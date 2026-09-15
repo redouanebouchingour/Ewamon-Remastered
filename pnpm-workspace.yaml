@@ -1,0 +1,12 @@
+packages:
+  - 'packages/*'
+  - 'tools/*'
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - '@node-rs/argon2'
+  - bufferutil
+  - utf-8-validate
+  - protobufjs
+  - '@colyseus/core'
+  - '@pm2/io'

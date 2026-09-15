@@ -1,0 +1,24 @@
+node_modules/
+dist/
+dist-types/
+build/
+out/
+*.tsbuildinfo
+.vite/
+coverage/
+.eslintcache
+*.log
+.env
+.env.local
+.screenshots/
+.probe/
+.DS_Store
+Thumbs.db
+
+# Raw art sources (398 MB of creature illustrations + GLBs). Not tracked; see assets-src/README.md.
+assets-src/creatures/
+assets-src/models/
+# Pipeline scratch
+tools/sprite-pipeline/.cache/
+tools/audio-pipeline/.cache/
+tools/audio-pipeline/out/

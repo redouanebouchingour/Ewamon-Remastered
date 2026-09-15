@@ -1,0 +1,12 @@
+{
+  "name": "@ewa/protocol",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "build": "tsc -b" },
+  "dependencies": { "@ewa/core": "workspace:*", "@ewa/content": "workspace:*", "@colyseus/schema": "^5.0.8" },
+  "devDependencies": {  }
+}

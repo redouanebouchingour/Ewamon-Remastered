@@ -1,0 +1,18 @@
+{
+  "name": "@ewa/audio-pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -b",
+    "generate": "tsx src/cli.ts generate",
+    "plan": "tsx src/cli.ts plan"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

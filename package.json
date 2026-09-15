@@ -1,0 +1,39 @@
+{
+  "name": "ewamon-remastered",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Ewamon Remastered — HD-2D creature-collector MMO. Three.js WebGPU + Colyseus + PostgreSQL.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @ewa/client --filter @ewa/server dev",
+    "dev:client": "pnpm --filter @ewa/client dev",
+    "dev:server": "pnpm --filter @ewa/server dev",
+    "build": "pnpm -r --filter './packages/*' build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:lint-rules": "vitest run --config eslint/vitest.config.ts",
+    "typecheck": "tsc -b --pretty",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,css}\"",
+    "sprites": "pnpm --filter @ewa/sprite-pipeline run build",
+    "audit:assets": "pnpm --filter @ewa/asset-audit run report",
+    "db:generate": "pnpm --filter @ewa/persist run db:generate",
+    "db:migrate": "pnpm --filter @ewa/persist run db:migrate",
+    "check": "pnpm typecheck && pnpm lint && pnpm test:lint-rules && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@types/node": "^22.10.5",
+    "eslint": "^9.39.5",
+    "globals": "^15.15.0",
+    "prettier": "^3.6.2",
+    "tsx": "^4.19.2",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.67.0",
+    "vite": "^7.3.6",
+    "vitest": "^3.2.7"
+  }
+}

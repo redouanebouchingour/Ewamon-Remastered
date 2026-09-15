@@ -1,0 +1,6 @@
+node_modules
+dist
+dist-types
+assets-src
+packages/client/public/creatures
+pnpm-lock.yaml

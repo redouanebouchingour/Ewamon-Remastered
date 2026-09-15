@@ -1,0 +1,35 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  check:
+    name: check (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - name: No generated output in the index
+        run: |
+          tracked=$(git ls-files | grep -E '(^|/)(dist|dist-types|node_modules|coverage)/|\.tsbuildinfo$' || true)
+          if [ -n "$tracked" ]; then echo "Generated output is tracked:"; echo "$tracked"; exit 1; fi
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test:lint-rules
+      - run: pnpm test
+      - run: pnpm build
