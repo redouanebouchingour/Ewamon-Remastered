@@ -4,6 +4,11 @@
  */
 export type PersistErrorCode =
   | 'NotFound'
+  | 'UsernameTaken'
+  | 'EmailTaken'
+  | 'BidAboveBuyNow'
+  | 'AlreadyFriends'
+  | 'AlreadyClaimed'
   | 'InsufficientFunds'
   | 'InsufficientItems'
   | 'InventoryOverflow'

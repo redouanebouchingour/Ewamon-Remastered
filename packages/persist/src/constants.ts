@@ -21,6 +21,9 @@ export const MIN_BID_INCREMENT = 50;
 /** §5.2 guilds: membership limit enforced under a lock on the guild row. */
 export const GUILD_MAX_MEMBERS = 50;
 
+/** Default guild founding fee, charged in the same transaction as the insert (callers may override). */
+export const GUILD_CREATE_COST = 5000;
+
 /** §4.7: refresh tokens live 30 days. */
 export const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 

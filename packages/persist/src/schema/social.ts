@@ -18,6 +18,8 @@ export const friendships = pgTable(
   (t) => [
     primaryKey({ columns: [t.requesterId, t.addresseeId] }),
     index('friendships_addressee_idx').on(t.addresseeId),
+    // One row per unordered pair: A->B and B->A can never both exist (see IMPLEMENTATION-NOTES.md).
+    uniqueIndex('friendships_pair_uq').on(sql`least(${t.requesterId}, ${t.addresseeId})`, sql`greatest(${t.requesterId}, ${t.addresseeId})`),
     check('friendship_not_self_ck', sql`${t.requesterId} <> ${t.addresseeId}`),
   ],
 );
