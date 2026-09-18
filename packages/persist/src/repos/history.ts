@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import type { Tx } from '../db';
 import { fail } from '../errors';
 import { battleHistory, creatureInstances, tradeHistory } from '../schema/index';
@@ -116,7 +116,15 @@ export const historyRepo = {
     await playerRepo.lockMany(tx, [a.playerId, b.playerId]);
     const allIds = [...a.creatureIds, ...b.creatureIds];
     if (new Set(allIds).size !== allIds.length) fail('InvalidArgument', 'duplicate creature in trade');
-    const rows = allIds.length ? await tx.select().from(creatureInstances).where(inArray(creatureInstances.id, allIds)).for('update') : [];
+    // Both players are locked; creatures follow, in ascending uuid order like every other multi-row lock.
+    const rows = allIds.length
+      ? await tx
+          .select()
+          .from(creatureInstances)
+          .where(inArray(creatureInstances.id, allIds))
+          .orderBy(asc(creatureInstances.id))
+          .for('update')
+      : [];
     const byId = new Map(rows.map((r) => [r.id, r]));
     const summarise = (side: TradeSide): TradedCreatureSummary[] =>
       side.creatureIds.map((id) => {

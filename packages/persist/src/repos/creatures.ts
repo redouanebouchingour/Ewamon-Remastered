@@ -22,6 +22,25 @@ async function lockRow(tx: Tx, id: string): Promise<CreatureRow> {
   return row;
 }
 
+/**
+ * Lock order everywhere in persist is player row(s) FIRST, creature row SECOND (lockForTransfer,
+ * insert, swap, market.create all do this). A path that locked the creature first and then its
+ * owner would deadlock against a concurrent transfer. So: peek the owner without a lock, lock the
+ * owner, lock the creature, and refuse if the owner changed in between (the caller retries).
+ */
+async function lockOwnerThenRow(tx: Tx, id: string, expectedOwner: string | null): Promise<CreatureRow> {
+  let ownerId = expectedOwner;
+  if (ownerId === null) {
+    const [peek] = await tx.select({ ownerId: ci.ownerId }).from(ci).where(eq(ci.id, id)).limit(1);
+    if (!peek) fail('NotFound', `creature ${id}`);
+    ownerId = peek.ownerId;
+  }
+  await playerRepo.lock(tx, ownerId);
+  const row = await lockRow(tx, id);
+  if (row.ownerId !== ownerId) fail('NotOwner', `creature ${id} is owned by ${row.ownerId}`);
+  return row;
+}
+
 async function partyCount(tx: Tx, ownerId: string): Promise<number> {
   const [r] = await tx
     .select({ n: sql<number>`count(*)::int` })
@@ -163,8 +182,7 @@ export const creatureRepo = {
 
   /** Moves one creature to another slot of its owner; refuses to empty the party. */
   async moveToSlot(tx: Tx, id: string, kind: SlotKind, index: number | 'nextBox'): Promise<void> {
-    const row = await lockRow(tx, id);
-    await playerRepo.lock(tx, row.ownerId);
+    const row = await lockOwnerThenRow(tx, id, null);
     if (row.slotKind === 'party' && kind !== 'party' && (await partyCount(tx, row.ownerId)) <= 1) fail('PartyMinimum');
     if (row.slotKind !== 'party' && kind === 'party' && (await partyCount(tx, row.ownerId)) >= PARTY_MAX) fail('PartyFull');
     const slotIndex = await resolveSlot(tx, row.ownerId, kind, index, id);
@@ -214,8 +232,7 @@ export const creatureRepo = {
 
   /** Deletes a party/box creature. Refuses locked; refuses the last party member; refuses listed/escrowed. */
   async release(tx: Tx, id: string, ownerId: string): Promise<void> {
-    const row = await lockRow(tx, id);
-    if (row.ownerId !== ownerId) fail('NotOwner');
+    const row = await lockOwnerThenRow(tx, id, ownerId);
     if (row.locked) fail('Locked');
     if (row.slotKind !== 'party' && row.slotKind !== 'box') fail('InvalidSlot', `cannot release from ${row.slotKind}`);
     if (row.slotKind === 'party' && (await partyCount(tx, ownerId)) <= 1) fail('PartyMinimum');

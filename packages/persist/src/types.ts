@@ -113,7 +113,8 @@ export interface PublicProfile {
   readonly tier: string;
   readonly trainerLevel: number;
   readonly badges: readonly BadgeId[];
-  readonly guildTag: string;
+  /** null when the player is in no guild. */
+  readonly guildTag: string | null;
   readonly dexCaughtCount: number;
   readonly showcase: readonly CreatureInstance[];
   readonly createdAt: Date;
