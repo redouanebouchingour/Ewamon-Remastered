@@ -97,3 +97,14 @@ Run against a real database with something like
 
 Not yet written: `src/seed.ts` (§5.4 demo players with the three starters) — the server package
 owns creature construction (species/moves/hp come from `@ewa/core`), so the seed waits for it.
+
+## Verified on real Postgres (2026-09-18)
+
+The full suite (55/55, including the three `DATABASE_URL`-gated 20-way concurrency tests) passed
+against PostgreSQL 17.6 (the local `supabase-db` container, throwaway database `ewamon_persist_test`).
+The root `vitest.config.ts` disables file parallelism when `DATABASE_URL` is set because all test
+files share that one database; with PGlite (default) each file has its own in-memory instance.
+
+```bash
+DATABASE_URL=postgres://postgres:<pw>@127.0.0.1:54322/ewamon_persist_test pnpm exec vitest run packages/persist
+```

@@ -16,6 +16,9 @@ export default defineConfig({
     },
   },
   test: {
+    // Packages that can run against a real Postgres (DATABASE_URL) share one database, so their
+    // test files must not run in parallel workers. PGlite (the default) is per-file in-memory.
+    fileParallelism: !process.env.DATABASE_URL,
     include: ['packages/*/test/**/*.test.ts', 'packages/*/test/**/*.test.tsx', 'tools/*/test/**/*.test.ts'],
     environment: 'node',
     reporters: 'default',
