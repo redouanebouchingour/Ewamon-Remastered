@@ -55,7 +55,7 @@ Every library symbol below was read from `packages/render/node_modules/three@0.1
 1. **One `WebGPURenderer`, one `RenderPipeline`, one `Scene`, one `PerspectiveCamera` per `createRenderer`.** Zones, arenas and actors are children of that scene; nothing constructs a second renderer.
 2. **No `Math.random`, no `Date.now`, no `performance.now` in any builder.** Every generator takes a `seed: number` and uses the `Prng` in §10.5.2. Two clients with the same `ZoneSpec` build byte-identical geometry (asserted by the snapshot test in `20-client.md` §20.4.4 plus the geometry digest in §10.5.9).
 3. **Materials are shared instances from `MaterialLibrary`.** A builder never calls `new Mesh*NodeMaterial` outside `materials/`. `dispose()` of a builder never calls `material.dispose()` or `texture.dispose()` on a library object (spied in `dispose-contract.test.ts`).
-4. **Every lit opaque material has three maps** (`map`, the ORM texture bound to `aoMap`/`roughnessMap`/`metalnessMap`, `normalMap`) from KTX2 files. No `CanvasTexture`, no `DataTexture`, no PNG reaches a lit material. The single `CanvasTexture` in the package is the HUD's (§10.9), on an unlit overlay excluded from `dumpZone()`.
+4. **Every lit opaque material has three maps** (`map`, the ORM texture bound to `aoMap`/`roughnessMap`/`metalnessMap`, `normalMap`) from KTX2 files. No `CanvasTexture`, no `DataTexture`, no PNG reaches a lit material. Creature billboards (class `'billboard'`) are the one lit class whose maps are WebP (§10.4.1, `40-pipelines.md` §40.1.6) and the `'character'` class reads vertex colour with the placeholder ORM/normal (§10.7.7); both are exempt from `textures.ktx2Only`/`materials.threeMaps` by class, never by flag. The single `CanvasTexture` in the package is the HUD's (§10.9), on an unlit overlay excluded from `dumpZone()`. <!-- reconciled 2026-09-18 -->
 5. **Zero per-frame allocation** in `frame()`, `CameraRig.update`, `ActorPool.setTransform`, `HudLayer.draw`, `CreatureBillboard.set*`. Scratch `Vector3`/`Matrix4`/`Quaternion` are module-level.
 6. **The harvested look is a uniform, not a code path** (spine §1, last paragraph). `setHarvestLevel(l)` writes one `uniform` read by every library material and every billboard; it constructs and disposes nothing.
 7. **Effects flags remove passes, not just zero them.** `setEffects` rebuilds the pipeline graph so a disabled pass costs 0 ms; §10.8.4.
@@ -95,7 +95,7 @@ export interface RenderCaps {
   readonly adapter: string | null;             // GPUAdapterInfo.description when exposed; null otherwise
 }
 
-export type WeatherKind = 'none' | 'sun' | 'rain' | 'sand' | 'hail';   // mirrors spine §2.5; redefined here because render may not import core
+export type WeatherKind = 'none' | 'sun' | 'rain' | 'sand' | 'hail';   // text-identical mirror of spine §2.5 (render may not import core)
 export type HarvestLevel = 0 | 1 | 2;                                 // intact · thinning · harvested
 
 export interface RenderStats {
@@ -140,7 +140,7 @@ export function createRenderer(o: RendererOptions): Promise<Renderer>;
 2. `await gpu.init()`. Rejection → `createRenderer` rejects with `RenderInitError('no-gpu')`; the client shows its static message.
 3. `backend = gpu.backend.isWebGPUBackend ? 'webgpu' : 'webgl2'`. On `webgl2` the renderer still runs (three's automatic fallback), the post graph drops `traa` to `smaa` (§10.8.3) and `caps.timestampQuery = false`. Nothing else branches on the backend; the WebGL2 path is allowed to run and is not budgeted (`50-verification-budget.md` §50.3).
 4. `gpu.toneMapping = NoToneMapping; gpu.outputColorSpace = SRGBColorSpace; gpu.shadowMap.enabled = true; gpu.shadowMap.transmitted = false; gpu.info.autoReset = true`. Tone mapping happens **in the post graph** (`acesFilmicToneMapping`, §10.8), never in the renderer, so bloom's threshold and the DOF mask are evaluated on scene-linear values.
-5. `ktx2 = new KTX2Loader().setTranscoderPath(o.transcoderPath ?? '/basis/').detectSupport(gpu)`. `caps.ktx2` = `'astc'` if `workerConfig.astcSupported`, else `'bc7'` if `bptcSupported`, else `'etc2'` if `etc2Supported`, else `'rgba8'`. Below `maxTextureSize 8192` → reject `RenderInitError('texture-size')` (the largest atlas is 8192², §10.4.7).
+5. `ktx2 = new KTX2Loader().setTranscoderPath(o.transcoderPath ?? '/basis/').detectSupport(gpu)`. `caps.ktx2` = `'astc'` if `workerConfig.astcSupported`, else `'bc7'` if `bptcSupported`, else `'etc2'` if `etc2Supported`, else `'rgba8'`. Below `maxTextureSize 8192` → reject `RenderInitError('texture-size')` (the MRT targets at the 3840-wide drawing-buffer cap need it; the largest asset texture is a 2048² sprite atlas, §10.4.1). <!-- reconciled 2026-09-18: atlases are 2048², not 8192² -->
 6. `scene = new Scene()`; `camera = new PerspectiveCamera(28, w / h, 0.5, 220)` (Pillar 1: vertical FOV 28°; near 0.5 and far 220 are fixed — the far zoom stop plus the far LOD band fits inside 220 m).
 7. Lighting rig (§10.3), sky + PMREM (§10.3.3), fog node (§10.3.7), post graph for `o.effects` (§10.8), HUD (§10.9), `BattleStage`, `ActorPool` are constructed **before** `createRenderer` resolves, so the first `frame()` has no lazy allocation.
 8. `gpu.compileAsync(scene, camera)` is awaited once with a warm-up scene holding one instance of every library material and one billboard, so the first zone frame compiles nothing. `RenderStats.programs` after this step is the programs baseline of the leak test.
@@ -173,9 +173,12 @@ Every surface has one **texture set**, baked by `tools/` (`40-pipelines.md`) int
 
 | Map | Channels | Colour space | Encoding | Size |
 |---|---|---|---|---|
-| `<surface>_albedo.ktx2` | RGB | `SRGBColorSpace` | UASTC, mip chain to 1×1 | 1024² (terrain 2048²) |
+| `<surface>_albedo.ktx2` | RGB (RGBA for alpha cards) | `SRGBColorSpace` | UASTC + RDO + zstd, mip chain to 1×1 | `hero` tier 1024² · `field` tier 512² |
 | `<surface>_orm.ktx2` | R = AO, G = roughness, B = metalness | `NoColorSpace` | UASTC, mip chain | same as albedo |
 | `<surface>_normal.ktx2` | RGB tangent-space normal (3×3 Sobel of the procedural heightfield, Pillar 2) | `NoColorSpace` | UASTC, mip chain | same as albedo |
+
+<!-- reconciled 2026-09-18: 40-pipelines.md OQ-2 — a single 1024²/2048² tier is ≈ 143 MB on disk against a 60 MB ceiling and 28.8 MB for Mirevale against a 6 MB first-frame phase; two tiers from one recipe: `field` (512², every surface, ≈ 0.10 MB per map) ships first, `hero` (1024², `SurfaceDef.hero === true`: the 6 shared surfaces, every terrain layer and one signature surface per biome, ≤ 50 surfaces world-wide) streams after the first frame and re-points the same material's maps. 2048² is dropped everywhere: at 3 m tiling 1024² is 341 texel/m against 386 px/m at the battle push-in -->
+Every surface ships **both tiers** under `<surface>.<tier>_<map>.ktx2` (`40-pipelines.md` §40.3.4). `MaterialLibrary.preload(ids)` resolves when the `field` tier of every id is resident; `preloadHero(ids)` upgrades the bound materials in place (a map re-point on a shared material, no new program) and is what `20-client.md` §20.10.3 phase 5 awaits. A `field` texture at 512² over a 3 m tile is 170 texel/m — 1.5 texels per screen pixel at the default 111 px/m view — so the first frame is never visibly under-textured.
 
 Runtime texture state stamped by the library on load: `wrapS = wrapT = RepeatWrapping`, `minFilter = LinearMipmapLinearFilter`, `magFilter = LinearFilter`, `anisotropy = 8`, `generateMipmaps = false` (compressed; the chain is in the file). The ORM texture object is bound to `aoMap`, `roughnessMap` and `metalnessMap` of the same material — one texture, one sampler, three slots. `aoMap` in node materials samples `uv` (verified: `MaterialNode.js` line 403–405, `aoMap.r − 1) · aoMapIntensity + 1`); no `uv1` attribute is required. Albedo textures are baked with **maximum luminance 0.85** (asset-audit rule `materials.albedoCeiling`); with the noon sun at 1.0 and the IBL at ≤ 0.25 (§10.3.5) the brightest non-emissive pixel is ≤ 1.10 scene-linear, under the 1.15 bloom threshold (Pillar 8).
 
@@ -240,16 +243,19 @@ export interface SurfaceDef {
   readonly alphaTest: number | null;               // cards: 0.5
   readonly doubleSide: boolean;
   readonly castShadow: boolean;                    // false for water and glass
+  readonly hero: boolean;                          // true → a 1024² `hero` tier exists besides the 512² `field` tier (§10.2.1); the 6 shared surfaces, every triplanar layer and one signature surface per biome
 }
 export const SURFACES: Readonly<Record<SurfaceId, SurfaceDef>>;
 
-export interface TextureSet { readonly albedo: Texture; readonly orm: Texture; readonly normal: Texture; readonly bytes: number }
+export interface TextureSet { readonly albedo: Texture; readonly orm: Texture; readonly normal: Texture; readonly bytes: number; readonly tier: 'field' | 'hero' }
 
 export interface MaterialLibrary {
   /** Shared instance; never dispose it. Loads the KTX2 set on first call (awaitable through `ready`). */
   get(id: SurfaceId): MeshStandardNodeMaterial | MeshPhysicalNodeMaterial;
-  /** Resolves when every texture of every surface in `ids` is resident. loadZone awaits this before building. */
+  /** Resolves when the `field` tier of every surface in `ids` is resident. loadZone awaits this before building. */
   preload(ids: readonly SurfaceId[]): Promise<void>;
+  /** Resolves when the `hero` tier of every `hero: true` surface in `ids` is resident and re-pointed; no-op for field-only ids. Never awaited before the first frame. */
+  preloadHero(ids: readonly SurfaceId[]): Promise<void>;
   /** Releases the texture sets of surfaces not in `keep`; materials stay (their maps are re-pointed on next preload). */
   evictExcept(keep: readonly SurfaceId[]): void;
   /** Uniform group shared by every material: harvestLevel, wetness, windTime, windDir, timeOfDay. */
@@ -329,7 +335,7 @@ Writes `materials.uniforms.harvestLevel.value = l` and `billboards.uniforms.harv
 
 ### 10.2.7 Budget
 
-`MaterialBudget.assert(zoneRoot, 48)` runs at the end of `loadZone` and counts distinct `Material.uuid` reachable from the zone root, skipping `Layers` bit 31 (debug). The M2 slice binds 15 + 6 shared + 2 billboard atlas materials + 1 contact-decal + 1 impostor = 25.
+`MaterialBudget.assert(zoneRoot, 48)` runs at the end of `loadZone` and counts distinct `Material.uuid` reachable from the zone root, skipping `Layers` bit 31 (debug). The M2 slice binds 15 surfaces (the 6 shared ids are among them) + ≤ 8 billboard atlas materials + ≤ 6 party singles + 1 contact-decal + 1 impostor + 1 `character` = ≤ 32. <!-- reconciled 2026-09-18: atlas count per 40-pipelines.md §40.1.4 -->
 
 ### 10.2.8 Dispose contract
 
@@ -451,15 +457,19 @@ Palette values for grove: `fogDensity 0.018`, `fogBase 0.0` (m), `fogFalloff 0.3
 ### 10.4.1 Descriptors (verbatim)
 
 ```ts
-export type VariantKey = 'normal' | 'dawn' | 'dusk' | 'verdant' | 'ember';   // mirrors spine §2.8; redefined here (render imports no core)
-export type TypeName = 'Normal' | 'Fire' | 'Water' | 'Grass' | 'Electric' | 'Ice' | 'Fighting' | 'Poison' | 'Ground' | 'Flying'
-  | 'Psychic' | 'Bug' | 'Rock' | 'Ghost' | 'Dragon' | 'Steel' | 'Fairy' | 'Dark' | 'Cosmic';
+// text-identical mirrors of spine §2.8 / §2.2 (render imports only `three`; 50-verification-budget.md §50.7 rule 5 allows a mirror whose declaration text is identical)
+export type VariantKey = 'normal' | 'dawn' | 'dusk' | 'verdant' | 'ember';
+export type TypeName =
+  | 'Normal' | 'Fire' | 'Water' | 'Grass' | 'Electric' | 'Ice' | 'Fighting' | 'Poison'
+  | 'Ground' | 'Flying' | 'Psychic' | 'Bug' | 'Rock' | 'Ghost' | 'Dragon' | 'Steel'
+  | 'Fairy' | 'Dark' | 'Cosmic';
 
-/** One entry of the sprite manifest (40-pipelines.md writes it; the client passes it through unchanged). */
+/** One side of a creature. The client builds it from 40-pipelines.md's SpriteManifestV2 (`uv → rect`, `footV`, `aspect`, `px` for singles). */
 export interface SpriteFrame {
-  readonly atlas: string;                  // atlas id, e.g. 'mire_route_a'
-  readonly rect: readonly [number, number, number, number];   // u0, v0, u1, v1 in the atlas, v up
-  readonly footV: number;                  // 0..1 from the bottom of the rect where the feet touch the ground (pipeline default 0.08)
+  readonly atlas: string;                  // ManifestAtlasV2.id, e.g. 'a-017'
+  readonly rect: readonly [number, number, number, number];   // u0, v0, u1, v1 in the atlas, v up (= ManifestSpriteV2.<side>.uv)
+  readonly px: readonly [number, number, number, number];     // x, y, w, h level-0 texels, y down (= .px); used only by bindSingle's crop
+  readonly footV: number;                  // 0..1 from the bottom of the rect where the feet touch the ground (pipeline value 0.08)
   readonly aspect: number;                 // rect width / height in texels (1 for the 1024² normalised frames)
 }
 export interface SpriteDescriptor {
@@ -470,19 +480,25 @@ export interface SpriteDescriptor {
   readonly variant: VariantKey;
   readonly isAlpha: boolean;
 }
+/** One map of an atlas: WebP level 0 plus pipeline-built levels 1..3 (40-pipelines.md §40.1.6.3). Never KTX2 — see the note below. */
+export interface AtlasMap { readonly url: string; readonly mips: readonly string[] }
 export interface AtlasSet {
-  readonly id: string;
-  readonly albedo: string; readonly normal: string; readonly emissive: string;   // KTX2 urls; albedo sRGB, others NoColorSpace
-  readonly size: 4096 | 8192;
+  readonly id: string;                     // ManifestAtlasV2.id
+  readonly albedo: AtlasMap;               // sRGB, straight alpha, lossy q85 with lossless alpha
+  readonly normal: AtlasMap;               // NoColorSpace; at `normalScale` × the albedo resolution
+  readonly emissive: AtlasMap;             // two-valued mask in R; uploaded as RedFormat/R8
+  readonly size: 2048;                     // level-0 texels per side; 2 species (4 cells of 1024²) per atlas
+  readonly normalScale: 0.5 | 1;
 }
 ```
 
-Atlases are per zone (the route's spawn set plus the player's party species is one bind): the pipeline packs each zone's species into ≤ 2 atlases of 4096² (8192² only for `solenne`). A creature not in the current zone's atlases (a traded-in party member) binds its species' **own** `single_<species>` 2048² set; ≤ 6 such binds exist at a time (party size).
+<!-- reconciled 2026-09-18: the sprite manifest is 40-pipelines.md's v2 (this section's earlier `AtlasSet { size: 4096 | 8192 }`, per-zone 4096² atlases and `single_<species>` files are superseded); creature atlases are WebP because UASTC measured 1.57× LARGER than lossless WebP on sprite content, the bundled encoder refuses > 12 Mpix, and ETC1S quantises the alpha slice — KTX2 UASTC stays the format for materials (§10.2.1) and model textures. 40-pipelines OQ-1 and OQ-3 are decided here -->
+Atlases are **zone-affinity 2048² sets holding 2 species each** (front + back, 4 cells of 1024²); a zone binds the atlases listed in `manifest.zones[zoneId]` — **≤ 8 per zone** (the same texel budget as 2 × 4096²) — so a route's spawn set plus its statics, trainers and gym teams is ≤ 8 binds. A creature not in the current zone's atlases (a traded-in party member) is bound through `SpritePool.bindSingle(set, frame)`: render fetches its `home` atlas files and decodes only the creature's cells with `createImageBitmap(blob, x, y, w, h)` per map and mip level into a 1024² (normal 512²) texture set — the `single` is a runtime crop, never a file on disk; ≤ 6 such binds exist at a time (party size). Textures are built from the decoded `ImageBitmap`s with `texture.mipmaps = [level1, level2, level3]`, `generateMipmaps = false`, so the sampler's `lodMaxClamp` is 3 and the 256²-per-sprite level covers every authored view (a `sizeScale 1` creature at `zoomStop 2` is ≈ 137 px tall → level 2.9).
 
 ### 10.4.2 `CreatureBillboard` (verbatim)
 
 ```ts
-export type BattlerPose = 'idle' | 'lunge' | 'windup' | 'hurt' | 'faint' | 'enter' | 'exit';
+export type BattlerPose = 'idle' | 'lunge' | 'windup' | 'hurt' | 'recoil' | 'faint' | 'enter' | 'exit' | 'celebrate';   // reconciled 2026-09-18: 'recoil' and 'celebrate' added — 20-client.md §20.5.1 Keyframe.pose uses them
 
 export class CreatureBillboard {
   constructor(pool: SpritePool, d: SpriteDescriptor);
@@ -499,8 +515,10 @@ export class CreatureBillboard {
   dispose(): void;                                         // returns the quad to the pool; idempotent
 }
 export interface SpritePool {
-  bindAtlas(set: AtlasSet): Promise<void>;                 // loads 3 KTX2; one MeshStandardNodeMaterial per atlas
-  releaseAtlas(id: string): void;
+  bindAtlas(set: AtlasSet): Promise<void>;                 // fetches 3 maps × 4 levels (WebP), one MeshStandardNodeMaterial per atlas
+  /** A party single: decodes only `frame.px` (and the matching cells of the mip files) of the creature's home atlas into a private 1024² set keyed `single:<set.id>:<frame.px>`. ≤ 6 live. */
+  bindSingle(set: AtlasSet, frame: SpriteFrame): Promise<void>;
+  releaseAtlas(id: string): void;                          // also releases singles keyed on it when no billboard uses them
   acquire(d: SpriteDescriptor): CreatureBillboard;
   readonly uniforms: { readonly harvestLevel: UniformNode<'float', number>; readonly cameraYaw: UniformNode<'float', number> };
   stats(): { readonly live: number; readonly atlases: number; readonly bytes: number };
@@ -512,7 +530,7 @@ export interface SpritePool {
 
 Quad: `PlaneGeometry(1, 1)` shared by every billboard, scaled per instance. World height `H = 1.6 m × sizeScale` (range 0.8–3.52 m); width `H × aspect`. The quad's local origin is the **foot point**: vertices span `y ∈ [−footV·H, (1 − footV)·H]`, so `setPosition` places the feet on the sampled ground. Texel density: 1024 texels over 1.6 m = 640 texel/m.
 
-At the default view (26 m, FOV 28°, 1440 px) the screen shows 12.97 m vertically → 111 px/m → a `sizeScale 1` creature is 178 px tall (5.8 texels/px, minified). At the battle camera (12 m) it is 386 px (2.65 texels/px). Magnification (Pillar 6's test regime) happens in the dex/party inspector (`stage.inspect`, 4 m) and at `zoomStop 0`. Filters: `magFilter = NearestFilter` (hard texels when magnified, Pillar 6), `minFilter = LinearMipmapLinearFilter` with the KTX2 mip chain (box-filtered by the pipeline, premultiplied-alpha aware) so minification does not shimmer, `anisotropy = 1`, `generateMipmaps = false`. The Pillar 6 test reads the scene pass `output` MRT texture (pre-TRAA) at 1.3× magnification: along a 200-pixel straight opaque edge every alpha is 0 or 1. TRAA is the only stage allowed to soften it afterwards, by construction.
+At the default view (26 m, FOV 28°, 1440 px) the screen shows 12.97 m vertically → 111 px/m → a `sizeScale 1` creature is 178 px tall (5.8 texels/px, minified). At the battle camera (12 m) it is 386 px (2.65 texels/px). Magnification (Pillar 6's test regime) happens in the dex/party inspector (`stage.inspect`, 4 m) and at `zoomStop 0`. Filters: `magFilter = NearestFilter` (hard texels when magnified, Pillar 6), `minFilter = LinearMipmapLinearFilter` with the pipeline-built WebP mip chain (levels 1–3, box-filtered in premultiplied space, coverage-preserving so `alphaTest 0.5` does not thin creatures at distance — `40-pipelines.md` §40.1.6.3) so minification does not shimmer, `anisotropy = 1`, `generateMipmaps = false`. <!-- reconciled 2026-09-18: WebP chain, not KTX2 --> The Pillar 6 test reads the scene pass `output` MRT texture (pre-TRAA) at 1.3× magnification: along a 200-pixel straight opaque edge every alpha is 0 or 1. TRAA is the only stage allowed to soften it afterwards, by construction.
 
 ### 10.4.4 Facing the camera (Y-axis only) — shadow-safe
 
@@ -593,7 +611,7 @@ Dual-typed creatures use `types[0]`. `20-client.md` §20.8.3 colourblind palette
 | Idle bob | `bob = 0.015 · H · sin(2π · 0.5 · t + phase)` — 0.5 Hz, ±1.5 % of height; `phase = hash(id) · 2π` so a party does not bob in unison |
 | Hurt flash | `hurt = strength` at `setHurt`, then `hurt *= exp(−dt / 70 ms)`; visible ≈ 220 ms |
 | Faint dissolve | `dissolve` set by the client's timeline (`KO_HOLD` 900 ms in `20-client.md`), linear 0 → 1 |
-| Poses | `lunge`: position +0.9 m toward the foe over 120 ms, back over 180; `windup`: scale y 0.94 then 1.04 over 250 ms; `hurt`: −0.3 m recoil 80 ms + flash; `enter`/`exit`: dissolve 1 → 0 / 0 → 1 over 450/350 ms; `faint`: dissolve + 0.4 m sink |
+| Poses | `lunge`: position +0.9 m toward the foe over 120 ms, back over 180; `windup`: scale y 0.94 then 1.04 over 250 ms; `hurt`: −0.3 m recoil 80 ms + flash; `recoil`: −0.25 m back over 100 ms, return over 150, no flash (the `damage { cause: 'recoil' }` cue); `enter`/`exit`: dissolve 1 → 0 / 0 → 1 over 450/350 ms; `faint`: dissolve + 0.4 m sink; `celebrate`: two 0.15 m hops over 600 ms (battle end, winner's active battler) |
 
 No pose creates a material or geometry; every pose is uniform writes on the shared quad and material.
 
@@ -616,7 +634,7 @@ Each billboard owns one decal: `PlaneGeometry(1, 1)` (shared), rotated flat, sca
 Field names follow `20-client.md` §20.4.4's adapter table (`palette`, `generators`, `setPiece`, `edges`, `actors`, `pickups`, `tablets`, `buildings`, `tallGrass`, `harvestLevel`, `accentType`) so `zoneSpecFor` needs no rename.
 
 ```ts
-export type Biome = 'grove' | 'cinder' | 'salt' | 'storm' | 'marrow' | 'vesper' | 'forge' | 'sky' | 'capital' | 'shrine' | 'rift';
+export type Biome = 'grove' | 'cinder' | 'salt' | 'storm' | 'marrow' | 'vesper' | 'forge' | 'sky' | 'capital' | 'shrine' | 'rift';   // text-identical mirror of spine §3.1
 export type Layout = 'town' | 'route' | 'story';
 export type Dir = 'n' | 'e' | 's' | 'w';
 export type GeneratorSet = 'grove' | 'cinder' | 'salt' | 'storm' | 'marrow' | 'vesper' | 'forge' | 'sky' | 'capital' | 'shrine' | 'rift';   // BIOME_GENERATORS keys = Biome
@@ -626,11 +644,12 @@ export type SetPieceId =
   | 'forge_great_gate' | 'siege_trebuchet' | 'sky_shrine' | 'ascent_stair' | 'solenne_cathedral' | 'eclipse_engine'
   | 'umbral_dome' | 'celestial_spire' | 'rift_maw';                                        // exactly 21; one per zone
 
-export interface HeightfieldData {          // structurally identical to @ewa/content Heightfield (30-server-netcode.md §30.2.3); the client passes content's object as-is
+export interface HeightfieldData {          // structurally identical to @ewa/content Heightfield (00-spine.md §3.11); the client passes content's object as-is
   readonly zoneId: string; readonly size: number; readonly step: 0.5; readonly res: number;
   readonly originX: number; readonly originZ: number;
-  readonly heights: Float32Array; readonly walkable: Uint8Array; readonly digest: string;
+  readonly heights: Float32Array; readonly walkable: Uint8Array; readonly water: Uint8Array; readonly digest: string;
 }
+export interface Marker { readonly id: string; readonly x: number; readonly z: number }   // warps (door markers), pickups, tablets share this shape
 export interface PropPlacement { readonly kind: string; readonly x: number; readonly z: number; readonly yaw: number; readonly scale: number; readonly seed: number }   // kind = a generator prop id (§10.5.4)
 export interface BuildingSpec { readonly id: string; readonly kind: 'house' | 'gym' | 'shop' | 'healer' | 'landmark'; readonly x: number; readonly z: number; readonly yaw: number; readonly w: number; readonly d: number; readonly floors: 1 | 2; readonly roof: 'slate' | 'thatch' | 'tile' | 'plate'; readonly seed: number }
 export interface ActorSpawn { readonly id: string; readonly look: string; readonly x: number; readonly z: number; readonly kind: 'npc' | 'trainer' }
@@ -646,8 +665,9 @@ export interface ZoneSpec {
   readonly palette: string;                                   // ZoneDef.palette -> PALETTES[palette] (§10.5.3)
   readonly generators: GeneratorSet;
   readonly layout: Layout;
-  readonly size: { readonly w: number; readonly d: number };  // town 128×128, route 256×128, story 96×96 (client bounds ±64 / 128×64 / ±48)
-  readonly heightfield: HeightfieldData;                      // town 160 m field for a 128 m zone: the 16 m margin is scenery, never walkable (walkable = 0 there)
+  readonly size: { readonly w: number; readonly d: number };  // the playable interior: town 128×128, route 208×208, story 168×168 (00-spine.md §3.1 extents) — reconciled 2026-09-18
+  readonly heightfield: HeightfieldData;                      // the full field (160 / 240 / 200 m): the 16 m margin is scenery, never walkable (walkable = 0 there)
+  readonly warps: readonly Marker[];                          // ZoneDef.warps → door markers (interior sub-areas are laid out by the builder at the warp's toX/toZ)
   readonly setPiece: SetPieceId;
   readonly edges: Readonly<Partial<Record<Dir, Edge>>>;
   readonly buildings: readonly BuildingSpec[];
@@ -760,7 +780,7 @@ Assertion (spine-level, `leak.spec.ts` in `50-verification-budget.md` §50.4.6):
 
 ### 10.6.1 The data is content's; the solver is render's
 
-`30-server-netcode.md` §30.2.3 decided that the heightfield is built in `@ewa/content` (`buildHeightfield(zone)`) so the server and the client sample the same `Float32Array`. Render cannot import content, so `HeightfieldData` (§10.5.1) is the structurally identical descriptor; `zoneSpecFor` passes `getHeightfield(zone.id)` through unchanged. Render never writes `heights` or `walkable`. The terrain mesh is built from the same array, so what you see is exactly what you collide with (the walkable-space fix in `PLAN.md`).
+`00-spine.md` §3.11 defines the heightfield as a pure `@ewa/content` export (`buildHeightfield(zone)`) so the server and the client sample the same `Float32Array`. Render cannot import content, so `HeightfieldData` (§10.5.1) is the structurally identical descriptor; `zoneSpecFor` passes `getHeightfield(zone.id)` through unchanged. Render never writes `heights`, `walkable` or `water`. <!-- reconciled 2026-09-18: the home is the spine, not 30-server-netcode.md --> The terrain mesh is built from the same array, so what you see is exactly what you collide with (the walkable-space fix in `PLAN.md`).
 
 ```ts
 export class TerrainCollider {
@@ -771,9 +791,11 @@ export class TerrainCollider {
   normal(x: number, z: number, out: Vector3): Vector3;
   /** Nearest sample's walkable bit; false outside. Identical to content's isWalkable. */
   walkable(x: number, z: number): boolean;
+  /** Nearest sample's water bit; false outside. Identical to content's isWater (water surface meshes and 'water' spawns sit on it). */
+  water(x: number, z: number): boolean;
   /** Slope in degrees at (x, z) from `normal`. */
   slopeDeg(x: number, z: number): number;
-  readonly bounds: { readonly minX: number; readonly maxX: number; readonly minZ: number; readonly maxZ: number };  // field extent shrunk by 1.0 m (30-server-netcode.md §30.2.3)
+  readonly bounds: { readonly minX: number; readonly maxX: number; readonly minZ: number; readonly maxZ: number };  // the playable interior = content's playableBounds(h): field extent shrunk by the 16 m margin (00-spine.md §3.1)
 }
 ```
 
@@ -823,8 +845,8 @@ export interface CameraRig {
   release(ms: number): void;                                // back to the diorama pose
   /** Additive rotational shake: amplitude in world units at the focus distance (20-client.md SHAKE_AMP ≤ 0.5), decays over ms; ignored when effects.shake is false. */
   shake(amp: number, ms: number): void;
-  /** Battle camera cue from the timeline (20-client.md MoveAnimDef.camera). */
-  cue(kind: 'attacker' | 'defender' | 'impact' | 'wide' | 'ko', ms: number): void;
+  /** Battle camera cue from the timeline (20-client.md MoveAnimDef.camera and Keyframe.camera.shot). */
+  cue(kind: 'attacker' | 'defender' | 'impact' | 'wide' | 'ko' | 'throw', ms: number): void;   // reconciled 2026-09-18: 'throw' added for the orb sequence
   update(dtMs: number): void;                               // called by frame(); zero allocation
   readonly focus: Readonly<Vector3>;                        // the point the DOF plane passes through (feet of the followed actor)
   readonly camera: PerspectiveCamera;
@@ -860,12 +882,13 @@ export interface CameraWork {
   readonly slowmo: { readonly scale: number; readonly ms: number } | null;    // forwarded to setTimeScale (effects.slowmo gates)
   readonly hold: number;                                                       // ms before returning to the arena pose
 }
-export const CAMERA_WORK: Readonly<Record<'attacker' | 'defender' | 'impact' | 'wide' | 'ko', CameraWork>> = {
+export const CAMERA_WORK: Readonly<Record<'attacker' | 'defender' | 'impact' | 'wide' | 'ko' | 'throw', CameraWork>> = {
   attacker: { push: { distance: 2.5, ms: 220 }, orbit: { deg: -10, ms: 220 }, shake: null, slowmo: null, hold: 300 },
   defender: { push: { distance: 2.5, ms: 220 }, orbit: { deg: 10, ms: 220 }, shake: null, slowmo: null, hold: 300 },
   impact:   { push: { distance: 1.2, ms: 90 },  orbit: null, shake: { amp: 0.25, ms: 180 }, slowmo: null, hold: 200 },
   wide:     { push: { distance: -3.0, ms: 400 }, orbit: { deg: 25, ms: 400 }, shake: null, slowmo: null, hold: 500 },
   ko:       { push: { distance: 1.8, ms: 300 }, orbit: { deg: 35, ms: 900 }, shake: null, slowmo: { scale: 0.35, ms: 400 }, hold: 900 },
+  throw:    { push: { distance: 1.5, ms: 600 }, orbit: { deg: 15, ms: 600 }, shake: null, slowmo: null, hold: 700 },   // follows the orb to the wild battler; the orb shakes play in this pose
 };
 ```
 
@@ -874,7 +897,7 @@ Per-move overrides come from the client's `MOVE_ANIMS` through `rig.cue(kind, ms
 ### 10.7.5 `BattleStage` (the surface `20-client.md` consumes) and the VFX id table
 
 ```ts
-export type Terrain = 'none' | 'grove' | 'cinder' | 'salt' | 'storm' | 'marrow' | 'vesper' | 'forge' | 'sky' | 'shrine' | 'rift';   // mirrors spine §2.9
+export type Terrain = 'none' | 'grove' | 'cinder' | 'salt' | 'storm' | 'marrow' | 'vesper' | 'forge' | 'sky' | 'shrine' | 'rift';   // text-identical mirror of spine §2.9
 export interface BattlerRef { readonly side: 0 | 1; readonly slot: number }
 
 export interface BattleStage {
@@ -925,7 +948,7 @@ export interface ActorPool {
 
 ### 10.7.7 Character models
 
-Player and NPC looks are `SkinnedMesh` rigs loaded once per `createRenderer` from `public/models/<look>.glb` (the CC0 Quaternius set the plan carries forward, `40-pipelines.md` re-encodes them with meshopt + KTX2). Each look is one draw (merged), `castShadow = true`, and its material is a library `MeshStandardNodeMaterial` built by the same graph (§10.2.4, surface class `'character'` with the GLB's own three maps), so harvest level 2 flattens characters too. Animation: `AnimationMixer` with `idle`/`walk`/`run` clips, `mixer.update(dt × timeScale)`. Nameplates are HUD (§10.9), never `Sprite`s.
+Player and NPC looks are `SkinnedMesh` rigs loaded once per `createRenderer` from `public/models/looks/<look>.glb` (`models.manifest.json` `looks`, the CC0 Quaternius set the plan carries forward, `40-pipelines.md` §40.2 re-encodes them with meshopt; the source files carry **no images**, so the pipeline bakes their 6 flat colours into `COLOR_0`). Each look is one draw (one primitive, one material), `castShadow = true`, and its material is the one shared library `MeshStandardNodeMaterial` of class `'character'`: the §10.2.4 graph with `vertexColor()` as albedo and the neutral placeholder ORM/normal set (`aoNode 1`, roughness 0.6, metalness 0, geometry normal) — exempt from `materials.threeMaps` by class, and flattened at harvest level 2 like everything else. Animation: `AnimationMixer` with the 7 kept clips `idle`/`walk`/`run`/`victory`/`defeat`/`sitdown`/`standup`, `mixer.update(dt × timeScale)`. Legendary GLBs (`public/models/legendaries/<id>.glb` + `<id>.lod1.glb`, skinned, one `idle` clip, three KTX2 maps) are the only skinned meshes with real maps and use the §10.2.4 graph unmodified; they switch to `lod1` beyond 40 m. Nameplates are HUD (§10.9), never `Sprite`s. <!-- reconciled 2026-09-18: paths, material and clip list from 40-pipelines.md §40.2.3/§40.2.5 -->
 
 ---
 
@@ -1069,9 +1092,7 @@ Regions (each with its own dirty bit; a `set` marks only the regions its keys be
 ### 10.10.1 `BudgetProbe` and `createZoneView` (the `50-verification-budget.md` §50.2.3 contract, verbatim there; implemented here)
 
 ```ts
-export type BudgetPass = 'opaque' | 'sprites' | 'shadows' | 'gtao' | 'traa' | 'bloom' | 'dof' | 'grade';
-export interface BudgetCounts { /* verbatim 50-verification-budget.md §50.2.3 */ }
-export interface BudgetProbe { setPassEnabled(pass: BudgetPass, on: boolean): void; counts(): BudgetCounts; gpuFrameMs(): Promise<number | undefined>; simMs(): number; dumpZone(): ZoneDump }
+// BudgetPass, BudgetCounts, BudgetProbe: defined verbatim in 50-verification-budget.md §50.2.3 and exported from @ewa/render unchanged (not restated here — §50.7 rule 5).
 
 export interface ZoneDump {
   readonly zone: string; readonly harvestLevel: HarvestLevel;
@@ -1081,6 +1102,8 @@ export interface ZoneDump {
   readonly sprites: readonly { readonly atlas: string; readonly magFilter: number; readonly anisotropy: number }[];
   readonly counts: BudgetCounts;
   readonly shadowDrawCalls: number;
+  readonly culledChunks: number;              // scatter chunks outside the frustum this frame (legacy-render-audit Q19: the cull rate is reported, not assumed) — reconciled 2026-09-18
+  readonly lightIds: readonly string[];       // LightSource ids present, sorted; pillars.spec.ts compares it before and during a battle (Pillar 7)
 }
 
 export interface ZoneViewOptions extends RendererOptions { readonly zone: ZoneSpec; readonly shots: readonly CameraShot[] }
@@ -1138,7 +1161,7 @@ Filled only by the differential procedure of `50-verification-budget.md` §50.2.
 ## NON-NEGOTIABLES (this file)
 
 1. One renderer, one pipeline, one scene, one camera; the zone root is never removed during a battle (Pillar 7).
-2. Every lit opaque material carries albedo + ORM + normal from KTX2; no runtime-generated texture reaches a lit material.
+2. Every lit opaque material carries albedo + ORM + normal from KTX2 (billboards: WebP atlases with the same three roles; characters: vertex colour + placeholder); no runtime-generated texture reaches a lit material.
 3. The harvested look is `harvestLevel` — one uniform in one graph. `setHarvestLevel` allocates nothing.
 4. Billboards are lit `MeshStandardNodeMaterial` quads with `NearestFilter` magnification, a normal map, a type-coloured rim, `maskShadowNode` alpha shadows and a multiply contact decal; the variant palette is four `userData` values, never re-baked pixels.
 5. The DOF focal plane passes through the followed actor's feet, tilted 24°, and the `mask.y` MRT channel keeps the player's creature and both active battlers at CoC 0.
@@ -1148,9 +1171,10 @@ Filled only by the differential procedure of `50-verification-budget.md` §50.2.
 9. `ZoneHandle.dispose()` returns `renderer.info.memory` to the post-warm-up baseline exactly; the library's materials, textures and programs are part of that baseline.
 10. No `Math.random`, `Date`, `performance.now` or per-frame allocation anywhere in `packages/render/src`.
 
-## OPEN QUESTIONS FOR OTHER SECTIONS
+## OPEN QUESTIONS FOR OTHER SECTIONS — RESOLVED 2026-09-18
 
-1. `20-client.md` §20.4.1: `RendererOptions` gains optional `forceWebGL`, `trackTimestamp`, `transcoderPath`; `Renderer` gains `renderer`, `backend`, `caps`, `scene`, `materials`; `ZoneHandle` gains `group`, `collider`, `bounds`, `geometryDigest`, `stats()`; `CameraRig` gains `cue`, `focus`, `camera`, `setAspect`; `BattleStage` is defined in §10.7.5 (with `setTypeColors`, `inspect`, `prewarm`, `syncFrom`, `dressSpectator`); `ZoneSpec` uses the adapter's field names plus `seed`, `biome`, `size`, `heightfield`, `props`, `lights`, `water`, `layout`. The client passes `getHeightfield(zone.id)` as `spec.heightfield` unchanged. `MOVE_ANIMS`/`DEFAULT_BY_TYPE` must reference only the 47 `VFX_IDS`.
-2. `30-server-netcode.md` §30.2.3: `HeightfieldData` here is structurally identical to content's `Heightfield`; `collider.test.ts` locks `sample`/`walkable` equality against the committed `mirevale` fixture — content should commit that fixture (`dist/heightfields/mirevale.json`) from `validate.ts`.
-3. `40-pipelines.md`: texture sets per §10.2.1 (UASTC, mip chains, albedo luminance ceiling 0.85), per-zone sprite atlases ≤ 2 × 4096² (`solenne` 8192²) plus `single_<species>` 2048² sets, the sprite manifest shape `SpriteFrame` (`atlas`, `rect`, `footV`, `aspect`), box-filtered premultiplied-alpha mips for sprite albedo, the 4×4 neutral placeholder set, GLB characters re-encoded with meshopt + KTX2, and `basis_transcoder.{js,wasm}` copied to `public/basis/`.
-4. `50-verification-budget.md`: the Pillar 6 edge test reads the scene pass `output` MRT (pre-TRAA); Pillar 1 reads the `mask` MRT; add `materials.albedoCeiling` (≤ 0.85) and the bloom-gap shot to the asset-audit rules; `renderTargets` steady state is 20 after impostor targets are folded (§10.10.2); `programs` is asserted constant across zone cycles (§10.5.9).
+<!-- reconciled 2026-09-18: each question below is answered in the named section; the list is kept as the audit trail -->
+1. `20-client.md` §20.4.1 → **done**: the client's consumed-surface block now points at this file's definitions (§10.1.1, §10.5.1, §10.7.2, §10.7.5, §10.7.6, §10.9) and lists the extra members; `zoneSpecFor` (§20.4.4) passes `getHeightfield(zone.id)` unchanged and fills `seed`, `biome`, `size`, `layout`, `props`, `lights`, `water`, `warps`; `MOVE_ANIMS`/`DEFAULT_BY_TYPE` reference only the 47 `VFX_IDS` (§20.5.2, asserted by `timeline.test.ts`). The client's `Keyframe.pose` values `recoil`/`celebrate` and `camera.shot 'throw'` were added here (§10.4.2, §10.7.2, §10.7.4) rather than removed there.
+2. `30-server-netcode.md` §30.2.3 → **done**: the `Heightfield` block moved to `00-spine.md` §3.11 (content owns it; `water` added); `validate.ts` commits `dist/heightfields/<zoneId>.json` for every zone (spine §3.10), and `collider.test.ts` reads `mirevale.json`.
+3. `40-pipelines.md` → **done, in 40's favour for creatures**: material texture sets are KTX2 UASTC in two tiers (§10.2.1 here, §40.3 there); creature atlases are WebP 2048² zone-affinity sets, ≤ 8 per zone, singles are runtime crops (§10.4.1 here = SpriteManifestV2 there); the placeholder set, meshopt GLBs (KTX2 maps on legendaries only) and `public/basis/` are as §40.2/§40.3.4/§40.6 state.
+4. `50-verification-budget.md` → **done**: §50.4.6 now names the pre-TRAA `output` read for Pillar 6, the `mask` read for Pillar 1, the rules `materials.albedoCeiling`, `shadows.drawCalls`, `harvest.same`, `geometry.noOutlineShells`, `scatter.instanced`, the bloom-gap shot, `renderTargets` steady state 20 ≤ 24 and `programs` constant across cycles.

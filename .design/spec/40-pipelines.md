@@ -1,6 +1,6 @@
 # EWAMON REMASTERED — SPEC §40: tools/ PIPELINES AND ASSET FORMATS
 
-**Status:** BINDING for `tools/sprite-pipeline`, `tools/model-pipeline`, `tools/material-bake`, `tools/audio-pipeline`, `tools/asset-audit` and for every file under `packages/client/public/`. Where this file disagrees with `00-spine.md`, `10-render.md`, `20-client.md` or `30-server-netcode.md`, the lower-numbered file wins and the disagreement is listed under OPEN QUESTIONS at the end. Where it disagrees with `50-verification-budget.md`, this file wins.
+**Status:** BINDING for `tools/sprite-pipeline`, `tools/model-pipeline`, `tools/material-bake`, `tools/audio-pipeline`, `tools/asset-audit` and for every file under `packages/client/public/`. Where this file disagrees with `00-spine.md`, `10-render.md`, `20-client.md` or `30-server-netcode.md`, the lower-numbered file wins; the disagreements found while writing it were listed under OPEN QUESTIONS at the end and are all resolved (reconciled 2026-09-18). Where it disagrees with `50-verification-budget.md`, this file wins.
 
 Inputs, all read from disk for this section: `tools/sprite-pipeline/src/*.ts` (the pipeline that has already run once); its output `packages/client/public/creatures/` (66 atlas files, 196.6 MB of lossless WebP + 15 MB of animation sheets, 22 atlases, 132 sprite ids, manifest `version: 1`); `tools/sprite-pipeline/qa/qa-report.json` (264 sprites, `counts: { clipped: 76, coverage: 1, fallback-source: 1, missing-side: 1, multiframe: 20, nonsquare: 52 }`); `tools/sprite-pipeline/node_modules/ktx2-encoder@0.6.0` (`types/node/index.d.ts`, `types/type.d.ts`, `dist/node/*.js`); `tools/asset-audit/package.json` (`@gltf-transform/{core,extensions,functions} ^4.5.0`, `meshoptimizer ^0.24.0`); `assets-src/models/` (4 legendary GLBs, 20 Quaternius glTFs, 45 MB); `.design/legacy/ewamon.js` (130 species); `.design/roster-coverage.md` §6 (15 spawn tables, 140 species placements, 72 distinct species); `10-render.md` §10.2 and §10.4; `20-client.md` §20.7.4 and §20.10.3; `50-verification-budget.md` §50.4.8 and §50.5 M1.
 
@@ -80,7 +80,7 @@ Cache (`cache.ts`): per sprite `.cache/sprites/<hash>/{albedo,normal,emissive}.p
 
 ### 40.1.4 Atlas planning — every species once, packed by zone affinity
 
-`10-render.md` §10.4.1 says: atlases are per zone, a zone's spawn set is ≤ 2 atlases of 4096² (8192² only for `solenne`), and a creature not in the current zone's atlases binds its species' `single_<species>` 2048² set. `groups.ts` today groups by the *legacy* route tables plus `league`/`starters`/`misc` and pulls forward evolutions in. Both are replaced by the plan below; the reason is arithmetic (§40.1.6.2): the 35 MB budget is reachable only if **each of the 260 sprites is stored once**, and a literal per-zone layout stores the 72 table species 140 times.
+`10-render.md` §10.4.1's first draft said: atlases are per zone, a zone's spawn set is ≤ 2 atlases of 4096² (8192² only for `solenne`), and a creature not in the current zone's atlases binds its species' `single_<species>` 2048² set (it now states the layout below — reconciled 2026-09-18). `groups.ts` today groups by the *legacy* route tables plus `league`/`starters`/`misc` and pulls forward evolutions in. Both are replaced by the plan below; the reason is arithmetic (§40.1.6.2): the 35 MB budget is reachable only if **each of the 260 sprites is stored once**, and a literal per-zone layout stores the 72 table species 140 times.
 
 **Zone set** `Z(zone)` for each of the 21 zones:
 
@@ -159,27 +159,17 @@ export interface SpriteManifest {
 }
 ```
 
-**What `10-render.md` §10.4.1 consumes** (verbatim there, quoted for the diff):
+**What `10-render.md` §10.4.1 consumes** is now the v2 shape below: `SpriteFrame { atlas, rect = uv, px, footV, aspect }` and `AtlasSet { id, albedo/normal/emissive: AtlasMap { url, mips }, size: 2048, normalScale }` — the earlier render-side draft (`rect` only, `AtlasSet.size: 4096 | 8192`, KTX2 urls) was replaced there on reconciliation, so the two files define one shape and this file is its source. <!-- reconciled 2026-09-18 -->
 
-```ts
-export interface SpriteFrame {
-  readonly atlas: string;                  // atlas id, e.g. 'mire_route_a'
-  readonly rect: readonly [number, number, number, number];   // u0, v0, u1, v1 in the atlas, v up
-  readonly footV: number;                  // 0..1 from the bottom of the rect where the feet touch the ground (pipeline default 0.08)
-  readonly aspect: number;                 // rect width / height in texels (1 for the 1024² normalised frames)
-}
-export interface AtlasSet { readonly id: string; readonly albedo: string; readonly normal: string; readonly emissive: string; readonly size: 4096 | 8192 }
-```
-
-**Mismatches and the decision on each** (`10-render.md` wins where it speaks; where it is silent the pipeline decides):
+**Mismatches and the decision on each** — v2 below is the contract; `10-render.md` §10.4.1 now consumes it verbatim (`SpriteFrame` = `uv → rect` + `px` + `footV` + `aspect`; `AtlasSet` = `ManifestAtlasV2` maps). <!-- reconciled 2026-09-18: v2 wins, stated in all three sections -->
 
 | # | v1 | §10.4.1 | Decision |
 |---|---|---|---|
 | 1 | `x, y, w, h` pixels, y down | `rect: [u0, v0, u1, v1]`, v **up** | v2 carries **both**: `px: [x, y, w, h]` (tooling, contact sheet, `createImageBitmap` crop) and `uv: [u0, v0, u1, v1]` with `u0 = x / size`, `v0 = 1 − (y + h) / size`, `u1 = (x + w) / size`, `v1 = 1 − y / size`. The client passes `uv` through unchanged as `rect`. |
 | 2 | `footV 0.92` measured from the **top** | `footV` from the **bottom**, default 0.08 | v2 `footV` is from the bottom: `1 − FOOT_V = 0.08`. `stages.test.ts` ("foot line at the manifest's fixed V ± 1 texel") reads `round((1 − footV) × 1024) = 942`. |
 | 3 | no `aspect` | `aspect` | v2 adds `aspect: 1` (every frame is a 1024² cell; a future non-square cell would set it). |
-| 4 | `ManifestAtlas.group` = legacy route name | `AtlasSet.size: 4096 \| 8192`, atlases keyed by zone | v2: atlases are 2048² and zone-agnostic (`species[]`, `size: 2048`, `slots`); the per-zone view is the `zones` record (§40.1.4). `group` is dropped. **Open question to `10-render.md`** (OQ-1): `AtlasSet.size` gains `2048`, and "≤ 2 atlases of 4096²" becomes "≤ 8 atlases of 2048²" — identical texel budget, 6 more shared materials. |
-| 5 | `encoding: 'ktx2-uastc' \| 'webp'` (whole manifest) | `AtlasSet` urls described as KTX2 | v2 `encoding: 'webp'` only (§40.1.6); per-map `codec` records the lossy/lossless choice so the audit can check it. KTX2 for creatures is removed from the type. **Open question to `10-render.md`** (OQ-1 at the end): `AtlasSet` urls are WebP, and `textures.ktx2Only` must exempt class `'billboard'`. |
+| 4 | `ManifestAtlas.group` = legacy route name | `AtlasSet.size: 4096 \| 8192`, atlases keyed by zone | v2: atlases are 2048² and zone-agnostic (`species[]`, `size: 2048`, `slots`); the per-zone view is the `zones` record (§40.1.4). `group` is dropped. **Decided** (OQ-1, `10-render.md` §10.4.1): `AtlasSet.size` is `2048`, and "≤ 2 atlases of 4096²" became "≤ 8 atlases of 2048²" — identical texel budget, 6 more shared materials. |
+| 5 | `encoding: 'ktx2-uastc' \| 'webp'` (whole manifest) | `AtlasSet` urls described as KTX2 | v2 `encoding: 'webp'` only (§40.1.6); per-map `codec` records the lossy/lossless choice so the audit can check it. KTX2 for creatures is removed from the type. **Decided** (OQ-1): `AtlasSet` maps are WebP (`AtlasMap { url, mips }`), and `textures.ktx2Only` exempts class `'billboard'`. |
 | 6 | one url per map | one url per map | v2 adds `mips: string[]` per map (levels 1..3, §40.1.6.3) because `10-render.md` §10.4.3 wants a pipeline-built, premultiplied-aware chain and `generateMipmaps = false`. |
 | 7 | `sizeScale?` optional | `SpriteDescriptor.sizeScale` required | v2 `sizeScale: number` required, copied from `SpeciesDef.sizeScale` (0.45–1.5 in the legacy data). |
 | 8 | `animations[]` | not consumed | dropped (§40.1.1). |
@@ -395,14 +385,14 @@ Runtime: the client loads GLBs with `GLTFLoader` + `MeshoptDecoder` + `KTX2Loade
 
 ### 40.3.1 What it produces
 
-`10-render.md` §10.2.1 fixes the output: per surface id, three KTX2 files — `<surface>_albedo.ktx2` (RGB, sRGB, UASTC, mips to 1×1), `<surface>_orm.ktx2` (R = AO, G = roughness, B = metalness, NoColorSpace, UASTC, mips), `<surface>_normal.ktx2` (tangent-space normal from a 3×3 Sobel of the procedural heightfield, NoColorSpace, UASTC, mips) — at 1024², 2048² for terrain layers (`triplanar: true`) and for the surfaces marked **hero** below; albedo maximum luminance 0.85; cached by content hash. The 83 surface ids and their base values are `SURFACES` in `packages/render/src/surfaces.ts` (`10-render.md` §10.2.2–10.2.3); the bake imports that table through a JSON export (`packages/render` writes `dist/surfaces.json` in its build; the bake reads the JSON, never the TS, so the import-boundary rule holds).
+`10-render.md` §10.2.1 fixes the output: per surface id, three KTX2 maps — `albedo` (RGB, sRGB, UASTC, mips to 1×1), `orm` (R = AO, G = roughness, B = metalness, NoColorSpace, UASTC, mips), `normal` (tangent-space normal from a 3×3 Sobel of the procedural heightfield, NoColorSpace, UASTC, mips) — in **two tiers from one recipe**: `field` at 512² for every surface and `hero` at 1024² for surfaces with `hero: true` (the 6 shared ids, every `triplanar` terrain layer, one signature surface per biome; ≤ 50 world-wide, asserted). There is no 2048² tier. Albedo maximum luminance 0.85; cached by content hash. <!-- reconciled 2026-09-18: OQ-2 decided in 10-render.md §10.2.1 — the single-tier layout was 143 MB against 60 --> The 83 surface ids and their base values are `SURFACES` in `packages/render/src/surfaces.ts` (`10-render.md` §10.2.2–10.2.3); the bake imports that table through a JSON export (`packages/render` writes `dist/surfaces.json` in its build; the bake reads the JSON, never the TS, so the import-boundary rule holds).
 
 The approach is the Table-Clash one (`reference-table-clash-SPEC.md` §2: `TextureSetRequest` with `albedo` painter, `orm` writer, `height` callback, `normalFromHeight`, `packOrm`, `fbm2`/`valueNoise2`/`hash21`), moved from runtime Canvas2D to a Node build step over `Float32Array`s. The runtime `CanvasTexture` path is cut (`10-render.md` §10.11).
 
 ### 40.3.2 `SurfaceRecipe` (verbatim, `tools/material-bake/src/recipe.ts`)
 
 ```ts
-export interface Field { readonly width: number; readonly height: number; readonly data: Float32Array }      // row-major, 0..1, pre-zeroed
+export interface ScalarField { readonly width: number; readonly height: number; readonly data: Float32Array }      // row-major, 0..1, pre-zeroed
 export interface Rgb   { readonly width: number; readonly height: number; readonly data: Float32Array }      // 3 floats per texel, linear 0..1 (converted to sRGB on write)
 export interface Orm   { readonly width: number; readonly height: number; readonly ao: Float32Array; readonly rough: Float32Array; readonly metal: Float32Array }  // pre-filled 1 / 0.5 / 0
 
@@ -415,7 +405,7 @@ export interface Noise {
 }
 
 export interface RecipeCtx {
-  readonly id: string; readonly size: number;                    // 1024 | 2048
+  readonly id: string; readonly size: number;                    // 512 (field) | 1024 (hero) — the recipe is resolution-independent; every coordinate is in tile units
   readonly metres: number;                                       // physical tile size the texture covers (u = v); repeat is world-constant in the shader
   readonly noise: Noise;
   readonly def: SurfaceDefJson;                                  // SURFACES[id] from packages/render dist/surfaces.json
@@ -423,14 +413,14 @@ export interface RecipeCtx {
 
 export interface SurfaceRecipe {
   readonly id: string;
-  readonly size: 1024 | 2048;
+  readonly hero: boolean;                                        // = SurfaceDef.hero; true → bake both tiers (512² + 1024²), false → 512² only
   readonly metres: number;                                       // e.g. 3 for terrain (10-render.md §10.2.4 triplanar 1/3.0), 2 for walls, 1 for small props
   /** Always called first. Writes the heightfield the normal is derived from and that the other two painters may read. */
-  height(h: Field, c: RecipeCtx): void;
+  height(h: ScalarField, c: RecipeCtx): void;
   /** Paints linear RGB. May read h. The bake clamps luminance to ≤ 0.85 after painting and reports how many texels it clamped. */
-  albedo(rgb: Rgb, h: Field, c: RecipeCtx): void;
+  albedo(rgb: Rgb, h: ScalarField, c: RecipeCtx): void;
   /** Writes AO / roughness / metalness in place. May read h. AO defaults to a cavity term derived from h if the recipe leaves `ao` untouched. */
-  orm(o: Orm, h: Field, c: RecipeCtx): void;
+  orm(o: Orm, h: ScalarField, c: RecipeCtx): void;
   /** Sobel gain for normalFromHeight. 0.35 fine pores … 0.9 deep relief. */
   readonly normalStrength: number;
   /** 'repeat' (seamless: the painters are written on a torus, the bake asserts the wrap seam error) or 'clamp'. */
@@ -458,66 +448,80 @@ encodeToKTX2(new Uint8Array(0), {
 });
 ```
 
-The sizes here (1024² = 1 Mpix, 2048² = 4.2 Mpix) are under the 12 Mpix cap measured in §40.1.6.1, so KTX2 is available; there is no WebP fallback for materials — `10-render.md` non-negotiable 2 ("every lit opaque material carries albedo + ORM + normal from KTX2") and the `textures.ktx2Only` audit rule make a fallback pointless. If the encoder is unavailable on a machine the bake fails with the probe message.
+The sizes here (512² = 0.26 Mpix, 1024² = 1 Mpix) are under the 12 Mpix cap measured in §40.1.6.1, so KTX2 is available; there is no WebP fallback for materials — `10-render.md` non-negotiable 2 ("every lit opaque material carries albedo + ORM + normal from KTX2") and the `textures.ktx2Only` audit rule make a fallback pointless. If the encoder is unavailable on a machine the bake fails with the probe message.
 
 ### 40.3.4 Output, manifest, cache
 
 ```
 packages/client/public/materials/
-├─ <surface>_albedo.ktx2  <surface>_orm.ktx2  <surface>_normal.ktx2      (83 × 3)
+├─ <surface>.field_{albedo,orm,normal}.ktx2                                (83 × 3, 512²)
+├─ <surface>.hero_{albedo,orm,normal}.ktx2                                 (≤ 50 × 3, 1024², hero: true only)
 ├─ placeholder_{albedo,orm,normal}.ktx2                                   (4×4 neutral set, 10-render.md §10.2.3: #808080 / (1, 0.5, 0) / (0.5, 0.5, 1))
 └─ materials.manifest.json
 ```
 
 ```ts
-export interface MaterialSetEntry {
+export interface MaterialTier {
   readonly albedo: string; readonly orm: string; readonly normal: string;   // urls relative to the manifest
-  readonly size: 1024 | 2048; readonly metres: number; readonly wrap: 'repeat' | 'clamp';
+  readonly size: 512 | 1024;
   readonly bytes: number;                                                    // sum of the three files
-  readonly hash: string;                                                     // sha256(recipe source, SurfaceDef JSON, size, encoder settingsKey) — the cache key and the client's cache-buster
-  readonly albedoClampedPct: number;                                         // texels moved to the 0.85 ceiling
+}
+export interface MaterialSetEntry {
+  readonly field: MaterialTier;                                              // always present
+  readonly hero: MaterialTier | null;                                        // null unless SurfaceDef.hero
+  readonly metres: number; readonly wrap: 'repeat' | 'clamp';
+  readonly hash: string;                                                     // sha256(recipe source, SurfaceDef JSON, tiers, encoder settingsKey) — the cache key and the client's cache-buster
+  readonly albedoClampedPct: number;                                         // texels moved to the 0.85 ceiling (hero tier when present, else field)
 }
 export interface MaterialsManifest {
-  readonly version: 1;
+  readonly version: 2;
   readonly surfaces: Readonly<Record<string, MaterialSetEntry>>;             // every SurfaceId
-  readonly byBiome: Readonly<Record<string, readonly string[]>>;             // 10-render.md §10.2.2 rows + the 6 shared ids, for 20-client.md §20.10.3 phase-2 preload
+  readonly byBiome: Readonly<Record<string, readonly string[]>>;             // 10-render.md §10.2.2 rows (each including the 6 shared ids), for 20-client.md §20.10.3 phase-2 preload
   readonly placeholder: { readonly albedo: string; readonly orm: string; readonly normal: string };
-  readonly totalBytes: number;
+  readonly fieldBytes: number; readonly heroBytes: number; readonly totalBytes: number;
 }
 ```
+<!-- reconciled 2026-09-18: two tiers (OQ-2) -->
 
 Cache: `.cache/<hash>/{albedo,orm,normal}.ktx2 + meta.json`. The recipe *source text* is part of the hash (`fs.readFileSync(recipeFile)`), so editing a recipe rebakes exactly that surface. `bake --report` prints per-surface bytes, clamped %, seam error and bake milliseconds; `bake --preview <id>` writes `qa/<id>.png` (albedo | ORM | normal side by side, level 0 and level 3) for the contact-sheet review.
 
 ### 40.3.5 Byte arithmetic and the two budgets that bind it
 
-UASTC is 1 byte/texel; a 1024² map with a full mip chain is 1.40 MB before supercompression. Measured on this repo's encoder for opaque sprite content (§40.1.6.1): zstd alone gives 0.6–0.75 of raw on textured regions. With RDO at `rdoQualityLevel 2.0` Basis documents 2–3× further reduction on tiling noise textures; the bake therefore targets **≤ 0.40 MB per 1024² map** and **≤ 1.6 MB per 2048² map**, asserted per surface by `tools/material-bake/test/budget.test.ts` from the manifest (a surface over target fails with its id; the fix is a higher `rdoQualityLevel` for that surface, recorded in the recipe as `rdo?: number`).
+UASTC is 1 byte/texel; a 1024² map with a full mip chain is 1.40 MB before supercompression, a 512² map 0.35 MB. Measured on this repo's encoder for opaque sprite content (§40.1.6.1): zstd alone gives 0.6–0.75 of raw on textured regions. With RDO at `rdoQualityLevel 2.0` Basis documents 2–3× further reduction on tiling noise textures; the bake therefore targets **≤ 0.40 MB per 1024² (`hero`) map** and **≤ 0.10 MB per 512² (`field`) map**, asserted per surface and tier by `tools/material-bake/test/budget.test.ts` from the manifest (a map over target fails with its id; the fix is a higher `rdoQualityLevel` for that surface, recorded in the recipe as `rdo?: number`).
 
-| Set | Maps | Target |
+<!-- reconciled 2026-09-18: OQ-2 decided (10-render.md §10.2.1, 20-client.md §20.10.3): field tier first, hero tier after the first frame; 2048² dropped; the materials ceiling in §40.6 is set from this arithmetic -->
+| Set | Maps | Bytes |
 |---|---|---|
-| Mirevale slice: 15 surfaces (§40.3.6), 3 terrain at 2048², 12 at 1024² | 45 | 3 × 3 × 1.6 + 12 × 3 × 0.40 = **28.8 MB** |
-| All 83 surfaces (≈ 12 terrain layers at 2048², 71 at 1024²) | 249 | 12 × 4.8 + 71 × 1.2 = **142.8 MB** |
+| Single-tier layout this file replaced (12 terrain at 2048², 71 at 1024², mips) | 249 | 12 × 4.8 + 71 × 1.2 = **142.8 MB** — over every ceiling; the reason the tiers exist |
+| Mirevale `field` (15 surfaces × 3 × 0.10) — `20-client.md` phase 2 | 45 | **4.5 MB** ≤ 6 MB |
+| Mirevale `hero` (9 surfaces: 6 shared + 3 terrain layers, plus `grove_bark` as the biome signature = 10 × 3 × 0.40) — phase 5 | 30 | **12.0 MB** |
+| All 83 `field` | 249 | 83 × 3 × 0.10 = **24.9 MB** |
+| All `hero` (≤ 50 surfaces) | ≤ 150 | ≤ 50 × 3 × 0.40 = **60.0 MB** |
+| **`public/materials/` total** | ≤ 399 | **≤ 85 MB** → ceiling **90 MB** (§40.6) |
 
-Both exceed their binding ceilings: `20-client.md` §20.10.3 phase 2 allows **≤ 6 MB** for Mirevale's material set, and §40.6 allows **≤ 60 MB** for `public/materials/`. The gap is not closable by RDO alone. **Decision** (this file's authority is the pipeline; the format is `10-render.md`'s, so this is filed as OQ-2 with the numbers): the bake emits **two tiers** from the same recipe — `hero` (the sizes above, UASTC) for the 6 surfaces the diorama camera reads at ≤ 4 m (`cobble, plaster, timber, slate_roof, grove_bark, water_pond` in Mirevale; the equivalent 6 per biome are marked `hero: true` in `surfaces.ts`) and `field` (**512²** with mips = 0.35 MB raw → ≤ 0.10 MB UASTC-RDO-zstd per map, or 1024² for terrain) for the rest. Mirevale becomes 6 × 3 × 0.40 + 3 × 3 × 0.40 + 6 × 3 × 0.10 = **12.6 MB**, all 83 ≈ **50 MB**. The remaining gap to 6 MB for phase 2 is left to `20-client.md` (raise phase 2 to ≤ 13 MB, or preload only `hero` before first frame and stream `field` in phase 5 — the placeholder set covers the 100–400 ms in between and is designed for exactly that). At 640 texel/m on a 1024² / 3 m terrain tile versus 111 px/m at the default view, `field` at 512² is still 1.5 texels per screen pixel; the hero tier is for the battle push-in (386 px/m).
+Hero surfaces, world-wide: the 6 shared ids (`cobble plaster timber stone_wall lantern_metal glass_warm`), every `triplanar` terrain layer (≤ 3 per biome × 11 = 33), and one signature surface per biome (`grove_bark`, `lava_crust`, `wet_rock`, `copper_oxide`, `marrow_sandstone`, `vesper_bark_black`, `forge_steel_plate`, `sky_marble`, `sun_marble`, `void_glass`, `rift_shard`) = ≤ 50; `surfaces.ts` marks them `hero: true` and `budget.test.ts` asserts the count. At 3 m tiling, `field` 512² is 170 texel/m = 1.5 texels per screen pixel at the default 111 px/m view, so the first frame is fully textured; `hero` 1024² (341 texel/m) is for the battle push-in (386 px/m) and the 4 m inspector, and arrives in `20-client.md` phase 5 through `MaterialLibrary.preloadHero` — a map re-point on the same material, no new program, no visible pop beyond the mip-level change.
 
-### 40.3.6 The 15 Mirevale-slice recipes (one line each; `metres`, `size`, `normalStrength` fixed here)
+### 40.3.6 The 15 Mirevale-slice recipes (one line each; `metres`, `hero`, `normalStrength` fixed here)
+
+The `size / m` column reads `hero-tier size / metres`; a `1024` surface is `hero: true` and also bakes the 512² field tier, a `512` surface bakes the field tier only. <!-- reconciled 2026-09-18: 2048² terrain → 1024² hero; non-hero props → 512² -->
 
 | id | size / m | strength | Recipe |
 |---|---|---|---|
 | `grove_bark` | 1024 / 2 | 0.70 | height: vertical fibre `fbm2(x·2, y·18, 5)` warped by `sin(y·6)·0.15` + 40 longitudinal cracks (worley f2−f1 < 0.04 along x) at depth 0.6; albedo `#5a4632` × `(0.8 + 0.4·h)`, moss tint `#4a6b33` where `fbm2(x·3,y·3,3) > 0.62` in the lower 30 % of V; rough 0.78–0.92 = `0.78 + 0.14·(1−h)`; metal 0 |
-| `grove_leaf_canopy` | 1024 / 1 | 0.45 | 3 overlapping leaf clusters painted as elliptical alpha masks (alpha stored in albedo A; the bake keeps A for cards), vein height `abs(sin(atan2(dy,dx)·7))·0.3`; albedo `#4f7a3a` with per-cluster hue jitter ±6°; rough 0.62; AO 0.7 at the cluster overlaps |
-| `grove_moss` | 2048 / 3 | 0.55 | height: `fbm2(x·6, y·6, 6)` + 3 000 small domes (`rng('grove_moss')`, r 4–9 px, h 0.5); albedo `#4a6b33` darkened 20 % in height valleys; rough 0.88; AO cavity default |
-| `path_gravel` | 2048 / 3 | 0.80 | height: 5 000 worley pebbles (`f1 < 0.35`, per-cell height 0.4–1.0, edge falloff 3 px) over `fbm2(x·4,y·4,4)·0.3` sand; albedo `#8d8272` with per-pebble value jitter ±12 %; rough 0.80 pebbles / 0.92 sand; wetness handled by the shader |
+| `grove_leaf_canopy` | 512 / 1 | 0.45 | 3 overlapping leaf clusters painted as elliptical alpha masks (alpha stored in albedo A; the bake keeps A for cards), vein height `abs(sin(atan2(dy,dx)·7))·0.3`; albedo `#4f7a3a` with per-cluster hue jitter ±6°; rough 0.62; AO 0.7 at the cluster overlaps |
+| `grove_moss` | 1024 / 3 | 0.55 | height: `fbm2(x·6, y·6, 6)` + 3 000 small domes (`rng('grove_moss')`, r 4–9 px, h 0.5); albedo `#4a6b33` darkened 20 % in height valleys; rough 0.88; AO cavity default |
+| `path_gravel` | 1024 / 3 | 0.80 | height: 5 000 worley pebbles (`f1 < 0.35`, per-cell height 0.4–1.0, edge falloff 3 px) over `fbm2(x·4,y·4,4)·0.3` sand; albedo `#8d8272` with per-pebble value jitter ±12 %; rough 0.80 pebbles / 0.92 sand; wetness handled by the shader |
 | `cobble` | 1024 / 2 | 0.85 | height: 8×8 offset-row cobbles (rounded rectangles, corner r 14 px, 6 px mortar at h 0.1, stone top `0.8 + fbm2·0.2`); albedo `#6f6a63` per-stone jitter ±10 %, mortar `#4c4843`; rough 0.55 stone → 0.75 mortar; AO 0.5 in mortar |
 | `plaster` | 1024 / 2 | 0.35 | height: `fbm2(x·12,y·12,5)·0.25` trowel texture + 12 hairline cracks (random walks, 1 px, depth 0.5); albedo `#d9cfbb` × `(0.92 + 0.08·fbm2)` (luminance sits at 0.62 linear, under the 0.85 ceiling); rough 0.72; **AO darkens toward the four edges** (`1 − 0.35·smoothstep(0.85, 1, max(|u−.5|,|v−.5|)·2)`) as §10.2.2 asks |
 | `timber` | 1024 / 2 | 0.50 | height: planks 4 per tile with 3 px gaps at h 0, grain `fbm2(x·1.5, y·24, 5)` stretched along x, 6 knots with ring compression (the Table-Clash `cabinetWood` ring function, `h = fract(sqrt(dx²+(0.18dy)²)·26 + fbm2·2.4)^0.6`); albedo `#6b4a2e` × `(0.85 + 0.3·grain)`; rough 0.66 |
-| `slate_roof` | 1024 / 2 | 0.75 | height: 6 courses of overlapping slates (each course offset half a slate, 1.5 px stepped edge at 0.4), per-slate cleavage `fbm2(x·20, y·3, 4)·0.15`; albedo `#3f444c` per-slate value ±8 %, hue ±3°; rough 0.42 dry (shader: 0.18 wet) |
-| `thatch` | 1024 / 2 | 0.65 | height: 8 000 straw strokes (`rng('thatch')`, length 40–120 px, 1–2 px wide, downward ±8°, additive 0.15 each, clamped), 5 horizontal binding ridges at 0.9; albedo `#a3813f` stroke value jitter ±15 %; rough 0.95 |
-| `water_pond` | 1024 / 4 | 0.35 | height: two ripple fields `sin(k·x + fbm2·2)` at 7 and 11 waves per tile summed with weights 0.6/0.4 (the shader scrolls the map; §10.5.6); albedo `#2b5666` flat; rough 0.05; metal 0; `wrap: repeat`, seam-checked |
+| `slate_roof` | 512 / 2 | 0.75 | height: 6 courses of overlapping slates (each course offset half a slate, 1.5 px stepped edge at 0.4), per-slate cleavage `fbm2(x·20, y·3, 4)·0.15`; albedo `#3f444c` per-slate value ±8 %, hue ±3°; rough 0.42 dry (shader: 0.18 wet) |
+| `thatch` | 512 / 2 | 0.65 | height: 8 000 straw strokes (`rng('thatch')`, length 40–120 px, 1–2 px wide, downward ±8°, additive 0.15 each, clamped), 5 horizontal binding ridges at 0.9; albedo `#a3813f` stroke value jitter ±15 %; rough 0.95 |
+| `water_pond` | 512 / 4 | 0.35 | height: two ripple fields `sin(k·x + fbm2·2)` at 7 and 11 waves per tile summed with weights 0.6/0.4 (the shader scrolls the map; §10.5.6); albedo `#2b5666` flat; rough 0.05; metal 0; `wrap: repeat`, seam-checked |
 | `stone_wall` | 1024 / 2 | 0.80 | height: 5 courses of irregular ashlar (worley cells stretched 2:1, mortar 5 px at 0.15, stone tops `0.7 + fbm2·0.3`, chipped corners where `hash21 > 0.8`); albedo `#7d7569` per-stone ±10 %, mortar `#5a544c`; rough 0.70; AO 0.55 in mortar |
 | `lantern_metal` | 1024 / 1 | 0.40 | height: 2 px brushed streaks along y (`fbm2(x·64, y·2, 3)·0.2`) + 24 rivet domes on a grid (r 10 px, h 1.0); albedo `#2e2a26` streak value ±4 %; rough 0.45, 0.30 on rivets; **metal 0.85** everywhere |
 | `glass_warm` | 1024 / 1 | 0.20 | height: 4 pane bevels (frame 24 px at 1.0, glass 0.5, bevel 8 px); albedo `#ffd9a0` (clamped to 0.85 luminance by the bake — reported, not an error, the emissive term supplies the brightness); rough 0.12 glass / 0.5 frame; metal 0 / 0.8 frame |
-| `dirt` | 2048 / 3 | 0.60 | height: `fbm2(x·5, y·5, 6)` + 400 footprint-scale depressions (ellipses 30–60 px, depth 0.3) + 2 000 grit specks (1–2 px, h 0.8); albedo `#6a5238` darker in depressions (wet-look −15 %); rough 0.90 |
-| `tall_grass` | 1024 / 1 | 0.50 | 3 blade cards painted into one sheet (alpha in albedo A): 60 blades per card as tapered quads (width 8 → 1 px, height 0.7–1.0 of the card), centre vein height 0.6; albedo `#5f8a3c` per-blade hue ±8°, tip lighter +12 %; rough 0.75; the shader adds `vertexColor` tint |
+| `dirt` | 1024 / 3 | 0.60 | height: `fbm2(x·5, y·5, 6)` + 400 footprint-scale depressions (ellipses 30–60 px, depth 0.3) + 2 000 grit specks (1–2 px, h 0.8); albedo `#6a5238` darker in depressions (wet-look −15 %); rough 0.90 |
+| `tall_grass` | 512 / 1 | 0.50 | 3 blade cards painted into one sheet (alpha in albedo A): 60 blades per card as tapered quads (width 8 → 1 px, height 0.7–1.0 of the card), centre vein height 0.6; albedo `#5f8a3c` per-blade hue ±8°, tip lighter +12 %; rough 0.75; the shader adds `vertexColor` tint |
 
 Card surfaces (`grove_leaf_canopy`, `tall_grass`) are the only recipes whose albedo carries alpha; the bake writes their albedo as RGBA UASTC (`alphaTest 0.5` in the shader) and the audit's `materials.threeMaps` still holds.
 
@@ -616,18 +620,7 @@ Opus adds 312 samples of encoder delay (6.5 ms at 48 kHz); `loopStartSec`/`loopE
 
 ### 40.4.6 Output — `public/audio/manifest.json` (the exact `20-client.md` §20.7.4 shape, produced here)
 
-```ts
-export interface AudioClipRef { readonly url: string; readonly urlFallback: string; readonly durationSec: number; readonly bytes: number; readonly hash: string }
-export interface StemRef extends AudioClipRef { readonly loopStartSec: number; readonly loopEndSec: number; readonly lufs: number }
-export interface AudioManifest {
-  readonly version: 1;
-  readonly builtAt: string;                                // ISO-8601 — the ONE non-deterministic field in any manifest (20-client.md requires it)
-  readonly themes: Readonly<Record<string, { readonly stems: { readonly base: StemRef; readonly threat: StemRef; readonly biome: StemRef; readonly night: StemRef }; readonly bpm: number }>>;
-  readonly sfx: Readonly<Record<string, { readonly clips: readonly AudioClipRef[]; readonly gainDb: number; readonly bus: 'sfx' | 'ui'; readonly maxConcurrent: number }>>;
-  readonly ambience: Readonly<Record<string, StemRef>>;
-  readonly zoneThemes: Readonly<Record<string, string>>;
-}
-```
+The output manifest type is **`20-client.md` §20.7.4 `AudioManifest`/`AudioClipRef`/`StemRef`, verbatim** — this section does not restate the block (§50.7 rule 5: one definition per identifier). `builtAt` is the one non-deterministic field in any manifest (`20-client.md` requires it; §40.4.7 excludes it from the determinism diff). <!-- reconciled 2026-09-18: the duplicate block here differed from 20-client.md's in a comment and was removed -->
 
 `bytes` is the `.webm` size; `hash` is `sha256(webm bytes)` and doubles as the cache-buster (`?v=<hash8>`). Layout: `public/audio/themes/<theme>/<layer>.{webm,m4a}`, `public/audio/ambience/<biome>.{webm,m4a}`, `public/audio/sfx/<id>_<n>.{webm,m4a}`, `public/audio/manifest.json`.
 
@@ -656,8 +649,11 @@ Today `src/cli.ts` is `export {};`. The tool is **headless and GPU-free**: it ne
 | `materials.count` | distinct `uuid` with `cls ∉ {debug}` `≤ 48` | §50.2.2, `10-render.md` §10.2.7 |
 | `materials.threeMaps` | every material with `cls ∈ {standard, physical, card, character}` and `harvestLevel === 0` has `maps.albedo && maps.orm && maps.normal` | Pillar 2 |
 | `materials.albedoCeiling` | every `surface` referenced resolves to a `materials.manifest.json` entry with `albedoClampedPct` present (the ceiling was applied at bake) | `10-render.md` §10.2.1, OQ-4 there |
-| `textures.ktx2Only` | every material with `cls ∈ {standard, physical, card, water, emissive, character}` has `ktx2 === true`; **`cls === 'billboard'` is exempt** (WebP atlases, §40.1.6) — the exemption is the audit's, pending OQ-1 | `10-render.md` non-negotiable 2 |
+| `textures.ktx2Only` | every material with `cls ∈ {standard, physical, card, water, emissive}` has `ktx2 === true`; `cls === 'billboard'` (WebP atlases, §40.1.6) and `cls === 'character'` (vertex colour + placeholder, `10-render.md` §10.7.7) are exempt **by class** — decided in `10-render.md` §10.0.3 rule 4 (reconciled 2026-09-18) | `10-render.md` non-negotiable 2 |
+| `materials.threeMaps` exemptions | `cls ∈ {billboard, impostor, decal, character}` and `harvestLevel ≥ 1` | `10-render.md` §10.0.3 rule 4 |
 | `geometry.noPrimitives` | no `type ∈ {BoxGeometry, ConeGeometry, IcosahedronGeometry}` and no `SphereGeometry` with `parameters.widthSegments < 24`, at `harvestLevel 0` | Pillar 3 |
+| `geometry.noOutlineShells` | no two meshes under the zone root share a geometry `uuid` where one has `material.side === BackSide` and a scale > 1 (the legacy outline-clone trick); `BackSide` materials are allowed only on `cls ∈ {sky}` — the dump gains `geometries[].sharedBy: number` and `materials[].side` for this | legacy-render-audit Q4 (reconciled 2026-09-18) |
+| `scatter.instanced` | every geometry whose `kind` is a scatter kind (`10-render.md` §10.5.4 list) has `instanced ≥ 1` (an `InstancedMesh`), and for every scatter kind present the dump lists 3 LOD tiers + `impostor` | legacy-render-audit Q19 (reconciled 2026-09-18) |
 | `lights.count` | `castShadow` lights `≤ 8`, others `≤ 24` | Pillar 4 |
 | `lights.housing` | every light has `housingDistance ≤ 0.6` | Pillar 4 |
 | `sprites.nearest` | every `sprites[]` entry has `magFilter === 1003 (NearestFilter)` and `anisotropy === 1` | Pillar 6 |
@@ -692,12 +688,12 @@ Nothing under `public/` is hand-edited except `keyart/`, `icons/` and `fonts/`; 
 |---|---|---|---|
 | `creatures/` | **≤ 35 MB** (36 700 160 B) | `tools/sprite-pipeline/test/budget.test.ts` | §40.1.6: 260 sprites × (albedo q85 ≈ 73 KB + half-res normal q90 ≈ 24 KB + emissive ≈ 3 KB) × 1.20 mips ≈ 31.2 MB, + 130 thumbs ≤ 6 KB = 0.8 MB |
 | `models/` | **≤ 12 MB** | `tools/model-pipeline/test/budget.test.ts` | §40.2.6: 6.5 + 5.0 + headroom |
-| `materials/` | **≤ 60 MB** | `tools/material-bake/test/budget.test.ts` | §40.3.5: hero/field two-tier ≈ 50 MB; the single-tier UASTC layout would be ≈ 143 MB and is why the tier exists |
+| `materials/` | **≤ 90 MB** | `tools/material-bake/test/budget.test.ts` | §40.3.5: field 24.9 MB + hero ≤ 60 MB = ≤ 85 MB; the single-tier UASTC layout would be ≈ 143 MB and is why the tiers exist <!-- reconciled 2026-09-18: was 60 MB, which the arithmetic could not meet --> |
 | `audio/` | **≤ 80 MB** | `tools/audio-pipeline/test/budget.test.ts` | §40.4.7: 78 MB at 16-bar stems |
 | `basis/ + icons/ + fonts/ + keyart/` | ≤ 2 MB | `tools/asset-audit --bytes` | transcoder wasm 0.6 MB, fonts 0.36 MB, key art ≤ 0.8 MB |
-| **total `public/`** | **≤ 189 MB** | `tools/asset-audit --bytes` | sum |
+| **total `public/`** | **≤ 219 MB** | `tools/asset-audit --bytes` | sum |
 
-The per-zone *load* budget is a different number and is `20-client.md` §20.10.3's: phase 2 (materials) ≤ 6 MB and phase 3 (creature atlases + party + body GLB) ≤ 4 MB. From this file's manifests, phase 3 is ≤ 8 atlases × (73 + 24 + 3) KB × 4 sprites × 1.20 + 0.25 MB GLB ≈ **4.1 MB** (0.1 MB over; the 8-atlas case is the single 14-species zone, `hollow_route`, and the GLB is already cached after the first zone, which brings the steady state to 3.8 MB) for a 14-species zone, inside the 4 MB; phase 2 is the OQ-2 gap (12.6 MB against 6 MB).
+The per-zone *load* budget is a different number and is `20-client.md` §20.10.3's: phase 2 (`field` materials) ≤ 6 MB — Mirevale 4.5 MB, the largest biome set (cinder, 9 + 6 shared = 15) also 4.5 MB — and phase 3 (creature atlases + party + body GLB) ≤ 4 MB. From this file's manifests, phase 3 is ≤ 8 atlases × (73 + 24 + 3) KB × 4 sprites × 1.20 + 0.25 MB GLB ≈ **4.1 MB** cold for the single 14-species zone (`hollow_route`); the GLB is cached after the first zone, which brings the steady state to 3.8 MB. The `hero` tier (≤ 12 MB per zone) is phase 5.
 
 ---
 
@@ -724,20 +720,21 @@ The per-zone *load* budget is a different number and is `20-client.md` §20.10.3
 | Shipping the `animations/` sheets | no consumer in `10-render.md`; 15 MB | `CreatureBillboard` poses are uniform writes |
 | Runtime sprite variant re-baking | `00-spine.md` §3.7: palettes are uniforms | `hueShift/satMul/lightMul/alphaGlow` userData |
 | Per-species hand-tuned emissive masks as a first step | 130 × 2 masks to paint | threshold 0.72 + `EMISSIVE_OVERRIDES` only where the contact sheet shows a miss |
-| Single-tier 1024² UASTC for all 83 surfaces | ≈ 143 MB against a 60 MB ceiling | hero/field tiers (§40.3.5) |
+| Single-tier 1024²/2048² UASTC for all 83 surfaces | ≈ 143 MB against the ceiling | hero 1024² / field 512² tiers (§40.3.5), ≤ 85 MB |
 | Two-pass dynamic `loudnorm` | alters the envelope, breaks loop seams | measured static gain |
 | `.ogg` Opus container | Safari `decodeAudioData` rejects it | `.webm` Opus + `.m4a` AAC fallback (same codec as the task asked for, different container) |
 | GPU in the audit | CI has no GPU | headless `ZoneDump` JSON |
 | Pixel-diff gating of atlases across pipeline versions | codec version bumps (libwebp in sharp) would fail every atlas | determinism is asserted within one toolchain lockfile; a toolchain change is a `PIPELINE_VERSION` bump and a reviewed contact-sheet pass |
 
-## OPEN QUESTIONS FOR OTHER SECTIONS
+## OPEN QUESTIONS FOR OTHER SECTIONS — RESOLVED 2026-09-18
 
-| Id | To | Question / requested change | Numbers |
-|---|---|---|---|
-| **OQ-1** | `10-render.md` §10.4.1, §10.4.3, §10.11, non-negotiable 2; `50-verification-budget.md` §50.4.6 `textures.ktx2Only` | Creature atlases are **WebP, not KTX2**: `AtlasSet` urls point at `.webp` level-0 files plus `mips[]`; `AtlasSet.size` gains `2048`; "≤ 2 atlases of 4096²" → "≤ 8 atlases of 2048²" (`zones[zoneId]`); `single_<species>` is a `createImageBitmap` crop of the `home` atlas, so `SpritePool` needs `bindSingle(species)` built from the manifest rather than a url; the client uploads emissive as `RedFormat` (R8) and normal at `normalScale 0.5`; `textures.ktx2Only` exempts `cls === 'billboard'`. | UASTC measured 1.57× lossless WebP on sprites; full-set lossless already 196.6 MB; the 12 Mpix encoder cap; VRAM ≤ 304 MB worst case (§40.1.4) |
-| **OQ-2** | `10-render.md` §10.2.1; `20-client.md` §20.10.3 phase 2 | 83 surfaces × 3 UASTC 1024² maps with mips ≈ 143 MB against the 60 MB ceiling, and Mirevale's 15 surfaces ≈ 28.8 MB against phase 2's 6 MB. Proposed: `SurfaceDef.hero: boolean` (6 per biome) and a 512² `field` tier for the rest (§40.3.5) → ≈ 50 MB total, 12.6 MB for Mirevale; and phase 2 either rises to ≤ 13 MB or preloads `hero` only before first frame. | §40.3.5 table |
-| **OQ-3** | `10-render.md` §10.4.3 | The pipeline mip chain stops at level 3 (512² for a 2048² atlas → 256² per sprite); the sampler's `lodMaxClamp` must be 3 (or the last level is repeated). At `zoomStop 2` a `sizeScale 1` creature is ≈ 137 px tall (1024/137 = 7.5 texels/px → level 2.9), so level 3 covers every authored view. | §40.1.6.3 |
-| **OQ-4** | `00-spine.md` §3.1 / `packages/content` `validate.ts` | Add rule: `|Z(zone)| ≤ 16` species per zone (table ∪ statics ∪ trainer teams ∪ league teams) so a zone binds ≤ 8 atlases without planner duplication; and export `dist/surfaces.json`-style JSON of `ENCOUNTER_TABLES`, `LEGENDARY_STATICS`, `LEAGUE`, zone trainer teams for the sprite planner. | §40.1.4 |
-| **OQ-5** | `20-client.md` §20.7.4 | `url` is `.webm` (Opus) and `urlFallback` `.m4a` as specified; note the encoder pre-skip correction (§40.4.5) so `loopStartSec` refers to the decoded buffer — the client must not re-apply an offset. Stems default to 16 bars to meet 80 MB (§40.4.7). | 78 MB |
-| **OQ-6** | `.design/audio-bible.md` (to be written) | Must be entered as `.design/audio/manifest.json` in the §40.4.1 shape (17 themes × 4 stems, 11 ambiences, ~120 sfx, 21 `zoneThemes`); the provider choice (`PLAN.md` open dependency 1) is an `AudioProvider` adapter with `EWA_AUDIO_API_KEY`. | — |
-| **OQ-7** | `50-verification-budget.md` §50.4.8 | `budget.test.ts` reads `manifest.totalBytes` and the 260-slot/68-atlas/8-per-zone assertions of §40.1.4; `stages.test.ts` reads `footV` from the bottom (0.08); `qa-flags.test.ts` gains `sidemismatch` and the `excluded`/`accepted` arrays; add `tools/model-pipeline/test/{determinism,budget}.test.ts` and `tools/material-bake/test/{determinism,budget,seam}.test.ts`. | §40.1.3, §40.2.6, §40.3 |
+<!-- reconciled 2026-09-18: every OQ is decided in the named section; the table stays as the audit trail -->
+| Id | To | Decision |
+|---|---|---|
+| **OQ-1** | `10-render.md` §10.4.1, §10.4.3, §10.0.3 rule 4; `50-verification-budget.md` §50.4.6 | **Accepted in full.** `AtlasSet` is `{ id, albedo/normal/emissive: AtlasMap { url, mips[] }, size: 2048, normalScale }`; ≤ 8 atlases per zone via `manifest.zones`; `SpritePool.bindSingle(set, frame)` crops the `home` atlas with `createImageBitmap`; emissive uploads as R8; `textures.ktx2Only`/`materials.threeMaps` exempt `cls 'billboard'` by class. Creature atlases are WebP because UASTC measured 1.57× larger than lossless WebP, the encoder refuses > 12 Mpix and ETC1S quantises the alpha slice; KTX2 stays for materials and model textures. |
+| **OQ-2** | `10-render.md` §10.2.1/§10.2.3; `20-client.md` §20.10.3 | **Two tiers accepted; 2048² dropped.** `SurfaceDef.hero: boolean`; `field` 512² for all 83, `hero` 1024² for ≤ 50; phase 2 loads `field` (Mirevale 4.5 MB ≤ 6 MB), phase 5 loads `hero` through `MaterialLibrary.preloadHero`; `public/materials/` ceiling **90 MB** (§40.6). |
+| **OQ-3** | `10-render.md` §10.4.3 | **Accepted.** Textures carry `mipmaps.length === 3`, so `lodMaxClamp` is 3. |
+| **OQ-4** | `00-spine.md` §3.10 | **Accepted** as validate rule 11 (`|Z(zone)| ≤ 16`); `dist/content-report.json` carries `perZone` and the bind sets `Z(zone)` for the planner. |
+| **OQ-5** | `20-client.md` §20.7.4 | **Accepted**; the client applies no pre-skip offset; stems 16 bars (32 battle/champion, 8 raid/victory). |
+| **OQ-6** | `.design/audio-bible.md` (to be written) | **Open — not decidable here.** The bible does not exist; when written it is entered as `.design/audio/manifest.json` in the §40.4.1 shape, and the provider is an `AudioProvider` adapter reading `EWA_AUDIO_API_KEY` (`PLAN.md` open dependency 1). |
+| **OQ-7** | `50-verification-budget.md` §50.4.8 | **Accepted**; the pipeline test rows are rewritten there (WebP, `totalBytes`, 68 atlases, `footV 0.08`, `sidemismatch`, model-pipeline and material-bake test files). |

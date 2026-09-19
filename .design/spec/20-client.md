@@ -37,7 +37,7 @@ Inputs: `00-spine.md`; `PLAN.md` (UI/UX, multiplayer, combat presentation paragr
 | `/play/party` | `PartyScreen` | none (reads store) | actions via `useFetcher` |
 | `/play/box` | `BoxScreen` | none (reads store; box pages from `/me`) | |
 | `/play/dex` | `DexScreen` | `GET /dex` | URL state: `?q=&type=&caught=` |
-| `/play/shop` | `ShopScreen` | `GET /shop/:zoneId` (zoneId from `useSessionStore.getState().zoneId`) | 403 from server when not in a shop zone → error state |
+| `/play/shop` | `ShopScreen` | `GET /shop/:zoneId` (zoneId from `useSessionStore.getState().zoneId`) | 404 from server when the zone has no shop (30-server-netcode.md §30.6.3) → "There is no shop here" state <!-- reconciled 2026-09-18: was 403 --> |
 | `/play/social` | `SocialScreen` | `GET /friends` | `?dm=<username>` opens a thread; thread loader `GET /messages/:username?limit=50` |
 | `/play/guild` | `GuildScreen` | `GET /guilds/:id` or `GET /guilds?search=` | |
 | `/play/market` | `MarketScreen` | `GET /marketplace?<request.url searchParams>` | every filter is a URL param; back button restores it |
@@ -154,7 +154,7 @@ Source of truth: `packages/client/src/ui/tokens.json`. `pnpm --filter @ewa/clien
 | `--hp-hi` / `--hp-mid` / `--hp-lo` | `#7be08a` / `#e0b35a` / `#e06a5a` | HP bar at > 50 % / 20–50 % / < 20 % | |
 | `--scrim` | `rgb(11 16 12 / 0.72)` | behind modals | |
 
-Type colours (19, in `TYPE_NAMES` order), used only by `TypeBadge` and the sprite rim light through the render descriptor: Normal `#a8a77a`, Fire `#ee8130`, Water `#6390f0`, Grass `#7ac74c`, Electric `#f7d02c`, Ice `#96d9d6`, Fighting `#c22e28`, Poison `#a33ea1`, Ground `#e2bf65`, Flying `#a98ff3`, Psychic `#f95587`, Bug `#a6b91a`, Rock `#b6a136`, Ghost `#735797`, Dragon `#6f35fc`, Steel `#b7b7ce`, Fairy `#d685ad`, Dark `#705746`, Cosmic `#3b2a7a`. Colourblind palettes in §20.8.3 override this table; the badge always carries its 2-letter glyph, so colour is never the only signal.
+Type colours (19, in `TYPE_NAMES` order) are **one table**, `10-render.md` §10.4.6 `typeColors.ts` (the legacy `TYPE_COLORS`), copied verbatim into `tokens.json` `typeColors.default` and asserted equal by `design-system.test.ts`: Normal `#a8a290`, Fire `#ee6f4a`, Water `#4aa3d6`, Grass `#6fae5a`, Electric `#f4cf3f`, Ice `#8fd6e8`, Fighting `#c0492f`, Poison `#9a5bb0`, Ground `#c9a24a`, Flying `#8aa6e0`, Psychic `#e06fa0`, Bug `#9aa83a`, Rock `#b09a6f`, Ghost `#6a5b9a`, Dragon `#6a52d0`, Steel `#9aa6b0`, Fairy `#f0a6d0`, Dark `#5b4b66`, Cosmic `#7be0d0`. Used by `TypeBadge`, the sprite rim light and the gym beacons, so a type reads the same in the DOM and in the world. Colourblind palettes in §20.8.3 override this table (and are passed to render through `stage.setTypeColors`); the badge always carries its 2-letter glyph, so colour is never the only signal. <!-- reconciled 2026-09-18: this file carried a second, different hex table -->
 
 **Space** (px): `--s-1 2`, `--s-2 4`, `--s-3 8`, `--s-4 12`, `--s-5 16`, `--s-6 24`, `--s-7 32`, `--s-8 48`, `--s-9 64`. Nothing else is permitted as a margin/padding/gap value.
 
@@ -380,16 +380,21 @@ import { ZoneState, type ServerMessage, type ClientMessageType, CLIENT_MESSAGES 
 export interface WorldSession {
   readonly room: Room<unknown, ZoneState> | null;
   readonly selfId: string;                                          // player uuid (room.state.players key), not sessionId
-  /** joinOrCreate('zone', { zoneId, access }, ZoneState). Room name and join options are fixed by 30-server-netcode.md. */
-  join(zoneId: ZoneId): Promise<void>;
+  /**
+   * First join / rejoin after reload: `POST /zone/enter { zoneId }` (spine §4.7) returns the SeatReservation of the shard the server picked
+   * (403 `gated` → toast + stay); then `client.consumeSeatReservation(seat)` with the access token as the auth token. The client never calls
+   * joinOrCreate: shard selection is the server's (30-server-netcode.md §30.2.6). `GET /me`.presence.zoneId is the zone to enter after a reload.
+   */
+  enter(zoneId: ZoneId): Promise<void>;
   /** Validates payload with CLIENT_MESSAGES[type].parse (throws in dev, drops + console.error in prod), then room.send. */
   send<K extends ClientMessageType>(type: K, payload: z.infer<(typeof CLIENT_MESSAGES)[K]>): void;
   onMessage(cb: (m: ServerMessage) => void): () => void;            // one dispatcher; fan-out inside the client
-  /** Handover (spine §4.6): client.consumeSeatReservation(reservation) on the destination, then send('handoverAck') there, then leave(source, true). */
+  /** Handover (spine §4.6): client.consumeSeatReservation(m.seat) on the destination (m.seat IS the ISeatReservation object), wait for its first onStateChange, send('handoverAck', { roomId: m.roomId, seat: m.seat.sessionId }) there, then leave(source, true) with code 4002. */
   handover(m: Extract<ServerMessage, { type: 'handover' }>): Promise<void>;
   leave(): Promise<void>;
 }
 ```
+<!-- reconciled 2026-09-18: join goes through POST /zone/enter (30-server-netcode.md §30.2.6, OQ 3); handover.seat is the typed SeatReservation (spine §4.4) -->
 
 Message routing: `room.onMessage('*', (type, payload) => …)` is **not** used; every `ServerMessage.type` string is registered once with `room.onMessage(type, cb)` at join, and the returned disposers are collected and called in `leave()`. Reconnect: on `onDrop` (unconsented, code ≠ 1000) `ui.connection = 'reconnecting'`, `ConnectionOverlay` appears after 2 000 ms, `client.reconnect(room.reconnectionToken)` is attempted at 1, 2, 4, 8, 8, 8 s (6 attempts, then `'offline'` and a "Return to login" button). On `onReconnect`: `hydrateFromMe(await GET /me)`, prediction buffer cleared, remote buffers cleared. Multi-tab: the server keys by player uuid, so a second tab's join replaces the first; the first receives `onLeave` code `4001` (30-server-netcode.md) and shows "Playing in another tab".
 
@@ -399,27 +404,19 @@ Message routing: `room.onMessage('*', (type, payload) => …)` is **not** used; 
 
 ### 20.4.1 The render surface the client consumes
 
-`10-render.md` exports these from `@ewa/render`; the client uses nothing else from that package. If `10-render.md` names them differently the reconciler adjusts this list, not the client's behaviour.
+`10-render.md` **defines** these (`§10.1.1 RendererOptions/EffectsFlags/Renderer/RenderStats`, `§10.5.1 ZoneSpec/ZoneHandle/HeightfieldData`, `§10.7.2 CameraRig`, `§10.7.5 BattleStage/VfxId/VFX_IDS`, `§10.7.6 ActorPool/ActorDescriptor`, `§10.9 HudLayer`, `§10.4.1 SpriteDescriptor/SpriteFrame/AtlasSet`); the client uses nothing else from that package and this block is the **consumed subset**, not a definition. <!-- reconciled 2026-09-18: 10-render.md OQ 1 — the definitions are render's; the members the client actually calls are listed -->
 
 ```ts
-// From @ewa/render (owned by 10-render.md); listed here as the consumed surface.
-export interface RendererOptions { readonly canvas: HTMLCanvasElement; readonly pixelRatio: number; readonly effects: EffectsFlags }
-export interface EffectsFlags { readonly dof: boolean; readonly bloom: boolean; readonly grain: boolean; readonly chroma: boolean; readonly shake: boolean; readonly hitstop: boolean; readonly slowmo: boolean; readonly taa: boolean }
-export interface Renderer {
-  loadZone(spec: ZoneSpec): Promise<ZoneHandle>;                  // builds the zone; resolves when the first frame can be drawn
-  readonly camera: CameraRig;                                     // setHeading(0|1|2|3), setZoomStop(0|1|2), pushIn(target, ms), release(ms), shake(amp, ms), follow(actorId)
-  readonly stage: BattleStage;                                    // dress(arenaAt, terrain, participants), undress(ms), setBattler(ref, descriptor), poses, flashes, vfx
-  readonly hud: HudLayer;                                         // set(partial: HudModel) — dirty-flagged; draws in-canvas
-  readonly actors: ActorPool;                                     // spawn(id, descriptor), setTransform(id, x, z, angle, moving, running), setEmote(id, n), despawn(id)
-  setTimeOfDay(t: number): void; setWeather(w: WeatherKind): void; setHarvestLevel(l: 0 | 1 | 2): void;
-  setEffects(f: EffectsFlags): void; setPixelRatio(r: number): void; resize(w: number, h: number): void;
-  setTimeScale(s: number): void;                                  // 1 normal; 0 hitstop; 0.35 crit slow-mo
-  frame(dtMs: number): void;                                      // advances animations by dt*timeScale and renders once
-  stats(): RenderStats;                                           // drawCalls, triangles, textureBytes, gpuMs
-  dispose(): void;
-}
-export interface ZoneHandle { readonly id: string; dispose(): void }
-export function createRenderer(o: RendererOptions): Promise<Renderer>;
+// From @ewa/render (owned by 10-render.md); the members the client calls.
+createRenderer({ canvas, pixelRatio, effects, transcoderPath?: '/basis/' });       // forceWebGL/trackTimestamp are harness-only
+Renderer.loadZone(spec: ZoneSpec): Promise<ZoneHandle>;                            // rejects if a zone is loaded and not disposed
+Renderer.camera: CameraRig;      // setHeading(0|1|2|3), setZoomStop(0|1|2), follow(actorId), pushIn(target, ms), release(ms), shake(amp, ms), cue(kind, ms), focus
+Renderer.stage: BattleStage;     // dress(at, terrain, participants), dressSpectator(x, z), undress(ms), setBattler(ref, d), setPose(ref, pose, ms), hurt, faint, setWeather, vfx(id, from, to, ms), prewarm(ids), syncFrom(hp), setTypeColors(table), inspect(d)
+Renderer.hud: HudLayer;          // set(partial: HudModel), setFonts(body, display), setScale(uiScale)
+Renderer.actors: ActorPool;      // spawn(id, { look, name, guildTag, isLocal }), setTransform(id, x, z, angle, moving, running), setEmote(id, n), despawn(id), feetOf(id, out), screenPositions(out)
+Renderer.materials.preloadHero(ids);                                                // §20.10.3 phase 5 only; never awaited before the first frame
+Renderer.setTimeOfDay(t); setWeather(w); setHarvestLevel(0 | 1 | 2); setEffects(f); setPixelRatio(r); resize(w, h); setTimeScale(s); frame(dtMs); stats(); dispose();
+ZoneHandle.id; ZoneHandle.collider; ZoneHandle.bounds; ZoneHandle.geometryDigest; ZoneHandle.dispose();   // collider → the protocol Collider adapter (§20.4.5)
 ```
 
 ### 20.4.2 `GameCanvas` and the tick loop
@@ -449,7 +446,7 @@ export interface World3D {
 ```ts
 // packages/client/src/scene/SceneDirector.ts
 export interface SceneDirector {
-  /** zoneSpecFor(content.zone(id), harvestState) -> renderer.loadZone; registers static actors (npcs, trainers, items, lore, links, gym/shop/healer) from the spec; plays the zone banner; starts the zone theme. Rejects if a zone is already loading (handover serialises). */
+  /** zoneSpecFor(content.zone(id), harvestStateFor(id, flags)) -> renderer.loadZone; registers static actors (npcs, trainers, items, lore, warps, links, gym/shop/healer) from the spec; plays the zone banner; starts the zone theme. Rejects if a zone is already loading (handover serialises). `harvestState` is the PLAYER's (spine §3.5 harvestStateFor over Progression.flags), never room.state.harvestState, which is only the content default. */
   loadZone(id: ZoneId, harvestState: HarvestState): Promise<void>;
   /** Despawns every actor, disposes the ZoneHandle, drops the audio stems, clears remote buffers. Idempotent. */
   unloadZone(): void;
@@ -459,10 +456,11 @@ export interface SceneDirector {
   exitBattle(): Promise<void>;
   setTimeOfDay(t: number): void;              // forwards to renderer + audio.night; called from room.state.timeOfDay listener (≤ 20 Hz)
   setWeather(w: WeatherKind): void;
-  setHarvest(h: HarvestState): void;          // intact 0, thinning 1, harvested 2
+  setHarvest(h: HarvestState): void;          // intact 0, thinning 1, harvested 2; called with harvestStateFor(currentZone, flags) whenever applyProgressionDelta changes `flags` (a restore beat re-textures the zone in place — one uniform, 10-render.md §10.2.6)
   readonly currentZone: ZoneId | null;
 }
 ```
+<!-- reconciled 2026-09-18: harvest is per player (spine §3.5/§4.1); the room's harvestState is not subscribed -->
 
 Battles that are **not** the local player's (a `BattleSummary` appears in `room.state.battles` for another participant within 40 units) dress a *spectator* arena at that position with `stage.dressSpectator(x, z)` — the ring and lights only, no battlers, no camera move. Removed when the summary is removed.
 
@@ -483,7 +481,7 @@ import type { ZoneSpec } from '@ewa/render';
 export function zoneSpecFor(zone: ZoneDef, harvest: HarvestState): ZoneSpec;
 ```
 
-Field mapping (the adapter is a table, not logic): `zone.id → spec.id`; `zone.layoutSeed → spec.seed`; `zone.biome → spec.palette = zone.palette` and `spec.generators = BIOME_GENERATORS[biome]` (the render descriptor keys `10-render.md` defines per biome); `zone.signature → spec.setPiece`; `zone.kind` picks `spec.layout` (`town` = plaza + 6–10 buildings, `route` = corridor with tall-grass patches, `story` = the signature only); `zone.links` → `spec.edges[dir] = { toZone, x, z }` at the zone bounds midpoints; `zone.npcs/trainers` → `spec.actors[] = { id, look, x, z, kind: 'npc' | 'trainer' }`; `zone.items` → `spec.pickups[]`; `zone.lore` → `spec.tablets[]`; `zone.gym/shop/healer` → `spec.buildings[]` with `kind`; `zone.encounterTable !== null` → `spec.tallGrass = true`; `harvest` → `spec.harvestLevel 0|1|2`; `zone.type` → `spec.accentType` (the sprite rim/gym beacon colour). Zone bounds are `±64` units for towns, `128 × 64` for routes, `±48` for story zones; the AOI cell of 32 units (spine §4.2) therefore covers a town in 16 cells.
+Field mapping (the adapter is a table, not logic; target names are `10-render.md` §10.5.1 `ZoneSpec`): `zone.id → spec.id`; `zone.layoutSeed → spec.seed`; `zone.biome → spec.biome` and `spec.generators = biome` (`GeneratorSet` keys = `Biome`); `zone.palette → spec.palette`; `zone.kind → spec.layout` (`town` = plaza + 6–10 buildings, `route` = corridor with tall-grass patches, `story` = the signature only) and `spec.size` (the playable interior: town 128×128, route 208×208, story 168×168); `getHeightfield(zone.id) → spec.heightfield` **unchanged** (spine §3.11; the 160/240/200 m field whose 16 m margin is unwalkable scenery); `zone.signature → spec.setPiece`; `zone.links` → `spec.edges[dir] = { toZone, x, z }` at the interior-boundary midpoints; `zone.npcs/trainers` → `spec.actors[] = { id, look, x, z, kind: 'npc' | 'trainer' }` (`look` = `BODIES`/NPC look ids, spine §3.12); `zone.items` → `spec.pickups[]`; `zone.lore` → `spec.tablets[]`; `zone.warps` → `spec.warps[]`; `zone.gym/shop/healer` → `spec.buildings[]` with `kind` (positions from the layout table, seeded); `spec.props`, `spec.lights` (≤ 8 shadow + ≤ 24 non-shadow, drawn from `createRng(zone.layoutSeed).fork()` per the biome's light table) and `spec.water` (from the layout's water polygon when the heightfield has `water` samples) are the adapter's seeded decisions; `zone.encounterTable !== null` → `spec.tallGrass = true`; `harvest` → `spec.harvestLevel 0|1|2`; `zone.type` → `spec.accentType` (the sprite rim/gym beacon colour). The AOI cell of 32 units (spine §4.2) covers a town's field in 5×5 = 25 cells. <!-- reconciled 2026-09-18: bounds were ±64 / 128×64 / ±48 here, 128×128 / 256×128 / 96×96 in 10-render.md and 160 / 240 / 200 fields in 30-server-netcode.md; the spine §3.1 extents table is now the one source -->
 
 ### 20.4.5 `LocalPlayerController` — input and prediction
 
@@ -505,16 +503,16 @@ Field mapping (the adapter is a table, not logic): `zone.id → spec.id`; `zone.
 
 While a DOM input/textarea has focus, or `ui.battle !== null`, or `ui.dialogue !== null`, or any `ui.modal !== 'none'`, movement keys are ignored (the controller checks `document.activeElement` and the store once per frame via `getState()`; no subscription).
 
-**Movement model** — one pure function shared with the server so prediction and truth run the same bytes. It lives in `@ewa/protocol` (`packages/protocol/src/movement.ts`; protocol may import core) because `@ewa/core`'s export list is closed by the spine. `30-server-netcode.md` validates against exactly this function.
+**Movement model** — one constants table shared with the server. It lives in `@ewa/protocol` (`packages/protocol/src/movement.ts`; protocol may import core) because `@ewa/core`'s export list is closed by the spine. The client predicts with `stepMovement`; the server does **not** re-simulate — it validates each `input` against a speed cap derived from these constants (`MOVEMENT.runSpeed × SPEED_TOLERANCE`), the dt budget and the heightfield (`30-server-netcode.md` §30.2.4, whose `WALK_SPEED`/`RUN_SPEED` are re-exports of the values below). <!-- reconciled 2026-09-18: this file had 4.5 / 8.0 / radius 0.4 and "validates against exactly this function"; 30-server-netcode.md had 4.2 / 7.0 and a cap check; 10-render.md §10.6.2 MOVER had capsuleRadius 0.35. One table, the server's speeds, render's radius -->
 
 ```ts
 // packages/protocol/src/movement.ts
 export const MOVEMENT = {
-  walkSpeed: 4.5,        // units / s
-  runSpeed: 8.0,
+  walkSpeed: 4.2,        // units / s  (= 30-server-netcode.md WALK_SPEED)
+  runSpeed: 7.0,         //            (= RUN_SPEED)
   accel: 40,             // units / s^2 toward target velocity
   turnRate: 12,          // rad / s toward input heading
-  radius: 0.4,           // capsule radius for edge/collider tests
+  radius: 0.35,          // capsule radius for edge/collider tests (= 10-render.md MOVER.capsuleRadius)
   stepMs: 1000 / 60,     // 16.667: client fixed step
   sendHz: 20,            // input messages per second
   maxDtMs: 100,          // matches InputMsg.dtMs max
@@ -527,6 +525,8 @@ export interface Collider { resolve(pose: MovePose, radius: number): void }     
 /** Advances pose in place by dtMs. Deterministic for identical inputs; allocation-free. */
 export function stepMovement(pose: MovePose, input: MoveInput, dtMs: number, collider: Collider): void;
 ```
+
+The client's `Collider` is a 12-line adapter over `ZoneHandle.collider` + `resolveMove` (`10-render.md` §10.6.2): `resolve(pose, radius)` calls `resolveMove(collider, fromX, fromZ, pose.x − fromX, pose.z − fromZ)` and writes the result back into `pose`. `resolveMove` never returns an unwalkable position, and the server accepts only `walkable = 1` positions, so prediction and truth agree on where a player may stand.
 
 **Prediction and reconciliation**:
 
@@ -546,11 +546,11 @@ Rules with numbers: input `seq` is a `uint32` starting at 1, incremented per **s
 
 ### 20.4.6 `RemoteInterpolator`
 
-For each other `PlayerState` in view, a ring of 8 samples `{ t, x, z, angle, moving, running }` where `t = tick * 50` ms (server time; spine: 20 Hz). Server-time offset = the median of the last 32 `(performance.now() - tick*50)` observations, updated on every `room.onStateChange`. Render time = `serverNow - 100` ms (the interpolation delay). Each step finds the two samples bracketing render time and **linearly** interpolates position and shortest-arc angle; if render time is past the newest sample it extrapolates with the last velocity for at most 100 ms, then holds still with `moving = false`. There is no `pos += (target - pos) * k` anywhere; the lint fixture `test/no-exp-smoothing.test.ts` greps `src/scene/**` for `\*\s*0\.\d+\s*\)?\s*;?\s*$` patterns on assignment to `x|z` and fails on a hit. Nearest-N rendering: at most 48 remote actors get a render actor (sorted by distance once per 500 ms); others are tracked but not spawned. Emote: `listen(player, 'emote', …)` → `actors.setEmote(id, n)`; the server clears it after 2 s. Chat: `world_chat`-equivalent `toast`-free chat lines arrive as `ServerMessage` `toast`? No — chat is the room message `chat` broadcast defined in `30-server-netcode.md`; the client appends `{ name, text }` to the HUD chat log (§20.6).
+For each other `PlayerState` in view, a ring of 8 samples `{ t, x, z, angle, moving, running }` where `t = tick * 50` ms (server time; spine: 20 Hz). Server-time offset = the median of the last 32 `(performance.now() - tick*50)` observations, updated on every `room.onStateChange`. Render time = `serverNow - 100` ms (the interpolation delay). Each step finds the two samples bracketing render time and **linearly** interpolates position and shortest-arc angle; if render time is past the newest sample it extrapolates with the last velocity for at most 100 ms, then holds still with `moving = false`. There is no `pos += (target - pos) * k` anywhere; the lint fixture `test/no-exp-smoothing.test.ts` greps `src/scene/**` for `\*\s*0\.\d+\s*\)?\s*;?\s*$` patterns on assignment to `x|z` and fails on a hit. Nearest-N rendering: at most 48 remote actors get a render actor (sorted by distance once per 500 ms); others are tracked but not spawned. Emote: `listen(player, 'emote', …)` → `actors.setEmote(id, n)`; the server clears it after 2 s. Chat: the `ServerMessage` variant `chat { id, name, text }` (spine §4.4; AOI-scoped by the server, `30-server-netcode.md` §30.6.5); the client appends `{ name, text, at }` to the HUD chat log (§20.6). <!-- reconciled 2026-09-18: `chat` is a spine variant now -->
 
 ### 20.4.7 Interaction targeting
 
-Once per fixed step the controller scans a preallocated array of interactables (static actors from the `ZoneSpec` + spawns from `getStateCallbacks(room).onAdd('spawns')` + remote players) and keeps the nearest within range: NPC/trainer/tablet/pickup/building 2.5 u; spawn 1.2 u; link edge 1.5 u (auto-triggers `handover` on the server side — the client just walks); player 6 u (for `C`). The prompt text is written to the HUD only when the nearest target id changes. `E` sends the corresponding message; the server replies with `dialogue` lines (30-server-netcode.md message, rendered by the DOM `DialogueBox`), `battleStart`, `inventoryDelta` (pickup) or `toast`.
+Once per fixed step the controller scans a preallocated array of interactables (static actors from the `ZoneSpec` + spawns from `getStateCallbacks(room).onAdd('spawns')` + remote players) and keeps the nearest within range: NPC/trainer/tablet/pickup/building 2.5 u; spawn 1.2 u; link edge 1.5 u (auto-triggers `handover` on the server side — the client just walks); player 6 u (for `C`). The prompt text is written to the HUD only when the nearest target id changes. `E` sends the corresponding `interact`. NPC dialogue is **content, not wire**: on `interact { kind: 'npc' }` the client immediately opens the DOM `DialogueBox` with the lines it computes from content and its own flags — `nextStoryBeat(zone, flags)?.speaker === npcId ? beat.lines : (the first `react` whose `when` flag is held, else `NpcDef.lines`)` — while the server, for the same interact, replies with nothing (plain NPC), `storyBeat { beatId, phase: 'start' }` (confirms the beat; the client keeps the lines it already shows), `battleStart` (trainer/gym/static/beat battle), `inventoryDelta` (pickup), `progressionDelta` (flags) or `toast`. `storyBeat { phase: 'complete' }` opens the beat's `after` lines. A `start` for a beat the client did not predict (flags changed under it) replaces the open dialogue. <!-- reconciled 2026-09-18: this file expected a `dialogue` message that no section defined; 30-server-netcode.md §30.4.6 says lines are content; the spine's `storyBeat` variant bridges the two -->
 
 ---
 
@@ -611,6 +611,8 @@ export interface MoveAnimRegistry { get(moveId: string, move: MoveDef): MoveAnim
 export const MOVE_ANIMS: Readonly<Record<string, Partial<MoveAnimDef>>>;   // keyed by move id ('Vine Lash'); hand-authored; ≥ 40 entries on the slice
 export const DEFAULT_BY_TYPE: Readonly<Record<TypeName, Partial<MoveAnimDef>>>; // all 19 present; validate.ts-style test asserts coverage
 ```
+
+Every `vfx` value in `MOVE_ANIMS`/`DEFAULT_BY_TYPE`, and every `vfx` id the builder emits for non-move events, is one of the 47 `VFX_IDS` of `10-render.md` §10.7.5; `timeline.test.ts` asserts the set difference is empty. `Keyframe.pose` values map 1:1 onto render's `BattlerPose` (`recoil` and `celebrate` included) and `Keyframe.camera.shot` onto `CameraRig.cue` kinds (`throw` included). <!-- reconciled 2026-09-18 -->
 
 ### 20.5.3 Timing constants (ms unless stated) — `packages/client/src/battle/constants.ts`
 
@@ -762,6 +764,8 @@ export interface AudioManifest {
 
 Boot validation (dev only): every `zoneThemes` key is a `ZoneId`; every `MOVE_ANIMS` / `DEFAULT_BY_TYPE` `sfx` id and every `sfx` id the timeline can emit (`hit_*`, `faint`, `switch`, `orb_*`, `status_*`, `stage_up`, `stage_down`, `weather_*`, `ui_*`) exists in `manifest.sfx`. Missing → `console.error` list, boot continues silently for those ids.
 
+`loopStartSec`/`loopEndSec` already include the Opus pre-skip correction (`40-pipelines.md` §40.4.5); the client schedules them against the decoded buffer as-is and applies no offset of its own. Stems are 16 bars by default (32 for `battle`/`champion`, 8 for `raid`/`victory`), so a theme loop is 16–64 s. <!-- reconciled 2026-09-18: 40-pipelines.md OQ-5 -->
+
 ---
 
 ## §20.8 SETTINGS AND ACCESSIBILITY
@@ -833,11 +837,11 @@ Each screen: information hierarchy in one paragraph, then its states. All `/play
 
 **20.9.5 Dex** (`/play/dex`) — *witnessing framing*. Header: "Witnessed **N / 130**" in display face with a segmented bar (caught solid, seen-only hatched, unknown empty) — this is the theme's win condition, so it is the largest number in the UI. Below: a 6-column grid in `dexNumber` order; unknown species render as a dark silhouette with `#???`; seen species show the sprite desaturated with the name; caught species show full colour with variant chips (up to 4 palette dots) and an alpha mark. Filters in the URL (`?type=&state=caught|seen|unknown&q=`). Selecting an entry opens a right detail: flavour text, types, evolution chain (arrows; unknown stages silhouetted), zones where recorded (from `dexEntries` caught zone), and the line "Recorded — this one cannot be quietly lost." for caught entries versus "Seen, not yet recorded." for seen. Empty: never (130 rows). Loading: skeleton grid. Error: panel retry.
 
-**20.9.6 Shop** (`/play/shop`). Two tabs (`?tab=buy|sell`). Buy: a `Table` of stock (icon, name, one-line effect, price mono) with a quantity stepper (1..99) and a running total against the money counter; the row's buy button is disabled with the caption "Not enough" when `qty × price > money`. Sell: the inventory filtered to `sellPrice > 0`. Each transaction is one `useFetcher` action; the response is applied through `applyInventoryDelta`. Empty: "Nothing to sell." Loading: skeleton table. Error: 403 → "There is no shop here" (the panel still opens, so the URL is honest); other → retry.
+**20.9.6 Shop** (`/play/shop`). Two tabs (`?tab=buy|sell`). Buy: a `Table` of stock (icon, name, one-line effect, price mono) with a quantity stepper (1..99) and a running total against the money counter; the row's buy button is disabled with the caption "Not enough" when `qty × price > money`. Sell: the inventory filtered to `sellPrice > 0`. Each transaction is one `useFetcher` action; the response is applied through `applyInventoryDelta`. Empty: "Nothing to sell." Loading: skeleton table. Error: 404 → "There is no shop here" (the panel still opens, so the URL is honest); other → retry.
 
 **20.9.7 Social / DM** (`/play/social`, `/play/social/:username`). Left 320 px: three tabs (`Friends · Requests (n) · Nearby`); friends show online state (from `GET /friends`, refreshed on focus) and unread DM counts; each row has `Message · Challenge · Trade` (the latter two enabled only when the player is in this zone: `room.state.players.has(id)`, read via `useRoomState`). Right: the DM thread (`GET /messages/:username?limit=50`, older loaded on scroll-top with `?before=`), composer at the bottom (`POST /messages/:username`, 1..300 chars, counter visible from 250). Incoming DMs arrive as the `30-server-netcode.md` room message `dm` → `notifications.unreadDm` + thread append when open. Empty: friends "No friends yet — add someone by username" with the request field focused; thread "Say hello." Loading: skeleton rows. Error: retry.
 
-**20.9.8 Guild** (`/play/guild`). No guild: search (`?q=`) + create form (name 3..24, tag `[A-Z0-9]{2,4}` validated live) side by side. In a guild: header (name, tag, member count, MOTD editable by leader/officers), a `Table` of members (name, role, trainer level, last seen) with role actions gated by the viewer's role (`kick`/`promote`), and a `Leave` button (`danger`, confirm; leaders must promote first). Empty search: "No guilds match." Loading: skeleton. Error: retry.
+**20.9.8 Guild** (`/play/guild`). No guild: search (`?q=`) + create form (name 3..24, tag `[A-Z0-9]{3,4}` validated live, the 5 000 founding cost shown on the button and disabled with "Not enough" below it) side by side. <!-- reconciled 2026-09-18: tag {3,4}, cost 5000 --> In a guild: header (name, tag, member count, MOTD editable by leader/officers), a `Table` of members (name, role, trainer level, last seen) with role actions gated by the viewer's role (`kick`/`promote`), and a `Leave` button (`danger`, confirm; leaders must promote first). Empty search: "No guilds match." Loading: skeleton. Error: retry.
 
 **20.9.9 Marketplace** (`/play/market`, `/play/market/:listingId`). Filter bar bound to URL params (`search, variant, isAlpha, levelMin, levelMax, sort, page`); results as `Table` rows (sprite, species/level, variant/alpha chips, current bid, buy-now, time left mono, seller). Tabs `Browse · My listings · My bids`. The detail route shows the creature card, full bid history, a bid field pre-filled with `max(startingBid, currentBid + 50)` and buttons `Bid` / `Buy now` / (own) `Cancel`; list-from-box modal picks a box creature, starting bid ≥ 100, optional buy-now, duration `12 | 24 | 48` h; fee 5 % shown before confirm. Rate-limit responses (`5/h list`, `30/h bid`) render as the exact remaining-time caption. Empty: "No listings match — widen the filters." Loading: skeleton rows; the previous page stays visible under a 0.6 opacity while a new page loads. Error: retry.
 
@@ -881,7 +885,7 @@ Each screen: information hierarchy in one paragraph, then its states. All `/play
 3. **HUD dirty-flag.** `HudWriter.flush` calls `renderer.hud.set` with a partial containing only fields whose dirty bit is set; the render side redraws only those regions. Test: 600 idle frames (no input, no chat, no timeOfDay tick) produce exactly 0 `hud.set` calls; walking produces ≤ 2 per second (prompt changes) + nameplates at 2 Hz.
 4. **Selectors return primitives.** `useRoomState` and every Zustand selector return primitives or shallow tuples; a Schema instance or store slice object is never returned (rule in §20.3.1/§20.3.3).
 5. **Loaders are cheap or skeletons.** ≤ 400 ms p95 (§20.1.3); `shouldRevalidate: () => false` on `/play`; child loaders revalidate only on their own navigation or explicit `useRevalidator`.
-6. **Images and sprites for the DOM** (`CreatureCard` thumbnails, dex grid) are the pipeline's 128 px WebP thumbnails from `40-pipelines.md` (`public/sprites/thumbs/<id>_front.webp`, ≤ 6 KB each), `loading="lazy"`, `decoding="async"`; never the KTX2 game textures.
+6. **Images and sprites for the DOM** (`CreatureCard` thumbnails, dex grid) are the pipeline's 128 px WebP thumbnails from `40-pipelines.md` (`public/creatures/thumbs/<id>_front.webp` = `ManifestSpriteV2.thumb`, ≤ 6 KB each), `loading="lazy"`, `decoding="async"`; never the game atlases. <!-- reconciled 2026-09-18: path per 40-pipelines.md §40.6 -->
 7. **Bundle**: the `/play` route imports `@ewa/render` and `three/webgpu` through `lazy` route modules so `/login` costs no Three.js. Shell (React + router + zustand + stores + ui) ≤ 180 KB gzipped; `/play` chunk (render + content + core + protocol + sdk) ≤ 900 KB gzipped; `vite build` fails via `build.chunkSizeWarningLimit` treated as an error in `vite.config.ts` when exceeded.
 
 ### 20.10.3 Chunked asset preload — first-frame budget 2.5 s on the slice
@@ -891,12 +895,14 @@ Target: a fresh `/play` load on Mirevale, cold cache, 50 Mbit/s, RTX 3060-class 
 | Phase | Payload | Budget (cumulative) |
 |---|---|---|
 | 0 HTML + shell JS + `tokens.css` + 3 fonts (preloaded) | ≤ 180 KB + 360 KB | 450 ms |
-| 1 `/play` chunk + `GET /me` + `joinOrCreate` in parallel | ≤ 900 KB JS; two round trips | 1 100 ms |
-| 2 zone materials for Mirevale (KTX2 albedo/ORM/normal set, `40-pipelines.md`) | ≤ 6 MB | 1 900 ms |
-| 3 creature atlas for Mirevale's spawn set + party species + the player body GLB | ≤ 4 MB | 2 350 ms |
+| 1 `/play` chunk + `GET /me`, then `POST /zone/enter` + `consumeSeatReservation` (§20.3.4) | ≤ 900 KB JS; three round trips, the last two overlapping phase 2 | 1 100 ms |
+| 2 zone materials for Mirevale — the **`field` tier** (512² KTX2 albedo/ORM/normal per surface, `10-render.md` §10.2.1): 15 surfaces × 3 × ≤ 0.10 MB | ≤ 6 MB (Mirevale 4.5) | 1 900 ms |
+| 3 creature atlases for Mirevale's bind set (`manifest.zones.mirevale`, ≤ 8 × 2048² WebP with mips) + party singles + the player body GLB | ≤ 4 MB (a 14-species zone is 4.1 MB cold, 3.8 with the GLB cached) | 2 350 ms |
 | **first frame** (zone built, DOF/bloom compiled, HUD fonts ready) | | **≤ 2 500 ms** |
 | 4 (after first frame) audio manifest + zone theme stems + ui sfx | ≤ 5 MB | music starts ≤ 4 000 ms; the world is silent, not blocked |
-| 5 (idle) neighbouring zone (`mire_route`) materials + spawn atlas | ≤ 10 MB | streamed at ≤ 2 MB/s in 256 KB `fetch` ranges so it never competes with a handover |
+| 5 (idle) **`hero` tier** of the current zone's `hero: true` surfaces (`renderer.materials.preloadHero`, ≤ 12 MB, swapped in place), then the neighbouring zone (`mire_route`) field materials + atlases | ≤ 22 MB | streamed at ≤ 2 MB/s in 256 KB `fetch` ranges so it never competes with a handover |
+
+<!-- reconciled 2026-09-18: 40-pipelines.md OQ-2 — phase 2 keeps its 6 MB by loading the field tier; hero textures arrive in phase 5 -->
 
 Rules: phases 2–3 are issued as parallel `fetch`es with `priority: 'high'`; phase 4–5 with `priority: 'low'`. A phase exceeding 2× its budget logs a `warn` toast in dev. `BootScreen` shows the phase name and a real byte-progress bar (from `Content-Length`), display face, no fake progress. Handover to a preloaded zone (phase 5 complete) must render its first frame within 250 ms of `handoverAck`; to a non-preloaded zone within 1 500 ms, with the HUD banner and the old zone still visible under the camera's 600 ms travel (spine §4.6 "no visible hitch" is measured as: no frame > 33 ms during the crossing).
 
@@ -932,9 +938,10 @@ Rules: phases 2–3 are issued as parallel `fetch`es with `priority: 'high'`; ph
 - **Voice-over, dialogue audio, lip sync.** Ducking exists for future VO and for modal focus; no VO ships.
 - **Service worker / offline mode.** Preload is `fetch` with priority hints and the browser cache; no SW.
 
-## OPEN QUESTIONS FOR OTHER SECTIONS
+## OPEN QUESTIONS FOR OTHER SECTIONS — RESOLVED 2026-09-18
 
-1. `10-render.md` must export the surface in §20.4.1 (`createRenderer`, `Renderer`, `ZoneSpec`, `ZoneHandle`, `CameraRig`, `BattleStage`, `HudLayer`, `ActorPool`, `EffectsFlags`, `RenderStats`) and the VFX id table that `MOVE_ANIMS`/`DEFAULT_BY_TYPE` reference; `HudLayer.set(partial)` must accept the `HudModel` field names in §20.6.
-2. `30-server-netcode.md` must adopt `@ewa/protocol/movement.ts` (`MOVEMENT`, `stepMovement`, `Collider`) as the validation model, fix the zone room name and join options used by `WorldSession.join`, the seat-reservation object carried by `handover`, the `dialogue`, `chat` and `dm` room messages named in §20.4.7/§20.6/§20.9.7, and the `4001` "replaced by another tab" leave code.
-3. `40-pipelines.md` must emit `public/audio/manifest.json` matching §20.7.4, the 128 px WebP thumbnails of §20.10.2 rule 6, and the per-zone KTX2 material/atlas chunk sizes assumed in §20.10.3.
-4. `50-verification-budget.md` should absorb the tests named here: prediction harness (§20.4.5), no-exp-smoothing grep (§20.4.6), timeline snapshot over the fuzz corpus (§20.5.1), tick budget + alloc test (§20.10.1–2), HUD dirty test (§20.10.2 rule 3), first-frame Playwright budget (§20.10.3), token contrast/ΔE checks (§20.2.2, §20.8.3).
+<!-- reconciled 2026-09-18: each question is answered in the named section; the list stays as the audit trail -->
+1. `10-render.md` → **done**: it defines every symbol in §20.4.1 (§10.1.1, §10.5.1, §10.7.2, §10.7.5 incl. the 47 `VFX_IDS`, §10.7.6, §10.9); `HudLayer.set` accepts exactly the §20.6 `HudModel` names (§10.9 says so); `BattlerPose` gained `recoil`/`celebrate` and `CameraRig.cue` gained `throw` to match §20.5.1.
+2. `30-server-netcode.md` → **done**: the server validates against a cap derived from `@ewa/protocol` `MOVEMENT` (4.2 / 7.0 m/s, §30.2.4 re-exports them) rather than re-running `stepMovement`; the join is `POST /zone/enter` + `consumeSeatReservation` (§20.3.4, §30.2.6); `handover.seat` is a typed `SeatReservation` (spine §4.4); `chat` and `dm` are spine `ServerMessage` variants, `dialogue` does not exist — NPC lines are content and `storyBeat` confirms beats (§20.4.7, §30.4.8); leave codes 4000/4001/4002/4003 are §30.2.2's.
+3. `40-pipelines.md` → **done**: `public/audio/manifest.json` is §40.4.6 = §20.7.4 (with the pre-skip note above); thumbnails are `public/creatures/thumbs/` (§40.1.6.5); phase 2/3/5 sizes are §20.10.3's, recomputed against the `field`/`hero` material tiers and the 2048² atlases.
+4. `50-verification-budget.md` → **done**: §50.4.7 now lists `prediction.test.ts` (harness + jitter), `no-exp-smoothing.test.ts`, `timeline.test.ts` over the fuzz corpus, `perf/tick.test.ts` + `perf/alloc.test.ts`, `hud-dirty.test.ts`, `first-frame.spec.ts`, `design-system.test.ts` (contrast, ΔE, type-colour table equality).
