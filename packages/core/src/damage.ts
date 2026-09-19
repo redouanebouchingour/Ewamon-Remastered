@@ -13,6 +13,7 @@ import {
 import { heldHooks, statMultipliers, typeBoostMultipliers } from './items';
 import { applyRatio, calcStat, mulFloor, stageRatio } from './stats';
 import { hasStatus, majorStatus } from './status';
+import { otherSide } from './side';
 import { typeMultiplier } from './typechart';
 import type { Battler, BattleState, ContentIndex, DamageResult, MoveDef, Rng, WeatherKind } from './types';
 
@@ -39,8 +40,9 @@ export function damageStop(inp: DamageInputs, move: MoveDef, content: ContentInd
     const k = imm.reaction.kind;
     return { stop: 'abilityImmunity', effectiveness, absorbed: k === 'none' ? null : k };
   }
-  if (hasWonderGuard(defHooks) && effectiveness < 2) return { stop: 'wonderGuard', effectiveness, absorbed: null };
+  // Wonder Guard blocks damaging moves below x2; status moves are unaffected (§2.5).
   if (move.power === 0) return { stop: 'statusMove', effectiveness, absorbed: null };
+  if (hasWonderGuard(defHooks) && effectiveness < 2) return { stop: 'wonderGuard', effectiveness, absorbed: null };
   return { stop: null, effectiveness, absorbed: null };
 }
 
@@ -149,8 +151,11 @@ export function calcDamage(
   content: ContentIndex,
 ): DamageResult {
   const atkSide = state.sides[attackerSide];
-  const defSide = state.sides[1 - attackerSide];
-  const attacker = atkSide.party[atkSide.active]!;
-  const defender = defSide.party[defSide.active]!;
+  const defSide = state.sides[otherSide(attackerSide)];
+  const attacker = atkSide.party[atkSide.active];
+  const defender = defSide.party[defSide.active];
+  if (attacker === undefined || defender === undefined) {
+    throw new RangeError(`calcDamage: side ${attackerSide} or its foe has no active battler`);
+  }
   return calcDamageFor({ attacker, defender, weather: state.field.weather.kind }, move, rng, content);
 }

@@ -116,6 +116,22 @@ export const EFFECT_HANDLERS: Readonly<Record<MoveEffect, EffectHandler>> = {
   },
 };
 
+/** Effects whose "Default chance" is "always" in the §2.4 table: no effectChance roll is ever made for them. */
+export function effectAlwaysApplies(effect: MoveEffect): boolean {
+  switch (effect) {
+    case 'crit':
+    case 'first':
+    case 'recoil':
+    case 'drain':
+    case 'heal':
+    case 'weather':
+    case 'sun':
+      return true;
+    default:
+      return false;
+  }
+}
+
 /** Whether the effect targets the defender (and so needs a standing target) — used by the turn loop. */
 export function effectTargetsDefender(effect: MoveEffect): boolean {
   switch (effect) {

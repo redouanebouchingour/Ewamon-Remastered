@@ -11,7 +11,9 @@ function expected(a: number, b: number): number {
 /** winnerDelta = round(K * (1 - expected(w, l))); loserDelta = -round(K * expected(l, w)). */
 export function eloDelta(winnerRating: number, loserRating: number): EloResult {
   const winnerDelta = Math.round(ELO_K * (1 - expected(winnerRating, loserRating)));
-  const loserDelta = -Math.round(ELO_K * expected(loserRating, winnerRating));
+  const loss = Math.round(ELO_K * expected(loserRating, winnerRating));
+  // `-0` would survive into JSON as 0 but fails Object.is; keep the zero positive.
+  const loserDelta = loss === 0 ? 0 : -loss;
   return { winnerDelta, loserDelta };
 }
 

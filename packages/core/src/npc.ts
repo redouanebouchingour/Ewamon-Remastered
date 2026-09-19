@@ -2,16 +2,32 @@
  * §2.10 — deterministic NPC policy.
  * Wild: uniform pick among moves with pp > 0. NPC trainer: highest expected damage, rng tiebreak.
  * A side that mustSwitch switches to its lowest-index standing party member. With no usable move and
- * no standing bench, the side forfeits (there is no Struggle in v1) so every battle terminates.
+ * no standing bench, the side flees when it may (`canFlee`) and forfeits otherwise (there is no Struggle
+ * in v1), so every battle terminates. Every action returned passes validateAction.
  */
 import { damageAmount, damageStop } from './damage';
+import { blocksStatusMoves, heldHooks } from './items';
+import { otherSide } from './side';
 import type { Action, BattleState, Battler, ContentIndex, MoveDef, Rng } from './types';
 
-function usableMoves(b: Battler): readonly string[] {
+/** Moves the battler may legally select: pp > 0, not choice-locked to another move, not a status move under Assault Vest. */
+function usableMoves(b: Battler, content: ContentIndex): readonly string[] {
   const out: string[] = [];
+  const noStatus = blocksStatusMoves(heldHooks(b, content));
   for (let i = 0; i < b.creature.moves.length; i++) {
     const m = b.creature.moves[i]!;
-    if (m.pp > 0 && (b.volatile.choiceLockedMove === null || b.volatile.choiceLockedMove === m.id)) out.push(m.id);
+    if (m.pp <= 0) continue;
+    if (b.volatile.choiceLockedMove !== null && b.volatile.choiceLockedMove !== m.id) continue;
+    if (noStatus) {
+      let power = 0;
+      try {
+        power = content.move(m.id).power;
+      } catch (_e) {
+        continue;
+      }
+      if (power === 0) continue;
+    }
+    out.push(m.id);
   }
   return out;
 }
@@ -27,9 +43,10 @@ function firstStanding(state: BattleState, side: 0 | 1): number {
 /** Expected damage with no crit and the mean random factor (92), scaled by accuracy. No rng. */
 export function expectedDamage(state: BattleState, side: 0 | 1, move: MoveDef, content: ContentIndex): number {
   const atkSide = state.sides[side];
-  const defSide = state.sides[1 - side];
-  const attacker = atkSide.party[atkSide.active]!;
-  const defender = defSide.party[defSide.active]!;
+  const defSide = state.sides[otherSide(side)];
+  const attacker = atkSide.party[atkSide.active];
+  const defender = defSide.party[defSide.active];
+  if (attacker === undefined || defender === undefined) return 0;
   const inp = { attacker, defender, weather: state.field.weather.kind };
   const s = damageStop(inp, move, content);
   if (s.stop !== null) return 0;
@@ -44,10 +61,12 @@ export function chooseNpcAction(state: BattleState, side: 0 | 1, content: Conten
     return { kind: 'switch', to: to === -1 ? 0 : to };
   }
   const b = s.party[s.active]!;
-  const moves = usableMoves(b);
+  const moves = usableMoves(b, content);
   if (moves.length === 0) {
+    // No usable move (there is no Struggle in v1): bench in, else leave the battle the way this side is allowed to.
     const to = firstStanding(state, side);
     if (to !== -1 && b.volatile.trappedTurns === 0) return { kind: 'switch', to };
+    if (s.canFlee) return { kind: 'flee' };
     return { kind: 'forfeit' };
   }
   if (s.kind === 'wild') return { kind: 'move', move: rng.pick(moves) };

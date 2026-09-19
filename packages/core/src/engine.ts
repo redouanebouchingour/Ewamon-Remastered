@@ -6,6 +6,7 @@
 import { abilityHooks, hooksOfKind, stageLowerImmune, statusImmune } from './abilities';
 import { DEFAULT_VOLATILE, ZERO_STAGES } from './battler';
 import { applyExp, expGain } from './exp';
+import { otherSide } from './side';
 import { calcMaxHp, calcStat, clampStage, ratioOf, applyRatio } from './stats';
 import { addStatus, hasStatus, isMajorStatus, majorStatus, removeStatus, clearMajorStatus } from './status';
 import type {
@@ -139,9 +140,7 @@ export function active(ctx: Ctx, side: 0 | 1): MBattler {
   return s.party[s.active]!;
 }
 
-export function other(side: 0 | 1): 0 | 1 {
-  return side === 0 ? 1 : 0;
-}
+export const other = otherSide;
 
 export function emit(ctx: Ctx, ev: BattleEvent): void {
   ctx.events.push(ev);
@@ -470,14 +469,19 @@ export function applySwitchOut(ctx: Ctx, side: 0 | 1, reason: 'action' | 'faint'
   }
 }
 
-/** Sets `to` active, emits switchIn, marks participation and fires onSwitchIn hooks (Intimidate). */
-export function applySwitchIn(ctx: Ctx, side: 0 | 1, to: number): void {
+/** Sets `to` active, marks participation and emits switchIn. Does NOT fire hooks (see applySwitchIn). */
+export function placeActive(ctx: Ctx, side: 0 | 1, to: number): void {
   const s = ctx.st.sides[side];
+  const b = s.party[to];
+  if (b === undefined) throw new RangeError(`placeActive: side ${side} has no party slot ${to}`);
   s.active = to;
-  const b = s.party[to]!;
   b.participated = true;
-  const who = ref(side, to);
-  emit(ctx, { t: 'switchIn', who });
+  emit(ctx, { t: 'switchIn', who: ref(side, to) });
+}
+
+/** placeActive + onSwitchIn hooks (Intimidate). */
+export function applySwitchIn(ctx: Ctx, side: 0 | 1, to: number): void {
+  placeActive(ctx, side, to);
   fireSwitchInHooks(ctx, side);
 }
 
