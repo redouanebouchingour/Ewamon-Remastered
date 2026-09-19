@@ -72,8 +72,11 @@ not edited; each item here is a candidate for a `.design/spec/CHANGELOG.md` entr
 17. **The §2.20 fuzz digest** (`test/fuzz-digests.json`, 1,000 entries) is `fnv1a32` over the joined per-turn
     `digestBattleState` values of each seeded battle (createBattle state first), so it captures every turn, not
     just the final state. Construction is in `test/fuzz.ts`; `maxTurns` is 200 as §2.20 says (the longest fuzz
-    battle is 65 turns). There is no `.design/spec/CHANGELOG.md` yet to record the file's creation against
-    §50.7; when the spec changelog is created, this first commit of the digests is its first entry.
+    battle is 65 turns). §50.7 rule 3 makes a change to that file a SPEC change needing a
+    `.design/spec/CHANGELOG.md` entry; its *creation* in this commit is not recorded there because the spec
+    directory is out of scope for the core task — the entry to add is "`00-spine.md` §2.20 — first commit of
+    `packages/core/test/fuzz-digests.json` (1,000 seeds, maxTurns 200, digest = fnv1a32 over per-turn digests)".
+    Items 1–13 above were folded into `00-spine.md` by the 2026-09-18 reconciliation; 14–19 are still pending.
 18. **Repair row "champion is zeon"** (`repairs.test.ts`) is asserted against the legacy roster
     `.design/legacy/league.js` (`LEAGUE_TRAINERS`), because `@ewa/content` ships no `LEAGUE` yet. Re-point the
     test at the content export when it exists.
