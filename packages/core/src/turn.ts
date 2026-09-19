@@ -173,6 +173,10 @@ export function validateAction(
   const s = state.sides[side];
   const o = state.sides[otherSide(side)];
 
+  // Wild/NPC sides never pass actions (§2.10): null means "core chooses via chooseNpcAction", in every phase —
+  // including a replacement phase in which this side is the one that must switch.
+  if (action === null && s.kind !== 'player') return null;
+
   if (s.mustSwitch) {
     if (action === null || action.kind !== 'switch') return 'mustSwitch';
     return validateSwitch(state, side, action.to, false);

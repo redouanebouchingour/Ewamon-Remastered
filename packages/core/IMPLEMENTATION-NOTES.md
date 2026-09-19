@@ -53,6 +53,43 @@ not edited; each item here is a candidate for a `.design/spec/CHANGELOG.md` entr
     a foe faints. "Winning player side" in §2.16 is read as "the player side opposite the fainted battler".
 13. **Contact hooks** (Flame Body, Rough Skin, …) fire only when the attacker is still standing after its
     move and the move was damaging (`power > 0 && contact`).
+14. **`validateAction(state, side, null)` is valid for every non-player side in every phase** — including a
+    replacement phase in which that NPC/wild side is the one that must switch. §2.10 says NPC sides never pass
+    actions and that the server validates before `resolveTurn`; without this rule the server could not get past
+    validation for an NPC whose active fainted. `resolveTurn` fills the choice via `chooseNpcAction` before its own
+    validation, exactly as before. (Found by the §2.20 fuzz; `turn.test.ts` pins it.)
+15. **Sleep / confusion counters tick at the sleeper's action in the SAME turn the status landed** when the
+    sleeper acts after the attacker (§2.11 step 6 is applied literally: "decrement at the start of the sleeper's
+    action"). Consequence: a sleep of N turns skips N − 1 actions in total, and a 1-turn sleep landing before the
+    sleeper's action is cured at that very action. The original `effects.test.ts` assumed no same-turn tick; it
+    was changed to the spec's algorithm. If N skipped actions is the intended feel, the fix is a spec sentence
+    ("the counter does not tick on the turn the status was inflicted") plus a one-line guard in `canAct`.
+16. **A type-chart immunity stops a power-0 move before its status is even attempted** (§2.14 step 0 order:
+    `effectiveness === 0` → `moveFailed { reason: 'immune' }`, no `statusBlocked`). So a Poison-typed status move
+    into a Steel type fails as "immune"; the Steel type's own poison immunity (`statusBlocked { reason: 'type' }`)
+    shows only when the move can connect (a non-Poison-typed poison move). Likewise a Fire-typed Will-O-Wisp into
+    Flash Fire is absorbed by `typeImmunity` (flag set) rather than refused by the Fire type's burn immunity.
+17. **The §2.20 fuzz digest** (`test/fuzz-digests.json`, 1,000 entries) is `fnv1a32` over the joined per-turn
+    `digestBattleState` values of each seeded battle (createBattle state first), so it captures every turn, not
+    just the final state. Construction is in `test/fuzz.ts`; `maxTurns` is 200 as §2.20 says (the longest fuzz
+    battle is 65 turns). There is no `.design/spec/CHANGELOG.md` yet to record the file's creation against
+    §50.7; when the spec changelog is created, this first commit of the digests is its first entry.
+18. **Repair row "champion is zeon"** (`repairs.test.ts`) is asserted against the legacy roster
+    `.design/legacy/league.js` (`LEAGUE_TRAINERS`), because `@ewa/content` ships no `LEAGUE` yet. Re-point the
+    test at the content export when it exists.
+19. **`test/helpers.ts` `turn()` teaches a content-registered move to the active creature** before calling
+    `resolveTurn` (movesets never touch the rng stream), so scenario suites can register dozens of `customMove`s
+    and use them on stock creatures; `customMove` re-derives the §2.4 default `effectChance` when `effect`/`power`
+    is patched without pinning a chance. Core's `unknownMove` rule is unchanged and asserted through `resolveTurn`
+    directly in `turn.test.ts`.
+
+## Test-file naming vs §50.4.1
+
+The task's suite list is used where it differs from §50.4.1's table: `turn.test.ts` covers both
+`turn-order.test.ts` and `validate-action.test.ts`; `determinism.test.ts` covers `fuzz.test.ts` and
+`determinism-replay.test.ts` (the shared driver is `test/fuzz.ts`); `effects.test.ts` is one file with one test
+per effect rather than 22 files; `typechart.test.ts` / `trainerExp.test.ts` stand for `types.test.ts` /
+`trainer-exp.test.ts`. Content is the same; only the file boundaries differ.
 
 ## Test fixture
 
