@@ -217,8 +217,9 @@ describe('§2.4 effects — one test each', () => {
     const dmgBurned = eventsOf(turn(start(burnedAtt, DEF, 3), move(TACKLE.id), move(NOOP.id)).events, 'damage')[0]!.amount;
     const dmgPlain = eventsOf(turn(start(ATT, DEF, 3), move(TACKLE.id), move(NOOP.id)).events, 'damage')[0]!.amount;
     expect(dmgBurned).toBe(Math.floor(dmgPlain / 2));
-    // Fire types immune
-    const vsFire = turn(start(ATT, { species: 'cindercap', level: 50, ability: 'Flash Fire' }), move(BURN.id), move(NOOP.id));
+    // Fire types immune (cindercap's Flame Body, not Flash Fire — a Flash Fire holder absorbs the Fire-type move
+    // itself under §2.14 step 0 before any status check, which is a different immunity)
+    const vsFire = turn(start(ATT, { species: 'cindercap', level: 50, ability: 'Flame Body' }), move(BURN.id), move(NOOP.id));
     expect(eventsOf(vsFire.events, 'statusBlocked')).toEqual([{ t: 'statusBlocked', target: { side: 1, slot: 0 }, status: 'burn', reason: 'type' }]);
     expect(activeOf(vsFire.state, 1).creature.status).toEqual([]);
     // major statuses are exclusive: a second one is blocked with alreadyStatused
@@ -233,10 +234,20 @@ describe('§2.4 effects — one test each', () => {
     expect(d.creature.status).toEqual(['poison']);
     const chip = eventsOf(r.events, 'damage').find((e) => e.cause === 'poison')!;
     expect(chip.amount).toBe(Math.floor(d.maxHp / 8));
-    for (const species of ['grubolt', 'glowtent']) {
-      const imm = turn(start(ATT, { species, level: 50, ability: 'Keen Eye' }), move(POISON.id), move(NOOP.id));
-      expect(eventsOf(imm.events, 'statusBlocked')[0]).toMatchObject({ status: 'poison', reason: 'type' });
-    }
+    // glowtent (Water/Poison): the Poison-type move connects (x0.5) and the status is refused by type.
+    const vsPoison = turn(start(ATT, { species: 'glowtent', level: 50, ability: 'Swift Swim' }), move(POISON.id), move(NOOP.id));
+    expect(eventsOf(vsPoison.events, 'statusBlocked')[0]).toEqual({ t: 'statusBlocked', target: { side: 1, slot: 0 }, status: 'poison', reason: 'type' });
+    expect(activeOf(vsPoison.state, 1).creature.status).toEqual([]);
+    // grubolt (Bug/Steel): Poison→Steel is 0 on the chart, so a Poison-TYPED status move never connects at all
+    // (§2.14 step 0 precedes the status check) — moveFailed { immune }, no statusBlocked.
+    const chart = turn(start(ATT, { species: 'grubolt', level: 50, ability: 'Keen Eye' }), move(POISON.id), move(NOOP.id));
+    expect(eventsOf(chart.events, 'moveFailed')[0]).toEqual({ t: 'moveFailed', who: { side: 0, slot: 0 }, move: POISON.id, reason: 'immune' });
+    expect(eventsOf(chart.events, 'statusBlocked').length).toBe(0);
+    // ...and the Steel type's own status immunity shows once the move can connect (a Normal-typed poison move).
+    const poisonN = sure('Poison Fog', 'E:poison_normal', { type: 'Normal' });
+    const steel = turn(start(ATT, { species: 'grubolt', level: 50, ability: 'Keen Eye' }), move(poisonN.id), move(NOOP.id));
+    expect(eventsOf(steel.events, 'statusBlocked')[0]).toMatchObject({ status: 'poison', reason: 'type' });
+    expect(activeOf(steel.state, 1).creature.status).toEqual([]);
   });
 
   it('paralyze: Spd ×0.5, 25 % full paralysis each turn; Electric types immune', () => {
@@ -290,6 +301,10 @@ describe('§2.4 effects — one test each', () => {
   });
 
   it('sleep: 1 + rng.int(3) turns, decremented at the start of the sleeper action, then statusCured timer', () => {
+    // §2.11 step 6: at the start of EVERY action of the sleeper — including the one later in the turn the sleep
+    // landed (bramblecub moved first) — the counter decrements; > 0 → statusTick + skip, 0 → statusCured and it acts.
+    // So a sleep of N turns skips N − 1 actions in total, and a 1-turn sleep landing before the sleeper's action
+    // is cured at that very action.
     const seen = new Set<number>();
     for (let seed = 0; seed < 40; seed++) {
       const r = turn(start(ATT, DEF, seed), move(SLEEP.id), move(NOOP.id));
@@ -297,21 +312,37 @@ describe('§2.4 effects — one test each', () => {
       expect(applied.status).toBe('sleep');
       expect([1, 2, 3]).toContain(applied.turns);
       seen.add(applied.turns!);
-      expect(activeOf(r.state, 1).volatile.sleepTurns).toBe(applied.turns);
-      // the sleeper's own move that same turn is skipped (bramblecub moved first and the defender had not acted)
+      const d = activeOf(r.state, 1);
+      expect(d.volatile.sleepTurns).toBe(applied.turns! - 1);
+      let skipped = 0;
+      if (applied.turns === 1) {
+        expect(eventsOf(r.events, 'statusCured')).toEqual([{ t: 'statusCured', target: { side: 1, slot: 0 }, status: 'sleep', cause: 'timer' }]);
+        expect(eventsOf(r.events, 'moveUsed').map((e) => e.who.side)).toEqual([0, 1]);
+        expect(d.creature.status).toEqual([]);
+        continue;
+      }
+      expect(eventsOf(r.events, 'statusTick')).toEqual([{ t: 'statusTick', target: { side: 1, slot: 0 }, status: 'sleep', detail: 'asleep' }]);
+      expect(eventsOf(r.events, 'moveUsed').map((e) => e.who.side)).toEqual([0]);
+      expect(d.creature.status).toEqual(['sleep']);
+      skipped++;
       let st = r.state;
-      let asleepTurns = 0;
-      for (let i = 0; i < 4; i++) {
+      let cured = false;
+      for (let i = 0; i < 4 && !cured; i++) {
         const t = turn(st, move(NOOP.id), move(TACKLE.id));
         st = t.state;
-        if (eventsOf(t.events, 'statusTick').some((e) => e.status === 'sleep')) asleepTurns++;
-        else {
+        if (eventsOf(t.events, 'statusTick').some((e) => e.status === 'sleep')) {
+          skipped++;
+          expect(eventsOf(t.events, 'moveUsed').map((e) => e.who.side)).toEqual([0]);
+        } else {
+          cured = true;
           expect(eventsOf(t.events, 'statusCured')[0]).toEqual({ t: 'statusCured', target: { side: 1, slot: 0 }, status: 'sleep', cause: 'timer' });
           expect(eventsOf(t.events, 'moveUsed').map((e) => e.who.side)).toEqual([0, 1]);
-          break;
+          expect(activeOf(t.state, 1).volatile.sleepTurns).toBe(0);
+          expect(activeOf(t.state, 1).creature.status).toEqual([]);
         }
       }
-      expect(asleepTurns).toBe(applied.turns! - 1);
+      expect(cured).toBe(true);
+      expect(skipped).toBe(applied.turns! - 1);
     }
     expect([...seen].sort()).toEqual([1, 2, 3]);
     expect(content.move('Hypno Fog').effectChance).toBe(100);
@@ -326,9 +357,15 @@ describe('§2.4 effects — one test each', () => {
       expect([2, 3, 4]).toContain(applied.turns);
       seenTurns.add(applied.turns!);
       expect(activeOf(r.state, 1).creature.status).toEqual(['confuse']);
+      // §2.11 step 6: the confused side acted later this same turn, so the counter has already ticked once
+      expect(activeOf(r.state, 1).volatile.confusedTurns).toBe(applied.turns! - 1);
     }
     expect([...seenTurns].sort()).toEqual([2, 3, 4]);
-    const confused = turn(start(), move(CONFUSE.id), move(NOOP.id)).state;
+    // a state with at least two confused turns left, so the next action can be a self-hit rather than the cure
+    const confused = findSeed((seed) => {
+      const s = turn(start(ATT, DEF, seed), move(CONFUSE.id), move(NOOP.id)).state;
+      return activeOf(s, 1).volatile.confusedTurns >= 2 ? s : null;
+    });
     const selfHit = findSeed((seed) => {
       const s = turn({ ...confused, rng: startBattle({ a: ATT, b: DEF, seed }).state.rng }, move(NOOP.id), move(TACKLE.id));
       return eventsOf(s.events, 'damage').some((e) => e.cause === 'confusion') ? s : null;

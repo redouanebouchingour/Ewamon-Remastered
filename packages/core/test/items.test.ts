@@ -196,11 +196,15 @@ describe('§2.6 consumables in battle', () => {
     expect(a.creature.hp).toBe(a.maxHp);
     expect(a.creature.status).toEqual([]);
     expect(eventsOf(full.events, 'statusCured')[0]).toMatchObject({ status: 'burn', cause: 'item' });
+    // max_potion / hyper_potion do not cure: the §2.11 step-7 burn chip (1/16) still lands after the heal.
+    const burnChip = Math.floor(a.maxHp / 16);
     const maxp = turn(st, item('max_potion'), move(NOOP.id));
-    expect(activeOf(maxp.state, 0).creature.hp).toBe(a.maxHp);
+    expect(eventsOf(maxp.events, 'heal')[0]).toMatchObject({ amount: a.maxHp - 1, hpAfter: a.maxHp, cause: 'item', item: 'max_potion' });
+    expect(activeOf(maxp.state, 0).creature.hp).toBe(a.maxHp - burnChip);
     expect(activeOf(maxp.state, 0).creature.status).toEqual(['burn']);
     const hyper = turn(st, item('hyper_potion'), move(NOOP.id));
-    expect(activeOf(hyper.state, 0).creature.hp).toBe(Math.min(a.maxHp, 101));
+    expect(eventsOf(hyper.events, 'heal')[0]).toMatchObject({ amount: Math.min(100, a.maxHp - 1), hpAfter: Math.min(a.maxHp, 101) });
+    expect(activeOf(hyper.state, 0).creature.hp).toBe(Math.min(a.maxHp, 101) - burnChip);
   });
 
   it('status cures: antidote / burn_heal / ice_heal / awakening / paralyze_heal cure one; full_heal cures all incl. confusion', () => {

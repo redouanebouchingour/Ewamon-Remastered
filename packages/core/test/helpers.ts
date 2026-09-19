@@ -18,7 +18,7 @@ import type {
   TurnResult,
 } from '../src/index';
 import { createBattle, createRng, projectBattler, resolveTurn } from '../src/index';
-import { buildLegacyContent } from './fixtures/legacyContent';
+import { buildLegacyContent, defaultEffectChance } from './fixtures/legacyContent';
 import type { LegacyContent } from './fixtures/legacyContent';
 
 export const content: LegacyContent = buildLegacyContent();
@@ -144,8 +144,40 @@ export const FLEE: Action = { kind: 'flee' };
 export const FORFEIT: Action = { kind: 'forfeit' };
 export const catchWith = (orb: string): Action => ({ kind: 'catch', orb });
 
+/**
+ * A copy of `state` in which `side`'s active creature knows `moveId` (full PP). No-op when it already does or
+ * when content does not know the move. Fills a free slot first; at four moves the LAST slot is replaced, so a
+ * species default is what gets displaced — never a move a test taught earlier in the same call chain unless
+ * it sat in slot 3. Movesets never touch the rng stream, so seed-driven assertions are unaffected.
+ */
+export function teach(state: BattleState, side: 0 | 1, moveId: string, c: LegacyContent = content): BattleState {
+  const s = state.sides[side];
+  const b = s.party[s.active];
+  if (b === undefined) return state;
+  if (b.creature.moves.some((m) => m.id === moveId)) return state;
+  let md: MoveDef;
+  try {
+    md = c.move(moveId);
+  } catch (_e) {
+    return state;
+  }
+  const slot = { id: md.id, pp: md.pp, ppMax: md.pp };
+  const moves = b.creature.moves.length < 4 ? [...b.creature.moves, slot] : [...b.creature.moves.slice(0, 3), slot];
+  const party = s.party.map((p, i) => (i === s.active ? { ...p, creature: { ...p.creature, moves } } : p));
+  const sides: BattleState['sides'] = side === 0 ? [{ ...s, party }, state.sides[1]] : [state.sides[0], { ...s, party }];
+  return { ...state, sides };
+}
+
+/**
+ * resolveTurn with a test convenience: a `move` action naming a content-registered move the active creature
+ * does not know is taught first (see `teach`), so scenario files can register dozens of `customMove`s and use
+ * them on a stock creature. Core's own `unknownMove` rule (§2.10) is asserted through `resolveTurn` directly.
+ */
 export function turn(state: BattleState, a0: Action | null, a1: Action | null, c: LegacyContent = content): TurnResult {
-  return resolveTurn(state, [a0, a1], c);
+  let st = state;
+  if (a0 !== null && a0.kind === 'move') st = teach(st, 0, a0.move, c);
+  if (a1 !== null && a1.kind === 'move') st = teach(st, 1, a1.move, c);
+  return resolveTurn(st, [a0, a1], c);
 }
 
 export function activeOf(state: BattleState, side: 0 | 1): Battler {
@@ -246,9 +278,15 @@ export function findSeed<T>(run: (seed: number) => T | null | undefined | false,
 
 // ─── content tweaks ─────────────────────────────────────────────────────────
 
-/** A copy of an existing move with fields overridden, registered under a new id. */
+/**
+ * A copy of an existing move with fields overridden, registered under a new id. When the patch changes `effect`
+ * or `power` without pinning `effectChance`, the §2.4 default chance is re-derived for the new (effect, power)
+ * pair — as the content build would — instead of inheriting the base move's chance.
+ */
 export function customMove(base: string, id: string, patch: Partial<MoveDef>, c: LegacyContent = content): MoveDef {
-  const m: MoveDef = { ...c.move(base), ...patch, id };
+  const merged: MoveDef = { ...c.move(base), ...patch, id };
+  const rederive = patch.effectChance === undefined && (patch.effect !== undefined || patch.power !== undefined);
+  const m: MoveDef = rederive ? { ...merged, effectChance: defaultEffectChance(merged.effect, merged.power) } : merged;
   c.withMove(m);
   return m;
 }
