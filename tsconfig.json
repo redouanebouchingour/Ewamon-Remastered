@@ -1,15 +1,38 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/core" },
-    { "path": "./packages/content" },
-    { "path": "./packages/protocol" },
-    { "path": "./packages/persist" },
-    { "path": "./packages/render" },
-    { "path": "./packages/server" },
-    { "path": "./packages/client" },
-    { "path": "./tools/sprite-pipeline" },
-    { "path": "./tools/asset-audit" },
-    { "path": "./tools/audio-pipeline" }
+    {
+      "path": "./packages/core"
+    },
+    {
+      "path": "./packages/content"
+    },
+    {
+      "path": "./packages/protocol"
+    },
+    {
+      "path": "./packages/persist"
+    },
+    {
+      "path": "./packages/render"
+    },
+    {
+      "path": "./packages/server"
+    },
+    {
+      "path": "./packages/client"
+    },
+    {
+      "path": "./tools/sprite-pipeline"
+    },
+    {
+      "path": "./tools/asset-audit"
+    },
+    {
+      "path": "./tools/audio-pipeline"
+    },
+    {
+      "path": "./tools/material-bake"
+    }
   ]
 }

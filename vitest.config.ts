@@ -13,6 +13,7 @@ export default defineConfig({
       '@ewa/persist': pkg('persist'),
       '@ewa/render': pkg('render'),
       '@ewa/server': pkg('server'),
+      '@ewa/render/surfaces': fileURLToPath(new URL('./packages/render/src/surfaces/index.ts', import.meta.url)),
     },
   },
   test: {

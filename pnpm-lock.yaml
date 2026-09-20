@@ -220,6 +220,18 @@ importers:
 
   tools/audio-pipeline: {}
 
+  tools/material-bake:
+    dependencies:
+      '@ewa/render':
+        specifier: workspace:*
+        version: link:../../packages/render
+      ktx2-encoder:
+        specifier: ^0.6.0
+        version: 0.6.0
+      sharp:
+        specifier: ^0.34.3
+        version: 0.34.5
+
   tools/sprite-pipeline:
     dependencies:
       ktx2-encoder:
