@@ -1,36 +1,123 @@
 /**
- * Stage 8 — QA artifacts: `contact-sheet.png` (every sprite at 128 px, 16 per row, on a
- * checkerboard, labelled with the built-in bitmap font) and `qa-report.json`.
+ * QA artifacts (spec §40.1.3): `qa-report.json`, `contact-sheet.png` (every sprite at 128 px,
+ * 16 per row, on a checkerboard, labelled with the built-in bitmap font) and the per-source
+ * frame strips `qa/frames/<id>-<side>.png` used to fill `frame-select.json`.
+ *
+ * Flag semantics: `INFORMATIONAL_FLAGS` never block a release; a flag listed in
+ * `qa-accept.json` with a reason is suppressed for that sprite; everything else is
+ * actionable. Release rule for M1: `actionable === 0`.
  */
 import sharp from 'sharp';
 import type { QaFlag } from './alpha.js';
+import { INFORMATIONAL_FLAGS, NEVER_ACCEPTED_FLAGS } from './alpha.js';
 import { GLYPH_ADVANCE, GLYPH_H, drawText } from './font.js';
+import type { BindStat } from './plan.js';
+import type { ExcludedFile } from './sources.js';
 import type { RgbaImage, SpriteSide } from './types.js';
-import { createRgba } from './types.js';
+import { compareStrings, createRgba } from './types.js';
 
 export interface QaEntry {
   species: string;
   side: SpriteSide;
   flags: QaFlag[];
   source: string;
+  /** Flags that are neither informational nor accepted. */
+  actionable: QaFlag[];
+}
+
+export interface QaAcceptance {
+  species: string;
+  /** Omit to accept the flag on both sides. */
+  side?: SpriteSide;
+  flag: QaFlag;
+  reason: string;
+}
+
+export interface QaEncodingSummary {
+  albedoQuality: number;
+  normalQuality: number;
+  /** Rungs tried, top first; the last one is the one shipped. */
+  rungsTried: Array<{ albedo: number; normal: number; totalBytes: number }>;
 }
 
 export interface QaReport {
+  /** Sprites processed (130 species × 2 sides = 260). */
   total: number;
-  flagged: QaEntry[];
-  /** Per-flag counts, for a quick read of the report. */
+  /** Sprites carrying at least one actionable flag. Release rule: 0. */
+  actionable: number;
+  /** Sprites whose flags are all informational or accepted. */
+  informational: number;
+  /** Files under the source folders that are not species sprites. */
+  excluded: ExcludedFile[];
+  /** Flags suppressed by `qa-accept.json`. */
+  accepted: QaAcceptance[];
+  /** Per-flag counts over `flagged` (informational flags included). */
   counts: Record<string, number>;
+  /** Every sprite with at least one flag, informational flags included, sorted by (species, side). */
+  flagged: QaEntry[];
+  /** Zone -> atlases bound and species duplicated for it (spec §40.1.4). */
+  bindStats: Record<string, BindStat>;
+  encoding: QaEncodingSummary | null;
+  totalBytes: number;
 }
 
-export function buildQaReport(entries: QaEntry[]): QaReport {
-  const sorted = [...entries].sort((a, b) => (a.species === b.species ? a.side.localeCompare(b.side) : a.species < b.species ? -1 : 1));
-  const flagged = sorted.filter((e) => e.flags.length > 0).map((e) => ({ ...e, flags: [...e.flags].sort() }));
+export interface QaReportInput {
+  entries: Array<Omit<QaEntry, 'actionable'>>;
+  excluded: ExcludedFile[];
+  accepted: QaAcceptance[];
+  bindStats: Record<string, BindStat>;
+  encoding: QaEncodingSummary | null;
+  totalBytes: number;
+}
+
+export function isAccepted(accepted: readonly QaAcceptance[], species: string, side: SpriteSide, flag: QaFlag): boolean {
+  if (NEVER_ACCEPTED_FLAGS.has(flag)) return false;
+  return accepted.some((a) => a.species === species && a.flag === flag && (a.side === undefined || a.side === side));
+}
+
+export function compareEntries(a: { species: string; side: SpriteSide }, b: { species: string; side: SpriteSide }): number {
+  return compareStrings(a.species, b.species) || compareStrings(a.side, b.side);
+}
+
+export function buildQaReport(input: QaReportInput): QaReport {
+  const sorted = [...input.entries].sort(compareEntries);
+  const flagged: QaEntry[] = sorted
+    .filter((e) => e.flags.length > 0)
+    .map((e) => {
+      const flags = [...new Set(e.flags)].sort(compareStrings);
+      const actionable = flags.filter((f) => !INFORMATIONAL_FLAGS.has(f) && !isAccepted(input.accepted, e.species, e.side, f));
+      return { species: e.species, side: e.side, flags, source: e.source, actionable };
+    });
   const counts: Record<string, number> = {};
   for (const e of flagged) for (const f of e.flags) counts[f] = (counts[f] ?? 0) + 1;
   const orderedCounts: Record<string, number> = {};
-  for (const k of Object.keys(counts).sort()) orderedCounts[k] = counts[k]!;
-  return { total: sorted.length, flagged, counts: orderedCounts };
+  for (const k of Object.keys(counts).sort(compareStrings)) orderedCounts[k] = counts[k]!;
+  const actionable = flagged.filter((e) => e.actionable.length > 0).length;
+  const bindStats: Record<string, BindStat> = {};
+  for (const z of Object.keys(input.bindStats).sort(compareStrings)) bindStats[z] = input.bindStats[z]!;
+  // Only acceptances that actually matched a flagged sprite are reported as used.
+  const accepted = input.accepted
+    .filter((a) => flagged.some((e) => e.species === a.species && e.flags.includes(a.flag) && (a.side === undefined || a.side === e.side)))
+    .sort((a, b) => compareStrings(a.species, b.species) || compareStrings(a.flag, b.flag));
+  return {
+    total: sorted.length,
+    actionable,
+    informational: flagged.length - actionable,
+    excluded: [...input.excluded].sort((a, b) => compareStrings(a.file, b.file)),
+    accepted,
+    counts: orderedCounts,
+    flagged,
+    bindStats,
+    encoding: input.encoding,
+    totalBytes: input.totalBytes,
+  };
 }
+
+export function serializeQaReport(r: QaReport): string {
+  return `${JSON.stringify(r, null, 2)}\n`;
+}
+
+// ---- contact sheet ---------------------------------------------------------------------------
 
 export const CONTACT_CELL = 128;
 export const CONTACT_COLUMNS = 16;
@@ -60,14 +147,45 @@ export async function renderContactSheet(items: ContactSheetItem[]): Promise<Buf
       .raw()
       .toBuffer({ resolveWithObject: true });
     compositeOver(sheet, new Uint8Array(data.buffer, data.byteOffset, data.byteLength), info.width, info.height, cx, cy);
-    // Label strip.
     fillRect(sheet, cx, cy + CONTACT_CELL, CONTACT_CELL, CONTACT_LABEL_H, item.flagged ? [120, 30, 30] : [24, 24, 28]);
     const maxChars = Math.floor(CONTACT_CELL / GLYPH_ADVANCE);
     drawText(sheet.data, sheet.width, sheet.height, cx + 2, cy + CONTACT_CELL + 3, item.label.slice(0, maxChars), item.flagged ? [255, 200, 200] : [230, 230, 230]);
   }
+  return encodePng(sheet);
+}
 
-  return sharp(Buffer.from(sheet.data.buffer, sheet.data.byteOffset, sheet.data.byteLength), {
-    raw: { width: sheet.width, height: sheet.height, channels: 4 },
+/** All pages of a multiframe source in a row, each `cell` px, labelled with its page index. */
+export function renderFrameStrip(pages: RgbaImage[], cell = 256): Promise<Buffer> {
+  const labelH = GLYPH_H + 5;
+  const strip = createRgba(Math.max(1, pages.length) * cell, cell + labelH);
+  drawCheckerboard(strip, 16);
+  pages.forEach((page, i) => {
+    const scale = cell / Math.max(page.width, page.height);
+    const w = Math.max(1, Math.round(page.width * scale));
+    const h = Math.max(1, Math.round(page.height * scale));
+    const resized = nearestResize(page, w, h);
+    compositeOver(strip, resized.data, w, h, i * cell + ((cell - w) >> 1), (cell - h) >> 1);
+    fillRect(strip, i * cell, cell, cell, labelH, [24, 24, 28]);
+    drawText(strip.data, strip.width, strip.height, i * cell + 2, cell + 3, `PAGE ${i}`, [230, 230, 230]);
+  });
+  return encodePng(strip);
+}
+
+function nearestResize(src: RgbaImage, w: number, h: number): RgbaImage {
+  const out = createRgba(w, h);
+  for (let y = 0; y < h; y++) {
+    const sy = Math.min(src.height - 1, Math.floor((y * src.height) / h));
+    for (let x = 0; x < w; x++) {
+      const sx = Math.min(src.width - 1, Math.floor((x * src.width) / w));
+      out.data.set(src.data.subarray((sy * src.width + sx) * 4, (sy * src.width + sx) * 4 + 4), (y * w + x) * 4);
+    }
+  }
+  return out;
+}
+
+function encodePng(img: RgbaImage): Promise<Buffer> {
+  return sharp(Buffer.from(img.data.buffer, img.data.byteOffset, img.data.byteLength), {
+    raw: { width: img.width, height: img.height, channels: 4 },
   })
     .png({ compressionLevel: 9, effort: 7, palette: false })
     .toBuffer();

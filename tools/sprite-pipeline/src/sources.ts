@@ -1,12 +1,15 @@
 /**
- * Maps species ids to the raw files under `assets-src/creatures/{front,back}`.
+ * Maps species ids to the raw files under `assets-src/creatures/{front,back}` (spec §40.1.1).
  *
  * Legacy file names are inconsistent (`smellduckfront.png`, `bloomduck(front).png`,
  * `bankaiser(front).webp`, `galaxion(front).gif`), so matching normalises both sides:
- * lower-case, extension and every `()_- ` character removed. PNG, WebP and GIF are
- * accepted (GIFs contribute their first frame). Files no species claims are kept as "forms":
- * `yaschamp(front)(boxingstyle).png` becomes the pseudo-species `yaschamp@boxingstyle`,
- * so every input file ships and nothing is dropped silently.
+ * lower-case, extension and every `()_- ` character removed, first against
+ * `frontSprite`/`backSprite` from `ewamon.js`, then against `<id><side>`.
+ *
+ * The species set is exactly the ids of `ewamon.js`. A file no species claims is NOT a
+ * species: it is recorded in `excluded` (`reason: 'alternate-style'` when it parses as
+ * `<id>(<side>)(<style>)` for a known species, `'unmapped'` otherwise) and never processed.
+ * A species with no file for a side is an error, never a fallback.
  */
 import { readdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
@@ -14,21 +17,27 @@ import type { LegacySpecies } from './legacy.js';
 import type { SpriteSide } from './types.js';
 
 export interface SpriteSource {
-  /** Species id (or `<species>@<form>` for unclaimed form files). */
   id: string;
   side: SpriteSide;
   /** Path relative to the assets dir, forward slashes, e.g. `front/abyssrake(front).png`. */
   file: string;
   abs: string;
   sizeScale: number;
-  /** Set when the canonical file was missing and another file of the same species was used. */
-  fallback: boolean;
+}
+
+export type ExclusionReason = 'alternate-style' | 'unmapped';
+
+export interface ExcludedFile {
+  /** Relative to the assets dir, e.g. `front/yaschamp(front)(boxingstyle).png`. */
+  file: string;
+  reason: ExclusionReason;
 }
 
 export interface SourceResolution {
   sources: SpriteSource[];
-  /** Species ids with no usable file for a side. Build refuses to ship without them. */
+  /** Species ids with no usable file for a side. The build refuses to ship without them. */
   missing: Array<{ id: string; side: SpriteSide; wanted: string }>;
+  excluded: ExcludedFile[];
 }
 
 const IMAGE_RE = /\.(png|webp|gif)$/i;
@@ -48,16 +57,15 @@ function listSide(assetsDir: string, side: SpriteSide): string[] {
     .sort();
 }
 
-/** Parses an unclaimed file name into `{ id, form }` or null when it has no recognisable shape. */
-export function parseFormFile(name: string, side: SpriteSide): { id: string; form: string } | null {
+/** `yaschamp(front)(boxingstyle).png` -> `{ id: 'yaschamp', style: 'boxingstyle' }`, else null. */
+export function parseAlternateStyle(name: string, side: SpriteSide): { id: string; style: string } | null {
   const base = name.replace(IMAGE_RE, '').toLowerCase();
-  const m =
-    base.match(/^([a-z0-9]+)\((front|back)\)\(([a-z0-9]+)\)$/) ??
-    base.match(/^([a-z0-9]+)[_-]?(front|back)[_-]([a-z0-9]+)$/);
+  const m = base.match(/^([a-z0-9]+)\((front|back)\)\(([a-z0-9]+)\)$/) ?? base.match(/^([a-z0-9]+)[_-]?(front|back)[_-]([a-z0-9]+)$/);
   if (!m || m[2] !== side) return null;
-  return { id: m[1]!, form: m[3]! };
+  return { id: m[1]!, style: m[3]! };
 }
 
+/** Sort: species id, then `back` before `front`. */
 export function compareSources(a: { id: string; side: SpriteSide }, b: { id: string; side: SpriteSide }): number {
   if (a.id !== b.id) return a.id < b.id ? -1 : 1;
   return a.side === b.side ? 0 : a.side === 'back' ? -1 : 1;
@@ -66,56 +74,34 @@ export function compareSources(a: { id: string; side: SpriteSide }, b: { id: str
 export function resolveSources(assetsDir: string, species: Map<string, LegacySpecies>): SourceResolution {
   const sources: SpriteSource[] = [];
   const missing: SourceResolution['missing'] = [];
-  const claimed = new Set<string>();
+  const excluded: ExcludedFile[] = [];
 
   for (const side of ['front', 'back'] as const) {
     const files = listSide(assetsDir, side);
+    const claimed = new Set<string>();
     const byNorm = new Map<string, string>();
     for (const f of files) byNorm.set(normalizeName(f), f);
 
     for (const id of [...species.keys()].sort()) {
       const sp = species.get(id)!;
       const wanted = side === 'front' ? sp.frontSprite : sp.backSprite;
-      let file = byNorm.get(normalizeName(wanted)) ?? byNorm.get(`${id}${side}`);
-      let fallback = false;
+      const file = (wanted ? byNorm.get(normalizeName(wanted)) : undefined) ?? byNorm.get(`${id}${side}`);
       if (!file) {
-        // Any file of this species and side (e.g. a form variant) beats shipping nothing.
-        const candidates = files.filter((f) => {
-          const n = normalizeName(f);
-          return n.startsWith(id) && n.includes(side) && !claimed.has(`${side}/${f}`);
-        });
-        file = candidates[0];
-        fallback = file !== undefined;
-      }
-      if (!file) {
-        missing.push({ id, side, wanted });
+        missing.push({ id, side, wanted: wanted || `${id}${side}.*` });
         continue;
       }
-      claimed.add(`${side}/${file}`);
-      sources.push(makeSource(assetsDir, id, side, file, sp.sizeScale, fallback));
+      claimed.add(file);
+      sources.push({ id, side, file: `${side}/${file}`, abs: path.join(assetsDir, side, file), sizeScale: sp.sizeScale });
     }
 
     for (const f of files) {
-      if (claimed.has(`${side}/${f}`)) continue;
-      const parsed = parseFormFile(f, side);
-      const id = parsed ? `${parsed.id}@${parsed.form}` : `unmapped@${normalizeName(f)}`;
-      const sizeScale = parsed ? (species.get(parsed.id)?.sizeScale ?? 1) : 1;
-      claimed.add(`${side}/${f}`);
-      sources.push(makeSource(assetsDir, id, side, f, sizeScale, false));
+      if (claimed.has(f)) continue;
+      const alt = parseAlternateStyle(f, side);
+      excluded.push({ file: `${side}/${f}`, reason: alt && species.has(alt.id) ? 'alternate-style' : 'unmapped' });
     }
   }
 
   sources.sort(compareSources);
-  return { sources, missing };
-}
-
-function makeSource(
-  assetsDir: string,
-  id: string,
-  side: SpriteSide,
-  file: string,
-  sizeScale: number,
-  fallback: boolean,
-): SpriteSource {
-  return { id, side, file: `${side}/${file}`, abs: path.join(assetsDir, side, file), sizeScale, fallback };
+  excluded.sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
+  return { sources, missing, excluded };
 }

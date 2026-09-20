@@ -4,42 +4,124 @@
  * The client only needs the manifest types; everything else is exported for tests and for
  * other build tools (asset audit, CI checks) that want to reuse a stage.
  */
-export type { SpriteManifest, SpriteRect, ManifestAtlas, ManifestSprite, ManifestAnimation, ManifestEncoding } from './manifest.js';
-export { MANIFEST_FILE, serializeManifest, validateManifest } from './manifest.js';
+export type { SpriteManifestV2, SpriteRectV2, ManifestAtlasV2, ManifestMap, ManifestSpriteV2, SpriteCodec, ValidateOptions } from './manifest.js';
+export { MANIFEST_FILE, serializeManifest, validateManifest, manifestErrors, pxToUv } from './manifest.js';
 
-export type { QaFlag, AlphaResult } from './alpha.js';
-export { recoverAlpha, hasMeaningfulAlpha, floodBackground, defringe, alphaBbox, isMagenta, isNearWhite, INFORMATIONAL_FLAGS } from './alpha.js';
+export type { QaFlag, AlphaResult, AlphaOptions } from './alpha.js';
+export {
+  recoverAlpha,
+  hasMeaningfulAlpha,
+  floodBackground,
+  defringe,
+  cleanTransparentRgb,
+  alphaBbox,
+  isMagenta,
+  isNearWhite,
+  isSideMismatch,
+  INFORMATIONAL_FLAGS,
+  NEVER_ACCEPTED_FLAGS,
+  FLOOD_TOLERANCE,
+  MEANINGFUL_ALPHA_FRACTION,
+  COVERAGE_MIN,
+  COVERAGE_MAX,
+  DEFRINGE_RADIUS,
+  TRANSPARENT_RGB_BAND,
+  SIDE_MISMATCH_RATIO,
+} from './alpha.js';
 
 export type { Placement, ResampleKernel, NormalizeResult } from './normalize.js';
-export { computePlacement, chooseKernel, normalizeSprite } from './normalize.js';
+export { computePlacement, chooseKernel, normalizeSprite, blit, INTEGER_TOLERANCE } from './normalize.js';
 
 export type { NormalMapOptions } from './normalmap.js';
-export { deriveNormalMap, DEFAULT_NORMAL_OPTIONS } from './normalmap.js';
+export { deriveNormalMap, chamferDistance, gaussianBlur, luminance, DEFAULT_NORMAL_OPTIONS } from './normalmap.js';
 
-export { deriveEmissive, saturationTimesLightness, DEFAULT_EMISSIVE_THRESHOLD } from './emissive.js';
+export { deriveEmissive, erode1px, saturationTimesLightness, resolveEmissiveOverride, DEFAULT_EMISSIVE_THRESHOLD } from './emissive.js';
 export type { EmissiveOverride } from './emissive-overrides.js';
 export { EMISSIVE_OVERRIDES } from './emissive-overrides.js';
+
+export type { FloatAlphaImage } from './mips.js';
+export {
+  toFloatAlpha,
+  boxDownPremultiplied,
+  coverageFraction,
+  coverageScale,
+  quantize,
+  buildAlphaMipChain,
+  buildNormalMipChain,
+  buildMaskMipChain,
+  renormalize,
+  halfResolutionNormal,
+} from './mips.js';
 
 export type { Rect } from './pack.js';
 export { MaxRectsPacker, packSquares, rectsOverlap } from './pack.js';
 
-export type { AtlasGroup, AtlasPlan } from './groups.js';
-export { buildGroups, planAtlases, STARTER_ROOTS } from './groups.js';
+export type { AtlasPlan, ZonePlan, BindStat } from './plan.js';
+export { planAtlases, speciesSequence, atlasId } from './plan.js';
 
-export type { TextureEncoder, EncodingRequest, TextureKind } from './encode.js';
-export { createWebpEncoder, createKtx2Encoder, selectEncoding, probeKtx2, decodeToRgba } from './encode.js';
+export type { ZoneId, ZoneSets, ZoneInputs, RosterTables, ZoneSetInput } from './zones.js';
+export { ZONE_ORDER, isZoneId, parseRosterTables, loadRosterTables, buildZoneSets, buildZoneInputs } from './zones.js';
 
-export type { SpriteSource, SourceResolution } from './sources.js';
-export { resolveSources, normalizeName, parseFormFile } from './sources.js';
+export type { TextureKind, MapEncodeSettings, Rung, ThumbRung } from './encode.js';
+export {
+  ALBEDO_LADDER,
+  NORMAL_LADDER,
+  MIP_QUALITY_DROP,
+  WEBP_EFFORT,
+  THUMB_QUALITY,
+  THUMB_LADDER,
+  THUMB_ALPHA_QUALITY,
+  ladderRungs,
+  settingsFor,
+  settingsKey,
+  encodeRgbaWebp,
+  encodeMaskWebp,
+  encodeThumb,
+  decodeToRgba,
+  decodeRaw,
+  pageCount,
+  mipLevels,
+  probeKtx2,
+  encodeKtx2Rgba,
+  transcodeKtx2ToRgba,
+} from './encode.js';
 
-export type { LegacyData, LegacySpecies } from './legacy.js';
-export { loadLegacyData, withEvolutions } from './legacy.js';
+export type { Crop, ErrorStats, AngularStats } from './metrics.js';
+export { errorStats, hardestEdgeCrop, angularError, isHardEdge, luma, HARD_EDGE_STEP, BAD_ERROR } from './metrics.js';
 
-export type { BuildOptions, BuildResult, ProcessedSprite, InheritedSide } from './pipeline.js';
-export { runBuild, processSprite, spriteCacheKey, findMissingSides, dirBytes } from './pipeline.js';
+export type { SpriteSource, SourceResolution, ExcludedFile, ExclusionReason } from './sources.js';
+export { resolveSources, normalizeName, parseAlternateStyle, compareSources } from './sources.js';
 
-export type { QaEntry, QaReport, ContactSheetItem } from './qa.js';
-export { buildQaReport, renderContactSheet } from './qa.js';
+export type { LegacyData, LegacySpecies, LegacyTeam } from './legacy.js';
+export { loadLegacyData, loadLegacySpecies, parseSpecies } from './legacy.js';
+
+export type { SpriteMeta, SpriteArtifacts } from './cache.js';
+export { SpriteCache, sha256 } from './cache.js';
+
+export type { BuildOptions, BuildResult, ProcessedSprite, ProcessContext, FrameSelect, AlphaOverrides, AtlasRasters } from './pipeline.js';
+export { runBuild, processSprite, spriteCacheKey, buildAtlasRasters, atlasFileKey, atlasFileName, thumbFileName, resolveAlphaOverride, dirBytes } from './pipeline.js';
+
+export type { QaEntry, QaReport, QaAcceptance, QaEncodingSummary, ContactSheetItem } from './qa.js';
+export { buildQaReport, serializeQaReport, isAccepted, renderContactSheet, renderFrameStrip } from './qa.js';
 
 export type { RgbaImage, GrayImage, Bbox, SpriteSide } from './types.js';
-export { PIPELINE_VERSION, DEFAULT_SPRITE_SIZE, DEFAULT_ATLAS_SIZE, FOOT_V, FILL_FRACTION, createRgba, createGray } from './types.js';
+export {
+  PIPELINE_VERSION,
+  DEFAULT_SPRITE_SIZE,
+  DEFAULT_ATLAS_SIZE,
+  ATLAS_SLOTS,
+  FOOT_V,
+  MANIFEST_FOOT_V,
+  FILL_FRACTION,
+  NORMAL_SCALE,
+  MIP_LEVELS,
+  CREATURES_BUDGET_BYTES,
+  MAX_ATLASES_PER_ZONE,
+  MAX_DUPLICATED_SPECIES,
+  THUMB_SIZE,
+  THUMB_MAX_BYTES,
+  CONCURRENCY,
+  createRgba,
+  createGray,
+  compareStrings,
+} from './types.js';

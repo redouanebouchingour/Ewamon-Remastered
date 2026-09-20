@@ -1,23 +1,26 @@
 /**
- * `tsx src/cli.ts <build|qa|bench> [flags]`
+ * `tsx src/cli.ts <build|qa|frames|bench> [flags]`
  *
- *   build   run every stage and write atlases + manifest + QA artifacts
+ *   build   run every stage and write atlases + thumbs + manifest + QA artifacts
  *   qa      refresh contact-sheet.png / qa-report.json only (uses the sprite cache)
- *   bench   encode a few normalized sprites as KTX2 and WebP, transcode the KTX2 back and
- *           report sizes + error metrics (the numbers quoted in README.md)
+ *   frames  write qa/frames/<id>-<side>.png (every page of a multiframe source in a row) so
+ *           frame-select.json can be filled; `--only a,b` or `--all`
+ *   bench   encode a few normalized sprites as KTX2 and lossless WebP, transcode the KTX2
+ *           back and report sizes + error metrics (the numbers quoted in README.md)
  *
- * Flags: --only a,b,c   --limit N   --force   --encoding auto|ktx2|webp
- *        --assets DIR   --out DIR   --cache DIR   --qa DIR   --legacy DIR   --count N (bench)
+ * Flags: --only a,b,c   --limit N   --force   --jobs N   --all (frames)   --count N (bench)
+ *        --assets DIR   --out DIR   --cache DIR   --qa DIR   --legacy DIR   --roster FILE
  */
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SpriteCache } from './cache.js';
-import type { EncodingRequest } from './encode.js';
-import { createWebpEncoder, encodeKtx2Rgba, probeKtx2, transcodeKtx2ToRgba } from './encode.js';
+import { WEBP_EFFORT, decodeToRgba, encodeKtx2Rgba, encodeRgbaWebp, pageCount, probeKtx2, transcodeKtx2ToRgba } from './encode.js';
 import { loadLegacyData } from './legacy.js';
-import { processSprite } from './pipeline.js';
-import { runBuild } from './pipeline.js';
+import { errorStats } from './metrics.js';
+import { processSprite, resolveAlphaOverride, runBuild } from './pipeline.js';
+import type { AlphaOverrides, FrameSelect } from './pipeline.js';
+import { renderFrameStrip } from './qa.js';
 import { resolveSources } from './sources.js';
 import type { RgbaImage } from './types.js';
 import { DEFAULT_ATLAS_SIZE, DEFAULT_SPRITE_SIZE } from './types.js';
@@ -31,6 +34,10 @@ export const DEFAULT_PATHS = {
   cacheDir: path.join(PKG_DIR, '.cache'),
   qaDir: path.join(PKG_DIR, 'qa'),
   legacyDir: path.join(REPO_ROOT, '.design', 'legacy'),
+  rosterPath: path.join(REPO_ROOT, '.design', 'roster-coverage.md'),
+  frameSelectPath: path.join(PKG_DIR, 'frame-select.json'),
+  acceptPath: path.join(PKG_DIR, 'qa-accept.json'),
+  alphaOverridesPath: path.join(PKG_DIR, 'alpha-overrides.json'),
 };
 
 interface Args {
@@ -63,52 +70,98 @@ function str(v: string | true | undefined): string | undefined {
 async function main(): Promise<void> {
   const { command, flags } = parseArgs(process.argv.slice(2));
   const paths = {
+    ...DEFAULT_PATHS,
     assetsDir: str(flags.assets) ?? DEFAULT_PATHS.assetsDir,
     outDir: str(flags.out) ?? DEFAULT_PATHS.outDir,
     cacheDir: str(flags.cache) ?? DEFAULT_PATHS.cacheDir,
     qaDir: str(flags.qa) ?? DEFAULT_PATHS.qaDir,
     legacyDir: str(flags.legacy) ?? DEFAULT_PATHS.legacyDir,
+    rosterPath: str(flags.roster) ?? DEFAULT_PATHS.rosterPath,
   };
   const only = str(flags.only)?.split(',').filter(Boolean);
   const limit = str(flags.limit) ? Number(flags.limit) : undefined;
-  const encoding = (str(flags.encoding) ?? 'auto') as EncodingRequest;
+  const jobs = str(flags.jobs) ? Number(flags.jobs) : undefined;
   const log = (m: string): void => console.log(m);
 
   if (command === 'build' || command === 'qa') {
     const t0 = Date.now();
-    const res = await runBuild({ ...paths, only, limit, force: flags.force === true, encoding, qaOnly: command === 'qa', log });
-    log(`done in ${((Date.now() - t0) / 1000).toFixed(1)} s: ${res.sprites.length} sprites, ${res.atlasCount} atlases, ${res.report.flagged.length} flagged, ${res.cacheHits} cache hits`);
+    const res = await runBuild({ ...paths, only, limit, jobs, force: flags.force === true, qaOnly: command === 'qa', log });
+    const rung = res.rung ? `albedo q${res.rung.albedo} / normal q${res.rung.normal}` : 'n/a';
+    log(
+      `done in ${((Date.now() - t0) / 1000).toFixed(1)} s: ${res.sprites.length} sprites, ${res.atlasCount} atlases, ${(res.totalBytes / 1e6).toFixed(2)} MB, ${rung}, ` +
+        `${res.report.flagged.length} flagged (${res.report.actionable} actionable), ${res.cacheHits} cache hits`,
+    );
+    if (res.report.actionable > 0) process.exitCode = 3;
+    return;
+  }
+  if (command === 'frames') {
+    await frames(paths, only, flags.all === true, log);
     return;
   }
   if (command === 'bench') {
     await bench(paths, Number(str(flags.count) ?? 6), log);
     return;
   }
-  throw new Error(`unknown command "${command}" (expected build | qa | bench)`);
+  throw new Error(`unknown command "${command}" (expected build | qa | frames | bench)`);
 }
 
-/** KTX2 vs WebP on real normalized sprites; prints a markdown table. */
+/** Per-source contact strips for every multiframe source (or the given species). */
+async function frames(paths: typeof DEFAULT_PATHS, only: string[] | undefined, all: boolean, log: (m: string) => void): Promise<void> {
+  if (!only && !all) throw new Error('frames: pass --only a,b or --all');
+  const legacy = await loadLegacyData(paths.legacyDir);
+  const { sources } = resolveSources(paths.assetsDir, legacy.species);
+  const frameSelect = existsSync(paths.frameSelectPath) ? (JSON.parse(readFileSync(paths.frameSelectPath, 'utf8')) as FrameSelect) : {};
+  const dir = path.join(paths.qaDir, 'frames');
+  mkdirSync(dir, { recursive: true });
+  let written = 0;
+  for (const src of sources) {
+    if (only && !only.includes(src.id)) continue;
+    const bytes = new Uint8Array(readFileSync(src.abs));
+    const n = await pageCount(bytes);
+    if (n <= 1) continue;
+    const pages: RgbaImage[] = [];
+    for (let p = 0; p < n; p++) pages.push(await decodeToRgba(bytes, p));
+    const out = path.join(dir, `${src.id}-${src.side}.png`);
+    writeFileSync(out, await renderFrameStrip(pages));
+    const key = `${src.id}/${src.side}`;
+    log(`${key}: ${n} pages -> ${path.relative(process.cwd(), out)}${key in frameSelect ? ` (frame-select: ${frameSelect[key]})` : ' (NO frame-select entry)'}`);
+    written++;
+  }
+  log(`${written} strips written`);
+}
+
+/** KTX2 vs lossless WebP on real normalized sprites; prints a markdown table. */
 async function bench(paths: typeof DEFAULT_PATHS, count: number, log: (m: string) => void): Promise<void> {
   const legacy = await loadLegacyData(paths.legacyDir);
   const { sources } = resolveSources(paths.assetsDir, legacy.species);
   const cache = new SpriteCache(paths.cacheDir);
-  const webp = createWebpEncoder();
+  const frameSelect = existsSync(paths.frameSelectPath) ? (JSON.parse(readFileSync(paths.frameSelectPath, 'utf8')) as FrameSelect) : {};
+  const overrides = existsSync(paths.alphaOverridesPath) ? (JSON.parse(readFileSync(paths.alphaOverridesPath, 'utf8')) as AlphaOverrides) : {};
   const picks = sources.filter((s) => s.side === 'front').slice(0, count);
   const rows: string[] = [];
   let ktxTotal = 0;
   let webpTotal = 0;
   for (const src of picks) {
-    const p = await processSprite(src, cache, DEFAULT_SPRITE_SIZE, false);
+    const bytes = new Uint8Array(readFileSync(src.abs));
+    const frames = await pageCount(bytes);
+    const p = await processSprite(src, cache, {
+      spriteSize: DEFAULT_SPRITE_SIZE,
+      force: false,
+      bytes,
+      frames,
+      frame: frameSelect[`${src.id}/${src.side}`] ?? 0,
+      alpha: resolveAlphaOverride(overrides, src.id, src.side),
+    });
     for (const kind of ['albedo', 'normal'] as const) {
       const img = await cache.readRgba(p.hash, kind);
       const t0 = Date.now();
       const ktx = await encodeKtx2Rgba(img, kind);
       const tKtx = Date.now() - t0;
       const t1 = Date.now();
-      const web = await webp.encodeRgba(img, kind);
+      const web = await encodeRgbaWebp(img, { codec: 'webp-lossless', quality: null, alphaQuality: 100, smartSubsample: false, effort: WEBP_EFFORT });
       const tWebp = Date.now() - t1;
       const back = await transcodeKtx2ToRgba(ktx);
-      const m = compare(img, back);
+      const m = errorStats(img, back);
       ktxTotal += ktx.byteLength;
       webpTotal += web.byteLength;
       rows.push(
@@ -116,10 +169,12 @@ async function bench(paths: typeof DEFAULT_PATHS, count: number, log: (m: string
       );
     }
   }
-  const probe = await probeKtx2(DEFAULT_ATLAS_SIZE);
-  log(`KTX2 at ${DEFAULT_ATLAS_SIZE}px: ${probe.ok ? 'supported' : `unsupported — ${probe.error}`}`);
+  const probe = await probeKtx2(2 * DEFAULT_ATLAS_SIZE);
+  log(`KTX2 at ${2 * DEFAULT_ATLAS_SIZE}px: ${probe.ok ? 'supported' : `unsupported — ${probe.error}`}`);
+  const probe2 = await probeKtx2(DEFAULT_ATLAS_SIZE);
+  log(`KTX2 at ${DEFAULT_ATLAS_SIZE}px: ${probe2.ok ? 'supported' : `unsupported — ${probe2.error}`}`);
   log('');
-  log('| sprite | map | KTX2 (UASTC+zstd) | enc | WebP lossless | enc | PSNR (opaque px) | max err | edge px err>16 |');
+  log('| sprite | map | KTX2 (UASTC+zstd) | enc | WebP lossless | enc | PSNR (opaque px) | max err | edge px err>12 |');
   log('|---|---|---|---|---|---|---|---|---|');
   for (const r of rows) log(r);
   log(`| **total** | | **${kb(ktxTotal)}** | | **${kb(webpTotal)}** | | | | |`);
@@ -129,46 +184,10 @@ function kb(n: number): string {
   return `${(n / 1024).toFixed(0)} KB`;
 }
 
-/** PSNR over pixels with alpha > 0, max channel error, and the share of alpha-edge pixels with a channel error > 16. */
-function compare(a: RgbaImage, b: RgbaImage): { psnr: number; maxErr: number; edgeBad: number } {
-  const { width, height } = a;
-  let se = 0;
-  let n = 0;
-  let maxErr = 0;
-  let edge = 0;
-  let edgeBad = 0;
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const i = (y * width + x) * 4;
-      const alpha = a.data[i + 3]!;
-      if (alpha === 0) continue;
-      let pixMax = 0;
-      for (let c = 0; c < 4; c++) {
-        const e = Math.abs(a.data[i + c]! - b.data[i + c]!);
-        se += e * e;
-        n++;
-        if (e > pixMax) pixMax = e;
-      }
-      if (pixMax > maxErr) maxErr = pixMax;
-      const onEdge =
-        (x > 0 && a.data[i - 1]! === 0) ||
-        (x < width - 1 && a.data[i + 7]! === 0) ||
-        (y > 0 && a.data[i - width * 4 + 3]! === 0) ||
-        (y < height - 1 && a.data[i + width * 4 + 3]! === 0);
-      if (onEdge) {
-        edge++;
-        if (pixMax > 16) edgeBad++;
-      }
-    }
-  }
-  const mse = n ? se / n : 0;
-  return { psnr: mse === 0 ? 99 : 10 * Math.log10((255 * 255) / mse), maxErr, edgeBad: edge ? edgeBad / edge : 0 };
-}
-
 const invokedDirectly = process.argv[1] !== undefined && existsSync(process.argv[1]) && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedDirectly) {
   main().catch((err: unknown) => {
-    console.error(err instanceof Error ? err.stack ?? err.message : String(err));
+    console.error(err instanceof Error ? (err.stack ?? err.message) : String(err));
     process.exitCode = 1;
   });
 }

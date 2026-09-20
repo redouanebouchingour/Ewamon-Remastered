@@ -1,10 +1,14 @@
 /**
- * Content-hash cache under `tools/sprite-pipeline/.cache/`.
+ * Content-hash cache under `tools/sprite-pipeline/.cache/` (spec §40.0.2 rule 2, §40.1.7).
  *
- * Per sprite: `sprites/<hash>/{albedo,normal,emissive}.png + meta.json`, where <hash> is
- * sha256(source bytes + PIPELINE_VERSION + stage parameters). Per atlas texture:
- * `atlases/<hash>.<ext>`, keyed by the member sprite hashes + encoder settings. A re-run
- * over unchanged inputs therefore does no image work at all.
+ *   sprites/<hash>/{albedo,normal,emissive}.png + meta.json
+ *       hash = sha256(source bytes, "v" + PIPELINE_VERSION, "size=1024", normal options,
+ *                     emissive override, frame-select entry, alpha override)
+ *   atlases/<hash>.webp        one encoded atlas file (a map at one mip level under one rung)
+ *       hash = sha256(PIPELINE_VERSION, settingsKey, "2048/1024", kind, level, members + placements)
+ *   thumbs/<sprite hash>.webp
+ *
+ * A rerun over unchanged inputs does no image work and reports `cacheHits === inputs`.
  */
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -25,13 +29,20 @@ export interface SpriteMeta {
   source: string;
   sourceWidth: number;
   sourceHeight: number;
+  /** Pages in the source (1 for a still image). */
+  frames: number;
+  /** Page decoded (frame-select.json; 0 for stills). */
+  frame: number;
   recovered: boolean;
   coverage: number;
   flags: QaFlag[];
+  /** From the BOTTOM of the cell (manifest convention), 0.08. */
   footV: number;
   pixelScale: number;
   kernel: 'nearest' | 'lanczos3';
   emissivePixels: number;
+  /** Alpha bbox on the normalised 1024² canvas (thumbnail crop). */
+  bbox: { x0: number; y0: number; x1: number; y1: number } | null;
 }
 
 export interface SpriteArtifacts {
@@ -97,6 +108,20 @@ export class SpriteCache {
   writeAtlas(hash: string, ext: string, bytes: Uint8Array): void {
     mkdirSync(path.join(this.root, 'atlases'), { recursive: true });
     writeFileSync(this.atlasPath(hash, ext), bytes);
+  }
+
+  thumbPath(hash: string): string {
+    return path.join(this.root, 'thumbs', `${hash}.webp`);
+  }
+
+  readThumb(hash: string): Uint8Array | null {
+    const p = this.thumbPath(hash);
+    return existsSync(p) ? new Uint8Array(readFileSync(p)) : null;
+  }
+
+  writeThumb(hash: string, bytes: Uint8Array): void {
+    mkdirSync(path.join(this.root, 'thumbs'), { recursive: true });
+    writeFileSync(this.thumbPath(hash), bytes);
   }
 }
 

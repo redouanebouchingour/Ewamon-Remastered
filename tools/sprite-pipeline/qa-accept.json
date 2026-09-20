@@ -1,0 +1,8 @@
+[
+  {
+    "species": "malice",
+    "side": "front",
+    "flag": "coverage",
+    "reason": "Small creature drawn on a large canvas; alpha verified on the contact sheet (opaque fraction below 0.12 is the drawing, not a recovery failure)."
+  }
+]

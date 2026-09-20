@@ -1,54 +1,98 @@
 /**
- * The build orchestrator: sources -> per-sprite stages (cached by content hash) -> atlas
- * planning + packing -> encoding -> manifest -> QA artifacts.
+ * The build orchestrator (spec §40.1): sources -> per-sprite stages (cached by content hash)
+ * -> zone-affinity atlas plan -> rasters + mip chains -> WebP encoding under the budget
+ * ladder -> manifest v2 -> output tree -> QA artifacts.
+ *
+ * Nothing under `outDir` is touched until every byte has been produced (into the cache), so
+ * a failed build never leaves a partial output tree.
  */
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import sharp from 'sharp';
-import type { QaFlag } from './alpha.js';
-import { INFORMATIONAL_FLAGS, recoverAlpha } from './alpha.js';
+import type { AlphaOptions, QaFlag } from './alpha.js';
+import { INFORMATIONAL_FLAGS, alphaBbox, isSideMismatch, recoverAlpha } from './alpha.js';
 import type { SpriteMeta } from './cache.js';
 import { SpriteCache, sha256 } from './cache.js';
 import { deriveEmissive, resolveEmissiveOverride } from './emissive.js';
-import type { EncodingRequest, TextureEncoder } from './encode.js';
-import { decodeToRgba, selectEncoding } from './encode.js';
-import type { AtlasPlan } from './groups.js';
-import { buildGroups, planAtlases } from './groups.js';
+import type { MapEncodeSettings, Rung, TextureKind } from './encode.js';
+import {
+  decodeToRgba,
+  encodeMaskWebp,
+  encodeRgbaWebp,
+  encodeThumb,
+  THUMB_LADDER,
+  ladderRungs,
+  mipLevels,
+  pageCount,
+  settingsFor,
+  settingsKey,
+} from './encode.js';
 import type { LegacyData } from './legacy.js';
 import { loadLegacyData } from './legacy.js';
-import type { ManifestAnimation, ManifestAtlas, SpriteManifest, SpriteRect } from './manifest.js';
-import { MANIFEST_FILE, serializeManifest, validateManifest } from './manifest.js';
+import type { ManifestAtlasV2, ManifestMap, ManifestSpriteV2, SpriteManifestV2, SpriteRectV2 } from './manifest.js';
+import { MANIFEST_FILE, manifestErrors, pxToUv, serializeManifest } from './manifest.js';
+import { buildAlphaMipChain, buildMaskMipChain, buildNormalMipChain, halfResolutionNormal } from './mips.js';
 import { blit, normalizeSprite } from './normalize.js';
 import { DEFAULT_NORMAL_OPTIONS, deriveNormalMap } from './normalmap.js';
+import type { Rect } from './pack.js';
 import { packSquares } from './pack.js';
-import type { QaEntry, QaReport } from './qa.js';
-import { buildQaReport, renderContactSheet } from './qa.js';
-import type { SpriteSource } from './sources.js';
+import type { ZonePlan } from './plan.js';
+import { planAtlases } from './plan.js';
+import type { QaAcceptance, QaEncodingSummary, QaEntry, QaReport } from './qa.js';
+import { buildQaReport, renderContactSheet, serializeQaReport } from './qa.js';
+import type { ExcludedFile, SpriteSource } from './sources.js';
 import { compareSources, resolveSources } from './sources.js';
 import type { GrayImage, RgbaImage } from './types.js';
-import { DEFAULT_ATLAS_SIZE, DEFAULT_SPRITE_SIZE, PIPELINE_VERSION, createGray, createRgba } from './types.js';
+import {
+  CONCURRENCY,
+  CREATURES_BUDGET_BYTES,
+  DEFAULT_ATLAS_SIZE,
+  DEFAULT_SPRITE_SIZE,
+  MANIFEST_FOOT_V,
+  MAX_ATLASES_PER_ZONE,
+  MIP_LEVELS,
+  NORMAL_SCALE,
+  PIPELINE_VERSION,
+  THUMB_MAX_BYTES,
+  THUMB_SIZE,
+  compareStrings,
+  createGray,
+  createRgba,
+} from './types.js';
+import { buildZoneInputs, loadRosterTables } from './zones.js';
 
 export interface BuildOptions {
-  /** `assets-src/creatures` — holds `front/`, `back/`, `animations/`. */
+  /** `assets-src/creatures` — holds `front/`, `back/`. */
   assetsDir: string;
-  /** `packages/client/public/creatures`. */
+  /** `packages/client/public/creatures`. Emptied and rewritten by a successful build. */
   outDir: string;
   cacheDir: string;
   qaDir: string;
-  /** `.design/legacy`; null means "no legacy data" (every species lands in `misc`). */
+  /** `.design/legacy`; null means "no legacy data" (synthetic runs: species = the given sources). */
   legacyDir: string | null;
-  /** Explicit sources (tests / synthetic runs). When set, `legacyDir` is only used for grouping. */
+  /** `.design/roster-coverage.md`; null or missing -> no encounter tables (every species is `home`). */
+  rosterPath?: string | null;
+  /** `frame-select.json`; every multiframe source needs an entry. */
+  frameSelectPath?: string | null;
+  /** `qa-accept.json`. */
+  acceptPath?: string | null;
+  /** `alpha-overrides.json`. */
+  alphaOverridesPath?: string | null;
+  /** Explicit sources (tests / synthetic runs). */
   sources?: SpriteSource[];
+  /** Expected species set (defaults to the legacy species; the sources' ids when there is none). */
+  species?: string[];
   /** Restrict to these species ids. */
   only?: string[];
   limit?: number;
-  /** Ignore the cache. */
+  /** Ignore the sprite cache (atlas and thumb caches are content-keyed and always valid). */
   force?: boolean;
-  encoding?: EncodingRequest;
   spriteSize?: number;
   atlasSize?: number;
   /** Only refresh the QA artifacts (sprites still go through the cached stages). */
   qaOnly?: boolean;
+  /** Per-sprite stage workers (default CONCURRENCY 3). Output-neutral. */
+  jobs?: number;
+  budgetBytes?: number;
   log?: (msg: string) => void;
 }
 
@@ -60,29 +104,46 @@ export interface ProcessedSprite {
 }
 
 export interface BuildResult {
-  manifest: SpriteManifest | null;
+  manifest: SpriteManifestV2 | null;
   report: QaReport;
   sprites: ProcessedSprite[];
-  encoding: string;
-  encodingReason: string;
+  plan: ZonePlan | null;
+  rung: Rung | null;
   atlasCount: number;
   totalBytes: number;
   cacheHits: number;
   outFiles: string[];
 }
 
+export type FrameSelect = Record<string, number>;
+export type AlphaOverrides = Record<string, AlphaOptions>;
+
 const noop = (): void => {};
+
+function readJson<T>(file: string | null | undefined, fallback: T): T {
+  if (!file || !existsSync(file)) return fallback;
+  return JSON.parse(readFileSync(file, 'utf8')) as T;
+}
+
+export function resolveAlphaOverride(overrides: AlphaOverrides, id: string, side: string): AlphaOptions {
+  return overrides[`${id}/${side}`] ?? overrides[id] ?? {};
+}
 
 export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
   const log = opts.log ?? noop;
   const spriteSize = opts.spriteSize ?? DEFAULT_SPRITE_SIZE;
   const atlasSize = opts.atlasSize ?? DEFAULT_ATLAS_SIZE;
-  if (atlasSize % spriteSize !== 0) throw new Error(`atlasSize ${atlasSize} must be a multiple of spriteSize ${spriteSize}`);
+  if (atlasSize !== 2 * spriteSize) throw new Error(`atlasSize ${atlasSize} must be 2 × spriteSize ${spriteSize} (2 × 2 cells)`);
+  const budget = opts.budgetBytes ?? CREATURES_BUDGET_BYTES;
   const cache = new SpriteCache(opts.cacheDir);
+  const frameSelect = readJson<FrameSelect>(opts.frameSelectPath, {});
+  const alphaOverrides = readJson<AlphaOverrides>(opts.alphaOverridesPath, {});
+  const accepted = readJson<QaAcceptance[]>(opts.acceptPath, []);
 
   // ---- sources -------------------------------------------------------------------------
   const legacy: LegacyData | null = opts.legacyDir ? await loadLegacyData(opts.legacyDir) : null;
   let sources: SpriteSource[];
+  let excluded: ExcludedFile[] = [];
   if (opts.sources) {
     sources = [...opts.sources].sort(compareSources);
   } else {
@@ -93,47 +154,81 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
       throw new Error(`no source file for: ${missing.map((m) => `${m.id}/${m.side} (wanted ${m.wanted})`).join(', ')}`);
     }
     sources = res.sources;
+    excluded = res.excluded;
   }
+  let expectedSpecies = opts.species ?? (legacy ? [...legacy.species.keys()] : [...new Set(sources.map((s) => s.id))]);
   if (opts.only) {
     const only = new Set(opts.only);
     sources = sources.filter((s) => only.has(s.id));
+    expectedSpecies = expectedSpecies.filter((id) => only.has(id));
   }
   if (opts.limit !== undefined) {
-    const ids = [...new Set(sources.map((s) => s.id))].slice(0, opts.limit);
-    const keep = new Set(ids);
+    const keep = new Set([...new Set(sources.map((s) => s.id))].slice(0, opts.limit));
     sources = sources.filter((s) => keep.has(s.id));
+    expectedSpecies = expectedSpecies.filter((id) => keep.has(id));
   }
-  log(`${sources.length} sprites from ${opts.assetsDir}`);
-
-  // Sides with no file at all. Only `<base>@<form>` pseudo-species may lack one (the form
-  // sheet had a single side); they inherit the base species' sprite for that side and are
-  // flagged `missing-side` so the gap is visible in the QA report, never silent.
-  const inherited = findMissingSides(sources);
+  expectedSpecies = [...expectedSpecies].sort(compareStrings);
+  log(`${sources.length} sprites from ${opts.assetsDir}${excluded.length ? ` (${excluded.length} files excluded)` : ''}`);
 
   // ---- per-sprite stages -----------------------------------------------------------------
   const sprites: ProcessedSprite[] = [];
+  const missingFrames: string[] = [];
   let cacheHits = 0;
   let done = 0;
-  const CONCURRENCY = 3;
   const queue = [...sources];
   const worker = async (): Promise<void> => {
     for (let src = queue.shift(); src; src = queue.shift()) {
-      const p = await processSprite(src, cache, spriteSize, opts.force ?? false);
+      const bytes = new Uint8Array(readFileSync(src.abs));
+      const frames = await pageCount(bytes);
+      const key = `${src.id}/${src.side}`;
+      let frame = 0;
+      if (frames > 1) {
+        const chosen = frameSelect[key];
+        if (chosen === undefined) {
+          missingFrames.push(`${key} (${frames} pages)`);
+          continue;
+        }
+        if (!Number.isInteger(chosen) || chosen < 0 || chosen >= frames) throw new Error(`frame-select.json: ${key} = ${chosen} is outside 0..${frames - 1}`);
+        frame = chosen;
+      }
+      const p = await processSprite(src, cache, {
+        spriteSize,
+        force: opts.force ?? false,
+        bytes,
+        frames,
+        frame,
+        alpha: resolveAlphaOverride(alphaOverrides, src.id, src.side),
+      });
       if (p.cached) cacheHits++;
       sprites.push(p);
       done++;
       if (done % 25 === 0 || done === sources.length) log(`  processed ${done}/${sources.length} (${cacheHits} cached)`);
     }
   };
-  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+  await Promise.all(Array.from({ length: Math.max(1, opts.jobs ?? CONCURRENCY) }, worker));
+  if (missingFrames.length) {
+    throw new Error(
+      `multiframe sources without a frame-select.json entry: ${missingFrames.sort().join(', ')}. ` +
+        `Run \`tsx src/cli.ts frames --all\` and pick a page per source from qa/frames/.`,
+    );
+  }
   sprites.sort((a, b) => compareSources(a.source, b.source));
 
-  // ---- QA --------------------------------------------------------------------------------
-  const qaEntries: QaEntry[] = sprites.map((p) => ({ species: p.source.id, side: p.source.side, flags: p.meta.flags, source: p.source.file }));
-  for (const m of inherited) qaEntries.push({ species: m.id, side: m.side, flags: ['missing-side'], source: `(inherited from ${m.base})` });
-  const report = buildQaReport(qaEntries);
+  // ---- QA entries ------------------------------------------------------------------------
+  const bySpecies = new Map<string, ProcessedSprite[]>();
+  for (const p of sprites) {
+    const list = bySpecies.get(p.source.id) ?? [];
+    list.push(p);
+    bySpecies.set(p.source.id, list);
+  }
+  const qaEntries: Array<Omit<QaEntry, 'actionable'>> = sprites.map((p) => {
+    const flags: QaFlag[] = [...p.meta.flags];
+    const front = bySpecies.get(p.source.id)!.find((s) => s.source.side === 'front');
+    const back = bySpecies.get(p.source.id)!.find((s) => s.source.side === 'back');
+    if (front && back && isSideMismatch(front.meta.pixelScale, back.meta.pixelScale)) flags.push('sidemismatch');
+    return { species: p.source.id, side: p.source.side, flags, source: p.source.file };
+  });
   mkdirSync(opts.qaDir, { recursive: true });
-  writeFileSync(path.join(opts.qaDir, 'qa-report.json'), `${JSON.stringify(report, null, 2)}\n`);
   const sheet = await renderContactSheet(
     sprites.map((p) => ({
       label: `${p.source.side === 'front' ? 'F' : 'B'} ${p.source.id}`,
@@ -142,132 +237,189 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
     })),
   );
   writeFileSync(path.join(opts.qaDir, 'contact-sheet.png'), sheet);
-  log(`QA: ${report.flagged.length}/${report.total} flagged -> ${opts.qaDir}`);
+
+  // ---- plan ------------------------------------------------------------------------------
+  const ids = [...bySpecies.keys()].sort(compareStrings);
+  for (const id of ids) {
+    const sides = bySpecies.get(id)!.map((s) => s.source.side);
+    if (!sides.includes('front') || !sides.includes('back')) throw new Error(`species ${id} has no ${sides.includes('front') ? 'back' : 'front'} sprite`);
+  }
+  const rosterPath = opts.rosterPath ?? null;
+  const roster = rosterPath && existsSync(rosterPath) ? loadRosterTables(rosterPath) : null;
+  const known = new Set(legacy ? legacy.species.keys() : ids);
+  const zoneInputs = buildZoneInputs({ roster, legacy }, known);
+  const plan = planAtlases(ids, zoneInputs.sets, MAX_ATLASES_PER_ZONE, zoneInputs.league);
+  const writeReport = (encoding: QaEncodingSummary | null, totalBytes: number): QaReport => {
+    const report = buildQaReport({ entries: qaEntries, excluded, accepted, bindStats: plan.bindStats, encoding, totalBytes });
+    writeFileSync(path.join(opts.qaDir, 'qa-report.json'), serializeQaReport(report));
+    return report;
+  };
 
   if (opts.qaOnly) {
-    return { manifest: null, report, sprites, encoding: 'n/a', encodingReason: 'qa only', atlasCount: 0, totalBytes: 0, cacheHits, outFiles: [] };
+    const report = writeReport(null, dirBytes(opts.outDir));
+    log(`QA: ${report.flagged.length}/${report.total} flagged, ${report.actionable} actionable -> ${opts.qaDir}`);
+    return { manifest: null, report, sprites, plan, rung: null, atlasCount: 0, totalBytes: report.totalBytes, cacheHits, outFiles: [] };
   }
 
-  // ---- atlases ---------------------------------------------------------------------------
-  const { encoder, reason } = await selectEncoding(opts.encoding ?? 'auto', atlasSize);
-  log(`encoding: ${encoder.encoding} (${reason})`);
-  const slots = (atlasSize / spriteSize) ** 2;
-  const speciesPerAtlas = Math.max(1, Math.floor(slots / 2));
-  const ids = [...new Set(sprites.map((p) => p.source.id))];
-  const plans = planAtlases(buildGroups(ids, legacy), speciesPerAtlas);
-  const bySpecies = new Map<string, ProcessedSprite[]>();
-  for (const p of sprites) {
-    const list = bySpecies.get(p.source.id) ?? [];
-    list.push(p);
-    bySpecies.set(p.source.id, list);
+  // ---- thumbs ----------------------------------------------------------------------------
+  const thumbs = new Map<string, Uint8Array>();
+  for (const id of ids) {
+    const front = bySpecies.get(id)!.find((s) => s.source.side === 'front')!;
+    const thumbKey = sha256(front.hash, 'thumb', `size=${THUMB_SIZE}`, `ladder=${THUMB_LADDER.map((r) => `${r.quality}/${r.alphaQuality}`).join(',')}`, `max=${THUMB_MAX_BYTES}`);
+    let bytes = cache.readThumb(thumbKey);
+    if (!bytes) {
+      const albedo = await cache.readRgba(front.hash, 'albedo');
+      const bbox = front.meta.bbox ?? { x0: 0, y0: 0, x1: albedo.width - 1, y1: albedo.height - 1 };
+      const thumb = await encodeThumb(albedo, bbox, THUMB_SIZE, THUMB_MAX_BYTES);
+      bytes = thumb.bytes;
+      if (thumb.rung !== THUMB_LADDER[0]) log(`  thumb ${id}: q${thumb.rung.quality}/aq${thumb.rung.alphaQuality} to fit ${THUMB_MAX_BYTES} B (${bytes.byteLength} B)`);
+      cache.writeThumb(thumbKey, bytes);
+    }
+    if (bytes.byteLength > THUMB_MAX_BYTES) throw new Error(`thumb ${id}: ${bytes.byteLength} B > ${THUMB_MAX_BYTES} B at the bottom of the thumb ladder`);
+    thumbs.set(id, bytes);
   }
+  const thumbBytes = [...thumbs.values()].reduce((n, b) => n + b.byteLength, 0);
 
-  const atlasesDir = path.join(opts.outDir, 'atlases');
-  mkdirSync(atlasesDir, { recursive: true });
-  const manifestAtlases: ManifestAtlas[] = [];
-  const rects: Record<string, Partial<Record<'front' | 'back', SpriteRect>>> = {};
-  const outFiles: string[] = [];
-
-  for (const plan of plans) {
-    const members = plan.species.flatMap((id) => bySpecies.get(id) ?? []).sort((a, b) => compareSources(a.source, b.source));
-    if (members.length > slots) throw new Error(`atlas ${plan.id}: ${members.length} sprites > ${slots} slots`);
+  // ---- atlases: members + placements ----------------------------------------------------------
+  interface AtlasJob {
+    id: string;
+    species: string[];
+    dupFor: string | null;
+    members: ProcessedSprite[];
+    placed: Rect[];
+    memberKey: string[];
+  }
+  const jobs: AtlasJob[] = plan.atlases.map((a) => {
+    const members = a.species.flatMap((id) => bySpecies.get(id) ?? []).sort((x, y) => compareSources(x.source, y.source));
     const placed = packSquares(members.length, spriteSize, atlasSize);
-    const key = sha256(
-      PIPELINE_VERSION,
-      encoder.settingsKey,
-      `${atlasSize}/${spriteSize}`,
-      ...members.map((m, i) => `${m.hash}@${placed[i]!.x},${placed[i]!.y}`),
-    );
-    const files = await encodeAtlas(plan, members, placed, key, cache, encoder, atlasSize, spriteSize, atlasesDir, log);
-    outFiles.push(...files.map((f) => path.join(atlasesDir, f)));
-    manifestAtlases.push({ id: plan.id, albedo: `atlases/${files[0]!}`, normal: `atlases/${files[1]!}`, emissive: `atlases/${files[2]!}`, group: plan.group });
-    members.forEach((m, i) => {
-      const r = placed[i]!;
-      const entry = (rects[m.source.id] ??= {});
-      entry[m.source.side] = {
-        atlas: plan.id,
-        x: r.x,
-        y: r.y,
-        w: r.w,
-        h: r.h,
-        footV: m.meta.footV,
-        pixelScale: m.meta.pixelScale,
-        source: m.source.file,
-      };
-    });
-  }
+    return { id: a.id, species: a.species, dupFor: a.dupFor, members, placed, memberKey: members.map((m, i) => `${m.hash}@${placed[i]!.x},${placed[i]!.y}`) };
+  });
 
-  // ---- animations --------------------------------------------------------------------------
-  const animations = await copyAnimations(opts.assetsDir, opts.outDir, outFiles);
+  // ---- encoding under the ladder -----------------------------------------------------------
+  type Encoded = Record<TextureKind, Uint8Array[]>;
+  const rungsTried: QaEncodingSummary['rungsTried'] = [];
+  let chosen: { rung: Rung; encoded: Map<string, Encoded>; manifest: SpriteManifestV2; totalBytes: number } | null = null;
+  for (const rung of ladderRungs()) {
+    const encoded = new Map<string, Encoded>();
+    let atlasBytes = 0;
+    // Atlases encode in parallel; the map is keyed by atlas id, so worker order never reaches the output.
+    const pending = [...jobs];
+    const encodeWorker = async (): Promise<void> => {
+      for (let job = pending.shift(); job; job = pending.shift()) {
+        const files = await encodeAtlasFiles(job, rung, cache, atlasSize, spriteSize, log);
+        encoded.set(job.id, files);
+        for (const kind of ['albedo', 'normal', 'emissive'] as const) for (const b of files[kind]) atlasBytes += b.byteLength;
+      }
+    };
+    await Promise.all(Array.from({ length: Math.max(1, opts.jobs ?? CONCURRENCY) }, encodeWorker));
+    const built = buildManifest(jobs, encoded, rung, plan, atlasBytes + thumbBytes, ids, atlasSize, spriteSize);
+    rungsTried.push({ albedo: rung.albedo, normal: rung.normal, totalBytes: built.totalBytes });
+    log(`ladder albedo q${rung.albedo} / normal q${rung.normal}: ${(built.totalBytes / 1e6).toFixed(2)} MB (budget ${(budget / 1e6).toFixed(2)} MB)`);
+    if (built.totalBytes <= budget) {
+      chosen = { rung, encoded, manifest: built.manifest, totalBytes: built.totalBytes };
+      break;
+    }
+  }
+  if (!chosen) {
+    throw new Error(`creatures exceed the ${budget} B budget at the bottom of the ladder: ${rungsTried.map((r) => `q${r.albedo}/q${r.normal} = ${r.totalBytes} B`).join(', ')}`);
+  }
+  const errors = manifestErrors(chosen.manifest, { species: expectedSpecies, budgetBytes: budget, spriteSize });
+  if (errors.length) throw new Error(`internal: manifest failed validation:\n  ${errors.join('\n  ')}`);
 
-  // ---- manifest ----------------------------------------------------------------------------
-  const manifestSprites: SpriteManifest['sprites'] = {};
-  for (const m of inherited) {
-    const from = rects[m.base]?.[m.side];
-    if (!from) throw new Error(`species ${m.id} has no ${m.side} sprite and its base ${m.base} has none to inherit`);
-    (rects[m.id] ??= {})[m.side] = from;
+  // ---- write the output tree -----------------------------------------------------------------
+  rmSync(opts.outDir, { recursive: true, force: true });
+  mkdirSync(path.join(opts.outDir, 'atlases'), { recursive: true });
+  mkdirSync(path.join(opts.outDir, 'thumbs'), { recursive: true });
+  const outFiles: string[] = [];
+  for (const job of jobs) {
+    const files = chosen.encoded.get(job.id)!;
+    for (const kind of ['albedo', 'normal', 'emissive'] as const) {
+      files[kind].forEach((bytes, level) => {
+        const p = path.join(opts.outDir, atlasFileName(job.id, kind, level));
+        writeFileSync(p, bytes);
+        outFiles.push(p);
+      });
+    }
   }
-  for (const id of Object.keys(rects).sort()) {
-    const r = rects[id]!;
-    if (!r.front || !r.back) throw new Error(`species ${id} is missing a ${r.front ? 'back' : 'front'} sprite`);
-    const sizeScale = bySpecies.get(id)?.[0]?.source.sizeScale;
-    manifestSprites[id] = { front: r.front, back: r.back, ...(sizeScale !== undefined ? { sizeScale } : {}) };
+  for (const [id, bytes] of thumbs) {
+    const p = path.join(opts.outDir, thumbFileName(id));
+    writeFileSync(p, bytes);
+    outFiles.push(p);
   }
-  const manifest: SpriteManifest = {
-    version: 1,
-    encoding: encoder.encoding,
-    atlasSize,
-    spriteSize,
-    atlases: manifestAtlases,
-    sprites: manifestSprites,
-    animations,
-  };
-  if (!validateManifest(manifest)) throw new Error('internal: manifest failed validation');
   const manifestPath = path.join(opts.outDir, MANIFEST_FILE);
-  writeFileSync(manifestPath, serializeManifest(manifest));
+  writeFileSync(manifestPath, serializeManifest(chosen.manifest));
   outFiles.push(manifestPath);
+  const onDisk = dirBytes(opts.outDir);
+  if (onDisk !== chosen.totalBytes) throw new Error(`internal: manifest totalBytes ${chosen.totalBytes} != ${onDisk} on disk`);
 
-  pruneStale(atlasesDir, new Set(outFiles.map((f) => path.resolve(f))), log);
-
-  const totalBytes = dirBytes(opts.outDir);
-  log(`wrote ${manifestAtlases.length} atlases, ${Object.keys(manifestSprites).length} species, ${(totalBytes / 1e6).toFixed(1)} MB -> ${opts.outDir}`);
-  return { manifest, report, sprites, encoding: encoder.encoding, encodingReason: reason, atlasCount: manifestAtlases.length, totalBytes, cacheHits, outFiles };
+  const report = writeReport({ albedoQuality: chosen.rung.albedo, normalQuality: chosen.rung.normal, rungsTried }, chosen.totalBytes);
+  log(`QA: ${report.flagged.length}/${report.total} flagged, ${report.actionable} actionable -> ${opts.qaDir}`);
+  log(`wrote ${jobs.length} atlases, ${ids.length} species, ${(chosen.totalBytes / 1e6).toFixed(2)} MB -> ${opts.outDir}`);
+  return {
+    manifest: chosen.manifest,
+    report,
+    sprites,
+    plan,
+    rung: chosen.rung,
+    atlasCount: jobs.length,
+    totalBytes: chosen.totalBytes,
+    cacheHits,
+    outFiles,
+  };
 }
 
-export function spriteCacheKey(bytes: Uint8Array, id: string, spriteSize: number): string {
+export function atlasFileName(atlasId: string, kind: TextureKind, level: number): string {
+  return `atlases/${atlasId}.${kind}${level === 0 ? '' : `.m${level}`}.webp`;
+}
+
+export function thumbFileName(species: string): string {
+  return `thumbs/${species}_front.webp`;
+}
+
+// ---- per-sprite stages --------------------------------------------------------------------
+
+export interface ProcessContext {
+  spriteSize: number;
+  force: boolean;
+  /** Source bytes (read once by the caller). */
+  bytes: Uint8Array;
+  frames: number;
+  frame: number;
+  alpha: AlphaOptions;
+}
+
+export function spriteCacheKey(bytes: Uint8Array, id: string, spriteSize: number, frame: number, alpha: AlphaOptions): string {
   return sha256(
     bytes,
     `v${PIPELINE_VERSION}`,
     `size=${spriteSize}`,
     `normal=${JSON.stringify(DEFAULT_NORMAL_OPTIONS)}`,
     `emissive=${JSON.stringify(resolveEmissiveOverride(id))}`,
+    `frame=${frame}`,
+    `alpha=${JSON.stringify(alpha)}`,
   );
 }
 
-export async function processSprite(src: SpriteSource, cache: SpriteCache, spriteSize: number, force: boolean): Promise<ProcessedSprite> {
-  const bytes = new Uint8Array(readFileSync(src.abs));
-  const hash = spriteCacheKey(bytes, src.id, spriteSize);
-  if (!force && cache.has(hash)) {
+export async function processSprite(src: SpriteSource, cache: SpriteCache, ctx: ProcessContext): Promise<ProcessedSprite> {
+  const hash = spriteCacheKey(ctx.bytes, src.id, ctx.spriteSize, ctx.frame, ctx.alpha);
+  if (!ctx.force && cache.has(hash)) {
     return { source: src, hash, meta: cache.readMeta(hash), cached: true };
   }
-  const decoded = await decodeToRgba(bytes);
-  const alpha = recoverAlpha(decoded);
+  const decoded = await decodeToRgba(ctx.bytes, ctx.frame);
+  const alpha = recoverAlpha(decoded, ctx.alpha);
   const flags: QaFlag[] = [...alpha.flags];
-  if (src.fallback) flags.push('fallback-source');
-  if (((await sharp(bytes, { pages: -1 }).metadata()).pages ?? 1) > 1) flags.push('multiframe');
+  if (ctx.frames > 1) flags.push('multiframe');
 
   let albedo: RgbaImage;
-  let footV = 0;
   let pixelScale = 1;
   let kernel: 'nearest' | 'lanczos3' = 'nearest';
   if (alpha.bbox) {
-    const norm = await normalizeSprite(alpha.image, alpha.bbox, spriteSize);
+    const norm = await normalizeSprite(alpha.image, alpha.bbox, ctx.spriteSize);
     albedo = norm.image;
-    footV = norm.placement.footV;
     pixelScale = norm.placement.scale;
     kernel = norm.placement.kernel;
   } else {
-    albedo = createRgba(spriteSize, spriteSize); // nothing recoverable; the 'empty' flag says so
+    albedo = createRgba(ctx.spriteSize, ctx.spriteSize); // nothing recoverable; the 'empty' flag says so
   }
   const normal = deriveNormalMap(albedo);
   const emissive = deriveEmissive(albedo, resolveEmissiveOverride(src.id));
@@ -280,63 +432,198 @@ export async function processSprite(src: SpriteSource, cache: SpriteCache, sprit
     source: src.file,
     sourceWidth: decoded.width,
     sourceHeight: decoded.height,
+    frames: ctx.frames,
+    frame: ctx.frame,
     recovered: alpha.recovered,
     coverage: round(alpha.coverage, 4),
-    flags: [...flags].sort(),
-    footV,
+    flags: [...new Set(flags)].sort(compareStrings),
+    footV: MANIFEST_FOOT_V,
     pixelScale: round(pixelScale, 6),
     kernel,
     emissivePixels,
+    bbox: alphaBbox(albedo),
   };
   await cache.write(hash, { meta, albedo, normal, emissive });
   return { source: src, hash, meta, cached: false };
 }
 
-async function encodeAtlas(
-  plan: AtlasPlan,
-  members: ProcessedSprite[],
-  placed: Array<{ x: number; y: number }>,
-  key: string,
+// ---- atlas rasters + encoding ------------------------------------------------------------------
+
+export interface AtlasRasters {
+  /** Level 0 (2048²) .. level MIP_LEVELS. */
+  albedo: RgbaImage[];
+  /** Half resolution: level 0 is 1024². */
+  normal: RgbaImage[];
+  emissive: GrayImage[];
+}
+
+/** Composites the cached sprite rasters into the three atlas maps and builds their mip chains. */
+export async function buildAtlasRasters(members: Array<{ hash: string }>, placed: Rect[], cache: SpriteCache, atlasSize: number, spriteSize: number): Promise<AtlasRasters> {
+  const albedo0 = createRgba(atlasSize, atlasSize);
+  const normal0 = createRgba(atlasSize, atlasSize);
+  const emissive0 = createGray(atlasSize, atlasSize);
+  // Transparent texels of the normal atlas encode the flat normal.
+  for (let p = 0; p < atlasSize * atlasSize; p++) {
+    normal0.data[p * 4] = 128;
+    normal0.data[p * 4 + 1] = 128;
+    normal0.data[p * 4 + 2] = 255;
+  }
+  for (let i = 0; i < members.length; i++) {
+    const { x, y } = placed[i]!;
+    const a = await cache.readRgba(members[i]!.hash, 'albedo');
+    const n = await cache.readRgba(members[i]!.hash, 'normal');
+    const e = await cache.readGray(members[i]!.hash);
+    for (const img of [a, n]) {
+      if (img.width !== spriteSize || img.height !== spriteSize) throw new Error(`cached sprite ${members[i]!.hash} is ${img.width}x${img.height}, expected ${spriteSize}`);
+    }
+    blit(albedo0, a.data, a.width, a.height, x, y);
+    blit(normal0, n.data, n.width, n.height, x, y);
+    blitGray(emissive0, e, x, y);
+  }
+  const normalHalf = await halfResolutionNormal(normal0);
+  const halfCell = Math.round(spriteSize * NORMAL_SCALE);
+  return {
+    albedo: [albedo0, ...buildAlphaMipChain(albedo0, MIP_LEVELS, spriteSize)],
+    normal: [normalHalf, ...buildNormalMipChain(normalHalf, MIP_LEVELS, halfCell)],
+    emissive: [emissive0, ...buildMaskMipChain(emissive0, MIP_LEVELS)],
+  };
+}
+
+export function atlasFileKey(memberKey: string[], kind: TextureKind, level: number, settings: MapEncodeSettings, atlasSize: number, spriteSize: number): string {
+  return sha256(PIPELINE_VERSION, settingsKey(settings), `${atlasSize}/${spriteSize}`, kind, `L${level}`, ...memberKey);
+}
+
+async function encodeAtlasFiles(
+  job: { id: string; members: ProcessedSprite[]; placed: Rect[]; memberKey: string[] },
+  rung: Rung,
   cache: SpriteCache,
-  encoder: TextureEncoder,
   atlasSize: number,
   spriteSize: number,
-  atlasesDir: string,
   log: (m: string) => void,
-): Promise<[string, string, string]> {
-  const names: [string, string, string] = [
-    `${plan.id}.albedo.${encoder.ext}`,
-    `${plan.id}.normal.${encoder.ext}`,
-    `${plan.id}.emissive.${encoder.ext}`,
-  ];
-  const kinds = ['albedo', 'normal', 'emissive'] as const;
-  for (let k = 0; k < kinds.length; k++) {
-    const kind = kinds[k]!;
-    const cacheKey = `${key}.${kind}`;
-    let bytes = cache.readAtlas(cacheKey, encoder.ext);
-    if (!bytes) {
-      if (kind === 'emissive') {
-        const atlas = createGray(atlasSize, atlasSize);
-        for (let i = 0; i < members.length; i++) {
-          const g = await cache.readGray(members[i]!.hash);
-          blitGray(atlas, g, placed[i]!.x, placed[i]!.y);
-        }
-        bytes = await encoder.encodeGray(atlas);
-      } else {
-        const atlas = createRgba(atlasSize, atlasSize);
-        for (let i = 0; i < members.length; i++) {
-          const img = await cache.readRgba(members[i]!.hash, kind);
-          if (img.width !== spriteSize || img.height !== spriteSize) throw new Error(`cached sprite ${members[i]!.hash} is ${img.width}x${img.height}, expected ${spriteSize}`);
-          blit(atlas, img.data, img.width, img.height, placed[i]!.x, placed[i]!.y);
-        }
-        bytes = await encoder.encodeRgba(atlas, kind);
+): Promise<Record<TextureKind, Uint8Array[]>> {
+  const out: Record<TextureKind, Uint8Array[]> = { albedo: [], normal: [], emissive: [] };
+  let rasters: AtlasRasters | null = null;
+  let encodedAny = false;
+  for (const kind of ['albedo', 'normal', 'emissive'] as const) {
+    for (const level of mipLevels()) {
+      const settings = settingsFor(kind, rung, level);
+      const key = atlasFileKey(job.memberKey, kind, level, settings, atlasSize, spriteSize);
+      let bytes = cache.readAtlas(key, 'webp');
+      if (!bytes) {
+        rasters ??= await buildAtlasRasters(job.members, job.placed, cache, atlasSize, spriteSize);
+        bytes = kind === 'emissive' ? await encodeMaskWebp(rasters.emissive[level]!, settings) : await encodeRgbaWebp(rasters[kind][level]!, settings);
+        cache.writeAtlas(key, 'webp', bytes);
+        encodedAny = true;
       }
-      cache.writeAtlas(cacheKey, encoder.ext, bytes);
-      log(`  atlas ${plan.id} ${kind}: ${members.length} sprites, ${(bytes.byteLength / 1024).toFixed(0)} KB`);
+      out[kind].push(bytes);
     }
-    writeFileSync(path.join(atlasesDir, names[k]!), bytes);
   }
-  return names;
+  if (encodedAny) {
+    const kb = (list: Uint8Array[]): string => (list.reduce((n, b) => n + b.byteLength, 0) / 1024).toFixed(0);
+    log(`  atlas ${job.id}: ${job.members.length} sprites, albedo ${kb(out.albedo)} KB, normal ${kb(out.normal)} KB, emissive ${kb(out.emissive)} KB (with mips)`);
+  }
+  return out;
+}
+
+// ---- manifest ------------------------------------------------------------------------------
+
+function buildManifest(
+  jobs: Array<{ id: string; species: string[]; dupFor: string | null; members: ProcessedSprite[]; placed: Rect[] }>,
+  encoded: Map<string, Record<TextureKind, Uint8Array[]>>,
+  rung: Rung,
+  plan: ZonePlan,
+  fileBytes: number,
+  ids: string[],
+  atlasSize: number,
+  spriteSize: number,
+): { manifest: SpriteManifestV2; totalBytes: number } {
+  const atlases: ManifestAtlasV2[] = [];
+  const rects = new Map<string, { front?: SpriteRectV2; back?: SpriteRectV2 }>();
+  const alt = new Map<string, Record<string, { front?: SpriteRectV2; back?: SpriteRectV2 }>>();
+  for (const job of jobs) {
+    const files = encoded.get(job.id)!;
+    const map = (kind: TextureKind): ManifestMap => {
+      const s = settingsFor(kind, rung, 0);
+      return {
+        url: atlasFileName(job.id, kind, 0),
+        mips: mipLevels()
+          .slice(1)
+          .map((l) => atlasFileName(job.id, kind, l)),
+        codec: s.codec,
+        quality: s.quality,
+        bytes: files[kind].reduce((n, b) => n + b.byteLength, 0),
+      };
+    };
+    atlases.push({
+      id: job.id,
+      species: [...job.species].sort(compareStrings),
+      // Production cells are 1024² in 2048² atlases; test fixtures build smaller ones with the same shape.
+      size: atlasSize as 2048,
+      slots: job.members.length,
+      albedo: map('albedo'),
+      normal: map('normal'),
+      emissive: map('emissive'),
+      normalScale: NORMAL_SCALE,
+    });
+    job.members.forEach((m, i) => {
+      const r = job.placed[i]!;
+      const px: [number, number, number, number] = [r.x, r.y, r.w, r.h];
+      const rect: SpriteRectV2 = {
+        atlas: job.id,
+        px,
+        uv: pxToUv(px, atlasSize),
+        footV: MANIFEST_FOOT_V,
+        aspect: r.w / r.h,
+        pixelScale: m.meta.pixelScale,
+        source: m.source.file,
+      };
+      if (job.dupFor === null) {
+        const entry = rects.get(m.source.id) ?? {};
+        entry[m.source.side] = rect;
+        rects.set(m.source.id, entry);
+      } else {
+        const bySpecies = alt.get(m.source.id) ?? {};
+        const entry = (bySpecies[job.id] ??= {});
+        entry[m.source.side] = rect;
+        alt.set(m.source.id, bySpecies);
+      }
+    });
+  }
+  const sprites: Record<string, ManifestSpriteV2> = {};
+  for (const id of ids) {
+    const r = rects.get(id);
+    if (!r?.front || !r.back) throw new Error(`internal: species ${id} has no home placement`);
+    const sizeScale = jobs.flatMap((j) => j.members).find((m) => m.source.id === id)!.source.sizeScale;
+    const alts = alt.get(id);
+    let altOut: ManifestSpriteV2['alt'];
+    if (alts) {
+      altOut = {};
+      for (const [atlasId, pair] of Object.entries(alts)) {
+        if (!pair.front || !pair.back) throw new Error(`internal: duplicate of ${id} in ${atlasId} lacks a side`);
+        altOut = { ...altOut, [atlasId]: { front: pair.front, back: pair.back } };
+      }
+    }
+    sprites[id] = {
+      front: r.front,
+      back: r.back,
+      sizeScale,
+      home: plan.home.get(id)!,
+      thumb: thumbFileName(id),
+      ...(altOut ? { alt: altOut } : {}),
+    };
+  }
+  const zones: Record<string, string[]> = {};
+  for (const [z, list] of plan.zones) zones[z] = list;
+  let totalBytes = fileBytes;
+  let manifest: SpriteManifestV2 = { version: 2, encoding: 'webp', spriteSize: spriteSize as 1024, pipelineVersion: PIPELINE_VERSION, atlases, zones, sprites, totalBytes };
+  // The manifest counts itself: iterate until its own length is stable.
+  for (let i = 0; i < 4; i++) {
+    const len = Buffer.byteLength(serializeManifest(manifest), 'utf8');
+    if (fileBytes + len === totalBytes) break;
+    totalBytes = fileBytes + len;
+    manifest = { ...manifest, totalBytes };
+  }
+  return { manifest, totalBytes };
 }
 
 function blitGray(dst: GrayImage, src: GrayImage, left: number, top: number): void {
@@ -346,70 +633,6 @@ function blitGray(dst: GrayImage, src: GrayImage, left: number, top: number): vo
     const w = Math.min(src.width, dst.width - left);
     if (w <= 0) continue;
     dst.data.set(src.data.subarray(y * src.width, y * src.width + w), dy * dst.width + left);
-  }
-}
-
-async function copyAnimations(assetsDir: string, outDir: string, outFiles: string[]): Promise<ManifestAnimation[]> {
-  const srcDir = path.join(assetsDir, 'animations');
-  const out: ManifestAnimation[] = [];
-  if (!existsSync(srcDir)) return out;
-  const dstDir = path.join(outDir, 'animations');
-  mkdirSync(dstDir, { recursive: true });
-  for (const file of readdirSync(srcDir).sort()) {
-    if (!/\.(png|webp|gif)$/i.test(file)) continue;
-    const src = path.join(srcDir, file);
-    const dst = path.join(dstDir, file);
-    if (!existsSync(dst) || statSync(dst).size !== statSync(src).size || !Buffer.from(readFileSync(dst)).equals(readFileSync(src))) {
-      copyFileSync(src, dst);
-    }
-    outFiles.push(dst);
-    const species = file.split(/[_.]/)[0]!;
-    const entry: ManifestAnimation = { species, file: `animations/${file}` };
-    const meta = await sharp(src, { pages: -1 }).metadata();
-    const named = file.match(/_(\d+)f\b/);
-    if (meta.pages && meta.pages > 1) entry.frames = meta.pages;
-    else if (named) entry.frames = Number(named[1]);
-    else if (meta.width && meta.height && meta.width > meta.height && meta.width % meta.height === 0) entry.frames = meta.width / meta.height;
-    const fps = file.match(/_(\d+)fps\b/);
-    if (fps) entry.fps = Number(fps[1]);
-    out.push(entry);
-  }
-  return out;
-}
-
-export interface InheritedSide {
-  id: string;
-  side: 'front' | 'back';
-  /** Species whose sprite fills the gap (`yaschamp` for `yaschamp@boxingstyle`). */
-  base: string;
-}
-
-/** Sides that have no source file; only form pseudo-species can inherit, anything else throws. */
-export function findMissingSides(sources: SpriteSource[]): InheritedSide[] {
-  const sides = new Map<string, Set<'front' | 'back'>>();
-  for (const s of sources) (sides.get(s.id) ?? sides.set(s.id, new Set()).get(s.id)!).add(s.side);
-  const out: InheritedSide[] = [];
-  for (const id of [...sides.keys()].sort()) {
-    for (const side of ['front', 'back'] as const) {
-      if (sides.get(id)!.has(side)) continue;
-      const base = id.split('@')[0]!;
-      if (base === id || !sides.get(base)?.has(side)) {
-        throw new Error(`species ${id} has no ${side} sprite (and no base species to inherit it from)`);
-      }
-      out.push({ id, side, base });
-    }
-  }
-  return out;
-}
-
-function pruneStale(atlasesDir: string, keep: Set<string>, log: (m: string) => void): void {
-  if (!existsSync(atlasesDir)) return;
-  for (const f of readdirSync(atlasesDir)) {
-    const p = path.resolve(atlasesDir, f);
-    if (!keep.has(p)) {
-      rmSync(p);
-      log(`  pruned stale ${f}`);
-    }
   }
 }
 

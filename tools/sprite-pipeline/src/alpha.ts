@@ -1,33 +1,55 @@
 /**
- * Stage 1 — alpha recovery.
+ * Stage 1 — alpha recovery (spec §40.1.2 #1).
  *
  * Many legacy sprites ship a flat white or magenta background instead of transparency.
  * If the image already carries meaningful alpha we keep it. Otherwise we flood-fill from
  * every border pixel against the border-mean colour (tolerance 38/255 per channel, i.e.
- * sum of absolute RGB differences <= 114), additionally accepting magenta and near-white
- * pixels connected to the border, then defringe partially transparent pixels by copying
- * the nearest opaque neighbour's colour.
+ * sum of absolute RGB differences <= FLOOD_TOLERANCE 114), additionally accepting magenta
+ * and near-white pixels connected to the border, then defringe partially transparent
+ * pixels by copying the nearest opaque neighbour's colour.
+ *
+ * Transparent-RGB rule (v2): after defringe, every `a = 0` pixel within a 3-4 chamfer
+ * distance <= TRANSPARENT_RGB_BAND (2 px) of an opaque pixel takes the nearest opaque RGB;
+ * every other `a = 0` pixel is set to (0, 0, 0). The flood leaves white/magenta RGB under
+ * transparent pixels, and both the premultiplied mip filter and bilinear minification
+ * would otherwise read it.
  */
+import { chamferDistance } from './normalmap.js';
 import type { Bbox, RgbaImage } from './types.js';
 
 export const FLOOD_TOLERANCE = 114; // 38 * 3
 export const MEANINGFUL_ALPHA_FRACTION = 0.03;
 export const COVERAGE_MIN = 0.12;
 export const COVERAGE_MAX = 0.92;
+export const DEFRINGE_RADIUS = 8;
+export const TRANSPARENT_RGB_BAND = 2;
+/** `sidemismatch`: |log2(front.pixelScale / back.pixelScale)| > log2(SIDE_MISMATCH_RATIO). */
+export const SIDE_MISMATCH_RATIO = 1.2;
 
 /**
- * QA flags. `nonsquare` and `multiframe` are informational; the rest mean a human should look:
- *   coverage        opaque fraction of the source canvas < 0.12 or > 0.92
- *   leak            the background flood reached the centre 20 % of the alpha bbox
- *   clipped         the alpha bbox touches the source canvas edge
- *   nonsquare       source is not square (informational)
- *   multiframe      source has several frames (GIF); only the first is used (informational)
- *   empty           nothing recoverable — the untouched source was shipped
- *   fallback-source the canonical file was missing; another file of the species was used
- *   missing-side    no file at all for this side; the base species' sprite is reused
+ * QA flags (spec §40.1.3):
+ *   clipped         the alpha bbox touches at least one edge of the SOURCE canvas      informational
+ *   nonsquare       source is not square                                               informational
+ *   multiframe      multi-page GIF / animated WebP; frame chosen by frame-select.json   informational
+ *   sidemismatch    front/back source drawings differ in scale by > 20 %               informational
+ *   coverage        opaque fraction of the source canvas outside [0.12, 0.92]           review (qa-accept.json)
+ *   leak            the background flood reached the centre 20 % of the alpha bbox     must be resolved
+ *   empty           nothing recoverable; the raw source was shipped                    must be resolved
  */
-export type QaFlag = 'coverage' | 'leak' | 'clipped' | 'nonsquare' | 'multiframe' | 'empty' | 'fallback-source' | 'missing-side';
-export const INFORMATIONAL_FLAGS: ReadonlySet<QaFlag> = new Set<QaFlag>(['nonsquare', 'multiframe']);
+export type QaFlag = 'clipped' | 'nonsquare' | 'multiframe' | 'sidemismatch' | 'coverage' | 'leak' | 'empty';
+export const INFORMATIONAL_FLAGS: ReadonlySet<QaFlag> = new Set<QaFlag>(['clipped', 'nonsquare', 'multiframe', 'sidemismatch']);
+/** Flags that can never be accepted with a reason. */
+export const NEVER_ACCEPTED_FLAGS: ReadonlySet<QaFlag> = new Set<QaFlag>(['leak', 'empty']);
+
+/** Per-species tuning from `alpha-overrides.json` (`leak` remedy; never an acceptance). */
+export interface AlphaOptions {
+  /** Summed RGB distance to the border-mean colour that still counts as background. */
+  tolerance?: number;
+  /** Also key magenta pixels connected to the border (default true). */
+  keyMagenta?: boolean;
+  /** Also key near-white pixels connected to the border (default true). */
+  keyWhite?: boolean;
+}
 
 export interface AlphaResult {
   image: RgbaImage;
@@ -75,11 +97,14 @@ export function hasMeaningfulAlpha(img: RgbaImage): boolean {
  * Flood-fills the background from the border. Returns the mask of removed pixels (1 = removed).
  * Mutates `img` alpha to 0 for removed pixels.
  */
-export function floodBackground(img: RgbaImage): Uint8Array {
+export function floodBackground(img: RgbaImage, opts: AlphaOptions = {}): Uint8Array {
   const { width, height, data } = img;
   const n = width * height;
   const removed = new Uint8Array(n);
   if (n === 0) return removed;
+  const tolerance = opts.tolerance ?? FLOOD_TOLERANCE;
+  const keyMagenta = opts.keyMagenta ?? true;
+  const keyWhite = opts.keyWhite ?? true;
 
   // Border-mean colour.
   let sr = 0;
@@ -110,8 +135,8 @@ export function floodBackground(img: RgbaImage): Uint8Array {
     const r = data[i]!;
     const g = data[i + 1]!;
     const b = data[i + 2]!;
-    if (Math.abs(r - mr) + Math.abs(g - mg) + Math.abs(b - mb) <= FLOOD_TOLERANCE) return true;
-    return isMagenta(r, g, b) || isNearWhite(r, g, b);
+    if (Math.abs(r - mr) + Math.abs(g - mg) + Math.abs(b - mb) <= tolerance) return true;
+    return (keyMagenta && isMagenta(r, g, b)) || (keyWhite && isNearWhite(r, g, b));
   };
 
   const queue = new Int32Array(n);
@@ -147,8 +172,34 @@ export function floodBackground(img: RgbaImage): Uint8Array {
   return removed;
 }
 
+/** Index of the nearest pixel with alpha >= `minAlpha` within `maxRadius` (Chebyshev rings, Euclidean tie-break), or -1. */
+function nearestWithAlpha(src: Uint8Array, width: number, height: number, x: number, y: number, maxRadius: number, minAlpha: number): number {
+  let found = -1;
+  let bestD = Infinity;
+  for (let r = 1; r <= maxRadius && found < 0; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      const yy = y + dy;
+      if (yy < 0 || yy >= height) continue;
+      const edge = Math.abs(dy) === r;
+      const step = edge ? 1 : 2 * r;
+      for (let dx = -r; dx <= r; dx += step) {
+        const xx = x + dx;
+        if (xx < 0 || xx >= width) continue;
+        const j = (yy * width + xx) * 4;
+        if (src[j + 3]! < minAlpha) continue;
+        const d = dx * dx + dy * dy;
+        if (d < bestD) {
+          bestD = d;
+          found = j;
+        }
+      }
+    }
+  }
+  return found;
+}
+
 /** For pixels with 0 < a < 255, replace RGB with the nearest fully opaque neighbour's colour. */
-export function defringe(img: RgbaImage, maxRadius = 8): void {
+export function defringe(img: RgbaImage, maxRadius = DEFRINGE_RADIUS): void {
   const { width, height, data } = img;
   const src = data.slice();
   for (let y = 0; y < height; y++) {
@@ -156,27 +207,7 @@ export function defringe(img: RgbaImage, maxRadius = 8): void {
       const i = (y * width + x) * 4;
       const a = src[i + 3]!;
       if (a === 0 || a === 255) continue;
-      let found = -1;
-      let bestD = Infinity;
-      for (let r = 1; r <= maxRadius && found < 0; r++) {
-        for (let dy = -r; dy <= r; dy++) {
-          const yy = y + dy;
-          if (yy < 0 || yy >= height) continue;
-          const edge = Math.abs(dy) === r;
-          const step = edge ? 1 : 2 * r;
-          for (let dx = -r; dx <= r; dx += step) {
-            const xx = x + dx;
-            if (xx < 0 || xx >= width) continue;
-            const j = (yy * width + xx) * 4;
-            if (src[j + 3] !== 255) continue;
-            const d = dx * dx + dy * dy;
-            if (d < bestD) {
-              bestD = d;
-              found = j;
-            }
-          }
-        }
-      }
+      const found = nearestWithAlpha(src, width, height, x, y, maxRadius, 255);
       if (found >= 0) {
         data[i] = src[found]!;
         data[i + 1] = src[found + 1]!;
@@ -184,6 +215,42 @@ export function defringe(img: RgbaImage, maxRadius = 8): void {
       }
     }
   }
+}
+
+/**
+ * Transparent-RGB rule: `a = 0` pixels within `band` px (3-4 chamfer) of a visible pixel copy
+ * the nearest visible pixel's RGB (which defringe already made opaque-coloured); every other
+ * `a = 0` pixel becomes (0, 0, 0). Returns the count of pixels that took a neighbour colour.
+ */
+export function cleanTransparentRgb(img: RgbaImage, band = TRANSPARENT_RGB_BAND): number {
+  const { width, height, data } = img;
+  const n = width * height;
+  // Distance of transparent pixels to the nearest visible pixel: invert the alpha mask.
+  const inv = new Uint8Array(n);
+  for (let p = 0; p < n; p++) inv[p] = data[p * 4 + 3] === 0 ? 1 : 0;
+  const dist = chamferDistance(inv, width, height, band + 1);
+  const src = data.slice();
+  let copied = 0;
+  for (let p = 0; p < n; p++) {
+    if (!inv[p]) continue;
+    const i = p * 4;
+    if (dist[p]! <= band) {
+      const x = p % width;
+      const y = (p - x) / width;
+      const found = nearestWithAlpha(src, width, height, x, y, band + 1, 1);
+      if (found >= 0) {
+        data[i] = src[found]!;
+        data[i + 1] = src[found + 1]!;
+        data[i + 2] = src[found + 2]!;
+        copied++;
+        continue;
+      }
+    }
+    data[i] = 0;
+    data[i + 1] = 0;
+    data[i + 2] = 0;
+  }
+  return copied;
 }
 
 export function alphaBbox(img: RgbaImage, threshold = 1): Bbox | null {
@@ -205,7 +272,7 @@ export function alphaBbox(img: RgbaImage, threshold = 1): Bbox | null {
   return x1 < 0 ? null : { x0, y0, x1, y1 };
 }
 
-export function recoverAlpha(input: RgbaImage): AlphaResult {
+export function recoverAlpha(input: RgbaImage, opts: AlphaOptions = {}): AlphaResult {
   const image: RgbaImage = { width: input.width, height: input.height, data: input.data.slice() };
   const flags: QaFlag[] = [];
   const n = image.width * image.height;
@@ -213,7 +280,7 @@ export function recoverAlpha(input: RgbaImage): AlphaResult {
   let removed: Uint8Array | null = null;
 
   if (!hasMeaningfulAlpha(image)) {
-    removed = floodBackground(image);
+    removed = floodBackground(image, opts);
     recovered = true;
     if (alphaBbox(image) === null) {
       // The flood ate everything (flat image?). Ship the untouched source rather than nothing.
@@ -224,6 +291,7 @@ export function recoverAlpha(input: RgbaImage): AlphaResult {
     }
   }
   defringe(image);
+  cleanTransparentRgb(image);
 
   const bbox = alphaBbox(image);
   let opaque = 0;
@@ -257,4 +325,10 @@ export function recoverAlpha(input: RgbaImage): AlphaResult {
   if (image.width !== image.height) flags.push('nonsquare');
 
   return { image, recovered, bbox, coverage, flags };
+}
+
+/** `sidemismatch` on a species' two `pixelScale`s (spec §40.1.3). */
+export function isSideMismatch(frontPixelScale: number, backPixelScale: number): boolean {
+  if (frontPixelScale <= 0 || backPixelScale <= 0) return false;
+  return Math.abs(Math.log2(frontPixelScale / backPixelScale)) > Math.log2(SIDE_MISMATCH_RATIO);
 }
