@@ -4,7 +4,15 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "lib": ["ES2022"],
-    "types": [], "experimentalDecorators": true
+    "types": [],
+    // @colyseus/schema 5.0.32 `@type()` / `@view()` are LEGACY PropertyDecorators (annotations.d.ts:
+    // `type(...): PropertyDecorator`, `view(tag?): (target, fieldName: string) => void`). Its README
+    // ("TypeScript support") requires BOTH flags below: legacy decorators, and [[Set]] class-field
+    // semantics so the `@type` accessor installed on the prototype is not shadowed by an own data
+    // property (tsconfig.base targets ES2022, whose default is useDefineForClassFields: true).
+    // esbuild (vitest) reads both flags from this file, so tsc and vitest agree.
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "references": [{ "path": "../core" }, { "path": "../content" }]

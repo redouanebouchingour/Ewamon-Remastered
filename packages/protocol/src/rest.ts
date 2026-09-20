@@ -1,0 +1,550 @@
+/**
+ * §4.7 REST — request/response schemas + types for every route, and the typed route table both the
+ * Fastify server and the client's `apiFetch` import. Fastify 5, bearer = `@fastify/jwt` access
+ * token (15 min); `admin` = bearer + `is_admin`.
+ *
+ * Wire conventions: timestamps are ISO-8601 strings (persist's `Date` columns serialise through
+ * JSON); ids are uuids; 204 responses have `response: null`.
+ */
+import { z } from 'zod';
+import { BADGE_IDS, MYTHICAL_CHOICES, STARTERS, ZONE_IDS } from './types';
+import {
+  BadgeIdSchema,
+  BattleFormatSchema,
+  CreatureInstanceSchema,
+  ItemCounts,
+  RewardsSummarySchema,
+  Uuid,
+  VariantKeySchema,
+} from './messages/common';
+import { QuestProgressEntrySchema, SeatReservationSchema } from './messages/server';
+
+// ---- primitives ----------------------------------------------------------------------------------------
+
+export const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
+export const GUILD_TAG_RE = /^[A-Z0-9]{3,4}$/;
+
+export const Username = z.string().regex(USERNAME_RE);
+export const Password = z.string().min(8).max(128);
+export const Email = z.email().max(254);
+export const ZoneIdSchema = z.enum(ZONE_IDS);
+export const IsoDate = z.iso.datetime({ offset: true });
+export const Money = z.number().int().min(0);
+export const Qty = z.number().int().min(1).max(99);
+export const ItemId = z.string().min(1).max(40);
+export const Page = z.coerce.number().int().min(1).default(1);
+export const PageSize = z.coerce.number().int().min(1).max(50).default(20);
+const StringList = z.array(z.string());
+const Nothing = z.object({}).optional();
+
+// ---- shared views ----------------------------------------------------------------------------------------
+
+/**
+ * TODO(spec): `PlayerProfile` is named by §4.7 (`/auth/*`, `GET /me`, `POST /profile`) but no
+ * section lists its fields; this is the self-view of the `players` row (§5.1) minus secrets.
+ */
+export const PlayerProfileSchema = z.object({
+  id: Uuid,
+  username: Username,
+  email: Email,
+  title: z.string().max(40),
+  motto: z.string().max(120),
+  body: z.string().min(1).max(32),
+  money: Money,
+  rating: z.number().int(),
+  peakRating: z.number().int(),
+  rankedMatches: z.number().int().min(0),
+  tier: z.string(),
+  trainerExp: z.number().int().min(0),
+  trainerLevel: z.number().int().min(1).max(100),
+  isAdmin: z.boolean(),
+  zoneId: ZoneIdSchema,
+  createdAt: IsoDate,
+});
+export type PlayerProfile = z.infer<typeof PlayerProfileSchema>;
+
+/** §5.3 allow-list, in PUBLIC_PROFILE_KEYS order. */
+export const PublicProfileSchema = z.object({
+  id: Uuid,
+  username: Username,
+  title: z.string(),
+  motto: z.string(),
+  body: z.string(),
+  rating: z.number().int(),
+  peakRating: z.number().int(),
+  tier: z.string(),
+  trainerLevel: z.number().int().min(1),
+  badges: z.array(BadgeIdSchema),
+  guildTag: z.string().regex(GUILD_TAG_RE).nullable(),
+  dexCaughtCount: z.number().int().min(0),
+  showcase: z.array(CreatureInstanceSchema).max(3),
+  createdAt: IsoDate,
+});
+export type PublicProfile = z.infer<typeof PublicProfileSchema>;
+
+export const LISTING_STATUSES = ['active', 'sold', 'expired', 'cancelled'] as const;
+export const MARKET_SORTS = ['endingSoon', 'newest', 'priceAsc', 'priceDesc', 'levelDesc'] as const;
+export const ListingViewSchema = z.object({
+  id: Uuid,
+  sellerId: Uuid,
+  creatureId: Uuid,
+  speciesId: z.string(),
+  level: z.number().int().min(1).max(100),
+  variantKey: VariantKeySchema,
+  isAlpha: z.boolean(),
+  startingBid: Money,
+  currentBid: Money.nullable(),
+  currentBidderId: Uuid.nullable(),
+  buyNowPrice: Money.nullable(),
+  status: z.enum(LISTING_STATUSES),
+  createdAt: IsoDate,
+  expiresAt: IsoDate,
+  resolvedAt: IsoDate.nullable(),
+});
+export type ListingView = z.infer<typeof ListingViewSchema>;
+export const BidViewSchema = z.object({ id: z.number().int(), listingId: Uuid, bidderId: Uuid, amount: Money, placedAt: IsoDate });
+export type BidView = z.infer<typeof BidViewSchema>;
+
+/** 30-server-netcode.md §30.7.1 — online/zoneId/inBattle come from PresenceStore, never the DB. */
+export const FriendViewSchema = z.object({
+  id: Uuid,
+  username: Username,
+  title: z.string(),
+  body: z.string(),
+  online: z.boolean(),
+  zoneId: ZoneIdSchema.nullable(),
+  inBattle: z.boolean(),
+  lastSeenAt: IsoDate,
+});
+export type FriendView = z.infer<typeof FriendViewSchema>;
+export const FriendListsSchema = z.object({
+  friends: z.array(FriendViewSchema),
+  incoming: z.array(FriendViewSchema),
+  outgoing: z.array(FriendViewSchema),
+});
+
+export const MessageViewSchema = z.object({
+  id: z.number().int(),
+  fromId: Uuid,
+  toId: Uuid,
+  text: z.string().min(1).max(300),
+  sentAt: IsoDate,
+  readAt: IsoDate.nullable(),
+});
+export type MessageView = z.infer<typeof MessageViewSchema>;
+
+export const GUILD_ROLES = ['leader', 'officer', 'member'] as const;
+export const GuildViewSchema = z.object({
+  id: Uuid,
+  name: z.string().min(3).max(24),
+  tag: z.string().regex(GUILD_TAG_RE),
+  leaderId: Uuid,
+  motd: z.string().max(200),
+  memberCount: z.number().int().min(0).max(50),
+  createdAt: IsoDate,
+});
+export type GuildView = z.infer<typeof GuildViewSchema>;
+export const GuildMemberViewSchema = z.object({ playerId: Uuid, username: Username, role: z.enum(GUILD_ROLES), joinedAt: IsoDate });
+export type GuildMemberView = z.infer<typeof GuildMemberViewSchema>;
+
+export const LEADERBOARD_MODES = ['rating', 'dex', 'trainerLevel'] as const;
+/** TODO(spec): `LeaderboardRow` has no field list in the spec; these are the columns §30.6.3 sorts on plus the showcase-card fields. */
+export const LeaderboardRowSchema = z.object({
+  rank: z.number().int().min(1),
+  id: Uuid,
+  username: Username,
+  title: z.string(),
+  body: z.string(),
+  rating: z.number().int(),
+  tier: z.string(),
+  trainerLevel: z.number().int().min(1),
+  dexCaughtCount: z.number().int().min(0),
+  guildTag: z.string().nullable(),
+});
+export type LeaderboardRow = z.infer<typeof LeaderboardRowSchema>;
+
+export const BATTLE_RESULTS = ['win', 'loss', 'draw', 'fled', 'caught'] as const;
+export const BattleHistoryRowSchema = z.object({
+  id: z.number().int(),
+  battleId: Uuid,
+  opponent: z.string().max(64),
+  format: BattleFormatSchema,
+  result: z.enum(BATTLE_RESULTS),
+  turns: z.number().int().min(0),
+  ratingDelta: z.number().int().nullable(),
+  rewards: RewardsSummarySchema,
+  happenedAt: IsoDate,
+});
+export type BattleHistoryRow = z.infer<typeof BattleHistoryRowSchema>;
+const TradedCreature = z.object({ id: Uuid, speciesId: z.string(), level: z.number().int().min(1).max(100) });
+export const TradeHistoryRowSchema = z.object({
+  id: z.number().int(),
+  tradeId: Uuid,
+  partnerId: Uuid,
+  sent: z.array(TradedCreature),
+  received: z.array(TradedCreature),
+  moneySent: Money,
+  moneyReceived: Money,
+  completedAt: IsoDate,
+});
+export type TradeHistoryRow = z.infer<typeof TradeHistoryRowSchema>;
+
+export const BattlePassRewardSchema = z.object({
+  level: z.number().int().min(1).max(100),
+  label: z.string(),
+  rarity: z.enum(['common', 'uncommon', 'rare', 'legendary', 'mythical', 'epic']),
+  money: Money,
+  items: ItemCounts,
+  creature: z.object({ species: z.string(), level: z.number().int().min(1).max(100) }).nullable(),
+  mythicalChoice: z.array(z.string()).nullable(),
+});
+export const BattlePassStateSchema = z.object({
+  trainerExp: z.number().int().min(0),
+  trainerLevel: z.number().int().min(1).max(100),
+  claimed: z.array(z.number().int().min(1).max(100)),
+  mythicalChoice: z.string().nullable(),
+  rewards: z.array(BattlePassRewardSchema),
+});
+export type BattlePassState = z.infer<typeof BattlePassStateSchema>;
+
+/** See types.ts `LiveOpsSummary` (TODO(spec)); loose so the server may grow it. */
+export const LiveOpsSummarySchema = z.looseObject({
+  dayKey: z.string(),
+  weekKey: z.string(),
+  weekdayVariant: VariantKeySchema.nullable(),
+  loginStreak: z.number().int().min(0),
+});
+
+/** A quest as `GET /me` lists it: the definition id + the player's progress rows + claim state. */
+export const QuestViewSchema = z.looseObject({
+  id: z.string().min(1),
+  progress: z.array(QuestProgressEntrySchema),
+  claimed: z.boolean(),
+});
+export type QuestView = z.infer<typeof QuestViewSchema>;
+
+// ---- error envelope ------------------------------------------------------------------------------------------
+
+/** Domain errors (persist §5.5) map to 409 `{ code }`; `RateLimited` → 429; zod → 400 `invalidPayload`; JWT → 401; else 500 `internal`. */
+export const RestErrorSchema = z.object({
+  code: z.string().min(1),
+  detail: z.string().nullable().optional(),
+  /** `POST /zone/enter` 403 `gated` names the missing badge */
+  badge: z.enum(BADGE_IDS).optional(),
+});
+export type RestError = z.infer<typeof RestErrorSchema>;
+
+// ---- auth --------------------------------------------------------------------------------------------------------
+
+export const RegisterReq = z.object({ username: Username, email: Email, password: Password, starter: z.enum(STARTERS) });
+export const LoginReq = z.object({ username: z.string().min(1).max(20), password: z.string().min(1).max(128) });
+export const RefreshReq = z.object({ refresh: z.string().min(1) });
+export const LogoutReq = RefreshReq;
+export const AuthRes = z.object({ access: z.string().min(1), refresh: z.string().min(1), player: PlayerProfileSchema });
+export const RefreshRes = z.object({ access: z.string().min(1), refresh: z.string().min(1) });
+
+// ---- me / zone / profile / quests --------------------------------------------------------------------------------
+
+export const MeRes = PlayerProfileSchema.extend({
+  party: z.array(CreatureInstanceSchema).min(1).max(6),
+  box: z.array(CreatureInstanceSchema),
+  inventory: ItemCounts,
+  badges: z.array(BadgeIdSchema),
+  flags: StringList,
+  quests: z.array(QuestViewSchema),
+  battlePass: BattlePassStateSchema,
+  presence: z.object({ roomId: z.string().nullable(), zoneId: ZoneIdSchema, shard: z.number().int().min(0) }),
+  unreadDm: z.record(z.string(), z.number().int().min(0)),
+  friendRequests: z.number().int().min(0),
+  liveOps: LiveOpsSummarySchema,
+});
+export type MeResponse = z.infer<typeof MeRes>;
+
+export const ZoneEnterReq = z.object({ zoneId: ZoneIdSchema });
+export const ZoneEnterRes = z.object({ seat: SeatReservationSchema });
+/** 403 body when the zone's `gate` badge is missing. */
+export const ZoneGatedErr = z.object({ code: z.literal('gated'), badge: BadgeIdSchema });
+
+/**
+ * Base shape only: `title ∈ TITLES` and `body ∈ BODIES` are content lists (§3.12) that protocol
+ * may not import as values — the server refines with `profileRequestFor(TITLES, BODIES)`.
+ */
+export const ProfileReq = z.object({
+  title: z.string().min(1).max(40).optional(),
+  motto: z.string().max(120).optional(),
+  body: z.string().min(1).max(32).optional(),
+});
+export type ProfileRequest = z.infer<typeof ProfileReq>;
+export function profileRequestFor(titles: readonly string[], bodies: readonly string[]) {
+  return ProfileReq.superRefine((v, ctx) => {
+    if (v.title !== undefined && !titles.includes(v.title)) ctx.addIssue({ code: 'custom', path: ['title'], message: 'title not in TITLES' });
+    if (v.body !== undefined && !bodies.includes(v.body)) ctx.addIssue({ code: 'custom', path: ['body'], message: 'body not in BODIES' });
+  });
+}
+
+/** daily/weekly ids `daily:<dayKey>` / `weekly:<weekKey>` use `objectiveId` (the mission id). */
+export const QuestClaimReq = z.object({ questId: z.string().min(1).max(64), objectiveId: z.string().min(1).max(64).optional() });
+export const QuestClaimRes = z.object({
+  inventory: ItemCounts,
+  money: Money,
+  creaturesAdded: z.array(CreatureInstanceSchema),
+  questProgress: z.array(QuestProgressEntrySchema),
+});
+
+// ---- party / creature / items ----------------------------------------------------------------------------------
+
+const Party = z.array(CreatureInstanceSchema).min(1).max(6);
+const Box = z.array(CreatureInstanceSchema);
+export const PartyRes = z.object({ party: Party });
+export const PartyBoxRes = z.object({ party: Party, box: Box });
+
+export const PartyReorderReq = z.object({
+  order: z
+    .array(Uuid)
+    .min(1)
+    .max(6)
+    .refine((ids) => new Set(ids).size === ids.length, 'duplicate creature id'),
+});
+export const PartySwapReq = z.object({ partyId: Uuid, boxId: Uuid });
+export const CreatureIdReq = z.object({ id: Uuid });
+export const CreatureParams = z.object({ id: Uuid });
+
+export const NicknameReq = z.object({ nickname: z.string().min(1).max(16).nullable() });
+export const MovesReq = z.object({
+  moves: z
+    .array(ItemId)
+    .min(1)
+    .max(4)
+    .refine((m) => new Set(m).size === m.length, 'duplicate move'),
+});
+export const SetupReq = z.object({ ability: z.string().min(1).max(40), heldItem: ItemId.nullable() });
+export const EvolveReq = z.object({ into: z.string().min(1).max(40) });
+export const CreatureFlagsReq = z.object({ favorite: z.boolean().optional(), locked: z.boolean().optional() });
+
+export const ItemUseReq = z.object({ item: ItemId, target: Uuid.nullable(), qty: Qty });
+export const ItemUseRes = z.object({
+  inventory: ItemCounts,
+  creaturesUpdated: z.array(CreatureInstanceSchema),
+  events: z.array(z.looseObject({ t: z.string() })),
+});
+
+// ---- dex / shop ----------------------------------------------------------------------------------------------------
+
+export const DexRes = z.object({
+  seen: StringList,
+  caught: StringList,
+  variants: z.record(z.string(), z.array(VariantKeySchema)),
+  alpha: StringList,
+});
+export const ShopParams = z.object({ zoneId: ZoneIdSchema });
+export const ShopRes = z.object({ stock: StringList, prices: z.record(z.string(), Money) });
+export const ShopTradeReq = z.object({ item: ItemId, qty: Qty });
+export const InventoryMoneyRes = z.object({ inventory: ItemCounts, money: Money });
+
+// ---- marketplace -----------------------------------------------------------------------------------------------------
+
+const QueryBool = z.union([z.boolean(), z.enum(['true', 'false']).transform((v) => v === 'true')]);
+export const MarketQuery = z.object({
+  search: z.string().max(40).optional(),
+  variant: VariantKeySchema.optional(),
+  isAlpha: QueryBool.optional(),
+  levelMin: z.coerce.number().int().min(1).max(100).optional(),
+  levelMax: z.coerce.number().int().min(1).max(100).optional(),
+  sort: z.enum(MARKET_SORTS).default('endingSoon'),
+  page: Page,
+  pageSize: PageSize,
+});
+export type MarketQueryParams = z.input<typeof MarketQuery>;
+export const MarketSearchRes = z.object({ listings: z.array(ListingViewSchema), total: z.number().int().min(0) });
+export const ListingListRes = z.array(ListingViewSchema);
+export const ListingDetailRes = ListingViewSchema.extend({ bids: z.array(BidViewSchema) });
+export const ListingParams = z.object({ id: Uuid });
+export const MARKET_DURATIONS = [12, 24, 48] as const;
+export const ListCreateReq = z
+  .object({
+    creatureId: Uuid,
+    startingBid: z.number().int().min(100),
+    buyNowPrice: z.number().int().min(1).nullable(),
+    durationHours: z.union([z.literal(12), z.literal(24), z.literal(48)]),
+  })
+  .refine((v) => v.buyNowPrice === null || v.buyNowPrice > v.startingBid, {
+    path: ['buyNowPrice'],
+    message: 'buyNowPrice must exceed startingBid',
+  });
+export const BidReq = z.object({ amount: z.number().int().min(1) });
+
+// ---- friends / messages ------------------------------------------------------------------------------------------
+
+export const UsernameReq = z.object({ username: Username });
+export const UsernameParams = z.object({ username: Username });
+export const MessagesQuery = z.object({ before: IsoDate.optional(), limit: z.coerce.number().int().min(1).max(50).default(50) });
+export const MessagesRes = z.object({ messages: z.array(MessageViewSchema) });
+export const SendMessageReq = z.object({ text: z.string().min(1).max(300) });
+
+// ---- guilds -------------------------------------------------------------------------------------------------------------
+
+export const GuildsQuery = z.object({ search: z.string().max(24).optional() });
+export const GuildParams = z.object({ id: Uuid });
+export const GuildCreateReq = z.object({ name: z.string().min(3).max(24), tag: z.string().regex(GUILD_TAG_RE) });
+export const GuildMemberReq = z.object({ playerId: Uuid.optional() });
+export const GuildListRes = z.array(GuildViewSchema);
+export const GuildDetailRes = GuildViewSchema.extend({ members: z.array(GuildMemberViewSchema) });
+
+// ---- leaderboard / players / battle pass / history ----------------------------------------------------------------
+
+export const LeaderboardQuery = z.object({ mode: z.enum(LEADERBOARD_MODES).default('rating'), page: Page });
+export const LeaderboardRes = z.object({ rows: z.array(LeaderboardRowSchema) });
+
+export const BattlePassClaimReq = z.object({ level: z.number().int().min(1).max(100) });
+export const BattlePassClaimRes = z.object({
+  claimed: z.array(z.number().int()),
+  inventory: ItemCounts,
+  money: Money,
+  creaturesAdded: z.array(CreatureInstanceSchema),
+});
+export const MythicalChoiceReq = z.object({ species: z.enum(MYTHICAL_CHOICES) });
+export const CreaturesAddedRes = z.object({ creaturesAdded: z.array(CreatureInstanceSchema) });
+
+export const PageQuery = z.object({ page: Page });
+export const BattleHistoryRes = z.object({ rows: z.array(BattleHistoryRowSchema) });
+export const TradeHistoryRes = z.object({ rows: z.array(TradeHistoryRowSchema) });
+
+// ---- admin / health -----------------------------------------------------------------------------------------------------
+
+/** TODO(spec): `/admin/stats` has no listed body; these are the legacy counters carried over. */
+export const AdminStatsRes = z.looseObject({
+  total: z.number().int().min(0),
+  banned: z.number().int().min(0),
+  online: z.number().int().min(0),
+});
+export const AdminPlayersQuery = z.object({ q: z.string().max(20).optional(), page: Page });
+export const AdminPlayerRowSchema = z.object({
+  id: Uuid,
+  username: Username,
+  email: Email,
+  isAdmin: z.boolean(),
+  bannedAt: IsoDate.nullable(),
+  banReason: z.string().nullable(),
+  createdAt: IsoDate,
+  lastSeenAt: IsoDate,
+});
+export const AdminPlayersRes = z.object({ rows: z.array(AdminPlayerRowSchema), total: z.number().int().min(0) });
+export const BanReq = z.object({ username: Username, reason: z.string().min(1).max(200) });
+export const UnbanReq = z.object({ username: Username, reason: z.string().min(1).max(200).optional() });
+/** 30-server-netcode.md §30.10.2 — loose: an observability shape the client only displays. */
+export const ProcessMetricsSchema = z.looseObject({
+  rooms: z.array(z.looseObject({ roomId: z.string(), zoneId: ZoneIdSchema, shard: z.number().int().min(0), players: z.number().int().min(0) })),
+  rest: z.record(z.string(), z.looseObject({ count: z.number(), p50Ms: z.number(), p99Ms: z.number(), s4xx: z.number(), s5xx: z.number() })),
+  db: z.looseObject({ txPerSec: z.number(), txP99Ms: z.number(), poolInUse: z.number() }),
+  presenceSize: z.number().int().min(0),
+  heapMb: z.number(),
+});
+export const HealthRes = z.object({ status: z.literal('ok'), time: z.number().int().min(0) });
+
+// ---- the route table -----------------------------------------------------------------------------------------------------
+
+export type HttpMethod = 'GET' | 'POST';
+export type RouteAuth = 'none' | 'bearer' | 'admin';
+
+export interface RouteDef {
+  readonly method: HttpMethod;
+  readonly path: string;
+  readonly auth: RouteAuth;
+  /** `:param` segments */
+  readonly params?: z.ZodType;
+  readonly query?: z.ZodType;
+  readonly request?: z.ZodType;
+  /** `null` = 204 No Content */
+  readonly response: z.ZodType | null;
+  /** 30-server-netcode.md §30.6.4 key, when the route has a dedicated limit (else restRead/restWrite). */
+  readonly limit?: 'register' | 'login' | 'refresh' | 'listing' | 'bid' | 'message' | 'friendReq' | 'guildOp';
+}
+
+const route = <const R extends RouteDef>(r: R): R => r;
+
+export const ROUTES = {
+  authRegister: route({ method: 'POST', path: '/auth/register', auth: 'none', request: RegisterReq, response: AuthRes, limit: 'register' }),
+  authLogin: route({ method: 'POST', path: '/auth/login', auth: 'none', request: LoginReq, response: AuthRes, limit: 'login' }),
+  authRefresh: route({ method: 'POST', path: '/auth/refresh', auth: 'none', request: RefreshReq, response: RefreshRes, limit: 'refresh' }),
+  authLogout: route({ method: 'POST', path: '/auth/logout', auth: 'bearer', request: LogoutReq, response: null }),
+  me: route({ method: 'GET', path: '/me', auth: 'bearer', response: MeRes }),
+  zoneEnter: route({ method: 'POST', path: '/zone/enter', auth: 'bearer', request: ZoneEnterReq, response: ZoneEnterRes }),
+  profile: route({ method: 'POST', path: '/profile', auth: 'bearer', request: ProfileReq, response: PlayerProfileSchema }),
+  questsClaim: route({ method: 'POST', path: '/quests/claim', auth: 'bearer', request: QuestClaimReq, response: QuestClaimRes }),
+  partyReorder: route({ method: 'POST', path: '/party/reorder', auth: 'bearer', request: PartyReorderReq, response: PartyRes }),
+  partySwap: route({ method: 'POST', path: '/party/swap', auth: 'bearer', request: PartySwapReq, response: PartyBoxRes }),
+  partyWithdraw: route({ method: 'POST', path: '/party/withdraw', auth: 'bearer', request: CreatureIdReq, response: PartyBoxRes }),
+  partyDeposit: route({ method: 'POST', path: '/party/deposit', auth: 'bearer', request: CreatureIdReq, response: PartyBoxRes }),
+  creatureNickname: route({ method: 'POST', path: '/creature/:id/nickname', auth: 'bearer', params: CreatureParams, request: NicknameReq, response: CreatureInstanceSchema }),
+  creatureMoves: route({ method: 'POST', path: '/creature/:id/moves', auth: 'bearer', params: CreatureParams, request: MovesReq, response: CreatureInstanceSchema }),
+  creatureSetup: route({ method: 'POST', path: '/creature/:id/setup', auth: 'bearer', params: CreatureParams, request: SetupReq, response: CreatureInstanceSchema }),
+  creatureEvolve: route({ method: 'POST', path: '/creature/:id/evolve', auth: 'bearer', params: CreatureParams, request: EvolveReq, response: CreatureInstanceSchema }),
+  creatureRelease: route({ method: 'POST', path: '/creature/:id/release', auth: 'bearer', params: CreatureParams, request: Nothing, response: null }),
+  creatureFlags: route({ method: 'POST', path: '/creature/:id/flags', auth: 'bearer', params: CreatureParams, request: CreatureFlagsReq, response: CreatureInstanceSchema }),
+  itemUse: route({ method: 'POST', path: '/item/use', auth: 'bearer', request: ItemUseReq, response: ItemUseRes }),
+  heal: route({ method: 'POST', path: '/heal', auth: 'bearer', request: Nothing, response: PartyRes }),
+  dex: route({ method: 'GET', path: '/dex', auth: 'bearer', response: DexRes }),
+  shop: route({ method: 'GET', path: '/shop/:zoneId', auth: 'bearer', params: ShopParams, response: ShopRes }),
+  shopBuy: route({ method: 'POST', path: '/shop/buy', auth: 'bearer', request: ShopTradeReq, response: InventoryMoneyRes }),
+  shopSell: route({ method: 'POST', path: '/shop/sell', auth: 'bearer', request: ShopTradeReq, response: InventoryMoneyRes }),
+  marketplace: route({ method: 'GET', path: '/marketplace', auth: 'bearer', query: MarketQuery, response: MarketSearchRes }),
+  marketplaceMyActive: route({ method: 'GET', path: '/marketplace/my/active', auth: 'bearer', response: ListingListRes }),
+  marketplaceMyBids: route({ method: 'GET', path: '/marketplace/my/bids', auth: 'bearer', response: ListingListRes }),
+  marketplaceDetail: route({ method: 'GET', path: '/marketplace/:id', auth: 'bearer', params: ListingParams, response: ListingDetailRes }),
+  marketplaceList: route({ method: 'POST', path: '/marketplace/list', auth: 'bearer', request: ListCreateReq, response: ListingViewSchema, limit: 'listing' }),
+  marketplaceBid: route({ method: 'POST', path: '/marketplace/:id/bid', auth: 'bearer', params: ListingParams, request: BidReq, response: ListingViewSchema, limit: 'bid' }),
+  marketplaceBuyNow: route({ method: 'POST', path: '/marketplace/:id/buy-now', auth: 'bearer', params: ListingParams, request: Nothing, response: ListingViewSchema }),
+  marketplaceCancel: route({ method: 'POST', path: '/marketplace/:id/cancel', auth: 'bearer', params: ListingParams, request: Nothing, response: ListingViewSchema }),
+  friends: route({ method: 'GET', path: '/friends', auth: 'bearer', response: FriendListsSchema }),
+  friendsRequest: route({ method: 'POST', path: '/friends/request', auth: 'bearer', request: UsernameReq, response: FriendListsSchema, limit: 'friendReq' }),
+  friendsAccept: route({ method: 'POST', path: '/friends/accept', auth: 'bearer', request: UsernameReq, response: FriendListsSchema }),
+  friendsDecline: route({ method: 'POST', path: '/friends/decline', auth: 'bearer', request: UsernameReq, response: FriendListsSchema }),
+  friendsRemove: route({ method: 'POST', path: '/friends/remove', auth: 'bearer', request: UsernameReq, response: FriendListsSchema }),
+  messagesThread: route({ method: 'GET', path: '/messages/:username', auth: 'bearer', params: UsernameParams, query: MessagesQuery, response: MessagesRes }),
+  messagesSend: route({ method: 'POST', path: '/messages/:username', auth: 'bearer', params: UsernameParams, request: SendMessageReq, response: MessageViewSchema, limit: 'message' }),
+  messagesRead: route({ method: 'POST', path: '/messages/read', auth: 'bearer', request: UsernameReq, response: null }),
+  guilds: route({ method: 'GET', path: '/guilds', auth: 'bearer', query: GuildsQuery, response: GuildListRes }),
+  guildDetail: route({ method: 'GET', path: '/guilds/:id', auth: 'bearer', params: GuildParams, response: GuildDetailRes }),
+  guildCreate: route({ method: 'POST', path: '/guilds', auth: 'bearer', request: GuildCreateReq, response: GuildViewSchema, limit: 'guildOp' }),
+  guildJoin: route({ method: 'POST', path: '/guilds/:id/join', auth: 'bearer', params: GuildParams, request: GuildMemberReq, response: GuildViewSchema, limit: 'guildOp' }),
+  guildLeave: route({ method: 'POST', path: '/guilds/:id/leave', auth: 'bearer', params: GuildParams, request: GuildMemberReq, response: GuildViewSchema, limit: 'guildOp' }),
+  guildKick: route({ method: 'POST', path: '/guilds/:id/kick', auth: 'bearer', params: GuildParams, request: GuildMemberReq, response: GuildViewSchema, limit: 'guildOp' }),
+  guildPromote: route({ method: 'POST', path: '/guilds/:id/promote', auth: 'bearer', params: GuildParams, request: GuildMemberReq, response: GuildViewSchema, limit: 'guildOp' }),
+  leaderboard: route({ method: 'GET', path: '/leaderboard', auth: 'bearer', query: LeaderboardQuery, response: LeaderboardRes }),
+  playerPublic: route({ method: 'GET', path: '/players/:username', auth: 'bearer', params: UsernameParams, response: PublicProfileSchema }),
+  battlePass: route({ method: 'GET', path: '/battle-pass', auth: 'bearer', response: BattlePassStateSchema }),
+  battlePassClaim: route({ method: 'POST', path: '/battle-pass/claim', auth: 'bearer', request: BattlePassClaimReq, response: BattlePassClaimRes }),
+  battlePassMythical: route({ method: 'POST', path: '/battle-pass/mythical-choice', auth: 'bearer', request: MythicalChoiceReq, response: CreaturesAddedRes }),
+  historyBattles: route({ method: 'GET', path: '/history/battles', auth: 'bearer', query: PageQuery, response: BattleHistoryRes }),
+  historyTrades: route({ method: 'GET', path: '/history/trades', auth: 'bearer', query: PageQuery, response: TradeHistoryRes }),
+  adminStats: route({ method: 'GET', path: '/admin/stats', auth: 'admin', response: AdminStatsRes }),
+  adminPlayers: route({ method: 'GET', path: '/admin/players', auth: 'admin', query: AdminPlayersQuery, response: AdminPlayersRes }),
+  adminMetrics: route({ method: 'GET', path: '/admin/metrics', auth: 'admin', response: ProcessMetricsSchema }),
+  adminBan: route({ method: 'POST', path: '/admin/ban', auth: 'admin', request: BanReq, response: null }),
+  adminUnban: route({ method: 'POST', path: '/admin/unban', auth: 'admin', request: UnbanReq, response: null }),
+  health: route({ method: 'GET', path: '/health', auth: 'none', response: HealthRes }),
+} as const satisfies Record<string, RouteDef>;
+
+export type RouteKey = keyof typeof ROUTES;
+export type Route<K extends RouteKey> = (typeof ROUTES)[K];
+type Infer<S> = S extends z.ZodType ? z.infer<S> : never;
+type Input<S> = S extends z.ZodType ? z.input<S> : never;
+/** The validated request body of a route (`never` for GETs). */
+export type RouteRequest<K extends RouteKey> = Route<K> extends { request: infer S } ? Infer<S> : never;
+/** What the client sends (before defaults/coercion). */
+export type RouteRequestInput<K extends RouteKey> = Route<K> extends { request: infer S } ? Input<S> : never;
+export type RouteQuery<K extends RouteKey> = Route<K> extends { query: infer S } ? Input<S> : never;
+export type RouteParams<K extends RouteKey> = Route<K> extends { params: infer S } ? Infer<S> : never;
+/** The 200 body (`void` for 204 routes). */
+export type RouteResponse<K extends RouteKey> = Route<K> extends { response: infer S } ? (S extends null ? void : Infer<S>) : never;
+
+export const ROUTE_KEYS = Object.freeze(Object.keys(ROUTES) as RouteKey[]);
+
+/** Substitute `:param` segments — `routePath('shop', { zoneId: 'mirevale' })` → `/shop/mirevale`. */
+export function routePath<K extends RouteKey>(key: K, params?: Readonly<Record<string, string>>): string {
+  return ROUTES[key].path.replace(/:([a-zA-Z]+)/g, (_m, name: string) => {
+    const v = params?.[name];
+    if (v === undefined) throw new RangeError(`route ${key}: missing param :${name}`);
+    return encodeURIComponent(v);
+  });
+}
