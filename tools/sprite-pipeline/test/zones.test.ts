@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { loadLegacyData } from '../src/legacy.js';
-import { ZONE_ORDER, buildZoneSets, loadRosterTables, parseRosterTables } from '../src/zones.js';
+import { ZONE_ORDER, buildZoneInputs, buildZoneSets, loadRosterTables, parseRosterTables } from '../src/zones.js';
 import { LEGACY_DIR, ROSTER_PATH } from './helpers.js';
 
 const SNIPPET = `
@@ -69,17 +69,24 @@ describe('zone sets', () => {
   });
 
   describe.skipIf(!existsSync(ROSTER_PATH) || !existsSync(LEGACY_DIR))('the real roster + legacy data', () => {
-    it('has 15 spawn tables, 8 legendary statics, and every zone set stays within 16 species', async () => {
+    it('has 15 spawn tables, 8 legendary statics, and every field zone set stays within 16 species', async () => {
       const roster = loadRosterTables(ROSTER_PATH);
       expect(roster.encounters.size).toBe(15);
       expect(roster.statics.length).toBe(8);
       expect(roster.encounters.get('hollow_route')!.length).toBe(14);
       const legacy = await loadLegacyData(LEGACY_DIR);
       expect(legacy.species.size).toBe(130);
-      const sets = buildZoneSets({ roster, legacy }, new Set(legacy.species.keys()));
-      for (const z of ZONE_ORDER) expect(sets.get(z)!.length).toBeLessThanOrEqual(16);
+      const known = new Set(legacy.species.keys());
+      const sets = buildZoneSets({ roster, legacy }, known);
+      // solenne is the one zone whose Z exceeds the 8-atlas cap even when perfectly packed:
+      // park table (6) + Elite Four + Champion teams (20) = 26. The planner defers its league
+      // teams to their `home` crops (plan.ts); every other zone holds at most 14 species.
+      for (const z of ZONE_ORDER) expect(sets.get(z)!.length, z).toBeLessThanOrEqual(z === 'solenne' ? 26 : 16);
+      expect(sets.get('solenne')!.length).toBe(26);
+      const { league } = buildZoneInputs({ roster, legacy }, known);
+      expect(league.get('solenne')!.length).toBe(20);
+      expect(sets.get('solenne')!.length - league.get('solenne')!.length).toBeLessThanOrEqual(16);
       expect(sets.get('mirevale')).toEqual(['bramblecub', 'briarbear', 'smellduck']);
-      expect(sets.get('solenne')!.length).toBeGreaterThan(15); // park table + elite + champion
     });
   });
 });

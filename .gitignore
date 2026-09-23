@@ -1,5 +1,9 @@
 node_modules/
 dist/
+# @ewa/content commits its built heightfields (spine §3.10 rule 12); everything else under its dist/ stays ignored.
+!packages/content/dist/
+packages/content/dist/*
+!packages/content/dist/heightfields/
 dist-types/
 build/
 out/

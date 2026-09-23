@@ -87,7 +87,8 @@ export function texturedBlob(size: number, bg: Rgba, seed: number, radiusFrac = 
         if (d > 0.82) c = [30, 24, 28, 255]; // outline
         // Flat grey patch (upper left of the body) and saturated bright patch (upper right).
         if (Math.abs(dx + 0.35) < 0.22 && Math.abs(dy + 0.3) < 0.22) c = [128, 128, 128, 255];
-        if (Math.abs(dx - 0.35) < 0.18 && Math.abs(dy + 0.3) < 0.18) c = [255, 60, 240, 255];
+        // HSL s × l = 1.0 × 0.735 >= 0.72 (the emissive threshold); not magenta / near-white for the flood.
+        if (Math.abs(dx - 0.35) < 0.18 && Math.abs(dy + 0.3) < 0.18) c = [255, 200, 120, 255];
       }
       const i = (y * size + x) * 4;
       img.data[i] = c[0];

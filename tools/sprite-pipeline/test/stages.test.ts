@@ -96,7 +96,9 @@ describe('emissive mask', () => {
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
         const hot = x >= 40 && x < 72 && y >= 40 && y < 72;
-        img.data.set(hot ? [255, 40, 250, 255] : [110, 100, 90, 255], (y * size + x) * 4);
+        // HSL s × l: (255, 200, 120) -> 1.0 × 0.735 = 0.735 >= 0.72; (110, 100, 90) -> 0.1 × 0.39 = 0.04.
+        // (A fully saturated pure hue such as (255, 40, 250) has l ≈ 0.58 and does NOT qualify.)
+        img.data.set(hot ? [255, 200, 120, 255] : [110, 100, 90, 255], (y * size + x) * 4);
       }
     }
     const m = deriveEmissive(img);

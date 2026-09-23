@@ -25,6 +25,7 @@ import {
   pageCount,
   settingsFor,
   settingsKey,
+  thumbRungKey,
 } from './encode.js';
 import type { LegacyData } from './legacy.js';
 import { loadLegacyData } from './legacy.js';
@@ -263,22 +264,25 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
 
   // ---- thumbs ----------------------------------------------------------------------------
   const thumbs = new Map<string, Uint8Array>();
+  const thumbRungs: Record<string, number> = {};
   for (const id of ids) {
     const front = bySpecies.get(id)!.find((s) => s.source.side === 'front')!;
-    const thumbKey = sha256(front.hash, 'thumb', `size=${THUMB_SIZE}`, `ladder=${THUMB_LADDER.map((r) => `${r.quality}/${r.alphaQuality}`).join(',')}`, `max=${THUMB_MAX_BYTES}`);
-    let bytes = cache.readThumb(thumbKey);
-    if (!bytes) {
+    const thumbKey = sha256(front.hash, 'thumb', `size=${THUMB_SIZE}`, `ladder=${THUMB_LADDER.map(thumbRungKey).join(',')}`, `max=${THUMB_MAX_BYTES}`);
+    let cached = cache.readThumb(thumbKey);
+    if (!cached) {
       const albedo = await cache.readRgba(front.hash, 'albedo');
       const bbox = front.meta.bbox ?? { x0: 0, y0: 0, x1: albedo.width - 1, y1: albedo.height - 1 };
       const thumb = await encodeThumb(albedo, bbox, THUMB_SIZE, THUMB_MAX_BYTES);
-      bytes = thumb.bytes;
-      if (thumb.rung !== THUMB_LADDER[0]) log(`  thumb ${id}: q${thumb.rung.quality}/aq${thumb.rung.alphaQuality} to fit ${THUMB_MAX_BYTES} B (${bytes.byteLength} B)`);
-      cache.writeThumb(thumbKey, bytes);
+      if (thumb.rung !== THUMB_LADDER[0]) log(`  thumb ${id}: ${thumbRungKey(thumb.rung)} to fit ${THUMB_MAX_BYTES} B (${thumb.bytes.byteLength} B)`);
+      cache.writeThumb(thumbKey, thumb.bytes, thumbRungKey(thumb.rung));
+      cached = { bytes: thumb.bytes, rung: thumbRungKey(thumb.rung) };
     }
-    if (bytes.byteLength > THUMB_MAX_BYTES) throw new Error(`thumb ${id}: ${bytes.byteLength} B > ${THUMB_MAX_BYTES} B at the bottom of the thumb ladder`);
-    thumbs.set(id, bytes);
+    if (cached.bytes.byteLength > THUMB_MAX_BYTES) throw new Error(`thumb ${id}: ${cached.bytes.byteLength} B > ${THUMB_MAX_BYTES} B at the bottom of the thumb ladder`);
+    thumbs.set(id, cached.bytes);
+    thumbRungs[cached.rung] = (thumbRungs[cached.rung] ?? 0) + 1;
   }
   const thumbBytes = [...thumbs.values()].reduce((n, b) => n + b.byteLength, 0);
+  const thumbSummary: QaEncodingSummary['thumbs'] = { count: thumbs.size, bytes: thumbBytes, rungs: Object.fromEntries(Object.entries(thumbRungs).sort(([a], [b]) => compareStrings(a, b))) };
 
   // ---- atlases: members + placements ----------------------------------------------------------
   interface AtlasJob {
@@ -352,7 +356,7 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
   const onDisk = dirBytes(opts.outDir);
   if (onDisk !== chosen.totalBytes) throw new Error(`internal: manifest totalBytes ${chosen.totalBytes} != ${onDisk} on disk`);
 
-  const report = writeReport({ albedoQuality: chosen.rung.albedo, normalQuality: chosen.rung.normal, rungsTried }, chosen.totalBytes);
+  const report = writeReport({ albedoQuality: chosen.rung.albedo, normalQuality: chosen.rung.normal, rungsTried, thumbs: thumbSummary }, chosen.totalBytes);
   log(`QA: ${report.flagged.length}/${report.total} flagged, ${report.actionable} actionable -> ${opts.qaDir}`);
   log(`wrote ${jobs.length} atlases, ${ids.length} species, ${(chosen.totalBytes / 1e6).toFixed(2)} MB -> ${opts.outDir}`);
   return {

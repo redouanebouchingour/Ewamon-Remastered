@@ -71,6 +71,8 @@ export {
   THUMB_QUALITY,
   THUMB_LADDER,
   THUMB_ALPHA_QUALITY,
+  thumbRungKey,
+  quantizeAlpha,
   ladderRungs,
   settingsFor,
   settingsKey,

@@ -30,25 +30,47 @@ export const ALBEDO_LADDER: readonly number[] = [88, 85, 82, 80];
 export const NORMAL_LADDER: readonly number[] = [92, 90, 85];
 export const MIP_QUALITY_DROP = 10;
 /**
- * Thumbnail ladder: (q80, alphaQuality 90) is the spec figure; a busy 128 px crop exceeds the
- * 6 KB cap there because lanczos minification leaves thousands of semi-transparent texels and
- * the alpha plane costs as much as the colour (measured: abysspark 6 886 B, acier 9 016 B at
- * q80/aq90), so the thumb steps down both qualities until it fits.
+ * Thumbnail ladder: (q80, alphaQuality 90) is the spec figure (§40.1.6.5). A busy 128 px crop
+ * does not fit the 6 KB cap there: lanczos minification leaves 23–38 % of the texels
+ * semi-transparent with ~250 distinct alpha values, so the alpha plane alone costs ≈ 4 KB
+ * (measured on the real sprites: blizzraak 11 908 B, acier 8 154 B, berkest 8 394 B at
+ * q80/aq90; blizzraak is still 6 542 B at q40/aq40 and 7 820 B with the alpha removed).
+ * The ladder therefore first quantises the alpha plane (16, then 8 levels — lossless-coded,
+ * `alphaQuality 100`; a −35–40 % step that is invisible at 128 px) and only then lowers the
+ * colour quality, so the picture stays sharp for as long as possible.
  */
 export interface ThumbRung {
   quality: number;
   alphaQuality: number;
+  /** Alpha levels the plane is quantised to before encoding; 0 keeps the 8-bit alpha. */
+  alphaLevels: number;
 }
 export const THUMB_LADDER: readonly ThumbRung[] = [
-  { quality: 80, alphaQuality: 90 },
-  { quality: 72, alphaQuality: 80 },
-  { quality: 64, alphaQuality: 70 },
-  { quality: 56, alphaQuality: 60 },
-  { quality: 48, alphaQuality: 50 },
-  { quality: 40, alphaQuality: 40 },
+  { quality: 80, alphaQuality: 90, alphaLevels: 0 },
+  { quality: 80, alphaQuality: 100, alphaLevels: 16 },
+  { quality: 80, alphaQuality: 100, alphaLevels: 8 },
+  { quality: 72, alphaQuality: 100, alphaLevels: 8 },
+  { quality: 64, alphaQuality: 100, alphaLevels: 8 },
+  { quality: 56, alphaQuality: 100, alphaLevels: 8 },
+  { quality: 48, alphaQuality: 100, alphaLevels: 8 },
+  { quality: 40, alphaQuality: 100, alphaLevels: 8 },
+  { quality: 32, alphaQuality: 100, alphaLevels: 8 },
 ];
 export const THUMB_QUALITY = THUMB_LADDER[0]!.quality;
 export const THUMB_ALPHA_QUALITY = THUMB_LADDER[0]!.alphaQuality;
+
+export function thumbRungKey(r: ThumbRung): string {
+  return `q${r.quality}/aq${r.alphaQuality}${r.alphaLevels ? `/a${r.alphaLevels}` : ''}`;
+}
+
+/** Snaps every alpha value to the nearest of `levels` evenly spaced values (0 and 255 kept). */
+export function quantizeAlpha(data: Uint8Array, levels: number): Uint8Array {
+  if (levels < 2) return data;
+  const out = data.slice();
+  const step = 255 / (levels - 1);
+  for (let i = 3; i < out.length; i += 4) out[i] = Math.round(Math.round(out[i]! / step) * step);
+  return out;
+}
 
 export interface Rung {
   albedo: number;
@@ -116,7 +138,8 @@ export async function encodeMaskWebp(mask: GrayImage, s: MapEncodeSettings): Pro
 
 /**
  * `thumbs/<id>_front.webp`: bbox crop, lanczos3 to `size` px on the longest edge, lossy
- * q80 / alphaQuality 90, stepping down `THUMB_LADDER` until the file is <= `maxBytes`.
+ * q80 / alphaQuality 90, stepping down `THUMB_LADDER` (alpha quantisation first, then colour
+ * quality) until the file is <= `maxBytes`.
  */
 export async function encodeThumb(
   img: RgbaImage,
@@ -136,8 +159,9 @@ export async function encodeThumb(
     .toBuffer({ resolveWithObject: true });
   let last: { bytes: Uint8Array; rung: ThumbRung } | null = null;
   for (const rung of THUMB_LADDER) {
+    const raw = rung.alphaLevels ? Buffer.from(quantizeAlpha(new Uint8Array(data.buffer, data.byteOffset, data.byteLength), rung.alphaLevels)) : data;
     const out = bytes(
-      await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } })
+      await sharp(raw, { raw: { width: info.width, height: info.height, channels: 4 } })
         .webp({ quality: rung.quality, alphaQuality: rung.alphaQuality, effort: WEBP_EFFORT })
         .toBuffer(),
     );

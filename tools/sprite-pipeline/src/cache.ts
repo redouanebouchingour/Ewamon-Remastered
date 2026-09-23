@@ -114,14 +114,18 @@ export class SpriteCache {
     return path.join(this.root, 'thumbs', `${hash}.webp`);
   }
 
-  readThumb(hash: string): Uint8Array | null {
+  /** The cached thumb and the ladder rung that produced it (`<hash>.webp` + `<hash>.rung`). */
+  readThumb(hash: string): { bytes: Uint8Array; rung: string } | null {
     const p = this.thumbPath(hash);
-    return existsSync(p) ? new Uint8Array(readFileSync(p)) : null;
+    const r = `${p}.rung`;
+    if (!existsSync(p) || !existsSync(r)) return null;
+    return { bytes: new Uint8Array(readFileSync(p)), rung: readFileSync(r, 'utf8').trim() };
   }
 
-  writeThumb(hash: string, bytes: Uint8Array): void {
+  writeThumb(hash: string, bytes: Uint8Array, rung: string): void {
     mkdirSync(path.join(this.root, 'thumbs'), { recursive: true });
     writeFileSync(this.thumbPath(hash), bytes);
+    writeFileSync(`${this.thumbPath(hash)}.rung`, `${rung}\n`);
   }
 }
 

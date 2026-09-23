@@ -38,6 +38,8 @@ export interface QaEncodingSummary {
   normalQuality: number;
   /** Rungs tried, top first; the last one is the one shipped. */
   rungsTried: Array<{ albedo: number; normal: number; totalBytes: number }>;
+  /** Thumbnail ladder outcome: rung label (`q80/aq90`, `q80/aq100/a8`, …) -> species count. */
+  thumbs: { count: number; bytes: number; rungs: Record<string, number> };
 }
 
 export interface QaReport {
@@ -95,9 +97,10 @@ export function buildQaReport(input: QaReportInput): QaReport {
   const actionable = flagged.filter((e) => e.actionable.length > 0).length;
   const bindStats: Record<string, BindStat> = {};
   for (const z of Object.keys(input.bindStats).sort(compareStrings)) bindStats[z] = input.bindStats[z]!;
-  // Only acceptances that actually matched a flagged sprite are reported as used.
+  // Only acceptances that actually suppressed a flag are reported as used: a `leak` / `empty`
+  // entry never does (NEVER_ACCEPTED_FLAGS), so it is not listed even when the sprite is flagged.
   const accepted = input.accepted
-    .filter((a) => flagged.some((e) => e.species === a.species && e.flags.includes(a.flag) && (a.side === undefined || a.side === e.side)))
+    .filter((a) => flagged.some((e) => e.species === a.species && e.flags.includes(a.flag) && isAccepted([a], e.species, e.side, a.flag)))
     .sort((a, b) => compareStrings(a.species, b.species) || compareStrings(a.flag, b.flag));
   return {
     total: sorted.length,

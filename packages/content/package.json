@@ -6,7 +6,13 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": { ".": "./src/index.ts" },
-  "scripts": { "build": "tsc -b", "validate": "tsx src/validate.ts" },
+  "scripts": {
+    "build": "tsc -b && tsx scripts/validate-cli.ts",
+    "validate": "tsx scripts/validate-cli.ts",
+    "migrate": "tsx scripts/migrate-legacy.ts",
+    "heightfields": "tsx scripts/build-heightfields.ts",
+    "typecheck:scripts": "tsc -p tsconfig.scripts.json"
+  },
   "dependencies": { "@ewa/core": "workspace:*", "zod": "^4.1.12" },
-  "devDependencies": {  }
+  "devDependencies": {}
 }
