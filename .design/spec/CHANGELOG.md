@@ -6,6 +6,11 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+## 2026-09-23 — `50-verification-budget.md` §50.4.3 — `rest.test.ts` row: ServerMessage variant count 17 → 16
+Why: the count was stale. The `ServerMessage` union in `00-spine.md` §4.4 declares 16 variants (battleStart, battleEvents, battleResync, battleEnd, inventoryDelta, progressionDelta, handover, challengeReceived, challengeResult, tradeUpdate, raidEvents, chat, dm, storyBeat, toast, error); the lower-numbered section wins.
+Evidence: `packages/protocol/test/server-messages.test.ts` "lists the 16 variants of the §4.4 block"; HANDOFF.md outstanding note.
+Affects: `.design/spec/50-verification-budget.md` §50.4.3 only; no code change.
+
 ## 2026-09-18 — `.design/SPEC.md` — first assembly of the binding SPEC from the six part files
 Why: `PLAN.md` and `spec/README.md` name `SPEC.md` as the binding contract; it did not exist.
 Evidence: `.design/spec/assemble.mjs` concatenates `00`…`50` in filename order behind a 40-line header and a generated table of contents; §50.7 rule 5 (no redefined exported identifier) checked by the script before writing.
