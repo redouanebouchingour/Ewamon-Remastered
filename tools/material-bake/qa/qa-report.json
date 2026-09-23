@@ -1,0 +1,2305 @@
+{
+  "surfaces": {
+    "anvil_black": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 20262,
+          "normal": 163540,
+          "orm": 84756
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.01386,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "banner_cloth": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 40853,
+          "normal": 95323,
+          "orm": 33505
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.41645,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": null
+      }
+    },
+    "barnacle_stone": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 141204,
+          "normal": 208220,
+          "orm": 128147
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.39594,
+        "overTarget": [
+          "albedo",
+          "orm",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 415265,
+          "normal": 714425,
+          "orm": 398098
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.39599,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "bog_water": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 41286,
+          "normal": 88236,
+          "orm": 78610
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.07187,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "bone_chalk": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 118788,
+          "normal": 147900,
+          "orm": 83966
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.67583,
+        "overTarget": [
+          "albedo",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 340581,
+          "normal": 478434,
+          "orm": 241828
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.67595,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "candle_wax": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 48825,
+          "normal": 76064,
+          "orm": 29896
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.67923,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "canyon_dust": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 110395,
+          "normal": 168335,
+          "orm": 107279
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.27719,
+        "overTarget": [
+          "albedo",
+          "orm",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 319071,
+          "normal": 573778,
+          "orm": 341513
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.2777,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "castle_granite": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 104075,
+          "normal": 135430,
+          "orm": 15964
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.37807,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 298787,
+          "normal": 511274,
+          "orm": 41436
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.37809,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "chain": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 59786,
+          "normal": 119529,
+          "orm": 4652
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.05164,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "charred_timber": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 46687,
+          "normal": 198092,
+          "orm": 91413
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.0156,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "cinder_ash_soil": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 66178,
+          "normal": 137105,
+          "orm": 93802
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.06732,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 192306,
+          "normal": 413744,
+          "orm": 289859
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.06835,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "cinder_basalt": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 109240,
+          "normal": 161992,
+          "orm": 84373
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.08213,
+        "overTarget": [
+          "albedo",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 308917,
+          "normal": 549024,
+          "orm": 254203
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.08214,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "cinder_scoria": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 137697,
+          "normal": 229529,
+          "orm": 120209
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.1126,
+        "overTarget": [
+          "albedo",
+          "orm",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 391445,
+          "normal": 782340,
+          "orm": 352660
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.11264,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "cloud_stone": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 134085,
+          "normal": 182233,
+          "orm": 111924
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.61937,
+        "overTarget": [
+          "albedo",
+          "orm",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 370053,
+          "normal": 612422,
+          "orm": 331517
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.61937,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "coal_glow": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 55822,
+          "normal": 168988,
+          "orm": 55919
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.09022,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "cobble": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 75711,
+          "normal": 151918,
+          "orm": 48647
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.17324,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 210746,
+          "normal": 540127,
+          "orm": 141233
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.17339,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "coil_brass": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 29237,
+          "normal": 29617,
+          "orm": 15967
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.31149,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "copper_oxide": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 77087,
+          "normal": 127679,
+          "orm": 108326
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.24925,
+        "overTarget": [
+          "orm",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 220823,
+          "normal": 397513,
+          "orm": 323605
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.24935,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "dirt": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 86200,
+          "normal": 166485,
+          "orm": 67807
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.18136,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 261750,
+          "normal": 583992,
+          "orm": 201070
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.18168,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "dragon_scale_tile": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 65593,
+          "normal": 132798,
+          "orm": 6851
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.14679,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "driftwood": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 52381,
+          "normal": 158966,
+          "orm": 79234
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.33807,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "eclipse_stone": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 111075,
+          "normal": 145287,
+          "orm": 84771
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.1582,
+        "overTarget": [
+          "albedo",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 304517,
+          "normal": 484795,
+          "orm": 252573
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.15822,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "forge_brick": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 91383,
+          "normal": 171186,
+          "orm": 35482
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.22103,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "forge_steel_plate": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 46950,
+          "normal": 107758,
+          "orm": 28414
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.21821,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 117252,
+          "normal": 346886,
+          "orm": 67641
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.21836,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "fountain_water": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 5821,
+          "normal": 123076,
+          "orm": 44996
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.1293,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "frost_glass": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 79199,
+          "normal": 170441,
+          "orm": 122206
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.72927,
+        "overTarget": [
+          "orm",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "gilt_bronze": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 43829,
+          "normal": 134314,
+          "orm": 49604
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.22771,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "glass_warm": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 1270,
+          "normal": 3227,
+          "orm": 4641
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.73424,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 1589,
+          "normal": 5775,
+          "orm": 8925
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.73424,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "gold_leaf": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 61574,
+          "normal": 142924,
+          "orm": 22703
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.44137,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "grave_moss": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 104710,
+          "normal": 141412,
+          "orm": 90932
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.09957,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 336303,
+          "normal": 503110,
+          "orm": 277257
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.09967,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "grove_bark": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 85813,
+          "normal": 175058,
+          "orm": 91200
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.13671,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 251233,
+          "normal": 594218,
+          "orm": 281620
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.1367,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "grove_leaf_canopy": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 50503,
+          "normal": 99779,
+          "orm": 13424
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.19076,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": null
+      }
+    },
+    "grove_moss": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 91007,
+          "normal": 221488,
+          "orm": 117252
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.14701,
+        "overTarget": [
+          "orm",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 281636,
+          "normal": 743369,
+          "orm": 361592
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.14697,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "gypsum_crystal": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 148359,
+          "normal": 186188,
+          "orm": 103779
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.69862,
+        "overTarget": [
+          "albedo",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "harbour_plank": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 52937,
+          "normal": 126782,
+          "orm": 49831
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.1323,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "insulator_glass": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 22519,
+          "normal": 45904,
+          "orm": 14384
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.42037,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "iron_grate": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 66854,
+          "normal": 100243,
+          "orm": 96514
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.04836,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "lantern_metal": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 6013,
+          "normal": 48939,
+          "orm": 35610
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.02768,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 13957,
+          "normal": 148603,
+          "orm": 86240
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.02768,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "laurel_leaf": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 123272,
+          "normal": 236944,
+          "orm": 46113
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.15811,
+        "overTarget": [
+          "albedo",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "lava_crust": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 62640,
+          "normal": 166008,
+          "orm": 88689
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.05104,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 174550,
+          "normal": 599901,
+          "orm": 260057
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.05105,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "lava_glow": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 89586,
+          "normal": 140772,
+          "orm": 97627
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.15748,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "lichen_stone": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 129904,
+          "normal": 140740,
+          "orm": 81058
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.38021,
+        "overTarget": [
+          "albedo",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 382680,
+          "normal": 478576,
+          "orm": 236032
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.38016,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "lightning_glass": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 95845,
+          "normal": 192705,
+          "orm": 73353
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.53898,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "marrow_sandstone": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 120820,
+          "normal": 136897,
+          "orm": 74718
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.38174,
+        "overTarget": [
+          "albedo",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 342162,
+          "normal": 459855,
+          "orm": 221247
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.38185,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "mine_timber": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 30227,
+          "normal": 128492,
+          "orm": 48958
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.07765,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "mist_glass": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 61132,
+          "normal": 55060,
+          "orm": 29102
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.48118,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "obsidian": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 12405,
+          "normal": 161547,
+          "orm": 67922
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.01061,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "ore_vein": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 114142,
+          "normal": 176289,
+          "orm": 92615
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.41276,
+        "overTarget": [
+          "albedo",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "path_gravel": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 113568,
+          "normal": 270866,
+          "orm": 136660
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.27663,
+        "overTarget": [
+          "albedo",
+          "orm",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 328024,
+          "normal": 844161,
+          "orm": 434448
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.27669,
+        "overTarget": [
+          "orm",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "pine_needle": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 67448,
+          "normal": 141528,
+          "orm": 60615
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.09954,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": null
+      }
+    },
+    "plaster": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 43505,
+          "normal": 91073,
+          "orm": 15482
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.6175,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 102143,
+          "normal": 305748,
+          "orm": 34676
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.61751,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "plaza_pale_stone": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 79604,
+          "normal": 109245,
+          "orm": 14551
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.55827,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 251739,
+          "normal": 406184,
+          "orm": 38249
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.55827,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "prayer_silk": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 63154,
+          "normal": 140546,
+          "orm": 59527
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.65872,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": null
+      }
+    },
+    "rail_iron": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 57975,
+          "normal": 159678,
+          "orm": 130212
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.06769,
+        "overTarget": [
+          "orm",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "rift_shard": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 134476,
+          "normal": 138998,
+          "orm": 85274
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.15678,
+        "overTarget": [
+          "albedo",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 389851,
+          "normal": 488284,
+          "orm": 253712
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.15666,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "ring_light": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 59877,
+          "normal": 110959,
+          "orm": 46079
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.58057,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "rivet_iron": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 59091,
+          "normal": 143934,
+          "orm": 95752
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.08756,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "rope": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 43345,
+          "normal": 156819,
+          "orm": 45363
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.22316,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "sailcloth": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 77430,
+          "normal": 170763,
+          "orm": 69810
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.75537,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": null
+      }
+    },
+    "salt_sand": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 101176,
+          "normal": 135676,
+          "orm": 84572
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.57012,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 305516,
+          "normal": 462545,
+          "orm": 250974
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.5702,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "sea_water": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 4289,
+          "normal": 123568,
+          "orm": 38246
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.06101,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "sky_marble": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 104509,
+          "normal": 61718,
+          "orm": 11021
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.66423,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 313888,
+          "normal": 237617,
+          "orm": 27652
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.66428,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "slate_roof": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 46037,
+          "normal": 112536,
+          "orm": 44703
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.06673,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "snow": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 90362,
+          "normal": 120061,
+          "orm": 98201
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.74621,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 277156,
+          "normal": 430918,
+          "orm": 315125
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.7463,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "stained_glass": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 78114,
+          "normal": 128975,
+          "orm": 106339
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.32918,
+        "overTarget": [
+          "orm",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "star_iron": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 60678,
+          "normal": 150407,
+          "orm": 88503
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.56535,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "stone_wall": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 64881,
+          "normal": 137508,
+          "orm": 16465
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.21072,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 179745,
+          "normal": 503612,
+          "orm": 42049
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.21076,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "storm_slate": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 102811,
+          "normal": 165983,
+          "orm": 98182
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.12456,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 283286,
+          "normal": 545684,
+          "orm": 292958
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.12471,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "sun_marble": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 100593,
+          "normal": 60591,
+          "orm": 11564
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.68498,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 319069,
+          "normal": 239842,
+          "orm": 30560
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.68498,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "tall_grass": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 119394,
+          "normal": 196382,
+          "orm": 12385
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.24209,
+        "overTarget": [
+          "albedo",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": null
+      }
+    },
+    "thatch": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 116865,
+          "normal": 244194,
+          "orm": 107011
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.27436,
+        "overTarget": [
+          "albedo",
+          "orm",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "tide_pool": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 24101,
+          "normal": 109862,
+          "orm": 69244
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.08911,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "timber": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 34461,
+          "normal": 95294,
+          "orm": 56516
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.09236,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 90547,
+          "normal": 349985,
+          "orm": 155823
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.09237,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "tower_stone": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 69982,
+          "normal": 165727,
+          "orm": 28949
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.1634,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "unmade_stone": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 56010,
+          "normal": 97756,
+          "orm": 60773
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.17798,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 131938,
+          "normal": 317382,
+          "orm": 161963
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.17798,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "vesper_bark_black": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 67744,
+          "normal": 150280,
+          "orm": 87042
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.02877,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 173364,
+          "normal": 529525,
+          "orm": 256970
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.02876,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "void_floor": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 71601,
+          "normal": 97931,
+          "orm": 14505
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.09858,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 192456,
+          "normal": 347127,
+          "orm": 40454
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.09858,
+        "overTarget": [],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "void_glass": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 96479,
+          "normal": 124860,
+          "orm": 77247
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.0896,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 263086,
+          "normal": 434585,
+          "orm": 223278
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.08963,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "water_pond": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 685,
+          "normal": 123312,
+          "orm": 44634
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.08128,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "wet_flagstone": {
+      "field": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 78604,
+          "normal": 146689,
+          "orm": 36363
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.10389,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": false,
+        "bytes": {
+          "albedo": 211977,
+          "normal": 524520,
+          "orm": 94391
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.10392,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "wet_rock": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 86348,
+          "normal": 141529,
+          "orm": 78389
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.09768,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      },
+      "hero": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 239902,
+          "normal": 472883,
+          "orm": 236321
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.09767,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    },
+    "willow_leaf": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 69959,
+          "normal": 123435,
+          "orm": 72173
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.17832,
+        "overTarget": [
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": null
+      }
+    },
+    "wrought_iron": {
+      "field": {
+        "aoDefault": true,
+        "bytes": {
+          "albedo": 48249,
+          "normal": 187343,
+          "orm": 133326
+        },
+        "clampedPct": 0,
+        "maxLuminance": 0.02962,
+        "overTarget": [
+          "orm",
+          "normal"
+        ],
+        "roughClippedPct": 0,
+        "seam": {
+          "albedo": 0,
+          "height": 0
+        }
+      }
+    }
+  },
+  "totals": {
+    "fieldBytes": 22980874,
+    "heroBytes": 35411882,
+    "totalBytes": 58393677
+  }
+}

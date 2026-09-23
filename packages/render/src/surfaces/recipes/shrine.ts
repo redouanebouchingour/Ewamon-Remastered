@@ -5,7 +5,7 @@ import { crystal, glass, masonry, metal, rock } from './families';
 export const FILE = 'recipes/shrine.ts';
 
 export const SHRINE_RECIPES: readonly SurfaceRecipe[] = [
-  crystal({ id: 'void_glass', hero: true, metres: 1, strength: 0.45, rdo: 4, kind: 'shards', base: '#1b2a33', light: '#3f6a6a', dark: '#0c1418', rough: [0.06, 0.16], cells: 5 }),
+  crystal({ id: 'void_glass', hero: true, metres: 1, strength: 0.45, rdo: 4, kind: 'shards', base: '#1b2a33', light: '#3f6a6a', dark: '#0c1418', rough: [0.06, 0.2], cells: 5 }),
   metal({ id: 'star_iron', hero: false, metres: 1, strength: 0.45, rdo: 4, base: '#3a3d4a', metal: 0.9, rough: [0.35, 0.6], hammered: 0.18,
     specks: { color: '#c8d4f0', amount: 0.25 } }),
   rock({ id: 'eclipse_stone', hero: true, metres: 3, strength: 0.65, rdo: 4, base: '#3c3a42', dark: '#222127', light: '#4c4a53',

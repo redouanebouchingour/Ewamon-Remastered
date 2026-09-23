@@ -13,7 +13,7 @@ export const SKY_RECIPES: readonly SurfaceRecipe[] = [
   metal({ id: 'gold_leaf', hero: false, metres: 1, strength: 0.3, rdo: 4, base: '#c9a24a', metal: 1.0, rough: [0.2, 0.4], leafSquares: 6, hammered: 0.08, tone: 0.05 }),
   cloth({ id: 'prayer_silk', hero: false, metres: 1, strength: 0.3, rdo: 4, kind: 'weave', base: '#c23b3b', rough: 0.7, weave: [80, 80], card: 'flags', wrap: 'clamp' }),
   scales({ id: 'dragon_scale_tile', hero: false, metres: 1, strength: 0.7, rdo: 4, base: '#3b6a6e', edge: '#23403f', rough: [0.35, 0.6], rows: 10, cols: 8 }),
-  glass({ id: 'frost_glass', hero: false, metres: 1, strength: 0.35, rdo: 4, pattern: 'frost', base: '#c3d6e0', accent: '#dbe8ef', rough: [0.08, 0.2], cells: 5 }),
+  glass({ id: 'frost_glass', hero: false, metres: 1, strength: 0.35, rdo: 4, pattern: 'frost', base: '#c3d6e0', accent: '#dbe8ef', rough: [0.08, 0.35], cells: 5 }),
   foliage({ id: 'pine_needle', hero: false, metres: 1, strength: 0.45, rdo: 4, kind: 'pine', base: '#3d5a36', rough: 0.7, count: 11 }),
   soil({ id: 'snow', hero: true, metres: 3, strength: 0.35, rdo: 4, base: '#d6dae0', dark: '#b8c0ca', light: '#dde1e7',
     rough: [0.5, 0.7], ripple: { k: [3, 5], amp: 0.2 }, grain: 0.05, sparkle: 0.35 }),

@@ -12,7 +12,7 @@ export const VESPER_RECIPES: readonly SurfaceRecipe[] = [
   metal({ id: 'wrought_iron', hero: false, metres: 1, strength: 0.6, rdo: 4, base: '#2d2b2b', metal: 0.85, rough: [0.5, 0.8], hammered: 0.35,
     brushed: { dir: 'v', amount: 0.12 }, rust: { color: '#4a2c1e', amount: 0.4 } }),
   glass({ id: 'candle_wax', hero: false, metres: 1, strength: 0.45, pattern: 'wax', base: '#d9ccb0', accent: '#e8dcc0', rough: [0.45, 0.6] }),
-  glass({ id: 'mist_glass', hero: false, metres: 1, strength: 0.3, pattern: 'mist', base: '#9fb0b8', accent: '#b8c6cc', rough: [0.12, 0.3], frameMetal: 0.8 }),
+  glass({ id: 'mist_glass', hero: false, metres: 1, strength: 0.3, pattern: 'mist', base: '#9fb0b8', accent: '#b8c6cc', rough: [0.12, 0.5], frameMetal: 0.8 }),
   foliage({ id: 'willow_leaf', hero: false, metres: 1, strength: 0.4, rdo: 4, kind: 'willow', base: '#56703f', rough: 0.65, count: 26 }),
   water({ id: 'bog_water', hero: false, metres: 3, strength: 0.25, base: '#2c3326', rough: 0.08, waves: [[4, 1, 0.5], [-1, 5, 0.5]], chop: 0.08,
     scum: { color: '#4a5a2a', amount: 0.7 } }),

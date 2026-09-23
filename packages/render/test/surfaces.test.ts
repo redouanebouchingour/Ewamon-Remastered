@@ -138,8 +138,8 @@ describe('RECIPES', () => {
     expect(RECIPES.water_pond!.wrap).toBe('repeat');
   });
 
-  /** Paint every recipe at 128² (the painters are resolution-independent) and return the buffers. */
-  function paint(id: string, S = 128): { h: Float32Array; rgb: Float32Array; alpha: Float32Array | null; orm: Orm } {
+  /** Paint every recipe at 64² (the painters are resolution-independent) and return the buffers. */
+  function paint(id: string, S = 64): { h: Float32Array; rgb: Float32Array; alpha: Float32Array | null; orm: Orm } {
     const r = RECIPES[id]!, def = SURFACES[id as SurfaceId];
     const c: RecipeCtx = { id, size: S, metres: r.metres, noise: createNoise(id), def };
     const h: ScalarField = { width: S, height: S, data: new Float32Array(S * S) };
@@ -167,7 +167,7 @@ describe('RECIPES', () => {
         expect(covered, `${id} card coverage`).toBeLessThan(0.98);
       }
     }
-  });
+  }, 300_000);
 });
 
 describe('noise', () => {

@@ -961,8 +961,7 @@ export function water(p: WaterParams): SurfaceRecipe {
     orm(o, _h, c) {
       const sc = p.scum ? tiled(c.noise, 10, 10, 3) : null;
       each(o, (u, v, i) => {
-        // scum is matte, but G is relative to SurfaceDef.roughness (D5): 2 × nominal is the most it can hold
-        o.rough[i] = sc && p.scum ? mix(p.rough, p.rough * 2, smoothstep(0.58, 0.68, sc.fbm(u, v, 4)) * p.scum.amount) : p.rough;
+        o.rough[i] = sc && p.scum ? mix(p.rough, 0.8, smoothstep(0.58, 0.68, sc.fbm(u, v, 4)) * p.scum.amount) : p.rough;   // matte scum
       });
     },
   });

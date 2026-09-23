@@ -1,0 +1,1570 @@
+{
+  "byBiome": {
+    "capital": [
+      "cobble",
+      "fountain_water",
+      "gilt_bronze",
+      "glass_warm",
+      "lantern_metal",
+      "laurel_leaf",
+      "plaster",
+      "plaza_pale_stone",
+      "stained_glass",
+      "stone_wall",
+      "sun_marble",
+      "timber"
+    ],
+    "cinder": [
+      "charred_timber",
+      "cinder_ash_soil",
+      "cinder_basalt",
+      "cinder_scoria",
+      "cobble",
+      "forge_brick",
+      "glass_warm",
+      "iron_grate",
+      "lantern_metal",
+      "lava_crust",
+      "lava_glow",
+      "obsidian",
+      "plaster",
+      "stone_wall",
+      "timber"
+    ],
+    "forge": [
+      "anvil_black",
+      "banner_cloth",
+      "castle_granite",
+      "chain",
+      "coal_glow",
+      "cobble",
+      "forge_steel_plate",
+      "glass_warm",
+      "lantern_metal",
+      "plaster",
+      "rivet_iron",
+      "stone_wall",
+      "timber"
+    ],
+    "grove": [
+      "cobble",
+      "dirt",
+      "glass_warm",
+      "grove_bark",
+      "grove_leaf_canopy",
+      "grove_moss",
+      "lantern_metal",
+      "path_gravel",
+      "plaster",
+      "slate_roof",
+      "stone_wall",
+      "tall_grass",
+      "thatch",
+      "timber",
+      "water_pond"
+    ],
+    "marrow": [
+      "bone_chalk",
+      "canyon_dust",
+      "cobble",
+      "glass_warm",
+      "gypsum_crystal",
+      "lantern_metal",
+      "marrow_sandstone",
+      "mine_timber",
+      "ore_vein",
+      "plaster",
+      "rail_iron",
+      "stone_wall",
+      "timber"
+    ],
+    "rift": [
+      "cobble",
+      "glass_warm",
+      "lantern_metal",
+      "plaster",
+      "rift_shard",
+      "stone_wall",
+      "timber",
+      "unmade_stone",
+      "void_floor"
+    ],
+    "salt": [
+      "barnacle_stone",
+      "cobble",
+      "driftwood",
+      "glass_warm",
+      "harbour_plank",
+      "lantern_metal",
+      "plaster",
+      "rope",
+      "sailcloth",
+      "salt_sand",
+      "sea_water",
+      "stone_wall",
+      "tide_pool",
+      "timber",
+      "wet_rock"
+    ],
+    "shrine": [
+      "cobble",
+      "eclipse_stone",
+      "glass_warm",
+      "lantern_metal",
+      "plaster",
+      "ring_light",
+      "star_iron",
+      "stone_wall",
+      "timber",
+      "void_glass"
+    ],
+    "sky": [
+      "cloud_stone",
+      "cobble",
+      "dragon_scale_tile",
+      "frost_glass",
+      "glass_warm",
+      "gold_leaf",
+      "lantern_metal",
+      "pine_needle",
+      "plaster",
+      "prayer_silk",
+      "sky_marble",
+      "snow",
+      "stone_wall",
+      "timber"
+    ],
+    "storm": [
+      "cobble",
+      "coil_brass",
+      "copper_oxide",
+      "glass_warm",
+      "insulator_glass",
+      "lantern_metal",
+      "lightning_glass",
+      "plaster",
+      "stone_wall",
+      "storm_slate",
+      "timber",
+      "tower_stone",
+      "wet_flagstone"
+    ],
+    "vesper": [
+      "bog_water",
+      "candle_wax",
+      "cobble",
+      "glass_warm",
+      "grave_moss",
+      "lantern_metal",
+      "lichen_stone",
+      "mist_glass",
+      "plaster",
+      "stone_wall",
+      "timber",
+      "vesper_bark_black",
+      "willow_leaf",
+      "wrought_iron"
+    ]
+  },
+  "fieldBytes": 22980874,
+  "heroBytes": 35411882,
+  "placeholder": {
+    "albedo": "placeholder_albedo.ktx2",
+    "normal": "placeholder_normal.ktx2",
+    "orm": "placeholder_orm.ktx2"
+  },
+  "surfaces": {
+    "anvil_black": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "anvil_black.field_albedo.ktx2",
+        "bytes": 268558,
+        "normal": "anvil_black.field_normal.ktx2",
+        "orm": "anvil_black.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "1f1e797c3547ebcafb4d3a04c53f97c95674e1601de0b0118e93463d0a315c19",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "banner_cloth": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "banner_cloth.field_albedo.ktx2",
+        "bytes": 169681,
+        "normal": "banner_cloth.field_normal.ktx2",
+        "orm": "banner_cloth.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "85af3756f9c315fbe6bc262c8e9cc837d222ba419c656035e09eeb14ae0d0353",
+      "hero": null,
+      "metres": 1,
+      "wrap": "clamp"
+    },
+    "barnacle_stone": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "barnacle_stone.field_albedo.ktx2",
+        "bytes": 477571,
+        "normal": "barnacle_stone.field_normal.ktx2",
+        "orm": "barnacle_stone.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "0b1476ab94922854c27505a9b86a239c9c35da8c52ffdf63a5e83bbbe7ab12a2",
+      "hero": {
+        "albedo": "barnacle_stone.hero_albedo.ktx2",
+        "bytes": 1527788,
+        "normal": "barnacle_stone.hero_normal.ktx2",
+        "orm": "barnacle_stone.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "bog_water": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "bog_water.field_albedo.ktx2",
+        "bytes": 208132,
+        "normal": "bog_water.field_normal.ktx2",
+        "orm": "bog_water.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "72b36245014ed0a4a3d4e2ca9bc0be108c3c04fb6ee535f2a9591deb7b8192c1",
+      "hero": null,
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "bone_chalk": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "bone_chalk.field_albedo.ktx2",
+        "bytes": 350654,
+        "normal": "bone_chalk.field_normal.ktx2",
+        "orm": "bone_chalk.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "a0f5db560afd923719583e9ad3fb34ae870c0cabf7d545e160a06c41d0a7defb",
+      "hero": {
+        "albedo": "bone_chalk.hero_albedo.ktx2",
+        "bytes": 1060843,
+        "normal": "bone_chalk.hero_normal.ktx2",
+        "orm": "bone_chalk.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "candle_wax": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "candle_wax.field_albedo.ktx2",
+        "bytes": 154785,
+        "normal": "candle_wax.field_normal.ktx2",
+        "orm": "candle_wax.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "2f364fa12f621f40d10cc1301a4228b430546d36559cd55f9b91fec30e8f0f47",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "canyon_dust": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "canyon_dust.field_albedo.ktx2",
+        "bytes": 386009,
+        "normal": "canyon_dust.field_normal.ktx2",
+        "orm": "canyon_dust.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "735005f849623f7fbf6d19ba2d0443586508249a18a6c01fec51f5eb7319a6bb",
+      "hero": {
+        "albedo": "canyon_dust.hero_albedo.ktx2",
+        "bytes": 1234362,
+        "normal": "canyon_dust.hero_normal.ktx2",
+        "orm": "canyon_dust.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "castle_granite": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "castle_granite.field_albedo.ktx2",
+        "bytes": 255469,
+        "normal": "castle_granite.field_normal.ktx2",
+        "orm": "castle_granite.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "ac0d4cfaacbb984ed1b163bb8717dd7d93629403859506861c44f81c49330494",
+      "hero": {
+        "albedo": "castle_granite.hero_albedo.ktx2",
+        "bytes": 851497,
+        "normal": "castle_granite.hero_normal.ktx2",
+        "orm": "castle_granite.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "chain": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "chain.field_albedo.ktx2",
+        "bytes": 183967,
+        "normal": "chain.field_normal.ktx2",
+        "orm": "chain.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "f320b90327cc2d4977b0f3517ece16d55bdd47f161359f24c75bc14b2fb43365",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "charred_timber": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "charred_timber.field_albedo.ktx2",
+        "bytes": 336192,
+        "normal": "charred_timber.field_normal.ktx2",
+        "orm": "charred_timber.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "f1aec0db39316deeca857b497c58c295d645ff47fc4ad7d247276d4fbbc648ad",
+      "hero": null,
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "cinder_ash_soil": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "cinder_ash_soil.field_albedo.ktx2",
+        "bytes": 297085,
+        "normal": "cinder_ash_soil.field_normal.ktx2",
+        "orm": "cinder_ash_soil.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "c99aa7d2bdac62a90266f207de2bb4b1658c69c6f76dee4497d101c489b57c2a",
+      "hero": {
+        "albedo": "cinder_ash_soil.hero_albedo.ktx2",
+        "bytes": 895909,
+        "normal": "cinder_ash_soil.hero_normal.ktx2",
+        "orm": "cinder_ash_soil.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "cinder_basalt": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "cinder_basalt.field_albedo.ktx2",
+        "bytes": 355605,
+        "normal": "cinder_basalt.field_normal.ktx2",
+        "orm": "cinder_basalt.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "047567907c3a0758c2fe42e8c75e201f9e29edf620da68826662f4d9ef7ebb37",
+      "hero": {
+        "albedo": "cinder_basalt.hero_albedo.ktx2",
+        "bytes": 1112144,
+        "normal": "cinder_basalt.hero_normal.ktx2",
+        "orm": "cinder_basalt.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "cinder_scoria": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "cinder_scoria.field_albedo.ktx2",
+        "bytes": 487435,
+        "normal": "cinder_scoria.field_normal.ktx2",
+        "orm": "cinder_scoria.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "037c934b3c9462b571a13d160f925050f60f038b112c516884ce8cbf929f89fb",
+      "hero": {
+        "albedo": "cinder_scoria.hero_albedo.ktx2",
+        "bytes": 1526445,
+        "normal": "cinder_scoria.hero_normal.ktx2",
+        "orm": "cinder_scoria.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "cloud_stone": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "cloud_stone.field_albedo.ktx2",
+        "bytes": 428242,
+        "normal": "cloud_stone.field_normal.ktx2",
+        "orm": "cloud_stone.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "7e53619a14497e038ffb6110e1254ae439ec2136476bda688c195bcda14277d2",
+      "hero": {
+        "albedo": "cloud_stone.hero_albedo.ktx2",
+        "bytes": 1313992,
+        "normal": "cloud_stone.hero_normal.ktx2",
+        "orm": "cloud_stone.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "coal_glow": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "coal_glow.field_albedo.ktx2",
+        "bytes": 280729,
+        "normal": "coal_glow.field_normal.ktx2",
+        "orm": "coal_glow.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "10ea2ce2f6529a50fa4fe08db84f72990575cecdef89c96562faa73474cf2355",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "cobble": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "cobble.field_albedo.ktx2",
+        "bytes": 276276,
+        "normal": "cobble.field_normal.ktx2",
+        "orm": "cobble.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "ec70d10f07b2f5dede35504591b1d3190ba00bc052732dd36cadcf842f375434",
+      "hero": {
+        "albedo": "cobble.hero_albedo.ktx2",
+        "bytes": 892106,
+        "normal": "cobble.hero_normal.ktx2",
+        "orm": "cobble.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "coil_brass": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "coil_brass.field_albedo.ktx2",
+        "bytes": 74821,
+        "normal": "coil_brass.field_normal.ktx2",
+        "orm": "coil_brass.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "16bb578e74b9bc21caafab137618c901b2f5fee5904a0b75b89732a751bf3a75",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "copper_oxide": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "copper_oxide.field_albedo.ktx2",
+        "bytes": 313092,
+        "normal": "copper_oxide.field_normal.ktx2",
+        "orm": "copper_oxide.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "86b1f2a7cc7a2e84e2184c24baf0e50ed1523ccb4773f054fca0e36ac1a4f3eb",
+      "hero": {
+        "albedo": "copper_oxide.hero_albedo.ktx2",
+        "bytes": 941941,
+        "normal": "copper_oxide.hero_normal.ktx2",
+        "orm": "copper_oxide.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "dirt": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "dirt.field_albedo.ktx2",
+        "bytes": 320492,
+        "normal": "dirt.field_normal.ktx2",
+        "orm": "dirt.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "53028d88eeee21aaea8b56b3c3e1015eff3ddb150cf7e5a8cf1cc069449345b5",
+      "hero": {
+        "albedo": "dirt.hero_albedo.ktx2",
+        "bytes": 1046812,
+        "normal": "dirt.hero_normal.ktx2",
+        "orm": "dirt.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "dragon_scale_tile": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "dragon_scale_tile.field_albedo.ktx2",
+        "bytes": 205242,
+        "normal": "dragon_scale_tile.field_normal.ktx2",
+        "orm": "dragon_scale_tile.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "4ef89f9cacae30be5fb3f9aad6557fdb13d39d3def84dfcdc914f87876717e33",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "driftwood": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "driftwood.field_albedo.ktx2",
+        "bytes": 290581,
+        "normal": "driftwood.field_normal.ktx2",
+        "orm": "driftwood.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "06b97c0ce6936475bae1e0ac50387f00cd3c4e8c310b2a85db70fec86798964b",
+      "hero": null,
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "eclipse_stone": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "eclipse_stone.field_albedo.ktx2",
+        "bytes": 341133,
+        "normal": "eclipse_stone.field_normal.ktx2",
+        "orm": "eclipse_stone.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "f070451ddf93b5775ba7cc8e42486687b483959b9c2c9679cd6dc0143c5b1162",
+      "hero": {
+        "albedo": "eclipse_stone.hero_albedo.ktx2",
+        "bytes": 1041885,
+        "normal": "eclipse_stone.hero_normal.ktx2",
+        "orm": "eclipse_stone.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "forge_brick": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "forge_brick.field_albedo.ktx2",
+        "bytes": 298051,
+        "normal": "forge_brick.field_normal.ktx2",
+        "orm": "forge_brick.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "bd4dd1a9c59f74ca2a5ee9b17461ee4fc430fa8c959f83eea09bd40a029641ad",
+      "hero": null,
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "forge_steel_plate": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "forge_steel_plate.field_albedo.ktx2",
+        "bytes": 183122,
+        "normal": "forge_steel_plate.field_normal.ktx2",
+        "orm": "forge_steel_plate.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "e116b1284a512147ac629a309dcbcbece1b1d71f7f90c686926cbcb0d2e4fd6b",
+      "hero": {
+        "albedo": "forge_steel_plate.hero_albedo.ktx2",
+        "bytes": 531779,
+        "normal": "forge_steel_plate.hero_normal.ktx2",
+        "orm": "forge_steel_plate.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "fountain_water": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "fountain_water.field_albedo.ktx2",
+        "bytes": 173893,
+        "normal": "fountain_water.field_normal.ktx2",
+        "orm": "fountain_water.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "1ad023a676c61c05b110caed15b3aebfebab9299d59d64323cdaf905504d3fc4",
+      "hero": null,
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "frost_glass": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "frost_glass.field_albedo.ktx2",
+        "bytes": 371846,
+        "normal": "frost_glass.field_normal.ktx2",
+        "orm": "frost_glass.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "9ef9818b663bcfe50b3c0a250d322dc43c995ad1a44c65426228f200feb3af31",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "gilt_bronze": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "gilt_bronze.field_albedo.ktx2",
+        "bytes": 227747,
+        "normal": "gilt_bronze.field_normal.ktx2",
+        "orm": "gilt_bronze.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "755f653ca15a1bc36fb14e7a19f3b0c2357398bd5c466a6f7eabb814c194505a",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "glass_warm": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "glass_warm.field_albedo.ktx2",
+        "bytes": 9138,
+        "normal": "glass_warm.field_normal.ktx2",
+        "orm": "glass_warm.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "5ed8acdc137cb8d9efc4e114de19991bba6bee4f0ffe498e0d5d98d119497887",
+      "hero": {
+        "albedo": "glass_warm.hero_albedo.ktx2",
+        "bytes": 16289,
+        "normal": "glass_warm.hero_normal.ktx2",
+        "orm": "glass_warm.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "gold_leaf": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "gold_leaf.field_albedo.ktx2",
+        "bytes": 227201,
+        "normal": "gold_leaf.field_normal.ktx2",
+        "orm": "gold_leaf.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "05c0306d49e513f2f0a488ce8c7481f449f511d8c73cf62d4cf13cd77da69d5f",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "grave_moss": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "grave_moss.field_albedo.ktx2",
+        "bytes": 337054,
+        "normal": "grave_moss.field_normal.ktx2",
+        "orm": "grave_moss.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "3113e621ca9cafe885bbf6ac8e74e7d51793e8a4e9d4475b244c43098c75d662",
+      "hero": {
+        "albedo": "grave_moss.hero_albedo.ktx2",
+        "bytes": 1116670,
+        "normal": "grave_moss.hero_normal.ktx2",
+        "orm": "grave_moss.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "grove_bark": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "grove_bark.field_albedo.ktx2",
+        "bytes": 352071,
+        "normal": "grove_bark.field_normal.ktx2",
+        "orm": "grove_bark.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "d6fa570319dfa6abcd3c22450f498877057a90ac4d64a5a79be1ad3d77b60874",
+      "hero": {
+        "albedo": "grove_bark.hero_albedo.ktx2",
+        "bytes": 1127071,
+        "normal": "grove_bark.hero_normal.ktx2",
+        "orm": "grove_bark.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "grove_leaf_canopy": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "grove_leaf_canopy.field_albedo.ktx2",
+        "bytes": 163706,
+        "normal": "grove_leaf_canopy.field_normal.ktx2",
+        "orm": "grove_leaf_canopy.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "b3c1f0d3ed4f08b8223c000e59edee4e435024e0a7da26a34160ed892a0c6fd3",
+      "hero": null,
+      "metres": 1,
+      "wrap": "clamp"
+    },
+    "grove_moss": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "grove_moss.field_albedo.ktx2",
+        "bytes": 429747,
+        "normal": "grove_moss.field_normal.ktx2",
+        "orm": "grove_moss.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "b881ac1468482758508d2ff29fe84f84d9486ef7e6b599ae845d7394fcbac9d6",
+      "hero": {
+        "albedo": "grove_moss.hero_albedo.ktx2",
+        "bytes": 1386597,
+        "normal": "grove_moss.hero_normal.ktx2",
+        "orm": "grove_moss.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "gypsum_crystal": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "gypsum_crystal.field_albedo.ktx2",
+        "bytes": 438326,
+        "normal": "gypsum_crystal.field_normal.ktx2",
+        "orm": "gypsum_crystal.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "9f9dabeb266b0a4cab1ec3b444080bf9a7fe5a680832f62881b2cbea8307e893",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "harbour_plank": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "harbour_plank.field_albedo.ktx2",
+        "bytes": 229550,
+        "normal": "harbour_plank.field_normal.ktx2",
+        "orm": "harbour_plank.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "ae05a15181b7c173a91e7bc0dbdddec6224c2e36b7aa409b2d0632de391eacf3",
+      "hero": null,
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "insulator_glass": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "insulator_glass.field_albedo.ktx2",
+        "bytes": 82807,
+        "normal": "insulator_glass.field_normal.ktx2",
+        "orm": "insulator_glass.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "bb60dd14e371180921f105bef46f72331ff268007ac16012e7774e2c739b554a",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "iron_grate": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "iron_grate.field_albedo.ktx2",
+        "bytes": 263611,
+        "normal": "iron_grate.field_normal.ktx2",
+        "orm": "iron_grate.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "942c2d8fd15f2a6ce3a772fab647531ea4a5783ccd7352ae6a4fa1192fab265f",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "lantern_metal": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "lantern_metal.field_albedo.ktx2",
+        "bytes": 90562,
+        "normal": "lantern_metal.field_normal.ktx2",
+        "orm": "lantern_metal.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "fd38c55e9baf8584a9254df83d3e05df07f008c1e86ed391e293d09c2dc68a76",
+      "hero": {
+        "albedo": "lantern_metal.hero_albedo.ktx2",
+        "bytes": 248800,
+        "normal": "lantern_metal.hero_normal.ktx2",
+        "orm": "lantern_metal.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "laurel_leaf": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "laurel_leaf.field_albedo.ktx2",
+        "bytes": 406329,
+        "normal": "laurel_leaf.field_normal.ktx2",
+        "orm": "laurel_leaf.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "a3815c993b764c2cb797636b5005cbfc2e1548fa8ab220cd6f1da6f05f6c59ce",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "lava_crust": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "lava_crust.field_albedo.ktx2",
+        "bytes": 317337,
+        "normal": "lava_crust.field_normal.ktx2",
+        "orm": "lava_crust.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "7377a9e55d98a0f522efa686816c2ec3fc0e9926d4595192ea027f037dac88e3",
+      "hero": {
+        "albedo": "lava_crust.hero_albedo.ktx2",
+        "bytes": 1034508,
+        "normal": "lava_crust.hero_normal.ktx2",
+        "orm": "lava_crust.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "lava_glow": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "lava_glow.field_albedo.ktx2",
+        "bytes": 327985,
+        "normal": "lava_glow.field_normal.ktx2",
+        "orm": "lava_glow.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "c4cb23246fba8cb26344761e5f36d91dd84b952005772befd18a1fc1c8fff515",
+      "hero": null,
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "lichen_stone": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "lichen_stone.field_albedo.ktx2",
+        "bytes": 351702,
+        "normal": "lichen_stone.field_normal.ktx2",
+        "orm": "lichen_stone.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "f12f6ca3fa2af181948b94d5e1d4c0c49400df3167a1169e2670dcda32b86f3a",
+      "hero": {
+        "albedo": "lichen_stone.hero_albedo.ktx2",
+        "bytes": 1097288,
+        "normal": "lichen_stone.hero_normal.ktx2",
+        "orm": "lichen_stone.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "lightning_glass": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "lightning_glass.field_albedo.ktx2",
+        "bytes": 361903,
+        "normal": "lightning_glass.field_normal.ktx2",
+        "orm": "lightning_glass.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "34c151c516835741ebf3d6b642317c8094a0f7d6b85556fbe6f15ca8ea5a4f30",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "marrow_sandstone": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "marrow_sandstone.field_albedo.ktx2",
+        "bytes": 332435,
+        "normal": "marrow_sandstone.field_normal.ktx2",
+        "orm": "marrow_sandstone.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "b893a94648175530dd9bc5c80401b1f3964eb3a658116c3cd729479a93d23250",
+      "hero": {
+        "albedo": "marrow_sandstone.hero_albedo.ktx2",
+        "bytes": 1023264,
+        "normal": "marrow_sandstone.hero_normal.ktx2",
+        "orm": "marrow_sandstone.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "mine_timber": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "mine_timber.field_albedo.ktx2",
+        "bytes": 207677,
+        "normal": "mine_timber.field_normal.ktx2",
+        "orm": "mine_timber.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "f0b065cf34bf96982db5a3168143bb8f53c6c4dd42dd060e52840410cb2de1cf",
+      "hero": null,
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "mist_glass": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "mist_glass.field_albedo.ktx2",
+        "bytes": 145294,
+        "normal": "mist_glass.field_normal.ktx2",
+        "orm": "mist_glass.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "9857d2109000e0fea37bf0cbbb5f7a468868464ae6f6f79e5ddd3f7465d7c855",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "obsidian": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "obsidian.field_albedo.ktx2",
+        "bytes": 241874,
+        "normal": "obsidian.field_normal.ktx2",
+        "orm": "obsidian.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "2b6693e027f763573c2713ee832cda296ac358920906bbfb14b52ab3182a1980",
+      "hero": null,
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "ore_vein": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "ore_vein.field_albedo.ktx2",
+        "bytes": 383046,
+        "normal": "ore_vein.field_normal.ktx2",
+        "orm": "ore_vein.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "184eb7c6cd89ac5886fa0cf2bcd22d575a58fd964c9723bda8b0931eef39a359",
+      "hero": null,
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "path_gravel": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "path_gravel.field_albedo.ktx2",
+        "bytes": 521094,
+        "normal": "path_gravel.field_normal.ktx2",
+        "orm": "path_gravel.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "f04ee53e077e4a5053461f0ff86f170f8918ca01c2666ec2b46dfee422647138",
+      "hero": {
+        "albedo": "path_gravel.hero_albedo.ktx2",
+        "bytes": 1606633,
+        "normal": "path_gravel.hero_normal.ktx2",
+        "orm": "path_gravel.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "pine_needle": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "pine_needle.field_albedo.ktx2",
+        "bytes": 269591,
+        "normal": "pine_needle.field_normal.ktx2",
+        "orm": "pine_needle.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "cbc793794349f9c5f79a35d31b435487eb17a39e0737c9874f1037cc855ebc0d",
+      "hero": null,
+      "metres": 1,
+      "wrap": "clamp"
+    },
+    "plaster": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "plaster.field_albedo.ktx2",
+        "bytes": 150060,
+        "normal": "plaster.field_normal.ktx2",
+        "orm": "plaster.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "7dab5904d35eb9d6bbf8ff1abc6c88e89a1fcb2a99f5356f99c9753274c631a4",
+      "hero": {
+        "albedo": "plaster.hero_albedo.ktx2",
+        "bytes": 442567,
+        "normal": "plaster.hero_normal.ktx2",
+        "orm": "plaster.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "plaza_pale_stone": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "plaza_pale_stone.field_albedo.ktx2",
+        "bytes": 203400,
+        "normal": "plaza_pale_stone.field_normal.ktx2",
+        "orm": "plaza_pale_stone.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "cb1958eda8f2080b9b2f46c81b7b15134c13602e78f52f1a618eab795366df82",
+      "hero": {
+        "albedo": "plaza_pale_stone.hero_albedo.ktx2",
+        "bytes": 696172,
+        "normal": "plaza_pale_stone.hero_normal.ktx2",
+        "orm": "plaza_pale_stone.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "prayer_silk": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "prayer_silk.field_albedo.ktx2",
+        "bytes": 263227,
+        "normal": "prayer_silk.field_normal.ktx2",
+        "orm": "prayer_silk.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "f055d58e1c853877a9ef66f210faa74f23e36b03ef823e05c298187ff691dc0a",
+      "hero": null,
+      "metres": 1,
+      "wrap": "clamp"
+    },
+    "rail_iron": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "rail_iron.field_albedo.ktx2",
+        "bytes": 347865,
+        "normal": "rail_iron.field_normal.ktx2",
+        "orm": "rail_iron.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "ece262c97a6a52607fdb7fe15cb8c15222fa2210158aa04b81a46c5248707aa3",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "rift_shard": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "rift_shard.field_albedo.ktx2",
+        "bytes": 358748,
+        "normal": "rift_shard.field_normal.ktx2",
+        "orm": "rift_shard.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "8873f823374556c5e5874b498b52ac0e99c179c528a0d7d8f2109a7b755d8f26",
+      "hero": {
+        "albedo": "rift_shard.hero_albedo.ktx2",
+        "bytes": 1131847,
+        "normal": "rift_shard.hero_normal.ktx2",
+        "orm": "rift_shard.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "ring_light": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "ring_light.field_albedo.ktx2",
+        "bytes": 216915,
+        "normal": "ring_light.field_normal.ktx2",
+        "orm": "ring_light.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "3c0737d90d79b3bfc82ea00cc40c55c3d834ae7ee17ada8b6d1ab0801d7f72b5",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "rivet_iron": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "rivet_iron.field_albedo.ktx2",
+        "bytes": 298777,
+        "normal": "rivet_iron.field_normal.ktx2",
+        "orm": "rivet_iron.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "547cfd5deb52e71e19e9cf88d5b3974ab21163808b8bf355a07a8024c652fc42",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "rope": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "rope.field_albedo.ktx2",
+        "bytes": 245527,
+        "normal": "rope.field_normal.ktx2",
+        "orm": "rope.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "ff695016945b7eee8b5d0c2782cd9f0404727a85e95b16e91840bdc2a42b0901",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "sailcloth": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "sailcloth.field_albedo.ktx2",
+        "bytes": 318003,
+        "normal": "sailcloth.field_normal.ktx2",
+        "orm": "sailcloth.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "e0624ce1799c3b3ab28c8f3f2f5d23cb6e12221ac5b2c46d3e18e32b727ceda7",
+      "hero": null,
+      "metres": 1,
+      "wrap": "clamp"
+    },
+    "salt_sand": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "salt_sand.field_albedo.ktx2",
+        "bytes": 321424,
+        "normal": "salt_sand.field_normal.ktx2",
+        "orm": "salt_sand.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "221e9f1484d3e0911520e927f2291c6bded46eddc2a492985679f9f7dfd01dd4",
+      "hero": {
+        "albedo": "salt_sand.hero_albedo.ktx2",
+        "bytes": 1019035,
+        "normal": "salt_sand.hero_normal.ktx2",
+        "orm": "salt_sand.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "sea_water": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "sea_water.field_albedo.ktx2",
+        "bytes": 166103,
+        "normal": "sea_water.field_normal.ktx2",
+        "orm": "sea_water.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "279151787c08753b935883bb4d543f1fa1c6ded476bdacc4d39ed07e6c2f67d0",
+      "hero": null,
+      "metres": 4,
+      "wrap": "repeat"
+    },
+    "sky_marble": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "sky_marble.field_albedo.ktx2",
+        "bytes": 177248,
+        "normal": "sky_marble.field_normal.ktx2",
+        "orm": "sky_marble.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "d316ebbbf8eef0de58bd0bbebc274a8719f83990488841742063a49619d4bce1",
+      "hero": {
+        "albedo": "sky_marble.hero_albedo.ktx2",
+        "bytes": 579157,
+        "normal": "sky_marble.hero_normal.ktx2",
+        "orm": "sky_marble.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "slate_roof": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "slate_roof.field_albedo.ktx2",
+        "bytes": 203276,
+        "normal": "slate_roof.field_normal.ktx2",
+        "orm": "slate_roof.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "6013a874adadca36de6f8f57d0b3ae9e499685b9c2188ac749081c771732b77c",
+      "hero": null,
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "snow": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "snow.field_albedo.ktx2",
+        "bytes": 308624,
+        "normal": "snow.field_normal.ktx2",
+        "orm": "snow.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "f35774aa7dead120fc7bd9acf3c7bcf40149af8848a1c625eac134e785c2fe80",
+      "hero": {
+        "albedo": "snow.hero_albedo.ktx2",
+        "bytes": 1023199,
+        "normal": "snow.hero_normal.ktx2",
+        "orm": "snow.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "stained_glass": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "stained_glass.field_albedo.ktx2",
+        "bytes": 313428,
+        "normal": "stained_glass.field_normal.ktx2",
+        "orm": "stained_glass.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "eeb14f60a3d18ad70c9330ac30e837393685b551319b8c46e592775b2c2ecac0",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "star_iron": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "star_iron.field_albedo.ktx2",
+        "bytes": 299588,
+        "normal": "star_iron.field_normal.ktx2",
+        "orm": "star_iron.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "590cd9d19c7a4aef3e35e7acc169738c695f350dc84424ef3f16238985947720",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "stone_wall": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "stone_wall.field_albedo.ktx2",
+        "bytes": 218854,
+        "normal": "stone_wall.field_normal.ktx2",
+        "orm": "stone_wall.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "6b54b3db5c86c8d9d9deb31119f5142fed5dca14b3bef5aea3d55f484f03ae26",
+      "hero": {
+        "albedo": "stone_wall.hero_albedo.ktx2",
+        "bytes": 725406,
+        "normal": "stone_wall.hero_normal.ktx2",
+        "orm": "stone_wall.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "storm_slate": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "storm_slate.field_albedo.ktx2",
+        "bytes": 366976,
+        "normal": "storm_slate.field_normal.ktx2",
+        "orm": "storm_slate.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "29da91a2363e2e8c9e85ce779dc13900569c1d403ca401c5e0ed09aef146b0a4",
+      "hero": {
+        "albedo": "storm_slate.hero_albedo.ktx2",
+        "bytes": 1121928,
+        "normal": "storm_slate.hero_normal.ktx2",
+        "orm": "storm_slate.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "sun_marble": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "sun_marble.field_albedo.ktx2",
+        "bytes": 172748,
+        "normal": "sun_marble.field_normal.ktx2",
+        "orm": "sun_marble.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "e2273ae6c624898deed1de1e2e33930b92f32f5a09fbb185ad2ded2fd10f1a35",
+      "hero": {
+        "albedo": "sun_marble.hero_albedo.ktx2",
+        "bytes": 589471,
+        "normal": "sun_marble.hero_normal.ktx2",
+        "orm": "sun_marble.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "tall_grass": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "tall_grass.field_albedo.ktx2",
+        "bytes": 328161,
+        "normal": "tall_grass.field_normal.ktx2",
+        "orm": "tall_grass.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "c0dd6c9c3711eddb92dd1cec7c4405e9b55d36c62b1281a6280fb3bd17ae4581",
+      "hero": null,
+      "metres": 1,
+      "wrap": "clamp"
+    },
+    "thatch": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "thatch.field_albedo.ktx2",
+        "bytes": 468070,
+        "normal": "thatch.field_normal.ktx2",
+        "orm": "thatch.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "82fea3fa392288eae1d9af4990f551f41c888ade0ce2efd006866bfd70cf761a",
+      "hero": null,
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "tide_pool": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "tide_pool.field_albedo.ktx2",
+        "bytes": 203207,
+        "normal": "tide_pool.field_normal.ktx2",
+        "orm": "tide_pool.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "2af463c89b6feeffa2cb01e1c10cafc318578550db14491de04e6169c9683577",
+      "hero": null,
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "timber": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "timber.field_albedo.ktx2",
+        "bytes": 186271,
+        "normal": "timber.field_normal.ktx2",
+        "orm": "timber.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "3cf277d356bb968d3b4c93089a45d61ea7f46ab25a1176d67bbc03c70c769798",
+      "hero": {
+        "albedo": "timber.hero_albedo.ktx2",
+        "bytes": 596355,
+        "normal": "timber.hero_normal.ktx2",
+        "orm": "timber.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "tower_stone": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "tower_stone.field_albedo.ktx2",
+        "bytes": 264658,
+        "normal": "tower_stone.field_normal.ktx2",
+        "orm": "tower_stone.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "1589605774dcb8d7ecfca6d830a699c0a60695d064da3e42f59bc30b4700f21e",
+      "hero": null,
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "unmade_stone": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "unmade_stone.field_albedo.ktx2",
+        "bytes": 214539,
+        "normal": "unmade_stone.field_normal.ktx2",
+        "orm": "unmade_stone.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "55da0ed65f7ca3e2d27cc3e366cfc0f321dc95ecb6f0222103b12e2e6ad802b4",
+      "hero": {
+        "albedo": "unmade_stone.hero_albedo.ktx2",
+        "bytes": 611283,
+        "normal": "unmade_stone.hero_normal.ktx2",
+        "orm": "unmade_stone.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "vesper_bark_black": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "vesper_bark_black.field_albedo.ktx2",
+        "bytes": 305066,
+        "normal": "vesper_bark_black.field_normal.ktx2",
+        "orm": "vesper_bark_black.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "6153544db8d2de2fcbf6438736d5d5cf3e32e1235faf1150426dc2836b6ace6e",
+      "hero": {
+        "albedo": "vesper_bark_black.hero_albedo.ktx2",
+        "bytes": 959859,
+        "normal": "vesper_bark_black.hero_normal.ktx2",
+        "orm": "vesper_bark_black.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 2,
+      "wrap": "repeat"
+    },
+    "void_floor": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "void_floor.field_albedo.ktx2",
+        "bytes": 184037,
+        "normal": "void_floor.field_normal.ktx2",
+        "orm": "void_floor.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "192a45ce84d30ae24eea222a8325f640519c204b61e5c23caa0076af8b84ab8d",
+      "hero": {
+        "albedo": "void_floor.hero_albedo.ktx2",
+        "bytes": 580037,
+        "normal": "void_floor.hero_normal.ktx2",
+        "orm": "void_floor.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "void_glass": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "void_glass.field_albedo.ktx2",
+        "bytes": 298586,
+        "normal": "void_glass.field_normal.ktx2",
+        "orm": "void_glass.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "dea49b9625996de25a61f2e4a277afab458bd5adbec392d0cbd98d1ca094f298",
+      "hero": {
+        "albedo": "void_glass.hero_albedo.ktx2",
+        "bytes": 920949,
+        "normal": "void_glass.hero_normal.ktx2",
+        "orm": "void_glass.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 1,
+      "wrap": "repeat"
+    },
+    "water_pond": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "water_pond.field_albedo.ktx2",
+        "bytes": 168631,
+        "normal": "water_pond.field_normal.ktx2",
+        "orm": "water_pond.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "9c84d0104c0e01e11fb1c6991b173bdac6531125864f52c911a67afba867ee06",
+      "hero": null,
+      "metres": 4,
+      "wrap": "repeat"
+    },
+    "wet_flagstone": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "wet_flagstone.field_albedo.ktx2",
+        "bytes": 261656,
+        "normal": "wet_flagstone.field_normal.ktx2",
+        "orm": "wet_flagstone.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "fb341180b9510294bf966ce05f56662d54cc9eab0b2170013f0d70288dc01d77",
+      "hero": {
+        "albedo": "wet_flagstone.hero_albedo.ktx2",
+        "bytes": 830888,
+        "normal": "wet_flagstone.hero_normal.ktx2",
+        "orm": "wet_flagstone.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "wet_rock": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "wet_rock.field_albedo.ktx2",
+        "bytes": 306266,
+        "normal": "wet_rock.field_normal.ktx2",
+        "orm": "wet_rock.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "d91114ffe60aff7db4a0e0f3aa237907f7a78d87872bd7f8b7a9b343162888be",
+      "hero": {
+        "albedo": "wet_rock.hero_albedo.ktx2",
+        "bytes": 949106,
+        "normal": "wet_rock.hero_normal.ktx2",
+        "orm": "wet_rock.hero_orm.ktx2",
+        "size": 1024
+      },
+      "metres": 3,
+      "wrap": "repeat"
+    },
+    "willow_leaf": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "willow_leaf.field_albedo.ktx2",
+        "bytes": 265567,
+        "normal": "willow_leaf.field_normal.ktx2",
+        "orm": "willow_leaf.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "2990266e46a7235ec46adecf03825aed8f289e34e87f677ecc9a992de82deb15",
+      "hero": null,
+      "metres": 1,
+      "wrap": "clamp"
+    },
+    "wrought_iron": {
+      "albedoClampedPct": 0,
+      "field": {
+        "albedo": "wrought_iron.field_albedo.ktx2",
+        "bytes": 368918,
+        "normal": "wrought_iron.field_normal.ktx2",
+        "orm": "wrought_iron.field_orm.ktx2",
+        "size": 512
+      },
+      "hash": "709f6e1da3ec6aae308a28edb62224c680804220e9699f18f09e314250e3be99",
+      "hero": null,
+      "metres": 1,
+      "wrap": "repeat"
+    }
+  },
+  "totalBytes": 58393677,
+  "version": 2
+}
