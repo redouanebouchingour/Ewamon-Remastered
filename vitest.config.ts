@@ -7,13 +7,14 @@ const pkg = (name: string): string =>
 export default defineConfig({
   resolve: {
     alias: {
+      // subpath first: vite matches '@ewa/render' as a prefix of '@ewa/render/surfaces' otherwise
+      '@ewa/render/surfaces': fileURLToPath(new URL('./packages/render/src/surfaces/index.ts', import.meta.url)),
       '@ewa/core': pkg('core'),
       '@ewa/content': pkg('content'),
       '@ewa/protocol': pkg('protocol'),
       '@ewa/persist': pkg('persist'),
       '@ewa/render': pkg('render'),
       '@ewa/server': pkg('server'),
-      '@ewa/render/surfaces': fileURLToPath(new URL('./packages/render/src/surfaces/index.ts', import.meta.url)),
     },
   },
   test: {

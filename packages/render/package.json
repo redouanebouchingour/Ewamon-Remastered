@@ -10,7 +10,8 @@
     "./surfaces": "./src/surfaces/index.ts"
   },
   "scripts": {
-    "build": "tsc -b"
+    "build": "tsc -b",
+    "sandbox": "vite --config vite.sandbox.config.ts --port 5180 --strictPort"
   },
   "dependencies": {
     "three": "^0.186.0"

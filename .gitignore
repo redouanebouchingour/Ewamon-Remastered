@@ -26,3 +26,4 @@ assets-src/models/
 tools/sprite-pipeline/.cache/
 tools/audio-pipeline/.cache/
 tools/audio-pipeline/out/
+tools/material-bake/.cache/

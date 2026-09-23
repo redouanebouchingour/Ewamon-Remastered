@@ -1,1 +1,81 @@
-export {};
+/**
+ * `@ewa/render` public surface (SPEC §10.0.2: re-exports the symbols named `export` in §10).
+ * Part 1 (this foundation): renderer host §10.1, material library §10.2, lighting rig §10.3, post stack
+ * §10.8, stats/budget §10.10. The §10.4–§10.7/§10.9 contracts are typed in `contracts.ts` and backed by
+ * placeholders in `defaults.ts` until their agents land.
+ */
+
+// ---- descriptors (plain data) ----
+export {
+  ALL_EFFECTS, BUDGET_PASSES, LAYERS, LIGHT_BUDGET,
+} from './descriptors.js';
+export type {
+  Backend, BudgetCounts, BudgetPass, EffectsFlags, HarvestLevel, HousingRef, LightKind, LightSource, RenderCaps, RenderStats, WeatherKind,
+} from './descriptors.js';
+
+// ---- §10.1 renderer host + §10.10 probe ----
+export {
+  CAMERA_LAYERS, CAMERA_PARAMS, DEFAULT_SUBSYSTEMS, MAX_DRAWING_WIDTH, MIN_MAX_TEXTURE_SIZE, PIXEL_RATIO_CAP, RenderInitError,
+  chooseKtx2Target, clampPixelRatio, createBudgetProbe, createRenderer, createZoneView, rendererInternals,
+} from './renderer.js';
+export type {
+  BudgetProbe, CameraShot, FrameHook, HostContext, HudBinding, PassMeasureOptions, Renderer, RendererOptions, RendererProbe,
+  RendererSubsystems, RenderInitErrorCode, ZoneView, ZoneViewOptions,
+} from './renderer.js';
+
+// ---- §10.2 materials ----
+export {
+  BIOME_SURFACES, SHARED_SURFACES, SURFACES, SURFACE_EXTRAS, SURFACE_IDS, heroSurfaces, isSurfaceId, surfaceDef, surfaceExtras,
+} from './materials/surfaces.js';
+export type { BiomeName, MaterialClass, SurfaceDef, SurfaceExtras, SurfaceId } from './materials/surfaces.js';
+export {
+  MaterialBudget, countMaterials, createMaterialLibrary, createMaterialLibraryWith, paintSurfaceColor, stampTexture, textureBytes,
+} from './materials/library.js';
+export type { LibraryDeps, MaterialInfo, MaterialLibrary, SharedUniforms, SurfaceMaterial, TextureSet, TextureSource } from './materials/library.js';
+export {
+  DEFAULT_PLACEHOLDER, MANIFEST_FILE, PLACEHOLDER_TEXELS, parseMaterialsManifest, planTierUrls, placeholderUrls, resolveUrl,
+} from './materials/manifest.js';
+export type { MapName, MaterialSetEntry, MaterialsManifest, MaterialTier, ParsedManifest, TierName, TierUrls } from './materials/manifest.js';
+export { WATER_DEPTH_ATTRIBUTE, buildSurfaceGraph } from './materials/graph.js';
+export { windDisplace } from './materials/wind.js';
+export type { WindParams } from './materials/wind.js';
+export { triplanarSample } from './materials/triplanar.js';
+export { createSharedUniforms, harvestBlend, stepWetness, toHarvestLevel } from './materials/harvest.js';
+
+// ---- §10.3 lighting ----
+export {
+  CASCADE_SPLITS_M, CSM_OPTIONS, LightRig, SPOT_PARAMS, SUN_SHADOW, assertLightBudget, castsShadowMap, flickerFactor, lightTypeFor,
+} from './lighting/rig.js';
+export type { LightCounts, PunctualHandle } from './lighting/rig.js';
+export {
+  DAY_KEYFRAMES, DAY_LENGTH_REAL_MS, DayCycle, GROVE_LIGHTING, MOON_SWITCH_DEG, directionalAt, isMoonLight, moonDirection, rebakeDue,
+  sampleDay, sunAzimuthDeg, sunDirection, sunElevationDeg, wrapTime,
+} from './lighting/daycycle.js';
+export type { DayKey, DayKeyframe, DaySample, LightingPalette } from './lighting/daycycle.js';
+export { SKY_HARVESTED, SKY_INTACT, SkyController } from './lighting/sky.js';
+export { createHeightFog, heightFogFactor } from './lighting/fog.js';
+export type { FogUniforms, HeightFog } from './lighting/fog.js';
+export { PrecipitationSheet, weatherParams } from './lighting/weather.js';
+export type { WeatherParams } from './lighting/weather.js';
+
+// ---- §10.8 post ----
+export {
+  ALL_PASSES_ON, POST_PARAMS, PostStack, buildPostOutput, planPostGraph, tiltPlaneNormal,
+} from './post/pipeline.js';
+export type { PassSwitches, PostNodes, PostStage, PostStageId, PostUniforms } from './post/pipeline.js';
+export { GROVE_GRADE, NEUTRAL_GRADE, gradeChannel, vignetteFactor } from './post/grade.js';
+export type { GradePalette } from './post/grade.js';
+export { REDUCED_OFF, applyReducedEffects, coerceTimeScale, effectsEqual, isReduced } from './post/effects.js';
+
+// ---- §10.10 stats ----
+export { COUNT_CAPS, capViolations, computePassMs, createRenderStats, dumpZone, median, percentile, readBudgetCounts } from './stats.js';
+export type { ZoneDump } from './stats.js';
+
+// ---- §10.4–§10.9 contracts (implemented by later agents) + placeholders ----
+export type {
+  ActorDescriptor, ActorPool, BattlerPose, BattlerRef, BattleStage, Biome, BuildingSpec, CameraRig, Dir, Edge, GeneratorSet, HeightfieldData,
+  HudLayer, HudModel, Layout, Marker, Pickup, PropPlacement, SetPieceId, SpriteDescriptor, SpriteFrame, Tablet, Terrain, TerrainColliderLike,
+  TypeName, VariantKey, VfxId, WaterSpec, ZoneHandle, ZoneSpec, ActorSpawn,
+} from './contracts.js';
+export { BasicDioramaRig, NullActorPool, NullBattleStage, NullHudLayer, unimplementedZoneLoader } from './defaults.js';
+export type { ZoneLoader } from './defaults.js';

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "render-sandbox",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@ewa/render", "sandbox"],
+      "port": 5180
+    }
+  ]
+}
