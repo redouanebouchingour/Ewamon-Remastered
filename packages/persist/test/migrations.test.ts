@@ -74,3 +74,28 @@ describe('migrations (§5.4)', () => {
     expect(n).toBe(1);
   });
 });
+
+describe('createDb({ pgliteDir }) — dev persistence without Docker', () => {
+  it('a PGlite database written to a directory survives close + reopen', async () => {
+    const { mkdtempSync, rmSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { createDb } = await import('../src/db');
+    const dir = mkdtempSync(join(tmpdir(), 'ewa-pglite-'));
+    try {
+      const a = await createDb({ pgliteDir: dir });
+      await runMigrations(a);
+      await a.transaction(async (tx) => {
+        await tx.execute(sql`insert into players (username, username_lower, email, password_hash) values ('dir_probe', 'dir_probe', 'dir@probe.test', 'x')`);
+      });
+      await a.close();
+      const b = await createDb({ pgliteDir: dir });
+      await runMigrations(b);
+      const n = await b.transaction(async (tx) => tx.execute(sql`select count(*)::int as n from players where username_lower = 'dir_probe'`));
+      expect(Number((n as unknown as { rows: { n: number }[] }).rows[0]!.n)).toBe(1);
+      await b.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 240_000); // an on-disk PGlite + migration is slow on Windows (~30 s alone, more under load)
+});

@@ -1,0 +1,2 @@
+# dev PGlite database (DATA_DIR default ./.data when DATABASE_URL is unset)
+.data/

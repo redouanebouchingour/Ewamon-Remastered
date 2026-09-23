@@ -1,6 +1,6 @@
 /**
  * The one place a driver is chosen. `createDb({ url })` opens node-postgres against `url`;
- * `createDb()` opens an in-memory PGlite (dev/test). Everything above this file sees only `Db`
+ * `createDb()` opens an in-memory PGlite (dev/test); `createDb({ pgliteDir })` a PGlite persisted on disk. Everything above this file sees only `Db`
  * and `Tx`, so repositories run byte-identical on both.
  */
 import { fileURLToPath } from 'node:url';
@@ -48,6 +48,11 @@ export interface CreateDbOptions {
   url?: string;
   /** node-postgres pool size (pg only). */
   poolMax?: number;
+  /**
+   * PGlite only: a directory to persist the database in (dev servers without Docker). Omitted → in-memory.
+   * Ignored when `url` is set.
+   */
+  pgliteDir?: string;
 }
 
 export async function createDb(opts: CreateDbOptions = {}): Promise<AnyDb> {
@@ -67,7 +72,7 @@ export async function createDb(opts: CreateDbOptions = {}): Promise<AnyDb> {
       },
     };
   }
-  const client = await PGlite.create();
+  const client = opts.pgliteDir !== undefined ? await PGlite.create(opts.pgliteDir) : await PGlite.create();
   const db = drizzlePglite({ client, schema });
   let closed = false;
   return {

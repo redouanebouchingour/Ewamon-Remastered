@@ -43,6 +43,16 @@ export const progressRepo = {
     return rows.map((r) => r.flag);
   },
 
+  /** When `flag` was set for the player, or null (trainer rematch windows, server §30.4.4). */
+  async flagSetAt(tx: Tx, playerId: string, flag: string): Promise<Date | null> {
+    const [row] = await tx
+      .select({ setAt: storyFlags.setAt })
+      .from(storyFlags)
+      .where(and(eq(storyFlags.playerId, playerId), eq(storyFlags.flag, flag)))
+      .limit(1);
+    return row?.setAt ?? null;
+  },
+
   /** Sets every flag (idempotent). Flags are never unset by this call. */
   async setFlags(tx: Tx, playerId: string, flags: readonly string[], now: Date): Promise<void> {
     const unique = [...new Set(flags)];

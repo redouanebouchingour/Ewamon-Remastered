@@ -4,8 +4,12 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "lib": ["ES2022"],
-    "types": ["node"], "experimentalDecorators": true
+    "types": ["node"],
+    // Same pair as packages/protocol/tsconfig.json: @colyseus/schema 5 uses legacy PropertyDecorators and
+    // needs [[Set]] class-field semantics (see packages/protocol/IMPLEMENTATION-NOTES.md).
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": ["src/**/*.ts"],
   "references": [{ "path": "../core" }, { "path": "../content" }, { "path": "../protocol" }, { "path": "../persist" }]
 }

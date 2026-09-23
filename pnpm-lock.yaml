@@ -202,6 +202,10 @@ importers:
       zod:
         specifier: ^4.1.12
         version: 4.6.5
+    devDependencies:
+      '@colyseus/sdk':
+        specifier: ^0.18.2
+        version: 0.18.2(@colyseus/core@0.18.14)(typescript@5.9.3)(zod@4.6.5)
 
   tools/asset-audit:
     dependencies:

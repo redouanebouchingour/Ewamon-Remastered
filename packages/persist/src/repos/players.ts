@@ -169,6 +169,18 @@ export const playerRepo = {
     }
   },
 
+  /** `is_admin` — written only by the server's dev-only ADMIN_BOOTSTRAP_USERNAME at boot (server §30.1.2). */
+  async setAdmin(tx: Tx, id: string, isAdmin: boolean): Promise<void> {
+    const res = await tx.update(players).set({ isAdmin }).where(eq(players.id, id)).returning({ id: players.id });
+    if (res.length === 0) fail('NotFound', `player ${id}`);
+  },
+
+  /** Every banned player id — the server's per-process ban cache is rebuilt from this (server §30.6.7). */
+  async bannedIds(tx: Tx): Promise<string[]> {
+    const rows = await tx.select({ id: players.id }).from(players).where(isNotNull(players.bannedAt)).orderBy(asc(players.id));
+    return rows.map((r) => r.id);
+  },
+
   async unban(tx: Tx, id: string): Promise<void> {
     const res = await tx.update(players).set({ bannedAt: null, banReason: null }).where(eq(players.id, id)).returning({ id: players.id });
     if (res.length === 0) fail('NotFound', `player ${id}`);

@@ -95,6 +95,21 @@ describe('PlayerRepo money / rating / identity', () => {
     });
   });
 
+  it('bannedIds lists exactly the banned players', async () => {
+    await db.transaction(async (tx) => {
+      const a = await mkPlayer(tx);
+      const b = await mkPlayer(tx);
+      await playerRepo.ban(tx, a, 'spam', T0);
+      const ids = await playerRepo.bannedIds(tx);
+      expect(ids).toContain(a);
+      expect(ids).not.toContain(b);
+      await playerRepo.unban(tx, a);
+      expect(await playerRepo.bannedIds(tx)).not.toContain(a);
+      await playerRepo.setAdmin(tx, b, true);
+      expect((await playerRepo.byId(tx, b))!.isAdmin).toBe(true);
+    });
+  });
+
   it('lock() returns the row FOR UPDATE and setPosition / ban / unban behave', async () => {
     await db.transaction(async (tx) => {
       const id = await mkPlayer(tx);
@@ -130,6 +145,30 @@ describe('AuthRepo refresh tokens — only hashes are stored, rotation is one-sh
       expect(await authRepo.revokeAll(tx, id, at(4000))).toBe(1);
       expect(await authRepo.rotateRefresh(tx, again!.token, at(5000))).toBeNull();
       expect(await authRepo.purge(tx, at(1_000_000))).toBe(3);
+    });
+  });
+
+  it('ownerOf finds a token in any state (reuse detection) and null for a never-issued one', async () => {
+    await db.transaction(async (tx) => {
+      const id = await mkPlayer(tx);
+      const first = await authRepo.issueRefresh(tx, id, T0);
+      expect(await authRepo.ownerOf(tx, first.token)).toMatchObject({ playerId: id, revokedAt: null });
+      await authRepo.rotateRefresh(tx, first.token, at(1000));
+      const revoked = await authRepo.ownerOf(tx, first.token);
+      expect(revoked?.playerId).toBe(id);
+      expect(revoked?.revokedAt).toEqual(at(1000));
+      expect(await authRepo.ownerOf(tx, 'never-issued')).toBeNull();
+    });
+  });
+});
+
+describe('ProgressRepo.flagSetAt', () => {
+  it('returns when a flag was set, null when absent', async () => {
+    await db.transaction(async (tx) => {
+      const id = await mkPlayer(tx);
+      expect(await progressRepo.flagSetAt(tx, id, 'trainer:x:beaten')).toBeNull();
+      await progressRepo.setFlags(tx, id, ['trainer:x:beaten'], at(5000));
+      expect(await progressRepo.flagSetAt(tx, id, 'trainer:x:beaten')).toEqual(at(5000));
     });
   });
 });

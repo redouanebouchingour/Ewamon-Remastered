@@ -1,0 +1,15 @@
+{
+  // Runtime-only config for `tsx` (dev/start). tsx applies a tsconfig's compilerOptions only to files matched by
+  // its `include`, and @ewa/protocol's @colyseus/schema classes need legacy decorators + [[Set]] class fields
+  // (see packages/protocol/tsconfig.json). This file covers every workspace source the server executes.
+  // Not used by `tsc -b` (that is tsconfig.json).
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "composite": false,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "../core/src/**/*.ts", "../content/src/**/*.ts", "../protocol/src/**/*.ts", "../persist/src/**/*.ts"]
+}

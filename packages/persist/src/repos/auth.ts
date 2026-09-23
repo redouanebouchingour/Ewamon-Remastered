@@ -38,6 +38,20 @@ export const authRepo = {
     return { playerId: row.playerId, ...fresh };
   },
 
+  /**
+   * The owner of a token in ANY state (live, revoked or expired), for refresh-reuse detection: a presented
+   * token that `rotateRefresh` refuses but that exists revoked is a replay, and the server revokes the
+   * whole family (server §30.5.1 #24). null = never issued.
+   */
+  async ownerOf(tx: Tx, token: string): Promise<{ playerId: string; revokedAt: Date | null; expiresAt: Date } | null> {
+    const [row] = await tx
+      .select({ playerId: refreshTokens.playerId, revokedAt: refreshTokens.revokedAt, expiresAt: refreshTokens.expiresAt })
+      .from(refreshTokens)
+      .where(eq(refreshTokens.tokenHash, hashRefreshToken(token)))
+      .limit(1);
+    return row ?? null;
+  },
+
   /** Revokes one token (logout). true when a live token was revoked. */
   async revoke(tx: Tx, token: string, now: Date): Promise<boolean> {
     const res = await tx
