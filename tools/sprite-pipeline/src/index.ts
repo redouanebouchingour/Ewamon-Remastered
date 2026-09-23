@@ -41,6 +41,7 @@ export { EMISSIVE_OVERRIDES } from './emissive-overrides.js';
 
 export type { FloatAlphaImage } from './mips.js';
 export {
+  binarizeAlpha,
   toFloatAlpha,
   boxDownPremultiplied,
   coverageFraction,
@@ -109,6 +110,8 @@ export { buildQaReport, serializeQaReport, isAccepted, renderContactSheet, rende
 export type { RgbaImage, GrayImage, Bbox, SpriteSide } from './types.js';
 export {
   PIPELINE_VERSION,
+  SPRITE_STAGE_VERSION,
+  ALPHA_THRESHOLD,
   DEFAULT_SPRITE_SIZE,
   DEFAULT_ATLAS_SIZE,
   ATLAS_SLOTS,

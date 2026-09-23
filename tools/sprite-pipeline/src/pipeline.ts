@@ -9,7 +9,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { AlphaOptions, QaFlag } from './alpha.js';
-import { INFORMATIONAL_FLAGS, alphaBbox, isSideMismatch, recoverAlpha } from './alpha.js';
+import { INFORMATIONAL_FLAGS, alphaBbox, cleanTransparentRgb, isSideMismatch, recoverAlpha } from './alpha.js';
 import type { SpriteMeta } from './cache.js';
 import { SpriteCache, sha256 } from './cache.js';
 import { deriveEmissive, resolveEmissiveOverride } from './emissive.js';
@@ -31,7 +31,7 @@ import type { LegacyData } from './legacy.js';
 import { loadLegacyData } from './legacy.js';
 import type { ManifestAtlasV2, ManifestMap, ManifestSpriteV2, SpriteManifestV2, SpriteRectV2 } from './manifest.js';
 import { MANIFEST_FILE, manifestErrors, pxToUv, serializeManifest } from './manifest.js';
-import { buildAlphaMipChain, buildMaskMipChain, buildNormalMipChain, halfResolutionNormal } from './mips.js';
+import { binarizeAlpha, buildAlphaMipChain, buildMaskMipChain, buildNormalMipChain, halfResolutionNormal } from './mips.js';
 import { blit, normalizeSprite } from './normalize.js';
 import { DEFAULT_NORMAL_OPTIONS, deriveNormalMap } from './normalmap.js';
 import type { Rect } from './pack.js';
@@ -53,6 +53,7 @@ import {
   MIP_LEVELS,
   NORMAL_SCALE,
   PIPELINE_VERSION,
+  SPRITE_STAGE_VERSION,
   THUMB_MAX_BYTES,
   THUMB_SIZE,
   compareStrings,
@@ -257,7 +258,11 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
   };
 
   if (opts.qaOnly) {
-    const report = writeReport(null, dirBytes(opts.outDir));
+    // `qa` refreshes flags and the contact sheet; the encoding summary belongs to the build that
+    // produced the output on disk, so it is carried over from the previous report, not nulled.
+    const prevPath = path.join(opts.qaDir, 'qa-report.json');
+    const prev = existsSync(prevPath) ? (JSON.parse(readFileSync(prevPath, 'utf8')) as Partial<QaReport>) : null;
+    const report = writeReport(prev?.encoding ?? null, dirBytes(opts.outDir));
     log(`QA: ${report.flagged.length}/${report.total} flagged, ${report.actionable} actionable -> ${opts.qaDir}`);
     return { manifest: null, report, sprites, plan, rung: null, atlasCount: 0, totalBytes: report.totalBytes, cacheHits, outFiles: [] };
   }
@@ -395,7 +400,7 @@ export interface ProcessContext {
 export function spriteCacheKey(bytes: Uint8Array, id: string, spriteSize: number, frame: number, alpha: AlphaOptions): string {
   return sha256(
     bytes,
-    `v${PIPELINE_VERSION}`,
+    `v${SPRITE_STAGE_VERSION}`,
     `size=${spriteSize}`,
     `normal=${JSON.stringify(DEFAULT_NORMAL_OPTIONS)}`,
     `emissive=${JSON.stringify(resolveEmissiveOverride(id))}`,
@@ -483,6 +488,21 @@ export async function buildAtlasRasters(members: Array<{ hash: string }>, placed
     blit(albedo0, a.data, a.width, a.height, x, y);
     blit(normal0, n.data, n.width, n.height, x, y);
     blitGray(emissive0, e, x, y);
+  }
+  // Binary alpha everywhere (types.ts ALPHA_THRESHOLD). The normal atlas carries the albedo's alpha.
+  binarizeAlpha(albedo0);
+  // Re-apply the stage-1 transparent-RGB rule at atlas level: stage 2's premultiplied lanczos
+  // resize leaves a = 0 texels black right against the silhouette, which linear minification
+  // reads as a dark fringe and which libwebp codes as a hard step.
+  cleanTransparentRgb(albedo0);
+  for (let p = 0; p < atlasSize * atlasSize; p++) {
+    const a = albedo0.data[p * 4 + 3]!;
+    normal0.data[p * 4 + 3] = a;
+    if (a === 0) {
+      normal0.data[p * 4] = 128;
+      normal0.data[p * 4 + 1] = 128;
+      normal0.data[p * 4 + 2] = 255;
+    }
   }
   const normalHalf = await halfResolutionNormal(normal0);
   const halfCell = Math.round(spriteSize * NORMAL_SCALE);

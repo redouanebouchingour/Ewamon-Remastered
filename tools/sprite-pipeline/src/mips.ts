@@ -14,7 +14,14 @@
  */
 import sharp from 'sharp';
 import type { GrayImage, RgbaImage } from './types.js';
-import { createGray, createRgba } from './types.js';
+import { ALPHA_THRESHOLD, createGray, createRgba } from './types.js';
+
+/** In place: a >= ALPHA_THRESHOLD -> 255, else 0 (types.ts). Returns the image. */
+export function binarizeAlpha(img: RgbaImage): RgbaImage {
+  const d = img.data;
+  for (let i = 3; i < d.length; i += 4) d[i] = d[i]! >= ALPHA_THRESHOLD ? 255 : 0;
+  return img;
+}
 
 /** Straight RGB + float alpha (0..255), the working form of a downsampled level. */
 export interface FloatAlphaImage {
@@ -129,7 +136,8 @@ export function quantize(level: FloatAlphaImage, cell: number, scales: Float32Ar
       out.data[p * 4] = level.rgb[p * 3]!;
       out.data[p * 4 + 1] = level.rgb[p * 3 + 1]!;
       out.data[p * 4 + 2] = level.rgb[p * 3 + 2]!;
-      out.data[p * 4 + 3] = Math.min(255, Math.round(level.alpha[p]! * s));
+      // Binary after the coverage scale: coverageScale lifts exactly k texels onto >= 128.
+      out.data[p * 4 + 3] = Math.min(255, Math.round(level.alpha[p]! * s)) >= ALPHA_THRESHOLD ? 255 : 0;
     }
   }
   return out;
@@ -155,13 +163,50 @@ export function buildAlphaMipChain(level0: RgbaImage, levels: number, cell: numb
   for (let l = 1; l <= levels; l++) {
     cur = boxDownPremultiplied(cur);
     c >>= 1;
-    const scales = new Float32Array(cellsX * cellsY);
-    for (let cy = 0; cy < cellsY; cy++) {
-      for (let cx = 0; cx < cellsX; cx++) {
-        scales[cy * cellsX + cx] = coverageScale(cur.alpha, cur.width, cx * c, cy * c, c, c, targets[cy * cellsX + cx]!);
-      }
+    out.push(selectBinaryCoverage(cur, c, cellsX, cellsY, targets));
+    // The next level filters the binary level just written, so coverage cannot drift.
+    cur = toFloatAlpha(out[out.length - 1]!);
+  }
+  return out;
+}
+
+/**
+ * Binary alpha for one downsampled level with per-cell coverage equal to level 0's: in each
+ * cell, exactly k = round(target × cell²) texels become opaque — the k with the largest
+ * footprint alpha. Binary level-0 alpha makes footprint means take only 5 values, so ties are
+ * the rule: they are broken by the 3×3 neighbourhood mean (a texel inside the silhouette wins
+ * over one on its rim), then by raster position. Texels with a zero footprint never qualify.
+ */
+export function selectBinaryCoverage(level: FloatAlphaImage, cell: number, cellsX: number, cellsY: number, targets: Float32Array): RgbaImage {
+  const { width, height, alpha, rgb } = level;
+  const out = createRgba(width, height);
+  for (let p = 0; p < width * height; p++) {
+    out.data[p * 4] = rgb[p * 3]!;
+    out.data[p * 4 + 1] = rgb[p * 3 + 1]!;
+    out.data[p * 4 + 2] = rgb[p * 3 + 2]!;
+  }
+  const neigh = (x: number, y: number): number => {
+    let s = 0;
+    for (let dy = -1; dy <= 1; dy++) {
+      const yy = Math.min(height - 1, Math.max(0, y + dy));
+      for (let dx = -1; dx <= 1; dx++) s += alpha[yy * width + Math.min(width - 1, Math.max(0, x + dx))]!;
     }
-    out.push(quantize(cur, c, scales));
+    return s;
+  };
+  for (let cy = 0; cy < cellsY; cy++) {
+    for (let cx = 0; cx < cellsX; cx++) {
+      const cand: Array<{ p: number; a: number; n: number }> = [];
+      for (let y = cy * cell; y < (cy + 1) * cell; y++) {
+        for (let x = cx * cell; x < (cx + 1) * cell; x++) {
+          const p = y * width + x;
+          const a = alpha[p]!;
+          if (a > 0) cand.push({ p, a, n: neigh(x, y) });
+        }
+      }
+      cand.sort((u, v) => v.a - u.a || v.n - u.n || u.p - v.p);
+      const k = Math.min(cand.length, Math.round(targets[cy * cellsX + cx]! * cell * cell));
+      for (let i = 0; i < k; i++) out.data[cand[i]!.p * 4 + 3] = 255;
+    }
   }
   return out;
 }
@@ -205,7 +250,8 @@ export async function halfResolutionNormal(level0: RgbaImage): Promise<RgbaImage
     .resize(level0.width >> 1, level0.height >> 1, { kernel: 'lanczos3', fit: 'fill' })
     .raw()
     .toBuffer({ resolveWithObject: true });
-  return renormalize({ width: info.width, height: info.height, data: new Uint8Array(data.buffer, data.byteOffset, data.byteLength) });
+  const img = { width: info.width, height: info.height, data: new Uint8Array(data.buffer, data.byteOffset, data.byteLength) };
+  return renormalize(binarizeAlpha(img));
 }
 
 /** Normal mip chain: premultiplied box filter + renormalise, same coverage rule as albedo. */

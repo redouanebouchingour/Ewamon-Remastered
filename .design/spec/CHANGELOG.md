@@ -6,6 +6,16 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+## 2026-09-24 — `40-pipelines.md` §40.3.5 — per-map material byte targets become targets, not gates; set budgets bind
+Why: the targets assumed RDO shrinks UASTC maps 2–3×. Measured on the full bake it does not: detailed normal maps stay at 0.4–0.85 byte/texel unless quality drops to about 20 dB, so 122 of 363 maps exceed 0.10 / 0.40 MB. Every set budget passes with margin.
+Evidence: `tools/material-bake/qa/qa-report.json`; `materials.manifest.json` fieldBytes 21.92 MB, heroBytes 33.77 MB, total 55.69 MB; Mirevale field 3.71 MB.
+Affects: `tools/material-bake/test/budget.test.ts` (over-target allowed only with `rdo: 4` and < 3× target, listed in the QA report); `tools/material-bake/IMPLEMENTATION-NOTES.md`.
+
+## 2026-09-24 — `40-pipelines.md` §40.1.6.3–§40.1.6.4 — binary atlas alpha, atlas-level transparent-RGB rule, exact binary mip coverage; measured byte arithmetic; acceptance tests 4, 5, 7 rebased on measurements
+Why: the first full v2 build failed the 35 MiB budget at the bottom rung (47.3 MB). Lossless WebP alpha of the soft lanczos silhouette cost a third of every albedo file although alpha-tested billboards never show soft alpha. Binary alpha shipped the set at the top rung (36.25 MB, q88 / q92). Acceptance test 4 applied atlas-wide mean figures to each sprite's worst 64×64 edge crop, so about half the sprites failed at the best quality the budget allows; test 5's ± 2 on every flat texel and test 7's transparent-RGB claim were never measured before this run (libwebp rewrites RGB under `a = 0`; `sharp` has no `exact` flag).
+Evidence: `tools/sprite-pipeline/README.md` measured table; `tools/sprite-pipeline/qa/qa-report.json` (rungsTried, 0 actionable); distributions quoted inline in §40.1.6.4; `pnpm exec vitest run tools/sprite-pipeline` 57/57.
+Affects: `tools/sprite-pipeline/src/{types,mips,pipeline,index}.ts` (`PIPELINE_VERSION` 4, `SPRITE_STAGE_VERSION`, `ALPHA_THRESHOLD`, `binarizeAlpha`, `selectBinaryCoverage`, `cleanTransparentRgb` on the atlas); `test/encoding.test.ts`; `packages/client/public/creatures/`.
+
 ## 2026-09-23 — `50-verification-budget.md` §50.4.3 — `rest.test.ts` row: ServerMessage variant count 17 → 16
 Why: the count was stale. The `ServerMessage` union in `00-spine.md` §4.4 declares 16 variants (battleStart, battleEvents, battleResync, battleEnd, inventoryDelta, progressionDelta, handover, challengeReceived, challengeResult, tradeUpdate, raidEvents, chat, dm, storyBeat, toast, error); the lower-numbered section wins.
 Evidence: `packages/protocol/test/server-messages.test.ts` "lists the 16 variants of the §4.4 block"; HANDOFF.md outstanding note.

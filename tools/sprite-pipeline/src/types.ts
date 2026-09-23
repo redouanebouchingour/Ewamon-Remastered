@@ -28,8 +28,21 @@ export type SpriteSide = 'front' | 'back';
  *
  * v2: stage-1 transparent-RGB rule, alternate-style exclusion, footV from the bottom, the
  * 2048² cell, the mip chain, the WebP codec ladder.
+ * v3 (never shipped): binary alpha in every atlas map.
+ * v4: binary alpha (level 0 thresholded at ALPHA_THRESHOLD; each mip keeps exactly the level-0
+ * coverage per cell, `selectBinaryCoverage`), and the stage-1 transparent-RGB rule re-applied to
+ * the composed albedo atlas. Atlas stage only: the per-sprite stages are unchanged, so their
+ * cache key uses SPRITE_STAGE_VERSION and stays valid.
  */
-export const PIPELINE_VERSION = '2';
+export const PIPELINE_VERSION = '4';
+/** Folded into the per-sprite cache key (stages 1–4). Bump only when those stages change. */
+export const SPRITE_STAGE_VERSION = '2';
+/**
+ * Every atlas map stores binary alpha: a >= ALPHA_THRESHOLD -> 255, else 0. The billboard
+ * alpha-tests at 0.5 (10-render.md §10.4.5) and Pillar 6 requires binary edges, so soft alpha
+ * never reaches the screen; stored soft, it cost a third of every albedo file.
+ */
+export const ALPHA_THRESHOLD = 128;
 export const DEFAULT_SPRITE_SIZE = 1024;
 /** Atlas edge in level-0 texels: 2 × 2 cells = 2 species (front + back). */
 export const DEFAULT_ATLAS_SIZE = 2048;

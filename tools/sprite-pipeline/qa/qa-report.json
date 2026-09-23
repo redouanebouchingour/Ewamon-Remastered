@@ -1,0 +1,1601 @@
+{
+  "total": 260,
+  "actionable": 0,
+  "informational": 152,
+  "excluded": [
+    {
+      "file": "back/yaschamp(back)(fighterstyle).png",
+      "reason": "alternate-style"
+    },
+    {
+      "file": "front/yaschamp(front)(boxingstyle).png",
+      "reason": "alternate-style"
+    },
+    {
+      "file": "front/yaschamp(front)(fighterstyle).png",
+      "reason": "alternate-style"
+    }
+  ],
+  "accepted": [
+    {
+      "species": "malice",
+      "side": "front",
+      "flag": "coverage",
+      "reason": "Small creature drawn on a large canvas; alpha verified on the contact sheet (opaque fraction below 0.12 is the drawing, not a recovery failure)."
+    }
+  ],
+  "counts": {
+    "clipped": 76,
+    "coverage": 1,
+    "multiframe": 20,
+    "nonsquare": 50,
+    "sidemismatch": 54
+  },
+  "flagged": [
+    {
+      "species": "ampmite",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/ampmite(back).png",
+      "actionable": []
+    },
+    {
+      "species": "ampmite",
+      "side": "front",
+      "flags": [
+        "clipped",
+        "sidemismatch"
+      ],
+      "source": "front/ampmite(front).png",
+      "actionable": []
+    },
+    {
+      "species": "aonred",
+      "side": "back",
+      "flags": [
+        "clipped",
+        "nonsquare"
+      ],
+      "source": "back/aonred(back).png",
+      "actionable": []
+    },
+    {
+      "species": "aonred",
+      "side": "front",
+      "flags": [
+        "clipped",
+        "nonsquare"
+      ],
+      "source": "front/aonred(front).png",
+      "actionable": []
+    },
+    {
+      "species": "archonosis",
+      "side": "back",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "back/archonosis(back).png",
+      "actionable": []
+    },
+    {
+      "species": "archonosis",
+      "side": "front",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "front/archonosis(front).png",
+      "actionable": []
+    },
+    {
+      "species": "auroracle",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/auroracle(front).png",
+      "actionable": []
+    },
+    {
+      "species": "bankaiser",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/bankaiser(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "bankaiser",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/bankaiser(front).webp",
+      "actionable": []
+    },
+    {
+      "species": "berkest",
+      "side": "back",
+      "flags": [
+        "clipped",
+        "nonsquare"
+      ],
+      "source": "back/berkest(back).png",
+      "actionable": []
+    },
+    {
+      "species": "berkest",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/berkest(front).png",
+      "actionable": []
+    },
+    {
+      "species": "blizzhowl",
+      "side": "back",
+      "flags": [
+        "clipped",
+        "sidemismatch"
+      ],
+      "source": "back/blizzhowl(back).png",
+      "actionable": []
+    },
+    {
+      "species": "blizzhowl",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/blizzhowl(front).png",
+      "actionable": []
+    },
+    {
+      "species": "blizzraak",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/blizzraak(back).png",
+      "actionable": []
+    },
+    {
+      "species": "blizzraak",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/blizzraak(front).png",
+      "actionable": []
+    },
+    {
+      "species": "briarvaunt",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/briarvaunt(back).png",
+      "actionable": []
+    },
+    {
+      "species": "briarvaunt",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/briarvaunt(front).png",
+      "actionable": []
+    },
+    {
+      "species": "brookrawl",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/brookrawl(back).png",
+      "actionable": []
+    },
+    {
+      "species": "brookrawl",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/brookrawl(front).png",
+      "actionable": []
+    },
+    {
+      "species": "caldermole",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/caldermole(back).png",
+      "actionable": []
+    },
+    {
+      "species": "caldermole",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/caldermole(front).png",
+      "actionable": []
+    },
+    {
+      "species": "cirrileap",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/cirrileap(front).png",
+      "actionable": []
+    },
+    {
+      "species": "clementar",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/clementar(back).png",
+      "actionable": []
+    },
+    {
+      "species": "clementar",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/clementar(front).png",
+      "actionable": []
+    },
+    {
+      "species": "coalette",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/coalette(back).png",
+      "actionable": []
+    },
+    {
+      "species": "coalette",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/coalette(front).png",
+      "actionable": []
+    },
+    {
+      "species": "darkone",
+      "side": "back",
+      "flags": [
+        "clipped",
+        "nonsquare"
+      ],
+      "source": "back/darkone(back).png",
+      "actionable": []
+    },
+    {
+      "species": "darkone",
+      "side": "front",
+      "flags": [
+        "clipped",
+        "nonsquare"
+      ],
+      "source": "front/darkone(front).png",
+      "actionable": []
+    },
+    {
+      "species": "darkyon",
+      "side": "back",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "back/darkyon(back).png",
+      "actionable": []
+    },
+    {
+      "species": "darkyon",
+      "side": "front",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "front/darkyon(front).png",
+      "actionable": []
+    },
+    {
+      "species": "devourest",
+      "side": "back",
+      "flags": [
+        "clipped",
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "back/devourest(back).png",
+      "actionable": []
+    },
+    {
+      "species": "devourest",
+      "side": "front",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "front/devourest(front).png",
+      "actionable": []
+    },
+    {
+      "species": "dreambud",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/dreambud(back).png",
+      "actionable": []
+    },
+    {
+      "species": "dreambud",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/dreambud(front).png",
+      "actionable": []
+    },
+    {
+      "species": "fedoraith",
+      "side": "back",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "back/fedoraith(back).png",
+      "actionable": []
+    },
+    {
+      "species": "fedoraith",
+      "side": "front",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "front/fedoraith(front).png",
+      "actionable": []
+    },
+    {
+      "species": "fennorange",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/fennorange(back).png",
+      "actionable": []
+    },
+    {
+      "species": "fennorange",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/fennorange(front).png",
+      "actionable": []
+    },
+    {
+      "species": "flowbot",
+      "side": "back",
+      "flags": [
+        "clipped",
+        "sidemismatch"
+      ],
+      "source": "back/flowbot(back).png",
+      "actionable": []
+    },
+    {
+      "species": "flowbot",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/flowbot(front).png",
+      "actionable": []
+    },
+    {
+      "species": "galaxion",
+      "side": "back",
+      "flags": [
+        "multiframe",
+        "nonsquare"
+      ],
+      "source": "back/galaxion(back).gif",
+      "actionable": []
+    },
+    {
+      "species": "galaxion",
+      "side": "front",
+      "flags": [
+        "multiframe",
+        "nonsquare"
+      ],
+      "source": "front/galaxion(front).gif",
+      "actionable": []
+    },
+    {
+      "species": "gemknight",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/gemknight(back).png",
+      "actionable": []
+    },
+    {
+      "species": "gemknight",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/gemknight(front).png",
+      "actionable": []
+    },
+    {
+      "species": "geoboxer",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/geoboxer(back).png",
+      "actionable": []
+    },
+    {
+      "species": "geoboxer",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/geoboxer(front).png",
+      "actionable": []
+    },
+    {
+      "species": "glacinid",
+      "side": "back",
+      "flags": [
+        "multiframe",
+        "sidemismatch"
+      ],
+      "source": "back/glacinid(back).gif",
+      "actionable": []
+    },
+    {
+      "species": "glacinid",
+      "side": "front",
+      "flags": [
+        "multiframe",
+        "sidemismatch"
+      ],
+      "source": "front/glacinid(front).gif",
+      "actionable": []
+    },
+    {
+      "species": "glimmereen",
+      "side": "back",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "back/glimmereen(back).png",
+      "actionable": []
+    },
+    {
+      "species": "glimmereen",
+      "side": "front",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "front/glimmereen(front).png",
+      "actionable": []
+    },
+    {
+      "species": "glimp",
+      "side": "back",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "back/glimp(back).png",
+      "actionable": []
+    },
+    {
+      "species": "glimp",
+      "side": "front",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "front/glimp(front).png",
+      "actionable": []
+    },
+    {
+      "species": "grubolt",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/grubolt(back).png",
+      "actionable": []
+    },
+    {
+      "species": "grubolt",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/grubolt(front).png",
+      "actionable": []
+    },
+    {
+      "species": "gustuff",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/gustuff(front).png",
+      "actionable": []
+    },
+    {
+      "species": "ironcarab",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/ironcarab(back).png",
+      "actionable": []
+    },
+    {
+      "species": "ironcarab",
+      "side": "front",
+      "flags": [
+        "clipped",
+        "sidemismatch"
+      ],
+      "source": "front/ironcarab(front).png",
+      "actionable": []
+    },
+    {
+      "species": "lumyth",
+      "side": "back",
+      "flags": [
+        "multiframe",
+        "nonsquare"
+      ],
+      "source": "back/lumyth(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "lumyth",
+      "side": "front",
+      "flags": [
+        "multiframe",
+        "nonsquare"
+      ],
+      "source": "front/lumyth(front).webp",
+      "actionable": []
+    },
+    {
+      "species": "luxtrik",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/luxtrik(back).png",
+      "actionable": []
+    },
+    {
+      "species": "luxtrik",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/luxtrik(front).png",
+      "actionable": []
+    },
+    {
+      "species": "malice",
+      "side": "back",
+      "flags": [
+        "clipped",
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "back/malice(back).png",
+      "actionable": []
+    },
+    {
+      "species": "malice",
+      "side": "front",
+      "flags": [
+        "coverage",
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "front/malice(front).png",
+      "actionable": []
+    },
+    {
+      "species": "miscarmen",
+      "side": "back",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "back/miscarmen(back).png",
+      "actionable": []
+    },
+    {
+      "species": "miscarmen",
+      "side": "front",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "front/miscarmen(front).png",
+      "actionable": []
+    },
+    {
+      "species": "mismagmen",
+      "side": "back",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "back/mismagmen(back).png",
+      "actionable": []
+    },
+    {
+      "species": "mismagmen",
+      "side": "front",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "front/mismagmen(front).png",
+      "actionable": []
+    },
+    {
+      "species": "moblaze",
+      "side": "back",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "back/moblaze(back).png",
+      "actionable": []
+    },
+    {
+      "species": "moblaze",
+      "side": "front",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "front/moblaze(front).png",
+      "actionable": []
+    },
+    {
+      "species": "moflame",
+      "side": "back",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "back/moflame(back).png",
+      "actionable": []
+    },
+    {
+      "species": "moflame",
+      "side": "front",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "front/moflame(front).png",
+      "actionable": []
+    },
+    {
+      "species": "mudbub",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/mudbub(back).png",
+      "actionable": []
+    },
+    {
+      "species": "mudbub",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/mudbub(front).png",
+      "actionable": []
+    },
+    {
+      "species": "mufflo",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/mufflo(back).png",
+      "actionable": []
+    },
+    {
+      "species": "mufflo",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/mufflo(front).png",
+      "actionable": []
+    },
+    {
+      "species": "murkrat",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/murkrat(back).png",
+      "actionable": []
+    },
+    {
+      "species": "murkrat",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/murkrat(front).png",
+      "actionable": []
+    },
+    {
+      "species": "murmink",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/murmink(back).png",
+      "actionable": []
+    },
+    {
+      "species": "murmink",
+      "side": "front",
+      "flags": [
+        "clipped",
+        "sidemismatch"
+      ],
+      "source": "front/murmink(front).png",
+      "actionable": []
+    },
+    {
+      "species": "nebucloak",
+      "side": "back",
+      "flags": [
+        "clipped",
+        "sidemismatch"
+      ],
+      "source": "back/nebucloak(back).png",
+      "actionable": []
+    },
+    {
+      "species": "nebucloak",
+      "side": "front",
+      "flags": [
+        "clipped",
+        "sidemismatch"
+      ],
+      "source": "front/nebucloak(front).png",
+      "actionable": []
+    },
+    {
+      "species": "necrogeist",
+      "side": "back",
+      "flags": [
+        "clipped",
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "back/necrogeist(back).png",
+      "actionable": []
+    },
+    {
+      "species": "necrogeist",
+      "side": "front",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "front/necrogeist(front).png",
+      "actionable": []
+    },
+    {
+      "species": "nerohat",
+      "side": "back",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "back/nerohat(back).png",
+      "actionable": []
+    },
+    {
+      "species": "nerohat",
+      "side": "front",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "front/nerohat(front).png",
+      "actionable": []
+    },
+    {
+      "species": "nettlewisp",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/nettlewisp(back).png",
+      "actionable": []
+    },
+    {
+      "species": "nettlewisp",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/nettlewisp(front).png",
+      "actionable": []
+    },
+    {
+      "species": "noxmyth",
+      "side": "back",
+      "flags": [
+        "multiframe",
+        "nonsquare"
+      ],
+      "source": "back/noxmyth(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "noxmyth",
+      "side": "front",
+      "flags": [
+        "multiframe",
+        "nonsquare"
+      ],
+      "source": "front/noxmyth(front).webp",
+      "actionable": []
+    },
+    {
+      "species": "pebblit",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/pebblit(back).png",
+      "actionable": []
+    },
+    {
+      "species": "pebblit",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/pebblit(front).png",
+      "actionable": []
+    },
+    {
+      "species": "pebfist",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/pebfist(back).png",
+      "actionable": []
+    },
+    {
+      "species": "pebfist",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/pebfist(front).png",
+      "actionable": []
+    },
+    {
+      "species": "prismolith",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/prismolith(back).png",
+      "actionable": []
+    },
+    {
+      "species": "prismolith",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/prismolith(front).png",
+      "actionable": []
+    },
+    {
+      "species": "pyrothal",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/pyrothal(back).png",
+      "actionable": []
+    },
+    {
+      "species": "pyrothal",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/pyrothal(front).png",
+      "actionable": []
+    },
+    {
+      "species": "raidori",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/raidori(back).png",
+      "actionable": []
+    },
+    {
+      "species": "raidori",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/raidori(front).png",
+      "actionable": []
+    },
+    {
+      "species": "raikitsune",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/raikitsune(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "raikitsune",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/raikitsune(front).webp",
+      "actionable": []
+    },
+    {
+      "species": "rambull",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/rambull(back).png",
+      "actionable": []
+    },
+    {
+      "species": "rambull",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/rambull(front).png",
+      "actionable": []
+    },
+    {
+      "species": "resilian",
+      "side": "back",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "back/resilian(back).png",
+      "actionable": []
+    },
+    {
+      "species": "resilian",
+      "side": "front",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "front/resilian(front).png",
+      "actionable": []
+    },
+    {
+      "species": "resilith",
+      "side": "back",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "back/resilith(back).png",
+      "actionable": []
+    },
+    {
+      "species": "resilith",
+      "side": "front",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "front/resilith(front).png",
+      "actionable": []
+    },
+    {
+      "species": "resilithorn",
+      "side": "back",
+      "flags": [
+        "clipped",
+        "nonsquare"
+      ],
+      "source": "back/resilithorn(back).png",
+      "actionable": []
+    },
+    {
+      "species": "resilithorn",
+      "side": "front",
+      "flags": [
+        "clipped",
+        "nonsquare"
+      ],
+      "source": "front/resilithorn(front).png",
+      "actionable": []
+    },
+    {
+      "species": "rimeidol",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/rimeidol(back).png",
+      "actionable": []
+    },
+    {
+      "species": "rimeidol",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/rimeidol(front).png",
+      "actionable": []
+    },
+    {
+      "species": "ripshell",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/ripshell(back).png",
+      "actionable": []
+    },
+    {
+      "species": "ripshell",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/ripshell(front).png",
+      "actionable": []
+    },
+    {
+      "species": "scalewisp",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/scalewisp(back).png",
+      "actionable": []
+    },
+    {
+      "species": "scalewisp",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/scalewisp(front).png",
+      "actionable": []
+    },
+    {
+      "species": "scraphog",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/scraphog(back).png",
+      "actionable": []
+    },
+    {
+      "species": "scraphog",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/scraphog(front).png",
+      "actionable": []
+    },
+    {
+      "species": "serpyre",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/serpyre(back).png",
+      "actionable": []
+    },
+    {
+      "species": "serpyre",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/serpyre(front).png",
+      "actionable": []
+    },
+    {
+      "species": "shardling",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/shardling(back).png",
+      "actionable": []
+    },
+    {
+      "species": "shardling",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/shardling(front).png",
+      "actionable": []
+    },
+    {
+      "species": "shiveruff",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/shiveruff(front).png",
+      "actionable": []
+    },
+    {
+      "species": "smellduck",
+      "side": "back",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "back/smellduck(back).png",
+      "actionable": []
+    },
+    {
+      "species": "smellduck",
+      "side": "front",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "front/smellduck(front).png",
+      "actionable": []
+    },
+    {
+      "species": "starwhim",
+      "side": "back",
+      "flags": [
+        "clipped",
+        "sidemismatch"
+      ],
+      "source": "back/starwhim(back).png",
+      "actionable": []
+    },
+    {
+      "species": "starwhim",
+      "side": "front",
+      "flags": [
+        "clipped",
+        "sidemismatch"
+      ],
+      "source": "front/starwhim(front).png",
+      "actionable": []
+    },
+    {
+      "species": "sunjaw",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/sunjaw(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "sunjaw",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/sunjaw(front).webp",
+      "actionable": []
+    },
+    {
+      "species": "tidespine",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/tidespine(back).png",
+      "actionable": []
+    },
+    {
+      "species": "tidespine",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/tidespine(front).png",
+      "actionable": []
+    },
+    {
+      "species": "toxshade",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/toxshade(back).png",
+      "actionable": []
+    },
+    {
+      "species": "toxshade",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/toxshade(front).png",
+      "actionable": []
+    },
+    {
+      "species": "trenchtusk",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/trenchtusk(back).png",
+      "actionable": []
+    },
+    {
+      "species": "trenchtusk",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/trenchtusk(front).png",
+      "actionable": []
+    },
+    {
+      "species": "tsunamite",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/tsunamite(back).png",
+      "actionable": []
+    },
+    {
+      "species": "tsunamite",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/tsunamite(front).png",
+      "actionable": []
+    },
+    {
+      "species": "velvetomb",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/velvetomb(back).png",
+      "actionable": []
+    },
+    {
+      "species": "velvetomb",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/velvetomb(front).png",
+      "actionable": []
+    },
+    {
+      "species": "voidraxis",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/voidraxis(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "voidraxis",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/voidraxis(front).webp",
+      "actionable": []
+    },
+    {
+      "species": "voltaura",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/voltaura(back).gif",
+      "actionable": []
+    },
+    {
+      "species": "voltaura",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/voltaura(front).gif",
+      "actionable": []
+    },
+    {
+      "species": "wooltug",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/wooltug(back).png",
+      "actionable": []
+    },
+    {
+      "species": "wooltug",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/wooltug(front).png",
+      "actionable": []
+    },
+    {
+      "species": "yahit",
+      "side": "back",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "back/yahit(back).png",
+      "actionable": []
+    },
+    {
+      "species": "yahit",
+      "side": "front",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "front/yahit(front).png",
+      "actionable": []
+    },
+    {
+      "species": "yaschamp",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/yaschamp(back).png",
+      "actionable": []
+    },
+    {
+      "species": "yaschamp",
+      "side": "front",
+      "flags": [
+        "nonsquare",
+        "sidemismatch"
+      ],
+      "source": "front/yaschamp(front).png",
+      "actionable": []
+    },
+    {
+      "species": "yasprime",
+      "side": "back",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "back/yasprime(back).png",
+      "actionable": []
+    },
+    {
+      "species": "yasprime",
+      "side": "front",
+      "flags": [
+        "nonsquare"
+      ],
+      "source": "front/yasprime(front).png",
+      "actionable": []
+    },
+    {
+      "species": "zenryu",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/zenryu(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "zenryu",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/zenryu(front).webp",
+      "actionable": []
+    }
+  ],
+  "bindStats": {
+    "ascent_route": {
+      "atlases": 7,
+      "duplicated": [],
+      "unbound": []
+    },
+    "ash_route": {
+      "atlases": 5,
+      "duplicated": [],
+      "unbound": []
+    },
+    "celestial_spire": {
+      "atlases": 6,
+      "duplicated": [],
+      "unbound": []
+    },
+    "cinderhold": {
+      "atlases": 2,
+      "duplicated": [],
+      "unbound": []
+    },
+    "deepcut_route": {
+      "atlases": 6,
+      "duplicated": [],
+      "unbound": []
+    },
+    "eclipse_shrine": {
+      "atlases": 6,
+      "duplicated": [],
+      "unbound": []
+    },
+    "forgewall": {
+      "atlases": 4,
+      "duplicated": [],
+      "unbound": []
+    },
+    "galvan_route": {
+      "atlases": 8,
+      "duplicated": [],
+      "unbound": []
+    },
+    "hollow_route": {
+      "atlases": 7,
+      "duplicated": [],
+      "unbound": []
+    },
+    "marrowdig": {
+      "atlases": 2,
+      "duplicated": [],
+      "unbound": []
+    },
+    "mire_route": {
+      "atlases": 5,
+      "duplicated": [],
+      "unbound": []
+    },
+    "mirevale": {
+      "atlases": 2,
+      "duplicated": [],
+      "unbound": []
+    },
+    "saltmourn": {
+      "atlases": 4,
+      "duplicated": [],
+      "unbound": []
+    },
+    "siege_route": {
+      "atlases": 7,
+      "duplicated": [],
+      "unbound": []
+    },
+    "skyrend": {
+      "atlases": 5,
+      "duplicated": [],
+      "unbound": []
+    },
+    "solenne": {
+      "atlases": 8,
+      "duplicated": [],
+      "unbound": [
+        "abyssrake",
+        "archonosis",
+        "auroracle",
+        "bankaiser",
+        "blizzraak",
+        "cirrileap",
+        "florasage",
+        "gemknight",
+        "glimmereen",
+        "nebucloak",
+        "pyrothal",
+        "rexaloft",
+        "starwhim",
+        "toxshade",
+        "voidraith"
+      ]
+    },
+    "stormrook": {
+      "atlases": 3,
+      "duplicated": [],
+      "unbound": []
+    },
+    "the_rift": {
+      "atlases": 7,
+      "duplicated": [],
+      "unbound": []
+    },
+    "tide_route": {
+      "atlases": 6,
+      "duplicated": [],
+      "unbound": []
+    },
+    "umbral_observatory": {
+      "atlases": 6,
+      "duplicated": [],
+      "unbound": []
+    },
+    "vesperveil": {
+      "atlases": 3,
+      "duplicated": [],
+      "unbound": []
+    }
+  },
+  "encoding": {
+    "albedoQuality": 88,
+    "normalQuality": 92,
+    "rungsTried": [
+      {
+        "albedo": 88,
+        "normal": 92,
+        "totalBytes": 36247708
+      }
+    ],
+    "thumbs": {
+      "count": 130,
+      "bytes": 690992,
+      "rungs": {
+        "q48/aq100/a8": 3,
+        "q56/aq100/a8": 3,
+        "q64/aq100/a8": 3,
+        "q72/aq100/a8": 19,
+        "q80/aq100/a16": 72,
+        "q80/aq100/a8": 5,
+        "q80/aq90": 25
+      }
+    }
+  },
+  "totalBytes": 36247708
+}
