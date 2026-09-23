@@ -1,0 +1,165 @@
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--bg-0);
+}
+
+.svg {
+  inline-size: 100%;
+  block-size: 100%;
+  display: block;
+}
+
+.skyTop {
+  stop-color: var(--bg-0);
+}
+
+.skyMid {
+  stop-color: var(--bg-2);
+}
+
+.skyLow {
+  stop-color: var(--bg-3);
+}
+
+.stars {
+  fill: var(--text-hi);
+}
+
+.moon {
+  fill: var(--accent-hi);
+  opacity: 0.95;
+}
+
+/* the unlit part of the disc, just visible against the sky */
+.moonShadow {
+  fill: var(--bg-3);
+  opacity: 0.55;
+}
+
+.moonCore {
+  stop-color: var(--accent-hi);
+  stop-opacity: 0.28;
+}
+
+.moonHalo {
+  stop-color: var(--accent);
+  stop-opacity: 0.1;
+}
+
+.moonFade {
+  stop-color: var(--accent);
+  stop-opacity: 0;
+}
+
+.hillFar {
+  fill: var(--line-1);
+  opacity: 0.85;
+}
+
+.hillMid {
+  fill: var(--bg-3);
+}
+
+.hillNear {
+  fill: var(--bg-1);
+}
+
+.trees {
+  fill: var(--bg-0);
+}
+
+.mist {
+  fill: var(--text-2);
+  opacity: 0.16;
+}
+
+.mistLow {
+  fill: var(--bg-2);
+  opacity: 0.9;
+}
+
+.veinFade {
+  stop-color: var(--accent);
+  stop-opacity: 0;
+}
+
+.veinCore {
+  stop-color: var(--accent);
+  stop-opacity: 1;
+}
+
+.vein {
+  fill: none;
+  stroke-width: 10;
+  opacity: 0.55;
+}
+
+.veinLine {
+  fill: none;
+  stroke-width: 2;
+  opacity: 0.9;
+}
+
+.veinSmall {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  opacity: 0.35;
+}
+
+.flies {
+  fill: var(--accent-hi);
+}
+
+.fly0,
+.fly1,
+.fly2,
+.fly3 {
+  animation: flicker 3200ms var(--ease-in-out) infinite;
+}
+
+.fly1 {
+  animation-delay: 800ms;
+}
+
+.fly2 {
+  animation-delay: 1600ms;
+}
+
+.fly3 {
+  animation-delay: 2400ms;
+}
+
+@keyframes flicker {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+:global(:root[data-reduced='1']) .fly0,
+:global(:root[data-reduced='1']) .fly1,
+:global(:root[data-reduced='1']) .fly2,
+:global(:root[data-reduced='1']) .fly3 {
+  animation: none;
+  opacity: 0.6;
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 30% 40%, transparent 40%, var(--bg-0) 100%),
+    linear-gradient(90deg, transparent 45%, var(--scrim) 100%);
+  pointer-events: none;
+}
+
+.dim .vignette {
+  background:
+    radial-gradient(120% 90% at 30% 40%, var(--scrim) 30%, var(--bg-0) 100%);
+}

@@ -1,0 +1,20 @@
+.icon {
+  flex: none;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.sm {
+  inline-size: 16px;
+  block-size: 16px;
+}
+
+.md {
+  inline-size: 20px;
+  block-size: 20px;
+}
+
+.lg {
+  inline-size: 24px;
+  block-size: 24px;
+}

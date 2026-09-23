@@ -6,6 +6,19 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@ewa/render", "sandbox"],
       "port": 5180
+    },
+    {
+      "name": "ewa-server",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@ewa/server", "start"],
+      "port": 4000,
+      "url": "http://localhost:4000"
+    },
+    {
+      "name": "ewa-client",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@ewa/client", "dev"],
+      "port": 5173
     }
   ]
 }

@@ -233,11 +233,104 @@ const noUnorderedIteration = {
   },
 };
 
+/** True for `x.style` (non-computed), the object every inline-style write goes through. */
+function isStyleMember(node) {
+  return (
+    node &&
+    node.type === 'MemberExpression' &&
+    !node.computed &&
+    node.property.type === 'Identifier' &&
+    node.property.name === 'style'
+  );
+}
+
+/**
+ * The client has one design system (SPEC §20.2.1, §50.1 #14): tokens compiled to CSS custom properties,
+ * consumed by CSS Modules. An inline style is a value that bypasses the token set and the reduced-motion /
+ * UI-scale / colourblind switches that live on :root, so it is banned outright.
+ *
+ * The single exception is `style={cssVars({ '--hp': 0.42 })}`: dynamic numbers (HP width, progress) reach
+ * module CSS as custom properties, and `cssVars` (src/ui/cssVars.ts) only accepts `--` keys. The rule
+ * checks the callee name and, when the argument is an object literal, that every key starts with `--`.
+ *
+ * Reported: any JSX `style` attribute not written as `cssVars(...)`; any assignment through `x.style`
+ * (`el.style.cssText = …`, `el.style.width = …`, `el.style = …`); `el.setAttribute('style', …)`;
+ * `Object.assign(el.style, …)`. `style.setProperty('--ui-scale', v)` is not an assignment and stays
+ * legal for the one programmatic write the spec allows (applySettings.ts).
+ */
+const noInlineStyle = {
+  meta: {
+    type: 'problem',
+    docs: { description: 'Forbid inline styles in the client; dynamic values go through cssVars() custom properties.' },
+    schema: [],
+    messages: {
+      jsxStyle:
+        "Inline `style` bypasses the one token set (SPEC §20.2.1). Put the rule in the component's .module.css; pass a dynamic number as a custom property with style={cssVars({ '--x': value })}.",
+      cssVarsKey:
+        "cssVars() only carries custom properties: key '{{key}}' must start with '--' and be consumed by module CSS.",
+      domStyle:
+        'Writing element styles from script bypasses the design system (SPEC §20.2.1). Toggle a class or data-attribute, or set a custom property via cssVars().',
+    },
+  },
+
+  create(context) {
+    return {
+      JSXAttribute(node) {
+        if (node.name.type !== 'JSXIdentifier' || node.name.name !== 'style') return;
+        const value = node.value;
+        const expr = value && value.type === 'JSXExpressionContainer' ? value.expression : null;
+        const isCssVars =
+          expr && expr.type === 'CallExpression' && expr.callee.type === 'Identifier' && expr.callee.name === 'cssVars';
+        if (!isCssVars) {
+          context.report({ node, messageId: 'jsxStyle' });
+          return;
+        }
+        const arg = expr.arguments[0];
+        if (arg && arg.type === 'ObjectExpression') {
+          for (const prop of arg.properties) {
+            if (prop.type !== 'Property') continue;
+            const key =
+              prop.key.type === 'Literal' ? String(prop.key.value) : prop.key.type === 'Identifier' && !prop.computed ? prop.key.name : null;
+            if (key !== null && !key.startsWith('--')) context.report({ node: prop, messageId: 'cssVarsKey', data: { key } });
+          }
+        }
+      },
+
+      AssignmentExpression(node) {
+        const left = node.left;
+        if (left.type !== 'MemberExpression') return;
+        // el.style = …  or  el.style.anything = …
+        if (isStyleMember(left) || isStyleMember(left.object)) context.report({ node, messageId: 'domStyle' });
+      },
+
+      CallExpression(node) {
+        const callee = node.callee;
+        if (callee.type !== 'MemberExpression' || callee.computed || callee.property.type !== 'Identifier') return;
+        const method = callee.property.name;
+        const first = node.arguments[0];
+        if (method === 'setAttribute' && first && first.type === 'Literal' && String(first.value).toLowerCase() === 'style') {
+          context.report({ node, messageId: 'domStyle' });
+        }
+        if (
+          method === 'assign' &&
+          callee.object.type === 'Identifier' &&
+          callee.object.name === 'Object' &&
+          first &&
+          isStyleMember(first)
+        ) {
+          context.report({ node, messageId: 'domStyle' });
+        }
+      },
+    };
+  },
+};
+
 /** @type {{ rules: Record<string, unknown> }} */
 export default {
   rules: {
     'no-external-imports': noExternalImports,
     'no-cross-package-relative-imports': noCrossPackageRelativeImports,
     'no-unordered-iteration': noUnorderedIteration,
+    'no-inline-style': noInlineStyle,
   },
 };

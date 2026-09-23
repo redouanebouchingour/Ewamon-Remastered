@@ -1,0 +1,56 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: var(--s-6);
+  align-items: start;
+}
+
+.searchRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-3);
+}
+
+.guildName {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  color: var(--text-hi);
+  font-weight: 600;
+}
+
+.tag {
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-1);
+  background: var(--bg-3);
+  color: var(--accent);
+  font-family: var(--face-mono);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+}
+
+.create {
+  position: sticky;
+  inset-block-start: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-6);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-3);
+  background: var(--bg-2);
+}
+
+.createFoot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin-top: var(--s-2);
+}
+
+.short {
+  color: var(--danger);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}

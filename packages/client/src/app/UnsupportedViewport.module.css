@@ -1,0 +1,41 @@
+.app {
+  block-size: 100%;
+}
+
+.app[hidden] {
+  display: none;
+}
+
+.page {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--s-6);
+}
+
+.card {
+  position: relative;
+  max-inline-size: 440px;
+  padding: var(--s-7);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-3);
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  text-align: center;
+}
+
+.title {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h2);
+  line-height: var(--lh-h2);
+  font-weight: 700;
+}
+
+.text {
+  margin-top: var(--s-3);
+  color: var(--text-1);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+}

@@ -1,0 +1,115 @@
+.sprite {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: 56px;
+  block-size: 56px;
+  border-radius: var(--r-2);
+  background:
+    radial-gradient(circle at 50% 65%, color-mix(in srgb, var(--tc) 55%, transparent) 0%, transparent 68%),
+    var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.sprite::after {
+  content: '';
+  position: absolute;
+  inset-inline: 18%;
+  inset-block-end: 12%;
+  block-size: 10%;
+  border-radius: 50%;
+  background: var(--shade-a40);
+  filter: blur(3px);
+  z-index: -1;
+}
+
+.img {
+  inline-size: 84%;
+  block-size: 84%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.monogram {
+  display: grid;
+  place-items: center;
+  inline-size: 62%;
+  block-size: 62%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--tc) 80%, var(--text-hi)), var(--tc) 60%, color-mix(in srgb, var(--tc) 60%, var(--bg-0)));
+  color: var(--tc-ink);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: 1;
+  font-weight: 800;
+  box-shadow:
+    0 4px 12px -4px var(--shade-a40),
+    inset 0 -2px 0 var(--shade-a40);
+}
+
+.sm {
+  inline-size: 40px;
+  block-size: 40px;
+}
+
+.sm .monogram {
+  font-size: var(--t-body);
+}
+
+.lg {
+  inline-size: 72px;
+  block-size: 72px;
+}
+
+.lg .monogram {
+  font-size: var(--t-h2);
+}
+
+.xl {
+  inline-size: 120px;
+  block-size: 120px;
+  border-radius: var(--r-3);
+}
+
+.xl .monogram {
+  font-size: var(--t-display);
+}
+
+.silhouette {
+  background: var(--bg-0);
+}
+
+.silhouette .monogram {
+  background: var(--bg-2);
+  color: var(--text-2);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+}
+
+.silhouette .img {
+  filter: brightness(0) opacity(0.55);
+}
+
+.desaturate .img,
+.desaturate .monogram {
+  filter: grayscale(0.85) brightness(0.8);
+}
+
+/* variant palettes, as a tint on the thumbnail (the world applies the real palette uniforms) */
+.dawn .img {
+  filter: hue-rotate(-24deg) saturate(1.15);
+}
+
+.dusk .img {
+  filter: hue-rotate(40deg) brightness(0.9) saturate(1.1);
+}
+
+.verdant .img {
+  filter: hue-rotate(80deg) saturate(1.1);
+}
+
+.ember .img {
+  filter: hue-rotate(-50deg) saturate(1.3);
+}

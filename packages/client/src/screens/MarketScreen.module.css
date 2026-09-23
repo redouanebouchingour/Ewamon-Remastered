@@ -1,0 +1,69 @@
+.search {
+  flex: 1 1 200px;
+}
+
+.level {
+  inline-size: 96px;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-6);
+  align-items: start;
+}
+
+.withDetail {
+  grid-template-columns: minmax(0, 1fr) 360px;
+}
+
+.creature {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+}
+
+.creatureText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.creatureName {
+  color: var(--text-hi);
+  font-weight: 600;
+}
+
+.chips {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-4);
+}
+
+.listForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+.listRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-4);
+}
+
+.fee {
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-2);
+  background: var(--bg-2);
+  color: var(--text-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}

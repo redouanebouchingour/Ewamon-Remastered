@@ -1,0 +1,220 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-inline-size: 0;
+}
+
+.disabled {
+  opacity: 0.45;
+}
+
+.label {
+  color: var(--text-1);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  inline-size: 100%;
+  block-size: var(--control-lg);
+  padding: 0 var(--s-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-1);
+  background: var(--bg-0);
+  color: var(--text-hi);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  transition:
+    border-color var(--motion-ui) var(--ease-out),
+    box-shadow var(--motion-ui) var(--ease-out);
+}
+
+.input::placeholder {
+  color: var(--text-2);
+}
+
+.input:hover:not(:disabled) {
+  border-color: var(--line-2);
+}
+
+.input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-a16);
+}
+
+.withIcon {
+  padding-left: var(--s-8);
+}
+
+.icon {
+  position: absolute;
+  inset-inline-start: var(--s-4);
+  color: var(--text-2);
+  pointer-events: none;
+}
+
+.select {
+  padding-right: var(--s-8);
+  appearance: none;
+  cursor: pointer;
+}
+
+.chevron {
+  position: absolute;
+  inset-inline-end: var(--s-4);
+  color: var(--text-2);
+  pointer-events: none;
+}
+
+.invalid .input {
+  border-color: var(--danger);
+}
+
+.invalid .input:focus-visible {
+  box-shadow: 0 0 0 3px var(--danger-a16);
+}
+
+.foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.error {
+  color: var(--danger);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}
+
+.hint {
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}
+
+.counter {
+  flex: none;
+  color: var(--text-2);
+  font-family: var(--face-mono);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.counterFull {
+  color: var(--warn);
+}
+
+.formError {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--danger-a16);
+  border-radius: var(--r-1);
+  background: var(--danger-a16);
+  color: var(--danger);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+
+/* ---- segmented ---- */
+
+.segmented {
+  display: inline-flex;
+  padding: var(--s-1);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-2);
+  background: var(--bg-0);
+}
+
+.segment {
+  padding: var(--s-2) var(--s-5);
+  border: none;
+  border-radius: var(--r-1);
+  background: none;
+  color: var(--text-2);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 600;
+  transition:
+    transform var(--motion-fast) var(--ease-out),
+    background-color var(--motion-ui) var(--ease-out),
+    color var(--motion-ui) var(--ease-out);
+}
+
+.segment:hover {
+  color: var(--text-hi);
+}
+
+.segment:active {
+  transform: scale(0.95);
+}
+
+.segmentOn,
+.segmentOn:hover {
+  background: var(--bg-3);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+
+/* ---- stepper ---- */
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-1);
+  background: var(--bg-0);
+}
+
+.stepBtn {
+  display: grid;
+  place-items: center;
+  inline-size: var(--control-sm);
+  block-size: var(--control-sm);
+  border: none;
+  background: none;
+  color: var(--text-1);
+}
+
+.stepBtn:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.stepBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.stepInput {
+  inline-size: 40px;
+  block-size: var(--control-sm);
+  border: none;
+  border-inline: 1px solid var(--line-1);
+  background: none;
+  color: var(--text-hi);
+  font-family: var(--face-mono);
+  font-size: var(--t-mono);
+  line-height: var(--lh-mono);
+  text-align: center;
+  appearance: textfield;
+  font-variant-numeric: tabular-nums;
+}
+
+.stepInput::-webkit-inner-spin-button,
+.stepInput::-webkit-outer-spin-button {
+  appearance: none;
+}

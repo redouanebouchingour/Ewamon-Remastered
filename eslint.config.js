@@ -166,6 +166,16 @@ export default tseslint.config(
     files: ['packages/client/src/**/*.ts', 'packages/client/src/**/*.tsx'],
     languageOptions: { globals: { ...globals.browser } },
     rules: {
+      // SPEC §20.2.1: one design system — no inline styles except cssVars({ '--x': v })
+      'ewa/no-inline-style': 'error',
+      // SPEC §20.3.1: components always pass a selector; a bare useXStore() re-renders on every write
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'CallExpression[callee.name=/^use\\w+Store$/][arguments.length=0]',
+          message: 'Pass a selector (useSessionStore((s) => s.inventory?.money ?? 0)) or useShallow for tuples; a bare store hook re-renders on every write (SPEC §20.3.1).',
+        },
+      ],
       'no-restricted-imports': [
         'error',
         {

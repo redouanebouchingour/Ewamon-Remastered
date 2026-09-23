@@ -1,0 +1,85 @@
+/**
+ * @ewa/client Vite config (SPEC §20.1, §20.2.2, §20.10.2).
+ *
+ * Dev proxies: `/api` → REST on :4000 (mounted at the root, so the prefix is stripped) and `/colyseus` → the
+ * Colyseus WebSocket on :2567 (the client connects straight to VITE_WS_URL, default ws://localhost:2567; the
+ * proxy exists for same-origin setups). `publicDir` stays the default `public/` (pipeline outputs live there).
+ */
+import { existsSync, readdirSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
+import { fileURLToPath } from 'node:url';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+import type { HtmlTagDescriptor, Plugin } from 'vite';
+
+const API_TARGET = process.env['EWA_API_TARGET'] ?? 'http://localhost:4000';
+const WS_TARGET = process.env['EWA_WS_TARGET'] ?? 'ws://localhost:2567';
+const fontsDir = fileURLToPath(new URL('./public/fonts', import.meta.url));
+
+/** §20.2.2: `<link rel="preload" as="font" crossorigin>` for each woff2 actually present in public/fonts/. */
+function fontPreloads(): Plugin {
+  return {
+    name: 'ewa:font-preloads',
+    transformIndexHtml(): HtmlTagDescriptor[] {
+      if (!existsSync(fontsDir)) return [];
+      return readdirSync(fontsDir)
+        .filter((f) => f.endsWith('.woff2'))
+        .sort()
+        .map((f) => ({
+          tag: 'link',
+          attrs: { rel: 'preload', as: 'font', type: 'font/woff2', href: `/fonts/${encodeURIComponent(f)}`, crossorigin: '' },
+          injectTo: 'head',
+        }));
+    },
+  };
+}
+
+/**
+ * §20.10.2 rule 7 bundle budget, gzipped: the entry (shell) chunk ≤ 180 KB, every other chunk ≤ 900 KB. Reported
+ * after every build; `EWA_BUNDLE_STRICT=1` turns an overrun into a build failure (see IMPLEMENTATION-NOTES D8).
+ */
+function bundleBudget(): Plugin {
+  const SHELL = 180 * 1024;
+  const CHUNK = 900 * 1024;
+  return {
+    name: 'ewa:bundle-budget',
+    apply: 'build',
+    generateBundle(_opts, bundle) {
+      const over: string[] = [];
+      for (const [name, out] of Object.entries(bundle)) {
+        if (out.type !== 'chunk') continue;
+        const gz = gzipSync(out.code).length;
+        const limit = out.isEntry ? SHELL : CHUNK;
+        this.info(`${name}: ${(gz / 1024).toFixed(1)} KB gzip (budget ${(limit / 1024).toFixed(0)} KB)`);
+        if (gz > limit) over.push(`${name} ${(gz / 1024).toFixed(1)} KB > ${(limit / 1024).toFixed(0)} KB`);
+      }
+      if (over.length === 0) return;
+      const msg = `bundle budget exceeded: ${over.join('; ')}`;
+      if (process.env['EWA_BUNDLE_STRICT'] === '1') this.error(msg);
+      else this.warn(msg);
+    },
+  };
+}
+
+export default defineConfig({
+  plugins: [react(), fontPreloads(), bundleBudget()],
+  server: {
+    port: 5173,
+    strictPort: true,
+    proxy: {
+      '/api': { target: API_TARGET, changeOrigin: true, rewrite: (p) => p.replace(/^\/api/, '') },
+      '/colyseus': { target: WS_TARGET, ws: true, changeOrigin: true, rewrite: (p) => p.replace(/^\/colyseus/, '') },
+    },
+  },
+  preview: {
+    port: 5174,
+    proxy: {
+      '/api': { target: API_TARGET, changeOrigin: true, rewrite: (p) => p.replace(/^\/api/, '') },
+    },
+  },
+  build: {
+    target: 'es2022',
+    sourcemap: true,
+    chunkSizeWarningLimit: 900,
+  },
+});

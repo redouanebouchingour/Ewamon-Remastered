@@ -1,0 +1,72 @@
+.search {
+  flex: 1 1 280px;
+}
+
+.partyStrip {
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+  margin-bottom: var(--s-6);
+  padding: var(--s-4) var(--s-5);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-2);
+  background: var(--bg-2);
+}
+
+.partyTiles {
+  display: grid;
+  grid-template-columns: repeat(6, 72px);
+  gap: var(--s-3);
+}
+
+.partyTile {
+  inline-size: 72px;
+}
+
+.partyEmpty {
+  aspect-ratio: 1;
+  border: 1px dashed var(--line-1);
+  border-radius: var(--r-2);
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-6);
+  align-items: start;
+}
+
+.withDetail {
+  grid-template-columns: minmax(0, 1fr) 420px;
+}
+
+.gridCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  min-inline-size: 0;
+}
+
+/* §20.9.4: 10 columns; 6 while the detail column is open */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+
+.withDetail .grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-4);
+}
+
+.swap {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}

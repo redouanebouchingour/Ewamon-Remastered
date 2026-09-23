@@ -1,0 +1,85 @@
+.boot {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+}
+
+.center {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  inline-size: 360px;
+}
+
+.brand {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-display);
+  line-height: var(--lh-display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 32px var(--accent-a32);
+}
+
+.tag {
+  color: var(--accent);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 600;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+}
+
+.phase {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  inline-size: 100%;
+  margin-top: var(--s-8);
+}
+
+.label {
+  color: var(--text-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.activity {
+  position: relative;
+  block-size: 6px;
+  border-radius: var(--r-pill);
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+  overflow: hidden;
+}
+
+.sweep {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 30%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: sweep 1400ms var(--ease-in-out) infinite;
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+
+:global(:root[data-reduced='1']) .sweep {
+  animation: none;
+  inline-size: 100%;
+  opacity: 0.4;
+}

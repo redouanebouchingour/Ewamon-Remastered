@@ -1,0 +1,116 @@
+.move {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-inline-size: 0;
+  padding: var(--s-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-2);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--tc) 9%, transparent), transparent 55%), var(--bg-2);
+  color: var(--text-1);
+  text-align: left;
+  transition:
+    transform var(--motion-fast) var(--ease-out),
+    border-color var(--motion-ui) var(--ease-out),
+    background-color var(--motion-ui) var(--ease-out);
+}
+
+button.move:hover:not(:disabled),
+button.move:focus-visible {
+  border-color: color-mix(in srgb, var(--tc) 70%, var(--line-2));
+}
+
+button.move:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+button.move:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+button.move:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-inline-size: 0;
+}
+
+.hotkey {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: 20px;
+  block-size: 20px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-1);
+  color: var(--text-2);
+  font-family: var(--face-mono);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}
+
+.name {
+  overflow: hidden;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eff {
+  margin-left: auto;
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+}
+
+.good {
+  color: var(--accent);
+}
+
+.bad {
+  color: var(--warn);
+}
+
+.middle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.pp {
+  color: var(--text-1);
+  font-family: var(--face-mono);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.low {
+  color: var(--warn);
+}
+
+.empty {
+  color: var(--danger);
+}
+
+.stats {
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

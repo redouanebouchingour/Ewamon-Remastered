@@ -1,0 +1,24 @@
+.host {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--bg-0);
+}
+
+.world {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-canvas);
+}
+
+.backdrop {
+  opacity: 0.9;
+}
+
+/* the chrome layer lets clicks through to the canvas; each interactive region opts back in */
+.chrome {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-chrome);
+  pointer-events: none;
+}

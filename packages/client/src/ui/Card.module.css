@@ -1,0 +1,38 @@
+.card {
+  position: relative;
+  padding: var(--s-5);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-2);
+  background: var(--bg-2);
+  box-shadow: var(--shadow-1);
+  color: var(--text-1);
+}
+
+.interactive {
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast) var(--ease-out),
+    border-color var(--motion-ui) var(--ease-out),
+    background-color var(--motion-ui) var(--ease-out);
+}
+
+.interactive:hover {
+  border-color: var(--line-2);
+  background: var(--bg-3);
+}
+
+.interactive:active {
+  transform: scale(0.99);
+}
+
+.selected {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, var(--accent-a08), transparent 70%), var(--bg-2);
+  box-shadow:
+    0 0 0 1px var(--accent-a32),
+    var(--shadow-1);
+}
+
+.selected.interactive:hover {
+  border-color: var(--accent-hi);
+}

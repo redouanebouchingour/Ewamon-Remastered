@@ -162,6 +162,43 @@ ruleTester.run('no-unordered-iteration', ewa.rules['no-unordered-iteration'], {
   ],
 });
 
+// SPEC §20.2.1: one passing and (at least) three failing fixtures for the client's inline-style ban.
+const jsxTester = new RuleTester({
+  languageOptions: {
+    parser: tseslint.parser,
+    ecmaVersion: 2022,
+    sourceType: 'module',
+    parserOptions: { ecmaFeatures: { jsx: true } },
+  },
+});
+const UI_FILE = 'packages/client/src/ui/HpBar.tsx';
+
+jsxTester.run('no-inline-style', ewa.rules['no-inline-style'], {
+  valid: [
+    // the one sanctioned form: custom properties through cssVars()
+    { filename: UI_FILE, code: "const a = <div className={s.fill} style={cssVars({ '--hp': 0.42 })} />;" },
+    { filename: UI_FILE, code: 'const a = <div className={s.fill} style={cssVars(vars)} />;' },
+    // setProperty is the one programmatic write the spec allows (applySettings.ts, --ui-scale)
+    { filename: UI_FILE, code: "document.documentElement.style.setProperty('--ui-scale', '1.1');" },
+    // a prop named style on a non-style concept is still a JSX style attribute; plain reads are fine
+    { filename: UI_FILE, code: 'const w = el.style.width;' },
+    { filename: UI_FILE, code: "el.setAttribute('data-state', 'open');" },
+  ],
+  invalid: [
+    { filename: UI_FILE, code: 'const a = <div style={{ width: 10 }} />;', errors: [{ messageId: 'jsxStyle' }] },
+    { filename: UI_FILE, code: 'const a = <div style="color: red" />;', errors: [{ messageId: 'jsxStyle' }] },
+    { filename: UI_FILE, code: "el.style.cssText = 'color: red';", errors: [{ messageId: 'domStyle' }] },
+    { filename: UI_FILE, code: "el.setAttribute('style', 'color: red');", errors: [{ messageId: 'domStyle' }] },
+    { filename: UI_FILE, code: "el.style.width = '10px';", errors: [{ messageId: 'domStyle' }] },
+    { filename: UI_FILE, code: 'Object.assign(el.style, { width: 1 });', errors: [{ messageId: 'domStyle' }] },
+    {
+      filename: UI_FILE,
+      code: "const a = <div style={cssVars({ width: '10px' })} />;",
+      errors: [{ messageId: 'cssVarsKey', data: { key: 'width' } }],
+    },
+  ],
+});
+
 /**
  * The severity a given file actually gets, straight from the real eslint.config.js.
  * `calculateConfigForFile` runs the same resolution `eslint .` does, so a `files:` glob that
@@ -209,6 +246,15 @@ describe('eslint.config.js wiring', () => {
     expect(denied(render.rules)).toContain('@ewa/core');
     expect(denied(render.rules)).toContain('react');
     expect(denied(render.rules)).toContain('@ewa/protocol');
+  });
+
+  it('bans inline styles across the client source (SPEC §20.2.1)', async () => {
+    for (const file of ['packages/client/src/ui/HpBar.tsx', 'packages/client/src/screens/PartyScreen.tsx', 'packages/client/src/net/api.ts']) {
+      const { rules } = await configFor(file);
+      expect(severity(rules, 'ewa/no-inline-style')).toBe(2);
+    }
+    const server = await configFor('packages/server/src/rooms/zone.ts');
+    expect(severity(server.rules, 'ewa/no-inline-style')).toBe('not configured');
   });
 
   it('applies the cross-package relative import rule to every package', async () => {
@@ -260,6 +306,19 @@ describe('eslint.config.js end to end', () => {
       "import { readFileSync } from 'node:fs';\nexport const n = readFileSync.length;\n",
     );
     expect(ids).toContain('no-restricted-imports');
+  });
+
+  it('rejects an inline style in a client component and accepts cssVars()', async () => {
+    const bad = await idsFor(
+      'packages/client/src/ui/Example.tsx',
+      'export const E = (): unknown => <div style={{ width: 4 }} />;\n',
+    );
+    expect(bad).toContain('ewa/no-inline-style');
+    const good = await idsFor(
+      'packages/client/src/ui/Example.tsx',
+      "declare function cssVars(v: Record<`--${string}`, number>): Record<string, number>;\nexport const E = (): unknown => <div style={cssVars({ '--hp': 0.5 })} />;\n",
+    );
+    expect(good).not.toContain('ewa/no-inline-style');
   });
 
   it('rejects three in the server and game rules in render', async () => {

@@ -1,0 +1,71 @@
+.wrap {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--scrim);
+  pointer-events: auto;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+  inline-size: var(--modal-md);
+  padding: var(--s-8) var(--s-8) var(--s-7);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-3);
+  background: var(--bg-1);
+  box-shadow: var(--shadow-3);
+  text-align: center;
+  animation: rise var(--motion-panel) var(--ease-out) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  inline-size: 64px;
+  block-size: 64px;
+  margin-bottom: var(--s-3);
+  border-radius: var(--r-pill);
+  background: var(--danger-a16);
+  color: var(--danger);
+}
+
+.eyebrow {
+  color: var(--danger);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.title {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h1);
+  line-height: var(--lh-h1);
+  font-weight: 700;
+}
+
+.detail {
+  max-inline-size: 460px;
+  color: var(--text-1);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+}
+
+.actions {
+  display: flex;
+  gap: var(--s-3);
+  margin-top: var(--s-5);
+}

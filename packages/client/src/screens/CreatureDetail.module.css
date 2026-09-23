@@ -1,0 +1,39 @@
+.stats {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.stat {
+  display: grid;
+  grid-template-columns: 72px 1fr 44px;
+  align-items: center;
+  gap: var(--s-4);
+}
+
+.setup {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-4);
+}
+
+.nickRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-3);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--line-1);
+}
+
+.releaseWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-left: auto;
+}

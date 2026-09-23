@@ -1,0 +1,101 @@
+.slider {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.disabled {
+  opacity: 0.45;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+}
+
+.label {
+  color: var(--text-hi);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 500;
+}
+
+.value {
+  color: var(--text-1);
+  font-family: var(--face-mono);
+  font-size: var(--t-mono);
+  line-height: var(--lh-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.input {
+  inline-size: 100%;
+  block-size: 20px;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+}
+
+.input:disabled {
+  cursor: not-allowed;
+}
+
+.input::-webkit-slider-runnable-track {
+  block-size: 6px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(90deg, var(--accent) calc(var(--fill) * 100%), var(--bg-0) calc(var(--fill) * 100%));
+  box-shadow: inset 0 0 0 1px var(--line-1);
+}
+
+.input::-moz-range-track {
+  block-size: 6px;
+  border-radius: var(--r-pill);
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+}
+
+.input::-moz-range-progress {
+  block-size: 6px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+}
+
+.input::-webkit-slider-thumb {
+  inline-size: 18px;
+  block-size: 18px;
+  margin-top: calc(var(--s-1) - var(--s-3));
+  border: 2px solid var(--bg-0);
+  border-radius: var(--r-pill);
+  background: var(--text-hi);
+  box-shadow: 0 0 0 1px var(--line-2);
+  appearance: none;
+  transition: transform var(--motion-fast) var(--ease-out);
+}
+
+.input::-moz-range-thumb {
+  inline-size: 14px;
+  block-size: 14px;
+  border: 2px solid var(--bg-0);
+  border-radius: var(--r-pill);
+  background: var(--text-hi);
+  box-shadow: 0 0 0 1px var(--line-2);
+}
+
+.input:hover::-webkit-slider-thumb {
+  transform: scale(1.1);
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 2px var(--bg-0), 0 0 0 4px var(--accent);
+}
+
+.input:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 2px var(--bg-0), 0 0 0 4px var(--accent);
+}

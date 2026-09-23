@@ -1,0 +1,104 @@
+/* The level is carried by the glyph disc and a faint full-surface tint + 1px border — no one-sided stripe. */
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-4);
+  inline-size: 360px;
+  padding: var(--s-4);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-2);
+  background: linear-gradient(var(--info-a16), var(--info-a16)) padding-box, var(--glass);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-2);
+  color: var(--text-hi);
+  animation: toast-in var(--motion-ui) var(--ease-out) both;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.leaving {
+  animation: toast-out var(--motion-fast) var(--ease-in-out) both;
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: 24px;
+  block-size: 24px;
+  border-radius: var(--r-pill);
+  background: var(--info);
+  color: var(--bg-0);
+}
+
+.text {
+  flex: 1 1 auto;
+  padding-top: var(--s-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  overflow-wrap: anywhere;
+}
+
+.dismiss {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: 24px;
+  block-size: 24px;
+  border: none;
+  border-radius: var(--r-1);
+  background: none;
+  color: var(--text-2);
+}
+
+.dismiss:hover {
+  background: var(--light-a06);
+  color: var(--text-hi);
+}
+
+.info {
+  border-color: var(--info-a16);
+}
+
+.success {
+  border-color: var(--accent-a32);
+  background: linear-gradient(var(--accent-a08), var(--accent-a08)) padding-box, var(--glass);
+}
+
+.success .mark {
+  background: var(--accent);
+}
+
+.warn {
+  border-color: var(--warn-a16);
+  background: linear-gradient(var(--warn-a16), var(--warn-a16)) padding-box, var(--glass);
+}
+
+.warn .mark {
+  background: var(--warn);
+}
+
+.danger {
+  border-color: var(--danger-a16);
+  background: linear-gradient(var(--danger-a16), var(--danger-a16)) padding-box, var(--glass);
+}
+
+.danger .mark {
+  background: var(--danger);
+}

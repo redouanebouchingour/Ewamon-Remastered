@@ -1,0 +1,24 @@
+/*
+ * SPEC §20.2.2 fonts: three OFL faces self-hosted as woff2 in public/fonts/ (latin + latin-ext).
+ * `local()` first so an installed copy is used without a download; when neither is present the
+ * families fall back to the token stacks (Bahnschrift / Segoe UI Variable / Cascadia Mono on Windows).
+ * The woff2 files are not committed yet — see IMPLEMENTATION-NOTES.md (fonts).
+ */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  src: local('Bricolage Grotesque'), url('/fonts/BricolageGrotesque[opsz,wdth,wght].woff2') format('woff2');
+  font-weight: 200 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Inter';
+  src: local('Inter Variable'), local('Inter'), url('/fonts/InterVariable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: local('JetBrains Mono'), url('/fonts/JetBrainsMono[wght].woff2') format('woff2');
+  font-weight: 100 800;
+  font-display: swap;
+}

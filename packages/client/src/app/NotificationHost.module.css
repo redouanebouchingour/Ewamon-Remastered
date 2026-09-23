@@ -1,0 +1,15 @@
+.host {
+  position: fixed;
+  inset-block-end: var(--s-6);
+  inset-inline-end: var(--s-6);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s-3);
+  pointer-events: none;
+}
+
+.host > li {
+  pointer-events: auto;
+}
