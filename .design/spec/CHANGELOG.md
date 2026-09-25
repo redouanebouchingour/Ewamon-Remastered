@@ -6,6 +6,255 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-09-25 spec-verification pass: every entry from here down to the next `---` is one fix from `.design/audits/spec-verification.md` (finding ids in each Evidence line). -->
+
+## 2026-09-25 — `30-server-netcode.md` §30.6.2 — `ARGON2.algorithm` is the literal `2 as Algorithm`
+Why: `@node-rs/argon2` 2.2.1 declares `Algorithm` as an ambient `const enum`, which cannot be referenced as a value under the repo's `isolatedModules`; the verbatim `Algorithm.Argon2id` does not compile.
+Evidence: `packages/server/src/rest/auth.ts` lines 6–13; `packages/server/IMPLEMENTATION-NOTES.md` "Verified against the installed libraries". Finding L1-29.
+Affects: none beyond the implemented server.
+
+## 2026-09-25 — `30-server-netcode.md` §30.5 — the authority matrix names every writer of `players.money`, `inventory_items.qty` and `story_flags`
+Why: the matrix claims to list "the only writer" per field but omitted raid rewards, mission claims, the daily-login streak (money, items and its `streak:*` story-flag rows), guild founding and the `/creature/:id/setup` equip, all of which the implemented server writes.
+Evidence: `packages/server/IMPLEMENTATION-NOTES.md` S6, Q5, Q11–Q14; §30.9.1 (streak stored as `story_flags`). Finding L2-24.
+Affects: `packages/server/test/authority.test.ts` snapshot expectations for those paths.
+
+## 2026-09-25 — `50-verification-budget.md` §50.4.8 — the `encoding.test.ts` row carries the §40.1.6.4 thresholds as amended on 2026-09-24
+Why: the 2026-09-24 amendment of §40.1.6.4 (per-sprite PSNR ≥ 30 / 26 dB, edge ≤ 50 %, interior ≤ 15 %, set medians, luma ≤ 40, flat ± 2 for ≥ 80 %, band luma ≤ 35) did not reach this row, which still listed the struck figures (36 dB, 18 %, 2 %, 24, ± 2, ± 12); the two sections contradicted each other.
+Evidence: contradiction §50.4.8 vs §40.1.6.4; `tools/sprite-pipeline/test/encoding.test.ts` (57/57 with the amended thresholds, `.design/audits/M1-asset-audit.md`). Finding L1-44.
+Affects: none.
+
+## 2026-09-25 — `50-verification-budget.md` §50.2.2 — texture memory read from `RenderStats.textureBytes`; render targets ≤ 41; programs ≤ 128; shadow lights counted scene-wide
+Why: three counts every compressed texture as 1 byte in `info.memory.texturesSize`, so the KTX2 materials were invisible to the cap; the stock display nodes need 29 render targets before shadows (measured 34 with one local caster) against a cap of 24; the light set is part of every lit program's source, so a zone adds its variants (measured 107) against a cap of 96.
+Evidence: `three` `src/renderers/common/Info.js` lines 449–453; `packages/render/IMPLEMENTATION-NOTES.md` C17, C18, and Part 2 "Measured" (107 programs in every slice shot, 34 render targets); DOF owns 8 targets (`DepthOfFieldNode.js` lines 88–134, `GaussianBlurNode.js` lines 71, 80). Findings L1-14, L3-02, L3-03.
+Affects: `10-render.md` §10.10.2, §10.8.3; `40-pipelines.md` §40.5.2 `budget.counts.*`; `50` §50.4.6 `budget.spec.ts`; `tools/asset-audit` rule constants.
+
+## 2026-09-25 — `50-verification-budget.md` §50.2.3 — `trackTimestamp` needs no cast
+Why: `trackTimestamp` is declared in `@types/three` 0.186's `WebGPUBackendParameters`; the "one typed cast" instruction described a gap that does not exist.
+Evidence: `@types/three` `src/renderers/webgpu/WebGPUBackend.d.ts` line 11; `WebGPURenderer.d.ts` line 5; render IMPLEMENTATION-NOTES C1. Finding L1-01.
+Affects: `10-render.md` header table, §10.1.2 step 1.
+
+## 2026-09-25 — `40-pipelines.md` §40.2.2–§40.2.6 — model pipeline against gltf-transform 4.5: no `meshopt()` (its tail only), no `textureCompress` for KTX2, `joinPrimitives` for skinned looks, `simplifyWithAttributes` at error 0.01, slot-bound texture roles, detached clips, ≤ 512² legendary texture ladder, 19 looks
+Why: `meshopt()` re-runs `reorder` + `quantize` after the explicit quantize; `textureCompress` has no KTX2 target; `join()` skips skinned nodes; `simplify()` is position-only and 0.001 stops at 24–29 k of 30 k triangles; the mean-colour role heuristic misreads the sources; `Animation.dispose()` leaves samplers alive; 1024² UASTC cannot fit 1.2 MB; the source directory and `LOOKS` hold 19 looks.
+Evidence: `@gltf-transform/functions` 4.5.0 `src/meshopt.ts` lines 82–93, `src/texture-compress.ts` line 24, `src/join.ts` lines 177–178, `src/simplify.ts` lines 176–183; `@gltf-transform/core` `src/properties/animation.ts`; `tools/model-pipeline/IMPLEMENTATION-NOTES.md` M0–M9 (lumyth/zenryu 1.91–2.31 MB at 1024²; LOD1 220–248 KB; looks 150–217 KB, 3.38 MB; `public/models/` 8.58 MB). Findings L1-34, L1-35, L1-37, L1-42.
+Affects: `50` §50.4.8 model-pipeline row (19 looks).
+
+## 2026-09-25 — `40-pipelines.md` §40.3.2–§40.3.3, §40.0.2 rule 5, §40.3.1 — recipes live in `@ewa/render/surfaces`; per-level KTX2 encode + container assembly; UASTC pack level 0; seam metric = excess over the interior baseline; `Noise.periodic`, `CardRgb`, `rdo?`
+Why: the `dist/surfaces.json` export was never built (the bake imports the pure subpath); ktx2-encoder 0.6.0 has no per-level input (mips as slices are refused by Basis) and no Zstandard level; pack 2 is larger and slower for equal PSNR; the literal seam check fails every textured seamless map; `fbm2` with lacunarity 2.03 cannot tile without a periodic lattice.
+Evidence: `ktx2-encoder` `types/type.d.ts` lines 16, 37, 176–258; `packages/render/src/surfaces/recipe.ts` lines 13–70; `tools/material-bake/src/encode.ts` lines 28–41, 89, 130; `tools/material-bake/IMPLEMENTATION-NOTES.md` D0–D6 (cobble albedo 0.385 → 0.228 B/texel at equal PSNR). Findings L1-36, L1-38.
+Affects: none beyond the implemented tools.
+
+## 2026-09-25 — `40-pipelines.md` §40.1.2, §40.1.5, §40.6 — stale "today" rows and v1 block marked historical; v2 `ManifestMap` comments and `alt?` match the code; the `creatures/` and phase-3 byte arithmetic replaced by the shipped manifest
+Why: rows 5–6 and the v1 block described the pre-v2 pipeline (4096², lossless, `selectEncoding`), the v2 comments named a 4096² layout, and §40.6 still computed 31.2 MB / 4.1 MB from the per-sprite estimates that the 2026-09-24 amendment of §40.1.6.3 had measured 1.5× optimistic; an 8-atlas zone is 4.35 MB, over the 4 MB phase-3 figure.
+Evidence: `tools/sprite-pipeline/src/manifest.ts` lines 24–65; `tools/sprite-pipeline/README.md` output table (36.20 MB); `packages/client/public/creatures/creatures.manifest.json` (65 atlases, 35.33 × 10⁶ B of maps, `zones.galvan_route` / `zones.solenne` 8). Findings L1-39, L3-16, L3-17.
+Affects: `20-client.md` §20.10.3 phases 2–3 (measured figures); recommendation R12.
+
+## 2026-09-25 — `10-render.md` header table and §10.1–§10.1.5 — three 0.186 facts: `trackTimestamp` declared, `Renderer.init` starts its own `Animation` loop, compressed textures count 1 byte, `RenderPipeline.dispose` frees only its quad, `CSMShadowNode.updateFrustums` throws before the first build, warm-up is a real frame and the light set is part of every program, HUD overlay colour space, `adapterInfo`
+Why: each draft sentence described behaviour the installed three.js does not have; implementers following them hit a crash (`updateFrustums`), a leak (display-node targets), a wrong metric (`texturesSize`), a blank overlay (HUD through the intermediate target) or a false "first zone frame compiles nothing".
+Evidence: `three` `src/renderers/common/Renderer.js` line 842, `Animation.js` line 81, `Info.js` lines 449–453, `RenderPipeline.js` lines 165–167, `examples/jsm/csm/CSMShadowNode.js` lines 65, 160, 215–216, 506; `packages/render/IMPLEMENTATION-NOTES.md` C1, C2, C8–C11, C17, C19, P1. Findings L1-01, L1-02, L1-08, L1-09, L1-10, L1-11, L1-14, L1-16.
+Affects: none beyond the implemented render package.
+
+## 2026-09-25 — `10-render.md` §10.2.4–§10.2.5 — the surface graph block matches the implemented graph (absolute maps via uniform scale/bias, `vec4` colour, view-space normal mix, re-pointable triplanar sampling, per-surface uniforms); `windDisplace` is a plain factory
+Why: the draft multiplied the baked absolute maps by the SurfaceDef values again, returned a vec3 colour (breaking alpha test and card shadows), mixed a view-space normal with an object-space attribute, sampled through `triplanarTexture` (which captures the texture at build time), inlined per-surface constants (one program per surface), and passed uniforms as a TSL `Fn`'s second argument (which is the NodeBuilder).
+Evidence: `three` `src/nodes/utils/TriplanarTextures.js` lines 26–46, `src/nodes/display/NormalMapNode.js` line 126, `src/nodes/tsl/TSLCore.js` line 596; `packages/render/src/materials/graph.ts` lines 162–195, `wind.ts` lines 15–35; render IMPLEMENTATION-NOTES C4–C7, M1–M3, M17 (7 structures, fragment programs 27 → 8). Findings L1-04 … L1-07.
+Affects: none beyond the implemented render package.
+
+## 2026-09-25 — `10-render.md` §10.3.3, §10.3.5, §10.2.1 — SPEC light units (`× π` for three's physically based lights), IBL normalised to a 0.3 sky radiance, sky re-centred on the camera, sun/moon fade; the visible sky's radiance stated
+Why: a directional light of intensity 1 gives `ρ/π` on a Lambert surface in three r155+, so "albedo 0.85 × noon sun 1.0 = 0.85" was off by π; SkyMesh's PMREM radiance (≈ 1.05 at noon) made the unnormalised IBL two thirds of all light and bloomed the frame; a 200 m sky box at the origin is exited on a 240 m route; the visible horizon reaches ≈ 5.9 scene-linear, above the bloom threshold.
+Evidence: `packages/render/src/lighting/rig.ts` line 36 (`SPEC_LIGHT_UNIT = Math.PI`), `sky.ts` lines 17–44, 151, 183–213; `three` `examples/jsm/objects/SkyMesh.js` lines 215, 239; render IMPLEMENTATION-NOTES C12, C13, C15, C16, M8 (noon median 0.34, p99 0.65). Findings L1-12, L3-04, L3-05.
+Affects: none beyond the implemented rig; recommendation R9 (visible sky).
+
+## 2026-09-25 — `10-render.md` §10.3.7 — grove `fogDensity` 0.018 → 0.0068 per m; the binding number is the fog on the focus (16 % at the default stop)
+Why: at 0.018 the player's feet — the DOF focal plane, 26 m of view depth at `y ≈ 0` — were 37 % fogged (46 % at the far stop), which lifted and flattened the whole diorama and washed the inspector close-up: atmosphere over readability, against Pillar 8.
+Evidence: `fogFactor = 1 − exp(−26 × 0.018) = 0.374`; `packages/render/src/zone/palettes.ts` line 65 (`FOG_SCALE = 0.38`); render IMPLEMENTATION-NOTES M19, Z12, open item 4. Finding L3-01.
+Affects: `packages/render/src/zone/palettes.ts` (already implemented as 0.018 × 0.38).
+
+## 2026-09-25 — `10-render.md` §10.3.2, §10.7.5 — the ZoneBuilder budget throws at the 7th shadow caster (8 − 2 reserved beacons); beacons exist from `createRenderer`; VFX add no lights and draw through one instanced `Sprite`
+Why: the beacons cannot be created at battle start (a new light recompiles every lit program), so they count scene-wide from boot; "throw at the 9th" let a zone spend 8 and the scene reach 10. `Points` are 1-px on WebGPU.
+Evidence: render IMPLEMENTATION-NOTES P8, P10, Q8, Q13, Z11; `three` `src/materials/nodes/PointsNodeMaterial.js` lines 21–22, 166–173. Findings L1-31, L3-10.
+Affects: `packages/render` zone builder assert (currently asserts ≤ 6 in the adapter test only); recommendation R7 (local casters vs the shadow draw-call derivation).
+
+## 2026-09-25 — `10-render.md` §10.3.6 — rain/hail are one `LineSegments` sheet (no `Points`, no `pointWidth`)
+Why: WebGPU has neither wide lines nor sized points, so `pointWidth 3` hail cannot be drawn.
+Evidence: `PointsNodeMaterial.js` lines 21–22; render IMPLEMENTATION-NOTES M10. Finding L1-31.
+Affects: none beyond the implemented weather.
+
+## 2026-09-25 — `10-render.md` §10.4.1, §10.4.3–§10.4.5, §10.4.7 — `mipmaps` holds every level; `cameraYaw` points toward the camera and the card leans back half the pitch; `typeColor` is a `'color'` uniform; `shadowSide = DoubleSide`; `map = null`; decal writes valid MRT values with mask (0, 0); battle-only species are bound per battle
+Why: `[level1, level2, level3]` uploads level 1 as level 0; `atan2(camDir.x, camDir.z)` turns the FrontSide quad away from the camera; a strictly vertical card reads at 0.62 of its height from the −52° camera; a `'vec3'` Color uploads NaN; the shadow pass renders FrontSide as BackSide and multiplies by `map.a` at the raw uv; MRT attachments are written unblended, so a transparent decal overwrote the ground's normal and mask; spine rule 11 no longer caps battle teams, which need a bind path.
+Evidence: `three` `src/renderers/common/Textures.js` lines 506–508, `Renderer.js` lines 50, 3540–3558, 3767, `UniformsGroup.js` lines 365–367 vs 431–433, `WebGPUPipelineUtils.js` lines 131, 146; render IMPLEMENTATION-NOTES P2–P7, P9, Q1–Q3, Q14. Findings L1-17, L1-18, L1-19, L3-08, L3-15, L3-20.
+Affects: render/client follow-up for per-battle opponent atlas binding (§10.4.1).
+
+## 2026-09-25 — `10-render.md` §10.4.5 — the creature-emissive bloom claim is restated in luminance
+Why: `BloomNode`'s high-pass keys on luminance, so `1.8 × albedo` crosses the 1.15 threshold only where luminance(albedo) > 0.639: warm and green accents bloom, saturated reds, blues and violets that the stage-4 mask selects never do.
+Evidence: `three` `examples/jsm/tsl/display/BloomNode.js` lines 12–15; arithmetic for `(0.92, 0.52, 0.52)` → 0.64 and `(0.6, 0.6, 1)` → 0.66 against `(1, 1, 0.6)` → 1.71. Finding L3-11 (recommendation R8).
+Affects: none until R8 is decided.
+
+## 2026-09-25 — `10-render.md` §10.5.5, §10.5.7, §10.5.9, §10.6 — geometric splat; zone-wide instanced tier fields; `LOD.autoUpdate = false`; card/solid split; impostors are cards; dispose events and attribute release; blockers + `surf` in `resolveMove`
+Why: per-chunk `InstancedMesh`es each compile their own program (175 → 271); three updates `LOD`s from shadow cameras; alternating `alphaTest` in the shadow pass cost 185 ms CPU per frame; impostor render targets would add to an over-cap count; plain meshes keep their programs until a `dispose` event; later-pass attributes leaked 9.8 MB per reload; content's walkable does not encode footprints; water-only samples are standable for HM Surf holders on the server but not predictable on the client.
+Evidence: `three` `src/nodes/accessors/Instance.js` lines 41–67, `Renderer.js` line 3258, `LOD.js` line 83; render IMPLEMENTATION-NOTES C20–C26, Z1, Z2, Z5, Z6; `packages/server/src/rooms/movement.ts` lines 32–85. Findings L1-32, L1-33, L2-01, L2-05.
+Affects: render follow-up: `resolveMove`/`resolveMoveInto` gain `surf`, the client's Collider adapter passes it.
+
+## 2026-09-25 — `10-render.md` §10.7.3, §10.8.2–§10.8.3 — DOF camera matrices as own uniforms; CoC arithmetic corrected (0.475 → 2.85 px at `pr 1`: Pillar 1's 3 px fails on the reference machine); vignette 9.3 %; explicit chroma centre; GTAO temporal filtering only with TRAA; `vignetteAspect`/`bokehScale` uniforms; texture-memory arithmetic
+Why: in a post graph the camera nodes resolve to the quad's camera; `smoothstep(0, 6, 2.90)` is 0.475, not 0.518 (4.44 px, not 4.1, at 4 m); `smoothstep(0.35, 0.85, 0.574)` is 0.42, not 0.36; a null chroma centre throws at build; the §10.8.3 memory row counted 40 MB of atlases where §40.1.4 gives ≤ 304 MB.
+Evidence: `three` `src/nodes/accessors/Camera.js` lines 140, 236, `QuadMesh.js` line 9, `ChromaticAberrationNode.js` lines 136, 169, `DepthOfFieldNode.js` lines 375–379; render IMPLEMENTATION-NOTES C3, C14, M11, M12, M20, Q12. Findings L1-03, L1-13, L3-06, L3-07, L3-12.
+Affects: recommendations R3 (DOF strength), R4 (DOF halo), R5 (texture cap).
+
+## 2026-09-25 — `10-render.md` §10.7.5 — `undress` sinks the arena into the ground instead of fading it
+Why: the arena is built from shared opaque library materials, which cannot fade without a transparent variant (a new program and a sorting change); the implemented stage rises and sinks the dressing over the same milliseconds.
+Evidence: render IMPLEMENTATION-NOTES Q7. Finding L3-21.
+Affects: none beyond the implemented stage.
+
+## 2026-09-25 — `10-render.md` §10.7.4 — the battlers stand along the heading's view direction, not perpendicular to it
+Why: "perpendicular to the diorama heading" puts both battlers at the same camera distance, contradicting "the player's battler is the nearer one" and the +12° anti-eclipse yaw in the same paragraph.
+Evidence: internal contradiction §10.7.4; render IMPLEMENTATION-NOTES Q5. Finding L3-09.
+Affects: none beyond the implemented stage.
+
+## 2026-09-25 — `10-render.md` §10.10.2 — render targets ≤ 41 (29 + 4 cascades + ≤ 8 local casters, measured 34) and programs ≤ 128 (measured 107); programs return to baseline after unload, not constant during a zone
+Why: see the §50.2.2 entry; the derivation "… impostors ≤ 6 → steady 20" omitted shadow maps, PMREM and `convertToTexture` targets, and "programs constant across a zone load" is impossible when the light set is part of each program's source.
+Evidence: render IMPLEMENTATION-NOTES C11, C18, Part 2 "Measured" and "Leak, real GPU" (programs back to baseline ±0 after 3 reload cycles). Findings L3-02, L3-03.
+Affects: `50` §50.2.2, §50.4.6; `40` §40.5.2; recommendation R6.
+
+## 2026-09-25 — `20-client.md` §20.3.2, §20.5.5 — a matching preview state becomes `authoritative` wholesale
+Why: an `authoritative` state patched from `hpAfter` only diverges from the server at the first stage, status, PP or weather change, after which every preview digest mismatches and the client requests a resync every turn.
+Evidence: `packages/client/src/battle/BattleController.ts` header (lines 10–13, the implemented rule). Finding L2-22.
+Affects: none beyond the implemented client.
+
+## 2026-09-25 — `50-verification-budget.md` §50.4.5 — authority cases A21–A24 added (matchmake bypass, REST fast travel, listing during a battle, story trainer outside its beat); A14 expects 4101
+Why: each is an attack the first draft of §30 left open (L2-02, L2-03, L2-07, L2-08); a case per attack is how §50 proves the fix. A14's 4001 collided with Colyseus' `SERVER_SHUTDOWN`.
+Evidence: `30-server-netcode.md` §30.5.1 #26–#28, §30.4.8 rule 6; `packages/protocol/src/messages/index.ts` line 34 (`replaced: 4101`). Findings L2-02, L2-03, L2-07, L2-08, L1-25.
+Affects: `packages/server/test/authority.test.ts` (A21–A24 to be written; A14 already uses `CLOSE_CODES.replaced`).
+
+## 2026-09-25 — `50-verification-budget.md` §50.4.5 `aoi-fanout.test.ts` — bots move 0.30 m per 45 ms (6.7 m/s) over the playable interior, not "1 unit per tick"
+Why: 1 unit per 50 ms tick is 20 m/s, which §30.2.4 rejects as `speed` (cap 8.05 m/s) — the test as written could only measure rejected inputs; the field-wide grid also put bots in the unwalkable margin.
+Evidence: contradiction §50.4.5 vs §30.2.4; `packages/server/IMPLEMENTATION-NOTES.md` "aoi-fanout.test.ts deviations" (measured exponent 1.002, 0 honest rejections). Finding L2-14.
+Affects: none (the implemented test already does this).
+
+## 2026-09-25 — `30-server-netcode.md` §30.4.8 — rule 6: a story-battle `TrainerDef` is fired only by its beat
+Why: the 7 story battle trainers are ordinary `TrainerDef`s in the zone; nothing stopped `interact` from starting a plain trainer battle before the beat was eligible, paying the reward and `trainer:<id>:beaten` early and a second reward when the beat's battle ran (a story sequence break).
+Evidence: `packages/content/IMPLEMENTATION-NOTES.md` clarification 4; `packages/server/src/rooms/ZoneRoom.ts` (beat check, then fall-through to `case 'trainer'`). Finding L2-07.
+Affects: `packages/server/src/rooms/ZoneRoom.ts` (follow-up: skip story trainers in the plain trainer path); `authority.test.ts` A24.
+
+## 2026-09-25 — `30-server-netcode.md` §30.6.3 — `/marketplace/list` joins the in-battle REST refusals; raid participants count as in battle
+Why: a creature projected in a live battle could be listed and bought mid-battle; the battle-end transaction would then write hp/exp/pp to a creature owned by someone else.
+Evidence: `packages/server/IMPLEMENTATION-NOTES.md` Q6, Q14. Finding L2-08.
+Affects: none beyond the implemented server; `authority.test.ts` A23.
+
+## 2026-09-25 — `30-server-netcode.md` §30.4.7 — raid boss PP restored on every copy-in; rounds are prepare → one transaction → commit
+Why: the boss acts once per participant per round, so its PP ran out and core's no-Struggle NPC policy forfeited private battles while the boss stood; a raid round had no stated failure semantics.
+Evidence: `packages/server/IMPLEMENTATION-NOTES.md` Q14, Q15. Finding L2-09.
+Affects: none beyond the implemented `raidSession.ts`.
+
+## 2026-09-25 — `30-server-netcode.md` §30.2.6 — per-process join tickets on every reserved seat; `wrongZone`; battle-room seat on reload
+Why: Colyseus 0.18 always exposes `POST /matchmake/*` guarded only by the static `onAuth` (default `true`), so any client could create shards or join any zone room with arbitrary options, and `/zone/enter` accepted any ungated zone — both teleport a player to another zone's spawn.
+Evidence: `@colyseus/core` `src/router/default_routes.ts` line 6, `src/matchmaker/controller.ts` line 22, `src/Room.ts` lines 788–794; `packages/server/src/rooms/matchmaking.ts`, `ZoneRoom.ts` lines 222, 304; `packages/server/IMPLEMENTATION-NOTES.md` R2, P3. Findings L2-02, L2-03.
+Affects: `30` §30.2.1 `ZoneJoinOptions.ticket`, §30.5.1 #26–#27, non-negotiable 5; spine §4.7.
+
+## 2026-09-25 — `30-server-netcode.md` §30.2.4 — `bounds` is checked before `unwalkable`; `validateInput`'s `prev` gains `canSurf`
+Why: the 16 m margin is `walkable = 0`, so with `unwalkable` first a `bounds` rejection could never happen and §50.4.5's `bounds` case could not pass; §30.3 makes water-only samples standable with HM Surf, which the verbatim signature had no input for.
+Evidence: `packages/server/src/rooms/movement.ts` lines 32–41 (`MovePrev.canSurf`), 64–85; `packages/server/IMPLEMENTATION-NOTES.md` S3. Findings L2-04, L2-05.
+Affects: `10-render.md` §10.6.2 (the client predicts water with HM Surf — see its own entry).
+
+## 2026-09-25 — `30-server-netcode.md` §30.2.2, §30.2.5, §30.2.7, §30.1.1 and header — Colyseus 0.18.14 behaviours: `Room<{ state; metadata; client }>`, `onMessage` without a validator + `'*'` counter, `onDrop` for reconnection, `leave(4101)` for a replaced tab, spawns set before `view.add`, handover trigger at the playable edge, `gracefullyShutdown: false`
+Why: each draft sentence named a behaviour the installed library does not have (validator rejection → 4002 disconnect, no-handler → 4002 disconnect, `allowReconnection` belongs in `onDrop`, `StateView.add` throws on a detached instance, 4001 is `SERVER_SHUTDOWN`, the SDK's `leave(true)` closes with 4000, the default shutdown handler calls `process.exit`).
+Evidence: `@colyseus/core` `src/Room.ts` lines 107–121, 650, 2313–2373; `src/RoomMessages.ts` lines 189–196, 334–342; `src/Server.ts` lines 180–181, 411; `@colyseus/schema` `src/encoder/StateView.ts` lines 334–349; `@colyseus/shared-types` `src/Protocol.ts` lines 279–284; `packages/server/IMPLEMENTATION-NOTES.md` R1, R3, R7, R8, R10, R11, S1, S2, P4. Findings L1-20 … L1-25, L2-06.
+Affects: none beyond the implemented server.
+
+## 2026-09-25 — `30-server-netcode.md` §30.3 — `SpawnDirector.tick(now, timeOfDay, players)` returns `freed`; `LiveOpsMods.featuredSpecies`; warm-up cadence; the footprint gap stated
+Why: the ≥ 10 m player-clearance rule needs player positions the draft signature did not pass; stalled engagements had no return path; seasonal featured species need the director to know the species at roll time.
+Evidence: `packages/server/src/rooms/spawnDirector.ts` lines 32–40, 73–78, 111; `packages/server/IMPLEMENTATION-NOTES.md` W1, W2, Q12. Finding L2-16.
+Affects: none beyond the implemented server.
+
+## 2026-09-25 — `30-server-netcode.md` §30.6.5, §30.7.1, §30.8.3, §30.11 — 19 blocked words; a reverse friend request accepts; `offerHash` sorted by playerId; DB-only replay uses `start`
+Why: the legacy list has 19 entries, not 20; "no row in either direction" contradicted the spine's `requestFriend`; the literal `[offers[0], offers[1]]` hash depends on seat order while protocol's `tradeOfferHash` (the function the client calls) sorts by playerId; replay needs the starting parties.
+Evidence: `packages/server/IMPLEMENTATION-NOTES.md` Q1, Q4, Q8, P6; `packages/protocol/src/digest.ts` line 30. Findings L2-10, L2-11, L2-13, L2-15.
+Affects: none beyond the implemented server.
+
+## 2026-09-25 — `20-client.md` §20.3.4 — reconnection is the SDK's (`room.reconnection` configured to 1, 2, 4, 8, 8, 8 s); a replaced tab sees 4101
+Why: `@colyseus/sdk` 0.18.2 reconnects internally on 1001/1005/1006/4010; a hand-rolled `client.reconnect()` loop races it. 4001 is Colyseus' `SERVER_SHUTDOWN`, so a restart looked like "another tab took over".
+Evidence: `@colyseus/sdk` `src/Room.ts` lines 166–173, `src/Reconnection.ts` lines 68–82; `packages/client/IMPLEMENTATION-NOTES.md` D5 and "Server findings" 5. Findings L1-25, L1-26.
+Affects: none beyond the implemented client.
+
+## 2026-09-25 — `20-client.md` §20.1.1, §20.1.2 — `createAppRouter()` replaces the module-level router; `apiFetch(key: RouteKey, init)`; react-router resolves 7.18.4
+Why: a module-level `createBrowserRouter` starts a browser router in every test that imports `routes`; `RestRoute<T>` was defined nowhere in the SPEC while protocol already ships the typed `ROUTES` table; the lockfile resolves react-router 7.18.4, not 7.9.
+Evidence: `packages/client/src/app/router.tsx` lines 31, 171; `packages/client/src/net/api.ts` line 174; `node_modules/.pnpm/react-router@7.18.4_*`; `packages/client/IMPLEMENTATION-NOTES.md` D1, D2. Findings L1-27, L1-28.
+Affects: none beyond the implemented client.
+
+## 2026-09-25 — `20-client.md` §20.4.5 — zoom stops are 20 / 26 / 34 m (render's `DISTANCE`)
+Why: the bindings table said 14 / 18 / 24 u, contradicting `10-render.md` §10.7.1, which owns the camera and whose numbers the Pillar 1 and texel-density arithmetic use.
+Evidence: `packages/render/src/camera/rig.ts` line 37 (`DISTANCE = [20, 26, 34]`); contradiction §20.4.5 vs §10.7.1. Finding L3-14.
+Affects: none (code already uses render's table).
+
+## 2026-09-25 — `00-spine.md` §5.2 — repository interfaces gain the server-part-1/2 additions (setAdmin, bannedIds, byIds, search, counts, leaderboard 'dex', markSeen → boolean, flagSetAt, claimObjective, pruneSyntheticQuests, closeExpiredDetailed + ClosedListing, ownerOf)
+Why: §5 is documented as "the implemented package is the reference"; the verbatim block had fallen behind the repos the server now calls (ban cache, admin routes, dex leaderboard, live-ops claims and rollover, refresh-reuse detection, expiry notifications).
+Evidence: `packages/persist/src/repos/players.ts` lines 173–241, `progress.ts` lines 48, 86, 167, 188, `market.ts` lines 15–27 and 253–257, `auth.ts` line 46; `packages/server/IMPLEMENTATION-NOTES.md` "Fixes in other packages" and "Protocol / persist changes (part 2)". Finding L1-40.
+Affects: documentation of `packages/persist` only; no code change.
+
+## 2026-09-25 — `00-spine.md` §5.1 — `battle_history` gains `start jsonb` (`BattleStartSnapshot`) and `final_digest varchar(8)`
+Why: `seed + actions` alone cannot replay a battle without its starting parties; the §30.11 checklist promised a database-only replay the schema could not deliver.
+Evidence: `packages/persist/drizzle/0001_battle_replay.sql`; `packages/persist/src/schema/history.ts` lines 25–28; `packages/server/IMPLEMENTATION-NOTES.md` S10 (part 1) and P6 (part 2, `fixes.test.ts` replays a room battle from the row). Finding L2-15.
+Affects: `30-server-netcode.md` §30.11 replay row; no further code change.
+
+## 2026-09-25 — `00-spine.md` §4.7 — `/creature/:id/setup`, `/guilds`, `/marketplace/list|bid|buy-now|cancel` responses carry an `inventoryDelta` (`CreatureSetupRes`, `GuildCreateRes`, `ListingMutationRes`)
+Why: those routes move money, items or creatures, but their spine responses carried neither, so the client's single-writer inventory went stale until the next `/me` (a client finding the server fixed additively).
+Evidence: `packages/server/IMPLEMENTATION-NOTES.md` P1; `packages/client/IMPLEMENTATION-NOTES.md` "Server findings" 1–2; protocol `InventoryDeltaBodySchema`. Finding L2-12.
+Affects: `packages/protocol/src/rest.ts` (already implemented); `20-client.md` §20.3.2 mapping (unchanged rule).
+
+## 2026-09-25 — `00-spine.md` §4.7 — `POST /zone/enter` answers 409 `wrongZone` unless `zoneId` is the persisted or live presence zone; during a battle it seats the player in the battle's own room
+Why: as written, any client could enter any ungated zone through REST and be placed at its spawn (onJoin step 3 fallback) — fast travel around the zone graph; and a reload mid-battle could not rejoin to receive `battleResync` (the CUT list promises it).
+Evidence: `packages/server/src/rest/routes/me.ts` lines 96–119; `packages/server/IMPLEMENTATION-NOTES.md` R2, P3; `packages/client/IMPLEMENTATION-NOTES.md` "Server findings" 4. Finding L2-02.
+Affects: `30-server-netcode.md` §30.2.6; `50-verification-budget.md` §50.4.5 A20 (unchanged), new authority expectation (a `wrongZone` enter writes nothing).
+
+## 2026-09-25 — `00-spine.md` §4.6 — the handover trigger is 6 m inside the **playable** edge, not the field edge
+Why: the field edge lies inside the 16 m margin whose samples are `walkable = 0` (§3.1), so a trigger 6 m inside the field edge can never be reached and no handover could ever fire.
+Evidence: contradiction §3.1 extents vs §4.6 / §30.2.7; `packages/server/src/rooms/ZoneRoom.ts` lines 121–144 (`HANDOVER_TRIGGER_M` against `playableBounds`); `packages/server/IMPLEMENTATION-NOTES.md` R7. Finding L2-06.
+Affects: `30-server-netcode.md` §30.2.7; `50-verification-budget.md` §50.4.5 `handover.test.ts`, §50.6.1 shot 6.
+
+## 2026-09-25 — `00-spine.md` §4.4 — raid rewards arrive as `battleEnd { battleId: raidId }`
+Why: the spine has no raid-end variant and did not say how a raid's result reaches the client; the server sends `battleEnd` keyed by the raid id.
+Evidence: `packages/server/IMPLEMENTATION-NOTES.md` Q14 ("Rewards / catch"). Finding L2-17.
+Affects: `packages/client` raid UI routing (a `battleEnd` whose `battleId === state.raid.id`).
+
+## 2026-09-25 — `00-spine.md` §4.3 — unknown message types are counted by a `'*'` handler (no reply); payload validation runs inside the handler wrapper, not as the `onMessage` validator
+Why: `@colyseus/core` 0.18.14 disconnects a client (4002) on the first message with no handler outside dev mode, and on a payload its `onMessage` validator rejects; "Colyseus drops it … no '*' handler exists" and "rejection answered with `invalidPayload`" were both impossible with the installed library.
+Evidence: `node_modules/.pnpm/@colyseus+core@0.18.14_*/node_modules/@colyseus/core/src/RoomMessages.ts` lines 189–196 (`client.leave(CloseCode.WITH_ERROR)` on a validator throw) and 334–342 (`#noHandler`); `packages/server/src/rooms/ZoneRoom.ts` lines 275–279; `packages/server/IMPLEMENTATION-NOTES.md` R1, R3. Finding L1-22.
+Affects: `30-server-netcode.md` §30.2.2 step 6, §30.5.1 #1; `50-verification-budget.md` §50.1.12, §50.4.5 A1.
+
+## 2026-09-25 — `00-spine.md` §4.3 — `InputMsg` drops `.finite()`
+Why: zod 4 `z.number()` already rejects NaN/±Infinity and `.finite()` is a deprecated no-op; the block now matches `packages/protocol/src/messages/client.ts`.
+Evidence: `node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/schemas.ts` lines 1132 (`@deprecated … This is a no-op`) and 1215–1216. Finding L1-30.
+Affects: none (behaviour identical).
+
+## 2026-09-25 — `00-spine.md` §3.11 — the missing building/prop footprints are recorded as an open authority gap
+Why: the `walkable` comment requires footprints to be 0, but footprints are planned by render's layout, which content cannot import; as built, the server accepts movement through houses and spawns can land inside footprints. The spec stated a guarantee nothing implements.
+Evidence: `packages/content/IMPLEMENTATION-NOTES.md` clarification 1; `packages/render/src/terrain/collider.ts` lines 8–13 (blockers); `packages/render/IMPLEMENTATION-NOTES.md` Z6. Finding L2-01 (recommendation R1).
+Affects: `10-render.md` §10.5.5, §10.6.2 wording; server and content follow-up when R1 is decided.
+
+## 2026-09-25 — `00-spine.md` §3.10 — `dist/heightfields/<zone>.json` is the exact compact encoding `q64-delta-varint-b64+rle`
+Why: raw JSON arrays of a 481² field exceed 2 MB; the committed files are a bit-exact encoding, which the spec did not describe.
+Evidence: `packages/content/IMPLEMENTATION-NOTES.md` D2 (routes ≈ 305 KB, 4.5 MB total, digest re-verified on decode). Finding L1-41.
+Affects: none (documentation).
+
+## 2026-09-25 — `00-spine.md` §3.10 rule 11 — the bind cap applies to the overworld set `O(zone)` = table ∪ statics; the full `Z(zone)` is reported, not capped
+Why: `|Z(zone)| ≤ 16` cannot hold: `solenne`'s legacy Warden + Champion teams alone are 20 species (26 with its table) and `umbral_observatory`'s story teams make 20.
+Evidence: `packages/content/IMPLEMENTATION-NOTES.md` D1; `validate.ts` enforces the subset. Finding L2-18.
+Affects: `10-render.md` §10.4.1 (battle-only binding), `40-pipelines.md` §40.1.4, `50-verification-budget.md` §50.4.2 `encounters.test.ts`.
+
+## 2026-09-25 — `00-spine.md` §2.11 — the sleep counter's effective length (`N − 1` skipped actions) is stated
+Why: the §2.4 row reads "cannot act for `1 + rng.int(3)` turns", but the §2.11 step-6 algorithm the core implements (decrement at the start of every action, act normally on the one that reaches 0) skips `N − 1` actions; a third of all sleeps skip none.
+Evidence: `packages/core/src/turn.ts` lines 322–330, `engine.ts` lines 318–321; `packages/core/IMPLEMENTATION-NOTES.md` item 15. Finding L2-20 (recommendation R11 on the feel).
+Affects: none until R11 is decided (a change moves `fuzz-digests.json`).
+
+## 2026-09-25 — `00-spine.md` §2.20 — the fuzz digest construction is stated; first commit of `packages/core/test/fuzz-digests.json` recorded
+Why: §50.7 rule 3 makes `fuzz-digests.json` a SPEC artefact; its creation (1 000 seeds, `maxTurns` 200, per seed `fnv1a32` over the joined per-turn `digestBattleState` values, createBattle state first) was never entered here.
+Evidence: `packages/core/IMPLEMENTATION-NOTES.md` item 17; `packages/core/test/fuzz.ts`. Finding L2-21.
+Affects: none.
+
+## 2026-09-25 — `00-spine.md` §2.10 — `resolveTurn`'s `null` rule includes every non-player side in every phase
+Why: the block said an action may be null ONLY in the replacement-phase exception, which contradicted the server rule three lines below (the server passes `null` for every NPC side) and made an NPC whose active fainted unresolvable.
+Evidence: `packages/core/src/turn.ts` lines 176–178; `packages/core/IMPLEMENTATION-NOTES.md` item 14. Finding L2-19.
+Affects: `50-verification-budget.md` §50.4.1 `validate-action.test.ts` row.
+
+---
+
 ## 2026-09-25 — `40-pipelines.md` §40.1.2 stage 4 — emissive mask = bright and vivid (HSV value ≥ 0.92, chroma ≥ 0.4) with an 8 % coverage cap
 Why: the render part-3 browser check found pale creatures glowing at night and blooming at noon. HSL saturation × lightness tends to 1 for any faintly tinted near-white, so 42–49 % of `mufflo` and `dreambud` and 31 % of `glimp` were emissive, while a pure saturated red scored 0.5 and never emitted. Without a cap the corrected rule marks 30–54 % of flame creatures.
 Evidence: coverage survey over the 260 cached sprites (old rule: 34 sprites above 10 %; new rule without cap: mufflo/dreambud/glimp 0 %, flampling 54 %); `packages/render/IMPLEMENTATION-NOTES.md` Part 3, orchestrator item 3.

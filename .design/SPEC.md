@@ -125,7 +125,7 @@ Companion documents (inputs, not binding): `.design/PLAN.md`, `.design/story-bib
     - [10.4.1 Descriptors (verbatim)](#10.4.1-descriptors-verbatim)
     - [10.4.2 `CreatureBillboard` (verbatim)](#10.4.2-creaturebillboard-verbatim)
     - [10.4.3 Geometry and anchoring](#10.4.3-geometry-and-anchoring)
-    - [10.4.4 Facing the camera (Y-axis only) — shadow-safe](#10.4.4-facing-the-camera-y-axis-only-shadow-safe)
+    - [10.4.4 Facing the camera (yaw + half-pitch lean) — shadow-safe](#10.4.4-facing-the-camera-yaw-half-pitch-lean-shadow-safe)
     - [10.4.5 The billboard material graph (one `MeshStandardNodeMaterial` per atlas)](#10.4.5-the-billboard-material-graph-one-meshstandardnodematerial-per-atlas)
     - [10.4.6 Uniform tables](#10.4.6-uniform-tables)
     - [10.4.7 Contact shadow and grounding](#10.4.7-contact-shadow-and-grounding)
@@ -294,7 +294,7 @@ Companion documents (inputs, not binding): `.design/PLAN.md`, `.design/story-bib
     - [40.2.6 Size targets (asserted by `tools/model-pipeline/test/budget.test.ts`)](#40.2.6-size-targets-asserted-by-toolsmodel-pipelinetestbudget.test.ts)
   - [§40.3 MATERIAL BAKE — `tools/material-bake` (new, the fourth tool)](#§40.3-material-bake-toolsmaterial-bake-new-the-fourth-tool)
     - [40.3.1 What it produces](#40.3.1-what-it-produces)
-    - [40.3.2 `SurfaceRecipe` (verbatim, `tools/material-bake/src/recipe.ts`)](#40.3.2-surfacerecipe-verbatim-toolsmaterial-bakesrcrecipe.ts)
+    - [40.3.2 `SurfaceRecipe` (verbatim, `packages/render/src/surfaces/recipe.ts`, imported by the bake through `@ewa/render/surfaces`)](#40.3.2-surfacerecipe-verbatim-packagesrendersrcsurfacesrecipe.ts-imported-by-the-bake-through-ewarendersurfaces)
     - [40.3.3 Encoding](#40.3.3-encoding)
     - [40.3.4 Output, manifest, cache](#40.3.4-output-manifest-cache)
     - [40.3.5 Byte arithmetic and the two budgets that bind it](#40.3.5-byte-arithmetic-and-the-two-budgets-that-bind-it)
@@ -935,7 +935,8 @@ export interface TurnResult { readonly state: BattleState; readonly events: read
 
 /**
  * Pure. Never mutates `state`. Advances rng from state.rng and stores the new state in result.state.rng.
- * `actions[i]` may be null ONLY when sides[1-i].mustSwitch && !sides[i].mustSwitch (replacement phase).
+ * `actions[i]` may be null (a) when sides[i].kind !== 'player', in every phase — including a replacement phase in which
+ * that wild/NPC side is the one that must switch — or (b) when sides[1-i].mustSwitch && !sides[i].mustSwitch (replacement phase).
  * Wild/NPC sides never pass actions: core chooses for them via chooseNpcAction, deterministically.
  */
 export function resolveTurn(
@@ -948,7 +949,11 @@ export function resolveTurn(
 export function chooseNpcAction(state: BattleState, side: 0 | 1, content: ContentIndex, rng: Rng): Action;
 ```
 
-Server rule: for `wild`, `trainer`, `league` and `raid`, the server passes `null` for the NPC side and core calls `chooseNpcAction` internally with the battle rng (so the choice is part of the deterministic stream). For `pvp`, both actions must be non-null (or the replacement-phase exception).
+Server rule: for `wild`, `trainer`, `league` and `raid`, the server passes `null` for the NPC side and core calls `chooseNpcAction` internally with the battle rng (so the choice is part of the deterministic stream). For `pvp`, both actions must be non-null (or the replacement-phase exception). `validateAction(state, side, null)` is therefore valid for every non-player side in every phase; for a player side `null` is valid only in the replacement-phase exception. <!-- amended 2026-09-25: the resolveTurn comment said "ONLY when … replacement phase", which contradicted this rule; folded packages/core IMPLEMENTATION-NOTES item 14 -->
+
+The §2.20 fuzz digest committed in `packages/core/test/fuzz-digests.json` is, per seed, `fnv1a32` over the joined per-turn `digestBattleState` values (the `createBattle` state first), so it captures every turn, not only the final state (`packages/core/test/fuzz.ts`). <!-- amended 2026-09-25: core IMPLEMENTATION-NOTES item 17 -->
+
+**Sleep counter** (§2.4 `sleep`, §2.11 step 6, as implemented and pinned by the fuzz digests): the counter decrements at the start of every sleeper action, including an action later in the same turn the status landed, and the action that brings it to 0 is taken normally (`statusCured`, then the move). A sleep of `N = 1 + rng.int(3)` therefore skips exactly `N − 1` of the sleeper's actions — 0, 1 or 2 — not `N`. <!-- amended 2026-09-25: core IMPLEMENTATION-NOTES item 15 — the §2.4 row "cannot act for 1 + rng.int(3) turns" read as N skipped actions; changing the feel is a semantics change (fuzz digests), see .design/audits/spec-verification.md -->
 
 ### 2.11 Turn resolution order
 
@@ -1489,10 +1494,10 @@ Fails the build on the first of:
 8. Every `EncounterSlot` has `levelMin <= levelMax`, weights > 0; a table on a `story` zone must satisfy roster-coverage RC-9 (levels inside the zone's band, Ghost/Dark night-only). No table exceeds 16 slots or 14 distinct species. <!-- reconciled 2026-09-18: roster-coverage A1 — story tables allowed -->
 9. Zone graph checks from §3.1, and every authored coordinate inside the playable interior (§3.1 extents; snapped, else fail).
 10. Prices: every consumable `sellPrice === floor(price / 2)`; orb prices are the legacy values.
-11. **Atlas bind cap.** For every zone, `|Z(zone)| ≤ 16` where `Z(zone)` = species of its encounter table ∪ its statics ∪ its trainers' teams ∪ the league teams whose `zoneId` is the zone (`40-pipelines.md` §40.1.4: a zone then binds ≤ 8 sprite atlases without planner duplication). <!-- reconciled 2026-09-18: 40-pipelines OQ-4 -->
+11. **Atlas bind cap.** For every zone, `|O(zone)| ≤ 16` where `O(zone)` = species of its encounter table ∪ its statics — the species the zone can show in the overworld at once (`40-pipelines.md` §40.1.4: a zone then binds ≤ 8 sprite atlases without planner duplication). The full `Z(zone)` = `O(zone)` ∪ its trainers' teams ∪ the league teams whose `zoneId` is the zone is computed and written to the report (`bindSets`) for the sprite planner, but is **not** capped: `solenne` (3 Wardens + the Champion, legacy teams) is 26 species and `umbral_observatory` (bible story teams) 20, so a cap on `Z` cannot hold. Battle-only species outside the zone's atlases are bound for the battle (`10-render.md` §10.4.1). <!-- reconciled 2026-09-18: 40-pipelines OQ-4 --> <!-- amended 2026-09-25: `|Z(zone)| ≤ 16` was measured impossible (packages/content IMPLEMENTATION-NOTES D1: solenne 26, umbral_observatory 20); validate.ts enforces the overworld subset -->
 12. Heightfields (§3.11): `buildHeightfield` runs for all 21 zones; `walkable` samples ≥ 45 % of `res²` (the playable interior is 64 % of the field at most; legacy was 10.7 %, legacy-render-audit Q12); `spawn` and every authored coordinate are walkable after snapping.
 
-`validate.ts` also emits `dist/content-report.json` (counts, coverage list + `roster` report, per-zone species list `perZone` and the bind sets `Z(zone)`, every zone's heightfield `digest`) and `dist/heightfields/<zoneId>.json` (the full field, for `10-render.md` §10.6.1 `collider.test.ts`), which `tools/asset-audit`, the sprite pipeline and the render tests consume.
+`validate.ts` also emits `dist/content-report.json` (counts, coverage list + `roster` report, per-zone species list `perZone` and the bind sets `Z(zone)`, every zone's heightfield `digest`) and `dist/heightfields/<zoneId>.json` (the full field, for `10-render.md` §10.6.1 `collider.test.ts`), which `tools/asset-audit`, the sprite pipeline and the render tests consume. The field file is an exact compact encoding (`encoding: 'q64-delta-varint-b64+rle'`: heights as 1/64 m integers, row-major, delta + zig-zag varint + base64; the two masks run-length encoded), decoded by `decodeHeightfield` bit for bit with the digest re-verified; heights are quantised to 1/64 m inside `buildHeightfield`, so the runtime field and the file hold the same numbers (routes ≈ 305 KB, 4.5 MB for 21 zones). <!-- amended 2026-09-25: packages/content IMPLEMENTATION-NOTES D2 — raw JSON arrays of a 481² field are > 2 MB -->
 
 ### 3.11 Heightfield — the walkable surface, built once, sampled by everyone
 
@@ -1529,6 +1534,8 @@ export function playableBounds(h: Heightfield): { readonly minX: number; readonl
 ```
 
 `buildHeightfield` uses only core's `createRng(zone.layoutSeed)` and integer/`Math.fround` arithmetic on `Float32Array`, so the `digest` is identical in Node and in a browser worker (`50-verification-budget.md` §50.4.2 `heightfield.test.ts`). The first call per zone costs ≤ 40 ms; memoised thereafter.
+
+**Open gap — building and prop footprints (blocker for server authority).** The `walkable` comment above requires prop footprints to be 0, but the building/prop placement is decided by render's layout (`10-render.md` §10.5.5 `planBuildings`/`planProps`, fed by `20-client.md` §20.4.4 `spec.buildings`/`spec.props`), which content cannot import. As implemented, `buildHeightfield` marks the margin, slopes and water only; render registers the footprints as client-side **blockers** in `TerrainCollider` (§10.6.2). Consequences until the footprint plan moves into content: the server's `validateInput` accepts a position inside a house or a trunk (a modified client walks through buildings), and `SpawnDirector` can place a wild spawn inside a footprint the client cannot reach. The fix is a pure content export of the footprint plan that both `buildHeightfield` and render's builder consume (`.design/audits/spec-verification.md`, recommendation R1). <!-- amended 2026-09-25: packages/render IMPLEMENTATION-NOTES Z6; packages/content IMPLEMENTATION-NOTES clarification 1 ("prop footprints are render data and are not modelled") -->
 
 ### 3.12 Bodies — the player's avatar
 
@@ -1619,8 +1626,8 @@ Cell size **32 world units**; a client sees the 3×3 block around its own cell. 
 ```ts
 import { z } from 'zod';
 
-export const InputMsg = z.object({ seq: z.number().int().min(0).max(0xffffffff), x: z.number().finite(), z: z.number().finite(),
-  angle: z.number().finite(), running: z.boolean(), dtMs: z.number().int().min(1).max(100) });
+export const InputMsg = z.object({ seq: z.number().int().min(0).max(0xffffffff), x: z.number(), z: z.number(),   // zod 4: z.number() rejects NaN/±Infinity; .finite() is a deprecated no-op
+  angle: z.number(), running: z.boolean(), dtMs: z.number().int().min(1).max(100) });
 export const EmoteMsg = z.object({ emote: z.number().int().min(1).max(6) });
 export const ChatMsg = z.object({ text: z.string().min(1).max(120) });
 export const InteractMsg = z.object({ targetId: z.string().min(1).max(64), kind: z.enum(['npc', 'item', 'lore', 'gym', 'healer', 'shop', 'warp', 'static']) });
@@ -1660,7 +1667,7 @@ export type ClientMessageType = keyof typeof CLIENT_MESSAGES;
 ```
 
 <!-- reconciled 2026-09-18: battleResync (named in §4.5 prose) is now in the block; 50-verification-budget.md §50.4.3 counts 20 -->
-Rate limits (per client, sliding window; excess is dropped with one `error { code: 'rateLimited' }` per window): `input` 30/s, `emote` 1 per 1.5 s, `chat` 4 per 4 s, `interact` 4/s, `engageSpawn` 2/s, `battleAction`/`battleResync` 4/s, `challenge`/`tradeRequest` 3 per 5 s, raid messages 4/s. A message whose `type` is not a `CLIENT_MESSAGES` key has no handler: Colyseus drops it, the room counts `metrics.unknownMessages`, and 5 within 10 s disconnect the client with code 4003 (there is no `'*'` handler and no error reply — `invalidPayload` is for a known type with a malformed body).
+Rate limits (per client, sliding window; excess is dropped with one `error { code: 'rateLimited' }` per window): `input` 30/s, `emote` 1 per 1.5 s, `chat` 4 per 4 s, `interact` 4/s, `engageSpawn` 2/s, `battleAction`/`battleResync` 4/s, `challenge`/`tradeRequest` 3 per 5 s, raid messages 4/s. A message whose `type` is not a `CLIENT_MESSAGES` key gets no reply: the room's `'*'` handler only counts it (`metrics.unknownMessages`) and 5 within 10 s disconnect the client with code 4003 — the `'*'` handler must exist, because `@colyseus/core` 0.18.14 closes the socket with 4002 on the first message that has no handler outside dev mode (`src/RoomMessages.ts` lines 334–342). `invalidPayload` is for a known type with a malformed body; the zod check therefore runs inside the handler wrapper (`safeParse`), never as the `onMessage` validator argument, which disconnects with 4002 on a rejected payload (`src/RoomMessages.ts` lines 189–196). <!-- amended 2026-09-25: "Colyseus drops it … there is no '*' handler" was false for 0.18.14; packages/server IMPLEMENTATION-NOTES R1, R3 -->
 
 ### 4.4 Server → client messages
 
@@ -1698,6 +1705,8 @@ export interface SeatReservation { readonly name: string; readonly sessionId: st
 <!-- reconciled 2026-09-18: `chat`/`dm` variants added (30-server-netcode.md OQ 2 routed them through `toast`); `storyBeat` added (20-client.md §20.4.7 expected a `dialogue` message no section defined); `handover.seat` widened from string to SeatReservation (30-server-netcode.md OQ 1) -->
 **`progressionDelta` and `inventoryDelta` are the only messages that change badges, exp, money, items, creatures, dex, rating or flags on the client.** The client store applies them and nothing else; a `BattleEvent` of `expGain` is animation, not state. `50-verification-budget.md`'s authority test fabricates every client message type and asserts the server's persisted rows are unchanged.
 
+There is no raid-end variant: a raid's rewards reach each participant as `battleEnd { battleId: <the raid id>, outcome: { winner: 0 }, rewards }` (after the round's `inventoryDelta`/`progressionDelta`); the client routes a `battleEnd` whose `battleId` equals `ZoneState.raid.id` to the raid UI. <!-- amended 2026-09-25: packages/server IMPLEMENTATION-NOTES Q14 -->
+
 ### 4.5 State digests
 
 Every `battleStart`, `battleEvents`, `battleResync` and `raidEvents` carries `stateDigest = digestBattleState(serverState)` (§2.20). The client runs the same `resolveTurn` as a *preview* to start animating before the server's message arrives; when the server's `battleEvents` lands it compares `digestBattleState(previewState)` with `stateDigest`. Mismatch → `console.warn('battle desync', battleId, turn)`, drop the preview, request `battleResync` (`CLIENT_MESSAGES.battleResync`, §4.3), and render from the server's events. A desync counter is exported to the dev HUD; the fuzz test's promise is that it stays at 0.
@@ -1706,7 +1715,7 @@ Every `battleStart`, `battleEvents`, `battleResync` and `raidEvents` carries `st
 
 ### 4.6 Handover
 
-Crossing a zone link: the source room sends `handover { roomId, seat, zoneId, x, z }` when the player is within 6 units of the link edge; the client pre-joins the destination via `@colyseus/sdk` `client.consumeSeatReservation` and sends `handoverAck` to the *destination*; the destination marks the player present; the source removes the avatar on receiving the destination's IPC confirm, or after 5 s. The player's authoritative position row is written once, by the destination, on ack. Details in `30-server-netcode.md`.
+Crossing a zone link: the source room sends `handover { roomId, seat, zoneId, x, z }` when the player is within 6 units of the link side's **playable** edge (`playableBounds`, §3.11 — the field edge lies inside the 16 m unwalkable margin and cannot be reached) <!-- amended 2026-09-25: packages/server IMPLEMENTATION-NOTES R7 -->; the client pre-joins the destination via `@colyseus/sdk` `client.consumeSeatReservation` and sends `handoverAck` to the *destination*; the destination marks the player present; the source removes the avatar on receiving the destination's IPC confirm, or after 5 s. The player's authoritative position row is written once, by the destination, on ack. Details in `30-server-netcode.md`.
 
 ### 4.7 REST (Fastify 5, `@fastify/jwt` access tokens 15 min, refresh tokens 30 d in `refresh_tokens`)
 
@@ -1719,7 +1728,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /auth/refresh` | `{ refresh }` | `{ access, refresh }` (rotating) | none |
 | `POST /auth/logout` | `{ refresh }` | `204` | bearer |
 | `GET /me` | — | `PlayerProfile & { party: CreatureInstance[]; box: CreatureInstance[]; inventory: Record<string, number>; badges; flags; quests; battlePass; presence: { roomId: string \| null; zoneId: ZoneId; shard: number }; unreadDm: Record<string, number>; friendRequests: number; liveOps: LiveOpsSummary }` | bearer |
-| `POST /zone/enter` | `{ zoneId }` | `{ seat: SeatReservation }` — picks/creates the shard (30-server-netcode.md §30.2.6); 403 `{ code: 'gated', badge }` when the zone's `gate` badge is missing; 409 `inBattle` during a battle | bearer |
+| `POST /zone/enter` | `{ zoneId }` | `{ seat: SeatReservation }` — picks/creates the shard (30-server-netcode.md §30.2.6); 403 `{ code: 'gated', badge }` when the zone's `gate` badge is missing; 409 `{ code: 'wrongZone', zoneId }` unless `zoneId` is the player's persisted `zone_id` or live presence zone (crossings are handovers, never a REST call); during a battle the seat is in the battle's own room (a reload rejoins and receives `battleResync`), any other zone 409 `inBattle` | bearer |
 | `POST /profile` | `{ title?: string; motto?: 0..120; body?: string }` (`title ∈ TITLES`, `body ∈ BODIES` ids, §3.12) | `PlayerProfile` | bearer |
 | `POST /quests/claim` | `{ questId: string; objectiveId?: string }` (daily/weekly ids `daily:<dayKey>` / `weekly:<weekKey>` use `objectiveId`) | `{ inventory, money, creaturesAdded, questProgress }` | bearer |
 | `POST /party/reorder` | `{ order: string[] }` (creature ids, 1..6) | `{ party }` | bearer |
@@ -1727,7 +1736,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /party/withdraw` / `POST /party/deposit` | `{ id }` | `{ party, box }` | bearer |
 | `POST /creature/:id/nickname` | `{ nickname: 1..16 | null }` | `CreatureInstance` | bearer |
 | `POST /creature/:id/moves` | `{ moves: string[] }` (1..4, ⊆ learnable at level) | `CreatureInstance` | bearer |
-| `POST /creature/:id/setup` | `{ ability: string; heldItem: string | null }` | `CreatureInstance` | bearer |
+| `POST /creature/:id/setup` | `{ ability: string; heldItem: string | null }` | `CreatureInstance & { inventoryDelta: InventoryDeltaBody }` (`CreatureSetupRes`: equipping takes one from the inventory and returns the previously held item) | bearer |
 | `POST /creature/:id/evolve` | `{ into: string }` | `CreatureInstance` | bearer |
 | `POST /creature/:id/release` | — | `204` (refused when `locked`) | bearer |
 | `POST /creature/:id/flags` | `{ favorite?: boolean; locked?: boolean }` | `CreatureInstance` | bearer |
@@ -1738,16 +1747,16 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /shop/buy` / `POST /shop/sell` | `{ item: string; qty: 1..99 }` | `{ inventory, money }` | bearer |
 | `GET /marketplace` | query `search, variant, isAlpha, levelMin, levelMax, sort, page, pageSize<=50` | `{ listings: ListingView[]; total }` | bearer |
 | `GET /marketplace/my/active` · `GET /marketplace/my/bids` · `GET /marketplace/:id` | — | `ListingView[]` / `ListingView & { bids: BidView[] }` | bearer |
-| `POST /marketplace/list` | `{ creatureId, startingBid >= 100, buyNowPrice: number | null, durationHours: 12|24|48 }` | `ListingView` (5/h) | bearer |
-| `POST /marketplace/:id/bid` | `{ amount }` | `ListingView` (30/h) | bearer |
-| `POST /marketplace/:id/buy-now` · `POST /marketplace/:id/cancel` | — | `ListingView` | bearer |
+| `POST /marketplace/list` | `{ creatureId, startingBid >= 100, buyNowPrice: number | null, durationHours: 12|24|48 }` | `ListingMutationRes` = `ListingView & { inventoryDelta }` (`creaturesRemoved: [creatureId]`) (5/h; 409 `inBattle` during a battle) | bearer |
+| `POST /marketplace/:id/bid` | `{ amount }` | `ListingMutationRes` (`inventoryDelta.money` after escrow) (30/h) | bearer |
+| `POST /marketplace/:id/buy-now` · `POST /marketplace/:id/cancel` | — | `ListingMutationRes` (buy-now: `money` + `creaturesAdded`; cancel: `creaturesAdded`) | bearer |
 | `GET /friends` | — | `{ friends: FriendView[]; incoming; outgoing }` | bearer |
 | `POST /friends/request` · `/accept` · `/decline` · `/remove` | `{ username }` | `{ friends, incoming, outgoing }` | bearer |
 | `GET /messages/:username?before=&limit<=50` | — | `{ messages: MessageView[] }` | bearer |
 | `POST /messages/:username` | `{ text: 1..300 }` | `MessageView` | bearer |
 | `POST /messages/read` | `{ username }` | `204` | bearer |
 | `GET /guilds?search=` · `GET /guilds/:id` | — | `GuildView[]` / `GuildView & { members }` | bearer |
-| `POST /guilds` | `{ name: 3..24, tag: /^[A-Z0-9]{3,4}$/ }` (costs `GUILD.createCost` 5000, 409 `InsufficientFunds`) | `GuildView` | bearer |
+| `POST /guilds` | `{ name: 3..24, tag: /^[A-Z0-9]{3,4}$/ }` (costs `GUILD.createCost` 5000, 409 `InsufficientFunds`) | `GuildCreateRes` = `GuildView & { inventoryDelta }` (`money` after the charge) | bearer |
 | `POST /guilds/:id/join` · `/leave` · `/kick` · `/promote` | `{ playerId? }` | `GuildView` | bearer |
 | `GET /leaderboard?mode=rating|dex|trainerLevel&page=` | — | `{ rows: LeaderboardRow[] }` | bearer |
 | `GET /players/:username` | — | `PublicProfile` (allow-list, §5.3) | bearer |
@@ -1759,6 +1768,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /health` | — | `{ status: 'ok', time }` | none |
 
 <!-- reconciled 2026-09-18: `/zone/enter`, `/profile`, `/quests/claim`, `/admin/metrics` added (30-server-netcode.md §30.2.6, §30.5, §30.9.1, §30.10.2 used them; OQ 3); `GET /me` gains presence/unread/liveOps; guild tag {3,4} (30-server-netcode.md OQ 5 — the persist column is varchar(4) and a 2-char tag collides with the 2-letter type glyphs in the HUD) -->
+<!-- amended 2026-09-25: `/zone/enter` wrongZone + battle-room seat, and the `inventoryDelta` extensions of `/creature/:id/setup`, `/guilds`, `/marketplace/*` (protocol `InventoryDeltaBodySchema`, additive) — packages/server IMPLEMENTATION-NOTES R2, P1, P3. Without `wrongZone` a client could "fast travel" by entering any ungated zone and being placed at its spawn -->
 Every user-supplied string that reaches SQL `LIKE`/`ILIKE` goes through `escapeLike()` in `@ewa/persist`; there is no regex search anywhere. Domain errors from persist (§5.5) map to `409 { code }`; `RateLimited` → 429; zod → 400 `invalidPayload`; JWT → 401; everything else → 500 `internal`.
 
 ---
@@ -1944,8 +1954,10 @@ export const battleHistory = pgTable('battle_history', {
   turns: smallint('turns').notNull(),
   ratingDelta: integer('rating_delta'),
   rewards: jsonb('rewards').$type<RewardsSummary>().notNull(),
-  seed: jsonb('seed').$type<RngState>().notNull(),                  // replay: seed + actions reproduce the battle
+  seed: jsonb('seed').$type<RngState>().notNull(),                  // replay: start + seed + actions reproduce the battle
   actions: jsonb('actions').$type<[Action | null, Action | null][]>().notNull(),
+  start: jsonb('start').$type<BattleStartSnapshot>(),               // migration 0001: the createBattle input minus the seed; null before 0001
+  finalDigest: varchar('final_digest', { length: 8 }),               // migration 0001: digestBattleState of the final state; null before 0001
   happenedAt: timestamp('happened_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index('battle_history_player_idx').on(t.playerId, t.happenedAt)]);
 
@@ -1987,11 +1999,12 @@ export const auditLog = pgTable('audit_log', {
 }, (t) => [index('audit_log_actor_idx').on(t.actorId, t.at), index('audit_log_action_idx').on(t.action, t.at)]);
 ```
 
-`players.x/z` use `real`; `real` is imported from `drizzle-orm/pg-core` alongside the others. `bigserial` likewise. There is no `party_slots`/`box_slots` table: the `(owner_id, slot_kind, slot_index)` unique index on `creature_instances` *is* the slot model, and a reorder is one transaction that rewrites `slot_index` for the affected rows.
+`players.x/z` use `real`; `real` is imported from `drizzle-orm/pg-core` alongside the others. `bigserial` likewise. `BattleStartSnapshot` is `{ readonly zoneId: string; readonly terrain: string; readonly sides: readonly [unknown, unknown] }` (the two `createBattle` sides, deep-copied before the call); with it a battle replays from the row alone — `createBattle({ id, format, seed, ...start })` then `resolveTurn` over `actions` reproduces `final_digest`. The original table (seed + actions only) could not replay without the starting parties. <!-- amended 2026-09-25: migration 0001_battle_replay, packages/server IMPLEMENTATION-NOTES S10/P6, packages/persist IMPLEMENTATION-NOTES "Server part 2 additions" --> There is no `party_slots`/`box_slots` table: the `(owner_id, slot_kind, slot_index)` unique index on `creature_instances` *is* the slot model, and a reorder is one transaction that rewrites `slot_index` for the affected rows.
 
 ### 5.2 Repository interfaces
 
 <!-- reconciled 2026-09-18: signatures as implemented in packages/persist/src/repos/*.ts — explicit `now: Date` on every method that stamps a time (persist never reads the wall clock), `toPublic(row, extras)`, `CreatureRecord`, `lockMany`, a `battlePass` repo, `swap`, and the closed `PersistErrorCode` union of §5.5 -->
+<!-- amended 2026-09-25: server part 1/2 repo additions folded (PlayerRepo setAdmin/bannedIds/byIds/search/counts and leaderboard 'dex', ProgressRepo markSeen → boolean/flagSetAt/claimObjective/pruneSyntheticQuests, MarketRepo closeExpiredDetailed + ClosedListing, AuthRepo ownerOf) — packages/persist/src/repos/*.ts -->
 ```ts
 import type { PgTransaction } from 'drizzle-orm/pg-core';
 export type Tx = PgTransaction<any, any, any>;   // the one place `any` is permitted: driver-generic transaction handle
@@ -2022,7 +2035,12 @@ export interface PlayerRepo {
   touchLastSeen(tx: Tx, id: string, now: Date): Promise<void>;
   ban(tx: Tx, id: string, reason: string, now: Date): Promise<void>;   // Forbidden when the target is_admin
   unban(tx: Tx, id: string): Promise<void>;
-  leaderboard(tx: Tx, mode: 'rating' | 'trainerLevel', page: number, pageSize: number): Promise<PlayerRow[]>;   // banned excluded; the dex-count mode is a ProgressRepo join in the server
+  setAdmin(tx: Tx, id: string, isAdmin: boolean): Promise<void>;     // dev-only ADMIN_BOOTSTRAP_USERNAME at boot
+  bannedIds(tx: Tx): Promise<string[]>;                              // the server's ban-cache rebuild (§30.6.7)
+  leaderboard(tx: Tx, mode: 'rating' | 'trainerLevel' | 'dex', page: number, pageSize: number): Promise<PlayerRow[]>;   // banned excluded in SQL (pages stay full); rating ties by peak then username_lower; dex = caught count
+  byIds(tx: Tx, ids: readonly string[]): Promise<PlayerRow[]>;       // friend views; order unspecified
+  search(tx: Tx, q: string, page: number, pageSize: number): Promise<{ rows: PlayerRow[]; total: number }>;   // admin: username_lower ILIKE escapeLike(q), newest first, pageSize 1..50
+  counts(tx: Tx): Promise<{ total: number; banned: number; admins: number }>;   // /admin/stats
   toPublic(row: PlayerRow, extras: PublicExtras): PublicProfile;      // ALLOW-LIST, pure, see 5.3
   publicProfile(tx: Tx, id: string): Promise<PublicProfile | null>;   // gathers extras (badges, guild tag, dex caught count, first 3 party slots) and calls toPublic
 }
@@ -2065,11 +2083,14 @@ export interface ProgressRepo {
   flags(tx: Tx, playerId: string): Promise<string[]>;
   setFlags(tx: Tx, playerId: string, flags: readonly string[], now: Date): Promise<void>;
   dex(tx: Tx, playerId: string): Promise<{ seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[] }>;
-  markSeen(tx: Tx, playerId: string, speciesId: string, now: Date): Promise<void>;
+  markSeen(tx: Tx, playerId: string, speciesId: string, now: Date): Promise<boolean>;   // idempotent; true when the species was new to the dex (live-ops newSpeciesSeen)
+  flagSetAt(tx: Tx, playerId: string, flag: string): Promise<Date | null>;              // trainer rematch windows (§30.4.4)
   markCaught(tx: Tx, playerId: string, speciesId: string, variant: VariantKey, isAlpha: boolean, now: Date): Promise<{ newSpecies: boolean }>;
   quest(tx: Tx, playerId: string, questId: string): Promise<{ objectiveId: string; count: number; done: boolean; claimedAt: Date | null }[]>;
   advance(tx: Tx, playerId: string, questId: string, objectiveId: string, count: number, done: boolean): Promise<void>;
   claim(tx: Tx, playerId: string, questId: string, now: Date): Promise<boolean>;   // false when already claimed
+  claimObjective(tx: Tx, playerId: string, questId: string, objectiveId: string, now: Date): Promise<boolean>;   // daily/weekly mission claim; false when missing, not done or already claimed
+  pruneSyntheticQuests(tx: Tx, prefix: string, beforeKey: string): Promise<number>;   // live-ops rollover: deletes `<prefix><key>` rows whose key sorts before beforeKey
   clearFlags(tx: Tx, playerId: string, flags: readonly string[]): Promise<void>;    // live-ops streak/daily rows only; story flags are never cleared
   allQuests(tx: Tx, playerId: string): Promise<Record<string, { objectiveId: string; count: number; done: boolean; claimedAt: Date | null }[]>>;
   claimedQuestIds(tx: Tx, playerId: string): Promise<string[]>;
@@ -2095,10 +2116,12 @@ export interface MarketRepo {
   /** FOR UPDATE; assert seller (NotOwner) && active && currentBid === null (ListingHasBids — a listing with a bid can only settle at expiry, so no escrow is ever stranded); creature back to seller's box; status cancelled. */
   cancel(tx: Tx, listingId: string, sellerId: string, now: Date): Promise<ListingView>;
   /** Expiry job: FOR UPDATE SKIP LOCKED over active && expiresAt <= now, `limit` rows; sold → transfer + pay seller; no bids → return + expired. Returns rows closed. */
-  closeExpired(tx: Tx, now: Date, limit: number): Promise<number>;
+  closeExpired(tx: Tx, now: Date, limit: number): Promise<number>;   // = (await closeExpiredDetailed(tx, now, limit)).length
+  closeExpiredDetailed(tx: Tx, now: Date, limit: number): Promise<ClosedListing[]>;   // what each closed listing became (dex marks, trade exp, notifications)
   creatureSlot(tx: Tx, creatureId: string): Promise<{ ownerId: string; slotKind: string; slotIndex: number } | null>;
 }
 export function marketFee(price: number): number;   // floor(price * MARKET.feePercent / 100)
+export interface ClosedListing { readonly id: string; readonly sold: boolean; readonly sellerId: string; readonly buyerId: string | null; readonly creatureId: string; readonly speciesId: string; readonly variantKey: VariantKey; readonly isAlpha: boolean; readonly price: number | null }
 
 export interface SocialRepo {
   requestFriend(tx: Tx, requesterId: string, addresseeId: string, now: Date): Promise<'requested' | 'accepted'>;   // a reverse pending request is accepted, not mirrored (friendships_pair_uq); AlreadyFriends
@@ -2123,7 +2146,7 @@ export interface SocialRepo {
   searchGuilds(tx: Tx, search: string, limit: number): Promise<GuildView[]>;   // escapeLike
 }
 export interface HistoryRepo {
-  recordBattle(tx: Tx, row: NewBattleHistory): Promise<void>; recordTrade(tx: Tx, row: NewTradeHistory): Promise<void>;   // rows carry their own timestamps
+  recordBattle(tx: Tx, row: NewBattleHistory): Promise<void>; recordTrade(tx: Tx, row: NewTradeHistory): Promise<void>;   // rows carry their own timestamps; NewBattleHistory carries optional `start` / `finalDigest` (§5.1)
   battles(tx: Tx, playerId: string, page: number, pageSize: number): Promise<BattleHistoryRow[]>; battleById(tx: Tx, playerId: string, battleId: string): Promise<BattleHistoryRow | null>;
   trades(tx: Tx, playerId: string, page: number, pageSize: number): Promise<TradeHistoryRow[]>;
   /** The whole two-player trade in one call (the transaction below): locks, escrow asserts, transfers both ways, money both ways, two trade_history rows, audit. */
@@ -2140,6 +2163,7 @@ export interface AuthRepo {
   issueRefresh(tx: Tx, playerId: string, now: Date): Promise<{ token: string; expiresAt: Date }>;
   rotateRefresh(tx: Tx, token: string, now: Date): Promise<{ playerId: string; token: string; expiresAt: Date } | null>;   // null = unknown, expired or already revoked (the server then calls revokeAll)
   revoke(tx: Tx, token: string, now: Date): Promise<boolean>; revokeAll(tx: Tx, playerId: string, now: Date): Promise<number>; purge(tx: Tx, before: Date): Promise<number>;
+  ownerOf(tx: Tx, token: string): Promise<{ playerId: string; revokedAt: Date | null; expiresAt: Date } | null>;   // refresh-reuse detection needs the owner of an already-revoked token (§30.5.1 #24)
 }
 export function hashRefreshToken(token: string): string;   // sha-256 hex; the only form stored
 export interface AuditRepo { write(tx: Tx, e: { actorId: string | null; action: string; subject: string | null; detail: Record<string, unknown> }, now: Date): Promise<void> }
@@ -2237,22 +2261,22 @@ Every library symbol below was read from `packages/render/node_modules/three@0.1
 
 | Symbol | Import | Verified fact |
 |---|---|---|
-| `WebGPURenderer` | `three/webgpu` | `new WebGPURenderer({ forceWebGL, antialias, alpha, depth, stencil, outputBufferType, powerPreference, trackTimestamp })`; `await renderer.init()`; `renderer.backend.isWebGPUBackend` / `isWebGLBackend`; `renderer.info.render.{drawCalls,triangles,timestamp}`, `renderer.info.memory.{geometries,textures,texturesSize,programs,renderTargets,attributes,attributesSize,total}`; `resolveTimestampsAsync(TimestampQuery.RENDER)`; `shadowMap.enabled`, `shadowMap.transmitted`; `compileAsync(scene, camera)`. `trackTimestamp` is a `WebGPUBackend.js` `@property` missing from `WebGPUBackendParameters` in the `.d.ts` — passed through one typed cast in `renderer.ts` (as `50-verification-budget.md` §50.2.3 already states) |
-| `RenderPipeline` | `three/webgpu` | `new RenderPipeline(renderer, outputNode?)`; `outputNode`, `outputColorTransform`, `needsUpdate`, `render()`, `dispose()`. `PostProcessing` is a deprecated alias since r183 and is not used |
+| `WebGPURenderer` | `three/webgpu` | `new WebGPURenderer({ forceWebGL, antialias, alpha, depth, stencil, outputBufferType, powerPreference, trackTimestamp })`; `await renderer.init()`; `renderer.backend.isWebGPUBackend` / `isWebGLBackend`; `renderer.info.render.{drawCalls,triangles,timestamp}`, `renderer.info.memory.{geometries,textures,texturesSize,programs,renderTargets,attributes,attributesSize,total}`; `resolveTimestampsAsync(TimestampQuery.RENDER)`; `shadowMap.enabled`, `shadowMap.transmitted`; `compileAsync(scene, camera)`. `trackTimestamp` **is** declared (`@types/three` `src/renderers/webgpu/WebGPUBackend.d.ts` line 11, inherited by `WebGPURendererParameters`) and is passed without a cast; it is forced to `false` when the adapter lacks `timestamp-query` (`WebGPUBackend.js` line 298). `Renderer.init()` always starts three's internal `Animation` rAF loop, which runs `info.reset()` when `autoReset` (`Renderer.js` line 842, `Animation.js` line 81). `renderer.info.memory.texturesSize` counts every compressed texture as **1 byte** (`Info.js` lines 449–453) <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES C1, C9, C17 --> |
+| `RenderPipeline` | `three/webgpu` | `new RenderPipeline(renderer, outputNode?)`; `outputNode`, `outputColorTransform`, `needsUpdate`, `render()`, `dispose()` — `dispose()` disposes only its quad material, never the display nodes' render targets (`RenderPipeline.js` lines 165–167). `PostProcessing` is a deprecated alias since r183 and is not used |
 | `PMREMGenerator` | `three/webgpu` | `fromScene(scene, sigma = 0, near = 0.1, far = 100, { size = 256, position, renderTarget })`; `dispose()` |
-| `pass`, `mrt`, `output`, `normalView`, `velocity`, `renderOutput`, `acesFilmicToneMapping`, `screenUV`, `uniform`, `texture`, `triplanarTexture`, `hue`, `saturation`, `luminance`, `vertexColor`, `userData`, `time`, `hash`, `mx_noise_float`, `positionWorld`, `positionView`, `positionGeometry`, `normalGeometry`, `normalWorld`, `cameraPosition`, `cameraProjectionMatrixInverse`, `getViewPosition`, `fog`, `densityFogFactor`, `smoothstep`, `mix`, `select`, `Fn`, `If`, `Discard`, `float`, `vec2`, `vec3`, `vec4`, `color` | `three/tsl` | `PassNode.setMRT(mrt({...}))`, `getTextureNode(name = 'output')`, `getViewZNode(name = 'depth')`, `getLinearDepthNode`, `setResolutionScale`; `MRTNode.merge` merges a material's `mrtNode` into the pass MRT (`NodeMaterial.js` line 564–574); `renderOutput(color, toneMapping = null, outputColorSpace = null)`; `hue(color, radians)` (rotation about `(0.577, 0.577, 0.577)`, verified in `ColorAdjustment.js`); `triplanarTexture(texX, texY?, texZ?, scale = 1, position = positionLocal, normal = normalLocal)`; `userData(name, type)` reads `object.userData[name]` per render object |
+| `pass`, `mrt`, `output`, `normalView`, `velocity`, `renderOutput`, `acesFilmicToneMapping`, `screenUV`, `uniform`, `texture`, `triplanarTexture`, `hue`, `saturation`, `luminance`, `vertexColor`, `userData`, `time`, `hash`, `mx_noise_float`, `positionWorld`, `positionView`, `positionGeometry`, `normalGeometry`, `normalWorld`, `cameraPosition`, `cameraProjectionMatrixInverse`, `getViewPosition`, `fog`, `densityFogFactor`, `smoothstep`, `mix`, `select`, `Fn`, `If`, `Discard`, `float`, `vec2`, `vec3`, `vec4`, `color` | `three/tsl` | `PassNode.setMRT(mrt({...}))`, `getTextureNode(name = 'output')`, `getViewZNode(name = 'depth')`, `getLinearDepthNode`, `setResolutionScale`; `MRTNode.merge` merges a material's `mrtNode` into the pass MRT (`NodeMaterial.js` line 564–574); `renderOutput(color, toneMapping = null, outputColorSpace = null)`; `hue(color, radians)` (rotation about `(0.577, 0.577, 0.577)`, verified in `ColorAdjustment.js`); `triplanarTexture(texX, texY?, texZ?, scale = 1, position = positionLocal, normal = normalLocal)` — reads `texX.value` at build time and creates fresh `texture(value, uv)` nodes, so a later map re-point does not reach the samples (`TriplanarTextures.js` lines 26–46); `userData(name, type)` reads `object.userData[name]` per render object — a `'vec3'` uniform reads `.x/.y/.z`, so a `Color` must use type `'color'` (a `'vec3'` Color uploads NaN; `UniformsGroup.js` lines 365–367 vs 431–433). Inside a post graph `cameraProjectionMatrixInverse`/`cameraWorldMatrix` resolve to the fullscreen `QuadMesh`'s orthographic camera (`Camera.js` lines 140, 236; `QuadMesh.js` line 9) — scene-camera matrices are passed as own uniforms. `normalMap()` returns a **view**-space normal (`NormalMapNode.js` line 126); `normalGeometry` is the raw object-space attribute. A TSL `Fn` callback's second argument is the `NodeBuilder` (`TSLCore.js` line 596) <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES C3, C4, C6, C7, P6 --> |
 | `ao` (`GTAONode`) | `three/addons/tsl/display/GTAONode.js` | `ao(depthNode, normalNode, camera)`; uniforms `radius`, `thickness`, `scale`, `samples`; `resolutionScale`; `useTemporalFiltering`; `getTextureNode()`; `distanceExponent`/`distanceFallOff` deprecated since r186 (not set) |
 | `traa` (`TRAANode`) | `three/addons/tsl/display/TRAANode.js` | `traa(beauty, depthTextureNode, velocityTextureNode, camera)`; "MSAA must be disabled when TRAA is in use" |
 | `bloom` (`BloomNode`) | `three/addons/tsl/display/BloomNode.js` | `bloom(node, strength, radius, threshold)`; uniform `smoothWidth` (default 0.01); `setResolutionScale`; 5 mips fixed |
-| `dof` (`DepthOfFieldNode`) | `three/addons/tsl/display/DepthOfFieldNode.js` | `dof(node, viewZNode, focusDistance, focalLength, bokehScale)`; CoC = `smoothstep(0, focalLength, |−viewZ − focusDistance|)`, split into near (`signedDist < 0`) and far fields; no mask input exists |
-| `film`, `chromaticAberration` | `three/addons/tsl/display/{FilmNode,ChromaticAberrationNode}.js` | `film(input, intensityNode?)` mixes `base` with `base·(1 + noise)` by `intensity`; `chromaticAberration(node, strength, center = null, scale = 1.1)` |
-| `CSMShadowNode` | `three/addons/csm/CSMShadowNode.js` | `new CSMShadowNode(directionalLight, { cascades, maxFar, mode: 'uniform'|'logarithmic'|'practical'|'custom', lightMargin, customSplitsCallback })`; `fade`; `updateFrustums()`; each cascade clones `light.shadow` (so `mapSize` is shared) with `bias × (i + 1)`; attached through `light.shadow.shadowNode` (read in `AnalyticLightNode.js` line 214) |
+| `dof` (`DepthOfFieldNode`) | `three/addons/tsl/display/DepthOfFieldNode.js` | `dof(node, viewZNode, focusDistance = 1, focalLength = 1, bokehScale = 1)`; CoC = `smoothstep(0, focalLength, |−viewZ − focusDistance|)`, split into near (`signedDist < 0`) and far fields; no mask input exists; owns 6 render targets plus 2 inside its `GaussianBlurNode` (lines 88–134, 199) |
+| `film`, `chromaticAberration` | `three/addons/tsl/display/{FilmNode,ChromaticAberrationNode}.js` | `film(input, intensityNode?)` mixes `base` with `base·(1 + noise)` by `intensity`; `chromaticAberration(node, strength, center, scale = 1.1)` — the documented `center = null → screen centre` default is **not implemented**: a `null` reaches the layout `Fn` and the build throws (lines 136, 169), so the centre is passed explicitly |
+| `CSMShadowNode` | `three/addons/csm/CSMShadowNode.js` | `new CSMShadowNode(directionalLight, { cascades, maxFar, mode: 'uniform'|'logarithmic'|'practical'|'custom', lightMargin, customSplitsCallback })`; `fade`; `updateFrustums()` — dereferences `this.camera`, which is set only on the node's first build (lines 65, 160, 215–216, 506), so a call before the first render throws; each cascade clones `light.shadow` (so `mapSize` is shared) with `bias × (i + 1)` (lines 175–176); attached through `light.shadow.shadowNode` (read in `AnalyticLightNode.js` line 214) |
 | `SunLight` / `SunLightShadow` | `three/addons/lights/SunLight.js` | **Not used.** `SunLightShadow` is "two cascaded shadow maps" (its own header); Pillar 4 requires 4 |
-| `SkyMesh` | `three/addons/objects/SkyMesh.js` | uniforms `turbidity`, `rayleigh`, `mieCoefficient`, `mieDirectionalG`, `sunPosition`, `cloudCoverage`, `cloudDensity`, `cloudScale`, `cloudSpeed`, `cloudElevation`, `showSunDisc`; node-material sky (the `Sky` class is the WebGL one) |
+| `SkyMesh` | `three/addons/objects/SkyMesh.js` | uniforms `turbidity`, `rayleigh`, `mieCoefficient`, `mieDirectionalG`, `sunPosition`, `cloudCoverage`, `cloudDensity`, `cloudScale`, `cloudSpeed`, `cloudElevation`, `showSunDisc`; node-material sky (the `Sky` class is the WebGL one); projects to the far plane (`position.z = position.w`, line 215) and derives the view ray from `positionWorld − cameraPosition` (line 239), `BackSide`, `fog = false` (lines 385–387) |
 | `KTX2Loader` | `three/addons/loaders/KTX2Loader.js` | `setTranscoderPath(path)`, `detectSupport(renderer)` (after `renderer.init()`), `loadAsync`, `dispose()`; transcoder files `basis_transcoder.js` + `basis_transcoder.wasm` in `three/examples/jsm/libs/basis/` |
-| `MeshStandardNodeMaterial`, `MeshPhysicalNodeMaterial`, `MeshBasicNodeMaterial` | `three/webgpu` | node slots `colorNode`, `normalNode`, `emissiveNode`, `roughnessNode`, `metalnessNode`, `aoNode`, `positionNode`, `castShadowPositionNode`, `maskShadowNode`, `alphaTestNode`, `mrtNode`, `outputNode`; physical adds `clearcoatNode`, `clearcoatRoughnessNode`. Shadow pass (`Renderer.js` `_getShadowNodes`): uses `castShadowPositionNode` else `positionNode`; multiplies shadow alpha by `map.a`/`colorNode.a`; discards where `maskShadowNode`/`maskNode` is false |
+| `MeshStandardNodeMaterial`, `MeshPhysicalNodeMaterial`, `MeshBasicNodeMaterial` | `three/webgpu` | node slots `colorNode`, `normalNode`, `emissiveNode`, `roughnessNode`, `metalnessNode`, `aoNode`, `positionNode`, `castShadowPositionNode`, `maskShadowNode`, `alphaTestNode`, `mrtNode`, `outputNode`; physical adds `clearcoatNode`, `clearcoatRoughnessNode`. Shadow pass (`Renderer.js` `_getShadowNodes`): uses `castShadowPositionNode` else `positionNode`; multiplies shadow alpha by `map.a` sampled at the raw uv **and** by `colorNode.a` (lines 3540, 3546); discards where `maskShadowNode`/`maskNode` is false; renders `FrontSide` materials with `BackSide` unless `material.shadowSide` is set (line 50, 3767). MRT blending: per-attachment blend state comes from the **pass/renderer** MRT (`renderObject.context.mrt`, `WebGPUPipelineUtils.js` lines 131, 146); a material's own `mrtNode` blend modes never reach the pipeline — unnamed attachments are written with no blending <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES P4, P5, P7 --> |
 | `SpriteNodeMaterial` | `three/webgpu` | **Not used for creatures** — it is unlit (`NodeMaterial` with sprite defaults); Pillar 5 needs a lit surface. Used for nothing in v1 |
-| `InstancedMesh`, `LOD`, `PlaneGeometry`, `LatheGeometry`, `ExtrudeGeometry`, `OrthographicCamera`, `CanvasTexture`, `DirectionalLight`, `SpotLight`, `PointLight`, `HemisphereLight` | `three/webgpu` | `LOD.addLevel(object, distance, hysteresis)`; `CompressedTexture.generateMipmaps === false` by default, `flipY === false` |
+| `InstancedMesh`, `LOD`, `PlaneGeometry`, `LatheGeometry`, `ExtrudeGeometry`, `OrthographicCamera`, `CanvasTexture`, `DirectionalLight`, `SpotLight`, `PointLight`, `HemisphereLight`, `Sprite` | `three/webgpu` | `LOD.addLevel(object, distance, hysteresis)`; the renderer calls `LOD.update(camera)` in `_projectObject` for **every** camera, shadow cameras included, unless `autoUpdate = false` (`Renderer.js` line 3258, `LOD.js` line 83); an `InstancedMesh` whose matrices fit the device's uniform-buffer limit (1 024 matrices at 64 KiB) keeps them in a per-mesh uniform array and compiles its own vertex program, above it an instanced attribute (`Instance.js` lines 41–67); `Points` rasterise 1-px points on WebGPU — sized particles are an instanced `Sprite` (`count`) with `PointsNodeMaterial` (`PointsNodeMaterial.js` lines 21–22, 166–173); `CompressedTexture.generateMipmaps === false` by default, `flipY === false`; a texture's `mipmaps` array holds **every** level including level 0 (`Textures.js` lines 506–508) <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES C21, C23, P2, P8 --> |
 
 ---
 
@@ -2321,7 +2345,7 @@ export interface RenderCaps {
   readonly timestampQuery: boolean;            // renderer.hasFeature('timestamp-query') on webgpu; false on webgl2
   readonly maxTextureSize: number;             // 8192 minimum required; createRenderer rejects below
   readonly ktx2: 'astc' | 'bc7' | 'etc2' | 'rgba8';   // KTX2Loader.workerConfig -> chosen transcode target
-  readonly adapter: string | null;             // GPUAdapterInfo.description when exposed; null otherwise
+  readonly adapter: string | null;             // device.adapterInfo.description (the backend keeps no adapter), else `vendor architecture`; null otherwise
 }
 
 export type WeatherKind = 'none' | 'sun' | 'rain' | 'sand' | 'hail';   // text-identical mirror of spine §2.5 (render may not import core)
@@ -2365,16 +2389,16 @@ export function createRenderer(o: RendererOptions): Promise<Renderer>;
 
 ### 10.1.2 Construction sequence (the order is the contract)
 
-1. `const gpu = new WebGPURenderer({ canvas, antialias: false, alpha: false, depth: true, stencil: false, forceWebGL: o.forceWebGL ?? false, powerPreference: 'high-performance', outputBufferType: HalfFloatType, ...(o.trackTimestamp ? { trackTimestamp: true } : {}) } as WebGPURendererParameters)`. `antialias: false` is required: TRAA (§10.8) forbids MSAA.
+1. `const gpu = new WebGPURenderer({ canvas, antialias: false, alpha: false, depth: true, stencil: false, forceWebGL: o.forceWebGL ?? false, powerPreference: 'high-performance', outputBufferType: HalfFloatType, trackTimestamp: o.trackTimestamp ?? false })` — no cast: `trackTimestamp` is declared in `WebGPUBackendParameters` (header table; amended 2026-09-25). `antialias: false` is required: TRAA (§10.8) forbids MSAA.
 2. `await gpu.init()`. Rejection → `createRenderer` rejects with `RenderInitError('no-gpu')`; the client shows its static message.
 3. `backend = gpu.backend.isWebGPUBackend ? 'webgpu' : 'webgl2'`. On `webgl2` the renderer still runs (three's automatic fallback), the post graph drops `traa` to `smaa` (§10.8.3) and `caps.timestampQuery = false`. Nothing else branches on the backend; the WebGL2 path is allowed to run and is not budgeted (`50-verification-budget.md` §50.3).
 4. `gpu.toneMapping = NoToneMapping; gpu.outputColorSpace = SRGBColorSpace; gpu.shadowMap.enabled = true; gpu.shadowMap.transmitted = false; gpu.info.autoReset = true`. Tone mapping happens **in the post graph** (`acesFilmicToneMapping`, §10.8), never in the renderer, so bloom's threshold and the DOF mask are evaluated on scene-linear values.
 5. `ktx2 = new KTX2Loader().setTranscoderPath(o.transcoderPath ?? '/basis/').detectSupport(gpu)`. `caps.ktx2` = `'astc'` if `workerConfig.astcSupported`, else `'bc7'` if `bptcSupported`, else `'etc2'` if `etc2Supported`, else `'rgba8'`. Below `maxTextureSize 8192` → reject `RenderInitError('texture-size')` (the MRT targets at the 3840-wide drawing-buffer cap need it; the largest asset texture is a 2048² sprite atlas, §10.4.1). <!-- reconciled 2026-09-18: atlases are 2048², not 8192² -->
 6. `scene = new Scene()`; `camera = new PerspectiveCamera(28, w / h, 0.5, 220)` (Pillar 1: vertical FOV 28°; near 0.5 and far 220 are fixed — the far zoom stop plus the far LOD band fits inside 220 m).
 7. Lighting rig (§10.3), sky + PMREM (§10.3.3), fog node (§10.3.7), post graph for `o.effects` (§10.8), HUD (§10.9), `BattleStage`, `ActorPool` are constructed **before** `createRenderer` resolves, so the first `frame()` has no lazy allocation.
-8. `gpu.compileAsync(scene, camera)` is awaited once with a warm-up scene holding one instance of every library material and one billboard, so the first zone frame compiles nothing. `RenderStats.programs` after this step is the programs baseline of the leak test.
+8. Warm-up: one frame is rendered **through the real pipeline** (scene-pass MRT + shadow variants) with a warm-up scene holding one instance of every library material structure and one billboard. `gpu.compileAsync(scene, camera)` alone is not enough: it compiles non-MRT programs the scene pass never uses (render IMPLEMENTATION-NOTES C11). `RenderStats.programs` after this step is the programs baseline of the leak test. Programs are deduplicated by WGSL source and **the scene's punctual-light set is part of every lit program's source** (`LightsNode`), so a zone whose light set differs from the warm-up's compiles one variant per lit structure on its first frame (measured +28 programs on Mirevale) — "the first zone frame compiles nothing" holds only if `loadZone` warm-compiles with the zone's light set before adding the root (recommendation R6). On the dev iGPU the step-8 frame took ≈ 16 s of synchronous compilation (C19). <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES C11, C19, and Part 2 "Open: programs 107 > 96" -->
 
-`renderer.setAnimationLoop` is **not** used. The client owns the loop (`20-client.md` §20.4.2: fixed 60 Hz simulation, then exactly one `renderer.frame(frameDt)`). `frame(dtMs)`: (1) `camera.update(dtMs * timeScale)`; (2) `daycycle.update()` (uniforms only; PMREM re-bake when due, §10.3.4); (3) `billboards.update(dtMs * timeScale)` (uniform writes only); (4) `pipeline.render()`; (5) `hud.drawIfDirty()` then `gpu.autoClear = false; gpu.render(hudScene, hudCamera); gpu.autoClear = true`; (6) copy `gpu.info` into the stats record; (7) when `caps.timestampQuery` and a resolve is not in flight, `gpu.resolveTimestampsAsync(TimestampQuery.RENDER).then(ms => stats.gpuMs = ms ?? null)`. Render-on-demand: when `document.hidden`, the client does not call `frame()`; the package renders nothing on its own.
+`renderer.setAnimationLoop` is **not** used. The client owns the loop (`20-client.md` §20.4.2: fixed 60 Hz simulation, then exactly one `renderer.frame(frameDt)`). three's `Renderer.init()` nevertheless starts its internal `Animation` loop (header table), which resets `info` and advances the node frame once per display frame; `frame()` advances the node frame itself when it is called twice inside one rAF tick (warm-up, harness loops). `frame(dtMs)`: (1) `camera.update(dtMs * timeScale)`; (2) `daycycle.update()` (uniforms only; PMREM re-bake when due, §10.3.4); (3) `billboards.update(dtMs * timeScale)` (uniform writes only); (4) `pipeline.render()`; (5) `hud.drawIfDirty()` then `gpu.autoClear = false; gpu.render(hudScene, hudCamera); gpu.autoClear = true`, with `gpu.outputColorSpace = gpu.workingColorSpace` for that call (§10.9: otherwise `render()` draws into the intermediate framebuffer target whose output pass overwrites the post image); (6) copy `gpu.info` into the stats record; (7) when `caps.timestampQuery` and a resolve is not in flight, `gpu.resolveTimestampsAsync(TimestampQuery.RENDER).then(ms => stats.gpuMs = ms ?? null)`. Render-on-demand: when `document.hidden`, the client does not call `frame()`; the package renders nothing on its own.
 
 ### 10.1.3 Pixel-ratio policy
 
@@ -2382,15 +2406,15 @@ export function createRenderer(o: RendererOptions): Promise<Renderer>;
 pr = min(o.pixelRatio, 1.5, 3840 / cssWidth)
 ```
 
-so a 2560×1440 canvas renders at most 3840×2160 (`pr 1.5`) and a 3840-wide canvas at most `pr 1.0`. `renderer.setPixelRatio(pr); renderer.setSize(cssWidth, cssHeight, false)` (the client owns the CSS size). Every render target in the graph follows the drawing-buffer size through `PassNode.setSize`, which `RenderPipeline` drives; the GTAO and bloom nodes carry their own `resolutionScale` (§10.8). `resize()` also calls `camera.setAspect`, `hud.resize(cssWidth, cssHeight, pr)` and `csm.updateFrustums()`.
+so a 2560×1440 canvas renders at most 3840×2160 (`pr 1.5`) and a 3840-wide canvas at most `pr 1.0`. `renderer.setPixelRatio(pr); renderer.setSize(cssWidth, cssHeight, false)` (the client owns the CSS size). Every render target in the graph follows the drawing-buffer size through `PassNode.setSize`, which `RenderPipeline` drives; the GTAO and bloom nodes carry their own `resolutionScale` (§10.8). `resize()` also calls `camera.setAspect`, `hud.resize(cssWidth, cssHeight, pr)` and `csm.updateFrustums()` — a no-op until the first render (`CSMShadowNode.updateFrustums` dereferences a camera set only on its first build; header table). A hidden or not-yet-laid-out canvas reports 0×0: `resize` ignores sizes < 1 and keeps the last valid size.
 
 ### 10.1.4 Colour management
 
-`ColorManagement.enabled` stays `true` (default). All albedo KTX2 textures are tagged `SRGBColorSpace`; ORM, normal, emissive-mask and sprite-normal textures are `NoColorSpace`. Output: the graph ends in `renderOutput(graded, NoToneMapping, SRGBColorSpace)` with `pipeline.outputColorTransform = false`, so the working-space→sRGB encode happens exactly once, after grain. The HUD canvas is drawn in sRGB and composited unlit on top with `toneMapped = false` semantics (its `MeshBasicNodeMaterial.colorNode` is `texture(hudTex)` and the overlay render uses `gpu.toneMapping = NoToneMapping`, which is already the renderer setting).
+`ColorManagement.enabled` stays `true` (default). All albedo KTX2 textures are tagged `SRGBColorSpace`; ORM, normal, emissive-mask and sprite-normal textures are `NoColorSpace`. Output: the graph ends in `renderOutput(graded, NoToneMapping, SRGBColorSpace)` with `pipeline.outputColorTransform = false`, so the working-space→sRGB encode happens exactly once, after grain. The HUD canvas is drawn in sRGB and composited unlit on top: the overlay render sets `outputColorSpace = workingColorSpace` (as `RenderPipeline.render` does — with the two different, `Renderer.needsFrameBufferTarget` is true and a plain `render()` goes through the intermediate target, whose output pass copies it over the canvas and replaces the post image), the `CanvasTexture` carries raw sRGB bytes (`NoColorSpace`), and the quad composites premultiplied (`CustomBlending` One / OneMinusSrcAlpha), which is byte-exact browser compositing. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES P1 -->
 
 ### 10.1.5 Dispose order
 
-`dispose()`: `hud.dispose()` → `stage.dispose()` → `actors.dispose()` → current `ZoneHandle.dispose()` if any → `pipeline.dispose()` (also disposes the display nodes' render targets) → `daycycle.dispose()` (PMREM generator + its target, sky mesh) → `materials.disposeAll()` (§10.2.8) → `ktx2.dispose()` → `await gpu.dispose()`. Calling it twice is a no-op. The leak test's baseline is taken **after** step 8 of §10.1.2 and before any `loadZone`, so library textures/materials/programs are part of the baseline and zone loads must return to it exactly.
+`dispose()`: `hud.dispose()` → `stage.dispose()` → `actors.dispose()` → current `ZoneHandle.dispose()` if any → `PostStack.dispose()` (`pipeline.dispose()` disposes only its quad material, so the stack walks the graph and disposes every node that renders into its own targets — GTAO, TRAA, Bloom, DOF, SMAA and the `RTTNode`s that `traa()`/`dof()`/`chromaticAberration()` create through `convertToTexture` — plus the scene pass; amended 2026-09-25, render IMPLEMENTATION-NOTES C2) → `daycycle.dispose()` (PMREM generator + its target, sky mesh) → `materials.disposeAll()` (§10.2.8) → `ktx2.dispose()` → `await gpu.dispose()`. Calling it twice is a no-op. The leak test's baseline is taken **after** step 8 of §10.1.2 and before any `loadZone`, so library textures/materials/programs are part of the baseline and zone loads must return to it exactly.
 
 ---
 
@@ -2409,7 +2433,7 @@ Every surface has one **texture set**, baked by `tools/` (`40-pipelines.md`) int
 <!-- reconciled 2026-09-18: 40-pipelines.md OQ-2 — a single 1024²/2048² tier is ≈ 143 MB on disk against a 60 MB ceiling and 28.8 MB for Mirevale against a 6 MB first-frame phase; two tiers from one recipe: `field` (512², every surface, ≈ 0.10 MB per map) ships first, `hero` (1024², `SurfaceDef.hero === true`: the 6 shared surfaces, every terrain layer and one signature surface per biome, ≤ 50 surfaces world-wide) streams after the first frame and re-points the same material's maps. 2048² is dropped everywhere: at 3 m tiling 1024² is 341 texel/m against 386 px/m at the battle push-in -->
 Every surface ships **both tiers** under `<surface>.<tier>_<map>.ktx2` (`40-pipelines.md` §40.3.4). `MaterialLibrary.preload(ids)` resolves when the `field` tier of every id is resident; `preloadHero(ids)` upgrades the bound materials in place (a map re-point on a shared material, no new program) and is what `20-client.md` §20.10.3 phase 5 awaits. A `field` texture at 512² over a 3 m tile is 170 texel/m — 1.5 texels per screen pixel at the default 111 px/m view — so the first frame is never visibly under-textured.
 
-Runtime texture state stamped by the library on load: `wrapS = wrapT = RepeatWrapping`, `minFilter = LinearMipmapLinearFilter`, `magFilter = LinearFilter`, `anisotropy = 8`, `generateMipmaps = false` (compressed; the chain is in the file). The ORM texture object is bound to `aoMap`, `roughnessMap` and `metalnessMap` of the same material — one texture, one sampler, three slots. `aoMap` in node materials samples `uv` (verified: `MaterialNode.js` line 403–405, `aoMap.r − 1) · aoMapIntensity + 1`); no `uv1` attribute is required. Albedo textures are baked with **maximum luminance 0.85** (asset-audit rule `materials.albedoCeiling`); with the noon sun at 1.0 and the IBL at ≤ 0.25 (§10.3.5) the brightest non-emissive pixel is ≤ 1.10 scene-linear, under the 1.15 bloom threshold (Pillar 8).
+Runtime texture state stamped by the library on load: `wrapS = wrapT = RepeatWrapping`, `minFilter = LinearMipmapLinearFilter`, `magFilter = LinearFilter`, `anisotropy = 8`, `generateMipmaps = false` (compressed; the chain is in the file). The ORM texture object is bound to `aoMap`, `roughnessMap` and `metalnessMap` of the same material — one texture, one sampler, three slots. `aoMap` in node materials samples `uv` (verified: `MaterialNode.js` line 403–405, `aoMap.r − 1) · aoMapIntensity + 1`); no `uv1` attribute is required. Albedo textures are baked with **maximum luminance 0.85** (asset-audit rule `materials.albedoCeiling`); with the noon sun at 1.0 and the IBL at ≤ 0.25 (§10.3.5, in SPEC light units — see there: three's physically based lights need the rig to write `value × π`) the brightest **diffuse** non-emissive pixel is ≤ 1.10 scene-linear, under the 1.15 bloom threshold (Pillar 8). Specular highlights are not bounded by this arithmetic (a wet `slate_roof` at roughness 0.18 or a `clearcoat` 0.4 can exceed it); measured on the intact Mirevale noon frame: median 0.34, p99 0.65, max 5.6 scene-linear, with only emissive housings above 1.15 (render IMPLEMENTATION-NOTES "Measured in the browser"). <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES C15, C16 -->
 
 ### 10.2.2 Surface ids
 
@@ -2516,44 +2540,58 @@ export class MaterialBudget {
 Every library material of class `standard`/`physical`/`card` is built by one function, `buildSurfaceGraph(def, set, u)`, which assigns these node slots (TSL, `three/tsl`):
 
 ```ts
+// p = the surface's per-material UNIFORMS (albedoScale/Bias, roughScale/Bias, metalScale/Bias, tileScale, emissive, clearcoat,
+// wetResponse, …): every per-surface number is a uniform, so surfaces of one structure share one program (§10.10.2 programs cap)
 const h   = u.harvestLevel.clamp(0, 2).div(2);                    // 0 intact .. 1 harvested
-const uvN = def.triplanar ? null : uv();
-const alb = def.triplanar
-  ? triplanarTexture(texture(set.albedo), null, null, float(1 / 3.0), positionWorld, normalWorld)   // 3 m tiles
-  : texture(set.albedo, uvN);
-const orm = def.triplanar ? triplanarTexture(texture(set.orm), null, null, float(1 / 3.0), positionWorld, normalWorld) : texture(set.orm, uvN);
-const nrm = def.triplanar ? triplanarTexture(texture(set.normal), null, null, float(1 / 3.0), positionWorld, normalWorld) : texture(set.normal, uvN);
+const uvN = uv().mul(p.tileScale);                                // builders emit metre UVs; tileScale = 1 / manifest.metres
+const sample = (base: TextureNode) => def.triplanar ? triplanarSample(base, p.tileScale) : texture(base, uvN);
+// triplanarSample samples texture(base, uvAxis) — it follows base.value, so a hero-tier re-point reaches it; three's
+// triplanarTexture() reads the texture at build time and would keep sampling the placeholder
+const alb = sample(set.albedo), orm = sample(set.orm), nrm = sample(set.normal);
 
-// Pillar 2 vs harvested: the SAME graph, blended by one uniform.
-m.colorNode     = mix(alb.rgb.mul(color(def.albedo)), vertexColor().rgb, h);        // level 2 = flat vertex colour (the builder writes def.albedo into the `color` attribute)
-m.normalNode    = mix(normalMap(nrm, float(1)), normalGeometry, h);                 // level 2 = geometry normal
-m.roughnessNode = mix(orm.g.mul(float(def.roughness).mul(2)), float(0.95), h);      // level 2 = flat rough
-m.metalnessNode = mix(orm.b.mul(def.metalness > 0 ? 1 : 0), float(0), h);
+// Pillar 2 vs harvested: the SAME graph, blended by one uniform. The baked maps are ABSOLUTE colour/roughness
+// (40-pipelines.md §40.3.6): scale 1 / bias 0 once the set is bound; scale 0 / bias = SurfaceDef value while the
+// placeholder is bound, so the placeholder renders as the surface's base colour ("nothing renders black").
+m.colorNode     = vec4(mix(alb.rgb.mul(p.albedoScale).add(p.albedoBias), vertexColor().rgb, h), alb.a);  // vec4: alpha test and the shadow pass read colorNode.a
+m.normalNode    = mix(normalMap(nrm, float(1)), normalView, h).normalize();         // normalMap() is VIEW space; level 2 = geometry normal (face normal when unwelded)
+m.roughnessNode = mix(orm.g.mul(p.roughScale).add(p.roughBias), float(0.95), h);   // level 2 = flat rough
+m.metalnessNode = mix(orm.b.mul(p.metalScale).add(p.metalBias), float(0), h);
 m.aoNode        = mix(orm.r, float(1), h);
-m.emissiveNode  = def.emissive ? color(def.emissive.color).mul(def.emissive.intensity).mul(oneMinus(h)) : null;  // level 2: no light sources (Pillar 4 off)
-if (def.clearcoat) { pm.clearcoatNode = mix(float(def.clearcoat.base), float(def.clearcoat.wet), u.wetness).mul(oneMinus(h)); pm.clearcoatRoughnessNode = float(def.clearcoat.roughness); }
-if (def.wetness)   { m.roughnessNode = m.roughnessNode.mul(mix(1, 0.45, u.wetness)); }
-if (def.wind)      { m.positionNode = windDisplace(positionLocal, def.wind, u); }    // §10.2.5
+m.emissiveNode  = mix(p.emissive, alb.rgb.mul(p.emissive), p.emissiveFromAlbedo).mul(oneMinus(h));   // p.emissive = colour × intensity (0 when none); stained_glass takes it from albedo; level 2: no light sources (Pillar 4 off)
+if (def.clearcoat) { pm.clearcoatNode = mix(p.clearcoat.base, p.clearcoat.wet, u.wetness).mul(oneMinus(h)); pm.clearcoatRoughnessNode = p.clearcoat.roughness; }
+m.roughnessNode = m.roughnessNode.mul(mix(float(1), float(0.45), u.wetness.mul(p.wetResponse)));   // wetResponse 0 for surfaces without `wetness`
+if (def.wind)      { m.positionNode = windDisplace(positionLocal, p.wind, u); }    // §10.2.5
 if (def.alphaTest !== null) { m.alphaTest = def.alphaTest; m.maskShadowNode = alb.a.greaterThan(def.alphaTest); }
 ```
 
-Flat shading at level 2: `normalGeometry` is the interpolated vertex normal; the zone builder emits **unwelded** triangles for buildings and rocks (each face its own vertices), so `normalGeometry` is the face normal and the level-2 look is faceted, exactly the old game's look. Terrain and scatter stay welded (their level-2 look is smooth vertex colour, which matches the old terrain). `harvestLevel 1` ("thinning") is the midpoint blend: maps at 50 %, normal detail halved, emissive at 50 %.
+<!-- amended 2026-09-25: the draft block multiplied the baked (absolute) maps by the SurfaceDef values a second time, returned a vec3 colour (breaks alpha test and card shadows), mixed a view-space normal with the object-space normalGeometry, sampled terrain through three's triplanarTexture (which never sees a re-pointed map) and inlined per-surface constants (83 surfaces → one program each, over the programs cap). Render IMPLEMENTATION-NOTES C4, C5, C6, M1, M2, M3, M17: 7 structures for 83 surfaces, library fragment programs 27 → 8 -->
+Per-surface numbers are uniforms and the cheap feature flags too (wetness response, emissive-from-albedo, forced harvest, card wind amplitude, card back tint), so programs exist per `surfaceStructure()` = {standard, physical, card, water} × triplanar × trunk wind — **7 structures for the 83 surfaces**.
+
+Flat shading at level 2: `normalView` inside the normal sub-build is the interpolated geometry normal; the zone builder emits **unwelded** triangles for buildings and rocks (each face its own vertices), so it is the face normal and the level-2 look is faceted, exactly the old game's look. Terrain and scatter stay welded (their level-2 look is smooth vertex colour, which matches the old terrain). `harvestLevel 1` ("thinning") is the midpoint blend: maps at 50 %, normal detail halved, emissive at 50 %.
 
 `MaterialClass 'water'` is §10.5.6; `'emissive'` (`glass_warm`, `lava_glow`, …) is the same graph with `emissiveNode` set and `castShadow: false`.
 
 ### 10.2.5 Wind vertex animation (TSL, verbatim)
 
+A TSL `Fn` callback's second argument is the `NodeBuilder` (header table), so the shared uniforms cannot be a second `Fn` parameter: `windDisplace` is a plain graph factory closing over `u`, and `stiffnessFromUv` is resolved at build time. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES C7 -->
+
 ```ts
-export const windDisplace = /*@__PURE__*/ Fn(([ p, amp, freq, stiffUv ]: [Node, Node, Node, Node], u: SharedUniforms) => {
+export interface WindParams {
+  readonly amplitude: UniformNode<'float', number>;
+  readonly frequency: UniformNode<'float', number>;
+  readonly stiffnessFromUv: boolean;          // cards: weight by uv.y (0 at the stem); trunks: by height / 6 m
+}
+export function windDisplace(p: Node, w: WindParams, u: SharedUniforms): Node {
+  const amp = w.amplitude, freq = w.frequency;
   const wp   = modelWorldMatrix.mul(vec4(p, 1)).xyz;
   const phase = wp.x.mul(0.35).add(wp.z.mul(0.21)).add(u.windTime.mul(freq));
   const gust  = mx_noise_float(vec3(wp.xz.mul(0.05), u.windTime.mul(0.07))).mul(0.5).add(0.5);   // 0..1 slow gust field
   const sway  = sin(phase).mul(0.7).add(sin(phase.mul(2.3).add(1.7)).mul(0.3));
-  const weight = stiffUv.equal(1).select(uv().y, p.y.div(6.0).clamp(0, 1));                   // cards: uv.y (0 at the stem); trunks: height / 6 m
-  const w = weight.mul(weight);                                                                 // quadratic stiffness
-  const d = vec3(u.windDir.x, 0, u.windDir.y).mul(sway.mul(amp).mul(gust).mul(w));
+  const weight = w.stiffnessFromUv ? uv().y : p.y.div(6.0).clamp(0, 1);                       // cards: uv.y (0 at the stem); trunks: height / 6 m — chosen at build time
+  const k = weight.mul(weight);                                                                 // quadratic stiffness
+  const d = vec3(u.windDir.x, 0, u.windDir.y).mul(sway.mul(amp).mul(gust).mul(k));
   return p.add(d);
-});
+}
 ```
 
 Amplitudes: `grove_bark 0.02`, `grove_leaf_canopy 0.12`, `tall_grass 0.18`, `banner_cloth 0.25`, `prayer_silk 0.30`; frequency 1.1 for trunks, 1.9 for cards. The same `positionNode` feeds the shadow pass (`_getShadowNodes` falls back to `positionNode`), so shadows sway with the geometry. `windTime` advances by `dt × timeScale`, so hitstop freezes foliage too (the spine's Pillar 8 test counts hitstop frames, not foliage, but freezing everything is the simplest way to be identical).
@@ -2593,7 +2631,7 @@ sun.shadow.shadowNode = csm;
 scene.add(sun, sun.target);
 ```
 
-Split distances (camera-space depth): **0–14 m, 14–34 m, 34–72 m, 72–160 m**. At the default view (§10.7.1) the player stands 26 m from the camera inside cascade 1 (14–34), whose 2048 texels span a 20 m depth slab; the near cascade covers the foreground of the diorama. `csm.updateFrustums()` is called on resize, zoom-stop change and heading change (camera projection or basis change), never per frame. The `sun.target` is the camera's focus point (§10.7.1) so the cascades follow the player.
+Split distances (camera-space depth): **0–14 m, 14–34 m, 34–72 m, 72–160 m**. At the default view (§10.7.1) the player stands 26 m from the camera inside cascade 1 (14–34), whose 2048 texels span a 20 m depth slab; the near cascade covers the foreground of the diorama. `csm.updateFrustums()` is called on resize, zoom-stop change and heading change (camera projection or basis change), never per frame, and is a no-op until the first render (header table). The `sun.target` is the camera's focus point (§10.7.1) so the cascades follow the player.
 
 Local shadow casters: `SpotLight` with `angle 0.87 rad (100°)`, `penumbra 0.5`, `shadow.mapSize 512²`, `shadow.bias -0.0006`, `shadow.normalBias 0.03`, `shadow.radius 2`; `PointLight` casters (only `kind: 'lava' | 'fire'`) use `shadow.mapSize 256²` (6 faces). Shadow maps are rendered every frame in v1 (a static-caster cache is a follow-up; the budget row `shadows 2.0 ms` in `50-verification-budget.md` §50.2.1 is the assertion this design must meet).
 
@@ -2619,19 +2657,19 @@ export type HousingRef = { readonly kind: 'generated'; readonly generator: 'lant
 export const LIGHT_BUDGET = { shadowCasters: 8, nonShadow: 24 } as const;
 ```
 
-`ZoneBuilder` throws `RangeError('light budget')` in dev at the 9th `castShadow: true` or the 25th `castShadow: false` source (Pillar 4 test: the count check fails the build). Each `LightSource` becomes one `SpotLight` (pointing −Y, `lamp`/`lantern`/`beacon`/`window`) or `PointLight` (`brazier`/`forge`/`lava`/`crystal`/`candle`/`fire`) plus its housing mesh whose material is the biome's emissive surface; the housing's world position is asserted within 0.6 u of the light's in `dumpZone()`. Flicker: `intensity × (1 + amplitude · sin(2π·hz·t) · 0.6 + amplitude · hash(floor(t·hz·3)) · 0.4)`, amplitude ≤ 0.15, written once per frame from the render-side clock (display only).
+`ZoneBuilder` throws `RangeError('light budget')` in dev at the **7th** `castShadow: true` or the 25th `castShadow: false` source (Pillar 4 test: the count check fails the build). The shadow budget is 8 for the whole scene, and the arena's 2 shadow-casting beacons (§10.7.5) exist under the stage root from `createRenderer` on — they cannot be created at battle start, because adding a light changes the light set and recompiles every lit program — so a zone may spend at most 8 − 2 = 6. `RenderStats.shadowLights` counts scene-wide (beacons included); the rig's own assert does not see the beacons. <!-- amended 2026-09-25: "9th" let a zone spend 8 and the scene reach 10 once the beacons were counted — render IMPLEMENTATION-NOTES P10, Q13, Z11 --> Each `LightSource` becomes one `SpotLight` (pointing −Y, `lamp`/`lantern`/`beacon`/`window`) or `PointLight` (`brazier`/`forge`/`lava`/`crystal`/`candle`/`fire`) plus its housing mesh whose material is the biome's emissive surface; the housing's world position is asserted within 0.6 u of the light's in `dumpZone()`. Flicker: `intensity × (1 + amplitude · sin(2π·hz·t) · 0.6 + amplitude · hash(floor(t·hz·3)) · 0.4)`, amplitude ≤ 0.15, written once per frame from the render-side clock (display only).
 
 Default sources for the slice: Mirevale 6 shadow-casting `lantern` (plaza ring + gym door + healer door) + 10 non-shadow (`window` ×8, `lantern` ×2); Mire Route 2 shadow `lantern` (route sign, bridge) + 6 non-shadow `crystal` at the tablets and the tall-grass edges.
 
 ### 10.3.3 Sky and IBL
 
 ```ts
-const sky = new SkyMesh(); sky.scale.setScalar(200); sky.layers.set(30);     // layer 30 = sky, excluded from GTAO normal write and from dumpZone
+const sky = new SkyMesh(); sky.scale.setScalar(200); sky.layers.set(30);     // layer 30 = sky, excluded from GTAO normal write and from dumpZone; re-centred on the camera every frame (a 200 m box at the origin is exited on a 240 m route field)
 sky.turbidity.value = 3; sky.rayleigh.value = 1.2; sky.mieCoefficient.value = 0.004; sky.mieDirectionalG.value = 0.8;
 sky.cloudCoverage.value = 0.35; sky.cloudDensity.value = 0.4; sky.cloudScale.value = 0.0002; sky.cloudSpeed.value = 0.00002;
 ```
 
-The PMREM is generated from a **separate** `Scene` containing only a second `SkyMesh` (same uniforms) with `showSunDisc.value = 0` (the header of `SkyMesh.js` recommends hiding the disc for environment maps), through `pmrem.fromScene(skyScene, 0, 0.1, 400, { size: 128 })`. `scene.environment = pmremTarget.texture; scene.environmentIntensity = envIntensity(t)`. Re-bake rule: when `|Δ sun elevation| ≥ 2°` since the last bake **or** 20 s of real time have passed, whichever first; at most one bake per frame; a bake at `size 128` costs ≤ 0.6 ms on the reference GPU and is not on the per-pass table (it is amortised inside `opaque`'s remainder). The previous `renderTarget` is reused (`options.renderTarget`), so re-bakes allocate nothing. Harvest level 2 sets `turbidity 20`, `rayleigh 0.2`, `cloudCoverage 0.9`, giving the grey flat sky of a forgotten place.
+The PMREM is generated from a **separate** `Scene` containing only a second `SkyMesh` (same uniforms) with `showSunDisc.value = 0` (the header of `SkyMesh.js` recommends hiding the disc for environment maps), through `pmrem.fromScene(skyScene, 0, 0.1, 400, { size: 128 })`. `scene.environment = pmremTarget.texture; scene.environmentIntensity = envIntensity(t) × norm` (the sky-radiance normalisation of §10.3.5 "Units"). The **visible** sky is not normalised: at noon its horizon reaches ≈ 5.9 scene-linear, far above the 1.15 bloom threshold, which is acceptable only because no gameplay camera of §10.7 frames the sky (the default top frustum edge is 38° below horizontal, the battle camera's 14°, the inspector's 4°); a free or hostile-audit camera that sees the horizon blooms it (recommendation R9). Re-bake rule: when `|Δ sun elevation| ≥ 2°` since the last bake **or** 20 s of real time have passed, whichever first; at most one bake per frame; a bake at `size 128` costs ≤ 0.6 ms on the reference GPU and is not on the per-pass table (it is amortised inside `opaque`'s remainder). The previous `renderTarget` is reused (`options.renderTarget`), so re-bakes allocate nothing. Harvest level 2 sets `turbidity 20`, `rayleigh 0.2`, `cloudCoverage 0.9`, giving the grey flat sky of a forgotten place.
 
 Hemisphere fill: `new HemisphereLight(skyColor, groundColor, 0.18)` whose colours are sampled from the palette's `skyZenith`/`groundBounce` at the current keyframe; it exists so the shadowed side of a sprite never reads pure black under the noon set (Pillar 5 luminance test needs shadowed pixels that are lit, not clipped).
 
@@ -2660,11 +2698,13 @@ When `elevationDeg < −4` the `DirectionalLight` **becomes the moon**: same obj
 | `golden_pm` | 0.72 | 3000 K | `#ffb46b` | 0.55 | 0.45 | 0.30 |
 | `dusk` | 0.80 | 2200 K | `#ff932c` | 0.12 | 0.18 | 0.90 |
 
-Wrap: `dusk (0.80) → night (1.00 ≡ 0.00)`. `punctual multiplier` scales every `LightSource.intensity` — lamps are off at noon and full at night (Pillar 4: night is a light-set change). Pillar 5 test pair: `noon` vs `dusk` — mean luminance over a billboard's opaque pixels must differ by ≥ 12 %; with sun 1.00 → 0.12 and lamps 0 → 0.9 the difference is designed to be ≥ 35 %. `envIntensity` caps the IBL contribution at ≤ 0.25 scene-linear on a 0.85-albedo surface (0.85 × 0.85 × 0.3 average irradiance ≈ 0.22), which is the number behind the 1.10 ceiling in §10.2.1.
+Wrap: `dusk (0.80) → night (1.00 ≡ 0.00)`. `punctual multiplier` scales every `LightSource.intensity` — lamps are off at noon and full at night (Pillar 4: night is a light-set change).
+
+**Units.** The `sun intensity` column (and the moon row and the 0.18 hemisphere fill of §10.3.3) is in *SPEC light units*: 1.0 lights a white Lambert surface to 1.0 scene-linear. three r155+ lights are physically based — a directional or hemisphere light of intensity `E` yields `ρ·E/π` on a Lambert surface — so the rig writes `value × SPEC_LIGHT_UNIT` with `SPEC_LIGHT_UNIT = π`; `LightSource.intensity` (candela-scaled three intensity) is written unchanged. The `envIntensity` column is also in SPEC units: `scene.environmentIntensity = envIntensity × norm`, `norm = clamp(0.3 / L, 0, 200)`, where `L` is the sky radiance seen by an upward 150° probe — predicted synchronously per bake from a measured `SKY_LUMINANCE_BY_ELEVATION` table and refined by an async 16² readback of the PMREM (which also absorbs weather cloud cover and the harvested sky). Unnormalised, `SkyMesh`'s Preetham radiance is ≈ 1.05 at noon (≈ 2.3 zenith / 5.9 horizon) and 0.0014 after dusk: the IBL supplied ~2/3 of all light and the frame bloomed. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES C15, C16; packages/render/src/lighting/rig.ts line 36, sky.ts lines 17–44 --> Pillar 5 test pair: `noon` vs `dusk` — mean luminance over a billboard's opaque pixels must differ by ≥ 12 %; with sun 1.00 → 0.12 and lamps 0 → 0.9 the difference is designed to be ≥ 35 %. `envIntensity` caps the IBL contribution at ≤ 0.25 scene-linear on a 0.85-albedo surface (0.85 × 0.85 × 0.3 average irradiance ≈ 0.22 — the 0.3 is the sky radiance the normalisation below holds the PMREM to), which is the number behind the 1.10 ceiling in §10.2.1. The directional light fades to 0 across the sun/moon switch (sun: elevation −4°…+2°, moon: +4°…+10°) so the direction flip at −4° does not pop shadows; it is never hidden (toggling `visible` changes the light set and recompiles every lit program).
 
 ### 10.3.6 Weather
 
-`setWeather(w)`: `rain` → `wetness` ramps to 1 (4 s), rain particle sheet (one `Points` of 4 000 streaks, `layers 29`, no shadow), sun intensity ×0.55, `cloudCoverage 0.85`; `sun` → `cloudCoverage 0.1`, `envIntensity ×1.1`; `sand` → fog density ×2.5, tint `#c9a24a`; `hail` → rain sheet with `pointWidth 3`, tint white; `none` → defaults. Weather is cosmetic in the overworld (spine §4.1); battles set their own through `BattleStage.setWeather`.
+`setWeather(w)`: `rain` → `wetness` ramps to 1 (4 s), rain sheet (one `LineSegments` of 4 000 streaks animated in the vertex stage from `windTime`, so hitstop freezes it; `layers 29`, no shadow), sun intensity ×0.55, `cloudCoverage 0.85`; `sun` → `cloudCoverage 0.1`, `envIntensity ×1.1`; `sand` → fog density ×2.5, tint `#c9a24a`; `hail` → the same sheet as short bright streaks (WebGPU has neither wide lines nor sized `Points`; header table), tint white, wetness as rain; `none` → defaults. <!-- amended 2026-09-25: `Points` + `pointWidth 3` cannot be drawn on WebGPU — render IMPLEMENTATION-NOTES M10, P8 --> Weather is cosmetic in the overworld (spine §4.1); battles set their own through `BattleStage.setWeather`.
 
 ### 10.3.7 Height fog (TSL, no raymarch)
 
@@ -2677,7 +2717,7 @@ const fogFactor = Fn(() => {
 scene.fogNode = fog(u.fogColor, fogFactor());
 ```
 
-Palette values for grove: `fogDensity 0.018`, `fogBase 0.0` (m), `fogFalloff 0.35` (per m), `fogColor` from the keyframe (`#b9c7a8` noon, `#1a2030` night). `scene.fogNode` is read by `NodeManager.getFogNode` (verified, line 24). The sky mesh has `fog = false`. Light-shaft cards (≤ 6 per zone, additive alpha cards under lanterns at night, `layers 29`) are the only volumetric suggestion; there is no raymarch (§10.11).
+Palette values for grove: `fogDensity 0.0068` (per m of view depth; the implemented `0.018 × FOG_SCALE 0.38`), `fogBase 0.0` (m), `fogFalloff 0.35` (per m), `fogColor` from the keyframe (`#b9c7a8` noon, `#1a2030` night). The binding number is the fog on the focus: the player's feet sit at `y ≈ 0` (so `hFall = 1`) and 26 m of view depth at the default stop, so `fogFactor = 1 − exp(−26 · density)` — 16 % at 0.0068, 21 % at the far stop (34 m). The draft's 0.018 fogged the feet 37 % (46 % at 34 m), lifting and flattening the whole diorama and washing the inspector close-up; `sand` weather's ×2.5 still reaches 36 % at the default stop by design. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES M19, Z12, open item 4 --> `scene.fogNode` is read by `NodeManager.getFogNode` (verified, line 24). The sky mesh has `fog = false`. Light-shaft cards (≤ 6 per zone, additive alpha cards under lanterns at night, `layers 29`) are the only volumetric suggestion; there is no raymarch (§10.11).
 
 ---
 
@@ -2722,7 +2762,7 @@ export interface AtlasSet {
 ```
 
 <!-- reconciled 2026-09-18: the sprite manifest is 40-pipelines.md's v2 (this section's earlier `AtlasSet { size: 4096 | 8192 }`, per-zone 4096² atlases and `single_<species>` files are superseded); creature atlases are WebP because UASTC measured 1.57× LARGER than lossless WebP on sprite content, the bundled encoder refuses > 12 Mpix, and ETC1S quantises the alpha slice — KTX2 UASTC stays the format for materials (§10.2.1) and model textures. 40-pipelines OQ-1 and OQ-3 are decided here -->
-Atlases are **zone-affinity 2048² sets holding 2 species each** (front + back, 4 cells of 1024²); a zone binds the atlases listed in `manifest.zones[zoneId]` — **≤ 8 per zone** (the same texel budget as 2 × 4096²) — so a route's spawn set plus its statics, trainers and gym teams is ≤ 8 binds. A creature not in the current zone's atlases (a traded-in party member) is bound through `SpritePool.bindSingle(set, frame)`: render fetches its `home` atlas files and decodes only the creature's cells with `createImageBitmap(blob, x, y, w, h)` per map and mip level into a 1024² (normal 512²) texture set — the `single` is a runtime crop, never a file on disk; ≤ 6 such binds exist at a time (party size). Textures are built from the decoded `ImageBitmap`s with `texture.mipmaps = [level1, level2, level3]`, `generateMipmaps = false`, so the sampler's `lodMaxClamp` is 3 and the 256²-per-sprite level covers every authored view (a `sizeScale 1` creature at `zoomStop 2` is ≈ 137 px tall → level 2.9).
+Atlases are **zone-affinity 2048² sets holding 2 species each** (front + back, 4 cells of 1024²); a zone binds the atlases listed in `manifest.zones[zoneId]` — **≤ 8 per zone** (the same texel budget as 2 × 4096²) — so a route's spawn set plus its statics, trainers and gym teams is ≤ 8 binds. A creature not in the current zone's atlases (a traded-in party member) is bound through `SpritePool.bindSingle(set, frame)`: render fetches its `home` atlas files and decodes only the creature's cells with `createImageBitmap(blob, x, y, w, h)` per map and mip level into a 1024² (normal 512²) texture set — the `single` is a runtime crop, never a file on disk; ≤ 6 such binds exist at a time (party size). An **opponent** battler whose species is outside the zone's bind list (the Warden/Champion teams in `solenne`, the story teams in `umbral_observatory` — spine §3.10 rule 11 caps only the overworld set) is bound for that battle by `bindAtlas` of its `home` atlas before `battleStart` plays and released after `battleEnd`; the zone's ≤ 8 plus ≤ 6 such battle binds is the worst case (render/client follow-up; amended 2026-09-25). Textures are built from the decoded `ImageBitmap`s with `image = level0`, `texture.mipmaps = [level0, level1, level2, level3]` (three reads `mipmaps[i]` as level `i` and the level count from `mipmaps.length`; header table), `generateMipmaps = false`, so the sampler's `lodMaxClamp` is 3 and the 256²-per-sprite level covers every authored view of a `sizeScale ≥ 1` creature (at `zoomStop 2` one is ≈ 122 px tall with the §10.4.4 lean → level 3.1, clamped to 3). <!-- amended 2026-09-25: `[level1, level2, level3]` would upload level 1 as level 0 — render IMPLEMENTATION-NOTES P2 -->
 
 ### 10.4.2 `CreatureBillboard` (verbatim)
 
@@ -2749,7 +2789,7 @@ export interface SpritePool {
   bindSingle(set: AtlasSet, frame: SpriteFrame): Promise<void>;
   releaseAtlas(id: string): void;                          // also releases singles keyed on it when no billboard uses them
   acquire(d: SpriteDescriptor): CreatureBillboard;
-  readonly uniforms: { readonly harvestLevel: UniformNode<'float', number>; readonly cameraYaw: UniformNode<'float', number> };
+  readonly uniforms: { readonly harvestLevel: UniformNode<'float', number>; readonly cameraYaw: UniformNode<'float', number>; readonly cameraLean: UniformNode<'float', number> };   // cameraLean: §10.4.4
   stats(): { readonly live: number; readonly atlases: number; readonly bytes: number };
   dispose(): void;
 }
@@ -2759,19 +2799,22 @@ export interface SpritePool {
 
 Quad: `PlaneGeometry(1, 1)` shared by every billboard, scaled per instance. World height `H = 1.6 m × sizeScale` (range 0.8–3.52 m); width `H × aspect`. The quad's local origin is the **foot point**: vertices span `y ∈ [−footV·H, (1 − footV)·H]`, so `setPosition` places the feet on the sampled ground. Texel density: 1024 texels over 1.6 m = 640 texel/m.
 
-At the default view (26 m, FOV 28°, 1440 px) the screen shows 12.97 m vertically → 111 px/m → a `sizeScale 1` creature is 178 px tall (5.8 texels/px, minified). At the battle camera (12 m) it is 386 px (2.65 texels/px). Magnification (Pillar 6's test regime) happens in the dex/party inspector (`stage.inspect`, 4 m) and at `zoomStop 0`. Filters: `magFilter = NearestFilter` (hard texels when magnified, Pillar 6), `minFilter = LinearMipmapLinearFilter` with the pipeline-built WebP mip chain (levels 1–3, box-filtered in premultiplied space, coverage-preserving so `alphaTest 0.5` does not thin creatures at distance — `40-pipelines.md` §40.1.6.3) so minification does not shimmer, `anisotropy = 1`, `generateMipmaps = false`. <!-- reconciled 2026-09-18: WebP chain, not KTX2 --> The Pillar 6 test reads the scene pass `output` MRT texture (pre-TRAA) at 1.3× magnification: along a 200-pixel straight opaque edge every alpha is 0 or 1. TRAA is the only stage allowed to soften it afterwards, by construction.
+At the default view (26 m, FOV 28°, 1440 px) the screen shows 12.97 m vertically → 111 px/m → a `sizeScale 1` creature facing the camera squarely would be 178 px tall; with the §10.4.4 lean (card tilted 26° from vertical, 26° left between card and image plane) it is 178 · cos 26° ≈ **160 px** (6.4 texels/px, minified). At the battle camera (12 m, pitch 28°, lean 14°) it is 385 · cos 14° ≈ 374 px (2.7 texels/px). A strictly vertical card would read at `cos 52° = 0.62` of its height (110 px) in the diorama — the squat look the lean exists to remove. <!-- amended 2026-09-25: the 178 / 386 px figures ignored the camera pitch --> Magnification (Pillar 6's test regime) happens in the dex/party inspector (`stage.inspect`, 4 m) and at `zoomStop 0`. Filters: `magFilter = NearestFilter` (hard texels when magnified, Pillar 6), `minFilter = LinearMipmapLinearFilter` with the pipeline-built WebP mip chain (levels 1–3, box-filtered in premultiplied space, coverage-preserving so `alphaTest 0.5` does not thin creatures at distance — `40-pipelines.md` §40.1.6.3) so minification does not shimmer, `anisotropy = 1`, `generateMipmaps = false`. <!-- reconciled 2026-09-18: WebP chain, not KTX2 --> The Pillar 6 test reads the scene pass `output` MRT texture (pre-TRAA) at 1.3× magnification: along a 200-pixel straight opaque edge every alpha is 0 or 1. TRAA is the only stage allowed to soften it afterwards, by construction.
 
-### 10.4.4 Facing the camera (Y-axis only) — shadow-safe
+### 10.4.4 Facing the camera (yaw + half-pitch lean) — shadow-safe
 
-`billboarding()` from `three/tsl` reads `cameraViewMatrix`, which during the shadow pass is the **light's** view, so a billboard would face the sun in its own shadow map. Not used. Instead one uniform, written once per frame from the main camera:
+`billboarding()` from `three/tsl` reads `cameraViewMatrix`, which during the shadow pass is the **light's** view, so a billboard would face the sun in its own shadow map. Not used. Instead two uniforms, written once per frame from the main camera:
 
 ```ts
-pool.uniforms.cameraYaw.value = Math.atan2(camDir.x, camDir.z);           // camera forward projected to xz
-const yawRot = Fn(([ p ]) => { const c = cos(u.cameraYaw), s = sin(u.cameraYaw); return vec3(p.x.mul(c).add(p.z.mul(s)), p.y, p.z.mul(c).sub(p.x.mul(s))); });
-mat.positionNode = yawRot(positionLocal.add(vec3(0, bob, 0)));           // bob: §10.4.6
+pool.uniforms.cameraYaw.value  = Math.atan2(-camDir.x, -camDir.z);        // direction TOWARD the camera, projected to xz: the quad's +Z face must point at the camera (FrontSide)
+pool.uniforms.cameraLean.value = 0.5 * Math.max(0, pitchDown);           // lean back about the foot line by half the camera's pitch-down (26° in the diorama, 14° in battle)
+// positionNode: rotate the (bobbed) local position by cameraLean about local x at the foot point, then by cameraYaw about y;
+// the same rotation is assigned to normalLocal/tangentLocal (the SkinningNode pattern) so the normal map lights the turned card
+mat.positionNode = leanYaw(positionLocal.add(vec3(0, bob, 0)));          // bob: §10.4.6
 ```
 
-Because the shadow pass falls back to `positionNode` (`Renderer.js` `_getShadowNodes`), the shadow silhouette is the same yaw as the visible quad. `castShadowPositionNode` is left `null`.
+<!-- amended 2026-09-25: `atan2(camDir.x, camDir.z)` with camDir = camera forward maps the quad's +Z face AWAY from the camera, where FrontSide culls it; a strictly vertical card is foreshortened to cos 52° = 0.62 of its height from the −52° diorama camera. Render IMPLEMENTATION-NOTES P3, P9, Q1 -->
+Because the shadow pass falls back to `positionNode` (`Renderer.js` `_getShadowNodes`), the shadow silhouette has the same yaw and lean as the visible quad. `castShadowPositionNode` is left `null`. `positionNode` alone does not rotate `normalLocal`, so the graph assigns the turned normal and tangent explicitly (the shared quad carries a tangent attribute). Apparent height: `cos 26° = 0.90` of `H` in the diorama, 0.97 in battle, ≈ 1 in the inspector.
 
 ### 10.4.5 The billboard material graph (one `MeshStandardNodeMaterial` per atlas)
 
@@ -2794,16 +2837,19 @@ mat.maskShadowNode = a.a.greaterThan(mat.alphaTestNode);         // shadow from 
 // rim + emissive
 const V     = cameraPosition.sub(positionWorld).normalize();
 const rim   = pow(oneMinus(abs(dot(normalWorld, V))), 3.0);      // normalWorld here is the normal-mapped one (alpha-edge bevel gives outward normals at the silhouette)
-const typeC = userData('typeColor', 'vec3');
-const shimmer = glow.mul(0.25).mul(sin(time.mul(3.0).add(uv().y.mul(8.0))).mul(0.5).add(0.5));
+const typeC = userData('typeColor', 'color');                    // 'color', not 'vec3': a vec3 uniform reads .x/.y/.z and a Color uploads NaN
+const shimmer = glow.mul(0.25).mul(sin(pool.uniforms.clock.mul(3.0).add(uv().y.mul(8.0))).mul(0.5).add(0.5));   // pool clock advanced by dt × timeScale (hitstop freezes it), not `time`
 mat.emissiveNode = typeC.mul(rim).mul(0.6).add(a.rgb.mul(em).mul(1.8)).add(a.rgb.mul(shimmer)).mul(oneMinus(h));
 mat.mrtNode = mrt({ mask: vec2(1, userData('sharp', 'float')) });   // x: exclude from GTAO darkening; y: DOF-sharp (§10.8.2)
-mat.side = FrontSide; mat.transparent = false; mat.depthWrite = true;
+mat.side = FrontSide; mat.shadowSide = DoubleSide; mat.transparent = false; mat.depthWrite = true;
+mat.map = null;   // the albedo is published as material.userData.ewaAlbedo: _getShadowNodes multiplies shadow alpha by map.a sampled at the RAW quad uv (the whole atlas)
 ```
 
-Dissolve additionally discards `hash(floor(uvRect.mul(1024))).lessThan(userData('dissolve','float'))` texels, so a fainting creature breaks into texel-sized holes rather than fading (Pillar 6: alpha stays binary). Creature emissive pixels output `1.8 × albedo` ≥ 1.35 scene-linear where the mask is 1 — above the 1.15 bloom threshold, below the housings' 3.2, and the environment's 1.10 ceiling sits under it: the threshold is in the gap (Pillar 8).
+<!-- amended 2026-09-25: typeColor 'vec3' → 'color', shimmer clock, shadowSide DoubleSide (the shadow pass renders FrontSide as BackSide, so a camera-facing card cast no shadow with the sun behind the camera), map null — render IMPLEMENTATION-NOTES P5, P6, P7, Q2 -->
 
-Per-object parameters through `userData(name, type)` (verified `UserDataNode.js`): `object.userData = { rect: Vector4, hueShift, satMul, lightMul, alphaGlow, hurt, dissolve, sharp, typeColor: Color, bob }` — a preallocated record per billboard, scalar writes only.
+Dissolve additionally discards `hash(floor(uvRect.mul(1024))).lessThan(userData('dissolve','float'))` texels, so a fainting creature breaks into texel-sized holes rather than fading (Pillar 6: alpha stays binary). Creature emissive pixels output `1.8 × albedo` where the mask is 1. `BloomNode`'s high-pass thresholds **luminance** (`BloomNode.js` lines 12–15: `smoothstep(threshold, threshold + smoothWidth, luminance(rgb))`), so the emissive term alone crosses the 1.15 threshold only where `luminance(albedo_linear) > 1.15 / 1.8 = 0.639` (and contributes fully only above 1.20 / 1.8 = 0.667, the 0.05 smooth width). The §40.1.2 stage-4 mask (HSV value ≥ 0.92, chroma ≥ 0.4) admits warm and green accents that meet it (a `(1, 1, 0.6)` sRGB yellow: luminance 0.95 → 1.71) and saturated reds, blues and violets that do not (`(0.92, 0.52, 0.52)` red: 0.36 → 0.64; `(0.6, 0.6, 1)` blue: 0.37 → 0.66) — those glow in the beauty image but never bloom, at night or noon. The "threshold in the gap" claim therefore holds per hue, not per mask (recommendation R8). <!-- amended 2026-09-25: the draft read 1.8 × albedo ≥ 1.35 as a per-channel floor; bloom is luminance-keyed -->
+
+Per-object parameters through `userData(name, type)` (verified `UserDataNode.js`): `object.userData = { rect: Vector4, hueShift, satMul, lightMul, alphaGlow, hurt, dissolve, sharp, typeColor: Color, bob }` — a preallocated record per billboard, scalar writes only. The dissolve hole mask is folded into the alpha, so `maskShadowNode` punches the same holes in the shadow. Billboards are alpha-tested: they are drawn in a `renderOrder ≥ 1` band so the shadow pass's shared override material does not flip its `alphaTest` between neighbouring solids and cards (§10.5.7).
 
 ### 10.4.6 Uniform tables
 
@@ -2846,7 +2892,7 @@ No pose creates a material or geometry; every pose is uniform writes on the shar
 
 ### 10.4.7 Contact shadow and grounding
 
-Each billboard owns one decal: `PlaneGeometry(1, 1)` (shared), rotated flat, scaled to `1.1 m × sizeScale` (×1.12 alpha), positioned at the feet on the sampled terrain height + normal (`TerrainCollider.normal`, §10.6), `MeshBasicNodeMaterial` shared across all billboards: `colorNode = vec4(0, 0, 0, 1)`, `opacityNode = smoothstep(0.5, 0.05, length(uv().sub(0.5))).mul(0.55).mul(oneMinus(h))`, `transparent = true`, `blending = MultiplyBlending`, `depthWrite = false`, `polygonOffset = true, polygonOffsetFactor = -2, polygonOffsetUnits = -2`, `renderOrder = 5`, `layers 28` (decals; excluded from GTAO via the `mask.x` MRT channel like sprites). The decal is the "soft occlusion gradient at the feet" of Pillar 5; the real cast shadow from `maskShadowNode` is the hard one. No y-epsilon anywhere: `polygonOffset` does the work.
+Each billboard owns one decal: `PlaneGeometry(1, 1)` (shared), rotated flat, scaled to `1.1 m × sizeScale` (×1.12 alpha), positioned at the feet on the sampled terrain height + normal (`TerrainCollider.normal`, §10.6), `MeshBasicNodeMaterial` shared across all billboards: `colorNode = vec4(0, 0, 0, 1)`, `opacityNode = smoothstep(0.5, 0.05, length(uv().sub(0.5))).mul(0.55).mul(oneMinus(h))`, `transparent = true`, `blending = MultiplyBlending` (which requires `premultipliedAlpha = true` on WebGPU), `fog = false` (fog would tint the multiply factor), `depthWrite = false`, `polygonOffset = true, polygonOffsetFactor = -2, polygonOffsetUnits = -2`, `renderOrder = 5`, `layers 28`. The pass MRT writes every non-`output` attachment with **no blending** (header table), so a transparent decal would overwrite the ground's normal/velocity/mask: the decal writes valid values — its own ground-up normal and velocity — and alpha-tests at 0.004 so fully transparent texels write nothing. It writes `mask (0, 0)`, not `(1, 0)`: it covers ground pixels, and excluding them from GTAO removed the ground's own contact occlusion inside the disc, which read as a light halo around every creature's feet. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES P4, Q14 --> The decal is the "soft occlusion gradient at the feet" of Pillar 5; the real cast shadow from `maskShadowNode` is the hard one. No y-epsilon anywhere: `polygonOffset` does the work.
 
 ### 10.4.8 Pillar tests owned here
 
@@ -2963,7 +3009,7 @@ Prop kinds for `PropPlacement.kind` in the grove set: `tree_oak`, `tree_birch`, 
 
 ### 10.5.5 Layout
 
-`layout.ts` (pure): `town` = a plaza (radius 14 m, `cobble`) centred at `(0, 0)`, 6–10 buildings on a ring of radius 22–30 m facing the plaza with 4 m gaps, gym at the north-most slot, shop/healer flanking the south road, roads (`path_gravel`, 3.5 m wide) from the plaza to each `edge`; `route` = a 12 m corridor along x with 3–5 tall-grass patches (ellipses 8×5 m) alternating sides, 2–3 clearings, the set-piece at the midpoint; `story` = the set-piece at the origin, a 20 m approach from the single edge. Trainers/npcs/pickups/tablets come from `spec.actors/pickups/tablets` (content positions) and are **not** moved by layout; layout only refuses to place scatter inside a 1.5 m radius of them or inside a building footprint. The layout writes the terrain splat (`color` attribute: R path, G dirt, B moss weight) and the footprints that content's `Heightfield.walkable` already encodes; render never edits `walkable` (§10.6).
+`layout.ts` (pure): `town` = a plaza (radius 14 m, `cobble`) centred at `(0, 0)`, 6–10 buildings on a ring of radius 22–30 m facing the plaza with 4 m gaps, gym at the north-most slot, shop/healer flanking the south road, roads (`path_gravel`, 3.5 m wide) from the plaza to each `edge`; `route` = a 12 m corridor along x with 3–5 tall-grass patches (ellipses 8×5 m) alternating sides, 2–3 clearings, the set-piece at the midpoint; `story` = the set-piece at the origin, a 20 m approach from the single edge. Trainers/npcs/pickups/tablets come from `spec.actors/pickups/tablets` (content positions) and are **not** moved by layout; layout only refuses to place scatter inside a 1.5 m radius of them or inside a building footprint. The terrain splat is geometric: the library has one material per surface, so terrain triangles are clipped on the zero lines of signed layer fields (plaza > path > detail > ground) into per-layer groups of one indexed chunk geometry, and `color` holds the layer albedo (the harvest level-2 colour), not blend weights. Building and prop footprints are **not** in content's `Heightfield.walkable` (spine §3.11 open gap): the builder registers them as `TerrainCollider` blockers (§10.6.2); render never edits `walkable`. <!-- amended 2026-09-25: "the footprints that content's walkable already encodes" was false — render IMPLEMENTATION-NOTES Z5, Z6 -->
 
 ### 10.5.6 Water
 
@@ -2971,9 +3017,9 @@ Prop kinds for `PropPlacement.kind` in the grove set: `tree_oak`, `tree_birch`, 
 
 ### 10.5.7 Scatter, LOD, culling
 
-Scatter is chunked into **32 m cells** (the AOI cell of spine §4.2): one `InstancedMesh` per `(kind, chunk, lodTier)` that has ≥ 1 instance, `frustumCulled = true`, `computeBoundingSphere()` once after `instanceMatrix` is filled, `instanceMatrix.setUsage(StaticDrawUsage)`. Per-instance tint through `instanceColor` (`setColorAt`), read by `vertexColor()` in the material graph where the generator marks `scatterTint: true`. LOD per chunk, not per instance: a chunk's tier is chosen each frame from the distance of its centre to the camera — **0–40 m LOD0, 40–90 m LOD1, 90–160 m LOD2, > 160 m impostor** — with 4 m hysteresis; the three tier meshes of a chunk exist from build time and toggle `visible`, so tier switches allocate nothing. Buildings and set-pieces use `LOD` objects (`addLevel(lod0, 0), addLevel(lod1, 40, 0.1), addLevel(lod2, 90, 0.1)`).
+Scatter is chunked into **32 m cells** (the AOI cell of spine §4.2), but drawn through **one zone-wide `InstancedMesh` per `(kind, lodTier, class)`** with capacity ≥ 1 025: an `InstancedMesh` whose matrices fit the uniform-buffer limit keeps them in a uniform array whose WGSL name carries a per-build id, so every such mesh compiles its **own** vertex program (header table; per-chunk meshes took Mirevale from 175 to 271 programs, climbing as chunks came into view). The chunk/tier logic writes the active chunks' instance slices into the preallocated tier buffers when the chunk set changes (partial upload via `addUpdateRange`); chunks outside the camera frustum (padded 16 m for shadow reach) contribute no instances. `instanceMatrix.setUsage(StaticDrawUsage)`. Per-instance tint through `instanceColor` (`setColorAt`) only on card/flower meshes (a tinted instanced mesh compiles its own fragment variant). LOD per chunk, not per instance: a chunk's tier is chosen each frame from the distance of its centre to the camera — **0–40 m LOD0, 40–90 m LOD1, 90–160 m LOD2, > 160 m impostor** — with 4 m hysteresis; tier switches copy slices into preallocated buffers and allocate nothing. Buildings and set-pieces use `LOD` objects (`addLevel(lod0, 0), addLevel(lod1, 40, 0.1), addLevel(lod2, 90, 0.1)`) with `autoUpdate = false`, updated once per frame against the main camera — three calls `LOD.update` for every camera including the shadow cameras, which would pick levels from the sun's position. Meshes mixing solid and alpha-tested card surfaces are split into meshes over geometry views, cards at `renderOrder 1`: the shadow pass renders with one override material per light and copies each object's `alphaTest` onto it, and every flip across 0 bumps its `version` and forces a full cache-key recompute (interleaved, Mirevale cost 185 ms CPU per frame; 8 ms split). <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES C20, C21, C23, Z1 -->
 
-Impostors: a camera-facing card per scatter kind beyond 160 m, textured from an 8-yaw × 2-pitch atlas (16 views of 128² in one 512² `RenderTarget`, `HalfFloatType`) rendered **once per zone load** per kind (≤ 6 kinds → ≤ 6 render targets, ≤ 3 ms each, counted in `renderTargets ≤ 24`). The card material is one shared `MeshBasicNodeMaterial` (`alphaTest 0.5`), lit by a baked flat term, and is excluded from the three-maps audit by class `'impostor'`.
+Impostors: two crossed canopy cards per tree kind (the library card material) beyond 160 m, not a render-target atlas — offscreen impostor targets would add ≤ 6 render targets to a count already over its cap (§10.10.2), and the default view never reaches 160 m (below). Rocks use their lod2; small kinds are not drawn beyond 90 m. Class `'impostor'` stays exempt from the three-maps audit. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES Z2 -->
 
 Geometry of the view: at `zoomStop 1` the camera sits 20.5 m above the focus and pitched 52°; the top frustum edge (52° − 14° = 38° below horizontal) meets the ground 26.2 m past the camera's ground point, so the default view sees at most ≈ 45 m of ground and 8 m tree tops out to ≈ 60 m. LOD2 and impostors are therefore reached by `zoomStop 2` (34 m), by `pushIn`/`release`, by the spectator arenas and by the hostile-audit free camera — they exist so those shots hold the budget, not for the default view. The tiers are still built for every zone; the cost is geometry memory (≤ 40 % of LOD0), not draw calls.
 
@@ -2997,9 +3043,9 @@ Geometry of the view: at `zoomStop 1` the camera sits 20.5 m above the focus and
 
 ### 10.5.9 Disposal contract — the leak test
 
-`ZoneHandle.dispose()`: (1) `scene.remove(group)`; (2) traverse `group` **once**, in the reverse of build order, calling `geometry.dispose()` on every geometry the builder created (recorded in a `Set<BufferGeometry>` at build time — shared library geometries such as the billboard quad and the decal plane are **not** in the set and are never disposed here), `dispose()` on every `InstancedMesh` (frees `instanceMatrix`/`instanceColor` attributes), `texture.dispose()` + `renderTarget.dispose()` on the ≤ 6 impostor targets, `light.dispose()` on every `PointLight`/`SpotLight` (frees its shadow map through `LightShadow.dispose`); (3) `materials.evictExcept(nextKeep)` where `nextKeep` is `[]` unless a `loadZone` is already pending (handover pre-load), in which case it is the next zone's bound set; (4) `pool.releaseAtlas` for the zone's atlases (party singles stay); (5) `collider` reference dropped; (6) `disposed = true`. A second call returns immediately.
+`ZoneHandle.dispose()`: (1) `scene.remove(group)`; (2) traverse `group` **once**, in the reverse of build order, calling `geometry.dispose()` on every geometry the builder created (recorded in a `Set<BufferGeometry>` at build time — shared library geometries such as the billboard quad and the decal plane are **not** in the set and are never disposed here), `dispose()` on every `InstancedMesh` (frees `instanceMatrix`/`instanceColor` attributes), `light.dispose()` on every `PointLight`/`SpotLight` (frees its shadow map through `LightShadow.dispose`); `dispatchEvent({ type: 'dispose' })` on every plain `Mesh` of the zone after its geometries — a plain `Mesh` has no `dispose()`, and its render objects (with the programs they hold) are released only on the object's or the material's `dispose` event, which library materials never fire; and the attribute lists of the zone's render objects, collected before disposal, are deleted from the renderer's attribute map afterwards — attributes a later pass binds (the velocity MRT's previous-instance-matrix buffers, three's wrapped instance colours) are otherwise never freed (measured +141 attributes / 9.8 MB per Mirevale reload before the fix, ±0 after) <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES C22, C26 -->; (3) `materials.evictExcept(nextKeep)` where `nextKeep` is `[]` unless a `loadZone` is already pending (handover pre-load), in which case it is the next zone's bound set; (4) `pool.releaseAtlas` for the zone's atlases (party singles stay); (5) `collider` reference dropped; (6) `disposed = true`. A second call returns immediately.
 
-Assertion (spine-level, `leak.spec.ts` in `50-verification-budget.md` §50.4.6): after `dispose()`, `renderer.info.memory.{geometries, textures, texturesSize, programs, renderTargets, attributes, attributesSize}` equal the baseline captured after §10.1.2 step 8 **exactly (±0)**; after 100 load/unload cycles `renderer.info.memory.total` equals the baseline. Programs are constant because every material graph exists (warm-compiled) before the first zone; a new graph appearing during a zone load is itself a leak-test failure and therefore a spec violation.
+Assertion (spine-level, `leak.spec.ts` in `50-verification-budget.md` §50.4.6): after `dispose()`, `renderer.info.memory.{geometries, textures, texturesSize, programs, renderTargets, attributes, attributesSize}` equal the baseline captured after §10.1.2 step 8 **exactly (±0)**; after 100 load/unload cycles `renderer.info.memory.total` equals the baseline. Programs return to the baseline after `dispose()` because every material graph exists (warm-compiled) before the first zone and the zone's render objects are released (above); **while** a zone is loaded, `programs` exceeds the baseline by the zone's light-set variants (§10.1.2 step 8: +28 on Mirevale, measured), which is not a leak. A program still alive after `dispose()` is a leak-test failure and therefore a spec violation. <!-- amended 2026-09-25: "programs are constant during a zone load" is impossible in three 0.186, where the light set is part of each program's source — render IMPLEMENTATION-NOTES C11 -->
 
 `geometryDigest` is `fnv1a32` over the concatenated `position` attribute bytes of every builder-created geometry in build order; `20-client.md` §20.4.4's snapshot test compares it across two builds of the same `ZoneSpec` (determinism), and CI compares it across Node (`layout` only — no GPU) and the browser.
 
@@ -3025,7 +3071,14 @@ export class TerrainCollider {
   /** Slope in degrees at (x, z) from `normal`. */
   slopeDeg(x: number, z: number): number;
   readonly bounds: { readonly minX: number; readonly maxX: number; readonly minZ: number; readonly maxZ: number };  // the playable interior = content's playableBounds(h): field extent shrunk by the 16 m margin (00-spine.md §3.1)
+  /** Footprint blockers registered by the zone builder (spine §3.11 open gap: content does not mark footprints). walkable() stays byte-identical to content. */
+  addBlocker(b: Blocker): void;
+  blocked(x: number, z: number): boolean;
+  passable(x: number, z: number): boolean;                 // walkable && !blocked (resolveMove adds the surf term)
 }
+export type Blocker =
+  | { readonly kind: 'rect'; readonly x: number; readonly z: number; readonly hw: number; readonly hd: number; readonly yaw: number }   // buildings
+  | { readonly kind: 'circle'; readonly x: number; readonly z: number; readonly r: number };                                              // trunks, rocks, posts
 ```
 
 `packages/render/test/collider.test.ts` (node): for 10 000 prng points over a fixture field, `collider.sample` equals content's `sampleHeight` to `1e-6` and `collider.walkable` equals `isWalkable` exactly (the fixture is the JSON dump of `mirevale`'s field committed by content's validate step, so the two implementations cannot drift).
@@ -3035,11 +3088,11 @@ export class TerrainCollider {
 ```ts
 export const MOVER = { capsuleRadius: 0.35, capsuleHeight: 1.7, stepHeight: 0.4, slopeLimitDeg: 40, skin: 0.02 } as const;
 export interface MoveResult { readonly x: number; readonly z: number; readonly y: number; readonly blocked: boolean; readonly slid: boolean }
-/** Pure. Resolves a desired xz displacement against the collider. Never returns an unwalkable position. */
-export function resolveMove(c: TerrainCollider, fromX: number, fromZ: number, dx: number, dz: number): MoveResult;
+/** Pure. Resolves a desired xz displacement against the collider. Never returns a position that is not passable. `surf` = the player holds HM Surf (30-server-netcode.md §30.3). */
+export function resolveMove(c: TerrainCollider, fromX: number, fromZ: number, dx: number, dz: number, surf?: boolean): MoveResult;
 ```
 
-Rules, in order: (1) target `(tx, tz) = (fromX + dx, fromZ + dz)`; (2) if `walkable(tx, tz)` and `sample(tz) − sample(from) ≤ stepHeight` and `slopeDeg(tx, tz) ≤ slopeLimitDeg` → accept; (3) else try the two axis-separated moves `(dx, 0)` then `(0, dz)` with the same tests → accept the first that passes, `slid = true`; (4) else probe 8 directions of the capsule radius (`0.35` at 45° steps) around the target and accept the walkable one with the smallest angle to the desired direction, `slid = true`; (5) else stay, `blocked = true`. `y = sample(x, z)`. The `slopeLimitDeg 40` only affects sliding feel between walkable samples; the `walkable` bitmap (which content marks 0 above 35°) is the sole authority on where a player may stand, and the server's `validateInput` accepts only `walkable = 1` positions — so the client can never predict itself somewhere the server will refuse on walkability grounds.
+Rules, in order, with `passable(x, z) = (walkable(x, z) || (surf && water(x, z))) && !blocked(x, z)` — `blocked` is the builder's footprint blockers (oriented rectangles for buildings, circles for trunks, big rocks, posts; §10.5.5): (1) target `(tx, tz) = (fromX + dx, fromZ + dz)`; (2) if `passable(tx, tz)` and `sample(tz) − sample(from) ≤ stepHeight` and `slopeDeg(tx, tz) ≤ slopeLimitDeg` → accept; (3) else try the two axis-separated moves `(dx, 0)` then `(0, dz)` with the same tests → accept the first that passes, `slid = true`; (4) else probe 8 directions of the capsule radius (`0.35` at 45° steps) around the target and accept the passable one with the smallest angle to the desired direction, `slid = true`; (5) else stay, `blocked = true`. If the start itself is not passable, the nearest passable sample within 4 m is returned. `y = sample(x, z)`. The `slopeLimitDeg 40`, `stepHeight` and the blockers only make prediction **stricter** than the server, whose `validateInput` accepts exactly `walkable || (canSurf && water)` (§30.2.4) — so the client never predicts itself somewhere the server refuses; the reverse is the open footprint gap of spine §3.11 (the server accepts positions the client's blockers refuse). Without the `surf` term the client could never predict a step onto water that the server accepts for an HM Surf holder, and surfing would be unreachable. <!-- amended 2026-09-25: §30.2.4/§30.3/§50.4.5 make water-only samples standable with HM Surf while this solver had no input for it; render follow-up: `resolveMove`/`resolveMoveInto` gain `surf`, the client's Collider adapter passes inventory['HM Surf'] > 0 — findings L2-05, L2-01 -->
 
 ---
 
@@ -3087,21 +3140,21 @@ Shake is applied as a rotation about the camera's right and up axes **after** th
 
 ### 10.7.3 `TiltShiftDOF` (Pillar 1)
 
-The focal plane passes through `rig.focus` and is **tilted 24° from the view-perpendicular toward the ground plane** about the camera's right axis. With pitch 52°, its normal is `n = normalize(−cos 76°·f_h + sin 76°·up) = (−0.2419·f_h, 0.9703)` where `f_h` is the horizontal forward unit vector. Per-pixel signed distance `d = dot(P_world − focus, n)` from world position reconstructed by `getViewPosition(screenUV, depth, cameraProjectionMatrixInverse)` transformed by `cameraWorldMatrix`.
+The focal plane passes through `rig.focus` and is **tilted 24° from the view-perpendicular toward the ground plane** about the camera's right axis. With pitch 52°, its normal is `n = normalize(−cos 76°·f_h + sin 76°·up) = (−0.2419·f_h, 0.9703)` where `f_h` is the horizontal forward unit vector. Per-pixel signed distance `d = dot(P_world − focus, n)` from world position reconstructed by `getViewPosition(screenUV, depth, uniform(camera.projectionMatrixInverse))` transformed by `uniform(camera.matrixWorld)` — inside a post graph the `cameraProjectionMatrixInverse`/`cameraWorldMatrix` nodes resolve to the fullscreen quad's camera (header table; the `GTAONode` pattern). <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES C3 -->
 
 | Parameter | Value | Consequence |
 |---|---|---|
 | tilt | 24° | a prop 12 m nearer/farther along the ground is `12 · 0.2419 = 2.90 m` off-plane |
-| `focalLength` (full blur distance) | 6.0 m | CoC = `smoothstep(0, 6, |d|)`; at 2.90 m → 0.518 |
-| `bokehScale` | 6 px (scaled by `pr`) | max CoC 6 px; at 2.90 m → 3.1 px ≥ 3 px (spine Pillar 1 test); 4 m above the plane → 4.1 px |
+| `focalLength` (full blur distance) | 6.0 m | CoC = `smoothstep(0, 6, |d|)`; at 2.90 m, `t = 0.483` → `t²(3 − 2t)` = **0.475** |
+| `bokehScale` | 6 px (scaled by `pr`) | max CoC 6 px; at 2.90 m → **2.85 px at `pr 1`** (4 m above the plane → 4.44 px). The reference machine (2560×1440, dpr 1) renders at `pr 1` (§10.1.3), so these values **fail** the spine's Pillar 1 "≥ 3 px at 1440p"; it holds from `pr ≥ 1.06` (4.3 px at `pr 1.5`). Recommendation R3 (bokehScale 7 px → 3.33 px, or focalLength 5.5 m → 3.24 px) is the art decision that closes it. <!-- amended 2026-09-25: the draft's 0.518 / 3.1 px / 4.1 px were arithmetic slips (render IMPLEMENTATION-NOTES Q12) --> |
 | f-stop equivalent | ≈ f/2.8 on the 35 mm-equivalent lens (informative) | the two numbers above are the binding ones |
 | `focusDistance` passed to `dof()` | 0 | the node computes `signedDist = −viewZ − focusDistance`; we pass `viewZNode = d.negate()` so `signedDist = d`; near field = below the plane, far field = above |
 
-Mask: MRT channel `mask.y` (§10.8.2), 1.0 over every pixel of a billboard with `sharp = 1` (the player's creature, both active battlers, the inspected creature); the composite is `mix(dofOut, preDof, maskTex.y)`. The player **character** mesh is also `sharp` (its own material sets `mrtNode = mrt({ mask: vec2(0, 1) })`). Pillar 1 test: mask value 1.0 over the whole billboard → `pillars.spec.ts` reads the `mask` MRT texture.
+Mask: MRT channel `mask.y` (§10.8.2), 1.0 over every pixel of a billboard with `sharp = 1` (the player's creature, both active battlers, the inspected creature); the composite is `mix(dofOut, preDof, maskTex.y)`. That composite keeps the sharp pixels sharp, but the far-field gather still reads their colour, so every sharp billboard off the focal plane gets a soft coloured halo in the blurred pixels around it (seen in the sandbox; gone with DOF off) — recommendation R4 (feed the DOF a `viewZ` whose CoC is 0 under `mask.y`). The player **character** mesh is also `sharp` (its own material sets `mrtNode = mrt({ mask: vec2(0, 1) })`). Pillar 1 test: mask value 1.0 over the whole billboard → `pillars.spec.ts` reads the `mask` MRT texture.
 
 ### 10.7.4 `BattleCamera` and arena framing (Pillar 7)
 
-Arena: the two battlers stand **5.5 m apart** on the line through the `BattleSummary (x, z)` perpendicular to the diorama heading; the player's battler is the nearer one, showing its **back** sprite. Default battle pose: camera **12 m** from the arena centre, **28° pitch**, yaw = diorama yaw + 12° (so the two battlers are staggered, not eclipsed), FOV unchanged (28°). `pushIn` eases position/pitch/yaw from the diorama pose over 600 ms with `smoothstep`; the battle pose is always within 40 u of the pre-battle player position (Pillar 7 test: 12 m + 5.5 m/2 < 40).
+Arena: the two battlers stand **5.5 m apart** on the line through the `BattleSummary (x, z)` **along** the diorama heading's horizontal view direction (player side near the camera, foe far); the player's battler is the nearer one, showing its **back** sprite. <!-- amended 2026-09-25: "perpendicular to the diorama heading" put both battlers at the same camera distance, contradicting "the nearer one" and the +12° anti-eclipse yaw below — render IMPLEMENTATION-NOTES Q5 --> Default battle pose: camera **12 m** from the arena centre, **28° pitch**, yaw = diorama yaw + 12° (so the two battlers are staggered, not eclipsed), FOV unchanged (28°). `pushIn` eases position/pitch/yaw from the diorama pose over 600 ms with `smoothstep`; the battle pose is always within 40 u of the pre-battle player position (Pillar 7 test: 12 m + 5.5 m/2 < 40).
 
 ```ts
 export interface CameraWork {
@@ -3133,7 +3186,7 @@ export interface BattleStage {
   /** Dresses the arena at (x, z): a 7 m ring (surface cobble / the biome's plaza stone), 2 shadow-casting beacons whose colour is accentType, ≤ 6 spectator billboards (npc looks), rope posts; all within the zone's light budget (the 2 beacons are reserved slots). */
   dress(at: { readonly x: number; readonly z: number }, terrain: Terrain, participants: readonly string[]): void;
   dressSpectator(x: number, z: number): void;           // ring + beacons only
-  undress(ms: number): void;                            // fades and removes the dressing; disposes nothing shared
+  undress(ms: number): void;                            // sinks the dressing into the ground over ms, then removes it (opaque library materials cannot fade; it rises the same way on dress — amended 2026-09-25, render IMPLEMENTATION-NOTES Q7); disposes nothing shared
   setBattler(ref: BattlerRef, d: SpriteDescriptor | null): void;   // null = empty slot; the two active refs get sharp = true
   setPose(ref: BattlerRef, pose: BattlerPose, ms: number): void;
   hurt(ref: BattlerRef, strength: number): void;
@@ -3158,7 +3211,7 @@ export type VfxId =
 export const VFX_IDS: readonly VfxId[];                  // exactly 19 + 4 + 6 + 5 + 4 + 4 + 5 = 47 entries; the client's MOVE_ANIMS/DEFAULT_BY_TYPE reference only these
 ```
 
-Every VFX is a pooled `Points` cloud (≤ 512 particles, additive, `layers 29`, one shared `PointsNodeMaterial` with per-particle `instancedBufferAttribute` for birth/lifetime/colour) or a pooled alpha-card burst (≤ 8 cards); pools are allocated in `createRenderer` (§10.1.2 step 7) and never grow. `impact_super` adds a 120 ms `chroma` request (`effects.chroma` gates it) and `impact_crit` a 3-frame white flash on the target (`hurt 1.0`). VFX never writes `mask.y = 1`, so effects blur with the scene and never sharpen; VFX never covers the HUD rects (the HUD is a later overlay pass — Pillar 8 readability gate in `50-verification-budget.md` §50.1 rule 15).
+Every VFX is a slice of one pooled instanced `Sprite` (`count` 4 096 = 8 emitters × 512 particles, additive, `layers 29`, one shared `PointsNodeMaterial` with per-particle `instancedBufferAttribute` for birth/lifetime/colour — a `Points` object rasterises 1-px points on WebGPU, header table) or a pooled alpha-card burst (≤ 8 cards); particles write valid MRT values (the view axis as normal, mask `(1, 0)`) and alpha-test at 0.004, because the pass MRT writes those attachments unblended and a zero normal made GTAO NaN. Pools are allocated in `createRenderer` (§10.1.2 step 7) and never grow. VFX add **no** lights (a light appearing mid-battle recompiles every lit program); impacts pulse the 2 reserved beacons instead, which live under the stage root from `createRenderer` on at intensity 0 with `shadow.autoUpdate = false` while undressed. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES P4, P8, P10, Q8 --> `impact_super` adds a 120 ms `chroma` request (`effects.chroma` gates it) and `impact_crit` a 3-frame white flash on the target (`hurt 1.0`). VFX never writes `mask.y = 1`, so effects blur with the scene and never sharpen; VFX never covers the HUD rects (the HUD is a later overlay pass — Pillar 8 readability gate in `50-verification-budget.md` §50.1 rule 15).
 
 ### 10.7.6 `ActorPool`
 
@@ -3224,6 +3277,8 @@ export interface PostUniforms {
   readonly vignette: UniformNode<'float', number>;     // 0.22
   readonly grain: UniformNode<'float', number>;        // 0.035
   readonly exposure: UniformNode<'float', number>;     // 1.0
+  readonly bokehScale: UniformNode<'float', number>;   // 6 × pixelRatio (§10.7.3)
+  readonly vignetteAspect: UniformNode<'float', number>; // height / width, 0.5625 at 16:9
 }
 
 export function buildPostGraph(gpu: WebGPURenderer, scene: Scene, camera: PerspectiveCamera, u: PostUniforms, f: EffectsFlags, backend: Backend, passes: Readonly<Record<BudgetPass, boolean>>): { pipeline: RenderPipeline; nodes: PostNodes } {
@@ -3240,7 +3295,7 @@ export function buildPostGraph(gpu: WebGPURenderer, scene: Scene, camera: Perspe
   let lit = beauty;
   if (passes.gtao) {
     const aoNode = ao(depthT, normalT, camera);
-    aoNode.resolutionScale = 0.5; aoNode.samples.value = 16; aoNode.radius.value = 0.9; aoNode.thickness.value = 0.6; aoNode.scale.value = 1.0; aoNode.useTemporalFiltering = true;
+    aoNode.resolutionScale = 0.5; aoNode.samples.value = 16; aoNode.radius.value = 0.9; aoNode.thickness.value = 0.6; aoNode.scale.value = 1.0; aoNode.useTemporalFiltering = passes.traa && f.taa && backend === 'webgpu';   // temporal filtering needs TRAA in the graph
     const aoT = aoNode.getTextureNode();
     lit = vec4(beauty.rgb.mul(mix(aoT.r, float(1), maskT.x)), beauty.a);             // sprites/decals (mask.x = 1) keep their own contact gradient
   }
@@ -3254,18 +3309,18 @@ export function buildPostGraph(gpu: WebGPURenderer, scene: Scene, camera: Perspe
     : aa;
 
   // Tilt-shift DOF through the sharp mask
-  const worldPos = cameraWorldMatrix.mul(vec4(getViewPosition(screenUV, depthT, cameraProjectionMatrixInverse), 1)).xyz;
+  const worldPos = uniform(camera.matrixWorld).mul(vec4(getViewPosition(screenUV, depthT, uniform(camera.projectionMatrixInverse)), 1)).xyz;   // scene-camera matrices as own uniforms (header table)
   const planeDist = dot(worldPos.sub(u.focusPoint), u.planeNormal);                    // §10.7.3 d
-  const blurred = passes.dof && f.dof ? dof(bloomed, planeDist.negate(), 0, 6.0, 6.0) : bloomed;
+  const blurred = passes.dof && f.dof ? dof(bloomed, planeDist.negate(), 0, 6.0, u.bokehScale) : bloomed;
   const focused = passes.dof && f.dof ? mix(blurred, bloomed, maskT.y) : bloomed;
 
   // Chromatic aberration (transient)
-  const ca = f.chroma ? chromaticAberration(focused, u.chroma, null, float(1.1)) : focused;
+  const ca = f.chroma ? chromaticAberration(focused, u.chroma, vec2(0.5, 0.5), float(1.1)) : focused;   // explicit centre: a null centre throws at build (header table)
 
   // ACES then grade (display-referred), vignette, grain
   const aces = passes.grade ? acesFilmicToneMapping(ca.rgb, u.exposure) : ca.rgb;
   const graded = passes.grade ? pow(aces.mul(u.gain).add(u.lift), vec3(1).div(u.gamma)).clamp(0, 1) : aces;   // lift/gamma/gain: out = (in·gain + lift)^(1/gamma)
-  const r = length(screenUV.sub(0.5).mul(vec2(1, 0.5625)));                            // aspect-corrected radius (16:9)
+  const r = length(screenUV.sub(0.5).mul(vec2(1, u.vignetteAspect)));                  // aspect-corrected radius: vignetteAspect = height / width (0.5625 at 16:9), written on resize
   const vig = passes.grade ? graded.mul(oneMinus(smoothstep(0.35, 0.85, r).mul(u.vignette))) : graded;
   const grained = f.grain && passes.grade ? film(vec4(vig, 1), u.grain).rgb : vig;
 
@@ -3275,18 +3330,19 @@ export function buildPostGraph(gpu: WebGPURenderer, scene: Scene, camera: Perspe
 }
 ```
 
+As implemented the function is split into `planPostGraph` (pure: which stages, which numbers — what `post-graph.test.ts` asserts), `buildPostOutput` (the TSL above) and `PostStack` (one `RenderPipeline`, a persistent scene pass, rebuilds by `outputNode` + `needsUpdate`, and the dispose walk of §10.1.5); the grade also clamps `c·gain + lift` at 0 before `pow`. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES M11, M12, C14 -->
 Grain 0.035 is `film`'s `intensity` mix (verified body: `mix(base, base + base·(noise + 0.1), intensity)`), i.e. ≤ 3.85 % luminance modulation. The `mask` target is read by two consumers (AO exclusion, DOF composite) and by `pillars.spec.ts`. Every uniform in `PostUniforms` is written in `frame()` from the rig and the palette; `setEffects` and `BudgetProbe.setPassEnabled` call `buildPostGraph` again and assign `pipeline.outputNode = …; pipeline.needsUpdate = true` (disposing the previous display nodes), so a disabled pass has **no** render target and **no** cost.
 
 ### 10.8.3 Numbers that are assertions
 
 | Stage | Setting | Where checked |
 |---|---|---|
-| MRT | 4 HalfFloat targets + depth at drawing-buffer size: at 3840×2160 that is 4 × 66.4 MB = 265.4 MB, inside the 700 MB texture cap with ≈ 180 MB of zone textures and ≈ 40 MB of atlases | `budget.spec.ts` `texturesSize` |
+| MRT | 4 HalfFloat targets + depth at drawing-buffer size: at 3840×2160 that is 4 × 66.4 MB = 265.4 MB. The draft's "inside the 700 MB cap with ≈ 180 MB of zone textures and ≈ 40 MB of atlases" undercounted: a zone binds ≤ 8 atlases ≈ 256 MB plus ≤ 6 singles ≈ 48 MB (`40-pipelines.md` §40.1.4; measured 167 MB for 5 atlases), each 2048² CSM cascade also allocates a colour attachment (≈ 32 MB, ≈ 128 MB for four), and TRAA/DOF/bloom/`convertToTexture` targets scale with the drawing buffer. MRT + atlases + singles + zone textures alone are ≈ 750 MB at 3840×2160 — over the cap before the shadow and post targets (recommendation R5). `renderer.info.memory.texturesSize` counts KTX2 textures as 1 byte each, so the metric is `RenderStats.textureBytes` (§50.2.2) <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES C17, C18, part-3 measurements --> | `budget.spec.ts` `texturesSize` |
 | GTAO | 1280×720 at `pr 1` on 1440p (`resolutionScale 0.5`), `samples 16` | §50.2.1 row `GTAO 1.2 ms` |
 | TRAA | MSAA off (`antialias: false`) | `createRenderer` throws if `gpu.samples > 0` |
 | Bloom | threshold 1.15 > 1.10 environment ceiling, < 1.35 creature emissive, < 3.2 housings | asset-audit `materials.albedoCeiling` + `pillars.spec.ts` bloom-gap shot (the brightest non-emissive pixel in the noon shot's beauty target ≤ 1.15) |
-| DOF | tilt 24°, focalLength 6 m, bokehScale 6 px, mask over sharp billboards | Pillar 1 test |
-| Vignette | 0.22 at the corners (`r = 0.5·√(1 + 0.5625²) ≈ 0.574` → `smoothstep(0.35, 0.85, 0.574) = 0.36` → 8 % darkening at the far corner; 22 % is the cap the uniform expresses) | shot readback in the hostile audit |
+| DOF | tilt 24°, focalLength 6 m, bokehScale 6 px × `pr`, mask over sharp billboards (CoC at the Pillar 1 prop = 2.85 px at `pr 1` — §10.7.3, recommendation R3) | Pillar 1 test |
+| Vignette | 0.22 at the corners (`r = 0.5·√(1 + 0.5625²) ≈ 0.574` → `t = 0.447`, `smoothstep(0.35, 0.85, 0.574) = t²(3 − 2t) = 0.42` → **9.3 %** darkening at the far corner; 22 % is the cap the uniform expresses) <!-- amended 2026-09-25: the draft's 0.36 / 8 % was an arithmetic slip; render IMPLEMENTATION-NOTES M20, the test asserts 9.3 % --> | shot readback in the hostile audit |
 | Grain | 0.035 | reduced effects → the `film` node is absent from the graph |
 
 ### 10.8.4 `ReducedEffects` — always wins
@@ -3310,7 +3366,7 @@ export interface HudLayer {
 }
 ```
 
-Implementation: one `OffscreenCanvas` (fallback `HTMLCanvasElement`) at `cssWidth·pr × cssHeight·pr`, one `CanvasTexture` (`SRGBColorSpace`, `minFilter = LinearFilter`, `magFilter = LinearFilter`, `generateMipmaps = false`, `premultiplyAlpha = true`), one full-screen `PlaneGeometry(2, 2)` with `MeshBasicNodeMaterial({ transparent: true, depthTest: false, depthWrite: false })` and `colorNode = texture(hudTex)`, rendered by `gpu.render(hudScene, new OrthographicCamera(-1, 1, 1, -1, 0, 1))` after `pipeline.render()` with `gpu.autoClear = false`. The HUD is therefore never touched by bloom, DOF, grain or aberration (Pillar 8; `50-verification-budget.md` §50.1 rule 15 measures exactly this).
+Implementation: one `OffscreenCanvas` (fallback `HTMLCanvasElement`) at `cssWidth·pr × cssHeight·pr`, one `CanvasTexture` (`NoColorSpace` — it carries the canvas's raw sRGB bytes, `minFilter = LinearFilter`, `magFilter = LinearFilter`, `generateMipmaps = false`, `premultiplyAlpha = true`), one full-screen `PlaneGeometry(2, 2)` with `MeshBasicNodeMaterial({ transparent: true, depthTest: false, depthWrite: false })`, `blending = CustomBlending` One / OneMinusSrcAlpha (premultiplied) and `colorNode = texture(hudTex)`, rendered by `gpu.render(hudScene, new OrthographicCamera(-1, 1, 1, -1, 0, 1))` after `pipeline.render()` with `gpu.autoClear = false` **and `gpu.outputColorSpace = gpu.workingColorSpace`** for that call (§10.1.4: otherwise the render goes through the intermediate framebuffer target, whose output pass overwrites the post image). <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES P1 --> The HUD is therefore never touched by bloom, DOF, grain or aberration (Pillar 8; `50-verification-budget.md` §50.1 rule 15 measures exactly this).
 
 Regions (each with its own dirty bit; a `set` marks only the regions its keys belong to): `party` (top-left strip, 48 px thumbs), `zoneName` (centre-top display face 48 px), `timeOfDay` + `questHint` (top-right), `chat` (bottom-left, 6 lines, fade 8 s — the fade re-marks the region dirty at 4 Hz while a line is fading), `prompt` (bottom-centre), `nameplates` (positions from `ActorPool.screenPositions`, redrawn when a position moves ≥ 1 px), `battle` (bars anchored above the billboards via the stage's projected positions; HP tween at 30 Hz while a `hp` frame is active), `connection`, `dev`. Text: body 14 px minimum at `uiScale 1` (spine/plan: "text ≥ 14 px"), numerals `tabular-nums`, 2 px dark outline under every glyph over the world. Nameplates cap at 16 (the model's cap). `drawIfDirty` costs 0 when nothing changed; the `20-client.md` §20.10.2 dirty test asserts that 600 idle frames produce 0 uploads.
 
@@ -3357,7 +3413,10 @@ export function createZoneView(o: ZoneViewOptions): Promise<ZoneView>;   // crea
 | grade / HUD | 0.5 | 0.7 | one quad for ACES/grade/vignette/grain, one HUD overlay draw |
 | **total** | **10.0** | **13.5** | with sim 0.6 |
 
-Counts (`50-verification-budget.md` §50.2.2): draw calls ≤ 400, triangles ≤ 2 500 000, `texturesSize` ≤ 734 003 200 bytes, materials ≤ 48, shadow lights ≤ 8, non-shadow ≤ 24, render targets ≤ 24 (scene MRT 1 + GTAO 2 + TRAA 2 + bloom 10 + DOF 4 + impostors ≤ 6 = 25 → **impostor targets are disposed after their atlas is copied into one 2048² `Texture` per zone**, bringing the steady state to 20), programs ≤ 96.
+Counts (`50-verification-budget.md` §50.2.2): draw calls ≤ 400, triangles ≤ 2 500 000, texture bytes (`RenderStats.textureBytes`) ≤ 734 003 200 bytes, materials ≤ 48, shadow lights ≤ 8, non-shadow ≤ 24, **render targets ≤ 41**, **programs ≤ 128**.
+
+<!-- amended 2026-09-25: the caps 24 and 96 were measured impossible with the stock three 0.186 display nodes — render IMPLEMENTATION-NOTES C18 and Part 2 "Measured" -->
+Render targets, as the stock nodes allocate them (measured at 1280×720 with the full graph): scene MRT 1 + GTAO 1 + TRAA 2 + its input `RTTNode` 1 + bloom 11 + DOF 6 + its internal Gaussian blur 2 + its input `RTTNode` 1 + chromatic-aberration input `RTTNode` 1 + PMREM target and ping-pong 2 + IBL probe 1 = **29**, plus 4 CSM cascades and 1 per local shadow caster (≤ 8 scene-wide, beacons included, §10.3.2) = **≤ 41**; measured 32 after step 8 and **34** with a zone (1 local caster). The draft's "scene MRT 1 + GTAO 2 + TRAA 2 + bloom 10 + DOF 4 + impostors ≤ 6 → steady 20" omitted the shadow maps, the PMREM and the `convertToTexture` targets the display nodes create, and impostors no longer use render targets (§10.5.7). Programs: 79 after step 8 (63 host + 16 stage/HUD) + the zone's light-set variants (C11; +28 on Mirevale) = **107 measured** in every slice shot; 128 leaves ≈ 20 % for a second light-set variant (a spectator arena, a harvested zone) — fewer distinct punctual-light sets per zone, or warm-compiling with the zone's set (recommendation R6), are the levers if a zone exceeds it.
 
 ### 10.10.3 `RenderStats.passMs`
 
@@ -3377,7 +3436,7 @@ Filled only by the differential procedure of `50-verification-budget.md` §50.2.
 | **AgX tone mapping** | ACES is the palette every sprite was authored against; re-verifying 130 species' emissive masks and 19 type colours is not paid for | `acesFilmicToneMapping` in the post graph |
 | **`SunLight` + `SunLightShadow`** | fixed at 2 cascades; Pillar 4 requires 4 | `DirectionalLight` + `CSMShadowNode({ cascades: 4 })` |
 | **`SpriteNodeMaterial` for creatures** | unlit; Pillar 5 requires lit surfaces | `MeshStandardNodeMaterial` quad with a yaw uniform (§10.4.4) |
-| **`billboarding()` TSL helper** | reads `cameraViewMatrix`, which is the light's during the shadow pass | one `cameraYaw` uniform written per frame |
+| **`billboarding()` TSL helper** | reads `cameraViewMatrix`, which is the light's during the shadow pass | `cameraYaw` + `cameraLean` uniforms written per frame (§10.4.4) |
 | **MSAA** | forbidden with TRAA (`TRAANode.js` header) | TRAA (webgpu) / SMAA (webgl2 fallback) |
 | **Per-instance LOD, GPU-driven culling, `BatchedMesh`** | chunked `InstancedMesh` already meets ≤ 400 draws; the extra machinery has no budget row | 32 m chunk LOD (§10.5.7) |
 | **Runtime texture generation (`CanvasTexture`/`DataTexture` on lit materials)** | the old world's zero-texture look came from exactly this; KTX2 at build is 4–6× smaller and mipped | build-time KTX2 sets, `textures.ktx2Only` audit rule |
@@ -3406,7 +3465,7 @@ Filled only by the differential procedure of `50-verification-budget.md` §50.2.
 1. `20-client.md` §20.4.1 → **done**: the client's consumed-surface block now points at this file's definitions (§10.1.1, §10.5.1, §10.7.2, §10.7.5, §10.7.6, §10.9) and lists the extra members; `zoneSpecFor` (§20.4.4) passes `getHeightfield(zone.id)` unchanged and fills `seed`, `biome`, `size`, `layout`, `props`, `lights`, `water`, `warps`; `MOVE_ANIMS`/`DEFAULT_BY_TYPE` reference only the 47 `VFX_IDS` (§20.5.2, asserted by `timeline.test.ts`). The client's `Keyframe.pose` values `recoil`/`celebrate` and `camera.shot 'throw'` were added here (§10.4.2, §10.7.2, §10.7.4) rather than removed there.
 2. `30-server-netcode.md` §30.2.3 → **done**: the `Heightfield` block moved to `00-spine.md` §3.11 (content owns it; `water` added); `validate.ts` commits `dist/heightfields/<zoneId>.json` for every zone (spine §3.10), and `collider.test.ts` reads `mirevale.json`.
 3. `40-pipelines.md` → **done, in 40's favour for creatures**: material texture sets are KTX2 UASTC in two tiers (§10.2.1 here, §40.3 there); creature atlases are WebP 2048² zone-affinity sets, ≤ 8 per zone, singles are runtime crops (§10.4.1 here = SpriteManifestV2 there); the placeholder set, meshopt GLBs (KTX2 maps on legendaries only) and `public/basis/` are as §40.2/§40.3.4/§40.6 state.
-4. `50-verification-budget.md` → **done**: §50.4.6 now names the pre-TRAA `output` read for Pillar 6, the `mask` read for Pillar 1, the rules `materials.albedoCeiling`, `shadows.drawCalls`, `harvest.same`, `geometry.noOutlineShells`, `scatter.instanced`, the bloom-gap shot, `renderTargets` steady state 20 ≤ 24 and `programs` constant across cycles.
+4. `50-verification-budget.md` → **done**: §50.4.6 now names the pre-TRAA `output` read for Pillar 6, the `mask` read for Pillar 1, the rules `materials.albedoCeiling`, `shadows.drawCalls`, `harvest.same`, `geometry.noOutlineShells`, `scatter.instanced`, the bloom-gap shot, `renderTargets` steady state 20 ≤ 24 and `programs` constant across cycles (superseded 2026-09-25: `renderTargets ≤ 41`, `programs ≤ 128`, programs back to baseline after unload — §10.10.2, §10.5.9).
 
 ---
 
@@ -3421,7 +3480,7 @@ Filled only by the differential procedure of `50-verification-budget.md` §50.2.
 
 Inputs: `00-spine.md`; `PLAN.md` (UI/UX, multiplayer, combat presentation paragraphs); `eslint.config.js` (`ewa/client` block: the client may import `@ewa/core`, `@ewa/content`, `@ewa/protocol`, `@ewa/render`, `react`, `react-dom`, `react-router`, `zustand`, `@colyseus/sdk`, `@colyseus/schema`; never `@ewa/server`, `@ewa/persist`, `colyseus`, `@colyseus/core`, `pg`, `drizzle-orm`, node builtins). Every library name below was read from `packages/client/node_modules`:
 
-- `react-router 7.9` (`dist/development/index.d.ts`): `createBrowserRouter`, `RouterProvider`, `Outlet`, `Link`, `NavLink`, `useLoaderData`, `useRouteLoaderData`, `useFetcher`, `useBlocker`, `useNavigation`, `useNavigate`, `useSearchParams`, `useRouteError`, `isRouteErrorResponse`, `redirect`, `data`, `RouteObject` (with `loader`, `action`, `lazy`, `HydrateFallback` / `hydrateFallbackElement`, `shouldRevalidate`), `LoaderFunctionArgs`, `ActionFunctionArgs`, `ShouldRevalidateFunction`.
+- `react-router` (the lockfile resolves **7.18.4**, re-verified 2026-09-25; the symbols below are unchanged since 7.9) (`dist/development/index.d.mts`): `createBrowserRouter`, `RouterProvider`, `Outlet`, `Link`, `NavLink`, `useLoaderData`, `useRouteLoaderData`, `useFetcher`, `useBlocker`, `useNavigation`, `useNavigate`, `useSearchParams`, `useRouteError`, `isRouteErrorResponse`, `redirect`, `data`, `RouteObject` (with `loader`, `action`, `lazy`, `HydrateFallback` / `hydrateFallbackElement`, `shouldRevalidate`), `LoaderFunctionArgs`, `ActionFunctionArgs`, `ShouldRevalidateFunction`.
 - `@colyseus/sdk 0.18.2` (`build/Client.d.ts`, `build/Room.d.ts`, `build/index.d.ts`): `Client` (`joinOrCreate`, `joinById`, `reconnect(reconnectionToken)`, `consumeSeatReservation(reservation)`), `Room` (`state`, `sessionId`, `roomId`, `reconnectionToken`, `onStateChange`, `onMessage(type, cb): () => void`, `send(type, payload)`, `onLeave`, `onError`, `onDrop`, `onReconnect`, `leave(consented)`, `removeAllListeners()`), `getStateCallbacks(room)` returning `SchemaCallbackProxy<T>` with `listen` / `onAdd` / `onRemove` / `onChange`.
 - `zustand 5` (`vanilla.d.ts`, `react.d.ts`, `middleware/*.d.ts`): `create`, `createStore`, `useStore`, `useShallow`, `persist` + `createJSONStorage`, `subscribeWithSelector`.
 - `react 19.2` (`@types/react`): `useSyncExternalStore`, `useTransition`, `useId`; `react-dom/client`: `createRoot`.
@@ -3443,7 +3502,7 @@ Inputs: `00-spine.md`; `PLAN.md` (UI/UX, multiplayer, combat presentation paragr
 
 ### 20.1.1 Route table
 
-`packages/client/src/app/router.tsx` builds one `createBrowserRouter` and `main.tsx` mounts `<RouterProvider router={router}/>` under `createRoot(document.getElementById('root')!)`. No `<BrowserRouter>`, no `<Routes>` tree, no React Router framework mode.
+`packages/client/src/app/router.tsx` builds one `createBrowserRouter` (through `createAppRouter()`) and `main.tsx` mounts `<RouterProvider router={createAppRouter()}/>` under `createRoot(document.getElementById('root')!)`. No `<BrowserRouter>`, no `<Routes>` tree, no React Router framework mode.
 
 | Path | Element | Loader (REST, spine §4.7) | Notes |
 |---|---|---|---|
@@ -3497,7 +3556,8 @@ export const routes: RouteObject[] = [
   { path: '/admin', element: <AdminScreen/>, loader: adminLoader },
   { path: '*', loader: () => redirect('/play') },
 ];
-export const router = createBrowserRouter(routes);
+/** Called once by main.ts. A module-level `createBrowserRouter(routes)` would start a browser router in every test that imports `routes` (amended 2026-09-25, client IMPLEMENTATION-NOTES D1). */
+export function createAppRouter(): ReturnType<typeof createBrowserRouter>;
 ```
 
 `PlayError` is the `errorElement` of `/play`, but `GameCanvas` is rendered by `PlayShell`, which is the route *element*; when the element throws, React Router swaps element for errorElement. To keep rule 1 true under an error, `PlayShell` is split: `PlayShell = <CanvasHost/> + <PanelHost/>`, where `CanvasHost` is rendered by a **parent pathless layout route** with no loader and no errorElement, and `/play`'s element/errorElement only own `PanelHost`. Concretely the `/play` entry above is wrapped: `{ element: <CanvasHost/>, children: [ { path: '/play', … } ] }`. The canvas therefore survives loader errors, child errors and 401 redirects to `/login` (the pathless layout matches `/play*` only; `/login` unmounts it — logging out is the one legal canvas unmount).
@@ -3517,7 +3577,7 @@ export class ApiFailure extends Error { constructor(readonly error: ApiError) { 
  * - Timeout 10_000 ms via AbortSignal.timeout; network error → { status: 0, code: 'network' }.
  * - Concurrent refreshes are coalesced: one in-flight refresh promise, shared.
  */
-export function apiFetch<T>(route: RestRoute<T>, init?: { body?: unknown; params?: Record<string, string | number | boolean | null>; signal?: AbortSignal }): Promise<T>;
+export function apiFetch<K extends RouteKey>(key: K, init?: ApiInit<K>): Promise<RouteResponse<K>>;   // routes addressed by @ewa/protocol's RouteKey (the typed ROUTES table); ApiInit = { body?, params? (path), query?, signal? } — amended 2026-09-25: `RestRoute<T>` was defined nowhere (client IMPLEMENTATION-NOTES D2)
 
 /** Loader helper: throws redirect('/login?next=<pathname>') when there is no refresh token; otherwise resolves the access token (refreshing if expired). */
 export function requireSession(request: Request): Promise<void>;
@@ -3753,7 +3813,7 @@ export interface NotificationsState {
 | `Progression.*` | `applyProgressionDelta` | room message `progressionDelta`; REST responses that return badges/dex/quests are converted to a `progressionDelta` literal by the route action and passed through the same function |
 | `Inventory.items/money/party/box` | `applyInventoryDelta` | room message `inventoryDelta`; REST `{ inventory, money, party, box, creaturesUpdated }` responses converted to an `inventoryDelta` literal by the action |
 | everything in `SessionState` | `hydrateFromMe` | `/play` loader; `WorldSession.onReconnected` (re-GET `/me`) |
-| `BattleUi.authoritative` | `BattleController.applyServer` | `battleStart`, `battleEvents` (HP from `damage.hpAfter`/`heal.hpAfter`), `battleResync` |
+| `BattleUi.authoritative` | `BattleController.applyServer` | `battleStart`; `battleEvents` — when the preview's digest matches `stateDigest`, the preview state **is** the server's state and becomes `authoritative`; without a preview (pvp, raid, a turn the client did not submit) the state is patched from the events (`hpAfter`, pp, status, actives, turn) and the next digest check decides; `battleResync` |
 | `zoneId` | `WorldSession` | `join` resolved / `handover` acked |
 
 A `BattleEvent` of `expGain`, `levelUp`, `catchResult` or `battleEnd` changes nothing in `SessionState`. The rewards arrive as `progressionDelta`/`inventoryDelta` sent by the server after `battleEnd`; the `BattleResultCard` reads `RewardsSummary` from the `battleEnd` message for display only.
@@ -3813,7 +3873,7 @@ export interface WorldSession {
 ```
 <!-- reconciled 2026-09-18: join goes through POST /zone/enter (30-server-netcode.md §30.2.6, OQ 3); handover.seat is the typed SeatReservation (spine §4.4) -->
 
-Message routing: `room.onMessage('*', (type, payload) => …)` is **not** used; every `ServerMessage.type` string is registered once with `room.onMessage(type, cb)` at join, and the returned disposers are collected and called in `leave()`. Reconnect: on `onDrop` (unconsented, code ≠ 1000) `ui.connection = 'reconnecting'`, `ConnectionOverlay` appears after 2 000 ms, `client.reconnect(room.reconnectionToken)` is attempted at 1, 2, 4, 8, 8, 8 s (6 attempts, then `'offline'` and a "Return to login" button). On `onReconnect`: `hydrateFromMe(await GET /me)`, prediction buffer cleared, remote buffers cleared. Multi-tab: the server keys by player uuid, so a second tab's join replaces the first; the first receives `onLeave` code `4001` (30-server-netcode.md) and shows "Playing in another tab".
+Message routing: `room.onMessage('*', (type, payload) => …)` is **not** used; every `ServerMessage.type` string is registered once with `room.onMessage(type, cb)` at join, and the returned disposers are collected and called in `leave()`. Reconnect: on `onDrop` (unconsented, code ≠ 1000) `ui.connection = 'reconnecting'`, `ConnectionOverlay` appears after 2 000 ms. `@colyseus/sdk` 0.18.2 reconnects **internally** on 1001/1005/1006/4010 (`src/Room.ts` lines 166–173; defaults 15 retries, `src/Reconnection.ts` lines 68–82), so the client configures `room.reconnection` to the schedule 1, 2, 4, 8, 8, 8 s (`maxRetries 6`) instead of running its own `client.reconnect(room.reconnectionToken)` loop, which would race the SDK's; after the last attempt the SDK fires `onLeave(4003)` → `'offline'` and a "Return to login" button. <!-- amended 2026-09-25: client IMPLEMENTATION-NOTES D5 --> On `onReconnect`: `hydrateFromMe(await GET /me)`, prediction buffer cleared, remote buffers cleared. Multi-tab: the server keys by player uuid, so a second tab's join replaces the first; the first receives `onLeave` code `4101` (`CLOSE_CODES.replaced`, 30-server-netcode.md §30.2.2) and shows "Playing in another tab"; 4001 is Colyseus' `SERVER_SHUTDOWN` and is treated as a restart/reconnect case.
 
 ---
 
@@ -3914,7 +3974,7 @@ Field mapping (the adapter is a table, not logic; target names are `10-render.md
 | emote 1–6 | `Digit1`…`Digit6` | `emote { emote }` |
 | challenge | `KeyC` | `challenge { targetId }` for the nearest player within 6 u, not `inBattle` |
 | rotate camera | `KeyQ` / `KeyR`, or mouse drag ≥ 80 px horizontal | `camera.setHeading((h ± 1) & 3)`; local only |
-| zoom | wheel | `camera.setZoomStop` between 3 stops (14 / 18 / 24 u); local only |
+| zoom | wheel | `camera.setZoomStop` between 3 stops (20 / 26 / 34 m, `10-render.md` §10.7.1 `DISTANCE`; amended 2026-09-25 — this row said 14 / 18 / 24, which contradicted render's table); local only |
 | party / bag / journal / pause | `KeyP` / `KeyB` / `KeyJ` / `Escape` | `navigate('/play/party')` etc.; local only |
 | toggle HUD | `F1` | local |
 
@@ -4070,7 +4130,7 @@ export interface BattleController {
 }
 ```
 
-**Preview rule.** On `submit`, when the opposing side is `wild`/`npc` (formats `wild`, `trainer`, `league`), the client computes `preview = resolveTurn(authoritative, seat === 0 ? [action, null] : [null, action], content)` — the same null-passing convention the server uses (spine §2.10), so the NPC choice comes from the same rng stream and the digest can match. For `pvp` and `raid` no preview is computed (the other action is unknown). The preview is used for exactly three things: (1) `renderer.stage.prewarm(vfxIdsIn(preview.events))` so shaders/particles for the likely VFX are resident before the server message lands; (2) `expectedDurationMs = buildTimeline(preview.events).durationMs` to size the input-lock and the "waiting" indicator; (3) `digestBattleState(preview.state)` compared with `battleEvents.stateDigest`. **No preview frame is ever rendered**: `TimelinePlayer.play` is only ever called with a timeline built from `m.events`. On mismatch: `console.warn('battle desync', battleId, turn)`, `ui.battle.desyncs += 1`, `send('battleResync', { battleId })`, and the server's events are still played (they are authoritative regardless). The `battleEvents.rng` field replaces the local `authoritative.rng` after every turn so the next preview starts from the server's stream.
+**Preview rule.** On `submit`, when the opposing side is `wild`/`npc` (formats `wild`, `trainer`, `league`), the client computes `preview = resolveTurn(authoritative, seat === 0 ? [action, null] : [null, action], content)` — the same null-passing convention the server uses (spine §2.10), so the NPC choice comes from the same rng stream and the digest can match. For `pvp` and `raid` no preview is computed (the other action is unknown). The preview is used for exactly three things: (1) `renderer.stage.prewarm(vfxIdsIn(preview.events))` so shaders/particles for the likely VFX are resident before the server message lands; (2) `expectedDurationMs = buildTimeline(preview.events).durationMs` to size the input-lock and the "waiting" indicator; (3) `digestBattleState(preview.state)` compared with `battleEvents.stateDigest`. **No preview frame is ever rendered**: `TimelinePlayer.play` is only ever called with a timeline built from `m.events`. On mismatch: `console.warn('battle desync', battleId, turn)`, `ui.battle.desyncs += 1`, `send('battleResync', { battleId })`, and the server's events are still played (they are authoritative regardless). The `battleEvents.rng` field replaces the local `authoritative.rng` after every turn so the next preview starts from the server's stream. On a digest **match** the preview state replaces `authoritative` wholesale: an `authoritative` updated only from `hpAfter` (the draft's §20.3.2 rule) would diverge from the server at the first stage, status, PP or weather change, and every later preview would mismatch and request a resync. <!-- amended 2026-09-25: client BattleController.ts header, the implemented rule -->
 
 **HP is never computed locally.** The HUD bar targets are `damage.hpAfter`/`heal.hpAfter`; `authoritative.sides[i].party[j].creature.hp` is overwritten from those same fields as events are applied.
 
@@ -4313,13 +4373,14 @@ Target: a fresh `/play` load on Mirevale, cold cache, 50 Mbit/s, RTX 3060-class 
 |---|---|---|
 | 0 HTML + shell JS + `tokens.css` + 3 fonts (preloaded) | ≤ 180 KB + 360 KB | 450 ms |
 | 1 `/play` chunk + `GET /me`, then `POST /zone/enter` + `consumeSeatReservation` (§20.3.4) | ≤ 900 KB JS; three round trips, the last two overlapping phase 2 | 1 100 ms |
-| 2 zone materials for Mirevale — the **`field` tier** (512² KTX2 albedo/ORM/normal per surface, `10-render.md` §10.2.1): 15 surfaces × 3 × ≤ 0.10 MB | ≤ 6 MB (Mirevale 4.5) | 1 900 ms |
-| 3 creature atlases for Mirevale's bind set (`manifest.zones.mirevale`, ≤ 8 × 2048² WebP with mips) + party singles + the player body GLB | ≤ 4 MB (a 14-species zone is 4.1 MB cold, 3.8 with the GLB cached) | 2 350 ms |
+| 2 zone materials for Mirevale — the **`field` tier** (512² KTX2 albedo/ORM/normal per surface, `10-render.md` §10.2.1) | ≤ 6 MB (Mirevale measured 3.71 MB) | 1 900 ms |
+| 3 creature atlases for Mirevale's bind set (`manifest.zones.mirevale`: 2 atlases, 0.544 MB each with mips) + party singles' home atlases + the player body GLB | ≤ 4 MB (Mirevale ≈ 1.1 MB + singles + GLB; an 8-atlas zone is 4.35 MB before singles — `40-pipelines.md` §40.6, recommendation R12) | 2 350 ms |
 | **first frame** (zone built, DOF/bloom compiled, HUD fonts ready) | | **≤ 2 500 ms** |
 | 4 (after first frame) audio manifest + zone theme stems + ui sfx | ≤ 5 MB | music starts ≤ 4 000 ms; the world is silent, not blocked |
 | 5 (idle) **`hero` tier** of the current zone's `hero: true` surfaces (`renderer.materials.preloadHero`, ≤ 12 MB, swapped in place), then the neighbouring zone (`mire_route`) field materials + atlases | ≤ 22 MB | streamed at ≤ 2 MB/s in 256 KB `fetch` ranges so it never competes with a handover |
 
 <!-- reconciled 2026-09-18: 40-pipelines.md OQ-2 — phase 2 keeps its 6 MB by loading the field tier; hero textures arrive in phase 5 -->
+<!-- amended 2026-09-25: phase 2/3 figures replaced by the shipped manifests (material-bake manifest fieldBytes; creatures.manifest.json zones + totalBytes); Mirevale hero measured 7.71 MB of phase 5's 12 -->
 
 Rules: phases 2–3 are issued as parallel `fetch`es with `priority: 'high'`; phase 4–5 with `priority: 'low'`. A phase exceeding 2× its budget logs a `warn` toast in dev. `BootScreen` shows the phase name and a real byte-progress bar (from `Content-Length`), display face, no fake progress. Handover to a preloaded zone (phase 5 complete) must render its first frame within 250 ms of `handoverAck`; to a non-preloaded zone within 1 500 ms, with the HUD banner and the old zone still visible under the camera's 600 ms travel (spine §4.6 "no visible hitch" is measured as: no frame > 33 ms during the crossing).
 
@@ -4359,7 +4420,7 @@ Rules: phases 2–3 are issued as parallel `fetch`es with `priority: 'high'`; ph
 
 <!-- reconciled 2026-09-18: each question is answered in the named section; the list stays as the audit trail -->
 1. `10-render.md` → **done**: it defines every symbol in §20.4.1 (§10.1.1, §10.5.1, §10.7.2, §10.7.5 incl. the 47 `VFX_IDS`, §10.7.6, §10.9); `HudLayer.set` accepts exactly the §20.6 `HudModel` names (§10.9 says so); `BattlerPose` gained `recoil`/`celebrate` and `CameraRig.cue` gained `throw` to match §20.5.1.
-2. `30-server-netcode.md` → **done**: the server validates against a cap derived from `@ewa/protocol` `MOVEMENT` (4.2 / 7.0 m/s, §30.2.4 re-exports them) rather than re-running `stepMovement`; the join is `POST /zone/enter` + `consumeSeatReservation` (§20.3.4, §30.2.6); `handover.seat` is a typed `SeatReservation` (spine §4.4); `chat` and `dm` are spine `ServerMessage` variants, `dialogue` does not exist — NPC lines are content and `storyBeat` confirms beats (§20.4.7, §30.4.8); leave codes 4000/4001/4002/4003 are §30.2.2's.
+2. `30-server-netcode.md` → **done**: the server validates against a cap derived from `@ewa/protocol` `MOVEMENT` (4.2 / 7.0 m/s, §30.2.4 re-exports them) rather than re-running `stepMovement`; the join is `POST /zone/enter` + `consumeSeatReservation` (§20.3.4, §30.2.6); `handover.seat` is a typed `SeatReservation` (spine §4.4); `chat` and `dm` are spine `ServerMessage` variants, `dialogue` does not exist — NPC lines are content and `storyBeat` confirms beats (§20.4.7, §30.4.8); leave codes 4000/4101/4002/4003 are §30.2.2's (4001 → 4101 amended 2026-09-25: 4001 is Colyseus' `SERVER_SHUTDOWN`).
 3. `40-pipelines.md` → **done**: `public/audio/manifest.json` is §40.4.6 = §20.7.4 (with the pre-skip note above); thumbnails are `public/creatures/thumbs/` (§40.1.6.5); phase 2/3/5 sizes are §20.10.3's, recomputed against the `field`/`hero` material tiers and the 2048² atlases.
 4. `50-verification-budget.md` → **done**: §50.4.7 now lists `prediction.test.ts` (harness + jitter), `no-exp-smoothing.test.ts`, `timeline.test.ts` over the fuzz corpus, `perf/tick.test.ts` + `perf/alloc.test.ts`, `hud-dirty.test.ts`, `first-frame.spec.ts`, `design-system.test.ts` (contrast, ΔE, type-colour table equality).
 
@@ -4376,6 +4437,17 @@ Rules: phases 2–3 are issued as parallel `fetch`es with `priority: 'high'`; ph
 
 Verified against the installed `.d.ts`, not memory: `@colyseus/core 0.18.14` (`Room.d.ts`: `onCreate/onJoin/onLeave/onDispose/onAuth(client, options, context)`, `setTimestep(cb, delayMs)` with `setSimulationInterval` as its deprecated forwarding alias, `setFixedTimestep`, `onMessage(type, validationSchema: StandardSchemaV1, cb)`, `broadcast`, `allowReconnection(client, seconds)`, `setMetadata`, `lock/unlock`, `maxClients`, `patchRate`, `clock: ClockTimer`, `presence: Presence`; `MatchMaker.d.ts`: `query`, `findOneRoomAvailable`, `createRoom`, `reserveSeatFor(room: IRoomCache, options, authData)`, `getLocalRoomById`, `remoteRoomCall`, `defineRoomType`; `RegisteredHandler.d.ts`: `filterBy`, `sortBy`; `Transport.d.ts`: `Client.view?: StateView`, `AuthContext { token?, ip, headers }`; `IPC.d.ts`: `subscribeIPC`, `requestFromIPC`; `presence/Presence.d.ts`: `setex/get/del/hincrbyex/publish/subscribe`), `@colyseus/shared-types 0.18.2` (`ISeatReservation { name, sessionId, roomId, publicAddress?, processId?, reconnectionToken? }`), `@colyseus/schema 5.0.32` (`StateView.add/remove/dispose`), `@colyseus/ws-transport 0.18` (`WebSocketTransport({ pingInterval, pingMaxRetries, beforeUpgrade })`), `colyseus 0.18.5` (re-exports `RedisPresence`, `RedisDriver`), `@colyseus/sdk 0.18.2` (`consumeSeatReservation(ISeatReservation)`), `fastify 5.12.4`, `@fastify/jwt 10.2.2` (`FastifyJWTOptions { secret, sign: { expiresIn } }`, `request.jwtVerify()`, `reply.jwtSign()`), `@node-rs/argon2 2.2.1` (`hash(password, { memoryCost, timeCost, parallelism, algorithm: Algorithm.Argon2id })`, `verify`), `drizzle-orm 0.45.2` (`.for('update', { skipLocked: true })`), `pino 9.14.0`. `@fastify/rate-limit` is **not** installed; rate limiting is a server module (§30.6.4).
 
+<!-- amended 2026-09-25: behaviours of the installed Colyseus the first draft got wrong; every item below was read from source and is what the implemented server relies on (packages/server IMPLEMENTATION-NOTES "Verified against the installed libraries") -->
+Behaviours of `@colyseus/core` 0.18.14 / `@colyseus/schema` 5.0.32 this file depends on (paths relative to the package roots):
+
+- `Room<T extends RoomOptions>` with `RoomOptions { state?; metadata?; client? }`; auth and user data are typed on `Client<{ userData; auth }>` (`src/Room.ts` lines 107–121, `src/Transport.ts` line 213). The pre-0.18 `Room<{ state; metadata; auth; userData }>` shape does not type-check the way §30.2.1's first draft assumed.
+- A payload rejected by the `onMessage(type, validator, cb)` validator closes the client with 4002 (`src/RoomMessages.ts` lines 189–196); a message with no registered handler does the same outside dev mode (lines 334–342). Hence §30.2.2 step 6: zod runs in the handler wrapper and a `'*'` handler counts unknown types.
+- A non-consented close is routed to `onDrop(client, code)`, where `allowReconnection(client, seconds)` belongs; `onLeave` is called only when the reconnection fails or the leave was consented (`src/Room.ts` lines 650, 2313–2315, 2361–2373).
+- `CloseCode`: 4000 consented, 4001 server shutdown, 4002 with error, 4003 failed to reconnect, 4010 may try reconnect (`@colyseus/shared-types` `src/Protocol.ts` lines 279–284); the SDK auto-reconnects on 1001/1005/1006/4010 (`@colyseus/sdk` `src/Room.ts` lines 166–173).
+- `Server({ gracefullyShutdown })` defaults to registering SIGINT/SIGTERM/SIGUSR2 and `uncaughtException` handlers that end in `process.exit` (`src/Server.ts` lines 180–181, 411; `src/utils/Utils.ts` lines 67–79).
+- Colyseus always mounts its HTTP matchmaking routes `POST /matchmake/:method/:roomName` for `joinOrCreate | create | join | joinById | reconnect` (`src/router/default_routes.ts` line 6, `src/matchmaker/controller.ts` line 22, `src/Server.ts` lines 331–340), guarded only by the room's **static** `onAuth`, whose default returns `true` (`src/Room.ts` lines 788–794): without §30.2.6's join ticket any authenticated client could create shards or join any zone room with arbitrary options.
+- `StateView.add` throws on an instance not yet attached to the state (`@colyseus/schema` `src/encoder/StateView.ts` lines 334–349).
+
 ---
 
 ## §30.0 MODULE LAYOUT
@@ -4386,7 +4458,8 @@ Verified against the installed `.d.ts`, not memory: `@colyseus/core 0.18.14` (`R
 |---|---|
 | `main.ts` | Boots one process: env parse → `createRepos` → Colyseus `Server` on `PORT_WS` → Fastify on `PORT_REST` → expiry/live-ops jobs. The only file with side effects at import time. |
 | `env.ts` | `Env` (zod-parsed `process.env`, §30.1.2). Throws at boot on any invalid value. |
-| `rooms/ZoneRoom.ts` | `ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta }>`. Tick, movement, AOI, handover, sharding. |
+| `rooms/ZoneRoom.ts` | `ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; client: ZoneClient }>`. Tick, movement, AOI, handover, sharding. |
+| `rooms/matchmaking.ts` | `pickZoneRoom`, `reserveZoneSeat`: every seat carries the per-process join ticket (§30.2.6). |
 | `rooms/aoi.ts` | Pure `AoiGrid` (§30.2.5). Unit-tested without Colyseus. |
 | `rooms/movement.ts` | Pure `validateInput` (§30.2.4). |
 | `rooms/spawnDirector.ts` | Pure `SpawnDirector` (§30.3). |
@@ -4434,12 +4507,12 @@ export async function boot(deps: ServerDeps): Promise<{ colyseus: Server; rest: 
 `boot`:
 
 1. `presence = env.REDIS_URL ? new RedisPresence(env.REDIS_URL) : new LocalPresence()`; `driver = env.REDIS_URL ? new RedisDriver(env.REDIS_URL) : new LocalDriver()`.
-2. `colyseus = new Server({ presence, driver, transport: new WebSocketTransport({ pingInterval: 5000, pingMaxRetries: 3, beforeUpgrade }), publicAddress: env.PUBLIC_ADDRESS, greet: false, gracefullyShutdown: true })`. `beforeUpgrade` returns `new Response(null, { status: 429 })` when the connecting IP has more than 8 open sockets (counted in `PresenceStore`, §30.7.4), and `403` when the IP is on the in-memory ban cache (§30.6.7).
+2. `colyseus = new Server({ presence, driver, transport: new WebSocketTransport({ pingInterval: 5000, pingMaxRetries: 3, beforeUpgrade }), publicAddress: env.PUBLIC_ADDRESS, greet: false, gracefullyShutdown: false })` — `false` because the library's own handler calls `process.exit` from inside its signal handler; `main.ts` handles SIGINT/SIGTERM itself and calls `stop()` (step 7) <!-- amended 2026-09-25: server IMPLEMENTATION-NOTES R10 -->. The REST app is built (`ready()`, not listening) before this step so rooms verify access tokens with the REST instance's `@fastify/jwt` verifier (R9); listening order stays WS then REST. `beforeUpgrade` returns `new Response(null, { status: 429 })` when the connecting IP has more than 8 open sockets (counted in `PresenceStore`, §30.7.4), and `403` when the IP is on the in-memory ban cache (§30.6.7).
 3. `matchMaker.defineRoomType('zone', ZoneRoom).filterBy(['zoneId', 'shard'])` — `zoneId` and `shard` are `onCreate` options and metadata fields (§30.2.6). No other room type exists: battles, raids and trades are sub-states of `ZoneRoom`.
 4. `await colyseus.listen(env.PORT_WS)`.
 5. `rest = buildRest(deps)`; `await rest.listen({ port: env.PORT_REST, host: '0.0.0.0' })`.
 6. Start `marketExpiry` (60 s), `liveOpsRollover` (checks every 60 s for a UTC day/week boundary), `presenceSweep` (30 s).
-7. `stop()` = stop jobs → `rest.close()` → `matchMaker.gracefullyShutdown()`.
+7. `stop()` = stop jobs → `rest.close()` → `colyseus.gracefullyShutdown(false)` → DB close.
 
 Dev ports: **2567** WebSocket, **4000** REST. The Vite client proxies `/api` → `:4000` and connects Colyseus to `ws://localhost:2567` directly. Production puts both behind one TLS terminator; the ports are not exposed.
 
@@ -4480,8 +4553,8 @@ export type Env = z.infer<typeof EnvSchema>;
 
 ```ts
 export interface ZoneMeta { readonly zoneId: ZoneId; readonly shard: number }         // shard 0..
-export interface ZoneJoinOptions { readonly zoneId: ZoneId; readonly shard?: number; readonly handover?: { readonly fromRoomId: string; readonly x: number; readonly z: number } }
-export interface ZoneAuth { readonly playerId: string; readonly username: string; readonly isAdmin: boolean }
+export interface ZoneJoinOptions { readonly zoneId: ZoneId; readonly shard?: number; readonly ticket?: string; readonly handover?: { readonly fromRoomId: string; readonly x: number; readonly z: number } }   // ticket: §30.2.6, never sent to a client
+export interface ZoneAuth { readonly playerId: string; readonly username: string; readonly isAdmin: boolean; readonly ip: string | null }   // ip: the per-IP socket count
 export interface ZoneUserData {
   readonly playerId: string;
   cell: readonly [number, number] | null;   // last AOI cell; null before first tick
@@ -4491,9 +4564,11 @@ export interface ZoneUserData {
   battleId: string | null;
   tradeId: string | null;
   limiter: RateLimiterState;                // per-message sliding windows (§30.6.4)
+  // the implementation adds caches and handover bookkeeping here (flags, badges, inventory, handover, arrival, replaced, handoverDone, …; server IMPLEMENTATION-NOTES R4)
 }
+export type ZoneClient = Client<{ userData: ZoneUserData; auth: ZoneAuth }>;   // @colyseus/core 0.18: auth/userData are typed on Client, not on Room
 
-export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; auth: ZoneAuth; userData: ZoneUserData }> {
+export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; client: ZoneClient }> {   // amended 2026-09-25: 0.18 RoomOptions = { state, metadata, client }
   static readonly TICK_MS = 50;             // 20 Hz
   static readonly PATCH_MS = 50;            // one schema patch per tick
   static readonly DAY_LENGTH_MS = 48 * 60_000;
@@ -4517,23 +4592,23 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; auth:
 3. `this.maxClients = env.ZONE_CAPACITY`; `this.patchRate = ZoneRoom.PATCH_MS`; `this.autoDispose = true`; `await this.setMetadata({ zoneId: options.zoneId, shard: options.shard ?? 0 })`.
 4. `this.state = new ZoneState()`; `state.harvestState = zone.harvestState` (the content default only — harvest is per player, spine §3.5/§4.1; the room never changes it); `state.timeOfDay = ((clock() % DAY_LENGTH_MS) / DAY_LENGTH_MS)` (wall-clock-anchored so every shard of every zone agrees on the hour).
 5. Seed: `const root = createRng(`${env.SERVER_SEED}:${zoneId}:${shard}:${clock()}`)`; `this.worldRng = root`; `this.spawns = new SpawnDirector(zone, table, root.fork())`; `this.battles = new BattleCoordinator(root.fork(), …)`.
-6. Register every message in `CLIENT_MESSAGES` with `this.onMessage(name, schema, handler)` — zod v4 schemas implement Standard Schema, so the room rejects malformed payloads before the handler runs; a rejection is answered with `error { code: 'invalidPayload' }` by the room's `onUncaughtException`. No `'*'` handler exists.
+6. Register every message in `CLIENT_MESSAGES` with `this.onMessage(name, handler)` — **no** validator argument: `@colyseus/core` 0.18.14 closes the client with 4002 when a Standard Schema validator rejects a payload (see the header). The handler wrapper rate-limits (§30.6.4), then `CLIENT_MESSAGES[name].safeParse(payload)`; a failure is answered with `error { code: 'invalidPayload' }` and no handler logic runs. One `'*'` handler exists and only counts unknown types (`metrics.unknownMessages`), sends nothing, and closes the client with 4003 at the 5th within 10 s (spine §4.3) — without it Colyseus disconnects on the first unknown type. <!-- amended 2026-09-25: server IMPLEMENTATION-NOTES R1, R3 --> `onCreate` and `onAuth` refuse options without the per-process join ticket (§30.2.6).
 7. `this.setTimestep((dt) => this.tick(dt), ZoneRoom.TICK_MS)`.
 
 **`onAuth(client, options, context)`** — `context.token` is the access JWT (the SDK sends it as the auth token). Verify with the same `JWT_SECRET`/algorithm as REST (`HS256`, `aud: 'ewa'`, `iss: 'ewa-server'`). Reject (`ServerError(401)`) on invalid/expired token, on `banned_at !== null`, and when `options.zoneId` is gated (`zone.gate !== null`) and the player lacks that badge in `badges` — the badge check runs here so a player cannot enter a gated room by joining it directly. Return `{ playerId, username, isAdmin }`.
 
 **`onJoin(client, options, auth)`**
 1. Load `players` row (`repos.players.byId`) + party (`repos.creatures.party`). A player with zero party members is refused (`ServerError(409, 'noParty')`) — cannot happen after registration, guards a corrupt row.
-2. Multi-tab collapse: if `state.players.has(auth.playerId)` — another socket of the same player is already in this room — the **older** client is sent `error { code: 'busy', detail: 'replaced' }` and `client.leave(4001)`; the new one takes over the existing `PlayerState` (position kept). Across rooms: `PresenceStore.enter(playerId, roomId)`; if the player is present in a different room, that room is told via `presence.publish('ewa:kick', { playerId, exceptRoomId })` and drops the older session. One avatar per player, everywhere, always.
+2. Multi-tab collapse: if `state.players.has(auth.playerId)` — another socket of the same player is already in this room — the **older** client is sent `error { code: 'busy', detail: 'replaced' }` and `client.leave(4101)` (`CLOSE_CODES.replaced`; 4001 is Colyseus' own `SERVER_SHUTDOWN`, so a restart would read as "another tab took over" — amended 2026-09-25, server IMPLEMENTATION-NOTES P4); the new one takes over the existing `PlayerState` (position kept). Across rooms: `PresenceStore.enter(playerId, roomId)`; if the player is present in a different room, that room is told via `presence.publish('ewa:kick', { playerId, exceptRoomId })` and drops the older session. One avatar per player, everywhere, always.
 3. Position: `options.handover` present and `fromRoomId` matches a pending handover for this player (§30.2.7) → `(x, z)` from the handover, else from the row when `row.zoneId === this.zone.id`, else the zone's spawn point `zone.spawn` (spine §3.1 `ZoneDef.spawn`; `mirevale` is `{ x: 0, z: 6 }`, the `players.z` default). The position is then **snapped**: `isWalkable(heightfield, x, z) ? (x, z) : nearestWalkable(heightfield, x, z, 8)` (spiral search, 0.5 m step). <!-- reconciled 2026-09-18: ZoneDef.spawn exists (OQ 4) -->
 4. `const ps = new PlayerState(); ps.id = playerId; ps.name = username; ps.x = x; ps.z = z; ps.body = row.body; ps.guildTag = guildTag ?? ''; state.players.set(playerId, ps)`.
-5. `client.view = new StateView(); client.view.add(ps)`; `client.userData = { playerId, cell: null, lastSeq: 0, budgetMs: 0, lastInputAt: clock(), battleId: null, tradeId: null, limiter: createLimiterState() }`. The first `tick` computes the cell and adds the 3×3 neighbourhood.
+5. `client.view = new StateView(); client.view.add(ps)` (after step 4's `state.players.set` — `StateView.add` throws on a detached instance); `client.userData = { playerId, cell: null, lastSeq: 0, budgetMs: 0, lastInputAt: clock(), battleId: null, tradeId: null, limiter: createLimiterState(), … }`. The viewer is registered and the avatar placed in the AOI grid immediately, so a `chat`/`interact` arriving before the first tick finds its cell and audience (amended 2026-09-25, server IMPLEMENTATION-NOTES R11).
 6. Send `toast { level: 'info', text: zone.name }` is **not** done here — the client reads `state.harvestState` and the zone name from content. Nothing is sent on join except the schema.
 7. `repos.players.setPosition(tx, playerId, zone.id, x, z, angle)` only when the position came from step 3's fallback branches (row was for another zone, or snapped). Handover writes are the destination's job (§30.2.7).
 
-**`onLeave(client, code)`**
-1. If `code` is a consented leave (4000) or a handover-complete leave (4002): remove immediately.
-2. Otherwise `await this.allowReconnection(client, 20)`; on success the same `PlayerState` continues (no position change); on timeout, remove.
+**`onDrop(client, code)` and `onLeave(client, code)`** <!-- amended 2026-09-25: 0.18 routes a non-consented close to onDrop and calls onLeave only when the reconnection fails (header); server IMPLEMENTATION-NOTES S1, S2 -->
+1. `onDrop` (non-consented close): `this.allowReconnection(client, 20)` unless the client was replaced, kicked or has completed a handover; on success the same `PlayerState` continues (no position change); on failure Colyseus calls `onLeave`.
+2. `onLeave` (consented 4000 — the SDK's `leave(true)` always closes with 4000, including after a handover — or a failed reconnection): remove, but only when this session still owns the avatar (a per-player owner map), so a late leave of a replaced socket cannot remove the avatar a newer tab took over; skip the position write when a handover moved the player (presence now in another room, or `handoverDone`).
 3. Remove = `battles.forfeitIfActive(playerId, 'disconnect')` (§30.4.4 — a PvP battle is a forfeit; wild/trainer/league end with no rewards; a raid seat is vacated), `trades.cancelFor(playerId)`, `challenges.dropFor(playerId)`, `aoi.removeEntity(ps)` (which calls `view.remove` on every viewer), `state.players.delete(playerId)`, `client.view.dispose()`, `PresenceStore.leave(playerId, roomId)`, one `setPosition` write with the last authoritative pose.
 
 **`onDispose()`** — `spawns.dispose()`, cancel clock timers, flush metrics. Rooms auto-dispose when empty (`autoDispose = true`) after Colyseus' default grace; a zone with zero players costs zero ticks.
@@ -4561,7 +4636,7 @@ export type InputVerdict =
   | { readonly ok: false; readonly reason: 'staleSeq' | 'dtBudget' | 'speed' | 'unwalkable' | 'bounds' | 'inBattle'; readonly budgetMs: number };
 
 export function validateInput(
-  prev: { readonly x: number; readonly z: number; readonly lastSeq: number; readonly budgetMs: number; readonly inBattle: boolean },
+  prev: { readonly x: number; readonly z: number; readonly lastSeq: number; readonly budgetMs: number; readonly inBattle: boolean; readonly canSurf?: boolean },   // canSurf = inventory['HM Surf'] > 0 (§30.3)
   input: z.infer<typeof InputMsg>,            // { seq, x, z, angle, running, dtMs }
   h: Heightfield,
 ): InputVerdict;
@@ -4573,9 +4648,9 @@ Rules, in this order (first failure wins):
 2. `prev.inBattle` → `inBattle` (position is frozen during a battle; see §30.4.1).
 3. `budget = prev.budgetMs - dtMs`; if `budget < BUDGET_MIN_MS` → `dtBudget`. The tick adds `TICK_MS` to every client's budget and clamps at `BUDGET_MAX_MS`, so the sum of accepted `dtMs` can never exceed real elapsed time by more than 100 ms. This is what closes the "send dt = 100 at 30 Hz" speed hack.
 4. `dist = hypot(x - prev.x, z - prev.z)`; `cap = (running ? MAX_RUN_STEP : MAX_WALK_STEP) * dtMs / 1000`; `dist > cap + 0.02` → `speed` (0.02 m absorbs float32 quantisation on the wire).
-5. `!isWalkable(h, x, z)` → `unwalkable`. Additionally the segment `prev → new` is sampled every 0.25 m; any unwalkable sample → `unwalkable` (no tunnelling through a 0.5 m wall in one 8 cm step is possible at these caps, but the check costs nothing).
-6. Outside the bounds of §30.2.3 → `bounds`.
-7. Otherwise `ok`; `angle` is wrapped into `[-π, π)`; `budgetMs = budget`.
+5. Outside the bounds of §30.2.3 → `bounds`. (Checked before walkability: the 16 m margin is `walkable = 0`, so with the opposite order `bounds` could never be observed and `movement.test.ts`'s `bounds` case could not pass; the accept set is identical — amended 2026-09-25, server IMPLEMENTATION-NOTES S3.)
+6. Not standable → `unwalkable`, where standable = `isWalkable(h, x, z) || (prev.canSurf && isWater(h, x, z))`. Additionally the segment `prev → new` is sampled every 0.25 m; any sample that is not standable → `unwalkable` (no tunnelling through a 0.5 m wall in one 8 cm step is possible at these caps, but the check costs nothing).
+7. Otherwise `ok`; `angle` is wrapped into `[-π, π)`; `budgetMs = budget`. Rejections other than `staleSeq` also advance `userData.lastSeq` (a rejected seq cannot be replayed).
 
 Application (`ZoneRoom.onInput`): on `ok`, write `ps.x/z/angle/running`, `ps.moving = dist > 0.001`, `ps.seq = input.seq`, `userData.lastSeq = seq`. On any failure other than `staleSeq`, the server does **not** move the avatar and sets `ps.seq = input.seq` anyway — the client's reconciler (`20-client.md`) sees a `seq` acknowledged against an unchanged authoritative `x/z` and snaps to it. That single mechanism is the "ack with authoritative pose"; there is no separate correction message. `speed`, `unwalkable` and `bounds` rejections increment `metrics.rejectedInputs[reason]`; 30 rejections within 10 s from one client → `client.leave(4003)` and an `audit_log` row `movement.kick`.
 
@@ -4610,33 +4685,35 @@ Tick order for AOI (after movement, before spawns):
 
 1. For each client with an accepted move this tick: `to = cellOf(ps.x, ps.z)`; if `to` differs from `userData.cell`: `{ show, hide } = aoi.moveViewer(playerId, from, to)`; `for e of show: client.view.add(e)`; `for e of hide: client.view.remove(e)`; `userData.cell = to`. Own `PlayerState` is never removed (it was added in `onJoin` and `moveViewer` excludes the viewer's own entity).
 2. For each entity (player or spawn) whose cell changed: `{ entered, left } = aoi.place(e)`; the corresponding clients' views get `add`/`remove`.
-3. New spawn: `aoi.place(spawn)` then `view.add` on every viewer returned; `state.spawns.set(id, spawn)` **after** the adds. Despawn: `view.remove` on every viewer from `aoi.removeEntity(spawn)`, then `state.spawns.delete(id)`.
+3. New spawn: `state.spawns.set(id, spawn)` **first** (`@colyseus/schema` 5.0.32 `StateView.add` throws on an instance not attached to the state; the `@view()` tag keeps it invisible to everyone until added), then `aoi.place(spawn)` and `view.add` on every viewer returned. Despawn: `view.remove` on every viewer from `aoi.removeEntity(spawn)`, then `state.spawns.delete(id)`. <!-- amended 2026-09-25: the draft ordered set after add, which throws — server IMPLEMENTATION-NOTES R8 -->
 
 Only `players` and `spawns` are `@view()`-tagged; `battles`, `raid`, `tick`, `timeOfDay`, `weather`, `harvestState` broadcast to all. A client therefore receives per tick: its own row, ≤ N₉ player rows and ≤ S₉ spawn rows where N₉/S₉ are the 3×3 populations, plus the small broadcast set. The netcode harness (§30.10.3) asserts this shape.
 
 ### 30.2.6 Capacity and sharding
 
-`maxClients = ZONE_CAPACITY` (200). Join flow, in the REST layer's `POST /zone/enter { zoneId }` (spine §4.7; the client calls it before every first Colyseus join and after a reload, using `GET /me`.presence.zoneId; it answers 403 `gated` when the zone's `gate` badge is missing and 409 `inBattle` during a battle): <!-- reconciled 2026-09-18: OQ 3 — both the route and the `presence` field exist -->
+`maxClients = ZONE_CAPACITY` (200). Join flow, in the REST layer's `POST /zone/enter { zoneId }` (spine §4.7; the client calls it before every first Colyseus join and after a reload, using `GET /me`.presence.zoneId; it answers 403 `gated` when the zone's `gate` badge is missing, 409 `wrongZone` unless `zoneId` is the player's persisted `zone_id` or live presence zone, and — during a battle — a seat in the battle's own room for that zone, 409 `inBattle` for any other): <!-- reconciled 2026-09-18: OQ 3 — both the route and the `presence` field exist --> <!-- amended 2026-09-25: wrongZone, battle-room seat and join tickets — server IMPLEMENTATION-NOTES R2, P3 -->
+
+**Join tickets.** Colyseus mounts `POST /matchmake/{joinOrCreate,create,join,joinById,reconnect}/:roomName` on every server, guarded only by the room's static `onAuth` (default `true`; header). Every seat the server reserves therefore carries `ticket` — a per-process random secret — in its join options; `ZoneRoom.onCreate` and `onAuth` refuse options without it (`ServerError(403, 'noTicket')`). Seat options never reach the client (`ISeatReservation` carries none), so `/zone/enter` and the handover are the only ways into a zone room. Without the ticket and `wrongZone`, a client could create shards at will or join any ungated zone and be placed at its spawn (onJoin step 3) — fast travel around the gate graph.
 
 1. `rooms = await matchMaker.query({ name: 'zone', metadata: { zoneId } })` (typed `query<ZoneRoom>`), filtered `clients < maxClients && !locked`, sorted by `metadata.shard` ascending.
-2. Pick the first; if none, `await matchMaker.createRoom('zone', { zoneId, shard: (max existing shard) + 1 })`.
-3. `return { seat: await matchMaker.reserveSeatFor(room, { zoneId, shard }, /* authData */ null) }` → the `ISeatReservation` handed to the client as the spine's `SeatReservation` (`{ name, sessionId, roomId, publicAddress?, processId? }`), which it passes to `consumeSeatReservation` unchanged.
+2. Pick the first; if none, `await matchMaker.createRoom('zone', { zoneId, shard: (max existing shard) + 1, ticket })`.
+3. `return { seat: await matchMaker.reserveSeatFor(room, { zoneId, shard, ticket }, /* authData */ null) }` → the `ISeatReservation` handed to the client as the spine's `SeatReservation` (`{ name, sessionId, roomId, publicAddress?, processId? }`), which it passes to `consumeSeatReservation` unchanged. With `authData` null the instance `onAuth` runs again when the seat is consumed, with `context.token` = the SDK's `_authToken` query parameter.
 
 A shard is a full, independent instance of the zone (own spawns, own raid). Players on different shards of the same zone do not see each other; friends see `presence.roomId`. Shard 0 is preferred for every join, so shards ≥ 1 drain and auto-dispose as population falls. Guild/party co-location is a follow-up (cut deliberately, see end).
 
 ### 30.2.7 Handover — zero visible hitch
 
-Links are `zone.links[dir]`. The link edge is the field boundary on that side; the trigger line is **6 m** inside the edge.
+Links are `zone.links[dir]`. The link edge is the **playable** boundary on that side (`playableBounds(h)`, spine §3.11) — the field boundary sits inside the 16 m unwalkable margin and is unreachable; the trigger line is **6 m** inside the playable edge, and a fresh arrival has a 3 s trigger cooldown. Link directions: `n = −z`, `s = +z`, `e = +x`, `w = −x`. <!-- amended 2026-09-25: server IMPLEMENTATION-NOTES R6, R7 -->
 
 Source room, in `tick`, for each player not in a battle/trade whose accepted position crosses a trigger line for direction `d` and who has no pending handover:
 
 1. `dest = zone.links[d]`; if `DEST.gate` is a badge the player lacks (checked against a badge set cached in `userData` at join and refreshed by `progressionDelta`): send `toast { level: 'warn', text: 'The way is barred. Badge required: <name>' }`, and push the player back 1.0 m along `−d` (authoritative pose changes; the `seq` echo snaps the client). No handover.
-2. Otherwise reserve: `room = await pickZoneRoom(dest)` (§30.2.6 steps 1–2, on the destination's shard 0 by preference); `seat = await matchMaker.reserveSeatFor(room, { zoneId: dest, handover: { fromRoomId: this.roomId, x: x', z: z' } }, null)`, where `(x', z')` is the entry point on the destination's opposite edge: same lateral coordinate, 6.5 m inside the destination edge, snapped to `nearestWalkable`.
+2. Otherwise reserve: `room = await pickZoneRoom(dest)` (§30.2.6 steps 1–2, on the destination's shard 0 by preference); `seat = await matchMaker.reserveSeatFor(room, { zoneId: dest, handover: { fromRoomId: this.roomId, x: x', z: z' } }, null)`, where `(x', z')` is the entry point on the destination's opposite edge: same lateral coordinate, 6.5 m inside the destination's playable edge, snapped to `nearestWalkable`.
 3. `presence.setex(`ewa:handover:${playerId}`, JSON.stringify({ fromRoomId: this.roomId, toRoomId: seat.roomId, sessionId: seat.sessionId, x: x', z: z', at: clock() }), 10)`.
 4. `client.send('handover', { roomId: seat.roomId, seat, zoneId: dest, x: x', z: z' })`. `seat` is the whole `ISeatReservation` object — the spine's `SeatReservation` type (§4.4) — because `consumeSeatReservation` needs `name`, `sessionId`, `roomId`, and on multi-process `publicAddress`/`processId`. <!-- reconciled 2026-09-18: OQ 1 — the spine field was widened from string to SeatReservation; no JSON encoding -->
 5. Mark `userData.handover = { toRoomId, sentAt }`; the avatar keeps ticking in the source (inputs still accepted for ≤ 5 s so the walk animation continues across the line).
 
-Client (`20-client.md` §20.3.4): `destRoom = await sdk.consumeSeatReservation(seat)`; wait for the first `onStateChange`; send `handoverAck { roomId, seat: seat.sessionId }` to the **destination**; keep the source room open until the destination's state has arrived; then `sourceRoom.leave(true)` with code 4002.
+Client (`20-client.md` §20.3.4): `destRoom = await sdk.consumeSeatReservation(seat)`; wait for the first `onStateChange`; send `handoverAck { roomId, seat: seat.sessionId }` to the **destination**; keep the source room open until the destination's state has arrived. The source closes the client with 4002 (`CLOSE_CODES.handoverComplete`) once the destination confirms; a client-side `sourceRoom.leave(true)` closes with 4000 (the SDK sends `LEAVE_ROOM`, the server closes consented), so the server never trusts the code alone (`userData.handoverDone`, presence).
 
 Destination room, `onJoin` with `options.handover`: validates `presence.get('ewa:handover:<playerId>')` — must exist, `toRoomId === this.roomId`, `fromRoomId === options.handover.fromRoomId`, `sessionId === client.sessionId`. Any mismatch → `ServerError(403, 'badHandover')` (a forged handover option cannot teleport). On `handoverAck` from that client: `repos.players.setPosition(tx, playerId, dest, x', z', angle)` — **the one authoritative position write of a crossing**, then `presence.publish(`ewa:handover:done:${fromRoomId}`, { playerId })`, then `presence.del` the key.
 
@@ -4652,7 +4729,7 @@ Invariant: at every instant the player exists in at least one room's `state.play
    (inputs are applied when they arrive, in onMessage('input'); the tick only refills budget)
 3. emote timers: any PlayerState with emote !== 0 whose emoteSetAt + 2000 <= now → emote = 0
 4. AOI pass (§30.2.5 steps 1–2)
-5. spawns.tick(now, state.timeOfDay) → { spawned, despawned } → AOI step 3, state.spawns writes
+5. spawns.tick(now, state.timeOfDay, playerPositions) → { spawned, despawned, freed } → AOI step 3, state.spawns writes
 6. handover triggers (§30.2.7)
 7. battles.tick(now) — deadlines, auto-actions, resolution, persistence (§30.4.3); raid.tick(now)
 8. trades.tick(now) — 120 s inactivity cancel
@@ -4683,12 +4760,13 @@ import { ROUTE_TUNING, TOWN_SPAWN_TUNING, STORY_TUNING, type SpawnTuning } from 
 /** Tuning by zone: route → ROUTE_TUNING; the 3 towns with a table (saltmourn · skyrend · solenne) → TOWN_SPAWN_TUNING; story → STORY_TUNING; a zone with encounterTable null runs no director. */
 export function tuningFor(zone: ZoneDef): SpawnTuning | null;
 
-export interface LiveOpsMods { readonly alphaBonus: number; readonly variantBonus: number; readonly swarmSpecies: readonly string[]; readonly swarmWeightBoost: number; readonly variantPool: readonly VariantKey[] }
+export interface LiveOpsMods { readonly alphaBonus: number; readonly variantBonus: number; readonly swarmSpecies: readonly string[]; readonly swarmWeightBoost: number; readonly variantPool: readonly VariantKey[]; readonly featuredSpecies?: readonly string[] }   // featuredSpecies: §30.9.2 per-species +0.01 alpha / +0.025 variant, added to the same draws
+export interface SpawnTickResult { readonly spawned: readonly SpawnRecord[]; readonly despawned: readonly string[]; readonly freed: readonly string[] }   // freed: engagements stalled past engagedTimeoutMs
 
 export class SpawnDirector {
   constructor(zone: ZoneDef, table: EncounterTable | null, rng: Rng, h: Heightfield, tuning: SpawnTuning, content: ContentIndex);
   setLiveOps(m: LiveOpsMods): void;                                      // re-read from §30.9 at each rollover
-  tick(now: number, timeOfDay: number): { readonly spawned: readonly SpawnRecord[]; readonly despawned: readonly string[] };
+  tick(now: number, timeOfDay: number, players: readonly { readonly x: number; readonly z: number }[]): SpawnTickResult;   // players: the ≥ 10 m clearance rule needs their positions (amended 2026-09-25, server IMPLEMENTATION-NOTES W2)
   engage(spawnId: string, playerId: string, now: number): 'ok' | 'notFound' | 'engaged' | 'tooFar';
   release(spawnId: string, outcome: 'caught' | 'ko' | 'fled' | 'timeout' | 'playerLeft', now: number): void;  // despawns for caught/ko/fled/timeout; frees for playerLeft
   get(spawnId: string): SpawnRecord | null;
@@ -4703,7 +4781,8 @@ Rules:
 - **Alpha.** `rng.next() < ALPHA_CHANCE + alphaBonus` where `ALPHA_CHANCE = 0.02` (content §3.2) — **not** 1/120: the content constant is the source of truth and 1/120 (0.0083) is the legacy value this replaces. A slot with `tier: 'alpha'` forces `isAlpha = true`. One draw.
 - **Variant.** `rng.next() < VARIANT_CHANCE + variantBonus` (0.03 base) → `rng.pick(variantPool)`; `variantPool` is `WEEKDAY_VARIANT[weekday]` when non-null, else the 4 non-normal keys. Two draws when the first succeeds, one otherwise.
 - **Position.** Up to 8 attempts: `x = originX + 1 + rng.next() * (size - 2)`, same for `z`, accepted if (`medium === 'water' ? isWater : isWalkable`) and ≥ 6 m from every other spawn and ≥ 10 m from every player. Failure → no spawn this tick. (The 16 m margin is `walkable = 0`, so spawns never land in scenery.)
-- **Cadence.** When `all.length < targetCount` and `now >= nextSpawnAt`: spawn one, `nextSpawnAt = now + respawnMinMs + rng.int(respawnMaxMs - respawnMinMs + 1)`. At most one spawn per tick.
+- **Cadence.** When `all.length < targetCount` and `now >= nextSpawnAt`: spawn one, `nextSpawnAt = now + respawnMinMs + rng.int(respawnMaxMs - respawnMinMs + 1)`. At most one spawn per tick. Until the director first reaches `targetCount` the delay is not waited (one spawn per tick, so a fresh room is populated in < 1 s); the delay draw is consumed either way, so seeded sequences are unchanged (amended 2026-09-25, server IMPLEMENTATION-NOTES W1).
+- **Footprints.** Position acceptance uses the heightfield only; it cannot see building/prop footprints (spine §3.11 open gap), so until recommendation R1 lands a spawn can be placed inside a footprint the client's collider blocks.
 - **Despawn.** `now >= despawnAt` with `engagedBy === null`; engagement sets `despawnAt = max(despawnAt, now + engagedTimeoutMs)` so a 90 s stall (client vanished mid-fight) releases the creature for everyone. `SpawnState.despawnAtTick` mirrors `despawnAt` as a tick count so clients can fade it.
 - **Engage.** `engageSpawn { spawnId }` from a client: requires no active battle, the spawn present in `aoi.entitiesNear(userData.cell)` (an out-of-AOI id → `notFound`), distance ≤ 3.0 m (`tooFar` → `error { code: 'notAllowed', detail: 'tooFar' }`), `engagedBy === null` (`engaged` → `busy`), and for a `medium: 'water'` spawn the player's own position on a `water` sample (`isWater(h, ps.x, ps.z)`; otherwise `notAllowed 'needSurf'` — standing on water requires the HM Surf key item, which the client checks before allowing the step onto a water-only sample and the server checks on `input`: a water-only sample is walkable for a player only when `inventory['HM Surf'] > 0`). Two players who send `engageSpawn` in the same tick for the same spawn: the first message processed wins; the second gets `error { code: 'busy' }`. Success → `SpawnState.engagedBy = playerId` (broadcast through AOI so others see it claimed) and `BattleCoordinator.startWild(...)` (§30.4.4).
 
@@ -4827,6 +4906,8 @@ On `interact { kind: 'npc' | 'gym', targetId }` (distance and AOI checks passed)
 3. If `beat.battle !== null`: `battles.startTrainer(...)` against `beat.battle.trainerId` (a `TrainerDef` or `LeagueTrainer`; the league rules of §30.4.4 still apply for a league id), with `session.beatId = beat.id`. Completion waits for the win; a loss or flee completes nothing and the beat stays eligible.
 4. Completion (immediately when `battle === null`, or inside the battle-end transaction of §30.4.3 step 3g when `session.beatId` is set and side 0 won): `setFlags(playerId, [...beat.set, beatDoneFlag(beat.id)])`; when `beat.harvest !== null` nothing else is persisted — `harvestStateFor` derives the state from the done flags; quest objectives of kind `flag` advance for every flag set; `audit 'story.beat'` with `{ beatId }`. After commit: `progressionDelta { flags }` then `storyBeat { beatId, phase: 'complete' }`.
 5. `starter` beat: completion additionally requires the player to already own their starter (always true after registration); the flag it sets is the only thing that happens.
+6. **Story trainers are fired by their beat only.** A `TrainerDef` whose id is some `StoryBeat.battle.trainerId` (the 7 story battle trainers, `rematchDays: null`, placed beside the speaking NPC) is not challengeable through the plain trainer row of §30.4.4: an `interact` on it when no eligible beat names it is handled like a plain NPC (nothing over the wire). Otherwise a player can fight the story trainer before the beat is reachable — collecting its reward and `trainer:<id>:beaten` early — and be paid a second time when the beat's own battle runs. <!-- amended 2026-09-25: packages/content IMPLEMENTATION-NOTES clarification 4 asked for this; packages/server/src/rooms/ZoneRoom.ts falls through to `case 'trainer'` (lines ~826–862) — server follow-up -->
+
 
 `ZoneState.harvestState` is never written by this path. Two players in one room can therefore see the same route as `intact` and `harvested`; each renders its own `harvestStateFor` (spine §3.5). Beats are idempotent per player through the done flag; `authority.test.ts` A17 asserts a forged `interact` on a speaker whose beat's `need` is unmet writes nothing.
 
@@ -4858,6 +4939,8 @@ Mechanics:
 
 - The boss is one `Battler` (`hp = floor(calcMaxHp(base, level) * hpMultiplier)`, `hp` tracked as a raid-side integer; `maxHp` reported to core as that scaled value so `%` chip and `hpAfter` are consistent). Each participant holds a private `BattleState` whose side 1 **is** the shared boss battler object by value copied in before each `resolveTurn` and written back after: `stateP.sides[1].party[0].creature.hp = bossHp` before, `bossHp = result.sides[1]…hp` after, processed **in ascending playerId order** within the round so the outcome is deterministic given the actions. The boss's own move each participant-turn is chosen by core (`chooseNpcAction` against that participant), so the boss acts once per participant per round — this is the shared-boss compromise the spine's §2.11(8) delegates here.
 - Round: `RAID_ROUND_MS` collect window → resolve all in order → one `raidEvents { raidId, round, events, stateDigest }` per participant with **their** events, and `RaidState` (`hpPct`, `damageBoard`, `phase`) updated for everyone. A participant with no action by the deadline gets the §30.4.3 auto-action.
+- **Boss PP.** The boss acts once per participant per round, so its PP would run out in a few rounds and core's NPC policy would then forfeit the participant's private battle while the boss stands (§2.11 clarifications: no Struggle). The shared boss's move PP is restored to `ppMax` on every copy-in; any client preview of a raid turn applies the same rule. <!-- amended 2026-09-25: server IMPLEMENTATION-NOTES Q15 -->
+- Rounds are two-phase — `prepareRound()` (pure) → one transaction (participants locked ascending; creature rows, consumables, rewards) → `commitRound()` — so a failed transaction leaves every private state and the boss unchanged (NON-NEGOTIABLE 1 applied to raids).
 - Phase 2 (`hpPct < 0.30`): boss `stages.atk += 2` once (event `statStage cause 'ability'`, `detail 'enraged'` via `abilityTrigger`); nothing else changes.
 - Boss defeat → phase 3 catch window `RAID_CATCH_WINDOW_MS`: every participant whose `damage > 0` may `raidCatch` once; each attempt is core's §2.15 with `H = 1` (a defeated boss counts as 1 HP), `statusBonus` from the boss's status, the participant's orb; success inserts a copy for that player (every successful participant gets their own instance — raids are not exclusive). Orb consumed either way.
 - Participant faints all six → they remain in the lobby as spectators (`damageBoard` kept, no catch window unless `damage > 0`, which it will be).
@@ -4872,7 +4955,7 @@ Every mutable player-visible field, the only writer, and the only wire path that
 
 | Field / row | Writer (server module) | Trigger | Client learns via |
 |---|---|---|---|
-| `players.money` | `PlayerRepo.addMoney` from shop/market/trade/battle rewards/battle pass/quest claim | REST or battle end tx | `inventoryDelta.money` / REST response |
+| `players.money` | `PlayerRepo.addMoney` from shop/market/trade/battle rewards/raid rewards/battle pass/quest and mission claims/daily-login streak/guild founding (5 000) | REST, battle or raid round tx, login | `inventoryDelta.money` / REST response (`inventoryDelta` body on `/guilds`, `/marketplace/*`) |
 | `players.x/z/angle/zone_id` | `PlayerRepo.setPosition` from `ZoneRoom` (join fallback, leave, handover ack) | room lifecycle | schema `PlayerState` |
 | `players.rating/peak_rating/ranked_matches` | `applyRating` from pvp end | battle end tx | `progressionDelta.rating` |
 | `players.trainer_exp` | `addTrainerExp` (battle end, catch, quest claim, daily login, trade, zone restore) | tx | `progressionDelta.trainerExp/trainerLevel` |
@@ -4880,9 +4963,9 @@ Every mutable player-visible field, the only writer, and the only wire path that
 | `players.banned_at/ban_reason/is_admin` | REST admin routes / boot bootstrap | REST | 403 on next request |
 | `creature_instances.*` (hp, pp, status, exp, level, moves, ability, held_item, nickname, favorite, locked, species on evolve) | `CreatureRepo.update` from battle tx or the `/creature/:id/*` and `/item/use` REST handlers | tx | `inventoryDelta.creaturesUpdated` / REST |
 | `creature_instances.owner_id/slot_kind/slot_index` | `transferCreature`, `moveToSlot`, `reorderParty`, `insert`, `release` | trade/market/party REST/catch tx | `inventoryDelta` / REST |
-| `inventory_items.qty` | `InventoryRepo.add` | shop/use/battle/quest/battle pass tx | `inventoryDelta.items` |
+| `inventory_items.qty` | `InventoryRepo.add` | shop/use/battle/raid/quest/mission/battle pass/daily-login/ground item/`/creature/:id/setup` (equip takes one, returns the old held item) tx | `inventoryDelta.items` |
 | `badges` | `ProgressRepo.awardBadge` from league win **only** | battle end tx | `progressionDelta.badges` |
-| `story_flags` | `setFlags` from league win, trainer win, ground item, static, quest claim, story beat completion | tx | `progressionDelta.flags` |
+| `story_flags` | `setFlags` from league win, trainer win, ground item, static, quest claim, story beat completion; the live-ops `streak:<n>` / `streak:last:<day>` bookkeeping rows (daily login, §30.9.1) | tx | `progressionDelta.flags` |
 | `dex_entries` | `markSeen/markCaught` from battle tx and trade/market receipt | tx | `progressionDelta.dexSeen/dexCaught` |
 | `quest_progress` | `advance/claim` from battle tx, interact handlers, REST claim | tx | `progressionDelta.questProgress` |
 | `battle_pass` | REST claim / mythical choice | REST | REST response |
@@ -4895,13 +4978,14 @@ Every mutable player-visible field, the only writer, and the only wire path that
 | `PlayerState.body/guildTag/name` | copied from rows at join; `body` re-read after `POST /profile` via `presence.publish('ewa:profile', …)` | REST | schema |
 | `RaidState.*`, `BattleSummary.*` | `RaidSession`, `BattleCoordinator` | tick | schema |
 
+<!-- amended 2026-09-25: the money / inventory / story_flags writer lists were incomplete against the implemented server (raid rewards, mission claims, daily-login streak, guild founding, setup equip) — a matrix that claims to name "the only writer" must name all of them -->
 The `50-verification-budget.md` authority test fabricates every `CLIENT_MESSAGES` type (including well-formed `battleAction` for another player's battle, `handoverAck` without a reservation, `engageSpawn` for a spawn outside AOI) and every REST body with adversarial values, then diffs the database against a snapshot: **zero rows changed** except `audit_log`, `players.last_seen_at`, and the attacker's own rate-limit kicks.
 
 ### 30.5.1 Adversarial test list — expected server response
 
 | # | Attack | Server response | Persisted effect |
 |---|---|---|---|
-| 1 | Client sends a `progressionDelta`/`inventoryDelta`-shaped message to the room | No handler registered for that type → Colyseus drops it; `metrics.unknownMessage += 1`; 5 in 10 s → `client.leave(4003)` | none |
+| 1 | Client sends a `progressionDelta`/`inventoryDelta`-shaped message to the room | No handler for that type → the `'*'` handler counts it (`metrics.unknownMessages += 1`), no reply; 5 in 10 s → `client.leave(4003)` | none |
 | 2 | `battleAction` with another player's `battleId` | `error { code: 'notFound' }` (identical to a missing id) | none |
 | 3 | `battleAction` with own `battleId`, `turn` ≠ collecting turn | `error { notAllowed, 'wrongTurn' }` | none |
 | 4 | `battleAction` `move` not in active moves / pp 0 / choice-locked | `error { notAllowed, <ActionError> }` from `validateAction` | none |
@@ -4926,6 +5010,9 @@ The `50-verification-budget.md` authority test fabricates every `CLIENT_MESSAGES
 | 23 | Forged JWT (wrong secret / expired / `aud` mismatch) | REST 401; room `onAuth` 401 | none |
 | 24 | Refresh token reuse after rotation | `rotateRefresh` returns null → 401 and `revokeAll(playerId)` (token theft response); audit `auth.refreshReuse` | all refresh tokens of that player revoked |
 | 25 | Register 6th account from one IP within an hour | 429 `rateLimited` | none |
+| 26 | Create or join a zone room directly through Colyseus' `POST /matchmake/*` routes (any options, any shard) | `onCreate`/`onAuth` without the join ticket → `ServerError(403, 'noTicket')` (§30.2.6) | none |
+| 27 | `POST /zone/enter` for an ungated zone that is not the player's current zone (REST "fast travel") | 409 `wrongZone`, no seat | none |
+| 28 | `POST /marketplace/list` of a party member during a live battle | 409 `inBattle` (§30.6.3) | none |
 
 ---
 
@@ -4947,8 +5034,10 @@ The `50-verification-budget.md` authority test fabricates every `CLIENT_MESSAGES
 
 ```ts
 // packages/server/src/rest/auth.ts — verbatim
-import { hash, verify, Algorithm } from '@node-rs/argon2';
-export const ARGON2: Parameters<typeof hash>[1] = { algorithm: Algorithm.Argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1, outputLen: 32 };
+import { hash, verify } from '@node-rs/argon2';
+import type { Algorithm, Options } from '@node-rs/argon2';
+const ARGON2ID = 2 as Algorithm;   // Algorithm.Argon2id — the package's enum is an ambient `const enum`, unusable under isolatedModules (amended 2026-09-25, server IMPLEMENTATION-NOTES)
+export const ARGON2: Options = { algorithm: ARGON2ID, memoryCost: 19456, timeCost: 2, parallelism: 1, outputLen: 32 };
 export function hashPassword(pw: string): Promise<string>;          // hash(pw, ARGON2) — PHC string, 16-byte random salt from the library
 export function verifyPassword(phc: string, pw: string): Promise<boolean>;   // verify(phc, pw); never compares strings
 export const ACCESS_TTL_S = 900;
@@ -4968,7 +5057,7 @@ export async function rotateTokens(tx: Tx, fastify: FastifyInstance, refresh: st
 The §4.7 table is the route table; this section only pins behaviours the table leaves to the server:
 
 - `GET /me` returns the spine §4.7 shape: `presence: { roomId: string | null; zoneId; shard }` (from `PresenceStore`/`presence.get`; `zoneId` falls back to the row's `zone_id` when offline) for the client to `POST /zone/enter` after a reload, plus `battlePass`, `quests` (all `QUESTS` filtered by `requires` satisfied, with progress rows; daily/weekly synthetic quests included), `flags`, `badges`, `unreadDm`, `friendRequests`, `liveOps` (§30.9 summary). <!-- reconciled 2026-09-18: OQ 3 -->
-- `POST /party/*`, `/creature/:id/*`, `/item/use`, `/heal`, `/shop/*` are refused with 409 `{ code: 'inBattle' }` while `PresenceStore.battleOf(playerId) !== null` — REST may not mutate a creature that is being projected in a live battle. The check reads presence (in-memory or Redis), which the room updates at battle start/end.
+- `POST /party/*`, `/creature/:id/*`, `/item/use`, `/heal`, `/shop/*` and `/marketplace/list` are refused with 409 `{ code: 'inBattle' }` while `PresenceStore.battleOf(playerId) !== null` — REST may not mutate or escrow a creature that is being projected in a live battle (a listed-then-bought creature would otherwise receive the battle transaction's hp/exp write under its new owner). A raid participant counts as in battle from the fight's start to the catch window. <!-- amended 2026-09-25: server IMPLEMENTATION-NOTES Q6, Q14 --> The check reads presence (in-memory or Redis), which the room updates at battle start/end.
 - `/heal`: player must currently be in a zone room whose `zone.healer === true` (presence lookup); heals `hp = maxHp`, `status = []`, `pp = ppMax` for every party member; free.
 - `/creature/:id/evolve { into }`: `into` must equal `applyExp(...)`-style readiness: `species.evolution` resolves to `into` at the current level and ability (split branch by ability, default last); performs core `evolve`, `markSeen/markCaught(into)`, audit `creature.evolve`.
 - `/creature/:id/moves { moves }`: 1..4 unique ids, each in `learnableMoves` with `level <= creature.level`; kept slots keep their `pp`, new slots get `pp = ppMax = move.pp`.
@@ -5022,7 +5111,7 @@ export function presenceRateLimiter(p: Presence, clock: () => number): RateLimit
 
 ```ts
 // packages/server/src/chat/blocklist.ts — the BLOCKED_WORDS list from legacy chatFilter.js, verbatim, as data
-export const BLOCKED_WORDS: readonly string[];            // 20 entries, lowercase
+export const BLOCKED_WORDS: readonly string[];            // 19 entries, lowercase — the legacy chatFilter.js list has 19 (amended 2026-09-25, server IMPLEMENTATION-NOTES Q1)
 export const LEET_MAP: Readonly<Record<string, string>> = { '3': 'e', '4': 'a', '0': 'o', '1': 'i', '@': 'a', '$': 's', '!': 'i', '+': 't' };
 // packages/server/src/chat/filter.ts
 export function normalizeLeet(s: string): string;                 // lowercase; LEET_MAP per char; then 'ph' -> 'f'
@@ -5049,7 +5138,7 @@ Every user-supplied string that reaches SQL `LIKE`/`ILIKE` passes through `escap
 
 ### 30.7.1 Friends
 
-`friendships` rows keyed `(requester, addressee)`. Request: target exists, not self, not banned, no row in either direction, ≤ 100 accepted friends per player (409 `friendLimit`). Accept: only the addressee of a `pending` row; sets `accepted`. Decline/remove: deletes the row (either party). `GET /friends` returns `FriendView { id, username, title, body, online: boolean, zoneId: ZoneId | null, inBattle: boolean, lastSeenAt }` — `online/zoneId/inBattle` come from `PresenceStore` (§30.7.4), never from the DB. Friend gifts (legacy `/friends/gift`) are **not** carried; trades exist.
+`friendships` rows keyed `(requester, addressee)`. Request: target exists, not self, not banned, ≤ 100 accepted friends for both players (409 `friendLimit`, checked on request and on accept); a reverse pending request is accepted instead of refused (spine §5.2 `requestFriend`, `friendships_pair_uq`) <!-- amended 2026-09-25: "no row in either direction" contradicted the spine's requestFriend; server IMPLEMENTATION-NOTES Q4 -->. Accept: only the addressee of a `pending` row; sets `accepted`. Decline/remove: deletes the row (either party). `GET /friends` returns `FriendView { id, username, title, body, online: boolean, zoneId: ZoneId | null, inBattle: boolean, lastSeenAt }` — `online/zoneId/inBattle` come from `PresenceStore` (§30.7.4), never from the DB. Friend gifts (legacy `/friends/gift`) are **not** carried; trades exist.
 
 ### 30.7.2 DMs (persisted)
 
@@ -5116,7 +5205,7 @@ export type TradePhase = 'requested' | 'open' | 'confirming' | 'complete' | 'can
 export class TradeSession {
   readonly id: string; readonly a: string; readonly b: string;   // player uuids
   phase: TradePhase; offers: [TradeOffer, TradeOffer]; lastActivity: number;
-  offerHash(): string;                    // fnv1a32(canonicalJson([offers[0] sans confirmed, offers[1] sans confirmed])) as 8 hex
+  offerHash(): string;                    // protocol tradeOfferHash(offers): fnv1a32(canonicalJson of the two { playerId, creatureIds, money } sorted by playerId) as 8 hex — independent of seat order, confirmed excluded
   setOffer(playerId: string, creatureIds: readonly string[], money: number, now: number): 'ok' | 'notParty' | 'badPhase';   // clears BOTH confirmed flags
   confirm(playerId: string, hash: string, now: number): 'ok' | 'staleOffer' | 'badPhase' | 'notParty';
   bothConfirmed(): boolean;
@@ -5209,7 +5298,7 @@ A run also flips 10 % of the bots to a cheating profile (dt inflation, 12 m/s) a
 | Rate limits per socket for map/battle events (`socketRateLimit.js`) | `LIMITS` table + per-client `RateLimiterState` | `rateLimit.test.ts`: 5th chat in 4 s → false; one `rateLimited` error per window |
 | Raid 20 s rounds, shared boss HP, damage board, catch window (`raidSocket.js`) | `RaidSession` constants | `raid.test.ts`: two participants, deterministic boss HP after round 1 given the seed |
 | Marketplace TTL expiry job returning unsold creatures (`marketplaceExpiry.js`) | `jobs/marketExpiry.ts` at 60 s over `closeExpired` | persist concurrency test (20 tx, one winner) + job test (expired-with-bid → transfer, expired-without → box) |
-| Battle history with enough data to replay | `battle_history.seed + actions` written at `battleEnd` | replay test: `createBattle(seed)` + recorded actions reproduces the final digest |
+| Battle history with enough data to replay | `battle_history.start + seed + actions + final_digest` written at `battleEnd` (spine §5.1, migration 0001) | replay test: `createBattle({ id, format, seed, ...start })` + recorded actions reproduces `final_digest` from the row alone |
 
 Not preserved, on purpose: client-side badge awards laundered through `gymwin_<id>` flags (badges are §30.4.4 league-win-only, server tx), the `/map` relay fanout, `sanitizeMapPosition` fade-to-black zone changes, fat-document `VersionError` retry wrappers, `Math.random` anywhere in spawn or battle code.
 
@@ -5221,7 +5310,7 @@ Not preserved, on purpose: client-side badge awards laundered through `gymwin_<i
 2. `validateAction` runs on every `battleAction` before `resolveTurn`; a `resolveTurn` throw is a server fault that voids the battle with no rewards, never a client-visible crash.
 3. Movement is accepted only through `validateInput`; rejection never moves the avatar and always echoes `seq`.
 4. AOI is exactly the spine's `StateView` rule: 32-unit cells, 3×3, `players` and `spawns` only; chat rides the same neighbourhood; nothing per-player is ever `broadcast`.
-5. The position row is written by the destination room on `handoverAck`, once per crossing; a handover option without a matching presence reservation is refused.
+5. The position row is written by the destination room on `handoverAck`, once per crossing; a handover option without a matching presence reservation is refused; a join without the server's ticket is refused, and `/zone/enter` seats a player only in their current zone.
 6. Badges are written by `awardBadge` from a league win inside the battle transaction and nowhere else.
 7. Every cross-player creature or money movement (trade, buy-now, expiry, bid escrow) is one transaction with `FOR UPDATE` in ascending uuid order; the expiry job uses `SKIP LOCKED`.
 8. Passwords: argon2id `m=19456 t=2 p=1`; tokens: HS256 access 15 min with `iss/aud`, opaque rotating refresh 30 d stored hashed; refresh reuse revokes the family.
@@ -5305,7 +5394,7 @@ tools/
 2. **Content-hash cache.** Every tool keeps `tools/<tool>/.cache/` keyed by `sha256(input bytes, PIPELINE_VERSION, stage parameters, encoder settingsKey)`. A rerun over unchanged inputs does no image/audio/mesh work and reports `cacheHits === inputs`. The cache directory is git-ignored; the outputs under `public/` are committed.
 3. **Refuse to ship silently.** A missing or unresolvable input fails the build with the offending id in the message. Anything a heuristic guessed is flagged in the tool's `qa-report.json`; the release rule for each tool is in its section.
 4. **Budgets are tests.** Every size number in §40.6 is asserted by a vitest file named in `50-verification-budget.md` §50.4.8 or added here; CI fails when a budget is exceeded.
-5. **LF line endings, ES modules, TypeScript, `tsx` entry points, `pnpm --filter @ewa/<tool> run <script>`.** No tool imports from `packages/*` except `@ewa/content` (for zone ids, species ids and the surface list) — never from `@ewa/render` or `@ewa/client`.
+5. **LF line endings, ES modules, TypeScript, `tsx` entry points, `pnpm --filter @ewa/<tool> run <script>`.** No tool imports from `packages/*` except `@ewa/content` (for zone ids, species ids and looks) and the pure subpath **`@ewa/render/surfaces`** (`packages/render/src/surfaces/`: the `SURFACES` table and the bake recipes, no three, no DOM, no node builtins — enforced by the render ESLint block), which `tools/material-bake` imports so the baked textures and the runtime graph cannot disagree — never the rest of `@ewa/render`, never `@ewa/client`. `tools/asset-audit` takes `@ewa/render` + `three` as **devDependencies** only, for the drift test that feeds a real `dumpZone()` to its `ZoneDump` mirror. <!-- amended 2026-09-25: material-bake IMPLEMENTATION-NOTES D0 (the `dist/surfaces.json` route was never built), asset-audit IMPLEMENTATION-NOTES A2 -->
 6. **Licences travel with assets.** `assets-src/licenses/QUATERNIUS-CREDITS.txt` is copied to `public/models/CREDITS.txt`; `TABLER-LICENSE.txt` to `public/icons/TABLER-LICENSE.txt` (MIT notice is required). The pipeline fails if either source file is missing.
 
 ---
@@ -5330,8 +5419,10 @@ Every parameter below is a named constant in `src/*.ts`; changing any of them ch
 | 2 | **Normalize** | `normalize.ts` | Trim to the alpha bbox; scale so `max(bboxW, bboxH) = round(FILL_FRACTION 0.86 × 1024) = 881 px`; centre horizontally; anchor the bbox bottom at `y = round(FOOT_V 0.92 × 1024) = 942`. Kernel: `nearest` when the scale factor is within `INTEGER_TOLERANCE 1e-3` of an integer or of the reciprocal of an integer, `lanczos3` otherwise (`chooseKernel`). Canvas `DEFAULT_SPRITE_SIZE 1024`. Measured over the 264 processed sprites: `pixelScale` min 0.43, median 0.89, max 10.74; 71 sprites are upscaled ≥ 2×, 152 are downscaled (< 1). |
 | 3 | **Normal map** | `normalmap.ts` | Height = Rec. 709 luminance of the albedo, Gaussian-blurred with `sigma 1.2` (radius `ceil(3σ) = 4`), clamped at borders. 3×3 Sobel with `strength 0.55`; transparent neighbours take the centre pixel's height so the Sobel never fires across the silhouette. Alpha-edge bevel: 3-4 chamfer distance over alpha capped at `bevelBand 6` px; within the band the normal is tilted outward (away from the nearest transparent pixel) by `bevelStrength 0.85` at the edge, falling linearly to 0 at 6 px. Encoding `R = 128 + nx·127`, `G = 128 + ny·127` (OpenGL +Y up), `B = 128 + nz·127`, `A = source alpha`; a flat opaque region encodes to exactly `(128, 128, 255)`. |
 | 4 | **Emissive mask** | `emissive.ts` | <!-- amended 2026-09-25: was HSL saturation × lightness ≥ 0.72, which tends to 1 for faintly tinted near-whites (42–49 % of mufflo/dreambud glowed) and scores a pure saturated hue 0.5 --> Per opaque pixel: emits when HSV value `max(r,g,b) ≥ EMISSIVE_MIN_VALUE 0.92` and chroma `max − min ≥ EMISSIVE_MIN_CHROMA 0.4` (bright and vivid: a lure, a flame, molten seams — not pale fur). If more than `EMISSIVE_MAX_COVERAGE 0.08` of the opaque texels qualify, only the most vivid are kept (ranked by value × chroma, ties by raster order), so the mask stays an accent. Then `erode1px` (3×3 min, image border counts as 0). Per-species `EMISSIVE_OVERRIDES[id] = { minValue?, minChroma?, maxCoverage?, disabled? }` in `emissive-overrides.ts` (empty today; every entry is an art decision reviewed on the contact sheet). Output is single-channel; the mask is stored in R of a 3-channel file because WebP has no grey mode. |
-| 5 | **Pack** | `groups.ts`, `pack.ts` | Atlas `DEFAULT_ATLAS_SIZE 4096`, 16 slots of 1024², MaxRects best-short-side-fit with a stable top-left tie-break (`MaxRectsPacker`), 8 species (front + back) per atlas. Grouping is rewritten in §40.1.4. |
-| 6 | **Encode** | `encode.ts` | Today: `selectEncoding('auto', 4096)` probes ktx2-encoder and falls back to lossless WebP (`effort 6`, `alphaQuality 100`) for albedo/normal and lossy WebP `q80` for the emissive mask. Rewritten in §40.1.6. |
+| 5 | **Plan + pack** | `plan.ts`, `pack.ts`, `zones.ts` | *(As shipped, `PIPELINE_VERSION` 5; the draft's 4096² / 16-slot / 8-species-per-atlas packer is gone.)* One global sequence over `ZONE_ORDER` (§40.1.4); consecutive species pairs form 2048² atlases of four 1024² cells (`packSquares(4, 1024, 2048)`); ≤ 8 atlases per zone, duplicating only when a zone would exceed that (0 duplicates on the shipped roster). |
+| 6 | **Rasters + encode** | `pipeline.ts`, `mips.ts`, `encode.ts` | *(As shipped.)* Composites the atlas maps, forces binary alpha, builds mips 1–3, encodes WebP under the §40.1.6.3 budget ladder, writes thumbnails, the manifest and QA artifacts. |
+
+<!-- amended 2026-09-25: rows 5 and 6 described the pre-v2 code ("Today: selectEncoding('auto', 4096) …"); tools/sprite-pipeline/README.md stages table -->
 
 Cache (`cache.ts`): per sprite `.cache/sprites/<hash>/{albedo,normal,emissive}.png + meta.json`, `hash = sha256(source bytes, "v" + PIPELINE_VERSION, "size=1024", normal options JSON, emissive override JSON)`; per atlas texture `.cache/atlases/<hash>.<ext>`, `hash = sha256(PIPELINE_VERSION, encoder.settingsKey, "4096/1024", member hashes with their placements)`. `SpriteMeta` records `sourceWidth/Height, recovered, coverage, flags, footV, pixelScale, kernel, emissivePixels`. Stage concurrency is 3 workers (`CONCURRENCY 3`); results are sorted by `(id, side)` before anything is written, so worker order never reaches the output.
 
@@ -5381,7 +5472,7 @@ The 6 towns without a table (`mirevale, cinderhold, stormrook, marrowdig, vesper
 
 ### 40.1.5 The manifest — `creatures.manifest.json`
 
-**Verbatim, as it exists today** (`src/manifest.ts`, `version: 1`):
+**Historical — the v1 shape this section replaced** (`src/manifest.ts` as it was when this section was written, `version: 1`; **not** in the code any more and not to be implemented — kept so the mismatch table below reads; amended 2026-09-25):
 
 ```ts
 export type ManifestEncoding = 'ktx2-uastc' | 'webp';
@@ -5467,8 +5558,8 @@ export interface SpriteRectV2 {
 }
 
 export interface ManifestMap {
-  readonly url: string;                                      // level 0, relative to the manifest, e.g. atlases/mire_route-0.albedo.webp
-  readonly mips: readonly string[];                          // levels 1..3 (2048², 1024², 512² for a 4096² atlas)
+  readonly url: string;                                      // level 0, relative to the manifest, e.g. atlases/a-000.albedo.webp
+  readonly mips: readonly string[];                          // levels 1..3 (1024², 512², 256² for a 2048² atlas)
   readonly codec: SpriteCodec;
   readonly quality: number | null;                           // libwebp q for lossy, null for lossless
   readonly bytes: number;                                    // sum over url + mips
@@ -5491,6 +5582,7 @@ export interface ManifestSpriteV2 {
   readonly sizeScale: number;                                // SpeciesDef.sizeScale
   readonly home: string;                                     // atlas id used for the runtime single set
   readonly thumb: string;                                    // thumbs/<id>_front.webp, 128 px (20-client.md §20.10.2 rule 6)
+  readonly alt?: Readonly<Record<string, { readonly front: SpriteRectV2; readonly back: SpriteRectV2 }>>;   // only for a planner-duplicated species: its rects in each a-<zoneId>-dup-N atlas (absent in the shipped build: 0 duplicates)
 }
 
 export interface SpriteManifestV2 {
@@ -5576,7 +5668,7 @@ Budget: `260 × (73 + 24 + 3) KB × 1.20 + 0.8 MB thumbs ≈ 32.0 MB ≤ 35 MB`.
 | Set | Files | Size on disk | Per file | Contents (read from the glTF JSON) |
 |---|---|---|---|---|
 | `assets-src/models/legendaries/` | `lumyth.glb`, `noxmyth.glb`, `voidraxis.glb`, `zenryu.glb` | 8.8 MB | 2.0–2.5 MB | 1 mesh, 1 material, 1 skin, 1 clip named `Animation`, **30 000 triangles each** (29 845 for voidraxis), 3 embedded `image/webp` textures of 21–204 KB (`EXT_texture_webp`), so 85–90 % of each file is vertex + animation data |
-| `assets-src/models/quaternius/` | 20 `.gltf` (`Casual_Male` … `Viking_Male`) | 37 MB | 1.7–2.2 MB | 1 mesh, 6 materials (flat colours, **0 images**), 3 000–6 800 triangles, 17 clips (`Death, Defeat, Idle, Jump, PickUp, Punch, RecieveHit, Roll, Run, Run_Carry, Shoot_OneHanded, SitDown, StandUp, SwordSlash, Victory, Walk, Walk_Carry`), one buffer embedded as a **base64 `data:` URI** of 0.8–1.0 MB — the 2 MB file is 1.33× base64 inflation of ≈ 0.9 MB of binary, most of it 17 animation clips at full float precision |
+| `assets-src/models/quaternius/` | **19** `.gltf` (`Casual_Male` … `Viking_Male`; amended 2026-09-25 — the draft said 20, the directory and `@ewa/content` `LOOKS` hold 19) | 36 MB | 1.7–2.2 MB | 1 mesh, 6 materials (flat colours, **0 images**), 3 000–6 800 triangles, 17 clips (`Death, Defeat, Idle, Jump, PickUp, Punch, RecieveHit, Roll, Run, Run_Carry, Shoot_OneHanded, SitDown, StandUp, SwordSlash, Victory, Walk, Walk_Carry`), one buffer embedded as a **base64 `data:` URI** of 0.8–1.0 MB — the 2 MB file is 1.33× base64 inflation of ≈ 0.9 MB of binary, most of it 17 animation clips at full float precision |
 
 The dependencies already declared in `tools/asset-audit/package.json` (`@gltf-transform/core|extensions|functions ^4.5.0`, `meshoptimizer ^0.24.0`) move to `tools/model-pipeline/package.json`; `asset-audit` keeps none of them.
 
@@ -5585,7 +5677,7 @@ The dependencies already declared in `tools/asset-audit/package.json` (`@gltf-tr
 ```ts
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { dedup, flatten, join, prune, quantize, reorder, resample, sparse, textureCompress, weld, meshopt } from '@gltf-transform/functions';
+import { dedup, flatten, join, prune, quantize, reorder, resample, sparse, weld } from '@gltf-transform/functions';
 import { MeshoptEncoder } from 'meshoptimizer';
 
 await MeshoptEncoder.ready;
@@ -5593,36 +5685,40 @@ const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies(
 await doc.transform(
   dedup(),                                                    // identical accessors/textures/materials → one
   flatten(),                                                  // node hierarchy without skins is collapsed (no-op on skinned rigs)
-  join({ keepNamed: false }),                                 // Quaternius: 6 flat-colour materials → vertex-coloured single primitive is NOT done here (§40.2.3); join merges only same-material primitives
+  join({ keepNamed: false }),                                 // merges same-material primitives only — and SKIPS skinned nodes (`if (node.getSkin()) continue;`, functions src/join.ts lines 177–178): the Quaternius merge is joinPrimitives in §40.2.3
   prune(),                                                    // unused nodes/accessors/materials
   resample({ tolerance: 1e-4 }),                              // animation keyframes: drops linear-redundant keys
   weld(),                                                     // gltf-transform 4.x weld() is exact (no tolerance argument)
-  reorder({ encoder: MeshoptEncoder }),                       // vertex-cache order; required before meshopt()
+  // [LOD1 only] simplifySkinned(ratio 0.35, error 0.01) — §40.2.3
+  reorder({ encoder: MeshoptEncoder, target: 'size' }),       // vertex-cache order
   quantize({ quantizePosition: 14, quantizeNormal: 10, quantizeTexcoord: 12, quantizeColor: 8, quantizeWeight: 8, quantizeGeneric: 12 }),  // KHR_mesh_quantization
   sparse(),                                                   // morph/anim accessors that are mostly zero
-  meshopt({ encoder: MeshoptEncoder, level: 'medium' }),      // EXT_meshopt_compression
-  textureCompress(TEXTURE_PLAN),                              // §40.2.4
+  meshoptCompression(),                                       // EXT_meshopt_compression, QUANTIZE method = the tail of meshopt({ level: 'medium' }) — NOT meshopt() itself
 );
+// textures: §40.2.4, applied after the sequence (gltf-transform's textureCompress has no KTX2 target)
 ```
+
+<!-- amended 2026-09-25: model-pipeline IMPLEMENTATION-NOTES M2, M3, M5 -->
+Three facts of gltf-transform 4.5.0 the first draft got wrong (paths relative to `node_modules/.pnpm/@gltf-transform+functions@4.5.0_*/node_modules/@gltf-transform/functions`): `meshopt()` is a wrapper that runs its own `reorder({ target: 'size' })` and `quantize()` before adding the extension (`src/meshopt.ts` lines 82–93), so after the explicit `quantize(14/10/12/…)` it would re-quantize the 14-bit positions and clone the skin's inverse-bind matrices again — the pipeline applies only its tail (`meshoptCompression()` in `src/transform.ts`); `textureCompress` supports `jpeg | png | webp | avif` only (`TEXTURE_COMPRESS_SUPPORTED_FORMATS`, `src/texture-compress.ts` line 24); and `join()` skips skinned nodes, which every Quaternius primitive is.
 
 Determinism: gltf-transform assigns no random ids; `NodeIO.writeBinary` is byte-stable for the same document, and the pipeline asserts it by encoding twice in `determinism.test.ts`. The Quaternius `data:` buffers become a single GLB `BIN` chunk (`io.writeBinary`), which alone removes the 33 % base64 inflation.
 
 ### 40.2.3 Per-set rules
 
-**Legendaries** (`10-render.md` §10.7.7 does not cover them; they are overworld statics per `roster-coverage.md` §7 and the arena's `ActorPool` per `10-render.md` §10.7.6): keep the skin and the single clip; the clip is renamed `idle`; `resample` at `1e-4`; 30 000 triangles are **kept for LOD0** and `simplify({ simplifier: MeshoptSimplifier, ratio: 0.35, error: 0.001 })` writes a second GLB `<id>.lod1.glb` (≈ 10 500 tris) used beyond 40 m (same thresholds as `10-render.md` §10.5.7). Skinned simplification with `meshoptimizer 0.24`'s `simplifyWithAttributes` locks the skin weights as attributes so joints stay bound. Three textures: base colour (sRGB), the second is treated as **normal** if its mean colour is within 16/255 of `(128,128,255)` else as ORM; the third is emissive. Output KTX2 per §40.2.4.
+**Legendaries** (`10-render.md` §10.7.7 does not cover them; they are overworld statics per `roster-coverage.md` §7 and the arena's `ActorPool` per `10-render.md` §10.7.6): keep the skin and the single clip; the clip is renamed `idle`; `resample` at `1e-4`; 30 000 triangles are **kept for LOD0** and a skinned simplification writes a second GLB `<id>.lod1.glb` (≈ 10 500 tris) used beyond 40 m (same thresholds as `10-render.md` §10.5.7). gltf-transform 4.5's `simplify()` calls the **position-only** `simplifier.simplify` (`src/simplify.ts` lines 176–183), so the pipeline's `simplifySkinned` calls `meshoptimizer` 0.24's `MeshoptSimplifier.simplifyWithAttributes` directly (NORMAL weight 0.5, TEXCOORD_0 1.0, WEIGHTS_0 1.0) and compacts the primitive, so surviving vertices keep JOINTS/WEIGHTS and the skin stays bound. **Error bound 0.01, not 0.001**: at 0.001 (2 mm on a 2 m creature) the simplifier stops at 24 000–28 900 of 30 000 triangles and LOD1 comes out at 505–619 KB against the 0.45 MB line; at 0.01 all four reach 10 435–10 493 tris with an achieved error of 0.0045–0.0081 of the extent (≈ 1 px at 40 m), LOD1 220–248 KB. Texture roles come from the material slots the sources bind (`baseColorTexture`, `normalTexture`, `metallicRoughnessTexture`); the draft's mean-colour heuristic misreads them — the normals average (127, 127, 234) and the third texture is metallic-roughness (mean (254, 28, 1)), there is no emissive map — and survives only as a `normal-suspect` QA cross-check. Output KTX2 per §40.2.4. <!-- amended 2026-09-25: model-pipeline IMPLEMENTATION-NOTES M4, M6 -->
 
-**Quaternius** (player/NPC looks, `10-render.md` §10.7.7: "each look is one draw (merged)"): the 6 flat-colour materials are baked into a `COLOR_0` vertex attribute (`vertexColor(): [baseColorFactor]` per primitive, written with `quantizeColor 8`) and the primitives joined into **one** primitive with one material — the render library's `'character'` surface class reads `vertexColor()` as albedo and uses the shared neutral 4×4 ORM/normal placeholder (`10-render.md` §10.2.3) since the source has no maps. Only the clips `Idle`, `Walk`, `Run`, `Victory`, `Defeat`, `SitDown`, `StandUp` are kept (renamed to lower-case; `10-render.md` §10.7.7 names `idle/walk/run`; the other four are for battle staging and the healer bench); the remaining 10 clips are dropped by `prune()` after being detached — that is where most of the 0.9 MB goes. Triangles are kept (3–7 k is already under any LOD0 budget); a `lod1` is not generated for characters (they are never far from the camera at the diorama's view distance).
+**Quaternius** (player/NPC looks, `10-render.md` §10.7.7: "each look is one draw (merged)"): the 6 flat-colour materials are baked into a `COLOR_0` vertex attribute (`vertexColor(): [baseColorFactor]` per primitive, written with `quantizeColor 8`) and the primitives joined into **one** primitive with one material — the render library's `'character'` surface class reads `vertexColor()` as albedo and uses the shared neutral 4×4 ORM/normal placeholder (`10-render.md` §10.2.3) since the source has no maps. Only the clips `Idle`, `Walk`, `Run`, `Victory`, `Defeat`, `SitDown`, `StandUp` are kept (renamed to lower-case; `10-render.md` §10.7.7 names `idle/walk/run`; the other four are for battle staging and the healer bench); the remaining 10 clips are dropped by `prune()` after being detached — that is where most of the 0.9 MB goes. "Detached" means channels and samplers disposed **before** the animation: `Animation.dispose()` leaves its samplers alive and pointing at their keyframe accessors (`@gltf-transform/core` `src/properties/animation.ts` has no `dispose` override; `prune()` keeps them — measured 1 136 accessors instead of 440). Tracks that hold a node's rest value in every kept clip are dropped too (lossless in three: the bone keeps its rest transform), which brings the looks to 150–217 KB. The merge into one primitive is `joinPrimitives` after the colours are baked into `COLOR_0` and all primitives share the one `character` material — `join()` skips skinned nodes. <!-- amended 2026-09-25: model-pipeline IMPLEMENTATION-NOTES M5, M8 --> Triangles are kept (3–7 k is already under any LOD0 budget); a `lod1` is not generated for characters (they are never far from the camera at the diorama's view distance).
 
 ### 40.2.4 Texture plan
 
-`TEXTURE_PLAN`: `{ encoder: ktx2Encoder, targetFormat: 'ktx2', slots: /baseColor|emissive/ → { mode: 'uastc', rdo: 2.0, zstd: 18, srgb: true, mipmaps: true }, slots: /normal|occlusion|metallicRoughness/ → { mode: 'uastc', rdo: 2.0, zstd: 18, srgb: false, normalMap: slot === 'normal', mipmaps: true } }`. The encoder is the same `ktx2-encoder@0.6.0` Node API as §40.1.6 (`encodeToKTX2(bytes, { isUASTC: true, isKTX2File: true, needSupercompression: true, enableRDO: true, rdoQualityLevel: 2, generateMipmap: true, isPerceptual, isSetKTX2SRGBTransferFunc, isNormalMap, imageDecoder })`); legendary textures are ≤ 2048² (≤ 4.2 Mpix), under the 12 Mpix cap that stops it for sprite atlases. **Fallback:** when `probeKtx2(2048)` fails on the build machine, textures are written as lossy WebP `q90` via `textureCompress({ encoder: sharp, targetFormat: 'webp', quality: 90 })` with `EXT_texture_webp`, and `models.manifest.json` records `textures: 'webp'`; CI treats the fallback as a warning, not a failure, until M2, then as a failure.
+`TEXTURE_PLAN` (its own step, `encodeTexture` + `applyTextures`, because `textureCompress` has no KTX2 target): sharp decodes and fits each image (Lanczos3); `/baseColor|emissive/` → UASTC, RDO 2.0, sRGB, mips; `/normal|occlusion|metallicRoughness/` → UASTC, RDO 2.0, linear, `isNormalMap` for the normal, mips; the texture gets `image/ktx2`, `KHR_texture_basisu` (required) and an **external** uri `<id>.<role>.<hash8>.ktx2` shared by LOD0 and LOD1. The encoder is the same `ktx2-encoder@0.6.0` Basis module as §40.3.3 with `uastcLDRQualityLevel 0` (pack 2 is larger and 4× slower on these maps) and Basis' own mip generation; it exposes **no Zstandard level** (supercompression is on/off), so the draft's `zstd: 18` is Basis' default level (re-compressing at level 18 measured −1.0 % over all 12 maps). **Resolution ladder** — 1024² UASTC does not fit the 1.2 MB LOD0 line at any RDO setting (lumyth/zenryu maps 1.91–2.31 MB at 1024²; geometry 0.53–0.64 MB), so each legendary takes the first tier whose GLB + textures ≤ 1 258 291 B: (512, 512, 512) → (512, 512, 256) → (512, 512, 128) → (512, 256, 128) → (256, 256, 128) for (base, normal, ORM); measured lumyth/voidraxis tier 0, noxmyth tier 1, zenryu tier 2; no tier fitting fails the build. **Fallback:** when `probeKtx2(2048)` fails on the build machine, textures are written as lossy WebP `q90` with sharp under `EXT_texture_webp`, and `models.manifest.json` records `textures: 'webp'`; CI treats the fallback as a warning, not a failure, until M2, then as a failure. <!-- amended 2026-09-25: model-pipeline IMPLEMENTATION-NOTES M1, M2, M7, M9; ktx2-encoder types/type.d.ts line 37 -->
 
 ### 40.2.5 Output and manifest
 
 ```
 packages/client/public/models/
 ├─ legendaries/<id>.glb, <id>.lod1.glb      (4 × 2)
-├─ looks/<look>.glb                          (20)
+├─ looks/<look>.glb                          (19)
 ├─ CREDITS.txt                               (copied from assets-src/licenses/QUATERNIUS-CREDITS.txt)
 └─ models.manifest.json
 ```
@@ -5637,7 +5733,7 @@ export interface ModelEntry {
 export interface ModelsManifest {
   readonly version: 1;
   readonly legendaries: Readonly<Record<'lumyth' | 'noxmyth' | 'voidraxis' | 'zenryu', ModelEntry>>;
-  readonly looks: Readonly<Record<string, ModelEntry>>;      // 20 Quaternius look ids, snake_case of the file stem (casual_male …)
+  readonly looks: Readonly<Record<string, ModelEntry>>;      // the 19 Quaternius look ids = @ewa/content LOOKS, snake_case of the file stem (casual_male …)
   readonly totalBytes: number;
 }
 ```
@@ -5646,12 +5742,12 @@ export interface ModelsManifest {
 
 | | Input | Target | How the number is reached |
 |---|---|---|---|
-| One legendary LOD0 | 2.0–2.5 MB | **≤ 1.2 MB** | 30 k tris × ~3 attributes at 14/10/12-bit quantization + meshopt ≈ 0.45 MB; 3 textures at 1024²–2048² UASTC+RDO+zstd with mips ≈ 0.4–0.6 MB; one resampled clip ≈ 0.1 MB |
-| One legendary LOD1 | — | ≤ 0.45 MB | 10.5 k tris, same textures **shared by reference** (`lod1.glb` reuses the KTX2 by url via `KHR_texture_basisu` + external `uri` next to it, so textures are not written twice; `bytes` counts the GLB only) |
+| One legendary LOD0 | 2.0–2.5 MB | **≤ 1.2 MB** (GLB + its three textures) | measured geometry 0.53–0.64 MB (30 k tris; NORMAL at 10 bits is the largest stream); textures from the §40.2.4 ladder at ≤ 512² (the draft's "1024²–2048² ≈ 0.4–0.6 MB" measured 1.91–2.31 MB at 1024²); one resampled clip |
+| One legendary LOD1 | — | ≤ 0.45 MB | 10.5 k tris at error 0.01 (§40.2.3), measured 220–248 KB; same textures **shared by reference** (LOD0 and LOD1 both reference the external KTX2 files; `bytes` counts LOD1's GLB only) |
 | 4 legendaries total | 8.8 MB | **≤ 6.5 MB** | 4 × (1.2 + 0.45) |
-| One Quaternius look | 1.7–2.2 MB | **≤ 0.25 MB** | binary chunk instead of base64 (−25 %), 7 of 17 clips (−55 %), `resample` (−30 % of the rest), quantized + meshopt geometry (3–7 k tris ≈ 60–120 KB) |
-| 20 looks total | 37 MB | **≤ 5.0 MB** | 20 × 0.25 |
-| **`public/models/` total** | 45 MB | **≤ 12 MB** (§40.6) | 6.5 + 5.0 + manifest, with 0.5 MB headroom |
+| One Quaternius look | 1.7–2.2 MB | **≤ 0.25 MB** | binary chunk instead of base64 (−25 %), 7 of 17 clips (−55 %), `resample` (−30 % of the rest), rest-pose tracks dropped, quantized + meshopt geometry; measured 150–217 KB |
+| 19 looks total (`@ewa/content` `LOOKS`; the draft counted 20) | 19 × 1.7–2.2 MB | **≤ 5.0 MB** | measured 3.38 MB |
+| **`public/models/` total** | 45 MB | **≤ 12 MB** (§40.6) | measured 8.58 MB (commit e2d6127) |
 
 Runtime: the client loads GLBs with `GLTFLoader` + `MeshoptDecoder` + `KTX2Loader` (`public/basis/basis_transcoder.{js,wasm}`, already present). `models.manifest.json` `hash` is the cache key the client's asset store uses; a `?v=<hash8>` query is appended to model urls by the build.
 
@@ -5661,11 +5757,11 @@ Runtime: the client loads GLBs with `GLTFLoader` + `MeshoptDecoder` + `KTX2Loade
 
 ### 40.3.1 What it produces
 
-`10-render.md` §10.2.1 fixes the output: per surface id, three KTX2 maps — `albedo` (RGB, sRGB, UASTC, mips to 1×1), `orm` (R = AO, G = roughness, B = metalness, NoColorSpace, UASTC, mips), `normal` (tangent-space normal from a 3×3 Sobel of the procedural heightfield, NoColorSpace, UASTC, mips) — in **two tiers from one recipe**: `field` at 512² for every surface and `hero` at 1024² for surfaces with `hero: true` (the 6 shared ids, every `triplanar` terrain layer, one signature surface per biome; ≤ 50 world-wide, asserted). There is no 2048² tier. Albedo maximum luminance 0.85; cached by content hash. <!-- reconciled 2026-09-18: OQ-2 decided in 10-render.md §10.2.1 — the single-tier layout was 143 MB against 60 --> The 83 surface ids and their base values are `SURFACES` in `packages/render/src/surfaces.ts` (`10-render.md` §10.2.2–10.2.3); the bake imports that table through a JSON export (`packages/render` writes `dist/surfaces.json` in its build; the bake reads the JSON, never the TS, so the import-boundary rule holds).
+`10-render.md` §10.2.1 fixes the output: per surface id, three KTX2 maps — `albedo` (RGB, sRGB, UASTC, mips to 1×1), `orm` (R = AO, G = roughness, B = metalness, NoColorSpace, UASTC, mips), `normal` (tangent-space normal from a 3×3 Sobel of the procedural heightfield, NoColorSpace, UASTC, mips) — in **two tiers from one recipe**: `field` at 512² for every surface and `hero` at 1024² for surfaces with `hero: true` (the 6 shared ids, every `triplanar` terrain layer, one signature surface per biome; ≤ 50 world-wide, asserted). There is no 2048² tier. Albedo maximum luminance 0.85; cached by content hash. <!-- reconciled 2026-09-18: OQ-2 decided in 10-render.md §10.2.1 — the single-tier layout was 143 MB against 60 --> The 83 surface ids and their base values are `SURFACES` in `packages/render/src/surfaces/surfaces.ts` (`10-render.md` §10.2.2–10.2.3); the bake imports that table and the recipes through the pure subpath `@ewa/render/surfaces` (§40.0.2 rule 5), and `packages/render/src/materials/surfaces.ts` re-exports the same leaf files. <!-- amended 2026-09-25: the `dist/surfaces.json` export was never built — material-bake IMPLEMENTATION-NOTES D0 -->
 
 The approach is the Table-Clash one (`reference-table-clash-SPEC.md` §2: `TextureSetRequest` with `albedo` painter, `orm` writer, `height` callback, `normalFromHeight`, `packOrm`, `fbm2`/`valueNoise2`/`hash21`), moved from runtime Canvas2D to a Node build step over `Float32Array`s. The runtime `CanvasTexture` path is cut (`10-render.md` §10.11).
 
-### 40.3.2 `SurfaceRecipe` (verbatim, `tools/material-bake/src/recipe.ts`)
+### 40.3.2 `SurfaceRecipe` (verbatim, `packages/render/src/surfaces/recipe.ts`, imported by the bake through `@ewa/render/surfaces`)
 
 ```ts
 export interface ScalarField { readonly width: number; readonly height: number; readonly data: Float32Array }      // row-major, 0..1, pre-zeroed
@@ -5678,13 +5774,14 @@ export interface Noise {
   fbm2(x: number, y: number, octaves: number, lacunarity?: number, gain?: number): number;   // defaults 2.03 / 0.5
   worley2(x: number, y: number, jitter?: number): { f1: number; f2: number; id: number };   // cells, for stone/scale
   rng(seed: string): () => number;                               // sfc32 seeded from sha256(seed); the only randomness
+  periodic(px: number, py?: number): Noise;                      // a view whose lattice wraps with period (px, py); fbm octave frequencies snapped to integral periods (seamless tiles)
 }
 
 export interface RecipeCtx {
   readonly id: string; readonly size: number;                    // 512 (field) | 1024 (hero) — the recipe is resolution-independent; every coordinate is in tile units
   readonly metres: number;                                       // physical tile size the texture covers (u = v); repeat is world-constant in the shader
   readonly noise: Noise;
-  readonly def: SurfaceDefJson;                                  // SURFACES[id] from packages/render dist/surfaces.json
+  readonly def: SurfaceDefJson;                                  // SURFACES[id] from @ewa/render/surfaces
 }
 
 export interface SurfaceRecipe {
@@ -5701,28 +5798,37 @@ export interface SurfaceRecipe {
   readonly normalStrength: number;
   /** 'repeat' (seamless: the painters are written on a torus, the bake asserts the wrap seam error) or 'clamp'. */
   readonly wrap: 'repeat' | 'clamp';
+  /** §40.3.5: per-surface RDO quality scalar when a map is over its byte target (default 2.0). */
+  readonly rdo?: number;
 }
+/** For card surfaces (`SurfaceDef.alphaTest !== null`) the bake passes an Rgb that also carries alpha (pre-filled 1). */
+export interface CardRgb extends Rgb { readonly alpha: Float32Array }
 
 export const RECIPES: Readonly<Record<string, SurfaceRecipe>>;  // one per SurfaceId; the bake fails if a SURFACES id has no recipe or vice versa
 ```
 
-Derivations done by the bake, not by recipes: `normal = sobel3x3(h, normalStrength)` encoded `(128 + n·127)` with OpenGL +Y up; cavity AO `ao *= 1 − 0.6 · saturate((blur(h, σ 6) − h) · 4)` when the recipe did not write `ao`; **seam check** for `wrap: 'repeat'` — mean absolute difference between column 0 and column `size−1` (and row 0 / row `size−1`) of albedo and height must be ≤ 2/255, else the build fails naming the surface; **luminance ceiling** — every albedo texel with Rec. 709 luminance > 0.85 (linear) is scaled down to 0.85 and counted; if more than 5 % of texels were clamped the build fails (the recipe is too bright, fix the recipe); mip chain by 2×2 box filter in linear space for albedo, straight average for ORM, renormalised average for normals.
+Derivations done by the bake, not by recipes: `normal = sobel3x3(h, normalStrength)` encoded `(128 + n·127)` with OpenGL +Y up; cavity AO `ao *= 1 − 0.6 · saturate((blur(h, σ 6) − h) · 4)` when the recipe did not write `ao`; **seam check** for `wrap: 'repeat'` — the mean absolute neighbour difference **across the wrap** (column `size−1` → column 0, row `size−1` → row 0) of albedo and height may exceed the *largest* mean neighbour difference between two adjacent interior columns (rows) by at most 2/255, else the build fails naming the surface. (The literal "column 0 vs column size−1 ≤ 2/255" fails every textured seamless map, because adjacent texels of a textured map legitimately differ by more than 2/255; a seamless torus scores 0 on the excess metric, a ramp ≈ 1.) The verbatim `Noise` gains `periodic(px, py)` (lattice wrapping with integral octave periods): `fbm2(x·k, …)` with lacunarity 2.03 cannot tile. <!-- amended 2026-09-25: material-bake IMPLEMENTATION-NOTES D3, D6 --> **luminance ceiling** — every albedo texel with Rec. 709 luminance > 0.85 (linear) is scaled down to 0.85 and counted; if more than 5 % of texels were clamped the build fails (the recipe is too bright, fix the recipe); mip chain by 2×2 box filter in linear space for albedo, straight average for ORM, renormalised average for normals.
 
 ### 40.3.3 Encoding
 
 `ktx2-encoder@0.6.0` Node API, one call per map:
 
 ```ts
-encodeToKTX2(new Uint8Array(0), {
+// src/encode.ts: encodeKtx2(levels, kind, rdo) calls encodeLevel(level, kind, rdo) once PER MIP LEVEL (each a
+// single-level KTX2) with the Basis settings below, then src/ktx2.ts assembles the levels' independently
+// supercompressed payloads into one KTX2 (level index, DFD and KVD of level 0, level data smallest first)
+const settings = {
   isUASTC: true, isKTX2File: true, needSupercompression: true,    // UASTC LDR + Zstandard
-  enableRDO: true, rdoQualityLevel: 2.0,                          // rate-distortion; the lever that makes UASTC fit (§40.3.5)
-  uastcLDRQualityLevel: 2,
-  generateMipmap: false,                                          // the bake supplies the chain (linear-space box filter, see above): mips are passed as extra slices via setSliceSourceImage in a small wrapper around NodeBasisEncoder (the high-level API exposes no per-level input)
+  enableRDO: true, rdoQualityLevel: 2.0,                          // rate-distortion (§40.3.5; measured: not the lever it was assumed to be)
+  uastcLDRQualityLevel: 0,                                        // pack level 0: same PSNR on albedo as 2 at ~0.6× the bytes and ~5× the speed
+  generateMipmap: false,                                          // the bake supplies the chain (linear-space box filter, see above)
   isPerceptual: kind === 'albedo', isSetKTX2SRGBTransferFunc: kind === 'albedo',
   isNormalMap: kind === 'normal',
-  imageDecoder: async () => ({ width, height, data }),
-});
+};
 ```
+
+<!-- amended 2026-09-25: material-bake IMPLEMENTATION-NOTES D1, D2 -->
+ktx2-encoder 0.6.0 has no per-level input: its only slice setter is `setSliceSourceImage(sliceIndex, …)` with no mip parameter, and Basis refuses mips passed as extra slices ("all source images must be the same resolution and have the same number of mipmap levels"); nor does it expose a Zstandard level (supercompression is on/off, `setKTX2UASTCSupercompression(boolean)`) or Basis' status printer (`setStatusOutput` exists in the wasm but not in `IBasisEncoder`) — so the bake drives the embind `BasisEncoder` directly, one single-level encode per mip, and assembles the container itself; each level is byte-identical to what Basis writes for that image. Basis skips RDO on blocks whose RMS error is above 8 (`setRDOUASTCSkipBlockRMSThresh`), so RDO λ alone barely moves textured maps; `rdoProfile(rdo)` keeps Basis' defaults up to 2.0 and widens the skip and max-RMS-ratio thresholds to 8 × rdo above it. Measured on this repo's recipes (256² crops): cobble albedo pack 2 λ2 0.385 B/texel 48.3 dB vs pack 0 λ2 0.228 B/texel 48.2 dB; cobble normal 0.597 → 0.467 B/texel. `node_modules/.pnpm/ktx2-encoder@0.6.0/node_modules/ktx2-encoder/types/type.d.ts` lines 16, 37, 176–258.
 
 The sizes here (512² = 0.26 Mpix, 1024² = 1 Mpix) are under the 12 Mpix cap measured in §40.1.6.1, so KTX2 is available; there is no WebP fallback for materials — `10-render.md` non-negotiable 2 ("every lit opaque material carries albedo + ORM + normal from KTX2") and the `textures.ktx2Only` audit rule make a fallback pointless. If the encoder is unavailable on a machine the bake fails with the probe message.
 
@@ -5920,8 +6026,8 @@ Today `src/cli.ts` is `export {};`. The tool is **headless and GPU-free**: it ne
 |---|---|---|
 | `budget.counts.drawCalls` | `counts.drawCalls ≤ 400` | §50.2.2 |
 | `budget.counts.triangles` | `≤ 2 500 000` | §50.2.2 |
-| `budget.counts.texturesSize` | `≤ 734 003 200` bytes | §50.2.2 |
-| `budget.counts.renderTargets` / `.programs` | `≤ 24` / `≤ 96` | §50.2.2 |
+| `budget.counts.texturesSize` | `≤ 734 003 200` bytes, read from `RenderStats.textureBytes` (KTX2 counted by level data, not three's 1-byte estimate) | §50.2.2 |
+| `budget.counts.renderTargets` / `.programs` | `≤ 41` / `≤ 128` (amended 2026-09-25: 24 / 96 measured impossible) | §50.2.2 |
 | `materials.count` | distinct `uuid` with `cls ∉ {debug}` `≤ 48` | §50.2.2, `10-render.md` §10.2.7 |
 | `materials.threeMaps` | every material with `cls ∈ {standard, physical, card, character}` and `harvestLevel === 0` has `maps.albedo && maps.orm && maps.normal` | Pillar 2 |
 | `materials.albedoCeiling` | every `surface` referenced resolves to a `materials.manifest.json` entry with `albedoClampedPct` present (the ceiling was applied at bake) | `10-render.md` §10.2.1, OQ-4 there |
@@ -5962,14 +6068,14 @@ Nothing under `public/` is hand-edited except `keyart/`, `icons/` and `fonts/`; 
 
 | Directory | Ceiling | Asserted by | Basis of the number |
 |---|---|---|---|
-| `creatures/` | **≤ 35 MB** (36 700 160 B) | `tools/sprite-pipeline/test/budget.test.ts` | §40.1.6: 260 sprites × (albedo q85 ≈ 73 KB + half-res normal q90 ≈ 24 KB + emissive ≈ 3 KB) × 1.20 mips ≈ 31.2 MB, + 130 thumbs ≤ 6 KB = 0.8 MB |
+| `creatures/` | **≤ 35 MB** (36 700 160 B) | `tools/sprite-pipeline/test/budget.test.ts` | measured (§40.1.6.3 as amended 2026-09-24, `PIPELINE_VERSION` 5): 65 atlases with binary alpha at albedo q88 / normal q92 — albedo 25.46 MB + normal 9.46 MB + emissive 0.46 MB (all levels) + thumbs and manifest 0.87 MB = **36.20 MB**, 0.50 MB under the ceiling. The draft's "73 + 24 + 3 KB × 1.20 ≈ 31.2 MB" was 1.5× optimistic <!-- amended 2026-09-25: stale basis after the 2026-09-24 amendment of §40.1.6.3 --> |
 | `models/` | **≤ 12 MB** | `tools/model-pipeline/test/budget.test.ts` | §40.2.6: 6.5 + 5.0 + headroom |
 | `materials/` | **≤ 90 MB** | `tools/material-bake/test/budget.test.ts` | §40.3.5: field 24.9 MB + hero ≤ 60 MB = ≤ 85 MB; the single-tier UASTC layout would be ≈ 143 MB and is why the tiers exist <!-- reconciled 2026-09-18: was 60 MB, which the arithmetic could not meet --> |
 | `audio/` | **≤ 80 MB** | `tools/audio-pipeline/test/budget.test.ts` | §40.4.7: 78 MB at 16-bar stems |
 | `basis/ + icons/ + fonts/ + keyart/` | ≤ 2 MB | `tools/asset-audit --bytes` | transcoder wasm 0.6 MB, fonts 0.36 MB, key art ≤ 0.8 MB |
 | **total `public/`** | **≤ 219 MB** | `tools/asset-audit --bytes` | sum |
 
-The per-zone *load* budget is a different number and is `20-client.md` §20.10.3's: phase 2 (`field` materials) ≤ 6 MB — Mirevale 4.5 MB, the largest biome set (cinder, 9 + 6 shared = 15) also 4.5 MB — and phase 3 (creature atlases + party + body GLB) ≤ 4 MB. From this file's manifests, phase 3 is ≤ 8 atlases × (73 + 24 + 3) KB × 4 sprites × 1.20 + 0.25 MB GLB ≈ **4.1 MB** cold for the single 14-species zone (`hollow_route`); the GLB is cached after the first zone, which brings the steady state to 3.8 MB. The `hero` tier (≤ 12 MB per zone) is phase 5.
+The per-zone *load* budget is a different number and is `20-client.md` §20.10.3's: phase 2 (`field` materials) ≤ 6 MB — Mirevale 4.5 MB, the largest biome set (cinder, 9 + 6 shared = 15) also 4.5 MB — and phase 3 (creature atlases + party + body GLB) ≤ 4 MB. From the shipped manifest (35.38 MB of atlas maps over 65 atlases = **0.544 MB per atlas**, all levels), phase 3 is `bound atlases × 0.544 MB` + the party singles' home atlases not already bound (≤ 6 × 0.544 MB) + the body GLB (0.15–0.22 MB): Mirevale binds 2 atlases (≈ 1.1 MB + GLB), well inside 4 MB; the 8-atlas zones (`galvan_route`, `solenne`) are 4.35 MB before singles and GLB, **over** the 4 MB phase-3 figure (it is asserted by `first-frame.spec.ts` on Mirevale only; recommendation R12). The draft's "≈ 4.1 MB cold for the 14-species `hollow_route`" used the pre-measurement 73 + 24 + 3 KB per sprite. The `hero` tier (≤ 12 MB per zone) is phase 5. <!-- amended 2026-09-25: stale arithmetic after §40.1.6.3's measured sizes; bind counts from packages/client/public/creatures/creatures.manifest.json `zones` -->
 
 ---
 
@@ -5995,7 +6101,7 @@ The per-zone *load* budget is a different number and is `20-client.md` §20.10.3
 | Per-zone duplicated 4096² atlases and `single_<species>` files | 140 placements of 72 species + a second 2048² copy of all 130 ≈ 2.7× the bytes of storing each sprite once | 2048² zone-affinity atlases, `zones[]` bind lists, `home` crop (§40.1.4) |
 | Shipping the `animations/` sheets | no consumer in `10-render.md`; 15 MB | `CreatureBillboard` poses are uniform writes |
 | Runtime sprite variant re-baking | `00-spine.md` §3.7: palettes are uniforms | `hueShift/satMul/lightMul/alphaGlow` userData |
-| Per-species hand-tuned emissive masks as a first step | 130 × 2 masks to paint | threshold 0.72 + `EMISSIVE_OVERRIDES` only where the contact sheet shows a miss |
+| Per-species hand-tuned emissive masks as a first step | 130 × 2 masks to paint | the §40.1.2 stage-4 rule (HSV value ≥ 0.92, chroma ≥ 0.4, 8 % cap; amended 2026-09-25 — was "threshold 0.72") + `EMISSIVE_OVERRIDES` only where the contact sheet shows a miss |
 | Single-tier 1024²/2048² UASTC for all 83 surfaces | ≈ 143 MB against the ceiling | hero 1024² / field 512² tiers (§40.3.5), ≤ 85 MB |
 | Two-pass dynamic `loudnorm` | alters the envelope, breaks loop seams | measured static gain |
 | `.ogg` Opus container | Safari `decodeAudioData` rejects it | `.webm` Opus + `.m4a` AAC fallback (same codec as the task asked for, different container) |
@@ -6050,7 +6156,7 @@ Each is a rule, the thing that enforces it, and the test that fails when it is b
 9. **Disposal returns to baseline.** The baseline is `BudgetCounts` captured after `createRenderer` resolves (library warm-compiled, `10-render.md` §10.1.2 step 8) and **before** any `loadZone`. After every `unloadZone()`, `renderer.info.memory.{geometries, textures, texturesSize, programs, renderTargets, attributes, attributesSize}` equal that baseline — exactly, not within a tolerance; the first cycle is not special. *Enforced by:* `packages/render/test/leak.spec.ts` (§50.4.6), 50 cycles over `mirevale` and `mire_route`. <!-- reconciled 2026-09-18: this file said "after the first warm load/unload cycle", 10-render.md said post-step-8; one baseline -->
 10. **No per-frame allocation in the sim step or the input path.** The client fixed step, prediction/reconciliation and remote interpolation allocate zero objects per tick after warm-up. *Enforced by:* `packages/client/test/alloc.spec.ts` — Chromium `--js-flags=--expose-gc`, `gc()` then 600 ticks, `performance.measureUserAgentSpecificMemory()` delta ≤ 64 KiB (sampling noise), and an instrumented `Array`/`Object`/`Map` constructor count of 0 inside the tick.
 11. **130/130 obtainable is asserted at build.** `validate.ts` rule 7 (spine §3.10). *Enforced by:* `pnpm --filter @ewa/content validate`, which `pnpm build` runs; `packages/content/test/coverage.test.ts` additionally lists the ids by acquisition path.
-12. **Content ids are validated at build.** Every dangling id in spine §3.10 rule 2 fails `pnpm build`. The server never resolves an unknown id at runtime — `ContentIndex` throws `RangeError`, and the server's message handlers catch it as `error { code: 'invalidPayload' }`. A message whose *type* is not a `CLIENT_MESSAGES` key has no handler and is dropped without a reply (spine §4.3; 5 in 10 s → disconnect 4003).
+12. **Content ids are validated at build.** Every dangling id in spine §3.10 rule 2 fails `pnpm build`. The server never resolves an unknown id at runtime — `ContentIndex` throws `RangeError`, and the server's message handlers catch it as `error { code: 'invalidPayload' }`. A message whose *type* is not a `CLIENT_MESSAGES` key is counted by the room's `'*'` handler and dropped without a reply (spine §4.3; 5 in 10 s → disconnect 4003; without the `'*'` handler `@colyseus/core` 0.18.14 would disconnect on the first one — amended 2026-09-25).
 13. **No client-side badge.** There is no code path on the client that produces a `BadgeId` other than reading `progressionDelta.badges`. *Enforced by:* a `grep`-shaped test, `packages/client/test/no-client-badge.test.ts`, which asserts that `packages/client/src` contains no string literal from `BADGES` ids except inside the display map `badgeIcon.ts`, and `authority.test.ts` case A6.
 14. **One design system.** `packages/client/src/ui/tokens.css` (generated from `tokens.json`, `20-client.md` §20.2.2) is the only file declaring CSS custom properties; no `style=` attribute except `cssVars({ '--x': … })`; no `font-size` outside the `--t-*` tokens; every spacing value a `--s-*` token. *Enforced by:* `packages/client/test/design-system.test.ts` (regex over the source tree, plus the contrast and ΔE checks of §20.2.2/§20.8.3 and equality of `tokens.json` `typeColors.default` with `10-render.md` §10.4.6) and the local ESLint rule `ewa/no-inline-style` (`20-client.md` §20.2.1). <!-- reconciled 2026-09-18: path and rule name per 20-client.md -->
 15. **Readability gates.** The HP bar, the type icon and the move-result text of both active battlers are never covered by bloom, DOF, VFX or camera framing. *Enforced by:* `packages/client/test/readability.spec.ts` — for the 6 audit shots in battle state, the HUD rects are read back from the final composite and compared with a HUD-only render: per-pixel luminance difference ≤ 2/255 over the rect (bloom and DOF are applied before the HUD layer, so a leak shows as a difference).
@@ -6086,12 +6192,15 @@ Statistic: over a 600-frame capture after 120 warm-up frames, **median ≤ targe
 |---|---|---|
 | Draw calls | `renderer.info.render.drawCalls` | ≤ 400 |
 | Triangles | `renderer.info.render.triangles` | ≤ 2 500 000 |
-| Texture memory | `renderer.info.memory.texturesSize` | ≤ 700 MB (734 003 200 bytes) |
+| Texture memory | `renderer.info.memory.texturesSize` **+** `materials.residentTextureBytes()` (= `RenderStats.textureBytes`; three counts every compressed texture as 1 byte, `Info.js` lines 449–453) | ≤ 700 MB (734 003 200 bytes) |
 | Unique materials | distinct `Material.uuid` reachable from the zone root, excluding the `debug` layer | ≤ 48 |
-| Shadow-casting lights | `PointLight`/`SpotLight` with `castShadow === true` | ≤ 8 (+ sun) |
+| Shadow-casting lights | `PointLight`/`SpotLight` with `castShadow === true`, scene-wide (the 2 arena beacons included) | ≤ 8 (+ sun) |
 | Non-shadowing lights | `PointLight`/`SpotLight` with `castShadow === false` | ≤ 24 |
-| Render targets alive | `renderer.info.memory.renderTargets` | ≤ 24 |
-| Shader programs alive | `renderer.info.memory.programs` | ≤ 96 |
+| Render targets alive | `renderer.info.memory.renderTargets` | ≤ 41 (29 post/IBL + 4 cascades + ≤ 8 local casters, `10-render.md` §10.10.2; measured 34) |
+| Shader programs alive | `renderer.info.memory.programs` | ≤ 128 (measured 107 with a zone loaded; baseline 79) |
+
+<!-- amended 2026-09-25: texture metric per render IMPLEMENTATION-NOTES C17; render-target and program caps 24 / 96 were measured impossible (C18: 34; Part 2: 107) — see 10-render.md §10.10.2 -->
+The 700 MB texture cap is itself doubtful at the 3840-wide drawing buffer once atlases, singles and cascade colour attachments are counted (`10-render.md` §10.8.3; recommendation R5 in `.design/audits/spec-verification.md`).
 
 Counts are read after `renderer.render()`/`pipeline.render()` returns for the frame; `renderer.info.autoReset` stays `true` so `render.*` is the last frame's figure.
 
@@ -6135,7 +6244,7 @@ export interface BudgetProbe {
 }
 ```
 
-GPU timing uses the renderer's own timestamp queries: the `WebGPURenderer` is constructed with `trackTimestamp: true` (a `WebGPUBackend.js` parameter, `@property {boolean} [trackTimestamp=false]`; it is missing from `@types/three` 0.186's `WebGPUBackendParameters`, so the harness passes it through one typed cast in `packages/render/src/renderer.ts` and nowhere else). `resolveTimestampsAsync('render')` returns the summed duration of all render contexts of the frame — the total row. It requires the adapter feature `timestamp-query`; Chromium exposes it behind `--enable-webgpu-developer-features`, which the harness launches with.
+GPU timing uses the renderer's own timestamp queries: the `WebGPURenderer` is constructed with `trackTimestamp: true` (a `WebGPUBackend.js` parameter, `@property {boolean} [trackTimestamp=false]`, declared in `@types/three` 0.186's `WebGPUBackendParameters` at `src/renderers/webgpu/WebGPUBackend.d.ts` line 11, so no cast is needed; the backend forces it to `false` when the adapter lacks `timestamp-query`). <!-- amended 2026-09-25: "missing from @types/three … one typed cast" was false — render IMPLEMENTATION-NOTES C1 --> `resolveTimestampsAsync('render')` returns the summed duration of all render contexts of the frame — the total row. It requires the adapter feature `timestamp-query`; Chromium exposes it behind `--enable-webgpu-developer-features`, which the harness launches with.
 
 **Per-pass time is differential, not per-context.** Three's pool keys timestamps by an internal render-context uid, and the display nodes (`BloomNode`, `GTAONode`, …) own their own render targets, so mapping uids to the table's rows would depend on internals this file does not control. Instead: `T_all` = median of 600 frames with every pass on; for each pass `p`, `T_without_p` = median with `setPassEnabled(p, false)`; `pass_ms(p) = T_all − T_without_p`. `opaque` is measured last as the remainder: `T_all − Σ pass_ms(others) − simMs`. Each pass is asserted against its row; `T_all + simMs` is asserted against the total row. Cross-check only: an `InspectorBase` subclass (`renderer.inspector = new BudgetInspector()`) logs `beginRender(uid, scene, camera, renderTarget)` / `finishRender(uid)` pairs and, after `resolveTimestampsAsync`, prints `renderer.backend.timestampQueryPool.render.getTimestamp(uid)` per uid next to the render target's `name`, so a reviewer can see which contexts a pass is made of. The printed values are not asserted.
 
@@ -6194,7 +6303,7 @@ Every file listed must exist with at least the assertions listed. A milestone in
 | `abilities.test.ts` | All 25 rows of spine §2.5 by hook: Intimidate fires once on switch-in and never in `calcDamage`; Guts cancels the burn halving; Wonder Guard blocks `effectiveness < 2` with `moveFailed { reason: 'wonderGuard' }`; Levitate/Void Sovereign → `absorbed: null`, `amount 0`; Water/Volt Absorb heal `floor(maxHp/4)`; Flash Fire flag set then ×3/2; Competitive +2 once per foe-caused lowering; Regenerator `floor(maxHp/3)`; Natural Cure clears major only. |
 | `items.test.ts` | All 14 held rows: Choice lock persists until switch-out, `choiceLocked` from `validateAction`; Assault Vest blocks power-0 (`statusMoveBlocked`) and ×1.25 def; Eviolite only when `evolution !== null`; Sitrus/Oran thresholds and one-shot; Weakness Policy consumed on `effectiveness ≥ 2`; Heavy Duty Boots no-op. |
 | `turn-order.test.ts` | Spine §2.11 order with a scripted rng: replacement phase returns without `turn + 1`; forfeit ends immediately; flee while trapped → `moveFailed { reason: 'trapped' }` and the wild side acts; switches before items before catch before moves; priority > speed > `rng.int(2)`; end-of-turn order sand→burn→poison→trap→berries→Speed Boost→weather countdown→faint→mustSwitch; a battler KO'd by burn takes no later tick and triggers no berry. |
-| `validate-action.test.ts` | Every `ActionError` value is produced by at least one case; `resolveTurn` throws on each; `null` accepted only in the replacement-phase exception; pvp with a `null` action throws. |
+| `validate-action.test.ts` | Every `ActionError` value is produced by at least one case; `resolveTurn` throws on each; `null` accepted for every non-player side in every phase (including its own replacement phase) and for a player side only in the replacement-phase exception (spine §2.10, amended 2026-09-25); pvp with a `null` action throws. |
 | `catch.test.ts` | `CATCH_B.length === 256`, `CATCH_B[0] === 0`, `CATCH_B[255] === 65536`, monotonic non-decreasing; regeneration with `Math.pow` compared and any mismatch *reported*, the literal wins; the `a` formula on 12 (M, H, rate, orb, status, alpha) rows; `a ≥ 255` → 0 draws, three `catchShake` then `catchResult { caught: true, shakes: 4 }`; otherwise 1..4 draws, `catchShake` count `min(3, shakes)`; alpha halves `rate` with floor and min 3; orb deducted on failure (`consumedItems`). |
 | `exp.test.ts` | `expToLevel(l) === l ** 3` for 1..100; `expToLevel(100) === 1_000_000`; `levelForExp` inverse over 0..1_000_000 step 997; `expGain` ×3/2 for trainer/league/pvp only; `applyExp` returns `levelsGained` as a contiguous list, `learnable` only moves not known, `evolveReady` resolves the `split` branch by ability; exp capped at 1_000_000; `evolve` keeps a non-species nickname, resets a species-name nickname, scales hp by the maxHp ratio. |
 | `elo.test.ts` | 10 000 seeded rating pairs: `winnerDelta ≥ 0`, `loserDelta ≤ 0`, `|winnerDelta| + |loserDelta|` within 1 of `K`; ratings floor at 0; `tierFor` on the six thresholds and each threshold − 1. |
@@ -6218,7 +6327,7 @@ Every file listed must exist with at least the assertions listed. A milestone in
 | `zones.test.ts` | Links symmetric for all 4 directions; every zone reachable from `mirevale` ignoring gates; gates appear in `BadgeId` order along `ZONE_ORDER`; the gate column equals spine §3.1's table row by row; `layoutSeed` unique; `mire_route.gate === null`. |
 | `gates-reachable.test.ts` | A simulated player holding badges `[]`, `[bloom]`, `[bloom, ember]`, … in order can reach the town of gym `n + 1` with `n` badges, for `n = 0..7`, and `solenne` with all 8 — BFS over `links` honouring `gate`. |
 | `league.test.ts` | 8 gyms with the 8 badges in order, ids `verdant_gym … draco_gym`; elite `veil`, `aurelia`, `kirei`; exactly one champion, `id === 'zeon'`; gym team levels non-decreasing across `order`; every team species/ability/held item resolves. |
-| `encounters.test.ts` | `levelMin ≤ levelMax`, weights > 0, story tables satisfy RC-9 (band + Ghost/Dark night-only), ≤ 16 slots and ≤ 14 species per table, `|Z(zone)| ≤ 16` for all 21 (spine rule 11); `medium` defaults to `'land'` and every `'water'` slot's zone has `water` samples; `ALPHA_CHANCE 0.02`, `VARIANT_CHANCE 0.03`; a 100 000-roll seeded sample of `mire_route` lands within ±1.5 percentage points of each slot's weight share. <!-- reconciled 2026-09-18: story tables allowed (roster-coverage A1) --> |
+| `encounters.test.ts` | `levelMin ≤ levelMax`, weights > 0, story tables satisfy RC-9 (band + Ghost/Dark night-only), ≤ 16 slots and ≤ 14 species per table, `|O(zone)| ≤ 16` (table ∪ statics) for all 21 and the full `Z(zone)` reported in `bindSets` (spine rule 11, amended 2026-09-25: `solenne` 26 and `umbral_observatory` 20 cannot meet a cap on `Z`); `medium` defaults to `'land'` and every `'water'` slot's zone has `water` samples; `ALPHA_CHANCE 0.02`, `VARIANT_CHANCE 0.03`; a 100 000-roll seeded sample of `mire_route` lands within ±1.5 percentage points of each slot's weight share. <!-- reconciled 2026-09-18: story tables allowed (roster-coverage A1) --> |
 | `story.test.ts` | Exactly one `starter`; every `need` flag resolvable (`badge:` or set by a beat/quest/league row — the 33 bible beats pass); acyclic per zone and at most one eligible beat per zone for every reachable flag set (BFS over the beat graph); each act has ≥ 1 beat; `mire_route` has both a `harvested` and an `intact` beat; `nextStoryBeat` returns beat 1 for an empty flag set and `null` for a zone whose beats are all done; `harvestStateFor('mire_route', {})` is the content default, `{ 'beat:grove_gone:done' }` → `harvested`, `{ …, 'beat:restore_the_grove:done' }` → `intact`; `beatDoneFlag` never collides with an authored flag. |
 | `index.test.ts` | `createContentIndex()` throws `RangeError` on an unknown id for each of the 5 lookups; `allSpecies()` sorted by `dexNumber`; the index is frozen (`Object.isFrozen` on a species). |
 
@@ -6257,13 +6366,13 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 
 | File | Asserts |
 |---|---|
-| `authority.test.ts` | The adversarial suite. Before each case, snapshot `canonicalJson` of the attacker's rows in `players`, `creature_instances`, `inventory_items`, `badges`, `story_flags`, `dex_entries`, `quest_progress`, `battle_pass`; after, assert byte-identical unless the case says otherwise. Cases: **A1** `progressionDelta` / `inventoryDelta` / `battleEnd` shaped payloads sent as client messages → no reply (no handler), `metrics.unknownMessages + 1`, the 5th within 10 s disconnects with code 4003 (spine §4.3); **A2** `battleAction` for a battle the client is not seated in → `notFound` (identical to a missing id, §30.4.2); **A3** `battleAction` with a move not in the active creature's `moves` → `notAllowed`, turn not advanced; **A4** `battleAction` with `turn` ≠ the collecting turn → `notAllowed 'wrongTurn'`; **A5** `engageSpawn` for a spawn > 3 m away → `notAllowed 'tooFar'`, for a spawn outside the 3×3 → `notFound`; **A6** `interact { kind: 'gym' }` without a win → no badge row; **A7** `POST /creature/:id/evolve` without `evolveReady` → 4xx, species unchanged; **A8** `POST /item/use` for an item at qty 0 → 409 `InsufficientItems`; **A9** `POST /shop/buy` with `money < price` → 409 `InsufficientFunds`; **A10** `POST /battle-pass/claim` above `trainerLevel` → 4xx; **A11** `POST /creature/:id/moves` with a move above level → 4xx; **A12** catching by sending `battleAction { kind: 'catch' }` in a `trainer` format battle → `validateAction` `cannotCatch`; **A13** 200 `input` messages in one second → 170 dropped with one `rateLimited`; **A14** a second socket with the same JWT → one `PlayerState`, the older socket closed with 4001; **A15** an `input` teleport of 64 units in one `dtMs 50` → position unchanged, `seq` echoed against the unchanged pose, **no error message** (§30.2.4: rejection is silent, 30 in 10 s → kick 4003); **A16** a *legitimate* wild win changes exactly `players.trainer_exp` (+10), `dex_entries`, `creature_instances.exp/level/hp` — the positive control that proves the snapshots would detect a write; **A17** `interact` on a story-beat `speaker` whose beat's `need` is unmet → no `storyBeat` message, no `story_flags` row (§30.4.8); **A18** `interact { kind: 'static' }` without the gate flag, or after the static's own flag is held → `notAllowed`, no battle; **A19** `handoverAck` to a room the player never reserved → join refused (`badHandover`), no position write; **A20** `POST /zone/enter` for a gated zone without the badge → 403 `gated`, no seat. <!-- reconciled 2026-09-18: A1/A2/A4/A5/A15 aligned with 30-server-netcode.md; A17–A20 added --> |
-| `aoi-fanout.test.ts` | N ∈ {50, 100, 200} bot clients placed on a uniform grid across `mire_route`'s 240 m field (7.5 × 7.5 AOI cells of 32 units), each moving 1 unit per tick along its row. Over 10 s at 20 Hz: per-client `PlayerState` patches received ≤ (bots in its 3 × 3 cells) × 200 + 10 % ; total patches ≤ 0.3 × (20 · N · (N − 1)); the quadratic model's figure is printed beside the measured one. Also: a bot crossing a cell boundary receives `add` for exactly the new column of 3 cells and `remove` for the old; a bot leaving (`onLeave`) triggers `view.dispose()` (spied) and is removed from every other view before `players.delete`. |
+| `authority.test.ts` | The adversarial suite. Before each case, snapshot `canonicalJson` of the attacker's rows in `players`, `creature_instances`, `inventory_items`, `badges`, `story_flags`, `dex_entries`, `quest_progress`, `battle_pass`; after, assert byte-identical unless the case says otherwise. Cases: **A1** `progressionDelta` / `inventoryDelta` / `battleEnd` shaped payloads sent as client messages → no reply (no handler), `metrics.unknownMessages + 1`, the 5th within 10 s disconnects with code 4003 (spine §4.3); **A2** `battleAction` for a battle the client is not seated in → `notFound` (identical to a missing id, §30.4.2); **A3** `battleAction` with a move not in the active creature's `moves` → `notAllowed`, turn not advanced; **A4** `battleAction` with `turn` ≠ the collecting turn → `notAllowed 'wrongTurn'`; **A5** `engageSpawn` for a spawn > 3 m away → `notAllowed 'tooFar'`, for a spawn outside the 3×3 → `notFound`; **A6** `interact { kind: 'gym' }` without a win → no badge row; **A7** `POST /creature/:id/evolve` without `evolveReady` → 4xx, species unchanged; **A8** `POST /item/use` for an item at qty 0 → 409 `InsufficientItems`; **A9** `POST /shop/buy` with `money < price` → 409 `InsufficientFunds`; **A10** `POST /battle-pass/claim` above `trainerLevel` → 4xx; **A11** `POST /creature/:id/moves` with a move above level → 4xx; **A12** catching by sending `battleAction { kind: 'catch' }` in a `trainer` format battle → `validateAction` `cannotCatch`; **A13** 200 `input` messages in one second → 170 dropped with one `rateLimited`; **A14** a second socket with the same JWT → one `PlayerState`, the older socket closed with 4101 (`CLOSE_CODES.replaced`; amended 2026-09-25 — 4001 is Colyseus' `SERVER_SHUTDOWN`); **A15** an `input` teleport of 64 units in one `dtMs 50` → position unchanged, `seq` echoed against the unchanged pose, **no error message** (§30.2.4: rejection is silent, 30 in 10 s → kick 4003); **A16** a *legitimate* wild win changes exactly `players.trainer_exp` (+10), `dex_entries`, `creature_instances.exp/level/hp` — the positive control that proves the snapshots would detect a write; **A17** `interact` on a story-beat `speaker` whose beat's `need` is unmet → no `storyBeat` message, no `story_flags` row (§30.4.8); **A18** `interact { kind: 'static' }` without the gate flag, or after the static's own flag is held → `notAllowed`, no battle; **A19** `handoverAck` to a room the player never reserved → join refused (`badHandover`), no position write; **A20** `POST /zone/enter` for a gated zone without the badge → 403 `gated`, no seat; **A21** `POST /matchmake/joinOrCreate/zone` or `/matchmake/create/zone` called directly with a valid token (any `zoneId`/`shard`) → refused `noTicket`, no room created, no avatar; **A22** `POST /zone/enter` for an ungated zone that is not the player's current zone → 409 `wrongZone`, no seat, no position write; **A23** `POST /marketplace/list` of a creature during a live battle → 409 `inBattle`; **A24** `interact` on a story-battle `TrainerDef` whose beat is not eligible → no `battleStart`, no money, no `trainer:<id>:beaten` (§30.4.8 rule 6). <!-- reconciled 2026-09-18: A1/A2/A4/A5/A15 aligned with 30-server-netcode.md; A17–A20 added --> <!-- amended 2026-09-25: A21–A24 added (30-server-netcode.md §30.5.1 #26–#28, §30.4.8 rule 6) --> |
+| `aoi-fanout.test.ts` | N ∈ {50, 100, 200} bot clients placed on a uniform grid across `mire_route`'s playable interior (±104, spine §3.1; 6.5 × 6.5 AOI cells of 32 units), each moving 0.30 m per 45 ms running input (6.7 m/s) along its row and bouncing off unwalkable samples — the earlier "1 unit per tick" is 20 m/s, a `speed` reject under §30.2.4's 8.05 m/s cap (amended 2026-09-25, server IMPLEMENTATION-NOTES "aoi-fanout.test.ts deviations"). Over 10 s at 20 Hz: per-client `PlayerState` patches received ≤ (bots in its 3 × 3 cells) × 200 + 10 % ; total patches ≤ 0.3 × (20 · N · (N − 1)); the quadratic model's figure is printed beside the measured one. Also: a bot crossing a cell boundary receives `add` for exactly the new column of 3 cells and `remove` for the old; a bot leaving (`onLeave`) triggers `view.dispose()` (spied) and is removed from every other view before `players.delete`. |
 | `movement.test.ts` | Speed cap: an `input` whose displacement exceeds `RUN_SPEED × 1.15 × dtMs` (+ 0.02 m) is rejected with `speed`, the avatar does not move and `seq` **is** echoed against the unchanged pose (the client snaps); the heightfield: an `input` onto a `walkable = 0` sample, or whose segment crosses one at 0.25 m sampling, → `unwalkable`; the dt budget: accepted `dtMs` can exceed real elapsed time by at most 100 ms (`BUDGET_MIN_MS`), so `dtMs 100` every 33 ms is rejected from the 4th input; a `seq ≤ lastSeq` is dropped silently; a `water`-only sample is accepted only with `HM Surf` in inventory; a position outside `playableBounds` → `bounds`. <!-- reconciled 2026-09-18: matches §30.2.4 --> |
 | `spawn-director.test.ts` | Driven with synthetic `now`: reaches `targetCount` (14 / 4 / 6 by zone kind — `ROUTE_TUNING`/`TOWN_SPAWN_TUNING`/`STORY_TUNING` from content), never exceeds it, one spawn per tick at most; the same `(seed, zone)` reproduces the same spawn sequence; `ability` is one of `species.abilities`; a `'water'` slot lands on a `water` sample; night-only slots never roll in `[0.25, 0.75)`; engagement extends `despawnAt`; a 100 000-roll sample matches the weights ±1.5 pp. |
 | `story-beats.test.ts` | With an in-process room: `interact` on `mirevale.wynn` with no flags → `storyBeat start` then `complete`, `story_flags` gains `met_wynn` and `beat:first_witness:done`, `progressionDelta.flags` sent; a second `interact` → plain NPC (nothing); a battle beat (`mire_rival`) completes only after the win; a `harvest` beat changes `harvestStateFor` for that player only (`ZoneState.harvestState` unchanged, a second player's `harvestStateFor` unchanged). |
 | `battle-room.test.ts` | `battleStart` carries `stateDigest === digestBattleState(state)`; each `battleEvents` digest matches a client-side `resolveTurn` preview over 50 seeded wild battles (desync counter 0); NPC side passes `null` and the server never calls `chooseNpcAction` itself; a `battleResync` request returns the current state with a matching digest; rewards on `battleEnd` equal `RewardsSummary` derived from `TRAINER_EXP` and `expGain`. |
-| `handover.test.ts` | Crossing within 6 units of a link edge emits `handover`; `handoverAck` at the destination marks presence; the source removes the avatar on IPC confirm or after 5 s; the position row is written once, by the destination. |
+| `handover.test.ts` | Crossing within 6 units of a link side's playable edge (`playableBounds`, amended 2026-09-25) emits `handover`; `handoverAck` at the destination marks presence; the source removes the avatar on IPC confirm or after 5 s; the position row is written once, by the destination. |
 | `challenge-trade.test.ts` | Challenge handshake re-checks presence before `createBattle`; a challenge to a player who left → `challengeResult { result: 'unavailable' }`; 45 s TTL expiry; trade `offerHash` is `fnv1a32` of the canonical pair of offers and a changed offer resets both `confirmed` flags. |
 | `rest-auth.test.ts` | Register → login → refresh → logout; access token expiry 15 min (`exp − iat === 900`); refresh 30 d; a revoked refresh fails; every bearer route returns 401 without a token; admin routes return 403 without `is_admin`. |
 | `raid.test.ts` | Boss `hpPct` is the only HP the client sees; phase transitions 0→1→2 (`hpPct < 0.3`)→3→4; `raidEvents` carry digests; the catch window accepts one `raidCatch` per player. |
@@ -6273,7 +6382,7 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | File | Asserts |
 |---|---|
 | `leak.spec.ts` | Capture `BudgetCounts` as baseline right after `createRenderer` resolves (§50.1.9); load `mirevale`, unload, repeat 50 times for `mirevale` and 50 for `mire_route`; after **every** unload `geometries`, `textures`, `texturesSize`, `programs`, `renderTargets`, `attributes`, `attributesSize` equal baseline exactly (`programs` constant proves no material graph appeared during a load, `10-render.md` §10.5.9); after the 100th cycle, `renderer.info.memory.total` equals baseline. Runs in CI under SwiftShader. |
-| `budget.spec.ts` | Runs `harness:budget` on the slice zones and asserts every §50.2.2 count cap, including `renderTargets` at the steady state of 20 (impostor targets folded, `10-render.md` §10.10.2); asserts §50.2.1 milliseconds only when `--budget-ms 1` (reference machine). |
+| `budget.spec.ts` | Runs `harness:budget` on the slice zones and asserts every §50.2.2 count cap, including `renderTargets ≤ 41` and `programs ≤ 128` (`10-render.md` §10.10.2; amended 2026-09-25 — the earlier "steady state of 20" was measured 34) and texture bytes from `RenderStats.textureBytes`; asserts §50.2.1 milliseconds only when `--budget-ms 1` (reference machine). |
 | `pillars.spec.ts` | Pillar 1: the `mask` MRT reads 1.0 over the player billboard; a prop 12 units off the focal plane has CoC ≥ 3 px. Pillar 4/night (legacy-render-audit Q7): at `timeOfDay 0.05` ground luminance directly under a lantern ≥ 4× the ground 10 units away (legacy ratio 1.0). Shadow reach (Q5): with the 4 cascades at 14 / 34 / 72 / 160 m the far cascade's texel is `(160 − 72) / 2048 = 4.3 cm` ≤ 8 cm, and a caster placed 120 units from the camera produces a non-empty footprint in cascade 4. Pillar 5: noon vs dusk light set differ by ≥ 12 % mean luminance over the opaque billboard pixels; shadow-map footprint non-empty. Pillar 6: the scene pass `output` MRT (pre-TRAA) at 1.3× shows no intermediate alpha along a 200-pixel straight edge. Pillar 7 (Q29): zone root never removed during a scripted battle; battle camera within 40 units; the zone's `lights[]` list in `dumpZone()` is identical before and during the battle (the 2 arena beacons are the reserved slots). Pillar 8: reduced effects → 600 frames with zero shake and zero `timeScale ≠ 1`. Bloom gap (Q9): in shot 1's beauty target the brightest non-emissive pixel ≤ 1.15 and the brightest creature-emissive pixel ≥ 1.35 scene-linear. <!-- reconciled 2026-09-18: 10-render.md OQ 4 + legacy audit Q5/Q7/Q9/Q29 --> |
 | `harvest.spec.ts` | `HarvestLevel` uniform 0 → three maps, punctual lights, lit sprites present; level 2 → the audit's pillar rules 2–5 *fail on purpose* and the harness asserts exactly that (the degraded look is a uniform, so `dumpZone()` reports the same material classes with `harvestLevel: 2`). |
 | `post-graph.test.ts` (vitest, node, mocked `three/tsl`) | `buildPostGraph` produces the node order of `10-render.md` §10.8.1 (GTAO → TRAA → bloom → DOF → chroma → ACES → grade → vignette → grain → output) with the stated parameters (GTAO radius 0.9 / 16 spp / half res, bloom 0.35 / 0.6 / 1.15, DOF tilt 24° / 6 m / 6 px, vignette 0.22, grain 0.035); with each `EffectsFlags` member false the corresponding node is absent from the graph, not zeroed (legacy-render-audit Q8). |
@@ -6310,10 +6419,10 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 |---|---|
 | `tools/sprite-pipeline/test/determinism.test.ts` | `runBuild` twice over a 6-species fixture set with `--force` on the second run: byte-identical WebP atlases and mip files, thumbs, `creatures.manifest.json`, `qa-report.json`; a third run without `--force` reports `cacheHits === 12` (6 species × 2 sides). <!-- reconciled 2026-09-18: 40-pipelines.md §40.1.7 --> |
 | `tools/sprite-pipeline/test/stages.test.ts` | Alpha recovery: a fixture with a white background yields an alpha channel with ≥ 99 % of border pixels at 0 and transparent RGB within 2 px of an edge equal to the nearest opaque RGB; normalize: a 300×480 input becomes 1024² with the foot line at `round((1 − footV) × 1024) = 942` (±1 texel, `footV 0.08` from the bottom); resample on integer factors uses nearest (a 2-colour checker stays 2 colours); normal map: a flat input yields (128,128,255) ±1 and the 6 px bevel band tilts outward; emissive mask: a fixture with one saturated bright region yields a two-valued mask covering that region and nothing else; multiframe sources decode the `frame-select.json` page. |
-| `tools/sprite-pipeline/test/encoding.test.ts` | The seven acceptance tests of `40-pipelines.md` §40.1.6.4: alpha byte-exact on every map; lossless emissive bit-identical on a hard-edge crop; lossy albedo PSNR ≥ 36 dB, hard-edge error share ≤ 18 %, interior ≤ 2 %, luma error ≤ 24; half-res normal mean angular error ≤ 6° (≤ 12° in the bevel band), flat region (128,128,255) ± 2; mip coverage within 1 % per level; transparent RGB survives encoding ± 12. |
+| `tools/sprite-pipeline/test/encoding.test.ts` | The seven acceptance tests of `40-pipelines.md` §40.1.6.4 **as amended 2026-09-24**: alpha byte-exact on every map; lossless emissive bit-identical on a hard-edge crop; lossy albedo per sprite whole-cell PSNR ≥ 30 dB and worst-edge-crop PSNR ≥ 26 dB, edge share ≤ 50 %, interior ≤ 15 %, set medians PSNR ≥ 35 dB / edge ≤ 25 % / interior ≤ 3 %, worst-edge-crop luma error ≤ 40; half-res normal mean angular error ≤ 6° (≤ 12° in the bevel band), flat region (128,128,255) ± 2 for ≥ 80 % of its texels and never beyond ± 12; mip coverage within 1 % per level; transparent-RGB band mean luma error ≤ 35 per atlas. <!-- amended 2026-09-25: this row still carried the pre-2026-09-24 thresholds (36 dB, 18 %, 2 %, 24, ± 2, ± 12), contradicting §40.1.6.4 --> |
 | `tools/sprite-pipeline/test/qa-flags.test.ts` | Flags with their §40.1.3 classes: `clipped`, `nonsquare`, `multiframe` (informational), `coverage` (review), `leak`, `empty`, `fallback-source`, `missing-side` (must be resolved), `sidemismatch` (front/back `pixelScale` differ by > 20 %, informational); each flag names the species and side; `excluded[]` lists the 4 alternate-style files with `reason: 'alternate-style'`; `accepted[]` carries a reason per entry; a clean fixture yields no non-informational flag. Release rule for M1: no flag that is non-informational and not accepted. <!-- reconciled 2026-09-18: was "flagged must be empty" --> |
 | `tools/sprite-pipeline/test/budget.test.ts` | `manifest.totalBytes ≤ 36 700 160` (35 MB); `Object.keys(manifest.sprites)` equals the 130 content species ids; `atlases.length ≤ 68` (65 + ≤ 3 dup), occupied cells `= 260 + 2 × duplicated`, `zones[z].length ≤ 8` for all 21 zones and every zone key present; every sprite has `front`/`back` with `uv` consistent with `px`, `footV === 0.08`, `aspect 1`, a `home` atlas and a `thumb` ≤ 6 KB. |
-| `tools/model-pipeline/test/{determinism,budget}.test.ts` | Two `writeBinary` runs byte-identical; legendary LOD0 ≤ 1.2 MB, LOD1 ≤ 0.45 MB, 4 legendaries ≤ 6.5 MB; each look ≤ 0.25 MB, 20 looks ≤ 5.0 MB, `public/models/` ≤ 12 MB; every GLB carries `EXT_meshopt_compression`; every legendary texture is KTX2 (`textures: 'ktx2'`), looks have `textures: 'none'`; kept clips are exactly `idle walk run victory defeat sitdown standup`; `CREDITS.txt` present (legacy-render-audit Q18). |
+| `tools/model-pipeline/test/{determinism,budget}.test.ts` | Two `writeBinary` runs byte-identical; legendary LOD0 ≤ 1.2 MB, LOD1 ≤ 0.45 MB, 4 legendaries ≤ 6.5 MB; each look ≤ 0.25 MB, the 19 looks (`@ewa/content` `LOOKS`; amended 2026-09-25, was 20) ≤ 5.0 MB, `public/models/` ≤ 12 MB; every GLB carries `EXT_meshopt_compression`; every legendary texture is KTX2 (`textures: 'ktx2'`), looks have `textures: 'none'`; kept clips are exactly `idle walk run victory defeat sitdown standup`; `CREDITS.txt` present (legacy-render-audit Q18). |
 | `tools/material-bake/test/{determinism,budget,seam}.test.ts` | Two bakes byte-identical; per map `field` ≤ 0.10 MB and `hero` ≤ 0.40 MB, `hero` surfaces ≤ 50, `public/materials/` ≤ 90 MB; every `SURFACES` id has a recipe and vice versa; `repeat` surfaces seam ≤ 2/255; albedo luminance ≤ 0.85 with `albedoClampedPct ≤ 5`; every map is KTX2 UASTC with a full mip chain. |
 | `tools/asset-audit/test/rules.test.ts` | As §50.4.6 (one violating fixture per rule, rule id in the error); `--bytes` roll-up fails on any §40.6 ceiling; `--baseline` regression at +5 %. |
 | `tools/audio-pipeline/test/plan.test.ts` | `plan` produces one job per entry in `.design/audio/manifest.json` (17 themes × 4 stems + 11 ambiences + every sfx variant) and validates `zoneThemes` against `ZONE_ORDER`; loop-point detection on a synthetic 4-bar 120 bpm fixture returns `L` within ±5 ms of 8.000 s; normalization to −16 LUFS ±1; the generator step is skipped with the exact message of §40.4.2 when `EWA_AUDIO_API_KEY` is unset; `process` output deterministic after deleting `builtAt`; total ≤ 80 MB. |
@@ -6398,7 +6507,7 @@ Camera per pillar 1: vertical FOV 28°, pitch −52°, yaw one of four headings 
 | 3 | `sprite-edge` | `mire_route` | encounter table's first `common` slot spawn point + `(−2, +3)` | 1 | 0.50 | wild creature in frame at 1.3× magnification (camera zoomed one step in) |
 | 4 | `lamps-night` | `mirevale` | shop door + `(+4, +6)` | 3 | 0.05 | overworld, night light set, ≥ 3 lamps in frame |
 | 5 | `battle` | `mire_route` | player position at `battleStart` (spine `BattleSummary.x/z`) | as the battle camera | 0.50 | turn 2 of a scripted wild battle, HUD live, a `damage` cue mid-flight |
-| 6 | `link-east` | `mirevale` | 6 units west of the `links.e` edge | 1 | 0.50 | overworld; the neighbouring zone streaming in must be visible |
+| 6 | `link-east` | `mirevale` | 6 units west of the `links.e` playable edge (x = 58) | 1 | 0.50 | overworld; the neighbouring zone streaming in must be visible |
 
 Each shot is captured three times: full effects, reduced effects, and with the DOF mask visualised (mask as greyscale). 18 PNGs per zone per set. Command: `pnpm --filter @ewa/client harness:shots -- --zone <id> --set M<n>`, writing `.screenshots/audit/M<n>/<zone>/<shotId>-<x>_<z>-<variant>.png`.
 

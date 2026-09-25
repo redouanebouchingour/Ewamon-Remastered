@@ -580,7 +580,8 @@ export interface TurnResult { readonly state: BattleState; readonly events: read
 
 /**
  * Pure. Never mutates `state`. Advances rng from state.rng and stores the new state in result.state.rng.
- * `actions[i]` may be null ONLY when sides[1-i].mustSwitch && !sides[i].mustSwitch (replacement phase).
+ * `actions[i]` may be null (a) when sides[i].kind !== 'player', in every phase — including a replacement phase in which
+ * that wild/NPC side is the one that must switch — or (b) when sides[1-i].mustSwitch && !sides[i].mustSwitch (replacement phase).
  * Wild/NPC sides never pass actions: core chooses for them via chooseNpcAction, deterministically.
  */
 export function resolveTurn(
@@ -593,7 +594,11 @@ export function resolveTurn(
 export function chooseNpcAction(state: BattleState, side: 0 | 1, content: ContentIndex, rng: Rng): Action;
 ```
 
-Server rule: for `wild`, `trainer`, `league` and `raid`, the server passes `null` for the NPC side and core calls `chooseNpcAction` internally with the battle rng (so the choice is part of the deterministic stream). For `pvp`, both actions must be non-null (or the replacement-phase exception).
+Server rule: for `wild`, `trainer`, `league` and `raid`, the server passes `null` for the NPC side and core calls `chooseNpcAction` internally with the battle rng (so the choice is part of the deterministic stream). For `pvp`, both actions must be non-null (or the replacement-phase exception). `validateAction(state, side, null)` is therefore valid for every non-player side in every phase; for a player side `null` is valid only in the replacement-phase exception. <!-- amended 2026-09-25: the resolveTurn comment said "ONLY when … replacement phase", which contradicted this rule; folded packages/core IMPLEMENTATION-NOTES item 14 -->
+
+The §2.20 fuzz digest committed in `packages/core/test/fuzz-digests.json` is, per seed, `fnv1a32` over the joined per-turn `digestBattleState` values (the `createBattle` state first), so it captures every turn, not only the final state (`packages/core/test/fuzz.ts`). <!-- amended 2026-09-25: core IMPLEMENTATION-NOTES item 17 -->
+
+**Sleep counter** (§2.4 `sleep`, §2.11 step 6, as implemented and pinned by the fuzz digests): the counter decrements at the start of every sleeper action, including an action later in the same turn the status landed, and the action that brings it to 0 is taken normally (`statusCured`, then the move). A sleep of `N = 1 + rng.int(3)` therefore skips exactly `N − 1` of the sleeper's actions — 0, 1 or 2 — not `N`. <!-- amended 2026-09-25: core IMPLEMENTATION-NOTES item 15 — the §2.4 row "cannot act for 1 + rng.int(3) turns" read as N skipped actions; changing the feel is a semantics change (fuzz digests), see .design/audits/spec-verification.md -->
 
 ### 2.11 Turn resolution order
 
@@ -1134,10 +1139,10 @@ Fails the build on the first of:
 8. Every `EncounterSlot` has `levelMin <= levelMax`, weights > 0; a table on a `story` zone must satisfy roster-coverage RC-9 (levels inside the zone's band, Ghost/Dark night-only). No table exceeds 16 slots or 14 distinct species. <!-- reconciled 2026-09-18: roster-coverage A1 — story tables allowed -->
 9. Zone graph checks from §3.1, and every authored coordinate inside the playable interior (§3.1 extents; snapped, else fail).
 10. Prices: every consumable `sellPrice === floor(price / 2)`; orb prices are the legacy values.
-11. **Atlas bind cap.** For every zone, `|Z(zone)| ≤ 16` where `Z(zone)` = species of its encounter table ∪ its statics ∪ its trainers' teams ∪ the league teams whose `zoneId` is the zone (`40-pipelines.md` §40.1.4: a zone then binds ≤ 8 sprite atlases without planner duplication). <!-- reconciled 2026-09-18: 40-pipelines OQ-4 -->
+11. **Atlas bind cap.** For every zone, `|O(zone)| ≤ 16` where `O(zone)` = species of its encounter table ∪ its statics — the species the zone can show in the overworld at once (`40-pipelines.md` §40.1.4: a zone then binds ≤ 8 sprite atlases without planner duplication). The full `Z(zone)` = `O(zone)` ∪ its trainers' teams ∪ the league teams whose `zoneId` is the zone is computed and written to the report (`bindSets`) for the sprite planner, but is **not** capped: `solenne` (3 Wardens + the Champion, legacy teams) is 26 species and `umbral_observatory` (bible story teams) 20, so a cap on `Z` cannot hold. Battle-only species outside the zone's atlases are bound for the battle (`10-render.md` §10.4.1). <!-- reconciled 2026-09-18: 40-pipelines OQ-4 --> <!-- amended 2026-09-25: `|Z(zone)| ≤ 16` was measured impossible (packages/content IMPLEMENTATION-NOTES D1: solenne 26, umbral_observatory 20); validate.ts enforces the overworld subset -->
 12. Heightfields (§3.11): `buildHeightfield` runs for all 21 zones; `walkable` samples ≥ 45 % of `res²` (the playable interior is 64 % of the field at most; legacy was 10.7 %, legacy-render-audit Q12); `spawn` and every authored coordinate are walkable after snapping.
 
-`validate.ts` also emits `dist/content-report.json` (counts, coverage list + `roster` report, per-zone species list `perZone` and the bind sets `Z(zone)`, every zone's heightfield `digest`) and `dist/heightfields/<zoneId>.json` (the full field, for `10-render.md` §10.6.1 `collider.test.ts`), which `tools/asset-audit`, the sprite pipeline and the render tests consume.
+`validate.ts` also emits `dist/content-report.json` (counts, coverage list + `roster` report, per-zone species list `perZone` and the bind sets `Z(zone)`, every zone's heightfield `digest`) and `dist/heightfields/<zoneId>.json` (the full field, for `10-render.md` §10.6.1 `collider.test.ts`), which `tools/asset-audit`, the sprite pipeline and the render tests consume. The field file is an exact compact encoding (`encoding: 'q64-delta-varint-b64+rle'`: heights as 1/64 m integers, row-major, delta + zig-zag varint + base64; the two masks run-length encoded), decoded by `decodeHeightfield` bit for bit with the digest re-verified; heights are quantised to 1/64 m inside `buildHeightfield`, so the runtime field and the file hold the same numbers (routes ≈ 305 KB, 4.5 MB for 21 zones). <!-- amended 2026-09-25: packages/content IMPLEMENTATION-NOTES D2 — raw JSON arrays of a 481² field are > 2 MB -->
 
 ### 3.11 Heightfield — the walkable surface, built once, sampled by everyone
 
@@ -1174,6 +1179,8 @@ export function playableBounds(h: Heightfield): { readonly minX: number; readonl
 ```
 
 `buildHeightfield` uses only core's `createRng(zone.layoutSeed)` and integer/`Math.fround` arithmetic on `Float32Array`, so the `digest` is identical in Node and in a browser worker (`50-verification-budget.md` §50.4.2 `heightfield.test.ts`). The first call per zone costs ≤ 40 ms; memoised thereafter.
+
+**Open gap — building and prop footprints (blocker for server authority).** The `walkable` comment above requires prop footprints to be 0, but the building/prop placement is decided by render's layout (`10-render.md` §10.5.5 `planBuildings`/`planProps`, fed by `20-client.md` §20.4.4 `spec.buildings`/`spec.props`), which content cannot import. As implemented, `buildHeightfield` marks the margin, slopes and water only; render registers the footprints as client-side **blockers** in `TerrainCollider` (§10.6.2). Consequences until the footprint plan moves into content: the server's `validateInput` accepts a position inside a house or a trunk (a modified client walks through buildings), and `SpawnDirector` can place a wild spawn inside a footprint the client cannot reach. The fix is a pure content export of the footprint plan that both `buildHeightfield` and render's builder consume (`.design/audits/spec-verification.md`, recommendation R1). <!-- amended 2026-09-25: packages/render IMPLEMENTATION-NOTES Z6; packages/content IMPLEMENTATION-NOTES clarification 1 ("prop footprints are render data and are not modelled") -->
 
 ### 3.12 Bodies — the player's avatar
 
@@ -1264,8 +1271,8 @@ Cell size **32 world units**; a client sees the 3×3 block around its own cell. 
 ```ts
 import { z } from 'zod';
 
-export const InputMsg = z.object({ seq: z.number().int().min(0).max(0xffffffff), x: z.number().finite(), z: z.number().finite(),
-  angle: z.number().finite(), running: z.boolean(), dtMs: z.number().int().min(1).max(100) });
+export const InputMsg = z.object({ seq: z.number().int().min(0).max(0xffffffff), x: z.number(), z: z.number(),   // zod 4: z.number() rejects NaN/±Infinity; .finite() is a deprecated no-op
+  angle: z.number(), running: z.boolean(), dtMs: z.number().int().min(1).max(100) });
 export const EmoteMsg = z.object({ emote: z.number().int().min(1).max(6) });
 export const ChatMsg = z.object({ text: z.string().min(1).max(120) });
 export const InteractMsg = z.object({ targetId: z.string().min(1).max(64), kind: z.enum(['npc', 'item', 'lore', 'gym', 'healer', 'shop', 'warp', 'static']) });
@@ -1305,7 +1312,7 @@ export type ClientMessageType = keyof typeof CLIENT_MESSAGES;
 ```
 
 <!-- reconciled 2026-09-18: battleResync (named in §4.5 prose) is now in the block; 50-verification-budget.md §50.4.3 counts 20 -->
-Rate limits (per client, sliding window; excess is dropped with one `error { code: 'rateLimited' }` per window): `input` 30/s, `emote` 1 per 1.5 s, `chat` 4 per 4 s, `interact` 4/s, `engageSpawn` 2/s, `battleAction`/`battleResync` 4/s, `challenge`/`tradeRequest` 3 per 5 s, raid messages 4/s. A message whose `type` is not a `CLIENT_MESSAGES` key has no handler: Colyseus drops it, the room counts `metrics.unknownMessages`, and 5 within 10 s disconnect the client with code 4003 (there is no `'*'` handler and no error reply — `invalidPayload` is for a known type with a malformed body).
+Rate limits (per client, sliding window; excess is dropped with one `error { code: 'rateLimited' }` per window): `input` 30/s, `emote` 1 per 1.5 s, `chat` 4 per 4 s, `interact` 4/s, `engageSpawn` 2/s, `battleAction`/`battleResync` 4/s, `challenge`/`tradeRequest` 3 per 5 s, raid messages 4/s. A message whose `type` is not a `CLIENT_MESSAGES` key gets no reply: the room's `'*'` handler only counts it (`metrics.unknownMessages`) and 5 within 10 s disconnect the client with code 4003 — the `'*'` handler must exist, because `@colyseus/core` 0.18.14 closes the socket with 4002 on the first message that has no handler outside dev mode (`src/RoomMessages.ts` lines 334–342). `invalidPayload` is for a known type with a malformed body; the zod check therefore runs inside the handler wrapper (`safeParse`), never as the `onMessage` validator argument, which disconnects with 4002 on a rejected payload (`src/RoomMessages.ts` lines 189–196). <!-- amended 2026-09-25: "Colyseus drops it … there is no '*' handler" was false for 0.18.14; packages/server IMPLEMENTATION-NOTES R1, R3 -->
 
 ### 4.4 Server → client messages
 
@@ -1343,6 +1350,8 @@ export interface SeatReservation { readonly name: string; readonly sessionId: st
 <!-- reconciled 2026-09-18: `chat`/`dm` variants added (30-server-netcode.md OQ 2 routed them through `toast`); `storyBeat` added (20-client.md §20.4.7 expected a `dialogue` message no section defined); `handover.seat` widened from string to SeatReservation (30-server-netcode.md OQ 1) -->
 **`progressionDelta` and `inventoryDelta` are the only messages that change badges, exp, money, items, creatures, dex, rating or flags on the client.** The client store applies them and nothing else; a `BattleEvent` of `expGain` is animation, not state. `50-verification-budget.md`'s authority test fabricates every client message type and asserts the server's persisted rows are unchanged.
 
+There is no raid-end variant: a raid's rewards reach each participant as `battleEnd { battleId: <the raid id>, outcome: { winner: 0 }, rewards }` (after the round's `inventoryDelta`/`progressionDelta`); the client routes a `battleEnd` whose `battleId` equals `ZoneState.raid.id` to the raid UI. <!-- amended 2026-09-25: packages/server IMPLEMENTATION-NOTES Q14 -->
+
 ### 4.5 State digests
 
 Every `battleStart`, `battleEvents`, `battleResync` and `raidEvents` carries `stateDigest = digestBattleState(serverState)` (§2.20). The client runs the same `resolveTurn` as a *preview* to start animating before the server's message arrives; when the server's `battleEvents` lands it compares `digestBattleState(previewState)` with `stateDigest`. Mismatch → `console.warn('battle desync', battleId, turn)`, drop the preview, request `battleResync` (`CLIENT_MESSAGES.battleResync`, §4.3), and render from the server's events. A desync counter is exported to the dev HUD; the fuzz test's promise is that it stays at 0.
@@ -1351,7 +1360,7 @@ Every `battleStart`, `battleEvents`, `battleResync` and `raidEvents` carries `st
 
 ### 4.6 Handover
 
-Crossing a zone link: the source room sends `handover { roomId, seat, zoneId, x, z }` when the player is within 6 units of the link edge; the client pre-joins the destination via `@colyseus/sdk` `client.consumeSeatReservation` and sends `handoverAck` to the *destination*; the destination marks the player present; the source removes the avatar on receiving the destination's IPC confirm, or after 5 s. The player's authoritative position row is written once, by the destination, on ack. Details in `30-server-netcode.md`.
+Crossing a zone link: the source room sends `handover { roomId, seat, zoneId, x, z }` when the player is within 6 units of the link side's **playable** edge (`playableBounds`, §3.11 — the field edge lies inside the 16 m unwalkable margin and cannot be reached) <!-- amended 2026-09-25: packages/server IMPLEMENTATION-NOTES R7 -->; the client pre-joins the destination via `@colyseus/sdk` `client.consumeSeatReservation` and sends `handoverAck` to the *destination*; the destination marks the player present; the source removes the avatar on receiving the destination's IPC confirm, or after 5 s. The player's authoritative position row is written once, by the destination, on ack. Details in `30-server-netcode.md`.
 
 ### 4.7 REST (Fastify 5, `@fastify/jwt` access tokens 15 min, refresh tokens 30 d in `refresh_tokens`)
 
@@ -1364,7 +1373,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /auth/refresh` | `{ refresh }` | `{ access, refresh }` (rotating) | none |
 | `POST /auth/logout` | `{ refresh }` | `204` | bearer |
 | `GET /me` | — | `PlayerProfile & { party: CreatureInstance[]; box: CreatureInstance[]; inventory: Record<string, number>; badges; flags; quests; battlePass; presence: { roomId: string \| null; zoneId: ZoneId; shard: number }; unreadDm: Record<string, number>; friendRequests: number; liveOps: LiveOpsSummary }` | bearer |
-| `POST /zone/enter` | `{ zoneId }` | `{ seat: SeatReservation }` — picks/creates the shard (30-server-netcode.md §30.2.6); 403 `{ code: 'gated', badge }` when the zone's `gate` badge is missing; 409 `inBattle` during a battle | bearer |
+| `POST /zone/enter` | `{ zoneId }` | `{ seat: SeatReservation }` — picks/creates the shard (30-server-netcode.md §30.2.6); 403 `{ code: 'gated', badge }` when the zone's `gate` badge is missing; 409 `{ code: 'wrongZone', zoneId }` unless `zoneId` is the player's persisted `zone_id` or live presence zone (crossings are handovers, never a REST call); during a battle the seat is in the battle's own room (a reload rejoins and receives `battleResync`), any other zone 409 `inBattle` | bearer |
 | `POST /profile` | `{ title?: string; motto?: 0..120; body?: string }` (`title ∈ TITLES`, `body ∈ BODIES` ids, §3.12) | `PlayerProfile` | bearer |
 | `POST /quests/claim` | `{ questId: string; objectiveId?: string }` (daily/weekly ids `daily:<dayKey>` / `weekly:<weekKey>` use `objectiveId`) | `{ inventory, money, creaturesAdded, questProgress }` | bearer |
 | `POST /party/reorder` | `{ order: string[] }` (creature ids, 1..6) | `{ party }` | bearer |
@@ -1372,7 +1381,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /party/withdraw` / `POST /party/deposit` | `{ id }` | `{ party, box }` | bearer |
 | `POST /creature/:id/nickname` | `{ nickname: 1..16 | null }` | `CreatureInstance` | bearer |
 | `POST /creature/:id/moves` | `{ moves: string[] }` (1..4, ⊆ learnable at level) | `CreatureInstance` | bearer |
-| `POST /creature/:id/setup` | `{ ability: string; heldItem: string | null }` | `CreatureInstance` | bearer |
+| `POST /creature/:id/setup` | `{ ability: string; heldItem: string | null }` | `CreatureInstance & { inventoryDelta: InventoryDeltaBody }` (`CreatureSetupRes`: equipping takes one from the inventory and returns the previously held item) | bearer |
 | `POST /creature/:id/evolve` | `{ into: string }` | `CreatureInstance` | bearer |
 | `POST /creature/:id/release` | — | `204` (refused when `locked`) | bearer |
 | `POST /creature/:id/flags` | `{ favorite?: boolean; locked?: boolean }` | `CreatureInstance` | bearer |
@@ -1383,16 +1392,16 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /shop/buy` / `POST /shop/sell` | `{ item: string; qty: 1..99 }` | `{ inventory, money }` | bearer |
 | `GET /marketplace` | query `search, variant, isAlpha, levelMin, levelMax, sort, page, pageSize<=50` | `{ listings: ListingView[]; total }` | bearer |
 | `GET /marketplace/my/active` · `GET /marketplace/my/bids` · `GET /marketplace/:id` | — | `ListingView[]` / `ListingView & { bids: BidView[] }` | bearer |
-| `POST /marketplace/list` | `{ creatureId, startingBid >= 100, buyNowPrice: number | null, durationHours: 12|24|48 }` | `ListingView` (5/h) | bearer |
-| `POST /marketplace/:id/bid` | `{ amount }` | `ListingView` (30/h) | bearer |
-| `POST /marketplace/:id/buy-now` · `POST /marketplace/:id/cancel` | — | `ListingView` | bearer |
+| `POST /marketplace/list` | `{ creatureId, startingBid >= 100, buyNowPrice: number | null, durationHours: 12|24|48 }` | `ListingMutationRes` = `ListingView & { inventoryDelta }` (`creaturesRemoved: [creatureId]`) (5/h; 409 `inBattle` during a battle) | bearer |
+| `POST /marketplace/:id/bid` | `{ amount }` | `ListingMutationRes` (`inventoryDelta.money` after escrow) (30/h) | bearer |
+| `POST /marketplace/:id/buy-now` · `POST /marketplace/:id/cancel` | — | `ListingMutationRes` (buy-now: `money` + `creaturesAdded`; cancel: `creaturesAdded`) | bearer |
 | `GET /friends` | — | `{ friends: FriendView[]; incoming; outgoing }` | bearer |
 | `POST /friends/request` · `/accept` · `/decline` · `/remove` | `{ username }` | `{ friends, incoming, outgoing }` | bearer |
 | `GET /messages/:username?before=&limit<=50` | — | `{ messages: MessageView[] }` | bearer |
 | `POST /messages/:username` | `{ text: 1..300 }` | `MessageView` | bearer |
 | `POST /messages/read` | `{ username }` | `204` | bearer |
 | `GET /guilds?search=` · `GET /guilds/:id` | — | `GuildView[]` / `GuildView & { members }` | bearer |
-| `POST /guilds` | `{ name: 3..24, tag: /^[A-Z0-9]{3,4}$/ }` (costs `GUILD.createCost` 5000, 409 `InsufficientFunds`) | `GuildView` | bearer |
+| `POST /guilds` | `{ name: 3..24, tag: /^[A-Z0-9]{3,4}$/ }` (costs `GUILD.createCost` 5000, 409 `InsufficientFunds`) | `GuildCreateRes` = `GuildView & { inventoryDelta }` (`money` after the charge) | bearer |
 | `POST /guilds/:id/join` · `/leave` · `/kick` · `/promote` | `{ playerId? }` | `GuildView` | bearer |
 | `GET /leaderboard?mode=rating|dex|trainerLevel&page=` | — | `{ rows: LeaderboardRow[] }` | bearer |
 | `GET /players/:username` | — | `PublicProfile` (allow-list, §5.3) | bearer |
@@ -1404,6 +1413,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /health` | — | `{ status: 'ok', time }` | none |
 
 <!-- reconciled 2026-09-18: `/zone/enter`, `/profile`, `/quests/claim`, `/admin/metrics` added (30-server-netcode.md §30.2.6, §30.5, §30.9.1, §30.10.2 used them; OQ 3); `GET /me` gains presence/unread/liveOps; guild tag {3,4} (30-server-netcode.md OQ 5 — the persist column is varchar(4) and a 2-char tag collides with the 2-letter type glyphs in the HUD) -->
+<!-- amended 2026-09-25: `/zone/enter` wrongZone + battle-room seat, and the `inventoryDelta` extensions of `/creature/:id/setup`, `/guilds`, `/marketplace/*` (protocol `InventoryDeltaBodySchema`, additive) — packages/server IMPLEMENTATION-NOTES R2, P1, P3. Without `wrongZone` a client could "fast travel" by entering any ungated zone and being placed at its spawn -->
 Every user-supplied string that reaches SQL `LIKE`/`ILIKE` goes through `escapeLike()` in `@ewa/persist`; there is no regex search anywhere. Domain errors from persist (§5.5) map to `409 { code }`; `RateLimited` → 429; zod → 400 `invalidPayload`; JWT → 401; everything else → 500 `internal`.
 
 ---
@@ -1589,8 +1599,10 @@ export const battleHistory = pgTable('battle_history', {
   turns: smallint('turns').notNull(),
   ratingDelta: integer('rating_delta'),
   rewards: jsonb('rewards').$type<RewardsSummary>().notNull(),
-  seed: jsonb('seed').$type<RngState>().notNull(),                  // replay: seed + actions reproduce the battle
+  seed: jsonb('seed').$type<RngState>().notNull(),                  // replay: start + seed + actions reproduce the battle
   actions: jsonb('actions').$type<[Action | null, Action | null][]>().notNull(),
+  start: jsonb('start').$type<BattleStartSnapshot>(),               // migration 0001: the createBattle input minus the seed; null before 0001
+  finalDigest: varchar('final_digest', { length: 8 }),               // migration 0001: digestBattleState of the final state; null before 0001
   happenedAt: timestamp('happened_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index('battle_history_player_idx').on(t.playerId, t.happenedAt)]);
 
@@ -1632,11 +1644,12 @@ export const auditLog = pgTable('audit_log', {
 }, (t) => [index('audit_log_actor_idx').on(t.actorId, t.at), index('audit_log_action_idx').on(t.action, t.at)]);
 ```
 
-`players.x/z` use `real`; `real` is imported from `drizzle-orm/pg-core` alongside the others. `bigserial` likewise. There is no `party_slots`/`box_slots` table: the `(owner_id, slot_kind, slot_index)` unique index on `creature_instances` *is* the slot model, and a reorder is one transaction that rewrites `slot_index` for the affected rows.
+`players.x/z` use `real`; `real` is imported from `drizzle-orm/pg-core` alongside the others. `bigserial` likewise. `BattleStartSnapshot` is `{ readonly zoneId: string; readonly terrain: string; readonly sides: readonly [unknown, unknown] }` (the two `createBattle` sides, deep-copied before the call); with it a battle replays from the row alone — `createBattle({ id, format, seed, ...start })` then `resolveTurn` over `actions` reproduces `final_digest`. The original table (seed + actions only) could not replay without the starting parties. <!-- amended 2026-09-25: migration 0001_battle_replay, packages/server IMPLEMENTATION-NOTES S10/P6, packages/persist IMPLEMENTATION-NOTES "Server part 2 additions" --> There is no `party_slots`/`box_slots` table: the `(owner_id, slot_kind, slot_index)` unique index on `creature_instances` *is* the slot model, and a reorder is one transaction that rewrites `slot_index` for the affected rows.
 
 ### 5.2 Repository interfaces
 
 <!-- reconciled 2026-09-18: signatures as implemented in packages/persist/src/repos/*.ts — explicit `now: Date` on every method that stamps a time (persist never reads the wall clock), `toPublic(row, extras)`, `CreatureRecord`, `lockMany`, a `battlePass` repo, `swap`, and the closed `PersistErrorCode` union of §5.5 -->
+<!-- amended 2026-09-25: server part 1/2 repo additions folded (PlayerRepo setAdmin/bannedIds/byIds/search/counts and leaderboard 'dex', ProgressRepo markSeen → boolean/flagSetAt/claimObjective/pruneSyntheticQuests, MarketRepo closeExpiredDetailed + ClosedListing, AuthRepo ownerOf) — packages/persist/src/repos/*.ts -->
 ```ts
 import type { PgTransaction } from 'drizzle-orm/pg-core';
 export type Tx = PgTransaction<any, any, any>;   // the one place `any` is permitted: driver-generic transaction handle
@@ -1667,7 +1680,12 @@ export interface PlayerRepo {
   touchLastSeen(tx: Tx, id: string, now: Date): Promise<void>;
   ban(tx: Tx, id: string, reason: string, now: Date): Promise<void>;   // Forbidden when the target is_admin
   unban(tx: Tx, id: string): Promise<void>;
-  leaderboard(tx: Tx, mode: 'rating' | 'trainerLevel', page: number, pageSize: number): Promise<PlayerRow[]>;   // banned excluded; the dex-count mode is a ProgressRepo join in the server
+  setAdmin(tx: Tx, id: string, isAdmin: boolean): Promise<void>;     // dev-only ADMIN_BOOTSTRAP_USERNAME at boot
+  bannedIds(tx: Tx): Promise<string[]>;                              // the server's ban-cache rebuild (§30.6.7)
+  leaderboard(tx: Tx, mode: 'rating' | 'trainerLevel' | 'dex', page: number, pageSize: number): Promise<PlayerRow[]>;   // banned excluded in SQL (pages stay full); rating ties by peak then username_lower; dex = caught count
+  byIds(tx: Tx, ids: readonly string[]): Promise<PlayerRow[]>;       // friend views; order unspecified
+  search(tx: Tx, q: string, page: number, pageSize: number): Promise<{ rows: PlayerRow[]; total: number }>;   // admin: username_lower ILIKE escapeLike(q), newest first, pageSize 1..50
+  counts(tx: Tx): Promise<{ total: number; banned: number; admins: number }>;   // /admin/stats
   toPublic(row: PlayerRow, extras: PublicExtras): PublicProfile;      // ALLOW-LIST, pure, see 5.3
   publicProfile(tx: Tx, id: string): Promise<PublicProfile | null>;   // gathers extras (badges, guild tag, dex caught count, first 3 party slots) and calls toPublic
 }
@@ -1710,11 +1728,14 @@ export interface ProgressRepo {
   flags(tx: Tx, playerId: string): Promise<string[]>;
   setFlags(tx: Tx, playerId: string, flags: readonly string[], now: Date): Promise<void>;
   dex(tx: Tx, playerId: string): Promise<{ seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[] }>;
-  markSeen(tx: Tx, playerId: string, speciesId: string, now: Date): Promise<void>;
+  markSeen(tx: Tx, playerId: string, speciesId: string, now: Date): Promise<boolean>;   // idempotent; true when the species was new to the dex (live-ops newSpeciesSeen)
+  flagSetAt(tx: Tx, playerId: string, flag: string): Promise<Date | null>;              // trainer rematch windows (§30.4.4)
   markCaught(tx: Tx, playerId: string, speciesId: string, variant: VariantKey, isAlpha: boolean, now: Date): Promise<{ newSpecies: boolean }>;
   quest(tx: Tx, playerId: string, questId: string): Promise<{ objectiveId: string; count: number; done: boolean; claimedAt: Date | null }[]>;
   advance(tx: Tx, playerId: string, questId: string, objectiveId: string, count: number, done: boolean): Promise<void>;
   claim(tx: Tx, playerId: string, questId: string, now: Date): Promise<boolean>;   // false when already claimed
+  claimObjective(tx: Tx, playerId: string, questId: string, objectiveId: string, now: Date): Promise<boolean>;   // daily/weekly mission claim; false when missing, not done or already claimed
+  pruneSyntheticQuests(tx: Tx, prefix: string, beforeKey: string): Promise<number>;   // live-ops rollover: deletes `<prefix><key>` rows whose key sorts before beforeKey
   clearFlags(tx: Tx, playerId: string, flags: readonly string[]): Promise<void>;    // live-ops streak/daily rows only; story flags are never cleared
   allQuests(tx: Tx, playerId: string): Promise<Record<string, { objectiveId: string; count: number; done: boolean; claimedAt: Date | null }[]>>;
   claimedQuestIds(tx: Tx, playerId: string): Promise<string[]>;
@@ -1740,10 +1761,12 @@ export interface MarketRepo {
   /** FOR UPDATE; assert seller (NotOwner) && active && currentBid === null (ListingHasBids — a listing with a bid can only settle at expiry, so no escrow is ever stranded); creature back to seller's box; status cancelled. */
   cancel(tx: Tx, listingId: string, sellerId: string, now: Date): Promise<ListingView>;
   /** Expiry job: FOR UPDATE SKIP LOCKED over active && expiresAt <= now, `limit` rows; sold → transfer + pay seller; no bids → return + expired. Returns rows closed. */
-  closeExpired(tx: Tx, now: Date, limit: number): Promise<number>;
+  closeExpired(tx: Tx, now: Date, limit: number): Promise<number>;   // = (await closeExpiredDetailed(tx, now, limit)).length
+  closeExpiredDetailed(tx: Tx, now: Date, limit: number): Promise<ClosedListing[]>;   // what each closed listing became (dex marks, trade exp, notifications)
   creatureSlot(tx: Tx, creatureId: string): Promise<{ ownerId: string; slotKind: string; slotIndex: number } | null>;
 }
 export function marketFee(price: number): number;   // floor(price * MARKET.feePercent / 100)
+export interface ClosedListing { readonly id: string; readonly sold: boolean; readonly sellerId: string; readonly buyerId: string | null; readonly creatureId: string; readonly speciesId: string; readonly variantKey: VariantKey; readonly isAlpha: boolean; readonly price: number | null }
 
 export interface SocialRepo {
   requestFriend(tx: Tx, requesterId: string, addresseeId: string, now: Date): Promise<'requested' | 'accepted'>;   // a reverse pending request is accepted, not mirrored (friendships_pair_uq); AlreadyFriends
@@ -1768,7 +1791,7 @@ export interface SocialRepo {
   searchGuilds(tx: Tx, search: string, limit: number): Promise<GuildView[]>;   // escapeLike
 }
 export interface HistoryRepo {
-  recordBattle(tx: Tx, row: NewBattleHistory): Promise<void>; recordTrade(tx: Tx, row: NewTradeHistory): Promise<void>;   // rows carry their own timestamps
+  recordBattle(tx: Tx, row: NewBattleHistory): Promise<void>; recordTrade(tx: Tx, row: NewTradeHistory): Promise<void>;   // rows carry their own timestamps; NewBattleHistory carries optional `start` / `finalDigest` (§5.1)
   battles(tx: Tx, playerId: string, page: number, pageSize: number): Promise<BattleHistoryRow[]>; battleById(tx: Tx, playerId: string, battleId: string): Promise<BattleHistoryRow | null>;
   trades(tx: Tx, playerId: string, page: number, pageSize: number): Promise<TradeHistoryRow[]>;
   /** The whole two-player trade in one call (the transaction below): locks, escrow asserts, transfers both ways, money both ways, two trade_history rows, audit. */
@@ -1785,6 +1808,7 @@ export interface AuthRepo {
   issueRefresh(tx: Tx, playerId: string, now: Date): Promise<{ token: string; expiresAt: Date }>;
   rotateRefresh(tx: Tx, token: string, now: Date): Promise<{ playerId: string; token: string; expiresAt: Date } | null>;   // null = unknown, expired or already revoked (the server then calls revokeAll)
   revoke(tx: Tx, token: string, now: Date): Promise<boolean>; revokeAll(tx: Tx, playerId: string, now: Date): Promise<number>; purge(tx: Tx, before: Date): Promise<number>;
+  ownerOf(tx: Tx, token: string): Promise<{ playerId: string; revokedAt: Date | null; expiresAt: Date } | null>;   // refresh-reuse detection needs the owner of an already-revoked token (§30.5.1 #24)
 }
 export function hashRefreshToken(token: string): string;   // sha-256 hex; the only form stored
 export interface AuditRepo { write(tx: Tx, e: { actorId: string | null; action: string; subject: string | null; detail: Record<string, unknown> }, now: Date): Promise<void> }

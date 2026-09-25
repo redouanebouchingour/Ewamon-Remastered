@@ -29,7 +29,7 @@ tools/
 2. **Content-hash cache.** Every tool keeps `tools/<tool>/.cache/` keyed by `sha256(input bytes, PIPELINE_VERSION, stage parameters, encoder settingsKey)`. A rerun over unchanged inputs does no image/audio/mesh work and reports `cacheHits === inputs`. The cache directory is git-ignored; the outputs under `public/` are committed.
 3. **Refuse to ship silently.** A missing or unresolvable input fails the build with the offending id in the message. Anything a heuristic guessed is flagged in the tool's `qa-report.json`; the release rule for each tool is in its section.
 4. **Budgets are tests.** Every size number in §40.6 is asserted by a vitest file named in `50-verification-budget.md` §50.4.8 or added here; CI fails when a budget is exceeded.
-5. **LF line endings, ES modules, TypeScript, `tsx` entry points, `pnpm --filter @ewa/<tool> run <script>`.** No tool imports from `packages/*` except `@ewa/content` (for zone ids, species ids and the surface list) — never from `@ewa/render` or `@ewa/client`.
+5. **LF line endings, ES modules, TypeScript, `tsx` entry points, `pnpm --filter @ewa/<tool> run <script>`.** No tool imports from `packages/*` except `@ewa/content` (for zone ids, species ids and looks) and the pure subpath **`@ewa/render/surfaces`** (`packages/render/src/surfaces/`: the `SURFACES` table and the bake recipes, no three, no DOM, no node builtins — enforced by the render ESLint block), which `tools/material-bake` imports so the baked textures and the runtime graph cannot disagree — never the rest of `@ewa/render`, never `@ewa/client`. `tools/asset-audit` takes `@ewa/render` + `three` as **devDependencies** only, for the drift test that feeds a real `dumpZone()` to its `ZoneDump` mirror. <!-- amended 2026-09-25: material-bake IMPLEMENTATION-NOTES D0 (the `dist/surfaces.json` route was never built), asset-audit IMPLEMENTATION-NOTES A2 -->
 6. **Licences travel with assets.** `assets-src/licenses/QUATERNIUS-CREDITS.txt` is copied to `public/models/CREDITS.txt`; `TABLER-LICENSE.txt` to `public/icons/TABLER-LICENSE.txt` (MIT notice is required). The pipeline fails if either source file is missing.
 
 ---
@@ -54,8 +54,10 @@ Every parameter below is a named constant in `src/*.ts`; changing any of them ch
 | 2 | **Normalize** | `normalize.ts` | Trim to the alpha bbox; scale so `max(bboxW, bboxH) = round(FILL_FRACTION 0.86 × 1024) = 881 px`; centre horizontally; anchor the bbox bottom at `y = round(FOOT_V 0.92 × 1024) = 942`. Kernel: `nearest` when the scale factor is within `INTEGER_TOLERANCE 1e-3` of an integer or of the reciprocal of an integer, `lanczos3` otherwise (`chooseKernel`). Canvas `DEFAULT_SPRITE_SIZE 1024`. Measured over the 264 processed sprites: `pixelScale` min 0.43, median 0.89, max 10.74; 71 sprites are upscaled ≥ 2×, 152 are downscaled (< 1). |
 | 3 | **Normal map** | `normalmap.ts` | Height = Rec. 709 luminance of the albedo, Gaussian-blurred with `sigma 1.2` (radius `ceil(3σ) = 4`), clamped at borders. 3×3 Sobel with `strength 0.55`; transparent neighbours take the centre pixel's height so the Sobel never fires across the silhouette. Alpha-edge bevel: 3-4 chamfer distance over alpha capped at `bevelBand 6` px; within the band the normal is tilted outward (away from the nearest transparent pixel) by `bevelStrength 0.85` at the edge, falling linearly to 0 at 6 px. Encoding `R = 128 + nx·127`, `G = 128 + ny·127` (OpenGL +Y up), `B = 128 + nz·127`, `A = source alpha`; a flat opaque region encodes to exactly `(128, 128, 255)`. |
 | 4 | **Emissive mask** | `emissive.ts` | <!-- amended 2026-09-25: was HSL saturation × lightness ≥ 0.72, which tends to 1 for faintly tinted near-whites (42–49 % of mufflo/dreambud glowed) and scores a pure saturated hue 0.5 --> Per opaque pixel: emits when HSV value `max(r,g,b) ≥ EMISSIVE_MIN_VALUE 0.92` and chroma `max − min ≥ EMISSIVE_MIN_CHROMA 0.4` (bright and vivid: a lure, a flame, molten seams — not pale fur). If more than `EMISSIVE_MAX_COVERAGE 0.08` of the opaque texels qualify, only the most vivid are kept (ranked by value × chroma, ties by raster order), so the mask stays an accent. Then `erode1px` (3×3 min, image border counts as 0). Per-species `EMISSIVE_OVERRIDES[id] = { minValue?, minChroma?, maxCoverage?, disabled? }` in `emissive-overrides.ts` (empty today; every entry is an art decision reviewed on the contact sheet). Output is single-channel; the mask is stored in R of a 3-channel file because WebP has no grey mode. |
-| 5 | **Pack** | `groups.ts`, `pack.ts` | Atlas `DEFAULT_ATLAS_SIZE 4096`, 16 slots of 1024², MaxRects best-short-side-fit with a stable top-left tie-break (`MaxRectsPacker`), 8 species (front + back) per atlas. Grouping is rewritten in §40.1.4. |
-| 6 | **Encode** | `encode.ts` | Today: `selectEncoding('auto', 4096)` probes ktx2-encoder and falls back to lossless WebP (`effort 6`, `alphaQuality 100`) for albedo/normal and lossy WebP `q80` for the emissive mask. Rewritten in §40.1.6. |
+| 5 | **Plan + pack** | `plan.ts`, `pack.ts`, `zones.ts` | *(As shipped, `PIPELINE_VERSION` 5; the draft's 4096² / 16-slot / 8-species-per-atlas packer is gone.)* One global sequence over `ZONE_ORDER` (§40.1.4); consecutive species pairs form 2048² atlases of four 1024² cells (`packSquares(4, 1024, 2048)`); ≤ 8 atlases per zone, duplicating only when a zone would exceed that (0 duplicates on the shipped roster). |
+| 6 | **Rasters + encode** | `pipeline.ts`, `mips.ts`, `encode.ts` | *(As shipped.)* Composites the atlas maps, forces binary alpha, builds mips 1–3, encodes WebP under the §40.1.6.3 budget ladder, writes thumbnails, the manifest and QA artifacts. |
+
+<!-- amended 2026-09-25: rows 5 and 6 described the pre-v2 code ("Today: selectEncoding('auto', 4096) …"); tools/sprite-pipeline/README.md stages table -->
 
 Cache (`cache.ts`): per sprite `.cache/sprites/<hash>/{albedo,normal,emissive}.png + meta.json`, `hash = sha256(source bytes, "v" + PIPELINE_VERSION, "size=1024", normal options JSON, emissive override JSON)`; per atlas texture `.cache/atlases/<hash>.<ext>`, `hash = sha256(PIPELINE_VERSION, encoder.settingsKey, "4096/1024", member hashes with their placements)`. `SpriteMeta` records `sourceWidth/Height, recovered, coverage, flags, footV, pixelScale, kernel, emissivePixels`. Stage concurrency is 3 workers (`CONCURRENCY 3`); results are sorted by `(id, side)` before anything is written, so worker order never reaches the output.
 
@@ -105,7 +107,7 @@ The 6 towns without a table (`mirevale, cinderhold, stormrook, marrowdig, vesper
 
 ### 40.1.5 The manifest — `creatures.manifest.json`
 
-**Verbatim, as it exists today** (`src/manifest.ts`, `version: 1`):
+**Historical — the v1 shape this section replaced** (`src/manifest.ts` as it was when this section was written, `version: 1`; **not** in the code any more and not to be implemented — kept so the mismatch table below reads; amended 2026-09-25):
 
 ```ts
 export type ManifestEncoding = 'ktx2-uastc' | 'webp';
@@ -191,8 +193,8 @@ export interface SpriteRectV2 {
 }
 
 export interface ManifestMap {
-  readonly url: string;                                      // level 0, relative to the manifest, e.g. atlases/mire_route-0.albedo.webp
-  readonly mips: readonly string[];                          // levels 1..3 (2048², 1024², 512² for a 4096² atlas)
+  readonly url: string;                                      // level 0, relative to the manifest, e.g. atlases/a-000.albedo.webp
+  readonly mips: readonly string[];                          // levels 1..3 (1024², 512², 256² for a 2048² atlas)
   readonly codec: SpriteCodec;
   readonly quality: number | null;                           // libwebp q for lossy, null for lossless
   readonly bytes: number;                                    // sum over url + mips
@@ -215,6 +217,7 @@ export interface ManifestSpriteV2 {
   readonly sizeScale: number;                                // SpeciesDef.sizeScale
   readonly home: string;                                     // atlas id used for the runtime single set
   readonly thumb: string;                                    // thumbs/<id>_front.webp, 128 px (20-client.md §20.10.2 rule 6)
+  readonly alt?: Readonly<Record<string, { readonly front: SpriteRectV2; readonly back: SpriteRectV2 }>>;   // only for a planner-duplicated species: its rects in each a-<zoneId>-dup-N atlas (absent in the shipped build: 0 duplicates)
 }
 
 export interface SpriteManifestV2 {
@@ -300,7 +303,7 @@ Budget: `260 × (73 + 24 + 3) KB × 1.20 + 0.8 MB thumbs ≈ 32.0 MB ≤ 35 MB`.
 | Set | Files | Size on disk | Per file | Contents (read from the glTF JSON) |
 |---|---|---|---|---|
 | `assets-src/models/legendaries/` | `lumyth.glb`, `noxmyth.glb`, `voidraxis.glb`, `zenryu.glb` | 8.8 MB | 2.0–2.5 MB | 1 mesh, 1 material, 1 skin, 1 clip named `Animation`, **30 000 triangles each** (29 845 for voidraxis), 3 embedded `image/webp` textures of 21–204 KB (`EXT_texture_webp`), so 85–90 % of each file is vertex + animation data |
-| `assets-src/models/quaternius/` | 20 `.gltf` (`Casual_Male` … `Viking_Male`) | 37 MB | 1.7–2.2 MB | 1 mesh, 6 materials (flat colours, **0 images**), 3 000–6 800 triangles, 17 clips (`Death, Defeat, Idle, Jump, PickUp, Punch, RecieveHit, Roll, Run, Run_Carry, Shoot_OneHanded, SitDown, StandUp, SwordSlash, Victory, Walk, Walk_Carry`), one buffer embedded as a **base64 `data:` URI** of 0.8–1.0 MB — the 2 MB file is 1.33× base64 inflation of ≈ 0.9 MB of binary, most of it 17 animation clips at full float precision |
+| `assets-src/models/quaternius/` | **19** `.gltf` (`Casual_Male` … `Viking_Male`; amended 2026-09-25 — the draft said 20, the directory and `@ewa/content` `LOOKS` hold 19) | 36 MB | 1.7–2.2 MB | 1 mesh, 6 materials (flat colours, **0 images**), 3 000–6 800 triangles, 17 clips (`Death, Defeat, Idle, Jump, PickUp, Punch, RecieveHit, Roll, Run, Run_Carry, Shoot_OneHanded, SitDown, StandUp, SwordSlash, Victory, Walk, Walk_Carry`), one buffer embedded as a **base64 `data:` URI** of 0.8–1.0 MB — the 2 MB file is 1.33× base64 inflation of ≈ 0.9 MB of binary, most of it 17 animation clips at full float precision |
 
 The dependencies already declared in `tools/asset-audit/package.json` (`@gltf-transform/core|extensions|functions ^4.5.0`, `meshoptimizer ^0.24.0`) move to `tools/model-pipeline/package.json`; `asset-audit` keeps none of them.
 
@@ -309,7 +312,7 @@ The dependencies already declared in `tools/asset-audit/package.json` (`@gltf-tr
 ```ts
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { dedup, flatten, join, prune, quantize, reorder, resample, sparse, textureCompress, weld, meshopt } from '@gltf-transform/functions';
+import { dedup, flatten, join, prune, quantize, reorder, resample, sparse, weld } from '@gltf-transform/functions';
 import { MeshoptEncoder } from 'meshoptimizer';
 
 await MeshoptEncoder.ready;
@@ -317,36 +320,40 @@ const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies(
 await doc.transform(
   dedup(),                                                    // identical accessors/textures/materials → one
   flatten(),                                                  // node hierarchy without skins is collapsed (no-op on skinned rigs)
-  join({ keepNamed: false }),                                 // Quaternius: 6 flat-colour materials → vertex-coloured single primitive is NOT done here (§40.2.3); join merges only same-material primitives
+  join({ keepNamed: false }),                                 // merges same-material primitives only — and SKIPS skinned nodes (`if (node.getSkin()) continue;`, functions src/join.ts lines 177–178): the Quaternius merge is joinPrimitives in §40.2.3
   prune(),                                                    // unused nodes/accessors/materials
   resample({ tolerance: 1e-4 }),                              // animation keyframes: drops linear-redundant keys
   weld(),                                                     // gltf-transform 4.x weld() is exact (no tolerance argument)
-  reorder({ encoder: MeshoptEncoder }),                       // vertex-cache order; required before meshopt()
+  // [LOD1 only] simplifySkinned(ratio 0.35, error 0.01) — §40.2.3
+  reorder({ encoder: MeshoptEncoder, target: 'size' }),       // vertex-cache order
   quantize({ quantizePosition: 14, quantizeNormal: 10, quantizeTexcoord: 12, quantizeColor: 8, quantizeWeight: 8, quantizeGeneric: 12 }),  // KHR_mesh_quantization
   sparse(),                                                   // morph/anim accessors that are mostly zero
-  meshopt({ encoder: MeshoptEncoder, level: 'medium' }),      // EXT_meshopt_compression
-  textureCompress(TEXTURE_PLAN),                              // §40.2.4
+  meshoptCompression(),                                       // EXT_meshopt_compression, QUANTIZE method = the tail of meshopt({ level: 'medium' }) — NOT meshopt() itself
 );
+// textures: §40.2.4, applied after the sequence (gltf-transform's textureCompress has no KTX2 target)
 ```
+
+<!-- amended 2026-09-25: model-pipeline IMPLEMENTATION-NOTES M2, M3, M5 -->
+Three facts of gltf-transform 4.5.0 the first draft got wrong (paths relative to `node_modules/.pnpm/@gltf-transform+functions@4.5.0_*/node_modules/@gltf-transform/functions`): `meshopt()` is a wrapper that runs its own `reorder({ target: 'size' })` and `quantize()` before adding the extension (`src/meshopt.ts` lines 82–93), so after the explicit `quantize(14/10/12/…)` it would re-quantize the 14-bit positions and clone the skin's inverse-bind matrices again — the pipeline applies only its tail (`meshoptCompression()` in `src/transform.ts`); `textureCompress` supports `jpeg | png | webp | avif` only (`TEXTURE_COMPRESS_SUPPORTED_FORMATS`, `src/texture-compress.ts` line 24); and `join()` skips skinned nodes, which every Quaternius primitive is.
 
 Determinism: gltf-transform assigns no random ids; `NodeIO.writeBinary` is byte-stable for the same document, and the pipeline asserts it by encoding twice in `determinism.test.ts`. The Quaternius `data:` buffers become a single GLB `BIN` chunk (`io.writeBinary`), which alone removes the 33 % base64 inflation.
 
 ### 40.2.3 Per-set rules
 
-**Legendaries** (`10-render.md` §10.7.7 does not cover them; they are overworld statics per `roster-coverage.md` §7 and the arena's `ActorPool` per `10-render.md` §10.7.6): keep the skin and the single clip; the clip is renamed `idle`; `resample` at `1e-4`; 30 000 triangles are **kept for LOD0** and `simplify({ simplifier: MeshoptSimplifier, ratio: 0.35, error: 0.001 })` writes a second GLB `<id>.lod1.glb` (≈ 10 500 tris) used beyond 40 m (same thresholds as `10-render.md` §10.5.7). Skinned simplification with `meshoptimizer 0.24`'s `simplifyWithAttributes` locks the skin weights as attributes so joints stay bound. Three textures: base colour (sRGB), the second is treated as **normal** if its mean colour is within 16/255 of `(128,128,255)` else as ORM; the third is emissive. Output KTX2 per §40.2.4.
+**Legendaries** (`10-render.md` §10.7.7 does not cover them; they are overworld statics per `roster-coverage.md` §7 and the arena's `ActorPool` per `10-render.md` §10.7.6): keep the skin and the single clip; the clip is renamed `idle`; `resample` at `1e-4`; 30 000 triangles are **kept for LOD0** and a skinned simplification writes a second GLB `<id>.lod1.glb` (≈ 10 500 tris) used beyond 40 m (same thresholds as `10-render.md` §10.5.7). gltf-transform 4.5's `simplify()` calls the **position-only** `simplifier.simplify` (`src/simplify.ts` lines 176–183), so the pipeline's `simplifySkinned` calls `meshoptimizer` 0.24's `MeshoptSimplifier.simplifyWithAttributes` directly (NORMAL weight 0.5, TEXCOORD_0 1.0, WEIGHTS_0 1.0) and compacts the primitive, so surviving vertices keep JOINTS/WEIGHTS and the skin stays bound. **Error bound 0.01, not 0.001**: at 0.001 (2 mm on a 2 m creature) the simplifier stops at 24 000–28 900 of 30 000 triangles and LOD1 comes out at 505–619 KB against the 0.45 MB line; at 0.01 all four reach 10 435–10 493 tris with an achieved error of 0.0045–0.0081 of the extent (≈ 1 px at 40 m), LOD1 220–248 KB. Texture roles come from the material slots the sources bind (`baseColorTexture`, `normalTexture`, `metallicRoughnessTexture`); the draft's mean-colour heuristic misreads them — the normals average (127, 127, 234) and the third texture is metallic-roughness (mean (254, 28, 1)), there is no emissive map — and survives only as a `normal-suspect` QA cross-check. Output KTX2 per §40.2.4. <!-- amended 2026-09-25: model-pipeline IMPLEMENTATION-NOTES M4, M6 -->
 
-**Quaternius** (player/NPC looks, `10-render.md` §10.7.7: "each look is one draw (merged)"): the 6 flat-colour materials are baked into a `COLOR_0` vertex attribute (`vertexColor(): [baseColorFactor]` per primitive, written with `quantizeColor 8`) and the primitives joined into **one** primitive with one material — the render library's `'character'` surface class reads `vertexColor()` as albedo and uses the shared neutral 4×4 ORM/normal placeholder (`10-render.md` §10.2.3) since the source has no maps. Only the clips `Idle`, `Walk`, `Run`, `Victory`, `Defeat`, `SitDown`, `StandUp` are kept (renamed to lower-case; `10-render.md` §10.7.7 names `idle/walk/run`; the other four are for battle staging and the healer bench); the remaining 10 clips are dropped by `prune()` after being detached — that is where most of the 0.9 MB goes. Triangles are kept (3–7 k is already under any LOD0 budget); a `lod1` is not generated for characters (they are never far from the camera at the diorama's view distance).
+**Quaternius** (player/NPC looks, `10-render.md` §10.7.7: "each look is one draw (merged)"): the 6 flat-colour materials are baked into a `COLOR_0` vertex attribute (`vertexColor(): [baseColorFactor]` per primitive, written with `quantizeColor 8`) and the primitives joined into **one** primitive with one material — the render library's `'character'` surface class reads `vertexColor()` as albedo and uses the shared neutral 4×4 ORM/normal placeholder (`10-render.md` §10.2.3) since the source has no maps. Only the clips `Idle`, `Walk`, `Run`, `Victory`, `Defeat`, `SitDown`, `StandUp` are kept (renamed to lower-case; `10-render.md` §10.7.7 names `idle/walk/run`; the other four are for battle staging and the healer bench); the remaining 10 clips are dropped by `prune()` after being detached — that is where most of the 0.9 MB goes. "Detached" means channels and samplers disposed **before** the animation: `Animation.dispose()` leaves its samplers alive and pointing at their keyframe accessors (`@gltf-transform/core` `src/properties/animation.ts` has no `dispose` override; `prune()` keeps them — measured 1 136 accessors instead of 440). Tracks that hold a node's rest value in every kept clip are dropped too (lossless in three: the bone keeps its rest transform), which brings the looks to 150–217 KB. The merge into one primitive is `joinPrimitives` after the colours are baked into `COLOR_0` and all primitives share the one `character` material — `join()` skips skinned nodes. <!-- amended 2026-09-25: model-pipeline IMPLEMENTATION-NOTES M5, M8 --> Triangles are kept (3–7 k is already under any LOD0 budget); a `lod1` is not generated for characters (they are never far from the camera at the diorama's view distance).
 
 ### 40.2.4 Texture plan
 
-`TEXTURE_PLAN`: `{ encoder: ktx2Encoder, targetFormat: 'ktx2', slots: /baseColor|emissive/ → { mode: 'uastc', rdo: 2.0, zstd: 18, srgb: true, mipmaps: true }, slots: /normal|occlusion|metallicRoughness/ → { mode: 'uastc', rdo: 2.0, zstd: 18, srgb: false, normalMap: slot === 'normal', mipmaps: true } }`. The encoder is the same `ktx2-encoder@0.6.0` Node API as §40.1.6 (`encodeToKTX2(bytes, { isUASTC: true, isKTX2File: true, needSupercompression: true, enableRDO: true, rdoQualityLevel: 2, generateMipmap: true, isPerceptual, isSetKTX2SRGBTransferFunc, isNormalMap, imageDecoder })`); legendary textures are ≤ 2048² (≤ 4.2 Mpix), under the 12 Mpix cap that stops it for sprite atlases. **Fallback:** when `probeKtx2(2048)` fails on the build machine, textures are written as lossy WebP `q90` via `textureCompress({ encoder: sharp, targetFormat: 'webp', quality: 90 })` with `EXT_texture_webp`, and `models.manifest.json` records `textures: 'webp'`; CI treats the fallback as a warning, not a failure, until M2, then as a failure.
+`TEXTURE_PLAN` (its own step, `encodeTexture` + `applyTextures`, because `textureCompress` has no KTX2 target): sharp decodes and fits each image (Lanczos3); `/baseColor|emissive/` → UASTC, RDO 2.0, sRGB, mips; `/normal|occlusion|metallicRoughness/` → UASTC, RDO 2.0, linear, `isNormalMap` for the normal, mips; the texture gets `image/ktx2`, `KHR_texture_basisu` (required) and an **external** uri `<id>.<role>.<hash8>.ktx2` shared by LOD0 and LOD1. The encoder is the same `ktx2-encoder@0.6.0` Basis module as §40.3.3 with `uastcLDRQualityLevel 0` (pack 2 is larger and 4× slower on these maps) and Basis' own mip generation; it exposes **no Zstandard level** (supercompression is on/off), so the draft's `zstd: 18` is Basis' default level (re-compressing at level 18 measured −1.0 % over all 12 maps). **Resolution ladder** — 1024² UASTC does not fit the 1.2 MB LOD0 line at any RDO setting (lumyth/zenryu maps 1.91–2.31 MB at 1024²; geometry 0.53–0.64 MB), so each legendary takes the first tier whose GLB + textures ≤ 1 258 291 B: (512, 512, 512) → (512, 512, 256) → (512, 512, 128) → (512, 256, 128) → (256, 256, 128) for (base, normal, ORM); measured lumyth/voidraxis tier 0, noxmyth tier 1, zenryu tier 2; no tier fitting fails the build. **Fallback:** when `probeKtx2(2048)` fails on the build machine, textures are written as lossy WebP `q90` with sharp under `EXT_texture_webp`, and `models.manifest.json` records `textures: 'webp'`; CI treats the fallback as a warning, not a failure, until M2, then as a failure. <!-- amended 2026-09-25: model-pipeline IMPLEMENTATION-NOTES M1, M2, M7, M9; ktx2-encoder types/type.d.ts line 37 -->
 
 ### 40.2.5 Output and manifest
 
 ```
 packages/client/public/models/
 ├─ legendaries/<id>.glb, <id>.lod1.glb      (4 × 2)
-├─ looks/<look>.glb                          (20)
+├─ looks/<look>.glb                          (19)
 ├─ CREDITS.txt                               (copied from assets-src/licenses/QUATERNIUS-CREDITS.txt)
 └─ models.manifest.json
 ```
@@ -361,7 +368,7 @@ export interface ModelEntry {
 export interface ModelsManifest {
   readonly version: 1;
   readonly legendaries: Readonly<Record<'lumyth' | 'noxmyth' | 'voidraxis' | 'zenryu', ModelEntry>>;
-  readonly looks: Readonly<Record<string, ModelEntry>>;      // 20 Quaternius look ids, snake_case of the file stem (casual_male …)
+  readonly looks: Readonly<Record<string, ModelEntry>>;      // the 19 Quaternius look ids = @ewa/content LOOKS, snake_case of the file stem (casual_male …)
   readonly totalBytes: number;
 }
 ```
@@ -370,12 +377,12 @@ export interface ModelsManifest {
 
 | | Input | Target | How the number is reached |
 |---|---|---|---|
-| One legendary LOD0 | 2.0–2.5 MB | **≤ 1.2 MB** | 30 k tris × ~3 attributes at 14/10/12-bit quantization + meshopt ≈ 0.45 MB; 3 textures at 1024²–2048² UASTC+RDO+zstd with mips ≈ 0.4–0.6 MB; one resampled clip ≈ 0.1 MB |
-| One legendary LOD1 | — | ≤ 0.45 MB | 10.5 k tris, same textures **shared by reference** (`lod1.glb` reuses the KTX2 by url via `KHR_texture_basisu` + external `uri` next to it, so textures are not written twice; `bytes` counts the GLB only) |
+| One legendary LOD0 | 2.0–2.5 MB | **≤ 1.2 MB** (GLB + its three textures) | measured geometry 0.53–0.64 MB (30 k tris; NORMAL at 10 bits is the largest stream); textures from the §40.2.4 ladder at ≤ 512² (the draft's "1024²–2048² ≈ 0.4–0.6 MB" measured 1.91–2.31 MB at 1024²); one resampled clip |
+| One legendary LOD1 | — | ≤ 0.45 MB | 10.5 k tris at error 0.01 (§40.2.3), measured 220–248 KB; same textures **shared by reference** (LOD0 and LOD1 both reference the external KTX2 files; `bytes` counts LOD1's GLB only) |
 | 4 legendaries total | 8.8 MB | **≤ 6.5 MB** | 4 × (1.2 + 0.45) |
-| One Quaternius look | 1.7–2.2 MB | **≤ 0.25 MB** | binary chunk instead of base64 (−25 %), 7 of 17 clips (−55 %), `resample` (−30 % of the rest), quantized + meshopt geometry (3–7 k tris ≈ 60–120 KB) |
-| 20 looks total | 37 MB | **≤ 5.0 MB** | 20 × 0.25 |
-| **`public/models/` total** | 45 MB | **≤ 12 MB** (§40.6) | 6.5 + 5.0 + manifest, with 0.5 MB headroom |
+| One Quaternius look | 1.7–2.2 MB | **≤ 0.25 MB** | binary chunk instead of base64 (−25 %), 7 of 17 clips (−55 %), `resample` (−30 % of the rest), rest-pose tracks dropped, quantized + meshopt geometry; measured 150–217 KB |
+| 19 looks total (`@ewa/content` `LOOKS`; the draft counted 20) | 19 × 1.7–2.2 MB | **≤ 5.0 MB** | measured 3.38 MB |
+| **`public/models/` total** | 45 MB | **≤ 12 MB** (§40.6) | measured 8.58 MB (commit e2d6127) |
 
 Runtime: the client loads GLBs with `GLTFLoader` + `MeshoptDecoder` + `KTX2Loader` (`public/basis/basis_transcoder.{js,wasm}`, already present). `models.manifest.json` `hash` is the cache key the client's asset store uses; a `?v=<hash8>` query is appended to model urls by the build.
 
@@ -385,11 +392,11 @@ Runtime: the client loads GLBs with `GLTFLoader` + `MeshoptDecoder` + `KTX2Loade
 
 ### 40.3.1 What it produces
 
-`10-render.md` §10.2.1 fixes the output: per surface id, three KTX2 maps — `albedo` (RGB, sRGB, UASTC, mips to 1×1), `orm` (R = AO, G = roughness, B = metalness, NoColorSpace, UASTC, mips), `normal` (tangent-space normal from a 3×3 Sobel of the procedural heightfield, NoColorSpace, UASTC, mips) — in **two tiers from one recipe**: `field` at 512² for every surface and `hero` at 1024² for surfaces with `hero: true` (the 6 shared ids, every `triplanar` terrain layer, one signature surface per biome; ≤ 50 world-wide, asserted). There is no 2048² tier. Albedo maximum luminance 0.85; cached by content hash. <!-- reconciled 2026-09-18: OQ-2 decided in 10-render.md §10.2.1 — the single-tier layout was 143 MB against 60 --> The 83 surface ids and their base values are `SURFACES` in `packages/render/src/surfaces.ts` (`10-render.md` §10.2.2–10.2.3); the bake imports that table through a JSON export (`packages/render` writes `dist/surfaces.json` in its build; the bake reads the JSON, never the TS, so the import-boundary rule holds).
+`10-render.md` §10.2.1 fixes the output: per surface id, three KTX2 maps — `albedo` (RGB, sRGB, UASTC, mips to 1×1), `orm` (R = AO, G = roughness, B = metalness, NoColorSpace, UASTC, mips), `normal` (tangent-space normal from a 3×3 Sobel of the procedural heightfield, NoColorSpace, UASTC, mips) — in **two tiers from one recipe**: `field` at 512² for every surface and `hero` at 1024² for surfaces with `hero: true` (the 6 shared ids, every `triplanar` terrain layer, one signature surface per biome; ≤ 50 world-wide, asserted). There is no 2048² tier. Albedo maximum luminance 0.85; cached by content hash. <!-- reconciled 2026-09-18: OQ-2 decided in 10-render.md §10.2.1 — the single-tier layout was 143 MB against 60 --> The 83 surface ids and their base values are `SURFACES` in `packages/render/src/surfaces/surfaces.ts` (`10-render.md` §10.2.2–10.2.3); the bake imports that table and the recipes through the pure subpath `@ewa/render/surfaces` (§40.0.2 rule 5), and `packages/render/src/materials/surfaces.ts` re-exports the same leaf files. <!-- amended 2026-09-25: the `dist/surfaces.json` export was never built — material-bake IMPLEMENTATION-NOTES D0 -->
 
 The approach is the Table-Clash one (`reference-table-clash-SPEC.md` §2: `TextureSetRequest` with `albedo` painter, `orm` writer, `height` callback, `normalFromHeight`, `packOrm`, `fbm2`/`valueNoise2`/`hash21`), moved from runtime Canvas2D to a Node build step over `Float32Array`s. The runtime `CanvasTexture` path is cut (`10-render.md` §10.11).
 
-### 40.3.2 `SurfaceRecipe` (verbatim, `tools/material-bake/src/recipe.ts`)
+### 40.3.2 `SurfaceRecipe` (verbatim, `packages/render/src/surfaces/recipe.ts`, imported by the bake through `@ewa/render/surfaces`)
 
 ```ts
 export interface ScalarField { readonly width: number; readonly height: number; readonly data: Float32Array }      // row-major, 0..1, pre-zeroed
@@ -402,13 +409,14 @@ export interface Noise {
   fbm2(x: number, y: number, octaves: number, lacunarity?: number, gain?: number): number;   // defaults 2.03 / 0.5
   worley2(x: number, y: number, jitter?: number): { f1: number; f2: number; id: number };   // cells, for stone/scale
   rng(seed: string): () => number;                               // sfc32 seeded from sha256(seed); the only randomness
+  periodic(px: number, py?: number): Noise;                      // a view whose lattice wraps with period (px, py); fbm octave frequencies snapped to integral periods (seamless tiles)
 }
 
 export interface RecipeCtx {
   readonly id: string; readonly size: number;                    // 512 (field) | 1024 (hero) — the recipe is resolution-independent; every coordinate is in tile units
   readonly metres: number;                                       // physical tile size the texture covers (u = v); repeat is world-constant in the shader
   readonly noise: Noise;
-  readonly def: SurfaceDefJson;                                  // SURFACES[id] from packages/render dist/surfaces.json
+  readonly def: SurfaceDefJson;                                  // SURFACES[id] from @ewa/render/surfaces
 }
 
 export interface SurfaceRecipe {
@@ -425,28 +433,37 @@ export interface SurfaceRecipe {
   readonly normalStrength: number;
   /** 'repeat' (seamless: the painters are written on a torus, the bake asserts the wrap seam error) or 'clamp'. */
   readonly wrap: 'repeat' | 'clamp';
+  /** §40.3.5: per-surface RDO quality scalar when a map is over its byte target (default 2.0). */
+  readonly rdo?: number;
 }
+/** For card surfaces (`SurfaceDef.alphaTest !== null`) the bake passes an Rgb that also carries alpha (pre-filled 1). */
+export interface CardRgb extends Rgb { readonly alpha: Float32Array }
 
 export const RECIPES: Readonly<Record<string, SurfaceRecipe>>;  // one per SurfaceId; the bake fails if a SURFACES id has no recipe or vice versa
 ```
 
-Derivations done by the bake, not by recipes: `normal = sobel3x3(h, normalStrength)` encoded `(128 + n·127)` with OpenGL +Y up; cavity AO `ao *= 1 − 0.6 · saturate((blur(h, σ 6) − h) · 4)` when the recipe did not write `ao`; **seam check** for `wrap: 'repeat'` — mean absolute difference between column 0 and column `size−1` (and row 0 / row `size−1`) of albedo and height must be ≤ 2/255, else the build fails naming the surface; **luminance ceiling** — every albedo texel with Rec. 709 luminance > 0.85 (linear) is scaled down to 0.85 and counted; if more than 5 % of texels were clamped the build fails (the recipe is too bright, fix the recipe); mip chain by 2×2 box filter in linear space for albedo, straight average for ORM, renormalised average for normals.
+Derivations done by the bake, not by recipes: `normal = sobel3x3(h, normalStrength)` encoded `(128 + n·127)` with OpenGL +Y up; cavity AO `ao *= 1 − 0.6 · saturate((blur(h, σ 6) − h) · 4)` when the recipe did not write `ao`; **seam check** for `wrap: 'repeat'` — the mean absolute neighbour difference **across the wrap** (column `size−1` → column 0, row `size−1` → row 0) of albedo and height may exceed the *largest* mean neighbour difference between two adjacent interior columns (rows) by at most 2/255, else the build fails naming the surface. (The literal "column 0 vs column size−1 ≤ 2/255" fails every textured seamless map, because adjacent texels of a textured map legitimately differ by more than 2/255; a seamless torus scores 0 on the excess metric, a ramp ≈ 1.) The verbatim `Noise` gains `periodic(px, py)` (lattice wrapping with integral octave periods): `fbm2(x·k, …)` with lacunarity 2.03 cannot tile. <!-- amended 2026-09-25: material-bake IMPLEMENTATION-NOTES D3, D6 --> **luminance ceiling** — every albedo texel with Rec. 709 luminance > 0.85 (linear) is scaled down to 0.85 and counted; if more than 5 % of texels were clamped the build fails (the recipe is too bright, fix the recipe); mip chain by 2×2 box filter in linear space for albedo, straight average for ORM, renormalised average for normals.
 
 ### 40.3.3 Encoding
 
 `ktx2-encoder@0.6.0` Node API, one call per map:
 
 ```ts
-encodeToKTX2(new Uint8Array(0), {
+// src/encode.ts: encodeKtx2(levels, kind, rdo) calls encodeLevel(level, kind, rdo) once PER MIP LEVEL (each a
+// single-level KTX2) with the Basis settings below, then src/ktx2.ts assembles the levels' independently
+// supercompressed payloads into one KTX2 (level index, DFD and KVD of level 0, level data smallest first)
+const settings = {
   isUASTC: true, isKTX2File: true, needSupercompression: true,    // UASTC LDR + Zstandard
-  enableRDO: true, rdoQualityLevel: 2.0,                          // rate-distortion; the lever that makes UASTC fit (§40.3.5)
-  uastcLDRQualityLevel: 2,
-  generateMipmap: false,                                          // the bake supplies the chain (linear-space box filter, see above): mips are passed as extra slices via setSliceSourceImage in a small wrapper around NodeBasisEncoder (the high-level API exposes no per-level input)
+  enableRDO: true, rdoQualityLevel: 2.0,                          // rate-distortion (§40.3.5; measured: not the lever it was assumed to be)
+  uastcLDRQualityLevel: 0,                                        // pack level 0: same PSNR on albedo as 2 at ~0.6× the bytes and ~5× the speed
+  generateMipmap: false,                                          // the bake supplies the chain (linear-space box filter, see above)
   isPerceptual: kind === 'albedo', isSetKTX2SRGBTransferFunc: kind === 'albedo',
   isNormalMap: kind === 'normal',
-  imageDecoder: async () => ({ width, height, data }),
-});
+};
 ```
+
+<!-- amended 2026-09-25: material-bake IMPLEMENTATION-NOTES D1, D2 -->
+ktx2-encoder 0.6.0 has no per-level input: its only slice setter is `setSliceSourceImage(sliceIndex, …)` with no mip parameter, and Basis refuses mips passed as extra slices ("all source images must be the same resolution and have the same number of mipmap levels"); nor does it expose a Zstandard level (supercompression is on/off, `setKTX2UASTCSupercompression(boolean)`) or Basis' status printer (`setStatusOutput` exists in the wasm but not in `IBasisEncoder`) — so the bake drives the embind `BasisEncoder` directly, one single-level encode per mip, and assembles the container itself; each level is byte-identical to what Basis writes for that image. Basis skips RDO on blocks whose RMS error is above 8 (`setRDOUASTCSkipBlockRMSThresh`), so RDO λ alone barely moves textured maps; `rdoProfile(rdo)` keeps Basis' defaults up to 2.0 and widens the skip and max-RMS-ratio thresholds to 8 × rdo above it. Measured on this repo's recipes (256² crops): cobble albedo pack 2 λ2 0.385 B/texel 48.3 dB vs pack 0 λ2 0.228 B/texel 48.2 dB; cobble normal 0.597 → 0.467 B/texel. `node_modules/.pnpm/ktx2-encoder@0.6.0/node_modules/ktx2-encoder/types/type.d.ts` lines 16, 37, 176–258.
 
 The sizes here (512² = 0.26 Mpix, 1024² = 1 Mpix) are under the 12 Mpix cap measured in §40.1.6.1, so KTX2 is available; there is no WebP fallback for materials — `10-render.md` non-negotiable 2 ("every lit opaque material carries albedo + ORM + normal from KTX2") and the `textures.ktx2Only` audit rule make a fallback pointless. If the encoder is unavailable on a machine the bake fails with the probe message.
 
@@ -644,8 +661,8 @@ Today `src/cli.ts` is `export {};`. The tool is **headless and GPU-free**: it ne
 |---|---|---|
 | `budget.counts.drawCalls` | `counts.drawCalls ≤ 400` | §50.2.2 |
 | `budget.counts.triangles` | `≤ 2 500 000` | §50.2.2 |
-| `budget.counts.texturesSize` | `≤ 734 003 200` bytes | §50.2.2 |
-| `budget.counts.renderTargets` / `.programs` | `≤ 24` / `≤ 96` | §50.2.2 |
+| `budget.counts.texturesSize` | `≤ 734 003 200` bytes, read from `RenderStats.textureBytes` (KTX2 counted by level data, not three's 1-byte estimate) | §50.2.2 |
+| `budget.counts.renderTargets` / `.programs` | `≤ 41` / `≤ 128` (amended 2026-09-25: 24 / 96 measured impossible) | §50.2.2 |
 | `materials.count` | distinct `uuid` with `cls ∉ {debug}` `≤ 48` | §50.2.2, `10-render.md` §10.2.7 |
 | `materials.threeMaps` | every material with `cls ∈ {standard, physical, card, character}` and `harvestLevel === 0` has `maps.albedo && maps.orm && maps.normal` | Pillar 2 |
 | `materials.albedoCeiling` | every `surface` referenced resolves to a `materials.manifest.json` entry with `albedoClampedPct` present (the ceiling was applied at bake) | `10-render.md` §10.2.1, OQ-4 there |
@@ -686,14 +703,14 @@ Nothing under `public/` is hand-edited except `keyart/`, `icons/` and `fonts/`; 
 
 | Directory | Ceiling | Asserted by | Basis of the number |
 |---|---|---|---|
-| `creatures/` | **≤ 35 MB** (36 700 160 B) | `tools/sprite-pipeline/test/budget.test.ts` | §40.1.6: 260 sprites × (albedo q85 ≈ 73 KB + half-res normal q90 ≈ 24 KB + emissive ≈ 3 KB) × 1.20 mips ≈ 31.2 MB, + 130 thumbs ≤ 6 KB = 0.8 MB |
+| `creatures/` | **≤ 35 MB** (36 700 160 B) | `tools/sprite-pipeline/test/budget.test.ts` | measured (§40.1.6.3 as amended 2026-09-24, `PIPELINE_VERSION` 5): 65 atlases with binary alpha at albedo q88 / normal q92 — albedo 25.46 MB + normal 9.46 MB + emissive 0.46 MB (all levels) + thumbs and manifest 0.87 MB = **36.20 MB**, 0.50 MB under the ceiling. The draft's "73 + 24 + 3 KB × 1.20 ≈ 31.2 MB" was 1.5× optimistic <!-- amended 2026-09-25: stale basis after the 2026-09-24 amendment of §40.1.6.3 --> |
 | `models/` | **≤ 12 MB** | `tools/model-pipeline/test/budget.test.ts` | §40.2.6: 6.5 + 5.0 + headroom |
 | `materials/` | **≤ 90 MB** | `tools/material-bake/test/budget.test.ts` | §40.3.5: field 24.9 MB + hero ≤ 60 MB = ≤ 85 MB; the single-tier UASTC layout would be ≈ 143 MB and is why the tiers exist <!-- reconciled 2026-09-18: was 60 MB, which the arithmetic could not meet --> |
 | `audio/` | **≤ 80 MB** | `tools/audio-pipeline/test/budget.test.ts` | §40.4.7: 78 MB at 16-bar stems |
 | `basis/ + icons/ + fonts/ + keyart/` | ≤ 2 MB | `tools/asset-audit --bytes` | transcoder wasm 0.6 MB, fonts 0.36 MB, key art ≤ 0.8 MB |
 | **total `public/`** | **≤ 219 MB** | `tools/asset-audit --bytes` | sum |
 
-The per-zone *load* budget is a different number and is `20-client.md` §20.10.3's: phase 2 (`field` materials) ≤ 6 MB — Mirevale 4.5 MB, the largest biome set (cinder, 9 + 6 shared = 15) also 4.5 MB — and phase 3 (creature atlases + party + body GLB) ≤ 4 MB. From this file's manifests, phase 3 is ≤ 8 atlases × (73 + 24 + 3) KB × 4 sprites × 1.20 + 0.25 MB GLB ≈ **4.1 MB** cold for the single 14-species zone (`hollow_route`); the GLB is cached after the first zone, which brings the steady state to 3.8 MB. The `hero` tier (≤ 12 MB per zone) is phase 5.
+The per-zone *load* budget is a different number and is `20-client.md` §20.10.3's: phase 2 (`field` materials) ≤ 6 MB — Mirevale 4.5 MB, the largest biome set (cinder, 9 + 6 shared = 15) also 4.5 MB — and phase 3 (creature atlases + party + body GLB) ≤ 4 MB. From the shipped manifest (35.38 MB of atlas maps over 65 atlases = **0.544 MB per atlas**, all levels), phase 3 is `bound atlases × 0.544 MB` + the party singles' home atlases not already bound (≤ 6 × 0.544 MB) + the body GLB (0.15–0.22 MB): Mirevale binds 2 atlases (≈ 1.1 MB + GLB), well inside 4 MB; the 8-atlas zones (`galvan_route`, `solenne`) are 4.35 MB before singles and GLB, **over** the 4 MB phase-3 figure (it is asserted by `first-frame.spec.ts` on Mirevale only; recommendation R12). The draft's "≈ 4.1 MB cold for the 14-species `hollow_route`" used the pre-measurement 73 + 24 + 3 KB per sprite. The `hero` tier (≤ 12 MB per zone) is phase 5. <!-- amended 2026-09-25: stale arithmetic after §40.1.6.3's measured sizes; bind counts from packages/client/public/creatures/creatures.manifest.json `zones` -->
 
 ---
 
@@ -719,7 +736,7 @@ The per-zone *load* budget is a different number and is `20-client.md` §20.10.3
 | Per-zone duplicated 4096² atlases and `single_<species>` files | 140 placements of 72 species + a second 2048² copy of all 130 ≈ 2.7× the bytes of storing each sprite once | 2048² zone-affinity atlases, `zones[]` bind lists, `home` crop (§40.1.4) |
 | Shipping the `animations/` sheets | no consumer in `10-render.md`; 15 MB | `CreatureBillboard` poses are uniform writes |
 | Runtime sprite variant re-baking | `00-spine.md` §3.7: palettes are uniforms | `hueShift/satMul/lightMul/alphaGlow` userData |
-| Per-species hand-tuned emissive masks as a first step | 130 × 2 masks to paint | threshold 0.72 + `EMISSIVE_OVERRIDES` only where the contact sheet shows a miss |
+| Per-species hand-tuned emissive masks as a first step | 130 × 2 masks to paint | the §40.1.2 stage-4 rule (HSV value ≥ 0.92, chroma ≥ 0.4, 8 % cap; amended 2026-09-25 — was "threshold 0.72") + `EMISSIVE_OVERRIDES` only where the contact sheet shows a miss |
 | Single-tier 1024²/2048² UASTC for all 83 surfaces | ≈ 143 MB against the ceiling | hero 1024² / field 512² tiers (§40.3.5), ≤ 85 MB |
 | Two-pass dynamic `loudnorm` | alters the envelope, breaks loop seams | measured static gain |
 | `.ogg` Opus container | Safari `decodeAudioData` rejects it | `.webm` Opus + `.m4a` AAC fallback (same codec as the task asked for, different container) |

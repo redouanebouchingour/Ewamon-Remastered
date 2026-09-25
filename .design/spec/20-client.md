@@ -4,7 +4,7 @@
 
 Inputs: `00-spine.md`; `PLAN.md` (UI/UX, multiplayer, combat presentation paragraphs); `eslint.config.js` (`ewa/client` block: the client may import `@ewa/core`, `@ewa/content`, `@ewa/protocol`, `@ewa/render`, `react`, `react-dom`, `react-router`, `zustand`, `@colyseus/sdk`, `@colyseus/schema`; never `@ewa/server`, `@ewa/persist`, `colyseus`, `@colyseus/core`, `pg`, `drizzle-orm`, node builtins). Every library name below was read from `packages/client/node_modules`:
 
-- `react-router 7.9` (`dist/development/index.d.ts`): `createBrowserRouter`, `RouterProvider`, `Outlet`, `Link`, `NavLink`, `useLoaderData`, `useRouteLoaderData`, `useFetcher`, `useBlocker`, `useNavigation`, `useNavigate`, `useSearchParams`, `useRouteError`, `isRouteErrorResponse`, `redirect`, `data`, `RouteObject` (with `loader`, `action`, `lazy`, `HydrateFallback` / `hydrateFallbackElement`, `shouldRevalidate`), `LoaderFunctionArgs`, `ActionFunctionArgs`, `ShouldRevalidateFunction`.
+- `react-router` (the lockfile resolves **7.18.4**, re-verified 2026-09-25; the symbols below are unchanged since 7.9) (`dist/development/index.d.mts`): `createBrowserRouter`, `RouterProvider`, `Outlet`, `Link`, `NavLink`, `useLoaderData`, `useRouteLoaderData`, `useFetcher`, `useBlocker`, `useNavigation`, `useNavigate`, `useSearchParams`, `useRouteError`, `isRouteErrorResponse`, `redirect`, `data`, `RouteObject` (with `loader`, `action`, `lazy`, `HydrateFallback` / `hydrateFallbackElement`, `shouldRevalidate`), `LoaderFunctionArgs`, `ActionFunctionArgs`, `ShouldRevalidateFunction`.
 - `@colyseus/sdk 0.18.2` (`build/Client.d.ts`, `build/Room.d.ts`, `build/index.d.ts`): `Client` (`joinOrCreate`, `joinById`, `reconnect(reconnectionToken)`, `consumeSeatReservation(reservation)`), `Room` (`state`, `sessionId`, `roomId`, `reconnectionToken`, `onStateChange`, `onMessage(type, cb): () => void`, `send(type, payload)`, `onLeave`, `onError`, `onDrop`, `onReconnect`, `leave(consented)`, `removeAllListeners()`), `getStateCallbacks(room)` returning `SchemaCallbackProxy<T>` with `listen` / `onAdd` / `onRemove` / `onChange`.
 - `zustand 5` (`vanilla.d.ts`, `react.d.ts`, `middleware/*.d.ts`): `create`, `createStore`, `useStore`, `useShallow`, `persist` + `createJSONStorage`, `subscribeWithSelector`.
 - `react 19.2` (`@types/react`): `useSyncExternalStore`, `useTransition`, `useId`; `react-dom/client`: `createRoot`.
@@ -26,7 +26,7 @@ Inputs: `00-spine.md`; `PLAN.md` (UI/UX, multiplayer, combat presentation paragr
 
 ### 20.1.1 Route table
 
-`packages/client/src/app/router.tsx` builds one `createBrowserRouter` and `main.tsx` mounts `<RouterProvider router={router}/>` under `createRoot(document.getElementById('root')!)`. No `<BrowserRouter>`, no `<Routes>` tree, no React Router framework mode.
+`packages/client/src/app/router.tsx` builds one `createBrowserRouter` (through `createAppRouter()`) and `main.tsx` mounts `<RouterProvider router={createAppRouter()}/>` under `createRoot(document.getElementById('root')!)`. No `<BrowserRouter>`, no `<Routes>` tree, no React Router framework mode.
 
 | Path | Element | Loader (REST, spine §4.7) | Notes |
 |---|---|---|---|
@@ -80,7 +80,8 @@ export const routes: RouteObject[] = [
   { path: '/admin', element: <AdminScreen/>, loader: adminLoader },
   { path: '*', loader: () => redirect('/play') },
 ];
-export const router = createBrowserRouter(routes);
+/** Called once by main.ts. A module-level `createBrowserRouter(routes)` would start a browser router in every test that imports `routes` (amended 2026-09-25, client IMPLEMENTATION-NOTES D1). */
+export function createAppRouter(): ReturnType<typeof createBrowserRouter>;
 ```
 
 `PlayError` is the `errorElement` of `/play`, but `GameCanvas` is rendered by `PlayShell`, which is the route *element*; when the element throws, React Router swaps element for errorElement. To keep rule 1 true under an error, `PlayShell` is split: `PlayShell = <CanvasHost/> + <PanelHost/>`, where `CanvasHost` is rendered by a **parent pathless layout route** with no loader and no errorElement, and `/play`'s element/errorElement only own `PanelHost`. Concretely the `/play` entry above is wrapped: `{ element: <CanvasHost/>, children: [ { path: '/play', … } ] }`. The canvas therefore survives loader errors, child errors and 401 redirects to `/login` (the pathless layout matches `/play*` only; `/login` unmounts it — logging out is the one legal canvas unmount).
@@ -100,7 +101,7 @@ export class ApiFailure extends Error { constructor(readonly error: ApiError) { 
  * - Timeout 10_000 ms via AbortSignal.timeout; network error → { status: 0, code: 'network' }.
  * - Concurrent refreshes are coalesced: one in-flight refresh promise, shared.
  */
-export function apiFetch<T>(route: RestRoute<T>, init?: { body?: unknown; params?: Record<string, string | number | boolean | null>; signal?: AbortSignal }): Promise<T>;
+export function apiFetch<K extends RouteKey>(key: K, init?: ApiInit<K>): Promise<RouteResponse<K>>;   // routes addressed by @ewa/protocol's RouteKey (the typed ROUTES table); ApiInit = { body?, params? (path), query?, signal? } — amended 2026-09-25: `RestRoute<T>` was defined nowhere (client IMPLEMENTATION-NOTES D2)
 
 /** Loader helper: throws redirect('/login?next=<pathname>') when there is no refresh token; otherwise resolves the access token (refreshing if expired). */
 export function requireSession(request: Request): Promise<void>;
@@ -336,7 +337,7 @@ export interface NotificationsState {
 | `Progression.*` | `applyProgressionDelta` | room message `progressionDelta`; REST responses that return badges/dex/quests are converted to a `progressionDelta` literal by the route action and passed through the same function |
 | `Inventory.items/money/party/box` | `applyInventoryDelta` | room message `inventoryDelta`; REST `{ inventory, money, party, box, creaturesUpdated }` responses converted to an `inventoryDelta` literal by the action |
 | everything in `SessionState` | `hydrateFromMe` | `/play` loader; `WorldSession.onReconnected` (re-GET `/me`) |
-| `BattleUi.authoritative` | `BattleController.applyServer` | `battleStart`, `battleEvents` (HP from `damage.hpAfter`/`heal.hpAfter`), `battleResync` |
+| `BattleUi.authoritative` | `BattleController.applyServer` | `battleStart`; `battleEvents` — when the preview's digest matches `stateDigest`, the preview state **is** the server's state and becomes `authoritative`; without a preview (pvp, raid, a turn the client did not submit) the state is patched from the events (`hpAfter`, pp, status, actives, turn) and the next digest check decides; `battleResync` |
 | `zoneId` | `WorldSession` | `join` resolved / `handover` acked |
 
 A `BattleEvent` of `expGain`, `levelUp`, `catchResult` or `battleEnd` changes nothing in `SessionState`. The rewards arrive as `progressionDelta`/`inventoryDelta` sent by the server after `battleEnd`; the `BattleResultCard` reads `RewardsSummary` from the `battleEnd` message for display only.
@@ -396,7 +397,7 @@ export interface WorldSession {
 ```
 <!-- reconciled 2026-09-18: join goes through POST /zone/enter (30-server-netcode.md §30.2.6, OQ 3); handover.seat is the typed SeatReservation (spine §4.4) -->
 
-Message routing: `room.onMessage('*', (type, payload) => …)` is **not** used; every `ServerMessage.type` string is registered once with `room.onMessage(type, cb)` at join, and the returned disposers are collected and called in `leave()`. Reconnect: on `onDrop` (unconsented, code ≠ 1000) `ui.connection = 'reconnecting'`, `ConnectionOverlay` appears after 2 000 ms, `client.reconnect(room.reconnectionToken)` is attempted at 1, 2, 4, 8, 8, 8 s (6 attempts, then `'offline'` and a "Return to login" button). On `onReconnect`: `hydrateFromMe(await GET /me)`, prediction buffer cleared, remote buffers cleared. Multi-tab: the server keys by player uuid, so a second tab's join replaces the first; the first receives `onLeave` code `4001` (30-server-netcode.md) and shows "Playing in another tab".
+Message routing: `room.onMessage('*', (type, payload) => …)` is **not** used; every `ServerMessage.type` string is registered once with `room.onMessage(type, cb)` at join, and the returned disposers are collected and called in `leave()`. Reconnect: on `onDrop` (unconsented, code ≠ 1000) `ui.connection = 'reconnecting'`, `ConnectionOverlay` appears after 2 000 ms. `@colyseus/sdk` 0.18.2 reconnects **internally** on 1001/1005/1006/4010 (`src/Room.ts` lines 166–173; defaults 15 retries, `src/Reconnection.ts` lines 68–82), so the client configures `room.reconnection` to the schedule 1, 2, 4, 8, 8, 8 s (`maxRetries 6`) instead of running its own `client.reconnect(room.reconnectionToken)` loop, which would race the SDK's; after the last attempt the SDK fires `onLeave(4003)` → `'offline'` and a "Return to login" button. <!-- amended 2026-09-25: client IMPLEMENTATION-NOTES D5 --> On `onReconnect`: `hydrateFromMe(await GET /me)`, prediction buffer cleared, remote buffers cleared. Multi-tab: the server keys by player uuid, so a second tab's join replaces the first; the first receives `onLeave` code `4101` (`CLOSE_CODES.replaced`, 30-server-netcode.md §30.2.2) and shows "Playing in another tab"; 4001 is Colyseus' `SERVER_SHUTDOWN` and is treated as a restart/reconnect case.
 
 ---
 
@@ -497,7 +498,7 @@ Field mapping (the adapter is a table, not logic; target names are `10-render.md
 | emote 1–6 | `Digit1`…`Digit6` | `emote { emote }` |
 | challenge | `KeyC` | `challenge { targetId }` for the nearest player within 6 u, not `inBattle` |
 | rotate camera | `KeyQ` / `KeyR`, or mouse drag ≥ 80 px horizontal | `camera.setHeading((h ± 1) & 3)`; local only |
-| zoom | wheel | `camera.setZoomStop` between 3 stops (14 / 18 / 24 u); local only |
+| zoom | wheel | `camera.setZoomStop` between 3 stops (20 / 26 / 34 m, `10-render.md` §10.7.1 `DISTANCE`; amended 2026-09-25 — this row said 14 / 18 / 24, which contradicted render's table); local only |
 | party / bag / journal / pause | `KeyP` / `KeyB` / `KeyJ` / `Escape` | `navigate('/play/party')` etc.; local only |
 | toggle HUD | `F1` | local |
 
@@ -653,7 +654,7 @@ export interface BattleController {
 }
 ```
 
-**Preview rule.** On `submit`, when the opposing side is `wild`/`npc` (formats `wild`, `trainer`, `league`), the client computes `preview = resolveTurn(authoritative, seat === 0 ? [action, null] : [null, action], content)` — the same null-passing convention the server uses (spine §2.10), so the NPC choice comes from the same rng stream and the digest can match. For `pvp` and `raid` no preview is computed (the other action is unknown). The preview is used for exactly three things: (1) `renderer.stage.prewarm(vfxIdsIn(preview.events))` so shaders/particles for the likely VFX are resident before the server message lands; (2) `expectedDurationMs = buildTimeline(preview.events).durationMs` to size the input-lock and the "waiting" indicator; (3) `digestBattleState(preview.state)` compared with `battleEvents.stateDigest`. **No preview frame is ever rendered**: `TimelinePlayer.play` is only ever called with a timeline built from `m.events`. On mismatch: `console.warn('battle desync', battleId, turn)`, `ui.battle.desyncs += 1`, `send('battleResync', { battleId })`, and the server's events are still played (they are authoritative regardless). The `battleEvents.rng` field replaces the local `authoritative.rng` after every turn so the next preview starts from the server's stream.
+**Preview rule.** On `submit`, when the opposing side is `wild`/`npc` (formats `wild`, `trainer`, `league`), the client computes `preview = resolveTurn(authoritative, seat === 0 ? [action, null] : [null, action], content)` — the same null-passing convention the server uses (spine §2.10), so the NPC choice comes from the same rng stream and the digest can match. For `pvp` and `raid` no preview is computed (the other action is unknown). The preview is used for exactly three things: (1) `renderer.stage.prewarm(vfxIdsIn(preview.events))` so shaders/particles for the likely VFX are resident before the server message lands; (2) `expectedDurationMs = buildTimeline(preview.events).durationMs` to size the input-lock and the "waiting" indicator; (3) `digestBattleState(preview.state)` compared with `battleEvents.stateDigest`. **No preview frame is ever rendered**: `TimelinePlayer.play` is only ever called with a timeline built from `m.events`. On mismatch: `console.warn('battle desync', battleId, turn)`, `ui.battle.desyncs += 1`, `send('battleResync', { battleId })`, and the server's events are still played (they are authoritative regardless). The `battleEvents.rng` field replaces the local `authoritative.rng` after every turn so the next preview starts from the server's stream. On a digest **match** the preview state replaces `authoritative` wholesale: an `authoritative` updated only from `hpAfter` (the draft's §20.3.2 rule) would diverge from the server at the first stage, status, PP or weather change, and every later preview would mismatch and request a resync. <!-- amended 2026-09-25: client BattleController.ts header, the implemented rule -->
 
 **HP is never computed locally.** The HUD bar targets are `damage.hpAfter`/`heal.hpAfter`; `authoritative.sides[i].party[j].creature.hp` is overwritten from those same fields as events are applied.
 
@@ -896,13 +897,14 @@ Target: a fresh `/play` load on Mirevale, cold cache, 50 Mbit/s, RTX 3060-class 
 |---|---|---|
 | 0 HTML + shell JS + `tokens.css` + 3 fonts (preloaded) | ≤ 180 KB + 360 KB | 450 ms |
 | 1 `/play` chunk + `GET /me`, then `POST /zone/enter` + `consumeSeatReservation` (§20.3.4) | ≤ 900 KB JS; three round trips, the last two overlapping phase 2 | 1 100 ms |
-| 2 zone materials for Mirevale — the **`field` tier** (512² KTX2 albedo/ORM/normal per surface, `10-render.md` §10.2.1): 15 surfaces × 3 × ≤ 0.10 MB | ≤ 6 MB (Mirevale 4.5) | 1 900 ms |
-| 3 creature atlases for Mirevale's bind set (`manifest.zones.mirevale`, ≤ 8 × 2048² WebP with mips) + party singles + the player body GLB | ≤ 4 MB (a 14-species zone is 4.1 MB cold, 3.8 with the GLB cached) | 2 350 ms |
+| 2 zone materials for Mirevale — the **`field` tier** (512² KTX2 albedo/ORM/normal per surface, `10-render.md` §10.2.1) | ≤ 6 MB (Mirevale measured 3.71 MB) | 1 900 ms |
+| 3 creature atlases for Mirevale's bind set (`manifest.zones.mirevale`: 2 atlases, 0.544 MB each with mips) + party singles' home atlases + the player body GLB | ≤ 4 MB (Mirevale ≈ 1.1 MB + singles + GLB; an 8-atlas zone is 4.35 MB before singles — `40-pipelines.md` §40.6, recommendation R12) | 2 350 ms |
 | **first frame** (zone built, DOF/bloom compiled, HUD fonts ready) | | **≤ 2 500 ms** |
 | 4 (after first frame) audio manifest + zone theme stems + ui sfx | ≤ 5 MB | music starts ≤ 4 000 ms; the world is silent, not blocked |
 | 5 (idle) **`hero` tier** of the current zone's `hero: true` surfaces (`renderer.materials.preloadHero`, ≤ 12 MB, swapped in place), then the neighbouring zone (`mire_route`) field materials + atlases | ≤ 22 MB | streamed at ≤ 2 MB/s in 256 KB `fetch` ranges so it never competes with a handover |
 
 <!-- reconciled 2026-09-18: 40-pipelines.md OQ-2 — phase 2 keeps its 6 MB by loading the field tier; hero textures arrive in phase 5 -->
+<!-- amended 2026-09-25: phase 2/3 figures replaced by the shipped manifests (material-bake manifest fieldBytes; creatures.manifest.json zones + totalBytes); Mirevale hero measured 7.71 MB of phase 5's 12 -->
 
 Rules: phases 2–3 are issued as parallel `fetch`es with `priority: 'high'`; phase 4–5 with `priority: 'low'`. A phase exceeding 2× its budget logs a `warn` toast in dev. `BootScreen` shows the phase name and a real byte-progress bar (from `Content-Length`), display face, no fake progress. Handover to a preloaded zone (phase 5 complete) must render its first frame within 250 ms of `handoverAck`; to a non-preloaded zone within 1 500 ms, with the HUD banner and the old zone still visible under the camera's 600 ms travel (spine §4.6 "no visible hitch" is measured as: no frame > 33 ms during the crossing).
 
@@ -942,6 +944,6 @@ Rules: phases 2–3 are issued as parallel `fetch`es with `priority: 'high'`; ph
 
 <!-- reconciled 2026-09-18: each question is answered in the named section; the list stays as the audit trail -->
 1. `10-render.md` → **done**: it defines every symbol in §20.4.1 (§10.1.1, §10.5.1, §10.7.2, §10.7.5 incl. the 47 `VFX_IDS`, §10.7.6, §10.9); `HudLayer.set` accepts exactly the §20.6 `HudModel` names (§10.9 says so); `BattlerPose` gained `recoil`/`celebrate` and `CameraRig.cue` gained `throw` to match §20.5.1.
-2. `30-server-netcode.md` → **done**: the server validates against a cap derived from `@ewa/protocol` `MOVEMENT` (4.2 / 7.0 m/s, §30.2.4 re-exports them) rather than re-running `stepMovement`; the join is `POST /zone/enter` + `consumeSeatReservation` (§20.3.4, §30.2.6); `handover.seat` is a typed `SeatReservation` (spine §4.4); `chat` and `dm` are spine `ServerMessage` variants, `dialogue` does not exist — NPC lines are content and `storyBeat` confirms beats (§20.4.7, §30.4.8); leave codes 4000/4001/4002/4003 are §30.2.2's.
+2. `30-server-netcode.md` → **done**: the server validates against a cap derived from `@ewa/protocol` `MOVEMENT` (4.2 / 7.0 m/s, §30.2.4 re-exports them) rather than re-running `stepMovement`; the join is `POST /zone/enter` + `consumeSeatReservation` (§20.3.4, §30.2.6); `handover.seat` is a typed `SeatReservation` (spine §4.4); `chat` and `dm` are spine `ServerMessage` variants, `dialogue` does not exist — NPC lines are content and `storyBeat` confirms beats (§20.4.7, §30.4.8); leave codes 4000/4101/4002/4003 are §30.2.2's (4001 → 4101 amended 2026-09-25: 4001 is Colyseus' `SERVER_SHUTDOWN`).
 3. `40-pipelines.md` → **done**: `public/audio/manifest.json` is §40.4.6 = §20.7.4 (with the pre-skip note above); thumbnails are `public/creatures/thumbs/` (§40.1.6.5); phase 2/3/5 sizes are §20.10.3's, recomputed against the `field`/`hero` material tiers and the 2048² atlases.
 4. `50-verification-budget.md` → **done**: §50.4.7 now lists `prediction.test.ts` (harness + jitter), `no-exp-smoothing.test.ts`, `timeline.test.ts` over the fuzz corpus, `perf/tick.test.ts` + `perf/alloc.test.ts`, `hud-dirty.test.ts`, `first-frame.spec.ts`, `design-system.test.ts` (contrast, ΔE, type-colour table equality).

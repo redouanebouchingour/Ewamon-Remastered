@@ -4,6 +4,17 @@
 
 Verified against the installed `.d.ts`, not memory: `@colyseus/core 0.18.14` (`Room.d.ts`: `onCreate/onJoin/onLeave/onDispose/onAuth(client, options, context)`, `setTimestep(cb, delayMs)` with `setSimulationInterval` as its deprecated forwarding alias, `setFixedTimestep`, `onMessage(type, validationSchema: StandardSchemaV1, cb)`, `broadcast`, `allowReconnection(client, seconds)`, `setMetadata`, `lock/unlock`, `maxClients`, `patchRate`, `clock: ClockTimer`, `presence: Presence`; `MatchMaker.d.ts`: `query`, `findOneRoomAvailable`, `createRoom`, `reserveSeatFor(room: IRoomCache, options, authData)`, `getLocalRoomById`, `remoteRoomCall`, `defineRoomType`; `RegisteredHandler.d.ts`: `filterBy`, `sortBy`; `Transport.d.ts`: `Client.view?: StateView`, `AuthContext { token?, ip, headers }`; `IPC.d.ts`: `subscribeIPC`, `requestFromIPC`; `presence/Presence.d.ts`: `setex/get/del/hincrbyex/publish/subscribe`), `@colyseus/shared-types 0.18.2` (`ISeatReservation { name, sessionId, roomId, publicAddress?, processId?, reconnectionToken? }`), `@colyseus/schema 5.0.32` (`StateView.add/remove/dispose`), `@colyseus/ws-transport 0.18` (`WebSocketTransport({ pingInterval, pingMaxRetries, beforeUpgrade })`), `colyseus 0.18.5` (re-exports `RedisPresence`, `RedisDriver`), `@colyseus/sdk 0.18.2` (`consumeSeatReservation(ISeatReservation)`), `fastify 5.12.4`, `@fastify/jwt 10.2.2` (`FastifyJWTOptions { secret, sign: { expiresIn } }`, `request.jwtVerify()`, `reply.jwtSign()`), `@node-rs/argon2 2.2.1` (`hash(password, { memoryCost, timeCost, parallelism, algorithm: Algorithm.Argon2id })`, `verify`), `drizzle-orm 0.45.2` (`.for('update', { skipLocked: true })`), `pino 9.14.0`. `@fastify/rate-limit` is **not** installed; rate limiting is a server module (§30.6.4).
 
+<!-- amended 2026-09-25: behaviours of the installed Colyseus the first draft got wrong; every item below was read from source and is what the implemented server relies on (packages/server IMPLEMENTATION-NOTES "Verified against the installed libraries") -->
+Behaviours of `@colyseus/core` 0.18.14 / `@colyseus/schema` 5.0.32 this file depends on (paths relative to the package roots):
+
+- `Room<T extends RoomOptions>` with `RoomOptions { state?; metadata?; client? }`; auth and user data are typed on `Client<{ userData; auth }>` (`src/Room.ts` lines 107–121, `src/Transport.ts` line 213). The pre-0.18 `Room<{ state; metadata; auth; userData }>` shape does not type-check the way §30.2.1's first draft assumed.
+- A payload rejected by the `onMessage(type, validator, cb)` validator closes the client with 4002 (`src/RoomMessages.ts` lines 189–196); a message with no registered handler does the same outside dev mode (lines 334–342). Hence §30.2.2 step 6: zod runs in the handler wrapper and a `'*'` handler counts unknown types.
+- A non-consented close is routed to `onDrop(client, code)`, where `allowReconnection(client, seconds)` belongs; `onLeave` is called only when the reconnection fails or the leave was consented (`src/Room.ts` lines 650, 2313–2315, 2361–2373).
+- `CloseCode`: 4000 consented, 4001 server shutdown, 4002 with error, 4003 failed to reconnect, 4010 may try reconnect (`@colyseus/shared-types` `src/Protocol.ts` lines 279–284); the SDK auto-reconnects on 1001/1005/1006/4010 (`@colyseus/sdk` `src/Room.ts` lines 166–173).
+- `Server({ gracefullyShutdown })` defaults to registering SIGINT/SIGTERM/SIGUSR2 and `uncaughtException` handlers that end in `process.exit` (`src/Server.ts` lines 180–181, 411; `src/utils/Utils.ts` lines 67–79).
+- Colyseus always mounts its HTTP matchmaking routes `POST /matchmake/:method/:roomName` for `joinOrCreate | create | join | joinById | reconnect` (`src/router/default_routes.ts` line 6, `src/matchmaker/controller.ts` line 22, `src/Server.ts` lines 331–340), guarded only by the room's **static** `onAuth`, whose default returns `true` (`src/Room.ts` lines 788–794): without §30.2.6's join ticket any authenticated client could create shards or join any zone room with arbitrary options.
+- `StateView.add` throws on an instance not yet attached to the state (`@colyseus/schema` `src/encoder/StateView.ts` lines 334–349).
+
 ---
 
 ## §30.0 MODULE LAYOUT
@@ -14,7 +25,8 @@ Verified against the installed `.d.ts`, not memory: `@colyseus/core 0.18.14` (`R
 |---|---|
 | `main.ts` | Boots one process: env parse → `createRepos` → Colyseus `Server` on `PORT_WS` → Fastify on `PORT_REST` → expiry/live-ops jobs. The only file with side effects at import time. |
 | `env.ts` | `Env` (zod-parsed `process.env`, §30.1.2). Throws at boot on any invalid value. |
-| `rooms/ZoneRoom.ts` | `ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta }>`. Tick, movement, AOI, handover, sharding. |
+| `rooms/ZoneRoom.ts` | `ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; client: ZoneClient }>`. Tick, movement, AOI, handover, sharding. |
+| `rooms/matchmaking.ts` | `pickZoneRoom`, `reserveZoneSeat`: every seat carries the per-process join ticket (§30.2.6). |
 | `rooms/aoi.ts` | Pure `AoiGrid` (§30.2.5). Unit-tested without Colyseus. |
 | `rooms/movement.ts` | Pure `validateInput` (§30.2.4). |
 | `rooms/spawnDirector.ts` | Pure `SpawnDirector` (§30.3). |
@@ -62,12 +74,12 @@ export async function boot(deps: ServerDeps): Promise<{ colyseus: Server; rest: 
 `boot`:
 
 1. `presence = env.REDIS_URL ? new RedisPresence(env.REDIS_URL) : new LocalPresence()`; `driver = env.REDIS_URL ? new RedisDriver(env.REDIS_URL) : new LocalDriver()`.
-2. `colyseus = new Server({ presence, driver, transport: new WebSocketTransport({ pingInterval: 5000, pingMaxRetries: 3, beforeUpgrade }), publicAddress: env.PUBLIC_ADDRESS, greet: false, gracefullyShutdown: true })`. `beforeUpgrade` returns `new Response(null, { status: 429 })` when the connecting IP has more than 8 open sockets (counted in `PresenceStore`, §30.7.4), and `403` when the IP is on the in-memory ban cache (§30.6.7).
+2. `colyseus = new Server({ presence, driver, transport: new WebSocketTransport({ pingInterval: 5000, pingMaxRetries: 3, beforeUpgrade }), publicAddress: env.PUBLIC_ADDRESS, greet: false, gracefullyShutdown: false })` — `false` because the library's own handler calls `process.exit` from inside its signal handler; `main.ts` handles SIGINT/SIGTERM itself and calls `stop()` (step 7) <!-- amended 2026-09-25: server IMPLEMENTATION-NOTES R10 -->. The REST app is built (`ready()`, not listening) before this step so rooms verify access tokens with the REST instance's `@fastify/jwt` verifier (R9); listening order stays WS then REST. `beforeUpgrade` returns `new Response(null, { status: 429 })` when the connecting IP has more than 8 open sockets (counted in `PresenceStore`, §30.7.4), and `403` when the IP is on the in-memory ban cache (§30.6.7).
 3. `matchMaker.defineRoomType('zone', ZoneRoom).filterBy(['zoneId', 'shard'])` — `zoneId` and `shard` are `onCreate` options and metadata fields (§30.2.6). No other room type exists: battles, raids and trades are sub-states of `ZoneRoom`.
 4. `await colyseus.listen(env.PORT_WS)`.
 5. `rest = buildRest(deps)`; `await rest.listen({ port: env.PORT_REST, host: '0.0.0.0' })`.
 6. Start `marketExpiry` (60 s), `liveOpsRollover` (checks every 60 s for a UTC day/week boundary), `presenceSweep` (30 s).
-7. `stop()` = stop jobs → `rest.close()` → `matchMaker.gracefullyShutdown()`.
+7. `stop()` = stop jobs → `rest.close()` → `colyseus.gracefullyShutdown(false)` → DB close.
 
 Dev ports: **2567** WebSocket, **4000** REST. The Vite client proxies `/api` → `:4000` and connects Colyseus to `ws://localhost:2567` directly. Production puts both behind one TLS terminator; the ports are not exposed.
 
@@ -108,8 +120,8 @@ export type Env = z.infer<typeof EnvSchema>;
 
 ```ts
 export interface ZoneMeta { readonly zoneId: ZoneId; readonly shard: number }         // shard 0..
-export interface ZoneJoinOptions { readonly zoneId: ZoneId; readonly shard?: number; readonly handover?: { readonly fromRoomId: string; readonly x: number; readonly z: number } }
-export interface ZoneAuth { readonly playerId: string; readonly username: string; readonly isAdmin: boolean }
+export interface ZoneJoinOptions { readonly zoneId: ZoneId; readonly shard?: number; readonly ticket?: string; readonly handover?: { readonly fromRoomId: string; readonly x: number; readonly z: number } }   // ticket: §30.2.6, never sent to a client
+export interface ZoneAuth { readonly playerId: string; readonly username: string; readonly isAdmin: boolean; readonly ip: string | null }   // ip: the per-IP socket count
 export interface ZoneUserData {
   readonly playerId: string;
   cell: readonly [number, number] | null;   // last AOI cell; null before first tick
@@ -119,9 +131,11 @@ export interface ZoneUserData {
   battleId: string | null;
   tradeId: string | null;
   limiter: RateLimiterState;                // per-message sliding windows (§30.6.4)
+  // the implementation adds caches and handover bookkeeping here (flags, badges, inventory, handover, arrival, replaced, handoverDone, …; server IMPLEMENTATION-NOTES R4)
 }
+export type ZoneClient = Client<{ userData: ZoneUserData; auth: ZoneAuth }>;   // @colyseus/core 0.18: auth/userData are typed on Client, not on Room
 
-export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; auth: ZoneAuth; userData: ZoneUserData }> {
+export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; client: ZoneClient }> {   // amended 2026-09-25: 0.18 RoomOptions = { state, metadata, client }
   static readonly TICK_MS = 50;             // 20 Hz
   static readonly PATCH_MS = 50;            // one schema patch per tick
   static readonly DAY_LENGTH_MS = 48 * 60_000;
@@ -145,23 +159,23 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; auth:
 3. `this.maxClients = env.ZONE_CAPACITY`; `this.patchRate = ZoneRoom.PATCH_MS`; `this.autoDispose = true`; `await this.setMetadata({ zoneId: options.zoneId, shard: options.shard ?? 0 })`.
 4. `this.state = new ZoneState()`; `state.harvestState = zone.harvestState` (the content default only — harvest is per player, spine §3.5/§4.1; the room never changes it); `state.timeOfDay = ((clock() % DAY_LENGTH_MS) / DAY_LENGTH_MS)` (wall-clock-anchored so every shard of every zone agrees on the hour).
 5. Seed: `const root = createRng(`${env.SERVER_SEED}:${zoneId}:${shard}:${clock()}`)`; `this.worldRng = root`; `this.spawns = new SpawnDirector(zone, table, root.fork())`; `this.battles = new BattleCoordinator(root.fork(), …)`.
-6. Register every message in `CLIENT_MESSAGES` with `this.onMessage(name, schema, handler)` — zod v4 schemas implement Standard Schema, so the room rejects malformed payloads before the handler runs; a rejection is answered with `error { code: 'invalidPayload' }` by the room's `onUncaughtException`. No `'*'` handler exists.
+6. Register every message in `CLIENT_MESSAGES` with `this.onMessage(name, handler)` — **no** validator argument: `@colyseus/core` 0.18.14 closes the client with 4002 when a Standard Schema validator rejects a payload (see the header). The handler wrapper rate-limits (§30.6.4), then `CLIENT_MESSAGES[name].safeParse(payload)`; a failure is answered with `error { code: 'invalidPayload' }` and no handler logic runs. One `'*'` handler exists and only counts unknown types (`metrics.unknownMessages`), sends nothing, and closes the client with 4003 at the 5th within 10 s (spine §4.3) — without it Colyseus disconnects on the first unknown type. <!-- amended 2026-09-25: server IMPLEMENTATION-NOTES R1, R3 --> `onCreate` and `onAuth` refuse options without the per-process join ticket (§30.2.6).
 7. `this.setTimestep((dt) => this.tick(dt), ZoneRoom.TICK_MS)`.
 
 **`onAuth(client, options, context)`** — `context.token` is the access JWT (the SDK sends it as the auth token). Verify with the same `JWT_SECRET`/algorithm as REST (`HS256`, `aud: 'ewa'`, `iss: 'ewa-server'`). Reject (`ServerError(401)`) on invalid/expired token, on `banned_at !== null`, and when `options.zoneId` is gated (`zone.gate !== null`) and the player lacks that badge in `badges` — the badge check runs here so a player cannot enter a gated room by joining it directly. Return `{ playerId, username, isAdmin }`.
 
 **`onJoin(client, options, auth)`**
 1. Load `players` row (`repos.players.byId`) + party (`repos.creatures.party`). A player with zero party members is refused (`ServerError(409, 'noParty')`) — cannot happen after registration, guards a corrupt row.
-2. Multi-tab collapse: if `state.players.has(auth.playerId)` — another socket of the same player is already in this room — the **older** client is sent `error { code: 'busy', detail: 'replaced' }` and `client.leave(4001)`; the new one takes over the existing `PlayerState` (position kept). Across rooms: `PresenceStore.enter(playerId, roomId)`; if the player is present in a different room, that room is told via `presence.publish('ewa:kick', { playerId, exceptRoomId })` and drops the older session. One avatar per player, everywhere, always.
+2. Multi-tab collapse: if `state.players.has(auth.playerId)` — another socket of the same player is already in this room — the **older** client is sent `error { code: 'busy', detail: 'replaced' }` and `client.leave(4101)` (`CLOSE_CODES.replaced`; 4001 is Colyseus' own `SERVER_SHUTDOWN`, so a restart would read as "another tab took over" — amended 2026-09-25, server IMPLEMENTATION-NOTES P4); the new one takes over the existing `PlayerState` (position kept). Across rooms: `PresenceStore.enter(playerId, roomId)`; if the player is present in a different room, that room is told via `presence.publish('ewa:kick', { playerId, exceptRoomId })` and drops the older session. One avatar per player, everywhere, always.
 3. Position: `options.handover` present and `fromRoomId` matches a pending handover for this player (§30.2.7) → `(x, z)` from the handover, else from the row when `row.zoneId === this.zone.id`, else the zone's spawn point `zone.spawn` (spine §3.1 `ZoneDef.spawn`; `mirevale` is `{ x: 0, z: 6 }`, the `players.z` default). The position is then **snapped**: `isWalkable(heightfield, x, z) ? (x, z) : nearestWalkable(heightfield, x, z, 8)` (spiral search, 0.5 m step). <!-- reconciled 2026-09-18: ZoneDef.spawn exists (OQ 4) -->
 4. `const ps = new PlayerState(); ps.id = playerId; ps.name = username; ps.x = x; ps.z = z; ps.body = row.body; ps.guildTag = guildTag ?? ''; state.players.set(playerId, ps)`.
-5. `client.view = new StateView(); client.view.add(ps)`; `client.userData = { playerId, cell: null, lastSeq: 0, budgetMs: 0, lastInputAt: clock(), battleId: null, tradeId: null, limiter: createLimiterState() }`. The first `tick` computes the cell and adds the 3×3 neighbourhood.
+5. `client.view = new StateView(); client.view.add(ps)` (after step 4's `state.players.set` — `StateView.add` throws on a detached instance); `client.userData = { playerId, cell: null, lastSeq: 0, budgetMs: 0, lastInputAt: clock(), battleId: null, tradeId: null, limiter: createLimiterState(), … }`. The viewer is registered and the avatar placed in the AOI grid immediately, so a `chat`/`interact` arriving before the first tick finds its cell and audience (amended 2026-09-25, server IMPLEMENTATION-NOTES R11).
 6. Send `toast { level: 'info', text: zone.name }` is **not** done here — the client reads `state.harvestState` and the zone name from content. Nothing is sent on join except the schema.
 7. `repos.players.setPosition(tx, playerId, zone.id, x, z, angle)` only when the position came from step 3's fallback branches (row was for another zone, or snapped). Handover writes are the destination's job (§30.2.7).
 
-**`onLeave(client, code)`**
-1. If `code` is a consented leave (4000) or a handover-complete leave (4002): remove immediately.
-2. Otherwise `await this.allowReconnection(client, 20)`; on success the same `PlayerState` continues (no position change); on timeout, remove.
+**`onDrop(client, code)` and `onLeave(client, code)`** <!-- amended 2026-09-25: 0.18 routes a non-consented close to onDrop and calls onLeave only when the reconnection fails (header); server IMPLEMENTATION-NOTES S1, S2 -->
+1. `onDrop` (non-consented close): `this.allowReconnection(client, 20)` unless the client was replaced, kicked or has completed a handover; on success the same `PlayerState` continues (no position change); on failure Colyseus calls `onLeave`.
+2. `onLeave` (consented 4000 — the SDK's `leave(true)` always closes with 4000, including after a handover — or a failed reconnection): remove, but only when this session still owns the avatar (a per-player owner map), so a late leave of a replaced socket cannot remove the avatar a newer tab took over; skip the position write when a handover moved the player (presence now in another room, or `handoverDone`).
 3. Remove = `battles.forfeitIfActive(playerId, 'disconnect')` (§30.4.4 — a PvP battle is a forfeit; wild/trainer/league end with no rewards; a raid seat is vacated), `trades.cancelFor(playerId)`, `challenges.dropFor(playerId)`, `aoi.removeEntity(ps)` (which calls `view.remove` on every viewer), `state.players.delete(playerId)`, `client.view.dispose()`, `PresenceStore.leave(playerId, roomId)`, one `setPosition` write with the last authoritative pose.
 
 **`onDispose()`** — `spawns.dispose()`, cancel clock timers, flush metrics. Rooms auto-dispose when empty (`autoDispose = true`) after Colyseus' default grace; a zone with zero players costs zero ticks.
@@ -189,7 +203,7 @@ export type InputVerdict =
   | { readonly ok: false; readonly reason: 'staleSeq' | 'dtBudget' | 'speed' | 'unwalkable' | 'bounds' | 'inBattle'; readonly budgetMs: number };
 
 export function validateInput(
-  prev: { readonly x: number; readonly z: number; readonly lastSeq: number; readonly budgetMs: number; readonly inBattle: boolean },
+  prev: { readonly x: number; readonly z: number; readonly lastSeq: number; readonly budgetMs: number; readonly inBattle: boolean; readonly canSurf?: boolean },   // canSurf = inventory['HM Surf'] > 0 (§30.3)
   input: z.infer<typeof InputMsg>,            // { seq, x, z, angle, running, dtMs }
   h: Heightfield,
 ): InputVerdict;
@@ -201,9 +215,9 @@ Rules, in this order (first failure wins):
 2. `prev.inBattle` → `inBattle` (position is frozen during a battle; see §30.4.1).
 3. `budget = prev.budgetMs - dtMs`; if `budget < BUDGET_MIN_MS` → `dtBudget`. The tick adds `TICK_MS` to every client's budget and clamps at `BUDGET_MAX_MS`, so the sum of accepted `dtMs` can never exceed real elapsed time by more than 100 ms. This is what closes the "send dt = 100 at 30 Hz" speed hack.
 4. `dist = hypot(x - prev.x, z - prev.z)`; `cap = (running ? MAX_RUN_STEP : MAX_WALK_STEP) * dtMs / 1000`; `dist > cap + 0.02` → `speed` (0.02 m absorbs float32 quantisation on the wire).
-5. `!isWalkable(h, x, z)` → `unwalkable`. Additionally the segment `prev → new` is sampled every 0.25 m; any unwalkable sample → `unwalkable` (no tunnelling through a 0.5 m wall in one 8 cm step is possible at these caps, but the check costs nothing).
-6. Outside the bounds of §30.2.3 → `bounds`.
-7. Otherwise `ok`; `angle` is wrapped into `[-π, π)`; `budgetMs = budget`.
+5. Outside the bounds of §30.2.3 → `bounds`. (Checked before walkability: the 16 m margin is `walkable = 0`, so with the opposite order `bounds` could never be observed and `movement.test.ts`'s `bounds` case could not pass; the accept set is identical — amended 2026-09-25, server IMPLEMENTATION-NOTES S3.)
+6. Not standable → `unwalkable`, where standable = `isWalkable(h, x, z) || (prev.canSurf && isWater(h, x, z))`. Additionally the segment `prev → new` is sampled every 0.25 m; any sample that is not standable → `unwalkable` (no tunnelling through a 0.5 m wall in one 8 cm step is possible at these caps, but the check costs nothing).
+7. Otherwise `ok`; `angle` is wrapped into `[-π, π)`; `budgetMs = budget`. Rejections other than `staleSeq` also advance `userData.lastSeq` (a rejected seq cannot be replayed).
 
 Application (`ZoneRoom.onInput`): on `ok`, write `ps.x/z/angle/running`, `ps.moving = dist > 0.001`, `ps.seq = input.seq`, `userData.lastSeq = seq`. On any failure other than `staleSeq`, the server does **not** move the avatar and sets `ps.seq = input.seq` anyway — the client's reconciler (`20-client.md`) sees a `seq` acknowledged against an unchanged authoritative `x/z` and snaps to it. That single mechanism is the "ack with authoritative pose"; there is no separate correction message. `speed`, `unwalkable` and `bounds` rejections increment `metrics.rejectedInputs[reason]`; 30 rejections within 10 s from one client → `client.leave(4003)` and an `audit_log` row `movement.kick`.
 
@@ -238,33 +252,35 @@ Tick order for AOI (after movement, before spawns):
 
 1. For each client with an accepted move this tick: `to = cellOf(ps.x, ps.z)`; if `to` differs from `userData.cell`: `{ show, hide } = aoi.moveViewer(playerId, from, to)`; `for e of show: client.view.add(e)`; `for e of hide: client.view.remove(e)`; `userData.cell = to`. Own `PlayerState` is never removed (it was added in `onJoin` and `moveViewer` excludes the viewer's own entity).
 2. For each entity (player or spawn) whose cell changed: `{ entered, left } = aoi.place(e)`; the corresponding clients' views get `add`/`remove`.
-3. New spawn: `aoi.place(spawn)` then `view.add` on every viewer returned; `state.spawns.set(id, spawn)` **after** the adds. Despawn: `view.remove` on every viewer from `aoi.removeEntity(spawn)`, then `state.spawns.delete(id)`.
+3. New spawn: `state.spawns.set(id, spawn)` **first** (`@colyseus/schema` 5.0.32 `StateView.add` throws on an instance not attached to the state; the `@view()` tag keeps it invisible to everyone until added), then `aoi.place(spawn)` and `view.add` on every viewer returned. Despawn: `view.remove` on every viewer from `aoi.removeEntity(spawn)`, then `state.spawns.delete(id)`. <!-- amended 2026-09-25: the draft ordered set after add, which throws — server IMPLEMENTATION-NOTES R8 -->
 
 Only `players` and `spawns` are `@view()`-tagged; `battles`, `raid`, `tick`, `timeOfDay`, `weather`, `harvestState` broadcast to all. A client therefore receives per tick: its own row, ≤ N₉ player rows and ≤ S₉ spawn rows where N₉/S₉ are the 3×3 populations, plus the small broadcast set. The netcode harness (§30.10.3) asserts this shape.
 
 ### 30.2.6 Capacity and sharding
 
-`maxClients = ZONE_CAPACITY` (200). Join flow, in the REST layer's `POST /zone/enter { zoneId }` (spine §4.7; the client calls it before every first Colyseus join and after a reload, using `GET /me`.presence.zoneId; it answers 403 `gated` when the zone's `gate` badge is missing and 409 `inBattle` during a battle): <!-- reconciled 2026-09-18: OQ 3 — both the route and the `presence` field exist -->
+`maxClients = ZONE_CAPACITY` (200). Join flow, in the REST layer's `POST /zone/enter { zoneId }` (spine §4.7; the client calls it before every first Colyseus join and after a reload, using `GET /me`.presence.zoneId; it answers 403 `gated` when the zone's `gate` badge is missing, 409 `wrongZone` unless `zoneId` is the player's persisted `zone_id` or live presence zone, and — during a battle — a seat in the battle's own room for that zone, 409 `inBattle` for any other): <!-- reconciled 2026-09-18: OQ 3 — both the route and the `presence` field exist --> <!-- amended 2026-09-25: wrongZone, battle-room seat and join tickets — server IMPLEMENTATION-NOTES R2, P3 -->
+
+**Join tickets.** Colyseus mounts `POST /matchmake/{joinOrCreate,create,join,joinById,reconnect}/:roomName` on every server, guarded only by the room's static `onAuth` (default `true`; header). Every seat the server reserves therefore carries `ticket` — a per-process random secret — in its join options; `ZoneRoom.onCreate` and `onAuth` refuse options without it (`ServerError(403, 'noTicket')`). Seat options never reach the client (`ISeatReservation` carries none), so `/zone/enter` and the handover are the only ways into a zone room. Without the ticket and `wrongZone`, a client could create shards at will or join any ungated zone and be placed at its spawn (onJoin step 3) — fast travel around the gate graph.
 
 1. `rooms = await matchMaker.query({ name: 'zone', metadata: { zoneId } })` (typed `query<ZoneRoom>`), filtered `clients < maxClients && !locked`, sorted by `metadata.shard` ascending.
-2. Pick the first; if none, `await matchMaker.createRoom('zone', { zoneId, shard: (max existing shard) + 1 })`.
-3. `return { seat: await matchMaker.reserveSeatFor(room, { zoneId, shard }, /* authData */ null) }` → the `ISeatReservation` handed to the client as the spine's `SeatReservation` (`{ name, sessionId, roomId, publicAddress?, processId? }`), which it passes to `consumeSeatReservation` unchanged.
+2. Pick the first; if none, `await matchMaker.createRoom('zone', { zoneId, shard: (max existing shard) + 1, ticket })`.
+3. `return { seat: await matchMaker.reserveSeatFor(room, { zoneId, shard, ticket }, /* authData */ null) }` → the `ISeatReservation` handed to the client as the spine's `SeatReservation` (`{ name, sessionId, roomId, publicAddress?, processId? }`), which it passes to `consumeSeatReservation` unchanged. With `authData` null the instance `onAuth` runs again when the seat is consumed, with `context.token` = the SDK's `_authToken` query parameter.
 
 A shard is a full, independent instance of the zone (own spawns, own raid). Players on different shards of the same zone do not see each other; friends see `presence.roomId`. Shard 0 is preferred for every join, so shards ≥ 1 drain and auto-dispose as population falls. Guild/party co-location is a follow-up (cut deliberately, see end).
 
 ### 30.2.7 Handover — zero visible hitch
 
-Links are `zone.links[dir]`. The link edge is the field boundary on that side; the trigger line is **6 m** inside the edge.
+Links are `zone.links[dir]`. The link edge is the **playable** boundary on that side (`playableBounds(h)`, spine §3.11) — the field boundary sits inside the 16 m unwalkable margin and is unreachable; the trigger line is **6 m** inside the playable edge, and a fresh arrival has a 3 s trigger cooldown. Link directions: `n = −z`, `s = +z`, `e = +x`, `w = −x`. <!-- amended 2026-09-25: server IMPLEMENTATION-NOTES R6, R7 -->
 
 Source room, in `tick`, for each player not in a battle/trade whose accepted position crosses a trigger line for direction `d` and who has no pending handover:
 
 1. `dest = zone.links[d]`; if `DEST.gate` is a badge the player lacks (checked against a badge set cached in `userData` at join and refreshed by `progressionDelta`): send `toast { level: 'warn', text: 'The way is barred. Badge required: <name>' }`, and push the player back 1.0 m along `−d` (authoritative pose changes; the `seq` echo snaps the client). No handover.
-2. Otherwise reserve: `room = await pickZoneRoom(dest)` (§30.2.6 steps 1–2, on the destination's shard 0 by preference); `seat = await matchMaker.reserveSeatFor(room, { zoneId: dest, handover: { fromRoomId: this.roomId, x: x', z: z' } }, null)`, where `(x', z')` is the entry point on the destination's opposite edge: same lateral coordinate, 6.5 m inside the destination edge, snapped to `nearestWalkable`.
+2. Otherwise reserve: `room = await pickZoneRoom(dest)` (§30.2.6 steps 1–2, on the destination's shard 0 by preference); `seat = await matchMaker.reserveSeatFor(room, { zoneId: dest, handover: { fromRoomId: this.roomId, x: x', z: z' } }, null)`, where `(x', z')` is the entry point on the destination's opposite edge: same lateral coordinate, 6.5 m inside the destination's playable edge, snapped to `nearestWalkable`.
 3. `presence.setex(`ewa:handover:${playerId}`, JSON.stringify({ fromRoomId: this.roomId, toRoomId: seat.roomId, sessionId: seat.sessionId, x: x', z: z', at: clock() }), 10)`.
 4. `client.send('handover', { roomId: seat.roomId, seat, zoneId: dest, x: x', z: z' })`. `seat` is the whole `ISeatReservation` object — the spine's `SeatReservation` type (§4.4) — because `consumeSeatReservation` needs `name`, `sessionId`, `roomId`, and on multi-process `publicAddress`/`processId`. <!-- reconciled 2026-09-18: OQ 1 — the spine field was widened from string to SeatReservation; no JSON encoding -->
 5. Mark `userData.handover = { toRoomId, sentAt }`; the avatar keeps ticking in the source (inputs still accepted for ≤ 5 s so the walk animation continues across the line).
 
-Client (`20-client.md` §20.3.4): `destRoom = await sdk.consumeSeatReservation(seat)`; wait for the first `onStateChange`; send `handoverAck { roomId, seat: seat.sessionId }` to the **destination**; keep the source room open until the destination's state has arrived; then `sourceRoom.leave(true)` with code 4002.
+Client (`20-client.md` §20.3.4): `destRoom = await sdk.consumeSeatReservation(seat)`; wait for the first `onStateChange`; send `handoverAck { roomId, seat: seat.sessionId }` to the **destination**; keep the source room open until the destination's state has arrived. The source closes the client with 4002 (`CLOSE_CODES.handoverComplete`) once the destination confirms; a client-side `sourceRoom.leave(true)` closes with 4000 (the SDK sends `LEAVE_ROOM`, the server closes consented), so the server never trusts the code alone (`userData.handoverDone`, presence).
 
 Destination room, `onJoin` with `options.handover`: validates `presence.get('ewa:handover:<playerId>')` — must exist, `toRoomId === this.roomId`, `fromRoomId === options.handover.fromRoomId`, `sessionId === client.sessionId`. Any mismatch → `ServerError(403, 'badHandover')` (a forged handover option cannot teleport). On `handoverAck` from that client: `repos.players.setPosition(tx, playerId, dest, x', z', angle)` — **the one authoritative position write of a crossing**, then `presence.publish(`ewa:handover:done:${fromRoomId}`, { playerId })`, then `presence.del` the key.
 
@@ -280,7 +296,7 @@ Invariant: at every instant the player exists in at least one room's `state.play
    (inputs are applied when they arrive, in onMessage('input'); the tick only refills budget)
 3. emote timers: any PlayerState with emote !== 0 whose emoteSetAt + 2000 <= now → emote = 0
 4. AOI pass (§30.2.5 steps 1–2)
-5. spawns.tick(now, state.timeOfDay) → { spawned, despawned } → AOI step 3, state.spawns writes
+5. spawns.tick(now, state.timeOfDay, playerPositions) → { spawned, despawned, freed } → AOI step 3, state.spawns writes
 6. handover triggers (§30.2.7)
 7. battles.tick(now) — deadlines, auto-actions, resolution, persistence (§30.4.3); raid.tick(now)
 8. trades.tick(now) — 120 s inactivity cancel
@@ -311,12 +327,13 @@ import { ROUTE_TUNING, TOWN_SPAWN_TUNING, STORY_TUNING, type SpawnTuning } from 
 /** Tuning by zone: route → ROUTE_TUNING; the 3 towns with a table (saltmourn · skyrend · solenne) → TOWN_SPAWN_TUNING; story → STORY_TUNING; a zone with encounterTable null runs no director. */
 export function tuningFor(zone: ZoneDef): SpawnTuning | null;
 
-export interface LiveOpsMods { readonly alphaBonus: number; readonly variantBonus: number; readonly swarmSpecies: readonly string[]; readonly swarmWeightBoost: number; readonly variantPool: readonly VariantKey[] }
+export interface LiveOpsMods { readonly alphaBonus: number; readonly variantBonus: number; readonly swarmSpecies: readonly string[]; readonly swarmWeightBoost: number; readonly variantPool: readonly VariantKey[]; readonly featuredSpecies?: readonly string[] }   // featuredSpecies: §30.9.2 per-species +0.01 alpha / +0.025 variant, added to the same draws
+export interface SpawnTickResult { readonly spawned: readonly SpawnRecord[]; readonly despawned: readonly string[]; readonly freed: readonly string[] }   // freed: engagements stalled past engagedTimeoutMs
 
 export class SpawnDirector {
   constructor(zone: ZoneDef, table: EncounterTable | null, rng: Rng, h: Heightfield, tuning: SpawnTuning, content: ContentIndex);
   setLiveOps(m: LiveOpsMods): void;                                      // re-read from §30.9 at each rollover
-  tick(now: number, timeOfDay: number): { readonly spawned: readonly SpawnRecord[]; readonly despawned: readonly string[] };
+  tick(now: number, timeOfDay: number, players: readonly { readonly x: number; readonly z: number }[]): SpawnTickResult;   // players: the ≥ 10 m clearance rule needs their positions (amended 2026-09-25, server IMPLEMENTATION-NOTES W2)
   engage(spawnId: string, playerId: string, now: number): 'ok' | 'notFound' | 'engaged' | 'tooFar';
   release(spawnId: string, outcome: 'caught' | 'ko' | 'fled' | 'timeout' | 'playerLeft', now: number): void;  // despawns for caught/ko/fled/timeout; frees for playerLeft
   get(spawnId: string): SpawnRecord | null;
@@ -331,7 +348,8 @@ Rules:
 - **Alpha.** `rng.next() < ALPHA_CHANCE + alphaBonus` where `ALPHA_CHANCE = 0.02` (content §3.2) — **not** 1/120: the content constant is the source of truth and 1/120 (0.0083) is the legacy value this replaces. A slot with `tier: 'alpha'` forces `isAlpha = true`. One draw.
 - **Variant.** `rng.next() < VARIANT_CHANCE + variantBonus` (0.03 base) → `rng.pick(variantPool)`; `variantPool` is `WEEKDAY_VARIANT[weekday]` when non-null, else the 4 non-normal keys. Two draws when the first succeeds, one otherwise.
 - **Position.** Up to 8 attempts: `x = originX + 1 + rng.next() * (size - 2)`, same for `z`, accepted if (`medium === 'water' ? isWater : isWalkable`) and ≥ 6 m from every other spawn and ≥ 10 m from every player. Failure → no spawn this tick. (The 16 m margin is `walkable = 0`, so spawns never land in scenery.)
-- **Cadence.** When `all.length < targetCount` and `now >= nextSpawnAt`: spawn one, `nextSpawnAt = now + respawnMinMs + rng.int(respawnMaxMs - respawnMinMs + 1)`. At most one spawn per tick.
+- **Cadence.** When `all.length < targetCount` and `now >= nextSpawnAt`: spawn one, `nextSpawnAt = now + respawnMinMs + rng.int(respawnMaxMs - respawnMinMs + 1)`. At most one spawn per tick. Until the director first reaches `targetCount` the delay is not waited (one spawn per tick, so a fresh room is populated in < 1 s); the delay draw is consumed either way, so seeded sequences are unchanged (amended 2026-09-25, server IMPLEMENTATION-NOTES W1).
+- **Footprints.** Position acceptance uses the heightfield only; it cannot see building/prop footprints (spine §3.11 open gap), so until recommendation R1 lands a spawn can be placed inside a footprint the client's collider blocks.
 - **Despawn.** `now >= despawnAt` with `engagedBy === null`; engagement sets `despawnAt = max(despawnAt, now + engagedTimeoutMs)` so a 90 s stall (client vanished mid-fight) releases the creature for everyone. `SpawnState.despawnAtTick` mirrors `despawnAt` as a tick count so clients can fade it.
 - **Engage.** `engageSpawn { spawnId }` from a client: requires no active battle, the spawn present in `aoi.entitiesNear(userData.cell)` (an out-of-AOI id → `notFound`), distance ≤ 3.0 m (`tooFar` → `error { code: 'notAllowed', detail: 'tooFar' }`), `engagedBy === null` (`engaged` → `busy`), and for a `medium: 'water'` spawn the player's own position on a `water` sample (`isWater(h, ps.x, ps.z)`; otherwise `notAllowed 'needSurf'` — standing on water requires the HM Surf key item, which the client checks before allowing the step onto a water-only sample and the server checks on `input`: a water-only sample is walkable for a player only when `inventory['HM Surf'] > 0`). Two players who send `engageSpawn` in the same tick for the same spawn: the first message processed wins; the second gets `error { code: 'busy' }`. Success → `SpawnState.engagedBy = playerId` (broadcast through AOI so others see it claimed) and `BattleCoordinator.startWild(...)` (§30.4.4).
 
@@ -455,6 +473,8 @@ On `interact { kind: 'npc' | 'gym', targetId }` (distance and AOI checks passed)
 3. If `beat.battle !== null`: `battles.startTrainer(...)` against `beat.battle.trainerId` (a `TrainerDef` or `LeagueTrainer`; the league rules of §30.4.4 still apply for a league id), with `session.beatId = beat.id`. Completion waits for the win; a loss or flee completes nothing and the beat stays eligible.
 4. Completion (immediately when `battle === null`, or inside the battle-end transaction of §30.4.3 step 3g when `session.beatId` is set and side 0 won): `setFlags(playerId, [...beat.set, beatDoneFlag(beat.id)])`; when `beat.harvest !== null` nothing else is persisted — `harvestStateFor` derives the state from the done flags; quest objectives of kind `flag` advance for every flag set; `audit 'story.beat'` with `{ beatId }`. After commit: `progressionDelta { flags }` then `storyBeat { beatId, phase: 'complete' }`.
 5. `starter` beat: completion additionally requires the player to already own their starter (always true after registration); the flag it sets is the only thing that happens.
+6. **Story trainers are fired by their beat only.** A `TrainerDef` whose id is some `StoryBeat.battle.trainerId` (the 7 story battle trainers, `rematchDays: null`, placed beside the speaking NPC) is not challengeable through the plain trainer row of §30.4.4: an `interact` on it when no eligible beat names it is handled like a plain NPC (nothing over the wire). Otherwise a player can fight the story trainer before the beat is reachable — collecting its reward and `trainer:<id>:beaten` early — and be paid a second time when the beat's own battle runs. <!-- amended 2026-09-25: packages/content IMPLEMENTATION-NOTES clarification 4 asked for this; packages/server/src/rooms/ZoneRoom.ts falls through to `case 'trainer'` (lines ~826–862) — server follow-up -->
+
 
 `ZoneState.harvestState` is never written by this path. Two players in one room can therefore see the same route as `intact` and `harvested`; each renders its own `harvestStateFor` (spine §3.5). Beats are idempotent per player through the done flag; `authority.test.ts` A17 asserts a forged `interact` on a speaker whose beat's `need` is unmet writes nothing.
 
@@ -486,6 +506,8 @@ Mechanics:
 
 - The boss is one `Battler` (`hp = floor(calcMaxHp(base, level) * hpMultiplier)`, `hp` tracked as a raid-side integer; `maxHp` reported to core as that scaled value so `%` chip and `hpAfter` are consistent). Each participant holds a private `BattleState` whose side 1 **is** the shared boss battler object by value copied in before each `resolveTurn` and written back after: `stateP.sides[1].party[0].creature.hp = bossHp` before, `bossHp = result.sides[1]…hp` after, processed **in ascending playerId order** within the round so the outcome is deterministic given the actions. The boss's own move each participant-turn is chosen by core (`chooseNpcAction` against that participant), so the boss acts once per participant per round — this is the shared-boss compromise the spine's §2.11(8) delegates here.
 - Round: `RAID_ROUND_MS` collect window → resolve all in order → one `raidEvents { raidId, round, events, stateDigest }` per participant with **their** events, and `RaidState` (`hpPct`, `damageBoard`, `phase`) updated for everyone. A participant with no action by the deadline gets the §30.4.3 auto-action.
+- **Boss PP.** The boss acts once per participant per round, so its PP would run out in a few rounds and core's NPC policy would then forfeit the participant's private battle while the boss stands (§2.11 clarifications: no Struggle). The shared boss's move PP is restored to `ppMax` on every copy-in; any client preview of a raid turn applies the same rule. <!-- amended 2026-09-25: server IMPLEMENTATION-NOTES Q15 -->
+- Rounds are two-phase — `prepareRound()` (pure) → one transaction (participants locked ascending; creature rows, consumables, rewards) → `commitRound()` — so a failed transaction leaves every private state and the boss unchanged (NON-NEGOTIABLE 1 applied to raids).
 - Phase 2 (`hpPct < 0.30`): boss `stages.atk += 2` once (event `statStage cause 'ability'`, `detail 'enraged'` via `abilityTrigger`); nothing else changes.
 - Boss defeat → phase 3 catch window `RAID_CATCH_WINDOW_MS`: every participant whose `damage > 0` may `raidCatch` once; each attempt is core's §2.15 with `H = 1` (a defeated boss counts as 1 HP), `statusBonus` from the boss's status, the participant's orb; success inserts a copy for that player (every successful participant gets their own instance — raids are not exclusive). Orb consumed either way.
 - Participant faints all six → they remain in the lobby as spectators (`damageBoard` kept, no catch window unless `damage > 0`, which it will be).
@@ -500,7 +522,7 @@ Every mutable player-visible field, the only writer, and the only wire path that
 
 | Field / row | Writer (server module) | Trigger | Client learns via |
 |---|---|---|---|
-| `players.money` | `PlayerRepo.addMoney` from shop/market/trade/battle rewards/battle pass/quest claim | REST or battle end tx | `inventoryDelta.money` / REST response |
+| `players.money` | `PlayerRepo.addMoney` from shop/market/trade/battle rewards/raid rewards/battle pass/quest and mission claims/daily-login streak/guild founding (5 000) | REST, battle or raid round tx, login | `inventoryDelta.money` / REST response (`inventoryDelta` body on `/guilds`, `/marketplace/*`) |
 | `players.x/z/angle/zone_id` | `PlayerRepo.setPosition` from `ZoneRoom` (join fallback, leave, handover ack) | room lifecycle | schema `PlayerState` |
 | `players.rating/peak_rating/ranked_matches` | `applyRating` from pvp end | battle end tx | `progressionDelta.rating` |
 | `players.trainer_exp` | `addTrainerExp` (battle end, catch, quest claim, daily login, trade, zone restore) | tx | `progressionDelta.trainerExp/trainerLevel` |
@@ -508,9 +530,9 @@ Every mutable player-visible field, the only writer, and the only wire path that
 | `players.banned_at/ban_reason/is_admin` | REST admin routes / boot bootstrap | REST | 403 on next request |
 | `creature_instances.*` (hp, pp, status, exp, level, moves, ability, held_item, nickname, favorite, locked, species on evolve) | `CreatureRepo.update` from battle tx or the `/creature/:id/*` and `/item/use` REST handlers | tx | `inventoryDelta.creaturesUpdated` / REST |
 | `creature_instances.owner_id/slot_kind/slot_index` | `transferCreature`, `moveToSlot`, `reorderParty`, `insert`, `release` | trade/market/party REST/catch tx | `inventoryDelta` / REST |
-| `inventory_items.qty` | `InventoryRepo.add` | shop/use/battle/quest/battle pass tx | `inventoryDelta.items` |
+| `inventory_items.qty` | `InventoryRepo.add` | shop/use/battle/raid/quest/mission/battle pass/daily-login/ground item/`/creature/:id/setup` (equip takes one, returns the old held item) tx | `inventoryDelta.items` |
 | `badges` | `ProgressRepo.awardBadge` from league win **only** | battle end tx | `progressionDelta.badges` |
-| `story_flags` | `setFlags` from league win, trainer win, ground item, static, quest claim, story beat completion | tx | `progressionDelta.flags` |
+| `story_flags` | `setFlags` from league win, trainer win, ground item, static, quest claim, story beat completion; the live-ops `streak:<n>` / `streak:last:<day>` bookkeeping rows (daily login, §30.9.1) | tx | `progressionDelta.flags` |
 | `dex_entries` | `markSeen/markCaught` from battle tx and trade/market receipt | tx | `progressionDelta.dexSeen/dexCaught` |
 | `quest_progress` | `advance/claim` from battle tx, interact handlers, REST claim | tx | `progressionDelta.questProgress` |
 | `battle_pass` | REST claim / mythical choice | REST | REST response |
@@ -523,13 +545,14 @@ Every mutable player-visible field, the only writer, and the only wire path that
 | `PlayerState.body/guildTag/name` | copied from rows at join; `body` re-read after `POST /profile` via `presence.publish('ewa:profile', …)` | REST | schema |
 | `RaidState.*`, `BattleSummary.*` | `RaidSession`, `BattleCoordinator` | tick | schema |
 
+<!-- amended 2026-09-25: the money / inventory / story_flags writer lists were incomplete against the implemented server (raid rewards, mission claims, daily-login streak, guild founding, setup equip) — a matrix that claims to name "the only writer" must name all of them -->
 The `50-verification-budget.md` authority test fabricates every `CLIENT_MESSAGES` type (including well-formed `battleAction` for another player's battle, `handoverAck` without a reservation, `engageSpawn` for a spawn outside AOI) and every REST body with adversarial values, then diffs the database against a snapshot: **zero rows changed** except `audit_log`, `players.last_seen_at`, and the attacker's own rate-limit kicks.
 
 ### 30.5.1 Adversarial test list — expected server response
 
 | # | Attack | Server response | Persisted effect |
 |---|---|---|---|
-| 1 | Client sends a `progressionDelta`/`inventoryDelta`-shaped message to the room | No handler registered for that type → Colyseus drops it; `metrics.unknownMessage += 1`; 5 in 10 s → `client.leave(4003)` | none |
+| 1 | Client sends a `progressionDelta`/`inventoryDelta`-shaped message to the room | No handler for that type → the `'*'` handler counts it (`metrics.unknownMessages += 1`), no reply; 5 in 10 s → `client.leave(4003)` | none |
 | 2 | `battleAction` with another player's `battleId` | `error { code: 'notFound' }` (identical to a missing id) | none |
 | 3 | `battleAction` with own `battleId`, `turn` ≠ collecting turn | `error { notAllowed, 'wrongTurn' }` | none |
 | 4 | `battleAction` `move` not in active moves / pp 0 / choice-locked | `error { notAllowed, <ActionError> }` from `validateAction` | none |
@@ -554,6 +577,9 @@ The `50-verification-budget.md` authority test fabricates every `CLIENT_MESSAGES
 | 23 | Forged JWT (wrong secret / expired / `aud` mismatch) | REST 401; room `onAuth` 401 | none |
 | 24 | Refresh token reuse after rotation | `rotateRefresh` returns null → 401 and `revokeAll(playerId)` (token theft response); audit `auth.refreshReuse` | all refresh tokens of that player revoked |
 | 25 | Register 6th account from one IP within an hour | 429 `rateLimited` | none |
+| 26 | Create or join a zone room directly through Colyseus' `POST /matchmake/*` routes (any options, any shard) | `onCreate`/`onAuth` without the join ticket → `ServerError(403, 'noTicket')` (§30.2.6) | none |
+| 27 | `POST /zone/enter` for an ungated zone that is not the player's current zone (REST "fast travel") | 409 `wrongZone`, no seat | none |
+| 28 | `POST /marketplace/list` of a party member during a live battle | 409 `inBattle` (§30.6.3) | none |
 
 ---
 
@@ -575,8 +601,10 @@ The `50-verification-budget.md` authority test fabricates every `CLIENT_MESSAGES
 
 ```ts
 // packages/server/src/rest/auth.ts — verbatim
-import { hash, verify, Algorithm } from '@node-rs/argon2';
-export const ARGON2: Parameters<typeof hash>[1] = { algorithm: Algorithm.Argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1, outputLen: 32 };
+import { hash, verify } from '@node-rs/argon2';
+import type { Algorithm, Options } from '@node-rs/argon2';
+const ARGON2ID = 2 as Algorithm;   // Algorithm.Argon2id — the package's enum is an ambient `const enum`, unusable under isolatedModules (amended 2026-09-25, server IMPLEMENTATION-NOTES)
+export const ARGON2: Options = { algorithm: ARGON2ID, memoryCost: 19456, timeCost: 2, parallelism: 1, outputLen: 32 };
 export function hashPassword(pw: string): Promise<string>;          // hash(pw, ARGON2) — PHC string, 16-byte random salt from the library
 export function verifyPassword(phc: string, pw: string): Promise<boolean>;   // verify(phc, pw); never compares strings
 export const ACCESS_TTL_S = 900;
@@ -596,7 +624,7 @@ export async function rotateTokens(tx: Tx, fastify: FastifyInstance, refresh: st
 The §4.7 table is the route table; this section only pins behaviours the table leaves to the server:
 
 - `GET /me` returns the spine §4.7 shape: `presence: { roomId: string | null; zoneId; shard }` (from `PresenceStore`/`presence.get`; `zoneId` falls back to the row's `zone_id` when offline) for the client to `POST /zone/enter` after a reload, plus `battlePass`, `quests` (all `QUESTS` filtered by `requires` satisfied, with progress rows; daily/weekly synthetic quests included), `flags`, `badges`, `unreadDm`, `friendRequests`, `liveOps` (§30.9 summary). <!-- reconciled 2026-09-18: OQ 3 -->
-- `POST /party/*`, `/creature/:id/*`, `/item/use`, `/heal`, `/shop/*` are refused with 409 `{ code: 'inBattle' }` while `PresenceStore.battleOf(playerId) !== null` — REST may not mutate a creature that is being projected in a live battle. The check reads presence (in-memory or Redis), which the room updates at battle start/end.
+- `POST /party/*`, `/creature/:id/*`, `/item/use`, `/heal`, `/shop/*` and `/marketplace/list` are refused with 409 `{ code: 'inBattle' }` while `PresenceStore.battleOf(playerId) !== null` — REST may not mutate or escrow a creature that is being projected in a live battle (a listed-then-bought creature would otherwise receive the battle transaction's hp/exp write under its new owner). A raid participant counts as in battle from the fight's start to the catch window. <!-- amended 2026-09-25: server IMPLEMENTATION-NOTES Q6, Q14 --> The check reads presence (in-memory or Redis), which the room updates at battle start/end.
 - `/heal`: player must currently be in a zone room whose `zone.healer === true` (presence lookup); heals `hp = maxHp`, `status = []`, `pp = ppMax` for every party member; free.
 - `/creature/:id/evolve { into }`: `into` must equal `applyExp(...)`-style readiness: `species.evolution` resolves to `into` at the current level and ability (split branch by ability, default last); performs core `evolve`, `markSeen/markCaught(into)`, audit `creature.evolve`.
 - `/creature/:id/moves { moves }`: 1..4 unique ids, each in `learnableMoves` with `level <= creature.level`; kept slots keep their `pp`, new slots get `pp = ppMax = move.pp`.
@@ -650,7 +678,7 @@ export function presenceRateLimiter(p: Presence, clock: () => number): RateLimit
 
 ```ts
 // packages/server/src/chat/blocklist.ts — the BLOCKED_WORDS list from legacy chatFilter.js, verbatim, as data
-export const BLOCKED_WORDS: readonly string[];            // 20 entries, lowercase
+export const BLOCKED_WORDS: readonly string[];            // 19 entries, lowercase — the legacy chatFilter.js list has 19 (amended 2026-09-25, server IMPLEMENTATION-NOTES Q1)
 export const LEET_MAP: Readonly<Record<string, string>> = { '3': 'e', '4': 'a', '0': 'o', '1': 'i', '@': 'a', '$': 's', '!': 'i', '+': 't' };
 // packages/server/src/chat/filter.ts
 export function normalizeLeet(s: string): string;                 // lowercase; LEET_MAP per char; then 'ph' -> 'f'
@@ -677,7 +705,7 @@ Every user-supplied string that reaches SQL `LIKE`/`ILIKE` passes through `escap
 
 ### 30.7.1 Friends
 
-`friendships` rows keyed `(requester, addressee)`. Request: target exists, not self, not banned, no row in either direction, ≤ 100 accepted friends per player (409 `friendLimit`). Accept: only the addressee of a `pending` row; sets `accepted`. Decline/remove: deletes the row (either party). `GET /friends` returns `FriendView { id, username, title, body, online: boolean, zoneId: ZoneId | null, inBattle: boolean, lastSeenAt }` — `online/zoneId/inBattle` come from `PresenceStore` (§30.7.4), never from the DB. Friend gifts (legacy `/friends/gift`) are **not** carried; trades exist.
+`friendships` rows keyed `(requester, addressee)`. Request: target exists, not self, not banned, ≤ 100 accepted friends for both players (409 `friendLimit`, checked on request and on accept); a reverse pending request is accepted instead of refused (spine §5.2 `requestFriend`, `friendships_pair_uq`) <!-- amended 2026-09-25: "no row in either direction" contradicted the spine's requestFriend; server IMPLEMENTATION-NOTES Q4 -->. Accept: only the addressee of a `pending` row; sets `accepted`. Decline/remove: deletes the row (either party). `GET /friends` returns `FriendView { id, username, title, body, online: boolean, zoneId: ZoneId | null, inBattle: boolean, lastSeenAt }` — `online/zoneId/inBattle` come from `PresenceStore` (§30.7.4), never from the DB. Friend gifts (legacy `/friends/gift`) are **not** carried; trades exist.
 
 ### 30.7.2 DMs (persisted)
 
@@ -744,7 +772,7 @@ export type TradePhase = 'requested' | 'open' | 'confirming' | 'complete' | 'can
 export class TradeSession {
   readonly id: string; readonly a: string; readonly b: string;   // player uuids
   phase: TradePhase; offers: [TradeOffer, TradeOffer]; lastActivity: number;
-  offerHash(): string;                    // fnv1a32(canonicalJson([offers[0] sans confirmed, offers[1] sans confirmed])) as 8 hex
+  offerHash(): string;                    // protocol tradeOfferHash(offers): fnv1a32(canonicalJson of the two { playerId, creatureIds, money } sorted by playerId) as 8 hex — independent of seat order, confirmed excluded
   setOffer(playerId: string, creatureIds: readonly string[], money: number, now: number): 'ok' | 'notParty' | 'badPhase';   // clears BOTH confirmed flags
   confirm(playerId: string, hash: string, now: number): 'ok' | 'staleOffer' | 'badPhase' | 'notParty';
   bothConfirmed(): boolean;
@@ -837,7 +865,7 @@ A run also flips 10 % of the bots to a cheating profile (dt inflation, 12 m/s) a
 | Rate limits per socket for map/battle events (`socketRateLimit.js`) | `LIMITS` table + per-client `RateLimiterState` | `rateLimit.test.ts`: 5th chat in 4 s → false; one `rateLimited` error per window |
 | Raid 20 s rounds, shared boss HP, damage board, catch window (`raidSocket.js`) | `RaidSession` constants | `raid.test.ts`: two participants, deterministic boss HP after round 1 given the seed |
 | Marketplace TTL expiry job returning unsold creatures (`marketplaceExpiry.js`) | `jobs/marketExpiry.ts` at 60 s over `closeExpired` | persist concurrency test (20 tx, one winner) + job test (expired-with-bid → transfer, expired-without → box) |
-| Battle history with enough data to replay | `battle_history.seed + actions` written at `battleEnd` | replay test: `createBattle(seed)` + recorded actions reproduces the final digest |
+| Battle history with enough data to replay | `battle_history.start + seed + actions + final_digest` written at `battleEnd` (spine §5.1, migration 0001) | replay test: `createBattle({ id, format, seed, ...start })` + recorded actions reproduces `final_digest` from the row alone |
 
 Not preserved, on purpose: client-side badge awards laundered through `gymwin_<id>` flags (badges are §30.4.4 league-win-only, server tx), the `/map` relay fanout, `sanitizeMapPosition` fade-to-black zone changes, fat-document `VersionError` retry wrappers, `Math.random` anywhere in spawn or battle code.
 
@@ -849,7 +877,7 @@ Not preserved, on purpose: client-side badge awards laundered through `gymwin_<i
 2. `validateAction` runs on every `battleAction` before `resolveTurn`; a `resolveTurn` throw is a server fault that voids the battle with no rewards, never a client-visible crash.
 3. Movement is accepted only through `validateInput`; rejection never moves the avatar and always echoes `seq`.
 4. AOI is exactly the spine's `StateView` rule: 32-unit cells, 3×3, `players` and `spawns` only; chat rides the same neighbourhood; nothing per-player is ever `broadcast`.
-5. The position row is written by the destination room on `handoverAck`, once per crossing; a handover option without a matching presence reservation is refused.
+5. The position row is written by the destination room on `handoverAck`, once per crossing; a handover option without a matching presence reservation is refused; a join without the server's ticket is refused, and `/zone/enter` seats a player only in their current zone.
 6. Badges are written by `awardBadge` from a league win inside the battle transaction and nowhere else.
 7. Every cross-player creature or money movement (trade, buy-now, expiry, bid escrow) is one transaction with `FOR UPDATE` in ascending uuid order; the expiry job uses `SKIP LOCKED`.
 8. Passwords: argon2id `m=19456 t=2 p=1`; tokens: HS256 access 15 min with `iss/aud`, opaque rotating refresh 30 d stored hashed; refresh reuse revokes the family.
