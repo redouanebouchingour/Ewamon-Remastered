@@ -1,0 +1,205 @@
+/**
+ * §10.7.1–§10.7.4 rig state machine (node, no GPU): heading/zoom eases, dead-zone follow with the critically damped
+ * spring, pushIn/release timing and the battle pose (Pillar 7), input ignored in a shot, cues, and the Pillar 8
+ * shake refusal under reduced effects.
+ */
+import { describe, expect, it, vi } from 'vitest';
+import { PerspectiveCamera, Quaternion, Vector3 } from 'three/webgpu';
+import { ALL_EFFECTS, type EffectsFlags } from '../src/descriptors.js';
+import { applyReducedEffects } from '../src/post/effects.js';
+import { DioramaRig, DISTANCE, HEADING_TURN_MS, PITCH, ZOOM_MS, headingYaw, springStep } from '../src/camera/rig.js';
+import { BATTLE_DISTANCE, BATTLE_PITCH, BATTLE_YAW_OFFSET, BATTLER_SEPARATION, PILLAR7_RADIUS, battlerSlot, cueEnvelope } from '../src/camera/battle.js';
+
+const DEG = Math.PI / 180;
+const FRAME = 1000 / 60;
+
+function makeRig(effects: EffectsFlags = ALL_EFFECTS, feet?: Map<string, Vector3>) {
+  const cam = new PerspectiveCamera(28, 16 / 9, 0.5, 220);
+  const onSlowmo = vi.fn();
+  const onSettled = vi.fn();
+  const r = new DioramaRig(cam, {
+    effects: () => effects,
+    feet: feet ? (id, out) => { const f = feet.get(id); return f ? out.copy(f) : null; } : undefined,
+    onSlowmo, onSettled,
+  });
+  return { r, cam, onSlowmo, onSettled };
+}
+
+function run(r: DioramaRig, ms: number, step = FRAME): void {
+  for (let t = 0; t < ms - 1e-9; t += step) r.update(Math.min(step, ms - t));
+}
+
+describe('heading and zoom eases', () => {
+  it('yaw eases by smoothstep over 320 ms along the shortest arc, then settles (csm.updateFrustums hook)', () => {
+    const { r, onSettled } = makeRig();
+    r.update(0);
+    r.setHeading(1);
+    run(r, HEADING_TURN_MS / 2);
+    expect(r.orbit.yaw).toBeCloseTo((headingYaw(0) + headingYaw(1)) / 2, 2);
+    run(r, HEADING_TURN_MS / 2 + FRAME);
+    expect(r.orbit.yaw).toBeCloseTo(headingYaw(1), 6);
+    expect(onSettled).toHaveBeenCalled();
+    r.setHeading(3);   // 1 → 3 is 180°: either way; 0 → 3 must go −90° (shortest)
+    run(r, HEADING_TURN_MS + FRAME);
+    r.setHeading(0);
+    const before = r.orbit.yaw;
+    run(r, HEADING_TURN_MS + FRAME);
+    expect(Math.abs(r.orbit.yaw - before)).toBeCloseTo(90 * DEG, 6);
+  });
+
+  it('distance eases between stops over 260 ms', () => {
+    const { r } = makeRig();
+    r.update(0);
+    expect(r.orbit.distance).toBe(DISTANCE[1]);
+    r.setZoomStop(2);
+    run(r, ZOOM_MS / 2);
+    expect(r.orbit.distance).toBeCloseTo((DISTANCE[1] + DISTANCE[2]) / 2, 3);
+    run(r, ZOOM_MS);
+    expect(r.orbit.distance).toBe(DISTANCE[2]);
+    expect(r.orbit.pitch).toBeCloseTo(PITCH * DEG, 12);
+  });
+});
+
+describe('follow: dead zone + critically damped spring', () => {
+  it('focus is the feet exactly; the target does not move inside 0.8 m and follows (feet − 0.8 m) outside', () => {
+    const feet = new Map([['me', new Vector3(0, 0, 0)]]);
+    const { r } = makeRig(ALL_EFFECTS, feet);
+    r.follow('me');
+    run(r, 500);
+    const c0 = r.orbit.center.clone();
+    feet.get('me')!.set(0.5, 0, 0);
+    run(r, 500);
+    expect(r.focus.x).toBe(0.5);                         // the DOF plane passes through the feet
+    expect(r.orbit.center.distanceTo(c0)).toBeLessThan(1e-6);   // inside the dead zone
+    feet.get('me')!.set(3, 0, 0);
+    run(r, 2000);
+    expect(r.orbit.center.x).toBeCloseTo(3 - 0.8, 3);
+  });
+
+  it('the spring is critically damped: no overshoot toward a step target', () => {
+    const s = { x: 0, v: 0 };
+    let max = 0;
+    for (let i = 0; i < 200; i++) { springStep(s.x, s.v, 1, FRAME / 1000, s); max = Math.max(max, s.x); }
+    expect(max).toBeLessThanOrEqual(1 + 1e-3);
+    expect(s.x).toBeCloseTo(1, 3);
+  });
+});
+
+describe('pushIn / release (Pillar 7) and input lock', () => {
+  it('eases to the battle pose over 600 ms: 12 m, 28° pitch, yaw + 12°, within 40 u of the player', () => {
+    const feet = new Map([['me', new Vector3(10, 0.4, -6)]]);
+    const { r, cam } = makeRig(ALL_EFFECTS, feet);
+    r.follow('me');
+    run(r, 300);
+    const dioYaw = r.dioramaYaw;
+    r.pushIn({ x: 11, z: -5 }, 600);
+    run(r, 300);
+    expect(r.shotBlend).toBeCloseTo(0.5, 2);
+    run(r, 300 + FRAME);
+    expect(r.shotBlend).toBe(1);
+    expect(r.orbit.distance).toBeCloseTo(BATTLE_DISTANCE, 6);
+    expect(r.orbit.pitch).toBeCloseTo(BATTLE_PITCH * DEG, 6);
+    expect(r.orbit.yaw).toBeCloseTo(dioYaw + BATTLE_YAW_OFFSET * DEG, 6);
+    expect(cam.position.distanceTo(new Vector3(11, 0.4, -5))).toBeCloseTo(BATTLE_DISTANCE, 3);
+    expect(cam.position.distanceTo(feet.get('me')!)).toBeLessThan(PILLAR7_RADIUS);
+    expect(r.currentMode).toBe('battle');
+  });
+
+  it('ignores heading/zoom/follow while in a shot and returns to the diorama pose on release', () => {
+    const { r } = makeRig();
+    r.setFocus(0, 0, 0);
+    r.update(0);
+    r.pushIn({ x: 0, z: 0 }, 600);
+    run(r, 700);
+    r.setHeading(2); r.setZoomStop(0); r.follow('someone');
+    expect(r.headingIndex).toBe(0);
+    expect(r.zoomStop).toBe(1);
+    expect(r.followedActor).toBeNull();
+    r.release(600);
+    run(r, 300);
+    expect(r.shotBlend).toBeCloseTo(0.5, 2);
+    run(r, 300 + FRAME);
+    expect(r.shotBlend).toBe(0);
+    expect(r.orbit.distance).toBe(DISTANCE[1]);
+    expect(r.orbit.yaw).toBeCloseTo(headingYaw(0), 9);
+    expect(r.currentMode).toBe('diorama');
+  });
+
+  it('battlers stand 5.5 m apart along the view axis, the player nearer the camera', () => {
+    const c = new Vector3(4, 0, 2);
+    const yaw = headingYaw(0);
+    const a = battlerSlot(c, yaw, 0, 0, 1, new Vector3());
+    const b = battlerSlot(c, yaw, 1, 0, 1, new Vector3());
+    expect(a.distanceTo(b)).toBeCloseTo(BATTLER_SEPARATION, 9);
+    const camPos = new Vector3(c.x + Math.sin(yaw) * 10, 5, c.z + Math.cos(yaw) * 10);
+    expect(a.distanceTo(camPos)).toBeLessThan(b.distanceTo(camPos));
+  });
+});
+
+describe('cues (§10.7.4 CameraWork)', () => {
+  it('impact dollies toward the defender and eases back; ko requests slow-mo only when effects.slowmo', () => {
+    const { r, onSlowmo } = makeRig();
+    r.setFocus(0, 0, 0);
+    r.pushIn({ x: 0, z: 0 }, 0);
+    r.update(FRAME);
+    const d0 = r.orbit.distance;
+    r.setCueTarget('defender', new Vector3(0, 0, -2.75));
+    r.cue('impact', 0);
+    run(r, 90);
+    expect(r.orbit.distance).toBeCloseTo(d0 - 1.2, 3);
+    run(r, 200 + 90 + 2 * FRAME);
+    expect(r.cueActive).toBe(false);
+    expect(r.orbit.distance).toBeCloseTo(d0, 6);
+    r.cue('ko', 0);
+    expect(onSlowmo).toHaveBeenCalledWith(0.35, 400);
+    const reduced = makeRig(applyReducedEffects(ALL_EFFECTS));
+    reduced.r.pushIn({ x: 0, z: 0 }, 0);
+    reduced.r.cue('ko', 0);
+    expect(reduced.onSlowmo).not.toHaveBeenCalled();
+  });
+
+  it('cue envelope: in, hold, out', () => {
+    expect(cueEnvelope(0, 100, 200, 100)).toBe(0);
+    expect(cueEnvelope(50, 100, 200, 100)).toBeCloseTo(0.5, 9);
+    expect(cueEnvelope(150, 100, 200, 100)).toBe(1);
+    expect(cueEnvelope(350, 100, 200, 100)).toBeCloseTo(0.5, 9);
+    expect(cueEnvelope(400, 100, 200, 100)).toBe(0);
+  });
+});
+
+describe('shake (Pillar 8)', () => {
+  it('reduced effects: 600 frames with zero shake offset and an untouched camera orientation', () => {
+    const reduced = applyReducedEffects(ALL_EFFECTS);
+    const a = makeRig(reduced); const b = makeRig(reduced);
+    a.r.setFocus(0, 0, 0); b.r.setFocus(0, 0, 0);
+    a.r.pushIn({ x: 0, z: 0 }, 0); b.r.pushIn({ x: 0, z: 0 }, 0);
+    const qa = new Quaternion(); const qb = new Quaternion();
+    for (let i = 0; i < 600; i++) {
+      if (i % 30 === 0) { a.r.shake(0.5, 300); a.r.cue('impact', 0); b.r.cue('impact', 0); }
+      a.r.update(FRAME); b.r.update(FRAME);
+      expect(a.r.shakeOffset).toBe(0);
+      expect(qa.copy(a.cam.quaternion).toArray()).toEqual(qb.copy(b.cam.quaternion).toArray());   // bit-identical orientation
+    }
+  });
+
+  it('with effects on, shake rotates the camera and decays to 0 over its ms; switching to reduced cuts it', () => {
+    let flags: EffectsFlags = ALL_EFFECTS;
+    const cam = new PerspectiveCamera(28, 16 / 9, 0.5, 220);
+    const r = new DioramaRig(cam, { effects: () => flags });
+    r.setFocus(0, 0, 0);
+    r.update(FRAME);
+    const q0 = cam.quaternion.clone();
+    r.shake(0.4, 200);
+    r.update(FRAME);
+    expect(r.shakeOffset).toBeGreaterThan(0);
+    expect(cam.quaternion.angleTo(q0)).toBeGreaterThan(0);
+    run(r, 220);
+    expect(r.shakeOffset).toBe(0);
+    r.shake(5, 300);                       // clamped to SHAKE_AMP_MAX 0.5
+    r.update(FRAME);
+    expect(r.shakeOffset).toBeLessThanOrEqual(0.5);
+    flags = applyReducedEffects(ALL_EFFECTS);
+    r.update(FRAME);
+    expect(r.shakeOffset).toBe(0);
+  });
+});

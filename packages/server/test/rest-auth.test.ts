@@ -6,7 +6,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ROUTES } from '@ewa/protocol';
 import { ARGON2, hashPassword, verifyPassword } from '../src/rest/auth';
-import { api, rawQuery, register, startServer, uniqueName } from './helpers';
+import { START_MONEY, api, rawQuery, register, startServer, uniqueName } from './helpers';
 import type { TestServer } from './helpers';
 
 let s: TestServer;
@@ -39,7 +39,7 @@ describe('auth flow', () => {
     const res = await s.booted.rest.inject({ method: 'POST', url: '/auth/register', payload: { username: name, email: `${name.toUpperCase()}@Mail.Test`, password: 'correct horse battery', starter: 'glimfin' }, remoteAddress: '198.51.100.1' });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.player).toMatchObject({ username: name, email: `${name}@mail.test`, money: 3000, zoneId: 'mirevale', trainerLevel: 1, tier: 'bronze' });
+    expect(body.player).toMatchObject({ username: name, email: `${name}@mail.test`, money: START_MONEY, zoneId: 'mirevale', trainerLevel: 1, tier: 'bronze' });
     const c = claims(body.access);
     expect(c).toMatchObject({ sub: body.player.id, usr: name, adm: false, iss: 'ewa-server', aud: 'ewa' });
     expect(Number(c['exp']) - Number(c['iat'])).toBe(900);
@@ -155,5 +155,67 @@ describe('auth flow', () => {
     expect(r.body.showcase[0].ownerId).toBeNull();
     expect(r.body).not.toHaveProperty('email');
     expect((await api(s, 'GET', '/players/nobody_at_all', a.access)).status).toBe(404);
+  }, 60_000);
+});
+
+describe('guild routes (§30.7.3, M4)', () => {
+  async function fund(id: string, amount: number): Promise<void> {
+    await s.repos.db.transaction((tx) => s.repos.players.addMoney(tx, id, amount));
+  }
+
+  it('create charges 5 000 in the same tx (409 InsufficientFunds below), returns the money as an inventoryDelta; name/tag unique; one guild per player', async () => {
+    const poor = await register(s); // START_MONEY (3 100) < 5 000
+    const tag = `G${Math.floor(Math.random() * 900 + 100)}`;
+    const refused = await api(s, 'POST', '/guilds', poor.access, { name: `Poor ${tag}`, tag });
+    expect(refused.status).toBe(409);
+    expect(refused.body.code).toBe('InsufficientFunds');
+    const leader = await register(s);
+    await fund(leader.id, 5_000);
+    const created = await api(s, 'POST', '/guilds', leader.access, { name: `Wardens ${tag}`, tag });
+    expect(created.status).toBe(200);
+    expect(created.body).toMatchObject({ name: `Wardens ${tag}`, tag, leaderId: leader.id, memberCount: 1 });
+    expect(created.body.inventoryDelta).toEqual({ items: {}, money: START_MONEY, creaturesAdded: [], creaturesRemoved: [], creaturesUpdated: [] });
+    const dupe = await register(s);
+    await fund(dupe.id, 5_000);
+    expect((await api(s, 'POST', '/guilds', dupe.access, { name: `Other ${tag}`, tag })).body.code).toBe('GuildNameTaken');
+    expect((await api(s, 'POST', '/guilds', leader.access, { name: `Second ${tag}`, tag: `${tag}X`.slice(0, 4) })).body.code).toBe('AlreadyInGuild');
+    expect((await api(s, 'POST', '/guilds', dupe.access, { name: 'ab', tag: 'ok' })).status).toBe(400); // zod: name ≥ 3, tag {3,4}
+  }, 60_000);
+
+  it('join / detail / kick / promote / leave: officer kicks members only, leader must promote before leaving, last leave deletes', async () => {
+    const leader = await register(s);
+    await fund(leader.id, 5_000);
+    const tag = `K${Math.floor(Math.random() * 900 + 100)}`;
+    const g = (await api(s, 'POST', '/guilds', leader.access, { name: `Kin ${tag}`, tag })).body;
+    const a = await register(s);
+    const b = await register(s);
+    const c = await register(s);
+    for (const m of [a, b, c]) expect((await api(s, 'POST', `/guilds/${g.id}/join`, m.access, {})).status).toBe(200);
+    const detail = await api(s, 'GET', `/guilds/${g.id}`, a.access);
+    expect(detail.body.memberCount).toBe(4);
+    expect(detail.body.members.map((m: { playerId: string }) => m.playerId)).toEqual([leader.id, a.id, b.id, c.id]);
+    const list = await api(s, 'GET', `/guilds?search=${encodeURIComponent('Kin')}`, a.access);
+    expect(list.body.some((x: { id: string }) => x.id === g.id)).toBe(true);
+    // a member cannot kick; the leader promotes a to officer; the officer kicks a member but not the leader
+    expect((await api(s, 'POST', `/guilds/${g.id}/kick`, b.access, { playerId: c.id })).status).toBe(403);
+    expect((await api(s, 'POST', `/guilds/${g.id}/promote`, a.access, { playerId: b.id })).status).toBe(403);
+    expect((await api(s, 'POST', `/guilds/${g.id}/promote`, leader.access, { playerId: a.id })).status).toBe(200);
+    expect((await api(s, 'POST', `/guilds/${g.id}/kick`, a.access, { playerId: c.id })).body.memberCount).toBe(3);
+    expect((await api(s, 'POST', `/guilds/${g.id}/kick`, a.access, { playerId: leader.id })).status).toBe(403);
+    // the leader cannot leave with members; promoting the officer hands over leadership
+    const stuck = await api(s, 'POST', `/guilds/${g.id}/leave`, leader.access, {});
+    expect(stuck.status).toBe(409);
+    expect(stuck.body.code).toBe('leaderMustPromote');
+    const handed = await api(s, 'POST', `/guilds/${g.id}/promote`, leader.access, { playerId: a.id });
+    expect(handed.body.leaderId).toBe(a.id);
+    expect((await api(s, 'POST', `/guilds/${g.id}/leave`, leader.access, {})).body.memberCount).toBe(2);
+    expect((await api(s, 'POST', `/guilds/${g.id}/leave`, b.access, {})).body.memberCount).toBe(1);
+    const last = await api(s, 'POST', `/guilds/${g.id}/leave`, a.access, {});
+    expect(last.status).toBe(200);
+    expect(last.body.memberCount).toBe(0);
+    expect((await api(s, 'GET', `/guilds/${g.id}`, a.access)).status).toBe(404);
+    // the guild tag is visible on the public profile while a member
+    const pub = await api(s, 'GET', `/players/${a.username}`, b.access);
+    expect(pub.body.guildTag).toBeNull();
   }, 60_000);
 });

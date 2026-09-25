@@ -176,3 +176,146 @@ blocklist (`chat/blocklist.ts` is empty; `censor` is a pass-through), the netcod
 `spawn-director`, `stores` (challenge/presence/rate-limit/chat/env), `battle-room` (coordinator on PGlite),
 `authority` (the adversarial suite, real server + SDK clients), `rest-auth` (fastify.inject), `zone-room`
 (two-client integration), `world` (story beats, ground items, handover, gate push-back, pvp handshake).
+
+---
+
+# Part 2
+
+Binding spec unchanged (§30.2.8 step 8, §30.4.7, §30.5.1 #14/#20/#21, §30.6.3, §30.6.5, §30.7–§30.11, §50.4.5,
+§50.5 M2/M4 server boxes). Items are referenced from code as `P<n>` (client-agent fixes), `Q<n>` (other part-2
+deviations). This section is written incrementally; the coverage table at the end is the summary.
+
+## Fixes found by the client agent
+
+- **P1 — REST side effects return an `inventoryDelta`.** New protocol schema `InventoryDeltaBodySchema` (= the §4.4
+  `inventoryDelta` message minus `type`). Responses extended *additively* (every spine field is still at the top
+  level): `CreatureSetupRes = CreatureInstance & { inventoryDelta }` (`POST /creature/:id/setup`: absolute counts of
+  the equipped and the returned held item, the creature in `creaturesUpdated`), `GuildCreateRes = GuildView &
+  { inventoryDelta }` (`POST /guilds`: `money` after the 5 000 charge), `ListingMutationRes = ListingView &
+  { inventoryDelta }` for `POST /marketplace/list` (the escrowed creature in `creaturesRemoved`), `/:id/bid`
+  (`money` after escrow), `/:id/buy-now` (`money` + `creaturesAdded`) and `/:id/cancel` (the creature back in
+  `creaturesAdded`). Bid / buy-now / cancel were included because they move money/creatures the same way.
+- **P2 — `/me` dex + guild id: not added (spec gap recorded).** The spine §4.7 `GET /me` type is `PlayerProfile &
+  { party, box, inventory, badges, flags, quests, battlePass, presence, unreadDm, friendRequests, liveOps }` — no dex
+  field and no guild id, and `PlayerProfile` itself has no field list in the spine. Per instructions protocol was not
+  extended. The client gets dex from `GET /dex` (seen/caught/variants/alpha — exactly the four Progression dex
+  fields) and its guild tag from `GET /players/:ownUsername` (`guildTag`); there is no spine route for "my guild id".
+  Suggested spine change: `GET /me` gains `guild: { id, tag, role } | null` and `dexCaughtCount`.
+- **P3 — reload mid-battle.** `POST /zone/enter` no longer answers 409 `inBattle` for the zone the battle lives in:
+  it reserves a seat in the battle's own room (`presence.roomId`, looked up with `matchMaker.getRoomById`), and
+  `ZoneRoom.onJoin` sends `battleResync { battleId, state, stateDigest }` to a joining player who holds a live
+  battle seat. Any other zone is still 409 `inBattle`. The rejoin works inside the 20 s reconnection window
+  (after it, `onLeave` removes the player and the battle is forfeited/voided as before). Dropped clients leave
+  `room.clients` before `onDrop` (0.18 `_onLeave`), so the owner map (S1) keeps the old socket's late `onLeave`
+  from removing the avatar.
+- **P4 — `CLOSE_CODES.replaced` is 4101** (protocol constant; was 4001 = Colyseus `SERVER_SHUTDOWN`). 4100–4199 is
+  not used by Colyseus 0.18 (`CloseCode`: 1000/1001/1005/1006, 4000–4003, 4010) and the SDK does not auto-reconnect
+  on it. The spec's §30.2.2 "`client.leave(4001)`" is the one sentence not followed. `handoverComplete` 4002 and
+  `kicked` 4003 are unchanged (they coincide with Colyseus WITH_ERROR / FAILED_TO_RECONNECT, which the SDK also
+  does not auto-reconnect on; the server never relies on the code alone).
+- **P5 — loopback is exempt from the 8-sockets-per-IP cap outside production** (`socketCapApplies(env, ip)`:
+  `127.0.0.0/8`, `::1`, `::ffff:127.*`). `NODE_ENV=production` never exempts anything.
+- **P6 — DB-only battle replay.** persist migration `0001_battle_replay` adds `battle_history.start jsonb`
+  (`BattleStartSnapshot { zoneId, terrain, sides }` — the `createBattle` input minus the seed, deep-copied before
+  the call) and `battle_history.final_digest varchar(8)` (`digestBattleState` of the final state). Both nullable
+  (rows written before the migration have neither). `fixes.test.ts` plays a wild battle through the room, then
+  replays `createBattle({ id, format, seed, ...start })` + `resolveTurn` over `actions` from the row alone and
+  matches the last `battleEvents.stateDigest` (= `final_digest`). S10 of part 1 is resolved.
+
+## Chat, social, marketplace
+
+- **Q1 — blocklist.** `chat/blocklist.ts` is the legacy `backend/src/utils/chatFilter.js` list transcribed verbatim
+  from the legacy repository (`../Ewamon/ewamon/backend/src/utils/`): **19** entries, not the spec's "20" (the legacy
+  file has 19; none were invented). `filter.ts` compiles one `\b l[\W_]*e[\W_]*t…\b` pattern per word at module load
+  and matches over `normalizeLeet` (lowercase → `LEET_MAP` per char → `ph`→`f`). `censor` maps every normalised
+  code unit back to its original span, so leet and `ph` forms are starred in the ORIGINAL string at their original
+  length (legacy `censorText` replaced on the original text with the un-normalised pattern and missed them).
+- **Q2 — presence mirror.** `rooms/presenceMirror.ts` wraps `PresenceStore` + Colyseus `Presence`: every
+  enter/leave/setBattle/setTrade writes `ewa:presence:<id>` `{ roomId, zoneId, shard, battleId, tradeId }` (90 s,
+  swept every 30 s). `GET /friends` and the DM push decision read it with `lookup()` (local first, then the key), so
+  they are process-agnostic. `refuseInBattle` / `/zone/enter` still read the local store (single process; with
+  Redis a room on another process would need `lookup` there too — noted, not needed for the harness or tests).
+- **Q3 — DM push.** `POST /messages/:username` publishes `ewa:dm:<toId>` when `lookup(toId)` finds the recipient;
+  the room holding the player subscribed that channel at join (unsubscribed on removal / dispose) and forwards the
+  spine `dm` variant. `fromName` is the sender's `usr` claim (usernames never change). A user literally named `read`
+  cannot be DM'd: `POST /messages/read` is the protocol's mark-read route (spec/protocol path collision, recorded).
+- **Q4 — friends.** A reverse request accepts the pending row (persist decision, kept) instead of refusing "row in
+  either direction". The 100-friend cap is checked for both players on request and on accept (409 `friendLimit`).
+  Self → 409 `self`; unknown or banned target → 404.
+- **Q5 — guilds.** Leave by a leader with members → 409 `leaderMustPromote` (pre-checked; persist's `Forbidden`
+  would be 403). Promote: member → officer, officer → leader (caller becomes officer); promoting the leader → 409
+  `alreadyLeader`. The last member's leave returns the deleted guild's view with `memberCount: 0`. Any guild change
+  publishes `ewa:profile { playerId }`; the room re-reads `body` + guild tag into `PlayerState` (also on
+  `POST /profile`, the part-1 seam). Kick/promote permission failures are persist `Forbidden` → 403.
+- **Q6 — marketplace.** `POST /marketplace/list` is refused with 409 `inBattle` during a live battle (the party is
+  projected there). Buy-now and job sales mark the buyer's dex (seen + caught with the variant/alpha) and grant
+  `tradeComplete` trainer exp to buyer and seller, in the sale transaction. persist gained
+  `marketRepo.closeExpiredDetailed` (what each closed listing became) — `closeExpired` is now a wrapper returning
+  its length, so persist's own tests are unchanged. Every listing attempt counts against `LIMITS.listing` (the
+  limiter runs before validation), rejected or not.
+- **Q7 — market-concurrency.test.ts** runs on PGlite by default (single connection: the 20 transactions are
+  serialised, asserting the serial outcome) and on real Postgres when `DATABASE_URL` is set (pool of 32, genuine
+  `FOR UPDATE` contention / `SKIP LOCKED`). It never truncates: its expiry listings are created with a 2001 clock so
+  nothing else is due at the job's `now`.
+
+## Trades (§30.8.3, tick step 8)
+
+- **Q8 — `rooms/tradeSession.ts`** = pure `TradeSession` (spec shape + `open`, `has`, `other`, `idle`, `toMessage`) and
+  `TradeCoordinator` (the room's sessions; `TradeHost` interface, no Colyseus). The offer hash is protocol's
+  `tradeOfferHash` (canonical `{ playerId, creatureIds, money }` pair **sorted by playerId**, `confirmed` excluded),
+  not the spec's literal "[offers[0], offers[1]]" order: it is the one function the client already calls, and it
+  makes the hash independent of seat order. Confirming never changes the hash.
+- **Q9 — busy rules.** The requester is marked trading (`userData.tradeId`, presence `tradeId`) from its request;
+  the target only from its accept (a pending request does not freeze the target — it can walk, battle, hand over).
+  Accept re-checks every request condition (presence, AOI + 12 m, not in battle, target not in another trade) and
+  voids the target's other pending requests. Entering a battle (`onBattleStart`), leaving (`removePlayer`),
+  `tradeCancel`, `tradeReply { accept: false }` and 120 s without activity (tick step 8) → `cancelled`.
+- **Q10 — completion transaction** (lock order §5.5): `players.lockMany([a, b])` first, then every offered creature in
+  ascending uuid: owner / not locked / party-or-box re-asserted, `moveToSlot(…, 'trade_escrow', 'nextBox')`; then
+  persist `completeTrade` (money both ways, `transferCreature` both ways into the receiver's box, two
+  `trade_history` rows, audit); dex marks for received species; `tradeComplete` exp to both. Any failure (e.g. money
+  spent between offer and confirm → `InsufficientFunds`) rolls back and both get `tradeUpdate cancelled`. After
+  commit: `tradeUpdate complete`, then per player `inventoryDelta` (absolute money, `creaturesRemoved` = given,
+  `creaturesAdded` = received rows) and `progressionDelta` (trainerExp/Level, dexSeen/dexCaught). An empty trade
+  (both offers empty) cannot be confirmed (`notAllowed 'emptyTrade'`).
+- Errors: unknown / foreign trade id → `notFound`; wrong phase → `notAllowed 'badPhase'`; offer validation →
+  `notAllowed` with `notOwner | notTradable | locked | partyMinimum | insufficientFunds | duplicate | tooMany`;
+  `tradeConfirm` with an old hash → `notAllowed 'staleOffer'`; a message during the completion tx → `busy`.
+
+## Live-ops (§30.9)
+
+- **Q11 — mission data lives in the server.** `DAILY_MISSIONS` (8-entry rotating pool, 3 picked per UTC day by
+  fnv1a32(dayKey) with a coprime stride), `WEEKLY_GOALS` (3, fixed) and `LOGIN_STREAK` (7 rows) are spec'd as
+  `packages/content/src/liveops.ts` additions, but content does not ship them and is not this agent's package; they
+  are `packages/server/src/liveops/missions.ts` with the spec's shapes, adapted from legacy liveOps.js onto the
+  spec's `DailyMetric` set (legacy rewards were items only; money was added). Move them to content verbatim later.
+- **Progress** uses synthetic quest ids `daily:<dayKey>` / `weekly:<weekKey>` (objective = mission id) through the
+  same `advanceQuests` call as QuestDefs ("one code path"). New `QuestEvent`s: `battle { format }` (every ended
+  battle → `pvpBattles` for pvp), `seen { species }` (persist `markSeen` now returns whether the species was new →
+  `newSpeciesSeen`; battle start lead, battle switch-ins, trade receipts), `trade` (→ `tradesCompleted`). `wildWins`
+  = wild wins; `trainerWins` = trainer + league wins; `zonesVisited` = handover arrivals (counts arrivals, not
+  distinct zones — no per-day visited list is stored). The handover ack now sends the touched quest progress.
+- **Claims** `POST /quests/claim { questId: 'daily:<key>' | 'weekly:<key>', objectiveId }`: the mission must be in
+  that key's set (404 otherwise, also when `objectiveId` is missing), done (409 `questIncomplete`) and unclaimed
+  (409 `AlreadyClaimed`, persist `claimObjective` — a per-objective claim was added); grants money + items. Any key
+  whose rows still exist may be claimed (a mission finished at 23:59 is claimable after midnight until pruned).
+- **`GET /me`** lists today's `daily:` and this week's `weekly:` quest (progress for every mission, count 0 when
+  untouched) with a loose `missions: [{ id, title, metric, target, reward, claimed }]`; `liveOps` (loose
+  LiveOpsSummary) = `{ dayKey, weekKey, weekdayVariant, loginStreak, dailyMissions, weeklyGoals, swarm, events,
+  raids }` (`raids[]` carries each hotspot's window and `open`).
+- **Q13 — login streak.** `liveops/login.ts dailyLogin(tx, …)` locks the player, and when `streak:last:<today>` is
+  absent: continues (`streak:last:<yesterday>` present) or resets the streak, rewrites the `streak:<n>` /
+  `streak:last:<day>` story flags (spec: no schema change), grants `LOGIN_STREAK[min(n,7)]` + `dailyLogin` exp,
+  audit `liveops.login`. Called from `POST /auth/login`, from the room join (only when the cached flags lack today's
+  marker; the grant is pushed as `inventoryDelta` + `progressionDelta` + a toast) **and from `POST /auth/register`**
+  (registration is the account's first login — day 1; otherwise every fresh account's first join would write
+  asynchronously right after the join). A fresh account therefore starts with 3 100 money and 30 trainer exp;
+  tests use `START_MONEY` / `START_EXP`. `/me.flags` includes the `streak:*` flags.
+- **Q12 — seasonal featured species.** `liveOpsModsFor(zoneId, now)` (pure, `liveops/schedule.ts`): weekday
+  variant pool, active `SEASONAL_EVENTS` for featured zones (bonuses summed), `DAILY_SWARMS[weekday]` for its zone.
+  The legacy per-species `+0.025 variant / +0.01 alpha` needs the director to know the species at roll time, so
+  `LiveOpsMods` gained an optional `featuredSpecies` (the spec's interface is otherwise verbatim); the roll adds
+  the bonus to the same draws (draw count unchanged → seeded sequences unchanged).
+- **Rollover** `liveops/rollover.ts` (60 s job started by boot): on a day/week key change → `ewa:liveops`, and
+  synthetic rows older than 14 days are deleted (persist `pruneSyntheticQuests`). Rooms apply
+  `liveOpsModsFor(zone, now)` at create and on every `ewa:liveops`.

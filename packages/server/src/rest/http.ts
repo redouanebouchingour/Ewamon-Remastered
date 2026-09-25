@@ -5,7 +5,8 @@
 import { zone as zoneById } from '@ewa/content';
 import { isPersistError } from '@ewa/persist';
 import type { PlayerRow } from '@ewa/persist';
-import type { PlayerProfile } from '@ewa/protocol';
+import type { InventoryDeltaBody, PlayerProfile } from '@ewa/protocol';
+import type { CreatureInstance } from '@ewa/core';
 import { tierFor, trainerLevelFor } from '@ewa/core';
 import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
@@ -146,3 +147,23 @@ export function toProfile(row: PlayerRow): PlayerProfile {
 }
 
 export type Reply = FastifyReply;
+
+/**
+ * The inventoryDelta-shaped body (protocol `InventoryDeltaBodySchema`) of a REST side effect (P1): absolute
+ * counts for the touched items, absolute money or null, creatures by id.
+ */
+export function inventoryDeltaBody(p: {
+  readonly items?: Readonly<Record<string, number>>;
+  readonly money?: number | null;
+  readonly creaturesAdded?: readonly CreatureInstance[];
+  readonly creaturesRemoved?: readonly string[];
+  readonly creaturesUpdated?: readonly CreatureInstance[];
+}): InventoryDeltaBody {
+  return {
+    items: { ...(p.items ?? {}) },
+    money: p.money ?? null,
+    creaturesAdded: [...(p.creaturesAdded ?? [])] as InventoryDeltaBody['creaturesAdded'],
+    creaturesRemoved: [...(p.creaturesRemoved ?? [])],
+    creaturesUpdated: [...(p.creaturesUpdated ?? [])] as InventoryDeltaBody['creaturesUpdated'],
+  };
+}

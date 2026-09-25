@@ -3,8 +3,8 @@
  * 1 cors · 2 jwt · 3 requireAuth · 4 requireAdmin · 5 zod bodies (handlers parse; Ajv bypassed) ·
  * 6 error handler · 7 request logging · 8 trustProxy · 9 64 KiB body limit, pageSize ≤ 50.
  *
- * Part 2 registers marketplace / friends / messages / guilds / admin stats+players on the same instance
- * (`registerRoutes` below is the seam).
+ * Part 2 added marketplace (routes/market.ts), friends / messages / guilds (routes/social.ts) and admin
+ * stats + players (routes/admin.ts).
  */
 import cors from '@fastify/cors';
 import fastifyJwt from '@fastify/jwt';
@@ -17,8 +17,10 @@ import type { RestDeps } from './http';
 import { registerAdminRoutes } from './routes/admin';
 import { registerAuthRoutes } from './routes/auth';
 import { registerCatalogRoutes } from './routes/catalog';
+import { registerMarketRoutes } from './routes/market';
 import { registerMeRoutes } from './routes/me';
 import { registerPartyRoutes } from './routes/party';
+import { registerSocialRoutes } from './routes/social';
 
 export const BODY_LIMIT = 64 * 1024;
 
@@ -61,5 +63,7 @@ export function registerRoutes(app: FastifyInstance, deps: RestDeps, opts: RestO
   registerMeRoutes(app, deps);
   registerPartyRoutes(app, deps);
   registerCatalogRoutes(app, deps);
+  registerMarketRoutes(app, deps);
+  registerSocialRoutes(app, deps);
   registerAdminRoutes(app, deps, opts.publishKick ?? (() => undefined));
 }

@@ -1,31 +1,42 @@
 /**
  * §4.7 rows: GET /me, POST /zone/enter, POST /profile, POST /quests/claim.
  */
-import { BATTLE_PASS, BODIES, QUESTS, TITLES, WEEKDAY_VARIANT, quest as questById, zone as zoneById } from '@ewa/content';
-import type { Weekday } from '@ewa/content';
+import { BATTLE_PASS, BODIES, QUESTS, TITLES, quest as questById, zone as zoneById } from '@ewa/content';
 import { TRAINER_EXP, trainerLevelFor } from '@ewa/core';
 import { MeRes, PlayerProfileSchema, QuestClaimReq, QuestClaimRes, ZoneEnterReq, ZoneEnterRes, profileRequestFor } from '@ewa/protocol';
 import type { QuestView, ZoneId } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
 import { newCreature } from '../../game/creatures';
-import { pickZoneRoom, reserveZoneSeat } from '../../rooms/matchmaking';
+import { liveStreak } from '../../liveops/login';
+import { WEEKLY_GOALS, dailyMissionsFor, dailyQuestId, missionsForQuest, weeklyQuestId } from '../../liveops/missions';
+import type { DailyMission } from '../../liveops/missions';
+import { dayKey, liveOpsSummary, weekKey } from '../../liveops/schedule';
+import { pickZoneRoom, reserveZoneSeat, zoneRoomById } from '../../rooms/matchmaking';
 import { toInstance } from '../../rooms/battleSession';
 import { HttpError, out, rateLimit, requireAuth, toProfile } from '../http';
 import type { RestDeps } from '../http';
 
-/** UTC calendar day key `YYYY-MM-DD`. */
-export function dayKey(ms: number): string {
-  return new Date(ms).toISOString().slice(0, 10);
-}
+export { dayKey, weekKey };
 
-/** ISO week key `YYYY-Www` (Monday 00:00 UTC). */
-export function weekKey(ms: number): string {
-  const d = new Date(ms);
-  const day = (d.getUTCDay() + 6) % 7; // Monday = 0
-  const thursday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day + 3));
-  const firstThursday = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 4));
-  const week = 1 + Math.round(((thursday.getTime() - firstThursday.getTime()) / 86_400_000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
-  return `${thursday.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+type QuestRows = Record<string, readonly { objectiveId: string; count: number; done: boolean; claimedAt: Date | null }[]>;
+
+/**
+ * A synthetic daily/weekly quest as GET /me lists it (QuestView is loose): one progress entry per mission (count 0
+ * when untouched) and, beside it, the missions themselves with their per-mission claim state.
+ */
+function syntheticView(questId: string, missions: readonly DailyMission[], rows: QuestRows): QuestView {
+  const got = rows[questId] ?? [];
+  const progress = missions.map((m) => {
+    const r = got.find((x) => x.objectiveId === m.id);
+    return { questId, objectiveId: m.id, count: r?.count ?? 0, done: r?.done ?? false };
+  });
+  const claimedIds = new Set(got.filter((r) => r.claimedAt !== null).map((r) => r.objectiveId));
+  return {
+    id: questId,
+    progress,
+    claimed: missions.every((m) => claimedIds.has(m.id)),
+    missions: missions.map((m) => ({ id: m.id, title: m.title, metric: m.metric, target: m.target, reward: m.reward, claimed: claimedIds.has(m.id) })),
+  };
 }
 
 const profileReq = profileRequestFor(TITLES, BODIES.map((b) => b.id));
@@ -61,6 +72,9 @@ export function registerMeRoutes(app: FastifyInstance, deps: RestDeps): void {
       progress: (data.quests[q.id] ?? []).map((r) => ({ questId: q.id, objectiveId: r.objectiveId, count: r.count, done: r.done })),
       claimed: claimedQuests.has(q.id),
     }));
+    // §30.6.3: daily/weekly synthetic quests included
+    quests.push(syntheticView(dailyQuestId(dayKey(now)), dailyMissionsFor(dayKey(now)), data.quests));
+    quests.push(syntheticView(weeklyQuestId(weekKey(now)), WEEKLY_GOALS, data.quests));
     const res = {
       ...toProfile(data.row),
       party: data.party.map(toInstance),
@@ -73,8 +87,8 @@ export function registerMeRoutes(app: FastifyInstance, deps: RestDeps): void {
       presence: presence === null ? { roomId: null, zoneId: data.row.zoneId as ZoneId, shard: 0 } : { roomId: presence.roomId, zoneId: presence.zoneId, shard: presence.shard },
       unreadDm: data.unread,
       friendRequests: data.friends.incoming.length,
-      // §30.9 summary — part 2 (live-ops) fills missions, swarms, events and the login streak
-      liveOps: { dayKey: dayKey(now), weekKey: weekKey(now), weekdayVariant: WEEKDAY_VARIANT[new Date(now).getUTCDay() as Weekday], loginStreak: 0 },
+      // §30.9 summary: day/week keys, weekday variant, login streak + (loose) missions, swarm, events, raid windows
+      liveOps: liveOpsSummary(now, liveStreak(data.flags, now)),
     };
     return out(deps, MeRes, res);
   });
@@ -87,10 +101,20 @@ export function registerMeRoutes(app: FastifyInstance, deps: RestDeps): void {
     const { row, badges } = await repos.db.transaction(async (tx) => ({ row: await repos.players.byId(tx, id), badges: await repos.progress.badges(tx, id) }));
     if (row === null) throw new HttpError(404, 'NotFound');
     if (zone.gate !== null && !badges.includes(zone.gate)) throw new HttpError(403, 'gated', { badge: zone.gate });
-    if (deps.presenceStore.battleOf(id) !== null) throw new HttpError(409, 'inBattle');
     // R2: the client may enter only the zone it is in (its row, or its live presence); crossings are handovers
-    const present = deps.presenceStore.get(id)?.zoneId ?? null;
+    const presence = deps.presenceStore.get(id);
+    const present = presence?.zoneId ?? null;
     if (body.zoneId !== row.zoneId && body.zoneId !== present) throw new HttpError(409, 'wrongZone', { zoneId: present ?? row.zoneId });
+    // P3: during a battle the seat is issued in the battle's own room (a reload rejoins it and gets battleResync
+    // on join); any other zone stays 409 inBattle
+    if (presence !== null && presence.battleId !== null) {
+      if (presence.zoneId !== body.zoneId) throw new HttpError(409, 'inBattle');
+      const battleRoom = await zoneRoomById(presence.roomId);
+      if (battleRoom !== null) {
+        const seat = await reserveZoneSeat(battleRoom, { zoneId: body.zoneId, shard: Number(battleRoom.metadata?.shard ?? 0), ticket: deps.ticket });
+        return out(deps, ZoneEnterRes, { seat: { ...seat } });
+      }
+    }
     const room = await pickZoneRoom(body.zoneId, deps.ticket);
     const seat = await reserveZoneSeat(room, { zoneId: body.zoneId, shard: Number(room.metadata?.shard ?? 0), ticket: deps.ticket });
     return out(deps, ZoneEnterRes, { seat: { ...seat } });
@@ -103,15 +127,45 @@ export function registerMeRoutes(app: FastifyInstance, deps: RestDeps): void {
       await repos.players.setIdentity(tx, id, body);
       return (await repos.players.byId(tx, id))!;
     });
-    // part 2: presence.publish('ewa:profile', …) so rooms re-read `body`
+    // §30.5: the room holding the avatar re-reads `body` (PlayerState)
+    deps.bus.publish('ewa:profile', { playerId: id });
     return out(deps, PlayerProfileSchema, toProfile(row));
   });
+
+  /**
+   * §30.9.1 daily/weekly claim: names the mission (`objectiveId`); the mission must belong to that key's set, be done
+   * and unclaimed (409 questIncomplete / AlreadyClaimed); grants that mission's money + items once.
+   */
+  async function claimMission(questId: string, objectiveId: string | undefined, missions: readonly DailyMission[], id: string) {
+    const mission = objectiveId === undefined ? undefined : missions.find((m) => m.id === objectiveId);
+    if (mission === undefined) throw new HttpError(404, 'NotFound');
+    const now = new Date(clock());
+    const res = await repos.db.transaction(async (tx) => {
+      await repos.players.lock(tx, id);
+      const rows = await repos.progress.quest(tx, id, questId);
+      const row = rows.find((r) => r.objectiveId === mission.id);
+      if (row === undefined || !row.done) throw new HttpError(409, 'questIncomplete');
+      if (!(await repos.progress.claimObjective(tx, id, questId, mission.id, now))) throw new HttpError(409, 'AlreadyClaimed');
+      const money = mission.reward.money > 0 ? await repos.players.addMoney(tx, id, mission.reward.money) : (await repos.players.byId(tx, id))!.money;
+      if (Object.keys(mission.reward.items).length > 0) await repos.inventory.addMany(tx, id, mission.reward.items);
+      await repos.audit.write(tx, { actorId: id, action: 'liveops.claim', subject: questId, detail: { mission: mission.id } }, now);
+      const progress = await repos.progress.quest(tx, id, questId);
+      return {
+        inventory: await repos.inventory.all(tx, id),
+        money,
+        creaturesAdded: [],
+        questProgress: progress.map((r) => ({ questId, objectiveId: r.objectiveId, count: r.count, done: r.done })),
+      };
+    });
+    return out(deps, QuestClaimRes, res);
+  }
 
   /** A QuestDef claim requires every objective done; grants money, items, creature (party or box), flag. */
   app.post('/quests/claim', bearer, async (req) => {
     const body = QuestClaimReq.parse(req.body);
     const id = req.user.sub;
-    if (body.questId.startsWith('daily:') || body.questId.startsWith('weekly:')) throw new HttpError(404, 'NotFound'); // part 2 (live-ops)
+    const missions = missionsForQuest(body.questId);
+    if (missions !== null) return claimMission(body.questId, body.objectiveId, missions, id);
     let q;
     try {
       q = questById(body.questId);

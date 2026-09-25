@@ -1,0 +1,107 @@
+/**
+ * SPEC §10.6.1 / §50.4.6 `collider.test.ts`: for 10 000 prng points over content's committed `mirevale` field,
+ * `TerrainCollider.sample` equals content's `sampleHeight` to 1e-6 and `walkable` / `water` equal `isWalkable` /
+ * `isWater` exactly; `resolveMove` never returns an unwalkable position over 10 000 random displacements.
+ */
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import { Vector3 } from 'three/webgpu';
+import { decodeHeightfield, isWalkable, isWater, playableBounds, sampleHeight, type HeightfieldJson } from '@ewa/content';
+import { MOVEMENT } from '@ewa/protocol';
+import { MOVER, TerrainCollider, resolveMove, resolveMoveInto } from '../src/terrain/collider.js';
+import { waterBodies } from '../src/terrain/field.js';
+import { createPrng } from '../src/zone/prng.js';
+
+const fixture = (id: string) => decodeHeightfield(JSON.parse(readFileSync(fileURLToPath(new URL(`../../content/dist/heightfields/${id}.json`, import.meta.url)), 'utf8')) as HeightfieldJson);
+
+describe('§10.6.1 TerrainCollider over the committed mirevale field', () => {
+  const h = fixture('mirevale');
+  const c = new TerrainCollider(h);
+
+  it('sample / walkable / water equal content for 10 000 prng points (incl. outside the field)', () => {
+    const p = createPrng(0xc011);
+    for (let i = 0; i < 10_000; i++) {
+      const x = p.range(-84, 84); const z = p.range(-84, 84);
+      const a = c.sample(x, z); const b = sampleHeight(h, x, z);
+      if (Number.isNaN(b)) expect(a).toBeNaN(); else expect(Math.abs(a - b)).toBeLessThanOrEqual(1e-6);
+      expect(c.walkable(x, z)).toBe(isWalkable(h, x, z));
+      expect(c.water(x, z)).toBe(isWater(h, x, z));
+    }
+  });
+
+  it('bounds are content playableBounds; normals are unit and up-facing; slope in degrees', () => {
+    expect(c.bounds).toEqual(playableBounds(h));
+    const n = new Vector3();
+    const p = createPrng(3);
+    for (let i = 0; i < 500; i++) {
+      const x = p.range(-79, 79); const z = p.range(-79, 79);
+      c.normal(x, z, n);
+      expect(n.length()).toBeCloseTo(1, 6);
+      expect(n.y).toBeGreaterThan(0);
+      expect(c.slopeDeg(x, z)).toBeGreaterThanOrEqual(0);
+      expect(c.slopeDeg(x, z)).toBeLessThan(90);
+    }
+    expect(c.normal(500, 0, n).toArray()).toEqual([0, 1, 0]);
+  });
+
+  it('MOVER.capsuleRadius is protocol MOVEMENT.radius (one table)', () => {
+    expect(MOVER.capsuleRadius).toBe(MOVEMENT.radius);
+  });
+});
+
+describe('§10.6.2 resolveMove', () => {
+  for (const id of ['mirevale', 'mire_route'] as const) {
+    it(`never returns an unwalkable position over 10 000 random displacements (${id})`, () => {
+      const h = fixture(id);
+      const c = new TerrainCollider(h);
+      // a few blockers so the passable path is exercised too
+      c.addBlocker({ kind: 'rect', x: 0, z: -32, hw: 7.35, hd: 6.35, yaw: 0 });
+      c.addBlocker({ kind: 'circle', x: 20, z: 20, r: 1.2 });
+      const p = createPrng(0x5eed);
+      const b = c.bounds;
+      let x = 0; let z = 6;
+      if (!c.passable(x, z)) [x, z] = c.nearestPassable(x, z, 8)!;
+      const out = { x: 0, z: 0, y: 0, blocked: false, slid: false };
+      let slid = 0; let blocked = 0;
+      for (let i = 0; i < 10_000; i++) {
+        const dx = p.range(-1.2, 1.2); const dz = p.range(-1.2, 1.2);
+        const r = resolveMoveInto(out, c, x, z, dx, dz);
+        expect(c.walkable(r.x, r.z)).toBe(true);
+        expect(c.blocked(r.x, r.z)).toBe(false);
+        expect(r.y).toBe(c.sample(r.x, r.z));
+        if (r.slid) slid++; if (r.blocked) blocked++;
+        x = r.x; z = r.z;
+        if (i % 500 === 499) {   // teleport to a random walkable spot to cover the whole field
+          const t = c.nearestPassable(p.range(b.minX, b.maxX), p.range(b.minZ, b.maxZ), 12);
+          if (t) { x = t[0]; z = t[1]; }
+        }
+      }
+      expect(slid + blocked).toBeGreaterThan(0);
+    });
+  }
+
+  it('accepts a clear move, slides along an axis, and stays when boxed in', () => {
+    const c = new TerrainCollider(fixture('mirevale'));
+    const a = resolveMove(c, 0, 6, 0.5, 0);
+    expect(a).toMatchObject({ x: 0.5, z: 6, blocked: false, slid: false });
+    c.addBlocker({ kind: 'rect', x: 3, z: 6, hw: 0.5, hd: 20, yaw: 0 });   // wall at x ∈ [2.5, 3.5]
+    const s = resolveMove(c, 2.2, 6, 0.6, 0.3);
+    expect(s.slid).toBe(true);
+    expect(c.passable(s.x, s.z)).toBe(true);
+    const w = new TerrainCollider(fixture('mirevale'));
+    w.addBlocker({ kind: 'circle', x: 0, z: 6, r: 3 });
+    const inside = resolveMove(w, 0, 6, 0.1, 0);                          // spawned inside a blocker: escapes to the nearest passable sample
+    expect(w.passable(inside.x, inside.z)).toBe(true);
+  });
+
+  it('water bodies: mirevale has two ponds with a boardwalk strip and a level above the pond floor', () => {
+    const bodies = waterBodies(fixture('mirevale'));
+    expect(bodies.length).toBe(2);
+    for (const b of bodies) {
+      expect(b.boardwalk).not.toBeNull();
+      expect(b.level).toBeGreaterThan(b.floor);
+      expect(b.r).toBeGreaterThan(2);
+    }
+  });
+});

@@ -1,7 +1,8 @@
-import { and, asc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, like, lt } from 'drizzle-orm';
 import type { Tx } from '../db';
 import { badges, dexEntries, questProgress, storyFlags } from '../schema/index';
 import type { BadgeId, VariantKey } from '../types';
+import { escapeLike } from '../util';
 import { auditRepo } from './audit';
 
 export interface DexSummary {
@@ -81,11 +82,14 @@ export const progressRepo = {
     return out;
   },
 
-  async markSeen(tx: Tx, playerId: string, speciesId: string, now: Date): Promise<void> {
-    await tx
+  /** Idempotent. Returns true when the species was new to the player's dex (live-ops `newSpeciesSeen`). */
+  async markSeen(tx: Tx, playerId: string, speciesId: string, now: Date): Promise<boolean> {
+    const res = await tx
       .insert(dexEntries)
       .values({ playerId, speciesId, seenAt: now })
-      .onConflictDoNothing({ target: [dexEntries.playerId, dexEntries.speciesId] });
+      .onConflictDoNothing({ target: [dexEntries.playerId, dexEntries.speciesId] })
+      .returning({ s: dexEntries.speciesId });
+    return res.length > 0;
   },
 
   /** Records a catch; appends the variant when new; flags alpha. Returns whether the species was new to the caught list. */
@@ -154,6 +158,39 @@ export const progressRepo = {
       .set({ claimedAt: now })
       .where(and(eq(questProgress.playerId, playerId), eq(questProgress.questId, questId), isNull(questProgress.claimedAt)));
     return true;
+  },
+
+  /**
+   * Claims ONE done, unclaimed objective (server §30.9.1 daily / weekly missions are claimed per mission).
+   * false when the objective is missing, not done, or already claimed.
+   */
+  async claimObjective(tx: Tx, playerId: string, questId: string, objectiveId: string, now: Date): Promise<boolean> {
+    const res = await tx
+      .update(questProgress)
+      .set({ claimedAt: now })
+      .where(
+        and(
+          eq(questProgress.playerId, playerId),
+          eq(questProgress.questId, questId),
+          eq(questProgress.objectiveId, objectiveId),
+          eq(questProgress.done, true),
+          isNull(questProgress.claimedAt),
+        ),
+      )
+      .returning({ o: questProgress.objectiveId });
+    return res.length > 0;
+  },
+
+  /**
+   * Live-ops rollover (server §30.9.1): deletes every player's synthetic quest rows `<prefix><key>` whose key
+   * sorts before `beforeKey` (day/week keys are ISO-ordered strings). Returns the number of rows removed.
+   */
+  async pruneSyntheticQuests(tx: Tx, prefix: string, beforeKey: string): Promise<number> {
+    const res = await tx
+      .delete(questProgress)
+      .where(and(like(questProgress.questId, `${escapeLike(prefix)}%`), lt(questProgress.questId, `${prefix}${beforeKey}`)))
+      .returning({ q: questProgress.questId });
+    return res.length;
   },
 
   async claimedQuestIds(tx: Tx, playerId: string): Promise<string[]> {

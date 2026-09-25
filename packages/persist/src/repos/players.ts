@@ -1,11 +1,11 @@
-import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { tierFor, trainerLevelFor } from '../constants';
 import type { Tx } from '../db';
 import { fail } from '../errors';
 import { badges, creatureInstances, dexEntries, guildMembers, guilds, players } from '../schema/index';
 import type { PlayerRow } from '../schema/index';
 import type { BadgeId, CreatureInstance, PublicProfile, ZoneId } from '../types';
-import { sortIds } from '../util';
+import { clampInt, escapeLike, sortIds } from '../util';
 import { rowToCreature } from './creatureMap';
 
 export interface NewPlayer {
@@ -186,11 +186,67 @@ export const playerRepo = {
     if (res.length === 0) fail('NotFound', `player ${id}`);
   },
 
-  async leaderboard(tx: Tx, mode: 'rating' | 'trainerLevel', page: number, pageSize: number): Promise<PlayerRow[]> {
+  /**
+   * Server §30.6.3: rating desc (ties by peak_rating, then username_lower), trainer exp desc, or dex caught
+   * count desc (ties by username_lower). Banned players are excluded in SQL, so pages stay full.
+   */
+  async leaderboard(tx: Tx, mode: 'rating' | 'trainerLevel' | 'dex', page: number, pageSize: number): Promise<PlayerRow[]> {
     const size = Math.min(100, Math.max(1, pageSize));
     const offset = Math.max(0, page - 1) * size;
-    const order = mode === 'rating' ? desc(players.rating) : desc(players.trainerExp);
-    return tx.select().from(players).orderBy(order, asc(players.usernameLower)).limit(size).offset(offset);
+    const caught = sql`(select count(*) from ${dexEntries} where ${dexEntries.playerId} = ${players.id} and ${dexEntries.caughtAt} is not null)`;
+    const order =
+      mode === 'rating'
+        ? [desc(players.rating), desc(players.peakRating), asc(players.usernameLower)]
+        : mode === 'trainerLevel'
+          ? [desc(players.trainerExp), asc(players.usernameLower)]
+          : [desc(caught), asc(players.usernameLower)];
+    return tx
+      .select()
+      .from(players)
+      .where(isNull(players.bannedAt))
+      .orderBy(...order)
+      .limit(size)
+      .offset(offset);
+  },
+
+  /** Rows for several ids (friend views); order unspecified. */
+  async byIds(tx: Tx, ids: readonly string[]): Promise<PlayerRow[]> {
+    if (ids.length === 0) return [];
+    return tx.select().from(players).where(inArray(players.id, [...new Set(ids)]));
+  },
+
+  /**
+   * Admin search (server §30.6.3): `username_lower ILIKE '%' || escapeLike(q) || '%'` (Postgres' default
+   * LIKE escape is `\`, which is what escapeLike emits); newest first; pageSize clamped 1..50.
+   */
+  async search(tx: Tx, q: string, page: number, pageSize: number): Promise<{ rows: PlayerRow[]; total: number }> {
+    const term = q.trim().toLowerCase();
+    const where = term.length > 0 ? sql`${players.usernameLower} ilike ${`%${escapeLike(term)}%`} escape '\\'` : undefined;
+    const size = clampInt(pageSize, 1, 50);
+    const rows = await tx
+      .select()
+      .from(players)
+      .where(where)
+      .orderBy(desc(players.createdAt), asc(players.id))
+      .limit(size)
+      .offset(Math.max(0, Math.trunc(page) - 1) * size);
+    const [c] = await tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(players)
+      .where(where);
+    return { rows, total: Number(c?.n ?? 0) };
+  },
+
+  /** `/admin/stats` counters. */
+  async counts(tx: Tx): Promise<{ total: number; banned: number; admins: number }> {
+    const [c] = await tx
+      .select({
+        total: sql<number>`count(*)::int`,
+        banned: sql<number>`count(*) filter (where ${players.bannedAt} is not null)::int`,
+        admins: sql<number>`count(*) filter (where ${players.isAdmin})::int`,
+      })
+      .from(players);
+    return { total: Number(c?.total ?? 0), banned: Number(c?.banned ?? 0), admins: Number(c?.admins ?? 0) };
   },
 
   /**

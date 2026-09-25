@@ -196,6 +196,18 @@ export interface GuildMemberView {
   readonly joinedAt: Date;
 }
 
+/**
+ * battle_history.start — everything `createBattle` needs besides the seed, captured at battle start (server
+ * IMPLEMENTATION-NOTES part 2, P6): `zoneId`, `terrain` and both sides exactly as passed to core (projected
+ * battlers). Opaque to persist (core's Side shape is the server's business), so a database-only replay is
+ * `createBattle({ id: battleId, format, seed, ...start })` + `resolveTurn` over `actions`.
+ */
+export interface BattleStartSnapshot {
+  readonly zoneId: string;
+  readonly terrain: string;
+  readonly sides: readonly [unknown, unknown];
+}
+
 export interface TradedCreatureSummary {
   readonly id: string;
   readonly speciesId: string;

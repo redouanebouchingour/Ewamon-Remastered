@@ -72,6 +72,31 @@ export { COUNT_CAPS, capViolations, computePassMs, createRenderStats, dumpZone, 
 export type { ZoneDump } from './stats.js';
 
 // ---- §10.4–§10.9 contracts (implemented by later agents) + placeholders ----
+// ---- §10.5 zone builder + §10.6 terrain = collision (part 2) ----
+export { MOVER, TerrainCollider, resolveMove, resolveMoveInto } from './terrain/collider.js';
+export type { Blocker, CircleBlocker, MoveResult, MoveResultMut, RectBlocker } from './terrain/collider.js';
+export { FIELD_MARGIN, heightAt, heightClamped, playableBounds, walkableAt, waterAt, waterBodies } from './terrain/field.js';
+export type { Bounds, WaterBody } from './terrain/field.js';
+export { buildSkirt, buildTerrainChunks } from './terrain/mesh.js';
+export { buildZone, loadZone, zoneSurfaces } from './zone/builder.js';
+export type { ZoneBuildDeps, ZoneHandleImpl } from './zone/builder.js';
+export { ZoneSystem, zoneSystemFor } from './zone/system.js';
+export {
+  BIOME_LIGHTS, BIOME_ROOFS, DIRS, FIELD_SIZE, HANDOVER_INSET, HOUSING_LOCAL, INTERIOR_SIZE, LANTERN_HOUSING_LOCAL, ROUTE_LAYOUT, SET_PIECE_EXTENT,
+  SET_PIECE_LIGHTS, STORY_LAYOUT, TOWN_LAYOUT, TYPE_ACCENT, ZONE_LIGHT_CAP, doorOf, doorPaths, edgePoint, footprintDistance, planBuildings, planLayout,
+  planLights, planProps, roadDistance, warpPairs,
+} from './zone/layout.js';
+export type { BiomeLightStyle, Circle, Ellipse, LayoutInput, RngLike, Road, Vec2, ZoneLayoutPlan } from './zone/layout.js';
+export { BUILDING_LOD_LEVELS, CHUNK_SIZE, LOD_DISTANCES, LOD_HYSTERESIS, chooseTier, chunkGrid, chunkOf, tierFor } from './zone/lod.js';
+export type { ChunkGrid, Tier } from './zone/lod.js';
+export { PALETTES, gradeOf, lightingPaletteOf, paletteFor } from './zone/palettes.js';
+export { createPrng, fnv1a32 } from './zone/prng.js';
+export type { Prng, PrngState } from './zone/prng.js';
+export { BIOME_GENERATORS, SET_PIECE_BUILDERS } from './zone/generators/index.js';
+export { generatorsFor } from './zone/generators/common.js';
+export type { BiomeSet } from './zone/generators/set.js';
+export type { BiomeGenerators, GeoLod, Palette, PropGeo, TreeKind } from './zone/types.js';
+
 export type {
   ActorDescriptor, ActorPool, BattlerPose, BattlerRef, BattleStage, Biome, BuildingSpec, CameraRig, Dir, Edge, GeneratorSet, HeightfieldData,
   HudLayer, HudModel, Layout, Marker, Pickup, PropPlacement, SetPieceId, SpriteDescriptor, SpriteFrame, Tablet, Terrain, TerrainColliderLike,
@@ -79,3 +104,39 @@ export type {
 } from './contracts.js';
 export { BasicDioramaRig, NullActorPool, NullBattleStage, NullHudLayer, unimplementedZoneLoader } from './defaults.js';
 export type { ZoneLoader } from './defaults.js';
+
+// ---- part 3: §10.4 creature sprites, §10.7 camera / stage / actors / VFX, §10.9 HUD ----
+export {
+  ATLAS_LEVELS, ATLAS_MAPS, AtlasCache, MAX_SINGLES, SINGLE_TEXELS, atlasSetBytes, browserDecoder, chainBytes, cropForLevel, loadAtlasTextures,
+  loadSingleTextures, singleKey, stampAtlasTexture, textureFromLevels,
+} from './sprites/atlas.js';
+export type { AtlasDecoder, AtlasMap, AtlasMapName, AtlasSet, AtlasTextures, Crop, DecodedImage } from './sprites/atlas.js';
+export { BillboardPool, CreatureBillboard, createBillboardMaterial, createDecalMaterial, createSpritePool } from './sprites/billboard.js';
+export type { BillboardPoolOptions, BillboardUniforms, BillboardUserData, SpritePool } from './sprites/billboard.js';
+export {
+  ANIM, BATTLER_POSES, BILLBOARD, POSES, VARIANT_KEYS, VARIANT_UNIFORMS, billboardDims, bobOffset, bobPhase, decayHurt, paletteFor as variantPaletteFor,
+  poseDurationMs, samplePose,
+} from './sprites/tables.js';
+export type { BillboardDims, PaletteValues, PoseDef, PoseSample, VariantUniforms } from './sprites/tables.js';
+export { TYPE_COLORS, TYPE_NAMES, hexToLinearInto, isTypeName, validateTypeColorTable } from './sprites/typeColors.js';
+export {
+  DEAD_ZONE, DEFAULT_ZOOM_STOP, DISTANCE, DioramaRig, FOV_V, HEADING_STEP, HEADING_TURN_MS, PITCH, SHAKE_AMP_MAX, SPRING_TAU, YAW_BASE, ZOOM_MS,
+  dioramaOffset, headingYaw, springStep,
+} from './camera/rig.js';
+export type { DioramaRigOptions, FeetResolver } from './camera/rig.js';
+export {
+  BATTLE_DISTANCE, BATTLE_PITCH, BATTLE_YAW_OFFSET, BATTLER_SEPARATION, CAMERA_WORK, CUE_KINDS, INSPECT_DISTANCE, PILLAR7_RADIUS, PUSH_IN_MS,
+  RELEASE_MS, RING_DIAMETER, battlePose, battlerSlot, orbitPosition,
+} from './camera/battle.js';
+export type { CameraWork, CueKind, OrbitPose } from './camera/battle.js';
+export { BOKEH_PX, FOCAL_LENGTH_M, TILT_DEG, TiltShiftDOF, circleOfConfusionPx, groundOffPlaneM } from './camera/dof.js';
+export { CAPACITY as VFX_CAPACITY, EMITTERS as VFX_EMITTERS, MAX_PARTICLES as VFX_MAX_PARTICLES, VFX_IDS, VFX_TABLE, VfxSystem, isVfxId } from './stage/vfx.js';
+export type { VfxAnchor, VfxPhase, VfxRecipe } from './stage/vfx.js';
+export { ACTOR_POOL_SIZE, CharacterPool, EMOTE_MS, buildCharacterGeometry, createCharacterMaterial, lookFor } from './stage/actors.js';
+export type { GroundSampler, LookDef } from './stage/actors.js';
+export { STAGE, Stage, TERRAIN_ACCENT, TERRAIN_SURFACE } from './stage/battleStage.js';
+export type { StageDeps, StageGround } from './stage/battleStage.js';
+export { CanvasHudLayer, FIELD_REGION, HUD, HUD_FIELDS, HUD_REGIONS, browserSurface } from './hud/layer.js';
+export type { HudAnchors, HudField, HudRegion, HudSurface, HudSurfaceFactory, Ref } from './hud/layer.js';
+export { PART3_SUBSYSTEMS, part3For, part3Of } from './stage/wiring.js';
+export type { Part3 } from './stage/wiring.js';

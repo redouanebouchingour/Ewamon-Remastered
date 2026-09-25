@@ -35,7 +35,13 @@ export interface LiveOpsMods {
   readonly swarmSpecies: readonly string[];
   readonly swarmWeightBoost: number;
   readonly variantPool: readonly VariantKey[];
+  /** Q12 (addition): an active seasonal event's featured species — +0.01 alpha / +0.025 variant when rolled */
+  readonly featuredSpecies?: readonly string[];
 }
+
+/** §30.9.2 legacy per-species bonus for an event's featured species. */
+export const FEATURED_ALPHA_BONUS = 0.01;
+export const FEATURED_VARIANT_BONUS = 0.025;
 
 export const NON_NORMAL_VARIANTS: readonly VariantKey[] = ['dawn', 'dusk', 'verdant', 'ember'];
 export const DEFAULT_LIVE_OPS: LiveOpsMods = { alphaBonus: 0, variantBonus: 0, swarmSpecies: [], swarmWeightBoost: 1, variantPool: NON_NORMAL_VARIANTS };
@@ -151,11 +157,13 @@ export class SpawnDirector {
     // level: one draw
     const level = slot.levelMin + this.rng.int(slot.levelMax - slot.levelMin + 1);
     // alpha: one draw (an 'alpha' tier slot forces it)
-    const alphaRoll = this.rng.next() < ALPHA_CHANCE + this.mods.alphaBonus;
+    // Q12: an active event's featured species get +0.01 alpha / +0.025 variant (legacy constants); draws unchanged
+    const featured = this.mods.featuredSpecies?.includes(slot.species) === true;
+    const alphaRoll = this.rng.next() < ALPHA_CHANCE + this.mods.alphaBonus + (featured ? FEATURED_ALPHA_BONUS : 0);
     const isAlpha = slot.tier === 'alpha' || alphaRoll;
     // variant: one draw, plus one pick on success
     let variantKey: VariantKey = 'normal';
-    if (this.rng.next() < VARIANT_CHANCE + this.mods.variantBonus) variantKey = this.rng.pick(this.mods.variantPool);
+    if (this.rng.next() < VARIANT_CHANCE + this.mods.variantBonus + (featured ? FEATURED_VARIANT_BONUS : 0)) variantKey = this.rng.pick(this.mods.variantPool);
     // ability: one draw
     const species = this.content.species(slot.species);
     const ability = species.abilities[this.rng.int(species.abilities.length)]!;

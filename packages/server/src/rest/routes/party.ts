@@ -11,6 +11,7 @@ import {
   CreatureIdReq,
   CreatureInstanceSchema,
   CreatureParams,
+  CreatureSetupRes,
   EvolveReq,
   ItemUseReq,
   ItemUseRes,
@@ -26,7 +27,7 @@ import type { FastifyInstance } from 'fastify';
 import { sanitizeChat } from '../../chat/filter';
 import { healed } from '../../game/creatures';
 import { toInstance } from '../../rooms/battleSession';
-import { HttpError, out, presenceZone, rateLimit, refuseInBattle, requireAuth } from '../http';
+import { HttpError, inventoryDeltaBody, out, presenceZone, rateLimit, refuseInBattle, requireAuth } from '../http';
 import type { RestDeps } from '../http';
 
 function isConsumable(def: ItemDef | ConsumableDef): def is ConsumableDef {
@@ -147,12 +148,15 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
   /**
    * ability ∈ species.abilities; heldItem null or a held ItemDef the player owns. Equipping takes one from the
    * inventory and returns the previously held item (IMPLEMENTATION-NOTES S6 — the spec leaves this open).
+   * The response is the CreatureInstance plus `inventoryDelta` (absolute counts of the touched items, the
+   * creature in creaturesUpdated) — part 2 P1.
    */
   app.post('/creature/:id/setup', bearer, async (req) => {
     const { id: cid } = CreatureParams.parse(req.params);
     const body = SetupReq.parse(req.body);
     const id = req.user.sub;
     refuseInBattle(deps, id);
+    const items: Record<string, number> = {};
     const c = await repos.db.transaction(async (tx) => {
       await repos.players.lock(tx, id);
       const rec = await own(tx, id, cid);
@@ -166,14 +170,14 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
           throw new HttpError(409, 'unknownItem');
         }
         if (isConsumable(def) || def.slot !== 'held') throw new HttpError(409, 'notHoldable');
-        await repos.inventory.add(tx, id, body.heldItem, -1);
+        items[body.heldItem] = await repos.inventory.add(tx, id, body.heldItem, -1);
       }
-      if (rec.heldItem !== null && rec.heldItem !== body.heldItem) await repos.inventory.add(tx, id, rec.heldItem, 1);
+      if (rec.heldItem !== null && rec.heldItem !== body.heldItem) items[rec.heldItem] = await repos.inventory.add(tx, id, rec.heldItem, 1);
       const next: CreatureInstance = { ...toInstance(rec), ability: body.ability, heldItem: body.heldItem };
       await repos.creatures.update(tx, next);
       return next;
     });
-    return out(deps, CreatureInstanceSchema, c);
+    return out(deps, CreatureSetupRes, { ...c, inventoryDelta: inventoryDeltaBody({ items, creaturesUpdated: [c] }) });
   });
 
   /** `into` must equal core's evolveReady at the current level and ability (split branch by ability). */

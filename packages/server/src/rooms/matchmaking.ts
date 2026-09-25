@@ -43,6 +43,12 @@ export async function pickZoneRoom(zoneId: ZoneId, ticket: string): Promise<Room
   }
 }
 
+/** The listing of one live room (any process), or null — a reload mid-battle rejoins the battle's own room (P3). */
+export async function zoneRoomById(roomId: string): Promise<RoomCache | null> {
+  const room = (await matchMaker.getRoomById(roomId)) as RoomCache | undefined | null;
+  return room ?? null;
+}
+
 /** Step 3: reserve a seat; the whole ISeatReservation goes to the client unchanged. */
 export async function reserveZoneSeat(room: RoomCache, opts: ZoneSeatOptions): Promise<SeatReservation> {
   const seat = await matchMaker.reserveSeatFor(room, opts, null);

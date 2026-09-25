@@ -1,0 +1,179 @@
+/**
+ * Sandbox demos for render part 3 (`?demo=lineup` | `?demo=battle`), on top of whatever scene main.ts built
+ * (the part-1 diorama, or a real zone with `?zone=`). Uses the REAL creature output
+ * (`/creatures/creatures.manifest.json`, SpriteManifestV2) adapted exactly as the client's adapter will:
+ * `uv → rect`, `px`, `footV`, `aspect`, atlas maps with their mip files. Species types come from content's
+ * species table (sandbox only; the render package never imports content).
+ *
+ * `window.__ewaSandbox.part3` exposes the bundle and demo controls (`setTime`, `shot` come from main.ts).
+ */
+import { Group, Vector3 } from 'three/webgpu';
+import { SPECIES } from '@ewa/content';   // sandbox only (vite alias); the render package never imports content
+import { part3Of, rendererInternals, type AtlasSet, type CreatureBillboard, type Renderer, type SpriteDescriptor, type TypeName, type VariantKey, type VfxId } from '../src/index.js';
+
+interface ManifestMap { readonly url: string; readonly mips: readonly string[] }
+interface ManifestAtlas { readonly id: string; readonly species: readonly string[]; readonly size: 2048; readonly albedo: ManifestMap; readonly normal: ManifestMap; readonly emissive: ManifestMap; readonly normalScale: 0.5 | 1 }
+interface ManifestRect { readonly atlas: string; readonly px: readonly [number, number, number, number]; readonly uv: readonly [number, number, number, number]; readonly footV: number; readonly aspect: number }
+interface ManifestSprite { readonly front: ManifestRect; readonly back: ManifestRect; readonly sizeScale: number; readonly home: string }
+interface Manifest { readonly version: 2; readonly atlases: readonly ManifestAtlas[]; readonly zones: Readonly<Record<string, readonly string[]>>; readonly sprites: Readonly<Record<string, ManifestSprite>> }
+
+const BASE = '/creatures/';
+
+async function loadManifest(): Promise<Manifest> {
+  for (let i = 0; ; i++) {
+    try {
+      const r = await fetch(`${BASE}creatures.manifest.json`);
+      if (r.ok && (r.headers.get('content-type') ?? '').includes('json')) return await r.json() as Manifest;
+    } catch { /* retry */ }
+    if (i === 0) console.info('[part3] waiting for /creatures/creatures.manifest.json …');
+    await new Promise((res) => setTimeout(res, 2000));
+  }
+}
+
+function atlasSet(a: ManifestAtlas): AtlasSet {
+  const m = (x: ManifestMap) => ({ url: BASE + x.url, mips: x.mips.map((u) => BASE + u) });
+  return { id: a.id, albedo: m(a.albedo), normal: m(a.normal), emissive: m(a.emissive), size: a.size, normalScale: a.normalScale };
+}
+
+function typesOf(id: string): readonly [TypeName] | readonly [TypeName, TypeName] {
+  const s = SPECIES.find((x) => x.id === id);
+  const t = (s?.types ?? ['Normal']) as readonly TypeName[];
+  return t.length > 1 ? [t[0]!, t[1]!] : [t[0]!];
+}
+
+function descriptor(man: Manifest, species: string, key: string, variant: VariantKey = 'normal', isAlpha = false): SpriteDescriptor {
+  const sp = man.sprites[species]!;
+  const f = (r: ManifestRect) => ({ atlas: r.atlas, rect: r.uv, px: r.px, footV: r.footV, aspect: r.aspect });
+  return { id: key, front: f(sp.front), back: f(sp.back), sizeScale: sp.sizeScale, types: typesOf(species), variant, isAlpha };
+}
+
+export async function startPart3Demo(r: Renderer, mode: string, api: Record<string, unknown>): Promise<void> {
+  const p = part3Of(r)!;
+  const host = rendererInternals(r)!;
+  const man = await loadManifest();
+  const zoneAtlases = man.zones.mire_route ?? [];
+  const sets = zoneAtlases.map((id) => atlasSet(man.atlases.find((a) => a.id === id)!));
+  const t0 = performance.now();
+  await Promise.all(sets.map((s) => p.sprites.bindAtlas(s)));
+  console.info(`[part3] bound ${sets.length} atlases in ${(performance.now() - t0).toFixed(0)} ms`, p.sprites.stats());
+  const species = sets.flatMap((s) => man.atlases.find((a) => a.id === s.id)!.species);
+  // hide part 1's creature stand-in
+  const standIn = r.scene.getObjectByName('sandbox:creature-standin');
+  if (standIn) standIn.visible = false;
+  const focus = p.rig.focus.clone();
+  const out: Record<string, unknown> = { bundle: p, species, manifest: man, tsl: await import('three/tsl'), three: await import('three/webgpu') };
+  api.part3 = out;
+
+  // a few walking characters in every mode
+  const walkers = ['casual_male', 'hiker_female', 'ranger_m'];
+  walkers.forEach((look, i) => p.actors.spawn(`walker${i}`, { look, name: ['Rowan', 'Isla', 'Tamsin'][i]!, guildTag: i === 1 ? '[MIRE]' : '', isLocal: i === 0 }));
+  let clockS = 0;
+  const walk = (dt: number): void => {
+    clockS += dt / 1000;
+    walkers.forEach((_, i) => {
+      const a = clockS * (0.25 + i * 0.07) + i * 2.1;
+      const rad = 3.2 + i * 1.1;
+      const x = focus.x - 5 + Math.cos(a) * rad; const z = focus.z - 5 + Math.sin(a) * rad;
+      p.actors.setTransform(`walker${i}`, x, z, a + Math.PI, true, i === 2);
+    });
+  };
+  p.hud.set({
+    zoneName: mode === 'battle' ? null : 'Mire Route', timeOfDay: 0.42, questHint: 'Find the Fenkeeper by the old lantern',
+    party: species.slice(0, 6).map((s, i) => ({ speciesId: s, variantKey: (i === 2 ? 'dusk' : 'normal') as VariantKey, hpFrac: 1 - i * 0.15, status: i === 3 ? 'psn' : null, fainted: i === 5 })),
+    chat: [{ name: 'Isla', text: 'anyone seen a dusk mossling?', at: 1 }, { name: 'Rowan', text: 'by the pond, just now', at: 2 }],
+    nameplates: walkers.map((_, i) => ({ id: `walker${i}`, name: ['Rowan', 'Isla', 'Tamsin'][i]!, guildTag: i === 1 ? '[MIRE]' : '', inBattle: false })),
+    prompt: mode === 'lineup' ? { key: 'E', verb: 'Talk to', target: 'Fenkeeper' } : null,
+  });
+  p.actors.setEmote('walker1', 1);
+
+  if (mode === 'lineup') {
+    const group = new Group();
+    group.name = 'sandbox:lineup';
+    r.scene.add(group);
+    const variants: VariantKey[] = ['normal', 'normal', 'dawn', 'normal', 'dusk', 'normal', 'verdant', 'normal', 'ember', 'normal'];
+    const cards: CreatureBillboard[] = [];
+    species.slice(0, 10).forEach((s, i) => {
+      const bb = p.sprites.acquire(descriptor(man, s, `lineup:${s}`, variants[i]!, i === 5));
+      const x = focus.x - 6.75 + i * 1.5; const z = focus.z + (i % 2) * 0.6;
+      bb.setPosition(x, 0, z);
+      bb.setSharp(i === 4);
+      group.add(bb.object);
+      cards.push(bb);
+    });
+    Object.assign(out, {
+      cards,
+      facing: (side: 'front' | 'back') => cards.forEach((c) => c.setFacing(side)),
+      pose: (i: number, pose: Parameters<CreatureBillboard['setPose']>[0]) => cards[i]?.setPose(pose, 0),
+      inspect: (i: number | null) => p.stage.inspect(i === null ? null : descriptor(man, species[i]!, `inspect:${species[i]}`)),
+    });
+  }
+
+  if (mode === 'battle') {
+    const q = new URLSearchParams(location.search);
+    const at = { x: Number(q.get('ax') ?? focus.x - 0.4), z: Number(q.get('az') ?? focus.z + 9) };   // a clear patch of the part-1 diorama
+    p.stage.dress(at, 'grove', ['walker0']);
+    p.rig.pushIn(at, 600);
+    const mine = species.includes('mossling') ? 'mossling' : species[0]!;
+    const foe = species.includes('snapling') ? 'snapling' : species[1]!;
+    const me = { side: 0 as const, slot: 0 }; const them = { side: 1 as const, slot: 0 };
+    p.stage.setBattler(me, descriptor(man, mine, 'battler:mine'));
+    p.stage.setBattler(them, descriptor(man, foe, 'battler:foe', 'normal', false));
+    p.stage.setPose(me, 'enter', 450); p.stage.setPose(them, 'enter', 450);
+    let hpMe = 58; let hpThem = 64; const maxMe = 58; const maxThem = 64;
+    const bars = () => ({
+      bars: [
+        { who: me, name: mine[0]!.toUpperCase() + mine.slice(1), level: 14, hp: hpMe, maxHp: maxMe, status: null, stages: '', showNumbers: true },
+        { who: them, name: foe[0]!.toUpperCase() + foe.slice(1), level: 12, hp: hpThem, maxHp: maxThem, status: hpThem < 30 ? 'par' : null, stages: hpThem < 40 ? 'Spe▼1' : '', showNumbers: false },
+      ],
+      turnLabel: 'Turn 1', shakes: 0,
+    });
+    p.hud.set({ battle: bars(), nameplates: [], prompt: null });
+    const typeVfx = (s: string): VfxId => `type_${typesOf(s)[0].toLowerCase()}` as VfxId;
+    // a scripted loop of turns (setTimeout in the sandbox only)
+    const turn = async (n: number): Promise<void> => {
+      const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+      await wait(900);
+      // my attack
+      p.stage.setPose(me, 'lunge', 300); p.rig.cue('attacker', 0);
+      await wait(180);
+      p.stage.vfx(typeVfx(mine), me, them, 700);
+      await wait(380);
+      p.stage.vfx(n % 2 === 0 ? 'impact_super' : 'impact_normal', me, them, 300);
+      p.stage.setPose(them, 'hurt', 240); p.rig.cue('impact', 0); p.rig.shake(0.3, 180);
+      hpThem = Math.max(0, hpThem - 17); p.hud.set({ battle: { ...bars(), turnLabel: `Turn ${n}` } });
+      await wait(900);
+      if (hpThem <= 0) {
+        p.stage.faint(them, 900); p.stage.vfx('faint', null, them, 900); p.rig.cue('ko', 0);
+        await wait(1600);
+        hpThem = maxThem; p.stage.setPose(them, 'enter', 450); p.stage.vfx('switch_in', null, them, 450);
+        p.hud.set({ battle: { ...bars(), turnLabel: `Turn ${n}` } });
+        return;
+      }
+      // foe's attack
+      p.stage.setPose(them, 'windup', 250); p.rig.cue('defender', 0);
+      await wait(260);
+      p.stage.vfx(typeVfx(foe), them, me, 700);
+      await wait(380);
+      p.stage.vfx(n % 3 === 0 ? 'impact_crit' : 'impact_normal', them, me, 300);
+      p.stage.setPose(me, 'hurt', 240); p.rig.shake(0.2, 180);
+      hpMe = Math.max(8, hpMe - 9); p.hud.set({ battle: { ...bars(), turnLabel: `Turn ${n}` } });
+      await wait(800);
+      const extra: VfxId[] = ['stat_up', 'status_paralyze', 'heal', 'status_confuse', 'drain', 'weather_rain'];
+      const e = extra[n % extra.length]!;
+      p.stage.vfx(e, me, e === 'status_paralyze' || e === 'status_confuse' ? them : me, 800);
+      if (e === 'heal') { hpMe = Math.min(maxMe, hpMe + 12); p.hud.set({ battle: { ...bars(), turnLabel: `Turn ${n}` } }); }
+    };
+    let n = 1;
+    const loop = async (): Promise<void> => { for (;;) { await turn(n++); } };
+    Object.assign(out, { at, turn, loop, battlers: () => [p.stage.battler(me), p.stage.battler(them)] });
+    if (new URLSearchParams(location.search).get('auto') !== '0') void loop();
+  }
+
+  // frame hook for the sandbox walkers (piggybacks on rAF)
+  let last = performance.now();
+  const tick = (now: number): void => { walk(Math.min(100, now - last)); last = now; requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+  out.focus = focus;
+  out.probeFocus = () => new Vector3().copy(p.rig.focus);
+  void host;
+}

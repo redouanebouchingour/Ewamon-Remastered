@@ -65,7 +65,7 @@ export type { SlotTarget, TransferReason } from './creatures';
 export type { NewBattleHistory, NewTradeHistory, TradeSide } from './history';
 export { INVENTORY_MAX_QTY } from './inventory';
 export { marketFee } from './market';
-export type { NewListing } from './market';
+export type { ClosedListing, NewListing } from './market';
 export { PUBLIC_PROFILE_KEYS } from './players';
 export type { NewPlayer, PublicExtras } from './players';
 export type { DexSummary, QuestObjectiveState } from './progress';

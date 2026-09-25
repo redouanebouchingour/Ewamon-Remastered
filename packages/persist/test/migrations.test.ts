@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { AnyDb } from '../src/db';
@@ -71,7 +72,9 @@ describe('migrations (§5.4)', () => {
       const r = await tx.execute<{ n: number }>(sql`select count(*)::int as n from drizzle.__drizzle_migrations`);
       return Number([...r.rows][0]?.n);
     });
-    expect(n).toBe(1);
+    // one row per committed migration (0000_init, 0001_battle_replay, …), none added by the second run
+    const journal = JSON.parse(readFileSync(new URL('../drizzle/meta/_journal.json', import.meta.url), 'utf8')) as { entries: unknown[] };
+    expect(n).toBe(journal.entries.length);
   });
 });
 

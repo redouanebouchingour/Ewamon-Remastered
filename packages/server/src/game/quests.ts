@@ -6,12 +6,18 @@
  * Count objectives (`catchSpecies`, `winBattles`) accumulate; every other kind is done on its first match.
  * `deliverItem` / `restoreZone` need flows owned by part 2 (NPC delivery, zone restoration) and are not
  * advanced here.
+ *
+ * §30.9.1 (part 2): the same call also advances today's daily missions (`daily:<dayKey>`) and this week's goals
+ * (`weekly:<weekKey>`) — synthetic quest ids whose objective ids are mission ids — "one code path".
  */
 import { QUESTS } from '@ewa/content';
 import type { BadgeId, QuestDef, QuestObjective, ZoneId } from '@ewa/content';
 import type { BattleFormat } from '@ewa/core';
 import type { QuestProgressEntry } from '@ewa/protocol';
 import type { Repos, Tx } from '@ewa/persist';
+import { WEEKLY_GOALS, dailyMissionsFor, dailyQuestId, weeklyQuestId } from '../liveops/missions';
+import type { DailyMetric, DailyMission } from '../liveops/missions';
+import { dayKey, weekKey } from '../liveops/schedule';
 
 export type QuestEvent =
   | { readonly kind: 'catch'; readonly species: string }
@@ -20,7 +26,33 @@ export type QuestEvent =
   | { readonly kind: 'flags'; readonly flags: readonly string[] }
   | { readonly kind: 'badge'; readonly badge: BadgeId }
   | { readonly kind: 'reachZone'; readonly zoneId: ZoneId }
-  | { readonly kind: 'talkTo'; readonly npcId: string };
+  | { readonly kind: 'talkTo'; readonly npcId: string }
+  /** an ended battle the player fought, any result (live-ops `pvpBattles`) */
+  | { readonly kind: 'battle'; readonly format: BattleFormat }
+  /** a species NEW to the player's dex (live-ops `newSpeciesSeen`) */
+  | { readonly kind: 'seen'; readonly species: string }
+  /** a completed trade (live-ops `tradesCompleted`) */
+  | { readonly kind: 'trade' };
+
+/** The live-ops metric an event counts toward (§30.9.1 DailyMetric), or null. */
+export function metricOf(e: QuestEvent): DailyMetric | null {
+  switch (e.kind) {
+    case 'catch':
+      return 'catches';
+    case 'win':
+      return e.format === 'wild' ? 'wildWins' : e.format === 'trainer' || e.format === 'league' ? 'trainerWins' : null;
+    case 'battle':
+      return e.format === 'pvp' ? 'pvpBattles' : null;
+    case 'seen':
+      return 'newSpeciesSeen';
+    case 'reachZone':
+      return 'zonesVisited';
+    case 'trade':
+      return 'tradesCompleted';
+    default:
+      return null;
+  }
+}
 
 function target(o: QuestObjective): number {
   if (o.kind === 'catchSpecies' || o.kind === 'winBattles') return o.count;
@@ -63,7 +95,7 @@ export function activeQuests(claimed: ReadonlySet<string>): readonly QuestDef[] 
   return QUESTS.filter((q) => !claimed.has(q.id) && q.requires.every((r) => claimed.has(r)));
 }
 
-export async function advanceQuests(tx: Tx, repos: Pick<Repos, 'progress'>, playerId: string, events: readonly QuestEvent[]): Promise<QuestProgressEntry[]> {
+export async function advanceQuests(tx: Tx, repos: Pick<Repos, 'progress'>, playerId: string, events: readonly QuestEvent[], nowMs: number = Date.now()): Promise<QuestProgressEntry[]> {
   if (events.length === 0) return [];
   const all = await repos.progress.allQuests(tx, playerId);
   const claimed = claimedSet(all);
@@ -86,6 +118,25 @@ export async function advanceQuests(tx: Tx, repos: Pick<Repos, 'progress'>, play
       const clamped = Math.min(count, need);
       await repos.progress.advance(tx, playerId, q.id, obj.id, clamped, done);
       touched.push({ questId: q.id, objectiveId: obj.id, count: clamped, done });
+    }
+  }
+  // §30.9.1 daily missions + weekly goals
+  const synthetic: [string, readonly DailyMission[]][] = [
+    [dailyQuestId(dayKey(nowMs)), dailyMissionsFor(dayKey(nowMs))],
+    [weeklyQuestId(weekKey(nowMs)), WEEKLY_GOALS],
+  ];
+  for (const [questId, missions] of synthetic) {
+    const rows = all[questId] ?? [];
+    for (const m of missions) {
+      const row = rows.find((r) => r.objectiveId === m.id);
+      if (row?.done === true || row?.claimedAt != null) continue;
+      let hits = 0;
+      for (const e of events) if (metricOf(e) === m.metric) hits++;
+      if (hits === 0) continue;
+      const count = Math.min((row?.count ?? 0) + hits, m.target);
+      const done = count >= m.target;
+      await repos.progress.advance(tx, playerId, questId, m.id, count, done);
+      touched.push({ questId, objectiveId: m.id, count, done });
     }
   }
   return touched;

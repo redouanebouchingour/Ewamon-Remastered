@@ -5,6 +5,7 @@ import { AuthRes, LoginReq, LogoutReq, RefreshReq, RefreshRes, RegisterReq } fro
 import { isPersistError } from '@ewa/persist';
 import type { FastifyInstance } from 'fastify';
 import { newCreature } from '../../game/creatures';
+import { dailyLogin } from '../../liveops/login';
 import { dummyHash, hashPassword, issueTokens, rotateTokens, verifyPassword } from '../auth';
 import { HttpError, out, rateLimit, requireAuth, toProfile } from '../http';
 import type { RestDeps } from '../http';
@@ -28,6 +29,8 @@ export function registerAuthRoutes(app: FastifyInstance, deps: RestDeps): void {
         await repos.progress.markSeen(tx, id, body.starter, now);
         await repos.progress.markCaught(tx, id, body.starter, 'normal', false, now);
         await repos.audit.write(tx, { actorId: id, action: 'auth.register', subject: id, detail: { starter: body.starter } }, now);
+        // registration is the account's first login: day 1 of the streak (§30.9.1, IMPLEMENTATION-NOTES Q13)
+        await dailyLogin(tx, repos, id, now.getTime());
         const row = (await repos.players.byId(tx, id))!;
         const tokens = await issueTokens(tx, repos, app, { id, username: row.username, isAdmin: row.isAdmin }, now);
         return out(deps, AuthRes, { ...tokens, player: toProfile(row) });
@@ -52,6 +55,8 @@ export function registerAuthRoutes(app: FastifyInstance, deps: RestDeps): void {
     const now = new Date(clock());
     return repos.db.transaction(async (tx) => {
       await repos.players.touchLastSeen(tx, row.id, now);
+      // §30.9.1: the first login of a UTC day grants dailyLogin exp + the streak reward (once, under the row lock)
+      await dailyLogin(tx, repos, row.id, now.getTime());
       const tokens = await issueTokens(tx, repos, app, { id: row.id, username: row.username, isAdmin: row.isAdmin }, now);
       const fresh = (await repos.players.byId(tx, row.id))!;
       return out(deps, AuthRes, { ...tokens, player: toProfile(fresh) });

@@ -1,0 +1,658 @@
+/**
+ * SPEC §10.7.5 `BattleStage` (Pillar 7: battles happen where you are standing).
+ *
+ * `dress(at, terrain, participants)` raises an arena out of the ground at (x, z) — no screen transition, no scene
+ * unload: a 7 m plinth ring in the biome's stone (library surface, metre UVs, a stone curb), eight lathed rope posts
+ * with sagging ropes, two lathed beacon pylons whose emissive housings take the zone's accent type colour and carry
+ * the two RESERVED shadow-casting spot lights, and ≤ 6 spectators (procedural characters from the actor pool)
+ * on the far half. The arena root is a child of the scene, never of the zone root, so the zone's light list and
+ * graph are identical before and during a battle (Pillar 7 test, §50.4.6). The two beacon lights exist from
+ * `createRenderer` on (warm-up light set, C13: a light appearing mid-battle would recompile every lit program);
+ * undressed they sit at intensity 0 with `shadow.autoUpdate = false` (no shadow-map cost).
+ *
+ * Battlers are `CreatureBillboard`s from the shared `SpritePool`: side 0 (the player's) on the near half showing its
+ * back sprite, side 1 on the far half showing its front, 5.5 m apart along the heading's view axis (§10.7.4
+ * interpretation P5), all DOF-sharp. VFX spawn between battler anchors; `impact_crit` flashes the target white;
+ * impacts pulse the beacons. `undress(ms)` sinks and hides the dressing and releases the battlers; it disposes
+ * nothing shared (library materials, the sprite pool, the actor pool stay).
+ */
+import {
+  BufferAttribute, CatmullRomCurve3, Color, Group, LatheGeometry, Mesh, MeshStandardNodeMaterial, Object3D, SpotLight, TubeGeometry, Vector2,
+  Vector3,
+} from 'three/webgpu';
+import type { BufferGeometry, Material, PerspectiveCamera, UniformNode } from 'three/webgpu';
+import { float, uniform, vec4 } from 'three/tsl';
+import type { BattlerPose, BattlerRef, BattleStage, SpriteDescriptor, Terrain, TypeName, VfxId } from '../contracts.js';
+import type { EffectsFlags, HarvestLevel, WeatherKind } from '../descriptors.js';
+import type { MaterialLibrary } from '../materials/library.js';
+import type { SurfaceId } from '../materials/surfaces.js';
+import { paintSurfaceColor } from '../materials/library.js';
+import { INSPECT_AIM, INSPECT_OFFSET, RING_DIAMETER, battlerSlot, forwardOfYaw } from '../camera/battle.js';
+import type { DioramaRig } from '../camera/rig.js';
+import type { BillboardPool, CreatureBillboard } from '../sprites/billboard.js';
+import { TYPE_COLORS, hexToLinearInto, validateTypeColorTable } from '../sprites/typeColors.js';
+import type { CharacterPool } from './actors.js';
+import { isVfxId, type VfxAnchor, type VfxSystem } from './vfx.js';
+
+// ---- numbers -------------------------------------------------------------------------------------------------------
+
+export const STAGE = Object.freeze({
+  ringRadius: RING_DIAMETER / 2,
+  ringTop: 0.06,
+  ringChamfer: 0.04,
+  ringSkirt: 0.45,
+  ringSegments: 64,
+  curbInner: 3.5, curbOuter: 3.85, curbHeight: 0.16,
+  postRadius: 4.35, postCount: 8, postHeight: 0.85, ropeSag: 0.14, ropeRadius: 0.022, ropeHeights: [0.42, 0.74] as const,
+  beaconRadius: 4.7, beaconHeight: 2.3, beaconAzimuthDeg: 40, beaconWhiteMix: 0.55,
+  beaconIntensity: 90, beaconRange: 18, beaconAngle: 0.8, beaconPenumbra: 0.6, beaconDecay: 2, beaconShadowMap: 512,
+  beaconBias: -0.0006, beaconNormalBias: 0.03,
+  housingEmissive: 3.2,
+  pulseMs: 260, pulseGain: 0.9,
+  spectatorRadius: 5.9, spectatorAnglesDeg: [28, -28, 58, -58, 88, -88] as const,
+  dressMs: 450, sinkM: 0.7,
+  inspectExitMs: 350,
+});
+
+/** "the biome's plaza stone" per battle terrain (cobble is the shared default). */
+export const TERRAIN_SURFACE: Readonly<Record<Terrain, SurfaceId>> = Object.freeze({
+  none: 'cobble', grove: 'cobble', cinder: 'cinder_basalt', salt: 'wet_rock', storm: 'wet_flagstone', marrow: 'marrow_sandstone',
+  vesper: 'lichen_stone', forge: 'castle_granite', sky: 'cloud_stone', shrine: 'eclipse_stone', rift: 'void_floor',
+});
+
+/** Accent type per terrain when the zone's `accentType` was not supplied (`setAccentType`). */
+export const TERRAIN_ACCENT: Readonly<Record<Terrain, TypeName>> = Object.freeze({
+  none: 'Normal', grove: 'Grass', cinder: 'Fire', salt: 'Water', storm: 'Electric', marrow: 'Ground', vesper: 'Ghost', forge: 'Steel',
+  sky: 'Flying', shrine: 'Psychic', rift: 'Cosmic',
+});
+
+// ---- deps ------------------------------------------------------------------------------------------------------------
+
+/** Terrain queries the stage needs (the zone's `TerrainCollider` satisfies it). */
+export interface StageGround {
+  sample(x: number, z: number): number;
+  normal?(x: number, z: number, out: Vector3): Vector3;
+}
+
+export interface StageDeps {
+  readonly parent: Object3D;
+  readonly sprites: BillboardPool;
+  readonly vfx: VfxSystem;
+  readonly rig: DioramaRig;
+  readonly actors: CharacterPool;
+  readonly materials: MaterialLibrary;
+  readonly effects: () => EffectsFlags;
+  readonly harvestLevel: () => HarvestLevel;
+  readonly camera: PerspectiveCamera;
+  readonly viewport: () => { readonly w: number; readonly h: number };
+  /** Arena-local weather (host day cycle + precipitation). */
+  readonly weather?: (w: WeatherKind) => void;
+}
+
+interface Battler { readonly ref: BattlerRef; bb: CreatureBillboard; id: string; hpFrac: number }
+
+interface Arena {
+  readonly root: Group;
+  readonly ring: Mesh;
+  readonly curb: Mesh;
+  readonly posts: Group;
+  readonly pylons: Group;
+  readonly center: Vector3;
+  dressed: boolean;
+  /** 0 = sunk/hidden … 1 = up. */
+  rise: number;
+  riseTarget: number;
+  riseMs: number;
+}
+
+const _v = new Vector3();
+const _w = new Vector3();
+const _n = new Vector3();
+const _fwd = new Vector3();
+const DEG = Math.PI / 180;
+
+function refKey(r: BattlerRef): string { return `${r.side}:${r.slot}`; }
+
+function sameFrame(a: SpriteDescriptor['front'], b: SpriteDescriptor['front']): boolean {
+  return a.atlas === b.atlas && a.rect[0] === b.rect[0] && a.rect[1] === b.rect[1] && a.rect[2] === b.rect[2] && a.rect[3] === b.rect[3];
+}
+
+/** Same sprite frames and size (variant / alpha may differ: those are uniform writes). */
+function sameSprite(a: SpriteDescriptor, b: SpriteDescriptor): boolean {
+  return a === b || (sameFrame(a.front, b.front) && sameFrame(a.back, b.back) && a.sizeScale === b.sizeScale && a.types[0] === b.types[0]);
+}
+
+// ---- geometry (built once; shared by every arena instance) ------------------------------------------------------------
+
+function latheFrom(points: readonly (readonly [number, number])[], segments: number): LatheGeometry {
+  return new LatheGeometry(points.map(([r, y]) => new Vector2(r, y)), segments);
+}
+
+/** Planar metre UVs (x, z) — library surfaces tile world-constant (IMPLEMENTATION-NOTES M3). */
+function metreUvs(g: BufferGeometry): BufferGeometry {
+  const p = g.getAttribute('position');
+  const uv = new Float32Array(p.count * 2);
+  for (let i = 0; i < p.count; i++) { uv[i * 2] = p.getX(i); uv[i * 2 + 1] = p.getZ(i); }
+  g.setAttribute('uv', new BufferAttribute(uv, 2));
+  return g;
+}
+
+function ringGeometry(): BufferGeometry {
+  const S = STAGE;
+  const r = S.ringRadius;
+  return metreUvs(latheFrom([[0.001, -S.ringSkirt], [r, -S.ringSkirt], [r, S.ringTop - S.ringChamfer], [r - S.ringChamfer, S.ringTop], [0.001, S.ringTop]], S.ringSegments));
+}
+
+function curbGeometry(): BufferGeometry {
+  const S = STAGE;
+  const c = S.ringChamfer;
+  return metreUvs(latheFrom([
+    [S.curbOuter, -S.ringSkirt], [S.curbOuter, S.curbHeight - c], [S.curbOuter - c, S.curbHeight], [S.curbInner + c, S.curbHeight],
+    [S.curbInner, S.curbHeight - c], [S.curbInner, S.ringTop - 0.01],
+  ], S.ringSegments));
+}
+
+function postGeometry(): BufferGeometry {
+  const h = STAGE.postHeight;
+  return latheFrom([[0.001, -0.2], [0.075, -0.2], [0.075, h - 0.08], [0.09, h - 0.05], [0.07, h], [0.001, h + 0.02]], 10);
+}
+
+function pylonGeometry(): BufferGeometry {
+  const h = STAGE.beaconHeight;
+  return latheFrom([[0.001, -0.2], [0.26, -0.2], [0.26, 0.12], [0.16, 0.2], [0.11, h - 0.35], [0.17, h - 0.3], [0.17, h - 0.26], [0.001, h - 0.26]], 12);
+}
+
+function housingGeometry(): BufferGeometry {
+  const h = STAGE.beaconHeight;
+  return latheFrom([[0.001, h - 0.26], [0.13, h - 0.24], [0.16, h - 0.1], [0.12, h + 0.02], [0.001, h + 0.05]], 8);
+}
+
+function capGeometry(): BufferGeometry {
+  const h = STAGE.beaconHeight;
+  return latheFrom([[0.001, h + 0.04], [0.2, h + 0.05], [0.05, h + 0.2], [0.001, h + 0.22]], 8);
+}
+
+/** Rope segments between adjacent posts: tubes along a sagging curve, merged per height into one geometry. */
+function ropeGeometry(height: number): BufferGeometry {
+  const S = STAGE;
+  const parts: BufferGeometry[] = [];
+  for (let i = 0; i < S.postCount; i++) {
+    const a0 = (i / S.postCount) * Math.PI * 2; const a1 = ((i + 1) / S.postCount) * Math.PI * 2;
+    const p0 = new Vector3(Math.cos(a0) * S.postRadius, height, Math.sin(a0) * S.postRadius);
+    const p1 = new Vector3(Math.cos(a1) * S.postRadius, height, Math.sin(a1) * S.postRadius);
+    const mid = p0.clone().add(p1).multiplyScalar(0.5); mid.y -= S.ropeSag;
+    parts.push(new TubeGeometry(new CatmullRomCurve3([p0, mid, p1]), 8, S.ropeRadius, 5, false).toNonIndexed());
+  }
+  let n = 0;
+  for (const g of parts) n += g.getAttribute('position').count;
+  const pos = new Float32Array(n * 3); const nor = new Float32Array(n * 3); const uv = new Float32Array(n * 2);
+  let o = 0;
+  for (const g of parts) {
+    const P = g.getAttribute('position'); const N = g.getAttribute('normal'); const U = g.getAttribute('uv');
+    for (let i = 0; i < P.count; i++, o++) {
+      pos.set([P.getX(i), P.getY(i), P.getZ(i)], o * 3); nor.set([N.getX(i), N.getY(i), N.getZ(i)], o * 3);
+      uv.set([U.getX(i) * 1.2, U.getY(i) * 0.15], o * 2);
+    }
+    g.dispose();
+  }
+  const out = new LatheGeometry([new Vector2(0, 0), new Vector2(0, 1)], 3);   // typed shell, attributes replaced below
+  out.setIndex(null);
+  out.setAttribute('position', new BufferAttribute(pos, 3));
+  out.setAttribute('normal', new BufferAttribute(nor, 3));
+  out.setAttribute('uv', new BufferAttribute(uv, 2));
+  out.computeBoundingSphere();
+  return out;
+}
+
+// ---- the stage ----------------------------------------------------------------------------------------------------------
+
+export class Stage implements BattleStage {
+  readonly root = new Group();
+  readonly beaconLights: readonly SpotLight[];
+  private readonly beaconTargets: readonly Object3D[];
+  private readonly housingColor: UniformNode<'vec3', Vector3>;
+  private readonly housingMaterial: MeshStandardNodeMaterial;
+  private readonly geo: { ring: Map<SurfaceId, BufferGeometry>; curb: BufferGeometry; post: BufferGeometry; pylon: BufferGeometry; housing: BufferGeometry; cap: BufferGeometry; ropes: BufferGeometry[] };
+  private readonly main: Arena;
+  private readonly spectatorArenas: Arena[] = [];
+  private readonly battlers = new Map<string, Battler>();
+  private readonly battlerList: Battler[] = [];
+  private readonly spectators: string[] = [];
+  private inspected: CreatureBillboard | null = null;
+  private terrain: Terrain = 'none';
+  private accent: TypeName | null = null;
+  private typeTable: Readonly<Record<TypeName, string>> = TYPE_COLORS;
+  private ground: StageGround | null = null;
+  private beaconLevel = 0;         // 0..1 fade
+  private beaconTarget = 0;
+  private beaconFadeMs: number = STAGE.dressMs;
+  private pulse = 0;
+  private disposed = false;
+
+  constructor(private readonly d: StageDeps) {
+    this.root.name = 'ewa:arena';
+    d.parent.add(this.root);
+    this.geo = {
+      ring: new Map(), curb: curbGeometry(), post: postGeometry(), pylon: pylonGeometry(), housing: housingGeometry(), cap: capGeometry(),
+      ropes: STAGE.ropeHeights.map((h) => ropeGeometry(h)),
+    };
+    paintSurfaceColor(this.geo.curb, 'stone_wall');
+    paintSurfaceColor(this.geo.post, 'timber');
+    paintSurfaceColor(this.geo.pylon, 'lantern_metal');
+    paintSurfaceColor(this.geo.cap, 'lantern_metal');
+    for (const r of this.geo.ropes) paintSurfaceColor(r, 'rope');
+    paintSurfaceColor(this.geo.housing, 'glass_warm');
+
+    this.housingColor = uniform(new Vector3(1, 1, 1));
+    const hm = new MeshStandardNodeMaterial();
+    const hl = uniform(0).setName('ewaBeaconHarvest');
+    hm.colorNode = vec4(this.housingColor.mul(0.35), 1);
+    hm.roughnessNode = float(0.2);
+    hm.metalnessNode = float(0);
+    hm.emissiveNode = this.housingColor.mul(STAGE.housingEmissive).mul(float(1).sub(hl.clamp(0, 2).div(2)));
+    hm.name = 'ewa:beacon-housing';
+    hm.userData = { ewaClass: 'emissive', ewaHousing: true, lightSource: true, harvest: hl };
+    this.housingMaterial = hm;
+
+    this.main = this.makeArena('ewa:arena-main');
+    // the two reserved beacon lights (exist from construction; intensity 0 until dressed)
+    const lights: SpotLight[] = []; const targets: Object3D[] = [];
+    for (let i = 0; i < 2; i++) {
+      const L = new SpotLight(0xffffff, 0, STAGE.beaconRange, STAGE.beaconAngle, STAGE.beaconPenumbra, STAGE.beaconDecay);
+      L.castShadow = true;
+      L.shadow.mapSize.set(STAGE.beaconShadowMap, STAGE.beaconShadowMap);
+      L.shadow.bias = STAGE.beaconBias;
+      L.shadow.normalBias = STAGE.beaconNormalBias;
+      L.shadow.autoUpdate = false;
+      L.name = `ewa:arena-beacon-light:${i}`;
+      L.userData = { ewaLightId: `arena_beacon_${i}`, ewaLightKind: 'beacon', ewaReserved: true };
+      const t = new Object3D();
+      t.name = `ewa:arena-beacon-target:${i}`;
+      L.target = t;
+      this.root.add(L, t);   // always in a visible hierarchy: an invisible parent would drop the light from the light set (C13)
+      lights.push(L); targets.push(t);
+    }
+    this.beaconLights = lights;
+    this.beaconTargets = targets;
+    this.refreshAccent();
+    this.main.root.visible = false;
+  }
+
+  setGround(g: StageGround | null): void { this.ground = g; }
+  /** The zone's `accentType` (gym beacon + arena ring colour); null = derive from the battle terrain. */
+  setAccentType(t: TypeName | null): void { this.accent = t; this.refreshAccent(); }
+
+  // ---- §10.7.5 -----------------------------------------------------------------------------------------------------
+
+  dress(at: { readonly x: number; readonly z: number }, terrain: Terrain, participants: readonly string[]): void {
+    if (this.disposed) return;
+    this.terrain = terrain;
+    this.refreshAccent();
+    this.placeArena(this.main, at.x, at.z, terrain);
+    // beacons: key lights from the audience (camera) side, ±40° off the view axis, aimed at the ring centre, so the
+    // battlers' visible faces are lit (placed laterally they only grazed the cards and left them silhouetted at dusk)
+    const yaw = this.d.rig.dioramaYaw;
+    this.placePylons(this.main, yaw);
+    for (let i = 0; i < 2; i++) {
+      const L = this.beaconLights[i]!;
+      const c = this.main.center;
+      const p = this.main.pylons.children[i * 3]!.position;
+      L.position.set(c.x + p.x, c.y + STAGE.beaconHeight, c.z + p.z);
+      this.beaconTargets[i]!.position.copy(c);
+      L.shadow.autoUpdate = true;
+    }
+    this.beaconTarget = 1;
+    this.beaconFadeMs = STAGE.dressMs;
+    this.spawnSpectators(participants, at.x, at.z, yaw);
+    this.d.rig.setCueTarget('attacker', this.main.center);
+    this.d.rig.setCueTarget('defender', this.main.center);
+  }
+
+  dressSpectator(x: number, z: number): void {
+    if (this.disposed) return;
+    let a = this.spectatorArenas.find((s) => !s.dressed && s.rise <= 0);
+    if (a === undefined) { a = this.makeArena(`ewa:arena-spectator:${this.spectatorArenas.length}`); this.spectatorArenas.push(a); }
+    this.placeArena(a, x, z, this.terrain);
+    this.placePylons(a, this.d.rig.dioramaYaw);
+  }
+
+  /** Beacon pylons at ±`beaconAzimuthDeg` from the toward-camera axis (3 meshes per pylon: body, housing, cap). */
+  private placePylons(a: Arena, yaw: number): void {
+    const tx = Math.sin(yaw); const tz = Math.cos(yaw);        // toward the camera
+    const rx = Math.cos(yaw); const rz = -Math.sin(yaw);       // right
+    const ca = Math.cos(STAGE.beaconAzimuthDeg * DEG); const sa = Math.sin(STAGE.beaconAzimuthDeg * DEG);
+    a.pylons.children.forEach((p, i) => {
+      const s = Math.floor(i / 3) === 0 ? 1 : -1;
+      p.position.set((tx * ca + s * rx * sa) * STAGE.beaconRadius, 0, (tz * ca + s * rz * sa) * STAGE.beaconRadius);
+    });
+  }
+
+  /** Extra: removes the spectator arena dressed nearest (x, z). */
+  undressSpectator(x: number, z: number, ms: number = STAGE.dressMs): void {
+    let best: Arena | null = null; let bd = Number.POSITIVE_INFINITY;
+    for (const a of this.spectatorArenas) {
+      if (!a.dressed) continue;
+      const d = Math.hypot(a.center.x - x, a.center.z - z);
+      if (d < bd) { bd = d; best = a; }
+    }
+    if (best !== null) this.sinkArena(best, ms);
+  }
+
+  undress(ms: number): void {
+    if (this.main.dressed) {
+      this.sinkArena(this.main, ms);
+      this.beaconTarget = 0;
+      this.beaconFadeMs = Math.max(1, ms);
+      for (const b of this.battlerList) b.bb.dispose();
+      this.battlers.clear();
+      this.battlerList.length = 0;
+      for (const id of this.spectators) this.d.actors.despawn(id);
+      this.spectators.length = 0;
+      this.d.vfx.clear();
+      return;
+    }
+    for (const a of this.spectatorArenas) if (a.dressed) this.sinkArena(a, ms);
+  }
+
+  setBattler(ref: BattlerRef, desc: SpriteDescriptor | null): void {
+    if (this.disposed) return;
+    const key = refKey(ref);
+    const have = this.battlers.get(key);
+    if (desc === null) {
+      if (have !== undefined) { have.bb.dispose(); this.battlers.delete(key); this.removeFromList(have); this.layoutSide(ref.side); }
+      return;
+    }
+    if (have !== undefined && have.id === desc.id && sameSprite(have.bb.descriptor, desc)) {
+      // the same creature (the client rebuilds descriptor objects): keep the billboard, refresh the palette
+      have.bb.setVariant(desc.variant, desc.isAlpha);
+      return;
+    }
+    if (have !== undefined) { have.bb.dispose(); this.removeFromList(have); }
+    const bb = this.d.sprites.acquire(desc);
+    bb.setFacing(ref.side === 0 ? 'back' : 'front');
+    bb.setSharp(true);                      // active battlers are DOF-sharp (Pillar 1)
+    this.main.root.add(bb.object);
+    const b: Battler = { ref: { side: ref.side, slot: ref.slot }, bb, id: desc.id, hpFrac: 1 };
+    this.battlers.set(key, b);
+    this.battlerList.push(b);
+    this.layoutSide(ref.side);
+  }
+
+  setPose(ref: BattlerRef, pose: BattlerPose, ms: number): void {
+    const b = this.battlers.get(refKey(ref));
+    if (b === undefined) return;
+    b.bb.setPose(pose, ms);
+    if (pose === 'lunge' || pose === 'windup') this.d.rig.setCueTarget('attacker', b.bb.feet(_v));
+    else if (pose === 'hurt' || pose === 'recoil') this.d.rig.setCueTarget('defender', b.bb.feet(_v));
+    else if (pose === 'faint') this.d.rig.setCueTarget('ko', b.bb.feet(_v));
+  }
+
+  hurt(ref: BattlerRef, strength: number): void {
+    const b = this.battlers.get(refKey(ref));
+    if (b === undefined) return;
+    b.bb.setHurt(strength);
+    this.d.rig.setCueTarget('defender', b.bb.feet(_v));
+  }
+
+  faint(ref: BattlerRef, ms: number): void {
+    const b = this.battlers.get(refKey(ref));
+    if (b === undefined) return;
+    b.bb.setPose('faint', ms);
+    b.hpFrac = 0;
+    this.d.rig.setCueTarget('ko', b.bb.feet(_v));
+  }
+
+  setWeather(w: WeatherKind): void { this.d.weather?.(w); }
+
+  vfx(id: VfxId, from: BattlerRef | null, to: BattlerRef | null, ms: number): void {
+    if (this.disposed) return;
+    if (!isVfxId(id)) throw new RangeError(`@ewa/render: unknown VfxId '${String(id)}'`);
+    const fb = from !== null ? this.battlers.get(refKey(from)) ?? null : null;
+    const tb = to !== null ? this.battlers.get(refKey(to)) ?? null : null;
+    const fa = fb !== null ? this.anchorOf(fb, this.anchorA) : null;
+    const ta = tb !== null ? this.anchorOf(tb, this.anchorB) : null;
+    const center = this.main.dressed ? this.main.center : this.d.rig.focus;
+    const r = this.d.vfx.spawn(id, fa, ta, center, ms);
+    if (fb !== null) this.d.rig.setCueTarget('attacker', fb.bb.feet(_v));
+    if (tb !== null) { this.d.rig.setCueTarget('defender', tb.bb.feet(_v)); if (id === 'orb_throw') this.d.rig.setCueTarget('throw', tb.bb.feet(_v)); }
+    if (r.flash > 0 && tb !== null) tb.bb.setHurt(r.flash);   // impact_crit: white flash on the target (hurt 1.0)
+    if (r.beaconPulse > 0 && this.main.dressed) this.pulse = Math.max(this.pulse, r.beaconPulse);
+  }
+
+  prewarm(ids: readonly VfxId[]): void { this.d.vfx.prewarm(ids); }
+
+  syncFrom(hp: readonly { readonly ref: BattlerRef; readonly hpFrac: number }[]): void {
+    for (const e of hp) {
+      const b = this.battlers.get(refKey(e.ref));
+      if (b === undefined) continue;
+      b.hpFrac = e.hpFrac;
+      b.bb.setPose('idle', 0);
+      b.bb.setFaint(e.hpFrac <= 0 ? 1 : 0);
+    }
+    this.d.vfx.clear();
+  }
+
+  setTypeColors(table: Readonly<Record<TypeName, string>>): void {
+    this.typeTable = validateTypeColorTable(table);
+    this.d.sprites.setTypeColors(this.typeTable);
+    this.d.vfx.setTypeColors(this.typeTable);
+    this.refreshAccent();
+  }
+
+  inspect(desc: SpriteDescriptor | null): void {
+    if (this.disposed) return;
+    if (this.inspected !== null) { this.inspected.dispose(); this.inspected = null; }
+    if (desc === null) { this.d.rig.release(STAGE.inspectExitMs); return; }
+    const bb = this.d.sprites.acquire(desc);
+    bb.setFacing('front');
+    bb.setSharp(true);
+    forwardOfYaw(this.d.rig.dioramaYaw, _fwd);
+    const f = this.d.rig.focus;
+    const x = f.x - _fwd.x * INSPECT_OFFSET; const z = f.z - _fwd.z * INSPECT_OFFSET;
+    const y = this.groundAt(x, z);
+    bb.setPosition(x, y, z);
+    this.d.parent.add(bb.object);
+    this.inspected = bb;
+    _w.set(x, y + bb.heightM * INSPECT_AIM, z);
+    this.d.rig.inspect(_w, STAGE.inspectExitMs);
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const b of this.battlerList) b.bb.dispose();
+    this.battlers.clear(); this.battlerList.length = 0;
+    this.inspected?.dispose(); this.inspected = null;
+    for (const id of this.spectators) this.d.actors.despawn(id);
+    this.spectators.length = 0;
+    for (const L of this.beaconLights) { L.removeFromParent(); L.dispose(); }
+    this.root.removeFromParent();
+    for (const g of this.geo.ring.values()) g.dispose();
+    this.geo.curb.dispose(); this.geo.post.dispose(); this.geo.pylon.dispose(); this.geo.housing.dispose(); this.geo.cap.dispose();
+    for (const r of this.geo.ropes) r.dispose();
+    this.housingMaterial.dispose();   // the stage's own material; library materials are never disposed here (§10.0.3 rule 3)
+  }
+
+  // ---- frame hook + HUD anchors --------------------------------------------------------------------------------------
+
+  /** Per frame: arena rise/sink, beacon fade + pulse, harvest. Zero allocation. */
+  update(dtScaledMs: number, dtRealMs: number): void {
+    if (this.disposed) return;
+    this.stepArena(this.main, dtRealMs);
+    for (let i = 0; i < this.spectatorArenas.length; i++) this.stepArena(this.spectatorArenas[i]!, dtRealMs);
+    const k = Math.min(1, dtRealMs / Math.max(1, this.beaconFadeMs));
+    this.beaconLevel += (this.beaconTarget > this.beaconLevel ? 1 : -1) * Math.min(Math.abs(this.beaconTarget - this.beaconLevel), k);
+    this.pulse = Math.max(0, this.pulse - dtScaledMs / STAGE.pulseMs);
+    const harvest = this.d.harvestLevel();
+    const on = harvest < 2 ? 1 : 0;
+    const I = STAGE.beaconIntensity * this.beaconLevel * (1 + this.pulse * STAGE.pulseGain) * on;
+    for (let i = 0; i < this.beaconLights.length; i++) {
+      const L = this.beaconLights[i]!;
+      L.intensity = I;
+      if (this.beaconLevel <= 0 && this.beaconTarget === 0) L.shadow.autoUpdate = false;
+    }
+    (this.housingMaterial.userData.harvest as UniformNode<'float', number>).value = harvest;
+  }
+
+  /** Projects battler `ref`'s sprite top to CSS px (HUD bar anchor). */
+  projectBattler(ref: BattlerRef, out: Float32Array, offset = 0): boolean {
+    const b = this.battlers.get(refKey(ref));
+    if (b === undefined || b.bb.dissolve >= 1) return false;
+    b.bb.topWorld(_v).project(this.d.camera);
+    if (_v.z < -1 || _v.z > 1) return false;
+    const vp = this.d.viewport();
+    out[offset] = (_v.x * 0.5 + 0.5) * vp.w;
+    out[offset + 1] = (-_v.y * 0.5 + 0.5) * vp.h;
+    return true;
+  }
+
+  /** A housing mesh for the renderer's warm-up frame (compiles the beacon housing material). */
+  warmupHousing(): Mesh {
+    const m = new Mesh(this.geo.housing, this.housingMaterial);
+    m.name = 'ewa:beacon-housing-warmup';
+    return m;
+  }
+
+  get dressed(): boolean { return this.main.dressed; }
+  get arenaCenter(): Readonly<Vector3> { return this.main.center; }
+  get arenaRoot(): Group { return this.main.root; }
+  battler(ref: BattlerRef): CreatureBillboard | null { return this.battlers.get(refKey(ref))?.bb ?? null; }
+  get battlerCount(): number { return this.battlerList.length; }
+  get spectatorIds(): readonly string[] { return this.spectators; }
+  get spectatorArenaCount(): number { return this.spectatorArenas.filter((a) => a.dressed).length; }
+  get beaconIntensity(): number { return this.beaconLights[0]?.intensity ?? 0; }
+  /** Whether the beacon shadow maps are being rendered (false when undressed). */
+  get beaconShadowsLive(): boolean { return this.beaconLights[0]?.shadow.autoUpdate ?? false; }
+
+  // ---- internals ---------------------------------------------------------------------------------------------------
+
+  private readonly anchorFeetA = new Vector3();
+  private readonly anchorFeetB = new Vector3();
+  private readonly anchorA: { feet: Vector3; height: number } = { feet: this.anchorFeetA, height: 1.6 };
+  private readonly anchorB: { feet: Vector3; height: number } = { feet: this.anchorFeetB, height: 1.6 };
+
+  private anchorOf(b: Battler, out: { feet: Vector3; height: number }): VfxAnchor {
+    b.bb.feet(out.feet);
+    out.height = b.bb.heightM;
+    return out;
+  }
+
+  private groundAt(x: number, z: number): number {
+    const y = this.ground?.sample(x, z) ?? 0;
+    return Number.isFinite(y) ? y : 0;
+  }
+
+  private removeFromList(b: Battler): void {
+    const i = this.battlerList.indexOf(b);
+    if (i >= 0) this.battlerList.splice(i, 1);
+  }
+
+  /** Positions every battler of `side` (slot spread depends on how many the side holds). */
+  private layoutSide(side: 0 | 1): void {
+    let count = 0;
+    for (const b of this.battlerList) if (b.ref.side === side) count = Math.max(count, b.ref.slot + 1);
+    const yaw = this.d.rig.dioramaYaw;
+    forwardOfYaw(yaw, _fwd);
+    for (const b of this.battlerList) {
+      if (b.ref.side !== side) continue;
+      battlerSlot(this.main.center, yaw, side, b.ref.slot, count, _v);
+      // relative to the arena root (the ring centre): the feet stand on the flat ring top and rise with the arena
+      b.bb.setPosition(_v.x - this.main.center.x, STAGE.ringTop, _v.z - this.main.center.z);
+      b.bb.setPoseAxis(side === 0 ? _fwd.x : -_fwd.x, side === 0 ? _fwd.z : -_fwd.z);
+      b.bb.setGroundNormal(0, 1, 0);
+    }
+  }
+
+  private spawnSpectators(participants: readonly string[], x: number, z: number, yaw: number): void {
+    for (const id of this.spectators) this.d.actors.despawn(id);
+    this.spectators.length = 0;
+    forwardOfYaw(yaw, _fwd);
+    const seed = participants.join('|');
+    STAGE.spectatorAnglesDeg.forEach((deg, i) => {
+      const a = Math.atan2(_fwd.x, _fwd.z) + deg * DEG;   // the far half, fanned out
+      const sx = x + Math.sin(a) * STAGE.spectatorRadius; const sz = z + Math.cos(a) * STAGE.spectatorRadius;
+      const id = `ewa:spectator:${i}`;
+      this.d.actors.spawn(id, { look: `spectator_${seed}_${i}`, name: '', guildTag: '', isLocal: false });
+      this.d.actors.setTransform(id, sx, sz, Math.atan2(x - sx, z - sz), false, false);
+      this.spectators.push(id);
+    });
+  }
+
+  private makeArena(name: string): Arena {
+    const root = new Group();
+    root.name = name;
+    const ring = new Mesh(this.ringFor('cobble'), this.d.materials.get('cobble'));
+    ring.receiveShadow = true; ring.castShadow = false; ring.name = `${name}:ring`;
+    const curb = new Mesh(this.geo.curb, this.d.materials.get('stone_wall'));
+    curb.receiveShadow = true; curb.castShadow = true; curb.name = `${name}:curb`;
+    const posts = new Group();
+    posts.name = `${name}:posts`;
+    const timber = this.d.materials.get('timber');
+    for (let i = 0; i < STAGE.postCount; i++) {
+      const a = (i / STAGE.postCount) * Math.PI * 2;
+      const p = new Mesh(this.geo.post, timber);
+      p.position.set(Math.cos(a) * STAGE.postRadius, 0, Math.sin(a) * STAGE.postRadius);
+      p.castShadow = true; p.receiveShadow = true;
+      posts.add(p);
+    }
+    const rope = this.d.materials.get('rope');
+    for (const g of this.geo.ropes) { const m = new Mesh(g, rope); m.castShadow = true; m.receiveShadow = true; posts.add(m); }
+    const pylons = new Group();
+    pylons.name = `${name}:beacons`;
+    const metal = this.d.materials.get('lantern_metal');
+    for (let i = 0; i < 2; i++) {
+      const body = new Mesh(this.geo.pylon, metal); body.castShadow = true; body.receiveShadow = true;
+      const housing = new Mesh(this.geo.housing, this.housingMaterial as Material); housing.castShadow = false;
+      const cap = new Mesh(this.geo.cap, metal); cap.castShadow = true;
+      pylons.add(body, housing, cap);
+    }
+    root.add(ring, curb, posts, pylons);
+    root.visible = false;
+    this.root.add(root);
+    return { root, ring, curb, posts, pylons, center: new Vector3(), dressed: false, rise: 0, riseTarget: 0, riseMs: STAGE.dressMs };
+  }
+
+  private ringFor(surface: SurfaceId): BufferGeometry {
+    let g = this.geo.ring.get(surface);
+    if (g === undefined) { g = ringGeometry(); paintSurfaceColor(g, surface); this.geo.ring.set(surface, g); }
+    return g;
+  }
+
+  private placeArena(a: Arena, x: number, z: number, terrain: Terrain): void {
+    const y = this.groundAt(x, z);
+    a.center.set(x, y, z);
+    const surface = TERRAIN_SURFACE[terrain];
+    a.ring.geometry = this.ringFor(surface);
+    a.ring.material = this.d.materials.get(surface);
+    void this.d.materials.preload([surface, 'stone_wall', 'timber', 'rope', 'lantern_metal']).catch(() => undefined);
+    a.dressed = true;
+    a.riseTarget = 1;
+    a.riseMs = STAGE.dressMs;
+    a.root.visible = true;
+    a.root.position.set(x, y - STAGE.sinkM * (1 - a.rise), z);
+  }
+
+  private sinkArena(a: Arena, ms: number): void {
+    a.dressed = false;
+    a.riseTarget = 0;
+    a.riseMs = Math.max(1, ms);
+  }
+
+  private stepArena(a: Arena, dtMs: number): void {
+    if (a.rise === a.riseTarget) { if (a.rise <= 0 && a.root.visible && !a.dressed) a.root.visible = false; return; }
+    const k = dtMs / Math.max(1, a.riseMs);
+    a.rise = a.riseTarget > a.rise ? Math.min(a.riseTarget, a.rise + k) : Math.max(a.riseTarget, a.rise - k);
+    const e = a.rise * a.rise * (3 - 2 * a.rise);
+    a.root.position.y = a.center.y - STAGE.sinkM * (1 - e);
+    if (a.rise <= 0 && !a.dressed) a.root.visible = false;
+  }
+
+  private refreshAccent(): void {
+    const t = this.accent ?? TERRAIN_ACCENT[this.terrain];
+    const c = hexToLinearInto(this.typeTable[t] ?? TYPE_COLORS[t], new Color());
+    this.housingColor.value.set(c.r, c.g, c.b);
+    // the housing glows the pure accent; the light it throws is tinted, not saturated, so creature colours read true
+    const k = STAGE.beaconWhiteMix;
+    for (const L of this.beaconLights ?? []) L.color.setRGB(c.r + (1 - c.r) * k, c.g + (1 - c.g) * k, c.b + (1 - c.b) * k);
+  }
+}

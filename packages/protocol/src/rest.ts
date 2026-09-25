@@ -17,7 +17,7 @@ import {
   Uuid,
   VariantKeySchema,
 } from './messages/common';
-import { QuestProgressEntrySchema, SeatReservationSchema } from './messages/server';
+import { InventoryDeltaMsg, QuestProgressEntrySchema, SeatReservationSchema } from './messages/server';
 
 // ---- primitives ----------------------------------------------------------------------------------------
 
@@ -223,6 +223,15 @@ export const QuestViewSchema = z.looseObject({
 });
 export type QuestView = z.infer<typeof QuestViewSchema>;
 
+/**
+ * An `inventoryDelta`-shaped body (§4.4 `inventoryDelta` minus `type`: absolute item counts, absolute money or
+ * null, creatures added / removed / updated). REST routes whose side effect moves items, money or creatures
+ * return it next to their view so the client applies it through its one inventory writer instead of going
+ * stale until the next `GET /me` (server IMPLEMENTATION-NOTES part 2, P1).
+ */
+export const InventoryDeltaBodySchema = InventoryDeltaMsg.omit({ type: true });
+export type InventoryDeltaBody = z.infer<typeof InventoryDeltaBodySchema>;
+
 // ---- error envelope ------------------------------------------------------------------------------------------
 
 /** Domain errors (persist §5.5) map to 409 `{ code }`; `RateLimited` → 429; zod → 400 `invalidPayload`; JWT → 401; else 500 `internal`. */
@@ -318,6 +327,8 @@ export const MovesReq = z.object({
     .refine((m) => new Set(m).size === m.length, 'duplicate move'),
 });
 export const SetupReq = z.object({ ability: z.string().min(1).max(40), heldItem: ItemId.nullable() });
+/** `CreatureInstance` (spine §4.7) + the held-item inventory counts it touched (P1). */
+export const CreatureSetupRes = CreatureInstanceSchema.extend({ inventoryDelta: InventoryDeltaBodySchema });
 export const EvolveReq = z.object({ into: z.string().min(1).max(40) });
 export const CreatureFlagsReq = z.object({ favorite: z.boolean().optional(), locked: z.boolean().optional() });
 
@@ -372,6 +383,8 @@ export const ListCreateReq = z
     message: 'buyNowPrice must exceed startingBid',
   });
 export const BidReq = z.object({ amount: z.number().int().min(1) });
+/** `ListingView` (spine §4.7) + the caller's money / creature changes of list, bid, buy-now and cancel (P1). */
+export const ListingMutationRes = ListingViewSchema.extend({ inventoryDelta: InventoryDeltaBodySchema });
 
 // ---- friends / messages ------------------------------------------------------------------------------------------
 
@@ -389,6 +402,8 @@ export const GuildCreateReq = z.object({ name: z.string().min(3).max(24), tag: z
 export const GuildMemberReq = z.object({ playerId: Uuid.optional() });
 export const GuildListRes = z.array(GuildViewSchema);
 export const GuildDetailRes = GuildViewSchema.extend({ members: z.array(GuildMemberViewSchema) });
+/** `GuildView` (spine §4.7) + the founder's money after the 5 000 charge (P1). */
+export const GuildCreateRes = GuildViewSchema.extend({ inventoryDelta: InventoryDeltaBodySchema });
 
 // ---- leaderboard / players / battle pass / history ----------------------------------------------------------------
 
@@ -477,7 +492,7 @@ export const ROUTES = {
   partyDeposit: route({ method: 'POST', path: '/party/deposit', auth: 'bearer', request: CreatureIdReq, response: PartyBoxRes }),
   creatureNickname: route({ method: 'POST', path: '/creature/:id/nickname', auth: 'bearer', params: CreatureParams, request: NicknameReq, response: CreatureInstanceSchema }),
   creatureMoves: route({ method: 'POST', path: '/creature/:id/moves', auth: 'bearer', params: CreatureParams, request: MovesReq, response: CreatureInstanceSchema }),
-  creatureSetup: route({ method: 'POST', path: '/creature/:id/setup', auth: 'bearer', params: CreatureParams, request: SetupReq, response: CreatureInstanceSchema }),
+  creatureSetup: route({ method: 'POST', path: '/creature/:id/setup', auth: 'bearer', params: CreatureParams, request: SetupReq, response: CreatureSetupRes }),
   creatureEvolve: route({ method: 'POST', path: '/creature/:id/evolve', auth: 'bearer', params: CreatureParams, request: EvolveReq, response: CreatureInstanceSchema }),
   creatureRelease: route({ method: 'POST', path: '/creature/:id/release', auth: 'bearer', params: CreatureParams, request: Nothing, response: null }),
   creatureFlags: route({ method: 'POST', path: '/creature/:id/flags', auth: 'bearer', params: CreatureParams, request: CreatureFlagsReq, response: CreatureInstanceSchema }),
@@ -491,10 +506,10 @@ export const ROUTES = {
   marketplaceMyActive: route({ method: 'GET', path: '/marketplace/my/active', auth: 'bearer', response: ListingListRes }),
   marketplaceMyBids: route({ method: 'GET', path: '/marketplace/my/bids', auth: 'bearer', response: ListingListRes }),
   marketplaceDetail: route({ method: 'GET', path: '/marketplace/:id', auth: 'bearer', params: ListingParams, response: ListingDetailRes }),
-  marketplaceList: route({ method: 'POST', path: '/marketplace/list', auth: 'bearer', request: ListCreateReq, response: ListingViewSchema, limit: 'listing' }),
-  marketplaceBid: route({ method: 'POST', path: '/marketplace/:id/bid', auth: 'bearer', params: ListingParams, request: BidReq, response: ListingViewSchema, limit: 'bid' }),
-  marketplaceBuyNow: route({ method: 'POST', path: '/marketplace/:id/buy-now', auth: 'bearer', params: ListingParams, request: Nothing, response: ListingViewSchema }),
-  marketplaceCancel: route({ method: 'POST', path: '/marketplace/:id/cancel', auth: 'bearer', params: ListingParams, request: Nothing, response: ListingViewSchema }),
+  marketplaceList: route({ method: 'POST', path: '/marketplace/list', auth: 'bearer', request: ListCreateReq, response: ListingMutationRes, limit: 'listing' }),
+  marketplaceBid: route({ method: 'POST', path: '/marketplace/:id/bid', auth: 'bearer', params: ListingParams, request: BidReq, response: ListingMutationRes, limit: 'bid' }),
+  marketplaceBuyNow: route({ method: 'POST', path: '/marketplace/:id/buy-now', auth: 'bearer', params: ListingParams, request: Nothing, response: ListingMutationRes }),
+  marketplaceCancel: route({ method: 'POST', path: '/marketplace/:id/cancel', auth: 'bearer', params: ListingParams, request: Nothing, response: ListingMutationRes }),
   friends: route({ method: 'GET', path: '/friends', auth: 'bearer', response: FriendListsSchema }),
   friendsRequest: route({ method: 'POST', path: '/friends/request', auth: 'bearer', request: UsernameReq, response: FriendListsSchema, limit: 'friendReq' }),
   friendsAccept: route({ method: 'POST', path: '/friends/accept', auth: 'bearer', request: UsernameReq, response: FriendListsSchema }),
@@ -505,7 +520,7 @@ export const ROUTES = {
   messagesRead: route({ method: 'POST', path: '/messages/read', auth: 'bearer', request: UsernameReq, response: null }),
   guilds: route({ method: 'GET', path: '/guilds', auth: 'bearer', query: GuildsQuery, response: GuildListRes }),
   guildDetail: route({ method: 'GET', path: '/guilds/:id', auth: 'bearer', params: GuildParams, response: GuildDetailRes }),
-  guildCreate: route({ method: 'POST', path: '/guilds', auth: 'bearer', request: GuildCreateReq, response: GuildViewSchema, limit: 'guildOp' }),
+  guildCreate: route({ method: 'POST', path: '/guilds', auth: 'bearer', request: GuildCreateReq, response: GuildCreateRes, limit: 'guildOp' }),
   guildJoin: route({ method: 'POST', path: '/guilds/:id/join', auth: 'bearer', params: GuildParams, request: GuildMemberReq, response: GuildViewSchema, limit: 'guildOp' }),
   guildLeave: route({ method: 'POST', path: '/guilds/:id/leave', auth: 'bearer', params: GuildParams, request: GuildMemberReq, response: GuildViewSchema, limit: 'guildOp' }),
   guildKick: route({ method: 'POST', path: '/guilds/:id/kick', auth: 'bearer', params: GuildParams, request: GuildMemberReq, response: GuildViewSchema, limit: 'guildOp' }),

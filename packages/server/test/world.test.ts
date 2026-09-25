@@ -12,7 +12,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { beatDoneFlag, getHeightfield, isWalkable, nearestWalkable, playableBounds } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
 import type { SeatReservation } from '@ewa/protocol';
-import { enter, joinSeat, ofType, placePlayer, rawQuery, register, sleep, startServer, waitFor } from './helpers';
+import { enter, joinSeat, ofType, placePlayer, rawQuery, register, sleep, startServer, storyOnly, waitFor } from './helpers';
 import type { Account, Joined, TestServer } from './helpers';
 
 let s: TestServer;
@@ -64,7 +64,7 @@ describe('§30.4.8 story beats', () => {
     expect(iStart).toBeLessThan(iProg);
     expect(iProg).toBeLessThan(iDone);
     const flags = (await rawQuery(s.db, 'select flag from story_flags where player_id = $1', [acc.id])).map((r) => r['flag']);
-    expect(flags.sort()).toEqual(['beat:first_witness:done', 'met_wynn']);
+    expect(storyOnly(flags).sort()).toEqual(['beat:first_witness:done', 'met_wynn']);
     const n = j.msgs.length;
     j.room.send('interact', { kind: 'npc', targetId: 'mirevale.wynn' });
     await sleep(500);

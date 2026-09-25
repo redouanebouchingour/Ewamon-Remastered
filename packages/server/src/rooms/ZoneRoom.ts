@@ -7,10 +7,10 @@ import { Room, ServerError } from '@colyseus/core';
 import type { AuthContext, Client } from '@colyseus/core';
 import { StateView } from '@colyseus/schema';
 import { badgeFlag, encounterTableFor, getHeightfield, isWalkable, isWater, league as leagueById, nearestWalkable, playableBounds, zone as zoneById } from '@ewa/content';
-import type { BadgeId, Heightfield, LinkDir, ZoneDef, ZoneId } from '@ewa/content';
+import type { BadgeId, Heightfield, LinkDir, RaidHotspot, ZoneDef, ZoneId } from '@ewa/content';
 import { createRng } from '@ewa/core';
 import type { Rng } from '@ewa/core';
-import { BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, PlayerState, SpawnState, ZoneState } from '@ewa/protocol';
+import { BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, PlayerState, RaidState, SpawnState, ZoneState } from '@ewa/protocol';
 import type { ClientMessageType, ClientPayload, ServerMessage } from '@ewa/protocol';
 import type { RoomDeps } from '../deps';
 import { censor, sanitizeChat } from '../chat/filter';
@@ -20,7 +20,7 @@ import { LIMITS, allow, createLimiterState, shouldNotify } from '../rest/rateLim
 import type { LimitKey, RateLimiterState } from '../rest/rateLimit';
 import { AoiGrid, cellOf } from './aoi';
 import type { Cell } from './aoi';
-import { BattleCoordinator, progressionOnly } from './battleSession';
+import { BattleCoordinator, TERRAIN_BY_BIOME, progressionOnly } from './battleSession';
 import type { BattleHost, BattleSession } from './battleSession';
 import { ChallengeStore } from './challengeStore';
 import { findTarget, itemFlag, rangeFor, trainerBeatenFlag } from './interactables';
@@ -30,7 +30,11 @@ import type { RejectReason } from './movement';
 import { SpawnDirector, tuningFor } from './spawnDirector';
 import type { SpawnRecord } from './spawnDirector';
 import { beatFor, completeBeatInTx, flagSet } from './storyBeats';
+import { RAID_JOIN_RANGE_M, RaidRunner, RaidSession } from './raidSession';
+import { TradeCoordinator } from './tradeSession';
 import { advanceQuests } from '../game/quests';
+import { STREAK_LAST_PREFIX, dailyLogin } from '../liveops/login';
+import { dayKey, hotspotDayKey, hotspotOpen, hotspotsFor, liveOpsModsFor } from '../liveops/schedule';
 
 export interface ZoneMeta {
   readonly zoneId: ZoneId;
@@ -99,6 +103,15 @@ export interface ZoneUserData {
 
 export type ZoneClient = Client<{ userData: ZoneUserData; auth: ZoneAuth }>;
 
+/** `ewa:dm:<toId>` payload published by `POST /messages/:username` (§30.7.2). */
+export interface DmPush {
+  readonly id: number;
+  readonly fromId: string;
+  readonly fromName: string;
+  readonly text: string;
+  readonly sentAt: number;
+}
+
 export const MOVE_KICK = { max: 30, windowMs: 10_000 } as const;
 export const UNKNOWN_KICK = { max: 5, windowMs: 10_000 } as const;
 export const HANDOVER_TRIGGER_M = 6;
@@ -164,6 +177,9 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   aoi!: AoiGrid<PlayerState | SpawnState>;
   spawns: SpawnDirector | null = null;
   battles!: BattleCoordinator;
+  trades!: TradeCoordinator;
+  /** §30.4.7: one raid per zone room at a time, opened by the hotspot scheduler */
+  raid: RaidRunner | null = null;
   challenges!: ChallengeStore;
   worldRng!: Rng;
   metrics!: RoomMetrics;
@@ -173,6 +189,13 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   /** player uuid → the sessionId that owns the PlayerState (multi-tab / reconnection guard) */
   private readonly owner = new Map<string, string>();
   private overruns = 0;
+  /** presence subscriptions held by this room, released in onDispose */
+  private readonly subs: [string, (m: never) => void][] = [];
+  /** `${hotspotId}:${dayKey}` windows this room already opened (or yielded) — a window opens at most once */
+  private readonly raidWindows = new Set<string>();
+  private raidCheckAt = 0;
+  /** player uuid → its `ewa:dm:<id>` callback (§30.7.2: DMs pushed live while the player is in this room) */
+  private readonly dmSubs = new Map<string, (m: DmPush) => void>();
 
   protected get deps(): RoomDeps {
     const d = (this.constructor as typeof ZoneRoom).roomDeps;
@@ -216,6 +239,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const table = encounterTableFor(this.zone.id);
     const spawnRng = root.fork();
     this.spawns = tuning === null ? null : new SpawnDirector(this.zone, table, spawnRng, this.heightfield, tuning, deps.content);
+    // §30.9.2: weekday variant, seasonal events, swarms — re-derived on every `ewa:liveops` rollover
+    this.spawns?.setLiveOps(liveOpsModsFor(this.zone.id, this.now()));
     this.battles = new BattleCoordinator(root.fork(), {
       repos: deps.repos,
       content: deps.content,
@@ -225,14 +250,31 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       host: this.battleHost(),
       metrics: this.metrics,
     });
+    this.trades = new TradeCoordinator({
+      repos: deps.repos,
+      clock: deps.clock,
+      log: deps.log.child({ roomId: this.roomId, zoneId: this.zone.id, shard }),
+      host: {
+        send: (playerId, msg) => this.sendTo(playerId, msg),
+        setTrade: (playerId, tradeId) => {
+          const c = this.clientOf(playerId);
+          if (c?.userData !== undefined) c.userData.tradeId = tradeId;
+          deps.presenceMirror.setTrade(playerId, tradeId);
+        },
+        eligible: (fromId, toId) => this.challengeable(fromId, toId, true),
+        tradeOf: (playerId) => this.clientOf(playerId)?.userData?.tradeId ?? null,
+      },
+    });
     // 6. messages (R1: zod safeParse in the wrapper; R3: '*' counts unknown types)
     for (const type of Object.keys(CLIENT_MESSAGES) as ClientMessageType[]) {
       this.onMessage(type, (client: ZoneClient, payload: unknown) => this.dispatch(client, type, payload));
     }
     this.onMessage('*', (client: ZoneClient) => this.onUnknownMessage(client));
-    // cross-room channels
-    await this.presence.subscribe('ewa:kick', (m: { playerId: string; exceptRoomId?: string }) => this.onKick(m));
-    await this.presence.subscribe(`ewa:handover:done:${this.roomId}`, (m: { playerId: string }) => this.onHandoverDone(m.playerId));
+    // cross-room channels (unsubscribed in onDispose)
+    await this.sub('ewa:kick', (m: { playerId: string; exceptRoomId?: string }) => this.onKick(m));
+    await this.sub(`ewa:handover:done:${this.roomId}`, (m: { playerId: string }) => this.onHandoverDone(m.playerId));
+    await this.sub('ewa:profile', (m: { playerId: string }) => void this.onProfile(m.playerId));
+    await this.sub('ewa:liveops', () => this.spawns?.setLiveOps(liveOpsModsFor(this.zone.id, this.now())));
     // 7.
     this.setTimestep((dt) => this.tick(dt), ZoneRoom.TICK_MS);
   }
@@ -295,10 +337,18 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       other.leave(CLOSE_CODES.replaced);
     }
     // across rooms: one avatar per player, everywhere (a valid handover keeps the source for ≤ 5 s)
-    const prev = deps.presenceStore.enter(playerId, { roomId: this.roomId, zoneId: this.zone.id, shard: this.metadata.shard, battleId: null, tradeId: null, since: this.now() });
+    const liveBattle = this.battles.ofPlayer(playerId);
+    const prev = deps.presenceMirror.enter(playerId, {
+      roomId: this.roomId,
+      zoneId: this.zone.id,
+      shard: this.metadata.shard,
+      battleId: liveBattle?.id ?? null,
+      tradeId: null,
+      since: this.now(),
+    });
     if (prev !== null && arrival === null) this.presence.publish('ewa:kick', { playerId, exceptRoomId: this.roomId });
     if (auth.ip !== null) deps.presenceStore.ipEnter(auth.ip);
-    void this.presence.setex(`ewa:presence:${playerId}`, JSON.stringify({ roomId: this.roomId, zoneId: this.zone.id, shard: this.metadata.shard }), 90);
+    this.subscribePlayer(playerId);
 
     // 3. position
     let x: number;
@@ -375,6 +425,17 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.metrics.aoiAdds += show.length + entered.length;
     this.metrics.players = this.state.players.size;
 
+    // §30.9.1: the first room join of a UTC day grants the daily login (once per day, shared with POST /auth/login);
+    // the flag cache loaded above already says whether today's grant happened, so a same-day join costs nothing
+    if (!client.userData.flags.has(`${STREAK_LAST_PREFIX}${dayKey(this.now())}`)) void this.grantDailyLogin(client, playerId);
+
+    // P3: a reload mid-battle rejoins this room; the client gets the live battle back without asking
+    const live = this.battles.ofPlayer(playerId);
+    if (live !== null) {
+      const resync = this.battles.resync(playerId, live.id);
+      if (resync !== null) this.sendMsg(client, resync);
+    }
+
     // 7. position write only for the fallback branches (handover writes are the ack's job)
     if (fallback && arrival === null) {
       await deps.repos.db.transaction((tx) => deps.repos.players.setPosition(tx, playerId, this.zone.id, x, z, ps.angle));
@@ -408,6 +469,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const playerId = ud.playerId;
     const ps = this.state.players.get(playerId);
     await this.battles.forfeitIfActive(playerId, 'disconnect').catch((e: unknown) => deps.log.error({ err: e }, 'forfeitIfActive failed'));
+    this.trades.cancelFor(playerId);
+    this.raid?.leave(playerId);
     for (const c of this.challenges.dropFor(playerId)) {
       const otherId = c.fromId === playerId ? c.toId : c.fromId;
       const other = this.clientOf(otherId);
@@ -421,8 +484,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.owner.delete(playerId);
     this.emoteSetAt.delete(playerId);
     client.view?.dispose();
-    const left = deps.presenceStore.leave(playerId, this.roomId);
-    if (left) void this.presence.del(`ewa:presence:${playerId}`);
+    deps.presenceMirror.leave(playerId, this.roomId);
+    this.unsubscribePlayer(playerId);
     this.metrics.players = this.state.players.size;
     // one position write with the last authoritative pose — unless a handover moved the row's owner
     const movedAway = ud.handoverDone || (ud.handover !== null && deps.presenceStore.get(playerId)?.roomId !== this.roomId);
@@ -436,8 +499,61 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   override onDispose(): void {
     this.spawns?.dispose();
     this.battles?.dispose();
+    this.trades?.dispose();
+    this.raid = null;
     this.clock.clear();
+    for (const [topic, cb] of this.subs) this.presence.unsubscribe(topic, cb);
+    this.subs.length = 0;
+    for (const id of [...this.dmSubs.keys()]) this.unsubscribePlayer(id);
     if (this.metrics !== undefined) this.deps.metrics.unregister(this.roomId);
+  }
+
+  // ─── presence channels ──────────────────────────────────────────────────────
+
+  private async sub<T>(topic: string, cb: (m: T) => void): Promise<void> {
+    this.subs.push([topic, cb as (m: never) => void]);
+    await this.presence.subscribe(topic, cb);
+  }
+
+  private subscribePlayer(playerId: string): void {
+    if (this.dmSubs.has(playerId)) return;
+    const cb = (m: DmPush): void => this.sendTo(playerId, { type: 'dm', id: m.id, fromId: m.fromId, fromName: m.fromName, text: m.text, sentAt: m.sentAt });
+    this.dmSubs.set(playerId, cb);
+    void this.presence.subscribe(`ewa:dm:${playerId}`, cb);
+  }
+
+  private unsubscribePlayer(playerId: string): void {
+    const cb = this.dmSubs.get(playerId);
+    if (cb === undefined) return;
+    this.dmSubs.delete(playerId);
+    this.presence.unsubscribe(`ewa:dm:${playerId}`, cb);
+  }
+
+  private async grantDailyLogin(client: ZoneClient, playerId: string): Promise<void> {
+    const deps = this.deps;
+    const g = await deps.repos.db.transaction((tx) => dailyLogin(tx, deps.repos, playerId, this.now())).catch((e: unknown) => {
+      deps.log.warn({ err: e, playerId }, 'daily login grant failed');
+      return null;
+    });
+    if (g === null || client.userData === undefined) return;
+    for (const [item, qty] of Object.entries(g.inventory)) client.userData.inventory[item] = qty;
+    this.applyFlags(client.userData, g.flags);
+    this.sendMsg(client, { type: 'inventoryDelta', items: { ...g.inventory }, money: g.money, creaturesAdded: [], creaturesRemoved: [], creaturesUpdated: [] });
+    this.sendMsg(client, progressionOnly({ trainerExp: g.trainerExp, trainerLevel: g.trainerLevel, flags: [...g.flags] }));
+    this.sendMsg(client, { type: 'toast', level: 'success', text: `Daily login — day ${g.streak} streak` });
+  }
+
+  /** §30.5 `PlayerState.body/guildTag` re-read after POST /profile or any guild change (`ewa:profile`). */
+  private async onProfile(playerId: string): Promise<void> {
+    const ps = this.state.players.get(playerId);
+    if (ps === undefined) return;
+    const deps = this.deps;
+    const r = await deps.repos.db
+      .transaction(async (tx) => ({ row: await deps.repos.players.byId(tx, playerId), guild: await deps.repos.social.guildOf(tx, playerId) }))
+      .catch(() => null);
+    if (r?.row == null) return;
+    ps.body = r.row.body;
+    ps.guildTag = r.guild?.tag ?? '';
   }
 
   // ─── messaging ──────────────────────────────────────────────────────────────
@@ -515,9 +631,25 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
           return this.onChallengeReply(client, data);
         case 'handoverAck':
           return this.onHandoverAck(client, data);
+        case 'tradeRequest':
+          return this.onTrade(client, this.tradeRequestGuard(client) ?? this.trades.request(client.userData!.playerId, (data as ClientPayload<'tradeRequest'>).targetId));
+        case 'tradeReply': {
+          const m = data as ClientPayload<'tradeReply'>;
+          return this.onTrade(client, this.trades.reply(client.userData!.playerId, m.tradeId, m.accept));
+        }
+        case 'tradeOffer': {
+          const m = data as ClientPayload<'tradeOffer'>;
+          return this.trades.offer(client.userData!.playerId, m.tradeId, m.creatureIds, m.money).then((e) => this.onTrade(client, e));
+        }
+        case 'tradeConfirm': {
+          const m = data as ClientPayload<'tradeConfirm'>;
+          return this.trades.confirm(client.userData!.playerId, m.tradeId, m.offerHash).then((e) => this.onTrade(client, e));
+        }
+        case 'tradeCancel':
+          return this.onTrade(client, this.trades.cancel(client.userData!.playerId, (data as ClientPayload<'tradeCancel'>).tradeId));
         default:
-          // trades (§30.8.3) and raids (§30.4.7) are part 2 — seam: a clear refusal, no state change
-          this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'unavailable' });
+          // raids (§30.4.7) are wired below when the zone has a hotspot; otherwise a clear refusal, no state change
+          return this.onRaidMessage(client, type, data);
       }
     };
     try {
@@ -647,7 +779,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     switch (target.kind) {
       case 'npc': {
         // plain conversation: nothing over the wire, except talkTo quest progress
-        const touched = await deps.repos.db.transaction((t) => advanceQuests(t, deps.repos, ud.playerId, [{ kind: 'talkTo', npcId: target.npc.id }]));
+        const touched = await deps.repos.db.transaction((t) => advanceQuests(t, deps.repos, ud.playerId, [{ kind: 'talkTo', npcId: target.npc.id }], this.now()));
         if (touched.length > 0) this.sendMsg(client, progressionOnly({ questProgress: touched }));
         return;
       }
@@ -833,6 +965,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     summary.z = session.z;
     for (const seat of session.seats) {
       if (seat.playerId === null) continue;
+      // §30.8.3: entering a battle cancels the player's trades (pending requests included)
+      this.trades.cancelFor(seat.playerId);
       summary.participants.push(seat.playerId);
       const ps = this.state.players.get(seat.playerId);
       if (ps !== undefined) {
@@ -841,7 +975,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       }
       const c = this.clientOf(seat.playerId);
       if (c?.userData !== undefined) c.userData.battleId = session.id;
-      this.deps.presenceStore.setBattle(seat.playerId, session.id);
+      this.deps.presenceMirror.setBattle(seat.playerId, session.id);
     }
     this.state.battles.set(session.id, summary);
     this.metrics.battles = this.battles.size;
@@ -855,7 +989,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       if (ps !== undefined) ps.inBattle = false;
       const c = this.clientOf(seat.playerId);
       if (c?.userData !== undefined && (c.userData.battleId === session.id || c.userData.battleId === 'pending')) c.userData.battleId = null;
-      this.deps.presenceStore.setBattle(seat.playerId, null);
+      this.deps.presenceMirror.setBattle(seat.playerId, null);
     }
     if (session.spawnId !== null && this.spawns !== null) {
       const release =
@@ -869,10 +1003,173 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.metrics.battles = this.battles.size;
   }
 
+  // ─── trades (§30.8.3) ───────────────────────────────────────────────────────
+
+  private tradeRequestGuard(client: ZoneClient): { code: 'busy'; detail: string } | null {
+    return client.userData!.battleId !== null ? { code: 'busy', detail: 'inBattle' } : null;
+  }
+
+  private onTrade(client: ZoneClient, err: { readonly code: 'notFound' | 'notAllowed' | 'busy'; readonly detail: string | null } | null): void {
+    if (err !== null && client.userData !== undefined) this.sendMsg(client, { type: 'error', code: err.code, detail: err.detail });
+  }
+
+  // ─── raids (§30.4.7, §30.9.2) ───────────────────────────────────────────────
+
+  /** raid* messages; an id other than the open raid's (or no raid) → notFound, like a foreign battle id. */
+  protected async onRaidMessage(client: ZoneClient, type: ClientMessageType, data: unknown): Promise<void> {
+    const ud = client.userData!;
+    const raid = this.raid;
+    const m = data as { raidId: string };
+    const reply = (e: { readonly code: 'notFound' | 'notAllowed' | 'busy' | 'internal'; readonly detail: string | null } | null): void => {
+      if (e !== null && client.userData !== undefined) this.sendMsg(client, { type: 'error', code: e.code, detail: e.detail });
+    };
+    if (raid === null || m.raidId !== raid.id) return reply({ code: 'notFound', detail: null });
+    switch (type) {
+      case 'raidJoin': {
+        const ps = this.state.players.get(ud.playerId);
+        if (ps === undefined) return;
+        if (ud.battleId !== null) return reply({ code: 'busy', detail: 'inBattle' });
+        if (ud.tradeId !== null) return reply({ code: 'busy', detail: 'inTrade' });
+        const h = raid.session.hotspot;
+        if (Math.hypot(ps.x - h.x, ps.z - h.z) > RAID_JOIN_RANGE_M) return reply({ code: 'notAllowed', detail: 'tooFar' });
+        const err = await raid.join(ud.playerId, this.now());
+        if (err === null) this.sendMsg(client, { type: 'toast', level: 'success', text: 'You joined the raid' });
+        return reply(err);
+      }
+      case 'raidReady':
+        return reply(raid.ready(ud.playerId));
+      case 'raidAction': {
+        const a = data as ClientPayload<'raidAction'>;
+        return reply(raid.action(ud.playerId, a.round, a.action));
+      }
+      case 'raidCatch':
+        return reply(await raid.catchAttempt(ud.playerId, (data as ClientPayload<'raidCatch'>).orb));
+      case 'raidLeave':
+        if (!raid.isParticipant(ud.playerId)) return reply({ code: 'notFound', detail: null });
+        raid.leave(ud.playerId);
+        return;
+      default:
+        return reply({ code: 'notAllowed', detail: 'unavailable' });
+    }
+  }
+
+  /** Opens a raid at `h` (the scheduler, after winning the election; tests call it directly). */
+  openRaid(h: RaidHotspot, now: number): RaidRunner {
+    const session = new RaidSession(h, this.worldRng.fork(), this.deps.content, now, TERRAIN_BY_BIOME[this.zone.biome]);
+    const runner = new RaidRunner(session, {
+      repos: this.deps.repos,
+      content: this.deps.content,
+      clock: this.deps.clock,
+      log: this.deps.log.child({ roomId: this.roomId, zoneId: this.zone.id, raidId: session.id }),
+      zone: this.zone,
+      host: {
+        send: (playerId, msg) => this.sendTo(playerId, msg),
+        setFighting: (playerId, raidId) => this.setRaidFighting(playerId, raidId),
+        onInventory: (playerId, inv) => {
+          const c = this.clientOf(playerId);
+          if (c?.userData !== undefined) c.userData.inventory = { ...inv };
+        },
+      },
+    });
+    this.raid = runner;
+    const rs = new RaidState();
+    this.state.raid = rs;
+    this.mirrorRaid(now);
+    this.metrics.raid = true;
+    return runner;
+  }
+
+  /** Fight start / end for one participant: frozen like a battle, REST party mutations refused (presence battle). */
+  private setRaidFighting(playerId: string, raidId: string | null): void {
+    const c = this.clientOf(playerId);
+    const ps = this.state.players.get(playerId);
+    if (raidId !== null) {
+      this.trades.cancelFor(playerId);
+      if (c?.userData !== undefined && c.userData.battleId === null) c.userData.battleId = raidId;
+      if (ps !== undefined) {
+        ps.inBattle = true;
+        ps.moving = false;
+      }
+      this.deps.presenceMirror.setBattle(playerId, raidId);
+      return;
+    }
+    const current = this.raid?.id;
+    if (c?.userData !== undefined && c.userData.battleId === current) c.userData.battleId = null;
+    if (ps !== undefined && this.battles.ofPlayer(playerId) === null) ps.inBattle = false;
+    if (this.deps.presenceStore.battleOf(playerId) === current) this.deps.presenceMirror.setBattle(playerId, null);
+  }
+
+  /** Copies the session's view into the broadcast `state.raid` (only changed fields are written). */
+  private mirrorRaid(now: number): void {
+    const raid = this.raid;
+    const rs = this.state.raid;
+    if (raid === null || rs === null) return;
+    const v = raid.session.toState(now);
+    if (rs.id !== v.id) rs.id = v.id;
+    if (rs.bossSpecies !== v.bossSpecies) rs.bossSpecies = v.bossSpecies;
+    if (rs.bossLevel !== v.bossLevel) rs.bossLevel = v.bossLevel;
+    if (Math.abs(rs.hpPct - v.hpPct) > 1e-7) rs.hpPct = v.hpPct;
+    if (rs.phase !== v.phase) rs.phase = v.phase;
+    // whole seconds: the countdown patches once a second, not every tick
+    const ends = Math.ceil(v.roundEndsInMs / 1000) * 1000;
+    if (rs.roundEndsInMs !== Math.min(0xffff, ends)) rs.roundEndsInMs = Math.min(0xffff, ends);
+    if (rs.x !== v.x) rs.x = v.x;
+    if (rs.z !== v.z) rs.z = v.z;
+    for (const [pid, dmg] of Object.entries(v.damageBoard)) if (rs.damageBoard.get(pid) !== dmg) rs.damageBoard.set(pid, dmg);
+    for (const pid of [...rs.damageBoard.keys()]) if (!(pid in v.damageBoard)) rs.damageBoard.delete(pid);
+  }
+
+  /** §30.2.8 step 7 (raid half) + §30.9.2 hotspot scheduling (shard 0, once a second). */
+  raidPass(now: number): void {
+    if (now >= this.raidCheckAt) {
+      this.raidCheckAt = now + 1000;
+      this.scheduleRaids(now);
+    }
+    const raid = this.raid;
+    if (raid === null) return;
+    if (raid.session.phase === 0 && !hotspotOpen(raid.session.hotspot, now)) raid.close(now); // window ended, no fight
+    if (raid.finished(now)) {
+      this.raid = null;
+      this.state.raid = null;
+      this.metrics.raid = false;
+      return;
+    }
+    raid.tick(now).catch((e: unknown) => this.deps.log.error({ err: e }, 'raid tick failed'));
+    this.mirrorRaid(now);
+  }
+
+  /** Election: `ewa:raid:<hotspotId>:<dayKey>` — the first setex after a get miss wins; a lost race yields. */
+  private scheduleRaids(now: number): void {
+    if (this.raid !== null || this.metadata.shard !== 0) return;
+    for (const h of hotspotsFor(this.zone.id)) {
+      if (!hotspotOpen(h, now)) continue;
+      const window = `${h.id}:${hotspotDayKey(h, now)}`;
+      if (this.raidWindows.has(window)) continue;
+      this.raidWindows.add(window);
+      void this.electRaid(h, window, now);
+      return;
+    }
+  }
+
+  private async electRaid(h: RaidHotspot, window: string, now: number): Promise<void> {
+    const key = `ewa:raid:${window}`;
+    const cur = await this.presence.get(key);
+    if (cur === null || cur === undefined) {
+      await this.presence.setex(key, this.roomId, 3600);
+      if ((await this.presence.get(key)) !== this.roomId) return;
+    } else if (cur !== this.roomId) {
+      return;
+    }
+    if (this.raid === null) this.openRaid(h, now);
+  }
+
   // ─── challenges (§30.4.5) ───────────────────────────────────────────────────
 
-  /** Step 1 conditions, re-checked on accept: both present, within AOI and 12 m, not in battle/trade, not self. */
-  private challengeable(fromId: string, toId: string): boolean {
+  /**
+   * Step 1 conditions, re-checked on accept: both present, within AOI and 12 m, not in battle/trade, not self.
+   * `ignoreTrades` — the trade flow's own check (a requester is already marked as trading while its request is pending).
+   */
+  private challengeable(fromId: string, toId: string, ignoreTrades = false): boolean {
     if (fromId === toId) return false;
     const a = this.state.players.get(fromId);
     const b = this.state.players.get(toId);
@@ -880,7 +1177,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const cb = this.clientOf(toId);
     if (a === undefined || b === undefined || ca?.userData === undefined || cb?.userData === undefined) return false;
     if (a.inBattle || b.inBattle || ca.userData.battleId !== null || cb.userData.battleId !== null) return false;
-    if (ca.userData.tradeId !== null || cb.userData.tradeId !== null) return false;
+    if (!ignoreTrades && (ca.userData.tradeId !== null || cb.userData.tradeId !== null)) return false;
     const cell = ca.userData.cell ?? cellOf(a.x, a.z);
     if (!this.aoi.isNear(cell, toId)) return false;
     return Math.hypot(a.x - b.x, a.z - b.z) <= CHALLENGE_RANGE_M;
@@ -990,10 +1287,11 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const ps = this.state.players.get(ud.playerId);
     const x = ps?.x ?? arrival.x;
     const z = ps?.z ?? arrival.z;
-    await deps.repos.db.transaction(async (tx) => {
+    const touched = await deps.repos.db.transaction(async (tx) => {
       await deps.repos.players.setPosition(tx, ud.playerId, this.zone.id, x, z, ps?.angle ?? 0);
-      await advanceQuests(tx, deps.repos, ud.playerId, [{ kind: 'reachZone', zoneId: this.zone.id }]);
+      return advanceQuests(tx, deps.repos, ud.playerId, [{ kind: 'reachZone', zoneId: this.zone.id }], this.now());
     });
+    if (touched.length > 0) this.sendMsg(client, progressionOnly({ questProgress: touched }));
     this.presence.publish(`ewa:handover:done:${arrival.fromRoomId}`, { playerId: ud.playerId });
     this.presence.del(`ewa:handover:${ud.playerId}`);
   }
@@ -1046,7 +1344,9 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.handoverPass(now);
     // 7. battles (deadlines, auto-actions, resolution, persistence) — async, guarded by `resolving`
     this.battles.tick(now).catch((e: unknown) => this.deps.log.error({ err: e }, 'battles.tick failed'));
-    // 8. trades — part 2
+    this.raidPass(now);
+    // 8. trades — 120 s inactivity cancel
+    this.trades.tick(now);
     // 9. challenges 45 s TTL
     for (const c of this.challenges.sweep(now)) this.sendTo(c.fromId, { type: 'challengeResult', targetId: c.toId, result: 'expired' });
     // 10. metrics

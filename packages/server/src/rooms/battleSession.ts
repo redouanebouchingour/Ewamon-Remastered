@@ -25,7 +25,7 @@ import {
 } from '@ewa/core';
 import type { Action, BattleEvent, BattleFormat, BattleOutcome, BattleState, ContentIndex, CreatureInstance, Rng, RngState, Side, Terrain } from '@ewa/core';
 import type { QuestProgressEntry, RewardsSummary, ServerMessage } from '@ewa/protocol';
-import type { Db, Repos } from '@ewa/persist';
+import type { BattleStartSnapshot, Db, Repos } from '@ewa/persist';
 import type { Logger } from '../log';
 import type { RoomMetrics } from '../metrics';
 import { isPersistedId, newCreature, persistableAfterBattle, withSyntheticId } from '../game/creatures';
@@ -84,6 +84,8 @@ export interface BattleSession {
   readonly rematch: boolean;
   /** the LegendaryStatic flag to set on win/catch */
   readonly staticFlag: string | null;
+  /** createBattle's input minus seed, deep-copied before the call — battle_history.start (P6, DB-only replay) */
+  readonly start: BattleStartSnapshot;
 }
 
 export interface BattleHost {
@@ -114,7 +116,7 @@ export interface PlayerSeat {
 export type StartResult = { readonly ok: true; readonly session: BattleSession } | { readonly ok: false; readonly code: 'notAllowed' | 'busy' | 'internal'; readonly detail: string };
 export type ActionResult = null | { readonly code: 'notFound' | 'notAllowed' | 'busy'; readonly detail: string | null };
 
-const TERRAIN_BY_BIOME: Readonly<Record<ZoneDef['biome'], Terrain>> = {
+export const TERRAIN_BY_BIOME: Readonly<Record<ZoneDef['biome'], Terrain>> = {
   grove: 'grove',
   cinder: 'cinder',
   salt: 'salt',
@@ -276,30 +278,44 @@ export class BattleCoordinator {
   }
 
   /** Reads party + inventory under the player lock and marks the opposing lead seen — the start transaction. */
-  private async loadPlayers(ids: readonly string[], seenSpecies: string | null): Promise<Map<string, { party: CreatureInstance[]; inventory: Record<string, number> }>> {
+  private async loadPlayers(
+    ids: readonly string[],
+    seenSpecies: string | null,
+  ): Promise<Map<string, { party: CreatureInstance[]; inventory: Record<string, number>; questProgress: QuestProgressEntry[] }>> {
     const { repos, clock } = this.deps;
-    const out = new Map<string, { party: CreatureInstance[]; inventory: Record<string, number> }>();
+    const out = new Map<string, { party: CreatureInstance[]; inventory: Record<string, number>; questProgress: QuestProgressEntry[] }>();
     await repos.db.transaction(async (tx) => {
       await repos.players.lockMany(tx, ids);
       for (const id of [...ids].sort()) {
         const party = await repos.creatures.party(tx, id);
         const inventory = await repos.inventory.all(tx, id);
-        out.set(id, { party, inventory });
-        if (seenSpecies !== null && party.some((c) => c.hp > 0)) await repos.progress.markSeen(tx, id, seenSpecies, new Date(clock()));
+        let questProgress: QuestProgressEntry[] = [];
+        if (seenSpecies !== null && party.some((c) => c.hp > 0) && (await repos.progress.markSeen(tx, id, seenSpecies, new Date(clock())))) {
+          questProgress = await advanceQuests(tx, repos, id, [{ kind: 'seen', species: seenSpecies }], clock());
+        }
+        out.set(id, { party, inventory, questProgress });
       }
     });
     return out;
   }
 
+  /** Quest / mission progress from the start transaction (a newly seen lead), sent after battleStart. */
+  private sendStartProgress(loaded: Map<string, { questProgress: QuestProgressEntry[] }>): void {
+    for (const [pid, l] of loaded) if (l.questProgress.length > 0) this.deps.host.send(pid, progressionOnly({ questProgress: l.questProgress }));
+  }
+
   private open(
-    base: Omit<BattleSession, 'state' | 'seed' | 'actionsLog' | 'pending' | 'deadlineAt' | 'resolving' | 'startedAt' | 'autoActions' | 'faults'>,
+    base: Omit<BattleSession, 'state' | 'seed' | 'actionsLog' | 'pending' | 'deadlineAt' | 'resolving' | 'startedAt' | 'autoActions' | 'faults' | 'start'>,
     sides: readonly [Omit<Side, 'mustSwitch' | 'consumedItems'>, Omit<Side, 'mustSwitch' | 'consumedItems'>],
     seed: RngState,
   ): { session: BattleSession; events: readonly BattleEvent[] } {
     const now = this.deps.clock();
-    const { state, events } = createBattle({ id: base.id, format: base.format, zoneId: base.zoneId, terrain: TERRAIN_BY_BIOME[this.deps.zone.biome], seed, sides }, this.deps.content);
+    const terrain = TERRAIN_BY_BIOME[this.deps.zone.biome];
+    const start = JSON.parse(JSON.stringify({ zoneId: base.zoneId, terrain, sides })) as BattleStartSnapshot;
+    const { state, events } = createBattle({ id: base.id, format: base.format, zoneId: base.zoneId, terrain, seed, sides }, this.deps.content);
     const session: BattleSession = {
       ...base,
+      start,
       state,
       seed,
       actionsLog: [],
@@ -352,6 +368,7 @@ export class BattleCoordinator {
       this.rng.fork().snapshot(),
     );
     this.deps.host.send(p.playerId, progressionOnly({ dexSeen: [spawn.speciesId] }));
+    this.sendStartProgress(loaded);
     return { ok: true, session };
   }
 
@@ -382,6 +399,7 @@ export class BattleCoordinator {
       [side0, side1],
       this.rng.fork().snapshot(),
     );
+    this.sendStartProgress(loaded);
     return { ok: true, session };
   }
 
@@ -432,6 +450,7 @@ export class BattleCoordinator {
       [side0, side1],
       this.rng.fork().snapshot(),
     );
+    this.sendStartProgress(loaded);
     return { ok: true, session };
   }
 
@@ -675,7 +694,7 @@ export class BattleCoordinator {
           if (ev.t !== 'switchIn' || ev.who.side !== other) continue;
           const sp = next.sides[other].party[ev.who.slot]?.creature.speciesId;
           if (sp === undefined || d.dexSeen.includes(sp)) continue;
-          await repos.progress.markSeen(tx, pid, sp, now);
+          if (await repos.progress.markSeen(tx, pid, sp, now)) questEvents.push({ kind: 'seen', species: sp });
           d.dexSeen.push(sp);
         }
 
@@ -686,6 +705,7 @@ export class BattleCoordinator {
         const flagsToSet: string[] = [];
         const outcome = next.ended;
         if (outcome !== null) {
+          questEvents.push({ kind: 'battle', format: session.format });
           const won = side === 0 ? side0Won(outcome) : outcome.winner === 1;
           if (session.format === 'wild') {
             if (won) trainerExpGain += TRAINER_EXP.wildWin;
@@ -745,7 +765,7 @@ export class BattleCoordinator {
           d.trainerExp = r.trainerExp;
           d.trainerLevel = r.trainerLevel;
         }
-        if (questEvents.length > 0) d.questProgress.push(...(await advanceQuests(tx, repos, pid, questEvents)));
+        if (questEvents.length > 0) d.questProgress.push(...(await advanceQuests(tx, repos, pid, questEvents, nowMs)));
         if (badge !== null) d.badges = await repos.progress.badges(tx, pid);
         if (outcome !== null) {
           const rewards: RewardsSummary = { money, items: {}, trainerExp: trainerExpGain, ratingDelta, badge };
@@ -761,6 +781,8 @@ export class BattleCoordinator {
             rewards,
             seed: session.seed,
             actions: actionsLog,
+            start: session.start,
+            finalDigest: digestBattleState(next),
             happenedAt: now,
           });
           await repos.audit.write(tx, { actorId: pid, action: 'battle.end', subject: session.id, detail: { format: session.format, result: resultFor(outcome, side), turns: next.turn } }, now);

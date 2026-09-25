@@ -39,6 +39,15 @@ function shotEndpoint(): Plugin {
 
 export default defineConfig({
   root: here('./sandbox'),
+  // real-zone mode (`?zone=mirevale`): the sandbox imports the client's pure content → render adapter
+  resolve: {
+    alias: {
+      '@ewa/core': here('../core/src/index.ts'),
+      '@ewa/content': here('../content/src/index.ts'),
+      '@ewa/render': here('./src/index.ts'),
+      '@ewa/client-adapter': here('../client/src/scene/zoneSpecFor.ts'),
+    },
+  },
   publicDir: here('../client/public'),
   plugins: [shotEndpoint()],
   server: { port: 5180, strictPort: true, fs: { allow: [here('..'), here('../..')] } },

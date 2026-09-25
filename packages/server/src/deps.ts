@@ -7,6 +7,7 @@ import type { Db, Repos } from '@ewa/persist';
 import type { Env } from './env';
 import type { Logger } from './log';
 import type { MetricsRegistry } from './metrics';
+import type { PresenceMirror } from './rooms/presenceMirror';
 import type { PresenceStore } from './rooms/presenceStore';
 
 export interface ServerDeps {
@@ -34,8 +35,16 @@ export interface BanCache {
   refresh(): Promise<void>;
 }
 
+/** Cross-room / cross-process events (Colyseus `presence.publish`): ewa:kick, ewa:dm:<id>, ewa:profile, ewa:liveops, ewa:teleport. */
+export interface EventBus {
+  publish(topic: string, data: unknown): void;
+}
+
 export interface Runtime {
   readonly presenceStore: PresenceStore;
+  /** the store + the `ewa:presence:<id>` mirror (§30.7.4 distributed half) */
+  readonly presenceMirror: PresenceMirror;
+  readonly bus: EventBus;
   readonly metrics: MetricsRegistry;
   readonly bans: BanCache;
   /** verifies an access JWT with the REST secret/iss/aud; throws on invalid/expired */

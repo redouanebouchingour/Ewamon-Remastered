@@ -15,17 +15,36 @@ import { WebSocketTransport } from '@colyseus/ws-transport';
 import { fnv1a32 } from '@ewa/core';
 import type { FastifyInstance } from 'fastify';
 import type { AccessClaims, BanCache, ServerDeps } from './deps';
+import { startMarketExpiry } from './jobs/marketExpiry';
+import { startLiveOpsRollover } from './liveops/rollover';
 import { MetricsRegistry } from './metrics';
 import { buildRest } from './rest/app';
 import type { RestDeps } from './rest/http';
 import { localRateLimiter, presenceRateLimiter } from './rest/rateLimit';
+import { PresenceMirror } from './rooms/presenceMirror';
 import { PresenceStore } from './rooms/presenceStore';
 import { ZONE_ROOM } from './rooms/matchmaking';
 import { bindZoneRoom } from './rooms/ZoneRoom';
 
 export const MAX_SOCKETS_PER_IP = 8;
+
+/** 127.0.0.0/8, ::1 and their IPv4-mapped forms. */
+export function isLoopback(ip: string): boolean {
+  const v4 = ip.startsWith('::ffff:') ? ip.slice(7) : ip;
+  return v4 === '::1' || v4.startsWith('127.');
+}
+
+/**
+ * The per-IP socket cap (§30.1.1 beforeUpgrade). Loopback is exempt outside production so the netcode harness
+ * (200 bots from 127.0.0.1, §30.10.3) can run; production never exempts anything (P5).
+ */
+export function socketCapApplies(env: { readonly NODE_ENV: string }, ip: string): boolean {
+  if (ip === '') return false;
+  return env.NODE_ENV === 'production' || !isLoopback(ip);
+}
 export const BAN_REFRESH_MS = 30_000;
 export const RATE_SWEEP_MS = 60_000;
+export const PRESENCE_SWEEP_MS = 30_000;
 
 export interface Booted {
   readonly colyseus: Server;
@@ -69,6 +88,7 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
   }
 
   const presenceStore = new PresenceStore();
+  const presenceMirror = new PresenceMirror(presenceStore, presence);
   const bans = createBanCache(deps);
   await bans.refresh();
   const local = localRateLimiter(deps.clock);
@@ -78,6 +98,8 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
   const runtime: RestDeps = {
     ...deps,
     presenceStore,
+    presenceMirror,
+    bus: { publish: (topic, data) => void presence.publish(topic, data) },
     metrics: new MetricsRegistry(),
     bans,
     limiter,
@@ -103,7 +125,7 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
       pingMaxRetries: 3,
       beforeUpgrade: (_request, context) => {
         const ip = context.ip ?? '';
-        if (ip !== '' && presenceStore.ipCount(ip) >= MAX_SOCKETS_PER_IP) return new Response(null, { status: 429 });
+        if (socketCapApplies(env, ip) && presenceStore.ipCount(ip) >= MAX_SOCKETS_PER_IP) return new Response(null, { status: 429 });
         return undefined;
       },
     }),
@@ -124,14 +146,10 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
   const timers: NodeJS.Timeout[] = [
     setInterval(() => void bans.refresh().catch((e: unknown) => log.warn({ err: e }, 'ban cache refresh failed')), BAN_REFRESH_MS),
     setInterval(() => local.sweep(), RATE_SWEEP_MS),
-    setInterval(() => {
-      for (const id of presenceStore.playerIds()) {
-        const e = presenceStore.get(id);
-        if (e !== null) void presence.setex(`ewa:presence:${id}`, JSON.stringify({ roomId: e.roomId, zoneId: e.zoneId, shard: e.shard }), 90);
-      }
-    }, 30_000),
+    setInterval(() => presenceMirror.sweep(), PRESENCE_SWEEP_MS),
   ];
   for (const t of timers) t.unref();
+  const jobs: { stop(): void }[] = [startMarketExpiry(deps), startLiveOpsRollover({ ...deps, bus: runtime.bus })];
   log.info({ ws: wsPort, rest: restPort, db: env.DATABASE_URL !== undefined ? 'postgres' : 'pglite' }, 'ewa server listening');
 
   let stopped = false;
@@ -145,6 +163,7 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
       stopped = true;
       // 7. jobs → rest.close() → matchMaker graceful shutdown
       for (const t of timers) clearInterval(t);
+      for (const j of jobs) j.stop();
       await rest.close();
       await colyseus.gracefullyShutdown(false);
     },

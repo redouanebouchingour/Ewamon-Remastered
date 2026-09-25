@@ -35,7 +35,7 @@ export interface BeatCompletion {
 export async function completeBeatInTx(tx: Tx, repos: Pick<Repos, 'progress' | 'audit'>, playerId: string, beat: StoryBeat, now: Date): Promise<BeatCompletion> {
   const flags = flagsAfterBeat(beat);
   await repos.progress.setFlags(tx, playerId, flags, now);
-  const questProgress = await advanceQuests(tx, repos, playerId, [{ kind: 'flags', flags }]);
+  const questProgress = await advanceQuests(tx, repos, playerId, [{ kind: 'flags', flags }], now.getTime());
   await repos.audit.write(tx, { actorId: playerId, action: 'story.beat', subject: beat.id, detail: { beatId: beat.id } }, now);
   return { flags, questProgress };
 }

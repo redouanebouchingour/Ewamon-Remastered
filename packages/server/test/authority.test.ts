@@ -6,10 +6,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { matchMaker } from '@colyseus/core';
 import { getHeightfield, nearestWalkable, zone } from '@ewa/content';
+import { CLOSE_CODES } from '@ewa/protocol';
 import type { ZoneId } from '@ewa/content';
 import type { ZoneRoom } from '../src/rooms/ZoneRoom';
 import { pickZoneRoom, reserveZoneSeat } from '../src/rooms/matchmaking';
-import { api, enter, joinSeat, ofType, placePlayer, rawQuery, register, sleep, snapshot, startServer, waitFor } from './helpers';
+import { START_EXP, api, enter, joinSeat, ofType, placePlayer, rawQuery, register, sleep, snapshot, startServer, waitFor } from './helpers';
 import type { Account, Joined, TestServer } from './helpers';
 
 let s: TestServer;
@@ -117,11 +118,11 @@ describe('room messages (§30.5.1)', () => {
     await j.room.leave(true);
   }, 60_000);
 
-  it('A14: a second socket with the same JWT → one PlayerState; the older socket is closed with 4001', async () => {
+  it('A14: a second socket with the same JWT → one PlayerState; the older socket is closed with CLOSE_CODES.replaced (4101, P4)', async () => {
     const { acc, j } = await inZone('mirevale', 0, 6);
     const j2 = await enter(s, acc, 'mirevale');
     await waitFor(() => j.left.code !== null, 5000);
-    expect(j.left.code).toBe(4001);
+    expect(j.left.code).toBe(CLOSE_CODES.replaced);
     expect(ofType(j.msgs, 'error').some((e) => e.code === 'busy' && e.detail === 'replaced')).toBe(true);
     const room = roomOf(j2);
     expect([...room.state.players.keys()].filter((k) => k === acc.id)).toHaveLength(1);
@@ -220,7 +221,7 @@ describe('room messages (§30.5.1)', () => {
     await waitFor(() => !jb.room.state.spawns.has(target.id), 5000);
     // fleeing wrote nothing but dex-seen + history (no exp, no money)
     const [row] = await rawQuery(s.db, 'select trainer_exp, money from players where id = $1', [b.id]);
-    expect(Number(row!['trainer_exp'])).toBe(0);
+    expect(Number(row!['trainer_exp'])).toBe(START_EXP);
     expect(bsnapBefore).not.toBe(''); // snapshot taken
     await a.j.room.leave(true);
     await jb.room.leave(true);

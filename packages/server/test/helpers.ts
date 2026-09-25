@@ -10,7 +10,8 @@ import { createDb, createRepos, runMigrations } from '@ewa/persist';
 import type { AnyDb, Db, Repos } from '@ewa/persist';
 import { ZoneState } from '@ewa/protocol';
 import type { SeatReservation, ServerMessage } from '@ewa/protocol';
-import { canonicalJson } from '@ewa/core';
+import { TRAINER_EXP, canonicalJson } from '@ewa/core';
+import { streakReward } from '../src/liveops/missions';
 import { testEnv } from '../src/env';
 import type { Env } from '../src/env';
 import { silentLogger } from '../src/log';
@@ -33,8 +34,20 @@ if (originalSend !== undefined) {
 
 export const content = createContentIndex();
 
-export async function openRepos(): Promise<{ db: AnyDb; repos: Repos & { readonly db: Db } }> {
-  const db = await createDb();
+/**
+ * What a freshly registered account holds: the schema default 3 000 plus day 1 of the login streak, which
+ * registration grants (§30.9.1, IMPLEMENTATION-NOTES Q13), and the dailyLogin trainer exp.
+ */
+export const START_MONEY = 3_000 + streakReward(1).money;
+export const START_EXP = TRAINER_EXP.dailyLogin;
+/** story_flags minus the login-streak bookkeeping (`streak:<n>`, `streak:last:<day>`). */
+export function storyOnly(flags: readonly unknown[]): string[] {
+  return flags.map(String).filter((f) => !f.startsWith('streak:'));
+}
+
+/** PGlite in memory by default; node-postgres when `databaseUrl` is given (market-concurrency.test.ts). */
+export async function openRepos(databaseUrl?: string): Promise<{ db: AnyDb; repos: Repos & { readonly db: Db } }> {
+  const db = await createDb(databaseUrl !== undefined ? { url: databaseUrl, poolMax: 32 } : {});
   await runMigrations(db);
   return { db, repos: createRepos(db) };
 }
@@ -54,8 +67,8 @@ export interface TestServer {
   stop(): Promise<void>;
 }
 
-export async function startServer(envOverrides: Partial<Env> = {}): Promise<TestServer> {
-  const { db, repos } = await openRepos();
+export async function startServer(envOverrides: Partial<Env> = {}, opts: { readonly databaseUrl?: string } = {}): Promise<TestServer> {
+  const { db, repos } = await openRepos(opts.databaseUrl);
   const time = offsetClock();
   const env = testEnv({ PORT_WS: 0, PORT_REST: 0, ...envOverrides });
   const booted = await boot({ env, repos, content, log: silentLogger(), clock: time.clock });

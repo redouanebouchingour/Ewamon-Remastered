@@ -11,6 +11,21 @@ import { auditRepo } from './audit';
 import { creatureRepo } from './creatures';
 import { playerRepo } from './players';
 
+/** One listing closed by the expiry job (server §30.8.2 job: the caller marks the buyer's dex in the same tx). */
+export interface ClosedListing {
+  readonly id: string;
+  readonly sold: boolean;
+  readonly sellerId: string;
+  /** the high bidder when sold */
+  readonly buyerId: string | null;
+  readonly creatureId: string;
+  readonly speciesId: string;
+  readonly variantKey: VariantKey;
+  readonly isAlpha: boolean;
+  /** the sale price when sold */
+  readonly price: number | null;
+}
+
 export interface NewListing {
   readonly sellerId: string;
   readonly creatureId: string;
@@ -235,6 +250,12 @@ export const marketRepo = {
    * the seller's box, status expired. Returns how many listings were closed.
    */
   async closeExpired(tx: Tx, now: Date, limit: number): Promise<number> {
+    return (await marketRepo.closeExpiredDetailed(tx, now, limit)).length;
+  },
+
+  /** `closeExpired`, returning what each closed listing became (sold → buyer, or returned to the seller). */
+  async closeExpiredDetailed(tx: Tx, now: Date, limit: number): Promise<ClosedListing[]> {
+    const out: ClosedListing[] = [];
     const due = await tx
       .select()
       .from(listings)
@@ -243,17 +264,20 @@ export const marketRepo = {
       .limit(clampInt(limit, 1, 1000))
       .for('update', { skipLocked: true });
     for (const l of due) {
+      const base = { id: l.id, sellerId: l.sellerId, creatureId: l.creatureId, speciesId: l.speciesId, variantKey: l.variantKey as VariantKey, isAlpha: l.isAlpha };
       if (l.currentBidderId !== null && l.currentBid !== null) {
         await playerRepo.lockMany(tx, [l.sellerId, l.currentBidderId]);
         await settleSale(tx, l, l.currentBidderId, l.currentBid, now);
+        out.push({ ...base, sold: true, buyerId: l.currentBidderId, price: l.currentBid });
       } else {
         await playerRepo.lock(tx, l.sellerId);
         await returnToSeller(tx, l);
         await tx.update(listings).set({ status: 'expired', resolvedAt: now }).where(eq(listings.id, l.id));
         await auditRepo.write(tx, { actorId: null, action: 'listing.expired', subject: l.id, detail: { sellerId: l.sellerId } }, now);
+        out.push({ ...base, sold: false, buyerId: null, price: null });
       }
     }
-    return due.length;
+    return out;
   },
 
   /** Where a listed creature currently sits — a diagnostic for tests and admin tooling. */

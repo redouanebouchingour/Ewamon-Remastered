@@ -10,6 +10,7 @@
  */
 import type { Group, PerspectiveCamera, Vector3 } from 'three/webgpu';
 import type { HarvestLevel, LightSource, RenderStats, WeatherKind } from './descriptors.js';
+import type { TerrainCollider } from './terrain/collider.js';
 
 // ---- §10.4.1 descriptors (verbatim) ----------------------------------------------------------------------
 
@@ -89,7 +90,7 @@ export interface ZoneSpec {
   readonly harvestLevel: HarvestLevel;
 }
 
-/** PLACEHOLDER for §10.6.1 `class TerrainCollider` (terrain agent): the structure `ZoneHandle.collider` needs. */
+/** The structure of §10.6.1 `TerrainCollider` (kept for callers typed against part 1; `ZoneHandle.collider` is the class). */
 export interface TerrainColliderLike {
   sample(x: number, z: number): number;
   normal(x: number, z: number, out: Vector3): Vector3;
@@ -102,7 +103,7 @@ export interface TerrainColliderLike {
 export interface ZoneHandle {
   readonly id: string;
   readonly group: Group;                                      // the zone root (Pillar 7: never removed during a battle)
-  readonly collider: TerrainColliderLike;                     // §10.6 (placeholder type, see TerrainColliderLike)
+  readonly collider: TerrainCollider;                         // §10.6
   readonly bounds: { readonly minX: number; readonly maxX: number; readonly minZ: number; readonly maxZ: number };
   readonly geometryDigest: string;                            // fnv1a32 over every geometry's position attribute bytes, in build order, 8 hex chars (§10.5.9)
   stats(): RenderStats;
@@ -175,8 +176,9 @@ export interface ActorPool {
 
 // ---- §10.9 HudLayer (verbatim interface; HudModel placeholder) -----------------------------------------------
 
-/** PLACEHOLDER: the HUD agent mirrors 20-client.md §20.6 `HudModel` here (render may not import the client). */
-export type HudModel = Readonly<Record<string, unknown>>;
+/** 20-client.md §20.6 `HudModel`, mirrored verbatim in `hud/layer.ts` (render may not import the client). */
+export type { HudModel } from './hud/layer.js';
+import type { HudModel } from './hud/layer.js';
 
 export interface HudLayer {
   /** Accepts exactly the HudModel field names of 20-client.md §20.6; unknown keys throw in dev. Marks the touched regions dirty. */

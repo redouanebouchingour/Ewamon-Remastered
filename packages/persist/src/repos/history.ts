@@ -3,7 +3,7 @@ import type { Tx } from '../db';
 import { fail } from '../errors';
 import { battleHistory, creatureInstances, tradeHistory } from '../schema/index';
 import type { BattleHistoryRow, TradeHistoryRow } from '../schema/index';
-import type { Action, BattleFormat, BattleResult, RewardsSummary, RngState, TradedCreatureSummary } from '../types';
+import type { Action, BattleFormat, BattleResult, BattleStartSnapshot, RewardsSummary, RngState, TradedCreatureSummary } from '../types';
 import { clampInt } from '../util';
 import { auditRepo } from './audit';
 import { creatureRepo } from './creatures';
@@ -20,6 +20,10 @@ export interface NewBattleHistory {
   readonly rewards: RewardsSummary;
   readonly seed: RngState;
   readonly actions: [Action | null, Action | null][];
+  /** the starting sides for a database-only replay (optional so older callers keep compiling) */
+  readonly start?: BattleStartSnapshot | null;
+  /** digestBattleState of the final state */
+  readonly finalDigest?: string | null;
   readonly happenedAt: Date;
 }
 
@@ -55,6 +59,8 @@ export const historyRepo = {
       rewards: row.rewards,
       seed: row.seed,
       actions: row.actions,
+      start: row.start ?? null,
+      finalDigest: row.finalDigest ?? null,
       happenedAt: row.happenedAt,
     });
   },

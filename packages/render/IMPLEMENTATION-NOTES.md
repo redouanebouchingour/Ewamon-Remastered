@@ -89,3 +89,60 @@ textures and the runtime graph cannot disagree.
 ## Sandbox
 
 `pnpm --filter @ewa/render sandbox` → http://localhost:5180 (Vite, `packages/client/public` as public dir). `window.__ewaSandbox`: `stats()`, `counts()`, `dump()`, `plan()`, `warnings()`, `caps()`, `setTime(hours)`, `setReducedEffects(bool)`, `setHarvest(level)`, `setWeather(kind)`, `capViolations()`, `shot(name, frames?)` (renders at a forced 1280×720 and writes `sandbox/.shots/<name>.jpg` through a dev-only `POST /__shot` endpoint; works while the window is hidden and rAF is paused).
+
+---
+
+# Part 3: creature billboards, camera, battle stage, actors, VFX, HUD (§10.4, §10.7, §10.9)
+
+## Layout
+
+| File | Owns |
+|---|---|
+| `src/sprites/typeColors.ts` | §10.4.6 type colour table (legacy `TYPE_COLORS` verbatim), colourblind-table validation |
+| `src/sprites/tables.ts` | §10.4.3/§10.4.6/§10.4.7 numbers, the 5 variant palettes as uniforms, pose keyframes, bob/hurt math (pure, node-tested) |
+| `src/sprites/atlas.ts` | §10.4.1 `AtlasMap`/`AtlasSet` (verbatim), WebP decode (level 0 + 3 pipeline mips), texture sampler contract, party singles (runtime crops), the refcounted `AtlasCache` |
+| `src/sprites/billboard.ts` | §10.4.2 `SpritePool` (verbatim) → `BillboardPool`, `CreatureBillboard`, the one material graph per atlas (§10.4.5), the shared contact decal (§10.4.7) |
+| `src/sprites/overlayMrt.ts` | MRT outputs for decals and VFX that keep the scene's normal/velocity/mask (P4) |
+| `src/camera/rig.ts` | §10.7.1 constants + §10.7.2 `CameraRig` → `DioramaRig` (spring, dead zone, eases, shots, cues, shake) |
+| `src/camera/battle.ts` | §10.7.4 arena framing constants, `CAMERA_WORK` (verbatim), battle/inspector poses, battler slots |
+| `src/camera/dof.ts` | §10.7.3 `TiltShiftDOF` numbers + CPU mirrors (CoC, off-plane distance) |
+| `src/stage/battleStage.ts` | §10.7.5 `BattleStage` → `Stage` (arena dressing, reserved beacons, battlers, spectators, inspector) |
+| `src/stage/vfx.ts` | §10.7.5 `VFX_IDS` (47) + recipes + the pooled particle system |
+| `src/stage/actors.ts` | §10.7.6 `ActorPool` → `CharacterPool`, §10.7.7 procedural character fallback + the shared `'character'` material |
+| `src/hud/layer.ts` | §10.9 `HudLayer` → `CanvasHudLayer`, the `HudModel` mirror (20-client.md §20.6 verbatim) |
+| `src/stage/wiring.ts` | one part-3 bundle per renderer, `PART3_SUBSYSTEMS` (plugged into `DEFAULT_SUBSYSTEMS`), the per-frame hook, warm-up objects, `part3Of(renderer)` |
+
+Renderer edits (surgical): `DEFAULT_SUBSYSTEMS` camera/stage/hud/actors/hooks/warmup come from `PART3_SUBSYSTEMS` (lazy references: `wiring.ts` imports `renderer.ts`); `FrameHook.update(dtScaled, dtReal)` and `FrameHook.onZone(handle)` (called after `loadZone` resolves; gives the stage/actors the collider); the HUD overlay renders with `outputColorSpace = workingColorSpace` (P1). `contracts.ts` re-exports the real `HudModel`.
+
+## three.js 0.186 corrections vs the SPEC text (part 3)
+
+| # | SPEC says | Installed code says | What the code does |
+|---|---|---|---|
+| P1 | HUD: `gpu.render(hudScene, ortho)` after `pipeline.render()` with `autoClear = false`; `CanvasTexture` `SRGBColorSpace` (§10.9, §10.1.4) | `Renderer.needsFrameBufferTarget` is true whenever `outputColorSpace ≠ workingColorSpace`, so a plain `render()` draws into the intermediate framebuffer target and its output pass copies that (stale) target over the canvas: the post image would be replaced | The host renders the overlay with `outputColorSpace = workingColorSpace` (what `RenderPipeline.render` does); the canvas texture carries raw sRGB bytes (`NoColorSpace`) and composites premultiplied (`CustomBlending` One / OneMinusSrcAlpha), byte-exact browser compositing |
+| P2 | `texture.mipmaps = [level1, level2, level3]` (§10.4.1) | `Textures.getMipLevels` = `mipmaps.length`; `WebGPUTextureUtils.updateTexture` uploads `mipmaps[i]` to level i | `mipmaps = [l0, l1, l2, l3]`, `image = l0`, `generateMipmaps = false` (4 levels, max LOD 3) |
+| P3 | `cameraYaw = atan2(camDir.x, camDir.z)`, camDir = camera forward (§10.4.4) | the SPEC's `yawRot` maps the quad's +Z face onto that direction, i.e. AWAY from the camera; `FrontSide` culls it | yaw from the direction toward the camera: `atan2(−f.x, −f.z)` |
+| P4 | contact decal multiply-blended with `mask.x = 1` (§10.4.7); VFX never write `mask.y` (§10.7.5) | in an MRT pass only `output` uses the material blending; every other attachment defaults to `NoBlending` (`MRTNode.getBlendMode`), so a transparent decal/particle overwrites normal/velocity/mask under it | `overlayMrt()`: normal/velocity blend with factors (0, 1) (kept), the decal's mask blends `max` with (1, 0), VFX keep the mask. `MultiplyBlending` requires `premultipliedAlpha = true` on WebGPU; the decal sets `fog = false` (fog would tint the multiply factor) |
+| P5 | billboard `side = FrontSide` (§10.4.5) | the shadow pass renders `_shadowSide[FrontSide] = BackSide`: a camera-facing card casts NO shadow when the sun is on the camera's side | `shadowSide = DoubleSide` |
+| P6 | `typeColor: Color` read as `userData('typeColor', 'vec3')` | a `'vec3'` uniform reads `.x/.y/.z`; a `Color` has `.r/.g/.b` | `userData('typeColor', 'color')` |
+| P7 | (the billboard graph does not mention `map`) | `Renderer._getShadowNodes` multiplies the shadow alpha by `material.map.a` sampled at the RAW quad uv (the whole atlas) | `material.map` stays null; the albedo is published as `material.userData.ewaAlbedo`. **For the orchestrator:** `stats.ts` `dumpZone` reads `m.map` for `sprites[]`; one line (`(m.userData?.ewaAlbedo ?? m.map)`) makes `sprites.nearest` see the atlas albedo (not changed: not a part-3 file) |
+| P8 | VFX: "a pooled `Points` cloud … `PointsNodeMaterial`" (§10.7.5) | a `Points` object rasterises 1-px points on WebGPU; sized particles go through `PointsNodeMaterial.setupVertexSprite`, i.e. an instanced `Sprite` (`sprite.count`) | one instanced `Sprite` (count 4096 = 8 emitters × 512) with the one shared additive `PointsNodeMaterial`; the Sprite quad geometry is three's module-level shared one (never disposed) |
+| P9 | the card is turned by `positionNode` | `positionNode` does not rotate `normalLocal`; the normal map would light an unturned card | `positionNode` assigns `normalLocal`/`tangentLocal` (the `SkinningNode` pattern); the shared quad carries a tangent attribute |
+| P10 | "2 shadow-casting beacons … reserved slots" | toggling a light's visibility (or parenting it under an invisible group) changes the light set → every lit program recompiles (C13) | the two `SpotLight`s live under the always-visible stage root from `createRenderer` on (warm-up light set), intensity 0 and `shadow.autoUpdate = false` while undressed |
+
+## Deviations / interpretations (part 3)
+
+| # | Where | What and why |
+|---|---|---|
+| Q1 | §10.4.4 facing | The card also **leans back** toward the camera about its foot line by `0.5 × camera pitch-down` (uniform `cameraLean`, written with `cameraYaw`, read by the same `positionNode`, so shadows match). A strictly vertical card seen from the −52° diorama camera is foreshortened to cos 52° = 0.62 of its height and reads as a squat card. With the lean the apparent height is cos 26° = 0.90 (battle camera 0.97, inspector ≈ 1). |
+| Q2 | §10.4.5 shimmer | driven by a pool clock advanced by `dt × timeScale` (hitstop freezes it), not `time`. |
+| Q3 | §10.4.5 dissolve | the hole mask is folded into the alpha (`select(hash < dissolve, 0, a.a)`), so `maskShadowNode` punches the same holes in the shadow. |
+| Q4 | §10.4.2 `CreatureBillboard` | extras: `setPoseAxis` (lunge direction), `setGroundNormal` (decal on the terrain normal), `topWorld`/`feet` (HUD/VFX anchors), `bound`. The pool drives `update(dt)` for every live billboard (host step 3). A billboard acquired before its atlas is bound stays hidden and is re-pointed when the bind lands. |
+| Q5 | §10.7.4 arena axis | "perpendicular to the diorama heading" contradicts "the player's battler is the nearer one" and the +12° anti-eclipse yaw; the battler line runs along the heading's view direction (player side 0 near, back sprite). |
+| Q6 | §10.7.2 `CameraRig` | extras: `setFocus` (sandbox/harness), `setCueTarget` (the stage tells the rig where attacker/defender/ko/throw are), `inspect(aim, ms)` (the §10.7.5 4 m inspector pose, pitch −18° so the background is ground, not fogged sky). `cue(kind, ms)`: `ms > 0` is the shot length (hold = ms − ease-in), else the row's `hold`. A `ko` cue's slow-mo is gated by `effects.slowmo` and restored after its ms (real time). |
+| Q7 | §10.7.5 `BattleStage` | extras: `setAccentType` (zone `accentType`; default from the battle terrain), `setGround`, `undressSpectator(x, z)`; `undress(ms)` removes the main arena if dressed, else the spectator arenas. Spectator arenas get ring + beacon housings but no lights (only 2 reserved slots exist). Spectators are procedural characters from the actor pool. The arena rises from / sinks into the ground over 450 ms instead of fading (opaque library materials cannot fade). `setBattler` keeps the billboard when the same creature arrives in a fresh descriptor object (variant/alpha re-applied as uniforms). |
+| Q8 | §10.7.5 VFX lights | none: a light appearing mid-battle recompiles every lit program (C13); impacts pulse the reserved beacons instead. |
+| Q9 | §10.7.7 characters | the look GLBs are not shipped: every look is a deterministic procedural figure (one merged geometry, six flat vertex colours, 7-bone rigid skin, one draw, `castShadow`), animated by procedural bone rotation (idle/walk/run blend, wave/happy emotes). The shared `'character'` material is built in `stage/actors.ts` (the library has no `'character'` class). `AnimationMixer` + GLB loading is the follow-up when `models.manifest.json` lands. |
+| Q10 | §10.7.6 emotes / nameplates | drawn by the HUD (§10.9: nameplates are HUD; the HUD canvas is the package's only `CanvasTexture`), anchored 1.95 m above the feet; `screenPositions(out)` writes head anchors in pool-slot order (NaN when behind the camera). |
+| Q11 | §10.9 HUD | the HUD clock advances by frame dt (no wall clock); chat lines fade from 6 s to 8 s after arrival; HP bars tween over 500 ms at 30 Hz toward the model's `hp`; party thumbs are drawn as initials (thumbnail WebPs are the client's). |
+| Q12 | §10.7.3 CoC arithmetic | SPEC: `smoothstep(0, 6, 2.90) = 0.518 → 3.1 px`; the formula gives **0.475 → 2.85 px at pr 1** (4.44 px, not 4.1, at 4 m). The Pillar 1 "≥ 3 px at 1440p" holds from pixel ratio 1.06 up (4.3 px at pr 1.5). Open SPEC question (the numbers are part 1's `POST_PARAMS`, unchanged). |
+| Q13 | light budget | the 2 beacons are counted by `RenderStats.shadowLights` (scene-wide) but not by `LightRig.createPunctuals`' budget assert (they are not rig handles): zone specs must stay ≤ 6 shadow casters for the total to hold ≤ 8. |

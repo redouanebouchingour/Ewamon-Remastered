@@ -18,7 +18,7 @@
  * - `GPUAdapterInfo` is not kept by the backend; `device.adapterInfo` is read instead.
  */
 import {
-  BufferAttribute, Group, HalfFloatType, Mesh, NoToneMapping, PerspectiveCamera, PlaneGeometry, SRGBColorSpace, Scene, Vector3,
+  BufferAttribute, ColorManagement, Group, HalfFloatType, Mesh, NoToneMapping, PerspectiveCamera, PlaneGeometry, SRGBColorSpace, Scene, Vector3,
   WebGPURenderer,
 } from 'three/webgpu';
 import type { BufferGeometry, Camera, Object3D } from 'three/webgpu';
@@ -26,9 +26,9 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import type {
   ActorPool, BattleStage, CameraRig, HudLayer, ZoneHandle, ZoneSpec,
 } from './contracts.js';
-import {
-  BasicDioramaRig, NullActorPool, NullBattleStage, NullHudLayer, unimplementedZoneLoader, type ZoneLoader,
-} from './defaults.js';
+import type { ZoneLoader } from './defaults.js';
+import { zoneSystemFor } from './zone/system.js';
+import { PART3_SUBSYSTEMS } from './stage/wiring.js';
 import {
   ALL_EFFECTS, LAYERS, type Backend, type BudgetCounts, type BudgetPass, type EffectsFlags, type HarvestLevel, type RenderCaps,
   type RenderStats, type WeatherKind,
@@ -165,8 +165,11 @@ export interface HostContext {
 
 /** Per-frame hooks from other subsystems (e.g. billboards: uniform writes only). */
 export interface FrameHook {
-  update?(dtScaledMs: number): void;
+  /** `dtRealMs` (unscaled) is passed as a second argument for hooks that must not stop at hitstop (HUD clock, fades). */
+  update?(dtScaledMs: number, dtRealMs?: number): void;
   setHarvestLevel?(l: HarvestLevel): void;
+  /** Called after `loadZone` resolves (part 3: the stage/actors sample the zone's collider for ground heights). */
+  onZone?(zone: ZoneHandle | null): void;
   dispose?(): void;
 }
 
@@ -189,13 +192,14 @@ export interface RendererSubsystems {
 
 /** The replacement point for §10.4–§10.9 (see defaults.ts). */
 export const DEFAULT_SUBSYSTEMS: RendererSubsystems = {
-  camera: (ctx) => new BasicDioramaRig(ctx.camera3, () => ctx.effects()),
-  stage: () => new NullBattleStage(),
-  hud: () => ({ layer: new NullHudLayer(), overlay: null }),
-  actors: () => new NullActorPool(),
-  zones: () => unimplementedZoneLoader,
-  hooks: () => [],
-  warmup: () => [],
+  // part 3 (§10.4 sprites, §10.7 camera/stage/actors, §10.9 HUD) — lazy references: stage/wiring.ts imports this module
+  camera: (ctx) => PART3_SUBSYSTEMS.camera(ctx),
+  stage: (ctx) => PART3_SUBSYSTEMS.stage(ctx),
+  hud: (ctx) => PART3_SUBSYSTEMS.hud(ctx),
+  actors: (ctx) => PART3_SUBSYSTEMS.actors(ctx),
+  zones: (ctx) => zoneSystemFor(ctx),
+  hooks: (ctx) => [zoneSystemFor(ctx), ...PART3_SUBSYSTEMS.hooks(ctx)],
+  warmup: (ctx) => PART3_SUBSYSTEMS.warmup(ctx),
 };
 
 const INTERNALS = new WeakMap<Renderer, RendererHost>();
@@ -450,6 +454,7 @@ class RendererHost implements Renderer, HostContext {
     try {
       const handle = await this.zones.load(spec);
       this.zone = handle;
+      for (const h of this.hooks) h.onZone?.(handle);
       this.setHarvestLevel(spec.harvestLevel);
       MaterialBudget.assert(handle.group, 48);
       this.refreshSceneCounts();
@@ -561,7 +566,7 @@ class RendererHost implements Renderer, HostContext {
     this.sky.follow(this.camera3.position);
     this.precipitation.follow(focus);
     // (3) billboards and other subsystem hooks (uniform writes only)
-    for (const h of this.hooks) h.update?.(scaled);
+    for (const h of this.hooks) h.update?.(scaled, dt);
     this.post.setFocus(focus);
     this.post.setDaylight(daylight(this.day.sample));
     // (4) the one pipeline render
@@ -569,9 +574,14 @@ class RendererHost implements Renderer, HostContext {
     // (5) HUD
     this.hud.drawIfDirty();
     if (this.hudOverlay !== null) {
+      // Working-space output (as RenderPipeline.render does): with sRGB output three 0.186 routes a plain render through
+      // the intermediate framebuffer target, whose output pass would overwrite the post image (IMPLEMENTATION-NOTES P3).
+      const cs = this.renderer.outputColorSpace;
+      this.renderer.outputColorSpace = ColorManagement.workingColorSpace;
       this.renderer.autoClear = false;
       this.renderer.render(this.hudOverlay.scene, this.hudOverlay.camera);
       this.renderer.autoClear = true;
+      this.renderer.outputColorSpace = cs;
     }
     // (6) stats
     copyInfo(this.renderer.info, this.statsRecord, this.materials.residentTextureBytes());
@@ -611,7 +621,8 @@ class RendererHost implements Renderer, HostContext {
 
   dump(zoneId: string): ZoneDump {
     const root = this.zoneRoot() ?? new Group();
-    return dumpZone({ zone: zoneId, harvestLevel: this.harvest, root, library: this.materials, counts: this.counts() });
+    const culled = (this.zones as ZoneLoader & { culledChunks?: () => number }).culledChunks?.() ?? 0;
+    return dumpZone({ zone: zoneId, harvestLevel: this.harvest, root, library: this.materials, counts: this.counts(), culledChunks: culled });
   }
 }
 

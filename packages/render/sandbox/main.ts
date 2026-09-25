@@ -17,7 +17,10 @@ import {
   ALL_EFFECTS, WATER_DEPTH_ATTRIBUTE, applyReducedEffects, capViolations, createBudgetProbe, createRenderer, paintSurfaceColor,
   rendererInternals,
 } from '../src/index.js';
-import type { BasicDioramaRig, HarvestLevel, LightSource, Renderer, SurfaceId, WeatherKind } from '../src/index.js';
+import type { BasicDioramaRig, HarvestLevel, LightSource, Renderer, SurfaceId, WeatherKind, ZoneHandleImpl } from '../src/index.js';
+import { zone as contentZone } from '@ewa/content';
+import type { ZoneId } from '@ewa/content';
+import { zoneSpecFor } from '@ewa/client-adapter';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hudEl = document.getElementById('hud') as HTMLDivElement;
@@ -182,14 +185,34 @@ async function main(): Promise<void> {
   const host = rendererInternals(r)!;
   const probe = createBudgetProbe(r, 'sandbox');
 
-  await r.materials.preload(SURFACES_USED);
-  const root = buildDiorama(r);
-  host.lighting.createPunctuals(LIGHTS, root);
-  r.scene.add(root);
-  host.setZoneRoot(root);
-  (r.camera as BasicDioramaRig).setFocus(0.9, 0, 1.2);
+  // ?zone=<ZoneId>: the REAL zone through the client adapter (SPEC §20.4.4) and renderer.loadZone (§10.5).
+  // Optional: &x=&z= focus, &h=0..3 heading, &zoom=0..2, &t=hours, &harvest=intact|thinning|harvested.
+  const params = new URLSearchParams(location.search);
+  const zoneId = params.get('zone') as ZoneId | null;
+  let zoneHandle: ZoneHandleImpl | null = null;
+  const rig = r.camera as BasicDioramaRig;
+  if (zoneId) {
+    const harvest = (params.get('harvest') ?? 'intact') as 'intact' | 'thinning' | 'harvested';
+    const def = contentZone(zoneId);
+    const spec = zoneSpecFor(def, harvest);
+    const t0 = performance.now();
+    zoneHandle = await r.loadZone(spec) as ZoneHandleImpl;
+    console.info(`[sandbox] loaded ${zoneId} in ${(performance.now() - t0).toFixed(0)} ms`, zoneHandle.info);
+    const fx = Number(params.get('x') ?? def.spawn.x); const fz = Number(params.get('z') ?? def.spawn.z);
+    rig.setFocus(fx, zoneHandle.collider.sampleClamped(fx, fz), fz);
+    rig.setHeading((Number(params.get('h') ?? 0) & 3) as 0 | 1 | 2 | 3);
+    rig.setZoomStop(Math.max(0, Math.min(2, Number(params.get('zoom') ?? 1))) as 0 | 1 | 2);
+    (window as unknown as { __ewaZone: unknown }).__ewaZone = { spec, handle: zoneHandle };
+  } else {
+    await r.materials.preload(SURFACES_USED);
+    const root = buildDiorama(r);
+    host.lighting.createPunctuals(LIGHTS, root);
+    r.scene.add(root);
+    host.setZoneRoot(root);
+    rig.setFocus(0.9, 0, 1.2);
+  }
 
-  let hours = 10;
+  let hours = Number(new URLSearchParams(location.search).get('t') ?? 10);
   r.setTimeOfDay(hours / 24);
   const resize = (): void => { if (canvas.clientWidth > 0 && canvas.clientHeight > 0) r.resize(canvas.clientWidth, canvas.clientHeight); };
   new ResizeObserver(resize).observe(canvas);
@@ -203,7 +226,7 @@ async function main(): Promise<void> {
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
-  void r.materials.preloadHero(SURFACES_USED);
+  if (!zoneHandle) void r.materials.preloadHero(SURFACES_USED);
 
   const api = {
     renderer: r,
@@ -219,16 +242,54 @@ async function main(): Promise<void> {
     setHarvest: (l: HarvestLevel) => r.setHarvestLevel(l),
     setWeather: (w: WeatherKind) => r.setWeather(w),
     capViolations: () => capViolations(probe.counts()),
+    /** Real-zone mode: move the focus (feet height from the collider), heading, zoom. */
+    goto: (x: number, z: number, heading?: 0 | 1 | 2 | 3, zoom?: 0 | 1 | 2) => {
+      rig.setFocus(x, zoneHandle ? zoneHandle.collider.sampleClamped(x, z) : 0, z);
+      if (heading !== undefined) rig.setHeading(heading);
+      if (zoom !== undefined) rig.setZoomStop(zoom);
+      host.lighting.updateFrustums();
+    },
+    zone: () => zoneHandle,
+    /** The BudgetCounts captured after construction step 8 (the leak-test baseline, §50.1.9). */
+    baseline: () => host.baseline,
+    /**
+     * In-browser leak check (§10.5.9): unload the zone, render, compare `renderer.info.memory` with the baseline;
+     * then reload it. `cycles` unload/reload rounds; returns the per-round diffs (all zeros = no leak).
+     */
+    leakCycle: async (cycles = 3) => {
+      const spec = (window as unknown as { __ewaZone?: { spec: Parameters<Renderer['loadZone']>[0] } }).__ewaZone?.spec;
+      if (!spec || !zoneHandle) return null;
+      const keys = ['geometries', 'textures', 'programs', 'renderTargets', 'attributes', 'attributesSize'] as const;
+      const rounds: Record<string, number>[] = [];
+      for (let i = 0; i < cycles; i++) {
+        zoneHandle.dispose();
+        for (let k = 0; k < 3; k++) r.frame(16);
+        const m = r.renderer.info.memory as unknown as Record<string, number>;
+        const b = host.baseline as unknown as Record<string, number>;
+        rounds.push(Object.fromEntries(keys.map((k) => [k, m[k]! - b[k]!])));
+        zoneHandle = await r.loadZone(spec) as ZoneHandleImpl;
+        for (let k = 0; k < 3; k++) r.frame(16);
+      }
+      return rounds;
+    },
+    /** Beauty-only draw calls: renders one frame with shadows off, reads the count, restores. */
+    beautyDraws: () => {
+      probe.setPassEnabled('shadows', false); r.frame(16); r.frame(16);
+      const c = probe.counts().drawCalls;
+      probe.setPassEnabled('shadows', true); r.frame(16);
+      return { beauty: c, total: probe.counts().drawCalls };
+    },
     /**
      * Renders `frames` frames at a forced 1280×720 drawing buffer (works while the window is hidden and rAF
      * is paused) and POSTs a JPEG to the dev server, which writes `sandbox/.shots/<name>.jpg`.
      */
     shot: async (name: string, frames = 24): Promise<unknown> => {
-      if (canvas.clientWidth === 0) r.resize(1280, 720);
+      r.resize(1280, 720);                                   // always 16:9 at 1280×720 (the gameplay framing)
       for (let i = 0; i < frames; i++) r.frame(1000 / 60);
       const c = document.createElement('canvas');
       c.width = 1280; c.height = 720;
       c.getContext('2d')!.drawImage(canvas, 0, 0, 1280, 720);
+      if (canvas.clientWidth > 0 && canvas.clientHeight > 0) r.resize(canvas.clientWidth, canvas.clientHeight);
       const blob = await new Promise<Blob | null>((res) => c.toBlob(res, 'image/jpeg', 0.88));
       if (!blob) return null;
       const resp = await fetch(`/__shot?name=${encodeURIComponent(name)}`, { method: 'POST', body: blob });
@@ -236,6 +297,9 @@ async function main(): Promise<void> {
     },
   };
   (window as unknown as { __ewaSandbox: typeof api }).__ewaSandbox = api;
+  // render part 3 demos: ?demo=lineup | ?demo=battle (creature billboards, arena, VFX, HUD — sandbox/part3.ts)
+  const demo = new URLSearchParams(location.search).get('demo');
+  if (demo) void import('./part3.js').then((m) => m.startPart3Demo(r, demo, api as unknown as Record<string, unknown>)).catch((e: unknown) => console.error(e));
 
   (document.getElementById('time') as HTMLInputElement).addEventListener('input', (e) => api.setTime(Number((e.target as HTMLInputElement).value)));
   (document.getElementById('reduced') as HTMLInputElement).addEventListener('change', (e) => api.setReducedEffects((e.target as HTMLInputElement).checked));
