@@ -4,6 +4,7 @@
  * the lighting (sky / bounce / fog) and the post grade; the hook re-picks chunk tiers and building LODs against
  * the main camera once per frame (zero allocation).
  */
+import type { Object3D } from 'three/webgpu';
 import type { ZoneSpec } from '../contracts.js';
 import type { HarvestLevel } from '../descriptors.js';
 import type { SurfaceId } from '../materials/surfaces.js';
@@ -31,6 +32,7 @@ export class ZoneSystem implements FrameHook {
         scene: ctx.scene,
         stats: () => ctx.statsRecord,
         nextKeep: () => this.pendingKeep,
+        releaseGpu: (root) => releaseZoneAttributes(ctx, root),
       }, this.clock ?? undefined);
       ctx.setLightingPalette(lightingPaletteOf(handle.palette));
       ctx.setGrade(gradeOf(handle.palette));
@@ -61,6 +63,29 @@ export class ZoneSystem implements FrameHook {
     if (this.current !== null) this.current.dispose();
     this.current = null;
   }
+}
+
+interface RenderObjectLike { readonly object: Object3D; getAttributes(): readonly object[] }
+interface RendererInternals { readonly _objects?: { readonly _renderObjects?: Set<RenderObjectLike> }; readonly _attributes?: { delete(a: object): unknown } }
+
+/**
+ * C26 (IMPLEMENTATION-NOTES Part 2): three frees a geometry's node attributes (instance matrices, the velocity
+ * pass's previous-matrix buffers, wrapped instance colours) only through the FIRST render object that initialised
+ * the geometry, so attributes first bound by a later pass stay alive (measured: +141 attributes / 9.8 MB per
+ * Mirevale reload). Before the zone is disposed its render objects' attribute lists are collected; after its
+ * geometries and meshes are disposed each is deleted from the renderer's attribute map (a no-op when three already
+ * released it). Reads three internals (`_objects`, `_attributes`); absent → nothing happens.
+ */
+function releaseZoneAttributes(ctx: HostContext, root: Object3D): () => void {
+  const gpu = ctx.gpu as unknown as RendererInternals;
+  const set = gpu._objects?._renderObjects;
+  const attrs = gpu._attributes;
+  if (!set || !attrs) return () => {};
+  const inZone = new Set<Object3D>();
+  root.traverse((o) => { inZone.add(o); });
+  const collected = new Set<object>();
+  for (const ro of set) if (inZone.has(ro.object)) for (const a of ro.getAttributes()) collected.add(a);
+  return () => { for (const a of collected) attrs.delete(a); };
 }
 
 const SYSTEMS = new WeakMap<object, ZoneSystem>();

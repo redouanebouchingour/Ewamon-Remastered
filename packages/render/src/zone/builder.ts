@@ -52,6 +52,11 @@ export interface ZoneBuildDeps {
   readonly stats?: () => RenderStats;
   /** Surfaces the next zone needs when a handover pre-load is pending (§10.5.9 step 3). */
   readonly nextKeep?: () => readonly SurfaceId[];
+  /**
+   * Called at the start of `dispose()` with the zone root; returns a finisher run after the geometries and meshes are
+   * disposed. The zone system uses it to release GPU attributes three does not free itself (C26).
+   */
+  readonly releaseGpu?: (root: Object3D) => () => void;
 }
 
 /** What the zone system needs beyond the verbatim `ZoneHandle`. */
@@ -347,6 +352,7 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     dispose(): void {
       if (disposed) return;
       disposed = true;
+      const finishGpu = deps.releaseGpu ? deps.releaseGpu(root) : null;
       root.removeFromParent();
       for (let i = views.length - 1; i >= 0; i--) views[i]!.dispose();
       for (let i = geometries.length - 1; i >= 0; i--) geometries[i]!.dispose();
@@ -358,6 +364,7 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
       punctuals = [];
       deps.materials.evictExcept(deps.nextKeep ? deps.nextKeep() : []);
       (handle as { collider: TerrainCollider | null }).collider = null;
+      if (finishGpu) finishGpu();
       root.clear();
     },
   };
