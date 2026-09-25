@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+## 2026-09-25 — `40-pipelines.md` §40.1.2 stage 4 — emissive mask = bright and vivid (HSV value ≥ 0.92, chroma ≥ 0.4) with an 8 % coverage cap
+Why: the render part-3 browser check found pale creatures glowing at night and blooming at noon. HSL saturation × lightness tends to 1 for any faintly tinted near-white, so 42–49 % of `mufflo` and `dreambud` and 31 % of `glimp` were emissive, while a pure saturated red scored 0.5 and never emitted. Without a cap the corrected rule marks 30–54 % of flame creatures.
+Evidence: coverage survey over the 260 cached sprites (old rule: 34 sprites above 10 %; new rule without cap: mufflo/dreambud/glimp 0 %, flampling 54 %); `packages/render/IMPLEMENTATION-NOTES.md` Part 3, orchestrator item 3.
+Affects: `tools/sprite-pipeline/src/{emissive,emissive-overrides,types,index}.ts` (`SPRITE_STAGE_VERSION` 3, `PIPELINE_VERSION` 5), `test/stages.test.ts`; every emissive atlas under `packages/client/public/creatures/`.
+
+---
+
 ## 2026-09-24 — `40-pipelines.md` §40.3.5 — per-map material byte targets become targets, not gates; set budgets bind
 Why: the targets assumed RDO shrinks UASTC maps 2–3×. Measured on the full bake it does not: detailed normal maps stay at 0.4–0.85 byte/texel unless quality drops to about 20 dB, so 122 of 363 maps exceed 0.10 / 0.40 MB. Every set budget passes with margin.
 Evidence: `tools/material-bake/qa/qa-report.json`; `materials.manifest.json` fieldBytes 21.92 MB, heroBytes 33.77 MB, total 55.69 MB; Mirevale field 3.71 MB.

@@ -35,7 +35,7 @@ export { computePlacement, chooseKernel, normalizeSprite, blit, INTEGER_TOLERANC
 export type { NormalMapOptions } from './normalmap.js';
 export { deriveNormalMap, chamferDistance, gaussianBlur, luminance, DEFAULT_NORMAL_OPTIONS } from './normalmap.js';
 
-export { deriveEmissive, erode1px, saturationTimesLightness, resolveEmissiveOverride, DEFAULT_EMISSIVE_THRESHOLD } from './emissive.js';
+export { deriveEmissive, erode1px, emissiveScore, resolveEmissiveOverride, EMISSIVE_MIN_VALUE, EMISSIVE_MIN_CHROMA, EMISSIVE_MAX_COVERAGE } from './emissive.js';
 export type { EmissiveOverride } from './emissive-overrides.js';
 export { EMISSIVE_OVERRIDES } from './emissive-overrides.js';
 

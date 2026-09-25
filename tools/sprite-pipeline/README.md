@@ -25,7 +25,7 @@ Exactly the 130 species of `.design/legacy/ewamon.js` (keys that carry `frontSpr
 | 1 | Alpha recovery | `alpha.ts` | Keeps real alpha (≥ 3 % translucent pixels, transparent border). Otherwise floods from the border against the border-mean colour (summed RGB tolerance 114), also keying connected magenta and near-white. Defringes translucent pixels from the nearest opaque colour within 8 px. Transparent pixels within 2 px of opaque take the nearest opaque RGB; all others become black, so filters never read white or magenta fringes. |
 | 2 | Normalize | `normalize.ts` | Trims to the alpha bbox, scales the longest side to 881 px (0.86 × 1024), centres horizontally, puts the feet at y = 942 (manifest `footV` 0.08 from the bottom). Nearest-neighbour on integer factors, lanczos3 otherwise. |
 | 3 | Normal map | `normalmap.ts` | Luminance height, Gaussian σ 1.2, Sobel strength 0.55, plus a 6 px outward alpha-edge bevel (strength 0.85) so silhouettes catch a rim light. OpenGL +Y. |
-| 4 | Emissive mask | `emissive.ts` | HSL saturation × lightness ≥ 0.72, eroded 1 px, per-species overrides in `emissive-overrides.ts`. Two-valued. |
+| 4 | Emissive mask | `emissive.ts` | Bright and vivid: HSV value ≥ 0.92 and chroma ≥ 0.4, capped at the most vivid 8 % of opaque texels, eroded 1 px, per-species overrides in `emissive-overrides.ts`. Two-valued. Pale fur never glows; flame creatures glow at accents only. |
 | 5 | Plan + pack | `plan.ts`, `pack.ts`, `zones.ts` | Every species stored once. A global sequence walks the zones in `ZONE_ORDER` (encounter tables, legendary statics, trainers, league), then the species in no zone. Consecutive pairs form 2048² atlases of four 1024² cells (front + back of two species). Each zone binds at most 8 atlases; the planner duplicates species only when a zone would exceed that. |
 | 6 | Rasters + encode | `pipeline.ts`, `mips.ts`, `encode.ts` | Composites the atlas maps, forces binary alpha, builds mips 1–3 (premultiplied box filter, coverage-preserving, normals renormalised, mask stays two-valued), encodes WebP under the budget ladder, writes thumbnails, the manifest and QA artifacts. |
 
@@ -63,7 +63,7 @@ With soft alpha the bottom rung was 47.3 MB, over budget; the spec's 32 MB estim
 
 ## Output
 
-`packages/client/public/creatures/` after the 2026-09-24 build (`PIPELINE_VERSION` 4):
+`packages/client/public/creatures/` after the 2026-09-25 build (`PIPELINE_VERSION` 5):
 
 | Item | Value |
 |---|---|
@@ -74,7 +74,7 @@ With soft alpha the bottom rung was 47.3 MB, over budget; the spec's 32 MB estim
 | Normal, all levels | 9.46 MB |
 | Emissive, all levels | 0.46 MB |
 | Thumbs + manifest | 0.87 MB |
-| **Total** | **36.25 MB** of the 36.70 MB (35 MiB) budget |
+| **Total** | **36.20 MB** of the 36.70 MB (35 MiB) budget |
 
 Layout: `creatures.manifest.json` (v2), `atlases/a-NNN.{albedo,normal,emissive}[.mipN].webp`, `thumbs/<id>_front.webp`. A clean rebuild with a warm sprite cache takes about 4–6 minutes; a cold run about 25 minutes.
 
@@ -88,3 +88,4 @@ Measured quality at the shipped rung (acceptance test 4–7 inputs): whole-sprit
 
 - Binary alpha in every atlas map and `SPRITE_STAGE_VERSION` for the per-sprite cache key (CHANGELOG 2026-09-24).
 - The §40.1.6.3 byte arithmetic is replaced by the measured table above (same CHANGELOG entry).
+- Stage 4 emissive rule replaced (CHANGELOG 2026-09-25).

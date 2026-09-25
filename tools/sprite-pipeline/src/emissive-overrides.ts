@@ -1,11 +1,15 @@
 /**
- * Per-species emissive tuning. Keys are species ids (or `<species>@<form>`).
- * Empty by default: the automatic saturation x lightness threshold is the baseline, and
- * an entry here is a deliberate art decision that should be reviewed on the contact sheet.
+ * Per-species emissive tuning, keyed by species id. Empty by default: the automatic
+ * bright-and-vivid rule with the coverage cap (`emissive.ts`) is the baseline, and an entry here
+ * is a deliberate art decision reviewed on the contact sheet.
  */
 export interface EmissiveOverride {
-  /** Replace the default 0.72 saturation x lightness threshold. */
-  threshold?: number;
+  /** Replace EMISSIVE_MIN_VALUE (HSV value, 0..1). */
+  minValue?: number;
+  /** Replace EMISSIVE_MIN_CHROMA (max − min, 0..1). */
+  minChroma?: number;
+  /** Replace EMISSIVE_MAX_COVERAGE (share of opaque texels). */
+  maxCoverage?: number;
   /** Emit nothing for this species. */
   disabled?: boolean;
 }

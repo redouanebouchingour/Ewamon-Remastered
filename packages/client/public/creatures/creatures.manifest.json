@@ -2,7 +2,7 @@
   "version": 2,
   "encoding": "webp",
   "spriteSize": 1024,
-  "pipelineVersion": "4",
+  "pipelineVersion": "5",
   "atlases": [
     {
       "id": "a-000",
@@ -43,7 +43,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 3776
+        "bytes": 3192
       },
       "normalScale": 0.5
     },
@@ -86,7 +86,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 5014
+        "bytes": 1406
       },
       "normalScale": 0.5
     },
@@ -129,7 +129,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 32476
+        "bytes": 5110
       },
       "normalScale": 0.5
     },
@@ -172,7 +172,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 27730
+        "bytes": 426
       },
       "normalScale": 0.5
     },
@@ -215,7 +215,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 23408
+        "bytes": 732
       },
       "normalScale": 0.5
     },
@@ -258,7 +258,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1326
+        "bytes": 8852
       },
       "normalScale": 0.5
     },
@@ -301,7 +301,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 3456
+        "bytes": 12334
       },
       "normalScale": 0.5
     },
@@ -344,7 +344,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 2944
+        "bytes": 6910
       },
       "normalScale": 0.5
     },
@@ -387,7 +387,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 398
+        "bytes": 5654
       },
       "normalScale": 0.5
     },
@@ -430,7 +430,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 902
+        "bytes": 8092
       },
       "normalScale": 0.5
     },
@@ -473,7 +473,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 3130
+        "bytes": 19598
       },
       "normalScale": 0.5
     },
@@ -516,7 +516,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 5650
+        "bytes": 6312
       },
       "normalScale": 0.5
     },
@@ -559,7 +559,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 6128
+        "bytes": 8426
       },
       "normalScale": 0.5
     },
@@ -602,7 +602,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1528
+        "bytes": 5632
       },
       "normalScale": 0.5
     },
@@ -645,7 +645,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1262
+        "bytes": 2022
       },
       "normalScale": 0.5
     },
@@ -688,7 +688,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 6952
+        "bytes": 4688
       },
       "normalScale": 0.5
     },
@@ -731,7 +731,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1898
+        "bytes": 398
       },
       "normalScale": 0.5
     },
@@ -774,7 +774,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 54712
+        "bytes": 20268
       },
       "normalScale": 0.5
     },
@@ -817,7 +817,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 3626
+        "bytes": 11304
       },
       "normalScale": 0.5
     },
@@ -860,7 +860,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 3302
+        "bytes": 11028
       },
       "normalScale": 0.5
     },
@@ -903,7 +903,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 510
+        "bytes": 966
       },
       "normalScale": 0.5
     },
@@ -946,7 +946,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 4346
+        "bytes": 4258
       },
       "normalScale": 0.5
     },
@@ -989,7 +989,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 23460
+        "bytes": 9754
       },
       "normalScale": 0.5
     },
@@ -1032,7 +1032,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 7992
+        "bytes": 19918
       },
       "normalScale": 0.5
     },
@@ -1075,7 +1075,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 22760
+        "bytes": 15948
       },
       "normalScale": 0.5
     },
@@ -1118,7 +1118,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1478
+        "bytes": 1046
       },
       "normalScale": 0.5
     },
@@ -1161,7 +1161,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 2630
+        "bytes": 1686
       },
       "normalScale": 0.5
     },
@@ -1204,7 +1204,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1118
+        "bytes": 3644
       },
       "normalScale": 0.5
     },
@@ -1247,7 +1247,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 10914
+        "bytes": 10042
       },
       "normalScale": 0.5
     },
@@ -1290,7 +1290,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 736
+        "bytes": 1828
       },
       "normalScale": 0.5
     },
@@ -1333,7 +1333,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1390
+        "bytes": 850
       },
       "normalScale": 0.5
     },
@@ -1376,7 +1376,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1546
+        "bytes": 1604
       },
       "normalScale": 0.5
     },
@@ -1419,7 +1419,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 2376
+        "bytes": 2214
       },
       "normalScale": 0.5
     },
@@ -1462,7 +1462,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 2020
+        "bytes": 918
       },
       "normalScale": 0.5
     },
@@ -1505,7 +1505,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1336
+        "bytes": 454
       },
       "normalScale": 0.5
     },
@@ -1548,7 +1548,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1294
+        "bytes": 3428
       },
       "normalScale": 0.5
     },
@@ -1591,7 +1591,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 4278
+        "bytes": 478
       },
       "normalScale": 0.5
     },
@@ -1634,7 +1634,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 860
+        "bytes": 2368
       },
       "normalScale": 0.5
     },
@@ -1677,7 +1677,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1988
+        "bytes": 7154
       },
       "normalScale": 0.5
     },
@@ -1720,7 +1720,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 2794
+        "bytes": 1058
       },
       "normalScale": 0.5
     },
@@ -1763,7 +1763,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1786
+        "bytes": 1208
       },
       "normalScale": 0.5
     },
@@ -1806,7 +1806,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1078
+        "bytes": 3650
       },
       "normalScale": 0.5
     },
@@ -1849,7 +1849,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1306
+        "bytes": 14988
       },
       "normalScale": 0.5
     },
@@ -1892,7 +1892,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 21686
+        "bytes": 14444
       },
       "normalScale": 0.5
     },
@@ -1935,7 +1935,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 5724
+        "bytes": 5028
       },
       "normalScale": 0.5
     },
@@ -1978,7 +1978,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 19716
+        "bytes": 14804
       },
       "normalScale": 0.5
     },
@@ -2021,7 +2021,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 6100
+        "bytes": 4904
       },
       "normalScale": 0.5
     },
@@ -2064,7 +2064,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 18404
+        "bytes": 10316
       },
       "normalScale": 0.5
     },
@@ -2107,7 +2107,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 9942
+        "bytes": 4260
       },
       "normalScale": 0.5
     },
@@ -2150,7 +2150,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1848
+        "bytes": 10166
       },
       "normalScale": 0.5
     },
@@ -2193,7 +2193,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 19600
+        "bytes": 10274
       },
       "normalScale": 0.5
     },
@@ -2236,7 +2236,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 636
+        "bytes": 7746
       },
       "normalScale": 0.5
     },
@@ -2279,7 +2279,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 870
+        "bytes": 1536
       },
       "normalScale": 0.5
     },
@@ -2322,7 +2322,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 4772
+        "bytes": 1016
       },
       "normalScale": 0.5
     },
@@ -2365,7 +2365,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 600
+        "bytes": 15554
       },
       "normalScale": 0.5
     },
@@ -2408,7 +2408,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 19704
+        "bytes": 6722
       },
       "normalScale": 0.5
     },
@@ -2451,7 +2451,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1926
+        "bytes": 1492
       },
       "normalScale": 0.5
     },
@@ -2494,7 +2494,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 484
+        "bytes": 10934
       },
       "normalScale": 0.5
     },
@@ -2537,7 +2537,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 3272
+        "bytes": 16826
       },
       "normalScale": 0.5
     },
@@ -2580,7 +2580,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 6000
+        "bytes": 1250
       },
       "normalScale": 0.5
     },
@@ -2623,7 +2623,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 3154
+        "bytes": 10052
       },
       "normalScale": 0.5
     },
@@ -2666,7 +2666,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 16676
+        "bytes": 3660
       },
       "normalScale": 0.5
     },
@@ -2709,7 +2709,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 534
+        "bytes": 728
       },
       "normalScale": 0.5
     },
@@ -2752,7 +2752,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 5144
+        "bytes": 912
       },
       "normalScale": 0.5
     },
@@ -2795,7 +2795,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 750
+        "bytes": 2832
       },
       "normalScale": 0.5
     }
@@ -8545,5 +8545,5 @@
       "thumb": "thumbs/zenryu_front.webp"
     }
   },
-  "totalBytes": 36247708
+  "totalBytes": 36197860
 }

@@ -33,10 +33,14 @@ export type SpriteSide = 'front' | 'back';
  * coverage per cell, `selectBinaryCoverage`), and the stage-1 transparent-RGB rule re-applied to
  * the composed albedo atlas. Atlas stage only: the per-sprite stages are unchanged, so their
  * cache key uses SPRITE_STAGE_VERSION and stays valid.
+ * v5: the new stage-4 emissive rule (SPRITE_STAGE_VERSION 3).
  */
-export const PIPELINE_VERSION = '4';
-/** Folded into the per-sprite cache key (stages 1–4). Bump only when those stages change. */
-export const SPRITE_STAGE_VERSION = '2';
+export const PIPELINE_VERSION = '5';
+/**
+ * Folded into the per-sprite cache key (stages 1–4). Bump only when those stages change.
+ * 3: stage 4 emissive = bright-and-vivid (HSV value + chroma) with a coverage cap.
+ */
+export const SPRITE_STAGE_VERSION = '3';
 /**
  * Every atlas map stores binary alpha: a >= ALPHA_THRESHOLD -> 255, else 0. The billboard
  * alpha-tests at 0.5 (10-render.md §10.4.5) and Pillar 6 requires binary edges, so soft alpha

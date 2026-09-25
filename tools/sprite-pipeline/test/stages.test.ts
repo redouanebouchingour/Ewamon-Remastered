@@ -96,8 +96,8 @@ describe('emissive mask', () => {
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
         const hot = x >= 40 && x < 72 && y >= 40 && y < 72;
-        // HSL s × l: (255, 200, 120) -> 1.0 × 0.735 = 0.735 >= 0.72; (110, 100, 90) -> 0.1 × 0.39 = 0.04.
-        // (A fully saturated pure hue such as (255, 40, 250) has l ≈ 0.58 and does NOT qualify.)
+        // (255, 200, 120): value 1.0, chroma 0.53 -> emits; (110, 100, 90): value 0.43 -> does not.
+        // The hot square is 6.25 % of the opaque texels, under the 8 % cap.
         img.data.set(hot ? [255, 200, 120, 255] : [110, 100, 90, 255], (y * size + x) * 4);
       }
     }
@@ -114,6 +114,31 @@ describe('emissive mask', () => {
     }
     expect(inside).toBe(30 * 30);
     expect(outside).toBe(0);
+  });
+
+  it('leaves pale, faintly tinted fur dark and emits a pure saturated hue', () => {
+    const img = createRgba(64, 64);
+    for (let p = 0; p < 64 * 64; p++) img.data.set(p < 2048 ? [240, 240, 255, 255] : [110, 100, 90, 255], p * 4);
+    // one vivid 6×6 spot inside the dark half (under the cap), pure red
+    for (let y = 40; y < 46; y++) for (let x = 20; x < 26; x++) img.data.set([255, 40, 40, 255], (y * 64 + x) * 4);
+    const m = deriveEmissive(img);
+    let pale = 0;
+    for (let p = 0; p < 2048; p++) pale += m.data[p] ? 1 : 0;
+    expect(pale).toBe(0);
+    expect(m.data[42 * 64 + 22]).toBe(255);
+  });
+
+  it('caps the mask at 8 % of the opaque texels, keeping the most vivid', () => {
+    const size = 100;
+    const img = createRgba(size, size);
+    // left half: vivid orange (value 1, chroma 0.8); right half: vivid but duller (value 0.94, chroma 0.45)
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) img.data.set(x < 50 ? [255, 180, 50, 255] : [240, 200, 125, 255], (y * size + x) * 4);
+    const raw = deriveEmissive(img, { maxCoverage: 1 });
+    const capped = deriveEmissive(img);
+    const count = (g: { data: Uint8Array }): number => g.data.reduce((n, v) => n + (v ? 1 : 0), 0);
+    expect(count(raw)).toBeGreaterThan(0.5 * size * size);
+    expect(count(capped)).toBeLessThanOrEqual(0.08 * size * size);
+    for (let y = 0; y < size; y++) for (let x = 50; x < size; x++) expect(capped.data[y * size + x]).toBe(0);
   });
 });
 
