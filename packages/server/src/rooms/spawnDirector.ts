@@ -6,6 +6,7 @@
 import { ALPHA_CHANCE, ROUTE_TUNING, STORY_TUNING, TOWN_SPAWN_TUNING, VARIANT_CHANCE, isWalkable, isWater } from '@ewa/content';
 import type { EncounterSlot, EncounterTable, Heightfield, SpawnTuning, ZoneDef } from '@ewa/content';
 import type { ContentIndex, Rng, VariantKey } from '@ewa/core';
+import { isLava } from './movement';
 
 export interface SpawnRecord {
   /** `${zoneId}:${counter}` — counter is per-director, monotonic */
@@ -173,7 +174,8 @@ export class SpawnDirector {
     for (let attempt = 0; attempt < POSITION_ATTEMPTS; attempt++) {
       const x = h.originX + 1 + this.rng.next() * (h.size - 2);
       const z = h.originZ + 1 + this.rng.next() * (h.size - 2);
-      const surfaceOk = medium === 'water' ? isWater(h, x, z) : isWalkable(h, x, z);
+      // a water spawn never lands on lava (audit L2-25; no draw is added, so seeded sequences are unchanged)
+      const surfaceOk = medium === 'water' ? isWater(h, x, z) && !isLava(h, x, z) : isWalkable(h, x, z);
       if (!surfaceOk) continue;
       let clear = true;
       for (const r of this.records.values()) {

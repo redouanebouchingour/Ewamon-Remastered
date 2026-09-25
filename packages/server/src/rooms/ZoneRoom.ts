@@ -29,7 +29,7 @@ import { SURF_ITEM, refillBudget, validateInput } from './movement';
 import type { RejectReason } from './movement';
 import { SpawnDirector, tuningFor } from './spawnDirector';
 import type { SpawnRecord } from './spawnDirector';
-import { beatFor, completeBeatInTx, flagSet } from './storyBeats';
+import { beatFor, completeBeatInTx, flagSet, isStoryTrainer, storyTrainerBeat } from './storyBeats';
 import { RAID_JOIN_RANGE_M, RaidRunner, RaidSession } from './raidSession';
 import { TradeCoordinator } from './tradeSession';
 import { advanceQuests } from '../game/quests';
@@ -823,9 +823,10 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const pos = { x: ps.x, z: ps.z };
     const seat = { playerId: ud.playerId, sessionId: client.sessionId };
 
-    // §30.4.8: a story beat whose speaker is this npc/gym runs first
+    // §30.4.8: a story beat whose speaker is this npc/gym runs first; a story trainer (rule 6) fires the beat
+    // whose battle names it, and nothing else
     if (target.kind === 'npc' || target.kind === 'trainer' || target.kind === 'gym') {
-      const beat = beatFor(this.zone.id, ud.flags, m.targetId);
+      const beat = beatFor(this.zone.id, ud.flags, m.targetId) ?? (target.kind === 'trainer' ? storyTrainerBeat(this.zone.id, ud.flags, target.trainer.id) : null);
       if (beat !== null) {
         this.sendMsg(client, { type: 'storyBeat', beatId: beat.id, phase: 'start' });
         if (beat.battle !== null) {
@@ -852,6 +853,9 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       }
       case 'trainer': {
         const t = target.trainer;
+        // §30.4.8 rule 6: a story trainer with no eligible beat naming it is a plain NPC — nothing over the wire
+        // (otherwise its reward and `trainer:<id>:beaten` could be collected before the beat, then paid again)
+        if (isStoryTrainer(t.id)) return;
         const flag = trainerBeatenFlag(t.id);
         let rematch = false;
         if (ud.flags.has(flag)) {
@@ -1539,4 +1543,23 @@ export function bindZoneRoom(deps: RoomDeps): typeof ZoneRoom {
   class BoundZoneRoom extends ZoneRoom {}
   BoundZoneRoom.roomDeps = deps;
   return BoundZoneRoom;
+}
+
+/**
+ * R2 / §30.5.1 #26: Colyseus' own HTTP routes (`POST /matchmake/{joinOrCreate,create,join,joinById}/…`) call the
+ * room class's **static** `onAuth` before they create a room or reserve a seat. Without the server's join ticket
+ * it refuses with 403 `noTicket`, so a direct call can neither create a shard nor park a reservation in a live
+ * room (reserved seats count against `maxClients`: a token holder could otherwise fill every shard and make the
+ * server open new ones). Server-side reservations (`reserveZoneSeat`, no auth context) never call it, and the
+ * instance `onAuth` still runs when any seat is consumed (a static returning `true` gives Colyseus no auth data,
+ * so it does not skip the instance hook). `/matchmake/reconnect` does not call `onAuth` and keeps working.
+ *
+ * Installed after `matchMaker.defineRoomType`: registration logs "instance-level onAuth will be ignored" for a
+ * class that defines both hooks, which is false for this static and would mislead whoever reads the boot log.
+ */
+export function refuseDirectMatchmaking(klass: typeof ZoneRoom, ticket: string): void {
+  klass.onAuth = async (_token: string, options: ZoneJoinOptions | undefined): Promise<true> => {
+    if (options?.ticket !== ticket) throw new ServerError(403, 'noTicket');
+    return true;
+  };
 }

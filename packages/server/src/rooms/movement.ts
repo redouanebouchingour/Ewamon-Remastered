@@ -3,8 +3,8 @@
  * speed cap derived from protocol's MOVEMENT table, the dt budget, the content heightfield and the playable
  * bounds. No Colyseus, DB or clock import (NON-NEGOTIABLE 12).
  */
-import { isWalkable, isWater, playableBounds } from '@ewa/content';
-import type { Heightfield } from '@ewa/content';
+import { allZones, isWalkable, isWater, playableBounds } from '@ewa/content';
+import type { Biome, Heightfield, ZoneId } from '@ewa/content';
 import { MOVEMENT, MOVEMENT_VALIDATION, wrapAngle } from '@ewa/protocol';
 import type { InputMsg } from '@ewa/protocol';
 import type { z } from 'zod';
@@ -39,10 +39,26 @@ export interface MovePrev {
   readonly canSurf?: boolean;
 }
 
-/** A sample is standable: walkable, or a water sample for a surfer. */
+/**
+ * Biomes whose heightfield `water` is lava (SPEC §3.11: `water` covers pond, sea, bog and lava; the client renders
+ * cinder water as lava — `zoneSpecFor` WATER_KIND). Content's heightfield has no per-sample water kind, so lava is
+ * decided per zone (IMPLEMENTATION-NOTES S11, audit L2-25).
+ */
+export const LAVA_BIOMES: ReadonlySet<Biome> = new Set<Biome>(['cinder']);
+const LAVA_ZONES: ReadonlySet<ZoneId> = new Set(allZones().filter((z) => LAVA_BIOMES.has(z.biome)).map((z) => z.id));
+
+/** A water sample of a lava zone. Open lava is `walkable = 0` in content; HM Surf never makes it standable. */
+export function isLava(h: Heightfield, x: number, z: number): boolean {
+  return LAVA_ZONES.has(h.zoneId) && isWater(h, x, z);
+}
+
+/**
+ * A sample is standable: walkable (content's boardwalk strip over a pond — a pier the render draws, lava pond or
+ * not — included), or a water sample that is not lava for a surfer.
+ */
 export function standable(h: Heightfield, x: number, z: number, canSurf: boolean): boolean {
   if (isWalkable(h, x, z)) return true;
-  return canSurf && isWater(h, x, z);
+  return canSurf && isWater(h, x, z) && !isLava(h, x, z);
 }
 
 /** Every 0.25 m along prev → next (excluding prev, including next) is standable. */

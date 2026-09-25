@@ -24,7 +24,7 @@ import { localRateLimiter, presenceRateLimiter } from './rest/rateLimit';
 import { PresenceMirror } from './rooms/presenceMirror';
 import { PresenceStore } from './rooms/presenceStore';
 import { ZONE_ROOM } from './rooms/matchmaking';
-import { bindZoneRoom } from './rooms/ZoneRoom';
+import { bindZoneRoom, refuseDirectMatchmaking } from './rooms/ZoneRoom';
 
 export const MAX_SOCKETS_PER_IP = 8;
 
@@ -138,7 +138,10 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
     gracefullyShutdown: false,
   });
   // 3. the only room type
-  matchMaker.defineRoomType(ZONE_ROOM, bindZoneRoom(runtime)).filterBy(['zoneId', 'shard']);
+  const zoneRoom = bindZoneRoom(runtime);
+  matchMaker.defineRoomType(ZONE_ROOM, zoneRoom).filterBy(['zoneId', 'shard']);
+  // R2: Colyseus' /matchmake/* HTTP routes are refused without the join ticket (after defineRoomType, see there)
+  refuseDirectMatchmaking(zoneRoom, runtime.ticket);
   // 4.
   await colyseus.listen(env.PORT_WS);
   const wsPort = (colyseus.transport.server?.address() as AddressInfo | null)?.port ?? env.PORT_WS;

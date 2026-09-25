@@ -10,7 +10,8 @@ import { CLOSE_CODES } from '@ewa/protocol';
 import type { ZoneId } from '@ewa/content';
 import type { ZoneRoom } from '../src/rooms/ZoneRoom';
 import { pickZoneRoom, reserveZoneSeat } from '../src/rooms/matchmaking';
-import { START_EXP, api, enter, joinSeat, ofType, placePlayer, rawQuery, register, sleep, snapshot, startServer, waitFor } from './helpers';
+import { newCreature } from '../src/game/creatures';
+import { START_EXP, api, content, enter, joinSeat, ofType, placePlayer, rawQuery, register, sleep, snapshot, startServer, waitFor } from './helpers';
 import type { Account, Joined, TestServer } from './helpers';
 
 let s: TestServer;
@@ -253,6 +254,79 @@ describe('room messages (§30.5.1)', () => {
     await keeper.j.room.leave(true);
   }, 60_000);
 
+  it('A21 / #26: Colyseus /matchmake/joinOrCreate|create|join|joinById called directly with a valid token → 403 noTicket; no room, no seat, no avatar', async () => {
+    // a live mirevale shard 0 (joinOrCreate / join / joinById would otherwise reserve a seat in it)
+    const keeper = await inZone('mirevale', 0, 6);
+    const live = roomOf(keeper.j);
+    const acc = await register(s);
+    const snap = await snapshot(s, acc.id);
+    const zoneRooms = async (): Promise<string[]> => ((await matchMaker.query({ name: 'zone' } as never)) as { roomId: string }[]).map((r) => r.roomId).sort();
+    const roomsBefore = await zoneRooms();
+    const clientsBefore = live.clients.length;
+    const matchmake = async (method: string, target: string, options: object): Promise<{ status: number; body: string }> => {
+      const res = await fetch(`http://127.0.0.1:${s.booted.ports.ws}/matchmake/${method}/${target}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${acc.access}` },
+        body: JSON.stringify(options),
+      });
+      return { status: res.status, body: await res.text() };
+    };
+    const attempts: [string, string, object][] = [
+      ['joinOrCreate', 'zone', { zoneId: 'mirevale', shard: 0 }], // matches the live room
+      ['joinOrCreate', 'zone', { zoneId: 'mire_route', shard: 5 }], // would create a shard
+      ['joinOrCreate', 'zone', {}],
+      ['create', 'zone', { zoneId: 'mirevale', shard: 0 }],
+      ['create', 'zone', { zoneId: 'cinderhold', shard: 9, ticket: 'guess' }], // gated zone, forged ticket
+      ['join', 'zone', { zoneId: 'mirevale' }],
+      ['joinById', live.roomId, { zoneId: 'mirevale' }],
+    ];
+    for (const [method, target, options] of attempts) {
+      const r = await matchmake(method, target, options);
+      expect(r.status, `${method} ${JSON.stringify(options)}`).toBe(403);
+      expect(r.body).toContain('noTicket');
+      expect(r.body).not.toContain('sessionId'); // no seat reservation in the body
+    }
+    await sleep(200);
+    expect(await zoneRooms()).toEqual(roomsBefore); // no room created
+    expect(live.clients.length).toBe(clientsBefore);
+    expect(live.state.players.has(acc.id)).toBe(false); // no avatar
+    // the refusal is not a blanket refusal: the same player still enters through REST (the only way in)
+    const j = await enter(s, acc, 'mirevale');
+    expect(roomOf(j).roomId).toBe(live.roomId);
+    await j.room.leave(true);
+    await sleep(300);
+    expect(await snapshot(s, acc.id)).toBe(snap);
+    await keeper.j.room.leave(true);
+  }, 60_000);
+
+  it('A24 (§30.4.8 rule 6): interact on a story-battle TrainerDef whose beat is not eligible → nothing over the wire, no battle, no money, no trainer flag', async () => {
+    // sable_mire (-60, 10) is the mire_rival beat's battle (need met_wynn); a fresh account does not hold met_wynn
+    const trainer = zone('mire_route').trainers.find((t) => t.id === 'sable_mire')!;
+    expect(trainer.rematchDays).toBeNull();
+    const { acc, j } = await inZone('mire_route', trainer.x, trainer.z - 2);
+    const snap = await snapshot(s, acc.id);
+    j.room.send('interact', { kind: 'npc', targetId: trainer.id });
+    await sleep(600);
+    expect(ofType(j.msgs, 'battleStart')).toEqual([]);
+    expect(ofType(j.msgs, 'storyBeat')).toEqual([]);
+    expect(ofType(j.msgs, 'error')).toEqual([]); // handled like a plain NPC: nothing over the wire
+    expect(j.room.state.players.get(acc.id)!.inBattle).toBe(false);
+    expect(s.booted.runtime.presenceStore.battleOf(acc.id)).toBeNull();
+    const flags = await rawQuery(s.db, 'select flag from story_flags where player_id = $1 and flag = $2', [acc.id, `trainer:${trainer.id}:beaten`]);
+    expect(flags).toEqual([]);
+    expect(await snapshot(s, acc.id)).toBe(snap); // money, flags, creatures, dex: byte-identical
+    await j.room.leave(true);
+
+    // positive control: with the beat eligible, the same interact fires the beat (storyBeat start + its battle)
+    const b = await register(s);
+    await s.repos.db.transaction((tx) => s.repos.progress.setFlags(tx, b.id, ['met_wynn'], new Date()));
+    const jb = (await inZone('mire_route', trainer.x, trainer.z - 2, b)).j;
+    jb.room.send('interact', { kind: 'npc', targetId: trainer.id });
+    await waitFor(() => ofType(jb.msgs, 'battleStart').length > 0, 10_000);
+    expect(ofType(jb.msgs, 'storyBeat')[0]).toMatchObject({ beatId: 'mire_rival', phase: 'start' });
+    await jb.room.leave(true);
+  }, 60_000);
+
   it('#23 (room): a forged JWT cannot join', async () => {
     const acc = await register(s);
     const r = await api(s, 'POST', '/zone/enter', acc.access, { zoneId: 'mirevale' });
@@ -315,6 +389,56 @@ describe('REST attacks (§30.5.1)', () => {
     const r = await api(s, 'POST', '/zone/enter', acc.access, { zoneId: 'cinderhold' });
     expect(r.status).toBe(403);
     expect(r.body).toEqual({ code: 'gated', badge: zone('cinderhold').gate });
+  }, 60_000);
+
+  it('A22 / #27: /zone/enter for an ungated zone that is not the current zone → 409 wrongZone, no seat, no position write', async () => {
+    const zoneRooms = async (zoneId: string): Promise<number> => ((await matchMaker.query({ name: 'zone', zoneId } as never)) as unknown[]).length;
+    const acc = await register(s);
+    const [row] = await rawQuery(s.db, 'select zone_id from players where id = $1', [acc.id]);
+    const home = String(row!['zone_id']) as ZoneId;
+    const away: ZoneId = home === 'mire_route' ? 'mirevale' : 'mire_route';
+    expect(zone(away).gate).toBeNull(); // ungated: only the current-zone rule can refuse it
+    const snap = await snapshot(s, acc.id);
+    const awayRooms = await zoneRooms(away);
+    // offline (persisted zone only)
+    const r = await api(s, 'POST', '/zone/enter', acc.access, { zoneId: away });
+    expect(r.status).toBe(409);
+    expect(r.body).toEqual({ code: 'wrongZone', zoneId: home });
+    // online in the current zone (live presence): REST "fast travel" is still refused
+    const j = await enter(s, acc, home);
+    const live = await api(s, 'POST', '/zone/enter', acc.access, { zoneId: away });
+    expect(live.status).toBe(409);
+    expect(live.body).toEqual({ code: 'wrongZone', zoneId: home });
+    expect(live.body.seat).toBeUndefined();
+    expect(await zoneRooms(away)).toBe(awayRooms); // no shard picked/created for the refused zone
+    await sleep(200);
+    expect(j.left.code).toBeNull(); // the live session is untouched
+    await j.room.leave(true);
+    await sleep(300);
+    expect(await snapshot(s, acc.id)).toBe(snap); // players.zone_id / x / z unchanged
+  }, 60_000);
+
+  it('A23 / #28: POST /marketplace/list of a creature during a live battle → 409 inBattle, no listing', async () => {
+    // Bug-Catcher Tev (50, 20) is a plain route trainer: interacting starts a trainer battle at once
+    const trainer = zone('mire_route').trainers.find((t) => t.id === 'mire_route.bug_catcher')!;
+    const acc = await register(s);
+    const starterId = (await api(s, 'GET', '/me', acc.access)).body.party[0].id as string;
+    // a second party member, so that outside a battle the listing would be valid (not PartyMinimum)
+    const second = await s.repos.db.transaction(async (tx) => (await s.repos.creatures.insert(tx, newCreature(content, 'glimp', 6, { ownerId: acc.id }), { kind: 'party', index: 1 })).id);
+    const { j } = await inZone('mire_route', trainer.x, trainer.z - 2, acc);
+    j.room.send('interact', { kind: 'npc', targetId: trainer.id });
+    await waitFor(() => ofType(j.msgs, 'battleStart').length > 0, 10_000);
+    expect(s.booted.runtime.presenceStore.battleOf(acc.id)).not.toBeNull();
+    await sleep(300); // battle-start writes (dex seen) settle before the snapshot
+    const snap = await snapshot(s, acc.id);
+    for (const creatureId of [second, starterId]) {
+      const r = await api(s, 'POST', '/marketplace/list', acc.access, { creatureId, startingBid: 100, buyNowPrice: null, durationHours: 12 });
+      expect(r.status).toBe(409);
+      expect(r.body.code).toBe('inBattle');
+    }
+    expect(await rawQuery(s.db, 'select id from listings where seller_id = $1', [acc.id])).toEqual([]);
+    expect(await snapshot(s, acc.id)).toBe(snap); // both creatures still in the party, owner unchanged
+    await j.room.leave(true);
   }, 60_000);
 
   it('#23 (REST): wrong secret / garbage / missing token → 401 on every bearer route', async () => {

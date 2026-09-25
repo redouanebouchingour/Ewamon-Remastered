@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { getHeightfield, isWalkable, isWater, playableBounds } from '@ewa/content';
 import type { Heightfield } from '@ewa/content';
 import { MOVEMENT } from '@ewa/protocol';
-import { BUDGET_MAX_MS, BUDGET_MIN_MS, MAX_RUN_STEP, MAX_WALK_STEP, RUN_SPEED, WALK_SPEED, refillBudget, validateInput } from '../src/rooms/movement';
+import { BUDGET_MAX_MS, BUDGET_MIN_MS, MAX_RUN_STEP, MAX_WALK_STEP, RUN_SPEED, WALK_SPEED, isLava, refillBudget, standable, validateInput } from '../src/rooms/movement';
 import type { MovePrev } from '../src/rooms/movement';
 
 const h = getHeightfield('mire_route');
@@ -156,5 +156,36 @@ describe('validateInput', () => {
   it('refillBudget clamps at 250 ms', () => {
     expect(refillBudget(240, 50)).toBe(250);
     expect(refillBudget(-100, 50)).toBe(-50);
+  });
+});
+
+describe('lava (audit L2-25): cinder water is never standable, HM Surf or not', () => {
+  for (const zoneId of ['cinderhold', 'ash_route'] as const) {
+    it(`${zoneId}: a surfer stepping onto open lava → unwalkable; the boardwalk pier over it stays walkable`, () => {
+      const lh = getHeightfield(zoneId);
+      const lb = playableBounds(lh);
+      let edge: readonly [number, number] | null = null;
+      let pier: readonly [number, number] | null = null;
+      for (let z = lb.minZ + 2; z < lb.maxZ - 2; z += 0.5) {
+        for (let x = lb.minX + 2; x < lb.maxX - 2; x += 0.5) {
+          if (edge === null && isWalkable(lh, x, z) && isWater(lh, x + 0.5, z) && !isWalkable(lh, x + 0.5, z)) edge = [x, z];
+          if (pier === null && isWalkable(lh, x, z) && isWater(lh, x, z)) pier = [x, z];
+        }
+      }
+      expect(edge).not.toBeNull();
+      const [x0, z0] = edge!;
+      expect(isLava(lh, x0 + 0.5, z0)).toBe(true);
+      const surfer = validateInput({ x: x0, z: z0, lastSeq: 0, budgetMs: 200, inBattle: false, canSurf: true }, { seq: 1, x: x0 + 0.5, z: z0, angle: 0, running: true, dtMs: 100 }, lh);
+      expect(surfer).toMatchObject({ ok: false, reason: 'unwalkable' });
+      expect(pier).not.toBeNull();
+      expect(isLava(lh, pier![0], pier![1])).toBe(true);
+      expect(standable(lh, pier![0], pier![1], false)).toBe(true); // content's walkable boardwalk strip, drawn as a pier
+    });
+  }
+
+  it('other biomes are not lava: mire_route water stays surfable', () => {
+    const [x0, z0] = water!;
+    expect(isLava(h, x0 + 0.5, z0)).toBe(false);
+    expect(standable(h, x0 + 0.5, z0, true)).toBe(true);
   });
 });

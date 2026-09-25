@@ -13,6 +13,7 @@
     "build": "pnpm -r --filter './packages/*' build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:browser": "playwright test",
     "test:lint-rules": "vitest run --config eslint/vitest.config.ts",
     "typecheck": "tsc -b --pretty",
     "lint": "eslint .",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.10.5",
     "eslint": "^9.39.5",
     "globals": "^15.15.0",

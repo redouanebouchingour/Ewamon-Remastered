@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { ROUTE_TUNING, STORY_TUNING, TOWN_SPAWN_TUNING, encounterTableFor, getHeightfield, isWalkable, isWater, zone, allZones } from '@ewa/content';
-import type { ZoneId } from '@ewa/content';
+import type { EncounterTable, ZoneId } from '@ewa/content';
 import { createRng } from '@ewa/core';
 import { SpawnDirector, isDay, slotEligible, tuningFor } from '../src/rooms/spawnDirector';
 import { content } from './helpers';
@@ -165,4 +165,15 @@ describe('SpawnDirector', () => {
     }
     for (const [sp, p] of expected) expect(Math.abs((counts.get(sp) ?? 0) / N - p)).toBeLessThan(0.015);
   }, 120_000);
+});
+
+describe('lava (audit L2-25)', () => {
+  it('a water slot never lands on lava: a cinder director whose table has only water slots places nothing', () => {
+    const z = zone('ash_route');
+    const table: EncounterTable = { id: 'lava_probe', zoneId: z.id, slots: [{ species: 'glimfin', weight: 1, levelMin: 10, levelMax: 10, timeOfDay: 'any', tier: 'common', medium: 'water' }] };
+    const h = getHeightfield(z.id);
+    expect(h.water.some((w) => w === 1)).toBe(true); // ash_route has a (lava) pond
+    const d = new SpawnDirector(z, table, createRng('lava'), h, ROUTE_TUNING, content);
+    expect(drive(d, 2000).spawned).toEqual([]);
+  });
 });

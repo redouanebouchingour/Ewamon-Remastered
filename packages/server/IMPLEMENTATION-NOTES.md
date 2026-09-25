@@ -81,7 +81,7 @@ process), `S<n>` (spec gaps) or `W<n>` (spawn director).
 - **S3 — movement rule order:** `bounds` is checked before `unwalkable` (spec lists them 6/5). The margin is
   `walkable = 0`, so with the spec order `bounds` could never be observed; the accept set is identical.
   Rejections other than `staleSeq` also advance `userData.lastSeq` (no replay of a rejected seq).
-  Water-only samples are standable with `HM Surf` in the inventory cache (§30.3).
+  Water-only samples are standable with `HM Surf` in the inventory cache (§30.3) — never lava (S11, part 3).
 - **S4 — battle persistence failures:** a `resolveTurn` throw voids the battle (`battleEnd { draw }`, no
   rewards). A failed transaction keeps `before`, clears `pending`, sends `error { internal, 'turnRejected' }`
   and reopens the turn; two consecutive failures void the battle (a deterministic failure must not loop).
@@ -474,3 +474,44 @@ deviations). This section is written incrementally; the coverage table at the en
 | §30.11 checklist | chat filter, raid, market expiry, DB-only replay now tested; presence/challenge/toPublic/rate limits from part 1 |
 | §50.4.5 matrix | `aoi-fanout`, `challenge-trade`, `raid` added; `handover.test.ts` / `story-beats.test.ts` remain folded into `world.test.ts` (part 1) |
 | §50.5 M2/M4 server boxes | aoi-fanout 50/100/200 ✓, challenge-trade ✓, raid ✓, guild routes in rest-auth ✓, market-concurrency ✓ on PGlite (Postgres run needs `DATABASE_URL`; not run here — Docker was not running) |
+
+---
+
+# Part 3 — authority follow-ups (SPEC amendments of 2026-09-25)
+
+§30.4.8 rule 6, §30.5.1 #26–#28 and §50.4.5 A21–A24 (`.design/audits/spec-verification.md` L2-02/03/07/08/25).
+
+- **R2, amended — `/matchmake/*` refused before any reservation (#26, A21).** `onCreate`/instance `onAuth` already
+  refused options without the ticket, but Colyseus' `POST /matchmake/joinOrCreate|join|joinById` on a *live* room
+  answered 200 with a seat: the refusal came only when the seat was consumed, and the dangling reservation counted
+  against `maxClients` for its lifetime (a token holder could fill every shard and make the server open new ones).
+  `refuseDirectMatchmaking(klass, ticket)` installs a **static** `onAuth` (the hook `callOnAuth` runs for every HTTP
+  matchmaking call, before `createRoom`/`reserveSeatFor`) that throws `ServerError(403, 'noTicket')` without the
+  ticket and otherwise returns `true` — which gives Colyseus no auth data, so the instance `onAuth` still runs on
+  every seat consumption. Server-side reservations pass no auth context and never call it; `/matchmake/reconnect`
+  does not call `onAuth`. It is installed right after `matchMaker.defineRoomType`, because registration logs
+  "instance-level onAuth will be ignored" for a class that defines both hooks — false for this static.
+- **#27 (A22)** `wrongZone` was already enforced (R2); **#28 (A23)** `inBattle` on `/marketplace/list` was already
+  enforced (Q6). Both are now in `authority.test.ts`.
+- **S12 — story trainers are fired by their beat only (§30.4.8 rule 6, A24).** `storyBeats.ts STORY_BATTLE_IDS`
+  (every `StoryBeat.battle.trainerId`). An `interact` on such a TrainerDef: when the zone's next eligible beat's
+  battle names it, that beat runs (`storyBeat start` + its battle, exactly as facing the speaker — the trainer stands
+  beside the speaking NPC); otherwise it is a plain NPC: nothing over the wire (no battle, reward or
+  `trainer:<id>:beaten`; before, it fell through to the plain trainer row and paid twice). The first half is this
+  package's reading of rule 6's "when no eligible beat names it" — the spec does not say what happens when one does.
+- **S11 — lava (L2-25).** Content's heightfield has one `water` mask (pond, sea, bog **and** lava; the client renders
+  the cinder biome's water as lava). Open water is `walkable = 0` in content, so nobody *walks* on lava; but
+  `standable()` let an HM Surf holder stand on any water-only sample, lava included (cinderhold 97 samples,
+  ash_route 350). `movement.ts LAVA_BIOMES = {cinder}` / `isLava(h, x, z)` (per zone — the field has no per-sample
+  water kind): a surfer is refused lava with `unwalkable`; the boardwalk strip over a lava pond stays walkable
+  (content marks it walkable and render draws a pier there, so prediction and truth agree). `SpawnDirector` refuses
+  lava for `medium: 'water'` spawns (no draw added: seeded sequences unchanged; no cinder table has water slots
+  today). No content change, no heightfield digest change. The SPEC's R10 (a per-sample lava mask in content) would
+  replace the per-zone rule.
+
+Tests: `authority.test.ts` A21 (7 direct matchmaking calls, incl. a forged ticket and `joinById` on the live room →
+403 `noTicket`; room list, client count and state unchanged; the same player still enters via REST), A22 (offline and
+while connected), A23 (second party member, so only the battle can refuse it), A24 (+ the positive control: with
+`met_wynn` the same interact fires `mire_rival`); `movement.test.ts` lava in cinderhold / ash_route;
+`spawn-director.test.ts` a water-only table in ash_route places nothing. Each was checked against a mutant (fix
+removed → the test fails).
