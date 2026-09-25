@@ -1,84 +1,74 @@
-# HANDOFF — Ewamon Remastered (as of 2026-09-23)
+# HANDOFF — Ewamon Remastered (as of 2026-09-25)
 
 This file is the single entry point for whoever continues the build. Read it, then
-`.design/PLAN.md` (approved plan) and `.design/SPEC.md` (BINDING contract, 6,488 lines,
-assembled from `.design/spec/*.md`; any change needs a `.design/spec/CHANGELOG.md` entry).
+`.design/PLAN.md` (approved plan) and `.design/SPEC.md` (BINDING contract, assembled from
+`.design/spec/*.md` by `node .design/spec/assemble.mjs`; any change to a part file needs a
+`.design/spec/CHANGELOG.md` entry in the same commit).
 
 ## Working rules
 
-- Repo: `C:\Users\Flowmatic - Redouane\Ewamon-Remastered`, branch `main`, commits land on `main`.
-  If you are running inside a **git worktree** of this repo, note that `assets-src/` (443 MB raw art),
-  `node_modules/` and `tools/*/.cache/` are gitignored and therefore absent there. Either change your
-  working directory to the main checkout above, or run `pnpm install` and copy `assets-src/` from it.
-- Old game (read-only reference): `C:\Users\Flowmatic - Redouane\Ewamon`. Legacy data copies:
-  `.design/legacy/`.
+- Repo: `C:\Users\Flowmatic - Redouane\Ewamon-Remastered`, branch `main`. Work from 2026-09-23 on was
+  done in the worktree `.claude/worktrees/wonderful-nightingale-29f3d5` (branch
+  `claude/wonderful-nightingale-29f3d5`) and fast-forwarded into `main` at each milestone.
+- In a **git worktree**, `assets-src/creatures`, `assets-src/models` and `tools/sprite-pipeline/.cache`
+  are gitignored and absent. Link them from the main checkout (Windows directory junctions,
+  `New-Item -ItemType Junction`) and run `pnpm install`.
+- Old game (read-only reference): `C:\Users\Flowmatic - Redouane\Ewamon`. Legacy data copies: `.design/legacy/`.
 - Rate limit: the account's 5-hour session limit trips after roughly 1.5–2 M subagent tokens. Run
-  **2–3 workflow agents at a time**, tell them to save files incrementally, and `git commit` after
-  each lands. Every package records spec deviations in `packages/<pkg>/IMPLEMENTATION-NOTES.md`.
-- Architectural laws are lint rules (`eslint.config.js`, `eslint/local-rules.js`): `@ewa/core`
-  imports nothing and is deterministic; `@ewa/render` knows no rules/content/network; server never
-  renders; client never imports server/persist. `pnpm check` = typecheck + lint + lint-rule tests +
-  tests + build.
-- Verify in the Browser pane (WebGPU works there: Chrome 152, Intel Gen-12 iGPU, `timestamp-query`
-  and BC compression available), not by build-passing.
+  **2–3 agents at a time**, tell them to save files incrementally, and `git commit` after each lands.
+  When the limit trips mid-agent, WIP-commit what is on disk and resume the agent with SendMessage.
+- Each package records spec deviations in `packages/<pkg>/IMPLEMENTATION-NOTES.md` (tools likewise).
+- Architectural laws are lint rules (`eslint.config.js`, `eslint/local-rules.js`): `@ewa/core` imports
+  nothing; `@ewa/render` imports only three; server never renders; client never imports server/persist;
+  `ewa/no-inline-style` in the client. `pnpm check` = typecheck + lint + lint-rule tests + tests + build.
+- Browser verification: the desktop app's Browser pane only draws frames while the session window is
+  visible. When it is not, use a local headless Chrome over CDP (Chrome 153 has WebGPU headless on this
+  machine): launch `chrome.exe --headless=new --remote-debugging-port=9444 --enable-unsafe-webgpu
+  --enable-gpu --ignore-gpu-blocklist --user-data-dir=<scratch>` and drive it with a small CDP script
+  (`Page.captureScreenshot`). The render sandbox is `pnpm --filter @ewa/render sandbox` (port 5180,
+  `?zone=mirevale`, `?zone=mire_route`, `?demo=lineup`, `?demo=battle`, `window.__ewaSandbox`).
 
 ## Status by package
 
 | Package / tool | State | Proof |
 |---|---|---|
-| foundation (pnpm, tsc -b, vitest, eslint boundaries, CI) | DONE | `pnpm typecheck && pnpm lint && pnpm test:lint-rules` |
-| `.design/` SPEC + story bible + roster coverage + legacy audit | DONE | `.design/SPEC.md`, `.design/story-bible.md`, `.design/roster-coverage.md`, `.design/audits/` |
-| `@ewa/core` | DONE — 19 files / 240 tests, 1,000-battle determinism fuzz, digests committed | `pnpm exec vitest run packages/core` |
-| `@ewa/persist` | DONE — 55 tests on PGlite; also verified on Docker Postgres 17 | `pnpm exec vitest run packages/persist`; real pg: `DATABASE_URL=postgres://postgres:<pw>@127.0.0.1:54322/ewamon_persist_test` (pw via `docker inspect supabase-db`, Env `POSTGRES_PASSWORD`) |
-| `@ewa/protocol` | DONE — 157 tests, AOI proven with real Encoder/StateView/Decoder | `pnpm exec vitest run packages/protocol` |
-| `@ewa/content` | DONE — validate gate OK (130/130 obtainable, 67 families, 21 heightfields ≥ 61 % walkable), 49 tests | `pnpm --filter @ewa/content run validate`; `pnpm exec vitest run packages/content` |
-| `tools/sprite-pipeline` | v2 code + 8 suites (41 pass); **output not regenerated** — `packages/client/public/creatures` is EMPTY | see "Next steps" 1 |
-| `tools/material-bake` + `packages/render/src/surfaces` | scaffolded only (package.json/tsconfig, deps installed) | see "Next steps" 2 |
-| `@ewa/render` | NOT STARTED (spec §10 complete) | — |
-| `@ewa/server` | NOT STARTED (spec §30 complete) | — |
-| `@ewa/client` | NOT STARTED (spec §20 complete) | — |
-| `tools/asset-audit`, `tools/audio-pipeline` | stubs | spec §40.4/§40.5 |
-| `.design/audio-bible.md` | NOT WRITTEN | prompt outline in the design workflow script (see below) |
-| Spec adversarial verification (implementability / determinism-authority / art-bar lenses) | NOT RUN | protocol notes: §50.4.3 says 17 ServerMessage variants, §4.4 has 16 — stale count |
+| foundation | DONE | `pnpm typecheck && pnpm lint && pnpm test:lint-rules` |
+| `.design/` SPEC, story bible, roster coverage, audio bible | DONE; SPEC amended 2026-09-23..25 (see CHANGELOG) | `.design/SPEC.md`, `.design/audio-bible.md` |
+| `@ewa/core` | DONE — 240 tests, 1,000-battle determinism fuzz | `pnpm exec vitest run packages/core` |
+| `@ewa/content` | DONE — validate gate 130/130, 67 families, 21 zones + heightfields | `pnpm --filter @ewa/content run validate` |
+| `@ewa/protocol` | DONE — 157 tests; `CLOSE_CODES.replaced` = 4101 | `pnpm exec vitest run packages/protocol` |
+| `@ewa/persist` | DONE — PGlite + Postgres; migration `0001_battle_replay` | `pnpm exec vitest run packages/persist` |
+| `@ewa/server` | DONE (parts 1 + 2) — ZoneRoom 20 Hz, movement validation, AOI, handover, spawns, battles, story beats, REST + JWT, trades, raids, social, guilds, marketplace, live-ops, metrics; AOI fanout 0.16–0.22 × quadratic at N = 50/100/200 | `pnpm exec vitest run packages/server` (with persist + protocol: 345 tests) |
+| `@ewa/render` | DONE (parts 1–3) — host, KTX2 material library, CSM + sky/IBL + day-night, post (GTAO→TRAA→bloom→DOF→ACES→grade), zone builder (11 biome sets, 21 set-pieces), terrain collider, scatter/LOD, billboards, camera rig, battle stage + 47 VFX, actor pool, HUD | `pnpm exec vitest run packages/render`; sandbox |
+| `@ewa/client` | part 1 DONE (shell, router, stores, WorldSession, design system, all screens); part 2 (3D scene, prediction, battles, HUD writer, audio director, modals) IN PROGRESS | `pnpm exec vitest run packages/client` |
+| `tools/sprite-pipeline` | DONE (M1) — 130 species, 65 atlases, 36.20 MB ≤ 35 MiB, QA actionable 0, binary alpha, 59 tests | `pnpm sprites`; `.design/audits/M1-asset-audit.md` |
+| `tools/material-bake` | DONE — 83 surfaces (38 hero), 55.7 MB ≤ 90 MB | `pnpm materials` |
+| `tools/model-pipeline` | DONE — 4 legendaries + 19 looks, 8.58 MB ≤ 12 MB | `pnpm models` |
+| `tools/asset-audit` | DONE — 17 rules; `--dump`, `--bytes`, baseline gate | `pnpm audit:assets -- --bytes` |
+| `tools/audio-pipeline` | key-less half DONE — `plan`, `generate` refusal, `process`; 366 jobs; **needs the user's `EWA_AUDIO_API_KEY` (Stability Stable Audio 2.5 recommended, ≈ $73)** | `pnpm --filter @ewa/audio-pipeline plan` |
 
-Client already holds the Basis transcoder at `packages/client/public/basis/` for `KTX2Loader`.
+## Known open issues (render)
+
+- Shader programs 107 against the §50.2.2 cap of 96; render targets 34 against 24 (the stock post chain
+  plus 4 cascades cannot meet 24 — spec amendment needed with the measured breakdown).
+- Leak test: textures and render targets +1/+1 after the first unload (a lazily created object outside
+  the zone); geometries/programs/attributes return to baseline exactly.
+- `dumpZone()` lacks `materials[].side`, scatter kind/tier/instanced and `lightSources`; billboards
+  keep their albedo in `userData.ewaAlbedo`, which `dumpZone` does not read yet.
+- DOF composite leaves a soft halo around sharp sprites (fix: feed `planeDist * (1 − mask)` as DOF depth).
+- Height fog still pales close-ups; first-frame shader warm-up is ≈ 16 s synchronous (use `compileAsync`).
+- GPU cost on the dev iGPU (Intel Gen-12) is 35–95 ms per frame at 1440×900 with the full post chain;
+  the budget target is an RTX 3060 class GPU. Per-pass `passMs` does not resolve yet.
+- Actors are procedural figures; the Quaternius GLB looks now exist in `public/models/` (≈ 3.1 units tall,
+  need scaling) and can replace them.
+- Server heightfield does not mark building footprints unwalkable; the client collider blocks them.
 
 ## Next steps, in order
 
-1. **Finish M1 sprite output.** In `tools/sprite-pipeline`: one test file fails only because the output is
-   missing. Run `pnpm --filter @ewa/sprite-pipeline run build` then `run qa` to regenerate the v2 output
-   (manifest version 2, exactly the 130 species, 2048² zone-affinity WebP atlases with mips,
-   `qa/contact-sheet.png`, `qa-report.json` with `actionable: 0`). Hard budget: `packages/client/public/creatures`
-   ≤ 35 MB (SPEC §40.1 fallback ladder). Write `tools/sprite-pipeline/README.md`. Make
-   `pnpm exec vitest run tools/sprite-pipeline`, `pnpm typecheck`, `pnpm lint` clean. Commit the output.
-2. **Material baker (SPEC §40.3 + §10.2).** Implement `packages/render/src/surfaces/{recipe,surfaces,index}.ts`
-   + `recipes/*` (pure TS, no three) for every SurfaceId in §10.2.2, and `tools/material-bake/src/*`
-   (bake → Sobel normal → ORM → KTX2 UASTC via `ktx2-encoder` node API, 512² field / 1024² hero, albedo
-   luminance ceiling 0.85 with `albedoClampedPct`, seam check, content-hash cache, `materials.manifest.json`)
-   writing to `packages/client/public/materials/`. Start with the Mirevale slice (`bake:slice`), Read the
-   preview sheet, then bake all.
-3. **`@ewa/render` (SPEC §10).** Split across 3 agents on separate modules: (a) renderer host + material
-   library + lighting rig (CSM 4 cascades, sky/IBL, day-night) + post stack (GTAO → TRAA → bloom → tilt-shift
-   DOF → ACES → grade, `ReducedEffects`); (b) zone builder + biome generators + terrain from content's
-   heightfield + InstancedMesh scatter + LOD + disposal contract + leak test; (c) creature billboard system
-   (NearestFilter, normal-lit, alpha shadow, contact shadow, rim light, variant uniforms) + DioramaCamera +
-   BattleStage + HudLayer. Verify every three.js API in `packages/render/node_modules/three` (0.186,
-   `three/webgpu`, `three/tsl`, `examples/jsm/tsl/display/*`, `examples/jsm/csm/CSMShadowNode.js`).
-4. **`@ewa/server` (SPEC §30)** — ZoneRoom (20 Hz, movement validation via content heightfield +
-   protocol MOVEMENT, AOI StateView, handover), spawn director, battle sub-state using `@ewa/core`,
-   Fastify REST + auth, persistence flows via `@ewa/persist`, authority adversarial suite, AOI fanout harness.
-5. **`@ewa/client` (SPEC §20)** — React 19 + react-router 7 shell, one design system, Zustand UI state,
-   Colyseus SDK world state, prediction/interpolation, SceneDirector, battle timeline → render BattleStage.
-6. **Integrate the vertical slice** (Mirevale + Mire Route): run server + client, drive it in the Browser
-   pane, capture the six §50.6 shots, write the hostile render audit, hit the §50.2 frame budget (record
-   real numbers; the dev machine is an Intel iGPU, the budget target is RTX 3060 class).
-7. Then M3 (19 zones), M4 (systems), M5 (audio — `.design/audio-bible.md` first; the AI audio API key is
-   the user's open dependency).
-
-## Useful paths
-
-- Workflow scripts from the previous session (prompts worth reusing):
-  `C:\Users\Flowmatic - Redouane\.claude\projects\C--Users-Flowmatic---Redouane-Ewamon\daaf83bf-e3eb-44dd-bcbd-370b16c4bb1d\workflows\scripts\` —
-  `ewamon-material-bake-*.js`, `ewamon-m1-finish-3-*.js`, `ewamon-design-docs-*.js` (audio-bible prompt inside).
-- Sprite raw inputs: `assets-src/creatures/{front,back,animations}`; models: `assets-src/models/`.
-- Postgres for real-db tests: Docker container `supabase-db`, port 54322, throwaway db `ewamon_persist_test`.
+1. Land client part 2 and drive the Mirevale + Mire Route slice with two accounts (meet, chat, trade,
+   battle, clear Grove-Keeper Mira).
+2. Render hardening pass on the open issues above; then the six §50.6 shots per zone and the hostile
+   render audit `.design/audits/M2-render-audit.md` by a reviewer who did not write render.
+3. `harness:budget` / `harness:shots` in the client (§50.2.3, §50.6.1) and the Playwright suites of §50.4.6–7.
+4. M3: all 21 zones through the audit + leak + shots; league battles per `LEAGUE` entry.
+5. M5: generate audio with the user's key, then the accessibility and performance passes.
