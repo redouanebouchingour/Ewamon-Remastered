@@ -17,9 +17,20 @@ const ERROR_TEXT: Readonly<Record<string, string>> = {
   internal: 'The server hit a problem. Try again.',
 };
 
+/**
+ * The server completes a trade with `tradeUpdate complete` then that trade's `inventoryDelta` (tradeSession
+ * `complete`), whose received creatures sit in the box. The wire delta has no slot, so the router marks the next one.
+ */
+let tradeReceiptPending = false;
+
 export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'handover'>): void {
   switch (m.type) {
     case 'inventoryDelta':
+      if (tradeReceiptPending) {
+        tradeReceiptPending = false;
+        applyInventoryDelta({ ...m, addedTo: 'box' });
+        return;
+      }
       applyInventoryDelta(m);
       return;
     case 'progressionDelta':
@@ -45,6 +56,7 @@ export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'han
       return;
     case 'tradeUpdate':
       if (m.phase === 'complete' || m.phase === 'cancelled') {
+        tradeReceiptPending = m.phase === 'complete';
         useUiStore.getState().setTrade(null);
         toast(m.phase === 'complete' ? 'success' : 'info', m.phase === 'complete' ? 'Trade complete.' : 'Trade cancelled.');
       } else {

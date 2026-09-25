@@ -109,7 +109,9 @@ describe('every route renders', () => {
     ['/play/settings', 'panel'],
   ])('%s', async (path, testId) => {
     mount([path]);
-    await screen.findByTestId(testId, {}, { timeout: 4000 });
+    // the first lazy route transforms PlayShell's whole module graph (part 2's world modals / battle DOM) on a cold
+    // worker: > 4 s when the full suite runs in parallel
+    await screen.findByTestId(testId, {}, { timeout: 15000 });
     await screen.findByTestId('topbar');
     noErrors();
     // the world view is capability-gated: no renderer canvas in jsdom

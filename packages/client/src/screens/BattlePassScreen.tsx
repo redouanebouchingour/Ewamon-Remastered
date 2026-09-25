@@ -6,6 +6,7 @@
  * Claim → `POST /battle-pass/claim` → applyInventoryDelta.
  */
 import { useEffect, useRef, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useLoaderData } from 'react-router';
 import { MYTHICAL_CHOICES } from '@ewa/protocol';
 import type { battlePassLoader } from '../app/loaders';
@@ -45,6 +46,56 @@ function rewardSummary(r: Reward): string {
   if (r.mythicalChoice !== null) parts.push('Mythical choice');
   return parts.join(' · ');
 }
+
+/** Daily missions + weekly goals (server part 2 Q11): progress from `quests[questId][missionId]`, one claim each. */
+function Missions({ fetcher }: { readonly fetcher: ReturnType<typeof useIntent> }) {
+  const missions = useSessionStore(useShallow((st) => st.progression?.missions ?? NO_MISSIONS));
+  const quests = useSessionStore((st) => st.progression?.quests ?? null);
+  if (missions.length === 0) return null;
+  return (
+    <section className={s.missions} aria-label="Missions">
+      <h3 className={l.h3}>Daily missions and weekly goals</h3>
+      <ul className={s.missionList}>
+        {missions.map((m) => {
+          const prog = quests?.[m.questId]?.[m.id];
+          const count = Math.min(m.target, prog?.count ?? 0);
+          const done = prog?.done ?? false;
+          const reward = [m.reward.money > 0 ? formatMoney(m.reward.money) : null, ...Object.entries(m.reward.items).map(([id, n]) => `${itemInfo(id).name} ×${n}`)].filter((x) => x !== null).join(' · ');
+          return (
+            <li key={`${m.questId}:${m.id}`} className={s.mission}>
+              <div className={l.stack}>
+                <span className={s.missionTitle}>{m.title}</span>
+                <span className={l.caption}>
+                  {m.questId.startsWith('weekly:') ? 'Weekly' : 'Daily'} · {reward}
+                </span>
+              </div>
+              <span className={l.mono}>
+                {count} / {m.target}
+              </span>
+              {m.claimed ? (
+                <span className={s.stateTag}>
+                  <Icon name="check" size="sm" /> Claimed
+                </span>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={!done}
+                  busy={fetcher.busy((p) => p.intent === 'claimMission' && p['missionId'] === m.id && p['questId'] === m.questId)}
+                  onClick={() => fetcher.submit({ intent: 'claimMission', questId: m.questId, missionId: m.id })}
+                >
+                  {done ? 'Claim' : 'In progress'}
+                </Button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+const NO_MISSIONS: readonly never[] = [];
 
 function Tile({ r, index, state, busy, onClaim }: { readonly r: Reward; readonly index: number; readonly state: TileState; readonly busy: boolean; readonly onClaim: () => void }) {
   return (
@@ -149,6 +200,8 @@ export function BattlePassScreen() {
           ))}
         </ol>
       </div>
+
+      <Missions fetcher={fetcher} />
 
       {mythical !== null && (
         <section className={s.mythical}>

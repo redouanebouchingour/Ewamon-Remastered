@@ -192,6 +192,34 @@ export default tseslint.config(
     },
   },
 
+  // ---- @ewa/client 60 Hz path: no React (SPEC §20.10.2 rule 1) -----------------------------------------
+  // (a later block's no-restricted-imports replaces the ewa/client one for these files, so it repeats that list)
+  {
+    name: 'ewa/client-60hz',
+    files: ['packages/client/src/scene/**/*.ts', 'packages/client/src/battle/TimelinePlayer.ts', 'packages/client/src/audio/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            ...deny(
+              ['@ewa/server', '@ewa/persist', 'colyseus', '@colyseus/core', 'pg', 'drizzle-orm', ...NODE_BUILTINS],
+              'the client is a browser bundle. Server truth arrives over the wire, never by import.',
+            ),
+            ...deny(
+              ['react', 'react-dom', 'react-dom/client', 'react-router'],
+              'World3D.tick and everything it calls is React-free (SPEC §20.10.2 rule 1): read stores with getState(), never a hook.',
+            ),
+          ],
+          patterns: denyPatterns(
+            [...NODE_BUILTIN_PATTERNS, '@ewa/server/*', '@ewa/persist/*', 'drizzle-orm/*'],
+            'the client is a browser bundle.',
+          ),
+        },
+      ],
+    },
+  },
+
   {
     name: 'ewa/tools-and-tests',
     files: ['tools/**/*.ts', 'packages/*/test/**/*.ts', 'packages/*/test/**/*.tsx', '*.ts', '*.js', 'eslint/**/*.js'],

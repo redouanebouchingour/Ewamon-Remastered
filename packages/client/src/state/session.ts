@@ -41,6 +41,40 @@ export interface Progression {
   readonly quests: QuestState;
   /** quest ids whose rewards were claimed (from GET /me) */
   readonly questsClaimed: readonly string[];
+  /** today's daily missions + this week's goals (the loose `missions[]` of GET /me's `daily:` / `weekly:` quests, server part 2 Q11) */
+  readonly missions: readonly MissionView[];
+}
+
+/** One daily / weekly mission; its progress lives in `quests[questId][id]`. */
+export interface MissionView {
+  readonly questId: string;
+  readonly id: string;
+  readonly title: string;
+  readonly target: number;
+  readonly reward: { readonly money: number; readonly items: Readonly<Record<string, number>> };
+  readonly claimed: boolean;
+}
+
+/** GET /me quest views are loose objects: synthetic daily / weekly quests carry `missions[]`. */
+function missionsFrom(quests: MeResponse['quests']): MissionView[] {
+  const out: MissionView[] = [];
+  for (const q of quests) {
+    const list = (q as { missions?: unknown }).missions;
+    if (!Array.isArray(list)) continue;
+    for (const m of list as { id?: unknown; title?: unknown; target?: unknown; reward?: unknown; claimed?: unknown }[]) {
+      if (typeof m.id !== 'string' || typeof m.title !== 'string') continue;
+      const r = (m.reward ?? {}) as { money?: unknown; items?: unknown };
+      out.push({
+        questId: q.id,
+        id: m.id,
+        title: m.title,
+        target: typeof m.target === 'number' ? m.target : 1,
+        reward: { money: typeof r.money === 'number' ? r.money : 0, items: (r.items ?? {}) as Readonly<Record<string, number>> },
+        claimed: m.claimed === true,
+      });
+    }
+  }
+  return out;
 }
 
 export interface Inventory {
@@ -50,6 +84,11 @@ export interface Inventory {
   readonly box: readonly CreatureInstance[];
 }
 
+/** Whether a party can start a battle (the server refuses with `noUsableParty` otherwise); unknown → true. */
+export function partyCanBattle(inv: Inventory | null): boolean {
+  return inv === null || inv.party.some((c) => c.hp > 0);
+}
+
 /**
  * The room's `progressionDelta` plus the two REST-only dex fields GET /dex returns (variants seen per species,
  * alpha catches), which the wire variant has no slot for. Same single writer; deviation D4.
@@ -57,6 +96,8 @@ export interface Inventory {
 export type ProgressionDelta = ServerMessageOf<'progressionDelta'> & {
   readonly dexVariants?: Readonly<Record<string, readonly VariantKey[]>>;
   readonly dexAlpha?: readonly string[];
+  /** POST /quests/claim of a daily / weekly mission (REST-only, like the dex extras) */
+  readonly missionClaimed?: { readonly questId: string; readonly missionId: string };
 };
 
 /**
@@ -68,6 +109,11 @@ export type ProgressionDelta = ServerMessageOf<'progressionDelta'> & {
 export type InventoryDelta = ServerMessageOf<'inventoryDelta'> & {
   readonly party?: readonly CreatureInstance[];
   readonly box?: readonly CreatureInstance[];
+  /**
+   * Where `creaturesAdded` land. Default 'auto' mirrors a catch (party while it has room, else the box); a trade's
+   * delta is 'box' — the server transfers received creatures into the receiver's box (persist `completeTrade`).
+   */
+  readonly addedTo?: 'auto' | 'box';
 };
 
 export interface SessionState {
@@ -114,6 +160,11 @@ function union(a: readonly string[], b: readonly string[] | null): readonly stri
   return out;
 }
 
+/** Login-streak bookkeeping (`streak:<n>`, `streak:last:<day>`, server part 2 Q13) is stored as flags; it is not story. */
+function storyFlags(flags: readonly string[]): string[] {
+  return flags.filter((f) => !f.startsWith('streak:'));
+}
+
 function questsFrom(entries: readonly QuestProgressEntry[], base: QuestState = {}): QuestState {
   const out: Record<string, Record<string, { count: number; done: boolean }>> = {};
   for (const [q, objectives] of Object.entries(base)) out[q] = { ...objectives };
@@ -157,9 +208,10 @@ export const useSessionStore = create<SessionState>()(
           dexCaught: prev?.dexCaught ?? [],
           dexVariants: prev?.dexVariants ?? {},
           dexAlpha: prev?.dexAlpha ?? [],
-          flags: [...me.flags],
+          flags: storyFlags(me.flags),
           quests,
           questsClaimed: me.quests.filter((q) => q.claimed).map((q) => q.id),
+          missions: missionsFrom(me.quests),
         },
         inventory: {
           items: withoutZeros(me.inventory),
@@ -186,8 +238,12 @@ export const useSessionStore = create<SessionState>()(
           dexCaught: union(p.dexCaught, d.dexCaught),
           dexVariants: d.dexVariants ?? p.dexVariants,
           dexAlpha: d.dexAlpha ?? p.dexAlpha,
-          flags: union(p.flags, d.flags),
+          flags: union(p.flags, d.flags === null ? null : storyFlags(d.flags)),
           quests: d.questProgress === null ? p.quests : questsFrom(d.questProgress, p.quests),
+          missions:
+            d.missionClaimed === undefined
+              ? p.missions
+              : p.missions.map((m) => (m.questId === d.missionClaimed!.questId && m.id === d.missionClaimed!.missionId ? { ...m, claimed: true } : m)),
         },
       });
     },
@@ -201,10 +257,11 @@ export const useSessionStore = create<SessionState>()(
         list.filter((c) => !removed.has(c.id)).map((c) => updated.get(c.id) ?? c);
       let party = d.party !== undefined ? [...d.party] : patch(inv.party);
       let box = d.box !== undefined ? [...d.box] : patch(inv.box);
-      // mirrors the server's placement: a new creature joins the party while it has room, else the box
+      // mirrors the server's placement: a caught creature joins the party while it has room, else the box; a traded
+      // one always goes to the box
       for (const c of d.creaturesAdded) {
         if (party.some((p) => p.id === c.id) || box.some((b) => b.id === c.id)) continue;
-        if (party.length < 6) party = [...party, c];
+        if (d.addedTo !== 'box' && party.length < 6) party = [...party, c];
         else box = [...box, c];
       }
       set({
@@ -272,6 +329,7 @@ export function toProgressionDelta(res: {
   readonly dexVariants?: Readonly<Record<string, readonly VariantKey[]>>;
   readonly dexAlpha?: readonly string[];
   readonly questProgress?: readonly QuestProgressEntry[];
+  readonly missionClaimed?: { readonly questId: string; readonly missionId: string };
 }): ProgressionDelta {
   return {
     type: 'progressionDelta',
@@ -285,6 +343,7 @@ export function toProgressionDelta(res: {
     questProgress: res.questProgress ?? null,
     ...(res.dexVariants !== undefined ? { dexVariants: res.dexVariants } : {}),
     ...(res.dexAlpha !== undefined ? { dexAlpha: res.dexAlpha } : {}),
+    ...(res.missionClaimed !== undefined ? { missionClaimed: res.missionClaimed } : {}),
   };
 }
 

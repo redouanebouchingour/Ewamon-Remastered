@@ -1,0 +1,78 @@
+/* over the canvas, under the DOM chrome (top bar, panels, toasts stay usable while the world boots) */
+.boot {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-canvas);
+  display: grid;
+  place-items: center;
+  background: var(--bg-0);
+  opacity: 1;
+  transition: opacity var(--motion-banner) var(--ease-out);
+  pointer-events: none;
+}
+
+.boot[data-state='done'] {
+  opacity: 0;
+}
+
+.center {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-4);
+  inline-size: 380px;
+}
+
+.brand {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h1);
+  line-height: var(--lh-h1);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.label {
+  color: var(--text-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.error {
+  color: var(--danger);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  text-align: center;
+}
+
+.activity {
+  position: relative;
+  inline-size: 100%;
+  block-size: 6px;
+  border-radius: var(--r-pill);
+  background: var(--bg-1);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+  overflow: hidden;
+}
+
+.sweep {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 30%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: sweep 1400ms var(--ease-in-out) infinite;
+  will-change: transform;
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}

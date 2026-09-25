@@ -7,13 +7,14 @@
 import { data, redirect } from 'react-router';
 import type { ActionFunctionArgs } from 'react-router';
 import { RegisterReq } from '@ewa/protocol';
+import type { InventoryDeltaBody } from '@ewa/protocol';
 import type { CreatureInstance } from '@ewa/core';
 import { itemInfo } from '../data/content';
 import { ApiFailure, apiFetch, storeTokens } from '../net/api';
 import { describeError, statusOf, toActionError } from '../net/errors';
 import type { ActionError } from '../net/errors';
 import { toast, useNotificationsStore } from '../state/notifications';
-import { toInventoryDelta, useSessionStore } from '../state/session';
+import { toInventoryDelta, toProgressionDelta, useSessionStore } from '../state/session';
 
 // ---- auth ---------------------------------------------------------------------------------------------
 
@@ -134,6 +135,14 @@ function runner(handlers: Readonly<Record<string, Handler>>) {
 }
 
 const applyInv = (d: Parameters<typeof toInventoryDelta>[0]): void => useSessionStore.getState().applyInventoryDelta(toInventoryDelta(d));
+/** A REST `inventoryDelta` body (server part 2 P1: setup, guild create, marketplace mutations) through the one writer. */
+const applyDelta = (d: InventoryDeltaBody): void => useSessionStore.getState().applyInventoryDelta({ type: 'inventoryDelta', ...d });
+/** Strips the `inventoryDelta` a mutation response carries after applying it; returns the view. */
+function withDelta<T extends { readonly inventoryDelta: InventoryDeltaBody }>(res: T): Omit<T, 'inventoryDelta'> {
+  const { inventoryDelta, ...view } = res;
+  applyDelta(inventoryDelta);
+  return view;
+}
 const updated = (c: CreatureInstance): void => applyInv({ creaturesUpdated: [c] });
 
 /** Creature + party/box intents, shared by /play/party and /play/box. */
@@ -155,7 +164,11 @@ const CREATURE_HANDLERS: Readonly<Record<string, Handler>> = {
   },
   async setup(p) {
     const held = str(p['heldItem']);
-    updated(await apiFetch('creatureSetup', { params: { id: str(p['id']) }, body: { ability: str(p['ability']), heldItem: held.length === 0 ? null : held } }));
+    const res = await apiFetch('creatureSetup', { params: { id: str(p['id']) }, body: { ability: str(p['ability']), heldItem: held.length === 0 ? null : held } });
+    // the equipped / returned held items come back as an inventoryDelta body (server part 2, P1)
+    const { inventoryDelta, ...creature } = res;
+    applyDelta(inventoryDelta);
+    updated(creature);
   },
   async moves(p) {
     const moves = Array.isArray(p['moves']) ? (p['moves'] as unknown[]).map(str) : [];
@@ -222,6 +235,16 @@ export const passAction = runner({
     applyInv({ creaturesAdded: res.creaturesAdded });
     return { species };
   },
+  /** a daily / weekly mission: `POST /quests/claim { questId: 'daily:<key>' | 'weekly:<key>', objectiveId: missionId }` */
+  async claimMission(p) {
+    const questId = str(p['questId']);
+    const missionId = str(p['missionId']);
+    const res = await apiFetch('questsClaim', { body: { questId, objectiveId: missionId } });
+    applyInv({ inventory: res.inventory, money: res.money, creaturesAdded: res.creaturesAdded });
+    useSessionStore.getState().applyProgressionDelta(toProgressionDelta({ questProgress: res.questProgress, missionClaimed: { questId, missionId } }));
+    toast('success', 'Mission reward claimed.');
+    return { questId, missionId };
+  },
 });
 
 export const socialAction = runner({
@@ -250,7 +273,7 @@ export const socialAction = runner({
 
 export const guildAction = runner({
   async create(p) {
-    return apiFetch('guildCreate', { body: { name: str(p['name']).trim(), tag: str(p['tag']).trim().toUpperCase() } });
+    return withDelta(await apiFetch('guildCreate', { body: { name: str(p['name']).trim(), tag: str(p['tag']).trim().toUpperCase() } }));
   },
   async join(p) {
     return apiFetch('guildJoin', { params: { id: str(p['id']) }, body: {} });
@@ -270,23 +293,25 @@ export const marketAction = runner({
   async list(p) {
     const buyNow = p['buyNowPrice'];
     const duration = num(p['durationHours']);
-    return apiFetch('marketplaceList', {
-      body: {
-        creatureId: str(p['creatureId']),
-        startingBid: num(p['startingBid']),
-        buyNowPrice: buyNow === null || buyNow === undefined || buyNow === '' ? null : num(buyNow),
-        durationHours: duration === 12 || duration === 48 ? duration : 24,
-      },
-    });
+    return withDelta(
+      await apiFetch('marketplaceList', {
+        body: {
+          creatureId: str(p['creatureId']),
+          startingBid: num(p['startingBid']),
+          buyNowPrice: buyNow === null || buyNow === undefined || buyNow === '' ? null : num(buyNow),
+          durationHours: duration === 12 || duration === 48 ? duration : 24,
+        },
+      }),
+    );
   },
   async bid(p) {
-    return apiFetch('marketplaceBid', { params: { id: str(p['id']) }, body: { amount: num(p['amount']) } });
+    return withDelta(await apiFetch('marketplaceBid', { params: { id: str(p['id']) }, body: { amount: num(p['amount']) } }));
   },
   async buyNow(p) {
-    return apiFetch('marketplaceBuyNow', { params: { id: str(p['id']) } });
+    return withDelta(await apiFetch('marketplaceBuyNow', { params: { id: str(p['id']) } }));
   },
   async cancel(p) {
-    return apiFetch('marketplaceCancel', { params: { id: str(p['id']) } });
+    return withDelta(await apiFetch('marketplaceCancel', { params: { id: str(p['id']) } }));
   },
 });
 

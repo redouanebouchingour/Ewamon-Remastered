@@ -1,0 +1,66 @@
+.box {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: var(--s-8);
+  z-index: var(--z-panel);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  inline-size: min(720px, calc(100vw - 2 * var(--s-7)));
+  margin-inline: auto;
+  padding: var(--s-5) var(--s-6);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-3);
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-2);
+  pointer-events: auto;
+  animation: rise var(--motion-panel) var(--ease-out) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.speaker {
+  color: var(--accent);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: var(--lh-h3);
+  font-weight: 700;
+}
+
+.line {
+  color: var(--text-hi);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+}
+
+.more {
+  align-self: flex-end;
+  padding: var(--s-1) var(--s-3);
+  border: 0;
+  border-radius: var(--r-1);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  cursor: pointer;
+}
+
+.more:hover {
+  color: var(--text-1);
+}
+
+.more:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

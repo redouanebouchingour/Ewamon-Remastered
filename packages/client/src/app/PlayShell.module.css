@@ -39,10 +39,12 @@
   flex-direction: column;
 }
 
+/* bottom-centre: the canvas HUD owns the bottom-left (chat) and the prompt sits above this (§20.6) */
 .hint {
   position: absolute;
-  inset-block-end: var(--s-6);
-  inset-inline-start: var(--s-6);
+  inset-block-end: var(--s-5);
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
   display: flex;
   gap: var(--s-5);
   padding: var(--s-3) var(--s-5);

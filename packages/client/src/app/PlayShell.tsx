@@ -8,6 +8,12 @@ import { useEffect, useState } from 'react';
 import { Outlet, useLoaderData, useLocation, useNavigate, useNavigation } from 'react-router';
 import type { ZoneId } from '@ewa/protocol';
 import { BattleOverlay } from '../battle/BattleOverlay';
+import { ChallengePrompt } from '../world/ChallengePrompt';
+import { ChatInput } from '../world/ChatInput';
+import { DialogueBox } from '../world/DialogueBox';
+import { PostBattlePrompts } from '../world/PostBattlePrompts';
+import { TradeModal } from '../world/TradeModal';
+import { setNavigator } from './navigation';
 import { installMessageRouter } from '../net/messageRouter';
 import { getWorldSession } from '../net/WorldSession';
 import { useSettingsStore } from '../state/settings';
@@ -49,10 +55,14 @@ function useShellHotkeys(): void {
   const navigate = useNavigate();
   const location = useLocation();
   useEffect(() => {
+    setNavigator((to) => void navigate(to));
+    return () => setNavigator(null);
+  }, [navigate]);
+  useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) return;
       const ui = useUiStore.getState();
-      if (ui.battle !== null || ui.modal !== 'none' || document.querySelector('[aria-modal="true"]') !== null) return;
+      if (ui.battle !== null || ui.modal !== 'none' || ui.dialogue !== null || ui.chatOpen || document.querySelector('[aria-modal="true"]') !== null) return;
       const binds = useSettingsStore.getState().keybinds;
       if (binds.toggleHud.includes(e.code)) {
         e.preventDefault();
@@ -142,7 +152,12 @@ export function PlayShell() {
         {pendingPanel !== null ? <PanelSkeleton path={pendingPanel} /> : <Outlet />}
       </div>
       {!hasPanel && <WorldHint />}
+      <DialogueBox />
+      <ChatInput />
       <BattleOverlay />
+      <ChallengePrompt />
+      <TradeModal />
+      <PostBattlePrompts />
       <ConnectionOverlay />
       <NotificationHost />
     </div>

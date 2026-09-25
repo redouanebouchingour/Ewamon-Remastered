@@ -51,16 +51,19 @@ export function ConnectionOverlay() {
       ? 'Reconnecting to the world'
       : reason === 'replaced'
         ? 'Playing somewhere else?'
-        : reason === 'kicked'
-          ? 'Disconnected by the server'
-          : 'Connection lost';
+        : reason === 'restarted'
+          ? 'The world server restarted'
+          : reason === 'kicked'
+            ? 'Disconnected by the server'
+            : 'Connection lost';
   const detail =
     connection === 'reconnecting'
       ? `Attempt ${Math.max(1, attempt)} of ${RECONNECT_DELAYS_MS.length}. Your progress is safe on the server.`
       : reason === 'replaced'
-        ? // close code 4001 is both protocol `replaced` and Colyseus SERVER_SHUTDOWN (IMPLEMENTATION-NOTES, server finding 5)
-          'This account joined the world from another tab or device, or the server restarted. Only one session can play at a time.'
-        : 'The world server stopped answering. Your progress is saved on the server.';
+        ? 'This account joined the world from another tab or device. Only one session can play at a time.'
+        : reason === 'restarted'
+          ? 'Your progress is saved on the server. Rejoin when it is back up.'
+          : 'The world server stopped answering. Your progress is saved on the server.';
 
   return (
     <div className={s.scrim} role="alertdialog" aria-modal="true" aria-labelledby="conn-title" data-testid="connectionoverlay">

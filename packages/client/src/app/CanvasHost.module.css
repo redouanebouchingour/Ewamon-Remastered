@@ -5,9 +5,14 @@
   background: var(--bg-0);
 }
 
+/*
+ * The world starts under the 56 px top bar: render's canvas HUD anchors its party strip, clock and zone banner to the
+ * canvas' own top edge, which the bar would otherwise cover (IMPLEMENTATION-NOTES part 2, L1).
+ */
 .world {
   position: absolute;
   inset: 0;
+  inset-block-start: var(--topbar-h);
   z-index: var(--z-canvas);
 }
 

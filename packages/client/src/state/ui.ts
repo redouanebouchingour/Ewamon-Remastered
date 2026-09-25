@@ -4,8 +4,21 @@
  */
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { BattleFormat, BattleState } from '@ewa/core';
-import type { TradeOffer } from '@ewa/protocol';
+import type { BattleFormat, BattleOutcome, BattleState } from '@ewa/core';
+import type { RewardsSummary, TradeOffer } from '@ewa/protocol';
+
+/** `battleEnd` for the result card: display only (the rewards reached the session through the delta writers). */
+export interface BattleResult {
+  readonly outcome: BattleOutcome;
+  readonly rewards: RewardsSummary;
+  /** evolve / learn-move prompts queued after the card */
+  readonly prompts: number;
+}
+
+/** An explicit post-battle REST prompt (§20.5.6): each is its own modal, in order; never automatic. */
+export type QueuedPrompt =
+  | { readonly kind: 'evolve'; readonly creatureId: string; readonly into: string }
+  | { readonly kind: 'learnMove'; readonly creatureId: string; readonly move: string };
 
 export interface BattleUi {
   readonly battleId: string;
@@ -19,6 +32,10 @@ export interface BattleUi {
   /** last 40 lines */
   readonly log: readonly { readonly id: number; readonly text: string; readonly tone: 'neutral' | 'good' | 'bad' }[];
   readonly desyncs: number;
+  /** set when the final timeline has played (BattleResultCard) */
+  readonly result: BattleResult | null;
+  /** the preview's timeline duration while 'submitted' (sizes the waiting indicator); 0 = unknown */
+  readonly expectedMs: number;
 }
 
 export type ModalKind = 'none' | 'evolve' | 'learnMove' | 'trade' | 'challenge' | 'raidLobby' | 'nickname' | 'release' | 'listing';
@@ -38,8 +55,11 @@ export interface DialogueUi {
   readonly targetId: string;
 }
 
-/** Why the world connection ended, for the overlay copy (§20.3.4: 4001 "Playing in another tab"). */
-export type LeaveReason = 'replaced' | 'kicked' | 'failed' | null;
+/**
+ * Why the world connection ended, for the overlay copy (§20.3.4 "Playing in another tab"): `replaced` is protocol
+ * `CLOSE_CODES.replaced` (4101), `restarted` is Colyseus' own SERVER_SHUTDOWN (4001), `kicked` is 4003.
+ */
+export type LeaveReason = 'replaced' | 'restarted' | 'kicked' | 'failed' | null;
 
 export interface UiState {
   readonly battle: BattleUi | null;
@@ -60,6 +80,8 @@ export interface UiState {
   readonly leaveReason: LeaveReason;
   /** dev HUD only, written at 1 Hz */
   readonly fps: number;
+  /** post-battle evolve / learn-move prompts still to show (the head is the open modal) */
+  readonly prompts: readonly QueuedPrompt[];
 
   setBattle(b: BattleUi | null): void;
   setDialogue(d: DialogueUi | null): void;
@@ -71,6 +93,9 @@ export interface UiState {
   toggleHud(): void;
   setConnection(c: Connection, attempt?: number, reason?: LeaveReason): void;
   setFps(fps: number): void;
+  enqueuePrompt(p: QueuedPrompt): void;
+  /** drops the head prompt (answered or skipped) */
+  shiftPrompt(): void;
   reset(): void;
 }
 
@@ -88,6 +113,7 @@ const INITIAL = {
   disconnectedAt: 0,
   leaveReason: null,
   fps: 0,
+  prompts: [] as readonly QueuedPrompt[],
 } as const satisfies Partial<UiState>;
 
 const now = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -114,6 +140,8 @@ export const useUiStore = create<UiState>()(
       });
     },
     setFps: (fps) => set({ fps }),
+    enqueuePrompt: (p) => set({ prompts: [...get().prompts, p] }),
+    shiftPrompt: () => set({ prompts: get().prompts.slice(1) }),
     reset: () => set({ ...INITIAL }),
   })),
 );

@@ -35,3 +35,36 @@ export function useBootPhase(): BootPhase {
 export function formatMb(bytes: number): string {
   return (bytes / 1_000_000).toFixed(1);
 }
+
+// ---- the world's own boot (part 2): renderer + shader warm-up + atlases + zone, until the first world frame ----
+
+export interface WorldBoot {
+  /** false until World3D rendered its first frame with the zone loaded */
+  readonly ready: boolean;
+  readonly label: string;
+  readonly loadedBytes: number | null;
+  readonly totalBytes: number | null;
+  /** a fatal renderer failure (no GPU): the overlay shows it instead of spinning */
+  readonly error: string | null;
+}
+
+let world: WorldBoot = { ready: false, label: 'Starting the renderer', loadedBytes: null, totalBytes: null, error: null };
+const worldListeners = new Set<() => void>();
+
+export function setWorldBoot(patch: Partial<WorldBoot>): void {
+  world = { ...world, ...patch };
+  for (const l of worldListeners) l();
+}
+
+export function getWorldBoot(): WorldBoot {
+  return world;
+}
+
+function subscribeWorld(cb: () => void): () => void {
+  worldListeners.add(cb);
+  return () => worldListeners.delete(cb);
+}
+
+export function useWorldBoot(): WorldBoot {
+  return useSyncExternalStore(subscribeWorld, getWorldBoot, getWorldBoot);
+}

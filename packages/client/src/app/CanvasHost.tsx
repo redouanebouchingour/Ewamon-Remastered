@@ -8,8 +8,10 @@ import { useEffect } from 'react';
 import { Outlet } from 'react-router';
 import { getWorldSession } from '../net/WorldSession';
 import { GameCanvas } from '../scene/GameCanvas';
+import { worldCapability } from '../scene/worldHost';
 import { KeyArt } from '../ui/KeyArt';
 import s from './CanvasHost.module.css';
+import { WorldBoot } from './WorldBoot';
 
 let leaveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -34,6 +36,7 @@ export function CanvasHost() {
         {/* backdrop under the canvas until the renderer draws its first frame (part 2) */}
         <KeyArt dim className={s.backdrop} />
         <GameCanvas />
+        {worldCapability() && <WorldBoot />}
       </div>
       <div className={s.chrome}>
         <Outlet />

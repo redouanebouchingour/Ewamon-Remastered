@@ -62,6 +62,8 @@ export interface WorldSessionDeps {
 /** SPEC §20.3.4 reconnect schedule: 1, 2, 4, 8, 8, 8 s. */
 export const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 8000, 8000] as const;
 const HANDOVER_STATE_TIMEOUT_MS = 5000;
+/** Colyseus `CloseCode.SERVER_SHUTDOWN` (@colyseus/shared-types 0.18.2): a server restart, not a takeover. */
+export const SERVER_SHUTDOWN_CODE = 4001;
 const SOURCE_LEAVE_GRACE_MS = 6000;
 
 export function defaultWsUrl(): string {
@@ -166,6 +168,7 @@ export function createWorldSession(deps: WorldSessionDeps): WorldSession {
       disposeWiring();
       room = null;
       if (code === CLOSE_CODES.replaced) ui().setConnection('offline', 0, 'replaced');
+      else if (code === SERVER_SHUTDOWN_CODE) ui().setConnection('offline', 0, 'restarted');
       else if (code === CLOSE_CODES.kicked && !wasReconnecting) ui().setConnection('offline', 0, 'kicked');
       else ui().setConnection('offline', 0, 'failed');
       emitRoom();

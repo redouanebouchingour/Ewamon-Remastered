@@ -110,9 +110,10 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: var(--s-2);
+  gap: var(--s-1);
   block-size: var(--control-md);
-  padding: 0 var(--s-3);
+  /* --s-2 (not --s-3): the nine links + the money / level / account cluster must fit the 1280 px minimum (part 2 L3) */
+  padding: 0 var(--s-2);
   border-radius: var(--r-2);
   color: var(--text-1);
   font-size: var(--t-body);
