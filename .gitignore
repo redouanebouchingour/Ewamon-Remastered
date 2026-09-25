@@ -29,3 +29,6 @@ tools/audio-pipeline/out/
 tools/material-bake/.cache/
 # Design hook cache
 .impeccable/
+tools/model-pipeline/.cache/
+tools/asset-audit/.cache/
+tools/asset-audit/.audit/report.json

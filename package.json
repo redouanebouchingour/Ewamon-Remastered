@@ -19,6 +19,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md,css}\"",
     "sprites": "pnpm --filter @ewa/sprite-pipeline run build",
+    "models": "pnpm --filter @ewa/model-pipeline run build",
+    "materials": "pnpm --filter @ewa/material-bake run bake",
     "audit:assets": "pnpm --filter @ewa/asset-audit run report",
     "db:generate": "pnpm --filter @ewa/persist run db:generate",
     "db:migrate": "pnpm --filter @ewa/persist run db:migrate",

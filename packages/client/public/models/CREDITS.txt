@@ -1,0 +1,10 @@
+3D character models in quaternius/ are by Quaternius (https://quaternius.com),
+from the "Ultimate Animated Character Pack":
+  https://quaternius.com/packs/ultimatedanimatedcharacter.html
+
+Licensed CC0 (public domain) — free to use, modify, and distribute, with no
+attribution required. Credit is given here as a courtesy.
+
+Used in Ewamon as the player and overworld NPC models (see
+src/world3d/characterModels.js). Recolored / cel-shaded at runtime to match the
+world; the source meshes are unmodified.

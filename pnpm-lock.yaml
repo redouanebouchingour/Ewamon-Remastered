@@ -208,21 +208,22 @@ importers:
         version: 0.18.2(@colyseus/core@0.18.14)(typescript@5.9.3)(zod@4.6.5)
 
   tools/asset-audit:
-    dependencies:
-      '@gltf-transform/core':
-        specifier: ^4.5.0
-        version: 4.5.0
-      '@gltf-transform/extensions':
-        specifier: ^4.5.0
-        version: 4.5.0
-      '@gltf-transform/functions':
-        specifier: ^4.5.0
-        version: 4.5.0(@types/node@22.20.3)
-      meshoptimizer:
-        specifier: ^0.24.0
-        version: 0.24.0
+    devDependencies:
+      '@ewa/render':
+        specifier: workspace:*
+        version: link:../../packages/render
+      three:
+        specifier: ^0.186.0
+        version: 0.186.0
 
-  tools/audio-pipeline: {}
+  tools/audio-pipeline:
+    dependencies:
+      '@ewa/content':
+        specifier: workspace:*
+        version: link:../../packages/content
+      zod:
+        specifier: ^4.1.12
+        version: 4.6.5
 
   tools/material-bake:
     dependencies:
@@ -235,6 +236,30 @@ importers:
       sharp:
         specifier: ^0.34.3
         version: 0.34.5
+
+  tools/model-pipeline:
+    dependencies:
+      '@ewa/content':
+        specifier: workspace:*
+        version: link:../../packages/content
+      '@gltf-transform/core':
+        specifier: ^4.5.0
+        version: 4.5.0
+      '@gltf-transform/extensions':
+        specifier: ^4.5.0
+        version: 4.5.0
+      '@gltf-transform/functions':
+        specifier: ^4.5.0
+        version: 4.5.0(@types/node@22.20.3)
+      ktx2-encoder:
+        specifier: ^0.6.0
+        version: 0.6.0
+      meshoptimizer:
+        specifier: ^0.24.0
+        version: 0.24.0
+      sharp:
+        specifier: ^0.35.4
+        version: 0.35.4(@types/node@22.20.3)
 
   tools/sprite-pipeline:
     dependencies:

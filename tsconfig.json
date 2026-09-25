@@ -26,6 +26,9 @@
       "path": "./tools/sprite-pipeline"
     },
     {
+      "path": "./tools/model-pipeline"
+    },
+    {
       "path": "./tools/asset-audit"
     },
     {

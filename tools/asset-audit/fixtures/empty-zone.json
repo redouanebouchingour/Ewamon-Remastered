@@ -1,0 +1,25 @@
+{
+  "counts": {
+    "attributes": 0,
+    "attributesSize": 0,
+    "drawCalls": 0,
+    "geometries": 0,
+    "materials": 0,
+    "nonShadowLights": 0,
+    "programs": 0,
+    "renderTargets": 0,
+    "shadowLights": 0,
+    "textures": 0,
+    "texturesSize": 0,
+    "triangles": 0
+  },
+  "culledChunks": 0,
+  "geometries": [],
+  "harvestLevel": 0,
+  "lightIds": [],
+  "lights": [],
+  "materials": [],
+  "shadowDrawCalls": 0,
+  "sprites": [],
+  "zone": "empty"
+}

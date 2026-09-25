@@ -1,0 +1,26 @@
+{
+  "name": "@ewa/model-pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -b",
+    "build": "tsx src/cli.ts build",
+    "inspect": "tsx src/cli.ts inspect"
+  },
+  "dependencies": {
+    "@ewa/content": "workspace:*",
+    "@gltf-transform/core": "^4.5.0",
+    "@gltf-transform/extensions": "^4.5.0",
+    "@gltf-transform/functions": "^4.5.0",
+    "ktx2-encoder": "^0.6.0",
+    "meshoptimizer": "^0.24.0",
+    "sharp": "^0.35.4"
+  },
+  "devDependencies": {}
+}

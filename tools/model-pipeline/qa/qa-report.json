@@ -1,0 +1,490 @@
+{
+  "flags": [
+    {
+      "detail": "texture tier 1 (tier 0: 1270885 B, tier 1: 1139569 B; LOD0 budget 1258291 B)",
+      "flag": "texture-tier",
+      "id": "noxmyth"
+    },
+    {
+      "detail": "texture tier 2 (tier 0: 1389390 B, tier 1: 1258458 B, tier 2: 1215884 B; LOD0 budget 1258291 B)",
+      "flag": "texture-tier",
+      "id": "zenryu"
+    }
+  ],
+  "models": [
+    {
+      "droppedRestTracks": 23,
+      "glbBytes": 576012,
+      "id": "lumyth",
+      "lod1Bytes": 220080,
+      "lod1Error": 0.004474,
+      "lod1Triangles": 10493,
+      "set": "legendary",
+      "sourceBytes": 2213884,
+      "textureBytes": 579575,
+      "textureTier": 0,
+      "textures": [
+        {
+          "bytes": 260103,
+          "height": 512,
+          "mean": [
+            113.42,
+            104.53,
+            165.82
+          ],
+          "role": "baseColor",
+          "uri": "lumyth.basecolor.b45ddb95.ktx2",
+          "width": 512
+        },
+        {
+          "bytes": 232377,
+          "height": 512,
+          "mean": [
+            127.28,
+            127.52,
+            233.95
+          ],
+          "role": "normal",
+          "uri": "lumyth.normal.f7268c89.ktx2",
+          "width": 512
+        },
+        {
+          "bytes": 87095,
+          "height": 512,
+          "mean": [
+            253.91,
+            28.29,
+            0.82
+          ],
+          "role": "orm",
+          "uri": "lumyth.orm.7bbc1cd8.ktx2",
+          "width": 512
+        }
+      ],
+      "triangles": 30000
+    },
+    {
+      "droppedRestTracks": 23,
+      "glbBytes": 592180,
+      "id": "noxmyth",
+      "lod1Bytes": 230940,
+      "lod1Error": 0.005255,
+      "lod1Triangles": 10491,
+      "set": "legendary",
+      "sourceBytes": 2295412,
+      "textureBytes": 547389,
+      "textureTier": 1,
+      "textures": [
+        {
+          "bytes": 253772,
+          "height": 512,
+          "mean": [
+            64.8,
+            55.75,
+            84.52
+          ],
+          "role": "baseColor",
+          "uri": "noxmyth.basecolor.01265b43.ktx2",
+          "width": 512
+        },
+        {
+          "bytes": 237307,
+          "height": 512,
+          "mean": [
+            127.24,
+            127.87,
+            243.81
+          ],
+          "role": "normal",
+          "uri": "noxmyth.normal.16763fae.ktx2",
+          "width": 512
+        },
+        {
+          "bytes": 56310,
+          "height": 256,
+          "mean": [
+            253.53,
+            46.36,
+            44.16
+          ],
+          "role": "orm",
+          "uri": "noxmyth.orm.e8033aae.ktx2",
+          "width": 256
+        }
+      ],
+      "triangles": 30000
+    },
+    {
+      "droppedRestTracks": 21,
+      "glbBytes": 530052,
+      "id": "voidraxis",
+      "lod1Bytes": 220492,
+      "lod1Error": 0.00805,
+      "lod1Triangles": 10435,
+      "set": "legendary",
+      "sourceBytes": 2070944,
+      "textureBytes": 647768,
+      "textureTier": 0,
+      "textures": [
+        {
+          "bytes": 276822,
+          "height": 512,
+          "mean": [
+            102.4,
+            101.17,
+            154.06
+          ],
+          "role": "baseColor",
+          "uri": "voidraxis.basecolor.dbb6e324.ktx2",
+          "width": 512
+        },
+        {
+          "bytes": 233426,
+          "height": 512,
+          "mean": [
+            126.52,
+            127.17,
+            237.24
+          ],
+          "role": "normal",
+          "uri": "voidraxis.normal.38b9bef8.ktx2",
+          "width": 512
+        },
+        {
+          "bytes": 137520,
+          "height": 512,
+          "mean": [
+            254.03,
+            18.6,
+            26.68
+          ],
+          "role": "orm",
+          "uri": "voidraxis.orm.7e3caf91.ktx2",
+          "width": 512
+        }
+      ],
+      "triangles": 29845
+    },
+    {
+      "droppedRestTracks": 21,
+      "glbBytes": 637544,
+      "id": "zenryu",
+      "lod1Bytes": 247552,
+      "lod1Error": 0.007173,
+      "lod1Triangles": 10484,
+      "set": "legendary",
+      "sourceBytes": 2599000,
+      "textureBytes": 578340,
+      "textureTier": 2,
+      "textures": [
+        {
+          "bytes": 290662,
+          "height": 512,
+          "mean": [
+            115.93,
+            145.77,
+            146.47
+          ],
+          "role": "baseColor",
+          "uri": "zenryu.basecolor.6374e4df.ktx2",
+          "width": 512
+        },
+        {
+          "bytes": 269731,
+          "height": 512,
+          "mean": [
+            125.35,
+            127.93,
+            234.21
+          ],
+          "role": "normal",
+          "uri": "zenryu.normal.403f3118.ktx2",
+          "width": 512
+        },
+        {
+          "bytes": 17947,
+          "height": 128,
+          "mean": [
+            252.37,
+            103.63,
+            42.49
+          ],
+          "role": "orm",
+          "uri": "zenryu.orm.4f57d061.ktx2",
+          "width": 128
+        }
+      ],
+      "triangles": 30000
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 159640,
+      "id": "blue_soldier_male",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 1857885,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 2994
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 195916,
+      "id": "casual2_female",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 2095997,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 6752
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 156968,
+      "id": "casual2_male",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 1850723,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 3216
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 173120,
+      "id": "casual3_male",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 1964505,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 4920
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 195440,
+      "id": "casual_female",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 2087315,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 6624
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 194736,
+      "id": "casual_male",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 2077224,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 6492
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 199860,
+      "id": "cowboy_female",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 2122887,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 6840
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 160004,
+      "id": "cowboy_male",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 1870630,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 3176
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 216540,
+      "id": "doctor_female_young",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 2218081,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 8530
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 149532,
+      "id": "kimono_male",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 1795114,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 2540
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 162068,
+      "id": "knight_golden_male",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 1877316,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 2964
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 161964,
+      "id": "knight_male",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 1880347,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 2992
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 157804,
+      "id": "ninja_male",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 1836530,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 2720
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 200236,
+      "id": "old_classy_female",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 2132576,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 7008
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 183588,
+      "id": "old_classy_male",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 2020757,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 5432
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 153164,
+      "id": "pirate_male",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 1829957,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 2724
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 159924,
+      "id": "soldier_male",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 1857889,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 2994
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 195680,
+      "id": "suit_male",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 2014332,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 6518
+    },
+    {
+      "droppedRestTracks": 287,
+      "glbBytes": 201928,
+      "id": "viking_male",
+      "lod1Bytes": null,
+      "lod1Error": null,
+      "lod1Triangles": null,
+      "set": "look",
+      "sourceBytes": 2103845,
+      "textureBytes": 0,
+      "textureTier": null,
+      "textures": [],
+      "triangles": 6264
+    }
+  ],
+  "pipelineVersion": "model-pipeline/1",
+  "textures": "ktx2",
+  "version": 1,
+  "warnings": []
+}

@@ -10,9 +10,15 @@
   },
   "scripts": {
     "typecheck": "tsc -b",
+    "plan": "tsx src/cli.ts plan",
     "generate": "tsx src/cli.ts generate",
-    "plan": "tsx src/cli.ts plan"
+    "process": "tsx src/cli.ts process",
+    "placeholders": "tsx src/cli.ts process --placeholders",
+    "all": "tsx src/cli.ts all"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@ewa/content": "workspace:*",
+    "zod": "^4.1.12"
+  },
   "devDependencies": {}
 }

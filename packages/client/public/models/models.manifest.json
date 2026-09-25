@@ -1,0 +1,651 @@
+{
+  "legendaries": {
+    "lumyth": {
+      "bounds": {
+        "max": [
+          0.8339,
+          2.0472,
+          0.2579
+        ],
+        "min": [
+          -0.8952,
+          0.0047,
+          -0.2972
+        ]
+      },
+      "bytes": 1155587,
+      "clips": [
+        "idle"
+      ],
+      "hash": "eb826611f9ca631496d060de8cc38d089900a68013e3e77edda96111c7c0949c",
+      "lod1": "legendaries/lumyth.lod1.glb",
+      "textures": "ktx2",
+      "triangles": 30000,
+      "url": "legendaries/lumyth.glb"
+    },
+    "noxmyth": {
+      "bounds": {
+        "max": [
+          1.0395,
+          2.0445,
+          0.6413
+        ],
+        "min": [
+          -0.8419,
+          0.0014,
+          -0.5292
+        ]
+      },
+      "bytes": 1139569,
+      "clips": [
+        "idle"
+      ],
+      "hash": "f29afd8891ae6237b502f9155c2276853aae3af1f15f4573d6d64a795aea415a",
+      "lod1": "legendaries/noxmyth.lod1.glb",
+      "textures": "ktx2",
+      "triangles": 30000,
+      "url": "legendaries/noxmyth.glb"
+    },
+    "voidraxis": {
+      "bounds": {
+        "max": [
+          0.8111,
+          1.9998,
+          0.7988
+        ],
+        "min": [
+          -0.8103,
+          -0.0009,
+          -0.7989
+        ]
+      },
+      "bytes": 1177820,
+      "clips": [
+        "idle"
+      ],
+      "hash": "61b5210fd3db769dbce63e63fc4e6178a23694a290a3c2ef118ef3cde9044038",
+      "lod1": "legendaries/voidraxis.lod1.glb",
+      "textures": "ktx2",
+      "triangles": 29845,
+      "url": "legendaries/voidraxis.glb"
+    },
+    "zenryu": {
+      "bounds": {
+        "max": [
+          0.7573,
+          2.0378,
+          0.9576
+        ],
+        "min": [
+          -0.9529,
+          -0.0006,
+          -1.0521
+        ]
+      },
+      "bytes": 1215884,
+      "clips": [
+        "idle"
+      ],
+      "hash": "c5bcaa28f498e7a40f555dccf9d975f85f8418e047731838087ac0b6b9cb4920",
+      "lod1": "legendaries/zenryu.lod1.glb",
+      "textures": "ktx2",
+      "triangles": 30000,
+      "url": "legendaries/zenryu.glb"
+    }
+  },
+  "looks": {
+    "blue_soldier_male": {
+      "bounds": {
+        "max": [
+          0.5242,
+          3.109,
+          1.1061
+        ],
+        "min": [
+          -0.685,
+          -0.0056,
+          -0.545
+        ]
+      },
+      "bytes": 159640,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "cb3a442802b4f12ccf205daeed58db9597a02bdab2babe213a2295229a0b67b0",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 2994,
+      "url": "looks/blue_soldier_male.glb"
+    },
+    "casual2_female": {
+      "bounds": {
+        "max": [
+          0.5242,
+          3.0425,
+          1.1061
+        ],
+        "min": [
+          -0.7666,
+          -0.0056,
+          -0.7269
+        ]
+      },
+      "bytes": 195916,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "7477677c589fb38103f458270f4b56fc31815c08239415ed17b00c70c85ee100",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 6752,
+      "url": "looks/casual2_female.glb"
+    },
+    "casual2_male": {
+      "bounds": {
+        "max": [
+          0.5242,
+          3.0422,
+          1.1061
+        ],
+        "min": [
+          -0.6149,
+          -0.0056,
+          -0.5306
+        ]
+      },
+      "bytes": 156968,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "aeaeaa507a23a959be0bac9748582cba42a21bad66f618ad3bc08e397d468c56",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 3216,
+      "url": "looks/casual2_male.glb"
+    },
+    "casual3_male": {
+      "bounds": {
+        "max": [
+          0.7593,
+          2.8122,
+          0.4639
+        ],
+        "min": [
+          -0.5377,
+          -0.0187,
+          -1.3066
+        ]
+      },
+      "bytes": 173120,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "d43d86a2fb818bc5b36a2990ddedae4efa70b0caed63a8ebf680fa80f4646b4a",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 4920,
+      "url": "looks/casual3_male.glb"
+    },
+    "casual_female": {
+      "bounds": {
+        "max": [
+          0.5242,
+          3.0425,
+          1.1061
+        ],
+        "min": [
+          -0.6901,
+          -0.0056,
+          -0.7269
+        ]
+      },
+      "bytes": 195440,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "bee1baa074668539aaf4293fa46aade0884fb2ae5b94c6a5d9471f15afb79ff8",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 6624,
+      "url": "looks/casual_female.glb"
+    },
+    "casual_male": {
+      "bounds": {
+        "max": [
+          0.5242,
+          3.1745,
+          1.1061
+        ],
+        "min": [
+          -0.6884,
+          -0.0056,
+          -0.5886
+        ]
+      },
+      "bytes": 194736,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "4659797c37b8dee5dd91127f6c37325ecf853ebc1c9142dddd6a3b00f744e711",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 6492,
+      "url": "looks/casual_male.glb"
+    },
+    "cowboy_female": {
+      "bounds": {
+        "max": [
+          0.5242,
+          3.382,
+          1.1061
+        ],
+        "min": [
+          -0.8264,
+          -0.0056,
+          -0.7269
+        ]
+      },
+      "bytes": 199860,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "d3a25d6a81e40efc7ed9aa935281568b0cbd028e7160a22036830e25b853aff1",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 6840,
+      "url": "looks/cowboy_female.glb"
+    },
+    "cowboy_male": {
+      "bounds": {
+        "max": [
+          0.5242,
+          3.3664,
+          1.1061
+        ],
+        "min": [
+          -0.8224,
+          -0.0056,
+          -0.668
+        ]
+      },
+      "bytes": 160004,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "63f203fd50997ffdab22533d1912f01b3f405a60441596db3b78a7c288dc558c",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 3176,
+      "url": "looks/cowboy_male.glb"
+    },
+    "doctor_female_young": {
+      "bounds": {
+        "max": [
+          0.5242,
+          3.0425,
+          1.1061
+        ],
+        "min": [
+          -0.6901,
+          -0.0056,
+          -0.6189
+        ]
+      },
+      "bytes": 216540,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "bbf4dcee94b256a383c55c4fac618c4f8ed1fa0542a1ef5c663721e2abcbf54b",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 8530,
+      "url": "looks/doctor_female_young.glb"
+    },
+    "kimono_male": {
+      "bounds": {
+        "max": [
+          0.5242,
+          3.1805,
+          1.1061
+        ],
+        "min": [
+          -0.6347,
+          -0.0056,
+          -0.5884
+        ]
+      },
+      "bytes": 149532,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "6f018b396ce941bd97eb933eeaf6338a0d06d8004bad4792f905eaa20815880d",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 2540,
+      "url": "looks/kimono_male.glb"
+    },
+    "knight_golden_male": {
+      "bounds": {
+        "max": [
+          0.7576,
+          3.092,
+          1.1061
+        ],
+        "min": [
+          -1.0142,
+          -0.0056,
+          -0.5186
+        ]
+      },
+      "bytes": 162068,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "a546316d298624ac8280e91db9ca70721cd1ef9c2ef256c8c21b638e0cbe0865",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 2964,
+      "url": "looks/knight_golden_male.glb"
+    },
+    "knight_male": {
+      "bounds": {
+        "max": [
+          0.5242,
+          3.4114,
+          1.1061
+        ],
+        "min": [
+          -0.6539,
+          -0.0056,
+          -0.7798
+        ]
+      },
+      "bytes": 161964,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "d5564342ccafd7d1c15f843c2b0e388e0635a545e99ae3da47f5830ad98bd79e",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 2992,
+      "url": "looks/knight_male.glb"
+    },
+    "ninja_male": {
+      "bounds": {
+        "max": [
+          0.5242,
+          2.9833,
+          1.1061
+        ],
+        "min": [
+          -0.5936,
+          -0.0056,
+          -0.5104
+        ]
+      },
+      "bytes": 157804,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "882a8a7ea60a971a8e78c689f149c7fd116728fdbf7edf58f475c846ee99e6da",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 2720,
+      "url": "looks/ninja_male.glb"
+    },
+    "old_classy_female": {
+      "bounds": {
+        "max": [
+          0.5242,
+          3.5792,
+          1.1061
+        ],
+        "min": [
+          -0.7666,
+          -0.0056,
+          -0.7269
+        ]
+      },
+      "bytes": 200236,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "857f241e7be2c3e851f0b3c239c9639c309ac846ed0a371b40b67652bc8e6dc3",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 7008,
+      "url": "looks/old_classy_female.glb"
+    },
+    "old_classy_male": {
+      "bounds": {
+        "max": [
+          0.5242,
+          3.5792,
+          1.1061
+        ],
+        "min": [
+          -0.6633,
+          -0.0056,
+          -0.5496
+        ]
+      },
+      "bytes": 183588,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "c5b4e1f623795ad4ac03203c7a8c76d05e8d42cf3e96d2eb05bba0e235192766",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 5432,
+      "url": "looks/old_classy_male.glb"
+    },
+    "pirate_male": {
+      "bounds": {
+        "max": [
+          0.5377,
+          3.6242,
+          1.1061
+        ],
+        "min": [
+          -0.7855,
+          0.0223,
+          -0.673
+        ]
+      },
+      "bytes": 153164,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "1725f7f396f1ad19f5b0e2d0ed71b07ac926f0da89ed2ff6209bdda22a9f3e71",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 2724,
+      "url": "looks/pirate_male.glb"
+    },
+    "soldier_male": {
+      "bounds": {
+        "max": [
+          0.5242,
+          3.109,
+          1.1061
+        ],
+        "min": [
+          -0.685,
+          -0.0056,
+          -0.545
+        ]
+      },
+      "bytes": 159924,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "fe786cc132c7226de91486509ea32f1f11274ef4a8f02c20c526364ebca72241",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 2994,
+      "url": "looks/soldier_male.glb"
+    },
+    "suit_male": {
+      "bounds": {
+        "max": [
+          0.5242,
+          3.1745,
+          1.1061
+        ],
+        "min": [
+          -0.6884,
+          -0.0056,
+          -0.5886
+        ]
+      },
+      "bytes": 195680,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "ba3f6dd6aa2ae9a6e1f008051281cbda7cbe0905a8d7a77d65dcf65a1beec408",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 6518,
+      "url": "looks/suit_male.glb"
+    },
+    "viking_male": {
+      "bounds": {
+        "max": [
+          0.5242,
+          3.4565,
+          1.1061
+        ],
+        "min": [
+          -0.6149,
+          -0.0056,
+          -0.7359
+        ]
+      },
+      "bytes": 201928,
+      "clips": [
+        "defeat",
+        "idle",
+        "run",
+        "sitdown",
+        "standup",
+        "victory",
+        "walk"
+      ],
+      "hash": "ec53290f41d7a57cf774a40ccf92ea5991eb2a092bfce1e4ccf9adc4ff635b52",
+      "lod1": null,
+      "textures": "none",
+      "triangles": 6264,
+      "url": "looks/viking_male.glb"
+    }
+  },
+  "totalBytes": 8999685,
+  "version": 1
+}
