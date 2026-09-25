@@ -108,3 +108,12 @@ files share that one database; with PGlite (default) each file has its own in-me
 ```bash
 DATABASE_URL=postgres://postgres:<pw>@127.0.0.1:54322/ewamon_persist_test pnpm exec vitest run packages/persist
 ```
+
+## Server part 2 additions (2026-09-25)
+
+Migration `0001_battle_replay`: `battle_history.start jsonb` (`BattleStartSnapshot` — the `createBattle` input minus
+the seed) and `battle_history.final_digest varchar(8)`, both nullable, so a battle replays from the database alone.
+Repository additions for the server's part-2 routes: `playerRepo.byIds / search (escapeLike + ESCAPE '\') / counts`,
+`leaderboard` gains `'dex'` and excludes banned players in SQL, `progressRepo.markSeen` returns whether the species
+was new, `claimObjective`, `pruneSyntheticQuests`, `marketRepo.closeExpiredDetailed` (`closeExpired` delegates).
+Tests: `test/admin-replay.test.ts`; `migrations.test.ts` now compares the migration count with the journal.

@@ -4,7 +4,7 @@
  * every bearer route 401 without a token; admin routes 403 without is_admin; bans.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { ROUTES } from '@ewa/protocol';
+import { ProcessMetricsSchema, ROUTES } from '@ewa/protocol';
 import { ARGON2, hashPassword, verifyPassword } from '../src/rest/auth';
 import { START_MONEY, api, rawQuery, register, startServer, uniqueName } from './helpers';
 import type { TestServer } from './helpers';
@@ -106,11 +106,11 @@ describe('auth flow', () => {
       if (r.auth === 'none') continue;
       const url = r.path.replace(':id', '00000000-0000-4000-8000-000000000000').replace(':zoneId', 'mirevale').replace(':username', 'someone');
       const res = await s.booted.rest.inject({ method: r.method, url, payload: r.method === 'POST' ? {} : undefined });
-      // part-2 routes are not registered yet (404); every registered bearer route must refuse (401)
-      expect([401, 404]).toContain(res.statusCode);
+      // every route of the table is registered (part 2): no token → 401, a non-admin on an admin route → 403
+      expect(res.statusCode, `${r.method} ${r.path}`).toBe(401);
       if (r.auth === 'admin') {
         const withUser = await s.booted.rest.inject({ method: r.method, url, payload: r.method === 'POST' ? {} : undefined, headers: { authorization: `Bearer ${a.access}` } });
-        expect([403, 404]).toContain(withUser.statusCode);
+        expect(withUser.statusCode, `${r.method} ${r.path}`).toBe(403);
       }
     }
     // the implemented part-1 surface is present (not 404) without a token
@@ -144,6 +144,18 @@ describe('auth flow', () => {
     const metrics = await api(s, 'GET', '/admin/metrics', admin.access);
     expect(metrics.status).toBe(200);
     expect(metrics.body).toHaveProperty('rooms');
+    expect(ProcessMetricsSchema.safeParse(metrics.body).success).toBe(true);
+    expect(Object.keys(metrics.body.rest).some((k) => k === 'GET /me')).toBe(true);
+    const stats = await api(s, 'GET', '/admin/stats', admin.access);
+    expect(stats.status).toBe(200);
+    expect(stats.body.total).toBeGreaterThanOrEqual(2);
+    expect(stats.body.banned).toBe(0);
+    const found = await api(s, 'GET', `/admin/players?q=${encodeURIComponent(target.username)}`, admin.access);
+    expect(found.body.rows.map((r: { id: string }) => r.id)).toEqual([target.id]);
+    expect((await api(s, 'GET', `/admin/players?q=${encodeURIComponent('%')}`, admin.access)).body.total).toBe(0);
+    const lb = await api(s, 'GET', '/leaderboard?mode=dex', admin.access);
+    expect(lb.status).toBe(200);
+    expect(lb.body.rows.length).toBeGreaterThan(0);
   }, 60_000);
 
   it('/players/:username is the toPublic allow-list; unknown → 404', async () => {

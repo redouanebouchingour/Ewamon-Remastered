@@ -185,8 +185,10 @@ describe('raids in the room (§30.4.7)', () => {
     await waitFor(() => runner.session.participants.size === 2, 3000);
     await waitFor(() => a.j.room.state.raid!.damageBoard.size === 2, 3000);
     await sleep(300);
+    await sleep(1100); // every raid* message shares the 4 / s window (§30.6.4 `raid`)
     for (const p of [a, b]) p.j.room.send('raidReady', { raidId: runner.id });
     await waitFor(() => a.j.room.state.raid!.phase === 1, 5000);
+    await sleep(1100);
     expect(a.j.room.state.players.get(a.acc.id)!.inBattle).toBe(true);
     // fight: each round both send their first move; raidEvents carry each participant's private digest
     const before = (await api(s, 'GET', '/me', a.acc.access)).body;

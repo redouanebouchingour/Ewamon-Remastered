@@ -156,3 +156,34 @@ describe('P6 database-only replay', () => {
 
 // keep the ServerMessage type import meaningful for readers of the resync assertion
 export type _Msg = ServerMessage;
+
+describe('field items (§30.6.3 part-1 seam)', () => {
+  it('escape rope: route only, one orb of rope spent, the room teleports to the zone spawn; repel/lure set a metre counter', async () => {
+    const acc = await register(s);
+    await s.repos.db.transaction(async (tx) => {
+      await s.repos.inventory.add(tx, acc.id, 'escape_rope', 2);
+      await s.repos.inventory.add(tx, acc.id, 'repel', 1);
+    });
+    // not in any room → not usable; in a town → not usable (nothing spent)
+    expect((await api(s, 'POST', '/item/use', acc.access, { item: 'escape_rope', target: null, qty: 1 })).body.code).toBe('notUsableHere');
+    const town = await enter(s, acc, 'mirevale');
+    expect((await api(s, 'POST', '/item/use', acc.access, { item: 'escape_rope', target: null, qty: 1 })).body.code).toBe('notUsableHere');
+    await town.room.leave(true);
+    await sleep(200);
+    const { getHeightfield, nearestWalkable, zone } = await import('@ewa/content');
+    const p = nearestWalkable(getHeightfield('mire_route'), 60, 40, 12)!;
+    await s.repos.db.transaction((tx) => s.repos.players.setPosition(tx, acc.id, 'mire_route', p[0], p[1], 0));
+    const j = await enter(s, acc, 'mire_route');
+    const r = await api(s, 'POST', '/item/use', acc.access, { item: 'escape_rope', target: null, qty: 1 });
+    expect(r.status).toBe(200);
+    expect(r.body.inventory.escape_rope).toBe(1);
+    const spawn = zone('mire_route').spawn;
+    await waitFor(() => Math.hypot(j.room.state.players.get(acc.id)!.x - spawn.x, j.room.state.players.get(acc.id)!.z - spawn.z) < 9, 3000);
+    expect((await api(s, 'POST', '/item/use', acc.access, { item: 'escape_rope', target: null, qty: 2 })).body.code).toBe('oneAtATime');
+    const room = roomOf(j);
+    expect((await api(s, 'POST', '/item/use', acc.access, { item: 'repel', target: null, qty: 1 })).status).toBe(200);
+    await waitFor(() => room.clientOf(acc.id)?.userData?.repel?.kind === 'repel', 3000);
+    expect(room.clientOf(acc.id)!.userData!.repel!.steps).toBe(50);
+    await j.room.leave(true);
+  }, 60_000);
+});

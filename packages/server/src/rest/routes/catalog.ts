@@ -237,9 +237,9 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
 
   app.get('/leaderboard', bearer, async (req) => {
     const q = LeaderboardQuery.parse(req.query);
-    if (q.mode === 'dex') throw new HttpError(400, 'unsupported'); // part 2: dex-count ranking is a ProgressRepo join
     const rows = await repos.db.transaction(async (tx) => {
-      const players = (await repos.players.leaderboard(tx, q.mode === 'rating' ? 'rating' : 'trainerLevel', q.page, LEADERBOARD_PAGE)).filter((p) => p.bannedAt === null);
+      // §30.6.3: rating (ties peak, username) / dex caught count / trainer exp; banned excluded in SQL
+      const players = await repos.players.leaderboard(tx, q.mode, q.page, LEADERBOARD_PAGE);
       const out = [];
       for (let i = 0; i < players.length; i++) {
         const p = players[i]!;

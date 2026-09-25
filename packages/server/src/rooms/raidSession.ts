@@ -138,9 +138,14 @@ export class RaidSession {
     return this.openedAt;
   }
 
+  /**
+   * Side 1 := the shared boss. The boss acts once per participant per round, so its PP is restored to ppMax on
+   * every copy-in (Q15): a raid boss never runs dry (core's NPC choice would otherwise end the private battle).
+   */
   private withBoss(state: BattleState, boss: Battler): BattleState {
     const s1 = state.sides[1];
-    return { ...state, sides: [state.sides[0], { ...s1, party: [boss], active: 0, mustSwitch: false }] };
+    const fresh: Battler = boss.creature.moves.every((m) => m.pp === m.ppMax) ? boss : { ...boss, creature: { ...boss.creature, moves: boss.creature.moves.map((m) => ({ ...m, pp: m.ppMax })) } };
+    return { ...state, sides: [state.sides[0], { ...s1, party: [fresh], active: 0, mustSwitch: false }] };
   }
 
   join(playerId: string, party: readonly CreatureInstance[], badges: number, now: number): RaidJoinResult {
@@ -212,6 +217,11 @@ export class RaidSession {
     for (const p of this.active()) {
       if (boss.creature.hp <= 0) break;
       const before = this.withBoss(p.state, boss);
+      if (before.ended !== null) {
+        // defensive: a private battle that ended while the boss stands leaves its owner spectating
+        spectators.add(p.playerId);
+        continue;
+      }
       const a = p.pending ?? autoAction(before, 0, this.content);
       const result = resolveTurn(before, [a, null], this.content);
       const after = result.state.sides[1].party[0]!;
@@ -242,6 +252,10 @@ export class RaidSession {
 
   /** Applies a prepared round (after the caller's transaction committed) and opens the next one. */
   commitRound(r: RaidRound, now: number): void {
+    for (const pid of r.spectators) {
+      const p = this.participants.get(pid);
+      if (p !== undefined) p.spectator = true;
+    }
     for (const pid of r.order) {
       const p = this.participants.get(pid);
       if (p === undefined) continue;

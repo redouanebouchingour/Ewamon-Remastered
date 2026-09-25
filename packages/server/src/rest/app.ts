@@ -49,9 +49,12 @@ export function buildRest(deps: RestDeps, opts: RestOptions = {}): FastifyInstan
   });
   // 6.
   installErrorHandler(app);
-  // 7. request id / player id on the request logger
+  // 7. request id / player id on the request logger; onResponse → metrics.rest[route].count/ms
   app.addHook('onRequest', async (req) => {
     req.log = req.log.child({ route: req.routeOptions.url ?? req.url });
+  });
+  app.addHook('onResponse', async (req, reply) => {
+    deps.metrics.recordRest(`${req.method} ${req.routeOptions.url ?? 'unknown'}`, reply.statusCode, reply.elapsedTime);
   });
   // 3–5 are per-route hooks (requireAuth / requireAdmin / zod parse) — see ./http.ts and ./routes/*
   registerRoutes(app, deps, opts);

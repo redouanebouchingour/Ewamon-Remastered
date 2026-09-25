@@ -60,7 +60,7 @@ describe('censor (soft, original string)', () => {
 
 describe('sanitizeChat', () => {
   it('strips controls and zero-width, collapses whitespace, caps at 120 (300 for DMs)', () => {
-    expect(sanitizeChat(`a\u0007b​c   d`)).toBe('abc d');
+    expect(sanitizeChat(`a\u0007b\u200bc   d`)).toBe('abc d');
     expect(sanitizeChat('x'.repeat(121))).toBeNull();
     expect(sanitizeChat('x'.repeat(300), 300)).toBe('x'.repeat(300));
   });

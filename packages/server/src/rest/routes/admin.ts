@@ -1,10 +1,10 @@
 /**
- * §4.7 admin rows (bans + metrics) and GET /health. `/admin/stats` and `/admin/players` (search with
- * escapeLike) are part 2 (observability) — they need persist count/search methods that do not exist yet.
+ * §4.7 admin rows (stats, players search, metrics, ban/unban) and GET /health. Admin = bearer + `is_admin` re-read
+ * from the row (never the token's `adm` claim).
  */
-import { BanReq, HealthRes, UnbanReq } from '@ewa/protocol';
+import { AdminPlayersQuery, AdminPlayersRes, AdminStatsRes, BanReq, HealthRes, UnbanReq } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
-import { HttpError, rateLimit, requireAdmin } from '../http';
+import { HttpError, iso, out, rateLimit, requireAdmin } from '../http';
 import type { RestDeps } from '../http';
 
 export function registerAdminRoutes(app: FastifyInstance, deps: RestDeps, publishKick: (playerId: string) => void): void {
@@ -43,15 +43,41 @@ export function registerAdminRoutes(app: FastifyInstance, deps: RestDeps, publis
     return reply.status(204).send();
   });
 
-  /** §30.10.2 — the counters part 1 keeps; part 2 adds rates, REST and DB figures. */
-  app.get('/admin/metrics', admin, async () => {
-    return {
-      rooms: deps.metrics.all().map((m) => ({ ...m })),
-      rest: {},
-      db: { txPerSec: 0, txP99Ms: 0, poolInUse: 0 },
-      presenceSize: deps.presenceStore.size,
-      heapMb: Math.round((process.memoryUsage().heapUsed / 1048576) * 10) / 10,
-    };
+  /** §30.10.2 ProcessMetrics: per-room rates/percentiles, REST per route, presence size, heap. */
+  app.get('/admin/metrics', admin, async () => deps.metrics.snapshot(deps.presenceStore.size));
+
+  /** Legacy counters (spec TODO: no body listed): players total/banned/admins, online, rooms, live battles/raids. */
+  app.get('/admin/stats', admin, async () => {
+    const c = await repos.db.transaction((tx) => repos.players.counts(tx));
+    const rooms = deps.metrics.all();
+    return out(deps, AdminStatsRes, {
+      total: c.total,
+      banned: c.banned,
+      online: deps.presenceStore.size,
+      admins: c.admins,
+      rooms: rooms.length,
+      battles: rooms.reduce((n, r) => n + r.battles, 0),
+      raids: rooms.filter((r) => r.raid).length,
+    });
+  });
+
+  /** `ILIKE '%' || escapeLike(q) || '%' ESCAPE ''` on username_lower (persist `players.search`), page of 25. */
+  app.get('/admin/players', admin, async (req) => {
+    const q = AdminPlayersQuery.parse(req.query);
+    const r = await repos.db.transaction((tx) => repos.players.search(tx, (q.q ?? '').slice(0, 32), q.page, 25));
+    return out(deps, AdminPlayersRes, {
+      rows: r.rows.map((p) => ({
+        id: p.id,
+        username: p.username,
+        email: p.email,
+        isAdmin: p.isAdmin,
+        bannedAt: p.bannedAt === null ? null : iso(p.bannedAt),
+        banReason: p.banReason,
+        createdAt: iso(p.createdAt),
+        lastSeenAt: iso(p.lastSeenAt),
+      })),
+      total: r.total,
+    });
   });
 
   app.get('/health', async () => HealthRes.parse({ status: 'ok', time: clock() }));

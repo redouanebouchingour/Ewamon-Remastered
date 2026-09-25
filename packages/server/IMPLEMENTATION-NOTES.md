@@ -319,3 +319,158 @@ deviations). This section is written incrementally; the coverage table at the en
 - **Rollover** `liveops/rollover.ts` (60 s job started by boot): on a day/week key change → `ewa:liveops`, and
   synthetic rows older than 14 days are deleted (persist `pruneSyntheticQuests`). Rooms apply
   `liveOpsModsFor(zone, now)` at create and on every `ewa:liveops`.
+
+## Raids (§30.4.7, §30.9.2 hotspots)
+
+- **Q14 — `rooms/raidSession.ts`** = pure `RaidSession` (spec constants verbatim; `join/ready/action/tick/catchAttempt/
+  leave/boss/toState`) + `RaidRunner` (the room's DB side, `RaidHost` interface, no Colyseus). Each participant holds a
+  private `BattleState` (format `raid`, seed forked from the room rng at join); per round the boss battler (HP,
+  stages, status) is copied in before each participant's `resolveTurn([action, null])` and read back after, in
+  ascending playerId order. Rounds are two-phase — `prepareRound()` (pure, nothing mutated) → ONE transaction
+  (participants locked ascending; changed creature rows, consumables, rewards) → `commitRound()` — so a failed
+  transaction leaves every private state and the boss unchanged (`rejectRound` re-opens the round, `error internal
+  'turnRejected'`), the battle pipeline's NON-NEGOTIABLE 1 applied to raids. Spec signature deviations:
+  `action(...)` also returns `'notParticipant' | 'alreadySubmitted' | 'notFighting'`; `tick(now)` returns whether
+  a timer transition happened (outbound messages are the runner's job); `catchAttempt` adds `'unknownOrb'`.
+- **Q15 — boss PP.** The boss acts once per participant per round, so it would run out of PP (core's NPC choice then
+  ends the private battle while the boss stands). The shared boss's PP is restored to ppMax on every copy-in.
+  A client preview of a raid turn must apply the same rule. A private battle that ended while the boss stands makes
+  its owner a spectator (defensive).
+- **Enrage** (phase 2) is applied by the server after the participant turn that crosses `hpPct < 0.30`:
+  `stages.atk += 2` once (clamped), events `abilityTrigger { detail: 'enraged' }` + `statStage { cause: 'ability' }`
+  appended to every participant's round events. Phase numbering is `RaidState.phase` (0 lobby, 1 fight,
+  2 enraged, 3 catch window, 4 over).
+- **Lobby:** the fight starts when every present participant is ready, or after `RAID_LOBBY_MS` with ≥ 1 ready
+  (unready participants are dropped at the start). A participant is frozen like a battle while fighting
+  (`userData.battleId = raidId`, `PlayerState.inBattle`, presence battle → REST party mutations 409), and released
+  at the catch window / when fainted out / on leave. `raidJoin` requires ≤ 8 m from the hotspot, no battle/trade,
+  `minBadges`, ≤ 8 players, a standing party member.
+- **Rewards / catch:** on the defeating round, every participant with damage > 0 gets `50 × bossLevel` money +
+  `raidClear` trainer exp in that round's transaction; the client learns it through `inventoryDelta`,
+  `progressionDelta` and **`battleEnd { battleId: raidId, outcome: { winner: 0 }, rewards }`** (the spine has no
+  raid-end variant — the client must route a `battleEnd` whose battleId is the open raid's id to the raid UI).
+  `raidCatch` (one per participant with damage > 0, #14 → `notAllowed 'already'`, no second orb): core's §2.15 via a
+  catch-only `resolveTurn` on a copy of the private battle with the boss at H = 1 (its status kept); the orb is
+  spent either way; a success inserts that participant's own full-HP copy (party or box), dex, catch exp, quests.
+  The roll's events come back as a `raidEvents` message with the roll state's digest.
+- **RaidState broadcast.** `state.raid` mirrors `toState()` once per tick, writing only changed fields;
+  `roundEndsInMs` is rounded up to whole seconds so the countdown patches ≤ 1/s. Total raid patches are bounded by
+  the 20 Hz patch rate regardless of N (asserted in `aoi-fanout.test.ts`).
+- **Scheduling:** the shard-0 room checks its zone's `RAID_HOTSPOTS` once a second; when a window is open and not yet
+  handled it runs the election (`presence.get('ewa:raid:<id>:<dayKey>')`, miss → `setex(roomId, 3600)` → re-read,
+  yield when another room holds it) and opens the raid at `(x, z)`. A lobby still unstarted when the window ends
+  closes (phase 4); a finished raid lingers 10 s, then `state.raid = null`. Raid ids other than the open raid's →
+  `notFound` (like a foreign battle id).
+
+## Observability (§30.10) and the netcode harness contract (§30.10.3)
+
+- **Q16 — metrics.** `metrics.ts`: rooms keep raw counters; `rollRoomMetrics` turns them into per-second rates once
+  a second and recomputes `tickMsP50/P99` over a 1 200-tick (60 s) ring; one `info` line per room every 60 s
+  (`roomLogLine`: numbers only). Patch bytes are measured on the wire: `ZoneRoom.meterClient` wraps each client's
+  `raw` send and counts frames whose protocol code (`byte0 & 0x1f`, modifier bits masked) is
+  `Protocol.ROOM_STATE_PATCH` (15) — `patchBytesPerSec`, plus additions `patchFramesPerSec` and `framesOutPerSec`
+  (patch frames + message frames); `room.traffic` keeps the same per client. REST: an `onResponse` hook records
+  `METHOD /route` count / p50 / p99 / 4xx / 5xx (bounded 1 000-sample ring). DB: the runtime's `repos.db` is
+  `timedDb(...)` (every server transaction timed; `poolInUse` from the pg pool, 0 on PGlite). `GET /admin/metrics`
+  = `MetricsRegistry.snapshot()` (the spec's `ProcessMetrics`).
+- **Q17 — netcode harness.** `netcode/harness.ts` is the pure §30.10.3 contract (`checkRun`, `checkScaling`,
+  `powerLawExponent`, `quadraticModel`, exported from `@ewa/server`) for `tools/netcode-harness` (not in this
+  package; not written here) and `aoi-fanout.test.ts`. "msgsOut/s" is read as **websocket frames the server sends**:
+  with per-client StateViews a client gets one patch frame per tick however many neighbours changed, which is what
+  is linear in N. The entity-level count (PlayerState updates) at a fixed field size grows with density, so its
+  exponent is ≈ 1.8 by construction; it is bounded instead per client (≤ its view population × ticks + 10 %) and in
+  total (≤ 0.3 × the quadratic model), both as §50.4.5 states.
+- **aoi-fanout.test.ts deviations:** bots move 0.30 m per 45 ms running input (6.7 m/s) instead of the matrix's
+  "1 unit per tick" (20 m/s is a `speed` reject under §30.2.4's 8.05 m/s cap); they bounce off unwalkable samples
+  and a 14 m margin (no handover triggers). The 200-join assertion is < 15 s in-process (measured 4.7–5.4 s): the
+  test server runs on single-connection PGlite with all 200 SDK clients in the same event loop; §30.10.3 #5's 5 s
+  belongs to the harness against a Postgres-backed server. Bots are created in the DB with today's login already
+  granted (so a join is not also a reward write). The raid broadcast is measured on a 20 s round clock (the lobby's
+  90 s countdown sits at `RaidState.roundEndsInMs`'s uint16 clamp and would not change). The cheating-profile run
+  of §30.10.3 is the harness tool's; the per-client movement authority (speed / dt budget / kick) stays covered by
+  `movement.test.ts` + `authority.test.ts`.
+- **Measured (10 s windows, this machine):**
+
+  | N | PlayerState patches/s | quadratic 20·N·(N−1) | ratio | server frames/s | mean neighbours | patch B/s/client | tick p99 |
+  |---|---|---|---|---|---|---|---|
+  | 50 | 10 900 | 49 000 | 0.222 | 795 | 12.7 | 2 937 | 2.27 ms |
+  | 100 | 41 703 | 198 000 | 0.211 | 1 586 | 25.4 | 5 532 | 2.76 ms |
+  | 200 (+ live raid) | 126 244 | 796 000 | 0.159 | 3 189 | 49.0 | 8 691 | 6.25 ms |
+
+  frames/s power-law exponent **1.002** (< 1.3); raid patches ≤ 1.0 /s per client at N = 200 (≤ 20 asserted);
+  zero honest-bot rejections.
+
+## Remaining §30.6.3 rows
+
+- **Admin:** `GET /admin/stats` (loose `AdminStatsRes`: `total, banned, online` + `admins, rooms, battles, raids`),
+  `GET /admin/players?q=&page=` (persist `players.search`: `username_lower ILIKE '%'||escapeLike(q)||'%' ESCAPE '\'`,
+  q capped at 32 chars, page of 25, newest first). `/leaderboard?mode=dex` ranks by dex caught count; banned
+  players are now excluded in SQL for every mode (pages stay full; part 1 filtered after paging).
+- **Q18 — field items** (`/item/use`, part-1 seam): `repel` / `lure` (qty 1) spend one and publish
+  `ewa:repel { playerId, kind, steps }`; the room holding the player keeps `userData.repel` (metres left, decremented
+  by accepted movement, a toast when it wears off); a repel makes `engageSpawn` on a spawn below the party lead's
+  level answer a toast + `error { notFound, 'repelled' }`. Lure is recorded only (the spec gives it no server
+  effect; the client-side encounter filter reads its own state). This replaces the spec's presence key
+  `ewa:repel:<playerId>` with a publish to the owning room (same reach, multi-process safe). `escape_rope` (qty 1,
+  route zones only, 409 `notUsableHere` elsewhere or when not in a room — nothing spent) publishes `ewa:teleport`;
+  the room snaps the avatar to `zone.spawn` (not during a battle) with a handover cooldown.
+
+## Protocol / persist changes (part 2)
+
+- **protocol** (additive, wire shapes widened only where a response had to carry state): `CLOSE_CODES.replaced`
+  4001 → **4101** (P4); `InventoryDeltaBodySchema` / `InventoryDeltaBody`; `CreatureSetupRes`,
+  `GuildCreateRes`, `ListingMutationRes` (P1) wired into `ROUTES.creatureSetup`, `guildCreate`, `marketplaceList`,
+  `marketplaceBid`, `marketplaceBuyNow`, `marketplaceCancel`. Nothing else changed; protocol's own tests unchanged.
+- **persist**: migration `0001_battle_replay` (`battle_history.start jsonb`, `battle_history.final_digest
+  varchar(8)`, type `BattleStartSnapshot`); `playerRepo.byIds / search / counts`, `leaderboard(mode: 'rating' |
+  'trainerLevel' | 'dex')` (banned excluded in SQL, rating ties by peak then username);
+  `progressRepo.markSeen` returns `boolean` (was `void`), `claimObjective`, `pruneSyntheticQuests`;
+  `marketRepo.closeExpiredDetailed` (+ `ClosedListing`), `closeExpired` delegates to it; `historyRepo.recordBattle`
+  accepts optional `start` / `finalDigest`. `migrations.test.ts` counts journal entries instead of "1";
+  `test/admin-replay.test.ts` covers the additions. `pnpm db:generate` → no schema changes.
+
+## For the client (exact names)
+
+- Close code **4101** = replaced by another tab/device (`CLOSE_CODES.replaced`); **4001** is now only Colyseus'
+  `SERVER_SHUTDOWN` — `ConnectionOverlay` can drop the "…or the server restarted" dual copy for 4101 and treat
+  4001 as a restart/reconnect case.
+- `POST /creature/:id/setup` → `CreatureSetupRes` (the creature + `inventoryDelta`); `POST /guilds` →
+  `GuildCreateRes` (+ `inventoryDelta.money`); `POST /marketplace/list | /:id/bid | /:id/buy-now | /:id/cancel` →
+  `ListingMutationRes` (+ `inventoryDelta`: list → `creaturesRemoved: [creatureId]`, bid → `money`, buy-now →
+  `money` + `creaturesAdded`, cancel → `creaturesAdded`). Apply `res.inventoryDelta` through the one
+  `applyInventoryDelta` writer (shape = the `inventoryDelta` message minus `type`).
+- Reload mid-battle: `POST /zone/enter` for the battle's zone now returns a seat in the battle's room; after
+  joining, a `battleResync` arrives unprompted — rebuild the battle UI from it. Other zones stay 409 `inBattle`.
+- `GET /me` still has no dex fields / guild id (P2 spec gap): use `GET /dex` and `GET /players/:ownUsername`
+  (`guildTag`). `me.quests` now includes `daily:<dayKey>` and `weekly:<weekKey>` entries with a `missions[]` list;
+  claim with `POST /quests/claim { questId, objectiveId: missionId }`. `me.liveOps` gained `dailyMissions`,
+  `weeklyGoals`, `swarm`, `events`, `raids[]` (loose schema). `me.flags` contains `streak:<n>` /
+  `streak:last:<day>` bookkeeping flags — ignore `streak:*` in story logic.
+- Raids: `state.raid` (`RaidState`, phase 0–4, `hpPct` only); messages `raidJoin/raidReady/raidAction/raidCatch/
+  raidLeave` with `raidId = state.raid.id`; `raidEvents` per round (and one for a catch roll); rewards arrive as
+  **`battleEnd` with `battleId === state.raid.id`**. While fighting, `PlayerState.inBattle` is true and inputs are
+  refused like a battle.
+- Trades: `tradeUpdate` per change; send `tradeConfirm { tradeId, offerHash }` with the hash from the latest
+  `tradeUpdate` (or `tradeOfferHash(offers)`); on completion both get `inventoryDelta` + `progressionDelta`.
+- DMs arrive live as `dm`; `POST /messages/:username` refuses blocked words with 400 `blockedWord`, strangers
+  409 `notFriends`. A fresh account starts at 3 100 money / 30 trainer exp (registration = login day 1).
+
+## Spec coverage (part 2)
+
+| Section | State |
+|---|---|
+| §30.2.8 tick | done — step 8 trades, step 7 raid half, step 10 percentiles + 60 s line |
+| §30.4.7 raids | done (Q14, Q15); RaidState ≤ 1 patch/s measured |
+| §30.5.1 #14 / #20 / #21 | done (`raid.test.ts`, `market-routes.test.ts` + `market-concurrency.test.ts`, `challenge-trade.test.ts`) |
+| §30.6.3 routes | done: friends, messages, guilds, marketplace (+ expiry job), admin stats/players, leaderboard dex, field items (Q18) |
+| §30.6.5 chat filter | done (legacy list, Q1) — DM hard reject, overworld soft censor |
+| §30.7 social | done (Q2–Q5); presence distributed half = `PresenceMirror`; `refuseInBattle` still local-only (Q2) |
+| §30.8.2 marketplace | done (Q6, Q7) |
+| §30.8.3 trades | done (Q8–Q10) |
+| §30.9 live-ops | done with data in the server (Q11–Q13); battle pass claim / mythical choice were part 1 (unchanged) |
+| §30.10.1 logs | partly: per-room/REST child loggers existed; 60 s room line added; no new redaction work |
+| §30.10.2 metrics | done (Q16) |
+| §30.10.3 harness | contract done (Q17, `netcode/harness.ts`); `tools/netcode-harness` itself not written (outside this package) |
+| §30.11 checklist | chat filter, raid, market expiry, DB-only replay now tested; presence/challenge/toPublic/rate limits from part 1 |
+| §50.4.5 matrix | `aoi-fanout`, `challenge-trade`, `raid` added; `handover.test.ts` / `story-beats.test.ts` remain folded into `world.test.ts` (part 1) |
+| §50.5 M2/M4 server boxes | aoi-fanout 50/100/200 ✓, challenge-trade ✓, raid ✓, guild routes in rest-auth ✓, market-concurrency ✓ on PGlite (Postgres run needs `DATABASE_URL`; not run here — Docker was not running) |

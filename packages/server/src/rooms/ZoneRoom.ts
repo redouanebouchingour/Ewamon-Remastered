@@ -14,7 +14,7 @@ import { BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, PlayerState, RaidState, Sp
 import type { ClientMessageType, ClientPayload, ServerMessage } from '@ewa/protocol';
 import type { RoomDeps } from '../deps';
 import { censor, sanitizeChat } from '../chat/filter';
-import { createRoomMetrics } from '../metrics';
+import { LOG_EVERY_MS, createRoomMetrics, recordTick, roomLogLine, rollRoomMetrics } from '../metrics';
 import type { RoomMetrics } from '../metrics';
 import { LIMITS, allow, createLimiterState, shouldNotify } from '../rest/rateLimit';
 import type { LimitKey, RateLimiterState } from '../rest/rateLimit';
@@ -99,6 +99,8 @@ export interface ZoneUserData {
   rejects: number[];
   /** unknown message type timestamps (5 in 10 s → 4003) */
   unknown: number[];
+  /** §30.6.3 repel / lure: metres left (decremented by accepted movement); repel refuses weaker wild spawns */
+  repel: { readonly kind: 'repel' | 'lure'; steps: number } | null;
 }
 
 export type ZoneClient = Client<{ userData: ZoneUserData; auth: ZoneAuth }>;
@@ -112,6 +114,8 @@ export interface DmPush {
   readonly sentAt: number;
 }
 
+/** @colyseus/shared-types Protocol.ROOM_STATE_PATCH — the first byte of a schema patch frame */
+export const ROOM_STATE_PATCH = 15;
 export const MOVE_KICK = { max: 30, windowMs: 10_000 } as const;
 export const UNKNOWN_KICK = { max: 5, windowMs: 10_000 } as const;
 export const HANDOVER_TRIGGER_M = 6;
@@ -189,6 +193,9 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   /** player uuid → the sessionId that owns the PlayerState (multi-tab / reconnection guard) */
   private readonly owner = new Map<string, string>();
   private overruns = 0;
+  private nextLogAt = 0;
+  /** per-client traffic (sessionId → schema patch frames / bytes, message frames) — the harness reads it (§30.10.3) */
+  readonly traffic = new Map<string, { patchFrames: number; patchBytes: number; msgFrames: number }>();
   /** presence subscriptions held by this room, released in onDispose */
   private readonly subs: [string, (m: never) => void][] = [];
   /** `${hotspotId}:${dayKey}` windows this room already opened (or yielded) — a window opens at most once */
@@ -275,6 +282,11 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     await this.sub(`ewa:handover:done:${this.roomId}`, (m: { playerId: string }) => this.onHandoverDone(m.playerId));
     await this.sub('ewa:profile', (m: { playerId: string }) => void this.onProfile(m.playerId));
     await this.sub('ewa:liveops', () => this.spawns?.setLiveOps(liveOpsModsFor(this.zone.id, this.now())));
+    await this.sub('ewa:repel', (m: { playerId: string; kind: 'repel' | 'lure'; steps: number }) => {
+      const c = this.clientOf(m.playerId);
+      if (c?.userData !== undefined) c.userData.repel = { kind: m.kind, steps: m.steps };
+    });
+    await this.sub('ewa:teleport', (m: { playerId: string }) => this.onTeleport(m.playerId));
     // 7.
     this.setTimestep((dt) => this.tick(dt), ZoneRoom.TICK_MS);
   }
@@ -389,6 +401,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     }
     this.owner.set(playerId, client.sessionId);
 
+    this.meterClient(client);
     // 5. view + userData; the first tick computes the cell and adds the 3×3
     client.view = new StateView();
     client.view.add(ps);
@@ -412,6 +425,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       moved: true,
       rejects: [],
       unknown: [],
+      repel: null,
     };
     // R11: the join's AOI pass runs here, not on the first tick, so a chat/interact sent right after joining
     // already has a cell and an audience (a takeover client re-registers the viewer from scratch)
@@ -450,6 +464,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   }
 
   override async onLeave(client: ZoneClient, _code?: number): Promise<void> {
+    this.traffic.delete(client.sessionId);
     const ud = client.userData;
     if (ud === undefined) return;
     const deps = this.deps;
@@ -508,6 +523,31 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     if (this.metrics !== undefined) this.deps.metrics.unregister(this.roomId);
   }
 
+  // ─── metering (§30.10.2) ─────────────────────────────────────────────────────
+
+  /**
+   * Wraps the client's raw send: a frame whose protocol code (first byte & 0x1f, modifier bits masked) is
+   * Protocol.ROOM_STATE_PATCH (15) is a schema patch
+   * (counted with its byte length), anything else a message frame. Patch bytes are exactly what went on the wire.
+   */
+  private meterClient(client: ZoneClient): void {
+    const t = { patchFrames: 0, patchBytes: 0, msgFrames: 0 };
+    this.traffic.set(client.sessionId, t);
+    const m = this.metrics;
+    const raw = client.raw.bind(client);
+    client.raw = ((data: Uint8Array | Buffer, ...rest: unknown[]) => {
+      if (data !== undefined && data.length > 0 && (data[0]! & 0x1f) === ROOM_STATE_PATCH) {
+        t.patchFrames++;
+        t.patchBytes += data.length;
+        m.patchFrames++;
+        m.patchBytes += data.length;
+      } else {
+        t.msgFrames++;
+      }
+      return (raw as (...a: unknown[]) => unknown)(data, ...rest);
+    }) as typeof client.raw;
+  }
+
   // ─── presence channels ──────────────────────────────────────────────────────
 
   private async sub<T>(topic: string, cb: (m: T) => void): Promise<void> {
@@ -541,6 +581,26 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.sendMsg(client, { type: 'inventoryDelta', items: { ...g.inventory }, money: g.money, creaturesAdded: [], creaturesRemoved: [], creaturesUpdated: [] });
     this.sendMsg(client, progressionOnly({ trainerExp: g.trainerExp, trainerLevel: g.trainerLevel, flags: [...g.flags] }));
     this.sendMsg(client, { type: 'toast', level: 'success', text: `Daily login — day ${g.streak} streak` });
+  }
+
+  private async leadLevel(playerId: string): Promise<number> {
+    const deps = this.deps;
+    const party = await deps.repos.db.transaction((tx) => deps.repos.creatures.party(tx, playerId));
+    return party.find((c) => c.hp > 0)?.level ?? 0;
+  }
+
+  /** §30.6.3 escape rope: authoritative teleport to the zone's spawn point (snapped), not during a battle. */
+  private onTeleport(playerId: string): void {
+    const c = this.clientOf(playerId);
+    const ps = this.state.players.get(playerId);
+    if (c?.userData === undefined || ps === undefined || c.userData.battleId !== null) return;
+    const p = isWalkable(this.heightfield, this.zone.spawn.x, this.zone.spawn.z) ? ([this.zone.spawn.x, this.zone.spawn.z] as const) : nearestWalkable(this.heightfield, this.zone.spawn.x, this.zone.spawn.z, 8);
+    if (p === null) return;
+    ps.x = p[0];
+    ps.z = p[1];
+    ps.moving = false;
+    c.userData.moved = true;
+    c.userData.handoverCooldownUntil = this.now() + HANDOVER_COOLDOWN_MS;
   }
 
   /** §30.5 `PlayerState.body/guildTag` re-read after POST /profile or any guild change (`ewa:profile`). */
@@ -689,6 +749,13 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       ud.lastSeq = input.seq;
       ud.lastInputAt = this.now();
       ud.moved = true;
+      if (ud.repel !== null) {
+        ud.repel.steps -= dist;
+        if (ud.repel.steps <= 0) {
+          ud.repel = null;
+          this.sendMsg(client, { type: 'toast', level: 'info', text: 'The repel wore off.' });
+        }
+      }
       return;
     }
     const reason: RejectReason = verdict.reason;
@@ -908,6 +975,11 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const rec = this.spawns?.get(m.spawnId) ?? null;
     if (rec === null || !this.aoi.isNear(cell, rec.id)) return this.sendMsg(client, { type: 'error', code: 'notFound', detail: null });
     if (rec.medium === 'water' && !isWater(this.heightfield, ps.x, ps.z)) return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'needSurf' });
+    // §30.6.3 repel: wild spawns below the lead's level refuse engagement (a notFound-equivalent toast)
+    if (ud.repel?.kind === 'repel' && rec.level < (await this.leadLevel(ud.playerId))) {
+      this.sendMsg(client, { type: 'toast', level: 'info', text: 'The repel keeps it away.' });
+      return this.sendMsg(client, { type: 'error', code: 'notFound', detail: 'repelled' });
+    }
     const verdict = this.spawns!.engage(rec.id, ud.playerId, this.now(), { x: ps.x, z: ps.z });
     if (verdict === 'notFound') return this.sendMsg(client, { type: 'error', code: 'notFound', detail: null });
     if (verdict === 'tooFar') return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'tooFar' });
@@ -1349,9 +1421,14 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.trades.tick(now);
     // 9. challenges 45 s TTL
     for (const c of this.challenges.sweep(now)) this.sendTo(c.fromId, { type: 'challengeResult', targetId: c.toId, result: 'expired' });
-    // 10. metrics
+    // 10. metrics: tick duration ring (p50/p99), 1 s rates, one info line per room every 60 s
     const ms = performance.now() - t0;
-    this.metrics.lastTickMs = ms;
+    recordTick(this.metrics, ms);
+    rollRoomMetrics(this.metrics, now);
+    if (now >= this.nextLogAt) {
+      if (this.nextLogAt !== 0) this.deps.log.info(roomLogLine(this.metrics), 'room metrics');
+      this.nextLogAt = now + LOG_EVERY_MS;
+    }
     if (ms > 40) {
       this.overruns += 1;
       this.metrics.tickOverruns += 1;

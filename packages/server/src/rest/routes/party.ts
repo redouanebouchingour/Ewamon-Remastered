@@ -229,8 +229,8 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
   // ---- items / heal ---------------------------------------------------------------------------------------
 
   /**
-   * Server-validated consumable effects out of battle. repel / lure / escapeRope (presence keys and room
-   * teleports) are part 2 and answer 409 `notUsableHere`.
+   * Server-validated consumable effects out of battle. repel / lure publish `ewa:repel` (the room holding the player
+   * keeps the step counter); escapeRope publishes `ewa:teleport` (route zones only) — IMPLEMENTATION-NOTES Q18.
    */
   app.post('/item/use', bearer, async (req) => {
     const body = ItemUseReq.parse(req.body);
@@ -244,6 +244,23 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
     }
     if (!isConsumable(def)) throw new HttpError(409, 'notUsable');
     const effect = def.effect;
+    // §30.6.3 field items: repel / lure (step counters the room consults) and escape rope (route zones only)
+    if (effect.kind === 'repel' || effect.kind === 'lure' || effect.kind === 'escapeRope') {
+      if (body.qty !== 1) throw new HttpError(409, 'oneAtATime');
+      const zone = presenceZone(deps, id);
+      if (zone === null) throw new HttpError(409, 'notUsableHere');
+      if (effect.kind === 'escapeRope' && zone.kind !== 'route') throw new HttpError(409, 'notUsableHere');
+      const now = new Date(clock());
+      const inventory = await repos.db.transaction(async (tx) => {
+        await repos.players.lock(tx, id);
+        await repos.inventory.add(tx, id, body.item, -1);
+        await repos.audit.write(tx, { actorId: id, action: 'item.use', subject: body.item, detail: { zoneId: zone.id } }, now);
+        return repos.inventory.all(tx, id);
+      });
+      if (effect.kind === 'escapeRope') deps.bus.publish('ewa:teleport', { playerId: id, to: 'spawn' });
+      else deps.bus.publish('ewa:repel', { playerId: id, kind: effect.kind, steps: effect.steps });
+      return out(deps, ItemUseRes, { inventory, creaturesUpdated: [], events: [{ t: 'itemUsed', item: body.item, target: null, qty: 1 }] });
+    }
     const res = await repos.db.transaction(async (tx) => {
       await repos.players.lock(tx, id);
       // the balance check is the repo's: going negative throws InsufficientItems (409)

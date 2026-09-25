@@ -17,7 +17,7 @@ import type { FastifyInstance } from 'fastify';
 import type { AccessClaims, BanCache, ServerDeps } from './deps';
 import { startMarketExpiry } from './jobs/marketExpiry';
 import { startLiveOpsRollover } from './liveops/rollover';
-import { MetricsRegistry } from './metrics';
+import { MetricsRegistry, timedDb } from './metrics';
 import { buildRest } from './rest/app';
 import type { RestDeps } from './rest/http';
 import { localRateLimiter, presenceRateLimiter } from './rest/rateLimit';
@@ -95,12 +95,15 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
   const limiter = env.REDIS_URL !== undefined ? presenceRateLimiter(presence, deps.clock) : local;
 
   let verify: ((token: string) => AccessClaims) | null = null;
+  const metrics = new MetricsRegistry(deps.clock);
   const runtime: RestDeps = {
     ...deps,
+    // every transaction the server runs is timed (§30.10.2 db.txPerSec / txP99Ms / poolInUse)
+    repos: { ...deps.repos, db: timedDb(deps.repos.db, metrics) },
     presenceStore,
     presenceMirror,
     bus: { publish: (topic, data) => void presence.publish(topic, data) },
-    metrics: new MetricsRegistry(),
+    metrics,
     bans,
     limiter,
     ticket: randomBytes(24).toString('base64url'),
