@@ -1,0 +1,3351 @@
+{
+  "byKind": {
+    "ambience": {
+      "cost": 2.2,
+      "jobs": 11,
+      "seconds": 682
+    },
+    "sfx": {
+      "cost": 47.6,
+      "jobs": 238,
+      "seconds": 207.7
+    },
+    "stem": {
+      "cost": 13.6,
+      "jobs": 68,
+      "seconds": 2742.244
+    },
+    "ui": {
+      "cost": 9.8,
+      "jobs": 49,
+      "seconds": 91.28
+    }
+  },
+  "bytes": {
+    "ambience": 14967700,
+    "budget": 83886080,
+    "m4a": 44380232,
+    "seconds": {
+      "ambience": 660,
+      "sfx": 298.98,
+      "stems": 2287.578
+    },
+    "sfx": 6197212,
+    "stems": 61372032,
+    "total": 82536944,
+    "webm": 38156712
+  },
+  "cached": 0,
+  "costBasis": "Stability AI platform pricing, Stable Audio 2.5 text-to-audio: 20 credits ($0.20) per generation, flat for 1–190 s (checked 2026-09-25)",
+  "counts": {
+    "ambience": 11,
+    "sfxIds": 129,
+    "sfxVariants": 287,
+    "stems": 68,
+    "themes": 17,
+    "uiIds": 45,
+    "zones": 21
+  },
+  "estimatedCost": 73.2,
+  "estimatedSeconds": 3723.224,
+  "fullCost": 73.2,
+  "jobs": [
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 62,
+      "id": "ambience/capital",
+      "kind": "ambience",
+      "requestHash": "cb18109091503f1a9917adad937b26d03cdd2e2be21ec84e81873e5db7bc6bc3",
+      "seed": 3745327130
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 62,
+      "id": "ambience/cinder",
+      "kind": "ambience",
+      "requestHash": "d2e60f88ba8fed56a79dfc685fcde48610a3779c40aff9a04fc3d105905b6780",
+      "seed": 3822882203
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 62,
+      "id": "ambience/forge",
+      "kind": "ambience",
+      "requestHash": "42a49b665cb95ef5d60d1852afe135d142a7310a0ffff6d191593ca9822eca45",
+      "seed": 1766232640
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 62,
+      "id": "ambience/grove",
+      "kind": "ambience",
+      "requestHash": "4856cd93ba874c993fdfaf4d8792833051030ebf09aa2c99f82e3be63ab40eb1",
+      "seed": 197253634
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 62,
+      "id": "ambience/marrow",
+      "kind": "ambience",
+      "requestHash": "83baa43963f0d4c949bd730e79873c327769757d1d7abe4be68fdc3186ea4874",
+      "seed": 2716801124
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 62,
+      "id": "ambience/rift",
+      "kind": "ambience",
+      "requestHash": "010310f57b4c1943bd0fe9f9ab615242a68350658842fdb4468827737c325983",
+      "seed": 3709117730
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 62,
+      "id": "ambience/salt",
+      "kind": "ambience",
+      "requestHash": "8031cfb466f4d0069f179fc9c1bee5f229b77834acdd74271b3eb539532f5f9c",
+      "seed": 3951287900
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 62,
+      "id": "ambience/shrine",
+      "kind": "ambience",
+      "requestHash": "fe5ca21703287b4857ca5edc3d7d056f9d4b8814f33819b570a8144d81caa2a4",
+      "seed": 2154140342
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 62,
+      "id": "ambience/sky",
+      "kind": "ambience",
+      "requestHash": "ae84e34707f31b62034fe90b1e84d3466a2505bad347883d17ce851d277d33c8",
+      "seed": 1270826387
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 62,
+      "id": "ambience/storm",
+      "kind": "ambience",
+      "requestHash": "e540fab994b0b4d2e26c767d3a5cc75762123c50e8de2322107043b2f1def9ae",
+      "seed": 2301807984
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 62,
+      "id": "ambience/vesper",
+      "kind": "ambience",
+      "requestHash": "a023834a4860ee8e362036ba34cb23a437f31ac44b43f7615c409494e2f62f06",
+      "seed": 3274470714
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/anvil_strike_1",
+      "kind": "sfx",
+      "requestHash": "6486af24ce774f2be164d201ed0a6cc0c8aae844a5c18cef487fc6b61f1633c6",
+      "seed": 3028632955
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/anvil_strike_2",
+      "kind": "sfx",
+      "requestHash": "a1bb0512af1c2780238bc510a1b6bb2621d3b2e9f727b228d73cded2bb81d6cb",
+      "seed": 3028632956
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3.5,
+      "id": "sfx/bell_toll_1",
+      "kind": "sfx",
+      "requestHash": "881a60c2c3b0a9a2e640cc360f15023812e7aa5698c8104614b85b63928cfe14",
+      "seed": 2359251323
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_bug_1",
+      "kind": "sfx",
+      "requestHash": "e44ae659b85243308a0f63f7ed9c428b18899e082be396005cd522c4265ad8c0",
+      "seed": 2979644237
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_bug_2",
+      "kind": "sfx",
+      "requestHash": "1547573f577e5448ea1e2498e2eec40ec6ac67e0c02ca388a16a0f1c06f8b1b3",
+      "seed": 2979644238
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_cosmic_1",
+      "kind": "sfx",
+      "requestHash": "c511258940705c04d330fd000799ba5ed13fa80add5cafe9bb055de34fff6207",
+      "seed": 37582503
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_cosmic_2",
+      "kind": "sfx",
+      "requestHash": "583eab60255f0ec2230b07d9f65aae3b0d2066bc9311f09e0a17e204b1af2f61",
+      "seed": 37582504
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_dark_1",
+      "kind": "sfx",
+      "requestHash": "3a91e1c64a040e2edb433724d2b401d29b81b202d755a7eff323e13816d3569e",
+      "seed": 857877995
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_dark_2",
+      "kind": "sfx",
+      "requestHash": "f0d91b625fe8bbc73d603a8881d89385dc78b2956bb828e09686665becb85751",
+      "seed": 857877996
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_dragon_1",
+      "kind": "sfx",
+      "requestHash": "43d175cef4e33f9f11536703c05b06340bd16b2ad1e37f0f7774088564702e8a",
+      "seed": 4110519558
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_dragon_2",
+      "kind": "sfx",
+      "requestHash": "a909c1d4642f9087cb769b6b801da6f37adf134663ce2dbb448db6f2a9e83924",
+      "seed": 4110519559
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_electric_1",
+      "kind": "sfx",
+      "requestHash": "d1a68961655e83806fe0c550e2b8c3d861c1be73c3bb0afb449e9130f2b3ac35",
+      "seed": 4281872737
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_electric_2",
+      "kind": "sfx",
+      "requestHash": "43523ea16b70f1b10f0229240b908a20c092df680132b535929cf5e74ad91bd4",
+      "seed": 4281872738
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_fairy_1",
+      "kind": "sfx",
+      "requestHash": "c2d5c45237eb521871fb5ae89106d7f981747f0eb1afcc867410b3677ed70422",
+      "seed": 1285772014
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_fairy_2",
+      "kind": "sfx",
+      "requestHash": "030d6eff5cd3a67e530ddac7f4783a29faac9a986c4c1d8a11073f7b96a3acbe",
+      "seed": 1285772015
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_fighting_1",
+      "kind": "sfx",
+      "requestHash": "b37ba410bac1f64c791345f8568929e92af4d7a4c89b2c2fb5cea9305f5a2daf",
+      "seed": 544943023
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_fighting_2",
+      "kind": "sfx",
+      "requestHash": "e0c2f55ef08fa2ec1e7f6b9a6e1ce0253e6f574af61701ea08e3663414871b8d",
+      "seed": 544943024
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_fire_1",
+      "kind": "sfx",
+      "requestHash": "e956e30de5e649847a5b716db15d2dec500c19e268a9986ed26c3777459b70ff",
+      "seed": 3600538079
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_fire_2",
+      "kind": "sfx",
+      "requestHash": "2d51e9257698e4bd8f28ea01b48a36d3e6693b7d0638e2200f5d0ba2c8103553",
+      "seed": 3600538080
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_flying_1",
+      "kind": "sfx",
+      "requestHash": "31f3b0cbc61312674d3a48f287f5c45f721c5040573cc9903ebec2fea32a7923",
+      "seed": 2022781554
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_flying_2",
+      "kind": "sfx",
+      "requestHash": "77d6c3d6555866f909c3bfeffd0b1bc3ccdf49ddcced423bffbeade2febbb52e",
+      "seed": 2022781555
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_ghost_1",
+      "kind": "sfx",
+      "requestHash": "f50445ee7be82d9efd1bf08ee766f37dd146cb2612ace35bee87a22b05469cc4",
+      "seed": 2332044485
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_ghost_2",
+      "kind": "sfx",
+      "requestHash": "095c7f6613c79bd874c35349bda2f66abdd429167b72b7253c05172552ddb213",
+      "seed": 2332044486
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_grass_1",
+      "kind": "sfx",
+      "requestHash": "207b755e6649eecb09df6b1fc73e24b32bc5519a1a35dc3a4a8c41e3c03f6b02",
+      "seed": 3614236336
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_grass_2",
+      "kind": "sfx",
+      "requestHash": "16fa50251b1469f81af3962923dcb61e5885e661e502cf32ef5706eeef156766",
+      "seed": 3614236337
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_ground_1",
+      "kind": "sfx",
+      "requestHash": "478de4380780fde2b0dca6174d8e88bb7d1169477afd584a3b73d1238aa7e568",
+      "seed": 53946737
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_ground_2",
+      "kind": "sfx",
+      "requestHash": "eb932c6b632a22333cec9e96e7db2f0aa695b5cd0f48eac2a4795de389382217",
+      "seed": 53946738
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_ice_1",
+      "kind": "sfx",
+      "requestHash": "38950efcd195047943e135db1289ebae02922edf0ffe36602cd2d07194af8df1",
+      "seed": 3072562568
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_ice_2",
+      "kind": "sfx",
+      "requestHash": "4374a5c8aa54f374f183bac45e633451eab3e6e06cd6c22e4d5cf9cec975703d",
+      "seed": 3072562569
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_normal_1",
+      "kind": "sfx",
+      "requestHash": "2ab948ccac91932c3709f22f896eab206db374edf9142420a065e1f1723260c1",
+      "seed": 3019936796
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_normal_2",
+      "kind": "sfx",
+      "requestHash": "6f66121d0d2f2ae84ed3d39f693efbb5571a553db3f2cf83fed6e30bb5c9e3f6",
+      "seed": 3019936797
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_poison_1",
+      "kind": "sfx",
+      "requestHash": "a83463d71b5b1dd3aad97c4a91930bdc3123fbc350e2376c2d75634ac2f4b654",
+      "seed": 802108984
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_poison_2",
+      "kind": "sfx",
+      "requestHash": "71babcab07baa0d0f3610a7086a3ff41b6598ef2690ee64163f3fd722a8e849e",
+      "seed": 802108985
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_psychic_1",
+      "kind": "sfx",
+      "requestHash": "22fc4fc7e543148c493e3a811591def28d7aff48520c01e9be88d8bde9339174",
+      "seed": 82123261
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_psychic_2",
+      "kind": "sfx",
+      "requestHash": "98323d50ecaf1dff714ad1afd77af773ff71dcd830fd5abf83fdecf6d0f8e2ed",
+      "seed": 82123262
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_rock_1",
+      "kind": "sfx",
+      "requestHash": "3e3e0a4b12197201520f21c97147a52a10fd56bbbb73d9343dffa9f87f7fefeb",
+      "seed": 4086721287
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_rock_2",
+      "kind": "sfx",
+      "requestHash": "8c627853a89d786deebafee4c8dc6fda2e3f3d3dfe0d47750e7800f366b2407c",
+      "seed": 4086721288
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_steel_1",
+      "kind": "sfx",
+      "requestHash": "6ad69294abc4ae6f71ee2a4e7db47cc8cb5fac33ebd4352ea42d8f5a2a3415f2",
+      "seed": 509097259
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_steel_2",
+      "kind": "sfx",
+      "requestHash": "bd09c597189f186c802392b1963e259cd5666ffcfad19827f8fad338aa6f1d73",
+      "seed": 509097260
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_water_1",
+      "kind": "sfx",
+      "requestHash": "dc50b6864581fb569bb25f95674eb8a25ca72837634afff29502578fa20fbd0c",
+      "seed": 803531404
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/cry_water_2",
+      "kind": "sfx",
+      "requestHash": "4e92f10f34f89398cafb5b0a50ecb43fe4b7516e102c9dba38b43e1fa980e7a3",
+      "seed": 803531405
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.7,
+      "id": "sfx/door_close_1",
+      "kind": "sfx",
+      "requestHash": "85440b5b5effdeb9f9495e79a7ed89be750238b18ead6b140bdc049b2575675a",
+      "seed": 3724405992
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.6,
+      "id": "sfx/door_heavy_1",
+      "kind": "sfx",
+      "requestHash": "e3e365aba78bb49aaa4f473cee970958c3079a697ed90b98fceee3508bc5da69",
+      "seed": 1144496706
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.9,
+      "id": "sfx/door_open_1",
+      "kind": "sfx",
+      "requestHash": "a3abbe9c6851dc185de95e708267fb8a8ff9ab9c085a2e48b677715ade54ce26",
+      "seed": 947213992
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.9,
+      "id": "sfx/door_open_2",
+      "kind": "sfx",
+      "requestHash": "e5700bc4d120f302c3a75f31084bcfa30fc839f63b2ce314d63f7666b8e2f348",
+      "seed": 947213993
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.3,
+      "id": "sfx/faint_1",
+      "kind": "sfx",
+      "requestHash": "20f56cece3a491b96da8a5119d10eb39d6c8a7de3a2546365202ac04c3e582b5",
+      "seed": 3228760849
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.3,
+      "id": "sfx/faint_2",
+      "kind": "sfx",
+      "requestHash": "6facca921239ffe9b1b25bb8d1aedaaaf9409df31b0decc7754f6faf50e4fb1b",
+      "seed": 3228760850
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1,
+      "id": "sfx/flee_1",
+      "kind": "sfx",
+      "requestHash": "9a57a63381be5ddd734eefc35e2ae51d44fd834e9b1c371f04c0264c104fdff7",
+      "seed": 2563484497
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/grass_rustle_1",
+      "kind": "sfx",
+      "requestHash": "f72f24e98c1a721429d229bef54b2ce7205854e2306cb4a73dd1835b21d915b4",
+      "seed": 1224140717
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/grass_rustle_2",
+      "kind": "sfx",
+      "requestHash": "c792b579a1af23623e212aafdc33d54d645fbb00a762ccc8c076aa4a004bab7a",
+      "seed": 1224140718
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/grass_rustle_3",
+      "kind": "sfx",
+      "requestHash": "b6012fb12f8b90df997162573e13bda0400ccb95e75b47b37fccb794248bbce8",
+      "seed": 1224140719
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.7,
+      "id": "sfx/hit_crit_1",
+      "kind": "sfx",
+      "requestHash": "04e429514a542b17c2d8b2af233a3101cc1f5b2a81d8bd039b2da7bbb4c74cfc",
+      "seed": 3066612587
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.7,
+      "id": "sfx/hit_crit_2",
+      "kind": "sfx",
+      "requestHash": "479894b6c7ae9707236e81edf4bd048589234304511d6a59e5ee351311486b29",
+      "seed": 3066612588
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.45,
+      "id": "sfx/hit_normal_1",
+      "kind": "sfx",
+      "requestHash": "82a80289779c734a4c8a62eeb76c3720b010fddfd7d498dea3d700aa912826de",
+      "seed": 4280102797
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.45,
+      "id": "sfx/hit_normal_2",
+      "kind": "sfx",
+      "requestHash": "1178ed10cd912b7508fc4c94481705eeb870ac6e8c68a33014e490185ce3148a",
+      "seed": 4280102798
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.45,
+      "id": "sfx/hit_normal_3",
+      "kind": "sfx",
+      "requestHash": "f4ca6ced4118c018402df85322828cb750219c65de3114e69a2aa58d3086db3b",
+      "seed": 4280102799
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/hit_super_1",
+      "kind": "sfx",
+      "requestHash": "833cd67a153657e5444d1375a596062e2cfbe8f56b3b9f467e704f0cc1767376",
+      "seed": 4032546583
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/hit_super_2",
+      "kind": "sfx",
+      "requestHash": "786d31603ee2923f7e47eab8c41db5672f932e7ad426e1df5e6fbc6bd44045a4",
+      "seed": 4032546584
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/hit_super_3",
+      "kind": "sfx",
+      "requestHash": "ce66cc63bcb8017a45c040ec65c5f3191c9b73ca5cbc332b41929fde4f61f99b",
+      "seed": 4032546585
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.4,
+      "id": "sfx/hit_weak_1",
+      "kind": "sfx",
+      "requestHash": "11442c3489ae605a486fdd308f93a5f03962702d0cb0636a4e2eede982b44af8",
+      "seed": 4104388584
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.4,
+      "id": "sfx/hit_weak_2",
+      "kind": "sfx",
+      "requestHash": "1f4c9b2aaa3c89acdfb21c901a9bf2851ba242ab9d3257e635cf1de8e74abb8b",
+      "seed": 4104388585
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_bug_1",
+      "kind": "sfx",
+      "requestHash": "7a67f4a0e2b937958646b819ba8c099683419fde893c84566cd88c97ded0522b",
+      "seed": 419839633
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_cosmic_1",
+      "kind": "sfx",
+      "requestHash": "30fcf788d2100e730414f96b44475a3e7ab80b4afd8b57eb5459f37f39c07d04",
+      "seed": 895353685
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_dark_1",
+      "kind": "sfx",
+      "requestHash": "56962257844e79f1550b4d07abc03f463d4aea1586609f954204dc4eac7e3d77",
+      "seed": 4164920861
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_dragon_1",
+      "kind": "sfx",
+      "requestHash": "0eaa6f34e98d865691dd18790974aecb4bb510732331d39a3070238078923039",
+      "seed": 482284936
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_electric_1",
+      "kind": "sfx",
+      "requestHash": "bd5804a9408a7359ed4cb0f801238f0754cf142f0a679e43cece0fe37d06709b",
+      "seed": 2941017495
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_fairy_1",
+      "kind": "sfx",
+      "requestHash": "0d946d7f9fedfdb467f54368b72c2a1fa2c3af703257fb60e1c024bed8ca4d2e",
+      "seed": 1151297412
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_fighting_1",
+      "kind": "sfx",
+      "requestHash": "1216774e543a0a714921b2432428ec0e08b85680a8735067dd493b0b961d8ea3",
+      "seed": 835818098
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_fire_1",
+      "kind": "sfx",
+      "requestHash": "0ce7d1d03d85688a40c866c1cbb4c4ff760807f21a9e652e14e6351b2b37f2ba",
+      "seed": 3934985310
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_flying_1",
+      "kind": "sfx",
+      "requestHash": "f5f181c93f12098daf58a1414c776d1c3614df641249525d90562ada8f6e204d",
+      "seed": 4126897247
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_ghost_1",
+      "kind": "sfx",
+      "requestHash": "f5a03b89efa10dbfd8e8ab25fb9613f8f94e85fed6ccf8a0a1ab99b963729a38",
+      "seed": 1500380086
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_grass_1",
+      "kind": "sfx",
+      "requestHash": "e02a705052ec6d0a70722d1da07b067ba7864ad2d758612942b80be7f65faae8",
+      "seed": 503457389
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_ground_1",
+      "kind": "sfx",
+      "requestHash": "75887f528ee14efdf1866fe5be93d197c2d4f2b926afb32eca7285e8a254ec71",
+      "seed": 713722458
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_ice_1",
+      "kind": "sfx",
+      "requestHash": "adc4fa3c797b392f32aff5fc7333b06cb6cb4c986fc2c4506db433b870c6f355",
+      "seed": 3435939479
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_normal_1",
+      "kind": "sfx",
+      "requestHash": "c990405dc4f80578c92b58527d668f000357232ea70dacfeaa4d20b82d0ad5a8",
+      "seed": 2688968640
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_poison_1",
+      "kind": "sfx",
+      "requestHash": "5fff9595d8ffec249ea4dd2440aa8b757cc2adcba274a81113160fd168300582",
+      "seed": 1888762545
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_psychic_1",
+      "kind": "sfx",
+      "requestHash": "937caed819a0bfb81ff70188d571b18e91f830130fbab1360a615412b9215e4d",
+      "seed": 833276579
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_rock_1",
+      "kind": "sfx",
+      "requestHash": "9ce47941235a777959ff8b68aeb8b8716cbdf6b40ce5e8238d2612eb79a847a2",
+      "seed": 3814975490
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_steel_1",
+      "kind": "sfx",
+      "requestHash": "31d9283b26a7b4b65ce98b158f74ca3010bef46cf70c5688e64537c3ab122a38",
+      "seed": 939947292
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/hurt_water_1",
+      "kind": "sfx",
+      "requestHash": "550f4432c25d68aa8aaadf21cb9e1b9bea3c3cf6434c065ae56e4aaa62b69754",
+      "seed": 1954848634
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_bug_1",
+      "kind": "sfx",
+      "requestHash": "44223b1d456716fde52ab75d37a6b8db373b03871f301b397ad46ed479817bfa",
+      "seed": 3476441817
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_bug_2",
+      "kind": "sfx",
+      "requestHash": "b1f779ef4c07bc89f5c82dcff445b5901e043f69dc5cb59a9d7614d768ccd64c",
+      "seed": 3476441818
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_cosmic_1",
+      "kind": "sfx",
+      "requestHash": "d27182ed492c383c99e1da70de5d2a7b4ba9b9339a11f104589fff7cfab267ec",
+      "seed": 4168366156
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_cosmic_2",
+      "kind": "sfx",
+      "requestHash": "1c368463e4fb7ce0cd064a816fc68b22af1548c85beaa2010449b233e6e23add",
+      "seed": 4168366157
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_dark_1",
+      "kind": "sfx",
+      "requestHash": "bb1457df3378a962ecf4d27d76662f5820184f37489b982ccf815ab4ee04a937",
+      "seed": 1616475807
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_dark_2",
+      "kind": "sfx",
+      "requestHash": "921eee0c8994a636e306fe51749f95ac70a2d9f1ef528ccb38532ccd6e2318ed",
+      "seed": 1616475808
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_dragon_1",
+      "kind": "sfx",
+      "requestHash": "603e5e5f7a3ca98df364888b8a6b143de54a38ec8917aa78c6a212ad00e17944",
+      "seed": 2692530491
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_dragon_2",
+      "kind": "sfx",
+      "requestHash": "ea319abafff092eb7dfbd23f7844832f7b2ce14212497dac360a74cd9e76f0ac",
+      "seed": 2692530492
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_electric_1",
+      "kind": "sfx",
+      "requestHash": "0bc779ae3eb4a9c0065af9c759a8a46b251a98a4fab6ca4c4dec434f2cfba8cd",
+      "seed": 1534392630
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_electric_2",
+      "kind": "sfx",
+      "requestHash": "6173ea94f418970ca091f2d6f63e70fb6dcd305dd3ee5633850b1bba6b2c555f",
+      "seed": 1534392631
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_fairy_1",
+      "kind": "sfx",
+      "requestHash": "ce2b5d8b66b934d880eb3b89484eb89a7d97699c10a98897ee20e81a4a064d3a",
+      "seed": 1496948495
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_fairy_2",
+      "kind": "sfx",
+      "requestHash": "171369b79a3081e4cfd6d19d7762bc6809b4639b51b5cff38e1be2b7fee51b76",
+      "seed": 1496948496
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_fighting_1",
+      "kind": "sfx",
+      "requestHash": "74f2340055cca704adee1458f05d0feb468bae9199687c51b5147d2fac13a54d",
+      "seed": 1343138767
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_fighting_2",
+      "kind": "sfx",
+      "requestHash": "4971fe8ed9032304228f7f727f6ecc286405db6d764097ca6088ffa8934d39cd",
+      "seed": 1343138768
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_fire_1",
+      "kind": "sfx",
+      "requestHash": "cad319543b455dde9054dbb2032f1c4e12bafd3d17798694b3aeaf8cd1473621",
+      "seed": 3368287731
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_fire_2",
+      "kind": "sfx",
+      "requestHash": "0ccbb7e5232b508c18a421836a57bc3944dcc63c255e2e2ea12ef935eadb7e9a",
+      "seed": 3368287732
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_flying_1",
+      "kind": "sfx",
+      "requestHash": "2a59e6e664ca0d32a8ee2cf8a60e9a919c9921890497367c8e82a4bc20b7da7f",
+      "seed": 525338225
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_flying_2",
+      "kind": "sfx",
+      "requestHash": "1fdf63921e433ac5fc5c78ac0e3b7e3f4ea0c45fd5fa8dda28acaff1c9ce5a0c",
+      "seed": 525338226
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_ghost_1",
+      "kind": "sfx",
+      "requestHash": "78a7bef41d68fc771071f10d7b53e28d458a191043cfcceb5385ce2ed7a4ff22",
+      "seed": 2559280997
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_ghost_2",
+      "kind": "sfx",
+      "requestHash": "39fcbc39abe491ac694fcf534682441b218e70a636bf8670332909d11c4a6176",
+      "seed": 2559280998
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_grass_1",
+      "kind": "sfx",
+      "requestHash": "f56315e81ce63d4215d90ff84be8a44bece1f00f92721f049aea5c2a230949e5",
+      "seed": 2231994068
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_grass_2",
+      "kind": "sfx",
+      "requestHash": "e6881402b828f6cea7c240e26cee5ad676cf62f4e427e081ebb178423800b285",
+      "seed": 2231994069
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_ground_1",
+      "kind": "sfx",
+      "requestHash": "4da6e65fafea7543823fd1863b73dd45b726b48154ac4eb3c75bb928c16877bd",
+      "seed": 2908486466
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_ground_2",
+      "kind": "sfx",
+      "requestHash": "5c96309fd9919f400a7390cf27808bd4108d89fbf57fe354bf3c8165de0ddc66",
+      "seed": 2908486467
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_ice_1",
+      "kind": "sfx",
+      "requestHash": "02a2c81e3dcc2c1838e18f1f591f966d1b1fe3243359dd3c7019f28c75728917",
+      "seed": 825999376
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_ice_2",
+      "kind": "sfx",
+      "requestHash": "c8ed72f5770416a4bd4186c2e65486c3b1697546473f11d1d5eb9fa479dd1a2e",
+      "seed": 825999377
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_normal_1",
+      "kind": "sfx",
+      "requestHash": "5aea5d58e5fbc7d9c39e7264a417b3b0daa45b4f90b41fb6415dd3eab59bccbe",
+      "seed": 2737927467
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_normal_2",
+      "kind": "sfx",
+      "requestHash": "fc1f3328f4b8dd590d30be338af460ec3eb8f433f0c8785a247ab1cf9e108b37",
+      "seed": 2737927468
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_poison_1",
+      "kind": "sfx",
+      "requestHash": "6d0d45b3751a477ba12d57741fc6082d7feaf3a29b4cd11ac4faa88692467630",
+      "seed": 70648843
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_poison_2",
+      "kind": "sfx",
+      "requestHash": "51fc419ad6d61dab332d8826fc3e07c8641fdf7dbbebb3976e5a9799d17cb318",
+      "seed": 70648844
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_psychic_1",
+      "kind": "sfx",
+      "requestHash": "d5e8b74571f038d074c3facae91c96aaf34f11a75fa5e9be3a03ed5a8c07ebb8",
+      "seed": 2623177812
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_psychic_2",
+      "kind": "sfx",
+      "requestHash": "22c4abd184ef7cd4eb2ad4f2a55e99fe6c7bbdb6b0723d2c61f767c3688116d7",
+      "seed": 2623177813
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_rock_1",
+      "kind": "sfx",
+      "requestHash": "2b1a2d1b84f8e7d8d317555f968ece47856264b90d52632b99805c4b7e6a9a94",
+      "seed": 612525407
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_rock_2",
+      "kind": "sfx",
+      "requestHash": "efd7d61c24a0be3f94b7de7f8912dc00e88d4bc8f5b7d5fc2bf77b462967f863",
+      "seed": 612525408
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_steel_1",
+      "kind": "sfx",
+      "requestHash": "00d92cb5bb92f34658073650e72cb8cd7eeb8ced98f498d54765475c24e530ed",
+      "seed": 4134286113
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_steel_2",
+      "kind": "sfx",
+      "requestHash": "53da234250c958919ebfa5eba78839e0eea60cd40a5fac7580b4b8e6359af451",
+      "seed": 4134286114
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_water_1",
+      "kind": "sfx",
+      "requestHash": "265fee1b8714a9d1b94a239cd46a3f13fc7e4624d0f4c1ce95bd3d1acd7e7b42",
+      "seed": 650843729
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/impact_water_2",
+      "kind": "sfx",
+      "requestHash": "dd901322f0ef9c14e42b13e418514712b5b20b4965ff1580f8309ba5455a79ab",
+      "seed": 650843730
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3,
+      "id": "sfx/lens_hum_1",
+      "kind": "sfx",
+      "requestHash": "cd94cc0664a3fff2c39a64f264bfe8ce99ea7b63bfb5236739abd7d5557e83ed",
+      "seed": 4159632190
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2,
+      "id": "sfx/lore_tablet_1",
+      "kind": "sfx",
+      "requestHash": "da243d70dac2cb320103eb41c8eb6811570f5012fab31e283acb7fd1eda85efc",
+      "seed": 109434776
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_bug_1",
+      "kind": "sfx",
+      "requestHash": "490979923ee0c42115208fd29c2c6e44a6d25e5e8d994e1cdf73c9125597ad15",
+      "seed": 2534215597
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_bug_2",
+      "kind": "sfx",
+      "requestHash": "59f3c1f46ebdf1106eeed2437d5e467cbc863bbd6e0fb17b47057b938a872107",
+      "seed": 2534215598
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_cosmic_1",
+      "kind": "sfx",
+      "requestHash": "dcdea25908d7729ffc9bcf058f43fd95ffb41a8f95d0b5b5ebbef75bc188e9a1",
+      "seed": 766215826
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_cosmic_2",
+      "kind": "sfx",
+      "requestHash": "07622cc0e7cf3196f5ac2dff05a64e673c8103e6f44012facde3583446cbd678",
+      "seed": 766215827
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_dark_1",
+      "kind": "sfx",
+      "requestHash": "7191008eda648ca09f9528132f783fde244608aa1e43675931a471d0c2234fa2",
+      "seed": 1903002132
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_dark_2",
+      "kind": "sfx",
+      "requestHash": "4f703cfe41d44c9ed607c8a44b43d335cb41eebf078effba59b4881e8a94163b",
+      "seed": 1903002133
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_dragon_1",
+      "kind": "sfx",
+      "requestHash": "723d083fee981e0e08f5d2be06e5b4d7f5d341d55cad4135aa7969e7f8a503ae",
+      "seed": 3028620083
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_dragon_2",
+      "kind": "sfx",
+      "requestHash": "ab2510314fcf768967a7a63d10df1d0e9e8203ae78a61da251d3bcc91a8ec550",
+      "seed": 3028620084
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_electric_1",
+      "kind": "sfx",
+      "requestHash": "fff6ed0cf5896a19c7e06cd493cd567853e996c685190b23c74301c0c5910852",
+      "seed": 2026448514
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_electric_2",
+      "kind": "sfx",
+      "requestHash": "47686e2f187a7e492f27e6229f1405348e76d17300a904277f5116f977e43b4f",
+      "seed": 2026448515
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_fairy_1",
+      "kind": "sfx",
+      "requestHash": "e297fa415baf21c78a4ef0c2bbeb87d238260909e7f2cfd00bc2cfff3a2fae53",
+      "seed": 1354089099
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_fairy_2",
+      "kind": "sfx",
+      "requestHash": "9a3a6e1ebe1b3f593ad42d9964893a244f0192c95fddaa0a7c6044d2b5826e09",
+      "seed": 1354089100
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_fighting_1",
+      "kind": "sfx",
+      "requestHash": "45d1a4d1c2059b64838ebfc32406fcc6917406d3ac7fa86779fb392b67a4a332",
+      "seed": 3182167169
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_fighting_2",
+      "kind": "sfx",
+      "requestHash": "4d8d09c88e6fa24724463c060908f10dccc878b7cbe8a7af8a558b7ea1b74e2e",
+      "seed": 3182167170
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_fire_1",
+      "kind": "sfx",
+      "requestHash": "0bf5a5f0e7f7d6786daaf55fb0a1a28ab9997420903fe713695d95d437b761b8",
+      "seed": 2404712463
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_fire_2",
+      "kind": "sfx",
+      "requestHash": "7ff20f87db65daeb68cf30f3480746ccf29b37ce253e067a0d95725fca059502",
+      "seed": 2404712464
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_flying_1",
+      "kind": "sfx",
+      "requestHash": "b47c6fa1e8cc4e8e6857788779341e025472703f5c843595ff8f97963ea9352c",
+      "seed": 1316188475
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_flying_2",
+      "kind": "sfx",
+      "requestHash": "062720f39ca523e821f8416d72c52ddbc41d6cd4c1de90ad5fcc134418019537",
+      "seed": 1316188476
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_ghost_1",
+      "kind": "sfx",
+      "requestHash": "ce9be667594d8d596422f8f491ad9d5a162e69e2a0f8c6db2d601b9404836b2c",
+      "seed": 3861030101
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_ghost_2",
+      "kind": "sfx",
+      "requestHash": "5bb84c987a33ff1d4072bc86a85f655a8e680d5ba56f35017eb3114c1d54cb13",
+      "seed": 3861030102
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_grass_1",
+      "kind": "sfx",
+      "requestHash": "784a1e6561d1b426f4163a719d8e22abab7ce8d5d4de18863ba678d6c7638ed9",
+      "seed": 335168174
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_grass_2",
+      "kind": "sfx",
+      "requestHash": "9a495bb0792e55efac264b774c50442c0e82d9d7eb2b91f1fd9d327fa23e0421",
+      "seed": 335168175
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_ground_1",
+      "kind": "sfx",
+      "requestHash": "53fb5767bfb784beb00a2a2868532dc6431c6958b01dd8c41782abbf04c55710",
+      "seed": 1980690831
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_ground_2",
+      "kind": "sfx",
+      "requestHash": "ead72d07934cff616c0e34d5a49d0e635d0bc96057be88349c045fc6a9c24185",
+      "seed": 1980690832
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_ice_1",
+      "kind": "sfx",
+      "requestHash": "ba9ebc0ddb2a68e357b9b614b935f6f4872e9ecfe5dc87cf53b8a88bf90ed0fc",
+      "seed": 2345789787
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_ice_2",
+      "kind": "sfx",
+      "requestHash": "da543045de514a56332dca7088f14b1716d328ff07aa2994bb369b2e081a9a4e",
+      "seed": 2345789788
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_normal_1",
+      "kind": "sfx",
+      "requestHash": "6db07d60721a3bca6cf73196119cef82c8ceac67280e810e4b71b4a312f4ab2e",
+      "seed": 174569176
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_normal_2",
+      "kind": "sfx",
+      "requestHash": "d80de59e582a8a088661a7239401a2484bec438607523754ef0575199ebec6c1",
+      "seed": 174569177
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_poison_1",
+      "kind": "sfx",
+      "requestHash": "60572b3e3660626eae6e29ff69f4c5fea019bca4067add30f22d98e90370178b",
+      "seed": 1260222282
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_poison_2",
+      "kind": "sfx",
+      "requestHash": "7dace5c2137ec2fb5f91df427fa2b6924eab358cfabacbb08d94ed03a9f90b03",
+      "seed": 1260222283
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_psychic_1",
+      "kind": "sfx",
+      "requestHash": "3d1b40253c048bd1ccf0b26ea2bb26418ca2358a14065020e52b88581747dedd",
+      "seed": 1076714849
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_psychic_2",
+      "kind": "sfx",
+      "requestHash": "dbe25ad2d860d59c6305c0634b91668a5d3a831400dc83332529c60c11f83a7c",
+      "seed": 1076714850
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_rock_1",
+      "kind": "sfx",
+      "requestHash": "f3d2219b63bc6a78ffe0d5009fcd2c70ddc5aff0cdd70ece643604487cddfe35",
+      "seed": 414914658
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_rock_2",
+      "kind": "sfx",
+      "requestHash": "a5e96321ccf418e78c1770502f6c44f79af26637c8596617bbe3253cee90c2a2",
+      "seed": 414914659
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_steel_1",
+      "kind": "sfx",
+      "requestHash": "c04e05e54bb32e431bcdca3f06d788d2550c9688f0e8f2cd10bcca423a5f850d",
+      "seed": 3968817788
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_steel_2",
+      "kind": "sfx",
+      "requestHash": "3f2d46ffb0c0c1e5025a1e8d7ae73b0366b48a5ec4fb0e4af5b7128384ec1861",
+      "seed": 3968817789
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_water_1",
+      "kind": "sfx",
+      "requestHash": "30a09bb3d67eca15d2ac976fc104978715e1876f9d6bd775795601d626464af4",
+      "seed": 2939647503
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/move_water_2",
+      "kind": "sfx",
+      "requestHash": "e89c6bbc30dd1af494c8fa60d1a63b7bbea69bf7a0c3d474c676add0cba29628",
+      "seed": 2939647504
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.9,
+      "id": "sfx/orb_break_1",
+      "kind": "sfx",
+      "requestHash": "8701d5cbc435d3da7145023eb7c617cfb0971e182c211d7a7f4ba37612a878db",
+      "seed": 1221770354
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.9,
+      "id": "sfx/orb_break_2",
+      "kind": "sfx",
+      "requestHash": "b64341b0d2ba21526f818b3803754fe3cfaf107f5f5d9b2fb05a664f94cfd0a3",
+      "seed": 1221770355
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.5,
+      "id": "sfx/orb_catch_1",
+      "kind": "sfx",
+      "requestHash": "22b59c8037e9d71476ec15de0b38069e12f961b56460a740b37f4b2f9810639a",
+      "seed": 860152806
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/orb_shake_1",
+      "kind": "sfx",
+      "requestHash": "a18239ee5f3a16905aa86d28041ab49184a240b226e10a29621ab0ca85ad4ea6",
+      "seed": 387605428
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/orb_shake_2",
+      "kind": "sfx",
+      "requestHash": "96466b3ddf31e28b2a2ec5f4c3895e0b3eec0bc11277036dedcace5f7655d41e",
+      "seed": 387605429
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/orb_shake_3",
+      "kind": "sfx",
+      "requestHash": "b027ee093a8f3131bfa3dd1851a2ad410ab24606993bbf6e96d5e2b86c32b313",
+      "seed": 387605430
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/orb_throw_1",
+      "kind": "sfx",
+      "requestHash": "6098be8792284eaca7f158a51adb5df6b8044cc6ceb0aec5a69b016978bb566e",
+      "seed": 656732126
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/orb_throw_2",
+      "kind": "sfx",
+      "requestHash": "c5287048e786d41919e1b789a1ae7bc1f5ac14a85beff1966ddf77d3804395f6",
+      "seed": 656732127
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.5,
+      "id": "sfx/pylon_crackle_1",
+      "kind": "sfx",
+      "requestHash": "ac3ba529333bd50d2762213cb6296e25ddea77525f5ed52b928943e230b03c82",
+      "seed": 1383581688
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.5,
+      "id": "sfx/pylon_crackle_2",
+      "kind": "sfx",
+      "requestHash": "84c1fe6ba81bdae4ebfb75fcdfce993ae8844243beddff46d051e39b89192420",
+      "seed": 1383581689
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2,
+      "id": "sfx/raid_phase_1",
+      "kind": "sfx",
+      "requestHash": "878545e3895ce69cf2dc2f9071675aaf5caff243ec42c348e9eed4d6a66cbda0",
+      "seed": 493537427
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2.5,
+      "id": "sfx/raid_roar_1",
+      "kind": "sfx",
+      "requestHash": "57537a8525fed687693be0d9ab8992271060ed08f63023fb478f69872f556f69",
+      "seed": 2931806371
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/spawn_shimmer_1",
+      "kind": "sfx",
+      "requestHash": "9264e2859a30bc3303f3b8335cfac06af19322e6d08e8fe691ad0dc449896e34",
+      "seed": 2870030672
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/spawn_shimmer_2",
+      "kind": "sfx",
+      "requestHash": "f9d9ae7ba68b257349655a2939e798396e7cf967fb67c1fa85878598ca7064db",
+      "seed": 2870030673
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/splash_1",
+      "kind": "sfx",
+      "requestHash": "53b465caa8e15f46e2f64ffb03fcfeb7cfe5e803a4334d470ea1df37aa2c59fb",
+      "seed": 1607138709
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/splash_2",
+      "kind": "sfx",
+      "requestHash": "5bce8b0cfd176ca7f9affc972abd61af88c1bc103e8a9d997d974717bc67d558",
+      "seed": 1607138710
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/spotted_1",
+      "kind": "sfx",
+      "requestHash": "598d314bee60e4858cb2af7d1ca8a3f0934e9b4f451c042f601b4452363b3c1f",
+      "seed": 216843934
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.9,
+      "id": "sfx/stage_down_1",
+      "kind": "sfx",
+      "requestHash": "fadebcc4bf87b47d2f01e8eb81ab8f6e130c3901b9a721b40af529bc61c6a12b",
+      "seed": 172686228
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.9,
+      "id": "sfx/stage_up_1",
+      "kind": "sfx",
+      "requestHash": "015b79a7da764bc855371181261adb7c7fc2dad2a6108b99238d5e95733cf533",
+      "seed": 2084612021
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1,
+      "id": "sfx/status_burn_1",
+      "kind": "sfx",
+      "requestHash": "5026a517f967576566b2bd3e82ae3fd9974fc223e6b8e5c8b721a40280ce88db",
+      "seed": 48997582
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1,
+      "id": "sfx/status_burn_2",
+      "kind": "sfx",
+      "requestHash": "291b71fc51d1332e32be8de5204a2433c8b00108aa5b38149f2f6de629412fe0",
+      "seed": 48997583
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1,
+      "id": "sfx/status_confuse_1",
+      "kind": "sfx",
+      "requestHash": "230b977121f83dd51a268941e86bee3639436ca29893153e0213c52eaf8fa384",
+      "seed": 277049977
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1,
+      "id": "sfx/status_confuse_2",
+      "kind": "sfx",
+      "requestHash": "d154d8316c19f643f3c89e76b5fd8fa2b227a4a8fc3cd344029c1405371b7b55",
+      "seed": 277049978
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1,
+      "id": "sfx/status_freeze_1",
+      "kind": "sfx",
+      "requestHash": "56ec945db3b9108f656daf75f8ddad5a4f58973eeb7402b04c197d1c584620d5",
+      "seed": 3525663565
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1,
+      "id": "sfx/status_freeze_2",
+      "kind": "sfx",
+      "requestHash": "4b37410e0fca1463e395822f8beb5590348eae5e0895f3915f2c51234b70f282",
+      "seed": 3525663566
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/status_heal_1",
+      "kind": "sfx",
+      "requestHash": "e18425e1caac1eed556e9c2b48c2bccd2f91535571926554dc1f0f23d77bc328",
+      "seed": 75841944
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/status_heal_2",
+      "kind": "sfx",
+      "requestHash": "64ceafccf6d0757584ef68d00ea81a7901265389fc120e782469f8ecdbd1642c",
+      "seed": 75841945
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1,
+      "id": "sfx/status_paralyze_1",
+      "kind": "sfx",
+      "requestHash": "64c0c2d946246080b66fa4c2d722ba4e424c45689a799a5f30b45a899cad70cc",
+      "seed": 1379112629
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1,
+      "id": "sfx/status_paralyze_2",
+      "kind": "sfx",
+      "requestHash": "12d0af5d1d460e309d2ae594bcd80f3ef341190ced24a58243e893d2ab360c7c",
+      "seed": 1379112630
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1,
+      "id": "sfx/status_poison_1",
+      "kind": "sfx",
+      "requestHash": "2a90187a14f8ca67a345b8801a8907eb1142d8727ef242488d5633bf05642acf",
+      "seed": 1009221272
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1,
+      "id": "sfx/status_poison_2",
+      "kind": "sfx",
+      "requestHash": "11495fdc69097c6d72e73b5ca9135cc6bac10fa3a3ed495140b5be964413fc9c",
+      "seed": 1009221273
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/status_sleep_1",
+      "kind": "sfx",
+      "requestHash": "deb31382e2c8577041b980e2a6a7a2608c7cd1706e047b8b4eaca8e8e9882301",
+      "seed": 3631109539
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.2,
+      "id": "sfx/status_sleep_2",
+      "kind": "sfx",
+      "requestHash": "9fb5bf12f7a8d7eb2726a030eb726bf8cc6d296d202d531dcdccfc02a2e770fa",
+      "seed": 3631109540
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_ash_1",
+      "kind": "sfx",
+      "requestHash": "c164fd82f1f1d804518287f2aaab92beb1b3380a910b9b2ed26cf5b1d0cfb9e2",
+      "seed": 4085672706
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_ash_2",
+      "kind": "sfx",
+      "requestHash": "f70122aeabb392cf83973fc6b6920587ea986ab0e2f51588eec95c2346703b0a",
+      "seed": 4085672707
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_ash_3",
+      "kind": "sfx",
+      "requestHash": "09ea64d96771df30b82dd7c9c4ee4e71ebc86fdc3e26e3417660883f9a2ce3af",
+      "seed": 4085672708
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_dirt_1",
+      "kind": "sfx",
+      "requestHash": "33e0f9d1a31e6804cdfb91581d283c56a7cd8d17a9f6524e12833c531aa26754",
+      "seed": 2435469674
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_dirt_2",
+      "kind": "sfx",
+      "requestHash": "57ad4f2335ec5a1e80a9279125c80cd0945eebde36a961daf590c492f7989bc6",
+      "seed": 2435469675
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_dirt_3",
+      "kind": "sfx",
+      "requestHash": "7a3fb6a1861bee71b47c9f7cdfa928b07b87e42d5b04666b0c878786b69b7c45",
+      "seed": 2435469676
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.3,
+      "id": "sfx/step_flat_1",
+      "kind": "sfx",
+      "requestHash": "95f52ece08fe4236bb52299d985eac71ac0ce6924427d4c1895fed5e07649ef5",
+      "seed": 3357332894
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.3,
+      "id": "sfx/step_flat_2",
+      "kind": "sfx",
+      "requestHash": "7e322e39bc2a0d0cf506d1c842e5b968b199130c130c89dfd2ee7548ab7f1ab0",
+      "seed": 3357332895
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.3,
+      "id": "sfx/step_flat_3",
+      "kind": "sfx",
+      "requestHash": "34536e8623748203b68589dcc7c5314384ac9363d26398efb0dd83ebca3f0970",
+      "seed": 3357332896
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_grass_1",
+      "kind": "sfx",
+      "requestHash": "30b090f26e2f9afff6a860fcf1556d47a26eacec6f703f17b4ac83c3a92bace0",
+      "seed": 1873724209
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_grass_2",
+      "kind": "sfx",
+      "requestHash": "08e2ee35d3056402ca09b39db7d4a1d84db29218ab7fbe65ca5aee852c836d77",
+      "seed": 1873724210
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_grass_3",
+      "kind": "sfx",
+      "requestHash": "c8bacd4d120c5f8f0106c147c69e8e28262a355a49df3276e10e954177df596d",
+      "seed": 1873724211
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_gravel_1",
+      "kind": "sfx",
+      "requestHash": "37ca87cdec5d10bf589a84ec1bbdd2b1ceeb2b08120fdb756d58122510220975",
+      "seed": 1037049915
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_gravel_2",
+      "kind": "sfx",
+      "requestHash": "7a2e01067e03327cb49a51df10e398486e3b30d6413f67bfe778cd20dc0c68d9",
+      "seed": 1037049916
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_gravel_3",
+      "kind": "sfx",
+      "requestHash": "5aab91a22a87e77372c1c5f432b8bef0b6c887c751b3a41c4853817bbe258a82",
+      "seed": 1037049917
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_metal_1",
+      "kind": "sfx",
+      "requestHash": "aaf6a068410aad2a6ae34b84ce315ca15f1db2885172210ca5d6492f53e2c681",
+      "seed": 3726408343
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_metal_2",
+      "kind": "sfx",
+      "requestHash": "ee4ea8d1417c6f0fd6217645b38e0b82d8c505b0bf19052036be2e6354410338",
+      "seed": 3726408344
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_metal_3",
+      "kind": "sfx",
+      "requestHash": "e0ee5e855f70bab428f95ffbaab211f814aa14b06f4c3dae0729a3cf472ae2aa",
+      "seed": 3726408345
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_salt_1",
+      "kind": "sfx",
+      "requestHash": "3c532fe986d3dc67b1790247055e09d0b8b74d06c761a4bfb4a0315db8911f97",
+      "seed": 4200268830
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_salt_2",
+      "kind": "sfx",
+      "requestHash": "ffba05d05079660268261c4f135799140a79c2576c31ef6aeebfe1b9ab573066",
+      "seed": 4200268831
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_salt_3",
+      "kind": "sfx",
+      "requestHash": "f9ae0feb4670e309687302eac9a5bea53d732f43522be902f81c282151051424",
+      "seed": 4200268832
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_sand_1",
+      "kind": "sfx",
+      "requestHash": "ed0461c9f2411e0832455241ce34cb16d2d6469290717563210c3ae08455bff5",
+      "seed": 225312294
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_sand_2",
+      "kind": "sfx",
+      "requestHash": "3e311e1b2e4b23b39222f5027fd0f00b0124ceff6805de1ac9de83d618f2edcd",
+      "seed": 225312295
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_sand_3",
+      "kind": "sfx",
+      "requestHash": "97337bb6b2939dd60f46676a80ac2d2b8c3d13bd7a921b86fa9434e838ea2cd0",
+      "seed": 225312296
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_snow_1",
+      "kind": "sfx",
+      "requestHash": "164d7fee9e5ae4cf3888de7a0eaaadd0d58767919d21ddb19e35954a0ee611f4",
+      "seed": 1797493544
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_snow_2",
+      "kind": "sfx",
+      "requestHash": "6a34096942c2f9cab70934854158b5bcfc8845c8f5f72385fddc92217d0aca60",
+      "seed": 1797493545
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_snow_3",
+      "kind": "sfx",
+      "requestHash": "b7fa570b17a2836e075f860df22908c8c076d4758a54f6d8009fc75a86703db5",
+      "seed": 1797493546
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_stone_1",
+      "kind": "sfx",
+      "requestHash": "6e3b1a58d69793484d70fef9f3d5073f75d61822ac82549f881a7bc22b469fa8",
+      "seed": 4287460268
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_stone_2",
+      "kind": "sfx",
+      "requestHash": "51cd62cbf6ca0c910a1c458076be5a8ee88c44de4180c4e87fa3c5e5d8d69f52",
+      "seed": 4287460269
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_stone_3",
+      "kind": "sfx",
+      "requestHash": "02e0a4a006416dbc33a9521026309765b3740690c4d5d9dec674268c91649b9d",
+      "seed": 4287460270
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_water_1",
+      "kind": "sfx",
+      "requestHash": "2c7b418d84fd79e8b6ca33d9a8d18f6a245a627fd7b26ad32f6412f945165069",
+      "seed": 4207250565
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_water_2",
+      "kind": "sfx",
+      "requestHash": "b7a32702221d6589485e416bc1db2bc0e046e1c57a09901cb8a6b0a24b41d889",
+      "seed": 4207250566
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_water_3",
+      "kind": "sfx",
+      "requestHash": "a3a573ed3a3923c3e5700fd54220ba4c17cfbd10d7f967a31676c63fb2da8f8a",
+      "seed": 4207250567
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_wood_1",
+      "kind": "sfx",
+      "requestHash": "2144c0d62ec5b15ca30b77e159c28668bac53ec93768fa67bd9792f73cecb219",
+      "seed": 3049833645
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_wood_2",
+      "kind": "sfx",
+      "requestHash": "5b854387932927ae0bac48a165e962f047cc70189903137728dcd079e14802e2",
+      "seed": 3049833646
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/step_wood_3",
+      "kind": "sfx",
+      "requestHash": "db0155b2d8004ece83a73c1a8b7088f934c63985b3063e7163953c899682ef31",
+      "seed": 3049833647
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.9,
+      "id": "sfx/switch_1",
+      "kind": "sfx",
+      "requestHash": "8e8d23e4e43f3e5a615691721e4abf07fd3c6a78c7be75658567782f0dba41ec",
+      "seed": 2063518407
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.9,
+      "id": "sfx/switch_2",
+      "kind": "sfx",
+      "requestHash": "7b0a468314dd442e672d3303bfbd4f04c3cb8ef846890e07ee0a5be2fa29330d",
+      "seed": 2063518408
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3.5,
+      "id": "sfx/thunder_1",
+      "kind": "sfx",
+      "requestHash": "157644292310a4f79158fb3e2160a0f8046d801a3c0d7b10b9bb9f55b4517f63",
+      "seed": 42980608
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3.5,
+      "id": "sfx/thunder_2",
+      "kind": "sfx",
+      "requestHash": "65cc549fef130e336646023102290e0fb37a66dc5b0934905fd53f1db05d2f95",
+      "seed": 42980609
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.25,
+      "id": "sfx/ui_back_1",
+      "kind": "ui",
+      "requestHash": "74bb1930e7c275920127c67e6a352da057f64738cb9825b20e9ed0b5c38593c2",
+      "seed": 2819874541
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3,
+      "id": "sfx/ui_badge_1",
+      "kind": "ui",
+      "requestHash": "28404ebba2346121ca096307cd77d5220bac9054dfbab095eb0c290e4f917d1e",
+      "seed": 3314446180
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.15,
+      "id": "sfx/ui_click_1",
+      "kind": "ui",
+      "requestHash": "9a877653732d5e21aa447ede4c061270ee3578822a907b794ea4eb8f6a25d5de",
+      "seed": 1436184259
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.15,
+      "id": "sfx/ui_click_2",
+      "kind": "ui",
+      "requestHash": "ef64850c8b6a07e4b6c2079933eec790fbd3f98ce7798bc0baec1620d235cfb8",
+      "seed": 1436184260
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.3,
+      "id": "sfx/ui_close_1",
+      "kind": "ui",
+      "requestHash": "39bfd0a4a449e9d541579f465ea3594e8d8134f1d47db8dab05f326c2e5b0753",
+      "seed": 2149241048
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/ui_confirm_1",
+      "kind": "ui",
+      "requestHash": "278a7ccefd94b8978e6d470a7294cf92431a89982d188f1c14718195fdda095e",
+      "seed": 2519006096
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.2,
+      "id": "sfx/ui_dialogue_advance_1",
+      "kind": "ui",
+      "requestHash": "07d08f496f669b23688b76028c3869e0c10ed3644da51a6e1b8bd46478fa9ee3",
+      "seed": 1035865104
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.4,
+      "id": "sfx/ui_error_1",
+      "kind": "ui",
+      "requestHash": "37b311f756dd01dd66119c56c9bbef8fe0a73113ba7c76aa2b85267c20432206",
+      "seed": 346130510
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3,
+      "id": "sfx/ui_evolve_done_1",
+      "kind": "ui",
+      "requestHash": "7c1f5091708cbbcdc46c4d2f0e93bea8b31b131e01d659a4bf254bd6e206b616",
+      "seed": 4086174186
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3.5,
+      "id": "sfx/ui_evolve_start_1",
+      "kind": "ui",
+      "requestHash": "284058df67cafb7b78a193873fe7e7a278a6167fed6cdb2a10cbfbb66643f2b8",
+      "seed": 2128156020
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2.5,
+      "id": "sfx/ui_heal_1",
+      "kind": "ui",
+      "requestHash": "62def231bfcbd4f6900a30bfd74bfc50368d8b207eb38f046e74e935edff8d81",
+      "seed": 1918081816
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.5,
+      "id": "sfx/ui_item_get_1",
+      "kind": "ui",
+      "requestHash": "d5a05efdf956ddc0ae8baf1da66e72bbd6e7bc73ddc1fa478040b937cead8b34",
+      "seed": 2416525487
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/ui_item_use_1",
+      "kind": "ui",
+      "requestHash": "ab373817fa75993f564053c19d976db3963e4e8a80893a7728cd6c5f410f50a9",
+      "seed": 1251771490
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.8,
+      "id": "sfx/ui_levelup_1",
+      "kind": "ui",
+      "requestHash": "c8b758d661cd2d53bbe0855e8e22095ce0827f006c5b3139e4a995570baad2b9",
+      "seed": 3854230805
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.5,
+      "id": "sfx/ui_notify_1",
+      "kind": "ui",
+      "requestHash": "225c61f5e85a73fe450be269b2a6a711ba9e988b7d2e1b3446ba43dbe6c7a5b6",
+      "seed": 342845599
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.35,
+      "id": "sfx/ui_open_1",
+      "kind": "ui",
+      "requestHash": "b62158c0fc77ebc25e31d513f7aa029ed67208a68027e602cf6fb179fd88aa66",
+      "seed": 1073654301
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1,
+      "id": "sfx/ui_quest_1",
+      "kind": "ui",
+      "requestHash": "956f20ca477a8275e45e90d63253bd2a12136ab759a0d84875c49940f047e76f",
+      "seed": 280018538
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2,
+      "id": "sfx/ui_quest_done_1",
+      "kind": "ui",
+      "requestHash": "99722ee3cd91532ec54edff05d47ab6f264868ca189e3b47736db2cdf951af81",
+      "seed": 1460675366
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/ui_save_1",
+      "kind": "ui",
+      "requestHash": "1ef3fd7433b23fc924b9f2488739a505e9df9e90135bfaa34440a0db83bb1cb6",
+      "seed": 1726113210
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/ui_shop_buy_1",
+      "kind": "ui",
+      "requestHash": "02a33954fb0d76e5ee88cc8bcd11da34aaf922e5f29089b9b82cff49b26984fc",
+      "seed": 478523382
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/ui_shop_buy_2",
+      "kind": "ui",
+      "requestHash": "6bfaa35707e3a9c6e4708de9e934dbf31dc1944970ca0426e30935caad51bd74",
+      "seed": 478523383
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.4,
+      "id": "sfx/ui_shop_deny_1",
+      "kind": "ui",
+      "requestHash": "714b70b021e11744c8f3cd049afdbbedf10612681381db4550e8eb498e19dca4",
+      "seed": 2904470011
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/ui_shop_sell_1",
+      "kind": "ui",
+      "requestHash": "b3f02183e108448a23ff6925dbbe8d7db8a8b3fe1bf2b83444302f4f98cbe0a8",
+      "seed": 973175950
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3,
+      "id": "sfx/ui_stinger_beat_1",
+      "kind": "ui",
+      "requestHash": "e4f9bbdbb05f9df0fc47b8c7f26ca53b0880f3fe20d7a90c801b2d0ea6090549",
+      "seed": 531725236
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2.5,
+      "id": "sfx/ui_stinger_catch_1",
+      "kind": "ui",
+      "requestHash": "4f0701e19881dcad6f1902a0a91dae15d33cad6470475e46d6c3fb85f82885e1",
+      "seed": 2308069962
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3,
+      "id": "sfx/ui_stinger_defeat_1",
+      "kind": "ui",
+      "requestHash": "48841743953fd820dd2bf9629f190f40278b29d5445b81d52cbddd14148b8da4",
+      "seed": 1237906457
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 4,
+      "id": "sfx/ui_stinger_intro_champion_1",
+      "kind": "ui",
+      "requestHash": "cc3520a430391f22227d55241175c82e2afc6c10c3bd6e58d3bb967d9e6ebd06",
+      "seed": 2809131286
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3.5,
+      "id": "sfx/ui_stinger_intro_elite_1",
+      "kind": "ui",
+      "requestHash": "8e25da85b08320b482c7d5537809139431e49c383e376744fc46a85a6e9fb818",
+      "seed": 178127289
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3,
+      "id": "sfx/ui_stinger_intro_gym_1",
+      "kind": "ui",
+      "requestHash": "e6af44887d0b3d0645d4c299183ff44ef2a7c9627e1f240771766383f48fc5af",
+      "seed": 1164228969
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 4,
+      "id": "sfx/ui_stinger_intro_legendary_1",
+      "kind": "ui",
+      "requestHash": "dfbfdbbed3db47468bb4684107e187971d34fe0ea44adbaefc153ec70f8e36d3",
+      "seed": 1854708286
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3.5,
+      "id": "sfx/ui_stinger_intro_raid_1",
+      "kind": "ui",
+      "requestHash": "bb6bc60f9466f00b6e04a23a8a3b2b9cee1bba5ba252438527229a1373ed310f",
+      "seed": 4275264511
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2.5,
+      "id": "sfx/ui_stinger_intro_trainer_1",
+      "kind": "ui",
+      "requestHash": "a2303b2368f31b5cd8e7ce711937ab2c093576c568282d74445834927b286caf",
+      "seed": 1785226926
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2,
+      "id": "sfx/ui_stinger_intro_wild_1",
+      "kind": "ui",
+      "requestHash": "ac2a3172c598e4f6237195442f09bde3286f5a51743c87296eb015ef011270c5",
+      "seed": 1782305406
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 4,
+      "id": "sfx/ui_stinger_restored_1",
+      "kind": "ui",
+      "requestHash": "d18e01314dbe777d0efece12db5a14e576bb1602e7e5be0d53fcf56150ce616b",
+      "seed": 2878113004
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 4,
+      "id": "sfx/ui_stinger_thinning_1",
+      "kind": "ui",
+      "requestHash": "8ac477904c43427a9ab4f495be9cda9848f16262c60ed86f9f222cd2de52a3bd",
+      "seed": 4063790845
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2.5,
+      "id": "sfx/ui_stinger_title_1",
+      "kind": "ui",
+      "requestHash": "11360dbda1f741ee5cfa5e376131d715288d27cfb64c94d4fcbf309c3b18ffc8",
+      "seed": 3073943739
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 4,
+      "id": "sfx/ui_stinger_victory_champion_1",
+      "kind": "ui",
+      "requestHash": "08b7abf417e677552c11045312c5e9d811008123628e009d6f3f436208b8a598",
+      "seed": 3044956699
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3.5,
+      "id": "sfx/ui_stinger_victory_gym_1",
+      "kind": "ui",
+      "requestHash": "3c4c870c7ef7c22eddeb61f4f207aab2a60303542311befdae788a5f5bb26f66",
+      "seed": 1227943537
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 4,
+      "id": "sfx/ui_stinger_victory_legendary_1",
+      "kind": "ui",
+      "requestHash": "d717a216271d26b5544fc01e3f04645ddec4a0fb3e320443b1e8064af274c333",
+      "seed": 4082324227
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 4,
+      "id": "sfx/ui_stinger_victory_raid_1",
+      "kind": "ui",
+      "requestHash": "c7b37adc1a5821f7bd7adb4b16fec72ed9330e6e3340ceed4b8976649ceff43a",
+      "seed": 1511207670
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3,
+      "id": "sfx/ui_stinger_victory_trainer_1",
+      "kind": "ui",
+      "requestHash": "544281541e8130c882313c51d97a3509840ee470ccf5f54e9b2a45ad684cb0f1",
+      "seed": 2144793344
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2.5,
+      "id": "sfx/ui_stinger_victory_wild_1",
+      "kind": "ui",
+      "requestHash": "ab5ebaf66e51ebce65da17c399fc0407f2d220f5f6a38c40653adf3d7312b64d",
+      "seed": 424579058
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.15,
+      "id": "sfx/ui_tab_1",
+      "kind": "ui",
+      "requestHash": "b95d83e06463683b2ac462e35d8b7eba67d936540ae81a130e47a12c6cdc3468",
+      "seed": 3947695403
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.6,
+      "id": "sfx/ui_toast_1",
+      "kind": "ui",
+      "requestHash": "bf2ae228c7284dc3a86e1fb452b2be67b926ee7cdb62a633ea7e2a6e41a9fd36",
+      "seed": 661305841
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.5,
+      "id": "sfx/ui_trade_1",
+      "kind": "ui",
+      "requestHash": "041b8abc58007cfae1140a69bcd44297a91240a8a0b62f5903f6f7c248dd1f75",
+      "seed": 2189296908
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.06,
+      "id": "sfx/ui_type_1",
+      "kind": "ui",
+      "requestHash": "77a39a784bb6ffdc34700b193e51e5c1479a0c73dbdeddfd52b949340b544fb2",
+      "seed": 3985933568
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.06,
+      "id": "sfx/ui_type_2",
+      "kind": "ui",
+      "requestHash": "56d6c86e1066cc82c123bbee4547931552a030512cadefbcaba8c25e777f0411",
+      "seed": 3985933569
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.06,
+      "id": "sfx/ui_type_3",
+      "kind": "ui",
+      "requestHash": "e406235622d19deab7a401c7ffbdb0511a4ce3a742c3dba4753bdb7f9899ecb3",
+      "seed": 3985933570
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.6,
+      "id": "sfx/ui_witness_1",
+      "kind": "ui",
+      "requestHash": "7a0f80d42d06ea681a9fd3d8503c4e6d2254a6e177bf73ea2efd1ab260311be2",
+      "seed": 1370169314
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 0.8,
+      "id": "sfx/warp_1",
+      "kind": "sfx",
+      "requestHash": "e187aaf10fea8f0fb1d51d28e22aacb5fb7e24c57415d3a37733b8767940a310",
+      "seed": 3225577530
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3,
+      "id": "sfx/weather_hail_1",
+      "kind": "sfx",
+      "requestHash": "90df69230e28cb91548771c5d7a4fa63ea8ad9e09968db1f0fee177483ef4be6",
+      "seed": 1986047645
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3,
+      "id": "sfx/weather_rain_1",
+      "kind": "sfx",
+      "requestHash": "f9a482d51ba2250fb39a5064f592e57d28bcfbcfc47438e61c65951d5c149f32",
+      "seed": 2414238480
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 3,
+      "id": "sfx/weather_sand_1",
+      "kind": "sfx",
+      "requestHash": "2bc4088f79f7826d12838ffc358c7b4b108e183e6f4aff61b4c9d8dccd7dae84",
+      "seed": 2258807876
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2.5,
+      "id": "sfx/weather_sun_1",
+      "kind": "sfx",
+      "requestHash": "69ed028a3708cab65121738de53036a1ba047e13928e966e22cb93653fd070bb",
+      "seed": 536015501
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2.5,
+      "id": "sfx/wind_gust_1",
+      "kind": "sfx",
+      "requestHash": "deee74d97e58fbe3ee7e2b1f4677e084c533a9eb3228f7054b3cfd0a509b6d32",
+      "seed": 2773278361
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2.5,
+      "id": "sfx/wind_gust_2",
+      "kind": "sfx",
+      "requestHash": "8ae5d0a78c7f32afcf757dc417c342f3273477a5010b27988ea64550085cbe4b",
+      "seed": 2773278362
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 53,
+      "id": "themes/battle/base",
+      "kind": "stem",
+      "requestHash": "3d7613475106941a465d4fcfe1b3919218a29dede774749ed6632e15102185a1",
+      "seed": 2194262678
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 53,
+      "id": "themes/battle/biome",
+      "kind": "stem",
+      "requestHash": "2c4c0d180af22c13ac28ed587d2d8a45cfdad22fdd31e30fd86b5332e67474a9",
+      "seed": 3846464195
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 53,
+      "id": "themes/battle/night",
+      "kind": "stem",
+      "requestHash": "1afc5bfbab430fbf649e39cb233355fe82abbb56f9c136f427734d64933b256f",
+      "seed": 3339767653
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 53,
+      "id": "themes/battle/threat",
+      "kind": "stem",
+      "requestHash": "bb0fd00b9ac100accf184d367163fbc74efbc8b9caed1d1b04f05fbe9b9267b0",
+      "seed": 2482634480
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 42,
+      "id": "themes/capital/base",
+      "kind": "stem",
+      "requestHash": "92bc93c71d81710a48dd1586d788fdc6a882cb80569c146cfa0f9ee47aeb8f43",
+      "seed": 3197411157
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 42,
+      "id": "themes/capital/biome",
+      "kind": "stem",
+      "requestHash": "cdc253ce3eea76cbb7cb516e990651a020ef17536af795564900dda600bba20a",
+      "seed": 1334481568
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 42,
+      "id": "themes/capital/night",
+      "kind": "stem",
+      "requestHash": "bff4185c9c359b6c554a5537dff6f8f745e6919e0025574fd309cf16cbc79f0c",
+      "seed": 4100998064
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 42,
+      "id": "themes/capital/threat",
+      "kind": "stem",
+      "requestHash": "0442b62dd966a4b5f6b1b291c20dfeb4e5f7b3b8cefee328edc94bfbde80472f",
+      "seed": 842933431
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 50.571,
+      "id": "themes/champion/base",
+      "kind": "stem",
+      "requestHash": "4152969c3bbefdca15ca5df60aabb676f4f8673eb730a000986a66f53195bf55",
+      "seed": 1734628940
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 50.571,
+      "id": "themes/champion/biome",
+      "kind": "stem",
+      "requestHash": "593dc283bd146432c01a1f18eae7acb2771e57841eebd921878aa6cddc1a2050",
+      "seed": 1896557144
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 50.571,
+      "id": "themes/champion/night",
+      "kind": "stem",
+      "requestHash": "66ac27ef8b13cfc5b5dd75bcfbaea05a816eb2e863277362642cefefb2ac7767",
+      "seed": 2223704546
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 50.571,
+      "id": "themes/champion/threat",
+      "kind": "stem",
+      "requestHash": "a4b036472eb6b5be2cf941063e4e3f723f017e5c3794ca79ad1087745fc85004",
+      "seed": 467153231
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 48.957,
+      "id": "themes/cinder/base",
+      "kind": "stem",
+      "requestHash": "179de6c727b16404bb2a18ecb38170851ed8d4e254412a98dc982c97ed6d8854",
+      "seed": 2630825719
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 48.957,
+      "id": "themes/cinder/biome",
+      "kind": "stem",
+      "requestHash": "1242f096cbdfa144ef0cdada0eda5d00c8370b561a3da7ea1e6043b39c1b52de",
+      "seed": 3839371427
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 48.957,
+      "id": "themes/cinder/night",
+      "kind": "stem",
+      "requestHash": "05d8ab1f9f1c965935704d29209a70c510061149d41962719c25f4dd6e1f37ab",
+      "seed": 1491766295
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 48.957,
+      "id": "themes/cinder/threat",
+      "kind": "stem",
+      "requestHash": "322071680c684ad46a42f860a7bc9994a86d5f5f260334d5e1f17f9bc9ceac90",
+      "seed": 3698228970
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 32,
+      "id": "themes/elite/base",
+      "kind": "stem",
+      "requestHash": "f1e123b23fcd79d577b44ef772fbef85506f0ee468cb122ffa40be0b59ab5beb",
+      "seed": 3780817322
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 32,
+      "id": "themes/elite/biome",
+      "kind": "stem",
+      "requestHash": "3d9f7a4041d21c0a10552e9e927b8e1c4462559a99922fd6778e401dd29a6999",
+      "seed": 2010739165
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 32,
+      "id": "themes/elite/night",
+      "kind": "stem",
+      "requestHash": "6869d8dc75090115dff5b37dbb24bf70d7350461e32cc90701d365e7aaa16ae6",
+      "seed": 765726003
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 32,
+      "id": "themes/elite/threat",
+      "kind": "stem",
+      "requestHash": "e42c39bcefbfd9163006dbb58c599d3fb9ffff833ac62860df14fa7adaf98b32",
+      "seed": 2718654484
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 40.571,
+      "id": "themes/forge/base",
+      "kind": "stem",
+      "requestHash": "d3cbd055bbe2cce917d12f704fcf04264a90aef3879f21ed813bdc059f446fc9",
+      "seed": 1335022514
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 40.571,
+      "id": "themes/forge/biome",
+      "kind": "stem",
+      "requestHash": "9914750bdfd6fdc8da3224133ac91d6dd1d5bfa96fb853d335900eee518d5b37",
+      "seed": 2969086615
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 40.571,
+      "id": "themes/forge/night",
+      "kind": "stem",
+      "requestHash": "b5a4d55d93a8acf57ae2d664090ab995e3034e8538270a91b1ffdcf6efcb6e44",
+      "seed": 1985284383
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 40.571,
+      "id": "themes/forge/threat",
+      "kind": "stem",
+      "requestHash": "7af931abb37b60e4074edb02010deca7b1155eb95d112b81e70c71e870f9fb78",
+      "seed": 3290050868
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 47,
+      "id": "themes/grove/base",
+      "kind": "stem",
+      "requestHash": "4cc13282f8a8f07a76dee42c077e56ac91f30aad4f389476a7e7a187a5000f24",
+      "seed": 2161516231
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 47,
+      "id": "themes/grove/biome",
+      "kind": "stem",
+      "requestHash": "392a65297faf1ad028472bc667d42e89247aea466e6e85d107959521afa6e4f8",
+      "seed": 616910753
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 47,
+      "id": "themes/grove/night",
+      "kind": "stem",
+      "requestHash": "8947f74c7b2621f4f9b5d24a886ccfb099d1994883ca0193a22ee2279487c356",
+      "seed": 787390364
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 47,
+      "id": "themes/grove/threat",
+      "kind": "stem",
+      "requestHash": "36bcfc81bafbc44587b8795114c3a0066bd1c67aefb1349b7d08f02dc7bc8d4d",
+      "seed": 3335575513
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 29,
+      "id": "themes/gym/base",
+      "kind": "stem",
+      "requestHash": "54b261c7ef16edf198cc28966ff326352e794810f7ae0bf027cbf865f587a56b",
+      "seed": 1897064391
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 29,
+      "id": "themes/gym/biome",
+      "kind": "stem",
+      "requestHash": "04bd969f036ee618c2239f7c5c5e807b5255e6a059194e4270dcd98ab7d6e60b",
+      "seed": 2325162004
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 29,
+      "id": "themes/gym/night",
+      "kind": "stem",
+      "requestHash": "9a7c2e78858877a8a8d9374cc34830ad29c950d55a9accfaaca54e089baa396d",
+      "seed": 2146662571
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 29,
+      "id": "themes/gym/threat",
+      "kind": "stem",
+      "requestHash": "fc63e1f93c9cdb34540599c95c27e94b786a59a2af58df93b555d3e6b2afd05e",
+      "seed": 2945541503
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 47,
+      "id": "themes/marrow/base",
+      "kind": "stem",
+      "requestHash": "927ea48a29688a5ff9798bf8b0c74768cfa5ada7a6486295fd4bd8b95b54319e",
+      "seed": 898643555
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 47,
+      "id": "themes/marrow/biome",
+      "kind": "stem",
+      "requestHash": "5e9f81bd7ccaf0d749bd77560da2fc469a03ecc2aee170063a0206a99b02a864",
+      "seed": 4236228953
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 47,
+      "id": "themes/marrow/night",
+      "kind": "stem",
+      "requestHash": "478b9a5f5a751c8218f01405c5a94b07ce98dc3dceb7ea7fccd89d3acd2c07f8",
+      "seed": 3515842241
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 47,
+      "id": "themes/marrow/threat",
+      "kind": "stem",
+      "requestHash": "d8047ed64ade0b68529b61d0be11443e4133a9461bde38a07d282e8fa2e9b2e5",
+      "seed": 3820263473
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 19.391,
+      "id": "themes/raid/base",
+      "kind": "stem",
+      "requestHash": "b398c347ef284eda472ecfaf5c8f418cf2e3644c66da834479202e4b13d9f25b",
+      "seed": 2444471756
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 19.391,
+      "id": "themes/raid/biome",
+      "kind": "stem",
+      "requestHash": "a4474261d6df21664e32605ec99dc88a33d0459d338ee4596006fb4669576be0",
+      "seed": 3026501629
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 19.391,
+      "id": "themes/raid/night",
+      "kind": "stem",
+      "requestHash": "44b6e228c78207a2651aff1c3f88804f67d4b851c1e09ad52ecbceae5b2e95c6",
+      "seed": 2219248466
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 19.391,
+      "id": "themes/raid/threat",
+      "kind": "stem",
+      "requestHash": "e4ac745621fda6f67e2014d1d06728fe6f39f33fb573bfc1a282f1f28484b69e",
+      "seed": 1694746740
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 42,
+      "id": "themes/rift/base",
+      "kind": "stem",
+      "requestHash": "1f9322217a984cbd161d36f43a7682242fdfbf952502ec130c1b26cb1d23376c",
+      "seed": 4178264941
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 42,
+      "id": "themes/rift/biome",
+      "kind": "stem",
+      "requestHash": "1cc11b48902d4df55a56f83c68e7b897d19a903382475344c90adadf00d5c9c3",
+      "seed": 1939062126
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 42,
+      "id": "themes/rift/night",
+      "kind": "stem",
+      "requestHash": "fa86b7d9cf09a48713f602ddbd43ae1a9b3e4a858b263f21ba68ad0b0edc66ff",
+      "seed": 3249811053
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 42,
+      "id": "themes/rift/threat",
+      "kind": "stem",
+      "requestHash": "216e941c4abeba4e38af72e6ef30994dba4235150c0dfa17e6b482330b197aed",
+      "seed": 2133412132
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 47,
+      "id": "themes/salt/base",
+      "kind": "stem",
+      "requestHash": "c9e0f361b7cca7025442d852e8f04c54ce2e53a7f1bf6a563c30b352a4365f76",
+      "seed": 4263345452
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 47,
+      "id": "themes/salt/biome",
+      "kind": "stem",
+      "requestHash": "85a76f6aef0c87818f7888e3169790bf2bc06e53099ca4fb6eb30c9680c89430",
+      "seed": 2532759703
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 47,
+      "id": "themes/salt/night",
+      "kind": "stem",
+      "requestHash": "9fb6cf0b6224ea0f2e6fdc950ccf8416f804aa8bebb77cecb77fcac713221188",
+      "seed": 3448345597
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 47,
+      "id": "themes/salt/threat",
+      "kind": "stem",
+      "requestHash": "ab56682a7c243d0e5cb290eea53f7d6a8a25e9976d105c9456190cec1f23ac57",
+      "seed": 3121859399
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 42,
+      "id": "themes/shrine/base",
+      "kind": "stem",
+      "requestHash": "75f633a0074cd17b89eb17f26f52c455661ef2f73c32aabe5e19d057b0b3baf6",
+      "seed": 3762678394
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 42,
+      "id": "themes/shrine/biome",
+      "kind": "stem",
+      "requestHash": "f7acd2cfdc0ee054f5c96d30f615e5e6e084a822530ce7f63c8af49e57e5b6d9",
+      "seed": 1977692662
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 42,
+      "id": "themes/shrine/night",
+      "kind": "stem",
+      "requestHash": "e1e1b79f8c6e9838f7ffdf201f0fe6f9d2cdb81dda7b8098833b2bc49a311106",
+      "seed": 3021374053
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 42,
+      "id": "themes/shrine/threat",
+      "kind": "stem",
+      "requestHash": "392ef18bba939ced70337736c20e4afa337ccd075393487016831a1a30670c5b",
+      "seed": 89690427
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 48.957,
+      "id": "themes/sky/base",
+      "kind": "stem",
+      "requestHash": "cfc9d89325ffa6eefb981d9c37bad5fd8f98ad15d3d57fca49d0720c04e15fa7",
+      "seed": 1054044095
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 48.957,
+      "id": "themes/sky/biome",
+      "kind": "stem",
+      "requestHash": "80a8924522b9ce41d7f299ea5a7f5bdf2d265cf1ed68d2f04cff71820f0c0de9",
+      "seed": 2608902381
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 48.957,
+      "id": "themes/sky/night",
+      "kind": "stem",
+      "requestHash": "04778ba3273ca64848dbca4811cd2c2b320a2c98ff2d84092da85905bd2361be",
+      "seed": 582805583
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 48.957,
+      "id": "themes/sky/threat",
+      "kind": "stem",
+      "requestHash": "ac441637c8eb54dcfa3b86cb62c83506ca82598a2c3207e4d99dd4569d0626a8",
+      "seed": 901623536
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 35.75,
+      "id": "themes/storm/base",
+      "kind": "stem",
+      "requestHash": "770a0bfcce6fe2687dee739e613f2e69e8f701040de5fb84d6eba308331acd31",
+      "seed": 3967473907
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 35.75,
+      "id": "themes/storm/biome",
+      "kind": "stem",
+      "requestHash": "bf215e15e755614f6431db4de651bd62d8762b0993de98fa0c1f7154b25a2cb8",
+      "seed": 2099273790
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 35.75,
+      "id": "themes/storm/night",
+      "kind": "stem",
+      "requestHash": "4a4fda2d690cb00da796d58adfb7d0f57316d9be1a2b9fe8716e102c50e166f7",
+      "seed": 381414366
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 35.75,
+      "id": "themes/storm/threat",
+      "kind": "stem",
+      "requestHash": "f173c2459f38538c365dda6e82453c9e80d55a988226fae2a0be2a35ffe8b269",
+      "seed": 528223174
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 38.364,
+      "id": "themes/vesper/base",
+      "kind": "stem",
+      "requestHash": "a14be78c08b0d83a47dc69c15491aac3bc8e6f7fda63cdf0f83585dc2efff1b4",
+      "seed": 2672461186
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 38.364,
+      "id": "themes/vesper/biome",
+      "kind": "stem",
+      "requestHash": "729a70d9e52fecdd58c41fa96343483ab6a2f93d98a5c71518a7839b528acb6e",
+      "seed": 2662541713
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 38.364,
+      "id": "themes/vesper/night",
+      "kind": "stem",
+      "requestHash": "95dba7cea0e492a982a5cbabc4bae16e65c10f35e5e5b7950d0af9fce03adb0b",
+      "seed": 789050074
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 38.364,
+      "id": "themes/vesper/threat",
+      "kind": "stem",
+      "requestHash": "e5f33e999a8deb9c7d4a489754e4bab18f1dfb68a3c61b77755988e708b80a18",
+      "seed": 4082473658
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 22,
+      "id": "themes/victory/base",
+      "kind": "stem",
+      "requestHash": "cb956f1a3164a7b217d8ad826c3174f2757067eb6d020088ba8bac9ba614a1ed",
+      "seed": 3387117701
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 22,
+      "id": "themes/victory/biome",
+      "kind": "stem",
+      "requestHash": "709595d68b379c9ef243a90fedc31a07233f1407275c921c2ba436a128597fb1",
+      "seed": 3926409267
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 22,
+      "id": "themes/victory/night",
+      "kind": "stem",
+      "requestHash": "11241263905dc9e8687f63fece46b76f08313b851d626e7f3a3ec964f5ce5b5a",
+      "seed": 1858668202
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 22,
+      "id": "themes/victory/threat",
+      "kind": "stem",
+      "requestHash": "0054fa04531607a2744ac2a10a381a42a56c78f3af42c1c3c8b8f0a6d6f885b1",
+      "seed": 2705299525
+    }
+  ],
+  "provider": "stable-audio",
+  "toGenerate": 366,
+  "total": 366
+}

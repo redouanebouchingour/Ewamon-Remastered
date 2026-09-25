@@ -1,0 +1,3385 @@
+{
+  "ambience": [
+    {
+      "biome": "capital",
+      "id": "capital",
+      "prompt": {
+        "durationSec": 62,
+        "instrumental": true,
+        "key": "E major",
+        "negative": "music, melody, speech, words, voices, crowd chatter, sudden loud events, fade-in, fade-out, clipping, distortion",
+        "seed": 3745327130,
+        "text": "Grand city plaza ambience: a stone fountain, pigeons, footsteps on marble echoing, distant carts, far bell tower chimes, banners in the wind; busy but calm, no voices, no words. Continuous and even from start to end so it can loop, no single event louder than the rest; any tonal element (chimes, hum) sits in E major."
+      }
+    },
+    {
+      "biome": "cinder",
+      "id": "cinder",
+      "prompt": {
+        "durationSec": 62,
+        "instrumental": true,
+        "key": "A dorian",
+        "negative": "music, melody, speech, words, voices, crowd chatter, sudden loud events, fade-in, fade-out, clipping, distortion",
+        "seed": 3822882203,
+        "text": "Forge-town ambience: distant hammer rings from a smithy, a low furnace roar, wood fire crackle, warm wind carrying ash, a far cart on cobbles; no people talking. Continuous and even from start to end so it can loop, no single event louder than the rest; any tonal element (chimes, hum) sits in A dorian."
+      }
+    },
+    {
+      "biome": "forge",
+      "id": "forge",
+      "prompt": {
+        "durationSec": 62,
+        "instrumental": true,
+        "key": "C# phrygian",
+        "negative": "music, melody, speech, words, voices, crowd chatter, sudden loud events, fade-in, fade-out, clipping, distortion",
+        "seed": 1766232640,
+        "text": "Fortified steel town ambience: steam vents hissing, distant metal clanks and chains, heavy flags flapping, wind on stone walls, a far foundry thump; no people talking. Continuous and even from start to end so it can loop, no single event louder than the rest; any tonal element (chimes, hum) sits in C# phrygian."
+      }
+    },
+    {
+      "biome": "grove",
+      "id": "grove",
+      "prompt": {
+        "durationSec": 62,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "music, melody, speech, words, voices, crowd chatter, sudden loud events, fade-in, fade-out, clipping, distortion",
+        "seed": 197253634,
+        "text": "Hedgerow morning field recording: layered birdsong (wren, blackbird, finches) near and far, leaves moving in a light breeze, a small brook trickling, occasional bees; peaceful, detailed, no people. Continuous and even from start to end so it can loop, no single event louder than the rest; any tonal element (chimes, hum) sits in D major."
+      }
+    },
+    {
+      "biome": "marrow",
+      "id": "marrow",
+      "prompt": {
+        "durationSec": 62,
+        "instrumental": true,
+        "key": "F# phrygian",
+        "negative": "music, melody, speech, words, voices, crowd chatter, sudden loud events, fade-in, fade-out, clipping, distortion",
+        "seed": 2716801124,
+        "text": "Mine ambience: water dripping in a stone cavern, distant pick strikes, a slow creaking winding gear, low rumble of rock, a lamp buzzing faintly; enclosed and dim, no people. Continuous and even from start to end so it can loop, no single event louder than the rest; any tonal element (chimes, hum) sits in F# phrygian."
+      }
+    },
+    {
+      "biome": "rift",
+      "id": "rift",
+      "prompt": {
+        "durationSec": 62,
+        "instrumental": true,
+        "key": "F# open fifth",
+        "negative": "music, melody, speech, words, voices, crowd chatter, sudden loud events, fade-in, fade-out, clipping, distortion",
+        "seed": 3709117730,
+        "text": "Near silence at the edge of nothing: a very low rumble, moving air, an occasional distant drip into black water, nothing else; empty and enormous. Continuous and even from start to end so it can loop, no single event louder than the rest; any tonal element (chimes, hum) sits in F# open fifth."
+      }
+    },
+    {
+      "biome": "salt",
+      "id": "salt",
+      "prompt": {
+        "durationSec": 62,
+        "instrumental": true,
+        "key": "E minor",
+        "negative": "music, melody, speech, words, voices, crowd chatter, sudden loud events, fade-in, fade-out, clipping, distortion",
+        "seed": 3951287900,
+        "text": "Harbour and salt-marsh ambience: gentle tide lapping on old stone, water sucking under a boardwalk, far gulls, creaking rigging, wind in reeds; grey and calm, no people. Continuous and even from start to end so it can loop, no single event louder than the rest; any tonal element (chimes, hum) sits in E minor."
+      }
+    },
+    {
+      "biome": "shrine",
+      "id": "shrine",
+      "prompt": {
+        "durationSec": 62,
+        "instrumental": true,
+        "key": "E open fifth",
+        "negative": "music, melody, speech, words, voices, crowd chatter, sudden loud events, fade-in, fade-out, clipping, distortion",
+        "seed": 2154140342,
+        "text": "Open-air mountain altar at twilight: gentle wind, far soft wind chimes, crickets, a faint resonant air tone, the hush of height; sacred and still, no people. Continuous and even from start to end so it can loop, no single event louder than the rest; any tonal element (chimes, hum) sits in E open fifth."
+      }
+    },
+    {
+      "biome": "sky",
+      "id": "sky",
+      "prompt": {
+        "durationSec": 62,
+        "instrumental": true,
+        "key": "A lydian",
+        "negative": "music, melody, speech, words, voices, crowd chatter, sudden loud events, fade-in, fade-out, clipping, distortion",
+        "seed": 1270826387,
+        "text": "High mountain ambience: strong wind gusts, blowing snow, distant ice cracking in a glacier, a hawk calling far away, thin cold air; vast, no people. Continuous and even from start to end so it can loop, no single event louder than the rest; any tonal element (chimes, hum) sits in A lydian."
+      }
+    },
+    {
+      "biome": "storm",
+      "id": "storm",
+      "prompt": {
+        "durationSec": 62,
+        "instrumental": true,
+        "key": "B minor",
+        "negative": "music, melody, speech, words, voices, crowd chatter, sudden loud events, fade-in, fade-out, clipping, distortion",
+        "seed": 2301807984,
+        "text": "Windy hilltop grid ambience: wind across high-voltage lines, soft crackle of insulators, a distant thunder roll, gusts through a steel pylon, light drizzle now and then; no people. Continuous and even from start to end so it can loop, no single event louder than the rest; any tonal element (chimes, hum) sits in B minor."
+      }
+    },
+    {
+      "biome": "vesper",
+      "id": "vesper",
+      "prompt": {
+        "durationSec": 62,
+        "instrumental": true,
+        "key": "F# minor",
+        "negative": "music, melody, speech, words, voices, crowd chatter, sudden loud events, fade-in, fade-out, clipping, distortion",
+        "seed": 3274470714,
+        "text": "Cliff-top graveyard at dusk: soft wind through grass and stones, lantern flames fluttering, crickets, a distant single bell now and then, the sea far below; hushed and uncanny, no people. Continuous and even from start to end so it can loop, no single event louder than the rest; any tonal element (chimes, hum) sits in F# minor."
+      }
+    }
+  ],
+  "sfx": [
+    {
+      "bus": "sfx",
+      "gainDb": -8,
+      "id": "anvil_strike",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3028632955,
+        "text": "One hammer strike on an anvil with a long bright metallic ring."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -8,
+      "id": "bell_toll",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 3.5,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2359251323,
+        "text": "One distant, deep town bell toll with a long natural decay."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_bug",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 2979644237,
+        "text": "A small creature's cry for a bug-type creature: a rapid clicking chitter; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_cosmic",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 37582503,
+        "text": "A small creature's cry for a cosmic-type creature: a distant resonant whale-like tone; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_dark",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 857877995,
+        "text": "A small creature's cry for a dark-type creature: a low hissing snarl; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_dragon",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 4110519558,
+        "text": "A small creature's cry for a dragon-type creature: a big reptile roar; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_electric",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 4281872737,
+        "text": "A small creature's cry for a electric-type creature: a buzzy chirp with crackling static; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_fairy",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 1285772014,
+        "text": "A small creature's cry for a fairy-type creature: a tinkling trill (no human voice); expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_fighting",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 544943023,
+        "text": "A small creature's cry for a fighting-type creature: a short determined grunt-bark (animal, no words); expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_fire",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 3600538079,
+        "text": "A small creature's cry for a fire-type creature: a raspy crackling growl with an ember hiss; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_flying",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 2022781554,
+        "text": "A small creature's cry for a flying-type creature: a bright bird screech call; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_ghost",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 2332044485,
+        "text": "A small creature's cry for a ghost-type creature: an airy wordless moaning wail; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_grass",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 3614236336,
+        "text": "A small creature's cry for a grass-type creature: a soft reedy whistle with a woody creak; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_ground",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 53946737,
+        "text": "A small creature's cry for a ground-type creature: a low burrowing grumble; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_ice",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 3072562568,
+        "text": "A small creature's cry for a ice-type creature: a glassy high call with a breathy chill; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_normal",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 3019936796,
+        "text": "A small creature's cry for a normal-type creature: a plain, friendly mid-pitched mammal chirp-bark; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_poison",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 802108984,
+        "text": "A small creature's cry for a poison-type creature: a wet hissing croak; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_psychic",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 82123261,
+        "text": "A small creature's cry for a psychic-type creature: an eerie humming chime-like call; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_rock",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 4086721287,
+        "text": "A small creature's cry for a rock-type creature: a gravelly low rumble-growl; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_steel",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 509097259,
+        "text": "A small creature's cry for a steel-type creature: a metallic resonant clank-growl; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "cry_water",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 803531404,
+        "text": "A small creature's cry for a water-type creature: a bubbly gurgling seal-like chirp; expressive, not human, no words."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -8,
+      "id": "door_close",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.7,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3724405992,
+        "text": "A wooden door closing gently with a latch click."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -8,
+      "id": "door_heavy",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 1.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1144496706,
+        "text": "A heavy steel-banded gate or stone door grinding open with a deep clunk."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -8,
+      "id": "door_open",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.9,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 947213992,
+        "text": "A wooden house door opening: latch click and a short creak."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -2,
+      "id": "faint",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.3,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3228760849,
+        "text": "A creature collapsing: a soft heavy body fall on the ground followed by a gentle descending whoosh, no voice."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "flee",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 1,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2563484497,
+        "text": "Running away: quick scrambling footsteps on grass fading off, with a small whoosh."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -10,
+      "id": "grass_rustle",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1224140717,
+        "text": "Walking through tall grass: a single brushing rustle of long stems against legs."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": 1,
+      "id": "hit_crit",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.7,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3066612587,
+        "text": "A single critical-hit impact: a sharp glassy crack layered over a heavy punch and a brief metallic ring, close and dry."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": 0,
+      "id": "hit_normal",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.45,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 4280102797,
+        "text": "A single solid impact of a creature being struck, punchy low-mid thud with a short crack, close and dry."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": 1,
+      "id": "hit_super",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 4032546583,
+        "text": "A single very heavy, bright impact with a sharp crack and a quick bass boom, satisfying and powerful, close and dry."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "hit_weak",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.4,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 4104388584,
+        "text": "A single soft, muffled impact, dull and small, like a blow absorbed by padding, close and dry."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_bug",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 419839633,
+        "text": "A small bug-type creature hurt: a short shrill chirr; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_cosmic",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 895353685,
+        "text": "A small cosmic-type creature hurt: a deep wavering hum dropping away; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_dark",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 4164920861,
+        "text": "A small dark-type creature hurt: a guttural hiss; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_dragon",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 482284936,
+        "text": "A small dragon-type creature hurt: a pained reptile snarl; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_electric",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 2941017495,
+        "text": "A small electric-type creature hurt: a fizzing squeak with a spark pop; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_fairy",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 1151297412,
+        "text": "A small fairy-type creature hurt: a sad tinkling squeak; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_fighting",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 835818098,
+        "text": "A small fighting-type creature hurt: a winded animal grunt; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_fire",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 3934985310,
+        "text": "A small fire-type creature hurt: a hissing yelp like water on coals; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_flying",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 4126897247,
+        "text": "A small flying-type creature hurt: a sharp bird squawk; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_ghost",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 1500380086,
+        "text": "A small ghost-type creature hurt: a thin fading whimper-wail; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_grass",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 503457389,
+        "text": "A small grass-type creature hurt: a squeaky woody creak of pain; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_ground",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 713722458,
+        "text": "A small ground-type creature hurt: a low muffled grunt; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_ice",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 3435939479,
+        "text": "A small ice-type creature hurt: a brittle high yelp with a crackle of frost; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_normal",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 2688968640,
+        "text": "A small normal-type creature hurt: a short startled yelp; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_poison",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 1888762545,
+        "text": "A small poison-type creature hurt: a gurgling hiss; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_psychic",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 833276579,
+        "text": "A small psychic-type creature hurt: a wavering glassy whine; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_rock",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 3814975490,
+        "text": "A small rock-type creature hurt: a stony grunt with a crunch; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_steel",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 939947292,
+        "text": "A small steel-type creature hurt: a metallic grinding grunt; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "hurt_water",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "human speech, words, singing, music, melody, background ambience, room reverb, clipping, distortion",
+        "seed": 1954848634,
+        "text": "A small water-type creature hurt: a wet sputtering squeal; short, not human, no words."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_bug",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3476441817,
+        "text": "The impact of a bug-type attack: a chitin crunch with a click, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_cosmic",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 4168366156,
+        "text": "The impact of a cosmic-type attack: a vast bloom of air and chime, like light arriving, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_dark",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1616475807,
+        "text": "The impact of a dark-type attack: a dull muted bite and snap, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_dragon",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2692530491,
+        "text": "The impact of a dragon-type attack: a heavy draconic blast of air and force, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_electric",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1534392630,
+        "text": "The impact of a electric-type attack: a sharp electric zap and crack, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_fairy",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1496948495,
+        "text": "The impact of a fairy-type attack: a bright bell-burst impact, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_fighting",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1343138767,
+        "text": "The impact of a fighting-type attack: a meaty punch impact, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_fire",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3368287731,
+        "text": "The impact of a fire-type attack: a fireball burst with crackling embers, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_flying",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 525338225,
+        "text": "The impact of a flying-type attack: an air-slash whoosh ending in a thwip, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_ghost",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2559280997,
+        "text": "The impact of a ghost-type attack: a hollow spectral thump with a short echo, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_grass",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2231994068,
+        "text": "The impact of a grass-type attack: a leafy thwack with scattering seeds, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_ground",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2908486466,
+        "text": "The impact of a ground-type attack: a dirt burst thud with pebbles falling, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_ice",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 825999376,
+        "text": "The impact of a ice-type attack: an ice-shard shatter, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_normal",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2737927467,
+        "text": "The impact of a normal-type attack: a solid padded thump of a body blow, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_poison",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 70648843,
+        "text": "The impact of a poison-type attack: an acid splat with a sizzle, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_psychic",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2623177812,
+        "text": "The impact of a psychic-type attack: a warped pulsing wub impact, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_rock",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 612525407,
+        "text": "The impact of a rock-type attack: a boulder crash with gravel scatter, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_steel",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 4134286113,
+        "text": "The impact of a steel-type attack: a heavy metal clang, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "impact_water",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 650843729,
+        "text": "The impact of a water-type attack: a heavy splash burst of water, sharp attack and a short tail."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -8,
+      "id": "lens_hum",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 3,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 4159632190,
+        "text": "A great glass lens powering: a deep electrical hum rising with a faint glassy whine, then settling."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -10,
+      "id": "lore_tablet",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 109434776,
+        "text": "An old stone tablet awakening: a low resonant stone hum with a soft shimmer of dust."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_bug",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2534215597,
+        "text": "The wind-up of a bug-type creature attack: a fast insect wing buzz, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_cosmic",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 766215826,
+        "text": "The wind-up of a cosmic-type creature attack: a deep sub-bass swell with starry shimmer, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_dark",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1903002132,
+        "text": "The wind-up of a dark-type creature attack: a low sinister whoosh, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_dragon",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3028620083,
+        "text": "The wind-up of a dragon-type creature attack: a deep roaring breath intake, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_electric",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2026448514,
+        "text": "The wind-up of a electric-type creature attack: a rising capacitor charge whine, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_fairy",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1354089099,
+        "text": "The wind-up of a fairy-type creature attack: a sparkling chime sweep, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_fighting",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3182167169,
+        "text": "The wind-up of a fighting-type creature attack: a fast punch-and-kick whoosh, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_fire",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2404712463,
+        "text": "The wind-up of a fire-type creature attack: a gas-flare ignition whoosh that roars up, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_flying",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1316188475,
+        "text": "The wind-up of a flying-type creature attack: a strong wing flap gust, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_ghost",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3861030101,
+        "text": "The wind-up of a ghost-type creature attack: a hollow breath swelling backwards, airy, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_grass",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 335168174,
+        "text": "The wind-up of a grass-type creature attack: leaves rustling into a vine whip crack, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_ground",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1980690831,
+        "text": "The wind-up of a ground-type creature attack: an earth rumble building under the feet, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_ice",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2345789787,
+        "text": "The wind-up of a ice-type creature attack: frost crystallising with a glassy tinkle, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_normal",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 174569176,
+        "text": "The wind-up of a normal-type creature attack: a quick cloth-and-air whoosh of a body lunging, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_poison",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1260222282,
+        "text": "The wind-up of a poison-type creature attack: a bubbling ooze gathering, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_psychic",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1076714849,
+        "text": "The wind-up of a psychic-type creature attack: a shimmering phase tone rising in pitch, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_rock",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 414914658,
+        "text": "The wind-up of a rock-type creature attack: stones grinding together, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_steel",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3968817788,
+        "text": "The wind-up of a steel-type creature attack: a metal blade ring and scrape, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "move_water",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2939647503,
+        "text": "The wind-up of a water-type creature attack: a rushing swirl of water gathering, building for about half a second, no impact at the end."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "orb_break",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.9,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1221770354,
+        "text": "A small orb bursting open: a sharp pop, a spray of light shimmer and a whoosh as the creature escapes."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -2,
+      "id": "orb_catch",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 1.5,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 860152806,
+        "text": "A small orb locking shut: a firm mechanical click, a tiny spark crackle and a soft settling tone."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "orb_shake",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 387605428,
+        "text": "A small closed orb wobbling on the ground: two muffled plastic-and-metal rattles, tense and quiet."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -3,
+      "id": "orb_throw",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 656732126,
+        "text": "A small hard orb thrown through the air: a quick hand whoosh then a spinning whistle ending in a light tap."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -10,
+      "id": "pylon_crackle",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.5,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1383581688,
+        "text": "High-voltage crackle and buzz from a power line insulator, erratic."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "raid_phase",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 493537427,
+        "text": "A massive impact boom with a shattering crack and a rising rumble, signalling a boss growing stronger."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": 0,
+      "id": "raid_roar",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2.5,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2931806371,
+        "text": "An enormous monster roar, deep and long, with a ground-shaking low end."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -10,
+      "id": "spawn_shimmer",
+      "maxConcurrent": 3,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2870030672,
+        "text": "A creature condensing out of the air: a soft rising shimmer, like breath on glass turning into a small pop of presence."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -8,
+      "id": "splash",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1607138709,
+        "text": "A medium splash of something stepping into or jumping into water."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "spotted",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 216843934,
+        "text": "A sharp alert sting: a quick bright two-note exclamation blip with a whoosh (not musical phrase, just an alert)."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "stage_down",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.9,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 172686228,
+        "text": "A stat falling: a quick dull descending sweep with a soft thud at the bottom."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "stage_up",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.9,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2084612021,
+        "text": "A stat rising: a quick bright ascending sweep with a small sparkle at the top."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -5,
+      "id": "status_burn",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 48997582,
+        "text": "A creature catching fire: a quick flame flare whoosh and crackling burn, short."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "status_confuse",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 277049977,
+        "text": "Confusion: a woozy warbling tone circling and bending in pitch with little birdlike twitters."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -5,
+      "id": "status_freeze",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3525663565,
+        "text": "Freezing solid: rapid ice crystallising with crackles and a glassy lock."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "status_heal",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 75841944,
+        "text": "Healing: a warm rising shimmer of soft bells and a gentle breath of air."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -5,
+      "id": "status_paralyze",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1379112629,
+        "text": "Paralysis: a crackling electric seize with stuttering static zaps, short."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -5,
+      "id": "status_poison",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1009221272,
+        "text": "Poison taking hold: a bubbling, gurgling ooze with a small sickly hiss, short."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "status_sleep",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 1.2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3631109539,
+        "text": "Falling asleep: a soft descending chime-like whistle and a gentle airy puff, drowsy."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -14,
+      "id": "step_ash",
+      "maxConcurrent": 4,
+      "prompt": {
+        "durationSec": 0.35,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 4085672706,
+        "text": "One single footstep of a light walking shoe on soft ash and cinders over stone, close-miked and dry, no second step."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -14,
+      "id": "step_dirt",
+      "maxConcurrent": 4,
+      "prompt": {
+        "durationSec": 0.35,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2435469674,
+        "text": "One single footstep of a light walking shoe on packed dry dirt path, close-miked and dry, no second step."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -16,
+      "id": "step_flat",
+      "maxConcurrent": 4,
+      "prompt": {
+        "durationSec": 0.3,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3357332894,
+        "text": "One single dull, toneless footstep tap with no surface texture at all, as if on nothing in particular, close and dry."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -14,
+      "id": "step_grass",
+      "maxConcurrent": 4,
+      "prompt": {
+        "durationSec": 0.35,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1873724209,
+        "text": "One single footstep of a light walking shoe on soft grass and leaf litter, close-miked and dry, no second step."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -14,
+      "id": "step_gravel",
+      "maxConcurrent": 4,
+      "prompt": {
+        "durationSec": 0.35,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1037049915,
+        "text": "One single footstep of a light walking shoe on loose gravel, close-miked and dry, no second step."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -14,
+      "id": "step_metal",
+      "maxConcurrent": 4,
+      "prompt": {
+        "durationSec": 0.35,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3726408343,
+        "text": "One single footstep of a light walking shoe on a steel grate walkway, close-miked and dry, no second step."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -14,
+      "id": "step_salt",
+      "maxConcurrent": 4,
+      "prompt": {
+        "durationSec": 0.35,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 4200268830,
+        "text": "One single footstep of a light walking shoe on a crunchy salt crust, close-miked and dry, no second step."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -14,
+      "id": "step_sand",
+      "maxConcurrent": 4,
+      "prompt": {
+        "durationSec": 0.35,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 225312294,
+        "text": "One single footstep of a light walking shoe on damp sand, close-miked and dry, no second step."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -14,
+      "id": "step_snow",
+      "maxConcurrent": 4,
+      "prompt": {
+        "durationSec": 0.35,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1797493544,
+        "text": "One single footstep of a light walking shoe on fresh crunchy snow, close-miked and dry, no second step."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -14,
+      "id": "step_stone",
+      "maxConcurrent": 4,
+      "prompt": {
+        "durationSec": 0.35,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 4287460268,
+        "text": "One single footstep of a light walking shoe on hard stone paving, close-miked and dry, no second step."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -14,
+      "id": "step_water",
+      "maxConcurrent": 4,
+      "prompt": {
+        "durationSec": 0.35,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 4207250565,
+        "text": "One single footstep of a light walking shoe on ankle-deep shallow water, close-miked and dry, no second step."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -14,
+      "id": "step_wood",
+      "maxConcurrent": 4,
+      "prompt": {
+        "durationSec": 0.35,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3049833645,
+        "text": "One single footstep of a light walking shoe on hollow wooden boardwalk planks, close-miked and dry, no second step."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "switch",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.9,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2063518407,
+        "text": "A capture orb opening: a bright mechanical click, a short beam-of-light whoosh and a soft pop as a creature appears."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -4,
+      "id": "thunder",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 3.5,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 42980608,
+        "text": "A close thunder crack followed by a rolling rumble."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "ui",
+      "gainDb": -14,
+      "id": "ui_back",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.25,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2819874541,
+        "text": "A soft short descending pluck, like closing a small wooden box."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -6,
+      "id": "ui_badge",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 3,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 3314446180,
+        "text": "A proud short brass-and-bell flourish for earning a badge, triumphant but brief."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -14,
+      "id": "ui_click",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.15,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1436184259,
+        "text": "A tiny soft wooden click, like a small bead tapped on a board, clean and short."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "ui",
+      "gainDb": -14,
+      "id": "ui_close",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.3,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2149241048,
+        "text": "A soft paper-and-wood swish of a menu or journal closing, slightly lower."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -12,
+      "id": "ui_confirm",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.35,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2519006096,
+        "text": "A soft pleasant two-tone confirm chime, warm and rounded."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -16,
+      "id": "ui_dialogue_advance",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1035865104,
+        "text": "A soft short pop-click, like a page turning in a small book."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -10,
+      "id": "ui_error",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.4,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 346130510,
+        "text": "A soft low dull double buzz-thunk, clearly \"no\" but not harsh."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -6,
+      "id": "ui_evolve_done",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 3,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 4086174186,
+        "text": "A radiant burst of bells and a warm major chord bloom, then a gentle sparkle tail."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -8,
+      "id": "ui_evolve_start",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 3.5,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 2128156020,
+        "text": "A building shimmer: rising glassy tones and airy whoosh, growing in intensity, with a heartbeat-like pulse."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -8,
+      "id": "ui_heal",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2.5,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 1918081816,
+        "text": "A calm healing jingle: soft harp and bell arpeggio rising and resolving."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -8,
+      "id": "ui_item_get",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 1.5,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 2416525487,
+        "text": "A cheerful short item-found jingle of plucked strings and a bell."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -12,
+      "id": "ui_item_use",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1251771490,
+        "text": "A small glass bottle uncorked with a soft fizz."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -6,
+      "id": "ui_levelup",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 1.8,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 3854230805,
+        "text": "A bright level-up jingle made of quick rising bell and marimba notes ending on a sparkle."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -14,
+      "id": "ui_notify",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.5,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 342845599,
+        "text": "A very soft double ping, unobtrusive."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -14,
+      "id": "ui_open",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.35,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1073654301,
+        "text": "A soft paper-and-wood swish of a menu or journal opening."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -10,
+      "id": "ui_quest",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 1,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 280018538,
+        "text": "A soft paper unrolling with a gentle chime, a new task."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -8,
+      "id": "ui_quest_done",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 1460675366,
+        "text": "A satisfying short completion jingle: warm plucked chord and a bell."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -14,
+      "id": "ui_save",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1726113210,
+        "text": "A soft quill scratch and a small wax-seal thump."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -10,
+      "id": "ui_shop_buy",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 478523382,
+        "text": "Coins dropping into a leather purse, a small satisfying jingle."
+      },
+      "variants": 2
+    },
+    {
+      "bus": "ui",
+      "gainDb": -10,
+      "id": "ui_shop_deny",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.4,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2904470011,
+        "text": "A soft empty purse shake and a low dull tap, \"not enough\"."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -10,
+      "id": "ui_shop_sell",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 973175950,
+        "text": "A few coins counted onto a wooden counter."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -6,
+      "id": "ui_stinger_beat",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 3,
+        "instrumental": true,
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 531725236,
+        "text": "A soft story sting: a single sustained low string note under three quiet music-box notes, thoughtful, unresolved."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -4,
+      "id": "ui_stinger_catch",
+      "maxConcurrent": 1,
+      "prompt": {
+        "bpm": 120,
+        "durationSec": 2.5,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 2308069962,
+        "text": "A short cheerful catch-success jingle: plucked strings and bells in D major ending on a bright D chord."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -5,
+      "id": "ui_stinger_defeat",
+      "maxConcurrent": 1,
+      "prompt": {
+        "bpm": 120,
+        "durationSec": 3,
+        "instrumental": true,
+        "key": "D minor",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 1237906457,
+        "text": "A gentle defeat sting: a slow descending phrase on muted strings and piano in D minor, sad but not bleak, ending softly on D."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -3,
+      "id": "ui_stinger_intro_champion",
+      "maxConcurrent": 1,
+      "prompt": {
+        "bpm": 168,
+        "durationSec": 4,
+        "instrumental": true,
+        "key": "B minor",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 2809131286,
+        "text": "A champion battle intro: the full orchestra rising with a massive timpani roll and brass fanfare ending on an F sharp major chord (dominant of B minor)."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -4,
+      "id": "ui_stinger_intro_elite",
+      "maxConcurrent": 1,
+      "prompt": {
+        "bpm": 144,
+        "durationSec": 3.5,
+        "instrumental": true,
+        "key": "C minor",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 178127289,
+        "text": "A Warden battle intro: a grave pipe-organ chord, timpani roll and low brass swell ending on a G major chord (dominant of C minor)."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -4,
+      "id": "ui_stinger_intro_gym",
+      "maxConcurrent": 1,
+      "prompt": {
+        "bpm": 160,
+        "durationSec": 3,
+        "instrumental": true,
+        "key": "A minor",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 1164228969,
+        "text": "A gym-leader battle intro: taiko hits, a fast string run and a bold brass rise ending on an E major chord (dominant of A minor)."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -3,
+      "id": "ui_stinger_intro_legendary",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 4,
+        "instrumental": true,
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 1854708286,
+        "text": "An unpitched vast swell for meeting a legendary creature: a reversed cymbal, deep drum roll and a sub boom, no melody and no chord, awe."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -3,
+      "id": "ui_stinger_intro_raid",
+      "maxConcurrent": 1,
+      "prompt": {
+        "bpm": 138,
+        "durationSec": 3.5,
+        "instrumental": true,
+        "key": "F minor",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 4275264511,
+        "text": "A raid intro: war drums and a monstrous low brass blast rising into a C major chord (dominant of F minor), huge."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -4,
+      "id": "ui_stinger_intro_trainer",
+      "maxConcurrent": 1,
+      "prompt": {
+        "bpm": 160,
+        "durationSec": 2.5,
+        "instrumental": true,
+        "key": "D minor",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 1785226926,
+        "text": "A short trainer-battle intro sting: rising strings, a snare roll and two stabbing brass hits ending on an A major chord (dominant of D minor)."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -4,
+      "id": "ui_stinger_intro_wild",
+      "maxConcurrent": 1,
+      "prompt": {
+        "bpm": 160,
+        "durationSec": 2,
+        "instrumental": true,
+        "key": "D minor",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 1782305406,
+        "text": "A short battle intro sting: a quick orchestral swoosh, snare roll and brass hit landing on an A major chord (dominant of D minor), energetic."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -4,
+      "id": "ui_stinger_restored",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 4,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 2878113004,
+        "text": "The reverse of forgetting: a dull tick blossoms into a bright music-box melody, notes returning one by one, ending on a warm open chord."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -5,
+      "id": "ui_stinger_thinning",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 4,
+        "instrumental": true,
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 4063790845,
+        "text": "A music-box melody that forgets itself: notes drop out one by one and the tone grows duller and more muffled until only a dull tick remains."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -8,
+      "id": "ui_stinger_title",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2.5,
+        "instrumental": true,
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 3073943739,
+        "text": "A soft zone-title sting: a gentle harp glissando and a single warm chime."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -3,
+      "id": "ui_stinger_victory_champion",
+      "maxConcurrent": 1,
+      "prompt": {
+        "bpm": 120,
+        "durationSec": 4,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 3044956699,
+        "text": "A grand, emotional victory fanfare: full orchestra in D major, brass and strings soaring to a final D major chord."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -3,
+      "id": "ui_stinger_victory_gym",
+      "maxConcurrent": 1,
+      "prompt": {
+        "bpm": 120,
+        "durationSec": 3.5,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 1227943537,
+        "text": "A triumphant victory fanfare for beating a gym leader: full brass, timpani and strings in D major resolving on a big D chord."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -3,
+      "id": "ui_stinger_victory_legendary",
+      "maxConcurrent": 1,
+      "prompt": {
+        "bpm": 120,
+        "durationSec": 4,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 4082324227,
+        "text": "A hushed, awed victory: soft strings and bells in D major rising to a warm D chord with a shimmering tail."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -3,
+      "id": "ui_stinger_victory_raid",
+      "maxConcurrent": 1,
+      "prompt": {
+        "bpm": 120,
+        "durationSec": 4,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 1511207670,
+        "text": "A huge communal victory fanfare: drums, brass and strings in D major, celebratory, resolving on D."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -4,
+      "id": "ui_stinger_victory_trainer",
+      "maxConcurrent": 1,
+      "prompt": {
+        "bpm": 120,
+        "durationSec": 3,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 2144793344,
+        "text": "A victory fanfare: trumpets and strings in D major, a proud rising figure resolving on D."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -4,
+      "id": "ui_stinger_victory_wild",
+      "maxConcurrent": 1,
+      "prompt": {
+        "bpm": 120,
+        "durationSec": 2.5,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 424579058,
+        "text": "A short victory jingle: bright brass and strings in D major, a quick rising figure resolving on a D major chord."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -16,
+      "id": "ui_tab",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.15,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3947695403,
+        "text": "A very small soft page-flick tick."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -12,
+      "id": "ui_toast",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 661305841,
+        "text": "A gentle bright notification chime, one soft bell ping with a short tail."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -10,
+      "id": "ui_trade",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 1.5,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2189296908,
+        "text": "A light exchange sound: two soft whooshes crossing and a gentle chime."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "ui",
+      "gainDb": -22,
+      "id": "ui_type",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 0.06,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3985933568,
+        "text": "One tiny soft typewriter-like tick, very short and quiet."
+      },
+      "variants": 3
+    },
+    {
+      "bus": "ui",
+      "gainDb": -8,
+      "id": "ui_witness",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 1.6,
+        "instrumental": true,
+        "key": "D major",
+        "negative": "vocals, singing, lyrics, speech, crowd, applause, long reverb tail, fade-in, clipping, distortion",
+        "seed": 1370169314,
+        "text": "A soft recording sound: a gentle mechanical shutter click followed by a warm rising chime, something being remembered."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -10,
+      "id": "warp",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 0.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3225577530,
+        "text": "A soft airy transition whoosh with a faint chime, like stepping through a threshold."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "weather_hail",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 3,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1986047645,
+        "text": "Hail starting: a gust followed by hard ice pellets clattering on stone and ground."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "weather_rain",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 3,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2414238480,
+        "text": "Rain beginning: a quick build from scattered drops to steady rainfall on the ground."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "weather_sand",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 3,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2258807876,
+        "text": "A sandstorm rising: a gusting wind swell full of hissing, rattling sand grains."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -6,
+      "id": "weather_sun",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2.5,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 536015501,
+        "text": "Harsh sunlight breaking through: a warm swelling whoosh with a bright shimmering heat haze."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -8,
+      "id": "wind_gust",
+      "maxConcurrent": 2,
+      "prompt": {
+        "durationSec": 2.5,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2773278361,
+        "text": "A single strong wind gust rising and falling."
+      },
+      "variants": 2
+    }
+  ],
+  "themes": [
+    {
+      "bars": 32,
+      "bpm": 160,
+      "id": "battle",
+      "stems": {
+        "base": {
+          "bpm": 160,
+          "durationSec": 53,
+          "instrumental": true,
+          "key": "D minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2194262678,
+          "text": "Battle battle-music theme for a gentle HD-2D creature-collecting RPG (HD-2D JRPG battle: heroic, driving, bright; the A section attacks, the B section lifts). Driving live drum kit, punchy electric bass and a rhythm-string ostinato in eighth notes, orchestral rock energy; section B lifts with a half-time crash pattern. This is the BASE layer: drums, bass and rhythm section with the chords, full energy, it must stand alone. Seamless loop: exactly 32 bars of 4/4 at 160 BPM in D minor; chords: section A, bars 1-16: Dm, Bb, C, Dm repeated; section B, bars 17-32: Gm, Bb, C, A repeated. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 160,
+          "durationSec": 53,
+          "instrumental": true,
+          "key": "D minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3846464195,
+          "text": "Battle battle-music theme for a gentle HD-2D creature-collecting RPG (HD-2D JRPG battle: heroic, driving, bright; the A section attacks, the B section lifts). Piano runs, woodwind flourishes and string counter-lines that answer the melody, harmonic colour only. This is the COUNTER layer: counter-melody, runs and harmonic colour, no drums, no bass. Seamless loop: exactly 32 bars of 4/4 at 160 BPM in D minor; chords: section A, bars 1-16: Dm, Bb, C, Dm repeated; section B, bars 17-32: Gm, Bb, C, A repeated. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 160,
+          "durationSec": 53,
+          "instrumental": true,
+          "key": "D minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3339767653,
+          "text": "Battle battle-music theme for a gentle HD-2D creature-collecting RPG (HD-2D JRPG battle: heroic, driving, bright; the A section attacks, the B section lifts). A soft synth pad and glassy chime accents on the first beat of every bar, adding a night-time sheen under the battle. This is the NIGHT layer: a quiet shimmer of pads and bells over the battle, sparse, no drums. Seamless loop: exactly 32 bars of 4/4 at 160 BPM in D minor; chords: section A, bars 1-16: Dm, Bb, C, Dm repeated; section B, bars 17-32: Gm, Bb, C, A repeated. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 160,
+          "durationSec": 53,
+          "instrumental": true,
+          "key": "D minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2482634480,
+          "text": "Battle battle-music theme for a gentle HD-2D creature-collecting RPG (HD-2D JRPG battle: heroic, driving, bright; the A section attacks, the B section lifts). The battle melody: unison trumpets and violins with a heroic, memorable hook in section A and a soaring answer in section B; big tom and cymbal accents. This is the LEAD layer: the main melody on brass and strings plus the heaviest percussion accents. Seamless loop: exactly 32 bars of 4/4 at 160 BPM in D minor; chords: section A, bars 1-16: Dm, Bb, C, Dm repeated; section B, bars 17-32: Gm, Bb, C, A repeated. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 16,
+      "bpm": 108,
+      "id": "capital",
+      "stems": {
+        "base": {
+          "bpm": 108,
+          "durationSec": 42,
+          "instrumental": true,
+          "key": "E major",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3197411157,
+          "text": "Capital area theme for a gentle HD-2D creature-collecting RPG (the Sun-City, the public ledger on its lectern, civic grandeur that is also a little administrative). Full orchestral bed: strings on the chords, a low brass chorale, and a light clockwork pizzicato ostinato like a ledger being kept, stately and warm. This is the BASE layer: harmony and pulse only, warm low-mid register, it must stand alone and carry the chords. Seamless loop: exactly 16 bars of 4/4 at 108 BPM in E major; chords: E, C#m, A, B, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 108,
+          "durationSec": 42,
+          "instrumental": true,
+          "key": "E major",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 1334481568,
+          "text": "Capital area theme for a gentle HD-2D creature-collecting RPG (the Sun-City, the public ledger on its lectern, civic grandeur that is also a little administrative). A proud full-orchestra melody on horns and violins, harp glissandi, bright trumpets and celesta sparkle; ceremonial but humane. This is the BIOME layer: the signature instruments and the melody, bright upper register above the bed, no bass, no drums. Seamless loop: exactly 16 bars of 4/4 at 108 BPM in E major; chords: E, C#m, A, B, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 108,
+          "durationSec": 42,
+          "instrumental": true,
+          "key": "E major",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 4100998064,
+          "text": "Capital area theme for a gentle HD-2D creature-collecting RPG (the Sun-City, the public ledger on its lectern, civic grandeur that is also a little administrative). Quiet woodwinds and celesta over muted strings, a soft harp note on the first beat of every bar, a city asleep. This is the NIGHT layer: sparse and quiet, few notes, lots of air, no drums, sits on top of the other layers. Seamless loop: exactly 16 bars of 4/4 at 108 BPM in E major; chords: E, C#m, A, B, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 108,
+          "durationSec": 42,
+          "instrumental": true,
+          "key": "E major",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 842933431,
+          "text": "Capital area theme for a gentle HD-2D creature-collecting RPG (the Sun-City, the public ledger on its lectern, civic grandeur that is also a little administrative). Ominous brass swells, a snare march, timpani rolls into every downbeat, low strings in stern eighth notes. This is the THREAT layer: rhythm and tension only, percussion and an ostinato on the tonic, no melody, it adds urgency without changing the harmony. Seamless loop: exactly 16 bars of 4/4 at 108 BPM in E major; chords: E, C#m, A, B, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 32,
+      "bpm": 168,
+      "id": "champion",
+      "stems": {
+        "base": {
+          "bpm": 168,
+          "durationSec": 50.571,
+          "instrumental": true,
+          "key": "B minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 1734628940,
+          "text": "Champion battle-music theme for a gentle HD-2D creature-collecting RPG (the grandest fight in Ewa: everything the player has witnessed, at once). Epic orchestral rock rhythm section: full drum kit with double kicks, driving electric bass, low brass and staccato strings, relentless. This is the BASE layer: drums, bass and rhythm section with the chords, full energy, it must stand alone. Seamless loop: exactly 32 bars of 4/4 at 168 BPM in B minor; chords: section A, bars 1-16: Bm, G, D, A repeated; section B, bars 17-32: Em, G, A, F# repeated. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 168,
+          "durationSec": 50.571,
+          "instrumental": true,
+          "key": "B minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 1896557144,
+          "text": "Champion battle-music theme for a gentle HD-2D creature-collecting RPG (the grandest fight in Ewa: everything the player has witnessed, at once). Piano and harp arpeggios, woodwind and string counter-melodies, glockenspiel sparkle, the whole orchestra answering. This is the COUNTER layer: counter-melody, runs and harmonic colour, no drums, no bass. Seamless loop: exactly 32 bars of 4/4 at 168 BPM in B minor; chords: section A, bars 1-16: Bm, G, D, A repeated; section B, bars 17-32: Em, G, A, F# repeated. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 168,
+          "durationSec": 50.571,
+          "instrumental": true,
+          "key": "B minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2223704546,
+          "text": "Champion battle-music theme for a gentle HD-2D creature-collecting RPG (the grandest fight in Ewa: everything the player has witnessed, at once). A soft shimmering pad and crystal bell on the first beat of every bar, glowing under the fight. This is the NIGHT layer: a quiet shimmer of pads and bells over the battle, sparse, no drums. Seamless loop: exactly 32 bars of 4/4 at 168 BPM in B minor; chords: section A, bars 1-16: Bm, G, D, A repeated; section B, bars 17-32: Em, G, A, F# repeated. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 168,
+          "durationSec": 50.571,
+          "instrumental": true,
+          "key": "B minor",
+          "negative": "lyrics, words, solo singer, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, distortion, clipping, lo-fi hiss, vinyl crackle",
+          "seed": 467153231,
+          "text": "Champion battle-music theme for a gentle HD-2D creature-collecting RPG (the grandest fight in Ewa: everything the player has witnessed, at once). The champion melody: full brass section and violins in octaves, heroic and tragic, a soaring climax in section B with a wordless choir singing only \"ah\". This is the LEAD layer: the main melody on brass and strings plus the heaviest percussion accents. Seamless loop: exactly 32 bars of 4/4 at 168 BPM in B minor; chords: section A, bars 1-16: Bm, G, D, A repeated; section B, bars 17-32: Em, G, A, F# repeated. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 16,
+      "bpm": 92,
+      "id": "cinder",
+      "stems": {
+        "base": {
+          "bpm": 92,
+          "durationSec": 48.957,
+          "instrumental": true,
+          "key": "A dorian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2630825719,
+          "text": "Cinder area theme for a gentle HD-2D creature-collecting RPG (heat, labour, a memorial wall of 4,100 names; dignified, not angry). Low brass chorale: tubas, euphonium and horns in their low register sustaining the chords, a bass drum like a slow heartbeat on beats 1 and 3, warm and heavy. This is the BASE layer: harmony and pulse only, warm low-mid register, it must stand alone and carry the chords. Seamless loop: exactly 16 bars of 4/4 at 92 BPM in A dorian; chords: Am, G, D, Am, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 92,
+          "durationSec": 48.957,
+          "instrumental": true,
+          "key": "A dorian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3839371427,
+          "text": "Cinder area theme for a gentle HD-2D creature-collecting RPG (heat, labour, a memorial wall of 4,100 names; dignified, not angry). Ringing anvil strikes on beats 2 and 4 with long metallic overtones, a cimbalom throwing spark-like figures, and a solo euphonium carrying a noble, memorial melody in A dorian. This is the BIOME layer: the signature instruments and the melody, bright upper register above the bed, no bass, no drums. Seamless loop: exactly 16 bars of 4/4 at 92 BPM in A dorian; chords: Am, G, D, Am, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 92,
+          "durationSec": 48.957,
+          "instrumental": true,
+          "key": "A dorian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 1491766295,
+          "text": "Cinder area theme for a gentle HD-2D creature-collecting RPG (heat, labour, a memorial wall of 4,100 names; dignified, not angry). A low horn pedal on A, soft cimbalom tremolo like embers, one quiet anvil ring on the first beat of every bar, very sparse. This is the NIGHT layer: sparse and quiet, few notes, lots of air, no drums, sits on top of the other layers. Seamless loop: exactly 16 bars of 4/4 at 92 BPM in A dorian; chords: Am, G, D, Am, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 92,
+          "durationSec": 48.957,
+          "instrumental": true,
+          "key": "A dorian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3698228970,
+          "text": "Cinder area theme for a gentle HD-2D creature-collecting RPG (heat, labour, a memorial wall of 4,100 names; dignified, not angry). Forge percussion: taiko and anvil in driving sixteenths, snarling trombone stabs on A, bellows-like swells; hot and urgent. This is the THREAT layer: rhythm and tension only, percussion and an ostinato on the tonic, no melody, it adds urgency without changing the harmony. Seamless loop: exactly 16 bars of 4/4 at 92 BPM in A dorian; chords: Am, G, D, Am, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 16,
+      "bpm": 144,
+      "id": "elite",
+      "stems": {
+        "base": {
+          "bpm": 144,
+          "durationSec": 32,
+          "instrumental": true,
+          "key": "C minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3780817322,
+          "text": "Elite battle-music theme for a gentle HD-2D creature-collecting RPG (formal, ancient, severe; the Wardens counted the sky for three hundred years). Pipe organ chords, timpani and orchestral bass drum in a martial pattern, staccato low strings in eighth notes, cathedral weight. This is the BASE layer: drums, bass and rhythm section with the chords, full energy, it must stand alone. Seamless loop: exactly 16 bars of 4/4 at 144 BPM in C minor; chords: section A, bars 1-8: Cm, Ab, Eb, Bb, Cm, Ab, Fm, G; section B, bars 9-16: Ab, Bb, Cm, Cm, Ab, Bb, G, G. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 144,
+          "durationSec": 32,
+          "instrumental": true,
+          "key": "C minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2010739165,
+          "text": "Elite battle-music theme for a gentle HD-2D creature-collecting RPG (formal, ancient, severe; the Wardens counted the sky for three hundred years). Harpsichord-like arpeggios, tubular bells and string runs weaving around the organ, severe and intricate. This is the COUNTER layer: counter-melody, runs and harmonic colour, no drums, no bass. Seamless loop: exactly 16 bars of 4/4 at 144 BPM in C minor; chords: section A, bars 1-8: Cm, Ab, Eb, Bb, Cm, Ab, Fm, G; section B, bars 9-16: Ab, Bb, Cm, Cm, Ab, Bb, G, G. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 144,
+          "durationSec": 32,
+          "instrumental": true,
+          "key": "C minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 765726003,
+          "text": "Elite battle-music theme for a gentle HD-2D creature-collecting RPG (formal, ancient, severe; the Wardens counted the sky for three hundred years). A high string harmonic pad and a single tubular bell on the first beat of every bar, quiet. This is the NIGHT layer: a quiet shimmer of pads and bells over the battle, sparse, no drums. Seamless loop: exactly 16 bars of 4/4 at 144 BPM in C minor; chords: section A, bars 1-8: Cm, Ab, Eb, Bb, Cm, Ab, Fm, G; section B, bars 9-16: Ab, Bb, Cm, Cm, Ab, Bb, G, G. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 144,
+          "durationSec": 32,
+          "instrumental": true,
+          "key": "C minor",
+          "negative": "lyrics, words, solo singer, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, distortion, clipping, lo-fi hiss, vinyl crackle",
+          "seed": 2718654484,
+          "text": "Elite battle-music theme for a gentle HD-2D creature-collecting RPG (formal, ancient, severe; the Wardens counted the sky for three hundred years). A grave, powerful melody on horns and trombones doubled by violins, with a wordless choir singing only \"ah\" on the long notes. This is the LEAD layer: the main melody on brass and strings plus the heaviest percussion accents. Seamless loop: exactly 16 bars of 4/4 at 144 BPM in C minor; chords: section A, bars 1-8: Cm, Ab, Eb, Bb, Cm, Ab, Fm, G; section B, bars 9-16: Ab, Bb, Cm, Cm, Ab, Bb, G, G. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 16,
+      "bpm": 112,
+      "id": "forge",
+      "stems": {
+        "base": {
+          "bpm": 112,
+          "durationSec": 40.571,
+          "instrumental": true,
+          "key": "C# phrygian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 1335022514,
+          "text": "Forge area theme for a gentle HD-2D creature-collecting RPG (a steel-plated town that said no in the open; made things arguing with memory). A mechanical ostinato of hammered metal pipes in eighth notes, a low synth-bass pulse on the chords, a marching snare; stubborn and steady. This is the BASE layer: harmony and pulse only, warm low-mid register, it must stand alone and carry the chords. Seamless loop: exactly 16 bars of 4/4 at 112 BPM in C# phrygian; chords: C#m, D, C#m, Bm, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 112,
+          "durationSec": 40.571,
+          "instrumental": true,
+          "key": "C# phrygian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2969086615,
+          "text": "Forge area theme for a gentle HD-2D creature-collecting RPG (a steel-plated town that said no in the open; made things arguing with memory). Industrial signature: anvil and struck steel plate, chain rattles, tuned steam-hiss accents, and a defiant trumpet and horn melody in C# phrygian. This is the BIOME layer: the signature instruments and the melody, bright upper register above the bed, no bass, no drums. Seamless loop: exactly 16 bars of 4/4 at 112 BPM in C# phrygian; chords: C#m, D, C#m, Bm, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 112,
+          "durationSec": 40.571,
+          "instrumental": true,
+          "key": "C# phrygian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 1985284383,
+          "text": "Forge area theme for a gentle HD-2D creature-collecting RPG (a steel-plated town that said no in the open; made things arguing with memory). Slow ringing pipe resonances, sustained bowed metal, a far foundry thump on the first beat of every bar, cold and quiet. This is the NIGHT layer: sparse and quiet, few notes, lots of air, no drums, sits on top of the other layers. Seamless loop: exactly 16 bars of 4/4 at 112 BPM in C# phrygian; chords: C#m, D, C#m, Bm, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 112,
+          "durationSec": 40.571,
+          "instrumental": true,
+          "key": "C# phrygian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3290050868,
+          "text": "Forge area theme for a gentle HD-2D creature-collecting RPG (a steel-plated town that said no in the open; made things arguing with memory). Full industrial drive: pounding metal percussion and taiko, brass stabs on C#, clanking sixteenths; a siege line waking up. This is the THREAT layer: rhythm and tension only, percussion and an ostinato on the tonic, no melody, it adds urgency without changing the harmony. Seamless loop: exactly 16 bars of 4/4 at 112 BPM in C# phrygian; chords: C#m, D, C#m, Bm, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 16,
+      "bpm": 96,
+      "id": "grove",
+      "stems": {
+        "base": {
+          "bpm": 96,
+          "durationSec": 47,
+          "instrumental": true,
+          "key": "D major",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2161516231,
+          "text": "Grove area theme for a gentle HD-2D creature-collecting RPG (home, morning, a place remembered in full detail). Warm pastoral folk bed: fingerpicked nylon-string guitar arpeggios, soft upright bass on the roots, brushed frame drum and a light shaker on every beat, gentle and unhurried. This is the BASE layer: harmony and pulse only, warm low-mid register, it must stand alone and carry the chords. Seamless loop: exactly 16 bars of 4/4 at 96 BPM in D major; chords: D, Bm, G, A, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 96,
+          "durationSec": 47,
+          "instrumental": true,
+          "key": "D major",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 616910753,
+          "text": "Grove area theme for a gentle HD-2D creature-collecting RPG (home, morning, a place remembered in full detail). Wooden flute and clarinet trade a simple, singable folk melody over a kalimba ostinato in D major pentatonic; birdlike grace notes; bright and close. This is the BIOME layer: the signature instruments and the melody, bright upper register above the bed, no bass, no drums. Seamless loop: exactly 16 bars of 4/4 at 96 BPM in D major; chords: D, Bm, G, A, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 96,
+          "durationSec": 47,
+          "instrumental": true,
+          "key": "D major",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 787390364,
+          "text": "Grove area theme for a gentle HD-2D creature-collecting RPG (home, morning, a place remembered in full detail). Slow kalimba and music-box dyads on D major pentatonic, one soft chime on the first beat of every bar, a faint high string pad on D and A. This is the NIGHT layer: sparse and quiet, few notes, lots of air, no drums, sits on top of the other layers. Seamless loop: exactly 16 bars of 4/4 at 96 BPM in D major; chords: D, Bm, G, A, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 96,
+          "durationSec": 47,
+          "instrumental": true,
+          "key": "D major",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3335575513,
+          "text": "Grove area theme for a gentle HD-2D creature-collecting RPG (home, morning, a place remembered in full detail). Taut frame drums and low toms in steady eighth notes, muted pizzicato cellos pulsing on D, a rising shaker; hedgerow-rustle energy. This is the THREAT layer: rhythm and tension only, percussion and an ostinato on the tonic, no melody, it adds urgency without changing the harmony. Seamless loop: exactly 16 bars of 4/4 at 96 BPM in D major; chords: D, Bm, G, A, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 16,
+      "bpm": 160,
+      "id": "gym",
+      "stems": {
+        "base": {
+          "bpm": 160,
+          "durationSec": 29,
+          "instrumental": true,
+          "key": "A minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 1897064391,
+          "text": "Gym battle-music theme for a gentle HD-2D creature-collecting RPG (a leader with a stake in the fight: tighter, faster, more percussive than a route battle). Fast rock-orchestral rhythm section: double-time drum kit, driving electric bass, staccato strings, taiko accents on every downbeat. This is the BASE layer: drums, bass and rhythm section with the chords, full energy, it must stand alone. Seamless loop: exactly 16 bars of 4/4 at 160 BPM in A minor; chords: section A, bars 1-8: Am, F, G, Am, Am, F, G, E; section B, bars 9-16: Dm, F, G, E, Dm, F, G, E. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 160,
+          "durationSec": 29,
+          "instrumental": true,
+          "key": "A minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2325162004,
+          "text": "Gym battle-music theme for a gentle HD-2D creature-collecting RPG (a leader with a stake in the fight: tighter, faster, more percussive than a route battle). Fast marimba and piano counter-lines, harp arpeggios, woodwind runs answering the lead. This is the COUNTER layer: counter-melody, runs and harmonic colour, no drums, no bass. Seamless loop: exactly 16 bars of 4/4 at 160 BPM in A minor; chords: section A, bars 1-8: Am, F, G, Am, Am, F, G, E; section B, bars 9-16: Dm, F, G, E, Dm, F, G, E. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 160,
+          "durationSec": 29,
+          "instrumental": true,
+          "key": "A minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2146662571,
+          "text": "Gym battle-music theme for a gentle HD-2D creature-collecting RPG (a leader with a stake in the fight: tighter, faster, more percussive than a route battle). Shimmering synth pad and bell accents on the first beat of every bar, quiet under the fight. This is the NIGHT layer: a quiet shimmer of pads and bells over the battle, sparse, no drums. Seamless loop: exactly 16 bars of 4/4 at 160 BPM in A minor; chords: section A, bars 1-8: Am, F, G, Am, Am, F, G, E; section B, bars 9-16: Dm, F, G, E, Dm, F, G, E. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 160,
+          "durationSec": 29,
+          "instrumental": true,
+          "key": "A minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2945541503,
+          "text": "Gym battle-music theme for a gentle HD-2D creature-collecting RPG (a leader with a stake in the fight: tighter, faster, more percussive than a route battle). A fierce lead melody on horns, trumpets and violins with stabbing brass accents and a triumphant climb in section B. This is the LEAD layer: the main melody on brass and strings plus the heaviest percussion accents. Seamless loop: exactly 16 bars of 4/4 at 160 BPM in A minor; chords: section A, bars 1-8: Am, F, G, Am, Am, F, G, E; section B, bars 9-16: Dm, F, G, E, Dm, F, G, E. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 16,
+      "bpm": 96,
+      "id": "marrow",
+      "stems": {
+        "base": {
+          "bpm": 96,
+          "durationSec": 47,
+          "instrumental": true,
+          "key": "F# phrygian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 898643555,
+          "text": "Marrow area theme for a gentle HD-2D creature-collecting RPG (a pit town whose hands remember what its mouths forgot; banded rock, a lit shaft). Bowed double bass and low cellos droning on F# with the G above leaning on it, struck stone slabs marking every beat, earthy and patient. This is the BASE layer: harmony and pulse only, warm low-mid register, it must stand alone and carry the chords. Seamless loop: exactly 16 bars of 4/4 at 96 BPM in F# phrygian; chords: F#m, G, F#m, Em, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 96,
+          "durationSec": 47,
+          "instrumental": true,
+          "key": "F# phrygian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 4236228953,
+          "text": "Marrow area theme for a gentle HD-2D creature-collecting RPG (a pit town whose hands remember what its mouths forgot; banded rock, a lit shaft). A stone percussion ensemble: lithophone melody in F# phrygian, rock clacks, pebble shakers and pick-like strikes, a wooden marimba doubling the tune; dry and rhythmic. This is the BIOME layer: the signature instruments and the melody, bright upper register above the bed, no bass, no drums. Seamless loop: exactly 16 bars of 4/4 at 96 BPM in F# phrygian; chords: F#m, G, F#m, Em, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 96,
+          "durationSec": 47,
+          "instrumental": true,
+          "key": "F# phrygian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3515842241,
+          "text": "Marrow area theme for a gentle HD-2D creature-collecting RPG (a pit town whose hands remember what its mouths forgot; banded rock, a lit shaft). Slow dripping lithophone notes, a deep bowed-bass harmonic, one distant low bell on the first beat of every bar, cavernous and still. This is the NIGHT layer: sparse and quiet, few notes, lots of air, no drums, sits on top of the other layers. Seamless loop: exactly 16 bars of 4/4 at 96 BPM in F# phrygian; chords: F#m, G, F#m, Em, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 96,
+          "durationSec": 47,
+          "instrumental": true,
+          "key": "F# phrygian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3820263473,
+          "text": "Marrow area theme for a gentle HD-2D creature-collecting RPG (a pit town whose hands remember what its mouths forgot; banded rock, a lit shaft). Pounding stone and floor-tom percussion with syncopated pick strikes, a low brass drone on F#; the mine shaking. This is the THREAT layer: rhythm and tension only, percussion and an ostinato on the tonic, no melody, it adds urgency without changing the harmony. Seamless loop: exactly 16 bars of 4/4 at 96 BPM in F# phrygian; chords: F#m, G, F#m, Em, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 8,
+      "bpm": 138,
+      "id": "raid",
+      "stems": {
+        "base": {
+          "bpm": 138,
+          "durationSec": 19.391,
+          "instrumental": true,
+          "key": "F minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2444471756,
+          "text": "Raid battle-music theme for a gentle HD-2D creature-collecting RPG (a swarm, many trainers, one enormous opponent). Massive low percussion and a heavy synth-and-brass bass ostinato, huge and slow-feeling at a fast tempo, the stalk before the fight turns. This is the BASE layer: drums, bass and rhythm section with the chords, full energy, it must stand alone. Seamless loop: exactly 8 bars of 4/4 at 138 BPM in F minor; chords: Fm, Db, Eb, C, Fm, Db, Eb, C, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 138,
+          "durationSec": 19.391,
+          "instrumental": true,
+          "key": "F minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3026501629,
+          "text": "Raid battle-music theme for a gentle HD-2D creature-collecting RPG (a swarm, many trainers, one enormous opponent). Low string swells and synth risers answering the bass, dark colour, no melody. This is the COUNTER layer: counter-melody, runs and harmonic colour, no drums, no bass. Seamless loop: exactly 8 bars of 4/4 at 138 BPM in F minor; chords: Fm, Db, Eb, C, Fm, Db, Eb, C, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 138,
+          "durationSec": 19.391,
+          "instrumental": true,
+          "key": "F minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2219248466,
+          "text": "Raid battle-music theme for a gentle HD-2D creature-collecting RPG (a swarm, many trainers, one enormous opponent). Eerie high pad and a bell toll on the first beat of every bar, quiet. This is the NIGHT layer: a quiet shimmer of pads and bells over the battle, sparse, no drums. Seamless loop: exactly 8 bars of 4/4 at 138 BPM in F minor; chords: Fm, Db, Eb, C, Fm, Db, Eb, C, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 138,
+          "durationSec": 19.391,
+          "instrumental": true,
+          "key": "F minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 1694746740,
+          "text": "Raid battle-music theme for a gentle HD-2D creature-collecting RPG (a swarm, many trainers, one enormous opponent). Full war drums, pounding taiko and snare, brass stabs and a savage horn melody; the phase-one escalation. This is the LEAD layer: the main melody on brass and strings plus the heaviest percussion accents. Seamless loop: exactly 8 bars of 4/4 at 138 BPM in F minor; chords: Fm, Db, Eb, C, Fm, Db, Eb, C, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 8,
+      "bpm": 60,
+      "id": "rift",
+      "stems": {
+        "base": {
+          "bpm": 60,
+          "durationSec": 42,
+          "instrumental": true,
+          "key": "F# open fifth",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 4178264941,
+          "text": "Rift area theme for a gentle HD-2D creature-collecting RPG (the floor of the Held: nothing was ever here to remember). A sub-bass drone on F# with a slow breath in it, one muted low felt-piano note on the first beat of every bar, dark and nearly empty; nothing above 1 kHz. This is the BASE layer: harmony and pulse only, warm low-mid register, it must stand alone and carry the chords. Seamless loop: exactly 8 bars of 4/4 at 60 BPM in F# open fifth; chords: an open fifth F# and C# held throughout, no third. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 60,
+          "durationSec": 42,
+          "instrumental": true,
+          "key": "F# open fifth",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 1939062126,
+          "text": "Rift area theme for a gentle HD-2D creature-collecting RPG (the floor of the Held: nothing was ever here to remember). Almost nothing: distant low bowed double bass notes on F# and C#, a pure low sine tone, one soft low felt-piano note on the first beat of every bar. This is the BIOME layer: the signature instruments and the melody, bright upper register above the bed, no bass, no drums. Seamless loop: exactly 8 bars of 4/4 at 60 BPM in F# open fifth; chords: an open fifth F# and C# held throughout, no third. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 60,
+          "durationSec": 42,
+          "instrumental": true,
+          "key": "F# open fifth",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3249811053,
+          "text": "Rift area theme for a gentle HD-2D creature-collecting RPG (the floor of the Held: nothing was ever here to remember). A faint high sine tone and one far-away glass ping on the first beat of every bar, barely audible. This is the NIGHT layer: sparse and quiet, few notes, lots of air, no drums, sits on top of the other layers. Seamless loop: exactly 8 bars of 4/4 at 60 BPM in F# open fifth; chords: an open fifth F# and C# held throughout, no third. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 60,
+          "durationSec": 42,
+          "instrumental": true,
+          "key": "F# open fifth",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2133412132,
+          "text": "Rift area theme for a gentle HD-2D creature-collecting RPG (the floor of the Held: nothing was ever here to remember). A sub kick heartbeat on every beat, a low piano cluster on F#, a rumbling swell into each bar; the before, at the edge. This is the THREAT layer: rhythm and tension only, percussion and an ostinato on the tonic, no melody, it adds urgency without changing the harmony. Seamless loop: exactly 8 bars of 4/4 at 60 BPM in F# open fifth; chords: an open fifth F# and C# held throughout, no third. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 16,
+      "bpm": 96,
+      "id": "salt",
+      "stems": {
+        "base": {
+          "bpm": 96,
+          "durationSec": 47,
+          "instrumental": true,
+          "key": "E minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 4263345452,
+          "text": "Salt area theme for a gentle HD-2D creature-collecting RPG (a harbour everyone agrees was always there; tides that no longer match the chart). Slow swelling cellos and double basses on the chords with a lilting triplet sway, soft harp arpeggios on every beat, like water moving under boards. This is the BASE layer: harmony and pulse only, warm low-mid register, it must stand alone and carry the chords. Seamless loop: exactly 16 bars of 4/4 at 96 BPM in E minor; chords: Em, C, G, D, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 96,
+          "durationSec": 47,
+          "instrumental": true,
+          "key": "E minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2532759703,
+          "text": "Salt area theme for a gentle HD-2D creature-collecting RPG (a harbour everyone agrees was always there; tides that no longer match the chart). Bowed glass harmonica and bowed vibraphone singing long, bell-like melody tones in E minor, a harp answering each phrase; glassy, cold and beautiful. This is the BIOME layer: the signature instruments and the melody, bright upper register above the bed, no bass, no drums. Seamless loop: exactly 16 bars of 4/4 at 96 BPM in E minor; chords: Em, C, G, D, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 96,
+          "durationSec": 47,
+          "instrumental": true,
+          "key": "E minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3448345597,
+          "text": "Salt area theme for a gentle HD-2D creature-collecting RPG (a harbour everyone agrees was always there; tides that no longer match the chart). Tide-slow bowed glass pads, a single celesta note on the first beat of every bar, a low bowed cymbal shimmer, distant and quiet. This is the NIGHT layer: sparse and quiet, few notes, lots of air, no drums, sits on top of the other layers. Seamless loop: exactly 16 bars of 4/4 at 96 BPM in E minor; chords: Em, C, G, D, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 96,
+          "durationSec": 47,
+          "instrumental": true,
+          "key": "E minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3121859399,
+          "text": "Salt area theme for a gentle HD-2D creature-collecting RPG (a harbour everyone agrees was always there; tides that no longer match the chart). Surging low-string ostinato in triplets, timpani swelling into every downbeat, a bowed-glass cluster held on E; the tide coming in fast. This is the THREAT layer: rhythm and tension only, percussion and an ostinato on the tonic, no melody, it adds urgency without changing the harmony. Seamless loop: exactly 16 bars of 4/4 at 96 BPM in E minor; chords: Em, C, G, D, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 8,
+      "bpm": 60,
+      "id": "shrine",
+      "stems": {
+        "base": {
+          "bpm": 60,
+          "durationSec": 42,
+          "instrumental": true,
+          "key": "E open fifth",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3762678394,
+          "text": "Shrine area theme for a gentle HD-2D creature-collecting RPG (the sky as it was; the first morning and the first night were counted here). A deep sustained drone on E and B from pipe organ and bowed strings, slow breathing swells, a soft temple bell struck on the first beat of every bar. This is the BASE layer: harmony and pulse only, warm low-mid register, it must stand alone and carry the chords. Seamless loop: exactly 8 bars of 4/4 at 60 BPM in E open fifth; chords: an open fifth E and B held throughout, no third. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 60,
+          "durationSec": 42,
+          "instrumental": true,
+          "key": "E open fifth",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 1977692662,
+          "text": "Shrine area theme for a gentle HD-2D creature-collecting RPG (the sky as it was; the first morning and the first night were counted here). Singing bowls and crystal-bell chimes ringing on E and B, a breathy bamboo flute phrase, sacred, timeless and bright. This is the BIOME layer: the signature instruments and the melody, bright upper register above the bed, no bass, no drums. Seamless loop: exactly 8 bars of 4/4 at 60 BPM in E open fifth; chords: an open fifth E and B held throughout, no third. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 60,
+          "durationSec": 42,
+          "instrumental": true,
+          "key": "E open fifth",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3021374053,
+          "text": "Shrine area theme for a gentle HD-2D creature-collecting RPG (the sky as it was; the first morning and the first night were counted here). A high harmonic shimmer, distant singing-bowl strikes on the first beat of every bar, starry and very quiet. This is the NIGHT layer: sparse and quiet, few notes, lots of air, no drums, sits on top of the other layers. Seamless loop: exactly 8 bars of 4/4 at 60 BPM in E open fifth; chords: an open fifth E and B held throughout, no third. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 60,
+          "durationSec": 42,
+          "instrumental": true,
+          "key": "E open fifth",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 89690427,
+          "text": "Shrine area theme for a gentle HD-2D creature-collecting RPG (the sky as it was; the first morning and the first night were counted here). A low timpani heartbeat on every beat, deep gong swells into each bar, the drone thickening; the old sky looking back. This is the THREAT layer: rhythm and tension only, percussion and an ostinato on the tonic, no melody, it adds urgency without changing the harmony. Seamless loop: exactly 8 bars of 4/4 at 60 BPM in E open fifth; chords: an open fifth E and B held throughout, no third. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 16,
+      "bpm": 92,
+      "id": "sky",
+      "stems": {
+        "base": {
+          "bpm": 92,
+          "durationSec": 48.957,
+          "instrumental": true,
+          "key": "A lydian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 1054044095,
+          "text": "Sky area theme for a gentle HD-2D creature-collecting RPG (three centuries of star-charts, each with fewer stars; thin air, a glacier). A warm string orchestra sustaining the chords over open-fifth cellos and basses, soft timpani on beat 1 of every bar, broad and airy. This is the BASE layer: harmony and pulse only, warm low-mid register, it must stand alone and carry the chords. Seamless loop: exactly 16 bars of 4/4 at 92 BPM in A lydian; chords: A, B, C#m, A, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 92,
+          "durationSec": 48.957,
+          "instrumental": true,
+          "key": "A lydian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2608902381,
+          "text": "Sky area theme for a gentle HD-2D creature-collecting RPG (three centuries of star-charts, each with fewer stars; thin air, a glacier). A soaring violin melody over high tremolo strings, answered by an airy wooden flute and panpipes, lydian brightness, wind-borne and high. This is the BIOME layer: the signature instruments and the melody, bright upper register above the bed, no bass, no drums. Seamless loop: exactly 16 bars of 4/4 at 92 BPM in A lydian; chords: A, B, C#m, A, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 92,
+          "durationSec": 48.957,
+          "instrumental": true,
+          "key": "A lydian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 582805583,
+          "text": "Sky area theme for a gentle HD-2D creature-collecting RPG (three centuries of star-charts, each with fewer stars; thin air, a glacier). Star-glint harp harmonics and high string harmonics, a soft glockenspiel note on the first beat of every bar, vast and sparse. This is the NIGHT layer: sparse and quiet, few notes, lots of air, no drums, sits on top of the other layers. Seamless loop: exactly 16 bars of 4/4 at 92 BPM in A lydian; chords: A, B, C#m, A, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 92,
+          "durationSec": 48.957,
+          "instrumental": true,
+          "key": "A lydian",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 901623536,
+          "text": "Sky area theme for a gentle HD-2D creature-collecting RPG (three centuries of star-charts, each with fewer stars; thin air, a glacier). Driving low-string spiccato ostinato, pounding timpani, horns rising in fifths on A; a dragon's shadow crossing the peak. This is the THREAT layer: rhythm and tension only, percussion and an ostinato on the tonic, no melody, it adds urgency without changing the harmony. Seamless loop: exactly 16 bars of 4/4 at 92 BPM in A lydian; chords: A, B, C#m, A, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 16,
+      "bpm": 128,
+      "id": "storm",
+      "stems": {
+        "base": {
+          "bpm": 128,
+          "durationSec": 35.75,
+          "instrumental": true,
+          "key": "B minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3967473907,
+          "text": "Storm area theme for a gentle HD-2D creature-collecting RPG (the grid, three live pylon lines, the hum of a switching hall). Pulsing analog synth bass in eighth notes, warm sidechained pads on the chords, a soft four-on-the-floor kick, clean and electric. This is the BASE layer: harmony and pulse only, warm low-mid register, it must stand alone and carry the chords. Seamless loop: exactly 16 bars of 4/4 at 128 BPM in B minor; chords: Bm, G, D, A, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 128,
+          "durationSec": 35.75,
+          "instrumental": true,
+          "key": "B minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2099273790,
+          "text": "Storm area theme for a gentle HD-2D creature-collecting RPG (the grid, three live pylon lines, the hum of a switching hall). Bright analog synth arpeggios in sixteenth notes across B minor, a gliding portamento lead melody, crisp electric sparkle; retro-futurist and precise. This is the BIOME layer: the signature instruments and the melody, bright upper register above the bed, no bass, no drums. Seamless loop: exactly 16 bars of 4/4 at 128 BPM in B minor; chords: Bm, G, D, A, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 128,
+          "durationSec": 35.75,
+          "instrumental": true,
+          "key": "B minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 381414366,
+          "text": "Storm area theme for a gentle HD-2D creature-collecting RPG (the grid, three live pylon lines, the hum of a switching hall). A slow filtered arpeggio, a detuned bell synth on the first beat of every bar, a soft sub pad on B, the feeling of a line humming at night. This is the NIGHT layer: sparse and quiet, few notes, lots of air, no drums, sits on top of the other layers. Seamless loop: exactly 16 bars of 4/4 at 128 BPM in B minor; chords: Bm, G, D, A, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 128,
+          "durationSec": 35.75,
+          "instrumental": true,
+          "key": "B minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 528223174,
+          "text": "Storm area theme for a gentle HD-2D creature-collecting RPG (the grid, three live pylon lines, the hum of a switching hall). Gated snares, tom rolls, an aggressive saw-wave ostinato on B with sidechain pumping, rising noise sweeps; voltage building. This is the THREAT layer: rhythm and tension only, percussion and an ostinato on the tonic, no melody, it adds urgency without changing the harmony. Seamless loop: exactly 16 bars of 4/4 at 128 BPM in B minor; chords: Bm, G, D, A, repeated four times, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 8,
+      "bpm": 66,
+      "id": "vesper",
+      "stems": {
+        "base": {
+          "bpm": 66,
+          "durationSec": 38.364,
+          "instrumental": true,
+          "key": "F# minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2672461186,
+          "text": "Vesper area theme for a gentle HD-2D creature-collecting RPG (memory is loose here; lanterns, a cliff, graves with nothing buried). Harmonium and muted low strings sustaining the chords, a soft felt bass drum on the first beat of every bar, slow and candlelit. This is the BASE layer: harmony and pulse only, warm low-mid register, it must stand alone and carry the chords. Seamless loop: exactly 8 bars of 4/4 at 66 BPM in F# minor; chords: F#m, D, A, E, F#m, D, Bm, C#, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 66,
+          "durationSec": 38.364,
+          "instrumental": true,
+          "key": "F# minor",
+          "negative": "lyrics, words, solo singer, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, distortion, clipping, lo-fi hiss, vinyl crackle",
+          "seed": 2662541713,
+          "text": "Vesper area theme for a gentle HD-2D creature-collecting RPG (memory is loose here; lanterns, a cliff, graves with nothing buried). A soft wordless choir singing only \"ooh\" and \"aah\" and a slightly detuned music box carrying a lullaby-like melody in F# minor; tender and uncanny. This is the BIOME layer: the signature instruments and the melody, bright upper register above the bed, no bass, no drums. Seamless loop: exactly 8 bars of 4/4 at 66 BPM in F# minor; chords: F#m, D, A, E, F#m, D, Bm, C#, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 66,
+          "durationSec": 38.364,
+          "instrumental": true,
+          "key": "F# minor",
+          "negative": "lyrics, words, solo singer, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, distortion, clipping, lo-fi hiss, vinyl crackle",
+          "seed": 789050074,
+          "text": "Vesper area theme for a gentle HD-2D creature-collecting RPG (memory is loose here; lanterns, a cliff, graves with nothing buried). Celesta and music box only: one soft music-box note on the first beat of every bar and a few after it, a reversed choir swell into every other downbeat, almost not there. This is the NIGHT layer: sparse and quiet, few notes, lots of air, no drums, sits on top of the other layers. Seamless loop: exactly 8 bars of 4/4 at 66 BPM in F# minor; chords: F#m, D, A, E, F#m, D, Bm, C#, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 66,
+          "durationSec": 38.364,
+          "instrumental": true,
+          "key": "F# minor",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 4082473658,
+          "text": "Vesper area theme for a gentle HD-2D creature-collecting RPG (memory is loose here; lanterns, a cliff, graves with nothing buried). A slow tolling low piano cluster on F#, heartbeat timpani, dissonant string glissandi that always return to F#; something standing behind you. This is the THREAT layer: rhythm and tension only, percussion and an ostinato on the tonic, no melody, it adds urgency without changing the harmony. Seamless loop: exactly 8 bars of 4/4 at 66 BPM in F# minor; chords: F#m, D, A, E, F#m, D, Bm, C#, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    },
+    {
+      "bars": 8,
+      "bpm": 120,
+      "id": "victory",
+      "stems": {
+        "base": {
+          "bpm": 120,
+          "durationSec": 22,
+          "instrumental": true,
+          "key": "D major",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3387117701,
+          "text": "Victory battle-music theme for a gentle HD-2D creature-collecting RPG (relief and warmth: every fight resolves into the home key of Mirevale). A bright, bouncy rhythm section with brushed kit, pizzicato strings and warm bass, celebratory but gentle, easy to loop under a results panel. This is the BASE layer: drums, bass and rhythm section with the chords, full energy, it must stand alone. Seamless loop: exactly 8 bars of 4/4 at 120 BPM in D major; chords: D, G, A, D, Bm, G, A, D, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "biome": {
+          "bpm": 120,
+          "durationSec": 22,
+          "instrumental": true,
+          "key": "D major",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 3926409267,
+          "text": "Victory battle-music theme for a gentle HD-2D creature-collecting RPG (relief and warmth: every fight resolves into the home key of Mirevale). A cheerful wooden flute and glockenspiel melody in D major, a callback to the home theme. This is the COUNTER layer: counter-melody, runs and harmonic colour, no drums, no bass. Seamless loop: exactly 8 bars of 4/4 at 120 BPM in D major; chords: D, G, A, D, Bm, G, A, D, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "night": {
+          "bpm": 120,
+          "durationSec": 22,
+          "instrumental": true,
+          "key": "D major",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 1858668202,
+          "text": "Victory battle-music theme for a gentle HD-2D creature-collecting RPG (relief and warmth: every fight resolves into the home key of Mirevale). Soft music-box and harp notes, a chime on the first beat of every bar. This is the NIGHT layer: a quiet shimmer of pads and bells over the battle, sparse, no drums. Seamless loop: exactly 8 bars of 4/4 at 120 BPM in D major; chords: D, G, A, D, Bm, G, A, D, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        },
+        "threat": {
+          "bpm": 120,
+          "durationSec": 22,
+          "instrumental": true,
+          "key": "D major",
+          "negative": "vocals, singing, lyrics, spoken words, rap, crowd noise, applause, fade-in, fade-out, ending, long silence, tempo change, key change, modulation, distortion, clipping, lo-fi hiss, vinyl crackle, radio static",
+          "seed": 2705299525,
+          "text": "Victory battle-music theme for a gentle HD-2D creature-collecting RPG (relief and warmth: every fight resolves into the home key of Mirevale). A proud brass fanfare figure doubled by trumpets and horns, heard on major victories. This is the LEAD layer: the main melody on brass and strings plus the heaviest percussion accents. Seamless loop: exactly 8 bars of 4/4 at 120 BPM in D major; chords: D, G, A, D, Bm, G, A, D, one chord per bar. Constant energy from the first beat to the last, the final bar leads straight back into the first; no intro, no ending, no fade."
+        }
+      },
+      "timeSig": 4
+    }
+  ],
+  "version": 1,
+  "zoneThemes": {
+    "ascent_route": "sky",
+    "ash_route": "cinder",
+    "celestial_spire": "shrine",
+    "cinderhold": "cinder",
+    "deepcut_route": "marrow",
+    "eclipse_shrine": "shrine",
+    "forgewall": "forge",
+    "galvan_route": "storm",
+    "hollow_route": "vesper",
+    "marrowdig": "marrow",
+    "mire_route": "grove",
+    "mirevale": "grove",
+    "saltmourn": "salt",
+    "siege_route": "forge",
+    "skyrend": "sky",
+    "solenne": "capital",
+    "stormrook": "storm",
+    "the_rift": "rift",
+    "tide_route": "salt",
+    "umbral_observatory": "vesper",
+    "vesperveil": "vesper"
+  }
+}
