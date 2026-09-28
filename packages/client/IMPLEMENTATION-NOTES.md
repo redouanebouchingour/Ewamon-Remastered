@@ -430,3 +430,59 @@ lower bound, and two pages at once ran at ~4 fps.
 **Blockers for the two-player slice**: none on the client. Performance on this machine is far below 60 fps
 (GPU-bound; render bugs 5 and the shared iGPU), and the far battler's bar still depends on the client framing until
 render clamps anchored bars (bug 4).
+
+---
+
+# Part 3 — the Act I slice loop (SPEC §50.5 M2: "Act I opening plays from STORY with the starter beat", "one clears Grove-Keeper Mira")
+
+**Dialogue and beats (§20.4.7, §30.4.8 mirrored)** — `scene/dialogue.ts` gains pure interact plans used by
+`World3D.activate`:
+- **D17 — a beat with a battle, and a gym leader's challenge, send their `interact` on the last page.** A trainer's
+  interact starts the battle at once (B11), so Sable's `mire_rival` lines — opened by `E` on him or on the story
+  trainer beside him (rule 6) — were covered by the battle within a frame. `DialogueUi.onFinish` runs when the player
+  pages past the last line (not on Escape = walk away, nothing sent); the beat's `storyBeat start` that follows is
+  recognised (`readBeat`) and not reopened. Beats without a battle (Wynn's starter beat, `grove_stone`,
+  `bloom_after`) still open and send together, as the spec reads.
+- **D18 — the gym door.** `gymPlan` runs Mira's beats first exactly like the server (speaker = league id), then her
+  `pre` lines (challenge on finish) when the server will let the player fight; a refusal the client can predict
+  (badge held, the story gate, the previous badge) is sent at once for the server's toast. A won league battle opens
+  the leader's `post` lines (the concession line is `post[1]`) once the result card is dismissed. The gym prompt
+  names the leader ("Challenge Mira Thornwell"); dialogue speakers are "Mira Thornwell, Grove-Keeper of Mirevale".
+- **D19 — the HUD hint follows the story.** `questHint` shows the beat the player can play next ("Talk to Prof.
+  Wynn (Mirevale)", "Talk to Sable (Mire Route)", "Talk to Mira Thornwell (Mirevale)") before the active quest's
+  objective, and "Challenge Mira Thornwell (Mirevale)" when no beat and no quest is left — a fresh account has no
+  started quest, so the Act I opening had no pointer at all. Deviation from §20.6's "from the active quest" wording.
+- **D20 — post-battle prompts from every turn.** `BattleController` collected evolve / learn-move prompts from the
+  final turn's events only; in a trainer / league battle the level-up of the first KO happens turns earlier and its
+  prompt was lost. Prompts are now gathered on every `battleEvents` for the player's own seat (the foe's are not
+  theirs), deduplicated (core repeats `evolveReady` on every exp gain past the level), and shown after the result
+  card — and after the beat's `after` / the leader's `post` lines (`PostBattlePrompts` waits for the dialogue).
+- **D21 — the server's own toast is not doubled.** A league refusal is `toast` + `error { leagueLocked }`; the router
+  no longer adds "That is not allowed right now. (leagueLocked)" under the explanation.
+
+**Server findings of part 2, now fixed server-side (server Part 4 S14 / S15)**: `challengeResult.reason`
+(`{ code, playerId }`) → `challengeResultText` says whose party / state stopped the battle ("Your party needs
+healing before a battle." vs "The other trainer's party needs healing first."); `inventoryDelta.placement` is honoured
+by `applyInventoryDelta` (the M3 trade inference stays only for a delta without it).
+
+**Tests**: `dialogue-flow.test.tsx` (plans for Wynn / Sable / the story trainer / a plain trainer / the gym door in
+each state, the story hint along the chain, DialogueBox `onFinish` on the last page only and not on Escape,
+PostBattlePrompts waiting for the after-battle lines, the 5th-move forget flow), `battle-controller.test.ts`
+(mid-battle learn-move + deduplicated evolve, foe prompts ignored), `session-part2.test.ts` (placement both ways,
+challenge reasons, one toast for a league refusal); `collider.test.ts`'s control case now asserts render's fixed
+`resolveMoveInto` (render Part 4 H9) never overshoots the step.
+
+**Verified live (part 3)** — server + client build (`vite preview`), headless Chrome (WebGPU), fresh accounts; the
+story account's party was levelled by a headless SDK player through the server's normal paths (zone/enter, 20 Hz
+inputs, handover, engageSpawn, battleAction, `/heal`). Fresh spawn in Mirevale with "Talk to Prof. Wynn
+(Mirevale)"; `E` at Wynn → `first_witness` lines from content in the DialogueBox, `met_wynn` + done flag via
+`progressionDelta`, hint → Sable; the gym door before `grove_stone` → one toast "Mira Thornwell is not taking
+challengers yet."; a wild win crossing L15 → "Cindercap wants to learn Fire Fang. Choose a move to forget" → forget
+Growl → learned; Sable: lines, then the battle on the last page (lost twice to the Flash-Fire Coalette with fire
+moves — the beat stayed open — then won with Tackle), his `after` lines; the door → `grove_stone`; Mira's `pre` lines
+→ the league battle (her content team) → "Badge earned, +800 money" → her `post` lines → "Cindercap is ready to
+evolve into Pyrecap" → evolved; `bloom_after`; "You already hold this badge."; harvest level 0 (intact) throughout.
+Loss path (L9 grass starter): Mira's lines, defeat, no badge / money, party fainted. PvP start with the challenger's
+party fainted: the accepter's toast "The other trainer's party needs healing first.", the challenger received
+`reason { noUsableParty, playerId: <challenger> }`. A catch's delta carried `placement: party`; a traded Snapling
+landed in the box (session store and the Box screen), the party unchanged.

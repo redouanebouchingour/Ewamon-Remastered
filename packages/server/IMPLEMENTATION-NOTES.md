@@ -515,3 +515,38 @@ while connected), A23 (second party member, so only the battle can refuse it), A
 `met_wynn` the same interact fires `mire_rival`); `movement.test.ts` lava in cinderhold / ash_route;
 `spawn-director.test.ts` a water-only table in ash_route places nothing. Each was checked against a mutant (fix
 removed → the test fails).
+
+---
+
+# Part 4 — the Act I slice loop (SPEC §50.5 M2: "Act I opening plays from STORY", "one clears Grove-Keeper Mira")
+
+- **S13 — the gym's story gate (story-bible §6.1 / §5.4 / §11.1).** The bible says content gates the `verdant_gym`
+  interaction on `saw_thinning` (set by `grove_stone`, the gym's own pre-fight beat) so Mira's stone scene precedes
+  the fight; neither content nor `leagueRefusal` carried it, so a fresh account could fight (and badge) Mira before
+  meeting Wynn or Sable. Content now exports `LEAGUE_STORY_GATES` (`{ verdant_gym: 'saw_thinning' }`, only the gate
+  the bible names; `validate.ts` checks each flag is set by a beat that league id speaks in its town) and
+  `leagueStoryGate(id)`; `ZoneRoom.leagueRefusal` refuses with the toast "Mira Thornwell is not taking challengers
+  yet." + `error { notAllowed, 'leagueLocked' }`. Beats still run first (§30.4.8 step 1), so the chain is
+  wynn → sable (beat battle) → the gym door plays `grove_stone` → the next interact is the league battle →
+  `bloom_after` after the badge. "You already hold this badge." is checked before the gate (a badge holder is never
+  told the gym is closed).
+- **S14 — a failed pvp start tells both players, naming the side (client part 2 finding 1).** `startPvp` failures
+  carry the `playerId` whose party / battle stopped them; `onChallengeReply` sends
+  `challengeResult { result: 'unavailable', reason: { code: 'noUsableParty' | 'inBattle', playerId } }` to the
+  accepter **and** the challenger. The step-3 re-check (§30.4.5: accepter only, spec kept) now also carries a
+  reason (`expired`, `left`, `inBattle`, `trading`, `tooFar` — `tooFar` names the challenger). `reason` is an
+  optional protocol field (older clients ignore it).
+- **S15 — `inventoryDelta.placement` (client part 2 finding 2).** Optional, additive
+  `placement: Record<creatureId, 'party' | 'box'>` on the wire message (and so on `InventoryDeltaBody`): a battle
+  catch and a raid catch report the slot they were inserted in, a trade and marketplace buy-now / cancel report
+  `box` (persist moves those into the box). A delta without it is placed by the client's old catch rule.
+
+Tests: `story-beats.test.ts` (new, §50.4.5 M2 row): the chain end to end through the room (wynn → gym refused
+before its beat, nothing written → `sable_mire` via the story trainer, its content team, won: flags + 300 money,
+then a plain NPC → `grove_stone` at the door → the league battle with Mira's `LEAGUE` team verbatim, won: badge via
+`progressionDelta`, `badges` row, reward, gymWin → `bloom_after` → "already hold this badge", nothing written);
+forged gym interacts (out of range / another town's gym / unknown id) write nothing; the loss path (no badge, no
+money, flags unchanged, the fight offered again after `POST /heal`). `challenge-trade.test.ts`: a pvp start refused
+for a fainted party reaches both players with `reason.playerId` = the fainted side (accepter and challenger cases),
+nothing persisted; the expired accept carries `reason.code 'expired'`; the trade delta's `placement` is `box`.
+`battle-room.test.ts` (catch → `placement party`), `market-routes.test.ts` (buy-now → `placement box`).

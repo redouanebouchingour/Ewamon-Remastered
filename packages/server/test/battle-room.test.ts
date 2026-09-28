@@ -189,7 +189,11 @@ describe('wild battles', () => {
     expect(orbs).toHaveLength(0);
     const inv = msgsOf(host, pid).find((m) => m.type === 'inventoryDelta');
     expect(inv).toMatchObject({ items: { aether_orb: 0 } });
-    if (inv?.type === 'inventoryDelta') expect(inv.creaturesAdded.map((x) => x.speciesId)).toEqual(['mossling']);
+    if (inv?.type === 'inventoryDelta') {
+      expect(inv.creaturesAdded.map((x) => x.speciesId)).toEqual(['mossling']);
+      // server finding (b): the delta says where the catch went (party slot 1 here)
+      expect(inv.placement).toEqual({ [inv.creaturesAdded[0]!.id]: 'party' });
+    }
     const dex = await rawQuery(db, "select caught_at from dex_entries where player_id = $1 and species_id = 'mossling'", [pid]);
     expect(dex[0]!['caught_at']).not.toBeNull();
   }, 120_000);

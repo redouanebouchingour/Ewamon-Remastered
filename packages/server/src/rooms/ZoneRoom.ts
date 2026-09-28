@@ -6,12 +6,12 @@
 import { Room, ServerError } from '@colyseus/core';
 import type { AuthContext, Client } from '@colyseus/core';
 import { StateView } from '@colyseus/schema';
-import { badgeFlag, encounterTableFor, getHeightfield, isWalkable, isWater, league as leagueById, nearestWalkable, playableBounds, zone as zoneById } from '@ewa/content';
+import { badgeFlag, encounterTableFor, getHeightfield, isWalkable, isWater, league as leagueById, leagueStoryGate, nearestWalkable, playableBounds, zone as zoneById } from '@ewa/content';
 import type { BadgeId, Heightfield, LinkDir, RaidHotspot, ZoneDef, ZoneId } from '@ewa/content';
 import { createRng } from '@ewa/core';
 import type { Rng } from '@ewa/core';
 import { BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, PlayerState, RaidState, SpawnState, ZoneState } from '@ewa/protocol';
-import type { ClientMessageType, ClientPayload, ServerMessage } from '@ewa/protocol';
+import type { ChallengeFailReason, ClientMessageType, ClientPayload, ServerMessage } from '@ewa/protocol';
 import type { RoomDeps } from '../deps';
 import { censor, sanitizeChat } from '../chat/filter';
 import { LOG_EVERY_MS, createRoomMetrics, recordTick, roomLogLine, rollRoomMetrics } from '../metrics';
@@ -918,9 +918,16 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     }
   }
 
-  /** §30.4.4 league order rules; null = may challenge. Already beaten → refused (no rematch in v1). */
+  /**
+   * §30.4.4 league order rules; null = may challenge. Already beaten → refused (no rematch in v1). Plus the story
+   * gate content carries (story-bible §6.1: `verdant_gym` needs `saw_thinning`, so the gym's pre-fight beat
+   * `grove_stone` plays before the fight — IMPLEMENTATION-NOTES S13).
+   */
   private leagueRefusal(ud: ZoneUserData, leagueId: string): string | null {
     const lt = leagueById(leagueId);
+    const gate = leagueStoryGate(lt.id);
+    if (lt.stage === 'gym' && lt.badge !== null && ud.badges.includes(lt.badge)) return 'You already hold this badge.';
+    if (gate !== null && !ud.flags.has(gate)) return `${lt.name} is not taking challengers yet.`;
     if (lt.stage === 'gym') {
       if (lt.badge !== null && ud.badges.includes(lt.badge)) return 'You already hold this badge.';
       if (lt.order > 1) {
@@ -1247,16 +1254,27 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
    */
   private challengeable(fromId: string, toId: string, ignoreTrades = false): boolean {
     if (fromId === toId) return false;
+    return this.challengeBlocker(fromId, toId, ignoreTrades) === null;
+  }
+
+  /**
+   * The step-1 condition that fails first, naming the side it belongs to (`challengeResult.reason`, additive), or
+   * null when both may battle. `tooFar` is mutual; it names the challenger (the one who has to walk back).
+   */
+  private challengeBlocker(fromId: string, toId: string, ignoreTrades = false): ChallengeFailReason | null {
     const a = this.state.players.get(fromId);
     const b = this.state.players.get(toId);
     const ca = this.clientOf(fromId);
     const cb = this.clientOf(toId);
-    if (a === undefined || b === undefined || ca?.userData === undefined || cb?.userData === undefined) return false;
-    if (a.inBattle || b.inBattle || ca.userData.battleId !== null || cb.userData.battleId !== null) return false;
-    if (!ignoreTrades && (ca.userData.tradeId !== null || cb.userData.tradeId !== null)) return false;
+    if (a === undefined || ca?.userData === undefined) return { code: 'left', playerId: fromId };
+    if (b === undefined || cb?.userData === undefined) return { code: 'left', playerId: toId };
+    if (a.inBattle || ca.userData.battleId !== null) return { code: 'inBattle', playerId: fromId };
+    if (b.inBattle || cb.userData.battleId !== null) return { code: 'inBattle', playerId: toId };
+    if (!ignoreTrades && ca.userData.tradeId !== null) return { code: 'trading', playerId: fromId };
+    if (!ignoreTrades && cb.userData.tradeId !== null) return { code: 'trading', playerId: toId };
     const cell = ca.userData.cell ?? cellOf(a.x, a.z);
-    if (!this.aoi.isNear(cell, toId)) return false;
-    return Math.hypot(a.x - b.x, a.z - b.z) <= CHALLENGE_RANGE_M;
+    if (!this.aoi.isNear(cell, toId) || Math.hypot(a.x - b.x, a.z - b.z) > CHALLENGE_RANGE_M) return { code: 'tooFar', playerId: fromId };
+    return null;
   }
 
   private onChallenge(client: ZoneClient, m: ClientPayload<'challenge'>): void {
@@ -1279,9 +1297,11 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       if (consumed) this.sendTo(m.fromId, { type: 'challengeResult', targetId: me, result: 'declined' });
       return;
     }
-    // step 3: re-check every condition of step 1 against current state
-    if (!consumed || !this.challengeable(m.fromId, me)) {
-      this.sendMsg(client, { type: 'challengeResult', targetId: m.fromId, result: 'unavailable' });
+    // step 3: re-check every condition of step 1 against current state — the accepter alone is told (spec), now
+    // with the reason and the side it belongs to
+    const blocker: ChallengeFailReason | null = !consumed ? { code: 'expired', playerId: m.fromId } : m.fromId === me ? { code: 'left', playerId: me } : this.challengeBlocker(m.fromId, me);
+    if (blocker !== null) {
+      this.sendMsg(client, { type: 'challengeResult', targetId: m.fromId, result: 'unavailable', reason: blocker });
       return;
     }
     const challenger = this.clientOf(m.fromId)!;
@@ -1292,7 +1312,13 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       { playerId: me, sessionId: client.sessionId },
       { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 },
     );
-    if (!res.ok) this.sendMsg(client, { type: 'challengeResult', targetId: m.fromId, result: 'unavailable' });
+    if (!res.ok) {
+      // both players are told, with whose party / state stopped it (server finding: only the accepter was, and the
+      // message could not say it was the accepter's own fainted party)
+      const reason: ChallengeFailReason = { code: res.detail === 'noUsableParty' ? 'noUsableParty' : 'inBattle', playerId: res.playerId ?? me };
+      this.sendMsg(client, { type: 'challengeResult', targetId: m.fromId, result: 'unavailable', reason });
+      this.sendTo(m.fromId, { type: 'challengeResult', targetId: me, result: 'unavailable', reason });
+    }
   }
 
   // ─── handover (§30.2.7) ─────────────────────────────────────────────────────

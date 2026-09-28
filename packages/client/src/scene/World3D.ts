@@ -16,7 +16,7 @@
  */
 import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
-import { BODIES, LEAGUE, QUESTS, harvestStateFor, zone as zoneDef } from '@ewa/content';
+import { BODIES, QUESTS, harvestStateFor, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
@@ -44,7 +44,8 @@ import { useSettingsStore } from '../state/settings';
 import { useUiStore } from '../state/ui';
 import { FONT, TYPE_COLORS } from '../ui/tokens';
 import { createStepCollider } from './collider';
-import { beatDialogue, npcDialogue, storyFlagSet } from './dialogue';
+import { beatDialogue, gymPlan, leaguePostDialogue, leagueSpeaker, npcPlan, storyFlagSet, storyHint, trainerPlan } from './dialogue';
+import type { DialogueLines, InteractPlan } from './dialogue';
 import { HudWriter, partyStrip } from './HudWriter';
 import type { HudNameplates } from './HudWriter';
 import { createInputCapture } from './input';
@@ -88,17 +89,24 @@ function devBuild(): boolean {
 
 const nextFrame = (): Promise<void> => new Promise((r) => requestAnimationFrame(() => r()));
 
-/** The quest hint: the first started, unfinished quest's first undone objective label (≤ 60 chars in the writer). */
+/**
+ * The HUD hint line (≤ 60 chars in the writer): the story beat the player can play next ("Talk to Prof. Wynn
+ * (Mirevale)") — the Act I opening has no started quest to point at — else the first started, unfinished quest's
+ * first undone objective label, else the next gym badge.
+ */
 function questHint(): string | null {
   const p = useSessionStore.getState().progression;
   if (p === null) return null;
+  const flags = storyFlagSet(p.flags, p.badges as readonly BadgeId[]);
+  const story = storyHint(flags, []);
+  if (story !== null && story.startsWith('Talk to')) return story;
   for (const q of QUESTS) {
     const prog = p.quests[q.id];
     if (prog === undefined || p.questsClaimed.includes(q.id)) continue;
     const undone = q.objectives.find((o) => !(prog[o.id]?.done ?? false));
     if (undone !== undefined) return undone.label;
   }
-  return null;
+  return storyHint(flags, p.badges as readonly BadgeId[]);
 }
 
 class World implements World3D {
@@ -141,6 +149,8 @@ class World implements World3D {
   private readonly selfTmp = { x: 0, z: 0 };
   private spectatorArenas = new Map<string, { x: number; z: number }>();
   private zone: ZoneDef | null = null;
+  /** the beat whose lines the player already read before its interact was sent (its `storyBeat start` is no news) */
+  private readBeat: string | null = null;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.audio = createAudioDirector();
@@ -612,9 +622,16 @@ class World implements World3D {
         for (const s of m.state.sides) for (const b of s.party) this.ensureSpecies(b.creature.speciesId);
         this.battle.onBattleResync(m);
         return;
-      case 'battleEnd':
+      case 'battleEnd': {
+        // a won gym battle: the leader's `post` lines once the result card is dismissed (then the evolve / learn prompts)
+        const b = useUiStore.getState().battle;
+        if (b !== null && b.battleId === m.battleId && b.format === 'league' && 'winner' in m.outcome && m.outcome.winner === b.seat) {
+          const post = leaguePostDialogue(b.authoritative.sides[b.seat === 0 ? 1 : 0].trainerId);
+          if (post !== null) this.showAfterBattle(post, `league:${m.battleId}:post`);
+        }
         this.battle.onBattleEnd(m);
         return;
+      }
       case 'chat':
         if (useSettingsStore.getState().social.showChat) this.hudWriter.pushChat(m.name, m.text);
         return;
@@ -623,26 +640,18 @@ class World implements World3D {
         const open = ui.dialogue;
         const lines = beatDialogue(m.beatId, m.phase, (id) => this.speakerName(id));
         if (m.phase === 'start') {
-          // the client already shows the beat it predicted; an unpredicted start replaces the dialogue
+          // the client already shows (or has shown, before sending the interact) the beat it predicted; an
+          // unpredicted start replaces the dialogue
+          if (this.readBeat === m.beatId) {
+            this.readBeat = null;
+            return;
+          }
           if (open !== null && open.targetId === `beat:${m.beatId}`) return;
           if (open !== null && lines !== null && open.lines === lines.lines) return;
           if (lines !== null && ui.battle === null) ui.setDialogue({ speaker: lines.speaker, lines: lines.lines, index: 0, targetId: `beat:${m.beatId}` });
           return;
         }
-        if (lines !== null) {
-          const show = (): void => useUiStore.getState().setDialogue({ speaker: lines.speaker, lines: lines.lines, index: 0, targetId: `beat:${m.beatId}:after` });
-          if (ui.battle === null) show();
-          else {
-            const off = useUiStore.subscribe(
-              (s) => s.battle === null,
-              (done) => {
-                if (!done) return;
-                off();
-                show();
-              },
-            );
-          }
-        }
+        if (lines !== null) this.showAfterBattle(lines, `beat:${m.beatId}:after`);
         return;
       }
       case 'raidEvents':
@@ -655,9 +664,49 @@ class World implements World3D {
   private speakerName(id: string): string {
     const npc = this.zone?.npcs.find((n) => n.id === id);
     if (npc !== undefined) return npc.name;
-    const leader = LEAGUE.find((l) => l.id === id);
-    if (leader !== undefined) return `${leader.title} ${leader.name}`;
-    return id.replace(/_/g, ' ');
+    return leagueSpeaker(id);
+  }
+
+  /** Opens `d` now, or — during a battle — once the result card is dismissed (the post-battle prompts wait for it). */
+  private showAfterBattle(d: DialogueLines, targetId: string): void {
+    const show = (): void => useUiStore.getState().setDialogue({ speaker: d.speaker, lines: d.lines, index: 0, targetId });
+    if (useUiStore.getState().battle === null) {
+      show();
+      return;
+    }
+    const off = useUiStore.subscribe(
+      (s) => s.battle === null,
+      (done) => {
+        if (!done) return;
+        off();
+        show();
+      },
+    );
+  }
+
+  /**
+   * Runs an interact plan: the lines open now; the interact is sent now or, for a beat battle / a gym challenge, when
+   * the player pages past the last line (Escape = walk away: nothing is sent).
+   */
+  private runPlan(plan: InteractPlan, targetId: string, send: () => void): void {
+    const d = plan.dialogue;
+    if (d === null) {
+      send();
+      return;
+    }
+    const target = d.beatId !== null ? `beat:${d.beatId}` : targetId;
+    if (!plan.sendOnFinish) {
+      useUiStore.getState().setDialogue({ speaker: d.speaker, lines: d.lines, index: 0, targetId: target });
+      send();
+      return;
+    }
+    useUiStore.getState().setDialogue({
+      speaker: d.speaker, lines: d.lines, index: 0, targetId: target,
+      onFinish: () => {
+        this.readBeat = d.beatId;
+        send();
+      },
+    });
   }
 
   // ---- interaction (called from DOM keydown, never from the tick) ------------------------------------------------
@@ -671,20 +720,22 @@ class World implements World3D {
       case 'npc': {
         const npc = z.npcs.find((n) => n.id === t.id);
         if (npc === undefined) return;
-        const d = npcDialogue(z.id, npc, this.flags());
-        ui.setDialogue({ speaker: d.speaker, lines: d.lines, index: 0, targetId: d.beatId !== null ? `beat:${d.beatId}` : npc.id });
-        this.ws.send('interact', { targetId: npc.id, kind: 'npc' });
+        this.runPlan(npcPlan(z.id, npc, this.flags()), npc.id, () => this.ws.send('interact', { targetId: npc.id, kind: 'npc' }));
         return;
       }
       case 'trainer': {
+        const plan = trainerPlan(z.id, t.id, this.flags());
         const tr = z.trainers.find((x) => x.id === t.id);
-        if (tr !== undefined && tr.lines.length > 0) toast('info', `${tr.name}: ${tr.lines[0]}`);
-        this.ws.send('interact', { targetId: t.id, kind: 'npc' });
+        if (plan.dialogue === null && tr !== undefined && tr.lines.length > 0) toast('info', `${tr.name}: ${tr.lines[0]}`);
+        this.runPlan(plan, t.id, () => this.ws.send('interact', { targetId: t.id, kind: 'npc' }));
         return;
       }
-      case 'gym':
-        this.ws.send('interact', { targetId: t.id, kind: 'gym' });
+      case 'gym': {
+        const p = useSessionStore.getState().progression;
+        const plan = gymPlan(z.id, t.id, this.flags(), (p?.badges ?? []) as readonly BadgeId[]);
+        this.runPlan(plan, t.id, () => this.ws.send('interact', { targetId: t.id, kind: 'gym' }));
         return;
+      }
       case 'item':
         this.ws.send('interact', { targetId: t.id, kind: 'item' });
         return;

@@ -117,6 +117,39 @@ describe('BattleController', () => {
     expect(useUiStore.getState().battle?.authoritative).toBe(res.state);
   });
 
+  it('evolve / learn-move prompts from EVERY turn of the battle, own side only, deduplicated, queued after the card', () => {
+    const { c, playOut } = setup();
+    const { state, events } = wild();
+    const id = '00000000-0000-4000-8000-000000000001';
+    c.onBattleStart(startMsg(state, events));
+    playOut();
+    const mine = state.sides[0].party[0]!.creature.id;
+    const A = { side: 0 as const, slot: 0 };
+    const F = { side: 1 as const, slot: 0 };
+    // turn 1 (not the last): a level-up that learns a move and reaches the evolution level — a trainer battle's
+    // first KO; the foe's own learnMove is not the player's prompt
+    const t1 = [
+      { t: 'learnMove' as const, who: A, move: 'Leaf Blade', level: 6 },
+      { t: 'evolveReady' as const, who: A, into: 'briarbear' },
+      { t: 'learnMove' as const, who: F, move: 'Nature Drain', level: 6 },
+      { t: 'turnEnd' as const, turn: 1 },
+    ];
+    c.onBattleEvents({ type: 'battleEvents', battleId: id, turn: 1, events: t1, stateDigest: '00000000', rng: state.rng });
+    playOut();
+    // turn 2 (the last): core repeats evolveReady on every exp gain past the level — one prompt, not two
+    const t2 = [{ t: 'evolveReady' as const, who: A, into: 'briarbear' }, { t: 'turnEnd' as const, turn: 2 }];
+    c.onBattleEvents({ type: 'battleEvents', battleId: id, turn: 2, events: t2, stateDigest: '00000000', rng: state.rng });
+    c.onBattleEnd({ type: 'battleEnd', battleId: id, outcome: { winner: 0 }, rewards: { money: 0, items: {}, trainerExp: 10, ratingDelta: null, badge: null } });
+    playOut();
+    expect(useUiStore.getState().battle?.result?.prompts).toBe(2);
+    expect(useUiStore.getState().prompts).toEqual([]); // nothing before the card is dismissed
+    c.dismissResult();
+    expect(useUiStore.getState().prompts).toEqual([
+      { kind: 'learnMove', creatureId: mine, move: 'Leaf Blade' },
+      { kind: 'evolve', creatureId: mine, into: 'briarbear' },
+    ]);
+  });
+
   it('battleEnd waits for the timeline, then the result card; dismiss clears ui.battle; no session write', () => {
     const { c, calls, playOut } = setup();
     const sessionBefore = useSessionStore.getState();

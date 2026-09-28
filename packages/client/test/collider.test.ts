@@ -11,7 +11,7 @@ import { createRng } from '@ewa/core';
 import { ESCAPE_STEP_M, createStepCollider } from '../src/scene/collider';
 
 describe('step collider', () => {
-  it('control: raw resolveMove corner probes can exceed the requested step (the render behaviour clamped here)', () => {
+  it('control: raw resolveMove no longer moves farther than the step (render IMPLEMENTATION-NOTES Part 4 H9 fixed client render bug 2; the client clamp stays as a belt)', () => {
     const terrain = new TerrainCollider(getHeightfield('mire_route'));
     terrain.addBlocker({ kind: 'circle', x: -20, z: 0, r: 1 });
     const out = { x: 0, z: 0, y: 0, blocked: false, slid: false };
@@ -23,7 +23,7 @@ describe('step collider', () => {
       resolveMoveInto(out, terrain, fx, 0, -0.117, 0);
       worst = Math.max(worst, Math.hypot(out.x - fx, out.z));
     }
-    expect(worst).toBeGreaterThan(0.117 + 0.01);
+    expect(worst).toBeLessThanOrEqual(0.117 + 1e-6);
   });
 
   it('10 000 random steps through a field of trunks: ≤ the requested step each, never inside a blocker', () => {

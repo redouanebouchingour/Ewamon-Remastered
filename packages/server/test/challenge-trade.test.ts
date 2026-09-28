@@ -121,6 +121,7 @@ describe('challenges (§30.4.5)', () => {
       c.j.room.send('challengeReply', { fromId: a.acc.id, accept: true });
       await waitFor(() => ofType(c.j.msgs, 'challengeResult').length === 1, 3000);
       expect(ofType(c.j.msgs, 'challengeResult')[0]!.result).toBe('unavailable');
+      expect(ofType(c.j.msgs, 'challengeResult')[0]!.reason).toEqual({ code: 'expired', playerId: a.acc.id });
       expect(ofType(a.j.msgs, 'battleStart')).toEqual([]);
     } finally {
       s.time.advance(-46_000);
@@ -128,6 +129,35 @@ describe('challenges (§30.4.5)', () => {
     await a.j.room.leave(true);
     await c.j.room.leave(true);
   }, 60_000);
+
+  it('a pvp start refused for a fainted party tells BOTH players, and the reason names whose party it was', async () => {
+    const faint = async (acc: Account): Promise<void> =>
+      s.repos.db.transaction(async (tx) => {
+        for (const c of await s.repos.creatures.party(tx, acc.id)) await s.repos.creatures.update(tx, { ...c, hp: 0 });
+      });
+    for (const who of ['accepter', 'challenger'] as const) {
+      const [a, b] = await pair();
+      const fainted = who === 'accepter' ? b.acc : a.acc;
+      await faint(fainted);
+      const snapA = await snapshot(s, a.acc.id);
+      const snapB = await snapshot(s, b.acc.id);
+      a.j.room.send('challenge', { targetId: b.acc.id });
+      await waitFor(() => ofType(b.j.msgs, 'challengeReceived').length === 1, 3000);
+      b.j.room.send('challengeReply', { fromId: a.acc.id, accept: true });
+      await waitFor(() => ofType(a.j.msgs, 'challengeResult').length === 1 && ofType(b.j.msgs, 'challengeResult').length === 1, 5000);
+      const reason = { code: 'noUsableParty', playerId: fainted.id };
+      expect(ofType(a.j.msgs, 'challengeResult')[0]).toEqual({ type: 'challengeResult', targetId: b.acc.id, result: 'unavailable', reason });
+      expect(ofType(b.j.msgs, 'challengeResult')[0]).toEqual({ type: 'challengeResult', targetId: a.acc.id, result: 'unavailable', reason });
+      await sleep(200);
+      expect(ofType(a.j.msgs, 'battleStart')).toEqual([]);
+      expect(ofType(b.j.msgs, 'battleStart')).toEqual([]);
+      expect(a.j.room.state.battles.size).toBe(0);
+      expect(await snapshot(s, a.acc.id)).toBe(snapA);
+      expect(await snapshot(s, b.acc.id)).toBe(snapB);
+      await a.j.room.leave(true);
+      await b.j.room.leave(true);
+    }
+  }, 90_000);
 });
 
 describe('trades (§30.8.3, §30.5.1 #21)', () => {
@@ -191,6 +221,8 @@ describe('trades (§30.8.3, §30.5.1 #21)', () => {
     // inventoryDelta to both (absolute money, removed / added creatures) + dex through progressionDelta
     await waitFor(() => ofType(a.j.msgs, 'inventoryDelta').length > 0 && ofType(b.j.msgs, 'inventoryDelta').length > 0, 3000);
     expect(ofType(a.j.msgs, 'inventoryDelta').at(-1)).toMatchObject({ money: START_MONEY - 150, creaturesRemoved: [ca], creaturesAdded: [expect.objectContaining({ id: cb, ownerId: a.acc.id })] });
+    // server finding (b): received creatures are placed in the box, and the delta says so
+    expect(ofType(a.j.msgs, 'inventoryDelta').at(-1)!.placement).toEqual({ [cb]: 'box' });
     expect(ofType(b.j.msgs, 'progressionDelta').at(-1)).toMatchObject({ dexCaught: ['glimp'], trainerExp: START_EXP + TRAINER_EXP.tradeComplete });
     // both are free again: a new request works
     await sleep(1000);

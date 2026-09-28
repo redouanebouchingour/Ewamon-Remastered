@@ -330,7 +330,8 @@ export class TradeCoordinator {
     this.completing.delete(t.id);
     this.end(t, 'complete');
     for (const [pid, r] of result) {
-      host.send(pid, { type: 'inventoryDelta', items: {}, money: r.money, creaturesAdded: r.added, creaturesRemoved: r.removed, creaturesUpdated: [] });
+      // received creatures are transferred into the receiver's box (persist completeTrade → transferCreature)
+      host.send(pid, { type: 'inventoryDelta', items: {}, money: r.money, creaturesAdded: r.added, creaturesRemoved: r.removed, creaturesUpdated: [], ...(r.added.length > 0 ? { placement: Object.fromEntries(r.added.map((c) => [c.id, 'box' as const])) } : {}) });
       host.send(pid, {
         type: 'progressionDelta',
         badges: null,

@@ -129,9 +129,11 @@ function LearnMove({ p, c }: { readonly p: Extract<QueuedPrompt, { kind: 'learnM
 export function PostBattlePrompts() {
   const head = useUiStore((st) => st.prompts[0] ?? null);
   const inBattle = useUiStore((st) => st.battle !== null);
+  // a beat's `after` lines / a leader's `post` lines are read first, then the prompts
+  const talking = useUiStore((st) => st.dialogue !== null);
   // re-render when the creature changes (an evolve answered, a party move)
   useSessionStore((st) => st.inventory);
-  if (head === null || inBattle) return null;
+  if (head === null || inBattle || talking) return null;
   const c = findCreature(head.creatureId);
   if (c === null) {
     queueMicrotask(next);

@@ -9,6 +9,9 @@ import { applyInventoryDelta, applyProgressionDelta } from '../state/session';
 import { useUiStore } from '../state/ui';
 import type { WorldSession } from './WorldSession';
 
+/** refusals the server already explained with its own toast (e.g. a league gate: toast + error leagueLocked) */
+const EXPLAINED_DETAILS: ReadonlySet<string> = new Set(['leagueLocked']);
+
 const ERROR_TEXT: Readonly<Record<string, string>> = {
   notAllowed: 'That is not allowed right now.',
   notFound: 'That is no longer there.',
@@ -19,16 +22,41 @@ const ERROR_TEXT: Readonly<Record<string, string>> = {
 
 /**
  * The server completes a trade with `tradeUpdate complete` then that trade's `inventoryDelta` (tradeSession
- * `complete`), whose received creatures sit in the box. The wire delta has no slot, so the router marks the next one.
+ * `complete`), whose received creatures sit in the box. A current server says so in `placement`; for a delta without
+ * it (an older server) the router marks the next one.
  */
 let tradeReceiptPending = false;
 
-export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'handover'>): void {
+/** challengeResult copy; `reason` (additive) names the problem and whose side it is. */
+export function challengeResultText(m: Extract<ServerMessage, { type: 'challengeResult' }>, selfId: string): string {
+  if (m.result === 'declined') return 'Challenge declined.';
+  if (m.result === 'expired') return 'Challenge expired.';
+  const r = m.reason;
+  if (r === undefined) return 'That trainer is unavailable.';
+  const mine = r.playerId === selfId;
+  switch (r.code) {
+    case 'noUsableParty':
+      return mine ? 'Your party needs healing before a battle.' : "The other trainer's party needs healing first.";
+    case 'inBattle':
+      return mine ? 'You are already in a battle.' : 'That trainer is already in a battle.';
+    case 'trading':
+      return mine ? 'Finish your trade first.' : 'That trainer is busy trading.';
+    case 'tooFar':
+      return 'You are too far apart to battle.';
+    case 'left':
+      return mine ? 'The challenge was lost when you left.' : 'That trainer has left.';
+    case 'expired':
+      return 'That challenge has expired.';
+  }
+  return 'That trainer is unavailable.';
+}
+
+export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'handover' | 'selfId'>): void {
   switch (m.type) {
     case 'inventoryDelta':
       if (tradeReceiptPending) {
         tradeReceiptPending = false;
-        applyInventoryDelta({ ...m, addedTo: 'box' });
+        applyInventoryDelta(m.placement !== undefined ? m : { ...m, addedTo: 'box' });
         return;
       }
       applyInventoryDelta(m);
@@ -41,6 +69,7 @@ export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'han
       return;
     case 'error':
       if (m.code === 'rateLimited') return; // one per window; the UI already disables repeat actions
+      if (m.detail !== null && EXPLAINED_DETAILS.has(m.detail)) return; // found live: two toasts for one gym refusal
       toast('warn', m.detail !== null && m.detail.length > 0 && m.code !== 'internal' ? `${ERROR_TEXT[m.code] ?? 'Refused'} (${m.detail})` : (ERROR_TEXT[m.code] ?? 'Refused.'));
       return;
     case 'dm':
@@ -52,7 +81,7 @@ export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'han
       toast('info', `${m.fromName} challenges you to a battle.`, Math.min(m.expiresInMs, 15_000));
       return;
     case 'challengeResult':
-      toast('info', m.result === 'declined' ? 'Challenge declined.' : m.result === 'expired' ? 'Challenge expired.' : 'That trainer is unavailable.');
+      toast(m.reason?.code === 'noUsableParty' ? 'warn' : 'info', challengeResultText(m, ws.selfId));
       return;
     case 'tradeUpdate':
       if (m.phase === 'complete' || m.phase === 'cancelled') {

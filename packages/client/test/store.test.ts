@@ -11,7 +11,7 @@ import { toInventoryDelta, toProgressionDelta, useSessionStore } from '../src/st
 import { useUiStore } from '../src/state/ui';
 import { creature, meFixture } from './fixtures';
 
-const noHandover = { handover: async () => undefined };
+const noHandover = { handover: async () => undefined, selfId: 'me' };
 
 const progressionDelta = (over: Partial<Extract<ServerMessage, { type: 'progressionDelta' }>> = {}): Extract<ServerMessage, { type: 'progressionDelta' }> => ({
   type: 'progressionDelta',

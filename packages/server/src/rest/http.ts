@@ -158,6 +158,8 @@ export function inventoryDeltaBody(p: {
   readonly creaturesAdded?: readonly CreatureInstance[];
   readonly creaturesRemoved?: readonly string[];
   readonly creaturesUpdated?: readonly CreatureInstance[];
+  /** where `creaturesAdded` landed (protocol `inventoryDelta.placement`, additive) */
+  readonly placement?: Readonly<Record<string, 'party' | 'box'>>;
 }): InventoryDeltaBody {
   return {
     items: { ...(p.items ?? {}) },
@@ -165,5 +167,6 @@ export function inventoryDeltaBody(p: {
     creaturesAdded: [...(p.creaturesAdded ?? [])] as InventoryDeltaBody['creaturesAdded'],
     creaturesRemoved: [...(p.creaturesRemoved ?? [])],
     creaturesUpdated: [...(p.creaturesUpdated ?? [])] as InventoryDeltaBody['creaturesUpdated'],
+    ...(p.placement !== undefined ? { placement: { ...p.placement } } : {}),
   };
 }

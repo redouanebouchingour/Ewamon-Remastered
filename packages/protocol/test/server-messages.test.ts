@@ -108,4 +108,21 @@ describe('§4.4 ServerMessage', () => {
     expect(ServerMessageSchema.safeParse({ ...EXAMPLES.progressionDelta, badges: ['gold'] }).success).toBe(false);
     expect(ServerMessageSchema.safeParse({ ...EXAMPLES.tradeUpdate, offers: [EXAMPLES.tradeUpdate.offers[0]] }).success).toBe(false);
   });
+
+  it('additive optional fields: inventoryDelta.placement and challengeResult.reason (old shapes still parse)', () => {
+    const c = creature();
+    const placed = { ...EXAMPLES.inventoryDelta, creaturesAdded: [c], placement: { [c.id]: 'box' } };
+    const r = parseServerMessage(placed);
+    expect(r.ok).toBe(true);
+    if (r.ok && r.message.type === 'inventoryDelta') expect(r.message.placement).toEqual({ [c.id]: 'box' });
+    expect(ServerMessageSchema.safeParse({ ...placed, placement: { [c.id]: 'trade_escrow' } }).success).toBe(false);
+    expect(ServerMessageSchema.safeParse(EXAMPLES.inventoryDelta).success).toBe(true); // no placement = the client's catch rule
+    const failed = { type: 'challengeResult', targetId: U2, result: 'unavailable', reason: { code: 'noUsableParty', playerId: U1 } } as const;
+    const f = parseServerMessage(failed);
+    expect(f.ok).toBe(true);
+    if (f.ok && f.message.type === 'challengeResult') expect(f.message.reason).toEqual({ code: 'noUsableParty', playerId: U1 });
+    expect(ServerMessageSchema.safeParse({ ...failed, reason: { code: 'sleepy', playerId: U1 } }).success).toBe(false);
+    expect(ServerMessageSchema.safeParse({ ...failed, reason: { code: 'inBattle' } }).success).toBe(false);
+    expect(ServerMessageSchema.safeParse(EXAMPLES.challengeResult).success).toBe(true);
+  });
 });

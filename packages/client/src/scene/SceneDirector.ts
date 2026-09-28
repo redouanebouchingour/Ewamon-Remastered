@@ -209,7 +209,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     for (const w of z.warps) out.push(makeInteractable(w.id, 'warp', w.x, w.z, 'Enter', w.label, key));
     const league = LEAGUE.filter((l) => l.zoneId === z.id).sort((a, b) => (a.stage === b.stage ? a.order - b.order : a.stage === 'gym' ? -1 : 1));
     const leader = z.gym !== null ? LEAGUE.find((l) => l.id === z.gym) : league[0];
-    if (leader !== undefined) out.push(makeInteractable(leader.id, 'gym', LEAGUE_MARKER.x, LEAGUE_MARKER.z, 'Challenge', `${leader.title} ${leader.name}`, key));
+    if (leader !== undefined) out.push(makeInteractable(leader.id, 'gym', LEAGUE_MARKER.x, LEAGUE_MARKER.z, 'Challenge', leader.name, key));
     const spec = handleSpec;
     if (spec !== null) {
       for (const b of spec.buildings) {

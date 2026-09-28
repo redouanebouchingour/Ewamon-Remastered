@@ -113,7 +113,8 @@ export interface PlayerSeat {
   readonly sessionId: string;
 }
 
-export type StartResult = { readonly ok: true; readonly session: BattleSession } | { readonly ok: false; readonly code: 'notAllowed' | 'busy' | 'internal'; readonly detail: string };
+/** A failed start; `playerId` (pvp) names the side whose party / battle stopped it. */
+export type StartResult = { readonly ok: true; readonly session: BattleSession } | { readonly ok: false; readonly code: 'notAllowed' | 'busy' | 'internal'; readonly detail: string; readonly playerId?: string };
 export type ActionResult = null | { readonly code: 'notFound' | 'notAllowed' | 'busy'; readonly detail: string | null };
 
 export const TERRAIN_BY_BIOME: Readonly<Record<ZoneDef['biome'], Terrain>> = {
@@ -135,6 +136,8 @@ interface PlayerDelta {
   items: Record<string, number>;
   money: number | null;
   creaturesAdded: CreatureInstance[];
+  /** where each creaturesAdded entry was inserted (protocol inventoryDelta.placement) */
+  placement: Record<string, 'party' | 'box'>;
   creaturesUpdated: CreatureInstance[];
   trainerExp: number | null;
   trainerLevel: number | null;
@@ -154,6 +157,7 @@ function emptyDelta(): PlayerDelta {
     items: {},
     money: null,
     creaturesAdded: [],
+    placement: {},
     creaturesUpdated: [],
     trainerExp: null,
     trainerLevel: null,
@@ -456,12 +460,21 @@ export class BattleCoordinator {
 
   /** §30.4.5 step 3: lock both players in one tx (ascending uuid) to read parties; seed = createRng(battleId). */
   async startPvp(challenger: PlayerSeat, accepter: PlayerSeat, at: { readonly x: number; readonly z: number }): Promise<StartResult> {
-    if (this.byPlayer.has(challenger.playerId) || this.byPlayer.has(accepter.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
+    const busy = (): StartResult | null =>
+      this.byPlayer.has(challenger.playerId)
+        ? { ok: false, code: 'busy', detail: 'inBattle', playerId: challenger.playerId }
+        : this.byPlayer.has(accepter.playerId)
+          ? { ok: false, code: 'busy', detail: 'inBattle', playerId: accepter.playerId }
+          : null;
+    const before = busy();
+    if (before !== null) return before;
     const loaded = await this.loadPlayers([challenger.playerId, accepter.playerId], null);
     const side0 = this.playerSide(loaded.get(challenger.playerId)!.party, challenger.playerId, false, false);
     const side1 = this.playerSide(loaded.get(accepter.playerId)!.party, accepter.playerId, false, false);
-    if (side0 === null || side1 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
-    if (this.byPlayer.has(challenger.playerId) || this.byPlayer.has(accepter.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
+    if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty', playerId: challenger.playerId };
+    if (side1 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty', playerId: accepter.playerId };
+    const after = busy();
+    if (after !== null) return after;
     const id = randomUUID();
     const { session } = this.open(
       {
@@ -586,7 +599,15 @@ export class BattleCoordinator {
       if (d.inventoryAll !== null) session.inventory[seat.side] = d.inventoryAll;
       const itemsTouched = Object.keys(d.items).length > 0;
       if (itemsTouched || d.money !== null || d.creaturesAdded.length > 0 || d.creaturesUpdated.length > 0) {
-        host.send(pid, { type: 'inventoryDelta', items: d.items, money: d.money, creaturesAdded: d.creaturesAdded, creaturesRemoved: [], creaturesUpdated: d.creaturesUpdated });
+        host.send(pid, {
+          type: 'inventoryDelta',
+          items: d.items,
+          money: d.money,
+          creaturesAdded: d.creaturesAdded,
+          creaturesRemoved: [],
+          creaturesUpdated: d.creaturesUpdated,
+          ...(d.creaturesAdded.length > 0 ? { placement: d.placement } : {}),
+        });
       }
       const progressed =
         d.trainerExp !== null || d.badges !== null || d.rating !== null || d.dexSeen.length > 0 || d.dexCaught.length > 0 || d.flags.length > 0 || d.questProgress.length > 0;
@@ -683,6 +704,7 @@ export class BattleCoordinator {
             partyIndex === -1 ? { kind: 'box', index: 'nextBox' } : { kind: 'party', index: partyIndex },
           );
           d.creaturesAdded.push(toInstance(inserted));
+          d.placement[inserted.id] = partyIndex === -1 ? 'box' : 'party';
           const { newSpecies } = await repos.progress.markCaught(tx, pid, wild.speciesId, wild.variantKey, wild.isAlpha, now);
           d.dexCaught.push(wild.speciesId);
           trainerExpGain += TRAINER_EXP.catch + (newSpecies ? TRAINER_EXP.catchNewSpecies : 0);

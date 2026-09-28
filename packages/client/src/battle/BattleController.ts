@@ -192,8 +192,8 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
   let preview: { state: BattleState; digest: string; turn: number } | null = null;
   let pendingEnd: ServerMessageOf<'battleEnd'> | null = null;
   let resultShown = false;
+  /** every evolve / learn-move of the battle for the player's own side, in order (a trainer battle levels up mid-way) */
   let prompts: QueuedPrompt[] = [];
-  let lastEvents: readonly BattleEvent[] = [];
   let logId = 0;
   const pendingLog: { text: string; tone: LogTone }[] = [];
   let logTimer: ReturnType<typeof setInterval> | null = null;
@@ -442,7 +442,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       state = next;
       preState = before;
       resetHpTable(before);
-      lastEvents = m.events;
+      for (const p of promptsFrom(m.events, next, seat)) if (!prompts.some((q) => samePrompt(q, p))) prompts.push(p);
       writeUi({ phase: 'playing', authoritative: next, expectedMs: 0 });
       play(buildTimeline(m.events, ctxFor(before)));
     },
@@ -488,7 +488,6 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
         return;
       }
       pendingEnd = m;
-      prompts = promptsFrom(lastEvents, state);
       if (!player.isPlaying) showResult();
     },
 
@@ -547,16 +546,27 @@ function cap(s: string): string {
   return s.length === 0 ? s : s[0]!.toUpperCase() + s.slice(1);
 }
 
-/** The evolve / learn-move prompts of the final turn (queued after the result card, each an explicit REST call). */
-function promptsFrom(events: readonly BattleEvent[], st: BattleState | null): QueuedPrompt[] {
+/**
+ * The evolve / learn-move prompts in one turn's events for the player's own side (queued after the result card, each
+ * an explicit REST call). Every turn counts, not only the last: in a trainer / league battle the level-up of the
+ * first KO happens turns before the end (found live — the learn-move of a mid-battle level-up never showed).
+ */
+export function promptsFrom(events: readonly BattleEvent[], st: BattleState | null, seat: 0 | 1): QueuedPrompt[] {
   const out: QueuedPrompt[] = [];
   if (st === null) return out;
   for (const e of events) {
     if (e.t !== 'evolveReady' && e.t !== 'learnMove') continue;
+    if (e.who.side !== seat) continue;
     const c = st.sides[e.who.side]?.party[e.who.slot]?.creature;
     if (c === undefined || c.ownerId === null) continue;
     if (e.t === 'evolveReady') out.push({ kind: 'evolve', creatureId: c.id, into: e.into });
     else out.push({ kind: 'learnMove', creatureId: c.id, move: e.move });
   }
   return out;
+}
+
+/** core emits evolveReady on every exp gain at or past the evolution level: one prompt per creature and target */
+function samePrompt(a: QueuedPrompt, b: QueuedPrompt): boolean {
+  if (a.kind !== b.kind || a.creatureId !== b.creatureId) return false;
+  return a.kind === 'evolve' ? a.into === (b as typeof a).into : a.move === (b as typeof a).move;
 }

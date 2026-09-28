@@ -101,6 +101,7 @@ describe('#20 bids, buy-now, cancel', () => {
     expect(bought.body.status).toBe('sold');
     expect(bought.body.inventoryDelta.money).toBe(START_MONEY - 1_000);
     expect(bought.body.inventoryDelta.creaturesAdded[0]).toMatchObject({ id: cid, ownerId: buyer.id, speciesId: 'mossling' });
+    expect(bought.body.inventoryDelta.placement).toEqual({ [cid]: 'box' });
     expect((await api(s, 'GET', '/me', b.access)).body.money).toBe(START_MONEY);
     const sellerMe = (await api(s, 'GET', '/me', seller.access)).body;
     expect(sellerMe.money).toBe(START_MONEY + 1_000 - marketFee(1_000));

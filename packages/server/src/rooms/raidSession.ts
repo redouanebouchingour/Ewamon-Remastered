@@ -604,12 +604,13 @@ export class RaidRunner {
     const { repos, clock, zone } = this.deps;
     const nowMs = clock();
     const now = new Date(nowMs);
-    let outcome: { inventory: Record<string, number>; added: CreatureInstance[]; newDex: boolean; quest: QuestProgressEntry[] };
+    let outcome: { inventory: Record<string, number>; added: CreatureInstance[]; placement: Record<string, 'party' | 'box'>; newDex: boolean; quest: QuestProgressEntry[] };
     try {
       outcome = await repos.db.transaction(async (tx) => {
         await repos.players.lock(tx, playerId);
         const left = await repos.inventory.add(tx, playerId, orb, -1);
         const added: CreatureInstance[] = [];
+        const placement: Record<string, 'party' | 'box'> = {};
         let newDex = false;
         let quest: QuestProgressEntry[] = [];
         if (roll.caught) {
@@ -624,6 +625,7 @@ export class RaidRunner {
           }
           const inserted = await repos.creatures.insert(tx, { ...roll.creature, ownerId: playerId, caughtAt: { zoneId: zone.id, at: nowMs } }, idx === -1 ? { kind: 'box', index: 'nextBox' } : { kind: 'party', index: idx });
           added.push(toInstance(inserted));
+          placement[inserted.id] = idx === -1 ? 'box' : 'party';
           await repos.progress.markSeen(tx, playerId, roll.creature.speciesId, now);
           newDex = (await repos.progress.markCaught(tx, playerId, roll.creature.speciesId, roll.creature.variantKey, roll.creature.isAlpha, now)).newSpecies;
           const exp = TRAINER_EXP.catch + (newDex ? TRAINER_EXP.catchNewSpecies : 0);
@@ -631,7 +633,7 @@ export class RaidRunner {
           quest = await advanceQuests(tx, repos, playerId, [{ kind: 'catch', species: roll.creature.speciesId }], nowMs);
         }
         await repos.audit.write(tx, { actorId: playerId, action: 'raid.catch', subject: s.id, detail: { orb, caught: roll.caught } }, now);
-        return { inventory: { [orb]: left }, added, newDex, quest };
+        return { inventory: { [orb]: left }, added, placement, newDex, quest };
       });
     } catch (e) {
       this.deps.log.info({ err: e, raidId: s.id }, 'raid catch transaction failed');
@@ -641,7 +643,7 @@ export class RaidRunner {
     this.inventory.set(playerId, inv2);
     this.deps.host.onInventory(playerId, inv2);
     this.deps.host.send(playerId, { type: 'raidEvents', raidId: s.id, round: Math.max(1, s.round), events: roll.events, stateDigest: roll.stateDigest });
-    this.deps.host.send(playerId, { type: 'inventoryDelta', items: outcome.inventory, money: null, creaturesAdded: outcome.added, creaturesRemoved: [], creaturesUpdated: [] });
+    this.deps.host.send(playerId, { type: 'inventoryDelta', items: outcome.inventory, money: null, creaturesAdded: outcome.added, creaturesRemoved: [], creaturesUpdated: [], placement: outcome.placement });
     if (roll.caught) {
       this.deps.host.send(playerId, {
         type: 'progressionDelta',

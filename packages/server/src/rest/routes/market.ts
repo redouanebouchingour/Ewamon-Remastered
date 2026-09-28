@@ -129,7 +129,7 @@ export function registerMarketRoutes(app: FastifyInstance, deps: RestDeps): void
       await repos.players.addTrainerExp(tx, l.sellerId, TRAINER_EXP.tradeComplete);
       return { l, c, money: await moneyOf(tx, me) };
     });
-    return out(deps, ListingMutationRes, { ...listingView(r.l), inventoryDelta: inventoryDeltaBody({ money: r.money, creaturesAdded: [r.c] }) });
+    return out(deps, ListingMutationRes, { ...listingView(r.l), inventoryDelta: inventoryDeltaBody({ money: r.money, creaturesAdded: [r.c], placement: { [r.c.id]: 'box' } }) });
   });
 
   /** seller, active, no bid (409 ListingHasBids) → creature back to the seller's box */
@@ -141,6 +141,6 @@ export function registerMarketRoutes(app: FastifyInstance, deps: RestDeps): void
       const l = await repos.market.cancel(tx, id, me, now);
       return { l, c: await creatureOf(tx, l.creatureId) };
     });
-    return out(deps, ListingMutationRes, { ...listingView(r.l), inventoryDelta: inventoryDeltaBody({ creaturesAdded: [r.c] }) });
+    return out(deps, ListingMutationRes, { ...listingView(r.l), inventoryDelta: inventoryDeltaBody({ creaturesAdded: [r.c], placement: { [r.c.id]: 'box' } }) });
   });
 }

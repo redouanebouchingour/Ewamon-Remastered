@@ -53,6 +53,11 @@ export interface DialogueUi {
   readonly lines: readonly string[];
   readonly index: number;
   readonly targetId: string;
+  /**
+   * Runs when the player pages past the last line (not on Escape): a story beat with a battle, or a gym leader's
+   * `pre` lines, send their `interact` only then, so the lines are read before the battle covers the world.
+   */
+  readonly onFinish?: () => void;
 }
 
 /**

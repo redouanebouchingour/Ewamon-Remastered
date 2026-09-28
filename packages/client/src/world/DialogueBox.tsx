@@ -1,7 +1,8 @@
 /**
  * SPEC §20.9.2 DialogueBox: bottom-centre, --t-body-lg, speaker in the display face, `Enter` / `E` advance, ≤ 3 lines
  * visible, the remaining count shown; `Escape` closes. The lines come from content (§20.4.7) — World3D writes
- * `ui.dialogue`; this component only pages through it.
+ * `ui.dialogue`; this component only pages through it. Paging past the last line runs `onFinish` (a beat battle or a
+ * gym challenge starts then); Escape does not.
  */
 import { useEffect, useRef } from 'react';
 import { useUiStore } from '../state/ui';
@@ -14,8 +15,10 @@ function advance(): void {
   const d = ui.dialogue;
   if (d === null) return;
   const next = d.index + LINES_PER_PAGE;
-  if (next >= d.lines.length) ui.setDialogue(null);
-  else ui.setDialogue({ ...d, index: next });
+  if (next >= d.lines.length) {
+    ui.setDialogue(null);
+    d.onFinish?.();
+  } else ui.setDialogue({ ...d, index: next });
 }
 
 export function DialogueBox() {

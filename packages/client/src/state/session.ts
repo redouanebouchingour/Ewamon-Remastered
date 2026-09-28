@@ -110,8 +110,9 @@ export type InventoryDelta = ServerMessageOf<'inventoryDelta'> & {
   readonly party?: readonly CreatureInstance[];
   readonly box?: readonly CreatureInstance[];
   /**
-   * Where `creaturesAdded` land. Default 'auto' mirrors a catch (party while it has room, else the box); a trade's
-   * delta is 'box' — the server transfers received creatures into the receiver's box (persist `completeTrade`).
+   * Where `creaturesAdded` land when the wire delta carries no `placement` (an older server). Default 'auto' mirrors
+   * a catch (party while it has room, else the box); a trade's delta is 'box' — the server transfers received
+   * creatures into the receiver's box (persist `completeTrade`). The server's per-creature `placement` wins.
    */
   readonly addedTo?: 'auto' | 'box';
 };
@@ -257,11 +258,13 @@ export const useSessionStore = create<SessionState>()(
         list.filter((c) => !removed.has(c.id)).map((c) => updated.get(c.id) ?? c);
       let party = d.party !== undefined ? [...d.party] : patch(inv.party);
       let box = d.box !== undefined ? [...d.box] : patch(inv.box);
-      // mirrors the server's placement: a caught creature joins the party while it has room, else the box; a traded
-      // one always goes to the box
+      // the server's `placement` says where each one went; without it (older server) the catch rule is mirrored: a
+      // caught creature joins the party while it has room, else the box; a traded one always goes to the box
       for (const c of d.creaturesAdded) {
         if (party.some((p) => p.id === c.id) || box.some((b) => b.id === c.id)) continue;
-        if (d.addedTo !== 'box' && party.length < 6) party = [...party, c];
+        const placed = d.placement?.[c.id];
+        const toParty = placed !== undefined ? placed === 'party' && party.length < 6 : d.addedTo !== 'box' && party.length < 6;
+        if (toParty) party = [...party, c];
         else box = [...box, c];
       }
       set({

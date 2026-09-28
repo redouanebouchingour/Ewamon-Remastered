@@ -6,11 +6,11 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { MeResponse } from '@ewa/protocol';
-import { routeServerMessage } from '../src/net/messageRouter';
+import { challengeResultText, routeServerMessage } from '../src/net/messageRouter';
 import { partyCanBattle, toProgressionDelta, useSessionStore } from '../src/state/session';
 import { creature, meFixture } from './fixtures';
 
-const noHandover = { handover: async () => undefined };
+const noHandover = { handover: async () => undefined, selfId: 'me' };
 
 const withMissions = (): MeResponse =>
   meFixture({
@@ -67,6 +67,43 @@ describe('session (part 2)', () => {
     inv = useSessionStore.getState().inventory!;
     expect(inv.party.map((c) => c.id)).toEqual([inv.party[0]!.id, caught.id]);
     expect(inv.box).toHaveLength(1);
+  });
+
+  it('inventoryDelta.placement (server finding b) wins over the catch rule, either way; without it the rule applies', () => {
+    const toBox = creature('glimp', { level: 3 });
+    const toParty = creature('seedrift', { level: 3 });
+    // a traded creature announced by placement, no preceding tradeUpdate needed
+    routeServerMessage({ type: 'inventoryDelta', items: {}, money: null, creaturesAdded: [toBox], creaturesRemoved: [], creaturesUpdated: [], placement: { [toBox.id]: 'box' } }, noHandover);
+    let inv = useSessionStore.getState().inventory!;
+    expect(inv.party).toHaveLength(1);
+    expect(inv.box.map((c) => c.id)).toEqual([toBox.id]);
+    // placement 'party' is honoured even right after a trade completes (the old router hack would have boxed it)
+    const offer = { creatureIds: [], money: 0, confirmed: true };
+    routeServerMessage({ type: 'tradeUpdate', tradeId: 't2', phase: 'complete', offers: [offer, offer], offerHash: 'h' } as never, noHandover);
+    routeServerMessage({ type: 'inventoryDelta', items: {}, money: null, creaturesAdded: [toParty], creaturesRemoved: [], creaturesUpdated: [], placement: { [toParty.id]: 'party' } }, noHandover);
+    inv = useSessionStore.getState().inventory!;
+    expect(inv.party.map((c) => c.id)).toContain(toParty.id);
+    expect(inv.box.map((c) => c.id)).toEqual([toBox.id]);
+  });
+
+  it('challengeResult: the reason says whose party / state stopped the battle (server finding a)', () => {
+    const base = { type: 'challengeResult', targetId: 'them', result: 'unavailable' } as const;
+    expect(challengeResultText(base, 'me')).toBe('That trainer is unavailable.'); // an older server: no reason
+    expect(challengeResultText({ ...base, reason: { code: 'noUsableParty', playerId: 'me' } }, 'me')).toBe('Your party needs healing before a battle.');
+    expect(challengeResultText({ ...base, reason: { code: 'noUsableParty', playerId: 'them' } }, 'me')).toBe("The other trainer's party needs healing first.");
+    expect(challengeResultText({ ...base, reason: { code: 'inBattle', playerId: 'them' } }, 'me')).toBe('That trainer is already in a battle.');
+    expect(challengeResultText({ ...base, reason: { code: 'tooFar', playerId: 'them' } }, 'me')).toBe('You are too far apart to battle.');
+    expect(challengeResultText({ ...base, result: 'declined' }, 'me')).toBe('Challenge declined.');
+  });
+
+  it('a league refusal shows the server toast once (the matching error leagueLocked adds no second toast)', async () => {
+    const { useNotificationsStore } = await import('../src/state/notifications');
+    useNotificationsStore.getState().clear();
+    routeServerMessage({ type: 'toast', level: 'warn', text: 'Mira Thornwell is not taking challengers yet.' }, noHandover);
+    routeServerMessage({ type: 'error', code: 'notAllowed', detail: 'leagueLocked' }, noHandover);
+    expect(useNotificationsStore.getState().toasts.map((t) => t.text)).toEqual(['Mira Thornwell is not taking challengers yet.']);
+    routeServerMessage({ type: 'error', code: 'notAllowed', detail: 'tooFar' }, noHandover);
+    expect(useNotificationsStore.getState().toasts).toHaveLength(2);
   });
 
   it('partyCanBattle: false only when every party member has fainted', () => {
