@@ -14,7 +14,10 @@ coverage/
 *.log
 .env
 .env.local
-.screenshots/
+# SPEC §50.5 / §50.2.3: the audit shots and the budget JSON (+ dumps) are committed; every other capture stays local.
+.screenshots/*
+!.screenshots/audit/
+!.screenshots/budget/
 .probe/
 .DS_Store
 Thumbs.db

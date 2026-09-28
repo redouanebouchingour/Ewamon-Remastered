@@ -257,3 +257,60 @@ Browser: sandbox `?zone=mirevale` / `?zone=mire_route` (real ZoneSpecs through t
 ## Sandbox (part 2)
 
 `?zone=<ZoneId>` loads the real zone through `@ewa/client-adapter` (vite alias to `packages/client/src/scene/zoneSpecFor.ts`, plus `@ewa/content` / `@ewa/core` / `@ewa/render` aliases) and `renderer.loadZone`; optional `&x=&z=` focus, `&h=` heading, `&zoom=`, `&t=` hours, `&harvest=`. `window.__ewaSandbox` adds `goto(x, z, heading?, zoom?)`, `zone()`, `baseline()`, `beautyDraws()` (frame with shadows off → beauty + post count), `leakCycle(n)` (dispose / render / diff `renderer.info.memory` against the step-8 baseline / reload); `shot()` now always renders at 1280×720.
+
+---
+
+# Part 4 — hardening (2026-09-25)
+
+Scope: the amended SPEC §10 / §50.2 (2026-09-25: render targets ≤ 41, programs ≤ 128, fog 0.0068, × π light units,
+billboard yaw + half-pitch lean, DOF arithmetic) and the findings / recommendations of
+`.design/audits/spec-verification.md` that land in `@ewa/render`. The SPEC is not edited here; where a SPEC number or
+sentence should change, the proposed CHANGELOG entry text is given at the end of this part.
+
+Measurement setup (every browser number below): the render sandbox (`EWA_SANDBOX_NO_HMR=1 pnpm --filter @ewa/render
+sandbox`, port 5180 — HMR off so saving a file never reloads a page mid-measurement), headless Chrome 153 over CDP
+(`--headless=new --enable-unsafe-webgpu --enable-gpu --ignore-gpu-blocklist --disable-gpu-shader-disk-cache`, a fresh
+profile per run, so every run compiles cold), dev machine Intel Gen-12 iGPU (D3D12), 1280×720 canvas, pixel ratio 1,
+`?zone=mirevale&x=6&z=8&t=10` unless stated. `__ewaSandbox.timing()` (new) records `createRenderer` (incl. the step-8
+warm-up frame and a GPU-queue drain), `loadZone`, and the first zone frame (CPU time of `frame()` and time until
+`device.queue.onSubmittedWorkDone()`), with `programs` at each step.
+
+## H1 — caps (task 1)
+
+`stats.ts` `COUNT_CAPS` and `tools/asset-audit/src/caps.ts` `COUNT_CAPS` carry the amended §50.2.2 values:
+`renderTargets 41`, `programs 128` (was 24 / 96). Both test files pin the literals; the render test also asserts the
+measured slice numbers (34 render targets, 107 programs) raise no violation and 41 / 128 are inclusive. The sandbox's
+`capViolations()` no longer flags every zone (M3 smoke note). The asset-audit README table follows.
+
+## H2 — `dumpZone()` completeness (task 2)
+
+`ZoneDump` gains the fields §40.5.2 says "the dump gains" (render's type = §10.10.1 verbatim + these; the asset-audit
+mirror already had them as optional fields, so only its comments, README and the drift test's key lists changed):
+
+| Field | Source |
+|---|---|
+| `materials[].side` | `Material.side` (0 Front, 1 Back, 2 Double) |
+| `geometries[].sharedBy` | meshes under the root drawing the geometry |
+| `geometries[].kind` / `.tier` | `InstancedMesh.userData.ewaScatterKind / ewaScatterTier`, written by `ScatterField` (null / absent for non-scatter). A geometry drawn at two tiers (rock_a's lod2 doubles as its impostor) gets one row per tier |
+| `geometries[].instancedMesh` | `isInstancedMesh` (the verbatim `instanced` is 1 for a plain mesh too) |
+| `lightSources[]` `{ id, lightDistance }` | the housing → light direction of Pillar 4 (§50.4.6 "both directions"): every **tagged** housing and the distance from its glowing part to the nearest light (+∞ → JSON null) |
+
+- **Tagging.** The zone builder tags every generated housing with the world AABB of its emissive-class triangles at
+  lod0 (`root.userData.ewaHousings`, `HousingTag`), computed from the real housing geometry at its real placement —
+  not from the light position — so a generator whose glass drifts from `HOUSING_LOCAL` shows up. A mesh whose
+  material has `userData.lightSource === true` (the arena beacon housings) is tagged whole.
+- **Light → housing got tighter.** `housingDistance` used the bounding box of every mesh with an emissive material;
+  static props are merged per 32 m chunk, so a lamp's "housing" was the whole chunk box (any light inside a chunk
+  with one emissive triangle read 0). Now the emissive groups of each mesh are split into connected glowing parts
+  (triangles sharing a 25 cm grid cell, union-find) and the distance is to the nearest part (or tagged housing).
+- **Billboards.** `sprites[]` and the billboard material row read `userData.ewaAlbedo ?? map` (part-3 note P7), so
+  `sprites.nearest` sees the atlas albedo (magFilter 1003, anisotropy 1) and `maps.albedo` is true.
+- **Measured on the built slice zones** (`test/zone-dump.test.ts`, mock library, real specs): mirevale 18 lights /
+  15 tagged housings, mire_route 10 / 8 (the rest are set-piece `mesh` housings, measured by direction 1 only); worst
+  light → glowing-part distance 0.00 m and worst housing → light 0.00 m in both (the light sits inside its glass);
+  sides {0, 2} only (no BackSide under a zone root). Moving one tag 5 m makes its `lightDistance` > 4 (test).
+- **Finding for the audit (not changed here):** `scatter.instanced` requires lod0/lod1/lod2 + impostor for every
+  scatter kind. The dump now shows the implemented tier sets: trees and rock_a {0, 1, 2, 3}; rock_b, bush, stump,
+  log {0, 1, 2}; flower_patch, grass_tuft, tall_grass {0, 1} — the part-2 Z2 design (small kinds are not drawn
+  beyond 90 m, only trees get impostor cards). The rule will therefore fail every real dump; proposed CHANGELOG
+  entry P4-C1 below (accept "not drawn at that tier" for non-tree kinds).

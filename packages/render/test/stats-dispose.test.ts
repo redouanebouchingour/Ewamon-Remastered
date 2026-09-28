@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Group, Mesh, MeshStandardNodeMaterial, PerspectiveCamera, PlaneGeometry, PointLight, Scene, SpotLight, Vector3 } from 'three/webgpu';
 import type { Node, WebGPURenderer } from 'three/webgpu';
-import { ALL_EFFECTS, BUDGET_PASSES } from '../src/descriptors.js';
+import { ALL_EFFECTS, BUDGET_PASSES, type BudgetPass } from '../src/descriptors.js';
 import {
-  COUNT_CAPS, capViolations, computePassMs, copyInfo, countPunctualLights, createRenderStats, median, percentile, readBudgetCounts,
+  COUNT_CAPS, PassTimer, aggregatePassMs, capViolations, computePassMs, copyInfo, countPunctualLights, createRenderStats, median, percentile, readBudgetCounts,
 } from '../src/stats.js';
 import { applyReducedEffects } from '../src/post/effects.js';
 import { PostStack } from '../src/post/pipeline.js';
@@ -38,10 +38,14 @@ describe('§10.10 stats record and counts', () => {
   });
 
   it('reads BudgetCounts and flags the §50.2.2 caps', () => {
-    const c = readBudgetCounts(info({ programs: 97, renderTargets: 25 }), 49, 9, 24);
-    expect(c).toMatchObject({ drawCalls: 120, programs: 97, renderTargets: 25, materials: 49, shadowLights: 9, nonShadowLights: 24, attributesSize: 4096 });
+    const c = readBudgetCounts(info({ programs: 129, renderTargets: 42 }), 49, 9, 24);
+    expect(c).toMatchObject({ drawCalls: 120, programs: 129, renderTargets: 42, materials: 49, shadowLights: 9, nonShadowLights: 24, attributesSize: 4096 });
     expect(capViolations(c).map((v) => v.metric).sort()).toEqual(['materials', 'programs', 'renderTargets', 'shadowLights']);
-    expect(COUNT_CAPS).toMatchObject({ drawCalls: 400, triangles: 2_500_000, texturesSize: 734_003_200, materials: 48, renderTargets: 24, programs: 96 });
+    // §50.2.2 as amended 2026-09-25: render targets ≤ 41, programs ≤ 128 (the old 24 / 96 were measured impossible)
+    expect(COUNT_CAPS).toEqual({ drawCalls: 400, triangles: 2_500_000, texturesSize: 734_003_200, materials: 48, shadowLights: 8, nonShadowLights: 24, renderTargets: 41, programs: 128 });
+    // the measured slice numbers (34 render targets, 107 programs with Mirevale loaded) are inside the caps
+    expect(capViolations(readBudgetCounts(info({ programs: 107, renderTargets: 34 }), 18, 3, 17))).toEqual([]);
+    expect(capViolations(readBudgetCounts(info({ programs: 128, renderTargets: 41 }), 48, 8, 24))).toEqual([]);
   });
 
   it('computes per-pass ms differentially: T_all − T_without, opaque as the remainder', () => {
@@ -145,5 +149,43 @@ describe('dispose bookkeeping (mocked GPU)', () => {
     expect(rig.handlesList()[0]!.light.intensity).toBe(0);
     expect(countPunctualLights(scene, { shadow: 0, nonShadow: 0 })).toEqual({ shadow: 1, nonShadow: 0 });
     rig.dispose();
+  });
+});
+
+describe('per-context GPU timing → passMs (IMPLEMENTATION-NOTES Part 4, H6)', () => {
+  it('sums the last resolved frame by row; unknown contexts count as opaque; sprites stays null; absent rows 0', () => {
+    const uidPass = new Map<string, { pass: BudgetPass; target: string }>([
+      ['r:1:7:f10', { pass: 'opaque', target: 'scene' }],
+      ['r:1:7:f11', { pass: 'opaque', target: 'scene' }],
+      ['r:2:9:f11', { pass: 'shadows', target: 'ShadowMap' }],
+      ['r:3:9:f11', { pass: 'shadows', target: 'ShadowMap' }],
+      ['r:4:12:f11', { pass: 'bloom', target: 'UnrealBloomPass.h0' }],
+      ['r:5:1:f11', { pass: 'grade', target: 'canvas' }],
+    ]);
+    const timestamps = new Map<string, number>([
+      ['r:1:7:f10', 9], ['r:1:7:f11', 3], ['r:2:9:f11', 0.5], ['r:3:9:f11', 0.25], ['r:4:12:f11', 0.4], ['r:5:1:f11', 0.1], ['r:6:3:f11', 0.2],
+    ]);
+    const out = createRenderStats().passMs as Record<BudgetPass, number | null>;
+    const rows = aggregatePassMs({ timestamps, frames: [10, 11] }, uidPass, out)!;
+    expect(out.opaque).toBeCloseTo(3.2, 9);            // scene pass 3 + the unattributed context 0.2 (PMREM / probe rule)
+    expect(out.shadows).toBeCloseTo(0.75, 9);
+    expect(out.bloom).toBeCloseTo(0.4, 9);
+    expect(out.grade).toBeCloseTo(0.1, 9);
+    expect(out.gtao).toBe(0);
+    expect(out.sprites).toBeNull();
+    expect(rows).toHaveLength(6);
+    expect(aggregatePassMs({ timestamps: new Map(), frames: [] }, uidPass, out)).toBeNull();
+  });
+
+  it('PassTimer classifies each beginRender and forgets the resolved batch', () => {
+    const t = new PassTimer((rt) => (rt === null ? 'grade' : 'dof'));
+    t.beginRender('r:1:1:f5', new Scene(), new PerspectiveCamera(), null);
+    t.beginRender('r:2:2:f5', new Scene(), new PerspectiveCamera(), { width: 4, height: 4, texture: { name: 'DepthOfField.Composite' } } as never);
+    const out = createRenderStats().passMs as Record<BudgetPass, number | null>;
+    expect(t.collect({ timestamps: new Map([['r:1:1:f5', 0.3], ['r:2:2:f5', 0.9]]), frames: [5] }, out)).toBe(true);
+    expect(out.grade).toBeCloseTo(0.3, 9);
+    expect(out.dof).toBeCloseTo(0.9, 9);
+    expect(t.last.map((r) => r.target).sort()).toEqual(['DepthOfField.Composite', 'canvas']);
+    expect(t.collect(null, out)).toBe(false);
   });
 });

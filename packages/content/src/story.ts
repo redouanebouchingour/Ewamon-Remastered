@@ -2,6 +2,7 @@
  * §3.5 story runtime — pure; the client and the server call the same three functions.
  */
 import type { HarvestState, StoryBeat, ZoneDef, ZoneId } from './types';
+import { LEAGUE_STORY_GATES } from './data/league';
 import { STORY } from './data/story';
 import { ZONES } from './data/zones';
 
@@ -53,4 +54,12 @@ export function harvestStateFor(zoneId: ZoneId, flags: ReadonlySet<string>): Har
 /** All flags a completed beat contributes: its `set` flags plus its done marker. */
 export function flagsAfterBeat(beat: StoryBeat): readonly string[] {
   return [...beat.set, beatDoneFlag(beat.id)];
+}
+
+/**
+ * The story flag a league interaction waits for (story-bible §6.1: `verdant_gym` needs `saw_thinning`, so the
+ * gym's pre-fight beat plays before the fight), or null when the league row is not story-gated.
+ */
+export function leagueStoryGate(leagueId: string): string | null {
+  return Object.hasOwn(LEAGUE_STORY_GATES, leagueId) ? LEAGUE_STORY_GATES[leagueId]! : null;
 }

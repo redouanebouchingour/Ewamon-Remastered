@@ -46,6 +46,14 @@ export const HEADING_TURN_MS = 320;
 export const ZOOM_MS = 260;
 // #endregion
 
+// #region constants — follow spring integration (implementation value)
+/**
+ * Longest semi-implicit Euler step of the follow spring (s). The integrator is stable only for dt < τ (0.12 s); a
+ * longer frame (a shader-compile stall, a starved tab at ~4 fps) is integrated in sub-steps of at most this length.
+ */
+export const SPRING_MAX_STEP_S = 1 / 60;
+// #endregion
+
 // #region constants — §10.7.2 shake (amp · 0.4° roll; oscillator rates/phases are implementation values)
 /** Roll added to a shake: amp · 0.4 degrees per world unit. */
 export const SHAKE_ROLL_DEG = 0.4;
@@ -79,12 +87,23 @@ function angleDelta(a: number, b: number): number {
   return d;
 }
 
-/** One critically damped spring axis step (semi-implicit Euler, §10.7.1): v first, then x with the new v. */
+/**
+ * One critically damped spring axis step (semi-implicit Euler, §10.7.1): v first, then x with the new v. A frame
+ * longer than SPRING_MAX_STEP_S runs as equal sub-steps: one step of dt ≥ τ diverges (at 250 ms the target flew
+ * hundreds of metres off and went NaN — a black canvas that never recovered). Identical for dt ≤ 1/60 s.
+ */
 export function springStep(x: number, v: number, target: number, dtS: number, out: { x: number; v: number }): { x: number; v: number } {
   const w = 1 / SPRING_TAU;
-  const nv = v - (2 * w * v + w * w * (x - target)) * dtS;
-  out.v = nv;
-  out.x = x + nv * dtS;
+  const n = dtS > SPRING_MAX_STEP_S ? Math.ceil(dtS / SPRING_MAX_STEP_S) : 1;
+  const h = dtS / n;
+  let px = x;
+  let pv = v;
+  for (let i = 0; i < n; i++) {
+    pv = pv - (2 * w * pv + w * w * (px - target)) * h;
+    px = px + pv * h;
+  }
+  out.v = pv;
+  out.x = px;
   return out;
 }
 

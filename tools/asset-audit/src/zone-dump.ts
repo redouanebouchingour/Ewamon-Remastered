@@ -13,8 +13,10 @@
  *  - `cls` additionally admits `'sky'` and `'debug'`, the two classes §40.5.2 names (`BackSide` only on `sky`;
  *    `materials.count` excludes `debug`) that render does not emit today.
  *  - The OPTIONAL fields below are the ones §40.5.2 says "the dump gains" (`geometries[].sharedBy`,
- *    `materials[].side`, the scatter `kind` + LOD tier, the `lightSource`-tagged emissives of §50.4.6). Render
- *    does not write them yet; a rule whose input is absent reports itself as unevaluated (never as a silent pass).
+ *    `materials[].side`, the scatter `kind` + LOD tier + `instancedMesh`, the `lightSource`-tagged emissives of
+ *    §50.4.6). Render writes all of them since 2026-09-25 (render IMPLEMENTATION-NOTES Part 4, H2) except `meshes[]`
+ *    and `shot`; they stay optional so older dumps still parse, and a rule whose input is absent reports itself as
+ *    unevaluated (never as a silent pass). `lightSources[].lightDistance` is `null` for render's `+Infinity` (no light).
  */
 
 export type HarvestLevel = 0 | 1 | 2;

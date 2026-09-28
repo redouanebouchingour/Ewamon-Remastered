@@ -46,7 +46,7 @@ import { TYPE_CHART } from './data/typechart';
 import { ZONES } from './data/zones';
 import { ENCOUNTER_BANDS, ENCOUNTER_TABLES } from './data/encounters';
 import { LEGENDARY_IDS, LEGENDARY_STATICS, MYTHICAL_IDS } from './data/statics';
-import { BADGES, LEAGUE } from './data/league';
+import { BADGES, LEAGUE, LEAGUE_STORY_GATES } from './data/league';
 import { QUESTS } from './data/quests';
 import { STORY } from './data/story';
 import { DAILY_SWARMS, RAID_HOTSPOTS, SEASONAL_EVENTS } from './data/liveops';
@@ -546,6 +546,16 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     for (const s of harvestZones.values()) if (s.has('harvested') && s.has('intact')) restoration = true;
     if (!restoration) err('story: no zone has both a harvested and an intact harvest beat');
     for (const b of STORY) if (setFlags.has(beatDoneFlag(b.id))) err(`story: authored flag collides with done marker of ${b.id}`);
+    // bible §6.1: a story-gated league interaction waits for a flag its own pre-fight beat (same zone, speaker = the league id) sets
+    for (const [leagueId, flag] of Object.entries(LEAGUE_STORY_GATES).sort(([a], [b]) => (a < b ? -1 : 1))) {
+      const lt = LEAGUE.find((l) => l.id === leagueId);
+      if (lt === undefined) {
+        err(`LEAGUE_STORY_GATES: unknown league id '${leagueId}'`);
+        continue;
+      }
+      checkFlag(`LEAGUE_STORY_GATES.${leagueId}`, flag);
+      if (!STORY.some((b) => b.zoneId === lt.zoneId && b.speaker === leagueId && b.set.includes(flag))) err(`LEAGUE_STORY_GATES.${leagueId}: '${flag}' is not set by a beat ${leagueId} speaks in ${lt.zoneId}`);
+    }
   }
 
   // ── §3.6 live-ops ──

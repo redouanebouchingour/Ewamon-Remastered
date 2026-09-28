@@ -11,6 +11,7 @@ import {
   beatDoneFlag,
   harvestStateFor,
   isKnownFlag,
+  leagueStoryGate,
   nextStoryBeat,
 } from '../src/index';
 
@@ -105,5 +106,33 @@ describe('story (§3.5)', () => {
       const lt = LEAGUE.find((l) => l.id === b.speaker);
       expect(npc !== undefined || lt?.zoneId === b.zoneId, `${b.id}: ${b.speaker}`).toBe(true);
     }
+  });
+
+  it('the Act I slice chain: mirevale 1 → (mire_route 2) → 3 → gym (gated on saw_thinning) → 4', () => {
+    const flags = new Set<string>();
+    const run = (zone: ZoneId, id: string): void => {
+      const b = nextStoryBeat(zone, flags);
+      expect(b?.id, `${zone} after ${[...flags].join(',')}`).toBe(id);
+      for (const f of b!.set) flags.add(f);
+      flags.add(beatDoneFlag(b!.id));
+    };
+    expect(nextStoryBeat('mire_route', flags)).toBeNull();
+    run('mirevale', 'first_witness');
+    expect(nextStoryBeat('mirevale', flags)).toBeNull(); // grove_stone waits for met_sable
+    run('mire_route', 'mire_rival');
+    expect(nextStoryBeat('mire_route', flags)).toBeNull();
+    // the gym is story-gated until grove_stone set saw_thinning (bible §6.1)
+    const gate = leagueStoryGate('verdant_gym');
+    expect(gate).toBe('saw_thinning');
+    expect(flags.has(gate!)).toBe(false);
+    run('mirevale', 'grove_stone');
+    expect(flags.has(gate!)).toBe(true);
+    expect(nextStoryBeat('mirevale', flags)).toBeNull(); // the fight itself is the league row, not a beat
+    flags.add('badge:bloom');
+    run('mirevale', 'bloom_after');
+    expect(nextStoryBeat('mirevale', flags)).toBeNull();
+    // only the bible's gate exists
+    expect(leagueStoryGate('blaze_gym')).toBeNull();
+    expect(leagueStoryGate('zeon')).toBeNull();
   });
 });

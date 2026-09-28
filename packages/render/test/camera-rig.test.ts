@@ -76,6 +76,21 @@ describe('follow: dead zone + critically damped spring', () => {
     expect(r.orbit.center.x).toBeCloseTo(3 - 0.8, 3);
   });
 
+  it('long frames stay stable: 250 ms steps converge without overshoot; ≤ 1/60 s is one plain Euler step', () => {
+    const s = { x: 0, v: 0 };
+    let max = 0;
+    for (let i = 0; i < 40; i++) { springStep(s.x, s.v, 100, 0.25, s); max = Math.max(max, Math.abs(s.x)); }
+    expect(Number.isFinite(s.x)).toBe(true);
+    expect(max).toBeLessThanOrEqual(100 + 1e-3);
+    expect(s.x).toBeCloseTo(100, 3);
+    const w = 1 / 0.12;
+    const h = FRAME / 1000;
+    const one = springStep(0.3, -0.2, 1, h, { x: 0, v: 0 });
+    const nv = -0.2 - (2 * w * -0.2 + w * w * (0.3 - 1)) * h;
+    expect(one.v).toBe(nv);
+    expect(one.x).toBe(0.3 + nv * h);
+  });
+
   it('the spring is critically damped: no overshoot toward a step target', () => {
     const s = { x: 0, v: 0 };
     let max = 0;

@@ -26,7 +26,7 @@ optionally `measure` (the per-shot number `report.json` keeps the worst of) and 
 
 | Rule | Assertion |
 |---|---|
-| `budget.counts.drawCalls` / `.triangles` / `.texturesSize` / `.renderTargets` / `.programs` | ≤ 400 / 2 500 000 / 734 003 200 / 24 / 96 |
+| `budget.counts.drawCalls` / `.triangles` / `.texturesSize` / `.renderTargets` / `.programs` | ≤ 400 / 2 500 000 / 734 003 200 / 41 / 128 (§50.2.2 as amended 2026-09-25) |
 | `materials.count` | distinct non-`debug` material uuids (and `counts.materials`) ≤ 48 |
 | `materials.threeMaps` | `standard`/`physical`/`card` at harvest 0 have albedo + ORM + normal |
 | `materials.albedoCeiling` | every referenced surface has `albedoClampedPct` in `materials.manifest.json` |
@@ -40,10 +40,10 @@ optionally `measure` (the per-shot number `report.json` keeps the worst of) and 
 | `shadows.drawCalls` | ≤ 564 |
 | `harvest.same` | harvest 0 and 2 dumps of the same shot have the same material-class multiset |
 
-A rule whose input fields the dump does not carry is listed as **unevaluated** (never a silent pass). Today's render
-dumps lack `materials[].side`, `geometries[].kind / tier / instancedMesh` and `lightSources[]` — the fields §40.5.2
-says "the dump gains" — so `geometry.noOutlineShells` and `scatter.instanced` report unevaluated on them and
-`lights.housing` checks one direction. `harvest.same` pairs dumps by zone and shot key: `dump.shot` if present, else
+A rule whose input fields the dump does not carry is listed as **unevaluated** (never a silent pass). Render dumps
+carry the fields §40.5.2 says "the dump gains" since 2026-09-25 — `materials[].side`, `geometries[].sharedBy / kind /
+tier / instancedMesh` and `lightSources[]` — so `geometry.noOutlineShells` (check 1), `scatter.instanced` and both
+directions of `lights.housing` are evaluated on them; `meshes[]` (the precise outline-shell check) is still absent. `harvest.same` pairs dumps by zone and shot key: `dump.shot` if present, else
 the file name with a trailing `-h0` / `_h2` / `.harvest2` removed.
 
 `fixtures/empty-zone.json` passes every rule, all evaluated.

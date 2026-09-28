@@ -50,7 +50,9 @@ export default defineConfig({
   },
   publicDir: here('../client/public'),
   plugins: [shotEndpoint()],
-  server: { port: 5180, strictPort: true, fs: { allow: [here('..'), here('../..')] } },
+  // `EWA_SANDBOX_NO_HMR=1`: no HMR socket, so saving a source file never reloads a page mid-measurement (the budget /
+  // compile-time / leak numbers in IMPLEMENTATION-NOTES Part 4 were taken this way; a navigation loads the latest code)
+  server: { port: 5180, strictPort: true, hmr: process.env.EWA_SANDBOX_NO_HMR === '1' ? false : undefined, fs: { allow: [here('..'), here('../..')] } },
   preview: { port: 5180, strictPort: true },
   build: { outDir: here('./.sandbox-dist'), emptyOutDir: true, target: 'es2022' },
   esbuild: { target: 'es2022' },

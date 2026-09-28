@@ -87,7 +87,7 @@ export {
   VARIANT_CHANCE,
 } from './data/encounters';
 export { LEGENDARY_IDS, LEGENDARY_STATICS, MYTHICAL_IDS } from './data/statics';
-export { BADGES, LEAGUE } from './data/league';
+export { BADGES, LEAGUE, LEAGUE_STORY_GATES } from './data/league';
 export { QUESTS } from './data/quests';
 export { STORY } from './data/story';
 export { DAILY_SWARMS, RAID_HOTSPOTS, SEASONAL_EVENTS, VARIANT_PALETTES, WEEKDAY_VARIANT } from './data/liveops';
@@ -101,7 +101,7 @@ export type { FlagEntry } from './flags';
 export * from './schema';
 
 // ─── §3.5 story runtime ──────────────────────────────────────────────────────
-export { beatDoneFlag, beatEligible, flagsAfterBeat, harvestStateFor, nextStoryBeat } from './story';
+export { beatDoneFlag, beatEligible, flagsAfterBeat, harvestStateFor, leagueStoryGate, nextStoryBeat } from './story';
 
 // ─── §3.11 heightfield ───────────────────────────────────────────────────────
 export type { Heightfield, HeightfieldJson } from './heightfield';

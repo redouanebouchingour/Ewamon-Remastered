@@ -260,3 +260,12 @@ export const BADGES: readonly BadgeDef[] = [
   { id: 'anvil', name: 'Anvil Badge', type: 'Steel', gym: 'iron_gym' },
   { id: 'ascend', name: 'Ascend Badge', type: 'Dragon', gym: 'draco_gym' },
 ];
+
+/**
+ * story-bible.md §6.1 / §5.4 / §11.1: "content gates the gym interaction on `saw_thinning` so beat 3 precedes the
+ * fight". A league interaction listed here is refused (server) until the player holds the flag — the gym's own
+ * pre-fight beat (`grove_stone`, speaker `verdant_gym`) must have played first. Only the gates the bible names.
+ */
+export const LEAGUE_STORY_GATES: Readonly<Record<string, string>> = {
+  verdant_gym: 'saw_thinning',
+};

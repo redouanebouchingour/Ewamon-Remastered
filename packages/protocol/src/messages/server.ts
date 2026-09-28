@@ -56,6 +56,18 @@ export type ServerErrorCode = (typeof SERVER_ERROR_CODES)[number];
 
 export type TradePhase = 'requested' | 'open' | 'confirming' | 'complete' | 'cancelled';
 export type ChallengeResultKind = 'declined' | 'expired' | 'unavailable';
+/**
+ * Why an accepted challenge could not become a battle (additive, optional — older servers omit it): `code` names
+ * the problem and `playerId` the side it belongs to, so each recipient can tell "your party" from "theirs".
+ */
+export const CHALLENGE_FAIL_CODES = ['noUsableParty', 'inBattle', 'trading', 'tooFar', 'left', 'expired'] as const;
+export type ChallengeFailCode = (typeof CHALLENGE_FAIL_CODES)[number];
+export interface ChallengeFailReason {
+  readonly code: ChallengeFailCode;
+  readonly playerId: string;
+}
+/** Where each of an `inventoryDelta`'s `creaturesAdded` was placed, by creature id (additive, optional). */
+export type CreaturePlacement = 'party' | 'box';
 export type ToastLevel = 'info' | 'success' | 'warn';
 export type StoryBeatPhase = 'start' | 'complete';
 
@@ -89,6 +101,11 @@ export type ServerMessage =
       readonly creaturesAdded: readonly CreatureInstance[];
       readonly creaturesRemoved: readonly string[];
       readonly creaturesUpdated: readonly CreatureInstance[];
+      /**
+       * Where each `creaturesAdded` entry landed (a catch joins the party while it has room, a trade always goes to the
+       * box). Optional and additive: a delta without it is placed by the client's catch rule.
+       */
+      readonly placement?: Readonly<Record<string, CreaturePlacement>>;
     }
   | {
       readonly type: 'progressionDelta';
@@ -110,7 +127,7 @@ export type ServerMessage =
       readonly z: number;
     }
   | { readonly type: 'challengeReceived'; readonly fromId: string; readonly fromName: string; readonly expiresInMs: number }
-  | { readonly type: 'challengeResult'; readonly targetId: string; readonly result: ChallengeResultKind }
+  | { readonly type: 'challengeResult'; readonly targetId: string; readonly result: ChallengeResultKind; readonly reason?: ChallengeFailReason }
   | {
       readonly type: 'tradeUpdate';
       readonly tradeId: string;
@@ -214,6 +231,7 @@ export const InventoryDeltaMsg = z.object({
   creaturesAdded: z.array(CreatureInstanceSchema),
   creaturesRemoved: z.array(z.string()),
   creaturesUpdated: z.array(CreatureInstanceSchema),
+  placement: z.record(z.string().min(1), z.enum(['party', 'box'])).optional(),
 });
 export const ProgressionDeltaMsg = z.object({
   type: z.literal('progressionDelta'),
@@ -245,6 +263,7 @@ export const ChallengeResultMsg = z.object({
   type: z.literal('challengeResult'),
   targetId: z.string().min(1),
   result: z.enum(['declined', 'expired', 'unavailable']),
+  reason: z.object({ code: z.enum(CHALLENGE_FAIL_CODES), playerId: z.string().min(1) }).optional(),
 });
 export const TradeUpdateMsg = z.object({
   type: z.literal('tradeUpdate'),

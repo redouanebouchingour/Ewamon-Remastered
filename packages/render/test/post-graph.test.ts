@@ -16,7 +16,7 @@ import TRAANode from 'three/addons/tsl/display/TRAANode.js';
 import { ALL_EFFECTS, type EffectsFlags } from '../src/descriptors.js';
 import { applyReducedEffects } from '../src/post/effects.js';
 import {
-  ALL_PASSES_ON, POST_PARAMS, buildPostOutput, createPostUniforms, createScenePass, planPostGraph, tiltPlaneNormal,
+  ALL_PASSES_ON, POST_PARAMS, buildPostOutput, createPostUniforms, createScenePass, planPostGraph, renderTargetsOf, stageTargets, tiltPlaneNormal,
 } from '../src/post/pipeline.js';
 
 // SMAANode builds its lookup textures from DOM `Image`s; node has none, and graph construction only needs the object.
@@ -140,5 +140,56 @@ describe('§10.7.3 tilt-shift focal plane', () => {
     expect(n.x).toBeCloseTo(0, 9);
     // a prop 12 m nearer/farther along the ground is 2.90 m off-plane
     expect(12 * 0.2419).toBeCloseTo(2.90, 2);
+  });
+});
+
+describe('R4 — the DOF CoC is zero under the sharp mask (IMPLEMENTATION-NOTES Part 4, H3)', () => {
+  function dofOf(dofMaskedCoC?: boolean) {
+    const camera = new PerspectiveCamera(28, 16 / 9, 0.5, 220);
+    const nodes = createScenePass(new Scene(), camera);
+    const plan = planPostGraph(ALL_EFFECTS, 'webgpu');
+    const { outputNode } = buildPostOutput(nodes, camera, createPostUniforms(), plan, dofMaskedCoC === undefined ? {} : { dofMaskedCoC });
+    const [dof] = find(collect(outputNode), DepthOfFieldNode);
+    return { dof: dof!, maskT: nodes.maskT as unknown as Node, depthT: nodes.scenePass.getTextureNode('depth') as unknown as Node };
+  }
+
+  it('viewZNode = −d · (1 − mask.y): the mask texture feeds the CoC, next to the depth reconstruction', () => {
+    const { dof, maskT, depthT } = dofOf();
+    type Op = Node & { op?: string; aNode?: Node; bNode?: Node; isVarNode?: boolean; node?: Node };
+    let viewZ = dof.viewZNode as Op;
+    while (viewZ.isVarNode === true) viewZ = viewZ.node as Op;   // TSL wraps a reused expression in a VarNode
+    expect(viewZ.op).toBe('*');
+    expect(contains(viewZ.aNode!, depthT)).toBe(true);        // −d (world position from depth, dotted with the plane)
+    expect(contains(viewZ.aNode!, maskT)).toBe(false);
+    expect(contains(viewZ.bNode!, maskT)).toBe(true);          // (1 − mask.y)
+    expect(contains(viewZ.bNode!, depthT)).toBe(false);
+  });
+
+  it('the before-graph (dofMaskedCoC false) feeds −d alone', () => {
+    const { dof, maskT, depthT } = dofOf(false);
+    expect(contains(dof.viewZNode as Node, maskT)).toBe(false);
+    expect(contains(dof.viewZNode as Node, depthT)).toBe(true);
+  });
+});
+
+describe('per-context GPU timing: render target → §50.2.1 row (IMPLEMENTATION-NOTES Part 4, H6)', () => {
+  it('maps the scene pass to opaque and every stage\'s own targets (incl. convertToTexture RTTs) to its row', () => {
+    const camera = new PerspectiveCamera(28, 16 / 9, 0.5, 220);
+    const nodes = createScenePass(new Scene(), camera);
+    const build = buildPostOutput(nodes, camera, createPostUniforms(), planPostGraph(ALL_EFFECTS, 'webgpu'));
+    const map = stageTargets(nodes, build);
+    const byPass: Record<string, number> = {};
+    for (const p of map.values()) byPass[p] = (byPass[p] ?? 0) + 1;
+    expect(map.get((nodes.scenePass as unknown as { renderTarget: never }).renderTarget)).toBe('opaque');
+    const all = collect(build.outputNode);
+    const [gtao] = find(all, GTAONode); const [traa] = find(all, TRAANode); const [bloom] = find(all, BloomNode); const [dof] = find(all, DepthOfFieldNode);
+    for (const rt of renderTargetsOf(gtao as unknown as Node)) expect(map.get(rt)).toBe('gtao');
+    for (const rt of renderTargetsOf(traa as unknown as Node)) expect(map.get(rt)).toBe('traa');
+    for (const rt of renderTargetsOf(bloom as unknown as Node)) expect(map.get(rt)).toBe('bloom');
+    for (const rt of renderTargetsOf(dof as unknown as Node)) expect(map.get(rt)).toBe('dof');
+    // the counts the render-target cap derivation (§10.10.2) lists: bloom 11, DOF 6 + Gaussian 2 + input RTT 1,
+    // TRAA 2 + input RTT 1, GTAO 1, chroma input RTT 1 (grade row), scene MRT 1
+    expect(byPass).toEqual({ opaque: 1, gtao: 1, traa: 3, bloom: 11, dof: 9, grade: 1 });
+    expect(build.stages.map((s) => s.pass)).toEqual(['gtao', 'traa', 'bloom', 'dof', 'grade']);
   });
 });

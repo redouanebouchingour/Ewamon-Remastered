@@ -95,8 +95,8 @@ describe('§40.5.2 rule set', () => {
     expect(Object.keys(VIOLATING).sort()).toEqual([...RULE_IDS].sort());
   });
 
-  it('pins the §50.2.2 / §10.5.8 numbers', () => {
-    expect(COUNT_CAPS).toEqual({ drawCalls: 400, triangles: 2_500_000, texturesSize: 734_003_200, renderTargets: 24, programs: 96 });
+  it('pins the §50.2.2 / §10.5.8 numbers (render targets / programs as amended 2026-09-25)', () => {
+    expect(COUNT_CAPS).toEqual({ drawCalls: 400, triangles: 2_500_000, texturesSize: 734_003_200, renderTargets: 41, programs: 128 });
     expect([MATERIALS_MAX, SHADOW_LIGHTS_MAX, NON_SHADOW_LIGHTS_MAX, HOUSING_MAX, SHADOW_DRAW_CALLS_MAX]).toEqual([48, 8, 24, 0.6, 564]);
   });
 

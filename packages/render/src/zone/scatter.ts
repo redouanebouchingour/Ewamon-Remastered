@@ -180,6 +180,8 @@ export class ScatterField {
         if (part.geometry.getAttribute('position').count === 0) continue;
         const mesh = new InstancedMesh(part.geometry, mats, cap);
         mesh.name = `ewa:scatter:${kind.name}:t${t}:a${part.cls}`;
+        // read by dumpZone (§40.5.2 `scatter.instanced`: the dump gains the scatter kind and LOD tier; 3 = impostor)
+        mesh.userData = { ewaScatterKind: kind.name, ewaScatterTier: t };
         if (matrixAttr === null) { mesh.instanceMatrix.setUsage(StaticDrawUsage); matrixAttr = mesh.instanceMatrix; }
         else mesh.instanceMatrix = matrixAttr;                          // every class shares one instance buffer
         if (tint === 'all' || (tint === 'cards' && part.cls === 1)) {

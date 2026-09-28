@@ -163,8 +163,13 @@ export interface MoveResult { readonly x: number; readonly z: number; readonly y
 /** Mutable result for the allocation-free variant. */
 export interface MoveResultMut { x: number; z: number; y: number; blocked: boolean; slid: boolean }
 
-const PROBE_COS: readonly number[] = Array.from({ length: 8 }, (_, k) => Math.cos((k * Math.PI) / 4));
-const PROBE_SIN: readonly number[] = Array.from({ length: 8 }, (_, k) => Math.sin((k * Math.PI) / 4));
+/**
+ * Rule-4 probe directions relative to the desired direction, smallest angle first: ±22.5°, ±45°, ±67.5°, ±90°
+ * (IMPLEMENTATION-NOTES Part 4, H9 — never backwards, never farther than the step).
+ */
+const PROBE_ANGLES: readonly number[] = [22.5, -22.5, 45, -45, 67.5, -67.5, 90, -90].map((d) => (d * Math.PI) / 180);
+const PROBE_COS: readonly number[] = PROBE_ANGLES.map(Math.cos);
+const PROBE_SIN: readonly number[] = PROBE_ANGLES.map(Math.sin);
 
 function accepts(c: TerrainCollider, fromY: number, x: number, z: number): boolean {
   if (!c.passable(x, z)) return false;
@@ -175,10 +180,14 @@ function accepts(c: TerrainCollider, fromY: number, x: number, z: number): boole
 
 /**
  * §10.6.2 rules in order: (1) target; (2) accept when passable, step ≤ 0.4 m and slope ≤ 40°; (3) the two
- * axis-separated moves; (4) 8 probes of the capsule radius around the target, the passing one with the smallest
- * angle to the desired direction; (5) stay. If the start itself is not passable (spawned into a blocker), the
- * nearest passable sample within 4 m is returned instead — the solver never returns an unwalkable position when
- * one exists nearby. Allocation-free: writes into `out`.
+ * axis-separated moves; (4) 8 probes AT THE STEP LENGTH around the START, ±22.5° … ±90° from the desired direction,
+ * the first (smallest angle) that passes; (5) stay. If the start itself is not passable (spawned into a blocker), the
+ * solver steps toward the nearest passable sample within 4 m by at most the step length.
+ *
+ * Invariant (IMPLEMENTATION-NOTES Part 4, H9): the returned position is never farther than `hypot(dx, dz)` from
+ * the start. The SPEC's rule 4 probed the capsule radius around the TARGET (up to step + 0.35 m) and the escape
+ * returned the nearest sample outright (up to 4 m); the server rejects any step over its speed cap and kicks after
+ * 30 rejections, which live two-player runs hit at walls. Allocation-free: writes into `out`.
  */
 export function resolveMoveInto(out: MoveResultMut, c: TerrainCollider, fromX: number, fromZ: number, dx: number, dz: number): MoveResultMut {
   const fromY = c.sample(fromX, fromZ);
@@ -190,25 +199,23 @@ export function resolveMoveInto(out: MoveResultMut, c: TerrainCollider, fromX: n
   if (dz !== 0 && accepts(c, fromY, fromX, fromZ + dz)) { out.slid = true; return finish(out, c, fromX, fromZ + dz); }
   const len = Math.hypot(dx, dz);
   if (len > 0) {
-    let bestK = -1; let bestCos = -2;
-    for (let k = 0; k < 8; k++) {
-      const px = tx + MOVER.capsuleRadius * PROBE_COS[k]!;
-      const pz = tz + MOVER.capsuleRadius * PROBE_SIN[k]!;
-      if (!accepts(c, fromY, px, pz)) continue;
-      const vx = px - fromX; const vz = pz - fromZ;
-      const vl = Math.hypot(vx, vz);
-      const cos = vl > 0 ? (vx * dx + vz * dz) / (vl * len) : 1;
-      if (cos > bestCos) { bestCos = cos; bestK = k; }
-    }
-    if (bestK >= 0) {
-      out.slid = true;
-      return finish(out, c, tx + MOVER.capsuleRadius * PROBE_COS[bestK]!, tz + MOVER.capsuleRadius * PROBE_SIN[bestK]!);
+    const ux = dx / len; const uz = dz / len;
+    for (let k = 0; k < PROBE_ANGLES.length; k++) {
+      const co = PROBE_COS[k]!; const si = PROBE_SIN[k]!;
+      const px = fromX + (ux * co - uz * si) * len;
+      const pz = fromZ + (ux * si + uz * co) * len;
+      if (accepts(c, fromY, px, pz)) { out.slid = true; return finish(out, c, px, pz); }
     }
   }
   out.blocked = true;
   if (c.passable(fromX, fromZ)) return finish(out, c, fromX, fromZ);
-  const near = c.nearestPassable(fromX, fromZ, 4);
-  if (near !== null) return finish(out, c, near[0], near[1]);
+  const near = len > 0 ? c.nearestPassable(fromX, fromZ, 4) : null;
+  if (near !== null) {
+    const ex = near[0] - fromX; const ez = near[1] - fromZ;
+    const el = Math.hypot(ex, ez);
+    const k = el > len ? len / el : 1;                 // walk out of the blocker, one step at a time
+    return finish(out, c, fromX + ex * k, fromZ + ez * k);
+  }
   return finish(out, c, fromX, fromZ);
 }
 

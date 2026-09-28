@@ -67,6 +67,8 @@ describe('§10.6.2 resolveMove', () => {
       for (let i = 0; i < 10_000; i++) {
         const dx = p.range(-1.2, 1.2); const dz = p.range(-1.2, 1.2);
         const r = resolveMoveInto(out, c, x, z, dx, dz);
+        // never displaced farther than the requested step (the server's speed check; IMPLEMENTATION-NOTES Part 4, H9)
+        expect(Math.hypot(r.x - x, r.z - z)).toBeLessThanOrEqual(Math.hypot(dx, dz) + 1e-9);
         expect(c.walkable(r.x, r.z)).toBe(true);
         expect(c.blocked(r.x, r.z)).toBe(false);
         expect(r.y).toBe(c.sample(r.x, r.z));
@@ -91,8 +93,31 @@ describe('§10.6.2 resolveMove', () => {
     expect(c.passable(s.x, s.z)).toBe(true);
     const w = new TerrainCollider(fixture('mirevale'));
     w.addBlocker({ kind: 'circle', x: 0, z: 6, r: 3 });
-    const inside = resolveMove(w, 0, 6, 0.1, 0);                          // spawned inside a blocker: escapes to the nearest passable sample
-    expect(w.passable(inside.x, inside.z)).toBe(true);
+    // spawned inside a blocker: walks out toward the nearest passable sample, one step (never more) per call
+    let px = 0; let pz = 6; let steps = 0;
+    while (!w.passable(px, pz) && steps < 100) {
+      const r = resolveMove(w, px, pz, 0.1, 0);
+      expect(Math.hypot(r.x - px, r.z - pz)).toBeLessThanOrEqual(0.1 + 1e-9);
+      px = r.x; pz = r.z; steps++;
+    }
+    expect(w.passable(px, pz)).toBe(true);
+    expect(steps).toBeGreaterThanOrEqual(30);                               // ≥ 3 m at 0.1 m per step
+    expect(resolveMove(w, 0, 6, 0, 0)).toMatchObject({ x: 0, z: 6, blocked: true });   // no input, no jump
+  });
+
+  it('slides along a wall at the step length (never farther, never backwards)', () => {
+    const c = new TerrainCollider(fixture('mirevale'));
+    c.addBlocker({ kind: 'rect', x: 3, z: 6, hw: 0.5, hd: 20, yaw: 0 });   // wall face at x = 2.5
+    const r = resolveMove(c, 2.3, 6, 0.4, 0.05);                            // almost straight into it: rule 3, the z-axis slide
+    expect(r).toMatchObject({ x: 2.3, slid: true, blocked: false });
+    expect(r.z).toBeCloseTo(6.05, 9);
+    // head-on: both axis moves fail (dz = 0), rule 4 finds the ±67.5° probe at exactly the step length
+    const head = resolveMove(c, 2.3, 6, 0.4, 0);
+    expect(head.slid).toBe(true);
+    expect(Math.hypot(head.x - 2.3, head.z - 6)).toBeCloseTo(0.4, 9);
+    expect(head.x).toBeLessThan(2.5);
+    expect(head.x - 2.3).toBeGreaterThan(0);                                // forward along the wall, never backwards
+    expect(c.passable(head.x, head.z)).toBe(true);
   });
 
   it('water bodies: mirevale has two ponds with a boardwalk strip and a level above the pond floor', () => {

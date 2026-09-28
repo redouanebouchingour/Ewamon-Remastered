@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 5174",
     "tokens": "tsx scripts/tokens.ts",
-    "tokens:check": "tsx scripts/tokens.ts --check"
+    "tokens:check": "tsx scripts/tokens.ts --check",
+    "harness:budget": "tsx scripts/harness/budget.ts",
+    "harness:shots": "tsx scripts/harness/shots.ts"
   },
   "dependencies": {
     "@ewa/core": "workspace:*",

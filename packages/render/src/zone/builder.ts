@@ -17,9 +17,9 @@ import type { BufferGeometry, Material, Object3D , InstancedMesh, Vector3 } from
 import type { BuildingSpec, HeightfieldData, ZoneHandle, ZoneSpec } from '../contracts.js';
 import type { LightSource, RenderStats } from '../descriptors.js';
 import type { MaterialLibrary } from '../materials/library.js';
-import type { SurfaceId } from '../materials/surfaces.js';
+import { SURFACES, type SurfaceId } from '../materials/surfaces.js';
 import type { PunctualHandle } from '../lighting/rig.js';
-import { createRenderStats } from '../stats.js';
+import { HOUSINGS_KEY, createRenderStats, type HousingTag } from '../stats.js';
 import { TerrainCollider } from '../terrain/collider.js';
 import { heightClamped } from '../terrain/field.js';
 import { buildSkirt, buildTerrainChunks, skirtHeightFn, type SkirtOpts, type TerrainLayers } from '../terrain/mesh.js';
@@ -112,6 +112,27 @@ function objectFromGeo(geo: PropGeo, tier: 0 | 1 | 2, material: (id: SurfaceId) 
   grp.name = name;
   split.parts.forEach((p, k) => grp.add(make(p.geometry, p.cls, p.casts, k)));
   return grp;
+}
+
+/**
+ * Local AABB `[minX, minY, minZ, maxX, maxY, maxZ]` of a prop's emissive-class triangles at lod0 (the part that
+ * glows: lantern glass, brazier coals, crystal, candles); null when the prop has none.
+ */
+function emissivePartBounds(geo: PropGeo): [number, number, number, number, number, number] | null {
+  const pos = geo.lod0.getAttribute('position');
+  const idx = geo.lod0.getIndex();
+  let b: [number, number, number, number, number, number] | null = null;
+  for (const gr of geo.lod0.groups) {
+    const s = geo.surfaces[gr.materialIndex ?? 0];
+    if (s === undefined || SURFACES[s].cls !== 'emissive') continue;
+    for (let i = gr.start; i < gr.start + gr.count; i++) {
+      const v = idx ? idx.getX(i) : i;
+      const x = pos.getX(v); const y = pos.getY(v); const z = pos.getZ(v);
+      if (b === null) b = [x, y, z, x, y, z];
+      else { if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (z < b[2]) b[2] = z; if (x > b[3]) b[3] = x; if (y > b[4]) b[4] = y; if (z > b[5]) b[5] = z; }
+    }
+  }
+  return b;
 }
 
 // ---- the build ----------------------------------------------------------------------------------------------
@@ -260,7 +281,8 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     else if (pp.kind === 'bench') collider.addBlocker({ kind: 'rect', x: pp.x, z: pp.z, hw: 1.0 + MOVER_R, hd: 0.25 + MOVER_R, yaw: pp.yaw });
     else if (r > 0) collider.addBlocker({ kind: 'circle', x: pp.x, z: pp.z, r: r + MOVER_R });
   }
-  // light housings (generated)
+  // light housings (generated); each one's glowing part is tagged for dumpZone's lightSources (§50.4.6 both directions)
+  const housingTags: HousingTag[] = [];
   for (const l of spec.lights) {
     if (l.housing.kind !== 'generated') continue;
     const gen = l.housing.generator;
@@ -270,6 +292,8 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     const g = heightClamped(h, x, z);
     const castHousing = gen === 'beacon' || gen === 'brazier';
     placeProp(geo, x, base, z, 0, 1, castHousing);
+    const glow = emissivePartBounds(geo);
+    if (glow) housingTags.push({ id: `${l.id}:housing`, min: [glow[0] + x, glow[1] + base, glow[2] + z], max: [glow[3] + x, glow[4] + base, glow[5] + z] });
     disposeProp(geo);
     if (base > g + 0.02) { const t = partsAt(x, z, castHousing); for (const p of t) box(p, set.props.stone, x, g - 0.2, z, 0.5, base - g + 0.22, 0.5, 0, 0.04); }
     collider.addBlocker({ kind: 'circle', x, z, r: (gen === 'beacon' ? 0.45 : 0.22) + MOVER_R });
@@ -320,6 +344,7 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
   let instances = 0;
   for (const f of fields) { digest.add(f.instanceData()); instances += f.total; }
 
+  root.userData[HOUSINGS_KEY] = housingTags;
   if (deps.scene) deps.scene.add(root);
 
   let disposed = false;

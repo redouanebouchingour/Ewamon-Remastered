@@ -1,0 +1,14 @@
+/* The harness page: one full-viewport canvas and a pass-through overlay layer (the battle panel anchors to it). */
+.canvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+  inline-size: 100vw;
+  block-size: 100vh;
+}
+
+.layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}

@@ -14,8 +14,8 @@ file:
 - Optional fields §40.5.2 says the dump "gains" but render does not write yet: `materials[].side`,
   `geometries[].sharedBy / kind / tier / instancedMesh`, `lightSources[]`, `meshes[]`, `shot`. Rules that need them
   report **unevaluated** on dumps without them (`report.json` `unevaluated`, printed by the CLI) instead of passing
-  silently. Render follow-up: `dumpZone()` should write `side`, the scatter `kind` + tier + `isInstancedMesh`
-  (the `ewa:scatter:<kind>:t<tier>` mesh names already carry them) and the `lightSource`-tagged emissives.
+  silently. Done in render on 2026-09-25 (render IMPLEMENTATION-NOTES Part 4, H2): `dumpZone()` writes `side`,
+  `sharedBy`, the scatter `kind` + tier + `instancedMesh` and `lightSources[]`; `meshes[]` and `shot` remain absent.
 
 **A2 — the drift test uses render's real `dumpZone()`.** §40.0.2 rule 5 keeps `@ewa/render` out of the tool; the
 test that "a fixture produced from the render type parses" runs `dumpZone()` on a small three.js scene in node and

@@ -18,10 +18,11 @@
  * - `GPUAdapterInfo` is not kept by the backend; `device.adapterInfo` is read instead.
  */
 import {
-  BufferAttribute, ColorManagement, Group, HalfFloatType, Mesh, NoToneMapping, PerspectiveCamera, PlaneGeometry, SRGBColorSpace, Scene, Vector3,
-  WebGPURenderer,
+  BufferAttribute, ColorManagement, Group, HalfFloatType, Matrix4, Mesh, NoToneMapping, PerspectiveCamera, PlaneGeometry, SRGBColorSpace, Scene,
+  Vector3, WebGPURenderer,
 } from 'three/webgpu';
-import type { BufferGeometry, Camera, Object3D } from 'three/webgpu';
+import { velocity } from 'three/tsl';
+import type { BufferGeometry, Camera, Object3D, RenderTarget } from 'three/webgpu';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import type {
   ActorPool, BattleStage, CameraRig, HudLayer, ZoneHandle, ZoneSpec,
@@ -46,8 +47,8 @@ import { coerceTimeScale } from './post/effects.js';
 import { GROVE_GRADE, type GradePalette } from './post/grade.js';
 import { ALL_PASSES_ON, GRAPH_PASSES, PostStack, type PassSwitches } from './post/pipeline.js';
 import {
-  computePassMs, copyInfo, countPunctualLights, createRenderStats, dumpZone, median, readBudgetCounts, TimestampResolver,
-  type LightCountsOut, type MutableRenderStats, type ZoneDump,
+  computePassMs, copyInfo, countPunctualLights, createRenderStats, dumpZone, median, PassTimer, readBudgetCounts, TimestampResolver,
+  type LightCountsOut, type MutableRenderStats, type TimestampPoolLike, type ZoneDump,
 } from './stats.js';
 
 // ---- §10.1.1 public surface (verbatim) --------------------------------------------------------------------
@@ -64,6 +65,22 @@ export interface RendererOptions {
   readonly materialsUrl?: string;
   /** Millisecond clock for `RenderStats.frameMs`; render never reads a wall clock itself (§10 NN 10). Default: none (frameMs = 0). */
   readonly clock?: () => number;
+  /**
+   * Shader pre-compilation progress (IMPLEMENTATION-NOTES Part 4, H4): `createRenderer` step 8 (`phase 'boot'`) and
+   * every `loadZone` (`phase 'zone'`) compile the scene-pass programs through `compileAsync` before anything is drawn;
+   * `loaded` / `total` count render objects. For the client's BootScreen.
+   */
+  readonly onCompileProgress?: (p: CompileProgress) => void;
+}
+
+/** One `onCompileProgress` report. `done` is true on the last report of a phase (with its wall time when a clock is set). */
+export interface CompileProgress {
+  readonly phase: 'boot' | 'zone';
+  readonly zone: string | null;
+  readonly loaded: number;
+  readonly total: number;
+  readonly done: boolean;
+  readonly ms: number | null;
 }
 
 export interface Renderer {
@@ -293,6 +310,13 @@ function createWarmupGeometry(): BufferGeometry {
 
 const _focusFallback = new Vector3();
 
+/** Concurrent `compileAsync` calls of one pre-compile (H4): several pipelines in flight for the driver's workers. */
+export const COMPILE_CONCURRENCY = 4;
+/** Fallback render call depth of the scene pass when none was measured yet (`PostStack.sceneCallDepth`). */
+const SCENE_PASS_CALL_DEPTH = 2;
+
+interface CompileStat { readonly objects: number; readonly ms: number | null; readonly groups: number }
+
 class RendererHost implements Renderer, HostContext {
   readonly renderer: WebGPURenderer;
   readonly scene = new Scene();
@@ -315,8 +339,21 @@ class RendererHost implements Renderer, HostContext {
   private readonly zones: ZoneLoader;
   private readonly hooks: readonly FrameHook[];
   private readonly timestamps: TimestampResolver;
+  /** Per-context GPU time → `passMs` (only when timestamps are tracked; IMPLEMENTATION-NOTES Part 4, H6). */
+  readonly passTimer: PassTimer | null;
+  /** Set once `measurePassMs` wrote the differential numbers: the live per-context values stop overwriting them. */
+  passMsLatched = false;
   private readonly clock: (() => number) | null;
+  private readonly onCompileProgress: ((p: CompileProgress) => void) | null;
   private readonly warmObjects: Object3D[] = [];
+  /** The step-8 warm-up group (kept, detached): recompiled against every zone's light set (H4). */
+  private warmGroup: Group | null = null;
+  /** While a pre-compile runs: the renderer state frames must render with (the compile keeps the scene pass's). */
+  private compileHold: { readonly target: RenderTarget | null; readonly mrt: ReturnType<WebGPURenderer['getMRT']>; readonly velocityProjection: Matrix4 | null } | null = null;
+  /** The unjittered projection the velocity MRT reads while a pre-compile runs (what TRAA sets during its render). */
+  private readonly compileProjection = new Matrix4();
+  /** Last pre-compile per phase: render objects compiled and wall ms (sandbox / harness). */
+  readonly compileStats: { boot: CompileStat | null; zone: CompileStat | null } = { boot: null, zone: null };
   private readonly lightCounts: LightCountsOut = { shadow: 0, nonShadow: 0 };
   private effectsFlags: EffectsFlags;
   private passes: PassSwitches = ALL_PASSES_ON;
@@ -344,6 +381,7 @@ class RendererHost implements Renderer, HostContext {
     this.effectsFlags = o.effects ?? ALL_EFFECTS;
     this.requestedPr = o.pixelRatio;
     this.clock = o.clock ?? null;
+    this.onCompileProgress = o.onCompileProgress ?? null;
 
     // 6.
     const cssW = o.canvas.clientWidth || o.canvas.width || 1;
@@ -364,7 +402,10 @@ class RendererHost implements Renderer, HostContext {
     this.precipitation = new PrecipitationSheet(this.materials.uniforms);
     this.scene.add(this.precipitation.object);
     this.post = new PostStack(gpu, this.scene, this.camera3, backend, this.effectsFlags, this.passes);
-    this.timestamps = new TimestampResolver(gpu, caps.timestampQuery && o.trackTimestamp === true, this.statsRecord);
+    const trackTs = caps.timestampQuery && o.trackTimestamp === true;
+    this.passTimer = trackTs ? new PassTimer((rt) => this.classifyRender(rt)) : null;
+    if (this.passTimer !== null) gpu.inspector = this.passTimer;
+    this.timestamps = new TimestampResolver(gpu, trackTs, this.statsRecord, this.passTimer !== null ? () => this.collectPassMs() : undefined);
 
     this.camera = subsystems.camera(this);
     const hud = subsystems.hud(this);
@@ -398,6 +439,13 @@ class RendererHost implements Renderer, HostContext {
       group.add(mesh);
     });
     for (const o of this.warmObjects) { o.frustumCulled = false; group.add(o); }
+    // H4: the scene-pass programs compile off the main thread first; the frame below then only builds the post
+    // chain's quads and the shadow-pass variants synchronously. The day cycle runs once before, so the PMREM
+    // environment (part of every lit program's source) exists when the programs are built.
+    // One frame without the warm group first: it builds the post chain and records the scene pass's render depth
+    // (H4 point 3). Then the day cycle has baked the PMREM environment, which is part of every lit program's source.
+    this.frame(0);
+    await this.precompile('boot', null, [group]);
     this.scene.add(group);
     const rainWasVisible = this.precipitation.object.visible;
     this.precipitation.object.visible = true;
@@ -406,8 +454,97 @@ class RendererHost implements Renderer, HostContext {
     this.scene.remove(group);
     // The warm meshes are kept (never `dispose`d): their render objects keep the compiled programs alive.
     this.warmObjects.push(...group.children);
+    this.warmGroup = group;
     geo.dispose();
     this.captureBaseline();
+  }
+
+  /**
+   * H4 (IMPLEMENTATION-NOTES Part 4): compiles every program the renderable children of `containers` need in the
+   * scene pass — with the scene's light set — through `gpu.compileAsync` (`createRenderPipelineAsync`, a yield per
+   * object), as `COMPILE_CONCURRENCY` concurrent calls so the driver compiles several pipelines at once. What three
+   * 0.186 requires for the result to be the programs the real frame uses (each point measured in the browser):
+   * 1. Light set: every call sees the scene's lights through `targetScene` and its own subtree's through projection,
+   *    so the containers' renderable children are moved into detached groups while the containers keep their lights
+   *    (the zone root stays attached, holding only its lights, so a frame rendered meanwhile draws no zone geometry
+   *    and compiles nothing synchronously); `LightsNode` sorts lights by id, so list order is irrelevant.
+   * 2. Target + MRT: `compileAsync` captures the render context in its synchronous prologue, but every node build
+   *    runs later in its async loop and reads `renderer.getRenderTarget()` / `getMRT()` again
+   *    (`NodeMaterial.setupOutput`, `NodeBuilder.needsPreviousData`); restored early, each fragment stage had one
+   *    output against a 4-attachment context and every async pipeline failed validation. So the scene pass's target
+   *    + MRT stay set for the whole compile and `frame()` swaps the canvas state in and out (`compileHold`).
+   * 3. Render context: `RenderObject.getMaterialCacheKey()` includes `renderContext.id`, and `RenderContexts.get` keys
+   *    contexts by call depth; the scene pass renders nested in whichever display node's quad first reads its
+   *    textures (depth 2 with the full graph: the DOF CoC quad), `compileAsync` asks for depth 0 — every node build
+   *    was redone on the CPU by the first frame (8.6–11 s, profiled). The prologue asks for the depth the scene pass
+   *    last rendered at (`PostStack.sceneCallDepth`, measured from its own `updateBefore`).
+   * 4. TRAA sets `velocity.setProjectionMatrix(unjittered)` only during its render, and `VelocityNode.setup` emits
+   *    `uniform(projectionMatrix)` instead of `cameraProjectionMatrix` when one is set: compiled without it every lit
+   *    program was the wrong variant (29 compiled, 26 rebuilt by the first frame). While compiling, the velocity node
+   *    carries a projection whenever TRAA is in the graph, re-applied after every frame that runs meanwhile.
+   * For the prologue every object is also made visible and un-culled (LOD levels, far scatter tiers, out-of-view
+   * props compile too). Not covered (built by the first real render): shadow-pass variants (`ShadowNode.updateBefore`
+   * returns while pre-compiling) and the post chain's own quads.
+   */
+  private async precompile(phase: 'boot' | 'zone', zone: string | null, containers: readonly Object3D[]): Promise<void> {
+    type Compile = (scene: Object3D, camera: Camera, targetScene?: Scene | null, onProgress?: ((e: { loaded: number; total: number }) => void) | null) => Promise<void>;
+    const gpu = this.renderer as WebGPURenderer & { compileAsync?: Compile; _renderContexts?: { get(rt: RenderTarget | null, mrt: unknown, depth?: number): unknown } };
+    if (typeof gpu.compileAsync !== 'function') return;
+    const pass = this.post.nodes.scenePass as unknown as { renderTarget: RenderTarget; getMRT(): unknown };
+    const t0 = this.clock !== null ? this.clock() : null;
+
+    // 1. renderable children → detached groups (containers keep their lights)
+    const groups: Group[] = [];
+    for (let k = 0; k < COMPILE_CONCURRENCY; k++) groups.push(new Group());
+    const originals = containers.map((c) => c.children.slice());
+    let n = 0;
+    const renderable = (o: Object3D): boolean => (o as Object3D & { isLight?: boolean }).isLight !== true && !(o.type === 'Object3D' && o.children.length === 0);   // lights and spot targets stay
+    for (const kids of originals) for (const o of kids) if (renderable(o)) groups[n++ % groups.length]!.add(o);
+    const jobsGroups = groups.filter((g) => g.children.length > 0);
+    const touched: Object3D[] = []; const state: number[] = [];
+    for (const g of jobsGroups) g.traverse((o) => { touched.push(o); state.push((o.visible ? 1 : 0) | (o.frustumCulled ? 2 : 0)); o.visible = true; o.frustumCulled = false; });
+
+    const loaded = new Array<number>(jobsGroups.length).fill(0);
+    const totals = new Array<number>(jobsGroups.length).fill(0);
+    const sum = (a: readonly number[]): number => a.reduce((x, y) => x + y, 0);
+    const report = (done: boolean): void => {
+      const ms = t0 !== null && this.clock !== null ? this.clock() - t0 : null;
+      if (done) this.compileStats[phase] = { objects: sum(totals), ms, groups: jobsGroups.length };
+      this.onCompileProgress?.({ phase, zone, loaded: sum(loaded), total: sum(totals), done, ms });
+    };
+
+    const traa = this.post.plan.some((st) => st.id === 'traa');
+    const hold = { target: gpu.getRenderTarget(), mrt: gpu.getMRT(), velocityProjection: traa ? this.compileProjection.copy(this.camera3.projectionMatrix) : null };
+    const vel = velocity as unknown as { setProjectionMatrix(m: Matrix4 | null): void };
+    const contexts = gpu._renderContexts;
+    const getContext = contexts?.get;
+    const jobs: Promise<void>[] = [];
+    try {
+      gpu.setRenderTarget(pass.renderTarget);
+      gpu.setMRT(pass.getMRT() as Parameters<WebGPURenderer['setMRT']>[0]);
+      vel.setProjectionMatrix(hold.velocityProjection);                                          // 4.
+      const depth = this.post.sceneCallDepth ?? SCENE_PASS_CALL_DEPTH;
+      if (contexts && getContext) contexts.get = (rt, mrt, d) => getContext.call(contexts, rt, mrt, d ?? depth);   // 3.
+      this.compileHold = hold;                                                                   // 2.
+      jobsGroups.forEach((g, i) => {
+        jobs.push(gpu.compileAsync!(g, this.camera3, this.scene, (e) => { loaded[i] = e.loaded; totals[i] = e.total; report(false); }));
+      });
+    } finally {
+      if (contexts && getContext) contexts.get = getContext;
+      touched.forEach((o, i) => { o.visible = (state[i]! & 1) !== 0; o.frustumCulled = (state[i]! & 2) !== 0; });
+    }
+    try {
+      await Promise.all(jobs);
+    } finally {
+      this.compileHold = null;
+      vel.setProjectionMatrix(null);
+      gpu.setRenderTarget(hold.target);
+      gpu.setMRT(hold.mrt);
+      // children back into their containers, in their original order
+      for (const g of groups) g.remove(...g.children);
+      containers.forEach((c, i) => { c.remove(...c.children); c.add(...originals[i]!); });
+    }
+    report(true);
   }
 
   private captureBaseline(): void {
@@ -454,6 +591,9 @@ class RendererHost implements Renderer, HostContext {
     try {
       const handle = await this.zones.load(spec);
       this.zone = handle;
+      // H4: the zone's light set is part of every lit program — compile the zone, then the kept warm-up group
+      // (library structures, billboard, character, beacon housing, VFX) against it, before the first zone frame
+      await this.precompile('zone', spec.id, this.warmGroup !== null ? [handle.group, this.warmGroup] : [handle.group]);
       for (const h of this.hooks) h.onZone?.(handle);
       this.setHarvestLevel(spec.harvestLevel);
       MaterialBudget.assert(handle.group, 48);
@@ -532,6 +672,26 @@ class RendererHost implements Renderer, HostContext {
   passSwitches(): PassSwitches { return this.passes; }
 
   /**
+   * §50.2.1 row of a render call by its target: the canvas (final output quad, HUD overlay) is `grade`, the scene
+   * pass and the stages' own targets come from the post graph, shadow maps by three's texture names; anything else
+   * (PMREM bakes, the IBL probe) is `opaque` — §10.3.3 amortises the bake inside opaque's remainder.
+   */
+  private classifyRender(rt: RenderTarget | null): BudgetPass | null {
+    if (rt === null) return 'grade';
+    const p = this.post.passOfTarget(rt);
+    if (p !== null) return p;
+    const n = rt.texture?.name;
+    if (n === 'ShadowMap' || n === 'PointShadowMap' || n === 'VSMVertical' || n === 'VSMHorizontal') return 'shadows';
+    return null;
+  }
+
+  private collectPassMs(): void {
+    if (this.passTimer === null || this.passMsLatched) return;
+    const pool = (this.renderer.backend as unknown as { timestampQueryPool?: { render?: TimestampPoolLike | null } }).timestampQueryPool?.render;
+    this.passTimer.collect(pool, this.statsRecord.passMs);
+  }
+
+  /**
    * Frame-scoped node updates run once per `nodeFrame.frameId`, which three's internal rAF loop advances.
    * When `frame()` runs twice inside one rAF tick, advance it here (and reset the per-frame counters).
    */
@@ -550,6 +710,20 @@ class RendererHost implements Renderer, HostContext {
   /** §10.1.2 frame steps (1)–(7). Zero allocation on the steady path. */
   frame(dtMs: number): void {
     if (this.disposed) return;
+    const hold = this.compileHold;
+    if (hold === null) { this.frameSteps(dtMs); return; }
+    // a pre-compile is running with the scene pass's target + MRT set on the renderer (H4): render this frame with
+    // the state it had before, then put the compile's back (the frame is synchronous, the compile never sees it)
+    const gpu = this.renderer;
+    const target = gpu.getRenderTarget(); const mrt = gpu.getMRT();
+    gpu.setRenderTarget(hold.target); gpu.setMRT(hold.mrt);
+    try { this.frameSteps(dtMs); } finally {
+      gpu.setRenderTarget(target); gpu.setMRT(mrt);
+      (velocity as unknown as { setProjectionMatrix(m: Matrix4 | null): void }).setProjectionMatrix(hold.velocityProjection);   // TRAA reset it
+    }
+  }
+
+  private frameSteps(dtMs: number): void {
     const t0 = this.clock !== null ? this.clock() : 0;
     this.advanceStaleFrame();
     const dt = Number.isFinite(dtMs) && dtMs > 0 ? dtMs : 0;
@@ -708,6 +882,7 @@ export function createBudgetProbe(r: Renderer, zoneId: string, ownsRenderer = fa
         host.setPassEnabled(p, true);
       }
       const passMs = computePassMs(tAll, without, sim);
+      host.passMsLatched = true;
       for (const k of Object.keys(passMs) as BudgetPass[]) host.statsRecord.passMs[k] = passMs[k];
       const sorted = [...all].sort((a, b) => a - b);
       const p95 = sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1)] ?? Number.NaN;

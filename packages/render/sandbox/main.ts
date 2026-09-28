@@ -172,7 +172,54 @@ const LIGHTS: LightSource[] = [
 
 // ---- boot -------------------------------------------------------------------------------------------------
 
+/** Waits for the GPU queue (so a frame's deferred pipeline compilation is inside the measured interval). */
+async function gpuIdle(r: Renderer): Promise<void> {
+  const dev = (r.renderer.backend as unknown as { device?: { queue: { onSubmittedWorkDone(): Promise<void> } } }).device;
+  if (dev) await dev.queue.onSubmittedWorkDone();
+}
+
+/** Boot / zone timings for the Part 4 measurements (`__ewaSandbox.timing()`). */
+const timing: Record<string, number | string | null> = {};
+let holding = false;
+let firstZoneFrame: (() => Promise<void>) | null = null;
+
+/** WGSL of every program three holds (`renderer._pipelines.programs`), for "which programs did this frame add". */
+function programCodes(r: Renderer): { vertex: string[]; fragment: string[] } {
+  const p = (r.renderer as unknown as { _pipelines?: { programs?: { vertex: Map<string, unknown>; fragment: Map<string, unknown> } } })._pipelines?.programs;
+  return { vertex: p ? [...p.vertex.keys()] : [], fragment: p ? [...p.fragment.keys()] : [] };
+}
+let programsAtLoad: { vertex: string[]; fragment: string[] } | null = null;
+
+interface TrackedGpu { readonly targets: Map<object, string>; readonly textures: Map<object, string> }
+
+/**
+ * `?track=1` (leak hunting, IMPLEMENTATION-NOTES Part 4): wraps three's texture bookkeeping so every render target /
+ * texture three initialises after this call is listed with its name, size and creation phase until it is destroyed.
+ */
+function trackGpuObjects(r: Renderer, phase: () => string): TrackedGpu {
+  const t = (r.renderer as unknown as { _textures: Record<string, (...a: unknown[]) => unknown> & { has(o: object): boolean; info: { createTexture(tx: object): void; destroyTexture(tx: object): void } } })._textures;
+  const out: TrackedGpu = { targets: new Map(), textures: new Map() };
+  const describe = (o: { name?: string; texture?: { name?: string }; width?: number; height?: number; image?: { width?: number; height?: number } }): string =>
+    `${o.texture?.name || o.name || (o as { constructor: { name: string } }).constructor.name} ${o.width ?? o.image?.width ?? '?'}x${o.height ?? o.image?.height ?? '?'} @${phase()}`;
+  const upd = t.updateRenderTarget!.bind(t);
+  t.updateRenderTarget = (rt: unknown, lvl: unknown) => {
+    const had = t.has(rt as object) && (t as unknown as { get(o: object): { initialized?: boolean } }).get(rt as object).initialized === true;
+    const res = upd(rt, lvl);
+    if (!had) out.targets.set(rt as object, describe(rt as never));
+    return res;
+  };
+  const destroyRT = t._destroyRenderTarget!.bind(t);
+  t._destroyRenderTarget = (rt: unknown) => { out.targets.delete(rt as object); return destroyRT(rt); };
+  const info = t.info;
+  const create = info.createTexture.bind(info);
+  info.createTexture = (tx: object) => { out.textures.set(tx, describe(tx as never)); create(tx); };
+  const destroy = info.destroyTexture.bind(info);
+  info.destroyTexture = (tx: object) => { out.textures.delete(tx); destroy(tx); };
+  return out;
+}
+
 async function main(): Promise<void> {
+  const tBoot = performance.now();
   const r = await createRenderer({
     canvas,
     pixelRatio: window.devicePixelRatio || 1,
@@ -182,6 +229,11 @@ async function main(): Promise<void> {
     materialsUrl: '/materials/',
     clock: () => performance.now(),
   });
+  await gpuIdle(r);
+  timing.createRendererMs = Math.round(performance.now() - tBoot);
+  timing.programsAfterWarmup = r.renderer.info.memory.programs;
+  let trackPhase = 'boot';
+  const tracked = new URLSearchParams(location.search).get('track') === '1' ? trackGpuObjects(r, () => trackPhase) : null;
   const host = rendererInternals(r)!;
   const probe = createBudgetProbe(r, 'sandbox');
 
@@ -196,12 +248,30 @@ async function main(): Promise<void> {
     const def = contentZone(zoneId);
     const spec = zoneSpecFor(def, harvest);
     const t0 = performance.now();
+    trackPhase = 'loadZone';
     zoneHandle = await r.loadZone(spec) as ZoneHandleImpl;
+    trackPhase = 'firstFrame';
+    timing.loadZoneMs = Math.round(performance.now() - t0);
+    timing.programsAfterLoad = r.renderer.info.memory.programs;
+    programsAtLoad = programCodes(r);
     console.info(`[sandbox] loaded ${zoneId} in ${(performance.now() - t0).toFixed(0)} ms`, zoneHandle.info);
     const fx = Number(params.get('x') ?? def.spawn.x); const fz = Number(params.get('z') ?? def.spawn.z);
     rig.setFocus(fx, zoneHandle.collider.sampleClamped(fx, fz), fz);
     rig.setHeading((Number(params.get('h') ?? 0) & 3) as 0 | 1 | 2 | 3);
     rig.setZoomStop(Math.max(0, Math.min(2, Number(params.get('zoom') ?? 1))) as 0 | 1 | 2);
+    // the first zone frame: CPU time of frame() and until the GPU queue drained (sync pipeline compiles land here);
+    // `&hold=1` defers it (and the loop) until `__ewaSandbox.release()`, so it can run under the CDP profiler
+    firstZoneFrame = async (): Promise<void> => {
+      const tf = performance.now();
+      r.frame(16);
+      timing.firstZoneFrameCpuMs = Math.round(performance.now() - tf);
+      await gpuIdle(r);
+      timing.firstZoneFrameMs = Math.round(performance.now() - tf);
+      timing.programsAfterFirstFrame = r.renderer.info.memory.programs;
+      trackPhase = 'play';
+      holding = false;
+    };
+    if (params.get('hold') === '1') holding = true; else await firstZoneFrame();
     (window as unknown as { __ewaZone: unknown }).__ewaZone = { spec, handle: zoneHandle };
   } else {
     await r.materials.preload(SURFACES_USED);
@@ -222,7 +292,7 @@ async function main(): Promise<void> {
   const loop = (now: number): void => {
     const dt = Math.min(100, now - last);
     last = now;
-    r.frame(dt);
+    if (!holding) r.frame(dt);
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
@@ -231,6 +301,19 @@ async function main(): Promise<void> {
   const api = {
     renderer: r,
     probe,
+    /** Boot / zone-load / first-frame timings (ms) and program counts at each step. */
+    timing: () => ({ ...timing }),
+    /** `&hold=1`: renders the deferred first zone frame (then the loop resumes) and returns the timings. */
+    release: async () => { if (firstZoneFrame && holding) await firstZoneFrame(); return { ...timing }; },
+    /** Programs (WGSL) three holds now that it did not hold right after `loadZone` resolved, plus that snapshot. */
+    newPrograms: () => {
+      if (!programsAtLoad) return null;
+      const now = programCodes(r);
+      const at = programsAtLoad;
+      return { vertex: now.vertex.filter((c) => !at.vertex.includes(c)), fragment: now.fragment.filter((c) => !at.fragment.includes(c)), atLoad: at };
+    },
+    /** `?track=1`: render targets / textures three initialised after boot and still alive (name size @phase). */
+    live: () => (tracked ? { targets: [...tracked.targets.values()], textures: [...tracked.textures.values()] } : null),
     stats: () => ({ ...r.stats(), passMs: { ...r.stats().passMs } }),
     counts: () => probe.counts(),
     dump: () => probe.dumpZone(),
@@ -262,13 +345,16 @@ async function main(): Promise<void> {
       const keys = ['geometries', 'textures', 'programs', 'renderTargets', 'attributes', 'attributesSize'] as const;
       const rounds: Record<string, number>[] = [];
       for (let i = 0; i < cycles; i++) {
+        trackPhase = `unload${i}`;
         zoneHandle.dispose();
         for (let k = 0; k < 3; k++) r.frame(16);
         const m = r.renderer.info.memory as unknown as Record<string, number>;
         const b = host.baseline as unknown as Record<string, number>;
         rounds.push(Object.fromEntries(keys.map((k) => [k, m[k]! - b[k]!])));
+        trackPhase = `reload${i}`;
         zoneHandle = await r.loadZone(spec) as ZoneHandleImpl;
         for (let k = 0; k < 3; k++) r.frame(16);
+        trackPhase = 'play';
       }
       return rounds;
     },

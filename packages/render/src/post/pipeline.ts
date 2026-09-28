@@ -25,10 +25,10 @@
  *   implemented in 0.186 (the null reaches the layout Fn and the build throws); the centre is explicit.
  */
 import { NoToneMapping, RenderPipeline, SRGBColorSpace, Vector3 } from 'three/webgpu';
-import type { Camera, Node, PassNode, PerspectiveCamera, Scene, TextureNode, UniformNode, WebGPURenderer } from 'three/webgpu';
+import type { Camera, Node, PassNode, PerspectiveCamera, RenderTarget, Scene, TextureNode, UniformNode, WebGPURenderer } from 'three/webgpu';
 import {
-  acesFilmicToneMapping, dot, float, getViewPosition, mix, mrt, normalView, output, pass, renderOutput, screenUV, uniform, vec2, vec4,
-  velocity,
+  acesFilmicToneMapping, dot, float, getViewPosition, mix, mrt, normalView, oneMinus, output, pass, renderOutput, screenUV, uniform, vec2,
+  vec4, velocity,
 } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { traa } from 'three/addons/tsl/display/TRAANode.js';
@@ -162,6 +162,8 @@ export interface PostNodes {
 export interface PostBuild {
   readonly outputNode: Node;
   readonly plan: readonly PostStage[];
+  /** The output node of every realised stage, in graph order, with the §50.2.1 row its GPU time belongs to. */
+  readonly stages: readonly { readonly pass: BudgetPass; readonly node: Node }[];
 }
 
 function has(plan: readonly PostStage[], id: PostStageId): boolean {
@@ -180,12 +182,19 @@ export function createScenePass(scene: Scene, camera: Camera): PostNodes {
   };
 }
 
+/** Build options that exist for A/B comparisons (sandbox shots, tests); the defaults are the shipped graph. */
+export interface PostBuildOptions {
+  /** DOF CoC forced to 0 under `mask.y` (default true; false = the part-1 graph, for before/after shots). */
+  readonly dofMaskedCoC?: boolean;
+}
+
 /** Realises `plan` on top of an existing scene pass. Pure TSL graph construction (no GPU work). */
-export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: PostUniforms, plan: readonly PostStage[]): PostBuild {
+export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: PostUniforms, plan: readonly PostStage[], opts: PostBuildOptions = {}): PostBuild {
   const { scenePass, beautyT: beauty, maskT } = nodes;
   const depthT = scenePass.getTextureNode('depth');
   const normalT = scenePass.getTextureNode('normal');
   const velT = scenePass.getTextureNode('velocity');
+  const stages: { pass: BudgetPass; node: Node }[] = [];
 
   // GTAO — half resolution, 16 spp; sprites/decals (mask.x = 1) keep their own contact gradient.
   let lit: Node<'vec4'> = beauty as unknown as Node<'vec4'>;
@@ -199,6 +208,7 @@ export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: 
     aoNode.thickness.value = g.thickness;
     aoNode.scale.value = g.scale;
     aoNode.useTemporalFiltering = gtao.params.temporal === true;
+    stages.push({ pass: 'gtao', node: aoNode as unknown as Node });
     const aoT = aoNode.getTextureNode();
     lit = vec4(beauty.rgb.mul(mix(aoT.r, float(1), maskT.x)), beauty.a);
   }
@@ -207,6 +217,7 @@ export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: 
   let aa: Node<'vec4'> = lit;
   if (has(plan, 'traa')) aa = traa(lit, depthT, velT, camera) as unknown as Node<'vec4'>;
   else if (has(plan, 'smaa')) aa = smaa(lit) as unknown as Node<'vec4'>;
+  if (aa !== lit) stages.push({ pass: 'traa', node: aa });
 
   // Bloom — threshold 1.15 scene-linear sits in the gap between 1.10 environment and 1.35 creature emissive.
   let bloomed: Node<'vec4'> = aa;
@@ -215,6 +226,7 @@ export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: 
     const bn = bloom(aa, b.strength, b.radius, b.threshold);
     bn.smoothWidth.value = b.smoothWidth;
     bn.setResolutionScale(b.resolutionScale);
+    stages.push({ pass: 'bloom', node: bn as unknown as Node });
     bloomed = aa.add(bn as unknown as Node<'vec4'>);
   }
 
@@ -226,7 +238,12 @@ export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: 
     const viewPos = getViewPosition(screenUV, depthT as unknown as Node<'float'>, projInv) as Node<'vec3'>;
     const worldPos = camWorld.mul(vec4(viewPos, 1)).xyz;
     const planeDist = dot(worldPos.sub(u.focusPoint), u.planeNormal);
-    const blurred = dof(bloomed, planeDist.negate(), POST_PARAMS.dof.focusDistance, POST_PARAMS.dof.focalLength, u.bokehScale) as unknown as Node<'vec4'>;
+    // R4 (IMPLEMENTATION-NOTES Part 4, H3): the CoC is 0 under mask.y, so a sharp billboard off the plane has no
+    // near/far-field weight of its own — its CoC is not Gaussian-dilated into the ground around it and its colour
+    // is not spread by the near-field max pass (the soft coloured halo). The composite below still restores it.
+    const viewZ = opts.dofMaskedCoC === false ? planeDist.negate() : planeDist.negate().mul(oneMinus(maskT.y));
+    const blurred = dof(bloomed, viewZ, POST_PARAMS.dof.focusDistance, POST_PARAMS.dof.focalLength, u.bokehScale) as unknown as Node<'vec4'>;
+    stages.push({ pass: 'dof', node: blurred });
     focused = mix(blurred, bloomed, maskT.y);
   }
 
@@ -234,6 +251,7 @@ export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: 
   let ca: Node<'vec4'> = focused;
   // `center = null` is documented as "screen centre" but 0.186 passes the null straight into its layout Fn (crash): explicit centre.
   if (has(plan, 'chroma')) ca = chromaticAberration(focused, u.chroma, vec2(0.5, 0.5), float(POST_PARAMS.chroma.scale)) as unknown as Node<'vec4'>;
+  if (ca !== focused) stages.push({ pass: 'grade', node: ca });   // §50.2.1 "grade / HUD" row lists the aberration
 
   // ACES then grade (display-referred), vignette, grain.
   let rgb: Node<'vec3'> = ca.rgb;
@@ -243,7 +261,40 @@ export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: 
   if (has(plan, 'grain')) rgb = (film(vec4(rgb, 1), u.grain) as unknown as Node<'vec4'>).rgb;
 
   const outputNode = renderOutput(vec4(rgb, 1), NoToneMapping, SRGBColorSpace);
-  return { outputNode, plan };
+  return { outputNode, plan, stages };
+}
+
+/** Every `RenderTarget` a display node holds in its own (also private) properties, one level into private sub-nodes. */
+export function renderTargetsOf(n: Node, depth = 1): RenderTarget[] {
+  const out: RenderTarget[] = [];
+  const rec = n as unknown as Record<string, unknown>;
+  for (const k of Object.getOwnPropertyNames(rec)) {
+    const v = rec[k] as { isRenderTarget?: boolean; isNode?: boolean } | unknown[] | null | undefined;
+    if (v === null || v === undefined || typeof v !== 'object') continue;
+    if (Array.isArray(v)) { for (const e of v) if ((e as { isRenderTarget?: boolean } | null)?.isRenderTarget === true) out.push(e as RenderTarget); continue; }
+    if ((v as { isRenderTarget?: boolean }).isRenderTarget === true) out.push(v as RenderTarget);
+    else if (depth > 0 && k.startsWith('_') && (v as { isNode?: boolean }).isNode === true) out.push(...renderTargetsOf(v as unknown as Node, depth - 1));
+  }
+  return out;
+}
+
+/**
+ * Render target → §50.2.1 row for the realised graph: the scene pass is `opaque` (sprites render inside it), every
+ * stage's display nodes (and the `convertToTexture` RTTs they create) belong to that stage. Used by the per-context
+ * GPU timer (`PassTimer`, IMPLEMENTATION-NOTES Part 4, H6).
+ */
+export function stageTargets(nodes: PostNodes, build: PostBuild): Map<RenderTarget, BudgetPass> {
+  const map = new Map<RenderTarget, BudgetPass>();
+  const scene = (nodes.scenePass as unknown as { renderTarget?: RenderTarget }).renderTarget;
+  if (scene) map.set(scene, 'opaque');
+  const keep = new Set<Node>([nodes.scenePass, nodes.beautyT, nodes.maskT] as unknown as Node[]);
+  for (const st of build.stages) {
+    for (const n of collectOwnedNodes(st.node, keep)) {
+      keep.add(n);
+      for (const rt of renderTargetsOf(n)) if (!map.has(rt)) map.set(rt, st.pass);
+    }
+  }
+  return map;
 }
 
 /** Nodes whose `updateBefore` renders into targets they own (the ones that must be disposed on rebuild). */
@@ -279,6 +330,17 @@ export class PostStack {
   private owned: Node[] = [];
   private readonly keep: ReadonlySet<Node>;
   private grade: GradePalette = GROVE_GRADE;
+  private buildOpts: PostBuildOptions = {};
+  private targets = new Map<RenderTarget, BudgetPass>();
+  /**
+   * three's render call depth at which the scene pass last rendered (`RenderContexts` keys contexts by it; the
+   * pre-compile must use the same context, IMPLEMENTATION-NOTES Part 4, H4). It is the depth of whichever display
+   * node's quad first reads a scene-pass texture, + 1 — 2 with the full graph (the DOF CoC quad), so it is measured,
+   * not assumed. Null before the first frame.
+   */
+  sceneCallDepth: number | null = null;
+  private flags: EffectsFlags;
+  private passes: PassSwitches;
   private disposed = false;
 
   constructor(
@@ -290,10 +352,22 @@ export class PostStack {
     passes: PassSwitches = ALL_PASSES_ON,
   ) {
     this.uniforms = createPostUniforms();
+    this.flags = f;
+    this.passes = passes;
     this.nodes = createScenePass(scene, camera);
+    {
+      const pass = this.nodes.scenePass as unknown as { updateBefore(frame: unknown): unknown };
+      const r = gpu as unknown as { _callDepth?: number };
+      const updateBefore = pass.updateBefore.bind(pass);
+      pass.updateBefore = (frame: unknown): unknown => {
+        if (typeof r._callDepth === 'number') this.sceneCallDepth = r._callDepth + 1;   // its renderer.render() nests one deeper
+        return updateBefore(frame);
+      };
+    }
     this.keep = new Set<Node>([this.nodes.scenePass, this.nodes.beautyT, this.nodes.maskT]);
     this.current = buildPostOutput(this.nodes, camera, this.uniforms, planPostGraph(f, backend, passes));
     this.owned = collectOwnedNodes(this.current.outputNode, this.keep);
+    this.targets = stageTargets(this.nodes, this.current);
     this.pipeline = new RenderPipeline(gpu, this.current.outputNode);
     this.pipeline.outputColorTransform = false;   // the graph ends in renderOutput(…, NoToneMapping, SRGBColorSpace)
   }
@@ -304,12 +378,26 @@ export class PostStack {
   /** Rebuilds the chain for new flags / pass switches; retired display nodes are disposed. */
   rebuild(f: EffectsFlags, passes: PassSwitches = ALL_PASSES_ON): void {
     if (this.disposed) return;
+    this.flags = f;
+    this.passes = passes;
     const retired = this.owned;
-    this.current = buildPostOutput(this.nodes, this.camera, this.uniforms, planPostGraph(f, this.backend, passes));
+    this.current = buildPostOutput(this.nodes, this.camera, this.uniforms, planPostGraph(f, this.backend, passes), this.buildOpts);
     this.owned = collectOwnedNodes(this.current.outputNode, this.keep);
+    this.targets = stageTargets(this.nodes, this.current);
     this.pipeline.outputNode = this.current.outputNode;
     this.pipeline.needsUpdate = true;
     for (const n of retired) n.dispose();
+  }
+
+  /** The §50.2.1 row a render into `rt` belongs to (scene pass, a stage's own targets), or null (not the graph's). */
+  passOfTarget(rt: RenderTarget): BudgetPass | null {
+    return this.targets.get(rt) ?? null;
+  }
+
+  /** A/B switches for comparisons (sandbox shots); rebuilds with the current flags and passes. */
+  setBuildOptions(o: PostBuildOptions): void {
+    this.buildOpts = { ...o };
+    this.rebuild(this.flags, this.passes);
   }
 
   /** Per-frame: DOF focal plane through `focus` (§10.7.3). Zero allocation. */

@@ -6,13 +6,18 @@ import type { BudgetCounts, ZoneDump } from './zone-dump.js';
 import type { AuditContext, RuleModule, Violation } from './types.js';
 import { violation } from './types.js';
 
-/** §50.2.2 count caps. */
+/**
+ * §50.2.2 count caps, as amended 2026-09-25 (§40.5.2 row `budget.counts.renderTargets` / `.programs`: ≤ 41 / ≤ 128 —
+ * the earlier 24 / 96 were measured impossible with the stock three 0.186 display nodes and a zone's light set).
+ * `texturesSize` is `RenderStats.textureBytes` (KTX2 counted by level data), which render writes into
+ * `counts.texturesSize`.
+ */
 export const COUNT_CAPS = Object.freeze({
   drawCalls: 400,
   triangles: 2_500_000,
   texturesSize: 734_003_200,
-  renderTargets: 24,
-  programs: 96,
+  renderTargets: 41,
+  programs: 128,
 });
 
 /** §50.2.2 / §10.2.7: distinct materials under the zone root, `debug` excluded. */
