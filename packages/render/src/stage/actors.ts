@@ -1,302 +1,200 @@
 /**
- * SPEC §10.7.6 `ActorPool` and §10.7.7 character models.
+ * SPEC §10.7.6 `ActorPool` and §10.7.7 characters — HD-2D pixel-art sprites (proposed amendment, see
+ * tools/character-pipeline/IMPLEMENTATION-NOTES.md): the GLB mannequins are gone; every player and NPC is a lit
+ * billboard of the procedural character atlas (`public/characters/`, tools/character-pipeline).
  *
- * Looks come from `models.manifest.json` (`looks.ts`, IMPLEMENTATION-NOTES Part 4, H7): one GLB per look, loaded once
- * and cloned per actor (own bones, shared geometry, the pool's one `'character'` material, one draw), animated by an
- * `AnimationMixer` (idle / walk / run blended by the gait weights, emotes on victory / defeat / standup). While a look
- * loads, when the manifest does not list it or when it fails, the actor is the procedural fallback below: a clean
- * stylised figure (big-headed, 1.7 m) built ONCE per look as a single merged geometry with
- * six flat vertex colours (the same shape the model pipeline produces: `COLOR_0`, one primitive, one material) and
- * rigid skin weights on a 7-bone skeleton (hips, spine, head, 2 arms, 2 legs). Every actor is one `SkinnedMesh`
- * (one draw, `castShadow`), all sharing ONE `'character'`-class `MeshStandardNodeMaterial` (vertex colour albedo,
- * roughness 0.6, metalness 0, geometry normal; flat-shaded at harvest level 2). The local player's mesh writes
- * `mask.y = 1` (DOF-sharp, §10.7.3).
+ * - Material: the creature billboard graph (§10.4.5) over the character atlas, instanced (`characterAtlas.ts`):
+ *   derived-normal-map lighting, binary alpha with the shadow from the same alpha, `NearestFilter` magnification
+ *   (Pillar 6), the §10.4.4 yaw + half-pitch lean, the DOF-sharp bit for the local player. ONE material and ONE
+ *   instanced card for all 48 slots: the per-actor frame, feet and flags are instance attributes.
+ * - Facing: the actor's heading relative to the camera heading, quantised to 4 with hysteresis
+ *   (`characterAnim.ts`). Frames: idle breathing, walk / run advanced by the measured ground speed, wave / cheer
+ *   emotes facing the camera.
+ * - Grounding: one instanced contact decal for all slots (the §10.4.7 material), laid on the collider's normal.
+ * - Draws for ANY number of live actors: 1 card draw in the beauty pass + 1 per shadow cascade + 1 decal draw
+ *   (none at all with no live actor: an instance count of 0 issues no draw).
  *
- * Animation is procedural bone rotation (idle breathing, walk and run cycles blended by the `moving`/`running`
- * flags, the wave emote), advanced by `dt × timeScale` — the `AnimationMixer` clip set of §10.7.7 arrives with the
- * GLBs. Nameplates and emote cards are drawn by the HUD (§10.9: "Nameplates are HUD, never Sprites"; the HUD's
- * canvas is the package's only CanvasTexture), anchored through `screenPositions` / `projectHead`.
- *
- * 48 rigs are preallocated (§10.7.6) and never grow; `setTransform` and `update` allocate nothing.
+ * 48 rigs are preallocated (§10.7.6) and never grow; `setTransform` and `update` allocate nothing. Nameplates and
+ * emote cards are the HUD's (§10.9), anchored through `screenPositions` / `projectHead` at the leaned head top.
  */
-import {
-  AnimationMixer, Bone, BufferAttribute, BufferGeometry, Color, CylinderGeometry, Group, LatheGeometry, Matrix4, MeshStandardNodeMaterial,
-  Quaternion, Skeleton, SkinnedMesh, SphereGeometry, Vector2, Vector3,
-} from 'three/webgpu';
-import type { AnimationAction, Node, Object3D, PerspectiveCamera, UniformNode } from 'three/webgpu';
-import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import type { LookSource, LookTemplate } from './looks.js';
-import { float, mix, mrt, normalFlat, normalView, userData, vec2, vec4, vertexColor } from 'three/tsl';
+import { Color, Group, InstancedMesh, Matrix4, Mesh, PlaneGeometry, Quaternion, Vector3 } from 'three/webgpu';
+import type { MeshBasicNodeMaterial, MeshStandardNodeMaterial, Object3D, PerspectiveCamera, Texture, UniformNode } from 'three/webgpu';
+import { uniform } from 'three/tsl';
 import type { ActorDescriptor, ActorPool } from '../contracts.js';
+import { LAYERS } from '../descriptors.js';
 import { isDevBuild } from '../env.js';
-import { hash01 } from '../sprites/tables.js';
+import { browserDecoder, type AtlasDecoder } from '../sprites/atlas.js';
+import { createDecalMaterial, type BillboardUniforms } from '../sprites/billboard.js';
+import { BILLBOARD, hash01 } from '../sprites/tables.js';
+import {
+  assignCharacterImages, createCharacterInstances, createCharacterMaterial, createCharacterTextures, disposeCharacterTextures, loadCharacterSet,
+  type CharacterFrames, type CharacterInstances, type CharacterTextures, type CharacterUniforms, type LookFrames,
+} from '../sprites/characterAtlas.js';
+import { STATE_KEYS, createCharAnim, frameIndex, resetCharAnim, stepCharAnim, type CharAnim } from '../sprites/characterAnim.js';
 
 // ---- numbers ---------------------------------------------------------------------------------------------------
 
 export const ACTOR_POOL_SIZE = 48;
 export const EMOTE_MS = 2000;
-/** Head-top anchor above the feet for nameplates / emote cards (m). */
+/** Fallback head-top anchor above the feet (m) before the atlas loads. */
 export const HEAD_ANCHOR_M = 1.95;
-export const CHARACTER = Object.freeze({ roughness: 0.6, metalness: 0, heightM: 1.7 });
-/** Stride rates (cycles per second) and swing amplitudes (rad). */
-export const GAIT = Object.freeze({
-  walkHz: 1.7, runHz: 2.6, walkLeg: 0.55, runLeg: 0.95, walkArm: 0.45, runArm: 0.9, runLean: 0.18, blendRate: 8,
-  idleHz: 0.35, bobWalk: 0.025, bobRun: 0.05,
+export const CHARACTER = Object.freeze({
+  /** A standing character (no hat) in world metres — the pipeline's STAND_M. */
+  heightM: 1.7,
+  /** Nameplate / emote anchor: this much above the look's head top (m). */
+  headMarginM: 0.16,
+  /** Contact decal diameter (m) (the creature decal is 1.1 m × sizeScale). */
+  decalM: 0.95,
+  /** Rim colour (linear): the characters' stand-in for the creature type rim, a faint warm edge light. */
+  rim: Object.freeze([0.09, 0.08, 0.07] as const),
+  /** Ground normal probe distance (m) for the decal (central differences on the collider height). */
+  normalProbeM: 0.3,
+  /** Card size (m) and foot line before the manifest arrives (the pipeline's 32 × 52 cell at 40 texels / 1.7 m). */
+  cellW: 32 / (40 / 1.7), cellH: 52 / (40 / 1.7), footV: 1 / 52,
 });
 
 export type EmoteId = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 /** spine §4.1: 1..6 = wave happy sad alert heart cool. */
 export const EMOTE_NAMES: readonly string[] = Object.freeze(['', 'wave', 'happy', 'sad', 'alert', 'heart', 'cool']);
-/** The look clip each emote plays on a GLB look (the pipeline keeps no dedicated emote clips). */
-export const EMOTE_CLIPS: readonly (string | null)[] = Object.freeze([null, 'victory', 'victory', 'defeat', 'standup', 'victory', 'victory']);
-/** Emote clip fade in / out rate (1/s, exponential). */
-export const EMOTE_BLEND_RATE = 10;
 
-// ---- looks -------------------------------------------------------------------------------------------------------
-
-export type HairStyle = 'short' | 'long' | 'bun' | 'hat';
-export interface LookDef {
-  readonly skin: string; readonly hair: string; readonly top: string; readonly bottom: string; readonly shoes: string; readonly accent: string;
-  readonly hairStyle: HairStyle; readonly backpack: boolean;
-}
-
-const SKINS = ['#f1c9a5', '#e0ac85', '#c68863', '#9c6644', '#6f4a33'];
-const HAIRS = ['#2b2118', '#4a3222', '#7a4b2a', '#c9a060', '#1d1d24', '#a0452c', '#d8d0c0'];
-const TOPS = ['#3f6ea8', '#b84a3c', '#4f8a4a', '#d8b04a', '#6a4f9a', '#2f7f86', '#e8e2d4', '#8a5a3a'];
-const BOTTOMS = ['#3a3f4a', '#5a4632', '#2c3e5a', '#6b6356', '#4a3a52', '#28302a'];
-const SHOES = ['#2a2420', '#5a3a26', '#e8e4dc', '#3a2c52'];
-const ACCENTS = ['#e0b040', '#c0392b', '#2e86c1', '#27ae60', '#f39c12', '#8e44ad'];
-
-function pick<T>(list: readonly T[], seed: string, salt: string): T {
-  return list[Math.floor(hash01(`${seed}:${salt}`) * list.length) % list.length]!;
-}
-
-/** Deterministic procedural look for any look id (keywords steer the silhouette: female/_f → long hair, ranger → hat). */
-export function lookFor(look: string): LookDef {
-  const l = look.toLowerCase();
-  const style: HairStyle = /ranger|hiker|trainer|hat/.test(l) ? 'hat'
-    : /female|_f\b|girl|woman|lass/.test(l) ? (hash01(`${look}:bun`) < 0.4 ? 'bun' : 'long')
-      : /male|_m\b|boy|man/.test(l) ? 'short'
-        : (['short', 'long', 'bun', 'hat'] as const)[Math.floor(hash01(`${look}:style`) * 4) % 4]!;
-  return {
-    skin: pick(SKINS, look, 'skin'), hair: pick(HAIRS, look, 'hair'), top: pick(TOPS, look, 'top'), bottom: pick(BOTTOMS, look, 'bottom'),
-    shoes: pick(SHOES, look, 'shoes'), accent: pick(ACCENTS, look, 'accent'), hairStyle: style,
-    backpack: /ranger|hiker|explorer|scout/.test(l) || hash01(`${look}:pack`) < 0.3,
-  };
-}
-
-// ---- skeleton ------------------------------------------------------------------------------------------------------
-
-/** Bone indices and rest positions (world, feet at the origin, facing +Z). */
-export const BONES = Object.freeze({ hips: 0, spine: 1, head: 2, armL: 3, armR: 4, legL: 5, legR: 6 });
-const BONE_REST: readonly (readonly [number, number, number, number])[] = [
-  // [x, y, z, parent]
-  [0, 0.95, 0, -1],     // hips
-  [0, 1.05, 0, 0],      // spine
-  [0, 1.44, 0, 1],      // head (neck pivot)
-  [0.21, 1.37, 0, 1],   // armL (shoulder)
-  [-0.21, 1.37, 0, 1],  // armR
-  [0.095, 0.9, 0, 0],   // legL (hip joint)
-  [-0.095, 0.9, 0, 0],  // legR
-];
-
-function makeBones(): Bone[] {
-  const bones = BONE_REST.map(() => new Bone());
-  BONE_REST.forEach(([x, y, z, parent], i) => {
-    const b = bones[i]!;
-    if (parent < 0) b.position.set(x, y, z);
-    else { const [px, py, pz] = BONE_REST[parent]!; b.position.set(x - px, y - py, z - pz); bones[parent]!.add(b); }
-    b.name = Object.keys(BONES)[i]!;
-  });
-  return bones;
-}
-
-// ---- procedural geometry ----------------------------------------------------------------------------------------
-
-const _m = new Matrix4();
-const _q = new Quaternion();
-const _s = new Vector3();
-const _c = new Color();
-
-interface Part { readonly geo: BufferGeometry; readonly bone: number; readonly color: string }
-
-function place(g: BufferGeometry, x: number, y: number, z: number, rx = 0, sx = 1, sy = 1, sz = 1): BufferGeometry {
-  _q.setFromAxisAngle(_s.set(1, 0, 0), rx);
-  _m.compose(new Vector3(x, y, z), _q, new Vector3(sx, sy, sz));
-  g.applyMatrix4(_m);
-  return g;
-}
-
-function lathe(points: readonly (readonly [number, number])[], segments: number): BufferGeometry {
-  return new LatheGeometry(points.map(([r, y]) => new Vector2(r, y)), segments);
-}
-
-/** Merges parts into one non-indexed geometry with `color`, `skinIndex`, `skinWeight` (rigid weights). */
-function mergeParts(parts: readonly Part[]): BufferGeometry {
-  const flat = parts.map((p) => ({ g: p.geo.index ? p.geo.toNonIndexed() : p.geo, p }));
-  let n = 0;
-  for (const f of flat) n += f.g.getAttribute('position').count;
-  const pos = new Float32Array(n * 3); const nor = new Float32Array(n * 3); const col = new Float32Array(n * 3);
-  const si = new Uint16Array(n * 4); const sw = new Float32Array(n * 4);
-  let o = 0;
-  for (const { g, p } of flat) {
-    const P = g.getAttribute('position'); const N = g.getAttribute('normal');
-    _c.set(p.color);   // sRGB hex → linear working space
-    for (let i = 0; i < P.count; i++, o++) {
-      pos[o * 3] = P.getX(i); pos[o * 3 + 1] = P.getY(i); pos[o * 3 + 2] = P.getZ(i);
-      nor[o * 3] = N.getX(i); nor[o * 3 + 1] = N.getY(i); nor[o * 3 + 2] = N.getZ(i);
-      col[o * 3] = _c.r; col[o * 3 + 1] = _c.g; col[o * 3 + 2] = _c.b;
-      si[o * 4] = p.bone; sw[o * 4] = 1;
-    }
-    if (g !== p.geo) g.dispose();
-    p.geo.dispose();
-  }
-  const out = new BufferGeometry();
-  out.setAttribute('position', new BufferAttribute(pos, 3));
-  out.setAttribute('normal', new BufferAttribute(nor, 3));
-  out.setAttribute('color', new BufferAttribute(col, 3));
-  out.setAttribute('skinIndex', new BufferAttribute(si, 4));
-  out.setAttribute('skinWeight', new BufferAttribute(sw, 4));
-  out.computeBoundingBox();
-  out.computeBoundingSphere();
-  return out;
-}
-
-/** The procedural character of one look, in bind pose (feet at the origin, facing +Z). */
-export function buildCharacterGeometry(look: LookDef): BufferGeometry {
-  const B = BONES;
-  const parts: Part[] = [];
-  const add = (geo: BufferGeometry, bone: number, color: string): void => { parts.push({ geo, bone, color }); };
-  // legs + shoes
-  for (const [side, bone] of [[1, B.legL], [-1, B.legR]] as const) {
-    add(place(lathe([[0.001, 0], [0.058, 0.02], [0.062, 0.45], [0.074, 0.8], [0.07, 0.9], [0.001, 0.91]], 12), side * 0.095, 0.02, 0), bone, look.bottom);
-    add(place(lathe([[0.001, 0], [0.06, 0.01], [0.065, 0.06], [0.05, 0.1], [0.001, 0.11]], 12), side * 0.095, 0, 0.035, 0, 1, 1, 1.55), bone, look.shoes);
-  }
-  // pelvis + torso
-  add(lathe([[0.001, 0.84], [0.15, 0.85], [0.165, 0.95], [0.155, 1.02], [0.001, 1.03]], 16), B.hips, look.bottom);
-  add(place(lathe([[0.001, 0.98], [0.15, 0.99], [0.175, 1.16], [0.2, 1.33], [0.16, 1.4], [0.06, 1.43], [0.001, 1.44]], 16), 0, 0, 0, 0, 1, 1, 0.78), B.spine, look.top);
-  // belt (accent)
-  add(place(new CylinderGeometry(0.162, 0.162, 0.04, 16, 1, true), 0, 0.99, 0, 0, 1, 1, 0.8), B.hips, look.accent);
-  // arms: sleeve + forearm + hand
-  for (const [side, bone] of [[1, B.armL], [-1, B.armR]] as const) {
-    add(place(lathe([[0.001, 1.13], [0.05, 1.14], [0.058, 1.3], [0.064, 1.38], [0.001, 1.42]], 10), side * 0.23, 0, 0), bone, look.top);
-    add(place(lathe([[0.001, 0.93], [0.042, 0.94], [0.047, 1.1], [0.05, 1.16], [0.001, 1.17]], 10), side * 0.235, 0, 0), bone, look.skin);
-    add(place(new SphereGeometry(0.052, 12, 8), side * 0.235, 0.91, 0.01), bone, look.skin);
-  }
-  // neck + head + eyes
-  add(place(new CylinderGeometry(0.05, 0.055, 0.1, 10), 0, 1.47, 0), B.head, look.skin);
-  add(place(new SphereGeometry(0.165, 24, 16), 0, 1.62, 0.005), B.head, look.skin);
-  for (const side of [1, -1]) add(place(new SphereGeometry(0.02, 8, 6), side * 0.058, 1.63, 0.152), B.head, '#1b1a22');
-  // hair
-  add(place(new SphereGeometry(0.175, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.52), 0, 1.635, -0.012), B.head, look.hair);
-  if (look.hairStyle === 'long') add(place(new CylinderGeometry(0.16, 0.14, 0.34, 16, 1, true, Math.PI * 0.62, Math.PI * 0.76), 0, 1.5, -0.03), B.head, look.hair);
-  if (look.hairStyle === 'bun') add(place(new SphereGeometry(0.075, 12, 8), 0, 1.76, -0.13), B.head, look.hair);
-  if (look.hairStyle === 'hat') {
-    add(place(new CylinderGeometry(0.25, 0.25, 0.022, 24), 0, 1.74, 0), B.head, look.accent);
-    add(place(lathe([[0.001, 0], [0.16, 0], [0.155, 0.11], [0.12, 0.14], [0.001, 0.145]], 16), 0, 1.745, 0), B.head, look.accent);
-  }
-  // backpack
-  if (look.backpack) add(place(lathe([[0.001, 0], [0.12, 0.01], [0.13, 0.2], [0.11, 0.3], [0.001, 0.31]], 12), 0, 1.02, -0.2, 0, 1, 1, 0.55), B.spine, look.accent);
-  return mergeParts(parts);
-}
-
-// ---- the shared 'character' material -----------------------------------------------------------------------------
-
-/** §10.7.7: vertex-colour albedo, placeholder ORM (ao 1, roughness 0.6, metalness 0), geometry normal; harvest-flattened. */
-export function createCharacterMaterial(harvestLevel: UniformNode<'float', number>): MeshStandardNodeMaterial {
-  const m = new MeshStandardNodeMaterial();
-  const h = harvestLevel.clamp(0, 2).div(2) as unknown as Node<'float'>;
-  m.colorNode = vec4(vertexColor().rgb, 1);
-  m.roughnessNode = float(CHARACTER.roughness);
-  m.metalnessNode = float(CHARACTER.metalness);
-  m.normalNode = mix(normalView, normalFlat, h).normalize();
-  m.mrtNode = mrt({ mask: vec2(0, userData('sharp', 'float') as unknown as Node<'float'>) });
-  m.name = 'ewa:character';
-  m.userData = { ewaClass: 'character' };
-  return m;
-}
-
-// ---- the pool ---------------------------------------------------------------------------------------------------
-
-interface ActorUserData { sharp: number; ewaActor: string }
-
-/** One GLB look instance (cloned from its template; recycled per look on despawn). */
-interface GlbInstance {
-  readonly look: string;
-  readonly root: Object3D;
-  readonly mesh: SkinnedMesh;
-  readonly mixer: AnimationMixer;
-  readonly idle: AnimationAction | null;
-  readonly walk: AnimationAction | null;
-  readonly run: AnimationAction | null;
-  /** Indexed by emote id (0 unused). */
-  readonly emotes: readonly (AnimationAction | null)[];
-}
+/** Ground height sampler (the zone collider); flat 0 when unset. */
+export type GroundSampler = (x: number, z: number) => number;
 
 interface Rig {
-  readonly mesh: SkinnedMesh;
-  readonly bones: Bone[];
-  readonly ud: ActorUserData;
+  readonly slot: number;
+  readonly anim: CharAnim;
   id: string | null;
   look: string;
+  frames: LookFrames | null;
   name: string;
   guildTag: string;
   isLocal: boolean;
   readonly feet: Vector3;
+  readonly groundN: Vector3;
   angle: number;
   moving: boolean;
   running: boolean;
-  walkW: number;
-  runW: number;
-  phase: number;
-  clock: number;
   emote: EmoteId;
   emoteLeft: number;
-  emoteW: number;
-  /** The GLB look shown instead of `mesh` once its template loaded; null = procedural. */
-  glb: GlbInstance | null;
 }
-
-/** Ground height sampler (the zone collider); flat 0 when unset. */
-export type GroundSampler = (x: number, z: number) => number;
 
 export interface ActorPoolOptions {
   readonly harvestLevel: UniformNode<'float', number>;
   readonly camera?: PerspectiveCamera;
   /** CSS viewport size for `screenPositions`. */
   readonly viewport?: () => { readonly w: number; readonly h: number };
-  /** GLB looks (`createGlbLookSource`); absent = every look procedural. */
-  readonly looks?: LookSource;
+  /** Where `characters.manifest.json` and the atlas are served (`RendererOptions.charactersUrl`); null = none (tests: actors stay hidden). */
+  readonly charactersUrl?: string | null;
+  /** The sprite pool's uniforms (camera yaw / lean written once per frame for creatures and characters); own ones when absent. */
+  readonly uniforms?: BillboardUniforms;
+  readonly decoder?: AtlasDecoder;
+  readonly fetchJson?: (url: string) => Promise<unknown>;
+  /** Eager GPU upload once the atlas decoded (`renderer.initTexture`). */
+  readonly upload?: (t: Texture) => void;
+  readonly warn?: (msg: string) => void;
 }
 
 const _p = new Vector3();
+const _dir = new Vector3();
+const _m = new Matrix4();
+const _q = new Quaternion();
+const _s = new Vector3();
+const _up = new Vector3(0, 1, 0);
+const _qFlat = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
+const ZERO_SCALE = new Matrix4().makeScale(0, 0, 0);
 
 export class CharacterPool implements ActorPool {
   readonly root = new Group();
   readonly material: MeshStandardNodeMaterial;
+  readonly uniforms: BillboardUniforms;
+  readonly characterUniforms: CharacterUniforms;
+  /** Resolves true once the atlas is bound (false when there is none or it failed). */
+  readonly ready: Promise<boolean>;
+  private readonly textures: CharacterTextures;
+  private readonly inst: CharacterInstances;
+  private readonly cards: Mesh;
+  private readonly decalGeometry: PlaneGeometry;
+  private readonly decalMaterial: MeshBasicNodeMaterial;
+  private readonly decals: InstancedMesh;
+  private readonly ownsUniforms: boolean;
   private readonly rigs: Rig[] = [];
   private readonly byId = new Map<string, Rig>();
-  private readonly geometries = new Map<string, BufferGeometry>();
+  private frames: CharacterFrames | null = null;
   private ground: GroundSampler | null = null;
   private camera: PerspectiveCamera | null;
-  private readonly looks: LookSource | null;
-  /** Loaded templates by look (null = no model / failed: procedural). */
-  private readonly templates = new Map<string, LookTemplate | null>();
-  private readonly pendingLooks = new Set<string>();
-  private readonly freeGlb = new Map<string, GlbInstance[]>();
   private readonly viewport: () => { readonly w: number; readonly h: number };
+  private dirtyFeet = false;
+  private dirtyRect = false;
+  private dirtyMisc = false;
+  private dirtyDecals = false;
+  private warm: { mesh: Mesh; inst: CharacterInstances } | null = null;
   private disposed = false;
 
   constructor(o: ActorPoolOptions) {
     this.root.name = 'ewa:actors';
-    this.material = createCharacterMaterial(o.harvestLevel);
     this.camera = o.camera ?? null;
     this.viewport = o.viewport ?? (() => ({ w: 1, h: 1 }));
-    this.looks = o.looks ?? null;
+    this.ownsUniforms = o.uniforms === undefined;
+    this.uniforms = o.uniforms ?? {
+      harvestLevel: o.harvestLevel,
+      cameraYaw: uniform(0).setName('ewaCharYaw'),
+      cameraLean: uniform(0).setName('ewaCharLean'),
+      animTime: uniform(0).setName('ewaCharTime'),
+    };
+    this.characterUniforms = {
+      cellW: uniform(CHARACTER.cellW).setName('ewaCharCellW'),
+      cellH: uniform(CHARACTER.cellH).setName('ewaCharCellH'),
+      footV: uniform(CHARACTER.footV).setName('ewaCharFootV'),
+      rim: uniform(new Color(CHARACTER.rim[0], CHARACTER.rim[1], CHARACTER.rim[2])).setName('ewaCharRim'),
+    };
+    this.textures = createCharacterTextures();
+    this.material = createCharacterMaterial(this.textures, this.uniforms, this.characterUniforms);
+    this.inst = createCharacterInstances(ACTOR_POOL_SIZE);
+    this.cards = new Mesh(this.inst.geometry, this.material);
+    this.cards.name = 'ewa:character-cards';
+    this.cards.castShadow = true;
+    this.cards.receiveShadow = true;
+    this.cards.frustumCulled = false;   // instances span the zone; an instance count of 0 draws nothing
+    this.cards.layers.set(LAYERS.billboards);
+    this.root.add(this.cards);
+    this.decalGeometry = new PlaneGeometry(1, 1);
+    this.decalGeometry.name = 'ewa:character-decal';
+    this.decalMaterial = createDecalMaterial(this.uniforms);
+    this.decalMaterial.name = 'ewa:character-decal';
+    this.decals = new InstancedMesh(this.decalGeometry, this.decalMaterial, ACTOR_POOL_SIZE);
+    this.decals.name = 'ewa:character-decals';
+    this.decals.userData = { shade: 1, ewaDecal: true };
+    this.decals.renderOrder = BILLBOARD.decalRenderOrder;
+    this.decals.layers.set(LAYERS.decals);
+    this.decals.castShadow = false;
+    this.decals.receiveShadow = false;
+    this.decals.frustumCulled = false;
+    for (let i = 0; i < ACTOR_POOL_SIZE; i++) this.decals.setMatrixAt(i, ZERO_SCALE);
+    this.decals.count = 0;
+    this.root.add(this.decals);
     for (let i = 0; i < ACTOR_POOL_SIZE; i++) this.rigs.push(this.makeRig(i));
+
+    const url = o.charactersUrl ?? null;
+    if (url === null) { this.ready = Promise.resolve(false); return; }
+    const fetchJson = o.fetchJson ?? (async (u: string) => { const r = await fetch(u); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<unknown>; });
+    this.ready = loadCharacterSet(url, o.decoder ?? browserDecoder(), fetchJson).then((set) => {
+      if (this.disposed) { set.albedo.close?.(); set.normal.close?.(); return false; }
+      assignCharacterImages(this.textures, set.albedo, set.normal);
+      if (o.upload) { o.upload(this.textures.albedo); o.upload(this.textures.normal); }
+      this.frames = set.frames;
+      this.characterUniforms.cellW.value = set.frames.cellW;
+      this.characterUniforms.cellH.value = set.frames.cellH;
+      this.characterUniforms.footV.value = set.frames.footV;
+      for (const r of this.rigs) if (r.id !== null) this.bindLook(r);
+      this.flush();
+      return true;
+    }, (err: unknown) => {
+      o.warn?.(`characters unavailable (${err instanceof Error ? err.message : String(err)}): actors stay hidden`);
+      return false;
+    });
   }
 
-  setGround(g: GroundSampler | null): void { this.ground = g; }
+  setGround(g: GroundSampler | null): void { this.ground = g; for (const r of this.rigs) if (r.id !== null) this.place(r); }
   setCamera(c: PerspectiveCamera): void { this.camera = c; }
 
   // ---- §10.7.6 -------------------------------------------------------------------------------------------------
@@ -314,29 +212,26 @@ export class CharacterPool implements ActorPool {
       }
       r.id = id;
       this.byId.set(id, r);
-      r.feet.set(0, 0, 0); r.angle = 0; r.moving = false; r.running = false; r.walkW = 0; r.runW = 0;
-      r.phase = hash01(id) * Math.PI * 2; r.clock = 0; r.emote = 0; r.emoteLeft = 0; r.emoteW = 0;
+      r.feet.set(0, 0, 0); r.groundN.set(0, 1, 0); r.angle = 0; r.moving = false; r.running = false; r.emote = 0; r.emoteLeft = 0;
+      resetCharAnim(r.anim, hash01(id) * 2);
+      this.refreshCounts();
     }
     r.look = d.look; r.name = d.name; r.guildTag = d.guildTag; r.isLocal = d.isLocal;
-    r.ud.sharp = d.isLocal ? 1 : 0;
-    r.ud.ewaActor = id;
-    r.mesh.geometry = this.geometryFor(d.look);
-    r.mesh.name = `ewa:actor:${id}`;
-    this.attachLook(r);
-    this.pose(r);
+    this.inst.misc.setX(r.slot, d.isLocal ? 1 : 0);
+    this.dirtyMisc = true;
+    this.bindLook(r);
+    this.place(r);
   }
 
   setTransform(id: string, x: number, z: number, angle: number, moving: boolean, running: boolean): void {
     const r = this.byId.get(id);
     if (r === undefined) return;
-    const y = this.ground !== null ? this.ground(x, z) : 0;
-    r.feet.set(x, Number.isFinite(y) ? y : 0, z);
-    r.angle = angle;
+    r.feet.x = Number.isFinite(x) ? x : 0;
+    r.feet.z = Number.isFinite(z) ? z : 0;
+    r.angle = Number.isFinite(angle) ? angle : 0;
     r.moving = moving;
     r.running = running;
-    r.mesh.position.copy(r.feet);
-    r.mesh.rotation.y = angle;
-    if (r.glb !== null) { r.glb.root.position.copy(r.feet); r.glb.root.rotation.y = angle; }
+    this.place(r);
   }
 
   setEmote(id: string, n: 0 | 1 | 2 | 3 | 4 | 5 | 6): void {
@@ -351,10 +246,13 @@ export class CharacterPool implements ActorPool {
     if (r === undefined) return;
     this.byId.delete(id);
     r.id = null;
-    r.mesh.visible = false;
-    r.mesh.removeFromParent();
-    if (r.glb !== null) this.releaseGlb(r);
-    r.emote = 0; r.emoteLeft = 0; r.emoteW = 0;
+    r.frames = null;
+    r.emote = 0; r.emoteLeft = 0;
+    this.inst.misc.setXY(r.slot, 0, 0);
+    this.dirtyMisc = true;
+    this.decals.setMatrixAt(r.slot, ZERO_SCALE);
+    this.dirtyDecals = true;
+    this.refreshCounts();
   }
 
   feetOf(id: string, out: Vector3): Vector3 | null {
@@ -369,7 +267,7 @@ export class CharacterPool implements ActorPool {
       const r = this.rigs[i]!;
       if (r.id === null) continue;
       if ((n + 1) * 2 > out.length) break;
-      if (!this.projectPoint(r.feet.x, r.feet.y + HEAD_ANCHOR_M, r.feet.z, out, n * 2)) { out[n * 2] = Number.NaN; out[n * 2 + 1] = Number.NaN; }
+      if (!this.projectAnchor(r, out, n * 2)) { out[n * 2] = Number.NaN; out[n * 2 + 1] = Number.NaN; }
       n++;
     }
     return n;
@@ -378,42 +276,45 @@ export class CharacterPool implements ActorPool {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const r of this.rigs) { r.mesh.removeFromParent(); r.mesh.skeleton.dispose(); if (r.glb !== null) this.releaseGlb(r); }
-    for (const list of this.freeGlb.values()) for (const g of list) disposeGlb(g);
-    this.freeGlb.clear();
-    (this.looks as (LookSource & { dispose?: () => void }) | null)?.dispose?.();
-    this.templates.clear();
     this.byId.clear();
-    for (const g of this.geometries.values()) g.dispose();
-    this.geometries.clear();
+    this.cards.removeFromParent();
+    this.inst.geometry.dispose();
+    this.decals.removeFromParent();
+    this.decals.dispose();
+    this.decalGeometry.dispose();
+    this.decalMaterial.dispose();
+    if (this.warm !== null) { this.warm.mesh.removeFromParent(); this.warm.inst.geometry.dispose(); }
     this.material.dispose();
+    disposeCharacterTextures(this.textures);
     this.root.removeFromParent();
   }
 
   // ---- frame hook + extras ---------------------------------------------------------------------------------------
 
-  /** Per frame: gait blend, bone poses, emote timers (dt × timeScale). Zero allocation. */
+  /** Per frame (host step 3, after the sprite pool wrote the camera uniforms): facing, frame, emote timers. Zero allocation. */
   update(dtScaledMs: number): void {
     if (this.disposed) return;
-    const dt = Math.max(0, dtScaledMs);
+    const dt = Number.isFinite(dtScaledMs) ? Math.max(0, dtScaledMs) : 0;
+    if (this.ownsUniforms && this.camera !== null) {
+      this.camera.getWorldDirection(_dir);
+      this.uniforms.cameraYaw.value = Math.atan2(-_dir.x, -_dir.z);
+      this.uniforms.cameraLean.value = BILLBOARD.leanFraction * Math.max(0, Math.asin(Math.min(1, Math.max(-1, -_dir.y))));
+    }
+    const yaw = this.uniforms.cameraYaw.value;
     for (let i = 0; i < this.rigs.length; i++) {
       const r = this.rigs[i]!;
       if (r.id === null) continue;
-      const k = Math.min(1, dt / 1000 * GAIT.blendRate);
-      r.walkW += ((r.moving ? 1 : 0) - r.walkW) * k;
-      r.runW += ((r.moving && r.running ? 1 : 0) - r.runW) * k;
-      const hz = GAIT.walkHz + (GAIT.runHz - GAIT.walkHz) * r.runW;
-      r.phase += (dt / 1000) * hz * Math.PI * 2 * Math.max(0.0001, r.walkW);
-      r.clock += dt / 1000;
       if (r.emoteLeft > 0) { r.emoteLeft = Math.max(0, r.emoteLeft - dt); if (r.emoteLeft === 0) r.emote = 0; }
-      if (r.glb !== null) this.animateGlb(r, dt); else this.pose(r);
+      stepCharAnim(r.anim, dt, r.feet.x, r.feet.z, r.angle, r.moving, r.running, r.emoteLeft > 0 ? r.emote : 0, yaw);
+      this.applyFrame(r);
     }
+    this.flush();
   }
 
   /** Projects the head anchor of `id` to CSS px into `out[offset..offset+1]`; false when absent or behind the camera. */
   projectHead(id: string, out: Float32Array, offset = 0): boolean {
     const r = this.byId.get(id);
-    return r !== undefined && this.projectPoint(r.feet.x, r.feet.y + HEAD_ANCHOR_M, r.feet.z, out, offset);
+    return r !== undefined && this.projectAnchor(r, out, offset);
   }
 
   /** Live actor ids in slot order (the order `screenPositions` writes). */
@@ -427,96 +328,124 @@ export class CharacterPool implements ActorPool {
     return r === undefined ? { n: 0, left: 0 } : { n: r.emote, left: r.emoteLeft / EMOTE_MS };
   }
 
-  /** A standalone skinned character for the renderer's warm-up frame (never pooled). */
-  warmupMesh(): SkinnedMesh {
-    const bones = makeBones();
-    const mesh = new SkinnedMesh(this.geometryFor('default'), this.material);
-    mesh.add(bones[0]!);
-    mesh.updateMatrixWorld(true);
-    mesh.bind(new Skeleton(bones));
-    mesh.castShadow = true;
-    mesh.userData = { sharp: 1, ewaActor: 'warmup' };
-    mesh.name = 'ewa:actor-warmup';
-    return mesh;
+  /** One card on the character material for the renderer's warm-up frame: its own one-instance geometry (never pooled). */
+  warmupMesh(): Object3D {
+    if (this.warm === null) {
+      const inst = createCharacterInstances(1);
+      inst.rect.setXYZW(0, 0, 0, 1, 1);
+      inst.misc.setXY(0, 1, 1);
+      inst.geometry.instanceCount = 1;
+      const mesh = new Mesh(inst.geometry, this.material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.frustumCulled = false;
+      mesh.layers.set(LAYERS.billboards);
+      mesh.name = 'ewa:actor-warmup';
+      this.warm = { mesh, inst };
+    }
+    return this.warm.mesh;
   }
 
   has(id: string): boolean { return this.byId.has(id); }
   get liveCount(): number { return this.byId.size; }
   get capacity(): number { return this.rigs.length; }
-  /** The mesh that draws the actor (the GLB look once loaded, else the procedural figure). */
-  meshOf(id: string): SkinnedMesh | null { const r = this.byId.get(id); return r === undefined ? null : r.glb?.mesh ?? r.mesh; }
-  /** Whether the actor currently shows its GLB look. */
-  hasModel(id: string): boolean { return (this.byId.get(id)?.glb ?? null) !== null; }
-
-  // ---- GLB looks (H7) ----------------------------------------------------------------------------------------
-
-  /** Shows the rig's look: its GLB instance when the template is loaded, else the procedural mesh (and a load request). */
-  private attachLook(r: Rig): void {
-    if (r.glb !== null && r.glb.look === r.look) return;
-    if (r.glb !== null) this.releaseGlb(r);
-    const t = this.templates.get(r.look);
-    if (t === undefined) this.requestLook(r.look);
-    if (t) {
-      const g = this.acquireGlb(t, r);
-      r.glb = g;
-      r.mesh.visible = false;
-      r.mesh.removeFromParent();
-      g.root.position.copy(r.feet);
-      g.root.rotation.y = r.angle;
-      g.root.visible = true;
-      if (g.root.parent !== this.root) this.root.add(g.root);
-      return;
-    }
-    r.mesh.visible = true;
-    if (r.mesh.parent !== this.root) this.root.add(r.mesh);
+  /** Whether the atlas is bound (actors are hidden until it is). */
+  get atlasReady(): boolean { return this.frames !== null; }
+  /** The one instanced card mesh every actor draws through. */
+  get cardMesh(): Mesh { return this.cards; }
+  /** The instanced contact-decal mesh (one draw for every actor). */
+  get decalMesh(): InstancedMesh { return this.decals; }
+  /** Whether an actor is drawn (atlas bound and look resolved). */
+  isShown(id: string): boolean { const r = this.byId.get(id); return r !== undefined && this.inst.misc.getY(r.slot) === 1; }
+  /** The actor's DOF-sharp bit (the local player: 1). */
+  sharpOf(id: string): number { const r = this.byId.get(id); return r === undefined ? 0 : this.inst.misc.getX(r.slot); }
+  /** The frame rect (u0, v0, u1, v1) an actor currently draws. */
+  rectOf(id: string): readonly [number, number, number, number] | null {
+    const r = this.byId.get(id);
+    if (r === undefined) return null;
+    const a = this.inst.rect;
+    return [a.getX(r.slot), a.getY(r.slot), a.getZ(r.slot), a.getW(r.slot)];
   }
-
-  private requestLook(look: string): void {
-    if (this.looks === null || this.pendingLooks.has(look) || this.templates.has(look)) return;
-    this.pendingLooks.add(look);
-    this.looks(look).then((t) => {
-      this.pendingLooks.delete(look);
-      if (this.disposed) return;
-      this.templates.set(look, t);
-      if (t === null) return;
-      for (const r of this.rigs) if (r.id !== null && r.look === look && r.glb === null) this.attachLook(r);
-    }, () => { this.pendingLooks.delete(look); this.templates.set(look, null); });
-  }
-
-  private acquireGlb(t: LookTemplate, r: Rig): GlbInstance {
-    const free = this.freeGlb.get(t.look);
-    const g = free !== undefined && free.length > 0 ? free.pop()! : createGlb(t, this.material);
-    g.mesh.userData = r.ud as unknown as Record<string, unknown>;   // `sharp` (DOF mask) of this rig
-    g.mesh.name = `ewa:actor:${r.id ?? ''}:${t.look}`;
-    return g;
-  }
-
-  private releaseGlb(r: Rig): void {
-    const g = r.glb!;
-    r.glb = null;
-    g.root.removeFromParent();
-    g.root.visible = false;
-    let list = this.freeGlb.get(g.look);
-    if (list === undefined) { list = []; this.freeGlb.set(g.look, list); }
-    list.push(g);
-  }
-
-  /** Per frame (GLB): gait weights onto idle / walk / run, the emote clip over them, then the mixer. Zero allocation. */
-  private animateGlb(r: Rig, dtMs: number): void {
-    const g = r.glb!;
-    const k = Math.min(1, (dtMs / 1000) * EMOTE_BLEND_RATE);
-    const emoting = r.emote !== 0 && r.emoteLeft > 0 && (g.emotes[r.emote] ?? null) !== null;
-    r.emoteW += ((emoting ? 1 : 0) - r.emoteW) * k;
-    const base = 1 - r.emoteW;
-    g.idle?.setEffectiveWeight((1 - r.walkW) * base);
-    g.walk?.setEffectiveWeight(r.walkW * (1 - r.runW) * base);
-    g.run?.setEffectiveWeight(r.walkW * r.runW * base);
-    for (let e = 1; e < g.emotes.length; e++) g.emotes[e]?.setEffectiveWeight(0);
-    if (r.emote !== 0) g.emotes[r.emote]?.setEffectiveWeight(r.emoteW);
-    g.mixer.update(dtMs / 1000);
+  /** The resolved atlas look an actor draws (`casual2_male:dusk`, a base look, or the hash pick), null before the atlas. */
+  lookOf(id: string): string | null { return this.byId.get(id)?.frames?.id ?? null; }
+  /** Current facing (D U L R), state and frame of an actor (sandbox, tests). */
+  frameOf(id: string): { readonly facing: string; readonly state: string; readonly frame: number } | null {
+    const r = this.byId.get(id);
+    if (r === undefined || r.frames === null) return null;
+    const k = r.anim.facing * STATE_KEYS.length + r.anim.state;
+    return { facing: 'DULR'[r.anim.facing]!, state: STATE_KEYS[r.anim.state]!, frame: frameIndex(r.anim, r.frames.count[k]!) };
   }
 
   // ---- internals -------------------------------------------------------------------------------------------------
+
+  private bindLook(r: Rig): void {
+    const f = this.frames;
+    r.frames = f === null ? null : f.resolve(r.look);
+    this.inst.misc.setY(r.slot, r.frames !== null ? 1 : 0);
+    this.dirtyMisc = true;
+    if (r.frames !== null) this.applyFrame(r);
+  }
+
+  private applyFrame(r: Rig): void {
+    const lf = r.frames;
+    if (lf === null) return;
+    const k = r.anim.facing * STATE_KEYS.length + r.anim.state;
+    const i = (lf.first[k]! + frameIndex(r.anim, lf.count[k]!)) * 4;
+    const q = lf.rects;
+    const a = this.inst.rect;
+    const s = r.slot;
+    if (a.getX(s) !== q[i] || a.getY(s) !== q[i + 1] || a.getZ(s) !== q[i + 2] || a.getW(s) !== q[i + 3]) {
+      a.setXYZW(s, q[i]!, q[i + 1]!, q[i + 2]!, q[i + 3]!);
+      this.dirtyRect = true;
+    }
+  }
+
+  /** Feet on the ground (the card's instance), the decal on the ground normal. */
+  private place(r: Rig): void {
+    const g = this.ground;
+    const y = g !== null ? g(r.feet.x, r.feet.z) : 0;
+    r.feet.y = Number.isFinite(y) ? y : 0;
+    this.inst.feet.setXYZ(r.slot, r.feet.x, r.feet.y, r.feet.z);
+    this.dirtyFeet = true;
+    if (g !== null) {
+      const d = CHARACTER.normalProbeM;
+      const hx = g(r.feet.x + d, r.feet.z) - g(r.feet.x - d, r.feet.z);
+      const hz = g(r.feet.x, r.feet.z + d) - g(r.feet.x, r.feet.z - d);
+      r.groundN.set(-hx, 2 * d, -hz);
+      if (!Number.isFinite(r.groundN.x + r.groundN.z) || r.groundN.lengthSq() < 1e-8) r.groundN.set(0, 1, 0);
+      r.groundN.normalize();
+    }
+    _q.setFromUnitVectors(_up, r.groundN).multiply(_qFlat);
+    _s.set(CHARACTER.decalM, CHARACTER.decalM, 1);
+    _m.compose(r.feet, _q, _s);
+    this.decals.setMatrixAt(r.slot, _m);
+    this.dirtyDecals = true;
+  }
+
+  /** Uploads what changed this frame (a few hundred bytes at most). */
+  private flush(): void {
+    if (this.dirtyFeet) { this.inst.feet.needsUpdate = true; this.dirtyFeet = false; }
+    if (this.dirtyRect) { this.inst.rect.needsUpdate = true; this.dirtyRect = false; }
+    if (this.dirtyMisc) { this.inst.misc.needsUpdate = true; this.dirtyMisc = false; }
+    if (this.dirtyDecals) { this.decals.instanceMatrix.needsUpdate = true; this.dirtyDecals = false; }
+  }
+
+  /** Instances drawn: up to the highest live slot (slots are reused lowest-first). */
+  private refreshCounts(): void {
+    let top = 0;
+    for (const x of this.rigs) if (x.id !== null) top = x.slot + 1;
+    this.inst.geometry.instanceCount = top;
+    this.decals.count = top;
+  }
+
+  /** The head anchor on the LEANED card (§10.4.4): h·cos λ up and h·sin λ away from the camera, projected. */
+  private projectAnchor(r: Rig, out: Float32Array, offset: number): boolean {
+    const h = (r.frames?.heightM ?? HEAD_ANCHOR_M) + CHARACTER.headMarginM;
+    const lean = this.uniforms.cameraLean.value;
+    const yaw = this.uniforms.cameraYaw.value;
+    const back = h * Math.sin(lean);
+    return this.projectPoint(r.feet.x - Math.sin(yaw) * back, r.feet.y + h * Math.cos(lean), r.feet.z - Math.cos(yaw) * back, out, offset);
+  }
 
   private projectPoint(x: number, y: number, z: number, out: Float32Array, offset: number): boolean {
     const cam = this.camera;
@@ -529,98 +458,10 @@ export class CharacterPool implements ActorPool {
     return true;
   }
 
-  private geometryFor(look: string): BufferGeometry {
-    let g = this.geometries.get(look);
-    if (g === undefined) {
-      g = buildCharacterGeometry(lookFor(look));
-      g.name = `ewa:look:${look}`;
-      this.geometries.set(look, g);
-    }
-    return g;
-  }
-
   private makeRig(i: number): Rig {
-    const bones = makeBones();
-    const g = this.geometryFor('default');
-    const mesh = new SkinnedMesh(g, this.material);
-    mesh.add(bones[0]!);
-    mesh.updateMatrixWorld(true);
-    mesh.bind(new Skeleton(bones));
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    mesh.visible = false;
-    mesh.frustumCulled = false;   // skinned bounds follow the bones; 48 rigs max
-    mesh.name = `ewa:actor-slot:${i}`;
-    const ud: ActorUserData = { sharp: 0, ewaActor: '' };
-    mesh.userData = ud as unknown as Record<string, unknown>;
     return {
-      mesh, bones, ud, id: null, look: 'default', name: '', guildTag: '', isLocal: false, feet: new Vector3(), angle: 0,
-      moving: false, running: false, walkW: 0, runW: 0, phase: 0, clock: 0, emote: 0, emoteLeft: 0, emoteW: 0, glb: null,
+      slot: i, anim: createCharAnim(), id: null, look: '', frames: null, name: '', guildTag: '', isLocal: false,
+      feet: new Vector3(), groundN: new Vector3(0, 1, 0), angle: 0, moving: false, running: false, emote: 0, emoteLeft: 0,
     };
   }
-
-  /** Procedural pose: idle breathing + walk/run swing + wave emote. */
-  private pose(r: Rig): void {
-    const b = r.bones;
-    const s = Math.sin(r.phase);
-    const legAmp = GAIT.walkLeg + (GAIT.runLeg - GAIT.walkLeg) * r.runW;
-    const armAmp = GAIT.walkArm + (GAIT.runArm - GAIT.walkArm) * r.runW;
-    const w = r.walkW;
-    const breathe = Math.sin(r.clock * Math.PI * 2 * GAIT.idleHz);
-    b[BONES.legL]!.rotation.x = s * legAmp * w;
-    b[BONES.legR]!.rotation.x = -s * legAmp * w;
-    b[BONES.armL]!.rotation.x = -s * armAmp * w;
-    b[BONES.armR]!.rotation.x = s * armAmp * w;
-    b[BONES.armL]!.rotation.z = 0.08 + breathe * 0.015 * (1 - w);
-    b[BONES.armR]!.rotation.z = -0.08 - breathe * 0.015 * (1 - w);
-    b[BONES.spine]!.rotation.x = GAIT.runLean * r.runW + breathe * 0.012 * (1 - w);
-    b[BONES.head]!.rotation.y = Math.sin(r.clock * 0.7 + r.phase * 0.1) * 0.08 * (1 - w);
-    const bob = Math.abs(Math.cos(r.phase)) * (GAIT.bobWalk + (GAIT.bobRun - GAIT.bobWalk) * r.runW) * w;
-    b[BONES.hips]!.position.y = BONE_REST[0]![1] + bob;
-    if (r.emote === 1 && r.emoteLeft > 0) {   // wave: right arm up, waving
-      b[BONES.armR]!.rotation.z = -2.6;
-      b[BONES.armR]!.rotation.x = Math.sin(r.clock * 14) * 0.35;
-    } else if (r.emote === 2 && r.emoteLeft > 0) {   // happy: little hop
-      b[BONES.hips]!.position.y += Math.abs(Math.sin(r.clock * 9)) * 0.06;
-    }
-  }
-}
-
-/** A GLB instance of a template: cloned bones, the template's geometry, the pool's material, one mixer, looping clips at weight 0. */
-function createGlb(t: LookTemplate, material: MeshStandardNodeMaterial): GlbInstance {
-  const root = cloneSkinned(t.scene);
-  let found: SkinnedMesh | null = null;
-  root.traverse((n) => {
-    if ((n as SkinnedMesh).isSkinnedMesh === true && found === null) found = n as SkinnedMesh;
-    else if ((n as { isMesh?: boolean }).isMesh === true) n.visible = false;   // a look is one primitive (§10.7.7): nothing else draws
-  });
-  if (found === null) throw new Error(`@ewa/render: look '${t.look}' has no skinned mesh`);
-  const mesh: SkinnedMesh = found;
-  mesh.material = material;
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  mesh.frustumCulled = false;   // skinned bounds follow the bones; 48 rigs max
-  root.scale.setScalar(t.scale);
-  const mixer = new AnimationMixer(root);
-  const action = (name: string | null): AnimationAction | null => {
-    if (name === null) return null;
-    const clip = t.clips.find((c) => c.name === name);
-    if (clip === undefined) return null;
-    const a = mixer.clipAction(clip);
-    a.enabled = true;
-    a.setEffectiveWeight(0);
-    a.play();
-    return a;
-  };
-  const idle = action('idle');
-  idle?.setEffectiveWeight(1);
-  const emotes = EMOTE_CLIPS.map((c) => action(c));
-  return { look: t.look, root, mesh, mixer, idle, walk: action('walk'), run: action('run'), emotes };
-}
-
-function disposeGlb(g: GlbInstance): void {
-  g.mixer.stopAllAction();
-  g.mixer.uncacheRoot(g.root);
-  g.mesh.skeleton.dispose();
-  g.root.removeFromParent();
 }

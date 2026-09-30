@@ -228,6 +228,18 @@ importers:
         specifier: ^4.1.12
         version: 4.6.5
 
+  tools/character-pipeline:
+    dependencies:
+      '@ewa/content':
+        specifier: workspace:*
+        version: link:../../packages/content
+      '@ewa/sprite-pipeline':
+        specifier: workspace:*
+        version: link:../sprite-pipeline
+      sharp:
+        specifier: ^0.34.3
+        version: 0.34.5
+
   tools/material-bake:
     dependencies:
       '@ewa/render':
