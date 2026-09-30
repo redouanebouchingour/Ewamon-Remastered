@@ -486,3 +486,95 @@ Loss path (L9 grass starter): Mira's lines, defeat, no badge / money, party fain
 party fainted: the accepter's toast "The other trainer's party needs healing first.", the challenger received
 `reason { noUsableParty, playerId: <challenger> }`. A catch's delta carried `placement: party`; a traded Snapling
 landed in the box (session store and the Box screen), the party unchanged.
+
+---
+
+# Part 4 — the measurement and screenshot harness (SPEC §50.2.3 `harness:budget`, §50.6.1 `harness:shots`)
+
+```
+pnpm --filter @ewa/client harness:shots  -- --zone mirevale --set M2      # 4 shots x 3 variants -> .screenshots/audit/M2/mirevale/
+pnpm --filter @ewa/client harness:shots  -- --zone mire_route --set M2    # 2 shots x 3 variants -> .screenshots/audit/M2/mire_route/
+pnpm --filter @ewa/client harness:budget -- --zone mirevale --shots all [--frames 600 --warmup 120 --diff-frames N --budget-ms 0|1 --report-only]
+pnpm audit:assets -- --dump .screenshots/budget/mirevale.dump.json
+```
+
+Run from the repo root (relative `--out` / `--out-dir` resolve against `INIT_CWD`). Common flags: `--serve build|dev`
+(default `build`: a `vite build` of `harness/index.html` only, into `dist/harness`, served with `public/` by a small
+Node static server; `dev` = the Vite dev server with HMR and the watcher off), `--no-build`, `--width 1440 --height 900`,
+`--headings words|rig` (shots). Chrome is launched by the script (`--headless=new --enable-unsafe-webgpu
+--enable-webgpu-developer-features --enable-gpu --ignore-gpu-blocklist`, free debugging port from 9470, scratch profile)
+and driven over CDP with Node's built-in `WebSocket` / `fetch` (no Playwright dependency); server and browser are
+stopped on exit, error and SIGINT.
+
+| File | Owns |
+|---|---|
+| `harness/index.html` | the separate Vite input (never part of the app's `index.html` bundle), served at `/harness/budget?zone=` and `/harness/shots?zone=` |
+| `src/harness/HarnessWorld.ts` | offline world: `createRenderer({ trackTimestamp: true })` + the real SceneDirector, LocalPlayerController, RemoteInterpolator, InteractionTargets, HudWriter, SpawnViews, BattleController, silent AudioDirector; World3D's tick order at a fixed 16.667 ms dt; `drawMask()` |
+| `src/harness/shotTable.ts`, `anchors.ts` | the §50.6.1 table as data; anchor resolution from content + the zone layout (rules below) |
+| `src/harness/stage.ts` | stages one shot x variant (overworld settle; shot 5's scripted battle to turn 2's impact + 150 ms) |
+| `src/harness/battleScript.ts` | shot 5's wild battle with `@ewa/core` (`createBattle` / `resolveTurn`), fed to the controller as `battleStart` / `battleEvents` |
+| `src/harness/measure.ts`, `budgetRules.ts` | the §50.2.3 capture through the `BudgetProbe` only + the §50.2.1 / §50.2.2 assertions |
+| `src/harness/main.tsx`, `HarnessOverlay.tsx`, `Harness.module.css` | entry, `window.__ewaHarness`, the DOM battle panel (BattleOverlay's panel + the real BattleMenu, no router blocker) |
+| `scripts/harness/{common,shots,budget}.ts` | args, server, Chrome/CDP, PNG decode + checks, JSON writers |
+
+**Outputs.** Shots: `<shotId>-<x>_<z>-<full|reduced|mask>.png` (x/z = the resolved anchor, cm), one sidecar
+`<shotId>-<x>_<z>.json` per shot (table row, anchor + rule, `layoutSeed`, camera, post plan, counts, HUD / battle state,
+notes, per-variant PNG checks: size, black share, greyscale share, mask coverage of the player / battler rects) and an
+`index.json` per zone. The §50.6.1 file pattern has no slot for `layoutSeed`, so the seed is in the sidecar and index.
+Budget: `.screenshots/budget/<zone>.json` = `{ machine, adapter, zone, shots: [{ id, counts, passMs, totalMs: { median,
+p95 }, simMs }] }` + `violations`, `worst` and the full per-shot record under `detail` (counts max/min over the capture,
+`withoutMs`, the per-context cross-check, CPU frame ms, sim ms, programs before/after), rewritten after every shot;
+`<zone>.dump.json` = `dumpZone()` at the shot with the most draw calls. `.gitignore` now ignores `.screenshots/*` but
+tracks `.screenshots/audit/` and `.screenshots/budget/` (SPEC §50.5 / §50.2.3 commit both).
+
+## Anchor rules (committed data only; `test/harness-anchors.test.ts` pins them)
+
+- **H1 — headings.** §50.6.1 says "0 = +z forward, 1 = +x, 2 = −z, 3 = −x"; the rig's heading k (§10.7.1: yaw −35° + 90°·k,
+  camera at target + (sin yaw, cos yaw)·d) looks toward (−sin yaw, −cos yaw), so rig 0 looks roughly −z: the two differ
+  by 180°. The harness follows the words (rig = `(h + 2) & 3`): only that reading frames the subjects (shot 2 looks at the
+  gym door, shot 3 at the creature ahead in +x, shot 6 out over the east edge). Side effect: shot 1 at heading 0 looks
+  south across the heart tree, whose crown hides the player standing at the spawn. `--headings rig` captures the
+  literal-number reading into `headings-rig/`. A SPEC answer is needed (which convention §50.6.1 means).
+- **H2 — door offsets are read in the door frame** (+z = the door's outward normal). The gym door faces +z, so (0, +8) is the
+  same either way: (0, −18). Mirevale's shop door faces the plaza (normal (−0.30, −0.95)); the world-axis reading of
+  (+4, +6) lands 0.08 m inside the shop's back wall (world (10.95, 28.16)); the door-frame reading is (1.34, 17.63).
+- **H3 — the encounter spawn point.** The server draws spawn positions from a time-seeded rng (`ZoneRoom` `worldRng`), so no
+  spawn point is committed. Rule: the table's first `common` slot (mire_route: mossling, level = `levelMin` 2) stands at the
+  road-side edge of the layout's first tall-grass patch (`planLayout(spec).grassPatches[0]`, centre + (rz + 1.5 m) toward
+  `roadZ`, just outside the builder's 0.9 m grass fringe): (−78.94, 2.30). A first capture used the patch centre, which
+  buried the level-2 sprite in grass cards (useless for the §50.6.2 line-5 edge check); it is kept under
+  `.screenshots/dbg/superseded/` (not tracked).
+- **H4 — shot 5 position** = the engaging player's position (`BattleSummary.x/z` is `ps.x/z` in `ZoneRoom.engageSpawn`): from
+  the shot-3 anchor toward the spawn, stopping 2.5 m away (inside `ENGAGE_RANGE_M` 3.0): (−80.32, 4.38). The pre-battle
+  heading is shot 3's; SceneDirector then picks the least-occluded battle heading as it does online.
+- **H5 — shot 6**: `edgePoint('town', 'e')` − `HANDOVER_INSET` = (58, 0). Neighbour streaming is NOT staged: the client has
+  no neighbour prefetch (part 2 §20.10 row) and `Renderer.loadZone` rejects a second zone while one is loaded; the sidecar
+  says so and the frame shows Mirevale's east edge only.
+
+## Harness decisions
+
+- **H6 — counts are read synchronously after `renderer.frame`.** three 0.186's own rAF loop runs `info.reset()` once per
+  display frame, so a read after any `await` sees an empty frame (first run: `drawCalls 0`). The same holds for
+  `dumpZone()` (its `counts` are `renderer.info`): the page ticks once and dumps in the same task. Render could snapshot
+  `counts()` inside `frame()` step 6 instead (it already copies `RenderStats` there).
+- **H7 — per-pass ms is differential.** The live per-context attribution (`RenderStats.passMs` via render's `PassTimer`)
+  resolves every context to `opaque` (the uid → target lookup misses; the timed contexts print target `?`), so `passMs` is
+  §50.2.3's differential (`T_all − T_without_p`, `opaque` the remainder, render's `computePassMs`); the per-context values
+  stay in `detail[].passMsPerContext` / `contexts` as the cross-check. A toggled graph pass rebuilds the post chain, so
+  every differential run re-settles (program count still for 30 frames) and re-warms first.
+- **H8 — sim ms** is the harness's fixed step (input sample + prediction + remote interpolation + targeting + TimelinePlayer +
+  audio step) without network input: a lower bound of the §50.2.1 `sim` row.
+- **H9 — the mask variant** swaps the pipeline's output node for `renderOutput(vec4(vec3(mask.y), 1), NoToneMapping,
+  LinearSRGB)` for one `post.render()` (no HUD overlay pass, DOM overlay hidden): grey = mask.y x 255, full effects
+  otherwise, same frame state.
+- **H10 — shot 5's moment.** Intro and turn 1 play in full through the real BattleController / TimelinePlayer; turn 2 runs
+  until its first HP frame changes a bar (the impact: `impact` camera cue, hurt flash, drain start) plus 9 fixed steps
+  (150 ms). Reduced effects rebuild the timeline with `ctx.reduced` (no shake / hitstop / slow-mo) at identical frame
+  times. Seed = the first ≥ 1 whose turns 1 and 2 both carry a move `damage` and where nobody faints on turn 1.
+- **H11 — HUD in the shots**: the canvas HUD (party strip, clock, nameplates ≤ 18 m, prompt, battle bars) and, in battle,
+  the DOM panel with the last three log lines. §50.6.2 line 7's "type icons" do not exist on the canvas bars; the DOM menu
+  shows move types only in its moves grid, which is closed while a turn plays.
+- **H12 — frame counts for the M2 run on the dev iGPU.** A frame costs ≈ 240 ms of GPU time at 1440 x 900 on the Intel
+  UHD (Gen-12) iGPU, so §50.2.3's 600 + 120 frames x 8 runs would take ≈ 25 min per shot position; the committed JSON was
+  captured with `--frames 120 --warmup 60 --diff-frames 60` (recorded in `options`). The defaults stay 600 / 120 / 600
+  for the reference machine.

@@ -1,0 +1,384 @@
+{
+  "set": "M2",
+  "zone": "mirevale",
+  "shot": "link-east",
+  "n": 6,
+  "table": {
+    "n": 6,
+    "id": "link-east",
+    "zone": "mirevale",
+    "heading": 1,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "overworld; the neighbouring zone streaming in must be visible"
+  },
+  "layoutSeed": 1293811713,
+  "anchor": {
+    "layoutSeed": 1293811713,
+    "shot": "link-east",
+    "zone": "mirevale",
+    "heading": {
+      "spec": 1,
+      "rig": 3,
+      "viewForward": [
+        0.8192,
+        0.5736
+      ],
+      "convention": "words"
+    },
+    "x": 58,
+    "z": 0,
+    "snapped": false,
+    "raw": [
+      58,
+      0
+    ],
+    "rule": "edgePoint(town, 'e') - 6 m along x (the links.e handover line, neighbour mire_route)",
+    "base": {
+      "name": "links.e edge (mire_route)",
+      "x": 64,
+      "z": 0
+    },
+    "offset": {
+      "dx": -6,
+      "dz": 0,
+      "frame": "world"
+    },
+    "wild": null,
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.58",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "link-east-58_0-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 148.4,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "link-east",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            44.888,
+            19.785,
+            -9.181
+          ],
+          "focus": [
+            58,
+            -0.703,
+            0
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 176,
+          "triangles": 625157,
+          "texturesSize": 493119418,
+          "textures": 165,
+          "geometries": 297,
+          "programs": 129,
+          "renderTargets": 34,
+          "attributes": 1748,
+          "attributesSize": 113058848,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 129
+        },
+        "rects": {
+          "player": [
+            695,
+            352,
+            745,
+            469
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [
+          "neighbour streaming NOT staged: the client does not prefetch neighbour zones (IMPLEMENTATION-NOTES part 2, §20.10 row: \"phase 5's neighbour-zone prefetch not done\") and Renderer.loadZone rejects a second zone while one is loaded (renderer.ts loadZone); the frame shows the east edge of this zone only"
+        ],
+        "frame": 960
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "link-east-58_0-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 145.1,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "link-east",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            44.888,
+            19.785,
+            -9.181
+          ],
+          "focus": [
+            58,
+            -0.703,
+            0
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 165,
+          "triangles": 625146,
+          "texturesSize": 417303422,
+          "textures": 153,
+          "geometries": 297,
+          "programs": 117,
+          "renderTargets": 24,
+          "attributes": 1764,
+          "attributesSize": 114108448,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 117
+        },
+        "rects": {
+          "player": [
+            695,
+            352,
+            745,
+            469
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [
+          "neighbour streaming NOT staged: the client does not prefetch neighbour zones (IMPLEMENTATION-NOTES part 2, §20.10 row: \"phase 5's neighbour-zone prefetch not done\") and Renderer.loadZone rejects a second zone while one is loaded (renderer.ts loadZone); the frame shows the east edge of this zone only"
+        ],
+        "frame": 1050
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "link-east-58_0-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 0.6,
+        "blackShare": 0.9976,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9976,
+          "full": 0.0024,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.5361,
+        "battlers": []
+      },
+      "stage": {
+        "shot": "link-east",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            44.888,
+            19.785,
+            -9.181
+          ],
+          "focus": [
+            58,
+            -0.703,
+            0
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 176,
+          "triangles": 625157,
+          "texturesSize": 493119426,
+          "textures": 167,
+          "geometries": 297,
+          "programs": 129,
+          "renderTargets": 34,
+          "attributes": 1764,
+          "attributesSize": 114108448,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 129
+        },
+        "rects": {
+          "player": [
+            695,
+            352,
+            745,
+            469
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [
+          "neighbour streaming NOT staged: the client does not prefetch neighbour zones (IMPLEMENTATION-NOTES part 2, §20.10 row: \"phase 5's neighbour-zone prefetch not done\") and Renderer.loadZone rejects a second zone while one is loaded (renderer.ts loadZone); the frame shows the east edge of this zone only"
+        ],
+        "frame": 1140
+      }
+    }
+  ]
+}

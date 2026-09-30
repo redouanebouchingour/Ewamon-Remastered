@@ -1,0 +1,65 @@
+{
+  "set": "M2",
+  "zone": "mire_route",
+  "layoutSeed": 1293811714,
+  "generatedAt": "2026-09-30T14:28:50.450Z",
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.58",
+  "bootMs": 43300,
+  "harvest": "intact",
+  "headingConvention": "words",
+  "shots": [
+    {
+      "shot": "sprite-edge",
+      "n": 3,
+      "x": -80.93594153225422,
+      "z": 5.296072076654431,
+      "layoutSeed": 1293811714,
+      "files": [
+        "sprite-edge--80.94_5.3-full.png",
+        "sprite-edge--80.94_5.3-reduced.png",
+        "sprite-edge--80.94_5.3-mask.png"
+      ],
+      "sidecar": "sprite-edge--80.94_5.3.json",
+      "checks": []
+    },
+    {
+      "shot": "battle",
+      "n": 5,
+      "x": -80.3226920228173,
+      "z": 4.37619781249904,
+      "layoutSeed": 1293811714,
+      "files": [
+        "battle--80.32_4.38-full.png",
+        "battle--80.32_4.38-reduced.png",
+        "battle--80.32_4.38-mask.png"
+      ],
+      "sidecar": "battle--80.32_4.38.json",
+      "checks": []
+    }
+  ]
+}

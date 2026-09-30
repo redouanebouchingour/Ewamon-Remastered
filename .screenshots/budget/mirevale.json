@@ -1,0 +1,2011 @@
+{
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0",
+    "chrome": "Chrome/154.0.8037.58",
+    "resolution": {
+      "width": 1440,
+      "height": 900,
+      "devicePixelRatio": 1
+    },
+    "note": "dev machine; the §50.2 reference machine is 2560x1440 on an RTX 3060 / RX 6600"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics",
+    "info": {
+      "vendor": "intel",
+      "architecture": "gen-12lp",
+      "device": "0xa7a8",
+      "description": "Intel(R) UHD Graphics"
+    }
+  },
+  "zone": "mirevale",
+  "layoutSeed": 1293811713,
+  "generatedAt": "2026-09-30T14:44:25.337Z",
+  "complete": true,
+  "options": {
+    "frames": 120,
+    "warmup": 60,
+    "diffFrames": 60,
+    "differential": true,
+    "budgetMs": true,
+    "reportOnly": false,
+    "shots": [
+      "spawn-noon",
+      "gym-dusk",
+      "lamps-night",
+      "link-east"
+    ]
+  },
+  "table": {
+    "sim": {
+      "target": 0.6,
+      "ceiling": 1
+    },
+    "opaque": {
+      "target": 2.6,
+      "ceiling": 3.4
+    },
+    "sprites": {
+      "target": 0.8,
+      "ceiling": 1.2
+    },
+    "shadows": {
+      "target": 2,
+      "ceiling": 2.6
+    },
+    "gtao": {
+      "target": 1.2,
+      "ceiling": 1.6
+    },
+    "traa": {
+      "target": 0.7,
+      "ceiling": 1
+    },
+    "bloom": {
+      "target": 0.7,
+      "ceiling": 1
+    },
+    "dof": {
+      "target": 0.9,
+      "ceiling": 1.3
+    },
+    "grade": {
+      "target": 0.5,
+      "ceiling": 0.7
+    },
+    "total": {
+      "target": 10,
+      "ceiling": 13.5
+    }
+  },
+  "baseline": {
+    "drawCalls": 387,
+    "triangles": 24037,
+    "texturesSize": 308829739,
+    "textures": 60,
+    "geometries": 21,
+    "programs": 79,
+    "renderTargets": 33,
+    "attributes": 53,
+    "attributesSize": 1080096,
+    "materials": 0,
+    "shadowLights": 2,
+    "nonShadowLights": 0
+  },
+  "shots": [
+    {
+      "id": "spawn-noon",
+      "counts": {
+        "drawCalls": 369,
+        "triangles": 694109,
+        "texturesSize": 493119382,
+        "textures": 156,
+        "geometries": 297,
+        "programs": 102,
+        "renderTargets": 34,
+        "attributes": 1340,
+        "attributesSize": 85095968,
+        "materials": 18,
+        "shadowLights": 3,
+        "nonShadowLights": 17
+      },
+      "passMs": {
+        "opaque": 66.715,
+        "sprites": 0,
+        "shadows": 9.98,
+        "gtao": 0,
+        "traa": 1.412,
+        "bloom": 5.182,
+        "dof": 12.905,
+        "grade": 4.749
+      },
+      "totalMs": {
+        "median": 100.942,
+        "p95": 159.113
+      },
+      "simMs": 0
+    },
+    {
+      "id": "gym-dusk",
+      "counts": {
+        "drawCalls": 406,
+        "triangles": 882459,
+        "texturesSize": 493119406,
+        "textures": 162,
+        "geometries": 297,
+        "programs": 115,
+        "renderTargets": 34,
+        "attributes": 1524,
+        "attributesSize": 98364448,
+        "materials": 18,
+        "shadowLights": 3,
+        "nonShadowLights": 17
+      },
+      "passMs": {
+        "opaque": 0,
+        "sprites": 17.805,
+        "shadows": 30.692,
+        "gtao": 13.305,
+        "traa": 16.448,
+        "bloom": 15.523,
+        "dof": 20.184,
+        "grade": 15.947
+      },
+      "totalMs": {
+        "median": 80.894,
+        "p95": 98.677
+      },
+      "simMs": 0
+    },
+    {
+      "id": "lamps-night",
+      "counts": {
+        "drawCalls": 408,
+        "triangles": 741155,
+        "texturesSize": 493119430,
+        "textures": 168,
+        "geometries": 297,
+        "programs": 115,
+        "renderTargets": 34,
+        "attributes": 1716,
+        "attributesSize": 112157728,
+        "materials": 18,
+        "shadowLights": 3,
+        "nonShadowLights": 17
+      },
+      "passMs": {
+        "opaque": 37.635,
+        "sprites": 0,
+        "shadows": 11.106,
+        "gtao": 2.106,
+        "traa": 4.279,
+        "bloom": 2.774,
+        "dof": 7.386,
+        "grade": 0
+      },
+      "totalMs": {
+        "median": 65.286,
+        "p95": 72.702
+      },
+      "simMs": 0
+    },
+    {
+      "id": "link-east",
+      "counts": {
+        "drawCalls": 176,
+        "triangles": 625157,
+        "texturesSize": 493119454,
+        "textures": 174,
+        "geometries": 297,
+        "programs": 115,
+        "renderTargets": 34,
+        "attributes": 1980,
+        "attributesSize": 130674208,
+        "materials": 18,
+        "shadowLights": 3,
+        "nonShadowLights": 17
+      },
+      "passMs": {
+        "opaque": 53.14,
+        "sprites": 0,
+        "shadows": 14.806,
+        "gtao": 3.759,
+        "traa": 1.903,
+        "bloom": 0.853,
+        "dof": 0.141,
+        "grade": 0
+      },
+      "totalMs": {
+        "median": 74.601,
+        "p95": 93.194
+      },
+      "simMs": 0
+    }
+  ],
+  "worst": {
+    "totalMs": "spawn-noon",
+    "drawCalls": "lamps-night",
+    "triangles": "gym-dusk"
+  },
+  "violations": [
+    {
+      "shot": "spawn-noon",
+      "metric": "total.median",
+      "value": 100.942,
+      "limit": 10,
+      "kind": "ms"
+    },
+    {
+      "shot": "spawn-noon",
+      "metric": "total.p95",
+      "value": 159.213,
+      "limit": 13.5,
+      "kind": "ms"
+    },
+    {
+      "shot": "spawn-noon",
+      "metric": "opaque.median",
+      "value": 66.715,
+      "limit": 2.6,
+      "kind": "ms"
+    },
+    {
+      "shot": "spawn-noon",
+      "metric": "shadows.median",
+      "value": 9.98,
+      "limit": 2,
+      "kind": "ms"
+    },
+    {
+      "shot": "spawn-noon",
+      "metric": "traa.median",
+      "value": 1.412,
+      "limit": 0.7,
+      "kind": "ms"
+    },
+    {
+      "shot": "spawn-noon",
+      "metric": "bloom.median",
+      "value": 5.182,
+      "limit": 0.7,
+      "kind": "ms"
+    },
+    {
+      "shot": "spawn-noon",
+      "metric": "dof.median",
+      "value": 12.905,
+      "limit": 0.9,
+      "kind": "ms"
+    },
+    {
+      "shot": "spawn-noon",
+      "metric": "grade.median",
+      "value": 4.749,
+      "limit": 0.5,
+      "kind": "ms"
+    },
+    {
+      "shot": "gym-dusk",
+      "metric": "drawCalls",
+      "value": 406,
+      "limit": 400,
+      "kind": "count"
+    },
+    {
+      "shot": "gym-dusk",
+      "metric": "total.median",
+      "value": 80.894,
+      "limit": 10,
+      "kind": "ms"
+    },
+    {
+      "shot": "gym-dusk",
+      "metric": "total.p95",
+      "value": 98.777,
+      "limit": 13.5,
+      "kind": "ms"
+    },
+    {
+      "shot": "gym-dusk",
+      "metric": "sprites.median",
+      "value": 17.805,
+      "limit": 0.8,
+      "kind": "ms"
+    },
+    {
+      "shot": "gym-dusk",
+      "metric": "shadows.median",
+      "value": 30.692,
+      "limit": 2,
+      "kind": "ms"
+    },
+    {
+      "shot": "gym-dusk",
+      "metric": "gtao.median",
+      "value": 13.305,
+      "limit": 1.2,
+      "kind": "ms"
+    },
+    {
+      "shot": "gym-dusk",
+      "metric": "traa.median",
+      "value": 16.448,
+      "limit": 0.7,
+      "kind": "ms"
+    },
+    {
+      "shot": "gym-dusk",
+      "metric": "bloom.median",
+      "value": 15.523,
+      "limit": 0.7,
+      "kind": "ms"
+    },
+    {
+      "shot": "gym-dusk",
+      "metric": "dof.median",
+      "value": 20.184,
+      "limit": 0.9,
+      "kind": "ms"
+    },
+    {
+      "shot": "gym-dusk",
+      "metric": "grade.median",
+      "value": 15.947,
+      "limit": 0.5,
+      "kind": "ms"
+    },
+    {
+      "shot": "lamps-night",
+      "metric": "drawCalls",
+      "value": 408,
+      "limit": 400,
+      "kind": "count"
+    },
+    {
+      "shot": "lamps-night",
+      "metric": "total.median",
+      "value": 65.286,
+      "limit": 10,
+      "kind": "ms"
+    },
+    {
+      "shot": "lamps-night",
+      "metric": "total.p95",
+      "value": 72.80199999999999,
+      "limit": 13.5,
+      "kind": "ms"
+    },
+    {
+      "shot": "lamps-night",
+      "metric": "opaque.median",
+      "value": 37.635,
+      "limit": 2.6,
+      "kind": "ms"
+    },
+    {
+      "shot": "lamps-night",
+      "metric": "shadows.median",
+      "value": 11.106,
+      "limit": 2,
+      "kind": "ms"
+    },
+    {
+      "shot": "lamps-night",
+      "metric": "gtao.median",
+      "value": 2.106,
+      "limit": 1.2,
+      "kind": "ms"
+    },
+    {
+      "shot": "lamps-night",
+      "metric": "traa.median",
+      "value": 4.279,
+      "limit": 0.7,
+      "kind": "ms"
+    },
+    {
+      "shot": "lamps-night",
+      "metric": "bloom.median",
+      "value": 2.774,
+      "limit": 0.7,
+      "kind": "ms"
+    },
+    {
+      "shot": "lamps-night",
+      "metric": "dof.median",
+      "value": 7.386,
+      "limit": 0.9,
+      "kind": "ms"
+    },
+    {
+      "shot": "link-east",
+      "metric": "total.median",
+      "value": 74.601,
+      "limit": 10,
+      "kind": "ms"
+    },
+    {
+      "shot": "link-east",
+      "metric": "total.p95",
+      "value": 93.294,
+      "limit": 13.5,
+      "kind": "ms"
+    },
+    {
+      "shot": "link-east",
+      "metric": "opaque.median",
+      "value": 53.14,
+      "limit": 2.6,
+      "kind": "ms"
+    },
+    {
+      "shot": "link-east",
+      "metric": "shadows.median",
+      "value": 14.806,
+      "limit": 2,
+      "kind": "ms"
+    },
+    {
+      "shot": "link-east",
+      "metric": "gtao.median",
+      "value": 3.759,
+      "limit": 1.2,
+      "kind": "ms"
+    },
+    {
+      "shot": "link-east",
+      "metric": "traa.median",
+      "value": 1.903,
+      "limit": 0.7,
+      "kind": "ms"
+    },
+    {
+      "shot": "link-east",
+      "metric": "bloom.median",
+      "value": 0.853,
+      "limit": 0.7,
+      "kind": "ms"
+    }
+  ],
+  "dump": {
+    "file": "mirevale.dump.json",
+    "at": "lamps-night"
+  },
+  "detail": [
+    {
+      "id": "spawn-noon",
+      "anchor": {
+        "layoutSeed": 1293811713,
+        "shot": "spawn-noon",
+        "zone": "mirevale",
+        "heading": {
+          "spec": 0,
+          "rig": 2,
+          "viewForward": [
+            -0.5736,
+            0.8192
+          ],
+          "convention": "words"
+        },
+        "x": 0,
+        "z": 6,
+        "snapped": false,
+        "raw": [
+          0,
+          6
+        ],
+        "rule": "ZoneDef.spawn",
+        "base": {
+          "name": "spawn",
+          "x": 0,
+          "z": 6
+        },
+        "offset": null,
+        "wild": null,
+        "worldReading": null
+      },
+      "stage": {
+        "shot": "spawn-noon",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 2,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            9.181,
+            20.863,
+            -7.112
+          ],
+          "focus": [
+            0,
+            0.375,
+            6
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 369,
+          "triangles": 694109,
+          "texturesSize": 493119382,
+          "textures": 156,
+          "geometries": 297,
+          "programs": 102,
+          "renderTargets": 34,
+          "attributes": 1340,
+          "attributesSize": 85095968,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 102
+        },
+        "rects": {
+          "player": [
+            695,
+            352,
+            745,
+            469
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a child",
+            "the berry-gardener",
+            "Hessa Dunmore, town archivist"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 150
+      },
+      "counts": {
+        "drawCalls": 369,
+        "triangles": 694109,
+        "texturesSize": 493119382,
+        "textures": 156,
+        "geometries": 297,
+        "programs": 102,
+        "renderTargets": 34,
+        "attributes": 1340,
+        "attributesSize": 85095968,
+        "materials": 18,
+        "shadowLights": 3,
+        "nonShadowLights": 17
+      },
+      "countsMax": {
+        "drawCalls": 369,
+        "triangles": 694109
+      },
+      "countsMin": {
+        "drawCalls": 369,
+        "triangles": 694109
+      },
+      "passMs": {
+        "opaque": 66.715,
+        "sprites": 0,
+        "shadows": 9.98,
+        "gtao": 0,
+        "traa": 1.412,
+        "bloom": 5.182,
+        "dof": 12.905,
+        "grade": 4.749
+      },
+      "passMsMethod": "differential",
+      "withoutMs": {
+        "sprites": 148.934,
+        "shadows": 90.962,
+        "gtao": 106.841,
+        "traa": 99.53,
+        "bloom": 95.76,
+        "dof": 88.037,
+        "grade": 96.193
+      },
+      "passMsPerContext": {
+        "opaque": 100.942,
+        "sprites": null,
+        "shadows": 0,
+        "gtao": 0,
+        "traa": 0,
+        "bloom": 0,
+        "dof": 0,
+        "grade": 0
+      },
+      "contexts": [
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.827
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.572
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.604
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 113.866
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 3.477
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.695
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.652
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.357
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.405
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.096
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.934
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.768
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.014
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.347
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 2.248
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.444
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 4.89
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.159
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.129
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.134
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.09
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.053
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.043
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.028
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.023
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.015
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.018
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.014
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.135
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.284
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.106
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.284
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.34
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.191
+        }
+      ],
+      "totalMs": {
+        "median": 100.942,
+        "p95": 159.113,
+        "n": 120
+      },
+      "gpuMs": {
+        "median": 100.942,
+        "p95": 159.113,
+        "n": 120
+      },
+      "cpuFrameMs": {
+        "median": 15.65,
+        "p95": 38.9,
+        "n": 120
+      },
+      "simMs": {
+        "median": 0,
+        "p95": 0.1,
+        "n": 120
+      },
+      "programsBefore": 102,
+      "programsAfter": 115,
+      "frames": 120,
+      "warmup": 60,
+      "diffFrames": 60,
+      "wallMs": 204883
+    },
+    {
+      "id": "gym-dusk",
+      "anchor": {
+        "layoutSeed": 1293811713,
+        "shot": "gym-dusk",
+        "zone": "mirevale",
+        "heading": {
+          "spec": 2,
+          "rig": 0,
+          "viewForward": [
+            0.5736,
+            -0.8192
+          ],
+          "convention": "words"
+        },
+        "x": 0,
+        "z": -18,
+        "snapped": false,
+        "raw": [
+          0,
+          -18
+        ],
+        "rule": "doorOf(mirevale.gym) + (0, 8) in the door frame (+z = outward normal (0, 1))",
+        "base": {
+          "name": "mirevale.gym door",
+          "x": 0,
+          "z": -26
+        },
+        "offset": {
+          "dx": 0,
+          "dz": 8,
+          "frame": "door"
+        },
+        "wild": null,
+        "worldReading": null
+      },
+      "stage": {
+        "shot": "gym-dusk",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -9.181,
+            20.863,
+            -4.888
+          ],
+          "focus": [
+            0,
+            0.375,
+            -18
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.8,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 406,
+          "triangles": 882459,
+          "texturesSize": 493119406,
+          "textures": 162,
+          "geometries": 297,
+          "programs": 115,
+          "renderTargets": 34,
+          "attributes": 1524,
+          "attributesSize": 98364448,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 115
+        },
+        "rects": {
+          "player": [
+            695,
+            352,
+            745,
+            469
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "Prof. Wynn"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.8,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 1540
+      },
+      "counts": {
+        "drawCalls": 406,
+        "triangles": 882459,
+        "texturesSize": 493119406,
+        "textures": 162,
+        "geometries": 297,
+        "programs": 115,
+        "renderTargets": 34,
+        "attributes": 1524,
+        "attributesSize": 98364448,
+        "materials": 18,
+        "shadowLights": 3,
+        "nonShadowLights": 17
+      },
+      "countsMax": {
+        "drawCalls": 406,
+        "triangles": 882459
+      },
+      "countsMin": {
+        "drawCalls": 406,
+        "triangles": 882459
+      },
+      "passMs": {
+        "opaque": 0,
+        "sprites": 17.805,
+        "shadows": 30.692,
+        "gtao": 13.305,
+        "traa": 16.448,
+        "bloom": 15.523,
+        "dof": 20.184,
+        "grade": 15.947
+      },
+      "passMsMethod": "differential",
+      "withoutMs": {
+        "sprites": 63.089,
+        "shadows": 50.202,
+        "gtao": 67.589,
+        "traa": 64.446,
+        "bloom": 65.371,
+        "dof": 60.71,
+        "grade": 64.947
+      },
+      "passMsPerContext": {
+        "opaque": 80.894,
+        "sprites": null,
+        "shadows": 0,
+        "gtao": 0,
+        "traa": 0,
+        "bloom": 0,
+        "dof": 0,
+        "grade": 0
+      },
+      "contexts": [
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.775
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.581
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.559
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 58.217
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 4.216
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 3.486
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.791
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.369
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.491
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.094
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.877
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.708
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.957
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.338
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 2.124
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.393
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 4.581
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.153
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.123
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.125
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.083
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.05
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.045
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.027
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.02
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.016
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.015
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.016
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.125
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.268
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.954
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.266
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.318
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.185
+        }
+      ],
+      "totalMs": {
+        "median": 80.894,
+        "p95": 98.677,
+        "n": 120
+      },
+      "gpuMs": {
+        "median": 80.894,
+        "p95": 98.677,
+        "n": 120
+      },
+      "cpuFrameMs": {
+        "median": 19.85,
+        "p95": 30.1,
+        "n": 120
+      },
+      "simMs": {
+        "median": 0,
+        "p95": 0.1,
+        "n": 120
+      },
+      "programsBefore": 115,
+      "programsAfter": 115,
+      "frames": 120,
+      "warmup": 60,
+      "diffFrames": 60,
+      "wallMs": 110684
+    },
+    {
+      "id": "lamps-night",
+      "anchor": {
+        "layoutSeed": 1293811713,
+        "shot": "lamps-night",
+        "zone": "mirevale",
+        "heading": {
+          "spec": 3,
+          "rig": 1,
+          "viewForward": [
+            -0.8192,
+            -0.5736
+          ],
+          "convention": "words"
+        },
+        "x": 1.3396833415445215,
+        "z": 17.63296866606593,
+        "snapped": false,
+        "raw": [
+          1.3396833415445215,
+          17.63296866606593
+        ],
+        "rule": "doorOf(mirevale.shop) + (4, 6) in the door frame (+z = outward normal (-0.2993, -0.9541))",
+        "base": {
+          "name": "mirevale.shop door",
+          "x": 6.952309739119363,
+          "z": 22.16048729344297
+        },
+        "offset": {
+          "dx": 4,
+          "dz": 6,
+          "frame": "door"
+        },
+        "wild": null,
+        "worldReading": [
+          10.95,
+          28.16
+        ]
+      },
+      "stage": {
+        "shot": "lamps-night",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 1,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            14.452,
+            20.863,
+            26.814
+          ],
+          "focus": [
+            1.34,
+            0.375,
+            17.633
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.05,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 408,
+          "triangles": 741155,
+          "texturesSize": 493119430,
+          "textures": 168,
+          "geometries": 297,
+          "programs": 115,
+          "renderTargets": 34,
+          "attributes": 1716,
+          "attributesSize": 112157728,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 115
+        },
+        "rects": {
+          "player": [
+            695,
+            352,
+            745,
+            469
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a child",
+            "the berry-gardener"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.05,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 2930
+      },
+      "counts": {
+        "drawCalls": 408,
+        "triangles": 741155,
+        "texturesSize": 493119430,
+        "textures": 168,
+        "geometries": 297,
+        "programs": 115,
+        "renderTargets": 34,
+        "attributes": 1716,
+        "attributesSize": 112157728,
+        "materials": 18,
+        "shadowLights": 3,
+        "nonShadowLights": 17
+      },
+      "countsMax": {
+        "drawCalls": 408,
+        "triangles": 741155
+      },
+      "countsMin": {
+        "drawCalls": 408,
+        "triangles": 741155
+      },
+      "passMs": {
+        "opaque": 37.635,
+        "sprites": 0,
+        "shadows": 11.106,
+        "gtao": 2.106,
+        "traa": 4.279,
+        "bloom": 2.774,
+        "dof": 7.386,
+        "grade": 0
+      },
+      "passMsMethod": "differential",
+      "withoutMs": {
+        "sprites": 65.372,
+        "shadows": 54.18,
+        "gtao": 63.18,
+        "traa": 61.007,
+        "bloom": 62.512,
+        "dof": 57.9,
+        "grade": 86.152
+      },
+      "passMsPerContext": {
+        "opaque": 65.286,
+        "sprites": null,
+        "shadows": 0,
+        "gtao": 0,
+        "traa": 0,
+        "bloom": 0,
+        "dof": 0,
+        "grade": 0
+      },
+      "contexts": [
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.731
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.54
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.515
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 56.335
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.455
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.664
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.686
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.037
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.345
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.088
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.829
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.669
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.9
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.309
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 2.022
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.407
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 4.302
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.145
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.114
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.121
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.077
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.051
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.039
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.025
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.022
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.016
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.014
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.015
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.119
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.255
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.919
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.251
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.303
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.172
+        }
+      ],
+      "totalMs": {
+        "median": 65.286,
+        "p95": 72.702,
+        "n": 120
+      },
+      "gpuMs": {
+        "median": 65.286,
+        "p95": 72.702,
+        "n": 120
+      },
+      "cpuFrameMs": {
+        "median": 13.6,
+        "p95": 22,
+        "n": 120
+      },
+      "simMs": {
+        "median": 0,
+        "p95": 0.1,
+        "n": 120
+      },
+      "programsBefore": 115,
+      "programsAfter": 115,
+      "frames": 120,
+      "warmup": 60,
+      "diffFrames": 60,
+      "wallMs": 105136
+    },
+    {
+      "id": "link-east",
+      "anchor": {
+        "layoutSeed": 1293811713,
+        "shot": "link-east",
+        "zone": "mirevale",
+        "heading": {
+          "spec": 1,
+          "rig": 3,
+          "viewForward": [
+            0.8192,
+            0.5736
+          ],
+          "convention": "words"
+        },
+        "x": 58,
+        "z": 0,
+        "snapped": false,
+        "raw": [
+          58,
+          0
+        ],
+        "rule": "edgePoint(town, 'e') - 6 m along x (the links.e handover line, neighbour mire_route)",
+        "base": {
+          "name": "links.e edge (mire_route)",
+          "x": 64,
+          "z": 0
+        },
+        "offset": {
+          "dx": -6,
+          "dz": 0,
+          "frame": "world"
+        },
+        "wild": null,
+        "worldReading": null
+      },
+      "stage": {
+        "shot": "link-east",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            44.888,
+            19.785,
+            -9.181
+          ],
+          "focus": [
+            58,
+            -0.703,
+            0
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 176,
+          "triangles": 625157,
+          "texturesSize": 493119454,
+          "textures": 174,
+          "geometries": 297,
+          "programs": 115,
+          "renderTargets": 34,
+          "attributes": 1980,
+          "attributesSize": 130674208,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 115
+        },
+        "rects": {
+          "player": [
+            695,
+            352,
+            745,
+            469
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [
+          "neighbour streaming NOT staged: the client does not prefetch neighbour zones (IMPLEMENTATION-NOTES part 2, §20.10 row: \"phase 5's neighbour-zone prefetch not done\") and Renderer.loadZone rejects a second zone while one is loaded (renderer.ts loadZone); the frame shows the east edge of this zone only"
+        ],
+        "frame": 4320
+      },
+      "counts": {
+        "drawCalls": 176,
+        "triangles": 625157,
+        "texturesSize": 493119454,
+        "textures": 174,
+        "geometries": 297,
+        "programs": 115,
+        "renderTargets": 34,
+        "attributes": 1980,
+        "attributesSize": 130674208,
+        "materials": 18,
+        "shadowLights": 3,
+        "nonShadowLights": 17
+      },
+      "countsMax": {
+        "drawCalls": 176,
+        "triangles": 625157
+      },
+      "countsMin": {
+        "drawCalls": 176,
+        "triangles": 625157
+      },
+      "passMs": {
+        "opaque": 53.14,
+        "sprites": 0,
+        "shadows": 14.806,
+        "gtao": 3.759,
+        "traa": 1.903,
+        "bloom": 0.853,
+        "dof": 0.141,
+        "grade": 0
+      },
+      "passMsMethod": "differential",
+      "withoutMs": {
+        "sprites": 74.796,
+        "shadows": 59.795,
+        "gtao": 70.842,
+        "traa": 72.698,
+        "bloom": 73.748,
+        "dof": 74.46,
+        "grade": 78.459
+      },
+      "passMsPerContext": {
+        "opaque": 74.601,
+        "sprites": null,
+        "shadows": 0,
+        "gtao": 0,
+        "traa": 0,
+        "bloom": 0,
+        "dof": 0,
+        "grade": 0
+      },
+      "contexts": [
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.59
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.435
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.433
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 57.382
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.102
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 2.047
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.561
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.887
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.43
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.068
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.667
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.534
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.723
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.246
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.629
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.309
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 3.494
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.108
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.093
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.096
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.064
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.037
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.031
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.02
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.013
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.012
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.011
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.012
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.096
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.202
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.757
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.2
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.248
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.138
+        }
+      ],
+      "totalMs": {
+        "median": 74.601,
+        "p95": 93.194,
+        "n": 120
+      },
+      "gpuMs": {
+        "median": 74.601,
+        "p95": 93.194,
+        "n": 120
+      },
+      "cpuFrameMs": {
+        "median": 8.9,
+        "p95": 14.8,
+        "n": 120
+      },
+      "simMs": {
+        "median": 0,
+        "p95": 0.1,
+        "n": 120
+      },
+      "programsBefore": 115,
+      "programsAfter": 115,
+      "frames": 120,
+      "warmup": 60,
+      "diffFrames": 60,
+      "wallMs": 113851
+    }
+  ],
+  "pageLog": [
+    "13.1s compile boot: 88 objects in 11262 ms",
+    "13.5s renderer ready in 13096 ms (backend webgpu, adapter Intel(R) UHD Graphics, timestamp-query true)",
+    "48.7s compile zone mirevale: 569 objects in 30822 ms",
+    "48.8s zone mirevale loaded in 34723 ms (layoutSeed 1293811713, harvest intact)",
+    "67.0s boot settle: 60 frames, programs 102, stable true",
+    "93.4s spawn-noon: T_all 120 frames",
+    "130.7s spawn-noon: without sprites 148.934 ms (T_all 100.942)",
+    "169.2s spawn-noon: without shadows 90.962 ms (T_all 100.942)",
+    "205.3s spawn-noon: without gtao 106.841 ms (T_all 100.942)",
+    "221.6s spawn-noon: without traa 99.53 ms (T_all 100.942)",
+    "237.1s spawn-noon: without bloom 95.76 ms (T_all 100.942)",
+    "252.0s spawn-noon: without dof 88.037 ms (T_all 100.942)",
+    "268.3s spawn-noon: without grade 96.193 ms (T_all 100.942)",
+    "289.5s gym-dusk: T_all 120 frames",
+    "311.5s gym-dusk: without sprites 63.089 ms (T_all 80.894)",
+    "325.2s gym-dusk: without shadows 50.202 ms (T_all 80.894)",
+    "337.8s gym-dusk: without gtao 67.589 ms (T_all 80.894)",
+    "348.7s gym-dusk: without traa 64.446 ms (T_all 80.894)",
+    "359.5s gym-dusk: without bloom 65.371 ms (T_all 80.894)",
+    "369.4s gym-dusk: without dof 60.71 ms (T_all 80.894)",
+    "380.4s gym-dusk: without grade 64.947 ms (T_all 80.894)",
+    "397.1s lamps-night: T_all 120 frames",
+    "416.6s lamps-night: without sprites 65.372 ms (T_all 65.286)",
+    "427.6s lamps-night: without shadows 54.18 ms (T_all 65.286)",
+    "440.2s lamps-night: without gtao 63.18 ms (T_all 65.286)",
+    "450.8s lamps-night: without traa 61.007 ms (T_all 65.286)",
+    "461.7s lamps-night: without bloom 62.512 ms (T_all 65.286)",
+    "471.8s lamps-night: without dof 57.9 ms (T_all 65.286)",
+    "483.7s lamps-night: without grade 86.152 ms (T_all 65.286)",
+    "503.7s link-east: T_all 120 frames",
+    "526.2s link-east: without sprites 74.796 ms (T_all 74.601)",
+    "537.1s link-east: without shadows 59.795 ms (T_all 74.601)",
+    "550.3s link-east: without gtao 70.842 ms (T_all 74.601)",
+    "562.2s link-east: without traa 72.698 ms (T_all 74.601)",
+    "574.7s link-east: without bloom 73.748 ms (T_all 74.601)",
+    "586.6s link-east: without dof 74.46 ms (T_all 74.601)",
+    "599.1s link-east: without grade 78.459 ms (T_all 74.601)"
+  ],
+  "bootMs": 67097,
+  "wallMs": 603324
+}

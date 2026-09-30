@@ -1,0 +1,1089 @@
+{
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0",
+    "chrome": "Chrome/154.0.8037.58",
+    "resolution": {
+      "width": 1440,
+      "height": 900,
+      "devicePixelRatio": 1
+    },
+    "note": "dev machine; the §50.2 reference machine is 2560x1440 on an RTX 3060 / RX 6600"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics",
+    "info": {
+      "vendor": "intel",
+      "architecture": "gen-12lp",
+      "device": "0xa7a8",
+      "description": "Intel(R) UHD Graphics"
+    }
+  },
+  "zone": "mire_route",
+  "layoutSeed": 1293811714,
+  "generatedAt": "2026-09-30T14:34:20.527Z",
+  "complete": true,
+  "options": {
+    "frames": 120,
+    "warmup": 60,
+    "diffFrames": 60,
+    "differential": true,
+    "budgetMs": true,
+    "reportOnly": false,
+    "shots": [
+      "sprite-edge",
+      "battle"
+    ]
+  },
+  "table": {
+    "sim": {
+      "target": 0.6,
+      "ceiling": 1
+    },
+    "opaque": {
+      "target": 2.6,
+      "ceiling": 3.4
+    },
+    "sprites": {
+      "target": 0.8,
+      "ceiling": 1.2
+    },
+    "shadows": {
+      "target": 2,
+      "ceiling": 2.6
+    },
+    "gtao": {
+      "target": 1.2,
+      "ceiling": 1.6
+    },
+    "traa": {
+      "target": 0.7,
+      "ceiling": 1
+    },
+    "bloom": {
+      "target": 0.7,
+      "ceiling": 1
+    },
+    "dof": {
+      "target": 0.9,
+      "ceiling": 1.3
+    },
+    "grade": {
+      "target": 0.5,
+      "ceiling": 0.7
+    },
+    "total": {
+      "target": 10,
+      "ceiling": 13.5
+    }
+  },
+  "baseline": {
+    "drawCalls": 387,
+    "triangles": 24037,
+    "texturesSize": 308829739,
+    "textures": 60,
+    "geometries": 21,
+    "programs": 79,
+    "renderTargets": 33,
+    "attributes": 53,
+    "attributesSize": 1080096,
+    "materials": 0,
+    "shadowLights": 2,
+    "nonShadowLights": 0
+  },
+  "shots": [
+    {
+      "id": "sprite-edge",
+      "counts": {
+        "drawCalls": 193,
+        "triangles": 959273,
+        "texturesSize": 668886934,
+        "textures": 165,
+        "geometries": 262,
+        "programs": 106,
+        "renderTargets": 34,
+        "attributes": 1318,
+        "attributesSize": 63715732,
+        "materials": 13,
+        "shadowLights": 3,
+        "nonShadowLights": 9
+      },
+      "passMs": {
+        "opaque": 44.749,
+        "sprites": 2.594,
+        "shadows": 21.94,
+        "gtao": 0,
+        "traa": 0,
+        "bloom": 0,
+        "dof": 0,
+        "grade": 0
+      },
+      "totalMs": {
+        "median": 69.283,
+        "p95": 83.802
+      },
+      "simMs": 0
+    },
+    {
+      "id": "battle",
+      "counts": {
+        "drawCalls": 391,
+        "triangles": 1395889,
+        "texturesSize": 672032769,
+        "textures": 176,
+        "geometries": 275,
+        "programs": 117,
+        "renderTargets": 36,
+        "attributes": 1616,
+        "attributesSize": 87322272,
+        "materials": 13,
+        "shadowLights": 3,
+        "nonShadowLights": 9
+      },
+      "passMs": {
+        "opaque": 30.635,
+        "sprites": 4.665,
+        "shadows": 34.851,
+        "gtao": 7.097,
+        "traa": 0,
+        "bloom": 4.538,
+        "dof": 0,
+        "grade": 8.055
+      },
+      "totalMs": {
+        "median": 89.841,
+        "p95": 108.186
+      },
+      "simMs": 0
+    }
+  ],
+  "worst": {
+    "totalMs": "battle",
+    "drawCalls": "battle",
+    "triangles": "battle"
+  },
+  "violations": [
+    {
+      "shot": "sprite-edge",
+      "metric": "total.median",
+      "value": 69.283,
+      "limit": 10,
+      "kind": "ms"
+    },
+    {
+      "shot": "sprite-edge",
+      "metric": "total.p95",
+      "value": 83.902,
+      "limit": 13.5,
+      "kind": "ms"
+    },
+    {
+      "shot": "sprite-edge",
+      "metric": "opaque.median",
+      "value": 44.749,
+      "limit": 2.6,
+      "kind": "ms"
+    },
+    {
+      "shot": "sprite-edge",
+      "metric": "sprites.median",
+      "value": 2.594,
+      "limit": 0.8,
+      "kind": "ms"
+    },
+    {
+      "shot": "sprite-edge",
+      "metric": "shadows.median",
+      "value": 21.94,
+      "limit": 2,
+      "kind": "ms"
+    },
+    {
+      "shot": "battle",
+      "metric": "total.median",
+      "value": 89.841,
+      "limit": 10,
+      "kind": "ms"
+    },
+    {
+      "shot": "battle",
+      "metric": "total.p95",
+      "value": 108.286,
+      "limit": 13.5,
+      "kind": "ms"
+    },
+    {
+      "shot": "battle",
+      "metric": "opaque.median",
+      "value": 30.635,
+      "limit": 2.6,
+      "kind": "ms"
+    },
+    {
+      "shot": "battle",
+      "metric": "sprites.median",
+      "value": 4.665,
+      "limit": 0.8,
+      "kind": "ms"
+    },
+    {
+      "shot": "battle",
+      "metric": "shadows.median",
+      "value": 34.851,
+      "limit": 2,
+      "kind": "ms"
+    },
+    {
+      "shot": "battle",
+      "metric": "gtao.median",
+      "value": 7.097,
+      "limit": 1.2,
+      "kind": "ms"
+    },
+    {
+      "shot": "battle",
+      "metric": "bloom.median",
+      "value": 4.538,
+      "limit": 0.7,
+      "kind": "ms"
+    },
+    {
+      "shot": "battle",
+      "metric": "grade.median",
+      "value": 8.055,
+      "limit": 0.5,
+      "kind": "ms"
+    }
+  ],
+  "dump": {
+    "file": "mire_route.dump.json",
+    "at": "battle"
+  },
+  "detail": [
+    {
+      "id": "sprite-edge",
+      "anchor": {
+        "layoutSeed": 1293811714,
+        "shot": "sprite-edge",
+        "zone": "mire_route",
+        "heading": {
+          "spec": 1,
+          "rig": 3,
+          "viewForward": [
+            0.8192,
+            0.5736
+          ],
+          "convention": "words"
+        },
+        "x": -80.93594153225422,
+        "z": 5.296072076654431,
+        "snapped": false,
+        "raw": [
+          -80.93594153225422,
+          5.296072076654431
+        ],
+        "rule": "enc_mire_route slot 0 (mossling, first 'common') at the road-side edge of grassPatches[0] (centre + 1.5 m past rz toward roadZ) + (-2, +3) world",
+        "base": {
+          "name": "mossling spawn",
+          "x": -78.93594153225422,
+          "z": 2.296072076654431
+        },
+        "offset": {
+          "dx": -2,
+          "dz": 3,
+          "frame": "world"
+        },
+        "wild": {
+          "speciesId": "mossling",
+          "level": 2,
+          "slotIndex": 0,
+          "x": -78.93594153225422,
+          "z": 2.296072076654431
+        },
+        "worldReading": null
+      },
+      "stage": {
+        "shot": "sprite-edge",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 0,
+          "mode": "diorama",
+          "position": [
+            -91.022,
+            15.87,
+            -1.767
+          ],
+          "focus": [
+            -80.936,
+            0.109,
+            5.296
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 193,
+          "triangles": 959273,
+          "texturesSize": 668886934,
+          "textures": 165,
+          "geometries": 262,
+          "programs": 106,
+          "renderTargets": 34,
+          "attributes": 1318,
+          "attributesSize": 63715732,
+          "materials": 13,
+          "shadowLights": 3,
+          "nonShadowLights": 9
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 106
+        },
+        "rects": {
+          "player": [
+            687,
+            321,
+            753,
+            475
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 150
+      },
+      "counts": {
+        "drawCalls": 193,
+        "triangles": 959273,
+        "texturesSize": 668886934,
+        "textures": 165,
+        "geometries": 262,
+        "programs": 106,
+        "renderTargets": 34,
+        "attributes": 1318,
+        "attributesSize": 63715732,
+        "materials": 13,
+        "shadowLights": 3,
+        "nonShadowLights": 9
+      },
+      "countsMax": {
+        "drawCalls": 193,
+        "triangles": 959273
+      },
+      "countsMin": {
+        "drawCalls": 193,
+        "triangles": 959273
+      },
+      "passMs": {
+        "opaque": 44.749,
+        "sprites": 2.594,
+        "shadows": 21.94,
+        "gtao": 0,
+        "traa": 0,
+        "bloom": 0,
+        "dof": 0,
+        "grade": 0
+      },
+      "passMsMethod": "differential",
+      "withoutMs": {
+        "sprites": 66.689,
+        "shadows": 47.343,
+        "gtao": 79.578,
+        "traa": 78.11,
+        "bloom": 70.52,
+        "dof": 74.772,
+        "grade": 74.819
+      },
+      "passMsPerContext": {
+        "opaque": 69.283,
+        "sprites": null,
+        "shadows": 0,
+        "gtao": 0,
+        "traa": 0,
+        "bloom": 0,
+        "dof": 0,
+        "grade": 0
+      },
+      "contexts": [
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.653
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.477
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.473
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 52.997
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.316
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.968
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 2.358
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.308
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.829
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.078
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.743
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.597
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.805
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.273
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.792
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.346
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 3.867
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.104
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.102
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.105
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.069
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.041
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.034
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.023
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.019
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.014
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.012
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.014
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.107
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.225
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.798
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.222
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.269
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.152
+        }
+      ],
+      "totalMs": {
+        "median": 69.283,
+        "p95": 83.802,
+        "n": 120
+      },
+      "gpuMs": {
+        "median": 69.283,
+        "p95": 83.802,
+        "n": 120
+      },
+      "cpuFrameMs": {
+        "median": 9.75,
+        "p95": 21.3,
+        "n": 120
+      },
+      "simMs": {
+        "median": 0,
+        "p95": 0.1,
+        "n": 120
+      },
+      "programsBefore": 106,
+      "programsAfter": 115,
+      "frames": 120,
+      "warmup": 60,
+      "diffFrames": 60,
+      "wallMs": 124092
+    },
+    {
+      "id": "battle",
+      "anchor": {
+        "layoutSeed": 1293811714,
+        "shot": "battle",
+        "zone": "mire_route",
+        "heading": {
+          "spec": null,
+          "rig": null,
+          "viewForward": null,
+          "convention": "words"
+        },
+        "x": -80.3226920228173,
+        "z": 4.37619781249904,
+        "snapped": false,
+        "raw": [
+          -80.3226920228173,
+          4.37619781249904
+        ],
+        "rule": "BattleSummary.x/z = the engaging player's position: from the sprite-edge anchor toward the mossling spawn, stopping 2.5 m from it (ENGAGE_RANGE_M 3.0)",
+        "base": {
+          "name": "mossling spawn",
+          "x": -78.93594153225422,
+          "z": 2.296072076654431
+        },
+        "offset": null,
+        "wild": {
+          "speciesId": "mossling",
+          "level": 2,
+          "slotIndex": 0,
+          "x": -78.93594153225422,
+          "z": 2.296072076654431
+        },
+        "worldReading": null
+      },
+      "stage": {
+        "shot": "battle",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -86.848,
+            5.245,
+            2.228
+          ],
+          "focus": [
+            -78.07,
+            0.175,
+            5.954
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 375,
+          "triangles": 1344597,
+          "texturesSize": 672032769,
+          "textures": 176,
+          "geometries": 275,
+          "programs": 117,
+          "renderTargets": 36,
+          "attributes": 1616,
+          "attributesSize": 87322272,
+          "materials": 13,
+          "shadowLights": 3,
+          "nonShadowLights": 9
+        },
+        "settle": {
+          "frames": 220,
+          "stable": true,
+          "programs": 117
+        },
+        "rects": {
+          "player": [
+            -170,
+            1201,
+            276,
+            1935
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                133,
+                943,
+                580,
+                1217
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                643,
+                304,
+                819,
+                462
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 30/31",
+            "The wild Mossling L2 14/24"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 466.667,
+          "timelineMs": 1910,
+          "framesIntro": 74,
+          "framesTurn1": 115,
+          "framesToImpact": 22,
+          "afterImpactMs": 150,
+          "log": [
+            "The wild Mossling used Vine Lash!",
+            "It’s not very effective…",
+            "Bramblecub used Tackle!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1700
+      },
+      "counts": {
+        "drawCalls": 391,
+        "triangles": 1395889,
+        "texturesSize": 672032769,
+        "textures": 176,
+        "geometries": 275,
+        "programs": 117,
+        "renderTargets": 36,
+        "attributes": 1616,
+        "attributesSize": 87322272,
+        "materials": 13,
+        "shadowLights": 3,
+        "nonShadowLights": 9
+      },
+      "countsMax": {
+        "drawCalls": 391,
+        "triangles": 1395889
+      },
+      "countsMin": {
+        "drawCalls": 391,
+        "triangles": 1395889
+      },
+      "passMs": {
+        "opaque": 30.635,
+        "sprites": 4.665,
+        "shadows": 34.851,
+        "gtao": 7.097,
+        "traa": 0,
+        "bloom": 4.538,
+        "dof": 0,
+        "grade": 8.055
+      },
+      "passMsMethod": "differential",
+      "withoutMs": {
+        "sprites": 85.176,
+        "shadows": 54.99,
+        "gtao": 82.744,
+        "traa": 102.838,
+        "bloom": 85.303,
+        "dof": 91.858,
+        "grade": 81.786
+      },
+      "passMsPerContext": {
+        "opaque": 89.841,
+        "sprites": null,
+        "shadows": 0,
+        "gtao": 0,
+        "traa": 0,
+        "bloom": 0,
+        "dof": 0,
+        "grade": 0
+      },
+      "contexts": [
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.591
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.463
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.429
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 64.909
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.188
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.782
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 2.369
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.214
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.828
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.848
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.799
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.068
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.667
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.536
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.753
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.26
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 1.637
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.329
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 3.465
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.112
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.092
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.096
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.063
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.038
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.032
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.02
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.014
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.014
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.011
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.012
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.096
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.204
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.742
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.201
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.253
+        },
+        {
+          "target": "?",
+          "pass": "opaque",
+          "ms": 0.143
+        }
+      ],
+      "totalMs": {
+        "median": 89.841,
+        "p95": 108.186,
+        "n": 120
+      },
+      "gpuMs": {
+        "median": 89.841,
+        "p95": 108.186,
+        "n": 120
+      },
+      "cpuFrameMs": {
+        "median": 18.85,
+        "p95": 35.5,
+        "n": 120
+      },
+      "simMs": {
+        "median": 0,
+        "p95": 0.1,
+        "n": 120
+      },
+      "programsBefore": 117,
+      "programsAfter": 121,
+      "frames": 120,
+      "warmup": 60,
+      "diffFrames": 60,
+      "wallMs": 161321
+    }
+  ],
+  "pageLog": [
+    "10.9s compile boot: 88 objects in 8780 ms",
+    "11.0s renderer ready in 10582 ms (backend webgpu, adapter Intel(R) UHD Graphics, timestamp-query true)",
+    "29.4s compile zone mire_route: 447 objects in 15786 ms",
+    "29.4s zone mire_route loaded in 17902 ms (layoutSeed 1293811714, harvest intact)",
+    "39.6s boot settle: 60 frames, programs 102, stable true",
+    "58.2s sprite-edge: T_all 120 frames",
+    "79.5s sprite-edge: without sprites 66.689 ms (T_all 69.283)",
+    "93.4s sprite-edge: without shadows 47.343 ms (T_all 69.283)",
+    "112.6s sprite-edge: without gtao 79.578 ms (T_all 69.283)",
+    "125.1s sprite-edge: without traa 78.11 ms (T_all 69.283)",
+    "137.1s sprite-edge: without bloom 70.52 ms (T_all 69.283)",
+    "148.7s sprite-edge: without dof 74.772 ms (T_all 69.283)",
+    "161.4s sprite-edge: without grade 74.819 ms (T_all 69.283)",
+    "203.0s battle: T_all 120 frames",
+    "229.1s battle: without sprites 85.176 ms (T_all 89.841)",
+    "240.9s battle: without shadows 54.99 ms (T_all 89.841)",
+    "262.0s battle: without gtao 82.744 ms (T_all 89.841)",
+    "279.1s battle: without traa 102.838 ms (T_all 89.841)",
+    "294.0s battle: without bloom 85.303 ms (T_all 89.841)",
+    "308.0s battle: without dof 91.858 ms (T_all 89.841)",
+    "322.1s battle: without grade 81.786 ms (T_all 89.841)"
+  ],
+  "bootMs": 40051,
+  "wallMs": 327048
+}
