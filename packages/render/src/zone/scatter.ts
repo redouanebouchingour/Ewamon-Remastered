@@ -128,6 +128,144 @@ export const MIN_INSTANCE_CAPACITY = 1025;
 
 export function instanceCapacity(n: number): number { return Math.max(MIN_INSTANCE_CAPACITY, n); }
 
+// ---- ground-cover masks (IMPLEMENTATION-NOTES Part 5, T1 / T3) -----------------------------------------------
+
+/** Cover classes a mask disc can affect (bit set). */
+export const COVER = Object.freeze({ ground: 1, small: 2, large: 4, tree: 8 });
+
+/**
+ * The cover class of a scatter kind by its builder name (`ScatterKind.name`, the dump's `ewaScatterKind`): grass
+ * tufts, tall grass and flower patches are ground cover; big rocks are large; trees are trees; everything else
+ * (small rocks and pebbles, bushes, stumps, logs) is small.
+ */
+export function coverClassOf(kind: string): number {
+  if (kind.startsWith('tree')) return COVER.tree;
+  if (kind === 'rock_a') return COVER.large;
+  if (kind === 'grass_tuft' || kind === 'tall_grass' || kind === 'flower_patch') return COVER.ground;
+  return COVER.small;
+}
+
+/** Mask discs per zone (arena slots + revealed creatures; see `stage/groundCover.ts`). */
+export const SCATTER_MASK_SLOTS = 24;
+/** A vertical factor at or below this hides the instance entirely (a zero matrix: nothing rasterises). */
+export const MASK_HIDE_BELOW = 0.04;
+/** Disc edits smaller than this (m, or factor) are ignored: a creature idling in place never rewrites a buffer. */
+const MASK_EPS = 0.01;
+const MASK_STRIDE = 5;
+
+/**
+ * Discs that flatten or hide scatter instances without rebuilding anything (IMPLEMENTATION-NOTES Part 5, T1): a
+ * masked instance is written into its tier buffer with its vertical axis scaled by the disc's factor — `floor`
+ * inside `inner`, easing back to 1 at `outer` — and a factor ≤ `MASK_HIDE_BELOW` writes a zero 3×3 (a degenerate
+ * instance: nothing rasterises, in the beauty pass or the shadow maps). The source matrices, the meshes, the
+ * materials, the programs and the zone graph are never touched; clearing a disc rewrites the original matrices.
+ * Nothing is allocated. One mask per zone root (`scatterMaskFor`), read by every `ScatterField` of that root.
+ */
+export class ScatterMask {
+  /** Bumped whenever a factor can have changed; fields re-apply on their next `sync`. */
+  generation = 0;
+  private readonly d = new Float32Array(SCATTER_MASK_SLOTS * MASK_STRIDE);   // x, z, inner, outer, floor
+  private readonly cls = new Uint8Array(SCATTER_MASK_SLOTS);                 // 0 = free slot
+  private used = 0;
+
+  /**
+   * Writes disc `slot`: scatter of the `classes` bit set within `outer` m of (x, z) is scaled vertically by `floor`
+   * inside `inner`, easing (smoothstep) to 1 at `outer`; `floor` 0 hides. Unchanged values bump nothing.
+   */
+  set(slot: number, x: number, z: number, inner: number, outer: number, floor: number, classes: number): void {
+    if (!(slot >= 0 && slot < SCATTER_MASK_SLOTS) || !Number.isFinite(x) || !Number.isFinite(z)) return;
+    const o = slot * MASK_STRIDE; const d = this.d;
+    const r0 = Math.max(0, inner); const r1 = Math.max(r0 + MASK_EPS, outer); const f = Math.min(1, Math.max(0, floor));
+    const c = classes & 0xff;
+    if (this.cls[slot] === c && Math.abs(d[o]! - x) < MASK_EPS && Math.abs(d[o + 1]! - z) < MASK_EPS && Math.abs(d[o + 2]! - r0) < MASK_EPS
+      && Math.abs(d[o + 3]! - r1) < MASK_EPS && Math.abs(d[o + 4]! - f) < MASK_EPS) return;
+    if (this.cls[slot] === 0 && c !== 0) this.used++;
+    if (this.cls[slot] !== 0 && c === 0) this.used--;
+    d[o] = x; d[o + 1] = z; d[o + 2] = r0; d[o + 3] = r1; d[o + 4] = f;
+    this.cls[slot] = c;
+    this.generation++;
+  }
+
+  clear(slot: number): void {
+    if (!(slot >= 0 && slot < SCATTER_MASK_SLOTS) || this.cls[slot] === 0) return;
+    this.cls[slot] = 0;
+    this.used--;
+    this.generation++;
+  }
+
+  clearAll(): void {
+    if (this.used === 0) return;
+    this.cls.fill(0);
+    this.used = 0;
+    this.generation++;
+  }
+
+  /** Discs in use. */
+  get count(): number { return this.used; }
+  isSet(slot: number): boolean { return slot >= 0 && slot < SCATTER_MASK_SLOTS && this.cls[slot] !== 0; }
+
+  /** Vertical factor at (x, z) for an instance of class `cls` (1 = untouched): the smallest over the discs. */
+  factor(x: number, z: number, cls: number): number {
+    let f = 1;
+    const d = this.d;
+    for (let s = 0; s < SCATTER_MASK_SLOTS; s++) {
+      if ((this.cls[s]! & cls) === 0) continue;
+      const o = s * MASK_STRIDE;
+      const dx = x - d[o]!; const dz = z - d[o + 1]!;
+      const r2 = dx * dx + dz * dz; const outer = d[o + 3]!;
+      if (r2 >= outer * outer) continue;
+      const inner = d[o + 2]!; const floor = d[o + 4]!;
+      let g = floor;
+      const r = Math.sqrt(r2);
+      if (r > inner) { const t = (r - inner) / (outer - inner); g = floor + (1 - floor) * t * t * (3 - 2 * t); }
+      if (g < f) f = g;
+    }
+    return f;
+  }
+
+  /** Whether a disc of class `cls` reaches the rectangle [x0, x1] × [z0, z1]. */
+  touches(x0: number, z0: number, x1: number, z1: number, cls: number): boolean {
+    if (this.used === 0) return false;
+    const d = this.d;
+    for (let s = 0; s < SCATTER_MASK_SLOTS; s++) {
+      if ((this.cls[s]! & cls) === 0) continue;
+      const o = s * MASK_STRIDE;
+      const cx = d[o]!; const cz = d[o + 1]!; const r = d[o + 3]!;
+      const dx = cx < x0 ? x0 - cx : cx > x1 ? cx - x1 : 0;
+      const dz = cz < z0 ? z0 - cz : cz > z1 ? cz - z1 : 0;
+      if (dx * dx + dz * dz < r * r) return true;
+    }
+    return false;
+  }
+}
+
+const MASKS = new WeakMap<Object3D, ScatterMask>();
+
+/** The ground-cover mask of a zone root (created on first use; every `ScatterField` under that root reads it). */
+export function scatterMaskFor(root: Object3D): ScatterMask {
+  let m = MASKS.get(root);
+  if (m === undefined) { m = new ScatterMask(); MASKS.set(root, m); }
+  return m;
+}
+
+interface UpdateRange { start: number; count: number }
+
+/** Adds [lo, hi) to an attribute's pending upload (one range, grown in place: nothing allocated after the first). */
+function extendUpload(attr: InstancedMesh['instanceMatrix'], lo: number, hi: number, spare: UpdateRange): void {
+  if (hi <= lo) return;
+  const r = attr.updateRanges as UpdateRange[];
+  if (r.length > 0) {
+    const e = r[0]!;
+    const end = Math.max(e.start + e.count, hi);
+    e.start = Math.min(e.start, lo);
+    e.count = end - e.start;
+  } else {
+    spare.start = lo; spare.count = hi - lo;
+    r.push(spare);
+  }
+  attr.needsUpdate = true;
+}
+
 /** A kind's instances, sorted by chunk, and its zone-wide tier meshes. */
 export class ScatterField {
   readonly meshes: InstancedMesh[] = [];
@@ -141,8 +279,22 @@ export class ScatterField {
   private readonly spheres = [new Sphere(), new Sphere(), new Sphere(), new Sphere()];
   private generation = -1;
   readonly total: number;
+  /** The zone root's ground-cover mask and this kind's cover class (T1 / T3). */
+  readonly mask: ScatterMask;
+  readonly coverClass: number;
+  private maskGeneration = -1;
+  /** Per chunk slice: its first instance index in its current tier buffer (−1 = not written), whether it is masked. */
+  private dstAt: Int32Array = new Int32Array(0);
+  private masked: Uint8Array = new Uint8Array(0);
+  private halfCell = 16;
+  private readonly spare: UpdateRange[] = [{ start: 0, count: 0 }, { start: 0, count: 0 }, { start: 0, count: 0 }, { start: 0, count: 0 }];
+  private readonly lo = new Float64Array(4);
+  private readonly hi = new Float64Array(4);
 
   constructor(readonly kind: ScatterKind, instances: readonly Instance[], chunks: ChunkSet, parent: Object3D, tints: readonly Color[]) {
+    this.mask = scatterMaskFor(parent);
+    this.coverClass = coverClassOf(kind.name);
+    this.halfCell = chunks.grid.cell / 2;
     const byChunk = new Map<number, Instance[]>();
     for (const it of instances) {
       const k = chunkOf(chunks.grid, it.x, it.z);
@@ -167,6 +319,8 @@ export class ScatterField {
         o++;
       }
     }
+    this.dstAt = new Int32Array(this.recs.length).fill(-1);
+    this.masked = new Uint8Array(this.recs.length);
     const mats = kind.materials.length === 1 ? kind.materials[0]! : [...kind.materials];
     const cap = instanceCapacity(n);
     for (let t = 0; t < 4; t++) {
@@ -207,16 +361,26 @@ export class ScatterField {
     }
   }
 
-  /** Rewrites the tier buffers from the active chunks when the chunk set changed. Zero allocation. */
+  /**
+   * Rewrites the tier buffers from the active chunks when the chunk set changed, and re-applies the zone's
+   * ground-cover mask when it changed (only the chunk slices a disc reaches, or reached, are rewritten and uploaded).
+   * Zero allocation.
+   */
   sync(chunks: ChunkSet): void {
-    if (chunks.generation === this.generation) return;
+    const maskChanged = this.mask.generation !== this.maskGeneration;
+    if (chunks.generation === this.generation && !maskChanged) return;
+    this.maskGeneration = this.mask.generation;
+    if (chunks.generation === this.generation) { this.applyMask(false); return; }
     this.generation = chunks.generation;
+    this.dstAt.fill(-1);
+    this.masked.fill(0);
     for (let t = 0; t < 4; t++) {
       const group = this.tierMeshes[t];
       if (!group) continue;
       const head = group[0]!;
       const dstM = head.instanceMatrix.array as Float32Array;
-      const colorAttr = group.find((m) => m.instanceColor !== null)?.instanceColor ?? null;
+      let colorAttr: InstancedMesh['instanceColor'] = null;
+      for (let i = 0; i < group.length; i++) if (group[i]!.instanceColor !== null) { colorAttr = group[i]!.instanceColor; break; }
       const dstC = colorAttr ? colorAttr.array as Float32Array : null;
       const sphere = this.spheres[t]!;
       let k = 0;
@@ -227,6 +391,7 @@ export class ScatterField {
         const s = this.starts[c]!; const n = this.counts[c]!;
         dstM.set(this.matrices.subarray(s * 16, (s + n) * 16), k * 16);
         if (dstC) dstC.set(this.colors.subarray(s * 3, (s + n) * 3), k * 3);
+        this.dstAt[c] = k;
         k += n;
         const cx = rec.centre.x; const cz = rec.centre.z;
         if (cx < minX) minX = cx;
@@ -238,11 +403,67 @@ export class ScatterField {
         const h = chunks.grid.cell * 0.75 + 10;
         sphere.center.set((minX + maxX) / 2, 4, (minZ + maxZ) / 2);
         sphere.radius = Math.hypot((maxX - minX) / 2 + h, 14, (maxZ - minZ) / 2 + h);
-        head.instanceMatrix.clearUpdateRanges(); head.instanceMatrix.addUpdateRange(0, k * 16); head.instanceMatrix.needsUpdate = true;
+        head.instanceMatrix.clearUpdateRanges(); extendUpload(head.instanceMatrix, 0, k * 16, this.spare[t]!);
         if (colorAttr) { colorAttr.clearUpdateRanges(); colorAttr.addUpdateRange(0, k * 3); colorAttr.needsUpdate = true; }
       }
       for (const m of group) { m.count = k; m.visible = k > 0; }
     }
+    this.applyMask(true);
+  }
+
+  /**
+   * Writes the masked matrices of every written chunk slice a disc reaches (and restores the originals of slices a
+   * disc no longer reaches). `fresh`: the buffers were just rewritten from the originals (and are uploaded whole).
+   */
+  private applyMask(fresh: boolean): void {
+    const mask = this.mask; const cls = this.coverClass; const h = this.halfCell;
+    this.lo.fill(Infinity); this.hi.fill(-Infinity);
+    for (let c = 0; c < this.recs.length; c++) {
+      const k = this.dstAt[c]!;
+      if (k < 0) continue;
+      const rec = this.recs[c]!;
+      const cx = rec.centre.x; const cz = rec.centre.z;
+      const touched = mask.touches(cx - h, cz - h, cx + h, cz + h, cls);
+      if (!touched && this.masked[c] === 0) continue;
+      const group = this.tierMeshes[rec.tier];
+      if (!group) continue;
+      const dstM = group[0]!.instanceMatrix.array as Float32Array;
+      const s = this.starts[c]!; const n = this.counts[c]!;
+      const src = this.matrices;
+      for (let i = 0; i < n; i++) {
+        const so = (s + i) * 16; const d = (k + i) * 16;
+        for (let e = 0; e < 16; e++) dstM[d + e] = src[so + e]!;
+        if (!touched) continue;
+        const f = mask.factor(src[so + 12]!, src[so + 14]!, cls);
+        if (f >= 1) continue;
+        if (f <= MASK_HIDE_BELOW) { for (let e = 0; e < 11; e++) dstM[d + e] = 0; }
+        else { dstM[d + 4] = dstM[d + 4]! * f; dstM[d + 5] = dstM[d + 5]! * f; dstM[d + 6] = dstM[d + 6]! * f; }
+      }
+      this.masked[c] = touched ? 1 : 0;
+      const t = rec.tier;
+      if (k * 16 < this.lo[t]!) this.lo[t] = k * 16;
+      if ((k + n) * 16 > this.hi[t]!) this.hi[t] = (k + n) * 16;
+    }
+    if (fresh) return;
+    for (let t = 0; t < 4; t++) {
+      const group = this.tierMeshes[t];
+      if (!group || !(this.hi[t]! > this.lo[t]!)) continue;
+      extendUpload(group[0]!.instanceMatrix, this.lo[t]!, this.hi[t]!, this.spare[t]!);
+    }
+  }
+
+  /** The matrix currently written for build-order instance `i` (tests / the Pillar 7 check), or null when not written. */
+  writtenMatrix(i: number, out: Float32Array): Float32Array | null {
+    for (let c = 0; c < this.recs.length; c++) {
+      const s = this.starts[c]!; const n = this.counts[c]!;
+      if (i < s || i >= s + n) continue;
+      const k = this.dstAt[c]!;
+      const group = this.tierMeshes[this.recs[c]!.tier];
+      if (k < 0 || !group) return null;
+      out.set((group[0]!.instanceMatrix.array as Float32Array).subarray((k + i - s) * 16, (k + i - s + 1) * 16));
+      return out;
+    }
+    return null;
   }
 
   /** Instance matrices in build order (for the geometry digest). */

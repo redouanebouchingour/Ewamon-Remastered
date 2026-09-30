@@ -16,13 +16,16 @@ import type { HarvestLevel } from '../descriptors.js';
 import type { ZoneHandle } from '../contracts.js';
 import { DioramaRig } from '../camera/rig.js';
 import { createSpritePool, type BillboardPool } from '../sprites/billboard.js';
-import { CanvasHudLayer, type HudAnchors, type Ref } from '../hud/layer.js';
+import { CanvasHudLayer, HUD, type HudAnchors, type Ref } from '../hud/layer.js';
+import { PANEL_DEFAULT_FRACTION } from '../camera/battle.js';
 import { CHARACTER, CharacterPool } from './actors.js';
 import { createGlbLookSource } from './looks.js';
 import { isDevBuild } from '../env.js';
 import { Stage, type StageGround } from './battleStage.js';
 import { VfxSystem } from './vfx.js';
+import { GroundCoverReveal } from './groundCover.js';
 import { TerrainCollider } from '../terrain/collider.js';
+import { scatterMaskFor } from '../zone/scatter.js';
 
 export interface Part3 {
   readonly sprites: BillboardPool;
@@ -31,11 +34,19 @@ export interface Part3 {
   readonly vfx: VfxSystem;
   readonly stage: Stage;
   readonly hud: CanvasHudLayer;
+  /** Flattens the grass around shown creatures near the camera focus (IMPLEMENTATION-NOTES Part 5, T3). */
+  readonly reveal: GroundCoverReveal;
   readonly hook: FrameHook;
   /** Ground for the stage, the actors and the inspector (the zone's collider; null = flat 0). */
   setGround(g: StageGround | null): void;
   /** CSS viewport (from the last `hud.resize`). */
   viewport(): { readonly w: number; readonly h: number };
+  /**
+   * T2 (IMPLEMENTATION-NOTES Part 5): CSS px of the canvas covered by DOM chrome during a battle — `bottomPx` the battle
+   * panel (null = the SPEC's bottom 28 % + margin), `topPx` anything over the canvas top. The battle camera frames both
+   * battlers (and the far battler's HP bar) in the band between; the HUD keeps the bars above the panel.
+   */
+  setBattleInsets(topPx: number, bottomPx: number | null): void;
 }
 
 const BUNDLES = new WeakMap<HostContext, Part3>();
@@ -72,14 +83,26 @@ function build(ctx: HostContext): Part3 {
     parent: ctx.scene, sprites, vfx, rig, actors, materials: ctx.materials, effects: () => ctx.effects(), harvestLevel: () => ctx.harvestLevel(),
     camera: ctx.camera3, viewport, weather: (w) => host.setWeather(w),
   });
+  const reveal = new GroundCoverReveal(sprites, () => rig.focus);
   const anchors: HudAnchors = {
     nameplate: (id, out, offset) => actors.projectHead(id, out, offset),
     battler: (ref: Ref, out, offset) => stage.projectBattler(ref, out, offset),
     emotes: (visit) => actors.forEachLive((id, _n, _g, emote, left) => { if (emote > 0) visit(id, emote, left); }),
   };
   const hud = new CanvasHudLayer({ anchors });
+  let insetTopPx = 0; let insetBottomPx: number | null = null;
+  const applyInsets = (): void => {
+    const h = Math.max(1, vp.h);
+    const bottom = insetBottomPx ?? PANEL_DEFAULT_FRACTION * h;
+    // the far battler's bar sits HUD.barLift + barH above its head, under the top margin (at the HUD's UI scale)
+    const bars = (HUD.margin + HUD.barLift + HUD.barH) * hud.uiScale;
+    rig.setShotInsets((insetTopPx + bars) / h, bottom / h);
+    hud.setBottomInset(bottom);
+  };
   const hudResize = hud.resize.bind(hud);
-  hud.resize = (w: number, h: number, pr: number): void => { vp.w = w; vp.h = h; hudResize(w, h, pr); };
+  hud.resize = (w: number, h: number, pr: number): void => { vp.w = w; vp.h = h; hudResize(w, h, pr); applyInsets(); };
+  const hudScale = hud.setScale.bind(hud);
+  hud.setScale = (s: number): void => { hudScale(s); applyInsets(); };
 
   const hook: FrameHook & { onZone(z: ZoneHandle | null): void } = {
     update(dtScaledMs: number, dtRealMs?: number): void {
@@ -88,6 +111,7 @@ function build(ctx: HostContext): Part3 {
       vfx.update(dtScaledMs, ctx.camera3);
       actors.update(dtScaledMs);
       stage.update(dtScaledMs, real);
+      reveal.update(real);
       if (slowmoLeft > 0) { slowmoLeft -= real; if (slowmoLeft <= 0) host.setTimeScale(1); }
       if (chromaLeft > 0) {
         chromaLeft = Math.max(0, chromaLeft - real);
@@ -100,14 +124,23 @@ function build(ctx: HostContext): Part3 {
     onZone(z: ZoneHandle | null): void {
       bundle.setGround(z === null ? null : z.collider);
       zoneRef = z;
+      // T1 / T3: the zone's ground-cover mask (arena rings, revealed creatures); per-instance scale, never a rebuild
+      const mask = z === null ? null : scatterMaskFor(z.group);
+      stage.setGroundCover(mask);
+      reveal.setMask(mask);
     },
-    dispose(): void { vfx.dispose(); sprites.dispose(); },
+    dispose(): void { reveal.dispose(); vfx.dispose(); sprites.dispose(); },
   };
 
   const bundle: Part3 = {
-    sprites, rig, actors, vfx, stage, hud, hook,
+    sprites, rig, actors, vfx, stage, hud, reveal, hook,
     setGround(g) { stage.setGround(g); actors.setGround(g === null ? null : (x, z) => g.sample(x, z)); },
     viewport,
+    setBattleInsets(topPx, bottomPx) {
+      insetTopPx = Number.isFinite(topPx) ? Math.max(0, topPx) : 0;
+      insetBottomPx = bottomPx === null || !Number.isFinite(bottomPx) ? null : Math.max(0, bottomPx);
+      applyInsets();
+    },
   };
   return bundle;
 }
@@ -141,12 +174,14 @@ function warmupObjects(ctx: HostContext): Object3D[] {
 }
 
 /** The subsystem factories part 3 provides (merged into `DEFAULT_SUBSYSTEMS`). */
-export const PART3_SUBSYSTEMS: Pick<RendererSubsystems, 'camera' | 'stage' | 'hud' | 'actors' | 'hooks' | 'warmup'> = {
+export const PART3_SUBSYSTEMS: Pick<RendererSubsystems, 'camera' | 'stage' | 'hud' | 'actors' | 'hooks' | 'warmup'> & { persistent(ctx: HostContext): readonly Object3D[] } = {
   camera: (ctx) => part3For(ctx).rig,
   stage: (ctx) => part3For(ctx).stage,
   hud: (ctx) => { const h = part3For(ctx).hud; return { layer: h, overlay: { scene: h.scene, camera: h.camera } }; },
   actors: (ctx) => part3For(ctx).actors,
   hooks: (ctx) => [part3For(ctx).hook],
   warmup: (ctx) => warmupObjects(ctx),
+  // T4: the main arena (hidden until a battle) compiles at boot and in every zone's background phase
+  persistent: (ctx) => [part3For(ctx).stage.arenaRoot],
 };
 

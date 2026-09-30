@@ -9,10 +9,9 @@ import type { BufferAttribute, BufferGeometry, InterleavedBufferAttribute, Mater
 import { createMaterialLibraryWith, type MaterialLibrary } from '../src/materials/library.js';
 import type { MaterialsManifest } from '../src/materials/manifest.js';
 import { SURFACE_IDS } from '../src/materials/surfaces.js';
-import type { Dir, Edge, HeightfieldData, Marker, SetPieceId, ZoneSpec } from '../src/contracts.js';
-import { createRng } from '@ewa/core';
-import { getHeightfield, zone as contentZone, type ZoneId } from '@ewa/content';
-import { BIOME_ROOFS, INTERIOR_SIZE, edgePoint, planBuildings, planLayout, planLights, planProps } from '../src/zone/layout.js';
+import type { Dir, Edge, HeightfieldData, Marker, ZonePlanData, ZoneSpec } from '../src/contracts.js';
+import { SET_PIECE_BY_ZONE, getHeightfield, zone as contentZone, zonePlan, type ZoneId } from '@ewa/content';
+import { INTERIOR_SIZE, edgePoint, lightsFromPlan } from '../src/zone/layout.js';
 
 type Attr = BufferAttribute | InterleavedBufferAttribute;
 
@@ -130,6 +129,11 @@ export function syntheticSpec(seed = 7): ZoneSpec {
     props: [{ kind: 'well', x: 6, z: -12, yaw: 0, scale: 1, seed: 3 }, { kind: 'barrel', x: -4, z: 12, yaw: 1, scale: 1, seed: 4 }],
     lights: [{ id: 'l1', kind: 'lantern', color: '#ffb35c', intensity: 40, position: [-4, 2.9, -4], castShadow: true, range: 12, housing: { kind: 'generated', generator: 'lantern', seed: 5 }, flicker: null }],
     actors: [{ id: 'a', look: 'x', x: 2, z: 2, kind: 'npc' }], pickups: [], tablets: [], tallGrass: true, water: null, accentType: 'Grass', harvestLevel: 0,
+    plan: {
+      plaza: { x: 0, z: 0, r: 14 }, roads: [{ id: 'road_e', kind: 'road', width: 4, points: [[13.4, 0], [18, 1.2], [24, 0]] }], doorPaths: [], roadMeander: null,
+      grassPatches: [{ x: -12, z: 12, rx: 5, rz: 3, yaw: 0.3 }], clearings: [], setPiece: { id: 'mire_boardwalk', x: 0, z: 0, yaw: 0, hw: 15, hd: 4.5 },
+      points: [[2, 2]], warpPairs: [],
+    },
   };
 }
 
@@ -144,10 +148,8 @@ export async function countDisposals<T>(fn: () => T | Promise<T>): Promise<{ res
   } finally { ms.mockRestore(); ts.mockRestore(); }
 }
 
-const SET_PIECES: Readonly<Record<string, SetPieceId>> = { mirevale: 'grove_heart_tree', mire_route: 'mire_boardwalk' };
-
 /**
- * A real slice ZoneSpec for render-side tests, built with the same planners and rng order as the client adapter
+ * A real slice ZoneSpec for render-side tests, from content's zone plan exactly as the client adapter builds it
  * (`packages/client/src/scene/zoneSpecFor.ts`; render tests may not import the client package). Water spec omitted.
  */
 export function realSpec(id: 'mirevale' | 'mire_route', harvestLevel: 0 | 1 | 2 = 0): ZoneSpec {
@@ -160,18 +162,19 @@ export function realSpec(id: 'mirevale' | 'mire_route', harvestLevel: 0 | 1 | 2 
   const actors = [...z.npcs.map((n) => ({ id: n.id, look: n.look, x: n.x, z: n.z, kind: 'npc' as const })), ...z.trainers.map((t) => ({ id: t.id, look: t.look, x: t.x, z: t.z, kind: 'trainer' as const }))];
   const pickups = z.items.map((i) => ({ id: i.id, x: i.x, z: i.z }));
   const tablets = z.lore.map((l) => ({ id: l.id, x: l.x, z: l.z }));
-  const setPiece = SET_PIECES[id]!;
+  const setPiece = SET_PIECE_BY_ZONE[z.id];
   const tallGrass = z.encounterTable !== null;
   const seed = z.layoutSeed >>> 0;
-  const plan = planLayout({ seed, layout, heightfield, edges, actors, pickups, tablets, warps, tallGrass, setPiece });
-  const rng = createRng(z.layoutSeed);
-  const bRng = rng.fork(); const lRng = rng.fork(); const pRng = rng.fork();
-  const roofs = BIOME_ROOFS[z.biome]!;
-  const buildings = planBuildings({ plan, zoneId: z.id, gym: z.gym !== null, shop: z.shop !== null, healer: z.healer, roofs: roofs.houses, landmarkRoof: roofs.landmark }, bRng);
-  const lights = planLights({ plan, zoneId: z.id, biome: z.biome, heightfield, buildings, accentType: z.type }, lRng);
-  const props = planProps({ plan, biome: z.biome, buildings, lights }, pRng);
+  const p = zonePlan(z.id);
+  const buildings = p.buildings.map((b) => ({ id: b.id, kind: b.kind, x: b.x, z: b.z, yaw: b.yaw, w: b.w, d: b.d, floors: b.floors, roof: b.roof, seed: b.seed }));
+  const props = p.props.map((q) => ({ kind: q.kind, x: q.x, z: q.z, yaw: q.yaw, scale: q.scale, seed: q.seed }));
+  const lights = lightsFromPlan(p.lights, z.biome, setPiece, z.type);
+  const plan: ZonePlanData = {
+    plaza: p.plaza, roads: p.roads, doorPaths: p.doorPaths, roadMeander: p.roadMeander, grassPatches: p.grassPatches, clearings: p.clearings,
+    setPiece: p.setPiece, points: p.points, warpPairs: p.warpPairs,
+  };
   return {
     id: z.id, seed, biome: z.biome, palette: z.palette, generators: z.biome, layout, size: { w: INTERIOR_SIZE[layout], d: INTERIOR_SIZE[layout] }, heightfield,
-    warps, setPiece, edges, buildings, props, lights, actors, pickups, tablets, tallGrass, water: null, accentType: z.type, harvestLevel,
+    warps, setPiece, edges, buildings, props, lights, actors, pickups, tablets, tallGrass, water: null, accentType: z.type, harvestLevel, plan,
   };
 }

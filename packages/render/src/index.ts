@@ -84,11 +84,11 @@ export { buildZone, loadZone, zoneSurfaces } from './zone/builder.js';
 export type { ZoneBuildDeps, ZoneHandleImpl } from './zone/builder.js';
 export { ZoneSystem, zoneSystemFor } from './zone/system.js';
 export {
-  BIOME_LIGHTS, BIOME_ROOFS, DIRS, FIELD_SIZE, HANDOVER_INSET, HOUSING_LOCAL, INTERIOR_SIZE, LANTERN_HOUSING_LOCAL, ROUTE_LAYOUT, SET_PIECE_EXTENT,
-  SET_PIECE_LIGHTS, STORY_LAYOUT, TOWN_LAYOUT, TYPE_ACCENT, ZONE_LIGHT_CAP, doorOf, doorPaths, edgePoint, footprintDistance, planBuildings, planLayout,
-  planLights, planProps, roadDistance, warpPairs,
+  BIOME_LIGHTS, DIRS, FIELD_SIZE, HANDOVER_INSET, HOUSING_LOCAL, INTERIOR_SIZE, LANTERN_HOUSING_LOCAL, ROUTE_LAYOUT, SET_PIECE_EXTENT,
+  SET_PIECE_LIGHTS, STORY_LAYOUT, TOWN_LAYOUT, TYPE_ACCENT, ZONE_LIGHT_CAP, doorOf, edgePoint, footprintDistance, layoutOf, lightsFromPlan, planLayout,
+  roadDistance, roadZAt, warpPairs,
 } from './zone/layout.js';
-export type { BiomeLightStyle, Circle, Ellipse, LayoutInput, RngLike, Road, Vec2, ZoneLayoutPlan } from './zone/layout.js';
+export type { BiomeLightStyle, Circle, Ellipse, LayoutInput, PlanLightData, RngLike, Road, Vec2, ZoneLayoutPlan } from './zone/layout.js';
 export { BUILDING_LOD_LEVELS, CHUNK_SIZE, LOD_DISTANCES, LOD_HYSTERESIS, chooseTier, chunkGrid, chunkOf, tierFor } from './zone/lod.js';
 export type { ChunkGrid, Tier } from './zone/lod.js';
 export { PALETTES, gradeOf, lightingPaletteOf, paletteFor } from './zone/palettes.js';
@@ -102,7 +102,7 @@ export type { BiomeGenerators, GeoLod, Palette, PropGeo, TreeKind } from './zone
 export type {
   ActorDescriptor, ActorPool, BattlerPose, BattlerRef, BattleStage, Biome, BuildingSpec, CameraRig, Dir, Edge, GeneratorSet, HeightfieldData,
   HudLayer, HudModel, Layout, Marker, Pickup, PropPlacement, SetPieceId, SpriteDescriptor, SpriteFrame, Tablet, Terrain, TerrainColliderLike,
-  TypeName, VariantKey, VfxId, WaterSpec, ZoneHandle, ZoneSpec, ActorSpawn,
+  TypeName, VariantKey, VfxId, WaterSpec, ZoneHandle, ZoneSpec, ActorSpawn, PlanRoadData, ZonePlanData,
 } from './contracts.js';
 export { BasicDioramaRig, NullActorPool, NullBattleStage, NullHudLayer, unimplementedZoneLoader } from './defaults.js';
 export type { ZoneLoader } from './defaults.js';

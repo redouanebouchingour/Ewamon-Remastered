@@ -88,6 +88,32 @@ export interface ZoneSpec {
   readonly water: WaterSpec | null;
   readonly accentType: TypeName | null;                       // gym beacon + arena ring colour
   readonly harvestLevel: HarvestLevel;
+  readonly plan: ZonePlanData;                                // content's zone plan (audit R1): the layout the builder lays out
+}
+
+type XZ = readonly [number, number];
+/** A road / lane / door path: a polyline of world (x, z) points and its width. */
+export interface PlanRoadData { readonly id: string; readonly kind: 'road' | 'lane' | 'path'; readonly width: number; readonly points: readonly XZ[] }
+
+/**
+ * The zone's layout plan, computed by `@ewa/content` `zonePlan(zone.id)` and passed through unchanged by the client
+ * adapter (audit R1: the town / route plan lives in content, so the server's heightfield carries exactly the
+ * footprints the builder draws). The builder lays roads, plaza, tall-grass patches, clearings, the set-piece and warp
+ * rooms from it and never plans a layout of its own; `buildings`, `props` and `lights` above come from the same plan.
+ */
+export interface ZonePlanData {
+  readonly plaza: { readonly x: number; readonly z: number; readonly r: number } | null;
+  readonly roads: readonly PlanRoadData[];
+  /** 1.6 m paths from every door to the nearest road or the plaza rim */
+  readonly doorPaths: readonly PlanRoadData[];
+  /** A route's road centreline `z(x) = amp·sin(2πx/λ + phase) + 0.5·sin(2πx/(0.37λ) + phase2)`; null elsewhere (z = 0). */
+  readonly roadMeander: { readonly amp: number; readonly wavelength: number; readonly phase: number; readonly phase2: number } | null;
+  readonly grassPatches: readonly { readonly x: number; readonly z: number; readonly rx: number; readonly rz: number; readonly yaw: number }[];
+  readonly clearings: readonly { readonly x: number; readonly z: number; readonly r: number }[];
+  readonly setPiece: { readonly id: SetPieceId; readonly x: number; readonly z: number; readonly yaw: number; readonly hw: number; readonly hd: number };
+  /** Authored points the layout keeps clear (actors, pickups, tablets, warp doors and arrivals). */
+  readonly points: readonly XZ[];
+  readonly warpPairs: readonly { readonly id: string; readonly door: XZ; readonly to: XZ | null }[];
 }
 
 /** The structure of §10.6.1 `TerrainCollider` (kept for callers typed against part 1; `ZoneHandle.collider` is the class). */

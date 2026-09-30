@@ -2,13 +2,24 @@
  * SPEC §20.4.4 — `zoneSpecFor` is pure: the same (zone, harvest) gives a byte-identical ZoneSpec (all 21 zones × 3
  * harvest states, compared by a canonical digest and against a committed snapshot), and the seeded decisions hold
  * their invariants (server gym door, light budget, authored points never covered, edges at the interior midpoints).
+ *
+ * Audit R1: the layout, buildings, lights and props are content's zone plan now. The snapshot was re-baselined for
+ * exactly two fields — `heightfield` (its digest: footprints are stamped into `walkable`) and the new `plan` — and
+ * the test below proves every other field is byte-identical to the adapter's output before the move
+ * (`packages/content/test/fixtures/r1-pre-move.json`, captured at HEAD 689fd78).
  */
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { allZones, getHeightfield, isWalkable, type HarvestState } from '@ewa/content';
-import { INTERIOR_SIZE, LIGHT_BUDGET, SET_PIECE_EXTENT, doorOf, footprintDistance, type ZoneSpec } from '@ewa/render';
+import { fnv1a32 } from '@ewa/core';
+import { allZones, getHeightfield, isWalkable, zonePlan, type HarvestState } from '@ewa/content';
+import { INTERIOR_SIZE, LIGHT_BUDGET, SET_PIECE_EXTENT, doorOf, footprintDistance, layoutOf, planLayout, type ZoneSpec } from '@ewa/render';
 import { SET_PIECE_BY_ZONE, zoneSpecFor } from '../src/scene/zoneSpecFor';
 
 const HARVESTS: readonly HarvestState[] = ['intact', 'thinning', 'harvested'];
+const PRE_MOVE = JSON.parse(readFileSync(new URL('../../content/test/fixtures/r1-pre-move.json', import.meta.url), 'utf8')) as {
+  readonly zones: Readonly<Record<string, { readonly specFields: Readonly<Record<string, string>>; readonly heightfieldDigest: string }>>;
+};
+const fieldDigest = (v: unknown): string => fnv1a32(JSON.stringify(v)).toString(16).padStart(8, '0');
 
 /** Canonical JSON of everything but the heightfield object (which is content's, passed through by identity). */
 function canonical(s: ZoneSpec): string {
@@ -36,6 +47,42 @@ describe('§20.4.4 zoneSpecFor', () => {
     }
     expect(Object.keys(digests)).toHaveLength(63);
     expect(digests).toMatchSnapshot();
+  });
+
+  it('R1: every field but heightfield and the new plan is byte-identical to the pre-move adapter output (all 21 zones)', () => {
+    for (const z of allZones()) {
+      const s = zoneSpecFor(z, 'intact');
+      const before = PRE_MOVE.zones[z.id]!;
+      const { heightfield, plan, ...rest } = s;
+      const now: Record<string, string> = {};
+      for (const [k, v] of Object.entries(rest)) now[k] = fieldDigest(v);
+      expect(now, z.id).toEqual(before.specFields);
+      // the two intended changes: the field now carries the plan's footprints, and the plan itself travels along
+      expect(heightfield.digest).not.toBe(before.heightfieldDigest);
+      expect(plan).toBeDefined();
+    }
+  });
+
+  it("R1: spec.plan / buildings / props / lights are content's zonePlan, passed through", () => {
+    for (const z of allZones()) {
+      const s = zoneSpecFor(z, 'intact');
+      const p = zonePlan(z.id);
+      expect(s.plan).toEqual({
+        plaza: p.plaza, roads: p.roads, doorPaths: p.doorPaths, roadMeander: p.roadMeander, grassPatches: p.grassPatches,
+        clearings: p.clearings, setPiece: p.setPiece, points: p.points, warpPairs: p.warpPairs,
+      });
+      expect(s.plan.setPiece.id).toBe(s.setPiece);
+      expect(s.buildings).toEqual(p.buildings);
+      expect(s.props).toEqual(p.props);
+      expect(s.lights.map((l) => [l.id, l.position[0], l.position[2], l.castShadow])).toEqual(p.lights.map((l) => [l.id, l.x, l.z, l.castShadow]));
+      // the builder's view: water bodies from the stamped field equal the plan's (footprints never touch water)
+      expect(layoutOf(s).water).toEqual(p.water);
+      // the render planner the capture harness still calls equals content's plan
+      const { doorPaths: _a, roadZ: legacyZ, ...legacy } = planLayout(s);
+      const { doorPaths: _b, roadZ, ...now } = layoutOf(s);
+      expect(legacy, z.id).toEqual(now);
+      for (let x = -120; x <= 120; x += 7.3) expect(legacyZ(x)).toBe(roadZ(x));
+    }
   });
 
   it('maps the table fields', () => {

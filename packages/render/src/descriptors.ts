@@ -94,6 +94,11 @@ export const LIGHT_BUDGET = { shadowCasters: 8, nonShadow: 24 } as const;
  */
 export const LAYERS = Object.freeze({
   default: 0,
+  /**
+   * Zone meshes whose programs are not compiled yet (IMPLEMENTATION-NOTES Part 5, T4): the scene camera does not render
+   * this layer (so a frame never compiles them synchronously); the renderer enables it only inside a compile prologue.
+   */
+  compileGate: 26,
   billboards: 27,
   decals: 28,
   fx: 29,

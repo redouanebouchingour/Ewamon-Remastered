@@ -52,7 +52,26 @@ export const STAGE = Object.freeze({
   spectatorRadius: 5.9, spectatorAnglesDeg: [28, -28, 58, -58, 88, -88] as const,
   dressMs: 450, sinkM: 0.7,
   inspectExitMs: 350,
+  /**
+   * Ground cover under a dressed arena (IMPLEMENTATION-NOTES Part 5, T1): grass / tufts / flowers are hidden inside
+   * `coverHideM` (the ring, curb, posts and beacon pylons) and grow back by `coverOuterM`; small props (bushes, small
+   * rocks, stumps, logs) and big rocks are hidden inside `propHideM` with a hard edge. Trees stay (the camera avoids
+   * their crowns, H11).
+   */
+  coverHideM: 4.9, coverOuterM: 6.6, propHideM: 5.0,
+  /** Arenas whose ground cover is masked (main + 3 spectator arenas; 2 mask slots each, slots 0..7). */
+  coverArenas: 4,
 });
+
+/** Ground-cover mask the stage writes (the zone's `ScatterMask`; IMPLEMENTATION-NOTES Part 5, T1). */
+export interface GroundCoverMask {
+  set(slot: number, x: number, z: number, inner: number, outer: number, floor: number, classes: number): void;
+  clear(slot: number): void;
+}
+/** `COVER` bits (zone/scatter.ts), repeated so the stage does not import the zone builder. */
+const COVER_GROUND = 1; const COVER_SMALL = 2; const COVER_LARGE = 4;
+/** Mask slots owned by the stage (the rest are the creature reveal's, stage/groundCover.ts). */
+export const STAGE_COVER_SLOTS = 8;
 
 /** "the biome's plaza stone" per battle terrain (cobble is the shared default). */
 export const TERRAIN_SURFACE: Readonly<Record<Terrain, SurfaceId>> = Object.freeze({
@@ -223,6 +242,7 @@ export class Stage implements BattleStage {
   private accent: TypeName | null = null;
   private typeTable: Readonly<Record<TypeName, string>> = TYPE_COLORS;
   private ground: StageGround | null = null;
+  private cover: GroundCoverMask | null = null;
   private beaconLevel = 0;         // 0..1 fade
   private beaconTarget = 0;
   private beaconFadeMs: number = STAGE.dressMs;
@@ -279,6 +299,18 @@ export class Stage implements BattleStage {
   }
 
   setGround(g: StageGround | null): void { this.ground = g; }
+
+  /**
+   * The loaded zone's ground-cover mask (null when no zone is loaded). A dressed arena hides the grass and small props
+   * inside its ring through it — per-instance scale in the zone's instance buffers, never a rebuild (T1, Pillar 7).
+   */
+  setGroundCover(m: GroundCoverMask | null): void {
+    if (m === this.cover) return;
+    this.cover = m;
+    if (m === null) return;
+    this.coverArena(this.main, this.main.rise > 0 || this.main.dressed);
+    this.spectatorArenas.forEach((a) => this.coverArena(a, a.rise > 0 || a.dressed));
+  }
   /** The zone's `accentType` (gym beacon + arena ring colour); null = derive from the battle terrain. */
   setAccentType(t: TypeName | null): void { this.accent = t; this.refreshAccent(); }
 
@@ -465,6 +497,9 @@ export class Stage implements BattleStage {
     this.inspected?.dispose(); this.inspected = null;
     for (const id of this.spectators) this.d.actors.despawn(id);
     this.spectators.length = 0;
+    this.coverArena(this.main, false);
+    this.spectatorArenas.forEach((a) => this.coverArena(a, false));
+    this.cover = null;
     for (const L of this.beaconLights) { L.removeFromParent(); L.dispose(); }
     this.root.removeFromParent();
     for (const g of this.geo.ring.values()) g.dispose();
@@ -510,6 +545,7 @@ export class Stage implements BattleStage {
   warmupHousing(): Mesh {
     const m = new Mesh(this.geo.housing, this.housingMaterial);
     m.name = 'ewa:beacon-housing-warmup';
+    m.userData = { ewaCompileDeferred: true };      // T4: needed by a battle, not by a zone's first frame (background phase)
     return m;
   }
 
@@ -561,6 +597,10 @@ export class Stage implements BattleStage {
       b.bb.setPoseAxis(side === 0 ? _fwd.x : -_fwd.x, side === 0 ? _fwd.z : -_fwd.z);
       b.bb.setGroundNormal(0, 1, 0);
     }
+    // T2: the battle framing fits the tallest creature of each side above the DOM panel
+    let near = 0; let far = 0;
+    for (const b of this.battlerList) { if (b.ref.side === 0) near = Math.max(near, b.bb.heightM); else far = Math.max(far, b.bb.heightM); }
+    this.d.rig.setBattleSubjects(near, far);
   }
 
   private spawnSpectators(participants: readonly string[], x: number, z: number, yaw: number): void {
@@ -630,6 +670,7 @@ export class Stage implements BattleStage {
     a.riseMs = STAGE.dressMs;
     a.root.visible = true;
     a.root.position.set(x, y - STAGE.sinkM * (1 - a.rise), z);
+    this.coverArena(a, true);
   }
 
   private sinkArena(a: Arena, ms: number): void {
@@ -639,12 +680,30 @@ export class Stage implements BattleStage {
   }
 
   private stepArena(a: Arena, dtMs: number): void {
-    if (a.rise === a.riseTarget) { if (a.rise <= 0 && a.root.visible && !a.dressed) a.root.visible = false; return; }
+    if (a.rise === a.riseTarget) { if (a.rise <= 0 && a.root.visible && !a.dressed) this.hideArena(a); return; }
     const k = dtMs / Math.max(1, a.riseMs);
     a.rise = a.riseTarget > a.rise ? Math.min(a.riseTarget, a.rise + k) : Math.max(a.riseTarget, a.rise - k);
     const e = a.rise * a.rise * (3 - 2 * a.rise);
     a.root.position.y = a.center.y - STAGE.sinkM * (1 - e);
-    if (a.rise <= 0 && !a.dressed) a.root.visible = false;
+    if (a.rise <= 0 && !a.dressed) this.hideArena(a);
+  }
+
+  /** The sunk arena disappears and the ground cover under it comes back (undress, T1). */
+  private hideArena(a: Arena): void {
+    a.root.visible = false;
+    this.coverArena(a, false);
+  }
+
+  /** Writes (or clears) the two mask discs of arena `a`: ground cover eased at the ring's edge, props hidden inside. */
+  private coverArena(a: Arena, on: boolean): void {
+    const m = this.cover;
+    if (m === null) return;
+    const i = a === this.main ? 0 : this.spectatorArenas.indexOf(a) + 1;
+    if (i < 0 || i >= STAGE.coverArenas) return;
+    const s = i * 2;
+    if (!on) { m.clear(s); m.clear(s + 1); return; }
+    m.set(s, a.center.x, a.center.z, STAGE.coverHideM, STAGE.coverOuterM, 0, COVER_GROUND);
+    m.set(s + 1, a.center.x, a.center.z, STAGE.propHideM, STAGE.propHideM + 0.05, 0, COVER_SMALL | COVER_LARGE);
   }
 
   private refreshAccent(): void {

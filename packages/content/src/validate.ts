@@ -55,8 +55,9 @@ import { BODIES, LOOKS, TITLES } from './data/bodies';
 import { SHOP_STOCK_DEFAULT } from './data/shop';
 import { FLAG_REGISTRY, isKnownFlag } from './flags';
 import { computeRosterReport } from './roster';
-import { getHeightfield, isWater, nearestWalkable, walkableRatio, waterRatio } from './heightfield';
-import type { Heightfield } from './heightfield';
+import { getZoneSurface, isWalkable, nearestWalkable, playableBounds, reachableWithin, walkableComponent, walkableRatio, waterRatio } from './heightfield';
+import type { ZoneSurface } from './heightfield';
+import { TOWN_LAYOUT, solidContains } from './plan';
 import { beatDoneFlag, BEAT_DONE_PREFIX } from './story';
 
 /** Legacy orb prices (§3.10 rule 10: "orb prices are the legacy values"). */
@@ -74,6 +75,17 @@ const LEGACY_ORB_PRICES: Readonly<Record<string, number>> = {
 };
 
 const OPPOSITE: Readonly<Record<LinkDir, LinkDir>> = { n: 's', s: 'n', e: 'w', w: 'e' };
+
+/**
+ * The server's interaction ranges and handover line (packages/server `interactables.ts` INTERACT_RANGE_M / GYM_RANGE_M /
+ * LEAGUE_MARKER, `raidSession.ts` RAID_JOIN_RANGE_M, `ZoneRoom.ts` HANDOVER_TRIGGER_M): rule 12's reachability
+ * asks for a walkable sample connected to the spawn within these distances.
+ */
+const INTERACT_RANGE_M = 3;
+const GYM_RANGE_M = 4;
+const RAID_RANGE_M = 8;
+const HANDOVER_TRIGGER_M = 6;
+const LEAGUE_DOOR = { x: TOWN_LAYOUT.gymDoor[0], z: TOWN_LAYOUT.gymDoor[1] } as const;
 
 export interface ValidateOptions {
   /** Skip the heightfield rules (9's walkability half and 12). Tests that mutate data use this to stay fast. */
@@ -584,33 +596,88 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   if (!TITLES.includes('Rookie Trainer')) err("TITLES: 'Rookie Trainer' (persist default) missing");
 
   // ── 12. heightfields (and the walkability half of 9) ──
-  const heightfields = {} as Record<ZoneId, { readonly digest: string; readonly walkable: number; readonly water: number }>;
+  const heightfields = {} as Record<ZoneId, ValidationStats['heightfields'][ZoneId]>;
+  const snapped: ValidationStats['snapped'][number][] = [];
   if (!opts.skipHeightfields) {
     for (const z of zones) {
-      let h: Heightfield;
+      let surface: ZoneSurface;
       try {
-        h = getHeightfield(z.id);
+        surface = getZoneSurface(z.id);
       } catch (e) {
         err(`zone ${z.id}: buildHeightfield threw ${String(e)}`);
         continue;
       }
+      const h = surface.heightfield;
       const wr = walkableRatio(h);
       const water = waterRatio(h);
-      heightfields[z.id] = { digest: h.digest, walkable: wr, water };
+      heightfields[z.id] = {
+        digest: h.digest, walkable: wr, water,
+        terrainWalkable: surface.footprints.baseWalkable / h.walkable.length,
+        footprintSamples: surface.footprints.stamped,
+        solids: surface.plan.solids.length,
+      };
       if (wr < 0.45) err(`zone ${z.id}: walkable ${(wr * 100).toFixed(1)}% < 45%`);
       const expectRes = ZONE_SIZE[z.kind] / 0.5 + 1;
       if (h.res !== expectRes) err(`zone ${z.id}: heightfield res ${h.res} !== ${expectRes}`);
-      const snap = (what: string, x: number, zz: number): void => {
-        if (nearestWalkable(h, x, zz, 8) === null) err(`zone ${z.id}: ${what} (${x}, ${zz}) has no walkable sample within 8 m`);
+      // every authored coordinate is walkable after the nearestWalkable(h, x, z, 8) snap; each moved one is reported
+      const snap = (what: string, x: number, zz: number): readonly [number, number] | null => {
+        if (isWalkable(h, x, zz)) return [x, zz];
+        const to = nearestWalkable(h, x, zz, 8);
+        if (to === null) {
+          err(`zone ${z.id}: ${what} (${x}, ${zz}) has no walkable sample within 8 m`);
+          return null;
+        }
+        const sx = h.originX + Math.round((x - h.originX) / h.step) * h.step;
+        const sz = h.originZ + Math.round((zz - h.originZ) / h.step) * h.step;
+        const cover = surface.plan.solids.find((s) => solidContains(s.shape, sx, sz));
+        snapped.push({ zoneId: z.id, what, x, z: zz, toX: to[0], toZ: to[1], cause: cover === undefined ? 'terrain' : `${cover.source} ${cover.ref}` });
+        return to;
       };
-      snap('spawn', z.spawn.x, z.spawn.z);
-      for (const n of z.npcs) snap(`npc ${n.id}`, n.x, n.z);
-      for (const t of z.trainers) snap(`trainer ${t.id}`, t.x, t.z);
-      for (const i of z.items) snap(`item ${i.id}`, i.x, i.z);
-      for (const l of z.lore) snap(`lore ${l.id}`, l.x, l.z);
-      for (const w of z.warps) { snap(`warp ${w.id}`, w.x, w.z); snap(`warp ${w.id} target`, w.toX, w.toZ); }
-      for (const s of LEGENDARY_STATICS) if (s.zoneId === z.id) snap(`static ${s.species}`, s.x, s.z);
-      for (const r of RAID_HOTSPOTS) if (r.zoneId === z.id) snap(`raid ${r.id}`, r.x, r.z);
+      const spawn = snap('spawn', z.spawn.x, z.spawn.z);
+      // … and reachable from the spawn over walkable samples (4-neighbour) at its interaction range
+      const reach = spawn === null ? null : walkableComponent(h, spawn[0], spawn[1]);
+      const target = (what: string, x: number, zz: number, range: number): void => {
+        snap(what, x, zz);
+        if (reach !== null && !reachableWithin(h, reach, x, zz, range)) err(`zone ${z.id}: ${what} (${x}, ${zz}) is not reachable from the spawn within ${range} m`);
+      };
+      for (const n of z.npcs) target(`npc ${n.id}`, n.x, n.z, INTERACT_RANGE_M);
+      for (const t of z.trainers) target(`trainer ${t.id}`, t.x, t.z, INTERACT_RANGE_M);
+      for (const i of z.items) target(`item ${i.id}`, i.x, i.z, INTERACT_RANGE_M);
+      for (const l of z.lore) target(`lore ${l.id}`, l.x, l.z, INTERACT_RANGE_M);
+      for (const w of z.warps) { target(`warp ${w.id}`, w.x, w.z, INTERACT_RANGE_M); target(`warp ${w.id} target`, w.toX, w.toZ, INTERACT_RANGE_M); }
+      for (const s of LEGENDARY_STATICS) if (s.zoneId === z.id) target(`static ${s.species}`, s.x, s.z, INTERACT_RANGE_M);
+      for (const r of RAID_HOTSPOTS) if (r.zoneId === z.id) target(`raid ${r.id}`, r.x, r.z, RAID_RANGE_M);
+      if (reach !== null) {
+        if (LEAGUE.some((l) => l.zoneId === z.id)) {
+          if (!reachableWithin(h, reach, LEAGUE_DOOR.x, LEAGUE_DOOR.z, GYM_RANGE_M)) err(`zone ${z.id}: the league door (${LEAGUE_DOOR.x}, ${LEAGUE_DOOR.z}) is not reachable from the spawn`);
+        }
+        // every building door: some sample of its approach strip is walkable and reachable
+        for (const d of surface.plan.doors) {
+          const a = d.approach;
+          const r = Math.hypot(a.hw, a.hd);
+          let ok = false;
+          for (let row = Math.max(0, Math.ceil((a.z - r - h.originZ) / h.step)); row <= Math.min(h.res - 1, Math.floor((a.z + r - h.originZ) / h.step)) && !ok; row++) {
+            for (let col = Math.max(0, Math.ceil((a.x - r - h.originX) / h.step)); col <= Math.min(h.res - 1, Math.floor((a.x + r - h.originX) / h.step)) && !ok; col++) {
+              ok = reach[row * h.res + col] === 1 && solidContains(a, h.originX + col * h.step, h.originZ + row * h.step);
+            }
+          }
+          if (!ok) err(`zone ${z.id}: the door of ${d.building} is not reachable from the spawn`);
+        }
+        // every link's handover band (the trigger line is 6 m inside the playable edge) has a reachable sample
+        const b = playableBounds(h);
+        for (const dir of ['n', 'e', 's', 'w'] as const) {
+          if (z.links[dir] === undefined) continue;
+          let ok = false;
+          for (let i = 0; i < reach.length && !ok; i++) {
+            if (reach[i] !== 1) continue;
+            const row = Math.floor(i / h.res);
+            const x = h.originX + (i - row * h.res) * h.step;
+            const zz = h.originZ + row * h.step;
+            ok = dir === 'e' ? x >= b.maxX - HANDOVER_TRIGGER_M : dir === 'w' ? x <= b.minX + HANDOVER_TRIGGER_M : dir === 's' ? zz >= b.maxZ - HANDOVER_TRIGGER_M : zz <= b.minZ + HANDOVER_TRIGGER_M;
+          }
+          if (!ok) err(`zone ${z.id}: link ${dir} → ${z.links[dir]} has no reachable sample in its handover band`);
+        }
+      }
       const t = ENCOUNTER_TABLES.find((x) => x.zoneId === z.id);
       if (t !== undefined && t.slots.some((s) => s.medium === 'water')) {
         if (water === 0) err(`zone ${z.id}: table has water slots but the heightfield has no water samples`);
@@ -618,7 +685,6 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
         let boardwalk = false;
         for (let i = 0; i < h.walkable.length && !boardwalk; i++) if (h.walkable[i] === 1 && h.water[i] === 1) boardwalk = true;
         if (!boardwalk) err(`zone ${z.id}: no sample is both walkable and water (boardwalk)`);
-        void isWater;
       }
     }
   }
@@ -647,6 +713,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     roster,
     bindSets,
     heightfields,
+    snapped,
   };
 
   return { ok: errors.length === 0, errors, stats };

@@ -21,8 +21,8 @@ import type { PerspectiveCamera } from 'three/webgpu';
 import type { CameraRig } from '../contracts.js';
 import type { EffectsFlags } from '../descriptors.js';
 import {
-  CAMERA_WORK, battlePose, cueEnvelope, cueInMs, cueTotalMs, forwardOfYaw, inspectPose, orbitPosition,
-  type CameraWork, type CueKind, type OrbitPose,
+  CAMERA_WORK, FRAMING_EASE_MS, NOMINAL_BATTLER_HEIGHT_M, PANEL_DEFAULT_FRACTION, battleFraming, battlePose, cueEnvelope, cueInMs, cueTotalMs,
+  forwardOfYaw, inspectPose, orbitPosition, type CameraWork, type CueKind, type Framing, type OrbitPose,
 } from './battle.js';
 
 // #region constants — §10.7.1 table (verbatim)
@@ -166,6 +166,14 @@ export class DioramaRig implements CameraRig {
   private blendTo = 0;
   private blendMs = 0;
   private blendT = 0;
+  // battle framing above the DOM panel (T2): insets as shares of the viewport height, subject heights, eased result
+  private insetTop = 0;
+  private insetBottom = PANEL_DEFAULT_FRACTION;
+  private subjectNear = NOMINAL_BATTLER_HEIGHT_M;
+  private subjectFar = NOMINAL_BATTLER_HEIGHT_M;
+  private readonly framing: Framing = { distance: 0, tilt: 0, fits: true };
+  private shotTilt = 0;
+  private frameFromD = 0; private frameToD = 0; private frameFromTilt = 0; private frameToTilt = 0; private frameT = 1;
   // cue
   private cueWork: CameraWork | null = null;
   private cueT = 0;
@@ -219,6 +227,11 @@ export class DioramaRig implements CameraRig {
   pushIn(target: { readonly x: number; readonly z: number }, ms: number): void {
     _pos.set(target.x, this.focus.y, target.z);
     battlePose(_pos, this.yawTo, this.shot);
+    // T2: pulled back / tilted so both battlers sit in the screen band above the DOM battle panel
+    battleFraming(this.camera.fov, this.insetTop, this.insetBottom, this.subjectNear, this.subjectFar, this.framing);
+    this.shot.distance = this.framing.distance;
+    this.shotTilt = this.framing.tilt;
+    this.frameT = 1;
     this.shotFocus.copy(_pos);
     this.enterShot('battle', ms);
     this.cueWork = null;
@@ -277,6 +290,14 @@ export class DioramaRig implements CameraRig {
     if (this.distT < 1) { this.distT = Math.min(1, this.distT + dt / ZOOM_MS); this.dist = this.distFrom + (this.distTo - this.distFrom) * smooth(this.distT); }
     if (!settledBefore && this.yawT >= 1 && this.distT >= 1) this.settledPending = true;
 
+    // framing ease (a panel resize / a switch-in during the battle)
+    if (this.frameT < 1) {
+      this.frameT = Math.min(1, this.frameT + dt / FRAMING_EASE_MS);
+      const e = smooth(this.frameT);
+      this.shot.distance = this.frameFromD + (this.frameToD - this.frameFromD) * e;
+      this.shotTilt = this.frameFromTilt + (this.frameToTilt - this.frameFromTilt) * e;
+    }
+
     // shot blend
     if (this.blendT < 1) {
       this.blendT = this.blendMs > 0 ? Math.min(1, this.blendT + dt / this.blendMs) : 1;
@@ -312,6 +333,7 @@ export class DioramaRig implements CameraRig {
     orbitPosition(this.pose, this.camera.position);
     if (b > 0) this.avoidCrowns(b);
     this.camera.lookAt(this.pose.center);
+    if (b > 0 && this.shotTilt !== 0) this.camera.rotateX(-this.shotTilt * b);   // T2: content up into the band
 
     // DOF focus: the feet in the diorama (held when nothing is followed), the shot's focus (arena centre /
     // inspected creature, pulled toward the cue target) in a shot
@@ -377,9 +399,44 @@ export class DioramaRig implements CameraRig {
     this.cueTargets[kind].copy(p);
   }
 
+  /**
+   * T2 (IMPLEMENTATION-NOTES Part 5): the shares of the viewport height a battle shot must keep clear — the DOM battle
+   * panel at the bottom, the far battler's HP-bar allowance at the top. Default: no top inset, the SPEC panel (bottom
+   * 28 % + margin). During a battle the framing eases to the new values.
+   */
+  setShotInsets(topFrac: number, bottomFrac: number): void {
+    const t = Number.isFinite(topFrac) ? Math.min(1, Math.max(0, topFrac)) : 0;
+    const b = Number.isFinite(bottomFrac) ? Math.min(1, Math.max(0, bottomFrac)) : PANEL_DEFAULT_FRACTION;
+    if (t === this.insetTop && b === this.insetBottom) return;
+    this.insetTop = t; this.insetBottom = b;
+    this.reframe();
+  }
+
+  /** T2: the tallest battler (m) of the near (player's) side and of the far side; the stage reports them on every layout. */
+  setBattleSubjects(nearM: number, farM: number): void {
+    const n = nearM > 0 ? nearM : NOMINAL_BATTLER_HEIGHT_M; const f = farM > 0 ? farM : NOMINAL_BATTLER_HEIGHT_M;
+    if (n === this.subjectNear && f === this.subjectFar) return;
+    this.subjectNear = n; this.subjectFar = f;
+    this.reframe();
+  }
+
+  /** The battle framing in use (T2; distance before crown avoidance, tilt in rad). */
+  get battleFramingNow(): Readonly<Framing> { return this.framing; }
+  get tiltNow(): number { return this.mode === 'battle' ? this.shotTilt : 0; }
+
+  private reframe(): void {
+    battleFraming(this.camera.fov, this.insetTop, this.insetBottom, this.subjectNear, this.subjectFar, this.framing);
+    if (this.mode !== 'battle') return;
+    this.frameFromD = this.shot.distance; this.frameFromTilt = this.shotTilt;
+    this.frameToD = this.framing.distance; this.frameToTilt = this.framing.tilt;
+    this.frameT = 0;
+  }
+
   /** Inspector close-up (§10.7.5 `stage.inspect`): the camera 4 m from `aim`; `release(ms)` exits. */
   inspect(aim: Vector3, ms: number): void {
     inspectPose(aim, this.yawTo, this.shot);
+    this.shotTilt = 0;
+    this.frameT = 1;
     this.shotFocus.copy(aim);
     this.enterShot('inspect', ms);
   }

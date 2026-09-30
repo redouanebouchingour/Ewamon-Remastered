@@ -168,6 +168,8 @@ export class CanvasHudLayer implements HudLayer {
   private readonly raw: Record<HudRegion, Box>;
   private readonly clearBox = box();
   private cssW = 1; private cssH = 1; private pr = 1; private ui = 1;
+  /** CSS px at the bottom of the canvas covered by the DOM battle panel: battle bars stay above it (T2). */
+  private bottomInset = 0;
   private bodyFamily = 'system-ui, sans-serif';
   private displayFamily = 'Georgia, serif';
   private digitAdvance = 0;
@@ -303,6 +305,20 @@ export class CanvasHudLayer implements HudLayer {
     this.bodyFamily = body; this.displayFamily = display; this.digitFont = '';
     this.markAll();
   }
+
+  /**
+   * T2 (IMPLEMENTATION-NOTES Part 5): CSS px at the bottom of the canvas that DOM chrome covers during a battle (the
+   * battle panel). Battle bars are clamped above it; nothing else moves.
+   */
+  setBottomInset(cssPx: number): void {
+    const v = Number.isFinite(cssPx) ? Math.max(0, cssPx) : 0;
+    if (v === this.bottomInset) return;
+    this.bottomInset = v;
+    this.markDirty('battle');
+  }
+
+  /** The clamped UI scale (bars, text). */
+  get uiScale(): number { return this.ui; }
 
   setScale(uiScale: number): void {
     const s = Number.isFinite(uiScale) ? Math.min(HUD.scaleMax, Math.max(HUD.scaleMin, uiScale)) : 1;
@@ -553,7 +569,7 @@ export class CanvasHudLayer implements HudLayer {
     const W = this.surface.canvas.width; const H = this.surface.canvas.height;
     const M = HUD.margin * s;
     const w = HUD.barW * s; const h = HUD.barH * s; const gap = HUD.barGap * s;
-    const xMax = Math.max(M, W - M - w); const yMax = Math.max(M, H - M - h);
+    const xMax = Math.max(M, W - M - w); const yMax = Math.max(M, H - M - h - this.bottomInset * pr);
     // reserved boxes (+ gap): the turn label, the party strip, the clock / quest hint
     const rb = this.reservedBoxes;
     rb[0] = W / 2 - (HUD.turnBandW / 2) * s - gap; rb[1] = (HUD.margin + HUD.turnBandTop) * s - gap;
@@ -590,7 +606,7 @@ export class CanvasHudLayer implements HudLayer {
           const px = this.barPos[j * 2]!; const py = this.barPos[j * 2 + 1]!;
           if (!(x < px + w + gap && x + w + gap > px && y < py + h + gap && y + h + gap > py)) continue;
           // below the other bar if that fits on screen, else above it, else beside it (right, then left)
-          if (py + 2 * h + gap <= H - M) y = py + h + gap;
+          if (py + h + gap <= yMax) y = py + h + gap;
           else if (py - h - gap >= M) y = py - h - gap;
           else if (px + 2 * w + gap <= W - M) x = px + w + gap;
           else x = Math.max(M, px - w - gap);

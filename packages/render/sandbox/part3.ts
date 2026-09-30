@@ -109,9 +109,44 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
     });
   }
 
+  if (mode === 'wild') {
+    // T3: wild creatures standing in tall grass as the client's SpawnViews places them (`&wild=x,z;x,z`, default a
+    // ring round the focus at 2–14 m), with the reveal on (`&reveal=0` turns it off for the A/B shot)
+    const q = new URLSearchParams(location.search);
+    const group = new Group();
+    group.name = 'sandbox:wild';
+    r.scene.add(group);
+    const spots = (q.get('wild') ?? '').split(';').filter((t) => t.includes(',')).map((t) => t.split(',').map(Number) as [number, number]);
+    if (spots.length === 0) for (let i = 0; i < 6; i++) { const a = i * 1.05; const d = 2 + i * 2.4; spots.push([focus.x + Math.cos(a) * d, focus.z + Math.sin(a) * d]); }
+    const ground = (x: number, z: number): number => ((api.zone as () => { collider: { sampleClamped(x: number, z: number): number } } | null)()?.collider.sampleClamped(x, z) ?? 0);
+    const wild = spots.map(([x, z], i) => {
+      const s = species[i % species.length]!;
+      const bb = p.sprites.acquire(descriptor(man, s, `wild:${i}`));
+      bb.setFacing('front');
+      bb.setPosition(x, ground(x, z), z);
+      group.add(bb.object);
+      return bb;
+    });
+    if (q.get('reveal') === '0') p.reveal.setMask(null);
+    walkers.forEach((_, i) => p.actors.despawn(`walker${i}`));
+    p.hud.set({ nameplates: [], chat: [], prompt: null });
+    Object.assign(out, { wild, revealed: () => p.reveal.revealed });
+  }
+
   if (mode === 'battle') {
     const q = new URLSearchParams(location.search);
     const at = { x: Number(q.get('ax') ?? focus.x - 0.4), z: Number(q.get('az') ?? focus.z + 9) };   // a clear patch of the part-1 diorama
+    // T2: a stand-in for the client's DOM battle panel (§20.5.6: the bottom 28 % + a 24 px margin); `&panel=0` hides it
+    if (q.get('panel') !== '0') {
+      const panel = document.createElement('div');
+      panel.id = 'sandbox-battle-panel';
+      panel.textContent = 'battle panel (DOM stand-in)';
+      Object.assign(panel.style, { position: 'fixed', left: '24px', right: '24px', bottom: '24px', height: '28vh', background: 'rgba(20, 24, 22, 0.86)', border: '1px solid rgba(255,255,255,0.16)', borderRadius: '12px', color: '#9aa39c', font: '12px system-ui', padding: '16px', boxSizing: 'border-box', pointerEvents: 'none' });
+      document.body.appendChild(panel);
+      const measure = (): void => { const rc = panel.getBoundingClientRect(); p.setBattleInsets(0, Math.max(0, window.innerHeight - rc.top)); };
+      measure();
+      new ResizeObserver(measure).observe(panel);
+    }
     p.stage.dress(at, 'grove', ['walker0']);
     p.rig.pushIn(at, 600);
     const mine = species.includes('mossling') ? 'mossling' : species[0]!;
@@ -165,7 +200,9 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
       if (e === 'heal') { hpMe = Math.min(maxMe, hpMe + 12); p.hud.set({ battle: { ...bars(), turnLabel: `Turn ${n}` } }); }
     };
     let n = 1;
-    const loop = async (): Promise<void> => { for (;;) { await turn(n++); } };
+    let paused = false;
+    const loop = async (): Promise<void> => { for (;;) { if (paused) { await new Promise((res) => setTimeout(res, 100)); continue; } await turn(n++); } };
+    out.pause = (on: boolean) => { paused = on; };
     Object.assign(out, { at, turn, loop, battlers: () => [p.stage.battler(me), p.stage.battler(them)] });
     if (new URLSearchParams(location.search).get('auto') !== '0') void loop();
   }

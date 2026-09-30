@@ -2,8 +2,10 @@
  * SPEC §20.4.5 — the client's protocol `Collider`: a small adapter over the zone's `TerrainCollider` +
  * `resolveMoveInto` (render §10.6.2). `stepMovement` integrates the pose and then calls `resolve`; the adapter
  * resolves the step from the position recorded by `begin()` (the pose before the step) to the integrated one and
- * writes the accepted point back. `resolveMove` never returns an unwalkable position; render's blockers make
- * prediction stricter than the server, never looser. Allocation-free.
+ * writes the accepted point back. `resolveMove` never returns an unwalkable position. Building, prop, trunk and rock
+ * footprints are content's (`walkable = 0` in the heightfield the server validates with, audit R1), so a predicted
+ * step lands exactly where `validateInput` accepts it; only extra client-side blockers (`addBlocker`, none in a
+ * built zone) could make prediction stricter than the server, never looser. Allocation-free.
  */
 import type { Collider, MovePose } from '@ewa/protocol';
 import { resolveMoveInto } from '@ewa/render';

@@ -22,6 +22,10 @@ import {
   Vector3, WebGPURenderer,
 } from 'three/webgpu';
 import { velocity } from 'three/tsl';
+import { DEFAULT_ZOOM_STOP, DISTANCE, PITCH } from './camera/rig.js';
+import { orbitPosition, type OrbitPose } from './camera/battle.js';
+import { hasRenderable, orderUnits, planZoneCompile, type ViewGuess } from './compilePlan.js';
+import { isDevBuild } from './env.js';
 import type { BufferGeometry, Camera, Object3D, RenderTarget } from 'three/webgpu';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import type {
@@ -68,18 +72,25 @@ export interface RendererOptions {
   /** Millisecond clock for `RenderStats.frameMs`; render never reads a wall clock itself (§10 NN 10). Default: none (frameMs = 0). */
   readonly clock?: () => number;
   /**
-   * Shader pre-compilation progress (IMPLEMENTATION-NOTES Part 4, H4): `createRenderer` step 8 (`phase 'boot'`) and
-   * every `loadZone` (`phase 'zone'`) compile the scene-pass programs through `compileAsync` before anything is drawn;
-   * `loaded` / `total` count render objects. For the client's BootScreen.
+   * Shader pre-compilation progress (IMPLEMENTATION-NOTES Part 4 H4, Part 5 T4): `createRenderer` step 8 (`phase
+   * 'boot'`), every `loadZone`'s blocking phase 1 (`'zone'`: what the first view draws) and its background phase 2
+   * (`'background'`: the rest, after `loadZone` resolved). `loaded` / `total` count compile units (`compileAsync`
+   * roots: one zone root child or LOD level, one warm-up object). For the client's BootScreen and handover indicator.
    */
   readonly onCompileProgress?: (p: CompileProgress) => void;
   /** Default true. False skips the H4 pre-compile (first frames compile synchronously): A/B measurements only. */
   readonly precompile?: boolean;
+  /**
+   * T4: true → `loadZone` resolves after phase 1 and phase 2 runs in the background; false → `loadZone` resolves only
+   * when every program of the zone is compiled (the Part 4 behaviour, for deterministic captures). Default: true, and
+   * false when `trackTimestamp` is set (the budget / shot harness measures fully compiled zones).
+   */
+  readonly backgroundCompile?: boolean;
 }
 
 /** One `onCompileProgress` report. `done` is true on the last report of a phase (with its wall time when a clock is set). */
 export interface CompileProgress {
-  readonly phase: 'boot' | 'zone';
+  readonly phase: 'boot' | 'zone' | 'background';
   readonly zone: string | null;
   readonly loaded: number;
   readonly total: number;
@@ -97,7 +108,9 @@ export interface Renderer {
   readonly hud: HudLayer;                      // §10.9
   readonly actors: ActorPool;                  // §10.7.6
   readonly materials: MaterialLibrary;         // §10.2 (read-only use by the client: stats, prewarm)
-  loadZone(spec: ZoneSpec): Promise<ZoneHandle>;   // rejects if a zone is loaded and not yet disposed
+  loadZone(spec: ZoneSpec, opts?: LoadZoneOptions): Promise<ZoneHandle>;   // rejects if a zone is loaded and not yet disposed
+  /** T4 addition: resolves when the loaded zone's background compile finished (or its zone was disposed). */
+  compileIdle?(): Promise<void>;
   setTimeOfDay(t: number): void;               // 0..1; §10.3.5
   setWeather(w: WeatherKind): void;            // §10.3.7
   setHarvestLevel(l: HarvestLevel): void;      // §10.2.6
@@ -211,6 +224,11 @@ export interface RendererSubsystems {
   hooks(ctx: HostContext): readonly FrameHook[];
   /** Extra objects rendered in the step-8 warm-up frame (e.g. one billboard). */
   warmup(ctx: HostContext): readonly Object3D[];
+  /**
+   * T4: objects that live in the scene, hidden until used (the battle arena), compiled at boot and in every zone's
+   * background phase so their first appearance compiles nothing. Optional.
+   */
+  persistent?(ctx: HostContext): readonly Object3D[];
 }
 
 /** The replacement point for §10.4–§10.9 (see defaults.ts). */
@@ -223,6 +241,7 @@ export const DEFAULT_SUBSYSTEMS: RendererSubsystems = {
   zones: (ctx) => zoneSystemFor(ctx),
   hooks: (ctx) => [zoneSystemFor(ctx), ...PART3_SUBSYSTEMS.hooks(ctx)],
   warmup: (ctx) => PART3_SUBSYSTEMS.warmup(ctx),
+  persistent: (ctx) => PART3_SUBSYSTEMS.persistent(ctx),
 };
 
 const INTERNALS = new WeakMap<Renderer, RendererHost>();
@@ -316,12 +335,39 @@ function createWarmupGeometry(): BufferGeometry {
 
 const _focusFallback = new Vector3();
 
-/** Concurrent `compileAsync` calls of one pre-compile (H4): several pipelines in flight for the driver's workers. */
+/** Concurrent `compileAsync` calls of a blocking pre-compile (boot, a zone's phase 1; H4): several pipelines in flight. */
 export const COMPILE_CONCURRENCY = 4;
+/**
+ * Concurrent calls of a zone's background phase (T4): one — the driver compiles on the GPU process's threads, so the
+ * frames keep theirs; the main thread only builds one unit's nodes at a time, in `yieldToMain` slices.
+ */
+export const BACKGROUND_CONCURRENCY = 1;
 /** Fallback render call depth of the scene pass when none was measured yet (`PostStack.sceneCallDepth`). */
 const SCENE_PASS_CALL_DEPTH = 2;
 
-interface CompileStat { readonly objects: number; readonly ms: number | null; readonly groups: number }
+/** One pre-compile: render objects compiled, wall ms, workers, compile units (`compileAsync` roots). */
+interface CompileStat { readonly objects: number; readonly ms: number | null; readonly groups: number; readonly units: number }
+
+/** One compile run: the boot, or one zone's phases 1 + 2 (cancelled when that zone is disposed; T4). */
+interface CompileRun { cancelled: boolean }
+/** One `compileAsync` root; `owned` = zone meshes (released again when their zone is disposed mid-compile). */
+interface CompileItem { readonly object: Object3D; readonly owned: boolean }
+/** Thrown inside three's compile loop for a unit whose zone was disposed: nothing further is built for it (T4). */
+const COMPILE_ABORT = new Error('@ewa/render: compile cancelled (the zone was disposed)');
+const VELOCITY = velocity as unknown as { setProjectionMatrix(m: Matrix4 | null): void };
+
+/** A low-priority slot before each background unit (T4): `scheduler.postTask('background')`, else a frame's worth. */
+function backgroundSlot(): Promise<void> {
+  const s = (globalThis as { scheduler?: { postTask?(cb: () => void, o: { priority: string }): Promise<void> } }).scheduler;
+  if (s?.postTask) return s.postTask(() => undefined, { priority: 'background' });
+  return new Promise((r) => setTimeout(r, 16));
+}
+
+/** `loadZone` options (addition, IMPLEMENTATION-NOTES Part 5, T4). */
+export interface LoadZoneOptions {
+  /** Where the player will stand (spawn / handover arrival): phase 1 compiles what the diorama camera sees from there. Absent → the rig's focus. */
+  readonly focus?: { readonly x: number; readonly z: number } | null;
+}
 
 class RendererHost implements Renderer, HostContext {
   readonly renderer: WebGPURenderer;
@@ -353,7 +399,12 @@ class RendererHost implements Renderer, HostContext {
   private readonly clock: (() => number) | null;
   private readonly onCompileProgress: ((p: CompileProgress) => void) | null;
   private readonly precompileEnabled: boolean;
+  private readonly backgroundEnabled: boolean;
   private readonly warmObjects: Object3D[] = [];
+  /** The subsystems' warm-up objects (billboard, VFX, character, beacon housing), as opposed to the library quads. */
+  private readonly warmSubsystem = new Set<Object3D>();
+  /** Scene objects hidden until used (the arena), compiled with every light set (T4). */
+  private readonly persistent: Object3D[] = [];
   /** The step-8 warm-up group (kept, detached): recompiled against every zone's light set (H4). */
   private warmGroup: Group | null = null;
   private warmGeometry: BufferGeometry | null = null;
@@ -362,7 +413,7 @@ class RendererHost implements Renderer, HostContext {
   /** The unjittered projection the velocity MRT reads while a pre-compile runs (what TRAA sets during its render). */
   private readonly compileProjection = new Matrix4();
   /** Last pre-compile per phase: render objects compiled and wall ms (sandbox / harness). */
-  readonly compileStats: { boot: CompileStat | null; zone: CompileStat | null } = { boot: null, zone: null };
+  readonly compileStats: { boot: CompileStat | null; zone: CompileStat | null; background: CompileStat | null } = { boot: null, zone: null, background: null };
   private readonly lightCounts: LightCountsOut = { shadow: 0, nonShadow: 0 };
   private effectsFlags: EffectsFlags;
   private passes: PassSwitches = ALL_PASSES_ON;
@@ -393,6 +444,9 @@ class RendererHost implements Renderer, HostContext {
     this.modelsUrl = o.modelsUrl === undefined ? '/models/' : o.modelsUrl;
     this.onCompileProgress = o.onCompileProgress ?? null;
     this.precompileEnabled = o.precompile !== false;
+    // measurement renderers (`trackTimestamp`: the budget / shot harness) compile a zone fully before `loadZone`
+    // resolves unless they ask otherwise, so a capture never runs while far units are still gated (T4)
+    this.backgroundEnabled = o.backgroundCompile ?? o.trackTimestamp !== true;
 
     // 6.
     const cssW = o.canvas.clientWidth || o.canvas.width || 1;
@@ -427,6 +481,9 @@ class RendererHost implements Renderer, HostContext {
     this.zones = subsystems.zones(this);
     this.hooks = subsystems.hooks(this);
     this.warmObjects.push(...subsystems.warmup(this));
+    for (const w of this.warmObjects) this.warmSubsystem.add(w);
+    this.persistent.push(...(subsystems.persistent?.(this) ?? []));
+    this.installCompileAbort();
 
     this.resize(cssW, cssH);
   }
@@ -456,7 +513,7 @@ class RendererHost implements Renderer, HostContext {
     // One frame without the warm group first: it builds the post chain and records the scene pass's render depth
     // (H4 point 3). Then the day cycle has baked the PMREM environment, which is part of every lit program's source.
     this.frame(0);
-    if (this.precompileEnabled) await this.precompile('boot', null, [group]);
+    if (this.precompileEnabled) await this.precompile('boot', [group]);
     this.scene.add(group);
     const rainWasVisible = this.precipitation.object.visible;
     this.precipitation.object.visible = true;
@@ -499,65 +556,212 @@ class RendererHost implements Renderer, HostContext {
    * props compile too). Not covered (built by the first real render): shadow-pass variants (`ShadowNode.updateBefore`
    * returns while pre-compiling) and the post chain's own quads.
    */
-  private async precompile(phase: 'boot' | 'zone', zone: string | null, containers: readonly Object3D[]): Promise<void> {
-    type Compile = (scene: Object3D, camera: Camera, targetScene?: Scene | null, onProgress?: ((e: { loaded: number; total: number }) => void) | null) => Promise<void>;
-    const gpu = this.renderer as WebGPURenderer & { compileAsync?: Compile; _renderContexts?: { get(rt: RenderTarget | null, mrt: unknown, depth?: number): unknown } };
-    if (typeof gpu.compileAsync !== 'function') return;
+  /** Boot (step 8): every warm-up object (the detached warm group) and the persistent scene objects, blocking. */
+  private async precompile(phase: 'boot', containers: readonly Object3D[]): Promise<void> {
+    const items: CompileItem[] = [];
+    for (const c of containers) for (const o of c.children) if (hasRenderable(o)) items.push({ object: o, owned: false });
+    for (const o of this.persistent) items.push({ object: o, owned: false });
+    await this.compileQueue(phase, null, items, COMPILE_CONCURRENCY, { cancelled: false }, false);
+  }
+
+  /** T4: runs holding the scene pass's target + MRT on the renderer (`compileHold`); the last one restores. */
+  private holdCount = 0;
+
+  private beginCompileHold(): void {
+    if (this.holdCount++ > 0) return;
+    const gpu = this.renderer;
     const pass = this.post.nodes.scenePass as unknown as { renderTarget: RenderTarget; getMRT(): unknown };
-    const t0 = this.clock !== null ? this.clock() : null;
-
-    // 1. renderable children → detached groups (containers keep their lights)
-    const groups: Group[] = [];
-    for (let k = 0; k < COMPILE_CONCURRENCY; k++) groups.push(new Group());
-    const originals = containers.map((c) => c.children.slice());
-    let n = 0;
-    const renderable = (o: Object3D): boolean => (o as Object3D & { isLight?: boolean }).isLight !== true && !(o.type === 'Object3D' && o.children.length === 0);   // lights and spot targets stay
-    for (const kids of originals) for (const o of kids) if (renderable(o)) groups[n++ % groups.length]!.add(o);
-    const jobsGroups = groups.filter((g) => g.children.length > 0);
-    const touched: Object3D[] = []; const state: number[] = [];
-    for (const g of jobsGroups) g.traverse((o) => { touched.push(o); state.push((o.visible ? 1 : 0) | (o.frustumCulled ? 2 : 0)); o.visible = true; o.frustumCulled = false; });
-
-    const loaded = new Array<number>(jobsGroups.length).fill(0);
-    const totals = new Array<number>(jobsGroups.length).fill(0);
-    const sum = (a: readonly number[]): number => a.reduce((x, y) => x + y, 0);
-    const report = (done: boolean): void => {
-      const ms = t0 !== null && this.clock !== null ? this.clock() - t0 : null;
-      if (done) this.compileStats[phase] = { objects: sum(totals), ms, groups: jobsGroups.length };
-      this.onCompileProgress?.({ phase, zone, loaded: sum(loaded), total: sum(totals), done, ms });
-    };
-
     const traa = this.post.plan.some((st) => st.id === 'traa');
     const hold = { target: gpu.getRenderTarget(), mrt: gpu.getMRT(), velocityProjection: traa ? this.compileProjection.copy(this.camera3.projectionMatrix) : null };
-    const vel = velocity as unknown as { setProjectionMatrix(m: Matrix4 | null): void };
-    const contexts = gpu._renderContexts;
-    const getContext = contexts?.get;
-    const jobs: Promise<void>[] = [];
+    gpu.setRenderTarget(pass.renderTarget);                                                     // 2.
+    gpu.setMRT(pass.getMRT() as Parameters<WebGPURenderer['setMRT']>[0]);
+    VELOCITY.setProjectionMatrix(hold.velocityProjection);                                     // 4.
+    this.compileHold = hold;
+  }
+
+  private endCompileHold(): void {
+    if (--this.holdCount > 0) return;
+    const hold = this.compileHold;
+    this.compileHold = null;
+    VELOCITY.setProjectionMatrix(null);
+    if (hold !== null) { this.renderer.setRenderTarget(hold.target); this.renderer.setMRT(hold.mrt); }
+  }
+
+  /**
+   * T4: compiles `items` with `concurrency` workers, each unit by one in-place `compileAsync(unit, camera, scene)` —
+   * the unit stays where it is (a LOD level in its LOD, a chunk mesh under the zone root), so a frame rendered meanwhile
+   * sees the scene as it is; a zone unit is gated (`gate`) until its own compile finished, so no frame compiles it
+   * synchronously. `background`: a low-priority slot before each unit. A cancelled run stops pulling units and aborts
+   * the ones in flight (`COMPILE_ABORT` from the node build). Reports `onCompileProgress` in units.
+   */
+  private async compileQueue(phase: CompileProgress['phase'], zone: string | null, items: readonly CompileItem[], concurrency: number, run: CompileRun, background: boolean): Promise<void> {
+    const gpu = this.renderer as WebGPURenderer & { compileAsync?: unknown };
+    if (typeof gpu.compileAsync !== 'function') return;
+    const t0 = this.clock !== null ? this.clock() : null;
+    let next = 0; let done = 0; let objects = 0;
+    const workers = Math.max(1, Math.min(concurrency, items.length));
+    const report = (fin: boolean): void => {
+      const ms = t0 !== null && this.clock !== null ? this.clock() - t0 : null;
+      if (fin) this.compileStats[phase] = { objects, ms, groups: workers, units: done };
+      this.onCompileProgress?.({ phase, zone, loaded: done, total: items.length, done: fin, ms });
+    };
+    report(false);
+    this.beginCompileHold();
     try {
-      gpu.setRenderTarget(pass.renderTarget);
-      gpu.setMRT(pass.getMRT() as Parameters<WebGPURenderer['setMRT']>[0]);
-      vel.setProjectionMatrix(hold.velocityProjection);                                          // 4.
-      const depth = this.post.sceneCallDepth ?? SCENE_PASS_CALL_DEPTH;
-      if (contexts && getContext) contexts.get = (rt, mrt, d) => getContext.call(contexts, rt, mrt, d ?? depth);   // 3.
-      this.compileHold = hold;                                                                   // 2.
-      jobsGroups.forEach((g, i) => {
-        jobs.push(gpu.compileAsync!(g, this.camera3, this.scene, (e) => { loaded[i] = e.loaded; totals[i] = e.total; report(false); }));
-      });
-    } finally {
-      if (contexts && getContext) contexts.get = getContext;
-      touched.forEach((o, i) => { o.visible = (state[i]! & 1) !== 0; o.frustumCulled = (state[i]! & 2) !== 0; });
-    }
-    try {
+      const worker = async (): Promise<void> => {
+        while (!run.cancelled && next < items.length) {
+          const item = items[next++]!;
+          if (background) await backgroundSlot();
+          if (run.cancelled) break;
+          objects += await this.compileUnit(item, run);
+          if (!run.cancelled) this.ungate(item.object);
+          done++;
+          report(false);
+        }
+      };
+      const jobs: Promise<void>[] = [];
+      for (let k = 0; k < workers; k++) jobs.push(worker());
       await Promise.all(jobs);
     } finally {
-      this.compileHold = null;
-      vel.setProjectionMatrix(null);
-      gpu.setRenderTarget(hold.target);
-      gpu.setMRT(hold.mrt);
-      // children back into their containers, in their original order
-      for (const g of groups) g.remove(...g.children);
-      containers.forEach((c, i) => { c.remove(...c.children); c.add(...originals[i]!); });
+      this.endCompileHold();
     }
     report(true);
+  }
+
+  /**
+   * One unit (H4 facts 1–4 per call): the prologue — synchronous inside `compileAsync` — sees the unit visible and
+   * un-culled (every LOD level, far tier and empty instanced mesh compiles), the gate layer enabled on the camera and
+   * render contexts at the scene pass's call depth; all of it is restored before this returns to the event loop.
+   * Lights come from the scene (`targetScene`), so a unit compiles against the scene's light set exactly once.
+   * Returns the render objects compiled.
+   */
+  private async compileUnit(item: CompileItem, run: CompileRun): Promise<number> {
+    type Compile = (scene: Object3D, camera: Camera, targetScene?: Scene | null, onProgress?: ((e: { loaded: number; total: number }) => void) | null) => Promise<void>;
+    const gpu = this.renderer as WebGPURenderer & { compileAsync: Compile; _renderContexts?: { get(rt: RenderTarget | null, mrt: unknown, depth?: number): unknown } };
+    const o = item.object;
+    const touched: Object3D[] = []; const state: number[] = [];
+    o.traverse((x) => { touched.push(x); state.push((x.visible ? 1 : 0) | (x.frustumCulled ? 2 : 0)); x.visible = true; x.frustumCulled = false; this.runOf.set(x, run); });
+    const contexts = gpu._renderContexts;
+    const getContext = contexts?.get;
+    const depth = this.post.sceneCallDepth ?? SCENE_PASS_CALL_DEPTH;
+    const layers = this.camera3.layers;
+    const gateWasOn = layers.isEnabled(LAYERS.compileGate);
+    let total = 0;
+    let job: Promise<void>;
+    try {
+      if (contexts && getContext) contexts.get = (rt, mrt, d) => getContext.call(contexts, rt, mrt, d ?? depth);   // 3.
+      layers.enable(LAYERS.compileGate);
+      job = gpu.compileAsync(o, this.camera3, this.scene, (e) => { total = e.total; });
+    } finally {
+      if (contexts && getContext) contexts.get = getContext;
+      if (!gateWasOn) layers.disable(LAYERS.compileGate);
+      touched.forEach((x, i) => { x.visible = (state[i]! & 1) !== 0; x.frustumCulled = (state[i]! & 2) !== 0; });
+    }
+    try {
+      await job;
+    } catch (e) {
+      if (e !== COMPILE_ABORT) throw e;
+    }
+    // a zone disposed mid-compile: render objects three created for its meshes after their dispose event are released
+    if (run.cancelled && item.owned) for (const x of touched) if (isDrawable(x)) x.dispatchEvent({ type: 'dispose' } as never);
+    return total;
+  }
+
+  /** Zone meshes not compiled yet → the gate layer only (the scene camera skips them); `ungate` restores (T4). */
+  private readonly gated = new Map<Object3D, number>();
+
+  private gate(o: Object3D): void {
+    o.traverse((x) => { if (isDrawable(x) && !this.gated.has(x)) { this.gated.set(x, x.layers.mask); x.layers.set(LAYERS.compileGate); } });
+  }
+
+  private ungate(o: Object3D): void {
+    o.traverse((x) => { const m = this.gated.get(x); if (m !== undefined) { x.layers.mask = m; this.gated.delete(x); } });
+  }
+
+  /** The compile run a mesh belongs to (the node-build abort check). */
+  private readonly runOf = new WeakMap<Object3D, CompileRun>();
+
+  /**
+   * T4: one check around three's `NodeManager.getForRenderAsync` (only `compileAsync` calls it): a render object of a
+   * cancelled run throws `COMPILE_ABORT` before and after its node build, so three's compile loop stops before it
+   * uploads geometry, creates bindings or takes a pipeline for a disposed zone.
+   */
+  private installCompileAbort(): void {
+    const nodes = (this.renderer as unknown as { _nodes?: { getForRenderAsync?(ro: { object: Object3D }): Promise<unknown> } })._nodes;
+    const orig = nodes?.getForRenderAsync?.bind(nodes);
+    if (!nodes || !orig) return;
+    nodes.getForRenderAsync = async (ro: { object: Object3D }): Promise<unknown> => {
+      if (this.runOf.get(ro.object)?.cancelled === true) throw COMPILE_ABORT;
+      const r = await orig(ro);
+      if (this.runOf.get(ro.object)?.cancelled === true) throw COMPILE_ABORT;
+      return r;
+    };
+  }
+
+  /** The current zone's background phase (T4): resolves when it finished or its zone was disposed. */
+  private background: Promise<void> = Promise.resolve();
+
+  compileIdle(): Promise<void> { return this.background; }
+
+  /**
+   * T4: the diorama view the player gets at `focus` (the rig's heading and zoom, the §10.7.1 pitch), or null when the
+   * rig does not expose them (then the whole zone is phase 1).
+   */
+  private predictView(handle: ZoneHandle, focus: { readonly x: number; readonly z: number } | null): ViewGuess | null {
+    const rig = this.camera as CameraRig & { readonly dioramaYaw?: number; readonly zoomStop?: 0 | 1 | 2 };
+    const f = focus ?? { x: rig.focus.x, z: rig.focus.z };
+    if (typeof rig.dioramaYaw !== 'number' || !Number.isFinite(f.x) || !Number.isFinite(f.z)) return null;
+    const collider = (handle as ZoneHandle & { readonly collider?: { sampleClamped?(x: number, z: number): number } }).collider;
+    const y = collider?.sampleClamped?.(f.x, f.z) ?? 0;
+    const cam = this.viewGuess;
+    cam.fov = this.camera3.fov; cam.aspect = this.camera3.aspect; cam.near = this.camera3.near; cam.far = this.camera3.far;
+    cam.updateProjectionMatrix();
+    const pose: OrbitPose = { center: new Vector3(f.x, Number.isFinite(y) ? y : 0, f.z), yaw: rig.dioramaYaw, pitch: (PITCH * Math.PI) / 180, distance: DISTANCE[rig.zoomStop ?? DEFAULT_ZOOM_STOP] };
+    orbitPosition(pose, cam.position);
+    cam.lookAt(pose.center);
+    cam.updateMatrixWorld();
+    return { camera: cam, focus: pose.center };
+  }
+
+  private readonly viewGuess = new PerspectiveCamera();
+
+  /**
+   * T4: the zone's compile units — phase 1: what the predicted first view draws plus the actor / billboard / decal /
+   * VFX warm objects; phase 2: the beacon housing and the arena (battle readiness), then the zone's other units nearest
+   * first, the warm library quads last. Every zone unit is gated until compiled. Background off: one phase.
+   */
+  private planZone(handle: ZoneHandle, focus: { readonly x: number; readonly z: number } | null): { near: CompileItem[]; far: CompileItem[] } {
+    const units = planZoneCompile(handle.group, this.backgroundEnabled ? this.predictView(handle, focus) : null);
+    for (const u of units) this.gate(u.object);
+    const near: CompileItem[] = orderUnits(units.filter((u) => u.near)).map((u) => ({ object: u.object, owned: true }));
+    const farZone = units.filter((u) => !u.near).sort((a, b) => a.distance - b.distance).map((u) => ({ object: u.object, owned: true }));
+    const far: CompileItem[] = [];
+    const quads: CompileItem[] = [];
+    for (const o of this.warmGroup?.children ?? []) {
+      if (!this.warmSubsystem.has(o)) quads.push({ object: o, owned: false });
+      else if ((o.userData as { ewaCompileDeferred?: boolean }).ewaCompileDeferred === true) far.push({ object: o, owned: false });
+      else near.push({ object: o, owned: false });
+    }
+    for (const o of this.persistent) far.push({ object: o, owned: false });
+    far.push(...farZone, ...quads);
+    if (!this.backgroundEnabled) return { near: [...near, ...far], far: [] };
+    return { near, far };
+  }
+
+  /** T4: wraps the handle's `dispose`: the zone's compile run is cancelled first and the hooks hear `onZone(null)`. */
+  private watchDispose(handle: ZoneHandle, run: CompileRun): void {
+    const h = handle as ZoneHandle & { dispose(): void };
+    const dispose = h.dispose.bind(h);
+    const root = handle.group;
+    h.dispose = (): void => {
+      if (run.cancelled) { dispose(); return; }
+      run.cancelled = true;
+      for (const hk of this.hooks) hk.onZone?.(null);
+      const mine: Object3D[] = [];
+      root.traverse((o) => { if (this.gated.has(o)) mine.push(o); });
+      dispose();
+      for (const o of mine) this.gated.delete(o);
+    };
   }
 
   private captureBaseline(): void {
@@ -595,7 +799,7 @@ class RendererHost implements Renderer, HostContext {
 
   // ---- Renderer ------------------------------------------------------------------------------------------
 
-  async loadZone(spec: ZoneSpec): Promise<ZoneHandle> {
+  async loadZone(spec: ZoneSpec, opts: LoadZoneOptions = {}): Promise<ZoneHandle> {
     if (this.disposed) throw new Error('@ewa/render: loadZone after dispose()');
     if (this.loading || (this.zone !== null && !isDisposedHandle(this.zone))) {
       throw new Error(`@ewa/render: loadZone('${spec.id}') while a zone is loaded and not yet disposed`);
@@ -606,11 +810,22 @@ class RendererHost implements Renderer, HostContext {
       const heroGate = new Promise<void>((res) => { openHero = res; });
       const handle = await this.zones.load(spec, { heroGate });
       this.zone = handle;
-      // H4: the zone's light set is part of every lit program — compile the zone, then the kept warm-up group
-      // (library structures, billboard, character, beacon housing, VFX) against it, before the first zone frame.
-      // H5: the hero texture stream waits for it (a re-point mid-compile leaked the replaced field sets).
+      const run: CompileRun = { cancelled: false };
+      this.watchDispose(handle, run);
+      // H4 / T4: the zone's light set is part of every lit program. Phase 1 compiles what the first view draws (and the
+      // actor / billboard / VFX warm objects) against it before `loadZone` resolves; phase 2 compiles the rest in the
+      // background, each unit gated until its programs exist. H5: the hero texture stream opens after phase 1 (field
+      // sets are retired, not disposed, since H5c, so a re-point during phase 2 re-initialises nothing).
       try {
-        if (this.precompileEnabled) await this.precompile('zone', spec.id, this.warmGroup !== null ? [handle.group, this.warmGroup] : [handle.group]);
+        if (this.precompileEnabled) {
+          const plan = this.planZone(handle, opts.focus ?? null);
+          await this.compileQueue('zone', spec.id, plan.near, COMPILE_CONCURRENCY, run, false);
+          if (plan.far.length > 0) {
+            this.background = this.compileQueue('background', spec.id, plan.far, BACKGROUND_CONCURRENCY, run, true).catch((e: unknown) => {
+              if (isDevBuild()) console.error('@ewa/render: background compile failed', e);
+            });
+          }
+        }
       } finally {
         openHero();
       }
@@ -820,6 +1035,12 @@ class RendererHost implements Renderer, HostContext {
     const culled = (this.zones as ZoneLoader & { culledChunks?: () => number }).culledChunks?.() ?? 0;
     return dumpZone({ zone: zoneId, harvestLevel: this.harvest, root, library: this.materials, counts: this.counts(), culledChunks: culled, spriteScan: this.scene });
   }
+}
+
+/** A mesh, line, points or sprite (what three draws and a compile gate hides). */
+function isDrawable(o: Object3D): boolean {
+  const r = o as Object3D & { isMesh?: boolean; isLine?: boolean; isPoints?: boolean; isSprite?: boolean };
+  return r.isMesh === true || r.isLine === true || r.isPoints === true || r.isSprite === true;
 }
 
 function isDisposedHandle(h: ZoneHandle): boolean {

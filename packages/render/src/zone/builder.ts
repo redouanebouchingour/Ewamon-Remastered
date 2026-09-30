@@ -25,14 +25,14 @@ import { heightClamped } from '../terrain/field.js';
 import { buildSkirt, buildTerrainChunks, skirtHeightFn, type SkirtOpts, type TerrainLayers } from '../terrain/mesh.js';
 import type { Parts} from './geo.js';
 import { Digest, box, beam, card, lathe, releaseShapeCache, trs } from './geo.js';
-import { BIOME_GENERATORS, PROP_BLOCKER, SET_PIECE_BUILDERS, buildHousing, buildPropKind } from './generators/index.js';
+import { BIOME_GENERATORS, FENCE_FOOTPRINT, PROP_BLOCKER, SET_PIECE_BUILDERS, buildHousing, buildPropKind } from './generators/index.js';
 import { addPropTier, disposeProp, finish, tiers3 } from './generators/common.js';
 import { buildHouse } from './generators/buildings.js';
 import { buildBush, buildFlowers, buildGroundTuft, buildImpostorCards, buildLog, buildRock, buildStump, buildTallGrass, buildTree } from './generators/nature.js';
 import { buildPondBank } from './generators/props.js';
 import { setSurfaces, type BiomeSet } from './generators/set.js';
 import {
-  FIELD_SIZE, HOUSING_LOCAL, createSplatContext, footprintDistance, inEllipse, planLayout, roadDistance, scatterClear, splatAt, toWorld,
+  FIELD_SIZE, HOUSING_LOCAL, createSplatContext, footprintDistance, inEllipse, layoutOf, roadDistance, scatterClear, splatAt, toWorld,
   type SplatContext, type SplatFields, type ZoneLayoutPlan,
 } from './layout.js';
 import { BUILDING_LOD_LEVELS, CHUNK_SIZE, chunkGrid, type ChunkGrid } from './lod.js';
@@ -180,11 +180,11 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
   const h = spec.heightfield;
   const collider = new TerrainCollider(h);
   const prng = createPrng(spec.seed);
-  prng.fork('layout');                                   // consumed by planLayout's own fork; kept for the fixed label order
+  prng.fork('layout');                                   // content's plan drew its layout from this fork; kept for the fixed label order
   const scatterRng = prng.fork('scatter');
   const propsRng = prng.fork('props');
   prng.fork('lights');
-  const plan = planLayout(spec);
+  const plan = layoutOf(spec);                           // content's zone plan (spec.plan): the builder plans no layout of its own
   const splat = createSplatContext(plan, spec.buildings, spec.seed);
   const fieldCells = Math.ceil(FIELD_SIZE[spec.layout] / CHUNK_SIZE);
   const grid: ChunkGrid = chunkGrid((fieldCells + 4) * CHUNK_SIZE);
@@ -240,7 +240,7 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     lod.rotation.y = b.yaw;
     root.add(lod); lods.push(lod); lodChunks.push(chunks.at(b.x, b.z));
     record(geo.lod0); record(geo.lod1); record(geo.lod2);
-    collider.addBlocker({ kind: 'rect', x: b.x, z: b.z, hw: b.w / 2 + 0.12 + MOVER_R, hd: b.d / 2 + 0.12 + MOVER_R, yaw: b.yaw });
+    collider.addFootprint({ kind: 'rect', x: b.x, z: b.z, hw: b.w / 2 + 0.12 + MOVER_R, hd: b.d / 2 + 0.12 + MOVER_R, yaw: b.yaw });
   }
 
   // 5. set-piece
@@ -262,8 +262,8 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
       lod.rotation.y = sp.yaw;
       root.add(lod); lods.push(lod); lodChunks.push(chunks.at(sp.x, sp.z));
       record(geo.lod0); record(geo.lod1); record(geo.lod2);
-      if (sp.id === 'grove_heart_tree') collider.addBlocker({ kind: 'circle', x: sp.x, z: sp.z, r: 4.45 + MOVER_R });
-      else if (SOLID_SET_PIECES.has(sp.id)) collider.addBlocker({ kind: 'rect', x: sp.x, z: sp.z, hw: sp.hw * 0.6, hd: sp.hd * 0.6, yaw: sp.yaw });
+      if (sp.id === 'grove_heart_tree') collider.addFootprint({ kind: 'circle', x: sp.x, z: sp.z, r: 4.45 + MOVER_R });
+      else if (SOLID_SET_PIECES.has(sp.id)) collider.addFootprint({ kind: 'rect', x: sp.x, z: sp.z, hw: sp.hw * 0.6, hd: sp.hd * 0.6, yaw: sp.yaw });
     }
   }
 
@@ -289,9 +289,10 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     placeProp(geo, pp.x, y - (pp.kind.startsWith('tree') ? 0.1 : 0), pp.z, pp.yaw, pp.scale > 0 ? pp.scale : 1, !NON_CASTING_PROPS.has(pp.kind));
     disposeProp(geo);
     const r = PROP_BLOCKER[pp.kind] ?? 0;
-    if (pp.kind === 'garden') collider.addBlocker({ kind: 'rect', x: pp.x, z: pp.z, hw: 2.7 + MOVER_R, hd: 1.8 + MOVER_R, yaw: pp.yaw });
-    else if (pp.kind === 'bench') collider.addBlocker({ kind: 'rect', x: pp.x, z: pp.z, hw: 1.0 + MOVER_R, hd: 0.25 + MOVER_R, yaw: pp.yaw });
-    else if (r > 0) collider.addBlocker({ kind: 'circle', x: pp.x, z: pp.z, r: r + MOVER_R });
+    if (pp.kind === 'garden') collider.addFootprint({ kind: 'rect', x: pp.x, z: pp.z, hw: 2.7 + MOVER_R, hd: 1.8 + MOVER_R, yaw: pp.yaw });
+    else if (pp.kind === 'bench') collider.addFootprint({ kind: 'rect', x: pp.x, z: pp.z, hw: 1.0 + MOVER_R, hd: 0.25 + MOVER_R, yaw: pp.yaw });
+    else if (pp.kind === 'fence') collider.addFootprint({ kind: 'rect', x: pp.x, z: pp.z, hw: FENCE_FOOTPRINT.hw + MOVER_R, hd: FENCE_FOOTPRINT.hd + MOVER_R, yaw: pp.yaw });
+    else if (r > 0) collider.addFootprint({ kind: 'circle', x: pp.x, z: pp.z, r: r + MOVER_R });
   }
   // light housings (generated); each one's glowing part is tagged for dumpZone's lightSources (§50.4.6 both directions)
   const housingTags: HousingTag[] = [];
@@ -308,7 +309,7 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     if (glow) housingTags.push({ id: `${l.id}:housing`, min: [glow[0] + x, glow[1] + base, glow[2] + z], max: [glow[3] + x, glow[4] + base, glow[5] + z] });
     disposeProp(geo);
     if (base > g + 0.02) { const t = partsAt(x, z, castHousing); for (const p of t) box(p, set.props.stone, x, g - 0.2, z, 0.5, base - g + 0.22, 0.5, 0, 0.04); }
-    collider.addBlocker({ kind: 'circle', x, z, r: (gen === 'beacon' ? 0.45 : 0.22) + MOVER_R });
+    collider.addFootprint({ kind: 'circle', x, z, r: (gen === 'beacon' ? 0.45 : 0.22) + MOVER_R });
   }
   dressBoundary(spec, plan, set, splat, partsAt, propsRng.next.bind(propsRng));
   dressWater(spec, plan, set, partsAt);
@@ -683,7 +684,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
     const k = pickTree(p.h);
     const s = 0.85 + hash2(Math.round(p.x * 8), Math.round(p.z * 8), salt + 3) * 0.35;
     treeInst[k]!.push({ x: p.x, y: yAt(p.x, p.z) - 0.12, z: p.z, yaw: p.h * 97.3, scale: s, tint: foliageTint(p.h * 3.7 % 1) });
-    if (inPlay(p.x, p.z)) collider.addBlocker({ kind: 'circle', x: p.x, z: p.z, r: 0.42 * s + MOVER_R });
+    if (inPlay(p.x, p.z)) collider.addFootprint({ kind: 'circle', x: p.x, z: p.z, r: 0.42 * s + MOVER_R });
   }
   // willows ring the ponds
   const willow = set.trees.find((t) => t.nearWater);
@@ -698,7 +699,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
         const x = body.cx + Math.cos(a) * rr; const z = body.cz + Math.sin(a) * rr;
         if (!scatterClear(splat, x, z, 1.2, true) || roadDistance(splat.roads, x, z) < 2.5) continue;
         wInst.push({ x, y: yAt(x, z) - 0.12, z, yaw: a * 3.1, scale: 0.9 + hash2(k, body.id, salt + 43) * 0.25, tint: 0 });
-        if (inPlay(x, z)) collider.addBlocker({ kind: 'circle', x, z, r: 0.5 + MOVER_R });
+        if (inPlay(x, z)) collider.addFootprint({ kind: 'circle', x, z, r: 0.5 + MOVER_R });
       }
     }
     if (wInst.length > 0) {
@@ -725,7 +726,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
     const big = p.h < 0.45;
     const s = big ? 0.7 + p.h * 1.5 : 0.6 + p.h * 0.8;
     (big ? aInst : bInst).push({ x: p.x, y: yAt(p.x, p.z) - 0.05, z: p.z, yaw: p.h * 131, scale: s, tint: 0 });
-    if (big && inPlay(p.x, p.z) && s > 0.8) collider.addBlocker({ kind: 'circle', x: p.x, z: p.z, r: 0.75 * s + MOVER_R * 0.6 });
+    if (big && inPlay(p.x, p.z) && s > 0.8) collider.addFootprint({ kind: 'circle', x: p.x, z: p.z, r: 0.75 * s + MOVER_R * 0.6 });
   }
   // pebbles along road edges
   for (const r of splat.roads) {

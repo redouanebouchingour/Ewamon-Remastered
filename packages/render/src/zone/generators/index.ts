@@ -19,11 +19,17 @@ export const BIOME_GENERATORS: Readonly<Record<GeneratorSet, BiomeSet>> = { grov
 /** Every set-piece builder, from whichever set owns it. */
 export const SET_PIECE_BUILDERS: Readonly<Partial<Record<SetPieceId, SetPieceBuilder>>> = Object.assign({}, ...Object.values(BIOME_GENERATORS).map((s) => s.setPieces));
 
-/** Blocker radius (m) of a hand-placed prop kind for the movement solver (0 = walk-through). */
+/**
+ * Footprint radius (m, before the capsule radius) of a hand-placed prop kind (0 = walk-through, or a rectangle:
+ * garden, bench, fence). Content's `PROP_SOLID_RADIUS` is the same table — it stamps these footprints into the
+ * heightfield's `walkable`; `packages/client/test/footprints.test.ts` asserts the builder's footprints equal content's.
+ */
 export const PROP_BLOCKER: Readonly<Record<string, number>> = {
   well: 1.25, cart: 1.1, stall: 1.4, bench: 0.7, planter: 0.75, barrel: 0.4, crate: 0.5, sign: 0.2, rock_l: 1.0, rock_m: 0.65, rock_s: 0,
   tree_oak: 0.5, tree_birch: 0.35, tree_willow: 0.55, stump: 0.45, log: 0.6, bush: 0, flower_patch: 0, fence: 0, garden: 0,
 };
+/** A fence run's footprint half extents (`buildFence` below: 0.13 m posts every 1.8 m over local x ∈ [−1.8, 1.8]). */
+export const FENCE_FOOTPRINT = { hw: 1.865, hd: 0.065 } as const;
 
 /** Builds one hand-placed prop kind with the set's surfaces (null = unknown kind). */
 export function buildPropKind(set: BiomeSet, kind: string, seed: number): PropGeo | null {

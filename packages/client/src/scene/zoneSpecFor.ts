@@ -2,33 +2,25 @@
  * SPEC §20.4.4 — the content → render adapter. Pure: the same (zone, harvest) gives a byte-identical ZoneSpec
  * (snapshot + determinism test over all 21 zones × 3 harvest states in `test/zoneSpecFor.test.ts`).
  *
- * The field mapping is a table. Everything the adapter decides beyond the ZoneDef — building slots, lamp posts
- * within the Pillar-4 budget, hand-placed props, the primary water body — comes from render's pure layout planners
- * (`planLayout`, `planBuildings`, `planLights`, `planProps`; the same functions the zone builder re-runs, so the two
- * can never disagree) fed with forks of `createRng(zone.layoutSeed)`. Nothing here reads Math.random, Date, or the DOM.
+ * The field mapping is a table. Everything beyond the ZoneDef — roads, plaza, tall grass, building slots, lamp posts
+ * within the Pillar-4 budget, hand-placed props — is content's zone plan (`zonePlan(zone.id)`, audit R1): the same
+ * plan whose footprints `getHeightfield` stamps into `walkable`, so the server validates movement against exactly the
+ * houses, trunks and rocks the builder draws. The adapter copies the plan into `spec.plan` / `buildings` / `props`,
+ * composes `lights` from the plan's light positions with render's light tables (`lightsFromPlan`), and derives the
+ * primary water body. Nothing here reads Math.random, Date, or the DOM.
  *
  * Notes (IMPLEMENTATION-NOTES.md in @ewa/render, Part 2): content's `ZoneDef.signature` strings (e.g.
- * 'grove_stone') are story names, not render `SetPieceId`s, so the set-piece is the SPEC §10.5.1 id of the zone's
- * slot in ZONE_ORDER (one per zone, same order); `ZoneSpec.warps` carries each warp door marker plus an arrival
- * marker `${id}:to` at (toX, toZ), because `Marker` has no destination field.
+ * 'grove_stone') are story names, not render `SetPieceId`s, so the set-piece is content's `SET_PIECE_BY_ZONE` (one
+ * per zone, in ZONE_ORDER); `ZoneSpec.warps` carries each warp door marker plus an arrival marker `${id}:to` at
+ * (toX, toZ), because `Marker` has no destination field.
  */
-import { createRng } from '@ewa/core';
-import { getHeightfield } from '@ewa/content';
-import type { HarvestState, LinkDir, ZoneDef, ZoneId } from '@ewa/content';
-import {
-  BIOME_ROOFS, INTERIOR_SIZE, edgePoint, planBuildings, planLayout, planLights, planProps, waterBodies,
-} from '@ewa/render';
-import type { Dir, Edge, HarvestLevel, Marker, SetPieceId, WaterSpec, ZoneSpec } from '@ewa/render';
+import { SET_PIECE_BY_ZONE, getHeightfield, zonePlan } from '@ewa/content';
+import type { HarvestState, LinkDir, ZoneDef } from '@ewa/content';
+import { INTERIOR_SIZE, edgePoint, lightsFromPlan, waterBodies } from '@ewa/render';
+import type { Dir, Edge, HarvestLevel, Marker, WaterSpec, ZonePlanData, ZoneSpec } from '@ewa/render';
 
-/** SPEC §10.5.1 `SetPieceId`, one per zone, in ZONE_ORDER order. */
-export const SET_PIECE_BY_ZONE: Readonly<Record<ZoneId, SetPieceId>> = {
-  mirevale: 'grove_heart_tree', mire_route: 'mire_boardwalk', cinderhold: 'cinder_caldera', ash_route: 'ash_lava_bridge',
-  saltmourn: 'salt_lighthouse', tide_route: 'tide_wreck', stormrook: 'storm_coil_tower', galvan_route: 'galvan_span',
-  marrowdig: 'marrow_mineshaft', deepcut_route: 'deepcut_arch', vesperveil: 'vesper_witch_hut', hollow_route: 'hollow_lantern_road',
-  forgewall: 'forge_great_gate', siege_route: 'siege_trebuchet', skyrend: 'sky_shrine', ascent_route: 'ascent_stair',
-  solenne: 'solenne_cathedral', eclipse_shrine: 'eclipse_engine', umbral_observatory: 'umbral_dome', celestial_spire: 'celestial_spire',
-  the_rift: 'rift_maw',
-};
+/** SPEC §10.5.1 `SetPieceId`, one per zone, in ZONE_ORDER order (content's table). */
+export { SET_PIECE_BY_ZONE };
 
 export const HARVEST_LEVEL: Readonly<Record<HarvestState, HarvestLevel>> = { intact: 0, thinning: 1, harvested: 2 };
 
@@ -41,11 +33,12 @@ const WATER_KIND: Readonly<Record<ZoneDef['biome'], WaterSpec['kind']>> = {
 const LINK_DIRS: readonly LinkDir[] = ['n', 'e', 's', 'w'];
 
 /**
- * Pure. Same (zone, harvest) → byte-identical ZoneSpec. Everything beyond the ZoneDef is drawn from
- * `createRng(zone.layoutSeed)` forks (buildings, lights, props — in that order).
+ * Pure. Same (zone, harvest) → byte-identical ZoneSpec. The layout, buildings, lights and props are content's plan
+ * for the zone (seeded from `zone.layoutSeed`), passed through.
  */
 export function zoneSpecFor(zone: ZoneDef, harvest: HarvestState): ZoneSpec {
   const heightfield = getHeightfield(zone.id);                        // spine §3.11: passed through unchanged
+  const plan = zonePlan(zone.id);                                     // the plan whose footprints the field carries
   const layout = zone.kind;
   const interior = INTERIOR_SIZE[layout];
   const edges: Partial<Record<Dir, Edge>> = {};
@@ -70,15 +63,13 @@ export function zoneSpecFor(zone: ZoneDef, harvest: HarvestState): ZoneSpec {
   const tallGrass = zone.encounterTable !== null;
   const seed = zone.layoutSeed >>> 0;
 
-  const plan = planLayout({ seed, layout, heightfield, edges, actors, pickups, tablets, warps, tallGrass, setPiece });
-  const rng = createRng(zone.layoutSeed);
-  const buildingRng = rng.fork();
-  const lightRng = rng.fork();
-  const propRng = rng.fork();
-  const roofs = BIOME_ROOFS[zone.biome] ?? BIOME_ROOFS.grove!;
-  const buildings = planBuildings({ plan, zoneId: zone.id, gym: zone.gym !== null, shop: zone.shop !== null, healer: zone.healer, roofs: roofs.houses, landmarkRoof: roofs.landmark }, buildingRng);
-  const lights = planLights({ plan, zoneId: zone.id, biome: zone.biome, heightfield, buildings, accentType: zone.type }, lightRng);
-  const props = planProps({ plan, biome: zone.biome, buildings, lights }, propRng);
+  const buildings = plan.buildings.map((b) => ({ id: b.id, kind: b.kind, x: b.x, z: b.z, yaw: b.yaw, w: b.w, d: b.d, floors: b.floors, roof: b.roof, seed: b.seed }));
+  const props = plan.props.map((p) => ({ kind: p.kind, x: p.x, z: p.z, yaw: p.yaw, scale: p.scale, seed: p.seed }));
+  const lights = lightsFromPlan(plan.lights, zone.biome, setPiece, zone.type);
+  const specPlan: ZonePlanData = {
+    plaza: plan.plaza, roads: plan.roads, doorPaths: plan.doorPaths, roadMeander: plan.roadMeander, grassPatches: plan.grassPatches,
+    clearings: plan.clearings, setPiece: plan.setPiece, points: plan.points, warpPairs: plan.warpPairs,
+  };
 
   // the primary water body (largest) as the WaterSpec; the builder renders every body of the heightfield mask
   let water: WaterSpec | null = null;
@@ -116,5 +107,6 @@ export function zoneSpecFor(zone: ZoneDef, harvest: HarvestState): ZoneSpec {
     water,
     accentType: zone.type,
     harvestLevel: HARVEST_LEVEL[harvest],
+    plan: specPlan,
   };
 }

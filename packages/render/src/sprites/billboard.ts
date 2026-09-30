@@ -28,7 +28,7 @@ import {
   BufferAttribute, Color, DoubleSide, FrontSide, Group, Mesh, MeshBasicNodeMaterial, MeshStandardNodeMaterial, MultiplyBlending,
   PlaneGeometry, Quaternion, Sphere, Box3, Vector2, Vector3, Vector4,
 } from 'three/webgpu';
-import type { Node, PerspectiveCamera, Texture, UniformNode } from 'three/webgpu';
+import type { Node, Object3D, PerspectiveCamera, Texture, UniformNode } from 'three/webgpu';
 import {
   Fn, abs, cameraPosition, cos, dot, float, floor, hash, hue, length, mix, mrt, normalLocal, normalMap, normalView, normalWorld, oneMinus,
   positionLocal, positionWorld, pow, saturation, select, sin, smoothstep, tangentLocal, texture, uniform, userData, uv, vec2, vec3, vec4,
@@ -295,6 +295,9 @@ export class BillboardPool implements SpritePool {
     if (this.disposed) throw new Error('@ewa/render: SpritePool used after dispose()');
     return new CreatureBillboard(this, d);
   }
+
+  /** The live billboards (the pool's own array: read it, never keep or mutate it). Zero allocation. */
+  liveBillboards(): readonly CreatureBillboard[] { return this.live; }
 
   stats(): { readonly live: number; readonly atlases: number; readonly bytes: number } {
     return { live: this.live.length, atlases: this.cache.loaded(), bytes: this.cache.bytes() };
@@ -604,6 +607,17 @@ export class CreatureBillboard {
     this.object.getWorldPosition(out);
     out.y += this.dims.yMax + this.rig.ud.lift;
     return out;
+  }
+
+  /** Whether the billboard is in the scene and drawn: attached under a `Scene` with every ancestor visible. */
+  isShown(): boolean {
+    let o: Object3D | null = this.object;
+    while (o !== null) {
+      if (!o.visible) return false;
+      if ((o as Object3D & { isScene?: boolean }).isScene === true) return true;
+      o = o.parent;
+    }
+    return false;
   }
 
   /** WORLD position of the feet (the setPosition point in the parent's space, without pose offsets). */

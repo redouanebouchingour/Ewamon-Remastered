@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { allZones } from '@ewa/content';
 import { LOD_DISTANCES, LOD_HYSTERESIS, chooseTier, chunkCentre, chunkGrid, chunkOf, tierFor } from '../src/zone/lod.js';
 import {
-  HOUSING_LOCAL, SET_PIECE_EXTENT, SET_PIECE_LIGHTS, TOWN_LAYOUT, createSplatContext, doorOf, footprintDistance, planLayout, roadDistance, splatAt,
+  HOUSING_LOCAL, SET_PIECE_EXTENT, SET_PIECE_LIGHTS, TOWN_LAYOUT, createSplatContext, doorOf, footprintDistance, layoutOf, planLayout, roadDistance, splatAt,
 } from '../src/zone/layout.js';
 import { PALETTES, paletteFor } from '../src/zone/palettes.js';
 import { realSpec } from './zone-helpers.js';
@@ -56,12 +56,21 @@ describe('§10.5.5 layout', () => {
   const mr = realSpec('mire_route');
 
   it('is deterministic and matches between the adapter and the builder input', () => {
-    const a = planLayout(mv); const b = planLayout(mv);
+    const a = layoutOf(mv); const b = layoutOf(mv);
     expect(JSON.stringify({ ...a, water: a.water.length, roadZ: 0 })).toBe(JSON.stringify({ ...b, water: b.water.length, roadZ: 0 }));
   });
 
+  it("the deprecated planLayout (the capture harness's anchors) still equals content's plan", () => {
+    for (const s of [mv, mr]) {
+      const legacy = planLayout(s); const plan = layoutOf(s);
+      const { doorPaths: _a, roadZ: _b, ...l } = legacy; const { doorPaths: _c, roadZ: _d, ...c } = plan;
+      expect(l).toEqual(c);
+      for (let x = -120; x <= 120; x += 3.7) expect(legacy.roadZ(x)).toBe(plan.roadZ(x));
+    }
+  });
+
   it('town: plaza r 14, a road to each edge, the gym north with its door at (0, −26), buildings on the 22–30 m ring', () => {
-    const plan = planLayout(mv);
+    const plan = layoutOf(mv);
     expect(plan.plaza).toEqual({ x: 0, z: 0, r: TOWN_LAYOUT.plazaR });
     expect(plan.roads.find((r) => r.id === 'road_e')).toBeDefined();
     const gym = mv.buildings.find((b) => b.kind === 'gym')!;
@@ -82,7 +91,7 @@ describe('§10.5.5 layout', () => {
   });
 
   it('route: a meandering road on the corridor, 3–5 tall-grass patches alternating sides, 2–3 clearings, set-piece at the midpoint', () => {
-    const plan = planLayout(mr);
+    const plan = layoutOf(mr);
     expect(plan.grassPatches.length).toBeGreaterThanOrEqual(3);
     expect(plan.grassPatches.length).toBeLessThanOrEqual(5);
     expect(plan.clearings.length).toBeGreaterThanOrEqual(2);
@@ -94,7 +103,7 @@ describe('§10.5.5 layout', () => {
   });
 
   it('splat: plaza inside r 14, path on roads, ground elsewhere', () => {
-    const plan = planLayout(mv);
+    const plan = layoutOf(mv);
     const ctx = createSplatContext(plan, mv.buildings, mv.seed);
     const f = { plaza: 0, path: 0, detail: 0 };
     expect(splatAt(ctx, 0, 5, f).plaza).toBeGreaterThan(0);

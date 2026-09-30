@@ -57,6 +57,66 @@ export const CAMERA_WORK: Readonly<Record<'attacker' | 'defender' | 'impact' | '
 export const CUE_KINDS: readonly CueKind[] = ['attacker', 'defender', 'impact', 'wide', 'ko', 'throw'];
 // #endregion
 
+// #region constants — battle framing above the DOM battle panel (implementation values, IMPLEMENTATION-NOTES Part 5, T2)
+/** Default share of the viewport height the DOM battle panel covers (§20.5.6: the bottom 28 % plus its 24 px margin at 900 px). */
+export const PANEL_DEFAULT_FRACTION = 0.307;
+/** Gap kept between the near battler's feet and the panel's top edge (share of the viewport height). */
+export const FRAME_BOTTOM_GAP = 0.015;
+/** Nominal battler height (m) until the stage reports the real ones. */
+export const NOMINAL_BATTLER_HEIGHT_M = 1.6;
+/** The framing may pull the battle camera back to at most this distance (m); it never comes closer than BATTLE_DISTANCE. */
+export const BATTLE_DISTANCE_MAX = 22;
+export const FRAMING_STEP_M = 0.25;
+/** A framing change during a battle (panel resize, a taller creature switched in) eases over this (ms). */
+export const FRAMING_EASE_MS = 300;
+// #endregion
+
+/** A battle framing: the camera distance and the extra downward tilt (rad) of the view (T2). */
+export interface Framing { distance: number; tilt: number; fits: boolean }
+
+/**
+ * T2 (IMPLEMENTATION-NOTES Part 5): the smallest battle distance in [BATTLE_DISTANCE, BATTLE_DISTANCE_MAX] and the
+ * downward tilt that put both battlers inside the screen band `topFrac … 1 − bottomFrac` of the viewport height (the
+ * DOM battle panel covers the bottom; `topFrac` includes the far battler's HP-bar allowance): the near battler's feet
+ * above the band's bottom, the taller top of the two battlers below its top. The camera orbits the arena centre at
+ * BATTLE_PITCH, BATTLE_YAW_OFFSET off the diorama heading (the battlers stand on the heading's view axis); tilting the
+ * view down by α about its right axis raises every point's vertical view angle by exactly α, so the band test is exact.
+ * When nothing fits up to BATTLE_DISTANCE_MAX the farthest pose is used, centred in the band. Pure, allocation-free.
+ */
+export function battleFraming(fovDeg: number, topFrac: number, bottomFrac: number, nearH: number, farH: number, out: Framing): Framing {
+  const t = Math.tan((fovDeg * DEG) / 2);
+  const top = Math.min(1, Math.max(0, topFrac));
+  const bot = Math.max(top + FRAME_BOTTOM_GAP, 1 - Math.max(0, bottomFrac) - FRAME_BOTTOM_GAP);
+  const phiTop = Math.atan((1 - 2 * top) * t);           // NDC y = 1 − 2·(y px / H)
+  const phiBot = Math.atan((1 - 2 * bot) * t);
+  const th = BATTLE_YAW_OFFSET * DEG; const p = BATTLE_PITCH * DEG;
+  const cp = Math.cos(p);
+  // view basis for a camera at d·(cp·sin θ, sin(−p), cp·cos θ) looking at the arena centre (lookAt with +y up)
+  const wx = -cp * Math.sin(th); const wy = -Math.sin(-p); const wz = -cp * Math.cos(th);
+  const rn = Math.hypot(wz, wx);
+  const rx = -wz / rn; const rz = wx / rn;                  // right = normalize(w × up)
+  const ux = -rz * wy; const uy = rz * wx - rx * wz; const uz = rx * wy;   // up = right × w
+  const half = BATTLER_SEPARATION / 2;
+  const hn = nearH > 0 ? nearH : NOMINAL_BATTLER_HEIGHT_M; const hf = farH > 0 ? farH : NOMINAL_BATTLER_HEIGHT_M;
+  const angle = (d: number, z: number, y: number): number => {
+    const vx = -d * cp * Math.sin(th); const vy = y - d * Math.sin(-p); const vz = z - d * cp * Math.cos(th);
+    return Math.atan2(vx * ux + vy * uy + vz * uz, vx * wx + vy * wy + vz * wz);
+  };
+  let d = BATTLE_DISTANCE;
+  for (; ; d += FRAMING_STEP_M) {
+    const low = Math.min(angle(d, half, 0), angle(d, -half, 0));        // near feet (z = +half faces the camera), far feet
+    const high = Math.max(angle(d, half, hn), angle(d, -half, hf));
+    const aB = phiBot - low; const aT = phiTop - high;                 // tilt ≥ aB lifts the feet into the band, ≤ aT keeps the tops in
+    const last = d + FRAMING_STEP_M > BATTLE_DISTANCE_MAX;
+    if (aB <= aT || last) {
+      out.distance = d;
+      out.tilt = (aB + aT) / 2;
+      out.fits = aB <= aT;
+      return out;
+    }
+  }
+}
+
 const DEG = Math.PI / 180;
 
 /** An orbit pose: the camera sits at `center + distance · (cos p · sin yaw, −sin p, cos p · cos yaw)`. */

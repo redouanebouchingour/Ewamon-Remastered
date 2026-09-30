@@ -128,10 +128,15 @@ describe('validateInput', () => {
   });
 
   it('unwalkable: a segment crossing an unwalkable sample (0.25 m sampling) is rejected even if both ends are walkable', () => {
-    if (wall === null) return; // field has no thin wall at this resolution — covered by the endpoint test
+    // since the plan's footprints are stamped (audit R1) mire_route has thin walls (fence runs, lamp posts); before,
+    // `wall` was null here and the test returned early
+    expect(wall).not.toBeNull();
     const [x0, z0, span = 0.5] = wall as readonly [number, number, number?];
-    const v = validateInput(prev({ x: x0, z: z0 }), { seq: 1, x: x0 + span, z: z0, angle: 0, running: true, dtMs: 100 }, h);
+    // enough dt that the step is inside the run cap (8.05 m/s): the rejection must be the segment's, not the speed's
+    const dtMs = Math.ceil((span / MAX_RUN_STEP) * 1000) + 10;
+    const v = validateInput(prev({ x: x0, z: z0 }), { seq: 1, x: x0 + span, z: z0, angle: 0, running: true, dtMs }, h);
     expect(v).toMatchObject({ ok: false, reason: 'unwalkable' });
+    expect(isWalkable(h, x0 + span, z0)).toBe(true);                         // both ends walkable: only the segment check refuses it
   });
 
   it('water: a water-only sample is standable only with HM Surf', () => {

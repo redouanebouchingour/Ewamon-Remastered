@@ -427,10 +427,37 @@ export interface ValidationStats {
   readonly roster: RosterReport;
   /** Z(zone) of §3.10 rule 11, sorted, per zone */
   readonly bindSets: Readonly<Record<ZoneId, readonly string[]>>;
-  /** per-zone heightfield digest and walkable ratio */
+  /**
+   * per-zone heightfield digest and walkable ratio; `terrainWalkable` is the ratio before the zone plan's footprints
+   * were stamped, `footprintSamples` the samples they made unwalkable, `solids` the plan's footprint count
+   */
   readonly heightfields: Readonly<
-    Record<ZoneId, { readonly digest: string; readonly walkable: number; readonly water: number }>
+    Record<
+      ZoneId,
+      {
+        readonly digest: string;
+        readonly walkable: number;
+        readonly water: number;
+        readonly terrainWalkable: number;
+        readonly footprintSamples: number;
+        readonly solids: number;
+      }
+    >
   >;
+  /**
+   * §3.10 rules 9 / 12: authored coordinates (spawn, npcs, trainers, items, lore, warps, statics, raid hotspots) whose
+   * own sample is not walkable, and the walkable sample `nearestWalkable(h, x, z, 8)` snaps them to. `cause` names the
+   * plan footprint covering the sample, or 'terrain' (margin, slope, water).
+   */
+  readonly snapped: readonly {
+    readonly zoneId: ZoneId;
+    readonly what: string;
+    readonly x: number;
+    readonly z: number;
+    readonly toX: number;
+    readonly toZ: number;
+    readonly cause: string;
+  }[];
 }
 
 export interface ValidationResult {

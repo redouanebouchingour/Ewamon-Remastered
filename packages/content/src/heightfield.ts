@@ -8,13 +8,17 @@
  * Layout = value-noise fbm (biome amplitude) + a kind feature (town plaza · route road · story platform) + biome
  * ponds (the `water` mask; each pond carries a boardwalk that is both walkable and water) + a flat, dry clearing
  * around every authored coordinate of the zone (npcs, trainers, items, lore, warps, spawn) so authored points are
- * walkable by construction. `walkable = 0` in the 16 m margin, where the slope exceeds 35°, or on open water.
+ * walkable by construction. `walkable = 0` in the 16 m margin, where the slope exceeds 35°, on open water, and on
+ * every footprint of the zone plan (`plan.ts`: buildings, the solid set-piece core, props, lamp posts, tree trunks,
+ * big rocks — door approaches and water samples excepted), so the server sees houses and trunks as the client does.
  */
 import { createRng } from '@ewa/core';
 import type { Rng } from '@ewa/core';
 import type { Biome, ZoneDef, ZoneId, ZoneKind } from './types';
 import { ZONE_MARGIN, ZONE_SIZE } from './types';
 import { ZONES } from './data/zones';
+import { planZone, stampFootprints } from './plan';
+import type { FootprintStamp, ZonePlan } from './plan';
 
 export interface Heightfield {
   readonly zoneId: ZoneId;
@@ -200,8 +204,32 @@ function placePonds(rng: Rng, zone: ZoneDef, half: number, points: readonly (rea
   return ponds;
 }
 
+/** A zone's heightfield together with the plan whose footprints it carries. */
+export interface ZoneSurface {
+  readonly heightfield: Heightfield;
+  readonly plan: ZonePlan;
+  readonly footprints: FootprintStamp;
+}
+
 /** Deterministic from zone.layoutSeed, zone.kind and zone.biome (value noise + the layout's footprints). */
 export function buildHeightfield(zone: ZoneDef): Heightfield {
+  return buildZoneSurface(zone).heightfield;
+}
+
+/**
+ * The terrain field (steps 1–5 below), the zone plan laid out on it (`planZone`), then the plan's footprints
+ * stamped into `walkable` (`stampFootprints`) and the digest taken over the result.
+ */
+export function buildZoneSurface(zone: ZoneDef): ZoneSurface {
+  const base = buildTerrainField(zone);
+  const plan = planZone(zone, base);
+  const footprints = stampFootprints(base, plan);
+  const digest = digestHeightfield(base.heights, base.walkable, base.water);
+  return { heightfield: { ...base, digest }, plan, footprints };
+}
+
+/** Terrain only: noise, kind feature, ponds, clearings; walkable = margin, slope and open water. `digest` is ''. */
+function buildTerrainField(zone: ZoneDef): Heightfield {
   const size = ZONE_SIZE[zone.kind];
   const half = size / 2;
   const res = size / HEIGHTFIELD_STEP + 1;
@@ -341,8 +369,7 @@ export function buildHeightfield(zone: ZoneDef): Heightfield {
     }
   }
 
-  const digest = digestHeightfield(heights, walkable, water);
-  return { zoneId: zone.id, size, step: HEIGHTFIELD_STEP, res, originX, originZ, heights, walkable, water, digest };
+  return { zoneId: zone.id, size, step: HEIGHTFIELD_STEP, res, originX, originZ, heights, walkable, water, digest: '' };
 }
 
 // ─── digest ──────────────────────────────────────────────────────────────────
@@ -374,17 +401,27 @@ export function digestHeightfield(heights: Float32Array, walkable: Uint8Array, w
 // ─── memo ────────────────────────────────────────────────────────────────────
 
 const ZONE_BY_ID: ReadonlyMap<ZoneId, ZoneDef> = new Map(ZONES.map((z) => [z.id, z]));
-const cache = new Map<ZoneId, Heightfield>();
+const cache = new Map<ZoneId, ZoneSurface>();
 
-/** memoised buildHeightfield */
-export function getHeightfield(zoneId: ZoneId): Heightfield {
+/** memoised buildZoneSurface (one build per zone serves getHeightfield and zonePlan) */
+export function getZoneSurface(zoneId: ZoneId): ZoneSurface {
   const hit = cache.get(zoneId);
   if (hit !== undefined) return hit;
   const zone = ZONE_BY_ID.get(zoneId);
   if (zone === undefined) throw new RangeError(`unknown zone '${zoneId}'`);
-  const h = buildHeightfield(zone);
-  cache.set(zoneId, h);
-  return h;
+  const s = buildZoneSurface(zone);
+  cache.set(zoneId, s);
+  return s;
+}
+
+/** memoised buildHeightfield */
+export function getHeightfield(zoneId: ZoneId): Heightfield {
+  return getZoneSurface(zoneId).heightfield;
+}
+
+/** The zone's plan (roads, buildings with doors, lights, props, footprints) — the one `getHeightfield` carries. Memoised. */
+export function zonePlan(zoneId: ZoneId): ZonePlan {
+  return getZoneSurface(zoneId).plan;
 }
 
 // ─── sampling ────────────────────────────────────────────────────────────────
@@ -480,6 +517,46 @@ export function playableBounds(h: Heightfield): {
     minZ: h.originZ + ZONE_MARGIN,
     maxZ: h.originZ + h.size - ZONE_MARGIN,
   };
+}
+
+/**
+ * The walkable samples connected (4-neighbour) to the nearest walkable sample within 8 m of (x, z): 1 = in the
+ * component. All zeros when nothing within 8 m is walkable. Diagonal steps are not counted — a straight move across a
+ * shared sample corner is not guaranteed to stay on walkable samples — so this is the conservative reach.
+ */
+export function walkableComponent(h: Heightfield, x: number, z: number): Uint8Array {
+  const out = new Uint8Array(h.res * h.res);
+  const p = nearestWalkable(h, x, z, 8);
+  if (p === null) return out;
+  const start = Math.round((p[1] - h.originZ) / h.step) * h.res + Math.round((p[0] - h.originX) / h.step);
+  const stack = [start];
+  out[start] = 1;
+  while (stack.length > 0) {
+    const i = stack.pop()!;
+    const row = Math.floor(i / h.res);
+    const col = i - row * h.res;
+    if (col > 0 && out[i - 1] === 0 && h.walkable[i - 1] === 1) { out[i - 1] = 1; stack.push(i - 1); }
+    if (col < h.res - 1 && out[i + 1] === 0 && h.walkable[i + 1] === 1) { out[i + 1] = 1; stack.push(i + 1); }
+    if (row > 0 && out[i - h.res] === 0 && h.walkable[i - h.res] === 1) { out[i - h.res] = 1; stack.push(i - h.res); }
+    if (row < h.res - 1 && out[i + h.res] === 0 && h.walkable[i + h.res] === 1) { out[i + h.res] = 1; stack.push(i + h.res); }
+  }
+  return out;
+}
+
+/** True when some sample of `component` lies within `radius` m of (x, z) — a player there can interact at that range. */
+export function reachableWithin(h: Heightfield, component: Uint8Array, x: number, z: number, radius: number): boolean {
+  const c0 = Math.max(0, Math.ceil((x - radius - h.originX) / h.step));
+  const c1 = Math.min(h.res - 1, Math.floor((x + radius - h.originX) / h.step));
+  const r0 = Math.max(0, Math.ceil((z - radius - h.originZ) / h.step));
+  const r1 = Math.min(h.res - 1, Math.floor((z + radius - h.originZ) / h.step));
+  for (let row = r0; row <= r1; row++) {
+    const sz = h.originZ + row * h.step;
+    for (let col = c0; col <= c1; col++) {
+      const sx = h.originX + col * h.step;
+      if ((sx - x) * (sx - x) + (sz - z) * (sz - z) <= radius * radius && component[row * h.res + col] === 1) return true;
+    }
+  }
+  return false;
 }
 
 /** Fraction of all res² samples that are walkable (§3.10 rule 12: ≥ 0.45). */

@@ -242,6 +242,67 @@ function trackGpuObjects(gpu: WebGPURenderer, phase: () => string): TrackedGpu {
   return out;
 }
 
+/**
+ * `?pipes=1` (compile-time hunting, IMPLEMENTATION-NOTES Part 5): times every `GPUDevice.createRenderPipeline(Async)`
+ * call (label, start, duration, phase) so the zone compile's wall time can be split by pipeline.
+ */
+interface PipeRec { readonly label: string; readonly t0: number; dt: number; readonly async: boolean; readonly phase: string; readonly by: string }
+const pipeRecs: PipeRec[] = [];
+let pipePhase = 'boot';
+/** The render object whose pipeline three is creating right now (set around `backend.createRenderPipeline`). */
+let pipeBy = '';
+/** Installed once the backend exists: names the object behind every pipeline (`PipeRec.by`). */
+function tagPipelines(gpu: WebGPURenderer): void {
+  const be = gpu.backend as unknown as { createRenderPipeline(ro: { object?: { name?: string; type?: string; isInstancedMesh?: boolean; count?: number }; material?: { name?: string } }, p: unknown): unknown };
+  const orig = be.createRenderPipeline.bind(be);
+  be.createRenderPipeline = (ro, p) => {
+    pipeBy = `${ro.object?.type ?? '?'} '${ro.object?.name ?? ''}'${ro.object?.isInstancedMesh ? ` n${ro.object.count ?? 0}` : ''}`;
+    try { return orig(ro, p); } finally { pipeBy = ''; }
+  };
+}
+if (new URLSearchParams(location.search).get('pipes') === '1') {
+  const proto = WebGPURenderer.prototype as unknown as { init(this: WebGPURenderer): Promise<unknown> };
+  const init = proto.init;
+  let tagged = false;
+  proto.init = async function (this: WebGPURenderer): Promise<unknown> {
+    const res = await init.call(this);
+    if (!tagged) { tagged = true; tagPipelines(this); }
+    return res;
+  };
+}
+if (new URLSearchParams(location.search).get('pipes') === '1' && typeof GPUDevice !== 'undefined') {
+  const proto = GPUDevice.prototype as unknown as { createRenderPipelineAsync(d: { label?: string }): Promise<unknown>; createRenderPipeline(d: { label?: string }): unknown };
+  const pa = proto.createRenderPipelineAsync;
+  proto.createRenderPipelineAsync = function (this: GPUDevice, d: { label?: string }): Promise<unknown> {
+    const rec: PipeRec = { label: d.label ?? '', t0: performance.now(), dt: -1, async: true, phase: pipePhase, by: pipeBy };
+    pipeRecs.push(rec);
+    return pa.call(this, d).then((p) => { rec.dt = performance.now() - rec.t0; return p; });
+  };
+  const ps = proto.createRenderPipeline;
+  proto.createRenderPipeline = function (this: GPUDevice, d: { label?: string }): unknown {
+    const rec: PipeRec = { label: d.label ?? '', t0: performance.now(), dt: 0, async: false, phase: pipePhase, by: pipeBy };
+    pipeRecs.push(rec);
+    const p = ps.call(this, d);
+    rec.dt = performance.now() - rec.t0;
+    return p;
+  };
+}
+function pipeSummary(): Record<string, unknown> {
+  const by = new Map<string, PipeRec[]>();
+  for (const r of pipeRecs) { const a = by.get(r.phase) ?? []; a.push(r); by.set(r.phase, a); }
+  const out: Record<string, unknown> = {};
+  for (const [ph, rs] of by) {
+    const done = rs.filter((r) => r.dt >= 0);
+    const span = rs.length ? Math.max(...done.map((r) => r.t0 + r.dt)) - Math.min(...rs.map((r) => r.t0)) : 0;
+    out[ph] = {
+      n: rs.length, async: rs.filter((r) => r.async).length, sync: rs.filter((r) => !r.async).length, pending: rs.length - done.length,
+      sumMs: Math.round(done.reduce((s, r) => s + r.dt, 0)), spanMs: Math.round(span),
+      top: [...done].sort((a, b) => b.dt - a.dt).slice(0, 40).map((r) => `${Math.round(r.dt)} @${Math.round(r.t0)} ${r.label} <- ${r.by}`),
+    };
+  }
+  return out;
+}
+
 let trackPhase = 'boot';
 let tracked: TrackedGpu | null = null;
 if (new URLSearchParams(location.search).get('track') === '1') {
@@ -254,9 +315,35 @@ if (new URLSearchParams(location.search).get('track') === '1') {
   };
 }
 
+/** Compile progress reports (T4) and the frames rendered while a background phase ran (ms between rAF ticks, frame() CPU). */
+const compileLog: { phase: string; zone: string | null; loaded: number; total: number; done: boolean; ms: number | null; at: number }[] = [];
+let backgroundActive = false;
+const bgFrames: { gap: number; cpu: number; at: number }[] = [];
+/** Main-thread long tasks (> 50 ms) while a background phase ran: start (ms since navigation) and duration. */
+const bgLongTasks: { at: number; ms: number }[] = [];
+try {
+  const all: { at: number; ms: number }[] = [];
+  (window as unknown as { __ewaLongTasks: typeof all }).__ewaLongTasks = all;
+  new PerformanceObserver((l) => {
+    for (const e of l.getEntries()) {
+      const rec = { at: Math.round(e.startTime), ms: Math.round(e.duration) };
+      if (backgroundActive) bgLongTasks.push(rec);
+      if (all.length < 400) all.push(rec);
+    }
+  }).observe({ type: 'longtask', buffered: false });
+} catch { /* no long-task timing */ }
+const idleFrames: { gap: number; cpu: number; at: number }[] = [];
+
 async function main(): Promise<void> {
   const tBoot = performance.now();
   const r = await createRenderer({
+    onCompileProgress: (p) => {
+      compileLog.push({ ...p, at: Math.round(performance.now()) });
+      if (p.phase === 'background') backgroundActive = !p.done;
+      if (p.done) timing[`compile_${p.phase}_ms`] = p.ms === null ? null : Math.round(p.ms);
+      if (p.done) timing[`compile_${p.phase}_units`] = p.total;
+    },
+    backgroundCompile: new URLSearchParams(location.search).get('bg') !== '0',   // `&bg=0`: single-phase (Part 4) A/B
     canvas,
     pixelRatio: window.devicePixelRatio || 1,
     effects: ALL_EFFECTS,
@@ -285,18 +372,22 @@ async function main(): Promise<void> {
     const harvest = (params.get('harvest') ?? 'intact') as 'intact' | 'thinning' | 'harvested';
     const def = contentZone(zoneId);
     const spec = zoneSpecFor(def, harvest);
+    const fx = Number(params.get('x') ?? def.spawn.x); const fz = Number(params.get('z') ?? def.spawn.z);
+    rig.setHeading((Number(params.get('h') ?? 0) & 3) as 0 | 1 | 2 | 3);
+    rig.setZoomStop(Math.max(0, Math.min(2, Number(params.get('zoom') ?? 1))) as 0 | 1 | 2);
+    for (let i = 0; i < 30; i++) rig.update(16);     // settle the heading / zoom eases (the predicted view reads them)
     const t0 = performance.now();
     trackPhase = 'loadZone';
-    zoneHandle = await r.loadZone(spec) as ZoneHandleImpl;
+    pipePhase = 'zone';
+    zoneHandle = await r.loadZone(spec, { focus: { x: fx, z: fz } }) as ZoneHandleImpl;
+    pipePhase = 'background';
     trackPhase = 'firstFrame';
+    pipePhase = 'firstFrame';
     timing.loadZoneMs = Math.round(performance.now() - t0);
     timing.programsAfterLoad = r.renderer.info.memory.programs;
     programsAtLoad = programCodes(r);
     console.info(`[sandbox] loaded ${zoneId} in ${(performance.now() - t0).toFixed(0)} ms`, zoneHandle.info);
-    const fx = Number(params.get('x') ?? def.spawn.x); const fz = Number(params.get('z') ?? def.spawn.z);
     rig.setFocus(fx, zoneHandle.collider.sampleClamped(fx, fz), fz);
-    rig.setHeading((Number(params.get('h') ?? 0) & 3) as 0 | 1 | 2 | 3);
-    rig.setZoomStop(Math.max(0, Math.min(2, Number(params.get('zoom') ?? 1))) as 0 | 1 | 2);
     // the first zone frame: CPU time of frame() and until the GPU queue drained (sync pipeline compiles land here);
     // `&hold=1` defers it (and the loop) until `__ewaSandbox.release()`, so it can run under the CDP profiler
     firstZoneFrame = async (): Promise<void> => {
@@ -307,6 +398,8 @@ async function main(): Promise<void> {
       timing.firstZoneFrameMs = Math.round(performance.now() - tf);
       timing.programsAfterFirstFrame = r.renderer.info.memory.programs;
       trackPhase = 'play';
+      if (!backgroundActive) pipePhase = 'play';
+      void (r.compileIdle?.() ?? Promise.resolve()).then(() => { pipePhase = 'play'; timing.backgroundIdleAt = Math.round(performance.now() - t0); timing.programsAfterBackground = r.renderer.info.memory.programs; });
       holding = false;
     };
     if (params.get('hold') === '1') holding = true; else await firstZoneFrame();
@@ -328,9 +421,13 @@ async function main(): Promise<void> {
 
   let last = performance.now();
   const loop = (now: number): void => {
-    const dt = Math.min(100, now - last);
+    const gap = now - last;
+    const dt = Math.min(100, gap);
     last = now;
+    const tc = performance.now();
     if (!holding) r.frame(dt);
+    const rec = { gap: Math.round(gap * 10) / 10, cpu: Math.round((performance.now() - tc) * 10) / 10, at: Math.round(now) };
+    if (backgroundActive) { if (bgFrames.length < 20000) bgFrames.push(rec); } else if (idleFrames.length < 600) idleFrames.push(rec);
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
@@ -341,6 +438,39 @@ async function main(): Promise<void> {
     probe,
     /** Boot / zone-load / first-frame timings (ms) and program counts at each step. */
     timing: () => ({ ...timing }),
+    /** T4: every onCompileProgress report (phase, units, ms) and frame gaps / CPU during vs after the background phase. */
+    compileLog: () => compileLog.filter((c) => c.done || c.loaded === 0),
+    frameStats: () => {
+      const q = (xs: number[], f: number): number => { const a = [...xs].sort((x, y) => x - y); return a.length ? a[Math.min(a.length - 1, Math.floor(a.length * f))]! : Number.NaN; };
+      const sum = (fs: { gap: number; cpu: number }[]) => ({ n: fs.length, gapP50: q(fs.map((f) => f.gap), 0.5), gapP95: q(fs.map((f) => f.gap), 0.95), gapMax: q(fs.map((f) => f.gap), 1), cpuP50: q(fs.map((f) => f.cpu), 0.5), cpuP95: q(fs.map((f) => f.cpu), 0.95), cpuMax: q(fs.map((f) => f.cpu), 1), over50: fs.filter((f) => f.gap > 50).length, over100: fs.filter((f) => f.gap > 100).length });
+      const lt = bgLongTasks;
+      return {
+        background: sum(bgFrames), after: sum(idleFrames),
+        longTasks: { n: lt.length, sumMs: lt.reduce((x, e) => x + e.ms, 0), maxMs: lt.reduce((x, e) => Math.max(x, e.ms), 0), top: [...lt].sort((a2, b2) => b2.ms - a2.ms).slice(0, 8) },
+        slowFrames: bgFrames.filter((f) => f.gap > 100).slice(0, 40).map((f) => `${f.at}:${f.gap}`),
+      };
+    },
+    /** T4: a zone handover measured like the client does it: dispose, then loadZone(next, focus); phase 1 ms returned. */
+    handover: async (next: string, x?: number, z?: number) => {
+      const def2 = contentZone(next as ZoneId);
+      const spec2 = zoneSpecFor(def2, 'intact');
+      const hx = x ?? def2.spawn.x; const hz = z ?? def2.spawn.z;
+      zoneHandle?.dispose();
+      rig.setFocus(hx, 0, hz);
+      bgFrames.length = 0; idleFrames.length = 0; bgLongTasks.length = 0;
+      pipePhase = 'handover';
+      const th = performance.now();
+      zoneHandle = await r.loadZone(spec2, { focus: { x: hx, z: hz } }) as ZoneHandleImpl;
+      const phase1 = Math.round(performance.now() - th);
+      pipePhase = 'handover-bg';
+      rig.setFocus(hx, zoneHandle.collider.sampleClamped(hx, hz), hz);
+      (window as unknown as { __ewaZone: unknown }).__ewaZone = { spec: spec2, handle: zoneHandle };
+      await (r.compileIdle?.() ?? Promise.resolve());
+      return { phase1Ms: phase1, totalMs: Math.round(performance.now() - th), programs: r.renderer.info.memory.programs };
+    },
+    /** `?pipes=1`: render pipelines created per phase (count, summed / wall ms, the slowest). */
+    pipes: () => pipeSummary(),
+    pipeRecs: () => pipeRecs.map((p) => ({ ...p, t0: Math.round(p.t0), dt: Math.round(p.dt) })),
     /** `&hold=1`: renders the deferred first zone frame (then the loop resumes) and returns the timings. */
     release: async () => { if (firstZoneFrame && holding) await firstZoneFrame(); return { ...timing }; },
     /** Programs (WGSL) three holds now that it did not hold right after `loadZone` resolved, plus that snapshot. */
@@ -406,8 +536,9 @@ async function main(): Promise<void> {
         const b = host.baseline as unknown as Record<string, number>;
         rounds.push(Object.fromEntries(keys.map((k) => [k, m[k]! - b[k]!])));
         trackPhase = `reload${i}`;
-        zoneHandle = await r.loadZone(spec) as ZoneHandleImpl;
+        zoneHandle = await r.loadZone(spec, { focus: { x: rig.focus.x, z: rig.focus.z } }) as ZoneHandleImpl;
         for (let k = 0; k < 3; k++) r.frame(16);
+        if (new URLSearchParams(location.search).get('leakwait') !== '0') await (r.compileIdle?.() ?? Promise.resolve());
         trackPhase = 'play';
       }
       return rounds;
