@@ -79,8 +79,11 @@ export interface World3D extends WorldInstance {
   tick(nowMs: number): void;
 }
 
+/** The render look id for a player body: `<look>` or `<look>:<palette>` (the character atlas bakes palette variants). */
 function lookOf(body: string): string {
-  return BODIES.find((b) => b.id === body)?.look ?? 'casual_male';
+  const def = BODIES.find((b) => b.id === body);
+  if (!def) return 'casual_male';
+  return def.palette ? `${def.look}:${def.palette}` : def.look;
 }
 
 function devBuild(): boolean {
