@@ -527,3 +527,60 @@ rig (a crown two thirds of the way to the camera pulls the shot in and leaves it
   the clock, and never overlap (render Part 4 H10).
 - **P4-C9** §10.7.4: the battle / inspector camera never enters a tree crown. The zone collider exposes crown spheres
   and the rig pulls the shot in along its orbit ray (render Part 4 H11).
+
+## H2 addendum — sprites outside the zone root
+
+Creature billboards live in the sprite pool, outside the zone root, so a zone dump never listed them and
+`sprites.nearest` could not see them. `DumpInput.spriteScan` (the host passes its scene) adds one `sprites[]` row per
+billboard material found anywhere in the scene. `materials[]` stays the zone root's set, which is what
+`counts.materials` counts. Test: `zone-dump.test.ts` (a pool outside the root yields `{ atlas, magFilter 1003,
+anisotropy 1 }` read from `userData.ewaAlbedo`).
+
+## Measured summary (dev iGPU, cold compiles)
+
+| Metric | before | after |
+|---|---|---|
+| caps (render targets / programs) | 24 / 96 (every zone flagged) | 41 / 128 (Mirevale 34 / 97 passes) |
+| programs after step 8 / after `loadZone` / after the first zone frame | 79 / 79 / 107 | 79 / 91 / 97 |
+| render targets (Mirevale / battle demo) | 34 / 34 | 34 / 36 (battle: +2 beacon shadow maps, unchanged by this part) |
+| first zone frame CPU / to GPU idle | 10.1 s / 48.9 s | 0.19–0.34 s / 1.9–3.4 s |
+| `createRenderer` (step 8 incl.) | 43.0 s | 16.4–23.0 s |
+| `loadZone` | 7.2 s | 37–53 s (the compile moved here, incl. LOD / far tiers) |
+| leak after unload (rt / tex / attr / prog / geo) | +1 / +1…+2 / 0 / 0 / 0 | 0 / 0 / 0 / 0 / 0 (immediate and after a full cycle) |
+| `stats().passMs` in the sandbox | all null | resolves per row (Mirevale: opaque 91–119, shadows 6.9–7.5, gtao 2.9–3.4, traa 1.6–1.9, bloom 0.6, dof 3.4–4.1, grade 1.0 ms; battle demo: gpu 29–37, opaque 20, dof 4.8 ms) |
+| actor | procedural figure, 1 mesh | GLB look (6 492 tris, 23 bones), 1 mesh; 6 draws per actor per frame = beauty + 4 cascades + the local spot, the same count as a procedural rig |
+| DOF A/B, battle demo (same frame) | — | mean absolute difference 1.6 / 2.7 levels per channel around the far / near battler (max 66) |
+| fog on the 4 m inspector | 0.018 host default | 0.0068; contrast σ 49.9 → 51.3, nearly identical at that distance |
+
+## Tests (Part 4)
+
+Render + asset-audit: **238 tests in 22 files, all passing** (baseline 215 in 20). New files: `test/zone-dump.test.ts`
+(dump on the built slice zones, housings both directions, sprite scan) and `test/actors-glb.test.ts` (GLB looks). Extended:
+`stats-dispose` (caps, per-context pass aggregation, `PassTimer`), `post-graph` (DOF mask CoC, stage → render-target
+map), `collider` (step-bounded `resolveMove`, crowns), `camera-rig` (crown avoidance), `hud` (bar placement),
+`material-library` (retire / `beforeRelease` / refresh), `zone-dispose` (hero gate), `lighting` (fog default),
+asset-audit `rules` (caps) and `zone-dump` (new fields, drift keys). `packages/client` (read-only check): `tsc -b`
+clean, `zoneSpecFor` snapshot unchanged, and the client suite passes.
+
+## Sandbox (Part 4)
+
+`EWA_SANDBOX_NO_HMR=1` disables HMR for measurements. After a dependency re-optimisation, reload the page by hand
+(vite cannot reload it without HMR). URL flags: `&track=1` (GPU object tracker), `&hold=1` (defer the first zone frame;
+`release()` renders it), `&precompile=0` (the pre-H4 path). `window.__ewaSandbox` adds `timing()`, `newPrograms()`,
+`live()`, `leaks()`, `setTrackPhase(p)`, `setDofMaskedCoC(bool)`, `setFogDensity(d)` and `release()`. The lineup demo
+walkers are two manifest looks (`casual_male`, `cowboy_female`) plus `ranger_m` (not in the manifest: procedural).
+
+## Open (not done in Part 4)
+
+1. **Legendary GLBs** (§10.7.7, LOD1 beyond 40 m): no render subsystem draws a legendary yet (battle creatures are
+   billboards), so they are not wired. `createGlbLookSource` already passes the host `KTX2Loader` to `GLTFLoader`.
+2. **`onCompileProgress` → BootScreen:** the option exists and reports progress; the client has to pass it into
+   `createRenderer` and show it (client file, not changed here). Zone loads now take 37–53 s cold on the iGPU, and
+   that time is in `loadZone`. A browser GPU shader cache (warm runs) should cut it; not measured.
+3. **Shadow-pass variants and post quads** still compile on the first zone frame (4 + 4 programs, ≈ 0.3 s CPU).
+4. **`scatter.instanced`** fails every real dump by design until P4-C1 is decided.
+5. **Browser-side audit run:** the new dump fields are verified in node on the built slice zones and through the drift
+   test. A `dump()` from the browser sandbox piped through `pnpm audit:assets` was not re-run after the last change.
+6. **DOF gather leak:** out-of-focus background pixels next to a sharp sprite still gather its colour within their own
+   CoC (H3). Removing that needs depth-weighted taps inside `DepthOfFieldNode`, i.e. a custom DOF node.
+7. The `sprites` row of `passMs` stays null in play (inside the scene pass); only the differential probe splits it.
