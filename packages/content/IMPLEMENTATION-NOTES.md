@@ -69,8 +69,9 @@ touching the committed data. The zero-argument call is the §3.10 gate.
    zone, so `spawn`/npcs/trainers/items/lore/warps are walkable by construction (`heightfield.test.ts` asserts
    `isWalkable` directly on them). Statics and raid hotspots are not in `ZoneDef`, so they are checked with
    `nearestWalkable(h, x, z, 8)`; `voidraxis (0, 84)` and `raid_ascent_pyrothal (0, 104)` sit on the interior
-   boundary and snap inward as the CHANGELOG predicts. Prop footprints are render data and are not modelled.
-   Walkable ratio: 61.3 % (saltmourn) … 74.4 % (siege_route, deepcut_route).
+   boundary and snap inward as the CHANGELOG predicts. ~~Prop footprints are render data and are not modelled.~~
+   Superseded by R1 below: the zone plan and its footprints are content's now. Terrain walkable ratio
+   61.3 % (saltmourn) … 74.4 % (siege_route, deepcut_route); after footprints 56.9 % … 72.5 %.
 2. **Water where tables need it.** `validate` adds a check the spec implies: a zone whose table has `medium: 'water'`
    slots must have ≥ 1 water sample and ≥ 1 boardwalk sample (walkable ∧ water), so a water spawn can be engaged
    without HM Surf. Salt-biome towns scale pond radius by 0.6 so the harbour fits beside the plaza.
@@ -105,8 +106,130 @@ species 130 · moves 193 · abilities 25 · items 17 · orbs 10 · consumables 2
 zones 21 · tables 15 (148 slots) · statics 8 · league 12 · quests 12 · beats 33
 events 4 · swarms 7 · raids 8 · battle pass 100 · bodies 14 · flags 49
 roster: direct |E| 79 · obtainable 130/130 · families 67 · unobtainable 0
-heightfields 21 · min walkable 61.3%
+heightfields 21 · min walkable 56.9% (terrain 61.3%; plan footprints stamped, R1)
 ```
 
 Generator rewrites (also in the generated headers): `Moonblast` `lower_spAtk → lower_atk` (§2.4); no move carried
 `weaknessPolicy` after all (the §2.4 note is honoured by code, not needed by data).
+
+## R1 — the zone plan moved into content; footprints in `walkable` (2026-09-30)
+
+Audit recommendation R1 / finding L2-01 (`.design/audits/spec-verification.md`): building and prop footprints existed
+only in render's collider, so the server's heightfield let a modified client walk through houses and the spawn
+director could place creatures inside them. Closed.
+
+**What moved.** `src/plan.ts` is render's layout, statement for statement: `planLayout` (plaza, roads, tall-grass
+patches, clearings, set-piece placement, authored keep-clear points, warp pairs), `planBuildings`, `planLights`
+(positions, shadow budget and housing seeds; appearance stays render's), `planProps`, `doorPaths`, `waterBodies`, and
+the solid half of the builder's `buildScatter` (interior tree trunks, pond willows, big rocks: the same jittered grids,
+`hash2` / `fbm2` noise and acceptance, playable interior only). Same seeds, same rng streams in the same order
+(`fork('layout')` / `fork('scatter')` of `createRng(layoutSeed)` via `forkLabelled`, which reproduces render's
+labelled fork; buildings / lights / props from three unlabelled forks, as the adapter drew them).
+
+**API.** `zonePlan(zoneId)` (memoised with the field: `getZoneSurface(zoneId)` gives `{ heightfield, plan, footprints }`),
+`planZone(zone, base)`, `buildingFootprints(plan)`, `stampFootprints`, `solidContains`, `roadZAt`, `waterBodies`,
+`walkableComponent`, `reachableWithin`, and the tables (`SET_PIECE_BY_ZONE`, `SET_PIECE_EXTENT`, `SET_PIECE_LIGHT_SLOTS`,
+`BIOME_ROOFS`, `BIOME_LIGHT_GENERATOR`, `BIOME_SOLID_SCATTER`, `PROP_SOLID_RADIUS`, `SOLID_SET_PIECES`, `FENCE_HALF`,
+`HEART_TREE_RADIUS`, `MOVER_RADIUS`, `TOWN/ROUTE/STORY_LAYOUT`, `ZONE_LIGHT_CAP`, `HANDOVER_INSET`, `INTERIOR_SIZE`).
+`ZonePlan.solids` holds every footprint in render's blocker shapes (`{kind:'rect', x, z, hw, hd, yaw}` /
+`{kind:'circle', x, z, r}`, grown by the 0.35 m capsule radius, tagged `source` building / setpiece / prop / housing /
+tree / willow / rock); `ZonePlan.doors` gives each building's door and approach strip.
+
+**Stamping.** `buildHeightfield` = terrain (steps 1–5 as before), then `planZone(zone, terrain)`, then
+`stampFootprints`: a sample whose centre is strictly inside a solid (render's `blocked` test) becomes `walkable = 0`,
+except water samples (open water is unwalkable already; boardwalk piers stay walkable; no footprint covers any water
+sample in the 21 zones, so `waterBodies` of the stamped field equal the plan's) and samples inside a door approach —
+1.6 m wide, 1.2 m long, starting where the building's own footprint ends (plinth + capsule). Starting it at the plinth
+line admitted positions 0.23 m inside a rotated facade (nearest-sample lookup; found by
+`server/test/footprints.test.ts`). In the 21 zones no other footprint covers any approach, so the carve is a guarantee,
+not a change. The digest is taken after stamping. Cost per zone 9–44 ms in Node (plan + stamp); all 21 in 481 ms in a
+Chrome worker.
+
+**Identity proof.** `test/fixtures/r1-pre-move.json` was captured from the render planners, the client adapter and the
+zone builder at HEAD 689fd78 before anything moved (regenerated from a `git archive` of that tree after the first raw
+capture was overwritten in scratch; counts and digests match the first capture). `test/plan.test.ts` asserts, for all
+21 zones: every layout field, the door paths, the buildings (in full), the props, the light positions / shadow flags /
+housing seeds, and the ordered list of every collider blocker the builder registered equal content's plan.
+`packages/client/test/zoneSpecFor.test.ts` asserts every `ZoneSpec` field except `heightfield` and the new `plan` is
+byte-identical to the pre-move adapter output; the 63 old snapshot digests are reproduced exactly by dropping `plan`
+and restoring the pre-move field digest (checked once, then the snapshot was re-baselined).
+`packages/client/test/footprints.test.ts` builds all 21 zones and asserts the builder's registered footprints are
+content's `plan.solids`, in order, with no client-only blockers. Scratch-only checks: the builder's `geometryDigest`
+is unchanged for all 21 zones in Node and for mirevale / mire_route in Chrome WebGPU (`ad2ad9d2`, `e2e1597b`), and
+before / after sandbox shots of mirevale and mire_route are indistinguishable (< 0.04 % of town pixels differ by
+more than 15/255, about 1 % on the routes: foliage sway and TAA jitter).
+
+**Deliberate changes.** (1) Fence runs (garden pickets, route wayside fences) are solid: `FENCE_HALF` 1.865 × 0.065 m
+plus capsule (render drew them walk-through; `PROP_BLOCKER.fence` was 0): 5–12 per town, 6 per route, 0 in story
+zones. (2) Door approaches (above). (3) Client prediction equals server truth: the builder registers every footprint
+with `TerrainCollider.addFootprint` (shape queries only: `blocked()` for SceneDirector's occluder scoring);
+`passable()` is `walkable` (plus extra `addBlocker` shapes, none in a built zone).
+
+**Walkable share, terrain → with footprints** (%, validate): mirevale 62.77 → 58.02 · mire_route 73.97 → 70.36 ·
+cinderhold 63.01 → 58.82 · ash_route 74.29 → 72.46 · saltmourn 61.28 → 56.94 · tide_route 72.16 → 70.54 ·
+stormrook 62.94 → 57.91 · galvan_route 74.03 → 71.65 · marrowdig 63.03 → 58.15 · deepcut_route 74.40 → 72.08 ·
+vesperveil 62.75 → 58.49 · hollow_route 74.11 → 71.25 · forgewall 63.11 → 58.20 · siege_route 74.44 → 72.32 ·
+skyrend 62.49 → 57.87 · ascent_route 73.72 → 71.48 · solenne 62.94 → 59.07 · eclipse_shrine 69.79 → 67.38 ·
+umbral_observatory 69.21 → 66.93 · celestial_spire 69.79 → 67.45 · the_rift 67.71 → 65.16. Footprints: 151–232 per
+town, 306–392 per story zone, 347–1035 per route (plus fences).
+
+**Moved points** (rule 9 / 12 snap, now reported in `stats.snapped` / `content-report.json` and printed by the CLI):
+`solenne` spawn (−50, 0) → (−50, 0.5), in the road-w lamp post's footprint (the layout keeps actors, items, lore and
+warps clear, not the spawn; the room already snaps the spawn with `nearestWalkable`); `galvan_route` static `voltaura`
+(92, −40) → (92, −39.5), in a big rock; unchanged boundary cases `ascent_route` raid (0, 104) → (0, 103.5) and
+`the_rift` `voidraxis` (0, 84) → (0, 83.5). Every npc, trainer, item, lore tablet and warp end stays walkable.
+
+**Validate additions (rule 12).** Reachability: a 4-neighbour flood fill from the spawn's snapped sample over
+`walkable`; every npc / trainer / item / lore / warp end / static within 3 m, raid hotspot within 8 m, the league door
+(0, −26) within 4 m (towns with a gym, and solenne), every building's door approach and every link's 6 m handover band
+must contain a reached sample. All 21 zones pass (the walkable set is one component in every zone). `validate-cli` now
+also writes `dist/heightfields/<zone>.json` (§3.10 says validate emits them; the separate `heightfields` script still
+works). Files: 4.7 MB (was 4.5 MB).
+
+**Findings.** (a) Warp huts are never placed: `planBuildings` puts the hut's door on the warp marker, and the marker is
+itself an authored point that the 2.5 m clearance refuses, so saltmourn's harbourmaster hut, solenne's league hall and
+umbral_observatory's stair have no building (behaviour kept; the seed draw is kept so nothing else moves). (b)
+Determinism: the plan uses `Math.sin / cos / atan2 / hypot / pow` (render's arithmetic), so §3.11's "integer /
+`Math.fround` arithmetic only" no longer holds for `buildHeightfield`. V8's software implementations make Node and
+Chrome agree (the M0 browser check passes, 21/21); an engine with a different libm (JavaScriptCore) could differ in the
+last ulp and, at worst, flip a boundary sample. Clients on such engines should load the committed
+`dist/heightfields/*.json` (or the plan's inputs could be quantised): a decision for the SPEC owner. (c)
+`packages/server/test/movement.test.ts`'s thin-wall case was vacuous on mire_route (no thin wall existed); fences and
+posts provide one now, and its `dtMs` was raised so the step stays inside the speed cap.
+
+**Left.** `packages/client/src/harness/anchors.ts` (the capture harness) still calls render's deprecated `planLayout`;
+render keeps that planner (asserted equal to content's plan in render's `zone-layout.test.ts` and the client's
+`zoneSpecFor.test.ts`) until the harness reads `layoutOf(spec)`; then it can be deleted. `resolveMove` still has no
+`surf` argument (L2-05, render's).
+
+### Proposed CHANGELOG entries (not applied: the SPEC is being edited elsewhere)
+
+1. **§3.11 Heightfield.** Replace the "Open gap — building and prop footprints" paragraph with: "`buildHeightfield`
+   builds the terrain (noise, kind feature, ponds, authored-point clearings; margin, slope and open water unwalkable),
+   lays out the zone plan on it (`planZone`) and stamps every plan footprint `walkable = 0`: a sample is stamped when
+   its centre lies strictly inside a solid (circle `d² < r²`; rect `|lx| < hw ∧ |lz| < hd` in its yawed frame), except
+   water samples and samples inside a door approach. The digest is taken after stamping." Amend the determinism
+   sentence: "The plan uses `Math.sin/cos/atan2/hypot/pow`; V8 (Node, Chrome) is bit-identical and §50.4.2 checks it;
+   other engines load `dist/heightfields`." Add the plan API to the verbatim block: `zonePlan`, `planZone`,
+   `getZoneSurface`, `buildingFootprints`, `stampFootprints`, `solidContains`, `ZonePlan`, `PlanSolid`, `DoorApproach`
+   (shapes grown by the 0.35 m capsule radius, so `walkable` means "where a player's centre may stand").
+2. **§3.10 rule 12.** "… `spawn` and every authored coordinate are walkable after snapping (each snapped point is
+   reported with its cause); from the spawn, a 4-neighbour flood fill over `walkable` reaches every npc / trainer /
+   item / lore / warp end / static within 3 m, raid hotspot within 8 m, the league door within 4 m, every building's
+   door approach and every link's handover band." And: validate writes `dist/heightfields/<zoneId>.json`.
+3. **§10.5.1 `ZoneSpec`** gains `readonly plan: ZonePlanData` (content's layout: plaza, roads, door paths, road
+   meander, tall-grass patches, clearings, set-piece placement, keep-clear points, warp pairs).
+4. **§10.5.5 Layout.** "The layout is content's (`zonePlan`); the builder reads `spec.plan` (`layoutOf`) and plans
+   nothing. Building and prop footprints ARE in content's `walkable`; the builder registers their shapes with
+   `TerrainCollider.addFootprint` for shape queries." (Reverts the 2026-09-25 amendment.)
+5. **§10.6.1 / §10.6.2.** `addFootprint(b)` (shape only; `blocked()` sees it, `passable()` does not) beside
+   `addBlocker(b)` (an extra client-only obstacle; both see it); `passable = walkable (∨ surf ∧ water) ∧ ¬extra
+   blocker`; delete "the reverse is the open footprint gap of spine §3.11": prediction and validation sample the same
+   bits.
+6. **§20.4.4 adapter.** `spec.buildings` / `props` / `plan` = `zonePlan(zone.id)`; `spec.lights` = render
+   `lightsFromPlan(plan.lights, biome, setPiece, type)`; `SET_PIECE_BY_ZONE` is content's.
+7. **§30.3 Spawn director, "Footprints".** "Position acceptance samples the stamped heightfield, so a spawn never lands
+   inside a footprint (`server/test/footprints.test.ts`)." §30.2.4 needs no change (movement into a house is refused
+   as `unwalkable`).
+8. **Audit table.** L2-01 / R1: closed.
+9. **Render prop table.** Fences are solid (`FENCE_FOOTPRINT` 1.865 × 0.065 m plus capsule).

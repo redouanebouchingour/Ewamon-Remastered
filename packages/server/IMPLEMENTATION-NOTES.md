@@ -550,3 +550,16 @@ money, flags unchanged, the fight offered again after `POST /heal`). `challenge-
 for a fainted party reaches both players with `reason.playerId` = the fainted side (accepter and challenger cases),
 nothing persisted; the expired accept carries `reason.code 'expired'`; the trade delta's `placement` is `box`.
 `battle-room.test.ts` (catch → `placement party`), `market-routes.test.ts` (buy-now → `placement box`).
+
+# Part 5 — footprints are in the heightfield (audit R1, 2026-09-30)
+
+Content's `getHeightfield` now stamps the zone plan's footprints (buildings, solid set-piece cores, props incl. fence
+runs, lamp posts, tree trunks, big rocks) into `walkable` (packages/content IMPLEMENTATION-NOTES, R1). No server code
+changed: `validateInput` and the `SpawnDirector` already sample only the heightfield. `test/footprints.test.ts` pins
+it: a step from every town building's door step through its door is `unwalkable`; no sample inside any building wall
+is walkable; no footprint covers a water sample (a surfer cannot stand in one either); 15 zones × about 1 000–4 000
+spawn rolls each never place a spawn whose sample is inside a footprint or inside a house; every npc / trainer / item
+/ lore / warp end is walkable. One authored point moved: solenne's spawn (−50, 0) sits in a lamp post's footprint and
+the room's existing `nearestWalkable` snap places players 0.5 m away at (−50, 0.5). `movement.test.ts`'s thin-wall
+case, vacuous before (mire_route had no thin wall), now runs against a fence / post and got a `dtMs` inside the speed
+cap.
