@@ -307,6 +307,8 @@ export interface SessionOptions {
   readonly height: number;
   readonly serve: 'build' | 'dev';
   readonly build: boolean;
+  /** §50.6.1 heading convention for the page (default 'words', anchors.ts) */
+  readonly headings?: 'words' | 'rig';
 }
 
 /** Server + Chrome + the harness page booted for `zone` (renderer, zone, shader warm-up done). */
@@ -326,7 +328,7 @@ export async function openSession(o: SessionOptions): Promise<Session> {
   try {
     browser = await launchChrome({ width: o.width, height: o.height });
     log(`chrome ${browser.version} on debugging port ${browser.port}`);
-    const url = `${server.origin}/harness/${o.route}?zone=${encodeURIComponent(o.zone)}`;
+    const url = `${server.origin}/harness/${o.route}?zone=${encodeURIComponent(o.zone)}${o.headings === 'rig' ? '&headings=rig' : ''}`;
     const t0 = Date.now();
     await browser.cdp.send('Page.navigate', { url });
     let state: { ready: boolean; error: string | null } | null = null;

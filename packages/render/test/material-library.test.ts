@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Group, LinearFilter, LinearMipmapLinearFilter, Mesh, MeshStandardNodeMaterial, PlaneGeometry, RepeatWrapping, SRGBColorSpace, NoColorSpace, Texture } from 'three/webgpu';
 import { LAYERS } from '../src/descriptors.js';
-import { MaterialBudget, countMaterials, createMaterialLibraryWith, paintSurfaceColor, type MaterialLibrary } from '../src/materials/library.js';
+import { MaterialBudget, countMaterials, createMaterialLibraryWith, paintSurfaceColor, refreshCachedTextureBindings, type MaterialLibrary } from '../src/materials/library.js';
 import type { MaterialsManifest } from '../src/materials/manifest.js';
 import { structureKey, surfaceStructure } from '../src/materials/graph.js';
 import { SURFACE_IDS, SURFACES } from '../src/materials/surfaces.js';
@@ -126,7 +126,7 @@ describe('MaterialLibrary: loading, dedupe, re-pointing', () => {
     lib.disposeAll();
   });
 
-  it('preloadHero re-points the same material and releases the field set; field-only ids are a no-op', async () => {
+  it('preloadHero re-points the same material and retires the field set until the next eviction; field-only ids are a no-op', async () => {
     const { source, loaded } = mockSource();
     const lib = createMaterialLibraryWith({ baseUrl: '/materials/', source, fetchJson: async () => manifestFor(['cobble', 'thatch'], ['cobble']) });
     await lib.preload(['cobble', 'thatch']);
@@ -136,10 +136,46 @@ describe('MaterialLibrary: loading, dedupe, re-pointing', () => {
     expect(lib.get('cobble')).toBe(m);                     // same material object: no new program
     const heroAlbedo = loaded.find((l) => l.url.includes('cobble.hero_albedo'))!;
     expect(m.map).toBe(heroAlbedo.tex);
-    expect(fieldAlbedo.dispose).toHaveBeenCalledTimes(1);   // field set released
+    // H5c: not disposed at the hero bind (three's shadow pass may still re-initialise it), released at eviction
+    expect(fieldAlbedo.dispose).not.toHaveBeenCalled();
     expect(loaded.some((l) => l.url.includes('thatch.hero'))).toBe(false);
     expect(lib.describe(m)!.bound).toBe('hero');
+    const setsBefore = lib.stats().residentSets;
+    lib.evictExcept(['cobble']);                             // cobble is kept (its hero set stays), the retired field set goes
+    expect(fieldAlbedo.dispose).toHaveBeenCalledTimes(1);
+    expect(lib.stats().residentSets).toBe(setsBefore - 2);   // cobble.field (retired) + thatch.field (evicted)
+    expect(lib.get('cobble').map).toBe(heroAlbedo.tex);
     lib.disposeAll();
+  });
+
+  it('H5: beforeRelease runs after the re-point and before the replaced set is disposed (hero bind and eviction)', async () => {
+    const { source, loaded } = mockSource();
+    const order: string[] = [];
+    const lib = createMaterialLibraryWith({
+      baseUrl: '/materials/', source, fetchJson: async () => manifestFor(['cobble'], ['cobble']),
+      beforeRelease: () => {
+        const field = loaded.find((l) => l.url.includes('cobble.field_albedo'));
+        order.push(`refresh(map=${lib.get('cobble').map === field?.tex ? 'field' : 'other'}, fieldDisposed=${field ? (field.dispose as unknown as { mock: { calls: unknown[] } }).mock.calls.length : -1})`);
+      },
+    });
+    await lib.preload(['cobble']);
+    await lib.preloadHero(['cobble']);
+    lib.evictExcept([]);
+    // after the hero bind (map already the hero set, field set not disposed), then after the eviction re-point (the
+    // retired field set is disposed only after the hook)
+    expect(order.filter((o) => o.startsWith('refresh(map=other, fieldDisposed=0)')).length).toBe(2);
+    lib.disposeAll();
+  });
+
+  it('H5: refreshCachedTextureBindings brings every cached sampled-texture binding up to its texture node', () => {
+    const a = new Texture(); const b = new Texture();
+    const node = { value: b };
+    const binding = { isSampledTexture: true, textureNode: node, texture: a, update(this: { texture: Texture; textureNode: { value: Texture } }) { if (this.texture !== this.textureNode.value) { this.texture = this.textureNode.value; return true; } return false; } };
+    const uniform = { isUniformBuffer: true };
+    const renderer = { _nodes: { nodeBuilderCache: new Map([[1, { bindings: [{ bindings: [binding, uniform] }] }]]) } };
+    refreshCachedTextureBindings(renderer as never);
+    expect(binding.texture).toBe(b);
+    expect(() => refreshCachedTextureBindings({} as never)).not.toThrow();
   });
 
   it('evictExcept frees texture sets and re-points evicted materials to the placeholder', async () => {

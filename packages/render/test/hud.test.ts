@@ -123,6 +123,44 @@ describe('§10.9 HudLayer', () => {
     expect(s.calls()).toBe(0);
   });
 
+  it('battle bars stay inside the margins, out of the turn label box, and never overlap (IMPLEMENTATION-NOTES Part 4, H10)', () => {
+    const s = recordingSurface();
+    const a = anchors();
+    const hud = new CanvasHudLayer({ surface: s.factory, anchors: a });
+    hud.resize(1280, 720, 1);
+    const pos = (): number[] => [...(hud as unknown as { barPos: Float32Array }).barPos.slice(0, 4)];
+    const W = 1280; const H = 720; const M = HUD.margin; const w = HUD.barW; const h = HUD.barH;
+    const label = { x0: W / 2 - HUD.turnBandW / 2, x1: W / 2 + HUD.turnBandW / 2, y0: HUD.margin + HUD.turnBandTop, y1: HUD.margin + HUD.turnBandTop + HUD.turnBandH };
+    const check = (): void => {
+      const [x0, y0, x1, y1] = pos() as [number, number, number, number];
+      for (const [x, y] of [[x0, y0], [x1, y1]] as const) {
+        expect(x).toBeGreaterThanOrEqual(M); expect(x + w).toBeLessThanOrEqual(W - M);
+        expect(y).toBeGreaterThanOrEqual(M); expect(y + h).toBeLessThanOrEqual(H - M);
+        expect(x < label.x1 && x + w > label.x0 && y < label.y1 && y + h > label.y0).toBe(false);   // never on the turn label
+      }
+      const overlap = x0 < x1 + w && x0 + w > x1 && y0 < y1 + h && y0 + h > y1;
+      expect(overlap).toBe(false);
+    };
+    // the near battler's head at the top centre (its bar would sit on the turn label), the far one off the right edge
+    a.pos.set('0:0', [640, 90]); a.pos.set('1:0', [1275, 40]);
+    hud.set({ battle: bars(40) }); hud.tick(16); hud.drawIfDirty();
+    check();
+    // the far battler at the top of the frame, its bar just grazing the label: moved up by the few px, not down onto the creature
+    a.pos.set('0:0', [100, 600]); a.pos.set('1:0', [700, 150]);
+    hud.tick(16); hud.drawIfDirty();
+    check();
+    expect(pos()[3]!).toBeLessThan(150 - HUD.barLift - HUD.barH + 1);                 // not below where it wanted to be
+    // both anchors on the same spot: the second bar is pushed below the first
+    a.pos.set('0:0', [640, 400]); a.pos.set('1:0', [650, 405]);
+    hud.tick(16); hud.drawIfDirty();
+    check();
+    // bottom-left corner
+    a.pos.set('0:0', [5, 715]); a.pos.set('1:0', [30, 710]);
+    hud.tick(16); hud.drawIfDirty();
+    check();
+    expect(s.texts).toContain('Turn 1');
+  });
+
   it('chat lines fade after 6 s over 2 s, repainting at ≤ 4 Hz, then go quiet', () => {
     const s = recordingSurface();
     const hud = new CanvasHudLayer({ surface: s.factory });

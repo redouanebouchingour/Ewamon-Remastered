@@ -20,7 +20,7 @@ export class ZoneSystem implements FrameHook {
 
   constructor(private readonly ctx: HostContext, private readonly clock: (() => number) | null = null) {}
 
-  async load(spec: ZoneSpec): Promise<ZoneHandleImpl> {
+  async load(spec: ZoneSpec, opts: { readonly heroGate?: Promise<void> } = {}): Promise<ZoneHandleImpl> {
     this.loads++;
     // a load that starts while the previous zone is still up is a handover pre-load: keep its sets on dispose
     if (this.current !== null && !this.current.disposed) this.pendingKeep = zoneSurfaces(spec);
@@ -33,6 +33,7 @@ export class ZoneSystem implements FrameHook {
         stats: () => ctx.statsRecord,
         nextKeep: () => this.pendingKeep,
         releaseGpu: (root) => releaseZoneAttributes(ctx, root),
+        ...(opts.heroGate ? { heroGate: opts.heroGate } : {}),
       }, this.clock ?? undefined);
       ctx.setLightingPalette(lightingPaletteOf(handle.palette));
       ctx.setGrade(gradeOf(handle.palette));

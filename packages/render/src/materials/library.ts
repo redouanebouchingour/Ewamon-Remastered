@@ -94,6 +94,31 @@ export interface LibraryDeps {
   readonly fetchJson: (url: string) => Promise<unknown>;
   /** Optional eager GPU upload (`renderer.initTexture`) so the first frame uploads nothing. */
   readonly upload?: (t: Texture) => void;
+  /**
+   * Called after materials were re-pointed and BEFORE the replaced textures are disposed (hero bind, eviction). The
+   * renderer refreshes three's cached node-builder states there (IMPLEMENTATION-NOTES Part 4, H5): a render object
+   * created later clones its bindings from a state built before the re-point and would re-initialise the disposed
+   * texture on the GPU — a texture nothing releases again.
+   */
+  readonly beforeRelease?: () => void;
+}
+
+/**
+ * H5 (three 0.186): `NodeBuilderState.createBindings()` clones each `NodeSampledTexture` with the `texture` captured
+ * when the state was built, and `Bindings._createBindings` uploads `binding.texture` before `binding.update()`
+ * refreshes it from its texture node. So after a re-point, every cached state's sampled textures are brought up to
+ * date (`update()` = `texture = textureNode.value`); render objects that already exist refresh on their next render.
+ * Reads three internals (`_nodes.nodeBuilderCache`); absent → nothing happens.
+ */
+export function refreshCachedTextureBindings(renderer: WebGPURenderer): void {
+  type Binding = { isSampledTexture?: boolean; textureNode?: unknown; update?: () => boolean };
+  const cache = (renderer as unknown as { _nodes?: { nodeBuilderCache?: Map<unknown, { bindings?: readonly { bindings: readonly Binding[] }[] }> } })._nodes?.nodeBuilderCache;
+  if (!cache) return;
+  for (const state of cache.values()) {
+    for (const group of state.bindings ?? []) {
+      for (const b of group.bindings) if (b.isSampledTexture === true && b.textureNode !== undefined && typeof b.update === 'function') b.update();
+    }
+  }
 }
 
 /** SPEC §10.2.3 factory. `baseUrl` is where `materials.manifest.json` lives (e.g. `'/materials/'`). */
@@ -110,6 +135,7 @@ export function createMaterialLibrary(renderer: WebGPURenderer, ktx2: KTX2Loader
       return res.json() as Promise<unknown>;
     },
     upload: (t) => renderer.initTexture(t),
+    beforeRelease: () => refreshCachedTextureBindings(renderer),
   });
 }
 
@@ -173,6 +199,13 @@ export function createMaterialLibraryWith(deps: LibraryDeps): MaterialLibrary {
   const byMaterial = new Map<string, Rec>();
   const resident = new Map<string, Resident>();
   const pending = new Map<string, Promise<TextureSet | null>>();
+  /**
+   * Field sets replaced by their hero set, kept resident until the next `evictExcept` (IMPLEMENTATION-NOTES Part 4,
+   * H5c): three's shadow pass samples `material.map` through a `reference()` node whose value updates only during a
+   * render, so a shadow render object created after the re-point re-initialised a field texture disposed at the hero
+   * bind (measured: +1 texture per zone visit). At eviction the zone's render objects are gone.
+   */
+  const retired = new Set<string>();
   const wanted = new Set<SurfaceId>();
   const warned = new Set<string>();
   const warnings: string[] = [];
@@ -307,6 +340,7 @@ export function createMaterialLibraryWith(deps: LibraryDeps): MaterialLibrary {
       if (deps.upload) { deps.upload(t.albedo); deps.upload(t.orm); deps.upload(t.normal); }
       placeholder = { albedo: t.albedo, orm: t.orm, normal: t.normal, ktx2: true };
       for (const rec of recs.values()) if (rec.bound === 'placeholder') bindPlaceholder(rec);
+      deps.beforeRelease?.();
       disposeSet(fallback);   // nothing references the runtime set any more
     } catch (err) {
       warn(`KTX2 placeholder set unavailable (${err instanceof Error ? err.message : String(err)}): using the runtime 4×4 neutral set`);
@@ -347,7 +381,8 @@ export function createMaterialLibraryWith(deps: LibraryDeps): MaterialLibrary {
         const set = await loadTier(id, 'hero');
         if (set === null || disposed || !wanted.has(id)) return;
         bindSet(rec, set);
-        releaseResident(setKey(id, 'field'));                // the field set is no longer bound anywhere
+        deps.beforeRelease?.();
+        if (resident.has(setKey(id, 'field'))) retired.add(setKey(id, 'field'));   // released at the next eviction (H5c)
       }));
     },
 
@@ -358,7 +393,9 @@ export function createMaterialLibraryWith(deps: LibraryDeps): MaterialLibrary {
       for (const rec of recs.values()) {
         if (!keepSet.has(rec.def.id) && rec.bound !== 'placeholder') bindPlaceholder(rec);
       }
-      for (const [key, r] of [...resident]) if (!keepSet.has(r.id)) releaseResident(key);
+      deps.beforeRelease?.();
+      for (const [key, r] of [...resident]) if (!keepSet.has(r.id) || retired.has(key)) releaseResident(key);
+      retired.clear();
     },
 
     stats() {
@@ -374,7 +411,7 @@ export function createMaterialLibraryWith(deps: LibraryDeps): MaterialLibrary {
       for (const key of [...resident.keys()]) releaseResident(key);
       if (placeholder !== fallback) disposeSet(placeholder);
       disposeSet(fallback);   // idempotent on the three side; harmless if already disposed after `ready`
-      recs.clear(); byMaterial.clear(); pending.clear(); wanted.clear();
+      recs.clear(); byMaterial.clear(); pending.clear(); wanted.clear(); retired.clear();
     },
 
     warmup() {

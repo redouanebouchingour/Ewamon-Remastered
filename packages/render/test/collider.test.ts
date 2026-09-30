@@ -130,3 +130,31 @@ describe('§10.6.2 resolveMove', () => {
     }
   });
 });
+
+describe('tree crowns (IMPLEMENTATION-NOTES Part 4, H11)', () => {
+  it('crownClearance is the first entry parameter; inside the start sphere counts as clear', () => {
+    const c = new TerrainCollider(fixture('mirevale'));
+    expect(c.crownClearance(0, 1, 0, 10, 1, 0)).toBe(1);
+    c.addCrown({ x: 5, y: 1, z: 0, r: 1 });
+    expect(c.crownClearance(0, 1, 0, 10, 1, 0)).toBeCloseTo(0.4, 9);        // enters at x = 4
+    expect(c.crownClearance(0, 5, 0, 10, 5, 0)).toBe(1);                    // passes above
+    expect(c.crownClearance(5, 1, 0, 10, 1, 0)).toBe(1);                    // starts inside
+    expect(c.inCrown(5.5, 1, 0)).toBe(true);
+    expect(c.inCrown(6.5, 1, 0)).toBe(false);
+  });
+
+  it('the zone builder registers a crown for every scatter tree, the unwalkable margin forest included', async () => {
+    const { buildZone } = await import('../src/zone/builder.js');
+    const { mockLibrary, realSpec } = await import('./zone-helpers.js');
+    const lib = await mockLibrary();
+    const h = buildZone(realSpec('mire_route'), { materials: lib, lighting: null, scene: null });
+    const n = h.collider.crownCount();
+    expect(n).toBeGreaterThan(500);
+    // some crowns stand in the 16 m margin (no blockers there): probe a margin tree line
+    const b = h.collider.bounds;
+    let margin = 0;
+    for (let x = b.minX - 15; x < b.minX; x += 1) for (let z = b.minZ; z < b.maxZ; z += 1) if (h.collider.inCrown(x, h.collider.sampleClamped(x, z) + 5, z)) margin++;
+    expect(margin).toBeGreaterThan(0);
+    h.dispose();
+  }, 60_000);
+});

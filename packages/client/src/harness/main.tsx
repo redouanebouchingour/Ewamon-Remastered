@@ -13,7 +13,7 @@ import { harvestStateFor, zone as zoneDef } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
 import { rendererInternals } from '@ewa/render';
 import type { BudgetCounts, ZoneDump } from '@ewa/render';
-import { AUDIT_SHOTS, resolveAnchor, shotDef, shotsForZone } from './anchors';
+import { AUDIT_SHOTS, headingConvention, resolveAnchor, setHeadingConvention, shotDef, shotsForZone } from './anchors';
 import type { ResolvedAnchor, ShotId, Variant } from './anchors';
 import { HarnessWorld } from './HarnessWorld';
 import { HarnessOverlay } from './HarnessOverlay';
@@ -40,6 +40,8 @@ interface HarnessApi {
 
 const params = new URLSearchParams(location.search);
 const zoneId = (params.get('zone') ?? 'mirevale') as ZoneId;
+// ?headings=rig: the §50.6.1 heading numbers straight to the rig (default: the table's words, anchors.ts)
+setHeadingConvention(params.get('headings') === 'rig' ? 'rig' : 'words');
 const log: string[] = [];
 const say = (line: string): void => {
   log.push(`${(performance.now() / 1000).toFixed(1)}s ${line}`);
@@ -93,6 +95,7 @@ function info(): Record<string, unknown> {
     compileStats: host?.compileStats ?? null,
     materialWarnings: r.materials.warnings(),
     harvest: world.harvest,
+    headingConvention: headingConvention(),
     shots: shotsForZone(zoneId).map((x) => x.id),
   };
 }

@@ -314,3 +314,216 @@ mirror already had them as optional fields, so only its comments, README and the
   log {0, 1, 2}; flower_patch, grass_tuft, tall_grass {0, 1} — the part-2 Z2 design (small kinds are not drawn
   beyond 90 m, only trees get impostor cards). The rule will therefore fail every real dump; proposed CHANGELOG
   entry P4-C1 below (accept "not drawn at that tier" for non-tree kinds).
+
+## H3 — DOF halo around sharp billboards (task 3, R4)
+
+`buildPostOutput` feeds the DOF `viewZNode = −d · (1 − mask.y)` instead of `−d` (`post/pipeline.ts`), so the circle
+of confusion is 0 wherever a sharp billboard or the player character writes `mask.y = 1`; the composite
+`mix(blurred, bloomed, mask.y)` is unchanged. Why this removes the halo (read in `DepthOfFieldNode.js`): the near
+field's CoC is Gaussian-blurred (`_CoCBlurNode`) and the blur16 pass is a max filter over blur64 taps, so a sharp
+sprite off the tilted plane spread its own CoC (and, through the max pass, its colour) into the in-focus ground
+around it. With its CoC at 0 the sprite adds no near/far weight of its own. What remains by construction: an
+out-of-focus background pixel next to a sprite still gathers the sprite's colour within its own CoC radius (a gather
+DOF without per-tap depth weighting; three's node has none). That is much weaker and only happens where the
+background is already blurred. `PostBuildOptions.dofMaskedCoC` (default true) keeps the part-1 graph available for
+A/B (`__ewaSandbox.setDofMaskedCoC(false)`). Test: `post-graph.test.ts` walks the real TSL graph. Through its
+`VarNode`, the DOF's `viewZNode` is a `*` whose left operand contains the depth texture and not the mask, and whose
+right operand contains the mask texture and not the depth. With the option off, the mask is absent.
+
+## H4 — shader pre-compilation (task 4, R6; coordinator item 4)
+
+`renderer.loadZone` now resolves only after `precompile('zone', …)` has compiled the zone root and the kept step-8
+warm-up group against the zone's light set; `createRenderer` step 8 pre-compiles the warm-up group before its warm-up
+frame. Both go through `gpu.compileAsync` (`createRenderPipelineAsync` plus a yield per object), as
+`COMPILE_CONCURRENCY = 4` concurrent calls. Progress: `RendererOptions.onCompileProgress({ phase: 'boot' | 'zone', zone,
+loaded, total, done, ms })` for the client's BootScreen (the client still has to wire it; not a render file).
+`RendererOptions.precompile: false` restores the old path (A/B only).
+
+These three 0.186 facts each made the pre-compiled programs differ from the ones the first frame used. They were
+measured by diffing `renderer._pipelines.programs` before and after the first zone frame (`__ewaSandbox.newPrograms()`):
+
+| # | Fact (node_modules) | Symptom before the fix | Fix |
+|---|---|---|---|
+| a | `compileAsync` captures the render context in its synchronous prologue, but every node build runs later in its async loop and reads `renderer.getRenderTarget()` / `getMRT()` again (`NodeMaterial.setup` → `setupOutput`, `NodeBuilder.needsPreviousData`) | with the target and MRT restored after the prologue, every async pipeline failed validation ("Color target has no corresponding fragment stage output") | the scene pass's target and MRT stay set for the whole compile; `frame()` swaps the canvas state in and out around its synchronous body (`compileHold`) |
+| b | `RenderObject.getMaterialCacheKey()` includes `renderContext.id`, and `RenderContexts.get(rt, mrt, callDepth)` keys contexts by render call depth. The scene pass renders nested inside the display node that first reads its textures (depth 3 measured with the full graph: pipeline quad → DOF CoC quad → pass), while `compileAsync` asks for depth 0 | the first frame redid every node build on the CPU (profiled: 10.4 s in `NodeManager.getForRender → NodeBuilder.build`) | the prologue's `RenderContexts.get` answers with the depth the scene pass last rendered at (`PostStack.sceneCallDepth`, recorded by wrapping the pass's `updateBefore`) |
+| c | TRAA calls `velocity.setProjectionMatrix(unjittered)` only during its own render; `VelocityNode.setup` emits `uniform(projectionMatrix)` when a matrix is set and `cameraProjectionMatrix` otherwise, which is different WGSL | 29 programs pre-compiled, 26 of them rebuilt by the first frame, differing only in that line | while compiling, the velocity node carries a projection matrix whenever TRAA is in the graph (re-applied after any frame that runs meanwhile) |
+| d | the light set is part of every lit program; a light listed twice counts as a different set | (design) | the containers' renderable children compile from detached groups while their lights and spot targets stay in place; `LightsNode` sorts by id, so order does not matter |
+| e | `ShadowNode.updateBefore` returns while `_isPreCompiling`; post quads compile on their first render | 4 vertex + 4 fragment programs are still built by the first frame | not covered (small) |
+
+Measured on Mirevale, cold (fresh Chrome profile, `--disable-gpu-shader-disk-cache`, Intel Gen-12 iGPU):
+
+| | before (parts 1–3) | after |
+|---|---|---|
+| `createRenderer` incl. step 8 + GPU drain | 43.0 s | 16.4–23.0 s (boot pre-compile 15.2–20.2 s, 88 render objects in 4 groups) |
+| `loadZone` | 7.2 s | 36.6–52.9 s (zone pre-compile 40–45 s, 569 render objects, including every LOD level, far scatter tier and off-screen prop) |
+| first zone frame, CPU `frame()` | 10.1 s | 0.19–0.34 s |
+| first zone frame until the GPU queue drains | 48.9 s | 1.9–3.4 s |
+| programs after step 8 / after `loadZone` / after the first frame | 79 / 79 / 107 | 79 / 91 / 97 |
+| boot → first finished zone frame | ≈ 99 s, then ≈ 50 s of ~1 fps frames (coordinator item 4) | ≈ 68 s, with no hitch after it |
+
+The zone compile takes longer than the old synchronous first frame's CPU part because it also compiles what that
+first frame never showed (LOD 1–2, scatter tiers 1–3, off-screen chunks). The old path compiled those later, as
+hitches when the camera moved. The hero-tier texture stream now waits for the compile (H5a).
+
+## H5 — leak baseline (task 5)
+
+Measured against the step-8 baseline with `?track=1`. The sandbox hooks `WebGPURenderer.init`, so every render target,
+texture and attribute three initialises after init is recorded with its name, size and creation phase. After the
+first zone frame it also records the call stack and the render object that created it. `__ewaSandbox.leaks()` lists
+what is alive now that was not alive at the baseline. Test: Mirevale, unload right after load, then a full cycle
+(reload, 8 s of play, unload):
+
+| After unload vs the step-8 baseline | before | with the pre-compile, before these fixes | after |
+|---|---|---|---|
+| render targets | +1 | 0 | **0** |
+| textures | +1 … +2 | +21 | **0** |
+| attributes / bytes | 0 | +5 / 192 B | **0 / 0** |
+| programs, geometries | 0 | 0 | **0 / 0** |
+
+After the fixes, both the immediate unload and the full cycle measure exactly 0 in every counter, with an empty
+`leaks()` list. The Part 2 **+1 render target** was never alive in any tracked list: it was created by the first
+frames after step 8, before the old tracker was installed. Step 8 now renders one frame before its pre-compile and
+warm-up frame, so the target exists at the baseline (measured 0 ever since). The node leak test (`zone-dispose.test.ts`,
+100 cycles with the mock GPU) asserts the exact baseline as before, plus the hero gate (H5a).
+
+- **H5a (+21 textures): the hero stream during the compile.** `loadZone` started `preloadHero` at once. Hero sets
+  bound mid-compile disposed the field sets while the compile was still building bindings from states made before
+  the re-point, and those builds re-initialised the disposed field textures on the GPU. Fix: `ZoneBuildDeps.heroGate`.
+  The renderer opens the hero stream after the pre-compile, and never for a zone that was disposed meanwhile.
+- **H5b (+5 attributes / 192 B): the warm-up quad.** `warmUp` disposed the quad geometry but kept its meshes, so the
+  zone pre-compile of the warm group re-uploaded the disposed geometry and nothing freed it again. The quad now stays
+  alive with the warm meshes (it is part of the baseline) and is disposed in `dispose()`.
+- **H5c (three 0.186, general): stale sampled textures in cached node-builder states.** `NodeBuilderState.createBindings()`
+  clones every `NodeSampledTexture` with the `texture` captured when the state was built, and
+  `Bindings._createBindings` calls `textures.updateTexture(binding.texture)` before `binding.update()` refreshes it
+  from its node. So any render object created after a material re-point (a LOD or scatter tier appearing, a
+  shadow-pass object) re-initialises the replaced, already disposed texture, and nothing disposes it again. The last
+  +1 was exactly this. The tracker named it: "RE-INIT after destroy by Mesh 'ewa:scatter:tree_willow:t1:a0' /
+  'ShadowMaterial'", a field albedo disposed at the hero bind and sampled by the shadow pass through
+  `reference('map', 'texture', material)`, a node whose value updates only during a render. Two changes:
+  (1) `preloadHero` **retires** the replaced field set instead of disposing it; retired sets are released at the next
+  `evictExcept`, when the zone's render objects are gone (cost: the field sets of hero surfaces stay resident for the
+  zone's lifetime, ≈ 1 MB each at 512² BC7). (2) Defensively, the library calls `beforeRelease` after every re-point and
+  before it disposes anything (eviction, the KTX2 placeholder replacing the runtime one). The renderer's hook refreshes
+  the sampled-texture bindings of every cached state (`refreshCachedTextureBindings`, `_nodes.nodeBuilderCache`).
+  Tests: `material-library.test.ts` (retire then release at eviction, hook order, the refresh itself).
+
+## H6 — per-pass GPU timing (task 6)
+
+Why `passMs` was all null: nothing in play wrote it. §10.10.3 reserves it for the differential harness
+(`measurePassMs`), and `resolveTimestampsAsync('render')` returns only the summed frame. three 0.186 can resolve
+per-pass times, though. `WebGPUTimestampQueryPool._resolveQueries` keeps one duration per render-context uid in
+`timestamps: Map<uid, ms>` for the last resolved batch, and `Renderer._renderScene` calls
+`inspector.beginRender(uid, scene, camera, renderTarget)` with the same uid for every `render()` (`Renderer.js` line
+1751). So with `trackTimestamp` on, the host installs a `PassTimer` (`stats.ts`, an `InspectorBase`) that maps each uid
+to a §50.2.1 row by render target:
+- the scene pass → `opaque`;
+- the render targets each graph stage's display nodes own (including the `convertToTexture` RTTs) → that stage
+  (`stageTargets`, rebuilt with the graph). The mapping reproduces the §10.10.2 derivation exactly: bloom 11, DOF 9
+  (6 + Gaussian 2 + input RTT), TRAA 3, GTAO 1, chroma input RTT 1 (`grade` row), scene 1 (tested);
+- `ShadowMap` / `PointShadowMap` / `VSM*` targets → `shadows`;
+- the canvas (the output quad + HUD) → `grade`;
+- anything else (PMREM bakes, the IBL probe) → `opaque`, as §10.3.3 amortises the bake inside opaque.
+
+After every resolve, `collect` sums the last frame's durations per row into `RenderStats.passMs`. `sprites` stays null:
+billboards, decals and VFX render inside the one scene pass (§10.8.1), so only the differential procedure can split
+them out. Once `measurePassMs` has run, its numbers are latched. The client does not pass `trackTimestamp`, so in play
+`passMs` stays null as §10.10.3 says (proposed entry P4-C2). Measured (Mirevale spawn, 1264×569, cold iGPU): `gpuMs`
+108–137, opaque 91–119, shadows 6.9–7.5, gtao 2.9–3.4, traa 1.6–1.9, bloom 0.59–0.67, dof 3.4–4.1, grade 0.95–1.14 ms.
+The rows sum to `gpuMs`. Only one resolve is in flight at a time, so a value lags the frame by a few frames.
+
+## H7 — characters from GLB (task 7)
+
+`stage/looks.ts` `createGlbLookSource` reads `models.manifest.json` once, loads each look's GLB once through
+`GLTFLoader` + `MeshoptDecoder` + the host's `KTX2Loader` (`/models/${url}?v=${hash8}`), and keeps the one skinned
+mesh, its clips and ONE scale for every look (`CHARACTER.heightM / median(bounds height)` = 1.7 / 3.1). Using one
+factor keeps a viking's horns taller than a bare head. `CharacterPool`:
+- on `spawn`, shows the look's GLB instance when the template is loaded; otherwise it shows the procedural figure and
+  requests the load (one request per look), then swaps every live actor wearing that look. A look the manifest does
+  not list (for example `ranger_m`) or a failed load keeps the procedural figure (warned once, in dev);
+- an instance is `SkeletonUtils.clone(template)`: its own bones, the template's geometry (shared per look), the pool's
+  one `'character'` material, `castShadow`, `userData = the rig's { sharp }` (DOF mask). That is one mesh per actor,
+  so one draw per pass;
+- one `AnimationMixer` per instance. `idle` / `walk` / `run` weights come from the existing gait blend
+  (`1 − walk`, `walk · (1 − run)`, `walk · run`). Emotes play `victory` (wave, happy, heart, cool), `defeat` (sad) and
+  `standup` (alert) over them with a 10/s fade. `mixer.update(dt × timeScale)` runs in the pool's frame hook with no
+  per-frame allocation;
+- a despawned instance is recycled per look, not re-cloned. `dispose()` stops and uncaches the mixers, disposes the
+  skeletons and the look source (template geometries and materials).
+`RendererOptions.modelsUrl` (default `/models/`, null = procedural only). Test: `actors-glb.test.ts` (4 tests, a
+synthetic template shaped like the pipeline output). Legendary GLBs (§10.7.7, LOD1 beyond 40 m) are not wired: no
+render subsystem draws a legendary yet, and battle creatures are billboards. Left open.
+
+## H8 — fog and readability (task 8)
+
+The zone palettes already carry the amended grove density: 0.018 × `FOG_SCALE` 0.38 = 0.00684 m⁻¹. Feet at 26 m are
+16.3 % fogged, a 12 m battle close-up 7.9 % (5.5 % at 1 m height), the 4 m inspector 2.7 %. But the host defaults
+(`GROVE_LIGHTING.fogDensity`, `createHeightFog`) were still the draft's 0.018. Those defaults are what every zone-less
+view renders (boot, the part-3 lineup / inspector demo, frames before `loadZone` applies the zone palette), which is
+where part 3 saw the washed-out inspector. Both are now `GROVE_FOG_DENSITY = 0.018 × 0.38` (test: equals
+`PALETTES.grove_mirevale.fogDensity`, 16 % at 26 m, < 3 % at 4 m). Some zone rows keep their own densities (mire
+route 0.02 × 0.38, rift 0.03 × 0.38); those are within §10.3.7 ("palette values for grove").
+
+## H9 — `resolveMove` never moves farther than the step (coordinator item 1)
+
+Rule 4 probed the capsule radius around the TARGET (up to step + 0.35 m) and the stuck-inside escape returned the
+nearest passable sample (up to 4 m). The server counts a step over its speed cap as a rejection and kicks after 30,
+which the client's two-player runs hit at walls. Now rule 4 probes AT THE STEP LENGTH around the START, at ±22.5°, ±45°,
+±67.5° and ±90° from the desired direction (never backwards), taking the first that passes, and the escape walks toward
+the nearest passable sample by at most the step. Invariant tested over the 20 000 random displacements:
+`|result − start| ≤ |d|`. A head-on wall case slides along the wall at exactly the step length, and a start inside a
+3 m blocker walks out at 0.1 m per call.
+
+## H10 — battle HUD bars (coordinator items 2, 3)
+
+`placeBars()` centres each bar above its battler's anchor and clamps it inside the screen margins. It then moves the
+bar off three reserved boxes (the turn label's `HUD.turnBandW 320 × turnBandH 34` box at its old position, the party
+strip, and the clock / quest hint) by the smallest move among up / down / left / right that stays on screen. Finally it
+moves the bar past any earlier bar (below, else above, else beside), so bars never overlap. The dirty-region box and
+the draw both use the placed positions. A first version reserved a full-width band under the top row. In the sandbox
+battle shot that pushed the far battler's bar down onto its own sprite (the far battler stands at the top of the
+battle frame), so only the label's box is reserved now. Test (`hud.test.ts`): the near battler's head at the top centre,
+the far one off the right edge, both on one spot, the bottom-left corner, and a bar grazing the label that moves up a
+few px instead of down.
+
+## H11 — tree crowns for the shot camera (coordinator item 5)
+
+The zone builder registers one crown sphere per scatter tree on the zone's `TerrainCollider` (`addCrown`), including
+the unwalkable 16 m margin forest and the skirt treeline, which have no blockers. The sphere is the tree kind's leaf-card
+bounding box (lod0), rotated and scaled per instance, radius 0.85 × the half extent. mire_route registers > 500. Query:
+`crownClearance(a, b)` returns the first entry parameter along a segment (a start inside a crown counts as clear), plus
+`inCrown(p)`, both allocation-free on a 4 m grid. `DioramaRig` takes `occluders` (the wiring passes the loaded zone's
+collider, null once it is disposed). In a battle or inspector shot the camera is pulled in along the orbit ray to
+0.4 m in front of the first crown between it and the orbit centre, never closer than 3 m, weighted by the shot blend.
+The diorama camera (high above the canopy) is untouched. Tests: collider (entry parameter, pass-over, start-inside) and
+rig (a crown two thirds of the way to the camera pulls the shot in and leaves it outside every crown; diorama unchanged).
+
+## Proposed SPEC CHANGELOG entries (not applied — the SPEC is not edited here)
+
+- **P4-C1** §40.5.2 `scatter.instanced`: "for every scatter kind present the dump lists 3 LOD tiers + `impostor`" →
+  "tree kinds list lod0–lod2 + impostor; other kinds list the tiers they are drawn at (≥ lod0 + lod1), since small
+  kinds are not drawn beyond 90 m (render Part 2 Z2)". As written, every real dump fails (render Part 4 H2).
+- **P4-C2** §10.10.3: "`passMs` … during play every entry is null" → "… null unless the renderer tracks timestamps;
+  then the host fills it per render context (scene pass → opaque, stage targets → their row, shadow maps → shadows,
+  canvas → grade, `sprites` null). The differential procedure of §50.2.3 remains the budget measurement and overrides
+  the per-context values once run" (render Part 4 H6).
+- **P4-C3** §10.1.2 step 8 and §10.5.9: `loadZone` resolves after `compileAsync` has pre-compiled the zone and the
+  warm-up group with the zone's light set (the R6 recommendation, done), keeping the scene pass's target, MRT, call
+  depth and TRAA's velocity projection for the whole compile. The first zone frame then builds only shadow-pass
+  variants and post quads (measured 4 + 4 programs, 0.3 s CPU vs 10.1 s). `RendererOptions.onCompileProgress` reports
+  progress (render Part 4 H4).
+- **P4-C4** §10.6.2 rule 4: "8 directions of the capsule radius (0.35 at 45° steps) around the target" → "8 directions
+  at the step length around the start, ±22.5°…±90° from the desired direction, smallest angle first", and the
+  stuck-inside escape "steps toward the nearest passable sample by at most the step length". Invariant:
+  `|result − from| ≤ |(dx, dz)|` (render Part 4 H9).
+- **P4-C5** §10.10.1 `ZoneDump`: add `materials[].side`, `geometries[].sharedBy / kind / tier? / instancedMesh` and
+  `lightSources[] { id, lightDistance }` to the verbatim type (the fields §40.5.2 says the dump gains; render Part 4 H2).
+- **P4-C6** §10.2.3 / §10.5.9: "`preloadHero` … releases the surface's field set" → "retires it; retired field sets
+  are released at the next `evictExcept`", and the hero stream starts after the zone pre-compile. three 0.186's shadow
+  pass re-initialises a texture disposed while render objects of the zone can still be created (render Part 4 H5).
+- **P4-C7** §10.7.7: all looks are scaled by ONE factor `1.7 m / median look height`; emotes play
+  `victory` / `defeat` / `standup` (the pipeline keeps no emote clips) (render Part 4 H7).
+- **P4-C8** §10.9 `battle` region: bars are clamped inside the margins, kept off the turn label, the party strip and
+  the clock, and never overlap (render Part 4 H10).
+- **P4-C9** §10.7.4: the battle / inspector camera never enters a tree crown. The zone collider exposes crown spheres
+  and the rig pulls the shot in along its orbit ray (render Part 4 H11).

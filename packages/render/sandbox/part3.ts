@@ -65,7 +65,8 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
   api.part3 = out;
 
   // a few walking characters in every mode
-  const walkers = ['casual_male', 'hiker_female', 'ranger_m'];
+  // two manifest looks (GLB, §10.7.7) and one id the manifest does not list (the procedural fallback)
+  const walkers = ['casual_male', 'cowboy_female', 'ranger_m'];
   walkers.forEach((look, i) => p.actors.spawn(`walker${i}`, { look, name: ['Rowan', 'Isla', 'Tamsin'][i]!, guildTag: i === 1 ? '[MIRE]' : '', isLocal: i === 0 }));
   let clockS = 0;
   const walk = (dt: number): void => {

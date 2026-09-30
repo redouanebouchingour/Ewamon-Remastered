@@ -170,3 +170,17 @@ describe('§10.3.6 weather, §10.3.7 fog, IBL normalisation, wetness', () => {
     expect(toHarvestLevel(Number.NaN)).toBe(0);
   });
 });
+
+describe('§10.3.7 fog as amended 2026-09-25 (IMPLEMENTATION-NOTES Part 4, H8)', () => {
+  it('the zone-less default is the grove palette density 0.0068; feet at 26 m are 16 % fogged, a 4 m close-up 2.7 %', async () => {
+    const { GROVE_LIGHTING } = await import('../src/lighting/daycycle.js');
+    const { GROVE_FOG_DENSITY, createHeightFog } = await import('../src/lighting/fog.js');
+    const { PALETTES } = await import('../src/zone/palettes.js');
+    expect(GROVE_FOG_DENSITY).toBeCloseTo(0.0068, 4);
+    expect(GROVE_LIGHTING.fogDensity).toBe(GROVE_FOG_DENSITY);
+    expect(PALETTES.grove_mirevale!.fogDensity).toBeCloseTo(GROVE_FOG_DENSITY, 12);
+    expect(createHeightFog().uniforms.fogDensity.value).toBe(GROVE_FOG_DENSITY);
+    expect(heightFogFactor(26, 0, GROVE_FOG_DENSITY, 0, 0.35)).toBeCloseTo(0.163, 3);   // SPEC: "16 % at 0.0068"
+    expect(heightFogFactor(4, 0.8, GROVE_FOG_DENSITY, 0, 0.35)).toBeLessThan(0.03);
+  });
+});

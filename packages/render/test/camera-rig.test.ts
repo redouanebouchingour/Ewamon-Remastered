@@ -218,3 +218,34 @@ describe('shake (Pillar 8)', () => {
     expect(r.shakeOffset).toBe(0);
   });
 });
+
+describe('shot camera vs tree crowns (IMPLEMENTATION-NOTES Part 4, H11)', () => {
+  it('a battle shot is pulled in in front of a crown between the camera and the arena; the diorama is left alone', async () => {
+    const { TerrainCollider } = await import('../src/terrain/collider.js');
+    const { getHeightfield } = await import('@ewa/content');
+    const collider = new TerrainCollider(getHeightfield('mirevale' as never));
+    const cam = new PerspectiveCamera(28, 16 / 9, 0.5, 220);
+    let occ: InstanceType<typeof TerrainCollider> | null = null;
+    const r = new DioramaRig(cam, { effects: () => ALL_EFFECTS, occluders: () => occ });
+    r.pushIn({ x: 0, z: 0 }, 0);
+    for (let i = 0; i < 5; i++) r.update(16);
+    const free = cam.position.clone();
+    const centre = new Vector3(0, r.focus.y, 0);
+    const dFree = free.distanceTo(centre);
+    // a 2 m crown two thirds of the way from the arena to the camera
+    const at = centre.clone().lerp(free, 2 / 3);
+    collider.addCrown({ x: at.x, y: at.y, z: at.z, r: 2 });
+    occ = collider;
+    r.update(16);
+    const pulled = cam.position.distanceTo(centre);
+    expect(pulled).toBeLessThan(dFree - 2);
+    expect(collider.inCrown(cam.position.x, cam.position.y, cam.position.z)).toBe(false);
+    expect(collider.crownClearance(centre.x, centre.y, centre.z, cam.position.x, cam.position.y, cam.position.z)).toBe(1);
+    // back in the diorama (blend 0) the crown does not move the camera
+    r.release(0);
+    r.update(16);
+    const dio = cam.position.clone();
+    occ = null; r.update(16);
+    expect(cam.position.distanceTo(dio)).toBeLessThan(1e-6);
+  });
+});

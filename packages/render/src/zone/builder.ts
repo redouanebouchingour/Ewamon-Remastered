@@ -57,6 +57,12 @@ export interface ZoneBuildDeps {
    * disposed. The zone system uses it to release GPU attributes three does not free itself (C26).
    */
   readonly releaseGpu?: (root: Object3D) => () => void;
+  /**
+   * The hero-tier stream (`preloadHero`) starts when this resolves (default: at once). The renderer opens it after
+   * the zone's shader pre-compile: a hero set bound mid-compile disposed field sets the compile then re-initialised
+   * on the GPU, and nothing ever released them again (IMPLEMENTATION-NOTES Part 4, H5: +21 textures per unload).
+   */
+  readonly heroGate?: Promise<void>;
 }
 
 /** What the zone system needs beyond the verbatim `ZoneHandle`. */
@@ -119,12 +125,17 @@ function objectFromGeo(geo: PropGeo, tier: 0 | 1 | 2, material: (id: SurfaceId) 
  * glows: lantern glass, brazier coals, crystal, candles); null when the prop has none.
  */
 function emissivePartBounds(geo: PropGeo): [number, number, number, number, number, number] | null {
+  return surfaceBounds(geo, (s) => SURFACES[s].cls === 'emissive');
+}
+
+/** Local AABB of a prop's lod0 triangles whose surface passes `test`; null when none. */
+function surfaceBounds(geo: PropGeo, test: (s: SurfaceId) => boolean): [number, number, number, number, number, number] | null {
   const pos = geo.lod0.getAttribute('position');
   const idx = geo.lod0.getIndex();
   let b: [number, number, number, number, number, number] | null = null;
   for (const gr of geo.lod0.groups) {
     const s = geo.surfaces[gr.materialIndex ?? 0];
-    if (s === undefined || SURFACES[s].cls !== 'emissive') continue;
+    if (s === undefined || !test(s)) continue;
     for (let i = gr.start; i < gr.start + gr.count; i++) {
       const v = idx ? idx.getX(i) : i;
       const x = pos.getX(v); const y = pos.getY(v); const z = pos.getZ(v);
@@ -156,7 +167,8 @@ export async function loadZone(spec: ZoneSpec, deps: ZoneBuildDeps, clock?: () =
   const handle = buildZone(spec, deps, surfaces);
   const buildMs = t0 !== null && clock ? clock() - t0 : null;
   (handle.info as { buildMs: number | null }).buildMs = buildMs;
-  void deps.materials.preloadHero(surfaces);
+  const hero = (): void => { if (!handle.disposed) void deps.materials.preloadHero(surfaces); };   // never for a zone already gone
+  if (deps.heroGate) void deps.heroGate.then(hero, hero); else hero();
   return handle;
 }
 
@@ -598,6 +610,27 @@ function kindFrom(name: string, geo: PropGeo, material: (id: SurfaceId) => Mater
  * water, two rock shapes (+ pebbles along roads), bushes (hedgerows on route boundaries), flower patches, ground
  * tufts, tall grass in the layout's patches, stumps and logs.
  */
+/** Crown of one tree kind in its local frame: the leaf cards' bounding box as a sphere mostly inside the canopy. */
+interface CrownShape { readonly cx: number; readonly cy: number; readonly cz: number; readonly r: number }
+/** Fraction of the leaf box's half extent used as the crown radius (the camera may graze the outer leaves). */
+const CROWN_FILL = 0.85;
+
+function crownShape(geo: PropGeo, leaf: SurfaceId): CrownShape | null {
+  const b = surfaceBounds(geo, (s) => s === leaf);
+  if (b === null) return null;
+  const half = Math.max(b[3] - b[0], b[4] - b[1], b[5] - b[2]) / 2;
+  return { cx: (b[0] + b[3]) / 2, cy: (b[1] + b[4]) / 2, cz: (b[2] + b[5]) / 2, r: half * CROWN_FILL };
+}
+
+/** Registers one crown per tree instance on the collider (H11: the battle / inspector camera avoids them). */
+function addCrowns(collider: TerrainCollider, shape: CrownShape | null, instances: readonly Instance[]): void {
+  if (shape === null) return;
+  for (const it of instances) {
+    const c = Math.cos(it.yaw); const sn = Math.sin(it.yaw);   // three's makeRotationY
+    collider.addCrown({ x: it.x + (c * shape.cx + sn * shape.cz) * it.scale, y: it.y + shape.cy * it.scale, z: it.z + (-sn * shape.cx + c * shape.cz) * it.scale, r: shape.r * it.scale });
+  }
+}
+
 function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat: SplatContext, collider: TerrainCollider, skirtY: (x: number, z: number) => number, mat: (id: SurfaceId) => Material, views: BufferGeometry[], seed: number, flower0: number, flowerN: number, foliageN: number): ScatterOut[] {
   const out: ScatterOut[] = [];
   const h = spec.heightfield;
@@ -670,11 +703,13 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
     }
     if (wInst.length > 0) {
       const g = buildTree(willow.bark, willow.leaf, willow.shape, spec.seed ^ 0x3111);
+      addCrowns(collider, crownShape(g, willow.leaf), wInst);
       out.push({ ...kindFrom('tree_willow', g, mat, views, true, 3, impostorFor(g, willow.leaf)), instances: wInst });
     }
   }
   treeKinds.forEach((t, k) => {
     if (treeInst[k]!.length === 0) return;
+    addCrowns(collider, crownShape(treeGeos[k]!, t.leaf), treeInst[k]!);
     out.push({ ...kindFrom(t.kind, treeGeos[k]!, mat, views, true, 3, impostorFor(treeGeos[k]!, t.leaf)), instances: treeInst[k]! });
   });
 

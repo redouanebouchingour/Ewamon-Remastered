@@ -121,13 +121,13 @@ describe('dispose bookkeeping (mocked GPU)', () => {
     expect(rig.sun.target.position.toArray()).toEqual([3, 0, 4]);
     expect(rig.sun.position.y).toBeCloseTo(120 * Math.sin(70 * Math.PI / 180), 6);
     expect(shared.timeOfDay.value).toBe(0.5);
-    expect(fog.uniforms.fogDensity.value).toBeCloseTo(0.018, 12);
+    expect(fog.uniforms.fogDensity.value).toBeCloseTo(0.018 * 0.38, 12);   // §10.3.7 as amended: 0.0068
     day.update(16, 0.016, new Vector3(3, 0, 4));
     expect(bake).toHaveBeenCalledTimes(1);                    // no re-bake without 2° / 20 s
     day.setWeather('sand');
     day.update(16, 0.016, new Vector3());
     expect(bake).toHaveBeenCalledTimes(2);                    // weather forces a re-bake
-    expect(fog.uniforms.fogDensity.value).toBeCloseTo(0.018 * 2.5, 12);
+    expect(fog.uniforms.fogDensity.value).toBeCloseTo(0.018 * 0.38 * 2.5, 12);
     day.dispose();
     day.dispose();
     expect(skyDispose).toHaveBeenCalledTimes(1);

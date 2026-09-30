@@ -25,6 +25,22 @@ async function dumpOf(id: 'mirevale' | 'mire_route') {
   return { spec, h, d };
 }
 
+describe('dumpZone sprites (H2)', () => {
+  it('billboards outside the zone root are listed through spriteScan, with the atlas albedo from userData.ewaAlbedo', async () => {
+    const { Group, Mesh, MeshStandardNodeMaterial, NearestFilter, PlaneGeometry, Texture } = await import('three/webgpu');
+    const lib = await mockLibrary();
+    const zoneRoot = new Group(); const scene = new Group(); scene.add(zoneRoot);
+    const card = new MeshStandardNodeMaterial();
+    const albedo = new Texture(); albedo.magFilter = NearestFilter; albedo.anisotropy = 1;
+    card.userData = { ewaClass: 'billboard', ewaAtlas: 'mire_route-000', ewaAlbedo: albedo };   // map stays null (P7)
+    const pool = new Group(); pool.add(new Mesh(new PlaneGeometry(1, 1), card)); pool.add(new Mesh(new PlaneGeometry(1, 1), card)); scene.add(pool);
+    const d = dumpZone({ zone: 'z', harvestLevel: 0, root: zoneRoot, library: lib, counts, spriteScan: scene });
+    expect(d.sprites).toEqual([{ atlas: 'mire_route-000', magFilter: 1003, anisotropy: 1 }]);
+    expect(d.materials).toEqual([]);                                   // materials[] stays the zone root's set
+    expect(dumpZone({ zone: 'z', harvestLevel: 0, root: zoneRoot, library: lib, counts }).sprites).toEqual([]);
+  });
+});
+
 describe('dumpZone on the slice zones', () => {
   it.each(['mirevale', 'mire_route'] as const)('%s: sides, scatter kinds / tiers, sharedBy, housings both directions', async (id) => {
     const { spec, h, d } = await dumpOf(id);

@@ -40,9 +40,23 @@ export function shotsForZone(zone: string): readonly ShotDef[] {
   return AUDIT_SHOTS.filter((s) => s.zone === zone);
 }
 
-/** §50.6.1 words → rig heading index (see the header: the two conventions differ by 180°). */
+/**
+ * How a §50.6.1 heading becomes a rig heading: 'words' (default) follows the table's words (0 = +z forward, the camera
+ * LOOKS that way) = rig `(h + 2) & 3`; 'rig' passes the number straight to `CameraRig.setHeading` (§10.7.1's yaw
+ * −35° + 90°·h). The two differ by 180° — see anchors.ts.
+ */
+export type HeadingConvention = 'words' | 'rig';
+let convention: HeadingConvention = 'words';
+export function setHeadingConvention(c: HeadingConvention): void {
+  convention = c;
+}
+export function headingConvention(): HeadingConvention {
+  return convention;
+}
+
+/** §50.6.1 heading → rig heading index under the current convention. */
 export function rigHeading(specHeading: Heading): Heading {
-  return ((specHeading + 2) & 3) as Heading;
+  return (convention === 'rig' ? specHeading : (specHeading + 2) & 3) as Heading;
 }
 
 /** Position rounding used in file names and sidecars (cm). */

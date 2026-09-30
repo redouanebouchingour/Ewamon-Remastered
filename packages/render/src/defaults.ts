@@ -113,7 +113,8 @@ export class NullActorPool implements ActorPool {
 }
 
 export interface ZoneLoader {
-  load(spec: ZoneSpec): Promise<ZoneHandle>;
+  /** `opts.heroGate`: the hero-tier texture stream starts when it resolves (IMPLEMENTATION-NOTES Part 4, H5). */
+  load(spec: ZoneSpec, opts?: { readonly heroGate?: Promise<void> }): Promise<ZoneHandle>;
 }
 
 export const unimplementedZoneLoader: ZoneLoader = {

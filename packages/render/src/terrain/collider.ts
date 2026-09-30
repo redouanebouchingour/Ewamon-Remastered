@@ -24,6 +24,8 @@ export interface RectBlocker { readonly kind: 'rect'; readonly x: number; readon
 /** Circle blocker (trunks, rocks, posts). */
 export interface CircleBlocker { readonly kind: 'circle'; readonly x: number; readonly z: number; readonly r: number }
 export type Blocker = RectBlocker | CircleBlocker;
+/** A tree crown as a sphere (world metres): what the battle / inspector camera must not enter (H11). */
+export interface Crown { readonly x: number; readonly y: number; readonly z: number; readonly r: number }
 
 const DEG = 180 / Math.PI;
 const CELL = 4;
@@ -35,6 +37,9 @@ export class TerrainCollider {
   private readonly h: HeightfieldData;
   private readonly blockers: Blocker[] = [];
   private readonly grid = new Map<number, number[]>();
+  private readonly crowns: Crown[] = [];
+  private readonly crownGrid = new Map<number, number[]>();
+  private crownMaxR = 0;
   private readonly _n = new Vector3();
 
   constructor(h: HeightfieldData) {
@@ -95,6 +100,77 @@ export class TerrainCollider {
   }
 
   blockerCount(): number { return this.blockers.length; }
+
+  // ---- tree crowns (addition, IMPLEMENTATION-NOTES Part 4, H11) ----------------------------------------------------
+
+  /**
+   * Registers a tree crown (the zone builder adds one per scatter tree, the unwalkable margin forest and the skirt
+   * treeline included, which have no blockers). Crowns do not affect movement; they are the camera's obstacles.
+   */
+  addCrown(c: Crown): void {
+    const i = this.crowns.length;
+    this.crowns.push(c);
+    if (c.r > this.crownMaxR) this.crownMaxR = c.r;
+    const c0 = Math.floor((c.x - c.r) / CELL); const c1 = Math.floor((c.x + c.r) / CELL);
+    const r0 = Math.floor((c.z - c.r) / CELL); const r1 = Math.floor((c.z + c.r) / CELL);
+    for (let cz = r0; cz <= r1; cz++) {
+      for (let cx = c0; cx <= c1; cx++) {
+        const k = cellKey(cx, cz);
+        let list = this.crownGrid.get(k);
+        if (list === undefined) { list = []; this.crownGrid.set(k, list); }
+        list.push(i);
+      }
+    }
+  }
+
+  crownCount(): number { return this.crowns.length; }
+
+  /** True when (x, y, z) is inside a crown. */
+  inCrown(x: number, y: number, z: number): boolean {
+    const list = this.crownGrid.get(cellKey(Math.floor(x / CELL), Math.floor(z / CELL)));
+    if (list === undefined) return false;
+    for (let k = 0; k < list.length; k++) {
+      const c = this.crowns[list[k]!]!;
+      const dx = x - c.x; const dy = y - c.y; const dz = z - c.z;
+      if (dx * dx + dy * dy + dz * dz < c.r * c.r) return true;
+    }
+    return false;
+  }
+
+  /**
+   * The segment a → b against every crown: the parameter t ∈ [0, 1] where it first enters one (1 = clear; a start
+   * inside a crown counts as clear from there, so a camera orbit centre under a canopy does not pin the camera).
+   * The camera rig pulls a shot camera in to that point. Zero allocation.
+   */
+  crownClearance(ax: number, ay: number, az: number, bx: number, by: number, bz: number): number {
+    if (this.crowns.length === 0) return 1;
+    const dx = bx - ax; const dy = by - ay; const dz = bz - az;
+    const dd = dx * dx + dy * dy + dz * dz;
+    if (!(dd > 1e-12)) return 1;
+    const pad = this.crownMaxR;
+    const c0 = Math.floor((Math.min(ax, bx) - pad) / CELL); const c1 = Math.floor((Math.max(ax, bx) + pad) / CELL);
+    const r0 = Math.floor((Math.min(az, bz) - pad) / CELL); const r1 = Math.floor((Math.max(az, bz) + pad) / CELL);
+    let best = 1;
+    for (let cz = r0; cz <= r1; cz++) {
+      for (let cx = c0; cx <= c1; cx++) {
+        const list = this.crownGrid.get(cellKey(cx, cz));
+        if (list === undefined) continue;
+        for (let k = 0; k < list.length; k++) {
+          const c = this.crowns[list[k]!]!;
+          const fx = ax - c.x; const fy = ay - c.y; const fz = az - c.z;
+          const cc = fx * fx + fy * fy + fz * fz - c.r * c.r;
+          if (cc <= 0) continue;                                   // the start is inside this crown
+          const bb = fx * dx + fy * dy + fz * dz;
+          if (bb >= 0) continue;                                    // pointing away
+          const disc = bb * bb - dd * cc;
+          if (disc < 0) continue;
+          const t = (-bb - Math.sqrt(disc)) / dd;
+          if (t >= 0 && t < best) best = t;
+        }
+      }
+    }
+    return best;
+  }
 
   /** True when (x, z) lies inside a registered blocker. */
   blocked(x: number, z: number): boolean {

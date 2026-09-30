@@ -1,8 +1,11 @@
 /**
  * SPEC §10.7.6 `ActorPool` and §10.7.7 character models.
  *
- * The Quaternius look GLBs (`public/models/looks/<look>.glb`) are not shipped yet, so every look is the procedural
- * fallback below: a clean stylised figure (big-headed, 1.7 m) built ONCE per look as a single merged geometry with
+ * Looks come from `models.manifest.json` (`looks.ts`, IMPLEMENTATION-NOTES Part 4, H7): one GLB per look, loaded once
+ * and cloned per actor (own bones, shared geometry, the pool's one `'character'` material, one draw), animated by an
+ * `AnimationMixer` (idle / walk / run blended by the gait weights, emotes on victory / defeat / standup). While a look
+ * loads, when the manifest does not list it or when it fails, the actor is the procedural fallback below: a clean
+ * stylised figure (big-headed, 1.7 m) built ONCE per look as a single merged geometry with
  * six flat vertex colours (the same shape the model pipeline produces: `COLOR_0`, one primitive, one material) and
  * rigid skin weights on a 7-bone skeleton (hips, spine, head, 2 arms, 2 legs). Every actor is one `SkinnedMesh`
  * (one draw, `castShadow`), all sharing ONE `'character'`-class `MeshStandardNodeMaterial` (vertex colour albedo,
@@ -17,10 +20,12 @@
  * 48 rigs are preallocated (§10.7.6) and never grow; `setTransform` and `update` allocate nothing.
  */
 import {
-  Bone, BufferAttribute, BufferGeometry, Color, CylinderGeometry, Group, LatheGeometry, Matrix4, MeshStandardNodeMaterial, Quaternion,
-  Skeleton, SkinnedMesh, SphereGeometry, Vector2, Vector3,
+  AnimationMixer, Bone, BufferAttribute, BufferGeometry, Color, CylinderGeometry, Group, LatheGeometry, Matrix4, MeshStandardNodeMaterial,
+  Quaternion, Skeleton, SkinnedMesh, SphereGeometry, Vector2, Vector3,
 } from 'three/webgpu';
-import type { Node, PerspectiveCamera, UniformNode } from 'three/webgpu';
+import type { AnimationAction, Node, Object3D, PerspectiveCamera, UniformNode } from 'three/webgpu';
+import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
+import type { LookSource, LookTemplate } from './looks.js';
 import { float, mix, mrt, normalFlat, normalView, userData, vec2, vec4, vertexColor } from 'three/tsl';
 import type { ActorDescriptor, ActorPool } from '../contracts.js';
 import { isDevBuild } from '../env.js';
@@ -42,6 +47,10 @@ export const GAIT = Object.freeze({
 export type EmoteId = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 /** spine §4.1: 1..6 = wave happy sad alert heart cool. */
 export const EMOTE_NAMES: readonly string[] = Object.freeze(['', 'wave', 'happy', 'sad', 'alert', 'heart', 'cool']);
+/** The look clip each emote plays on a GLB look (the pipeline keeps no dedicated emote clips). */
+export const EMOTE_CLIPS: readonly (string | null)[] = Object.freeze([null, 'victory', 'victory', 'defeat', 'standup', 'victory', 'victory']);
+/** Emote clip fade in / out rate (1/s, exponential). */
+export const EMOTE_BLEND_RATE = 10;
 
 // ---- looks -------------------------------------------------------------------------------------------------------
 
@@ -211,6 +220,19 @@ export function createCharacterMaterial(harvestLevel: UniformNode<'float', numbe
 
 interface ActorUserData { sharp: number; ewaActor: string }
 
+/** One GLB look instance (cloned from its template; recycled per look on despawn). */
+interface GlbInstance {
+  readonly look: string;
+  readonly root: Object3D;
+  readonly mesh: SkinnedMesh;
+  readonly mixer: AnimationMixer;
+  readonly idle: AnimationAction | null;
+  readonly walk: AnimationAction | null;
+  readonly run: AnimationAction | null;
+  /** Indexed by emote id (0 unused). */
+  readonly emotes: readonly (AnimationAction | null)[];
+}
+
 interface Rig {
   readonly mesh: SkinnedMesh;
   readonly bones: Bone[];
@@ -230,6 +252,9 @@ interface Rig {
   clock: number;
   emote: EmoteId;
   emoteLeft: number;
+  emoteW: number;
+  /** The GLB look shown instead of `mesh` once its template loaded; null = procedural. */
+  glb: GlbInstance | null;
 }
 
 /** Ground height sampler (the zone collider); flat 0 when unset. */
@@ -240,6 +265,8 @@ export interface ActorPoolOptions {
   readonly camera?: PerspectiveCamera;
   /** CSS viewport size for `screenPositions`. */
   readonly viewport?: () => { readonly w: number; readonly h: number };
+  /** GLB looks (`createGlbLookSource`); absent = every look procedural. */
+  readonly looks?: LookSource;
 }
 
 const _p = new Vector3();
@@ -252,6 +279,11 @@ export class CharacterPool implements ActorPool {
   private readonly geometries = new Map<string, BufferGeometry>();
   private ground: GroundSampler | null = null;
   private camera: PerspectiveCamera | null;
+  private readonly looks: LookSource | null;
+  /** Loaded templates by look (null = no model / failed: procedural). */
+  private readonly templates = new Map<string, LookTemplate | null>();
+  private readonly pendingLooks = new Set<string>();
+  private readonly freeGlb = new Map<string, GlbInstance[]>();
   private readonly viewport: () => { readonly w: number; readonly h: number };
   private disposed = false;
 
@@ -260,6 +292,7 @@ export class CharacterPool implements ActorPool {
     this.material = createCharacterMaterial(o.harvestLevel);
     this.camera = o.camera ?? null;
     this.viewport = o.viewport ?? (() => ({ w: 1, h: 1 }));
+    this.looks = o.looks ?? null;
     for (let i = 0; i < ACTOR_POOL_SIZE; i++) this.rigs.push(this.makeRig(i));
   }
 
@@ -282,15 +315,14 @@ export class CharacterPool implements ActorPool {
       r.id = id;
       this.byId.set(id, r);
       r.feet.set(0, 0, 0); r.angle = 0; r.moving = false; r.running = false; r.walkW = 0; r.runW = 0;
-      r.phase = hash01(id) * Math.PI * 2; r.clock = 0; r.emote = 0; r.emoteLeft = 0;
+      r.phase = hash01(id) * Math.PI * 2; r.clock = 0; r.emote = 0; r.emoteLeft = 0; r.emoteW = 0;
     }
     r.look = d.look; r.name = d.name; r.guildTag = d.guildTag; r.isLocal = d.isLocal;
     r.ud.sharp = d.isLocal ? 1 : 0;
     r.ud.ewaActor = id;
     r.mesh.geometry = this.geometryFor(d.look);
     r.mesh.name = `ewa:actor:${id}`;
-    r.mesh.visible = true;
-    if (r.mesh.parent !== this.root) this.root.add(r.mesh);
+    this.attachLook(r);
     this.pose(r);
   }
 
@@ -304,6 +336,7 @@ export class CharacterPool implements ActorPool {
     r.running = running;
     r.mesh.position.copy(r.feet);
     r.mesh.rotation.y = angle;
+    if (r.glb !== null) { r.glb.root.position.copy(r.feet); r.glb.root.rotation.y = angle; }
   }
 
   setEmote(id: string, n: 0 | 1 | 2 | 3 | 4 | 5 | 6): void {
@@ -320,7 +353,8 @@ export class CharacterPool implements ActorPool {
     r.id = null;
     r.mesh.visible = false;
     r.mesh.removeFromParent();
-    r.emote = 0; r.emoteLeft = 0;
+    if (r.glb !== null) this.releaseGlb(r);
+    r.emote = 0; r.emoteLeft = 0; r.emoteW = 0;
   }
 
   feetOf(id: string, out: Vector3): Vector3 | null {
@@ -344,7 +378,11 @@ export class CharacterPool implements ActorPool {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const r of this.rigs) { r.mesh.removeFromParent(); r.mesh.skeleton.dispose(); }
+    for (const r of this.rigs) { r.mesh.removeFromParent(); r.mesh.skeleton.dispose(); if (r.glb !== null) this.releaseGlb(r); }
+    for (const list of this.freeGlb.values()) for (const g of list) disposeGlb(g);
+    this.freeGlb.clear();
+    (this.looks as (LookSource & { dispose?: () => void }) | null)?.dispose?.();
+    this.templates.clear();
     this.byId.clear();
     for (const g of this.geometries.values()) g.dispose();
     this.geometries.clear();
@@ -368,7 +406,7 @@ export class CharacterPool implements ActorPool {
       r.phase += (dt / 1000) * hz * Math.PI * 2 * Math.max(0.0001, r.walkW);
       r.clock += dt / 1000;
       if (r.emoteLeft > 0) { r.emoteLeft = Math.max(0, r.emoteLeft - dt); if (r.emoteLeft === 0) r.emote = 0; }
-      this.pose(r);
+      if (r.glb !== null) this.animateGlb(r, dt); else this.pose(r);
     }
   }
 
@@ -405,7 +443,78 @@ export class CharacterPool implements ActorPool {
   has(id: string): boolean { return this.byId.has(id); }
   get liveCount(): number { return this.byId.size; }
   get capacity(): number { return this.rigs.length; }
-  meshOf(id: string): SkinnedMesh | null { return this.byId.get(id)?.mesh ?? null; }
+  /** The mesh that draws the actor (the GLB look once loaded, else the procedural figure). */
+  meshOf(id: string): SkinnedMesh | null { const r = this.byId.get(id); return r === undefined ? null : r.glb?.mesh ?? r.mesh; }
+  /** Whether the actor currently shows its GLB look. */
+  hasModel(id: string): boolean { return (this.byId.get(id)?.glb ?? null) !== null; }
+
+  // ---- GLB looks (H7) ----------------------------------------------------------------------------------------
+
+  /** Shows the rig's look: its GLB instance when the template is loaded, else the procedural mesh (and a load request). */
+  private attachLook(r: Rig): void {
+    if (r.glb !== null && r.glb.look === r.look) return;
+    if (r.glb !== null) this.releaseGlb(r);
+    const t = this.templates.get(r.look);
+    if (t === undefined) this.requestLook(r.look);
+    if (t) {
+      const g = this.acquireGlb(t, r);
+      r.glb = g;
+      r.mesh.visible = false;
+      r.mesh.removeFromParent();
+      g.root.position.copy(r.feet);
+      g.root.rotation.y = r.angle;
+      g.root.visible = true;
+      if (g.root.parent !== this.root) this.root.add(g.root);
+      return;
+    }
+    r.mesh.visible = true;
+    if (r.mesh.parent !== this.root) this.root.add(r.mesh);
+  }
+
+  private requestLook(look: string): void {
+    if (this.looks === null || this.pendingLooks.has(look) || this.templates.has(look)) return;
+    this.pendingLooks.add(look);
+    this.looks(look).then((t) => {
+      this.pendingLooks.delete(look);
+      if (this.disposed) return;
+      this.templates.set(look, t);
+      if (t === null) return;
+      for (const r of this.rigs) if (r.id !== null && r.look === look && r.glb === null) this.attachLook(r);
+    }, () => { this.pendingLooks.delete(look); this.templates.set(look, null); });
+  }
+
+  private acquireGlb(t: LookTemplate, r: Rig): GlbInstance {
+    const free = this.freeGlb.get(t.look);
+    const g = free !== undefined && free.length > 0 ? free.pop()! : createGlb(t, this.material);
+    g.mesh.userData = r.ud as unknown as Record<string, unknown>;   // `sharp` (DOF mask) of this rig
+    g.mesh.name = `ewa:actor:${r.id ?? ''}:${t.look}`;
+    return g;
+  }
+
+  private releaseGlb(r: Rig): void {
+    const g = r.glb!;
+    r.glb = null;
+    g.root.removeFromParent();
+    g.root.visible = false;
+    let list = this.freeGlb.get(g.look);
+    if (list === undefined) { list = []; this.freeGlb.set(g.look, list); }
+    list.push(g);
+  }
+
+  /** Per frame (GLB): gait weights onto idle / walk / run, the emote clip over them, then the mixer. Zero allocation. */
+  private animateGlb(r: Rig, dtMs: number): void {
+    const g = r.glb!;
+    const k = Math.min(1, (dtMs / 1000) * EMOTE_BLEND_RATE);
+    const emoting = r.emote !== 0 && r.emoteLeft > 0 && (g.emotes[r.emote] ?? null) !== null;
+    r.emoteW += ((emoting ? 1 : 0) - r.emoteW) * k;
+    const base = 1 - r.emoteW;
+    g.idle?.setEffectiveWeight((1 - r.walkW) * base);
+    g.walk?.setEffectiveWeight(r.walkW * (1 - r.runW) * base);
+    g.run?.setEffectiveWeight(r.walkW * r.runW * base);
+    for (let e = 1; e < g.emotes.length; e++) g.emotes[e]?.setEffectiveWeight(0);
+    if (r.emote !== 0) g.emotes[r.emote]?.setEffectiveWeight(r.emoteW);
+    g.mixer.update(dtMs / 1000);
+  }
 
   // ---- internals -------------------------------------------------------------------------------------------------
 
@@ -446,7 +555,7 @@ export class CharacterPool implements ActorPool {
     mesh.userData = ud as unknown as Record<string, unknown>;
     return {
       mesh, bones, ud, id: null, look: 'default', name: '', guildTag: '', isLocal: false, feet: new Vector3(), angle: 0,
-      moving: false, running: false, walkW: 0, runW: 0, phase: 0, clock: 0, emote: 0, emoteLeft: 0,
+      moving: false, running: false, walkW: 0, runW: 0, phase: 0, clock: 0, emote: 0, emoteLeft: 0, emoteW: 0, glb: null,
     };
   }
 
@@ -475,4 +584,43 @@ export class CharacterPool implements ActorPool {
       b[BONES.hips]!.position.y += Math.abs(Math.sin(r.clock * 9)) * 0.06;
     }
   }
+}
+
+/** A GLB instance of a template: cloned bones, the template's geometry, the pool's material, one mixer, looping clips at weight 0. */
+function createGlb(t: LookTemplate, material: MeshStandardNodeMaterial): GlbInstance {
+  const root = cloneSkinned(t.scene);
+  let found: SkinnedMesh | null = null;
+  root.traverse((n) => {
+    if ((n as SkinnedMesh).isSkinnedMesh === true && found === null) found = n as SkinnedMesh;
+    else if ((n as { isMesh?: boolean }).isMesh === true) n.visible = false;   // a look is one primitive (§10.7.7): nothing else draws
+  });
+  if (found === null) throw new Error(`@ewa/render: look '${t.look}' has no skinned mesh`);
+  const mesh: SkinnedMesh = found;
+  mesh.material = material;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.frustumCulled = false;   // skinned bounds follow the bones; 48 rigs max
+  root.scale.setScalar(t.scale);
+  const mixer = new AnimationMixer(root);
+  const action = (name: string | null): AnimationAction | null => {
+    if (name === null) return null;
+    const clip = t.clips.find((c) => c.name === name);
+    if (clip === undefined) return null;
+    const a = mixer.clipAction(clip);
+    a.enabled = true;
+    a.setEffectiveWeight(0);
+    a.play();
+    return a;
+  };
+  const idle = action('idle');
+  idle?.setEffectiveWeight(1);
+  const emotes = EMOTE_CLIPS.map((c) => action(c));
+  return { look: t.look, root, mesh, mixer, idle, walk: action('walk'), run: action('run'), emotes };
+}
+
+function disposeGlb(g: GlbInstance): void {
+  g.mixer.stopAllAction();
+  g.mixer.uncacheRoot(g.root);
+  g.mesh.skeleton.dispose();
+  g.root.removeFromParent();
 }

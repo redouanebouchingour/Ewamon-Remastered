@@ -137,3 +137,25 @@ describe('§10.5.9 leak (node, mock GPU bookkeeping)', () => {
     rig.dispose(); lib.disposeAll();
   }, 120_000);
 });
+
+describe('H5a: the hero texture stream waits for the renderer (IMPLEMENTATION-NOTES Part 4)', () => {
+  it('preloadHero starts only when heroGate resolves, and never for a zone disposed before that', async () => {
+    const lib = await mockLibrary();
+    const hero = vi.spyOn(lib, 'preloadHero');
+    let open!: () => void;
+    const gate = new Promise<void>((r) => { open = r; });
+    const h = await loadZone(syntheticSpec(), { materials: lib, lighting: null, scene: null, heroGate: gate });
+    await Promise.resolve();
+    expect(hero).not.toHaveBeenCalled();
+    open(); await gate; await Promise.resolve();
+    expect(hero).toHaveBeenCalledTimes(1);
+    h.dispose();
+    let open2!: () => void;
+    const gate2 = new Promise<void>((r) => { open2 = r; });
+    const h2 = await loadZone(syntheticSpec(), { materials: lib, lighting: null, scene: null, heroGate: gate2 });
+    h2.dispose();
+    open2(); await gate2; await Promise.resolve();
+    expect(hero).toHaveBeenCalledTimes(1);                      // the disposed zone never streams its hero sets
+    lib.disposeAll();
+  });
+});

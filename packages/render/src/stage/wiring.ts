@@ -17,9 +17,12 @@ import type { ZoneHandle } from '../contracts.js';
 import { DioramaRig } from '../camera/rig.js';
 import { createSpritePool, type BillboardPool } from '../sprites/billboard.js';
 import { CanvasHudLayer, type HudAnchors, type Ref } from '../hud/layer.js';
-import { CharacterPool } from './actors.js';
+import { CHARACTER, CharacterPool } from './actors.js';
+import { createGlbLookSource } from './looks.js';
+import { isDevBuild } from '../env.js';
 import { Stage, type StageGround } from './battleStage.js';
 import { VfxSystem } from './vfx.js';
+import { TerrainCollider } from '../terrain/collider.js';
 
 export interface Part3 {
   readonly sprites: BillboardPool;
@@ -45,10 +48,17 @@ function build(ctx: HostContext): Part3 {
   let chromaAmount = 0; let chromaMs = 0; let chromaLeft = 0;
 
   const sprites = createSpritePool({ harvestLevel: harvestUniform, camera: ctx.camera3, upload: (t) => ctx.gpu.initTexture(t) });
-  const actors = new CharacterPool({ harvestLevel: harvestUniform, camera: ctx.camera3, viewport });
+  const looks = ctx.modelsUrl === null ? undefined : createGlbLookSource({
+    baseUrl: ctx.modelsUrl, heightM: CHARACTER.heightM, ktx2: ctx.ktx2, warn: (m) => { if (isDevBuild()) console.warn(`[@ewa/render looks] ${m}`); },
+  });
+  const actors = new CharacterPool({ harvestLevel: harvestUniform, camera: ctx.camera3, viewport, ...(looks ? { looks } : {}) });
   ctx.scene.add(actors.root);
   const host = ctx as unknown as Renderer;
+  // the loaded zone's collider carries the tree crowns the shot camera avoids (H11); nothing once it is disposed
+  let zoneRef: (ZoneHandle & { readonly disposed?: boolean; readonly collider?: unknown }) | null = null;
+  const crowns = (): TerrainCollider | null => (zoneRef !== null && zoneRef.disposed !== true && zoneRef.collider instanceof TerrainCollider ? zoneRef.collider : null);
   const rig = new DioramaRig(ctx.camera3, {
+    occluders: crowns,
     effects: () => ctx.effects(),
     feet: (id, out) => actors.feetOf(id, out),
     onSettled: () => ctx.lighting.updateFrustums(),
@@ -87,7 +97,10 @@ function build(ctx: HostContext): Part3 {
       hud.tick(real);
     },
     setHarvestLevel(l: HarvestLevel): void { sprites.setHarvestLevel(l); },
-    onZone(z: ZoneHandle | null): void { bundle.setGround(z === null ? null : z.collider); },
+    onZone(z: ZoneHandle | null): void {
+      bundle.setGround(z === null ? null : z.collider);
+      zoneRef = z;
+    },
     dispose(): void { vfx.dispose(); sprites.dispose(); },
   };
 

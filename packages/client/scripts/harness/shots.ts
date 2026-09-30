@@ -7,7 +7,8 @@
  *
  * Options: `--shots all|<id,id>` (default all of the zone's table rows) · `--variants full,reduced,mask` ·
  * `--out-dir .screenshots/audit` · `--width 1440 --height 900` · `--settle 90` (min settle frames) ·
- * `--serve build|dev` (default build) · `--no-build` (reuse `dist/harness`).
+ * `--serve build|dev` (default build) · `--no-build` (reuse `dist/harness`) · `--headings words|rig` (default words: the
+ * table's '0 = +z forward' reading; rig = the numbers straight to CameraRig.setHeading, written under `headings-rig/`).
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -41,10 +42,11 @@ async function main(): Promise<void> {
   const tableShots = AUDIT_SHOTS.filter((s) => s.zone === zone);
   const shots = want === 'all' ? tableShots : tableShots.filter((s) => want.split(',').includes(s.id));
   if (shots.length === 0) throw new Error(`no §50.6.1 shot belongs to zone ${zone} (table zones: ${[...new Set(AUDIT_SHOTS.map((s) => s.zone))].join(', ')})`);
-  const outDir = join(outRoot, set, zone);
+  const headings = argStr(args, 'headings', 'words') === 'rig' ? 'rig' : 'words';
+  const outDir = headings === 'rig' ? join(outRoot, set, zone, 'headings-rig') : join(outRoot, set, zone);
   mkdirSync(outDir, { recursive: true });
 
-  const session = await openSession({ zone, route: 'shots', width, height, serve: argStr(args, 'serve', 'build') === 'dev' ? 'dev' : 'build', build: args['no-build'] !== true });
+  const session = await openSession({ zone, route: 'shots', width, height, serve: argStr(args, 'serve', 'build') === 'dev' ? 'dev' : 'build', build: args['no-build'] !== true, headings });
   const index: Record<string, unknown>[] = [];
   let failures = 0;
   try {
@@ -66,10 +68,11 @@ async function main(): Promise<void> {
         const png = imageStats(img);
         const checks: string[] = [];
         if (img.width !== width || img.height !== height) checks.push(`size ${img.width}x${img.height} != ${width}x${height}`);
-        if (png.blackShare > 0.6) checks.push(`${Math.round(png.blackShare * 100)} % black pixels (camera inside geometry / nothing drawn?)`);
+        if (variant !== 'mask' && png.blackShare > 0.6) checks.push(`${Math.round(png.blackShare * 100)} % black pixels (camera inside geometry / nothing drawn?)`);
         let maskCoverage: VariantRecord['maskCoverage'] = null;
         if (variant === 'mask') {
           if (png.greyShare < 1) checks.push(`mask not greyscale: ${Math.round((1 - png.greyShare) * 1e4) / 100} % coloured pixels`);
+          if (png.levels.full === 0) checks.push('mask has no DOF-sharp pixel (player / battlers not visible?)');
           maskCoverage = {
             player: st.rects.player === null ? null : fullShareIn(img, st.rects.player),
             battlers: st.rects.battlers.map((b) => ({ side: b.side, full: fullShareIn(img, b.rect) })),
@@ -91,7 +94,7 @@ async function main(): Promise<void> {
     writeFileSync(join(outDir, 'index.json'), `${JSON.stringify({
       set, zone, layoutSeed: session.info['layoutSeed'], generatedAt: new Date().toISOString(), resolution: { width, height, devicePixelRatio: 1 },
       machine: machine(), adapter: session.info['caps'], adapterInfo: session.info['adapterInfo'], chrome: session.browser.version, bootMs: session.bootMs,
-      harvest: session.info['harvest'], shots: index,
+      harvest: session.info['harvest'], headingConvention: headings, shots: index,
     }, null, 2)}\n`);
     const log2 = await evaluate<string[]>(cdp, 'window.__ewaHarness.log');
     writeFileSync(join(outDir, 'harness.log'), `${log2.join('\n')}\n`);

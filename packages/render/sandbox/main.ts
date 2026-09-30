@@ -10,11 +10,12 @@
  */
 import {
   BufferAttribute, CircleGeometry, ExtrudeGeometry, Group, LatheGeometry, Mesh, MeshStandardNodeMaterial, PlaneGeometry, Shape, Vector2,
+  WebGPURenderer,
 } from 'three/webgpu';
 import type { BufferGeometry } from 'three/webgpu';
 import { color, mrt, vec2 } from 'three/tsl';
 import {
-  ALL_EFFECTS, WATER_DEPTH_ATTRIBUTE, applyReducedEffects, capViolations, createBudgetProbe, createRenderer, paintSurfaceColor,
+  ALL_EFFECTS, GROVE_LIGHTING, WATER_DEPTH_ATTRIBUTE, applyReducedEffects, capViolations, createBudgetProbe, createRenderer, paintSurfaceColor,
   rendererInternals,
 } from '../src/index.js';
 import type { BasicDioramaRig, HarvestLevel, LightSource, Renderer, SurfaceId, WeatherKind, ZoneHandleImpl } from '../src/index.js';
@@ -190,15 +191,23 @@ function programCodes(r: Renderer): { vertex: string[]; fragment: string[] } {
 }
 let programsAtLoad: { vertex: string[]; fragment: string[] } | null = null;
 
-interface TrackedGpu { readonly targets: Map<object, string>; readonly textures: Map<object, string> }
+interface TrackedGpu { readonly targets: Map<object, string>; readonly textures: Map<object, string>; readonly attributes: Map<object, string> }
+
+/** A few frames of the call stack (file:line), for objects created after the first zone frame. */
+function shortStack(): string {
+  const lines = (new Error().stack ?? '').split('\n').slice(3).map((l) => l.trim().replace(/^at /, '').replace(/\(?https?:\/\/[^)]*\/([^/?)]+)(\?[^:)]*)?:(\d+):\d+\)?/, ' $1:$3'));
+  return lines.filter((l) => !l.includes('main.ts')).slice(0, 7).join(' < ');
+}
 
 /**
  * `?track=1` (leak hunting, IMPLEMENTATION-NOTES Part 4): wraps three's texture bookkeeping so every render target /
  * texture three initialises after this call is listed with its name, size and creation phase until it is destroyed.
+ * Installed from `WebGPURenderer.init` (below), i.e. before `createRenderer`'s step 8 — so the objects alive at the
+ * step-8 baseline are known and `leaks()` can name what outlives it.
  */
-function trackGpuObjects(r: Renderer, phase: () => string): TrackedGpu {
-  const t = (r.renderer as unknown as { _textures: Record<string, (...a: unknown[]) => unknown> & { has(o: object): boolean; info: { createTexture(tx: object): void; destroyTexture(tx: object): void } } })._textures;
-  const out: TrackedGpu = { targets: new Map(), textures: new Map() };
+function trackGpuObjects(gpu: WebGPURenderer, phase: () => string): TrackedGpu {
+  const t = (gpu as unknown as { _textures: Record<string, (...a: unknown[]) => unknown> & { has(o: object): boolean; info: { createTexture(tx: object): void; destroyTexture(tx: object): void } } })._textures;
+  const out: TrackedGpu = { targets: new Map(), textures: new Map(), attributes: new Map() };
   const describe = (o: { name?: string; texture?: { name?: string }; width?: number; height?: number; image?: { width?: number; height?: number } }): string =>
     `${o.texture?.name || o.name || (o as { constructor: { name: string } }).constructor.name} ${o.width ?? o.image?.width ?? '?'}x${o.height ?? o.image?.height ?? '?'} @${phase()}`;
   const upd = t.updateRenderTarget!.bind(t);
@@ -211,11 +220,38 @@ function trackGpuObjects(r: Renderer, phase: () => string): TrackedGpu {
   const destroyRT = t._destroyRenderTarget!.bind(t);
   t._destroyRenderTarget = (rt: unknown) => { out.targets.delete(rt as object); return destroyRT(rt); };
   const info = t.info;
+  const destroyed = new WeakSet<object>();
+  let current: { material?: { name?: string }; object?: { name?: string; type?: string } } | null = null;
+  const bindings = (gpu as unknown as { _bindings: { getForRender(ro: unknown): unknown } })._bindings;
+  const getForRender = bindings.getForRender.bind(bindings);
+  bindings.getForRender = (ro: unknown) => { current = ro as typeof current; try { return getForRender(ro); } finally { current = null; } };
   const create = info.createTexture.bind(info);
-  info.createTexture = (tx: object) => { out.textures.set(tx, describe(tx as never)); create(tx); };
+  info.createTexture = (tx: object) => {
+    const who = current ? ` by ${current.object?.type ?? '?'} '${current.object?.name ?? ''}' / '${current.material?.name ?? ''}'` : '';
+    const again = destroyed.has(tx) ? ' RE-INIT after destroy' : '';
+    out.textures.set(tx, describe(tx as never) + again + who + (phase() === 'play' || phase().startsWith('x') ? ` [${shortStack()}]` : ''));
+    create(tx);
+  };
+  const inf = info as unknown as { createAttribute(a: object): void; destroyAttribute(a: object): void };
+  const cA = inf.createAttribute.bind(inf);
+  inf.createAttribute = (a: object) => { out.attributes.set(a, `${(a as { name?: string }).name || (a as { constructor: { name: string } }).constructor.name} n${(a as { count?: number }).count ?? '?'} x${(a as { itemSize?: number }).itemSize ?? '?'} @${phase()} [${shortStack()}]`); cA(a); };
+  const dA = inf.destroyAttribute.bind(inf);
+  inf.destroyAttribute = (a: object) => { out.attributes.delete(a); dA(a); };
   const destroy = info.destroyTexture.bind(info);
-  info.destroyTexture = (tx: object) => { out.textures.delete(tx); destroy(tx); };
+  info.destroyTexture = (tx: object) => { out.textures.delete(tx); destroyed.add(tx); destroy(tx); };
   return out;
+}
+
+let trackPhase = 'boot';
+let tracked: TrackedGpu | null = null;
+if (new URLSearchParams(location.search).get('track') === '1') {
+  const proto = WebGPURenderer.prototype as unknown as { init(this: WebGPURenderer): Promise<unknown> };
+  const init = proto.init;
+  proto.init = async function (this: WebGPURenderer): Promise<unknown> {
+    const res = await init.call(this);
+    if (tracked === null) tracked = trackGpuObjects(this, () => trackPhase);
+    return res;
+  };
 }
 
 async function main(): Promise<void> {
@@ -228,12 +264,14 @@ async function main(): Promise<void> {
     transcoderPath: '/basis/',
     materialsUrl: '/materials/',
     clock: () => performance.now(),
+    precompile: new URLSearchParams(location.search).get('precompile') !== '0',   // `&precompile=0`: the pre-H4 path (A/B)
   });
+  // the step-8 baseline was captured inside createRenderer, with no await after it: this is the same moment
+  const atBaseline = tracked ? { targets: new Set(tracked.targets.keys()), textures: new Set(tracked.textures.keys()), attributes: new Set(tracked.attributes.keys()) } : null;
+  trackPhase = 'after-baseline';
   await gpuIdle(r);
   timing.createRendererMs = Math.round(performance.now() - tBoot);
   timing.programsAfterWarmup = r.renderer.info.memory.programs;
-  let trackPhase = 'boot';
-  const tracked = new URLSearchParams(location.search).get('track') === '1' ? trackGpuObjects(r, () => trackPhase) : null;
   const host = rendererInternals(r)!;
   const probe = createBudgetProbe(r, 'sandbox');
 
@@ -314,6 +352,22 @@ async function main(): Promise<void> {
     },
     /** `?track=1`: render targets / textures three initialised after boot and still alive (name size @phase). */
     live: () => (tracked ? { targets: [...tracked.targets.values()], textures: [...tracked.textures.values()] } : null),
+    /** A/B for the Part 4 shots: the DOF CoC masked under mask.y (H3; true = shipped) and a fog density override (H8). */
+    setDofMaskedCoC: (on: boolean) => host.post.setBuildOptions({ dofMaskedCoC: on }),
+    setFogDensity: (d: number) => host.setLightingPalette({ ...GROVE_LIGHTING, fogDensity: d }),
+    /** `?track=1`: labels the objects created from now on (leak hunting). */
+    setTrackPhase: (p: string) => { trackPhase = p; },
+    /** `?track=1`: render targets / textures alive now that were not alive at the step-8 baseline. */
+    leaks: () => {
+      if (!tracked || !atBaseline) return null;
+      const t = tracked;
+      return {
+        targets: [...t.targets.entries()].filter(([o]) => !atBaseline.targets.has(o)).map(([, d]) => d),
+        textures: [...t.textures.entries()].filter(([o]) => !atBaseline.textures.has(o)).map(([, d]) => d),
+        attributes: [...t.attributes.entries()].filter(([o]) => !atBaseline.attributes.has(o)).map(([, d]) => d),
+        goneSinceBaseline: { targets: [...atBaseline.targets].filter((o) => !t.targets.has(o)).length, textures: [...atBaseline.textures].filter((o) => !t.textures.has(o)).length },
+      };
+    },
     stats: () => ({ ...r.stats(), passMs: { ...r.stats().passMs } }),
     counts: () => probe.counts(),
     dump: () => probe.dumpZone(),

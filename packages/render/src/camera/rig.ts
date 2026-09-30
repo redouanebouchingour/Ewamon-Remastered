@@ -54,6 +54,13 @@ export const ZOOM_MS = 260;
 export const SPRING_MAX_STEP_S = 1 / 60;
 // #endregion
 
+// #region constants — shot camera vs tree crowns (implementation values, IMPLEMENTATION-NOTES Part 4, H11)
+/** A battle / inspector camera stops this far (m) in front of the first crown between it and the orbit centre. */
+export const CROWN_MARGIN_M = 0.4;
+/** ... but never closer to the orbit centre than this (m). */
+export const MIN_SHOT_DISTANCE_M = 3;
+// #endregion
+
 // #region constants — §10.7.2 shake (amp · 0.4° roll; oscillator rates/phases are implementation values)
 /** Roll added to a shake: amp · 0.4 degrees per world unit. */
 export const SHAKE_ROLL_DEG = 0.4;
@@ -117,6 +124,13 @@ export interface DioramaRigOptions {
   readonly onSettled?: () => void;
   /** Slow-mo request from a `ko` cue (the host coerces it through `setTimeScale`, §10.8.4). */
   readonly onSlowmo?: (scale: number, ms: number) => void;
+  /** Tree crowns of the loaded zone (the collider's `crownClearance`); null / absent = none (H11). */
+  readonly occluders?: () => CameraOccluders | null;
+}
+
+/** What a shot camera avoids: the parameter t ∈ [0, 1] where the segment a → b first enters a crown (1 = clear). */
+export interface CameraOccluders {
+  crownClearance(ax: number, ay: number, az: number, bx: number, by: number, bz: number): number;
 }
 
 type Mode = 'diorama' | 'battle' | 'inspect';
@@ -296,6 +310,7 @@ export class DioramaRig implements CameraRig {
       this.pose.distance = Math.max(1, this.pose.distance - push * b);
     }
     orbitPosition(this.pose, this.camera.position);
+    if (b > 0) this.avoidCrowns(b);
     this.camera.lookAt(this.pose.center);
 
     // DOF focus: the feet in the diorama (held when nothing is followed), the shot's focus (arena centre /
@@ -322,6 +337,23 @@ export class DioramaRig implements CameraRig {
     this.camera.updateMatrixWorld();
 
     if (this.settledPending) { this.settledPending = false; this.o.onSettled?.(); }
+  }
+
+  /**
+   * H11: a battle / inspector shot never puts the camera inside (or behind) a tree crown: the camera is pulled in
+   * along the orbit ray to just before the first crown it would cross, by the shot blend (the diorama camera, high
+   * above the canopy, is left alone). Zero allocation.
+   */
+  private avoidCrowns(b: number): void {
+    const occ = this.o.occluders?.() ?? null;
+    if (occ === null) return;
+    const c = this.pose.center; const p = this.camera.position;
+    const t = occ.crownClearance(c.x, c.y, c.z, p.x, p.y, p.z);
+    if (!(t < 1)) return;
+    const d = Math.max(this.pose.distance, MIN_SHOT_DISTANCE_M);
+    const k = Math.min(1, Math.max(MIN_SHOT_DISTANCE_M / d, t - CROWN_MARGIN_M / d));
+    const f = 1 + (k - 1) * b;
+    p.set(c.x + (p.x - c.x) * f, c.y + (p.y - c.y) * f, c.z + (p.z - c.z) * f);
   }
 
   setAspect(aspect: number): void {

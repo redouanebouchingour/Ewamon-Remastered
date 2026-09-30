@@ -296,6 +296,11 @@ export interface DumpInput {
   readonly culledChunks?: number;
   /** Cascades rendered by the sun (4). */
   readonly cascades?: number;
+  /**
+   * Where else to look for creature billboards (their pool lives outside the zone root; H2): `sprites[]` rows for
+   * every billboard material found under it. `materials[]` stays the zone root's set (what `counts.materials` counts).
+   */
+  readonly spriteScan?: Object3D;
 }
 
 function numericParams(g: BufferGeometry): Record<string, number> | null {
@@ -451,6 +456,19 @@ export function dumpZone(i: DumpInput): ZoneDump {
     for (const c of o.children) visit(c);
   };
   visit(i.root);
+  if (i.spriteScan) {
+    const seenSprite = new Set<string>(materials.filter((m) => m.cls === 'billboard').map((m) => m.uuid));
+    i.spriteScan.traverse((o) => {
+      const mat = (o as Mesh).material as Material | Material[] | undefined;
+      if (mat === undefined) return;
+      for (const m of Array.isArray(mat) ? mat : [mat]) {
+        if (seenSprite.has(m.uuid) || m.userData?.ewaClass !== 'billboard') continue;
+        seenSprite.add(m.uuid);
+        const map = albedoOf(m);
+        sprites.push({ atlas: String(m.userData?.ewaAtlas ?? ''), magFilter: map?.magFilter ?? -1, anisotropy: map?.anisotropy ?? -1 });
+      }
+    });
+  }
   const geometries = [...geometryRows.values()];
   for (const row of geometries) row.sharedBy = meshesPerGeometry.get(row.uuid) ?? 0;
 

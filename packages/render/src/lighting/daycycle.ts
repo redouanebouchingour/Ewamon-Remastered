@@ -10,7 +10,7 @@ import type { Vector3 } from 'three/webgpu';
 import type { WeatherKind } from '../descriptors.js';
 import type { SharedUniforms } from '../materials/harvest.js';
 import { stepWetness } from '../materials/harvest.js';
-import type { HeightFog } from './fog.js';
+import { GROVE_FOG_DENSITY, type HeightFog } from './fog.js';
 import type { LightRig } from './rig.js';
 import type { SkyController } from './sky.js';
 import { weatherParams, type WeatherParams } from './weather.js';
@@ -232,7 +232,7 @@ export const GROVE_LIGHTING: LightingPalette = Object.freeze({
   skyHorizon: '#dfe6d6',
   groundBounce: '#5d6b3f',
   fogColor: ['#1a2030', '#b9c7a8'] as const,
-  fogDensity: 0.018,
+  fogDensity: GROVE_FOG_DENSITY,   // §10.3.7 as amended: 0.0068 (was 0.018; H8)
   fogBase: 0.0,
   fogFalloff: 0.35,
 });

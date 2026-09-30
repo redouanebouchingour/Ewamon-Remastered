@@ -7,10 +7,13 @@
  * - `spawn-noon`: `ZoneDef.spawn` (mirevale `(0, 6)`).
  * - `gym-dusk`: the gym building's door (`doorOf`, the server's league marker `(0, −26)`) + `(0, +8)` in the DOOR frame
  *   (+z = the door's outward normal, +x = that normal turned −90° about y, so a door facing +z reads in world axes).
- * - `sprite-edge`: the encounter table's first `common` slot is the creature; its spawn point is the centre of the
- *   zone layout's first tall-grass patch (`planLayout(spec).grassPatches[0]`), snapped to the heightfield
- *   (`nearestWalkable`, 8 m) — the server draws spawn points from a time-seeded rng (`ZoneRoom` `worldRng`), so there
- *   is no committed spawn point; the grass patch is where the layout puts wild creatures. Anchor = spawn + `(−2, +3)`.
+ * - `sprite-edge`: the encounter table's first `common` slot is the creature; its spawn point is the road-side edge of
+ *   the zone layout's first tall-grass patch (`planLayout(spec).grassPatches[0]`): from the patch centre toward the
+ *   road centreline (`plan.roadZ`) by `rz + 1.5` m (`SPAWN_EDGE_OUT_M`), i.e. just outside the builder's 0.9 m grass fringe,
+ *   snapped to the heightfield (`nearestWalkable`, 8 m). The server draws spawn points from a time-seeded rng
+ *   (`ZoneRoom` `worldRng`), so there is no committed spawn point; the patch is where the layout puts wild creatures,
+ *   and its edge keeps the sprite out of the tall grass (the patch centre buried a level-2 mossling in grass cards,
+ *   which defeats the edge audit). Anchor = spawn + `(−2, +3)` world.
  * - `lamps-night`: the shop building's door + `(+4, +6)` in the door frame. Read in world axes the offset lands inside
  *   the shop (mirevale: world (10.95, 28.16), 0.08 m inside the back wall), because this shop's door faces the plaza
  *   (−z), not +z as the table assumes.
@@ -29,11 +32,11 @@ import { ENCOUNTER_TABLES, getHeightfield, isWalkable, isWater, nearestWalkable,
 import type { EncounterSlot, ZoneDef, ZoneId } from '@ewa/content';
 import { HANDOVER_INSET, doorOf, edgePoint, headingYaw, planLayout } from '@ewa/render';
 import type { BuildingSpec, ZoneSpec } from '@ewa/render';
-import { rigHeading, round2 } from './shotTable';
+import { headingConvention, rigHeading, round2 } from './shotTable';
 import type { Heading, ShotDef, ShotId } from './shotTable';
 
-export { AUDIT_SHOTS, VARIANTS, coordTag, rigHeading, round2, shotDef, shotFileStem, shotsForZone } from './shotTable';
-export type { Heading, ShotDef, ShotId, Variant } from './shotTable';
+export { AUDIT_SHOTS, VARIANTS, coordTag, headingConvention, rigHeading, round2, setHeadingConvention, shotDef, shotFileStem, shotsForZone } from './shotTable';
+export type { Heading, HeadingConvention, ShotDef, ShotId, Variant } from './shotTable';
 
 /** Horizontal view direction (camera → scene) of a rig heading, rounded to 1e-4. */
 export function viewForward(rig: Heading): readonly [number, number] {
@@ -66,6 +69,9 @@ function snapWalkable(z: ZoneDef, x: number, zz: number): Snap {
   return { x: p[0], z: p[1], snapped: true, raw: [x, zz] };
 }
 
+/** How far outside the grass patch ellipse (along z, toward the road) the creature stands: past the 0.9 m fringe. */
+export const SPAWN_EDGE_OUT_M = 1.5;
+
 export interface EncounterAnchor {
   readonly slot: EncounterSlot;
   readonly slotIndex: number;
@@ -85,8 +91,13 @@ export function encounterAnchor(z: ZoneDef, spec: ZoneSpec): EncounterAnchor | n
     tablets: spec.tablets, warps: spec.warps, tallGrass: spec.tallGrass, setPiece: spec.setPiece,
   });
   const patch = plan.grassPatches[0];
-  const cx = patch?.x ?? z.spawn.x;
-  const cz = patch?.z ?? z.spawn.z;
+  let cx = patch?.x ?? z.spawn.x;
+  let cz = patch?.z ?? z.spawn.z;
+  if (patch !== undefined) {
+    const toward = Math.sign(plan.roadZ(patch.x) - patch.z) || -1;
+    cz = patch.z + toward * (patch.rz + SPAWN_EDGE_OUT_M);
+    cx = patch.x;
+  }
   const h = getHeightfield(z.id);
   if ((slot.medium ?? 'land') === 'water') {
     return { slot, slotIndex, spawn: { x: cx, z: cz, snapped: false, raw: [cx, cz] } };
@@ -113,7 +124,7 @@ export interface ResolvedAnchor {
   readonly wild: { readonly speciesId: string; readonly level: number; readonly slotIndex: number; readonly x: number; readonly z: number } | null;
   /** world-axis reading of a door-frame offset, when it differs (reported, not used) */
   readonly worldReading: readonly [number, number] | null;
-  readonly heading: { readonly spec: Heading | null; readonly rig: Heading | null; readonly viewForward: readonly [number, number] | null };
+  readonly heading: { readonly spec: Heading | null; readonly rig: Heading | null; readonly viewForward: readonly [number, number] | null; readonly convention: 'words' | 'rig' };
 }
 
 function buildingOf(spec: ZoneSpec, kind: BuildingSpec['kind']): BuildingSpec | null {
@@ -130,7 +141,7 @@ export const ENGAGE_AT_M = 2.5;
 export function resolveAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | null {
   const z = zoneDef(spec.id as ZoneId);
   const rigH = shot.heading === null ? null : rigHeading(shot.heading);
-  const heading = { spec: shot.heading, rig: rigH, viewForward: rigH === null ? null : viewForward(rigH) };
+  const heading = { spec: shot.heading, rig: rigH, viewForward: rigH === null ? null : viewForward(rigH), convention: headingConvention() };
   const base = { layoutSeed: z.layoutSeed >>> 0, shot: shot.id, zone: z.id, heading };
   switch (shot.id) {
     case 'spawn-noon': {
@@ -170,7 +181,7 @@ export function resolveAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | n
         const p = snapWalkable(z, ax, az);
         return {
           ...base, x: p.x, z: p.z, snapped: p.snapped, raw: p.raw,
-          rule: `${z.encounterTable} slot ${e.slotIndex} (${e.slot.species}, first 'common') at grassPatches[0] centre${s.snapped ? ' (snapped)' : ''} + (-2, +3) world`,
+          rule: `${z.encounterTable} slot ${e.slotIndex} (${e.slot.species}, first 'common') at the road-side edge of grassPatches[0] (centre + ${SPAWN_EDGE_OUT_M} m past rz toward roadZ)${s.snapped ? ' (snapped)' : ''} + (-2, +3) world`,
           base: { name: `${e.slot.species} spawn`, x: s.x, z: s.z }, offset: { dx: -2, dz: 3, frame: 'world' }, wild, worldReading: null,
         };
       }

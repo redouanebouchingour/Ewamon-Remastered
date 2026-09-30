@@ -15,11 +15,11 @@ export type {
 
 // ---- §10.1 renderer host + §10.10 probe ----
 export {
-  CAMERA_LAYERS, CAMERA_PARAMS, DEFAULT_SUBSYSTEMS, MAX_DRAWING_WIDTH, MIN_MAX_TEXTURE_SIZE, PIXEL_RATIO_CAP, RenderInitError,
+  CAMERA_LAYERS, CAMERA_PARAMS, COMPILE_CONCURRENCY, DEFAULT_SUBSYSTEMS, MAX_DRAWING_WIDTH, MIN_MAX_TEXTURE_SIZE, PIXEL_RATIO_CAP, RenderInitError,
   chooseKtx2Target, clampPixelRatio, createBudgetProbe, createRenderer, createZoneView, rendererInternals,
 } from './renderer.js';
 export type {
-  BudgetProbe, CameraShot, FrameHook, HostContext, HudBinding, PassMeasureOptions, Renderer, RendererOptions, RendererProbe,
+  BudgetProbe, CameraShot, CompileProgress, FrameHook, HostContext, HudBinding, PassMeasureOptions, Renderer, RendererOptions, RendererProbe,
   RendererSubsystems, RenderInitErrorCode, ZoneView, ZoneViewOptions,
 } from './renderer.js';
 
@@ -68,8 +68,10 @@ export type { GradePalette } from './post/grade.js';
 export { REDUCED_OFF, applyReducedEffects, coerceTimeScale, effectsEqual, isReduced } from './post/effects.js';
 
 // ---- §10.10 stats ----
-export { COUNT_CAPS, capViolations, computePassMs, createRenderStats, dumpZone, median, percentile, readBudgetCounts } from './stats.js';
-export type { ZoneDump } from './stats.js';
+export {
+  COUNT_CAPS, HOUSINGS_KEY, PassTimer, aggregatePassMs, capViolations, computePassMs, createRenderStats, dumpZone, median, percentile, readBudgetCounts,
+} from './stats.js';
+export type { HousingTag, TimedContext, ZoneDump } from './stats.js';
 
 // ---- §10.4–§10.9 contracts (implemented by later agents) + placeholders ----
 // ---- §10.5 zone builder + §10.6 terrain = collision (part 2) ----
@@ -132,7 +134,8 @@ export type { CameraWork, CueKind, OrbitPose } from './camera/battle.js';
 export { BOKEH_PX, FOCAL_LENGTH_M, TILT_DEG, TiltShiftDOF, circleOfConfusionPx, groundOffPlaneM } from './camera/dof.js';
 export { CAPACITY as VFX_CAPACITY, EMITTERS as VFX_EMITTERS, MAX_PARTICLES as VFX_MAX_PARTICLES, VFX_IDS, VFX_TABLE, VfxSystem, isVfxId } from './stage/vfx.js';
 export type { VfxAnchor, VfxPhase, VfxRecipe } from './stage/vfx.js';
-export { ACTOR_POOL_SIZE, CharacterPool, EMOTE_MS, buildCharacterGeometry, createCharacterMaterial, lookFor } from './stage/actors.js';
+export { ACTOR_POOL_SIZE, CharacterPool, EMOTE_CLIPS, EMOTE_MS, buildCharacterGeometry, createCharacterMaterial, lookFor } from './stage/actors.js';
+export { LOOK_CLIPS, createGlbLookSource, lookScale, parseLooks, type LookSource, type LookTemplate } from './stage/looks.js';
 export type { GroundSampler, LookDef } from './stage/actors.js';
 export { STAGE, Stage, TERRAIN_ACCENT, TERRAIN_SURFACE } from './stage/battleStage.js';
 export type { StageDeps, StageGround } from './stage/battleStage.js';

@@ -71,7 +71,10 @@ export const HUD = Object.freeze({
   thumbPx: 48, thumbGap: 8, partyMax: 6,
   chatLines: 6, chatLineH: 21, chatWidth: 440, chatHoldMs: 6000, chatFadeMs: 2000, chatRepaintMs: 250,
   nameplatesMax: 16,
-  barW: 210, barH: 52, barLift: 18,
+  barW: 210, barH: 52, barLift: 18, barGap: 6,
+  /** The battle turn label's reserved box: top-centre, `turnBandTop` below the margin, `turnBandW` × `turnBandH`; bars never enter it. */
+  turnBandTop: 120, turnBandH: 34, turnBandW: 320,
+
   hpTweenMs: 500, hpRepaintMs: 1000 / 30,
   promptW: 520, promptH: 46, promptBottom: 132,
   topRightW: 440,
@@ -180,6 +183,10 @@ export class CanvasHudLayer implements HudLayer {
   private readonly barXY = new Float32Array(16 * 2);
   private readonly barDrawnXY = new Float32Array(16 * 2);
   private readonly barOk = new Uint8Array(16);
+  /** Placed top-left corners of the battle bars (canvas px): inside the margins, off the reserved boxes, unstacked. */
+  private readonly barPos = new Float32Array(16 * 2);
+  /** [x0, y0, x1, y1] × 3: the turn label, the party strip, the clock (canvas px, incl. the gap). */
+  private readonly reservedBoxes = new Float32Array(12);
   private readonly emoteXY = new Float32Array(2);
   private emoteActive = false;
   // hp tween, per bar index of the current model (≤ 16)
@@ -521,16 +528,79 @@ export class CanvasHudLayer implements HudLayer {
     }
     const b = m.battle;
     if (b === null) return;
-    const n = Math.min(b.bars.length, 16);
+    const n = this.placeBars();
     for (let i = 0; i < n; i++) {
       if (this.barOk[i] !== 1) continue;
-      const x = this.barXY[i * 2]! * pr; const y = this.barXY[i * 2 + 1]! * pr;
-      tmp.x = x - (HUD.barW / 2 + 4) * s; tmp.y = y - (HUD.barH + HUD.barLift + 4) * s; tmp.w = (HUD.barW + 8) * s; tmp.h = (HUD.barH + 8) * s;
+      tmp.x = this.barPos[i * 2]! - 4 * s; tmp.y = this.barPos[i * 2 + 1]! - 4 * s; tmp.w = (HUD.barW + 8) * s; tmp.h = (HUD.barH + 8) * s;
       unionInto(out, tmp);
     }
     const W = this.surface.canvas.width;
-    tmp.x = W / 2 - 160 * s; tmp.y = HUD.margin * s + (HUD.displayPx + 72) * s; tmp.w = 320 * s; tmp.h = 34 * s;
+    tmp.x = W / 2 - (HUD.turnBandW / 2) * s; tmp.y = (HUD.margin + HUD.turnBandTop) * s; tmp.w = HUD.turnBandW * s; tmp.h = HUD.turnBandH * s;
     unionInto(out, tmp);
+  }
+
+  /**
+   * Places the battle bars (IMPLEMENTATION-NOTES Part 4, H10): centred above each battler's anchor, clamped inside the
+   * screen margins, moved off the reserved boxes (the turn label — the near battler's bar used to overprint it — the
+   * party strip and the clock) by the smallest move among up / down / left / right that stays on screen, so a battler
+   * at the top of the frame keeps its bar beside or just above the label instead of over its own sprite, then moved
+   * past any earlier bar so two bars never overlap. Writes `barPos`; zero allocation. Returns the bar count.
+   */
+  private placeBars(): number {
+    const b = this.model.battle;
+    if (b === null) return 0;
+    const s = this.s(); const pr = this.pr;
+    const W = this.surface.canvas.width; const H = this.surface.canvas.height;
+    const M = HUD.margin * s;
+    const w = HUD.barW * s; const h = HUD.barH * s; const gap = HUD.barGap * s;
+    const xMax = Math.max(M, W - M - w); const yMax = Math.max(M, H - M - h);
+    // reserved boxes (+ gap): the turn label, the party strip, the clock / quest hint
+    const rb = this.reservedBoxes;
+    rb[0] = W / 2 - (HUD.turnBandW / 2) * s - gap; rb[1] = (HUD.margin + HUD.turnBandTop) * s - gap;
+    rb[2] = W / 2 + (HUD.turnBandW / 2) * s + gap; rb[3] = (HUD.margin + HUD.turnBandTop + HUD.turnBandH) * s + gap;
+    const np = Math.min(HUD.partyMax, this.model.party.length);
+    rb[4] = M - gap; rb[5] = M - gap; rb[6] = np > 0 ? M + np * (HUD.thumbPx + HUD.thumbGap) * s + gap : M - gap; rb[7] = np > 0 ? M + (HUD.thumbPx + 20) * s + gap : M - gap;
+    rb[8] = W - M - HUD.topRightW * s - gap; rb[9] = M - gap; rb[10] = W - M + gap; rb[11] = M + (this.model.questHint !== null ? 60 : 34) * s + gap;
+    const n = Math.min(b.bars.length, 16);
+    for (let i = 0; i < n; i++) {
+      if (this.barOk[i] !== 1) continue;
+      let x = this.barXY[i * 2]! * pr - w / 2;
+      let y = this.barXY[i * 2 + 1]! * pr - HUD.barLift * s - h;
+      x = Math.min(Math.max(x, M), xMax);
+      y = Math.min(Math.max(y, M), yMax);
+      for (let pass = 0; pass < 3; pass++) {                  // each box by the smallest move that stays on screen
+        let moved = false;
+        for (let k = 0; k < rb.length; k += 4) {
+          const x0 = rb[k]!; const y0 = rb[k + 1]!; const x1 = rb[k + 2]!; const y1 = rb[k + 3]!;
+          if (!(x < x1 && x + w > x0 && y < y1 && y + h > y0)) continue;
+          const du = y0 - h >= M ? y - (y0 - h) : Number.POSITIVE_INFINITY;
+          const dd = y1 <= yMax ? y1 - y : Number.POSITIVE_INFINITY;
+          const dl = x0 - w >= M ? x - (x0 - w) : Number.POSITIVE_INFINITY;
+          const dr = x1 <= xMax ? x1 - x : Number.POSITIVE_INFINITY;
+          const best = Math.min(du, dd, dl, dr);
+          if (best === du) y = y0 - h; else if (best === dd) y = y1; else if (best === dl) x = x0 - w; else if (best === dr) x = x1;
+          moved = best !== Number.POSITIVE_INFINITY;
+        }
+        if (!moved) break;
+      }
+      for (let pass = 0; pass < n; pass++) {                  // settle against every earlier bar (bounded passes)
+        let moved = false;
+        for (let j = 0; j < i; j++) {
+          if (this.barOk[j] !== 1) continue;
+          const px = this.barPos[j * 2]!; const py = this.barPos[j * 2 + 1]!;
+          if (!(x < px + w + gap && x + w + gap > px && y < py + h + gap && y + h + gap > py)) continue;
+          // below the other bar if that fits on screen, else above it, else beside it (right, then left)
+          if (py + 2 * h + gap <= H - M) y = py + h + gap;
+          else if (py - h - gap >= M) y = py - h - gap;
+          else if (px + 2 * w + gap <= W - M) x = px + w + gap;
+          else x = Math.max(M, px - w - gap);
+          moved = true;
+        }
+        if (!moved) break;
+      }
+      this.barPos[i * 2] = x; this.barPos[i * 2 + 1] = y;
+    }
+    return n;
   }
 
   private readonly tmpBox = box();
@@ -766,15 +836,14 @@ export class CanvasHudLayer implements HudLayer {
     const b = this.model.battle;
     if (b === null) return;
     const { ctx } = this.surface;
-    const s = this.s(); const pr = this.pr;
-    const n = Math.min(b.bars.length, 16);
+    const s = this.s();
+    const n = this.placeBars();
     for (let i = 0; i < n; i++) {
       this.barDrawnXY[i * 2] = this.barXY[i * 2]!; this.barDrawnXY[i * 2 + 1] = this.barXY[i * 2 + 1]!;
       if (this.barOk[i] !== 1) continue;
       const bar = b.bars[i]!;
-      const ax = this.barXY[i * 2]! * pr; const ay = this.barXY[i * 2 + 1]! * pr;
       const w = HUD.barW * s; const h = HUD.barH * s;
-      const x = ax - w / 2; const y = ay - HUD.barLift * s - h;
+      const x = this.barPos[i * 2]!; const y = this.barPos[i * 2 + 1]!;
       this.panel(x, y, w, h, 8 * s);
       ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
       ctx.font = this.font(HUD.bodyPx, 700);
@@ -798,9 +867,9 @@ export class CanvasHudLayer implements HudLayer {
       if (bar.status !== null) { this.statusPill(bar.status, sx, y + 35 * s); sx += 44 * s; }
       if (bar.stages.length > 0) { ctx.font = this.font(HUD.smallPx, 700); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; this.text(bar.stages, sx, y + 43 * s, '#bfe3ff'); }
     }
-    // turn label + orb shakes (top-centre, under the connection pill)
+    // turn label + orb shakes (top-centre, in the reserved band under the top HUD row / connection pill)
     const W = this.surface.canvas.width;
-    const ty = HUD.margin * s + (HUD.displayPx + 89) * s;
+    const ty = (HUD.margin + HUD.turnBandTop + HUD.turnBandH / 2) * s;
     ctx.font = this.font(HUD.bodyPx + 1, 700);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     if (b.turnLabel.length > 0) this.text(b.turnLabel, W / 2, ty);

@@ -63,6 +63,8 @@ export interface RendererOptions {
   // ---- additions (documented in IMPLEMENTATION-NOTES.md) ----
   /** Where `materials.manifest.json` and the KTX2 sets are served. Default `'/materials/'`. */
   readonly materialsUrl?: string;
+  /** Where `models.manifest.json` and the look GLBs are served (§10.7.7; IMPLEMENTATION-NOTES Part 4, H7). Default `'/models/'`; null = procedural characters only. */
+  readonly modelsUrl?: string | null;
   /** Millisecond clock for `RenderStats.frameMs`; render never reads a wall clock itself (§10 NN 10). Default: none (frameMs = 0). */
   readonly clock?: () => number;
   /**
@@ -71,6 +73,8 @@ export interface RendererOptions {
    * `loaded` / `total` count render objects. For the client's BootScreen.
    */
   readonly onCompileProgress?: (p: CompileProgress) => void;
+  /** Default true. False skips the H4 pre-compile (first frames compile synchronously): A/B measurements only. */
+  readonly precompile?: boolean;
 }
 
 /** One `onCompileProgress` report. `done` is true on the last report of a phase (with its wall time when a clock is set). */
@@ -158,6 +162,8 @@ export interface HostContext {
   readonly camera3: PerspectiveCamera;
   readonly ktx2: KTX2Loader;
   readonly materials: MaterialLibrary;
+  /** `RendererOptions.modelsUrl` (null = no GLB looks). */
+  readonly modelsUrl: string | null;
   readonly lighting: LightRig;
   readonly sky: SkyController;
   readonly fog: HeightFog;
@@ -326,6 +332,7 @@ class RendererHost implements Renderer, HostContext {
   readonly hud: HudLayer;
   readonly actors: ActorPool;
   readonly materials: MaterialLibrary;
+  readonly modelsUrl: string | null;
   readonly lighting: LightRig;
   readonly sky: SkyController;
   readonly fog: HeightFog;
@@ -345,9 +352,11 @@ class RendererHost implements Renderer, HostContext {
   passMsLatched = false;
   private readonly clock: (() => number) | null;
   private readonly onCompileProgress: ((p: CompileProgress) => void) | null;
+  private readonly precompileEnabled: boolean;
   private readonly warmObjects: Object3D[] = [];
   /** The step-8 warm-up group (kept, detached): recompiled against every zone's light set (H4). */
   private warmGroup: Group | null = null;
+  private warmGeometry: BufferGeometry | null = null;
   /** While a pre-compile runs: the renderer state frames must render with (the compile keeps the scene pass's). */
   private compileHold: { readonly target: RenderTarget | null; readonly mrt: ReturnType<WebGPURenderer['getMRT']>; readonly velocityProjection: Matrix4 | null } | null = null;
   /** The unjittered projection the velocity MRT reads while a pre-compile runs (what TRAA sets during its render). */
@@ -381,7 +390,9 @@ class RendererHost implements Renderer, HostContext {
     this.effectsFlags = o.effects ?? ALL_EFFECTS;
     this.requestedPr = o.pixelRatio;
     this.clock = o.clock ?? null;
+    this.modelsUrl = o.modelsUrl === undefined ? '/models/' : o.modelsUrl;
     this.onCompileProgress = o.onCompileProgress ?? null;
+    this.precompileEnabled = o.precompile !== false;
 
     // 6.
     const cssW = o.canvas.clientWidth || o.canvas.width || 1;
@@ -445,7 +456,7 @@ class RendererHost implements Renderer, HostContext {
     // One frame without the warm group first: it builds the post chain and records the scene pass's render depth
     // (H4 point 3). Then the day cycle has baked the PMREM environment, which is part of every lit program's source.
     this.frame(0);
-    await this.precompile('boot', null, [group]);
+    if (this.precompileEnabled) await this.precompile('boot', null, [group]);
     this.scene.add(group);
     const rainWasVisible = this.precipitation.object.visible;
     this.precipitation.object.visible = true;
@@ -455,7 +466,9 @@ class RendererHost implements Renderer, HostContext {
     // The warm meshes are kept (never `dispose`d): their render objects keep the compiled programs alive.
     this.warmObjects.push(...group.children);
     this.warmGroup = group;
-    geo.dispose();
+    // H5: the warm quad stays alive with the warm meshes (part of the baseline). Disposed here, it was re-uploaded
+    // by every zone pre-compile of the warm group — 5 attributes / 192 B nothing freed again.
+    this.warmGeometry = geo;
     this.captureBaseline();
   }
 
@@ -589,11 +602,18 @@ class RendererHost implements Renderer, HostContext {
     }
     this.loading = true;
     try {
-      const handle = await this.zones.load(spec);
+      let openHero: () => void = () => {};
+      const heroGate = new Promise<void>((res) => { openHero = res; });
+      const handle = await this.zones.load(spec, { heroGate });
       this.zone = handle;
       // H4: the zone's light set is part of every lit program — compile the zone, then the kept warm-up group
-      // (library structures, billboard, character, beacon housing, VFX) against it, before the first zone frame
-      await this.precompile('zone', spec.id, this.warmGroup !== null ? [handle.group, this.warmGroup] : [handle.group]);
+      // (library structures, billboard, character, beacon housing, VFX) against it, before the first zone frame.
+      // H5: the hero texture stream waits for it (a re-point mid-compile leaked the replaced field sets).
+      try {
+        if (this.precompileEnabled) await this.precompile('zone', spec.id, this.warmGroup !== null ? [handle.group, this.warmGroup] : [handle.group]);
+      } finally {
+        openHero();
+      }
       for (const h of this.hooks) h.onZone?.(handle);
       this.setHarvestLevel(spec.harvestLevel);
       MaterialBudget.assert(handle.group, 48);
@@ -787,6 +807,8 @@ class RendererHost implements Renderer, HostContext {
     this.precipitation.dispose();
     this.lighting.dispose();
     this.materials.disposeAll();
+    this.warmGeometry?.dispose();
+    this.warmGeometry = null;
     this.ktx2.dispose();
     void this.renderer.dispose();
   }
@@ -796,7 +818,7 @@ class RendererHost implements Renderer, HostContext {
   dump(zoneId: string): ZoneDump {
     const root = this.zoneRoot() ?? new Group();
     const culled = (this.zones as ZoneLoader & { culledChunks?: () => number }).culledChunks?.() ?? 0;
-    return dumpZone({ zone: zoneId, harvestLevel: this.harvest, root, library: this.materials, counts: this.counts(), culledChunks: culled });
+    return dumpZone({ zone: zoneId, harvestLevel: this.harvest, root, library: this.materials, counts: this.counts(), culledChunks: culled, spriteScan: this.scene });
   }
 }
 
