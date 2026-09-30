@@ -173,11 +173,23 @@ describe('rule details', () => {
     expect(r.unevaluated['geometry.noOutlineShells']).toEqual(['shot']);
   });
 
-  it('scatter.instanced needs an InstancedMesh and all four tiers per kind', () => {
-    const tiers = (kind: string, inst = true): DumpGeometry[] => [0, 1, 2, 3].map((t) => geo({ uuid: `${kind}-${t}`, kind, tier: t as 0 | 1 | 2 | 3, instancedMesh: inst }));
+  it('scatter.instanced needs an InstancedMesh; trees lod0–lod2 + impostor, other kinds lod0 + lod1 (P4-C1)', () => {
+    const tiers = (kind: string, inst = true, ts: readonly number[] = [0, 1, 2, 3]): DumpGeometry[] => ts.map((t) => geo({ uuid: `${kind}-${t}`, kind, tier: t as 0 | 1 | 2 | 3, instancedMesh: inst }));
     expect(failed(audit(one(dump({ geometries: [...tiers('tree_oak'), ...tiers('bush')] }))))).toEqual([]);
     expect(failed(audit(one(dump({ geometries: tiers('rock_s', false) }))))).toEqual(['scatter.instanced']);
     expect(audit(one(dump({ geometries: [geo()] }))).unevaluated['scatter.instanced']).toEqual(['shot']);
+    // the tier sets render actually builds (Part 4 H2): small kinds stop at their last drawn tier and pass
+    const real = [...tiers('tree_oak'), ...tiers('rock_a'), ...tiers('bush', true, [0, 1, 2]), ...tiers('tall_grass', true, [0, 1]), ...tiers('grass_tuft', true, [0, 1])];
+    expect(failed(audit(one(dump({ geometries: real }))))).toEqual([]);
+    // a tree without its impostor, or a small kind without lod1, still fails
+    expect(failed(audit(one(dump({ geometries: tiers('tree_oak', true, [0, 1, 2]) }))))).toEqual(['scatter.instanced']);
+    expect(failed(audit(one(dump({ geometries: tiers('tall_grass', true, [0]) }))))).toEqual(['scatter.instanced']);
+  });
+
+  it('budget.counts.drawCalls caps beauty + post: counts.drawCalls − shadowDrawCalls (§10.5.8, amended 2026-09-30)', () => {
+    // M2 lamps-night: 408 draw calls of which 248 shadow-map draws → beauty + post 160 passes
+    expect(failed(audit(one(dump({ counts: { ...EMPTY.counts, drawCalls: 408 }, shadowDrawCalls: 248 }))))).toEqual([]);
+    expect(failed(audit(one(dump({ counts: { ...EMPTY.counts, drawCalls: 700 }, shadowDrawCalls: 299 }))))).toEqual(['budget.counts.drawCalls']);
   });
 
   it('lights.count counts non-shadow lights too, and trusts the larger of lights[] and counts', () => {

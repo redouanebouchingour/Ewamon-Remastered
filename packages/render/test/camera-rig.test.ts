@@ -107,6 +107,7 @@ describe('pushIn / release (Pillar 7) and input lock', () => {
     r.follow('me');
     run(r, 300);
     const dioYaw = r.dioramaYaw;
+    r.setShotInsets(0, 0);                 // §10.7.4's 12 m pose; the DOM panel's framing is battle-framing.test.ts
     r.pushIn({ x: 11, z: -5 }, 600);
     run(r, 300);
     expect(r.shotBlend).toBeCloseTo(0.5, 2);
@@ -155,12 +156,16 @@ describe('cues (§10.7.4 CameraWork)', () => {
   it('impact dollies toward the defender and eases back; ko requests slow-mo only when effects.slowmo', () => {
     const { r, onSlowmo } = makeRig();
     r.setFocus(0, 0, 0);
+    r.setShotInsets(0, 0);                 // no DOM panel: the row's full push fits (T2 clamps it otherwise, below)
     r.pushIn({ x: 0, z: 0 }, 0);
     r.update(FRAME);
     const d0 = r.orbit.distance;
-    r.setCueTarget('defender', new Vector3(0, 0, -2.75));
+    // a defender on the arena centre: the dolly does not swing the near battler off frame, so the full row applies
+    // (a far defender scales the push back: battle-framing.test.ts)
+    r.setCueTarget('defender', new Vector3(0, 0, 0));
     r.cue('impact', 0);
     run(r, 90);
+    expect(r.cueFit).toBe(1);
     expect(r.orbit.distance).toBeCloseTo(d0 - 1.2, 3);
     run(r, 200 + 90 + 2 * FRAME);
     expect(r.cueActive).toBe(false);

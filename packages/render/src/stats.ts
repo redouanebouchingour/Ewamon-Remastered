@@ -141,7 +141,7 @@ export interface TimedContext { readonly uid: string; readonly pass: BudgetPass;
  * the one scene pass — §10.8.1 — so their GPU time is part of `opaque`; only the differential procedure splits
  * them). Returns the timed contexts, or null when the pool holds no frame.
  */
-export function aggregatePassMs(pool: TimestampPoolLike, uidPass: ReadonlyMap<string, { readonly pass: BudgetPass; readonly target: string }>, out: Record<BudgetPass, number | null>): TimedContext[] | null {
+export function aggregatePassMs(pool: TimestampPoolLike, uidPass: { get(uid: string): { readonly pass: BudgetPass; readonly target: string } | undefined }, out: Record<BudgetPass, number | null>): TimedContext[] | null {
   if (pool.frames.length === 0) return null;
   let last = pool.frames[0]!;
   for (const f of pool.frames) if (f > last) last = f;
@@ -158,30 +158,62 @@ export function aggregatePassMs(pool: TimestampPoolLike, uidPass: ReadonlyMap<st
   return rows;
 }
 
+/** Render calls nested deeper than this are not draw-counted (the scene pass nests ≤ 4 deep, shadows one more). */
+const MAX_RENDER_DEPTH = 32;
+/** One generation of the uid → row map; two generations keep ≈ 2 × 4096 render calls (≈ 200 frames) resolvable. */
+const UID_GENERATION = 4096;
+
 /**
- * `renderer.inspector` that records which §50.2.1 row every render context belongs to (`beginRender(uid, scene,
- * camera, renderTarget)` is called by three 0.186 for every `render()` with the same uid the timestamp pool keys its
- * durations by — `Renderer.js` line 1751, `Backend.updateTimeStampUID`). After each `resolveTimestampsAsync` the
- * host calls `collect`, which fills `RenderStats.passMs` from the pool's per-context durations. Installed only when
- * the renderer tracks timestamps (harness / sandbox); it allocates one map entry per render call.
+ * The host's `renderer.inspector` (IMPLEMENTATION-NOTES Part 4 H6, Part 5 B2): classifies every `render()` by its
+ * target (`beginRender(uid, scene, camera, renderTarget)` / `finishRender(uid)` are called by three 0.186 for every
+ * `render()`, with the uid the timestamp pool keys its durations by — `Renderer.js` lines 1751 / 1934).
+ * - Always: counts the draw calls rendered into shadow maps (`shadowDraws`, read and reset once per `frame()`), so
+ *   `BudgetCounts.beautyDrawCalls` = total − shadow is the §10.5.8 / §50.2.2 capped number. Zero allocation (typed
+ *   stack for nested renders).
+ * - With `timing` (the renderer tracks timestamps): records uid → row; after each `resolveTimestampsAsync` the host
+ *   calls `collect`, which fills `RenderStats.passMs` from the pool's per-context durations. The map keeps two
+ *   generations of uids and never deletes on `collect`: three's pool returns the previous batch unchanged when no
+ *   query is pending, so a second resolve of one batch (the harness's `gpuFrameMs()` beside `frame()`'s own poll)
+ *   found every uid already deleted and attributed the whole frame to `opaque` (the harness's H7 finding).
  */
 export class PassTimer extends InspectorBase {
-  private readonly uidPass = new Map<string, { pass: BudgetPass; target: string }>();
+  private cur = new Map<string, { pass: BudgetPass; target: string }>();
+  private old = new Map<string, { pass: BudgetPass; target: string }>();
+  private readonly lookup = { get: (uid: string) => this.cur.get(uid) ?? this.old.get(uid) };
+  private readonly stackShadow = new Uint8Array(MAX_RENDER_DEPTH);
+  private readonly stackStart = new Float64Array(MAX_RENDER_DEPTH);
+  private depth = 0;
+  /** Draw calls rendered into shadow maps since the last `takeShadowDraws()`. */
+  private shadowDraws = 0;
   last: TimedContext[] = [];
 
-  constructor(private readonly classify: PassClassifier) { super(); }
+  constructor(private readonly classify: PassClassifier, private readonly timing = true, private readonly info: (() => InfoLike) | null = null) { super(); }
 
   override beginRender(uid: string, scene: Object3D, camera: Camera, renderTarget: RenderTarget | null): void {
-    if (this.uidPass.size > 16384) this.uidPass.clear();      // no resolve for a long time: drop stale uids
     const pass = this.classify(renderTarget, scene, camera) ?? 'opaque';
-    this.uidPass.set(uid, { pass, target: renderTarget === null ? 'canvas' : renderTarget.texture?.name || `rt${renderTarget.width}x${renderTarget.height}` });
+    if (this.depth < MAX_RENDER_DEPTH) {
+      this.stackShadow[this.depth] = pass === 'shadows' ? 1 : 0;
+      this.stackStart[this.depth] = this.info?.().render.drawCalls ?? 0;
+    }
+    this.depth++;
+    if (!this.timing) return;
+    if (this.cur.size >= UID_GENERATION) { this.old = this.cur; this.cur = new Map(); }
+    this.cur.set(uid, { pass, target: renderTarget === null ? 'canvas' : renderTarget.texture?.name || `rt${renderTarget.width}x${renderTarget.height}` });
   }
 
-  /** Reads the resolved pool into `out`; forgets the uids of the resolved batch. False when nothing was resolved. */
+  override finishRender(): void {
+    if (this.depth === 0) return;
+    this.depth--;
+    if (this.depth < MAX_RENDER_DEPTH && this.stackShadow[this.depth] === 1) this.shadowDraws += (this.info?.().render.drawCalls ?? 0) - this.stackStart[this.depth]!;
+  }
+
+  /** Shadow-map draw calls since the last call (the host reads it once per `frame()`, step 6). */
+  takeShadowDraws(): number { const n = this.shadowDraws; this.shadowDraws = 0; return n; }
+
+  /** Reads the resolved pool into `out`. False when nothing was resolved. */
   collect(pool: TimestampPoolLike | null | undefined, out: Record<BudgetPass, number | null>): boolean {
-    if (!pool) return false;
-    const rows = aggregatePassMs(pool, this.uidPass, out);
-    for (const uid of pool.timestamps.keys()) this.uidPass.delete(uid);
+    if (!pool || !this.timing) return false;
+    const rows = aggregatePassMs(pool, this.lookup, out);
     if (rows === null) return false;
     this.last = rows;
     return true;
@@ -296,6 +328,11 @@ export interface DumpInput {
   readonly culledChunks?: number;
   /** Cascades rendered by the sun (4). */
   readonly cascades?: number;
+  /**
+   * Shadow-map draw calls MEASURED in the frame the counts come from (the host's inspector, B2). When given, it is the
+   * dump's `shadowDrawCalls`; otherwise the dump carries the upper-bound estimate below.
+   */
+  readonly shadowDrawCalls?: number;
   /**
    * Where else to look for creature billboards (their pool lives outside the zone root; H2): `sprites[]` rows for
    * every billboard material found under it. `materials[]` stays the zone root's set (what `counts.materials` counts).
@@ -500,8 +537,8 @@ export function dumpZone(i: DumpInput): ZoneDump {
   // Upper-bound estimate: every visible caster in every sun cascade, plus per local caster its passes
   // (spot 1, point 6) over casters within its range. The ≤ 564 audit rule is an upper-bound check.
   const cascades = i.cascades ?? 4;
-  let shadowDrawCalls = casters.length * cascades;
-  lights.forEach((l, k) => {
+  let shadowDrawCalls = i.shadowDrawCalls ?? casters.length * cascades;
+  if (i.shadowDrawCalls === undefined) lights.forEach((l, k) => {
     if (!l.castShadow) return;
     const p = lightPositions[k]!;
     const range = l.distance > 0 ? l.distance : Number.POSITIVE_INFINITY;

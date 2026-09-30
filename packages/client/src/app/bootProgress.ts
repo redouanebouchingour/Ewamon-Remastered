@@ -46,9 +46,16 @@ export interface WorldBoot {
   readonly totalBytes: number | null;
   /** a fatal renderer failure (no GPU): the overlay shows it instead of spinning */
   readonly error: string | null;
+  /**
+   * the renderer's blocking shader compile (render `onCompileProgress` phase 'boot' / 'zone'): units compiled of the
+   * phase's total — a real bar while no byte count is known (render IMPLEMENTATION-NOTES Part 5, T5)
+   */
+  readonly compile?: { readonly loaded: number; readonly total: number } | null;
+  /** the zone's background compile after `loadZone` resolved (phase 'background'): the small non-blocking pill */
+  readonly background?: { readonly loaded: number; readonly total: number } | null;
 }
 
-let world: WorldBoot = { ready: false, label: 'Starting the renderer', loadedBytes: null, totalBytes: null, error: null };
+let world: WorldBoot = { ready: false, label: 'Starting the renderer', loadedBytes: null, totalBytes: null, error: null, compile: null, background: null };
 const worldListeners = new Set<() => void>();
 
 export function setWorldBoot(patch: Partial<WorldBoot>): void {

@@ -26,7 +26,8 @@ import {
 } from 'three/webgpu';
 import type { TextureNode } from 'three/webgpu';
 import { texture as textureNode } from 'three/tsl';
-import type { HudLayer, VariantKey } from '../contracts.js';
+import type { HudLayer, TypeName, VariantKey } from '../contracts.js';
+import { TYPE_COLORS } from '../sprites/typeColors.js';
 import { isDevBuild } from '../env.js';
 
 // ---- the model (20-client.md §20.6, verbatim; mirrored because render may not import the client) -----------------
@@ -42,7 +43,7 @@ export interface HudModel {
   readonly chat: readonly { readonly name: string; readonly text: string; readonly at: number }[]; // last 6 lines, bottom-left, each fades 8 s after `at`
   readonly prompt: { readonly key: string; readonly verb: string; readonly target: string } | null; // "E — Talk to Fenkeeper", bottom-centre
   readonly nameplates: readonly { readonly id: string; readonly name: string; readonly guildTag: string; readonly inBattle: boolean }[]; // ≤ 16 nearest; render positions them over actors
-  readonly battle: { readonly bars: readonly { readonly who: Ref; readonly name: string; readonly level: number; readonly hp: number; readonly maxHp: number; readonly status: string | null; readonly stages: string; readonly showNumbers: boolean }[]; readonly turnLabel: string; readonly shakes: number } | null;
+  readonly battle: { readonly bars: readonly { readonly who: Ref; readonly name: string; readonly level: number; readonly hp: number; readonly maxHp: number; readonly status: string | null; readonly stages: string; readonly showNumbers: boolean; readonly types?: readonly string[] }[]; readonly turnLabel: string; readonly shakes: number } | null;   // `types`: addition (Part 5, M2-battle-7)
   readonly connection: 'connected' | 'reconnecting' | 'offline';
   readonly dev: { readonly fps: number; readonly drawCalls: number; readonly gpuMs: number; readonly desyncs: number; readonly rubberBands: number } | null; // F3 in dev builds
 }
@@ -71,7 +72,9 @@ export const HUD = Object.freeze({
   thumbPx: 48, thumbGap: 8, partyMax: 6,
   chatLines: 6, chatLineH: 21, chatWidth: 440, chatHoldMs: 6000, chatFadeMs: 2000, chatRepaintMs: 250,
   nameplatesMax: 16,
-  barW: 210, barH: 52, barLift: 18, barGap: 6,
+  barW: 240, barH: 52, barLift: 18, barGap: 6,
+  /** Type badges on a battle plate (M2-battle-7): height, inner padding, gap (CSS px at uiScale 1). */
+  badgeH: 18, badgePad: 5, badgeGap: 4,
   /** The battle turn label's reserved box: top-centre, `turnBandTop` below the margin, `turnBandW` × `turnBandH`; bars never enter it. */
   turnBandTop: 120, turnBandH: 34, turnBandW: 320,
 
@@ -83,6 +86,17 @@ export const HUD = Object.freeze({
 });
 
 const INK = 'rgba(8, 10, 14, 0.92)';
+
+/** Readable text colour on a `#rrggbb` badge (relative luminance > 0.45 → dark ink). */
+function inkOn(hex: string): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (m === null) return TEXT_ON_DARK;
+  const v = parseInt(m[1]!, 16);
+  const lin = (c: number): number => { const x = c / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+  const L = 0.2126 * lin((v >> 16) & 255) + 0.7152 * lin((v >> 8) & 255) + 0.0722 * lin(v & 255);
+  return L > 0.45 ? '#101216' : TEXT_ON_DARK;
+}
+const TEXT_ON_DARK = '#fbf8f1';
 const PANEL = 'rgba(14, 17, 23, 0.72)';
 const PANEL_EDGE = 'rgba(255, 255, 255, 0.14)';
 const TEXT = '#f3efe6';
@@ -168,6 +182,7 @@ export class CanvasHudLayer implements HudLayer {
   private readonly raw: Record<HudRegion, Box>;
   private readonly clearBox = box();
   private cssW = 1; private cssH = 1; private pr = 1; private ui = 1;
+  private typeTable: Readonly<Record<TypeName, string>> = TYPE_COLORS;
   /** CSS px at the bottom of the canvas covered by the DOM battle panel: battle bars stay above it (T2). */
   private bottomInset = 0;
   private bodyFamily = 'system-ui, sans-serif';
@@ -880,6 +895,9 @@ export class CanvasHudLayer implements HudLayer {
         this.num(shown, x + w - 14 * s - maxW - slash, my, 'right');
       }
       let sx = x + 10 * s;
+      // type badges first (§50.1 #15, M2-battle-7): the §10.4.6 colour (the colourblind table when set), 3-letter name
+      const types = bar.types ?? [];
+      for (let t = 0; t < types.length && t < 2; t++) sx += this.typeBadge(types[t]!, sx, y + 43 * s) + HUD.badgeGap * s;
       if (bar.status !== null) { this.statusPill(bar.status, sx, y + 35 * s); sx += 44 * s; }
       if (bar.stages.length > 0) { ctx.font = this.font(HUD.smallPx, 700); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; this.text(bar.stages, sx, y + 43 * s, '#bfe3ff'); }
     }
@@ -896,6 +914,32 @@ export class CanvasHudLayer implements HudLayer {
         ctx.lineWidth = 2 * s; ctx.strokeStyle = INK; ctx.stroke();
       }
     }
+  }
+
+  /** One type badge with its left edge at x, vertically centred on cy; returns its width (canvas px). */
+  private typeBadge(type: string, x: number, cy: number): number {
+    const { ctx } = this.surface;
+    const s = this.s();
+    const label = type.slice(0, 3).toUpperCase();
+    ctx.font = this.font(HUD.smallPx, 800);
+    const w = ctx.measureText(label).width + 2 * HUD.badgePad * s;
+    const h = HUD.badgeH * s;
+    const fill = this.typeTable[type as TypeName] ?? '#9aa0a6';
+    ctx.beginPath();
+    ctx.roundRect(x, cy - h / 2, w, h, h / 2);
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.lineWidth = 1.5 * s; ctx.strokeStyle = INK; ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = inkOn(fill);
+    ctx.fillText(label, x + w / 2, cy + 0.5 * s);
+    return w;
+  }
+
+  /** The type colour table badges use (the stage's `setTypeColors` forwards the colourblind tables, §20.8.3). */
+  setTypeColors(table: Readonly<Record<TypeName, string>>): void {
+    if (table === this.typeTable) return;
+    this.typeTable = table;
+    this.markDirty('battle');
   }
 
   private drawConnection(): void {

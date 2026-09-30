@@ -5,13 +5,32 @@
  * and the anchored container. Part 2 (§20.5.6) renders `BattleMenu` — root menu, moves grid, party/bag/orbs lists,
  * the last log lines — and the BattleResultCard. The in-canvas bars / turn label / orb counter are the HUD's.
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useBlocker } from 'react-router';
 import { toast } from '../state/notifications';
 import { useUiStore } from '../state/ui';
 import s from './BattleOverlay.module.css';
 import { BattleMenu } from './BattleMenu';
 import { BattleResultCard } from './BattleResultCard';
+import { setBattlePanelTop } from './panelInset';
+
+/** Reports the panel's top edge while mounted (render T2: the battle camera frames the battlers above it). */
+function usePanelTop(ref: React.RefObject<HTMLElement | null>, active: boolean): void {
+  useEffect(() => {
+    const el = ref.current;
+    if (!active || el === null) return;
+    const measure = (): void => setBattlePanelTop(el.getBoundingClientRect().top);
+    measure();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', measure);
+      setBattlePanelTop(null);
+    };
+  }, [ref, active]);
+}
 
 function BattleBlocker() {
   const blocker = useBlocker(({ currentLocation, nextLocation }) => currentLocation.pathname !== nextLocation.pathname);
@@ -27,9 +46,11 @@ function BattleBlocker() {
 export function BattleOverlay() {
   const active = useUiStore((st) => st.battle !== null);
   const turnLabel = useUiStore((st) => st.battle?.turnLabel ?? '');
+  const ref = useRef<HTMLElement | null>(null);
+  usePanelTop(ref, active);
   if (!active) return null;
   return (
-    <section className={s.overlay} data-testid="battleoverlay" aria-label="Battle">
+    <section ref={ref} className={s.overlay} data-testid="battleoverlay" aria-label="Battle">
       <BattleBlocker />
       <p className={s.turn}>{turnLabel}</p>
       <div className={s.body}>

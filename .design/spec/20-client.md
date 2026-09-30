@@ -660,6 +660,8 @@ export interface BattleController {
 
 ### 20.5.6 Battle menu (DOM) and in-canvas elements
 
+Amended 2026-09-30 (render Part 5 T2; audit M2-battle-5 / -6): `BattleOverlay` reports the panel's measured top edge; World3D hands render the panel's height over the canvas (`part3.setBattleInsets(0, px)`), and render's battle camera frames both battlers — and the far battler's HP bar — above it, while the HUD keeps both bars off it. The client's former 1.0 m look-at shift toward the camera (`FRAME_SHIFT_M`) is 0. `BattleHud` fills each bar's `types` from the species table for the plate's type badges.
+
 DOM (`BattleOverlay`, bottom 28 % of the viewport, `Panel` without title): root menu `Fight · Party · Bag · Orbs · Run/Forfeit` (hotkeys `1–5`), moves grid of 4 `MoveButton`s (hotkeys `1–4`, `Escape` back), party list of `CreatureCard variant="row"` (switch), bag list filtered by `usableInBattle`, orbs list. Disabled reasons come from `validateAction` (`ActionError` → label table, e.g. `noPp → 'No PP'`, `choiceLocked → 'Choice-locked'`, `trapped → 'Trapped'`). The last 3 log lines render in the DOM panel's left third with `--t-body-lg`.
 
 In-canvas (render `HudLayer`, spine Pillar 8: never covered by an effect): both active battlers' HP bars anchored above the billboards with name, level, HP numbers (own side only), status glyph, stage arrows (▲/▼ per stat with count); the turn label; the orb shake counter. The `BattleResultCard` (DOM modal) shows `RewardsSummary` and, for `battleEnd` with `evolveReady`/`learnMove` events in the last turn, the `evolve`/`learnMove` modals queued in order, each an explicit REST call (`POST /creature/:id/evolve`, `POST /creature/:id/moves`) — never automatic.
@@ -680,7 +682,7 @@ export interface HudModel {
   readonly chat: readonly { readonly name: string; readonly text: string; readonly at: number }[]; // last 6 lines, bottom-left, each fades 8 s after `at`
   readonly prompt: { readonly key: string; readonly verb: string; readonly target: string } | null; // "E — Talk to Fenkeeper", bottom-centre
   readonly nameplates: readonly { readonly id: string; readonly name: string; readonly guildTag: string; readonly inBattle: boolean }[]; // ≤ 16 nearest; render positions them over actors
-  readonly battle: { readonly bars: readonly { readonly who: Ref; readonly name: string; readonly level: number; readonly hp: number; readonly maxHp: number; readonly status: string | null; readonly stages: string; readonly showNumbers: boolean }[]; readonly turnLabel: string; readonly shakes: number } | null;
+  readonly battle: { readonly bars: readonly { readonly who: Ref; readonly name: string; readonly level: number; readonly hp: number; readonly maxHp: number; readonly status: string | null; readonly stages: string; readonly showNumbers: boolean; readonly types?: readonly TypeName[] }[]; readonly turnLabel: string; readonly shakes: number } | null;   // types: amended 2026-09-30 (M2-battle-7)
   readonly connection: 'connected' | 'reconnecting' | 'offline';
   readonly dev: { readonly fps: number; readonly drawCalls: number; readonly gpuMs: number; readonly desyncs: number; readonly rubberBands: number } | null; // F3 in dev builds
 }
@@ -909,6 +911,8 @@ Target: a fresh `/play` load on Mirevale, cold cache, 50 Mbit/s, RTX 3060-class 
 Rules: phases 2–3 are issued as parallel `fetch`es with `priority: 'high'`; phase 4–5 with `priority: 'low'`. A phase exceeding 2× its budget logs a `warn` toast in dev. `BootScreen` shows the phase name and a real byte-progress bar (from `Content-Length`), display face, no fake progress. Handover to a preloaded zone (phase 5 complete) must render its first frame within 250 ms of `handoverAck`; to a non-preloaded zone within 1 500 ms, with the HUD banner and the old zone still visible under the camera's 600 ms travel (spine §4.6 "no visible hitch" is measured as: no frame > 33 ms during the crossing).
 
 ### 20.10.4 `BootScreen` and the dev HUD
+
+Amended 2026-09-30 (render Part 5 T4 / T5): the world boot overlay shows the renderer's real compile progress — `onCompileProgress` phase `'boot'` ("Compiling shaders n / m") and a zone's phase 1 ("Preparing <zone> n / m") as a bar of compile units — and comes back for the blocking part of a zone handover ("Travelling to <zone>") until the new zone's first frame. The background phase that follows (`'background'`) is a small non-blocking corner pill ("Preparing distant scenery n / m") that never takes input and disappears when the phase ends. World3D passes the arrival position as `loadZone`'s `focus`.
 
 `BootScreen` is the `hydrateFallbackElement` of `/play`: key art, the phase label (`Waking the grove…` is not permitted — labels are literal: "Loading materials 3.1 / 6.0 MB"), the byte bar. It is replaced by the canvas the moment `/me` resolves; phases 2–3 continue behind a 400 ms fade of the same screen drawn *by the canvas HUD* so the DOM boot screen is gone before the first frame. The dev HUD (`F3`, `import.meta.env.DEV` or `?dev=1`) shows fps, frame ms p95, draw calls, GPU ms, texture MB, remote count, prediction error, rubber-bands, desync counter, audio voices, heap MB.
 

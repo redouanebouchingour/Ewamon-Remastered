@@ -59,6 +59,8 @@ export const STAGE = Object.freeze({
    * their crowns, H11).
    */
   coverHideM: 4.9, coverOuterM: 6.6, propHideM: 5.0,
+  /** Ground samples on the ring's rim the arena is seated on (the highest wins, capped by the skirt). */
+  seatSamples: 12,
   /** Arenas whose ground cover is masked (main + 3 spectator arenas; 2 mask slots each, slots 0..7). */
   coverArenas: 4,
 });
@@ -68,6 +70,8 @@ export interface GroundCoverMask {
   set(slot: number, x: number, z: number, inner: number, outer: number, floor: number, classes: number): void;
   clear(slot: number): void;
 }
+/** Static props inside a ring (the zone's merged prop meshes; stage/propCutaway.ts, M2-battle-8). */
+export interface PropCutawayLike { hide(slot: number, x: number, z: number, r: number): void; restore(slot: number): void }
 /** `COVER` bits (zone/scatter.ts), repeated so the stage does not import the zone builder. */
 const COVER_GROUND = 1; const COVER_SMALL = 2; const COVER_LARGE = 4;
 /** Mask slots owned by the stage (the rest are the creature reveal's, stage/groundCover.ts). */
@@ -106,6 +110,8 @@ export interface StageDeps {
   readonly viewport: () => { readonly w: number; readonly h: number };
   /** Arena-local weather (host day cycle + precipitation). */
   readonly weather?: (w: WeatherKind) => void;
+  /** The validated type colour table (colourblind modes) for the HUD's type badges (M2-battle-7). */
+  readonly typeColors?: (t: Readonly<Record<TypeName, string>>) => void;
 }
 
 interface Battler { readonly ref: BattlerRef; bb: CreatureBillboard; id: string; hpFrac: number }
@@ -243,6 +249,7 @@ export class Stage implements BattleStage {
   private typeTable: Readonly<Record<TypeName, string>> = TYPE_COLORS;
   private ground: StageGround | null = null;
   private cover: GroundCoverMask | null = null;
+  private cut: PropCutawayLike | null = null;
   private beaconLevel = 0;         // 0..1 fade
   private beaconTarget = 0;
   private beaconFadeMs: number = STAGE.dressMs;
@@ -304,9 +311,10 @@ export class Stage implements BattleStage {
    * The loaded zone's ground-cover mask (null when no zone is loaded). A dressed arena hides the grass and small props
    * inside its ring through it — per-instance scale in the zone's instance buffers, never a rebuild (T1, Pillar 7).
    */
-  setGroundCover(m: GroundCoverMask | null): void {
-    if (m === this.cover) return;
+  setGroundCover(m: GroundCoverMask | null, cut: PropCutawayLike | null = null): void {
+    if (m === this.cover && cut === this.cut) return;
     this.cover = m;
+    this.cut = cut;
     if (m === null) return;
     this.coverArena(this.main, this.main.rise > 0 || this.main.dressed);
     this.spectatorArenas.forEach((a) => this.coverArena(a, a.rise > 0 || a.dressed));
@@ -468,6 +476,7 @@ export class Stage implements BattleStage {
     this.typeTable = validateTypeColorTable(table);
     this.d.sprites.setTypeColors(this.typeTable);
     this.d.vfx.setTypeColors(this.typeTable);
+    this.d.typeColors?.(this.typeTable);
     this.refreshAccent();
   }
 
@@ -500,6 +509,7 @@ export class Stage implements BattleStage {
     this.coverArena(this.main, false);
     this.spectatorArenas.forEach((a) => this.coverArena(a, false));
     this.cover = null;
+    this.cut = null;
     for (const L of this.beaconLights) { L.removeFromParent(); L.dispose(); }
     this.root.removeFromParent();
     for (const g of this.geo.ring.values()) g.dispose();
@@ -659,7 +669,15 @@ export class Stage implements BattleStage {
   }
 
   private placeArena(a: Arena, x: number, z: number, terrain: Terrain): void {
-    const y = this.groundAt(x, z);
+    // seated on the highest ground under its rim (within the skirt): on a slope the uphill half no longer disappears
+    // under the terrain (seen in the Part 5 sandbox shots); the downhill side is closed by the 0.45 m skirt
+    let y = this.groundAt(x, z);
+    const c = y;
+    for (let k = 0; k < STAGE.seatSamples; k++) {
+      const ang = (k / STAGE.seatSamples) * Math.PI * 2;
+      y = Math.max(y, this.groundAt(x + Math.cos(ang) * STAGE.ringRadius, z + Math.sin(ang) * STAGE.ringRadius));
+    }
+    y = Math.min(y, c + STAGE.ringSkirt - 0.05);
     a.center.set(x, y, z);
     const surface = TERRAIN_SURFACE[terrain];
     a.ring.geometry = this.ringFor(surface);
@@ -701,7 +719,8 @@ export class Stage implements BattleStage {
     const i = a === this.main ? 0 : this.spectatorArenas.indexOf(a) + 1;
     if (i < 0 || i >= STAGE.coverArenas) return;
     const s = i * 2;
-    if (!on) { m.clear(s); m.clear(s + 1); return; }
+    if (!on) { m.clear(s); m.clear(s + 1); this.cut?.restore(i); return; }
+    this.cut?.hide(i, a.center.x, a.center.z, STAGE.propHideM);
     m.set(s, a.center.x, a.center.z, STAGE.coverHideM, STAGE.coverOuterM, 0, COVER_GROUND);
     m.set(s + 1, a.center.x, a.center.z, STAGE.propHideM, STAGE.propHideM + 0.05, 0, COVER_SMALL | COVER_LARGE);
   }

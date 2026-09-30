@@ -578,3 +578,35 @@ tracks `.screenshots/audit/` and `.screenshots/budget/` (SPEC §50.5 / §50.2.3 
   UHD (Gen-12) iGPU, so §50.2.3's 600 + 120 frames x 8 runs would take ≈ 25 min per shot position; the committed JSON was
   captured with `--frames 120 --warmup 60 --diff-frames 60` (recorded in `options`). The defaults stay 600 / 120 / 600
   for the reference machine.
+
+---
+
+# Part 5 — slice fixes from the M2 audit (2026-09-30; render IMPLEMENTATION-NOTES Part 5)
+
+- **Compile progress (render T4 / T5).** `World3D` passes `onCompileProgress` to `createRenderer`.
+  `bootProgress.WorldBoot` gains `compile: { loaded, total } | null` (the blocking phases: `'boot'` and a zone's phase
+  1) and `background: { loaded, total } | null` (phase 2). `WorldBoot` shows "Compiling shaders n / m" / "Preparing
+  <zone> n / m" with a real `ProgressBar` of compile units; `BackgroundCompile` (mounted beside it in `CanvasHost`) is a
+  220 px corner pill, "Preparing distant scenery n / m", `pointer-events: none`, gone when the phase ends. Store writes
+  happen in the compile callbacks, never in the tick.
+- **Handover.** `enterZone` after the first frame puts the overlay back ("Travelling to <zone>", `ready: false`) until
+  the new zone's first frame (`awaitingZoneFrame`), then the pill covers its background phase. The arrival position
+  (`room.state.players.get(selfId)`) is `SceneDirector.loadZone`'s new `focus` → `renderer.loadZone(spec, { focus })`,
+  so render compiles what the first view there draws before resolving (default: the zone spawn).
+- **Battle framing (render T2).** `battle/panelInset.ts` is a tiny signal: `BattleOverlay` reports its section's top
+  edge (ResizeObserver + resize) and clears it on unmount; `World3D.applyBattleInset` converts it to the panel's height
+  over the canvas (`canvas bottom − panel top`) and calls `part3.setBattleInsets(0, px)` (null → render's SPEC default).
+  `SceneDirector.FRAME_SHIFT_M` is 0: render frames the battlers above the real panel, which the 1.0 m look-at shift
+  only approximated (and failed at the impact cue, audit M2-battle-5).
+- **Type badges (M2-battle-7).** `BattleHud` bars carry `types`; `BattleController.typesOf` reads them from the species
+  table on every `setBar`.
+- **Budget rules (M2-gym-dusk-7).** `src/harness/budgetRules.ts` caps `counts.beautyDrawCalls` (beauty + post) at 400
+  when render measures it, and `shadowDrawCalls` at 564 (§10.5.8); `countsMax.drawCalls` (a whole-frame total) is used
+  only without the beauty count. Test: `harness-budget.test.ts`.
+- **For the harness owner** (not changed here): renderers with `trackTimestamp` keep the single-phase compile by
+  default, so captures stay fully compiled; §50.6.1's heading words now follow the rig (0 looks toward −z), so the
+  `words` reading `(h + 2) & 3` must become the identity; `counts()` / `dumpZone()` can be read after an await (render
+  B1); per-context `passMs` no longer collapses into `opaque` (render B1).
+
+Checks: `tsc -b packages/client` clean, `eslint packages/client` clean, `vitest run packages/client` green
+(`routes.test.tsx` is load-sensitive in the full parallel run and passes alone, as noted in part 2).

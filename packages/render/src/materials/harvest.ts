@@ -6,6 +6,7 @@ import { Vector2 } from 'three/webgpu';
 import type { Node, UniformNode } from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import type { HarvestLevel } from '../descriptors.js';
+import { createOcclusionUniforms, type OcclusionState } from './occlusion.js';
 
 /** SPEC §10.2.3, verbatim. */
 export interface SharedUniforms {
@@ -14,6 +15,8 @@ export interface SharedUniforms {
   readonly windTime: UniformNode<'float', number>;       // seconds × timeScale
   readonly windDir: UniformNode<'vec2', Vector2>;        // unit xz
   readonly timeOfDay: UniformNode<'float', number>;
+  /** Addition (IMPLEMENTATION-NOTES Part 5, M2-spawn-noon-9): the diorama occluder fade (materials/occlusion.ts). */
+  readonly occlusion?: OcclusionState;
 }
 
 export function createSharedUniforms(): SharedUniforms {
@@ -23,6 +26,7 @@ export function createSharedUniforms(): SharedUniforms {
     windTime: uniform(0).setName('ewaWindTime'),
     windDir: uniform(new Vector2(0.8, 0.6)).setName('ewaWindDir'),
     timeOfDay: uniform(0.5).setName('ewaTimeOfDay'),
+    occlusion: createOcclusionUniforms(),
   };
 }
 

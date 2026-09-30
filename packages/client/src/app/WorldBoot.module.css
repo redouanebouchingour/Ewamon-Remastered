@@ -76,3 +76,31 @@
     transform: translateX(340%);
   }
 }
+
+/* render T4 phase 2: the background compile after a zone became playable (small, corner, never blocks input) */
+.pill {
+  position: absolute;
+  inset-inline-end: var(--s-5);
+  inset-block-end: var(--s-5);
+  z-index: var(--z-canvas);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  inline-size: 220px;
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-3);
+  background: var(--glass);
+  pointer-events: none;
+}
+
+.pillLabel {
+  color: var(--text-1);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.pillBar {
+  inline-size: 100%;
+}

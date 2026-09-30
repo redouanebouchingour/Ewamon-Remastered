@@ -1,7 +1,9 @@
 /**
  * `scatter.instanced` (legacy-render-audit Q19): every geometry whose `kind` is a scatter kind is drawn by an
- * `InstancedMesh`, and every scatter kind present lists 3 LOD tiers + `impostor` (§10.5.7: LOD0 0–40 m, LOD1
- * 40–90 m, LOD2 90–160 m, impostor beyond).
+ * `InstancedMesh`; every TREE kind (`tree_*`) lists lod0, lod1, lod2 + `impostor` (§10.5.7: 0–40 / 40–90 / 90–160 m,
+ * impostor beyond), every other kind lists at least lod0 + lod1 — small kinds are not drawn beyond 90 m and only trees
+ * get impostor cards (render Part 2 Z2; SPEC §40.5.2 amended 2026-09-30, P4-C1). Before the amendment every kind
+ * needed all four tiers, which every real dump failed by design.
  *
  * Reads the optional `geometries[].kind / tier / instancedMesh` (§40.5.2: the dump gains the scatter kind). A
  * geometry with a non-null `kind` is a scatter geometry — the §10.5.4 kinds (`tree_*`, `rock_*`, `bush`,
@@ -15,6 +17,13 @@ import type { ScatterTier, ZoneDump } from '../zone-dump.js';
 export const id = 'scatter.instanced';
 
 export const REQUIRED_TIERS: readonly ScatterTier[] = [0, 1, 2, 3];
+/** Non-tree kinds: the tiers they are drawn at, at least (P4-C1). */
+export const REQUIRED_TIERS_SMALL: readonly ScatterTier[] = [0, 1];
+
+/** Tree kinds (`tree_oak`, `tree_willow`, …) carry impostors; everything else stops at its last drawn tier. */
+export function requiredTiers(kind: string): readonly ScatterTier[] {
+  return kind.startsWith('tree') ? REQUIRED_TIERS : REQUIRED_TIERS_SMALL;
+}
 const TIER_NAME: Readonly<Record<ScatterTier, string>> = { 0: 'lod0', 1: 'lod1', 2: 'lod2', 3: 'impostor' };
 
 export function evaluable(dump: ZoneDump): boolean {
@@ -35,8 +44,9 @@ export function rule(dump: ZoneDump, ctx: AuditContext): Violation[] {
   }
   for (const kind of [...tiers.keys()].sort()) {
     const have = tiers.get(kind)!;
-    const missing = REQUIRED_TIERS.filter((t) => !have.has(t)).map((t) => TIER_NAME[t]);
-    if (missing.length) out.push(violation(id, dump, ctx, `scatter kind ${kind} lacks ${missing.join(', ')} (needs lod0, lod1, lod2 + impostor)`, { kind, tiers: [...have].sort().map((t) => TIER_NAME[t]) }));
+    const need = requiredTiers(kind);
+    const missing = need.filter((t) => !have.has(t)).map((t) => TIER_NAME[t]);
+    if (missing.length) out.push(violation(id, dump, ctx, `scatter kind ${kind} lacks ${missing.join(', ')} (needs ${need.map((t) => TIER_NAME[t]).join(', ')})`, { kind, tiers: [...have].sort().map((t) => TIER_NAME[t]) }));
   }
   return out;
 }

@@ -659,7 +659,7 @@ Today `src/cli.ts` is `export {};`. The tool is **headless and GPU-free**: it ne
 
 | Rule id | Assertion | Source of the number |
 |---|---|---|
-| `budget.counts.drawCalls` | `counts.drawCalls ≤ 400` | §50.2.2 |
+| `budget.counts.drawCalls` | `counts.drawCalls − shadowDrawCalls ≤ 400` (beauty + post; the shadow maps have their own rule) <!-- amended 2026-09-30: audit M2-gym-dusk-7 --> | §50.2.2 |
 | `budget.counts.triangles` | `≤ 2 500 000` | §50.2.2 |
 | `budget.counts.texturesSize` | `≤ 734 003 200` bytes, read from `RenderStats.textureBytes` (KTX2 counted by level data, not three's 1-byte estimate) | §50.2.2 |
 | `budget.counts.renderTargets` / `.programs` | `≤ 41` / `≤ 128` (amended 2026-09-25: 24 / 96 measured impossible) | §50.2.2 |
@@ -670,7 +670,7 @@ Today `src/cli.ts` is `export {};`. The tool is **headless and GPU-free**: it ne
 | `materials.threeMaps` exemptions | `cls ∈ {billboard, impostor, decal, character}` and `harvestLevel ≥ 1` | `10-render.md` §10.0.3 rule 4 |
 | `geometry.noPrimitives` | no `type ∈ {BoxGeometry, ConeGeometry, IcosahedronGeometry}` and no `SphereGeometry` with `parameters.widthSegments < 24`, at `harvestLevel 0` | Pillar 3 |
 | `geometry.noOutlineShells` | no two meshes under the zone root share a geometry `uuid` where one has `material.side === BackSide` and a scale > 1 (the legacy outline-clone trick); `BackSide` materials are allowed only on `cls ∈ {sky}` — the dump gains `geometries[].sharedBy: number` and `materials[].side` for this | legacy-render-audit Q4 (reconciled 2026-09-18) |
-| `scatter.instanced` | every geometry whose `kind` is a scatter kind (`10-render.md` §10.5.4 list) has `instanced ≥ 1` (an `InstancedMesh`), and for every scatter kind present the dump lists 3 LOD tiers + `impostor` | legacy-render-audit Q19 (reconciled 2026-09-18) |
+| `scatter.instanced` | every geometry whose `kind` is a scatter kind (`10-render.md` §10.5.4 list) has `instanced ≥ 1` (an `InstancedMesh`); every **tree** kind (`tree_*`) lists lod0, lod1, lod2 + `impostor`, every other kind lists the tiers it is drawn at, at least lod0 + lod1 (small kinds are not drawn beyond 90 m and only trees get impostor cards, §10.5.7) <!-- amended 2026-09-30: as written every real dump failed by design — render Part 4 H2, P4-C1 --> | legacy-render-audit Q19 (reconciled 2026-09-18) |
 | `lights.count` | `castShadow` lights `≤ 8`, others `≤ 24` | Pillar 4 |
 | `lights.housing` | every light has `housingDistance ≤ 0.6` | Pillar 4 |
 | `sprites.nearest` | every `sprites[]` entry has `magFilter === 1003 (NearestFilter)` and `anisotropy === 1` | Pillar 6 |

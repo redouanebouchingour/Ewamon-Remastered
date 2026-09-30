@@ -6,6 +6,100 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-09-30 render hardening follow-up: the nine entries proposed at the end of render IMPLEMENTATION-NOTES Part 4 (P4-C1 … P4-C9) and the SPEC changes of render Part 5 (tasks T1–T5, audit blockers M2-battle-5/6/7/8, M2-spawn-noon-9, M2-gym-dusk-7, harness findings B1/B2/H1). -->
+
+## 2026-09-30 — `50-verification-budget.md` §50.6.1 — heading numbers follow the rig: 0 looks toward −z, 1 −x, 2 +z, 3 +x
+Why: the words "0 = +z forward, 1 = +x, 2 = −z, 3 = −x" are 180° from `10-render.md` §10.7.1 (yaw −35° + 90°·k, camera at target + (sin yaw, cos yaw)·d, looking toward −(sin yaw, cos yaw)); the harness followed the words and shot 1 then put the heart-tree crown between the camera and the player. The rig's numbering is what the game shows (heading 0 at the Mirevale spawn has the player in front of the heart tree), so the words change, not the rig.
+Evidence: `packages/client/IMPLEMENTATION-NOTES.md` Part 4 H1; `packages/render/src/camera/rig.ts` `headingYaw`, `orbitPosition`; audit M2-spawn-noon-9.
+Affects: `packages/client/src/harness/anchors.ts` / `shots.ts` (the `words` heading reading must become the rig reading — harness owner); `.design/audits/M2-render-audit.md` shot 1 and 2 headings.
+
+## 2026-09-30 — `10-render.md` §10.5.8, `50-verification-budget.md` §50.2.2, `40-pipelines.md` §40.5.2 — the draw-call cap of 400 counts beauty + post: `BudgetCounts.beautyDrawCalls = drawCalls − shadowDrawCalls`
+Why: §10.5.8 always excluded the shadow cascades from the cap ("reported separately … the ≤ 400 cap applies to the beauty pass and the post quads"), but §50.2.2's source column and the `budget.counts.drawCalls` rule read `renderer.info.render.drawCalls`, which includes them; Mirevale's gym-dusk (406) and lamps-night (408) failed on ~160 beauty + post draws.
+Evidence: audit M2-gym-dusk-7 (dump `shadowDrawCalls` 248 at lamps-night); render Part 5 B2 (the host inspector counts the draw calls rendered into shadow maps every frame; `stats-dispose.test.ts`); `tools/asset-audit/src/rules/budget.counts.drawCalls.ts`, `packages/client/src/harness/budgetRules.ts` (+ tests).
+Affects: `BudgetCounts` gains optional `beautyDrawCalls` / `shadowDrawCalls`; `ZoneDump.shadowDrawCalls` is the measured value; `harness:budget` and `audit:assets` exit 0 on the M2 dumps.
+
+## 2026-09-30 — `50-verification-budget.md` §50.2.3 / `10-render.md` §10.10.1 — `BudgetProbe.counts()` and `dumpZone()` read the last completed frame's snapshot
+Why: three's own rAF loop resets `renderer.info` before the next frame, so counts read after any await returned an empty frame (`drawCalls 0`) — the harness had to tick and read in the same task.
+Evidence: `packages/client/IMPLEMENTATION-NOTES.md` Part 4 H6; render Part 5 B1 (`frame()` step 6 keeps the frame's `BudgetCounts`).
+Affects: the harness may read counts at any time after a frame.
+
+## 2026-09-30 — `10-render.md` §10.2.4 — the diorama occluder fade: library materials above the ground dither away between the camera and the player
+Why: at the Mirevale spawn the heart-tree crown hid the player (4.7 % of the player sharp in the mask shot); H11's crown avoidance only moves shot cameras, and the diorama camera cannot move without leaving Pillar 1's pose.
+Evidence: audit M2-spawn-noon-9; `packages/render/src/materials/occlusion.ts`; sandbox shots `occ-spawn-fade0/1` (render Part 5); `compile-plan.test.ts` (mask on cards and solids, not on triplanar ground or water; scene-camera gate).
+Affects: every non-terrain library program carries the mask (compiled at step 8; no runtime compile); shadow maps are untouched.
+
+## 2026-09-30 — `10-render.md` §10.5.7 — per-instance ground-cover masks; creatures within 15 m are readable in tall grass
+Why: the M2 sprite-edge shot showed a wild creature nearly invisible inside tall grass; the arena needs the same mechanism (next entry). Rebuilding scatter per event is not acceptable (Pillar 7, no allocation).
+Evidence: render Part 5 T1 / T3 (`ScatterMask`, `GroundCoverReveal`), `ground-cover.test.ts`; sandbox shots `t3-reveal0/1`.
+Affects: `packages/render/src/zone/scatter.ts` (the mask), `stage/groundCover.ts`; no builder change.
+
+## 2026-09-30 — `10-render.md` §10.7.5 — a dressed arena hides ground cover, small props and merged static props inside its ring, restored on undress; it is seated on the highest ground under its rim
+Why: the M2 battle shot showed tall grass filling the ring and a fence post over the foe's face (80 % of the foe hidden); on a slope the terrain covered the ring's uphill half.
+Evidence: audit M2-battle-3, M2-battle-8; `.screenshots/audit/M2/mire_route/battle--80.32_4.38-full.png` (before); render Part 5 T1 (`STAGE.coverHideM` 4.9 / `coverOuterM` 6.6 / `propHideM` 5.0, `PropCutaway`), `ground-cover.test.ts` (Pillar 7: zone root children and light list unchanged).
+Affects: `packages/render/src/stage/battleStage.ts`, `stage/propCutaway.ts`, `stage/wiring.ts`.
+
+## 2026-09-30 — `10-render.md` §10.7.4 — the battle camera frames both battlers above the DOM panel: fitted distance and tilt, clear-yaw search, cue scaling, shake room
+Why: the fixed 12 m / −28° pose put the near battler and its HP bar under the bottom 28 % DOM panel, and the impact cue's dolly toward the defender swung the near battler below the frame (rect y 943–1217 of 900).
+Evidence: audit M2-battle-5; render Part 5 T2 (`battleFraming`, `setShotInsets`, `setBattleSubjects`, `CROWN_YAW_STEPS`, `CUE_FIT_STEPS`), `battle-framing.test.ts` (1440×900 and 1280×720, every frame of impact / attacker / ko cues inside the band); sandbox shots `after-battle-1440-*`, `after-battle-1280-*`.
+Affects: `20-client.md` §20.5.6 (the client passes the panel height; `FRAME_SHIFT_M` 0).
+
+## 2026-09-30 — `10-render.md` §10.9, `20-client.md` §20.6 — battle plates carry type badges and stay above the DOM panel
+Why: §50.1 #15 requires the battlers' type icons to be legible and none were drawn; the near plate sat under the panel.
+Evidence: audit M2-battle-6, M2-battle-7; render Part 5 (`HUD.barW` 240, `typeBadge`, `setBottomInset`); `compile-plan.test.ts` (badges, ≥ 14 px), `battle-framing.test.ts` (bars above the panel).
+Affects: `HudModel.battle.bars[].types` (optional), `packages/client/src/battle/BattleHud.ts` / `BattleController.ts`.
+
+## 2026-09-30 — `10-render.md` §10.1.2, §10.5.9, `20-client.md` §20.10.4 — two-phase zone compile: `loadZone(spec, { focus })` resolves after the first view's programs; the rest compiles in the background, gated
+Why: after P4-C3 `loadZone` resolved only when every program of the zone was compiled — 37–53 s cold on the dev iGPU (a zone handover stall). Each unique pipeline costs 1–5 s of driver time; about 40 % of them are not needed by the first view (warm library quads, beacon housing, far set-pieces and water).
+Evidence: render Part 5 T4 (cold measurements, pipeline timings per phase, frame gaps during the background phase, leak checks with a dispose mid-background); `compile-plan.test.ts`.
+Affects: `RendererOptions.backgroundCompile`, `CompileProgress.phase 'background'`, `Renderer.compileIdle()`, `LAYERS.compileGate` (26); the client's boot overlay and handover pill (§20.10.4); harnesses (`trackTimestamp`) keep the single-phase compile by default.
+
+## 2026-09-30 — `10-render.md` §10.7.4 — P4-C9: the battle / inspector camera never enters a tree crown
+Why: the battle camera landed inside crowns in live runs (client Part 2 render bug 6).
+Evidence: render Part 4 H11 (`TerrainCollider.addCrown`, `crownClearance`, `DioramaRig` occluders), `camera-rig.test.ts`, `collider.test.ts`.
+Affects: none beyond render.
+
+## 2026-09-30 — `10-render.md` §10.9 — P4-C8: battle bars are clamped inside the margins, kept off the turn label, the party strip and the clock, and never overlap
+Why: the far battler's bar left the canvas top for a tall species and the turn label overprinted the near bar (client Part 2 render bugs 3 and 4).
+Evidence: render Part 4 H10, `hud.test.ts`.
+Affects: none.
+
+## 2026-09-30 — `10-render.md` §10.7.7 — P4-C7: one scale factor for every look; emotes play `victory` / `defeat` / `standup`
+Why: per-look height normalisation erased relative heights; the model pipeline keeps no emote clips.
+Evidence: render Part 4 H7, `actors-glb.test.ts`.
+Affects: none (the looks are being replaced by pixel-art character billboards separately).
+
+## 2026-09-30 — `10-render.md` §10.2.3 — P4-C6: `preloadHero` retires the replaced field set; retired sets are released at the next `evictExcept`; the hero stream starts after the zone's phase-1 compile
+Why: three 0.186's shadow pass re-initialises a texture disposed while render objects of the zone can still be created (+21 textures per unload, then +1).
+Evidence: render Part 4 H5a / H5c, `material-library.test.ts`, `zone-dispose.test.ts`; Part 5 T4 leak checks.
+Affects: none.
+
+## 2026-09-30 — `10-render.md` §10.10.1 — P4-C5: `ZoneDump` gains `materials[].side`, `geometries[].sharedBy / kind / tier? / instancedMesh`, `lightSources[] { id, lightDistance }`
+Why: §40.5.2 says the dump gains these fields; the verbatim type did not list them.
+Evidence: render Part 4 H2, `zone-dump.test.ts` (render and asset-audit).
+Affects: none (the asset-audit mirror already read them).
+
+## 2026-09-30 — `10-render.md` §10.6.2 — P4-C4: rule 4 probes at the step length around the start, ±22.5°…±90°; the stuck-inside escape steps at most the step length
+Why: probing the capsule radius around the target and escaping up to 4 m moved a mover farther than its step; the server counts that as a speed rejection and kicks after 30.
+Evidence: render Part 4 H9, `collider.test.ts` (`|result − from| ≤ |d|` over 20 000 displacements), client `collider.test.ts`.
+Affects: none.
+
+## 2026-09-30 — `10-render.md` §10.1.2 step 8, §10.5.9 — P4-C3: pre-compilation through `compileAsync` with the scene pass's target, MRT, call depth and TRAA's velocity projection
+Why: the first zone frame compiled every pipeline synchronously (10.1 s CPU, 48.9 s to GPU idle); `compileAsync` alone compiled programs the frame did not use.
+Evidence: render Part 4 H4 (facts a–e).
+Affects: superseded in its `loadZone` part by the two-phase entry above.
+
+## 2026-09-30 — `10-render.md` §10.10.3 — P4-C2: `passMs` is filled per render context when the renderer tracks timestamps; the uid map survives a second resolve of a batch
+Why: "during play every entry is null" contradicted the per-context fill the host does with `trackTimestamp`; the harness then saw every context in `opaque` because `collect` deleted the batch's uids and the pool hands the same batch to a second resolve.
+Evidence: render Part 4 H6; render Part 5 B1 (`PassTimer` two-generation map), `stats-dispose.test.ts`; client Part 4 H7.
+Affects: the harness's per-context cross-check.
+
+## 2026-09-30 — `40-pipelines.md` §40.5.2, `50-verification-budget.md` §50.4.x — P4-C1: `scatter.instanced` needs lod0–lod2 + impostor for trees only; other kinds need the tiers they are drawn at (≥ lod0 + lod1)
+Why: small kinds are not drawn beyond 90 m and only trees get impostor cards (render Part 2 Z2), so the rule failed every real dump by design.
+Evidence: render Part 4 H2 (tier sets on the built slice zones); `tools/asset-audit/src/rules/scatter.instanced.ts`, `rules.test.ts`.
+Affects: `audit:assets` on real dumps.
+
+---
+
 <!-- 2026-09-25 spec-verification pass: every entry from here down to the next `---` is one fix from `.design/audits/spec-verification.md` (finding ids in each Evidence line). -->
 
 ## 2026-09-25 — `30-server-netcode.md` §30.6.2 — `ARGON2.algorithm` is the literal `2 as Algorithm`

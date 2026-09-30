@@ -17,7 +17,7 @@ import {
   CAPACITY, EMITTERS, MAX_PARTICLES, VFX_IDS, VFX_IMPACT_IDS, VFX_MISC_IDS, VFX_ORB_IDS, VFX_STAT_IDS, VFX_STATUS_IDS, VFX_TABLE, VFX_TYPE_IDS,
   VFX_WEATHER_IDS, VfxSystem,
 } from '../src/stage/vfx.js';
-import { ACTOR_POOL_SIZE, CharacterPool, EMOTE_MS, lookFor } from '../src/stage/actors.js';
+import { ACTOR_POOL_SIZE, CharacterPool, EMOTE_MS } from '../src/stage/actors.js';
 import { STAGE, Stage } from '../src/stage/battleStage.js';
 import type { SpriteDescriptor, VfxId } from '../src/contracts.js';
 
@@ -203,7 +203,7 @@ describe('§10.7.6 ActorPool', () => {
     pool.setTransform('me', 2, 4, 1.2, true, false);
     expect(pool.feetOf('me', new Vector3())!.toArray()).toEqual([2, 0.4, 4]);
     expect(pool.feetOf('ghost', new Vector3())).toBeNull();
-    expect((pool.meshOf('me')!.userData as { sharp: number }).sharp).toBe(1);   // the local character is DOF-sharp
+    expect(pool.sharpOf('me')).toBe(1);   // the local character is DOF-sharp
     const xy = new Float32Array(96);
     expect(pool.screenPositions(xy)).toBe(1);
     expect(xy[0]).toBeGreaterThan(0); expect(xy[0]).toBeLessThan(1280);
@@ -218,9 +218,6 @@ describe('§10.7.6 ActorPool', () => {
     expect(pool.has('a1')).toBe(false);
     pool.spawn('late', { look: 'x', name: '', guildTag: '', isLocal: false });
     expect(pool.liveCount).toBe(ACTOR_POOL_SIZE);
-    expect(lookFor('ranger_m').hairStyle).toBe('hat');
-    expect(lookFor('casual_female').hairStyle === 'long' || lookFor('casual_female').hairStyle === 'bun').toBe(true);
-    expect(lookFor('x')).toEqual(lookFor('x'));
     pool.dispose(); pool.dispose();
   });
 });

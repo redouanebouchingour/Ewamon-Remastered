@@ -112,6 +112,17 @@ function foeOf(state: BattleState, seat: 0 | 1): string | null {
   return other.kind === 'player' ? other.trainerId : null;
 }
 
+/** The battler's species types for its HUD plate (§50.1 #15); [] for an unknown species id. */
+function typesOf(state: BattleState, r: Ref, content: ContentIndex): readonly string[] {
+  const b = state.sides[r.side]?.party[r.slot];
+  if (b === undefined) return [];
+  try {
+    return content.species(b.creature.speciesId).types;
+  } catch (_e) {
+    return [];
+  }
+}
+
 function sideName(state: BattleState, r: Ref, seat: 0 | 1, content: ContentIndex): string {
   const b = state.sides[r.side]?.party[r.slot];
   if (b === undefined) return 'It';
@@ -216,7 +227,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     const b = s.party[s.active];
     if (b === undefined) return;
     const hp = hpNow[side]?.[s.active] ?? b.creature.hp;
-    hud.setBar(side, cap(sideName(st, { side, slot: s.active }, seat, deps.content)), b.creature.level, hp, b.maxHp, statusGlyph(majorOf(b.creature.status)), side === seat);
+    hud.setBar(side, cap(sideName(st, { side, slot: s.active }, seat, deps.content)), b.creature.level, hp, b.maxHp, statusGlyph(majorOf(b.creature.status)), side === seat, typesOf(st, { side, slot: s.active }, deps.content));
   };
 
   const showBattler = (st: BattleState, side: 0 | 1, slot: number): void => {
@@ -279,7 +290,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       const b = st.sides[who.side]!.party[who.slot];
       if (b !== undefined) {
         const hp = hpNow[who.side]?.[who.slot] ?? b.creature.hp;
-        hud.setBar(who.side, cap(sideName(st, who, seat, deps.content)), b.creature.level, hp, b.maxHp, statusGlyph(majorOf(b.creature.status)), who.side === seat);
+        hud.setBar(who.side, cap(sideName(st, who, seat, deps.content)), b.creature.level, hp, b.maxHp, statusGlyph(majorOf(b.creature.status)), who.side === seat, typesOf(st, who, deps.content));
       }
     },
     log: (text, tone) => {

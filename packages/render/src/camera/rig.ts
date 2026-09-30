@@ -21,7 +21,8 @@ import type { PerspectiveCamera } from 'three/webgpu';
 import type { CameraRig } from '../contracts.js';
 import type { EffectsFlags } from '../descriptors.js';
 import {
-  CAMERA_WORK, FRAMING_EASE_MS, NOMINAL_BATTLER_HEIGHT_M, PANEL_DEFAULT_FRACTION, battleFraming, battlePose, cueEnvelope, cueInMs, cueTotalMs,
+  BATTLER_SEPARATION, CAMERA_WORK, FRAME_BOTTOM_GAP, FRAMING_EASE_MS, NOMINAL_BATTLER_HEIGHT_M, PANEL_DEFAULT_FRACTION, battleFraming, battlePose,
+  cueEnvelope, cueInMs, cueTotalMs,
   forwardOfYaw, inspectPose, orbitPosition, type CameraWork, type CueKind, type Framing, type OrbitPose,
 } from './battle.js';
 
@@ -52,6 +53,19 @@ export const ZOOM_MS = 260;
  * longer frame (a shader-compile stall, a starved tab at ~4 fps) is integrated in sub-steps of at most this length.
  */
 export const SPRING_MAX_STEP_S = 1 / 60;
+// #endregion
+
+// #region constants — battle cues inside the band (implementation value, IMPLEMENTATION-NOTES Part 5, T2)
+/** Bisection steps when a cue must be scaled back to keep both battlers above the panel (1/64 resolution). */
+export const CUE_FIT_STEPS = 6;
+/** A shake uses at most 1 / this of the band's remaining room (off-centre points move more than the axis). */
+export const SHAKE_BAND_SAFETY = 1.5;
+/** A cue keeps both battlers' anchors inside this NDC |x| (room for the creature's half width and its bar). */
+export const FRAME_SIDE_NDC = 0.72;
+/** A final tilt correction smaller than this (NDC) is skipped. */
+export const TILT_EPS_NDC = 1e-4;
+/** A battle shot whose orbit ray enters a crown first tries these yaw offsets (degrees) for a clear ray (T2 + H11). */
+export const CROWN_YAW_STEPS = [15, -15, 30, -30, 45, -45] as const;
 // #endregion
 
 // #region constants — shot camera vs tree crowns (implementation values, IMPLEMENTATION-NOTES Part 4, H11)
@@ -139,6 +153,10 @@ const _pos = new Vector3();
 const _feet = new Vector3();
 const _spring = { x: 0, v: 0 };
 const _dolly = new Vector3();
+const _band = new Vector3();
+const _rows = { feet: 0, top: 0, side: 0 };
+const _clear = new Vector3();
+const _fwdBand = new Vector3();
 
 export class DioramaRig implements CameraRig {
   readonly focus = new Vector3();
@@ -174,6 +192,7 @@ export class DioramaRig implements CameraRig {
   private readonly framing: Framing = { distance: 0, tilt: 0, fits: true };
   private shotTilt = 0;
   private frameFromD = 0; private frameToD = 0; private frameFromTilt = 0; private frameToTilt = 0; private frameT = 1;
+  private cueScale = 1;
   // cue
   private cueWork: CameraWork | null = null;
   private cueT = 0;
@@ -232,6 +251,7 @@ export class DioramaRig implements CameraRig {
     this.shot.distance = this.framing.distance;
     this.shotTilt = this.framing.tilt;
     this.frameT = 1;
+    this.clearShotYaw();
     this.shotFocus.copy(_pos);
     this.enterShot('battle', ms);
     this.cueWork = null;
@@ -317,8 +337,73 @@ export class DioramaRig implements CameraRig {
       if (this.cueT >= cueTotalMs(this.cueIn, this.cueHold)) this.cueWork = null;
     }
 
-    // blend the orbit parameters: diorama ↔ shot
+    // blend the orbit parameters: diorama ↔ shot; a battle cue is scaled back until both battlers stay in the band
+    // above the DOM panel (T2 / M2-battle-5: the impact push had put the near battler below the frame)
     const b = this.blend;
+    let k = 1;
+    this.composePose(b, orbit, push, aim);
+    const banded = this.mode === 'battle' && b > 0;
+    if (w !== null && banded && this.bandSlack() < 0) {
+      let lo = 0; let hi = 1;
+      for (let i = 0; i < CUE_FIT_STEPS; i++) {
+        const m = (lo + hi) / 2;
+        this.composePose(b, orbit * m, push * m, aim * m);
+        if (this.bandSlack() >= 0) lo = m; else hi = m;
+      }
+      k = lo;
+      this.composePose(b, orbit * k, push * k, aim * k);
+    }
+    aim *= k;
+    this.cueScale = k;
+    // the shake may use what is left of the band (a rotation of α moves NDC y by ≈ α / tan(fov/2))
+    const shakeRoom = banded ? Math.max(0, this.bandSlack()) * Math.tan((this.camera.fov * DEG) / 2) / SHAKE_BAND_SAFETY : Number.POSITIVE_INFINITY;
+
+    // DOF focus: the feet in the diorama (held when nothing is followed), the shot's focus (arena centre /
+    // inspected creature, pulled toward the cue target) in a shot
+    if (b > 0) {
+      this.focus.lerpVectors(this.followed !== null ? this.focus : this.target, this.shotFocus, b);
+      if (aim > 0) this.focus.lerp(this.cueTarget, aim * b);
+    }
+
+    // shake: rotation about right/up after the pose, plus roll
+    if (this.shakeLeft > 0) {
+      if (!this.o.effects().shake) { this.shakeLeft = 0; }
+      else {
+        this.shakeLeft = Math.max(0, this.shakeLeft - dt);
+        this.shakeClock += dtS;
+        const fd = Math.max(1, this.camera.position.distanceTo(this.focus));
+        const mag = Math.min(this.shakeOffset, shakeRoom * fd);     // T2: never shakes a battler out of the band
+        const a = mag / fd;
+        this.camera.rotateX(a * Math.sin(TAU * SHAKE_HZ[0] * this.shakeClock + SHAKE_PHASE[0]));
+        this.camera.rotateY(a * Math.sin(TAU * SHAKE_HZ[1] * this.shakeClock + SHAKE_PHASE[1]));
+        this.camera.rotateZ(mag * SHAKE_ROLL_DEG * DEG * Math.sin(TAU * SHAKE_HZ[2] * this.shakeClock + SHAKE_PHASE[2]));
+      }
+    }
+    this.camera.updateMatrixWorld();
+
+    if (this.settledPending) { this.settledPending = false; this.o.onSettled?.(); }
+  }
+
+  /**
+   * T2 + H11: pulling the camera in front of a crown (below) shrinks the battle shot until both battlers cannot fit
+   * above the panel (7.6 m measured in a mire_route grove), so a battle shot first orbits to the nearest yaw offset
+   * whose ray from the arena centre is clear of every crown; none clear → the pose stays and the pull-in applies.
+   */
+  private clearShotYaw(): void {
+    const occ = this.o.occluders?.() ?? null;
+    if (occ === null) return;
+    const c = this.shot.center; const base = this.shot.yaw;
+    const clear = (): boolean => { orbitPosition(this.shot, _clear); return !(occ.crownClearance(c.x, c.y, c.z, _clear.x, _clear.y, _clear.z) < 1); };
+    if (clear()) return;
+    for (const off of CROWN_YAW_STEPS) {
+      this.shot.yaw = base + off * DEG;
+      if (clear()) return;
+    }
+    this.shot.yaw = base;
+  }
+
+  /** The orbit pose, camera position (crown-avoided), look-at and band tilt for blend `b` and cue components. */
+  private composePose(b: number, orbit: number, push: number, aim: number): void {
     const shotYaw = this.shot.yaw + orbit;
     this.pose.yaw = this.yaw + angleDelta(this.yaw, shotYaw) * b;
     this.pose.pitch = PITCH * DEG + (this.shot.pitch - PITCH * DEG) * b;
@@ -334,31 +419,59 @@ export class DioramaRig implements CameraRig {
     if (b > 0) this.avoidCrowns(b);
     this.camera.lookAt(this.pose.center);
     if (b > 0 && this.shotTilt !== 0) this.camera.rotateX(-this.shotTilt * b);   // T2: content up into the band
-
-    // DOF focus: the feet in the diorama (held when nothing is followed), the shot's focus (arena centre /
-    // inspected creature, pulled toward the cue target) in a shot
-    if (b > 0) {
-      this.focus.lerpVectors(this.followed !== null ? this.focus : this.target, this.shotFocus, b);
-      if (aim > 0) this.focus.lerp(this.cueTarget, aim * b);
-    }
-
-    // shake: rotation about right/up after the pose, plus roll
-    if (this.shakeLeft > 0) {
-      if (!this.o.effects().shake) { this.shakeLeft = 0; }
-      else {
-        this.shakeLeft = Math.max(0, this.shakeLeft - dt);
-        this.shakeClock += dtS;
-        const mag = this.shakeOffset;
-        const fd = Math.max(1, this.camera.position.distanceTo(this.focus));
-        const a = mag / fd;
-        this.camera.rotateX(a * Math.sin(TAU * SHAKE_HZ[0] * this.shakeClock + SHAKE_PHASE[0]));
-        this.camera.rotateY(a * Math.sin(TAU * SHAKE_HZ[1] * this.shakeClock + SHAKE_PHASE[1]));
-        this.camera.rotateZ(mag * SHAKE_ROLL_DEG * DEG * Math.sin(TAU * SHAKE_HZ[2] * this.shakeClock + SHAKE_PHASE[2]));
-      }
-    }
     this.camera.updateMatrixWorld();
+    if (b > 0 && this.mode === 'battle') this.correctTilt(b);
+  }
 
-    if (this.settledPending) { this.settledPending = false; this.o.onSettled?.(); }
+  /**
+   * T2: the framing was solved for the orbit distance; a crown can pull the camera in (H11) and a cue moves it, so the
+   * final camera is re-checked: the view is tilted until the near battler's feet clear the band's bottom (the panel),
+   * and down again while the tops are above its top as far as the feet allow — the player's battler wins when both
+   * cannot fit (the far bar is clamped inside the screen by the HUD). Two passes (the NDC ↔ angle map is not linear).
+   */
+  private correctTilt(b: number): void {
+    const t = Math.tan((this.camera.fov * DEG) / 2);
+    const bottom = 1 - 2 * Math.min(1, 1 - this.insetBottom - FRAME_BOTTOM_GAP);
+    const top = 1 - 2 * this.insetTop;
+    for (let pass = 0; pass < 2; pass++) {
+      this.bandRows();
+      const need = bottom - _rows.feet;                // > 0: the feet are below the band
+      const room = top - _rows.top;                    // < 0: a top is above the band
+      let sh = 0;
+      if (need > 0) sh = need;
+      else if (room < 0) sh = Math.max(room, need);    // move down, but never below the feet's limit
+      if (Math.abs(sh) < TILT_EPS_NDC) return;
+      this.camera.rotateX(-Math.atan(sh * t) * b);
+      this.camera.updateMatrixWorld();
+    }
+  }
+
+  /** NDC y of the lower feet and the higher top of the two battlers for the current camera (into `_rows`). */
+  private bandRows(): void {
+    const c = this.shot.center; const half = BATTLER_SEPARATION / 2;
+    forwardOfYaw(this.yawTo, _fwdBand);
+    _rows.feet = Number.POSITIVE_INFINITY; _rows.top = Number.NEGATIVE_INFINITY; _rows.side = 0;
+    for (let side = 0; side < 2; side++) {
+      const s = side === 0 ? -half : half;
+      _band.set(c.x + _fwdBand.x * s, c.y, c.z + _fwdBand.z * s).project(this.camera);
+      if (_band.y < _rows.feet) _rows.feet = _band.y;
+      _rows.side = Math.max(_rows.side, Math.abs(_band.x));
+      _band.set(c.x + _fwdBand.x * s, c.y + (side === 0 ? this.subjectNear : this.subjectFar), c.z + _fwdBand.z * s).project(this.camera);
+      if (_band.y > _rows.top) _rows.top = _band.y;
+      _rows.side = Math.max(_rows.side, Math.abs(_band.x));
+    }
+  }
+
+  /**
+   * T2: how far (NDC y) both battlers — nominal slots on the arena axis, the reported heights — are inside the band:
+   * the feet above `1 − insetBottom − gap`, the tops below `insetTop` (which holds the HP-bar allowance). Negative =
+   * outside. Zero allocation.
+   */
+  private bandSlack(): number {
+    const bottom = 1 - 2 * Math.min(1, 1 - this.insetBottom - FRAME_BOTTOM_GAP);
+    const top = 1 - 2 * this.insetTop;
+    this.bandRows();
+    return Math.min(_rows.feet - bottom, top - _rows.top, FRAME_SIDE_NDC - _rows.side);
   }
 
   /**
@@ -460,6 +573,8 @@ export class DioramaRig implements CameraRig {
   dioramaForward(out: Vector3): Vector3 { return forwardOfYaw(this.yawTo, out); }
   /** Whether a cue is playing. */
   get cueActive(): boolean { return this.cueWork !== null; }
+  /** The share of the current cue's push / orbit / aim that keeps both battlers in the band (1 = the full row; T2). */
+  get cueFit(): number { return this.cueScale; }
 
   // ---- internals ---------------------------------------------------------------------------------------------
 

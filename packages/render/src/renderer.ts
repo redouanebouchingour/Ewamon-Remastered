@@ -26,6 +26,7 @@ import { DEFAULT_ZOOM_STOP, DISTANCE, PITCH } from './camera/rig.js';
 import { orbitPosition, type OrbitPose } from './camera/battle.js';
 import { hasRenderable, orderUnits, planZoneCompile, type ViewGuess } from './compilePlan.js';
 import { isDevBuild } from './env.js';
+import { setOcclusion } from './materials/occlusion.js';
 import type { BufferGeometry, Camera, Object3D, RenderTarget } from 'three/webgpu';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import type {
@@ -69,6 +70,8 @@ export interface RendererOptions {
   readonly materialsUrl?: string;
   /** Where `models.manifest.json` and the look GLBs are served (§10.7.7; IMPLEMENTATION-NOTES Part 4, H7). Default `'/models/'`; null = procedural characters only. */
   readonly modelsUrl?: string | null;
+  /** Where `characters.manifest.json` and the character atlas are served (tools/character-pipeline). Default `'/characters/'`; null = no characters drawn. */
+  readonly charactersUrl?: string | null;
   /** Millisecond clock for `RenderStats.frameMs`; render never reads a wall clock itself (§10 NN 10). Default: none (frameMs = 0). */
   readonly clock?: () => number;
   /**
@@ -177,6 +180,8 @@ export interface HostContext {
   readonly materials: MaterialLibrary;
   /** `RendererOptions.modelsUrl` (null = no GLB looks). */
   readonly modelsUrl: string | null;
+  /** `RendererOptions.charactersUrl` (null = no character atlas). */
+  readonly charactersUrl: string | null;
   readonly lighting: LightRig;
   readonly sky: SkyController;
   readonly fog: HeightFog;
@@ -379,6 +384,7 @@ class RendererHost implements Renderer, HostContext {
   readonly actors: ActorPool;
   readonly materials: MaterialLibrary;
   readonly modelsUrl: string | null;
+  readonly charactersUrl: string | null;
   readonly lighting: LightRig;
   readonly sky: SkyController;
   readonly fog: HeightFog;
@@ -394,6 +400,11 @@ class RendererHost implements Renderer, HostContext {
   private readonly timestamps: TimestampResolver;
   /** Per-context GPU time → `passMs` (only when timestamps are tracked; IMPLEMENTATION-NOTES Part 4, H6). */
   readonly passTimer: PassTimer | null;
+  /** The host's inspector (always): shadow-map draw calls per frame (B2); per-context timing when tracked. */
+  private readonly inspector: PassTimer;
+  /** `BudgetCounts` of the last completed `frame()`, taken at its step 6: readable after any await (B1). */
+  private frameCounts: BudgetCounts | null = null;
+  private frameShadowDraws = 0;
   /** Set once `measurePassMs` wrote the differential numbers: the live per-context values stop overwriting them. */
   passMsLatched = false;
   private readonly clock: (() => number) | null;
@@ -442,6 +453,7 @@ class RendererHost implements Renderer, HostContext {
     this.requestedPr = o.pixelRatio;
     this.clock = o.clock ?? null;
     this.modelsUrl = o.modelsUrl === undefined ? '/models/' : o.modelsUrl;
+    this.charactersUrl = o.charactersUrl === undefined ? '/characters/' : o.charactersUrl;
     this.onCompileProgress = o.onCompileProgress ?? null;
     this.precompileEnabled = o.precompile !== false;
     // measurement renderers (`trackTimestamp`: the budget / shot harness) compile a zone fully before `loadZone`
@@ -459,6 +471,7 @@ class RendererHost implements Renderer, HostContext {
     this.materials = createMaterialLibrary(gpu, ktx2, o.materialsUrl ?? '/materials/');
 
     // 7. lighting rig, sky + PMREM, fog node, post graph, HUD, stage, actors — all before resolve.
+    if (this.materials.uniforms.occlusion !== undefined) this.materials.uniforms.occlusion.camera = this.camera3;   // M2-spawn-noon-9
     this.lighting = new LightRig(this.scene);
     this.sky = new SkyController(gpu, this.scene);
     this.fog = createHeightFog();
@@ -468,8 +481,10 @@ class RendererHost implements Renderer, HostContext {
     this.scene.add(this.precipitation.object);
     this.post = new PostStack(gpu, this.scene, this.camera3, backend, this.effectsFlags, this.passes);
     const trackTs = caps.timestampQuery && o.trackTimestamp === true;
-    this.passTimer = trackTs ? new PassTimer((rt) => this.classifyRender(rt)) : null;
-    if (this.passTimer !== null) gpu.inspector = this.passTimer;
+    // B1 / B2: one inspector always — it counts the shadow-map draw calls of every frame; timing only when tracked
+    this.inspector = new PassTimer((rt) => this.classifyRender(rt), trackTs, () => gpu.info);
+    gpu.inspector = this.inspector;
+    this.passTimer = trackTs ? this.inspector : null;
     this.timestamps = new TimestampResolver(gpu, trackTs, this.statsRecord, this.passTimer !== null ? () => this.collectPassMs() : undefined);
 
     this.camera = subsystems.camera(this);
@@ -967,6 +982,9 @@ class RendererHost implements Renderer, HostContext {
     // (1) camera
     this.camera.update(scaled);
     const focus = (this.camera.focus as Vector3) ?? _focusFallback;
+    // the diorama occluder fade (M2-spawn-noon-9): camera → the followed feet, faded out as a shot blends in
+    const occ = this.materials.uniforms.occlusion;
+    if (occ !== undefined) setOcclusion(occ, this.camera3.position, focus, 1 - ((this.camera as CameraRig & { shotBlend?: number }).shotBlend ?? 0));
     // (2) day cycle: uniforms only (+ PMREM re-bake when due)
     this.materials.uniforms.windTime.value += scaled / 1000;
     this.renderClockS += scaled / 1000;
@@ -992,8 +1010,11 @@ class RendererHost implements Renderer, HostContext {
       this.renderer.autoClear = true;
       this.renderer.outputColorSpace = cs;
     }
-    // (6) stats
+    // (6) stats — and the frame's counts, kept: three's own rAF loop resets `renderer.info` before the next frame,
+    // so `counts()` / `dumpZone()` read after an await would otherwise see an empty frame (B1)
     copyInfo(this.renderer.info, this.statsRecord, this.materials.residentTextureBytes());
+    this.frameShadowDraws = this.inspector.takeShadowDraws();
+    this.frameCounts = this.readCounts();
     // (7) GPU timestamps
     this.timestamps.poll();
     this.statsRecord.frameMs = this.clock !== null ? this.clock() - t0 : 0;
@@ -1001,7 +1022,14 @@ class RendererHost implements Renderer, HostContext {
 
   stats(): RenderStats { return this.statsRecord; }
 
+  /** B1: the last completed frame's counts (plus beauty / shadow draw calls, B2); live counts before the first frame. */
   counts(): BudgetCounts {
+    const c = this.frameCounts ?? this.readCounts();
+    const shadow = this.frameCounts !== null ? this.frameShadowDraws : 0;
+    return { ...c, beautyDrawCalls: Math.max(0, c.drawCalls - shadow), shadowDrawCalls: shadow };
+  }
+
+  private readCounts(): BudgetCounts {
     return readBudgetCounts(this.renderer.info, this.statsRecord.materials, this.statsRecord.shadowLights, this.statsRecord.nonShadowLights, this.materials.residentTextureBytes());
   }
 
@@ -1033,7 +1061,11 @@ class RendererHost implements Renderer, HostContext {
   dump(zoneId: string): ZoneDump {
     const root = this.zoneRoot() ?? new Group();
     const culled = (this.zones as ZoneLoader & { culledChunks?: () => number }).culledChunks?.() ?? 0;
-    return dumpZone({ zone: zoneId, harvestLevel: this.harvest, root, library: this.materials, counts: this.counts(), culledChunks: culled, spriteScan: this.scene });
+    const counts = this.frameCounts ?? this.readCounts();
+    return dumpZone({
+      zone: zoneId, harvestLevel: this.harvest, root, library: this.materials, counts, culledChunks: culled, spriteScan: this.scene,
+      ...(this.frameCounts !== null ? { shadowDrawCalls: this.frameShadowDraws } : {}),
+    });
   }
 }
 

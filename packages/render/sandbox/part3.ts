@@ -129,6 +129,12 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
     });
     if (q.get('reveal') === '0') p.reveal.setMask(null);
     walkers.forEach((_, i) => p.actors.despawn(`walker${i}`));
+    // `&me=1`: the local player standing at the focus (the occluder fade check, M2-spawn-noon-9); `&fade=0` turns it off
+    if (q.get('me') === '1') {
+      p.actors.spawn('me', { look: 'casual_male', name: '', guildTag: '', isLocal: true });
+      p.actors.setTransform('me', focus.x, focus.z, Number(q.get('face') ?? 0), false, false);
+    }
+    if (q.get('fade') === '0') { const occ = (host.materials.uniforms as { occlusion?: { camera: unknown } }).occlusion; if (occ) occ.camera = null; }
     p.hud.set({ nameplates: [], chat: [], prompt: null });
     Object.assign(out, { wild, revealed: () => p.reveal.revealed });
   }

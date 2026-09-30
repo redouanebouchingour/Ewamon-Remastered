@@ -11,7 +11,7 @@ import { GameCanvas } from '../scene/GameCanvas';
 import { worldCapability } from '../scene/worldHost';
 import { KeyArt } from '../ui/KeyArt';
 import s from './CanvasHost.module.css';
-import { WorldBoot } from './WorldBoot';
+import { BackgroundCompile, WorldBoot } from './WorldBoot';
 
 let leaveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -37,6 +37,7 @@ export function CanvasHost() {
         <KeyArt dim className={s.backdrop} />
         <GameCanvas />
         {worldCapability() && <WorldBoot />}
+        {worldCapability() && <BackgroundCompile />}
       </div>
       <div className={s.chrome}>
         <Outlet />

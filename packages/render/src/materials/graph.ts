@@ -31,9 +31,10 @@
 import { Color, DoubleSide, FrontSide, MeshPhysicalNodeMaterial, MeshStandardNodeMaterial, Vector3 } from 'three/webgpu';
 import type { Node, TextureNode, UniformNode } from 'three/webgpu';
 import {
-  attribute, float, frontFacing, max, mix, normalMap, normalView, oneMinus, positionLocal, texture, uniform, uv, vec2, vec4, vertexColor,
+  attribute, bool, float, frontFacing, max, mix, normalMap, normalView, oneMinus, positionLocal, texture, uniform, uv, vec2, vec4, vertexColor,
 } from 'three/tsl';
 import { harvestBlend, type SharedUniforms } from './harvest.js';
+import { occlusionKeep } from './occlusion.js';
 import type { SurfaceDef, SurfaceExtras } from './surfaces.js';
 import { triplanarSample } from './triplanar.js';
 import { windDisplace, type WindParams } from './wind.js';
@@ -191,6 +192,13 @@ export function buildSurfaceGraph(def: SurfaceDef, _extras: SurfaceExtras, maps:
   if (st.kind === 'card') {
     m.alphaTest = def.alphaTest ?? 0.5;
     m.maskShadowNode = alb.a.greaterThan(def.alphaTest ?? 0.5);
+  }
+  // M2-spawn-noon-9: everything above the ground can be dithered out between the diorama camera and the player
+  if (u.occlusion !== undefined && !def.triplanar) {
+    m.maskNode = occlusionKeep(u.occlusion);
+    // the shadow pass uses `maskShadowNode || maskNode`: shadows never fade, so solids get a constant mask there and
+    // their shadow programs stay independent of the fade graph (cards keep their alpha mask)
+    if (m.maskShadowNode === null) m.maskShadowNode = bool(true);
   }
   m.side = def.doubleSide ? DoubleSide : FrontSide;
   m.transparent = false;

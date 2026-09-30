@@ -188,4 +188,34 @@ describe('per-context GPU timing → passMs (IMPLEMENTATION-NOTES Part 4, H6)', 
     expect(t.last.map((r) => r.target).sort()).toEqual(['DepthOfField.Composite', 'canvas']);
     expect(t.collect(null, out)).toBe(false);
   });
+
+  it('B1: a second resolve of the same batch (harness gpuFrameMs + frame poll) keeps the rows — nothing lands in opaque', () => {
+    const t = new PassTimer((rt) => (rt === null ? 'grade' : 'shadows'));
+    t.beginRender('r:1:1:f9', new Scene(), new PerspectiveCamera(), null);
+    t.beginRender('r:2:2:f9', new Scene(), new PerspectiveCamera(), { width: 2048, height: 2048, texture: { name: 'ShadowMap' } } as never);
+    const pool = { timestamps: new Map([['r:1:1:f9', 0.4], ['r:2:2:f9', 2.5]]), frames: [9] };
+    const out = createRenderStats().passMs as Record<BudgetPass, number | null>;
+    expect(t.collect(pool, out)).toBe(true);
+    expect(t.collect(pool, out)).toBe(true);              // three's pool returns the previous batch unchanged
+    expect(out.shadows).toBeCloseTo(2.5, 9);
+    expect(out.grade).toBeCloseTo(0.4, 9);
+    expect(out.opaque).toBe(0);
+    expect(t.last.every((r) => r.target !== '?')).toBe(true);
+  });
+
+  it('B2: counts the draw calls rendered into shadow maps (nested renders), zero allocation, reset per take', () => {
+    const inf = { render: { drawCalls: 0, triangles: 0 }, memory: info().memory };
+    const t = new PassTimer((rt) => (rt === null ? 'grade' : rt.texture?.name === 'ShadowMap' ? 'shadows' : 'opaque'), false, () => inf);
+    const shadowRt = { width: 2048, height: 2048, texture: { name: 'ShadowMap' } } as never;
+    t.beginRender('scene', new Scene(), new PerspectiveCamera(), { width: 8, height: 8, texture: { name: 'scene' } } as never);
+    inf.render.drawCalls += 40;
+    t.beginRender('csm0', new Scene(), new PerspectiveCamera(), shadowRt); inf.render.drawCalls += 60; t.finishRender();
+    t.beginRender('csm1', new Scene(), new PerspectiveCamera(), shadowRt); inf.render.drawCalls += 50; t.finishRender();
+    inf.render.drawCalls += 30;
+    t.finishRender();
+    t.beginRender('canvas', new Scene(), new PerspectiveCamera(), null); inf.render.drawCalls += 3; t.finishRender();
+    expect(t.takeShadowDraws()).toBe(110);
+    expect(inf.render.drawCalls - 110).toBe(73);            // beauty + post
+    expect(t.takeShadowDraws()).toBe(0);
+  });
 });

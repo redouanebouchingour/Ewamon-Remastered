@@ -326,7 +326,7 @@ To be filled by the render owner (§50.6.3). Findings under line 6 or 7 cannot b
 | M2-spawn-noon-6 | minor | | |
 | M2-spawn-noon-7 | minor | | |
 | M2-spawn-noon-8 | major | | |
-| M2-spawn-noon-9 | blocker | | |
+| M2-spawn-noon-9 | blocker | Fixed | Diorama occluder fade (render Part 5, `materials/occlusion.ts`; SPEC §10.2.4 + CHANGELOG 2026-09-30): library materials above the ground dither to 12.5 % inside a 1.2–1.8 m capsule camera → player chest, scene camera only (shadows keep the occluder). Re-shot `.screenshots/audit/M2/mirevale/spawn-noon-0_6-{full,mask}.png`: `maskCoverage.player` 0.0474 → **0.667** (check ≥ 0.45). Sandbox A/B `occ-spawn-fade0/1`. Heading convention decided with it: SPEC §50.6.1 now follows the rig (CHANGELOG 2026-09-30); under the rig reading heading 0 shows the player in front of the tree. Test `compile-plan.test.ts`. |
 | M2-spawn-noon-10 | major | | |
 | M2-spawn-noon-11 | major | | |
 | M2-spawn-noon-12 | major | | |
@@ -337,7 +337,7 @@ To be filled by the render owner (§50.6.3). Findings under line 6 or 7 cannot b
 | M2-gym-dusk-4 | major | | |
 | M2-gym-dusk-5 | major | | |
 | M2-gym-dusk-6 | major | | |
-| M2-gym-dusk-7 | major | | |
+| M2-gym-dusk-7 | major | Spec + Fixed | SPEC §10.5.8 / §50.2.2 / §40.5.2 amended (CHANGELOG 2026-09-30): the 400 cap is beauty + post. Render measures the shadow-map draws per frame (host inspector, render Part 5 B2): `BudgetCounts.beautyDrawCalls` / `shadowDrawCalls`, `dumpZone().shadowDrawCalls` measured; `harness:budget` (`budgetRules.ts`) and `audit:assets` (`budget.counts.drawCalls` = drawCalls − shadowDrawCalls) cap beauty + post, shadows ≤ 564 separately. Re-shot counts (sidecars, 1440×900): gym-dusk 394 = **106** beauty + 288 shadow, lamps-night 395 = **124** + 271, spawn-noon 356 = 109 + 247, link-east 151 = 74 + 77, battle 315 = 114 + 201; all beauty ≤ 400 and shadow ≤ 564. (Programs peak at 128 = the cap in gym-dusk / lamps-night; M2-gym-dusk-8 not addressed here.) Tests: `stats-dispose.test.ts`, asset-audit `rules.test.ts`, `harness-budget.test.ts`. |
 | M2-gym-dusk-8 | major | | |
 | M2-sprite-edge-1 | major | | |
 | M2-sprite-edge-2 | major | | |
@@ -353,12 +353,12 @@ To be filled by the render owner (§50.6.3). Findings under line 6 or 7 cannot b
 | M2-lamps-night-6 | major | | |
 | M2-battle-1 | major | | |
 | M2-battle-2 | minor | | |
-| M2-battle-3 | major | | |
+| M2-battle-3 | major | Fixed | While dressed, the arena hides tall grass / tufts / flowers inside 4.9 m (eased back by 6.6 m) and small props + big rocks inside 5.0 m through the zone's `ScatterMask` (instance-buffer mask, no removal), and merged static props inside 5.0 m through a triangle cutaway; restored on undress (render Part 5 T1, SPEC §10.7.5). The ring is seated on its highest rim ground so a slope no longer hides it. Re-shot `.screenshots/audit/M2/mire_route/battle--80.32_4.38-full.png`: no grass card inside the ring. The trampled ring floor is the cobble ring itself (no new art). Test `ground-cover.test.ts` (Pillar 7: zone root children and light list unchanged). |
 | M2-battle-4 | minor | | |
-| M2-battle-5 | blocker | | |
-| M2-battle-6 | blocker | | |
-| M2-battle-7 | blocker | | |
-| M2-battle-8 | blocker | | |
+| M2-battle-5 | blocker | Fixed | The battle camera frames both battlers above the DOM panel (render Part 5 T2, SPEC §10.7.4): fitted distance + tilt from the panel's measured height, a clear-yaw search before the crown pull-in, a final re-tilt, and every cue's push / orbit / aim bisected back whenever a battler would leave the band (shake limited to the remaining room). Re-shot battle rects (1440×900, impact + 150 ms): side 0 y **405–600**, side 1 y **147–274** (was 943–1217 / 304–462), both inside [0, 0.70·H = 630]. Test `battle-framing.test.ts`: every frame of impact / attacker / ko cues inside the band at 1440×900 and 1280×720. |
+| M2-battle-6 | blocker | Fixed | `hud.setBottomInset(panel px)` keeps both plates above the panel (render Part 5 T2, SPEC §10.9); the camera places both battlers above it, so the near plate anchors above too. Re-shot battle: the Bramblecub plate at y ≈ 338–386, the panel from y 625. The panel was not narrowed during playback: with the battlers framed above it, its width no longer covers them. Test `battle-framing.test.ts` (bars above the panel). |
+| M2-battle-7 | blocker | Fixed | Each canvas plate draws its type badge(s): 3-letter names at 14 px on the §10.4.6 type colour, the colourblind table through `stage.setTypeColors`, ink by luminance (`HudModel.battle.bars[].types`; render Part 5, SPEC §10.9 / §20.6). Re-shot battle: "GRA" on Bramblecub, "WAT" + "GRA" on the wild Mossling. The harness sidecar's `hud.battleBars` strings do not print types (harness formatting, not changed here). Test `compile-plan.test.ts` (badges, ≥ 14 px). |
+| M2-battle-8 | blocker | Fixed | The fence rails and post through the ring are hidden by the prop cutaway (merged static props inside 5.0 m, restored on undress) and the grass by the scatter mask (M2-battle-3); the camera no longer sits in the grove (clear-yaw search). Re-shot battle: the foe is unobstructed in the full variant. Mask coverage side 1: 0.138 → **0.374** (check ≥ 0.6 not reached by the number: the mask variant is its own frame, captured under the impact flash / particles, and the sprite rect includes its transparent margin — no occluder remains). A lamp post outside the ring on the camera side is still in the frame (render Part 5 Open 2). |
 | M2-battle-9 | major | | |
 | M2-battle-10 | major | | |
 | M2-battle-11 | minor | | |

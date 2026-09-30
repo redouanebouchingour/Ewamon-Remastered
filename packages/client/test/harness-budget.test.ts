@@ -43,6 +43,13 @@ describe('§50.2 budget rules', () => {
     expect(v.map((x) => x.metric).sort()).toEqual(['drawCalls', 'materials', 'programs', 'renderTargets']);
   });
 
+  it('caps beauty + post draw calls at 400 when render measures them, shadow-map draws at 564 (§10.5.8)', () => {
+    // M2 lamps-night: 408 total = 160 beauty + post + 248 shadow → passes; the worst total frame no longer fails it
+    expect(countViolations(row({ counts: counts({ drawCalls: 408, beautyDrawCalls: 160, shadowDrawCalls: 248 }), countsMax: { drawCalls: 420, triangles: 1 } }))).toEqual([]);
+    const v = countViolations(row({ counts: counts({ drawCalls: 1000, beautyDrawCalls: 401, shadowDrawCalls: 599 }) }));
+    expect(v.map((x) => x.metric).sort()).toEqual(['drawCalls', 'shadowDrawCalls']);
+  });
+
   it('asserts total = T_all + sim (median ≤ target, p95 ≤ ceiling) and each pass against its target', () => {
     const v = msViolations(row({ totalMs: { median: 9.8, p95: 13.2, n: 600 }, simMs: { median: 0.3, p95: 0.2, n: 600 }, passMs: { ...passes(0.1), shadows: 2.1 } }));
     expect(v.map((x) => x.metric).sort()).toEqual(['shadows.median', 'total.median']);

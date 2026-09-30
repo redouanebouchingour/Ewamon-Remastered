@@ -190,6 +190,14 @@ function programCodes(r: Renderer): { vertex: string[]; fragment: string[] } {
   return { vertex: p ? [...p.vertex.keys()] : [], fragment: p ? [...p.fragment.keys()] : [] };
 }
 let programsAtLoad: { vertex: string[]; fragment: string[] } | null = null;
+let programsAtBaseline: { vertex: string[]; fragment: string[] } | null = null;
+let programNamesAtBaseline: string[] = [];
+/** `stage:name` of every program three holds (multiset, sorted). */
+function programNames(r: Renderer): string[] {
+  const p = (r.renderer as unknown as { _pipelines?: { programs?: { vertex: Map<string, { name: string }>; fragment: Map<string, { name: string }> } } })._pipelines?.programs;
+  if (!p) return [];
+  return [...[...p.vertex.values()].map((x) => `v:${x.name}`), ...[...p.fragment.values()].map((x) => `f:${x.name}`)].sort();
+}
 
 interface TrackedGpu { readonly targets: Map<object, string>; readonly textures: Map<object, string>; readonly attributes: Map<object, string> }
 
@@ -356,6 +364,8 @@ async function main(): Promise<void> {
   // the step-8 baseline was captured inside createRenderer, with no await after it: this is the same moment
   const atBaseline = tracked ? { targets: new Set(tracked.targets.keys()), textures: new Set(tracked.textures.keys()), attributes: new Set(tracked.attributes.keys()) } : null;
   trackPhase = 'after-baseline';
+  programsAtBaseline = programCodes(r);
+  programNamesAtBaseline = programNames(r);
   await gpuIdle(r);
   timing.createRendererMs = Math.round(performance.now() - tBoot);
   timing.programsAfterWarmup = r.renderer.info.memory.programs;
@@ -479,6 +489,23 @@ async function main(): Promise<void> {
       const now = programCodes(r);
       const at = programsAtLoad;
       return { vertex: now.vertex.filter((c) => !at.vertex.includes(c)), fragment: now.fragment.filter((c) => !at.fragment.includes(c)), atLoad: at };
+    },
+    /** Program names now vs the step-8 baseline (multiset difference both ways). */
+    programNamesVsBaseline: () => {
+      const now = programNames(r); const base = [...programNamesAtBaseline];
+      const extra: string[] = [];
+      for (const n of now) { const i = base.indexOf(n); if (i >= 0) base.splice(i, 1); else extra.push(n); }
+      return { extra, missing: base };
+    },
+    /** Programs alive now that were not at the step-8 baseline, and baseline programs gone (first lines of their WGSL). */
+    programsVsBaseline: () => {
+      if (!programsAtBaseline) return null;
+      const now = programCodes(r); const at = programsAtBaseline;
+      const head = (c: string) => c.split(String.fromCharCode(10)).filter((l) => l.includes('fn ') || l.includes('NodeUniform') || l.includes('@location')).slice(0, 6).join(' | ').slice(0, 400);
+      return {
+        added: { vertex: now.vertex.filter((c) => !at.vertex.includes(c)).map(head), fragment: now.fragment.filter((c) => !at.fragment.includes(c)).map(head) },
+        gone: { vertex: at.vertex.filter((c) => !now.vertex.includes(c)).length, fragment: at.fragment.filter((c) => !now.fragment.includes(c)).length },
+      };
     },
     /** `?track=1`: render targets / textures three initialised after boot and still alive (name size @phase). */
     live: () => (tracked ? { targets: [...tracked.targets.values()], textures: [...tracked.textures.values()] } : null),

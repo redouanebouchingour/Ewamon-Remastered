@@ -60,7 +60,7 @@ Statistic: over a 600-frame capture after 120 warm-up frames, **median ≤ targe
 
 | Metric | Source | Cap |
 |---|---|---|
-| Draw calls | `renderer.info.render.drawCalls` | ≤ 400 |
+| Draw calls (beauty + post) | `BudgetCounts.beautyDrawCalls` = `renderer.info.render.drawCalls` − the frame's shadow-map draws (`shadowDrawCalls`, ≤ 564 separately, §10.5.8) <!-- amended 2026-09-30: the source column counted the shadow cascades, which §10.5.8 excludes — audit M2-gym-dusk-7 --> | ≤ 400 |
 | Triangles | `renderer.info.render.triangles` | ≤ 2 500 000 |
 | Texture memory | `renderer.info.memory.texturesSize` **+** `materials.residentTextureBytes()` (= `RenderStats.textureBytes`; three counts every compressed texture as 1 byte, `Info.js` lines 449–453) | ≤ 700 MB (734 003 200 bytes) |
 | Unique materials | distinct `Material.uuid` reachable from the zone root, excluding the `debug` layer | ≤ 48 |
@@ -83,7 +83,7 @@ export type BudgetPass =
   | 'opaque' | 'sprites' | 'shadows' | 'gtao' | 'traa' | 'bloom' | 'dof' | 'grade';
 
 export interface BudgetCounts {
-  readonly drawCalls: number;        // renderer.info.render.drawCalls
+  readonly drawCalls: number;        // renderer.info.render.drawCalls (the whole frame, shadow maps included)
   readonly triangles: number;        // renderer.info.render.triangles
   readonly texturesSize: number;     // renderer.info.memory.texturesSize (bytes)
   readonly textures: number;         // renderer.info.memory.textures
@@ -261,7 +261,7 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `prng.test.ts` (vitest, node) | Render's sfc32 copy reproduces `packages/core/test/rng.test.ts`'s committed constant for `createPrng(12345).int(1000)`. |
 | `dispose-contract.test.ts` (vitest, node) | Every builder in `@ewa/render` returns an object with `dispose()`; calling it twice is a no-op; a `Material`/`Texture` obtained from the shared library is never `dispose()`d directly (a spy on `Texture.prototype.dispose` counts calls during a builder's `dispose`). Pure-logic parts of render (`layout`, `lod`, `descriptors`) are tested in node without a GPU. |
 
-`tools/asset-audit` (`pnpm audit:assets`, reads `ZoneDump` JSON written by `harness:budget --dump`) rules, each failing the build, named exactly as `40-pipelines.md` §40.5.2 implements them: `budget.counts.*` (§50.2.2), `materials.count ≤ 48`, `materials.threeMaps` (exempt by class: `billboard`, `impostor`, `decal`, `character`, and `harvestLevel ≥ 1`), `materials.albedoCeiling` (every surface's bake reports `albedoClampedPct`), `textures.ktx2Only` (no `CanvasTexture`, no PNG albedo on a lit material; `billboard` WebP and `character` vertex colour exempt by class), `geometry.noPrimitives`, `geometry.noOutlineShells` (no BackSide scaled clone sharing a geometry — legacy-render-audit Q4), `scatter.instanced` (every scatter kind an `InstancedMesh` with 3 LOD tiers + impostor — Q19), `lights.housing (≤ 0.6 units, both directions: every light has a housing and every `lightSource`-tagged emissive has a light)`, `lights.count (8 / 24)`, `sprites.nearest`, `shadows.drawCalls ≤ 564`, `harvest.same`. Test: `tools/asset-audit/test/rules.test.ts` feeds one violating fixture per rule and asserts the rule name in the error. <!-- reconciled 2026-09-18: rule list unified with 40-pipelines.md and extended for the legacy audit -->
+`tools/asset-audit` (`pnpm audit:assets`, reads `ZoneDump` JSON written by `harness:budget --dump`) rules, each failing the build, named exactly as `40-pipelines.md` §40.5.2 implements them: `budget.counts.*` (§50.2.2), `materials.count ≤ 48`, `materials.threeMaps` (exempt by class: `billboard`, `impostor`, `decal`, `character`, and `harvestLevel ≥ 1`), `materials.albedoCeiling` (every surface's bake reports `albedoClampedPct`), `textures.ktx2Only` (no `CanvasTexture`, no PNG albedo on a lit material; `billboard` WebP and `character` vertex colour exempt by class), `geometry.noPrimitives`, `geometry.noOutlineShells` (no BackSide scaled clone sharing a geometry — legacy-render-audit Q4), `scatter.instanced` (every scatter kind an `InstancedMesh`; trees with lod0–lod2 + impostor, other kinds with the tiers they are drawn at, ≥ lod0 + lod1 — Q19; amended 2026-09-30, P4-C1), `lights.housing (≤ 0.6 units, both directions: every light has a housing and every `lightSource`-tagged emissive has a light)`, `lights.count (8 / 24)`, `sprites.nearest`, `shadows.drawCalls ≤ 564`, `harvest.same`. Test: `tools/asset-audit/test/rules.test.ts` feeds one violating fixture per rule and asserts the rule name in the error. <!-- reconciled 2026-09-18: rule list unified with 40-pipelines.md and extended for the legacy audit -->
 
 ### 50.4.7 `@ewa/client` — `packages/client/test/`
 
@@ -368,7 +368,7 @@ One audit per milestone from M2 onward: `.design/audits/M<n>-render-audit.md`. I
 
 ### 50.6.1 The six shots
 
-Camera per pillar 1: vertical FOV 28°, pitch −52°, yaw one of four headings (0 = +z forward, 1 = +x, 2 = −z, 3 = −x). Positions are anchors resolved by the harness from content and the zone layout; the resolved world `x, z` and the `layoutSeed` are printed in the shot's file name and in the audit header so a shot is reproducible from the committed data alone. Zoom is the default distance; `timeOfDay` is the `ZoneState` value.
+Camera per pillar 1: vertical FOV 28°, pitch −52°, yaw one of four headings numbered as the rig numbers them (`10-render.md` §10.7.1: yaw −35° + 90°·k, camera at target + (sin yaw, cos yaw)·d): heading 0 looks toward −z (the camera stands south of the focus), 1 toward −x, 2 toward +z, 3 toward +x. <!-- amended 2026-09-30: the words "0 = +z forward, 1 = +x, 2 = −z, 3 = −x" were 180° from the rig; the rig's numbering is kept (at the Mirevale spawn heading 0 shows the player in front of the heart tree, the words' reading put the crown between camera and player) — M2 harness finding H1 --> Positions are anchors resolved by the harness from content and the zone layout; the resolved world `x, z` and the `layoutSeed` are printed in the shot's file name and in the audit header so a shot is reproducible from the committed data alone. Zoom is the default distance; `timeOfDay` is the `ZoneState` value.
 
 | # | Id | Zone | Anchor (+ offset in world units) | Heading | timeOfDay | State |
 |---|---|---|---|---|---|---|

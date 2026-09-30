@@ -21,12 +21,13 @@ import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
 import { ACTOR_POOL_SIZE, createRenderer, heroSurfaces, part3Of } from '@ewa/render';
-import type { Renderer, SurfaceId, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
+import type { CompileProgress, Renderer, SurfaceId, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
 import { createAudioDirector } from '../audio/AudioDirector';
 import type { AudioDirector } from '../audio/AudioDirector';
 import { loadAudioManifest, validateAudioManifest } from '../audio/manifest';
 import { navigateTo } from '../app/navigation';
-import { setWorldBoot } from '../app/bootProgress';
+import { getWorldBoot, setWorldBoot } from '../app/bootProgress';
+import { battlePanelTop, onBattlePanelTop } from '../battle/panelInset';
 import { createBattleController } from '../battle/BattleController';
 import type { BattleController, BattleView } from '../battle/BattleController';
 import { setBattleActions } from '../battle/controllerRef';
@@ -132,6 +133,8 @@ class World implements World3D {
   private acc = 0;
   private firstFrame = false;
   private zoneLoaded = false;
+  /** a handover's zone is loading: the boot overlay is back until its first frame (render T4 phase 1) */
+  private awaitingZoneFrame = false;
   private room: ZoneRoom | null = null;
   private roomZone: ZoneId | null = null;
   private roomDisposers: (() => void)[] = [];
@@ -224,7 +227,10 @@ class World implements World3D {
     await nextFrame();
     let r: Renderer;
     try {
-      r = await createRenderer({ canvas: this.canvas, pixelRatio: this.pixelRatio(), effects: eff.effects, transcoderPath: '/basis/', clock: () => performance.now() });
+      r = await createRenderer({
+        canvas: this.canvas, pixelRatio: this.pixelRatio(), effects: eff.effects, transcoderPath: '/basis/', charactersUrl: '/characters/', clock: () => performance.now(),
+        onCompileProgress: (p) => this.onCompileProgress(p),
+      });
     } catch (e) {
       setWorldBoot({ error: e instanceof Error ? e.message : String(e) });
       throw e;
@@ -305,6 +311,25 @@ class World implements World3D {
     if (!this.disposed) this.renderer.hud.setFonts(body, display);
   }
 
+  /**
+   * render `onCompileProgress` (T5): the blocking phases ('boot', a zone's phase 1) drive the boot overlay's real bar;
+   * the background phase after a zone became playable drives the small corner pill. Store writes happen here, from
+   * the compile callbacks, never from the tick.
+   */
+  private onCompileProgress(p: CompileProgress): void {
+    if (p.phase === 'background') {
+      setWorldBoot({ background: p.done ? null : { loaded: p.loaded, total: p.total } });
+      return;
+    }
+    if (getWorldBoot().ready) return;
+    if (p.done) {
+      setWorldBoot({ compile: null });
+      return;
+    }
+    const label = p.phase === 'boot' ? 'Compiling shaders' : `Preparing ${this.zone?.name ?? 'the world'}`;
+    setWorldBoot({ label, loadedBytes: null, totalBytes: null, compile: { loaded: p.loaded, total: p.total } });
+  }
+
   private pixelRatio(): number {
     const scale = useSettingsStore.getState().graphics.renderScale;
     return (typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) * scale;
@@ -314,8 +339,10 @@ class World implements World3D {
     const apply = (): void => {
       const rect = this.canvas.getBoundingClientRect();
       this.renderer.resize(rect.width, rect.height);
+      this.applyBattleInset();
     };
     apply();
+    this.offs.push(onBattlePanelTop(() => this.applyBattleInset()));
     if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(apply);
       ro.observe(this.canvas);
@@ -327,6 +354,22 @@ class World implements World3D {
         () => this.renderer.setPixelRatio(this.pixelRatio()),
       ),
     );
+  }
+
+  /**
+   * render T2: the DOM battle panel's real height over the canvas (canvas bottom − panel top) → the battle camera
+   * frames both battlers above it and the HUD keeps the HP bars off it; no panel → render's SPEC default (28 % + margin).
+   */
+  private applyBattleInset(): void {
+    const p3 = part3Of(this.renderer);
+    if (p3 === undefined) return;
+    const top = battlePanelTop();
+    if (top === null) {
+      p3.setBattleInsets(0, null);
+      return;
+    }
+    const rect = this.canvas.getBoundingClientRect();
+    p3.setBattleInsets(0, Math.max(0, Math.min(rect.height, rect.bottom - top)));
   }
 
   // ---- session / room wiring ------------------------------------------------------------------------------------
@@ -524,12 +567,20 @@ class World implements World3D {
       this.input.override = null;
     }
     const flags = this.flags();
+    // a handover: the overlay covers the blocking part of the next zone's load (its first frame lifts it again)
+    if (this.firstFrame) {
+      this.awaitingZoneFrame = true;
+      setWorldBoot({ ready: false, label: `Travelling to ${z.name}`, loadedBytes: null, totalBytes: null, compile: null, background: null });
+    }
+    // where the player will stand: render compiles what the first view there draws before loadZone resolves (T4)
+    const arrival = room.state.players.get(this.ws.selfId);
+    const focus = arrival !== undefined ? { x: arrival.x, z: arrival.z } : null;
     try {
       await this.bindZoneAtlases(zoneId);
       setWorldBoot({ label: `Building ${z.name}`, loadedBytes: null, totalBytes: null });
       await nextFrame();
       this.zoneLoaded = false;
-      await this.director.loadZone(zoneId, harvestStateFor(zoneId, flags));
+      await this.director.loadZone(zoneId, harvestStateFor(zoneId, flags), focus);
     } catch (e) {
       console.error('zone load failed', e);
       toast('danger', `Could not build ${z.name}.`);
@@ -997,11 +1048,15 @@ class World implements World3D {
     if (this.devLeft <= 0) this.onSecond();
     if (!this.firstFrame && this.zoneLoaded) {
       this.firstFrame = true;
+      this.awaitingZoneFrame = false;
       performance.mark('ewa:first-frame');
       setTimeout(() => {
-        setWorldBoot({ ready: true, label: 'Ready', loadedBytes: null, totalBytes: null });
+        setWorldBoot({ ready: true, label: 'Ready', loadedBytes: null, totalBytes: null, compile: null });
         this.startPhase5();
       }, 0);
+    } else if (this.awaitingZoneFrame && this.zoneLoaded) {
+      this.awaitingZoneFrame = false;
+      setTimeout(() => setWorldBoot({ ready: true, label: 'Ready', loadedBytes: null, totalBytes: null, compile: null }), 0);
     }
   }
 

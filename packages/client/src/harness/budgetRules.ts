@@ -37,14 +37,26 @@ export interface ShotBudgetLike {
 
 export interface Violation { readonly shot: string; readonly metric: string; readonly value: number; readonly limit: number; readonly kind: 'count' | 'ms' }
 
-/** §50.2.2: every cap, always. `countsMax` (if present) is checked for draw calls / triangles. */
+/** §10.5.8: the shadow-map passes' own cap, 4 cascades × (terrain 12 + buildings 29 + scatter 60 + billboards 40). */
+export const SHADOW_DRAW_CALLS_MAX = 4 * (12 + 29 + 60 + 40);
+
+/**
+ * §50.2.2: every cap, always. The draw-call cap of 400 is beauty + post (§10.5.8, amended 2026-09-30): it reads
+ * `counts.beautyDrawCalls` when render measures it (render Part 5 B2), and `countsMax.drawCalls` — a whole-frame
+ * total including the shadow maps — only when it does not; the shadow-map draws have their own cap (564).
+ * `countsMax` (if present) is checked for triangles.
+ */
 export function countViolations(s: ShotBudgetLike): Violation[] {
   const out: Violation[] = [];
+  const beauty = s.counts.beautyDrawCalls;
   for (const k of Object.keys(COUNT_CAPS) as (keyof typeof COUNT_CAPS)[]) {
     let v = s.counts[k];
-    if ((k === 'drawCalls' || k === 'triangles') && s.countsMax) v = Math.max(v, s.countsMax[k]);
+    if (k === 'drawCalls' && beauty !== undefined) v = beauty;
+    else if ((k === 'drawCalls' || k === 'triangles') && s.countsMax) v = Math.max(v, s.countsMax[k]);
     if (v > COUNT_CAPS[k]) out.push({ shot: s.id, metric: k, value: v, limit: COUNT_CAPS[k], kind: 'count' });
   }
+  const shadow = s.counts.shadowDrawCalls;
+  if (shadow !== undefined && shadow > SHADOW_DRAW_CALLS_MAX) out.push({ shot: s.id, metric: 'shadowDrawCalls', value: shadow, limit: SHADOW_DRAW_CALLS_MAX, kind: 'count' });
   return out;
 }
 

@@ -79,13 +79,13 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 109.7,
+        "meanLuma": 121.8,
         "blackShare": 0,
         "greyShare": 0.0001,
         "levels": {
           "zero": 0,
-          "full": 0,
-          "mid": 1
+          "full": 0.0001,
+          "mid": 0.9999
         }
       },
       "checks": [],
@@ -94,18 +94,18 @@
         "shot": "battle",
         "variant": "full",
         "camera": {
-          "rigHeading": 3,
+          "rigHeading": 0,
           "zoomStop": 1,
           "mode": "battle",
           "position": [
-            -86.848,
-            5.245,
-            2.228
+            -78.362,
+            5.9,
+            14.207
           ],
           "focus": [
-            -78.07,
-            0.175,
-            5.954
+            -79.682,
+            0.143,
+            3.461
           ],
           "shotBlend": 1
         },
@@ -134,48 +134,50 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 375,
-          "triangles": 1344597,
-          "texturesSize": 672032757,
-          "textures": 173,
-          "geometries": 275,
-          "programs": 131,
+          "drawCalls": 315,
+          "triangles": 1078877,
+          "texturesSize": 686516229,
+          "textures": 176,
+          "geometries": 260,
+          "programs": 122,
           "renderTargets": 36,
-          "attributes": 1728,
-          "attributesSize": 95290016,
+          "attributes": 1650,
+          "attributesSize": 86503648,
           "materials": 13,
           "shadowLights": 3,
-          "nonShadowLights": 9
+          "nonShadowLights": 9,
+          "beautyDrawCalls": 114,
+          "shadowDrawCalls": 201
         },
         "settle": {
           "frames": 220,
           "stable": true,
-          "programs": 131
+          "programs": 122
         },
         "rects": {
           "player": [
-            -170,
-            1201,
-            276,
-            1935
+            -227,
+            412,
+            20,
+            812
           ],
           "battlers": [
             {
               "side": 0,
               "rect": [
-                133,
-                943,
-                580,
-                1217
+                79,
+                405,
+                363,
+                600
               ]
             },
             {
               "side": 1,
               "rect": [
-                643,
-                304,
-                819,
-                462
+                801,
+                147,
+                965,
+                274
               ]
             }
           ]
@@ -207,7 +209,7 @@
             "Bramblecub used Tackle!"
           ],
           "turnLabel": "Turn 2",
-          "heading": 3
+          "heading": 0
         },
         "notes": [],
         "frame": 580
@@ -219,7 +221,7 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 105.4,
+        "meanLuma": 118.4,
         "blackShare": 0,
         "greyShare": 0,
         "levels": {
@@ -234,18 +236,18 @@
         "shot": "battle",
         "variant": "reduced",
         "camera": {
-          "rigHeading": 3,
+          "rigHeading": 0,
           "zoomStop": 1,
           "mode": "battle",
           "position": [
-            -86.848,
-            5.245,
-            2.228
+            -84.379,
+            6.016,
+            14.184
           ],
           "focus": [
-            -78.07,
-            0.175,
-            5.954
+            -80.052,
+            0.127,
+            3.989
           ],
           "shotBlend": 1
         },
@@ -271,48 +273,50 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 365,
-          "triangles": 1342560,
-          "texturesSize": 596216761,
-          "textures": 161,
-          "geometries": 275,
-          "programs": 121,
+          "drawCalls": 321,
+          "triangles": 958552,
+          "texturesSize": 610700233,
+          "textures": 164,
+          "geometries": 260,
+          "programs": 110,
           "renderTargets": 26,
-          "attributes": 1764,
-          "attributesSize": 97806752,
+          "attributes": 1702,
+          "attributesSize": 90069984,
           "materials": 13,
           "shadowLights": 3,
-          "nonShadowLights": 9
+          "nonShadowLights": 9,
+          "beautyDrawCalls": 105,
+          "shadowDrawCalls": 216
         },
         "settle": {
           "frames": 214,
           "stable": true,
-          "programs": 121
+          "programs": 110
         },
         "rects": {
           "player": [
-            -175,
-            1188,
-            272,
-            1917
+            391,
+            467,
+            572,
+            872
           ],
           "battlers": [
             {
               "side": 0,
               "rect": [
-                128,
-                931,
-                575,
-                1203
+                459,
+                408,
+                717,
+                599
               ]
             },
             {
               "side": 1,
               "rect": [
-                637,
-                301,
-                810,
-                450
+                717,
+                83,
+                848,
+                198
               ]
             }
           ]
@@ -344,7 +348,7 @@
             "Bramblecub used Tackle!"
           ],
           "turnLabel": "Turn 2",
-          "heading": 3
+          "heading": 0
         },
         "notes": [],
         "frame": 824
@@ -356,26 +360,26 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 0.8,
-        "blackShare": 0.997,
+        "meanLuma": 15.6,
+        "blackShare": 0.9388,
         "greyShare": 1,
         "levels": {
-          "zero": 0.997,
-          "full": 0.003,
+          "zero": 0.9388,
+          "full": 0.0612,
           "mid": 0
         }
       },
       "checks": [],
       "maskCoverage": {
-        "player": null,
+        "player": 0.7102,
         "battlers": [
           {
             "side": 0,
-            "full": null
+            "full": 0.7079
           },
           {
             "side": 1,
-            "full": 0.1384
+            "full": 0.3736
           }
         ]
       },
@@ -383,18 +387,18 @@
         "shot": "battle",
         "variant": "mask",
         "camera": {
-          "rigHeading": 3,
+          "rigHeading": 0,
           "zoomStop": 1,
           "mode": "battle",
           "position": [
-            -86.848,
-            5.245,
-            2.228
+            -84.379,
+            6.016,
+            14.184
           ],
           "focus": [
-            -78.07,
-            0.175,
-            5.954
+            -80.052,
+            0.127,
+            3.989
           ],
           "shotBlend": 1
         },
@@ -423,48 +427,50 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 376,
-          "triangles": 1342571,
-          "texturesSize": 672032765,
-          "textures": 175,
-          "geometries": 275,
-          "programs": 133,
+          "drawCalls": 332,
+          "triangles": 958563,
+          "texturesSize": 686516237,
+          "textures": 178,
+          "geometries": 260,
+          "programs": 122,
           "renderTargets": 36,
-          "attributes": 1764,
-          "attributesSize": 97806752,
+          "attributes": 1702,
+          "attributesSize": 90069984,
           "materials": 13,
           "shadowLights": 3,
-          "nonShadowLights": 9
+          "nonShadowLights": 9,
+          "beautyDrawCalls": 116,
+          "shadowDrawCalls": 216
         },
         "settle": {
           "frames": 220,
           "stable": true,
-          "programs": 133
+          "programs": 122
         },
         "rects": {
           "player": [
-            -185,
-            1183,
-            263,
-            1912
+            391,
+            467,
+            572,
+            872
           ],
           "battlers": [
             {
               "side": 0,
               "rect": [
-                118,
-                925,
-                565,
-                1199
+                459,
+                407,
+                717,
+                599
               ]
             },
             {
               "side": 1,
               "rect": [
-                628,
-                287,
-                804,
-                445
+                717,
+                77,
+                851,
+                198
               ]
             }
           ]
@@ -496,7 +502,7 @@
             "Bramblecub used Tackle!"
           ],
           "turnLabel": "Turn 2",
-          "heading": 3
+          "heading": 0
         },
         "notes": [],
         "frame": 1074

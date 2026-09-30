@@ -584,3 +584,190 @@ walkers are two manifest looks (`casual_male`, `cowboy_female`) plus `ranger_m` 
 6. **DOF gather leak:** out-of-focus background pixels next to a sharp sprite still gather its colour within their own
    CoC (H3). Removing that needs depth-weighted taps inside `DepthOfFieldNode`, i.e. a custom DOF node.
 7. The `sprites` row of `passMs` stays null in play (inside the scene pass); only the differential probe splits it.
+
+---
+
+# Part 5 — slice fixes from the M2 audit (2026-09-30)
+
+Scope: the first M2 audit shots (battle arena full of tall grass, the battle HUD hiding the player's battler, a wild
+creature invisible in tall grass), the two-phase zone compile, the client's compile progress, the SPEC sync of the
+Part 4 entries, and the audit blockers M2-battle-5/6/7/8, M2-spawn-noon-9 and M2-gym-dusk-7 plus the capture
+harness's findings (heading convention, counts after an await, `passMs` all `opaque`). SPEC entries: CHANGELOG
+2026-09-30 (P4-C1 … P4-C9 and one per change below). Measurement setup as in Part 4 (render sandbox, headless Chrome
+over CDP, fresh profile, `--disable-gpu-shader-disk-cache`, Intel Gen-12 iGPU).
+
+## T1 — the arena clears the ground cover (and the props) in its ring
+
+- **`ScatterMask`** (`zone/scatter.ts`, one per zone root via `scatterMaskFor(root)`; every `ScatterField` of that
+  root reads it, so the builder did not change): 24 disc slots `{ x, z, inner, outer, floor, classes }`. `sync()`
+  writes a masked instance with its vertical axis scaled by the disc factor (`floor` inside `inner`, smoothstep to 1
+  at `outer`), or a zero 3×3 at a factor ≤ `MASK_HIDE_BELOW` 0.04 (degenerate: nothing rasterises, beauty or shadow).
+  Cover classes by kind name (`coverClassOf`): ground (`tall_grass`, `grass_tuft`, `flower_patch`), small (bushes,
+  `rock_b`, stumps, logs), large (`rock_a`), tree. A mask change rewrites only the chunk slices a disc reaches or
+  reached (per chunk `dstAt` / `masked`), uploaded as one update range per tier grown in place (`extendUpload`, no
+  allocation after the first range object). A chunk rewrite (tier or frustum change) re-applies the mask. Source
+  matrices and the digest are untouched.
+- **Stage** (`stage/battleStage.ts`): `dress` → `coverArena(on)`: slot 2i hides ground cover inside 4.9 m, easing
+  back by 6.6 m; slot 2i+1 hides small + large props inside 5.0 m (hard edge). Main arena + 3 spectator arenas (slots
+  0–7). Cleared when the arena has sunk (`hideArena`) and in `dispose`. `setGroundCover(mask, cut)` comes from the
+  wiring's `onZone` (null when the zone is disposed: the renderer now calls `onZone(null)` from the handle's dispose).
+- **Prop cutaway** (`stage/propCutaway.ts`, audit M2-battle-8): hand-placed props are merged per chunk
+  (`ewa:props:*`), so a fence post cannot be hidden per object. Triangles whose centroid is inside 5.0 m become
+  degenerate (indexed: the three indices become one; otherwise the vertices collapse onto the first); the overwritten
+  range is saved and restored byte-exactly on undress; geometry views sharing the attributes follow.
+- **Seating** (found in the sandbox shots): the ring stood at the centre's ground height and a slope hid its uphill
+  half; it now sits on the highest of 12 rim samples, capped by the 0.45 m skirt.
+- **Pillar 7 test** (`ground-cover.test.ts`): dress → grass inside the ring zero-scaled, the post inside the ring
+  degenerate, the one at 20 m untouched, `root.children` and the light list identical; undress → matrices and index
+  buffer byte-identical to before.
+
+## T2 — the battle camera frames both battlers above the DOM panel
+
+- `battleFraming(fov, topShare, bottomShare, nearH, farH)` (`camera/battle.ts`, pure): the smallest distance in
+  [12, 22] m (0.25 m steps) and the downward tilt that put the near battler's feet and both tops inside the band (2 %
+  shake head-room at each edge). Exact in angle space: a tilt of α about the camera's right axis raises every point's
+  vertical view angle by α. A view-offset lens shift was rejected: TRAA owns `camera.view` every frame.
+- `DioramaRig.setShotInsets(topShare, bottomShare)` (default: the SPEC panel, 28 % + margin = 0.307) and
+  `setBattleSubjects(nearM, farM)` (the stage reports the tallest battler per side on every layout); changes during a
+  battle ease over 300 ms. The wiring's `setBattleInsets(topPx, bottomPx | null)` converts px (adding the far bar's
+  allowance `margin + barLift + barH` at the HUD scale) and sets `hud.setBottomInset`.
+- Per frame in a battle shot: `composePose` → **`correctTilt`** (the final camera — after the H11 crown pull-in and a
+  cue — is re-tilted until the near feet clear the band, and down again while the tops are above it, as far as the
+  feet allow) → a cue's push / orbit / aim is **bisected back** (`CUE_FIT_STEPS` 6) whenever the band's slack goes
+  negative (feet, tops, and |NDC x| ≤ 0.72) → the **shake** uses at most the remaining slack / 1.5. At push-in the
+  shot first **orbits to a clear yaw** (`CROWN_YAW_STEPS` ±15°…±45°) when the orbit ray enters a crown: in a
+  mire_route grove the H11 pull-in alone left the camera 7.6 m from the arena, where both battlers cannot fit.
+- HUD: `setBottomInset(cssPx)` lowers the battle bars' floor (`yMax`); bar stacking respects it (M2-battle-6).
+- Tests (`battle-framing.test.ts`): solver; pushed-in pose at 1440×900 and 1280×720; every frame of impact /
+  attacker / ko cues inside the band with shake on (the pushes are scaled); eased resize; bars above the panel.
+- Shots (sandbox, `?zone=mire_route&x=-80.32&z=10.7&demo=battle&ax=-80.32&az=10.7&bg=0&t=12`, with a DOM panel
+  stand-in of 28 vh + 24 px): `after-battle-1440-{a,b,c}.png`, `after-battle-1280-{a,b,c}.png`. The harness re-shoot
+  is in `.screenshots/audit/M2/`. Before: the committed harness shot `.screenshots/audit/M2/mire_route/
+  battle--80.32_4.38-full.png` and the superseded `battle--80.32_10.7-full.png`.
+
+## T3 — wild creatures readable in tall grass
+
+`stage/groundCover.ts` `GroundCoverReveal` is created by the wiring and applies to every billboard of the pool, so
+the client's `SpawnViews`, the harness and the sandbox need no wiring. Every 150 ms, the ≤ 16 nearest *shown*
+billboards (in the scene, every ancestor visible; an engaged spawn is hidden, so it is not revealed) within 15 m of
+the camera focus get a ground-class disc: grass inside 0.55 m drops to 20 % height, back to full by 1.35 m; the
+effect is full inside 9 m and fades out by 15 m in 0.1 steps. Slots are stable (8–23), and `ScatterMask.set`
+ignores changes < 1 cm, so an idling creature rewrites nothing. Distant creatures keep their grass. Shots:
+`t3-reveal0.png` / `t3-reveal1.png` (`?zone=mire_route&x=-80.94&z=11.62&h=1&zoom=0&demo=wild&wild=…&reveal=0|1`).
+Test: `ground-cover.test.ts`.
+
+## T4 — two-phase zone compile
+
+What the data said (`?pipes=1` times every `createRenderPipeline(Async)` and names the render object behind it): a
+mire_route zone compile is **23 unique render pipelines at 1–5 s of driver time each** (49 s summed, 20 s wall with 4
+in flight); every other render object is a pipeline-cache hit. Of the 23, the first view at the spawn needs about 12.
+The rest are the warm library quads (slate roof 4.7 s, wet rock 2.9 s, plaster), the beacon housing (2.2 s), a far
+set-piece (boardwalk: tall-grass card 4.7 s, glass 2.8 s) and water (2.6 s).
+
+- **Plan** (`compilePlan.ts`, pure): units are the zone root's renderable children and each LOD level. Phase 1 = in
+  the predicted view (the rig's heading and zoom at `focus`, §10.7.1 pitch, frustum padded 12 m) or within 28 m of the
+  player, at the level that view picks (LOD), scatter tiers ≤ 1, not a `:lod2` chunk mesh; plus the subsystem warm
+  objects (billboard, decal, VFX, character) except those flagged `ewaCompileDeferred` (the beacon housing). Queue
+  order: a new material key first (every worker starts on a unique pipeline), then nearest first.
+- **Engine** (`renderer.ts`): each unit is compiled **in place** by one `compileAsync(unit, camera, scene)`. The Part 4
+  facts a–d hold per call (target / MRT held by a refcounted `compileHold`, render-context depth patched in the
+  prologue, velocity projection, lights from the scene). Phase 1 runs 4 workers, phase 2 one worker with a
+  `scheduler.postTask('background')` slot before each unit. Every zone unit starts on `LAYERS.compileGate` (26), which
+  the scene camera (and so the shadow cameras, which copy its mask) never renders; a unit is ungated when its own
+  compile finished, so no frame compiles zone geometry synchronously. `loadZone` resolves after phase 1 and opens the
+  hero stream then (H5c's retire makes a re-point during phase 2 safe; the tracker confirms 0 extra textures).
+- **Cancellation**: the handle's `dispose` is wrapped: the run is cancelled, `onZone(null)` is sent, then the zone is
+  disposed. A wrapper around three's `NodeManager.getForRenderAsync` (only `compileAsync` calls it) throws
+  `COMPILE_ABORT` before and after the node build of a cancelled run's render object, so three stops before the
+  geometry upload, the bindings and the pipeline. Afterwards the unit's meshes get `dispose` again, which releases
+  render objects created after the zone's dispose.
+- **Persistent objects** (`RendererSubsystems.persistent`): the main arena compiles at boot (its attributes are part
+  of the baseline) and first in every zone's phase 2, with the beacon housing.
+- API: `loadZone(spec, { focus })`, `compileIdle()`, `RendererOptions.backgroundCompile` (default true; **false by
+  default when `trackTimestamp` is set**, so the harness keeps capturing fully compiled zones with no change on its
+  side), `CompileProgress.phase` `'boot' | 'zone' | 'background'` counting units.
+
+Measured cold (fresh profile, no shader cache). Machine load varied during the session, so every comparison below is
+within one run set:
+
+| | Part 4 path (session start, loaded machine) | single-phase now (`&bg=0`) | two-phase now |
+|---|---|---|---|
+| mire_route `loadZone` | 26.0 s / 23.8 s (compile 22.4 s span, 23 pipelines) | 11.3 s (compile 9.9 s, 291 units, 26 pipelines) | **6.6 s** (phase 1 5.2 s, 51 units, 12 pipelines) |
+| mire_route background phase | — | — | 18.2 s, 240 units; frame gaps p50 33 / p95 50 / max 100 ms, none > 100 ms (after it: p95 50) |
+| mirevale `loadZone` | 36.6–52.9 s (Part 4 table) | — | **10.4 s** (phase 1 8.6 s, 71 units); background 15.1 s |
+| handover mirevale → mire_route | ≈ 26 s blocking | — | **7.2 s** blocking, 24.2 s until the background ends; frame gaps max 99.7 ms, none > 100 ms |
+| first zone frame to GPU idle | 1.8–1.9 s | 0.7 s | 0.8 s |
+| `createRenderer` (step 8) | 18.4–18.9 s | 8.2 s | 8.1 s |
+
+An earlier two-phase run on the loaded machine measured mire_route `loadZone` 9.1–10.2 s (phase 1 7.2–7.8 s) and a
+background phase of 26.6–40.6 s with 15–80 frames of 100–167 ms. Those gaps coincide with the driver compiling a
+pipeline (GPU process) and with node-build chunks of three's `buildAsync` (≈ 30 ms each, profiled). The worst long
+tasks (370–750 ms) are the synchronous work right after `loadZone` resolves (the first zone frame, hero uploads), not
+the background phase.
+
+**Leaks** (`?track=1`): disposing Mirevale **while its background phase runs**, then two full cycles and a final
+unload: geometries, textures, render targets, attributes and attribute bytes **0**, `leaks()` empty. **Programs +2,
+constant** (not growing across cycles; the same with the single-phase path). By name they are shadow-pass and
+light-set variants that the persistent warm objects keep from the last zone's light set; nothing renders those
+objects again until the next zone re-keys them. Part 4 measured 0; see Open.
+
+## T5 — the client's compile progress (client notes part 5)
+
+`World3D` passes `onCompileProgress`; `bootProgress.WorldBoot` gains `compile` and `background`. The overlay shows
+"Compiling shaders n / m" and "Preparing Mirevale n / m" as a real bar, comes back for a handover's blocking phase
+("Travelling to …") until the new zone's first frame, and `BackgroundCompile` is the small corner pill ("Preparing
+distant scenery n / m") while phase 2 runs.
+
+## The occluder fade (audit M2-spawn-noon-9)
+
+`materials/occlusion.ts`: every non-terrain library material gets `maskNode = occlusionKeep(u.occlusion)`. Fragments
+within a capsule (full inside 1.2 m, eased out by 1.8 m) around camera → player chest (focus + 0.9 m), at least
+1.0 m in front of the player, are dithered away by interleaved gradient noise that keeps 12.5 % (TRAA resolves it),
+scaled by `1 − shotBlend`. `pass` is a render-group uniform set per render call: 1 only when `frame.camera` is the
+scene camera, so shadow maps and probes keep the occluder; solids get a constant `maskShadowNode` so their shadow
+programs do not carry the fade. The host writes the uniforms each frame (`setOcclusion`, zero allocation). Shots:
+`occ-spawn-fade0/1.png` (Mirevale (0, 6), rig heading 2 = the SPEC wording's heading 0, a player actor at the focus):
+the player hidden by the heart-tree crown → visible through a soft-edged cutaway. Test: `compile-plan.test.ts`.
+
+## Budget and harness findings (B1, B2)
+
+- **B1** `counts()` / `dumpZone()` read the snapshot `frame()` takes at step 6 (three's rAF resets `info` before the
+  next frame). `PassTimer` keeps two generations of uid → row and never deletes on `collect`: three's timestamp pool
+  returns the previous batch unchanged when no query is pending, so the harness's `gpuFrameMs()` beside `frame()`'s
+  own poll resolved the same batch twice, and the second pass found every uid gone → all `opaque` (client H7).
+- **B2** the inspector (now always installed; timing only with `trackTimestamp`) counts the draw calls rendered into
+  shadow maps (a typed stack over nested renders, zero allocation). `counts()` adds `beautyDrawCalls` /
+  `shadowDrawCalls`; `dumpZone().shadowDrawCalls` is the measured value. The draw-call cap is beauty + post
+  (`budget.counts.drawCalls` = `drawCalls − shadowDrawCalls`; `budgetRules.ts` reads `beautyDrawCalls`). Mirevale's
+  406 / 408 were ≈ 160 beauty + post. Tests: `stats-dispose.test.ts`, asset-audit `rules.test.ts`, client
+  `harness-budget.test.ts`.
+- **Heading convention**: the rig is kept (heading 0 at the spawn shows the player in front of the heart tree);
+  SPEC §50.6.1's words now follow it. The harness's `words` reading (`rig = (h + 2) & 3`) must become the identity
+  (harness owner).
+- **Type badges** (M2-battle-7): `HudModel.battle.bars[].types` (optional), 3-letter badges at 14 px / weight 800 on
+  the type colour (the colourblind table through the stage's `setTypeColors`), ink chosen by luminance;
+  `HUD.barW` 240.
+
+## SPEC sync (task 6)
+
+The nine Part 4 entries (P4-C1 … P4-C9) are applied to the part files with one CHANGELOG entry each, plus entries for
+T1, T2, T3, T4/T5, the occluder fade, the badges, B1, B2 and the heading convention (18 entries dated 2026-09-30,
+newest on top); `.design/SPEC.md` is regenerated with `assemble.mjs`. P4-C1: trees need lod0–lod2 + impostor, other
+kinds the tiers they are drawn at (≥ lod0 + lod1); `tools/asset-audit` `scatter.instanced` and its test follow, and
+`budget.counts.drawCalls` measures beauty + post.
+
+## Tests (Part 5)
+
+New: `ground-cover.test.ts` (mask, Pillar 7 arena, reveal, cutaway), `battle-framing.test.ts`, `compile-plan.test.ts`
+(plan, occluder mask + gate, badges). Extended: `stats-dispose.test.ts` (double resolve, shadow draws),
+`camera-rig.test.ts` (insets for the §10.7.4 pose), asset-audit `rules.test.ts`, client `harness-budget.test.ts`.
+
+## Open
+
+1. **Programs +2 after unload** (constant; see T4 Leaks). Likely the persistent warm objects keeping the last zone's
+   light-set variants; re-keying the warm group after each unload would close it at a compile cost.
+2. **Props between the camera and the ring** (a lamp post in the sandbox shot) stay: only props inside the ring are
+   cut, and the occluder fade is off in battle shots.
+3. The **harness's `words` heading reading** must follow the amended §50.6.1 (not a render file).
+4. GLB character looks compile synchronously on their first appearance (skinning with the look's bone count). Not
+   pursued: the looks are being replaced by pixel-art billboards.

@@ -21,6 +21,8 @@ export interface BarState {
   status: string | null;
   stages: string;
   showNumbers: boolean;
+  /** the creature's type(s), drawn as badges on the plate (§50.1 #15; audit M2-battle-7) */
+  types: readonly string[];
 }
 
 export interface BattleHudModel {
@@ -39,9 +41,11 @@ const STAT_ORDER: readonly StatKey[] = ['atk', 'def', 'spd', 'acc', 'eva'];
 /** Flip on once render's HUD keeps the turn label clear of the battler bars. */
 export const CANVAS_TURN_LABEL = false;
 
+const NO_TYPES: readonly string[] = Object.freeze([]);
+
 function makeModel(): BattleHudModel {
   return {
-    bars: [0, 1].map((side) => ({ who: STAGE_REFS[side as 0 | 1], name: '', level: 1, hp: 0, maxHp: 1, status: null, stages: '', showNumbers: side === 0 })),
+    bars: [0, 1].map((side) => ({ who: STAGE_REFS[side as 0 | 1], name: '', level: 1, hp: 0, maxHp: 1, status: null, stages: '', showNumbers: side === 0, types: NO_TYPES })),
     turnLabel: '',
     shakes: 0,
   };
@@ -72,7 +76,7 @@ export class BattleHud {
       const src = f.bars[i]!;
       const dst = b.bars[i]!;
       dst.name = src.name; dst.level = src.level; dst.hp = src.hp; dst.maxHp = src.maxHp;
-      dst.status = src.status; dst.stages = src.stages; dst.showNumbers = src.showNumbers;
+      dst.status = src.status; dst.stages = src.stages; dst.showNumbers = src.showNumbers; dst.types = src.types;
     }
     b.turnLabel = f.turnLabel;
     b.shakes = f.shakes;
@@ -95,9 +99,9 @@ export class BattleHud {
   }
 
   /** Full bar reset (battle start, switch-in, resync). */
-  setBar(side: 0 | 1, name: string, level: number, hp: number, maxHp: number, status: string | null, showNumbers: boolean): void {
+  setBar(side: 0 | 1, name: string, level: number, hp: number, maxHp: number, status: string | null, showNumbers: boolean, types: readonly string[] = NO_TYPES): void {
     const bar = this.prepare().bars[this.at(side)]!;
-    bar.name = name; bar.level = level; bar.hp = hp; bar.maxHp = Math.max(1, maxHp); bar.status = status; bar.showNumbers = showNumbers;
+    bar.name = name; bar.level = level; bar.hp = hp; bar.maxHp = Math.max(1, maxHp); bar.status = status; bar.showNumbers = showNumbers; bar.types = types;
     this.stagesBySide[side].fill(0);
     bar.stages = '';
     this.active = true;

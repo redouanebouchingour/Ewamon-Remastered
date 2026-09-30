@@ -54,6 +54,13 @@ export interface BudgetCounts {
   readonly materials: number;        // distinct Material.uuid under the zone root, debug layer excluded
   readonly shadowLights: number;
   readonly nonShadowLights: number;
+  /**
+   * Additions (IMPLEMENTATION-NOTES Part 5, B2): the frame's draw calls without the shadow-map renders (beauty + post +
+   * HUD — what the §10.5.8 / §50.2.2 cap of 400 counts) and the shadow-map draw calls (§10.5.8: ≤ 564, reported
+   * separately). Measured by the host's inspector; absent on counts built elsewhere.
+   */
+  readonly beautyDrawCalls?: number;
+  readonly shadowDrawCalls?: number;
 }
 
 /** SPEC §10.1.1, verbatim. */

@@ -62,6 +62,8 @@ export const CUE_KINDS: readonly CueKind[] = ['attacker', 'defender', 'impact', 
 export const PANEL_DEFAULT_FRACTION = 0.307;
 /** Gap kept between the near battler's feet and the panel's top edge (share of the viewport height). */
 export const FRAME_BOTTOM_GAP = 0.015;
+/** Head-room the framing keeps at both band edges for a cue's camera shake (share of the viewport height). */
+export const FRAME_SHAKE_MARGIN = 0.02;
 /** Nominal battler height (m) until the stage reports the real ones. */
 export const NOMINAL_BATTLER_HEIGHT_M = 1.6;
 /** The framing may pull the battle camera back to at most this distance (m); it never comes closer than BATTLE_DISTANCE. */
@@ -85,8 +87,8 @@ export interface Framing { distance: number; tilt: number; fits: boolean }
  */
 export function battleFraming(fovDeg: number, topFrac: number, bottomFrac: number, nearH: number, farH: number, out: Framing): Framing {
   const t = Math.tan((fovDeg * DEG) / 2);
-  const top = Math.min(1, Math.max(0, topFrac));
-  const bot = Math.max(top + FRAME_BOTTOM_GAP, 1 - Math.max(0, bottomFrac) - FRAME_BOTTOM_GAP);
+  const top = Math.min(1, Math.max(0, topFrac) + FRAME_SHAKE_MARGIN);
+  const bot = Math.max(top + FRAME_BOTTOM_GAP, 1 - Math.max(0, bottomFrac) - FRAME_BOTTOM_GAP - FRAME_SHAKE_MARGIN);
   const phiTop = Math.atan((1 - 2 * top) * t);           // NDC y = 1 − 2·(y px / H)
   const phiBot = Math.atan((1 - 2 * bot) * t);
   const th = BATTLE_YAW_OFFSET * DEG; const p = BATTLE_PITCH * DEG;

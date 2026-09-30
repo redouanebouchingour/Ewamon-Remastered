@@ -18,12 +18,12 @@ import { DioramaRig } from '../camera/rig.js';
 import { createSpritePool, type BillboardPool } from '../sprites/billboard.js';
 import { CanvasHudLayer, HUD, type HudAnchors, type Ref } from '../hud/layer.js';
 import { PANEL_DEFAULT_FRACTION } from '../camera/battle.js';
-import { CHARACTER, CharacterPool } from './actors.js';
-import { createGlbLookSource } from './looks.js';
+import { CharacterPool } from './actors.js';
 import { isDevBuild } from '../env.js';
 import { Stage, type StageGround } from './battleStage.js';
 import { VfxSystem } from './vfx.js';
 import { GroundCoverReveal } from './groundCover.js';
+import { PropCutaway } from './propCutaway.js';
 import { TerrainCollider } from '../terrain/collider.js';
 import { scatterMaskFor } from '../zone/scatter.js';
 
@@ -59,10 +59,11 @@ function build(ctx: HostContext): Part3 {
   let chromaAmount = 0; let chromaMs = 0; let chromaLeft = 0;
 
   const sprites = createSpritePool({ harvestLevel: harvestUniform, camera: ctx.camera3, upload: (t) => ctx.gpu.initTexture(t) });
-  const looks = ctx.modelsUrl === null ? undefined : createGlbLookSource({
-    baseUrl: ctx.modelsUrl, heightM: CHARACTER.heightM, ktx2: ctx.ktx2, warn: (m) => { if (isDevBuild()) console.warn(`[@ewa/render looks] ${m}`); },
+  // characters: lit pixel-art billboards on the sprite pool's camera uniforms (tools/character-pipeline atlas)
+  const actors = new CharacterPool({
+    harvestLevel: harvestUniform, camera: ctx.camera3, viewport, uniforms: sprites.uniforms, charactersUrl: ctx.charactersUrl,
+    upload: (t) => ctx.gpu.initTexture(t), warn: (m) => { if (isDevBuild()) console.warn(`[@ewa/render characters] ${m}`); },
   });
-  const actors = new CharacterPool({ harvestLevel: harvestUniform, camera: ctx.camera3, viewport, ...(looks ? { looks } : {}) });
   ctx.scene.add(actors.root);
   const host = ctx as unknown as Renderer;
   // the loaded zone's collider carries the tree crowns the shot camera avoids (H11); nothing once it is disposed
@@ -82,8 +83,10 @@ function build(ctx: HostContext): Part3 {
   const stage = new Stage({
     parent: ctx.scene, sprites, vfx, rig, actors, materials: ctx.materials, effects: () => ctx.effects(), harvestLevel: () => ctx.harvestLevel(),
     camera: ctx.camera3, viewport, weather: (w) => host.setWeather(w),
+    typeColors: (t) => hud.setTypeColors(t),
   });
   const reveal = new GroundCoverReveal(sprites, () => rig.focus);
+  const cutaway = new PropCutaway();
   const anchors: HudAnchors = {
     nameplate: (id, out, offset) => actors.projectHead(id, out, offset),
     battler: (ref: Ref, out, offset) => stage.projectBattler(ref, out, offset),
@@ -126,7 +129,8 @@ function build(ctx: HostContext): Part3 {
       zoneRef = z;
       // T1 / T3: the zone's ground-cover mask (arena rings, revealed creatures); per-instance scale, never a rebuild
       const mask = z === null ? null : scatterMaskFor(z.group);
-      stage.setGroundCover(mask);
+      cutaway.setRoot(z === null ? null : z.group);
+      stage.setGroundCover(mask, z === null ? null : cutaway);
       reveal.setMask(mask);
     },
     dispose(): void { reveal.dispose(); vfx.dispose(); sprites.dispose(); },
@@ -166,7 +170,7 @@ function warmupObjects(ctx: HostContext): Object3D[] {
   const fx = new Sprite(p.vfx.material);                       // one particle of the shared VFX material
   fx.count = 1;
   fx.position.set(1, 1, -2);
-  const character = p.actors.warmupMesh();                     // one skinned character (shared 'character' material)
+  const character = p.actors.warmupMesh();                     // one character card (the shared character billboard material)
   character.position.set(-1, 0, -2);
   const housing = p.stage.warmupHousing();                     // the beacon housing material
   housing.position.set(2, 0, -2);

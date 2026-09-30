@@ -39,10 +39,12 @@ export function terrainFor(biome: ZoneDef['biome']): Terrain {
 }
 
 const DEG = Math.PI / 180;
-/** The battle look-at point sits this far toward the camera from the arena centre, so the near battler and its HP
- * bar clear the bottom 28 % DOM battle panel (§20.5.6) while the far battler's bar (anchored above its head) stays
- * below the canvas top for a tall species — a framing choice; the arena itself dresses at (x, z). */
-export const FRAME_SHIFT_M = 1.0;
+/**
+ * The battle look-at offset toward the camera from the arena centre. 0 since render Part 5 (T2): the battle camera
+ * itself frames both battlers above the DOM panel's real height (`setBattleInsets`), where this 1.0 m shift used to
+ * approximate it (and failed at the impact cue, audit M2-battle-5).
+ */
+export const FRAME_SHIFT_M = 0;
 /** The trainer stands behind their own creature during a battle. */
 export const TRAINER_BACK_M = BATTLER_SEPARATION / 2 + 1.7;
 
@@ -118,7 +120,8 @@ export function pickBattleHeading(c: Pick<TerrainCollider, 'blocked'> | null, x:
 }
 
 export interface SceneDirector {
-  loadZone(id: ZoneId, harvestState: HarvestState): Promise<void>;
+  /** `focus`: where the player will stand (render T4 compiles what the first view there draws before resolving). */
+  loadZone(id: ZoneId, harvestState: HarvestState, focus?: { readonly x: number; readonly z: number } | null): Promise<void>;
   unloadZone(): void;
   enterBattle(summary: { readonly battleId: string; readonly x: number; readonly z: number; readonly format: BattleFormat }): Promise<void>;
   exitBattle(): Promise<void>;
@@ -234,12 +237,12 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     }, BANNER_MS);
   }
 
-  async function doLoad(id: ZoneId, h: HarvestState): Promise<void> {
+  async function doLoad(id: ZoneId, h: HarvestState, focus: { readonly x: number; readonly z: number } | null): Promise<void> {
     unload();
     const z = zoneDef(id);
     const spec = zoneSpecFor(z, h);
     handleSpec = spec;
-    const zh = await d.renderer.loadZone(spec);
+    const zh = await d.renderer.loadZone(spec, { focus: focus ?? { x: z.spawn.x, z: z.spawn.z } });
     handle = zh;
     def = z;
     current = id;
@@ -281,11 +284,11 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
       return battleFrame;
     },
 
-    loadZone(id, h) {
+    loadZone(id, h, focus = null) {
       const run = async (): Promise<void> => {
         if (loading !== null) await loading.catch(() => undefined);
         if (current === id && handle !== null) return;
-        await doLoad(id, h);
+        await doLoad(id, h, focus);
       };
       const p = run().finally(() => {
         if (loading === p) loading = null;
