@@ -10,6 +10,8 @@
  *  - `clips` sorted by name; `triangles` is LOD0's.
  *  - `totalBytes` is every file under `public/models/`, this manifest included (the size is solved to a fixed
  *    point), so it equals the directory on disk and `asset-audit --bytes` reads the same number either way.
+ *  - `looks` is kept so the file still matches the §40.2.5 interface, and is always `{}`: the Quaternius looks are
+ *    no longer built — characters are pixel-art sprites in `public/characters/` (IMPLEMENTATION-NOTES M11).
  */
 
 export interface ModelEntry {
@@ -21,7 +23,7 @@ export interface ModelEntry {
 export interface ModelsManifest {
   readonly version: 1;
   readonly legendaries: Readonly<Record<'lumyth' | 'noxmyth' | 'voidraxis' | 'zenryu', ModelEntry>>;
-  readonly looks: Readonly<Record<string, ModelEntry>>;      // 20 Quaternius look ids, snake_case of the file stem (casual_male …)
+  readonly looks: Readonly<Record<string, ModelEntry>>;      // always {} since the looks were dropped (M11)
   readonly totalBytes: number;
 }
 

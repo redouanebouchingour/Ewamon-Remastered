@@ -10,7 +10,7 @@ import type { Vector3 } from 'three/webgpu';
 import type { WeatherKind } from '../descriptors.js';
 import type { SharedUniforms } from '../materials/harvest.js';
 import { stepWetness } from '../materials/harvest.js';
-import { GROVE_FOG_DENSITY, type HeightFog } from './fog.js';
+import { FOG_START_M, GROVE_FOG_DENSITY, type HeightFog } from './fog.js';
 import type { LightRig } from './rig.js';
 import type { SkyController } from './sky.js';
 import { weatherParams, type WeatherParams } from './weather.js';
@@ -73,6 +73,10 @@ export interface DaySample {
   env: number;
   hemi: number;
   punctual: number;
+  /** Sun-elevation daylight factor 0..1 (`daylightAt`). */
+  daylight: number;
+  /** Golden-hour weight 0..1 (`goldenAt`). */
+  golden: number;
   /** Bracketing keyframes and the blend factor, for inspection. */
   a: DayKey;
   b: DayKey;
@@ -80,7 +84,7 @@ export interface DaySample {
 }
 
 export function createDaySample(): DaySample {
-  return { srgb: [1, 1, 1], linear: [1, 1, 1], sun: 1, env: 1, hemi: 0.08, punctual: 0, a: 'noon', b: 'noon', f: 0 };
+  return { srgb: [1, 1, 1], linear: [1, 1, 1], sun: 1, env: 1, hemi: 0.08, punctual: 0, daylight: 1, golden: 0, a: 'noon', b: 'noon', f: 0 };
 }
 
 const KEY_SRGB: readonly (readonly [number, number, number])[] = DAY_KEYFRAMES.map((k) => hexToSrgb(k.srgb));
@@ -110,6 +114,8 @@ export function sampleDay(t: number, out: DaySample = createDaySample()): DaySam
   out.env = lerp(ka.env, kb.env, f);
   out.hemi = lerp(ka.hemi, kb.hemi, f);
   out.punctual = lerp(ka.punctual, kb.punctual, f);
+  out.daylight = daylightAt(tw);
+  out.golden = goldenAt(tw);
   out.a = ka.key; out.b = kb.key; out.f = f;
   return out;
 }
@@ -269,6 +275,8 @@ export interface LightingPalette {
   readonly groundBounce: string;
   readonly fogColor: readonly [night: string, noon: string];
   readonly fogDensity: number;
+  /** m of view depth before the fog starts (§10.3.7 as amended 2026-09-30); absent = `FOG_START_M`. */
+  readonly fogStart?: number;
   readonly fogBase: number;
   readonly fogFalloff: number;
 }
@@ -279,7 +287,8 @@ export const GROVE_LIGHTING: LightingPalette = Object.freeze({
   skyHorizon: '#dfe6d6',
   groundBounce: '#5d6b3f',
   fogColor: ['#1a2030', '#b9c7a8'] as const,
-  fogDensity: GROVE_FOG_DENSITY,   // §10.3.7 as amended: 0.0068 (was 0.018; H8)
+  fogDensity: GROVE_FOG_DENSITY,   // §10.3.7 as amended 2026-09-30: 0.00486 past 15 m (was 0.0068 from the eye)
+  fogStart: FOG_START_M,
   fogBase: 0.0,
   fogFalloff: 0.35,
 });
@@ -288,9 +297,27 @@ export const GROVE_LIGHTING: LightingPalette = Object.freeze({
 const NIGHT_SKY = hexToSrgb('#1a2440');
 const NIGHT_GROUND = hexToSrgb('#0c0f14');
 
-/** Daylight factor 0..1 used to blend the palette's night/noon pairs: the keyframe sun intensity. */
+/**
+ * Daylight factor 0..1 used to blend the palette's night/noon pairs (hemisphere colours, fog colour, the grade's lift):
+ * the sun's elevation, 0 at −8° (deep twilight) … 1 at +14° (§10.3.5 as amended 2026-09-30; it was the keyframe sun
+ * intensity, which the moon row now shares).
+ */
 export function daylight(day: DaySample): number {
-  return Math.min(1, Math.max(0, day.sun));
+  return day.daylight;
+}
+
+/** `daylight` of a time of day. Pure. */
+export function daylightAt(t: number): number {
+  return smooth(-8, 14, sunElevationDeg(t));
+}
+
+/**
+ * Golden-hour weight 0..1: 1 while the sun is between 2° and 16° up, easing out by 30° and to 0 at −3°. Tints the fog
+ * toward the key colour (a warm haze at dusk and dawn).
+ */
+export function goldenAt(t: number): number {
+  const el = sunElevationDeg(t);
+  return smooth(-3, 2, el) * (1 - smooth(16, 30, el));
 }
 
 /** Blends two sRGB hex colours in sRGB and returns linear components (no allocation). */
@@ -309,6 +336,8 @@ export interface DayCycleTargets {
 }
 
 const _lin: [number, number, number] = [1, 1, 1];
+const _sky: [number, number, number] = [1, 1, 1];
+const _ground: [number, number, number] = [0, 0, 0];
 
 /**
  * Owns time-of-day + weather state and writes it out each frame. The client calls `setTime` (from the
@@ -376,17 +405,30 @@ export class DayCycle {
     rig.applyDirectional(d.dir, d.linear, d.intensity * w.sunMul);
     rig.setPunctualMultiplier(day.punctual);
 
-    const lit = daylight(day);
+    const lit = day.daylight;
     const p = this.paletteSrgb;
-    rig.setHemisphere(mixSrgbToLinear(NIGHT_SKY, p.zenith, lit, _lin), mixSrgbToLinear(NIGHT_GROUND, p.ground, lit, [0, 0, 0]));
+    // §10.3.3 as amended: the hemisphere colours are normalised to a unit sky (the ground keeps its ratio to the sky)
+    // and the keyframe's `hemi` column carries the level, so the cool fill is a number of the table, not of the palette
+    mixSrgbToLinear(NIGHT_SKY, p.zenith, lit, _sky);
+    mixSrgbToLinear(NIGHT_GROUND, p.ground, lit, _ground);
+    const top = Math.max(_sky[0], _sky[1], _sky[2], 1e-4);
+    for (let c = 0; c < 3; c++) { _sky[c] = _sky[c]! / top; _ground[c] = _ground[c]! / top; }
+    rig.setHemisphere(_sky, _ground, day.hemi * w.envMul);
 
     mixSrgbToLinear(p.fogNight, p.fogNoon, lit, _lin);
+    // golden hours: the haze takes the low sun's colour (up to 45 % of the fog)
+    if (day.golden > 0) {
+      const g = day.golden * 0.45;
+      const luma = 0.2126 * _lin[0] + 0.7152 * _lin[1] + 0.0722 * _lin[2];
+      for (let c = 0; c < 3; c++) _lin[c] = lerp(_lin[c]!, day.linear[c]! * luma * 1.25, g);
+    }
     if (w.fogTint !== null) {
       const tint = w.fogTintSrgb!;
       for (let c = 0; c < 3; c++) _lin[c] = lerp(_lin[c]!, srgbToLinear(tint[c]!), 0.6);
     }
     fog.uniforms.fogColor.value.setRGB(_lin[0], _lin[1], _lin[2]);
     fog.uniforms.fogDensity.value = this.palette.fogDensity * w.fogDensityMul;
+    fog.uniforms.fogStart.value = (this.palette.fogStart ?? FOG_START_M) / Math.max(1, w.fogDensityMul);
     fog.uniforms.fogBase.value = this.palette.fogBase;
     fog.uniforms.fogFalloff.value = this.palette.fogFalloff;
 
