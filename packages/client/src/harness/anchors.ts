@@ -22,11 +22,11 @@
  *   (inside `ENGAGE_RANGE_M` 3.0).
  * - `link-east`: `HANDOVER_INSET` (6 m) west of the `links.e` playable edge point (`edgePoint(layout, 'e')`).
  *
- * Headings: §50.6.1 words say heading 0 = +z forward, 1 = +x, 2 = −z, 3 = −x (the camera LOOKS that way). The rig's
- * heading k (§10.7.1, yaw −35° + 90°·k, camera at target + (sin yaw, cos yaw)·horizontal) looks toward
- * (−sin yaw, −cos yaw): k = 0 looks ≈ −z. The two disagree by 180°; the anchors only frame their subjects with the
- * words' reading (shot 2 looks at the gym, shot 3 at the creature ahead in +x, shot 6 at the east edge), so the
- * harness drives rig heading `(spec + 2) & 3` and records both.
+ * Headings: §50.6.1 (amended 2026-09-30) numbers headings as the rig does (§10.7.1, yaw −35° + 90°·k, camera at
+ * target + (sin yaw, cos yaw)·horizontal, looking toward (−sin yaw, −cos yaw)): 0 looks ≈ −z, 1 −x, 2 +z, 3 +x. The
+ * harness passes the table's number straight to the rig (identity); the table's numbers keep each shot's subject in
+ * view (shot 2 looks at the gym, shot 3 at the creature ahead in +x, shot 6 at the east edge). The superseded words
+ * reading (rig `(h + 2) & 3`) is still available as `?headings=words`; the sidecar records both numbers.
  */
 import { ENCOUNTER_TABLES, getHeightfield, isWalkable, isWater, nearestWalkable, zone as zoneDef } from '@ewa/content';
 import type { EncounterSlot, ZoneDef, ZoneId } from '@ewa/content';

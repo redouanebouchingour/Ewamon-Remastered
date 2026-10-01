@@ -53,7 +53,7 @@ import { DAILY_SWARMS, RAID_HOTSPOTS, SEASONAL_EVENTS } from './data/liveops';
 import { BATTLE_PASS } from './data/battlePass';
 import { BODIES, LOOKS, TITLES } from './data/bodies';
 import { SHOP_STOCK_DEFAULT } from './data/shop';
-import { FLAG_REGISTRY, isKnownFlag } from './flags';
+import { FLAG_REGISTRY, badgeFlag, isKnownFlag } from './flags';
 import { computeRosterReport } from './roster';
 import { getZoneSurface, isWalkable, nearestWalkable, playableBounds, reachableWithin, walkableComponent, walkableRatio, waterRatio } from './heightfield';
 import type { ZoneSurface } from './heightfield';
@@ -558,7 +558,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     for (const s of harvestZones.values()) if (s.has('harvested') && s.has('intact')) restoration = true;
     if (!restoration) err('story: no zone has both a harvested and an intact harvest beat');
     for (const b of STORY) if (setFlags.has(beatDoneFlag(b.id))) err(`story: authored flag collides with done marker of ${b.id}`);
-    // bible §6.1: a story-gated league interaction waits for a flag its own pre-fight beat (same zone, speaker = the league id) sets
+    // bible §6.1: a story-gated league interaction waits for a flag a pre-fight beat of the leader's town sets — one
+    // that does not itself need what the fight awards (its badge, its setsFlags), or the fight could never open
     for (const [leagueId, flag] of Object.entries(LEAGUE_STORY_GATES).sort(([a], [b]) => (a < b ? -1 : 1))) {
       const lt = LEAGUE.find((l) => l.id === leagueId);
       if (lt === undefined) {
@@ -566,7 +567,10 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
         continue;
       }
       checkFlag(`LEAGUE_STORY_GATES.${leagueId}`, flag);
-      if (!STORY.some((b) => b.zoneId === lt.zoneId && b.speaker === leagueId && b.set.includes(flag))) err(`LEAGUE_STORY_GATES.${leagueId}: '${flag}' is not set by a beat ${leagueId} speaks in ${lt.zoneId}`);
+      const awards = new Set<string>([...(lt.badge === null ? [] : [badgeFlag(lt.badge)]), ...lt.setsFlags]);
+      const setters = STORY.filter((b) => b.zoneId === lt.zoneId && b.set.includes(flag));
+      if (setters.length === 0) err(`LEAGUE_STORY_GATES.${leagueId}: '${flag}' is not set by a beat in ${lt.zoneId}`);
+      else if (!setters.some((b) => !b.need.some((n) => awards.has(n)))) err(`LEAGUE_STORY_GATES.${leagueId}: '${flag}' is only set by a beat that needs the fight's own award`);
     }
   }
 
