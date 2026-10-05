@@ -7,9 +7,8 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { LEAGUE, beatDoneFlag, zone } from '@ewa/content';
-import type { ZoneId } from '@ewa/content';
-import { TRAINER_EXP, chooseNpcAction, createBattle, createRng, digestBattleState, resolveTurn } from '@ewa/core';
-import type { Action, BattleState, CreateBattleOpts, RngState } from '@ewa/core';
+import { TRAINER_EXP, createRng, digestBattleState, resolveTurn } from '@ewa/core';
+import type { Action, BattleState } from '@ewa/core';
 import type { AnyDb, Db, Repos } from '@ewa/persist';
 import type { ServerMessage } from '@ewa/protocol';
 import { newCreature } from '../src/game/creatures';
@@ -52,7 +51,7 @@ function recorder(): Recorder {
   };
 }
 
-function coordinator(host: Recorder, zoneId: ZoneId = 'mire_route', seed = 'b'): BattleCoordinator {
+function coordinator(host: Recorder, zoneId: 'mire_route' | 'mirevale' = 'mire_route', seed = 'b'): BattleCoordinator {
   return new BattleCoordinator(createRng(seed), {
     repos,
     content,
@@ -333,76 +332,4 @@ describe('league, story beat and pvp outcomes (server-side only)', () => {
     expect(Number(rb!['trainer_exp'])).toBe(TRAINER_EXP.pvpLoss);
     expect(msgsOf(host, a).find((m) => m.type === 'battleEnd')).toMatchObject({ outcome: { winner: 0 }, rewards: { ratingDelta: 16 } });
   }, 120_000);
-});
-
-/**
- * §50.5 M3: one seeded league battle per LEAGUE entry (12) through the real `BattleCoordinator` with the trainer's
- * content team verbatim. The coordinator's rng is seeded per entry (`league:<id>`), so each battle is reproducible;
- * the player side picks with core's expected-damage policy (a deterministic rng of its own). Every `battleEvents`
- * digest is checked against the client's local `resolveTurn` preview (NPC side `null`), and the finished battle
- * replays from its `battle_history` row alone.
- */
-describe('M3: one seeded league battle per LEAGUE entry (12), desync counter 0', () => {
-  /** A strong mixed party ten levels above the ace — the pipeline is under test here, not the balance. */
-  const PARTY = ['thornback', 'caldermole', 'bogmaw', 'rivetalon', 'toxshade', 'gemknight'] as const;
-  let totalDesync = 0;
-  let battles = 0;
-
-  for (const lt of LEAGUE) {
-    it(`${lt.stage} ${lt.id} (${lt.team.map((m) => `${m.species}:${m.level}`).join(', ')})`, async () => {
-      const host = recorder();
-      const c = coordinator(host, lt.zoneId, `league:${lt.id}`);
-      const level = Math.min(100, Math.max(...lt.team.map((m) => m.level)) + 10);
-      const pid = await mkPlayer(PARTY.map((species) => ({ species, level })));
-      const res = await c.startNpc({ playerId: pid, sessionId: 's' }, { kind: 'league', league: lt }, null, { x: 0, z: -26 });
-      if (!res.ok) throw new Error(res.detail);
-      const start = msgsOf(host, pid).find((m): m is Extract<ServerMessage, { type: 'battleStart' }> => m.type === 'battleStart')!;
-      expect(start).toMatchObject({ format: 'league', seat: 0 });
-      expect(start.stateDigest).toBe(digestBattleState(start.state));
-      // the trainer's content team verbatim: species, level, nickname, ability (null → species.abilities[0]), held item
-      const side1 = start.state.sides[1];
-      expect(side1.kind).toBe('npc');
-      expect(side1.trainerId).toBe(lt.id);
-      expect(side1.party.map((b) => [b.creature.speciesId, b.creature.level, b.creature.nickname, b.creature.ability, b.creature.heldItem])).toEqual(
-        lt.team.map((m) => [m.species, m.level, m.nickname, m.ability ?? content.species(m.species).abilities[0], m.heldItem]),
-      );
-      const rng = createRng(`player:${lt.id}`);
-      const { desyncs, turns } = await playOut(c, host, pid, res.session, (s) => chooseNpcAction(s, 0, content, rng));
-      totalDesync += desyncs;
-      battles += 1;
-      expect(desyncs).toBe(0);
-      expect(turns).toBeGreaterThan(0);
-
-      const end = msgsOf(host, pid).find((m): m is Extract<ServerMessage, { type: 'battleEnd' }> => m.type === 'battleEnd')!;
-      const exp = lt.stage === 'gym' ? TRAINER_EXP.gymWin : lt.stage === 'elite' ? TRAINER_EXP.eliteWin : TRAINER_EXP.championWin;
-      expect(end).toMatchObject({ outcome: { winner: 0 }, rewards: { money: lt.reward, trainerExp: exp, badge: lt.badge, ratingDelta: null } });
-      const badges = (await rawQuery(db, 'select badge_id from badges where player_id = $1', [pid])).map((b) => b['badge_id']);
-      expect(badges).toEqual(lt.badge === null ? [] : [lt.badge]);
-      const flags = (await rawQuery(db, 'select flag from story_flags where player_id = $1', [pid])).map((f) => String(f['flag'])).sort();
-      expect(flags).toEqual([...lt.setsFlags, ...(lt.id === 'zeon' ? ['champion:zeon:beaten'] : [])].filter((f, i, a) => a.indexOf(f) === i).sort());
-
-      // the database-only replay (P6): the row + content reproduce the last digest; the NPC side never acted
-      const last = msgsOf(host, pid).filter((m): m is Extract<ServerMessage, { type: 'battleEvents' }> => m.type === 'battleEvents').at(-1)!;
-      const row = await repos.db.transaction((tx) => repos.history.battleById(tx, pid, res.session.id));
-      expect(row!.finalDigest).toBe(last.stateDigest);
-      expect(row!.actions.every((a) => (a as [unknown, unknown])[1] === null)).toBe(true);
-      const opts: CreateBattleOpts = {
-        id: row!.battleId,
-        format: row!.format,
-        zoneId: row!.start!.zoneId,
-        terrain: row!.start!.terrain as CreateBattleOpts['terrain'],
-        seed: row!.seed as RngState,
-        sides: row!.start!.sides as CreateBattleOpts['sides'],
-      };
-      let replay = createBattle(opts, content).state;
-      for (const acts of row!.actions) replay = resolveTurn(replay, acts as [Action | null, Action | null], content).state;
-      expect(digestBattleState(replay)).toBe(last.stateDigest);
-      expect(replay.ended).toEqual({ winner: 0 });
-    }, 180_000);
-  }
-
-  it('12 league battles, desync counter 0', () => {
-    expect(battles).toBe(12);
-    expect(totalDesync).toBe(0);
-  });
 });

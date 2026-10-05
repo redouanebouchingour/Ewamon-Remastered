@@ -40,8 +40,8 @@ interface HarnessApi {
 
 const params = new URLSearchParams(location.search);
 const zoneId = (params.get('zone') ?? 'mirevale') as ZoneId;
-// §50.6.1 (amended 2026-09-30): the heading numbers are rig indices; ?headings=words reproduces the superseded reading
-setHeadingConvention(params.get('headings') === 'words' ? 'words' : 'rig');
+// ?headings=rig: the §50.6.1 heading numbers straight to the rig (default: the table's words, anchors.ts)
+setHeadingConvention(params.get('headings') === 'rig' ? 'rig' : 'words');
 const log: string[] = [];
 const say = (line: string): void => {
   log.push(`${(performance.now() / 1000).toFixed(1)}s ${line}`);

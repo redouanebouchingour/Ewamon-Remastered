@@ -30,19 +30,18 @@ describe('§50.6.1 shot table', () => {
     expect(AUDIT_SHOTS.find((s) => s.id === 'sprite-edge')!.zoomStop).toBe(0);
   });
 
-  it('passes the §50.6.1 headings to the rig unchanged (amended 2026-09-30) and each shot looks at its subject', () => {
-    for (const s of [0, 1, 2, 3] as const) expect(rigHeading(s)).toBe(s);
-    // rig heading 0 looks ≈ −z (camera at target + (sin yaw, cos yaw)), 1 −x, 2 +z, 3 +x
-    const want: Record<number, readonly [number, number]> = { 0: [0, -1], 1: [-1, 0], 2: [0, 1], 3: [1, 0] };
+  it('maps the words (0 = +z forward, 1 = +x, 2 = −z, 3 = −x) onto rig headings that look that way', () => {
+    const want: Record<number, readonly [number, number]> = { 0: [0, 1], 1: [1, 0], 2: [0, -1], 3: [-1, 0] };
     for (const s of [0, 1, 2, 3] as const) {
       const [fx, fz] = viewForward(rigHeading(s));
       const [wx, wz] = want[s]!;
       // the diorama yaw base is −35°, so "forward" is the dominant axis of the view direction
       expect(fx * wx + fz * wz).toBeGreaterThan(0.8);
     }
+    expect(rigHeading(0)).toBe(2);
+    expect(rigHeading(1)).toBe(3);
+    // the rig's own heading 0 looks ≈ −z (camera at target + (sin yaw, cos yaw)), the reason for the mapping
     expect(-Math.cos(headingYaw(0))).toBeLessThan(-0.8);
-    // the table keeps the views the words reading gave shots 2, 3, 4 and 6: the gym (−z), the creature and the east edge (+x)
-    expect(AUDIT_SHOTS.map((s) => s.heading)).toEqual([0, 0, 3, 1, null, 3]);
   });
 
   it('reads door offsets in the door frame (+z = outward normal), world axes for a door facing +z', () => {
