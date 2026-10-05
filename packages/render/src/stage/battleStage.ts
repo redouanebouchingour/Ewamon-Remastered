@@ -22,7 +22,7 @@ import {
 } from 'three/webgpu';
 import type { BufferGeometry, Material, PerspectiveCamera, UniformNode } from 'three/webgpu';
 import { float, uniform, vec4 } from 'three/tsl';
-import type { BattlerPose, BattlerRef, BattleStage, SpriteDescriptor, Terrain, TypeName, VfxId } from '../contracts.js';
+import type { BattlerPose, BattlerRef, BattleStage, HallBounds, SpriteDescriptor, Terrain, TypeName, VfxId } from '../contracts.js';
 import type { EffectsFlags, HarvestLevel, WeatherKind } from '../descriptors.js';
 import type { MaterialLibrary } from '../materials/library.js';
 import type { SurfaceId } from '../materials/surfaces.js';
@@ -63,6 +63,14 @@ export const STAGE = Object.freeze({
   seatSamples: 12,
   /** Arenas whose ground cover is masked (main + 3 spectator arenas; 2 mask slots each, slots 0..7). */
   coverArenas: 4,
+  /**
+   * Phase A halls (`dress(…, hall)`): the trainers stand this far either side of the centre along the battle axis
+   * (client `TRAINER_BACK_M` = BATTLER_SEPARATION / 2 + 1.7, content `ARENA_SLOT_M`); everything keeps `hallMarginM`
+   * (+ its own radius) from the hall's floor edge. The rope posts may pull in to `postMinScale` of their radius, the
+   * pylons to `pylonMinRadius`, the spectators to `spectatorMinRadius`; what still does not fit is not shown.
+   */
+  trainerSlotM: 4.45, trainerR: 0.4, ringFitR: 4.0, hallMarginM: 0.1,
+  postMinScale: 0.92, postR: 0.1, pylonMinRadius: 4.05, pylonR: 0.3, spectatorMinRadius: 4.9, spectatorR: 0.45, fitStep: 0.1,
 });
 
 /** Ground-cover mask the stage writes (the zone's `ScatterMask`; IMPLEMENTATION-NOTES Part 5, T1). */
@@ -137,6 +145,39 @@ const _fwd = new Vector3();
 const DEG = Math.PI / 180;
 
 function refKey(r: BattlerRef): string { return `${r.side}:${r.slot}`; }
+
+const _fitOut: [number, number] = [0, 0];
+
+/** Whether a disc of radius `r` at world (x, z) lies on the hall's floor rectangle. */
+export function inHall(h: HallBounds, x: number, z: number, r: number): boolean {
+  const dx = x - h.x; const dz = z - h.z;
+  const c = Math.cos(h.yaw); const s = Math.sin(h.yaw);
+  const lx = c * dx - s * dz; const lz = s * dx + c * dz;
+  return Math.abs(lx) <= h.hw - r + 1e-9 && Math.abs(lz) <= h.hd - r + 1e-9;
+}
+
+/**
+ * Phase A: the arena centre nearest (x, z) that keeps the ring (+ curb) and both trainer slots (±`trainerSlotM` along
+ * the battle axis of diorama yaw `yaw`) on the hall floor; per hall axis the feasible interval is intersected, and an
+ * axis too short for all of them takes the interval's middle. World (x, z) into `out`.
+ */
+export function fitCentre(h: HallBounds, x: number, z: number, yaw: number, out: [number, number]): [number, number] {
+  const c = Math.cos(h.yaw); const s = Math.sin(h.yaw);
+  const dx = x - h.x; const dz = z - h.z;
+  let lx = c * dx - s * dz; let lz = s * dx + c * dz;
+  const fx = -Math.sin(yaw); const fz = -Math.cos(yaw);                       // the battle axis (world) → hall local
+  const ox = (c * fx - s * fz) * STAGE.trainerSlotM; const oz = (s * fx + c * fz) * STAGE.trainerSlotM;
+  const m = STAGE.hallMarginM;
+  const need: readonly (readonly [number, number, number])[] = [[0, 0, STAGE.ringFitR + m], [ox, oz, STAGE.trainerR + m], [-ox, -oz, STAGE.trainerR + m]];
+  const fit = (v: number, half: number, axis: 0 | 1): number => {
+    let lo = -Infinity; let hi = Infinity;
+    for (const n of need) { lo = Math.max(lo, -half + n[2] - n[axis]); hi = Math.min(hi, half - n[2] - n[axis]); }
+    return lo > hi ? (lo + hi) / 2 : Math.min(hi, Math.max(lo, v));
+  };
+  lx = fit(lx, h.hw, 0); lz = fit(lz, h.hd, 1);
+  out[0] = h.x + c * lx + s * lz; out[1] = h.z - s * lx + c * lz;
+  return out;
+}
 
 function sameFrame(a: SpriteDescriptor['front'], b: SpriteDescriptor['front']): boolean {
   return a.atlas === b.atlas && a.rect[0] === b.rect[0] && a.rect[1] === b.rect[1] && a.rect[2] === b.rect[2] && a.rect[3] === b.rect[3];
@@ -250,6 +291,7 @@ export class Stage implements BattleStage {
   private ground: StageGround | null = null;
   private cover: GroundCoverMask | null = null;
   private cut: PropCutawayLike | null = null;
+  private hall: HallBounds | null = null;
   private beaconLevel = 0;         // 0..1 fade
   private beaconTarget = 0;
   private beaconFadeMs: number = STAGE.dressMs;
@@ -324,15 +366,19 @@ export class Stage implements BattleStage {
 
   // ---- §10.7.5 -----------------------------------------------------------------------------------------------------
 
-  dress(at: { readonly x: number; readonly z: number }, terrain: Terrain, participants: readonly string[]): void {
+  dress(at: { readonly x: number; readonly z: number }, terrain: Terrain, participants: readonly string[], hall?: HallBounds): void {
     if (this.disposed) return;
     this.terrain = terrain;
     this.refreshAccent();
-    this.placeArena(this.main, at.x, at.z, terrain);
+    const yaw = this.d.rig.dioramaYaw;
+    // Phase A: inside a hall the ring centre is pulled in (if needed) so the ring and both trainer slots stay on the floor
+    this.hall = hall ?? null;
+    const c = this.hall !== null ? fitCentre(this.hall, at.x, at.z, yaw, _fitOut) : null;
+    this.placeArena(this.main, c ? c[0] : at.x, c ? c[1] : at.z, terrain);
     // beacons: key lights from the audience (camera) side, ±40° off the view axis, aimed at the ring centre, so the
     // battlers' visible faces are lit (placed laterally they only grazed the cards and left them silhouetted at dusk)
-    const yaw = this.d.rig.dioramaYaw;
     this.placePylons(this.main, yaw);
+    if (this.hall !== null) this.fitToHall(this.main, this.hall);
     for (let i = 0; i < 2; i++) {
       const L = this.beaconLights[i]!;
       const c = this.main.center;
@@ -343,7 +389,7 @@ export class Stage implements BattleStage {
     }
     this.beaconTarget = 1;
     this.beaconFadeMs = STAGE.dressMs;
-    this.spawnSpectators(participants, at.x, at.z, yaw);
+    this.spawnSpectators(participants, this.main.center.x, this.main.center.z, yaw);
     this.d.rig.setCueTarget('attacker', this.main.center);
     this.d.rig.setCueTarget('defender', this.main.center);
   }
@@ -366,6 +412,52 @@ export class Stage implements BattleStage {
       p.position.set((tx * ca + s * rx * sa) * STAGE.beaconRadius, 0, (tz * ca + s * rz * sa) * STAGE.beaconRadius);
     });
   }
+
+  /**
+   * Phase A: pulls the rope posts in (or hides those that still cross the hall's floor edge, and the ropes with them)
+   * and walks each beacon pylon in along its bearing until it stands on the floor (else hides it). Transforms only.
+   */
+  private fitToHall(a: Arena, hall: HallBounds): void {
+    const S = STAGE;
+    const cx = a.center.x; const cz = a.center.z;
+    const posts = a.posts.children;
+    const postIn = (k: number, scale: number): boolean => {
+      const ang = (k / S.postCount) * Math.PI * 2;
+      return inHall(hall, cx + Math.cos(ang) * S.postRadius * scale, cz + Math.sin(ang) * S.postRadius * scale, S.postR + S.hallMarginM);
+    };
+    const allIn = (sc: number): boolean => { for (let k = 0; k < S.postCount; k++) if (!postIn(k, sc)) return false; return true; };
+    let scale = 1;
+    while (!allIn(scale) && scale - 0.02 >= S.postMinScale - 1e-9) scale -= 0.02;
+    const fits = allIn(scale);
+    if (!fits) scale = 1;
+    a.posts.scale.set(scale, 1, scale);
+    // ropes (children after the posts) only when every post stands
+    for (let k = 0; k < posts.length; k++) posts[k]!.visible = k < S.postCount ? fits || postIn(k, scale) : fits;
+    for (let i = 0; i < 2; i++) {
+      const body = a.pylons.children[i * 3]!;
+      const px = body.position.x; const pz = body.position.z;
+      const r0 = Math.hypot(px, pz) || 1;
+      let r = r0;
+      while (r >= S.pylonMinRadius && !inHall(hall, cx + (px / r0) * r, cz + (pz / r0) * r, S.pylonR + S.hallMarginM)) r -= S.fitStep;
+      const ok = r >= S.pylonMinRadius;
+      for (let j = 0; j < 3; j++) {
+        const o = a.pylons.children[i * 3 + j]!;
+        if (ok) o.position.set((px / r0) * r, 0, (pz / r0) * r);
+        o.visible = ok;
+      }
+    }
+  }
+
+  /** Where trainer `side` stands (the client's `TRAINER_BACK_M` behind its battler on the battle axis): world xz into `out`, y = the arena centre's. */
+  trainerSpot(side: 0 | 1, out: Vector3): Vector3 {
+    forwardOfYaw(this.d.rig.dioramaYaw, _fwd);
+    const s = side === 0 ? -1 : 1;
+    const c = this.main.center;
+    return out.set(c.x + _fwd.x * s * STAGE.trainerSlotM, c.y, c.z + _fwd.z * s * STAGE.trainerSlotM);
+  }
+
+  /** The hall the main arena was last dressed in (null = open ground). */
+  get hallBounds(): HallBounds | null { return this.hall; }
 
   /** Extra: removes the spectator arena dressed nearest (x, z). */
   undressSpectator(x: number, z: number, ms: number = STAGE.dressMs): void {
@@ -618,9 +710,16 @@ export class Stage implements BattleStage {
     this.spectators.length = 0;
     forwardOfYaw(yaw, _fwd);
     const seed = participants.join('|');
+    const hall = this.hall;
     STAGE.spectatorAnglesDeg.forEach((deg, i) => {
       const a = Math.atan2(_fwd.x, _fwd.z) + deg * DEG;   // the far half, fanned out
-      const sx = x + Math.sin(a) * STAGE.spectatorRadius; const sz = z + Math.cos(a) * STAGE.spectatorRadius;
+      let r: number = STAGE.spectatorRadius;
+      // Phase A: in a hall a spectator steps in toward the ring until on the floor, or stays away
+      if (hall !== null) {
+        while (r >= STAGE.spectatorMinRadius && !inHall(hall, x + Math.sin(a) * r, z + Math.cos(a) * r, STAGE.spectatorR + STAGE.hallMarginM)) r -= STAGE.fitStep;
+        if (r < STAGE.spectatorMinRadius) return;
+      }
+      const sx = x + Math.sin(a) * r; const sz = z + Math.cos(a) * r;
       const id = `ewa:spectator:${i}`;
       this.d.actors.spawn(id, { look: `spectator_${seed}_${i}`, name: '', guildTag: '', isLocal: false });
       this.d.actors.setTransform(id, sx, sz, Math.atan2(x - sx, z - sz), false, false);
@@ -683,6 +782,9 @@ export class Stage implements BattleStage {
     a.ring.geometry = this.ringFor(surface);
     a.ring.material = this.d.materials.get(surface);
     void this.d.materials.preload([surface, 'stone_wall', 'timber', 'rope', 'lantern_metal']).catch(() => undefined);
+    a.posts.scale.set(1, 1, 1);
+    for (const o of a.posts.children) o.visible = true;
+    for (const o of a.pylons.children) o.visible = true;
     a.dressed = true;
     a.riseTarget = 1;
     a.riseMs = STAGE.dressMs;

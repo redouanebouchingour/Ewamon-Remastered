@@ -3,7 +3,7 @@
  * comes from the director's own `Rng` (the room's `worldRng.fork()`), so the sequence of spawns for a given
  * seed is reproducible by driving `tick` with synthetic `now` values.
  */
-import { ALPHA_CHANCE, ROUTE_TUNING, STORY_TUNING, TOWN_SPAWN_TUNING, VARIANT_CHANCE, isWalkable, isWater } from '@ewa/content';
+import { ALPHA_CHANCE, ROUTE_TUNING, STORY_TUNING, TOWN_SPAWN_TUNING, VARIANT_CHANCE, interiorFootprintAt, isWalkable, isWater } from '@ewa/content';
 import type { EncounterSlot, EncounterTable, Heightfield, SpawnTuning, ZoneDef } from '@ewa/content';
 import type { ContentIndex, Rng, VariantKey } from '@ewa/core';
 import { isLava } from './movement';
@@ -177,6 +177,8 @@ export class SpawnDirector {
       // a water spawn never lands on lava (audit L2-25; no draw is added, so seeded sequences are unchanged)
       const surfaceOk = medium === 'water' ? isWater(h, x, z) && !isLava(h, x, z) : isWalkable(h, x, z);
       if (!surfaceOk) continue;
+      // never inside an interior pocket (its floor is walkable but only reached through door warps; Phase A)
+      if (interiorFootprintAt(this.zone.id, x, z) !== null) continue;
       let clear = true;
       for (const r of this.records.values()) {
         if (Math.hypot(r.x - x, r.z - z) < MIN_SPAWN_SPACING_M) {

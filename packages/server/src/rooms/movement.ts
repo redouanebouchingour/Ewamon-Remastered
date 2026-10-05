@@ -3,8 +3,8 @@
  * speed cap derived from protocol's MOVEMENT table, the dt budget, the content heightfield and the playable
  * bounds. No Colyseus, DB or clock import (NON-NEGOTIABLE 12).
  */
-import { allZones, isWalkable, isWater, playableBounds } from '@ewa/content';
-import type { Biome, Heightfield, ZoneId } from '@ewa/content';
+import { allZones, isWalkable, isWater, playableBounds, solidContains } from '@ewa/content';
+import type { Biome, Heightfield, RectSolid, ZoneId } from '@ewa/content';
 import { MOVEMENT, MOVEMENT_VALIDATION, wrapAngle } from '@ewa/protocol';
 import type { InputMsg } from '@ewa/protocol';
 import type { z } from 'zod';
@@ -37,6 +37,19 @@ export interface MovePrev {
   readonly inBattle: boolean;
   /** inventory['HM Surf'] > 0 — a water-only sample is walkable for this player */
   readonly canSurf?: boolean;
+  /**
+   * Interior gates still shut for this player (content `gatesClosedFor(...)` `.solid`s, grown by the capsule radius):
+   * unwalkable for this player only. Empty / absent in most zones.
+   */
+  readonly closedGates?: readonly RectSolid[];
+}
+
+export const NO_GATES: readonly RectSolid[] = [];
+
+/** True when (x, z) lies inside one of the player's closed gate solids. */
+export function inClosedGate(gates: readonly RectSolid[], x: number, z: number): boolean {
+  for (let i = 0; i < gates.length; i++) if (solidContains(gates[i]!, x, z)) return true;
+  return false;
 }
 
 /**
@@ -54,20 +67,22 @@ export function isLava(h: Heightfield, x: number, z: number): boolean {
 
 /**
  * A sample is standable: walkable (content's boardwalk strip over a pond — a pier the render draws, lava pond or
- * not — included), or a water sample that is not lava for a surfer.
+ * not — included), or a water sample that is not lava for a surfer; never inside one of the player's closed
+ * interior gates.
  */
-export function standable(h: Heightfield, x: number, z: number, canSurf: boolean): boolean {
+export function standable(h: Heightfield, x: number, z: number, canSurf: boolean, gates: readonly RectSolid[] = NO_GATES): boolean {
+  if (gates.length > 0 && inClosedGate(gates, x, z)) return false;
   if (isWalkable(h, x, z)) return true;
   return canSurf && isWater(h, x, z) && !isLava(h, x, z);
 }
 
 /** Every 0.25 m along prev → next (excluding prev, including next) is standable. */
-export function segmentStandable(h: Heightfield, x0: number, z0: number, x1: number, z1: number, canSurf: boolean): boolean {
+export function segmentStandable(h: Heightfield, x0: number, z0: number, x1: number, z1: number, canSurf: boolean, gates: readonly RectSolid[] = NO_GATES): boolean {
   const dist = Math.hypot(x1 - x0, z1 - z0);
   const steps = Math.max(1, Math.ceil(dist / SEGMENT_SAMPLE_M));
   for (let i = 1; i <= steps; i++) {
     const t = i / steps;
-    if (!standable(h, x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, canSurf)) return false;
+    if (!standable(h, x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, canSurf, gates)) return false;
   }
   return true;
 }
@@ -95,7 +110,8 @@ export function validateInput(prev: MovePrev, input: z.infer<typeof InputMsg>, h
   if (!(dist <= cap + QUANTISATION_SLACK)) return { ok: false, reason: 'speed', budgetMs: budget };
   if (!inBounds(h, input.x, input.z)) return { ok: false, reason: 'bounds', budgetMs: budget };
   const canSurf = prev.canSurf === true;
-  if (!standable(h, input.x, input.z, canSurf) || !segmentStandable(h, prev.x, prev.z, input.x, input.z, canSurf)) {
+  const gates = prev.closedGates ?? NO_GATES;
+  if (!standable(h, input.x, input.z, canSurf, gates) || !segmentStandable(h, prev.x, prev.z, input.x, input.z, canSurf, gates)) {
     return { ok: false, reason: 'unwalkable', budgetMs: budget };
   }
   return { ok: true, x: input.x, z: input.z, angle: wrapAngle(input.angle), running: input.running, budgetMs: budget };

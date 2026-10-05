@@ -19,6 +19,8 @@ import { ZONE_MARGIN, ZONE_SIZE } from './types';
 import { ZONES } from './data/zones';
 import { planZone, stampFootprints } from './plan';
 import type { FootprintStamp, ZonePlan } from './plan';
+import { planInteriors, stampInteriors } from './interiors';
+import type { InteriorPlan, PlacedInterior } from './interiors';
 
 export interface Heightfield {
   readonly zoneId: ZoneId;
@@ -209,6 +211,9 @@ export interface ZoneSurface {
   readonly heightfield: Heightfield;
   readonly plan: ZonePlan;
   readonly footprints: FootprintStamp;
+  /** the town's pockets (one per building), placed after the plan; [] outside towns */
+  readonly interiors: readonly PlacedInterior[];
+  readonly interiorPlan: InteriorPlan;
 }
 
 /** Deterministic from zone.layoutSeed, zone.kind and zone.biome (value noise + the layout's footprints). */
@@ -223,9 +228,12 @@ export function buildHeightfield(zone: ZoneDef): Heightfield {
 export function buildZoneSurface(zone: ZoneDef): ZoneSurface {
   const base = buildTerrainField(zone);
   const plan = planZone(zone, base);
-  const footprints = stampFootprints(base, plan);
+  const interiorPlan = planInteriors(zone, plan, base);
+  const dropped = new Set(interiorPlan.droppedSolids);
+  const footprints = stampFootprints(base, dropped.size === 0 ? plan : { solids: plan.solids.filter((_, i) => !dropped.has(i)), doors: plan.doors });
+  stampInteriors(base, interiorPlan.interiors, MAX_SLOPE);
   const digest = digestHeightfield(base.heights, base.walkable, base.water);
-  return { heightfield: { ...base, digest }, plan, footprints };
+  return { heightfield: { ...base, digest }, plan, footprints, interiors: interiorPlan.interiors, interiorPlan };
 }
 
 /** Terrain only: noise, kind feature, ponds, clearings; walkable = margin, slope and open water. `digest` is ''. */

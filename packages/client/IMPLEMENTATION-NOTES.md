@@ -610,3 +610,72 @@ tracks `.screenshots/audit/` and `.screenshots/budget/` (SPEC §50.5 / §50.2.3 
 
 Checks: `tsc -b packages/client` clean, `eslint packages/client` clean, `vitest run packages/client` green
 (`routes.test.tsx` is load-sensitive in the full parallel run and passes alone, as noted in part 2).
+
+# Phase A interiors — pockets, themed gym halls, puzzles, hall arenas (2026-10-06)
+
+Content places one POCKET per town building (a walled roofless hall in the zone's own outer band, `PlacedInterior`),
+reached only by door warps; the server resolves door warps, gym trainers, switches and league trainers at their
+`leaderAt`. The client half:
+
+- **Render spec.** `zoneSpecFor` adds `interiors: interiorSpecsFor(zone.id)` (content's pockets flattened to render's
+  `InteriorSpec`: local frames kept, gates as rect + id + style, switches id/kind/lx/lz, rooms id/arena/leaderAt/bounds,
+  props; league ids and gate flags stay client-side). `[]` outside towns. Pocket door warps are NOT in `spec.warps`
+  (those markers make render draw a "warp room"; the pocket is the room).
+- **Interactables** (`scene/interiors.ts` `interiorInteractables`, registered with the zone's own): `<id>.in` / `.out`
+  ('Enter Mirevale Gym' / 'Leave Mirevale Gym', kind `warp`); one `gym` per league trainer at its hall `leaderAt`
+  (Solenne: Veil, Aurelia, Kirei, Zeon) — `LEAGUE_MARKER` (0, −26) and the `league[0]` pick are gone; gym trainers
+  (`trainer`, disabled once `trainer:<id>:beaten` is held — the actor stays where it stands); switches (`switch`, prompt
+  split from content's `label`: "Wake" + "the root-stone"; disabled once its flag is held unless it is a teleport tile);
+  the shop keeper (`shop:<npc>`) and nurse (`healer:<npc>`, the league hall's nurse too) instead of the building door
+  (the door fallback remains only for a shop / healer building without a pocket — none today); the healer's `pc` prop
+  (`pc:<interior>`, new kind `pc` → `/play/box`); residents and guides (`npc`, client-local dialogue: `World3D.activate`
+  falls back to `interiorNpcs` and opens the lines without an interact); hidden house items (`item`, same flag scheme).
+- **Ranges** (`RANGE`): gym 3.5 (server 4 at `leaderAt`), shop / healer 3 (the keeper stands behind a counter, 2.1 m
+  from the nearest floor; the server has no range for these), switch / pc 2.5 (server 3). `makeInteractable` takes an
+  optional range.
+- **Pocket tracking** (`SceneDirector.updatePocket`, every fixed step from `World3D.fixedStep`; `FloorIndex` is
+  content's `onFloor` without allocation, so warps, switch teleports and server corrections are all covered without
+  hooking each). Entering: `interiors.setActive(id)`, `camera.setYawBase(pocketYawDeg)`, `setHeading(0)`, `setView`, and
+  the pocket's NPCs / gym trainers / leaders spawn (looks from content; leaders from the `LeagueTrainer`, facing the
+  door). Leaving: `setActive(null)`, `setYawBase(null)`, the heading the player had outside, despawn. The yaw base is the
+  pocket yaw itself: the rig's forward at yaw θ is (−sin θ, −cos θ) and a pocket's local +z (door side) is
+  (sin yaw, cos yaw), so heading 0 looks from the door toward the far end (asserted in `interiors.test.ts`).
+  `World3D.tick` forwards the rig's `dioramaYaw` to `syncView`, which calls `setView` only on change. Tracking pauses
+  during a battle. `setYawBase` is called only when the rig has it (render's implementation was not in the tree yet).
+- **Actor budget.** `remotes.cap` also reserves `pocketActorMax(zone)` (the most any one pocket spawns, ≤ 6).
+- **Gates** (`GateSync`, created per zone load, synced on load and in `refreshFlags`): `gatesClosedFor(zone, flags)` →
+  prediction blockers keyed by gate id with content's `.solid` (the capsule-grown centre-exclusion shape the server
+  tests), plus `interiors.setGateOpen`; switch tiles → `setSwitchOn(id, flags.has(sets))` (flagless tiles stay off). Only
+  changes are pushed. **Deviation:** render's `TerrainCollider.addBlocker` has no removal and render was off limits, so
+  the removable blockers live in the client adapter (`collider.ts`: `addBlocker(id, solid)` / `removeBlocker(id)` /
+  `blockerIds()` / `passable`); the solver runs on a view whose `passable` is `terrain.passable && !inside a closed
+  gate` (resolveMoveInto tests centres only, like the server). The battle camera's `blocked()` does not see gates.
+  Prediction is never looser than the server: a gate opens only after the server's flag reaches the client.
+- **Hall battles.** `BattleController` keeps `battleStart.x / z / yaw` as the arena (the message arrives before the
+  BattleSummary patch; summary, then the predicted self position, remain the fallbacks — a reload's `battleResync`
+  carries none). `BattleView.enterBattle` gains `yaw` and `foeNpc` (an NPC / league side's content id). The director
+  fights an arena that lies on a pocket floor along the hall axis (yaw base = pocket yaw, heading 0, no
+  `pickBattleHeading`), passes `HallBounds` (floor centre, yaw, w/2, d/2) to `stage.dress`, and on exit restores the
+  pocket camera (the in-hall heading) instead of the town default; every static actor's transform is restored. World3D
+  restages the foe trainer actor (gym trainer / leader) behind its creature like a pvp foe (`isStaticActor`).
+- **Dialogue.** `gymPlan` now covers the Wardens and the Champion, mirroring the server's `leagueRefusal` (Warden: not
+  beaten, eight badges, previous Warden beaten; Champion: not beaten, every Warden beaten; story gate) — their `pre`
+  lines open and the challenge is sent on the last page; a refused fight goes straight to the server for its toast.
+- **Fixtures.** `test/zoneSpecFor.test.ts`: `interiors` is excluded from the R1 comparison like `plan`; the snapshot was
+  re-baselined (every zone's digest changes with the new field); Solenne's `specFields` (warps, buildings, props,
+  lights, actors) in `packages/content/test/fixtures/r1-pre-move.json` were re-captured (its plan changed deliberately;
+  `about` says so); its `heightfieldDigest` keeps the pre-move value (the test asserts the stamped field differs). The
+  gym-door test counts Solenne's league hall as its gym-slot building, and "authored points clear of buildings" is now
+  `≥ 2 m`: Solenne's lectern (`lore_solenne_lectern`, (0, −24)) stands exactly 2.0 m in front of the league hall and
+  0.93 m from its `Enter` warp (content placement — the nearer prompt wins; worth moving in content).
+- **Not done / open.** Spectator arenas of other players' hall battles still use `dressSpectator(x, z)` without hall
+  bounds (no contract for it). The pocket camera, `setView`, `setGateOpen` / `setSwitchOn` and hall dressing are coded
+  against the contract with fakes only; the live render implementation was in progress, so nothing here was verified
+  in a browser.
+
+Tests: `test/interiors.test.ts` (7: Mirevale interactables, Solenne's four chambers, pocket tracking yaw base / heading
+/ actors / setView, gates → blockers + renderer as flags change, a closed gate blocking predicted movement on the real
+field, a hall battle, helpers), `battle-controller.test.ts` (+1: battleStart x / z / yaw as the arena),
+`dialogue-flow.test.tsx` (+1: Wardens / Champion), `zoneSpecFor.test.ts` (+1: interiors flattened, deterministic,
+pocket warps not in `spec.warps`), `scene-director.test.ts` (the gym at its `leaderAt`). Client: 23 files, 175 tests
+green; `tsc` (client sources against the other packages' sources) clean; `eslint packages/client` clean.

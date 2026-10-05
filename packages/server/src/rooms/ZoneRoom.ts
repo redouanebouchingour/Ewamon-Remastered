@@ -6,8 +6,22 @@
 import { Room, ServerError } from '@colyseus/core';
 import type { AuthContext, Client } from '@colyseus/core';
 import { StateView } from '@colyseus/schema';
-import { badgeFlag, encounterTableFor, getHeightfield, isWalkable, isWater, league as leagueById, leagueStoryGate, nearestWalkable, playableBounds, zone as zoneById } from '@ewa/content';
-import type { BadgeId, Heightfield, LinkDir, RaidHotspot, ZoneDef, ZoneId } from '@ewa/content';
+import {
+  badgeFlag,
+  encounterTableFor,
+  gatesClosedFor,
+  getHeightfield,
+  interiorArenaFor,
+  interiorGates,
+  isWalkable,
+  isWater,
+  league as leagueById,
+  leagueStoryGate,
+  nearestWalkable,
+  playableBounds,
+  zone as zoneById,
+} from '@ewa/content';
+import type { BadgeId, Heightfield, LinkDir, RaidHotspot, RectSolid, ZoneDef, ZoneId } from '@ewa/content';
 import { createRng } from '@ewa/core';
 import type { Rng } from '@ewa/core';
 import { BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, PlayerState, RaidState, SpawnState, ZoneState } from '@ewa/protocol';
@@ -25,7 +39,7 @@ import type { BattleHost, BattleSession } from './battleSession';
 import { ChallengeStore } from './challengeStore';
 import { findTarget, itemFlag, rangeFor, trainerBeatenFlag } from './interactables';
 import { pickZoneRoom, reserveZoneSeat } from './matchmaking';
-import { SURF_ITEM, refillBudget, validateInput } from './movement';
+import { NO_GATES, SURF_ITEM, refillBudget, validateInput } from './movement';
 import type { RejectReason } from './movement';
 import { SpawnDirector, tuningFor } from './spawnDirector';
 import type { SpawnRecord } from './spawnDirector';
@@ -80,6 +94,11 @@ export interface ZoneUserData {
   // ---- additions (IMPLEMENTATION-NOTES R4) ----
   /** story_flags ∪ badge:<id>, cached at join, refreshed by every progressionDelta this room sends */
   flags: Set<string>;
+  /**
+   * Phase A: the interior gates still shut for this player (`gatesClosedFor(zone, flags)` `.solid`s), recomputed by
+   * `applyFlags` — every flag write of this room goes through it. Shared empty array in zones without gates.
+   */
+  closedGates: readonly RectSolid[];
   badges: BadgeId[];
   /** absolute item counts (HM Surf walkability) */
   inventory: Record<string, number>;
@@ -405,6 +424,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     // 5. view + userData; the first tick computes the cell and adds the 3×3
     client.view = new StateView();
     client.view.add(ps);
+    const flags = flagSet(loaded.flags, loaded.badges);
     client.userData = {
       playerId,
       cell: null,
@@ -414,7 +434,9 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       battleId: this.battles.ofPlayer(playerId)?.id ?? null,
       tradeId: null,
       limiter: createLimiterState(),
-      flags: flagSet(loaded.flags, loaded.badges),
+      flags,
+      // join and handover arrival alike (both land here): the gate list starts from the loaded flags
+      closedGates: this.closedGatesFor(flags),
       badges: loaded.badges,
       inventory: loaded.inventory,
       handover: null,
@@ -733,7 +755,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const ps = this.state.players.get(ud.playerId);
     if (ps === undefined) return;
     const verdict = validateInput(
-      { x: ps.x, z: ps.z, lastSeq: ud.lastSeq, budgetMs: ud.budgetMs, inBattle: ud.battleId !== null, canSurf: (ud.inventory[SURF_ITEM] ?? 0) > 0 },
+      { x: ps.x, z: ps.z, lastSeq: ud.lastSeq, budgetMs: ud.budgetMs, inBattle: ud.battleId !== null, canSurf: (ud.inventory[SURF_ITEM] ?? 0) > 0, closedGates: ud.closedGates },
       input,
       this.heightfield,
     );
@@ -820,7 +842,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     // AOI membership first: a target outside the 3×3 is notFound (same as a non-existent id)
     if (target === null || !this.inCellRange(cell, tx, tz)) return this.sendMsg(client, { type: 'error', code: 'notFound', detail: null });
     if (!this.near(ps, tx, tz, rangeFor(target))) return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'tooFar' });
-    const pos = { x: ps.x, z: ps.z };
+    // every NPC / static battle (story-beat battles included) forms at the hall's arena when started inside one
+    const pos = this.battleAt(ps.x, ps.z);
     const seat = { playerId: ud.playerId, sessionId: client.sessionId };
 
     // §30.4.8: a story beat whose speaker is this npc/gym runs first; a story trainer (rule 6) fires the beat
@@ -898,13 +921,23 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
         return; // content text; nothing changes
       case 'warp': {
         const w = target.warp;
-        const snapped = isWalkable(this.heightfield, w.toX, w.toZ) ? ([w.toX, w.toZ] as const) : nearestWalkable(this.heightfield, w.toX, w.toZ, 8);
-        if (snapped === null) return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'warpBlocked' });
-        // authoritative teleport; the seq echo carries the client
-        ps.x = snapped[0];
-        ps.z = snapped[1];
-        ps.moving = false;
-        ud.moved = true;
+        if (!this.teleport(ud, ps, w.toX, w.toZ)) return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'warpBlocked' });
+        return;
+      }
+      case 'switch': {
+        // Phase A puzzle switch: `requires` gates it; `sets` is written once; `warpTo` teleports every time
+        const sw = target.sw;
+        if (!sw.requires.every((f) => ud.flags.has(f))) {
+          this.sendMsg(client, { type: 'toast', level: 'warn', text: 'Nothing happens. Something else must come first.' });
+          return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'switchLocked' });
+        }
+        const flag = sw.sets;
+        if (flag !== null && !ud.flags.has(flag)) {
+          await deps.repos.db.transaction((t) => deps.repos.progress.setFlags(t, ud.playerId, [flag], new Date(this.now())));
+          this.applyFlags(ud, [flag]);
+          this.sendMsg(client, progressionOnly({ flags: [flag] }));
+        }
+        if (sw.warpTo !== null && !this.teleport(ud, ps, sw.warpTo.x, sw.warpTo.z)) return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'warpBlocked' });
         return;
       }
       case 'static': {
@@ -966,8 +999,40 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     return null;
   }
 
+  /** The ONLY writer of `ud.flags` after join: adds the flags and, when one is new, recomputes the closed gates. */
   private applyFlags(ud: ZoneUserData, flags: readonly string[]): void {
-    for (const f of flags) ud.flags.add(f);
+    let changed = false;
+    for (const f of flags) {
+      if (ud.flags.has(f)) continue;
+      ud.flags.add(f);
+      changed = true;
+    }
+    if (changed && ud.closedGates.length > 0) ud.closedGates = this.closedGatesFor(ud.flags);
+  }
+
+  /** Phase A: the movement solids of the interior gates `flags` leave shut (the shared empty array when none). */
+  private closedGatesFor(flags: ReadonlySet<string>): readonly RectSolid[] {
+    if (interiorGates(this.zone.id).length === 0) return NO_GATES;
+    const shut = gatesClosedFor(this.zone.id, flags);
+    return shut.length === 0 ? NO_GATES : shut.map((g) => g.solid);
+  }
+
+  /** Where a battle started at (x, z) forms: the hall's room arena inside an interior, else right here. */
+  private battleAt(x: number, z: number): { readonly x: number; readonly z: number; readonly yaw: number | null } {
+    const a = interiorArenaFor(this.zone.id, x, z);
+    return a === null ? { x, z, yaw: null } : { x: a.x, z: a.z, yaw: a.yaw };
+  }
+
+  /** Authoritative teleport (warps, warp switches), snapped to walkable ground; false when nothing walkable is near. */
+  private teleport(ud: ZoneUserData, ps: PlayerState, x: number, z: number): boolean {
+    const snapped = isWalkable(this.heightfield, x, z) ? ([x, z] as const) : nearestWalkable(this.heightfield, x, z, 8);
+    if (snapped === null) return false;
+    // the seq echo carries the client
+    ps.x = snapped[0];
+    ps.z = snapped[1];
+    ps.moving = false;
+    ud.moved = true;
+    return true;
   }
 
   private inCellRange(cell: Cell, x: number, z: number): boolean {
@@ -1032,7 +1097,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
         if (p.flags !== undefined) this.applyFlags(c.userData, p.flags);
         if (p.badges !== undefined) {
           c.userData.badges = [...p.badges];
-          for (const b of p.badges) c.userData.flags.add(badgeFlag(b));
+          this.applyFlags(c.userData, p.badges.map(badgeFlag));
         }
         if (p.inventory !== undefined) c.userData.inventory = { ...p.inventory };
       },
@@ -1310,7 +1375,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const res = await this.battles.startPvp(
       { playerId: m.fromId, sessionId: challenger.sessionId },
       { playerId: me, sessionId: client.sessionId },
-      { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 },
+      this.battleAt((a.x + b.x) / 2, (a.z + b.z) / 2),
     );
     if (!res.ok) {
       // both players are told, with whose party / state stopped it (server finding: only the accepter was, and the

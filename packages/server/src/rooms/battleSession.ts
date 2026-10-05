@@ -71,8 +71,11 @@ export interface BattleSession {
   /** §30.4.6 `static`: the LegendaryStatic whose flag is set on win or catch */
   readonly staticSpecies: string | null;
   readonly startedAt: number;
+  /** where the arena forms: a hall's room arena inside an interior (Phase A), else the player's position */
   readonly x: number;
   readonly z: number;
+  /** the hall's battle-axis yaw inside an interior; null in the open world */
+  readonly yaw: number | null;
   // ---- server bookkeeping beyond the spec's shape ----
   /** per-side inventory snapshot (item/orb balance checks at validate time); null for non-player sides */
   inventory: [Record<string, number> | null, Record<string, number> | null];
@@ -106,6 +109,13 @@ export interface BattleDeps {
   readonly zone: ZoneDef;
   readonly host: BattleHost;
   readonly metrics: RoomMetrics;
+}
+
+/** Where a battle forms (ZoneRoom `battleAt`): a hall arena + its battle-axis yaw inside an interior, else the player. */
+export interface BattleAt {
+  readonly x: number;
+  readonly z: number;
+  readonly yaw?: number | null;
 }
 
 export interface PlayerSeat {
@@ -335,13 +345,24 @@ export class BattleCoordinator {
     this.deps.host.onStart(session);
     for (const seat of session.seats) {
       if (seat.playerId === null) continue;
-      this.deps.host.send(seat.playerId, { type: 'battleStart', battleId: session.id, format: session.format, seat: seat.side, state, events, stateDigest: digestBattleState(state) });
+      this.deps.host.send(seat.playerId, {
+        type: 'battleStart',
+        battleId: session.id,
+        format: session.format,
+        seat: seat.side,
+        state,
+        events,
+        stateDigest: digestBattleState(state),
+        x: session.x,
+        z: session.z,
+        yaw: session.yaw,
+      });
     }
     return { session, events };
   }
 
   /** §30.4.4 `wild`: one battler projected from the SpawnRecord. */
-  async startWild(p: PlayerSeat, spawn: SpawnRecord, at: { readonly x: number; readonly z: number }): Promise<StartResult> {
+  async startWild(p: PlayerSeat, spawn: SpawnRecord, at: BattleAt): Promise<StartResult> {
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
     const loaded = await this.loadPlayers([p.playerId], spawn.speciesId);
     const side0 = this.playerSide(loaded.get(p.playerId)!.party, p.playerId, true, true);
@@ -365,6 +386,7 @@ export class BattleCoordinator {
         staticFlag: null,
         x: at.x,
         z: at.z,
+        yaw: at.yaw ?? null,
         inventory: [loaded.get(p.playerId)!.inventory, null],
         rematch: false,
       },
@@ -377,7 +399,7 @@ export class BattleCoordinator {
   }
 
   /** §30.4.6 `static`: format wild, canFlee false, canCatch true; flag set on win or catch. */
-  async startStatic(p: PlayerSeat, st: LegendaryStatic, at: { readonly x: number; readonly z: number }): Promise<StartResult> {
+  async startStatic(p: PlayerSeat, st: LegendaryStatic, at: BattleAt): Promise<StartResult> {
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
     const loaded = await this.loadPlayers([p.playerId], st.species);
     const side0 = this.playerSide(loaded.get(p.playerId)!.party, p.playerId, false, true);
@@ -397,6 +419,7 @@ export class BattleCoordinator {
         staticFlag: st.flag,
         x: at.x,
         z: at.z,
+        yaw: at.yaw ?? null,
         inventory: [loaded.get(p.playerId)!.inventory, null],
         rematch: false,
       },
@@ -412,7 +435,7 @@ export class BattleCoordinator {
     p: PlayerSeat,
     def: { readonly kind: 'trainer'; readonly trainer: TrainerDef; readonly rematch: boolean } | { readonly kind: 'league'; readonly league: LeagueTrainer },
     beatId: string | null,
-    at: { readonly x: number; readonly z: number },
+    at: BattleAt,
   ): Promise<StartResult> {
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
     const content = this.deps.content;
@@ -448,6 +471,7 @@ export class BattleCoordinator {
         staticFlag: null,
         x: at.x,
         z: at.z,
+        yaw: at.yaw ?? null,
         inventory: [loaded.get(p.playerId)!.inventory, null],
         rematch: def.kind === 'trainer' && def.rematch,
       },
@@ -459,7 +483,7 @@ export class BattleCoordinator {
   }
 
   /** §30.4.5 step 3: lock both players in one tx (ascending uuid) to read parties; seed = createRng(battleId). */
-  async startPvp(challenger: PlayerSeat, accepter: PlayerSeat, at: { readonly x: number; readonly z: number }): Promise<StartResult> {
+  async startPvp(challenger: PlayerSeat, accepter: PlayerSeat, at: BattleAt): Promise<StartResult> {
     const busy = (): StartResult | null =>
       this.byPlayer.has(challenger.playerId)
         ? { ok: false, code: 'busy', detail: 'inBattle', playerId: challenger.playerId }
@@ -492,6 +516,7 @@ export class BattleCoordinator {
         staticFlag: null,
         x: at.x,
         z: at.z,
+        yaw: at.yaw ?? null,
         inventory: [loaded.get(challenger.playerId)!.inventory, loaded.get(accepter.playerId)!.inventory],
         rematch: false,
       },

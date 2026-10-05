@@ -9,8 +9,8 @@ import type { BufferAttribute, BufferGeometry, InterleavedBufferAttribute, Mater
 import { createMaterialLibraryWith, type MaterialLibrary } from '../src/materials/library.js';
 import type { MaterialsManifest } from '../src/materials/manifest.js';
 import { SURFACE_IDS } from '../src/materials/surfaces.js';
-import type { Dir, Edge, HeightfieldData, Marker, ZonePlanData, ZoneSpec } from '../src/contracts.js';
-import { SET_PIECE_BY_ZONE, getHeightfield, zone as contentZone, zonePlan, type ZoneId } from '@ewa/content';
+import type { Dir, Edge, HeightfieldData, InteriorSpec, Marker, ZonePlanData, ZoneSpec } from '../src/contracts.js';
+import { SET_PIECE_BY_ZONE, getHeightfield, interiorsFor, zone as contentZone, zonePlan, type ZoneId } from '@ewa/content';
 import { INTERIOR_SIZE, edgePoint, lightsFromPlan } from '../src/zone/layout.js';
 
 type Attr = BufferAttribute | InterleavedBufferAttribute;
@@ -152,7 +152,7 @@ export async function countDisposals<T>(fn: () => T | Promise<T>): Promise<{ res
  * A real slice ZoneSpec for render-side tests, from content's zone plan exactly as the client adapter builds it
  * (`packages/client/src/scene/zoneSpecFor.ts`; render tests may not import the client package). Water spec omitted.
  */
-export function realSpec(id: 'mirevale' | 'mire_route', harvestLevel: 0 | 1 | 2 = 0): ZoneSpec {
+export function realSpec(id: ZoneId, harvestLevel: 0 | 1 | 2 = 0): ZoneSpec {
   const z = contentZone(id as ZoneId);
   const heightfield = getHeightfield(z.id);
   const layout = z.kind;
@@ -176,5 +176,23 @@ export function realSpec(id: 'mirevale' | 'mire_route', harvestLevel: 0 | 1 | 2 
   return {
     id: z.id, seed, biome: z.biome, palette: z.palette, generators: z.biome, layout, size: { w: INTERIOR_SIZE[layout], d: INTERIOR_SIZE[layout] }, heightfield,
     warps, setPiece, edges, buildings, props, lights, actors, pickups, tablets, tallGrass, water: null, accentType: z.type, harvestLevel, plan,
+    interiors: interiorSpecsFor(z.id),
   };
+}
+
+/** Content's placed pockets as render `InteriorSpec`s (the client adapter's `interiorSpecsFor`, repeated: render tests may not import the client). */
+export function interiorSpecsFor(zoneId: ZoneId): InteriorSpec[] {
+  return interiorsFor(zoneId).map((p) => {
+    const d = p.def;
+    return {
+      id: d.id, building: d.building, template: d.template, theme: d.theme, x: p.at.x, z: p.at.z, yaw: p.at.yaw, floorY: p.at.floorY, w: d.w, d: d.d,
+      footprint: { x: p.footprint.x, z: p.footprint.z, hw: p.footprint.hw, hd: p.footprint.hd },
+      entry: { lx: d.entry.lx, lz: d.entry.lz }, exit: { lx: d.exit.lx, lz: d.exit.lz },
+      walls: d.walls.map((w) => ({ lx: w.lx, lz: w.lz, hw: w.hw, hd: w.hd, style: w.style })),
+      gates: d.gates.map((g) => ({ lx: g.rect.lx, lz: g.rect.lz, hw: g.rect.hw, hd: g.rect.hd, id: g.id, style: g.style })),
+      switches: d.switches.map((s) => ({ id: s.id, kind: s.kind, lx: s.lx, lz: s.lz })),
+      rooms: d.rooms.map((r) => ({ id: r.id, arena: { lx: r.arena.lx, lz: r.arena.lz }, leaderAt: r.leaderAt === null ? null : { lx: r.leaderAt.lx, lz: r.leaderAt.lz }, bounds: { lx: r.bounds.lx, lz: r.bounds.lz, hw: r.bounds.hw, hd: r.bounds.hd } })),
+      props: d.props.map((q) => ({ kind: q.kind, lx: q.lx, lz: q.lz, yaw: q.yaw, scale: q.scale })),
+    };
+  });
 }

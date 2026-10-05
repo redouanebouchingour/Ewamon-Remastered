@@ -88,9 +88,9 @@ export const SHAKE_PHASE = [0, 1.3, 2.1] as const;
 const DEG = Math.PI / 180;
 const TAU = Math.PI * 2;
 
-/** The §10.7.1 heading yaw in radians. */
-export function headingYaw(h: number): number {
-  return (YAW_BASE + HEADING_STEP * h) * DEG;
+/** The §10.7.1 heading yaw in radians; `baseDeg` is the diorama yaw base (Phase A: a hall's axis, `setYawBase`). */
+export function headingYaw(h: number, baseDeg: number = YAW_BASE): number {
+  return (baseDeg + HEADING_STEP * h) * DEG;
 }
 
 /** §10.7.1 camera offset from the target at pitch −52°: height `d·sin 52°`, horizontal `d·cos 52°`. */
@@ -162,6 +162,7 @@ export class DioramaRig implements CameraRig {
   readonly focus = new Vector3();
   // diorama state
   private heading: 0 | 1 | 2 | 3 = 0;
+  private yawBase: number = YAW_BASE;
   private zoom: 0 | 1 | 2 = DEFAULT_ZOOM_STOP;
   private yaw = headingYaw(0);
   private yawFrom = this.yaw;
@@ -223,9 +224,26 @@ export class DioramaRig implements CameraRig {
     if (this.mode !== 'diorama' || h === this.heading) return;
     this.heading = h;
     this.yawFrom = this.yaw;
-    this.yawTo = this.yaw + angleDelta(this.yaw, headingYaw(h));
+    this.yawTo = this.yaw + angleDelta(this.yaw, headingYaw(h, this.yawBase));
     this.yawT = 0;
   }
+
+  /**
+   * Phase A: the diorama yaw base in degrees (headings become base + 90°·k; the current heading index is kept); null
+   * restores the default diagonal. Eases like a heading turn; during a battle / inspector shot the new yaw applies to
+   * the diorama pose the shot releases to (the shot itself keeps the yaw it was built from).
+   */
+  setYawBase(deg: number | null): void {
+    const b = deg === null || !Number.isFinite(deg) ? YAW_BASE : deg;
+    if (b === this.yawBase) return;
+    this.yawBase = b;
+    this.yawFrom = this.yaw;
+    this.yawTo = this.yaw + angleDelta(this.yaw, headingYaw(this.heading, b));
+    this.yawT = 0;
+  }
+
+  /** The diorama yaw base in degrees (YAW_BASE unless a hall set its axis). */
+  get yawBaseDeg(): number { return this.yawBase; }
 
   setZoomStop(z: 0 | 1 | 2): void {
     if (this.mode !== 'diorama' || z === this.zoom) return;

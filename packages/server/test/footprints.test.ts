@@ -5,7 +5,7 @@
  * footprint. No server code changed; these tests pin the behaviour.
  */
 import { describe, expect, it } from 'vitest';
-import { allZones, encounterTableFor, getHeightfield, isWalkable, isWater, nearestWalkable, solidContains, zone, zonePlan } from '@ewa/content';
+import { allZones, encounterTableFor, getHeightfield, getZoneSurface, interiorFootprintAt, isWalkable, isWater, nearestWalkable, solidContains, zone, zonePlan } from '@ewa/content';
 import type { Heightfield, PlanBuilding, ZoneDef } from '@ewa/content';
 import { createRng } from '@ewa/core';
 import { validateInput } from '../src/rooms/movement';
@@ -92,12 +92,17 @@ describe('the spawn director never places a spawn inside a footprint', () => {
     for (const z of zones) {
       const h = getHeightfield(z.id);
       const plan = zonePlan(z.id);
+      // Phase A: scatter solids overlapping an interior pocket are dropped from the stamp (content interiorPlan);
+      // only the stamped solids are obstacles, and no spawn may land in a pocket's footprint
+      const dropped = new Set(getZoneSurface(z.id).interiorPlan.droppedSolids);
+      const stamped = plan.solids.filter((_, i) => !dropped.has(i));
       let n = 0;
       const ticks = Math.round(12_600 / tuningFor(z)!.targetCount);          // ≈ the same number of rolls per zone
       for (const seed of ['r1-a', 'r1-b', 'r1-c']) {
         for (const s of drive(z, seed, ticks)) {
           const [cx, cz] = sampleCentre(h, s.x, s.z);
-          const hit = plan.solids.find((q) => solidContains(q.shape, cx, cz));
+          const hit = stamped.find((q) => solidContains(q.shape, cx, cz));
+          expect(interiorFootprintAt(z.id, s.x, s.z), `${z.id} spawn in a pocket`).toBeNull();
           expect(hit, `${z.id} spawn (${s.x.toFixed(2)}, ${s.z.toFixed(2)}) inside ${hit?.source} ${hit?.ref}`).toBeUndefined();
           for (const b of plan.buildings) expect(insideWalls(b, s.x, s.z), `${z.id} spawn in ${b.id}`).toBe(false);
           if (s.medium === 'land') expect(isWalkable(h, s.x, s.z)).toBe(true);

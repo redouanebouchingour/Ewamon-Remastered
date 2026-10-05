@@ -16,7 +16,7 @@
  */
 import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
-import { BODIES, QUESTS, harvestStateFor, zone as zoneDef } from '@ewa/content';
+import { BODIES, QUESTS, harvestStateFor, interiorNpcs, interiorTrainers, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
@@ -45,6 +45,7 @@ import { useSettingsStore } from '../state/settings';
 import { useUiStore } from '../state/ui';
 import { FONT, TYPE_COLORS } from '../ui/tokens';
 import { createStepCollider } from './collider';
+import type { StepCollider } from './collider';
 import { beatDialogue, gymPlan, leaguePostDialogue, leagueSpeaker, npcPlan, storyFlagSet, storyHint, trainerPlan } from './dialogue';
 import type { DialogueLines, InteractPlan } from './dialogue';
 import { HudWriter, partyStrip } from './HudWriter';
@@ -52,6 +53,7 @@ import type { HudNameplates } from './HudWriter';
 import { createInputCapture } from './input';
 import type { InputCapture } from './input';
 import { InteractionTargets, PLAYER_RANGE } from './interaction';
+import { pocketActorMax } from './interiors';
 import { LocalPlayerController } from './LocalPlayerController';
 import { RemoteInterpolator } from './RemoteInterpolator';
 import { TRAINER_BACK_M, createSceneDirector } from './SceneDirector';
@@ -148,6 +150,10 @@ class World implements World3D {
   private nameplateLeft = 0;
   /** the other trainer of a pvp battle (their remote actor stands behind the far battler) */
   private battleFoe: string | null = null;
+  /** Phase A: the foe is a director actor (a gym trainer / league trainer in its hall), restaged like a pvp foe */
+  private battleFoeStatic = false;
+  /** the prediction collider of the loaded zone (gates are its removable blockers) */
+  private stepCollider: StepCollider | null = null;
   private devLeft = 0;
   private devOn = false;
   private frames = 0;
@@ -258,6 +264,7 @@ class World implements World3D {
       setInputEnabled: (on) => this.input.setEnabled(on),
       setAccentType: (t) => part3Of(r)?.stage.setAccentType(t),
       reducedMotion: () => getEffectiveSettings().reduced,
+      blockers: () => this.stepCollider,
     });
     this.hudWriter.bind(r.hud);
     this.hudWriter.setConnection(useUiStore.getState().connection);
@@ -601,8 +608,8 @@ class World implements World3D {
     if (me !== undefined) this.input.reconcile(me.x, me.z, me.angle, me.seq);
     this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, this.input.pose.angle, false, false);
     this.renderer.camera.follow(selfId);
-    // statics took rigs: shrink the remote budget
-    const statics = z.npcs.length + z.trainers.length;
+    // statics took rigs: shrink the remote budget (+ the most any one pocket spawns while the player stands in it)
+    const statics = z.npcs.length + z.trainers.length + pocketActorMax(zoneId);
     this.remotes.cap = Math.max(8, ACTOR_POOL_SIZE - 1 - SPECTATOR_RIGS - statics);
     // spawns already in view
     room.state.spawns.forEach((s) => this.spawns?.add(s));
@@ -614,7 +621,8 @@ class World implements World3D {
   }
 
   private onZoneChanged(h: ZoneHandle | null, z: ZoneDef | null): void {
-    this.input.setCollider(h === null ? null : createStepCollider(h.collider));
+    this.stepCollider = h === null ? null : createStepCollider(h.collider);
+    this.input.setCollider(this.stepCollider);
     this.zone = z;
     this.spawns?.reground();
   }
@@ -776,13 +784,18 @@ class World implements World3D {
     switch (t.kind) {
       case 'npc': {
         const npc = z.npcs.find((n) => n.id === t.id);
-        if (npc === undefined) return;
+        if (npc === undefined) {
+          // Phase A: residents and guides inside the pockets talk client-side (the server has no record of them)
+          const inside = interiorNpcs(z.id).find((n) => n.id === t.id);
+          if (inside !== undefined) ui.setDialogue({ speaker: inside.name, lines: inside.lines, index: 0, targetId: inside.id });
+          return;
+        }
         this.runPlan(npcPlan(z.id, npc, this.flags()), npc.id, () => this.ws.send('interact', { targetId: npc.id, kind: 'npc' }));
         return;
       }
       case 'trainer': {
         const plan = trainerPlan(z.id, t.id, this.flags());
-        const tr = z.trainers.find((x) => x.id === t.id);
+        const tr = z.trainers.find((x) => x.id === t.id) ?? interiorTrainers(z.id).find((x) => x.id === t.id);
         if (plan.dialogue === null && tr !== undefined && tr.lines.length > 0) toast('info', `${tr.name}: ${tr.lines[0]}`);
         this.runPlan(plan, t.id, () => this.ws.send('interact', { targetId: t.id, kind: 'npc' }));
         return;
@@ -804,6 +817,13 @@ class World implements World3D {
       }
       case 'warp':
         this.ws.send('interact', { targetId: t.id, kind: 'warp' });
+        return;
+      case 'switch':
+        // the server refuses (toast) unless `requires` is held, sets the flag, and may teleport (a snap re-tracks the pocket)
+        this.ws.send('interact', { targetId: t.id, kind: 'switch' });
+        return;
+      case 'pc':
+        navigateTo('/play/box');
         return;
       case 'healer':
         this.ws.send('interact', { targetId: z.id, kind: 'healer' });
@@ -887,12 +907,15 @@ class World implements World3D {
     return {
       enterBattle: (s) => {
         // from the battle state (the BattleSummary patch can arrive after battleStart)
-        this.battleFoe = s.foeId !== this.ws.selfId ? s.foeId : null;
+        const npcFoe = s.foeNpc !== null && this.director.isStaticActor(s.foeNpc) ? s.foeNpc : null;
+        this.battleFoe = s.foeId !== null && s.foeId !== this.ws.selfId ? s.foeId : npcFoe;
+        this.battleFoeStatic = this.battleFoe !== null && this.battleFoe === npcFoe;
         void this.director.enterBattle(s);
         this.audio.setTheme('battle', 400);
       },
       exitBattle: () => {
         this.battleFoe = null;
+        this.battleFoeStatic = false;
         void this.director.exitBattle();
         if (this.zone !== null) this.audio.setTheme(this.audio.themeFor(this.zone.id, this.zone.biome), 400);
       },
@@ -999,6 +1022,8 @@ class World implements World3D {
 
   private fixedStep(): void {
     this.input.step(STEP_MS);
+    // Phase A: pockets are reached only by warps / switch teleports / corrections; the floor test is allocation-free
+    if (this.ready && this.zoneLoaded) this.director.updatePocket(this.input.pose.x, this.input.pose.z);
     this.remotes.step(STEP_MS, this.input.pose.x, this.input.pose.z);
     this.targets.step(this.input.pose.x, this.input.pose.z, this.worldBlocked());
     this.battle.player.step(STEP_MS);
@@ -1029,7 +1054,7 @@ class World implements World3D {
         // the trainer stands behind their own creature, facing the foe; a pvp foe behind theirs (the remote
         // interpolator wrote its server pose this step — both players are frozen in battle, so this only restages it)
         this.renderer.actors.setTransform(selfId, bf.x - bf.fx * TRAINER_BACK_M, bf.z - bf.fz * TRAINER_BACK_M, Math.atan2(bf.fx, bf.fz), false, false);
-        if (this.battleFoe !== null && this.remotes.isSpawned(this.battleFoe)) {
+        if (this.battleFoe !== null && (this.battleFoeStatic || this.remotes.isSpawned(this.battleFoe))) {
           this.renderer.actors.setTransform(this.battleFoe, bf.x + bf.fx * TRAINER_BACK_M, bf.z + bf.fz * TRAINER_BACK_M, Math.atan2(-bf.fx, -bf.fz), false, false);
         }
       } else {
@@ -1041,6 +1066,8 @@ class World implements World3D {
       this.nameplateLeft = NAMEPLATE_MS;
       this.updateNameplates();
     }
+    // the active pocket drops the walls facing the camera (only on a yaw change)
+    if (this.director.pocket !== null) this.director.syncView(this.cameraYaw());
     // (3)
     this.hudWriter.flush();
     // (4)
@@ -1185,6 +1212,10 @@ class World implements World3D {
         if (n.until !== null && flags.has(n.until)) continue;
         list.push({ id: n.id, name: n.name, guildTag: '', inBattle: false, d });
       }
+    }
+    for (const a of this.director.pocketActors) {
+      const d = Math.hypot(a.x - sx, a.z - sz);
+      if (d <= 18) list.push({ id: a.id, name: a.name, guildTag: '', inBattle: false, d });
     }
     list.sort((a, b) => a.d - b.d);
     const next: HudNameplates = list.slice(0, 16).map(({ id, name, guildTag, inBattle }) => ({ id, name, guildTag, inBattle }));

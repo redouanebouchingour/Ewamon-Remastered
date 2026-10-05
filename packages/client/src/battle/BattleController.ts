@@ -43,8 +43,15 @@ type Cue = Parameters<TimelineTargets['cue']>[0];
 
 /** The render/audio side of a battle. World3D binds it once the renderer exists; null parts are skipped. */
 export interface BattleView {
-  /** `foeId`: the other trainer's player uuid in a pvp battle (their avatar is restaged behind their creature), else null. */
-  enterBattle(summary: { readonly battleId: string; readonly x: number; readonly z: number; readonly format: BattleState['format']; readonly foeId: string | null }): void;
+  /**
+   * `foeId`: the other trainer's player uuid in a pvp battle (their avatar is restaged behind their creature), else null.
+   * `foeNpc`: the content id of an NPC / league trainer foe (Phase A: its hall actor is restaged the same way), else null.
+   * `yaw`: the hall battle axis from `battleStart` (null outside a hall or when unknown, e.g. after a reload).
+   */
+  enterBattle(summary: {
+    readonly battleId: string; readonly x: number; readonly z: number; readonly format: BattleState['format']; readonly foeId: string | null;
+    readonly foeNpc: string | null; readonly yaw: number | null;
+  }): void;
   exitBattle(): void;
   /** `null` clears the position. `key` is unique per creature per battle. */
   setBattler(ref: StageRef, c: CreatureInstance | null, key: string): void;
@@ -110,6 +117,10 @@ const TURN = (n: number): string => `Turn ${n}`;
 function foeOf(state: BattleState, seat: 0 | 1): string | null {
   const other = state.sides[seat === 0 ? 1 : 0];
   return other.kind === 'player' ? other.trainerId : null;
+}
+function foeNpcOf(state: BattleState, seat: 0 | 1): string | null {
+  const other = state.sides[seat === 0 ? 1 : 0];
+  return other.kind === 'npc' ? other.trainerId : null;
 }
 
 /** The battler's species types for its HUD plate (§50.1 #15); [] for an unknown species id. */
@@ -196,6 +207,12 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
   const ui = (): ReturnType<typeof useUiStore.getState> => useUiStore.getState();
 
   let battleId: string | null = null;
+  /**
+   * Where the arena forms: `battleStart.x / z / yaw` when the message carries them (Phase A — the server's hall arena;
+   * `battleStart` arrives BEFORE the BattleSummary state patch, so the summary is not there yet), else the summary,
+   * else the predicted self position.
+   */
+  let arena: { readonly x: number; readonly z: number; readonly yaw: number | null } | null = null;
   let seat: 0 | 1 = 0;
   let format: BattleState['format'] = 'wild';
   let state: BattleState | null = null;       // authoritative
@@ -343,8 +360,18 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     player.play(tl, seat);
   }
 
-  function begin(m: { battleId: string; seat: 0 | 1; format: BattleState['format']; state: BattleState }): void {
+  function arenaFor(id: string): { readonly x: number; readonly z: number; readonly yaw: number | null } {
+    if (arena !== null) return arena;
+    const at = deps.summaryAt(id) ?? deps.selfPosition();
+    return { x: at.x, z: at.z, yaw: null };
+  }
+
+  function begin(m: {
+    battleId: string; seat: 0 | 1; format: BattleState['format']; state: BattleState;
+    x?: number | undefined; z?: number | undefined; yaw?: number | null | undefined;
+  }): void {
     battleId = m.battleId;
+    arena = m.x !== undefined && m.z !== undefined && Number.isFinite(m.x) && Number.isFinite(m.z) ? { x: m.x, z: m.z, yaw: m.yaw ?? null } : null;
     seat = m.seat;
     hud.setSeat(m.seat);
     format = m.format;
@@ -356,8 +383,8 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     prompts = [];
     pendingLog.length = 0;
     resetHpTable(m.state);
-    const at = deps.summaryAt(m.battleId) ?? deps.selfPosition();
-    view?.enterBattle({ battleId: m.battleId, x: at.x, z: at.z, format: m.format, foeId: foeOf(m.state, m.seat) });
+    const at = arenaFor(m.battleId);
+    view?.enterBattle({ battleId: m.battleId, x: at.x, z: at.z, format: m.format, foeId: foeOf(m.state, m.seat), foeNpc: foeNpcOf(m.state, m.seat), yaw: at.yaw });
     view?.setThreat(true);
     for (const side of [0, 1] as const) {
       showBattler(m.state, side, m.state.sides[side].active);
@@ -382,8 +409,8 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       view = v;
       if (v === null || state === null || battleId === null) return;
       // a battle that started before the renderer existed (reload mid-battle): dress it now
-      const at = deps.summaryAt(battleId) ?? deps.selfPosition();
-      v.enterBattle({ battleId, x: at.x, z: at.z, format, foeId: foeOf(state, seat) });
+      const at = arenaFor(battleId);
+      v.enterBattle({ battleId, x: at.x, z: at.z, format, foeId: foeOf(state, seat), foeNpc: foeNpcOf(state, seat), yaw: at.yaw });
       v.setThreat(true);
       for (const side of [0, 1] as const) showBattler(state, side, state.sides[side].active);
       hud.commit();
@@ -533,6 +560,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     }
     hud.clear();
     battleId = null;
+    arena = null;
     state = null;
     preState = null;
     preview = null;

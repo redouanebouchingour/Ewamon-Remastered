@@ -115,6 +115,156 @@ export interface WarpDef {
   readonly label: string;
 }
 
+// ─── interiors (pockets inside the zone, reached by door warps) ──────────────
+
+export type InteriorTemplate = 'gym_hall' | 'league_hall' | 'shop' | 'healer' | 'house_s' | 'house_m';
+export type InteriorTheme =
+  | 'grove'
+  | 'cinder'
+  | 'salt'
+  | 'storm'
+  | 'marrow'
+  | 'vesper'
+  | 'forge'
+  | 'sky'
+  | 'league'
+  | 'shop'
+  | 'healer'
+  | 'house';
+
+/** A point in an interior's local frame: origin at the floor centre, the door on the local +z wall. Metres. */
+export interface LocalPoint {
+  readonly lx: number;
+  readonly lz: number;
+}
+/** An axis-aligned rectangle in the interior's local frame: centre and half extents (x, z). Metres. */
+export interface LocalRect {
+  readonly lx: number;
+  readonly lz: number;
+  readonly hw: number;
+  readonly hd: number;
+}
+
+export type InteriorWallStyle = 'wall' | 'hedge' | 'grate' | 'channel' | 'boulder' | 'chasm' | 'iron' | 'counter' | 'rail';
+/** A solid inside the hall (the physical extent; the walkable mask grows it by the capsule radius). */
+export interface InteriorWall extends LocalRect {
+  readonly style: InteriorWallStyle;
+}
+
+/** A battle room: the arena forms at `arena` (the hall axis is the battle axis); `leader` waits at `leaderAt`. */
+export interface InteriorRoom {
+  readonly id: string;
+  readonly arena: LocalPoint;
+  /** LeagueTrainer id fought here, or null */
+  readonly leader: string | null;
+  readonly leaderAt: LocalPoint | null;
+  readonly bounds: LocalRect;
+}
+
+export type InteriorGateStyle = 'hedge' | 'grate' | 'sluice' | 'barrier' | 'boulder' | 'rune' | 'portcullis';
+/** A per-player door: solid until the player holds every flag of `opensWhen` (never stamped into the heightfield). */
+export interface InteriorGate {
+  readonly id: string;
+  readonly rect: LocalRect;
+  readonly opensWhen: readonly string[];
+  readonly style: InteriorGateStyle;
+}
+
+export type InteriorSwitchKind = 'rootstone' | 'furnace' | 'lever' | 'breaker' | 'keystone' | 'tile' | 'anvil';
+/**
+ * `interact { kind: 'switch' }`: refused unless the player holds every flag of `requires`; then sets `sets` (a
+ * `switch:<zone>:<id>` flag, or null for a plain teleport tile) and, when `warpTo` is given, teleports there.
+ */
+export interface InteriorSwitch {
+  /** globally unique: `<interior id>.<local id>` */
+  readonly id: string;
+  readonly kind: InteriorSwitchKind;
+  readonly lx: number;
+  readonly lz: number;
+  readonly sets: string | null;
+  readonly requires: readonly string[];
+  readonly warpTo: LocalPoint | null;
+  readonly label: string;
+}
+
+export interface InteriorTrainer {
+  /** globally unique: `<interior id>.<local id>`; beaten flag `trainer:<id>:beaten` */
+  readonly id: string;
+  readonly name: string;
+  readonly lx: number;
+  readonly lz: number;
+  /** local yaw the trainer faces (0 = toward local +z, the door) */
+  readonly facing: number;
+  readonly look: string;
+  readonly team: readonly { readonly species: string; readonly level: number }[];
+  readonly lines: readonly string[];
+  readonly reward: number;
+}
+
+export type InteriorNpcRole = 'shopkeeper' | 'nurse' | 'resident' | 'guide';
+export interface InteriorNpc {
+  readonly id: string;
+  readonly name: string;
+  readonly lx: number;
+  readonly lz: number;
+  readonly facing: number;
+  readonly look: string;
+  readonly lines: readonly string[];
+  readonly role: InteriorNpcRole;
+}
+
+export interface InteriorItem {
+  readonly id: string;
+  readonly lx: number;
+  readonly lz: number;
+  readonly item: string;
+  readonly qty: number;
+}
+
+/** Furniture and dressing; `solid` props are also listed in `walls` (style 'wall' or 'counter'). */
+export interface InteriorProp {
+  readonly kind: string;
+  readonly lx: number;
+  readonly lz: number;
+  readonly yaw: number;
+  readonly scale: number;
+}
+
+export interface InteriorDef {
+  /** = the building id (`<zone>.gym`, `<zone>.league`, `<zone>.shop`, `<zone>.healer`, `<zone>.house<k>`) */
+  readonly id: string;
+  readonly zoneId: ZoneId;
+  readonly building: string;
+  readonly template: InteriorTemplate;
+  readonly theme: InteriorTheme;
+  /** the prompt names it: "Enter <label>" */
+  readonly label: string;
+  /** inner floor extent along local x (w) and local z (d); the door is the centre of the +z wall */
+  readonly w: number;
+  readonly d: number;
+  /** where a player arrives through the door */
+  readonly entry: LocalPoint;
+  /** the 'Leave' marker by the door */
+  readonly exit: LocalPoint;
+  readonly rooms: readonly InteriorRoom[];
+  readonly walls: readonly InteriorWall[];
+  readonly gates: readonly InteriorGate[];
+  readonly switches: readonly InteriorSwitch[];
+  readonly trainers: readonly InteriorTrainer[];
+  readonly npcs: readonly InteriorNpc[];
+  readonly items: readonly InteriorItem[];
+  readonly props: readonly InteriorProp[];
+}
+
+/** Where a pocket stands in its zone: the local origin's world position, its yaw, and the flattened floor height. */
+export interface InteriorPlacement {
+  readonly x: number;
+  readonly z: number;
+  /** multiple of π/2 */
+  readonly yaw: number;
+  readonly floorY: number;
+}
+
 export type LinkDir = 'n' | 'e' | 's' | 'w';
 
 export interface ZoneDef {

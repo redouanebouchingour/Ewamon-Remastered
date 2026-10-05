@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-06 Phase A (interiors, themed gym halls, puzzles, correct arenas): the user's decisions — walk inside through the door, the leader visible at the far end, the arena at an authored point in the hall; a unique themed hall per gym with 2–3 gym trainers and one gimmick; everything enterable as pockets inside the same zone; one league hall with four chambers. -->
+
+## 2026-10-06 — `00-spine.md` §3.13 (new), §3.11, §3.10 — interiors: every town building opens into a pocket hall reached by door warps; gym halls with trainers, per-player gates and switch puzzles; Solenne's league hall
+Why: gyms were solid shells — the challenge was an interact point at the door (0, −26) and the arena formed round the player in front of the wall, so its far half (foe, far ring, spectators) sat inside the building; the leader was never visible; Solenne could only challenge the first Warden. The fix is an authored arena inside a real hall.
+Evidence: `packages/content/src/interiors.ts`, `interiorIndex.ts`, `data/interiors.ts`; `packages/content/test/interiors.test.ts` (70 pockets over 9 towns placed, disjoint, walkable floors, all 8 gym puzzles + 4 league chambers solvable by the walker and closed without flags, arena clearance ≥ 6.5 m, determinism); `validate()` green.
+Affects: `@ewa/content` `ZoneSurface.interiors`, the 9 town heightfields (`dist/heightfields/*.json` regenerated), `plan.ts` (Solenne gets the `solenne.league` hall in its gym slot), Solenne's ZoneDef (stale `solenne.league_hall` warp removed; Comptroller Varn and Bursar Quill moved to the hall door), `test/fixtures/r1-pre-move.json` (Solenne re-captured); `@ewa/protocol` (`INTERACT_KINDS` += 'switch', `battleStart` += optional `x`, `z`, `yaw`); `@ewa/render` contracts (`ZoneSpec.interiors`, `InteriorsHandle`, `CameraRig.setYawBase`, `BattleStage.dress(…, hall)`); server, render and client consume them.
+
 <!-- 2026-10-05 KayKit characters: the user's decision "3D people with 2D creatures" (stylised 3D people from the KayKit "Adventurers 2.0" free pack, creatures stay 2D lit billboards). Five entries, newest on top. -->
 
 ## 2026-10-05 — `10-render.md` §10.7.7 — the pixel-art character proposal of 2026-09-30 (`tools/character-pipeline`) is closed unapplied; its output and runtime are deleted

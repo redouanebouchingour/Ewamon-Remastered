@@ -1022,7 +1022,7 @@ export const ZONES: readonly ZoneDef[] = [
     gate: 'ascend',
     encounterTable: 'enc_solenne',
     npcs: [
-      npc('solenne.comptroller_varn', 'Comptroller Odile Varn', 0, -30, 'old_classy_female', [
+      npc('solenne.comptroller_varn', 'Comptroller Odile Varn', -3.5, -22.5, 'old_classy_female', [
         'I have never asked you to trust me. I have asked you to read.',
         'Thirty days.',
       ], { when: 'badge:ascend', until: 'spire_confronted' }),
@@ -1032,7 +1032,7 @@ export const ZONES: readonly ZoneDef[] = [
           { when: 'saw_capital_thinning', lines: ["The, the — I've lived here fifty years."] },
         ],
       }),
-      npc('solenne.bursar_quill', 'Bursar Elias Quill', 6, -34, 'suit_male', ["I've added a column.", 'Costs that appear on paper get argued about.'], { when: 'name_held' }),
+      npc('solenne.bursar_quill', 'Bursar Elias Quill', 3.5, -22.5, 'suit_male', ["I've added a column.", 'Costs that appear on paper get argued about.'], { when: 'name_held' }),
       npc('solenne.hospital_nurse', 'a nurse at the Provision Hospital', 34, 20, 'doctor_female_young', [
         "Dispensary's stocked. Always has been. I've worked here twenty years.",
       ], {
@@ -1050,13 +1050,13 @@ export const ZONES: readonly ZoneDef[] = [
         "'Twelfth of Winter. The lens. I have done a thing and the sacks are full. I will do it again tomorrow and write both down.'",
         'He wrote both down. Every Comptroller since has. Read the second column.',
       ]),
-      lo('lore_solenne_lectern', 0, -24, 'The Public Ledger', [
+      lo('lore_solenne_lectern', -7, -20, 'The Public Ledger', [
         'Working copy at the Observatory; this copy monthly by courier. 1,400 pages. Two columns.',
         'Anyone may read. Register notation on the draw side: species, place, count.',
         'If you can read it, you are one of thirteen people in Ewa who can. Twelve carry devices. One is the Comptroller.',
       ]),
     ],
-    warps: [{ id: 'solenne.league_hall', x: 30, z: -10, toX: 30, toZ: 44, label: 'League hall' }],
+    warps: [],
     shop: TOWN_SHOP(['mythos_orb', 'max_potion', 'full_restore', 'max_revive', 'max_ether', 'rarecandy']),
     healer: true,
     gym: null,

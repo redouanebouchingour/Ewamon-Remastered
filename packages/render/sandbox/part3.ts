@@ -227,7 +227,9 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
 
   if (mode === 'battle') {
     const q = new URLSearchParams(location.search);
-    const at = { x: Number(q.get('ax') ?? focus.x - 0.4), z: Number(q.get('az') ?? focus.z + 9) };   // a clear patch of the part-1 diorama
+    // Phase A: with `&interior=<id>` the battle forms at that hall's arena and stays on its floor
+    const hallInfo = (window as unknown as { __ewaInterior?: { arena: { x: number; z: number }; hall: { x: number; z: number; yaw: number; hw: number; hd: number } } }).__ewaInterior;
+    const at = hallInfo ? hallInfo.arena : { x: Number(q.get('ax') ?? focus.x - 0.4), z: Number(q.get('az') ?? focus.z + 9) };   // a clear patch of the part-1 diorama
     // T2: a stand-in for the client's DOM battle panel (§20.5.6: the bottom 28 % + a 24 px margin); `&panel=0` hides it
     if (q.get('panel') !== '0') {
       const panel = document.createElement('div');
@@ -239,7 +241,7 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
       measure();
       new ResizeObserver(measure).observe(panel);
     }
-    p.stage.dress(at, 'grove', ['walker0']);
+    p.stage.dress(at, 'grove', ['walker0'], hallInfo?.hall);
     p.rig.pushIn(at, 600);
     const mine = species.includes('mossling') ? 'mossling' : species[0]!;
     const foe = species.includes('snapling') ? 'snapling' : species[1]!;

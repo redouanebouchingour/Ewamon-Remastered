@@ -1,17 +1,17 @@
 /**
  * §20.4.3 SceneDirector over a recording renderer: loadZone builds the adapter's spec and spawns the NPCs present for
- * the player's flags + trainers, registers the interactables (the gym at the league marker (0, −26)), plays the
+ * the player's flags + trainers, registers the interactables (the gym leader at its hall `leaderAt`), plays the
  * banner, starts the theme; enterBattle pushes the camera in (Pillar 7) and dresses the arena without unloading;
  * exitBattle undresses + releases; a flags change that changes harvestStateFor calls setHarvestLevel exactly once
  * (§50.4.7 store.test's harvest clause); unloadZone disposes the handle and despawns everything.
  */
 import { describe, expect, it } from 'vitest';
-import { beatDoneFlag, zone } from '@ewa/content';
+import { beatDoneFlag, interiorLeaders, zone } from '@ewa/content';
 import type { Renderer, ZoneHandle, ZoneSpec } from '@ewa/render';
 import { createAudioDirector } from '../src/audio/AudioDirector';
 import { HudWriter } from '../src/scene/HudWriter';
 import { InteractionTargets } from '../src/scene/interaction';
-import { FRAME_SHIFT_M, LEAGUE_MARKER, MARGIN_M, arenaOcclusion, createSceneDirector, pickBattleHeading } from '../src/scene/SceneDirector';
+import { FRAME_SHIFT_M, MARGIN_M, arenaOcclusion, createSceneDirector, pickBattleHeading } from '../src/scene/SceneDirector';
 
 function fakeRenderer() {
   const log: string[] = [];
@@ -50,7 +50,7 @@ function fakeRenderer() {
 }
 
 describe('SceneDirector', () => {
-  it('loads Mirevale: statics for the flags, interactables incl. the gym marker, banner, theme', async () => {
+  it('loads Mirevale: statics for the flags, interactables incl. the gym leader in its hall, banner, theme', async () => {
     const { r, log, actors } = fakeRenderer();
     const hud = new HudWriter(null);
     const prompts: unknown[] = [];
@@ -71,8 +71,9 @@ describe('SceneDirector', () => {
     const z = zone('mirevale');
     for (const n of z.npcs.filter((x) => x.when === null)) expect(actors.has(n.id), n.id).toBe(true);
     const gym = targets.staticEntries().find((e) => e.kind === 'gym');
-    expect(gym).toMatchObject({ id: 'verdant_gym', x: LEAGUE_MARKER.x, z: LEAGUE_MARKER.z });
-    expect(targets.staticEntries().filter((e) => e.kind === 'item')).toHaveLength(z.items.length);
+    const leader = interiorLeaders('mirevale').find((l) => l.leagueId === 'verdant_gym')!;
+    expect(gym).toMatchObject({ id: 'verdant_gym', x: leader.x, z: leader.z });
+    expect(targets.staticEntries().filter((e) => e.kind === 'item' && z.items.some((i) => i.id === e.id))).toHaveLength(z.items.length);
     expect(hud.current().zoneName).toBe('Mirevale');
     expect(audio.state.theme).toBe('grove');
     // walking next to Prof. Wynn prompts "E — Talk to Prof. Wynn"

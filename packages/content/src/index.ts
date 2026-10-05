@@ -35,6 +35,24 @@ export type {
   EncounterTier,
   GroundItemDef,
   HarvestState,
+  InteriorDef,
+  InteriorGate,
+  InteriorGateStyle,
+  InteriorItem,
+  InteriorNpc,
+  InteriorNpcRole,
+  InteriorPlacement,
+  InteriorProp,
+  InteriorRoom,
+  InteriorSwitch,
+  InteriorSwitchKind,
+  InteriorTemplate,
+  InteriorTheme,
+  InteriorTrainer,
+  InteriorWall,
+  InteriorWallStyle,
+  LocalPoint,
+  LocalRect,
   LeagueStage,
   LeagueTeamMember,
   LeagueTrainer,
@@ -187,6 +205,43 @@ export {
   stampFootprints,
   waterBodies,
 } from './plan';
+
+// ─── interiors (pockets reached by door warps) ───────────────────────────────
+export type { InteriorPlan, InteriorWalk, PlacedInterior, WorldGate, WorldLeader, WorldSwitch } from './interiors';
+export {
+  ARENA_CLEARANCE_M,
+  ARENA_SLOT_M,
+  INTERIOR_EDGE_CLEAR_M,
+  INTERIOR_SCREEN_M,
+  INTERIOR_WALL_H,
+  INTERIOR_WALL_T,
+  checkInterior,
+  inFootprint,
+  interiorDefFor,
+  localToWorld,
+  localYawToWorld,
+  onFloor,
+  planInteriors,
+  rectToWorld,
+  stampInteriors,
+  walkInterior,
+  worldToLocal,
+} from './interiors';
+export {
+  gatesClosedFor,
+  interiorArenaFor,
+  interiorAt,
+  interiorFootprintAt,
+  interiorGates,
+  interiorItems,
+  interiorLeaders,
+  interiorNpcs,
+  interiorSwitches,
+  interiorTrainers,
+  interiorWarps,
+  interiorsFor,
+} from './interiorIndex';
+export { GYM_HALL, LEAGUE_HALL, interiorTrainerFlag, switchFlag } from './data/interiors';
 
 // ─── roster + validate ───────────────────────────────────────────────────────
 export { childrenOf, computeRosterReport, stageOf } from './roster';

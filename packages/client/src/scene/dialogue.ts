@@ -92,9 +92,12 @@ export function trainerPlan(zoneId: ZoneId, trainerId: string, flags: ReadonlySe
 }
 
 /**
- * The gym door. A beat Mira speaks (grove_stone, bloom_after) runs first, exactly like the server (§30.4.8 step 1).
- * Otherwise a gym the server will let the player fight opens the leader's `pre` lines and challenges on finish; one
- * it will refuse (badge held, story gate, previous badge missing) is sent at once for the server's toast.
+ * A league trainer, challenged where it waits in its hall (Phase A: the gym leader at its `leaderAt`, the Wardens and
+ * the Champion in Solenne's league chambers). A beat the trainer speaks (grove_stone, bloom_after) runs first, exactly
+ * like the server (§30.4.8 step 1). Otherwise a fight the server will accept opens the trainer's `pre` lines and
+ * challenges on finish; one it will refuse is sent at once for the server's toast. The refusal rules mirror the
+ * server's `leagueRefusal`: gyms — badge held, story gate, previous badge missing; Wardens — already beaten, fewer than
+ * eight badges, the previous Warden not beaten; the Champion — already beaten, any Warden not beaten.
  */
 export function gymPlan(zoneId: ZoneId, leagueId: string, flags: ReadonlySet<string>, badges: readonly BadgeId[]): InteractPlan {
   const beat = nextStoryBeat(zoneId, flags);
@@ -103,12 +106,23 @@ export function gymPlan(zoneId: ZoneId, leagueId: string, flags: ReadonlySet<str
     return { dialogue: { speaker: leagueSpeaker(leagueId), lines: beat.lines, beatId: beat.id }, sendOnFinish: beat.battle !== null };
   }
   const lt = LEAGUE.find((l) => l.id === leagueId);
-  if (lt === undefined || lt.stage !== 'gym' || lt.badge === null || lt.pre.length === 0) return SEND_NOW;
-  if (badges.includes(lt.badge)) return SEND_NOW;
+  if (lt === undefined || lt.pre.length === 0) return SEND_NOW;
   const gate = leagueStoryGate(lt.id);
   if (gate !== null && !flags.has(gate)) return SEND_NOW;
-  const prev = LEAGUE.find((l) => l.stage === 'gym' && l.order === lt.order - 1);
-  if (prev?.badge != null && !badges.includes(prev.badge)) return SEND_NOW;
+  const beaten = (l: { readonly setsFlags: readonly string[] }): boolean => l.setsFlags.length > 0 && l.setsFlags.every((f) => flags.has(f));
+  if (lt.stage === 'gym') {
+    if (lt.badge === null || badges.includes(lt.badge)) return SEND_NOW;
+    const prev = LEAGUE.find((l) => l.stage === 'gym' && l.order === lt.order - 1);
+    if (prev?.badge != null && !badges.includes(prev.badge)) return SEND_NOW;
+  } else {
+    if (beaten(lt)) return SEND_NOW;
+    const elites = LEAGUE.filter((l) => l.stage === 'elite');
+    if (lt.stage === 'elite') {
+      if (badges.length < 8) return SEND_NOW;
+      const prev = elites.find((l) => l.order === lt.order - 1);
+      if (prev !== undefined && !beaten(prev)) return SEND_NOW;
+    } else if (elites.some((l) => !beaten(l))) return SEND_NOW;
+  }
   return { dialogue: { speaker: leagueSpeaker(lt.id), lines: lt.pre, beatId: null }, sendOnFinish: true };
 }
 

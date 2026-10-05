@@ -12,7 +12,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LEAGUE, STORY, beatDoneFlag, zone } from '@ewa/content';
 import type { BadgeId } from '@ewa/content';
-import { gymPlan, leaguePostDialogue, npcPlan, storyFlagSet, storyHint, trainerPlan } from '../src/scene/dialogue';
+import { gymPlan, leaguePostDialogue, leagueSpeaker, npcPlan, storyFlagSet, storyHint, trainerPlan } from '../src/scene/dialogue';
 import { useSessionStore } from '../src/state/session';
 import { useUiStore } from '../src/state/ui';
 import { DialogueBox } from '../src/world/DialogueBox';
@@ -68,6 +68,25 @@ describe('interact plans (§20.4.7, §30.4.8 mirrored on the client)', () => {
     // her post lines after a win carry the concession line
     expect(leaguePostDialogue('verdant_gym')?.lines).toEqual(mira.post);
     expect(leaguePostDialogue(null)).toBeNull();
+  });
+
+  it("Solenne's chambers (Phase A): a Warden's / the Champion's pre lines only when the server will accept the fight", () => {
+    const SEND = { dialogue: null, sendOnFinish: false };
+    const eight = LEAGUE.filter((l) => l.stage === 'gym').map((l) => l.badge!) as BadgeId[];
+    const pre = (id: string) => ({ dialogue: { speaker: leagueSpeaker(id), lines: LEAGUE.find((l) => l.id === id)!.pre, beatId: null }, sendOnFinish: true });
+    const beaten = (...ids: string[]) => ids.flatMap((id) => LEAGUE.find((l) => l.id === id)!.setsFlags);
+    // fewer than eight badges: the server's toast
+    expect(gymPlan('solenne', 'veil', flags([], eight.slice(0, 7)), eight.slice(0, 7))).toEqual(SEND);
+    // eight badges: Veil's pre lines, the challenge on finish
+    expect(gymPlan('solenne', 'veil', flags([], eight), eight)).toEqual(pre('veil'));
+    // the next Warden waits for the previous one; a beaten Warden is no fight
+    expect(gymPlan('solenne', 'aurelia', flags([], eight), eight)).toEqual(SEND);
+    expect(gymPlan('solenne', 'aurelia', flags(beaten('veil'), eight), eight)).toEqual(pre('aurelia'));
+    expect(gymPlan('solenne', 'veil', flags(beaten('veil'), eight), eight)).toEqual(SEND);
+    // the Champion: every Warden first
+    expect(gymPlan('solenne', 'zeon', flags(beaten('veil', 'aurelia'), eight), eight)).toEqual(SEND);
+    expect(gymPlan('solenne', 'zeon', flags(beaten('veil', 'aurelia', 'kirei'), eight), eight)).toEqual(pre('zeon'));
+    expect(gymPlan('solenne', 'zeon', flags(beaten('veil', 'aurelia', 'kirei', 'zeon'), eight), eight)).toEqual(SEND);
   });
 
   it('the story hint walks the Act I chain', () => {

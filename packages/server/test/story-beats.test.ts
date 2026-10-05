@@ -8,12 +8,11 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { matchMaker } from '@colyseus/core';
-import { beatDoneFlag, getHeightfield, league, nearestWalkable } from '@ewa/content';
+import { beatDoneFlag, getHeightfield, interiorLeaders, league, nearestWalkable } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
 import { TRAINER_EXP, calcMaxHp } from '@ewa/core';
 import type { Action, BattleState } from '@ewa/core';
 import type { ZoneRoom } from '../src/rooms/ZoneRoom';
-import { LEAGUE_MARKER } from '../src/rooms/interactables';
 import { api, content, enter, ofType, placePlayer, rawQuery, register, sleep, snapshot, startServer, storyOnly, waitFor } from './helpers';
 import type { Account, Joined, TestServer } from './helpers';
 
@@ -89,7 +88,9 @@ async function interact(j: Joined, kind: 'npc' | 'gym', targetId: string): Promi
   return j.msgs.slice(n);
 }
 
-const GYM_AT = { x: LEAGUE_MARKER.x, z: LEAGUE_MARKER.z + 2.5 };
+/** Phase A: Mira waits in her hall (`mirevale.gym`); stand 2.5 m in front of her, toward the arena. */
+const MIRA = interiorLeaders('mirevale').find((l) => l.leagueId === 'verdant_gym')!;
+const GYM_AT = { x: MIRA.x + Math.sign(MIRA.arena.x - MIRA.x) * 2.5, z: MIRA.z + Math.sign(MIRA.arena.z - MIRA.z) * 2.5 };
 
 describe('Act I slice chain (§3.5 / §30.4.8, story-bible §5.2 beats 1–4)', () => {
   it('wynn → sable (beat battle) → the gym door (grove_stone) → Mira (league, her content team) → bloom_after; the badge only from the win', async () => {
@@ -182,7 +183,7 @@ describe('Act I slice chain (§3.5 / §30.4.8, story-bible §5.2 beats 1–4)', 
   it('the badge is never written by a forged interact: out of range, an unknown league id, or a gym of another town', async () => {
     const acc = await register(s, 'cindercap');
     await s.repos.db.transaction((tx) => s.repos.progress.setFlags(tx, acc.id, ['met_wynn', 'met_sable', 'saw_thinning', beatDoneFlag('first_witness'), beatDoneFlag('mire_rival'), beatDoneFlag('grove_stone')], new Date()));
-    const j = await inZone(acc, 'mirevale', 0, 6); // 32 m from the door
+    const j = await inZone(acc, 'mirevale', MIRA.x, MIRA.z + 26); // in the hall, AOI-near but 26 m from Mira
     const snap = await snapshot(s, acc.id);
     let out = await interact(j, 'gym', 'verdant_gym');
     expect(ofType(out, 'error')[0]).toMatchObject({ code: 'notAllowed', detail: 'tooFar' });

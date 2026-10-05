@@ -82,6 +82,11 @@ export type ServerMessage =
       readonly state: BattleState;
       readonly events: readonly BattleEvent[];
       readonly stateDigest: string;
+      /** where the arena forms (a hall's authored arena point inside an interior, else the player's position) */
+      readonly x?: number;
+      readonly z?: number;
+      /** the battle axis yaw inside a hall (the pocket's yaw), null/absent in the open world */
+      readonly yaw?: number | null;
     }
   | {
       readonly type: 'battleEvents';
@@ -203,6 +208,9 @@ export const BattleStartMsg = z.object({
   state: BattleStateSchema,
   events: BattleEvents,
   stateDigest: Digest,
+  x: z.number().finite().optional(),
+  z: z.number().finite().optional(),
+  yaw: z.number().finite().nullable().optional(),
 });
 export const BattleEventsMsg = z.object({
   type: z.literal('battleEvents'),

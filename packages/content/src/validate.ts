@@ -58,6 +58,7 @@ import { computeRosterReport } from './roster';
 import { getZoneSurface, isWalkable, nearestWalkable, playableBounds, reachableWithin, walkableComponent, walkableRatio, waterRatio } from './heightfield';
 import type { ZoneSurface } from './heightfield';
 import { TOWN_LAYOUT, solidContains } from './plan';
+import { checkInterior, interiorDefFor, trainersOf, warpsOf } from './interiors';
 import { beatDoneFlag, BEAT_DONE_PREFIX } from './story';
 
 /** Legacy orb prices (§3.10 rule 10: "orb prices are the legacy values"). */
@@ -677,6 +678,33 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
           }
           if (!ok) err(`zone ${z.id}: link ${dir} → ${z.links[dir]} has no reachable sample in its handover band`);
         }
+      }
+      // interiors: every town building has a pocket; every pocket's puzzle, warps, arena and points hold up
+      for (const b of surface.plan.buildings) {
+        if (z.kind === 'town' && interiorDefFor(z, b) === null) err(`zone ${z.id}: building ${b.id} has no interior template`);
+      }
+      for (const u of surface.interiorPlan.unplaced) err(`zone ${z.id}: no pocket fits the interior of ${u}`);
+      const pockets = surface.interiors;
+      for (let a = 0; a < pockets.length; a++) {
+        const p = pockets[a]!;
+        const f = p.footprint;
+        const bnd = ZONE_SIZE[z.kind] / 2 - ZONE_MARGIN;
+        if (Math.abs(f.x) + f.hw > bnd || Math.abs(f.z) + f.hd > bnd) err(`zone ${z.id}: pocket ${p.def.id} leaves the playable interior`);
+        for (let b = a + 1; b < pockets.length; b++) {
+          const q = pockets[b]!.footprint;
+          if (Math.abs(f.x - q.x) < f.hw + q.hw && Math.abs(f.z - q.z) < f.hd + q.hd) err(`zone ${z.id}: pockets ${p.def.id} and ${pockets[b]!.def.id} overlap`);
+        }
+        for (const e of checkInterior(h, p)) err(`zone ${z.id}: ${e}`);
+        for (const w of warpsOf(p)) { if (reach !== null && w.id.endsWith('.in')) target(`warp ${w.id}`, w.x, w.z, INTERACT_RANGE_M); }
+        for (const t of trainersOf(p)) {
+          if (t.team.length < 1 || t.team.length > 6) err(`zone ${z.id}: interior trainer ${t.id} team size ${t.team.length}`);
+          for (const m of t.team) {
+            if (!speciesById.has(m.species)) err(`zone ${z.id}: interior trainer ${t.id} species '${m.species}' unknown`);
+            if (m.level < 1 || m.level > 100) err(`zone ${z.id}: interior trainer ${t.id} level ${m.level}`);
+          }
+          if (!LOOKS.includes(t.look)) err(`zone ${z.id}: interior trainer ${t.id} look '${t.look}' unknown`);
+        }
+        for (const it of p.def.items) if (!items.some((x) => x.id === it.item) && !consumables.some((x) => x.id === it.item)) err(`zone ${z.id}: interior item ${it.id} '${it.item}' unknown`);
       }
       const t = ENCOUNTER_TABLES.find((x) => x.zoneId === z.id);
       if (t !== undefined && t.slots.some((s) => s.medium === 'water')) {

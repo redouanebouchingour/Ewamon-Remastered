@@ -55,7 +55,9 @@ process), `S<n>` (spec gaps) or `W<n>` (spawn director).
 - **R4 — `ZoneUserData` additions:** `flags`, `badges`, `inventory` (caches the spec's §30.4.8 / §30.2.7
   already assume), `handover` / `arrival` / `handoverCooldownUntil`, `replaced`, `handoverDone`, `moved`,
   `rejects`, `unknown`. `ZoneAuth.ip` carries the socket IP for the per-IP socket count.
-- **R5 — gym marker.** Content has no coordinate for a gym door. The server fixes `LEAGUE_MARKER = (0, −26)`
+- **R5 — gym marker.** *(Superseded by Phase A interiors, 2026-10-06: league trainers are challenged at their
+  `interiorLeaders` spot inside their hall; the marker below is only the fallback for a league trainer with no hall.)*
+  Content has no coordinate for a gym door. The server fixes `LEAGUE_MARKER = (0, −26)`
   (the plaza ring's north side) in every town with a gym and in `solenne` (Wardens / Champion), checked at
   4 m. **Open question for the client/render agents:** place the gym door there, or add `ZoneDef.gymAt` to
   content and point `rooms/interactables.ts` at it.
@@ -563,3 +565,45 @@ spawn rolls each never place a spawn whose sample is inside a footprint or insid
 the room's existing `nearestWalkable` snap places players 0.5 m away at (−50, 0.5). `movement.test.ts`'s thin-wall
 case, vacuous before (mire_route had no thin wall), now runs against a fence / post and got a `dtMs` inside the speed
 cap.
+
+# Phase A interiors (2026-10-06)
+
+Every town building opens into a pocket hall in the zone's own outer band (content `interiors.ts` /
+`interiorIndex.ts`). Walls and screens are stamped `walkable = 0`, so movement validation refuses them unchanged.
+
+- **Interact targets** (`rooms/interactables.ts`): `warp` = `zone.warps ∪ interiorWarps`; `npc` also resolves hall
+  trainers (`interiorTrainers`, plain `TrainerDef`s → `kind: 'trainer'`, flag `trainer:<id>:beaten`, no rematch);
+  `item` also resolves `interiorItems` (same `item:<zone>:<id>` flag); `gym` is checked at the leader's own
+  `interiorLeaders` x/z (4 m) — `LEAGUE_MARKER` is only the fallback for a league trainer without a hall (supersedes
+  R5); new `switch` kind from `interiorSwitches`. Interior NPCs (shopkeepers, residents) are client-local and never
+  resolve.
+- **Battle position** (`ZoneRoom.battleAt`): `interiorArenaFor(zone, x, z) ?? player position`, used for every
+  `startNpc` / `startStatic` (story-beat battles included) and for pvp (the midpoint). Wild battles keep the player
+  position (spawns never stand in a pocket). `BattleSession.yaw` (new, `null` outside a hall) and `battleStart` now
+  carry `x`, `z`, `yaw` for every sender (npc, static, wild, pvp all go through `open`).
+- **Switches** (`case 'switch'`): every `requires` flag held, else toast + `error notAllowed 'switchLocked'`; a
+  non-null `sets` not yet held is written in one transaction (`progress.setFlags`), applied, and sent as
+  `progressionOnly({ flags })`; a `warpTo` teleports through the same snap as warps (`ZoneRoom.teleport`) — also when
+  the flag is already held.
+- **Per-player gates**: `ZoneUserData.closedGates` (the `.solid`s of `gatesClosedFor(zone, flags)`; the shared empty
+  `NO_GATES` in zones without gates) is passed to `validateInput` as `MovePrev.closedGates`; `standable` /
+  `segmentStandable` refuse a sample inside one. It is computed on join (handover arrivals join through the same path)
+  and recomputed by `applyFlags` only when a flag is new and some gate is still shut. `applyFlags` is now the only
+  writer of `ud.flags` after join: the battle-end badge path (`onProgress` → `badge:<id>`) was writing the set
+  directly and now goes through it; battle-end flags (`trainer:<id>:beaten`, `elite:*:beaten`) already did.
+- **Spawn director**: a roll inside a pocket footprint (`interiorFootprintAt`) is skipped like an unwalkable one (no
+  extra draw, seeded sequences outside pockets unchanged).
+- **League order** is unchanged (`leagueRefusal`); the Wardens are now fought at their chambers of `solenne.league`,
+  each chamber gate opening on the previous Warden's `elite:*:beaten`.
+- **Tests**: `test/interiors.test.ts` (10 tests: pure gate validation; spawn rolls never in a pocket; door warps both
+  ways + a hall wall refused; a gate refused → opened by a trainer win → for that player only → open on join from a
+  stored flag; Mira at the hall arena with `battleStart` x/z/yaw and nothing at the old door marker; an open-world
+  battle keeps the position and `yaw: null`; switch `requires` / `sets` once / `warpTo` incl. with the flag held;
+  Solenne Wardens in order with the c1 gate opened by the Veil win; a full Mirevale walk with real inputs → badge).
+  `story-beats.test.ts` now challenges Mira 2.5 m in front of her in the hall (was the (0, −23.5) door marker); the
+  forged-interact "too far" cases (story-beats, authority A6) stand 26 m away inside the hall (the old spot is outside the AOI now → notFound).
+  `footprints.test.ts`'s spawn check uses the STAMPED solids (content drops scatter solids overlapping a pocket from
+  the stamp, `interiorPlan.droppedSolids`) and also asserts no spawn in a pocket.
+- **Open (content/render)**: a dropped scatter solid is dropped when its circle merely OVERLAPS a pocket footprint,
+  so a tree/rock whose centre is outside the footprint (e.g. skyrend `tree@41.82,53.71` between house2 and house3)
+  loses its walk block while — unless render also filters `droppedSolids` — it may still be drawn.

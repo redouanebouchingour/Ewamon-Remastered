@@ -7,11 +7,16 @@
  * exactly two fields — `heightfield` (its digest: footprints are stamped into `walkable`) and the new `plan` — and
  * the test below proves every other field is byte-identical to the adapter's output before the move
  * (`packages/content/test/fixtures/r1-pre-move.json`, captured at HEAD 689fd78).
+ *
+ * Phase A: the snapshot was re-baselined for the new `interiors` field (content's pockets, flattened), which the R1
+ * comparison excludes like `plan`. Solenne's plan changed deliberately (the league hall stands in its gym slot, its
+ * stale `league_hall` warp is gone, two Act III NPCs moved to the hall door), so the fixture's Solenne `specFields`
+ * were re-captured (see the fixture's `about`); the other 20 zones are byte-identical to the pre-move capture.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { fnv1a32 } from '@ewa/core';
-import { allZones, getHeightfield, isWalkable, zonePlan, type HarvestState } from '@ewa/content';
+import { LEAGUE, allZones, getHeightfield, interiorWarps, interiorsFor, isWalkable, zonePlan, type HarvestState } from '@ewa/content';
 import { INTERIOR_SIZE, LIGHT_BUDGET, SET_PIECE_EXTENT, doorOf, footprintDistance, layoutOf, planLayout, type ZoneSpec } from '@ewa/render';
 import { SET_PIECE_BY_ZONE, zoneSpecFor } from '../src/scene/zoneSpecFor';
 
@@ -49,11 +54,11 @@ describe('§20.4.4 zoneSpecFor', () => {
     expect(digests).toMatchSnapshot();
   });
 
-  it('R1: every field but heightfield and the new plan is byte-identical to the pre-move adapter output (all 21 zones)', () => {
+  it('R1: every field but heightfield, the new plan and the Phase A interiors is byte-identical to the pre-move adapter output (all 21 zones)', () => {
     for (const z of allZones()) {
       const s = zoneSpecFor(z, 'intact');
       const before = PRE_MOVE.zones[z.id]!;
-      const { heightfield, plan, ...rest } = s;
+      const { heightfield, plan, interiors: _interiors, ...rest } = s;
       const now: Record<string, string> = {};
       for (const [k, v] of Object.entries(rest)) now[k] = fieldDigest(v);
       expect(now, z.id).toEqual(before.specFields);
@@ -119,7 +124,9 @@ describe('§20.4.4 zoneSpecFor', () => {
     for (const z of allZones()) {
       const s = zoneSpecFor(z, 'intact');
       const gym = s.buildings.filter((b) => b.kind === 'gym');
-      expect(gym.length).toBe(z.gym !== null ? 1 : 0);
+      // a gym town's gym, or Solenne's league hall (Phase A: it stands in the gym slot)
+      const league = LEAGUE.some((l) => l.zoneId === z.id && l.stage !== 'gym');
+      expect(gym.length).toBe(z.gym !== null || league ? 1 : 0);
       for (const g of gym) {
         const d = doorOf(g);
         expect(d.x).toBeCloseTo(0, 6);
@@ -130,7 +137,8 @@ describe('§20.4.4 zoneSpecFor', () => {
         expect(s.buildings.length).toBeLessThanOrEqual(10 + z.warps.length);
       }
       const points = [...s.actors, ...s.pickups, ...s.tablets];
-      for (const b of s.buildings) for (const p of points) expect(footprintDistance(b, p.x, p.z)).toBeGreaterThan(2);
+      // ≥ 2 m (Phase A: Solenne's lectern stands exactly 2 m in front of the league hall, which now fills the gym slot)
+      for (const b of s.buildings) for (const p of points) expect(footprintDistance(b, p.x, p.z)).toBeGreaterThanOrEqual(2);
       const shadow = s.lights.filter((l) => l.castShadow).length;
       expect(shadow).toBeLessThanOrEqual(LIGHT_BUDGET.shadowCasters - 2);   // 2 arena beacons stay free
       expect(s.lights.length - shadow).toBeLessThanOrEqual(LIGHT_BUDGET.nonShadow);
@@ -141,6 +149,34 @@ describe('§20.4.4 zoneSpecFor', () => {
       const spX = 0; const spZ = s.layout === 'route' ? null : 0;
       if (spZ !== null) for (const p of points) expect(Math.abs(p.x - spX) < ext.hw * 0.5 && Math.abs(p.z - spZ) < ext.hd * 0.5).toBe(false);
     }
+  });
+
+  it("Phase A: spec.interiors is content's pockets flattened (deterministic); pocket door warps stay out of spec.warps", () => {
+    for (const z of allZones()) {
+      const s = zoneSpecFor(z, 'intact');
+      const pockets = interiorsFor(z.id);
+      expect(s.interiors).toBeDefined();
+      expect(JSON.stringify(s.interiors)).toBe(JSON.stringify(zoneSpecFor(z, 'harvested').interiors));
+      expect(s.interiors!.map((i) => i.id)).toEqual(pockets.map((p) => p.def.id));
+      if (z.kind !== 'town') expect(s.interiors).toEqual([]);
+      const ids = new Set(s.warps.map((w) => w.id));
+      for (const w of interiorWarps(z.id)) {
+        expect(ids.has(w.id), w.id).toBe(false);
+        expect(ids.has(`${w.id}:to`), w.id).toBe(false);
+      }
+      for (const [k, spec] of s.interiors!.entries()) {
+        const p = pockets[k]!;
+        expect(spec).toMatchObject({ building: p.def.building, template: p.def.template, theme: p.def.theme, x: p.at.x, z: p.at.z, yaw: p.at.yaw, floorY: p.at.floorY, w: p.def.w, d: p.def.d });
+        expect(spec.footprint).toEqual({ x: p.footprint.x, z: p.footprint.z, hw: p.footprint.hw, hd: p.footprint.hd });
+        expect(spec.gates).toEqual(p.def.gates.map((g) => ({ ...g.rect, id: g.id, style: g.style })));
+        expect(spec.switches.map((x) => x.id)).toEqual(p.def.switches.map((x) => x.id));
+        expect(spec.rooms.map((r) => r.leaderAt)).toEqual(p.def.rooms.map((r) => r.leaderAt));
+        expect(spec.props).toEqual(p.def.props);
+        expect(spec.walls).toEqual(p.def.walls);
+      }
+    }
+    expect(zoneSpecFor(allZones().find((z) => z.id === 'mirevale')!, 'intact').interiors!.some((i) => i.template === 'gym_hall')).toBe(true);
+    expect(zoneSpecFor(allZones().find((z) => z.id === 'solenne')!, 'intact').interiors!.some((i) => i.template === 'league_hall')).toBe(true);
   });
 
   it('builds a WaterSpec from the largest heightfield water body when there is water', () => {

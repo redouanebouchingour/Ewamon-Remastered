@@ -12,7 +12,7 @@
  * to, the biome light styles, the terrain splat and the scatter keep-clear test. `planLayout` survives only for the
  * capture harness (`packages/client/src/harness/anchors.ts`) and is asserted equal to content's plan.
  */
-import type { BuildingSpec, Dir, Edge, HeightfieldData, Layout, Marker, SetPieceId, TypeName, ZonePlanData, ZoneSpec } from '../contracts.js';
+import type { BuildingSpec, Dir, Edge, HeightfieldData, InteriorSpec, Layout, Marker, SetPieceId, TypeName, ZonePlanData, ZoneSpec } from '../contracts.js';
 import type { LightKind, LightSource } from '../descriptors.js';
 import { FIELD_MARGIN, waterBodies, type Bounds, type WaterBody } from '../terrain/field.js';
 import { createPrng, valueNoise } from './prng.js';
@@ -499,15 +499,42 @@ export function lightsFromPlan(lights: readonly PlanLightData[], biome: string, 
 /** Signed layer fields at a point (positive = inside): the terrain mesh splits triangles on their zero lines. */
 export interface SplatFields { plaza: number; path: number; detail: number }
 
+/** Phase A: a pocket as the splat / scatter see it — the paved rect (floor + wall, local frame) and the outer footprint AABB. */
+export interface PocketRect {
+  readonly x: number; readonly z: number; readonly yaw: number;
+  /** half extents of the floor + the 0.4 m wall (paved, crisp edge) */
+  readonly hw: number; readonly hd: number;
+  /** world AABB of the outer footprint (floor + wall + screen): no scatter inside it */
+  readonly fx: number; readonly fz: number; readonly fhw: number; readonly fhd: number;
+}
+
+/** Wall thickness of a pocket (content `INTERIOR_WALL_T`). */
+export const POCKET_WALL_T = 0.4;
+
+export function pocketRects(interiors: readonly InteriorSpec[] | undefined): PocketRect[] {
+  return (interiors ?? []).map((p) => ({
+    x: p.x, z: p.z, yaw: p.yaw, hw: p.w / 2 + POCKET_WALL_T, hd: p.d / 2 + POCKET_WALL_T,
+    fx: p.footprint.x, fz: p.footprint.z, fhw: p.footprint.hw, fhd: p.footprint.hd,
+  }));
+}
+
+/** True when (x, z) lies within `pad` of a pocket's outer footprint (Phase A: scatter never stands there). */
+export function inPocket(pockets: readonly PocketRect[], x: number, z: number, pad = 0): boolean {
+  for (const p of pockets) if (Math.abs(x - p.fx) < p.fhw + pad && Math.abs(z - p.fz) < p.fhd + pad) return true;
+  return false;
+}
+
 export interface SplatContext {
   readonly plan: ZoneLayoutPlan;
   readonly roads: readonly Road[];            // plan.roads + door paths
   readonly buildings: readonly BuildingSpec[];
   readonly salt: number;
+  /** Phase A pockets (paved; scatter-free footprints). */
+  readonly pockets: readonly PocketRect[];
 }
 
-export function createSplatContext(plan: ZoneLayoutPlan, buildings: readonly BuildingSpec[], seed: number): SplatContext {
-  return { plan, roads: [...plan.roads, ...plan.doorPaths], buildings, salt: seed & 0xffff };
+export function createSplatContext(plan: ZoneLayoutPlan, buildings: readonly BuildingSpec[], seed: number, interiors?: readonly InteriorSpec[]): SplatContext {
+  return { plan, roads: [...plan.roads, ...plan.doorPaths], buildings, salt: seed & 0xffff, pockets: pocketRects(interiors) };
 }
 
 /**
@@ -520,6 +547,12 @@ export function splatAt(c: SplatContext, x: number, z: number, out: SplatFields)
   const n1 = valueNoise(x * 0.9, z * 0.9, c.salt);
   const n2 = valueNoise(x * 0.23, z * 0.23, c.salt + 7);
   out.plaza = plan.plaza ? plan.plaza.r - Math.hypot(x - plan.plaza.x, z - plan.plaza.z) : -1e3;
+  // Phase A: pocket floors (+ walls) are paved with a crisp edge (the hall's themed floor and the arena sit on it)
+  for (const p of c.pockets) {
+    const [lx, lz] = toLocal(p, x, z);
+    const inside = Math.min(p.hw - Math.abs(lx), p.hd - Math.abs(lz));
+    if (inside > out.plaza) out.plaza = inside;
+  }
   let rd = Infinity; let pathRd = Infinity;
   for (const r of c.roads) {
     const d = distToPolyline(r.points, x, z) - r.width / 2;

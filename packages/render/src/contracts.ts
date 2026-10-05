@@ -89,7 +89,57 @@ export interface ZoneSpec {
   readonly accentType: TypeName | null;                       // gym beacon + arena ring colour
   readonly harvestLevel: HarvestLevel;
   readonly plan: ZonePlanData;                                // content's zone plan (audit R1): the layout the builder lays out
+  /** Phase A: the town's pockets (one hall per building, reached by door warps); absent / [] outside towns. */
+  readonly interiors?: readonly InteriorSpec[];
 }
+
+// ---- Phase A interiors (content `PlacedInterior`, flattened by the client adapter) --------------------------------
+
+/** A point / rect in a pocket's LOCAL frame: origin at the floor centre, door in the middle of the local +z wall. */
+export interface InteriorLocalPoint { readonly lx: number; readonly lz: number }
+export interface InteriorLocalRect { readonly lx: number; readonly lz: number; readonly hw: number; readonly hd: number }
+export type InteriorTemplateId = 'gym_hall' | 'league_hall' | 'shop' | 'healer' | 'house_s' | 'house_m';
+/** grove … sky = the 8 gym themes; league / shop / healer / house */
+export type InteriorThemeId = 'grove' | 'cinder' | 'salt' | 'storm' | 'marrow' | 'vesper' | 'forge' | 'sky' | 'league' | 'shop' | 'healer' | 'house';
+export interface InteriorSpec {
+  readonly id: string;                                        // = the building id (`mirevale.gym`, `solenne.league`, `mirevale.house3`)
+  readonly building: string;
+  readonly template: InteriorTemplateId;
+  readonly theme: InteriorThemeId;
+  /** world position of the local origin, yaw (multiple of π/2; local→world = content `toWorld`), flat floor height */
+  readonly x: number; readonly z: number; readonly yaw: number; readonly floorY: number;
+  /** inner floor extent along local x / local z (walls stand just outside it, 0.4 m thick, 2.4 m tall, roofless) */
+  readonly w: number; readonly d: number;
+  /** world AABB of the outer footprint: floor + wall + the 2 m screen band (draw a thicket there from outside) */
+  readonly footprint: { readonly x: number; readonly z: number; readonly hw: number; readonly hd: number };
+  readonly entry: InteriorLocalPoint;
+  readonly exit: InteriorLocalPoint;
+  /** internal solids: style 'wall' | 'hedge' | 'grate' | 'channel' | 'boulder' | 'chasm' | 'iron' | 'counter' | 'rail' */
+  readonly walls: readonly (InteriorLocalRect & { readonly style: string })[];
+  /** per-player doors (start closed; `InteriorsHandle.setGateOpen`); style 'hedge' | 'grate' | 'sluice' | 'barrier' | 'boulder' | 'rune' | 'portcullis' */
+  readonly gates: readonly (InteriorLocalRect & { readonly id: string; readonly style: string })[];
+  /** kind 'rootstone' | 'furnace' | 'lever' | 'breaker' | 'keystone' | 'tile' | 'anvil' (start off; `setSwitchOn`) */
+  readonly switches: readonly { readonly id: string; readonly kind: string; readonly lx: number; readonly lz: number }[];
+  /** battle rooms: the arena centre and where the leader waits (league ids are the client's business) */
+  readonly rooms: readonly { readonly id: string; readonly arena: InteriorLocalPoint; readonly leaderAt: InteriorLocalPoint | null; readonly bounds: InteriorLocalRect }[];
+  /** dressing: counter, shelf, cabinet, pc, bed, table, chair, bookshelf, rug, plant, lamp, bench, crate, barrel, statue,
+   * pillar, banner, brazier, spectators, planter, flowerbed, lava_channel, anchor, coil, light_path, crystal, minecart,
+   * candles, mirror, forge, weapon_rack, bridge, cloud, throne — unknown kinds draw nothing */
+  readonly props: readonly { readonly kind: string; readonly lx: number; readonly lz: number; readonly yaw: number; readonly scale: number }[];
+}
+
+/** Live control of the zone's pockets (ZoneHandle.interiors). Every call only changes transforms / visibility / uniforms. */
+export interface InteriorsHandle {
+  /** The pocket the local player stands in (its hall shows, its outside canopy hides), or null (every pocket reads as a thicket from outside). */
+  setActive(id: string | null): void;
+  /** Camera view yaw (radians, the rig's current yaw): walls of the active pocket whose outward normal faces the camera drop to a 0.5 m kerb. */
+  setView(yaw: number): void;
+  setGateOpen(gateId: string, open: boolean): void;
+  setSwitchOn(switchId: string, on: boolean): void;
+}
+
+/** A hall's floor rectangle in the world (centre, yaw, half extents) — battle dressing stays on it. */
+export interface HallBounds { readonly x: number; readonly z: number; readonly yaw: number; readonly hw: number; readonly hd: number }
 
 type XZ = readonly [number, number];
 /** A road / lane / door path: a polyline of world (x, z) points and its width. */
@@ -132,6 +182,8 @@ export interface ZoneHandle {
   readonly collider: TerrainCollider;                         // §10.6
   readonly bounds: { readonly minX: number; readonly maxX: number; readonly minZ: number; readonly maxZ: number };
   readonly geometryDigest: string;                            // fnv1a32 over every geometry's position attribute bytes, in build order, 8 hex chars (§10.5.9)
+  /** Phase A: the pockets of a town (absent when the spec has none) */
+  readonly interiors?: InteriorsHandle;
   stats(): RenderStats;
   dispose(): void;                                            // idempotent; §10.5.9
 }
@@ -149,6 +201,8 @@ export interface CameraRig {
   shake(amp: number, ms: number): void;
   /** Battle camera cue from the timeline (20-client.md MoveAnimDef.camera and Keyframe.camera.shot). */
   cue(kind: 'attacker' | 'defender' | 'impact' | 'wide' | 'ko' | 'throw', ms: number): void;   // reconciled 2026-09-18: 'throw' added for the orb sequence
+  /** Phase A: the diorama yaw base in degrees (headings are base + 90°·k); null restores the default diagonal −35°. Inside a hall the client sets the hall axis. */
+  setYawBase(deg: number | null): void;
   update(dtMs: number): void;                               // called by frame(); zero allocation
   readonly focus: Readonly<Vector3>;                        // the point the DOF plane passes through (feet of the followed actor)
   readonly camera: PerspectiveCamera;
@@ -171,7 +225,7 @@ export type VfxId =
 
 export interface BattleStage {
   /** Dresses the arena at (x, z): a 7 m ring (surface cobble / the biome's plaza stone), 2 shadow-casting beacons whose colour is accentType, ≤ 6 spectator billboards (npc looks), rope posts; all within the zone's light budget (the 2 beacons are reserved slots). */
-  dress(at: { readonly x: number; readonly z: number }, terrain: Terrain, participants: readonly string[]): void;
+  dress(at: { readonly x: number; readonly z: number }, terrain: Terrain, participants: readonly string[], hall?: HallBounds): void;   // Phase A: inside a hall, ring/posts/pylons/spectators stay on `hall`
   dressSpectator(x: number, z: number): void;           // ring + beacons only
   undress(ms: number): void;                            // fades and removes the dressing; disposes nothing shared
   setBattler(ref: BattlerRef, d: SpriteDescriptor | null): void;   // null = empty slot; the two active refs get sharp = true

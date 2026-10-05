@@ -6,11 +6,12 @@
  * collider (`addFootprint`, for shape queries such as the battle camera's occluders). This test builds all 21 zones
  * from `zoneSpecFor` and asserts the builder's footprints are content's `plan.solids`, in order and exactly — so the
  * trees and houses the player sees are the ones the server refuses to let them walk through — and that the built
- * collider's `passable` is content's `isWalkable` (no client-only blockers).
+ * collider's `passable` is content's `isWalkable` (no client-only blockers). Phase A: town pockets drop the scatter centred
+ * in them and register their own wall footprints.
  */
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { Texture } from 'three/webgpu';
-import { allZones, isWalkable, zonePlan } from '@ewa/content';
+import { allZones, getZoneSurface, inFootprint, isWalkable, zonePlan } from '@ewa/content';
 import { createRng } from '@ewa/core';
 import { buildZone, createMaterialLibraryWith, SURFACE_IDS } from '@ewa/render';
 import type { MaterialLibrary } from '@ewa/render';
@@ -41,7 +42,17 @@ describe('R1: the builder draws exactly the footprints content stamps', () => {
       const plan = zonePlan(z.id);
       const handle = buildZone(spec, { materials: lib, lighting: null, scene: null });
       const c = handle.collider;
-      expect(c.footprintShapes(), `${z.id}: builder footprints vs content solids`).toEqual(plan.solids.map((s) => s.shape));
+      // Phase A: scatter centred in a town pocket is dropped (content and render alike), and each pocket registers its
+      // own walls — outside the pockets the builder's footprints are content's solids, in order and exactly
+      const surface = getZoneSurface(z.id);
+      const dropped = new Set(surface.interiorPlan.droppedSolids);
+      const inPocket = (x: number, zz: number): boolean => surface.interiors.some((p) => inFootprint(p, x, zz));
+      const shapes = c.footprintShapes();
+      expect(shapes.filter((s) => !inPocket(s.x, s.z)), `${z.id}: builder footprints vs content solids`).toEqual(plan.solids.filter((_, i) => !dropped.has(i)).map((s) => s.shape));
+      for (const p of surface.interiors) {
+        const walls = shapes.filter((s) => inFootprint(p, s.x, s.z)).length;
+        expect(walls, `${z.id}: ${p.def.id} wall footprints`).toBeGreaterThanOrEqual(4);   // the 4 outer walls (low walls such as water channels need no occluder shape)
+      }
       expect(c.blockerCount(), z.id).toBe(0);
       // prediction samples what the server validates
       const rng = createRng(`r1:${z.id}`);
@@ -51,7 +62,7 @@ describe('R1: the builder draws exactly the footprints content stamps', () => {
         expect(c.passable(x, zz)).toBe(isWalkable(h, x, zz));
       }
       // the shapes stay queryable (SceneDirector's occluder scoring): every solid's centre is `blocked`
-      for (const s of plan.solids) expect(c.blocked(s.shape.x, s.shape.z)).toBe(true);
+      plan.solids.forEach((s, i) => { if (!dropped.has(i)) expect(c.blocked(s.shape.x, s.shape.z)).toBe(true); });
       handle.dispose();
     }
   }, 240_000);

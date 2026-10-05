@@ -19,7 +19,7 @@ export const InputMsg = z.object({
 export const EmoteMsg = z.object({ emote: z.number().int().min(1).max(6) });
 export const ChatMsg = z.object({ text: z.string().min(1).max(120) });
 
-export const INTERACT_KINDS = ['npc', 'item', 'lore', 'gym', 'healer', 'shop', 'warp', 'static'] as const;
+export const INTERACT_KINDS = ['npc', 'item', 'lore', 'gym', 'healer', 'shop', 'warp', 'static', 'switch'] as const;
 export type InteractKind = (typeof INTERACT_KINDS)[number];
 export const InteractMsg = z.object({ targetId: z.string().min(1).max(64), kind: z.enum(INTERACT_KINDS) });
 export const EngageSpawnMsg = z.object({ spawnId: z.string().min(1).max(64) });

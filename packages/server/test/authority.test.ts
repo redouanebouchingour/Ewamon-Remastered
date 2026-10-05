@@ -5,7 +5,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { matchMaker } from '@colyseus/core';
-import { getHeightfield, nearestWalkable, zone } from '@ewa/content';
+import { getHeightfield, interiorLeaders, nearestWalkable, zone } from '@ewa/content';
 import { CLOSE_CODES } from '@ewa/protocol';
 import type { ZoneId } from '@ewa/content';
 import type { ZoneRoom } from '../src/rooms/ZoneRoom';
@@ -142,9 +142,11 @@ describe('room messages (§30.5.1)', () => {
     expect(await snapshot(s, acc.id)).toBe(snap);
     await j.room.leave(true);
 
-    const g = await inZone('mirevale', 0, 6);
+    // Phase A: Mira waits in her hall; stand in the hall, AOI-near but 26 m from her
+    const mira = interiorLeaders('mirevale').find((l) => l.leagueId === 'verdant_gym')!;
+    const g = await inZone('mirevale', mira.x, mira.z + 26);
     const gsnap = await snapshot(s, g.acc.id);
-    g.j.room.send('interact', { kind: 'gym', targetId: 'verdant_gym' }); // 32 m from the marker: in AOI, out of range
+    g.j.room.send('interact', { kind: 'gym', targetId: 'verdant_gym' }); // in AOI, out of range
     await waitFor(() => ofType(g.j.msgs, 'error').length > 0, 3000);
     expect(ofType(g.j.msgs, 'error')[0]).toMatchObject({ code: 'notAllowed', detail: 'tooFar' });
     g.j.room.send('interact', { kind: 'gym', targetId: 'draco_gym' }); // not fought in this zone

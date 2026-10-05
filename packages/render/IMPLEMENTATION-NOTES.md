@@ -915,3 +915,106 @@ warm-up body. Removed: `test/characters.test.ts` (the pixel path). Render total:
    an authored clip would replace them through `EMOTE_CLIPS` without code changes.
 3. The DOF gather noise reads as a fine speckle on out-of-focus faces in the 4 m inspector close-ups (Part 4 Open 6);
    the diorama distances do not show it.
+
+---
+
+# Phase A interiors (2026-10-06)
+
+Content places one **pocket** per town building (a roofless walled hall in the zone's own outer band, reached by door
+warps; `@ewa/content` `interiors.ts`). Render draws it from `ZoneSpec.interiors` (`InteriorSpec[]`, contracts.ts) and
+exposes `ZoneHandle.interiors` (`InteriorsHandle`).
+
+## Layout
+
+- `zone/generators/interiors.ts` — `buildInterior(spec, deps)`: the per-pocket group, the theme kits
+  (`themeKit`, `interiorSurfaces`), props / internal walls / gates / switches by kind, the canopy and rim.
+- `zone/interiors.ts` — `InteriorSystem` (the `InteriorsHandle`): visibility, wall drops, gate / switch eases.
+- `zone/layout.ts` — `PocketRect`, `pocketRects`, `inPocket`; `createSplatContext(…, interiors)`; `splatAt` paves.
+- `zone/builder.ts` — step 6b (pockets after the static props, before scatter; their geometries are recorded in that
+  order, so the 9 town digests changed), scatter rejection, `warpRooms` skips arrivals inside a pocket,
+  `zoneSurfaces` adds the pockets' surfaces (+ the doorway surface when the zone has buildings), the canopy LODs join
+  the building LOD list, `updateLod` steps the interior eases, and `scatterInstances()` (tests / audit).
+- `generators/buildings.ts` — doors stand open: a dark doorway (`DOORWAY_SURFACE` = `lantern_metal`, a shared
+  surface) 1.3 m deep with dark reveals, the leaf (both leaves of a gym arch) swung 100° in; lod1's door slab is dark.
+- `camera/rig.ts` — `setYawBase(deg | null)` (eases like a heading turn; the heading index is kept), `yawBaseDeg`,
+  `headingYaw(h, baseDeg = YAW_BASE)` (additive optional parameter). `defaults.ts` — `BasicDioramaRig.setYawBase` and a
+  `dioramaYaw` getter; `NullBattleStage.dress` takes the 4th parameter.
+- `stage/battleStage.ts` — `dress(at, terrain, participants, hall?)`, `fitCentre`, `inHall`, `trainerSpot(side, out)`,
+  `hallBounds`, the `STAGE` hall numbers.
+
+## Design / deviations
+
+1. **One group per pocket** `ewa:interior:<id>` at the local origin (`rotation.y = yaw` reproduces content's
+   `toWorld`, y = `floorY`): `:hall` (hidden until `setActive`), `:canopy` (a `THREE.LOD`, hidden while active),
+   `:rim` (always shown). Hall children: `:wall:back|front|left|right` (each its own mesh, origin on the floor, so
+   `setView` is a `scale.y` to 0.5 / 2.4), `:floor` (slab top 3 cm over `floorY`, border, runner, an inlaid ring at
+   each room arena — it hides under the battle ring's curb), `:static` (inner walls + tall props, casting),
+   `:dressing` (small props + switch bases, no shadow), `:water` (channels, the library water graph's `depthBelow`),
+   `:gate:<id>` holders, `:switch:<id>` holders (`:pivot` → `:moving`, `:glow`).
+2. **Floor paving.** `splatAt`'s plaza field is positive inside floor + wall (crisp edge), so the terrain under a hall
+   is the zone's plaza stone; the per-theme look comes from the hall's own floor slab (the terrain has only 4 layers
+   per zone). The arena ring is seated on `floorY` (collider), 3 cm under the slab top — the ring top (6 cm) still
+   sits proud of it.
+3. **Themes** use only the theme biome's row + the shared row (gym themes: that biome's generator set; league: the
+   capital set; shop / healer / house: the zone's own set). Gym theme = the town's biome in every town, so a zone binds
+   almost nothing new (Mirevale stays ≤ 32 materials; sandbox programs 105 with or without pockets at the same view).
+   No per-pocket material: switch "on" glows and lava are library emissive surfaces shown by `visible`; gates /
+   switches / walls move by transform. Every live call is transform / visibility only (tested).
+4. **Furniture solids.** Content lists solid furniture twice (a `wall` / `counter` rect and a prop). A rect holding
+   exactly one prop at its centre draws nothing (the prop draws it, sized to the rect); a rect holding several props
+   (shop shelves, healer cabinets) gets a low back counter under them; an empty `wall` rect is a 2 m partition.
+5. **Gates**: hedge / boulder slide aside along their long axis toward the hall's centre line (into the wall beside
+   them; boulders roll), the rest sink into the floor; fully open = hidden. Gates and switch moving parts cast no
+   shadow (draw budget). **Switches** face the hall's centre line when beside a side wall, else the door.
+6. **Canopy** (outside view): a knoll mesh over the whole footprint (smooth grid, the zone's ground layer, blending
+   into the terrain at the footprint edge, 2.7 m over the floor inside the walls), crowned with the zone's first leafy
+   tree kind every ~3.6 m and packed with bushes of the same leaf surface (no extra draw); barren biomes (cinder,
+   marrow, shrine, rift: dead trees only) get a crag of big stones. Three LOD tiers (0 / 40 / 90 m like buildings);
+   crowns cast at lod0 only, the knoll never. The rim (bushes or stones 1 m outside the walls in the screen band)
+   stays when inside, so the hall reads as a clearing. Canopy trees register no crowns on the collider (the
+   battle-camera crown avoidance would also fire inside the active hall).
+7. **Scatter**: no instance of any kind whose centre lies inside a pocket's outer footprint (content's drop rule,
+   `inFootprint`, no padding — trees / willows / rocks also skip their collider footprint). Hand-placed props and
+   lights are avoided by content's placement.
+8. **Collider**: the 4 outer walls and every solid internal wall (not channel / chasm) are registered with
+   `addFootprint` (+ capsule radius), like buildings; walkability is the heightfield's. Gates are client blockers.
+9. **Battle in a hall**: with `hall`, the ring centre is pulled in (per hall axis, the interval that keeps the ring +
+   curb and both trainer slots ±4.45 m along the battle axis on the floor; an axis too short takes the middle), the
+   rope posts shrink to ≥ 0.92 of their radius or the ones still outside hide (with the ropes), each pylon walks in
+   along its bearing to ≥ 4.05 m or hides (its light stays at the pulled position), spectators step in to ≥ 4.9 m or
+   are not spawned. All transforms / visibility; an open-ground `dress` restores the full dressing. The stage reads
+   `rig.dioramaYaw`, so with `setYawBase(hall axis)` the battle axis runs along the hall (tested). Ground-cover
+   masking is unchanged (masks are still written at the centre; a paved floor simply has no scatter under it).
+   `trainerSpot(side, out)` gives the trainer positions on the (possibly pulled-in) centre — the client stages
+   trainers from its own battle frame; if the centre moved they should read `trainerSpot` / `arenaCenter`. For every
+   shipped hall arena the centre does not move (gym chamber 20 × 15, league chambers 20 × 14).
+10. **Draw budget**: a first cut cost ~130 draws in the gym (410 > cap 400 in the sandbox); walls became
+    single-surface (coping / plinth / pilasters in the wall surface), small dressing / gates / switch parts / rim
+    stopped casting: the Mirevale gym interior view now reads 323 draws (caps ok). The `?demo=battle` scene is over
+    the 400 cap with or without pockets (476 on open ground → 515 in the gym hall, same arena position).
+
+## Sandbox
+
+`?zone=mirevale&interior=mirevale.gym` (setActive + setYawBase(hall axis) + setView, focus on the floor centre;
+`&at=arena` focuses the first room's arena, `&open=1` opens every gate, `&on=1` throws every switch);
+`&demo=battle&interior=…&at=arena` dresses the battle at that arena with the room's `HallBounds`;
+`&interiors=0` builds the zone without pockets (A/B). The sandbox's specs come from the client adapter
+(`zoneSpecFor`), which already fills `interiors` (`interiorSpecsFor`).
+
+## Tests
+
+`test/interiors.test.ts` (10): every pocket of the 9 towns builds (4 walls, inner solids = spec walls, gates,
+switches with hidden glows, canopy LOD 3, rim, footprints; all 12 themes); live controls change no geometry /
+material / graph; a shown + rendered hall unloads to the mock-GPU baseline; 0 scatter centred in a footprint and
+paved floors (mirevale, cinderhold, saltmourn); `dress(…, hall)` at every hall arena × 4 headings keeps ring, trainer
+slots, visible posts / pylons, spectators on the floor, a too-small hall pulls in / hides, open ground restores;
+`setYawBase` on both rigs. `zone-helpers.realSpec` now carries `interiors` (and accepts any `ZoneId`). Existing tests
+needed no change (none pins a town digest).
+
+## Open
+
+1. Inner walls of the active hall never drop (only the outer walls do); ≤ 2 m, they hide a strip of floor behind
+   them at the diorama pitch.
+2. Canopy knoll edges read as a faceted ramp from close up; the outside of a pocket is mostly seen from 20–34 m.
+3. The rim / canopy of the active pocket do not react to `setView` (rim bushes are ≤ 1.5 m and 1 m outside the
+   walls, so they do not cover the floor at the diorama pitch).

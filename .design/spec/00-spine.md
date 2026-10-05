@@ -1191,6 +1191,53 @@ export const BODIES: readonly BodyDef[];   // ≥ 10 rows; 'ranger_m' is the per
 export const TITLES: readonly string[];    // `POST /profile` accepts only these (default 'Rookie Trainer' must exist)
 ```
 
+### 3.13 Interiors — every town building opens into a hall
+<!-- added 2026-10-06 (Phase A): interiors, themed gym halls, puzzles, correct arenas -->
+Every town building (gym, Solenne's league hall, shop, healer, houses) opens into a **pocket**: a walled, roofless hall
+standing in the zone's own playable outer band, reached only through door warps. Pockets are a layer laid out after
+the zone plan (`planInteriors(zone, plan, base)`; `ZoneDef`, the plan and its rng streams are untouched), placed by a
+deterministic greedy scan (outermost ring first, then angle) clear of buildings, roads, the plaza, water, the set-piece,
+authored points, props and lights, ≥ 9 m from every linked edge (the 6 m handover trigger and 6.5 m arrival line stay
+outside), tall-grass patches avoided unless no other spot fits. Yaw is a multiple of π/2, the long axis runs along the
+nearer side, the door (local +z) faces the town centre.
+```ts
+export interface InteriorDef {           // authored in the hall's LOCAL frame: origin at the floor centre, door in the +z wall
+  readonly id: string;                   // = the building id: '<zone>.gym' | '<zone>.league' | '<zone>.shop' | '<zone>.healer' | '<zone>.house<k>'
+  readonly zoneId: ZoneId; readonly building: string;
+  readonly template: 'gym_hall' | 'league_hall' | 'shop' | 'healer' | 'house_s' | 'house_m';
+  readonly theme: 'grove' | 'cinder' | 'salt' | 'storm' | 'marrow' | 'vesper' | 'forge' | 'sky' | 'league' | 'shop' | 'healer' | 'house';
+  readonly label: string; readonly w: number; readonly d: number;   // inner floor extent (gym 20×34, league 20×62, shop/healer 10×8, houses 8×7 / 9×8)
+  readonly entry: LocalPoint; readonly exit: LocalPoint;
+  readonly rooms: readonly InteriorRoom[];    // { id, arena, leader (LeagueTrainer id), leaderAt, bounds }
+  readonly walls: readonly InteriorWall[];    // internal solids (stamped unwalkable)
+  readonly gates: readonly InteriorGate[];    // per-player doors: solid until every `opensWhen` flag is held — never stamped
+  readonly switches: readonly InteriorSwitch[]; // interact { kind: 'switch' }: `requires` ⊆ flags, sets `switch:<zone>:<id>` (or null), optional warpTo
+  readonly trainers: readonly InteriorTrainer[]; // gym trainers; beaten flag `trainer:<id>:beaten`, no rematch
+  readonly npcs: readonly InteriorNpc[];      // shopkeeper / nurse / guide / resident — client-local dialogue
+  readonly items: readonly InteriorItem[];    // pickup flag `item:<zone>:<id>`
+  readonly props: readonly InteriorProp[];
+}
+export interface InteriorPlacement { readonly x: number; readonly z: number; readonly yaw: number; readonly floorY: number }
+```
+Heightfield (§3.11 amended): `planZone → planInteriors → stampFootprints(plan solids minus the scatter that falls in a
+pocket) → stampInteriors` — the floor and a 0.4 m wall flatten to `floorY` (quantised to 1/64), a 2 m screen band blends to
+the terrain, `water = 0` over the footprint; walkable = the floor inset by the capsule radius minus internal walls; walls
+and screen unwalkable. Gates are a per-player overlay (server movement validation, client collider blockers).
+
+Gym halls: a foyer, a puzzle band with 2–3 gym trainers beside gates and one gimmick (grass hedge maze + root-stones,
+fire furnace grates, water tide sluices, electric ordered breakers, rock boulder maze + keystone, ghost teleport tiles,
+steel anvil sequence, dragon bridge gauntlet), then the leader's chamber behind a gated wall at local z = −2 with the
+arena at (0, −9.5) and the leader at (0, −13.7). The league hall: a foyer (nurse, herald) and four 14 m chambers (Veil,
+Aurelia, Kirei, Zeon), each gate opening on the previous Warden's `elite:*` flag; healing between fights. A battle
+started inside a hall forms at the containing room's arena (gym trainers fight in the leader's chamber) on the hall axis
+(`interiorArenaFor`); `battleStart` carries `x`, `z`, `yaw`.
+
+validate (§3.10 amended): every town building has a pocket; pockets disjoint and inside the playable interior; for
+every pocket a progression walker from the entry with no flags (beating reachable trainers, using reachable switches
+whose `requires` it holds, following teleports) reaches every leader, and with every gate closed reaches none (in the
+league hall, none past the first chamber); every arena keeps ≥ 6.5 m of floor and both trainer slots (±4.45 m) on the
+floor; entry → gym arena ≤ 30 m; every npc / item / exit reachable.
+
 ---
 
 ## §4 @ewa/protocol WIRE

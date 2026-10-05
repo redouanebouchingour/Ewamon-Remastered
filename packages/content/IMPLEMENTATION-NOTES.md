@@ -233,3 +233,29 @@ render keeps that planner (asserted equal to content's plan in render's `zone-la
    as `unwalkable`).
 8. **Audit table.** L2-01 / R1: closed.
 9. **Render prop table.** Fences are solid (`FENCE_FOOTPRINT` 1.865 × 0.065 m plus capsule).
+
+## Phase A — interiors (2026-10-06)
+
+- **Pockets are a layer after the plan.** `planInteriors(zone, plan, base)` runs after `planZone` and never touches
+  `ZoneDef.npcs/trainers/warps` or the plan's rng streams, so `r1-pre-move.json` holds for every zone but Solenne.
+  Scatter solids (tree / willow / rock) whose shape falls in a pocket footprint are dropped from the stamp
+  (`interiorPlan.droppedSolids`); `plan.solids` itself is unchanged, so render must drop them too.
+- **Placement grid.** A 1 m lattice with a summed-area table of blocked cells (buildings + 2.5 m, roads and door paths
+  + 1.5 m, the plaza + 2 m, water bodies + 3 m, the set-piece + 2 m, authored points / spawn / statics / raid hotspots
+  + 3 m, props + 2 m, lights + 1.5 m, other solids + 1 m, linked edges 9 m). Candidates run outermost ring first, then
+  by angle; the biggest halls go first. Tall-grass patches are blocked in a first pass and allowed in a second, lazily
+  built pass (Saltmourn's gym hall needs it: its north band is cut by a pond and a patch, its east/west sides are
+  linked). The 9 m linked-edge clearance keeps the handover arrival line (6.5 m) from snapping into a hall.
+- **Floor height** = mean terrain height over the floor, quantised to 1/64; a 2 m screen band blends back to the
+  terrain; the slope test re-runs one ring outside the screen (only ever turning samples unwalkable).
+- **Solenne.** The league hall stands in the gym slot (door (0, −26), id `solenne.league`, kind 'gym'). The stale
+  `solenne.league_hall` warp (to an unbuilt sub-area at (30, 44)) is removed. Comptroller Varn and Bursar Quill
+  stood at (0, −30) / (6, −34), inside the new hall's footprint; they now flank its door at (±3.5, −22.5) beside
+  the Public Ledger lectern. The hall's front stays 2 m from the lectern (0, −24), so the clearance loop falls back
+  to the full 14 × 12 size, as the gym towns' halls do.
+- **Gym trainers** fight with the leader's own non-legendary species a few levels under the leader's lowest, so no
+  gym adds species to its zone's bind set.
+- **Walker.** `walkInterior` BFSes the stamped field (4-neighbour, inside the pocket) with closed gates' solids as
+  blockers, beats trainers / uses switches within 3 m (leaders 4 m) until a fixpoint. Interaction ranges ignore walls
+  (as the server's do), so every switch carries `requires` for the gates that guard it — the puzzles are enforced by
+  flags, not geometry alone.

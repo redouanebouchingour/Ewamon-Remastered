@@ -3,18 +3,26 @@
  *
  * loadZone: `zoneSpecFor(zone, harvestStateFor(id, flags))` → `renderer.loadZone`; the zone collider becomes the
  * prediction collider; static actors (NPCs present for the player's flags, trainers) are spawned from the spec; the
- * interactables (NPCs, trainers, pickups not yet taken, tablets, warps, the gym at the league marker (0, −26), the
- * healer / shop doors) are registered; the zone banner plays (§20.2.6 timing) and the zone theme starts. Loads are
- * serialised (a handover while loading waits). unloadZone despawns everything, disposes the ZoneHandle, drops the
- * audio stems' theme and clears remote buffers. Idempotent.
+ * interactables (NPCs, trainers, pickups not yet taken, tablets, warps, and — Phase A — everything inside the town's
+ * pockets: door warps, one league challenge per trainer at its hall `leaderAt`, gym trainers, switches, the shop
+ * keeper / nurse / PC inside the shop and healer) are registered; the zone banner plays (§20.2.6 timing) and the zone
+ * theme starts. Loads are serialised (a handover while loading waits). unloadZone despawns everything, disposes the
+ * ZoneHandle, drops the audio stems' theme and clears remote buffers. Idempotent.
  * enterBattle: Pillar 7 — `camera.pushIn` 600 ms to the BattleSummary (x, z), `stage.dress(terrainFor(biome))`;
  * nothing is unloaded. exitBattle: `stage.undress(400)`, `camera.release(600)`; input returns after the camera settles.
+ *
+ * Pockets (Phase A): `updatePocket(x, z)` runs every fixed step (allocation-free unless the pocket changes). Entering a
+ * pocket activates its hall (`interiors.setActive`), turns the camera down the hall axis (`setYawBase(pocket yaw)`,
+ * heading 0, `setView`) and spawns the pocket's NPCs, gym trainers and league trainers; leaving restores the default
+ * diagonal and the heading the player had outside, and despawns them. A battle whose arena lies on a pocket's floor
+ * fights along the hall axis (no `pickBattleHeading`), dresses the stage inside the hall (`HallBounds`) and returns to
+ * the pocket camera afterwards. Gates and switch tiles follow the player's flags (`GateSync`).
  */
-import { LEAGUE, getHeightfield, harvestStateFor, zone as zoneDef } from '@ewa/content';
-import type { HarvestState, ZoneDef, ZoneId } from '@ewa/content';
+import { getHeightfield, harvestStateFor, interiorAt, interiorsFor, zone as zoneDef } from '@ewa/content';
+import type { HarvestState, PlacedInterior, ZoneDef, ZoneId } from '@ewa/content';
 import type { BattleFormat } from '@ewa/core';
 import { BATTLER_SEPARATION, BATTLE_DISTANCE, BATTLE_PITCH, BATTLE_YAW_OFFSET, doorOf, headingYaw } from '@ewa/render';
-import type { Renderer, Terrain, TerrainCollider, WeatherKind, ZoneHandle } from '@ewa/render';
+import type { CameraRig, Renderer, Terrain, TerrainCollider, WeatherKind, ZoneHandle } from '@ewa/render';
 import { itemInfo } from '../data/content';
 import type { AudioDirector } from '../audio/AudioDirector';
 import { reverbKindFor } from '../audio/mixer';
@@ -24,9 +32,9 @@ import type { HudWriter } from './HudWriter';
 import type { Interactable, InteractionTargets } from './interaction';
 import { makeInteractable } from './interaction';
 import { npcVisible } from './dialogue';
-
-/** The gym / league door the server checks (server IMPLEMENTATION-NOTES R5). */
-export const LEAGUE_MARKER = { x: 0, z: -26 } as const;
+import type { GateBlockers } from './collider';
+import { FloorIndex, GateSync, hallBoundsOf, interiorInteractables, pocketActors, pocketYawDeg, refreshInteriorTargets } from './interiors';
+import type { PocketActor } from './interiors';
 /** §20.2.6 zone banner: 400 in, 2 000 hold, 400 out (the HUD draws it statically; hold only under reduced motion). */
 export const BANNER_MS = 2800;
 
@@ -123,7 +131,8 @@ export interface SceneDirector {
   /** `focus`: where the player will stand (render T4 compiles what the first view there draws before resolving). */
   loadZone(id: ZoneId, harvestState: HarvestState, focus?: { readonly x: number; readonly z: number } | null): Promise<void>;
   unloadZone(): void;
-  enterBattle(summary: { readonly battleId: string; readonly x: number; readonly z: number; readonly format: BattleFormat }): Promise<void>;
+  /** `yaw`: the hall battle axis from `battleStart` (null / absent outside a hall; the arena's pocket decides anyway). */
+  enterBattle(summary: { readonly battleId: string; readonly x: number; readonly z: number; readonly format: BattleFormat; readonly yaw?: number | null }): Promise<void>;
   exitBattle(): Promise<void>;
   setTimeOfDay(t: number): void;
   setWeather(w: WeatherKind): void;
@@ -134,8 +143,17 @@ export interface SceneDirector {
   readonly inBattle: boolean;
   /** arena centre + forward while a battle is dressed (the trainer stands behind their creature) */
   readonly battleFrame: { readonly x: number; readonly z: number; readonly fx: number; readonly fz: number } | null;
-  /** Re-evaluates NPC presence / pickups for new flags (a restore beat, a pickup). */
+  /** Re-evaluates NPC presence / pickups / gates / switch tiles for new flags (a restore beat, a pickup, a beaten gym trainer). */
   refreshFlags(flags: ReadonlySet<string>): void;
+  /** Phase A: the pocket whose floor the player stands on (null outside); call after every step / warp / correction. */
+  updatePocket(x: number, z: number): void;
+  readonly pocket: PlacedInterior | null;
+  /** The rig's current yaw (radians); forwarded to `interiors.setView` when it changed while a pocket is active. */
+  syncView(yaw: number): void;
+  /** The active pocket's actors (nameplates), [] outside. */
+  readonly pocketActors: readonly PocketActor[];
+  /** True for an actor the director spawned (zone NPC / trainer, pocket NPC / trainer / leader). */
+  isStaticActor(id: string): boolean;
 }
 
 export interface SceneDirectorDeps {
@@ -153,9 +171,20 @@ export interface SceneDirectorDeps {
   /** accent type (gym beacon + arena ring colour) for the part-3 stage */
   readonly setAccentType: (t: ZoneDef['type']) => void;
   readonly reducedMotion: () => boolean;
+  /** Phase A: the prediction collider's removable blockers (gates); read after `onZone` gave it the new zone. */
+  readonly blockers?: () => GateBlockers | null;
 }
 
-interface StaticActor { readonly id: string; readonly npc: boolean }
+interface StaticActor { readonly id: string; readonly npc: boolean; readonly x: number; readonly z: number; readonly angle: number; readonly pocket: boolean }
+
+type Heading = 0 | 1 | 2 | 3;
+/** The rig as the director drives it (setYawBase is Phase A; a rig without it keeps the default diagonal). */
+type Rig = CameraRig & { readonly headingIndex?: Heading };
+function setYawBase(rig: Rig, deg: number | null): void {
+  const f = (rig as Partial<CameraRig>).setYawBase;
+  if (typeof f === 'function') f.call(rig, deg);
+}
+const DEG2RAD = Math.PI / 180;
 
 export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
   let current: ZoneId | null = null;
@@ -168,30 +197,88 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
   let settleTimer: ReturnType<typeof setTimeout> | null = null;
   let harvest: HarvestState = 'intact';
   let battleFrame: { x: number; z: number; fx: number; fz: number } | null = null;
-  let savedHeading: 0 | 1 | 2 | 3 | null = null;
+  let savedHeading: Heading | null = null;
+  /** the pocket the current battle is fought in (hall axis), else null */
+  let battleHall: PlacedInterior | null = null;
+  let pocket: PlacedInterior | null = null;
+  let floors: FloorIndex | null = null;
+  let outsideHeading: Heading | null = null;
+  let viewYaw = Number.NaN;
+  let activeActors: PocketActor[] = [];
+  let gates: GateSync | null = null;
 
   function faceOrigin(x: number, z: number): number {
     return Math.atan2(-x, -z);
   }
 
   function spawnStatics(z: ZoneDef, flags: ReadonlySet<string>): void {
-    const actors = d.renderer.actors;
     for (const n of z.npcs) {
       if (!npcVisible(n, flags)) continue;
-      actors.spawn(n.id, { look: n.look, name: n.name, guildTag: '', isLocal: false });
-      actors.setTransform(n.id, n.x, n.z, faceOrigin(n.x, n.z), false, false);
-      statics.push({ id: n.id, npc: true });
+      spawnStatic(n.id, n.look, n.name, n.x, n.z, faceOrigin(n.x, n.z), true, false);
     }
-    for (const t of z.trainers) {
-      actors.spawn(t.id, { look: t.look, name: t.name, guildTag: '', isLocal: false });
-      actors.setTransform(t.id, t.x, t.z, faceOrigin(t.x, t.z), false, false);
-      statics.push({ id: t.id, npc: false });
-    }
+    for (const t of z.trainers) spawnStatic(t.id, t.look, t.name, t.x, t.z, faceOrigin(t.x, t.z), false, false);
+  }
+
+  function spawnStatic(id: string, look: string, name: string, x: number, z: number, angle: number, npc: boolean, inPocket: boolean): void {
+    const actors = d.renderer.actors;
+    actors.spawn(id, { look, name, guildTag: '', isLocal: false });
+    actors.setTransform(id, x, z, angle, false, false);
+    statics.push({ id, npc, x, z, angle, pocket: inPocket });
   }
 
   function despawnStatics(): void {
     for (const s of statics) d.renderer.actors.despawn(s.id);
     statics = [];
+    activeActors = [];
+  }
+
+  /** Puts every static actor back where it stands (a battle restaged the foe trainer behind its creature). */
+  function restoreStatics(): void {
+    for (const s of statics) d.renderer.actors.setTransform(s.id, s.x, s.z, s.angle, false, false);
+  }
+
+  // ---- pockets ------------------------------------------------------------------------------------------------
+
+  function rig(): Rig {
+    return d.renderer.camera as Rig;
+  }
+
+  function enterPocket(p: PlacedInterior): void {
+    const c = rig();
+    if (pocket === null) outsideHeading = c.headingIndex ?? 0;
+    else leavePocketActors();
+    pocket = p;
+    handle?.interiors?.setActive(p.def.id);
+    setYawBase(c, pocketYawDeg(p));
+    c.setHeading(0);
+    viewYaw = Number.NaN;
+    director.syncView(pocketYawDeg(p) * DEG2RAD);
+    const z = current;
+    if (z === null) return;
+    activeActors = pocketActors(z, p);
+    for (const a of activeActors) spawnStatic(a.id, a.look, a.name, a.x, a.z, a.angle, a.kind === 'npc', true);
+  }
+
+  function leavePocketActors(): void {
+    const keep: StaticActor[] = [];
+    for (const s of statics) {
+      if (s.pocket) d.renderer.actors.despawn(s.id);
+      else keep.push(s);
+    }
+    statics = keep;
+    activeActors = [];
+  }
+
+  function leavePocket(): void {
+    if (pocket === null) return;
+    leavePocketActors();
+    pocket = null;
+    viewYaw = Number.NaN;
+    handle?.interiors?.setActive(null);
+    const c = rig();
+    setYawBase(c, null);
+    c.setHeading(outsideHeading ?? 0);
+    outsideHeading = null;
   }
 
   function interactables(z: ZoneDef, flags: ReadonlySet<string>): Interactable[] {
@@ -210,13 +297,14 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     }
     for (const l of z.lore) out.push(makeInteractable(l.id, 'lore', l.x, l.z, 'Read', l.title, key));
     for (const w of z.warps) out.push(makeInteractable(w.id, 'warp', w.x, w.z, 'Enter', w.label, key));
-    const league = LEAGUE.filter((l) => l.zoneId === z.id).sort((a, b) => (a.stage === b.stage ? a.order - b.order : a.stage === 'gym' ? -1 : 1));
-    const leader = z.gym !== null ? LEAGUE.find((l) => l.id === z.gym) : league[0];
-    if (leader !== undefined) out.push(makeInteractable(leader.id, 'gym', LEAGUE_MARKER.x, LEAGUE_MARKER.z, 'Challenge', leader.name, key));
+    // Phase A: league trainers, the shop counter and the healer live inside the town's pockets
+    out.push(...interiorInteractables(z.id, flags, key));
     const spec = handleSpec;
     if (spec !== null) {
+      const inside = new Set(interiorsFor(z.id).map((p) => p.def.building));
       for (const b of spec.buildings) {
         if (b.kind !== 'healer' && b.kind !== 'shop') continue;
+        if (inside.has(b.id)) continue; // served by the keeper / nurse inside its pocket
         const door = doorOf(b);
         const x = door.x + door.nx * 1.2;
         const zz = door.z + door.nz * 1.2;
@@ -252,6 +340,9 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     spawnStatics(z, flags);
     d.targets.setStatics(interactables(z, flags));
     d.onZone(zh, z);
+    floors = new FloorIndex(interiorsFor(id));
+    gates = new GateSync(id, d.blockers?.() ?? null);
+    gates.sync(flags, zh.interiors);
     playBanner(z.name);
     d.audio.setTheme(d.audio.themeFor(id, z.biome), 400);
     d.audio.setReverbZone(reverbKindFor(z.kind, z.biome));
@@ -260,6 +351,9 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
 
   function unload(): void {
     if (handle === null && current === null) return;
+    leavePocket();
+    floors = null;
+    gates = null;
     despawnStatics();
     d.targets.clear();
     d.onZone(null, null);
@@ -283,6 +377,12 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     get battleFrame() {
       return battleFrame;
     },
+    get pocket() {
+      return pocket;
+    },
+    get pocketActors() {
+      return activeActors;
+    },
 
     loadZone(id, h, focus = null) {
       const run = async (): Promise<void> => {
@@ -305,21 +405,33 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
       inBattle = true;
       if (settleTimer !== null) clearTimeout(settleTimer);
       d.setInputEnabled(false);
-      const cam = d.renderer.camera;
-      const rig = cam as typeof cam & { headingIndex?: 0 | 1 | 2 | 3 };
-      const cur = rig.headingIndex ?? 0;
-      const half = def === null ? Number.POSITIVE_INFINITY : getHeightfield(def.id).size / 2;
-      const best = pickBattleHeading(handle?.collider ?? null, summary.x, summary.z, cur, half);
-      if (best !== cur) {
+      const cam = rig();
+      const cur = cam.headingIndex ?? 0;
+      // Phase A: an arena on a pocket's floor fights along the hall axis (player by the door, foe toward the far end)
+      const hall = def === null ? null : interiorAt(def.id, summary.x, summary.z);
+      battleHall = hall;
+      let fy: number;
+      if (hall !== null) {
         savedHeading = cur;
-        cam.setHeading(best);
-      } else savedHeading = null;
-      const fy = headingYaw(best);
+        setYawBase(cam, pocketYawDeg(hall));
+        cam.setHeading(0);
+        fy = hall.at.yaw;
+      } else {
+        const half = def === null ? Number.POSITIVE_INFINITY : getHeightfield(def.id).size / 2;
+        const best = pickBattleHeading(handle?.collider ?? null, summary.x, summary.z, cur, half);
+        if (best !== cur) {
+          savedHeading = cur;
+          cam.setHeading(best);
+        } else savedHeading = null;
+        fy = headingYaw(best);
+      }
       const fx = -Math.sin(fy);
       const fz = -Math.cos(fy);
       battleFrame = { x: summary.x, z: summary.z, fx, fz };
       cam.pushIn({ x: summary.x - fx * FRAME_SHIFT_M, z: summary.z - fz * FRAME_SHIFT_M }, PUSH_IN);
-      d.renderer.stage.dress({ x: summary.x, z: summary.z }, terrainFor(def?.biome ?? 'grove'), [d.selfId()]);
+      const terrain = terrainFor(def?.biome ?? 'grove');
+      if (hall !== null) d.renderer.stage.dress({ x: summary.x, z: summary.z }, terrain, [d.selfId()], hallBoundsOf(hall));
+      else d.renderer.stage.dress({ x: summary.x, z: summary.z }, terrain, [d.selfId()]);
     },
 
     async exitBattle() {
@@ -327,9 +439,17 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
       inBattle = false;
       battleFrame = null;
       d.renderer.stage.undress(UNDRESS_MS);
-      d.renderer.camera.release(RELEASE);
-      if (savedHeading !== null) d.renderer.camera.setHeading(savedHeading);
+      const cam = rig();
+      cam.release(RELEASE);
+      if (battleHall !== null) {
+        // back to the pocket camera (the hall axis and the heading the player had in it), not the town default
+        setYawBase(cam, pocket === null ? null : pocketYawDeg(pocket));
+        cam.setHeading(savedHeading ?? 0);
+        viewYaw = Number.NaN;
+      } else if (savedHeading !== null) cam.setHeading(savedHeading);
+      battleHall = null;
       savedHeading = null;
+      restoreStatics();
       d.renderer.setWeather('none');
       if (settleTimer !== null) clearTimeout(settleTimer);
       await new Promise<void>((resolve) => {
@@ -365,9 +485,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
       for (const n of z.npcs) {
         const want = npcVisible(n, flags);
         if (want && !present.has(n.id)) {
-          d.renderer.actors.spawn(n.id, { look: n.look, name: n.name, guildTag: '', isLocal: false });
-          d.renderer.actors.setTransform(n.id, n.x, n.z, faceOrigin(n.x, n.z), false, false);
-          statics.push({ id: n.id, npc: true });
+          spawnStatic(n.id, n.look, n.name, n.x, n.z, faceOrigin(n.x, n.z), true, false);
         } else if (!want && present.has(n.id)) {
           d.renderer.actors.despawn(n.id);
           statics = statics.filter((s) => s.id !== n.id);
@@ -381,8 +499,29 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
           e.enabled = !flags.has(`item:${z.id}:${e.id}`);
         }
       }
+      refreshInteriorTargets(z.id, d.targets.staticEntries(), flags);
+      gates?.sync(flags, handle?.interiors);
       const h = harvestStateFor(z.id, flags);
       director.setHarvest(h);
+    },
+
+    updatePocket(x, z) {
+      if (floors === null || inBattle || floors.size === 0) return;
+      const p = floors.at(x, z);
+      if (p === pocket) return;
+      if (p === null) leavePocket();
+      else enterPocket(p);
+    },
+
+    syncView(yaw) {
+      if (pocket === null || yaw === viewYaw || !Number.isFinite(yaw)) return;
+      viewYaw = yaw;
+      handle?.interiors?.setView(yaw);
+    },
+
+    isStaticActor(id) {
+      for (const s of statics) if (s.id === id) return true;
+      return false;
     },
   };
   return director;

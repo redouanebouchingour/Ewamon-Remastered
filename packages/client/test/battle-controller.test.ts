@@ -73,6 +73,33 @@ describe('BattleController', () => {
     expect(hud()?.bars[1]!.name).toBe('The wild Mossling');
   });
 
+  it('Phase A: battleStart x / z / yaw (a hall arena) are the arena centre, ahead of the BattleSummary patch', () => {
+    const entered: unknown[] = [];
+    const view: BattleView = {
+      enterBattle: (s) => entered.push(s), exitBattle: () => undefined, setBattler: () => undefined, setPose: () => undefined, hurt: () => undefined,
+      vfx: () => undefined, prewarm: () => undefined, syncFrom: () => undefined, setWeather: () => undefined, cue: () => undefined, shake: () => undefined,
+      setTimeScale: () => undefined, hitstopEnabled: () => true, slowmoEnabled: () => true, playSfx: () => undefined, setBattleHud: () => undefined,
+      setThreat: () => undefined,
+    };
+    let summary: { x: number; z: number } | null = null;
+    const c = createBattleController({
+      content, send: () => undefined, reduced: () => false, instantText: () => true, selfPosition: () => ({ x: 1, z: 2 }),
+      summaryAt: () => summary, selfId: () => 'p0', raidId: () => null, view, defer: (fn) => fn(),
+    });
+    const { state, events } = wild();
+    c.onBattleStart({ ...startMsg(state, events), x: -51, z: -2.4, yaw: Math.PI / 2 });
+    expect(entered.at(-1)).toMatchObject({ x: -51, z: -2.4, yaw: Math.PI / 2, foeId: null, foeNpc: null });
+    // a re-attach (the renderer came back) keeps the message's arena even once the summary has arrived elsewhere
+    summary = { x: 9, z: 9 };
+    c.attach(view);
+    expect(entered.at(-1)).toMatchObject({ x: -51, z: -2.4, yaw: Math.PI / 2 });
+    c.reset();
+    // without x / z (an older server): the summary, else the predicted self position; no hall yaw
+    summary = null;
+    c.onBattleStart(startMsg(state, events));
+    expect(entered.at(-1)).toMatchObject({ x: 1, z: 2, yaw: null });
+  });
+
   it('submit: local validation, battleAction with turn + 1, preview digest matches → authoritative adopted', () => {
     const { c, sent, playOut, hud } = setup();
     const { state, events } = wild();
