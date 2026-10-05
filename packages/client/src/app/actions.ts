@@ -15,6 +15,7 @@ import { describeError, statusOf, toActionError } from '../net/errors';
 import type { ActionError } from '../net/errors';
 import { toast, useNotificationsStore } from '../state/notifications';
 import { toInventoryDelta, toProgressionDelta, useSessionStore } from '../state/session';
+import { presentItemUse } from './itemUseFeedback';
 
 // ---- auth ---------------------------------------------------------------------------------------------
 
@@ -199,8 +200,10 @@ const CREATURE_HANDLERS: Readonly<Record<string, Handler>> = {
   },
   async useItem(p) {
     const target = str(p['target']);
-    const res = await apiFetch('itemUse', { body: { item: str(p['item']), target: target.length === 0 ? null : target, qty: num(p['qty'] ?? 1) } });
+    const qty = num(p['qty'] ?? 1);
+    const res = await apiFetch('itemUse', { body: { item: str(p['item']), target: target.length === 0 ? null : target, qty } });
     applyInv({ inventory: res.inventory, creaturesUpdated: res.creaturesUpdated });
+    presentItemUse(str(p['item']), qty, res.creaturesUpdated[0], res.events);
   },
 };
 

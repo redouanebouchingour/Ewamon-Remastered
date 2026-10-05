@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { CreatureInstance } from '@ewa/core';
-import { HELD_ITEMS, ability as abilityDef, displayName, itemInfo, maxHpOf, move as moveDef, species, statsOf } from '../data/content';
+import { CREATURE_ITEMS, HELD_ITEMS, MULTI_USE_ITEMS, ability as abilityDef, displayName, itemInfo, maxHpOf, move as moveDef, species, statsOf } from '../data/content';
 import { useSessionStore } from '../state/session';
 import { Button } from '../ui/Button';
 import { badgesOf } from '../ui/CreatureCard';
@@ -42,6 +42,7 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
   const [abilityId, setAbilityId] = useState(c.ability);
   const [held, setHeld] = useState(c.heldItem ?? '');
   const [confirmRelease, setConfirmRelease] = useState(false);
+  const [useId, setUseId] = useState('');
 
   useEffect(() => {
     setNickname(c.nickname ?? '');
@@ -61,6 +62,17 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
   const setupDirty = abilityId !== c.ability || held !== (c.heldItem ?? '');
   const nickDirty = nickname.trim() !== (c.nickname ?? '');
   const currentAbility = abilityDef(abilityId);
+  // field items the player owns that work on a creature (Rare Candy, potions, revives, status cures, PP)
+  const usable = CREATURE_ITEMS.filter((i) => (items?.[i.id] ?? 0) > 0);
+  const useItem = usable.find((i) => i.id === useId) ?? usable[0];
+  const owned = useItem === undefined ? 0 : (items?.[useItem.id] ?? 0);
+  const multi = useItem !== undefined && MULTI_USE_ITEMS.has(useItem.id);
+  // a Rare Candy stops at level 100; other items are one use per request
+  const maxTimes = multi ? Math.min(owned, Math.max(0, 100 - c.level)) : Math.min(owned, 1);
+  const useBusy = fetcher.busy((p) => p.intent === 'useItem' && p['target'] === c.id);
+  const submitUse = (qty: number): void => {
+    if (useItem !== undefined) fetcher.submit({ intent: 'useItem', item: useItem.id, target: c.id, qty });
+  };
 
   return (
     <aside className={l.detail} data-type={sp?.types[0] ?? 'Normal'} aria-label={`${displayName(c)} details`}>
@@ -105,6 +117,39 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
             return def === undefined ? null : <MoveButton key={m.id} move={def} pp={m.pp} ppMax={m.ppMax} />;
           })}
         </div>
+      </section>
+
+      <section className={l.section}>
+        <h4 className={l.sectionTitle}>Use an item</h4>
+        {useItem === undefined ? (
+          <p className={l.caption}>You have no items that work on a creature. Potions, revives and Rare Candy are sold in town shops.</p>
+        ) : (
+          <>
+            <Select
+              label="Item"
+              value={useItem.id}
+              options={usable.map((i) => ({ value: i.id, label: `${i.name} ×${items?.[i.id] ?? 0}` }))}
+              onChange={setUseId}
+            />
+            <p className={l.caption}>{useItem.description}</p>
+            <div className={l.row}>
+              <Button size="sm" variant="primary" disabled={maxTimes < 1} busy={useBusy} onClick={() => submitUse(1)}>
+                Use
+              </Button>
+              {multi && maxTimes >= 5 && (
+                <Button size="sm" disabled={useBusy} onClick={() => submitUse(5)}>
+                  Use ×5
+                </Button>
+              )}
+              {multi && maxTimes >= 10 && (
+                <Button size="sm" disabled={useBusy} onClick={() => submitUse(10)}>
+                  Use ×10
+                </Button>
+              )}
+              {multi && maxTimes < 1 && <span className={l.caption}>Already level 100.</span>}
+            </div>
+          </>
+        )}
       </section>
 
       <section className={l.section}>

@@ -39,6 +39,8 @@ function useWorldConnection(zoneId: ZoneId): void {
 
 const SHORTCUTS: Partial<Record<InputAction, string>> = {
   party: '/play/party',
+  // field items (Rare Candy, potions, revives…) are used from a creature's panel on the Party screen
+  bag: '/play/party',
   journal: '/play/dex',
 };
 
@@ -126,6 +128,9 @@ function WorldHint() {
     <aside className={s.hint} aria-label="Shortcuts">
       <span>
         <kbd>{label(binds.party[0])}</kbd> Party
+      </span>
+      <span>
+        <kbd>{label(binds.bag[0])}</kbd> Items
       </span>
       <span>
         <kbd>{label(binds.journal[0])}</kbd> Dex

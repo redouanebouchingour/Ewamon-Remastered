@@ -97,6 +97,13 @@ export function itemInfo(id: string): ItemInfo {
 
 export const HELD_ITEMS: readonly ItemInfo[] = [...itemMap.values()].filter((i) => i.kind === 'held');
 
+/** Consumable effects the server applies to one creature outside battle (`POST /item/use` with a target). */
+const CREATURE_EFFECTS: ReadonlySet<string> = new Set(['healHp', 'revive', 'cureStatus', 'fullRestore', 'restorePp', 'rareCandy']);
+/** Field items usable on a creature from its panel, in content order. */
+export const CREATURE_ITEMS: readonly ItemInfo[] = CONSUMABLES.filter((c) => CREATURE_EFFECTS.has(c.effect.kind)).map((c) => itemInfo(c.id));
+/** True for items whose effect can be applied several times in one request (`qty` > 1). */
+export const MULTI_USE_ITEMS: ReadonlySet<string> = new Set(CONSUMABLES.filter((c) => c.effect.kind === 'rareCandy').map((c) => c.id));
+
 // ---- zones ----------------------------------------------------------------------------------------------
 
 const zoneNames = new Map<string, string>(allZones().map((z) => [z.id, z.name]));
