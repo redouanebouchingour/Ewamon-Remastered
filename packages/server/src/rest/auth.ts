@@ -2,30 +2,42 @@
  * §30.6.2 Auth — argon2id password hashing, HS256 access JWTs (15 min, iss/aud), opaque rotating refresh
  * tokens (30 d, stored as sha-256 hex by persist). Refresh reuse after rotation revokes the whole family.
  */
-import { hash, verify } from '@node-rs/argon2';
-import type { Algorithm, Options } from '@node-rs/argon2';
+import { randomBytes } from 'node:crypto';
+import { argon2Verify, argon2id } from 'hash-wasm';
 import type { FastifyInstance } from 'fastify';
 import type { Repos, Tx } from '@ewa/persist';
 import type { AccessClaims } from '../deps';
 
-/** Algorithm.Argon2id — the enum is an ambient `const enum`, unusable under isolatedModules; 2 is its value. */
-const ARGON2ID = 2 as Algorithm;
-export const ARGON2: Options = { algorithm: ARGON2ID, memoryCost: 19456, timeCost: 2, parallelism: 1, outputLen: 32 };
+/**
+ * argon2id via `hash-wasm` (WebAssembly). It replaced `@node-rs/argon2` on 2026-10-05: Windows application
+ * control blocks unsigned native `.node` bindings on the dev machine, so the server could not boot. Same
+ * algorithm, same parameters, same PHC string format (`$argon2id$v=19$m=19456,t=2,p=1$…`), so stored hashes
+ * from either library verify with the other. `algorithm: 2` keeps the old enum value for readers of the constant.
+ */
+export const ARGON2 = { algorithm: 2, memoryCost: 19456, timeCost: 2, parallelism: 1, outputLen: 32 } as const;
 
 export const ACCESS_TTL_S = 900;
 export const REFRESH_TTL_D = 30;
 export const JWT_ISS = 'ewa-server';
 export const JWT_AUD = 'ewa';
 
-/** PHC string; 16-byte random salt from the library. */
+/** PHC string; 16-byte random salt. */
 export function hashPassword(pw: string): Promise<string> {
-  return hash(pw, ARGON2);
+  return argon2id({
+    password: pw,
+    salt: randomBytes(16),
+    memorySize: ARGON2.memoryCost,
+    iterations: ARGON2.timeCost,
+    parallelism: ARGON2.parallelism,
+    hashLength: ARGON2.outputLen,
+    outputType: 'encoded',
+  });
 }
 
 /** Never compares strings: argon2 verify. A malformed PHC is a mismatch, not a crash. */
 export async function verifyPassword(phc: string, pw: string): Promise<boolean> {
   try {
-    return await verify(phc, pw);
+    return await argon2Verify({ password: pw, hash: phc });
   } catch (_e) {
     return false;
   }

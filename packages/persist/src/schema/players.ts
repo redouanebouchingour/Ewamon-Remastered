@@ -8,7 +8,7 @@ export const players = pgTable(
     username: varchar('username', { length: 20 }).notNull(),
     usernameLower: varchar('username_lower', { length: 20 }).notNull(),
     email: varchar('email', { length: 254 }).notNull(),
-    /** @node-rs/argon2, argon2id, m=19456 t=2 p=1 — hashed by the server, opaque here. */
+    /** argon2id (hash-wasm), m=19456 t=2 p=1 — hashed by the server, opaque here. */
     passwordHash: text('password_hash').notNull(),
     money: integer('money').notNull().default(3000),
     zoneId: varchar('zone_id', { length: 32 }).notNull().default('mirevale'),
