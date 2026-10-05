@@ -14,7 +14,7 @@
  * - `RedFormat` + `UnsignedByteType` maps to `r8unorm`, a valid `copyExternalImageToTexture` destination.
  */
 import {
-  ClampToEdgeWrapping, DataTexture, LinearMipmapLinearFilter, NearestFilter, NoColorSpace, RGBAFormat, RedFormat, SRGBColorSpace, Texture,
+  ClampToEdgeWrapping, DataTexture, LinearFilter, LinearMipmapLinearFilter, NearestFilter, NoColorSpace, RGBAFormat, RedFormat, SRGBColorSpace, Texture,
   UnsignedByteType,
 } from 'three/webgpu';
 import type { SpriteFrame } from '../contracts.js';
@@ -192,7 +192,11 @@ export function neutralAtlasTextures(): AtlasTextures {
     }
     const t = new DataTexture(data, 4, 4, red ? RedFormat : RGBAFormat, UnsignedByteType);
     stampAtlasTexture(t, map);
-    t.minFilter = NearestFilter;   // a single level
+    // a single level, but FILTERABLE like the atlases' trilinear min filter: three's WGSL builder treats a texture with
+    // Nearest min AND mag as unfilterable (`textureLoad` instead of `textureSample`), so a Nearest/Nearest neutral set
+    // compiled a different billboard program at the step-8 warm-up than every real atlas then needed (the first
+    // creature drawn — or an evolution sequence in a zone without wild creatures — compiled 2 programs; Part 7 E6)
+    t.minFilter = LinearFilter;
     t.name = `ewa_sprite_neutral_${map}`;
     t.needsUpdate = true;
     return t;

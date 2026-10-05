@@ -22,7 +22,7 @@ import {
 } from 'three/webgpu';
 import type { BufferGeometry, Material, PerspectiveCamera, UniformNode } from 'three/webgpu';
 import { float, uniform, vec4 } from 'three/tsl';
-import type { BattlerPose, BattlerRef, BattleStage, SpriteDescriptor, Terrain, TypeName, VfxId } from '../contracts.js';
+import type { BattlerPose, BattlerRef, BattleStage, EvolutionHandle, EvolutionRequest, SpriteDescriptor, Terrain, TypeName, VfxId } from '../contracts.js';
 import type { EffectsFlags, HarvestLevel, WeatherKind } from '../descriptors.js';
 import type { MaterialLibrary } from '../materials/library.js';
 import type { SurfaceId } from '../materials/surfaces.js';
@@ -32,6 +32,7 @@ import type { DioramaRig } from '../camera/rig.js';
 import type { BillboardPool, CreatureBillboard } from '../sprites/billboard.js';
 import { TYPE_COLORS, hexToLinearInto, validateTypeColorTable } from '../sprites/typeColors.js';
 import type { CharacterPool } from './actors.js';
+import { EvolutionSequence } from './evolution.js';
 import { isVfxId, type VfxAnchor, type VfxSystem } from './vfx.js';
 
 // ---- numbers -------------------------------------------------------------------------------------------------------
@@ -63,6 +64,13 @@ export const STAGE = Object.freeze({
   seatSamples: 12,
   /** Arenas whose ground cover is masked (main + 3 spectator arenas; 2 mask slots each, slots 0..7). */
   coverArenas: 4,
+  /**
+   * The evolution sequence's site (main-arena slots, free while undressed): grass hidden inside 1.3 m of the creature
+   * (back by 2.3 m), small props inside 1.6 m, merged static props within 1.9 m of a point 1 m toward the camera.
+   */
+  evoCoverInnerM: 1.3, evoCoverOuterM: 2.3, evoPropHideM: 1.6, evoCutM: 1.9,
+  /** Warm-up: the beacons render their shadow maps for the first N frames (the boot frame and the warm-group frame), from here. */
+  warmShadowFrames: 2, warmShadowHeightM: 4, warmShadowBackM: 4,
 });
 
 /** Ground-cover mask the stage writes (the zone's `ScatterMask`; IMPLEMENTATION-NOTES Part 5, T1). */
@@ -95,6 +103,10 @@ export const TERRAIN_ACCENT: Readonly<Record<Terrain, TypeName>> = Object.freeze
 export interface StageGround {
   sample(x: number, z: number): number;
   normal?(x: number, z: number, out: Vector3): Vector3;
+  /** Footprints / blockers (camera occluders): the evolution sequence picks a clear spot for the creature. */
+  blocked?(x: number, z: number): boolean;
+  /** What a creature may stand on (walkable, not blocked). */
+  passable?(x: number, z: number): boolean;
 }
 
 export interface StageDeps {
@@ -112,6 +124,8 @@ export interface StageDeps {
   readonly weather?: (w: WeatherKind) => void;
   /** The validated type colour table (colourblind modes) for the HUD's type badges (M2-battle-7). */
   readonly typeColors?: (t: Readonly<Record<TypeName, string>>) => void;
+  /** Post exposure / vignette: the evolution sequence dims the world around the creature (restored exactly). */
+  readonly post?: { readonly exposure: UniformNode<'float', number>; readonly vignette: UniformNode<'float', number> } | null;
 }
 
 interface Battler { readonly ref: BattlerRef; bb: CreatureBillboard; id: string; hpFrac: number }
@@ -254,6 +268,9 @@ export class Stage implements BattleStage {
   private beaconTarget = 0;
   private beaconFadeMs: number = STAGE.dressMs;
   private pulse = 0;
+  private evo: EvolutionSequence | null = null;
+  /** Frames the beacons still render their shadow maps for the step-8 warm-up (`armWarmupShadows`). */
+  private warmShadowFrames = 0;
   private disposed = false;
 
   constructor(private readonly d: StageDeps) {
@@ -326,6 +343,7 @@ export class Stage implements BattleStage {
 
   dress(at: { readonly x: number; readonly z: number }, terrain: Terrain, participants: readonly string[]): void {
     if (this.disposed) return;
+    this.cancelEvolution();            // a battle owns the camera, the beacons and the VFX pool
     this.terrain = terrain;
     this.refreshAccent();
     this.placeArena(this.main, at.x, at.z, terrain);
@@ -482,6 +500,7 @@ export class Stage implements BattleStage {
 
   inspect(desc: SpriteDescriptor | null): void {
     if (this.disposed) return;
+    this.cancelEvolution();
     if (this.inspected !== null) { this.inspected.dispose(); this.inspected = null; }
     if (desc === null) { this.d.rig.release(STAGE.inspectExitMs); return; }
     const bb = this.d.sprites.acquire(desc);
@@ -498,8 +517,57 @@ export class Stage implements BattleStage {
     this.d.rig.inspect(_w, STAGE.inspectExitMs);
   }
 
+  /**
+   * §10.7.5 evolution sequence (amended 2026-10-05; `stage/evolution.ts`): the creature appears beside the trainer under
+   * the inspector camera, glows, alternates between its old and new silhouettes and is revealed in a light burst
+   * (reduced effects: a gentle cross-fade). The caller plays it only after the server confirmed the evolution. A
+   * running sequence is cancelled by a new one, `dress`, `inspect` and `dispose`.
+   */
+  evolve(r: EvolutionRequest): EvolutionHandle {
+    this.cancelEvolution();
+    if (this.disposed) return { phase: 'done', done: Promise.resolve('cancelled'), skip: () => undefined, cancel: () => undefined };
+    if (this.inspected !== null) { this.inspected.dispose(); this.inspected = null; }   // the sequence takes the inspector shot over
+    // a main arena still sinking after a battle goes at once: the sequence borrows its beacon and its ground-cover slots
+    if (!this.main.dressed && this.main.rise > 0) { this.main.rise = 0; this.main.riseTarget = 0; this.hideArena(this.main); }
+    if (!this.main.dressed) { this.beaconLevel = 0; this.beaconTarget = 0; }
+    const g = this.ground;
+    const seq = new EvolutionSequence({
+      sprites: this.d.sprites, vfx: this.d.vfx, rig: this.d.rig, actors: this.d.actors, parent: this.d.parent,
+      light: this.beaconLights[0]!, lightTarget: this.beaconTargets[0]!, ground: (x, z) => this.groundAt(x, z), effects: this.d.effects,
+      post: this.d.post ?? null,
+      occluded: g !== null && g.blocked !== undefined ? (x, z) => g.blocked!(x, z) : null,
+      standable: g !== null && g.passable !== undefined ? (x, z) => g.passable!(x, z) : null,
+      clearSite: (on, x, z, cx, cz) => this.evolutionSite(on, x, z, cx, cz),
+    }, r);
+    this.evo = seq;
+    return seq;
+  }
+
+  /** The running evolution sequence (null when none). */
+  get evolution(): EvolutionSequence | null { return this.evo !== null && !this.evo.isFinished ? this.evo : null; }
+
+  /**
+   * The evolution sequence's site (the main arena's two ground-cover slots and prop-cutaway slot, free while no battle
+   * is dressed): grass and small props around the creature, and merged static props between it and the camera.
+   */
+  private evolutionSite(on: boolean, x: number, z: number, cx: number, cz: number): void {
+    const m = this.cover;
+    if (!on) { m?.clear(0); m?.clear(1); this.cut?.restore(0); return; }
+    if (this.main.dressed) return;
+    m?.set(0, x, z, STAGE.evoCoverInnerM, STAGE.evoCoverOuterM, 0, COVER_GROUND);
+    m?.set(1, x, z, STAGE.evoPropHideM, STAGE.evoPropHideM + 0.05, 0, COVER_SMALL | COVER_LARGE);
+    this.cut?.hide(0, cx, cz, STAGE.evoCutM);
+  }
+
+  private cancelEvolution(): void {
+    if (this.evo === null) return;
+    this.evo.cancel();
+    this.evo = null;
+  }
+
   dispose(): void {
     if (this.disposed) return;
+    this.cancelEvolution();
     this.disposed = true;
     for (const b of this.battlerList) b.bb.dispose();
     this.battlers.clear(); this.battlerList.length = 0;
@@ -534,9 +602,15 @@ export class Stage implements BattleStage {
     for (let i = 0; i < this.beaconLights.length; i++) {
       const L = this.beaconLights[i]!;
       L.intensity = I;
-      if (this.beaconLevel <= 0 && this.beaconTarget === 0) L.shadow.autoUpdate = false;
+      if (this.beaconLevel <= 0 && this.beaconTarget === 0) L.shadow.autoUpdate = this.warmShadowFrames > 0;
     }
+    if (this.warmShadowFrames > 0) this.warmShadowFrames--;
     (this.housingMaterial.userData.harvest as UniformNode<'float', number>).value = harvest;
+    // the evolution sequence borrows beacon 0 (written after the arena's own beacon values) and restores it at its end
+    if (this.evo !== null) {
+      this.evo.update(dtRealMs);
+      if (this.evo.isFinished) this.evo = null;
+    }
   }
 
   /** Projects battler `ref`'s sprite top to CSS px (HUD bar anchor). */
@@ -549,6 +623,19 @@ export class Stage implements BattleStage {
     out[offset] = (_v.x * 0.5 + 0.5) * vp.w;
     out[offset + 1] = (-_v.y * 0.5 + 0.5) * vp.h;
     return true;
+  }
+
+  /**
+   * §10.1.2 step 8: the two reserved beacons render their shadow maps (at intensity 0) during the warm-up frames,
+   * aimed at the warm-up group, so the spot-shadow pass programs (the generic shadow material, the billboard's
+   * positionNode / alpha-mask variant, skinned bodies) exist before the first battle or evolution needs them.
+   */
+  armWarmupShadows(): void {
+    this.warmShadowFrames = STAGE.warmShadowFrames;
+    for (let i = 0; i < this.beaconLights.length; i++) {
+      this.beaconLights[i]!.position.set(0, STAGE.warmShadowHeightM, STAGE.warmShadowBackM);
+      this.beaconTargets[i]!.position.set(0, 0, -1);
+    }
   }
 
   /** A housing mesh for the renderer's warm-up frame (compiles the beacon housing material). */

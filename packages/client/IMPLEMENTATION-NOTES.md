@@ -610,3 +610,69 @@ tracks `.screenshots/audit/` and `.screenshots/budget/` (SPEC §50.5 / §50.2.3 
 
 Checks: `tsc -b packages/client` clean, `eslint packages/client` clean, `vitest run packages/client` green
 (`routes.test.tsx` is load-sensitive in the full parallel run and passes alone, as noted in part 2).
+
+
+---
+
+# Part 6 — the evolution sequence (2026-10-05; render IMPLEMENTATION-NOTES Part 7)
+
+Evolving was a confirm modal → `POST /creature/:id/evolve` → a toast; the creature just swapped. Now every evolve path
+plays render's evolution sequence (`stage.evolve`) after the server confirmed it. SPEC: §20.5.6, §20.9.2, §20.9.3
+(CHANGELOG 2026-10-05).
+
+| File | What |
+|---|---|
+| `src/app/evolution.ts` | the DOM-side seam (no scene import): `evolveCreature(c, into)` (REST → the one inventory writer → `playEvolution`), `playEvolution(req)` (sets `ui.evolution` for the whole sequence, serialises sequences, banner-only fallback without a world), `preloadEvolution(species)`, `setEvolutionPlayer` |
+| `src/scene/EvolutionDirector.ts` | the world side (World3D's `EvolutionPlayer`): descriptors from the sprite catalog, both species' atlases asked for, `stage.evolve`, the input lock, the skip capture, the facing, the restore |
+| `src/world/EvolutionBanner.tsx` + `.module.css` | the DOM banner ("Evolution" / "<Name> evolved into <Species>!", `role="status"`) and the "Space or click to skip" pill |
+| `src/state/ui.ts` | `evolution: EvolutionUi | null` (`playing` → `revealed` → `leaving`) + `setEvolution` |
+| `src/world/PostBattlePrompts.tsx` | Evolve calls `evolveCreature`; preloads the new form when the prompt opens; the queue waits while `ui.evolution` is set |
+| `src/scene/World3D.ts` | builds the director at boot and registers it; `worldBlocked` includes `ui.evolution`; the tick faces the avatar toward the creature; dispose cancels |
+| `src/app/PlayShell.tsx` + `.module.css` | mounts the banner; `data-evolving` fades the panel slot and the hint out (`visibility: hidden`); the shell hotkeys ignore keys while evolving |
+| `src/harness/{HarnessWorld.ts,HarnessOverlay.tsx,main.tsx}` | the harness builds the same director and shows the banner; `__ewaHarness.evolve(from, to, reduced)`, `step(ms)`, `evolution()` |
+| `test/evolution.test.tsx` | 6 tests (below) |
+
+**V1 — server truth first.** `evolveCreature` awaits the REST answer, writes the returned creature through
+`applyInventoryDelta`, and only then calls `playEvolution` with the RESPONSE's `speciesId` / variant / alpha; a
+failure throws before anything plays (the prompt's `danger` toast names the code, the prompt stays). The success toast
+is replaced by the banner. The Rare Candy path is the same component: `presentItemUse` queues the explicit evolve prompt
+from the server's `evolveReady` item event, and the prompt shows over the Party screen.
+
+**V2 — one sequence at a time, prompts after it.** `ui.evolution` is set synchronously by `playEvolution` (before the
+prompt calls `shiftPrompt`), so `PostBattlePrompts` renders nothing until it clears: a learn-move prompt queued behind
+the evolve prompt opens after the banner. A second `playEvolution` waits for the first.
+
+**V3 — the input lock** (`EvolutionDirector`): at start `input.setEnabled(false)` and `hud.setVisible(false)`; every
+world action is gated by `worldBlocked()` (now including `ui.evolution`), the shell hotkeys check it, the panel slot is
+hidden (`visibility`, so nothing in it takes focus or a click). `Space` / `Enter` / `NumpadEnter` / `Escape` and a
+primary click (window capture phase) call `handle.skip()` — the keys are `preventDefault` + `stopImmediatePropagation`
+(Escape would otherwise open Settings, Space is the jump bind), a held key skips once, other keys pass through to the
+(blocked) capture. At the end: listeners removed, the HUD back to the F1 state, input back on unless a battle took
+over (render's `dress` cancels the sequence; `inputAfter` reads `ui.battle` / `director.inBattle`).
+
+**V4 — off the tick.** Render calls `onPhase` from its frame hook (inside `renderer.frame`); the director defers the
+`reveal` / `exit` callbacks with `setTimeout(0)` before they write the store (B8). The tick adds one branch (the
+avatar's heading toward the creature, `atan2` on numbers) — no allocation, no React.
+
+**V5 — atlases.** The prompt binds the new species when it opens (`preloadEvolution` → `ensureSpecies`); the director
+asks again for both forms at the start (a no-op when bound); render's sequence waits for both binds (≤ 8 s).
+
+**V6 — the banner.** Bottom-centre over the canvas like a game text box (the close-up frames the creature and its
+trainer in the upper four fifths; a top banner covered the trainer's head in the harness shots), `--glass` with the
+eyebrow in `--accent-hi`, the line in the display face at `--t-h2`, the species in `--accent-hi`; it fades in / out over
+`--motion-banner` (0 ms under reduced motion), `--z-toast`, no pointer events. Without a world (no zone, a battle) the
+banner alone shows for `BANNER_ONLY_MS` 2.6 s.
+
+**Verified in the harness** (client dev server on :5182, `/harness/index.html?zone=mirevale`, headless Chrome over CDP,
+`__ewaHarness.evolve('bramblecub', 'briarbear')`, 150 ms steps): the whole sequence through the real seam, director,
+stage and banner, full and reduced; the banner appears at the reveal frame and fades at the exit; the trainer stands
+beside the creature, both in frame. The live game (ports 4000 / 2567 / 5173) was not touched.
+
+**Tests** (`test/evolution.test.tsx`, 6): a refused evolve plays nothing and keeps the prompt, a confirmed one plays the
+response's species strictly after the response, writes the inventory, holds the next prompt, shows / fades the banner
+and opens the next prompt at the end; Rare Candy (`presentItemUse` → prompt → Evolve → sequence); post-battle (the
+prompt behind the result card plays once the battle UI is gone); the banner-only fallback; `EvolutionDirector` locks
+input and the HUD during the sequence and restores them after (and keeps input locked when a battle cancels it), skips
+on Space / Enter / Escape / click only (KeyW passes, a repeat skips once), defers phase callbacks, removes its
+listeners; it refuses to play (null, nothing locked) without a zone or a sprite. Client total: 23 files, 171 tests
+(+ the harness-free suites unchanged); `perf/tick` passes in the full run.

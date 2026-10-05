@@ -20,7 +20,11 @@ import { HarnessOverlay } from './HarnessOverlay';
 import { measureShot } from './measure';
 import type { MeasureOptions, ShotBudget } from './measure';
 import { stageShot } from './stage';
+import { playEvolution, setEvolutionPlayer } from '../app/evolution';
+import { STEP_MS } from '../battle/constants';
+import { useUiStore } from '../state/ui';
 import { zoneSpecFor } from '../scene/zoneSpecFor';
+import { speciesName } from '../data/content';
 import type { StageOptions, StageResult } from './stage';
 import s from './Harness.module.css';
 
@@ -36,6 +40,14 @@ interface HarnessApi {
   dump(): ZoneDump;
   counts(): BudgetCounts;
   overlay(on: boolean): void;
+  /**
+   * §20.5.6: plays the evolution sequence for a party creature of species `from` → `to` through the app's seam
+   * (`playEvolution`, World3D's director) — the harness has no server, so this stands in for the confirmed response.
+   * Step it with `step(ms)`; `evolution()` reads `ui.evolution`.
+   */
+  evolve(from: string, to: string, reduced?: boolean): void;
+  step(ms: number): void;
+  evolution(): unknown;
 }
 
 const params = new URLSearchParams(location.search);
@@ -124,6 +136,16 @@ const api: HarnessApi = {
   overlay: (on) => {
     layer.hidden = !on;
   },
+  evolve: (from, to, reduced = false) => {
+    world.setEffects(reduced);
+    const evo = world.evolution;
+    setEvolutionPlayer(evo === null ? null : { play: (req, cb) => evo.play(req, cb), preload: () => undefined });
+    void playEvolution({ creatureId: 'harness-evolve', name: speciesName(from), fromSpecies: from, toSpecies: to, variantKey: 'normal', isAlpha: false });
+  },
+  step: (ms) => {
+    for (let i = 0; i < Math.max(1, Math.round(ms / STEP_MS)); i++) world.tick();
+  },
+  evolution: () => useUiStore.getState().evolution,
 };
 (window as unknown as { __ewaHarness: HarnessApi }).__ewaHarness = api;
 

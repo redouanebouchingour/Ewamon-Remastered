@@ -11,6 +11,7 @@ import { BattleOverlay } from '../battle/BattleOverlay';
 import { ChallengePrompt } from '../world/ChallengePrompt';
 import { ChatInput } from '../world/ChatInput';
 import { DialogueBox } from '../world/DialogueBox';
+import { EvolutionBanner } from '../world/EvolutionBanner';
 import { PostBattlePrompts } from '../world/PostBattlePrompts';
 import { TradeModal } from '../world/TradeModal';
 import { setNavigator } from './navigation';
@@ -64,7 +65,7 @@ function useShellHotkeys(): void {
     const onKey = (e: KeyboardEvent): void => {
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) return;
       const ui = useUiStore.getState();
-      if (ui.battle !== null || ui.modal !== 'none' || ui.dialogue !== null || ui.chatOpen || document.querySelector('[aria-modal="true"]') !== null) return;
+      if (ui.battle !== null || ui.evolution !== null || ui.modal !== 'none' || ui.dialogue !== null || ui.chatOpen || document.querySelector('[aria-modal="true"]') !== null) return;
       const binds = useSettingsStore.getState().keybinds;
       if (binds.toggleHud.includes(e.code)) {
         e.preventDefault();
@@ -146,12 +147,14 @@ export function PlayShell() {
   const { zoneId } = useLoaderData<typeof playLoader>();
   const location = useLocation();
   const hudVisible = useUiStore((st) => st.hudVisible);
+  // the evolution sequence has the stage: the open panel and the shortcut hint step aside until it ends (§20.5.6)
+  const evolving = useUiStore((st) => st.evolution !== null);
   useWorldConnection(zoneId as ZoneId);
   useShellHotkeys();
   const pendingPanel = usePendingPanel();
   const hasPanel = location.pathname !== '/play' && location.pathname !== '/play/';
   return (
-    <div className={s.shell} data-testid="playshell" data-hud={hudVisible ? 'on' : 'off'}>
+    <div className={s.shell} data-testid="playshell" data-hud={hudVisible ? 'on' : 'off'} data-evolving={evolving || undefined}>
       <TopBar />
       <div className={s.panelSlot} data-open={hasPanel || pendingPanel !== null || undefined}>
         {pendingPanel !== null ? <PanelSkeleton path={pendingPanel} /> : <Outlet />}
@@ -163,6 +166,7 @@ export function PlayShell() {
       <ChallengePrompt />
       <TradeModal />
       <PostBattlePrompts />
+      <EvolutionBanner />
       <ConnectionOverlay />
       <NotificationHost />
     </div>

@@ -100,7 +100,8 @@ export type { BiomeSet } from './zone/generators/set.js';
 export type { BiomeGenerators, GeoLod, Palette, PropGeo, TreeKind } from './zone/types.js';
 
 export type {
-  ActorDescriptor, ActorPool, BattlerPose, BattlerRef, BattleStage, Biome, BuildingSpec, CameraRig, Dir, Edge, GeneratorSet, HeightfieldData,
+  ActorDescriptor, ActorPool, BattlerPose, BattlerRef, BattleStage, Biome, BuildingSpec, CameraRig, Dir, Edge, EvolutionHandle, EvolutionPhase,
+  EvolutionRequest, GeneratorSet, HeightfieldData,
   HudLayer, HudModel, Layout, Marker, Pickup, PropPlacement, SetPieceId, SpriteDescriptor, SpriteFrame, Tablet, Terrain, TerrainColliderLike,
   TypeName, VariantKey, VfxId, WaterSpec, ZoneHandle, ZoneSpec, ActorSpawn, PlanRoadData, ZonePlanData,
 } from './contracts.js';
@@ -133,7 +134,7 @@ export {
 export type { CameraWork, CueKind, OrbitPose } from './camera/battle.js';
 export { BOKEH_PX, FOCAL_LENGTH_M, TILT_DEG, TiltShiftDOF, circleOfConfusionPx, groundOffPlaneM } from './camera/dof.js';
 export { CAPACITY as VFX_CAPACITY, EMITTERS as VFX_EMITTERS, MAX_PARTICLES as VFX_MAX_PARTICLES, VFX_IDS, VFX_TABLE, VfxSystem, isVfxId } from './stage/vfx.js';
-export type { VfxAnchor, VfxPhase, VfxRecipe } from './stage/vfx.js';
+export type { SequenceVfxRecipe, VfxAnchor, VfxPhase, VfxRecipe } from './stage/vfx.js';
 export { ACTOR_POOL_SIZE, CHARACTER, CharacterPool, EMOTE_CLIPS, EMOTE_MS, EMOTE_NAMES } from './stage/actors.js';
 export type { ActorPoolOptions, EmoteId, GroundSampler } from './stage/actors.js';
 export { CHARACTER_MATERIAL, createCharacterMaterial } from './stage/characterMaterial.js';
@@ -144,6 +145,10 @@ export type {
   ShapeTemplate,
 } from './stage/looks.js';
 export { STAGE, Stage, TERRAIN_ACCENT, TERRAIN_SURFACE } from './stage/battleStage.js';
+export {
+  EVOLUTION, EVOLUTION_TIMELINE, EvolutionSequence, alternationHz, evolutionDurationMs, evolutionPhaseAt, evolutionRecipes, sampleEvolution,
+} from './stage/evolution.js';
+export type { EvolutionDeps, EvolutionSample, PhaseSpan } from './stage/evolution.js';
 export type { StageDeps, StageGround } from './stage/battleStage.js';
 export { CanvasHudLayer, FIELD_REGION, HUD, HUD_FIELDS, HUD_REGIONS, browserSurface } from './hud/layer.js';
 export type { HudAnchors, HudField, HudRegion, HudSurface, HudSurfaceFactory, Ref } from './hud/layer.js';

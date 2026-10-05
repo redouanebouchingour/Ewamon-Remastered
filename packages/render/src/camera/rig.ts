@@ -192,6 +192,7 @@ export class DioramaRig implements CameraRig {
   private readonly framing: Framing = { distance: 0, tilt: 0, fits: true };
   private shotTilt = 0;
   private frameFromD = 0; private frameToD = 0; private frameFromTilt = 0; private frameToTilt = 0; private frameT = 1;
+  private frameMs: number = FRAMING_EASE_MS;
   private cueScale = 1;
   // cue
   private cueWork: CameraWork | null = null;
@@ -312,7 +313,7 @@ export class DioramaRig implements CameraRig {
 
     // framing ease (a panel resize / a switch-in during the battle)
     if (this.frameT < 1) {
-      this.frameT = Math.min(1, this.frameT + dt / FRAMING_EASE_MS);
+      this.frameT = Math.min(1, this.frameT + dt / Math.max(1, this.frameMs));
       const e = smooth(this.frameT);
       this.shot.distance = this.frameFromD + (this.frameToD - this.frameFromD) * e;
       this.shotTilt = this.frameFromTilt + (this.frameToTilt - this.frameFromTilt) * e;
@@ -543,16 +544,36 @@ export class DioramaRig implements CameraRig {
     this.frameFromD = this.shot.distance; this.frameFromTilt = this.shotTilt;
     this.frameToD = this.framing.distance; this.frameToTilt = this.framing.tilt;
     this.frameT = 0;
+    this.frameMs = FRAMING_EASE_MS;
   }
 
-  /** Inspector close-up (§10.7.5 `stage.inspect`): the camera 4 m from `aim`; `release(ms)` exits. */
-  inspect(aim: Vector3, ms: number): void {
+  /**
+   * Inspector close-up (§10.7.5 `stage.inspect`): the camera 4 m from `aim` (or `distance` m — the evolution sequence
+   * frames the taller of two forms); `release(ms)` exits.
+   */
+  inspect(aim: Vector3, ms: number, distance?: number): void {
     inspectPose(aim, this.yawTo, this.shot);
+    if (distance !== undefined && Number.isFinite(distance) && distance > 0) this.shot.distance = distance;
     this.shotTilt = 0;
     this.frameT = 1;
     this.shotFocus.copy(aim);
     this.enterShot('inspect', ms);
   }
+
+  /**
+   * Eases the current shot's orbit distance to `distance` m over `ms` (smoothstep): the evolution sequence's slow
+   * push toward the creature during its build-up. Ignored in the diorama pose.
+   */
+  dollyShot(distance: number, ms: number): void {
+    if (this.mode === 'diorama' || !(Number.isFinite(distance) && distance > 0)) return;
+    this.frameFromD = this.shot.distance; this.frameToD = distance;
+    this.frameFromTilt = this.shotTilt; this.frameToTilt = this.shotTilt;
+    this.frameMs = Number.isFinite(ms) && ms > 0 ? ms : FRAMING_EASE_MS;
+    this.frameT = 0;
+  }
+
+  /** The current shot's orbit distance (m; the inspector's 4 m, a battle framing, a dolly in progress). */
+  get shotDistance(): number { return this.shot.distance; }
 
   /** Current shake offset magnitude in world units (Pillar 8 hook: 0 whenever effects.shake is false). */
   get shakeOffset(): number {

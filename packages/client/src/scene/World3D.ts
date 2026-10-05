@@ -25,6 +25,7 @@ import type { CompileProgress, Renderer, SurfaceId, VfxId, WeatherKind, ZoneHand
 import { createAudioDirector } from '../audio/AudioDirector';
 import type { AudioDirector } from '../audio/AudioDirector';
 import { loadAudioManifest, validateAudioManifest } from '../audio/manifest';
+import { setEvolutionPlayer } from '../app/evolution';
 import { navigateTo } from '../app/navigation';
 import { getWorldBoot, setWorldBoot } from '../app/bootProgress';
 import { battlePanelTop, onBattlePanelTop } from '../battle/panelInset';
@@ -49,6 +50,7 @@ import { beatDialogue, gymPlan, leaguePostDialogue, leagueSpeaker, npcPlan, stor
 import type { DialogueLines, InteractPlan } from './dialogue';
 import { HudWriter, partyStrip } from './HudWriter';
 import type { HudNameplates } from './HudWriter';
+import { EvolutionDirector } from './EvolutionDirector';
 import { createInputCapture } from './input';
 import type { InputCapture } from './input';
 import { InteractionTargets, PLAYER_RANGE } from './interaction';
@@ -160,6 +162,8 @@ class World implements World3D {
   private zone: ZoneDef | null = null;
   /** the beat whose lines the player already read before its interact was sent (its `storyBeat start` is no news) */
   private readBeat: string | null = null;
+  /** §20.5.6 the evolution sequence (render's `stage.evolve` + the input lock), built at boot */
+  private evolution: EvolutionDirector | null = null;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.audio = createAudioDirector();
@@ -298,6 +302,25 @@ class World implements World3D {
     });
     this.battle.attach(this.battleView());
     this.ready = true;
+    // §20.5.6: every evolve path plays render's evolution sequence through this player (app/evolution.ts)
+    if (p3 !== undefined) {
+      const evo = new EvolutionDirector({
+        stage: p3.stage,
+        descriptor: (sp, key, v, a) => this.catalog?.descriptor(sp, key, v, a) ?? null,
+        ensureSpecies: (sp) => this.ensureSpecies(sp),
+        canPlay: () => this.zoneLoaded && !this.disposed && useUiStore.getState().battle === null && !this.director.inBattle,
+        position: () => ({ x: this.input.renderX, z: this.input.renderZ }),
+        selfId: () => this.ws.selfId,
+        reduced: () => getEffectiveSettings().reduced,
+        setInputEnabled: (on) => this.input.setEnabled(on),
+        inputAfter: () => useUiStore.getState().battle === null && !this.director.inBattle,
+        setHudVisible: (on) => this.hudWriter.setVisible(on),
+        hudVisible: () => useUiStore.getState().hudVisible,
+        target: window,
+      });
+      this.evolution = evo;
+      setEvolutionPlayer({ play: (req, cb) => evo.play(req, cb), preload: (sp) => this.ensureSpecies(sp) });
+    }
     // a room joined while the renderer compiled
     if (this.room !== null && this.roomZone !== null) void this.enterZone(this.room, this.roomZone);
     else setWorldBoot({ label: 'Joining the world' });
@@ -861,7 +884,7 @@ class World implements World3D {
 
   private worldBlocked(): boolean {
     const ui = useUiStore.getState();
-    return ui.battle !== null || ui.dialogue !== null || ui.modal !== 'none' || ui.chatOpen || ui.prompts.length > 0 || ui.trade !== null || ui.challenge !== null;
+    return ui.battle !== null || ui.evolution !== null || ui.dialogue !== null || ui.modal !== 'none' || ui.chatOpen || ui.prompts.length > 0 || ui.trade !== null || ui.challenge !== null;
   }
 
   private cameraYaw(): number {
@@ -1032,6 +1055,11 @@ class World implements World3D {
         if (this.battleFoe !== null && this.remotes.isSpawned(this.battleFoe)) {
           this.renderer.actors.setTransform(this.battleFoe, bf.x + bf.fx * TRAINER_BACK_M, bf.z + bf.fz * TRAINER_BACK_M, Math.atan2(-bf.fx, -bf.fz), false, false);
         }
+      } else if (this.evolution?.active === true) {
+        // the evolution sequence: the trainer turns to the creature beside them (input is locked meanwhile)
+        const rx = this.input.renderX;
+        const rz = this.input.renderZ;
+        this.renderer.actors.setTransform(selfId, rx, rz, this.evolution.faceAngle(rx, rz), false, false);
       } else {
         this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, this.input.pose.angle, this.input.moving, this.input.running);
       }
@@ -1215,6 +1243,8 @@ class World implements World3D {
     this.capture.dispose();
     this.battle.reset();
     setBattleActions(null);
+    setEvolutionPlayer(null);
+    this.evolution?.cancel();
     this.audio.dispose();
     if (this.ready) {
       this.director.unloadZone();

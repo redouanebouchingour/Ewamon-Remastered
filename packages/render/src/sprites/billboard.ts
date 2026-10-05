@@ -85,6 +85,8 @@ export interface BillboardUserData {
   hurt: number;
   dissolve: number;
   sharp: number;
+  /** Evolution glow 0..1 (white silhouette; §10.7.5 evolution sequence). */
+  glow: number;
   readonly typeColor: Color;
   ewaBillboard: true;
 }
@@ -141,7 +143,9 @@ export function createBillboardMaterial(tex: AtlasTextures, u: BillboardUniforms
   const alpha = select(holes, float(0), a.a);
   const cut = float(B.alphaTest).add(dissolve.mul(0.5));
 
-  m.colorNode = vec4(mix(c, a.rgb, h), alpha);
+  // evolution glow: the card becomes a white silhouette of its own alpha (lit white + white emissive below)
+  const glow = f('glow');
+  m.colorNode = vec4(mix(mix(c, a.rgb, h), vec3(1), glow), alpha);
   m.normalNode = mix(normalMap(n.rgb, float(1)) as unknown as Node<'vec3'>, normalView, h).normalize();
   m.roughnessNode = float(B.roughness);
   m.metalnessNode = float(B.metalness);
@@ -154,7 +158,8 @@ export function createBillboardMaterial(tex: AtlasTextures, u: BillboardUniforms
   const rim = pow(oneMinus(abs(dot(normalWorld, V))), B.rimPower);
   const typeC = userData('typeColor', 'color') as unknown as Node<'vec3'>;
   const shimmer = f('alphaGlow').mul(B.shimmerAmp).mul(sin(u.animTime.mul(B.shimmerRate).add(uv().y.mul(B.shimmerBands))).mul(0.5).add(0.5));
-  m.emissiveNode = typeC.mul(rim).mul(B.rimStrength).add(a.rgb.mul(em).mul(B.emissiveGain)).add(a.rgb.mul(shimmer)).mul(oneMinus(h));
+  m.emissiveNode = typeC.mul(rim).mul(B.rimStrength).add(a.rgb.mul(em).mul(B.emissiveGain)).add(a.rgb.mul(shimmer)).mul(oneMinus(h))
+    .add(vec3(glow.mul(B.glowGain)));
 
   m.mrtNode = mrt({ mask: vec2(1, f('sharp')) });   // x: exclude from GTAO darkening; y: DOF-sharp (§10.8.2)
   m.positionNode = billboardPosition(u);
@@ -423,7 +428,7 @@ export class BillboardPool implements SpritePool {
   private makeRig(): Rig {
     const ud: BillboardUserData = {
       rect: new Vector4(0, 0, 1, 1), size: new Vector2(1, 1.6), footV: 0.08, scaleY: 1, lift: 0, bob: 0,
-      hueShift: 0, satMul: 1, lightMul: 1, alphaGlow: 0, hurt: 0, dissolve: 0, sharp: 0, typeColor: new Color(1, 1, 1), ewaBillboard: true,
+      hueShift: 0, satMul: 1, lightMul: 1, alphaGlow: 0, hurt: 0, dissolve: 0, sharp: 0, glow: 0, typeColor: new Color(1, 1, 1), ewaBillboard: true,
     };
     const quad = new Mesh(this.quadGeometry, this.neutral.material);
     quad.userData = ud as unknown as Record<string, unknown>;
@@ -480,6 +485,7 @@ export class CreatureBillboard {
   private dissolveBase = 0;
   private variant: VariantKey;
   private isAlpha: boolean;
+  private sizeMul = 1;
   private disposed = false;
 
   constructor(pool: SpritePool, d: SpriteDescriptor) {
@@ -493,7 +499,7 @@ export class CreatureBillboard {
     this.rig = pool.takeRig();
     this.object = this.rig.group;
     this.object.name = `ewa:creature:${d.id}`;
-    this.rig.ud.hurt = 0; this.rig.ud.dissolve = 0; this.rig.ud.sharp = 0; this.rig.ud.lift = 0; this.rig.ud.scaleY = 1; this.rig.ud.bob = 0;
+    this.rig.ud.hurt = 0; this.rig.ud.dissolve = 0; this.rig.ud.sharp = 0; this.rig.ud.lift = 0; this.rig.ud.scaleY = 1; this.rig.ud.bob = 0; this.rig.ud.glow = 0;
     this.object.position.set(0, 0, 0);
     this.setVariant(d.variant, d.isAlpha);
     this.refreshTypeColor();
@@ -592,8 +598,27 @@ export class CreatureBillboard {
     hexToLinearInto(this.pool.typeColorHex(this.d.types[0]), this.rig.ud.typeColor);
   }
 
+  /** Evolution glow 0..1: a white silhouette of the card's own alpha (§10.7.5 evolution sequence). Scalar write. */
+  setGlow(v: number): void { this.rig.ud.glow = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0; }
+
+  /**
+   * Shows / hides the card and its contact decal without touching the pose or the bind (the evolution sequence's
+   * silhouette swaps): a visibility flag, so no program, material or binding changes.
+   */
+  setShown(on: boolean): void { this.object.visible = on; }
+
+  /** Uniform scale of the card about its foot point (the evolution sequence's silhouette "pop"); 1 = the §10.4.3 size. */
+  setSizeMul(k: number): void {
+    const v = Number.isFinite(k) && k > 0 ? k : 1;
+    if (v === this.sizeMul) return;
+    this.sizeMul = v;
+    this.applyDims();
+  }
+
   get descriptor(): SpriteDescriptor { return this.d; }
   get heightM(): number { return this.dims.heightM; }
+  /** Card width (m) at the §10.4.3 size (before `setSizeMul`). */
+  get widthM(): number { return this.dims.widthM; }
   get facing(): 'front' | 'back' { return this.side; }
   get currentPose(): BattlerPose { return this.pose; }
   get isDisposed(): boolean { return this.disposed; }
@@ -656,7 +681,7 @@ export class CreatureBillboard {
   private applyDims(): void {
     billboardDims(this.frame(), this.d.sizeScale, this.isAlpha, this.dims);
     const ud = this.rig.ud;
-    ud.size.set(this.dims.widthM, this.dims.heightM);
+    ud.size.set(this.dims.widthM * this.sizeMul, this.dims.heightM * this.sizeMul);
     ud.footV = this.frame().footV;
     this.rig.decal.scale.set(this.dims.decalM, this.dims.decalM, 1);
   }

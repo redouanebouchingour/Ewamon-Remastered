@@ -38,6 +38,21 @@ export interface BattleUi {
   readonly expectedMs: number;
 }
 
+/**
+ * The evolution sequence on screen (SPEC §20.5.6, amended 2026-10-05): set by `app/evolution.ts` once the server has
+ * confirmed the evolution; `revealed` from the light burst (the DOM banner shows), `leaving` while the camera pulls
+ * back; null when it ended. World input, the shell hotkeys and the queued prompts wait while it is set.
+ */
+export interface EvolutionUi {
+  readonly id: number;
+  readonly creatureId: string;
+  /** the creature's display name before the evolution (its nickname, or the old species' name) */
+  readonly name: string;
+  /** the new species' display name */
+  readonly species: string;
+  readonly phase: 'playing' | 'revealed' | 'leaving';
+}
+
 export type ModalKind = 'none' | 'evolve' | 'learnMove' | 'trade' | 'challenge' | 'raidLobby' | 'nickname' | 'release' | 'listing';
 export type Connection = 'connected' | 'reconnecting' | 'offline';
 
@@ -87,6 +102,8 @@ export interface UiState {
   readonly fps: number;
   /** post-battle evolve / learn-move prompts still to show (the head is the open modal) */
   readonly prompts: readonly QueuedPrompt[];
+  /** the evolution sequence playing (null = none) */
+  readonly evolution: EvolutionUi | null;
 
   setBattle(b: BattleUi | null): void;
   setDialogue(d: DialogueUi | null): void;
@@ -101,6 +118,7 @@ export interface UiState {
   enqueuePrompt(p: QueuedPrompt): void;
   /** drops the head prompt (answered or skipped) */
   shiftPrompt(): void;
+  setEvolution(e: EvolutionUi | null): void;
   reset(): void;
 }
 
@@ -119,6 +137,7 @@ const INITIAL = {
   leaveReason: null,
   fps: 0,
   prompts: [] as readonly QueuedPrompt[],
+  evolution: null,
 } as const satisfies Partial<UiState>;
 
 const now = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -147,6 +166,7 @@ export const useUiStore = create<UiState>()(
     setFps: (fps) => set({ fps }),
     enqueuePrompt: (p) => set({ prompts: [...get().prompts, p] }),
     shiftPrompt: () => set({ prompts: get().prompts.slice(1) }),
+    setEvolution: (evolution) => set({ evolution }),
     reset: () => set({ ...INITIAL }),
   })),
 );

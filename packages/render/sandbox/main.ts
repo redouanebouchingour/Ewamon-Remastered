@@ -483,6 +483,8 @@ async function main(): Promise<void> {
     pipeRecs: () => pipeRecs.map((p) => ({ ...p, t0: Math.round(p.t0), dt: Math.round(p.dt) })),
     /** `&hold=1`: renders the deferred first zone frame (then the loop resumes) and returns the timings. */
     release: async () => { if (firstZoneFrame && holding) await firstZoneFrame(); return { ...timing }; },
+    /** Pauses / resumes the rAF loop's frames (deterministic frame stepping for captures: `renderer.frame(dt)` by hand). */
+    pause: (on: boolean) => { holding = on; },
     /** Programs (WGSL) three holds now that it did not hold right after `loadZone` resolved, plus that snapshot. */
     newPrograms: () => {
       if (!programsAtLoad) return null;

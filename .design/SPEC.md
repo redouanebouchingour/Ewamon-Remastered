@@ -2832,7 +2832,8 @@ const hueR = userData('hueShift', 'float'), satM = userData('satMul', 'float'), 
 let c = hue(a.rgb, hueR); c = saturation(c, satM); c = c.mul(litM);
 const flash = userData('hurt', 'float');
 c = mix(c, vec3(1), flash.mul(0.85));
-mat.colorNode     = vec4(mix(c, a.rgb, h), a.a);                 // harvested: raw albedo, no palette (Pillar 5 off means unlit-looking; lighting below)
+const evo = userData('glow', 'float');                           // §10.7.5 evolution sequence: 0 for every other billboard (amended 2026-10-05)
+mat.colorNode     = vec4(mix(mix(c, a.rgb, h), vec3(1), evo), a.a);   // harvested: raw albedo, no palette (Pillar 5 off means unlit-looking; lighting below); evo → white
 mat.normalNode    = mix(normalMap(n, float(1)), normalGeometry, h);   // derived normal lights the sprite (Pillar 5); level 2: flat
 mat.roughnessNode = float(0.85); mat.metalnessNode = float(0);
 mat.alphaTest     = 0.5;
@@ -2843,13 +2844,15 @@ const V     = cameraPosition.sub(positionWorld).normalize();
 const rim   = pow(oneMinus(abs(dot(normalWorld, V))), 3.0);      // normalWorld here is the normal-mapped one (alpha-edge bevel gives outward normals at the silhouette)
 const typeC = userData('typeColor', 'color');                    // 'color', not 'vec3': a vec3 uniform reads .x/.y/.z and a Color uploads NaN
 const shimmer = glow.mul(0.25).mul(sin(pool.uniforms.clock.mul(3.0).add(uv().y.mul(8.0))).mul(0.5).add(0.5));   // pool clock advanced by dt × timeScale (hitstop freezes it), not `time`
-mat.emissiveNode = typeC.mul(rim).mul(0.6).add(a.rgb.mul(em).mul(1.8)).add(a.rgb.mul(shimmer)).mul(oneMinus(h));
+mat.emissiveNode = typeC.mul(rim).mul(0.6).add(a.rgb.mul(em).mul(1.8)).add(a.rgb.mul(shimmer)).mul(oneMinus(h)).add(vec3(evo.mul(1.3)));   // evo: a glowing white silhouette of the card's own alpha
 mat.mrtNode = mrt({ mask: vec2(1, userData('sharp', 'float')) });   // x: exclude from GTAO darkening; y: DOF-sharp (§10.8.2)
 mat.side = FrontSide; mat.shadowSide = DoubleSide; mat.transparent = false; mat.depthWrite = true;
 mat.map = null;   // the albedo is published as material.userData.ewaAlbedo: _getShadowNodes multiplies shadow alpha by map.a sampled at the RAW quad uv (the whole atlas)
 ```
 
 <!-- amended 2026-09-25: typeColor 'vec3' → 'color', shimmer clock, shadowSide DoubleSide (the shadow pass renders FrontSide as BackSide, so a camera-facing card cast no shadow with the sun behind the camera), map null — render IMPLEMENTATION-NOTES P5, P6, P7, Q2 -->
+
+Amended 2026-10-05 (render IMPLEMENTATION-NOTES Part 7): the per-object `glow` (0..1, `BILLBOARD.glowGain` 1.3) is the evolution sequence's white silhouette (§10.7.5). It is part of the one billboard program from the step-8 warm-up on, so a sequence compiles nothing — the warm-up billboard's 4 × 4 neutral set now uses a linear min filter (single level): three 0.186 treats a texture with Nearest min AND mag as unfilterable (`textureLoad`), so the Nearest/Nearest neutral set had compiled a different program from every atlas (Nearest mag, trilinear min), and the first creature drawn compiled the real one; `CreatureBillboard` gains `setGlow(v)`, `setShown(on)` (the group's visibility: a silhouette swap is no material, program or binding change) and `setSizeMul(k)` (a uniform scale about the foot point). <!-- amended 2026-10-05: render IMPLEMENTATION-NOTES Part 7 -->
 
 Dissolve additionally discards `hash(floor(uvRect.mul(1024))).lessThan(userData('dissolve','float'))` texels, so a fainting creature breaks into texel-sized holes rather than fading (Pillar 6: alpha stays binary). Creature emissive pixels output `1.8 × albedo` where the mask is 1. `BloomNode`'s high-pass thresholds **luminance** (`BloomNode.js` lines 12–15: `smoothstep(threshold, threshold + smoothWidth, luminance(rgb))`), so the emissive term alone crosses the 1.15 threshold only where `luminance(albedo_linear) > 1.15 / 1.8 = 0.639` (and contributes fully only above 1.20 / 1.8 = 0.667, the 0.05 smooth width). The §40.1.2 stage-4 mask (HSV value ≥ 0.92, chroma ≥ 0.4) admits warm and green accents that meet it (a `(1, 1, 0.6)` sRGB yellow: luminance 0.95 → 1.71) and saturated reds, blues and violets that do not (`(0.92, 0.52, 0.52)` red: 0.36 → 0.64; `(0.6, 0.6, 1)` blue: 0.37 → 0.66) — those glow in the beauty image but never bloom, at night or noon. The "threshold in the gap" claim therefore holds per hue, not per mask (recommendation R8). <!-- amended 2026-09-25: the draft read 1.8 × albedo ≥ 1.35 as a per-channel floor; bloom is luminance-keyed -->
 
@@ -3209,7 +3212,26 @@ export interface BattleStage {
   syncFrom(hp: readonly { readonly ref: BattlerRef; readonly hpFrac: number }[]): void;   // after battleResync: poses reset, no animation
   setTypeColors(table: Readonly<Record<TypeName, string>>): void;   // colourblind palettes (20-client.md §20.8.3)
   inspect(d: SpriteDescriptor | null): void;            // 4 m close-up pose for the party/dex inspector; null exits
+  /** The evolution sequence (amended 2026-10-05): call only after the server confirmed the evolution; a new call or `dress` cancels a running one. */
+  evolve(r: EvolutionRequest): EvolutionHandle;
   dispose(): void;
+}
+
+/** §10.7.5 evolution sequence phases; `fade` replaces `charge · alternate · peak` under effective reduced effects. */
+export type EvolutionPhase = 'stage' | 'charge' | 'alternate' | 'peak' | 'fade' | 'reveal' | 'hold' | 'exit' | 'done';
+export interface EvolutionRequest {
+  readonly from: SpriteDescriptor;                       // the form before (bound or binding: the sequence waits for both atlases)
+  readonly to: SpriteDescriptor;                         // the form after (the server's species)
+  readonly at?: { readonly x: number; readonly z: number } | null;   // the trainer's feet (default: the camera focus); the creature appears in front of them
+  readonly reduced: boolean;                             // effective reduced effects: a gentle cross-fade, no pulses, no burst, no shake
+  readonly cheer?: string | null;                        // actor id that cheers at the reveal when within 6 m of the creature (the local player)
+  readonly onPhase?: (phase: EvolutionPhase) => void;    // called from the frame hook on every phase entry: keep it cheap (defer store writes)
+}
+export interface EvolutionHandle {
+  readonly phase: EvolutionPhase;
+  readonly done: Promise<'done' | 'cancelled'>;          // after the cleanup: camera released, lights / post / bindings restored
+  skip(): void;                                          // before the reveal → the reveal; during the reveal / hold → the exit
+  cancel(): void;                                        // immediate cleanup (a battle starting, the stage disposed)
 }
 
 export type VfxId =
@@ -3224,6 +3246,35 @@ export const VFX_IDS: readonly VfxId[];                  // exactly 19 + 4 + 6 +
 ```
 
 Every VFX is a slice of one pooled instanced `Sprite` (`count` 4 096 = 8 emitters × 512 particles, additive, `layers 29`, one shared `PointsNodeMaterial` with per-particle `instancedBufferAttribute` for birth/lifetime/colour — a `Points` object rasterises 1-px points on WebGPU, header table) or a pooled alpha-card burst (≤ 8 cards); particles write valid MRT values (the view axis as normal, mask `(1, 0)`) and alpha-test at 0.004, because the pass MRT writes those attachments unblended and a zero normal made GTAO NaN. Pools are allocated in `createRenderer` (§10.1.2 step 7) and never grow. VFX add **no** lights (a light appearing mid-battle recompiles every lit program); impacts pulse the 2 reserved beacons instead, which live under the stage root from `createRenderer` on at intensity 0 with `shadow.autoUpdate = false` while undressed. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES P4, P8, P10, Q8 --> `impact_super` adds a 120 ms `chroma` request (`effects.chroma` gates it) and `impact_crit` a 3-frame white flash on the target (`hurt 1.0`). VFX never writes `mask.y = 1`, so effects blur with the scene and never sharpen; VFX never covers the HUD rects (the HUD is a later overlay pass — Pillar 8 readability gate in `50-verification-budget.md` §50.1 rule 15).
+
+**Sequence effects** (amended 2026-10-05; `stage/evolution.ts` `evolutionRecipes(type, reduced)`): recipes outside the 47-id table (the `VfxId` union and its count are unchanged), built once per sequence with the new form's type colour and spawned through `VfxSystem.spawnRecipe` into the same pooled emitters and the one shared material — nothing allocated on the GPU, no program. Each phase is ≤ 512 particles, cards ≤ 8.
+
+| Recipe | When | Phases |
+|---|---|---|
+| `evolve_motes` | charge → peak (5 000 ms) | rising stars (90, cream / white) + rising soft discs (200, type colour / warm white), swirling up from the feet |
+| `evolve_converge` | peak (500 ms) | 160 stars drawn from a 1.6 m shell into the creature's chest |
+| `evolve_burst` | reveal | one soft flare disc (2.4 m shrinking, 300 ms), a star burst (130, white / gold, 6.5 m/s), two ring cards (1.2 → 2.4 m), rising type-coloured stars (90) |
+| `evolve_motes` (reduced) | fade (2 600 ms) | 60 stars + 90 discs, slower |
+| `evolve_reveal` (reduced) | reveal | 110 rising stars — no burst, no ring cards |
+
+**Evolution sequence** (amended 2026-10-05; render IMPLEMENTATION-NOTES Part 7; the user-approved design). `evolve(request)` plays a creature's evolution in place, beside the trainer; the client calls it only with the species the server returned (`20-client.md` §20.5.6), and every evolve path (the post-battle prompt, Rare Candy, future stones and trades) goes through it. Timeline (ms; `skip()` jumps to the reveal, a second `skip()` to the exit):
+
+| Phase | Full | Reduced | What |
+|---|---|---|---|
+| `stage` | 0–1 100 | 0–1 100 | the camera pushes in on the §10.7.4 inspector pose (pitch −18°, distance `max(4, 2.6 × taller form, the creature + trainer span / (0.8 × the frame width at 1 m))` m, aimed at the middle of that span so both stay in frame); the old form dissolves in (250–750 ms) 1.2 m in front of the trainer and to one side by at least half the wider card + 0.3 m, so a big creature does not hide its trainer — the first of 9 candidate spots whose footprint and ground line toward the camera are clear of the collider's footprints; the world dims (post `exposure` × 0.74, `vignette` → 0.55); a soft light rises under the creature |
+| `charge` | 1 100–2 000 | — | the old form turns into a glowing white silhouette (`glow` 0 → 1); motes rise |
+| `alternate` | 2 000–5 600 | — | the white silhouettes alternate OLD ↔ NEW on a linear ramp from 0.7 to 2.4 full cycles per second (never above 3 Hz); each incoming silhouette pops from 0.88 × to full size over 110 ms; the camera dollies 0.6 m closer |
+| `peak` | 5 600–6 100 | — | the new silhouette held white while sparkles converge on it (the gap that keeps the burst from adding a flash to the alternation's last second) |
+| `fade` | — | 1 100–3 700 | the two forms cross-fade through the dissolve dither under a gentle glow (≤ 0.35, one slow rise and fall) |
+| `reveal` | 6 100–7 000 | 3 700–4 600 | full: the light burst (the light × 2.4 and back, star burst, ring cards, a 0.06 / 300 ms shake that `effects.shake` gates), the glow fades into the new form's colours (held 120 ms, ease-out over 560 ms); reduced: rising sparkles only, no spike, no shake; both: the camera eases back to 0.4 m beyond its start distance (over the reveal and half the hold: the whole new form, room for the banner), the world brightens back, the trainer (`cheer`) plays its `cheer` emote when within 6 m, the new form bounces (`celebrate`, 640 ms) |
+| `hold` | 7 000–8 800 | 4 600–6 400 | the new form idles (the client's DOM banner) |
+| `exit` | 8 800–9 500 | 6 400–7 100 | the camera releases to the diorama pose (700 ms), the creature dissolves out (first 60 %), the light fades |
+
+- **Flashing (WCAG 2.3.1)**: at most 5 silhouette swaps (opposing luminance changes) in any one second, ≥ 214 ms apart, the burst included (test: a luminance proxy of glow × area + light has ≤ 6 opposing changes of ≥ 10 % in every 1 s window); reduced: no swap, the light never exceeds its charge level, no pair of opposing changes in any second.
+- **Light**: the reserved arena beacon 0 (it exists from `createRenderer`, so the light set never changes): a warm spot 1.15 m toward the camera and 0.2 m up, aimed at mid-height (angle 0.6, penumbra 0.9, range 9 m, decay 2, intensity 7 × the phase level). While borrowed its shadow camera renders only `LAYERS.billboards`, and the step-8 warm-up frames render both beacons' shadow maps over the warm group (`Stage.armWarmupShadows`), so the spot-shadow pass programs exist from boot: a sequence compiles nothing (measured: 0 new programs). A main arena still sinking after a battle is finished at once.
+- **Site**: 450 ms into the stage the main arena's two ground-cover slots hide grass inside 1.3 m (back by 2.3 m) and small props inside 1.6 m of the creature, and the prop cutaway hides merged static props within 1.9 m of a point 1 m toward the camera; restored halfway through the exit (§10.5.7, byte-exact).
+- **Atlases**: both billboards are acquired at the start; the stage holds just before its end until both atlases are bound, at most 8 s; past that, with the new form still unbound, the sequence goes straight to the reveal (the new form shows when its bind lands).
+- **Cleanup** (done or cancelled): both billboards disposed (the pool's live count and the atlas refcounts as before), beacon 0's position, target, colour, intensity, cone, range, decay, shadow update and shadow-camera layers restored, post exposure / vignette restored, the site restored; cancelled: the VFX pool cleared and the camera released unless a battle's push-in owns it. `dress`, `inspect`, a second `evolve` and `dispose` cancel a running sequence. Per frame: scalar writes only, no allocation.
 
 ### 10.7.6 `ActorPool`
 
@@ -4172,6 +4223,8 @@ DOM (`BattleOverlay`, bottom 28 % of the viewport, `Panel` without title): root 
 
 In-canvas (render `HudLayer`, spine Pillar 8: never covered by an effect): both active battlers' HP bars anchored above the billboards with name, level, HP numbers (own side only), status glyph, stage arrows (▲/▼ per stat with count); the turn label; the orb shake counter. The `BattleResultCard` (DOM modal) shows `RewardsSummary` and, for `battleEnd` with `evolveReady`/`learnMove` events in the last turn, the `evolve`/`learnMove` modals queued in order, each an explicit REST call (`POST /creature/:id/evolve`, `POST /creature/:id/moves`) — never automatic.
 
+**The evolution sequence** (amended 2026-10-05; client IMPLEMENTATION-NOTES Part 6, render §10.7.5). Every evolve path — the post-battle prompt, the Party screen's Rare Candy (the server's `evolveReady` item event queues the same prompt, §20.9.3), and later stones and trades — calls `app/evolution.ts` `evolveCreature(creature, into)`: **server truth first** — `POST /creature/:id/evolve` answers, the returned creature goes through the one inventory writer, and only then `playEvolution` stages the response's species; a failed call plays nothing (the `danger` toast names the error code and the prompt stays). The prompt starts binding the new form's atlas when it opens (`preloadEvolution`). World3D registers the player (`scene/EvolutionDirector.ts`): render's `stage.evolve({ from, to, at: the player's feet, reduced: effective reduced effects, cheer: the local player })`. While it plays, `ui.evolution` is set: movement is off and every world action is blocked (`worldBlocked`), the shell hotkeys are ignored, the canvas HUD is hidden (restored to the F1 state after), the open panel and the shortcut hint step aside (§20.9.2), the queued prompts wait, and the avatar faces the creature. A primary click or `Space` / `Enter` / `Escape` skips to the reveal, then to the exit (the keys are swallowed; others pass). Render's phase callbacks arrive from its frame hook and are deferred off the tick (`setTimeout(0)`): `reveal` shows the DOM `EvolutionBanner` — an eyebrow "Evolution" and "<Name> evolved into <Species>!" in the display face (`--t-h2`), bottom-centre over the canvas like a game text box, `role="status"` — replacing the old success toast; `exit` fades it (`--motion-banner`); the end restores the input (unless a battle took over) and clears `ui.evolution`. While the sequence builds up, a caption pill reads "Space or click to skip". Without a world (no zone, a battle) the banner alone shows for 2.6 s. A battle starting cancels the sequence (render's `dress`). <!-- amended 2026-10-05: client IMPLEMENTATION-NOTES Part 6 -->
+
 ---
 
 ## §20.6 IN-WORLD HUD
@@ -4338,9 +4391,9 @@ Each screen: information hierarchy in one paragraph, then its states. All `/play
 
 **20.9.1 Auth** (`/login`, `/register`). Full-bleed static key-art (`public/keyart/mirevale.ktx2`-derived JPEG, 1440p) with a 420 px `Card` centred-right. Primary: username + password (+ email + starter picker on register). The starter picker is three `CreatureCard variant="showcase"` for `bramblecub / glimfin / cindercap` with type badges and a two-line flavour each; the selection is the largest element on the register form. Secondary: the switch link (login ↔ register). Errors from the action render inline under the field they concern (`username taken`, `bad credentials`); network errors as a single `danger` line above the button. No password rules beyond 8..128 are displayed until violated.
 
-**20.9.2 World** (`/play`). The canvas is the screen. HUD per §20.6. DOM elements present: a 56 px top bar with the nav (`Party · Box · Dex · Shop · Social · Guild · Market · Pass · Settings`, `NavLink`s with unread counts), the money counter (mono, tabular), the trainer level pip; the chat input (hidden until `T`); toasts bottom-right; `DialogueBox` bottom-centre (`--t-body-lg`, speaker in display face, `Enter`/`E` advances, ≤ 3 lines visible, remaining count shown). Empty: a zone with no other players shows nothing extra. Loading: `BootScreen` (§20.10.4) only before the first `/me`; a zone change shows only the banner. Error: `ConnectionOverlay` after 2 s disconnected (§20.3.4).
+**20.9.2 World** (`/play`). The canvas is the screen. HUD per §20.6. DOM elements present: a 56 px top bar with the nav (`Party · Box · Dex · Shop · Social · Guild · Market · Pass · Settings`, `NavLink`s with unread counts), the money counter (mono, tabular), the trainer level pip; the chat input (hidden until `T`); toasts bottom-right; `DialogueBox` bottom-centre (`--t-body-lg`, speaker in display face, `Enter`/`E` advances, ≤ 3 lines visible, remaining count shown). Empty: a zone with no other players shows nothing extra. Loading: `BootScreen` (§20.10.4) only before the first `/me`; a zone change shows only the banner. Error: `ConnectionOverlay` after 2 s disconnected (§20.3.4). Evolution (amended 2026-10-05, §20.5.6): while the sequence plays, an open `/play/*` panel and the shortcut hint fade out (`visibility: hidden`, so nothing in them takes focus or clicks) and come back where they were; the `EvolutionBanner` sits bottom-centre over the canvas (`--z-toast`, no pointer events).
 
-**20.9.3 Party** (`/play/party`). Left 60 %: six `CreatureCard variant="row"` in slot order (sprite, name/nickname, level, `HpBar`, status, held item icon), keyboard-reorderable (`Alt+↑/↓`) and pointer-draggable; reorder commits with `POST /party/reorder` on drop (optimistic order, revert on error). Right 40 %: the selected creature's detail — stats (`calcStat` from core for display, marked "at level"), four `MoveButton`s with PP, ability + held item selects (`POST /creature/:id/setup`), nickname (`POST /creature/:id/nickname`), favourite/lock toggles (`POST /creature/:id/flags`), release (`danger`, confirm modal, refused when locked). Empty: impossible (party ≥ 1). Loading: none (store). Error: toast.
+**20.9.3 Party** (`/play/party`). Left 60 %: six `CreatureCard variant="row"` in slot order (sprite, name/nickname, level, `HpBar`, status, held item icon), keyboard-reorderable (`Alt+↑/↓`) and pointer-draggable; reorder commits with `POST /party/reorder` on drop (optimistic order, revert on error). Right 40 %: the selected creature's detail — stats (`calcStat` from core for display, marked "at level"), four `MoveButton`s with PP, ability + held item selects (`POST /creature/:id/setup`), nickname (`POST /creature/:id/nickname`), favourite/lock toggles (`POST /creature/:id/flags`), release (`danger`, confirm modal, refused when locked). Empty: impossible (party ≥ 1). Loading: none (store). Error: toast. Field items (amended 2026-10-05): the detail's "Use an item" section uses Rare Candy and the other field items through `POST /item/use`; an `evolveReady` event in the answer queues the explicit evolve prompt (§20.5.6), and accepting it plays the evolution sequence in the world behind the panel, which steps aside until it ends (§20.9.2).
 
 **20.9.4 Box** (`/play/box`). A 10-column tile grid (`CreatureCard variant="tile"`, 72 px) paged 60 per page (`?page=`), with a sticky filter row (search by name/species, type, sort by level/dex/recent). The party strip is pinned at the top of the panel so deposit/withdraw is one drag or two clicks (`POST /party/withdraw`/`deposit`, `POST /party/swap` when the party is full and a slot is targeted). Selecting a tile shows the same detail column as Party. Empty: "Your box is empty — creatures you catch with a full party arrive here." Loading: skeleton grid. Error: toast + retry button in the panel header.
 

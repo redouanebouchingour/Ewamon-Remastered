@@ -6,6 +6,33 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-05 evolution sequence: the user-approved design (stage it with the inspector camera, a white glow pulsing between the old and new silhouettes, a light burst and a banner; WCAG 2.3.1 flashing limits, a reduced-effects cross-fade, skip; server truth first; one sequence for every evolve path). Five entries, newest on top. -->
+
+## 2026-10-05 — `20-client.md` §20.9.2, §20.9.3 — while an evolution plays, the open panel and the shortcut hint step aside and the evolution banner sits over the canvas; Rare Candy's `evolveReady` queues the evolve prompt from the Party screen
+Why: the Party screen's "Use an item" (Rare Candy) can trigger an evolution while the 1120 px panel covers most of the canvas; the sequence is the moment, so the panel fades out (`visibility: hidden`: nothing in it takes focus or clicks) and returns where it was.
+Evidence: `packages/client/src/app/PlayShell.tsx` / `PlayShell.module.css` (`data-evolving`), `world/EvolutionBanner.tsx`; `test/evolution.test.tsx` (the Rare Candy path queues the prompt and plays the sequence).
+Affects: `packages/client/src/app/PlayShell.*`, `world/EvolutionBanner.*`; the shell hotkeys ignore keys while `ui.evolution` is set.
+
+## 2026-10-05 — `20-client.md` §20.5.6 — evolving plays the evolution sequence after the server confirmed it: `evolveCreature` (REST → inventory writer → `playEvolution`), input locked with click / Space / Enter / Escape to skip, the DOM banner from the reveal, the next prompt after it
+Why: an evolution was a confirm modal, a REST call and a toast — the creature just swapped. Server truth first keeps the game from showing an evolution that did not happen; one entry point (`app/evolution.ts`) serves the post-battle prompt, Rare Candy and future stones / trades.
+Evidence: client IMPLEMENTATION-NOTES Part 6; `test/evolution.test.tsx` (a failed call plays nothing and keeps the prompt; a confirmed one plays the response's species after the response; Rare Candy and post-battle paths; the banner; `EvolutionDirector` locks input and the HUD during the sequence and restores them after, skip keys swallowed, phase callbacks deferred off the tick).
+Affects: `packages/client/src/app/evolution.ts`, `scene/EvolutionDirector.ts`, `scene/World3D.ts` (`worldBlocked`, the avatar faces the creature), `world/PostBattlePrompts.tsx`, `state/ui.ts` (`evolution`); the success toast is replaced by the banner.
+
+## 2026-10-05 — `10-render.md` §10.7.5 (VFX table) — sequence effects: the evolution sequence's recipes (`evolve_motes`, `evolve_converge`, `evolve_burst`; reduced `evolve_motes`, `evolve_reveal`) spawn into the pooled emitters outside the 47-id table
+Why: the sequence needs rising sparkles, a converge and a burst in the new form's type colour; adding `VfxId`s would change the client's MOVE_ANIMS contract and the 47-id count for effects no move uses.
+Evidence: `packages/render/src/stage/evolution.ts` `evolutionRecipes`, `VfxSystem.spawnRecipe`; `test/evolution.test.ts` (every phase ≤ 512 particles; the reduced set has no burst motion and no ring cards); sandbox frames (render IMPLEMENTATION-NOTES Part 7).
+Affects: `packages/render/src/stage/vfx.ts` (`spawnRecipe`, `SequenceVfxRecipe`); `VFX_IDS` and the `VfxId` union unchanged.
+
+## 2026-10-05 — `10-render.md` §10.7.5 — `BattleStage.evolve(request)`: the evolution sequence (inspector camera push-in, world dim, white glow alternating old / new silhouettes at ≤ 3 Hz, light burst, cheer, cleanup), with a reduced-effects cross-fade and skip
+Why: the user approved a proper evolution moment in the HD-2D style; it must never exceed 3 flashes per second (WCAG 2.3.1), must cross-fade under reduced effects, must not change the light set or compile programs mid-sequence, and must give everything it borrows back exactly.
+Evidence: render IMPLEMENTATION-NOTES Part 7 (sandbox frame sequences day / night / reduced / skip; 0 new programs during a sequence; max 5 swaps per second, ≥ 214 ms apart); `test/evolution.test.ts` (timing, WCAG proxy, reduced path, atlas gate, skip, cancel by `dress`, exact restore of camera, beacon, post, site and bindings).
+Affects: `packages/render/src/stage/{evolution,battleStage,wiring}.ts` (`Stage.armWarmupShadows`, the beacons' shadow pass compiled in the step-8 warm-up frames), `camera/rig.ts` (`inspect(aim, ms, distance?)`, `dollyShot`), `contracts.ts` / `defaults.ts` (`EvolutionRequest`, `EvolutionHandle`, `EvolutionPhase`), `sandbox/part3.ts` (`?demo=evolve`).
+
+## 2026-10-05 — `10-render.md` §10.4.5 — the billboard graph gains the per-object `glow` (white silhouette for the evolution sequence); `CreatureBillboard` gains `setGlow`, `setShown`, `setSizeMul`; the warm-up's neutral set is filterable like the atlases
+Why: the hurt flash mixes the lit albedo only 85 % toward white, which reads grey at dusk; the evolution needs a glowing white silhouette of the card's own alpha at any time of day. In the one billboard program from boot, it costs no program at sequence time. The warm-up's neutral set had Nearest min + mag, which three 0.186 compiles as an unfilterable `textureLoad` variant — a program no atlas uses — so the first creature drawn (or a sequence in a zone without wild creatures) compiled the atlas variant; it now has a linear min filter.
+Evidence: `packages/render/src/sprites/billboard.ts`, `tables.ts` (`BILLBOARD.glowGain` 1.3), `atlas.ts` (`neutralAtlasTextures`); sandbox (render IMPLEMENTATION-NOTES Part 7 E6): with no creature on screen before the sequence, 4 new programs before, 0 after; boot programs 111 → 107; `test/evolution.test.ts` (the neutral set is filterable like the atlases).
+Affects: every billboard writes `glow = 0` (no visible change outside the sequence); the neutral placeholder is sampled linearly when minified (4 × 4, one level: no visible change).
+
 <!-- 2026-10-05 KayKit characters: the user's decision "3D people with 2D creatures" (stylised 3D people from the KayKit "Adventurers 2.0" free pack, creatures stay 2D lit billboards). Five entries, newest on top. -->
 
 ## 2026-10-05 — `10-render.md` §10.7.7 — the pixel-art character proposal of 2026-09-30 (`tools/character-pipeline`) is closed unapplied; its output and runtime are deleted

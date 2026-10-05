@@ -1,0 +1,114 @@
+/*
+ * The evolution banner sits over the canvas, bottom-centre like a game text box (the close-up frames the creature and
+ * its trainer in the upper four fifths); it never takes pointer events (a click anywhere skips the sequence —
+ * World3D's capture). Entrance / exit use the motion tokens (0 ms under reduced motion).
+ */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.banner {
+  position: absolute;
+  inset-block-end: var(--s-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  max-inline-size: min(var(--modal-md), 100vw - 2 * var(--s-7));
+  padding: var(--s-4) var(--s-7);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--r-3);
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-2);
+  text-align: center;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity var(--motion-banner) var(--ease-out),
+    transform var(--motion-banner) var(--ease-out);
+}
+
+.banner[data-shown] {
+  opacity: 1;
+  transform: none;
+}
+
+.layer[data-phase='leaving'] .banner {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.eyebrow {
+  color: var(--accent-hi);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.line {
+  margin: 0;
+  color: var(--text-1);
+  font-family: var(--face-display);
+  font-size: var(--t-h2);
+  line-height: var(--lh-h2);
+  font-weight: 600;
+}
+
+.name {
+  color: var(--text-hi);
+  font-weight: 800;
+}
+
+.species {
+  color: var(--accent-hi);
+  font-weight: 800;
+}
+
+.hint {
+  position: absolute;
+  inset-block-end: var(--s-7);
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-5);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--r-pill);
+  background: var(--glass);
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}
+
+.hint kbd {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 22px;
+  block-size: 22px;
+  padding: 0 var(--s-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-1);
+  background: var(--bg-1);
+  color: var(--text-hi);
+  font-family: var(--face-mono);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}
+
+.sr {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

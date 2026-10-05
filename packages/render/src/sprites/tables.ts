@@ -26,6 +26,12 @@ export const BILLBOARD = Object.freeze({
   shimmerRate: 3.0,
   shimmerBands: 8.0,
   hurtFlashMix: 0.85,
+  /**
+   * Evolution glow (§10.7.5 evolution sequence): `glow` 0..1 mixes the lit albedo to white and adds `glow × glowGain`
+   * white emissive (scene-linear, above the 1.15 bloom threshold), so the card reads as a glowing white silhouette of
+   * its own alpha at any time of day. 0 for every other billboard (the term is in the one billboard program from boot).
+   */
+  glowGain: 1.3,
   /** Dissolve holes: `hash(floor(uvRect × 1024))`. */
   dissolveCells: 1024,
   /** §10.4.7 contact decal: 1.1 m × sizeScale, opacity 0.55, radial smoothstep(0.5, 0.05). */

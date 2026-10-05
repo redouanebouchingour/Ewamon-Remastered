@@ -1,10 +1,13 @@
 /**
- * SPEC §20.5.6 — the evolve / learn-move modals queued after the BattleResultCard, one at a time, in order; each an
- * explicit REST call (`POST /creature/:id/evolve { into }`, `POST /creature/:id/moves { moves }`) — never automatic.
- * The returned CreatureInstance goes through the one inventory writer.
+ * SPEC §20.5.6 — the evolve / learn-move modals queued after the BattleResultCard (or by an item's `evolveReady` /
+ * `learnMove` events, e.g. Rare Candy on the Party screen), one at a time, in order; each an explicit REST call
+ * (`POST /creature/:id/evolve { into }`, `POST /creature/:id/moves { moves }`) — never automatic. The returned
+ * CreatureInstance goes through the one inventory writer. Evolve: only after the server confirmed it, the evolution
+ * sequence plays (`app/evolution.ts`); the next prompt waits until it ended.
  */
 import { useEffect, useState } from 'react';
 import type { CreatureInstance } from '@ewa/core';
+import { evolveCreature, preloadEvolution } from '../app/evolution';
 import { displayName, move as moveDef, speciesName } from '../data/content';
 import { ApiFailure, apiFetch } from '../net/api';
 import { toast } from '../state/notifications';
@@ -29,12 +32,13 @@ function failure(e: unknown): string {
 
 function Evolve({ p, c }: { readonly p: Extract<QueuedPrompt, { kind: 'evolve' }>; readonly c: CreatureInstance }) {
   const [busy, setBusy] = useState(false);
+  // the new form's sprite atlas binds while the player reads the prompt (the sequence must not wait for it)
+  useEffect(() => preloadEvolution(p.into), [p.into]);
   const go = async (): Promise<void> => {
     setBusy(true);
     try {
-      const res = await apiFetch('creatureEvolve', { params: { id: c.id }, body: { into: p.into } });
-      applyInventoryDelta(toInventoryDelta({ creaturesUpdated: [res] }));
-      toast('success', `${displayName(c)} evolved into ${speciesName(p.into)}!`);
+      // REST first: the sequence (and its "evolved into" banner) plays only for the creature the server returned
+      await evolveCreature(c, p.into);
       next();
     } catch (e) {
       toast('danger', `Evolution failed (${failure(e)}).`);
@@ -131,9 +135,11 @@ export function PostBattlePrompts() {
   const inBattle = useUiStore((st) => st.battle !== null);
   // a beat's `after` lines / a leader's `post` lines are read first, then the prompts
   const talking = useUiStore((st) => st.dialogue !== null);
+  // the evolution sequence plays: the next prompt waits for it
+  const evolving = useUiStore((st) => st.evolution !== null);
   // re-render when the creature changes (an evolve answered, a party move)
   useSessionStore((st) => st.inventory);
-  if (head === null || inBattle || talking) return null;
+  if (head === null || inBattle || talking || evolving) return null;
   const c = findCreature(head.creatureId);
   if (c === null) {
     queueMicrotask(next);

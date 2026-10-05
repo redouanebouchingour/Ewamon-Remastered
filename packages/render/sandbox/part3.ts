@@ -299,6 +299,77 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
     if (new URLSearchParams(location.search).get('auto') !== '0') void loop();
   }
 
+  if (mode === 'evolve') {
+    // §10.7.5 evolution sequence: `&from=bramblecub&to=briarbear` (default), `&reduced=1`, `&look=`; the local player
+    // stands at the focus facing the camera; `part3.evo.play(reduced?)`, `skip()`, `step(ms)` (with `pause(true)`),
+    // `state()`. `&auto=1` plays once on load.
+    const q = new URLSearchParams(location.search);
+    const from = q.get('from') ?? 'bramblecub'; const to = q.get('to') ?? 'briarbear';
+    const need = new Set([man.sprites[from]?.front.atlas, man.sprites[from]?.back.atlas, man.sprites[to]?.front.atlas, man.sprites[to]?.back.atlas]);
+    const extra = man.atlases.filter((a) => need.has(a.id) && !zoneAtlases.includes(a.id)).map(atlasSet);
+    walkers.forEach((_, i) => p.actors.despawn(`walker${i}`));
+    walkersOn = false;
+    const fwd = p.rig.dioramaForward(new Vector3());
+    const faceCam = Math.atan2(-fwd.x, -fwd.z);
+    const ground = (x: number, z: number): number => ((api.zone as (() => { collider: { sampleClamped(x: number, z: number): number } } | null) | undefined)?.()?.collider.sampleClamped(x, z) ?? 0);
+    const me = { x: focus.x + Number(q.get('dx') ?? 0), z: focus.z + Number(q.get('dz') ?? 0) };
+    p.actors.spawn('me', { look: q.get('look') ?? 'casual_male', name: 'Rowan', guildTag: '', isLocal: true });
+    p.actors.setTransform('me', me.x, me.z, faceCam + Number(q.get('face') ?? 0), false, false);
+    p.rig.setFocus(me.x, ground(me.x, me.z), me.z);
+    p.hud.set({ nameplates: [], chat: [], prompt: null, zoneName: null, questHint: null, party: [] });
+    // a wild creature of the zone a few metres off, as the client's SpawnViews would show one (`&wild=0` hides it):
+    // the atlas billboard programs (beauty + sun shadow) exist before the sequence, as they do in play
+    if (q.get('wild') !== '0') {
+      const wildBb = p.sprites.acquire(descriptor(man, species[1] ?? species[0]!, 'evo:wild'));
+      wildBb.setFacing('front');
+      const wx = me.x - fwd.x * 2 - fwd.z * 5; const wz = me.z - fwd.z * 2 + fwd.x * 5;
+      wildBb.setPosition(wx, ground(wx, wz), wz);
+      r.scene.add(wildBb.object);
+    }
+    const host2 =host as unknown as { post: { uniforms: { exposure: { value: number }; vignette: { value: number } } } };
+    const phases: { phase: string; at: number }[] = [];
+    let handle: ReturnType<typeof p.stage.evolve> | null = null;
+    let clock = 0;
+    // programs three holds (WGSL keys → names): what the sequence compiles, if anything
+    const progs = (): Map<string, string> => {
+      const pr = (r.renderer as unknown as { _pipelines?: { programs?: { vertex: Map<string, { name: string }>; fragment: Map<string, { name: string }> } } })._pipelines?.programs;
+      const m = new Map<string, string>();
+      if (pr) { for (const [k, v] of pr.vertex) m.set(`v:${k}`, `v:${v.name}`); for (const [k, v] of pr.fragment) m.set(`f:${k}`, `f:${v.name}`); }
+      return m;
+    };
+    let progsAtPlay = new Map<string, string>();
+    const newPrograms = (): string[] => { const now = progs(); const outN: string[] = []; for (const [k, n] of now) if (!progsAtPlay.has(k)) outN.push(n); return outN; };
+    const play = (reduced = q.get('reduced') === '1'): void => {
+      void Promise.all(extra.map((s) => p.sprites.bindAtlas(s)));            // the sequence waits for the binds
+      progsAtPlay = progs();
+      phases.length = 0; clock = 0;
+      handle = p.stage.evolve({
+        from: descriptor(man, from, `evo:${from}`), to: descriptor(man, to, `evo:${to}`), at: me, reduced, cheer: 'me',
+        onPhase: (ph) => phases.push({ phase: ph, at: Math.round(clock) }),
+      });
+    };
+    extraTicks.push((dt) => { clock += dt; });
+    const evo = {
+      play,
+      /** Resolves when the zone's background compile is done (measure programs only after it). */
+      idle: async () => { await (r.compileIdle?.() ?? Promise.resolve()); return r.renderer.info.memory.programs; },
+      skip: () => handle?.skip(),
+      /** Advances `ms` of frames at 60 Hz with the loop paused (`__ewaSandbox.pause(true)` first). */
+      step: (ms: number) => { const n = Math.max(1, Math.round(ms / (1000 / 60))); for (let i = 0; i < n; i++) r.frame(1000 / 60); },
+      state: () => {
+        const s = p.stage.evolution;
+        return {
+          phase: handle?.phase ?? null, clock: s?.clock ?? null, bound: s?.bound ?? null, phases: [...phases],
+          sample: s ? { ...s.lastSample } : null, exposure: host2.post.uniforms.exposure.value, vignette: host2.post.uniforms.vignette.value,
+          light: p.stage.beaconLights[0]!.intensity, programs: r.renderer.info.memory.programs, live: p.sprites.stats().live,
+          rig: p.rig.currentMode, blend: p.rig.shotBlend, newPrograms: newPrograms(),
+        };
+      },
+    };
+    Object.assign(out, { evo });
+    if (q.get('auto') === '1') setTimeout(() => play(), 300);
+  }
+
   // the sandbox walkers move inside the renderer's frame (before the actor pool's hook), so `shot()` frames animate too
   (host as unknown as { hooks: FrameHook[] }).hooks.unshift({ update: (dt: number) => walk(Math.min(100, dt)) });
   out.focus = focus;
