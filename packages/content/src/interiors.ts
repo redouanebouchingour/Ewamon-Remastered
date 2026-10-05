@@ -469,6 +469,7 @@ export function stampInteriors(
 // ─── per-zone views (world coordinates) ──────────────────────────────────────
 
 const w2 = (p: PlacedInterior, q: LocalPoint): Vec2 => localToWorld(p, q.lx, q.lz);
+const xz = (v: Vec2): { x: number; z: number } => ({ x: v[0], z: v[1] });
 
 /** `<id>.in` at the door approach → entry; `<id>.out` at the exit marker → the door approach. */
 export function warpsOf(p: PlacedInterior): readonly WarpDef[] {
@@ -593,6 +594,13 @@ export interface WorldLeader {
   readonly arena: { readonly x: number; readonly z: number };
   /** the battle axis yaw (= the pocket yaw) */
   readonly yaw: number;
+  /** until the player holds `until`, the leader stands at (x, z) here instead (room `greet`) */
+  readonly greet: { readonly x: number; readonly z: number; readonly until: string } | null;
+}
+
+/** Where a hall leader stands for a player holding `flags`: the greet point until its flag, else `leaderAt`. */
+export function leaderSpot(l: WorldLeader, flags: ReadonlySet<string>): { readonly x: number; readonly z: number } {
+  return l.greet !== null && !flags.has(l.greet.until) ? l.greet : l;
 }
 export function leadersOf(p: PlacedInterior): readonly WorldLeader[] {
   const out: WorldLeader[] = [];
@@ -609,6 +617,7 @@ export function leadersOf(p: PlacedInterior): readonly WorldLeader[] {
       facing: localYawToWorld(p, 0),
       arena: { x: ax, z: az },
       yaw: p.at.yaw,
+      greet: r.greet == null ? null : { ...xz(w2(p, r.greet.at)), until: r.greet.until },
     });
   }
   return out;
@@ -854,6 +863,8 @@ export function checkInterior(h: Heightfield, p: PlacedInterior): string[] {
     beatLeaders: true,
     leaderFlags: false,
   });
+  // a greeting leader must be reachable from the entry with every gate closed (its beat plays before any fight)
+  for (const l of leadersOf(p)) if (l.greet !== null && !reachNear(h, shut.reach, l.greet.x, l.greet.z, LEADER_M)) errs.push(`${id}: ${l.leagueId} greets out of reach`);
   const firstOpen = p.def.template === 'league_hall' ? 1 : 0;
   shut.leaders.forEach((l) => {
     const k = p.def.rooms.findIndex((r) => r.leader === l);

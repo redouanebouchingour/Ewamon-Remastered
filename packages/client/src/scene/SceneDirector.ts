@@ -33,7 +33,7 @@ import type { Interactable, InteractionTargets } from './interaction';
 import { makeInteractable } from './interaction';
 import { npcVisible } from './dialogue';
 import type { GateBlockers } from './collider';
-import { FloorIndex, GateSync, hallBoundsOf, interiorInteractables, pocketActors, pocketYawDeg, refreshInteriorTargets } from './interiors';
+import { FloorIndex, GateSync, hallBoundsOf, interiorInteractables, leaderSpots, pocketActors, pocketYawDeg, refreshInteriorTargets } from './interiors';
 import type { PocketActor } from './interiors';
 /** §20.2.6 zone banner: 400 in, 2 000 hold, 400 out (the HUD draws it statically; hold only under reduced motion). */
 export const BANNER_MS = 2800;
@@ -191,6 +191,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
   let def: ZoneDef | null = null;
   let handle: ZoneHandle | null = null;
   let loading: Promise<void> | null = null;
+  let lastFlags: ReadonlySet<string> = new Set();
   let statics: StaticActor[] = [];
   let bannerTimer: ReturnType<typeof setTimeout> | null = null;
   let inBattle = false;
@@ -255,7 +256,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     director.syncView(pocketYawDeg(p) * DEG2RAD);
     const z = current;
     if (z === null) return;
-    activeActors = pocketActors(z, p);
+    activeActors = pocketActors(z, p, lastFlags);
     for (const a of activeActors) spawnStatic(a.id, a.look, a.name, a.x, a.z, a.angle, a.kind === 'npc', true);
   }
 
@@ -500,6 +501,18 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
         }
       }
       refreshInteriorTargets(z.id, d.targets.staticEntries(), flags);
+      lastFlags = flags;
+      // a hall leader who greets until a story flag (Kirei in the league foyer) moves to her chamber once it is held
+      for (const [id, at] of leaderSpots(z.id, flags)) {
+        for (const e of d.targets.staticEntries()) if (e.kind === 'gym' && e.id === id) { e.x = at.x; e.z = at.z; }
+        const k = statics.findIndex((s) => s.id === id);
+        const st = statics[k];
+        if (st !== undefined && (st.x !== at.x || st.z !== at.z)) {
+          statics[k] = { ...st, x: at.x, z: at.z };
+          d.renderer.actors.setTransform(id, at.x, at.z, st.angle, false, false);
+        }
+        activeActors = activeActors.map((a) => (a.id === id ? { ...a, x: at.x, z: at.z } : a));
+      }
       gates?.sync(flags, handle?.interiors);
       const h = harvestStateFor(z.id, flags);
       director.setHarvest(h);

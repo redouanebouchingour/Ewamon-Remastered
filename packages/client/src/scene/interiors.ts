@@ -17,6 +17,7 @@ import {
   interiorGates,
   interiorItems,
   interiorLeaders,
+  leaderSpot,
   interiorNpcs,
   interiorSwitches,
   interiorTrainerFlag,
@@ -104,7 +105,7 @@ export interface PocketActor {
 }
 
 /** What stands in a pocket: its NPCs, gym trainers (facing from the def) and league trainers at `leaderAt`, facing the door. */
-export function pocketActors(zoneId: ZoneId, p: PlacedInterior): PocketActor[] {
+export function pocketActors(zoneId: ZoneId, p: PlacedInterior, flags: ReadonlySet<string> = new Set()): PocketActor[] {
   const out: PocketActor[] = [];
   for (const n of interiorNpcs(zoneId)) {
     if (n.interior !== p.def.id) continue;
@@ -118,7 +119,8 @@ export function pocketActors(zoneId: ZoneId, p: PlacedInterior): PocketActor[] {
     if (l.interior !== p.def.id) continue;
     const lt = LEAGUE.find((x) => x.id === l.leagueId);
     if (lt === undefined) continue;
-    out.push({ id: lt.id, look: lt.look, name: lt.name, x: l.x, z: l.z, angle: l.facing, kind: 'leader' });
+    const at = leaderSpot(l, flags);
+    out.push({ id: lt.id, look: lt.look, name: lt.name, x: at.x, z: at.z, angle: l.facing, kind: 'leader' });
   }
   return out;
 }
@@ -149,7 +151,8 @@ export function interiorInteractables(zoneId: ZoneId, flags: ReadonlySet<string>
   for (const l of interiorLeaders(zoneId)) {
     const lt = LEAGUE.find((x) => x.id === l.leagueId);
     if (lt === undefined) continue;
-    out.push(makeInteractable(lt.id, 'gym', l.x, l.z, 'Challenge', lt.name, key));
+    const at = leaderSpot(l, flags);
+    out.push(makeInteractable(lt.id, 'gym', at.x, at.z, 'Challenge', lt.name, key));
   }
   for (const t of interiorTrainers(zoneId)) {
     const e = makeInteractable(t.id, 'trainer', t.x, t.z, 'Challenge', t.name, key);
@@ -236,4 +239,11 @@ export class GateSync {
       handle?.setSwitchOn(s.id, lit);
     }
   }
+}
+
+/** Hall leaders whose spot depends on a flag (content `leaderSpot`): where each stands for `flags`. */
+export function leaderSpots(zoneId: ZoneId, flags: ReadonlySet<string>): ReadonlyMap<string, { readonly x: number; readonly z: number }> {
+  const out = new Map<string, { readonly x: number; readonly z: number }>();
+  for (const l of interiorLeaders(zoneId)) if (l.greet !== null) out.set(l.leagueId, leaderSpot(l, flags));
+  return out;
 }

@@ -25,6 +25,7 @@ import {
   interiorWarps,
   interiorsFor,
   isWalkable,
+  leaderSpot,
   localToWorld,
   walkInterior,
   worldToLocal,
@@ -144,6 +145,13 @@ describe('interiors', () => {
     expect(two.leaders).toEqual(['veil', 'aurelia']);
     const all = walkInterior(h, p, new Set(), { beatLeaders: true });
     expect(all.leaders).toEqual(['veil', 'aurelia', 'kirei', 'zeon']);
+    // Kirei speaks `wardens_charge` (it sets `wardens_met`, the Wardens' story gate): she greets in the foyer until then
+    const kirei = interiorLeaders('solenne').find((l) => l.leagueId === 'kirei')!;
+    expect(kirei.greet?.until).toBe('wardens_met');
+    expect(leaderSpot(kirei, new Set())).toEqual(kirei.greet);
+    expect(leaderSpot(kirei, new Set(['wardens_met']))).toBe(kirei);
+    expect(interiorAt('solenne', kirei.greet!.x, kirei.greet!.z)).toBe(p);
+    expect(interiorLeaders('solenne').filter((l) => l.greet !== null).map((l) => l.leagueId)).toEqual(['kirei']);
   });
 
   it('arenas: ≥ 6.5 m of floor round the centre, both trainer slots on the floor; interiorArenaFor finds the room', () => {

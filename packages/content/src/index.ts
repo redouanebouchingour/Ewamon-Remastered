@@ -218,6 +218,7 @@ export {
   checkInterior,
   inFootprint,
   interiorDefFor,
+  leaderSpot,
   localToWorld,
   localYawToWorld,
   onFloor,

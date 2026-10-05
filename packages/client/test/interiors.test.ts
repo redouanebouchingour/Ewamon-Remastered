@@ -6,7 +6,7 @@
  * switch tiles, and a battle in a hall (hall axis, no heading pick, `HallBounds`, back to the pocket camera).
  */
 import { describe, expect, it } from 'vitest';
-import {
+import { leaderSpot,
   LEAGUE,
   getHeightfield,
   interiorGates,
@@ -148,7 +148,10 @@ describe('Phase A interiors (client)', () => {
     const { targets } = await director('solenne', { current: new Set() });
     const gyms = targets.staticEntries().filter((e) => e.kind === 'gym');
     expect(gyms.map((e) => e.id)).toEqual(['veil', 'aurelia', 'kirei', 'zeon']);
-    for (const l of interiorLeaders('solenne')) expect(gyms.find((e) => e.id === l.leagueId)).toMatchObject({ x: l.x, z: l.z });
+    // with no flags Kirei greets in the foyer (she speaks `wardens_charge`); the others wait in their chambers
+    for (const l of interiorLeaders('solenne')) expect(gyms.find((e) => e.id === l.leagueId)).toMatchObject({ x: leaderSpot(l, new Set()).x, z: leaderSpot(l, new Set()).z });
+    const kirei = interiorLeaders('solenne').find((l) => l.leagueId === 'kirei')!;
+    expect(gyms.find((e) => e.id === 'kirei')).toMatchObject({ x: kirei.greet!.x, z: kirei.greet!.z });
     const league = gymOf('solenne');
     expect(league.def.template).toBe('league_hall');
     expect(targets.staticEntries().filter((e) => e.kind === 'healer').map((e) => e.id)).toContain(`healer:${league.def.id}.nurse`);

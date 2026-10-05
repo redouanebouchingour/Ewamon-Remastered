@@ -159,6 +159,11 @@ export interface InteriorRoom {
   readonly leader: string | null;
   readonly leaderAt: LocalPoint | null;
   readonly bounds: LocalRect;
+  /**
+   * Until the player holds `until`, the leader waits at `at` instead (league hall: the Warden who gives the league's
+   * story charge greets the player in the foyer, where the beat she speaks can play, then takes her chamber).
+   */
+  readonly greet?: { readonly at: LocalPoint; readonly until: string } | null;
 }
 
 export type InteriorGateStyle = 'hedge' | 'grate' | 'sluice' | 'barrier' | 'boulder' | 'rune' | 'portcullis';

@@ -32,6 +32,8 @@ import type {
   ZoneId,
 } from '../types';
 import { LEGENDARY_IDS, MYTHICAL_IDS } from './statics';
+import { STORY } from './story';
+import { LEAGUE_STORY_GATES } from './league';
 
 // ─── flags ───────────────────────────────────────────────────────────────────
 
@@ -741,12 +743,17 @@ export function leagueHall(
   order.forEach((l, k) => {
     const top = half - L.foyer - k * L.chamber;
     const zc = top - L.chamber / 2;
+    // a leader who speaks the beat that sets the hall's story gate (`wardens_charge`, Kirei) greets in the foyer
+    // until it has played — her chamber lies behind the gates that gate opens
+    const charge = STORY.find((b) => b.zoneId === zoneId && b.speaker === l.id && b.set.some((f) => order.some((o) => LEAGUE_STORY_GATES[o.id] === f)));
+    const until = charge?.set.find((f) => order.some((o) => LEAGUE_STORY_GATES[o.id] === f));
     rooms.push({
       id: `chamber${k + 1}`,
       arena: pt(0, zc),
       leader: l.id,
       leaderAt: pt(0, zc - 4.2),
       bounds: rect(0, zc, 10, L.chamber / 2),
+      greet: until === undefined ? null : { at: pt(2.5, half - L.foyer + 1.4), until },
     });
     const bottom = top - L.chamber;
     if (k < order.length - 1) {

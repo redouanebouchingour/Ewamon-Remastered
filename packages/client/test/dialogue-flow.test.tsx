@@ -74,13 +74,14 @@ describe('interact plans (§20.4.7, §30.4.8 mirrored on the client)', () => {
     const SEND = { dialogue: null, sendOnFinish: false };
     const eight = LEAGUE.filter((l) => l.stage === 'gym').map((l) => l.badge!) as BadgeId[];
     const pre = (id: string) => ({ dialogue: { speaker: leagueSpeaker(id), lines: LEAGUE.find((l) => l.id === id)!.pre, beatId: null }, sendOnFinish: true });
-    const beaten = (...ids: string[]) => ids.flatMap((id) => LEAGUE.find((l) => l.id === id)!.setsFlags);
+    const beaten = (...ids: string[]) => ['wardens_met', ...ids.flatMap((id) => LEAGUE.find((l) => l.id === id)!.setsFlags)];
     // fewer than eight badges: the server's toast
     expect(gymPlan('solenne', 'veil', flags([], eight.slice(0, 7)), eight.slice(0, 7))).toEqual(SEND);
     // eight badges: Veil's pre lines, the challenge on finish
-    expect(gymPlan('solenne', 'veil', flags([], eight), eight)).toEqual(pre('veil'));
+    expect(gymPlan('solenne', 'veil', flags([], eight), eight)).toEqual(SEND);   // the Wardens wait for `wardens_met`
+    expect(gymPlan('solenne', 'veil', flags(beaten(), eight), eight)).toEqual(pre('veil'));
     // the next Warden waits for the previous one; a beaten Warden is no fight
-    expect(gymPlan('solenne', 'aurelia', flags([], eight), eight)).toEqual(SEND);
+    expect(gymPlan('solenne', 'aurelia', flags(beaten(), eight), eight)).toEqual(SEND);
     expect(gymPlan('solenne', 'aurelia', flags(beaten('veil'), eight), eight)).toEqual(pre('aurelia'));
     expect(gymPlan('solenne', 'veil', flags(beaten('veil'), eight), eight)).toEqual(SEND);
     // the Champion: every Warden first

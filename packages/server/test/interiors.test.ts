@@ -443,6 +443,8 @@ describe("Solenne's league hall", () => {
     const acc = await register(s, 'cindercap');
     await boost(acc, 100);
     await grantAllBadges(acc);
+    // the Wardens' story gate (LEAGUE_STORY_GATES: `wardens_met`, set by the `wardens_charge` beat)
+    await s.repos.db.transaction((tx) => s.repos.progress.setFlags(tx, acc.id, ['wardens_met', beatDoneFlag('wardens_charge')], new Date()));
 
     // Aurelia first (placed behind the closed gate — setup only): refused by the league order
     const fa = front(aurelia, 2);

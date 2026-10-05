@@ -831,7 +831,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     if (ps === undefined) return;
     if (ud.battleId !== null || ud.tradeId !== null) return this.sendMsg(client, { type: 'error', code: 'busy', detail: 'inBattle' });
     if (m.kind === 'healer' || m.kind === 'shop') return; // no-ops over the room (POST /heal, GET /shop/:zoneId)
-    const target = findTarget(this.zone, m.kind, m.targetId);
+    const target = findTarget(this.zone, m.kind, m.targetId, ud.flags);
     const cell = ud.cell ?? cellOf(ps.x, ps.z);
     let tx = target?.x ?? 0;
     let tz = target?.z ?? 0;

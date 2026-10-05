@@ -7,7 +7,7 @@
  * coordinates). A league trainer is challenged where it stands in its hall (`interiorLeaders` x/z, checked at 4 m).
  * `LEAGUE_MARKER` (0, −26) is only the fallback for a league trainer with no hall (IMPLEMENTATION-NOTES R5).
  */
-import { LEAGUE, interiorItems, interiorLeaders, interiorSwitches, interiorTrainers, interiorWarps, staticsFor } from '@ewa/content';
+import { leaderSpot, LEAGUE, interiorItems, interiorLeaders, interiorSwitches, interiorTrainers, interiorWarps, staticsFor } from '@ewa/content';
 import type { GroundItemDef, LeagueTrainer, LegendaryStatic, LoreTabletDef, NpcDef, TrainerDef, WarpDef, WorldSwitch, ZoneDef } from '@ewa/content';
 import type { InteractKind } from '@ewa/protocol';
 
@@ -31,9 +31,9 @@ export function leagueIn(zone: ZoneDef): readonly LeagueTrainer[] {
 }
 
 /** Where a league trainer is challenged: its spot in its hall, else the legacy marker. */
-export function leaguePosition(zone: ZoneDef, leagueId: string): { readonly x: number; readonly z: number } {
+export function leaguePosition(zone: ZoneDef, leagueId: string, flags: ReadonlySet<string> = new Set()): { readonly x: number; readonly z: number } {
   const l = interiorLeaders(zone.id).find((x) => x.leagueId === leagueId);
-  return l === undefined ? LEAGUE_MARKER : { x: l.x, z: l.z };
+  return l === undefined ? LEAGUE_MARKER : leaderSpot(l, flags);
 }
 
 /**
@@ -41,7 +41,8 @@ export function leaguePosition(zone: ZoneDef, leagueId: string): { readonly x: n
  * faces; trainers are actors with `kind: 'trainer'` in the render spec). `gym` resolves LeagueTrainer ids fought in
  * this zone. Interior NPCs (shopkeepers, residents) are client-local dialogue and never resolve here.
  */
-export function findTarget(zone: ZoneDef, kind: InteractKind, targetId: string): InteractTarget | null {
+/** `flags`: the player's flags (a hall leader may greet elsewhere until a story flag — content `leaderSpot`). */
+export function findTarget(zone: ZoneDef, kind: InteractKind, targetId: string, flags: ReadonlySet<string> = new Set()): InteractTarget | null {
   switch (kind) {
     case 'npc': {
       const npc = zone.npcs.find((n) => n.id === targetId);
@@ -53,7 +54,7 @@ export function findTarget(zone: ZoneDef, kind: InteractKind, targetId: string):
     case 'gym': {
       const league = leagueIn(zone).find((l) => l.id === targetId);
       if (league === undefined) return null;
-      const at = leaguePosition(zone, league.id);
+      const at = leaguePosition(zone, league.id, flags);
       return { kind: 'gym', league, x: at.x, z: at.z };
     }
     case 'item': {

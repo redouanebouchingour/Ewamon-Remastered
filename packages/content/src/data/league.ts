@@ -262,10 +262,34 @@ export const BADGES: readonly BadgeDef[] = [
 ];
 
 /**
- * story-bible.md §6.1 / §5.4 / §11.1: "content gates the gym interaction on `saw_thinning` so beat 3 precedes the
- * fight". A league interaction listed here is refused (server) until the player holds the flag — the gym's own
- * pre-fight beat (`grove_stone`, speaker `verdant_gym`) must have played first. Only the gates the bible names.
+ * A league interaction listed here is refused (server `leagueRefusal`, client `gymPlan`) until the player holds the
+ * flag: the leader's pre-fight beat in the leader's town must have played first.
+ *
+ * - `verdant_gym` — story-bible §6.1 / §5.4 / §11.1 name it: "content gates the gym interaction on `saw_thinning`
+ *   so beat 3 precedes the fight".
+ * - The other rows apply the same rule to every leader whose §5.3 beat is written as the fight's preamble (the beat
+ *   ends by sending the player to the gym, or the leader's `pre` presupposes it) and which zone entry alone does not
+ *   make eligible, so a player could otherwise fight first and hear the preamble after the badge (M3 progression
+ *   audit, server IMPLEMENTATION-NOTES Part 6): b6 `forge_gratitude` ("…come to the gym"; it needs b5 on Ash Route,
+ *   which lies past Cinderhold, so the player returns), b8 `drowned_harbour` (Maren introduces himself as
+ *   harbourmaster *and* gym; b9 needs its flag), b10 `grid_numbers` ("…then come back and beat me"), b13
+ *   `the_seam` ("Beat me at the gym…"; already first by §30.4.8 step 1, gated for symmetry), b15 `grove_gone`
+ *   (Nyx's `pre` — "They're reading again" — follows it; b16 needs its flag), b21 `the_requisition` (Rell's gate
+ *   stand precedes the Anvil Badge in the bible's play order; §7.2 galaxion row), b24 `star_counts` ("Come and be
+ *   judged."), and b30 `wardens_charge` ("Go through Veil, Aurelia, me, and then Zeon — and be told.") for the three
+ *   Wardens and the Champion (§4.6.2: the Spire precedes the title).
  */
 export const LEAGUE_STORY_GATES: Readonly<Record<string, string>> = {
   verdant_gym: 'saw_thinning',
+  blaze_gym: 'heard_grey_year',
+  tidal_gym: 'saw_old_harbour',
+  volt_gym: 'saw_grid_draw',
+  stone_gym: 'saw_seam',
+  phantom_gym: 'grove_harvested',
+  iron_gym: 'saw_requisition',
+  draco_gym: 'saw_star_counts',
+  veil: 'wardens_met',
+  aurelia: 'wardens_met',
+  kirei: 'wardens_met',
+  zeon: 'wardens_met',
 };
