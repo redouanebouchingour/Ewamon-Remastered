@@ -10,6 +10,7 @@ compressed, normalized outputs into `packages/client/public/`, which *is* tracke
 | `creatures/animations` | `.../ewamon(animations)` — 4 legendary idle sheets | Project-owned |
 | `models/legendaries/*.glb` | `Ewamon/ewamon/frontend/public/models/legendaries` — rigged legendary GLBs | Project-owned |
 | `models/quaternius/` | Quaternius "Ultimate Animated Character Pack" | CC0 — see `licenses/QUATERNIUS-CREDITS.txt` |
+| `models/kaykit-adventurers/` | KayKit "Character Pack: Adventurers" 2.0, free tier, by Kay Lousberg — downloaded 2026-10-05 from https://kaylousberg.itch.io/kaykit-adventurers (`Free 2.0`, 12 MB zip): 6 characters on `Rig_Medium`, 2 animation GLBs, accessories | CC0 — see `licenses/KAYKIT-ADVENTURERS-LICENSE.txt` (credit optional: "Kay Lousberg, www.kaylousberg.com") |
 | `licenses/TABLER-LICENSE.txt` | Tabler Icons | MIT — notice is legally required and ships with the client |
 
 To restore from the original repository:
