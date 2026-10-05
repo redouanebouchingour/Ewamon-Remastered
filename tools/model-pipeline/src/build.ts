@@ -1,7 +1,8 @@
 /**
  * `pnpm models` — SPEC §40.2 end to end: licences checked, sources listed and validated, per-set rules, the
  * §40.2.2 sequence, the §40.2.4 textures, GLBs + `models.manifest.json` written under `public/models/`, the
- * content-hash cache consulted first, `qa/qa-report.json` written.
+ * content-hash cache consulted first, `qa/qa-report.json` written. The legendaries are built here; the KayKit
+ * character set in `buildCharacters.ts`.
  */
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
@@ -18,9 +19,11 @@ import { probeKtx2 } from './ktx2.js';
 import { MANIFEST_FILE } from './manifest.js';
 import type { ModelEntry, ModelsManifest } from './manifest.js';
 import { DEFAULT_CACHE_DIR, DEFAULT_OUT_DIR, ICONS_DIR, LICENSES_DIR, QA_DIR, SRC_DIR } from './paths.js';
-import { REST_TRACK_EPSILON, classifyLegendaryTextures, normalLike, prepareLegendary, prepareLook, pruneRestTracks } from './prepare.js';
+import { buildCharacters } from './buildCharacters.js';
+import type { CharacterQa, LookQa } from './buildCharacters.js';
+import { REST_TRACK_EPSILON, classifyLegendaryTextures, normalLike, prepareLegendary, pruneRestTracks } from './prepare.js';
 import type { QaFlag, TextureRole } from './prepare.js';
-import { KEPT_CLIPS, LEGENDARY_IDS, listSources } from './sets.js';
+import { LEGENDARY_IDS, bodyPaletteLooks, listKayKit, listSources } from './sets.js';
 import type { LegendaryId, SourceFile } from './sets.js';
 import { LOD1_SIMPLIFY, SIMPLIFY_ATTRIBUTES } from './simplify.js';
 import type { SimplifyResult } from './simplify.js';
@@ -28,11 +31,31 @@ import { TEXTURE_PLAN, TEXTURE_TIERS, applyTextures, encodeTexture, planKey, sha
 import type { EncodedTexture, TextureFormat } from './textures.js';
 import { SEQUENCE_KEY, runSequence } from './transform.js';
 
-/** §40.0.2 rule 6: source → destination (relative to `public/`). */
+/**
+ * §40.0.2 rule 6: source → destination (relative to `public/`). `models/CREDITS.txt` is the KayKit licence text
+ * under a credit line (`creditsText`); the Tabler licence is a byte copy.
+ */
 export const LICENCE_COPIES: readonly { readonly from: string; readonly to: string }[] = Object.freeze([
-  { from: 'QUATERNIUS-CREDITS.txt', to: 'models/CREDITS.txt' },
+  { from: 'KAYKIT-ADVENTURERS-LICENSE.txt', to: 'models/CREDITS.txt' },
   { from: 'TABLER-LICENSE.txt', to: 'icons/TABLER-LICENSE.txt' },
 ]);
+
+/** `public/models/CREDITS.txt`: who made the shipped models, then the KayKit licence verbatim (LF line ends). */
+export function creditsText(kaykitLicence: string): string {
+  return [
+    '3D character models in characters/ are from "KayKit : Adventurers Character Pack (2.0)" (free tier)',
+    'by Kay Lousberg, www.kaylousberg.com - https://kaylousberg.itch.io/kaykit-adventurers',
+    '',
+    'Licensed CC0 (public domain). Credit is not required; it is given here gladly.',
+    'Used in Ewamon as the player and NPC characters: the parts are recombined (heads on other bodies), the',
+    'swatch textures recoloured per look and packed into one atlas, and the clips re-encoded (tools/model-pipeline).',
+    '',
+    'The legendary models in legendaries/ are project-owned.',
+    '',
+    '----- KAYKIT-ADVENTURERS-LICENSE.txt -----',
+    kaykitLicence.split(String.fromCharCode(13)).join(''),
+  ].join(String.fromCharCode(10));
+}
 
 export interface BuildOptions {
   readonly srcDir?: string;
@@ -47,6 +70,8 @@ export interface BuildOptions {
   readonly textures?: 'auto' | TextureFormat;
   /** Expected look ids (defaults to `@ewa/content` LOOKS). */
   readonly looks?: readonly string[];
+  /** Expected `look:palette` ids (defaults to the `@ewa/content` BODIES palettes). */
+  readonly paletteLooks?: readonly string[];
   /** When false nothing is written under `public/` (tests). */
   readonly write?: boolean;
   readonly log?: (s: string) => void;
@@ -54,7 +79,7 @@ export interface BuildOptions {
 
 export interface ModelQa {
   readonly id: string;
-  readonly set: 'legendary' | 'look';
+  readonly set: 'legendary';
   readonly sourceBytes: number;
   readonly glbBytes: number;
   readonly lod1Bytes: number | null;
@@ -74,6 +99,9 @@ export interface QaReport {
   readonly warnings: readonly string[];
   readonly flags: readonly QaFlag[];
   readonly models: readonly ModelQa[];
+  /** KayKit outputs (shapes, accessories, animations, atlas) and the per-look recolour means. */
+  readonly characters: readonly CharacterQa[];
+  readonly looks: readonly LookQa[];
 }
 
 export interface BuildResult {
@@ -122,7 +150,7 @@ async function readDoc(file: string, bytes: Uint8Array): Promise<Document> {
 function modelKey(src: SourceFile, bytes: Uint8Array, format: TextureFormat | null): string {
   return hashKey(
     PIPELINE_VERSION, src.set, src.id, SEQUENCE_KEY,
-    JSON.stringify({ lod1: LOD1_SIMPLIFY, attrs: SIMPLIFY_ATTRIBUTES, clips: KEPT_CLIPS, restEps: REST_TRACK_EPSILON, lod0Max: LEGENDARY_LOD0_MAX }),
+    JSON.stringify({ lod1: LOD1_SIMPLIFY, attrs: SIMPLIFY_ATTRIBUTES, restEps: REST_TRACK_EPSILON, lod0Max: LEGENDARY_LOD0_MAX }),
     format === null ? 'no-textures' : `${format};${JSON.stringify(TEXTURE_TIERS)};${JSON.stringify(TEXTURE_PLAN)}`,
     pipelineSourceText(), bytes,
   );
@@ -212,23 +240,6 @@ async function buildLegendary(src: SourceFile, bytes: Uint8Array, format: Textur
   return { src, lod0: chosen.glb.glb, lod1: w1.glb, meta, textures: withUri, cacheHit: false, sourceBytes: bytes.byteLength };
 }
 
-async function buildLook(src: SourceFile, bytes: Uint8Array, cacheDir: string, force: boolean): Promise<Built> {
-  const key = modelKey(src, bytes, null);
-  const hit = force ? null : readModel<ModelMeta>(cacheDir, key);
-  if (hit) return { src, lod0: hit.lod0, lod1: null, meta: hit.meta, textures: [], cacheHit: true, sourceBytes: bytes.byteLength };
-  const io = await createIO();
-  const doc = await readDoc(src.file, bytes);
-  const flags: QaFlag[] = [];
-  const shape = prepareLook(doc, src.id, flags);
-  const dropped = pruneRestTracks(doc);
-  const bounds = restPoseBounds(doc);
-  await runSequence(doc);
-  const glb = await io.writeBinary(doc);
-  const meta: ModelMeta = { triangles: shape.triangles, clips: shape.clips, bounds, lod1Triangles: null, lod1Error: null, droppedRestTracks: dropped, flags, textureTier: null, textures: [] };
-  writeModel(cacheDir, key, { lod0: glb, lod1: null, meta });
-  return { src, lod0: glb, lod1: null, meta, textures: [], cacheHit: false, sourceBytes: bytes.byteLength };
-}
-
 /** Solves `totalBytes` so it includes the manifest's own size. */
 export function finaliseManifest(m: Omit<ModelsManifest, 'totalBytes'>, otherBytes: number): { manifest: ModelsManifest; json: string } {
   let total = otherBytes;
@@ -272,7 +283,8 @@ export async function runBuild(o: BuildOptions = {}): Promise<BuildResult> {
     const f = join(licensesDir, l.from);
     if (!existsSync(f)) throw new Error(`[model-pipeline] licence file missing: ${f} (SPEC §40.0.2 rule 6: licences travel with assets)`);
   }
-  const sources = listSources(srcDir, o.looks);
+  const sources = listSources(srcDir);
+  const kaykit = listKayKit(srcDir, o.looks, o.paletteLooks ?? bodyPaletteLooks());
 
   const warnings: string[] = [];
   let format: TextureFormat = o.textures === 'webp' ? 'webp' : 'ktx2';
@@ -289,20 +301,24 @@ export async function runBuild(o: BuildOptions = {}): Promise<BuildResult> {
   for (const src of sources) {
     const t0 = Date.now();
     const bytes = bytesOf(readFileSync(src.file));
-    const b = src.set === 'legendary' ? await buildLegendary(src, bytes, format, cacheDir, force) : await buildLook(src, bytes, cacheDir, force);
+    const b = await buildLegendary(src, bytes, format, cacheDir, force);
     built.push(b);
     log(`  ${b.cacheHit ? 'cached' : 'built '} ${src.set.padEnd(9)} ${src.id.padEnd(20)} ${String(b.lod0.byteLength).padStart(8)} B${b.lod1 ? ` + lod1 ${b.lod1.byteLength} B` : ''}${b.textures.length ? ` + ${b.textures.length} ${format} ${b.textures.reduce((s, t) => s + t.bytes.byteLength, 0)} B` : ''}  (${Date.now() - t0} ms)`);
   }
 
+  const t1 = Date.now();
+  const chars = await buildCharacters(kaykit, format, cacheDir, force);
+  for (const c of chars.qa) log(`  ${c.cacheHit ? 'cached' : 'built '} ${c.kind.padEnd(10)} ${c.id.padEnd(20)} ${String(c.bytes).padStart(8)} B${c.triangles !== null ? ` ${c.triangles} tris` : ''}`);
+  log(`  characters: ${Object.keys(chars.looks).length} looks, ${chars.inputs} outputs (${Date.now() - t1} ms)`);
+
   const files = new Map<string, Uint8Array>();
-  const credits = new Uint8Array(readFileSync(join(licensesDir, 'QUATERNIUS-CREDITS.txt')));
-  files.set('CREDITS.txt', credits);
+  files.set('CREDITS.txt', new TextEncoder().encode(creditsText(readFileSync(join(licensesDir, 'KAYKIT-ADVENTURERS-LICENSE.txt'), 'utf8'))));
+  for (const [rel, data] of chars.files) files.set(rel, data);
   const legendaries: Record<string, ModelEntry> = {};
-  const looks: Record<string, ModelEntry> = {};
   const qaModels: ModelQa[] = [];
   const flags: QaFlag[] = [];
   for (const b of built) {
-    const dir = b.src.set === 'legendary' ? 'legendaries' : 'looks';
+    const dir = 'legendaries';
     const url = `${dir}/${b.src.id}.glb`;
     files.set(url, b.lod0);
     let lod1: string | null = null;
@@ -318,7 +334,7 @@ export async function runBuild(o: BuildOptions = {}): Promise<BuildResult> {
       bounds: { min: [...b.meta.bounds.min], max: [...b.meta.bounds.max] },
       hash: sha256(b.lod0),
     };
-    (b.src.set === 'legendary' ? legendaries : looks)[b.src.id] = entry;
+    legendaries[b.src.id] = entry;
     flags.push(...b.meta.flags);
     qaModels.push({
       id: b.src.id, set: b.src.set, sourceBytes: b.sourceBytes, glbBytes: b.lod0.byteLength, lod1Bytes: b.lod1?.byteLength ?? null,
@@ -331,11 +347,11 @@ export async function runBuild(o: BuildOptions = {}): Promise<BuildResult> {
   for (const id of LEGENDARY_IDS) if (!legendaries[id]) throw new Error(`[model-pipeline] legendary ${id} was not built`);
   let other = 0;
   for (const v of files.values()) other += v.byteLength;
-  const { manifest, json } = finaliseManifest({ version: 1, legendaries: legendaries as Record<LegendaryId, ModelEntry>, looks }, other);
+  const { manifest, json } = finaliseManifest({ version: 2, legendaries: legendaries as Record<LegendaryId, ModelEntry>, characters: chars.characters, looks: chars.looks }, other);
   files.set(MANIFEST_FILE, new TextEncoder().encode(json));
 
-  const qa: QaReport = { version: 1, pipelineVersion: PIPELINE_VERSION, textures: format, warnings, flags, models: qaModels };
-  const cacheHits = built.filter((b) => b.cacheHit).length;
+  const qa: QaReport = { version: 1, pipelineVersion: PIPELINE_VERSION, textures: format, warnings, flags, models: qaModels, characters: chars.qa, looks: chars.lookQa };
+  const cacheHits = built.filter((b) => b.cacheHit).length + chars.cacheHits;
 
   if (write) {
     mkdirSync(outDir, { recursive: true });
@@ -352,5 +368,5 @@ export async function runBuild(o: BuildOptions = {}): Promise<BuildResult> {
       writeFileSync(join(qaDir, 'qa-report.json'), stableJson(qa));
     }
   }
-  return { manifest, files, qa, inputs: sources.length, cacheHits };
+  return { manifest, files, qa, inputs: sources.length + chars.inputs, cacheHits };
 }

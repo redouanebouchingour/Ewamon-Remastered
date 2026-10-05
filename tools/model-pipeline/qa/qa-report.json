@@ -1,4 +1,160 @@
 {
+  "characters": [
+    {
+      "bytes": 111656,
+      "cacheHit": false,
+      "id": "barbarian",
+      "kind": "shape",
+      "triangles": 7123
+    },
+    {
+      "bytes": 92300,
+      "cacheHit": false,
+      "id": "knight",
+      "kind": "shape",
+      "triangles": 5372
+    },
+    {
+      "bytes": 91136,
+      "cacheHit": false,
+      "id": "knight_trooper",
+      "kind": "shape",
+      "triangles": 5288
+    },
+    {
+      "bytes": 90096,
+      "cacheHit": false,
+      "id": "mage_hatted",
+      "kind": "shape",
+      "triangles": 5504
+    },
+    {
+      "bytes": 105628,
+      "cacheHit": false,
+      "id": "mage_lass",
+      "kind": "shape",
+      "triangles": 6632
+    },
+    {
+      "bytes": 95712,
+      "cacheHit": false,
+      "id": "mage_long",
+      "kind": "shape",
+      "triangles": 6188
+    },
+    {
+      "bytes": 90676,
+      "cacheHit": false,
+      "id": "mage_moustache",
+      "kind": "shape",
+      "triangles": 5626
+    },
+    {
+      "bytes": 124264,
+      "cacheHit": false,
+      "id": "ranger_lad",
+      "kind": "shape",
+      "triangles": 8127
+    },
+    {
+      "bytes": 145736,
+      "cacheHit": false,
+      "id": "ranger_lass",
+      "kind": "shape",
+      "triangles": 9651
+    },
+    {
+      "bytes": 130684,
+      "cacheHit": false,
+      "id": "ranger_moustache",
+      "kind": "shape",
+      "triangles": 8645
+    },
+    {
+      "bytes": 123116,
+      "cacheHit": false,
+      "id": "ranger_plain",
+      "kind": "shape",
+      "triangles": 8043
+    },
+    {
+      "bytes": 102952,
+      "cacheHit": false,
+      "id": "rogue_captain",
+      "kind": "shape",
+      "triangles": 6556
+    },
+    {
+      "bytes": 111348,
+      "cacheHit": false,
+      "id": "rogue_hooded",
+      "kind": "shape",
+      "triangles": 7185
+    },
+    {
+      "bytes": 95412,
+      "cacheHit": false,
+      "id": "rogue_lad",
+      "kind": "shape",
+      "triangles": 5954
+    },
+    {
+      "bytes": 116784,
+      "cacheHit": false,
+      "id": "rogue_lass",
+      "kind": "shape",
+      "triangles": 7478
+    },
+    {
+      "bytes": 8280,
+      "cacheHit": false,
+      "id": "mug_full",
+      "kind": "accessory",
+      "triangles": 426
+    },
+    {
+      "bytes": 6552,
+      "cacheHit": false,
+      "id": "shield_badge_color",
+      "kind": "accessory",
+      "triangles": 262
+    },
+    {
+      "bytes": 7044,
+      "cacheHit": false,
+      "id": "shield_round_color",
+      "kind": "accessory",
+      "triangles": 284
+    },
+    {
+      "bytes": 6648,
+      "cacheHit": false,
+      "id": "shield_square_color",
+      "kind": "accessory",
+      "triangles": 262
+    },
+    {
+      "bytes": 7436,
+      "cacheHit": false,
+      "id": "spellbook_closed",
+      "kind": "accessory",
+      "triangles": 292
+    },
+    {
+      "bytes": 83216,
+      "cacheHit": false,
+      "id": "animations",
+      "kind": "animations",
+      "triangles": null
+    },
+    {
+      "bytes": 47492,
+      "cacheHit": false,
+      "id": "atlas",
+      "kind": "atlas",
+      "triangles": null
+    }
+  ],
   "flags": [
     {
       "detail": "texture tier 1 (tier 0: 1270885 B, tier 1: 1139569 B; LOD0 budget 1258291 B)",
@@ -9,6 +165,1175 @@
       "detail": "texture tier 2 (tier 0: 1389390 B, tier 1: 1258458 B, tier 2: 1215884 B; LOD0 budget 1258291 B)",
       "flag": "texture-tier",
       "id": "zenryu"
+    }
+  ],
+  "looks": [
+    {
+      "accessory": "shield_square_color",
+      "id": "blue_soldier_male",
+      "shape": "knight_trooper",
+      "slots": {
+        "armour": [
+          120,
+          132,
+          142
+        ],
+        "cape": [
+          47,
+          95,
+          174
+        ],
+        "hair": [
+          42,
+          34,
+          32
+        ],
+        "leather": [
+          90,
+          58,
+          40
+        ],
+        "ribbon": [
+          237,
+          237,
+          237
+        ],
+        "shield": [
+          47,
+          95,
+          174
+        ],
+        "shieldLight": [
+          237,
+          237,
+          237
+        ],
+        "skin": [
+          196,
+          138,
+          98
+        ],
+        "trim": [
+          179,
+          188,
+          194
+        ],
+        "under": [
+          58,
+          70,
+          96
+        ]
+      },
+      "tile": 0
+    },
+    {
+      "accessory": null,
+      "id": "casual2_female",
+      "shape": "rogue_lass",
+      "slots": {
+        "boots": [
+          78,
+          52,
+          38
+        ],
+        "hair": [
+          58,
+          42,
+          34
+        ],
+        "scarf": [
+          236,
+          211,
+          131
+        ],
+        "skin": [
+          246,
+          196,
+          162
+        ],
+        "trousers": [
+          92,
+          74,
+          62
+        ],
+        "tunic": [
+          196,
+          106,
+          72
+        ],
+        "vest": [
+          122,
+          82,
+          56
+        ]
+      },
+      "tile": 1
+    },
+    {
+      "accessory": null,
+      "id": "casual2_female:dusk",
+      "shape": "rogue_lass",
+      "slots": {
+        "boots": [
+          78,
+          52,
+          38
+        ],
+        "hair": [
+          58,
+          42,
+          34
+        ],
+        "scarf": [
+          236,
+          160,
+          112
+        ],
+        "skin": [
+          246,
+          196,
+          162
+        ],
+        "trousers": [
+          60,
+          53,
+          80
+        ],
+        "tunic": [
+          108,
+          74,
+          140
+        ],
+        "vest": [
+          74,
+          56,
+          88
+        ]
+      },
+      "tile": 2
+    },
+    {
+      "accessory": null,
+      "id": "casual2_male",
+      "shape": "rogue_lad",
+      "slots": {
+        "belt": [
+          106,
+          70,
+          48
+        ],
+        "boots": [
+          90,
+          58,
+          40
+        ],
+        "hair": [
+          46,
+          36,
+          32
+        ],
+        "scarf": [
+          217,
+          164,
+          63
+        ],
+        "skin": [
+          217,
+          160,
+          122
+        ],
+        "trousers": [
+          74,
+          68,
+          64
+        ],
+        "tunic": [
+          93,
+          138,
+          76
+        ],
+        "vest": [
+          138,
+          90,
+          60
+        ]
+      },
+      "tile": 3
+    },
+    {
+      "accessory": null,
+      "id": "casual2_male:dusk",
+      "shape": "rogue_lad",
+      "slots": {
+        "belt": [
+          58,
+          42,
+          62
+        ],
+        "boots": [
+          90,
+          58,
+          40
+        ],
+        "hair": [
+          46,
+          36,
+          32
+        ],
+        "scarf": [
+          223,
+          138,
+          90
+        ],
+        "skin": [
+          217,
+          160,
+          122
+        ],
+        "trousers": [
+          58,
+          52,
+          80
+        ],
+        "tunic": [
+          91,
+          74,
+          126
+        ],
+        "vest": [
+          74,
+          58,
+          90
+        ]
+      },
+      "tile": 4
+    },
+    {
+      "accessory": "mug_full",
+      "id": "casual3_male",
+      "shape": "ranger_plain",
+      "slots": {
+        "boots": [
+          90,
+          60,
+          42
+        ],
+        "hair": [
+          217,
+          178,
+          90
+        ],
+        "leather": [
+          122,
+          90,
+          64
+        ],
+        "shirt": [
+          201,
+          80,
+          62
+        ],
+        "skin": [
+          246,
+          196,
+          162
+        ],
+        "sleeve": [
+          201,
+          80,
+          62
+        ],
+        "trousers": [
+          70,
+          80,
+          94
+        ]
+      },
+      "tile": 5
+    },
+    {
+      "accessory": null,
+      "id": "casual_female",
+      "shape": "ranger_lass",
+      "slots": {
+        "hair": [
+          138,
+          64,
+          35
+        ],
+        "leather": [
+          138,
+          90,
+          62
+        ],
+        "scarf": [
+          199,
+          73,
+          89
+        ],
+        "shirt": [
+          235,
+          227,
+          208
+        ],
+        "skin": [
+          246,
+          196,
+          162
+        ],
+        "sleeve": [
+          235,
+          227,
+          208
+        ],
+        "trousers": [
+          75,
+          90,
+          122
+        ]
+      },
+      "tile": 6
+    },
+    {
+      "accessory": null,
+      "id": "casual_male",
+      "shape": "ranger_lad",
+      "slots": {
+        "hair": [
+          90,
+          58,
+          38
+        ],
+        "scarf": [
+          50,
+          121,
+          193
+        ],
+        "skin": [
+          240,
+          184,
+          146
+        ],
+        "trousers": [
+          91,
+          81,
+          72
+        ]
+      },
+      "tile": 7
+    },
+    {
+      "accessory": null,
+      "id": "cowboy_female",
+      "shape": "ranger_lass",
+      "slots": {
+        "boots": [
+          74,
+          48,
+          32
+        ],
+        "hair": [
+          192,
+          112,
+          57
+        ],
+        "leather": [
+          122,
+          74,
+          48
+        ],
+        "scarf": [
+          169,
+          85,
+          59
+        ],
+        "shirt": [
+          235,
+          220,
+          197
+        ],
+        "skin": [
+          196,
+          138,
+          98
+        ],
+        "sleeve": [
+          235,
+          220,
+          197
+        ],
+        "trousers": [
+          90,
+          70,
+          54
+        ]
+      },
+      "tile": 8
+    },
+    {
+      "accessory": null,
+      "id": "cowboy_female:tide",
+      "shape": "ranger_lass",
+      "slots": {
+        "boots": [
+          74,
+          48,
+          32
+        ],
+        "hair": [
+          192,
+          112,
+          57
+        ],
+        "leather": [
+          122,
+          74,
+          48
+        ],
+        "scarf": [
+          59,
+          135,
+          169
+        ],
+        "shirt": [
+          228,
+          234,
+          235
+        ],
+        "skin": [
+          196,
+          138,
+          98
+        ],
+        "sleeve": [
+          228,
+          234,
+          235
+        ],
+        "trousers": [
+          61,
+          85,
+          102
+        ]
+      },
+      "tile": 9
+    },
+    {
+      "accessory": null,
+      "id": "cowboy_male",
+      "shape": "ranger_moustache",
+      "slots": {
+        "boots": [
+          74,
+          48,
+          32
+        ],
+        "hair": [
+          74,
+          48,
+          32
+        ],
+        "leather": [
+          106,
+          68,
+          48
+        ],
+        "scarf": [
+          155,
+          78,
+          48
+        ],
+        "shirt": [
+          226,
+          201,
+          163
+        ],
+        "skin": [
+          217,
+          160,
+          122
+        ],
+        "sleeve": [
+          226,
+          201,
+          163
+        ],
+        "trousers": [
+          90,
+          74,
+          58
+        ]
+      },
+      "tile": 10
+    },
+    {
+      "accessory": null,
+      "id": "cowboy_male:tide",
+      "shape": "ranger_moustache",
+      "slots": {
+        "boots": [
+          74,
+          48,
+          32
+        ],
+        "hair": [
+          74,
+          48,
+          32
+        ],
+        "leather": [
+          90,
+          74,
+          58
+        ],
+        "scarf": [
+          49,
+          112,
+          143
+        ],
+        "shirt": [
+          217,
+          225,
+          228
+        ],
+        "skin": [
+          217,
+          160,
+          122
+        ],
+        "sleeve": [
+          217,
+          225,
+          228
+        ],
+        "trousers": [
+          58,
+          74,
+          90
+        ]
+      },
+      "tile": 11
+    },
+    {
+      "accessory": "spellbook_closed",
+      "id": "doctor_female_young",
+      "shape": "mage_lass",
+      "slots": {
+        "belt": [
+          90,
+          144,
+          176
+        ],
+        "book": [
+          200,
+          54,
+          62
+        ],
+        "boots": [
+          106,
+          90,
+          82
+        ],
+        "buttons": [
+          193,
+          200,
+          204
+        ],
+        "hair": [
+          75,
+          47,
+          36
+        ],
+        "robe": [
+          230,
+          232,
+          232
+        ],
+        "satchel": [
+          208,
+          70,
+          74
+        ],
+        "skin": [
+          246,
+          196,
+          162
+        ],
+        "trim": [
+          157,
+          196,
+          214
+        ],
+        "under": [
+          95,
+          138,
+          166
+        ]
+      },
+      "tile": 12
+    },
+    {
+      "accessory": null,
+      "id": "kimono_male",
+      "shape": "mage_hatted",
+      "slots": {
+        "belt": [
+          184,
+          62,
+          45
+        ],
+        "boots": [
+          58,
+          42,
+          32
+        ],
+        "buttons": [
+          210,
+          176,
+          112
+        ],
+        "hair": [
+          38,
+          34,
+          32
+        ],
+        "hat": [
+          210,
+          177,
+          113
+        ],
+        "robe": [
+          52,
+          68,
+          123
+        ],
+        "satchel": [
+          106,
+          138,
+          90
+        ],
+        "skin": [
+          240,
+          184,
+          146
+        ],
+        "trim": [
+          230,
+          226,
+          217
+        ],
+        "under": [
+          35,
+          42,
+          68
+        ]
+      },
+      "tile": 13
+    },
+    {
+      "accessory": "shield_round_color",
+      "id": "knight_golden_male",
+      "shape": "knight",
+      "slots": {
+        "armour": [
+          223,
+          182,
+          66
+        ],
+        "cape": [
+          234,
+          232,
+          227
+        ],
+        "dark": [
+          154,
+          106,
+          33
+        ],
+        "ribbon": [
+          210,
+          63,
+          64
+        ],
+        "shield": [
+          223,
+          182,
+          66
+        ],
+        "shieldLight": [
+          238,
+          236,
+          231
+        ],
+        "shieldRim": [
+          200,
+          154,
+          53
+        ],
+        "skin": [
+          240,
+          184,
+          146
+        ],
+        "trim": [
+          236,
+          221,
+          159
+        ],
+        "under": [
+          106,
+          90,
+          64
+        ]
+      },
+      "tile": 14
+    },
+    {
+      "accessory": "shield_badge_color",
+      "id": "knight_male",
+      "shape": "knight",
+      "slots": {
+        "armour": [
+          107,
+          116,
+          123
+        ],
+        "cape": [
+          192,
+          51,
+          60
+        ],
+        "shield": [
+          192,
+          51,
+          60
+        ],
+        "shieldRim": [
+          139,
+          148,
+          154
+        ],
+        "skin": [
+          240,
+          184,
+          146
+        ],
+        "trim": [
+          163,
+          172,
+          179
+        ]
+      },
+      "tile": 15
+    },
+    {
+      "accessory": "shield_badge_color",
+      "id": "knight_male:forge",
+      "shape": "knight",
+      "slots": {
+        "armour": [
+          86,
+          86,
+          95
+        ],
+        "cape": [
+          221,
+          112,
+          43
+        ],
+        "dark": [
+          46,
+          46,
+          52
+        ],
+        "ribbon": [
+          237,
+          192,
+          97
+        ],
+        "shield": [
+          221,
+          112,
+          43
+        ],
+        "shieldRim": [
+          139,
+          148,
+          154
+        ],
+        "skin": [
+          240,
+          184,
+          146
+        ],
+        "trim": [
+          143,
+          143,
+          150
+        ]
+      },
+      "tile": 16
+    },
+    {
+      "accessory": null,
+      "id": "ninja_male",
+      "shape": "rogue_hooded",
+      "slots": {
+        "belt": [
+          192,
+          50,
+          60
+        ],
+        "boots": [
+          30,
+          30,
+          36
+        ],
+        "gloves": [
+          42,
+          42,
+          50
+        ],
+        "hair": [
+          30,
+          28,
+          28
+        ],
+        "metal": [
+          139,
+          143,
+          150
+        ],
+        "scarf": [
+          31,
+          31,
+          39
+        ],
+        "skin": [
+          217,
+          160,
+          122
+        ],
+        "trousers": [
+          38,
+          38,
+          46
+        ],
+        "tunic": [
+          45,
+          45,
+          55
+        ],
+        "vest": [
+          58,
+          58,
+          70
+        ]
+      },
+      "tile": 17
+    },
+    {
+      "accessory": "spellbook_closed",
+      "id": "old_classy_female",
+      "shape": "mage_long",
+      "slots": {
+        "belt": [
+          75,
+          59,
+          71
+        ],
+        "book": [
+          58,
+          90,
+          138
+        ],
+        "boots": [
+          58,
+          42,
+          40
+        ],
+        "buttons": [
+          214,
+          187,
+          108
+        ],
+        "hair": [
+          207,
+          203,
+          197
+        ],
+        "robe": [
+          125,
+          75,
+          109
+        ],
+        "satchel": [
+          58,
+          106,
+          106
+        ],
+        "skin": [
+          246,
+          196,
+          162
+        ],
+        "trim": [
+          230,
+          222,
+          206
+        ],
+        "under": [
+          74,
+          58,
+          70
+        ]
+      },
+      "tile": 18
+    },
+    {
+      "accessory": "spellbook_closed",
+      "id": "old_classy_male",
+      "shape": "mage_moustache",
+      "slots": {
+        "belt": [
+          59,
+          43,
+          35
+        ],
+        "book": [
+          122,
+          42,
+          42
+        ],
+        "boots": [
+          46,
+          36,
+          32
+        ],
+        "buttons": [
+          202,
+          169,
+          72
+        ],
+        "hair": [
+          220,
+          216,
+          210
+        ],
+        "robe": [
+          111,
+          93,
+          69
+        ],
+        "satchel": [
+          122,
+          58,
+          42
+        ],
+        "skin": [
+          240,
+          184,
+          146
+        ],
+        "trim": [
+          203,
+          182,
+          139
+        ],
+        "under": [
+          74,
+          64,
+          56
+        ]
+      },
+      "tile": 19
+    },
+    {
+      "accessory": "mug_full",
+      "id": "pirate_male",
+      "shape": "rogue_captain",
+      "slots": {
+        "belt": [
+          216,
+          176,
+          73
+        ],
+        "boots": [
+          30,
+          27,
+          27
+        ],
+        "gloves": [
+          42,
+          32,
+          36
+        ],
+        "hair": [
+          30,
+          27,
+          25
+        ],
+        "metal": [
+          215,
+          176,
+          70
+        ],
+        "scarf": [
+          31,
+          31,
+          37
+        ],
+        "skin": [
+          217,
+          160,
+          122
+        ],
+        "trousers": [
+          42,
+          42,
+          48
+        ],
+        "tunic": [
+          184,
+          47,
+          58
+        ],
+        "vest": [
+          44,
+          36,
+          40
+        ]
+      },
+      "tile": 20
+    },
+    {
+      "accessory": "shield_round_color",
+      "id": "soldier_male",
+      "shape": "knight_trooper",
+      "slots": {
+        "armour": [
+          111,
+          120,
+          125
+        ],
+        "cape": [
+          80,
+          123,
+          58
+        ],
+        "hair": [
+          42,
+          34,
+          32
+        ],
+        "ribbon": [
+          230,
+          226,
+          205
+        ],
+        "shield": [
+          80,
+          123,
+          58
+        ],
+        "shieldLight": [
+          230,
+          226,
+          205
+        ],
+        "skin": [
+          156,
+          100,
+          70
+        ],
+        "trim": [
+          165,
+          172,
+          176
+        ],
+        "under": [
+          74,
+          80,
+          64
+        ]
+      },
+      "tile": 21
+    },
+    {
+      "accessory": "spellbook_closed",
+      "id": "suit_male",
+      "shape": "rogue_lad",
+      "slots": {
+        "belt": [
+          30,
+          30,
+          34
+        ],
+        "boots": [
+          27,
+          27,
+          30
+        ],
+        "gloves": [
+          230,
+          230,
+          230
+        ],
+        "hair": [
+          58,
+          42,
+          32
+        ],
+        "metal": [
+          212,
+          185,
+          107
+        ],
+        "scarf": [
+          184,
+          47,
+          58
+        ],
+        "skin": [
+          240,
+          184,
+          146
+        ],
+        "trousers": [
+          42,
+          46,
+          56
+        ],
+        "tunic": [
+          47,
+          53,
+          65
+        ],
+        "vest": [
+          60,
+          66,
+          80
+        ]
+      },
+      "tile": 22
+    },
+    {
+      "accessory": "mug_full",
+      "id": "viking_male",
+      "shape": "barbarian",
+      "slots": {
+        "beard": [
+          200,
+          116,
+          56
+        ],
+        "skin": [
+          240,
+          184,
+          146
+        ]
+      },
+      "tile": 23
     }
   ],
   "models": [
@@ -215,272 +1540,6 @@
         }
       ],
       "triangles": 30000
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 159640,
-      "id": "blue_soldier_male",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 1857885,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 2994
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 195916,
-      "id": "casual2_female",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 2095997,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 6752
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 156968,
-      "id": "casual2_male",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 1850723,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 3216
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 173120,
-      "id": "casual3_male",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 1964505,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 4920
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 195440,
-      "id": "casual_female",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 2087315,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 6624
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 194736,
-      "id": "casual_male",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 2077224,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 6492
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 199860,
-      "id": "cowboy_female",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 2122887,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 6840
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 160004,
-      "id": "cowboy_male",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 1870630,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 3176
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 216540,
-      "id": "doctor_female_young",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 2218081,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 8530
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 149532,
-      "id": "kimono_male",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 1795114,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 2540
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 162068,
-      "id": "knight_golden_male",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 1877316,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 2964
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 161964,
-      "id": "knight_male",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 1880347,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 2992
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 157804,
-      "id": "ninja_male",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 1836530,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 2720
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 200236,
-      "id": "old_classy_female",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 2132576,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 7008
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 183588,
-      "id": "old_classy_male",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 2020757,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 5432
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 153164,
-      "id": "pirate_male",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 1829957,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 2724
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 159924,
-      "id": "soldier_male",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 1857889,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 2994
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 195680,
-      "id": "suit_male",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 2014332,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 6518
-    },
-    {
-      "droppedRestTracks": 287,
-      "glbBytes": 201928,
-      "id": "viking_male",
-      "lod1Bytes": null,
-      "lod1Error": null,
-      "lod1Triangles": null,
-      "set": "look",
-      "sourceBytes": 2103845,
-      "textureBytes": 0,
-      "textureTier": null,
-      "textures": [],
-      "triangles": 6264
     }
   ],
   "pipelineVersion": "model-pipeline/1",

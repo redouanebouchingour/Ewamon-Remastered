@@ -58,6 +58,12 @@ export interface SequenceOptions {
   readonly simplify?: SimplifyParams;
   /** Receives one row per simplified primitive. */
   readonly simplifyOut?: SimplifyResult[];
+  /**
+   * Characters: keep vertex attributes no material texture references. `prune()` drops them by default
+   * (`keepAttributes: false`), and a KayKit shape ships its UVs without an image (the atlas is the runtime's), so its
+   * TEXCOORD_0 would go. The legendaries keep the plain `prune()` (their bytes are unchanged).
+   */
+  readonly keepAttributes?: boolean;
 }
 
 /** Runs the §40.2.2 geometry + animation sequence on `doc` in place (textures are the caller's last step). */
@@ -67,7 +73,7 @@ export async function runSequence(doc: Document, opts: SequenceOptions = {}): Pr
     dedup(),
     flatten(),
     join({ keepNamed: false }),
-    prune(),
+    opts.keepAttributes === true ? prune({ keepAttributes: true }) : prune(),
     resample({ tolerance: RESAMPLE_TOLERANCE }),
     weld(),
   ];

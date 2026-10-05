@@ -36,9 +36,6 @@
     },
     {
       "path": "./tools/material-bake"
-    },
-    {
-      "path": "./tools/character-pipeline"
     }
   ]
 }

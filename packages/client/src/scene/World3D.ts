@@ -79,7 +79,10 @@ export interface World3D extends WorldInstance {
   tick(nowMs: number): void;
 }
 
-/** The render look id for a player body: `<look>` or `<look>:<palette>` (the character atlas bakes palette variants). */
+/**
+ * The render look id for a player body: `<look>` or `<look>:<palette>` — `models.manifest.json` lists every BODIES
+ * palette variant as its own look (a recoloured atlas tile, render §10.7.7); an unknown palette falls back to the base look.
+ */
 function lookOf(body: string): string {
   const def = BODIES.find((b) => b.id === body);
   if (!def) return 'casual_male';
@@ -231,7 +234,7 @@ class World implements World3D {
     let r: Renderer;
     try {
       r = await createRenderer({
-        canvas: this.canvas, pixelRatio: this.pixelRatio(), effects: eff.effects, transcoderPath: '/basis/', charactersUrl: '/characters/', clock: () => performance.now(),
+        canvas: this.canvas, pixelRatio: this.pixelRatio(), effects: eff.effects, transcoderPath: '/basis/', clock: () => performance.now(),
         onCompileProgress: (p) => this.onCompileProgress(p),
       });
     } catch (e) {

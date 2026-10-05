@@ -4,9 +4,13 @@ Every place the implementation departs from `.design/SPEC.md` §40.2 (and the §
 measurement behind it. Library APIs were read from `node_modules` (gltf-transform 4.5.0, meshoptimizer 0.24.0,
 ktx2-encoder 0.6.0 with its Basis Universal 2.5 WASM, sharp 0.35.4).
 
+> **2026-10-05:** the Quaternius looks are replaced by the KayKit "Adventurers 2.0" character set (section K at the
+> end). M0, M5 and the look half of M8 describe the removed Quaternius path and are kept as history; the legendary
+> notes are current and the legendary outputs are byte-identical across the change.
+
 ## Inputs
 
-**M0 — 19 looks, not 20.** §40.2.1 / §40.2.5 say 20 Quaternius characters; `assets-src/models/quaternius` holds 19
+**M0 — 19 looks, not 20 (historical: Quaternius).** §40.2.1 / §40.2.5 say 20 Quaternius characters; `assets-src/models/quaternius` holds 19
 and `@ewa/content` `LOOKS` lists the same 19. The pipeline validates the directory against `LOOKS` (a missing or
 unknown look fails with its id). Budgets are unaffected (19 × ≤ 0.25 MB).
 
@@ -93,7 +97,7 @@ At 0.01 all four reach the ratio (10 435–10 493 tris, the SPEC's "≈ 10 500")
 0.0045–0.0081 of the extent (0.9–1.6 cm, about a pixel at the 40 m LOD1 distance); LOD1 GLBs are 220–248 KB. The
 achieved error is in the QA report.
 
-**M5 — the look merge is `joinPrimitives`, not `join()`.** `join()` skips skinned nodes (`if (node.getSkin())
+**M5 — the look merge is `joinPrimitives`, not `join()` (historical: Quaternius).** `join()` skips skinned nodes (`if (node.getSkin())
 continue;`), and every Quaternius primitive is skinned, so `join({ keepNamed: false })` is a no-op there. After the
 colours are baked into `COLOR_0` (VEC3 float, quantized to 8-bit by the sequence) and all primitives share the one
 `character` material, `prepareLook` merges them with `joinPrimitives`. `join()` still runs in the sequence as the
@@ -126,3 +130,60 @@ plays. For the Quaternius files that pose is not the T-pose (≈ 3.1 units tall)
   which loads sharp 0.35; two libvips copies in one process crash (`VipsInterpretation … colourspace: parameter
   space not set`). Using the same sharp as ndarray-pixels avoids it.
 - `@ewa/content` is the only workspace import (for `LOOKS`), as rule 5 allows.
+
+## K — the KayKit character set (2026-10-05)
+
+Sources: `assets-src/models/kaykit-adventurers` (the free 2.0 zip as downloaded; CC0, Kay Lousberg). Measured with the
+scripts in `dev/` (`peek.ts` structure, `swatches.ts` per-part swatch usage, `rigcheck2.ts` rig equality, `anims2.ts`
+clip foot speeds).
+
+**K1 — one rig, six joint orders.** All six characters and both animation files carry `Rig_Medium`: the same 23 joint
+names with identical rest TRS and inverse bind matrices (max difference 5e-12), but every file lists the joints in a
+different order (`Knight.glb`: root hips spine chest upperarm.l …; `Mage.glb`: root hips upperleg.r …). A shape that
+takes a head from another character therefore cannot be a `joinPrimitives` of two files' primitives. `kaykit.ts`
+writes ONE canonical rig (Knight's order, `RIG_JOINTS`) and appends each part's vertices with `JOINTS_0` remapped by
+joint name (`assertSameRig` checks the rest pose and IBMs per joint first). The result is what `joinPrimitives` gives
+for one file: one primitive, one material `character`.
+
+**K2 — heads move between bodies.** Every KayKit texture is the same 8 × 4 grid of 128 × 256 gradient swatches, and
+every head part samples only the universal cells skin 0,0 / hair 1,0 / eyes 2,0 (the rogue's earring adds metal
+3,0, grey in every texture). So a Knight head (clean-shaven, short hair) on a Ranger body samples the Ranger tile's
+skin and hair: 15 shapes from 6 characters, for the 19 looks.
+
+**K3 — prune keeps the UVs.** gltf-transform's `prune()` defaults to `keepAttributes: false` and drops vertex
+attributes no material texture references. A shape ships its UVs without an image (the runtime's atlas samples them),
+so its TEXCOORD_0 was removed (measured: shapes 70–110 KB with no UVs, the runtime drew one flat colour). Characters
+run the sequence with `prune({ keepAttributes: true })` (`SequenceOptions.keepAttributes`); the legendaries keep the
+plain `prune()` and their bytes are unchanged (the internal prunes of `join`, `reorder` and `quantize` already keep
+attributes). Shapes are 90–146 KB with UVs.
+
+**K4 — recolour per swatch cell, in OKLab.** Every face maps into the interior of one cell (closest vertex UV 4 % of a
+cell width from its edge, `dev/swatches.ts`), so a palette is "slot → cells" (`SLOTS`, named from each cell's parts,
+vertex centroid and colour). A cell moves to the target's OKLab hue and chroma and keeps each pixel's lightness offset
+from the cell mean, so the KayKit shading gradient survives; chroma fades within 0.08 of white / black so white coats
+and black hoods stay clean. Palette variants may not touch skin, hair or beard (asserted).
+
+**K5 — the atlas: 256² tiles, level 0 only.** A 256² tile is 32 × 64 px per cell; the cells are 4-px block aligned
+(no BC7 block straddles two swatches) and a vertex UV is at least 0.6 px from a cell edge, so linear filtering never
+mixes neighbours. Mips would (a 4 × 4 level spans 32 swatches), and a gradient atlas needs none: one swatch interior
+maps to a face, so minification cannot shimmer. 24 look tiles + the barbarian (mug) and mage (book) source tiles in
+an 8 × 4 grid → 2048 × 1024 UASTC, RDO 1, zstd: **47.5 KB** (lossless PNG of the same atlas 116 KB; 2 MB of BC7 on the
+GPU after transcoding). A KTX2 is kept over the tiny PNG so the character material is a KTX2 like every lit one
+(`textures.ktx2Only`), and it is half the PNG's bytes.
+
+**K6 — clips and gait speeds.** Kept: `Idle_A Walking_A Running_A Jump_Full_Short Hit_A Use_Item` → `idle walk run cheer
+flinch use`; the rest (deaths, other hits, jumps, spawns, T-poses, the alternative walks / runs, `Interact`, `Throw`,
+`PickUp`, `Idle_B`) are not copied. The clips are in place (no root motion; `rootMove 0`). `gaitSpeed` is the mean
+backward speed of a toe while it is within 1.5 cm of its lowest point: walk **0.808**, run **3.367** model units / s
+(at the one scale 0.6819: 0.55 and 2.30 m/s). Rest-pose tracks are dropped across the file (`pruneRestTracks`, 307 of
+the kept tracks); the file is 83 KB.
+
+**K7 — one scale.** `scale = 1.55 m / median(bare-head top of the 15 shapes)` = 1.55 / 2.273 = **0.6819**; headwear
+(helmet, bear hat, straw hat, hood mask) is excluded from the median and included in each look's `heightM` (1.47–1.81 m).
+
+**K8 — accessories.** Rigid meshes from `Assets/gltf` (their UVs address their own class texture: the mug the
+barbarian's, the book the mage's, shields the knight's). An accessory samples its look's own tile when it shares the
+body's texture (a soldier's shield follows the soldier's recolour) and its source texture's tile otherwise. KayKit
+hand slots are built for blades (idle pose: +Y forward along the forearm, +Z sideways, +X down on the right, up on the
+left), so a mug lay on its side: each accessory carries a slot `rotation` (a quarter turn about Z: +Y to world up, the
+face still outward), measured in the sandbox. No weapon ships; townsfolk hold a mug or a book, soldiers a shield.

@@ -1,4 +1,13 @@
-# @ewa/character-pipeline
+# @ewa/character-pipeline — SUPERSEDED (2026-10-05)
+
+> **Not shipped.** On 2026-10-05 the characters became stylised 3D people ("3D people with 2D creatures"): the KayKit
+> "Adventurers 2.0" set built by `tools/model-pipeline` (`public/models/characters/`) and drawn by
+> `packages/render/src/stage/actors.ts` (SPEC §10.7.6 / §10.7.7 / §40.2, CHANGELOG 2026-10-05). The pixel-art atlas
+> (`public/characters/`) and its runtime (`sprites/characterAtlas.ts`, `sprites/characterAnim.ts`) are deleted, and the
+> proposed SPEC entries of `IMPLEMENTATION-NOTES.md` are closed unapplied. The source stays for reference: it is no
+> longer in the root `tsconfig.json` references, the default `pnpm test` run (`vitest.config.ts` excludes it) or any
+> budget. Its own commands still work (`pnpm --filter @ewa/character-pipeline run build -- --out <dir>` to look at it;
+> do not write into `public/`).
 
 Procedural pixel-art characters for the HD-2D world: a deterministic paper-doll generator whose templates are
 hand-authored in code, baked into one atlas (albedo + derived normal map) and `characters.manifest.json` under
@@ -9,9 +18,9 @@ NPC as a lit billboard of this atlas. Design notes, measurements and the propose
 ## Commands
 
 ```bash
-pnpm --filter @ewa/character-pipeline run build            # compose + bake → public/characters + qa/contact-sheet.png
-pnpm --filter @ewa/character-pipeline run build -- --force # ignore the content-hash cache
-pnpm exec vitest run tools/character-pipeline              # generator rules, budget, determinism + cache
+pnpm --filter @ewa/character-pipeline run build -- --out <dir>           # compose + bake → <dir> + qa/contact-sheet.png
+pnpm --filter @ewa/character-pipeline run build -- --out <dir> --force # ignore the content-hash cache
+# tests: excluded from the root vitest config (superseded; the budget test reads the deleted public/characters)
 pnpm exec tsx tools/character-pipeline/dev/lineup.ts <out.png> 5 idle 0 [look…]    # art review: looks × facings
 pnpm exec tsx tools/character-pipeline/dev/gallery.ts <out.png> 5 hair|hats        # one part family on the base body
 ```

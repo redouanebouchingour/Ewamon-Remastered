@@ -769,5 +769,149 @@ New: `ground-cover.test.ts` (mask, Pillar 7 arena, reveal, cutaway), `battle-fra
 2. **Props between the camera and the ring** (a lamp post in the sandbox shot) stay: only props inside the ring are
    cut, and the occluder fade is off in battle shots.
 3. The **harness's `words` heading reading** must follow the amended §50.6.1 (not a render file).
-4. GLB character looks compile synchronously on their first appearance (skinning with the look's bone count). Not
-   pursued: the looks are being replaced by pixel-art billboards.
+4. GLB character looks compile synchronously on their first appearance (skinning with the look's bone count). Answered
+   by Part 6: the KayKit bodies all have 23 joints and the warm-up frame compiles that skinning program.
+
+---
+
+# Part 6 — KayKit 3D characters (2026-10-05)
+
+Scope: the user's decision of 2026-10-05 — "3D people with 2D creatures" — with the KayKit "Adventurers 2.0" free
+pack (Kay Lousberg, CC0) instead of the Quaternius mannequins. Creatures stay lit billboards (§10.4). The pixel-art
+character runtime of 2026-09-30 (`sprites/characterAtlas.ts`, `sprites/characterAnim.ts`, the instanced card path in
+`stage/actors.ts`, `test/characters.test.ts`, `public/characters/`) is deleted; `RendererOptions.charactersUrl` is gone.
+The asset side is `tools/model-pipeline` (IMPLEMENTATION-NOTES K1–K8). SPEC: §10.7.6, §10.7.7, §10.5.8, NN 2, §40.2,
+§40.6 (CHANGELOG 2026-10-05). Measurement setup as in Parts 4–5 (render sandbox, headless Chrome 154 over CDP, Intel
+UHD / Gen-12 iGPU, D3D12, 1280 × 720 shots).
+
+## Layout
+
+| File | What |
+|---|---|
+| `stage/looks.ts` | `models.manifest.json` v2 mirror (`parseCharacterSet`), `resolveLook` (variant → base look → hash pick), `CharacterSource` (the seam) and the browser `createGltfCharacterSource` (GLTFLoader + MeshoptDecoder + the host's KTX2Loader; manifest, clips and atlas once; each shape / accessory once, on first use) |
+| `stage/characterMaterial.ts` | the one `'character'` material and its uniforms |
+| `stage/actors.ts` | `CharacterPool`: rigs, bodies, accessories, gait, facing, emotes, decals, shadow casters, LOD, anchors, warm-up |
+| `stage/wiring.ts` | builds the pool with `createGltfCharacterSource({ baseUrl: modelsUrl, ktx2 })` |
+| `test/actors.test.ts` | 12 tests over a synthetic source shaped like the pipeline output |
+| `sandbox/part3.ts` | `?demo=people`: the 24 looks in two rows, creature billboards for scale, walkers / runners; walkers move inside the renderer's frame hook, so `shot()` frames animate |
+
+## Design
+
+**C1 — one material, a tile per actor.** Every body and accessory draws with ONE `MeshStandardNodeMaterial`: albedo =
+the atlas sampled at `(tileCell + uv) / (columns, rows)` with `tile = userData.ewaTile`, an OBJECT-scope uniform (the
+same mechanism as the DOF `sharp` bit). 24 looks cost no material and no program: the material count of the sandbox
+stays 15 from 0 to 48 actors. The atlas is a texture node re-pointed once from a 4 × 4 placeholder to the KTX2 (the
+placeholder lives until `dispose`, so no render object can re-initialise a disposed texture — H5c). The KTX2 is BC7
+on this GPU with `colorSpace = SRGBColorSpace` (sampled linear), level 0 only, `LinearFilter`.
+
+**C2 — colour.** KayKit swatches are painted for flat renders (skin #f5b993, cloth whites at 0.97); under the noon key
++ sky fill + ACES the first sandbox lineup clipped faces and shirts to near white. `albedoGain` 0.72 (linear) and a
+saturation of 1.18 around the luminance bring the characters into the baked world's albedo range with their hues
+(checked on close-ups of all 24 looks at noon and dusk). Readability at night (audit M2-gym-dusk-6): an albedo floor
+of 0.05 and a warm rim (`pow(1 − |n·v|, 3) × 0.22`) in `emissive` — at noon a few percent, at night the silhouettes,
+faces and clothing stay legible between lamp pools (`kk-night-wide`). Roughness 0.8, metalness 0, double-sided
+(capes are single sheets), flat normals at harvest level 2, mask MRT x 0 (GTAO applies to 3D bodies) / y `sharp`.
+
+**C3 — bodies.** `SkeletonUtils.clone(template.scene)`: own bones, the template's geometry shared per shape, the pool
+material. Clones are recycled per shape on despawn (and accessories per id). The root carries the manifest's one scale
+(0.6819); each body has a fixed bounding sphere (model units: centre y 1.1, radius 1.75), so frustum culling works
+without per-frame skinned bounds. All KayKit shapes have 23 joints, so one skinning program serves every shape.
+
+**C4 — gait by measured speed.** The protocol moves players at 4.2 m/s (walk input) and 7 m/s (run); a 1.55 m chibi's
+walk clip covers 0.55 m/s and its run 2.30 m/s at time scale 1 (the pipeline's planted-toe measurement × scale). So
+the gait follows the measured ground speed, not the flags: speed = smoothed displacement / dt (τ 0.1 s; a jump > 3 m
+in one update measures nothing), stand below 0.25 m/s, walk → run blended between 1.1 and 1.7 m/s, and each clip
+plays at `speed / natural speed` (walk ≤ × 3.2, run ≤ × 4; at 4.2 m/s the run clip plays × 1.83, at 7 m/s × 3.04).
+Measured in the sandbox (`march`, 4 actors, 150 frames, a toe counts as planted within 2 cm of its lowest point):
+mean planted-toe velocity along the walk −0.04 m/s at 0.7 m/s and −0.06 m/s at 1.0 m/s (the foot stays put; the
+unsigned mean of 0.26 m/s is toe roll that cancels), 0.12 m/s at 4.2 and 0.13 m/s at 7 m/s (2–3 % of the body
+speed). Inside the 1.1–1.7 m/s blend the two cycles mix and slide (0.49 m/s at 1.4 m/s); actors rarely sit there.
+A `moving` actor that does not move stands. Each actor starts its cycles at a hash phase (a crowd does not march in
+step).
+
+**C5 — facing.** The displayed yaw turns toward the heading at 14 / s along the shortest arc (3.0 → −3.0 rad goes
+through ±π); the first transform snaps.
+
+**C6 — emotes.** KayKit ships no wave and nothing downcast. wave = procedural (after the mixer: the right upper arm
+aimed up and out, the forearm swinging ±0.42 rad at 2.2 Hz, by world-space aim, so no bone axis is assumed); sad =
+procedural bow (head 0.42 rad, chest 0.16 rad about the actor's right axis); happy and heart = `cheer` (a hop,
+looping for the 2 s); alert = `flinch`; cool = `use`. Clip emotes take weight from the gait (base = 1 − emote weight,
+so the weights always sum to 1 — below 1 the bind T-pose bleeds in, which the first procedural wave showed);
+procedural ones keep the full gait under them. Emotes play while standing and yield to walking.
+
+**C7 — accessories.** A clone of the accessory's mesh node (its quantization transform) with the manifest's slot
+rotation baked in (`T(R·p)·R·S`, no extra node), parented to the hand-slot joint, `castShadow` false, its own
+`userData` (the look's or the source texture's tile, the actor's `sharp`). The slot rotations were measured in the
+sandbox (idle: right slot +X down, left slot +X up, +Y forward along the forearm): mugs stand upright in the right
+hand, books and shields hang upright in the left with their face outward.
+
+**C8 — shadows and LOD.** After the per-actor update the pool sorts its 48 slots by camera distance (insertion sort,
+no allocation) and lets the nearest 12 bodies within 45 m cast; accessories never cast. Accessories hide beyond 45 m;
+bodies are hidden (and their mixers skipped) beyond 140 m. At the diorama distances (camera 20 / 26 / 34 m from the
+player) every visible actor of a busy frame is within 45 m.
+
+**C9 — grounding and anchors.** Feet on the collider; one instanced contact decal (the §10.4.7 material, 0.85 m, on
+the collider normal, 1 cm up) for every actor: one draw. The nameplate / emote anchor is the head joint's world
+position raised to the look's top (`heightM − headRestY × scale`, + 0.18 m), so plates follow a hop or a bow and sit
+above helmets and the straw hat.
+
+**C10 — loading and warm-up.** Until its shape arrives an actor shows its decal and nameplate (one request per shape
+per renderer). The warm-up frame (§10.1.2 step 8) renders a 23-bone `SkinnedMesh` with the shipped attribute formats
+(int16-normalised position and normal, uint16-normalised UV, uint8 joints, uint8-normalised weights) and a rigid
+accessory, both on the character material and casting shadows, so the skinned and rigid programs exist before the
+first character.
+
+## Measured
+
+Sandbox diorama, noon, `?demo=people` (`window.__ewaSandbox.counts()` after 40 settled frames):
+
+| | beauty draws | shadow draws | programs | materials | bodies / shadow casters / accessories shown |
+|---|---|---|---|---|---|
+| 0 actors | 73 | 112 | 112 | 15 | 0 / 0 / 0 |
+| 24 actors (every look) | 110 | 158 | 114 | 15 | 24 / 12 / 12 |
+| 48 actors | 146 | 161 | 114 | 15 | 48 / 12 / 24 |
+
+Per actor: 1 beauty draw + 1 per shown accessory; shadows are capped by the 12 casters (+ 46 at 24 actors, + 3 more
+at 48). The decal is 1 draw for all. Programs: +2 over the warm-up when the first real bodies draw.
+
+Client harness re-shoot (`harness:shots -- --set M2`, 1440 × 900; `.screenshots/audit/M2/{mirevale,mire_route}/`) and
+a short budget probe (`harness:budget -- --frames 60 --warmup 30 --no-diff --report-only`, a fresh session per zone):
+
+| Shot | beauty draws (HEAD → now) | shadow draws | materials | programs, shots run (HEAD → now) | programs, budget probe | player mask coverage (HEAD → now) |
+|---|---|---|---|---|---|---|
+| mirevale spawn-noon | 109 → 110 | 247 → 247 | 18 | 101 → 107 | 107 | 0.667 → 0.495 |
+| mirevale gym-dusk | 106 → 107 | 288 → 288 | 18 | 128 → 139 | 107 | 0.749 → 0.559 |
+| mirevale lamps-night | 124 → 125 | 271 → 267 | 18 | 128 → 139 | 107 | 0.749 → 0.561 |
+| mirevale link-east | 74 → 74 | 77 → 77 | 18 | 128 → 139 | 107 | 0.754 → 0.560 |
+| mire_route sprite-edge | 80 → 80 | 92 → 86 | 13 | 103 → 111 | 111 | 0.584 → 0.523 |
+| mire_route battle (6 spectators) | 114 → 116 | 201 → 199 | 13 | 122 → 137 | 111 | 0.710 → 0.609 |
+
+Draw calls and materials are unchanged within ±2 (the scenes hold 1–7 characters). The player's mask coverage is
+measured on the harness's player cylinder (now 0.4 × 1.6 m for the chibi; a wide head over narrow legs fills less of
+it) and stays above the 0.45 check. Programs: the shots run keeps every post variant it built (reduced, mask) alive,
+so it climbs with the session (audit M2-gym-dusk-8: HEAD already read 128 there); the character material adds its
+skinned / rigid beauty and shadow programs per light set on top. A fresh session at the same positions reads 107
+(Mirevale) and 111 (Mire Route, the battle included), inside the 128 cap.
+
+Spectators: a battle's six `spectator_<seed>_<i>` ids resolve to deterministic base looks. Plain FNV-1a (`hash01`)
+barely moves its high bits when only the last character changes, so the first re-shoot had six ninjas around the
+arena; `pickHash` adds a murmur3 finaliser (re-shot: a mixed crowd).
+
+## Tests
+
+`test/actors.test.ts` (new, 12): manifest v2 parsing; look resolution; no source → decals only; shared geometry per
+shape, own skeleton, the one material, the per-actor tile, one load per shape, scale; accessories on the joint with
+their tile; gait by measured speed with foot-matched time scales, flags alone stand; shortest-arc facing; emotes
+(clip, yield, timeout); nearest-12 shadow casters, accessory LOD and culling; recycling; anchors; exact dispose; the
+warm-up body. Removed: `test/characters.test.ts` (the pixel path). Render total: 22 files + this one.
+
+## Open
+
+1. **Programs over 128 in the harness's history-dependent runs** (see the table below): the full-effects shots after
+   a dusk / night light set read 139, 11 over HEAD's 128, which already sat on the cap because every post variant
+   built earlier in the session stays resident (audit M2-gym-dusk-8). The character material adds its skinned and
+   rigid programs per light set; a fresh boot at noon reads 107 (cap 128).
+2. **Wave / bow are procedural** over the idle (KayKit's free tier has no such clips); a paid KayKit animation pack or
+   an authored clip would replace them through `EMOTE_CLIPS` without code changes.
+3. The DOF gather noise reads as a fine speckle on out-of-focus faces in the 4 m inspector close-ups (Part 4 Open 6);
+   the diorama distances do not show it.

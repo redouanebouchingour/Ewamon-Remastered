@@ -1,81 +1,157 @@
 /**
- * SPEC §10.7.6 `ActorPool` and §10.7.7 characters — HD-2D pixel-art sprites (proposed amendment, see
- * tools/character-pipeline/IMPLEMENTATION-NOTES.md): the GLB mannequins are gone; every player and NPC is a lit
- * billboard of the procedural character atlas (`public/characters/`, tools/character-pipeline).
+ * SPEC §10.7.6 `ActorPool` and §10.7.7 characters (amended 2026-10-05): stylised 3D people — the KayKit
+ * "Adventurers" set (`looks.ts`, `tools/model-pipeline`) — among 2D creature billboards.
  *
- * - Material: the creature billboard graph (§10.4.5) over the character atlas, instanced (`characterAtlas.ts`):
- *   derived-normal-map lighting, binary alpha with the shadow from the same alpha, `NearestFilter` magnification
- *   (Pillar 6), the §10.4.4 yaw + half-pitch lean, the DOF-sharp bit for the local player. ONE material and ONE
- *   instanced card for all 48 slots: the per-actor frame, feet and flags are instance attributes.
- * - Facing: the actor's heading relative to the camera heading, quantised to 4 with hysteresis
- *   (`characterAnim.ts`). Frames: idle breathing, walk / run advanced by the measured ground speed, wave / cheer
- *   emotes facing the camera.
- * - Grounding: one instanced contact decal for all slots (the §10.4.7 material), laid on the collider's normal.
- * - Draws for ANY number of live actors: 1 card draw in the beauty pass + 1 per shadow cascade + 1 decal draw
- *   (none at all with no live actor: an instance count of 0 issues no draw).
+ * - Geometry: one `SkinnedMesh` per actor, cloned from its shape's template with `SkeletonUtils.clone` (own bones,
+ *   the template's geometry shared per shape), at the manifest's one scale (a bare head at 1.55 m). A look may hold an
+ *   accessory (mug, book, shield) parented to a hand-slot joint. Clones are recycled per shape on despawn.
+ * - Material: ONE `'character'` material for every body and accessory (`characterMaterial.ts`); the look's atlas tile
+ *   is the per-object `userData.ewaTile`, the DOF-sharp bit `userData.sharp`.
+ * - Animation: one `AnimationMixer` per actor over the shared clips. Idle / walk / run are blended by the MEASURED
+ *   ground speed and each gait clip plays at `speed / (clip ground speed × scale)` (the pipeline measures the planted
+ *   toe), so planted feet move with the ground; emotes (spine §4.1) play a clip over the blend while standing.
+ *   Facing is smoothed toward the actor's heading (shortest arc).
+ * - Grounding: feet on the collider; one instanced contact decal for every actor (the §10.4.7 material) on the
+ *   ground normal; real shadows from the nearest `shadowCasters` actors within `shadowRangeM` of the camera.
+ * - LOD: beyond `accessoryRangeM` no accessory, beyond `shadowRangeM` no shadow, beyond `cullRangeM` hidden.
+ * - Loading: while its shape (or the clips / atlas) loads an actor shows only its decal and nameplate; a look id the
+ *   manifest lacks resolves to its base look, else to a deterministic base look (`resolveLook`).
  *
- * 48 rigs are preallocated (§10.7.6) and never grow; `setTransform` and `update` allocate nothing. Nameplates and
- * emote cards are the HUD's (§10.9), anchored through `screenPositions` / `projectHead` at the leaned head top.
+ * 48 rigs are preallocated (§10.7.6) and never grow; `setTransform` and `update` allocate nothing. Nameplates and emote
+ * cards are the HUD's (§10.9), anchored at the head joint (`screenPositions` / `projectHead`).
  */
-import { Color, Group, InstancedMesh, Matrix4, Mesh, PlaneGeometry, Quaternion, Vector3 } from 'three/webgpu';
-import type { MeshBasicNodeMaterial, MeshStandardNodeMaterial, Object3D, PerspectiveCamera, Texture, UniformNode } from 'three/webgpu';
+import {
+  AnimationMixer, Bone, BufferAttribute, BufferGeometry, Euler, Group, InstancedMesh, LoopOnce, LoopRepeat, Matrix4, Mesh, PlaneGeometry,
+  PropertyBinding, Quaternion, Skeleton, SkinnedMesh, Sphere, Vector3,
+} from 'three/webgpu';
+import type { AnimationAction, AnimationClip, MeshBasicNodeMaterial, MeshStandardNodeMaterial, Object3D, PerspectiveCamera, UniformNode } from 'three/webgpu';
 import { uniform } from 'three/tsl';
+import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import type { ActorDescriptor, ActorPool } from '../contracts.js';
 import { LAYERS } from '../descriptors.js';
 import { isDevBuild } from '../env.js';
-import { browserDecoder, type AtlasDecoder } from '../sprites/atlas.js';
 import { createDecalMaterial, type BillboardUniforms } from '../sprites/billboard.js';
 import { BILLBOARD, hash01 } from '../sprites/tables.js';
-import {
-  assignCharacterImages, createCharacterInstances, createCharacterMaterial, createCharacterTextures, disposeCharacterTextures, loadCharacterSet,
-  type CharacterFrames, type CharacterInstances, type CharacterTextures, type CharacterUniforms, type LookFrames,
-} from '../sprites/characterAtlas.js';
-import { STATE_KEYS, createCharAnim, frameIndex, resetCharAnim, stepCharAnim, type CharAnim } from '../sprites/characterAnim.js';
+import { createCharacterMaterial, type CharacterMaterial } from './characterMaterial.js';
+import { resolveLook, type AccessoryTemplate, type CharacterSet, type CharacterSource, type LookRef, type ShapeTemplate } from './looks.js';
 
 // ---- numbers ---------------------------------------------------------------------------------------------------
 
 export const ACTOR_POOL_SIZE = 48;
 export const EMOTE_MS = 2000;
-/** Fallback head-top anchor above the feet (m) before the atlas loads. */
-export const HEAD_ANCHOR_M = 1.95;
+/** Head-top anchor above the feet before a look resolves (m). */
+export const HEAD_ANCHOR_M = 1.7;
 export const CHARACTER = Object.freeze({
-  /** A standing character (no hat) in world metres — the pipeline's STAND_M. */
-  heightM: 1.7,
-  /** Nameplate / emote anchor: this much above the look's head top (m). */
-  headMarginM: 0.16,
+  /** A bare-headed character (the pipeline's CHARACTER_HEIGHT_M; the manifest's `heightM` wins). */
+  heightM: 1.55,
+  /** Nameplate / emote anchor: this much above the look's top (m). */
+  headMarginM: 0.18,
   /** Contact decal diameter (m) (the creature decal is 1.1 m × sizeScale). */
-  decalM: 0.95,
-  /** Rim colour (linear): the characters' stand-in for the creature type rim, a faint warm edge light. */
-  rim: Object.freeze([0.09, 0.08, 0.07] as const),
-  /** Ground normal probe distance (m) for the decal (central differences on the collider height). */
+  decalM: 0.85,
+  /** Ground normal probe distance (m) for the decal. */
   normalProbeM: 0.3,
-  /** Card size (m) and foot line before the manifest arrives (the pipeline's 32 × 52 cell at 40 texels / 1.7 m). */
-  cellW: 32 / (40 / 1.7), cellH: 52 / (40 / 1.7), footV: 1 / 52,
+  /** Facing smoothing rate (1/s, exponential, shortest arc). */
+  turnRate: 14,
+  /** Idle / walk / run weight blend rate (1/s) and the emote fade rate (1/s). */
+  gaitBlendRate: 10,
+  emoteBlendRate: 8,
+  /** Ground-speed smoothing time constant (s); a jump farther than `teleportM` in one update gives no speed. */
+  speedTau: 0.1,
+  teleportM: 3,
+  /** Below this measured speed an actor stands (m/s). */
+  standMps: 0.25,
+  /** Walk → run blend band (m/s): the walk clip's natural speed is ≈ 0.55 m/s, the run's ≈ 2.3 m/s. */
+  runFromMps: 1.1, runToMps: 1.7,
+  /** Gait time-scale clamps (the clips stay readable at the protocol's 4.2 / 7 m/s: run × 1.8 / × 3.0). */
+  walkScaleMax: 3.2, runScaleMax: 4,
+  /** Shadow casters: the nearest N within the range (camera distance, m); accessories hidden beyond; culled beyond. */
+  shadowCasters: 12,
+  shadowRangeM: 45,
+  accessoryRangeM: 45,
+  cullRangeM: 140,
+  /** Bounding sphere of a body in model units (centre y, radius), generous enough for every clip. */
+  boundsCentreY: 1.1, boundsRadius: 1.75,
 });
 
 export type EmoteId = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 /** spine §4.1: 1..6 = wave happy sad alert heart cool. */
 export const EMOTE_NAMES: readonly string[] = Object.freeze(['', 'wave', 'happy', 'sad', 'alert', 'heart', 'cool']);
+/**
+ * The clip each emote plays (§10.7.7). KayKit ships no wave and nothing downcast, so those two are procedural poses
+ * over the idle (`EMOTE_POSES`): the right arm raised and waving, the head and chest bowed. Joy and the heart hop
+ * (`cheer`), alert flinches, cool is the one-handed `use`.
+ */
+export const EMOTE_CLIPS: readonly (string | null)[] = Object.freeze([null, null, 'cheer', null, 'flinch', 'cheer', 'use']);
+/** Procedural emotes (applied after the mixer, weighted by the emote fade). */
+export const EMOTE_POSES: readonly ('wave' | 'bow' | null)[] = Object.freeze([null, 'wave', null, 'bow', null, null, null]);
+/** Emotes that loop for their 2 s (the others play once and hold). */
+const EMOTE_LOOPS: readonly boolean[] = Object.freeze([false, false, true, false, false, true, false]);
+/** Procedural wave / bow numbers (root space: +x left, +y up, +z forward; radians, Hz). */
+export const EMOTE_POSE = Object.freeze({
+  /** Upper-arm direction of the wave (up and out to the right, a little forward). */
+  waveUpper: Object.freeze([-0.84, 0.5, 0.18] as const),
+  /** Forearm swing about vertical (rad) and rate (Hz). */
+  waveSwing: 0.42, waveHz: 2.2,
+  /** Bow: head and chest pitched forward (rad). */
+  bowHead: 0.42, bowChest: 0.16,
+});
 
 /** Ground height sampler (the zone collider); flat 0 when unset. */
 export type GroundSampler = (x: number, z: number) => number;
 
+interface ActorUserData { sharp: number; ewaTile: number; ewaActor: string }
+interface AccessoryUserData { sharp: number; ewaTile: number }
+
+/** One cloned body (recycled per shape). */
+interface Instance {
+  readonly shape: string;
+  readonly root: Object3D;
+  readonly mesh: SkinnedMesh;
+  readonly head: Object3D | null;
+  readonly bones: ReadonlyMap<string, Object3D>;
+  readonly mixer: AnimationMixer;
+  readonly idle: AnimationAction | null;
+  readonly walk: AnimationAction | null;
+  readonly run: AnimationAction | null;
+  /** By clip name. */
+  readonly emotes: ReadonlyMap<string, AnimationAction>;
+  /** Head joint y above the root in the bind pose (model units). */
+  readonly headRestY: number;
+}
+
 interface Rig {
   readonly slot: number;
-  readonly anim: CharAnim;
+  readonly ud: ActorUserData;
+  readonly accUd: AccessoryUserData;
   id: string | null;
   look: string;
-  frames: LookFrames | null;
+  lookId: string | null;
+  lookRef: LookRef | null;
   name: string;
   guildTag: string;
   isLocal: boolean;
   readonly feet: Vector3;
   readonly groundN: Vector3;
   angle: number;
+  yaw: number;
+  hasYaw: boolean;
   moving: boolean;
   running: boolean;
+  speed: number;
+  lastX: number;
+  lastZ: number;
+  hasLast: boolean;
+  idleW: number;
+  walkW: number;
+  runW: number;
   emote: EmoteId;
   emoteLeft: number;
+  emoteW: number;
+  emoteAction: AnimationAction | null;
+  inst: Instance | null;
+  acc: Mesh | null;
+  accId: string | null;
+  dist2: number;
 }
 
 export interface ActorPoolOptions {
@@ -83,80 +159,74 @@ export interface ActorPoolOptions {
   readonly camera?: PerspectiveCamera;
   /** CSS viewport size for `screenPositions`. */
   readonly viewport?: () => { readonly w: number; readonly h: number };
-  /** Where `characters.manifest.json` and the atlas are served (`RendererOptions.charactersUrl`); null = none (tests: actors stay hidden). */
-  readonly charactersUrl?: string | null;
-  /** The sprite pool's uniforms (camera yaw / lean written once per frame for creatures and characters); own ones when absent. */
+  /** The KayKit set (`createGltfCharacterSource`); absent / null = no bodies (node tests: decals and anchors only). */
+  readonly source?: CharacterSource | null;
+  /** The sprite pool's uniforms (the decal material reads them); own ones when absent. */
   readonly uniforms?: BillboardUniforms;
-  readonly decoder?: AtlasDecoder;
-  readonly fetchJson?: (url: string) => Promise<unknown>;
-  /** Eager GPU upload once the atlas decoded (`renderer.initTexture`). */
-  readonly upload?: (t: Texture) => void;
   readonly warn?: (msg: string) => void;
 }
 
 const _p = new Vector3();
-const _dir = new Vector3();
 const _m = new Matrix4();
 const _q = new Quaternion();
 const _s = new Vector3();
+const _v = new Vector3();
 const _up = new Vector3(0, 1, 0);
 const _qFlat = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
 const ZERO_SCALE = new Matrix4().makeScale(0, 0, 0);
+const TWO_PI = Math.PI * 2;
+
+function wrapPi(a: number): number {
+  let x = a % TWO_PI;
+  if (x > Math.PI) x -= TWO_PI;
+  else if (x <= -Math.PI) x += TWO_PI;
+  return x;
+}
+const smooth01 = (e0: number, e1: number, x: number): number => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
 
 export class CharacterPool implements ActorPool {
   readonly root = new Group();
   readonly material: MeshStandardNodeMaterial;
+  readonly characterMaterial: CharacterMaterial;
   readonly uniforms: BillboardUniforms;
-  readonly characterUniforms: CharacterUniforms;
-  /** Resolves true once the atlas is bound (false when there is none or it failed). */
+  /** Resolves true once the manifest, clips and atlas are bound (false without a source or on failure). */
   readonly ready: Promise<boolean>;
-  private readonly textures: CharacterTextures;
-  private readonly inst: CharacterInstances;
-  private readonly cards: Mesh;
+  private readonly source: CharacterSource | null;
   private readonly decalGeometry: PlaneGeometry;
   private readonly decalMaterial: MeshBasicNodeMaterial;
   private readonly decals: InstancedMesh;
-  private readonly ownsUniforms: boolean;
   private readonly rigs: Rig[] = [];
   private readonly byId = new Map<string, Rig>();
-  private frames: CharacterFrames | null = null;
+  private set: CharacterSet | null = null;
+  private clips: readonly AnimationClip[] = [];
+  private readonly shapes = new Map<string, ShapeTemplate | null>();
+  private readonly accessories = new Map<string, AccessoryTemplate | null>();
+  private readonly pending = new Set<string>();
+  private readonly freeInst = new Map<string, Instance[]>();
+  private readonly freeAcc = new Map<string, Mesh[]>();
+  private readonly order: number[] = [];
   private ground: GroundSampler | null = null;
   private camera: PerspectiveCamera | null;
   private readonly viewport: () => { readonly w: number; readonly h: number };
-  private dirtyFeet = false;
-  private dirtyRect = false;
-  private dirtyMisc = false;
+  private readonly warn: (msg: string) => void;
+  private warm: Group | null = null;
   private dirtyDecals = false;
-  private warm: { mesh: Mesh; inst: CharacterInstances } | null = null;
   private disposed = false;
+  private shadowCount = 0;
 
   constructor(o: ActorPoolOptions) {
     this.root.name = 'ewa:actors';
     this.camera = o.camera ?? null;
     this.viewport = o.viewport ?? (() => ({ w: 1, h: 1 }));
-    this.ownsUniforms = o.uniforms === undefined;
+    this.warn = o.warn ?? (() => undefined);
     this.uniforms = o.uniforms ?? {
       harvestLevel: o.harvestLevel,
       cameraYaw: uniform(0).setName('ewaCharYaw'),
       cameraLean: uniform(0).setName('ewaCharLean'),
       animTime: uniform(0).setName('ewaCharTime'),
     };
-    this.characterUniforms = {
-      cellW: uniform(CHARACTER.cellW).setName('ewaCharCellW'),
-      cellH: uniform(CHARACTER.cellH).setName('ewaCharCellH'),
-      footV: uniform(CHARACTER.footV).setName('ewaCharFootV'),
-      rim: uniform(new Color(CHARACTER.rim[0], CHARACTER.rim[1], CHARACTER.rim[2])).setName('ewaCharRim'),
-    };
-    this.textures = createCharacterTextures();
-    this.material = createCharacterMaterial(this.textures, this.uniforms, this.characterUniforms);
-    this.inst = createCharacterInstances(ACTOR_POOL_SIZE);
-    this.cards = new Mesh(this.inst.geometry, this.material);
-    this.cards.name = 'ewa:character-cards';
-    this.cards.castShadow = true;
-    this.cards.receiveShadow = true;
-    this.cards.frustumCulled = false;   // instances span the zone; an instance count of 0 draws nothing
-    this.cards.layers.set(LAYERS.billboards);
-    this.root.add(this.cards);
+    this.characterMaterial = createCharacterMaterial(o.harvestLevel);
+    this.material = this.characterMaterial.material;
     this.decalGeometry = new PlaneGeometry(1, 1);
     this.decalGeometry.name = 'ewa:character-decal';
     this.decalMaterial = createDecalMaterial(this.uniforms);
@@ -172,26 +242,25 @@ export class CharacterPool implements ActorPool {
     for (let i = 0; i < ACTOR_POOL_SIZE; i++) this.decals.setMatrixAt(i, ZERO_SCALE);
     this.decals.count = 0;
     this.root.add(this.decals);
-    for (let i = 0; i < ACTOR_POOL_SIZE; i++) this.rigs.push(this.makeRig(i));
+    for (let i = 0; i < ACTOR_POOL_SIZE; i++) { this.rigs.push(this.makeRig(i)); this.order.push(i); }
 
-    const url = o.charactersUrl ?? null;
-    if (url === null) { this.ready = Promise.resolve(false); return; }
-    const fetchJson = o.fetchJson ?? (async (u: string) => { const r = await fetch(u); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<unknown>; });
-    this.ready = loadCharacterSet(url, o.decoder ?? browserDecoder(), fetchJson).then((set) => {
-      if (this.disposed) { set.albedo.close?.(); set.normal.close?.(); return false; }
-      assignCharacterImages(this.textures, set.albedo, set.normal);
-      if (o.upload) { o.upload(this.textures.albedo); o.upload(this.textures.normal); }
-      this.frames = set.frames;
-      this.characterUniforms.cellW.value = set.frames.cellW;
-      this.characterUniforms.cellH.value = set.frames.cellH;
-      this.characterUniforms.footV.value = set.frames.footV;
+    this.source = o.source ?? null;
+    const src = this.source;
+    if (src === null) { this.ready = Promise.resolve(false); return; }
+    const mat = this.characterMaterial;
+    const warn = this.warn;
+    this.ready = (async (): Promise<boolean> => {
+      const set = await src.set();
+      if (set === null || this.disposed) return false;
+      const [clips, atlas] = await Promise.all([src.clips(), src.atlas()]);
+      if (this.disposed) return false;
+      if (atlas !== null) mat.setAtlas(atlas, set.atlas.columns, set.atlas.rows);
+      else warn('character atlas unavailable: bodies draw the placeholder grey');
+      this.set = set;
+      this.clips = clips;
       for (const r of this.rigs) if (r.id !== null) this.bindLook(r);
-      this.flush();
       return true;
-    }, (err: unknown) => {
-      o.warn?.(`characters unavailable (${err instanceof Error ? err.message : String(err)}): actors stay hidden`);
-      return false;
-    });
+    })().catch((e: unknown) => { warn(`characters unavailable (${e instanceof Error ? e.message : String(e)})`); return false; });
   }
 
   setGround(g: GroundSampler | null): void { this.ground = g; for (const r of this.rigs) if (r.id !== null) this.place(r); }
@@ -212,14 +281,15 @@ export class CharacterPool implements ActorPool {
       }
       r.id = id;
       this.byId.set(id, r);
-      r.feet.set(0, 0, 0); r.groundN.set(0, 1, 0); r.angle = 0; r.moving = false; r.running = false; r.emote = 0; r.emoteLeft = 0;
-      resetCharAnim(r.anim, hash01(id) * 2);
+      r.feet.set(0, 0, 0); r.groundN.set(0, 1, 0); r.angle = 0; r.yaw = 0; r.hasYaw = false; r.moving = false; r.running = false;
+      r.speed = 0; r.hasLast = false; r.idleW = 1; r.walkW = 0; r.runW = 0; r.emote = 0; r.emoteLeft = 0; r.emoteW = 0; r.emoteAction = null;
       this.refreshCounts();
     }
-    r.look = d.look; r.name = d.name; r.guildTag = d.guildTag; r.isLocal = d.isLocal;
-    this.inst.misc.setX(r.slot, d.isLocal ? 1 : 0);
-    this.dirtyMisc = true;
-    this.bindLook(r);
+    r.name = d.name; r.guildTag = d.guildTag; r.isLocal = d.isLocal;
+    r.ud.sharp = d.isLocal ? 1 : 0;
+    r.accUd.sharp = r.ud.sharp;
+    r.ud.ewaActor = id;
+    if (r.look !== d.look || r.lookRef === null) { r.look = d.look; this.bindLook(r); }
     this.place(r);
   }
 
@@ -229,6 +299,7 @@ export class CharacterPool implements ActorPool {
     r.feet.x = Number.isFinite(x) ? x : 0;
     r.feet.z = Number.isFinite(z) ? z : 0;
     r.angle = Number.isFinite(angle) ? angle : 0;
+    if (!r.hasYaw) { r.yaw = r.angle; r.hasYaw = true; }
     r.moving = moving;
     r.running = running;
     this.place(r);
@@ -239,6 +310,7 @@ export class CharacterPool implements ActorPool {
     if (r === undefined) return;
     r.emote = n;
     r.emoteLeft = n === 0 ? 0 : EMOTE_MS;
+    this.startEmote(r);
   }
 
   despawn(id: string): void {
@@ -246,10 +318,10 @@ export class CharacterPool implements ActorPool {
     if (r === undefined) return;
     this.byId.delete(id);
     r.id = null;
-    r.frames = null;
-    r.emote = 0; r.emoteLeft = 0;
-    this.inst.misc.setXY(r.slot, 0, 0);
-    this.dirtyMisc = true;
+    r.emote = 0; r.emoteLeft = 0; r.emoteW = 0; r.emoteAction = null;
+    this.releaseAccessory(r);
+    if (r.inst !== null) this.releaseInstance(r);
+    r.lookRef = null; r.lookId = null; r.look = '';
     this.decals.setMatrixAt(r.slot, ZERO_SCALE);
     this.dirtyDecals = true;
     this.refreshCounts();
@@ -276,39 +348,98 @@ export class CharacterPool implements ActorPool {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    for (const r of this.rigs) { this.releaseAccessory(r); if (r.inst !== null) this.releaseInstance(r); r.id = null; }
+    for (const list of this.freeInst.values()) for (const g of list) disposeInstance(g);
+    this.freeInst.clear();
+    this.freeAcc.clear();          // clones share the template geometry (disposed by the source) and the pool material
     this.byId.clear();
-    this.cards.removeFromParent();
-    this.inst.geometry.dispose();
+    this.source?.dispose();
+    this.shapes.clear();
+    this.accessories.clear();
     this.decals.removeFromParent();
     this.decals.dispose();
     this.decalGeometry.dispose();
     this.decalMaterial.dispose();
-    if (this.warm !== null) { this.warm.mesh.removeFromParent(); this.warm.inst.geometry.dispose(); }
-    this.material.dispose();
-    disposeCharacterTextures(this.textures);
+    if (this.warm !== null) {
+      this.warm.removeFromParent();
+      this.warm.traverse((o) => {
+        const m = o as SkinnedMesh;
+        if (m.isMesh === true) m.geometry.dispose();
+        if (m.isSkinnedMesh === true) m.skeleton.dispose();
+      });
+      this.warm = null;
+    }
+    this.characterMaterial.dispose();
     this.root.removeFromParent();
   }
 
   // ---- frame hook + extras ---------------------------------------------------------------------------------------
 
-  /** Per frame (host step 3, after the sprite pool wrote the camera uniforms): facing, frame, emote timers. Zero allocation. */
+  /** Per frame (host step 3): speed, gait, facing, emotes, mixers, LOD and shadow casters. Zero allocation. */
   update(dtScaledMs: number): void {
     if (this.disposed) return;
-    const dt = Number.isFinite(dtScaledMs) ? Math.max(0, dtScaledMs) : 0;
-    if (this.ownsUniforms && this.camera !== null) {
-      this.camera.getWorldDirection(_dir);
-      this.uniforms.cameraYaw.value = Math.atan2(-_dir.x, -_dir.z);
-      this.uniforms.cameraLean.value = BILLBOARD.leanFraction * Math.max(0, Math.asin(Math.min(1, Math.max(-1, -_dir.y))));
-    }
-    const yaw = this.uniforms.cameraYaw.value;
+    const dtMs = Number.isFinite(dtScaledMs) ? Math.max(0, dtScaledMs) : 0;
+    const dt = dtMs / 1000;
+    const C = CHARACTER;
+    const cam = this.camera;
+    const kGait = 1 - Math.exp(-dt * C.gaitBlendRate);
+    const kEmote = 1 - Math.exp(-dt * C.emoteBlendRate);
+    const kTurn = 1 - Math.exp(-dt * C.turnRate);
+    const kSpeed = dt > 0 ? 1 - Math.exp(-dt / C.speedTau) : 0;
+    const set = this.set;
+    const walkV = set !== null ? Math.max(0.05, set.animations.gaitSpeed.walk * set.scale) : 0.55;
+    const runV = set !== null ? Math.max(0.05, set.animations.gaitSpeed.run * set.scale) : 2.3;
     for (let i = 0; i < this.rigs.length; i++) {
       const r = this.rigs[i]!;
       if (r.id === null) continue;
-      if (r.emoteLeft > 0) { r.emoteLeft = Math.max(0, r.emoteLeft - dt); if (r.emoteLeft === 0) r.emote = 0; }
-      stepCharAnim(r.anim, dt, r.feet.x, r.feet.z, r.angle, r.moving, r.running, r.emoteLeft > 0 ? r.emote : 0, yaw);
-      this.applyFrame(r);
+      // measured ground speed
+      if (dt > 0) {
+        if (r.hasLast) {
+          const d = Math.hypot(r.feet.x - r.lastX, r.feet.z - r.lastZ);
+          if (d < C.teleportM) r.speed += (d / dt - r.speed) * kSpeed;
+        }
+        r.lastX = r.feet.x; r.lastZ = r.feet.z; r.hasLast = true;
+      }
+      // the gait follows the MEASURED speed (feet must match the ground); the moving / running flags are hints only
+      const locomote = r.speed > C.standMps;
+      const s = r.speed;
+      const runT = locomote ? smooth01(C.runFromMps, C.runToMps, s) : 0;
+      r.idleW += ((locomote ? 0 : 1) - r.idleW) * kGait;
+      r.walkW += ((locomote ? 1 - runT : 0) - r.walkW) * kGait;
+      r.runW += ((locomote ? runT : 0) - r.runW) * kGait;
+      // facing
+      if (r.hasYaw) r.yaw = wrapPi(r.yaw + wrapPi(r.angle - r.yaw) * kTurn);
+      // emote timer (an emote yields to walking)
+      if (r.emoteLeft > 0) { r.emoteLeft = Math.max(0, r.emoteLeft - dtMs); if (r.emoteLeft === 0) r.emote = 0; }
+      const emoting = r.emote !== 0 && r.emoteLeft > 0 && !locomote && (r.emoteAction !== null || EMOTE_POSES[r.emote] !== null);
+      r.emoteW += ((emoting ? 1 : 0) - r.emoteW) * kEmote;
+      // distance LOD
+      r.dist2 = cam !== null ? cam.position.distanceToSquared(r.feet) : 0;
+      const g = r.inst;
+      if (g === null) continue;
+      const visible = r.dist2 <= C.cullRangeM * C.cullRangeM;
+      g.root.visible = visible;
+      g.root.position.copy(r.feet);
+      g.root.rotation.y = r.yaw;
+      if (r.acc !== null) r.acc.visible = visible && r.dist2 <= C.accessoryRangeM * C.accessoryRangeM;
+      if (!visible) continue;
+      // a clip emote replaces the gait; a procedural one (wave, bow) poses bones over it, so the gait keeps its full weight
+      // (weights summing below 1 would blend the bind T-pose in)
+      const base = r.emoteAction !== null ? 1 - r.emoteW : 1;
+      const sum = Math.max(1e-6, r.idleW + r.walkW + r.runW);
+      g.idle?.setEffectiveWeight((r.idleW / sum) * base);
+      if (g.walk !== null) { g.walk.setEffectiveWeight((r.walkW / sum) * base); g.walk.setEffectiveTimeScale(Math.min(C.walkScaleMax, Math.max(0.4, s / walkV))); }
+      if (g.run !== null) { g.run.setEffectiveWeight((r.runW / sum) * base); g.run.setEffectiveTimeScale(Math.min(C.runScaleMax, Math.max(0.4, s / runV))); }
+      if (r.emoteAction !== null) r.emoteAction.setEffectiveWeight(r.emoteW);
+      g.mixer.update(dt);
+      if (r.emoteW > 0.002 && r.emote !== 0) {
+        const pose = EMOTE_POSES[r.emote];
+        if (pose === 'wave') this.poseWave(g, r.emoteW, (EMOTE_MS - r.emoteLeft) / 1000);
+        else if (pose === 'bow') this.poseBow(g, r.emoteW);
+      }
     }
-    this.flush();
+    this.pickShadowCasters();
+    if (this.dirtyDecals) { this.decals.instanceMatrix.needsUpdate = true; this.dirtyDecals = false; }
   }
 
   /** Projects the head anchor of `id` to CSS px into `out[offset..offset+1]`; false when absent or behind the camera. */
@@ -328,85 +459,330 @@ export class CharacterPool implements ActorPool {
     return r === undefined ? { n: 0, left: 0 } : { n: r.emote, left: r.emoteLeft / EMOTE_MS };
   }
 
-  /** One card on the character material for the renderer's warm-up frame: its own one-instance geometry (never pooled). */
+  /**
+   * The renderer's warm-up frame (§10.1.2 step 8): a 23-bone skinned body with the shipped GLBs' attribute formats
+   * (int16 / uint16 normalized, uint8 joints and weights) and a rigid accessory, both on the character material and
+   * casting shadows, so the beauty and shadow programs exist before the first character appears (never pooled).
+   */
   warmupMesh(): Object3D {
-    if (this.warm === null) {
-      const inst = createCharacterInstances(1);
-      inst.rect.setXYZW(0, 0, 0, 1, 1);
-      inst.misc.setXY(0, 1, 1);
-      inst.geometry.instanceCount = 1;
-      const mesh = new Mesh(inst.geometry, this.material);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      mesh.frustumCulled = false;
-      mesh.layers.set(LAYERS.billboards);
-      mesh.name = 'ewa:actor-warmup';
-      this.warm = { mesh, inst };
-    }
-    return this.warm.mesh;
+    if (this.warm !== null) return this.warm;
+    const g = new BufferGeometry();
+    g.setAttribute('position', new BufferAttribute(new Int16Array([0, 0, 0, 0, 16000, 0, 8000, 0, 0, 0, 0, 0]), 3, true));
+    g.setAttribute('normal', new BufferAttribute(new Int16Array([0, 0, 32767, 0, 0, 32767, 0, 0, 32767, 0, 0, 32767]), 3, true));
+    g.setAttribute('uv', new BufferAttribute(new Uint16Array([0, 0, 1000, 1000, 2000, 0, 0, 0]), 2, true));
+    g.setAttribute('skinIndex', new BufferAttribute(new Uint8Array([0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0]), 4));
+    g.setAttribute('skinWeight', new BufferAttribute(new Uint8Array([255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0]), 4, true));
+    g.setIndex(new BufferAttribute(new Uint16Array([0, 1, 2, 0, 2, 3]), 1));
+    const bones: Bone[] = [];
+    for (let i = 0; i < 23; i++) { const b = new Bone(); b.name = `warm${i}`; if (i > 0) { b.position.y = 0.05; bones[i - 1]!.add(b); } bones.push(b); }
+    const body = new SkinnedMesh(g, this.material);
+    body.add(bones[0]!);
+    body.updateMatrixWorld(true);
+    body.bind(new Skeleton(bones));
+    body.castShadow = true;
+    body.receiveShadow = true;
+    body.frustumCulled = false;
+    body.userData = { sharp: 1, ewaTile: 0, ewaActor: 'warmup' };
+    body.name = 'ewa:actor-warmup';
+    const ag = new BufferGeometry();
+    ag.setAttribute('position', new BufferAttribute(new Int16Array([0, 0, 0, 0, 16000, 0, 8000, 0, 0]), 3, true));
+    ag.setAttribute('normal', new BufferAttribute(new Int16Array([0, 0, 32767, 0, 0, 32767, 0, 0, 32767]), 3, true));
+    ag.setAttribute('uv', new BufferAttribute(new Uint16Array([0, 0, 1000, 1000, 2000, 0]), 2, true));
+    ag.setIndex(new BufferAttribute(new Uint16Array([0, 1, 2]), 1));
+    const acc = new Mesh(ag, this.material);
+    acc.castShadow = true;
+    acc.receiveShadow = true;
+    acc.frustumCulled = false;
+    acc.userData = { sharp: 0, ewaTile: 0 };
+    acc.name = 'ewa:actor-warmup-accessory';
+    acc.position.x = 0.4;
+    const group = new Group();
+    group.name = 'ewa:actor-warmup';
+    group.add(body, acc);
+    this.warm = group;
+    return group;
   }
 
   has(id: string): boolean { return this.byId.has(id); }
   get liveCount(): number { return this.byId.size; }
   get capacity(): number { return this.rigs.length; }
-  /** Whether the atlas is bound (actors are hidden until it is). */
-  get atlasReady(): boolean { return this.frames !== null; }
-  /** The one instanced card mesh every actor draws through. */
-  get cardMesh(): Mesh { return this.cards; }
   /** The instanced contact-decal mesh (one draw for every actor). */
   get decalMesh(): InstancedMesh { return this.decals; }
-  /** Whether an actor is drawn (atlas bound and look resolved). */
-  isShown(id: string): boolean { const r = this.byId.get(id); return r !== undefined && this.inst.misc.getY(r.slot) === 1; }
+  /** Whether the character set (manifest, clips, atlas) is bound. */
+  get setReady(): boolean { return this.set !== null; }
+  /** The body an actor draws (null while its shape loads). */
+  meshOf(id: string): SkinnedMesh | null { return this.byId.get(id)?.inst?.mesh ?? null; }
+  /** The accessory an actor holds (null when none / beyond the LOD range is still the mesh, hidden). */
+  accessoryOf(id: string): Mesh | null { return this.byId.get(id)?.acc ?? null; }
+  /** Whether an actor's body is attached. */
+  hasModel(id: string): boolean { return (this.byId.get(id)?.inst ?? null) !== null; }
+  /** The resolved look an actor draws (`casual2_male:dusk`, a base look, or the hash pick), null before the manifest. */
+  lookOf(id: string): string | null { return this.byId.get(id)?.lookId ?? null; }
   /** The actor's DOF-sharp bit (the local player: 1). */
-  sharpOf(id: string): number { const r = this.byId.get(id); return r === undefined ? 0 : this.inst.misc.getX(r.slot); }
-  /** The frame rect (u0, v0, u1, v1) an actor currently draws. */
-  rectOf(id: string): readonly [number, number, number, number] | null {
+  sharpOf(id: string): number { return this.byId.get(id)?.ud.sharp ?? 0; }
+  /** Gait weights of an actor (sandbox, tests). */
+  gaitOf(id: string): { readonly idle: number; readonly walk: number; readonly run: number; readonly emote: number; readonly speed: number; readonly yaw: number } | null {
     const r = this.byId.get(id);
     if (r === undefined) return null;
-    const a = this.inst.rect;
-    return [a.getX(r.slot), a.getY(r.slot), a.getZ(r.slot), a.getW(r.slot)];
+    const sum = Math.max(1e-6, r.idleW + r.walkW + r.runW);
+    return { idle: r.idleW / sum, walk: r.walkW / sum, run: r.runW / sum, emote: r.emoteW, speed: r.speed, yaw: r.yaw };
   }
-  /** The resolved atlas look an actor draws (`casual2_male:dusk`, a base look, or the hash pick), null before the atlas. */
-  lookOf(id: string): string | null { return this.byId.get(id)?.frames?.id ?? null; }
-  /** Current facing (D U L R), state and frame of an actor (sandbox, tests). */
-  frameOf(id: string): { readonly facing: string; readonly state: string; readonly frame: number } | null {
-    const r = this.byId.get(id);
-    if (r === undefined || r.frames === null) return null;
-    const k = r.anim.facing * STATE_KEYS.length + r.anim.state;
-    return { facing: 'DULR'[r.anim.facing]!, state: STATE_KEYS[r.anim.state]!, frame: frameIndex(r.anim, r.frames.count[k]!) };
+  /** Counts for the budget: live, attached bodies, visible bodies, shadow casters, visible accessories. */
+  stats(): { readonly live: number; readonly bodies: number; readonly visible: number; readonly shadowCasters: number; readonly accessories: number } {
+    let bodies = 0, visible = 0, acc = 0;
+    for (const r of this.rigs) {
+      if (r.id === null || r.inst === null) continue;
+      bodies++;
+      if (r.inst.root.visible) visible++;
+      if (r.acc !== null && r.acc.visible && r.inst.root.visible) acc++;
+    }
+    return { live: this.byId.size, bodies, visible, shadowCasters: this.shadowCount, accessories: acc };
+  }
+
+  // ---- looks ------------------------------------------------------------------------------------------------------
+
+  /** Resolves the rig's look and attaches its body (and accessory) when loaded, else requests them. */
+  private bindLook(r: Rig): void {
+    const set = this.set;
+    if (set === null || r.id === null) return;
+    const res = resolveLook(set, r.look);
+    r.lookId = res.id;
+    r.lookRef = res.look;
+    r.ud.ewaTile = res.look.tile;
+    r.accUd.ewaTile = res.look.accessoryTile ?? res.look.tile;
+    if (r.inst !== null && r.inst.shape !== res.look.shape) { this.releaseAccessory(r); this.releaseInstance(r); }
+    if (r.inst === null) {
+      const t = this.shapes.get(res.look.shape);
+      if (t === undefined) this.request('shape', res.look.shape);
+      else if (t !== null) this.attachInstance(r, t);
+    }
+    if (r.inst !== null) {
+      r.inst.root.scale.setScalar(res.look.scale);
+      this.bindAccessory(r);
+    }
+  }
+
+  private bindAccessory(r: Rig): void {
+    const want = r.lookRef?.accessory ?? null;
+    if (r.accId === want && (want === null || r.acc !== null)) return;
+    this.releaseAccessory(r);
+    if (want === null || r.inst === null) return;
+    const t = this.accessories.get(want);
+    if (t === undefined) { this.request('accessory', want); return; }
+    if (t === null) return;
+    const bone = r.inst.bones.get(PropertyBinding.sanitizeNodeName(t.bone));
+    if (bone === undefined) { this.warn(`accessory '${want}': no joint ${t.bone}`); return; }
+    const free = this.freeAcc.get(want);
+    let m = free !== undefined && free.length > 0 ? free.pop()! : null;
+    if (m === null) {
+      // the template node carries the quantization transform (position / scale); the slot rotation turns it about the joint
+      const item = t.mesh.clone();
+      item.material = this.material;
+      item.castShadow = false;
+      item.receiveShadow = true;
+      item.name = `ewa:accessory:${want}`;
+      if (t.rotation) {
+        // slot-frame rotation R on a node with the quantization T(p)·S: T(R·p)·R·S (the template has no rotation)
+        const e = new Euler(t.rotation[0], t.rotation[1], t.rotation[2]);
+        item.position.applyEuler(e);
+        item.quaternion.setFromEuler(e).multiply(t.mesh.quaternion);
+      }
+      m = item;
+    }
+    m.userData = r.accUd as unknown as Record<string, unknown>;
+    m.visible = true;
+    bone.add(m);
+    r.acc = m;
+    r.accId = want;
+  }
+
+  private releaseAccessory(r: Rig): void {
+    const m = r.acc;
+    if (m !== null && r.accId !== null) {
+      m.removeFromParent();
+      let list = this.freeAcc.get(r.accId);
+      if (list === undefined) { list = []; this.freeAcc.set(r.accId, list); }
+      list.push(m);
+    }
+    r.acc = null;
+    r.accId = null;
+  }
+
+  private request(kind: 'shape' | 'accessory', id: string): void {
+    const key = `${kind}:${id}`;
+    const src = this.source;
+    if (src === null || this.pending.has(key)) return;
+    this.pending.add(key);
+    const done = (t: ShapeTemplate | AccessoryTemplate | null): void => {
+      this.pending.delete(key);
+      if (this.disposed) return;
+      if (kind === 'shape') this.shapes.set(id, t as ShapeTemplate | null);
+      else this.accessories.set(id, t as AccessoryTemplate | null);
+      if (t === null) return;
+      for (const r of this.rigs) if (r.id !== null && r.lookRef !== null) this.bindLook(r);
+    };
+    (kind === 'shape' ? src.shape(id) : src.accessory(id)).then(done, () => done(null));
+  }
+
+  private attachInstance(r: Rig, t: ShapeTemplate): void {
+    const free = this.freeInst.get(t.id);
+    const g = free !== undefined && free.length > 0 ? free.pop()! : this.createInstance(t);
+    g.mesh.userData = r.ud as unknown as Record<string, unknown>;
+    g.mesh.name = `ewa:actor:${r.id ?? ''}:${t.id}`;
+    g.root.position.copy(r.feet);
+    g.root.rotation.y = r.yaw;
+    g.root.visible = true;
+    g.mixer.stopAllAction();
+    g.idle?.reset().play();
+    g.walk?.reset().play();
+    g.run?.reset().play();
+    // the cycle phase is per actor, so a crowd does not march in step
+    const phase = hash01(r.id ?? '');
+    if (g.walk !== null) g.walk.time = phase * g.walk.getClip().duration;
+    if (g.run !== null) g.run.time = phase * g.run.getClip().duration;
+    if (g.idle !== null) g.idle.time = phase * g.idle.getClip().duration;
+    g.idle?.setEffectiveWeight(1); g.walk?.setEffectiveWeight(0); g.run?.setEffectiveWeight(0);
+    if (g.root.parent !== this.root) this.root.add(g.root);
+    r.inst = g;
+    if (r.emote !== 0) this.startEmote(r);
+  }
+
+  private releaseInstance(r: Rig): void {
+    const g = r.inst!;
+    r.inst = null;
+    r.emoteAction = null;
+    g.mixer.stopAllAction();
+    g.root.removeFromParent();
+    g.root.visible = false;
+    g.mesh.castShadow = false;
+    let list = this.freeInst.get(g.shape);
+    if (list === undefined) { list = []; this.freeInst.set(g.shape, list); }
+    list.push(g);
+  }
+
+  private createInstance(t: ShapeTemplate): Instance {
+    const root = cloneSkinned(t.scene);
+    let mesh: SkinnedMesh | null = null;
+    const bones = new Map<string, Object3D>();
+    root.traverse((n) => {
+      if ((n as SkinnedMesh).isSkinnedMesh === true && mesh === null) mesh = n as SkinnedMesh;
+      else if ((n as Mesh).isMesh === true) n.visible = false;
+      if ((n as Bone).isBone === true) bones.set(n.name, n);
+    });
+    if (mesh === null) throw new Error(`@ewa/render: shape '${t.id}' has no skinned mesh`);
+    const m: SkinnedMesh = mesh;
+    m.material = this.material;
+    m.castShadow = false;
+    m.receiveShadow = true;
+    m.frustumCulled = true;
+    m.boundingSphere = new Sphere(new Vector3(0, CHARACTER.boundsCentreY, 0), CHARACTER.boundsRadius);
+    root.name = `ewa:actor-root:${t.id}`;
+    const head = bones.get('head') ?? null;
+    let headRestY = 1.24;
+    if (head !== null) {
+      root.updateMatrixWorld(true);
+      head.getWorldPosition(_v);
+      root.getWorldPosition(_p);
+      headRestY = _v.y - _p.y;
+    }
+    const mixer = new AnimationMixer(root);
+    const action = (name: string, loop: boolean): AnimationAction | null => {
+      const clip = this.clips.find((c) => c.name === name);
+      if (clip === undefined) return null;
+      const a = mixer.clipAction(clip);
+      a.enabled = true;
+      a.setLoop(loop ? LoopRepeat : LoopOnce, loop ? Infinity : 1);
+      a.clampWhenFinished = !loop;
+      a.setEffectiveWeight(0);
+      return a;
+    };
+    const emotes = new Map<string, AnimationAction>();
+    for (let e = 1; e < EMOTE_CLIPS.length; e++) {
+      const name = EMOTE_CLIPS[e] ?? null;
+      if (name === null || emotes.has(name)) continue;
+      const a = action(name, false);
+      if (a !== null) emotes.set(name, a);
+    }
+    return { shape: t.id, root, mesh: m, head, bones, mixer, idle: action('idle', true), walk: action('walk', true), run: action('run', true), emotes, headRestY };
+  }
+
+  private startEmote(r: Rig): void {
+    const g = r.inst;
+    if (g === null) return;
+    if (r.emoteAction !== null && r.emote === 0) { r.emoteAction = null; return; }
+    const name = r.emote === 0 ? null : EMOTE_CLIPS[r.emote] ?? null;
+    const a = name === null ? null : g.emotes.get(name) ?? null;
+    if (r.emoteAction !== null && r.emoteAction !== a) r.emoteAction.setEffectiveWeight(0);
+    r.emoteAction = a;
+    if (a === null) return;
+    const loop = EMOTE_LOOPS[r.emote] === true;
+    a.setLoop(loop ? LoopRepeat : LoopOnce, loop ? Infinity : 1);
+    a.clampWhenFinished = !loop;
+    a.reset().play();
+    a.setEffectiveWeight(r.emoteW);
+  }
+
+  // ---- procedural emotes (after the mixer; the mixer rewrites the bones next frame, so nothing accumulates) -------
+
+  /** Wave: the right upper arm aimed up and out, the forearm swinging about vertical. Zero allocation. */
+  private poseWave(g: Instance, w: number, t: number): void {
+    const up = g.bones.get('upperarmr'), low = g.bones.get('lowerarmr'), hand = g.bones.get('handr');
+    if (up === undefined || low === undefined || hand === undefined) return;
+    const P = EMOTE_POSE;
+    g.root.getWorldQuaternion(_qRoot);
+    _t.set(P.waveUpper[0], P.waveUpper[1], P.waveUpper[2]).normalize();
+    aimBone(up, low, _t.applyQuaternion(_qRoot), w);
+    const s = Math.sin(t * Math.PI * 2 * P.waveHz) * P.waveSwing;
+    _t.set(-0.2 + Math.sin(s), Math.cos(s), 0.12).normalize();
+    aimBone(low, hand, _t.applyQuaternion(_qRoot), w);
+  }
+
+  /** Bow: head and chest pitched forward about the actor's right axis. */
+  private poseBow(g: Instance, w: number): void {
+    const head = g.bones.get('head'), chest = g.bones.get('chest');
+    g.root.getWorldQuaternion(_qRoot);
+    _t.set(1, 0, 0).applyQuaternion(_qRoot);
+    if (chest !== undefined) tiltBone(chest, _t, EMOTE_POSE.bowChest * w);
+    if (head !== undefined) tiltBone(head, _t, EMOTE_POSE.bowHead * w);
+  }
+
+  /** Shadows from the nearest `shadowCasters` visible bodies within `shadowRangeM`; accessories never cast. */
+  private pickShadowCasters(): void {
+    const C = CHARACTER;
+    const o = this.order;
+    // insertion sort of slot indices by camera distance (48 entries, no allocation)
+    for (let i = 1; i < o.length; i++) {
+      const v = o[i]!;
+      const d = this.rigs[v]!.id === null ? Infinity : this.rigs[v]!.dist2;
+      let j = i - 1;
+      while (j >= 0) {
+        const w = this.rigs[o[j]!]!;
+        const dw = w.id === null ? Infinity : w.dist2;
+        if (dw <= d) break;
+        o[j + 1] = o[j]!;
+        j--;
+      }
+      o[j + 1] = v;
+    }
+    let n = 0;
+    const range2 = C.shadowRangeM * C.shadowRangeM;
+    for (let i = 0; i < o.length; i++) {
+      const r = this.rigs[o[i]!]!;
+      if (r.id === null || r.inst === null) continue;
+      const cast = n < C.shadowCasters && r.inst.root.visible && r.dist2 <= range2;
+      r.inst.mesh.castShadow = cast;
+      if (cast) n++;
+    }
+    this.shadowCount = n;
   }
 
   // ---- internals -------------------------------------------------------------------------------------------------
 
-  private bindLook(r: Rig): void {
-    const f = this.frames;
-    r.frames = f === null ? null : f.resolve(r.look);
-    this.inst.misc.setY(r.slot, r.frames !== null ? 1 : 0);
-    this.dirtyMisc = true;
-    if (r.frames !== null) this.applyFrame(r);
-  }
-
-  private applyFrame(r: Rig): void {
-    const lf = r.frames;
-    if (lf === null) return;
-    const k = r.anim.facing * STATE_KEYS.length + r.anim.state;
-    const i = (lf.first[k]! + frameIndex(r.anim, lf.count[k]!)) * 4;
-    const q = lf.rects;
-    const a = this.inst.rect;
-    const s = r.slot;
-    if (a.getX(s) !== q[i] || a.getY(s) !== q[i + 1] || a.getZ(s) !== q[i + 2] || a.getW(s) !== q[i + 3]) {
-      a.setXYZW(s, q[i]!, q[i + 1]!, q[i + 2]!, q[i + 3]!);
-      this.dirtyRect = true;
-    }
-  }
-
-  /** Feet on the ground (the card's instance), the decal on the ground normal. */
+  /** Feet on the ground, the decal on the ground normal. */
   private place(r: Rig): void {
     const g = this.ground;
     const y = g !== null ? g(r.feet.x, r.feet.z) : 0;
     r.feet.y = Number.isFinite(y) ? y : 0;
-    this.inst.feet.setXYZ(r.slot, r.feet.x, r.feet.y, r.feet.z);
-    this.dirtyFeet = true;
     if (g !== null) {
       const d = CHARACTER.normalProbeM;
       const hx = g(r.feet.x + d, r.feet.z) - g(r.feet.x - d, r.feet.z);
@@ -417,34 +793,32 @@ export class CharacterPool implements ActorPool {
     }
     _q.setFromUnitVectors(_up, r.groundN).multiply(_qFlat);
     _s.set(CHARACTER.decalM, CHARACTER.decalM, 1);
-    _m.compose(r.feet, _q, _s);
+    _p.copy(r.feet);
+    _p.y += 0.01;
+    _m.compose(_p, _q, _s);
     this.decals.setMatrixAt(r.slot, _m);
     this.dirtyDecals = true;
+    if (r.inst !== null) r.inst.root.position.copy(r.feet);
   }
 
-  /** Uploads what changed this frame (a few hundred bytes at most). */
-  private flush(): void {
-    if (this.dirtyFeet) { this.inst.feet.needsUpdate = true; this.dirtyFeet = false; }
-    if (this.dirtyRect) { this.inst.rect.needsUpdate = true; this.dirtyRect = false; }
-    if (this.dirtyMisc) { this.inst.misc.needsUpdate = true; this.dirtyMisc = false; }
-    if (this.dirtyDecals) { this.decals.instanceMatrix.needsUpdate = true; this.dirtyDecals = false; }
-  }
-
-  /** Instances drawn: up to the highest live slot (slots are reused lowest-first). */
+  /** Decal instances drawn: up to the highest live slot (slots are reused lowest-first). */
   private refreshCounts(): void {
     let top = 0;
     for (const x of this.rigs) if (x.id !== null) top = x.slot + 1;
-    this.inst.geometry.instanceCount = top;
     this.decals.count = top;
   }
 
-  /** The head anchor on the LEANED card (§10.4.4): h·cos λ up and h·sin λ away from the camera, projected. */
+  /** The head anchor: the head joint's world position raised to the look's top (+ margin), projected. */
   private projectAnchor(r: Rig, out: Float32Array, offset: number): boolean {
-    const h = (r.frames?.heightM ?? HEAD_ANCHOR_M) + CHARACTER.headMarginM;
-    const lean = this.uniforms.cameraLean.value;
-    const yaw = this.uniforms.cameraYaw.value;
-    const back = h * Math.sin(lean);
-    return this.projectPoint(r.feet.x - Math.sin(yaw) * back, r.feet.y + h * Math.cos(lean), r.feet.z - Math.cos(yaw) * back, out, offset);
+    const g = r.inst;
+    const top = r.lookRef?.heightM ?? HEAD_ANCHOR_M;
+    if (g !== null && g.head !== null && g.root.visible) {
+      g.head.updateWorldMatrix(true, false);
+      g.head.getWorldPosition(_v);
+      const scale = r.lookRef?.scale ?? 1;
+      return this.projectPoint(_v.x, _v.y + (top - g.headRestY * scale) + CHARACTER.headMarginM, _v.z, out, offset);
+    }
+    return this.projectPoint(r.feet.x, r.feet.y + top + CHARACTER.headMarginM, r.feet.z, out, offset);
   }
 
   private projectPoint(x: number, y: number, z: number, out: Float32Array, offset: number): boolean {
@@ -460,8 +834,50 @@ export class CharacterPool implements ActorPool {
 
   private makeRig(i: number): Rig {
     return {
-      slot: i, anim: createCharAnim(), id: null, look: '', frames: null, name: '', guildTag: '', isLocal: false,
-      feet: new Vector3(), groundN: new Vector3(0, 1, 0), angle: 0, moving: false, running: false, emote: 0, emoteLeft: 0,
+      slot: i, ud: { sharp: 0, ewaTile: 0, ewaActor: '' }, accUd: { sharp: 0, ewaTile: 0 }, id: null, look: '', lookId: null, lookRef: null,
+      name: '', guildTag: '', isLocal: false, feet: new Vector3(), groundN: new Vector3(0, 1, 0), angle: 0, yaw: 0, hasYaw: false,
+      moving: false, running: false, speed: 0, lastX: 0, lastZ: 0, hasLast: false, idleW: 1, walkW: 0, runW: 0, emote: 0, emoteLeft: 0,
+      emoteW: 0, emoteAction: null, inst: null, acc: null, accId: null, dist2: 0,
     };
   }
+}
+
+const _qRoot = new Quaternion();
+const _t = new Vector3();
+const _a = new Vector3();
+const _b = new Vector3();
+const _qd = new Quaternion();
+const _qw = new Quaternion();
+const _qp = new Quaternion();
+const _qI = new Quaternion();
+
+/** Rotates `bone` (in world space, by weight `w`) so the direction bone → `child` points along world `dir`. */
+function aimBone(bone: Object3D, child: Object3D, dir: Vector3, w: number): void {
+  bone.getWorldPosition(_a);
+  child.getWorldPosition(_b);
+  _b.sub(_a);
+  if (_b.lengthSq() < 1e-12 || bone.parent === null) return;
+  _qd.setFromUnitVectors(_b.normalize(), dir);
+  _qI.identity().slerp(_qd, Math.min(1, Math.max(0, w)));
+  bone.getWorldQuaternion(_qw);
+  bone.parent.getWorldQuaternion(_qp).invert();
+  bone.quaternion.copy(_qp.multiply(_qI.multiply(_qw)));
+  bone.updateWorldMatrix(false, true);
+}
+
+/** Rotates `bone` by `angle` about the world `axis` (its children follow). */
+function tiltBone(bone: Object3D, axis: Vector3, angle: number): void {
+  if (bone.parent === null) return;
+  _qd.setFromAxisAngle(axis, angle);
+  bone.getWorldQuaternion(_qw);
+  bone.parent.getWorldQuaternion(_qp).invert();
+  bone.quaternion.copy(_qp.multiply(_qd.multiply(_qw)));
+  bone.updateWorldMatrix(false, true);
+}
+
+function disposeInstance(g: Instance): void {
+  g.mixer.stopAllAction();
+  g.mixer.uncacheRoot(g.root);
+  g.mesh.skeleton.dispose();
+  g.root.removeFromParent();
 }

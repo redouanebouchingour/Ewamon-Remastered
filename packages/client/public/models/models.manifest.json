@@ -1,4 +1,399 @@
 {
+  "characters": {
+    "accessories": {
+      "mug_full": {
+        "bone": "handslot.r",
+        "bytes": 8280,
+        "hash": "1e849c36722f9b5b8a7e11b49eab69df56286c298a8f1aae9f37f7044500ad8a",
+        "rotation": [
+          0,
+          0,
+          1.570796
+        ],
+        "texture": "barbarian",
+        "triangles": 426,
+        "url": "characters/acc_mug_full.glb"
+      },
+      "shield_badge_color": {
+        "bone": "handslot.l",
+        "bytes": 6552,
+        "hash": "c412f3bb416f9b69faf53a857fa6c21482084e5a98e03367d6e39e91741a2a53",
+        "rotation": [
+          0,
+          0,
+          -1.570796
+        ],
+        "texture": "knight",
+        "triangles": 262,
+        "url": "characters/acc_shield_badge_color.glb"
+      },
+      "shield_round_color": {
+        "bone": "handslot.l",
+        "bytes": 7044,
+        "hash": "228e5d30c54c1b845751ec3a30eddd7503a5e24c17408ce38456bc78df7d5d1d",
+        "rotation": [
+          0,
+          0,
+          -1.570796
+        ],
+        "texture": "knight",
+        "triangles": 284,
+        "url": "characters/acc_shield_round_color.glb"
+      },
+      "shield_square_color": {
+        "bone": "handslot.l",
+        "bytes": 6648,
+        "hash": "2842ac2075b3fde11573596255c4054459ba56d25a348d838dc048338dca90d3",
+        "rotation": [
+          0,
+          0,
+          -1.570796
+        ],
+        "texture": "knight",
+        "triangles": 262,
+        "url": "characters/acc_shield_square_color.glb"
+      },
+      "spellbook_closed": {
+        "bone": "handslot.l",
+        "bytes": 7436,
+        "hash": "cad26dda8716bd9c1e3138829306b84166f3c0d7daf8fea6323ca7a0527b2bc7",
+        "rotation": [
+          0,
+          0,
+          -1.570796
+        ],
+        "texture": "mage",
+        "triangles": 292,
+        "url": "characters/acc_spellbook_closed.glb"
+      }
+    },
+    "animations": {
+      "bytes": 83216,
+      "clips": [
+        "cheer",
+        "flinch",
+        "idle",
+        "run",
+        "use",
+        "walk"
+      ],
+      "durations": {
+        "cheer": 1.1667,
+        "flinch": 0.6667,
+        "idle": 1.0667,
+        "run": 0.8,
+        "use": 1.6,
+        "walk": 1.0667
+      },
+      "gaitSpeed": {
+        "run": 3.3667,
+        "walk": 0.8077
+      },
+      "hash": "7156346e5775ade8e6b01f202bd9ab5cce1e5f0c2424d0397a9ef94f6f522433",
+      "url": "characters/animations.glb"
+    },
+    "atlas": {
+      "bytes": 47492,
+      "columns": 8,
+      "hash": "72ef7fe53ee279839376ff21b13c60bc14820a047c906d9a07eff0f228ae844e",
+      "height": 1024,
+      "rows": 4,
+      "textures": "ktx2",
+      "tileSize": 256,
+      "url": "characters/atlas.72ef7fe5.ktx2",
+      "width": 2048
+    },
+    "heightM": 1.55,
+    "rig": "Rig_Medium",
+    "scale": 0.6819,
+    "shapes": {
+      "barbarian": {
+        "bounds": {
+          "max": [
+            0.9713,
+            2.3978,
+            0.7386
+          ],
+          "min": [
+            -0.9713,
+            0,
+            -0.5253
+          ]
+        },
+        "bytes": 111656,
+        "hash": "9d376420c2f4f1a9931333a0a06a43c1683f9a85dc61ee98cf9b2c543bbf893a",
+        "texture": "barbarian",
+        "triangles": 7123,
+        "url": "characters/barbarian.glb"
+      },
+      "knight": {
+        "bounds": {
+          "max": [
+            0.9713,
+            2.3979,
+            0.5977
+          ],
+          "min": [
+            -0.9713,
+            0,
+            -0.5422
+          ]
+        },
+        "bytes": 92300,
+        "hash": "17e56ba825fd18bbacc3729429c8b96f4e3f4375594eff1e91e6ce57218dd67d",
+        "texture": "knight",
+        "triangles": 5372,
+        "url": "characters/knight.glb"
+      },
+      "knight_trooper": {
+        "bounds": {
+          "max": [
+            0.9713,
+            2.3979,
+            0.5977
+          ],
+          "min": [
+            -0.9713,
+            0,
+            -0.5422
+          ]
+        },
+        "bytes": 91136,
+        "hash": "44818cc3d5a6b453816bbe9bd370a271a1f40a0b4faf5202ed0d6b81dcb41231",
+        "texture": "knight",
+        "triangles": 5288,
+        "url": "characters/knight_trooper.glb"
+      },
+      "mage_hatted": {
+        "bounds": {
+          "max": [
+            0.9713,
+            2.6527,
+            1
+          ],
+          "min": [
+            -0.9713,
+            -0.002,
+            -0.9665
+          ]
+        },
+        "bytes": 90096,
+        "hash": "0148d76501cbbbd2594986f650dc282be238c685461bb535b951c386846d8fa4",
+        "texture": "mage",
+        "triangles": 5504,
+        "url": "characters/mage_hatted.glb"
+      },
+      "mage_lass": {
+        "bounds": {
+          "max": [
+            0.9713,
+            2.1783,
+            0.5632
+          ],
+          "min": [
+            -0.9713,
+            -0.002,
+            -0.5807
+          ]
+        },
+        "bytes": 105628,
+        "hash": "5edbe34c7a37b053595e8251f1376b7415c1921fe67c71f93a0b5cc87cd968d7",
+        "texture": "mage",
+        "triangles": 6632,
+        "url": "characters/mage_lass.glb"
+      },
+      "mage_long": {
+        "bounds": {
+          "max": [
+            0.9713,
+            2.16,
+            0.5254
+          ],
+          "min": [
+            -0.9713,
+            -0.002,
+            -0.5059
+          ]
+        },
+        "bytes": 95712,
+        "hash": "64fd28df334bfe6929d94d790119125d82558d18cf7e1c36b966c8a7d8f057e3",
+        "texture": "mage",
+        "triangles": 6188,
+        "url": "characters/mage_long.glb"
+      },
+      "mage_moustache": {
+        "bounds": {
+          "max": [
+            0.9713,
+            2.2729,
+            0.535
+          ],
+          "min": [
+            -0.9713,
+            -0.002,
+            -0.4878
+          ]
+        },
+        "bytes": 90676,
+        "hash": "4cb464e1e8a5f80ed6f56d42aed9a909a66e122dd3917cc1e8e225e7974db2fa",
+        "texture": "mage",
+        "triangles": 5626,
+        "url": "characters/mage_moustache.glb"
+      },
+      "ranger_lad": {
+        "bounds": {
+          "max": [
+            0.9713,
+            2.2842,
+            0.5318
+          ],
+          "min": [
+            -0.9713,
+            -0.002,
+            -0.4821
+          ]
+        },
+        "bytes": 124264,
+        "hash": "4d1dab823be60111e9a4f76e29242af8720fd810eb9ae84a2305c9e311489808",
+        "texture": "ranger",
+        "triangles": 8127,
+        "url": "characters/ranger_lad.glb"
+      },
+      "ranger_lass": {
+        "bounds": {
+          "max": [
+            0.9713,
+            2.1783,
+            0.5632
+          ],
+          "min": [
+            -0.9713,
+            -0.002,
+            -0.5807
+          ]
+        },
+        "bytes": 145736,
+        "hash": "e1f38a97ee184bbf907f527bb16933c7912307d85ca6539e972fc51c60f97173",
+        "texture": "ranger",
+        "triangles": 9651,
+        "url": "characters/ranger_lass.glb"
+      },
+      "ranger_moustache": {
+        "bounds": {
+          "max": [
+            0.9713,
+            2.2729,
+            0.535
+          ],
+          "min": [
+            -0.9713,
+            -0.002,
+            -0.4878
+          ]
+        },
+        "bytes": 130684,
+        "hash": "6793c08641eabd68eae8e074ee13b0f264d1d602104afb67e8d37f294065fc6e",
+        "texture": "ranger",
+        "triangles": 8645,
+        "url": "characters/ranger_moustache.glb"
+      },
+      "ranger_plain": {
+        "bounds": {
+          "max": [
+            0.9713,
+            2.2842,
+            0.5318
+          ],
+          "min": [
+            -0.9713,
+            -0.002,
+            -0.4821
+          ]
+        },
+        "bytes": 123116,
+        "hash": "5200ab050a39f43a26353506080b77bec0eb9a4774834c4cbd07a84749c6ba00",
+        "texture": "ranger",
+        "triangles": 8043,
+        "url": "characters/ranger_plain.glb"
+      },
+      "rogue_captain": {
+        "bounds": {
+          "max": [
+            0.9724,
+            2.2729,
+            0.535
+          ],
+          "min": [
+            -0.9723,
+            -0.002,
+            -0.4878
+          ]
+        },
+        "bytes": 102952,
+        "hash": "75ec279a1c53fe2b720168d79382a21c9db0028736ba3532030816251238ca11",
+        "texture": "rogue",
+        "triangles": 6556,
+        "url": "characters/rogue_captain.glb"
+      },
+      "rogue_hooded": {
+        "bounds": {
+          "max": [
+            0.9724,
+            2.171,
+            0.5577
+          ],
+          "min": [
+            -0.9723,
+            -0.002,
+            -0.5415
+          ]
+        },
+        "bytes": 111348,
+        "hash": "1ff63f4589c315f4feba4fb2c794752619a4acf2a9edd69c44e8a7317ae56c5f",
+        "texture": "rogue",
+        "triangles": 7185,
+        "url": "characters/rogue_hooded.glb"
+      },
+      "rogue_lad": {
+        "bounds": {
+          "max": [
+            0.9724,
+            2.2842,
+            0.5318
+          ],
+          "min": [
+            -0.9723,
+            -0.002,
+            -0.4821
+          ]
+        },
+        "bytes": 95412,
+        "hash": "10c382e59cd8894fa833e5b5734aabad5b3df6527e987c156fe99745bb0ee91a",
+        "texture": "rogue",
+        "triangles": 5954,
+        "url": "characters/rogue_lad.glb"
+      },
+      "rogue_lass": {
+        "bounds": {
+          "max": [
+            0.9724,
+            2.1783,
+            0.5632
+          ],
+          "min": [
+            -0.9723,
+            -0.002,
+            -0.5807
+          ]
+        },
+        "bytes": 116784,
+        "hash": "7785e4689995a677575f5d01f5e471cff39a5538ff9fd84589c6c989dc0b1eff",
+        "texture": "rogue",
+        "triangles": 7478,
+        "url": "characters/rogue_lass.glb"
+      }
+    }
+  },
   "legendaries": {
     "lumyth": {
       "bounds": {
@@ -95,557 +490,198 @@
   },
   "looks": {
     "blue_soldier_male": {
-      "bounds": {
-        "max": [
-          0.5242,
-          3.109,
-          1.1061
-        ],
-        "min": [
-          -0.685,
-          -0.0056,
-          -0.545
-        ]
-      },
-      "bytes": 159640,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "cb3a442802b4f12ccf205daeed58db9597a02bdab2babe213a2295229a0b67b0",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 2994,
-      "url": "looks/blue_soldier_male.glb"
+      "accessory": "shield_square_color",
+      "accessoryTile": 0,
+      "heightM": 1.635,
+      "scale": 0.6819,
+      "shape": "knight_trooper",
+      "tile": 0
     },
     "casual2_female": {
-      "bounds": {
-        "max": [
-          0.5242,
-          3.0425,
-          1.1061
-        ],
-        "min": [
-          -0.7666,
-          -0.0056,
-          -0.7269
-        ]
-      },
-      "bytes": 195916,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "7477677c589fb38103f458270f4b56fc31815c08239415ed17b00c70c85ee100",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 6752,
-      "url": "looks/casual2_female.glb"
+      "accessory": null,
+      "accessoryTile": null,
+      "heightM": 1.485,
+      "scale": 0.6819,
+      "shape": "rogue_lass",
+      "tile": 1
+    },
+    "casual2_female:dusk": {
+      "accessory": null,
+      "accessoryTile": null,
+      "heightM": 1.485,
+      "scale": 0.6819,
+      "shape": "rogue_lass",
+      "tile": 2
     },
     "casual2_male": {
-      "bounds": {
-        "max": [
-          0.5242,
-          3.0422,
-          1.1061
-        ],
-        "min": [
-          -0.6149,
-          -0.0056,
-          -0.5306
-        ]
-      },
-      "bytes": 156968,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "aeaeaa507a23a959be0bac9748582cba42a21bad66f618ad3bc08e397d468c56",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 3216,
-      "url": "looks/casual2_male.glb"
+      "accessory": null,
+      "accessoryTile": null,
+      "heightM": 1.558,
+      "scale": 0.6819,
+      "shape": "rogue_lad",
+      "tile": 3
+    },
+    "casual2_male:dusk": {
+      "accessory": null,
+      "accessoryTile": null,
+      "heightM": 1.558,
+      "scale": 0.6819,
+      "shape": "rogue_lad",
+      "tile": 4
     },
     "casual3_male": {
-      "bounds": {
-        "max": [
-          0.7593,
-          2.8122,
-          0.4639
-        ],
-        "min": [
-          -0.5377,
-          -0.0187,
-          -1.3066
-        ]
-      },
-      "bytes": 173120,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "d43d86a2fb818bc5b36a2990ddedae4efa70b0caed63a8ebf680fa80f4646b4a",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 4920,
-      "url": "looks/casual3_male.glb"
+      "accessory": "mug_full",
+      "accessoryTile": 24,
+      "heightM": 1.558,
+      "scale": 0.6819,
+      "shape": "ranger_plain",
+      "tile": 5
     },
     "casual_female": {
-      "bounds": {
-        "max": [
-          0.5242,
-          3.0425,
-          1.1061
-        ],
-        "min": [
-          -0.6901,
-          -0.0056,
-          -0.7269
-        ]
-      },
-      "bytes": 195440,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "bee1baa074668539aaf4293fa46aade0884fb2ae5b94c6a5d9471f15afb79ff8",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 6624,
-      "url": "looks/casual_female.glb"
+      "accessory": null,
+      "accessoryTile": null,
+      "heightM": 1.485,
+      "scale": 0.6819,
+      "shape": "ranger_lass",
+      "tile": 6
     },
     "casual_male": {
-      "bounds": {
-        "max": [
-          0.5242,
-          3.1745,
-          1.1061
-        ],
-        "min": [
-          -0.6884,
-          -0.0056,
-          -0.5886
-        ]
-      },
-      "bytes": 194736,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "4659797c37b8dee5dd91127f6c37325ecf853ebc1c9142dddd6a3b00f744e711",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 6492,
-      "url": "looks/casual_male.glb"
+      "accessory": null,
+      "accessoryTile": null,
+      "heightM": 1.558,
+      "scale": 0.6819,
+      "shape": "ranger_lad",
+      "tile": 7
     },
     "cowboy_female": {
-      "bounds": {
-        "max": [
-          0.5242,
-          3.382,
-          1.1061
-        ],
-        "min": [
-          -0.8264,
-          -0.0056,
-          -0.7269
-        ]
-      },
-      "bytes": 199860,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "d3a25d6a81e40efc7ed9aa935281568b0cbd028e7160a22036830e25b853aff1",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 6840,
-      "url": "looks/cowboy_female.glb"
+      "accessory": null,
+      "accessoryTile": null,
+      "heightM": 1.485,
+      "scale": 0.6819,
+      "shape": "ranger_lass",
+      "tile": 8
+    },
+    "cowboy_female:tide": {
+      "accessory": null,
+      "accessoryTile": null,
+      "heightM": 1.485,
+      "scale": 0.6819,
+      "shape": "ranger_lass",
+      "tile": 9
     },
     "cowboy_male": {
-      "bounds": {
-        "max": [
-          0.5242,
-          3.3664,
-          1.1061
-        ],
-        "min": [
-          -0.8224,
-          -0.0056,
-          -0.668
-        ]
-      },
-      "bytes": 160004,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "63f203fd50997ffdab22533d1912f01b3f405a60441596db3b78a7c288dc558c",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 3176,
-      "url": "looks/cowboy_male.glb"
+      "accessory": null,
+      "accessoryTile": null,
+      "heightM": 1.55,
+      "scale": 0.6819,
+      "shape": "ranger_moustache",
+      "tile": 10
+    },
+    "cowboy_male:tide": {
+      "accessory": null,
+      "accessoryTile": null,
+      "heightM": 1.55,
+      "scale": 0.6819,
+      "shape": "ranger_moustache",
+      "tile": 11
     },
     "doctor_female_young": {
-      "bounds": {
-        "max": [
-          0.5242,
-          3.0425,
-          1.1061
-        ],
-        "min": [
-          -0.6901,
-          -0.0056,
-          -0.6189
-        ]
-      },
-      "bytes": 216540,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "bbf4dcee94b256a383c55c4fac618c4f8ed1fa0542a1ef5c663721e2abcbf54b",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 8530,
-      "url": "looks/doctor_female_young.glb"
+      "accessory": "spellbook_closed",
+      "accessoryTile": 12,
+      "heightM": 1.485,
+      "scale": 0.6819,
+      "shape": "mage_lass",
+      "tile": 12
     },
     "kimono_male": {
-      "bounds": {
-        "max": [
-          0.5242,
-          3.1805,
-          1.1061
-        ],
-        "min": [
-          -0.6347,
-          -0.0056,
-          -0.5884
-        ]
-      },
-      "bytes": 149532,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "6f018b396ce941bd97eb933eeaf6338a0d06d8004bad4792f905eaa20815880d",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 2540,
-      "url": "looks/kimono_male.glb"
+      "accessory": null,
+      "accessoryTile": null,
+      "heightM": 1.809,
+      "scale": 0.6819,
+      "shape": "mage_hatted",
+      "tile": 13
     },
     "knight_golden_male": {
-      "bounds": {
-        "max": [
-          0.7576,
-          3.092,
-          1.1061
-        ],
-        "min": [
-          -1.0142,
-          -0.0056,
-          -0.5186
-        ]
-      },
-      "bytes": 162068,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "a546316d298624ac8280e91db9ca70721cd1ef9c2ef256c8c21b638e0cbe0865",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 2964,
-      "url": "looks/knight_golden_male.glb"
+      "accessory": "shield_round_color",
+      "accessoryTile": 14,
+      "heightM": 1.635,
+      "scale": 0.6819,
+      "shape": "knight",
+      "tile": 14
     },
     "knight_male": {
-      "bounds": {
-        "max": [
-          0.5242,
-          3.4114,
-          1.1061
-        ],
-        "min": [
-          -0.6539,
-          -0.0056,
-          -0.7798
-        ]
-      },
-      "bytes": 161964,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "d5564342ccafd7d1c15f843c2b0e388e0635a545e99ae3da47f5830ad98bd79e",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 2992,
-      "url": "looks/knight_male.glb"
+      "accessory": "shield_badge_color",
+      "accessoryTile": 15,
+      "heightM": 1.635,
+      "scale": 0.6819,
+      "shape": "knight",
+      "tile": 15
+    },
+    "knight_male:forge": {
+      "accessory": "shield_badge_color",
+      "accessoryTile": 16,
+      "heightM": 1.635,
+      "scale": 0.6819,
+      "shape": "knight",
+      "tile": 16
     },
     "ninja_male": {
-      "bounds": {
-        "max": [
-          0.5242,
-          2.9833,
-          1.1061
-        ],
-        "min": [
-          -0.5936,
-          -0.0056,
-          -0.5104
-        ]
-      },
-      "bytes": 157804,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "882a8a7ea60a971a8e78c689f149c7fd116728fdbf7edf58f475c846ee99e6da",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 2720,
-      "url": "looks/ninja_male.glb"
+      "accessory": null,
+      "accessoryTile": null,
+      "heightM": 1.48,
+      "scale": 0.6819,
+      "shape": "rogue_hooded",
+      "tile": 17
     },
     "old_classy_female": {
-      "bounds": {
-        "max": [
-          0.5242,
-          3.5792,
-          1.1061
-        ],
-        "min": [
-          -0.7666,
-          -0.0056,
-          -0.7269
-        ]
-      },
-      "bytes": 200236,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "857f241e7be2c3e851f0b3c239c9639c309ac846ed0a371b40b67652bc8e6dc3",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 7008,
-      "url": "looks/old_classy_female.glb"
+      "accessory": "spellbook_closed",
+      "accessoryTile": 18,
+      "heightM": 1.473,
+      "scale": 0.6819,
+      "shape": "mage_long",
+      "tile": 18
     },
     "old_classy_male": {
-      "bounds": {
-        "max": [
-          0.5242,
-          3.5792,
-          1.1061
-        ],
-        "min": [
-          -0.6633,
-          -0.0056,
-          -0.5496
-        ]
-      },
-      "bytes": 183588,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "c5b4e1f623795ad4ac03203c7a8c76d05e8d42cf3e96d2eb05bba0e235192766",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 5432,
-      "url": "looks/old_classy_male.glb"
+      "accessory": "spellbook_closed",
+      "accessoryTile": 19,
+      "heightM": 1.55,
+      "scale": 0.6819,
+      "shape": "mage_moustache",
+      "tile": 19
     },
     "pirate_male": {
-      "bounds": {
-        "max": [
-          0.5377,
-          3.6242,
-          1.1061
-        ],
-        "min": [
-          -0.7855,
-          0.0223,
-          -0.673
-        ]
-      },
-      "bytes": 153164,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "1725f7f396f1ad19f5b0e2d0ed71b07ac926f0da89ed2ff6209bdda22a9f3e71",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 2724,
-      "url": "looks/pirate_male.glb"
+      "accessory": "mug_full",
+      "accessoryTile": 24,
+      "heightM": 1.55,
+      "scale": 0.6819,
+      "shape": "rogue_captain",
+      "tile": 20
     },
     "soldier_male": {
-      "bounds": {
-        "max": [
-          0.5242,
-          3.109,
-          1.1061
-        ],
-        "min": [
-          -0.685,
-          -0.0056,
-          -0.545
-        ]
-      },
-      "bytes": 159924,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "fe786cc132c7226de91486509ea32f1f11274ef4a8f02c20c526364ebca72241",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 2994,
-      "url": "looks/soldier_male.glb"
+      "accessory": "shield_round_color",
+      "accessoryTile": 21,
+      "heightM": 1.635,
+      "scale": 0.6819,
+      "shape": "knight_trooper",
+      "tile": 21
     },
     "suit_male": {
-      "bounds": {
-        "max": [
-          0.5242,
-          3.1745,
-          1.1061
-        ],
-        "min": [
-          -0.6884,
-          -0.0056,
-          -0.5886
-        ]
-      },
-      "bytes": 195680,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "ba3f6dd6aa2ae9a6e1f008051281cbda7cbe0905a8d7a77d65dcf65a1beec408",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 6518,
-      "url": "looks/suit_male.glb"
+      "accessory": "spellbook_closed",
+      "accessoryTile": 25,
+      "heightM": 1.558,
+      "scale": 0.6819,
+      "shape": "rogue_lad",
+      "tile": 22
     },
     "viking_male": {
-      "bounds": {
-        "max": [
-          0.5242,
-          3.4565,
-          1.1061
-        ],
-        "min": [
-          -0.6149,
-          -0.0056,
-          -0.7359
-        ]
-      },
-      "bytes": 201928,
-      "clips": [
-        "defeat",
-        "idle",
-        "run",
-        "sitdown",
-        "standup",
-        "victory",
-        "walk"
-      ],
-      "hash": "ec53290f41d7a57cf774a40ccf92ea5991eb2a092bfce1e4ccf9adc4ff635b52",
-      "lod1": null,
-      "textures": "none",
-      "triangles": 6264,
-      "url": "looks/viking_male.glb"
+      "accessory": "mug_full",
+      "accessoryTile": 23,
+      "heightM": 1.635,
+      "scale": 0.6819,
+      "shape": "barbarian",
+      "tile": 23
     }
   },
-  "totalBytes": 8999685,
-  "version": 1
+  "totalBytes": 7420209,
+  "version": 2
 }

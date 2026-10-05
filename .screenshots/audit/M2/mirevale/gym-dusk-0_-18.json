@@ -72,7 +72,7 @@
     "device": "0xa7a8",
     "description": "Intel(R) UHD Graphics"
   },
-  "chrome": "Chrome/154.0.8037.58",
+  "chrome": "Chrome/154.0.8037.93",
   "variants": [
     {
       "variant": "full",
@@ -80,7 +80,7 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 24.1,
+        "meanLuma": 26.4,
         "blackShare": 0,
         "greyShare": 0,
         "levels": {
@@ -135,32 +135,32 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 394,
-          "triangles": 699647,
-          "texturesSize": 507602866,
-          "textures": 162,
-          "geometries": 295,
-          "programs": 128,
+          "drawCalls": 395,
+          "triangles": 829626,
+          "texturesSize": 493119395,
+          "textures": 160,
+          "geometries": 303,
+          "programs": 139,
           "renderTargets": 34,
-          "attributes": 1608,
-          "attributesSize": 99992836,
+          "attributes": 1643,
+          "attributesSize": 101280436,
           "materials": 18,
           "shadowLights": 3,
           "nonShadowLights": 17,
-          "beautyDrawCalls": 106,
+          "beautyDrawCalls": 107,
           "shadowDrawCalls": 288
         },
         "settle": {
           "frames": 90,
           "stable": true,
-          "programs": 128
+          "programs": 139
         },
         "rects": {
           "player": [
-            695,
-            352,
-            745,
-            469
+            691,
+            356,
+            749,
+            472
           ],
           "battlers": []
         },
@@ -184,7 +184,7 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 23.7,
+        "meanLuma": 25.9,
         "blackShare": 0,
         "greyShare": 0,
         "levels": {
@@ -236,32 +236,32 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 383,
-          "triangles": 699636,
-          "texturesSize": 431786870,
-          "textures": 150,
-          "geometries": 295,
-          "programs": 116,
+          "drawCalls": 384,
+          "triangles": 829615,
+          "texturesSize": 417303399,
+          "textures": 148,
+          "geometries": 303,
+          "programs": 127,
           "renderTargets": 24,
-          "attributes": 1616,
-          "attributesSize": 100517636,
+          "attributes": 1651,
+          "attributesSize": 101805236,
           "materials": 18,
           "shadowLights": 3,
           "nonShadowLights": 17,
-          "beautyDrawCalls": 95,
+          "beautyDrawCalls": 96,
           "shadowDrawCalls": 288
         },
         "settle": {
           "frames": 90,
           "stable": true,
-          "programs": 116
+          "programs": 127
         },
         "rects": {
           "player": [
-            695,
-            352,
-            745,
-            469
+            691,
+            356,
+            749,
+            472
           ],
           "battlers": []
         },
@@ -285,18 +285,18 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 1.1,
-        "blackShare": 0.9958,
+        "meanLuma": 0.7,
+        "blackShare": 0.9971,
         "greyShare": 1,
         "levels": {
-          "zero": 0.9958,
-          "full": 0.0042,
+          "zero": 0.9971,
+          "full": 0.0029,
           "mid": 0
         }
       },
       "checks": [],
       "maskCoverage": {
-        "player": 0.7491,
+        "player": 0.5589,
         "battlers": []
       },
       "stage": {
@@ -343,32 +343,32 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 394,
-          "triangles": 699647,
-          "texturesSize": 507602874,
-          "textures": 164,
-          "geometries": 295,
-          "programs": 128,
+          "drawCalls": 395,
+          "triangles": 829626,
+          "texturesSize": 493119403,
+          "textures": 162,
+          "geometries": 303,
+          "programs": 139,
           "renderTargets": 34,
-          "attributes": 1616,
-          "attributesSize": 100517636,
+          "attributes": 1651,
+          "attributesSize": 101805236,
           "materials": 18,
           "shadowLights": 3,
           "nonShadowLights": 17,
-          "beautyDrawCalls": 106,
+          "beautyDrawCalls": 107,
           "shadowDrawCalls": 288
         },
         "settle": {
           "frames": 90,
           "stable": true,
-          "programs": 128
+          "programs": 139
         },
         "rects": {
           "player": [
-            695,
-            352,
-            745,
-            469
+            691,
+            356,
+            749,
+            472
           ],
           "battlers": []
         },

@@ -6,7 +6,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { finaliseManifest } from '../src/build.js';
 import { createIO, packGlb, readGlbJson, writeGlbExternalImages } from '../src/glb.js';
 import { encodeKtx2, isKtx2, probeKtx2, readKtx2Header, SUPERCOMPRESSION_ZSTD } from '../src/ktx2.js';
-import { LEGENDARY_IDS, listSources } from '../src/sets.js';
+import { LEGENDARY_IDS, bodyPaletteLooks, listKayKit, listSources } from '../src/sets.js';
+import { LOOK_DEFS, PALETTE_VARIANTS } from '../src/characters.js';
 import { encodeTexture, textureUri, TEXTURE_TIERS } from '../src/textures.js';
 import { HAS_SOURCES, SRC_MODELS, skinnedFixture } from './helpers.js';
 
@@ -94,37 +95,49 @@ describe('KTX2 (§40.2.4)', () => {
 });
 
 describe('source sets (§40.2.1, §40.0.2 rule 3)', () => {
-  function fakeSrc(looks: readonly string[], legendaries: readonly string[] = LEGENDARY_IDS): string {
+  function fakeLegendaries(legendaries: readonly string[] = LEGENDARY_IDS): string {
     const d = mkdtempSync(join(tmpdir(), 'ewa-src-'));
     tmp.push(d);
     mkdirSync(join(d, 'legendaries'));
-    mkdirSync(join(d, 'quaternius'));
     for (const id of legendaries) writeFileSync(join(d, 'legendaries', `${id}.glb`), '');
-    for (const f of looks) writeFileSync(join(d, 'quaternius', f), '');
     return d;
   }
 
-  it('lists legendaries then looks, each sorted, ids from the file stems', () => {
-    const s = listSources(fakeSrc(['Casual_Male.gltf', 'BlueSoldier_Male.gltf', 'README.txt']), ['blue_soldier_male', 'casual_male']);
-    expect(s.map((x) => `${x.set}:${x.id}`)).toEqual(['legendary:lumyth', 'legendary:noxmyth', 'legendary:voidraxis', 'legendary:zenryu', 'look:blue_soldier_male', 'look:casual_male']);
+  it('lists the four legendaries, sorted; a missing one fails with its id', () => {
+    expect(listSources(fakeLegendaries()).map((x) => `${x.set}:${x.id}`)).toEqual(['legendary:lumyth', 'legendary:noxmyth', 'legendary:voidraxis', 'legendary:zenryu']);
+    expect(() => listSources(fakeLegendaries(['lumyth']))).toThrow(/legendary noxmyth/);
   });
 
-  it('refuses to ship silently: a missing legendary, a missing look and an unknown look fail with the id', () => {
-    expect(() => listSources(fakeSrc(['Casual_Male.gltf'], ['lumyth']), ['casual_male'])).toThrow(/legendary noxmyth/);
-    expect(() => listSources(fakeSrc(['Casual_Male.gltf']), ['casual_male', 'ninja_male'])).toThrow(/ninja_male .*no source/);
-    expect(() => listSources(fakeSrc(['Casual_Male.gltf', 'Robot_Male.gltf']), ['casual_male'])).toThrow(/robot_male .*not in @ewa\/content LOOKS/);
+  it('refuses to ship silently: the look table must be exactly LOOKS and the BODIES palettes', () => {
+    const d = fakeLegendaries();
+    const looks = Object.keys(LOOK_DEFS);
+    expect(() => listKayKit(d, looks)).toThrow(/kaykit-adventurers/);              // the set directory is missing
+    mkdirSync(join(d, 'kaykit-adventurers'));
+    expect(() => listKayKit(d, [...looks, 'robot_male'])).toThrow(/robot_male .*no entry in the KayKit look table/);
+    expect(() => listKayKit(d, looks.filter((l) => l !== 'ninja_male'))).toThrow(/ninja_male .*not in @ewa\/content LOOKS/);
+    expect(() => listKayKit(d, looks, [...Object.keys(PALETTE_VARIANTS), 'casual_male:ember'])).toThrow(/casual_male:ember .*no recolour/);
+    expect(() => listKayKit(d, looks, ['casual2_male:dusk'])).toThrow(/not used by any @ewa\/content BODIES row/);
+    expect(() => listKayKit(d, looks)).toThrow(/KayKit source .*Barbarian\.glb not found/);
   });
 
-  it.skipIf(!HAS_SOURCES)('the real assets-src/models matches @ewa/content LOOKS (19 looks) and the 4 legendaries', () => {
-    const s = listSources(SRC_MODELS);
-    expect(s.filter((x) => x.set === 'legendary')).toHaveLength(4);
-    expect(s.filter((x) => x.set === 'look')).toHaveLength(19);
+  it('the BODIES palettes are the five variants the look table recolours', () => {
+    expect(bodyPaletteLooks()).toEqual(Object.keys(PALETTE_VARIANTS).sort());
+    expect(bodyPaletteLooks()).toEqual(['casual2_female:dusk', 'casual2_male:dusk', 'cowboy_female:tide', 'cowboy_male:tide', 'knight_male:forge']);
+  });
+
+  it.skipIf(!HAS_SOURCES)('the real assets-src/models has the 4 legendaries and every KayKit file the set reads', () => {
+    expect(listSources(SRC_MODELS)).toHaveLength(4);
+    const k = listKayKit(SRC_MODELS);
+    expect(Object.keys(k.characters).sort()).toEqual(['Barbarian', 'Knight', 'Mage', 'Ranger', 'Rogue', 'Rogue_Hooded']);
+    expect(Object.keys(k.textures).sort()).toEqual(['barbarian', 'knight', 'mage', 'ranger', 'rogue']);
+    expect(k.animations).toHaveLength(2);
+    expect(Object.keys(k.accessories)).toHaveLength(5);
   });
 });
 
 describe('manifest totalBytes fixed point', () => {
   it('includes the manifest\'s own size', () => {
-    const { manifest, json } = finaliseManifest({ version: 1, legendaries: {} as never, looks: {} }, 1000);
+    const { manifest, json } = finaliseManifest({ version: 2, legendaries: {} as never, characters: {} as never, looks: {} }, 1000);
     expect(manifest.totalBytes).toBe(1000 + Buffer.byteLength(json));
     expect(JSON.parse(json).totalBytes).toBe(manifest.totalBytes);
   });

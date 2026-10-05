@@ -1,15 +1,20 @@
 /**
- * Sandbox demos for render part 3 (`?demo=lineup` | `?demo=battle`), on top of whatever scene main.ts built
+ * Sandbox demos for render part 3 (`?demo=lineup` | `?demo=battle` | `?demo=wild` | `?demo=people`), on top of whatever scene main.ts built
  * (the part-1 diorama, or a real zone with `?zone=`). Uses the REAL creature output
  * (`/creatures/creatures.manifest.json`, SpriteManifestV2) adapted exactly as the client's adapter will:
  * `uv → rect`, `px`, `footV`, `aspect`, atlas maps with their mip files. Species types come from content's
  * species table (sandbox only; the render package never imports content).
  *
  * `window.__ewaSandbox.part3` exposes the bundle and demo controls (`setTime`, `shot` come from main.ts).
+ *
+ * `?demo=people`: every look of `models.manifest.json` (24) in two rows facing the camera, a few creature billboards
+ * beside them for scale, and walkers / runners circling in front at 1.0, 4.2 and 7.0 m/s (the protocol's walk and run
+ * speeds). Controls on `part3.people`: `emote(n)` (all, 0..6), `close(i)` (inspector close-up on look i), `wide()`,
+ * `march(on)` (the lineup walks 3 m along its row and back, `&marchSpeed=` m/s), `gait(i)`, `stats()`.
  */
 import { Group, Vector3 } from 'three/webgpu';
 import { SPECIES } from '@ewa/content';   // sandbox only (vite alias); the render package never imports content
-import { part3Of, rendererInternals, type AtlasSet, type CreatureBillboard, type Renderer, type SpriteDescriptor, type TypeName, type VariantKey, type VfxId } from '../src/index.js';
+import { part3Of, rendererInternals, type AtlasSet, type CreatureBillboard, type FrameHook, type Renderer, type SpriteDescriptor, type TypeName, type VariantKey, type VfxId } from '../src/index.js';
 
 interface ManifestMap { readonly url: string; readonly mips: readonly string[] }
 interface ManifestAtlas { readonly id: string; readonly species: readonly string[]; readonly size: 2048; readonly albedo: ManifestMap; readonly normal: ManifestMap; readonly emissive: ManifestMap; readonly normalScale: 0.5 | 1 }
@@ -64,19 +69,25 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
   const out: Record<string, unknown> = { bundle: p, species, manifest: man, tsl: await import('three/tsl'), three: await import('three/webgpu') };
   api.part3 = out;
 
-  // a few walking characters in every mode
-  // two manifest looks (GLB, §10.7.7) and one id the manifest does not list (the procedural fallback)
-  const walkers = ['casual_male', 'cowboy_female', 'ranger_m'];
+  // a few walking characters in every mode (KayKit looks, §10.7.7): a walker at 1.0 m/s, the protocol's walk (4.2 m/s,
+  // the run clip at × 1.8) and run (7 m/s); an id the manifest does not list resolves to a deterministic base look
+  const walkers = ['casual_male', 'cowboy_female:tide', 'ranger_m'];
+  const walkerSpeed = [1.0, 4.2, 7.0];
+  const walkerRadius = [2.6, 3.6, 4.6];
   walkers.forEach((look, i) => p.actors.spawn(`walker${i}`, { look, name: ['Rowan', 'Isla', 'Tamsin'][i]!, guildTag: i === 1 ? '[MIRE]' : '', isLocal: i === 0 }));
-  let clockS = 0;
+  const walkerAngle = [0, 2.1, 4.2];
+  let walkersOn = true;
+  const extraTicks: ((dt: number) => void)[] = [];
   const walk = (dt: number): void => {
-    clockS += dt / 1000;
-    walkers.forEach((_, i) => {
-      const a = clockS * (0.25 + i * 0.07) + i * 2.1;
-      const rad = 3.2 + i * 1.1;
-      const x = focus.x - 5 + Math.cos(a) * rad; const z = focus.z - 5 + Math.sin(a) * rad;
-      p.actors.setTransform(`walker${i}`, x, z, a + Math.PI, true, i === 2);
-    });
+    if (walkersOn) {
+      walkers.forEach((_, i) => {
+        walkerAngle[i]! += (walkerSpeed[i]! / walkerRadius[i]!) * (dt / 1000);
+        const a = walkerAngle[i]!;
+        const x = focus.x - 5 + Math.cos(a) * walkerRadius[i]!; const z = focus.z - 5 + Math.sin(a) * walkerRadius[i]!;
+        p.actors.setTransform(`walker${i}`, x, z, Math.atan2(-Math.sin(a), Math.cos(a)), true, i === 2);
+      });
+    }
+    for (const t of extraTicks) t(dt);
   };
   p.hud.set({
     zoneName: mode === 'battle' ? null : 'Mire Route', timeOfDay: 0.42, questHint: 'Find the Fenkeeper by the old lantern',
@@ -137,6 +148,81 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
     if (q.get('fade') === '0') { const occ = (host.materials.uniforms as { occlusion?: { camera: unknown } }).occlusion; if (occ) occ.camera = null; }
     p.hud.set({ nameplates: [], chat: [], prompt: null });
     Object.assign(out, { wild, revealed: () => p.reveal.revealed });
+  }
+
+  if (mode === 'people') {
+    // every look, in two rows facing the camera; creature billboards for scale; walkers / runners in front
+    const q = new URLSearchParams(location.search);
+    const models = await (await fetch('/models/models.manifest.json')).json() as { looks: Record<string, unknown> };
+    const looks = Object.keys(models.looks).sort();
+    const fwd = p.rig.dioramaForward(new Vector3());                    // camera → scene, horizontal
+    const right = new Vector3(-fwd.z, 0, fwd.x);                        // screen right on the ground
+    const faceCam = Math.atan2(-fwd.x, -fwd.z);
+    // `&back=` m behind the focus, `&shift=` m to screen-right (the part-1 diorama's house stands left of the focus)
+    const at = focus.clone().addScaledVector(fwd, Number(q.get('back') ?? 1.5)).addScaledVector(right, Number(q.get('shift') ?? 2.5));
+    p.rig.setFocus(at.x, 0, at.z);                                      // frame the lineup, not the diorama's centre
+    const perRow = Math.ceil(looks.length / 2);
+    const spacing = Number(q.get('spacing') ?? 1.25);
+    const ids: string[] = [];
+    looks.forEach((look, i) => {
+      const row = Math.floor(i / perRow), col = i % perRow;
+      const pos = at.clone().addScaledVector(right, (col - (perRow - 1) / 2) * spacing).addScaledVector(fwd, row * 2.4 - 1.2);
+      const id = `look:${look}`;
+      ids.push(id);
+      p.actors.spawn(id, { look, name: look, guildTag: '', isLocal: false });
+      p.actors.setTransform(id, pos.x, pos.z, faceCam, false, false);
+    });
+    // creature billboards beside the rows (sizeScale-1 creatures are ~1 m)
+    const group = new Group();
+    group.name = 'sandbox:people-creatures';
+    r.scene.add(group);
+    const sized = species.map((s) => ({ s, k: man.sprites[s]!.sizeScale })).sort((a, b) => a.k - b.k);
+    const pick = [sized[0], sized[Math.floor(sized.length / 2)], sized[sized.length - 1]].filter((x): x is { s: string; k: number } => x !== undefined);
+    const creatures = pick.map(({ s }, i) => {
+      const bb = p.sprites.acquire(descriptor(man, s, `people:${s}`));
+      // in front of the first row, between characters: smallest, median and largest sizeScale
+      const pos = at.clone().addScaledVector(right, (i - 1) * 3.5 * spacing + spacing / 2).addScaledVector(fwd, -2.4);
+      bb.setPosition(pos.x, 0, pos.z);
+      bb.setFacing('front');
+      group.add(bb.object);
+      return { species: s, sizeScale: man.sprites[s]!.sizeScale, x: pos.x, z: pos.z };
+    });
+    p.hud.set({ nameplates: q.get('plates') === '1' ? ids.map((id) => ({ id, name: id.slice(5), guildTag: '', inBattle: false })) : [], chat: [], prompt: null, questHint: null, party: [] });
+    if (q.get('walkers') === '0') { walkersOn = false; walkers.forEach((_, i) => p.actors.despawn(`walker${i}`)); }
+    // march: the lineup walks along its row line and back (feet vs ground check)
+    let marchOn = q.get('march') === '1';
+    let marchT = 0;
+    const marchSpeed = Number(q.get('marchSpeed') ?? 1.0);
+    const base = ids.map((id) => p.actors.feetOf(id, new Vector3())!.clone());
+    extraTicks.push((dt) => {
+      if (!marchOn) return;
+      marchT += dt / 1000;
+      const span = 3;                                                    // m each way
+      const period = (2 * span) / marchSpeed;
+      const u = (marchT % period) / period;
+      const off = u < 0.5 ? u * 2 * span : (1 - u) * 2 * span;
+      const dir = u < 0.5 ? 1 : -1;
+      ids.forEach((id, i) => {
+        const b = base[i]!;
+        p.actors.setTransform(id, b.x + right.x * off, b.z + right.z * off, Math.atan2(right.x * dir, right.z * dir), true, false);
+      });
+    });
+    const people = {
+      ids, looks, creatures,
+      emote: (n: 0 | 1 | 2 | 3 | 4 | 5 | 6) => ids.forEach((id) => p.actors.setEmote(id, n)),
+      march: (on: boolean) => { marchOn = on; if (!on) ids.forEach((id, i) => p.actors.setTransform(id, base[i]!.x, base[i]!.z, faceCam, false, false)); },
+      // close-up on look i: the other row steps far away so no head stands between the camera and the subject
+      close: (i: number, ms = 400) => {
+        const row = Math.floor(i / perRow);
+        ids.forEach((id, k) => { if (Math.floor(k / perRow) !== row) p.actors.setTransform(id, base[k]!.x + 200, base[k]!.z, faceCam, false, false); else p.actors.setTransform(id, base[k]!.x, base[k]!.z, faceCam, false, false); });
+        const f = p.actors.feetOf(ids[i]!, new Vector3());
+        if (f) p.rig.inspect(f.add(new Vector3(0, 0.8, 0)), ms);
+      },
+      wide: (ms = 400) => { ids.forEach((id, k) => p.actors.setTransform(id, base[k]!.x, base[k]!.z, faceCam, false, false)); p.rig.release(ms); },
+      gait: (i: number) => p.actors.gaitOf(ids[i]!),
+      stats: () => p.actors.stats(),
+    };
+    Object.assign(out, { people });
   }
 
   if (mode === 'battle') {
@@ -213,10 +299,8 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
     if (new URLSearchParams(location.search).get('auto') !== '0') void loop();
   }
 
-  // frame hook for the sandbox walkers (piggybacks on rAF)
-  let last = performance.now();
-  const tick = (now: number): void => { walk(Math.min(100, now - last)); last = now; requestAnimationFrame(tick); };
-  requestAnimationFrame(tick);
+  // the sandbox walkers move inside the renderer's frame (before the actor pool's hook), so `shot()` frames animate too
+  (host as unknown as { hooks: FrameHook[] }).hooks.unshift({ update: (dt: number) => walk(Math.min(100, dt)) });
   out.focus = focus;
   out.probeFocus = () => new Vector3().copy(p.rig.focus);
   void host;

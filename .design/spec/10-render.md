@@ -788,11 +788,11 @@ Geometry of the view: at `zoomStop 1` the camera sits 20.5 m above the focus and
 | Lights' housings (merged per surface) | 3 |
 | Water | 1 |
 | Billboards (≤ 40 visible: 16 nameplated players, 12 spawns, 6 party, 6 npc/trainer) + contact decals | 80 |
-| Actors' character meshes (≤ 24 remote + local, 1 draw each, §10.7.6) | 25 |
+| Actors' bodies (≤ 24 remote + local, 1 draw each) + their hand-held accessories (≤ 1 each, none beyond 45 m) + 1 instanced contact decal (§10.7.6–7) <!-- amended 2026-10-05: KayKit characters --> | 51 |
 | Sky, rain sheet, light-shaft cards | 8 |
 | Arena dressing during a battle (ring, 2 lights' housings, 6 spectator billboards) | 10 |
 | Shadow passes: 4 cascades × (terrain 12 + buildings 29 + scatter 60 + billboards 40) is counted by `renderer.info` as draw calls | reported separately in `dumpZone()` (`shadowDrawCalls`, measured per frame by the host's inspector since 2026-09-30) and in `BudgetCounts.shadowDrawCalls`; the ≤ 400 cap applies to the beauty pass and the post quads (≤ 14): `BudgetCounts.beautyDrawCalls = drawCalls − shadowDrawCalls` <!-- amended 2026-09-30: audit M2-gym-dusk-7, render Part 5 B2 --> |
-| **Total (beauty + post)** | **≤ 310** |
+| **Total (beauty + post)** | **≤ 336** |
 
 ### 10.5.9 Disposal contract — the leak test
 
@@ -987,11 +987,22 @@ export interface ActorPool {
 }
 ```
 
+Amended 2026-10-05 (render Part 6): the pool is `CharacterPool` (`stage/actors.ts`). The 48 rig records are preallocated and never grow (a 49th `spawn` throws in dev, logs in production); a rig owns a KayKit body cloned from its look's shape (§10.7.7), recycled per shape on `despawn`. `setTransform` stores the feet and heading only — the gait is chosen in the frame hook from the **measured** displacement, not from the flags, so remote interpolation, prediction corrections and teleports animate correctly (a jump > 3 m in one update measures no speed). `setTransform`, `setEmote` and the per-frame hook allocate nothing. `screenPositions` anchors at the head joint (it follows a hop or a bow). The pool owns one instanced contact decal for all actors and picks the shadow casters (§10.7.7). <!-- amended 2026-10-05: render IMPLEMENTATION-NOTES Part 6 -->
+
 ### 10.7.7 Character models
 
-Amended 2026-09-30 (P4-C7, render Part 4 H7): every look is scaled by **one** factor, `1.7 m / median look height`, so relative heights survive (a viking's horns stay above a bare head); the emotes play the pipeline's `victory` (wave, happy, heart, cool), `defeat` (sad) and `standup` (alert) clips over the idle / walk / run blend, since the pipeline keeps no dedicated emote clips. (The looks are to be replaced by pixel-art character billboards in a separate task; this records what ships until then.)
+Amended 2026-10-05 (render IMPLEMENTATION-NOTES Part 6; the user's decision of 2026-10-05: "3D people with 2D creatures"): characters are **stylised 3D people from the KayKit "Adventurers 2.0" pack** (Kay Lousberg, CC0, free tier) built by `40-pipelines.md` §40.2; creatures stay 2D lit billboards (§10.4). The Quaternius looks (P4-C7) and the pixel-art character proposal of 2026-09-30 (`tools/character-pipeline`, never applied) are both retired.
 
-Player and NPC looks are `SkinnedMesh` rigs loaded once per `createRenderer` from `public/models/looks/<look>.glb` (`models.manifest.json` `looks`, the CC0 Quaternius set the plan carries forward, `40-pipelines.md` §40.2 re-encodes them with meshopt; the source files carry **no images**, so the pipeline bakes their 6 flat colours into `COLOR_0`). Each look is one draw (one primitive, one material), `castShadow = true`, and its material is the one shared library `MeshStandardNodeMaterial` of class `'character'`: the §10.2.4 graph with `vertexColor()` as albedo and the neutral placeholder ORM/normal set (`aoNode 1`, roughness 0.6, metalness 0, geometry normal) — exempt from `materials.threeMaps` by class, and flattened at harvest level 2 like everything else. Animation: `AnimationMixer` with the 7 kept clips `idle`/`walk`/`run`/`victory`/`defeat`/`sitdown`/`standup`, `mixer.update(dt × timeScale)`. Legendary GLBs (`public/models/legendaries/<id>.glb` + `<id>.lod1.glb`, skinned, one `idle` clip, three KTX2 maps) are the only skinned meshes with real maps and use the §10.2.4 graph unmodified; they switch to `lod1` beyond 40 m. Nameplates are HUD (§10.9), never `Sprite`s. <!-- reconciled 2026-09-18: paths, material and clip list from 40-pipelines.md §40.2.3/§40.2.5 -->
+- **Set** (`public/models/models.manifest.json` v2 `characters` + `looks`, §40.2.5): 15 body *shapes* (one skinned primitive each on the shared 23-joint `Rig_Medium`, UVs into the KayKit 8 × 4 swatch grid, no image), 5 hand-held accessories (mug, book, three shields — no weapon), one animation file and one atlas with a recoloured tile per look. Each of the 19 `LOOKS` and the 5 `BODIES` palette variants (`casual2_male:dusk` …) is `{ shape, tile, accessory, accessoryTile, scale, heightM }`; an id the manifest lacks resolves to its base look, else to a deterministic base look (spectators).
+- **Bodies**: each actor is `SkeletonUtils.clone` of its shape's template (own bones, the template's geometry shared per shape), recycled per shape on despawn; ONE factor for every look (`characters.scale` = 1.55 m / the median bare-head top = 0.6819), so a bare head stands at 1.55 m and hats and helmets stay above it (`heightM` 1.47–1.81 m); a sizeScale-1 creature (~1 m) reaches the chest.
+- **Material** (class `'character'`): ONE `MeshStandardNodeMaterial` for every body and accessory — albedo = the atlas sampled in the actor's tile (`userData.ewaTile`, a per-object uniform, so one program serves every look), × 0.72 with saturation 1.18 (the KayKit swatches are painted for flat renders and clip to white under the noon key), roughness 0.8, metalness 0, geometry normal (flat at harvest level 2), double-sided (capes are single sheets), a warm view-dependent rim (0.22) and an albedo floor (0.05) in `emissive` so a character is never a black cut-out at night (audit M2-gym-dusk-6). `mask` MRT: x 0 (GTAO applies), y = `userData.sharp` (the DOF-sharp local player). Exempt from `materials.threeMaps` by class: no ORM / normal maps (the low-poly gradient style has none).
+- **Animation**: one `AnimationMixer` per actor over the shared clips `idle walk run cheer flinch use` (bound by joint name). Idle / walk / run are blended by the **measured** ground speed (smoothed displacement, τ 0.1 s; < 0.25 m/s stands, walk → run between 1.1 and 1.7 m/s) and each gait clip plays at `speed / (clip ground speed × scale)` — the pipeline measures the planted toe (walk 0.55 m/s, run 2.30 m/s at time scale 1) — so planted feet move with the ground (measured: mean planted-toe drift −0.04 m/s at 0.7 m/s, ≤ 0.13 m/s at the protocol's 4.2 and 7 m/s); `moving` / `running` are hints only. Facing turns toward the heading along the shortest arc (rate 14 / s). Emotes (spine §4.1) while standing, faded at 8 / s, yielding to walking: wave = the right arm raised and waving (procedural, over the idle), happy and heart = `cheer` (a hop), sad = head and chest bowed (procedural), alert = `flinch`, cool = `use`.
+- **Grounding**: feet on the collider; one instanced contact decal for every actor (the §10.4.7 material, 0.85 m, on the ground normal); real shadows from the **nearest 12** bodies within 45 m of the camera (accessories never cast).
+- **LOD**: accessories hidden beyond 45 m, no shadow beyond 45 m, bodies culled beyond 140 m (the fog); frustum culling on a fixed bounding sphere per body (no per-frame skinned bounds).
+- **Draws**: 1 per body + 1 per visible accessory + 1 decal draw for all actors; measured in the sandbox diorama at noon (render Part 6): 0 / 24 / 48 actors → beauty 73 / 110 / 146, shadow 112 / 158 / 161, programs 112 / 114 / 114, materials 15 / 15 / 15.
+- **Loading**: the manifest, clips and atlas load once per `createRenderer` (`GLTFLoader` + `MeshoptDecoder` + the host's `KTX2Loader`), each shape and accessory once, on first use; until its shape is in, an actor shows its decal and nameplate only. The warm-up frame (§10.1.2 step 8) draws a 23-bone skinned body with the shipped attribute formats and an accessory on the character material, so their programs exist before the first character appears.
+
+Nameplates are HUD (§10.9), never `Sprite`s, anchored at the head joint raised to the look's top (+ 0.18 m). Legendary GLBs (`public/models/legendaries/<id>.glb` + `<id>.lod1.glb`, skinned, one `idle` clip, three KTX2 maps) are the only skinned meshes with real maps and use the §10.2.4 graph unmodified; they switch to `lod1` beyond 40 m. <!-- amended 2026-10-05: render IMPLEMENTATION-NOTES Part 6; tools/model-pipeline IMPLEMENTATION-NOTES K1–K8 -->
 
 ---
 
@@ -1169,7 +1180,7 @@ export function createZoneView(o: ZoneViewOptions): Promise<ZoneView>;   // crea
 
 | Row | Target ms | Ceiling ms | What in this file decides it |
 |---|---|---|---|
-| opaque | 2.6 | 3.4 | ≤ 310 beauty draws (§10.5.8), ≤ 2.5 M tris, chunked LOD, one material graph |
+| opaque | 2.6 | 3.4 | ≤ 336 beauty draws (§10.5.8), ≤ 2.5 M tris, chunked LOD, one material graph |
 | sprites | 0.8 | 1.2 | ≤ 40 billboards, alpha-tested (no sorting), pooled VFX ≤ 512 particles each |
 | shadows | 2.0 | 2.6 | 4 × 2048² cascades + ≤ 8 local casters at 512²/256² |
 | GTAO | 1.2 | 1.6 | half-res, 16 spp |
@@ -1215,7 +1226,7 @@ Filled by the differential procedure of `50-verification-budget.md` §50.2.3 (`T
 ## NON-NEGOTIABLES (this file)
 
 1. One renderer, one pipeline, one scene, one camera; the zone root is never removed during a battle (Pillar 7).
-2. Every lit opaque material carries albedo + ORM + normal from KTX2 (billboards: WebP atlases with the same three roles; characters: vertex colour + placeholder); no runtime-generated texture reaches a lit material.
+2. Every lit opaque material carries albedo + ORM + normal from KTX2 (billboards: WebP atlases with the same three roles; characters: the KTX2 look atlas, albedo only — §10.7.7); no runtime-generated texture reaches a lit material.
 3. The harvested look is `harvestLevel` — one uniform in one graph. `setHarvestLevel` allocates nothing.
 4. Billboards are lit `MeshStandardNodeMaterial` quads with `NearestFilter` magnification, a normal map, a type-coloured rim, `maskShadowNode` alpha shadows and a multiply contact decal; the variant palette is four `userData` values, never re-baked pixels.
 5. The DOF focal plane passes through the followed actor's feet, tilted 24°, and the `mask.y` MRT channel keeps the player's creature and both active battlers at CoC 0.

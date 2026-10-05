@@ -1,5 +1,9 @@
 # Character pipeline — implementation notes (2026-09-30)
 
+> **Superseded 2026-10-05.** The characters are KayKit 3D models now (`tools/model-pipeline`, render §10.7.7). The
+> proposed SPEC entries at the end of this file were never applied and are closed (SPEC CHANGELOG 2026-10-05,
+> "§10.7.7 … the pixel-art character proposal is closed"). Kept as a record of the work.
+
 The Quaternius GLB mannequins (§10.7.7) are replaced by procedural HD-2D pixel-art sprites: a paper-doll generator
 in `tools/character-pipeline`, an atlas + manifest in `packages/client/public/characters/`, and an `ActorPool` that
 draws every actor as one instance of a lit billboard (`packages/render/src/stage/actors.ts`,

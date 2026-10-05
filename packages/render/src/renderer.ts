@@ -68,10 +68,8 @@ export interface RendererOptions {
   // ---- additions (documented in IMPLEMENTATION-NOTES.md) ----
   /** Where `materials.manifest.json` and the KTX2 sets are served. Default `'/materials/'`. */
   readonly materialsUrl?: string;
-  /** Where `models.manifest.json` and the look GLBs are served (§10.7.7; IMPLEMENTATION-NOTES Part 4, H7). Default `'/models/'`; null = procedural characters only. */
+  /** Where `models.manifest.json`, the character GLBs and the look atlas are served (§10.7.7; IMPLEMENTATION-NOTES Part 6). Default `'/models/'`; null = no character bodies (decals and nameplates only). */
   readonly modelsUrl?: string | null;
-  /** Where `characters.manifest.json` and the character atlas are served (tools/character-pipeline). Default `'/characters/'`; null = no characters drawn. */
-  readonly charactersUrl?: string | null;
   /** Millisecond clock for `RenderStats.frameMs`; render never reads a wall clock itself (§10 NN 10). Default: none (frameMs = 0). */
   readonly clock?: () => number;
   /**
@@ -178,10 +176,8 @@ export interface HostContext {
   readonly camera3: PerspectiveCamera;
   readonly ktx2: KTX2Loader;
   readonly materials: MaterialLibrary;
-  /** `RendererOptions.modelsUrl` (null = no GLB looks). */
+  /** `RendererOptions.modelsUrl` (null = no character bodies). */
   readonly modelsUrl: string | null;
-  /** `RendererOptions.charactersUrl` (null = no character atlas). */
-  readonly charactersUrl: string | null;
   readonly lighting: LightRig;
   readonly sky: SkyController;
   readonly fog: HeightFog;
@@ -384,7 +380,6 @@ class RendererHost implements Renderer, HostContext {
   readonly actors: ActorPool;
   readonly materials: MaterialLibrary;
   readonly modelsUrl: string | null;
-  readonly charactersUrl: string | null;
   readonly lighting: LightRig;
   readonly sky: SkyController;
   readonly fog: HeightFog;
@@ -453,7 +448,6 @@ class RendererHost implements Renderer, HostContext {
     this.requestedPr = o.pixelRatio;
     this.clock = o.clock ?? null;
     this.modelsUrl = o.modelsUrl === undefined ? '/models/' : o.modelsUrl;
-    this.charactersUrl = o.charactersUrl === undefined ? '/characters/' : o.charactersUrl;
     this.onCompileProgress = o.onCompileProgress ?? null;
     this.precompileEnabled = o.precompile !== false;
     // measurement renderers (`trackTimestamp`: the budget / shot harness) compile a zone fully before `loadZone`

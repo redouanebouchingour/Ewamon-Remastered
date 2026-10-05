@@ -29,9 +29,9 @@ async function main(argv: readonly string[]): Promise<number> {
   const r = await runBuild({ force, textures, ...(outDir ? { outDir } : {}) });
   const MiB = 1024 * 1024;
   const leg = Object.values(r.manifest.legendaries);
-  const looks = Object.values(r.manifest.looks);
+  const chars = [...r.files.entries()].filter(([rel]) => rel.startsWith('characters/')).reduce((s, [, d]) => s + d.byteLength, 0);
   console.log(`model-pipeline: ${r.inputs} inputs, ${r.cacheHits} cache hits, ${((Date.now() - t0) / 1000).toFixed(1)} s`);
-  console.log(`  legendaries ${(leg.reduce((s, e) => s + e.bytes, 0) / MiB).toFixed(2)} MB LOD0 (+ LOD1), looks ${(looks.reduce((s, e) => s + e.bytes, 0) / MiB).toFixed(2)} MB, public/models ${(r.manifest.totalBytes / MiB).toFixed(2)} MB, textures ${r.qa.textures}`);
+  console.log(`  legendaries ${(leg.reduce((s, e) => s + e.bytes, 0) / MiB).toFixed(2)} MB LOD0 (+ LOD1), characters ${(chars / MiB).toFixed(2)} MB (${Object.keys(r.manifest.looks).length} looks), public/models ${(r.manifest.totalBytes / MiB).toFixed(2)} MB, textures ${r.qa.textures}`);
   for (const f of r.qa.flags) console.log(`  qa ${f.flag} ${f.id}: ${f.detail}`);
   for (const w of r.qa.warnings) console.log(`  warning: ${w}`);
   return 0;

@@ -6,6 +6,33 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-05 KayKit characters: the user's decision "3D people with 2D creatures" (stylised 3D people from the KayKit "Adventurers 2.0" free pack, creatures stay 2D lit billboards). Five entries, newest on top. -->
+
+## 2026-10-05 — `10-render.md` §10.7.7 — the pixel-art character proposal of 2026-09-30 (`tools/character-pipeline`) is closed unapplied; its output and runtime are deleted
+Why: the user chose 3D people with 2D creatures on 2026-10-05; the pixel-art billboards were a proposal (`tools/character-pipeline/IMPLEMENTATION-NOTES.md`, "proposed SPEC entries") that §10.7.7 only mentioned ("to be replaced by pixel-art character billboards in a separate task") and never adopted.
+Evidence: `packages/client/public/characters/` and `packages/render/src/sprites/characterAtlas.ts` / `characterAnim.ts` / `test/characters.test.ts` removed; `tools/character-pipeline/README.md` marked superseded (its CLI refuses to write into `public/`).
+Affects: `tools/character-pipeline` leaves the root `tsconfig.json` references and the default `vitest` run (`vitest.config.ts` excludes it); `RendererOptions.charactersUrl` and `HostContext.charactersUrl` are removed (`packages/client/src/scene/World3D.ts` no longer passes it).
+
+## 2026-10-05 — `40-pipelines.md` §40.6 — the `models/` budget line: measured 7.42 MB of 12 (legendaries 5.61 + the KayKit set 1.79); the layout lists `characters/`
+Why: the Quaternius looks (3.38 MB, `looks/<look>.glb`) are replaced by the KayKit character set; the phase-3 load note named "the body GLB".
+Evidence: `tools/model-pipeline/test/budget.test.ts` (`dirBytes(public/models)` = `models.manifest.json totalBytes` = 7 420 209 B; `characters/` 1 794 168 B ≤ 5 MiB); `pnpm models` output.
+Affects: none beyond the text (the ceiling, its test and `asset-audit --bytes` are unchanged).
+
+## 2026-10-05 — `40-pipelines.md` §40.0.2 rule 6, §40.2.1–§40.2.6, non-negotiable 10 — the model pipeline builds the KayKit "Adventurers 2.0" set (15 shapes, 5 accessories, one animation file, one look atlas) and `models.manifest.json` version 2; the Quaternius looks are removed
+Why: the user replaced the disliked Quaternius mannequins with KayKit's stylised characters (free tier, CC0, Kay Lousberg). KayKit characters are 6–9 skinned parts on one shared rig whose joint order differs per file, with one gradient-swatch texture each, so looks are built as shapes (parts merged into one primitive with joints remapped by name, heads moved between bodies) + per-look swatch recolours in one atlas + hand-held accessories; clips live once in a shared file with measured gait speeds.
+Evidence: `tools/model-pipeline/IMPLEMENTATION-NOTES.md` K1–K8 (rig equality and joint orders, swatch usage per part, `prune` dropping UVs, OKLab recolour, atlas 47.5 KB vs 116 KB PNG, gait speeds walk 0.808 / run 3.367 units/s, one scale 0.6819, accessory slot rotations); tests `budget.test.ts`, `characters.test.ts`, `determinism.test.ts` (a rerun is 26/26 cache hits and reproduces the committed bytes; the 4 legendary outputs are byte-identical to before).
+Affects: `tools/model-pipeline/src/{characters,kaykit,atlas,buildCharacters}.ts` (new), `sets.ts`, `build.ts`, `manifest.ts`, `transform.ts` (`keepAttributes`), `prepare.ts` (Quaternius rule removed); `public/models/characters/**`, `CREDITS.txt` (Kay Lousberg); `@ewa/render` reads manifest v2 (`stage/looks.ts`).
+
+## 2026-10-05 — `10-render.md` §10.7.7, §10.5.8, non-negotiable 2 — characters are KayKit 3D bodies: one `'character'` material sampling a per-actor atlas tile, the shared clips blended by measured ground speed with foot-matched time scales, procedural wave and bow emotes, nearest-12 shadow casters, distance LOD
+Why: the user's decision of 2026-10-05 ("3D people with 2D creatures", KayKit free tier). One material + a per-object tile uniform keeps the material count and the programs flat across 24 looks; gait from measured displacement keeps planted feet on the ground at the protocol's 4.2 / 7 m/s; the albedo gain / saturation and rim / floor keep the bright KayKit swatches readable from noon to night (audit M2-gym-dusk-6).
+Evidence: render IMPLEMENTATION-NOTES Part 6 (sandbox lineup of the 24 looks walking, running and emoting at noon, dusk and night beside creature billboards; draw calls 0 / 24 / 48 actors: beauty 73 / 110 / 146, shadow 112 / 158 / 161, programs 112 / 114 / 114, materials 15; planted-toe drift −0.04 m/s at 0.7 m/s walk, ≤ 0.13 m/s at 4.2 / 7 m/s run); `test/actors.test.ts` (12 tests); client harness re-shots `.screenshots/audit/M2/{mirevale,mire_route}/`.
+Affects: `packages/render/src/stage/{actors,looks,characterMaterial,wiring}.ts`, `renderer.ts` (`charactersUrl` removed), `index.ts`; §10.5.8's actor row becomes bodies + accessories + 1 decal (25 → 51; total beauty + post ≤ 336, still under the 400 cap); NN 2's character clause reads "the KTX2 look atlas, albedo only".
+
+## 2026-10-05 — `10-render.md` §10.7.6 — `ActorPool` is the KayKit `CharacterPool`: 48 preallocated rigs owning cloned bodies recycled per shape, gait from measured displacement (the `moving` / `running` flags are hints), anchors at the head joint, one instanced contact decal
+Why: the interface is unchanged, but its behaviour now depends on 3D bodies: remote interpolation, prediction corrections and teleports must animate from what the actor actually does (a jump > 3 m measures no speed), and nameplates follow a hop or a bow.
+Evidence: render IMPLEMENTATION-NOTES Part 6; `test/actors.test.ts` (gait by measured speed, flags-only actors stand, facing along the shortest arc, emotes yield to walking, recycling, exact dispose, anchors).
+Affects: none outside `@ewa/render` (the client's calls are unchanged; `HarnessWorld` passes the body's `look:palette` like `World3D`).
+
 <!-- 2026-09-30 render hardening follow-up: the nine entries proposed at the end of render IMPLEMENTATION-NOTES Part 4 (P4-C1 … P4-C9) and the SPEC changes of render Part 5 (tasks T1–T5, audit blockers M2-battle-5/6/7/8, M2-spawn-noon-9, M2-gym-dusk-7, harness findings B1/B2/H1). -->
 
 ## 2026-09-30 — `50-verification-budget.md` §50.6.1 — heading numbers follow the rig: 0 looks toward −z, 1 −x, 2 +z, 3 +x

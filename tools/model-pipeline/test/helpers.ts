@@ -8,7 +8,7 @@ export const REPO = resolve(__dirname, '..', '..', '..');
 export const SRC_MODELS = resolve(REPO, 'assets-src', 'models');
 export const OUT_MODELS = resolve(REPO, 'packages', 'client', 'public', 'models');
 /** The raw sources are git-ignored; tests that need them skip on a checkout without them. */
-export const HAS_SOURCES = existsSync(resolve(SRC_MODELS, 'legendaries')) && existsSync(resolve(SRC_MODELS, 'quaternius'));
+export const HAS_SOURCES = existsSync(resolve(SRC_MODELS, 'legendaries')) && existsSync(resolve(SRC_MODELS, 'kaykit-adventurers'));
 
 /** A grid of `n × n` quads in the XY plane at height `z`, indexed. */
 function grid(n: number, z: number): { pos: Float32Array; nrm: Float32Array; idx: Uint16Array } {
@@ -30,7 +30,7 @@ export interface SkinnedFixture {
 }
 
 /**
- * A Quaternius-shaped document: one skinned mesh with `colours.length` flat-colour primitives, a 2-joint rig,
+ * A skinned test document: one skinned mesh with `colours.length` flat-colour primitives, a 2-joint rig,
  * and one clip per name in `clips`. Joint 0's scale track holds the rest value (1,1,1) in every clip; joint 1's
  * rotation track moves.
  */

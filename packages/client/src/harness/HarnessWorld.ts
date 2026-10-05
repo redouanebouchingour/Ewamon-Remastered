@@ -189,7 +189,9 @@ export class HarnessWorld {
     const tz = performance.now();
     await this.director.loadZone(zoneId, this.harvest);
     this.log(`zone ${zoneId} loaded in ${Math.round(performance.now() - tz)} ms (layoutSeed ${this.zone.layoutSeed >>> 0}, harvest ${this.harvest})`);
-    const look = BODIES.find((b) => b.id === SELF_BODY)?.look ?? 'casual_male';
+    const body = BODIES.find((b) => b.id === SELF_BODY);
+    // the same `look:palette` id World3D's lookOf gives the local player
+    const look = body === undefined ? 'casual_male' : body.palette ? `${body.look}:${body.palette}` : body.look;
     r.actors.spawn(SELF_ID, { look, name: 'Harness', guildTag: '', isLocal: true });
     this.battle.attach(this.battleView());
     this.probe = createBudgetProbe(r, zoneId);
@@ -420,14 +422,14 @@ export class HarnessWorld {
     return [Math.round(x0), Math.round(y0), Math.round(x1), Math.round(y1)];
   }
 
-  /** CSS-px rect of the local player's figure (a 0.35 m × 1.75 m cylinder at its feet). */
+  /** CSS-px rect of the local player's figure (a 0.4 m × 1.6 m cylinder at its feet: the KayKit chibi stands 1.55 m with a wide head). */
   playerRect(): readonly [number, number, number, number] | null {
     const f = this.renderer.actors.feetOf(SELF_ID, new Vector3());
     if (f === null) return null;
     const pts: Vector3[] = [];
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2;
-      for (const y of [0, 1.75]) pts.push(new Vector3(f.x + Math.cos(a) * 0.35, f.y + y, f.z + Math.sin(a) * 0.35));
+      for (const y of [0, 1.6]) pts.push(new Vector3(f.x + Math.cos(a) * 0.4, f.y + y, f.z + Math.sin(a) * 0.4));
     }
     return this.rectOf(pts);
   }

@@ -30,7 +30,7 @@ tools/
 3. **Refuse to ship silently.** A missing or unresolvable input fails the build with the offending id in the message. Anything a heuristic guessed is flagged in the tool's `qa-report.json`; the release rule for each tool is in its section.
 4. **Budgets are tests.** Every size number in §40.6 is asserted by a vitest file named in `50-verification-budget.md` §50.4.8 or added here; CI fails when a budget is exceeded.
 5. **LF line endings, ES modules, TypeScript, `tsx` entry points, `pnpm --filter @ewa/<tool> run <script>`.** No tool imports from `packages/*` except `@ewa/content` (for zone ids, species ids and looks) and the pure subpath **`@ewa/render/surfaces`** (`packages/render/src/surfaces/`: the `SURFACES` table and the bake recipes, no three, no DOM, no node builtins — enforced by the render ESLint block), which `tools/material-bake` imports so the baked textures and the runtime graph cannot disagree — never the rest of `@ewa/render`, never `@ewa/client`. `tools/asset-audit` takes `@ewa/render` + `three` as **devDependencies** only, for the drift test that feeds a real `dumpZone()` to its `ZoneDump` mirror. <!-- amended 2026-09-25: material-bake IMPLEMENTATION-NOTES D0 (the `dist/surfaces.json` route was never built), asset-audit IMPLEMENTATION-NOTES A2 -->
-6. **Licences travel with assets.** `assets-src/licenses/QUATERNIUS-CREDITS.txt` is copied to `public/models/CREDITS.txt`; `TABLER-LICENSE.txt` to `public/icons/TABLER-LICENSE.txt` (MIT notice is required). The pipeline fails if either source file is missing.
+6. **Licences travel with assets.** `assets-src/licenses/KAYKIT-ADVENTURERS-LICENSE.txt` is written to `public/models/CREDITS.txt` under a credit line ("Kay Lousberg, www.kaylousberg.com" — CC0, credit optional and given); `TABLER-LICENSE.txt` is copied to `public/icons/TABLER-LICENSE.txt` (MIT notice is required). The pipeline fails if either source file is missing. <!-- amended 2026-10-05: the Quaternius credits left with the Quaternius looks -->
 
 ---
 
@@ -303,7 +303,8 @@ Budget: `260 × (73 + 24 + 3) KB × 1.20 + 0.8 MB thumbs ≈ 32.0 MB ≤ 35 MB`.
 | Set | Files | Size on disk | Per file | Contents (read from the glTF JSON) |
 |---|---|---|---|---|
 | `assets-src/models/legendaries/` | `lumyth.glb`, `noxmyth.glb`, `voidraxis.glb`, `zenryu.glb` | 8.8 MB | 2.0–2.5 MB | 1 mesh, 1 material, 1 skin, 1 clip named `Animation`, **30 000 triangles each** (29 845 for voidraxis), 3 embedded `image/webp` textures of 21–204 KB (`EXT_texture_webp`), so 85–90 % of each file is vertex + animation data |
-| `assets-src/models/quaternius/` | **19** `.gltf` (`Casual_Male` … `Viking_Male`; amended 2026-09-25 — the draft said 20, the directory and `@ewa/content` `LOOKS` hold 19) | 36 MB | 1.7–2.2 MB | 1 mesh, 6 materials (flat colours, **0 images**), 3 000–6 800 triangles, 17 clips (`Death, Defeat, Idle, Jump, PickUp, Punch, RecieveHit, Roll, Run, Run_Carry, Shoot_OneHanded, SitDown, StandUp, SwordSlash, Victory, Walk, Walk_Carry`), one buffer embedded as a **base64 `data:` URI** of 0.8–1.0 MB — the 2 MB file is 1.33× base64 inflation of ≈ 0.9 MB of binary, most of it 17 animation clips at full float precision |
+| `assets-src/models/kaykit-adventurers/` (amended 2026-10-05; replaces `quaternius/`) | the KayKit "Adventurers 2.0" free pack as unzipped: `Characters/gltf/{Barbarian,Knight,Mage,Ranger,Rogue,Rogue_Hooded}.glb` + five `*_texture.png`, `Animations/gltf/Rig_Medium/Rig_Medium_{General,MovementBasic}.glb`, `Assets/gltf/*.gltf` (accessories and weapons) | 2.4 MB characters + 1.5 MB clips | 0.34–0.48 MB per character | 6–9 skinned parts per character (body, arms, legs, head, headwear, cape …), **one material and one 1024² gradient-swatch texture** (8 × 4 cells of 128 × 256 px) per character, all on the same 23-joint `Rig_Medium` (identical names, rest pose and inverse bind matrices; a different joint order in every file); 25 clips over the two animation files, in place (no root motion) |
+| ~~`assets-src/models/quaternius/`~~ (historical) | **19** `.gltf` (`Casual_Male` … `Viking_Male`; amended 2026-09-25 — the draft said 20, the directory and `@ewa/content` `LOOKS` hold 19) | 36 MB | 1.7–2.2 MB | 1 mesh, 6 materials (flat colours, **0 images**), 3 000–6 800 triangles, 17 clips (`Death, Defeat, Idle, Jump, PickUp, Punch, RecieveHit, Roll, Run, Run_Carry, Shoot_OneHanded, SitDown, StandUp, SwordSlash, Victory, Walk, Walk_Carry`), one buffer embedded as a **base64 `data:` URI** of 0.8–1.0 MB — the 2 MB file is 1.33× base64 inflation of ≈ 0.9 MB of binary, most of it 17 animation clips at full float precision |
 
 The dependencies already declared in `tools/asset-audit/package.json` (`@gltf-transform/core|extensions|functions ^4.5.0`, `meshoptimizer ^0.24.0`) move to `tools/model-pipeline/package.json`; `asset-audit` keeps none of them.
 
@@ -320,7 +321,7 @@ const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies(
 await doc.transform(
   dedup(),                                                    // identical accessors/textures/materials → one
   flatten(),                                                  // node hierarchy without skins is collapsed (no-op on skinned rigs)
-  join({ keepNamed: false }),                                 // merges same-material primitives only — and SKIPS skinned nodes (`if (node.getSkin()) continue;`, functions src/join.ts lines 177–178): the Quaternius merge is joinPrimitives in §40.2.3
+  join({ keepNamed: false }),                                 // merges same-material primitives only — and SKIPS skinned nodes (`if (node.getSkin()) continue;`, functions src/join.ts lines 177–178): the KayKit shapes are merged by name-remapped joints in §40.2.3
   prune(),                                                    // unused nodes/accessors/materials
   resample({ tolerance: 1e-4 }),                              // animation keyframes: drops linear-redundant keys
   weld(),                                                     // gltf-transform 4.x weld() is exact (no tolerance argument)
@@ -336,26 +337,37 @@ await doc.transform(
 <!-- amended 2026-09-25: model-pipeline IMPLEMENTATION-NOTES M2, M3, M5 -->
 Three facts of gltf-transform 4.5.0 the first draft got wrong (paths relative to `node_modules/.pnpm/@gltf-transform+functions@4.5.0_*/node_modules/@gltf-transform/functions`): `meshopt()` is a wrapper that runs its own `reorder({ target: 'size' })` and `quantize()` before adding the extension (`src/meshopt.ts` lines 82–93), so after the explicit `quantize(14/10/12/…)` it would re-quantize the 14-bit positions and clone the skin's inverse-bind matrices again — the pipeline applies only its tail (`meshoptCompression()` in `src/transform.ts`); `textureCompress` supports `jpeg | png | webp | avif` only (`TEXTURE_COMPRESS_SUPPORTED_FORMATS`, `src/texture-compress.ts` line 24); and `join()` skips skinned nodes, which every Quaternius primitive is.
 
-Determinism: gltf-transform assigns no random ids; `NodeIO.writeBinary` is byte-stable for the same document, and the pipeline asserts it by encoding twice in `determinism.test.ts`. The Quaternius `data:` buffers become a single GLB `BIN` chunk (`io.writeBinary`), which alone removes the 33 % base64 inflation.
+Determinism: gltf-transform assigns no random ids; `NodeIO.writeBinary` is byte-stable for the same document, and the pipeline asserts it by encoding twice in `determinism.test.ts`. Characters run the sequence with `prune({ keepAttributes: true })`: a shape ships its UVs without an image (the runtime's atlas samples them), and the default `prune()` drops attributes no texture references (amended 2026-10-05, model-pipeline IMPLEMENTATION-NOTES K3); the legendaries keep `prune()` and their bytes did not change.
 
 ### 40.2.3 Per-set rules
 
 **Legendaries** (`10-render.md` §10.7.7 does not cover them; they are overworld statics per `roster-coverage.md` §7 and the arena's `ActorPool` per `10-render.md` §10.7.6): keep the skin and the single clip; the clip is renamed `idle`; `resample` at `1e-4`; 30 000 triangles are **kept for LOD0** and a skinned simplification writes a second GLB `<id>.lod1.glb` (≈ 10 500 tris) used beyond 40 m (same thresholds as `10-render.md` §10.5.7). gltf-transform 4.5's `simplify()` calls the **position-only** `simplifier.simplify` (`src/simplify.ts` lines 176–183), so the pipeline's `simplifySkinned` calls `meshoptimizer` 0.24's `MeshoptSimplifier.simplifyWithAttributes` directly (NORMAL weight 0.5, TEXCOORD_0 1.0, WEIGHTS_0 1.0) and compacts the primitive, so surviving vertices keep JOINTS/WEIGHTS and the skin stays bound. **Error bound 0.01, not 0.001**: at 0.001 (2 mm on a 2 m creature) the simplifier stops at 24 000–28 900 of 30 000 triangles and LOD1 comes out at 505–619 KB against the 0.45 MB line; at 0.01 all four reach 10 435–10 493 tris with an achieved error of 0.0045–0.0081 of the extent (≈ 1 px at 40 m), LOD1 220–248 KB. Texture roles come from the material slots the sources bind (`baseColorTexture`, `normalTexture`, `metallicRoughnessTexture`); the draft's mean-colour heuristic misreads them — the normals average (127, 127, 234) and the third texture is metallic-roughness (mean (254, 28, 1)), there is no emissive map — and survives only as a `normal-suspect` QA cross-check. Output KTX2 per §40.2.4. <!-- amended 2026-09-25: model-pipeline IMPLEMENTATION-NOTES M4, M6 -->
 
-**Quaternius** (player/NPC looks, `10-render.md` §10.7.7: "each look is one draw (merged)"): the 6 flat-colour materials are baked into a `COLOR_0` vertex attribute (`vertexColor(): [baseColorFactor]` per primitive, written with `quantizeColor 8`) and the primitives joined into **one** primitive with one material — the render library's `'character'` surface class reads `vertexColor()` as albedo and uses the shared neutral 4×4 ORM/normal placeholder (`10-render.md` §10.2.3) since the source has no maps. Only the clips `Idle`, `Walk`, `Run`, `Victory`, `Defeat`, `SitDown`, `StandUp` are kept (renamed to lower-case; `10-render.md` §10.7.7 names `idle/walk/run`; the other four are for battle staging and the healer bench); the remaining 10 clips are dropped by `prune()` after being detached — that is where most of the 0.9 MB goes. "Detached" means channels and samplers disposed **before** the animation: `Animation.dispose()` leaves its samplers alive and pointing at their keyframe accessors (`@gltf-transform/core` `src/properties/animation.ts` has no `dispose` override; `prune()` keeps them — measured 1 136 accessors instead of 440). Tracks that hold a node's rest value in every kept clip are dropped too (lossless in three: the bone keeps its rest transform), which brings the looks to 150–217 KB. The merge into one primitive is `joinPrimitives` after the colours are baked into `COLOR_0` and all primitives share the one `character` material — `join()` skips skinned nodes. <!-- amended 2026-09-25: model-pipeline IMPLEMENTATION-NOTES M5, M8 --> Triangles are kept (3–7 k is already under any LOD0 budget); a `lod1` is not generated for characters (they are never far from the camera at the diorama's view distance).
+**KayKit characters** (player / NPC looks, `10-render.md` §10.7.7; amended 2026-10-05, replacing the Quaternius rule — model-pipeline IMPLEMENTATION-NOTES K1–K8):
+
+- **Shapes** (`SHAPES`, 15): each a list of parts of up to two KayKit characters (`Knight` body + helmet + cape; a `Ranger` body with a `Knight` head; …), written as ONE skinned primitive with ONE material `character` (no image) on a canonical copy of the rig: every part's vertices are appended with `JOINTS_0` remapped **by joint name** to the canonical order (Knight's) after asserting each file's rig equals it (rest TRS, inverse bind matrices). `joinPrimitives` cannot merge parts of two files, whose joint orders differ. Heads move between bodies because every head samples only the universal skin / hair / eyes cells. Capes, quivers, hats, helmets and visors are in or out per shape.
+- **Looks** (`LOOK_DEFS`, exactly `@ewa/content` `LOOKS`; `PALETTE_VARIANTS`, exactly the `look:palette` pairs of `BODIES`): a shape + a palette (named slots → swatch cells per texture, `SLOTS`) + an optional accessory. A palette variant may not recolour skin, hair or beard.
+- **Accessories** (`ACCESSORIES`, 5: `mug_full`, `spellbook_closed`, three `shield_*_color`): one rigid mesh each, UVs kept, no image, a hand-slot joint and a slot rotation (KayKit slots point blades forward; a quarter turn about Z stands a mug or a shield upright). Townsfolk hold a mug or a book, soldiers a shield; no weapon ships.
+- **Animations**: the clips `Idle_A Walking_A Running_A Jump_Full_Short Hit_A Use_Item` → `idle walk run cheer flinch use`, copied onto a node-only rig (no mesh, no skin: `AnimationMixer` binds tracks by joint name) and written as ONE file; the other 19 clips are not copied. Rest-pose tracks are dropped across the file; `resample` 1e-4. The walk and run **ground speeds** are measured from the planted toe (`gaitSpeed`: the mean backward speed of a toe within 1.5 cm of its lowest point) and written to the manifest.
+- **Scale**: one factor for every look, `1.55 m / median(bare-head top of the shapes)` = 0.6819; each look's `heightM` includes its headwear.
 
 ### 40.2.4 Texture plan
 
 `TEXTURE_PLAN` (its own step, `encodeTexture` + `applyTextures`, because `textureCompress` has no KTX2 target): sharp decodes and fits each image (Lanczos3); `/baseColor|emissive/` → UASTC, RDO 2.0, sRGB, mips; `/normal|occlusion|metallicRoughness/` → UASTC, RDO 2.0, linear, `isNormalMap` for the normal, mips; the texture gets `image/ktx2`, `KHR_texture_basisu` (required) and an **external** uri `<id>.<role>.<hash8>.ktx2` shared by LOD0 and LOD1. The encoder is the same `ktx2-encoder@0.6.0` Basis module as §40.3.3 with `uastcLDRQualityLevel 0` (pack 2 is larger and 4× slower on these maps) and Basis' own mip generation; it exposes **no Zstandard level** (supercompression is on/off), so the draft's `zstd: 18` is Basis' default level (re-compressing at level 18 measured −1.0 % over all 12 maps). **Resolution ladder** — 1024² UASTC does not fit the 1.2 MB LOD0 line at any RDO setting (lumyth/zenryu maps 1.91–2.31 MB at 1024²; geometry 0.53–0.64 MB), so each legendary takes the first tier whose GLB + textures ≤ 1 258 291 B: (512, 512, 512) → (512, 512, 256) → (512, 512, 128) → (512, 256, 128) → (256, 256, 128) for (base, normal, ORM); measured lumyth/voidraxis tier 0, noxmyth tier 1, zenryu tier 2; no tier fitting fails the build. **Fallback:** when `probeKtx2(2048)` fails on the build machine, textures are written as lossy WebP `q90` with sharp under `EXT_texture_webp`, and `models.manifest.json` records `textures: 'webp'`; CI treats the fallback as a warning, not a failure, until M2, then as a failure. <!-- amended 2026-09-25: model-pipeline IMPLEMENTATION-NOTES M1, M2, M7, M9; ktx2-encoder types/type.d.ts line 37 -->
 
+**Character atlas** (amended 2026-10-05, K4–K5): per look, its body's 1024² swatch texture recoloured cell by cell in OKLab (the target's hue and chroma; each pixel keeps its lightness offset from the cell mean, so the painted gradient survives; chroma fades near white and black), box-downscaled in linear light to a 256² tile (32 × 64 px per cell, cells 4-px block aligned, every vertex UV ≥ 0.6 px inside its cell); the 24 look tiles plus the source tiles the mug and an off-body book need, row-major in an 8 × 4 grid, as ONE 2048 × 1024 UASTC KTX2 (RDO 1, zstd, sRGB, **level 0 only** — a mip would mix 32 swatches per texel and the gradients need none) named `characters/atlas.<hash8>.ktx2`: 47.5 KB (the same atlas as lossless PNG: 116 KB). The WebP fallback writes it lossless.
+
 ### 40.2.5 Output and manifest
 
 ```
 packages/client/public/models/
-├─ legendaries/<id>.glb, <id>.lod1.glb      (4 × 2)
-├─ looks/<look>.glb                          (19)
-├─ CREDITS.txt                               (copied from assets-src/licenses/QUATERNIUS-CREDITS.txt)
-└─ models.manifest.json
+├─ legendaries/<id>.glb, <id>.lod1.glb      (4 × 2) + <id>.{basecolor,normal,orm}.<hash8>.ktx2
+├─ characters/<shape>.glb                    (15; amended 2026-10-05, replaces looks/<look>.glb)
+├─ characters/acc_<accessory>.glb            (5)
+├─ characters/animations.glb
+├─ characters/atlas.<hash8>.ktx2
+├─ CREDITS.txt                               (the KayKit licence under a credit line)
+└─ models.manifest.json                      (version 2)
 ```
 
 ```ts
@@ -365,10 +377,51 @@ export interface ModelEntry {
   readonly textures: 'ktx2' | 'webp' | 'none'; readonly bounds: { readonly min: [number, number, number]; readonly max: [number, number, number] };
   readonly hash: string;                                     // sha256 of the written GLB
 }
+/** One written file of the character set (amended 2026-10-05: version 2, the KayKit set). */
+export interface CharacterFile { readonly url: string; readonly bytes: number; readonly hash: string }
+export interface ShapeEntry extends CharacterFile {
+  readonly triangles: number;
+  readonly texture: 'barbarian' | 'knight' | 'mage' | 'ranger' | 'rogue';   // the swatch layout its UVs address
+  readonly bounds: { readonly min: [number, number, number]; readonly max: [number, number, number] };
+}
+export interface AccessoryEntry extends CharacterFile {
+  readonly triangles: number;
+  readonly texture: 'barbarian' | 'knight' | 'mage' | 'ranger' | 'rogue';
+  readonly bone: 'handslot.l' | 'handslot.r';
+  readonly rotation: readonly [number, number, number];                    // XYZ Euler (radians) in the slot's frame
+}
+export interface AnimationsEntry extends CharacterFile {
+  readonly clips: readonly string[];
+  readonly durations: Readonly<Record<string, number>>;
+  readonly gaitSpeed: { readonly walk: number; readonly run: number };   // model units / s of the planted toe at time scale 1
+}
+export interface AtlasEntry extends CharacterFile {
+  readonly textures: 'ktx2' | 'webp';
+  readonly width: number; readonly height: number;
+  readonly columns: number; readonly rows: number; readonly tileSize: number;
+}
+export interface CharactersEntry {
+  readonly rig: 'Rig_Medium';
+  readonly scale: number;                                    // world metres per model unit, one factor for every look
+  readonly heightM: number;                                  // a bare-headed character's standing height (1.55)
+  readonly animations: AnimationsEntry;
+  readonly atlas: AtlasEntry;
+  readonly shapes: Readonly<Record<string, ShapeEntry>>;
+  readonly accessories: Readonly<Record<string, AccessoryEntry>>;
+}
+export interface LookEntry {
+  readonly shape: string;
+  readonly tile: number;                                     // atlas tile, row-major
+  readonly accessory: string | null;
+  readonly accessoryTile: number | null;                     // the look's own tile, or its accessory's source-texture tile
+  readonly scale: number;
+  readonly heightM: number;                                  // top of the look (headwear included), metres
+}
 export interface ModelsManifest {
-  readonly version: 1;
+  readonly version: 2;
   readonly legendaries: Readonly<Record<'lumyth' | 'noxmyth' | 'voidraxis' | 'zenryu', ModelEntry>>;
-  readonly looks: Readonly<Record<string, ModelEntry>>;      // the 19 Quaternius look ids = @ewa/content LOOKS, snake_case of the file stem (casual_male …)
+  readonly characters: CharactersEntry;
+  readonly looks: Readonly<Record<string, LookEntry>>;      // the 19 @ewa/content LOOKS + the BODIES palette variants (`casual2_male:dusk` …)
   readonly totalBytes: number;
 }
 ```
@@ -380,11 +433,12 @@ export interface ModelsManifest {
 | One legendary LOD0 | 2.0–2.5 MB | **≤ 1.2 MB** (GLB + its three textures) | measured geometry 0.53–0.64 MB (30 k tris; NORMAL at 10 bits is the largest stream); textures from the §40.2.4 ladder at ≤ 512² (the draft's "1024²–2048² ≈ 0.4–0.6 MB" measured 1.91–2.31 MB at 1024²); one resampled clip |
 | One legendary LOD1 | — | ≤ 0.45 MB | 10.5 k tris at error 0.01 (§40.2.3), measured 220–248 KB; same textures **shared by reference** (LOD0 and LOD1 both reference the external KTX2 files; `bytes` counts LOD1's GLB only) |
 | 4 legendaries total | 8.8 MB | **≤ 6.5 MB** | 4 × (1.2 + 0.45) |
-| One Quaternius look | 1.7–2.2 MB | **≤ 0.25 MB** | binary chunk instead of base64 (−25 %), 7 of 17 clips (−55 %), `resample` (−30 % of the rest), rest-pose tracks dropped, quantized + meshopt geometry; measured 150–217 KB |
-| 19 looks total (`@ewa/content` `LOOKS`; the draft counted 20) | 19 × 1.7–2.2 MB | **≤ 5.0 MB** | measured 3.38 MB |
-| **`public/models/` total** | 45 MB | **≤ 12 MB** (§40.6) | measured 8.58 MB (commit e2d6127) |
+| One character file (amended 2026-10-05) | 0.34–0.48 MB per KayKit character | **≤ 0.25 MB** | measured: shapes 90–146 KB (5 288–9 651 tris; NORMAL 10 bit and the UVs are the largest streams), accessories 6.6–8.3 KB, the animation file 83 KB (6 clips), the atlas 47.5 KB |
+| ~~One Quaternius look~~ (historical) | 1.7–2.2 MB | **≤ 0.25 MB** | binary chunk instead of base64 (−25 %), 7 of 17 clips (−55 %), `resample` (−30 % of the rest), rest-pose tracks dropped, quantized + meshopt geometry; measured 150–217 KB |
+| The character set (`characters/`, 24 looks; amended 2026-10-05) | 3.9 MB of sources | **≤ 5.0 MB** | measured 1.79 MB (Quaternius looks were 3.38 MB) |
+| **`public/models/` total** | 45 MB | **≤ 12 MB** (§40.6) | measured 7.42 MB (2026-10-05; 8.58 MB with the Quaternius looks, commit e2d6127) |
 
-Runtime: the client loads GLBs with `GLTFLoader` + `MeshoptDecoder` + `KTX2Loader` (`public/basis/basis_transcoder.{js,wasm}`, already present). `models.manifest.json` `hash` is the cache key the client's asset store uses; a `?v=<hash8>` query is appended to model urls by the build.
+Runtime: the client loads GLBs with `GLTFLoader` + `MeshoptDecoder` + `KTX2Loader` (`public/basis/basis_transcoder.{js,wasm}`, already present); the character atlas through the same `KTX2Loader` (`10-render.md` §10.7.7). `models.manifest.json` `hash` is the cache key the client's asset store uses; a `?v=<hash8>` query is appended to model urls by the build.
 
 ---
 
@@ -666,7 +720,7 @@ Today `src/cli.ts` is `export {};`. The tool is **headless and GPU-free**: it ne
 | `materials.count` | distinct `uuid` with `cls ∉ {debug}` `≤ 48` | §50.2.2, `10-render.md` §10.2.7 |
 | `materials.threeMaps` | every material with `cls ∈ {standard, physical, card, character}` and `harvestLevel === 0` has `maps.albedo && maps.orm && maps.normal` | Pillar 2 |
 | `materials.albedoCeiling` | every `surface` referenced resolves to a `materials.manifest.json` entry with `albedoClampedPct` present (the ceiling was applied at bake) | `10-render.md` §10.2.1, OQ-4 there |
-| `textures.ktx2Only` | every material with `cls ∈ {standard, physical, card, water, emissive}` has `ktx2 === true`; `cls === 'billboard'` (WebP atlases, §40.1.6) and `cls === 'character'` (vertex colour + placeholder, `10-render.md` §10.7.7) are exempt **by class** — decided in `10-render.md` §10.0.3 rule 4 (reconciled 2026-09-18) | `10-render.md` non-negotiable 2 |
+| `textures.ktx2Only` | every material with `cls ∈ {standard, physical, card, water, emissive}` has `ktx2 === true`; `cls === 'billboard'` (WebP atlases, §40.1.6) and `cls === 'character'` (the KTX2 look atlas, or its 4 × 4 placeholder before it loads, `10-render.md` §10.7.7; amended 2026-10-05) are exempt **by class** — decided in `10-render.md` §10.0.3 rule 4 (reconciled 2026-09-18) | `10-render.md` non-negotiable 2 |
 | `materials.threeMaps` exemptions | `cls ∈ {billboard, impostor, decal, character}` and `harvestLevel ≥ 1` | `10-render.md` §10.0.3 rule 4 |
 | `geometry.noPrimitives` | no `type ∈ {BoxGeometry, ConeGeometry, IcosahedronGeometry}` and no `SphereGeometry` with `parameters.widthSegments < 24`, at `harvestLevel 0` | Pillar 3 |
 | `geometry.noOutlineShells` | no two meshes under the zone root share a geometry `uuid` where one has `material.side === BackSide` and a scale > 1 (the legacy outline-clone trick); `BackSide` materials are allowed only on `cls ∈ {sky}` — the dump gains `geometries[].sharedBy: number` and `materials[].side` for this | legacy-render-audit Q4 (reconciled 2026-09-18) |
@@ -691,7 +745,7 @@ Today `src/cli.ts` is `export {};`. The tool is **headless and GPU-free**: it ne
 packages/client/public/
 ├─ basis/            basis_transcoder.js, basis_transcoder.wasm, README.md   (present; KTX2Loader.setTranscoderPath('/basis/'))
 ├─ creatures/        atlases/a-NNN.{albedo,normal,emissive}.webp + .m1/.m2/.m3.webp mips, thumbs/<id>_front.webp, creatures.manifest.json
-├─ models/           legendaries/<id>.glb + <id>.lod1.glb, looks/<look>.glb, CREDITS.txt, models.manifest.json
+├─ models/           legendaries/<id>.glb + <id>.lod1.glb + KTX2, characters/ (15 shapes, 5 accessories, animations.glb, atlas KTX2), CREDITS.txt, models.manifest.json
 ├─ materials/        <surface>_{albedo,orm,normal}.ktx2 (83 × 3), placeholder_*.ktx2, materials.manifest.json
 ├─ audio/            themes/<theme>/<layer>.{webm,m4a}, ambience/<biome>.{webm,m4a}, sfx/<id>_<n>.{webm,m4a}, manifest.json
 ├─ icons/            TABLER-LICENSE.txt + the rank/type SVGs the client ships
@@ -704,13 +758,13 @@ Nothing under `public/` is hand-edited except `keyart/`, `icons/` and `fonts/`; 
 | Directory | Ceiling | Asserted by | Basis of the number |
 |---|---|---|---|
 | `creatures/` | **≤ 35 MB** (36 700 160 B) | `tools/sprite-pipeline/test/budget.test.ts` | measured (§40.1.6.3 as amended 2026-09-24, `PIPELINE_VERSION` 5): 65 atlases with binary alpha at albedo q88 / normal q92 — albedo 25.46 MB + normal 9.46 MB + emissive 0.46 MB (all levels) + thumbs and manifest 0.87 MB = **36.20 MB**, 0.50 MB under the ceiling. The draft's "73 + 24 + 3 KB × 1.20 ≈ 31.2 MB" was 1.5× optimistic <!-- amended 2026-09-25: stale basis after the 2026-09-24 amendment of §40.1.6.3 --> |
-| `models/` | **≤ 12 MB** | `tools/model-pipeline/test/budget.test.ts` | §40.2.6: 6.5 + 5.0 + headroom |
+| `models/` | **≤ 12 MB** | `tools/model-pipeline/test/budget.test.ts` | §40.2.6: legendaries ≤ 6.5 + characters ≤ 5.0 + headroom; measured **7.42 MB** (2026-10-05): legendaries 5.61 MB + the KayKit set 1.79 MB (15 shapes 1.62 MB, animations 0.08, atlas 0.05, accessories 0.04) <!-- amended 2026-10-05: KayKit characters replace the Quaternius looks (3.38 MB) --> |
 | `materials/` | **≤ 90 MB** | `tools/material-bake/test/budget.test.ts` | §40.3.5: field 24.9 MB + hero ≤ 60 MB = ≤ 85 MB; the single-tier UASTC layout would be ≈ 143 MB and is why the tiers exist <!-- reconciled 2026-09-18: was 60 MB, which the arithmetic could not meet --> |
 | `audio/` | **≤ 80 MB** | `tools/audio-pipeline/test/budget.test.ts` | §40.4.7: 78 MB at 16-bar stems |
 | `basis/ + icons/ + fonts/ + keyart/` | ≤ 2 MB | `tools/asset-audit --bytes` | transcoder wasm 0.6 MB, fonts 0.36 MB, key art ≤ 0.8 MB |
 | **total `public/`** | **≤ 219 MB** | `tools/asset-audit --bytes` | sum |
 
-The per-zone *load* budget is a different number and is `20-client.md` §20.10.3's: phase 2 (`field` materials) ≤ 6 MB — Mirevale 4.5 MB, the largest biome set (cinder, 9 + 6 shared = 15) also 4.5 MB — and phase 3 (creature atlases + party + body GLB) ≤ 4 MB. From the shipped manifest (35.38 MB of atlas maps over 65 atlases = **0.544 MB per atlas**, all levels), phase 3 is `bound atlases × 0.544 MB` + the party singles' home atlases not already bound (≤ 6 × 0.544 MB) + the body GLB (0.15–0.22 MB): Mirevale binds 2 atlases (≈ 1.1 MB + GLB), well inside 4 MB; the 8-atlas zones (`galvan_route`, `solenne`) are 4.35 MB before singles and GLB, **over** the 4 MB phase-3 figure (it is asserted by `first-frame.spec.ts` on Mirevale only; recommendation R12). The draft's "≈ 4.1 MB cold for the 14-species `hollow_route`" used the pre-measurement 73 + 24 + 3 KB per sprite. The `hero` tier (≤ 12 MB per zone) is phase 5. <!-- amended 2026-09-25: stale arithmetic after §40.1.6.3's measured sizes; bind counts from packages/client/public/creatures/creatures.manifest.json `zones` -->
+The per-zone *load* budget is a different number and is `20-client.md` §20.10.3's: phase 2 (`field` materials) ≤ 6 MB — Mirevale 4.5 MB, the largest biome set (cinder, 9 + 6 shared = 15) also 4.5 MB — and phase 3 (creature atlases + party + body GLB) ≤ 4 MB. From the shipped manifest (35.38 MB of atlas maps over 65 atlases = **0.544 MB per atlas**, all levels), phase 3 is `bound atlases × 0.544 MB` + the party singles' home atlases not already bound (≤ 6 × 0.544 MB) + the character set's first shapes, clips and atlas (≈ 0.25–0.5 MB; amended 2026-10-05, was one 0.15–0.22 MB body GLB): Mirevale binds 2 atlases (≈ 1.1 MB + GLB), well inside 4 MB; the 8-atlas zones (`galvan_route`, `solenne`) are 4.35 MB before singles and GLB, **over** the 4 MB phase-3 figure (it is asserted by `first-frame.spec.ts` on Mirevale only; recommendation R12). The draft's "≈ 4.1 MB cold for the 14-species `hollow_route`" used the pre-measurement 73 + 24 + 3 KB per sprite. The `hero` tier (≤ 12 MB per zone) is phase 5. <!-- amended 2026-09-25: stale arithmetic after §40.1.6.3's measured sizes; bind counts from packages/client/public/creatures/creatures.manifest.json `zones` -->
 
 ---
 
@@ -725,7 +779,7 @@ The per-zone *load* budget is a different number and is `20-client.md` §20.10.3
 7. Loudness (−16 / −20 LUFS) and loop points are measured, not trusted; a stem whose autocorrelation peak is < 0.6 is regenerated, not shipped.
 8. `ffmpeg` and the KTX2 encoder are checked before work starts; a missing prerequisite is one clear message and exit 1, never a partial output tree.
 9. The four directory ceilings in §40.6 are tests; a regression of > 5 % against the committed audit baseline fails CI even under the cap.
-10. Licence files travel: `CREDITS.txt` (Quaternius, CC0) and `TABLER-LICENSE.txt` (MIT) are copied by the tools and their absence fails the build.
+10. Licence files travel: `CREDITS.txt` (KayKit, CC0, crediting Kay Lousberg; amended 2026-10-05) and `TABLER-LICENSE.txt` (MIT) are written by the tools and their absence fails the build.
 
 ## CUT DELIBERATELY (this file)
 

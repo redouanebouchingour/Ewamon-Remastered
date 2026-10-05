@@ -1,7 +1,7 @@
 /**
  * `textures.ktx2Only` (§10 non-negotiable 2): every material with `cls ∈ {standard, physical, card, water,
  * emissive}` has `ktx2 === true` — no `CanvasTexture`, no PNG albedo on a lit material. `billboard` (WebP atlases,
- * §40.1.6) and `character` (vertex colour + placeholder, §10.7.7) are exempt by class (§10.0.3 rule 4).
+ * §40.1.6) and `character` (the KTX2 look atlas, sampled per actor tile — or its 4 × 4 placeholder before it loads, §10.7.7) are exempt by class (§10.0.3 rule 4).
  */
 import type { AuditContext, Violation } from '../types.js';
 import { violation } from '../types.js';

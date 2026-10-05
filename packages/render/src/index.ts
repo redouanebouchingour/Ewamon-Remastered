@@ -134,11 +134,15 @@ export type { CameraWork, CueKind, OrbitPose } from './camera/battle.js';
 export { BOKEH_PX, FOCAL_LENGTH_M, TILT_DEG, TiltShiftDOF, circleOfConfusionPx, groundOffPlaneM } from './camera/dof.js';
 export { CAPACITY as VFX_CAPACITY, EMITTERS as VFX_EMITTERS, MAX_PARTICLES as VFX_MAX_PARTICLES, VFX_IDS, VFX_TABLE, VfxSystem, isVfxId } from './stage/vfx.js';
 export type { VfxAnchor, VfxPhase, VfxRecipe } from './stage/vfx.js';
-export { ACTOR_POOL_SIZE, CHARACTER, CharacterPool, EMOTE_MS, EMOTE_NAMES } from './stage/actors.js';
+export { ACTOR_POOL_SIZE, CHARACTER, CharacterPool, EMOTE_CLIPS, EMOTE_MS, EMOTE_NAMES } from './stage/actors.js';
 export type { ActorPoolOptions, EmoteId, GroundSampler } from './stage/actors.js';
-export { CHARACTERS_MANIFEST, CharacterFrames, createCharacterMaterial, parseCharactersManifest } from './sprites/characterAtlas.js';
-export type { CharactersManifest, CharManifestLook, LookFrames } from './sprites/characterAtlas.js';
-export { CHAR_ANIM, facingFor, facingOf, stepCharAnim } from './sprites/characterAnim.js';
+export { CHARACTER_MATERIAL, createCharacterMaterial } from './stage/characterMaterial.js';
+export type { CharacterMaterial, CharacterMaterialUniforms } from './stage/characterMaterial.js';
+export { createGltfCharacterSource, disposeAccessory, disposeShape, parseCharacterSet, resolveLook } from './stage/looks.js';
+export type {
+  AccessoryRef, AccessoryTemplate, AnimationsRef, AtlasRef, CharacterFileRef, CharacterSet, CharacterSource, GltfCharacterSourceOptions, LookRef, ShapeRef,
+  ShapeTemplate,
+} from './stage/looks.js';
 export { STAGE, Stage, TERRAIN_ACCENT, TERRAIN_SURFACE } from './stage/battleStage.js';
 export type { StageDeps, StageGround } from './stage/battleStage.js';
 export { CanvasHudLayer, FIELD_REGION, HUD, HUD_FIELDS, HUD_REGIONS, browserSurface } from './hud/layer.js';

@@ -19,6 +19,7 @@ import { createSpritePool, type BillboardPool } from '../sprites/billboard.js';
 import { CanvasHudLayer, HUD, type HudAnchors, type Ref } from '../hud/layer.js';
 import { PANEL_DEFAULT_FRACTION } from '../camera/battle.js';
 import { CharacterPool } from './actors.js';
+import { createGltfCharacterSource } from './looks.js';
 import { isDevBuild } from '../env.js';
 import { Stage, type StageGround } from './battleStage.js';
 import { VfxSystem } from './vfx.js';
@@ -59,10 +60,11 @@ function build(ctx: HostContext): Part3 {
   let chromaAmount = 0; let chromaMs = 0; let chromaLeft = 0;
 
   const sprites = createSpritePool({ harvestLevel: harvestUniform, camera: ctx.camera3, upload: (t) => ctx.gpu.initTexture(t) });
-  // characters: lit pixel-art billboards on the sprite pool's camera uniforms (tools/character-pipeline atlas)
+  // characters: KayKit 3D bodies from models.manifest.json (§10.7.7); the decal reads the sprite pool's camera uniforms
+  const warnCharacters = (m: string): void => { if (isDevBuild()) console.warn(`[@ewa/render characters] ${m}`); };
   const actors = new CharacterPool({
-    harvestLevel: harvestUniform, camera: ctx.camera3, viewport, uniforms: sprites.uniforms, charactersUrl: ctx.charactersUrl,
-    upload: (t) => ctx.gpu.initTexture(t), warn: (m) => { if (isDevBuild()) console.warn(`[@ewa/render characters] ${m}`); },
+    harvestLevel: harvestUniform, camera: ctx.camera3, viewport, uniforms: sprites.uniforms, warn: warnCharacters,
+    source: ctx.modelsUrl === null ? null : createGltfCharacterSource({ baseUrl: ctx.modelsUrl, ktx2: ctx.ktx2, warn: warnCharacters }),
   });
   ctx.scene.add(actors.root);
   const host = ctx as unknown as Renderer;
@@ -170,7 +172,7 @@ function warmupObjects(ctx: HostContext): Object3D[] {
   const fx = new Sprite(p.vfx.material);                       // one particle of the shared VFX material
   fx.count = 1;
   fx.position.set(1, 1, -2);
-  const character = p.actors.warmupMesh();                     // one character card (the shared character billboard material)
+  const character = p.actors.warmupMesh();                     // a 23-bone skinned body + an accessory on the character material
   character.position.set(-1, 0, -2);
   const housing = p.stage.warmupHousing();                     // the beacon housing material
   housing.position.set(2, 0, -2);

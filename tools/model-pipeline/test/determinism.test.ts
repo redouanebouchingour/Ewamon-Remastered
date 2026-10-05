@@ -9,28 +9,28 @@ import { describe, expect, it } from 'vitest';
 import { runBuild } from '../src/build.js';
 import { createIO, writeGlbExternalImages } from '../src/glb.js';
 import { encodeKtx2 } from '../src/ktx2.js';
-import { prepareLegendary, prepareLook, pruneRestTracks } from '../src/prepare.js';
+import { prepareLegendary, pruneRestTracks } from '../src/prepare.js';
+import { SHAPES } from '../src/characters.js';
+import type { KayKitCharacter } from '../src/characters.js';
+import { buildShape } from '../src/kaykit.js';
 import { applyTextures } from '../src/textures.js';
 import type { EncodedTexture } from '../src/textures.js';
 import { runSequence } from '../src/transform.js';
 import { LOD1_SIMPLIFY } from '../src/simplify.js';
 import { HAS_SOURCES, OUT_MODELS, SRC_MODELS, skinnedFixture } from './helpers.js';
 
-const SEVENTEEN = ['Death', 'Defeat', 'Idle', 'Jump', 'PickUp', 'Punch', 'RecieveHit', 'Roll', 'Run', 'Run_Carry', 'Shoot_OneHanded', 'SitDown', 'StandUp', 'SwordSlash', 'Victory', 'Walk', 'Walk_Carry'];
-
-async function lookGlb(): Promise<Uint8Array> {
+async function fixtureGlb(): Promise<Uint8Array> {
   const io = await createIO();
-  const { doc } = skinnedFixture([[0.2, 0.3, 0.4], [0.8, 0.1, 0.1]], SEVENTEEN);
-  prepareLook(doc, 'fixture', []);
+  const { doc } = skinnedFixture([[0.2, 0.3, 0.4], [0.8, 0.1, 0.1]], ['Idle', 'Walk', 'Run']);
   pruneRestTracks(doc);
-  await runSequence(doc);
+  await runSequence(doc, { keepAttributes: true });
   return io.writeBinary(doc);
 }
 
 describe('determinism', () => {
-  it('two runs of the look path (prepare → sequence → writeBinary) are byte-identical', async () => {
-    const a = await lookGlb();
-    const b = await lookGlb();
+  it('two runs of the skinned path (sequence → writeBinary) are byte-identical', async () => {
+    const a = await fixtureGlb();
+    const b = await fixtureGlb();
     expect(a.byteLength).toBeGreaterThan(0);
     expect(Buffer.from(a).equals(Buffer.from(b))).toBe(true);
   });
@@ -65,10 +65,26 @@ describe('determinism', () => {
     }
   });
 
+  it.skipIf(!HAS_SOURCES)('two runs of a cross-character KayKit shape (rogue body + ranger head) are byte-identical', async () => {
+    const io = await createIO();
+    const def = SHAPES.rogue_captain!;
+    const once = async (): Promise<Uint8Array> => {
+      const m = new Map<KayKitCharacter, Awaited<ReturnType<typeof io.read>>>();
+      for (const c of ['Knight', 'Rogue', 'Ranger'] as const) m.set(c, await io.read(join(SRC_MODELS, 'kaykit-adventurers', 'Characters', 'gltf', `${c}.glb`)));
+      const b = buildShape('rogue_captain', def, m);
+      await runSequence(b.doc, { keepAttributes: true });
+      return io.writeBinary(b.doc);
+    };
+    const a = await once();
+    const b = await once();
+    expect(Buffer.from(a).equals(Buffer.from(b))).toBe(true);
+    expect(Buffer.from(a).equals(readFileSync(join(OUT_MODELS, 'characters', 'rogue_captain.glb')))).toBe(true);
+  });
+
   it.skipIf(!HAS_SOURCES)('a rerun is all cache hits and reproduces the committed public/models bytes', async () => {
     const first = await runBuild({ write: false, qaDir: null, log: () => undefined });
     const second = await runBuild({ write: false, qaDir: null, log: () => undefined });
-    expect(second.inputs).toBe(23);
+    expect(second.inputs).toBe(4 + 15 + 5 + 1 + 1);      // legendaries, shapes, accessories, animations, atlas
     expect(second.cacheHits).toBe(second.inputs);
     expect([...second.files.keys()].sort()).toEqual([...first.files.keys()].sort());
     for (const [rel, data] of second.files) {
