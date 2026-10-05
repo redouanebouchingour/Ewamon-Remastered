@@ -952,54 +952,90 @@ const RESIDENT_LINES: Readonly<Partial<Record<ZoneId, readonly string[]>>> = {
     'My gran swore the grove used to be twice as wide.',
     'Mira trains in the hedge hall. You can hear the leaves rustle from here.',
     'Mud on the boots means you have been somewhere, my father said.',
+    "Prof. Wynn's lab light is on at all hours. I don't think he sleeps.",
+    'The mire route floods every spring. Bring dry socks.',
+    'My boy caught his first Ewamon by the old lantern. Cried for a week when it evolved.',
+    "Count the rings on a fallen grove-oak sometime. You'll run out of fingers.",
   ],
   cinderhold: [
     'Keep the shutters closed on ash days.',
     'The caldera glows brighter every winter. Nobody says why.',
     'Karn eats his breakfast next to the furnace. Every day.',
     'If your tea is cold, you live in the wrong town.',
+    'The Office men took readings at the caldera again. They never say what they read.',
+    'Ash on the windowsill, ash in the bread, ash in my hair. Home.',
+    'My grandfather forged the first gate hinge in town. Still swings true.',
+    'Fire-types sleep curled on the hearthstones. Mind your step at night.',
   ],
   saltmourn: [
     'The harbour used to hold forty boats. Count them now.',
     'Salt gets into everything. Even the bread.',
     'Captain Maren can read the tide by the smell of it.',
     'Fog rolls in at dusk. Stay off the old pier.',
+    "Maren's lighthouse never misses a night. Not one in twenty years.",
+    "We used to dry fish on every roof. Now it's mostly gulls.",
+    'The old harbour is under that water. You can see the chimneys at low tide.',
+    'Never whistle on a boat. The sea takes it as an invitation.',
   ],
   stormrook: [
     'The coil tower sings before a storm.',
     'My lamps flicker whenever the grid draws hard.',
     'Zia rewired the whole street in one night once.',
     'Lightning never strikes twice here. It strikes nine times.',
+    'The grid hums louder every month. My teeth feel it.',
+    'Rain falls sideways here. We built the gutters sideways too.',
+    'My cousin works the substation. She glows a little after a double shift.',
+    'When the coil tower goes quiet, everyone goes quiet with it.',
   ],
   marrowdig: [
     'Hear that tapping? The mine never sleeps.',
     'My brother found a crystal the size of a fist. Sold it for soup.',
     'Petra can tell a seam by the sound of a pebble.',
     'Mind the low beams. Everyone here has the same bruise.',
+    'The mine whistle blows at noon. Set your clock by it.',
+    "Deeper seams, smaller lamps. That's the rule down there.",
+    "We carve our names in the tunnel walls. Mine's on level four.",
+    'Rock-types sun themselves on the spoil heaps. Lazy beasts. Lovely, though.',
   ],
   vesperveil: [
     'Do not answer if someone knocks three times after dark.',
     'The candles here burn blue on quiet nights.',
     'Nyx once told me my future. I am still waiting for it.',
     'Old houses remember. This one remembers too much.',
+    "Leave a candle in the window. It's polite to the ones who walk at night.",
+    "My mirror shows the room a second late. I've stopped minding.",
+    'The fog keeps secrets better than any priest.',
+    'Ghost-types steal socks. Only the left one. Nobody knows why.',
   ],
   forgewall: [
     'The gate has not closed in a hundred years.',
     'You can tell a Forgewall smith by the burns on the left hand.',
     'Marshal Rell inspects the walls every dawn.',
     'Iron is honest. People less so.',
+    'The siege bells were rung for drills when I was young. Now they ring for real.',
+    "Every brick in the wall has a smith's mark. Find mine and I'll buy you a pie.",
+    'The furnaces never go cold. Not even on holidays.',
+    'Steel-types polish themselves on the anvils at night. You can hear them ring.',
   ],
   skyrend: [
     'The wind up here takes your hat and your manners.',
     'Clouds come through the window some mornings.',
     'Sylvane flies out at dawn. Back by dusk, always.',
     'Breathe slow. The air is thin and the stairs are long.',
+    "The stair has nine hundred steps. I've counted them every day for forty years.",
+    'Up here the stars are close enough to argue with.',
+    'Dragon-types circle the peak at dawn. Best alarm clock there is.',
+    'We hang wind-chimes for the ones who fell. There are a lot of chimes.',
   ],
   solenne: [
     'The cathedral bells count the hours and the Office counts the rest.',
     'Everyone in the capital is in a hurry to be somewhere.',
     'They say the Champion has never lost a home match.',
     'Bread is twice the price it was. The Office says it is temporary.',
+    'The Ledger is open to anyone. Hardly anyone reads it.',
+    'The Wardens walk the cathedral steps at dusk. Nobody stops them to chat.',
+    "Market prices are posted every morning. Every morning they're higher.",
+    'My grandmother says the city once forgot its own name for a day. She laughs when she says it.',
   ],
 };
 const HOUSE_ITEMS = [
@@ -1054,11 +1090,13 @@ export function houseHall(
     props.push(prop('cabinet', mirror * -(hw - 0.55), 0.6, (mirror * Math.PI) / 2));
   }
   const pool = RESIDENT_LINES[zoneId] ?? RESIDENT_LINES.mirevale!;
+  // each house of a town starts on its own line and name (house index k; 3 and 7 are coprime with the pool sizes)
+  const k = Number(/house(\d+)$/.exec(building)?.[1] ?? 0);
   const nLines = 1 + ((h >>> 3) % 3);
-  const lines = Array.from({ length: nLines }, (_, k) => pool[((h >>> 5) + k) % pool.length]!);
+  const lines = Array.from({ length: nLines }, (_, j) => pool[(k + j * 3) % pool.length]!);
   const resident: InteriorNpc = {
     id: `${building}.resident`,
-    name: RESIDENT_NAMES[(h >>> 9) % RESIDENT_NAMES.length]!,
+    name: RESIDENT_NAMES[(townIndex * 5 + k * 7) % RESIDENT_NAMES.length]!,
     lx: mirror * -1.6,
     lz: -hd + 2.2,
     facing: 0,

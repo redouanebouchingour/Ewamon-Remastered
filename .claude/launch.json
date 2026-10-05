@@ -4,21 +4,52 @@
     {
       "name": "render-sandbox",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@ewa/render", "sandbox"],
+      "runtimeArgs": [
+        "--filter",
+        "@ewa/render",
+        "sandbox"
+      ],
       "port": 5180
     },
     {
       "name": "ewa-server",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@ewa/server", "start"],
+      "runtimeArgs": [
+        "--filter",
+        "@ewa/server",
+        "start"
+      ],
       "port": 4000,
       "url": "http://localhost:4000"
     },
     {
       "name": "ewa-client",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@ewa/client", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@ewa/client",
+        "dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "ewa-server-alt",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:/Users/FLOWMA~1/AppData/Local/Temp/claude/C--Users-Flowmatic---Redouane-Ewamon-Remastered/8d2ca930-824c-4bed-889a-942e6720666a/scratchpad/dev-alt.mjs",
+        "server"
+      ],
+      "port": 4100,
+      "url": "http://localhost:4100"
+    },
+    {
+      "name": "ewa-client-alt",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:/Users/FLOWMA~1/AppData/Local/Temp/claude/C--Users-Flowmatic---Redouane-Ewamon-Remastered/8d2ca930-824c-4bed-889a-942e6720666a/scratchpad/dev-alt.mjs",
+        "client"
+      ],
+      "port": 5174
     }
   ]
 }
