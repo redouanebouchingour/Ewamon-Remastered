@@ -36,7 +36,7 @@
       "name": "ewa-server-alt",
       "runtimeExecutable": "node",
       "runtimeArgs": [
-        "C:/Users/FLOWMA~1/AppData/Local/Temp/claude/C--Users-Flowmatic---Redouane-Ewamon-Remastered/8d2ca930-824c-4bed-889a-942e6720666a/scratchpad/dev-alt.mjs",
+        "scripts/dev-alt.mjs",
         "server"
       ],
       "port": 4100,
@@ -46,7 +46,7 @@
       "name": "ewa-client-alt",
       "runtimeExecutable": "node",
       "runtimeArgs": [
-        "C:/Users/FLOWMA~1/AppData/Local/Temp/claude/C--Users-Flowmatic---Redouane-Ewamon-Remastered/8d2ca930-824c-4bed-889a-942e6720666a/scratchpad/dev-alt.mjs",
+        "scripts/dev-alt.mjs",
         "client"
       ],
       "port": 5174
