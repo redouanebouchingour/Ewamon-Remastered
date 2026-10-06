@@ -4,8 +4,8 @@
  * `flags ⊆ FLAG_REGISTRY ∪ badge sugar`. Naming rule (§11.4): snake_case, no zone prefix; colon-namespaced
  * flags are the server's.
  */
-import type { BadgeId } from './types';
-import { BADGE_ORDER } from './types';
+import type { BadgeId, ZoneId } from './types';
+import { BADGE_ORDER, ZONE_ORDER } from './types';
 
 export interface FlagEntry {
   readonly id: string;
@@ -78,7 +78,17 @@ export function badgeFlag(badge: BadgeId): string {
 
 export const BADGE_FLAGS: ReadonlySet<string> = new Set(BADGE_ORDER.map(badgeFlag));
 
-/** True for a registered flag or a badge sugar flag. */
+/**
+ * Phase C3: `visited:<ZoneId>` — the server writes it the first time a player joins a zone (fresh join or handover
+ * arrival). The world map reads it; fast travel only goes to visited towns. Server-set, like every colon flag.
+ */
+export const VISITED_PREFIX = 'visited:';
+export function visitedFlag(zoneId: ZoneId): string {
+  return `${VISITED_PREFIX}${zoneId}`;
+}
+export const VISITED_FLAGS: ReadonlySet<string> = new Set(ZONE_ORDER.map(visitedFlag));
+
+/** True for a registered flag, a badge sugar flag or a `visited:<zone>` flag. */
 export function isKnownFlag(flag: string): boolean {
-  return FLAG_IDS.has(flag) || BADGE_FLAGS.has(flag);
+  return FLAG_IDS.has(flag) || BADGE_FLAGS.has(flag) || VISITED_FLAGS.has(flag);
 }

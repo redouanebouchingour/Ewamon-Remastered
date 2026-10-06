@@ -626,3 +626,89 @@ Every town building opens into a pocket hall in the zone's own outer band (conte
   only while q08 is active; short → toast + nothing spent; enough → spent in the same tx with `inventoryDelta` +
   `questProgress`, once; no q08 → items kept; claim 409 until all done, then once). `story-beats.test.ts` + 1
   (`restore_the_grove` advances q10 `restore`, a beat without harvest does not).
+
+# Phase B progression walker (B5 + B6, 2026-10-06)
+
+The §50.5 M3 walk — one headless account plays Acts I–III through the real server — restored from the WIP commit
+`a6606df` (`test/walker.ts`, `test/pathing.ts`, `test/progression.ts`, `test/progression-act{1,2,3a,3b,3c}.test.ts`)
+and taught the Phase A interiors.
+
+- **Own vitest project.** `vitest.progression.config.ts` (root) runs `packages/server/test/progression-*.test.ts`
+  one file at a time in file-name order (a `BaseSequencer` subclass), with the default config's aliases; root script
+  `pnpm test:progression [leg]`. The default `vitest.config.ts` excludes those files, so `pnpm test` stays fast.
+  `EWA_PROGRESSION_WRITE=1` rewrites a leg's end fixture (`test/fixtures/progression/<leg>.json`); without it the leg
+  compares its end signature (zone, badges, story flags) with the committed one. Each leg starts from the previous
+  leg's fixture. `EWA_WALK_LOG=<file>` streams a live trace.
+- **Halls.** `Walker.walk()` leaves the hall it stands in when the goal lies elsewhere (through `<id>.out`, taking a
+  warp tile first when the exit is beyond a sealed wall) and enters a goal's hall through its door warp (`<id>.in`).
+  `Walker.reachLeader(id)` (used by `goTo('gym', …)`, so `winLeague`, `expectLocked` and league-speaker beats) walks
+  to where the trainer stands for this player (`leaderSpot`: Kirei greets in the foyer until `wardens_met`), clearing
+  the hall on the way: each step is re-planned from the player's real flags (GET /me ∪ `badge:*`) and position — the
+  reachable unbeaten gym trainers and usable unset switches, ranked by content's own `walkInterior` order; when none
+  is reachable, `hop()` takes a warp tile whose landing reaches a goal (Vesperveil's cells; its decoys never qualify).
+  Gym trainers are fought healed (POST /heal works anywhere in a healer town — the halls' nurse counters are client
+  dialogue) with the best lead; a loss heals and retries (twice). `winLeague` now heals **after** reaching the leader
+  (the gym trainers on the way wear the party).
+- **Pathing** (`test/pathing.ts`): `findPath` / `steps` take the player's closed gate solids
+  (`gatesClosedFor(zone, flags)`) and pass them to `standable` / `segmentStandable` — the exact predicate the room
+  uses — so no path crosses a gate the room would refuse. Hall walls are in the heightfield already.
+- **Leg changes.** act1: Mira's pre-beat refusal (`expectLocked(verdant_gym)`) is dropped — she stands behind two gym
+  trainers (L8–10) a fresh L5 starter cannot pass, and her gate flag is set by her own beat `grove_stone`, which plays
+  the moment she is in reach; Karn's and Maren's refusals are still walked (their halls are cleared on the first
+  visit, the refusal is asked at the leader).
+- **Smoke.** `test/progression-halls.test.ts` (same project, ~4 min): every gym hall and the league hall walked with
+  real inputs by a set-up account (five L100 creatures, previous badges and the leader's beats granted through the
+  repos — setup only). It pins the planner on all eight gym designs and on the league hall (Kirei's foyer charge, the
+  four chambers in order).
+- **B6 — `scripts/seed-progression.ts`** (`pnpm --filter @ewa/server seed:progression <leg> <username>
+  [--password <pw>]`; `DATA_DIR` resolved from `packages/server` like the server's `./.data`, or `DATABASE_URL`):
+  loads a leg fixture into a dev account. An existing account keeps its login, look, admin bit and history; its
+  progression rows (creatures, bag, badges, flags, dex, quests, battle pass) and `money / zone / position / title /
+  trainer_exp` are replaced. A missing account is created (`<username>@dev.ewa`, password `correct horse battery`
+  unless `--password`). Creature ids are regenerated; fixture columns the live schema lacks are dropped. Stop a
+  PGlite dev server first (one writer per directory).
+
+## Phase C1 raids (server half)
+
+- **`battleResync { battleId: raidId }`** now goes to every participant twice (`RaidRunner.resyncAll`): at the fight
+  start (lobby → phase 1, right after `setFighting`) with `RaidSession.viewFor(playerId)` — the private battle with the
+  shared boss copied in, `turn 0`, `canCatch false` — and when the catch window opens (the round that fells the boss,
+  after its `raidEvents` and **before** its `inventoryDelta` / `progressionDelta` / `battleEnd`) with
+  `RaidSession.catchStateFor(playerId)`: the §2.15 roll's pre-state (lead at full HP, boss at 1 HP, nobody switching,
+  `ended null`), `canCatch` true only while the participant may still `raidCatch` (damage > 0, no attempt yet).
+  `rollCatch` builds its state from the same private `catchState(p, true)`, so the resync is exactly what the roll
+  starts from. `stateDigest = digestBattleState(state)`. Before this, the client had no `BattleState` to seed a raid
+  battle from (only `raidEvents` + `battleEnd`).
+- No ZoneRoom change: a client-sent `battleResync { battleId: raidId }` still answers `notFound` (the client never
+  sends one for a raid: a raid has no preview / digest check, like pvp).
+- Tests: `raid.test.ts` — the room test asserts both resyncs per participant (fight start: format `raid`, turn 0, own
+  trainerId, full boss HP, digest = `viewFor`; catch window: not ended, boss 1 HP, `canCatch` = damage > 0, ahead of
+  the round's `battleEnd`; none to a non-participant); the pure phases test asserts `catchStateFor` (null for a
+  stranger, `canCatch` false once the attempt is spent).
+
+## Phase C3 — visited flags and fast travel (2026-10-06)
+
+- **Visited.** `onJoin` (fresh join and handover arrival alike) fires `markVisited` when the cached flags lack
+  `visited:<zone>`: one `progress.setFlags` transaction, then `applyFlags` and a `progressionDelta { flags: [flag] }`
+  (asynchronous, like the daily-login grant, so the join never waits on it). Registration writes `visited:` for the
+  starting zone inside the register transaction, so a new account's first join sends nothing and the authority
+  snapshots (A1 / A21 / A22) stay byte-identical.
+- **`fastTravel { zoneId }`** (`ZoneRoom.onFastTravel`) checks, in order: `notTown` (destination kind is not town),
+  `notVisited` (flag cache), `travelGated` (badge gate, belt and braces), `travelBusy` (battle — raids included, they
+  set `battleId` — trade, raid participant, or a crossing in progress), `travelCooldown` (`fastTravelReadyAt`: 3 s
+  after an accepted trip and after any handover arrival). Each refusal is a warn toast + `error notAllowed <reason>`.
+  Accepted: the cooldown starts and `seatHandover(client, dest, dest.spawn)` runs — steps 2–5 of the edge crossing,
+  extracted from `beginHandover` unchanged (reserve on the destination, presence reservation, `handover`,
+  `ud.handover = pending`); the destination validates and acks it exactly like an edge crossing (one position write,
+  `reachZone` quest events). A trip to the zone you stand in teleports to its spawn (`travelBlocked` if nothing
+  walkable is near).
+- `LIMITS.fastTravel` 4 / 1 s (it would otherwise fall to `roomOther`).
+- **Tests.** `test/fast-travel.test.ts` (5): registration marks the start zone; a first join of another zone writes the
+  flag once (row + one delta), a rejoin nothing; an accepted trip from Mire Route = `handover` to Mirevale's spawn, the
+  destination takes the player, the ack writes the row, the arrival starts the cooldown; refusals notVisited / notTown /
+  travelGated, a same-zone hop then travelCooldown, accepted again after 3.1 s; travelBusy in a pvp battle.
+  `test/helpers.ts` `storyOnly` now also drops `visited:`, so story-flag comparisons (world, story-beats, interiors, the
+  progression walk) ignore the new bookkeeping flags.
+- **Found, not fixed (pre-existing):** a page reload within the 20 s reconnect window takes the old avatar over
+  (`existing` in `onJoin`) and keeps `lastSeq: existing.seq`; the new client counts from 1, so every input is
+  `staleSeq` until its seq passes the old one (seen live: ~15 s of rejected movement after a reload).

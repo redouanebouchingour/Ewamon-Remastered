@@ -1,12 +1,13 @@
 /**
  * §4.3 Client → server messages. zod v4 schemas; every payload is validated before any handler
  * runs (the room registers each with `onMessage(name, schema, handler)`; zod v4 implements
- * Standard Schema). Exactly 20 keys in CLIENT_MESSAGES — a `type` outside them has no handler.
+ * Standard Schema). Exactly 21 keys in CLIENT_MESSAGES (Phase C3 added `fastTravel`) — a `type` outside them has no handler.
  *
  * zod v4 `z.number()` already rejects NaN/±Infinity (`.finite()` is a deprecated no-op), so the
  * spine's `.finite()` calls are satisfied by the default. Objects STRIP unknown keys (zod default).
  */
 import { z } from 'zod';
+import { ZONE_IDS } from '../types';
 
 export const InputMsg = z.object({
   seq: z.number().int().min(0).max(0xffffffff),
@@ -64,6 +65,14 @@ export const RaidCatchMsg = z.object({ raidId: z.string().uuid(), orb: z.string(
 export const RaidLeaveMsg = z.object({ raidId: z.string().uuid() });
 /** seat = the destination sessionId from the SeatReservation */
 export const HandoverAckMsg = z.object({ roomId: z.string().min(1), seat: z.string().min(1) });
+/** Phase C3: free fast travel to a visited town — the server answers with a `handover` to that zone's spawn. */
+export const FastTravelMsg = z.object({ zoneId: z.enum(ZONE_IDS) });
+/**
+ * Phase C3: the `error { code: 'notAllowed', detail }` reasons a `fastTravel` can be refused with (each with a warn
+ * toast of its own, so the client does not toast the error again).
+ */
+export const FAST_TRAVEL_REFUSALS = ['notTown', 'notVisited', 'travelGated', 'travelBusy', 'travelCooldown', 'travelBlocked', 'travelFailed'] as const;
+export type FastTravelRefusal = (typeof FAST_TRAVEL_REFUSALS)[number];
 /** §4.5 */
 export const BattleResyncMsg = z.object({ battleId: z.string().uuid() });
 
@@ -88,7 +97,8 @@ export const CLIENT_MESSAGES = {
   raidCatch: RaidCatchMsg,
   raidLeave: RaidLeaveMsg,
   handoverAck: HandoverAckMsg,
-} as const; // exactly 20 keys
+  fastTravel: FastTravelMsg,
+} as const; // exactly 21 keys
 
 export type ClientMessageType = keyof typeof CLIENT_MESSAGES;
 export type ClientPayload<T extends ClientMessageType> = z.infer<(typeof CLIENT_MESSAGES)[T]>;
@@ -98,7 +108,7 @@ export type ClientMessage = {
 export type BattleAction = z.infer<typeof BattleActionSchema>;
 
 export const CLIENT_MESSAGE_TYPES = Object.freeze(Object.keys(CLIENT_MESSAGES) as ClientMessageType[]);
-export const CLIENT_MESSAGE_COUNT = 20;
+export const CLIENT_MESSAGE_COUNT = 21;
 
 /**
  * §4.3 rate limits (per client, sliding window; excess dropped with ONE `error { code: 'rateLimited' }`
@@ -125,6 +135,7 @@ export const CLIENT_MESSAGE_LIMITS: Readonly<Record<ClientMessageType, { readonl
   raidCatch: { max: 4, windowMs: 1_000 },
   raidLeave: { max: 4, windowMs: 1_000 },
   handoverAck: { max: 4, windowMs: 1_000 },
+  fastTravel: { max: 4, windowMs: 1_000 },
 };
 
 export function isClientMessageType(type: unknown): type is ClientMessageType {

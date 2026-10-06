@@ -64,6 +64,8 @@ import { TRAINER_BACK_M, createSceneDirector } from './SceneDirector';
 import type { SceneDirector } from './SceneDirector';
 import { SpawnViews } from './SpawnViews';
 import { LegendaryViews, staticTargetId } from './LegendaryViews';
+import { RaidDen, raidTargetId } from './RaidViews';
+import { raidInfoOf } from '../battle/raid';
 import { createSpriteCatalog, loadCreatureManifest } from './spriteCatalog';
 import type { SpriteCatalog } from './spriteCatalog';
 import type { WorldInstance } from './worldHost';
@@ -126,6 +128,12 @@ class World implements World3D {
   private spawns: SpawnViews | null = null;
   /** Phase B1: legendary statics (the director syncs them on load / flags / unload) */
   private legendaries: LegendaryViews | null = null;
+  /** Phase C1: the open raid's den (synced from the patch handler) */
+  private raidDen: RaidDen | null = null;
+  /** the last `state.raid` id / phase / hpPct seen by the patch handler (no allocation per patch) */
+  private raidSeenId = '';
+  private raidSeenPhase = -1;
+  private raidSeenHp = -1;
   private readonly clientGroupName = 'ewa:client-creatures';
   private ready = false;
   private running = false;
@@ -221,6 +229,7 @@ class World implements World3D {
       },
       selfId: () => this.ws.selfId,
       raidId: () => this.room?.state.raid?.id ?? null,
+      raidInfo: () => (this.room === null ? null : raidInfoOf(this.room.state, this.ws.selfId)),
       view: null,
     });
     setBattleActions({
@@ -308,6 +317,18 @@ class World implements World3D {
         height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
         targets: this.targets,
         interactKey: () => this.keyLabel('interact'),
+      });
+      // Phase C1: the boss in the alpha treatment (glow rim) marks the den
+      this.raidDen = new RaidDen({
+        parent: group,
+        acquire: (d) => p3.sprites.acquire(d),
+        descriptor: (sp, key) => this.catalog?.descriptor(sp, key, 'normal', true) ?? null,
+        ensureSpecies: (sp) => this.ensureSpecies(sp),
+        height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
+        targets: this.targets,
+        interactKey: () => this.keyLabel('interact'),
+        dress: (x, z) => p3.stage.dressSpectator(x, z),
+        undress: (x, z) => p3.stage.undressSpectator(x, z),
       });
     }
     this.audio.armOnGesture(window);
@@ -569,6 +590,7 @@ class World implements World3D {
     const onPatch = (): void => {
       this.remotes.observeTick(state.tick);
       state.players.forEach(this.pushSample);
+      this.syncRaid(state, false);
     };
     this.pushSampleState = state;
     room.onStateChange(onPatch);
@@ -582,10 +604,35 @@ class World implements World3D {
     this.remotes.push(key, this.pushSampleState.tick, p.x, p.z, p.angle, p.moving, p.running);
   };
 
+  /**
+   * Phase C1: `state.raid` → the den (on a new raid / phase) and the battle controller (hpPct, phase, removal). Runs
+   * per applied patch (network callback, not the tick); compares three fields, allocates only on a change.
+   */
+  private syncRaid(state: ZoneState, force: boolean): void {
+    const r = state.raid ?? null;
+    const id = r?.id ?? '';
+    const phase = r?.phase ?? -1;
+    const hp = r?.hpPct ?? -1;
+    if (!force && id === this.raidSeenId && phase === this.raidSeenPhase && hp === this.raidSeenHp) return;
+    const denChanged = force || id !== this.raidSeenId || phase !== this.raidSeenPhase;
+    this.raidSeenId = id;
+    this.raidSeenPhase = phase;
+    this.raidSeenHp = hp;
+    if (denChanged && this.ready && this.zoneLoaded) {
+      this.raidDen?.sync(r === null || id === '' ? null : { id, bossSpecies: r.bossSpecies, bossLevel: r.bossLevel, phase, x: r.x, z: r.z });
+      if (r !== null && id !== '') this.ensureSpecies(r.bossSpecies);
+    }
+    this.battle.onRaidState();
+  }
+
   private detachRoom(): void {
     for (const f of this.roomDisposers) f();
     this.roomDisposers = [];
     this.pushSampleState = null;
+    this.raidDen?.clear();
+    this.raidSeenId = '';
+    this.raidSeenPhase = -1;
+    this.raidSeenHp = -1;
     this.remotes.clear();
     this.spawns?.clear();
     this.input.clear();
@@ -642,6 +689,8 @@ class World implements World3D {
     this.director.setWeather(room.state.weather as WeatherKind);
     this.input.setEnabled(useUiStore.getState().battle === null);
     this.battle.attach(this.battleView());
+    // Phase C1: a raid already open in this room (or opened while the zone built)
+    this.syncRaid(room.state, true);
   }
 
   private onZoneChanged(h: ZoneHandle | null, z: ZoneDef | null): void {
@@ -649,6 +698,7 @@ class World implements World3D {
     this.input.setCollider(this.stepCollider);
     this.zone = z;
     this.spawns?.reground();
+    this.raidDen?.reground();
   }
 
   /** §20.10.3 phase 3: the zone's bind set, parallel, real byte progress from the manifest sizes. */
@@ -709,6 +759,8 @@ class World implements World3D {
       case 'battleResync':
         this.input.setEnabled(false);
         for (const s of m.state.sides) for (const b of s.party) this.ensureSpecies(b.creature.speciesId);
+        // Phase C1: a raid's fight starts with this resync — the lobby yields to the battle
+        if (useUiStore.getState().modal === 'raidLobby') useUiStore.getState().closeModal();
         this.battle.onBattleResync(m);
         return;
       case 'battleEnd': {
@@ -744,6 +796,8 @@ class World implements World3D {
         return;
       }
       case 'raidEvents':
+        // Phase C1: a raid round's (or the catch roll's) events drive the battle view
+        this.battle.onRaidEvents(m);
         return;
       default:
         return;
@@ -873,6 +927,21 @@ class World implements World3D {
         }
         this.ws.send('interact', { targetId: staticTargetId(t.id), kind: 'static' });
         return;
+      case 'raid': {
+        // Phase C1: the den — join (lobby, not in yet) and open the lobby; later phases open it as a view
+        const r = this.room?.state.raid ?? null;
+        const raidId = raidTargetId(t.id);
+        if (r === null || r.id !== raidId) return;
+        if (r.phase === 0 && !r.damageBoard.has(this.ws.selfId)) {
+          if (!partyCanBattle(useSessionStore.getState().inventory)) {
+            toast('warn', 'Your party needs healing before a raid.');
+            return;
+          }
+          this.ws.send('raidJoin', { raidId });
+        }
+        ui.openModal('raidLobby', { raidId });
+        return;
+      }
     }
   }
 
@@ -940,8 +1009,10 @@ class World implements World3D {
       enterBattle: (s) => {
         // from the battle state (the BattleSummary patch can arrive after battleStart)
         this.foe.begin(foeSpecOf(s.foeId, s.foeNpc, this.ws.selfId, (id) => foeIdentity(id)));
+        // Phase C1: the den's boss steps aside while its arena copy fights
+        if (s.format === 'raid') this.raidDen?.setHidden(true);
         void this.director.enterBattle(s);
-        this.audio.setTheme('battle', 400);
+        this.audio.setTheme(s.format === 'raid' ? 'raid' : 'battle', 400);
       },
       ended: (foeWon) => {
         // Phase B7: the winner cheers, the loser bows (the player's own avatar too)
@@ -950,6 +1021,7 @@ class World implements World3D {
       },
       exitBattle: () => {
         this.foe.end();
+        this.raidDen?.setHidden(false);
         void this.director.exitBattle();
         if (this.zone !== null) this.audio.setTheme(this.audio.themeFor(this.zone.id, this.zone.biome), 400);
       },
@@ -1211,7 +1283,8 @@ class World implements World3D {
       remotes: this.remotes.size, spawnedRemotes: this.remotes.spawnedCount, spawns: this.spawns?.size ?? 0,
       spawnList: room === null ? [] : [...room.state.spawns.values()].map((s) => ({ id: s.id, speciesId: s.speciesId, level: s.level, x: s.x, z: s.z, engagedBy: s.engagedBy })),
       target: this.targets.current === null ? null : { id: this.targets.current.id, kind: this.targets.current.kind },
-      battle: ui.battle === null ? null : { phase: ui.battle.phase, turn: ui.battle.turnLabel, log: ui.battle.log.slice(-4).map((l) => l.text), desyncs: ui.battle.desyncs, result: ui.battle.result },
+      battle: ui.battle === null ? null : { phase: ui.battle.phase, turn: ui.battle.turnLabel, log: ui.battle.log.slice(-4).map((l) => l.text), desyncs: ui.battle.desyncs, result: ui.battle.result, raid: ui.battle.raid ?? null },
+      raid: room === null ? null : raidInfoOf(room.state, selfId), raidDen: this.raidDen === null ? null : { id: this.raidDen.raidId, phase: this.raidDen.phase, visible: this.raidDen.visible, dressed: this.raidDen.dressed }, modal: ui.modal,
       dialogue: ui.dialogue, chat: this.hudWriter.current().chat.map((c) => `${c.name}: ${c.text}`), connection: ui.connection,
       hudSetCalls: this.hudWriter.setCalls, lastSecond: this.lastSecond, audio: this.audio.state,
       party: useSessionStore.getState().inventory?.party.map((c) => `${c.speciesId} L${c.level} ${c.hp}hp`) ?? [],

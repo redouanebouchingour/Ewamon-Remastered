@@ -13,6 +13,35 @@ export interface BattleResult {
   readonly rewards: RewardsSummary;
   /** evolve / learn-move prompts queued after the card */
   readonly prompts: number;
+  /** Phase C1: a raid's summary card (RaidSummaryCard) instead of the BattleResultCard */
+  readonly raid?: RaidSummary;
+}
+
+/** Phase C1 — what the raid summary card shows (written by BattleController; display only). */
+export interface RaidSummary {
+  readonly bossSpecies: string;
+  readonly bossLevel: number;
+  /** the boss went down (the catch window opened) */
+  readonly cleared: boolean;
+  /** the catch attempt's result; null = no attempt (not eligible, skipped or the window closed) */
+  readonly caught: boolean | null;
+  /** the player's whole party fainted before the boss did (they stay on the board) */
+  readonly fainted: boolean;
+  /** the player left the fight (`raidLeave`) */
+  readonly left: boolean;
+  readonly damage: number;
+  /** 1-based place on the damage board; null when the board did not list the player */
+  readonly rank: number | null;
+  readonly board: readonly { readonly playerId: string; readonly name: string; readonly damage: number; readonly self: boolean }[];
+}
+
+/** Phase C1 — the raid half of `ui.battle` (format 'raid'; BattleController is its writer). */
+export interface RaidBattleUi {
+  readonly raidId: string;
+  /** the round the next `raidAction` is for */
+  readonly round: number;
+  /** the boss is down: only orbs (one `raidCatch`) or Done */
+  readonly catchWindow: boolean;
 }
 
 /** An explicit post-battle REST prompt (§20.5.6): each is its own modal, in order; never automatic. */
@@ -36,6 +65,8 @@ export interface BattleUi {
   readonly result: BattleResult | null;
   /** the preview's timeline duration while 'submitted' (sizes the waiting indicator); 0 = unknown */
   readonly expectedMs: number;
+  /** Phase C1: set for format 'raid' */
+  readonly raid?: RaidBattleUi;
 }
 
 /**

@@ -40,9 +40,9 @@ export const content = createContentIndex();
  */
 export const START_MONEY = 3_000 + streakReward(1).money;
 export const START_EXP = TRAINER_EXP.dailyLogin;
-/** story_flags minus the login-streak bookkeeping (`streak:<n>`, `streak:last:<day>`). */
+/** story_flags minus the login-streak bookkeeping (`streak:<n>`, `streak:last:<day>`) and the Phase C3 `visited:<zone>` flags. */
 export function storyOnly(flags: readonly unknown[]): string[] {
-  return flags.map(String).filter((f) => !f.startsWith('streak:'));
+  return flags.map(String).filter((f) => !f.startsWith('streak:') && !f.startsWith('visited:'));
 }
 
 /** PGlite in memory by default; node-postgres when `databaseUrl` is given (market-concurrency.test.ts). */

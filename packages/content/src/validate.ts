@@ -53,7 +53,7 @@ import { DAILY_SWARMS, RAID_HOTSPOTS, SEASONAL_EVENTS } from './data/liveops';
 import { BATTLE_PASS } from './data/battlePass';
 import { BODIES, LOOKS, TITLES } from './data/bodies';
 import { SHOP_STOCK_DEFAULT } from './data/shop';
-import { FLAG_REGISTRY, badgeFlag, isKnownFlag } from './flags';
+import { FLAG_REGISTRY, VISITED_FLAGS, badgeFlag, isKnownFlag } from './flags';
 import { computeRosterReport } from './roster';
 import { getZoneSurface, isWalkable, nearestWalkable, playableBounds, reachableWithin, walkableComponent, walkableRatio, waterRatio } from './heightfield';
 import type { ZoneSurface } from './heightfield';
@@ -166,7 +166,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   for (const q of QUESTS) if (q.rewards.flag !== null) setFlags.add(q.rewards.flag);
   for (const l of LEAGUE) for (const f of l.setsFlags) setFlags.add(f);
   for (const s of LEGENDARY_STATICS) setFlags.add(s.flag);
-  const flagResolvable = (f: string): boolean => f.startsWith('badge:') || setFlags.has(f);
+  const flagResolvable = (f: string): boolean => f.startsWith('badge:') || VISITED_FLAGS.has(f) || setFlags.has(f);
   const checkFlag = (where: string, f: string): void => {
     if (!isKnownFlag(f)) err(`${where}: flag '${f}' is not in the §11 registry`);
     if (f.startsWith(BEAT_DONE_PREFIX)) err(`${where}: flag '${f}' uses the reserved beat-done prefix`);

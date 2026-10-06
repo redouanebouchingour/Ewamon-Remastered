@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-06 Phase C3 (world map, minimap, fast travel): the user's decision "world map + HUD minimap + free fast travel to visited towns". -->
+
+## 2026-10-06 — `00-spine.md` §4.3, §4.6 — `fastTravel { zoneId }` (21st client message, 4/s) and `visited:<ZoneId>` flags
+Why: free fast travel between visited towns needs a server-checked request and a per-player record of where the player has been; the world map shows the same record.
+Evidence: `packages/protocol/test/payloads.test.ts` (21 keys, fastTravel valid / invalid); `packages/server/test/fast-travel.test.ts` (registration and first joins write `visited:` once; accepted trip = handover to the town's spawn, the ack writes the row; refusals notVisited / notTown / travelGated / travelBusy / travelCooldown); `packages/content/test/worldMap.test.ts` (`isKnownFlag` accepts exactly the 21 `visited:` flags; map cells unique, linked zones adjacent).
+Affects: `@ewa/content` (`visitedFlag`, `VISITED_FLAGS`, `zoneMapPositions`), `@ewa/protocol` (`FastTravelMsg`, `FAST_TRAVEL_REFUSALS`, `CLIENT_MESSAGE_LIMITS.fastTravel`), the server (`ZoneRoom.onFastTravel`, `markVisited`, `LIMITS.fastTravel`, registration), the client (`/play/map`, the `M` key, the HUD minimap). Server tests compare story flags through `storyOnly`, which now drops `visited:` like the streak bookkeeping.
+
 <!-- 2026-10-06 Phase B (story-complete): battle presentation and league story gates. -->
 
 ## 2026-10-06 — `00-spine.md` §3.3 — `LeagueTrainer.mid { halfHp, lastStand }`: a line when the foe team first drops to half its total HP and one when its last creature enters, for all 12 league trainers

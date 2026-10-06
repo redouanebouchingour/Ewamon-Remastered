@@ -83,3 +83,13 @@ installed library that future readers should not have to re-derive. The spec its
   apostrophe in `'…Or I'm older…'`), which is the concurrent content agent's WIP. Because protocol references content, `tsc -b`
   stops there; protocol itself is clean (above).
 - `pnpm lint` — protocol `src/` and `test/` clean; the same content parse error is the only other report.
+
+## Phase C3 — `fastTravel` (2026-10-06)
+
+- `CLIENT_MESSAGES.fastTravel = FastTravelMsg { zoneId: z.enum(ZONE_IDS) }` — the 21st client message
+  (`CLIENT_MESSAGE_COUNT` 21); `CLIENT_MESSAGE_LIMITS.fastTravel` 4 / 1 s (the server adds a 3 s cooldown of its own).
+- `FAST_TRAVEL_REFUSALS` — the `error { code: 'notAllowed', detail }` reasons (`notTown`, `notVisited`, `travelGated`,
+  `travelBusy`, `travelCooldown`, `travelBlocked`, `travelFailed`), typed for the server and read by the client so it does
+  not toast an error the server already explained with its own toast. No server message changed: an accepted trip is the
+  ordinary `handover`.
+- `test/payloads.test.ts`: 21 keys in spine order, the valid example and four malformed payloads.

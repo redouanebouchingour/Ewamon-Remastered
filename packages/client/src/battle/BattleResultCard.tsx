@@ -19,7 +19,8 @@ export function BattleResultCard() {
   const seat = useUiStore((st) => st.battle?.seat ?? 0);
   const format = useUiStore((st) => st.battle?.format ?? null);
   const state = useUiStore((st) => st.battle?.authoritative ?? null);
-  if (result === null) return null;
+  // Phase C1: a raid closes with its own summary card (RaidSummaryCard)
+  if (result === null || result.raid !== undefined) return null;
   const o = result.outcome;
   const title =
     o.winner === 'caught' ? 'Caught!' : o.winner === 'fled' ? 'Got away safely' : o.winner === 'draw' ? 'A draw' : o.winner === seat ? 'Victory' : 'Defeat';

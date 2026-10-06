@@ -112,7 +112,7 @@ export { DAILY_SWARMS, RAID_HOTSPOTS, SEASONAL_EVENTS, VARIANT_PALETTES, WEEKDAY
 export { BATTLE_PASS } from './data/battlePass';
 export { MARKET, SHOP_STOCK_DEFAULT } from './data/shop';
 export { BODIES, LOOKS, TITLES } from './data/bodies';
-export { BADGE_FLAGS, FLAG_IDS, FLAG_REGISTRY, badgeFlag, isKnownFlag } from './flags';
+export { BADGE_FLAGS, FLAG_IDS, FLAG_REGISTRY, VISITED_FLAGS, VISITED_PREFIX, badgeFlag, isKnownFlag, visitedFlag } from './flags';
 export type { FlagEntry } from './flags';
 
 // ─── schemas ─────────────────────────────────────────────────────────────────
@@ -243,6 +243,10 @@ export {
   interiorsFor,
 } from './interiorIndex';
 export { GYM_HALL, LEAGUE_HALL, interiorTrainerFlag, switchFlag } from './data/interiors';
+
+// ─── Phase C3 world map ──────────────────────────────────────────────────────
+export type { MapCell } from './worldMap';
+export { MAP_STEP, computeMapPositions, zoneMapPositions, zoneMapSize } from './worldMap';
 
 // ─── roster + validate ───────────────────────────────────────────────────────
 export { childrenOf, computeRosterReport, stageOf } from './roster';

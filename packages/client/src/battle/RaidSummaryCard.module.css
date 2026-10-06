@@ -1,0 +1,115 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-2);
+  background: var(--bg-2);
+}
+
+.body[data-cleared] .stat:first-child {
+  border-color: var(--accent-a32);
+}
+
+.label {
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.value {
+  margin: 0;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: var(--lh-h3);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.line {
+  color: var(--text-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 2ch minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--s-3);
+  color: var(--text-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+
+.self {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.rank {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.damage {
+  font-family: var(--face-mono);
+  font-size: var(--t-mono);
+  line-height: var(--lh-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.rewards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reward {
+  color: var(--text-hi);
+  font-family: var(--face-mono);
+  font-size: var(--t-mono);
+  line-height: var(--lh-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.none {
+  color: var(--text-2);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}

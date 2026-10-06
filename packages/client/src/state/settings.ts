@@ -9,7 +9,7 @@ export type Colorblind = 'none' | 'deuteranopia' | 'protanopia' | 'tritanopia';
 export type InputAction =
   | 'forward' | 'back' | 'left' | 'right' | 'run' | 'interact' | 'jump' | 'chat'
   | 'emote1' | 'emote2' | 'emote3' | 'emote4' | 'emote5' | 'emote6'
-  | 'challenge' | 'rotateLeft' | 'rotateRight' | 'party' | 'bag' | 'journal' | 'pause' | 'toggleHud';
+  | 'challenge' | 'rotateLeft' | 'rotateRight' | 'party' | 'bag' | 'journal' | 'map' | 'pause' | 'toggleHud';
 
 export interface GraphicsSettings {
   readonly reducedEffects: boolean;
@@ -82,6 +82,7 @@ export const DEFAULT_KEYBINDS: Keybinds = {
   party: ['KeyP'],
   bag: ['KeyB'],
   journal: ['KeyJ'],
+  map: ['KeyM'],
   pause: ['Escape'],
   toggleHud: ['F1'],
 };

@@ -11,11 +11,14 @@ import { BattleOverlay } from '../battle/BattleOverlay';
 import { ChallengePrompt } from '../world/ChallengePrompt';
 import { ChatInput } from '../world/ChatInput';
 import { DialogueBox } from '../world/DialogueBox';
+import { Minimap } from '../world/Minimap';
 import { PostBattlePrompts } from '../world/PostBattlePrompts';
+import { RaidLobby } from '../world/RaidLobby';
 import { TradeModal } from '../world/TradeModal';
 import { setNavigator } from './navigation';
 import { installMessageRouter } from '../net/messageRouter';
 import { getWorldSession } from '../net/WorldSession';
+import { worldCapability } from '../scene/worldHost';
 import { useSettingsStore } from '../state/settings';
 import type { InputAction } from '../state/settings';
 import { useUiStore } from '../state/ui';
@@ -42,6 +45,7 @@ const SHORTCUTS: Partial<Record<InputAction, string>> = {
   // field items (Rare Candy, potions, revives…) are used from a creature's panel on the Party screen
   bag: '/play/party',
   journal: '/play/dex',
+  map: '/play/map',
 };
 
 function isTyping(target: EventTarget | null): boolean {
@@ -136,6 +140,9 @@ function WorldHint() {
         <kbd>{label(binds.journal[0])}</kbd> Dex
       </span>
       <span>
+        <kbd>{label(binds.map[0])}</kbd> Map
+      </span>
+      <span>
         <kbd>{label(binds.pause[0]) === 'Escape' ? 'Esc' : label(binds.pause[0])}</kbd> Settings
       </span>
     </aside>
@@ -146,6 +153,7 @@ export function PlayShell() {
   const { zoneId } = useLoaderData<typeof playLoader>();
   const location = useLocation();
   const hudVisible = useUiStore((st) => st.hudVisible);
+  const inBattle = useUiStore((st) => st.battle !== null);
   useWorldConnection(zoneId as ZoneId);
   useShellHotkeys();
   const pendingPanel = usePendingPanel();
@@ -157,11 +165,14 @@ export function PlayShell() {
         {pendingPanel !== null ? <PanelSkeleton path={pendingPanel} /> : <Outlet />}
       </div>
       {!hasPanel && <WorldHint />}
+      {/* Phase C3: the minimap draws over the live world only (no world → no canvas, as GameCanvas) */}
+      {!hasPanel && !inBattle && worldCapability() && <Minimap />}
       <DialogueBox />
       <ChatInput />
       <BattleOverlay />
       <ChallengePrompt />
       <TradeModal />
+      <RaidLobby />
       <PostBattlePrompts />
       <ConnectionOverlay />
       <NotificationHost />

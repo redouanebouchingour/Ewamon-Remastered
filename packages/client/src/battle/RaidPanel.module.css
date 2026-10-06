@@ -1,0 +1,118 @@
+/* Phase C1: the raid's shared numbers, a glass card at the arena's top-left, under the HUD's party strip (16 px margin +
+   48 px thumbs + its bars); the banner is centred and the HP bars float over the battlers. */
+.panel {
+  position: absolute;
+  inset-inline-start: var(--s-5);
+  inset-block-start: calc(var(--topbar-h) + var(--s-9) + var(--s-6));
+  z-index: var(--z-panel);
+  inline-size: min(280px, calc(100% - 48px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-4);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-3);
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-2);
+  pointer-events: none;
+}
+
+.panel[data-phase='2'] {
+  border-color: var(--danger);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+.boss {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.level {
+  color: var(--text-2);
+  font-family: var(--face-text);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 600;
+}
+
+.hp {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.hp > :first-child {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.pct {
+  color: var(--text-1);
+  font-family: var(--face-mono);
+  font-size: var(--t-mono);
+  line-height: var(--lh-mono);
+  font-variant-numeric: tabular-nums;
+  min-inline-size: 4ch;
+  text-align: end;
+}
+
+.timer {
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 2ch minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--s-2);
+  color: var(--text-1);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}
+
+.self {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.rank {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.damage {
+  font-family: var(--face-mono);
+  font-variant-numeric: tabular-nums;
+}

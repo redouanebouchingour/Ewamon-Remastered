@@ -47,6 +47,7 @@ const PATHS = {
   orb: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h6M15 12h6M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
   leaf: 'M5 19c0-8 5-14 15-14 0 10-6 15-14 15M5 19l7-7',
   quest: 'M7 4h11a2 2 0 0 1 2 2v1h-4M7 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7M9 9.5l1.5 1.5 3-3M9 15h6',
+  map: 'M9 4.5L3.5 6.5v13L9 17.5l6 2 5.5-2v-13L15 6.5l-6-2zM9 4.5v13M15 6.5v13',
 } as const;
 
 export type IconName = keyof typeof PATHS;

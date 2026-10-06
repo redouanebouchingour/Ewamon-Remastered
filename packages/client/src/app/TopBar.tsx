@@ -29,6 +29,7 @@ export const NAV: readonly { readonly to: string; readonly label: string; readon
   { to: '/play/market', label: 'Market', icon: 'market' },
   { to: '/play/pass', label: 'Pass', icon: 'pass' },
   { to: '/play/quests', label: 'Quests', icon: 'quest' },
+  { to: '/play/map', label: 'Map', icon: 'map' },
   { to: '/play/settings', label: 'Settings', icon: 'settings' },
 ];
 
@@ -151,9 +152,9 @@ export function TopBar() {
         {NAV.map((n) => {
           const count = counts[n.to] ?? 0;
           return (
-            <NavLink key={n.to} to={n.to} className={({ isActive }) => cx(s.link, isActive && s.active)}>
+            <NavLink key={n.to} to={n.to} className={({ isActive }) => cx(s.link, isActive && s.active)} title={n.label}>
               <Icon name={n.icon} size="sm" />
-              <span>{n.label}</span>
+              <span className={s.linkLabel}>{n.label}</span>
               {count > 0 && (
                 <span className={s.count} aria-label={`${count} new`}>
                   {count > 99 ? '99+' : count}

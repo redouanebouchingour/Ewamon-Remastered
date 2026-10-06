@@ -1,0 +1,41 @@
+/*
+ * Phase C3 HUD minimap: a glass square on the right, under the canvas HUD's top-right clock + quest hint (the HUD's
+ * margin + 60 px × uiScale ≤ 1.4) — clear of the toasts and the scenery pill in the bottom-right corner, the chat
+ * (bottom-left) and the prompt (bottom-centre).
+ */
+
+.minimap {
+  position: absolute;
+  inset-block-start: calc(var(--topbar-h) + 112px);
+  inset-inline-end: var(--s-5);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s-1);
+  padding: var(--s-2);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--r-3);
+  background: var(--glass);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
+.canvas {
+  display: block;
+  inline-size: 168px;
+  block-size: 168px;
+  border-radius: var(--r-2);
+  background: var(--bg-0);
+}
+
+.label {
+  overflow: hidden;
+  max-inline-size: 168px;
+  color: var(--text-1);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 600;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

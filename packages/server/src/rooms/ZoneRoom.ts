@@ -19,13 +19,14 @@ import {
   leagueStoryGate,
   nearestWalkable,
   playableBounds,
+  visitedFlag,
   zone as zoneById,
 } from '@ewa/content';
 import type { BadgeId, Heightfield, LinkDir, RaidHotspot, RectSolid, ZoneDef, ZoneId } from '@ewa/content';
 import { createRng } from '@ewa/core';
 import type { Rng } from '@ewa/core';
 import { BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, PlayerState, RaidState, SpawnState, ZoneState } from '@ewa/protocol';
-import type { ChallengeFailReason, ClientMessageType, ClientPayload, ServerMessage } from '@ewa/protocol';
+import type { ChallengeFailReason, ClientMessageType, ClientPayload, FastTravelRefusal, ServerMessage } from '@ewa/protocol';
 import type { RoomDeps } from '../deps';
 import { censor, sanitizeChat } from '../chat/filter';
 import { LOG_EVERY_MS, createRoomMetrics, recordTick, roomLogLine, rollRoomMetrics } from '../metrics';
@@ -121,6 +122,8 @@ export interface ZoneUserData {
   unknown: number[];
   /** §30.6.3 repel / lure: metres left (decremented by accepted movement); repel refuses weaker wild spawns */
   repel: { readonly kind: 'repel' | 'lure'; steps: number } | null;
+  /** Phase C3: no `fastTravel` before this time (3 s after the last accepted one, or after any arrival) */
+  fastTravelReadyAt: number;
 }
 
 export type ZoneClient = Client<{ userData: ZoneUserData; auth: ZoneAuth }>;
@@ -148,6 +151,8 @@ export const EMOTE_MS = 2_000;
 export const IDLE_MS = 250;
 export const RECONNECT_S = 20;
 export const CHALLENGE_RANGE_M = 12;
+/** Phase C3: the fast-travel cooldown (after an accepted travel, and after arriving by any handover). */
+export const FAST_TRAVEL_COOLDOWN_MS = 3_000;
 
 /** Link direction → unit vector (R6: n = −z, s = +z, e = +x, w = −x). */
 export const LINK_VECTORS: Readonly<Record<LinkDir, readonly [number, number]>> = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] };
@@ -449,6 +454,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       rejects: [],
       unknown: [],
       repel: null,
+      fastTravelReadyAt: arrival !== null ? this.now() + FAST_TRAVEL_COOLDOWN_MS : 0,
     };
     // R11: the join's AOI pass runs here, not on the first tick, so a chat/interact sent right after joining
     // already has a cell and an audience (a takeover client re-registers the viewer from scratch)
@@ -465,6 +471,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     // §30.9.1: the first room join of a UTC day grants the daily login (once per day, shared with POST /auth/login);
     // the flag cache loaded above already says whether today's grant happened, so a same-day join costs nothing
     if (!client.userData.flags.has(`${STREAK_LAST_PREFIX}${dayKey(this.now())}`)) void this.grantDailyLogin(client, playerId);
+    // Phase C3: the first join of this zone (fresh join or handover arrival) writes `visited:<zone>` (world map, fast travel)
+    if (!client.userData.flags.has(visitedFlag(this.zone.id))) void this.markVisited(client, playerId);
 
     // P3: a reload mid-battle rejoins this room; the client gets the live battle back without asking
     const live = this.battles.ofPlayer(playerId);
@@ -606,6 +614,22 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.sendMsg(client, { type: 'toast', level: 'success', text: `Daily login — day ${g.streak} streak` });
   }
 
+  /** Phase C3: persists `visited:<zone>` once, through `applyFlags`, and tells the client (progressionDelta). */
+  private async markVisited(client: ZoneClient, playerId: string): Promise<void> {
+    const deps = this.deps;
+    const flag = visitedFlag(this.zone.id);
+    const ok = await deps.repos.db
+      .transaction((tx) => deps.repos.progress.setFlags(tx, playerId, [flag], new Date(this.now())))
+      .then(() => true)
+      .catch((e: unknown) => {
+        deps.log.warn({ err: e, playerId, flag }, 'visited flag write failed');
+        return false;
+      });
+    if (!ok || client.userData === undefined || client.userData.flags.has(flag)) return;
+    this.applyFlags(client.userData, [flag]);
+    this.sendMsg(client, progressionOnly({ flags: [flag] }));
+  }
+
   private async leadLevel(playerId: string): Promise<number> {
     const deps = this.deps;
     const party = await deps.repos.db.transaction((tx) => deps.repos.creatures.party(tx, playerId));
@@ -714,6 +738,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
           return this.onChallengeReply(client, data);
         case 'handoverAck':
           return this.onHandoverAck(client, data);
+        case 'fastTravel':
+          return this.onFastTravel(client, data);
         case 'tradeRequest':
           return this.onTrade(client, this.tradeRequestGuard(client) ?? this.trades.request(client.userData!.playerId, (data as ClientPayload<'tradeRequest'>).targetId));
         case 'tradeReply': {
@@ -1420,7 +1446,6 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   // ─── handover (§30.2.7) ─────────────────────────────────────────────────────
 
   private async beginHandover(client: ZoneClient, dir: LinkDir): Promise<void> {
-    const deps = this.deps;
     const ud = client.userData!;
     const ps = this.state.players.get(ud.playerId);
     if (ps === undefined) return;
@@ -1434,9 +1459,23 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       ud.moved = true;
       return;
     }
+    if (!(await this.seatHandover(client, destId, entryPoint(dest, dir, ps.x, ps.z)))) {
+      const [vx, vz] = LINK_VECTORS[dir];
+      this.pushBack(ps, vx, vz);
+      ud.moved = true;
+    }
+  }
+
+  /**
+   * Steps 2–5 of a crossing to `destId` at `entry` (edge crossings and Phase C3 fast travel): reserve a seat on the
+   * destination, record the presence reservation it validates, send the `handover`. False when the reservation failed
+   * (`ud.handover` is cleared again).
+   */
+  private async seatHandover(client: ZoneClient, destId: ZoneId, entry: { readonly x: number; readonly z: number }): Promise<boolean> {
+    const deps = this.deps;
+    const ud = client.userData!;
     ud.handover = 'reserving';
     try {
-      const entry = entryPoint(dest, dir, ps.x, ps.z);
       // 2. reserve on the destination (shard 0 by preference)
       const room = await pickZoneRoom(destId, deps.ticket);
       const seat = await reserveZoneSeat(room, { zoneId: destId, shard: Number(room.metadata?.shard ?? 0), ticket: deps.ticket, handover: { fromRoomId: this.roomId, x: entry.x, z: entry.z } });
@@ -1446,18 +1485,49 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
         JSON.stringify({ fromRoomId: this.roomId, toRoomId: seat.roomId, sessionId: seat.sessionId, x: entry.x, z: entry.z, at: this.now() }),
         10,
       );
-      if (client.userData === undefined || this.clientOf(ud.playerId) !== client) return;
+      if (client.userData === undefined || this.clientOf(ud.playerId) !== client) return true;
       // 4. the whole ISeatReservation
       this.sendMsg(client, { type: 'handover', roomId: seat.roomId, seat, zoneId: destId, x: entry.x, z: entry.z });
       // 5.
       ud.handover = { toRoomId: seat.roomId, sentAt: this.now() };
+      return true;
     } catch (e) {
       deps.log.error({ err: e, playerId: ud.playerId, dest: destId }, 'handover reservation failed');
       ud.handover = null;
-      const [vx, vz] = LINK_VECTORS[dir];
-      this.pushBack(ps, vx, vz);
-      ud.moved = true;
+      return false;
     }
+  }
+
+  /**
+   * Phase C3 fast travel: a handover to a visited town's `spawn`, free. Refused (toast + `error notAllowed <reason>`)
+   * when the destination is not a town (`notTown`), not visited (`notVisited`), gated by a badge the player lacks
+   * (`travelGated`), or while battling / trading / in a raid / mid-crossing (`travelBusy`), or inside the 3 s cooldown
+   * (`travelCooldown`). Travelling to the zone the player stands in teleports them to its spawn.
+   */
+  private async onFastTravel(client: ZoneClient, m: ClientPayload<'fastTravel'>): Promise<void> {
+    const ud = client.userData!;
+    const ps = this.state.players.get(ud.playerId);
+    if (ps === undefined) return;
+    const now = this.now();
+    const dest = zoneById(m.zoneId);
+    const refuse = (detail: FastTravelRefusal, text: string): void => {
+      this.sendMsg(client, { type: 'toast', level: 'warn', text });
+      this.sendMsg(client, { type: 'error', code: 'notAllowed', detail });
+    };
+    if (dest.kind !== 'town') return refuse('notTown', 'Fast travel only goes to towns.');
+    if (!ud.flags.has(visitedFlag(dest.id))) return refuse('notVisited', `You have not been to ${dest.name} yet.`);
+    if (dest.gate !== null && !ud.badges.includes(dest.gate)) return refuse('travelGated', `The way is barred. Badge required: ${dest.gate}`);
+    if (ud.battleId !== null || ud.tradeId !== null || ud.handover !== null || this.raid?.isParticipant(ud.playerId) === true) {
+      return refuse('travelBusy', 'You cannot travel right now.');
+    }
+    if (now < ud.fastTravelReadyAt) return refuse('travelCooldown', 'Catch your breath before travelling again.');
+    ud.fastTravelReadyAt = now + FAST_TRAVEL_COOLDOWN_MS;
+    if (dest.id === this.zone.id) {
+      if (!this.teleport(ud, ps, dest.spawn.x, dest.spawn.z)) return refuse('travelBlocked', 'Something blocks the way.');
+      this.sendMsg(client, { type: 'toast', level: 'info', text: `Back at ${dest.name}.` });
+      return;
+    }
+    if (!(await this.seatHandover(client, dest.id, dest.spawn))) refuse('travelFailed', 'Travel failed — staying here.');
   }
 
   private pushBack(ps: PlayerState, vx: number, vz: number): void {

@@ -759,3 +759,102 @@ post[0]); content `test/league-mid.test.ts` (3). Client + content: 36 files, 276
 Tests: `test/legendary-statics.test.ts` (4: gate flags, visible set at the snapped point for every static, views
 spawn / prompt / despawn on the flag, director sync on load / refresh / unload); `test/quest-journal.test.tsx` (4:
 status model, hint text, NAV, route render + mocked claim + Track); `routes.test.tsx` renders `/play/quests`.
+
+## Phase C1 raids
+
+- **Den** (`scene/RaidViews.ts`, `RaidDen`): while `room.state.raid` is open (phases 0–3) the boss stands at the
+  hotspot `(x, z)` as a billboard with the renderer's alpha treatment (`descriptor(sp, key, 'normal', true)` →
+  `alphaGlow`) at `RAID_DEN_SCALE` 1.8 × its size, inside a spectator ring (`stage.dressSpectator` — ring + the two
+  glowing beacon pylons; `undressSpectator` on removal). No render change. A `raid` interactable (`InteractableKind`
+  gains `'raid'`, `RANGE.raid` 8 = the server's `RAID_JOIN_RANGE_M`, from the same unsnapped hotspot point the server
+  measures from) prompts "Join raid" in the lobby and "View raid" later (a new prompt object per phase). It goes at
+  phase 4 or when the room drops the raid, and hides (billboard + ring) while the player's own raid battle is on.
+  World3D drives it from its `onStateChange` handler (`syncRaid`: compares id / phase / hpPct, allocates only on a
+  change; forced once after a zone load) — not from the tick.
+- **E on the den**: phase 0 and not yet on the damage board → `raidJoin` (after the party-can-battle check), then
+  `ui.openModal('raidLobby', { raidId })`; later phases open the modal as a read-only view.
+- **Lobby** (`world/RaidLobby.tsx` + CSS module, mounted in PlayShell): all `room.state.raid` through `useRoomState`
+  (boss, phase pill, countdown from `roundEndsInMs` — lobby 90 s / round 20 s / catch window 60 s —, shared HP,
+  trainers = the damage board's keys, names from `state.players` when in AOI). Join → `raidJoin` (disabled with the
+  hotspot's `minBadges` shown when short; full at 8); Ready up → `raidReady`; Leave → `raidLeave`. **Deviation:** the
+  schema has no ready flags, so the modal keeps this player's own Ready in its payload (`{ raidId, ready: true }`);
+  other trainers' readiness is not shown. The modal yields to the battle (`ui.battle !== null`; World3D also closes it
+  on the fight-start `battleResync`).
+- **Battle adapter** (BattleController, format 'raid'; the server half sends the resyncs): the fight-start
+  `battleResync { battleId: raidId }` seeds the battle through the existing restore path (no battleStart / intro);
+  `submit` sends `raidAction { raidId, round }` (validated locally, no preview, like pvp); Run is "Leave raid"
+  (`raidLeave`, confirmed) → summary. `onRaidEvents` patches the state from the round's events (`patchFromEvents`),
+  plays them, and advances the round (`raid.round = m.round + 1`; the round shown — turn label, `BattleUi.raid.round` —
+  catches up when the timeline ends). The boss's bar and HP follow the shared `RaidState.hpPct` × its maxHp at each
+  timeline end and on later hpPct patches (`onRaidState`, called by World3D) — a round's events only carry this
+  player's turn, so other trainers' damage arrives that way. The enrage (`abilityTrigger … 'enraged'`) pushes a banner
+  with the boss's name. The boss is named "the raid boss X" in bars and log lines (not "the wild X").
+- **Catch window**: when the boss falls the second `battleResync` is held until the KO timeline has played, then
+  restores the catch state: turn label "Catch window", the menu leaves only Orbs (one `raidCatch`) and Done (`check`
+  disables the rest with "The boss is down — throw an orb"). A window without a catch try (no damage) goes straight to
+  the summary; one arriving after a fainted player's summary was dismissed reopens the battle only when `canCatch`.
+- **Summary card** (`battle/RaidSummaryCard.tsx` + CSS; `BattleResult.raid: RaidSummary`, BattleResultCard returns
+  null for it): title Caught! / Raid cleared / Your party is out / You left the raid / The raid is over; your damage
+  and place, the board (top 8, you marked), the catch line, and the rewards of `battleEnd { battleId: raidId }` (which
+  now fill the card instead of the old toast; the toast remains for a battleEnd that arrives with no raid battle open).
+  Shown after the catch roll's timeline, when the private battle ends against the player (party out), on Leave / Done,
+  or when the raid ends (phase 4 / dropped — deferred until a playing timeline finishes). "Back to the world" closes the
+  battle, then the evolve / learn-move prompts of the raid.
+- **Raid panel** (`battle/RaidPanel.tsx` + CSS, in BattleOverlay for format 'raid' until the summary): boss + level,
+  phase pill (Enraged in danger tone, the border too), shared HP bar + %, "Round n · Round ends in Ns" (or the catch
+  window's countdown), damage board top 5 (+ you). Top-left under the HUD party strip.
+- Foe actor: none for raids (the Phase B7 `FoeActor` gets `foeId`/`foeNpc` null → `none`); the music theme is `raid`.
+- `messageRouter`: refusal details with their own copy (`tooFar`, `badges`, `full`, `started`, `noParty`, `noWindow`,
+  `noOrb`) instead of "That is not allowed right now. (tooFar)".
+- Model helpers in `battle/raid.ts` (`raidInfoOf`, `boardRows`, `boardFlat`/`unflattenBoard` for useRoomState,
+  `countdownLine`, `raidMinBadges`, the mirrored `RAID_JOIN_RANGE_M` / `RAID_MAX_PLAYERS`).
+- **Verified live** (isolated probe server on REST 4300 / WS 2867 + client 5194, headless Chrome 154 with WebGPU via
+  Playwright; a scratch script booted the real server and called `room.openRaid` with a weak test boss next to the
+  player, because the real hotspots only open in their UTC window and no dev route exists): den + ring + "Join raid"
+  prompt within 8 m; E → lobby, joined (server toast), Ready up → fight start resync → raid battle with the panel;
+  rounds through the battle menu (raidAction, events, panel HP / timer / board); boss down → catch window (Orbs + Done
+  only, boss at 1 HP), a Spark Orb → the roll played → summary "Raid cleared", +100 money / +150 trainer EXP, money
+  updated in the top bar; after dismiss the den stands again (phase 3). A first run with a stronger boss ended with the
+  party fainting: the summary appeared but said "The raid is over" — the raid's phase 4 patch beat the timeline end;
+  fixed (the fainted check now runs before the deferred-end check) and covered by a unit test, not re-run live.
+  Not verified live: two players in one raid, the enrage banner, leaving mid-fight, a fainted player's catch-window
+  reopen, the lobby at small viewports.
+
+Tests: `test/raid.test.tsx` (8: model + board order; den appear / prompts / range / phase / hide / ring / gone;
+lobby join → ready → yields to the battle; badge gate + dropped raid; controller fight start → raidAction → events →
+hpPct bar → enrage banner; boss down → held catch resync → orbs only → raidCatch → summary with rewards → dismiss;
+leave / ineligible window / reopen with a catch try / phase-4 summary / fainted party; raid panel from the room).
+
+## Phase C3 — world map, HUD minimap, fast travel (2026-10-06)
+
+- **`/play/map`** (`screens/MapScreen.tsx`, lazy route, NAV "Map" with a new `map` icon, key `M` — a new `map`
+  `InputAction` defaulting to `KeyM`, in the Controls table and the shortcut hint bar). Zones sit on a gapless grid at
+  content's `zoneMapPositions()` cells (148 × 168 px) so the SVG link layer, drawn in cell units with
+  `vector-effect: non-scaling-stroke`, meets cell centres; the board scrolls sideways and opens centred on the current
+  zone. Each node: name, kind, services (visited towns), the badge gate chip (earned / locked), "You are here", and a
+  Travel button on visited towns other than the current one (`data/worldMap.ts`: `visitedSet` = the server's `visited:`
+  flags plus the session zone; `canTravelTo`), hidden in battle. Travel sends `fastTravel { zoneId }` and closes the
+  panel; the server answers with the ordinary `handover` (WorldSession's existing path) or a refusal toast —
+  `messageRouter` skips the matching `error` (`FAST_TRAVEL_REFUSALS` join `EXPLAINED_DETAILS`).
+- **HUD minimap** (`world/Minimap.tsx` + `world/minimapDraw.ts`): a DOM 2D `<canvas>` (168 CSS px, DPR ≤ 2), top-right
+  under the canvas HUD's clock / quest hint, an `<aside>` of the shell so F1 hides it; not rendered while a panel is
+  open, in battle, or without world capability (jsdom: `routes.test` still finds no canvas). Each view's base — the
+  zone's playable square, or the hall the player stands in (`interiorAt`), drawn in the hall's own frame (placement
+  yaw, door wall at the bottom) to match the hall camera — is rasterised once per view with `createImageData` /
+  `putImageData` (never `getImageData`) from the heightfield's walkable / water bits, plus exits (centroid of the
+  walkable samples on each linked playable edge) and gym / shop / healer door markers from `zonePlan`. A 4 Hz interval
+  blits the base and draws the AOI's other players and the player (heading tick) from `room.state` — preallocated dots,
+  no React state per tick; the HudWriter and render's `HudModel` are untouched (the minimap is not a canvas-HUD field).
+  Roads are not distinguished from other walkable ground (the heightfield has no road bit).
+- **Tests.** `test/world-map.test.tsx` (8): nodes = zones, links join neighbours; visited / travel rules; nav + `M`
+  binding; the route renders 21 zones with their visited state and only "Travel to Cinderhold" for the fixture, which
+  sends `fastTravel` and returns to `/play`; `M` opens the map; the minimap renders in jsdom without a context; the base
+  draws once with `putImageData` and marks Mirevale's east exit + gym / healer; a hall view is centred on the hall with
+  the way out bottom-centre.
+- **Live (own dev server on alternate ports, headless Chrome over CDP, 1440 × 900):** minimap drawn in Mirevale (exits,
+  gym / healer / shop, water, the player); walked into Mire Route (the minimap swapped zones); the map read "2 of 21
+  explored" with Travel on Mirevale only; Travel → handover → standing at Mirevale's spawn (0, 6); entered the Mirevale
+  healer → the minimap showed the hall in the camera's orientation. With Map the top bar has 11 links: they fit with
+  labels at 1440 px but overlapped the money / account cluster by ~22 px at the 1280 px minimum, so under 1400 px the
+  links show icons only (`TopBar.module.css` media query; the label stays for screen readers, `title` for the pointer)
+  — checked live at 1280 × 800.

@@ -1,6 +1,8 @@
 /**
  * §30.6.2 / §4.7 auth rows: register, login, refresh, logout.
  */
+import { visitedFlag } from '@ewa/content';
+import type { ZoneId } from '@ewa/content';
 import { AuthRes, LoginReq, LogoutReq, RefreshReq, RefreshRes, RegisterReq } from '@ewa/protocol';
 import { isPersistError } from '@ewa/persist';
 import type { FastifyInstance } from 'fastify';
@@ -32,6 +34,8 @@ export function registerAuthRoutes(app: FastifyInstance, deps: RestDeps): void {
         // registration is the account's first login: day 1 of the streak (§30.9.1, IMPLEMENTATION-NOTES Q13)
         await dailyLogin(tx, repos, id, now.getTime());
         const row = (await repos.players.byId(tx, id))!;
+        // Phase C3: the starting zone counts as visited from the first moment (the room writes it on any later first join)
+        await repos.progress.setFlags(tx, id, [visitedFlag(row.zoneId as ZoneId)], now);
         const tokens = await issueTokens(tx, repos, app, { id, username: row.username, isAdmin: row.isAdmin }, now);
         return out(deps, AuthRes, { ...tokens, player: toProfile(row) });
       });

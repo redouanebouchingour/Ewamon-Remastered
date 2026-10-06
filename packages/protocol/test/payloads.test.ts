@@ -1,5 +1,5 @@
 /**
- * §4.3 / 50.4.3 payloads.test.ts — every one of the 20 CLIENT_MESSAGES schemas accepts its
+ * §4.3 / 50.4.3 payloads.test.ts — every one of the 21 CLIENT_MESSAGES schemas accepts its
  * documented example and rejects ≥ 3 malformed payloads (wrong type, out of range, oversize
  * string / non-uuid / missing field). Unknown keys are STRIPPED (zod v4 `z.object` default), and
  * an unknown message type is a typed 'unknownType' rejection.
@@ -149,18 +149,22 @@ const CASES: Record<ClientMessageType, Case> = {
     valid: { roomId: 'room-abc', seat: 'sess-xyz' },
     invalid: [{ roomId: '', seat: 'sess' }, { roomId: 'room', seat: '' }, { roomId: 1, seat: 'sess' }, { roomId: 'room' }],
   },
+  fastTravel: {
+    valid: { zoneId: 'cinderhold' },
+    invalid: [{ zoneId: 'atlantis' }, { zoneId: '' }, { zoneId: 3 }, {}],
+  },
 };
 
 describe('§4.3 CLIENT_MESSAGES', () => {
-  it('has exactly 20 keys, in the spine order', () => {
-    expect(Object.keys(CLIENT_MESSAGES)).toHaveLength(20);
-    expect(CLIENT_MESSAGE_COUNT).toBe(20);
+  it('has exactly 21 keys, in the spine order', () => {
+    expect(Object.keys(CLIENT_MESSAGES)).toHaveLength(21);
+    expect(CLIENT_MESSAGE_COUNT).toBe(21);
     expect(CLIENT_MESSAGE_TYPES).toEqual([
       'input', 'emote', 'chat', 'interact', 'engageSpawn',
       'battleAction', 'battleResync', 'challenge', 'challengeReply',
       'tradeRequest', 'tradeReply', 'tradeOffer', 'tradeConfirm', 'tradeCancel',
       'raidJoin', 'raidReady', 'raidAction', 'raidCatch', 'raidLeave',
-      'handoverAck',
+      'handoverAck', 'fastTravel',
     ]);
     expect(Object.keys(CASES).sort()).toEqual([...CLIENT_MESSAGE_TYPES].sort());
     expect(Object.keys(CLIENT_MESSAGE_LIMITS).sort()).toEqual([...CLIENT_MESSAGE_TYPES].sort());

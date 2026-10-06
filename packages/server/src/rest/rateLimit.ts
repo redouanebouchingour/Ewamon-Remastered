@@ -34,6 +34,8 @@ export const LIMITS = {
   challenge: { max: 3, windowMs: 5_000 },
   tradeRequest: { max: 3, windowMs: 5_000 },
   raid: { max: 4, windowMs: 1_000 },
+  /** Phase C3 fast travel (the 3 s server cooldown answers anything faster with `cooldown`) */
+  fastTravel: { max: 4, windowMs: 1_000 },
   /** every room message the spine gives no row (challengeReply, trade*, handoverAck): the generic 4 / 1 s of protocol's CLIENT_MESSAGE_LIMITS */
   roomOther: { max: 4, windowMs: 1_000 },
 } as const satisfies Record<string, Limit>;

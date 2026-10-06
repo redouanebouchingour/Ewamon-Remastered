@@ -268,3 +268,18 @@ reads them; the client banners `halfHp` when the team's total HP first drops to 
 creature enters. The lines name no creature: the replacement order is the battle AI's, not the team list's.
 `test/league-mid.test.ts` pins all 12, the length cap, uniqueness and the schema refusal. Not in the SPEC (§3.3 lists
 no such field) — a CHANGELOG entry is owed when the spec is next amended.
+
+## Phase C3 — world map cells and visited flags (2026-10-06)
+
+- **`zoneMapPositions()`** (`src/worldMap.ts`): every zone's map cell, computed — not authored — by a BFS over the
+  4-neighbour `links` from `ZONE_ORDER[0]` (Mirevale at the west edge), n-e-s-w order, `e` = +x, `n` = −y (the same
+  orientation as the handover vectors, n = −z). It throws on a clash or an unreachable zone. The committed world lays
+  out as an 18 × 3 strip: the main road on the middle row, The Rift south of Marrowdig, the Umbral Observatory north of
+  Vesperveil, the Celestial Spire north of Solenne. Also `zoneMapSize()`, `computeMapPositions(zones)`, `MAP_STEP`. No
+  zone data changed (layout seeds, npcs, trainers and warps untouched), so no heightfield or layout moved.
+- **`visited:<ZoneId>`** (`flags.ts`): `visitedFlag(id)`, `VISITED_PREFIX`, `VISITED_FLAGS` (exactly 21). `isKnownFlag`
+  accepts them like the badge sugar (the registry stays the §11 story list); validate's need resolution treats them as
+  settable (the server writes them on join).
+- Tests: `test/worldMap.test.ts` (every zone placed, cells unique, linked zones adjacent in the link direction, the three
+  branches off the road, refusal of a broken layout, the 21 visited flags known and nothing else with the prefix,
+  validate green).

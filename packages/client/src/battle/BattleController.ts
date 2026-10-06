@@ -17,6 +17,14 @@
  *   went through the session writers); on dismiss: director.exitBattle, ui.battle = null, then the evolve /
  *   learn-move modals of the final turn, in order. A battleEnd for the open raid goes to the raid summary instead.
  *
+ * Phase C1 raids (format 'raid', battleId = the raid id): the server's `battleResync { battleId: raidId }` at the fight
+ * start seeds the battle (no battleStart exists for a raid); `submit` sends `raidAction { raidId, round }` (no preview,
+ * like pvp), `onRaidEvents` patches the state from each round's events and plays them, the boss bar follows the shared
+ * `RaidState.hpPct` (`onRaidState`, at each timeline end). When the boss falls the second `battleResync` (the catch
+ * window, held until the KO timeline has played) leaves only orbs (`raidCatch`, once) or Done; the raid summary card
+ * (`BattleResult.raid`) closes it — after the catch roll, when the party is out, on leaving, or when the raid ends.
+ * The raid's rewards (`battleEnd { battleId: raidId }`) fill the summary instead of a result card.
+ *
  * Phase B7 presentation: `battleStart` of a trainer / league battle writes `ui.battleIntro` (the VS card; never under
  * reduced motion, never on a resync restore); a league trainer's `mid` lines are pushed as `ui.battleBanner` as the
  * timeline PLAYS — `halfHp` once when the foe team's total displayed HP first drops to half or below, `lastStand` once
@@ -27,9 +35,9 @@
  */
 import { digestBattleState, resolveTurn, validateAction } from '@ewa/core';
 import type { Action, BattleEvent, BattleState, ContentIndex, CreatureInstance, Ref, StatusId } from '@ewa/core';
-import type { ClientMessageType, ClientPayload, ServerMessageOf } from '@ewa/protocol';
+import type { ClientMessageType, ClientPayload, RewardsSummary, ServerMessageOf } from '@ewa/protocol';
 import { useUiStore } from '../state/ui';
-import type { BattleResult, BattleUi, QueuedPrompt } from '../state/ui';
+import type { BattleResult, BattleUi, QueuedPrompt, RaidBattleUi, RaidSummary } from '../state/ui';
 import { toast } from '../state/notifications';
 import { BattleHud, STAGE_REFS } from './BattleHud';
 import type { BattleHudModel } from './BattleHud';
@@ -39,6 +47,7 @@ import { foeOfState } from './foe';
 import type { FoeIdentity } from './foe';
 import { createMoveAnimRegistry } from './moveAnims';
 import type { MoveAnimRegistry } from './moveAnims';
+import type { RaidInfo } from './raid';
 import { buildTimeline, statusGlyph, vfxIdsIn } from './timeline';
 import type { LogTone, Timeline, TimelineCtx } from './timeline';
 import { TimelinePlayer } from './TimelinePlayer';
@@ -97,6 +106,8 @@ export interface BattleControllerDeps {
   readonly selfId: () => string;
   /** `room.state.raid?.id` */
   readonly raidId: () => string | null;
+  /** Phase C1: the open raid (`room.state.raid` + player names), null without one */
+  readonly raidInfo?: () => RaidInfo | null;
   readonly view: BattleView | null;
   /** timers (tests inject a manual scheduler) */
   readonly defer?: (fn: () => void) => void;
@@ -108,6 +119,10 @@ export interface BattleController {
   onBattleEvents(m: ServerMessageOf<'battleEvents'>): void;
   onBattleResync(m: ServerMessageOf<'battleResync'>): void;
   onBattleEnd(m: ServerMessageOf<'battleEnd'>): void;
+  /** Phase C1: one raid round's (or the catch roll's) events for this participant */
+  onRaidEvents(m: ServerMessageOf<'raidEvents'>): void;
+  /** Phase C1: `room.state.raid` changed (hpPct, phase, removed) — the scene calls it from its patch handler */
+  onRaidState(): void;
   readonly preview: { state: BattleState; digest: string } | null;
   // ---- additions ----
   readonly player: TimelinePlayer;
@@ -125,6 +140,30 @@ export interface BattleController {
 }
 
 const TURN = (n: number): string => `Turn ${n}`;
+const NO_REWARDS: RewardsSummary = { money: 0, items: {}, trainerExp: 0, ratingDelta: null, badge: null };
+
+/** Phase C1: the controller's private raid run (non-null iff the open battle is a raid). */
+interface RaidRun {
+  /** the round the next raidAction is for */
+  round: number;
+  /** the round on screen (`round` once the previous round's events have played) */
+  shownRound: number;
+  catchWindow: boolean;
+  /** a raidCatch was sent (the roll's raidEvents follow) */
+  attempted: boolean;
+  caught: boolean | null;
+  bossDown: boolean;
+  fainted: boolean;
+  left: boolean;
+  rewards: RewardsSummary | null;
+  /** the catch-window resync, held while the KO timeline plays */
+  pendingResync: ServerMessageOf<'battleResync'> | null;
+  /** the raid ended (phase 4 / dropped) while a timeline played: the summary waits for it */
+  overPending: boolean;
+  summaryShown: boolean;
+  /** the last raid snapshot seen (the summary still has it after the room dropped the raid) */
+  info: RaidInfo | null;
+}
 
 /** The other side's player uuid when it is a player (pvp), else null. */
 function foeOf(state: BattleState, seat: 0 | 1): string | null {
@@ -159,6 +198,8 @@ function sideName(state: BattleState, r: Ref, seat: 0 | 1, content: ContentIndex
     }
   }
   if (r.side === seat) return base;
+  // Phase C1: a raid's shared boss is no wild creature
+  if (state.format === 'raid') return `the raid boss ${base}`;
   return state.sides[r.side]!.kind === 'wild' ? `the wild ${base}` : `the foe’s ${base}`;
 }
 
@@ -248,9 +289,10 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
   let midHalfDone = false;
   let midLastDone = false;
   let bannerId = 0;
+  let raid: RaidRun | null = null;
 
-  const pushBanner = (text: string): void => {
-    const speaker = foe?.name ?? '';
+  const pushBanner = (text: string, speakerName?: string): void => {
+    const speaker = speakerName ?? foe?.name ?? '';
     const id = ++bannerId;
     const forBattle = battleId;
     // the timeline plays inside World3D.tick: the store write is deferred off it
@@ -296,10 +338,44 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
 
   const creatureAt = (st: BattleState, side: 0 | 1, slot: number): CreatureInstance | null => st.sides[side]?.party[slot]?.creature ?? null;
 
+  const raidUi = (): RaidBattleUi | undefined => (raid === null || battleId === null ? undefined : { raidId: battleId, round: raid.shownRound, catchWindow: raid.catchWindow });
+
   const writeUi = (patch: Partial<BattleUi>): void => {
     const b = ui().battle;
     if (b === null || b.battleId !== battleId) return;
-    ui().setBattle({ ...b, ...patch });
+    const r = raidUi();
+    ui().setBattle(r === undefined ? { ...b, ...patch } : { ...b, ...patch, raid: r });
+  };
+
+  /** The turn label: `Turn n`, or for a raid `Round n` / `Catch window` (the raid's shown round catches up here). */
+  const labelFor = (st: BattleState): string => {
+    if (raid === null) return TURN(st.turn + 1);
+    raid.shownRound = raid.round;
+    return raid.catchWindow ? 'Catch window' : `Round ${raid.round}`;
+  };
+
+  const raidInfo = (): RaidInfo | null => {
+    const info = deps.raidInfo?.() ?? null;
+    const ok = info !== null && info.id === battleId ? info : null;
+    if (raid !== null && ok !== null) raid.info = ok;
+    return ok;
+  };
+
+  /** The boss's displayed HP := the shared hpPct x its maxHp (a raid round's events only carry this player's turn). */
+  const syncBossHp = (st: BattleState): BattleState => {
+    const info = raidInfo();
+    if (info === null || raid === null || raid.catchWindow) return st;
+    const side = (seat === 0 ? 1 : 0) as 0 | 1;
+    const s1 = st.sides[side];
+    const b = s1.party[s1.active];
+    if (b === undefined) return st;
+    const hp = info.hpPct <= 0 ? 0 : Math.max(1, Math.round(info.hpPct * b.maxHp));
+    const row = hpNow[side];
+    if (row !== undefined) row[s1.active] = hp;
+    if (b.creature.hp === hp) return st;
+    const party = s1.party.map((x, i) => (i === s1.active ? { ...x, creature: { ...x.creature, hp } } : x));
+    const sides = (side === 1 ? [st.sides[0], { ...s1, party }] : [{ ...s1, party }, st.sides[1]]) as unknown as BattleState['sides'];
+    return { ...st, sides };
   };
 
   const barFor = (st: BattleState, side: 0 | 1): void => {
@@ -388,8 +464,13 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
   const player = new TimelinePlayer(targets);
 
   function onTimelineEnd(): void {
+    if (state === null || battleId === null) return;
+    if (raid !== null && raid.pendingResync !== null) {
+      applyRaidResync(raid.pendingResync);
+      return;
+    }
+    if (raid !== null) state = syncBossHp(state);
     const st = state;
-    if (st === null || battleId === null) return;
     preState = st;
     resetHpTable(st);
     // align the bars with the authoritative state (levels after a level-up, the true active)
@@ -397,11 +478,84 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       if (displayed[side] !== st.sides[side].active) showBattler(st, side, st.sides[side].active);
       barFor(st, side);
     }
-    hud.setTurnLabel(TURN(st.turn + 1));
+    const label = labelFor(st);
+    hud.setTurnLabel(label);
     hud.commit();
     flushLog();
-    writeUi({ phase: phaseAfter(st), menu: 'root', turnLabel: TURN(st.turn + 1), authoritative: st });
+    if (raid !== null) {
+      raidAfterTimeline(st, label);
+      return;
+    }
+    writeUi({ phase: phaseAfter(st), menu: 'root', turnLabel: label, authoritative: st });
     if (pendingEnd !== null) showResult();
+  }
+
+  /** Phase C1: what a raid does once a timeline has played. */
+  function raidAfterTimeline(st: BattleState, label: string): void {
+    const r = raid!;
+    // the private battle ended against us (the whole party fainted) — also when the raid ended meanwhile
+    if (!r.catchWindow && !r.bossDown && st.ended !== null) r.fainted = true;
+    if (r.overPending || r.fainted || (r.catchWindow && r.attempted)) {
+      showRaidSummary();
+      return;
+    }
+    if (r.catchWindow) {
+      writeUi({ phase: 'selecting', menu: 'root', turnLabel: label, authoritative: st });
+      return;
+    }
+    if (r.bossDown) {
+      // the boss fell: the catch window's battleResync follows (it is applied right away if it already came)
+      writeUi({ phase: 'submitted', menu: 'root', turnLabel: label, authoritative: st, expectedMs: 0 });
+      return;
+    }
+    writeUi({ phase: phaseAfter(st), menu: 'root', turnLabel: label, authoritative: st });
+  }
+
+  /** Phase C1: the catch window's battleResync for the open raid battle. */
+  function applyRaidResync(m: ServerMessageOf<'battleResync'>): void {
+    const r = raid!;
+    r.pendingResync = null;
+    const canCatch = m.state.sides[seat].canCatch;
+    r.catchWindow = true;
+    r.bossDown = true;
+    restoreFrom(m.state);
+    if (!canCatch) showRaidSummary(); // no damage dealt (or the attempt is spent): nothing to throw
+  }
+
+  /** The summary card of a raid (BattleResult.raid); rewards arriving later refresh it. */
+  function showRaidSummary(): void {
+    const r = raid;
+    if (r === null || battleId === null || state === null) return;
+    r.overPending = false;
+    r.summaryShown = true;
+    player.stop();
+    flushLog();
+    raidInfo();
+    const info = r.info;
+    const selfId = deps.selfId();
+    const board = info?.board ?? [];
+    const at = board.findIndex((row) => row.self || row.playerId === selfId);
+    const foeSide = (seat === 0 ? 1 : 0) as 0 | 1;
+    const boss = state.sides[foeSide].party[0]?.creature;
+    const cleared = r.bossDown || r.catchWindow || r.rewards !== null || (info !== null && info.phase === 3);
+    const summary: RaidSummary = {
+      bossSpecies: info?.bossSpecies ?? boss?.speciesId ?? 'unknown',
+      bossLevel: info?.bossLevel ?? boss?.level ?? 1,
+      cleared,
+      caught: r.attempted ? r.caught : null,
+      fainted: r.fainted,
+      left: r.left,
+      damage: at >= 0 ? board[at]!.damage : 0,
+      rank: at >= 0 ? at + 1 : null,
+      board: board.slice(0, RAID_BOARD_ROWS).map((row) => ({ playerId: row.playerId, name: row.name, damage: row.damage, self: row.self || row.playerId === selfId })),
+    };
+    const outcome: BattleResult['outcome'] = r.caught === true ? { winner: 'caught', slot: 0 } : { winner: cleared ? seat : foeSide };
+    const result: BattleResult = { outcome, rewards: r.rewards ?? NO_REWARDS, prompts: prompts.length, raid: summary };
+    writeUi({ phase: 'ended', result });
+    if (!resultShown) {
+      resultShown = true;
+      view?.ended?.(cleared ? false : null);
+    }
   }
 
   function startLogTimer(): void {
@@ -454,6 +608,15 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     foe = foeOfState(m.state, m.seat);
     midHalfDone = false;
     midLastDone = false;
+    const catchNow = m.format === 'raid' && m.state.sides[m.seat].canCatch;
+    raid =
+      m.format === 'raid'
+        ? {
+            round: m.state.turn + 1, shownRound: m.state.turn + 1, catchWindow: catchNow, attempted: false, caught: null, bossDown: catchNow, fainted: false, left: false, rewards: null,
+            pendingResync: null, overPending: false, summaryShown: false, info: null,
+          }
+        : null;
+    if (raid !== null) raidInfo();
     const at = arenaFor(m.battleId);
     view?.enterBattle({ battleId: m.battleId, x: at.x, z: at.z, format: m.format, foeId: foeOf(m.state, m.seat), foeNpc: foeNpcOf(m.state, m.seat), yaw: at.yaw });
     view?.setThreat(true);
@@ -461,7 +624,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       showBattler(m.state, side, m.state.sides[side].active);
       barFor(m.state, side);
     }
-    hud.setTurnLabel(TURN(m.state.turn + 1));
+    hud.setTurnLabel(labelFor(m.state));
     hud.setShakes(0);
     hud.commit();
     startLogTimer();
@@ -504,6 +667,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
 
     check(action) {
       if (state === null) return 'No battle';
+      if (raid !== null) return raidCheck(state, action);
       return actionErrorLabel(validateAction(state, seat, action, deps.content));
     },
 
@@ -511,6 +675,10 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       if (state === null || battleId === null) return;
       const b = ui().battle;
       if (b === null || (b.phase !== 'selecting' && b.phase !== 'replacement')) return;
+      if (raid !== null) {
+        submitRaid(state, battleId, raid, action);
+        return;
+      }
       const err = validateAction(state, seat, action, deps.content);
       if (err !== null) {
         toast('warn', actionErrorLabel(err) ?? 'Not allowed');
@@ -561,38 +729,82 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     },
 
     onBattleResync(m) {
+      if (raid !== null && battleId === m.battleId) {
+        // Phase C1: the catch window — after the KO timeline, never over it
+        if (player.isPlaying) raid.pendingResync = m;
+        else applyRaidResync(m);
+        return;
+      }
       if (battleId !== m.battleId) {
-        // no battle UI yet (reload mid-battle, server part 2 P3): restore it without an intro
         const s = m.state;
         const mySeat: 0 | 1 = s.sides[1].kind === 'player' && s.sides[1].trainerId === deps.selfId() ? 1 : 0;
+        if (s.format === 'raid') {
+          // Phase C1: a raid seeds its battle from this resync (the fight start, or the catch window after a fainted
+          // party's summary was dismissed). A catch window with nothing to throw, or one over another battle, stays shut.
+          if (battleId !== null) return;
+          if (!s.sides[mySeat].canCatch && (deps.raidInfo?.()?.phase ?? 0) >= 3) return;
+        }
+        // no battle UI yet (reload mid-battle, server part 2 P3): restore it without an intro
         begin({ battleId: m.battleId, seat: mySeat, format: s.format, state: s });
+        const r = raidUi();
         ui().setBattle({
           battleId: m.battleId, format: s.format, seat: mySeat, authoritative: s, phase: phaseAfter(s), menu: 'root',
-          turnLabel: TURN(s.turn + 1), log: [], desyncs: 0, result: null, expectedMs: 0,
+          turnLabel: labelFor(s), log: [], desyncs: 0, result: null, expectedMs: 0, ...(r === undefined ? {} : { raid: r }),
         });
         return;
       }
-      player.stop();
-      state = m.state;
-      preState = m.state;
-      preview = null;
-      resetHpTable(m.state);
-      for (const side of [0, 1] as const) {
-        showBattler(m.state, side, m.state.sides[side].active);
-        barFor(m.state, side);
+      restoreFrom(m.state);
+    },
+
+    onRaidEvents(m) {
+      if (raid === null || battleId === null || m.raidId !== battleId || state === null || raid.summaryShown) return;
+      const before = state;
+      const foeSide = (seat === 0 ? 1 : 0) as 0 | 1;
+      if (raid.catchWindow) {
+        // the catch roll (catchThrow ... catchResult); the summary follows its timeline
+        raid.attempted = true;
+        raid.caught = m.events.some((e) => e.t === 'catchResult' && e.caught);
+      } else {
+        raid.round = m.round + 1;
+        if (m.events.some((e) => e.t === 'abilityTrigger' && e.detail === 'enraged')) {
+          const bossName = cap(sideName(before, { side: foeSide, slot: 0 }, foeSide, deps.content));
+          pushBanner('is enraged — its attack rose sharply!', bossName);
+        }
       }
-      view?.syncFrom(
-        ([0, 1] as const).map((side) => {
-          const b = m.state.sides[side].party[m.state.sides[side].active];
-          return { ref: STAGE_REFS[(side ^ seat) as 0 | 1], hpFrac: b === undefined ? 0 : b.creature.hp / Math.max(1, b.maxHp) };
-        }),
-      );
-      hud.setTurnLabel(TURN(m.state.turn + 1));
+      const next = patchFromEvents(before, m.events, before.turn + 1, before.rng);
+      if (!raid.catchWindow && (next.sides[foeSide].party[0]?.creature.hp ?? 1) <= 0) raid.bossDown = true;
+      preview = null;
+      state = next;
+      preState = before;
+      resetHpTable(before);
+      for (const p of promptsFrom(m.events, next, seat)) if (!prompts.some((q) => samePrompt(q, p))) prompts.push(p);
+      writeUi({ phase: 'playing', authoritative: next, expectedMs: 0 });
+      play(buildTimeline(m.events, ctxFor(before)));
+    },
+
+    onRaidState() {
+      if (raid === null || battleId === null || state === null || raid.summaryShown) return;
+      const info = raidInfo();
+      if (info === null || info.phase === 4) {
+        // the raid ended (window closed, everyone out, or the room dropped it): the summary, after a playing timeline
+        if (player.isPlaying) raid.overPending = true;
+        else showRaidSummary();
+        return;
+      }
+      if (player.isPlaying || raid.catchWindow) return;
+      state = syncBossHp(state);
+      barFor(state, (seat === 0 ? 1 : 0) as 0 | 1);
       hud.commit();
-      writeUi({ phase: phaseAfter(m.state), menu: 'root', authoritative: m.state, turnLabel: TURN(m.state.turn + 1) });
     },
 
     onBattleEnd(m) {
+      if (raid !== null && battleId === m.battleId) {
+        // Phase C1: the raid's rewards ride battleEnd { battleId: raidId }: they fill the summary card
+        raid.rewards = m.rewards;
+        raid.bossDown = true;
+        if (raid.summaryShown) showRaidSummary();
+        return;
+      }
       if (battleId === null || m.battleId !== battleId) {
         if (m.battleId === deps.raidId()) {
           const r = m.rewards;
@@ -617,6 +829,57 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       finish();
     },
   };
+
+  /** Replaces the battle with a server state (resync): stage, bars and phase from it, the playing timeline dropped. */
+  function restoreFrom(st: BattleState): void {
+    player.stop();
+    state = st;
+    preState = st;
+    preview = null;
+    resetHpTable(st);
+    for (const side of [0, 1] as const) {
+      showBattler(st, side, st.sides[side].active);
+      barFor(st, side);
+    }
+    view?.syncFrom(
+      ([0, 1] as const).map((side) => {
+        const b = st.sides[side].party[st.sides[side].active];
+        return { ref: STAGE_REFS[(side ^ seat) as 0 | 1], hpFrac: b === undefined ? 0 : b.creature.hp / Math.max(1, b.maxHp) };
+      }),
+    );
+    const label = labelFor(st);
+    hud.setTurnLabel(label);
+    hud.commit();
+    writeUi({ phase: phaseAfter(st), menu: 'root', authoritative: st, turnLabel: label });
+  }
+
+  /** Phase C1: the disabled reason of an action in a raid (catch window: orbs and Done only; leaving is always allowed). */
+  function raidCheck(st: BattleState, action: Action): string | null {
+    if (action.kind === 'forfeit') return null;
+    if (raid?.catchWindow === true && action.kind !== 'catch') return 'The boss is down — throw an orb';
+    return actionErrorLabel(validateAction(st, seat, action, deps.content));
+  }
+
+  /** Phase C1: raidAction for the current round, raidCatch in the window, raidLeave (or Done) for a forfeit. */
+  function submitRaid(st: BattleState, id: string, r: RaidRun, action: Action): void {
+    if (action.kind === 'forfeit') {
+      if (!r.catchWindow) {
+        deps.send('raidLeave', { raidId: id });
+        r.left = true;
+      }
+      showRaidSummary();
+      return;
+    }
+    const err = raidCheck(st, action);
+    if (err !== null) {
+      toast('warn', err);
+      return;
+    }
+    if (r.catchWindow && action.kind === 'catch') deps.send('raidCatch', { raidId: id, orb: action.orb });
+    else deps.send('raidAction', { raidId: id, round: r.round, action });
+    preview = null;
+    writeUi({ phase: 'submitted', expectedMs: 0 });
+  }
 
   function showResult(): void {
     if (pendingEnd === null || resultShown) return;
@@ -650,6 +913,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     foe = null;
     midHalfDone = false;
     midLastDone = false;
+    raid = null;
     if (ui().battleIntro !== null) ui().setBattleIntro(null);
     if (ui().battleBanner !== null || ui().battleBannerQueue.length > 0) ui().clearBattleBanners();
     if (ui().battle !== null) ui().setBattle(null);
@@ -657,6 +921,9 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
 
   return controller;
 }
+
+/** rows of the damage board the raid summary lists */
+const RAID_BOARD_ROWS = 8;
 
 function majorOf(status: readonly StatusId[]): StatusId | null {
   for (const s of status) if (s !== 'confuse') return s;

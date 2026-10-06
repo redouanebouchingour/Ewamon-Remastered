@@ -4,6 +4,8 @@
  * player holds) and the orbs. Disabled reasons come from `validateAction` through the controller (`ACTION_ERROR_LABEL`).
  * The last 3 log lines render in the left third at --t-body-lg. HP shown here is `authoritative` — the state the
  * server's events produced (hpAfter), never a client computation.
+ * Phase C1 raids: Run is "Leave raid" (`raidLeave`, confirmed); in the catch window only Orbs (one `raidCatch`) and
+ * Done (straight to the raid summary) are live.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -156,6 +158,10 @@ export function BattleMenu() {
   const forced = phase === 'replacement';
   const menu: Menu = forced ? 'party' : (b?.menu ?? 'root');
   const selectable = phase === 'selecting' || phase === 'replacement';
+  const raid = b?.raid ?? null;
+  const catchWindow = raid?.catchWindow === true;
+  /** Run fires without a confirmation: fleeing, or Done in a raid's catch window */
+  const runNow = canFlee || catchWindow;
 
   const runAction = useMemo<Action>(() => (canFlee ? { kind: 'flee' } : { kind: 'forfeit' }), [canFlee]);
 
@@ -180,9 +186,9 @@ export function BattleMenu() {
         e.preventDefault();
         const k = ROOT[n - 1]!.key;
         if (k === 'run') {
-          if (canFlee || confirmForfeit) submit(runAction);
+          if (runNow || confirmForfeit) submit(runAction);
           else setConfirmForfeit(true);
-        } else setMenu(k);
+        } else if (!catchWindow || k === 'orbs') setMenu(k);
       } else if (menu === 'moves' && n <= 4) {
         const m = activeOf(st, seat)?.creature.moves[n - 1];
         if (m !== undefined) {
@@ -194,22 +200,30 @@ export function BattleMenu() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selectable, st, seat, menu, forced, canFlee, confirmForfeit, runAction]);
+  }, [selectable, st, seat, menu, forced, runNow, catchWindow, confirmForfeit, runAction]);
 
   if (b === null || st === null) return null;
   const me = activeOf(st, seat);
   const status =
     phase === 'submitted'
-      ? b.expectedMs > 0
-        ? 'Waiting for the turn…'
-        : 'Waiting for the other trainer…'
+      ? raid !== null
+        ? catchWindow
+          ? 'Throwing…'
+          : 'Waiting for the round to resolve…'
+        : b.expectedMs > 0
+          ? 'Waiting for the turn…'
+          : 'Waiting for the other trainer…'
       : phase === 'playing' || phase === 'ended'
         ? null
         : forced
           ? 'Choose your next creature'
-          : me !== undefined
-            ? `What will ${displayName(me.creature)} do?`
-            : null;
+          : catchWindow
+            ? 'The boss is down — throw an orb to catch it (one try)'
+            : me !== undefined
+              ? `What will ${displayName(me.creature)} do?`
+              : null;
+  const runLabel =
+    raid !== null ? (catchWindow ? 'Done' : confirmForfeit ? 'Confirm leave' : 'Leave raid') : canFlee ? 'Run' : confirmForfeit ? 'Confirm forfeit' : 'Forfeit';
   const runWhy = reason(runAction);
 
   return (
@@ -223,18 +237,18 @@ export function BattleMenu() {
               <Button
                 key={r.key}
                 size="lg"
-                variant={r.key === 'moves' ? 'primary' : r.key === 'run' ? (canFlee ? 'ghost' : 'danger') : 'secondary'}
+                variant={r.key === (catchWindow ? 'orbs' : 'moves') ? 'primary' : r.key === 'run' ? (runNow ? 'ghost' : 'danger') : 'secondary'}
                 onClick={() => {
                   if (r.key === 'run') {
-                    if (canFlee || confirmForfeit) submit(runAction);
+                    if (runNow || confirmForfeit) submit(runAction);
                     else setConfirmForfeit(true);
                   } else setMenu(r.key);
                 }}
                 title={r.key === 'run' && runWhy !== null ? runWhy : undefined}
-                disabled={r.key === 'run' ? runWhy !== null : r.key === 'orbs' ? !st.sides[seat].canCatch : false}
+                disabled={r.key === 'run' ? runWhy !== null : r.key === 'orbs' ? !st.sides[seat].canCatch : catchWindow}
               >
                 <kbd className={s.key}>{i + 1}</kbd>
-                {r.key === 'run' ? (canFlee ? 'Run' : confirmForfeit ? 'Confirm forfeit' : 'Forfeit') : r.label}
+                {r.key === 'run' ? runLabel : r.label}
               </Button>
             ))}
           </div>

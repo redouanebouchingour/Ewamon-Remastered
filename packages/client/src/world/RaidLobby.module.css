@@ -1,0 +1,132 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.text {
+  color: var(--text-1);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.countdown {
+  color: var(--text-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-variant-numeric: tabular-nums;
+}
+
+.hp {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.label {
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pct {
+  color: var(--text-1);
+  font-family: var(--face-mono);
+  font-size: var(--t-mono);
+  line-height: var(--lh-mono);
+  font-variant-numeric: tabular-nums;
+  min-inline-size: 4ch;
+  text-align: end;
+}
+
+.roster {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-2);
+  background: var(--bg-2);
+}
+
+.heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-2);
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: var(--lh-h3);
+  font-weight: 700;
+}
+
+.count {
+  color: var(--text-2);
+  font-family: var(--face-mono);
+  font-size: var(--t-mono);
+  line-height: var(--lh-mono);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+  color: var(--text-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+
+.self {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag {
+  color: var(--accent);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.damage {
+  font-family: var(--face-mono);
+  font-size: var(--t-mono);
+  line-height: var(--lh-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.caption {
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}

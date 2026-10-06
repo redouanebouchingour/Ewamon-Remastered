@@ -3,14 +3,15 @@
  * session writers; everything a scene owns (battle*, chat, storyBeat, raidEvents) is left for part 2's
  * World3D / BattleController, which subscribe to the same `WorldSession.onMessage`.
  */
+import { FAST_TRAVEL_REFUSALS } from '@ewa/protocol';
 import type { ServerMessage } from '@ewa/protocol';
 import { toast, useNotificationsStore } from '../state/notifications';
 import { applyInventoryDelta, applyProgressionDelta } from '../state/session';
 import { useUiStore } from '../state/ui';
 import type { WorldSession } from './WorldSession';
 
-/** refusals the server already explained with its own toast (e.g. a league gate: toast + error leagueLocked) */
-const EXPLAINED_DETAILS: ReadonlySet<string> = new Set(['leagueLocked']);
+/** refusals the server already explained with its own toast (e.g. a league gate: toast + error leagueLocked; Phase C3 fast travel) */
+const EXPLAINED_DETAILS: ReadonlySet<string> = new Set(['leagueLocked', ...FAST_TRAVEL_REFUSALS]);
 
 const ERROR_TEXT: Readonly<Record<string, string>> = {
   notAllowed: 'That is not allowed right now.',
@@ -18,6 +19,17 @@ const ERROR_TEXT: Readonly<Record<string, string>> = {
   busy: 'Busy — try again in a moment.',
   invalidPayload: 'The server rejected that request.',
   internal: 'The server hit a problem. Try again.',
+};
+
+/** Phase C1: refusal details with their own copy (the raid flow's raidJoin / raidCatch answers among them) */
+const DETAIL_TEXT: Readonly<Record<string, string>> = {
+  tooFar: 'You are too far away — walk closer.',
+  badges: 'You need more badges for that.',
+  full: 'That raid is full.',
+  started: 'That raid has already started.',
+  noParty: 'Your party needs healing first.',
+  noWindow: 'The catch window has closed.',
+  noOrb: 'You have no orb of that kind.',
 };
 
 /**
@@ -70,6 +82,10 @@ export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'han
     case 'error':
       if (m.code === 'rateLimited') return; // one per window; the UI already disables repeat actions
       if (m.detail !== null && EXPLAINED_DETAILS.has(m.detail)) return; // found live: two toasts for one gym refusal
+      if (m.detail !== null && m.code !== 'internal' && DETAIL_TEXT[m.detail] !== undefined) {
+        toast('warn', DETAIL_TEXT[m.detail]!);
+        return;
+      }
       toast('warn', m.detail !== null && m.detail.length > 0 && m.code !== 'internal' ? `${ERROR_TEXT[m.code] ?? 'Refused'} (${m.detail})` : (ERROR_TEXT[m.code] ?? 'Refused.'));
       return;
     case 'dm':

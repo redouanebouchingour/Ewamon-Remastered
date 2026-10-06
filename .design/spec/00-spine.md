@@ -1348,19 +1348,20 @@ export const RaidCatchMsg = z.object({ raidId: z.string().uuid(), orb: z.string(
 export const RaidLeaveMsg = z.object({ raidId: z.string().uuid() });
 export const HandoverAckMsg = z.object({ roomId: z.string().min(1), seat: z.string().min(1) });   // seat = the destination sessionId from the SeatReservation
 export const BattleResyncMsg = z.object({ battleId: z.string().uuid() });                          // §4.5
+export const FastTravelMsg = z.object({ zoneId: z.enum(ZONE_IDS) });                               // §4.6; amended 2026-10-06 (Phase C3)
 
 export const CLIENT_MESSAGES = {
   input: InputMsg, emote: EmoteMsg, chat: ChatMsg, interact: InteractMsg, engageSpawn: EngageSpawnMsg,
   battleAction: BattleActionMsg, battleResync: BattleResyncMsg, challenge: ChallengeMsg, challengeReply: ChallengeReplyMsg,
   tradeRequest: TradeRequestMsg, tradeReply: TradeReplyMsg, tradeOffer: TradeOfferMsg, tradeConfirm: TradeConfirmMsg, tradeCancel: TradeCancelMsg,
   raidJoin: RaidJoinMsg, raidReady: RaidReadyMsg, raidAction: RaidActionMsg, raidCatch: RaidCatchMsg, raidLeave: RaidLeaveMsg,
-  handoverAck: HandoverAckMsg,
-} as const;   // exactly 20 keys
+  handoverAck: HandoverAckMsg, fastTravel: FastTravelMsg,
+} as const;   // exactly 21 keys (Phase C3 added fastTravel)
 export type ClientMessageType = keyof typeof CLIENT_MESSAGES;
 ```
 
 <!-- reconciled 2026-09-18: battleResync (named in §4.5 prose) is now in the block; 50-verification-budget.md §50.4.3 counts 20 -->
-Rate limits (per client, sliding window; excess is dropped with one `error { code: 'rateLimited' }` per window): `input` 30/s, `emote` 1 per 1.5 s, `chat` 4 per 4 s, `interact` 4/s, `engageSpawn` 2/s, `battleAction`/`battleResync` 4/s, `challenge`/`tradeRequest` 3 per 5 s, raid messages 4/s. A message whose `type` is not a `CLIENT_MESSAGES` key gets no reply: the room's `'*'` handler only counts it (`metrics.unknownMessages`) and 5 within 10 s disconnect the client with code 4003 — the `'*'` handler must exist, because `@colyseus/core` 0.18.14 closes the socket with 4002 on the first message that has no handler outside dev mode (`src/RoomMessages.ts` lines 334–342). `invalidPayload` is for a known type with a malformed body; the zod check therefore runs inside the handler wrapper (`safeParse`), never as the `onMessage` validator argument, which disconnects with 4002 on a rejected payload (`src/RoomMessages.ts` lines 189–196). <!-- amended 2026-09-25: "Colyseus drops it … there is no '*' handler" was false for 0.18.14; packages/server IMPLEMENTATION-NOTES R1, R3 -->
+Rate limits (per client, sliding window; excess is dropped with one `error { code: 'rateLimited' }` per window): `input` 30/s, `emote` 1 per 1.5 s, `chat` 4 per 4 s, `interact` 4/s, `engageSpawn` 2/s, `battleAction`/`battleResync` 4/s, `challenge`/`tradeRequest` 3 per 5 s, raid messages 4/s, `fastTravel` 4/s (plus its own 3 s server cooldown, §4.6). A message whose `type` is not a `CLIENT_MESSAGES` key gets no reply: the room's `'*'` handler only counts it (`metrics.unknownMessages`) and 5 within 10 s disconnect the client with code 4003 — the `'*'` handler must exist, because `@colyseus/core` 0.18.14 closes the socket with 4002 on the first message that has no handler outside dev mode (`src/RoomMessages.ts` lines 334–342). `invalidPayload` is for a known type with a malformed body; the zod check therefore runs inside the handler wrapper (`safeParse`), never as the `onMessage` validator argument, which disconnects with 4002 on a rejected payload (`src/RoomMessages.ts` lines 189–196). <!-- amended 2026-09-25: "Colyseus drops it … there is no '*' handler" was false for 0.18.14; packages/server IMPLEMENTATION-NOTES R1, R3 -->
 
 ### 4.4 Server → client messages
 
@@ -1409,6 +1410,8 @@ Every `battleStart`, `battleEvents`, `battleResync` and `raidEvents` carries `st
 ### 4.6 Handover
 
 Crossing a zone link: the source room sends `handover { roomId, seat, zoneId, x, z }` when the player is within 6 units of the link side's **playable** edge (`playableBounds`, §3.11 — the field edge lies inside the 16 m unwalkable margin and cannot be reached) <!-- amended 2026-09-25: packages/server IMPLEMENTATION-NOTES R7 -->; the client pre-joins the destination via `@colyseus/sdk` `client.consumeSeatReservation` and sends `handoverAck` to the *destination*; the destination marks the player present; the source removes the avatar on receiving the destination's IPC confirm, or after 5 s. The player's authoritative position row is written once, by the destination, on ack. Details in `30-server-netcode.md`.
+
+**Fast travel** <!-- amended 2026-10-06: Phase C3 world map --> — `fastTravel { zoneId }` asks for a free trip to a town's `spawn`. The source room checks, in order: the destination is a town (`notTown`), the player holds `visited:<zoneId>` (`notVisited`), its badge gate is met (`travelGated`), the player is not in a battle, trade, raid or crossing (`travelBusy`), and 3 s have passed since the last accepted trip or any handover arrival (`travelCooldown`). A refusal is a warn `toast` plus `error { code: 'notAllowed', detail: <reason> }` (protocol `FAST_TRAVEL_REFUSALS`). An accepted trip runs the crossing above from step 2 with the destination's `spawn` as the entry point — the same `handover` message, reservation, ack and single position write; a trip to the zone the player stands in teleports to its spawn instead. **Visited flags**: the server writes `visited:<ZoneId>` (content `visitedFlag`, accepted by `isKnownFlag`) the first time a player joins a zone — fresh join or handover arrival — through the room's flag writer and a `progressionDelta { flags }`; registration writes `visited:` for the starting zone.
 
 ### 4.7 REST (Fastify 5, `@fastify/jwt` access tokens 15 min, refresh tokens 30 d in `refresh_tokens`)
 

@@ -150,6 +150,10 @@ export const routes: RouteObject[] = [
             },
           }),
           child({
+            path: 'map',
+            lazy: async () => ({ Component: (await import('../screens/MapScreen')).MapScreen }),
+          }),
+          child({
             path: 'settings',
             lazy: async () => ({ Component: (await import('../screens/SettingsScreen')).SettingsScreen }),
           }),
