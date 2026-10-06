@@ -34,6 +34,8 @@ import type {
 } from './contracts.js';
 import type { ZoneLoader } from './defaults.js';
 import { zoneSystemFor, type PreparedZone } from './zone/system.js';
+import { createSliceStats, STEPS_CANCELLED, type SliceStats } from './steps.js';
+import { isZoneMesh } from './zone/builder.js';
 import { PART3_SUBSYSTEMS } from './stage/wiring.js';
 import {
   ALL_EFFECTS, LAYERS, type Backend, type BudgetCounts, type BudgetPass, type EffectsFlags, type HarvestLevel, type RenderCaps,
@@ -405,6 +407,9 @@ interface CompileStat { readonly objects: number; readonly ms: number | null; re
 /** One compile run: the boot, or one zone's phases 1 + 2 (cancelled when that zone is disposed; T4). */
 interface CompileRun { cancelled: boolean; /** a prepared zone's run once its zone is adopted: no background slots */ urgent?: boolean }
 
+/** What `ZoneSystem.prepare` takes from the renderer (Handover II: the sliced build's controls). */
+interface PrepareOptions { readonly cancelled?: () => boolean; readonly urgent?: () => boolean; readonly stats?: SliceStats }
+
 /** A zone being prepared off-scene (handover (b)): its build, its compile run and when that run ends. */
 interface PreparedRecord { readonly spec: ZoneSpec; readonly ready: Promise<PreparedZone | null>; readonly run: CompileRun; readonly done: Promise<void> }
 
@@ -557,6 +562,8 @@ class RendererHost implements Renderer, HostContext {
     for (const w of this.warmObjects) this.warmSubsystem.add(w);
     this.persistent.push(...(subsystems.persistent?.(this) ?? []));
     this.installCompileAbort();
+    this.installBuildKeep();
+    this.installPipelineHold();
 
     this.resize(cssW, cssH);
   }
@@ -778,6 +785,77 @@ class RendererHost implements Renderer, HostContext {
     };
   }
 
+  /** Handover II: node builder states a zone mesh made, kept past their last render object (`installBuildKeep`). */
+  readonly buildKeep = { states: 0 };
+
+  /**
+   * Handover II (IMPLEMENTATION-NOTES): three drops a node build from its cache (`NodeManager.delete`) when its last
+   * render object goes, so a cold crossing — the old zone disposed, then the new one built — rebuilt every key the two
+   * zones share (the same library surfaces on the same geometry layouts). The first time a zone mesh's build would be
+   * dropped it is kept instead (one extra use, once per build): the next zone's meshes with that key find it in the
+   * cache. A build holds the generated shader text and the binding layout — no GPU object (programs and pipelines are
+   * still released with their render objects, so `programs` returns to the baseline as before). Bounded by the distinct
+   * keys: library surface × geometry layout × render context (the light key is fixed since the light layout). Shadow-pass
+   * builds are not kept: they are cheap (16 per crossing, 36 ms), and kept ones re-initialised hero textures the library
+   * had disposed (+5 textures per Mirevale reload in the sandbox leak cycle).
+   */
+  private installBuildKeep(): void {
+    type State = { usedTimes: number };
+    const nodes = (this.renderer as unknown as { _nodes?: { delete?(o: unknown): unknown; get?(o: unknown): { nodeBuilderState?: State } } })._nodes;
+    const orig = nodes?.delete?.bind(nodes);
+    if (!nodes || !orig || typeof nodes.get !== 'function') return;
+    const kept = new WeakSet<State>();
+    nodes.delete = (o: unknown): unknown => {
+      const ro = o as { isRenderObject?: boolean; object?: Object3D; material?: { isShadowPassMaterial?: boolean } };
+      if (ro.isRenderObject === true && ro.object !== undefined && isZoneMesh(ro.object) && ro.material?.isShadowPassMaterial !== true) {
+        const st = nodes.get!(o).nodeBuilderState;
+        if (st !== undefined && !kept.has(st)) { kept.add(st); st.usedTimes++; this.buildKeep.states++; }
+      }
+      return orig(o);
+    };
+  }
+
+  /** Handover II: render objects of a disposed zone whose pipeline release waits for the next zone's phase 1 (null: none held). */
+  private heldPipelines: object[] | null = null;
+  private releasePipelines: (held: readonly object[]) => void = () => {};
+  /** Handover II: pipelines held across the last crossing (diagnostics). */
+  readonly pipelineHold = { held: 0 };
+
+  /**
+   * Handover II (IMPLEMENTATION-NOTES): a cold crossing disposes the old zone, then builds and compiles the new one.
+   * three releases a render object's pipeline (and its programs, at zero users) when the object goes, so the new zone's
+   * phase 1 re-created every pipeline the two zones share — GPU pipeline compiles the main thread waited for (≈ 0.4 s
+   * idle in the cold crossing's profile). While a zone is disposed, its render objects' pipeline releases are held;
+   * they run once the next zone's phase 1 finished (its first view's pipelines are cache hits meanwhile), or in the next
+   * task when no zone load follows the dispose. Pipeline keys are structural (material state, render context, geometry
+   * layout), so they carry over. Programs are back to the counts without the hold as soon as the hold is released.
+   */
+  private installPipelineHold(): void {
+    const pipes = (this.renderer as unknown as { _pipelines?: { delete?(o: object): unknown } })._pipelines;
+    const orig = pipes?.delete?.bind(pipes);
+    if (!pipes || !orig) return;
+    pipes.delete = (o: object): unknown => {
+      const ro = o as { isRenderObject?: boolean; object?: Object3D };
+      if (this.heldPipelines !== null && ro.isRenderObject === true && ro.object !== undefined && isZoneMesh(ro.object)) { this.heldPipelines.push(o); return undefined; }
+      return orig(o);
+    };
+    this.releasePipelines = (held) => { for (const o of held) orig(o); };
+  }
+
+  /** Starts holding zone pipeline releases (a zone is about to be disposed). */
+  private holdPipelines(): void {
+    if (this.heldPipelines === null) this.heldPipelines = [];
+  }
+
+  /** Releases every held pipeline (the next zone's phase 1 is done, no load followed, or the renderer goes). */
+  private releaseHeldPipelines(): void {
+    const held = this.heldPipelines;
+    if (held === null) return;
+    this.heldPipelines = null;
+    this.pipelineHold.held = held.length;
+    this.releasePipelines(held);
+  }
+
   /** The current zone's background phase (T4): resolves when it finished or its zone was disposed. */
   private background: Promise<void> = Promise.resolve();
 
@@ -839,8 +917,10 @@ class RendererHost implements Renderer, HostContext {
       for (const hk of this.hooks) hk.onZone?.(null);
       const mine: Object3D[] = [];
       root.traverse((o) => { if (this.gated.has(o)) mine.push(o); });
+      if (!this.disposed) this.holdPipelines();   // Handover II: released after the next zone's phase 1
       dispose();
       for (const o of mine) this.gated.delete(o);
+      if (this.heldPipelines !== null) setTimeout(() => { if (!this.loading) this.releaseHeldPipelines(); }, 0);
       this.scheduleWarmRekey();
     };
   }
@@ -929,21 +1009,26 @@ class RendererHost implements Renderer, HostContext {
 
   /** Handover (b): the zone prepared off-scene, if any. */
   private prepared: PreparedRecord | null = null;
+  /** Handover II: the last prepare's sliced build (slices, the longest step; sandbox / harness diagnostics). */
+  prepareStats: SliceStats | null = null;
 
   prepareZone(next: ZoneSpec, opts: LoadZoneOptions = {}): Promise<void> {
     if (this.disposed || !this.precompileEnabled) return Promise.resolve();
-    const zones = this.zones as ZoneLoader & { prepare?(s: ZoneSpec): Promise<PreparedZone> };
+    const zones = this.zones as ZoneLoader & { prepare?(s: ZoneSpec, o?: PrepareOptions): Promise<PreparedZone> };
     if (typeof zones.prepare !== 'function') return Promise.resolve();
     if (this.prepared !== null) {
       if (sameZone(this.prepared.spec, next)) return this.prepared.done;
       this.dropPrepared();
     }
     const run: CompileRun = { cancelled: false };
-    const ready = zones.prepare(next).then((z) => {
+    // Handover II: the build runs in slices between frames; a drop stops it, an adopting `loadZone` hurries it
+    const stats = createSliceStats();
+    this.prepareStats = stats;
+    const ready = zones.prepare(next, { cancelled: () => run.cancelled || this.disposed, urgent: () => run.urgent === true, stats }).then((z) => {
       if (run.cancelled || this.disposed) { z.drop(); return null; }
       return z;
     }, (e: unknown) => {
-      if (isDevBuild()) console.error(`@ewa/render: prepareZone('${next.id}') failed`, e);
+      if (e !== STEPS_CANCELLED && isDevBuild()) console.error(`@ewa/render: prepareZone('${next.id}') failed`, e);
       return null;
     });
     const done = ready.then(async (z) => {
@@ -984,7 +1069,7 @@ class RendererHost implements Renderer, HostContext {
       // handover (b): adopt the zone prepared off-scene for this spec (any other prepared zone is dropped)
       const prepared = this.prepared !== null && sameZone(this.prepared.spec, spec) ? this.prepared : null;
       if (prepared === null) this.dropPrepared();
-      else this.prepared = null;
+      else { this.prepared = null; prepared.run.urgent = true; }   // a build still in slices finishes without waits
       const pz = prepared !== null ? await prepared.ready : null;
       if (prepared !== null && pz !== null) return await this.adoptPrepared(spec, prepared, pz, opts);
       let openHero: () => void = () => {};
@@ -1017,6 +1102,7 @@ class RendererHost implements Renderer, HostContext {
       return handle;
     } finally {
       this.loading = false;
+      this.releaseHeldPipelines();   // Handover II: the first view's pipelines exist (both paths resolve after phase 1)
     }
   }
 
@@ -1253,6 +1339,7 @@ class RendererHost implements Renderer, HostContext {
     this.dropPrepared();
     if (this.zone !== null) this.zone.dispose();
     this.zone = null;
+    this.releaseHeldPipelines();
     for (const h of this.hooks) h.dispose?.();
     this.post.dispose();
     this.day.dispose();              // PMREM generator + its target, sky meshes

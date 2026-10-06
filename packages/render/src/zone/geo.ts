@@ -184,7 +184,18 @@ export function trsEuler(x: number, y: number, z: number, rx: number, ry: number
 
 // ---- shapes ------------------------------------------------------------------------------------------------
 
-const boxCache = new Map<string, BufferGeometry>();
+let boxCache = new Map<string, BufferGeometry>();
+
+/**
+ * Handover II: makes `cache` the shape cache and returns the one it replaces. A zone build gives each of its steps its
+ * own cache (`buildZoneSteps`), so a sliced build interleaved with another build never sees that build's boxes (a hit
+ * matches sizes to 1 mm, so what is in the cache decides the exact vertices, and the digest).
+ */
+export function swapShapeCache(cache: Map<string, BufferGeometry>): Map<string, BufferGeometry> {
+  const prev = boxCache;
+  boxCache = cache;
+  return prev;
+}
 
 /**
  * A box with `c` chamfers on all 12 edges (Pillar 3: 3–5 cm on buildings), bottom at y = 0, centred in x/z,

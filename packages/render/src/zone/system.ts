@@ -10,7 +10,15 @@ import type { HarvestLevel, LightSource } from '../descriptors.js';
 import type { PunctualHandle } from '../lighting/rig.js';
 import type { SurfaceId } from '../materials/surfaces.js';
 import type { FrameHook, HostContext } from '../renderer.js';
+import { createSliceStats, nextFrame, type SliceStats } from '../steps.js';
 import { loadZone, zoneSurfaces, type ZoneHandleImpl } from './builder.js';
+
+/**
+ * Handover II: the prepare's build runs one slice of this many ms per frame, right after the frame (steps.ts
+ * `nextFrame`). A slice ends after the step that crosses it; the longest steps (a set-piece, a pond bank, a gym's walls)
+ * take 15–35 ms on the dev iGPU, inside the main thread's idle time of a GPU-bound frame.
+ */
+export const PREPARE_SLICE_MS = 8;
 import { gradeOf, lightingPaletteOf } from './palettes.js';
 
 export class ZoneSystem implements FrameHook {
@@ -68,23 +76,40 @@ export class ZoneSystem implements FrameHook {
    * created (a light of the next zone would light this one: every zone is laid out around the origin), its hero tier
    * waits. `adopt` makes it the current zone; `drop` disposes it. Its surfaces stay resident through the current zone's
    * dispose. The renderer compiles it meanwhile (`Renderer.prepareZone`).
+   *
+   * Handover II: the build runs in `PREPARE_SLICE_MS` slices between frames (`opts.sliced`, default on), so preparing
+   * never holds a frame for the whole build; `opts.cancelled` stops it between slices (the promise rejects with
+   * `STEPS_CANCELLED`); once `opts.urgent` returns true the rest of the build runs without waits. `opts.stats` receives
+   * the slice counts.
    */
-  async prepare(spec: ZoneSpec): Promise<PreparedZone> {
+  async prepare(spec: ZoneSpec, opts: { readonly sliced?: boolean; readonly cancelled?: () => boolean; readonly urgent?: () => boolean; readonly stats?: SliceStats } = {}): Promise<PreparedZone> {
     const ctx = this.ctx;
     const lights = deferredLights(ctx.lighting);
     let openHero!: () => void;
     const heroGate = new Promise<void>((res) => { openHero = res; });
-    this.preparedKeep = zoneSurfaces(spec);
-    const handle = await loadZone(spec, {
-      materials: ctx.materials,
-      lighting: lights.deps,
-      scene: null,
-      stats: () => ctx.statsRecord,
-      // dropped unadopted, it must not evict the CURRENT zone's sets (adopted, it is the current zone: disposed first)
-      nextKeep: () => { const cur = this.zone(); return cur !== null && cur !== handle ? [...new Set([...this.keep(), ...cur.surfaces])] : this.keep(); },
-      releaseGpu: (root) => releaseZoneAttributes(ctx, root),
-      heroGate,
-    }, this.clock ?? undefined);
+    // this prepare's keep (a later prepare replaces it; clearing ours must not clear that one's)
+    const keep = zoneSurfaces(spec);
+    this.preparedKeep = keep;
+    const clearKeep = (): void => { if (this.preparedKeep === keep) this.preparedKeep = []; };
+    let handle: ZoneHandleImpl;
+    try {
+      handle = await loadZone(spec, {
+        materials: ctx.materials,
+        lighting: lights.deps,
+        scene: null,
+        stats: () => ctx.statsRecord,
+        // dropped unadopted, it must not evict the CURRENT zone's sets (adopted, it is the current zone: disposed first)
+        nextKeep: () => { const cur = this.zone(); return cur !== null && cur !== handle ? [...new Set([...this.keep(), ...cur.surfaces])] : this.keep(); },
+        releaseGpu: (root) => releaseZoneAttributes(ctx, root),
+        heroGate,
+        ...(opts.sliced !== false ? { sliceMs: PREPARE_SLICE_MS, sliceWait: () => nextFrame(), sliceStats: opts.stats ?? createSliceStats() } : {}),
+        ...(opts.cancelled ? { cancelled: opts.cancelled } : {}),
+        ...(opts.urgent ? { urgent: opts.urgent } : {}),
+      }, this.clock ?? undefined);
+    } catch (e) {
+      clearKeep();
+      throw e;
+    }
     let state: 'prepared' | 'adopted' | 'dropped' = 'prepared';
     return {
       spec,
@@ -92,7 +117,7 @@ export class ZoneSystem implements FrameHook {
       adopt: (): ZoneHandleImpl => {
         if (state !== 'prepared') throw new Error(`@ewa/render: prepared zone '${spec.id}' is ${state}`);
         state = 'adopted';
-        this.preparedKeep = [];
+        clearKeep();
         this.pendingKeep = [];   // `prepareHandover`'s keep was for this zone: it is loaded now
         ctx.scene.add(handle.group);
         lights.activate();
@@ -105,7 +130,7 @@ export class ZoneSystem implements FrameHook {
       drop: (): void => {
         if (state !== 'prepared') return;
         state = 'dropped';
-        this.preparedKeep = [];
+        clearKeep();
         handle.dispose();
       },
     };

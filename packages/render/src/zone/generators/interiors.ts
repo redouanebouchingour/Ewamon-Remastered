@@ -37,6 +37,7 @@ import { BIOME_GENERATORS } from './index.js';
 import { buildBush, buildFlowers, buildRock, buildTree } from './nature.js';
 import { buildBarrel, buildBench, buildBrazier, buildCandle, buildCrate, buildCrystal, buildPlanter, type PropStyle } from './props.js';
 import type { BiomeSet } from './set.js';
+import { drain, type Steps } from '../../steps.js';
 
 const TAU = Math.PI * 2;
 
@@ -897,6 +898,11 @@ function moundParts(P: Parts, surface: SurfaceId, fhw: number, fhd: number, step
 
 /** Builds one pocket (`ewa:interior:<id>`): the hall (hidden), the canopy (shown) and the rim. */
 export function buildInterior(spec: InteriorSpec, d: InteriorBuildDeps): BuiltInterior {
+  return drain(interiorSteps(spec, d));
+}
+
+/** `buildInterior` as resumable steps (Handover II, steps.ts): a yield after each wall, prop, gate, switch and merge. */
+export function* interiorSteps(spec: InteriorSpec, d: InteriorBuildDeps): Steps<BuiltInterior> {
   const kit = themeKit(spec.theme, d.zoneSet);
   const id = spec.id;
   const seed = seedOf(id);
@@ -937,29 +943,35 @@ export function buildInterior(spec: InteriorSpec, d: InteriorBuildDeps): BuiltIn
   rectW(0, spec.d / 2 + T / 2, spec.w / 2 + T, T / 2);
   rectW(-spec.w / 2 - T / 2, 0, T / 2, spec.d / 2);
   rectW(spec.w / 2 + T / 2, 0, T / 2, spec.d / 2);
+  yield 'pocket:walls';
 
   // internal solids, props ----------------------------------------------------------------------------------------
   let innerWalls = 0;
-  spec.walls.forEach((w, k) => {
+  for (let k = 0; k < spec.walls.length; k++) {
+    const w = spec.walls[k]!;
     if (innerWall(S, F, W, spec, w, kit, seed + 101 * (k + 1))) innerWalls++;
     if (w.style !== 'channel' && w.style !== 'chasm') rectW(w.lx, w.lz, w.hw, w.hd);
-  });
+    yield 'pocket:inner-wall';
+  }
   let props = 0;
-  spec.props.forEach((pp, k) => {
+  for (let k = 0; k < spec.props.length; k++) {
+    const pp = spec.props[k]!;
     const t = new Parts();
     // a prop standing on a solid rect is sized to it (beds, tables, counters, bookshelves)
     const solid = spec.walls.find((w) => (w.style === 'wall' || w.style === 'counter') && Math.abs(pp.lx - w.lx) <= w.hw + 0.05 && Math.abs(pp.lz - w.lz) <= w.hd + 0.05);
     const quarter = Math.abs(Math.sin(pp.yaw)) > 0.7;
     const size: [number, number] | null = solid ? (quarter ? [solid.hd, solid.hw] : [solid.hw, solid.hd]) : null;
-    if (!propInto(t, pp.kind, kit, size, seed + 7919 * (k + 1))) return;
+    if (!propInto(t, pp.kind, kit, size, seed + 7919 * (k + 1))) continue;
     const flat = pp.kind === 'rug' || pp.kind === 'light_path' || pp.kind === 'lava_channel';
     (flat ? F : CASTING_PROPS.has(pp.kind) ? S : P).addParts(t, trs(pp.lx, top, pp.lz, pp.yaw, pp.scale > 0 ? pp.scale : 1));
     props++;
-  });
+    yield 'pocket:prop';
+  }
 
   // gates --------------------------------------------------------------------------------------------------------
   const gates: GateRec[] = [];
-  spec.gates.forEach((g, k) => {
+  for (let k = 0; k < spec.gates.length; k++) {
+    const g = spec.gates[k]!;
     const along = g.hw >= g.hd;
     const L = 2 * Math.max(g.hw, g.hd); const Tk = 2 * Math.min(g.hw, g.hd);
     const yawG = along ? 0 : Math.PI / 2;
@@ -967,7 +979,7 @@ export function buildInterior(spec: InteriorSpec, d: InteriorBuildDeps): BuiltIn
     gateGeometry(t, g.style, kit, L, Tk, seed + 503 * (k + 1));
     gateFrame(S, g.style, kit, L, Tk, trs(g.lx, top, g.lz, yawG));
     const o = meshOf(t, `ewa:interior:${id}:gate:${g.id}:mesh`, false, d);   // transient: no shadow draws
-    if (!o) return;
+    if (!o) continue;
     const holder = new Group();
     holder.name = `ewa:interior:${id}:gate:${g.id}`;
     holder.position.set(g.lx, top, g.lz);
@@ -984,11 +996,13 @@ export function buildInterior(spec: InteriorSpec, d: InteriorBuildDeps): BuiltIn
       rest: [g.lx, top, g.lz], delta: aside ? [ax * dir * travel, 0, az * dir * travel] : [0, -travel, 0],
       roll: g.style === 'boulder' ? -dir * (travel / Math.max(0.5, L * 0.42)) : 0,
     });
-  });
+    yield 'pocket:gate';
+  }
 
   // switches ----------------------------------------------------------------------------------------------------
   const switches: SwitchRec[] = [];
-  spec.switches.forEach((s, k) => {
+  for (let k = 0; k < spec.switches.length; k++) {
+    const s = spec.switches[k]!;
     const sp = switchGeometry(s.kind, kit, seed + 307 * (k + 1));
     // face the approach: a switch by a side wall faces the hall's centre line, the rest face the door
     const nearSide = Math.abs(s.lx) > spec.w / 2 - 2;
@@ -1013,17 +1027,21 @@ export function buildInterior(spec: InteriorSpec, d: InteriorBuildDeps): BuiltIn
     if (gl) { gl.visible = false; holder.add(gl); }
     hall.add(holder);
     switches.push({ id: s.id, kind: s.kind, holder, moving, glow: gl, off: [sp.off[0], sp.pivot[1] + sp.off[1]], on: [sp.on[0], sp.pivot[1] + sp.on[1]] });
-  });
+    yield 'pocket:switch';
+  }
 
   // merged statics ------------------------------------------------------------------------------------------------
   const flatMesh = meshOf(F, `ewa:interior:${id}:floor`, false, d);
   if (flatMesh) hall.add(flatMesh);
+  yield 'pocket:merge';
   const stat = meshOf(S, `ewa:interior:${id}:static`, true, d);
   if (stat) hall.add(stat);
+  yield 'pocket:merge';
   const dress = meshOf(P, `ewa:interior:${id}:dressing`, false, d);
   if (dress) hall.add(dress);
   const water = waterMesh(W, kit.water, `ewa:interior:${id}:water`, d);
   if (water) hall.add(water);
+  yield 'pocket:merge';
 
   // canopy (a LOD of three tiers) + rim ------------------------------------------------------------------------------
   const ac = Math.abs(cs) > 0.5;
@@ -1037,11 +1055,13 @@ export function buildInterior(spec: InteriorSpec, d: InteriorBuildDeps): BuiltIn
   const salt = seed & 0xffff;
   const groundLayer = tree ? d.palette.terrainLayers[0] : d.zoneSet.rock;
   mounds.forEach((M, k) => moundParts(M, groundLayer, fhw, fhd, k === 1 ? 2 : 1, ground, salt));
+  yield 'pocket:mounds';
   const ihw = spec.w / 2 + T + 0.6; const ihd = spec.d / 2 + T + 0.6;
   const spacing = tree ? INTERIOR.canopyTreeSpacing : 3.2;
   const kinds: PropGeo[] = tree
     ? [0, 1, 2].map((k) => buildTree(tree.bark, tree.leaf, tree.shape, (seed ^ 0x7ee5) + k * 977))
     : [0, 1, 2].map((k) => buildRock(d.zoneSet.rock, (seed ^ 0x40c1) + k * 31, { size: 1.5, squash: 0.75, elongate: 1.3, cuts: [3, 5] }));
+  yield 'pocket:canopy-kinds';
   const nxT = Math.max(1, Math.round((2 * ihw) / spacing)); const nzT = Math.max(1, Math.round((2 * ihd) / spacing));
   for (let j = 0; j < nzT; j++) for (let i = 0; i < nxT; i++) {
     const h1 = hash2(i, j, seed); const h2 = hash2(i, j, seed + 1);
@@ -1050,8 +1070,10 @@ export function buildInterior(spec: InteriorSpec, d: InteriorBuildDeps): BuiltIn
     const m = trs(lx, y, lz, h1 * TAU, tree ? 0.85 + h2 * 0.25 : 0.9 + h1 * 0.8);
     const g = kinds[(i * 7 + j) % 3]!;
     tiers.forEach((Tp, k) => addPropTier(Tp, g, k as 0 | 1 | 2, m));
+    if (i === nxT - 1) yield 'pocket:canopy';
   }
   for (const g of kinds) disposeProp(g);
+  yield 'pocket:canopy';
   // undergrowth: bushes packed over the knoll so it reads as a thicket, not a bald hump (same leaf surface: no extra draw)
   const under = foliageOf(d.zoneSet);
   if (tree && under) {
@@ -1065,19 +1087,25 @@ export function buildInterior(spec: InteriorSpec, d: InteriorBuildDeps): BuiltIn
       tiers.forEach((Tp, k) => { if (k < 2 || (i + j) % 2 === 0) addPropTier(Tp, bushes[(i + 2 * j) % 3]!, k as 0 | 1 | 2, m); });
     }
     for (const g of bushes) disposeProp(g);
+    yield 'pocket:undergrowth';
   }
   let canopyLod: LOD | null = null;
   // each level: the knoll (no shadow; lod2 a coarser grid) + the crowns (casting at lod0 only)
   const moundMeshes = mounds.map((M, k) => meshOf(M, `ewa:interior:${id}:canopy:mound${k}`, false, d));
-  const levels = tiers.map((Tp, k) => {
-    const crowns = meshOf(Tp, `ewa:interior:${id}:canopy:lod${k}`, k === 0, d);
+  yield 'pocket:canopy-merge';
+  const levels: (Group | null)[] = [];
+  for (let k = 0; k < tiers.length; k++) {
+    const crowns = meshOf(tiers[k]!, `ewa:interior:${id}:canopy:lod${k}`, k === 0, d);
     const mound = moundMeshes[k === 2 ? 1 : 0] ?? null;
-    if (!crowns || !mound) return null;
-    const lv = new Group();
-    lv.name = `ewa:interior:${id}:canopy:level${k}`;
-    lv.add(k === 1 ? mound.clone(true) : mound, crowns);
-    return lv;
-  });
+    let lv: Group | null = null;
+    if (crowns && mound) {
+      lv = new Group();
+      lv.name = `ewa:interior:${id}:canopy:level${k}`;
+      lv.add(k === 1 ? mound.clone(true) : mound, crowns);
+    }
+    levels.push(lv);
+    yield 'pocket:canopy-merge';
+  }
   if (levels.every((o) => o !== null)) {
     const lod = new LOD();
     lod.name = `ewa:interior:${id}:canopy:lod`;

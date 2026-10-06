@@ -1800,5 +1800,145 @@ as a guard.
   scatter meshes of a material share one node build. That touches the material graph, the shadow pass and the TRAA
   velocity path.
 - **The prepare's one long frame** (0.8–1.1 s) is `buildZone`. Splitting the build into yielding steps would remove it.
+- The two items above are closed by "Handover II" below.
 - **Slots**: a zone with more than 2 shadow-map casters needs `LIGHT_LAYOUT.shadowSpotSlots` raised, within the
   16-sampled-texture budget (≤ 5 with the current billboard material).
+
+# Handover II: shared scatter builds, a time-sliced build (2026-10-06)
+
+Closes the two open items of "Handover: fixed light layout" (the not-preloaded crossing, the prepare's long frame).
+
+## PROGRESS (resume point after a restart)
+
+- [x] baseline numbers (harness bundle of HEAD ffe5d48 in the session scratchpad `hitch2/base`): preloaded first frame
+      79 ms, prepare 2.75 s with one 717 ms frame; cold crossing 2 510 ms (lighter machine load than the last phase).
+- [x] (a) `zone/instancing.ts` ScatterMesh + the build keep (`Renderer.installBuildKeep`): cold 1 089 ms, prepare
+      963 ms; A/B shots mean |Δ| 0.04–0.97 / 255, programs / draws / triangles identical, attributes −288.
+- [x] (b) `steps.ts` + generator builders (`buildZoneSteps`, terrain / skirt / house / pocket / jittered points); the
+      digests of all 21 zones equal HEAD's, sync and sliced (temp test). Longest step ≈ 15–30 ms (node).
+- [x] (b) `ZoneSystem.prepare` builds sliced: one 8 ms slice per frame right after it (`nextFrame`), cancel on drop,
+      urgent on adoption. Prepare max frame 66.8 ms (= idle), 0 frames > 100 ms; prepare 3.1–3.7 s (was one 1.1 s frame).
+- [x] the pipeline hold (`Renderer.installPipelineHold`): a disposed zone's pipeline releases wait for the next zone's
+      phase 1. Cold crossing 692–1 348 ms depending on machine load (base 2 510–2 995 ms in the same sessions).
+- [x] tests, budgets, leaks, A/B shots, SPEC + CHANGELOG (done; the sections below are final)
+- [x] the build keep skips shadow-pass builds (they re-initialised disposed hero textures: +5 textures per Mirevale
+      reload in `leakCycle(3)`); leak cycles ±0 again; `test/handover-ii.test.ts` (7); A/B fresh + round-trip shots.
+
+## Layout
+
+| File | What |
+|---|---|
+| `src/zone/instancing.ts` (new) | `ScatterMesh`, `ScatterMatrices`, `scatterColors`, `installScatterInstancing` (the `setupPosition` prepend) |
+| `src/steps.ts` (new) | `Steps<T>`, `drain`, `runSliced` (budget, `cancelled`, `urgent`, `SliceStats`), `nextSlice`, `nextFrame`, `STEPS_CANCELLED` |
+| `src/zone/scatter.ts` | `ScatterField` builds `ScatterMesh`es (shared tier matrix / tint buffers, `instances` instead of `count`); `jitteredPointSteps` |
+| `src/zone/builder.ts` | `buildZoneSteps` (generator; `buildZone` drains it; each build has its own shape cache), `loadZone` `sliceMs` / `sliceWait` / `cancelled` / `urgent` / `sliceStats`, `isZoneMesh` |
+| `src/terrain/mesh.ts`, `zone/generators/{buildings,interiors}.ts`, `zone/geo.ts` | `terrainChunkSteps`, `skirtSteps`, `houseSteps`, `interiorSteps` (the old functions drain them); `swapShapeCache` |
+| `src/zone/system.ts` | `prepare(spec, { sliced, cancelled, urgent, stats })`, `PREPARE_SLICE_MS`; a prepare's keep is cleared only if still its own |
+| `src/renderer.ts` | `installBuildKeep` (`buildKeep.states`), `installPipelineHold` (`pipelineHold.held`), `prepareStats`; `prepareZone` passes cancel / urgent / stats |
+| `src/stats.ts`, `src/compilePlan.ts` | a `ScatterMesh` counts as an instanced draw (dump `instancedMesh`, `instanced` = its instances; compile-plan bounds / unit key) |
+| client `src/harness/HarnessWorld.ts` | `HandoverResult.prepare.build` (the sliced build's slices, work ms, longest slice / step) |
+
+## Design
+
+**(a) Scatter builds shared.** three 0.186 keys an `InstancedMesh`'s node build by its uuid
+(`RenderObject.getMaterialCacheKey`: `isInstancedMesh || count > 1`), because its instance buffers are node attributes
+bound to that one object (`BufferAttributeNode.attribute`, resolved before the geometry in `RenderObject.getAttributes`).
+- `ScatterMesh` is a plain `Mesh` (`count` stays 1) over an `InstancedBufferGeometry` that references the part geometry's
+  attributes, index, groups and draw range (nothing copied) and adds the instance data as plain geometry attributes:
+  `ewaInstM0..3` (vec4 rows of one `InstancedInterleavedBuffer` per tier, shared by the tier's class meshes) and
+  `ewaInstColor` (tinted parts). Draw count = `geometry.instanceCount` (`RenderObject.getDrawParameters` reads it first).
+  Attributes read by name resolve against each object's own geometry, so the key is material + attribute layout.
+- The transform is three's `Instance.js` moved in front of `NodeMaterial.prototype.setupPosition` (installed once), for
+  geometries that carry `ewaInstM0` only, so no other key or program moves. It runs for the beauty pass and for the
+  shadow pass's override material (which uses the base `setupPosition`): position, `transformNormal`, `vInstanceColor`
+  (three's `setupDiffuseColor` multiplies it in when `object.instanceColor` is set), and `positionPrevious` through the
+  same matrix for the velocity MRT (three's previous-matrix copy differed only on a tier rewrite frame). Wind
+  (`positionNode`) still runs after it on the instanced position.
+- `ScatterField` keeps its buffers, chunk slices, masks and capacities; `count` → `instances`. `ScatterMesh.dispose()`
+  fires the object's `dispose` (render objects) and disposes the wrapper geometry.
+- Within a zone this alone turns 49 scatter builds into one per material × layout. Across a cold crossing it is not
+  enough: the old zone is disposed first, and three drops a node build (and a pipeline, and programs) with its last
+  render object. Hence:
+- **Build keep** (`installBuildKeep`, wraps `NodeManager.delete`): the first time a zone mesh's (`isZoneMesh`, a WeakSet
+  the builder fills) scene-pass build would be dropped, it gets one extra use, so it stays in `nodeBuilderCache` for the
+  session. A build is shader text + binding layout, no GPU object; bounded by surface × layout × context (31–38 kept
+  after Mirevale + mire_route). Shadow-pass builds are NOT kept: with them `leakCycle(3)` showed +5 / +10 textures
+  (1024² hero textures "RE-INIT after destroy by … / ShadowMaterial", the `?track=1` tracker), and they are cheap.
+- **Pipeline hold** (`installPipelineHold`, wraps `Pipelines.delete`): while a zone is disposed its render objects'
+  pipeline releases are queued; they run when the next `loadZone` ends (both paths resolve after phase 1), in the next
+  task when no load follows (before the warm re-key), or on renderer dispose. Pipeline keys are structural
+  (`WebGPUBackend.getRenderCacheKey`), so the new zone's first view hits them instead of waiting on GPU pipeline
+  compiles (≈ 0.4 s idle in the cold profile). Programs return exactly as before once released.
+
+**(b) The time-sliced build.** `buildZoneSteps` is the old `buildZone` body as a generator yielding a label after each
+unit (terrain field rows / chunk, skirt segment, water body, house wall / roof / dressing, LOD tier, prop, housing,
+boundary piece, pond stones / planks / posts, plaza curb / pattern, warp room, pocket wall / prop / gate / switch /
+merge / canopy row / level, static chunk, scatter section / 4 096 jittered candidates / field, digest batch).
+- `buildZone` = `drain(buildZoneSteps(...))`; `loadZone(..., { sliceMs })` = `runSliced`. Same code, same order.
+- Every build runs each of its steps with its own chamfer-box cache (`swapShapeCache`): the module cache matches sizes to
+  1 mm, so what is in it decides exact vertices; interleaved builds (a dropped prepare still in flight, two prepares)
+  would otherwise change each other's digest.
+- `ZoneSystem.prepare`: one slice of `PREPARE_SLICE_MS` = 8 ms per frame, started by `nextFrame()` (a task right after
+  the next animation-frame callback; 250 ms stall fallback for hidden tabs). A first version yielded with
+  `scheduler.postTask` between 8 ms slices: frames waited behind the current slice (prepare max frame 100–183 ms).
+  Right after a frame, the main thread of a GPU-bound iGPU frame is idle, so even the longest steps (15–30 ms in node,
+  40–55 ms in the browser: a set-piece's geometry, a pond bank, a gym wall) land in that gap.
+- `cancelled()` (renderer: the run was dropped / the renderer disposed) stops between slices (`g.return()`,
+  `STEPS_CANCELLED`, handled quietly); `urgent()` (set when `loadZone` adopts a prepare still building) runs the rest
+  without waits. A prepare's surface keep is cleared only if it is still its own (`clearKeep`).
+- The cold `loadZone` still builds synchronously (fastest to the first frame; the overlay covers it).
+
+## Measured (Intel Gen-12 iGPU, headless Chrome 154; other sessions' Chromes running; HEAD = harness bundle of ffe5d48)
+
+`handover-hitch.spec.ts`, HEAD and final bundles back to back (`EWA_HARNESS_NO_BUILD` + `EWA_HARNESS_BUILD_DIR`):
+
+| | HEAD | final |
+|---|---|---|
+| not preloaded, first destination frame (SPEC ≤ 1 500) | 2 062 / 2 510 / 2 995 ms | **687 / 743 ms** (1 327 / 1 348 under heavier load, before the shadow-keep fix) |
+| preloaded, first destination frame (SPEC ≤ 250) | 63 / 79 / 89 ms | 42 / 46 ms |
+| the prepare: total / longest frame / frames > 100 ms | 2.8–3.7 s / 683–1 150 ms / 1–2 | 3.8–4.1 s / **67 ms** (= idle) / 0 |
+| the prepare's build | one call | 70–74 slices, 731–823 ms work, longest slice 41–58 ms |
+| programs before → first frame → settled | 109 → 109 → 109 | 109 → 109 → 109 |
+| node builds during the crossing (incl. the prepare) | 49 instanced + 11 mesh + 18 shadow | 0 + 1 + 5 (cold and preloaded) |
+
+Cold profile before the pipeline hold (unminified bundle, CPU profile window = the director's `loadZone`): 150 ms of
+neighbour plans in the client (`withNeighbours` → content `zonePlan`), 810 ms synchronous build (terrain 436 ms), then
+phase 1 ≈ 600 ms, of which ≈ 400 ms main-thread idle (GPU pipelines). After: phase 1 41 ms.
+
+- **Leaks** (sandbox `?zone=mirevale&track=1`): `leakCycle(3)` ±0 on geometries / textures / programs / render targets /
+  attributes / attribute bytes every round (HEAD the same in the same session; the earlier "+1 texture" did not
+  reproduce). Prepare mire_route → drop: geometries 508 → 744 → 508, attributes 1 560 → 2 495 → 1 560, programs 107.
+- **Budgets** (`harness:budget --set M3`, final bundle): 0 cap violations on mirevale, cinderhold, deepcut_route,
+  the_rift. Mirevale: draws 383, programs 109, geometries +2 (wrapper geometries), attributes 1 879 → 1 591.
+- **Visuals** (harness `stage()` spawn-noon / gym-dusk / lamps-night, 1440 × 900): fresh mirevale + cinderhold mean |Δ|
+  0.04–0.72 / 255. After a cold round trip (zone → link → zone, with the kept builds and held pipelines in use) 0.2–2.6 /
+  255, from wind phase and the DOF-blurred crown in front of the camera; the HEAD bundle's own fresh vs round-trip shots
+  differ by 3.8 / 255. Draws, triangles and programs equal in every shot.
+- **Digests**: all 21 zones equal HEAD's, drained and sliced (a one-off test against a HEAD source snapshot).
+
+## Tests
+
+- `test/handover-ii.test.ts` (7):
+  - scatter draws: no `isInstancedMesh`, `count` 1, the row attributes on the tier's shared buffer, the tint attribute,
+    tier-0 instances, fewer layouts than draws, shared buffers per tier;
+  - dispose fires each draw's `dispose` and its wrapper geometry's;
+  - drained / sliced / interleaved builds give the same digest and info (mirevale, cinderhold, mire_route);
+  - `runSliced` budget, stats, cancel (the generator's `finally` runs), urgent;
+  - `loadZone({ sliceMs })` and `ZoneSystem.prepare` (sliced by default, cancelled, urgent, adopt).
+- `zone-dispose.test.ts` (scatter draws wrap their geometry in an `InstancedBufferGeometry`), `zone-helpers.ts` (the
+  mock GPU counts a `ScatterMesh` as instanced), `zone-dump.test.ts` (comment).
+- `npx vitest run packages/render packages/client`: 79 files, 641 tests; `pnpm typecheck`; `npx eslint packages/render
+  packages/client` clean.
+
+## Open
+
+- The cold crossing still pays the synchronous build (≈ 0.6–0.8 s, half of it terrain) and the client's neighbour plans
+  (≈ 150 ms, content `zonePlan` for the destination's neighbours). Faster terrain chunk generation needs its own digest
+  check.
+- The prepare now takes 3–4 s on this iGPU (one 8 ms slice per ~50 ms frame) and starts 48 m from the edge; a bike
+  (10.5 m/s) reaches the edge in ≈ 4.6 s. A crossing that arrives first finishes the build without waits (`urgent`).
+- The kept node builds live for the session (bounded by surface × layout; 31–38 after two zones). Why kept shadow-pass
+  builds re-initialised disposed hero textures was not pinned down (three's shared shadow override material swaps
+  `colorNode` per object), so shadow builds are never kept.
+- `ScatterMesh` relies on two three internals: the `getMaterialCacheKey` rule above and `NodeMaterial.setupPosition`. A
+  three upgrade must re-check both (the A/B shots and `handover-ii.test.ts` catch a broken transform or layout).

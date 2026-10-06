@@ -2,14 +2,15 @@
  * SPEC §10.5.9 / §50.4.6 — the zone disposal contract, in node:
  * - `dispose-contract`: `ZoneHandle.dispose()` is idempotent; it never disposes a library material or texture
  *   directly (only the library's own `evictExcept` releases texture sets); every geometry the builder created is
- *   disposed, every InstancedMesh disposed, every punctual light released.
+ *   disposed, every scatter mesh (`ScatterMesh`, Handover II) disposed, every punctual light released.
  * - leak: 100 load/unload cycles against a mock GPU that mirrors three 0.186's `info.memory` bookkeeping; after
  *   every unload geometries / attributes / textures / programs / render objects equal the baseline exactly; the
  *   geometry digest is identical on every cycle (determinism).
  */
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { Mesh, PointLight, Scene, SpotLight } from 'three/webgpu';
-import type { BufferGeometry, InstancedMesh } from 'three/webgpu';
+import type { BufferGeometry } from 'three/webgpu';
+import { isScatterMesh, type ScatterMesh } from '../src/zone/instancing.js';
 import { LightRig } from '../src/lighting/rig.js';
 import type { MaterialLibrary } from '../src/materials/library.js';
 import { buildZone, loadZone, zoneSurfaces, type ZoneBuildDeps } from '../src/zone/builder.js';
@@ -23,7 +24,7 @@ function deps(lib: MaterialLibrary, rig: LightRig | null, scene: Scene | null): 
 }
 
 describe('§10.5.9 dispose-contract', () => {
-  it('dispose is idempotent, removes the root, releases lights, disposes every builder geometry and InstancedMesh', async () => {
+  it('dispose is idempotent, removes the root, releases lights, disposes every builder geometry and scatter mesh', async () => {
     const lib = await mockLibrary();
     const scene = new Scene();
     const rig = new LightRig(scene);
@@ -36,7 +37,7 @@ describe('§10.5.9 dispose-contract', () => {
     expect(rig.counts()).toEqual({ shadow: 1, nonShadow: 0 });
     const disposedGeo = new Set<BufferGeometry>();
     for (const g of h.geometries) g.addEventListener('dispose', () => disposedGeo.add(g));
-    const instancedDisposed = new Set<InstancedMesh>();
+    const instancedDisposed = new Set<ScatterMesh>();
     for (const m of h.instanced) m.addEventListener('dispose', () => instancedDisposed.add(m));
     const meshes: Mesh[] = [];
     h.group.traverse((o) => { if (o instanceof Mesh) meshes.push(o); });
@@ -78,7 +79,8 @@ describe('§10.5.9 dispose-contract', () => {
       const mats = new Set<string>();
       h.group.traverse((o) => {
         if (!(o instanceof Mesh)) return;
-        expect(o.geometry.type).toBe('BufferGeometry');
+        // a scatter draw wraps its builder geometry's attributes in an InstancedBufferGeometry (Handover II)
+        expect(o.geometry.type).toBe(isScatterMesh(o) ? 'InstancedBufferGeometry' : 'BufferGeometry');
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
           expect(lib.describe(m)).not.toBeNull();
           mats.add(m.uuid);

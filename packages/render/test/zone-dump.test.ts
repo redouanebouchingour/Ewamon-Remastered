@@ -47,7 +47,7 @@ describe('dumpZone on the slice zones', () => {
     // materials[].side: every row carries it; BackSide (1) never appears under a zone root (sky is not in the zone)
     expect(d.materials.length).toBeGreaterThan(5);
     expect(d.materials.every((m) => m.side === 0 || m.side === 2)).toBe(true);
-    // scatter rows: kind + tier + InstancedMesh; plain geometries: kind null, no tier
+    // scatter rows: kind + tier + an instanced draw (ScatterMesh); plain geometries: kind null, no tier
     const scatter = d.geometries.filter((g) => g.kind !== null);
     expect(scatter.length).toBeGreaterThan(10);
     expect(scatter.every((g) => g.instancedMesh && g.tier !== undefined && g.instanced >= 0)).toBe(true);

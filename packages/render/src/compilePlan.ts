@@ -38,7 +38,7 @@ interface Renderable extends Object3D {
   readonly geometry?: BufferGeometry;
   readonly material?: Material | Material[];
   readonly isMesh?: boolean; readonly isLine?: boolean; readonly isPoints?: boolean; readonly isSprite?: boolean;
-  readonly isInstancedMesh?: boolean; readonly isSkinnedMesh?: boolean;
+  readonly isInstancedMesh?: boolean; readonly isScatterMesh?: boolean; readonly isSkinnedMesh?: boolean;
   readonly boundingSphere?: Sphere | null;
 }
 
@@ -67,7 +67,7 @@ function subtreeSphere(o: Object3D, out: Sphere): boolean {
   o.traverse((x) => {
     if (!isRenderable(x)) return;
     const r = x as Renderable;
-    if (r.isInstancedMesh === true && r.boundingSphere) { r.boundingSphere.getBoundingBox(_b); _box.union(_b); return; }
+    if ((r.isInstancedMesh === true || r.isScatterMesh === true) && r.boundingSphere) { r.boundingSphere.getBoundingBox(_b); _box.union(_b); return; }
     const g = r.geometry;
     if (!g) { _b.setFromCenterAndSize(x.getWorldPosition(_v), _v.set(1, 1, 1)); _box.union(_b); return; }
     if (g.boundingBox === null) g.computeBoundingBox();
@@ -87,7 +87,7 @@ export function unitKey(o: Object3D): string {
     if (!isRenderable(x)) return;
     const r = x as Renderable;
     const mats = Array.isArray(r.material) ? r.material : r.material ? [r.material] : [];
-    const kind = `${r.isInstancedMesh ? 'I' : ''}${r.isSkinnedMesh ? 'S' : ''}${r.isSprite ? 'P' : ''}${r.isLine ? 'L' : ''}`;
+    const kind = `${r.isInstancedMesh || r.isScatterMesh ? 'I' : ''}${r.isSkinnedMesh ? 'S' : ''}${r.isSprite ? 'P' : ''}${r.isLine ? 'L' : ''}`;
     parts.push(`${kind}:${mats.map((m) => m.uuid).join(',')}`);
   });
   return parts.sort().join('|');

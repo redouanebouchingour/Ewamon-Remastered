@@ -299,7 +299,7 @@ export interface ZoneDump {
     readonly kind: string | null;
     /** The LOD tier of a scatter geometry (3 = impostor); absent otherwise. A geometry drawn at two tiers has one row per tier. */
     readonly tier?: DumpScatterTier;
-    /** True when an `InstancedMesh` draws it (`instanced` is 1 for a plain mesh too). */
+    /** True when an instanced draw draws it — an `InstancedMesh` or a scatter `ScatterMesh` (`instanced` is 1 for a plain mesh). */
     readonly instancedMesh: boolean;
   }[];
   readonly lights: readonly { readonly id: string; readonly type: 'PointLight' | 'SpotLight'; readonly castShadow: boolean; readonly position: readonly [number, number, number]; readonly housingDistance: number }[];
@@ -481,14 +481,15 @@ export function dumpZone(i: DumpInput): ZoneDump {
       }
       const g = o.geometry as BufferGeometry;
       meshesPerGeometry.set(g.uuid, (meshesPerGeometry.get(g.uuid) ?? 0) + 1);
-      const isInst = (o as Mesh & { isInstancedMesh?: boolean }).isInstancedMesh === true;
+      const scatterMesh = (o as Mesh & { isScatterMesh?: boolean }).isScatterMesh === true;   // Handover II: instancing.ts
+      const isInst = scatterMesh || (o as Mesh & { isInstancedMesh?: boolean }).isInstancedMesh === true;
       const kind = typeof o.userData?.ewaScatterKind === 'string' ? o.userData.ewaScatterKind as string : null;
       const tier = kind !== null && typeof o.userData?.ewaScatterTier === 'number' ? o.userData.ewaScatterTier as DumpScatterTier : undefined;
       const key = tier === undefined ? g.uuid : `${g.uuid}:t${tier}`;
       if (!geometryRows.has(key)) {
         geometryRows.set(key, {
           uuid: g.uuid, type: g.type, parameters: numericParams(g), triangles: triangleCount(g),
-          instanced: isInst ? (o as unknown as InstancedMesh).count : 1,
+          instanced: scatterMesh ? (o as unknown as { instances: number }).instances : isInst ? (o as unknown as InstancedMesh).count : 1,
           sharedBy: 0, kind, ...(tier === undefined ? {} : { tier }), instancedMesh: isInst,
         });
       }

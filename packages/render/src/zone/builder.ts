@@ -13,7 +13,7 @@
  * camera, so trees would cast LOD2 shadows).
  */
 import { Color, Group, LOD, Mesh } from 'three/webgpu';
-import type { BufferGeometry, Material, Object3D , InstancedMesh, Vector3 } from 'three/webgpu';
+import type { BufferGeometry, Material, Object3D , Vector3 } from 'three/webgpu';
 import type { BuildingSpec, HeightfieldData, ObstaclesHandle, ZoneHandle, ZoneSpec } from '../contracts.js';
 import type { LightSource, RenderStats } from '../descriptors.js';
 import type { MaterialLibrary } from '../materials/library.js';
@@ -22,15 +22,16 @@ import type { PunctualHandle } from '../lighting/rig.js';
 import { HOUSINGS_KEY, createRenderStats, type HousingTag } from '../stats.js';
 import { TerrainCollider } from '../terrain/collider.js';
 import { heightClamped } from '../terrain/field.js';
-import { buildSkirt, buildTerrainChunks, skirtClearFn, skirtHeightFn, type NeighbourField, type SkirtOpts, type TerrainLayers } from '../terrain/mesh.js';
+import { skirtClearFn, skirtHeightFn, skirtSteps, terrainChunkSteps, type NeighbourField, type SkirtOpts, type TerrainLayers } from '../terrain/mesh.js';
+import { createSliceStats, drain, runSliced, type SliceStats, type Steps } from '../steps.js';
 import type { Parts} from './geo.js';
-import { Digest, box, beam, card, lathe, releaseShapeCache, trs } from './geo.js';
+import { Digest, box, beam, card, lathe, releaseShapeCache, swapShapeCache, trs } from './geo.js';
 import { BIOME_GENERATORS, FENCE_FOOTPRINT, PROP_BLOCKER, SET_PIECE_BUILDERS, buildHousing, buildPropKind } from './generators/index.js';
 import { addPropTier, disposeProp, finish, tiers3 } from './generators/common.js';
-import { DOORWAY_SURFACE, buildHouse } from './generators/buildings.js';
+import { DOORWAY_SURFACE, houseSteps } from './generators/buildings.js';
 import { buildBush, buildFlowers, buildGroundTuft, buildImpostorCards, buildLog, buildRock, buildStump, buildTallGrass, buildTree } from './generators/nature.js';
 import { buildPondBank } from './generators/props.js';
-import { buildInterior, interiorSurfaces, type BuiltInterior } from './generators/interiors.js';
+import { interiorSteps, interiorSurfaces, type BuiltInterior } from './generators/interiors.js';
 import { boundaryPieces, buildShard, buildSkirtItem, dressingFor, rockClusters, screeClusters, skirtPlacements, vergeClusters, type CoverPoint, type DressingStyle } from './generators/dressing.js';
 import { InteriorSystem } from './interiors.js';
 import { setSurfaces, type BiomeSet } from './generators/set.js';
@@ -41,7 +42,8 @@ import {
 import { BUILDING_LOD_LEVELS, CHUNK_SIZE, chunkGrid, type ChunkGrid } from './lod.js';
 import { paletteFor } from './palettes.js';
 import { createPrng, fbm2, hash2, valueNoise } from './prng.js';
-import { ChunkSet, ScatterField, jitteredPoints, type ChunkRec, type Instance, type ScatterKind } from './scatter.js';
+import { ChunkSet, ScatterField, jitteredPointSteps, jitteredPoints, type ChunkRec, type Instance, type ScatterKind } from './scatter.js';
+import { isScatterMesh, type ScatterMesh } from './instancing.js';
 import type { Palette, PropGeo } from './types.js';
 import { buildWaterMesh } from './water.js';
 import { CARD_RENDER_ORDER, splitByClass } from './split.js';
@@ -66,6 +68,19 @@ export interface ZoneBuildDeps {
    * on the GPU, and nothing ever released them again (IMPLEMENTATION-NOTES Part 4, H5: +21 textures per unload).
    */
   readonly heroGate?: Promise<void>;
+  /**
+   * Handover II: build in time slices of this many ms between frames (`runSliced`) instead of in one call — the
+   * off-scene prepare, so preparing the next zone never holds a frame for the whole build. Same steps, same result.
+   */
+  readonly sliceMs?: number;
+  /** Resolves when the next slice may run (default: the next task, steps.ts `nextSlice`). */
+  readonly sliceWait?: () => Promise<void>;
+  /** Filled by a sliced build (slices, the longest step). */
+  readonly sliceStats?: SliceStats;
+  /** A sliced build stops between slices once this returns true (`loadZone` rejects with `STEPS_CANCELLED`). */
+  readonly cancelled?: () => boolean;
+  /** A sliced build finishes without further waits once this returns true. */
+  readonly urgent?: () => boolean;
 }
 
 /** What the zone system needs beyond the verbatim `ZoneHandle`. */
@@ -76,7 +91,8 @@ export interface ZoneHandleImpl extends ZoneHandle {
   readonly disposed: boolean;
   /** Geometries the builder created, in build order (§10.5.9). */
   readonly geometries: readonly BufferGeometry[];
-  readonly instanced: readonly InstancedMesh[];
+  /** The scatter draws (instancing.ts; one per kind × tier × alpha class). */
+  readonly instanced: readonly ScatterMesh[];
   readonly info: { readonly triangles: number; readonly chunks: number; readonly instances: number; readonly buildMs: number | null };
   /** Per-frame LOD pick against the main camera. Zero allocation. Returns chunks at the impostor tier. */
   updateLod(camera: Vector3, cameraObject: Object3D): number;
@@ -87,6 +103,12 @@ export interface ZoneHandleImpl extends ZoneHandle {
 }
 
 const MOVER_R = 0.35;
+
+/** Every drawable a zone build created (the renderer's node-build keep, Handover II: `isZoneMesh`). */
+const ZONE_MESHES = new WeakSet<Object3D>();
+
+/** Whether `o` was created by a zone build (terrain, props, buildings, scatter, pockets, obstacles). */
+export function isZoneMesh(o: Object3D): boolean { return ZONE_MESHES.has(o); }
 
 // ---- helpers ------------------------------------------------------------------------------------------------
 
@@ -102,7 +124,7 @@ function footprintHeights(h: HeightfieldData, b: BuildingSpec): { max: number; m
   return { max, min };
 }
 
-interface Built { readonly root: Group; readonly geometries: BufferGeometry[]; readonly instanced: InstancedMesh[]; triangles: number }
+interface Built { readonly root: Group; readonly geometries: BufferGeometry[]; readonly instanced: ScatterMesh[]; triangles: number }
 
 /**
  * A PropGeo tier as a render object: one Mesh, or a Group of two Meshes when the tier mixes solid and alpha-tested
@@ -172,7 +194,12 @@ export async function loadZone(spec: ZoneSpec, deps: ZoneBuildDeps, clock?: () =
   const surfaces = zoneSurfaces(spec);
   await deps.materials.preload(surfaces);
   const t0 = clock ? clock() : null;
-  const handle = buildZone(spec, deps, surfaces);
+  const handle = deps.sliceMs !== undefined && deps.sliceMs > 0
+    ? await runSliced(buildZoneSteps(spec, deps, surfaces), {
+      sliceMs: deps.sliceMs, now: clock ?? sliceClock, stats: deps.sliceStats ?? createSliceStats(),
+      ...(deps.sliceWait ? { wait: deps.sliceWait } : {}), ...(deps.cancelled ? { cancelled: deps.cancelled } : {}), ...(deps.urgent ? { urgent: deps.urgent } : {}),
+    })
+    : buildZone(spec, deps, surfaces);
   const buildMs = t0 !== null && clock ? clock() - t0 : null;
   (handle.info as { buildMs: number | null }).buildMs = buildMs;
   const hero = (): void => { if (!handle.disposed) void deps.materials.preloadHero(surfaces); };   // never for a zone already gone
@@ -180,8 +207,36 @@ export async function loadZone(spec: ZoneSpec, deps: ZoneBuildDeps, clock?: () =
   return handle;
 }
 
+const sliceClock = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
 /** Synchronous build (surfaces must be resolvable through `deps.materials.get`). */
 export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonly SurfaceId[] = zoneSurfaces(spec)): ZoneHandleImpl {
+  return drain(buildZoneSteps(spec, deps, surfaces));
+}
+
+/**
+ * Handover II: the build as resumable steps (steps.ts) — `buildZone` drains it, a sliced `loadZone` runs it between
+ * frames. It yields after every unit of work (a terrain chunk or skirt segment, a building, a prop, a pocket, a static
+ * chunk, a scatter kind's placement and its field, a batch of digested geometries); nothing outside the build is read
+ * between steps, so the result does not depend on how it is sliced.
+ */
+export function buildZoneSteps(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonly SurfaceId[] = zoneSurfaces(spec)): Steps<ZoneHandleImpl> {
+  return withOwnShapeCache(zoneSteps(spec, deps, surfaces));
+}
+
+/** Runs every step of `g` with one shape cache of its own (geo.ts `swapShapeCache`): interleaved builds never share boxes. */
+function* withOwnShapeCache<T>(g: Steps<T>): Steps<T> {
+  const cache = new Map<string, BufferGeometry>();
+  for (;;) {
+    const prev = swapShapeCache(cache);
+    let r: IteratorResult<string, T>;
+    try { r = g.next(); } finally { swapShapeCache(prev); }
+    if (r.done === true) return r.value;
+    yield r.value;
+  }
+}
+
+function* zoneSteps(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonly SurfaceId[]): Steps<ZoneHandleImpl> {
   const set: BiomeSet = BIOME_GENERATORS[spec.generators] ?? BIOME_GENERATORS.grove;
   const palette = paletteFor(spec.palette, spec.biome);
   const mat = (id: SurfaceId): Material => deps.materials.get(id);
@@ -209,7 +264,7 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
 
   // 1. terrain chunks + 2. skirt
   const layers: TerrainLayers = [palette.plaza, palette.terrainLayers[1], palette.terrainLayers[2], palette.terrainLayers[0]];
-  for (const c of buildTerrainChunks(h, grid, splat, layers, mat)) {
+  for (const c of yield* terrainChunkSteps(h, grid, splat, layers, mat)) {
     root.add(c.mesh); record(c.geometry); built.triangles += c.triangles;
     chunks.at(c.centre[0], c.centre[1]).always.push(c.mesh);
   }
@@ -226,31 +281,35 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
   const skirtOpts: SkirtOpts = { reach: 60, rise: spec.layout === 'route' ? 11 : 14, salt: spec.seed & 0xffff, exits, ...(neighbours.length > 0 ? { neighbours } : {}) };
   const skirtY = skirtHeightFn(h, skirtOpts);
   const skirtClear = skirtClearFn(h, skirtOpts);
-  for (const c of buildSkirt(h, skirtOpts, layers, mat)) { root.add(c.mesh); record(c.geometry); built.triangles += c.triangles; }
+  for (const c of yield* skirtSteps(h, skirtOpts, layers, mat)) { root.add(c.mesh); record(c.geometry); built.triangles += c.triangles; }
 
   // 3. water
   const waterSurface: SurfaceId = set.props.water ?? 'water_pond';
   for (const body of plan.water) {
     const w = buildWaterMesh(h, body, waterSurface, mat(waterSurface));
     if (w) { root.add(w); record(w.geometry); }
+    yield 'water';
   }
 
   // 4. buildings (THREE.LOD each)
   for (const b of spec.buildings) {
     const fh = footprintHeights(h, b);
-    const geo = buildHouse(set.building, b, { drop: fh.max - fh.min, accent: b.kind === 'gym' ? set.accent : null });
+    const geo = yield* houseSteps(set.building, b, { drop: fh.max - fh.min, accent: b.kind === 'gym' ? set.accent : null });
+    yield 'building:geometry';
     const lod = new LOD();
     lod.name = `ewa:building:${b.id}`;
     lod.autoUpdate = false;
     for (let t = 0; t < 3; t++) {
       const m = objectFromGeo(geo, t as 0 | 1 | 2, mat, `${lod.name}:lod${t}`, views, t < 2);
       lod.addLevel(m, BUILDING_LOD_LEVELS[t]!.distance, BUILDING_LOD_LEVELS[t]!.hysteresis);
+      yield 'building:tier';
     }
     lod.position.set(b.x, fh.max, b.z);
     lod.rotation.y = b.yaw;
     root.add(lod); lods.push(lod); lodChunks.push(chunks.at(b.x, b.z));
     record(geo.lod0); record(geo.lod1); record(geo.lod2);
     collider.addFootprint({ kind: 'rect', x: b.x, z: b.z, hw: b.w / 2 + 0.12 + MOVER_R, hd: b.d / 2 + 0.12 + MOVER_R, yaw: b.yaw });
+    yield 'building';
   }
 
   // 5. set-piece
@@ -261,12 +320,14 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     if (builder) {
       const ground = (lx: number, lz: number): number => { const [wx, wz] = toWorld(sp, lx, lz); return heightClamped(h, wx, wz) - y0; };
       const geo = builder({ set, seed: spec.seed ^ 0x5e7, ground });
+      yield 'set-piece:geometry';
       const lod = new LOD();
       lod.name = `ewa:setpiece:${sp.id}`;
       lod.autoUpdate = false;
       for (let t = 0; t < 3; t++) {
         const m = objectFromGeo(geo, t as 0 | 1 | 2, mat, `${lod.name}:lod${t}`, views, t < 2);
         lod.addLevel(m, BUILDING_LOD_LEVELS[t]!.distance, BUILDING_LOD_LEVELS[t]!.hysteresis);
+        yield 'set-piece:tier';
       }
       lod.position.set(sp.x, y0, sp.z);
       lod.rotation.y = sp.yaw;
@@ -276,6 +337,7 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
       else if (SOLID_SET_PIECES.has(sp.id)) collider.addFootprint({ kind: 'rect', x: sp.x, z: sp.z, hw: sp.hw * 0.6, hd: sp.hd * 0.6, yaw: sp.yaw });
     }
   }
+  yield 'set-piece';
 
   // 6. static props merged per chunk
   // key = chunk index * 2 + (casts shadows ? 1 : 0): small / low things go to a non-casting mesh per chunk
@@ -303,6 +365,7 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     else if (pp.kind === 'bench') collider.addFootprint({ kind: 'rect', x: pp.x, z: pp.z, hw: 1.0 + MOVER_R, hd: 0.25 + MOVER_R, yaw: pp.yaw });
     else if (pp.kind === 'fence') collider.addFootprint({ kind: 'rect', x: pp.x, z: pp.z, hw: FENCE_FOOTPRINT.hw + MOVER_R, hd: FENCE_FOOTPRINT.hd + MOVER_R, yaw: pp.yaw });
     else if (r > 0) collider.addFootprint({ kind: 'circle', x: pp.x, z: pp.z, r: r + MOVER_R });
+    yield 'prop';
   }
   // Phase E1: wall-hugging dressing round the town buildings, inside their collider footprints (dressing.ts)
   const dressing = dressingFor(set.biome);
@@ -319,6 +382,7 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
         placeProp(geo, sk.x, heightClamped(h, sk.x, sk.z) - 0.02, sk.z, sk.yaw, 1, false);
         disposeProp(geo);
       }
+      yield 'dressing';
     }
   }
   // light housings (generated); each one's glowing part is tagged for dumpZone's lightSources (§50.4.6 both directions)
@@ -337,26 +401,29 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     disposeProp(geo);
     if (base > g + 0.02) { const t = partsAt(x, z, castHousing); for (const p of t) box(p, set.props.stone, x, g - 0.2, z, 0.5, base - g + 0.22, 0.5, 0, 0.04); }
     collider.addFootprint({ kind: 'circle', x, z, r: (gen === 'beacon' ? 0.45 : 0.22) + MOVER_R });
+    yield 'housing';
   }
-  dressBoundary(spec, plan, set, dressing, partsAt, propsRng.next.bind(propsRng));
-  dressWater(spec, plan, set, partsAt);
-  if (plan.plaza) { plazaCurb(h, plan, palette, set, partsAt); plazaPattern(h, plan, set, partsAt, spec.seed); }
-  warpRooms(h, plan, set, partsAt, splat.pockets);
+  yield* boundarySteps(spec, plan, set, dressing, partsAt, propsRng.next.bind(propsRng));
+  yield* waterDressingSteps(spec, plan, set, partsAt);
+  if (plan.plaza) { yield* plazaCurbSteps(h, plan, palette, set, partsAt); yield* plazaPatternSteps(h, plan, set, partsAt, spec.seed); }
+  yield* warpRoomSteps(h, plan, set, partsAt, splat.pockets);
   // 6b. Phase A pockets: one group per town building's hall (hall hidden, canopy shown until `setActive`)
   const pockets: BuiltInterior[] = [];
   for (const ip of spec.interiors ?? []) {
     const made: BufferGeometry[] = [];
-    const b = buildInterior(ip, { zoneSet: set, palette, heightfield: h, material: mat, geometries: made, views });
+    const b = yield* interiorSteps(ip, { zoneSet: set, palette, heightfield: h, material: mat, geometries: made, views });
     for (const g of made) { record(g); built.triangles += (g.index ? g.index.count : g.getAttribute('position').count) / 3; }
     root.add(b.root);
     for (const f of b.footprints) collider.addFootprint({ ...f, hw: f.hw + MOVER_R, hd: f.hd + MOVER_R });
     if (b.canopyLod) { lods.push(b.canopyLod); lodChunks.push(chunks.at(ip.x, ip.z)); }
     pockets.push(b);
+    yield 'pocket';
   }
   const interiorSystem = pockets.length > 0 ? new InteriorSystem(pockets) : null;
   // 6c. Phase D10 obstacles: one object each (never merged), so a cleared one can be swapped per player
   const obstacles = buildObstacles(spec, set, mat, views, record, root);
   releaseShapeCache();
+  yield 'obstacles';
   const chunkKeys = [...staticParts.keys()].sort((a, b) => a - b);
   for (const key of chunkKeys) {
     const tiers = staticParts.get(key)!;
@@ -373,20 +440,23 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
       rec.byTier[t]!.push(m);
       if (t === 2) rec.byTier[3]!.push(m);
     }
+    yield 'static-chunk';
   }
 
   // 7. scatter
   const tints = [...palette.scatterTints, ...FLOWER_TINTS, ...dressing.grassTints].map((hex) => new Color(hex));
   const flowerTint0 = palette.scatterTints.length;
-  const scatterKinds = buildScatter(spec, plan, set, dressing, splat, collider, skirtY, mat, views, (scatterRng.next() * 4294967296) >>> 0, flowerTint0, FLOWER_TINTS.length, palette.scatterTints.length, skirtClear);
+  const scatterKinds = yield* scatterSteps(spec, plan, set, dressing, splat, collider, skirtY, mat, views, (scatterRng.next() * 4294967296) >>> 0, flowerTint0, FLOWER_TINTS.length, palette.scatterTints.length, skirtClear);
   for (const sk of scatterKinds) {
     const field = new ScatterField(sk.kind, sk.instances, chunks, root, tints);
     fields.push(field);
     for (const m of field.meshes) built.instanced.push(m);
     for (const g of sk.sources) record(g);
+    yield 'scatter:field';
   }
   chunks.initVisibility();
   for (const f of fields) f.sync(chunks);
+  yield 'scatter:sync';
 
   // 8. lights
   let punctuals: PunctualHandle[] = [];
@@ -394,11 +464,16 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
 
   // digest: every builder geometry's position bytes in build order, then the instance matrices
   const digest = new Digest();
-  for (const g of built.geometries) digest.add(g.getAttribute('position').array as Float32Array);
+  for (let i = 0; i < built.geometries.length; i++) {
+    digest.add(built.geometries[i]!.getAttribute('position').array as Float32Array);
+    if ((i & 31) === 31) yield 'digest';
+  }
   let instances = 0;
   for (const f of fields) { digest.add(f.instanceData()); instances += f.total; }
+  yield 'digest';
 
   root.userData[HOUSINGS_KEY] = housingTags;
+  root.traverse((o) => { if ((o as Mesh).isMesh === true) ZONE_MESHES.add(o); });
   if (deps.scene) deps.scene.add(root);
 
   let disposed = false;
@@ -447,7 +522,7 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
       for (let i = built.instanced.length - 1; i >= 0; i--) built.instanced[i]!.dispose();
       // plain meshes have no dispose(): dispatch the event their render objects listen to, so three releases the
       // render objects (and the programs they hold) now instead of never (library materials are never disposed)
-      root.traverse((o) => { if ((o as Mesh).isMesh && !(o as InstancedMesh).isInstancedMesh) o.dispatchEvent({ type: 'dispose' } as never); });
+      root.traverse((o) => { if ((o as Mesh).isMesh && !isScatterMesh(o)) o.dispatchEvent({ type: 'dispose' } as never); });
       if (deps.lighting && punctuals.length > 0) deps.lighting.releasePunctuals(punctuals);
       punctuals = [];
       deps.materials.evictExcept(deps.nextKeep ? deps.nextKeep() : []);
@@ -564,7 +639,7 @@ function exitGaps(plan: ZoneLayoutPlan, ih: number): { side: 'n' | 's' | 'e' | '
  * dry-stone walls (`wall`: grove, forge, capital), post-and-rail fences (`fence`: salt, vesper), boulder dykes
  * (`rocks`: cinder, storm, marrow, sky). Nothing here is walkable ground (the heightfield ends at `half − 16`).
  */
-function dressBoundary(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, style: DressingStyle, partsAt: PartsAt, rnd: () => number): void {
+function* boundarySteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, style: DressingStyle, partsAt: PartsAt, rnd: () => number): Steps<void> {
   if (spec.layout !== 'town' || set.boundary === 'hedge' || set.boundary === 'crystal') return;
   const h = spec.heightfield;
   const ih = plan.half - 16 + 1.2;
@@ -577,6 +652,7 @@ function dressBoundary(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, styl
   const piers = pieces.filter((pc) => pc.kind === 'pier');
   const nearPier = (x: number, z: number, r: number): boolean => piers.some((pc) => Math.hypot(pc.x - x, pc.z - z) < r);
   for (const pc of pieces) {
+    yield 'boundary';
     const along = pc.yaw === 0 ? [1, 0] : [0, 1];
     const y = heightClamped(h, pc.x, pc.z);
     const t = partsAt(pc.x, pc.z);
@@ -641,11 +717,12 @@ function dressBoundary(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, styl
 }
 
 /** Stone banks round ponds (skipping the boardwalk arc) and a pier over content's boardwalk strips. */
-function dressWater(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, partsAt: PartsAt): void {
+function* waterDressingSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, partsAt: PartsAt): Steps<void> {
   const h = spec.heightfield;
   for (const body of plan.water) {
     if (body.r > 18) continue;                      // sea / lakes: no masonry ring
     const bank = buildPondBank(set.props, body.r + 0.3, spec.seed + body.id * 31);
+    yield 'water-dressing:bank';
     // re-emit the bank stones one by one so the boardwalk arc can be skipped and each sits on the terrain
     const t = partsAt(body.cx, body.cz, false);
     const n = Math.max(10, Math.round((Math.PI * 2 * (body.r + 0.3)) / 0.8));
@@ -660,6 +737,7 @@ function dressWater(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, partsAt
       const rk = rocks[k % 2]!;
       t[0].add(set.props.rock, rk.lod0, m); t[1].add(set.props.rock, rk.lod1, m);
       if (k % 2 === 0) t[2].add(set.props.rock, rk.lod2, m);
+      if ((k & 7) === 7) yield 'water-dressing:stones';
     }
     for (const rk of rocks) disposeProp(rk);
     disposeProp(bank);
@@ -674,6 +752,7 @@ function dressWater(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, partsAt
       const tp = partsAt(x, zc, false);
       box(tp[0], set.props.wood, x, deck - 0.06, zc + (hash2(Math.round(x * 10), body.id, 1) - 0.5) * 0.04, 0.32, 0.06, width - hash2(Math.round(x * 10), body.id, 2) * 0.1, (hash2(Math.round(x * 10), body.id, 3) - 0.5) * 0.04, 0.012);
       if (Math.round((x - x0) / 0.36) % 2 === 0) box(tp[1], set.props.wood, x, deck - 0.06, zc, 0.7, 0.06, width, 0, 0.012);
+      yield 'water-dressing:planks';
     }
     const tp = partsAt((x0 + x1) / 2, zc, false);
     box(tp[2], set.props.wood, (x0 + x1) / 2, deck - 0.08, zc, x1 - x0, 0.08, width, 0, 0.02);
@@ -685,13 +764,15 @@ function dressWater(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, partsAt
         box(tpp[0], set.props.wood, x, body.floor - 0.2, z, 0.16, top - body.floor + 0.2, 0.16, 0, 0.03);
         box(tpp[1], set.props.wood, x, body.floor - 0.2, z, 0.16, top - body.floor + 0.2, 0.16, 0, 0.03);
       }
+      yield 'water-dressing:posts';
     }
     for (const s of [-1, 1]) beam(tp[0], set.props.wood, [x0, deck + 0.82, zc + s * (width / 2 - 0.05)], [bw.x0 + 1, deck + 0.82, zc + s * (width / 2 - 0.05)], 0.09, 0.06, 0.015, [0, 0, s]);
+    yield 'water-dressing:rail';
   }
 }
 
 /** A flush stone curb round the plaza (top 5 cm above the ground). */
-function plazaCurb(h: HeightfieldData, plan: ZoneLayoutPlan, palette: Palette, set: BiomeSet, partsAt: PartsAt): void {
+function* plazaCurbSteps(h: HeightfieldData, plan: ZoneLayoutPlan, palette: Palette, set: BiomeSet, partsAt: PartsAt): Steps<void> {
   const P = plan.plaza!;
   const n = Math.round((Math.PI * 2 * P.r) / 0.62);
   void palette;
@@ -702,14 +783,16 @@ function plazaCurb(h: HeightfieldData, plan: ZoneLayoutPlan, palette: Palette, s
     const t = partsAt(x, z, false);
     box(t[0], set.props.stone, x, y - 0.2, z, 0.58, 0.25, 0.34, -a + Math.PI / 2, 0.03);
     if (k % 2 === 0) box(t[1], set.props.stone, x, y - 0.2, z, 1.2, 0.25, 0.34, -a + Math.PI / 2, 0.03);
+    if ((k & 15) === 15) yield 'plaza:curb';
   }
+  yield 'plaza:curb';
 }
 
 /**
  * The plaza's paving pattern: a band of large flags round the centre feature and round the rim, joined by eight
  * radial spokes (a compass rose), flags 2 cm proud of the cobbles with 4 cm chamfers.
  */
-function plazaPattern(h: HeightfieldData, plan: ZoneLayoutPlan, set: BiomeSet, partsAt: PartsAt, seed: number): void {
+function* plazaPatternSteps(h: HeightfieldData, plan: ZoneLayoutPlan, set: BiomeSet, partsAt: PartsAt, seed: number): Steps<void> {
   const P = plan.plaza!;
   const stone = set.props.stone;
   const inner = plan.setPiece.x === P.x && plan.setPiece.z === P.z ? Math.max(plan.setPiece.hw, plan.setPiece.hd) + 0.2 : 2.5;
@@ -726,17 +809,21 @@ function plazaPattern(h: HeightfieldData, plan: ZoneLayoutPlan, set: BiomeSet, p
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
       flag(P.x + Math.cos(a) * r, P.z + Math.sin(a) * r, (Math.PI * 2 * r) / n - 0.06, r1 - r0 - 0.06, -a + Math.PI / 2, k++);
+      if ((i & 15) === 15) yield 'plaza:pattern';
     }
+    yield 'plaza:pattern';
   }
   for (let s = 0; s < 8; s++) {
     const a = (s / 8) * Math.PI * 2 + Math.PI / 8;
     for (let r = inner + 1.45; r < P.r - 2.3; r += 0.95) flag(P.x + Math.cos(a) * r, P.z + Math.sin(a) * r, 0.62, 0.88, -a, k++);
+    yield 'plaza:pattern';
   }
 }
 
 /** Interior sub-areas at warp arrival markers: a roofless planked room (the camera looks in), low walls, furniture. */
-function warpRooms(h: HeightfieldData, plan: ZoneLayoutPlan, set: BiomeSet, partsAt: PartsAt, pockets: readonly PocketRect[]): void {
+function* warpRoomSteps(h: HeightfieldData, plan: ZoneLayoutPlan, set: BiomeSet, partsAt: PartsAt, pockets: readonly PocketRect[]): Steps<void> {
   for (const w of plan.warpPairs) {
+    yield 'warp-room';
     if (!w.to) continue;
     const [x, z] = w.to;
     if (inPocket(pockets, x, z, 4)) continue;             // Phase A: the pocket's hall is the room
@@ -819,7 +906,7 @@ function addCrowns(collider: TerrainCollider, shape: CrownShape | null, instance
   }
 }
 
-function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dressing: DressingStyle, splat: SplatContext, collider: TerrainCollider, skirtY: (x: number, z: number) => number, mat: (id: SurfaceId) => Material, views: BufferGeometry[], seed: number, flower0: number, flowerN: number, foliageN: number, skirtClear: (x: number, z: number) => boolean = () => true): ScatterOut[] {
+function* scatterSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dressing: DressingStyle, splat: SplatContext, collider: TerrainCollider, skirtY: (x: number, z: number) => number, mat: (id: SurfaceId) => Material, views: BufferGeometry[], seed: number, flower0: number, flowerN: number, foliageN: number, skirtClear: (x: number, z: number) => boolean = () => true): Steps<ScatterOut[]> {
   const out: ScatterOut[] = [];
   const h = spec.heightfield;
   const half = h.size / 2;
@@ -852,6 +939,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dress
     ...screeClusters(half - 1.5, dressing, salt, coverClear),
   ];
   const coverOf = (k: CoverPoint['kind']): CoverPoint[] => cover.filter((c) => c.kind === k);
+  yield 'scatter:cover';
   const grassTint = (hh: number): number => flower0 + flowerN + (Math.floor(hh * 131) % 4);
   const bushTint = (hh: number): number => (dressing.bushTint === 'grass' ? grassTint(hh) : foliageTint(hh));
 
@@ -859,6 +947,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dress
   const treeKinds = set.trees.filter((t) => t.weight > 0);
   const wsum = treeKinds.reduce((a, t) => a + t.weight, 0);
   const treeGeos = treeKinds.map((t, k) => buildTree(t.bark, t.leaf, t.shape, (spec.seed ^ 0x7ee5) + k * 977));
+  yield 'scatter:tree-geometry';
   const treeInst: Instance[][] = treeKinds.map(() => []);
   const interiorDensity = spec.layout === 'route' ? set.density.treeInterior : spec.layout === 'town' ? 0.009 : 0.012;
   const pickTree = (hh: number): number => {
@@ -885,7 +974,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dress
     return 1;
   };
   const marginDensity = Math.max(set.density.treeMargin, spec.layout === 'route' ? set.density.treeInterior : set.density.treeMargin);
-  for (const p of jitteredPoints(-half - reachTrees, half + reachTrees, -half - reachTrees, half + reachTrees, marginDensity, salt + 101, (x, z, hh) => {
+  for (const p of yield* jitteredPointSteps(-half - reachTrees, half + reachTrees, -half - reachTrees, half + reachTrees, marginDensity, salt + 101, (x, z, hh) => {
     const a = treeAccept(x, z);
     if (a <= 0) return 0;
     if (inPlay(x, z)) return a * (interiorDensity / marginDensity);
@@ -897,6 +986,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dress
     treeInst[k]!.push({ x: p.x, y: yAt(p.x, p.z) - 0.12, z: p.z, yaw: p.h * 97.3, scale: s, tint: foliageTint(p.h * 3.7 % 1) });
     if (inPlay(p.x, p.z)) collider.addFootprint({ kind: 'circle', x: p.x, z: p.z, r: 0.42 * s + MOVER_R });
   }
+  yield 'scatter:trees';
   // willows ring the ponds
   const willow = set.trees.find((t) => t.nearWater);
   if (willow && plan.water.length > 0) {
@@ -920,17 +1010,19 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dress
       out.push({ ...kindFrom('tree_willow', g, mat, views, true, 3, impostorFor(g, willow.leaf)), instances: wInst });
     }
   }
-  treeKinds.forEach((t, k) => {
-    if (treeInst[k]!.length === 0) return;
+  for (let k = 0; k < treeKinds.length; k++) {
+    const t = treeKinds[k]!;
+    if (treeInst[k]!.length === 0) continue;
     addCrowns(collider, crownShape(treeGeos[k]!, t.leaf), treeInst[k]!);
     out.push({ ...kindFrom(t.kind, treeGeos[k]!, mat, views, true, 3, impostorFor(treeGeos[k]!, t.leaf)), instances: treeInst[k]! });
-  });
+    yield 'scatter:tree-kind';
+  }
 
   // rocks + pebbles ------------------------------------------------------------------------------------------
   const rockA = buildRock(set.rock, spec.seed ^ 0x40c1, { size: 1.05, squash: 0.62, elongate: 1.3, cuts: [3, 5] });
   const rockB = buildRock(set.rock, spec.seed ^ 0x40c2, { size: 0.6, squash: 0.55, elongate: 1.4, cuts: [3, 5] });
   const aInst: Instance[] = []; const bInst: Instance[] = [];
-  for (const p of jitteredPoints(-half - 20, half + 20, -half - 20, half + 20, set.density.rock * 1.6, salt + 201, (x, z) => {
+  for (const p of yield* jitteredPointSteps(-half - 20, half + 20, -half - 20, half + 20, set.density.rock * 1.6, salt + 201, (x, z) => {
     if (Math.max(Math.abs(x), Math.abs(z)) > half + 20) return 0;
     if (inPlay(x, z)) return scatterClear(splat, x, z, 1.2, false) && roadDistance(splat.roads, x, z) > 1.5 ? 0.6 : 0;
     return Math.max(Math.abs(x), Math.abs(z)) <= half || skirtClear(x, z) ? 1 : 0;
@@ -969,13 +1061,14 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dress
   for (const c of coverOf('stone')) bInst.push({ x: c.x, y: yAt(c.x, c.z) - 0.04, z: c.z, yaw: c.h * 113, scale: c.scale, tint: 0 });
   if (aInst.length) out.push({ ...kindFrom('rock_a', rockA, mat, views, true, 3, rockA.lod2, 2), instances: aInst });
   if (bInst.length) out.push({ ...kindFrom('rock_b', rockB, mat, views, false, 3, null, 0), instances: bInst });
+  yield 'scatter:rocks';
 
   // bushes (+ hedgerows along route / story boundaries) -----------------------------------------------------
   if (bushLeaf) {
     const bush = buildBush(bushLeaf, spec.seed ^ 0xb005);
     const inst: Instance[] = [];
     const bushDensity = set.density.bush > 0 ? set.density.bush : dressing.bushDensity;
-    for (const p of jitteredPoints(-half - 6, half + 6, -half - 6, half + 6, bushDensity * 1.4, salt + 401, (x, z) => {
+    for (const p of yield* jitteredPointSteps(-half - 6, half + 6, -half - 6, half + 6, bushDensity * 1.4, salt + 401, (x, z) => {
       const d = Math.max(Math.abs(x), Math.abs(z));
       if (d > half + 6) return 0;
       if (d > ih && d < ih + 3.5) return roadDistance(splat.roads, x, z) < 3 ? 0 : spec.layout === 'town' ? 0.9 : 1;   // the hedge line
@@ -991,13 +1084,14 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dress
     }
     for (const c of coverOf('bush')) inst.push({ x: c.x, y: yAt(c.x, c.z) - 0.05, z: c.z, yaw: c.h * 53, scale: c.scale, tint: bushTint(c.h) });
     if (inst.length) out.push({ ...kindFrom('bush', bush, mat, views, true, 3, null, 2), instances: inst });
+    yield 'scatter:bushes';
   }
 
   // flowers -------------------------------------------------------------------------------------------------
   if (set.flower) {
     const fl = buildFlowers(set.flower, spec.seed ^ 0xf10e);
     const inst: Instance[] = [];
-    for (const p of jitteredPoints(-ih, ih, -ih, ih, set.density.flower * 3, salt + 501, (x, z) => {
+    for (const p of yield* jitteredPointSteps(-ih, ih, -ih, ih, set.density.flower * 3, salt + 501, (x, z) => {
       if (!scatterClear(splat, x, z, 0.7, false)) return 0;
       splatAt(splat, x, z, f);
       if (f.path > -0.3 || f.detail > 0.1) return 0;
@@ -1010,13 +1104,14 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dress
     }
     for (const c of coverOf('flower')) inst.push({ x: c.x, y: yAt(c.x, c.z), z: c.z, yaw: c.h * 71, scale: c.scale, tint: flower0 + (Math.floor(c.h * 997) % flowerN) });
     if (inst.length) out.push({ ...kindFrom('flower_patch', fl, mat, views, false, 2, null, 0, 'all'), instances: inst });
+    yield 'scatter:flowers';
   }
 
   // ground tufts (short grass on the ground layer) -----------------------------------------------------------
   if (set.tuft) {
     const tuft = buildGroundTuft(set.tuft, spec.seed ^ 0x70f7);
     const inst: Instance[] = [];
-    for (const p of jitteredPoints(-half + 1, half - 1, -half + 1, half - 1, set.density.tuft, salt + 601, (x, z) => {
+    for (const p of yield* jitteredPointSteps(-half + 1, half - 1, -half + 1, half - 1, set.density.tuft, salt + 601, (x, z) => {
       if (plan.plaza && Math.hypot(x - plan.plaza.x, z - plan.plaza.z) < plan.plaza.r + 0.4) return 0;
       splatAt(splat, x, z, f);
       if (f.path > -0.15 || f.plaza > -0.2) return 0;
@@ -1033,6 +1128,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dress
     }
     for (const c of coverOf('tuft')) inst.push({ x: c.x, y: yAt(c.x, c.z), z: c.z, yaw: c.h * 89, scale: c.scale, tint: grassTint(c.h) });
     if (inst.length) out.push({ ...kindFrom('grass_tuft', { ...tuft, lod1: tuft.lod0 }, mat, views, false, 2, null, 0), instances: inst });
+    yield 'scatter:tufts';
   }
 
   // tall grass in the layout's patches (2.2 / m²) ------------------------------------------------------------
@@ -1051,6 +1147,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dress
         if (!free(p.x, p.z)) continue;
         inst.push({ x: p.x, y: yAt(p.x, p.z) - 0.03, z: p.z, yaw: p.h * 61, scale: 0.85 + p.h * 0.5, tint: foliageTint(p.h) });
       }
+      yield 'scatter:tall-grass';
     }
     if (inst.length) out.push({ ...kindFrom('tall_grass', geo, mat, views, false, 2, null, 0), instances: inst });
   }
@@ -1068,6 +1165,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dress
   }
   if (sInst.length) out.push({ ...kindFrom('stump', stump, mat, views, false, 3, null, 0), instances: sInst });
   if (lInst.length) out.push({ ...kindFrom('log', log, mat, views, false, 3, null, 0), instances: lInst });
+  yield 'scatter:stumps';
 
   // crystal shards (Phase E1: shrine / rift / marrow open ground; the set's own crystal surface)
   const shards = coverOf('shard');

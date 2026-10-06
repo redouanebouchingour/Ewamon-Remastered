@@ -19,6 +19,7 @@ import type { SurfaceId } from '../../materials/surfaces.js';
 import { Parts, beam, box, card, extrude, lathe, propGeo, rectShape, trs, type V3 } from '../geo.js';
 import { createPrng, type Prng } from '../prng.js';
 import type { PropGeo } from '../types.js';
+import { drain, type Steps } from '../../steps.js';
 
 export interface BuildingStyle {
   readonly wall: SurfaceId;
@@ -323,6 +324,11 @@ export interface HouseOpts { readonly drop?: number; readonly accent?: SurfaceId
 
 /** SPEC §10.5.4 `makeHouse(spec)` (+ `drop`: terrain fall under the footprint). */
 export function buildHouse(st: BuildingStyle, spec: BuildingSpec, o: HouseOpts = {}): PropGeo {
+  return drain(houseSteps(st, spec, o));
+}
+
+/** `buildHouse` as resumable steps (Handover II, steps.ts): a yield after each wall, the roof and the dressing. */
+export function* houseSteps(st: BuildingStyle, spec: BuildingSpec, o: HouseOpts = {}): Steps<PropGeo> {
   const p = createPrng(spec.seed);
   const drop = Math.max(0, o.drop ?? 0);
   const grand = spec.kind === 'gym' || spec.kind === 'landmark';
@@ -376,6 +382,7 @@ export function buildHouse(st: BuildingStyle, spec: BuildingSpec, o: HouseOpts =
       const surf = op.kind === 'door' || op.kind === 'arch' ? DOORWAY_SURFACE : st.glass;
       box(L1, surf, op.x, op.y, 0.005, op.w, op.h, 0.03, 0, 0.01, wd.m);
     }
+    yield 'building:wall';
   }
   // stone band on the lower wall (stone-built looks) and corner posts for framed houses
   if (st.stoneBand > 0) {
@@ -405,6 +412,7 @@ export function buildHouse(st: BuildingStyle, spec: BuildingSpec, o: HouseOpts =
   roof(L2, st, roofSurface, spec.roof, w, roofDepth, wallTop, false);
   // gable infill for lod1/lod2 (solid walls have no gable in lod2)
   box(L2, st.wall, 0, P, 0, w, wallTop - P, roofDepth, 0, 0.05);
+  yield 'building:roof';
 
   // chimney
   if (st.chimney !== null && spec.kind !== 'shop' && p.next() < 0.85) {
@@ -457,6 +465,7 @@ export function buildHouse(st: BuildingStyle, spec: BuildingSpec, o: HouseOpts =
     lathe(L0, o.accent, [[0.001, 0], [0.34, 0.001], [0.34, 0.06], [0.001, 0.07]], { segments: 12, smooth: false }, trs(0, wallTop + rise * 0.45, hd + 0.02 + jetty).multiply(new Matrix4().makeRotationX(Math.PI / 2)));
   }
 
+  yield 'building:dressing';
   const order: SurfaceId[] = [st.wall, st.upperWall, roofSurface, st.plinth, ...(st.frame ? [st.frame] : []), st.door, st.glass, st.litGlass, st.trim, st.sill, st.metal];
   return propGeo(L0, L1, L2, null, order);
 }

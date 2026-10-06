@@ -5,6 +5,7 @@
  */
 import { vi } from 'vitest';
 import { InstancedMesh, Mesh, Texture } from 'three/webgpu';
+import { isScatterMesh } from '../src/zone/instancing.js';
 import type { BufferAttribute, BufferGeometry, InterleavedBufferAttribute, Material, Object3D } from 'three/webgpu';
 import { createMaterialLibraryWith, type MaterialLibrary } from '../src/materials/library.js';
 import type { MaterialsManifest } from '../src/materials/manifest.js';
@@ -72,8 +73,8 @@ export class MockGpu {
   render(root: Object3D): void {
     root.traverseVisible((o) => {
       if (!(o instanceof Mesh)) return;
-      const inst = o instanceof InstancedMesh;
-      const extra: Attr[] = inst ? [o.instanceMatrix, ...(o.instanceColor ? [o.instanceColor] : [])] : [];
+      const inst = o instanceof InstancedMesh || isScatterMesh(o);     // a scatter draw's instance data are geometry attributes
+      const extra: Attr[] = o instanceof InstancedMesh ? [o.instanceMatrix, ...(o.instanceColor ? [o.instanceColor] : [])] : [];
       this.trackGeometry(o.geometry, extra);
       const mats: Material[] = Array.isArray(o.material) ? o.material : [o.material];
       let set = this.renderObjects.get(o);
@@ -95,7 +96,7 @@ export class MockGpu {
   private releaseObject(o: Object3D): void {
     const set = this.renderObjects.get(o);
     if (!set) return;
-    const inst = o instanceof InstancedMesh;
+    const inst = o instanceof InstancedMesh || isScatterMesh(o);
     for (const m of set) {
       const key = `${m.uuid}|${inst ? 'i' : 'm'}`;
       const n = (this.programUse.get(key) ?? 1) - 1;

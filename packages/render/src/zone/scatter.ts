@@ -11,12 +11,18 @@
  * by the shadow reach). The chunk still decides the tier of its instances; nothing is allocated after the build —
  * the tier buffers are preallocated and only copied into (plus one partial upload). Draw calls no longer scale
  * with the number of chunks: one draw per kind × tier × class present.
+ *
+ * Handover II (IMPLEMENTATION-NOTES): the per-(kind, tier, class) draw is a `ScatterMesh` (instancing.ts) — the
+ * instance buffers are geometry attributes read by name — no longer an `InstancedMesh`, whose node build three keys by
+ * object uuid. The buffers, the chunk slices, the masks and the draw count are unchanged.
  */
-import { Box3, Color, Frustum, InstancedMesh, Matrix4, Quaternion, Sphere, StaticDrawUsage, Vector3 } from 'three/webgpu';
-import type { BufferGeometry, Camera, Material , Object3D} from 'three/webgpu';
+import { Box3, Color, Frustum, Matrix4, Quaternion, Sphere, Vector3 } from 'three/webgpu';
+import type { BufferGeometry, Camera, InstancedBufferAttribute, Material , Object3D} from 'three/webgpu';
 import { LAYERS } from '../descriptors.js';
 import { chooseTier, chunkCentre, chunkOf, type ChunkGrid, type Tier } from './lod.js';
+import { ScatterMatrices, ScatterMesh, scatterColors } from './instancing.js';
 import { hash2 } from './prng.js';
+import { drain, type Steps } from '../steps.js';
 import { CARD_RENDER_ORDER } from './split.js';
 
 /** One scatter instance (world placement + tint). */
@@ -123,7 +129,11 @@ const _s = new Vector3();
 const _up = new Vector3(0, 1, 0);
 const _col = new Color();
 
-/** three switches instancing to the count-free attribute path above 1024 instances (64 KB of mat4). */
+/**
+ * Minimum instance capacity of a tier buffer. Kept from the `InstancedMesh` era (three switched instancing to the
+ * count-free attribute path above 1024 instances); scatter now always reads attributes (instancing.ts), so this only
+ * keeps the buffer sizes, and the memory budget, where they were.
+ */
 export const MIN_INSTANCE_CAPACITY = 1025;
 
 export function instanceCapacity(n: number): number { return Math.max(MIN_INSTANCE_CAPACITY, n); }
@@ -250,8 +260,8 @@ export function scatterMaskFor(root: Object3D): ScatterMask {
 
 interface UpdateRange { start: number; count: number }
 
-/** Adds [lo, hi) to an attribute's pending upload (one range, grown in place: nothing allocated after the first). */
-function extendUpload(attr: InstancedMesh['instanceMatrix'], lo: number, hi: number, spare: UpdateRange): void {
+/** Adds [lo, hi) to a buffer's pending upload (one range, grown in place: nothing allocated after the first). */
+function extendUpload(attr: { readonly updateRanges: unknown[]; needsUpdate: boolean }, lo: number, hi: number, spare: UpdateRange): void {
   if (hi <= lo) return;
   const r = attr.updateRanges as UpdateRange[];
   if (r.length > 0) {
@@ -268,14 +278,14 @@ function extendUpload(attr: InstancedMesh['instanceMatrix'], lo: number, hi: num
 
 /** A kind's instances, sorted by chunk, and its zone-wide tier meshes. */
 export class ScatterField {
-  readonly meshes: InstancedMesh[] = [];
+  readonly meshes: ScatterMesh[] = [];
   private readonly matrices: Float32Array;
   private readonly colors: Float32Array;
   private readonly starts: number[] = [];
   private readonly counts: number[] = [];
   private readonly recs: ChunkRec[] = [];
   /** Per tier: the class meshes sharing one instance buffer (null when the kind has no geometry at that tier). */
-  private readonly tierMeshes: (InstancedMesh[] | null)[] = [null, null, null, null];
+  private readonly tierMeshes: (ScatterMesh[] | null)[] = [null, null, null, null];
   private readonly spheres = [new Sphere(), new Sphere(), new Sphere(), new Sphere()];
   private generation = -1;
   readonly total: number;
@@ -326,30 +336,22 @@ export class ScatterField {
     for (let t = 0; t < 4; t++) {
       const parts = kind.tiers[t];
       if (!parts || parts.length === 0) continue;
-      const group: InstancedMesh[] = [];
-      let matrixAttr: InstancedMesh['instanceMatrix'] | null = null;
-      let colorAttr: InstancedMesh['instanceColor'] = null;
+      const group: ScatterMesh[] = [];
+      let matrices: ScatterMatrices | null = null;                      // every class shares one instance buffer
+      let colorAttr: InstancedBufferAttribute | null = null;            // and the tinted classes one tint buffer
       const tint = kind.tint ?? 'cards';
       for (const part of parts) {
         if (part.geometry.getAttribute('position').count === 0) continue;
-        const mesh = new InstancedMesh(part.geometry, mats, cap);
+        matrices ??= new ScatterMatrices(cap);
+        const tinted = tint === 'all' || (tint === 'cards' && part.cls === 1);
+        if (tinted) colorAttr ??= scatterColors(cap);
+        const mesh = new ScatterMesh(part.geometry, mats, matrices, tinted ? colorAttr : null, this.spheres[t]!);
         mesh.name = `ewa:scatter:${kind.name}:t${t}:a${part.cls}`;
         // read by dumpZone (§40.5.2 `scatter.instanced`: the dump gains the scatter kind and LOD tier; 3 = impostor)
         mesh.userData = { ewaScatterKind: kind.name, ewaScatterTier: t };
-        if (matrixAttr === null) { mesh.instanceMatrix.setUsage(StaticDrawUsage); matrixAttr = mesh.instanceMatrix; }
-        else mesh.instanceMatrix = matrixAttr;                          // every class shares one instance buffer
-        if (tint === 'all' || (tint === 'cards' && part.cls === 1)) {
-          if (colorAttr === null) {
-            mesh.setColorAt(0, _col.set(1, 1, 1));                      // creates instanceColor (capacity-sized)
-            colorAttr = mesh.instanceColor!;
-            colorAttr.setUsage(StaticDrawUsage);
-          } else mesh.instanceColor = colorAttr;
-        }
-        mesh.count = 0;
         mesh.visible = false;
         mesh.renderOrder = part.cls === 1 ? CARD_RENDER_ORDER : 0;
         mesh.frustumCulled = true;
-        mesh.boundingSphere = this.spheres[t]!;
         mesh.castShadow = kind.castShadow && part.casts && t < kind.shadowTierLimit;
         mesh.receiveShadow = true;
         mesh.layers.set(LAYERS.default);
@@ -379,7 +381,7 @@ export class ScatterField {
       if (!group) continue;
       const head = group[0]!;
       const dstM = head.instanceMatrix.array as Float32Array;
-      let colorAttr: InstancedMesh['instanceColor'] = null;
+      let colorAttr: InstancedBufferAttribute | null = null;
       for (let i = 0; i < group.length; i++) if (group[i]!.instanceColor !== null) { colorAttr = group[i]!.instanceColor; break; }
       const dstC = colorAttr ? colorAttr.array as Float32Array : null;
       const sphere = this.spheres[t]!;
@@ -406,7 +408,7 @@ export class ScatterField {
         head.instanceMatrix.clearUpdateRanges(); extendUpload(head.instanceMatrix, 0, k * 16, this.spare[t]!);
         if (colorAttr) { colorAttr.clearUpdateRanges(); colorAttr.addUpdateRange(0, k * 3); colorAttr.needsUpdate = true; }
       }
-      for (const m of group) { m.count = k; m.visible = k > 0; }
+      for (const m of group) { m.instances = k; m.visible = k > 0; }
     }
     this.applyMask(true);
   }
@@ -477,12 +479,20 @@ export class ScatterField {
  * 1/√density, kept with probability `accept(x, z)` (0..1). Pure in (salt, bounds, density).
  */
 export function jitteredPoints(x0: number, x1: number, z0: number, z1: number, density: number, salt: number, accept: (x: number, z: number, h: number) => number): { x: number; z: number; h: number }[] {
+  return drain(jitteredPointSteps(x0, x1, z0, z1, density, salt, accept));
+}
+
+/** `jitteredPoints` as resumable steps (Handover II, steps.ts): a yield every 4 096 candidates (the same points). */
+export function* jitteredPointSteps(x0: number, x1: number, z0: number, z1: number, density: number, salt: number, accept: (x: number, z: number, h: number) => number): Steps<{ x: number; z: number; h: number }[]> {
   const out: { x: number; z: number; h: number }[] = [];
+  let tried = 0;
   if (density <= 0) return out;
   const cell = 1 / Math.sqrt(density);
   const i0 = Math.floor(x0 / cell); const i1 = Math.ceil(x1 / cell);
   const j0 = Math.floor(z0 / cell); const j1 = Math.ceil(z1 / cell);
   for (let j = j0; j < j1; j++) {
+    if (tried >= 4096) { tried = 0; yield 'scatter:points'; }
+    tried += i1 - i0;
     for (let i = i0; i < i1; i++) {
       const x = (i + hash2(i, j, salt)) * cell;
       const z = (j + hash2(i, j, salt + 1)) * cell;

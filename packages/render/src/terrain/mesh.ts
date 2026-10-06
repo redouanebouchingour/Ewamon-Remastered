@@ -20,6 +20,7 @@ import { roadDistance, splatAt, type SplatContext, type SplatFields } from '../z
 import type { ChunkGrid } from '../zone/lod.js';
 import { fbm2, valueNoise } from '../zone/prng.js';
 import { heightClamped } from './field.js';
+import { drain, type Steps } from '../steps.js';
 
 /** Layer order = priority: plaza, path, detail, ground. */
 export type TerrainLayers = readonly [plaza: SurfaceId, path: SurfaceId, detail: SurfaceId, ground: SurfaceId];
@@ -137,6 +138,11 @@ function finishGeometry(bufs: readonly LayerBuf[], layers: TerrainLayers, materi
  * 0.5 m step; neighbouring chunks share their border sample rows (identical positions and normals).
  */
 export function buildTerrainChunks(h: HeightfieldData, grid: ChunkGrid, splat: SplatContext, layers: TerrainLayers, material: (id: SurfaceId) => Material): TerrainChunk[] {
+  return drain(terrainChunkSteps(h, grid, splat, layers, material));
+}
+
+/** `buildTerrainChunks` as resumable steps (Handover II, steps.ts): a yield every 8 sample rows and after each chunk. */
+export function* terrainChunkSteps(h: HeightfieldData, grid: ChunkGrid, splat: SplatContext, layers: TerrainLayers, material: (id: SurfaceId) => Material): Steps<TerrainChunk[]> {
   const out: TerrainChunk[] = [];
   const res = h.res; const step = h.step;
   const f: SplatFields = { plaza: 0, path: 0, detail: 0 };
@@ -151,6 +157,7 @@ export function buildTerrainChunks(h: HeightfieldData, grid: ChunkGrid, splat: S
       const i = r * res + c;
       F0[i] = f.plaza; F1[i] = f.path; F2[i] = f.detail;
     }
+    if ((r & 7) === 7) yield 'terrain:fields';
   }
   const vert = (r: number, c: number): V => {
     const i = r * res + c;
@@ -191,6 +198,7 @@ export function buildTerrainChunks(h: HeightfieldData, grid: ChunkGrid, splat: S
       mesh.receiveShadow = true;
       mesh.frustumCulled = true;
       out.push({ mesh, geometry: built.geometry, centre: [x0 + grid.cell / 2, z0 + grid.cell / 2], triangles: built.triangles });
+      yield 'terrain:chunk';
     }
   }
   return out;
@@ -272,6 +280,11 @@ export function skirtClearFn(h: HeightfieldData, o: SkirtOpts): (x: number, z: n
  * segments (frustum-culled). Not walkable and not in the collider (outside the field).
  */
 export function buildSkirt(h: HeightfieldData, o: SkirtOpts, layers: TerrainLayers, material: (id: SurfaceId) => Material): TerrainChunk[] {
+  return drain(skirtSteps(h, o, layers, material));
+}
+
+/** `buildSkirt` as resumable steps (Handover II, steps.ts): a yield after each 32 m segment. */
+export function* skirtSteps(h: HeightfieldData, o: SkirtOpts, layers: TerrainLayers, material: (id: SurfaceId) => Material): Steps<TerrainChunk[]> {
   const half = h.size / 2;
   const R = half + o.reach;
   const step = 2;
@@ -320,6 +333,7 @@ export function buildSkirt(h: HeightfieldData, o: SkirtOpts, layers: TerrainLaye
     mesh.name = 'ewa:skirt';
     mesh.castShadow = false; mesh.receiveShadow = true;
     out.push({ mesh, geometry: built.geometry, centre: [(q.x0 + q.x1) / 2, (q.z0 + q.z1) / 2], triangles: built.triangles });
+    yield 'skirt:segment';
   }
   return out;
 }

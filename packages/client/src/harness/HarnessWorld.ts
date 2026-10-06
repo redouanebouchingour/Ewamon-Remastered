@@ -90,7 +90,11 @@ export interface HandoverResult {
   /** programs once the destination's background compile ended (`compileIdle()`) */
   readonly programsSettled: number;
   /** preloaded: the off-scene prepare of the destination (`prepareZone`) before the crossing, with its frame gaps */
-  readonly prepare: { readonly ms: number; readonly frames: number; readonly maxFrameMs: number; readonly framesOver33: number; readonly framesOver100: number } | null;
+  readonly prepare: {
+    readonly ms: number; readonly frames: number; readonly maxFrameMs: number; readonly framesOver33: number; readonly framesOver100: number;
+    /** render Handover II: the prepare's sliced build (slices, work ms, the longest slice and step) */
+    readonly build: { readonly slices: number; readonly workMs: number; readonly maxSliceMs: number; readonly maxStepMs: number; readonly maxStepLabel: string } | null;
+  } | null;
   readonly backgroundCompile: boolean;
 }
 
@@ -722,7 +726,9 @@ export class HarnessWorld {
       requestAnimationFrame(tickLoop);
       const tp = performance.now();
       await this.director.prepareZone(to, harvest, arrival);
-      prepare = { ms: Math.round(performance.now() - tp), frames: pg.length, maxFrameMs: Math.round(Math.max(0, ...pg) * 10) / 10, framesOver33: pg.filter((g) => g > 33).length, framesOver100: pg.filter((g) => g > 100).length };
+      const bs = (this.renderer as Renderer & { readonly prepareStats?: { slices: number; workMs: number; maxSliceMs: number; maxStepMs: number; maxStepLabel: string } | null }).prepareStats ?? null;
+      const build = bs === null ? null : { slices: bs.slices, workMs: Math.round(bs.workMs), maxSliceMs: Math.round(bs.maxSliceMs * 10) / 10, maxStepMs: Math.round(bs.maxStepMs * 10) / 10, maxStepLabel: bs.maxStepLabel };
+      prepare = { ms: Math.round(performance.now() - tp), frames: pg.length, maxFrameMs: Math.round(Math.max(0, ...pg) * 10) / 10, framesOver33: pg.filter((g) => g > 33).length, framesOver100: pg.filter((g) => g > 100).length, build };
       ticking = false;
       await this.settle(30, 10, 600);
     }
