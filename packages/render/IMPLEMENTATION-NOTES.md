@@ -1534,3 +1534,86 @@ Tests updated: `daycycle.test.ts`, `lighting.test.ts`, `post-graph.test.ts`, `st
 - Shrine scree uses `eclipse_stone` on an `eclipse_stone` floor and nearly vanishes; only the shards read.
 - House skirts are low and small, because they must fit the 0.47 m pad. They read at zoom 0 and barely at the default
   stop.
+
+---
+
+# Part 9 — creature texture residency, render's half (2026-10-06)
+
+Resolves Part 8 open item 1 (GPU memory). The client now binds only the side a view shows and releases what nothing
+shows (client IMPLEMENTATION-NOTES "Creature textures"); render gives it three small things and fixes the metric it is
+judged by.
+
+## Layout
+
+| File | What |
+|---|---|
+| `sprites/atlas.ts` | `infoOvercountBytes(textures)`: the level 0 of each map (RGBA8 albedo + RGBA8 normal + R8 emissive) |
+| `sprites/billboard.ts` | `BillboardPool.atlasUsers(id)` / `atlasRefs(id)` (billboards sampling / binds outstanding), `infoOvercountBytes()` (Σ over the loaded sets, kept in `load` and the cache's dispose callback); `CreatureBillboard.setFlipbook(on)` + `flipbookEnabled`; `resolve(frame, flipbook = true)` |
+| `renderer.ts` | `FrameHook.textureOvercountBytes?()`; the host's `textureCorrection()` = `materials.residentTextureBytes()` − Σ hooks' overcount, used by `copyInfo` (RenderStats.textureBytes), `counts()` and the baseline |
+| `stage/wiring.ts` | the part-3 hook reports `sprites.infoOvercountBytes()` |
+| `test/residency.test.ts` | 3 tests (below) |
+
+## Design
+
+**R1 — the §50.2.2 texture metric counted a sprite atlas 1.75 ×.** three 0.186 `Info._getTextureMemorySize`
+(`src/renderers/common/Info.js` lines 449–509) adds `width × height × bpp` of the image AND the size of every
+`mipmaps` entry; render's atlases put level 0 into `mipmaps` too (Part 3: `[l0, l1, l2, l3]`, or three uploads level 1
+as level 0), so each map's level 0 is counted twice: a 2048² static atlas reads 58.7 MB for 33.5 MB of GPU memory, a
+3072 × 2048 flipbook side 88 MB for 50.2 MB — Part 8's "three counts more (≈ 89 MB a side)". The GPU texture is
+created with `mipLevelCount = mipmaps.length` at the image's size, i.e. exactly the chain `atlasSetBytes` /
+`animAtlasSetBytes` estimate. The host now subtracts the surplus like it adds the KTX2 bytes three counts as 1:
+`textureBytes = info.texturesSize + residentTextureBytes() − Σ infoOvercountBytes()`, so a creature atlas reads its GPU
+bytes (`BillboardPool.stats().bytes`) and the client's residency budget and the metric speak the same unit. Only the
+sprite atlases / singles use the `mipmaps[0] = level 0` pattern (characters' GLB textures generate their mips; zone
+materials are KTX2). The correction is one signed term, allocation-free, evaluated per frame. Every number in this part
+gives both readings (`raw` = before the correction). **This changes how §50.2.2 is measured — proposed entry E1 below;
+it needs approval, and is a one-line revert (`textureCorrection` → `residentTextureBytes()`).**
+
+**R2 — `CreatureBillboard.setFlipbook(on)`.** A released atlas stays on the GPU while a billboard samples it (§10.4.2:
+disposed at refs = users = 0), so the client cannot free a flipbook a standing card plays. `setFlipbook(false)`
+re-resolves the side with the flipbook ignored: the card shows the static frame (the same one the bind-in-flight path
+shows), un-uses the anim atlas and no longer waits for it; `true` re-resolves (plays at once when bound, else the usual
+still → flipbook re-point on the bind). One re-resolve per call; no program, material or draw call is added. The client
+turns it off for a legendary static beyond 52 m of the player (never on screen: the diorama camera's ground footprint
+ends ≈ 24 m out at the widest zoom stop).
+
+**R3 — `atlasUsers` / `atlasRefs`.** Read-only views of the cache's two refcounts, so the client's budget guard never
+counts an atlas a billboard still samples as releasable (render would keep it anyway).
+
+## Measured
+
+The client's before / after runs (`pnpm --filter @ewa/client harness:textures`, client IMPLEMENTATION-NOTES "Creature
+textures", 1440 × 900, Intel UHD) read every step both ways. The correction is exactly 0.753 × the bound creature
+bytes: Mirevale idle 495.2 raw → 444.9 MB corrected (2 atlases, 66.8 MB of GPU memory); a zenryu vs raikitsune battle
+with the residency 789.2 → 613.1 MB; galvan_route beside a static 966.0 → 701.7 MB. With the residency and the
+correction every step of the four scenarios stays ≤ 707.1 MB (cap 734.0) and returns to 444.9 MB after leaving.
+`setFlipbook` in play: galvan_route's statics show their still frame beyond 52 m and play beside the player (one
+flipbook bound at a time). Programs / draw calls: unchanged by construction (no material, program or draw added).
+
+## Tests
+
+`test/residency.test.ts` (3): three's own `Info._getTextureMemorySize` on a static and an anim set equals the four-level
+chain estimate + `infoOvercountBytes` (1.753 ×), so count − overcount = `bytes`; the pool's overcount follows its
+loaded sets (bind, release, release-in-flight, dispose → 0) and `atlasRefs`; `setFlipbook(false)` shows the static
+frame, stops sampling the flipbook (`atlasUsers` 0 → the release frees it) and ignores a bind landing meanwhile,
+`setFlipbook(true)` plays at once when bound or re-points once when the bind lands. Client end-to-end on the pool:
+`packages/client/test/creatureTextures.test.ts`. Render total: 29 files, 264 tests.
+
+## Open
+
+1. The metric change (R1) needs approval: entry E1.
+2. The sandbox (`?demo=legends`) still binds all 20 sides at once — a stress view (Part 8 open item 3), not play.
+
+## SPEC CHANGELOG entries (§50.7 form; applied by the integrating session, 2026-10-06)
+
+```
+## 2026-10-06 — `50-verification-budget.md` §50.2.2 (Texture memory row), `10-render.md` §10.10 — the texture metric subtracts the level 0 three's `Info` counts twice for the creature atlases
+Why: three 0.186 `Info._getTextureMemorySize` adds the image's level 0 AND every `mipmaps` entry; §10.4.1 puts level 0 into `mipmaps` (`[l0, l1, l2, l3]`, or three uploads level 1 as level 0), so every creature atlas, flipbook and single read 1.753 × the GPU memory it allocates (a 2048² atlas 58.7 MB for 33.5 MB, a 3072 × 2048 flipbook side 88.0 MB for 50.2 MB). The row measures GPU texture memory; it already corrects the KTX2 bytes three counts as 1. Source column becomes: `renderer.info.memory.texturesSize` + `materials.residentTextureBytes()` − the sprite pool's `infoOvercountBytes()` (= `RenderStats.textureBytes`).
+Evidence: render IMPLEMENTATION-NOTES Part 9 R1 (three `src/renderers/common/Info.js` lines 449–509; the GPU texture has `mipLevelCount = mipmaps.length` at the image's size); `packages/render/test/residency.test.ts` (three's own count − `infoOvercountBytes` = the chain estimate, static and anim); the harness runs (client IMPLEMENTATION-NOTES "Creature textures": every row read both ways).
+Affects: `packages/render/src/{renderer,stage/wiring,sprites/atlas,sprites/billboard}.ts`; `RenderStats.textureBytes`, `BudgetCounts.texturesSize` and `harness:budget` reports read 0.753 × the bound creature bytes lower (Mirevale idle 495.2 → 444.9 MB at 1440 × 900); `tools/asset-audit` reads the dump's `counts.texturesSize` unchanged in shape.
+
+## 2026-10-06 — `10-render.md` §10.4.2 — `BillboardPool.atlasUsers(id)` / `atlasRefs(id)` / `infoOvercountBytes()`, `CreatureBillboard.setFlipbook(on)`, `FrameHook.textureOvercountBytes?()`
+Why: the client's residency (20-client.md §20.4.4, entry below) must not count an atlas a billboard still samples as freed (render keeps it while users > 0), and must be able to free the flipbook of a card that stays up but is never on screen (a legendary static more than 52 m from the player): `setFlipbook(false)` shows the card's static frame and stops sampling — and waiting for — its flipbook.
+Evidence: render IMPLEMENTATION-NOTES Part 9 R2–R3; `test/residency.test.ts`; client `test/creatureTextures.test.ts` (end to end on `BillboardPool`).
+Affects: `packages/render/src/sprites/billboard.ts`, `renderer.ts`, `stage/wiring.ts`; no program, material, draw-call or allocation-per-frame change.
+```

@@ -218,6 +218,13 @@ describe('anim fixture build', () => {
     expect(existsSync(path.join(withA.qa, 'anim-sheet.png'))).toBe(true);
     expect(existsSync(path.join(withA.qa, 'anim-report.json'))).toBe(true);
 
+    // ---- `qa` over that output rewrites the build's report unchanged (the manifest's anim share is not static) ------
+    const reportPath = path.join(withA.qa, 'qa-report.json');
+    const builtReport = readFileSync(reportPath);
+    const qaOnly = await fx.build('anim', { qaOnly: true });
+    expect(qaOnly.result.report.totalBytes).toBe(m.totalBytes);
+    expect(readFileSync(reportPath).equals(builtReport)).toBe(true);
+
     // ---- per-frame rasters from the cache (lossless): foot line, zero jitter -----------------------------------------
     const cache = new AnimCache(withA.cache);
     const sideHash = (side: 'front' | 'back'): string => withA.result.anim!.sides.find((x) => x.meta.side === side)!.hash;

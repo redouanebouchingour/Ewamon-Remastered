@@ -2,11 +2,13 @@
  * Content-hash cache under `tools/sprite-pipeline/.cache/` (spec §40.0.2 rule 2, §40.1.7).
  *
  *   sprites/<hash>/{albedo,normal,emissive}.png + meta.json
- *       hash = sha256(source bytes, "v" + PIPELINE_VERSION, "size=1024", normal options,
+ *       hash = sha256(source bytes, "v" + SPRITE_STAGE_VERSION, "size=1024", normal options,
  *                     emissive override, frame-select entry, alpha override)
+ *       Lossless true-colour PNG (`losslessPng`): albedo / normal RGBA8, emissive 8-bit grey. A read returns
+ *       exactly the raster the stages produced (`test/cache.test.ts`).
  *   atlases/<hash>.webp        one encoded atlas file (a map at one mip level under one rung)
  *       hash = sha256(PIPELINE_VERSION, settingsKey, "2048/1024", kind, level, members + placements)
- *   thumbs/<sprite hash>.webp
+ *   thumbs/<thumb key>.webp + .rung
  *
  * A rerun over unchanged inputs does no image work and reports `cacheHits === inputs`.
  */
@@ -89,9 +91,9 @@ export class SpriteCache {
     const d = this.dir(hash);
     mkdirSync(d, { recursive: true });
     await Promise.all([
-      rgbaToPng(art.albedo).then((b) => writeFileSync(path.join(d, 'albedo.png'), b)),
-      rgbaToPng(art.normal).then((b) => writeFileSync(path.join(d, 'normal.png'), b)),
-      grayToPng(art.emissive).then((b) => writeFileSync(path.join(d, 'emissive.png'), b)),
+      losslessPng(art.albedo).then((b) => writeFileSync(path.join(d, 'albedo.png'), b)),
+      losslessPng(art.normal).then((b) => writeFileSync(path.join(d, 'normal.png'), b)),
+      losslessPng(art.emissive).then((b) => writeFileSync(path.join(d, 'emissive.png'), b)),
     ]);
     writeFileSync(path.join(d, 'meta.json'), `${JSON.stringify(art.meta, null, 2)}\n`);
   }
@@ -129,18 +131,21 @@ export class SpriteCache {
   }
 }
 
-export function rgbaToPng(img: RgbaImage): Promise<Buffer> {
-  return sharp(Buffer.from(img.data.buffer, img.data.byteOffset, img.data.byteLength), {
-    raw: { width: img.width, height: img.height, channels: 4 },
-  })
-    .png({ compressionLevel: 6, effort: 4 })
-    .toBuffer();
-}
-
-export function grayToPng(img: GrayImage): Promise<Buffer> {
-  return sharp(Buffer.from(img.data.buffer, img.data.byteOffset, img.data.byteLength), {
-    raw: { width: img.width, height: img.height, channels: 1 },
-  })
-    .png({ compressionLevel: 6, effort: 4 })
-    .toBuffer();
+/**
+ * Lossless true-colour PNG of a stage raster: RGBA8 for an `RgbaImage`, 8-bit grey for a `GrayImage` (channels from
+ * the buffer length). The only PNG writer for the sprite and anim caches.
+ *
+ * `palette: false` is explicit and none of sharp's `effort`, `colours`, `dither` or `quality` PNG options is passed:
+ * each of them implies `palette: true`, i.e. libimagequant quantisation to ≤ 256 colours with dithering. Until
+ * SPRITE_STAGE_VERSION 4 the sprite cache wrote `png({ compressionLevel: 6, effort: 4 })`, so every static atlas
+ * was composed from 256-colour dithered copies of the stage output (spec §40.1.7, CHANGELOG 2026-10-06).
+ */
+export async function losslessPng(img: RgbaImage | GrayImage): Promise<Buffer> {
+  const channels = img.data.length / (img.width * img.height);
+  if (channels !== 1 && channels !== 4) throw new Error(`losslessPng: ${img.width}x${img.height} raster with ${img.data.length} bytes is neither RGBA8 nor grey`);
+  const s = sharp(Buffer.from(img.data.buffer, img.data.byteOffset, img.data.byteLength), {
+    raw: { width: img.width, height: img.height, channels },
+  });
+  // sharp's output colourspace defaults to sRGB, which would store a grey raster as three equal channels.
+  return (channels === 1 ? s.toColourspace('b-w') : s).png({ compressionLevel: 6, palette: false }).toBuffer();
 }

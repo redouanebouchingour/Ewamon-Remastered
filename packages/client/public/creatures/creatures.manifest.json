@@ -2,7 +2,7 @@
   "version": 2,
   "encoding": "webp",
   "spriteSize": 1024,
-  "pipelineVersion": "5",
+  "pipelineVersion": "6",
   "atlases": [
     {
       "id": "a-000",
@@ -21,7 +21,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 283726
+        "bytes": 246034
       },
       "normal": {
         "url": "atlases/a-000.normal.webp",
@@ -32,7 +32,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 97932
+        "bytes": 98920
       },
       "emissive": {
         "url": "atlases/a-000.emissive.webp",
@@ -64,7 +64,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 400686
+        "bytes": 343012
       },
       "normal": {
         "url": "atlases/a-001.normal.webp",
@@ -75,7 +75,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 138212
+        "bytes": 138072
       },
       "emissive": {
         "url": "atlases/a-001.emissive.webp",
@@ -107,7 +107,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 412840
+        "bytes": 373844
       },
       "normal": {
         "url": "atlases/a-002.normal.webp",
@@ -118,7 +118,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 174496
+        "bytes": 172190
       },
       "emissive": {
         "url": "atlases/a-002.emissive.webp",
@@ -150,7 +150,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 178370
+        "bytes": 159542
       },
       "normal": {
         "url": "atlases/a-003.normal.webp",
@@ -161,7 +161,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 65626
+        "bytes": 66474
       },
       "emissive": {
         "url": "atlases/a-003.emissive.webp",
@@ -193,7 +193,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 401100
+        "bytes": 379116
       },
       "normal": {
         "url": "atlases/a-004.normal.webp",
@@ -204,7 +204,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 187706
+        "bytes": 187588
       },
       "emissive": {
         "url": "atlases/a-004.emissive.webp",
@@ -236,7 +236,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 317350
+        "bytes": 287410
       },
       "normal": {
         "url": "atlases/a-005.normal.webp",
@@ -247,7 +247,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 119632
+        "bytes": 120364
       },
       "emissive": {
         "url": "atlases/a-005.emissive.webp",
@@ -279,7 +279,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 301426
+        "bytes": 270044
       },
       "normal": {
         "url": "atlases/a-006.normal.webp",
@@ -290,7 +290,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 108922
+        "bytes": 109792
       },
       "emissive": {
         "url": "atlases/a-006.emissive.webp",
@@ -322,7 +322,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 323886
+        "bytes": 292358
       },
       "normal": {
         "url": "atlases/a-007.normal.webp",
@@ -333,7 +333,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 120446
+        "bytes": 120642
       },
       "emissive": {
         "url": "atlases/a-007.emissive.webp",
@@ -365,7 +365,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 268554
+        "bytes": 244552
       },
       "normal": {
         "url": "atlases/a-008.normal.webp",
@@ -376,7 +376,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 109846
+        "bytes": 110154
       },
       "emissive": {
         "url": "atlases/a-008.emissive.webp",
@@ -408,7 +408,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 306092
+        "bytes": 279160
       },
       "normal": {
         "url": "atlases/a-009.normal.webp",
@@ -419,7 +419,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 127788
+        "bytes": 127924
       },
       "emissive": {
         "url": "atlases/a-009.emissive.webp",
@@ -451,7 +451,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 504230
+        "bytes": 445230
       },
       "normal": {
         "url": "atlases/a-010.normal.webp",
@@ -462,7 +462,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 169262
+        "bytes": 168692
       },
       "emissive": {
         "url": "atlases/a-010.emissive.webp",
@@ -494,7 +494,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 295386
+        "bytes": 259622
       },
       "normal": {
         "url": "atlases/a-011.normal.webp",
@@ -505,7 +505,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 107816
+        "bytes": 108626
       },
       "emissive": {
         "url": "atlases/a-011.emissive.webp",
@@ -537,7 +537,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 340070
+        "bytes": 301278
       },
       "normal": {
         "url": "atlases/a-012.normal.webp",
@@ -548,7 +548,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 120256
+        "bytes": 120598
       },
       "emissive": {
         "url": "atlases/a-012.emissive.webp",
@@ -580,7 +580,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 328360
+        "bytes": 289990
       },
       "normal": {
         "url": "atlases/a-013.normal.webp",
@@ -591,7 +591,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 119964
+        "bytes": 120182
       },
       "emissive": {
         "url": "atlases/a-013.emissive.webp",
@@ -623,7 +623,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 290612
+        "bytes": 273224
       },
       "normal": {
         "url": "atlases/a-014.normal.webp",
@@ -634,7 +634,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 146844
+        "bytes": 147218
       },
       "emissive": {
         "url": "atlases/a-014.emissive.webp",
@@ -666,7 +666,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 299604
+        "bytes": 264122
       },
       "normal": {
         "url": "atlases/a-015.normal.webp",
@@ -677,7 +677,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 112336
+        "bytes": 113114
       },
       "emissive": {
         "url": "atlases/a-015.emissive.webp",
@@ -709,7 +709,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 232868
+        "bytes": 226872
       },
       "normal": {
         "url": "atlases/a-016.normal.webp",
@@ -720,7 +720,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 110508
+        "bytes": 110420
       },
       "emissive": {
         "url": "atlases/a-016.emissive.webp",
@@ -752,7 +752,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 513748
+        "bytes": 444014
       },
       "normal": {
         "url": "atlases/a-017.normal.webp",
@@ -763,7 +763,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 150322
+        "bytes": 150878
       },
       "emissive": {
         "url": "atlases/a-017.emissive.webp",
@@ -795,7 +795,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 390870
+        "bytes": 336028
       },
       "normal": {
         "url": "atlases/a-018.normal.webp",
@@ -806,7 +806,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 129568
+        "bytes": 130632
       },
       "emissive": {
         "url": "atlases/a-018.emissive.webp",
@@ -838,7 +838,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 350296
+        "bytes": 321880
       },
       "normal": {
         "url": "atlases/a-019.normal.webp",
@@ -849,7 +849,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 130334
+        "bytes": 131178
       },
       "emissive": {
         "url": "atlases/a-019.emissive.webp",
@@ -881,7 +881,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 376158
+        "bytes": 333360
       },
       "normal": {
         "url": "atlases/a-020.normal.webp",
@@ -892,7 +892,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 130062
+        "bytes": 130826
       },
       "emissive": {
         "url": "atlases/a-020.emissive.webp",
@@ -924,7 +924,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 236614
+        "bytes": 212014
       },
       "normal": {
         "url": "atlases/a-021.normal.webp",
@@ -935,7 +935,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 91998
+        "bytes": 92496
       },
       "emissive": {
         "url": "atlases/a-021.emissive.webp",
@@ -967,7 +967,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 372082
+        "bytes": 339216
       },
       "normal": {
         "url": "atlases/a-022.normal.webp",
@@ -978,7 +978,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 146568
+        "bytes": 146670
       },
       "emissive": {
         "url": "atlases/a-022.emissive.webp",
@@ -1010,7 +1010,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 545156
+        "bytes": 455984
       },
       "normal": {
         "url": "atlases/a-023.normal.webp",
@@ -1021,7 +1021,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 167476
+        "bytes": 166216
       },
       "emissive": {
         "url": "atlases/a-023.emissive.webp",
@@ -1053,7 +1053,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 626940
+        "bytes": 518630
       },
       "normal": {
         "url": "atlases/a-024.normal.webp",
@@ -1064,7 +1064,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 218232
+        "bytes": 218428
       },
       "emissive": {
         "url": "atlases/a-024.emissive.webp",
@@ -1096,7 +1096,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 407732
+        "bytes": 361274
       },
       "normal": {
         "url": "atlases/a-025.normal.webp",
@@ -1107,7 +1107,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 155802
+        "bytes": 159496
       },
       "emissive": {
         "url": "atlases/a-025.emissive.webp",
@@ -1139,7 +1139,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 422948
+        "bytes": 384088
       },
       "normal": {
         "url": "atlases/a-026.normal.webp",
@@ -1150,7 +1150,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 141818
+        "bytes": 143282
       },
       "emissive": {
         "url": "atlases/a-026.emissive.webp",
@@ -1182,7 +1182,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 259834
+        "bytes": 229510
       },
       "normal": {
         "url": "atlases/a-027.normal.webp",
@@ -1193,7 +1193,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 102196
+        "bytes": 103258
       },
       "emissive": {
         "url": "atlases/a-027.emissive.webp",
@@ -1225,7 +1225,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 428250
+        "bytes": 389834
       },
       "normal": {
         "url": "atlases/a-028.normal.webp",
@@ -1236,7 +1236,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 153994
+        "bytes": 154324
       },
       "emissive": {
         "url": "atlases/a-028.emissive.webp",
@@ -1268,7 +1268,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 214022
+        "bytes": 192120
       },
       "normal": {
         "url": "atlases/a-029.normal.webp",
@@ -1279,7 +1279,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 99696
+        "bytes": 100990
       },
       "emissive": {
         "url": "atlases/a-029.emissive.webp",
@@ -1311,7 +1311,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 140864
+        "bytes": 129976
       },
       "normal": {
         "url": "atlases/a-030.normal.webp",
@@ -1322,7 +1322,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 79194
+        "bytes": 79772
       },
       "emissive": {
         "url": "atlases/a-030.emissive.webp",
@@ -1354,7 +1354,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 331398
+        "bytes": 297510
       },
       "normal": {
         "url": "atlases/a-031.normal.webp",
@@ -1365,7 +1365,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 120006
+        "bytes": 122074
       },
       "emissive": {
         "url": "atlases/a-031.emissive.webp",
@@ -1397,7 +1397,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 125870
+        "bytes": 112356
       },
       "normal": {
         "url": "atlases/a-032.normal.webp",
@@ -1408,7 +1408,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 65778
+        "bytes": 65898
       },
       "emissive": {
         "url": "atlases/a-032.emissive.webp",
@@ -1440,7 +1440,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 253504
+        "bytes": 168232
       },
       "normal": {
         "url": "atlases/a-033.normal.webp",
@@ -1451,7 +1451,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 55974
+        "bytes": 57498
       },
       "emissive": {
         "url": "atlases/a-033.emissive.webp",
@@ -1483,7 +1483,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 296534
+        "bytes": 270452
       },
       "normal": {
         "url": "atlases/a-034.normal.webp",
@@ -1494,7 +1494,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 128442
+        "bytes": 128446
       },
       "emissive": {
         "url": "atlases/a-034.emissive.webp",
@@ -1526,7 +1526,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 550844
+        "bytes": 507658
       },
       "normal": {
         "url": "atlases/a-035.normal.webp",
@@ -1537,7 +1537,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 210208
+        "bytes": 210610
       },
       "emissive": {
         "url": "atlases/a-035.emissive.webp",
@@ -1569,7 +1569,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 343286
+        "bytes": 312574
       },
       "normal": {
         "url": "atlases/a-036.normal.webp",
@@ -1580,7 +1580,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 141594
+        "bytes": 141620
       },
       "emissive": {
         "url": "atlases/a-036.emissive.webp",
@@ -1612,7 +1612,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 418864
+        "bytes": 381624
       },
       "normal": {
         "url": "atlases/a-037.normal.webp",
@@ -1623,7 +1623,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 161050
+        "bytes": 161184
       },
       "emissive": {
         "url": "atlases/a-037.emissive.webp",
@@ -1655,7 +1655,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 430084
+        "bytes": 337522
       },
       "normal": {
         "url": "atlases/a-038.normal.webp",
@@ -1666,7 +1666,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 148428
+        "bytes": 149694
       },
       "emissive": {
         "url": "atlases/a-038.emissive.webp",
@@ -1698,7 +1698,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 393644
+        "bytes": 359826
       },
       "normal": {
         "url": "atlases/a-039.normal.webp",
@@ -1709,7 +1709,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 148134
+        "bytes": 148488
       },
       "emissive": {
         "url": "atlases/a-039.emissive.webp",
@@ -1741,7 +1741,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 453022
+        "bytes": 362452
       },
       "normal": {
         "url": "atlases/a-040.normal.webp",
@@ -1752,7 +1752,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 143766
+        "bytes": 147344
       },
       "emissive": {
         "url": "atlases/a-040.emissive.webp",
@@ -1784,7 +1784,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 328978
+        "bytes": 304054
       },
       "normal": {
         "url": "atlases/a-041.normal.webp",
@@ -1795,7 +1795,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 133034
+        "bytes": 133622
       },
       "emissive": {
         "url": "atlases/a-041.emissive.webp",
@@ -1827,7 +1827,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 447268
+        "bytes": 416728
       },
       "normal": {
         "url": "atlases/a-042.normal.webp",
@@ -1838,7 +1838,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 154086
+        "bytes": 155024
       },
       "emissive": {
         "url": "atlases/a-042.emissive.webp",
@@ -1870,7 +1870,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 500328
+        "bytes": 422180
       },
       "normal": {
         "url": "atlases/a-043.normal.webp",
@@ -1881,7 +1881,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 148336
+        "bytes": 149290
       },
       "emissive": {
         "url": "atlases/a-043.emissive.webp",
@@ -1913,7 +1913,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 635876
+        "bytes": 582520
       },
       "normal": {
         "url": "atlases/a-044.normal.webp",
@@ -1924,7 +1924,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 224266
+        "bytes": 224928
       },
       "emissive": {
         "url": "atlases/a-044.emissive.webp",
@@ -1956,7 +1956,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 402926
+        "bytes": 365028
       },
       "normal": {
         "url": "atlases/a-045.normal.webp",
@@ -1967,7 +1967,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 149242
+        "bytes": 144108
       },
       "emissive": {
         "url": "atlases/a-045.emissive.webp",
@@ -1999,7 +1999,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 517522
+        "bytes": 455756
       },
       "normal": {
         "url": "atlases/a-046.normal.webp",
@@ -2010,7 +2010,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 203172
+        "bytes": 203018
       },
       "emissive": {
         "url": "atlases/a-046.emissive.webp",
@@ -2042,7 +2042,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 527504
+        "bytes": 468196
       },
       "normal": {
         "url": "atlases/a-047.normal.webp",
@@ -2053,7 +2053,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 201150
+        "bytes": 200688
       },
       "emissive": {
         "url": "atlases/a-047.emissive.webp",
@@ -2085,7 +2085,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 433924
+        "bytes": 382824
       },
       "normal": {
         "url": "atlases/a-048.normal.webp",
@@ -2096,7 +2096,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 158922
+        "bytes": 158862
       },
       "emissive": {
         "url": "atlases/a-048.emissive.webp",
@@ -2128,7 +2128,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 547428
+        "bytes": 504540
       },
       "normal": {
         "url": "atlases/a-049.normal.webp",
@@ -2139,7 +2139,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 204058
+        "bytes": 204016
       },
       "emissive": {
         "url": "atlases/a-049.emissive.webp",
@@ -2171,7 +2171,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 510872
+        "bytes": 467214
       },
       "normal": {
         "url": "atlases/a-050.normal.webp",
@@ -2182,7 +2182,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 200530
+        "bytes": 200842
       },
       "emissive": {
         "url": "atlases/a-050.emissive.webp",
@@ -2214,7 +2214,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 379012
+        "bytes": 353452
       },
       "normal": {
         "url": "atlases/a-051.normal.webp",
@@ -2225,7 +2225,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 164794
+        "bytes": 168112
       },
       "emissive": {
         "url": "atlases/a-051.emissive.webp",
@@ -2257,7 +2257,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 357072
+        "bytes": 312326
       },
       "normal": {
         "url": "atlases/a-052.normal.webp",
@@ -2268,7 +2268,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 158318
+        "bytes": 158092
       },
       "emissive": {
         "url": "atlases/a-052.emissive.webp",
@@ -2300,7 +2300,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 390948
+        "bytes": 348084
       },
       "normal": {
         "url": "atlases/a-053.normal.webp",
@@ -2311,7 +2311,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 136802
+        "bytes": 137128
       },
       "emissive": {
         "url": "atlases/a-053.emissive.webp",
@@ -2343,7 +2343,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 481592
+        "bytes": 435676
       },
       "normal": {
         "url": "atlases/a-054.normal.webp",
@@ -2354,7 +2354,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 164618
+        "bytes": 165002
       },
       "emissive": {
         "url": "atlases/a-054.emissive.webp",
@@ -2386,7 +2386,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 429494
+        "bytes": 383090
       },
       "normal": {
         "url": "atlases/a-055.normal.webp",
@@ -2397,7 +2397,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 171608
+        "bytes": 172064
       },
       "emissive": {
         "url": "atlases/a-055.emissive.webp",
@@ -2429,7 +2429,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 468026
+        "bytes": 387824
       },
       "normal": {
         "url": "atlases/a-056.normal.webp",
@@ -2440,7 +2440,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 155202
+        "bytes": 159952
       },
       "emissive": {
         "url": "atlases/a-056.emissive.webp",
@@ -2472,7 +2472,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 637376
+        "bytes": 567792
       },
       "normal": {
         "url": "atlases/a-057.normal.webp",
@@ -2483,7 +2483,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 212202
+        "bytes": 213652
       },
       "emissive": {
         "url": "atlases/a-057.emissive.webp",
@@ -2515,7 +2515,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 500072
+        "bytes": 459660
       },
       "normal": {
         "url": "atlases/a-058.normal.webp",
@@ -2526,7 +2526,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 188538
+        "bytes": 188386
       },
       "emissive": {
         "url": "atlases/a-058.emissive.webp",
@@ -2558,7 +2558,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 380036
+        "bytes": 347348
       },
       "normal": {
         "url": "atlases/a-059.normal.webp",
@@ -2569,7 +2569,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 151112
+        "bytes": 154010
       },
       "emissive": {
         "url": "atlases/a-059.emissive.webp",
@@ -2601,7 +2601,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 388106
+        "bytes": 332432
       },
       "normal": {
         "url": "atlases/a-060.normal.webp",
@@ -2612,7 +2612,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 157350
+        "bytes": 158662
       },
       "emissive": {
         "url": "atlases/a-060.emissive.webp",
@@ -2644,7 +2644,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 463792
+        "bytes": 409718
       },
       "normal": {
         "url": "atlases/a-061.normal.webp",
@@ -2655,7 +2655,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 158586
+        "bytes": 159098
       },
       "emissive": {
         "url": "atlases/a-061.emissive.webp",
@@ -2687,7 +2687,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 333282
+        "bytes": 299140
       },
       "normal": {
         "url": "atlases/a-062.normal.webp",
@@ -2698,7 +2698,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 130600
+        "bytes": 131014
       },
       "emissive": {
         "url": "atlases/a-062.emissive.webp",
@@ -2730,7 +2730,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 448388
+        "bytes": 384740
       },
       "normal": {
         "url": "atlases/a-063.normal.webp",
@@ -2741,7 +2741,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 158764
+        "bytes": 159414
       },
       "emissive": {
         "url": "atlases/a-063.emissive.webp",
@@ -2773,7 +2773,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 583274
+        "bytes": 526770
       },
       "normal": {
         "url": "atlases/a-064.normal.webp",
@@ -2784,7 +2784,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 218212
+        "bytes": 218538
       },
       "emissive": {
         "url": "atlases/a-064.emissive.webp",
@@ -12361,7 +12361,7 @@
       }
     }
   },
-  "totalBytes": 36197860,
+  "totalBytes": 33392547,
   "animAtlases": [
     {
       "id": "anim-bankaiser-back",

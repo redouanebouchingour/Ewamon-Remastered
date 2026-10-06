@@ -19,10 +19,15 @@
  * player holding the Old Rod, and E on it runs the `FishingController` prompt (a landed bite sends `fish { angle }`);
  * Cut / Strength obstacles are pre-checked against the bag and party before the interact goes out; the bike key mounts
  * the bicycle when owned, outdoors and on land, and it folds itself in a hall or when the item is gone.
+ *
+ * Creature textures (client IMPLEMENTATION-NOTES "Creature textures"): every creature atlas has an owner that releases
+ * it — the zone holds its static set and the party's static atlases for its life, every view (spawn, legendary static,
+ * raid den, battle slot, evolution) leases the ONE side it shows with that side's flipbook, and `CreatureTextures`
+ * releases what nothing shows after a grace period, under a creature-texture budget.
  */
 import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
-import { BIKE_ITEM, BODIES, POSTGAME_FLAG, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, staticsFor, zone as zoneDef } from '@ewa/content';
+import { BIKE_ITEM, BODIES, POSTGAME_FLAG, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import { FISH_REACH_M } from '@ewa/protocol';
@@ -76,14 +81,16 @@ import { EMOTE_CHEER, EMOTE_SAD, FoeActor, foeSpecOf } from './foeActor';
 import { TRAINER_BACK_M, createSceneDirector } from './SceneDirector';
 import type { SceneDirector } from './SceneDirector';
 import { SpawnViews } from './SpawnViews';
-import { LegendaryViews, staticTargetId } from './LegendaryViews';
 import { RaidDen, raidTargetId } from './RaidViews';
 import { raidInfoOf } from '../battle/raid';
-import { bindCatalogAtlas, createSpriteCatalog, loadCreatureManifest, speciesAtlases } from './spriteCatalog';
+import { LegendaryViews, STATIC_FLIPBOOK_NEAR_M, staticTargetId, visibleStatics } from './LegendaryViews';
+import { createSpriteCatalog, loadCreatureManifest } from './spriteCatalog';
 import { DeviceRecovery } from './deviceRecovery';
 import { fetchIntoCache, neighbourPrefetchPlan, runPrefetch } from './prefetch';
 import type { PrefetchToken } from './prefetch';
 import type { SpriteCatalog } from './spriteCatalog';
+import { BattleSprites, CreatureTextures, NO_LEASE, creatureBudget } from './creatureTextures';
+import type { AtlasHold, CreatureSide, SpritePart, SpriteLease } from './creatureTextures';
 import type { WorldInstance } from './worldHost';
 
 const MAX_STEPS = 4;
@@ -191,7 +198,12 @@ class World implements World3D {
   private frameMsSum = 0;
   private frameMsMax = 0;
   private readonly dev = devBuild();
-  private readonly bound = new Set<string>();
+  /** creature atlas residency (built at boot with the sprite pool) */
+  private textures: CreatureTextures | null = null;
+  /** the loaded zone's static set + the party's static atlases (§20.10.3 phase 3), held for the zone's life */
+  private zoneHold: AtlasHold | null = null;
+  /** the battle's team atlases and the side each stage slot shows */
+  private readonly battleSprites = new BattleSprites(() => this.textures);
   private readonly selfTmp = { x: 0, z: 0 };
   private spectatorArenas = new Map<string, { x: number; z: number }>();
   private zone: ZoneDef | null = null;
@@ -361,11 +373,18 @@ class World implements World3D {
     group.name = this.clientGroupName;
     r.scene.add(group);
     if (p3 !== undefined) {
+      this.textures = new CreatureTextures({
+        catalog: () => this.catalog,
+        pool: () => (this.disposed ? null : p3.sprites),
+        // what the §50.2.2 cap leaves once the zone's materials, the render targets and the rest are counted (live)
+        budgetBytes: () => creatureBudget(r.stats().textureBytes, p3.sprites.stats().bytes),
+        warn: (m) => console.warn(m),
+      });
       this.spawns = new SpawnViews({
         parent: group,
         acquire: (d) => p3.sprites.acquire(d),
         descriptor: (sp, key, v, a, s) => this.catalog?.descriptor(sp, key, v, a, s) ?? null,
-        ensureSpecies: (sp) => this.ensureSpecies(sp),
+        leaseSprites: (sp, side, part) => this.leaseSprites(sp, side, part),
         height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
         targets: this.targets,
         interactKey: () => this.keyLabel('interact'),
@@ -374,7 +393,7 @@ class World implements World3D {
         parent: group,
         acquire: (d) => p3.sprites.acquire(d),
         descriptor: (sp, key) => this.catalog?.descriptor(sp, key) ?? null,
-        ensureSpecies: (sp) => this.ensureSpecies(sp),
+        leaseSprites: (sp, side, part) => this.leaseSprites(sp, side, part),
         height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
         targets: this.targets,
         interactKey: () => this.keyLabel('interact'),
@@ -384,7 +403,7 @@ class World implements World3D {
         parent: group,
         acquire: (d) => p3.sprites.acquire(d),
         descriptor: (sp, key) => this.catalog?.descriptor(sp, key, 'normal', true) ?? null,
-        ensureSpecies: (sp) => this.ensureSpecies(sp),
+        leaseSprites: (sp, side, part) => this.leaseSprites(sp, side, part),
         height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
         targets: this.targets,
         interactKey: () => this.keyLabel('interact'),
@@ -396,7 +415,7 @@ class World implements World3D {
       const evoDirector = new EvolutionDirector({
         stage: p3.stage,
         descriptor: (sp, key, v, a) => this.catalog?.descriptor(sp, key, v, a) ?? null,
-        ensureSpecies: (sp) => this.ensureSpecies(sp),
+        leaseSprites: (sp, side, part) => this.leaseSprites(sp, side, part),
         canPlay: () => this.zoneLoaded && !this.disposed && useUiStore.getState().battle === null && !this.director.inBattle,
         position: () => ({ x: this.input.renderX, z: this.input.renderZ }),
         selfId: () => this.ws.selfId,
@@ -408,7 +427,8 @@ class World implements World3D {
         target: window,
       });
       this.evolution = evoDirector;
-      setEvolutionPlayer({ play: (req, cb) => evoDirector.play(req, cb), preload: (sp) => this.ensureSpecies(sp) });
+      // the evolve prompt warms the new form's front (it idles until the sequence leases it, or the grace period ends)
+      setEvolutionPlayer({ play: (req, cb) => evoDirector.play(req, cb), preload: (sp) => this.textures?.prefetch(sp, 'front') });
     }
     if (attachBattle) this.battle.attach(this.battleView());
     return true;
@@ -472,7 +492,17 @@ class World implements World3D {
     this.spawns = null;
     this.legendaries = null;
     this.raidDen = null;
-    this.bound.clear();
+    // the creature atlases lived on the dead sprite pool: the residency goes with it (the rebuild makes a new one and
+    // enterZone / battle.attach take their holds again)
+    const textures = this.textures;
+    this.textures = null;
+    this.battleSprites.end();
+    this.zoneHold = null;
+    try {
+      textures?.dispose();
+    } catch (e) {
+      console.warn('[world] creature texture release on a lost device', e);
+    }
     if (!hadRenderer) return;
     try {
       this.director.unloadZone();
@@ -758,8 +788,8 @@ class World implements World3D {
     this.raidSeenPhase = phase;
     this.raidSeenHp = hp;
     if (denChanged && this.ready && this.zoneLoaded) {
+      // the den leases the boss's front (the raid battle's foe shows the same side)
       this.raidDen?.sync(r === null || id === '' ? null : { id, bossSpecies: r.bossSpecies, bossLevel: r.bossLevel, phase, x: r.x, z: r.z });
-      if (r !== null && id !== '') this.ensureSpecies(r.bossSpecies);
     }
     this.battle.onRaidState();
   }
@@ -797,8 +827,13 @@ class World implements World3D {
     // where the player will stand: render compiles what the first view there draws before loadZone resolves (T4)
     const arrival = room.state.players.get(this.ws.selfId);
     const focus = arrival !== undefined ? { x: arrival.x, z: arrival.z } : null;
+    // the statics' flipbooks are held only until the zone's LegendaryViews lease them (sync inside loadZone)
+    let preload: SpriteLease = NO_LEASE;
     try {
-      await this.bindZoneAtlases(zoneId);
+      preload = await this.bindZoneAtlases(zoneId, flags, focus);
+      // the statics near the arrival point play their flipbooks from the first frame; the far ones stand still (no
+      // arrival point: every static counts as near until the first nameplate pass)
+      this.legendaries?.setViewer(focus?.x ?? Number.NaN, focus?.z ?? Number.NaN);
       setWorldBoot({ label: `Building ${z.name}`, loadedBytes: null, totalBytes: null });
       await nextFrame();
       this.zoneLoaded = false;
@@ -807,6 +842,8 @@ class World implements World3D {
       console.error('zone load failed', e);
       toast('danger', `Could not build ${z.name}.`);
       return;
+    } finally {
+      preload.release();
     }
     if (this.room !== room) return;
     this.zoneLoaded = true;
@@ -844,52 +881,39 @@ class World implements World3D {
     this.raidDen?.reground();
   }
 
-  /** §20.10.3 phase 3: the zone's bind set, parallel, real byte progress from the manifest sizes. */
-  private async bindZoneAtlases(zoneId: ZoneId): Promise<void> {
+  /**
+   * §20.10.3 phase 3: the zone's static set + the party's static atlases, held for the zone's life (the previous zone's
+   * hold idles as this one is taken: what both zones show never leaves the GPU), and the front flipbooks of the
+   * legendary statics standing for these flags, so they play from the first frame — returned as a short hold the
+   * caller drops once the zone's statics lease them. Parallel, real byte progress from the manifest sizes.
+   */
+  private async bindZoneAtlases(zoneId: ZoneId, flags: ReadonlySet<string>, focus: { readonly x: number; readonly z: number } | null): Promise<SpriteLease> {
     const cat = this.catalog;
-    const p3 = part3Of(this.renderer);
-    if (cat === null || p3 === undefined) return;
-    const ids = cat.zoneAtlases(zoneId).filter((id) => !this.bound.has(id));
-    const add = (a: string): void => {
-      if (!this.bound.has(a) && !ids.includes(a)) ids.push(a);
-    };
-    // the zone's legendary statics play their flipbooks from the first frame: their anim atlases come with the static set
-    for (const s of staticsFor(zoneId)) for (const a of cat.animAtlasesOf(s.species)) add(a);
-    // the party's creatures too (battle leads), flipbooks included
-    for (const c of useSessionStore.getState().inventory?.party ?? []) for (const a of speciesAtlases(cat, c.speciesId)) add(a);
-    if (ids.length === 0) return;
-    const total = cat.bytesOf(ids);
+    const tex = this.textures;
+    if (cat === null || tex === null) return NO_LEASE;
+    const party = (useSessionStore.getState().inventory?.party ?? []).map((c) => c.speciesId);
+    const statics = [...cat.zoneAtlases(zoneId), ...tex.staticAtlasesOf(party)];
+    const near = (s: { readonly x: number; readonly z: number }): boolean => focus === null || Math.hypot(s.x - focus.x, s.z - focus.z) <= STATIC_FLIPBOOK_NEAR_M;
+    const flipbooks = visibleStatics(zoneId, flags).filter(near).flatMap((s) => tex.sideAtlases(s.species, 'front'));
+    const fresh = [...statics, ...flipbooks].filter((id) => !tex.isBound(id));
+    const total = cat.bytesOf(fresh);
     let loaded = 0;
-    setWorldBoot({ label: 'Loading creature sprites', loadedBytes: 0, totalBytes: total > 0 ? total : null });
-    await Promise.all(
-      ids.map(async (id) => {
-        const bind = bindCatalogAtlas(p3.sprites, cat, id);
-        if (bind === null) return;
-        this.bound.add(id);
-        try {
-          await bind;
-        } catch (e) {
-          console.warn('atlas bind failed', id, e);
-        }
-        loaded += cat.bytesOf([id]);
-        if (!this.firstFrame) setWorldBoot({ label: 'Loading creature sprites', loadedBytes: loaded, totalBytes: total > 0 ? total : null });
-      }),
-    );
+    const progress = (id: string): void => {
+      if (!fresh.includes(id)) return;
+      loaded += cat.bytesOf([id]);
+      if (!this.firstFrame) setWorldBoot({ label: 'Loading creature sprites', loadedBytes: loaded, totalBytes: total > 0 ? total : null });
+    };
+    if (fresh.length > 0) setWorldBoot({ label: 'Loading creature sprites', loadedBytes: 0, totalBytes: total > 0 ? total : null });
+    const zone = tex.hold(statics, progress, this.zoneHold);
+    this.zoneHold = zone;
+    const preload = tex.hold(flipbooks, progress);
+    await Promise.all([zone.ready, preload.ready]);
+    return preload;
   }
 
-  /** A species outside the bind set (a swarm, a trade, the other player's party) is bound on demand. */
-  private ensureSpecies(speciesId: string): void {
-    const cat = this.catalog;
-    const p3 = this.ready ? part3Of(this.renderer) : undefined;
-    if (cat === null || p3 === undefined) return;
-    // the static atlas and, for an animated legendary / mythical, its flipbooks (the static frame shows until they land)
-    for (const id of speciesAtlases(cat, speciesId)) {
-      if (this.bound.has(id)) continue;
-      const bind = bindCatalogAtlas(p3.sprites, cat, id);
-      if (bind === null) continue;
-      this.bound.add(id);
-      void bind.catch((e: unknown) => console.warn('atlas bind failed', id, e));
-    }
+  /** A view's lease on the side it shows (`CreatureTextures.show`); nothing before the sprite pool exists. */
+  private leaseSprites(speciesId: string, side: CreatureSide, part?: SpritePart): SpriteLease {
+    return this.textures?.show(speciesId, side, part) ?? NO_LEASE;
   }
 
   // ---- messages -----------------------------------------------------------------------------------------------
@@ -899,7 +923,8 @@ class World implements World3D {
       case 'battleStart':
         this.input.setEnabled(false);
         this.fishing.cancel();
-        for (const s of m.state.sides) for (const b of s.party) this.ensureSpecies(b.creature.speciesId);
+        // both teams' static atlases for the battle's life (a switch-in never waits); flipbooks come per shown side
+        this.battleSprites.begin(m.state.sides.flatMap((s) => s.party.map((b) => b.creature.speciesId)));
         useUiStore.getState().setDialogue(null);
         this.battle.onBattleStart(m);
         return;
@@ -908,7 +933,7 @@ class World implements World3D {
         return;
       case 'battleResync':
         this.input.setEnabled(false);
-        for (const s of m.state.sides) for (const b of s.party) this.ensureSpecies(b.creature.speciesId);
+        this.battleSprites.begin(m.state.sides.flatMap((s) => s.party.map((b) => b.creature.speciesId)));
         // Phase C1: a raid's fight starts with this resync — the lobby yields to the battle
         if (useUiStore.getState().modal === 'raidLobby') useUiStore.getState().closeModal();
         this.battle.onBattleResync(m);
@@ -1289,14 +1314,18 @@ class World implements World3D {
         this.foe.end();
         this.raidDen?.setHidden(false);
         void this.director.exitBattle();
+        // the stage disposed its battlers: their sides and the teams' atlases idle (released after the grace period)
+        this.battleSprites.end();
         if (this.zone !== null) this.audio.setTheme(this.audio.themeFor(this.zone.id, this.zone.biome), 400);
       },
       setBattler: (ref, c, key) => {
         if (c === null || cat === null) {
           r.stage.setBattler(ref, null);
+          this.battleSprites.set(ref, null);
           return;
         }
-        this.ensureSpecies(c.speciesId);
+        // the side this slot shows (the player's back, the foe's front), leased before the billboard asks for it
+        this.battleSprites.set(ref, c.speciesId);
         r.stage.setBattler(ref, cat.descriptor(c.speciesId, key, c.variantKey, c.isAlpha, c.isShiny === true));
       },
       setPose: (ref, pose, ms) => r.stage.setPose(ref, pose, ms),
@@ -1481,6 +1510,8 @@ class World implements World3D {
 
   private onSecond(): void {
     this.devLeft = DEV_MS;
+    // the creature budget is live (other textures come and go): flipbooks it refused get another try
+    this.textures?.refresh();
     const fps = this.frames;
     const avg = fps > 0 ? this.frameMsSum / fps : 0;
     const st = this.renderer.stats();
@@ -1567,6 +1598,17 @@ class World implements World3D {
       toasts: useNotificationsStore.getState().toasts.map((t) => `${t.level}: ${t.text}`),
       items: useSessionStore.getState().inventory?.items ?? {},
       authoritativeTurn: ui.battle?.authoritative.turn ?? null,
+      textures: this.textureSummary(),
+    };
+  }
+
+  /** Creature texture residency at a glance (debug / harness): bound GPU bytes vs the budget, what idles, what waits. */
+  private textureSummary(): Record<string, unknown> | null {
+    const t = this.textures?.stats();
+    if (t === undefined) return null;
+    return {
+      boundMB: Math.round(t.boundBytes / 2 ** 20), budgetMB: Math.round(t.budgetBytes / 2 ** 20), bound: t.bound, idle: t.idle, denied: t.denied,
+      held: t.entries.filter((e) => e.refs > 0).map((e) => `${e.id}x${e.refs}`),
     };
   }
 
@@ -1577,6 +1619,8 @@ class World implements World3D {
   private updateNameplates(): void {
     const sx = this.input.pose.x;
     const sz = this.input.pose.z;
+    // the legendary statics near the player play their flipbooks; the far ones let theirs go (2 Hz)
+    this.legendaries?.setViewer(sx, sz);
     const list: { id: string; name: string; guildTag: string; inBattle: boolean; d: number }[] = [];
     this.remotes.forEach((id, x, z, info, spawned) => {
       if (!spawned) return;
@@ -1631,7 +1675,9 @@ class World implements World3D {
     const token: PrefetchToken = { cancelled: false };
     this.prefetchToken = token;
     const r = this.renderer;
-    const plan = neighbourPrefetchPlan(z, this.flags(), this.catalog, this.bound);
+    // atlases already on the GPU (held or idling) need no HTTP-cache warm-up
+    const bound = new Set((this.textures?.stats().entries ?? []).filter((e) => e.bound).map((e) => e.id));
+    const plan = neighbourPrefetchPlan(z, this.flags(), this.catalog, bound);
     const bytes = await runPrefetch(plan, token, {
       ...(r.materials.prefetch !== undefined ? { materials: (ids) => r.materials.prefetch!(ids) } : {}),
       fetch: fetchIntoCache,
@@ -1658,6 +1704,10 @@ class World implements World3D {
     this.rendererOffs = [];
     if (this.ready) {
       this.director.unloadZone();
+      this.battleSprites.end();
+      this.zoneHold?.release();
+      this.zoneHold = null;
+      this.textures?.dispose();
       this.renderer.dispose();
     }
     this.ready = false;

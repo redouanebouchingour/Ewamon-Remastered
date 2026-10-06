@@ -7,13 +7,16 @@
  * forms' atlases (the sequence itself waits for the binds). While it plays: the player's movement is off (and every
  * world action is blocked by `ui.evolution`, which `app/evolution.ts` sets), the canvas HUD is hidden, the avatar faces
  * the creature (`faceAngle`, read by the tick — no allocation), and a primary click or Space / Enter / Escape skips (to
- * the reveal, then to the exit; the keys are swallowed so nothing else reacts). Render calls `onPhase` from its frame
+ * the reveal, then to the exit; the keys are swallowed so nothing else reacts). Both forms' front textures (flipbooks
+ * included) are leased for the sequence and released when it ends (client IMPLEMENTATION-NOTES "Creature textures"). Render calls `onPhase` from its frame
  * hook, so the reveal / leave callbacks are deferred off the tick. When the sequence ends — played, skipped or
  * cancelled (a battle's `dress`) — the input, the HUD and the listeners are restored exactly.
  */
 import type { EvolutionHandle, EvolutionPhase, SpriteDescriptor } from '@ewa/render';
 import type { VariantKey } from '@ewa/core';
 import type { EvolutionCallbacks, EvolutionRequest } from '../app/evolution';
+import { sideFor } from './creatureTextures';
+import type { LeaseSprites } from './creatureTextures';
 
 /** The keys that skip the sequence (a primary click does too). */
 export const EVOLUTION_SKIP_KEYS: ReadonlySet<string> = new Set(['Space', 'Enter', 'NumpadEnter', 'Escape']);
@@ -33,7 +36,8 @@ export interface EvolutionDirectorDeps {
     readonly evolution: { readonly feet: { readonly x: number; readonly z: number } } | null;
   };
   readonly descriptor: (speciesId: string, key: string, variant: VariantKey, isAlpha: boolean) => SpriteDescriptor | null;
-  readonly ensureSpecies: (speciesId: string) => void;
+  /** the textures of the side both forms show (the front), held while the sequence plays */
+  readonly leaseSprites: LeaseSprites;
   /** a zone is loaded and no battle runs */
   readonly canPlay: () => boolean;
   /** the player's rendered feet (the creature appears in front of them) */
@@ -76,8 +80,8 @@ export class EvolutionDirector {
     const from = d.descriptor(req.fromSpecies, `evolve:${req.creatureId}:from`, req.variantKey, req.isAlpha);
     const to = d.descriptor(req.toSpecies, `evolve:${req.creatureId}:to`, req.variantKey, req.isAlpha);
     if (from === null || to === null) return null;
-    d.ensureSpecies(req.fromSpecies);
-    d.ensureSpecies(req.toSpecies);
+    // both forms' atlases are asked for before the sequence starts (render waits for the binds before the swap)
+    const leases = [d.leaseSprites(req.fromSpecies, sideFor('evolution')), d.leaseSprites(req.toSpecies, sideFor('evolution'))];
     this.handle?.cancel();
     d.setInputEnabled(false);
     d.setHudVisible(false);
@@ -113,6 +117,7 @@ export class EvolutionDirector {
     return handle.done.then(() => {
       d.target.removeEventListener('keydown', onKey, true);
       d.target.removeEventListener('pointerdown', onPointer, true);
+      for (const l of leases) l.release();
       if (this.handle !== handle) return;            // a newer sequence took over: it restores
       this.handle = null;
       d.setHudVisible(d.hudVisible());

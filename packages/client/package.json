@@ -10,7 +10,8 @@
     "tokens": "tsx scripts/tokens.ts",
     "tokens:check": "tsx scripts/tokens.ts --check",
     "harness:budget": "tsx scripts/harness/budget.ts",
-    "harness:shots": "tsx scripts/harness/shots.ts"
+    "harness:shots": "tsx scripts/harness/shots.ts",
+    "harness:textures": "tsx scripts/harness/textures.ts"
   },
   "dependencies": {
     "@ewa/core": "workspace:*",

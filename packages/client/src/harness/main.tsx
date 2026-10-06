@@ -25,7 +25,7 @@ import { playEvolution, setEvolutionPlayer } from '../app/evolution';
 import { STEP_MS } from '../battle/constants';
 import { useUiStore } from '../state/ui';
 import { zoneSpecFor } from '../scene/zoneSpecFor';
-import { speciesName } from '../data/content';
+import { SPECIES_BY_DEX, speciesName } from '../data/content';
 import type { EdgeStage, StageOptions, StageResult } from './stage';
 import s from './Harness.module.css';
 
@@ -62,6 +62,8 @@ interface HarnessApi {
   readonly world: HarnessWorld;
   /** The live creature billboards: id, side, whether the flipbook plays (§10.4.5), its page, held (faint). */
   billboards(): { id: string; facing: string; animated: boolean; page: number; paused: boolean; bound: boolean }[];
+  /** `n` evolution pairs (`evolvesFrom` → species) with sprites, spread over the dex (texture-memory runs). */
+  evolutionPairs(n: number): [string, string][];
 }
 
 const params = new URLSearchParams(location.search);
@@ -84,7 +86,8 @@ layer.className = s.layer ?? '';
 document.body.appendChild(layer);
 createRoot(layer).render(<HarnessOverlay />);
 
-const world = new HarnessWorld(canvas, say);
+// ?residency=legacy: the creature binding before CreatureTextures (before / after texture-memory runs)
+const world = new HarnessWorld(canvas, say, params.get('residency') === 'legacy' ? 'legacy' : 'managed');
 world.backgroundCompile = params.get('bg') === '1';
 
 function anchors(): ResolvedAnchor[] {
@@ -181,6 +184,12 @@ const api: HarnessApi = {
   world,
   billboards: () =>
     (part3Of(world.renderer)?.sprites.liveBillboards() ?? []).map((b) => ({ id: b.id, facing: b.facing, animated: b.animated, page: b.animFrame, paused: b.animPaused, bound: b.bound })),
+  evolutionPairs: (n) => {
+    const all = SPECIES_BY_DEX.filter((sp) => sp.evolvesFrom !== null && world.catalog?.descriptor(sp.id, 'x') && world.catalog.descriptor(sp.evolvesFrom, 'x'))
+      .map((sp): [string, string] => [sp.evolvesFrom!, sp.id]);
+    const step = Math.max(1, Math.floor(all.length / Math.max(1, n)));
+    return all.filter((_p, i) => i % step === 0).slice(0, n);
+  },
 };
 (window as unknown as { __ewaHarness: HarnessApi }).__ewaHarness = api;
 

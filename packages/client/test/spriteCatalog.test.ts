@@ -61,6 +61,11 @@ describe('sprite catalog: flipbooks', () => {
     expect(cat.animAtlasesOf('still')).toEqual([]);
     expect(speciesAtlases(cat, 'flap')).toEqual(['a-000', 'anim-flap-front', 'anim-flap-back']);
     expect(speciesAtlases(cat, 'still')).toEqual(['a-000']);
+    // one side = its static atlas + that side's flipbook (what a view binds — creatureTextures.ts)
+    expect(cat.sideAtlases('flap', 'front')).toEqual({ atlas: 'a-000', anim: 'anim-flap-front' });
+    expect(cat.sideAtlases('flap', 'back')).toEqual({ atlas: 'a-000', anim: 'anim-flap-back' });
+    expect(cat.sideAtlases('still', 'back')).toEqual({ atlas: 'a-000', anim: null });
+    expect(cat.sideAtlases('nobody', 'front')).toBeNull();
     expect(cat.bytesOf(['a-000', 'anim-flap-front'])).toBe(30 + 300);
   });
 
@@ -71,6 +76,7 @@ describe('sprite catalog: flipbooks', () => {
     expect(d.front.anim).toBeUndefined();
     expect(d.back.anim?.atlas).toBe('anim-flap-back');
     expect(cat.animAtlasesOf('flap')).toEqual(['anim-flap-back']);
+    expect(cat.sideAtlases('flap', 'front')).toEqual({ atlas: 'a-000', anim: null });
   });
 
   it('bindCatalogAtlas routes static ids to bindAtlas and flipbook ids to bindAnimAtlas', async () => {

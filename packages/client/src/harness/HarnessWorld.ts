@@ -9,11 +9,16 @@
  * `tick()` is World3D.tick's order: sample → fixed step (prediction, remotes, targeting, timeline, audio) → actor
  * transforms → nameplates → HUD flush → one `renderer.frame`. The fixed-step portion is the §50.2.1 `sim` row and is
  * pushed to the probe (`setSimMs`).
+ *
+ * Creature textures go through World3D's `CreatureTextures` (zone hold, per-view side leases, battle holds, grace /
+ * LRU, budget guard — client IMPLEMENTATION-NOTES "Creature textures"). `residency: 'legacy'` (`?residency=legacy`)
+ * replays the binding before it — every atlas of a species (static + both flipbooks) bound on first sight, never
+ * released — so the before / after texture-memory runs drive the same page.
  */
 import { ACESFilmicToneMapping, Group, LinearSRGBColorSpace, NoToneMapping, SRGBColorSpace, Vector3 } from 'three/webgpu';
 import type { Node } from 'three/webgpu';
 import { float, renderOutput, texture, vec3, vec4 } from 'three/tsl';
-import { BODIES, harvestStateFor, zone as zoneDef } from '@ewa/content';
+import { BODIES, harvestStateFor, staticsFor, zone as zoneDef } from '@ewa/content';
 import type { HarvestState, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import { ALL_EFFECTS, applyReducedEffects, createBudgetProbe, createRenderer, edgePoint, part3Of, rendererInternals, zoneSurfaces } from '@ewa/render';
@@ -31,6 +36,9 @@ import { npcVisible } from '../scene/dialogue';
 import { HudWriter, partyStrip } from '../scene/HudWriter';
 import type { HudNameplates } from '../scene/HudWriter';
 import { InteractionTargets } from '../scene/interaction';
+import { LegendaryViews, STATIC_FLIPBOOK_NEAR_M, visibleStatics } from '../scene/LegendaryViews';
+import { BattleSprites, CreatureTextures, NO_LEASE, creatureBudget } from '../scene/creatureTextures';
+import type { AtlasHold, CreatureSide, CreatureTextureStats, SpritePart, SpriteLease } from '../scene/creatureTextures';
 import { LocalPlayerController } from '../scene/LocalPlayerController';
 import { RemoteInterpolator } from '../scene/RemoteInterpolator';
 import { TRAINER_BACK_M, createSceneDirector, terrainFor } from '../scene/SceneDirector';
@@ -54,6 +62,9 @@ const NAMEPLATE_MS = 500;
 const NAMEPLATE_RANGE = 18;
 
 export type HarnessLog = (line: string) => void;
+
+/** `managed`: World3D's `CreatureTextures`; `legacy`: the pre-residency binding (everything, forever) for before / after runs. */
+export type HarnessResidency = 'managed' | 'legacy';
 
 /** E3: one measured zone crossing (`handover-hitch.spec.ts`, SPEC §20.10.3 / §50.4.7). */
 export interface HandoverResult {
@@ -99,7 +110,14 @@ export class HarnessWorld {
   zone!: ZoneDef;
   spec!: ZoneSpec;
   harvest: HarvestState = 'intact';
-  readonly flags: ReadonlySet<string> = new Set<string>();
+  /** the story flags the zone reads (harvest state, legendary statics' gates); the texture runs set them */
+  readonly flags = new Set<string>();
+  /** Phase B1 legendary statics, synced by the director like World3D's */
+  legendaries: LegendaryViews | null = null;
+  /** the party's species: their static atlases are held with the zone (World3D's zone hold) */
+  party: string[] = [LEAD.speciesId];
+  /** creature atlas residency (`managed` only) */
+  textures: CreatureTextures | null = null;
   readonly lead: CreatureInstance;
   reduced = false;
   frames = 0;
@@ -110,13 +128,18 @@ export class HarnessWorld {
   lastCounts: BudgetCounts | null = null;
   private readonly held = new Uint8Array(16);
   private nameplateLeft = 0;
-  private readonly bound = new Set<string>();
+  /** `legacy` residency: every atlas ever bound */
+  private readonly legacyBound = new Set<string>();
+  private zoneHold: AtlasHold | null = null;
+  /** E3 sprite-edge scan: the inspected species' front side, held until the next `prepareSpecies` */
+  private preparedHold: AtlasHold | null = null;
+  private readonly battleSprites = new BattleSprites(() => this.textures);
   private battleScript: ScriptedBattle | null = null;
   private maskSaved: Node | null = null;
   private maskNode: Node | null = null;
   private outputNode: Node | null = null;
 
-  constructor(private readonly canvas: HTMLCanvasElement, private readonly log: HarnessLog) {
+  constructor(private readonly canvas: HTMLCanvasElement, private readonly log: HarnessLog, readonly residency: HarnessResidency = 'managed') {
     this.lead = makeCreature(content(), LEAD.speciesId, LEAD.level, 'harness-lead', SELF_ID);
     this.audio = createAudioDirector({ createContext: () => null });
     this.targets = new InteractionTargets((p) => this.hud.setPrompt(p));
@@ -187,6 +210,7 @@ export class HarnessWorld {
       setInputEnabled: (on) => this.input.setEnabled(on),
       setAccentType: (t) => part3Of(r)?.stage.setAccentType(t),
       reducedMotion: () => this.reduced,
+      legendaries: () => this.legendaries,
     });
     this.hud.bind(r.hud);
     this.hud.setConnection('connected');
@@ -203,10 +227,16 @@ export class HarnessWorld {
     group.name = 'ewa:client-creatures';
     r.scene.add(group);
     if (p3 !== undefined) {
+      if (this.residency === 'managed') {
+        this.textures = new CreatureTextures({
+          catalog: () => this.catalog, pool: () => p3.sprites, warn: (m) => this.log(m),
+          budgetBytes: () => creatureBudget(r.stats().textureBytes, p3.sprites.stats().bytes),
+        });
+      }
       this.evolution = new EvolutionDirector({
         stage: p3.stage,
         descriptor: (sp, key, v, a) => this.catalog?.descriptor(sp, key, v, a) ?? null,
-        ensureSpecies: (sp) => void this.bindSpecies([sp]),
+        leaseSprites: (sp, side, part) => this.leaseSprites(sp, side, part),
         canPlay: () => useUiStore.getState().battle === null && !this.director.inBattle,
         position: () => ({ x: this.input.renderX, z: this.input.renderZ }),
         selfId: () => SELF_ID,
@@ -221,7 +251,16 @@ export class HarnessWorld {
         parent: group,
         acquire: (d) => p3.sprites.acquire(d),
         descriptor: (sp, key, v, a) => this.catalog?.descriptor(sp, key, v, a) ?? null,
-        ensureSpecies: (sp) => void this.bindSpecies([sp]),
+        leaseSprites: (sp, side, part) => this.leaseSprites(sp, side, part),
+        height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
+        targets: this.targets,
+        interactKey: () => 'E',
+      });
+      this.legendaries = new LegendaryViews({
+        parent: group,
+        acquire: (d) => p3.sprites.acquire(d),
+        descriptor: (sp, key) => this.catalog?.descriptor(sp, key) ?? null,
+        leaseSprites: (sp, side, part) => this.leaseSprites(sp, side, part),
         height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
         targets: this.targets,
         interactKey: () => 'E',
@@ -230,9 +269,14 @@ export class HarnessWorld {
     this.zone = zoneDef(zoneId);
     this.harvest = harvestStateFor(zoneId, this.flags);
     this.spec = zoneSpecFor(this.zone, this.harvest);
-    await this.bindAtlases([...(this.catalog?.zoneAtlases(zoneId) ?? [])], [LEAD.speciesId, ...extraSpecies]);
+    const preload = await this.bindZone(zoneId, extraSpecies);
+    this.legendaries?.setViewer(this.zone.spawn.x, this.zone.spawn.z);
     const tz = performance.now();
-    await this.director.loadZone(zoneId, this.harvest);
+    try {
+      await this.director.loadZone(zoneId, this.harvest);
+    } finally {
+      preload.release();
+    }
     this.log(`zone ${zoneId} loaded in ${Math.round(performance.now() - tz)} ms (layoutSeed ${this.zone.layoutSeed >>> 0}, harvest ${this.harvest})`);
     const body = BODIES.find((b) => b.id === SELF_BODY);
     // the same `look:palette` id World3D's lookOf gives the local player
@@ -262,33 +306,67 @@ export class HarnessWorld {
     this.renderer.resize(rect.width, rect.height);
   }
 
-  private async bindAtlases(ids: string[], species: readonly string[]): Promise<void> {
+  /**
+   * World3D's zone binds: the zone's static set + the party's (and `extraSpecies'`, the shots' wild species) static
+   * atlases held for the zone's life (the previous zone's hold idles as this one is taken), and the front flipbooks of
+   * the legendary statics standing for the flags, returned as a short hold the caller drops after the zone's load.
+   */
+  private async bindZone(zoneId: ZoneId, extraSpecies: readonly string[]): Promise<SpriteLease> {
+    const cat = this.catalog;
+    const tex = this.textures;
+    if (cat === null) return NO_LEASE;
+    if (tex === null) {
+      // legacy: the zone set + every static's flipbooks + every atlas of the party's and the extra species
+      const ids = [...cat.zoneAtlases(zoneId)];
+      for (const st of staticsFor(zoneId)) for (const a of cat.animAtlasesOf(st.species)) if (!ids.includes(a)) ids.push(a);
+      for (const sp of [...this.party, ...extraSpecies]) for (const a of speciesAtlases(cat, sp)) if (!ids.includes(a)) ids.push(a);
+      await this.bindLegacy(ids);
+      return NO_LEASE;
+    }
+    const statics = [...cat.zoneAtlases(zoneId), ...tex.staticAtlasesOf([...this.party, ...extraSpecies])];
+    const zone = tex.hold(statics, undefined, this.zoneHold);
+    this.zoneHold = zone;
+    const at = zoneDef(zoneId).spawn;                          // boot and loadZone place the player there
+    const near = visibleStatics(zoneId, this.flags).filter((st) => Math.hypot(st.x - at.x, st.z - at.z) <= STATIC_FLIPBOOK_NEAR_M);
+    const preload = tex.hold(near.flatMap((st) => tex.sideAtlases(st.species, 'front')));
+    await Promise.all([zone.ready, preload.ready]);
+    return preload;
+  }
+
+  /**
+   * E3 sprite-edge scan: binds the front side (the inspector shows the front) of each species before its billboard is
+   * shown, held until the next call (resolves when bound); `legacy` binds every atlas of the species.
+   */
+  async prepareSpecies(species: readonly string[]): Promise<void> {
     const cat = this.catalog;
     if (cat === null) return;
-    for (const sp of species) for (const a of speciesAtlases(cat, sp)) if (!ids.includes(a)) ids.push(a);
-    await this.bindIds(ids);
+    const tex = this.textures;
+    if (tex === null) {
+      await this.bindLegacy(species.flatMap((sp) => [...speciesAtlases(cat, sp)]));
+      return;
+    }
+    const hold = tex.hold(species.flatMap((sp) => tex.sideAtlases(sp, 'front')), undefined, this.preparedHold);
+    this.preparedHold = hold;
+    await hold.ready;
   }
 
-  /** E3 sprite-edge scan: binds a species' atlases before its billboard is shown (resolves when bound). */
-  prepareSpecies(species: readonly string[]): Promise<void> {
-    return this.bindSpecies(species);
-  }
-
-  private async bindSpecies(species: readonly string[]): Promise<void> {
+  /** A view's lease on the side it shows; `legacy` binds every atlas of the species and never releases. */
+  private leaseSprites(speciesId: string, side: CreatureSide, part?: SpritePart): SpriteLease {
+    if (this.textures !== null) return this.textures.show(speciesId, side, part);
     const cat = this.catalog;
-    if (cat === null) return;
-    await this.bindIds(species.flatMap((sp) => [...speciesAtlases(cat, sp)]));
+    if (cat !== null) void this.bindLegacy(speciesAtlases(cat, speciesId));
+    return NO_LEASE;
   }
 
-  private async bindIds(ids: readonly string[]): Promise<void> {
+  private async bindLegacy(ids: readonly string[]): Promise<void> {
     const cat = this.catalog;
     const p3 = part3Of(this.renderer);
     if (cat === null || p3 === undefined) return;
     await Promise.all(
-      ids.filter((id) => !this.bound.has(id)).map(async (id) => {
+      ids.filter((id) => !this.legacyBound.has(id)).map(async (id) => {
         const bind = bindCatalogAtlas(p3.sprites, cat, id);
         if (bind === null) return;
-        this.bound.add(id);
+        this.legacyBound.add(id);
         try {
           await bind;
         } catch (e) {
@@ -298,10 +376,54 @@ export class HarnessWorld {
     );
   }
 
+  /**
+   * Switches zones the way World3D.enterZone does: the zone's binds (`bindZone`), then the director's load (the old
+   * zone, its statics and the wild spawn go), the player at the zone's spawn. Dev hook for the texture-memory runs (CDP).
+   */
+  async loadZone(zoneId: ZoneId): Promise<void> {
+    this.spawns?.clear();
+    const preload = await this.bindZone(zoneId, []);
+    this.legendaries?.setViewer(zoneDef(zoneId).spawn.x, zoneDef(zoneId).spawn.z);   // the arrival point, as World3D
+    this.zone = zoneDef(zoneId);
+    this.harvest = harvestStateFor(zoneId, this.flags);
+    this.spec = zoneSpecFor(this.zone, this.harvest);
+    try {
+      await this.director.loadZone(zoneId, this.harvest);
+    } finally {
+      preload.release();
+    }
+    this.probe = createBudgetProbe(this.renderer, zoneId);
+    this.place(this.zone.spawn.x, this.zone.spawn.z, 0);
+  }
+
+  /**
+   * Texture memory now: render's corrected `texturesSize` (§50.2.2) and the same before the sprite level-0 correction
+   * (`rawTexturesSize`, render IMPLEMENTATION-NOTES Part 9), the sprite pool's GPU estimate and its atlases, and
+   * (managed) the residency's bound bytes / idle / refused entries.
+   */
+  textureReadout(): {
+    readonly texturesSize: number; readonly rawTexturesSize: number; readonly textures: number; readonly spriteBytes: number; readonly spriteAtlases: number; readonly liveBillboards: number;
+    readonly residency: HarnessResidency; readonly managed: Omit<CreatureTextureStats, 'entries'> & { readonly held: readonly string[]; readonly idleIds: readonly string[] } | null;
+  } {
+    const c = this.probe.counts();
+    const st = part3Of(this.renderer)?.sprites.stats();
+    const m = this.textures?.stats() ?? null;
+    return {
+      texturesSize: c.texturesSize, rawTexturesSize: c.texturesSize + (part3Of(this.renderer)?.sprites.infoOvercountBytes() ?? 0), textures: c.textures,
+      spriteBytes: st?.bytes ?? 0, spriteAtlases: st?.atlases ?? 0, liveBillboards: st?.live ?? 0, residency: this.residency,
+      managed: m === null ? null : {
+        boundBytes: m.boundBytes, budgetBytes: m.budgetBytes, bound: m.bound, idle: m.idle, denied: m.denied, binds: m.binds, releases: m.releases,
+        held: m.entries.filter((e) => e.refs > 0).map((e) => `${e.id}x${e.refs}${e.denied ? ' (waits)' : ''}`),
+        idleIds: m.entries.filter((e) => e.idle).map((e) => e.id),
+      },
+    };
+  }
+
   // ---- placement / shot state -----------------------------------------------------------------------------------
 
   /** Places the local player (a fresh placement, as a join does) and snaps the camera onto it. */
   place(x: number, z: number, angle: number): void {
+    this.legendaries?.setViewer(x, z);
     this.input.clear();
     this.input.reconcile(x, z, angle, 0);
     this.renderer.actors.setTransform(SELF_ID, this.input.renderX, this.input.renderZ, this.input.pose.angle, false, false);
@@ -359,6 +481,9 @@ export class HarnessWorld {
     if (this.nameplateLeft <= 0) {
       this.nameplateLeft = NAMEPLATE_MS;
       this.updateNameplates();
+      // World3D's 2 Hz cadence: near statics play their flipbooks; the residency retries what its budget refused
+      this.legendaries?.setViewer(this.input.pose.x, this.input.pose.z);
+      this.textures?.refresh();
     }
     this.hud.flush();
     const simMs = t1 - t0;
@@ -574,9 +699,10 @@ export class HarnessWorld {
     await this.settle(30, 10, 600);
     const next = zoneDef(to);
     const harvest = harvestStateFor(to, this.flags);
+    let preloaded: SpriteLease = NO_LEASE;
     if (o.preload) {
       await this.renderer.materials.preload(zoneSurfaces(withNeighbours(zoneSpecFor(next, harvest), next)));
-      await this.bindAtlases([...(this.catalog?.zoneAtlases(to) ?? [])], []);
+      preloaded = await this.bindZone(to, []);
     }
     const [ax0, az0] = edgePoint(next.kind, opp);
     const [aix, aiz] = inward(opp, 8);
@@ -601,7 +727,11 @@ export class HarnessWorld {
     };
     const t0 = performance.now();
     requestAnimationFrame(loop);
-    await this.director.loadZone(to, harvest, arrival);
+    try {
+      await this.director.loadZone(to, harvest, arrival);
+    } finally {
+      preloaded.release();
+    }
     const loadMs = performance.now() - t0;
     this.zone = next;
     this.harvest = harvest;
@@ -631,7 +761,20 @@ export class HarnessWorld {
     return this.battleScript;
   }
 
+  /** A scripted wild battle `mine` (the player's lead) vs `foe`, both at `level` (dev hook for the texture runs). */
+  scriptBattle(mine: string, foe: string, level = 50): ScriptedBattle {
+    this.battleScript = scriptWildBattle(content(), {
+      playerId: SELF_ID, playerSpecies: mine, playerLevel: level, wildSpecies: foe, wildLevel: level, zoneId: this.zone.id,
+      terrain: terrainFor(this.zone.biome),
+    });
+    return this.battleScript;
+  }
+
   startBattle(s: ScriptedBattle): void {
+    // World3D's battleStart: both teams' static atlases for the battle's life
+    const species = s.start.state.sides.flatMap((side) => side.party.map((b) => b.creature.speciesId));
+    if (this.textures !== null) this.battleSprites.begin(species);
+    else for (const sp of species) this.leaseSprites(sp, 'front');
     this.battle.onBattleStart({ type: 'battleStart', battleId: s.battleId, format: 'wild', seat: 0, state: s.start.state, events: s.start.events, stateDigest: s.start.digest });
   }
 
@@ -656,14 +799,19 @@ export class HarnessWorld {
     const flags = (): EffectsFlags => (this.reduced ? applyReducedEffects(ALL_EFFECTS) : ALL_EFFECTS);
     return {
       enterBattle: (s) => void this.director.enterBattle(s),
-      exitBattle: () => void this.director.exitBattle(),
+      exitBattle: () => {
+        void this.director.exitBattle();
+        this.battleSprites.end();
+      },
       setBattler: (ref, c, key) => {
         const catalog = cat();
         if (c === null || catalog === null) {
           r.stage.setBattler(ref, null);
+          this.battleSprites.set(ref, null);
           return;
         }
-        void this.bindSpecies([c.speciesId]);
+        if (this.textures !== null) this.battleSprites.set(ref, c.speciesId);
+        else this.leaseSprites(c.speciesId, 'front');
         r.stage.setBattler(ref, catalog.descriptor(c.speciesId, key, c.variantKey, c.isAlpha));
       },
       setPose: (ref, pose, ms) => r.stage.setPose(ref, pose, ms),

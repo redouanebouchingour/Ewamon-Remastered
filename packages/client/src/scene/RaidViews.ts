@@ -6,13 +6,15 @@
  * measured from the same unsnapped hotspot point): "Join raid" in the lobby, "View raid" once the fight is on. `E`
  * opens the RaidLobby modal (and sends `raidJoin` first when the player is not in yet). The den goes when the raid
  * is over (phase 4) or the room drops it, and hides while the player's own raid battle is on (the boss stands on
- * the arena then). Same billboard pattern as `LegendaryViews` (renderer sprite pool, the client group); World3D
- * drives `sync` from its patch handler.
+ * the arena then). Same billboard pattern as `LegendaryViews` (renderer sprite pool, the client group, a lease on the
+ * textures of the front it shows while the den stands); World3D drives `sync` from its patch handler.
  */
 import type { Group } from 'three/webgpu';
 import type { CreatureBillboard, SpriteDescriptor } from '@ewa/render';
 import { speciesName } from '../data/content';
 import { RAID_JOIN_RANGE_M } from '../battle/raid';
+import { NO_LEASE, sideFor } from './creatureTextures';
+import type { LeaseSprites, SpriteLease } from './creatureTextures';
 import type { InteractionTargets } from './interaction';
 import { makeInteractable } from './interaction';
 
@@ -40,7 +42,8 @@ export interface RaidDenDeps {
   acquire(d: SpriteDescriptor): CreatureBillboard;
   /** the glowing (alpha) descriptor of the boss species */
   descriptor(speciesId: string, key: string): SpriteDescriptor | null;
-  ensureSpecies(speciesId: string): void;
+  /** the textures of the side the boss shows, held while the den stands (`CreatureTextures.show`) */
+  readonly leaseSprites: LeaseSprites;
   height(x: number, z: number): number;
   readonly targets: InteractionTargets;
   interactKey(): string;
@@ -56,6 +59,7 @@ export function denVerb(phase: number): string {
 export class RaidDen {
   private cur: RaidDenInfo | null = null;
   private bb: CreatureBillboard | null = null;
+  private lease: SpriteLease = NO_LEASE;
   private hidden = false;
   private dressedAt: { readonly x: number; readonly z: number } | null = null;
 
@@ -92,9 +96,9 @@ export class RaidDen {
     this.cur = { ...info };
     const base = this.d.descriptor(info.bossSpecies, `${RAID_PREFIX}${info.id}`);
     if (base !== null) {
-      this.d.ensureSpecies(info.bossSpecies);
+      this.lease = this.d.leaseSprites(info.bossSpecies, sideFor('raid'));
       const bb = this.d.acquire({ ...base, sizeScale: base.sizeScale * RAID_DEN_SCALE });
-      bb.setFacing('front');
+      bb.setFacing(sideFor('raid'));
       bb.setPosition(info.x, this.d.height(info.x, info.z), info.z);
       bb.object.visible = !this.hidden;
       this.d.parent.add(bb.object);
@@ -139,6 +143,8 @@ export class RaidDen {
     this.bb?.object.removeFromParent();
     this.bb?.dispose();
     this.bb = null;
+    this.lease.release();
+    this.lease = NO_LEASE;
     this.cur = null;
   }
 
