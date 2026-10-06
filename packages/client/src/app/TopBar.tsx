@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router';
 import { BADGE_CASE } from '../data/badgeIcon';
 import { zoneName } from '../data/content';
+import { readyCount } from '../data/quests';
 import { apiFetch, endSession } from '../net/api';
 import { getRefreshToken } from '../net/tokens';
 import { useRoomState } from '../net/useRoomState';
@@ -27,6 +28,7 @@ export const NAV: readonly { readonly to: string; readonly label: string; readon
   { to: '/play/guild', label: 'Guild', icon: 'guild' },
   { to: '/play/market', label: 'Market', icon: 'market' },
   { to: '/play/pass', label: 'Pass', icon: 'pass' },
+  { to: '/play/quests', label: 'Quests', icon: 'quest' },
   { to: '/play/settings', label: 'Settings', icon: 'settings' },
 ];
 
@@ -36,7 +38,8 @@ function useNavCounts(): Readonly<Record<string, number>> {
   const unread = useNotificationsStore((st) => Object.values(st.unreadDm).reduce((a, b) => a + b, 0));
   const requests = useNotificationsStore((st) => st.friendRequests);
   const claims = useNotificationsStore((st) => st.pendingBattlePassClaims);
-  return { '/play/social': unread + requests, '/play/pass': claims };
+  const quests = useSessionStore((st) => readyCount(st.progression));
+  return { '/play/social': unread + requests, '/play/pass': claims, '/play/quests': quests };
 }
 
 function ZoneChip() {

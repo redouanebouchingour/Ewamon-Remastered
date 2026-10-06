@@ -46,7 +46,8 @@ import type { SpawnRecord } from './spawnDirector';
 import { beatFor, completeBeatInTx, flagSet, isStoryTrainer, storyTrainerBeat } from './storyBeats';
 import { RAID_JOIN_RANGE_M, RaidRunner, RaidSession } from './raidSession';
 import { TradeCoordinator } from './tradeSession';
-import { advanceQuests } from '../game/quests';
+import { advanceQuests, deliveriesFor } from '../game/quests';
+import type { QuestEvent } from '../game/quests';
 import { STREAK_LAST_PREFIX, dailyLogin } from '../liveops/login';
 import { dayKey, hotspotDayKey, hotspotOpen, hotspotsFor, liveOpsModsFor } from '../liveops/schedule';
 
@@ -869,9 +870,30 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
 
     switch (target.kind) {
       case 'npc': {
-        // plain conversation: nothing over the wire, except talkTo quest progress
-        const touched = await deps.repos.db.transaction((t) => advanceQuests(t, deps.repos, ud.playerId, [{ kind: 'talkTo', npcId: target.npc.id }], this.now()));
-        if (touched.length > 0) this.sendMsg(client, progressionOnly({ questProgress: touched }));
+        // plain conversation: nothing over the wire, except talkTo quest progress — and (Phase B2) a deliverItem
+        // objective naming this npc: when the bag holds `qty`, the items are spent in the SAME transaction
+        const npcId = target.npc.id;
+        const r = await deps.repos.db.transaction(async (t) => {
+          const events: QuestEvent[] = [{ kind: 'talkTo', npcId }];
+          const spent: Record<string, number> = {};
+          const short: { item: string; qty: number }[] = [];
+          for (const d of await deliveriesFor(t, deps.repos, ud.playerId, npcId)) {
+            const have = await deps.repos.inventory.qty(t, ud.playerId, d.item);
+            if (have < d.qty) {
+              short.push({ item: d.item, qty: d.qty });
+              continue;
+            }
+            spent[d.item] = await deps.repos.inventory.add(t, ud.playerId, d.item, -d.qty);
+            events.push({ kind: 'deliver', npcId, item: d.item, qty: d.qty });
+          }
+          return { touched: await advanceQuests(t, deps.repos, ud.playerId, events, this.now()), spent, short };
+        });
+        if (Object.keys(r.spent).length > 0) {
+          for (const [item, qty] of Object.entries(r.spent)) ud.inventory[item] = qty;
+          this.sendMsg(client, { type: 'inventoryDelta', items: r.spent, money: null, creaturesAdded: [], creaturesRemoved: [], creaturesUpdated: [] });
+        }
+        if (r.touched.length > 0) this.sendMsg(client, progressionOnly({ questProgress: r.touched }));
+        for (const s of r.short) this.sendMsg(client, { type: 'toast', level: 'info', text: `Bring ${s.qty} × ${this.itemName(s.item)} to deliver.` });
         return;
       }
       case 'trainer': {
@@ -997,6 +1019,15 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       }
     }
     return null;
+  }
+
+  /** Display name of an item id for toasts (falls back to the id). */
+  private itemName(id: string): string {
+    try {
+      return this.deps.content.item(id).name;
+    } catch (_e) {
+      return id;
+    }
   }
 
   /** The ONLY writer of `ud.flags` after join: adds the flags and, when one is new, recomputes the closed gates. */

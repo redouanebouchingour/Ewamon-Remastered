@@ -106,6 +106,7 @@ describe('every route renders', () => {
     ['/play/market', 'panel'],
     ['/play/market/44444444-4444-4444-8444-444444444444', 'panel'],
     ['/play/pass', 'panel'],
+    ['/play/quests', 'panel'],
     ['/play/settings', 'panel'],
   ])('%s', async (path, testId) => {
     mount([path]);

@@ -679,3 +679,83 @@ field, a hall battle, helpers), `battle-controller.test.ts` (+1: battleStart x /
 `dialogue-flow.test.tsx` (+1: Wardens / Champion), `zoneSpecFor.test.ts` (+1: interiors flattened, deterministic,
 pocket warps not in `spec.warps`), `scene-director.test.ts` (the gym at its `leaderAt`). Client: 23 files, 175 tests
 green; `tsc` (client sources against the other packages' sources) clean; `eslint packages/client` clean.
+
+# Phase B7 — battle presentation: visible opponent, VS intro card, victory / badge card, mid-battle leader lines (2026-10-06)
+
+- **One foe actor** (`scene/foeActor.ts` `FoeActor`, `foeSpecOf`), reusable by raids and the post-game tower: `begin(spec)`
+  picks `remote` (a pvp foe's avatar, restaged only while the interpolator has a rig), `static` (a director actor —
+  route trainer, gym-hall trainer, league leader — restaged), `temporary` (no actor in the zone: a `battle:foe` actor is
+  spawned with the content look — a story trainer fought from a beat in another zone) or `none` (wild / raid boss /
+  legendary static: those sides carry no trainer). `stage(x, z, fx, fz, back)` every frame from `World3D.tick` (the far
+  trainer slot, facing the player; allocation-free), `react(foeWon)` plays the result emote, `end()` stands a static back
+  at its `restPose` (new `SceneDirector.staticPose(id)`; the director's own `restoreStatics` on exit still runs too) and
+  despawns a temporary. World3D's `battleFoe` / `battleFoeStatic` fields are gone. The remote budget reserves one more
+  rig for the temporary (`remotes.cap`).
+- **Identity** (`battle/foe.ts`): `foeIdentity(trainerId, leadSpecies)` resolves LEAGUE → zone trainers → gym-hall
+  trainers (name, title, type, look); a non-league trainer's "type" is its lead creature's primary type (TrainerDef has
+  none). `foeOfState` reads the NPC side.
+- **Emotes.** "cheer" / "sad" are render's emote ids 2 (`happy` → the `cheer` clip) and 3 (`sad` → the procedural bow;
+  KayKit has no downcast clip). They fire when the result card appears (new optional `BattleView.ended(foeWon)`, called
+  from `showResult` — after the final timeline, not at `battleEnd` message time, so the KO plays first). The player's
+  own avatar emotes too (winner cheers, loser bows); caught / fled / draw play nothing.
+- **VS intro card** (`battle/BattleIntroCard.tsx` + module): BattleController writes `ui.battleIntro` at `battleStart`
+  for a trainer / league battle with an NPC trainer — never under effective reduced motion (`deps.reduced()`, the same
+  flag the timeline uses), never on a resync restore. The card shows 1.8 s (`INTRO_MS`, the 600 ms push-in + lead
+  switch-ins; exit in the last 240 ms) and clears the field. **Deviation:** no look thumbnail exists in the DOM (the
+  looks are 3D atlases), so the emblem is the name's monogram on the type colour (`data-type` → `--tc`) plus a
+  TypeBadge. Non-blocking, `role="status"`. It and the banner render beside — not inside — the battle panel (its
+  `backdrop-filter` would be their containing block).
+- **Result card**: a won badge shows its glyph, name and type colour (`badgeIcon.ts` gains `badgeDisplay(id)` — still the
+  only file spelling badge ids); a won league battle shows the concession line. **Deviation:** `concessionLine` uses
+  `post[1]` for gym leaders as asked (content documents it as the concession), but `post[0]` for the Wardens and the
+  Champion — their `post[1]` sends the player on ("Aurelia keeps the count…", "Lean in…"), their concession is
+  `post[0]`. The full `post` dialogue still opens after the card (unchanged), so that one line is seen twice.
+- **Mid-battle lines**: content's `LeagueTrainer.mid { halfHp, lastStand }`. BattleController checks them as the
+  timeline PLAYS (TimelinePlayer's `hp` / `enter` targets, i.e. the damage and switch-in frames), not at message time:
+  `halfHp` once when the foe party's total displayed HP (`hpNow`, every member) is first ≤ 50 % of its total max HP;
+  `lastStand` once when the entering foe creature is the only one with HP left (teams of ≥ 2) — it also retires a
+  pending `halfHp`. The store write is deferred off the tick (`defer`). `ui.battleBanner` + `battleBannerQueue`
+  (`pushBattleBanner` / `dismissBattleBanner` / `clearBattleBanners`): when both lines land close together the second
+  waits for the first's 3 s instead of replacing it. `battle/BattleBanner.tsx` shows each for `BATTLE_BANNER_MS` 3 000
+  between the top bar and the HUD turn-label band. A resync mid-battle re-arms nothing (the flags persist per battle).
+- **Not verified live**: none of the above was driven in a browser this phase (unit / component tests only); the
+  banner and card placement against the in-canvas battle bars at small viewports is unchecked.
+
+Tests: `test/battle-presentation.test.tsx` (10: static restage + restore, temporary spawn + despawn + replacement,
+remote rig gating + no foe for wild, identities + concession lines, intro for league with the card clearing itself,
+intro for trainer and none for wild / reduced motion / resync, mid lines firing once each at the right frame with the
+banner queue, a route trainer never bannering, result card badge + concession, no concession on a loss / Warden
+post[0]); content `test/league-mid.test.ts` (3). Client + content: 36 files, 276 tests green; `pnpm typecheck` clean;
+`eslint packages/client packages/content` clean.
+
+## Phase B1–B3 (legendary statics, quest journal)
+
+- **B1 legendary statics.** `scene/LegendaryViews.ts` owns the billboards (renderer sprite pool under the client
+  group, the `SpawnViews` pattern) and the `static` interactables (`InteractableKind` gained `'static'`, range 2.5 inside
+  the server's 3 m). `visibleStatics(zoneId, flags)`: a static stands when its gate flag is held (`badge:<id>` stays a
+  badge flag; `flag:<f>` → `f`) and its `flag` is not, at `nearestWalkable(h, x, z, 8)` — the server's snap before its
+  range check. Deviation: the SceneDirector does not touch sprites itself; it drives the views through a new optional
+  dep `legendaries: () => { sync(zoneId | null, flags) } | null` (load → sync, `refreshFlags` → sync, unload →
+  sync(null)), so its hunk stays three lines and its tests need no sprite pool. Interactable ids are
+  `static:<species>` (spawn ids are server-generated); `E` sends `interact {kind:'static', targetId: species}` after
+  the same party-can-battle check as a challenge. The win/catch flag arrives in a `progressionDelta`, the
+  progression subscription calls `refreshFlags`, and the static despawns.
+- **B3 quest journal.** `/play/quests` (`screens/QuestScreen.tsx` + module CSS, `questAction` in `app/actions.ts`,
+  NAV entry "Quests" with a new `quest` icon and a ready-to-claim count). Model in `data/quests.ts` mirrors the server
+  rules (active once every `requires` is claimed; count objectives `catchSpecies` / `winBattles`, others done on the
+  first match; claimable when every objective is done). The server route `POST /quests/claim` already existed (server
+  part 1) — no server change. Claim → `applyInventoryDelta` (inventory / money / creaturesAdded) +
+  `applyProgressionDelta` with two REST-only additions: `ProgressionDelta.questClaimed` (appended to
+  `questsClaimed`, deviation D4 pattern like `missionClaimed`) and the reward `flag` in `flags`. The trainer exp the
+  server grants (`TRAINER_EXP.questComplete`) is not in `QuestClaimRes`, so it shows after the next GET /me.
+- **Tracking.** `state/questTracking.ts` (zustand persist `ewa.questTrack`, storage failures fall back to memory) holds
+  one tracked quest id; a claim untracks it. The HUD hint moved out of World3D into `scene/questHint.ts`
+  (`questHintFor(progression, tracked)`): the tracked quest's first undone objective (`label (n/target)` for count
+  objectives) or `Claim “Title” in Quests` once complete; otherwise the previous rule unchanged. World3D subscribes to
+  the tracking store to rewrite the hint.
+- **Not verified live** (unit / component tests only): the static billboards' scale and grounding in the real zones,
+  and the journal's layout at small viewports.
+
+Tests: `test/legendary-statics.test.ts` (4: gate flags, visible set at the snapped point for every static, views
+spawn / prompt / despawn on the flag, director sync on load / refresh / unload); `test/quest-journal.test.tsx` (4:
+status model, hint text, NAV, route render + mocked claim + Track); `routes.test.tsx` renders `/play/quests`.

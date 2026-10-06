@@ -4,8 +4,9 @@
  *
  * Active quests: every `QUESTS` row whose `requires` are all claimed and which is not claimed itself.
  * Count objectives (`catchSpecies`, `winBattles`) accumulate; every other kind is done on its first match.
- * `deliverItem` / `restoreZone` need flows owned by part 2 (NPC delivery, zone restoration) and are not
- * advanced here.
+ * Phase B2: `restoreZone` advances on the `restoreZone` event `completeBeatInTx` emits for a beat whose
+ * `harvest.to === 'intact'`; `deliverItem` advances on the `deliver` event ZoneRoom emits only after it has
+ * consumed the items in the same transaction (see `deliveryFor`).
  *
  * §30.9.1 (part 2): the same call also advances today's daily missions (`daily:<dayKey>`) and this week's goals
  * (`weekly:<weekKey>`) — synthetic quest ids whose objective ids are mission ids — "one code path".
@@ -27,6 +28,10 @@ export type QuestEvent =
   | { readonly kind: 'badge'; readonly badge: BadgeId }
   | { readonly kind: 'reachZone'; readonly zoneId: ZoneId }
   | { readonly kind: 'talkTo'; readonly npcId: string }
+  /** a story beat returned a zone to `intact` (Phase B2) */
+  | { readonly kind: 'restoreZone'; readonly zoneId: ZoneId }
+  /** the caller already consumed `qty` × `item` for this npc in the same transaction (Phase B2) */
+  | { readonly kind: 'deliver'; readonly npcId: string; readonly item: string; readonly qty: number }
   /** an ended battle the player fought, any result (live-ops `pvpBattles`) */
   | { readonly kind: 'battle'; readonly format: BattleFormat }
   /** a species NEW to the player's dex (live-ops `newSpeciesSeen`) */
@@ -77,6 +82,10 @@ function matches(o: QuestObjective, e: QuestEvent): boolean {
       return e.kind === 'reachZone' && e.zoneId === o.zoneId;
     case 'talkTo':
       return e.kind === 'talkTo' && e.npcId === o.npcId;
+    case 'restoreZone':
+      return e.kind === 'restoreZone' && e.zoneId === o.zoneId;
+    case 'deliverItem':
+      return e.kind === 'deliver' && e.npcId === o.npcId && e.item === o.item && e.qty >= o.qty;
     default:
       return false;
   }
@@ -93,6 +102,33 @@ function claimedSet(all: Record<string, { claimedAt: Date | null }[]>): Set<stri
 
 export function activeQuests(claimed: ReadonlySet<string>): readonly QuestDef[] {
   return QUESTS.filter((q) => !claimed.has(q.id) && q.requires.every((r) => claimed.has(r)));
+}
+
+export interface Delivery {
+  readonly questId: string;
+  readonly objectiveId: string;
+  readonly item: string;
+  readonly qty: number;
+}
+
+/**
+ * Phase B2: the open `deliverItem` objectives of the player's active quests that name `npcId` (not done, not
+ * claimed). The caller checks `inventory[item] >= qty`, spends the items and calls `advanceQuests` with a
+ * `deliver` event — all inside one transaction.
+ */
+export async function deliveriesFor(tx: Tx, repos: Pick<Repos, 'progress'>, playerId: string, npcId: string): Promise<Delivery[]> {
+  const all = await repos.progress.allQuests(tx, playerId);
+  const out: Delivery[] = [];
+  for (const q of activeQuests(claimedSet(all))) {
+    for (const obj of q.objectives) {
+      const o = obj.objective;
+      if (o.kind !== 'deliverItem' || o.npcId !== npcId) continue;
+      const row = (all[q.id] ?? []).find((r) => r.objectiveId === obj.id);
+      if (row?.done === true || row?.claimedAt != null) continue;
+      out.push({ questId: q.id, objectiveId: obj.id, item: o.item, qty: o.qty });
+    }
+  }
+  return out;
 }
 
 export async function advanceQuests(tx: Tx, repos: Pick<Repos, 'progress'>, playerId: string, events: readonly QuestEvent[], nowMs: number = Date.now()): Promise<QuestProgressEntry[]> {

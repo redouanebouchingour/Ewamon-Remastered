@@ -390,6 +390,12 @@ export interface LeagueTrainer {
   readonly zoneId: ZoneId;
   readonly pre: readonly string[];
   readonly post: readonly string[];
+  /**
+   * Phase B7: mid-battle lines (each non-empty, ≤ 140 chars) the client shows as a transient banner — `halfHp` once
+   * when the trainer's team's TOTAL remaining HP first drops to half or below, `lastStand` once when the last
+   * creature enters. Presentation only; the server never reads them.
+   */
+  readonly mid?: { readonly halfHp: string; readonly lastStand: string };
   readonly team: readonly LeagueTeamMember[];
   readonly reward: number;
   readonly setsFlags: readonly string[];

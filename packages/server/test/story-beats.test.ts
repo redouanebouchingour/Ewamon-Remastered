@@ -8,11 +8,12 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { matchMaker } from '@colyseus/core';
-import { beatDoneFlag, getHeightfield, interiorLeaders, league, nearestWalkable } from '@ewa/content';
+import { QUESTS, beatDoneFlag, getHeightfield, interiorLeaders, league, nearestWalkable, storyBeat } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
 import { TRAINER_EXP, calcMaxHp } from '@ewa/core';
 import type { Action, BattleState } from '@ewa/core';
 import type { ZoneRoom } from '../src/rooms/ZoneRoom';
+import { completeBeatInTx } from '../src/rooms/storyBeats';
 import { api, content, enter, ofType, placePlayer, rawQuery, register, sleep, snapshot, startServer, storyOnly, waitFor } from './helpers';
 import type { Account, Joined, TestServer } from './helpers';
 
@@ -219,4 +220,24 @@ describe('Act I slice chain (§3.5 / §30.4.8, story-bible §5.2 beats 1–4)', 
     expect(ofType(j.msgs, 'battleStart')[1]!.format).toBe('league');
     await j.room.leave(true);
   }, 180_000);
+});
+
+describe('restoreZone quest objective (Phase B2)', () => {
+  it('a beat with harvest.to = intact advances restoreZone; a beat without harvest does not', async () => {
+    const acc = await register(s);
+    // setup only: q01..q09 claimed so q10 (Restore the Grove) is active
+    await s.repos.db.transaction(async (tx) => {
+      for (const q of QUESTS) {
+        if (q.id === 'q10_restore_the_grove') break;
+        for (const o of q.objectives) await s.repos.progress.advance(tx, acc.id, q.id, o.id, 1, true);
+        await s.repos.progress.claim(tx, acc.id, q.id, new Date());
+      }
+    });
+    const plain = await s.repos.db.transaction((tx) => completeBeatInTx(tx, s.repos, acc.id, storyBeat('first_witness'), new Date()));
+    expect(plain.questProgress.filter((p) => p.objectiveId === 'restore')).toEqual([]);
+    const beat = storyBeat('restore_the_grove');
+    expect(beat.harvest).toEqual({ zoneId: 'mire_route', to: 'intact' });
+    const done = await s.repos.db.transaction((tx) => completeBeatInTx(tx, s.repos, acc.id, beat, new Date()));
+    expect(done.questProgress).toContainEqual({ questId: 'q10_restore_the_grove', objectiveId: 'restore', count: 1, done: true });
+  });
 });

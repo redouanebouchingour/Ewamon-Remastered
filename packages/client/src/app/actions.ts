@@ -15,6 +15,8 @@ import { describeError, statusOf, toActionError } from '../net/errors';
 import type { ActionError } from '../net/errors';
 import { toast, useNotificationsStore } from '../state/notifications';
 import { toInventoryDelta, toProgressionDelta, useSessionStore } from '../state/session';
+import { useQuestTracking } from '../state/questTracking';
+import { questById } from '../data/quests';
 import { presentItemUse } from './itemUseFeedback';
 
 // ---- auth ---------------------------------------------------------------------------------------------
@@ -247,6 +249,25 @@ export const passAction = runner({
     useSessionStore.getState().applyProgressionDelta(toProgressionDelta({ questProgress: res.questProgress, missionClaimed: { questId, missionId } }));
     toast('success', 'Mission reward claimed.');
     return { questId, missionId };
+  },
+});
+
+/**
+ * Phase B3 `/play/quests`: a story quest's claim — `POST /quests/claim { questId }` (the server re-checks every
+ * objective and grants money / items / creature / flag once; 409 questIncomplete / AlreadyClaimed). The grants go
+ * through the two writers; the quest joins `questsClaimed` (and stops being tracked).
+ */
+export const questAction = runner({
+  async claim(p) {
+    const questId = str(p['questId']);
+    const res = await apiFetch('questsClaim', { body: { questId } });
+    applyInv({ inventory: res.inventory, money: res.money, creaturesAdded: res.creaturesAdded });
+    const def = questById(questId);
+    const flag = def?.rewards.flag ?? null;
+    useSessionStore.getState().applyProgressionDelta(toProgressionDelta({ questProgress: res.questProgress, questClaimed: questId, ...(flag !== null ? { flags: [flag] } : {}) }));
+    if (useQuestTracking.getState().tracked === questId) useQuestTracking.getState().setTracked(null);
+    toast('success', `${def?.title ?? 'Quest'} complete. Rewards claimed.`);
+    return { questId };
   },
 });
 

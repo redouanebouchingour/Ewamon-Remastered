@@ -16,7 +16,7 @@
  */
 import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
-import { BODIES, QUESTS, harvestStateFor, interiorNpcs, interiorTrainers, zone as zoneDef } from '@ewa/content';
+import { BODIES, harvestStateFor, interiorNpcs, interiorTrainers, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
@@ -31,6 +31,7 @@ import { battlePanelTop, onBattlePanelTop } from '../battle/panelInset';
 import { createBattleController } from '../battle/BattleController';
 import type { BattleController, BattleView } from '../battle/BattleController';
 import { setBattleActions } from '../battle/controllerRef';
+import { foeIdentity } from '../battle/foe';
 import { STEP_MS } from '../battle/constants';
 import { TIMELINE_SFX } from '../battle/timeline';
 import { MOVE_ANIMS } from '../battle/moveAnims';
@@ -41,12 +42,14 @@ import type { WorldSession, ZoneRoom } from '../net/WorldSession';
 import { onEffectiveSettings, getEffectiveSettings } from '../state/applySettings';
 import { toast, useNotificationsStore } from '../state/notifications';
 import { applyInventoryDelta, partyCanBattle, toInventoryDelta, useSessionStore } from '../state/session';
+import { useQuestTracking } from '../state/questTracking';
 import { useSettingsStore } from '../state/settings';
 import { useUiStore } from '../state/ui';
 import { FONT, TYPE_COLORS } from '../ui/tokens';
 import { createStepCollider } from './collider';
 import type { StepCollider } from './collider';
-import { beatDialogue, gymPlan, leaguePostDialogue, leagueSpeaker, npcPlan, storyFlagSet, storyHint, trainerPlan } from './dialogue';
+import { beatDialogue, gymPlan, leaguePostDialogue, leagueSpeaker, npcPlan, storyFlagSet, trainerPlan } from './dialogue';
+import { questHintFor } from './questHint';
 import type { DialogueLines, InteractPlan } from './dialogue';
 import { HudWriter, partyStrip } from './HudWriter';
 import type { HudNameplates } from './HudWriter';
@@ -56,9 +59,11 @@ import { InteractionTargets, PLAYER_RANGE } from './interaction';
 import { pocketActorMax } from './interiors';
 import { LocalPlayerController } from './LocalPlayerController';
 import { RemoteInterpolator } from './RemoteInterpolator';
+import { EMOTE_CHEER, EMOTE_SAD, FoeActor, foeSpecOf } from './foeActor';
 import { TRAINER_BACK_M, createSceneDirector } from './SceneDirector';
 import type { SceneDirector } from './SceneDirector';
 import { SpawnViews } from './SpawnViews';
+import { LegendaryViews, staticTargetId } from './LegendaryViews';
 import { createSpriteCatalog, loadCreatureManifest } from './spriteCatalog';
 import type { SpriteCatalog } from './spriteCatalog';
 import type { WorldInstance } from './worldHost';
@@ -99,23 +104,11 @@ function devBuild(): boolean {
 const nextFrame = (): Promise<void> => new Promise((r) => requestAnimationFrame(() => r()));
 
 /**
- * The HUD hint line (≤ 60 chars in the writer): the story beat the player can play next ("Talk to Prof. Wynn
- * (Mirevale)") — the Act I opening has no started quest to point at — else the first started, unfinished quest's
- * first undone objective label, else the next gym badge.
+ * The HUD hint line (≤ 60 chars in the writer): `questHintFor` (Phase B3: the journal's tracked quest first, then the
+ * story beat the player can play next, the first started quest's undone objective, the next gym badge).
  */
 function questHint(): string | null {
-  const p = useSessionStore.getState().progression;
-  if (p === null) return null;
-  const flags = storyFlagSet(p.flags, p.badges as readonly BadgeId[]);
-  const story = storyHint(flags, []);
-  if (story !== null && story.startsWith('Talk to')) return story;
-  for (const q of QUESTS) {
-    const prog = p.quests[q.id];
-    if (prog === undefined || p.questsClaimed.includes(q.id)) continue;
-    const undone = q.objectives.find((o) => !(prog[o.id]?.done ?? false));
-    if (undone !== undefined) return undone.label;
-  }
-  return storyHint(flags, p.badges as readonly BadgeId[]);
+  return questHintFor(useSessionStore.getState().progression, useQuestTracking.getState().tracked);
 }
 
 class World implements World3D {
@@ -131,6 +124,8 @@ class World implements World3D {
   private readonly capture: InputCapture;
   private catalog: SpriteCatalog | null = null;
   private spawns: SpawnViews | null = null;
+  /** Phase B1: legendary statics (the director syncs them on load / flags / unload) */
+  private legendaries: LegendaryViews | null = null;
   private readonly clientGroupName = 'ewa:client-creatures';
   private ready = false;
   private running = false;
@@ -148,10 +143,21 @@ class World implements World3D {
   private roomDisposers: (() => void)[] = [];
   private readonly offs: (() => void)[] = [];
   private nameplateLeft = 0;
-  /** the other trainer of a pvp battle (their remote actor stands behind the far battler) */
-  private battleFoe: string | null = null;
-  /** Phase A: the foe is a director actor (a gym trainer / league trainer in its hall), restaged like a pvp foe */
-  private battleFoeStatic = false;
+  /**
+   * Phase B7: the trainer at the far slot — a pvp foe's remote avatar, a restaged director actor (route / hall trainer,
+   * league leader) or a temporary `battle:foe` actor with the content look (a story trainer fought from a beat).
+   */
+  private readonly foe = new FoeActor({
+    actors: {
+      spawn: (id, d) => this.ready && this.renderer.actors.spawn(id, d),
+      setTransform: (id, x, z, a, m, r) => this.ready && this.renderer.actors.setTransform(id, x, z, a, m, r),
+      setEmote: (id, n) => this.ready && this.renderer.actors.setEmote(id, n),
+      despawn: (id) => this.ready && this.renderer.actors.despawn(id),
+    },
+    isStatic: (id) => this.ready && this.director.isStaticActor(id),
+    isRemote: (id) => this.remotes.isSpawned(id),
+    restPose: (id) => (this.ready ? this.director.staticPose(id) : null),
+  });
   /** the prediction collider of the loaded zone (gates are its removable blockers) */
   private stepCollider: StepCollider | null = null;
   private devLeft = 0;
@@ -265,6 +271,7 @@ class World implements World3D {
       setAccentType: (t) => part3Of(r)?.stage.setAccentType(t),
       reducedMotion: () => getEffectiveSettings().reduced,
       blockers: () => this.stepCollider,
+      legendaries: () => this.legendaries,
     });
     this.hudWriter.bind(r.hud);
     this.hudWriter.setConnection(useUiStore.getState().connection);
@@ -288,6 +295,15 @@ class World implements World3D {
         parent: group,
         acquire: (d) => p3.sprites.acquire(d),
         descriptor: (sp, key, v, a) => this.catalog?.descriptor(sp, key, v, a) ?? null,
+        ensureSpecies: (sp) => this.ensureSpecies(sp),
+        height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
+        targets: this.targets,
+        interactKey: () => this.keyLabel('interact'),
+      });
+      this.legendaries = new LegendaryViews({
+        parent: group,
+        acquire: (d) => p3.sprites.acquire(d),
+        descriptor: (sp, key) => this.catalog?.descriptor(sp, key) ?? null,
         ensureSpecies: (sp) => this.ensureSpecies(sp),
         height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
         targets: this.targets,
@@ -421,6 +437,13 @@ class World implements World3D {
           if (this.ready) this.director.refreshFlags(this.flags());
         },
         { fireImmediately: true },
+      ),
+    );
+    // Phase B3: the journal's Track toggle re-points the hint
+    this.offs.push(
+      useQuestTracking.subscribe(
+        (s) => s.tracked,
+        () => this.hudWriter.setQuestHint(questHint()),
       ),
     );
     this.offs.push(
@@ -608,8 +631,9 @@ class World implements World3D {
     if (me !== undefined) this.input.reconcile(me.x, me.z, me.angle, me.seq);
     this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, this.input.pose.angle, false, false);
     this.renderer.camera.follow(selfId);
-    // statics took rigs: shrink the remote budget (+ the most any one pocket spawns while the player stands in it)
-    const statics = z.npcs.length + z.trainers.length + pocketActorMax(zoneId);
+    // statics took rigs: shrink the remote budget (+ the most any one pocket spawns while the player stands in it,
+    // + Phase B7's temporary battle foe)
+    const statics = z.npcs.length + z.trainers.length + pocketActorMax(zoneId) + 1;
     this.remotes.cap = Math.max(8, ACTOR_POOL_SIZE - 1 - SPECTATOR_RIGS - statics);
     // spawns already in view
     room.state.spawns.forEach((s) => this.spawns?.add(s));
@@ -841,6 +865,14 @@ class World implements World3D {
       case 'spawn':
         this.ws.send('engageSpawn', { spawnId: t.id });
         return;
+      case 'static':
+        // Phase B1: a legendary static (no flee; BattleMenu reads canFlee=false); the server re-checks gate + flag
+        if (!partyCanBattle(useSessionStore.getState().inventory)) {
+          toast('warn', 'Your party needs healing before a battle.');
+          return;
+        }
+        this.ws.send('interact', { targetId: staticTargetId(t.id), kind: 'static' });
+        return;
     }
   }
 
@@ -907,15 +939,17 @@ class World implements World3D {
     return {
       enterBattle: (s) => {
         // from the battle state (the BattleSummary patch can arrive after battleStart)
-        const npcFoe = s.foeNpc !== null && this.director.isStaticActor(s.foeNpc) ? s.foeNpc : null;
-        this.battleFoe = s.foeId !== null && s.foeId !== this.ws.selfId ? s.foeId : npcFoe;
-        this.battleFoeStatic = this.battleFoe !== null && this.battleFoe === npcFoe;
+        this.foe.begin(foeSpecOf(s.foeId, s.foeNpc, this.ws.selfId, (id) => foeIdentity(id)));
         void this.director.enterBattle(s);
         this.audio.setTheme('battle', 400);
       },
+      ended: (foeWon) => {
+        // Phase B7: the winner cheers, the loser bows (the player's own avatar too)
+        this.foe.react(foeWon);
+        if (foeWon !== null) r.actors.setEmote(this.ws.selfId, foeWon ? EMOTE_SAD : EMOTE_CHEER);
+      },
       exitBattle: () => {
-        this.battleFoe = null;
-        this.battleFoeStatic = false;
+        this.foe.end();
         void this.director.exitBattle();
         if (this.zone !== null) this.audio.setTheme(this.audio.themeFor(this.zone.id, this.zone.biome), 400);
       },
@@ -1051,12 +1085,10 @@ class World implements World3D {
       const selfId = this.ws.selfId;
       const bf = this.director.battleFrame;
       if (bf !== null) {
-        // the trainer stands behind their own creature, facing the foe; a pvp foe behind theirs (the remote
+        // the trainer stands behind their own creature, facing the foe; the foe actor behind theirs (a pvp foe's remote
         // interpolator wrote its server pose this step — both players are frozen in battle, so this only restages it)
         this.renderer.actors.setTransform(selfId, bf.x - bf.fx * TRAINER_BACK_M, bf.z - bf.fz * TRAINER_BACK_M, Math.atan2(bf.fx, bf.fz), false, false);
-        if (this.battleFoe !== null && (this.battleFoeStatic || this.remotes.isSpawned(this.battleFoe))) {
-          this.renderer.actors.setTransform(this.battleFoe, bf.x + bf.fx * TRAINER_BACK_M, bf.z + bf.fz * TRAINER_BACK_M, Math.atan2(-bf.fx, -bf.fz), false, false);
-        }
+        this.foe.stage(bf.x, bf.z, bf.fx, bf.fz, TRAINER_BACK_M);
       } else {
         this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, this.input.pose.angle, this.input.moving, this.input.running);
       }

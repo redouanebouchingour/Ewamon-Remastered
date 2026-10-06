@@ -6,6 +6,18 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-06 Phase B (story-complete): battle presentation and league story gates. -->
+
+## 2026-10-06 — `00-spine.md` §3.3 — `LeagueTrainer.mid { halfHp, lastStand }`: a line when the foe team first drops to half its total HP and one when its last creature enters, for all 12 league trainers
+Why: the user's decision "visible opponent trainer + VS intro card + victory/badge card + mid-battle leader lines".
+Evidence: `packages/content/test/league-mid.test.ts` (12 rows, non-empty, ≤ 140 chars); `packages/client/test/battle-presentation.test.tsx` (each line fires once, at the damage / switch-in event).
+Affects: `@ewa/content` `types.ts`, `schema.ts`, `data/league.ts`; the client's `BattleController`, `BattleBanner`, `BattleIntroCard`, `BattleResultCard` and the foe-actor abstraction (`scene/foeActor.ts`).
+
+## 2026-10-06 — `00-spine.md` §3.13 — `InteriorRoom.greet { at, until }`; `LEAGUE_STORY_GATES` covers all 12 league trainers
+Why: every leader now waits for its town's preamble beat (re-landed from the reverted M3 progression work); the Wardens wait for `wardens_met`, set by Kirei's `wardens_charge`, but her chamber lies behind the gates Veil and Aurelia open — so the leader who speaks the hall's gate beat greets in the foyer until it has played.
+Evidence: `packages/content/test/gates-reachable.test.ts`, `packages/content/test/interiors.test.ts` (Kirei greets until `wardens_met`; checkInterior: greet points reachable with every gate closed).
+Affects: content `leaderSpot`; server `findTarget` / `leaguePosition` take the player's flags; client hall interactables and actors follow them.
+
 <!-- 2026-10-06 Phase A (interiors, themed gym halls, puzzles, correct arenas): the user's decisions — walk inside through the door, the leader visible at the far end, the arena at an authored point in the hall; a unique themed hall per gym with 2–3 gym trainers and one gimmick; everything enterable as pockets inside the same zone; one league hall with four chambers. -->
 
 ## 2026-10-06 — `00-spine.md` §3.13 (new), §3.11, §3.10 — interiors: every town building opens into a pocket hall reached by door warps; gym halls with trainers, per-player gates and switch puzzles; Solenne's league hall

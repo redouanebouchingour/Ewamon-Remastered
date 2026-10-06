@@ -607,3 +607,22 @@ Every town building opens into a pocket hall in the zone's own outer band (conte
 - **Open (content/render)**: a dropped scatter solid is dropped when its circle merely OVERLAPS a pocket footprint,
   so a tree/rock whose centre is outside the footprint (e.g. skyrend `tree@41.82,53.71` between house2 and house3)
   loses its walk block while — unless render also filters `droppedSolids` — it may still be drawn.
+
+## Phase B1–B3 (quest objectives)
+
+- **`restoreZone`**: `completeBeatInTx` adds a `{ kind: 'restoreZone', zoneId }` quest event beside the `flags` event
+  when `beat.harvest?.to === 'intact'` (both the plain-beat path in ZoneRoom and the battle-beat path in
+  battleSession go through it). Today that is `restore_the_grove` (mire_route) → q10 `restore`, and `solenne`'s restore beat.
+- **`deliverItem`**: `ZoneRoom.onInteract` `case 'npc'` runs one transaction: `deliveriesFor(npcId)` lists the open
+  `deliverItem` objectives of active quests naming that npc; for each, the bag is read from the DB (`inventory.qty`,
+  not the cached `ud.inventory`, which REST purchases do not update); with `qty` or more the items are spent
+  (`inventory.add(-qty)`) and a `{ kind: 'deliver', npcId, item, qty }` event joins the `talkTo` event in the same
+  `advanceQuests` call. Then `inventoryDelta` (new quantities) + `progressionDelta.questProgress`. Short of items:
+  nothing is spent and the player gets an info toast `Bring <qty> × <item name> to deliver.` (deviation: the spec named
+  no feedback). A story beat whose speaker is the npc still runs first (no delivery that interact).
+- No route change: `POST /quests/claim` (all objectives done, grants money / items / creature / flag once, 409
+  `questIncomplete` / `AlreadyClaimed`) already existed in `rest/routes/me.ts`.
+- **Tests**: new `test/quests.test.ts` (5: restoreZone only for its zone and only while q10 is active; `deliveriesFor`
+  only while q08 is active; short → toast + nothing spent; enough → spent in the same tx with `inventoryDelta` +
+  `questProgress`, once; no q08 → items kept; claim 409 until all done, then once). `story-beats.test.ts` + 1
+  (`restore_the_grove` advances q10 `restore`, a beat without harvest does not).

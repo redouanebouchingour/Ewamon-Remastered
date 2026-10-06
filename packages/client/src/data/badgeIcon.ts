@@ -27,3 +27,8 @@ export interface BadgeDisplay {
 
 /** All eight in league order, for the badge case; `earned` comes from the caller (the store). */
 export const BADGE_CASE: readonly BadgeDisplay[] = BADGES.map((b) => ({ id: b.id as BadgeId, name: b.name, type: b.type, glyph: BADGE_GLYPH[b.id as BadgeId] ?? '•' }));
+
+/** Phase B7: the display row of a badge the server awarded (the result card), null for an unknown id. */
+export function badgeDisplay(id: BadgeId): BadgeDisplay | null {
+  return BADGE_CASE.find((b) => b.id === id) ?? null;
+}

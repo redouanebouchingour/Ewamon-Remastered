@@ -3,6 +3,9 @@
  * rewards are legacy league.js verbatim; titles, `pre`/`post` lines follow story-bible.md §4.4–§4.6
  * (each gym leader's concession line — the one with "recollection" — is post[1]). Team abilities/held items are
  * null (the server projects species.abilities[0]); no legacy team carried an item.
+ * `mid` (Phase B7, client banner only) is new writing in each character's voice: `halfHp` when the team's total HP
+ * first falls to half, `lastStand` when the last creature enters — no creature is named, since the replacement order
+ * is the battle AI's, not the team list's.
  */
 import type { BadgeDef, LeagueTeamMember, LeagueTrainer } from '../types';
 
@@ -34,6 +37,10 @@ export const LEAGUE: readonly LeagueTrainer[] = [
       "You held them like they were yours to keep. Maybe that's all a recollection needs.",
       'East. The Office keeps a station at Cinderhold. Ask them about the light.',
     ],
+    mid: {
+      halfHp: "Half my grove's down and the roots still hold. Don't get comfortable.",
+      lastStand: 'Last root in the ground. Hold, like I taught you to.',
+    },
     team: [m('bramblecub', 11, 'Thornling'), m('smellduck', 12, 'Petalquack'), m('briarbear', 14, 'Mossclaw')],
     reward: 800,
     setsFlags: [],
@@ -57,6 +64,10 @@ export const LEAGUE: readonly LeagueTrainer[] = [
       "The Office would call that a recollection. I'd call it a partner. Might be the same thing said twice.",
       'Saltmourn next. Maren reads waves. He also reads charts, and one of them is wrong.',
     ],
+    mid: {
+      halfHp: "Forge is running hot. Good. Means you're worth the coal.",
+      lastStand: 'Last ember in the forge. Burn honest, partner.',
+    },
     team: [m('cindercap', 15, 'Kindlecap'), m('moflame', 16, 'Embermane'), m('pyrecap', 18, 'Torchveil')],
     reward: 1100,
     setsFlags: [],
@@ -77,6 +88,10 @@ export const LEAGUE: readonly LeagueTrainer[] = [
       "Read the wave and you'll know it isn't water. It's a recollection of water. Same rules. Wetter.",
       "Stormrook next. Zia Volt keeps the grid. She'll have numbers. She always has numbers.",
     ],
+    mid: {
+      halfHp: "Tide's turning. Half my crew's in the brine. Read the next wave carefully.",
+      lastStand: "Last wave I've got. It's the big one. Hold your breath.",
+    },
     team: [m('glimfin', 19, 'Ripplefin'), m('tidespine', 20, 'Tidecrest'), m('voltide', 22, 'Breaker')],
     reward: 1500,
     setsFlags: [],
@@ -97,6 +112,10 @@ export const LEAGUE: readonly LeagueTrainer[] = [
       "You out-ran a current. That's not speed, that's a recollection that's sure of itself.",
       "Forty per cent of my night output goes east to a telescope. Go and look at the pylons. Then we'll both stop pretending.",
     ],
+    mid: {
+      halfHp: "Fifty per cent capacity. I've run the grid on less. Keep up.",
+      lastStand: "One unit left on the grid. Redline it. Everything you've got!",
+    },
     team: [m('ampmite', 24, 'Buzzscale'), m('raidori', 25, 'Ampclaw'), m('luxtrik', 26, 'Neon Bolt'), m('flowbot', 27, 'Overclock')],
     reward: 1900,
     setsFlags: [],
@@ -117,6 +136,10 @@ export const LEAGUE: readonly LeagueTrainer[] = [
       'A recollection of stone still breaks your hand. Ask mine.',
       'Now hold out your hand. There is a lease I want you to read to me.',
     ],
+    mid: {
+      halfHp: "Half the wall's down. The half that's left is the load-bearing half.",
+      lastStand: 'Last stone standing. Go on, then. Climb it.',
+    },
     team: [m('pebblit', 28, 'Pebblehorn'), m('lithokrysm', 29, 'Shardlord'), m('thornback', 31, 'Basaltusk'), m('prismolith', 32, 'Prismwall')],
     reward: 2300,
     setsFlags: [],
@@ -137,6 +160,10 @@ export const LEAGUE: readonly LeagueTrainer[] = [
       "A recollection's only a ghost that decided to stay.",
       "The cliff road east goes to the Observatory. They'll let you in. They'll let anyone in. That's the frightening part.",
     ],
+    mid: {
+      halfHp: 'The whispers are getting louder. Half of them are mine. Listen.',
+      lastStand: 'The last voice in the field. It will not go quietly.',
+    },
     team: [m('nerohat', 32, 'Velvet Hex'), m('miscarmen', 33, 'Haunted Veil'), m('nettlewisp', 34, 'Phantom Nett'), m('fedoraith', 35, 'Last Bow'), m('mismagmen', 37, 'Mindveil')],
     reward: 2700,
     setsFlags: [],
@@ -157,6 +184,10 @@ export const LEAGUE: readonly LeagueTrainer[] = [
       "Plating's a recollection of being hit and not moving. Yours has it.",
       "Skyrend. Sylvane keeps the Wardens' shrine. Wynn says they've waited forty years for someone to get this far.",
     ],
+    mid: {
+      halfHp: "Dented. Not breached. Plating holds until it doesn't.",
+      lastStand: "Last plate on the anvil. Strike true or don't strike.",
+    },
     team: [m('scraphog', 36, 'Iron Tusker'), m('alloylark', 37, 'Sky Rivet'), m('rivetalon', 39, 'Spike Wing'), m('trenchtusk', 40, 'Earthplate'), m('acier', 42, 'Zangrift')],
     reward: 3200,
     setsFlags: [],
@@ -177,6 +208,10 @@ export const LEAGUE: readonly LeagueTrainer[] = [
       'Every recollection up here is older than my shrine. You made them answer anyway.',
       'Solenne is open to you now. So is the shrine above the Ascent. Count what you meet on the way.',
     ],
+    mid: {
+      halfHp: "Half the sky has spoken for you. The judgement isn't finished.",
+      lastStand: "The shrine's last word. Hear it before you answer.",
+    },
     team: [m('serpyre', 39, 'Drake Fang'), m('budwing', 40, 'Skybud'), m('bloomdrake', 42, 'Canopymaw'), m('glacinid', 44, 'Rimefang'), m('pyrothal', 46, 'Solwyrm')],
     reward: 4000,
     setsFlags: [],
@@ -193,6 +228,10 @@ export const LEAGUE: readonly LeagueTrainer[] = [
     zoneId: 'solenne',
     pre: ["I have read every line the Provision ever wrote. Show me one it can't.", 'Fourteen hundred pages. Every settled place. Every Seam closed. Begin.'],
     post: ['Recorded. You are a line the ledger does not have a column for.', 'Aurelia keeps the count of what is left. Go and add to it.'],
+    mid: {
+      halfHp: 'Half the ledger, struck through. The Provision has a column for that.',
+      lastStand: 'The final page. Write something it cannot.',
+    },
     team: [m('mismagmen', 48, 'Veilwhisper'), m('fedoraith', 49, 'Final Bow'), m('voidraith', 50, 'Nullshade'), m('toxshade', 51, 'Blightveil'), m('bankaiser', 54, 'Bankaiser')],
     reward: 6000,
     setsFlags: ['elite:veil:beaten'],
@@ -209,6 +248,10 @@ export const LEAGUE: readonly LeagueTrainer[] = [
     zoneId: 'solenne',
     pre: ["I keep the count of what's left. You've been adding to it. Let's see how much.", 'The intact zones, the unspent Seams, the hospital\'s real stock. Show me you are worth keeping.'],
     post: ['Counted. Whole. I will write you into the second book.', 'Kirei keeps the record of the records. Twelve devices. Go and be the loudest.'],
+    mid: {
+      halfHp: 'Half my count, spent. I am recounting you instead.',
+      lastStand: 'The last of my count. Make it a number worth keeping.',
+    },
     team: [m('glimmereen', 48, 'Lightmote'), m('cirrileap', 49, 'Skyleap'), m('starwhim', 50, 'Wishfall'), m('gemknight', 51, 'Prismguard'), m('voltaura', 54, 'Voltaura')],
     reward: 7000,
     setsFlags: ['elite:aurelia:beaten'],
@@ -225,6 +268,10 @@ export const LEAGUE: readonly LeagueTrainer[] = [
     zoneId: 'solenne',
     pre: ["Twelve Attestors. Yours is the loudest. Let's find out if it's the truest.", 'I keep the count of the counts. Show me yours can stand being read.'],
     post: ['True. Loud and true. That has not happened in nineteen years.', 'Zeon holds the name. Go through, and be told.'],
+    mid: {
+      halfHp: 'Loud, yes. Half my record agrees. Now be true for the other half.',
+      lastStand: 'The last count. Read it, and let it read you.',
+    },
     team: [m('nebucloak', 48, 'Duskveil'), m('auroracle', 49, 'Foreseer'), m('archonosis', 51, 'Mindarch'), m('mismagmen', 52, 'Echoeye'), m('galaxion', 55, 'Galaxion')],
     reward: 8000,
     setsFlags: ['elite:kirei:beaten'],
@@ -244,6 +291,10 @@ export const LEAGUE: readonly LeagueTrainer[] = [
       "You've been to enough Seams to deserve what I hold and you haven't spent one. Show me the rest.",
     ],
     post: ["…Held. Every one of them. You didn't spend a single one.", 'Lean in. There is something you have earned being told.'],
+    mid: {
+      halfHp: 'Half my room, gone. Nineteen years and I have never had to say that.',
+      lastStand: 'The last thing I hold. Take it, if you can.',
+    },
     team: [m('florasage', 55, 'Verdant Sage'), m('blizzraak', 55, 'Rimecaller'), m('abyssrake', 56, 'Deepfang'), m('rexaloft', 57, 'Skytyrant'), m('pyrothal', 58, 'Solwyrm'), m('zenryu', 60, 'Zenryu')],
     reward: 20000,
     setsFlags: ['champion:zeon:beaten'],

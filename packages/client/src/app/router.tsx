@@ -143,6 +143,13 @@ export const routes: RouteObject[] = [
             },
           }),
           child({
+            path: 'quests',
+            lazy: async () => {
+              const [{ QuestScreen }, a] = await Promise.all([import('../screens/QuestScreen'), actions()]);
+              return { Component: QuestScreen, action: a.questAction };
+            },
+          }),
+          child({
             path: 'settings',
             lazy: async () => ({ Component: (await import('../screens/SettingsScreen')).SettingsScreen }),
           }),

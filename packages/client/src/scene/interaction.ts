@@ -6,7 +6,7 @@
  */
 import type { HudPrompt } from './HudWriter';
 
-export type InteractableKind = 'npc' | 'trainer' | 'item' | 'lore' | 'gym' | 'healer' | 'shop' | 'warp' | 'spawn' | 'switch' | 'pc';
+export type InteractableKind = 'npc' | 'trainer' | 'item' | 'lore' | 'gym' | 'healer' | 'shop' | 'warp' | 'spawn' | 'switch' | 'pc' | 'static';
 
 /**
  * Client ranges stay inside the server's (3 m for npc / item / warp / switch, 4 m for a league trainer at its
@@ -16,6 +16,8 @@ export type InteractableKind = 'npc' | 'trainer' | 'item' | 'lore' | 'gym' | 'he
  */
 export const RANGE: Readonly<Record<InteractableKind, number>> = {
   npc: 2.5, trainer: 2.5, item: 2.5, lore: 2.5, gym: 3.5, healer: 3, shop: 3, warp: 2.5, spawn: 1.2, switch: 2.5, pc: 2.5,
+  // Phase B1: a legendary static (server INTERACT_RANGE_M = 3 around its snapped point)
+  static: 2.5,
 };
 export const PLAYER_RANGE = 6;
 

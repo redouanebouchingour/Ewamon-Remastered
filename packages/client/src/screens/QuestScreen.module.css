@@ -1,0 +1,160 @@
+/* Phase B3 quest journal: acts as sections, one card per quest, a compact claimed list at the end. */
+
+.acts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+
+.act {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-3);
+  background: var(--bg-2);
+}
+
+.ready {
+  border-color: var(--accent);
+  background: radial-gradient(80% 120% at 0% 0%, var(--accent-a16), transparent 70%), var(--bg-2);
+}
+
+.tracked {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.locked {
+  background: var(--bg-1);
+  color: var(--text-2);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.title {
+  color: var(--text-hi);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-weight: 700;
+}
+
+.locked .title {
+  color: var(--text-2);
+}
+
+.summary {
+  color: var(--text-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+
+.objectives {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.objective {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--text-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+
+.mark {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 20px;
+  block-size: 20px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-1);
+  color: var(--accent);
+}
+
+.done {
+  color: var(--text-2);
+}
+
+.done .mark {
+  border-color: var(--accent);
+  background: var(--accent-a16);
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding-block-start: var(--s-3);
+  border-top: 1px solid var(--line-1);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.claimedList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.claimedRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-2);
+  background: var(--bg-1);
+  color: var(--text-2);
+}
+
+.claimedRow .mark {
+  border-color: var(--accent);
+  background: var(--accent-a16);
+}
+
+.claimedTitle {
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

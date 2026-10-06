@@ -154,6 +154,8 @@ export interface SceneDirector {
   readonly pocketActors: readonly PocketActor[];
   /** True for an actor the director spawned (zone NPC / trainer, pocket NPC / trainer / leader). */
   isStaticActor(id: string): boolean;
+  /** Phase B7: where a director actor stands when no battle restages it (the foe actor puts it back), else null. */
+  staticPose(id: string): { readonly x: number; readonly z: number; readonly angle: number } | null;
 }
 
 export interface SceneDirectorDeps {
@@ -173,6 +175,8 @@ export interface SceneDirectorDeps {
   readonly reducedMotion: () => boolean;
   /** Phase A: the prediction collider's removable blockers (gates); read after `onZone` gave it the new zone. */
   readonly blockers?: () => GateBlockers | null;
+  /** Phase B1: the legendary statics' billboards + interactables (`LegendaryViews`), synced on load / flags / unload. */
+  readonly legendaries?: () => { sync(zoneId: ZoneId | null, flags: ReadonlySet<string>): void } | null;
 }
 
 interface StaticActor { readonly id: string; readonly npc: boolean; readonly x: number; readonly z: number; readonly angle: number; readonly pocket: boolean }
@@ -344,6 +348,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     floors = new FloorIndex(interiorsFor(id));
     gates = new GateSync(id, d.blockers?.() ?? null);
     gates.sync(flags, zh.interiors);
+    d.legendaries?.()?.sync(id, flags);
     playBanner(z.name);
     d.audio.setTheme(d.audio.themeFor(id, z.biome), 400);
     d.audio.setReverbZone(reverbKindFor(z.kind, z.biome));
@@ -356,6 +361,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     floors = null;
     gates = null;
     despawnStatics();
+    d.legendaries?.()?.sync(null, lastFlags);
     d.targets.clear();
     d.onZone(null, null);
     handle?.dispose();
@@ -514,6 +520,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
         activeActors = activeActors.map((a) => (a.id === id ? { ...a, x: at.x, z: at.z } : a));
       }
       gates?.sync(flags, handle?.interiors);
+      d.legendaries?.()?.sync(z.id, flags);
       const h = harvestStateFor(z.id, flags);
       director.setHarvest(h);
     },
@@ -535,6 +542,11 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     isStaticActor(id) {
       for (const s of statics) if (s.id === id) return true;
       return false;
+    },
+
+    staticPose(id) {
+      for (const s of statics) if (s.id === id) return { x: s.x, z: s.z, angle: s.angle };
+      return null;
     },
   };
   return director;

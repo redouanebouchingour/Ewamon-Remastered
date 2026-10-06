@@ -1009,6 +1009,7 @@ export interface LeagueTrainer {
   readonly team: readonly { readonly species: string; readonly level: number; readonly nickname: string | null; readonly ability: string | null; readonly heldItem: string | null }[];
   readonly reward: number;
   readonly setsFlags: readonly string[];
+  readonly mid?: { readonly halfHp: string; readonly lastStand: string };   // added 2026-10-06 (Phase B7): mid-battle lines, ≤ 140 chars, all 12 rows
 }
 export const LEAGUE: readonly LeagueTrainer[];  // 12 entries; champion id is exactly 'zeon'
 export const BADGES: readonly { readonly id: BadgeId; readonly name: string; readonly type: TypeName; readonly gym: string }[];

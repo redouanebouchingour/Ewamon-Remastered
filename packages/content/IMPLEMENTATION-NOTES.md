@@ -259,3 +259,12 @@ render keeps that planner (asserted equal to content's plan in render's `zone-la
   blockers, beats trainers / uses switches within 3 m (leaders 4 m) until a fixpoint. Interaction ranges ignore walls
   (as the server's do), so every switch carries `requires` for the gates that guard it — the puzzles are enforced by
   flags, not geometry alone.
+
+## Phase B7 — league mid-battle lines (2026-10-06)
+
+`LeagueTrainer.mid?: { halfHp, lastStand }` (types + `LeagueTrainerSchema`: each non-empty, ≤ `MID_LINE_MAX` 140 chars,
+exported) with new lines for all 12 league trainers in their voices (`pre` / `post`). Presentation only — the server never
+reads them; the client banners `halfHp` when the team's total HP first drops to half and `lastStand` when the last
+creature enters. The lines name no creature: the replacement order is the battle AI's, not the team list's.
+`test/league-mid.test.ts` pins all 12, the length cap, uniqueness and the schema refusal. Not in the SPEC (§3.3 lists
+no such field) — a CHANGELOG entry is owed when the spec is next amended.

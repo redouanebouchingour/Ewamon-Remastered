@@ -17,6 +17,11 @@
  *   went through the session writers); on dismiss: director.exitBattle, ui.battle = null, then the evolve /
  *   learn-move modals of the final turn, in order. A battleEnd for the open raid goes to the raid summary instead.
  *
+ * Phase B7 presentation: `battleStart` of a trainer / league battle writes `ui.battleIntro` (the VS card; never under
+ * reduced motion, never on a resync restore); a league trainer's `mid` lines are pushed as `ui.battleBanner` as the
+ * timeline PLAYS — `halfHp` once when the foe team's total displayed HP first drops to half or below, `lastStand` once
+ * when the foe's last standing creature enters; the result card's arrival calls `view.ended` (foe actor emotes).
+ *
  * HP is never computed here: bars follow `damage.hpAfter` / `heal.hpAfter` (TimelinePlayer → BattleHud).
  * Store writes happen at message time or are deferred off the tick (setTimeout 0) — never from inside World3D.tick.
  */
@@ -30,6 +35,8 @@ import { BattleHud, STAGE_REFS } from './BattleHud';
 import type { BattleHudModel } from './BattleHud';
 import { LOG_DWELL_MIN } from './constants';
 import { actionErrorLabel } from './labels';
+import { foeOfState } from './foe';
+import type { FoeIdentity } from './foe';
 import { createMoveAnimRegistry } from './moveAnims';
 import type { MoveAnimRegistry } from './moveAnims';
 import { buildTimeline, statusGlyph, vfxIdsIn } from './timeline';
@@ -45,7 +52,8 @@ type Cue = Parameters<TimelineTargets['cue']>[0];
 export interface BattleView {
   /**
    * `foeId`: the other trainer's player uuid in a pvp battle (their avatar is restaged behind their creature), else null.
-   * `foeNpc`: the content id of an NPC / league trainer foe (Phase A: its hall actor is restaged the same way), else null.
+   * `foeNpc`: the content id of an NPC / league trainer foe (Phase B7: the world's FoeActor restages its actor, or spawns
+   * a temporary one with the content look), else null.
    * `yaw`: the hall battle axis from `battleStart` (null outside a hall or when unknown, e.g. after a reload).
    */
   enterBattle(summary: {
@@ -69,6 +77,11 @@ export interface BattleView {
   playSfx(id: string, at: StageRef | null): void;
   setBattleHud(m: BattleHudModel | null): void;
   setThreat(on: boolean): void;
+  /**
+   * Phase B7: the result card is up (the final timeline has played). `foeWon`: true when the other side won, false
+   * when the player did, null for no winner (caught, fled, draw). The world plays the cheer / sad emotes.
+   */
+  ended?(foeWon: boolean | null): void;
 }
 
 export interface BattleControllerDeps {
@@ -230,6 +243,56 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
   let hpNow: number[][] = [[], []];
 
   const hud = new BattleHud((m) => view?.setBattleHud(m));
+  /** Phase B7: the NPC trainer across the field (null for wild / pvp / raid) and which mid lines already played */
+  let foe: FoeIdentity | null = null;
+  let midHalfDone = false;
+  let midLastDone = false;
+  let bannerId = 0;
+
+  const pushBanner = (text: string): void => {
+    const speaker = foe?.name ?? '';
+    const id = ++bannerId;
+    const forBattle = battleId;
+    // the timeline plays inside World3D.tick: the store write is deferred off it
+    defer(() => {
+      if (battleId === forBattle) ui().pushBattleBanner({ id, speaker, text });
+    });
+  };
+
+  /** `halfHp`: the foe team's total displayed HP first at or below half (any damage to any foe party member). */
+  const checkHalfHp = (st: BattleState): void => {
+    const mid = foe?.league?.mid;
+    if (mid === undefined || midHalfDone) return;
+    const side = (seat === 0 ? 1 : 0) as 0 | 1;
+    const party = st.sides[side].party;
+    const row = hpNow[side] ?? [];
+    let hp = 0;
+    let max = 0;
+    for (let i = 0; i < party.length; i++) {
+      hp += Math.max(0, row[i] ?? party[i]!.creature.hp);
+      max += party[i]!.maxHp;
+    }
+    if (max <= 0 || hp * 2 > max) return;
+    midHalfDone = true;
+    pushBanner(mid.halfHp);
+  };
+
+  /** `lastStand`: the creature entering is the foe's only one still standing (a team of two or more). */
+  const checkLastStand = (st: BattleState, slot: number): void => {
+    const mid = foe?.league?.mid;
+    if (mid === undefined || midLastDone) return;
+    const side = (seat === 0 ? 1 : 0) as 0 | 1;
+    const party = st.sides[side].party;
+    if (party.length < 2) return;
+    const row = hpNow[side] ?? [];
+    for (let i = 0; i < party.length; i++) {
+      const hp = row[i] ?? party[i]!.creature.hp;
+      if (i === slot ? hp <= 0 : hp > 0) return;
+    }
+    midLastDone = true;
+    midHalfDone = true; // the last stand says more; a late half-HP line would only repeat it
+    pushBanner(mid.lastStand);
+  };
 
   const creatureAt = (st: BattleState, side: 0 | 1, slot: number): CreatureInstance | null => st.sides[side]?.party[slot]?.creature ?? null;
 
@@ -292,6 +355,10 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       const row = hpNow[who.side];
       if (row !== undefined) row[who.slot] = to;
       if (displayed[who.side] === who.slot) hud.setHp(who.side, to, max);
+      if (who.side !== seat && foe !== null) {
+        const st = preState ?? state;
+        if (st !== null) checkHalfHp(st);
+      }
     },
     status: (who, s) => {
       if (displayed[who.side] === who.slot) hud.setStatus(who.side, s);
@@ -304,6 +371,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       const st = preState ?? state;
       if (st === null) return;
       if (displayed[who.side] !== who.slot) showBattler(st, who.side, who.slot);
+      if (who.side !== seat && foe !== null) checkLastStand(st, who.slot);
       const b = st.sides[who.side]!.party[who.slot];
       if (b !== undefined) {
         const hp = hpNow[who.side]?.[who.slot] ?? b.creature.hp;
@@ -383,6 +451,9 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     prompts = [];
     pendingLog.length = 0;
     resetHpTable(m.state);
+    foe = foeOfState(m.state, m.seat);
+    midHalfDone = false;
+    midLastDone = false;
     const at = arenaFor(m.battleId);
     view?.enterBattle({ battleId: m.battleId, x: at.x, z: at.z, format: m.format, foeId: foeOf(m.state, m.seat), foeNpc: foeNpcOf(m.state, m.seat), yaw: at.yaw });
     view?.setThreat(true);
@@ -424,6 +495,10 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
         battleId: m.battleId, format: m.format, seat: m.seat, authoritative: m.state, phase: 'playing', menu: 'root',
         turnLabel: TURN(m.state.turn + 1), log: [], desyncs: 0, result: null, expectedMs: 0,
       });
+      // Phase B7: the VS card over the push-in (a fresh trainer / league battle only — a resync restore has none)
+      if (foe !== null && (m.format === 'trainer' || m.format === 'league') && !deps.reduced()) {
+        ui().setBattleIntro({ battleId: m.battleId, name: foe.name, title: foe.title, type: foe.type, look: foe.look, league: foe.league !== null });
+      } else if (ui().battleIntro !== null) ui().setBattleIntro(null);
       play(buildTimeline(m.events, ctxFor(m.state)));
     },
 
@@ -549,6 +624,8 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     flushLog();
     const result: BattleResult = { outcome: pendingEnd.outcome, rewards: pendingEnd.rewards, prompts: prompts.length };
     writeUi({ phase: 'ended', result });
+    const w = pendingEnd.outcome.winner;
+    view?.ended?.(typeof w === 'number' ? w !== seat : null);
   }
 
   function finish(): void {
@@ -570,6 +647,11 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     displayed[0] = -1;
     displayed[1] = -1;
     pendingLog.length = 0;
+    foe = null;
+    midHalfDone = false;
+    midLastDone = false;
+    if (ui().battleIntro !== null) ui().setBattleIntro(null);
+    if (ui().battleBanner !== null || ui().battleBannerQueue.length > 0) ui().clearBattleBanners();
     if (ui().battle !== null) ui().setBattle(null);
   }
 

@@ -4,7 +4,7 @@
  */
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { BattleFormat, BattleOutcome, BattleState } from '@ewa/core';
+import type { BattleFormat, BattleOutcome, BattleState, TypeName } from '@ewa/core';
 import type { RewardsSummary, TradeOffer } from '@ewa/protocol';
 
 /** `battleEnd` for the result card: display only (the rewards reached the session through the delta writers). */
@@ -36,6 +36,28 @@ export interface BattleUi {
   readonly result: BattleResult | null;
   /** the preview's timeline duration while 'submitted' (sizes the waiting indicator); 0 = unknown */
   readonly expectedMs: number;
+}
+
+/**
+ * Phase B7: the VS intro card over the battle push-in (trainer / league battles, not under reduced motion). Written by
+ * BattleController at `battleStart`; the card clears it when its time is up (or the battle ends).
+ */
+export interface BattleIntro {
+  readonly battleId: string;
+  readonly name: string;
+  /** league trainers only */
+  readonly title: string | null;
+  readonly type: TypeName | null;
+  /** the foe's render look id (no DOM thumbnail exists yet; the card shows the type emblem) */
+  readonly look: string | null;
+  readonly league: boolean;
+}
+
+/** Phase B7: a league trainer's mid-battle line (`LeagueTrainer.mid`), a transient banner (BattleBanner, 3 s). */
+export interface BattleBanner {
+  readonly id: number;
+  readonly speaker: string;
+  readonly text: string;
 }
 
 export type ModalKind = 'none' | 'evolve' | 'learnMove' | 'trade' | 'challenge' | 'raidLobby' | 'nickname' | 'release' | 'listing';
@@ -87,6 +109,10 @@ export interface UiState {
   readonly fps: number;
   /** post-battle evolve / learn-move prompts still to show (the head is the open modal) */
   readonly prompts: readonly QueuedPrompt[];
+  readonly battleIntro: BattleIntro | null;
+  /** the banner on screen; the next ones wait in `battleBannerQueue` */
+  readonly battleBanner: BattleBanner | null;
+  readonly battleBannerQueue: readonly BattleBanner[];
 
   setBattle(b: BattleUi | null): void;
   setDialogue(d: DialogueUi | null): void;
@@ -101,6 +127,13 @@ export interface UiState {
   enqueuePrompt(p: QueuedPrompt): void;
   /** drops the head prompt (answered or skipped) */
   shiftPrompt(): void;
+  setBattleIntro(i: BattleIntro | null): void;
+  /** shows `b` now, or after the banner on screen */
+  pushBattleBanner(b: BattleBanner): void;
+  /** the banner `id` is done (its 3 s are up): the next queued one, if any, takes its place */
+  dismissBattleBanner(id: number): void;
+  /** drops the banner and the queue (the battle ended) */
+  clearBattleBanners(): void;
   reset(): void;
 }
 
@@ -119,6 +152,9 @@ const INITIAL = {
   leaveReason: null,
   fps: 0,
   prompts: [] as readonly QueuedPrompt[],
+  battleIntro: null,
+  battleBanner: null,
+  battleBannerQueue: [] as readonly BattleBanner[],
 } as const satisfies Partial<UiState>;
 
 const now = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -147,6 +183,18 @@ export const useUiStore = create<UiState>()(
     setFps: (fps) => set({ fps }),
     enqueuePrompt: (p) => set({ prompts: [...get().prompts, p] }),
     shiftPrompt: () => set({ prompts: get().prompts.slice(1) }),
+    setBattleIntro: (battleIntro) => set({ battleIntro }),
+    pushBattleBanner: (b) => {
+      const st = get();
+      if (st.battleBanner === null) set({ battleBanner: b });
+      else set({ battleBannerQueue: [...st.battleBannerQueue, b] });
+    },
+    dismissBattleBanner: (id) => {
+      const st = get();
+      if (st.battleBanner === null || st.battleBanner.id !== id) return;
+      set({ battleBanner: st.battleBannerQueue[0] ?? null, battleBannerQueue: st.battleBannerQueue.slice(1) });
+    },
+    clearBattleBanners: () => set({ battleBanner: null, battleBannerQueue: [] }),
     reset: () => set({ ...INITIAL }),
   })),
 );

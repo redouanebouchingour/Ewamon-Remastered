@@ -1,0 +1,108 @@
+/* Phase B7 VS card: a glass band over the push-in; the opponent's type colour is its border and emblem. */
+.layer {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 28vh;
+  z-index: var(--z-panel);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+  inline-size: min(640px, calc(100% - 48px));
+  padding: var(--s-4) var(--s-6);
+  border: 1px solid var(--tc, var(--line-2));
+  border-radius: var(--r-3);
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-3);
+  color: var(--text-hi);
+  animation: intro-in var(--motion-banner) var(--ease-out) both;
+}
+
+.leaving {
+  animation: intro-out var(--motion-slow) var(--ease-in-out) both;
+}
+
+@keyframes intro-in {
+  from {
+    opacity: 0;
+    transform: translateX(48px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes intro-out {
+  to {
+    opacity: 0;
+    transform: translateX(-48px);
+  }
+}
+
+.vs {
+  flex: none;
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-h2);
+  line-height: var(--lh-h2);
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.04em;
+}
+
+.emblem {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: 64px;
+  block-size: 64px;
+  border-radius: var(--r-pill);
+  background: var(--tc, var(--accent));
+  color: var(--tc-ink, var(--on-accent));
+  box-shadow: inset 0 0 0 2px var(--shade-a40), var(--shadow-1);
+  font-family: var(--face-display);
+  font-size: var(--t-h1);
+  line-height: var(--lh-h1);
+  font-weight: 800;
+}
+
+.text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.title {
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.name {
+  overflow: hidden;
+  font-family: var(--face-display);
+  font-size: var(--t-h2);
+  line-height: var(--lh-h2);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card[data-league] .name {
+  font-size: var(--t-h1);
+  line-height: var(--lh-h1);
+}
+
+.type {
+  flex: none;
+}

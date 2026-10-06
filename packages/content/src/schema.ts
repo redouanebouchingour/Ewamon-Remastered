@@ -535,6 +535,9 @@ export const SpawnTuningSchema: z.ZodType<SpawnTuning> = z.object({
 
 // ─── §3.3 League ─────────────────────────────────────────────────────────────
 
+/** Phase B7: a league trainer's mid-battle banner line (`LeagueTrainer.mid`) fits one banner row. */
+export const MID_LINE_MAX = 140;
+
 export const LeagueTrainerSchema: z.ZodType<LeagueTrainer> = z.object({
   id: SnakeId,
   stage: z.enum(['gym', 'elite', 'champion']),
@@ -547,6 +550,7 @@ export const LeagueTrainerSchema: z.ZodType<LeagueTrainer> = z.object({
   zoneId: ZoneIdSchema,
   pre: Lines.min(1),
   post: Lines.min(1),
+  mid: z.object({ halfHp: z.string().min(1).max(MID_LINE_MAX), lastStand: z.string().min(1).max(MID_LINE_MAX) }).optional(),
   team: z
     .array(
       z.object({
