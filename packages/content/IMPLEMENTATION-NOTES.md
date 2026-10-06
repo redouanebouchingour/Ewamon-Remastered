@@ -387,3 +387,30 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   tower pools (≥ 6, known, non-legendary), set-reward items. Still 130/130, 67 families. The bind-set cap is unchanged
   (rematch / tower teams are battle-only).
 - Tests: `test/postgame.test.ts` (3).
+
+## Phase E5 — the §50.4.2 test files (2026-10-06)
+
+- `test/statics.test.ts`: the 8 rows are the 8 non-mythical legendaries. Each `when` resolves (badge id, or a flag
+  set by a beat / quest / league row, registered in §11). `galaxion.when === 'flag:ledger_read'`. Each static and
+  each raid hotspot snaps with `nearestWalkable(h, x, z, 8)`, the server's and client's placement, to a walkable
+  sample inside `playableBounds`. The two boundary authors, `voidraxis (0, 84)` and `raid_ascent_pyrothal (0, 104)`,
+  snap strictly inward.
+- `test/families.test.ts`:
+  - exactly 67 trees rooted at `evolvesFrom === null`, every species in exactly one tree, no cycle or merge
+  - `into` ⇔ `evolvesFrom` agree both ways
+  - every root is directly obtainable (wild / swarm / raid / static / quest / battle pass / the three register
+    starters, pinned in the test because content cannot import protocol), and the closure under `into` is all 130
+  - the one split (`darkone`) carries its null branch last
+- `test/league.test.ts`:
+  - 8 gyms `verdant_gym … draco_gym` with `BADGE_ORDER` badges in towns in `ZONE_ORDER` order; `BADGES` agrees
+  - elite `veil / aurelia / kirei`, one champion `zeon`, all in solenne
+  - gym levels non-decreasing (lowest and highest)
+  - every league / rematch species, ability (and species-legal) and held item resolves
+- `test/encounters.test.ts` (extended, not duplicated) gains the base §50.4.2 block:
+  - 15 tables wired to their zones; level ranges and weights
+  - RC-9 on the 4 story tables (band, Ghost / Dark night-only)
+  - ≤ 16 slots / ≤ 14 species; `|O(zone)| ≤ 16` with `Z(zone)` ⊆ `bindSets`
+  - medium omitted on land; water zones have water samples
+  - `ALPHA_CHANCE` / `VARIANT_CHANCE`
+  - a 100 000-roll seeded sample of `mire_route` (the spawn director's weighted pick) within ±1.5 pp of every slot
+- No content defects were found.

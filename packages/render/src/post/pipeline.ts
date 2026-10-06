@@ -35,10 +35,10 @@ import { traa } from 'three/addons/tsl/display/TRAANode.js';
 import { smaa } from 'three/addons/tsl/display/SMAANode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js';
-import { film } from 'three/addons/tsl/display/FilmNode.js';
 import { chromaticAberration } from 'three/addons/tsl/display/ChromaticAberrationNode.js';
 import type { Backend, BudgetPass, EffectsFlags } from '../descriptors.js';
 import { GROVE_GRADE, gradeNode, VIGNETTE, vignetteNode, type GradePalette } from './grade.js';
+import { grain } from './grain.js';
 
 // ---- numbers that are assertions (§10.8.3) -------------------------------------------------------------
 
@@ -48,7 +48,8 @@ export const POST_PARAMS = Object.freeze({
   dof: Object.freeze({ tiltDeg: 24, focalLength: 6.0, bokehPx: 6, focusDistance: 0 }),
   chroma: Object.freeze({ scale: 1.1, rest: 0, superStrength: 0.012, superMs: 120 }),
   vignette: VIGNETTE.strength,
-  grain: 0.035,
+  /** §10.8.2 as amended 2026-10-06: the zero-mean `GrainNode` (`grain.ts`), σ ≈ 1.5 % of the value at mid-grey (was `film` 0.035). */
+  grain: 0.052,
   exposure: 1.0,
 });
 
@@ -104,7 +105,7 @@ export interface PostUniforms {
   readonly chroma: UniformNode<'float', number>;       // 0 at rest; CHROMA_SUPER 0.012 for 120 ms
   readonly lift: UniformNode<'vec3', Vector3>; readonly gamma: UniformNode<'vec3', Vector3>; readonly gain: UniformNode<'vec3', Vector3>;
   readonly vignette: UniformNode<'float', number>;     // 0.22
-  readonly grain: UniformNode<'float', number>;        // 0.035
+  readonly grain: UniformNode<'float', number>;        // 0.052 (GrainNode intensity)
   readonly exposure: UniformNode<'float', number>;     // 1.0
   /** DOF max CoC in px: `6 × pixelRatio` (§10.7.3). */
   readonly bokehScale: UniformNode<'float', number>;
@@ -258,7 +259,8 @@ export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: 
   if (has(plan, 'aces')) rgb = acesFilmicToneMapping(ca.rgb, u.exposure) as Node<'vec3'>;
   if (has(plan, 'grade')) rgb = gradeNode(rgb, u.lift, u.gamma, u.gain);
   if (has(plan, 'vignette')) rgb = vignetteNode(rgb, u.vignette, u.vignetteAspect);
-  if (has(plan, 'grain')) rgb = (film(vec4(rgb, 1), u.grain) as unknown as Node<'vec4'>).rgb;
+  // zero-mean, luminance-weighted grain (grain.ts): full and reduced effects agree in exposure (FilmNode brightened ≈ 2 %)
+  if (has(plan, 'grain')) rgb = (grain(vec4(rgb, 1), u.grain) as unknown as Node<'vec4'>).rgb;
 
   const outputNode = renderOutput(vec4(rgb, 1), NoToneMapping, SRGBColorSpace);
   return { outputNode, plan, stages };

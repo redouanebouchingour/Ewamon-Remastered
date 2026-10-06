@@ -3,7 +3,7 @@
  * reproducible from its file name. Pins every resolved position of the M2 slice, the heading mapping and the rules.
  */
 import { describe, expect, it } from 'vitest';
-import { getHeightfield, isWalkable, zone } from '@ewa/content';
+import { ZONES, getHeightfield, isWalkable, zone } from '@ewa/content';
 import { headingYaw } from '@ewa/render';
 import { AUDIT_SHOTS, doorFrameOffset, resolveAnchor, rigHeading, shotFileStem, shotsForZone, viewForward } from '../src/harness/anchors';
 import type { ResolvedAnchor, ShotId } from '../src/harness/anchors';
@@ -99,5 +99,45 @@ describe('§50.6.1 anchors of the M2 slice', () => {
 
   it('resolves identically twice (pure)', () => {
     expect(anchor('battle')).toEqual(anchor('battle'));
+  });
+});
+
+describe('M3 audit set (§50.5 M3: six shots in every zone)', () => {
+  it('M2 keeps the table rows of the slice zones; M3 gives every zone all six rows', () => {
+    expect(shotsForZone('mirevale', 'M2').map((s) => s.id)).toEqual(['spawn-noon', 'gym-dusk', 'lamps-night', 'link-east']);
+    expect(shotsForZone('cinderhold', 'M2')).toEqual([]);
+    expect(shotsForZone('cinderhold', 'M3').map((s) => s.id)).toEqual(['spawn-noon', 'gym-dusk', 'sprite-edge', 'lamps-night', 'battle', 'link-east']);
+    expect(shotsForZone('cinderhold', 'M3').every((s) => s.zone === 'cinderhold')).toBe(true);
+  });
+
+  it('every zone resolves all six anchors on walkable ground; fallbacks say so; the slice keeps its table anchors', () => {
+    for (const z of ZONES) {
+      const spec = zoneSpecFor(zone(z.id), 'intact');
+      const h = getHeightfield(z.id);
+      for (const shot of shotsForZone(z.id, 'M3')) {
+        const a = resolveAnchor(shot, spec);
+        expect(a, `${z.id} ${shot.id}`).not.toBeNull();
+        expect(isWalkable(h, a!.x, a!.z), `${z.id} ${shot.id} at ${a!.x}, ${a!.z}`).toBe(true);
+        if (shot.id === 'sprite-edge' || shot.id === 'battle') expect(a!.wild, `${z.id} ${shot.id}`).not.toBeNull();
+        const table = shot.id === 'spawn-noon' || (z.id === 'mirevale' && shot.id !== 'sprite-edge' && shot.id !== 'battle') || (z.id === 'mire_route' && (shot.id === 'sprite-edge' || shot.id === 'battle'));
+        if (table) expect(a!.rule.startsWith('fallback'), `${z.id} ${shot.id}`).toBe(false);
+      }
+    }
+    // the slice's M3 anchors are its M2 anchors
+    expect(resolveAnchor(shotsForZone('mirevale', 'M3').find((s) => s.id === 'gym-dusk')!, specs.mirevale)).toEqual(anchor('gym-dusk'));
+    expect(resolveAnchor(shotsForZone('mire_route', 'M3').find((s) => s.id === 'battle')!, specs.mire_route)).toEqual(anchor('battle'));
+  });
+
+  it('a link-east fallback turns the view toward the edge it uses', () => {
+    for (const z of ZONES) {
+      const spec = zoneSpecFor(zone(z.id), 'intact');
+      if (spec.edges.e !== undefined) continue;
+      const a = resolveAnchor(shotsForZone(z.id, 'M3').find((s) => s.id === 'link-east')!, spec);
+      if (a === null) continue;
+      expect(a.rule).toMatch(/^fallback: no east link/);
+      const [fx, fz] = a.heading.viewForward!;
+      const [bx, bz] = [a.base.x - a.x, a.base.z - a.z];
+      expect(fx * bx + fz * bz).toBeGreaterThan(0);
+    }
   });
 });

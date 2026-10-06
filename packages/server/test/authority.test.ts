@@ -416,6 +416,33 @@ describe('REST attacks (§30.5.1)', () => {
     await j.room.leave(true);
   }, 90_000);
 
+  it('A10b (Phase E5): the mythical choice below trainer level 50 → 409 levelLocked, nothing written; at level 50 it claims the row once (+5000), a second choice → 409 AlreadyClaimed', async () => {
+    const acc = await register(s);
+    const snap = await snapshot(s, acc.id);
+    const low = await api(s, 'POST', '/battle-pass/mythical-choice', acc.access, { species: 'lumyth' });
+    expect(low.status).toBe(409);
+    expect(low.body.code).toBe('levelLocked');
+    expect(await snapshot(s, acc.id)).toBe(snap);
+
+    // the positive control: trainer level 50 (49 000 exp)
+    await rawQuery(s.db, 'update players set trainer_exp = 49000 where id = $1', [acc.id]);
+    const before = (await api(s, 'GET', '/me', acc.access)).body;
+    const ok = await api(s, 'POST', '/battle-pass/mythical-choice', acc.access, { species: 'noxmyth' });
+    expect(ok.status).toBe(200);
+    expect(ok.body.creaturesAdded.map((c: { speciesId: string; level: number }) => `${c.speciesId}:${c.level}`)).toEqual(['noxmyth:50']);
+    const bp = (await api(s, 'GET', '/battle-pass', acc.access)).body;
+    expect(bp.claimed).toEqual([50]);
+    expect(bp.mythicalChoice).toBe('noxmyth');
+    const after = (await api(s, 'GET', '/me', acc.access)).body;
+    expect(after.money - before.money).toBe(5000);
+    const again = await api(s, 'POST', '/battle-pass/mythical-choice', acc.access, { species: 'lumyth' });
+    expect(again.status).toBe(409);
+    expect(again.body.code).toBe('AlreadyClaimed');
+    const claim50 = await api(s, 'POST', '/battle-pass/claim', acc.access, { level: 50 });
+    expect(claim50.status).toBe(409);
+    expect(claim50.body.code).toBe('AlreadyClaimed');
+  }, 60_000);
+
   it('A20: /zone/enter for a gated zone without the badge → 403 gated, no seat', async () => {
     const acc = await register(s);
     const r = await api(s, 'POST', '/zone/enter', acc.access, { zoneId: 'cinderhold' });

@@ -1307,6 +1307,234 @@ needed no change (none pins a town digest).
   is content's stamp; the battle camera's occluder scoring ignores them — a small tree, acceptable).
 - Tests: `test/world-systems.test.ts` (5).
 
+## Phase E3 — audit blockers and render open items (2026-10-06)
+
+Measurement setup: the render sandbox on a private port (`EWA_SANDBOX_NO_HMR=1`, `?zone=mirevale`) and the client capture harness (`harness:shots`, 1440 × 900), in headless Chrome 154 over CDP on the Intel UHD (Gen-12) iGPU.
+
+Another agent's art pass (density, daycycle, grain) was in the tree during both the before and after runs. Draw-call and frame-time deltas between those runs are therefore not attributable to this phase; program counts are.
+
+### The neighbour skirt (audit M2-link-east-1)
+
+**Data.** `ZoneSpec.neighbours?: Partial<Record<Dir, NeighbourSpec>>` (contracts.ts). A `NeighbourSpec` is a subset of the neighbour's own spec, in its own frame: id, layout, seed, heightfield, plan, buildings and interiors. It adds `edge`, the neighbour's playable-edge point on the shared link.
+
+**Placement.** `zone/builder.ts` `neighbourFields(spec)` lays the neighbour's edge point on `edges[side]`. For mirevale e ↔ mire_route w that is d = (168, 0). It offsets the neighbour's heights so the two link points meet, and builds the neighbour's splat context from its layout plan (`layoutOf` + `createSplatContext`).
+
+**Terrain** (`terrain/mesh.ts`):
+- `skirtHeightFn` blends the generic hills toward the neighbour's terrain with `neighbourWeight`:
+  - The neighbour's heights take over over the first 20 m past the field edge.
+  - They fade back into the hills over the 16 m inside the neighbour field's own boundary, so there is no cliff where that field ends.
+- `buildSkirt` mixes the neighbour's plaza, path and detail layer fields into the skirt vertices. They fade in over 3 m, starting 2 m inside the edge, so the neighbour's road is close to full width where this zone's road stops (mirevale's road ends at (80, 0)).
+- `skirtClearFn` keeps the skirt treeline and rocks 4 m off the neighbour's roads and plaza.
+
+**Cost.** No new material, mesh or program: the skirt's existing 32 m segments gain a path-layer group where the road crosses them. Sandbox at (92, 0), zoom 2, reduced effects: draws 129 → 131; materials 18 and programs 97 in both. Without `neighbours`, the spec, the skirt and the digest are unchanged. With them the digest changes and is deterministic (test).
+
+**Shots:**
+- `sk0-h1` / `sk1-h1` (mirevale (92, 0), heading 1, zoom 2) are the sandbox A/B. Without neighbours: hills and trees. With them: mire_route's road continues through its own terrain.
+- `junc-h1` / `junc-h3` (zoom 0 at (80, 0)) show the join:
+  - The two roads meet with a lateral jog of about 1–2 m.
+  - The road edge is polygonal at the skirt's 2 m grid.
+  - The straight seam between mirevale's worn-ground margin and the skirt grass predates this phase.
+- The §50.6.1 shot-6 frame at (58, 0), zoom 1, ends at about x = 80, where the skirt starts. It therefore shows the edge of mirevale's field, not the skirt. The audit answer records this.
+
+**Client.** `withNeighbours(zoneSpecFor(z, h), z)` in the SceneDirector, the harness and the sandbox (`&neighbours=0` for A/B). `zoneSpecFor` and its snapshot are unchanged.
+
+**Test.** `test/neighbour-skirt.test.ts` (5):
+- the join, continuity at the field edge, the neighbour's heights past the blend band, and the rim fade;
+- skirt scatter off the road;
+- a built mirevale: path triangles in the east skirt only when neighbours are passed, no skirt tree on the neighbour's road, and a deterministic digest.
+
+### Handover keep and the phase-5 prefetch (prerequisites for handover-hitch)
+
+- `Renderer.prepareHandover(next)` (`ZoneSystem.prepareHandover`) makes the next zone's surfaces the `nextKeep` of the old zone's dispose. Shared texture sets stay resident instead of being evicted and transcoded again. The SceneDirector calls it when a zone is loaded at the time `loadZone` runs.
+- `MaterialLibrary.prefetch(ids)` (optional addition) fetches the `field` files of non-resident surfaces into the HTTP cache, one at a time at `priority: 'low'`, with no transcode and no GPU memory. It is used by the client's `scene/prefetch.ts`.
+
+### Programs over the cap after dusk (render Part 6 Open 1, audit M2-gym-dusk-8)
+
+**The light set is not the cause.** In the sandbox, at the spawn and at the gym, noon → dusk → night leaves programs at 107. The rig never toggles `visible` or `castShadow`, so the light set does not change with the time of day.
+
+**What the harness shows** (`programNames()` diff): spawn-noon full 109 → reduced 101 → full 113 → mask 109 → **full 140**. The 31 added programs are lit scene variants of every visible material: cobble, dirt, bark, leaf, lichen, plaster, timber, character, decal, ripple and `ShadowMaterial`.
+
+**Cause.** The harness's mask variant swapped the pipeline output to `mask.y` through the scene pass's texture node. That re-rendered the scene pass without TRAA (no velocity projection, Part 4 H4 fact c) at another render-call depth. The result was a second render object, with the TRAA-less program, for every visible object, and it stayed alive for the rest of the session. The shot order put the first full frame after a mask variant at gym-dusk, which is why it looked like "after dusk".
+
+**Fix**, in the client harness: `drawMask` / `drawOutput` sample `scenePass.getTexture('mask' | 'output')` as plain textures. They show the last full frame and render no scene. The game itself always has TRAA in its graph, and no setting turns it off.
+
+**Result.** `harness:shots` on mirevale (spawn-noon, gym-dusk, lamps-night, link-east × full / reduced / mask): programs **109 / 144 / 144 / 144 → 109 / 113 / 113 / 113**, reduced 132 → 101. Peak 144 → 113, against the 128 cap.
+
+**What remains.** +2 programs in the sandbox (+4 in the harness) after the first full → reduced → full. This is bounded and does not grow on further toggles. It is one extra vertex program per small instanced mesh (the character decal, the surf ripple) for the second render context that a graph without DOF creates; the mesh's uniform-array name carries a per-build id (header table C21).
+
+The task's hypothesis, "warm night variants in `compilePlan.ts`", was not needed: there is no night variant to warm.
+
+### +2 programs after unload (Part 5 Open 1)
+
+**Cause**, confirmed by program name: a zone's compile re-keys the warm objects and the persistent arena to its light set, and after the dispose nothing renders them. After a Mirevale unload, against the step-8 baseline, the extra programs are the warm quads `dirt`, `glass_warm`, `mist_glass` plus `character-decal` and `surf-ripple`; `grove_moss` and `plaster` are missing.
+
+**Fix:** `renderer.ts` `scheduleWarmRekey`, called from the zone handle's dispose wrapper. Unless a `loadZone` starts in the same task, the warm group and the persistent objects are compiled in the background against the zone-less light set, which is the boot's set. A handover is the exception: the next compile re-keys them, and the pending run is cancelled. `compileIdle()` covers the background compile.
+
+**Result.** Mirevale load → unload: programs **+2 right after `dispose()`, ±0 after `compileIdle()`**. The name diff against the baseline is empty. Geometries, textures, render targets and attributes are ±0. The sandbox's `leakCycle` now awaits `compileIdle()` after each unload. SPEC §10.5.9 is amended so the programs assertion is read after `compileIdle()`.
+
+### DOF speckle (Part 4 Open 6 / Part 6 Open 3): deferred
+
+**Where it comes from.** three 0.186's `DepthOfFieldNode` samples no noise. The speckle comes from its `blur16` near/far pass, a 16-tap max filter over the 64-tap bokeh result (`maxVal = max(tap.rgb, maxVal)`). That pass turns an isolated bright texel inside a large circle of confusion (a specular glint, a rim pixel) into a hard bright cluster. DOF runs after TRAA (§10.8.1), so nothing resolves the cluster over time. It shows only on out-of-focus faces in the 4 m inspector close-ups; at the diorama distances (20–34 m) the circle of confusion is small.
+
+**Why deferred.** The fix is a custom DOF node: a weighted gather with per-tap depth weighting instead of the max pass. Part 4 Open 6 (the gather leak) needs the same node. It needs inspector A/B shots to judge, and it lands in `post/pipeline.ts`, which the art pass was rewriting during this phase for the grain node. It is deferred to the next post-stack pass together with the gather leak.
+
+## Phase E6 — GPU device lost (2026-10-06)
+
+**Detection.** `createRenderer` subscribes `watchDeviceLost(device, …)` right after step 3, before the warm-up. Two cases are ignored: the `'destroyed'` loss that our own `dispose()` causes, and anything after `dispose()`.
+
+**On a loss**, `handleDeviceLost` runs once:
+- sets `Renderer.deviceLost = { reason, message }` and three's `_isDeviceLost`;
+- makes every later `frame()` return at once;
+- calls `RendererOptions.onDeviceLost(info)`.
+
+A lost renderer is not revived. Its owner disposes it and creates a new one; in the client that is World3D, `scene/deviceRecovery.ts`. three's own handler still logs its error. The WebGL2 fallback has no device-lost path; a lost WebGL context is out of scope.
+
+**Test.** `test/device-lost.test.ts` (5), with a fake device whose `lost` promise the test resolves:
+- one callback, with reason and message;
+- `'destroyed'` is ignored;
+- a loss after dispose is ignored;
+- missing fields get defaults;
+- no subscription when there is no `lost` promise.
+
+**Not reproduced on a real GPU.** Chrome offers no scripted device loss short of `chrome://gpucrash`.
+
+---
+
+# Phase E1–E2 — density pass, M3 shot set, the re-landed art pass (2026-10-06)
+
+User decision: "All towns as good as Mirevale; re-land the art pass; close audit blockers". The audit blockers (E3/E6:
+neighbour skirt, compile plan, device loss) ran in parallel in the same tree and are described in their own sections.
+
+## E1.1 — the 21-zone re-measure (before)
+
+Sandbox (`vite --config vite.sandbox.config.ts --port 5186`, `EWA_SANDBOX_NO_HMR=1`), headless Chrome 154 over CDP,
+Intel UHD (Gen-12LP), 1440×900, `?zone=<id>&t=10`, rig heading 0 / zoom 1 at `ZoneDef.spawn`, after `compileIdle`.
+The script and PNGs live in the session scratchpad (`phaseE/smoke.mjs`, `phaseE/before/*.png`, `phaseE/after/*.png`),
+not in the repo. The old note "towns other than Mirevale show no buildings from spawn" is still true; commit `33a852e`
+did not change it. **Every town but Mirevale spawns at (−50, 0)** (content `ZoneDef.spawn`, the west road entry), 14 m
+inside the 64 m walkable edge and 50 m from the plaza. The nearest house is 22–29 m away, outside the 26 m frame (≈ ±10 m
+wide at the focus). Mirevale spawns on its plaza at (0, 6). Routes spawn at (−92, 0) on the road; story zones on their
+approach. From spawn, towns and routes read as a road through sparse grass tufts (bright green even in cinder, marrow
+and salt), barren biomes as bare ground, and story zones as an empty floor. No plaza set-piece can be in frame from
+(−50, 0): the top frustum edge meets the ground ≈ 10 m past the focus. Render cannot move a spawn, a building or a
+solid prop.
+
+The re-landed lighting (E2) went into the tree while the before-run was going, so the before shots from `cinderhold` on
+already carry it. The density is unaffected.
+
+## E1.2 — the dressing pass (`zone/generators/dressing.ts`, wired in `zone/builder.ts`)
+
+Content owns every solid. Its plan stamps the server's heightfield, and client `footprints.test.ts` asserts that the
+builder's collider footprints equal content's. So the pass only adds what changes nothing a player can walk on:
+
+1. **Verge clusters** (`vergeClusters`). Along every road and lane centreline, every 1.4 m and on each side (door
+   paths at half the rate), a cluster is placed with probability `vergeRate` (0.70–0.85) × a 0..1 noise. It sits
+   1.0–3.6 m past the edge and holds 1–2 bushes, 1–4 tufts, a flower patch and 1–3 small stones. Keep-clear:
+   `scatterClear` (plaza, roads including door paths, buildings + 1 m, authored points + 1.5 m, water, set-piece,
+   grass patches), plus pockets, hand-placed props, light posts and D10 obstacles.
+2. **Rock clusters** (`rockClusters`): 1–6 small stones and 3 tufts round each big `rock_a` (scale > 0.8).
+3. **Scree and shards** (`screeClusters`). Banded clusters of 3–7 small stones everywhere (0.002–0.032 per m²).
+   Crystal-shard clusters (`buildShard`, the set's `props.crystal`) in marrow (0.005), shrine (0.012) and rift
+   (0.014). This is the one new scatter kind, `crystal_shard`: 3 tiers, no shadow, cover class small, so the arena
+   clears it.
+4. **Bushes for every green-ish biome.** `DressingStyle.bush` / `bushDensity` apply to sets without `bushLeaf`:
+   `tall_grass` clumps in salt, cinder and marrow; `pine_needle` in storm and forge. They are not written into
+   `BiomeSet.bushLeaf`, because the interiors' `foliageOf` and hand-placed `bush` props would change.
+5. **Tuft tints per biome** (`grassTints`, replacing the builder's `GRASS_TINTS`). Dry and ashen bushes take them too.
+6. **House skirts** (`skirtPlacements`, `buildSkirtItem`). 2–4 items per wall side: flower box, firewood stack, sacks,
+   pot, keg, small crate. Each is centred `depth/2 + 0.02` m from the wall and at most `SKIRT_DEPTH_M` 0.46 m deep, so
+   it stays inside the 0.47 m collider pad. None within 1.6 m of the door's centre line, none at a gym, none within
+   0.9 m of a hand-placed prop or light. Merged into the per-chunk non-casting prop meshes.
+7. **A boundary for every town biome** (`boundaryPieces`, `dressBoundary`). Runs of ≈ 2.8 m fill the stretches
+   between 7.6 m road gaps at `half − 16 + 1.2`, outside the walkable square (tested on all 9 towns). A gate pier
+   stands either side of each gap. The run is a dry-stone wall in grove, forge and capital (the old ~1 m blocks, laid
+   inside each run), a post-and-rail fence in salt and vesper (it was a row of bare posts), or a boulder dyke in
+   cinder, storm, marrow and sky (they had no boundary before). Rocks keep 1.7 m off the piers.
+
+Everything binds only surfaces the set already binds. Instances go into the existing kinds (`bush`, `flower_patch`,
+`grass_tuft`, `rock_b`), so the pass adds no draw call except `crystal_shard`. Every zone digest changes (no test pins
+one). Test: `test/dressing.test.ts` covers the styles, skirt depth / door / gym rules, cover keep-clear on 4 zones, the
+boundary outside the walkable square with its gaps, and determinism.
+
+Spawn-view counts from the sandbox smoke, before → after. Beauty = draws − shadow-map draws. E3's neighbour skirt
+landed in the tree during the run and accounts for the mire_route beauty +26 and the route materials +1.
+
+| Zone | beauty draws | shadow draws | triangles | materials | programs |
+|---|---|---|---|---|---|
+| `mirevale` | 100 → 119 | 259 → 234 | 561k → 579k | 18 → 18 | 107 → 107 |
+| `mire_route` | 89 → 115 | 78 → 74 | 841k → 882k | 13 → 14 | 107 → 107 |
+| `cinderhold` | 70 → 78 | 81 → 108 | 320k → 658k | 18 → 18 | 99 → 101 |
+| `ash_route` | 66 → 69 | 32 → 40 | 309k → 550k | 10 → 11 | 99 → 101 |
+| `saltmourn` | 74 → 81 | 122 → 139 | 326k → 436k | 18 → 18 | 103 → 103 |
+| `tide_route` | 75 → 78 | 34 → 42 | 302k → 411k | 10 → 11 | 101 → 101 |
+| `stormrook` | 72 → 81 | 76 → 101 | 352k → 597k | 18 → 18 | 103 → 103 |
+| `galvan_route` | 72 → 75 | 27 → 35 | 379k → 524k | 12 → 12 | 103 → 103 |
+| `marrowdig` | 83 → 92 | 123 → 148 | 401k → 757k | 15 → 16 | 99 → 101 |
+| `deepcut_route` | 73 → 79 | 24 → 32 | 276k → 505k | 7 → 9 | 97 → 99 |
+| `vesperveil` | 84 → 89 | 113 → 118 | 459k → 533k | 17 → 17 | 101 → 101 |
+| `hollow_route` | 76 → 76 | 41 → 41 | 591k → 657k | 9 → 10 | 101 → 101 |
+| `forgewall` | 78 → 83 | 114 → 122 | 371k → 507k | 19 → 19 | 103 → 103 |
+| `siege_route` | 72 → 75 | 34 → 42 | 322k → 461k | 9 → 10 | 103 → 103 |
+| `skyrend` | 77 → 84 | 119 → 132 | 431k → 628k | 18 → 18 | 105 → 105 |
+| `ascent_route` | 77 → 77 | 35 → 35 | 392k → 487k | 11 → 11 | 103 → 103 |
+| `solenne` | 90 → 93 | 159 → 159 | 513k → 576k | 20 → 20 | 107 → 107 |
+| `eclipse_shrine` | 56 → 58 | 16 → 16 | 287k → 671k | 6 → 6 | 99 → 99 |
+| `umbral_observatory` | 63 → 63 | 40 → 40 | 400k → 455k | 10 → 10 | 101 → 101 |
+| `celestial_spire` | 55 → 57 | 16 → 16 | 252k → 604k | 6 → 6 | 99 → 99 |
+| `the_rift` | 70 → 72 | 16 → 16 | 272k → 682k | 5 → 5 | 95 → 97 |
+
+The +2 programs in cinder, marrow, deepcut and ash are the casting `tall_grass` bush: beauty and shadow variants of
+the instanced card graph. The total stays ≤ 128. The `harness:budget --set M3` numbers for all 21 zones are in
+`.design/audits/M3-render-audit.md`.
+
+## E1.3 — the M3 shot set (client harness)
+
+- `shotTable.ts` `shotsForZone(zone, set)`: `M2` keeps the §50.6.1 table's own zones; any other set gives every zone
+  all six rows.
+- `anchors.ts`: `resolveAnchor = tableAnchor ?? fallbackAnchor`. The fallback rules are in §50.6.1 as amended
+  2026-10-06; a fallback's sidecar `rule` starts with `fallback:`.
+- `stage.ts` takes `anchor.heading.rig`, so a link-east fallback looks at its own edge.
+- `harness:shots` and `harness:budget` take `--set` (page `?set=`).
+- Test: `harness-anchors.test.ts` — all 21 zones resolve six walkable anchors; the slice's M3 anchors equal its M2
+  anchors.
+- M3 budget JSON goes to `.screenshots/budget/M3/<zone>.json` (+ `.dump.json`); M3 shots go to
+  `.screenshots/audit/M3/<zone>/`.
+
+## E2 — the art pass, re-landed
+
+`git diff a6606df^ HEAD` was empty for `lighting/`, `zone/palettes.ts` and `post/`. So `lighting/daycycle.ts`,
+`lighting/fog.ts`, `lighting/rig.ts`, `zone/palettes.ts` and the new `post/grain.ts` were taken from `aa19fa1` as they
+were, with two edits: amendment dates moved to 2026-10-06, and `GrainNode`'s `static override get type` lost its
+`override`, which @types/three 0.186 rejects on a static. `camera/rig.ts` was never part of those commits (they touched
+`lighting/rig.ts`), so Phase A's `setYawBase` is untouched. New wiring: `post/pipeline.ts` calls `grain(…)` instead of
+three's `film(…)`, with `POST_PARAMS.grain` 0.052.
+
+What the pass changes:
+- Sun path: sunrise 0.17, sunset 0.83, so t 0.80 is golden hour with the sun 10° up.
+- The moon has its own path: 40° up at midnight, ≥ 110° from noon's shadows, intensity 0.30 so it casts.
+- The §10.3.5 table: a warm key over a cool, low fill. The `hemi` column is 0.06–0.09 over hemisphere colours
+  normalised to a unit sky; noon env is 0.45.
+- `daylight` comes from the sun's elevation, not the keyframe intensity.
+- Golden hours tint the fog toward the key colour.
+- Fog has a 15 m clear zone and density 0.00486: 5.2 % at the 26 m focus.
+- Grain is zero-mean and luminance-weighted.
+
+Behaviour kept: interiors and the hall camera (no lighting hook), the doubles stage, the shiny glow, the surf ripple and
+weather. Weather multipliers still apply: `envMul` scales the fill, and the fog density multiplier divides `fogStart`.
+Tests updated: `daycycle.test.ts`, `lighting.test.ts`, `post-graph.test.ts`, `stats-dispose.test.ts`.
+
+## Open — honest assessment
+
+- From the town spawns the frame is still mostly road and ground with verge cover: richer than before, not Mirevale.
+  The fix that would make every town read like Mirevale belongs to content: a spawn on or beside the plaza (as in
+  Mirevale), or solid props and trees along the entry street in `planProps`. The heightfield, the server and the
+  progression walker change with it. Not done here, because another agent's walker reads the same content.
+- Tufts are still the crossed-card "X" clumps, and the `tall_grass` bushes in salt, cinder and marrow read as big
+  tufts.
+- Shrine scree uses `eclipse_stone` on an `eclipse_stone` floor and nearly vanishes; only the shards read.
+- House skirts are low and small, because they must fit the 0.47 m pad. They read at zoom 0 and barely at the default
+  stop.
+
 ---
 
 # Part 9 — creature texture residency, render's half (2026-10-06)
@@ -1376,7 +1604,7 @@ frame, stops sampling the flipbook (`atlasUsers` 0 → the release frees it) and
 1. The metric change (R1) needs approval: entry E1.
 2. The sandbox (`?demo=legends`) still binds all 20 sides at once — a stress view (Part 8 open item 3), not play.
 
-## Proposed SPEC CHANGELOG entries (§50.7 form; not applied — `.design/spec/**` is not edited here)
+## SPEC CHANGELOG entries (§50.7 form; applied by the integrating session, 2026-10-06)
 
 ```
 ## 2026-10-06 — `50-verification-budget.md` §50.2.2 (Texture memory row), `10-render.md` §10.10 — the texture metric subtracts the level 0 three's `Info` counts twice for the creature atlases

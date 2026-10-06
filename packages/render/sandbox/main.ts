@@ -21,7 +21,7 @@ import {
 import type { BasicDioramaRig, HarvestLevel, LightSource, Renderer, SurfaceId, WeatherKind, ZoneHandleImpl } from '../src/index.js';
 import { zone as contentZone } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
-import { zoneSpecFor } from '@ewa/client-adapter';
+import { withNeighbours, zoneSpecFor } from '@ewa/client-adapter';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hudEl = document.getElementById('hud') as HTMLDivElement;
@@ -381,7 +381,8 @@ async function main(): Promise<void> {
   if (zoneId) {
     const harvest = (params.get('harvest') ?? 'intact') as 'intact' | 'thinning' | 'harvested';
     const def = contentZone(zoneId);
-    const spec0 = zoneSpecFor(def, harvest);
+    // E3: the linked neighbours' terrain in the skirt, as the client builds it (`&neighbours=0`: the hills only, A/B)
+    const spec0 = params.get('neighbours') === '0' ? zoneSpecFor(def, harvest) : withNeighbours(zoneSpecFor(def, harvest), def);
     // `&interiors=0`: the zone without its Phase A pockets (A/B for the program / draw counts)
     const spec = params.get('interiors') === '0' ? { ...spec0, interiors: [] } : spec0;
     // Phase A: `&interior=<pocket id>` (e.g. mirevale.gym) shows that pocket's hall (setActive), turns the camera to the
@@ -488,7 +489,7 @@ async function main(): Promise<void> {
     /** T4: a zone handover measured like the client does it: dispose, then loadZone(next, focus); phase 1 ms returned. */
     handover: async (next: string, x?: number, z?: number) => {
       const def2 = contentZone(next as ZoneId);
-      const spec2 = zoneSpecFor(def2, 'intact');
+      const spec2 = new URLSearchParams(location.search).get('neighbours') === '0' ? zoneSpecFor(def2, 'intact') : withNeighbours(zoneSpecFor(def2, 'intact'), def2);
       const hx = x ?? def2.spawn.x; const hz = z ?? def2.spawn.z;
       zoneHandle?.dispose();
       rig.setFocus(hx, 0, hz);
@@ -585,6 +586,9 @@ async function main(): Promise<void> {
       for (let i = 0; i < cycles; i++) {
         trackPhase = `unload${i}`;
         zoneHandle.dispose();
+        for (let k = 0; k < 3; k++) r.frame(16);
+        // E3: the warm objects are re-keyed to the zone-less light set in the background after an unload
+        await (r.compileIdle?.() ?? Promise.resolve());
         for (let k = 0; k < 3; k++) r.frame(16);
         const m = r.renderer.info.memory as unknown as Record<string, number>;
         const b = host.baseline as unknown as Record<string, number>;

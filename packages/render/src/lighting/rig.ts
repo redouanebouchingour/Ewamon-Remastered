@@ -24,7 +24,8 @@ export const SUN_SHADOW = Object.freeze({ mapSize: 2048, bias: -0.0004, normalBi
 /** Camera-space cascade far edges in metres (0–14, 14–34, 34–72, 72–160). */
 export const CASCADE_SPLITS_M: readonly number[] = Object.freeze([14, 34, 72, 160]);
 export const CSM_OPTIONS = Object.freeze({ cascades: 4, maxFar: 160, mode: 'custom' as const, lightMargin: 60 });
-export const HEMI_INTENSITY = 0.18;
+/** §10.3.3 as amended 2026-10-06: the noon fill level (the day table's `hemi` column drives it per frame). */
+export const HEMI_INTENSITY = 0.08;
 
 /**
  * Unit bridge (implementation note): the SPEC's sun / moon / hemisphere numbers (§10.3.3, §10.3.5) use
@@ -147,9 +148,11 @@ export class LightRig {
     this.sun.intensity = intensity * SPEC_LIGHT_UNIT;   // never toggle `visible`: the lights set is part of every program's cache key
   }
 
-  setHemisphere(skyLinear: readonly number[], groundLinear: readonly number[]): void {
+  /** Hemisphere colours (linear, normalised to a unit sky) and SPEC-unit intensity (§10.3.5 `hemi` column). */
+  setHemisphere(skyLinear: readonly number[], groundLinear: readonly number[], intensity: number = HEMI_INTENSITY): void {
     this.hemi.color.setRGB(skyLinear[0]!, skyLinear[1]!, skyLinear[2]!);
     this.hemi.groundColor.setRGB(groundLinear[0]!, groundLinear[1]!, groundLinear[2]!);
+    this.hemi.intensity = intensity * SPEC_LIGHT_UNIT;
   }
 
   /** CSM re-split after a camera projection/basis change (resize, zoom stop, heading). No-op before the first render. */

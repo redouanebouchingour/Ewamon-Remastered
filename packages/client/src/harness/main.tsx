@@ -13,19 +13,20 @@ import { harvestStateFor, zone as zoneDef } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
 import { part3Of, rendererInternals } from '@ewa/render';
 import type { BudgetCounts, ZoneDump } from '@ewa/render';
-import { AUDIT_SHOTS, headingConvention, resolveAnchor, setHeadingConvention, shotDef, shotsForZone } from './anchors';
+import { headingConvention, resolveAnchor, setHeadingConvention, shotDef, shotsForZone } from './anchors';
 import type { ResolvedAnchor, ShotId, Variant } from './anchors';
 import { HarnessWorld } from './HarnessWorld';
+import type { HandoverResult } from './HarnessWorld';
 import { HarnessOverlay } from './HarnessOverlay';
 import { measureShot } from './measure';
 import type { MeasureOptions, ShotBudget } from './measure';
-import { stageShot } from './stage';
+import { restoreEdgeScan, stageEdgeScan, stageShot } from './stage';
 import { playEvolution, setEvolutionPlayer } from '../app/evolution';
 import { STEP_MS } from '../battle/constants';
 import { useUiStore } from '../state/ui';
 import { zoneSpecFor } from '../scene/zoneSpecFor';
 import { SPECIES_BY_DEX, speciesName } from '../data/content';
-import type { StageOptions, StageResult } from './stage';
+import type { EdgeStage, StageOptions, StageResult } from './stage';
 import s from './Harness.module.css';
 
 interface HarnessApi {
@@ -36,6 +37,15 @@ interface HarnessApi {
   info(): Record<string, unknown>;
   anchors(): readonly ResolvedAnchor[];
   stage(shot: ShotId, variant: Variant, o?: StageOptions): Promise<StageResult>;
+  /** E3 sprite-edge scan: the inspector close-up on the shot's wild creature, `mask.y` drawn to the canvas */
+  edgeScan(shot: ShotId): Promise<EdgeStage>;
+  /** E3: the same frame's scene-pass `output` MRT (pre-TRAA) drawn to the canvas */
+  edgeOutput(): Promise<void>;
+  edgeRestore(): Promise<void>;
+  /** E3 diagnostics: `stage:name` of every shader program three holds (multiset, sorted) */
+  programNames(): string[];
+  /** E3: a measured crossing into the linked zone `to` (`handover-hitch.spec.ts`); boot with `?bg=1` for the client's compile */
+  handover(to: ZoneId, o: { readonly preload: boolean; readonly framesAfter?: number }): Promise<HandoverResult>;
   measure(shot: ShotId, o: Omit<MeasureOptions, 'onProgress'>): Promise<ShotBudget>;
   dump(): ZoneDump;
   counts(): BudgetCounts;
@@ -58,6 +68,8 @@ interface HarnessApi {
 
 const params = new URLSearchParams(location.search);
 const zoneId = (params.get('zone') ?? 'mirevale') as ZoneId;
+// ?set=M3: every zone takes all six §50.6.1 rows (shotTable.ts `shotsForZone`); default M2 = the table's own zones
+const auditSet = params.get('set') ?? 'M2';
 // ?headings=rig: the §50.6.1 heading numbers straight to the rig (default: the table's words, anchors.ts)
 setHeadingConvention(params.get('headings') === 'rig' ? 'rig' : 'words');
 const log: string[] = [];
@@ -76,11 +88,11 @@ createRoot(layer).render(<HarnessOverlay />);
 
 // ?residency=legacy: the creature binding before CreatureTextures (before / after texture-memory runs)
 const world = new HarnessWorld(canvas, say, params.get('residency') === 'legacy' ? 'legacy' : 'managed');
+world.backgroundCompile = params.get('bg') === '1';
 
 function anchors(): ResolvedAnchor[] {
   const out: ResolvedAnchor[] = [];
-  for (const shot of AUDIT_SHOTS) {
-    if (shot.zone !== zoneId) continue;
+  for (const shot of shotsForZone(zoneId, auditSet)) {
     const a = resolveAnchor(shot, world.spec);
     if (a !== null) out.push(a);
   }
@@ -115,7 +127,8 @@ function info(): Record<string, unknown> {
     materialWarnings: r.materials.warnings(),
     harvest: world.harvest,
     headingConvention: headingConvention(),
-    shots: shotsForZone(zoneId).map((x) => x.id),
+    auditSet,
+    shots: shotsForZone(zoneId, auditSet).map((x) => x.id),
   };
 }
 
@@ -129,6 +142,21 @@ const api: HarnessApi = {
   stage: async (id, variant, o) => {
     layer.hidden = variant === 'mask';
     return stageShot(world, anchorOf(id), variant, o);
+  },
+  edgeScan: async (id) => {
+    layer.hidden = true;
+    return stageEdgeScan(world, anchorOf(id));
+  },
+  edgeOutput: () => world.drawOutput(),
+  handover: (to, o) => world.handover(to, o),
+  programNames: () => {
+    const p = (world.renderer.renderer as unknown as { _pipelines?: { programs?: { vertex: Map<string, { name: string }>; fragment: Map<string, { name: string }> } } })._pipelines?.programs;
+    if (!p) return [];
+    return [...[...p.vertex.values()].map((x) => `v:${x.name}`), ...[...p.fragment.values()].map((x) => `f:${x.name}`)].sort();
+  },
+  edgeRestore: async () => {
+    await restoreEdgeScan(world);
+    layer.hidden = false;
   },
   measure: async (id, o) => {
     layer.hidden = false;
@@ -170,8 +198,7 @@ async function main(): Promise<void> {
   const wild = new Set<string>();
   // the wild species of this zone's shots are bound before the zone is built (a species bound later pops in)
   const spec = zoneSpecFor(zoneDef(zoneId), harvestStateFor(zoneId, new Set()));
-  for (const shot of AUDIT_SHOTS) {
-    if (shot.zone !== zoneId) continue;
+  for (const shot of shotsForZone(zoneId, auditSet)) {
     const a = resolveAnchor(shot, spec);
     if (a?.wild) wild.add(a.wild.speciesId);
   }

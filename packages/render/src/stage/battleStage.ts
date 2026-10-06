@@ -611,6 +611,9 @@ export class Stage implements BattleStage {
     this.refreshAccent();
   }
 
+  /** The inspector's billboard while `inspect` is active (the capture harness's sprite-edge scan reads its rect; E3). */
+  get inspectedBillboard(): CreatureBillboard | null { return this.inspected; }
+
   inspect(desc: SpriteDescriptor | null): void {
     if (this.disposed) return;
     this.cancelEvolution();

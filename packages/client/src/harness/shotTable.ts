@@ -35,9 +35,16 @@ export function shotDef(id: ShotId): ShotDef {
   return s;
 }
 
-/** The shots of the §50.6.1 table that belong to `zone`. */
-export function shotsForZone(zone: string): readonly ShotDef[] {
-  return AUDIT_SHOTS.filter((s) => s.zone === zone);
+/**
+ * The shots of `zone` in audit set `set`. M2 (and any set named in `TABLE_SETS`) uses the §50.6.1 table as written:
+ * only the rows whose zone is `zone`. M3 onward (§50.5 M3: "6 shots each, 126 files") takes all six rows for every
+ * zone; `anchors.ts` resolves each row's rule in that zone, with a recorded fallback where the zone lacks the table's
+ * subject (no gym, no shop, no encounter table, no east link).
+ */
+export const TABLE_SETS: readonly string[] = ['M2'];
+export function shotsForZone(zone: string, set = 'M2'): readonly ShotDef[] {
+  if (TABLE_SETS.includes(set)) return AUDIT_SHOTS.filter((s) => s.zone === zone);
+  return AUDIT_SHOTS.map((s) => ({ ...s, zone }));
 }
 
 /**

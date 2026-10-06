@@ -37,3 +37,4 @@ tools/material-bake/.cache/
 tools/model-pipeline/.cache/
 tools/asset-audit/.cache/
 tools/asset-audit/.audit/report.json
+.cdp-shots/

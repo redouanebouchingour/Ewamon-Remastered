@@ -9,9 +9,10 @@
  *   damage cue mid-flight. Reduced effects rebuild the timeline with `ctx.reduced` exactly as the client does;
  * - the `mask` variant renders the same moment with full effects, then draws `mask.y` as greyscale (`drawMask`).
  */
+import { Vector3 } from 'three/webgpu';
 import type { BattleUi } from '../state/ui';
 import { useUiStore } from '../state/ui';
-import { rendererInternals } from '@ewa/render';
+import { part3Of, rendererInternals } from '@ewa/render';
 import type { BudgetCounts } from '@ewa/render';
 import type { HarnessWorld } from './HarnessWorld';
 import { yieldTask } from './HarnessWorld';
@@ -84,6 +85,95 @@ function hpKey(w: HarnessWorld): string {
 
 const phase = (): BattleUi['phase'] | null => useUiStore.getState().battle?.phase ?? null;
 
+/** E3 (audit M2-sprite-edge-5): the inspector close-up the sprite-edge scan reads. */
+export interface EdgeStage {
+  readonly species: string;
+  /** CSS-px rect of the inspected billboard's quad (feet → top, ± half width), dpr 1 */
+  readonly rect: readonly [number, number, number, number];
+  /** level-0 texels of the frame's height (`SpriteFrame.px[3]`) */
+  readonly frameTexels: number;
+  /** screen px per level-0 texel (rect height / frameTexels) — §50.1 #6 asks ≥ 1.3 */
+  readonly magnification: number;
+  /** at the stock inspector distance and 28° (before the lens narrowing) */
+  readonly magnificationStock: number;
+  readonly cameraDistance: number;
+  /** vertical fov used for the scan frame (28° narrowed until the magnification target is met) */
+  readonly fovDeg: number;
+  readonly frames: number;
+}
+
+/** Magnification the scan stages (margin over §50.1 #6's 1.3). */
+export const EDGE_SCAN_MAGNIFICATION = 1.35;
+
+const _feet = new Vector3();
+const _top = new Vector3();
+
+/**
+ * E3: stages `stage.inspect` on the shot-3 wild creature (noon, at the sprite-edge anchor) and narrows the camera's
+ * vertical fov — never its distance or the sampler — until one level-0 texel covers `EDGE_SCAN_MAGNIFICATION` screen
+ * px (the stock 4 m inspector gives ≈ 1.1× on a 1024² frame at 900 px, audit M2-sprite-edge-5). Then draws the scene
+ * pass's `mask.y` (the billboard is DOF-sharp in the inspector) for the Node-side scan. `restoreEdgeScan` undoes it.
+ */
+export async function stageEdgeScan(w: HarnessWorld, anchor: ResolvedAnchor): Promise<EdgeStage> {
+  const wild = anchor.wild;
+  if (wild === null) throw new Error(`shot ${anchor.shot} has no wild creature to inspect`);
+  const p3 = part3Of(w.renderer);
+  if (p3 === undefined || w.catalog === null) throw new Error('no stage / sprite catalog');
+  w.restoreOutput();
+  w.endBattle();
+  w.setEffects(false);
+  w.setWild(null);
+  const rig = rigHeading(shotDef('sprite-edge').heading ?? 1);
+  w.setView(rig, 1);
+  w.place(anchor.x, anchor.z, facingCamera(rig));
+  w.setTimeOfDay(0.5);
+  await w.prepareSpecies([wild.speciesId]);
+  const desc = w.catalog.descriptor(wild.speciesId, 'harness:edge-scan', 'normal', false);
+  if (desc === null) throw new Error(`no sprite for ${wild.speciesId}`);
+  w.renderer.stage.inspect(desc);
+  const cam = w.renderer.camera.camera;
+  const fov0 = cam.fov;
+  let frames = await w.runWhile(() => ((w.renderer.camera as unknown as { shotBlend?: number }).shotBlend ?? 1) < 1, 240);
+  frames += (await w.settle(20, 10, 300)).frames;
+  const bb = p3.stage.inspectedBillboard;
+  if (bb === null) throw new Error('inspector billboard missing');
+  const texels = desc.front.px[3];
+  const measure = (): { rect: readonly [number, number, number, number]; mag: number } => {
+    bb.feet(_feet); bb.topWorld(_top);
+    const right = new Vector3().setFromMatrixColumn(cam.matrixWorld, 0).setY(0).normalize();
+    const half = (bb.heightM * (desc.front.aspect || 1)) / 2;
+    const rect = w.rectOfWorld([_feet.clone().addScaledVector(right, -half), _feet.clone().addScaledVector(right, half), _top.clone().addScaledVector(right, -half), _top.clone().addScaledVector(right, half)]);
+    return { rect, mag: (rect[3] - rect[1]) / texels };
+  };
+  const stock = measure();
+  if (stock.mag < EDGE_SCAN_MAGNIFICATION) {
+    const k = stock.mag / EDGE_SCAN_MAGNIFICATION;
+    cam.fov = (2 * Math.atan(Math.tan((fov0 * Math.PI) / 360) * k) * 180) / Math.PI;
+    cam.updateProjectionMatrix();
+    frames += await w.runWhile(() => true, 8);
+  }
+  const scan = measure();
+  w.isolateInspector(true);
+  frames += await w.runWhile(() => true, 4);
+  await w.drawMask();
+  w.edgeFov0 = fov0;
+  return {
+    species: wild.speciesId, rect: scan.rect, frameTexels: texels, magnification: Math.round(scan.mag * 1000) / 1000,
+    magnificationStock: Math.round(stock.mag * 1000) / 1000, cameraDistance: Math.round(cam.position.distanceTo(_top.lerp(_feet, 0.5)) * 1000) / 1000,
+    fovDeg: Math.round(cam.fov * 1000) / 1000, frames,
+  };
+}
+
+/** E3: leaves the inspector, restores the fov and the output node. */
+export async function restoreEdgeScan(w: HarnessWorld): Promise<void> {
+  w.restoreOutput();
+  w.isolateInspector(false);
+  w.renderer.stage.inspect(null);
+  const cam = w.renderer.camera.camera;
+  if (w.edgeFov0 !== null) { cam.fov = w.edgeFov0; cam.updateProjectionMatrix(); w.edgeFov0 = null; }
+  await w.runWhile(() => ((w.renderer.camera as unknown as { shotBlend?: number }).shotBlend ?? 0) > 0, 120);
+}
+
 export async function stageShot(w: HarnessWorld, anchor: ResolvedAnchor, variant: Variant, o: StageOptions = {}): Promise<StageResult> {
   const shot: ShotDef = shotDef(anchor.shot);
   const notes: string[] = [];
@@ -95,7 +185,7 @@ export async function stageShot(w: HarnessWorld, anchor: ResolvedAnchor, variant
   let settle = { frames: 0, stable: false, programs: 0 };
 
   if (shot.id !== 'battle') {
-    const rig = rigHeading(shot.heading ?? 0);
+    const rig = anchor.heading.rig ?? rigHeading(shot.heading ?? 0);   // an M3 fallback anchor may turn the view (link-east to another edge)
     w.setWild(anchor.wild !== null && shot.id === 'sprite-edge' ? anchor.wild : null);
     w.setView(rig, shot.zoomStop);
     w.place(anchor.x, anchor.z, facingCamera(rig));
@@ -103,7 +193,7 @@ export async function stageShot(w: HarnessWorld, anchor: ResolvedAnchor, variant
     settle = await w.settle(settleFrames);
     if (shot.id === 'link-east') {
       notes.push(
-        'neighbour streaming NOT staged: the client does not prefetch neighbour zones (IMPLEMENTATION-NOTES part 2, §20.10 row: "phase 5\'s neighbour-zone prefetch not done") and Renderer.loadZone rejects a second zone while one is loaded (renderer.ts loadZone); the frame shows the east edge of this zone only',
+        'neighbour skirt staged (render E3, audit M2-link-east-1): beyond the field edge on each linked side the skirt is the neighbour zone\'s own terrain — its heightfield and road / plaza layers at 2 m, no props — from `ZoneSpec.neighbours` (SceneDirector `withNeighbours`); the neighbour\'s props, actors and creatures stream in at the handover (Renderer.loadZone holds one zone)',
       );
     }
   } else {

@@ -16,7 +16,7 @@ import type { Material } from 'three/webgpu';
 import type { HeightfieldData } from '../contracts.js';
 import { linearRgb } from '../materials/graph.js';
 import { surfaceDef, type SurfaceId } from '../materials/surfaces.js';
-import { splatAt, type SplatContext, type SplatFields } from '../zone/layout.js';
+import { roadDistance, splatAt, type SplatContext, type SplatFields } from '../zone/layout.js';
 import type { ChunkGrid } from '../zone/lod.js';
 import { fbm2, valueNoise } from '../zone/prng.js';
 import { heightClamped } from './field.js';
@@ -204,6 +204,66 @@ export interface SkirtOpts {
   /** Exits (world x/z of the road axis) where the land stays low so roads run on into a valley. */
   readonly exits: readonly { readonly dir: 'n' | 'e' | 's' | 'w'; readonly offset: number }[];
   readonly salt: number;
+  /** Phase E3: linked neighbours whose terrain replaces the hills on their side (absent → hills everywhere). */
+  readonly neighbours?: readonly NeighbourField[];
+}
+
+/**
+ * Phase E3 (audit M2-link-east-1): a linked neighbour's terrain as the skirt sees it — built by the zone builder from
+ * `ZoneSpec.neighbours`. World (x, z) maps to the neighbour's own frame as (x − dx, z − dz); its heights get `dy`.
+ */
+export interface NeighbourField {
+  /** The side of THIS field the neighbour lies on. */
+  readonly dir: 'n' | 'e' | 's' | 'w';
+  readonly h: HeightfieldData;
+  readonly dx: number; readonly dz: number; readonly dy: number;
+  /** The neighbour's layer fields (its road / plaza continue into the skirt); null → ground and slope detail only. */
+  readonly splat: SplatContext | null;
+}
+
+export const NEIGHBOUR_SKIRT = Object.freeze({
+  /** Metres past this field's edge over which the generic hills give way to the neighbour's heights. */
+  blendM: 20,
+  /** Metres over which the neighbour's road / plaza layers fade in … */
+  layerBlendM: 3,
+  /** … starting this far inside the field edge, so the neighbour's road is nearly full width where this zone's road ends. */
+  layerLeadM: 2,
+  /** Metres inside the neighbour field's own boundary over which it fades back into the hills. */
+  rimM: 16,
+  /** Skirt trees and rocks keep this far from the neighbour's roads (metres from the road edge). */
+  roadClearM: 4,
+});
+
+function smooth01(t: number): number {
+  const c = Math.min(1, Math.max(0, t));
+  return c * c * (3 - 2 * c);
+}
+
+/** Weight in [0, 1] of the neighbour's terrain at world (x, z): 0 on this field, off its side and outside its field. */
+export function neighbourWeight(n: NeighbourField, half: number, x: number, z: number, blend: number = NEIGHBOUR_SKIRT.blendM, lead = 0): number {
+  const along = n.dir === 'e' ? x - half : n.dir === 'w' ? -x - half : n.dir === 's' ? z - half : -z - half;
+  if (along <= 0) return 0;
+  const nh = n.h.size / 2;
+  const inside = Math.min(nh - Math.abs(x - n.dx), nh - Math.abs(z - n.dz));
+  if (inside <= 0) return 0;
+  return smooth01((along + lead) / blend) * smooth01(inside / NEIGHBOUR_SKIRT.rimM);
+}
+
+/** Phase E3: whether skirt scatter may stand at world (x, z) — not on (or within `roadClearM` of) a neighbour's road / plaza. */
+export function skirtClearFn(h: HeightfieldData, o: SkirtOpts): (x: number, z: number) => boolean {
+  const half = h.size / 2;
+  const ns = (o.neighbours ?? []).filter((n) => n.splat !== null);
+  if (ns.length === 0) return () => true;
+  return (x: number, z: number): boolean => {
+    for (const n of ns) {
+      if (neighbourWeight(n, half, x, z, NEIGHBOUR_SKIRT.layerBlendM) <= 0.05) continue;
+      const lx = x - n.dx; const lz = z - n.dz;
+      const plan = n.splat!.plan;
+      if (plan.plaza && Math.hypot(lx - plan.plaza.x, lz - plan.plaza.z) < plan.plaza.r + NEIGHBOUR_SKIRT.roadClearM) return false;
+      if (roadDistance(n.splat!.roads, lx, lz) < NEIGHBOUR_SKIRT.roadClearM) return false;
+    }
+    return true;
+  };
 }
 
 /**
@@ -237,7 +297,16 @@ export function buildSkirt(h: HeightfieldData, o: SkirtOpts, layers: TerrainLaye
         const hz = (heightAtSkirt(x, z + e) - heightAtSkirt(x, z - e)) / (2 * e);
         const slope = Math.hypot(hx, hz);
         const n = valueNoise(x * 0.15, z * 0.15, o.salt + 9);
-        verts.push({ key: `s${j * (nx + 1) + i}`, x, y, z, nx: -hx, ny: 1, nz: -hz, f0: -1, f1: -1, f2: (slope - 0.55) * 3 + n * 0.8 });
+        let f0 = -1; let f1 = -1; let f2 = (slope - 0.55) * 3 + n * 0.8;
+        // E3: the neighbour's road / plaza / detail layers continue into the skirt on its side
+        for (const nb of o.neighbours ?? []) {
+          if (nb.splat === null) continue;
+          const wl = neighbourWeight(nb, half, x, z, NEIGHBOUR_SKIRT.layerBlendM, NEIGHBOUR_SKIRT.layerLeadM);
+          if (wl <= 0) continue;
+          splatAt(nb.splat, x - nb.dx, z - nb.dz, _sf);
+          f0 += (_sf.plaza - f0) * wl; f1 += (_sf.path - f1) * wl; f2 += (_sf.detail - f2) * wl;
+        }
+        verts.push({ key: `s${j * (nx + 1) + i}`, x, y, z, nx: -hx, ny: 1, nz: -hz, f0, f1, f2 });
       }
     }
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
@@ -255,8 +324,27 @@ export function buildSkirt(h: HeightfieldData, o: SkirtOpts, layers: TerrainLaye
   return out;
 }
 
+const _sf: SplatFields = { plaza: 0, path: 0, detail: 0 };
+
 /** The skirt height function exposed for scatter placement beyond the field (same formula, pure). */
 export function skirtHeightFn(h: HeightfieldData, o: SkirtOpts): (x: number, z: number) => number {
+  const half = h.size / 2;
+  const hills = hillsHeightFn(h, o);
+  const ns = o.neighbours ?? [];
+  if (ns.length === 0) return hills;
+  // E3: on a linked side the hills give way to the neighbour's own terrain (offset so the two link points meet)
+  return (x: number, z: number): number => {
+    let y = hills(x, z);
+    for (const n of ns) {
+      const w = neighbourWeight(n, half, x, z);
+      if (w > 0) y += (heightClamped(n.h, x - n.dx, z - n.dz) + n.dy - y) * w;
+    }
+    return y;
+  };
+}
+
+/** The generic skirt: hills rising away from the field, valleys where roads leave. */
+function hillsHeightFn(h: HeightfieldData, o: SkirtOpts): (x: number, z: number) => number {
   const half = h.size / 2;
   return (x: number, z: number): number => {
     const d = Math.max(Math.abs(x), Math.abs(z)) - half;

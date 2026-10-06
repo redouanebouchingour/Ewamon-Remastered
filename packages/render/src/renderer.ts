@@ -87,6 +87,34 @@ export interface RendererOptions {
    * false when `trackTimestamp` is set (the budget / shot harness measures fully compiled zones).
    */
   readonly backgroundCompile?: boolean;
+  /**
+   * Phase E6: the WebGPU device was lost (driver reset, GPU process crash, TDR). Called once; from then on `frame()`
+   * renders nothing and `deviceLost` holds the info. The renderer cannot be revived: the owner disposes it and creates
+   * a new one (client: World3D re-runs the renderer boot and reloads the current zone). Never called for the device
+   * `dispose()` destroys itself, nor on the WebGL2 fallback.
+   */
+  readonly onDeviceLost?: (info: DeviceLostInfo) => void;
+}
+
+/** Phase E6: what `GPUDevice.lost` resolved with (`GPUDeviceLostInfo.reason` / `.message`). */
+export interface DeviceLostInfo { readonly reason: string | null; readonly message: string }
+
+/** The part of a `GPUDevice` `watchDeviceLost` reads. */
+export interface DeviceLostSource { readonly lost?: PromiseLike<{ readonly reason?: string | null; readonly message?: string } | null | undefined> }
+
+/**
+ * Phase E6: subscribes `onLost` to `device.lost`. A loss with reason `'destroyed'` (our own `dispose()` →
+ * `device.destroy()`) or one that resolves after `isDisposed()` turned true is ignored. Returns false when the device
+ * has no `lost` promise (WebGL2 backend, no device). Pure: tested with a fake device.
+ */
+export function watchDeviceLost(device: DeviceLostSource | null | undefined, onLost: (info: DeviceLostInfo) => void, isDisposed: () => boolean): boolean {
+  const lost = device?.lost;
+  if (lost === undefined || lost === null || typeof lost.then !== 'function') return false;
+  lost.then((info) => {
+    if (isDisposed() || info?.reason === 'destroyed') return;
+    onLost({ reason: info?.reason ?? null, message: info?.message !== undefined && info.message !== '' ? info.message : 'GPU device lost' });
+  }, () => undefined);
+  return true;
 }
 
 /** One `onCompileProgress` report. `done` is true on the last report of a phase (with its wall time when a clock is set). */
@@ -112,6 +140,13 @@ export interface Renderer {
   loadZone(spec: ZoneSpec, opts?: LoadZoneOptions): Promise<ZoneHandle>;   // rejects if a zone is loaded and not yet disposed
   /** T4 addition: resolves when the loaded zone's background compile finished (or its zone was disposed). */
   compileIdle?(): Promise<void>;
+  /**
+   * E3 addition (handover): call right before disposing the current zone for `next` — the dispose keeps `next`'s texture
+   * sets resident (shared surfaces are not fetched / transcoded again), then `loadZone(next)` as usual.
+   */
+  prepareHandover?(next: ZoneSpec): void;
+  /** E6 addition: the lost-device info once `GPUDevice.lost` resolved (then `frame()` renders nothing); null while alive. */
+  readonly deviceLost?: DeviceLostInfo | null;
   setTimeOfDay(t: number): void;               // 0..1; §10.3.5
   setWeather(w: WeatherKind): void;            // §10.3.7
   setHarvestLevel(l: HarvestLevel): void;      // §10.2.6
@@ -324,6 +359,8 @@ export async function createRenderer(o: RendererOptions, subsystems: RendererSub
   }
   // 6. + 7.
   const host = new RendererHost(gpu, backend, caps, ktx2, o, subsystems);
+  // E6: a lost device stops the frames and tells the owner (subscribed before the warm-up, which can take seconds)
+  if (backend === 'webgpu') watchDeviceLost((gpu.backend as unknown as BackendLike).device as DeviceLostSource | undefined, (info) => host.handleDeviceLost(info), () => host.isDisposed);
   // 8.
   await host.warmUp();
   INTERNALS.set(host, host);
@@ -439,6 +476,9 @@ class RendererHost implements Renderer, HostContext {
   private loading = false;
   private lastFrameId = -1;
   private disposed = false;
+  /** E6: set once the WebGPU device was lost; `frame()` renders nothing from then on. */
+  deviceLost: DeviceLostInfo | null = null;
+  private readonly onDeviceLost: ((info: DeviceLostInfo) => void) | null;
 
   constructor(
     gpu: WebGPURenderer,
@@ -454,6 +494,7 @@ class RendererHost implements Renderer, HostContext {
     this.clock = o.clock ?? null;
     this.modelsUrl = o.modelsUrl === undefined ? '/models/' : o.modelsUrl;
     this.onCompileProgress = o.onCompileProgress ?? null;
+    this.onDeviceLost = o.onDeviceLost ?? null;
     this.precompileEnabled = o.precompile !== false;
     // measurement renderers (`trackTimestamp`: the budget / shot harness) compile a zone fully before `loadZone`
     // resolves unless they ask otherwise, so a capture never runs while far units are still gated (T4)
@@ -775,12 +816,60 @@ class RendererHost implements Renderer, HostContext {
       root.traverse((o) => { if (this.gated.has(o)) mine.push(o); });
       dispose();
       for (const o of mine) this.gated.delete(o);
+      this.scheduleWarmRekey();
     };
+  }
+
+  /** E3: the pending / running re-key of the warm objects after an unload (cancelled by the next `loadZone`). */
+  private rekeyRun: CompileRun | null = null;
+
+  /**
+   * Phase E3 (render Part 5 Open 1, "programs +2 after unload"): a zone's compile re-keys the warm objects (library
+   * quads, the billboard / decal / VFX / character warm-ups) and the persistent arena to the zone's light set. Once the
+   * zone is gone nothing renders them, so their render objects keep the zone's light-set variants alive (measured +4
+   * programs after a Mirevale unload: the `dirt` / `glass_warm` / `mist_glass` quads, the character decal, the surf
+   * ripple), against a baseline captured with the boot light set. Unless a next zone starts loading within this task (a
+   * handover, whose own compile re-keys them to its light set), they are compiled against the zone-less light set in
+   * the background — the boot's set, so exactly the baseline programs come back and the zone variants are released.
+   * `compileIdle()` resolves when it is done; the leak check reads the counts after it.
+   */
+  private scheduleWarmRekey(): void {
+    if (!this.precompileEnabled || this.disposed) return;
+    const run: CompileRun = { cancelled: false };
+    this.rekeyRun = run;
+    let settle!: () => void;
+    const done = new Promise<void>((res) => { settle = res; });
+    const prev = this.background;
+    this.background = prev.then(() => done);
+    setTimeout(() => {
+      if (run.cancelled || this.disposed || this.loading || (this.zone !== null && !isDisposedHandle(this.zone))) { settle(); return; }
+      const items: CompileItem[] = [];
+      for (const o of this.warmGroup?.children ?? []) items.push({ object: o, owned: false });
+      for (const o of this.persistent) items.push({ object: o, owned: false });
+      void prev
+        .then(() => (run.cancelled ? undefined : this.compileQueue('background', null, items, BACKGROUND_CONCURRENCY, run, true)))
+        .catch((e: unknown) => { if (isDevBuild()) console.error('@ewa/render: warm re-key failed', e); })
+        .finally(() => { if (this.rekeyRun === run) this.rekeyRun = null; settle(); });
+    }, 0);
   }
 
   private captureBaseline(): void {
     this.refreshSceneCounts();
     this.baseline = readBudgetCounts(this.renderer.info, this.statsRecord.materials, this.lightCounts.shadow, this.lightCounts.nonShadow, this.textureCorrection());
+  }
+
+  get isDisposed(): boolean { return this.disposed; }
+
+  /**
+   * E6: the device is gone. Frames stop (three also skips its render calls once `_isDeviceLost` is set; the host's own
+   * frame steps — compile holds, HUD uploads, timestamp resolves — would only raise errors on a dead device), the
+   * running zone compile is cancelled through the zone's dispose by the owner, and the owner hears it once.
+   */
+  handleDeviceLost(info: DeviceLostInfo): void {
+    if (this.disposed || this.deviceLost !== null) return;
+    this.deviceLost = info;
+    (this.renderer as unknown as { _isDeviceLost?: boolean })._isDeviceLost = true;
+    try { this.onDeviceLost?.(info); } catch (e) { if (isDevBuild()) console.error('@ewa/render: onDeviceLost threw', e); }
   }
 
   // ---- HostContext ------------------------------------------------------------------------------------
@@ -819,6 +908,7 @@ class RendererHost implements Renderer, HostContext {
       throw new Error(`@ewa/render: loadZone('${spec.id}') while a zone is loaded and not yet disposed`);
     }
     this.loading = true;
+    if (this.rekeyRun !== null) { this.rekeyRun.cancelled = true; this.rekeyRun = null; }   // E3: the new zone re-keys them
     try {
       let openHero: () => void = () => {};
       const heroGate = new Promise<void>((res) => { openHero = res; });
@@ -851,6 +941,10 @@ class RendererHost implements Renderer, HostContext {
     } finally {
       this.loading = false;
     }
+  }
+
+  prepareHandover(next: ZoneSpec): void {
+    (this.zones as ZoneLoader & { prepareHandover?(s: ZoneSpec): void }).prepareHandover?.(next);
   }
 
   setTimeOfDay(t: number): void { this.day.setTime(t); }
@@ -958,7 +1052,7 @@ class RendererHost implements Renderer, HostContext {
 
   /** §10.1.2 frame steps (1)–(7). Zero allocation on the steady path. */
   frame(dtMs: number): void {
-    if (this.disposed) return;
+    if (this.disposed || this.deviceLost !== null) return;
     const hold = this.compileHold;
     if (hold === null) { this.frameSteps(dtMs); return; }
     // a pre-compile is running with the scene pass's target + MRT set on the renderer (H4): render this frame with

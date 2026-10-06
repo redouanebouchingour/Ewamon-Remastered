@@ -9,7 +9,7 @@ import type { Node } from 'three/webgpu';
 import BloomNode from 'three/addons/tsl/display/BloomNode.js';
 import ChromaticAberrationNode from 'three/addons/tsl/display/ChromaticAberrationNode.js';
 import DepthOfFieldNode from 'three/addons/tsl/display/DepthOfFieldNode.js';
-import FilmNode from 'three/addons/tsl/display/FilmNode.js';
+import { GrainNode, grainChannel } from '../src/post/grain.js';
 import GTAONode from 'three/addons/tsl/display/GTAONode.js';
 import SMAANode from 'three/addons/tsl/display/SMAANode.js';
 import TRAANode from 'three/addons/tsl/display/TRAANode.js';
@@ -58,7 +58,7 @@ describe('§10.8.1 order, realised as one graph', () => {
     const { outputNode } = graphOf(ALL_EFFECTS);
     const all = collect(outputNode);
     const [gtao] = find(all, GTAONode); const [traa] = find(all, TRAANode); const [bloom] = find(all, BloomNode);
-    const [dof] = find(all, DepthOfFieldNode); const [ca] = find(all, ChromaticAberrationNode); const [film] = find(all, FilmNode);
+    const [dof] = find(all, DepthOfFieldNode); const [ca] = find(all, ChromaticAberrationNode); const [film] = find(all, GrainNode);
     for (const n of [gtao, traa, bloom, dof, ca, film]) expect(n).toBeDefined();
     expect(contains(film!.inputNode as Node, ca as unknown as Node)).toBe(true);
     expect(contains(ca!.textureNode as Node, dof as unknown as Node)).toBe(true);
@@ -87,7 +87,22 @@ describe('§10.8.1 order, realised as one graph', () => {
     expect(POST_PARAMS.dof.tiltDeg).toBe(24);
     expect(POST_PARAMS.dof.bokehPx).toBe(6);
     expect(plan.find((s) => s.id === 'vignette')!.params.strength).toBe(0.22);
-    expect(plan.find((s) => s.id === 'grain')!.params.intensity).toBe(0.035);
+    expect(plan.find((s) => s.id === 'grain')!.params.intensity).toBe(0.052);
+  });
+
+  it('grain is zero-mean and luminance-weighted (§10.8.2 as amended 2026-10-06; audit M2-spawn-noon-13)', () => {
+    const k = POST_PARAMS.grain;
+    // mean over a uniform hash n ∈ [0, 1) is the input: full and reduced effects agree in exposure
+    for (const c of [0.05, 0.2, 0.5, 0.8]) {
+      let sum = 0; const N = 1000;
+      for (let i = 0; i < N; i++) sum += grainChannel(c, c, k, (i + 0.5) / N);
+      expect(sum / N).toBeCloseTo(c, 9);
+    }
+    // blacks stay black, whites stay white; mid-grey swings ±k/2 (σ ≈ k / √12 ≈ 1.5 %)
+    expect(grainChannel(0, 0, k, 1)).toBe(0);
+    expect(grainChannel(1, 1, k, 0)).toBe(1);
+    expect(grainChannel(0.5, 0.5, k, 1) / 0.5 - 1).toBeCloseTo(k / 2, 9);
+    expect(k / Math.sqrt(12)).toBeCloseTo(0.015, 3);
   });
 });
 
@@ -97,7 +112,7 @@ describe('§10.8.4 ReducedEffects: absent, not zeroed', () => {
     return {
       gtao: find(all, GTAONode).length, traa: find(all, TRAANode).length, smaa: find(all, SMAANode).length,
       bloom: find(all, BloomNode).length, dof: find(all, DepthOfFieldNode).length, ca: find(all, ChromaticAberrationNode).length,
-      film: find(all, FilmNode).length,
+      film: find(all, GrainNode).length,
     };
   };
 

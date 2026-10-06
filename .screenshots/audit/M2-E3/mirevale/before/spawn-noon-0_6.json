@@ -1,0 +1,392 @@
+{
+  "set": "E3before",
+  "zone": "mirevale",
+  "shot": "spawn-noon",
+  "n": 1,
+  "table": {
+    "n": 1,
+    "id": "spawn-noon",
+    "zone": "mirevale",
+    "heading": 0,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "overworld, player idle"
+  },
+  "layoutSeed": 1293811713,
+  "anchor": {
+    "layoutSeed": 1293811713,
+    "shot": "spawn-noon",
+    "zone": "mirevale",
+    "heading": {
+      "spec": 0,
+      "rig": 2,
+      "viewForward": [
+        -0.5736,
+        0.8192
+      ],
+      "convention": "words"
+    },
+    "x": 0,
+    "z": 6,
+    "snapped": false,
+    "raw": [
+      0,
+      6
+    ],
+    "rule": "ZoneDef.spawn",
+    "base": {
+      "name": "spawn",
+      "x": 0,
+      "z": 6
+    },
+    "offset": null,
+    "wild": null,
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "spawn-noon-0_6-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 126.2,
+        "blackShare": 0,
+        "greyShare": 0.0001,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "spawn-noon",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 2,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            9.181,
+            20.863,
+            -7.112
+          ],
+          "focus": [
+            0,
+            0.375,
+            6
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 360,
+          "triangles": 626417,
+          "texturesSize": 493119383,
+          "textures": 157,
+          "geometries": 486,
+          "programs": 109,
+          "renderTargets": 34,
+          "attributes": 1851,
+          "attributesSize": 116570628,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17,
+          "beautyDrawCalls": 113,
+          "shadowDrawCalls": 247
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 109
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a child",
+            "the berry-gardener",
+            "Hessa Dunmore, town archivist"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 150
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "spawn-noon-0_6-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 122.2,
+        "blackShare": 0,
+        "greyShare": 0.0001,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "spawn-noon",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 2,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            9.181,
+            20.863,
+            -7.112
+          ],
+          "focus": [
+            0,
+            0.375,
+            6
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 349,
+          "triangles": 626406,
+          "texturesSize": 417303387,
+          "textures": 145,
+          "geometries": 486,
+          "programs": 101,
+          "renderTargets": 24,
+          "attributes": 1995,
+          "attributesSize": 126528004,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17,
+          "beautyDrawCalls": 102,
+          "shadowDrawCalls": 247
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 101
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a child",
+            "the berry-gardener",
+            "Hessa Dunmore, town archivist"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 240
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "spawn-noon-0_6-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 0.7,
+        "blackShare": 0.9974,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9974,
+          "full": 0.0026,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.4945,
+        "battlers": []
+      },
+      "stage": {
+        "shot": "spawn-noon",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 2,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            9.181,
+            20.863,
+            -7.112
+          ],
+          "focus": [
+            0,
+            0.375,
+            6
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 360,
+          "triangles": 626417,
+          "texturesSize": 493119391,
+          "textures": 159,
+          "geometries": 486,
+          "programs": 113,
+          "renderTargets": 34,
+          "attributes": 1995,
+          "attributesSize": 126528004,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17,
+          "beautyDrawCalls": 113,
+          "shadowDrawCalls": 247
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 113
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a child",
+            "the berry-gardener",
+            "Hessa Dunmore, town archivist"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 330
+      }
+    }
+  ]
+}

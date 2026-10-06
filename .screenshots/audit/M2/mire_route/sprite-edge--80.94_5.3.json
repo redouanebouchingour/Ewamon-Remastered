@@ -78,7 +78,7 @@
     "device": "0xa7a8",
     "description": "Intel(R) UHD Graphics"
   },
-  "chrome": "Chrome/154.0.8037.93",
+  "chrome": "Chrome/154.0.8037.98",
   "variants": [
     {
       "variant": "full",
@@ -86,9 +86,9 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 139.2,
+        "meanLuma": 110.9,
         "blackShare": 0,
-        "greyShare": 0,
+        "greyShare": 0.0003,
         "levels": {
           "zero": 0,
           "full": 0,
@@ -141,25 +141,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 166,
-          "triangles": 830966,
+          "drawCalls": 167,
+          "triangles": 873378,
           "texturesSize": 668886935,
           "textures": 166,
-          "geometries": 263,
-          "programs": 111,
+          "geometries": 266,
+          "programs": 113,
           "renderTargets": 34,
-          "attributes": 1312,
-          "attributesSize": 59301944,
-          "materials": 13,
+          "attributes": 1320,
+          "attributesSize": 60563576,
+          "materials": 14,
           "shadowLights": 3,
           "nonShadowLights": 9,
-          "beautyDrawCalls": 80,
+          "beautyDrawCalls": 81,
           "shadowDrawCalls": 86
         },
         "settle": {
           "frames": 90,
           "stable": true,
-          "programs": 111
+          "programs": 113
         },
         "rects": {
           "player": [
@@ -188,9 +188,9 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 137.8,
+        "meanLuma": 110.8,
         "blackShare": 0,
-        "greyShare": 0,
+        "greyShare": 0.0003,
         "levels": {
           "zero": 0,
           "full": 0,
@@ -240,25 +240,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 155,
-          "triangles": 830955,
+          "drawCalls": 156,
+          "triangles": 873367,
           "texturesSize": 593070939,
           "textures": 154,
-          "geometries": 263,
-          "programs": 104,
+          "geometries": 266,
+          "programs": 107,
           "renderTargets": 24,
-          "attributes": 1488,
-          "attributesSize": 73141816,
-          "materials": 13,
+          "attributes": 1496,
+          "attributesSize": 74842232,
+          "materials": 14,
           "shadowLights": 3,
           "nonShadowLights": 9,
-          "beautyDrawCalls": 69,
+          "beautyDrawCalls": 70,
           "shadowDrawCalls": 86
         },
         "settle": {
           "frames": 90,
           "stable": true,
-          "programs": 104
+          "programs": 107
         },
         "rects": {
           "player": [
@@ -298,7 +298,7 @@
       },
       "checks": [],
       "maskCoverage": {
-        "player": 0.523,
+        "player": 0.5236,
         "battlers": []
       },
       "stage": {
@@ -345,25 +345,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 166,
-          "triangles": 830966,
+          "drawCalls": 167,
+          "triangles": 873378,
           "texturesSize": 668886943,
           "textures": 168,
-          "geometries": 263,
-          "programs": 116,
+          "geometries": 266,
+          "programs": 119,
           "renderTargets": 34,
-          "attributes": 1488,
-          "attributesSize": 73141816,
-          "materials": 13,
+          "attributes": 1496,
+          "attributesSize": 74842232,
+          "materials": 14,
           "shadowLights": 3,
           "nonShadowLights": 9,
-          "beautyDrawCalls": 80,
+          "beautyDrawCalls": 81,
           "shadowDrawCalls": 86
         },
         "settle": {
           "frames": 90,
           "stable": true,
-          "programs": 116
+          "programs": 119
         },
         "rects": {
           "player": [
@@ -386,5 +386,41 @@
         "frame": 330
       }
     }
-  ]
+  ],
+  "edgeScan": {
+    "species": "mossling",
+    "rect": [
+      -97,
+      -280,
+      1537,
+      1101
+    ],
+    "frameTexels": 1024,
+    "magnification": 1.349,
+    "magnificationStock": 0.384,
+    "cameraDistance": 3.997,
+    "fovDeg": 8.109,
+    "frames": 53,
+    "scan": {
+      "rect": [
+        1,
+        1,
+        1439,
+        899
+      ],
+      "silhouettePx": 832530,
+      "boundaryPx": 6867,
+      "straightPx": 6412,
+      "sampled": 200,
+      "intermediateSampled": 0,
+      "intermediateInRect": 0,
+      "want": 200,
+      "pass": true
+    },
+    "files": [
+      "sprite-edge--80.94_5.3-edgemask.png",
+      "sprite-edge--80.94_5.3-output.png"
+    ],
+    "checks": []
+  }
 }

@@ -16,10 +16,10 @@ export type {
 // ---- §10.1 renderer host + §10.10 probe ----
 export {
   CAMERA_LAYERS, CAMERA_PARAMS, COMPILE_CONCURRENCY, DEFAULT_SUBSYSTEMS, MAX_DRAWING_WIDTH, MIN_MAX_TEXTURE_SIZE, PIXEL_RATIO_CAP, RenderInitError,
-  chooseKtx2Target, clampPixelRatio, createBudgetProbe, createRenderer, createZoneView, rendererInternals,
+  chooseKtx2Target, clampPixelRatio, createBudgetProbe, createRenderer, createZoneView, rendererInternals, watchDeviceLost,
 } from './renderer.js';
 export type {
-  BudgetProbe, CameraShot, CompileProgress, FrameHook, HostContext, HudBinding, PassMeasureOptions, Renderer, RendererOptions, RendererProbe,
+  BudgetProbe, CameraShot, CompileProgress, DeviceLostInfo, DeviceLostSource, FrameHook, HostContext, HudBinding, PassMeasureOptions, Renderer, RendererOptions, RendererProbe,
   RendererSubsystems, RenderInitErrorCode, ZoneView, ZoneViewOptions,
 } from './renderer.js';
 
@@ -105,7 +105,7 @@ export type {
   HudLayer, HudModel, Layout, Marker, Pickup, PropPlacement, SetPieceId, SpriteAnim, SpriteDescriptor, SpriteFrame, Tablet, Terrain, TerrainColliderLike,
   TypeName, VariantKey, VfxId, WaterSpec, ZoneHandle, ZoneSpec, ActorSpawn, PlanRoadData, ZonePlanData,
   HallBounds, InteriorLocalPoint, InteriorLocalRect, InteriorSpec, InteriorTemplateId, InteriorThemeId, InteriorsHandle,
-  ObstacleSpec, ObstaclesHandle,
+  ObstacleSpec, ObstaclesHandle, NeighbourSpec,
 } from './contracts.js';
 export { BasicDioramaRig, NullActorPool, NullBattleStage, NullHudLayer, unimplementedZoneLoader } from './defaults.js';
 export type { ZoneLoader } from './defaults.js';

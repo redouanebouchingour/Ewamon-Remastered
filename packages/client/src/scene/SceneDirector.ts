@@ -32,7 +32,7 @@ import { itemInfo } from '../data/content';
 import type { AudioDirector } from '../audio/AudioDirector';
 import { reverbKindFor } from '../audio/mixer';
 import { PUSH_IN, RELEASE, UNDRESS_MS } from '../battle/constants';
-import { HARVEST_LEVEL, zoneSpecFor } from './zoneSpecFor';
+import { HARVEST_LEVEL, withNeighbours, zoneSpecFor } from './zoneSpecFor';
 import type { HudWriter } from './HudWriter';
 import type { Interactable, InteractionTargets } from './interaction';
 import { makeInteractable } from './interaction';
@@ -377,9 +377,11 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
   }
 
   async function doLoad(id: ZoneId, h: HarvestState, focus: { readonly x: number; readonly z: number } | null): Promise<void> {
-    unload();
     const z = zoneDef(id);
-    const spec = zoneSpecFor(z, h);
+    const spec = withNeighbours(zoneSpecFor(z, h), z);   // E3: the skirt continues into the linked zones
+    // E3: a handover keeps the next zone's texture sets through the old zone's dispose (shared surfaces stay resident)
+    if (handle !== null) d.renderer.prepareHandover?.(spec);
+    unload();
     handleSpec = spec;
     const zh = await d.renderer.loadZone(spec, { focus: focus ?? { x: z.spawn.x, z: z.spawn.z } });
     handle = zh;
