@@ -1434,8 +1434,8 @@ builder's collider footprints equal content's. So the pass only adds what change
    grass patches), plus pockets, hand-placed props, light posts and D10 obstacles.
 2. **Rock clusters** (`rockClusters`): 1–6 small stones and 3 tufts round each big `rock_a` (scale > 0.8).
 3. **Scree and shards** (`screeClusters`). Banded clusters of 3–7 small stones everywhere (0.002–0.032 per m²).
-   Crystal-shard clusters (`buildShard`, the set's `props.crystal`) in marrow (0.005), shrine (0.012) and rift
-   (0.014). This is the one new scatter kind, `crystal_shard`: 3 tiers, no shadow, cover class small, so the arena
+   Crystal-shard clusters (`buildShard`, the set's `props.crystal`) in shrine (0.012) and rift (0.014) only (marrow
+   had 0.005 in the first cut; it bound `gypsum_crystal` as a new material in marrowdig / deepcut, so it was dropped). This is the one new scatter kind, `crystal_shard`: 3 tiers, no shadow, cover class small, so the arena
    clears it.
 4. **Bushes for every green-ish biome.** `DressingStyle.bush` / `bushDensity` apply to sets without `bushLeaf`:
    `tall_grass` clumps in salt, cinder and marrow; `pine_needle` in storm and forge. They are not written into

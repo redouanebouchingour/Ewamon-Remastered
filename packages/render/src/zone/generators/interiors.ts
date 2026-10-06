@@ -77,6 +77,13 @@ export interface ThemeKit {
   readonly leaf: SurfaceId | null;
   readonly hedgeCore: SurfaceId; readonly dark: SurfaceId; readonly cloud: SurfaceId; readonly water: SurfaceId;
   readonly flower: SurfaceId | null;
+  /**
+   * The rug's field (2026-10-06, live report: the league foyer's `sun_marble` runner rug read as a flat white slab at
+   * dusk): a muted surface the theme already binds, never an alpha card (the cloth surfaces are banner / sail / flag
+   * cards) — the row's `rug`, else the row's runner; the zone-set themes (shop / healer / house) take the zone's cloth,
+   * else its wood.
+   */
+  readonly rug: SurfaceId;
   readonly style: PropStyle;
 }
 
@@ -84,19 +91,21 @@ interface ThemeRow {
   readonly set: keyof typeof BIOME_GENERATORS;
   readonly floor: SurfaceId; readonly border: SurfaceId; readonly runner: SurfaceId; readonly wall: SurfaceId; readonly trim: SurfaceId;
   readonly cloth: SurfaceId; readonly hedgeCore: SurfaceId; readonly cloud: SurfaceId;
+  /** rug field when the runner is too pale / not a textile (default: the runner) */
+  readonly rug?: SurfaceId;
 }
 
 /** The 8 gym dressings + the league hall (fixed sets); shop / healer / house dress in the zone's own set. */
 const THEME_ROWS: Readonly<Partial<Record<InteriorThemeId, ThemeRow>>> = {
-  grove: { set: 'grove', floor: 'path_gravel', border: 'stone_wall', runner: 'grove_moss', wall: 'stone_wall', trim: 'timber', cloth: 'plaster', hedgeCore: 'grove_moss', cloud: 'plaster' },
+  grove: { set: 'grove', floor: 'path_gravel', border: 'stone_wall', runner: 'grove_moss', wall: 'stone_wall', trim: 'timber', cloth: 'plaster', hedgeCore: 'grove_moss', cloud: 'plaster', rug: 'thatch' },
   cinder: { set: 'cinder', floor: 'cinder_basalt', border: 'obsidian', runner: 'cinder_scoria', wall: 'forge_brick', trim: 'cinder_basalt', cloth: 'obsidian', hedgeCore: 'cinder_ash_soil', cloud: 'cinder_ash_soil' },
   salt: { set: 'salt', floor: 'harbour_plank', border: 'barnacle_stone', runner: 'driftwood', wall: 'barnacle_stone', trim: 'driftwood', cloth: 'sailcloth', hedgeCore: 'salt_sand', cloud: 'salt_sand' },
   storm: { set: 'storm', floor: 'wet_flagstone', border: 'storm_slate', runner: 'copper_oxide', wall: 'tower_stone', trim: 'copper_oxide', cloth: 'storm_slate', hedgeCore: 'storm_slate', cloud: 'tower_stone' },
   marrow: { set: 'marrow', floor: 'marrow_sandstone', border: 'bone_chalk', runner: 'mine_timber', wall: 'marrow_sandstone', trim: 'mine_timber', cloth: 'bone_chalk', hedgeCore: 'canyon_dust', cloud: 'bone_chalk' },
   vesper: { set: 'vesper', floor: 'lichen_stone', border: 'wrought_iron', runner: 'grave_moss', wall: 'lichen_stone', trim: 'wrought_iron', cloth: 'vesper_bark_black', hedgeCore: 'grave_moss', cloud: 'mist_glass' },
-  forge: { set: 'forge', floor: 'castle_granite', border: 'rivet_iron', runner: 'forge_steel_plate', wall: 'castle_granite', trim: 'forge_steel_plate', cloth: 'banner_cloth', hedgeCore: 'castle_granite', cloud: 'castle_granite' },
-  sky: { set: 'sky', floor: 'sky_marble', border: 'gold_leaf', runner: 'cloud_stone', wall: 'cloud_stone', trim: 'gold_leaf', cloth: 'prayer_silk', hedgeCore: 'snow', cloud: 'snow' },
-  league: { set: 'capital', floor: 'plaza_pale_stone', border: 'gilt_bronze', runner: 'sun_marble', wall: 'sun_marble', trim: 'gilt_bronze', cloth: 'banner_cloth', hedgeCore: 'laurel_leaf', cloud: 'sun_marble' },
+  forge: { set: 'forge', floor: 'castle_granite', border: 'rivet_iron', runner: 'forge_steel_plate', wall: 'castle_granite', trim: 'forge_steel_plate', cloth: 'banner_cloth', hedgeCore: 'castle_granite', cloud: 'castle_granite', rug: 'charred_timber' },
+  sky: { set: 'sky', floor: 'sky_marble', border: 'gold_leaf', runner: 'cloud_stone', wall: 'cloud_stone', trim: 'gold_leaf', cloth: 'prayer_silk', hedgeCore: 'snow', cloud: 'snow', rug: 'dragon_scale_tile' },
+  league: { set: 'capital', floor: 'plaza_pale_stone', border: 'gilt_bronze', runner: 'sun_marble', wall: 'sun_marble', trim: 'gilt_bronze', cloth: 'banner_cloth', hedgeCore: 'laurel_leaf', cloud: 'sun_marble', rug: 'grove_moss' },
 };
 
 function isCard(s: SurfaceId): boolean { return SURFACES[s].cls === 'card'; }
@@ -125,6 +134,8 @@ export function themeKit(theme: InteriorThemeId, zoneSet: BiomeSet): ThemeKit {
     wood: p.wood, metal: p.metal, stone: p.stone, glow: p.glow, accent: set.accent ?? p.glow, crystal: p.crystal, candle: p.candle,
     glass: b.glass, rock: set.rock, soil: p.soil, leaf, hedgeCore: base.hedgeCore, dark: 'lantern_metal' as SurfaceId, cloud: base.cloud,
     water: zp.water ?? 'water_pond', flower: set.flower,
+    // never an alpha-card cloth (banner / sail / flag shapes would tile as cut-outs): the first non-card candidate
+    rug: [...(row ? [row.rug, row.runner] : [zp.cloth, zp.wood]), base.floor].find((x): x is SurfaceId => x !== undefined && !isCard(x))!,
   };
   const style: PropStyle = {
     wood: kit.wood, metal: kit.metal, stone: kit.stone, housingGlass: 'glass_warm', glow: kit.glow, crystal: kit.crystal, candle: kit.candle,
@@ -139,7 +150,7 @@ export function interiorSurfaces(specs: readonly InteriorSpec[], zoneSet: BiomeS
   if (specs.length === 0) return [];
   for (const sp of specs) {
     const k = themeKit(sp.theme, zoneSet);
-    for (const s of [k.floor, k.border, k.runner, k.wall, k.trim, k.cloth, k.wood, k.metal, k.stone, k.glow, k.accent, k.crystal, k.candle, k.glass, k.rock, k.soil, k.hedgeCore, k.dark, k.cloud, k.water, 'glass_warm' as SurfaceId]) out.add(s);
+    for (const s of [k.floor, k.border, k.runner, k.wall, k.trim, k.cloth, k.wood, k.metal, k.stone, k.glow, k.accent, k.crystal, k.candle, k.glass, k.rock, k.soil, k.hedgeCore, k.dark, k.cloud, k.water, k.rug, 'glass_warm' as SurfaceId]) out.add(s);
     if (k.leaf) out.add(k.leaf);
     if (k.flower) out.add(k.flower);
     if (k.style.leaf) out.add(k.style.leaf);
@@ -541,8 +552,12 @@ function propInto(t: Parts, kind: string, kit: Kit, size: readonly [number, numb
       return true;
     }
     case 'rug': {
-      box(t, kit.trim, 0, -0.022, 0, 3.12, 0.03, 2.12, 0, 0.008);
-      box(t, kit.runner, 0, -0.02, 0, 3.0, 0.035, 2.0, 0, 0.01);
+      // a woven field in the theme's rug surface, a narrow border and two inner bands in the trim, fringe at the ends;
+      // 2.4 × 1.6 m before the prop's scale (the league foyer's 1.4 gives 3.4 × 2.2 m; it was 4.2 × 2.8 m of pale marble)
+      box(t, kit.trim, 0, -0.022, 0, 2.5, 0.03, 1.7, 0, 0.008);
+      box(t, kit.rug, 0, -0.02, 0, 2.4, 0.034, 1.6, 0, 0.01);
+      for (const sz of [-1, 1]) box(t, kit.trim, 0, -0.019, sz * 0.58, 2.1, 0.034, 0.06, 0, 0.004);
+      for (const sx of [-1, 1]) for (let k = 0; k < 9; k++) box(t, kit.trim, sx * 1.27, -0.022, -0.72 + k * 0.18, 0.1, 0.012, 0.025, 0, 0.002);
       return true;
     }
     case 'plant': {
