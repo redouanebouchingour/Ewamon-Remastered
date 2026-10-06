@@ -157,6 +157,15 @@ describe('Phase A interiors (client)', () => {
     expect(targets.staticEntries().filter((e) => e.kind === 'healer').map((e) => e.id)).toContain(`healer:${league.def.id}.nurse`);
   });
 
+  it('a player already holding wardens_met finds Kirei in her chamber, not the foyer, on entering the league hall', async () => {
+    const { d, actors } = await director('solenne', { current: new Set(['wardens_met']) });
+    const hall = gymOf('solenne');
+    const [ex, ez] = entryOf(hall);
+    d.updatePocket(ex, ez);
+    const kirei = interiorLeaders('solenne').find((l) => l.leagueId === 'kirei')!;
+    expect(actors.get('kirei')).toMatchObject({ x: kirei.x, z: kirei.z });
+  });
+
   it('pocket tracking: entering sets the hall active, the yaw base down the hall and heading 0; leaving restores both', async () => {
     const { d, r, log, actors, heading, base } = await director('mirevale', { current: new Set() });
     const gym = gymOf('mirevale');

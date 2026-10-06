@@ -299,7 +299,9 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     director.syncView(pocketYawDeg(p) * DEG2RAD);
     const z = current;
     if (z === null) return;
-    activeActors = pocketActors(z, p, lastFlags);
+    // the player's flags NOW (a greeting leader — Kirei until `wardens_met` — stands by them; `lastFlags` may still be
+    // empty when the first pocket is entered before the first flag refresh)
+    activeActors = pocketActors(z, p, d.flags());
     for (const a of activeActors) spawnStatic(a.id, a.look, a.name, a.x, a.z, a.angle, a.kind === 'npc', true);
   }
 
