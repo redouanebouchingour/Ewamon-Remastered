@@ -8,6 +8,26 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 <!-- 2026-10-06 true-colour sprite cache: the per-sprite stage cache was a 256-colour dithered palette (sharp `png({ effort })`), and every static creature atlas was composed from it. Two entries, newest on top. -->
 
+## 2026-10-06 — `50-verification-budget.md` §50.2.2 (Texture memory row), `10-render.md` §10.10 — the texture metric subtracts the level 0 three's `Info` counts twice for the creature atlases
+Why: three 0.186 `Info._getTextureMemorySize` adds the image's level 0 AND every `mipmaps` entry; §10.4.1 puts level 0 into `mipmaps` (`[l0, l1, l2, l3]`, or three uploads level 1 as level 0), so every creature atlas, flipbook and single read 1.753 × the GPU memory it allocates (a 2048² atlas 58.7 MB for 33.5 MB, a 3072 × 2048 flipbook side 88.0 MB for 50.2 MB). The row measures GPU texture memory; it already corrects the KTX2 bytes three counts as 1.
+Evidence: render IMPLEMENTATION-NOTES Part 9 R1 (three `src/renderers/common/Info.js` lines 449–509); `packages/render/test/residency.test.ts` (three's own count − `infoOvercountBytes` = the chain estimate, static and anim); client IMPLEMENTATION-NOTES "Creature textures" (every harness row read both ways).
+Affects: `packages/render/src/{renderer,stage/wiring,sprites/atlas,sprites/billboard}.ts`; `RenderStats.textureBytes`, `BudgetCounts.texturesSize`, `harness:budget` (Mirevale idle 495.2 → 444.9 MB at 1440 × 900).
+
+## 2026-10-06 — `10-render.md` §10.4.2 — `BillboardPool.atlasUsers` / `atlasRefs` / `infoOvercountBytes`, `CreatureBillboard.setFlipbook(on)`, `FrameHook.textureOvercountBytes?`
+Why: the client's residency must not count an atlas a billboard still samples as freed, and must be able to free the flipbook of a card that stays up but is never on screen (a legendary static more than 52 m away).
+Evidence: render IMPLEMENTATION-NOTES Part 9 R2–R3; `test/residency.test.ts`; client `test/creatureTextures.test.ts` (end to end on `BillboardPool`).
+Affects: `packages/render/src/sprites/billboard.ts`, `renderer.ts`, `stage/wiring.ts`; no program, material, draw-call or per-frame allocation change.
+
+## 2026-10-06 — `20-client.md` §20.4.4 (new paragraph "Creature texture residency"), `50-verification-budget.md` §50.2.2 (the creature share of the texture cap) — owners release every creature atlas; a view binds the ONE side it shows; 20 s grace, 2 flipbooks + 4 static atlases idle; a live creature budget = the cap − every other texture byte − 16 MiB
+Why: the client bound a species' static atlas and BOTH flipbook sides the first time it saw it and never released a creature atlas; with the animated legendaries every legendary met or carried kept 100–150 MB for the session (a battle zenryu vs raikitsune 965 MB as three counted it; 10 legendary battles + 10 evolutions 3.9 GB; nothing returned on leaving).
+Evidence: client IMPLEMENTATION-NOTES "Creature textures" (harness before / after table, `pnpm harness:textures`); `packages/client/test/creatureTextures.test.ts` (17 tests); render `test/residency.test.ts`.
+Affects: `packages/client/src/scene/{creatureTextures,SpawnViews,LegendaryViews,RaidViews,EvolutionDirector,World3D,spriteCatalog}.ts`, `src/harness/*`, `scripts/harness/{textures,common}.ts`.
+
+## 2026-10-06 — `20-client.md` §20.10.3 — phase 3 binds the zone's static set, the party's STATIC atlases and the FRONT flipbooks of legendary statics within 40 m of the arrival point (supersedes the same-day entry below that loaded both sides of the statics' and the party's flipbooks)
+Why: a party flipbook only ever shows its back, in battle (bound by the battle when shown); a static shows its front, and only near the player. Binding both sides of all of them at zone load was the bulk of the leak above.
+Evidence: client IMPLEMENTATION-NOTES "Creature textures" (galvan_route with both statics standing: 1471 → 878 MB raw, 990 → 652 MB corrected).
+Affects: `packages/client/src/scene/World3D.ts` (`bindZoneAtlases`), `harness/HarnessWorld.ts`; galvan_route's phase-3 payload ≈ 4.7 MB → 0–2.4 MB; Mirevale unchanged.
+
 ## 2026-10-06 — `20-client.md` §20.10.3 — phase 3's creature-atlas figures follow the true-colour rebuild: Mirevale 0.83 MB (was 2 × 0.544), the 8-atlas zones 3.75 / 3.79 MB (was "4.35")
 Why: the static atlases are 8 % smaller after the rebuild below, and the old figure for the 8-atlas zones was 8 × the per-atlas mean rather than their measured bytes (4.15 / 4.17 MB before the rebuild). The zones are now 0.21–0.25 MB under the 4 MB phase-3 figure on their own atlases; one party single still takes them over, so R12 stands.
 Evidence: `packages/client/public/creatures/creatures.manifest.json` (`zones.mirevale`, `zones.galvan_route`, `zones.solenne` summed over each atlas's albedo + normal + emissive `bytes`).

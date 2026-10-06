@@ -62,7 +62,7 @@ Statistic: over a 600-frame capture after 120 warm-up frames, **median ≤ targe
 |---|---|---|
 | Draw calls (beauty + post) | `BudgetCounts.beautyDrawCalls` = `renderer.info.render.drawCalls` − the frame's shadow-map draws (`shadowDrawCalls`, ≤ 564 separately, §10.5.8) <!-- amended 2026-09-30: the source column counted the shadow cascades, which §10.5.8 excludes — audit M2-gym-dusk-7 --> | ≤ 400 |
 | Triangles | `renderer.info.render.triangles` | ≤ 2 500 000 |
-| Texture memory | `renderer.info.memory.texturesSize` **+** `materials.residentTextureBytes()` (= `RenderStats.textureBytes`; three counts every compressed texture as 1 byte, `Info.js` lines 449–453) | ≤ 700 MB (734 003 200 bytes) |
+| Texture memory | `renderer.info.memory.texturesSize` **+** `materials.residentTextureBytes()` **−** the sprite pool's `infoOvercountBytes()` (= `RenderStats.textureBytes`; three counts every compressed texture as 1 byte, `Info.js` lines 449–453, and counts a creature atlas's level 0 twice because §10.4.1 puts level 0 into `mipmaps`, `Info.js` lines 449–509) <!-- amended 2026-10-06 --> | ≤ 700 MB (734 003 200 bytes); creature textures get a live share = the cap − every other texture byte − 16 MiB (`20-client.md` §20.4.4 residency) |
 | Unique materials | distinct `Material.uuid` reachable from the zone root, excluding the `debug` layer | ≤ 48 |
 | Shadow-casting lights | `PointLight`/`SpotLight` with `castShadow === true`, scene-wide (the 2 arena beacons included) | ≤ 8 (+ sun) |
 | Non-shadowing lights | `PointLight`/`SpotLight` with `castShadow === false` | ≤ 24 |

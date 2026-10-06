@@ -3025,6 +3025,8 @@ export interface SpritePool {
 }
 ```
 
+**Residency hooks** <!-- amended 2026-10-06 -->: `BillboardPool.atlasUsers(id)` / `atlasRefs(id)` report how many billboards sample an atlas and how many binds hold it (the client's residency never treats an atlas a billboard still samples as freed — render keeps it while users > 0); `BillboardPool.infoOvercountBytes()` is the level-0 bytes three's `Info` counts twice for every bound creature atlas, flipbook and single (subtracted from `RenderStats.textureBytes`, `50-verification-budget.md` §50.2.2); `CreatureBillboard.setFlipbook(on)` shows the card's static frame and stops sampling — and waiting for — its flipbook (a legendary static more than 52 m from the player); `FrameHook.textureOvercountBytes?()`. No program, material, draw-call or per-frame allocation change.
+
 ### 10.4.3 Geometry and anchoring
 
 Quad: `PlaneGeometry(1, 1)` shared by every billboard, scaled per instance. World height `H = 1.6 m × sizeScale` (range 0.8–3.52 m); width `H × aspect`. The quad's local origin is the **foot point**: vertices span `y ∈ [−footV·H, (1 − footV)·H]`, so `setPosition` places the feet on the sampled ground. Texel density: 1024 texels over 1.6 m = 640 texel/m.
@@ -3728,6 +3730,8 @@ export function createZoneView(o: ZoneViewOptions): Promise<ZoneView>;   // crea
 
 `setPassEnabled('opaque' | 'sprites' | 'shadows', false)` are realised outside the post graph: `opaque` → the zone root's `visible = false` (billboards stay), `sprites` → `layers` 28/29 and the billboard layer 27 disabled on the camera, `shadows` → `gpu.shadowMap.enabled = false`. The other five are post-graph rebuilds (§10.8.2). `gpuFrameMs()` = `gpu.resolveTimestampsAsync(TimestampQuery.RENDER)`; `undefined` without `timestamp-query`.
 
+**Texture bytes** <!-- amended 2026-10-06 -->: `RenderStats.textureBytes` = `info.memory.texturesSize` + the library's resident KTX2 bytes − the sprite pool's `infoOvercountBytes()`; a 2048² creature atlas reads 33.5 MB (three's own count 58.7 MB), a 3072 × 2048 flipbook side 50.2 MB (88.0 MB).
+
 ### 10.10.2 Assertions (the `PLAN.md` table, made per-pass by `50-verification-budget.md` §50.2.1, restated as what this package must hit on the reference machine)
 
 | Row | Target ms | Ceiling ms | What in this file decides it |
@@ -4292,6 +4296,8 @@ export function zoneSpecFor(zone: ZoneDef, harvest: HarvestState): ZoneSpec;
 
 Field mapping (the adapter is a table, not logic; target names are `10-render.md` §10.5.1 `ZoneSpec`): `zone.id → spec.id`; `zone.layoutSeed → spec.seed`; `zone.biome → spec.biome` and `spec.generators = biome` (`GeneratorSet` keys = `Biome`); `zone.palette → spec.palette`; `zone.kind → spec.layout` (`town` = plaza + 6–10 buildings, `route` = corridor with tall-grass patches, `story` = the signature only) and `spec.size` (the playable interior: town 128×128, route 208×208, story 168×168); `getHeightfield(zone.id) → spec.heightfield` **unchanged** (spine §3.11; the 160/240/200 m field whose 16 m margin is unwalkable scenery); `zone.signature → spec.setPiece`; `zone.links` → `spec.edges[dir] = { toZone, x, z }` at the interior-boundary midpoints; `zone.npcs/trainers` → `spec.actors[] = { id, look, x, z, kind: 'npc' | 'trainer' }` (`look` = `BODIES`/NPC look ids, spine §3.12); `zone.items` → `spec.pickups[]`; `zone.lore` → `spec.tablets[]`; `zone.warps` → `spec.warps[]`; `zone.gym/shop/healer` → `spec.buildings[]` with `kind` (positions from the layout table, seeded); `spec.props`, `spec.lights` (≤ 8 shadow + ≤ 24 non-shadow, drawn from `createRng(zone.layoutSeed).fork()` per the biome's light table) and `spec.water` (from the layout's water polygon when the heightfield has `water` samples) are the adapter's seeded decisions; `zone.encounterTable !== null` → `spec.tallGrass = true`; `harvest` → `spec.harvestLevel 0|1|2`; `zone.type` → `spec.accentType` (the sprite rim/gym beacon colour). The AOI cell of 32 units (spine §4.2) covers a town's field in 5×5 = 25 cells. <!-- reconciled 2026-09-18: bounds were ±64 / 128×64 / ±48 here, 128×128 / 256×128 / 96×96 in 10-render.md and 160 / 240 / 200 fields in 30-server-netcode.md; the spine §3.1 extents table is now the one source -->
 
+**Creature texture residency** <!-- amended 2026-10-06 --> (`scene/creatureTextures.ts`). Every creature atlas has an owner that releases it, and a view binds only the ONE side it shows: overworld spawns, legendary statics, the raid den, remote players' creatures, the evolution and inspector close-ups and battle foes show the front; the player's battlers (doubles included) the back. Owners release on despawn, battle end, sequence end or zone unload; the zone holds its static set and the party's static atlases for its life. Released atlases stay bound for a 20 s grace with at most 2 flipbook sides and 4 static atlases idle, so re-showing a creature does not reload it. A live creature budget = the 700 MB cap − every other texture byte − 16 MiB: when over, idle flipbooks are evicted first, then idle static atlases; nothing a view holds or a billboard samples is ever evicted, and a flipbook that does not fit waits on the still frame. A legendary static plays its flipbook only within 40 m of the player (let go past 52 m; the diorama camera shows ≈ 24 m). Measured (1440 × 900, corrected metric): Mirevale idle 444.9 MB; a battle zenryu vs raikitsune 613.1 MB; galvan_route beside a static 703.8 MB; 10 evolutions + legendary battles peak 707.1 MB; every step returns to its baseline after leaving.
+
 ### 20.4.5 `LocalPlayerController` — input and prediction
 
 **Bindings** (defaults; remappable §20.8.5; `KeyboardEvent.code` values):
@@ -4741,6 +4747,8 @@ Target: a fresh `/play` load on Mirevale, cold cache, 50 Mbit/s, RTX 3060-class 
 <!-- amended 2026-09-25: phase 2/3 figures replaced by the shipped manifests (material-bake manifest fieldBytes; creatures.manifest.json zones + totalBytes); Mirevale hero measured 7.71 MB of phase 5's 12 -->
 
 Rules: phases 2–3 are issued as parallel `fetch`es with `priority: 'high'`; phase 4–5 with `priority: 'low'`. A phase exceeding 2× its budget logs a `warn` toast in dev. `BootScreen` shows the phase name and a real byte-progress bar (from `Content-Length`), display face, no fake progress. Handover to a preloaded zone (phase 5 complete) must render its first frame within 250 ms of `handoverAck`; to a non-preloaded zone within 1 500 ms, with the HUD banner and the old zone still visible under the camera's 600 ms travel (spine §4.6 "no visible hitch" is measured as: no frame > 33 ms during the crossing).
+
+**Phase 3 and the flipbooks** <!-- amended 2026-10-06; supersedes the same-day entry that loaded both flipbook sides of the zone's statics and party -->: phase 3 binds the zone's static set, the party's STATIC atlases and the FRONT flipbooks of the legendary statics standing within 40 m of the arrival point; a party flipbook only ever shows its back, in battle, and is bound by the battle when shown (§20.4.4 residency).
 
 ### 20.10.4 `BootScreen` and the dev HUD
 
@@ -6789,7 +6797,7 @@ Statistic: over a 600-frame capture after 120 warm-up frames, **median ≤ targe
 |---|---|---|
 | Draw calls (beauty + post) | `BudgetCounts.beautyDrawCalls` = `renderer.info.render.drawCalls` − the frame's shadow-map draws (`shadowDrawCalls`, ≤ 564 separately, §10.5.8) <!-- amended 2026-09-30: the source column counted the shadow cascades, which §10.5.8 excludes — audit M2-gym-dusk-7 --> | ≤ 400 |
 | Triangles | `renderer.info.render.triangles` | ≤ 2 500 000 |
-| Texture memory | `renderer.info.memory.texturesSize` **+** `materials.residentTextureBytes()` (= `RenderStats.textureBytes`; three counts every compressed texture as 1 byte, `Info.js` lines 449–453) | ≤ 700 MB (734 003 200 bytes) |
+| Texture memory | `renderer.info.memory.texturesSize` **+** `materials.residentTextureBytes()` **−** the sprite pool's `infoOvercountBytes()` (= `RenderStats.textureBytes`; three counts every compressed texture as 1 byte, `Info.js` lines 449–453, and counts a creature atlas's level 0 twice because §10.4.1 puts level 0 into `mipmaps`, `Info.js` lines 449–509) <!-- amended 2026-10-06 --> | ≤ 700 MB (734 003 200 bytes); creature textures get a live share = the cap − every other texture byte − 16 MiB (`20-client.md` §20.4.4 residency) |
 | Unique materials | distinct `Material.uuid` reachable from the zone root, excluding the `debug` layer | ≤ 48 |
 | Shadow-casting lights | `PointLight`/`SpotLight` with `castShadow === true`, scene-wide (the 2 arena beacons included) | ≤ 8 (+ sun) |
 | Non-shadowing lights | `PointLight`/`SpotLight` with `castShadow === false` | ≤ 24 |

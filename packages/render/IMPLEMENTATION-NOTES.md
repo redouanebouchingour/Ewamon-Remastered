@@ -1311,7 +1311,7 @@ needed no change (none pins a town digest).
 
 # Part 9 — creature texture residency, render's half (2026-10-06)
 
-Follow-up to Part 8 open item 1 (GPU memory). The client now binds only the side a view shows and releases what nothing
+Resolves Part 8 open item 1 (GPU memory). The client now binds only the side a view shows and releases what nothing
 shows (client IMPLEMENTATION-NOTES "Creature textures"); render gives it three small things and fixes the metric it is
 judged by.
 
@@ -1352,3 +1352,40 @@ ends ≈ 24 m out at the widest zoom stop).
 **R3 — `atlasUsers` / `atlasRefs`.** Read-only views of the cache's two refcounts, so the client's budget guard never
 counts an atlas a billboard still samples as releasable (render would keep it anyway).
 
+## Measured
+
+The client's before / after runs (`pnpm --filter @ewa/client harness:textures`, client IMPLEMENTATION-NOTES "Creature
+textures", 1440 × 900, Intel UHD) read every step both ways. The correction is exactly 0.753 × the bound creature
+bytes: Mirevale idle 495.2 raw → 444.9 MB corrected (2 atlases, 66.8 MB of GPU memory); a zenryu vs raikitsune battle
+with the residency 789.2 → 613.1 MB; galvan_route beside a static 966.0 → 701.7 MB. With the residency and the
+correction every step of the four scenarios stays ≤ 707.1 MB (cap 734.0) and returns to 444.9 MB after leaving.
+`setFlipbook` in play: galvan_route's statics show their still frame beyond 52 m and play beside the player (one
+flipbook bound at a time). Programs / draw calls: unchanged by construction (no material, program or draw added).
+
+## Tests
+
+`test/residency.test.ts` (3): three's own `Info._getTextureMemorySize` on a static and an anim set equals the four-level
+chain estimate + `infoOvercountBytes` (1.753 ×), so count − overcount = `bytes`; the pool's overcount follows its
+loaded sets (bind, release, release-in-flight, dispose → 0) and `atlasRefs`; `setFlipbook(false)` shows the static
+frame, stops sampling the flipbook (`atlasUsers` 0 → the release frees it) and ignores a bind landing meanwhile,
+`setFlipbook(true)` plays at once when bound or re-points once when the bind lands. Client end-to-end on the pool:
+`packages/client/test/creatureTextures.test.ts`. Render total: 29 files, 264 tests.
+
+## Open
+
+1. The metric change (R1) needs approval: entry E1.
+2. The sandbox (`?demo=legends`) still binds all 20 sides at once — a stress view (Part 8 open item 3), not play.
+
+## Proposed SPEC CHANGELOG entries (§50.7 form; not applied — `.design/spec/**` is not edited here)
+
+```
+## 2026-10-06 — `50-verification-budget.md` §50.2.2 (Texture memory row), `10-render.md` §10.10 — the texture metric subtracts the level 0 three's `Info` counts twice for the creature atlases
+Why: three 0.186 `Info._getTextureMemorySize` adds the image's level 0 AND every `mipmaps` entry; §10.4.1 puts level 0 into `mipmaps` (`[l0, l1, l2, l3]`, or three uploads level 1 as level 0), so every creature atlas, flipbook and single read 1.753 × the GPU memory it allocates (a 2048² atlas 58.7 MB for 33.5 MB, a 3072 × 2048 flipbook side 88.0 MB for 50.2 MB). The row measures GPU texture memory; it already corrects the KTX2 bytes three counts as 1. Source column becomes: `renderer.info.memory.texturesSize` + `materials.residentTextureBytes()` − the sprite pool's `infoOvercountBytes()` (= `RenderStats.textureBytes`).
+Evidence: render IMPLEMENTATION-NOTES Part 9 R1 (three `src/renderers/common/Info.js` lines 449–509; the GPU texture has `mipLevelCount = mipmaps.length` at the image's size); `packages/render/test/residency.test.ts` (three's own count − `infoOvercountBytes` = the chain estimate, static and anim); the harness runs (client IMPLEMENTATION-NOTES "Creature textures": every row read both ways).
+Affects: `packages/render/src/{renderer,stage/wiring,sprites/atlas,sprites/billboard}.ts`; `RenderStats.textureBytes`, `BudgetCounts.texturesSize` and `harness:budget` reports read 0.753 × the bound creature bytes lower (Mirevale idle 495.2 → 444.9 MB at 1440 × 900); `tools/asset-audit` reads the dump's `counts.texturesSize` unchanged in shape.
+
+## 2026-10-06 — `10-render.md` §10.4.2 — `BillboardPool.atlasUsers(id)` / `atlasRefs(id)` / `infoOvercountBytes()`, `CreatureBillboard.setFlipbook(on)`, `FrameHook.textureOvercountBytes?()`
+Why: the client's residency (20-client.md §20.4.4, entry below) must not count an atlas a billboard still samples as freed (render keeps it while users > 0), and must be able to free the flipbook of a card that stays up but is never on screen (a legendary static more than 52 m from the player): `setFlipbook(false)` shows the card's static frame and stops sampling — and waiting for — its flipbook.
+Evidence: render IMPLEMENTATION-NOTES Part 9 R2–R3; `test/residency.test.ts`; client `test/creatureTextures.test.ts` (end to end on `BillboardPool`).
+Affects: `packages/render/src/sprites/billboard.ts`, `renderer.ts`, `stage/wiring.ts`; no program, material, draw-call or allocation-per-frame change.
+```

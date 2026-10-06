@@ -567,6 +567,8 @@ export interface SpritePool {
 }
 ```
 
+**Residency hooks** <!-- amended 2026-10-06 -->: `BillboardPool.atlasUsers(id)` / `atlasRefs(id)` report how many billboards sample an atlas and how many binds hold it (the client's residency never treats an atlas a billboard still samples as freed — render keeps it while users > 0); `BillboardPool.infoOvercountBytes()` is the level-0 bytes three's `Info` counts twice for every bound creature atlas, flipbook and single (subtracted from `RenderStats.textureBytes`, `50-verification-budget.md` §50.2.2); `CreatureBillboard.setFlipbook(on)` shows the card's static frame and stops sampling — and waiting for — its flipbook (a legendary static more than 52 m from the player); `FrameHook.textureOvercountBytes?()`. No program, material, draw-call or per-frame allocation change.
+
 ### 10.4.3 Geometry and anchoring
 
 Quad: `PlaneGeometry(1, 1)` shared by every billboard, scaled per instance. World height `H = 1.6 m × sizeScale` (range 0.8–3.52 m); width `H × aspect`. The quad's local origin is the **foot point**: vertices span `y ∈ [−footV·H, (1 − footV)·H]`, so `setPosition` places the feet on the sampled ground. Texel density: 1024 texels over 1.6 m = 640 texel/m.
@@ -1269,6 +1271,8 @@ export function createZoneView(o: ZoneViewOptions): Promise<ZoneView>;   // crea
 ```
 
 `setPassEnabled('opaque' | 'sprites' | 'shadows', false)` are realised outside the post graph: `opaque` → the zone root's `visible = false` (billboards stay), `sprites` → `layers` 28/29 and the billboard layer 27 disabled on the camera, `shadows` → `gpu.shadowMap.enabled = false`. The other five are post-graph rebuilds (§10.8.2). `gpuFrameMs()` = `gpu.resolveTimestampsAsync(TimestampQuery.RENDER)`; `undefined` without `timestamp-query`.
+
+**Texture bytes** <!-- amended 2026-10-06 -->: `RenderStats.textureBytes` = `info.memory.texturesSize` + the library's resident KTX2 bytes − the sprite pool's `infoOvercountBytes()`; a 2048² creature atlas reads 33.5 MB (three's own count 58.7 MB), a 3072 × 2048 flipbook side 50.2 MB (88.0 MB).
 
 ### 10.10.2 Assertions (the `PLAN.md` table, made per-pass by `50-verification-budget.md` §50.2.1, restated as what this package must hit on the reference machine)
 

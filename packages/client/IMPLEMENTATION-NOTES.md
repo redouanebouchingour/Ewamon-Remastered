@@ -1186,3 +1186,113 @@ never one a hold shows or a billboard samples. A flipbook that still does not fi
 static frame (render waits on the id) and the flipbook is retried whenever bytes are freed and on `refresh()` (World3D
 1 Hz). A static atlas always binds (a creature is always drawn); an overrun is reported once per atlas.
 
+
+## Measured (`pnpm harness:textures`, headless Chrome 154 over CDP, WebGPU, Intel UHD (i7-13620H), 1440 × 900, pr 1)
+
+Both columns drive the same harness page (`HarnessWorld`: SceneDirector, SpawnViews, LegendaryViews, BattleController,
+EvolutionDirector) on the rebuilt true-colour static atlases (manifest sha1 `8d89a623…`; the flipbooks are unchanged);
+"before" is `?residency=legacy` (the binding this replaces: every atlas of a species, both flipbook sides, never
+released), "after" the residency. Each cell: **raw** (three's `texturesSize` + the KTX2 bytes — the §50.2.2 metric as
+measured until now) / **corrected** (render Part 9 R1: minus the level 0 three counts twice for creature atlases) in
+MB, then the sprite pool's GPU bytes (atlases bound). Cap: 734.0 MB. "+ grace" = 25 s after leaving (the grace is 20 s).
+Results: `.screenshots/textures/{legacy,managed}.{json,log}` (gitignored).
+
+| Step | before: raw / corrected | sprites | after: raw / corrected | sprites |
+|---|---|---|---|---|
+| (a) Mirevale idle | 495.2 / 444.9 | 66.8 (2) | 495.2 / 444.9 | 66.8 (2) |
+| (b) battle zenryu (back) vs raikitsune (front), Mirevale | **965.0** / 713.3 | 334.2 (8) | 789.2 / **613.1** | 234.0 (6) |
+| (b) right after the battle | 965.0 / 713.3 | 334.2 (8) | 789.2 / 613.1 (all four idle) | 234.0 (6) |
+| (b) + grace | 965.0 / 713.3 | 334.2 (8) | 496.3 / **445.9** | 66.8 (2) |
+| (c) galvan_route, both statics standing, at its spawn | **1471.3** / 990.0 | 639.2 (16) | 878.1 / **651.6** | 300.8 (9) |
+| (c) at raikitsune | 1471.3 / 990.0 | 639.2 (16) | 966.0 / **701.7** | 350.9 (10) |
+| (c) at voltaura | 1471.3 / 990.0 | 639.2 (16) | 969.6 / **703.8** | 353.0 (10) |
+| (c) back in Mirevale | **1498.6** / 1017.3 | 639.2 (16) | 495.2 / **444.9** | 66.8 (2) |
+| (c) + grace | 1498.6 / 1017.3 | 639.2 (16) | 495.2 / 444.9 | 66.8 (2) |
+| (d) 10 × (evolution + legendary battle): peak | **3938.4** / 2409.6 | 2030.5 (49) | 969.6 / **707.1** | 328.0 (8) |
+| (d) after the 10th | 3938.4 / 2409.6 | 2030.5 (49) | 833.2 / 638.1 | 259.0 (6) |
+| (d) + grace | **3938.4** / 2409.6 | 2030.5 (49) | 496.3 / **445.9** | 66.8 (2) |
+
+- **Under the cap.** After: every step ≤ 707.1 MB corrected (the residency's budget read 338.1 MB in Mirevale, 366.5 MB
+  in galvan_route: `creatureBudget` = 734.0 − the other textures − 16.8). Before: 27 of 32 steps over the cap by the
+  corrected count, 30 of 32 by the raw one. By the raw count (if the correction is not approved) the after column is
+  still over the cap in 25 of 32 steps (a legendary battle 789 MB, galvan_route 878–970 MB): the bytes it counts
+  1.75 × are the same GPU bytes; the residency would then need a budget ≈ 1.75 × smaller (≈ 190 MB in Mirevale — one
+  flipbook per battle at most, none in galvan_route).
+- **Back to the baseline.** Leaving a battle, galvan_route or 10 evolution + battle cycles returns to the boot reading
+  444.9 MB (+ 1.0 MB after the first battle in both columns: the stage's pooled battle textures, created once — not
+  creature atlases); before, nothing ever came back (2030 MB of creature atlases after (d)).
+- **Side binding.** In battle 2 flipbooks instead of 4 (`anim-zenryu-back`, `anim-raikitsune-front`); in galvan_route
+  no flipbook at the spawn (both statics > 40 m away), one at a time beside a static (raikitsune's, then voltaura's
+  while raikitsune's left — 222 m apart); never a flipbook refused (`waits 0` at every step: the near static fits).
+- **The split of the 700 MiB cap** (corrected metric, this machine at 1440 × 900): render targets + zone materials +
+  characters / HUD / VFX = 378.1 MB in Mirevale, 350.8 MB in galvan_route; 16.8 MB headroom; creatures get the rest —
+  339.2 MB / 366.5 MB. galvan_route's static set + the party's atlas alone is 300.8 MB of it.
+- Grace in action: right after the battle the four battle atlases idle (`idle a-024 a-023 anim-zenryu-back
+  anim-raikitsune-front`), 25 s later they are gone. In (d) the idle LRU (≤ 2 flipbooks + 4 statics) carries one battle's
+  atlases into the next evolution (the 707.1 MB peak = 2 zone + 2 evolution + 2 idle statics + 2 idle flipbooks), always
+  inside the budget.
+- An earlier pair of runs on the previous (palette) static atlases read the same numbers to 0.1 MB (same atlas sizes).
+
+## Tests
+
+`test/creatureTextures.test.ts` (17): the side per context and `stageSide`; a lease binds the shown side's static atlas
+and flipbook, never the other side's flipbook; `BattleSprites` (near slot back, far slot front, doubles, a re-set of
+the same battler leases nothing new, a switch moves the hold, `end` releases everything); the same side shown twice
+binds once, the last release idles it and the grace period releases it once; re-showing within the grace costs no
+upload; 100 show / hide cycles of spawns, statics, battles (switches included), evolutions and zone holds leave nothing
+bound and release every bind exactly once; the idle LRU per kind (oldest first); a replacing hold never idles a shared
+atlas; `ready` / `onSettled`; a failed bind holds no bytes and is never released to render; the guard releases idle
+flipbooks first (LRU), then idle static atlases, never a held one or one a billboard samples; a flipbook that does not
+fit waits (not bound) and binds once room frees up; a static atlas always binds (reported once); a 1-byte budget never
+releases a held texture; the views (spawn, raid den, statics with the near / far flipbook and its hysteresis) lease the
+side they show and release it; end to end on render's `BillboardPool` (fake decoder): still frame then the side's
+flipbook, 100 cycles leave no atlas on the pool (≤ 28 binds thanks to the idle cache); an atlas a billboard still
+samples outlives its release until the billboard goes. Updated: `evolution.test.tsx` (both forms' fronts leased before
+the sequence, released after it), `legendary-statics.test.ts` / `raid.test.tsx` (the dep), `spriteCatalog.test.ts`
+(`sideAtlases`). Render: `test/residency.test.ts` (render Part 9). Client total: 41 files, 321 tests; render 29 files,
+264 tests (`pnpm exec vitest run packages/render packages/client`: 70 files, 585 tests, green).
+
+## Harness port race (found while measuring; fixed)
+
+`launchChrome` probed a "free" debugging port (from 9470) and then let Chrome bind it. Another session's
+`harness:budget` (main checkout) launched its Chrome on 9470 in the same second: this run's Chrome lost the bind, the
+`/json/list` poll reached the OTHER Chrome, and this run navigated that session's page to its own harness URL (its
+forgewall M3 budget run, 09:19–09:28 UTC). The run was stopped as soon as it was noticed; the other session's budget
+numbers from that window may be affected and are worth re-running. Fix: Chrome picks its own port
+(`--remote-debugging-port=0`, read back from `DevToolsActivePort` in the run's unique profile) and only its own
+`about:blank` target is taken; a Chrome that fails to start throws instead of borrowing a neighbour. The page server's
+`freePort` probe stays (a lost race there is a bind error, never a wrong connection). The main checkout's copy of
+`common.ts` still has the race.
+
+## Open
+
+1. **The metric change (render Part 9 R1) needs approval** — entry E1. Without it, three's count reads every creature
+   byte 1.75 ×: the after-column's raw readings show where that leaves each step.
+2. **8-atlas zones and higher resolutions.** galvan_route's static set alone is 268 MB of GPU memory; at 1440 × 900
+   the creature share there is ≈ 366 MB, so one static flipbook plays at a time (the near one — by design they are
+   222 m apart). At the §50.2 reference 2560 × 1440 the render targets grow (≈ 2.8 × the pixels) and the creature
+   share shrinks with them: the guard keeps flipbooks inside it, but the non-creature part alone may crowd the 700 MB
+   cap (§50.2.2's own R5 note). Not measured at 2560 × 1440 here.
+3. The zone hold takes the party's static atlases at zone load; a creature caught or traded mid-zone binds per battle /
+   evolution / view until the next zone load.
+4. Not wired because the client does not use them yet: `stage.inspect` (lease `sideFor('inspect')` around it) and remote
+   players' creatures (`sideFor('remote')`).
+5. World3D's wiring was exercised through the harness (same views, controller, evolution director, residency) and by
+   typecheck / review, not against a live server in this pass.
+
+## Proposed SPEC CHANGELOG entries (§50.7 form; not applied — `.design/spec/**` is not edited here)
+
+The render-side entries (the §50.2.2 metric correction, the `BillboardPool` / `CreatureBillboard` additions) are in
+render IMPLEMENTATION-NOTES Part 9.
+
+```
+## 2026-10-06 — `20-client.md` §20.4.4 (new paragraph "Creature texture residency"), `50-verification-budget.md` §50.2.2 (the creature share of the texture cap) — every creature atlas has an owner that releases it; a view binds the ONE side it shows; 20 s grace, 2 flipbooks + 4 static atlases idle at most; a live creature budget = the cap − every other texture byte − 16 MiB
+Why: the client bound a species' static atlas and BOTH flipbook sides the first time it saw it and never released a creature atlas; with the animated legendaries every legendary met or carried kept 100–150 MB of GPU memory for the session (measured: a Mirevale battle zenryu vs raikitsune 965 MB as three counted it, 10 legendary battles + 10 evolutions 3.9 GB, nothing returned on leaving). Sides: overworld spawns, legendary statics, the raid den, remote players' creatures, the evolution and inspector close-ups and battle foes show the front, the player's battlers the back; a legendary static plays its flipbook within 40 m of the player only (let go past 52 m; the diorama camera shows ≈ 24 m). Budget guard: idle flipbooks are released first, then idle static atlases, least recently used first, never one a view shows or a billboard samples; a flipbook that does not fit keeps the card on its static frame until room frees up; a static atlas always binds.
+Evidence: client IMPLEMENTATION-NOTES "Creature textures" (harness before / after table, `pnpm harness:textures`); `packages/client/test/creatureTextures.test.ts` (17: refcounts, 100 show / hide cycles, side per context, grace, LRU, the guard, the views, end to end on render's pool); render `test/residency.test.ts`.
+Affects: `packages/client/src/scene/{creatureTextures,SpawnViews,LegendaryViews,RaidViews,EvolutionDirector,World3D,spriteCatalog}.ts`, `src/harness/*`, `scripts/harness/{textures,common}.ts`; needs render's corrected metric (render Part 9 entry) for the budget to be in the cap's unit.
+
+## 2026-10-06 — `20-client.md` §20.10.3 — phase 3 binds the zone's static set, the party's STATIC atlases and the FRONT flipbooks of the legendary statics standing within 40 m of the arrival point (supersedes today's earlier entry "phase 3 also loads the flipbooks of the zone's legendary statics and of animated party members")
+Why: a party flipbook only ever shows its back, in battle (bound by the battle when it shows it); a static shows its front, and only near the player. Binding both sides of all of them at zone load was the bulk of the leak above.
+Evidence: client IMPLEMENTATION-NOTES "Creature textures" (galvan_route loaded with both statics standing: 1471 → 878 MB raw, 990 → 652 MB corrected).
+Affects: `packages/client/src/scene/World3D.ts` (`bindZoneAtlases`), `harness/HarnessWorld.ts`; galvan_route's phase-3 payload drops by the flipbooks of statics away from the arrival point (≈ 4.7 MB → 0–2.4 MB); Mirevale unchanged.
+```
