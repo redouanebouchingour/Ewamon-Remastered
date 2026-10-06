@@ -151,6 +151,8 @@ export function battlePose(center: Vector3, dioramaYaw: number, out: OrbitPose):
 /**
  * Feet position of battler (`side`, `slot`) of a side holding `count` battlers: side 0 (the player's) on the near
  * half of the arena axis, side 1 on the far half, 5.5 m apart; slots spread laterally by `SLOT_SPACING`.
+ * Phase D6 doubles: `slot` is the field position and `count` is two; each side's first position stands on its own
+ * left (the layout is point-symmetric about the centre), a single battler stands on the axis.
  */
 export function battlerSlot(center: Vector3, dioramaYaw: number, side: 0 | 1, slot: number, count: number, out: Vector3): Vector3 {
   const fx = -Math.sin(dioramaYaw); const fz = -Math.cos(dioramaYaw);   // forward

@@ -50,12 +50,16 @@ export type RngState = readonly [number, number, number, number];
 // ---- §2.10 Action --------------------------------------------------------------------------
 
 export type Action =
-  | { readonly kind: 'move'; readonly move: string }
+  // Phase D6: `target` = a doubles field position (absent in singles)
+  | { readonly kind: 'move'; readonly move: string; readonly target?: { readonly side: 0 | 1; readonly pos: 0 | 1 } }
   | { readonly kind: 'switch'; readonly to: number }
   | { readonly kind: 'item'; readonly item: string; readonly target?: number }
   | { readonly kind: 'catch'; readonly orb: string }
   | { readonly kind: 'flee' }
   | { readonly kind: 'forfeit' };
+
+/** Phase D6: one side's entry in a replay's action log — singles: an Action / null; doubles: one per field position. */
+export type ReplayChoice = Action | null | readonly [Action | null, Action | null];
 
 // ---- §3.1 content ids -----------------------------------------------------------------------
 
@@ -214,6 +218,8 @@ export interface BattleStartSnapshot {
   readonly sides: readonly [unknown, unknown];
   /** Phase D7: the ambient zone weather passed to createBattle; absent = none */
   readonly weather?: string;
+  /** Phase D6: 2 for a doubles battle (createBattle `slots`); absent = singles */
+  readonly slots?: 2;
 }
 
 export interface TradedCreatureSummary {

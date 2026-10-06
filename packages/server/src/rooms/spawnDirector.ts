@@ -85,6 +85,66 @@ export function slotEligible(slot: EncounterSlot, timeOfDay: number): boolean {
   return slot.timeOfDay === (isDay(timeOfDay) ? 'day' : 'night');
 }
 
+/**
+ * Phase D9 — a bite on the Old Rod: one of `table`'s `water` slots eligible at `timeOfDay`, rolled with the same draws
+ * as a spawn (slot, level, alpha + shiny, variant, ability; swarm and event bonuses included) from `rng` (the room's
+ * fishing stream), placed at the cast point `at`. Never enters a director's population: the battle holds it and the
+ * room's release of an unknown id is a no-op. null when the table has no eligible water slot (nothing bites).
+ */
+export function rollFishing(
+  table: EncounterTable | null,
+  rng: Rng,
+  content: ContentIndex,
+  timeOfDay: number,
+  at: { readonly x: number; readonly z: number },
+  id: string,
+  now: number,
+  mods: LiveOpsMods = DEFAULT_LIVE_OPS,
+): SpawnRecord | null {
+  if (table === null) return null;
+  const eligible = table.slots.filter((s) => (s.medium ?? 'land') === 'water' && slotEligible(s, timeOfDay));
+  if (eligible.length === 0) return null;
+  const swarm = new Set(mods.swarmSpecies);
+  const weights = eligible.map((s) => s.weight * (swarm.has(s.species) ? mods.swarmWeightBoost : 1));
+  let total = 0;
+  for (const w of weights) total += w;
+  let pickAt = rng.next() * total;
+  let slot = eligible[eligible.length - 1]!;
+  for (let i = 0; i < eligible.length; i++) {
+    pickAt -= weights[i]!;
+    if (pickAt < 0) {
+      slot = eligible[i]!;
+      break;
+    }
+  }
+  const level = slot.levelMin + rng.int(slot.levelMax - slot.levelMin + 1);
+  const featured = mods.featuredSpecies?.includes(slot.species) === true;
+  const alphaDraw = rng.next();
+  const isAlpha = slot.tier === 'alpha' || alphaDraw < ALPHA_CHANCE + mods.alphaBonus + (featured ? FEATURED_ALPHA_BONUS : 0);
+  const isShiny = shinyFromDraw(alphaDraw);
+  let variantKey: VariantKey = 'normal';
+  const pool = mods.variantPool.length > 0 ? mods.variantPool : NON_NORMAL_VARIANTS;
+  if (rng.next() < VARIANT_CHANCE + mods.variantBonus + (featured ? FEATURED_VARIANT_BONUS : 0)) variantKey = rng.pick(pool);
+  const species = content.species(slot.species);
+  const ability = species.abilities[rng.int(species.abilities.length)]!;
+  return {
+    id,
+    speciesId: slot.species,
+    level,
+    variantKey,
+    isAlpha,
+    isShiny,
+    ability,
+    medium: 'water',
+    x: at.x,
+    z: at.z,
+    bornAt: now,
+    engagedBy: null,
+    engagedAt: null,
+    despawnAt: now,
+  };
+}
+
 export interface SpawnTickResult {
   readonly spawned: readonly SpawnRecord[];
   readonly despawned: readonly string[];

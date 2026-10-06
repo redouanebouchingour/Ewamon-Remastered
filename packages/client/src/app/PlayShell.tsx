@@ -11,6 +11,7 @@ import { BattleOverlay } from '../battle/BattleOverlay';
 import { ChallengePrompt } from '../world/ChallengePrompt';
 import { ChatInput } from '../world/ChatInput';
 import { DialogueBox } from '../world/DialogueBox';
+import { FishingPrompt } from '../world/FishingPrompt';
 import { Minimap } from '../world/Minimap';
 import { PostBattlePrompts } from '../world/PostBattlePrompts';
 import { RaidLobby } from '../world/RaidLobby';
@@ -168,6 +169,7 @@ export function PlayShell() {
       {/* Phase C3: the minimap draws over the live world only (no world → no canvas, as GameCanvas) */}
       {!hasPanel && !inBattle && worldCapability() && <Minimap />}
       <DialogueBox />
+      <FishingPrompt />
       <ChatInput />
       <BattleOverlay />
       <ChallengePrompt />

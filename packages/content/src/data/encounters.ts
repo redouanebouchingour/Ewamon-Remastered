@@ -1,6 +1,8 @@
 /**
  * §3.2 encounter tables — the 15 tables of .design/roster-coverage.md §6 transcribed row for row
- * (8 routes, 3 towns, 4 story tables; A1 and A2 accepted per the spec CHANGELOG), plus the spawn constants.
+ * (8 routes, 3 towns, 4 story tables; A1 and A2 accepted per the spec CHANGELOG), plus the spawn constants. Phase D8
+ * added water slots where the heightfield has ponds a table did not fish yet (mire_route, skyrend, umbral_observatory)
+ * — species already placed elsewhere, so the directly-placed set stays 79.
  */
 import type { EncounterSlot, EncounterTable, EncounterTier, Medium, SpawnTuning, TimeOfDay, ZoneId } from '../types';
 
@@ -82,6 +84,9 @@ export const ENCOUNTER_TABLES: readonly EncounterTable[] = [
     s('snapling', 5, 3, 6, 'night', 'uncommon'),
     s('bramblecub', 3, 4, 6, 'any', 'rare'),
     s('bloomsprite', 2, 4, 6, 'day', 'rare'),
+    // Phase D8: the mire's ponds (boardwalk, Old Rod, later HM Surf)
+    s('mossling', 5, 3, 6, 'day', 'uncommon', 'water'),
+    s('mudbub', 5, 3, 6, 'night', 'uncommon', 'water'),
     s('mossling', 1, 6, 6, 'any', 'alpha'),
   ]),
   // 6.2 ash_route — cinder, Fire, L7–11
@@ -200,6 +205,8 @@ export const ENCOUNTER_TABLES: readonly EncounterTable[] = [
     s('alloylark', 5, 38, 42, 'day', 'uncommon'),
     s('glacifang', 5, 39, 44, 'night', 'uncommon'),
     s('resilith', 3, 40, 44, 'any', 'rare'),
+    // Phase D8: the meltwater tarn under the roosts
+    s('tidalfang', 3, 39, 44, 'any', 'rare', 'water'),
   ]),
   // 6.11 solenne — town static: the suburb park and pond, L40–45
   table('solenne', [
@@ -235,6 +242,8 @@ export const ENCOUNTER_TABLES: readonly EncounterTable[] = [
     s('miscarmen', 3, 43, 47, 'night', 'rare'),
     s('aonred', 2, 44, 48, 'night', 'rare'),
     s('darkyon', 2, 44, 48, 'night', 'rare'),
+    // Phase D8: the black moat under the dome
+    s('wraithtide', 3, 43, 47, 'night', 'rare', 'water'),
   ]),
   // 6.14 celestial_spire — story, Cosmic, L50–55
   table('celestial_spire', [

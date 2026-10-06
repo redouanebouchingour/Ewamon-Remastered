@@ -92,6 +92,11 @@ export interface TrainerDef {
   readonly lines: readonly string[];
   readonly reward: number;
   readonly rematchDays: number | null;
+  /**
+   * Phase D6: fights 2-on-2 (needs ≥ 2 team members; the player needs 2 usable creatures, else the battle falls back to
+   * singles). Optional, absent = singles; never a story gate.
+   */
+  readonly doubles?: true;
 }
 
 export interface GroundItemDef {
@@ -118,6 +123,22 @@ export interface WarpDef {
   readonly toX: number;
   readonly toZ: number;
   readonly label: string;
+}
+
+/**
+ * Phase D10: a field obstacle — a small tree (HM Cut) or a boulder (HM Strength). Its disc is stamped unwalkable into
+ * the heightfield (after the plan's footprints and the interiors); a player who cleared it (`obstacle:<zone>:<id>`)
+ * walks through those samples (server `standable`, client collider). Never on a story path: shortcuts and treasure
+ * only. `item` is a ground item hidden behind / under it, granted once with the clearing. x/z never feed the layout
+ * (not an authored point: no clearing is flattened round it, no building moves).
+ */
+export type ObstacleKind = 'tree' | 'boulder';
+export interface ObstacleDef {
+  readonly id: string;
+  readonly kind: ObstacleKind;
+  readonly x: number;
+  readonly z: number;
+  readonly item?: { readonly item: string; readonly qty: number };
 }
 
 // ─── interiors (pockets inside the zone, reached by door warps) ──────────────
@@ -312,6 +333,8 @@ export interface ZoneDef {
   readonly storyRole: Readonly<Record<Act, string | null>>;
   /** the zone's DEFAULT; the effective state is per player, from story flags (§3.5 harvestStateFor) */
   readonly harvestState: HarvestState;
+  /** Phase D10: Cut / Strength obstacles (shortcuts and treasure, never a story gate); absent = none */
+  readonly obstacles?: readonly ObstacleDef[];
 }
 
 /** §3.1 extents: field side in metres per zone kind. */
@@ -404,6 +427,8 @@ export interface LeagueTrainer {
   readonly team: readonly LeagueTeamMember[];
   readonly reward: number;
   readonly setsFlags: readonly string[];
+  /** Phase D6: fights 2-on-2 (see TrainerDef.doubles); optional, absent = singles */
+  readonly doubles?: true;
 }
 
 export interface BadgeDef {

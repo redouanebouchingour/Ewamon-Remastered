@@ -17,8 +17,13 @@
  * diagonal and the heading the player had outside, and despawns them. A battle whose arena lies on a pocket's floor
  * fights along the hall axis (no `pickBattleHeading`), dresses the stage inside the hall (`HallBounds`) and returns to
  * the pocket camera afterwards. Gates and switch tiles follow the player's flags (`GateSync`).
+ *
+ * Phase D10 obstacles: each Cut tree / Strength boulder is an interactable ('Cut the small tree' / 'Push the
+ * boulder') until the player's `obstacle:<zone>:<id>` flag arrives; then the renderer swaps it (`ObstaclesHandle`)
+ * and the prediction collider re-opens its stamped samples (`ObstacleSink.setObstacles`) — on load and on every flag
+ * change, only when the cleared set changed.
  */
-import { getHeightfield, harvestStateFor, interiorAt, interiorsFor, zone as zoneDef } from '@ewa/content';
+import { getHeightfield, harvestStateFor, interiorAt, interiorsFor, obstacleAt, obstacleFlag, zone as zoneDef } from '@ewa/content';
 import type { HarvestState, PlacedInterior, ZoneDef, ZoneId } from '@ewa/content';
 import type { BattleFormat } from '@ewa/core';
 import { BATTLER_SEPARATION, BATTLE_DISTANCE, BATTLE_PITCH, BATTLE_YAW_OFFSET, doorOf, headingYaw } from '@ewa/render';
@@ -177,6 +182,20 @@ export interface SceneDirectorDeps {
   readonly blockers?: () => GateBlockers | null;
   /** Phase B1: the legendary statics' billboards + interactables (`LegendaryViews`), synced on load / flags / unload. */
   readonly legendaries?: () => { sync(zoneId: ZoneId | null, flags: ReadonlySet<string>): void } | null;
+  /** Phase D10: the prediction collider's obstacle hook (read after `onZone` gave it the new zone). */
+  readonly obstacles?: () => ObstacleSink | null;
+}
+
+/** Phase D10: what re-opens a cleared obstacle's stamped samples for prediction (the client `StepCollider`). */
+export interface ObstacleSink {
+  setObstacles(lookup: ((x: number, z: number) => string | null) | null, cleared: ReadonlySet<string>): void;
+}
+
+/** Phase D10: the ids of `zone`'s obstacles `flags` say the player cleared. */
+export function clearedObstacles(zone: ZoneDef, flags: ReadonlySet<string>): ReadonlySet<string> {
+  const out = new Set<string>();
+  for (const o of zone.obstacles ?? []) if (flags.has(obstacleFlag(zone.id, o.id))) out.add(o.id);
+  return out;
 }
 
 interface StaticActor { readonly id: string; readonly npc: boolean; readonly x: number; readonly z: number; readonly angle: number; readonly pocket: boolean }
@@ -213,6 +232,19 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
   let gates: GateSync | null = null;
   /** Phase D7: the zone's overworld weather (state.weather); interiors and battles render none */
   let overworldWeather: WeatherKind = 'none';
+  /** Phase D10: the cleared-obstacle key last pushed (renderer + collider), '' = none */
+  let obstacleKey: string | null = null;
+
+  function syncObstacles(z: ZoneDef, flags: ReadonlySet<string>, force: boolean): void {
+    if ((z.obstacles?.length ?? 0) === 0) return;
+    const cleared = clearedObstacles(z, flags);
+    const key = [...cleared].sort().join(',');
+    if (!force && key === obstacleKey) return;
+    obstacleKey = key;
+    for (const o of z.obstacles!) handle?.obstacles?.setCleared(o.id, cleared.has(o.id));
+    const h = getHeightfield(z.id);
+    d.obstacles?.()?.setObstacles(cleared.size === 0 ? null : (x, zz) => obstacleAt(h, x, zz), cleared);
+  }
 
   function applyWeather(): void {
     if (!inBattle) d.renderer.setWeather(pocket === null ? overworldWeather : 'none');
@@ -310,6 +342,12 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     }
     for (const l of z.lore) out.push(makeInteractable(l.id, 'lore', l.x, l.z, 'Read', l.title, key));
     for (const w of z.warps) out.push(makeInteractable(w.id, 'warp', w.x, w.z, 'Enter', w.label, key));
+    // Phase D10: Cut trees / Strength boulders until cleared
+    for (const o of z.obstacles ?? []) {
+      const e = makeInteractable(o.id, 'obstacle', o.x, o.z, o.kind === 'tree' ? 'Cut' : 'Push', o.kind === 'tree' ? 'the small tree' : 'the boulder', key);
+      e.enabled = !flags.has(obstacleFlag(z.id, o.id));
+      out.push(e);
+    }
     // Phase A: league trainers, the shop counter and the healer live inside the town's pockets
     out.push(...interiorInteractables(z.id, flags, key));
     const spec = handleSpec;
@@ -353,6 +391,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     spawnStatics(z, flags);
     d.targets.setStatics(interactables(z, flags));
     d.onZone(zh, z);
+    syncObstacles(z, flags, true);
     floors = new FloorIndex(interiorsFor(id));
     gates = new GateSync(id, d.blockers?.() ?? null);
     gates.sync(flags, zh.interiors);
@@ -368,6 +407,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     leavePocket();
     floors = null;
     gates = null;
+    obstacleKey = null;
     despawnStatics();
     d.legendaries?.()?.sync(null, lastFlags);
     d.targets.clear();
@@ -513,8 +553,11 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
           if (n !== undefined) e.enabled = npcVisible(n, flags);
         } else if (e.kind === 'item') {
           e.enabled = !flags.has(`item:${z.id}:${e.id}`);
+        } else if (e.kind === 'obstacle') {
+          e.enabled = !flags.has(obstacleFlag(z.id, e.id));
         }
       }
+      syncObstacles(z, flags, false);
       refreshInteriorTargets(z.id, d.targets.staticEntries(), flags);
       lastFlags = flags;
       // a hall leader who greets until a story flag (Kirei in the league foyer) moves to her chamber once it is held

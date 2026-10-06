@@ -37,7 +37,7 @@ import {
   schemaErrors,
 } from './schema';
 import { SPECIES } from './data/species';
-import { MOVES } from './data/moves';
+import { MOVES, SPREAD_MOVES } from './data/spreadMoves';
 import { ABILITIES } from './data/abilities';
 import { ITEMS } from './data/items';
 import { ORBS } from './data/orbs';
@@ -61,6 +61,8 @@ import type { ZoneSurface } from './heightfield';
 import { TOWN_LAYOUT, solidContains } from './plan';
 import { checkInterior, interiorDefFor, trainersOf, warpsOf } from './interiors';
 import { beatDoneFlag, BEAT_DONE_PREFIX } from './story';
+import { interiorFootprintAt } from './interiorIndex';
+import { OBSTACLE_INTERACT_M } from './obstacles';
 
 /** Legacy orb prices (§3.10 rule 10: "orb prices are the legacy values"). */
 const LEGACY_ORB_PRICES: Readonly<Record<string, number>> = {
@@ -211,9 +213,21 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     if (z.encounterTable !== null && z.encounterTable !== `enc_${z.id}`) err(`zone ${z.id}: encounterTable must be 'enc_${z.id}'`);
     if (z.shop !== null) for (const id of z.shop) if (!anyItem(id)) err(`zone ${z.id}: shop item '${id}' unknown`);
     for (const gi of z.items) if (!anyItem(gi.item)) err(`zone ${z.id}: ground item '${gi.item}' unknown`);
+    // Phase D10: obstacles — unique ids, a known kind and hidden item, inside the playable interior
+    const obIds = new Set<string>();
+    for (const o of z.obstacles ?? []) {
+      if (obIds.has(o.id)) err(`zone ${z.id}: duplicate obstacle id ${o.id}`);
+      obIds.add(o.id);
+      if (o.kind !== 'tree' && o.kind !== 'boulder') err(`zone ${z.id}: obstacle ${o.id} kind '${String(o.kind)}'`);
+      if (o.item !== undefined && (!anyItem(o.item.item) || !(o.item.qty >= 1))) err(`zone ${z.id}: obstacle ${o.id} item '${o.item.item}' x${o.item.qty} invalid`);
+      const lim = ZONE_SIZE[z.kind] / 2 - ZONE_MARGIN - 4;
+      if (Math.abs(o.x) > lim || Math.abs(o.z) > lim) err(`zone ${z.id}: obstacle ${o.id} (${o.x}, ${o.z}) outside ±${lim}`);
+    }
     for (const t of z.trainers) {
       for (const m of t.team) if (!speciesById.has(m.species)) err(`trainer ${t.id}: species '${m.species}' unknown`);
       if (!looks.has(t.look)) err(`trainer ${t.id}: look '${t.look}' not in LOOKS`);
+      // Phase D6: a doubles trainer brings two creatures to the field
+      if (t.doubles === true && t.team.length < 2) err(`trainer ${t.id}: doubles needs a team of 2+`);
     }
     for (const n of z.npcs) {
       if (!looks.has(n.look)) err(`npc ${n.id}: look '${n.look}' not in LOOKS`);
@@ -232,6 +246,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     for (const s of t.slots) if (!speciesById.has(s.species)) err(`table ${t.id}: species '${s.species}' unknown`);
   }
   for (const l of LEAGUE) {
+    if (l.doubles === true && l.team.length < 2) err(`league ${l.id}: doubles needs a team of 2+`);
     for (const m of l.team) {
       if (!speciesById.has(m.species)) err(`league ${l.id}: species '${m.species}' unknown`);
       if (m.ability !== null && !abilityIds.has(m.ability)) err(`league ${l.id}: ability '${m.ability}' unknown`);
@@ -312,6 +327,12 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   // ── 3. counts ──
   if (species.length !== 130) err(`SPECIES.length ${species.length} !== 130`);
   if (moves.length !== 193) err(`MOVES.length ${moves.length} !== 193`);
+  // Phase D6: every curated spread move exists, and only damaging or foe-targeted moves spread
+  for (const [id, sp] of Object.entries(SPREAD_MOVES).sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+    const m = moves.find((x) => x.id === id);
+    if (m === undefined) err(`SPREAD_MOVES: '${id}' not in MOVES`);
+    else if (m.spread !== sp || m.target !== 'foe') err(`SPREAD_MOVES: '${id}' must be a foe-targeted move carrying spread '${sp}'`);
+  }
   if (TYPE_NAMES.length !== 19) err(`TYPE_NAMES.length ${TYPE_NAMES.length} !== 19`);
   if (ABILITIES.length !== 25) err(`ABILITIES.length ${ABILITIES.length} !== 25`);
   if (items.length !== 17) err(`ITEMS.length ${items.length} !== 17`);
@@ -675,6 +696,25 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
       for (const w of z.warps) { target(`warp ${w.id}`, w.x, w.z, INTERACT_RANGE_M); target(`warp ${w.id} target`, w.toX, w.toZ, INTERACT_RANGE_M); }
       for (const s of LEGENDARY_STATICS) if (s.zoneId === z.id) target(`static ${s.species}`, s.x, s.z, INTERACT_RANGE_M);
       for (const r of RAID_HOTSPOTS) if (r.zoneId === z.id) target(`raid ${r.id}`, r.x, r.z, RAID_RANGE_M);
+      // Phase D10: an obstacle stands on ground its stamp made unwalkable (no stamp = it sits on nothing walkable),
+      // clear of the interiors and ≥ 6 m from every authored point, and is reachable at its interact range; the
+      // checks above already ran on the stamped field, so no story target is cut off behind one
+      for (const o of z.obstacles ?? []) {
+        let stamped = 0;
+        for (const id of surface.obstacleCells.values()) if (id === o.id) stamped++;
+        if (stamped === 0) err(`zone ${z.id}: obstacle ${o.id} stamps no walkable sample`);
+        if (interiorFootprintAt(z.id, o.x, o.z) !== null) err(`zone ${z.id}: obstacle ${o.id} stands in an interior pocket`);
+        const near: (readonly [string, number, number])[] = [['spawn', z.spawn.x, z.spawn.z]];
+        for (const n of z.npcs) near.push([n.id, n.x, n.z]);
+        for (const t of z.trainers) near.push([t.id, t.x, t.z]);
+        for (const i of z.items) near.push([i.id, i.x, i.z]);
+        for (const l of z.lore) near.push([l.id, l.x, l.z]);
+        for (const w of z.warps) { near.push([w.id, w.x, w.z]); near.push([`${w.id} target`, w.toX, w.toZ]); }
+        for (const st of LEGENDARY_STATICS) if (st.zoneId === z.id) near.push([st.species, st.x, st.z]);
+        for (const r of RAID_HOTSPOTS) if (r.zoneId === z.id) near.push([r.id, r.x, r.z]);
+        for (const [what, px, pz] of near) if (Math.hypot(px - o.x, pz - o.z) < 6) err(`zone ${z.id}: obstacle ${o.id} within 6 m of ${what}`);
+        if (reach !== null && !reachableWithin(h, reach, o.x, o.z, OBSTACLE_INTERACT_M)) err(`zone ${z.id}: obstacle ${o.id} is not reachable from the spawn`);
+      }
       if (reach !== null) {
         if (LEAGUE.some((l) => l.zoneId === z.id)) {
           if (!reachableWithin(h, reach, LEAGUE_DOOR.x, LEAGUE_DOOR.z, GYM_RANGE_M)) err(`zone ${z.id}: the league door (${LEAGUE_DOOR.x}, ${LEAGUE_DOOR.z}) is not reachable from the spawn`);

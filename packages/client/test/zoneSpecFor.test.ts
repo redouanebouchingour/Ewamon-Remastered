@@ -54,11 +54,13 @@ describe('§20.4.4 zoneSpecFor', () => {
     expect(digests).toMatchSnapshot();
   });
 
-  it('R1: every field but heightfield, the new plan and the Phase A interiors is byte-identical to the pre-move adapter output (all 21 zones)', () => {
+  it('R1: every field but heightfield, the new plan, the Phase A interiors and the Phase D10 obstacles is byte-identical to the pre-move adapter output (all 21 zones)', () => {
     for (const z of allZones()) {
       const s = zoneSpecFor(z, 'intact');
       const before = PRE_MOVE.zones[z.id]!;
-      const { heightfield, plan, interiors: _interiors, ...rest } = s;
+      const { heightfield, plan, interiors: _interiors, obstacles, ...rest } = s;
+      // Phase D10: obstacles travel only where content has some, as content wrote them
+      expect(obstacles ?? [], z.id).toEqual((z.obstacles ?? []).map((o) => ({ id: o.id, kind: o.kind, x: o.x, z: o.z })));
       const now: Record<string, string> = {};
       for (const [k, v] of Object.entries(rest)) now[k] = fieldDigest(v);
       expect(now, z.id).toEqual(before.specFields);

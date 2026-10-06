@@ -140,7 +140,12 @@ function build(ctx: HostContext): Part3 {
 
   const bundle: Part3 = {
     sprites, rig, actors, vfx, stage, hud, reveal, hook,
-    setGround(g) { stage.setGround(g); actors.setGround(g === null ? null : (x, z) => g.sample(x, z)); },
+    setGround(g) {
+      stage.setGround(g);
+      // Phase D8: surfers ride the water level (the collider's surfaceY) with a ripple where it says open water
+      if (g === null) actors.setGround(null);
+      else actors.setGround((x, z) => (g.surfaceY !== undefined ? g.surfaceY(x, z) : g.sample(x, z)), g.onWater !== undefined ? (x, z) => g.onWater!(x, z) : null);
+    },
     viewport,
     setBattleInsets(topPx, bottomPx) {
       insetTopPx = Number.isFinite(topPx) ? Math.max(0, topPx) : 0;

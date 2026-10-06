@@ -17,6 +17,9 @@
  * Phase A: `spec.interiors` is content's placed pockets flattened to render's `InteriorSpec` (`interiorSpecsFor`;
  * `[]` outside towns). The pockets' door warps (`<id>.in` / `<id>.out`) are NOT in `spec.warps` — those markers make
  * render draw a "warp room" at the destination; the pocket itself is the room.
+ *
+ * Phase D10: `spec.obstacles` is content's `ZoneDef.obstacles` (id, kind, x, z) — present only in zones that have
+ * some, so every other zone's spec is unchanged. Which ones a player cleared is per player (`ObstaclesHandle`).
  */
 import { SET_PIECE_BY_ZONE, getHeightfield, interiorsFor, zonePlan } from '@ewa/content';
 import type { HarvestState, LinkDir, ZoneDef, ZoneId } from '@ewa/content';
@@ -113,6 +116,7 @@ export function zoneSpecFor(zone: ZoneDef, harvest: HarvestState): ZoneSpec {
     harvestLevel: HARVEST_LEVEL[harvest],
     plan: specPlan,
     interiors: interiorSpecsFor(zone.id),
+    ...(zone.obstacles !== undefined && zone.obstacles.length > 0 ? { obstacles: zone.obstacles.map((o) => ({ id: o.id, kind: o.kind, x: o.x, z: o.z })) } : {}),
   };
 }
 

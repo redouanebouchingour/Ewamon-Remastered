@@ -87,6 +87,13 @@ export type MoveEffect =
 
 export type MoveTarget = 'foe' | 'self' | 'field';
 
+/**
+ * Phase D6 — doubles reach of a move. `'foes'` hits every standing foe on the field, `'all'` every other standing
+ * battler (both foes and the ally). Absent = single target. Read only in doubles (`BattleState.slots === 2`); a spread
+ * move that actually strikes 2+ targets deals ×0.75 (floor, min 1) to each. Content assigns it from a curated list.
+ */
+export type MoveSpread = 'foes' | 'all';
+
 export interface MoveDef {
   readonly id: string;              // the legacy display name, e.g. 'Vine Lash' — ids ARE names
   readonly type: TypeName;
@@ -99,6 +106,8 @@ export interface MoveDef {
   readonly effectChance: number;    // 1..100, applied AFTER the move hits (see table)
   readonly target: MoveTarget;      // 'field' for weather/sun; 'self' for raise_*/heal; else 'foe'
   readonly description: string;
+  /** Phase D6: doubles spread reach (absent = single target); ignored in singles */
+  readonly spread?: MoveSpread;
 }
 
 // ─── §2.5 AbilityDef and hooks ───────────────────────────────────────────────
@@ -264,6 +273,12 @@ export interface Side {
   readonly canCatch: boolean;              // wild + raid catch window: player side true
   readonly mustSwitch: boolean;            // active fainted and a replacement exists
   readonly consumedItems: readonly string[]; // consumable ids used this battle (raid/pvp limits)
+  /**
+   * Phase D6 — doubles only (present iff `BattleState.slots === 2`): the party index on field position 0 and 1.
+   * `active` mirrors `actives[0]`. A fainted battler with no bench left to replace it stays in its position (hp 0)
+   * and is skipped by every rule. `mustSwitch` = some position holds a fainted battler and a bench creature stands.
+   */
+  readonly actives?: readonly [number, number];
 }
 
 export type Terrain = 'none' | 'grove' | 'cinder' | 'salt' | 'storm' | 'marrow' | 'vesper' | 'forge' | 'sky' | 'shrine' | 'rift';
@@ -288,6 +303,8 @@ export interface BattleState {
   readonly rng: RngState;
   readonly ended: BattleOutcome | null;
   readonly zoneId: string;
+  /** Phase D6: present (2) only in a doubles battle; absent = singles (state shape byte-identical to pre-D6) */
+  readonly slots?: 2;
 }
 
 export interface CreateBattleOpts {
@@ -303,12 +320,23 @@ export interface CreateBattleOpts {
    * 5 turns as usual. Absent or 'none' → the state and events are byte-identical to a battle without the field.
    */
   readonly weather?: WeatherKind;
+  /**
+   * Phase D6: 2 = doubles (format trainer / league / pvp only; each side needs two standing creatures — the side's
+   * `actives` if given, else its `active` plus the lowest-index other standing creature). Absent or 1 = singles,
+   * byte-identical to pre-D6.
+   */
+  readonly slots?: 1 | 2;
 }
 
 // ─── §2.10 Actions ───────────────────────────────────────────────────────────
 
+/** Phase D6: a field position (doubles move target). `pos` is 0 or 1 — NOT a party index. */
+export interface FieldRef { readonly side: 0 | 1; readonly pos: 0 | 1 }
+
 export type Action =
-  | { readonly kind: 'move'; readonly move: string }          // must be in active.creature.moves with pp > 0
+  // must be in active.creature.moves with pp > 0. `target` (doubles only; ignored in singles): the foe or ally position a
+  // single-target move aims at — absent = the first standing foe; spread / self / field moves take none.
+  | { readonly kind: 'move'; readonly move: string; readonly target?: FieldRef }
   | { readonly kind: 'switch'; readonly to: number }          // party index, not active, hp > 0
   | { readonly kind: 'item'; readonly item: string; readonly target?: number } // consumable id; target = party index (default active)
   | { readonly kind: 'catch'; readonly orb: string }
@@ -319,7 +347,16 @@ export type ActionError =
   | 'battleEnded' | 'unknownMove' | 'noPp' | 'choiceLocked' | 'statusMoveBlocked'
   | 'badSwitchIndex' | 'switchToFainted' | 'switchToActive' | 'trapped'
   | 'unknownItem' | 'itemNotUsableInBattle' | 'badItemTarget'
-  | 'cannotCatch' | 'unknownOrb' | 'cannotFlee' | 'cannotForfeit' | 'mustSwitch' | 'actionNotRequired';
+  | 'cannotCatch' | 'unknownOrb' | 'cannotFlee' | 'cannotForfeit' | 'mustSwitch' | 'actionNotRequired'
+  // Phase D6 (doubles only): a move target that is not a position on the field / is the user itself
+  | 'badTarget';
+
+/**
+ * Phase D6: what one side submits to resolveTurn. Singles: one Action (or null). Doubles: one entry per field position
+ * (`[pos0, pos1]`); an entry is null when that position needs no action (fainted with no replacement, or the side is
+ * NPC/wild — core chooses). A bare Action in doubles is position 0's action with position 1 null.
+ */
+export type SideChoice = Action | null | readonly [Action | null, Action | null];
 
 export interface TurnResult { readonly state: BattleState; readonly events: readonly BattleEvent[] }
 
@@ -358,13 +395,17 @@ export interface Ref { readonly side: 0 | 1; readonly slot: number }
 
 export type BattleEvent =
   | { readonly t: 'turnStart'; readonly turn: number }
-  | { readonly t: 'switchOut'; readonly who: Ref; readonly reason: 'action' | 'faint' }
-  | { readonly t: 'switchIn'; readonly who: Ref }
+  // Phase D6: `pos` (the field position, 0/1) is present only in doubles
+  | { readonly t: 'switchOut'; readonly who: Ref; readonly reason: 'action' | 'faint'; readonly pos?: 0 | 1 }
+  | { readonly t: 'switchIn'; readonly who: Ref; readonly pos?: 0 | 1 }
   | { readonly t: 'abilityTrigger'; readonly who: Ref; readonly ability: string; readonly detail: string }
-  | { readonly t: 'moveUsed'; readonly who: Ref; readonly move: string; readonly target: Ref; readonly ppLeft: number }
+  // Phase D6: `targets` (every battler a doubles spread move aims at) is present only for a doubles spread move
+  | { readonly t: 'moveUsed'; readonly who: Ref; readonly move: string; readonly target: Ref; readonly ppLeft: number; readonly targets?: readonly Ref[] }
   | { readonly t: 'moveMissed'; readonly who: Ref; readonly move: string; readonly target: Ref }
   | { readonly t: 'moveFailed'; readonly who: Ref; readonly move: string | null;
-      readonly reason: 'fullHp' | 'noTarget' | 'trapped' | 'noEffect' | 'immune' | 'wonderGuard' }
+      readonly reason: 'fullHp' | 'noTarget' | 'trapped' | 'noEffect' | 'immune' | 'wonderGuard';
+      // Phase D6: the target a doubles spread move failed against (present only then)
+      readonly target?: Ref }
   | { readonly t: 'damage'; readonly target: Ref; readonly amount: number; readonly hpAfter: number; readonly maxHp: number;
       readonly effectiveness: Effectiveness; readonly crit: boolean; readonly stab: boolean;
       readonly cause: 'move' | 'confusion' | 'recoil' | 'burn' | 'poison' | 'trap' | 'sand' | 'hail' | 'contact';

@@ -7,6 +7,7 @@ import { Room, ServerError } from '@colyseus/core';
 import type { AuthContext, Client } from '@colyseus/core';
 import { StateView } from '@colyseus/schema';
 import {
+  OBSTACLE_PREFIX,
   badgeFlag,
   encounterTableFor,
   gatesClosedFor,
@@ -19,6 +20,9 @@ import {
   league as leagueById,
   leagueStoryGate,
   nearestWalkable,
+  obstacleFlag,
+  obstacleRefusal,
+  obstacleRefusalText,
   playableBounds,
   visitedFlag,
   zone as zoneById,
@@ -26,8 +30,8 @@ import {
 import type { BadgeId, Heightfield, LinkDir, RaidHotspot, RectSolid, ZoneDef, ZoneId } from '@ewa/content';
 import { createRng } from '@ewa/core';
 import type { Rng, WeatherKind } from '@ewa/core';
-import { BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, PlayerState, RaidState, SpawnState, ZoneState } from '@ewa/protocol';
-import type { ChallengeFailReason, ClientMessageType, ClientPayload, FastTravelRefusal, ServerMessage } from '@ewa/protocol';
+import { BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, FISH_REACH_M, PlayerState, RaidState, SpawnState, ZoneState } from '@ewa/protocol';
+import type { ChallengeFailReason, ClientMessageType, ClientPayload, FastTravelRefusal, FishRefusal, ServerMessage } from '@ewa/protocol';
 import type { RoomDeps } from '../deps';
 import { censor, sanitizeChat } from '../chat/filter';
 import { LOG_EVERY_MS, createRoomMetrics, recordTick, roomLogLine, rollRoomMetrics } from '../metrics';
@@ -41,9 +45,9 @@ import type { BattleHost, BattleSession } from './battleSession';
 import { ChallengeStore } from './challengeStore';
 import { findTarget, itemFlag, rangeFor, trainerBeatenFlag } from './interactables';
 import { pickZoneRoom, reserveZoneSeat } from './matchmaking';
-import { NO_GATES, SURF_ITEM, refillBudget, validateInput } from './movement';
+import { BIKE_ITEM, NO_CLEARED, NO_GATES, SURF_ITEM, isLava, onOpenWater, refillBudget, validateInput } from './movement';
 import type { RejectReason } from './movement';
-import { SpawnDirector, tuningFor } from './spawnDirector';
+import { SpawnDirector, rollFishing, tuningFor } from './spawnDirector';
 import type { SpawnRecord } from './spawnDirector';
 import { beatFor, completeBeatInTx, flagSet, isStoryTrainer, storyTrainerBeat } from './storyBeats';
 import { RAID_JOIN_RANGE_M, RaidRunner, RaidSession } from './raidSession';
@@ -103,6 +107,8 @@ export interface ZoneUserData {
    * `applyFlags` — every flag write of this room goes through it. Shared empty array in zones without gates.
    */
   closedGates: readonly RectSolid[];
+  /** Phase D10: ids of this zone's obstacles the player cleared (from `obstacle:<zone>:<id>` flags, kept by `applyFlags`) */
+  clearedObstacles: ReadonlySet<string>;
   badges: BadgeId[];
   /** absolute item counts (HM Surf walkability) */
   inventory: Record<string, number>;
@@ -155,6 +161,10 @@ export const RECONNECT_S = 20;
 export const CHALLENGE_RANGE_M = 12;
 /** Phase C3: the fast-travel cooldown (after an accepted travel, and after arriving by any handover). */
 export const FAST_TRAVEL_COOLDOWN_MS = 3_000;
+/** Phase D9: the key item a cast needs (content `old_rod`, Maren's gift). */
+export const ROD_ITEM = 'old_rod';
+/** Phase D9: the cast heading is sampled every 0.5 m from 0.5 m to FISH_REACH_M ahead of the accepted position. */
+export const FISH_SAMPLE_M = 0.5;
 
 /** Link direction → unit vector (R6: n = −z, s = +z, e = +x, w = −x). */
 export const LINK_VECTORS: Readonly<Record<LinkDir, readonly [number, number]>> = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] };
@@ -230,6 +240,9 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   private raidCheckAt = 0;
   /** Phase D7: the weather bucket state.weather was derived for */
   private weatherBucketAt = Number.NaN;
+  /** Phase D9: the fishing stream (seeded from the room seed; independent of the room's other forks) */
+  private fishRng: Rng | null = null;
+  private fishCounter = 0;
   /** player uuid → its `ewa:dm:<id>` callback (§30.7.2: DMs pushed live while the player is in this room) */
   private readonly dmSubs = new Map<string, (m: DmPush) => void>();
 
@@ -274,6 +287,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     // 5. seed
     const root = createRng(`${deps.worldSeed}:${options.zoneId}:${shard}:${this.now()}`);
     this.worldRng = root;
+    // Phase D9: its own seed, so adding it changes none of the root's forks (spawns, battles, raids)
+    this.fishRng = createRng(`${deps.worldSeed}:${options.zoneId}:${shard}:${this.now()}:fish`);
     const tuning = tuningFor(this.zone);
     const table = encounterTableFor(this.zone.id);
     const spawnRng = root.fork();
@@ -459,6 +474,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       flags,
       // join and handover arrival alike (both land here): the gate list starts from the loaded flags
       closedGates: this.closedGatesFor(flags),
+      clearedObstacles: this.clearedObstaclesFor(flags),
       badges: loaded.badges,
       inventory: loaded.inventory,
       handover: null,
@@ -710,6 +726,12 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     if (ud.unknown.length >= UNKNOWN_KICK.max) this.kick(client, 'unknownMessages');
   }
 
+  /** Phase D6: a `battleAction` for position 1 from a player in a doubles battle (its own limiter window). */
+  private doublesSecondPosition(playerId: string, payload: unknown): boolean {
+    if (payload === null || typeof payload !== 'object' || (payload as { pos?: unknown }).pos !== 1) return false;
+    return this.battles.ofPlayer(playerId)?.state.slots === 2;
+  }
+
   private kick(client: ZoneClient, reason: string): void {
     this.metrics.kicks += 1;
     this.deps.log.warn({ playerId: client.userData?.playerId, reason }, 'client kicked');
@@ -721,7 +743,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     if (ud === undefined || ud.replaced) return;
     this.metrics.msgsIn += 1;
     const now = this.now();
-    const key = roomLimitKey(type);
+    const key = type === 'battleAction' && this.doublesSecondPosition(ud.playerId, payload) ? 'battleActionPos1' : roomLimitKey(type);
     if (!allow(ud.limiter, key, now)) {
       if (shouldNotify(ud.limiter, key, now)) this.sendMsg(client, { type: 'error', code: 'rateLimited', detail: type });
       return;
@@ -756,6 +778,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
           return this.onHandoverAck(client, data);
         case 'fastTravel':
           return this.onFastTravel(client, data);
+        case 'fish':
+          return this.onFish(client, data);
         case 'tradeRequest':
           return this.onTrade(client, this.tradeRequestGuard(client) ?? this.trades.request(client.userData!.playerId, (data as ClientPayload<'tradeRequest'>).targetId));
         case 'tradeReply': {
@@ -797,8 +821,13 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const ud = client.userData!;
     const ps = this.state.players.get(ud.playerId);
     if (ps === undefined) return;
+    // Phase D11: the bike cap needs the bicycle and an outdoor start (halls are interiors)
+    const canBike = input.bike === true && (ud.inventory[BIKE_ITEM] ?? 0) > 0 && interiorAt(this.zone.id, ps.x, ps.z) === null;
     const verdict = validateInput(
-      { x: ps.x, z: ps.z, lastSeq: ud.lastSeq, budgetMs: ud.budgetMs, inBattle: ud.battleId !== null, canSurf: (ud.inventory[SURF_ITEM] ?? 0) > 0, closedGates: ud.closedGates },
+      {
+        x: ps.x, z: ps.z, lastSeq: ud.lastSeq, budgetMs: ud.budgetMs, inBattle: ud.battleId !== null, canSurf: (ud.inventory[SURF_ITEM] ?? 0) > 0,
+        closedGates: ud.closedGates, clearedObstacles: ud.clearedObstacles, canBike,
+      },
       input,
       this.heightfield,
     );
@@ -809,6 +838,10 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       ps.z = verdict.z;
       ps.angle = verdict.angle;
       ps.running = verdict.running;
+      // Phase D8 / D11: remote avatars ride at water level / on the bicycle (written only on change)
+      const surfing = onOpenWater(this.heightfield, verdict.x, verdict.z);
+      if (ps.surfing !== surfing) ps.surfing = surfing;
+      if (ps.biking !== verdict.bike) ps.biking = verdict.bike;
       ps.moving = dist > 0.001;
       ps.seq = input.seq;
       ud.lastSeq = input.seq;
@@ -1009,6 +1042,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
         if (sw.warpTo !== null && !this.teleport(ud, ps, sw.warpTo.x, sw.warpTo.z)) return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'warpBlocked' });
         return;
       }
+      case 'obstacle':
+        return this.clearObstacle(client, ud, target.obstacle);
       case 'static': {
         const st = target.static;
         const gateFlag = st.when.startsWith('badge:') ? st.when : st.when.slice('flag:'.length);
@@ -1080,12 +1115,108 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   /** The ONLY writer of `ud.flags` after join: adds the flags and, when one is new, recomputes the closed gates. */
   private applyFlags(ud: ZoneUserData, flags: readonly string[]): void {
     let changed = false;
+    let obstacle = false;
     for (const f of flags) {
       if (ud.flags.has(f)) continue;
       ud.flags.add(f);
       changed = true;
+      if (f.startsWith(OBSTACLE_PREFIX)) obstacle = true;
     }
     if (changed && ud.closedGates.length > 0) ud.closedGates = this.closedGatesFor(ud.flags);
+    if (obstacle) ud.clearedObstacles = this.clearedObstaclesFor(ud.flags);
+  }
+
+  /** Phase D10: this zone's obstacles `flags` say the player cleared (the shared empty set when none). */
+  private clearedObstaclesFor(flags: ReadonlySet<string>): ReadonlySet<string> {
+    const list = this.zone.obstacles ?? [];
+    if (list.length === 0) return NO_CLEARED;
+    const out = new Set<string>();
+    for (const o of list) if (flags.has(obstacleFlag(this.zone.id, o.id))) out.add(o.id);
+    return out.size === 0 ? NO_CLEARED : out;
+  }
+
+  /**
+   * Phase D10 `interact { kind: 'obstacle' }` (range already checked): refused once cleared (`alreadyCleared`), without
+   * the HM (`needHm`) or a party member of a suitable type (`needType`) — each with a toast. Otherwise the flag (and the
+   * hidden item, once) in one transaction, then the same deltas as a ground item; movement accepts its samples from now.
+   */
+  private async clearObstacle(client: ZoneClient, ud: ZoneUserData, o: NonNullable<ZoneDef['obstacles']>[number]): Promise<void> {
+    const deps = this.deps;
+    const flag = obstacleFlag(this.zone.id, o.id);
+    if (ud.flags.has(flag)) return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'alreadyCleared' });
+    const party = await deps.repos.db.transaction((t) => deps.repos.creatures.party(t, ud.playerId));
+    const types = party.map((c) => {
+      try {
+        return deps.content.species(c.speciesId).types as readonly string[];
+      } catch (_e) {
+        return [] as readonly string[];
+      }
+    });
+    const why = obstacleRefusal(o.kind, ud.inventory, types);
+    if (why !== null) {
+      this.sendMsg(client, { type: 'toast', level: 'warn', text: obstacleRefusalText(o.kind, why) });
+      return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: why });
+    }
+    const r = await deps.repos.db.transaction(async (t) => {
+      if ((await deps.repos.progress.flagSetAt(t, ud.playerId, flag)) !== null) return null;
+      await deps.repos.progress.setFlags(t, ud.playerId, [flag], new Date(this.now()));
+      const items: Record<string, number> = {};
+      if (o.item !== undefined) items[o.item.item] = await deps.repos.inventory.add(t, ud.playerId, o.item.item, o.item.qty);
+      return items;
+    });
+    if (r === null) return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'alreadyCleared' });
+    this.applyFlags(ud, [flag]);
+    if (Object.keys(r).length > 0) {
+      for (const [item, qty] of Object.entries(r)) ud.inventory[item] = qty;
+      this.sendMsg(client, { type: 'inventoryDelta', items: r, money: null, creaturesAdded: [], creaturesRemoved: [], creaturesUpdated: [] });
+    }
+    this.sendMsg(client, progressionOnly({ flags: [flag] }));
+    const found = o.item === undefined ? '' : ` Something was hidden behind it: ${this.itemName(o.item.item)}${o.item.qty > 1 ? ` x${o.item.qty}` : ''}.`;
+    this.sendMsg(client, { type: 'toast', level: 'success', text: `${o.kind === 'tree' ? 'The tree was cut down.' : 'The boulder was pushed aside.'}${found}` });
+  }
+
+  /**
+   * Phase D9 `fish { angle }`: the Old Rod in the bag (`noRod`), not in a hall, and open water (non-lava) within
+   * FISH_REACH_M of the ACCEPTED position along `angle` (`noWater`); then one of the zone's water slots from the fishing
+   * stream (`nothingBites` when the table has none for this time of day), started as a wild battle at the player.
+   */
+  private async onFish(client: ZoneClient, m: ClientPayload<'fish'>): Promise<void> {
+    const ud = client.userData!;
+    const ps = this.state.players.get(ud.playerId);
+    if (ps === undefined) return;
+    if (ud.battleId !== null || ud.tradeId !== null || this.raid?.isParticipant(ud.playerId) === true) return this.sendMsg(client, { type: 'error', code: 'busy', detail: 'inBattle' });
+    const refuse = (detail: FishRefusal, text: string): void => {
+      this.sendMsg(client, { type: 'toast', level: 'info', text });
+      this.sendMsg(client, { type: 'error', code: 'notAllowed', detail });
+    };
+    if ((ud.inventory[ROD_ITEM] ?? 0) <= 0) return refuse('noRod', 'You need a fishing rod.');
+    const water = interiorAt(this.zone.id, ps.x, ps.z) === null ? this.waterAhead(ps.x, ps.z, m.angle) : null;
+    if (water === null) return refuse('noWater', 'There is no water to fish in here.');
+    this.fishCounter += 1;
+    const id = `${this.zone.id}:fish:${this.fishCounter}`;
+    const rec = rollFishing(encounterTableFor(this.zone.id), this.fishRng!, this.deps.content, this.state.timeOfDay, water, id, this.now(), this.spawns?.liveOps);
+    if (rec === null) return refuse('nothingBites', 'Not even a nibble. Nothing seems to live in this water.');
+    ud.battleId = 'pending';
+    const res = await this.battles.startWild({ playerId: ud.playerId, sessionId: client.sessionId }, rec, { x: ps.x, z: ps.z }).catch((e: unknown) => {
+      this.deps.log.error({ err: e }, 'startWild (fish) failed');
+      return { ok: false as const, code: 'internal' as const, detail: 'startFailed' };
+    });
+    if (!res.ok) {
+      if (ud.battleId === 'pending') ud.battleId = null;
+      this.sendMsg(client, { type: 'error', code: res.code, detail: res.detail });
+    }
+  }
+
+  /** Phase D9: the first open-water (non-lava) sample along `angle` from (x, z), within FISH_REACH_M; null when none. */
+  private waterAhead(x: number, z: number, angle: number): { readonly x: number; readonly z: number } | null {
+    const dx = Math.sin(angle);
+    const dz = Math.cos(angle);
+    for (let d = FISH_SAMPLE_M; d <= FISH_REACH_M + 1e-9; d += FISH_SAMPLE_M) {
+      const wx = x + dx * d;
+      const wz = z + dz * d;
+      if (isWater(this.heightfield, wx, wz) && !isLava(this.heightfield, wx, wz)) return { x: wx, z: wz };
+    }
+    return null;
   }
 
   /** Phase A: the movement solids of the interior gates `flags` leave shut (the shared empty array when none). */
@@ -1154,7 +1285,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   }
 
   private onBattleAction(client: ZoneClient, m: ClientPayload<'battleAction'>): void {
-    const err = this.battles.action(client.userData!.playerId, m.battleId, m.turn, m.action);
+    const err = this.battles.action(client.userData!.playerId, m.battleId, m.turn, m.action, m.pos);
     if (err !== null) this.sendMsg(client, { type: 'error', code: err.code, detail: err.detail });
   }
 

@@ -15,6 +15,11 @@
  * - Compression (§20.5.3): above TURN_BUDGET the recover / status / stage / log-dwell segments are scaled (floor
  *   0.5×) so the result fits; if that alone cannot, the remaining unprotected segments (windup, travel, switch,
  *   weather) are scaled the same way. Hitstop, KO_HOLD and ORB_* never compress.
+ * - Phase D6 doubles (`ctx.activesOf` given for both sides): frame refs stay core refs (party indices); the timeline
+ *   tracks the party index on each field position (updated on `switchIn { pos }`, whose `enter` pose frame carries
+ *   that `pos` so the player can move its party → position map), turn-start / turn-end idles and the winner's
+ *   celebrate address every standing position, a drain VFX points at the battler the drainer last hit, a spread
+ *   move draws its VFX to each target, a per-target `moveFailed` names the target. Singles output is unchanged.
  */
 import type { BattleEvent, ContentIndex, MoveDef, Ref, StatKey, StatusId, TypeName, WeatherKind } from '@ewa/core';
 import {
@@ -28,7 +33,8 @@ export type CameraShot = 'wide' | 'attacker' | 'defender' | 'impact' | 'ko' | 't
 export type LogTone = 'neutral' | 'good' | 'bad';
 
 export type Keyframe =
-  | { readonly at: number; readonly k: 'pose'; readonly who: Ref; readonly pose: KeyPose }
+  // `pos` (Phase D6 doubles only): on a switch-in's `enter`, the field position the battler takes
+  | { readonly at: number; readonly k: 'pose'; readonly who: Ref; readonly pose: KeyPose; readonly pos?: 0 | 1 }
   | { readonly at: number; readonly k: 'flash'; readonly who: Ref; readonly color: string; readonly ms: number }
   | { readonly at: number; readonly k: 'vfx'; readonly id: string; readonly from: Ref | null; readonly to: Ref | null; readonly ms: number; readonly type: TypeName }
   | { readonly at: number; readonly k: 'camera'; readonly shot: CameraShot; readonly ms: number }
@@ -71,6 +77,10 @@ export interface TimelineCtx {
   readonly instantText?: boolean;
   /** Phase D4: the battler is a shiny — its switch-in adds the `shiny_sparkle` burst and a line. Default: never. */
   readonly shinyOf?: (r: Ref) => boolean;
+  /** Phase D6: the party index on field position 0 / 1 per side at the start of the events (doubles only). */
+  readonly activesOf?: (side: 0 | 1) => readonly [number, number] | undefined;
+  /** Phase D6: whether a battler stands at the start of the events (doubles idles skip a fainted-in-place one). Default: yes. */
+  readonly standing?: (r: Ref) => boolean;
 }
 
 /** Real time a crit slow-mo adds over its timeline span. */
@@ -159,6 +169,12 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
   const instant = ctx.instantText === true;
   const dwell = instant ? 0 : LOG_DWELL_MIN;
   const active: [number, number] = [ctx.activeOf?.(0) ?? 0, ctx.activeOf?.(1) ?? 0];
+  // Phase D6: the party index on each field position (null in singles), who is down, and who each drainer last hit
+  const a0 = ctx.activesOf?.(0);
+  const a1 = ctx.activesOf?.(1);
+  const field: [[number, number], [number, number]] | null = a0 !== undefined && a1 !== undefined ? [[a0[0], a0[1]], [a1[0], a1[1]]] : null;
+  const down = new Set<string>();
+  const lastHit = new Map<string, Ref>();
   const maxSeen = new Map<string, number>();
   const hpEnd = new Map<string, number>();
   let t = 0;
@@ -238,12 +254,25 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
     hpEnd.set(key(who), t + (instant ? 0 : HP_DRAIN(frac)));
   };
 
+  if (field !== null) {
+    for (const side of [0, 1] as const) for (const slot of field[side]) if (ctx.standing?.({ side, slot }) === false) down.add(key({ side, slot }));
+  }
+  /** Phase D6: a pose on every standing field battler of `side` (doubles). */
+  const posesOf = (side: 0 | 1, pose: KeyPose): void => {
+    for (const slot of field![side]) if (!down.has(key({ side, slot }))) push({ at: t, k: 'pose', who: { side, slot }, pose });
+  };
+
   push({ at: 0, k: 'inputLock', locked: true });
 
   for (const e of events) {
     switch (e.t) {
       case 'turnStart':
         flush();
+        if (field !== null) {
+          posesOf(0, 'idle');
+          posesOf(1, 'idle');
+          break;
+        }
         push({ at: t, k: 'pose', who: { side: 0, slot: active[0] }, pose: 'idle' });
         push({ at: t, k: 'pose', who: { side: 1, slot: active[1] }, pose: 'idle' });
         break;
@@ -259,7 +288,11 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         flush();
         active[e.who.side] = e.who.slot;
         log(e.who.side === seat ? `Go, ${name(e.who)}!` : `${cap(name(e.who))} appeared!`);
-        push({ at: t, k: 'pose', who: e.who, pose: 'enter' });
+        if (field !== null && e.pos !== undefined) {
+          field[e.who.side][e.pos] = e.who.slot;
+          down.delete(key(e.who));
+          push({ at: t, k: 'pose', who: e.who, pose: 'enter', pos: e.pos });
+        } else push({ at: t, k: 'pose', who: e.who, pose: 'enter' });
         push({ at: t, k: 'vfx', id: 'switch_in', from: e.who, to: e.who, ms: SWITCH_IN_MS, type: typeOf(e.who) });
         push({ at: t, k: 'sfx', id: 'switch', at3d: e.who });
         advance(SWITCH_IN_MS, 'other');
@@ -286,7 +319,10 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         push({ at: t, k: 'sfx', id: def.sfx, at3d: e.who });
         if (def.camera !== 'impact') push({ at: t, k: 'camera', shot: def.camera, ms: Math.round(def.windupMs + def.travelMs + def.recoverMs) });
         const vfxAt = t + def.windupMs * fOther;
-        push({ at: vfxAt, k: 'vfx', id: def.vfx, from: e.who, to: selfish ? e.who : e.target, ms: def.travelMs > 0 ? def.travelMs : 500, type });
+        if (e.targets !== undefined && e.targets.length > 0 && !selfish) {
+          // Phase D6: a doubles spread move travels to every target
+          for (const to of e.targets) push({ at: vfxAt, k: 'vfx', id: def.vfx, from: e.who, to, ms: def.travelMs > 0 ? def.travelMs : 500, type });
+        } else push({ at: vfxAt, k: 'vfx', id: def.vfx, from: e.who, to: selfish ? e.who : e.target, ms: def.travelMs > 0 ? def.travelMs : 500, type });
         advance(def.windupMs + def.travelMs, 'other');
         if (def.camera === 'impact') push({ at: t, k: 'camera', shot: 'impact', ms: Math.round(def.recoverMs + 200) });
         pending = { who: e.who, def };
@@ -298,10 +334,13 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         advance(200, 'status');
         break;
       case 'moveFailed':
-        log(FAIL_TEXT[e.reason] ?? 'But it failed!', tone(e.who, false));
+        // Phase D6: a spread move's per-target failure names the target
+        if (e.target !== undefined && e.reason === 'immune') log(`It doesn’t affect ${name(e.target)}…`, tone(e.who, false));
+        else log(FAIL_TEXT[e.reason] ?? 'But it failed!', tone(e.who, false));
         break;
       case 'damage': {
         maxSeen.set(key(e.target), e.maxHp);
+        if (field !== null && e.cause === 'move' && e.source !== null) lastHit.set(key(e.source), e.target);
         const frac = e.maxHp > 0 ? e.amount / e.maxHp : 0;
         if (e.cause === 'move') {
           if (e.amount > 0) {
@@ -338,7 +377,7 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
       }
       case 'heal': {
         const max = maxHp(e.target);
-        const foe: Ref = { side: e.target.side === 0 ? 1 : 0, slot: active[e.target.side === 0 ? 1 : 0] };
+        const foe: Ref = field !== null ? (lastHit.get(key(e.target)) ?? { side: e.target.side === 0 ? 1 : 0, slot: field[e.target.side === 0 ? 1 : 0][0] }) : { side: e.target.side === 0 ? 1 : 0, slot: active[e.target.side === 0 ? 1 : 0] };
         push({ at: t, k: 'vfx', id: e.cause === 'drain' || e.cause === 'absorb' ? 'drain' : 'heal', from: e.target, to: e.cause === 'drain' ? foe : e.target, ms: 500, type: typeOf(e.target) });
         push({ at: t, k: 'sfx', id: 'status_heal', at3d: e.target });
         hpFrame(e.target, e.hpAfter, max, max > 0 ? e.amount / max : 0);
@@ -443,6 +482,7 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         const drained = hpEnd.get(key(e.who)) ?? t;
         if (drained > t) t = drained;
         push({ at: t, k: 'pose', who: e.who, pose: 'faint' });
+        down.add(key(e.who));
         push({ at: t, k: 'vfx', id: 'faint', from: e.who, to: e.who, ms: KO_HOLD, type: typeOf(e.who) });
         push({ at: t, k: 'camera', shot: 'ko', ms: KO_HOLD });
         push({ at: t, k: 'sfx', id: 'faint', at3d: e.who });
@@ -516,6 +556,11 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         break;
       case 'turnEnd':
         flush();
+        if (field !== null) {
+          posesOf(0, 'idle');
+          posesOf(1, 'idle');
+          break;
+        }
         push({ at: t, k: 'pose', who: { side: 0, slot: active[0] }, pose: 'idle' });
         push({ at: t, k: 'pose', who: { side: 1, slot: active[1] }, pose: 'idle' });
         break;
@@ -529,7 +574,8 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         } else if (o.winner === 'draw') {
           log('The battle ended in a draw.');
         } else {
-          push({ at: t, k: 'pose', who: { side: o.winner, slot: active[o.winner] }, pose: 'celebrate' });
+          if (field !== null) posesOf(o.winner, 'celebrate');
+          else push({ at: t, k: 'pose', who: { side: o.winner, slot: active[o.winner] }, pose: 'celebrate' });
           log(o.winner === seat ? 'You won the battle!' : 'You lost the battle…', o.winner === seat ? 'good' : 'bad');
         }
         break;

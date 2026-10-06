@@ -82,12 +82,16 @@ export interface WaterBody {
   readonly boardwalk: { readonly x0: number; readonly x1: number; readonly z0: number; readonly z1: number; readonly y: number } | null;
 }
 
-/** Flood-fills the water mask into bodies. Pure; deterministic order. */
-export function waterBodies(h: HeightfieldData): WaterBody[] {
+/**
+ * Flood-fills the water mask into bodies. Pure; deterministic order. `labels` (Phase D8, optional, length res²) receives
+ * each water sample's body id (−1 elsewhere) — the collider's per-sample water level.
+ */
+export function waterBodies(h: HeightfieldData, labels?: Int32Array): WaterBody[] {
   const res = h.res;
   const seen = new Uint8Array(res * res);
   const out: WaterBody[] = [];
   const stack: number[] = [];
+  if (labels !== undefined) labels.fill(-1);
   for (let i = 0; i < res * res; i++) {
     if (h.water[i] !== 1 || seen[i] === 1) continue;
     seen[i] = 1; stack.push(i);
@@ -98,6 +102,7 @@ export function waterBodies(h: HeightfieldData): WaterBody[] {
     let shore = Infinity;
     while (stack.length > 0) {
       const j = stack.pop()!;
+      if (labels !== undefined) labels[j] = out.length;
       const row = Math.floor(j / res); const col = j - row * res;
       const x = h.originX + col * h.step; const z = h.originZ + row * h.step;
       const y = h.heights[j]!;

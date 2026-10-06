@@ -20,10 +20,11 @@ import {
   eloDelta,
   eloDrawDelta,
   projectBattler,
+  requiredPositions,
   resolveTurn,
   validateAction,
 } from '@ewa/core';
-import type { Action, BattleEvent, BattleFormat, BattleOutcome, BattleState, ContentIndex, CreatureInstance, Rng, RngState, Side, Terrain, WeatherKind } from '@ewa/core';
+import type { Action, BattleEvent, BattleFormat, BattleOutcome, BattleState, ContentIndex, CreatureInstance, Rng, RngState, Side, SideChoice, Terrain, WeatherKind } from '@ewa/core';
 import type { QuestProgressEntry, RewardsSummary, ServerMessage } from '@ewa/protocol';
 import type { BattleStartSnapshot, Db, Repos } from '@ewa/persist';
 import type { Logger } from '../log';
@@ -57,9 +58,12 @@ export interface BattleSession {
   /** createBattle's seed snapshot, for battle_history.seed */
   readonly seed: RngState;
   /** one entry per resolved resolveTurn, for battle_history.actions */
-  readonly actionsLog: [Action | null, Action | null][];
-  /** actions received for the CURRENT turn */
-  pending: [Action | null, Action | null];
+  readonly actionsLog: [SideChoice, SideChoice][];
+  /**
+   * actions received for the CURRENT turn. Singles: one Action (or null) per side. Phase D6 doubles
+   * (`state.slots === 2`): one `[pos0, pos1]` pair per side, filled position by position.
+   */
+  pending: [SideChoice, SideChoice];
   /** ms; 30 s after the turn opened */
   deadlineAt: number;
   resolving: boolean;
@@ -245,13 +249,63 @@ export function autoAction(state: BattleState, side: 0 | 1, content: ContentInde
   return { kind: 'forfeit' };
 }
 
-/** Sides whose player must act this turn: in a replacement phase only the mustSwitch side(s). */
+/** Phase D6: the doubles deadline / forfeit auto-choice — fills every required position still null in `have`. */
+export function autoPair(state: BattleState, side: 0 | 1, content: ContentIndex, have: readonly [Action | null, Action | null] = [null, null]): [Action | null, Action | null] {
+  const out: [Action | null, Action | null] = [have[0], have[1]];
+  const s = state.sides[side];
+  const a = s.actives!;
+  const taken = (to: number): boolean => out.some((x) => x !== null && x.kind === 'switch' && x.to === to);
+  for (const p of requiredPositions(state, side)) {
+    if (out[p] !== null) continue;
+    if (s.mustSwitch) {
+      const to = s.party.findIndex((b, i) => i !== a[0] && i !== a[1] && b.creature.hp > 0 && !taken(i));
+      out[p] = { kind: 'switch', to };
+      continue;
+    }
+    const b = s.party[a[p]]!;
+    let pick: Action = { kind: 'forfeit' };
+    for (const m of b.creature.moves) {
+      const mv: Action = { kind: 'move', move: m.id };
+      if (m.pp > 0 && validateAction(state, side, mv, content, p) === null) {
+        pick = mv;
+        break;
+      }
+    }
+    out[p] = pick;
+  }
+  return out;
+}
+
+/** Phase D6: true when the session runs a doubles battle. */
+export function isDoubles(session: BattleSession): boolean {
+  return session.state.slots === 2;
+}
+
+/** An empty pending slate (singles `[null, null]`; doubles one null pair per PLAYER side — NPC sides stay null). */
+function emptyPending(state: BattleState, seats: readonly [Seat, Seat]): [SideChoice, SideChoice] {
+  if (state.slots !== 2) return [null, null];
+  return [seats[0].playerId === null ? null : [null, null], seats[1].playerId === null ? null : [null, null]];
+}
+
+/** Whether `side`'s pending choice is complete (singles: non-null; doubles: every required position filled). */
+function sideReady(session: BattleSession, side: 0 | 1): boolean {
+  const p = session.pending[side];
+  if (!isDoubles(session)) return p !== null;
+  const pair = p as readonly [Action | null, Action | null];
+  return requiredPositions(session.state, side).every((q) => pair[q] !== null);
+}
+
+/** Sides whose player must act this turn: in a replacement phase only the mustSwitch side(s). Doubles: sides with a required position. */
 export function mustActSides(session: BattleSession): (0 | 1)[] {
   const st = session.state;
   const replacement = st.sides[0].mustSwitch || st.sides[1].mustSwitch;
   const out: (0 | 1)[] = [];
   for (const seat of session.seats) {
     if (seat.playerId === null) continue;
+    if (st.slots === 2) {
+      if (requiredPositions(st, seat.side).length > 0) out.push(seat.side);
+      continue;
+    }
     if (replacement && !st.sides[seat.side].mustSwitch) continue;
     out.push(seat.side);
   }
@@ -325,20 +379,23 @@ export class BattleCoordinator {
     base: Omit<BattleSession, 'state' | 'seed' | 'actionsLog' | 'pending' | 'deadlineAt' | 'resolving' | 'startedAt' | 'autoActions' | 'faults' | 'start'>,
     sides: readonly [Omit<Side, 'mustSwitch' | 'consumedItems'>, Omit<Side, 'mustSwitch' | 'consumedItems'>],
     seed: RngState,
+    doubles = false,
   ): { session: BattleSession; events: readonly BattleEvent[] } {
     const now = this.deps.clock();
     const terrain = TERRAIN_BY_BIOME[this.deps.zone.biome];
     const weather = this.deps.weather?.(base.format, { x: base.x, z: base.z }) ?? 'none';
     const ambient = weather === 'none' ? {} : { weather };
-    const start = JSON.parse(JSON.stringify({ zoneId: base.zoneId, terrain, sides, ...ambient })) as BattleStartSnapshot;
-    const { state, events } = createBattle({ id: base.id, format: base.format, zoneId: base.zoneId, terrain, seed, sides, ...ambient }, this.deps.content);
+    // Phase D6: `slots: 2` rides the start snapshot so a doubles battle replays from its history row alone
+    const slots = doubles ? { slots: 2 as const } : {};
+    const start = JSON.parse(JSON.stringify({ zoneId: base.zoneId, terrain, sides, ...ambient, ...slots })) as BattleStartSnapshot;
+    const { state, events } = createBattle({ id: base.id, format: base.format, zoneId: base.zoneId, terrain, seed, sides, ...ambient, ...slots }, this.deps.content);
     const session: BattleSession = {
       ...base,
       start,
       state,
       seed,
       actionsLog: [],
-      pending: [null, null],
+      pending: emptyPending(state, base.seats),
       deadlineAt: now + TURN_DEADLINE_MS,
       resolving: false,
       startedAt: now,
@@ -454,6 +511,10 @@ export class BattleCoordinator {
     const loaded = await this.loadPlayers([p.playerId], team[0]!.speciesId);
     const side0 = this.playerSide(loaded.get(p.playerId)!.party, p.playerId, false, false);
     if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
+    // Phase D6: a trainer authored as doubles (`doubles: true`, ≥ 2 creatures) fights 2-on-2 when the player has two
+    // usable creatures; with one, the battle falls back to singles (never a refusal: doubles is never a gate)
+    const authoredDoubles = (def.kind === 'trainer' ? def.trainer.doubles : def.league.doubles) === true && team.length >= 2;
+    const doubles = authoredDoubles && side0.party.filter((b) => b.creature.hp > 0).length >= 2;
     const side1: Omit<Side, 'mustSwitch' | 'consumedItems'> = {
       kind: 'npc',
       party: team.map((c) => projectBattler(c, content)),
@@ -482,6 +543,7 @@ export class BattleCoordinator {
       },
       [side0, side1],
       this.rng.fork().snapshot(),
+      doubles,
     );
     this.sendStartProgress(loaded);
     return { ok: true, session };
@@ -533,13 +595,18 @@ export class BattleCoordinator {
 
   // ─── actions ────────────────────────────────────────────────────────────────
 
-  /** §30.4.2 `battleAction` handler. null = accepted. */
-  action(playerId: string, battleId: string, turn: number, action: Action): ActionResult {
+  /**
+   * §30.4.2 `battleAction` handler. null = accepted. Phase D6: in a doubles battle `pos` names the field position
+   * the action is for (absent = the lowest required position still waiting); the turn resolves once every required
+   * position of every player seat holds an action. `pos` is ignored in singles.
+   */
+  action(playerId: string, battleId: string, turn: number, action: Action, pos?: 0 | 1): ActionResult {
     const session = this.sessions.get(battleId);
     const seat = session?.seats.find((s) => s.playerId === playerId);
     if (session === undefined || seat === undefined) return { code: 'notFound', detail: null };
     if (session.resolving) return { code: 'notAllowed', detail: 'resolving' };
     if (turn !== session.state.turn + 1) return { code: 'notAllowed', detail: 'wrongTurn' };
+    if (isDoubles(session)) return this.actionAt(session, seat.side, action, pos);
     const side = seat.side;
     const err = validateAction(session.state, side, action, this.deps.content);
     if (err !== null) return { code: 'notAllowed', detail: err };
@@ -551,6 +618,29 @@ export class BattleCoordinator {
     session.pending[side] = action;
     session.autoActions[side] = 0;
     if (mustActSides(session).every((s) => session.pending[s] !== null)) void this.resolveNow(session);
+    return null;
+  }
+
+  /** Phase D6: one position's action in a doubles battle (see `action`). */
+  private actionAt(session: BattleSession, side: 0 | 1, action: Action, pos: 0 | 1 | undefined): ActionResult {
+    const st = session.state;
+    if (!mustActSides(session).includes(side)) return { code: 'notAllowed', detail: 'actionNotRequired' };
+    const pair = session.pending[side] as [Action | null, Action | null];
+    const req = requiredPositions(st, side);
+    const p = pos ?? req.find((q) => pair[q] === null);
+    if (p === undefined) return { code: 'notAllowed', detail: 'alreadySubmitted' };
+    if (!req.includes(p)) return { code: 'notAllowed', detail: 'actionNotRequired' };
+    if (pair[p] !== null) return { code: 'notAllowed', detail: 'alreadySubmitted' };
+    const err = validateAction(st, side, action, this.deps.content, p);
+    if (err !== null) return { code: 'notAllowed', detail: err };
+    const other = pair[p === 0 ? 1 : 0];
+    if (other !== null && other.kind === 'switch' && action.kind === 'switch' && other.to === action.to) return { code: 'notAllowed', detail: 'switchToActive' };
+    const inv = session.inventory[side];
+    const sameItem = other !== null && other.kind === 'item' && action.kind === 'item' && other.item === action.item ? 1 : 0;
+    if (action.kind === 'item' && (inv?.[action.item] ?? 0) < 1 + sameItem) return { code: 'notAllowed', detail: 'noItem' };
+    pair[p] = action;
+    session.autoActions[side] = 0;
+    if (mustActSides(session).every((s) => sideReady(session, s))) void this.resolveNow(session);
     return null;
   }
 
@@ -569,7 +659,8 @@ export class BattleCoordinator {
     session.resolving = true;
     const { content, log, clock } = this.deps;
     const before = session.state;
-    const actions: [Action | null, Action | null] = [session.pending[0], session.pending[1]];
+    const copy = (c: SideChoice): SideChoice => (Array.isArray(c) ? [...(c as readonly (Action | null)[])] as [Action | null, Action | null] : c);
+    const actions: [SideChoice, SideChoice] = [copy(session.pending[0]), copy(session.pending[1])];
     let next: BattleState;
     let events: readonly BattleEvent[];
     try {
@@ -589,7 +680,7 @@ export class BattleCoordinator {
     } catch (e) {
       log.error({ err: e, battleId: session.id }, 'battle turn transaction failed');
       this.deps.metrics.battleFaults += 1;
-      session.pending = [null, null];
+      session.pending = emptyPending(before, session.seats);
       session.resolving = false;
       session.faults += 1;
       if (session.faults >= 2) {
@@ -604,7 +695,7 @@ export class BattleCoordinator {
     session.faults = 0;
     session.actionsLog.push(actions);
     session.state = next;
-    session.pending = [null, null];
+    session.pending = emptyPending(next, session.seats);
     const anyMustSwitch = next.sides[0].mustSwitch || next.sides[1].mustSwitch;
     session.deadlineAt = now + (anyMustSwitch ? REPLACEMENT_DEADLINE_MS : TURN_DEADLINE_MS);
     this.sendAfterCommit(session, next, events, deltas);
@@ -670,7 +761,7 @@ export class BattleCoordinator {
     before: BattleState,
     next: BattleState,
     events: readonly BattleEvent[],
-    actionsLog: [Action | null, Action | null][],
+    actionsLog: [SideChoice, SideChoice][],
     nowMs: number,
   ): Promise<Map<string, PlayerDelta>> {
     const { repos } = this.deps;
@@ -889,11 +980,21 @@ export class BattleCoordinator {
       if (!this.sessions.has(session.id)) return;
       const st = session.state;
       const forfeit: Action = { kind: 'forfeit' };
-      const mine = validateAction(st, side, forfeit, this.deps.content) === null ? forfeit : autoAction(st, side, this.deps.content);
       const mustAct = mustActSides(session);
-      session.pending = [null, null];
-      if (mustAct.includes(side)) session.pending[side] = mine;
-      if (mustAct.includes(other)) session.pending[other] = autoAction(st, other, this.deps.content);
+      session.pending = emptyPending(st, session.seats);
+      if (isDoubles(session)) {
+        // Phase D6: the leaver forfeits from its first required position (a replacement phase cannot forfeit: auto-fill)
+        const req = requiredPositions(st, side);
+        const first = req[0];
+        const mine: [Action | null, Action | null] = [null, null];
+        if (first !== undefined && validateAction(st, side, forfeit, this.deps.content, first) === null) mine[first] = forfeit;
+        if (mustAct.includes(side)) session.pending[side] = autoPair(st, side, this.deps.content, mine);
+        if (mustAct.includes(other)) session.pending[other] = autoPair(st, other, this.deps.content);
+      } else {
+        const mine = validateAction(st, side, forfeit, this.deps.content) === null ? forfeit : autoAction(st, side, this.deps.content);
+        if (mustAct.includes(side)) session.pending[side] = mine;
+        if (mustAct.includes(other)) session.pending[other] = autoAction(st, other, this.deps.content);
+      }
       await this.resolveNow(session);
     }
     if (this.sessions.has(session.id)) this.voidBattle(session);
@@ -905,6 +1006,13 @@ export class BattleCoordinator {
       if (session.resolving || now < session.deadlineAt) continue;
       const content = this.deps.content;
       for (const side of mustActSides(session)) {
+        if (isDoubles(session)) {
+          // Phase D6: fill only the positions still waiting
+          if (sideReady(session, side)) continue;
+          session.autoActions[side] += 1;
+          session.pending[side] = autoPair(session.state, side, content, session.pending[side] as [Action | null, Action | null]);
+          continue;
+        }
         if (session.pending[side] !== null) continue;
         session.autoActions[side] += 1;
         let a = autoAction(session.state, side, content);

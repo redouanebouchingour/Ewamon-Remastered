@@ -12,7 +12,9 @@
  *
  * Battlers are `CreatureBillboard`s from the shared `SpritePool`: side 0 (the player's) on the near half showing its
  * back sprite, side 1 on the far half showing its front, 5.5 m apart along the heading's view axis (§10.7.4
- * interpretation P5), all DOF-sharp. VFX spawn between battler anchors; `impact_crit` flashes the target white;
+ * interpretation P5), all DOF-sharp. Phase D6 doubles: a side holding two battlers (render `BattlerRef.slot` = the field
+ * position 0 / 1) spreads them `SLOT_SPACING` across the battle axis (`battlerSlot`), mirrored per side, every foot
+ * disc (`STAGE.battlerFootR`) inside the ring top; `fitCentre` keeps those four discs on a hall floor too. VFX spawn between battler anchors; `impact_crit` flashes the target white;
  * impacts pulse the beacons. `undress(ms)` sinks and hides the dressing and releases the battlers; it disposes
  * nothing shared (library materials, the sprite pool, the actor pool stay).
  */
@@ -27,7 +29,7 @@ import type { EffectsFlags, HarvestLevel, WeatherKind } from '../descriptors.js'
 import type { MaterialLibrary } from '../materials/library.js';
 import type { SurfaceId } from '../materials/surfaces.js';
 import { paintSurfaceColor } from '../materials/library.js';
-import { INSPECT_AIM, INSPECT_OFFSET, RING_DIAMETER, battlerSlot, forwardOfYaw } from '../camera/battle.js';
+import { BATTLER_SEPARATION, INSPECT_AIM, INSPECT_OFFSET, RING_DIAMETER, SLOT_SPACING, battlerSlot, forwardOfYaw } from '../camera/battle.js';
 import type { DioramaRig } from '../camera/rig.js';
 import type { BillboardPool, CreatureBillboard } from '../sprites/billboard.js';
 import { TYPE_COLORS, hexToLinearInto, validateTypeColorTable } from '../sprites/typeColors.js';
@@ -71,6 +73,12 @@ export const STAGE = Object.freeze({
    */
   trainerSlotM: 4.45, trainerR: 0.4, ringFitR: 4.0, hallMarginM: 0.1,
   postMinScale: 0.92, postR: 0.1, pylonMinRadius: 4.05, pylonR: 0.3, spectatorMinRadius: 4.9, spectatorR: 0.45, fitStep: 0.1,
+  /**
+   * Phase D6: the foot disc of a battler (the contact-shadow decal of a size-1 creature, `BILLBOARD.decalSizeM` / 2).
+   * A doubles battler's feet stand hypot(BATTLER_SEPARATION / 2, SLOT_SPACING / 2) ≈ 2.89 m from the centre, so the disc
+   * stays on the 3.5 m ring top; `fitCentre` checks the four discs against the hall floor.
+   */
+  battlerFootR: 0.55,
 });
 
 /** Ground-cover mask the stage writes (the zone's `ScatterMask`; IMPLEMENTATION-NOTES Part 5, T1). */
@@ -103,6 +111,10 @@ export const TERRAIN_ACCENT: Readonly<Record<Terrain, TypeName>> = Object.freeze
 export interface StageGround {
   sample(x: number, z: number): number;
   normal?(x: number, z: number, out: Vector3): Vector3;
+  /** Phase D8: feet height with open water at its level (the zone collider); actors use it when present */
+  surfaceY?(x: number, z: number): number;
+  /** Phase D8: open water (a surfer stands here) */
+  onWater?(x: number, z: number): boolean;
 }
 
 export interface StageDeps {
@@ -160,6 +172,9 @@ export function inHall(h: HallBounds, x: number, z: number, r: number): boolean 
  * Phase A: the arena centre nearest (x, z) that keeps the ring (+ curb) and both trainer slots (±`trainerSlotM` along
  * the battle axis of diorama yaw `yaw`) on the hall floor; per hall axis the feasible interval is intersected, and an
  * axis too short for all of them takes the interval's middle. World (x, z) into `out`.
+ * Phase D6: the four doubles battler foot discs (±BATTLER_SEPARATION / 2 along the axis, ±SLOT_SPACING / 2 across it,
+ * radius `battlerFootR`) are part of the need list. They lie inside the ring-fit disc (2.89 + 0.55 < 4.0), so they
+ * never move the centre today; listing them keeps the guarantee if the ring or the spacing changes.
  */
 export function fitCentre(h: HallBounds, x: number, z: number, yaw: number, out: [number, number]): [number, number] {
   const c = Math.cos(h.yaw); const s = Math.sin(h.yaw);
@@ -168,7 +183,12 @@ export function fitCentre(h: HallBounds, x: number, z: number, yaw: number, out:
   const fx = -Math.sin(yaw); const fz = -Math.cos(yaw);                       // the battle axis (world) → hall local
   const ox = (c * fx - s * fz) * STAGE.trainerSlotM; const oz = (s * fx + c * fz) * STAGE.trainerSlotM;
   const m = STAGE.hallMarginM;
-  const need: readonly (readonly [number, number, number])[] = [[0, 0, STAGE.ringFitR + m], [ox, oz, STAGE.trainerR + m], [-ox, -oz, STAGE.trainerR + m]];
+  const need: (readonly [number, number, number])[] = [[0, 0, STAGE.ringFitR + m], [ox, oz, STAGE.trainerR + m], [-ox, -oz, STAGE.trainerR + m]];
+  // Phase D6: the doubles battlers' feet (the battle axis and its right-hand normal, in hall local)
+  const rx = Math.cos(yaw); const rz = -Math.sin(yaw);
+  const ax = (c * fx - s * fz) * (BATTLER_SEPARATION / 2); const az = (s * fx + c * fz) * (BATTLER_SEPARATION / 2);
+  const bx = (c * rx - s * rz) * (SLOT_SPACING / 2); const bz = (s * rx + c * rz) * (SLOT_SPACING / 2);
+  for (const sa of [-1, 1]) for (const sb of [-1, 1]) need.push([sa * ax + sb * bx, sa * az + sb * bz, STAGE.battlerFootR + m]);
   const fit = (v: number, half: number, axis: 0 | 1): number => {
     let lo = -Infinity; let hi = Infinity;
     for (const n of need) { lo = Math.max(lo, -half + n[2] - n[axis]); hi = Math.min(hi, half - n[2] - n[axis]); }

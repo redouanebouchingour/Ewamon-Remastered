@@ -333,3 +333,37 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   `isAchievement`, `STORY_QUESTS` (index.ts; QUESTS without the achievements — defined in index to avoid an import cycle).
 - validate: an achievement must have giver null, no requires, money/item rewards only; `dexCaught` ≤ species count.
 - Tests: `test/achievements.test.ts` (4); `test/counts.test.ts` now checks 12 story + 30 achievements.
+
+## Phase D6 — doubles (2026-10-06)
+
+- `TrainerDef.doubles?: true` / `LeagueTrainer.doubles?: true` (schema `z.literal(true).optional()`; validate: a doubles
+  row needs a team of 2+). Authored: `draco_gym`, `aurelia`, and five Act II/III route trainers (`galvan_route.rocker`,
+  `deepcut_route.digger`, `hollow_route.medium`, `siege_route.engineer`, `ascent_route.tamer`) via a `doubles(tr(…))`
+  wrapper in `data/zones.ts` (x/z untouched, so no layout / heightfield digest moves). None is a story trainer and none is
+  a gate. Pairs of trainers fighting together were not done (single trainers with `doubles: true` only).
+- `data/spreadMoves.ts`: `SPREAD_MOVES` (16 curated ids) laid over the generated `data/moves.ts` (which has no reach);
+  `MOVES` exported from there, so `MOVES[i] === contentIndex.move(id)` still holds. `MoveDefSchema.spread?`; validate:
+  every listed id is a foe-targeted MOVES row carrying that spread.
+
+## Phase D8–D11 — world systems (2026-10-06)
+
+- **Water slots (D8).** mire_route gains `mossling` (day, uncommon, water) and `mudbub` (night, uncommon, water), skyrend
+  `tidalfang` (any, rare, water), umbral_observatory `wraithtide` (night, rare, water). All four species were already
+  placed elsewhere, so `directlyPlaced` stays 79, obtainable 130, families 67; RC rules hold (uncommon weight 5,
+  Ghost at night, no duplicate `species|time|tier` key, ≤ 16 slots). Every non-lava zone with a table and open water
+  now has ≥ 1 water slot (what the Old Rod rolls); ash_route (lava) has none on purpose.
+- **Obstacles (D10).** `ObstacleDef` / `ZoneDef.obstacles?` (schema + validate), data in `data/obstacles.ts` merged into
+  `ZONES` (`BASE_ZONES.map`, so no zone literal changed). `obstacles.ts`: radii (tree 0.7, boulder 0.95) + 0.35 m
+  capsule, `OBSTACLE_HM`, `OBSTACLE_TYPES` (Cut: Grass/Bug/Steel/Dark; Strength: Fighting/Rock/Ground/Steel — decided
+  here), `obstacleFlag`, `obstacleRefusal(Text)`, `stampObstacles`. `buildZoneSurface` stamps them LAST (after
+  `stampInteriors`) on still-walkable samples and keeps `ZoneSurface.obstacleCells` (sample → id); `obstacleAt(h, x, z)`
+  reads it (null for a synthetic field of a zone without obstacles). Obstacles are NOT authored points: neither
+  `plan.ts` nor `heightfield.ts` `authoredPoints` read them (the r1 fixture test is green). Positions were picked by a
+  scratch scan: walkable disc + 1 m, in the spawn's component, ≥ 12 m from every authored point and from the progression
+  walker's saved positions, |z| ≥ 16 on routes (off the road), ≥ 18 m inside the playable edge.
+- **Heightfields changed:** `mire_route`, `tide_route`, `deepcut_route`, `hollow_route`, `ascent_route` (the stamps only;
+  every other zone is byte-identical — `stampObstacles` is a no-op without obstacles). `dist/heightfields` rebuilt.
+- **Bicycle (D11).** `bike` key item (`BIKE_ITEM`, `BIKE_PRICE` 30 000) in `buildKeyItems`, sold in Saltmourn
+  (`PROGRESSION_STOCK.saltmourn` first). No beat grants it, nothing needs it.
+- Tests: `test/encounters.test.ts` (8). `test/plan.test.ts`: the outside-towns stamp count now adds
+  `obstacleCells.size` (the obstacle stamp runs after the footprints).

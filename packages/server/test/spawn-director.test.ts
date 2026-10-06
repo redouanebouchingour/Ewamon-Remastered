@@ -143,7 +143,10 @@ describe('SpawnDirector', () => {
   });
 
   it('a 100 000-roll sample matches the table weights within ±1.5 pp', () => {
-    const table = encounterTableFor('mire_route')!;
+    // land slots only: a water slot's roll is kept only when one of its 8 position draws lands on water (≈ 0.5 % of
+    // mire_route since Phase D8 gave the mire's ponds water slots), so the spawned sample under-represents it by design
+    const full = encounterTableFor('mire_route')!;
+    const table = { ...full, slots: full.slots.filter((s) => (s.medium ?? 'land') === 'land') };
     const eligible = table.slots.filter((s) => slotEligible(s, 0.5));
     const total = eligible.reduce((a, s) => a + s.weight, 0);
     const expected = new Map<string, number>();

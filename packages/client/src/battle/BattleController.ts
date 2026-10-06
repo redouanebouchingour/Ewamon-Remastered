@@ -30,16 +30,25 @@
  * timeline PLAYS — `halfHp` once when the foe team's total displayed HP first drops to half or below, `lastStand` once
  * when the foe's last standing creature enters; the result card's arrival calls `view.ended` (foe actor emotes).
  *
+ * Phase D6 doubles (`state.slots === 2`; trainer / league / pvp only): two battlers per side on stage slots = field
+ * positions 0 / 1 (`STAGE_REFS_DOUBLES`, four HUD bars). `submit` records the action of the position choosing now
+ * (`ui.battle.pick`, validated with `validateAction(…, pos)` and the cross-position switch rule) and moves on to the next
+ * required position (`requiredPositions`); `undoPick` (the menu's Back) re-opens the earlier one. Only when every
+ * required position has picked does it validate the pair (`validateSideChoice`), send ONE `battleAction { pos }` PER
+ * POSITION, and run the preview `resolveTurn(authoritative, [[a0, a1], null])` (pvp: none). A forfeit fills every
+ * required position. Stage / HUD addressing goes through the player's party → position map (`positionOf`); the
+ * displayed creature is tracked per position; `patchFromEvents` moves `actives` on `switchIn { pos }`.
+ *
  * HP is never computed here: bars follow `damage.hpAfter` / `heal.hpAfter` (TimelinePlayer → BattleHud).
  * Store writes happen at message time or are deferred off the tick (setTimeout 0) — never from inside World3D.tick.
  */
-import { digestBattleState, resolveTurn, validateAction } from '@ewa/core';
+import { digestBattleState, requiredPositions, resolveTurn, validateAction, validateSideChoice } from '@ewa/core';
 import type { Action, BattleEvent, BattleState, ContentIndex, CreatureInstance, Ref, StatusId } from '@ewa/core';
 import type { ClientMessageType, ClientPayload, RewardsSummary, ServerMessageOf } from '@ewa/protocol';
 import { useUiStore } from '../state/ui';
-import type { BattleResult, BattleUi, QueuedPrompt, RaidBattleUi, RaidSummary } from '../state/ui';
+import type { BattleResult, BattleUi, DoublesPick, QueuedPrompt, RaidBattleUi, RaidSummary } from '../state/ui';
 import { toast } from '../state/notifications';
-import { BattleHud, STAGE_REFS } from './BattleHud';
+import { BattleHud, STAGE_REFS, STAGE_REFS_DOUBLES } from './BattleHud';
 import type { BattleHudModel } from './BattleHud';
 import { LOG_DWELL_MIN } from './constants';
 import { actionErrorLabel } from './labels';
@@ -130,8 +139,10 @@ export interface BattleController {
   attach(view: BattleView | null): void;
   /** BattleResultCard's "Continue". */
   dismissResult(): void;
-  /** DOM menu → validate without sending (disabled reasons). */
+  /** DOM menu → validate without sending (disabled reasons). Doubles: for the position choosing now. */
   check(action: Action): string | null;
+  /** Phase D6: the menu's Back in doubles — re-opens the previous position's choice (nothing was sent yet). */
+  undoPick(): void;
   /** Called at LOG_DWELL_MIN by an interval while a battle is open (off the tick). */
   flushLog(): void;
   /** Tear down (world disposed). */
@@ -222,9 +233,17 @@ export function patchFromEvents(state: BattleState, events: readonly BattleEvent
       case 'faint':
         setCreature(e.who, { hp: 0 });
         break;
-      case 'switchIn':
-        sides[e.who.side]!.active = e.who.slot;
+      case 'switchIn': {
+        const sd = sides[e.who.side]!;
+        if (e.pos !== undefined && sd.actives !== undefined) {
+          // Phase D6: the battler takes its field position; `active` mirrors position 0
+          const a: [number, number] = [sd.actives[0], sd.actives[1]];
+          a[e.pos] = e.who.slot;
+          sd.actives = a;
+          sd.active = a[0];
+        } else sd.active = e.who.slot;
         break;
+      }
       case 'moveUsed': {
         const b = sides[e.who.side]?.party[e.who.slot];
         if (b !== undefined) setCreature(e.who, { moves: b.creature.moves.map((m) => (m.id === e.move ? { ...m, pp: e.ppLeft } : m)) });
@@ -279,8 +298,11 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
   let logId = 0;
   const pendingLog: { text: string; tone: LogTone }[] = [];
   let logTimer: ReturnType<typeof setInterval> | null = null;
-  /** displayed party slot per side, and the HP each party member shows at the current point of the timeline */
-  const displayed: [number, number] = [-1, -1];
+  /**
+   * displayed party slot per side and stage position (singles: position 0 only; Phase D6 doubles: both), and the HP each
+   * party member shows at the current point of the timeline
+   */
+  const displayed: [[number, number], [number, number]] = [[-1, -1], [-1, -1]];
   let hpNow: number[][] = [[], []];
 
   const hud = new BattleHud((m) => view?.setBattleHud(m));
@@ -378,19 +400,47 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     return { ...st, sides };
   };
 
-  const barFor = (st: BattleState, side: 0 | 1): void => {
-    const s = st.sides[side]!;
-    const b = s.party[s.active];
-    if (b === undefined) return;
-    const hp = hpNow[side]?.[s.active] ?? b.creature.hp;
-    hud.setBar(side, cap(sideName(st, { side, slot: s.active }, seat, deps.content)), b.creature.level, hp, b.maxHp, statusGlyph(majorOf(b.creature.status)), side === seat, typesOf(st, { side, slot: s.active }, deps.content));
+  /** The party index on each field position of `side`: [active] in singles, `actives` in doubles (Phase D6). */
+  const fieldOf = (st: BattleState, side: 0 | 1): readonly number[] => {
+    const s = st.sides[side];
+    return st.slots === 2 && s.actives !== undefined ? s.actives : [s.active];
   };
 
-  const showBattler = (st: BattleState, side: 0 | 1, slot: number): void => {
+  /** The stage ref of core `side`'s field position (render's stage side 0 is the near / viewer's position). */
+  const stageAt = (side: 0 | 1, pos: number): StageRef => {
+    const st = (side ^ seat) as 0 | 1;
+    return hud.isDoubles ? STAGE_REFS_DOUBLES[st * 2 + (pos === 1 ? 1 : 0)]! : STAGE_REFS[st];
+  };
+
+  /** The field position a timeline frame's party slot stands on (singles: 0; doubles: the player's map, -1 = off). */
+  const posFor = (side: 0 | 1, slot: number): number => (hud.isDoubles ? player.positionOf(side, slot) : 0);
+
+  const barFor = (st: BattleState, side: 0 | 1, pos: 0 | 1 = 0): void => {
+    const s = st.sides[side]!;
+    const slot = fieldOf(st, side)[pos] ?? s.active;
+    const b = s.party[slot];
+    if (b === undefined) return;
+    const hp = hpNow[side]?.[slot] ?? b.creature.hp;
+    hud.setBar(side, cap(sideName(st, { side, slot }, seat, deps.content)), b.creature.level, hp, b.maxHp, statusGlyph(majorOf(b.creature.status)), side === seat, typesOf(st, { side, slot }, deps.content), pos);
+  };
+
+  const showBattler = (st: BattleState, side: 0 | 1, slot: number, pos: 0 | 1 = 0): void => {
     const c = creatureAt(st, side, slot);
-    displayed[side] = slot;
+    displayed[side][pos] = slot;
     // render's stage side 0 is the near (viewer's) position: core sides map through the seat
-    view?.setBattler(STAGE_REFS[(side ^ seat) as 0 | 1], c, c === null ? '' : `battle:${battleId}:${side}:${c.id}`);
+    view?.setBattler(stageAt(side, pos), c, c === null ? '' : `battle:${battleId}:${side}:${c.id}`);
+  };
+
+  /** Every field position of both sides on the stage and its HUD bar (battle start, timeline end, resync). */
+  const showField = (st: BattleState, bars: boolean, onlyChanged: boolean): void => {
+    for (const side of [0, 1] as const) {
+      const f = fieldOf(st, side);
+      for (let p = 0; p < f.length; p++) {
+        const pos = p as 0 | 1;
+        if (!onlyChanged || displayed[side][pos] !== f[p]) showBattler(st, side, f[p]!, pos);
+        if (bars) barFor(st, side, pos);
+      }
+    }
   };
 
   const resetHpTable = (st: BattleState): void => {
@@ -406,6 +456,8 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     maxHpOf: (r) => st.sides[r.side]?.party[r.slot]?.maxHp ?? 1,
     activeOf: (side) => st.sides[side].active,
     shinyOf: (r) => creatureAt(st, r.side, r.slot)?.isShiny === true,
+    activesOf: (side) => (st.slots === 2 ? st.sides[side].actives : undefined),
+    standing: (r) => (creatureAt(st, r.side, r.slot)?.hp ?? 0) > 0,
     seat,
     instantText: deps.instantText(),
   });
@@ -415,6 +467,13 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     if (st.sides[seat].mustSwitch) return 'replacement';
     if (st.sides[seat === 0 ? 1 : 0].mustSwitch) return 'submitted';
     return 'selecting';
+  };
+
+  /** Phase D6: a fresh doubles pick (the first required position, nothing picked); {} in singles. */
+  const pickFor = (st: BattleState): { pick?: DoublesPick } => {
+    if (st.slots !== 2) return {};
+    const req = st.ended === null ? requiredPositions(st, seat) : [];
+    return { pick: { pos: req[0] ?? 0, picks: [null, null] } };
   };
 
   const targets: TimelineTargets = {
@@ -431,28 +490,34 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     hp: (who, to, max) => {
       const row = hpNow[who.side];
       if (row !== undefined) row[who.slot] = to;
-      if (displayed[who.side] === who.slot) hud.setHp(who.side, to, max);
+      const pos = posFor(who.side, who.slot);
+      if (pos >= 0 && displayed[who.side][pos] === who.slot) hud.setHp(who.side, to, max, pos as 0 | 1);
       if (who.side !== seat && foe !== null) {
         const st = preState ?? state;
         if (st !== null) checkHalfHp(st);
       }
     },
     status: (who, s) => {
-      if (displayed[who.side] === who.slot) hud.setStatus(who.side, s);
+      const pos = posFor(who.side, who.slot);
+      if (pos >= 0 && displayed[who.side][pos] === who.slot) hud.setStatus(who.side, s, pos as 0 | 1);
     },
     stage: (who, stat, delta) => {
-      if (displayed[who.side] === who.slot) hud.addStage(who.side, stat, delta);
+      const pos = posFor(who.side, who.slot);
+      if (pos >= 0 && displayed[who.side][pos] === who.slot) hud.addStage(who.side, stat, delta, pos as 0 | 1);
     },
     orb: (phase, n) => hud.setShakes(phase === 'throw' ? 0 : n),
     enter: (who) => {
       const st = preState ?? state;
       if (st === null) return;
-      if (displayed[who.side] !== who.slot) showBattler(st, who.side, who.slot);
+      const p = posFor(who.side, who.slot);
+      if (p < 0) return;
+      const pos = p as 0 | 1;
+      if (displayed[who.side][pos] !== who.slot) showBattler(st, who.side, who.slot, pos);
       if (who.side !== seat && foe !== null) checkLastStand(st, who.slot);
       const b = st.sides[who.side]!.party[who.slot];
       if (b !== undefined) {
         const hp = hpNow[who.side]?.[who.slot] ?? b.creature.hp;
-        hud.setBar(who.side, cap(sideName(st, who, seat, deps.content)), b.creature.level, hp, b.maxHp, statusGlyph(majorOf(b.creature.status)), who.side === seat, typesOf(st, who, deps.content));
+        hud.setBar(who.side, cap(sideName(st, who, seat, deps.content)), b.creature.level, hp, b.maxHp, statusGlyph(majorOf(b.creature.status)), who.side === seat, typesOf(st, who, deps.content), pos);
       }
     },
     log: (text, tone) => {
@@ -474,11 +539,9 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     const st = state;
     preState = st;
     resetHpTable(st);
-    // align the bars with the authoritative state (levels after a level-up, the true active)
-    for (const side of [0, 1] as const) {
-      if (displayed[side] !== st.sides[side].active) showBattler(st, side, st.sides[side].active);
-      barFor(st, side);
-    }
+    // align the bars with the authoritative state (levels after a level-up, the true active / actives)
+    if (st.slots === 2) player.seedPositions([st.sides[0].actives, st.sides[1].actives]);
+    showField(st, true, true);
     const label = labelFor(st);
     hud.setTurnLabel(label);
     hud.commit();
@@ -487,7 +550,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       raidAfterTimeline(st, label);
       return;
     }
-    writeUi({ phase: phaseAfter(st), menu: 'root', turnLabel: label, authoritative: st });
+    writeUi({ phase: phaseAfter(st), menu: 'root', turnLabel: label, authoritative: st, ...pickFor(st) });
     if (pendingEnd !== null) showResult();
   }
 
@@ -579,8 +642,9 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     ui().setBattle({ ...b, log: [...b.log, ...add].slice(-40) });
   }
 
-  function play(tl: Timeline): void {
-    player.play(tl, seat);
+  /** Plays `tl`, which starts from `from` (doubles: the player's party → position map is seeded from its actives). */
+  function play(tl: Timeline, from: BattleState): void {
+    player.play(tl, seat, from.slots === 2 ? [from.sides[0].actives, from.sides[1].actives] : null);
   }
 
   function arenaFor(id: string): { readonly x: number; readonly z: number; readonly yaw: number | null } {
@@ -606,6 +670,10 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     prompts = [];
     pendingLog.length = 0;
     resetHpTable(m.state);
+    // Phase D6: four bars and the party → position map for a doubles battle
+    hud.setLayout(m.state.slots === 2);
+    displayed[0][0] = -1; displayed[0][1] = -1; displayed[1][0] = -1; displayed[1][1] = -1;
+    if (m.state.slots === 2) player.seedPositions([m.state.sides[0].actives, m.state.sides[1].actives]);
     foe = foeOfState(m.state, m.seat);
     midHalfDone = false;
     midLastDone = false;
@@ -621,10 +689,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     const at = arenaFor(m.battleId);
     view?.enterBattle({ battleId: m.battleId, x: at.x, z: at.z, format: m.format, foeId: foeOf(m.state, m.seat), foeNpc: foeNpcOf(m.state, m.seat), yaw: at.yaw });
     view?.setThreat(true);
-    for (const side of [0, 1] as const) {
-      showBattler(m.state, side, m.state.sides[side].active);
-      barFor(m.state, side);
-    }
+    showField(m.state, true, false);
     hud.setTurnLabel(labelFor(m.state));
     hud.setShakes(0);
     hud.commit();
@@ -647,7 +712,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       const at = arenaFor(battleId);
       v.enterBattle({ battleId, x: at.x, z: at.z, format, foeId: foeOf(state, seat), foeNpc: foeNpcOf(state, seat), yaw: at.yaw });
       v.setThreat(true);
-      for (const side of [0, 1] as const) showBattler(state, side, state.sides[side].active);
+      showField(state, false, false);
       hud.commit();
       v.setBattleHud(hud.current() as BattleHudModel | null);
     },
@@ -663,13 +728,29 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       if (foe !== null && (m.format === 'trainer' || m.format === 'league') && !deps.reduced()) {
         ui().setBattleIntro({ battleId: m.battleId, name: foe.name, title: foe.title, type: foe.type, look: foe.look, league: foe.league !== null });
       } else if (ui().battleIntro !== null) ui().setBattleIntro(null);
-      play(buildTimeline(m.events, ctxFor(m.state)));
+      play(buildTimeline(m.events, ctxFor(m.state)), m.state);
     },
 
     check(action) {
       if (state === null) return 'No battle';
       if (raid !== null) return raidCheck(state, action);
+      if (state.slots === 2) return doublesCheck(state, action, currentPick(state));
       return actionErrorLabel(validateAction(state, seat, action, deps.content));
+    },
+
+    undoPick() {
+      if (state === null || state.slots !== 2) return;
+      const b = ui().battle;
+      if (b === null || (b.phase !== 'selecting' && b.phase !== 'replacement')) return;
+      const pick = currentPick(state);
+      const req = requiredPositions(state, seat);
+      const at = req.indexOf(pick.pos);
+      const prev = at > 0 ? req[at - 1]! : null;
+      if (prev === null) return;
+      const picks: [Action | null, Action | null] = [pick.picks[0], pick.picks[1]];
+      picks[prev] = null;
+      picks[pick.pos] = null;
+      writeUi({ menu: 'root', pick: { pos: prev, picks } });
     },
 
     submit(action) {
@@ -678,6 +759,10 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       if (b === null || (b.phase !== 'selecting' && b.phase !== 'replacement')) return;
       if (raid !== null) {
         submitRaid(state, battleId, raid, action);
+        return;
+      }
+      if (state.slots === 2) {
+        submitDoubles(state, battleId, action);
         return;
       }
       const err = validateAction(state, seat, action, deps.content);
@@ -726,7 +811,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       resetHpTable(before);
       for (const p of promptsFrom(m.events, next, seat)) if (!prompts.some((q) => samePrompt(q, p))) prompts.push(p);
       writeUi({ phase: 'playing', authoritative: next, expectedMs: 0 });
-      play(buildTimeline(m.events, ctxFor(before)));
+      play(buildTimeline(m.events, ctxFor(before)), before);
     },
 
     onBattleResync(m) {
@@ -750,7 +835,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
         const r = raidUi();
         ui().setBattle({
           battleId: m.battleId, format: s.format, seat: mySeat, authoritative: s, phase: phaseAfter(s), menu: 'root',
-          turnLabel: labelFor(s), log: [], desyncs: 0, result: null, expectedMs: 0, ...(r === undefined ? {} : { raid: r }),
+          turnLabel: labelFor(s), log: [], desyncs: 0, result: null, expectedMs: 0, ...(r === undefined ? {} : { raid: r }), ...pickFor(s),
         });
         return;
       }
@@ -780,7 +865,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       resetHpTable(before);
       for (const p of promptsFrom(m.events, next, seat)) if (!prompts.some((q) => samePrompt(q, p))) prompts.push(p);
       writeUi({ phase: 'playing', authoritative: next, expectedMs: 0 });
-      play(buildTimeline(m.events, ctxFor(before)));
+      play(buildTimeline(m.events, ctxFor(before)), before);
     },
 
     onRaidState() {
@@ -838,20 +923,81 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     preState = st;
     preview = null;
     resetHpTable(st);
-    for (const side of [0, 1] as const) {
-      showBattler(st, side, st.sides[side].active);
-      barFor(st, side);
-    }
+    if (st.slots === 2) player.seedPositions([st.sides[0].actives, st.sides[1].actives]);
+    showField(st, true, false);
     view?.syncFrom(
-      ([0, 1] as const).map((side) => {
-        const b = st.sides[side].party[st.sides[side].active];
-        return { ref: STAGE_REFS[(side ^ seat) as 0 | 1], hpFrac: b === undefined ? 0 : b.creature.hp / Math.max(1, b.maxHp) };
-      }),
+      ([0, 1] as const).flatMap((side) =>
+        fieldOf(st, side).map((slot, pos) => {
+          const b = st.sides[side].party[slot];
+          return { ref: stageAt(side, pos), hpFrac: b === undefined ? 0 : b.creature.hp / Math.max(1, b.maxHp) };
+        }),
+      ),
     );
     const label = labelFor(st);
     hud.setTurnLabel(label);
     hud.commit();
-    writeUi({ phase: phaseAfter(st), menu: 'root', authoritative: st, turnLabel: label });
+    writeUi({ phase: phaseAfter(st), menu: 'root', authoritative: st, turnLabel: label, ...pickFor(st) });
+  }
+
+  /** Phase D6: the doubles pick in the store (a fresh one when the store has none). */
+  function currentPick(st: BattleState): DoublesPick {
+    const b = ui().battle;
+    return b?.pick ?? pickFor(st).pick ?? { pos: 0, picks: [null, null] };
+  }
+
+  /** Phase D6: the disabled reason of `action` for the position choosing now (incl. the other position's switch). */
+  function doublesCheck(st: BattleState, action: Action, pick: DoublesPick): string | null {
+    const err = actionErrorLabel(validateAction(st, seat, action, deps.content, pick.pos));
+    if (err !== null) return err;
+    const other = pick.picks[pick.pos === 0 ? 1 : 0];
+    if (action.kind === 'switch' && other !== null && other.kind === 'switch' && other.to === action.to) return 'Already chosen';
+    return null;
+  }
+
+  /**
+   * Phase D6: records the choosing position's action; once every required position has one, validates the pair, sends
+   * one `battleAction { pos }` per position and runs the preview (not for pvp).
+   */
+  function submitDoubles(st: BattleState, id: string, action: Action): void {
+    const pick = currentPick(st);
+    const req = requiredPositions(st, seat);
+    if (!req.includes(pick.pos)) return;
+    const err = doublesCheck(st, action, pick);
+    if (err !== null) {
+      toast('warn', err);
+      return;
+    }
+    const picks: [Action | null, Action | null] = [pick.picks[0], pick.picks[1]];
+    if (action.kind === 'forfeit') for (const p of req) picks[p] = action;
+    else picks[pick.pos] = action;
+    const next = req.find((p) => picks[p] === null);
+    if (next !== undefined) {
+      writeUi({ menu: 'root', pick: { pos: next, picks } });
+      return;
+    }
+    const bad = validateSideChoice(st, seat, picks, deps.content);
+    if (bad !== null) {
+      toast('warn', actionErrorLabel(bad.code) ?? 'Not allowed');
+      picks[bad.pos] = null;
+      writeUi({ menu: 'root', pick: { pos: bad.pos, picks } });
+      return;
+    }
+    for (const p of req) deps.send('battleAction', { battleId: id, turn: st.turn + 1, action: picks[p]!, pos: p });
+    let expectedMs = 0;
+    preview = null;
+    if (format === 'trainer' || format === 'league') {
+      try {
+        const res = resolveTurn(st, seat === 0 ? [picks, null] : [null, picks], deps.content);
+        preview = { state: res.state, digest: digestBattleState(res.state), turn: res.state.turn };
+        const tl = buildTimeline(res.events, ctxFor(st));
+        view?.prewarm(vfxIdsIn(tl));
+        expectedMs = tl.durationMs;
+      } catch (e) {
+        console.warn('battle preview failed', e);
+        preview = null;
+      }
+    }
+    writeUi({ phase: 'submitted', expectedMs, menu: 'root', pick: { pos: pick.pos, picks } });
   }
 
   /** Phase C1: the disabled reason of an action in a raid (catch window: orbs and Done only; leaving is always allowed). */
@@ -908,8 +1054,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     pendingEnd = null;
     resultShown = false;
     prompts = [];
-    displayed[0] = -1;
-    displayed[1] = -1;
+    displayed[0][0] = -1; displayed[0][1] = -1; displayed[1][0] = -1; displayed[1][1] = -1;
     pendingLog.length = 0;
     foe = null;
     midHalfDone = false;

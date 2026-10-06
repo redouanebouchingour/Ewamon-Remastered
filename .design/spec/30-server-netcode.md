@@ -207,15 +207,20 @@ export const RUN_SPEED = MOVEMENT.runSpeed;     // 7.0 m/s
 export const SPEED_TOLERANCE = 1.15; // +15 %
 export const MAX_WALK_STEP = WALK_SPEED * SPEED_TOLERANCE;   // 4.83 m/s
 export const MAX_RUN_STEP = RUN_SPEED * SPEED_TOLERANCE;     // 8.05 m/s
+export const BIKE_SPEED = MOVEMENT.bikeSpeed;                 // 10.5 m/s — Phase D11
+export const MAX_BIKE_STEP = BIKE_SPEED * SPEED_TOLERANCE;    // 12.075 m/s
 export const BUDGET_MIN_MS = -100;   // an input may not spend more than 100 ms of time the server has not seen
 export const BUDGET_MAX_MS = 250;    // idle time does not bank more than 250 ms
 
 export type InputVerdict =
-  | { readonly ok: true; readonly x: number; readonly z: number; readonly angle: number; readonly running: boolean; readonly budgetMs: number }
+  | { readonly ok: true; readonly x: number; readonly z: number; readonly angle: number; readonly running: boolean; readonly budgetMs: number; readonly bike: boolean }   // bike: Phase D11, the bike cap applied
   | { readonly ok: false; readonly reason: 'staleSeq' | 'dtBudget' | 'speed' | 'unwalkable' | 'bounds' | 'inBattle'; readonly budgetMs: number };
 
 export function validateInput(
-  prev: { readonly x: number; readonly z: number; readonly lastSeq: number; readonly budgetMs: number; readonly inBattle: boolean; readonly canSurf?: boolean },   // canSurf = inventory['HM Surf'] > 0 (§30.3)
+  prev: { readonly x: number; readonly z: number; readonly lastSeq: number; readonly budgetMs: number; readonly inBattle: boolean; readonly canSurf?: boolean;   // canSurf = inventory['HM Surf'] > 0 (§30.3)
+    readonly closedGates?: readonly RectSolid[];         // Phase A
+    readonly clearedObstacles?: ReadonlySet<string>;     // Phase D10: this zone's obstacle ids the player cleared
+    readonly canBike?: boolean },                        // Phase D11: inventory.bike > 0 && the start is outdoors (interiorAt === null)
   input: z.infer<typeof InputMsg>,            // { seq, x, z, angle, running, dtMs }
   h: Heightfield,
 ): InputVerdict;
@@ -226,12 +231,12 @@ Rules, in this order (first failure wins):
 1. `seq <= prev.lastSeq` → `staleSeq` (replay or reorder; dropped silently — no snap, no error, the ack will carry the real `seq`).
 2. `prev.inBattle` → `inBattle` (position is frozen during a battle; see §30.4.1).
 3. `budget = prev.budgetMs - dtMs`; if `budget < BUDGET_MIN_MS` → `dtBudget`. The tick adds `TICK_MS` to every client's budget and clamps at `BUDGET_MAX_MS`, so the sum of accepted `dtMs` can never exceed real elapsed time by more than 100 ms. This is what closes the "send dt = 100 at 30 Hz" speed hack.
-4. `dist = hypot(x - prev.x, z - prev.z)`; `cap = (running ? MAX_RUN_STEP : MAX_WALK_STEP) * dtMs / 1000`; `dist > cap + 0.02` → `speed` (0.02 m absorbs float32 quantisation on the wire).
+4. `dist = hypot(x - prev.x, z - prev.z)`; `cap = (bike ? MAX_BIKE_STEP : running ? MAX_RUN_STEP : MAX_WALK_STEP) * dtMs / 1000` where `bike = input.bike === true && prev.canBike` (Phase D11: an unearned flag is checked against run / walk); `dist > cap + 0.02` → `speed` (0.02 m absorbs float32 quantisation on the wire).
 5. Outside the bounds of §30.2.3 → `bounds`. (Checked before walkability: the 16 m margin is `walkable = 0`, so with the opposite order `bounds` could never be observed and `movement.test.ts`'s `bounds` case could not pass; the accept set is identical — amended 2026-09-25, server IMPLEMENTATION-NOTES S3.)
-6. Not standable → `unwalkable`, where standable = `isWalkable(h, x, z) || (prev.canSurf && isWater(h, x, z))`. Additionally the segment `prev → new` is sampled every 0.25 m; any sample that is not standable → `unwalkable` (no tunnelling through a 0.5 m wall in one 8 cm step is possible at these caps, but the check costs nothing).
+6. Not standable → `unwalkable`, where standable = `!inClosedGate && (isWalkable(h, x, z) || clearedObstacles.has(obstacleAt(h, x, z)) || (canSurf && isWater(h, x, z) && !isLava))` with `canSurf = prev.canSurf && !bike` (Phase D10: a cleared obstacle's stamped samples, content `obstacleAt`; Phase D11: a ridden segment never touches open water) <!-- amended 2026-10-06: Phase D8–D11 world systems -->. Additionally the segment `prev → new` is sampled every 0.25 m; any sample that is not standable → `unwalkable` (no tunnelling through a 0.5 m wall in one 8 cm step is possible at these caps, but the check costs nothing).
 7. Otherwise `ok`; `angle` is wrapped into `[-π, π)`; `budgetMs = budget`. Rejections other than `staleSeq` also advance `userData.lastSeq` (a rejected seq cannot be replayed).
 
-Application (`ZoneRoom.onInput`): on `ok`, write `ps.x/z/angle/running`, `ps.moving = dist > 0.001`, `ps.seq = input.seq`, `userData.lastSeq = seq`. On any failure other than `staleSeq`, the server does **not** move the avatar and sets `ps.seq = input.seq` anyway — the client's reconciler (`20-client.md`) sees a `seq` acknowledged against an unchanged authoritative `x/z` and snaps to it. That single mechanism is the "ack with authoritative pose"; there is no separate correction message. `speed`, `unwalkable` and `bounds` rejections increment `metrics.rejectedInputs[reason]`; 30 rejections within 10 s from one client → `client.leave(4003)` and an `audit_log` row `movement.kick`.
+Application (`ZoneRoom.onInput`): on `ok`, write `ps.x/z/angle/running`, `ps.moving = dist > 0.001`, `ps.seq = input.seq`, `userData.lastSeq = seq`; Phase D8 / D11: `ps.surfing = water && !walkable` at the new pose and `ps.biking = verdict.bike`, each written only on change. `userData.clearedObstacles` is derived from the flags at join and recomputed by `applyFlags` when an `obstacle:` flag arrives. On any failure other than `staleSeq`, the server does **not** move the avatar and sets `ps.seq = input.seq` anyway — the client's reconciler (`20-client.md`) sees a `seq` acknowledged against an unchanged authoritative `x/z` and snaps to it. That single mechanism is the "ack with authoritative pose"; there is no separate correction message. `speed`, `unwalkable` and `bounds` rejections increment `metrics.rejectedInputs[reason]`; 30 rejections within 10 s from one client → `client.leave(4003)` and an `audit_log` row `movement.kick`.
 
 `Room.input`/`defineInput` (Colyseus' built-in input buffer) is **not** used in v1: the message path above is validated by zod and by `validateInput`, and prediction runs against the `seq` echo. `setFixedTimestep` is likewise not used — 20 Hz `setTimestep` with the budget rule above is sufficient for a turn-based game whose only real-time element is walking.
 
@@ -371,6 +376,8 @@ Rules:
 
 The director's rng is `worldRng.fork()`; the sequence of spawns for a given `(SERVER_SEED, zoneId, shard, bootMs)` is reproducible in a test by driving `tick` with synthetic `now` values.
 
+**Fishing** (Phase D9) <!-- amended 2026-10-06: Phase D8–D11 world systems --> — `fish { angle }`: refused while battling / trading / in a raid (`busy`); without `old_rod` (`noRod`); inside a hall or with no open-water (non-lava) sample within `FISH_REACH_M` = 2.5 m of the player's **accepted** position along `angle`, sampled every 0.5 m (`noWater`; a boardwalk sample counts — fishing from a pier); a refusal is an info toast plus `error { code: 'notAllowed', detail }`. Otherwise `rollFishing(table, fishRng, content, timeOfDay, waterPoint, id, now, liveOps)` picks one of the table's `water` slots eligible at this time of day with the spawn draws (slot, level, alpha + shiny from one draw, variant, ability; swarm and event bonuses apply) — none → `nothingBites` — and `startWild` runs it at the player like an engaged spawn (`ud.battleId = 'pending'` first). The bite never enters a director's population (`${zoneId}:fish:<n>`; the battle end's release of an unknown id is a no-op). `fishRng` is `createRng(`${seed}:${zoneId}:${shard}:${bootMs}:fish`)`, its own stream, so no fork of `worldRng` shifts.
+
 ---
 
 ## §30.4 BATTLE SUB-STATE
@@ -387,8 +394,8 @@ export interface BattleSession {
   readonly seats: readonly [Seat, Seat];
   state: BattleState;                        // core; the ONLY copy of the truth
   readonly seed: RngState;                   // createBattle's seed snapshot, for battle_history.seed
-  readonly actionsLog: [Action | null, Action | null][];   // one entry per resolved resolveTurn, for battle_history.actions
-  pending: [Action | null, Action | null];   // actions received for the CURRENT turn
+  readonly actionsLog: [SideChoice, SideChoice][];   // one entry per resolved resolveTurn, for battle_history.actions (Phase D6: SideChoice)
+  pending: [SideChoice, SideChoice];         // actions received for the CURRENT turn; Phase D6 doubles: one [pos0, pos1] pair per player side (NPC sides null)
   deadlineAt: number;                        // ms; 30 s after the turn opened
   resolving: boolean;
   readonly spawnId: string | null;           // wild: the SpawnRecord it consumes
@@ -448,6 +455,15 @@ A transaction failure rolls everything back and the session keeps `before` as it
 
 `advanceQuests` events added: `catch { isAlpha?, isShiny? }` (battle catch, raid catch), `dex { caught }` after a battle catch, a raid catch and a trade that received creatures (`progress.caughtCount`), `raidClear` with the raid's rewarded clear, `streak { days }` from `dailyLogin` (its `questProgress` rides the join's `progressionDelta`); `trade` already existed. `dexCaught` / `loginStreak` objectives are absolute (max-merged, an unchanged value writes nothing); the rest count +1 per matching event. Market purchases and evolutions do not emit `dex`; the next catch or trade catches the count up.
 
+### 30.4.3c Doubles (Phase D6)
+
+<!-- amended 2026-10-06 Phase D6 -->
+- **Start.** `startNpc` opens a doubles battle (`createBattle({ …, slots: 2 })`, `battle_history.start.slots = 2`) when the opponent is authored doubles — `TrainerDef.doubles` / `LeagueTrainer.doubles` with a team of 2+ — **and** the player's party has two usable (`hp > 0`) creatures. With one usable creature the same trainer fights singles (documented fallback, never a refusal: doubles is never a gate). Wild, static, raid and pvp battles are always singles. The two leads are the first two usable party members.
+- **`battleAction { battleId, turn, action, pos? }`.** In doubles one message per field position. `pos` absent = the lowest required position still empty (so a client that sends two plain messages works); a position that needs no action (`requiredPositions`, spine §2.10 doubles) → `actionNotRequired`; a filled position → `alreadySubmitted`; `validateAction(state, side, action, content, pos)`; a second switch to the creature the other position already chose → `switchToActive`; two item uses need two of that item (`noItem`). The turn resolves when every required position of every player seat is filled; `resolveTurn(before, pending)` gets the pairs (NPC sides `null`). `pos` is ignored in singles. **Rate limit:** a position-1 `battleAction` from a player in a doubles battle counts in its own window (`LIMITS.battleActionPos1`, 4 / 1 s, the same as `battleAction`), so a client that sends both picks in one burst is never refused; in singles `pos: 1` buys nothing (every `battleAction` shares the one 4 / 1 s window).
+- **Deadline / leave.** `tick` auto-fills only the missing positions (`autoPair`: replacement → the lowest unchosen bench creature; otherwise the first move that validates for that position, else forfeit). A pvp leaver (not reachable in v1: pvp is singles) forfeits from its first required position.
+- **Persistence** is unchanged: the per-side diff over `party` already covers both positions; `battle_history.actions` stores the pairs, and `createBattle({ id, format, seed, ...start })` + `resolveTurn` over them reproduces `final_digest` (`packages/server/test/doubles.test.ts`, the draco_gym / aurelia rows of `battle-room.test.ts`).
+- **Walker.** The progression walker (`packages/server/test/walker.ts`) drives doubles with `chooseNpcDoubles` (replacement: the best matchup per required position) and sends one `battleAction { pos }` per position; its preview passes the pair.
+
 ### 30.4.4 Formats
 
 | Format | Start | Side 1 | Rewards on side-0 win (`RewardsSummary`) | Elo |
@@ -485,7 +501,7 @@ export class ChallengeStore {
 
 ### 30.4.6 Trainer NPC and league dialogue
 
-`interact { kind: 'npc' }` on an `NpcDef` returns nothing over the wire for a plain conversation — lines are content and the client renders them (`when`/`until`/`react` flags come from `GET /me` and `progressionDelta`) — **unless** the NPC is the `speaker` of the player's next story beat in this zone, in which case §30.4.8 runs. The server otherwise acts only on interacts that change state: `TrainerDef` (battle), `gym` (league battle, or a beat whose `speaker` is the gym's league id — §30.4.8 first), `item` (ground item: once per player, flag `item:<zone>:<id>` in `story_flags`, `inventoryDelta`), `healer` (no-op over the room; healing is `POST /heal`), `shop` (no-op; `GET /shop/:zoneId`), `warp` (`ZoneDef.warps[id]`: authoritative teleport to `(toX, toZ)` snapped with `nearestWalkable`, ≤ 3 m check against `(x, z)`; the `seq` echo carries the client), `static` (a `LegendaryStatic` battle — `format: 'wild'`, `canFlee: false` on the player side (the legendary cannot be run from) and `canCatch: true`; the record's `when` gate is re-checked here, the static is refused once its `flag` is held, and `flag` is set on win **or** catch). Every interact checks distance ≤ 3 m against the content coordinates and AOI membership first; an interact on an entity outside the 3×3 → `error { code: 'notFound' }`. <!-- reconciled 2026-09-18: warps have data (spine §3.1); static rules per story-bible §7.2.1 -->
+`interact { kind: 'npc' }` on an `NpcDef` returns nothing over the wire for a plain conversation — lines are content and the client renders them (`when`/`until`/`react` flags come from `GET /me` and `progressionDelta`) — **unless** the NPC is the `speaker` of the player's next story beat in this zone, in which case §30.4.8 runs. The server otherwise acts only on interacts that change state: `TrainerDef` (battle), `gym` (league battle, or a beat whose `speaker` is the gym's league id — §30.4.8 first), `item` (ground item: once per player, flag `item:<zone>:<id>` in `story_flags`, `inventoryDelta`), `healer` (no-op over the room; healing is `POST /heal`), `shop` (no-op; `GET /shop/:zoneId`), `warp` (`ZoneDef.warps[id]`: authoritative teleport to `(toX, toZ)` snapped with `nearestWalkable`, ≤ 3 m check against `(x, z)`; the `seq` echo carries the client), `obstacle` (Phase D10, `ZoneDef.obstacles[id]`, ≤ `OBSTACLE_INTERACT_M` = 3 m from its centre: refused once cleared (`alreadyCleared`), without the kind's HM (`needHm`) or without a party member of one of `OBSTACLE_TYPES[kind]` (`needType`, fainted members count) — each with content's `obstacleRefusalText` as a warn toast; otherwise `obstacle:<zone>:<id>` and the hidden item (once) in one transaction, then `inventoryDelta`, `progressionDelta { flags }` and a success toast; movement accepts the stamped disc for that player from the next input), `static` (a `LegendaryStatic` battle — `format: 'wild'`, `canFlee: false` on the player side (the legendary cannot be run from) and `canCatch: true`; the record's `when` gate is re-checked here, the static is refused once its `flag` is held, and `flag` is set on win **or** catch). Every interact checks distance ≤ 3 m against the content coordinates and AOI membership first; an interact on an entity outside the 3×3 → `error { code: 'notFound' }`. <!-- reconciled 2026-09-18: warps have data (spine §3.1); static rules per story-bible §7.2.1 -->
 
 ### 30.4.8 Story beats — the runtime the bible left to this file
 

@@ -812,3 +812,53 @@ and taught the Phase A interiors.
 - Tests: `test/shiny.test.ts` (4), `test/achievements.test.ts` (6), `test/weather.test.ts` (6); Phase D5 assertions added to
   `challenge-trade.test.ts` (trade source) and `raid.test.ts` (raid source). Full `npx vitest run packages/server`: 29 files,
   218 tests green.
+
+## Phase D6 — doubles (2026-10-06)
+
+- **Start.** `startNpc` opens `slots: 2` when the trainer / league row is `doubles: true` with a team of 2+ AND the
+  player has two usable creatures; otherwise singles (the documented fallback — never a refusal). `open(…, doubles)`
+  writes `slots: 2` into `battle_history.start` so the row replays alone. Wild / static / pvp / raid stay singles.
+- **Actions.** `BattleCoordinator.action(…, pos?)` (ZoneRoom passes `m.pos`). Doubles goes through `actionAt`: `pos`
+  absent → the lowest required position still empty; `actionNotRequired` / `alreadySubmitted` / `validateAction(…, pos)`
+  / `switchToActive` (both positions to one creature) / `noItem` (two uses of one item need two). `pending` holds one
+  `[pos0, pos1]` pair per PLAYER side (NPC sides stay `null`, so `battle_history.actions[i][1] === null` still holds for
+  NPC battles); the turn resolves when every required position of every player seat is in (`sideReady`).
+- **Rate limit.** A doubles turn's two `battleAction`s arrive in one burst; with the shared 4 / 1 s window the second
+  pick was dropped (`rateLimited`) after two quick turns — found by the walker in act3a, a real client bug. `ZoneRoom.dispatch`
+  now counts a `pos: 1` battleAction from a player in a doubles battle in its own window (`LIMITS.battleActionPos1`, 4 / 1 s);
+  singles traffic, and `pos: 1` in a singles battle, stay on the one `battleAction` window. Clients should send `pos`.
+- **Deadline / leave.** `autoPair` fills only missing positions (replacement → the lowest unchosen bench creature;
+  otherwise the first move valid for the position, else forfeit). `forfeitIfActive` has a doubles branch (unreachable in
+  v1: pvp is singles).
+- **Walker** (`test/walker.ts`): `fight()` previews `resolveTurn(state, [pair, null])` and sends one
+  `battleAction { pos }` per required position (each after a limiter advance); `chooseDoubles` = core's
+  `chooseNpcDoubles`, or per required position the best-matchup bench creature in a replacement. Singles path unchanged.
+- **Tests.** `test/doubles.test.ts` (5): doubles start + per-position play + reward/flag + DB replay; singles fallback
+  with one usable creature; draco_gym doubles / a plain trainer singles; per-position rules + deadline fill; and the real
+  room (interact with Rocker Jinx, two `battleAction { pos }` per turn, every digest = the client preview, win).
+  `battle-room.test.ts`'s 12-league suite plays draco_gym and aurelia as doubles (desync 0, replay from the row).
+
+## Phase D8–D11 — world systems (2026-10-06)
+
+- **Movement.** `BIKE_SPEED` / `MAX_BIKE_STEP`; `MovePrev.clearedObstacles?` and `canBike?`; `standable` /
+  `segmentStandable` gain a trailing `cleared` set (default empty — the walker's `pathing.ts` calls are unchanged); a
+  sample stamped by a cleared obstacle (`obstacleAt`) is standable; `bike = input.bike && prev.canBike` picks the bike cap
+  and turns `canSurf` off for that segment; the verdict carries `bike`. `onOpenWater(h, x, z)`.
+- **Room.** `canBike` = owns `bike` && `interiorAt(zone, ps) === null`; `ps.surfing` / `ps.biking` written only on
+  change. `ud.clearedObstacles` from the flags at join, recomputed by `applyFlags` on an `obstacle:` flag.
+- **Fishing.** `onFish`: busy → `busy`; no `old_rod` → `noRod`; in a hall or no open (non-lava) water within 2.5 m along
+  the cast heading of the ACCEPTED pose → `noWater` (a boardwalk counts); `rollFishing` (spawnDirector.ts, the spawn draws
+  over the eligible water slots) from `fishRng` = `createRng(seed:zone:shard:boot:fish)` — its own stream so the root's
+  forks (spawns, battles, raids) are unchanged; none → `nothingBites`; else `startWild` at the player. Bites never join
+  a director (`<zone>:fish:<n>`; `release` of an unknown id is a no-op).
+- **Obstacles.** `findTarget` resolves `obstacle`; `rangeFor` 3 m; `clearObstacle`: `alreadyCleared` / `needHm` /
+  `needType` (party loaded from the repo; fainted members count), flag + hidden item in one transaction, then
+  `inventoryDelta`, `progressionDelta`, success toast.
+- `LIMITS.fish` 1 / 1.5 s.
+- **Test change.** `spawn-director.test.ts`'s 100 000-roll weight test now samples the land slots only: a water slot's
+  roll survives only when one of its 8 position draws lands on water (≈ 0.5 % of mire_route), which it under-represents by
+  design (this was already true of every table with water slots; mire_route simply gained some). `shiny.test.ts`'s pinned
+  pre-D4 spawn-stream digest is now computed over the director's pre-D8 inputs (mire_route's land slots and its field with
+  the obstacle cells un-stamped): the digest is unchanged (`8880f1e7`), so the director code itself did not move.
+- Tests: `test/world-systems.test.ts` (10: pure bike / ridden water / cleared obstacles / rollFishing ×2; live surf,
+  fishing ×2, Cut, bike).

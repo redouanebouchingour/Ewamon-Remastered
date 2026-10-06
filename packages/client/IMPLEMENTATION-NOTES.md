@@ -947,3 +947,58 @@ leave / ineligible window / reopen with a catch try / phase-4 summary / fainted 
   The timeline reads an ambient `weatherSet` (source null, turns 0) with the "continues" text.
 - Tests: `test/achievements-shiny.test.tsx` (5), `interiors.test.ts` "Phase D7", `timeline.test.ts` (ambient text),
   `rankings-profile.test.tsx` (profile achievements updated). Mocked/jsdom only — not verified live in the browser.
+
+## Phase D6 — doubles battles in the client (2026-10-06)
+
+- **Addressing.** Core refs stay party indices everywhere (timeline frames, HUD callbacks). Stage refs are
+  `{ side: side ^ seat, slot: field position }`. `TimelinePlayer.play(tl, seat, actives)` seeds a party → position map per
+  side from the starting state's `actives`; the `enter` pose frame of a `switchIn { pos }` carries `pos` (the only new
+  keyframe field, absent in singles) and moves the map. `positionOf(side, slot)` (-1 = off the field) routes hp / status /
+  stage / enter in the controller, whose `displayed` is now per side × position. Singles: position 0, byte-identical.
+- **Timeline.** `TimelineCtx.activesOf` / `standing` (doubles only). Idles and the winner's celebrate address every
+  standing field battler; a drain points at whoever the drainer last hit (no source on `heal`); a spread move draws one
+  move VFX per `targets` entry (the 8-emitter pool recycles, never grows); a per-target `moveFailed { target }` immune line
+  names the target. Existing singles timeline tests are unchanged and green.
+- **Selection: collect, then send.** The controller owns `ui.battle.pick { pos, picks }`: `submit` records the choosing
+  position's action and moves on (`requiredPositions`); `undoPick` (menu "Back to X") re-opens the earlier position; when
+  the last required position picks, `validateSideChoice`, then one `battleAction { pos }` per position in position order,
+  then the `[[a0, a1], null]` preview (trainer / league; pvp none). Chosen over send-as-you-go so the first pick can be
+  undone without a server round trip and the preview always sees both actions. A forfeit fills every required position.
+  The cross-position rule "two switches to the same creature" is pre-checked in `check` ("Already chosen").
+- **Targets.** Single-target = `!isSpread(def) && (power > 0 || target === 'foe')`. Candidates: standing foes (position
+  order), then the standing ally; never the user. One candidate → taken without asking. The target is a `FieldRef`
+  (position), not a party index.
+- **HUD.** `BattleHud.setLayout(doubles)` rebuilds the double buffer once per battle with four bars (near 0, near 1,
+  far 0, far 1); setters take the position as a trailing default-0 argument; stage arrows are kept per bar. The bars are
+  canvas (render `HudLayer`, which places ≤ 16 bars without overlap), so the CSS module only gained the target list.
+- **Label.** `ACTION_ERROR_LABEL.badTarget` = "Not a target".
+- **Wiring.** `BattleActions.undoPick?` (World3D and HarnessWorld pass `battle.undoPick`).
+- Tests: `test/doubles.test.tsx` (8): four stage battlers + four bars (two in singles); pick 0 → Back → pick 0 → pick 1 →
+  two `battleAction { pos }` + matching preview digest; same-switch refusal; replacement phase (one pick, `pos: 1`);
+  timeline addressing (damage on foe party 2 at position 1 hurts stage `{1,1}`, switch-in at pos 1 swaps slot 1, bar 4
+  follows); `buildTimeline` doubles frames; the menu's target list (3 targets for Tackle, none for Rock Slide / Bulk Up),
+  Back, and Party ("In battle" ×2, "Already chosen"). Not verified live (no server doubles encounter was available).
+
+## Phase D8–D11 — world systems (2026-10-06)
+
+- **Surf prediction.** `StepCollider.setSurf(on)` / `surfing` / `onWater`; the solver view passes `surf` through and
+  `height` is `surfaceY`. World3D sets surf every fixed step: HM Surf held, zone biome not cinder (lava), bike folded.
+  The render actor pool rides the level for everyone (local and remote) with the ripple.
+- **Fishing.** `scene/fishing.ts` `FishingController` (pure; 1.2–3.2 s wait, 700 ms bite window, 1 000 ms under reduced
+  motion, 900 ms 'missed'), `waterAhead`; `state/fishing.ts` (phase store + reel / cancel actions); `world/FishingPrompt.tsx`
+  + CSS module (a button card: bobbing float / pulsing "!" / "It got away."; frozen under `data-reduced='1'`), mounted in
+  PlayShell after the dialogue box; it owns E / Enter / Space / Escape (window capture) while up. A dynamic 'fish'
+  interactable rides the first water sample ahead (allocation-free per step) when the rod is held, outdoors, on foot.
+  A landed bite sends `fish { angle }`. `worldBlocked()` includes an active cast; a battle start / zone change cancels.
+- **Obstacles.** `zoneSpecFor` passes `obstacles` only where content has some (the snapshot changed for exactly the five
+  obstacle zones; the R1 test excludes the key like `interiors`). SceneDirector: an 'obstacle' interactable per obstacle
+  ('Cut the small tree' / 'Push the boulder') enabled until its flag; `syncObstacles` pushes `ObstaclesHandle.setCleared`
+  and `ObstacleSink.setObstacles(lookup = content obstacleAt, cleared)` on load and when the cleared set changes (new dep
+  `obstacles`, World3D passes its `StepCollider`). `activate` pre-checks `obstacleRefusal` and toasts content's text.
+- **Bike.** `InputAction 'bike'`, default `KeyV` (free), label "Bicycle (ride / fold)", `InputCallbacks.toggleBike`.
+  `LocalPlayerController.setBike/biking`: the step ring stores the gait 0 / 1 / 2 (bike), a message carries `bike` when
+  any step of its window was ridden. World3D mounts only when owned, outside a pocket and not on open water (toasts say
+  why), folds it in a pocket or when the item is gone (toast deferred off the tick); the avatar shows the run gait.
+- Not done: a bicycle mesh and a surf pose (no model in the KayKit set; the rider runs, the surfer stands on the water
+  with the ripple). Not verified live in a browser this phase (unit + server integration tests only).
+- Tests: `test/world-systems.test.ts` (10); `test/zoneSpecFor.test.ts` (R1 excludes `obstacles`, asserts them; snapshot).

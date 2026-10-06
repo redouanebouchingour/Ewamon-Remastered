@@ -23,4 +23,8 @@ export class PlayerState extends Schema {
   @type('string') guildTag = '';
   /** last input seq the server applied — the client reconciles against it */
   @type('uint32') seq = 0;
+  /** Phase D8: standing on a water-only sample (HM Surf) — remote avatars ride at water level (last fields: earlier indexes unchanged) */
+  @type('boolean') surfing = false;
+  /** Phase D11: the last accepted input was ridden on the bicycle */
+  @type('boolean') biking = false;
 }

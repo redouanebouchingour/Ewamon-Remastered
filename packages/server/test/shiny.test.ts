@@ -4,7 +4,8 @@
  * persists it on the creature and in the dex, and the marketplace filters on it.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { ROUTE_TUNING, encounterTableFor, getHeightfield, zone } from '@ewa/content';
+import { ROUTE_TUNING, encounterTableFor, getHeightfield, getZoneSurface, zone } from '@ewa/content';
+import type { EncounterTable, Heightfield } from '@ewa/content';
 import { createRng, fnv1a32 } from '@ewa/core';
 import { CreatureInstanceSchema, ServerMessageSchema } from '@ewa/protocol';
 import type { AnyDb, Db, Repos } from '@ewa/persist';
@@ -65,7 +66,16 @@ describe('the shiny roll', () => {
   }, 120_000);
 
   it('adds no rng draw: the pre-D4 fields of 3 000 seeded spawns hash to the value captured from the pre-D4 director', () => {
-    const spawns = rollSpawns(instantDirector('d4-stream'), 3000);
+    // the director's inputs as they were when the digest was captured: Phase D8 added water slots to mire_route's table
+    // and Phase D10 stamped its obstacle — drop the former and un-stamp the latter (the director code is what is pinned)
+    const full = encounterTableFor('mire_route')!;
+    const table: EncounterTable = { ...full, slots: full.slots.filter((s) => (s.medium ?? 'land') === 'land') };
+    const surface = getZoneSurface('mire_route');
+    const walkable = Uint8Array.from(surface.heightfield.walkable);
+    for (const i of surface.obstacleCells.keys()) walkable[i] = 1;
+    const h: Heightfield = { ...surface.heightfield, walkable };
+    const d = new SpawnDirector(zone('mire_route'), table, createRng('d4-stream'), h, { ...ROUTE_TUNING, targetCount: 1, lifetimeMs: 0, respawnMinMs: 0, respawnMaxMs: 0 }, content);
+    const spawns = rollSpawns(d, 3000);
     const lines = spawns.map((s) => `${s.id}|${s.speciesId}|${s.level}|${s.isAlpha}|${s.variantKey}|${s.ability}|${s.x}|${s.z}`);
     // captured by running HEAD~0's (pre-D4) spawnDirector.ts with the same tuning and seed
     expect(fnv1a32(lines.join('\n')).toString(16)).toBe('8880f1e7');

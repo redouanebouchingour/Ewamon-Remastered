@@ -13,7 +13,7 @@ function nameMap<T extends string>(names: readonly T[]): Readonly<{ [K in T]: K 
   return Object.freeze(out);
 }
 
-/** The 21 client → server message names (§4.3), as `{ input: 'input', … }`. */
+/** The 22 client → server message names (§4.3), as `{ input: 'input', … }`. */
 export const CLIENT_MSG: Readonly<{ [K in ClientMessageType]: K }> = nameMap(CLIENT_MESSAGE_TYPES);
 /** The 16 server → client message names (§4.4). */
 export const SERVER_MSG: Readonly<{ [K in ServerMessageType]: K }> = nameMap(SERVER_MESSAGE_TYPES);

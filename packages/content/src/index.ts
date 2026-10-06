@@ -5,7 +5,7 @@
 import type { AbilityDef, ConsumableDef, ContentIndex, ItemDef, MoveDef, OrbDef, SpeciesDef } from '@ewa/core';
 import type { EncounterTable, LeagueTrainer, LegendaryStatic, QuestDef, StoryBeat, ZoneDef, ZoneId } from './types';
 import { SPECIES } from './data/species';
-import { MOVES } from './data/moves';
+import { MOVES } from './data/spreadMoves';
 import { ABILITIES } from './data/abilities';
 import { ITEMS } from './data/items';
 import { ORBS } from './data/orbs';
@@ -62,6 +62,8 @@ export type {
   LoreTabletDef,
   Medium,
   NpcDef,
+  ObstacleDef,
+  ObstacleKind,
   QuestDef,
   QuestObjective,
   RaidHotspot,
@@ -87,12 +89,15 @@ export { BADGE_ORDER, ZONE_MARGIN, ZONE_ORDER, ZONE_SIZE } from './types';
 
 // ─── §2 definition tables (generated from legacy) ────────────────────────────
 export { SPECIES } from './data/species';
-export { MOVES } from './data/moves';
+export { MOVES } from './data/spreadMoves';
+export { SPREAD_MOVES } from './data/spreadMoves';
 export { ABILITIES } from './data/abilities';
 export { ITEMS } from './data/items';
 export { ORBS } from './data/orbs';
 export { CONSUMABLES } from './data/consumables';
 export {
+  BIKE_ITEM,
+  BIKE_PRICE,
   EVOLUTION_STONES,
   KEY_ITEMS,
   MOVE_TUTOR_PRICE,
@@ -152,6 +157,7 @@ export {
   isWalkable,
   isWater,
   nearestWalkable,
+  obstacleAt,
   playableBounds,
   reachableWithin,
   sampleHeight,
@@ -161,6 +167,22 @@ export {
   zonePlan,
   zoneSizeFor,
 } from './heightfield';
+
+// ─── Phase D10: Cut / Strength obstacles ─────────────────────────────────────
+export {
+  OBSTACLE_CAPSULE_M,
+  OBSTACLE_HM,
+  OBSTACLE_INTERACT_M,
+  OBSTACLE_PREFIX,
+  OBSTACLE_RADIUS,
+  OBSTACLE_TYPES,
+  obstacleFlag,
+  obstacleRefusal,
+  obstacleRefusalText,
+  obstacleStampRadius,
+  stampObstacles,
+} from './obstacles';
+export type { ObstacleRefusal, StampField } from './obstacles';
 
 // ─── the zone plan (layout, buildings, lights, props, footprints; audit R1) ───
 export type {

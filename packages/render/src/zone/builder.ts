@@ -14,7 +14,7 @@
  */
 import { Color, Group, LOD, Mesh } from 'three/webgpu';
 import type { BufferGeometry, Material, Object3D , InstancedMesh, Vector3 } from 'three/webgpu';
-import type { BuildingSpec, HeightfieldData, ZoneHandle, ZoneSpec } from '../contracts.js';
+import type { BuildingSpec, HeightfieldData, ObstaclesHandle, ZoneHandle, ZoneSpec } from '../contracts.js';
 import type { LightSource, RenderStats } from '../descriptors.js';
 import type { MaterialLibrary } from '../materials/library.js';
 import { SURFACES, type SurfaceId } from '../materials/surfaces.js';
@@ -334,6 +334,8 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     pockets.push(b);
   }
   const interiorSystem = pockets.length > 0 ? new InteriorSystem(pockets) : null;
+  // 6c. Phase D10 obstacles: one object each (never merged), so a cleared one can be swapped per player
+  const obstacles = buildObstacles(spec, set, mat, views, record, root);
   releaseShapeCache();
   const chunkKeys = [...staticParts.keys()].sort((a, b) => a - b);
   for (const key of chunkKeys) {
@@ -395,6 +397,7 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     instanced: built.instanced,
     info: { triangles: built.triangles, chunks: chunks.records().length, instances, buildMs: null },
     ...(interiorSystem ? { interiors: interiorSystem } : {}),
+    ...(obstacles ? { obstacles } : {}),
     scatterInstances: () => fields.map((f) => ({ kind: f.kind.name, matrices: f.instanceData() })),
     stats: () => (deps.stats ? deps.stats() : createRenderStats()),
     updateLod(camera: Vector3, cameraObject: Object3D): number {
@@ -434,6 +437,72 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     },
   };
   return handle;
+}
+
+/** Phase D10: a small tree's scale on the biome's first scatter tree (a sapling a Cut can fell). */
+export const OBSTACLE_TREE_SCALE = 0.55;
+
+/** fnv1a32 of an id, for per-obstacle seeds that never depend on list order. */
+function idSeed(id: string): number {
+  let h = 0x811c9dc5 | 0;
+  for (let i = 0; i < id.length; i++) { h ^= id.charCodeAt(i); h = Math.imul(h, 0x01000193) | 0; }
+  return h >>> 0;
+}
+
+/**
+ * Phase D10: each obstacle as its own object under the zone root (a tree: the biome's first scatter tree at
+ * OBSTACLE_TREE_SCALE plus a hidden stump; a boulder: a large rock), and the handle that swaps them per player. Library
+ * materials only; every geometry is recorded for the digest and disposal. null when the spec has none.
+ */
+function buildObstacles(
+  spec: ZoneSpec, set: BiomeSet, material: (id: SurfaceId) => Material, views: BufferGeometry[], record: (g: BufferGeometry) => void, root: Group,
+): ObstaclesHandle | null {
+  const list = spec.obstacles ?? [];
+  if (list.length === 0) return null;
+  const h = spec.heightfield;
+  const objs = new Map<string, { readonly standing: Object3D; readonly cleared: Object3D | null; done: boolean }>();
+  for (const o of list) {
+    const seed = (spec.seed ^ idSeed(o.id)) >>> 0;
+    const y = heightClamped(h, o.x, o.z);
+    const tree = set.trees[0];
+    let standing: Object3D;
+    let cleared: Object3D | null = null;
+    if (o.kind === 'tree' && tree !== undefined) {
+      const geo = buildTree(tree.bark, tree.leaf, tree.shape, seed);
+      standing = objectFromGeo(geo, 0, material, `ewa:obstacle:${o.id}`, views, true);
+      standing.scale.setScalar(OBSTACLE_TREE_SCALE);
+      standing.position.set(o.x, y - 0.06, o.z);
+      record(geo.lod0); record(geo.lod1); record(geo.lod2);
+      const sg = buildStump(tree.bark, set.props.wood, seed ^ 0x51);
+      cleared = objectFromGeo(sg, 0, material, `ewa:obstacle:${o.id}:stump`, views, false);
+      cleared.position.set(o.x, y - 0.04, o.z);
+      cleared.visible = false;
+      record(sg.lod0); record(sg.lod1); record(sg.lod2);
+      root.add(cleared);
+    } else {
+      const geo = buildRock(set.rock, seed, { size: 1.15, squash: 0.78, elongate: 1.15, cuts: [3, 5] });
+      standing = objectFromGeo(geo, 0, material, `ewa:obstacle:${o.id}`, views, true);
+      standing.position.set(o.x, y - 0.2, o.z);
+      standing.rotation.y = ((seed & 0xffff) / 0xffff) * Math.PI * 2;
+      record(geo.lod0); record(geo.lod1); record(geo.lod2);
+    }
+    standing.userData = { ...standing.userData, ewaObstacle: o.id };
+    root.add(standing);
+    objs.set(o.id, { standing, cleared, done: false });
+  }
+  return {
+    ids: list.map((o) => o.id),
+    setCleared(id: string, done: boolean): void {
+      const e = objs.get(id);
+      if (e === undefined || e.done === done) return;
+      e.done = done;
+      e.standing.visible = !done;
+      if (e.cleared !== null) e.cleared.visible = done;
+    },
+    isCleared(id: string): boolean {
+      return objs.get(id)?.done === true;
+    },
+  };
 }
 
 /** Set-pieces the movement solver treats as solid (towers, huts, gates…); the rest are walkable or open. */

@@ -4,7 +4,7 @@
  */
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { BattleFormat, BattleOutcome, BattleState, TypeName } from '@ewa/core';
+import type { Action, BattleFormat, BattleOutcome, BattleState, TypeName } from '@ewa/core';
 import type { RewardsSummary, TradeOffer } from '@ewa/protocol';
 
 /** `battleEnd` for the result card: display only (the rewards reached the session through the delta writers). */
@@ -68,6 +68,18 @@ export interface BattleUi {
   readonly expectedMs: number;
   /** Phase C1: set for format 'raid' */
   readonly raid?: RaidBattleUi;
+  /**
+   * Phase D6: doubles selection (doubles battles only, while 'selecting' / 'replacement'): the field position choosing
+   * now and the actions already picked this turn, per position. BattleController owns it; nothing is sent until every
+   * required position has picked (the menu's Back re-opens the earlier position).
+   */
+  readonly pick?: DoublesPick;
+}
+
+/** Phase D6 — see `BattleUi.pick`. */
+export interface DoublesPick {
+  readonly pos: 0 | 1;
+  readonly picks: readonly [Action | null, Action | null];
 }
 
 /**

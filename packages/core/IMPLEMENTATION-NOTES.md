@@ -126,3 +126,34 @@ consumables with `shop.js` prices. It is a test fixture, not `@ewa/content`.
 - **D4.** `CreatureInstance.isShiny?: boolean` — optional, present (true) only on a shiny, no battle effect; the digest
   omits undefined keys, so non-shiny states hash as before.
 - Tests: `test/weather-ambient.test.ts` (4).
+
+## Phase D6 — doubles (2026-10-06)
+
+- **The `slots` rule.** `CreateBattleOpts.slots?: 1 | 2`, `BattleState.slots?: 2`, `Side.actives?: readonly [number, number]`.
+  With `slots` absent or 1, `createBattle` / `validateAction` / `resolveTurn` run the unchanged singles code and no new key
+  appears anywhere in a singles state (`cloneSide` / `cloneState` copy `actives` / `slots` only when present), so
+  `test/fuzz-digests.json` is byte-identical (sha256 `47e764f9…` before and after; `npx vitest run packages/core`).
+- **Refactor that keeps singles identical.** The engine primitives that read "the foe's active" now take explicit Refs:
+  `EffectHandler(ctx, atk, def, move, dealt)`, `switchOutAt`, `fireSwitchInHooksAt`, `canActAt`, `executeMoveAt`,
+  `useItemAt`, `endOfTurnAt(field)`, `awardExp(ctx, defeatedRef)`, `checkFaint` via `onField`. The singles call sites
+  pass exactly the refs they used to compute (`activeRef(side)`, `activeRef(other)`), in the same order, so every rng draw
+  and event is unchanged — the 1,000-battle fuzz is the proof.
+- **`src/doubles.ts`** holds construction (`createDoubles`: wild/raid refused, two standing creatures per side or
+  RangeError), per-position validation (`validateDoublesAction`, `validateSideChoice`, `requiredPositions`), ordering
+  across four battlers (priority, speed, `rng.shuffle` of exact-tie groups), targeting (retarget a fainted foe target,
+  fail on a fainted ally), spread moves (`executeSpreadAt`, ×0.75 at 2+ targets after the §2.14 pipeline), and
+  `resolveDoublesTurn`. `npc.ts` adds `chooseNpcDoubles` and `expectedDamageVs`; `chooseNpcAction(…, pos)` delegates in
+  doubles. The rules are written out in the module header and in spine §2.10 "Doubles".
+- **Choices.** `SideChoice = Action | null | [Action | null, Action | null]`; a bare Action in doubles is position 0.
+  `Action` move gains `target?: FieldRef` (`{ side, pos }` — a field position, not a party index); new `ActionError`
+  `badTarget`. Events: `switchIn` / `switchOut` gain `pos`, `moveUsed` gains `targets` (spread), `moveFailed` gains
+  `target` (per-target spread failure) — all only in doubles. `MoveDef.spread?: 'foes' | 'all'` (ignored in singles).
+- **Decisions the task left open.** EXP is not split (each participant gets the full yield, as singles); the spread
+  ×0.75 applies only when 2+ targets were aimed at (Pokémon rule) and after the whole pipeline; a fainted position with no
+  bench stays on the field at hp 0 rather than becoming −1; in a replacement with fewer bench creatures than fainted
+  positions the FIRST fainted positions are filled (the player picks who, not where); doubles has no catch / flee.
+- **Tests.** `test/doubles.test.ts` (21): construction + singles shape identity, validation/targeting/retarget/ally,
+  spread (`'foes'`, `'all'`, one target left, ignored in singles), order across four + priority, switch before moves,
+  replacement per position (incl. 2 fainted / 1 bench), end, forfeit, EXP no split, Intimidate on both foes, NPC policy;
+  and a 300-seed doubles fuzz (`test/doubles-fuzz.ts`) with its own committed `test/doubles-fuzz-digests.json`, two
+  content instances agreeing and replays matching.

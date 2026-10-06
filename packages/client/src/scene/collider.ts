@@ -13,6 +13,12 @@
  * centre-exclusion shape the server tests) and resolves every step against `terrain.passable && !inside a gate`.
  * Render's `TerrainCollider.addBlocker` has no removal, so the gates live here, not in the zone collider (the battle
  * camera's `blocked()` does not need them).
+ *
+ * Phase D8 surf: `setSurf(true)` (the player holds HM Surf, the zone's water is not lava, not riding the bike) resolves
+ * with render's surf mode: open water is passable and the pose floats on the body's level (`height` is the surface).
+ * Phase D10 obstacles: content stamps every Cut / Strength obstacle unwalkable; `setObstacles(lookup, cleared)` re-opens
+ * the stamped samples of the ones this player cleared (`lookup` = content `obstacleAt` over the zone's field, the exact
+ * set the server's `standable` accepts), so prediction never refuses a step the server allows.
  */
 import type { Collider, MovePose } from '@ewa/protocol';
 import { resolveMoveInto } from '@ewa/render';
@@ -34,10 +40,17 @@ export interface GateBlockers {
 export interface StepCollider extends Collider, GateBlockers {
   /** Records the pre-step position (the controller calls it before every stepMovement). */
   begin(x: number, z: number): void;
-  /** Ground height for rendering / audio. */
+  /** Ground height for rendering / audio (Phase D8: the water level on open water). */
   height(x: number, z: number): number;
-  /** terrain.passable minus the closed gates (what prediction resolves against). */
+  /** terrain.passable (+ surf, + cleared obstacles) minus the closed gates (what prediction resolves against). */
   passable(x: number, z: number): boolean;
+  /** Phase D8: surf mode on / off (HM Surf held, water not lava, not biking). */
+  setSurf(on: boolean): void;
+  readonly surfing: boolean;
+  /** Phase D8: (x, z) is open water (water, not a boardwalk). */
+  onWater(x: number, z: number): boolean;
+  /** Phase D10: the obstacle owning a stamped sample (null = none) and the ids this player cleared. */
+  setObstacles(lookup: ((x: number, z: number) => string | null) | null, cleared: ReadonlySet<string>): void;
   readonly terrain: TerrainCollider | null;
 }
 
@@ -48,6 +61,15 @@ export function createStepCollider(terrain: TerrainCollider | null): StepCollide
   let fromX = 0;
   let fromZ = 0;
   const gates: GateEntry[] = [];
+  let surf = false;
+  let obstacleOf: ((x: number, z: number) => string | null) | null = null;
+  let cleared: ReadonlySet<string> = new Set<string>();
+  /** a sample stamped by an obstacle this player cleared (walkable again for them only) */
+  const reopened = (x: number, z: number): boolean => {
+    if (obstacleOf === null || cleared.size === 0) return false;
+    const id = obstacleOf(x, z);
+    return id !== null && cleared.has(id);
+  };
   const inGate = (x: number, z: number): boolean => {
     for (let i = 0; i < gates.length; i++) {
       const g = gates[i]!;
@@ -58,18 +80,22 @@ export function createStepCollider(terrain: TerrainCollider | null): StepCollide
     }
     return false;
   };
-  const passable = (x: number, z: number): boolean => terrain !== null && terrain.passable(x, z) && (gates.length === 0 || !inGate(x, z));
+  const passableFor = (x: number, z: number, s: boolean): boolean =>
+    terrain !== null && (terrain.passable(x, z, s) || reopened(x, z)) && (gates.length === 0 || !inGate(x, z));
+  const passable = (x: number, z: number): boolean => passableFor(x, z, surf);
   // the solver's view: the zone collider with the closed gates added to `passable` (resolveMoveInto reads passable,
   // sample, slopeDeg and — for a blocked start — nearestPassable)
   const view =
     terrain === null
       ? null
       : ({
-          passable,
+          passable: (x: number, z: number, s = false) => passableFor(x, z, s),
           sample: (x: number, z: number) => terrain.sample(x, z),
+          surfaceY: (x: number, z: number) => terrain.surfaceY(x, z),
+          onWater: (x: number, z: number) => terrain.onWater(x, z),
           slopeDeg: (x: number, z: number) => terrain.slopeDeg(x, z),
-          nearestPassable: (x: number, z: number, r: number) => {
-            const p = terrain.nearestPassable(x, z, r);
+          nearestPassable: (x: number, z: number, r: number, s = false) => {
+            const p = terrain.nearestPassable(x, z, r, s);
             return p !== null && gates.length > 0 && inGate(p[0], p[1]) ? null : p;
           },
         } as unknown as TerrainCollider);
@@ -80,6 +106,19 @@ export function createStepCollider(terrain: TerrainCollider | null): StepCollide
   return {
     terrain,
     passable,
+    get surfing() {
+      return surf;
+    },
+    setSurf(on) {
+      surf = on;
+    },
+    onWater(x, z) {
+      return terrain !== null && terrain.onWater(x, z);
+    },
+    setObstacles(lookup, ids) {
+      obstacleOf = lookup;
+      cleared = ids;
+    },
     addBlocker(id, sol) {
       remove(id);
       gates.push({ id, x: sol.x, z: sol.z, hw: sol.hw, hd: sol.hd, c: Math.cos(sol.yaw), s: Math.sin(sol.yaw), r2: sol.hw * sol.hw + sol.hd * sol.hd + 1e-9 });
@@ -104,7 +143,7 @@ export function createStepCollider(terrain: TerrainCollider | null): StepCollide
         }
         return;
       }
-      resolveMoveInto(out, view, fromX, fromZ, dx, dz);
+      resolveMoveInto(out, view, fromX, fromZ, dx, dz, surf);
       // resolveMove's corner probes land a capsule radius (0.35 m) around the target, and a blocked start escapes to
       // the nearest passable sample (≤ 4 m): either can move the pose several times farther than the step asked for,
       // which the server's per-message speed cap rejects (30 rejections in 10 s is a kick). Clamp every step to the
@@ -131,7 +170,7 @@ export function createStepCollider(terrain: TerrainCollider | null): StepCollide
     },
     height(x, z) {
       if (terrain === null) return 0;
-      const y = terrain.sample(x, z);
+      const y = terrain.surfaceY(x, z);
       return Number.isFinite(y) ? y : 0;
     },
   };

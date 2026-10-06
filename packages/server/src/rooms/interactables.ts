@@ -7,8 +7,8 @@
  * coordinates). A league trainer is challenged where it stands in its hall (`interiorLeaders` x/z, checked at 4 m).
  * `LEAGUE_MARKER` (0, −26) is only the fallback for a league trainer with no hall (IMPLEMENTATION-NOTES R5).
  */
-import { leaderSpot, LEAGUE, interiorItems, interiorLeaders, interiorSwitches, interiorTrainers, interiorWarps, staticsFor } from '@ewa/content';
-import type { GroundItemDef, LeagueTrainer, LegendaryStatic, LoreTabletDef, NpcDef, TrainerDef, WarpDef, WorldSwitch, ZoneDef } from '@ewa/content';
+import { OBSTACLE_INTERACT_M, leaderSpot, LEAGUE, interiorItems, interiorLeaders, interiorSwitches, interiorTrainers, interiorWarps, staticsFor } from '@ewa/content';
+import type { GroundItemDef, LeagueTrainer, LegendaryStatic, LoreTabletDef, NpcDef, ObstacleDef, TrainerDef, WarpDef, WorldSwitch, ZoneDef } from '@ewa/content';
 import type { InteractKind } from '@ewa/protocol';
 
 export const INTERACT_RANGE_M = 3;
@@ -23,7 +23,9 @@ export type InteractTarget =
   | { readonly kind: 'lore'; readonly lore: LoreTabletDef; readonly x: number; readonly z: number }
   | { readonly kind: 'warp'; readonly warp: WarpDef; readonly x: number; readonly z: number }
   | { readonly kind: 'static'; readonly static: LegendaryStatic; readonly x: number; readonly z: number }
-  | { readonly kind: 'switch'; readonly sw: WorldSwitch; readonly x: number; readonly z: number };
+  | { readonly kind: 'switch'; readonly sw: WorldSwitch; readonly x: number; readonly z: number }
+  /** Phase D10: a Cut tree / Strength boulder of `ZoneDef.obstacles` */
+  | { readonly kind: 'obstacle'; readonly obstacle: ObstacleDef; readonly x: number; readonly z: number };
 
 /** League trainers fought in this zone (gyms in their town, elite/champion in solenne). */
 export function leagueIn(zone: ZoneDef): readonly LeagueTrainer[] {
@@ -77,6 +79,10 @@ export function findTarget(zone: ZoneDef, kind: InteractKind, targetId: string, 
       const sw = interiorSwitches(zone.id).find((s) => s.id === targetId);
       return sw === undefined ? null : { kind: 'switch', sw, x: sw.x, z: sw.z };
     }
+    case 'obstacle': {
+      const o = zone.obstacles?.find((x) => x.id === targetId);
+      return o === undefined ? null : { kind: 'obstacle', obstacle: o, x: o.x, z: o.z };
+    }
     default:
       // healer / shop: no-ops over the room (POST /heal, GET /shop/:zoneId)
       return null;
@@ -84,7 +90,7 @@ export function findTarget(zone: ZoneDef, kind: InteractKind, targetId: string, 
 }
 
 export function rangeFor(t: InteractTarget): number {
-  return t.kind === 'gym' ? GYM_RANGE_M : INTERACT_RANGE_M;
+  return t.kind === 'gym' ? GYM_RANGE_M : t.kind === 'obstacle' ? OBSTACLE_INTERACT_M : INTERACT_RANGE_M;
 }
 
 /** Ground-item pickup flag: once per player (§30.4.6). Interior items share the scheme. */

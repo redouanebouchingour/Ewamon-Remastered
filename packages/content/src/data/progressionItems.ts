@@ -77,6 +77,10 @@ export const TRADE_EVOLVE_RIBBON = 'trade_evolve';
 
 // ─── key items ───────────────────────────────────────────────────────────────
 
+/** Phase D11: the bicycle's item id and its (steep) Saltmourn price. */
+export const BIKE_ITEM = 'bike';
+export const BIKE_PRICE = 30000;
+
 /** Built from MOVES at module load so a TM never disagrees with its move. */
 export function buildKeyItems(moves: readonly MoveDef[]): readonly ItemDef[] {
   const byId = new Map(moves.map((m) => [m.id, m]));
@@ -105,6 +109,16 @@ export function buildKeyItems(moves: readonly MoveDef[]): readonly ItemDef[] {
       fieldVerb: null,
       hooks: [],
       price: null,
+    },
+    {
+      // Phase D11: ridden outdoors (not in halls, not on water), toggled with the bike key; sold in Saltmourn
+      id: BIKE_ITEM,
+      name: 'Bicycle',
+      description: 'A folding harbour bicycle with salt in its chain. Much faster than running; it stays folded indoors and on water.',
+      slot: 'key',
+      fieldVerb: null,
+      hooks: [],
+      price: BIKE_PRICE,
     },
     ...tms,
   ];
@@ -136,7 +150,7 @@ export const EVOLUTION_STONES: readonly ConsumableDef[] = [
 
 /** Phase D2/D3 shop additions per town (appended to the town's stock in zones.ts). Later towns sell more. */
 export const PROGRESSION_STOCK: Readonly<Partial<Record<ZoneId, readonly string[]>>> = {
-  saltmourn: [tmItemId('Water Pulse'), tmItemId('Protect'), tmItemId('Fire Fang'), tmItemId('Frost Bite')],
+  saltmourn: [BIKE_ITEM, tmItemId('Water Pulse'), tmItemId('Protect'), tmItemId('Fire Fang'), tmItemId('Frost Bite')],
   stormrook: ['storm_stone', tmItemId('Discharge'), tmItemId('Thunderbolt'), tmItemId('Aerial Ace'), tmItemId('Body Slam')],
   marrowdig: ['ember_stone', 'moon_stone', tmItemId('Rock Slide'), tmItemId('Bulldoze'), tmItemId('Earthquake'), tmItemId('Iron Defense')],
   vesperveil: ['dusk_stone', tmItemId('Hex'), tmItemId('Shadow Ball'), tmItemId('Will-O-Wisp'), tmItemId('Dark Pulse'), tmItemId('Crunch')],
@@ -152,5 +166,5 @@ export const PROGRESSION_STOCK: Readonly<Partial<Record<ZoneId, readonly string[
   ],
 };
 
-/** `old_rod` + the 39 TMs (`tm:<Move>`), all `slot: 'key'`. */
+/** `old_rod`, the bicycle (Phase D11) and the 39 TMs (`tm:<Move>`), all `slot: 'key'`. */
 export const KEY_ITEMS: readonly ItemDef[] = buildKeyItems(MOVES);

@@ -75,7 +75,7 @@ const UUID_B = '22222222-2222-4222-8222-222222222222';
 describe('§4.1 field layout', () => {
   it('declares exactly the spine fields, in order', () => {
     expect(fieldNames(PlayerState)).toEqual([
-      'id', 'name', 'x', 'z', 'angle', 'moving', 'running', 'body', 'emote', 'inBattle', 'guildTag', 'seq',
+      'id', 'name', 'x', 'z', 'angle', 'moving', 'running', 'body', 'emote', 'inBattle', 'guildTag', 'seq', 'surfing', 'biking',
     ]);
     expect(fieldNames(SpawnState)).toEqual([
       'id', 'speciesId', 'level', 'x', 'z', 'variantKey', 'isAlpha', 'engagedBy', 'despawnAtTick', 'isShiny',

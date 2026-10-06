@@ -173,3 +173,60 @@
   font-size: var(--t-body);
   line-height: var(--lh-body);
 }
+
+/* Phase D6 doubles: the target list of a single-target move (foes first, then the ally) */
+.targets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-3);
+  inline-size: 100%;
+}
+
+.targetRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-2) var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-2);
+  background: var(--bg-2);
+  color: var(--text-1);
+  font: inherit;
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  text-align: start;
+  cursor: pointer;
+  transition: transform var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out);
+}
+
+.targetRow:hover:not(:disabled) {
+  border-color: var(--line-2);
+  transform: scale(1.05);
+}
+
+.targetRow:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.targetRow:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.targetRow:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.targetAlly {
+  border-style: dashed;
+}
+
+.targetSide {
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

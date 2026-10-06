@@ -8,8 +8,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { LEAGUE, beatDoneFlag, zone } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
-import { TRAINER_EXP, chooseNpcAction, createBattle, createRng, digestBattleState, resolveTurn } from '@ewa/core';
-import type { Action, BattleState, CreateBattleOpts, RngState } from '@ewa/core';
+import { TRAINER_EXP, chooseNpcAction, chooseNpcDoubles, createBattle, createRng, digestBattleState, resolveTurn } from '@ewa/core';
+import type { Action, BattleState, CreateBattleOpts, Rng, RngState, SideChoice } from '@ewa/core';
 import type { AnyDb, Db, Repos } from '@ewa/persist';
 import type { ServerMessage } from '@ewa/protocol';
 import { newCreature } from '../src/game/creatures';
@@ -93,13 +93,44 @@ async function settle(c: BattleCoordinator, id: string): Promise<void> {
 }
 
 /** Plays a whole battle choosing actions with `pick`, verifying each server digest against a client preview. */
-async function playOut(c: BattleCoordinator, host: Recorder, pid: string, session: BattleSession, pick: (s: BattleState) => Action): Promise<{ desyncs: number; turns: number }> {
+async function playOut(
+  c: BattleCoordinator,
+  host: Recorder,
+  pid: string,
+  session: BattleSession,
+  pick: (s: BattleState) => Action,
+  doublesRng: Rng = createRng('doubles-player'),
+): Promise<{ desyncs: number; turns: number }> {
   let client: BattleState = session.state; // what the client got in battleStart
   let desyncs = 0;
   let turns = 0;
   for (let guard = 0; guard < 120 && c.get(session.id) !== null; guard++) {
     const s = c.get(session.id)!;
     const side = s.seats.find((x) => x.playerId === pid)!.side;
+    if (s.state.slots === 2) {
+      // Phase D6: a doubles battle — one battleAction per required position (the core doubles policy picks both)
+      const pair = chooseNpcDoubles(s.state, side, content, doublesRng);
+      if (pair[0] === null && pair[1] === null) {
+        await settle(c, s.id);
+        continue;
+      }
+      const before = msgsOf(host, pid).length;
+      const choice: SideChoice = pair;
+      const preview = resolveTurn(client, side === 0 ? [choice, null] : [null, choice], content);
+      for (const p of [0, 1] as const) {
+        const a = pair[p];
+        if (a !== null) expect(c.action(pid, s.id, s.state.turn + 1, a, p)).toBeNull();
+      }
+      await settle(c, s.id);
+      const events = msgsOf(host, pid)
+        .slice(before)
+        .filter((m): m is Extract<ServerMessage, { type: 'battleEvents' }> => m.type === 'battleEvents');
+      expect(events.length).toBeGreaterThan(0);
+      if (events[0]!.stateDigest !== digestBattleState(preview.state)) desyncs++;
+      client = c.get(session.id)?.state ?? preview.state;
+      turns++;
+      continue;
+    }
     const mustSwitch = s.state.sides[side].mustSwitch;
     const replacementForOther = s.state.sides[side === 0 ? 1 : 0].mustSwitch && !mustSwitch;
     if (replacementForOther) {
@@ -393,9 +424,11 @@ describe('M3: one seeded league battle per LEAGUE entry (12), desync counter 0',
         terrain: row!.start!.terrain as CreateBattleOpts['terrain'],
         seed: row!.seed as RngState,
         sides: row!.start!.sides as CreateBattleOpts['sides'],
+        ...(row!.start!.slots === 2 ? { slots: 2 as const } : {}),
       };
+      expect(start.state.slots === 2).toBe(lt.doubles === true); // Phase D6: draco_gym and aurelia fight 2-on-2
       let replay = createBattle(opts, content).state;
-      for (const acts of row!.actions) replay = resolveTurn(replay, acts as [Action | null, Action | null], content).state;
+      for (const acts of row!.actions) replay = resolveTurn(replay, acts as [SideChoice, SideChoice], content).state;
       expect(digestBattleState(replay)).toBe(last.stateDigest);
       expect(replay.ended).toEqual({ winner: 0 });
     }, 180_000);

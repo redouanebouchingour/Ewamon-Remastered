@@ -13,10 +13,15 @@
  * (`blocked()`: the battle camera's occluder scoring) keep working; footprints never enter `passable()`.
  * `addBlocker` remains for EXTRA client-only obstacles, which do: `passable = walkable && !blocker` — stricter than
  * the server, never looser. `walkable()` itself stays byte-identical to content (the `collider.test.ts` contract).
+ *
+ * Surf mode (Phase D8): `passable(x, z, true)` also accepts water samples (the client passes `surf` only when the
+ * player holds HM Surf in a zone whose water is not lava; render cannot tell lava from a pond). A surfer stands on
+ * the body's flat surface: `surfaceY` is the water level (`waterBodies`, the plane the water mesh draws) on an
+ * open-water sample and the terrain elsewhere; `onWater` says which (actors ride the level with a ripple).
  */
 import { Vector3 } from 'three/webgpu';
 import type { HeightfieldData } from '../contracts.js';
-import { FIELD_MARGIN, heightAt, heightClamped, inField, walkableAt, waterAt, type Bounds } from './field.js';
+import { FIELD_MARGIN, heightAt, heightClamped, inField, walkableAt, waterAt, waterBodies, type Bounds } from './field.js';
 
 export { FIELD_MARGIN } from './field.js';
 export type { Bounds } from './field.js';
@@ -45,6 +50,8 @@ export class TerrainCollider {
   private readonly crownGrid = new Map<number, number[]>();
   private crownMaxR = 0;
   private readonly _n = new Vector3();
+  /** Phase D8: per-sample water level (NaN off water), built on the first surf query. */
+  private levels: Float32Array | null = null;
 
   constructor(h: HeightfieldData) {
     this.h = h;
@@ -77,6 +84,38 @@ export class TerrainCollider {
 
   /** Nearest sample's water bit; false outside. Identical to content's isWater. */
   water(x: number, z: number): boolean { return waterAt(this.h, x, z); }
+
+  /** Phase D8: an open-water sample (water, not walkable: not a boardwalk). Only a surfer stands here. */
+  onWater(x: number, z: number): boolean { return waterAt(this.h, x, z) && !walkableAt(this.h, x, z); }
+
+  /** Phase D8: the level of the water body under (x, z) (the water mesh's plane); NaN off water. */
+  waterLevel(x: number, z: number): number {
+    if (!inField(this.h, x, z)) return Number.NaN;
+    const h = this.h;
+    let lv = this.levels;
+    if (lv === null) {
+      const labels = new Int32Array(h.res * h.res);
+      const bodies = waterBodies(h, labels);
+      lv = new Float32Array(h.res * h.res).fill(Number.NaN);
+      for (let i = 0; i < labels.length; i++) if (labels[i]! >= 0) lv[i] = bodies[labels[i]!]!.level;
+      this.levels = lv;
+    }
+    const col = Math.round((x - h.originX) / h.step);
+    const row = Math.round((z - h.originZ) / h.step);
+    return lv[row * h.res + col]!;
+  }
+
+  /**
+   * Phase D8: where feet stand. On an open-water sample the body's surface (never below the terrain), else the terrain
+   * (`sample`). Everyone on a water-only sample is surfing (the server refuses it otherwise), so remote surfers ride
+   * the level too.
+   */
+  surfaceY(x: number, z: number): number {
+    const y = heightAt(this.h, x, z);
+    if (!this.onWater(x, z)) return y;
+    const lv = this.waterLevel(x, z);
+    return Number.isFinite(lv) && !(y > lv) ? lv : y;
+  }
 
   /** Slope in degrees at (x, z) from `normal`. */
   slopeDeg(x: number, z: number): number {
@@ -186,15 +225,15 @@ export class TerrainCollider {
   }
 
   /**
-   * `walkable && !extra blocker` — what the movement solver may stand on. Footprints act through `walkable` (content
-   * stamped them), so with no extra blockers this is exactly the server's `isWalkable`.
+   * `(walkable || (surf && water)) && !extra blocker` — what the movement solver may stand on. Footprints act through
+   * `walkable` (content stamped them), so with no extra blockers and no surf this is exactly the server's `isWalkable`.
    */
-  passable(x: number, z: number): boolean {
-    return this.walkable(x, z) && (this.blockers.length === 0 || !insideAny(this.grid, this.blockers, x, z));
+  passable(x: number, z: number, surf = false): boolean {
+    return (this.walkable(x, z) || (surf && this.water(x, z))) && (this.blockers.length === 0 || !insideAny(this.grid, this.blockers, x, z));
   }
 
   /** Nearest passable sample centre within `radius` metres (0.5 m ring spiral); null when none. */
-  nearestPassable(x: number, z: number, radius: number): readonly [number, number] | null {
+  nearestPassable(x: number, z: number, radius: number, surf = false): readonly [number, number] | null {
     const h = this.h;
     const col0 = Math.round((x - h.originX) / h.step);
     const row0 = Math.round((z - h.originZ) / h.step);
@@ -205,7 +244,7 @@ export class TerrainCollider {
       if (row < 0 || col < 0 || row >= h.res || col >= h.res) return;
       const sx = h.originX + col * h.step;
       const sz = h.originZ + row * h.step;
-      if (!this.passable(sx, sz)) return;
+      if (!this.passable(sx, sz, surf)) return;
       const d2 = (sx - x) * (sx - x) + (sz - z) * (sz - z);
       if (d2 <= bestD2 && (best === null || d2 < bestD2)) { bestD2 = d2; best = [sx, sz]; }
     };
@@ -277,11 +316,13 @@ const PROBE_ANGLES: readonly number[] = [22.5, -22.5, 45, -45, 67.5, -67.5, 90, 
 const PROBE_COS: readonly number[] = PROBE_ANGLES.map(Math.cos);
 const PROBE_SIN: readonly number[] = PROBE_ANGLES.map(Math.sin);
 
-function accepts(c: TerrainCollider, fromY: number, x: number, z: number): boolean {
-  if (!c.passable(x, z)) return false;
-  const y = c.sample(x, z);
+function accepts(c: TerrainCollider, fromY: number, x: number, z: number, surf: boolean): boolean {
+  if (!c.passable(x, z, surf)) return false;
+  // a surfer floats on the level: heights and slopes are the surface's (flat on open water)
+  const onWater = surf && c.onWater(x, z);
+  const y = surf ? c.surfaceY(x, z) : c.sample(x, z);
   if (!(y - fromY <= MOVER.stepHeight)) return false;
-  return c.slopeDeg(x, z) <= MOVER.slopeLimitDeg;
+  return onWater || c.slopeDeg(x, z) <= MOVER.slopeLimitDeg;
 }
 
 /**
@@ -295,14 +336,14 @@ function accepts(c: TerrainCollider, fromY: number, x: number, z: number): boole
  * returned the nearest sample outright (up to 4 m); the server rejects any step over its speed cap and kicks after
  * 30 rejections, which live two-player runs hit at walls. Allocation-free: writes into `out`.
  */
-export function resolveMoveInto(out: MoveResultMut, c: TerrainCollider, fromX: number, fromZ: number, dx: number, dz: number): MoveResultMut {
-  const fromY = c.sample(fromX, fromZ);
+export function resolveMoveInto(out: MoveResultMut, c: TerrainCollider, fromX: number, fromZ: number, dx: number, dz: number, surf = false): MoveResultMut {
+  const fromY = surf ? c.surfaceY(fromX, fromZ) : c.sample(fromX, fromZ);
   const tx = fromX + dx;
   const tz = fromZ + dz;
   out.blocked = false; out.slid = false;
-  if (accepts(c, fromY, tx, tz)) return finish(out, c, tx, tz);
-  if (dx !== 0 && accepts(c, fromY, fromX + dx, fromZ)) { out.slid = true; return finish(out, c, fromX + dx, fromZ); }
-  if (dz !== 0 && accepts(c, fromY, fromX, fromZ + dz)) { out.slid = true; return finish(out, c, fromX, fromZ + dz); }
+  if (accepts(c, fromY, tx, tz, surf)) return finish(out, c, tx, tz, surf);
+  if (dx !== 0 && accepts(c, fromY, fromX + dx, fromZ, surf)) { out.slid = true; return finish(out, c, fromX + dx, fromZ, surf); }
+  if (dz !== 0 && accepts(c, fromY, fromX, fromZ + dz, surf)) { out.slid = true; return finish(out, c, fromX, fromZ + dz, surf); }
   const len = Math.hypot(dx, dz);
   if (len > 0) {
     const ux = dx / len; const uz = dz / len;
@@ -310,29 +351,32 @@ export function resolveMoveInto(out: MoveResultMut, c: TerrainCollider, fromX: n
       const co = PROBE_COS[k]!; const si = PROBE_SIN[k]!;
       const px = fromX + (ux * co - uz * si) * len;
       const pz = fromZ + (ux * si + uz * co) * len;
-      if (accepts(c, fromY, px, pz)) { out.slid = true; return finish(out, c, px, pz); }
+      if (accepts(c, fromY, px, pz, surf)) { out.slid = true; return finish(out, c, px, pz, surf); }
     }
   }
   out.blocked = true;
-  if (c.passable(fromX, fromZ)) return finish(out, c, fromX, fromZ);
-  const near = len > 0 ? c.nearestPassable(fromX, fromZ, 4) : null;
+  if (c.passable(fromX, fromZ, surf)) return finish(out, c, fromX, fromZ, surf);
+  const near = len > 0 ? c.nearestPassable(fromX, fromZ, 4, surf) : null;
   if (near !== null) {
     const ex = near[0] - fromX; const ez = near[1] - fromZ;
     const el = Math.hypot(ex, ez);
     const k = el > len ? len / el : 1;                 // walk out of the blocker, one step at a time
-    return finish(out, c, fromX + ex * k, fromZ + ez * k);
+    return finish(out, c, fromX + ex * k, fromZ + ez * k, surf);
   }
-  return finish(out, c, fromX, fromZ);
+  return finish(out, c, fromX, fromZ, surf);
 }
 
-function finish(out: MoveResultMut, c: TerrainCollider, x: number, z: number): MoveResultMut {
+function finish(out: MoveResultMut, c: TerrainCollider, x: number, z: number, surf: boolean): MoveResultMut {
   out.x = x; out.z = z;
-  const y = c.sample(x, z);
+  const y = surf ? c.surfaceY(x, z) : c.sample(x, z);
   out.y = Number.isFinite(y) ? y : 0;
   return out;
 }
 
-/** SPEC §10.6.2, verbatim signature. Pure. Resolves a desired xz displacement against the collider. */
-export function resolveMove(c: TerrainCollider, fromX: number, fromZ: number, dx: number, dz: number): MoveResult {
-  return resolveMoveInto({ x: 0, z: 0, y: 0, blocked: false, slid: false }, c, fromX, fromZ, dx, dz);
+/**
+ * SPEC §10.6.2 signature (+ Phase D8 `surf`: the player holds HM Surf where the water is not lava). Pure. Resolves a
+ * desired xz displacement against the collider.
+ */
+export function resolveMove(c: TerrainCollider, fromX: number, fromZ: number, dx: number, dz: number, surf = false): MoveResult {
+  return resolveMoveInto({ x: 0, z: 0, y: 0, blocked: false, slid: false }, c, fromX, fromZ, dx, dz, surf);
 }

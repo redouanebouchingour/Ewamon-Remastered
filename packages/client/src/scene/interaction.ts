@@ -6,7 +6,7 @@
  */
 import type { HudPrompt } from './HudWriter';
 
-export type InteractableKind = 'npc' | 'trainer' | 'item' | 'lore' | 'gym' | 'healer' | 'shop' | 'warp' | 'spawn' | 'switch' | 'pc' | 'static' | 'raid';
+export type InteractableKind = 'npc' | 'trainer' | 'item' | 'lore' | 'gym' | 'healer' | 'shop' | 'warp' | 'spawn' | 'switch' | 'pc' | 'static' | 'raid' | 'obstacle' | 'fish';
 
 /**
  * Client ranges stay inside the server's (3 m for npc / item / warp / switch, 4 m for a league trainer at its
@@ -20,6 +20,10 @@ export const RANGE: Readonly<Record<InteractableKind, number>> = {
   static: 2.5,
   // Phase C1: a raid den (server RAID_JOIN_RANGE_M = 8 around the hotspot; raidJoin is checked there)
   raid: 8,
+  // Phase D10: a Cut tree / Strength boulder (server OBSTACLE_INTERACT_M = 3 from its centre; the stamped disc is ≈ 1.1 m)
+  obstacle: 2.6,
+  // Phase D9: the cast point the director keeps on the water ahead of the player (server FISH_REACH_M = 2.5)
+  fish: 2.6,
 };
 export const PLAYER_RANGE = 6;
 

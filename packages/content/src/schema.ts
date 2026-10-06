@@ -214,6 +214,7 @@ export const MoveDefSchema: z.ZodType<MoveDef> = z.object({
   effectChance: Int.min(1).max(100),
   target: MoveTargetSchema,
   description: z.string(),
+  spread: z.enum(['foes', 'all']).optional(),
 });
 
 // ─── §2.5 AbilityDef ─────────────────────────────────────────────────────────
@@ -431,6 +432,7 @@ export const TrainerDefSchema: z.ZodType<TrainerDef> = z.object({
   lines: Lines,
   reward: Money,
   rematchDays: z.union([PosInt, z.null()]),
+  doubles: z.literal(true).optional(),
 });
 
 export const GroundItemDefSchema: z.ZodType<GroundItemDef> = z.object({
@@ -485,6 +487,17 @@ export const ZoneDefSchema: z.ZodType<ZoneDef> = z.object({
     3: z.union([z.string().min(1), z.null()]),
   }),
   harvestState: HarvestStateSchema,
+  obstacles: z
+    .array(
+      z.object({
+        id: Id,
+        kind: z.enum(['tree', 'boulder']),
+        x: Coord,
+        z: Coord,
+        item: z.object({ item: Id, qty: PosInt }).optional(),
+      }),
+    )
+    .optional(),
 });
 
 // ─── §3.2 Encounters ─────────────────────────────────────────────────────────
@@ -568,6 +581,7 @@ export const LeagueTrainerSchema: z.ZodType<LeagueTrainer> = z.object({
     .max(6),
   reward: Money,
   setsFlags: z.array(Flag),
+  doubles: z.literal(true).optional(),
 });
 
 export const BadgeDefSchema: z.ZodType<BadgeDef> = z.object({

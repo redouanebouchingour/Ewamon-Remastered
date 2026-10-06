@@ -35,12 +35,20 @@ export const LIMITS = {
   interact: { max: 4, windowMs: 1_000 },
   engageSpawn: { max: 2, windowMs: 1_000 },
   battleAction: { max: 4, windowMs: 1_000 },
+  /**
+   * Phase D6: a doubles battle's position-1 `battleAction` counts in its own window, so the two per-turn actions a
+   * client sends back to back (one burst, one timestamp) never starve each other. Used only when the sender is in a
+   * doubles battle and names `pos: 1`; singles traffic stays on `battleAction` alone (4 / 1 s, unchanged).
+   */
+  battleActionPos1: { max: 4, windowMs: 1_000 },
   battleResync: { max: 4, windowMs: 1_000 },
   challenge: { max: 3, windowMs: 5_000 },
   tradeRequest: { max: 3, windowMs: 5_000 },
   raid: { max: 4, windowMs: 1_000 },
   /** Phase C3 fast travel (the 3 s server cooldown answers anything faster with `cooldown`) */
   fastTravel: { max: 4, windowMs: 1_000 },
+  /** Phase D9: one Old Rod cast per 1.5 s (protocol CLIENT_MESSAGE_LIMITS.fish) */
+  fish: { max: 1, windowMs: 1_500 },
   /** every room message the spine gives no row (challengeReply, trade*, handoverAck): the generic 4 / 1 s of protocol's CLIENT_MESSAGE_LIMITS */
   roomOther: { max: 4, windowMs: 1_000 },
 } as const satisfies Record<string, Limit>;

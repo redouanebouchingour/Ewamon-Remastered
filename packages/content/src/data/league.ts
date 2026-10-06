@@ -193,6 +193,8 @@ export const LEAGUE: readonly LeagueTrainer[] = [
     setsFlags: [],
   },
   {
+    // Phase D6: fights 2-on-2
+    doubles: true,
     id: 'draco_gym',
     stage: 'gym',
     order: 8,
@@ -237,6 +239,8 @@ export const LEAGUE: readonly LeagueTrainer[] = [
     setsFlags: ['elite:veil:beaten'],
   },
   {
+    // Phase D6: fights 2-on-2
+    doubles: true,
     id: 'aurelia',
     stage: 'elite',
     order: 2,

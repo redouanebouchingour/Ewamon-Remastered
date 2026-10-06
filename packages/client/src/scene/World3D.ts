@@ -13,12 +13,19 @@
  * thread blocks), reads the creature manifest, binds the zone's atlases with a real byte bar, builds the zone and
  * reveals the canvas on its first rendered frame (`performance.mark('ewa:first-frame')`). Phase 5 (hero materials)
  * starts after that, never awaited.
+ *
+ * Phase D8–D11 world systems: prediction surfs where the server would let it (HM Surf held, the zone's water not lava,
+ * not riding — `StepCollider.setSurf`, every fixed step); a 'fish' target rides the first water sample ahead of a
+ * player holding the Old Rod, and E on it runs the `FishingController` prompt (a landed bite sends `fish { angle }`);
+ * Cut / Strength obstacles are pre-checked against the bag and party before the interact goes out; the bike key mounts
+ * the bicycle when owned, outdoors and on land, and it folds itself in a hall or when the item is gone.
  */
 import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
-import { BODIES, harvestStateFor, interiorNpcs, interiorTrainers, zone as zoneDef } from '@ewa/content';
+import { BIKE_ITEM, BODIES, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
+import { FISH_REACH_M } from '@ewa/protocol';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
 import { ACTOR_POOL_SIZE, createRenderer, heroSurfaces, part3Of } from '@ewa/render';
 import type { CompileProgress, Renderer, SurfaceId, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
@@ -44,6 +51,7 @@ import { toast, useNotificationsStore } from '../state/notifications';
 import { applyInventoryDelta, partyCanBattle, toInventoryDelta, useSessionStore } from '../state/session';
 import { useQuestTracking } from '../state/questTracking';
 import { useSettingsStore } from '../state/settings';
+import { setFishingActions, useFishingStore } from '../state/fishing';
 import { useUiStore } from '../state/ui';
 import { FONT, TYPE_COLORS } from '../ui/tokens';
 import { createStepCollider } from './collider';
@@ -55,7 +63,9 @@ import { HudWriter, partyStrip } from './HudWriter';
 import type { HudNameplates } from './HudWriter';
 import { createInputCapture } from './input';
 import type { InputCapture } from './input';
-import { InteractionTargets, PLAYER_RANGE } from './interaction';
+import { InteractionTargets, PLAYER_RANGE, makeInteractable } from './interaction';
+import type { Interactable } from './interaction';
+import { FishingController } from './fishing';
 import { pocketActorMax } from './interiors';
 import { LocalPlayerController } from './LocalPlayerController';
 import { RemoteInterpolator } from './RemoteInterpolator';
@@ -71,6 +81,7 @@ import type { SpriteCatalog } from './spriteCatalog';
 import type { WorldInstance } from './worldHost';
 
 const MAX_STEPS = 4;
+const NO_ITEMS: Readonly<Record<string, number>> = Object.freeze({});
 const HIDDEN_STEP_MS = 250;
 const NAMEPLATE_MS = 500;
 const DEV_MS = 1000;
@@ -180,6 +191,9 @@ class World implements World3D {
   private zone: ZoneDef | null = null;
   /** the beat whose lines the player already read before its interact was sent (its `storyBeat start` is no news) */
   private readBeat: string | null = null;
+  /** Phase D9: the Old Rod's prompt and the cast point it is offered at (kept on the water ahead, every fixed step) */
+  private readonly fishing: FishingController;
+  private readonly fishSpot: Interactable = makeInteractable('fish:spot', 'fish', 0, 0, 'Fish in', 'the water', this.keyLabel('interact'));
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.audio = createAudioDirector();
@@ -192,6 +206,7 @@ class World implements World3D {
       rotate: (dir) => this.ready && this.renderer.camera.setHeading(((this.headingIndex() + dir + 4) & 3) as 0 | 1 | 2 | 3),
       zoom: (dir) => this.ready && this.renderer.camera.setZoomStop(Math.max(0, Math.min(2, this.zoomStop() + dir)) as 0 | 1 | 2),
       jump: () => undefined,
+      toggleBike: () => this.toggleBike(),
       toggleDev: () => {
         if (!this.dev) return;
         this.devOn = !this.devOn;
@@ -199,6 +214,17 @@ class World implements World3D {
       },
       blocked: () => this.worldBlocked(),
     });
+    this.fishSpot.enabled = false;
+    this.fishing = new FishingController({
+      setTimer: (fn, ms) => setTimeout(fn, ms),
+      clearTimer: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+      random: () => Math.random(),
+      reduced: () => getEffectiveSettings().reduced,
+      onPhase: (ph) => useFishingStore.getState().setPhase(ph),
+      onCatch: () => this.ws.send('fish', { angle: this.input.pose.angle }),
+      onMiss: () => undefined,
+    });
+    setFishingActions({ press: () => this.fishing.press(), cancel: () => this.fishing.cancel() });
     this.input = new LocalPlayerController({
       held: this.capture.held,
       cameraYaw: () => this.cameraYaw(),
@@ -236,6 +262,7 @@ class World implements World3D {
       submit: (a) => this.battle.submit(a),
       check: (a) => this.battle.check(a),
       dismissResult: () => this.battle.dismissResult(),
+      undoPick: () => this.battle.undoPick(),
     });
     this.subscribe();
     // dev builds / ?dev=1 only: the console + harness handle (debug(), walkTo(), lastSecond)
@@ -281,6 +308,7 @@ class World implements World3D {
       reducedMotion: () => getEffectiveSettings().reduced,
       blockers: () => this.stepCollider,
       legendaries: () => this.legendaries,
+      obstacles: () => this.stepCollider,
     });
     this.hudWriter.bind(r.hud);
     this.hudWriter.setConnection(useUiStore.getState().connection);
@@ -697,6 +725,10 @@ class World implements World3D {
     this.stepCollider = h === null ? null : createStepCollider(h.collider);
     this.input.setCollider(this.stepCollider);
     this.zone = z;
+    // Phase D9: a cast never survives a zone change; the cast point is a dynamic target of the new zone
+    this.fishing.cancel();
+    this.fishSpot.enabled = false;
+    if (h !== null) this.targets.addDynamic(this.fishSpot);
     this.spawns?.reground();
     this.raidDen?.reground();
   }
@@ -749,6 +781,7 @@ class World implements World3D {
     switch (m.type) {
       case 'battleStart':
         this.input.setEnabled(false);
+        this.fishing.cancel();
         for (const s of m.state.sides) for (const b of s.party) this.ensureSpecies(b.creature.speciesId);
         useUiStore.getState().setDialogue(null);
         this.battle.onBattleStart(m);
@@ -928,6 +961,28 @@ class World implements World3D {
       case 'spawn':
         this.ws.send('engageSpawn', { spawnId: t.id });
         return;
+      case 'obstacle': {
+        // Phase D10: the server re-checks; the same rule here saves a round trip and words the refusal
+        const o = z.obstacles?.find((x) => x.id === t.id);
+        if (o === undefined) return;
+        const inv = useSessionStore.getState().inventory;
+        const types = (inv?.party ?? []).map((c) => speciesDef(c.speciesId)?.types ?? []);
+        const why = obstacleRefusal(o.kind, inv?.items ?? {}, types);
+        if (why !== null) {
+          toast('info', obstacleRefusalText(o.kind, why));
+          return;
+        }
+        this.ws.send('interact', { targetId: o.id, kind: 'obstacle' });
+        return;
+      }
+      case 'fish':
+        // Phase D9: the prompt runs client-side; only a landed bite reaches the server
+        if (!partyCanBattle(useSessionStore.getState().inventory)) {
+          toast('warn', 'Your party needs healing before a battle.');
+          return;
+        }
+        this.fishing.start();
+        return;
       case 'static':
         // Phase B1: a legendary static (no flee; BattleMenu reads canFlee=false); the server re-checks gate + flag
         if (!partyCanBattle(useSessionStore.getState().inventory)) {
@@ -991,7 +1046,74 @@ class World implements World3D {
 
   private worldBlocked(): boolean {
     const ui = useUiStore.getState();
-    return ui.battle !== null || ui.dialogue !== null || ui.modal !== 'none' || ui.chatOpen || ui.prompts.length > 0 || ui.trade !== null || ui.challenge !== null;
+    return (
+      ui.battle !== null || ui.dialogue !== null || ui.modal !== 'none' || ui.chatOpen || ui.prompts.length > 0 || ui.trade !== null || ui.challenge !== null ||
+      this.fishing.active
+    );
+  }
+
+  // ---- Phase D8–D11 world systems ---------------------------------------------------------------------------------
+
+  private items(): Readonly<Record<string, number>> {
+    return useSessionStore.getState().inventory?.items ?? NO_ITEMS;
+  }
+
+  /** Phase D8: prediction surfs where the server lets this player (HM Surf, water that is not lava, not riding). */
+  private canSurf(): boolean {
+    return (this.items()['HM Surf'] ?? 0) > 0 && this.zone !== null && this.zone.biome !== 'cinder' && !this.input.biking;
+  }
+
+  /** Phase D11: why the bike cannot come out here (null = it can): the server's bike cap rules. */
+  private bikeRefusal(): string | null {
+    if ((this.items()[BIKE_ITEM] ?? 0) <= 0) return 'You have no bicycle.';
+    if (this.director.pocket !== null) return 'No riding indoors.';
+    if (this.stepCollider?.onWater(this.input.pose.x, this.input.pose.z) === true) return 'You cannot ride on water.';
+    return null;
+  }
+
+  private toggleBike(): void {
+    if (!this.ready || !this.zoneLoaded) return;
+    if (this.input.biking) {
+      this.input.setBike(false);
+      toast('info', 'You fold the bicycle.');
+      return;
+    }
+    const why = this.bikeRefusal();
+    if (why !== null) {
+      toast('info', why);
+      return;
+    }
+    this.input.setBike(true);
+    toast('info', 'You ride the bicycle.');
+  }
+
+  /**
+   * Once per fixed step (allocation-free): the bike folds itself where riding stops being allowed, prediction's surf
+   * mode follows the bag, and the 'fish' target sits on the first water sample ahead (Old Rod held, outdoors, on foot).
+   */
+  private stepWorldSystems(): void {
+    if (this.input.biking && (this.director.pocket !== null || (this.items()[BIKE_ITEM] ?? 0) <= 0)) {
+      this.input.setBike(false);
+      setTimeout(() => toast('info', 'You fold the bicycle.'), 0);
+    }
+    const c = this.stepCollider;
+    if (c !== null) c.setSurf(this.canSurf());
+    const spot = this.fishSpot;
+    spot.enabled = false;
+    const terrain = c?.terrain ?? null;
+    if (terrain === null || this.zone === null || this.zone.biome === 'cinder' || this.input.biking || this.director.pocket !== null || (this.items()['old_rod'] ?? 0) <= 0) return;
+    const pose = this.input.pose;
+    const dx = Math.sin(pose.angle);
+    const dz = Math.cos(pose.angle);
+    for (let d = 0.5; d <= FISH_REACH_M + 1e-9; d += 0.5) {
+      const wx = pose.x + dx * d;
+      const wz = pose.z + dz * d;
+      if (!terrain.water(wx, wz)) continue;
+      spot.x = wx;
+      spot.z = wz;
+      spot.enabled = true;
+      return;
+    }
   }
 
   private cameraYaw(): number {
@@ -1136,6 +1258,7 @@ class World implements World3D {
   }
 
   private fixedStep(): void {
+    if (this.ready && this.zoneLoaded) this.stepWorldSystems();
     this.input.step(STEP_MS);
     // Phase A: pockets are reached only by warps / switch teleports / corrections; the floor test is allocation-free
     if (this.ready && this.zoneLoaded) this.director.updatePocket(this.input.pose.x, this.input.pose.z);
@@ -1171,7 +1294,7 @@ class World implements World3D {
         this.renderer.actors.setTransform(selfId, bf.x - bf.fx * TRAINER_BACK_M, bf.z - bf.fz * TRAINER_BACK_M, Math.atan2(bf.fx, bf.fz), false, false);
         this.foe.stage(bf.x, bf.z, bf.fx, bf.fz, TRAINER_BACK_M);
       } else {
-        this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, this.input.pose.angle, this.input.moving, this.input.running);
+        this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, this.input.pose.angle, this.input.moving, this.input.running || this.input.biking);
       }
     }
     this.nameplateLeft -= frameDt;

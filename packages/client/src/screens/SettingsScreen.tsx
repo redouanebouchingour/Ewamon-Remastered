@@ -53,6 +53,7 @@ export const ACTION_LABEL: Readonly<Record<InputAction, string>> = {
   run: 'Run (hold)',
   interact: 'Interact',
   jump: 'Jump',
+  bike: 'Bicycle (ride / fold)',
   chat: 'Open chat',
   emote1: 'Emote: wave',
   emote2: 'Emote: happy',

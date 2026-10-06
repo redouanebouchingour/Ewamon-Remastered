@@ -1,7 +1,7 @@
 /**
  * §4.3 Client → server messages. zod v4 schemas; every payload is validated before any handler
  * runs (the room registers each with `onMessage(name, schema, handler)`; zod v4 implements
- * Standard Schema). Exactly 21 keys in CLIENT_MESSAGES (Phase C3 added `fastTravel`) — a `type` outside them has no handler.
+ * Standard Schema). Exactly 22 keys in CLIENT_MESSAGES (Phase C3 added `fastTravel`, Phase D9 `fish`) — a `type` outside them has no handler.
  *
  * zod v4 `z.number()` already rejects NaN/±Infinity (`.finite()` is a deprecated no-op), so the
  * spine's `.finite()` calls are satisfied by the default. Objects STRIP unknown keys (zod default).
@@ -16,17 +16,27 @@ export const InputMsg = z.object({
   angle: z.number(),
   running: z.boolean(),
   dtMs: z.number().int().min(1).max(100),
+  /**
+   * Phase D11: the message's displacement was ridden on the bicycle (cap `MOVEMENT.bikeSpeed × 1.15`). The server
+   * grants the bike cap only to an owner standing outdoors on land along the whole segment; otherwise the run / walk
+   * cap applies (a faster step is a `speed` rejection). Absent = false.
+   */
+  bike: z.boolean().optional(),
 });
 export const EmoteMsg = z.object({ emote: z.number().int().min(1).max(6) });
 export const ChatMsg = z.object({ text: z.string().min(1).max(120) });
 
-export const INTERACT_KINDS = ['npc', 'item', 'lore', 'gym', 'healer', 'shop', 'warp', 'static', 'switch'] as const;
+/** Phase D10 adds `obstacle` (a Cut tree / Strength boulder of `ZoneDef.obstacles`, by id). */
+export const INTERACT_KINDS = ['npc', 'item', 'lore', 'gym', 'healer', 'shop', 'warp', 'static', 'switch', 'obstacle'] as const;
 export type InteractKind = (typeof INTERACT_KINDS)[number];
 export const InteractMsg = z.object({ targetId: z.string().min(1).max(64), kind: z.enum(INTERACT_KINDS) });
 export const EngageSpawnMsg = z.object({ spawnId: z.string().min(1).max(64) });
 
+/** Phase D6: a field position — the doubles move target (`pos` 0/1 is a position on the field, not a party index). */
+export const FieldRefSchema = z.object({ side: z.union([z.literal(0), z.literal(1)]), pos: z.union([z.literal(0), z.literal(1)]) });
 export const BattleActionSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('move'), move: z.string().min(1).max(40) }),
+  // Phase D6: `target` (doubles only, optional; ignored in singles) — the foe or ally position a single-target move aims at
+  z.object({ kind: z.literal('move'), move: z.string().min(1).max(40), target: FieldRefSchema.optional() }),
   z.object({ kind: z.literal('switch'), to: z.number().int().min(0).max(5) }),
   z.object({
     kind: z.literal('item'),
@@ -41,6 +51,12 @@ export const BattleActionMsg = z.object({
   battleId: z.string().uuid(),
   turn: z.number().int().min(1),
   action: BattleActionSchema,
+  /**
+   * Phase D6: the field position (0/1) this action is for in a doubles battle — one message per position. Absent in a
+   * doubles battle = the lowest position still waiting for an action (so a client that sends two plain messages works).
+   * Ignored in singles.
+   */
+  pos: z.union([z.literal(0), z.literal(1)]).optional(),
 });
 export const ChallengeMsg = z.object({ targetId: z.string().uuid() });
 export const ChallengeReplyMsg = z.object({ fromId: z.string().uuid(), accept: z.boolean() });
@@ -73,6 +89,18 @@ export const FastTravelMsg = z.object({ zoneId: z.enum(ZONE_IDS) });
  */
 export const FAST_TRAVEL_REFUSALS = ['notTown', 'notVisited', 'travelGated', 'travelBusy', 'travelCooldown', 'travelBlocked', 'travelFailed'] as const;
 export type FastTravelRefusal = (typeof FAST_TRAVEL_REFUSALS)[number];
+/**
+ * Phase D9: a successful cast of the Old Rod (the client's timing prompt). `angle` is the heading the line was cast
+ * along (radians, the `input` convention: 0 = +z). The server checks the rod and a water (non-lava) sample within
+ * `FISH_REACH_M` of the player's ACCEPTED position along that heading, rolls one of the zone's `water` slots from its
+ * own rng and starts that wild battle like an engaged spawn. Refusals: `error { code: 'notAllowed', detail }` with a
+ * `FISH_REFUSALS` reason (and a toast for each).
+ */
+export const FishMsg = z.object({ angle: z.number() });
+/** Phase D9: how far ahead of the player a cast reaches water (m). */
+export const FISH_REACH_M = 2.5;
+export const FISH_REFUSALS = ['noRod', 'noWater', 'nothingBites'] as const;
+export type FishRefusal = (typeof FISH_REFUSALS)[number];
 /** §4.5 */
 export const BattleResyncMsg = z.object({ battleId: z.string().uuid() });
 
@@ -98,7 +126,8 @@ export const CLIENT_MESSAGES = {
   raidLeave: RaidLeaveMsg,
   handoverAck: HandoverAckMsg,
   fastTravel: FastTravelMsg,
-} as const; // exactly 21 keys
+  fish: FishMsg,
+} as const; // exactly 22 keys
 
 export type ClientMessageType = keyof typeof CLIENT_MESSAGES;
 export type ClientPayload<T extends ClientMessageType> = z.infer<(typeof CLIENT_MESSAGES)[T]>;
@@ -108,7 +137,7 @@ export type ClientMessage = {
 export type BattleAction = z.infer<typeof BattleActionSchema>;
 
 export const CLIENT_MESSAGE_TYPES = Object.freeze(Object.keys(CLIENT_MESSAGES) as ClientMessageType[]);
-export const CLIENT_MESSAGE_COUNT = 21;
+export const CLIENT_MESSAGE_COUNT = 22;
 
 /**
  * §4.3 rate limits (per client, sliding window; excess dropped with ONE `error { code: 'rateLimited' }`
@@ -136,6 +165,8 @@ export const CLIENT_MESSAGE_LIMITS: Readonly<Record<ClientMessageType, { readonl
   raidLeave: { max: 4, windowMs: 1_000 },
   handoverAck: { max: 4, windowMs: 1_000 },
   fastTravel: { max: 4, windowMs: 1_000 },
+  /** Phase D9: one cast per 1.5 s (the prompt itself takes longer) */
+  fish: { max: 1, windowMs: 1_500 },
 };
 
 export function isClientMessageType(type: unknown): type is ClientMessageType {

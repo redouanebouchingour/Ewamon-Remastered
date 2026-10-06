@@ -1,5 +1,5 @@
 /**
- * §4.3 / 50.4.3 payloads.test.ts — every one of the 21 CLIENT_MESSAGES schemas accepts its
+ * §4.3 / 50.4.3 payloads.test.ts — every one of the 22 CLIENT_MESSAGES schemas accepts its
  * documented example and rejects ≥ 3 malformed payloads (wrong type, out of range, oversize
  * string / non-uuid / missing field). Unknown keys are STRIPPED (zod v4 `z.object` default), and
  * an unknown message type is a typed 'unknownType' rejection.
@@ -39,6 +39,7 @@ const CASES: Record<ClientMessageType, Case> = {
       { seq: 1, x: '0', z: 0, angle: 0, running: false, dtMs: 50 }, // wrong type
       { seq: 1, x: 0, z: 0, angle: 0, running: 'yes', dtMs: 50 },
       { seq: 1, x: 0, z: 0, angle: 0, running: false }, // missing dtMs
+      { seq: 1, x: 0, z: 0, angle: 0, running: false, dtMs: 50, bike: 'yes' }, // Phase D11: bike is a boolean
     ],
   },
   emote: {
@@ -153,18 +154,23 @@ const CASES: Record<ClientMessageType, Case> = {
     valid: { zoneId: 'cinderhold' },
     invalid: [{ zoneId: 'atlantis' }, { zoneId: '' }, { zoneId: 3 }, {}],
   },
+  // Phase D9: the cast heading (the server samples water along it from the player's accepted pose)
+  fish: {
+    valid: { angle: 1.25 },
+    invalid: [{}, { angle: '1' }, { angle: Number.NaN }, { angle: Number.POSITIVE_INFINITY }],
+  },
 };
 
 describe('§4.3 CLIENT_MESSAGES', () => {
-  it('has exactly 21 keys, in the spine order', () => {
-    expect(Object.keys(CLIENT_MESSAGES)).toHaveLength(21);
-    expect(CLIENT_MESSAGE_COUNT).toBe(21);
+  it('has exactly 22 keys, in the spine order', () => {
+    expect(Object.keys(CLIENT_MESSAGES)).toHaveLength(22);
+    expect(CLIENT_MESSAGE_COUNT).toBe(22);
     expect(CLIENT_MESSAGE_TYPES).toEqual([
       'input', 'emote', 'chat', 'interact', 'engageSpawn',
       'battleAction', 'battleResync', 'challenge', 'challengeReply',
       'tradeRequest', 'tradeReply', 'tradeOffer', 'tradeConfirm', 'tradeCancel',
       'raidJoin', 'raidReady', 'raidAction', 'raidCatch', 'raidLeave',
-      'handoverAck', 'fastTravel',
+      'handoverAck', 'fastTravel', 'fish',
     ]);
     expect(Object.keys(CASES).sort()).toEqual([...CLIENT_MESSAGE_TYPES].sort());
     expect(Object.keys(CLIENT_MESSAGE_LIMITS).sort()).toEqual([...CLIENT_MESSAGE_TYPES].sort());
@@ -249,5 +255,12 @@ describe('§4.3 CLIENT_MESSAGES', () => {
     for (const k of ['raidJoin', 'raidReady', 'raidAction', 'raidCatch', 'raidLeave'] as const) {
       expect(CLIENT_MESSAGE_LIMITS[k]).toEqual({ max: 4, windowMs: 1000 });
     }
+    expect(CLIENT_MESSAGE_LIMITS.fish).toEqual({ max: 1, windowMs: 1500 });
+  });
+
+  it('Phase D10/D11: interact names obstacles; input carries an optional bike flag', () => {
+    expect(CLIENT_MESSAGES.interact.safeParse({ targetId: 'mire_route.thicket', kind: 'obstacle' }).success).toBe(true);
+    const ride = CLIENT_MESSAGES.input.safeParse({ seq: 2, x: 1, z: 1, angle: 0, running: false, dtMs: 50, bike: true });
+    expect(ride.success && ride.data.bike).toBe(true);
   });
 });

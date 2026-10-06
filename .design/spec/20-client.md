@@ -497,6 +497,7 @@ Field mapping (the adapter is a table, not logic; target names are `10-render.md
 | run | `ShiftLeft` (hold) | `input.running` |
 | interact | `KeyE`, `Enter` | `interact { targetId, kind }` or `engageSpawn { spawnId }` |
 | jump | `Space` | nothing — local cosmetic hop (0.6 u, 420 ms); never on the wire |
+| bike | `KeyV` | Phase D11: mounts / folds the Bicycle (owned, outdoors, not on open water — else a toast says why); `input.bike` while riding; it folds itself in a hall or when the item is gone |
 | chat | `KeyT` | opens the DOM chat input; `Enter` sends `chat { text }`; `Escape` closes |
 | emote 1–6 | `Digit1`…`Digit6` | `emote { emote }` |
 | challenge | `KeyC` | `challenge { targetId }` for the nearest player within 6 u, not `inBattle` |
@@ -514,6 +515,7 @@ While a DOM input/textarea has focus, or `ui.battle !== null`, or `ui.dialogue !
 export const MOVEMENT = {
   walkSpeed: 4.2,        // units / s  (= 30-server-netcode.md WALK_SPEED)
   runSpeed: 7.0,         //            (= RUN_SPEED)
+  bikeSpeed: 10.5,       //            Phase D11 (= BIKE_SPEED; MoveInput.bike, running ignored)
   accel: 40,             // units / s^2 toward target velocity
   turnRate: 12,          // rad / s toward input heading
   radius: 0.35,          // capsule radius for edge/collider tests (= 10-render.md MOVER.capsuleRadius)
@@ -522,7 +524,7 @@ export const MOVEMENT = {
   maxDtMs: 100,          // matches InputMsg.dtMs max
 } as const;
 
-export interface MoveInput { readonly ax: number; readonly az: number; readonly running: boolean } // ax/az in [-1,1], normalised by the caller
+export interface MoveInput { readonly ax: number; readonly az: number; readonly running: boolean; readonly bike?: boolean } // ax/az in [-1,1], normalised by the caller; bike: Phase D11
 export interface MovePose { x: number; z: number; angle: number; vx: number; vz: number }   // mutable scratch — the ONLY mutable type in protocol
 export interface Collider { resolve(pose: MovePose, radius: number): void }                    // heightfield + blockers; pushes the pose out in place
 
@@ -530,7 +532,7 @@ export interface Collider { resolve(pose: MovePose, radius: number): void }     
 export function stepMovement(pose: MovePose, input: MoveInput, dtMs: number, collider: Collider): void;
 ```
 
-The client's `Collider` is a 12-line adapter over `ZoneHandle.collider` + `resolveMove` (`10-render.md` §10.6.2): `resolve(pose, radius)` calls `resolveMove(collider, fromX, fromZ, pose.x − fromX, pose.z − fromZ)` and writes the result back into `pose`. `resolveMove` never returns an unwalkable position, and the server accepts only `walkable = 1` positions, so prediction and truth agree on where a player may stand.
+The client's `Collider` is a 12-line adapter over `ZoneHandle.collider` + `resolveMove` (`10-render.md` §10.6.2): `resolve(pose, radius)` calls `resolveMove(collider, fromX, fromZ, pose.x − fromX, pose.z − fromZ)` and writes the result back into `pose`. `resolveMove` never returns an unwalkable position, and the server accepts only `walkable = 1` positions, so prediction and truth agree on where a player may stand. Phase D8–D11 <!-- amended 2026-10-06: Phase D8–D11 world systems -->: the adapter's `setSurf(on)` (HM Surf held, water not lava, bike folded — World3D sets it every fixed step) resolves in render's surf mode and `height` is `surfaceY`; `setObstacles(lookup, cleared)` (the SceneDirector, on load and on every flag change) re-opens the stamped samples of the obstacles this player cleared — content `obstacleAt`, the exact set the server's `standable` accepts. A ridden step is stored in the pending ring as gait 2 (0 walk / 1 run) so a replay rides too, and a message carries `bike: true` when any step of its window was ridden.
 
 **Prediction and reconciliation**:
 
@@ -547,6 +549,10 @@ export interface LocalPlayerController {
 ```
 
 Rules with numbers: input `seq` is a `uint32` starting at 1, incremented per **sent** message (not per step). Messages are sent every 50 ms (`sendHz` 20) with `dtMs` = the sum of fixed steps since the last send (≤ 100), plus the predicted `x, z, angle` and `running`. The pending ring buffer holds 64 `{ seq, ax, az, running, dtMs }` entries, allocated once (`Float32Array(64*4)` + `Uint32Array(64)`); overflow drops the oldest. On `reconcile(sx, sz, sa, ackedSeq)`: drop entries with `seq <= ackedSeq`; compute `err = hypot(pose.x - sx, pose.z - sz)`; if `err < 0.01` return; set the pose to the server values and re-run `stepMovement` for every remaining pending entry in order; if `err > 4.0` the avatar snaps (this is also logged to the dev HUD as a "rubber-band"); otherwise the *render offset* (a separate `renderX/renderZ` pair) is blended from the old to the new pose linearly over 100 ms — simulation state is never blended. Test: a headless harness feeds 2 000 random inputs through client `stepMovement` and a mirrored server loop with 80–200 ms simulated latency and 2 % loss; the final positions agree within 0.01 u and no reconcile exceeds 4.0 u.
+
+**Fishing** (Phase D9) <!-- amended 2026-10-06: Phase D8–D11 world systems --> — with the Old Rod in the bag, outdoors and on foot, a 'fish' interactable (2.6 u) rides the first water sample within `FISH_REACH_M` (2.5 m) along the player's heading (allocation-free, each fixed step), prompting "E — Fish in the water". `E` starts `FishingController` (`scene/fishing.ts`, pure): 'waiting' 1.2–3.2 s, then 'bite' — the "!" window of 700 ms (1 000 ms under reduced motion) — a press inside it sends `fish { angle: pose.angle }`, a press while waiting (early) or none in the window (late) is 'missed' for 900 ms. `world/FishingPrompt.tsx` draws the card bottom centre (a bobbing float / a pulsing "!" / "It got away."; nothing moves under `:root[data-reduced='1']`) and owns `E` / `Enter` / `Space` (reel) and `Escape` (reel in empty) while it is up; movement is blocked meanwhile. A battle start or a zone change cancels the cast. The server rolls the bite (`30-server-netcode.md` §30.3 Fishing) and answers with a `battleStart` or a refusal toast.
+
+**Obstacles** (Phase D10) — a Cut tree / Strength boulder is an interactable ("Cut the small tree" / "Push the boulder", 2.6 u) until its `obstacle:<zone>:<id>` flag arrives; `E` checks content `obstacleRefusal(kind, items, party types)` first (the refusal text is content's `obstacleRefusalText`, the same the server toasts) and sends `interact { kind: 'obstacle' }` only when it would pass. On the flag the director swaps the prop (`ObstaclesHandle.setCleared`) and re-opens the collider.
 
 ### 20.4.6 `RemoteInterpolator`
 
@@ -598,6 +604,8 @@ export function buildTimeline(events: readonly BattleEvent[], ctx: TimelineCtx):
 
 `buildTimeline` is pure and tested by snapshot: the 1 000 fuzz battles from spine §2.20 are replayed and every turn's timeline is asserted to (a) be sorted, (b) end with `end`, (c) have `durationMs ≤ 9 000` after compression (§20.5.3), (d) contain zero `shake`/`time`/`chroma` frames when `ctx.reduced` is true.
 
+**Doubles timeline** <!-- amended 2026-10-06 Phase D6 -->. Keyframe refs stay core refs (party indices). With `TimelineCtx.activesOf` (both sides' `actives`; doubles only) `buildTimeline` tracks the party index on each field position: a `switchIn { pos }` moves it and its `enter` pose frame carries that `pos`; turn-start / turn-end idles and the winner's celebrate address every standing field battler (`TimelineCtx.standing` skips one fainted in place); a drain VFX points at the battler the drainer last hit; a spread `moveUsed { targets }` draws its move VFX to each target; a per-target `moveFailed { target }` names it. Without `activesOf` (singles) the output is byte-identical to pre-D6.
+
 ### 20.5.2 Move animation registry
 
 ```ts
@@ -643,6 +651,8 @@ Under effective reduced effects (§20.8.2) the builder emits no `shake`, `time`,
 
 Runs inside `World3D.tick` at the simulation step. Holds `cursor` (ms), applies every frame with `at <= cursor` in order, then advances `cursor += 16.667 * currentTimeScale` where `currentTimeScale` is 1 unless a `time` frame is active. A `time { scale: 0 }` frame with `ms: 50` freezes `cursor` for 3 real steps (the hitstop is real-time, not timeline-time). `camera` frames call `renderer.camera.*`; `shake` → `camera.shake`; `chroma` → `renderer.setEffects` transient; `hp` → HUD battle bar tween (canvas); `log` → `ui.battle.log` **batched**: log lines are pushed to a preallocated array and flushed to the store at most once per `LOG_DWELL_MIN` — the one place the timeline touches React state, at ≤ 2 Hz. `sfx` → `audio.play(id, at3d)`. `inputLock` frames bracket the whole timeline; the battle menu (DOM) reads `phase` from the store.
 
+**Doubles addressing** <!-- amended 2026-10-06 Phase D6 -->. `play(tl, seat, actives)` seeds a party index → field position map per side from the starting state's `actives`; an `enter` pose frame with `pos` moves it (whoever held that position leaves the map). Every pose / hurt / flash / VFX `from`·`to` / sfx anchor goes to stage ref `{ side: side ^ seat, slot: position }`; `positionOf(side, slot)` (-1 = off the field) is what the controller uses to route `hp` / `status` / `stage` / `enter` to the right bar and stage slot. Singles keeps stage slot 0 per side.
+
 ### 20.5.5 `BattleController` and the local preview
 
 ```ts
@@ -659,6 +669,8 @@ export interface BattleController {
 
 **Preview rule.** On `submit`, when the opposing side is `wild`/`npc` (formats `wild`, `trainer`, `league`), the client computes `preview = resolveTurn(authoritative, seat === 0 ? [action, null] : [null, action], content)` — the same null-passing convention the server uses (spine §2.10), so the NPC choice comes from the same rng stream and the digest can match. For `pvp` and `raid` no preview is computed (the other action is unknown). The preview is used for exactly three things: (1) `renderer.stage.prewarm(vfxIdsIn(preview.events))` so shaders/particles for the likely VFX are resident before the server message lands; (2) `expectedDurationMs = buildTimeline(preview.events).durationMs` to size the input-lock and the "waiting" indicator; (3) `digestBattleState(preview.state)` compared with `battleEvents.stateDigest`. **No preview frame is ever rendered**: `TimelinePlayer.play` is only ever called with a timeline built from `m.events`. On mismatch: `console.warn('battle desync', battleId, turn)`, `ui.battle.desyncs += 1`, `send('battleResync', { battleId })`, and the server's events are still played (they are authoritative regardless). The `battleEvents.rng` field replaces the local `authoritative.rng` after every turn so the next preview starts from the server's stream. On a digest **match** the preview state replaces `authoritative` wholesale: an `authoritative` updated only from `hpAfter` (the draft's §20.3.2 rule) would diverge from the server at the first stage, status, PP or weather change, and every later preview would mismatch and request a resync. <!-- amended 2026-09-25: client BattleController.ts header, the implemented rule -->
 
+**Doubles submit** <!-- amended 2026-10-06 Phase D6 -->. In a doubles battle (`state.slots === 2`; trainer / league / pvp) `submit(action)` records the action for the position choosing now (`ui.battle.pick = { pos, picks }`; `check` = `validateAction(state, seat, a, content, pos)` plus "no switch to the creature the other position already chose"), then moves to the next position `requiredPositions(state, seat)` lists; `undoPick()` re-opens the earlier one. Nothing is sent until the last required position has picked: then `validateSideChoice` on the pair, ONE `battleAction { battleId, turn, action, pos }` per required position, and (trainer / league) the preview `resolveTurn(authoritative, seat === 0 ? [[a0, a1], null] : [null, [a0, a1]], content)` with the usual digest check (pvp: no preview). A forfeit fills every required position. In the replacement phase only the fainted positions the bench can fill pick (a switch each). The stage shows four battlers (`STAGE_REFS_DOUBLES`), the displayed creature is tracked per position, `patchFromEvents` moves `actives` on `switchIn { pos }`, and `syncFrom` lists all four.
+
 **HP is never computed locally.** The HUD bar targets are `damage.hpAfter`/`heal.hpAfter`; `authoritative.sides[i].party[j].creature.hp` is overwritten from those same fields as events are applied.
 
 ### 20.5.6 Battle menu (DOM) and in-canvas elements
@@ -668,6 +680,8 @@ Amended 2026-09-30 (render Part 5 T2; audit M2-battle-5 / -6): `BattleOverlay` r
 DOM (`BattleOverlay`, bottom 28 % of the viewport, `Panel` without title): root menu `Fight · Party · Bag · Orbs · Run/Forfeit` (hotkeys `1–5`), moves grid of 4 `MoveButton`s (hotkeys `1–4`, `Escape` back), party list of `CreatureCard variant="row"` (switch), bag list filtered by `usableInBattle`, orbs list. Disabled reasons come from `validateAction` (`ActionError` → label table, e.g. `noPp → 'No PP'`, `choiceLocked → 'Choice-locked'`, `trapped → 'Trapped'`). The last 3 log lines render in the DOM panel's left third with `--t-body-lg`.
 
 In-canvas (render `HudLayer`, spine Pillar 8: never covered by an effect): both active battlers' HP bars anchored above the billboards with name, level, HP numbers (own side only), status glyph, stage arrows (▲/▼ per stat with count); the turn label; the orb shake counter. The `BattleResultCard` (DOM modal) shows `RewardsSummary` and, for `battleEnd` with `evolveReady`/`learnMove` events in the last turn, the `evolve`/`learnMove` modals queued in order, each an explicit REST call (`POST /creature/:id/evolve`, `POST /creature/:id/moves`) — never automatic.
+
+**Doubles menu and plates** <!-- amended 2026-10-06 Phase D6 -->. The menu picks per field position — position 0, then position 1 — and its prompt names the creature choosing (`What will X do? (1/2)`); "Back to X" re-opens position 0 before anything is sent (choice: collect both, then send — so a mistaken first pick costs nothing). A single-target move (power > 0 or target `'foe'`, not spread) opens a target list: each standing foe, then the standing ally (never the user), hotkeys `1–3`, `Escape` back to the moves; when only one candidate stands it is taken directly. Spread, self and field moves skip it. Party switches the choosing position's creature; both field creatures read "In battle" ("Fainted" for one fainted in place) and a creature the other position already chose this turn is disabled ("Already chosen"); the replacement phase asks once per required position. Orbs and Run (flee) do not exist in doubles; Forfeit forfeits for both positions. In-canvas: four HP plates (`BattleHud.setLayout(true)`; bar order near 0, near 1, far 0, far 1, numbers on the viewer's two), each anchored over its own battler by render's `HudLayer` (which already places up to 16 bars without overlap); singles keeps two.
 
 ---
 

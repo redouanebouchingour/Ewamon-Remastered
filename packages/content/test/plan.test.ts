@@ -113,10 +113,11 @@ describe('R1 zone plan (content)', () => {
       const f = FIXTURE.zones[z.id]!;
       expect(s.footprints.baseWalkable / h.walkable.length, `${z.id} terrain walkable (pre-move ratio)`).toBe(f.terrainWalkable);
       // town pockets (interiors) re-stamp their own footprints after the plan; outside towns the count is exact
+      // (plus the Phase D10 obstacle discs, stamped last on samples that were still walkable)
       if (s.interiors.length === 0) {
         let walk = 0;
         for (let i = 0; i < h.walkable.length; i++) walk += h.walkable[i]!;
-        expect(s.footprints.baseWalkable - walk).toBe(s.footprints.stamped);
+        expect(s.footprints.baseWalkable - walk).toBe(s.footprints.stamped + s.obstacleCells.size);
       }
       expect(s.footprints.stamped).toBeGreaterThan(1000);
       const approach = new Uint8Array(h.walkable.length);

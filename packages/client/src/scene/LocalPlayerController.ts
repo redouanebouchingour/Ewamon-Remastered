@@ -13,6 +13,11 @@
  * pose and re-run `stepMovement` over the remaining entries; a correction > 4.0 u snaps (a "rubber-band" in the dev
  * HUD), anything smaller blends the RENDER offset linearly over 100 ms — simulation state is never blended.
  * React-free and allocation-free on the sample / step / reconcile path.
+ *
+ * Phase D11 bike: `setBike(true)` rides at `MOVEMENT.bikeSpeed` (stepMovement's `bike`); a step entry stores its gait
+ * as 0 walk / 1 run / 2 bike so a replay rides too, and a message carries `bike: true` when any step of its window was
+ * ridden (the server's per-message cap is the bike cap only for an owner outdoors — World3D enforces the same rules
+ * before it turns the bike on, and turns it off when they stop holding).
  */
 import { MOVEMENT, stepMovement, wrapAngle } from '@ewa/protocol';
 import type { MoveInput, MovePose } from '@ewa/protocol';
@@ -26,8 +31,8 @@ export const AGREE_EPS = 0.01;
 export const SNAP_DISTANCE = 4.0;
 export const RENDER_BLEND_MS = 100;
 
-/** The mutable input payload (validated and sent by WorldSession.send). */
-export interface InputPayload { seq: number; x: number; z: number; angle: number; running: boolean; dtMs: number }
+/** The mutable input payload (validated and sent by WorldSession.send). `bike` (Phase D11): the window was ridden. */
+export interface InputPayload { seq: number; x: number; z: number; angle: number; running: boolean; dtMs: number; bike: boolean }
 
 export interface LocalPlayerDeps {
   /** held-key latch from input.ts */
@@ -54,9 +59,11 @@ export class LocalPlayerController {
 
   private collider: StepCollider | null = null;
   private enabled = true;
-  private readonly input: { ax: number; az: number; running: boolean } = { ax: 0, az: 0, running: false };
-  private readonly replayInput: { ax: number; az: number; running: boolean } = { ax: 0, az: 0, running: false };
-  private readonly payload: InputPayload = { seq: 0, x: 0, z: 0, angle: 0, running: false, dtMs: 1 };
+  /** Phase D11: riding the bicycle */
+  private bike = false;
+  private readonly input: { ax: number; az: number; running: boolean; bike: boolean } = { ax: 0, az: 0, running: false, bike: false };
+  private readonly replayInput: { ax: number; az: number; running: boolean; bike: boolean } = { ax: 0, az: 0, running: false, bike: false };
+  private readonly payload: InputPayload = { seq: 0, x: 0, z: 0, angle: 0, running: false, dtMs: 1, bike: false };
   // pending step ring
   private readonly stepSeq = new Uint32Array(PENDING_CAPACITY);
   private readonly stepData = new Float32Array(PENDING_CAPACITY * 4);
@@ -70,6 +77,8 @@ export class LocalPlayerController {
   private nextSeq = 1;
   private accumMs = 0;
   private ranInWindow = false;
+  private bikedInWindow = false;
+  private lastSentBike = false;
   private lastSentX = Number.NaN;
   private lastSentZ = Number.NaN;
   private lastSentAngle = Number.NaN;
@@ -109,6 +118,15 @@ export class LocalPlayerController {
   get running(): boolean {
     return this.input.running;
   }
+  /** Phase D11: riding the bicycle. */
+  get biking(): boolean {
+    return this.bike;
+  }
+
+  /** Phase D11: mounts / dismounts (World3D checks ownership, indoors and water first). */
+  setBike(on: boolean): void {
+    this.bike = on;
+  }
 
   setCollider(c: StepCollider | null): void {
     this.collider = c;
@@ -135,6 +153,7 @@ export class LocalPlayerController {
   /** DOM key state → the input frame (camera-relative, normalised). */
   sample(): void {
     const inp = this.input;
+    inp.bike = this.bike;
     if (!this.enabled || this.deps.blocked()) {
       inp.ax = 0;
       inp.az = 0;
@@ -178,8 +197,9 @@ export class LocalPlayerController {
       const inp = this.input;
       this.collider?.begin(this.pose.x, this.pose.z);
       stepMovement(this.pose, inp as MoveInput, dtMs, this.collider ?? NO_COLLIDER_STEP);
-      this.pushStep(this.nextSeq, inp.ax, inp.az, inp.running, dtMs);
+      this.pushStep(this.nextSeq, inp.ax, inp.az, inp.running, dtMs, inp.bike);
       if (inp.running) this.ranInWindow = true;
+      if (inp.bike) this.bikedInWindow = true;
       this.accumMs += dtMs;
       if (this.accumMs >= SEND_INTERVAL_MS - 0.001) this.maybeSend();
     } else {
@@ -256,7 +276,9 @@ export class LocalPlayerController {
       const i = ((this.stepHead + k) % PENDING_CAPACITY) * 4;
       inp.ax = this.stepData[i]!;
       inp.az = this.stepData[i + 1]!;
-      inp.running = this.stepData[i + 2]! > 0.5;
+      const gait = this.stepData[i + 2]!;
+      inp.running = gait > 0.5 && gait < 1.5;
+      inp.bike = gait > 1.5;
       this.collider?.begin(pose.x, pose.z);
       stepMovement(pose, inp as MoveInput, this.stepData[i + 3]!, this.collider ?? NO_COLLIDER_STEP);
     }
@@ -317,7 +339,7 @@ export class LocalPlayerController {
     this.renderZ = this.pose.z + this.offZ * k;
   }
 
-  private pushStep(seq: number, ax: number, az: number, running: boolean, dt: number): void {
+  private pushStep(seq: number, ax: number, az: number, running: boolean, dt: number, bike = false): void {
     let slot: number;
     if (this.stepCount < PENDING_CAPACITY) {
       slot = (this.stepHead + this.stepCount) % PENDING_CAPACITY;
@@ -330,7 +352,7 @@ export class LocalPlayerController {
     const i = slot * 4;
     this.stepData[i] = ax;
     this.stepData[i + 1] = az;
-    this.stepData[i + 2] = running ? 1 : 0;
+    this.stepData[i + 2] = bike ? 2 : running ? 1 : 0;
     this.stepData[i + 3] = dt;
   }
 
@@ -340,7 +362,10 @@ export class LocalPlayerController {
     // (releasing Shift mid-window would otherwise send a run-speed displacement under the walk cap → a `speed` reject)
     const running = this.ranInWindow;
     this.ranInWindow = false;
-    const moved = !(pose.x === this.lastSentX && pose.z === this.lastSentZ && pose.angle === this.lastSentAngle && running === this.lastSentRunning);
+    // Phase D11: any ridden step in the window claims the bike cap for the whole message
+    const bike = this.bikedInWindow;
+    this.bikedInWindow = false;
+    const moved = !(pose.x === this.lastSentX && pose.z === this.lastSentZ && pose.angle === this.lastSentAngle && running === this.lastSentRunning && bike === this.lastSentBike);
     const dt = Math.max(1, Math.min(MOVEMENT.maxDtMs, Math.round(this.accumMs)));
     this.accumMs = 0;
     if (!moved) return;
@@ -353,6 +378,7 @@ export class LocalPlayerController {
     p.angle = pose.angle;
     p.running = running;
     p.dtMs = dt;
+    p.bike = bike;
     // remember the pose sent under this seq
     let slot: number;
     if (this.sentCount < SENT_CAPACITY) {
@@ -373,6 +399,7 @@ export class LocalPlayerController {
     this.lastSentZ = pose.z;
     this.lastSentAngle = pose.angle;
     this.lastSentRunning = running;
+    this.lastSentBike = bike;
     this.sentVx = pose.vx;
     this.sentVz = pose.vz;
     this.deps.send(p);

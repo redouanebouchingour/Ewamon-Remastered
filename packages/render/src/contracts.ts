@@ -93,6 +93,22 @@ export interface ZoneSpec {
   readonly plan: ZonePlanData;                                // content's zone plan (audit R1): the layout the builder lays out
   /** Phase A: the town's pockets (one hall per building, reached by door warps); absent / [] outside towns. */
   readonly interiors?: readonly InteriorSpec[];
+  /** Phase D10: Cut trees / Strength boulders (content `ZoneDef.obstacles`); absent / [] in most zones. */
+  readonly obstacles?: readonly ObstacleSpec[];
+}
+
+/**
+ * Phase D10: a field obstacle. The builder draws a small tree (kind 'tree', the biome's first scatter tree at 0.55
+ * scale) or a boulder at (x, z), each its own object so `ObstaclesHandle.setCleared` can swap it per player. Movement
+ * is content's business (the heightfield stamps the disc unwalkable; the client's collider re-opens a cleared one).
+ */
+export interface ObstacleSpec { readonly id: string; readonly kind: 'tree' | 'boulder'; readonly x: number; readonly z: number }
+
+/** Phase D10: per-player obstacle state. A cleared tree shows its stump, a cleared boulder is gone; unknown ids are ignored. */
+export interface ObstaclesHandle {
+  readonly ids: readonly string[];
+  setCleared(id: string, cleared: boolean): void;
+  isCleared(id: string): boolean;
 }
 
 // ---- Phase A interiors (content `PlacedInterior`, flattened by the client adapter) --------------------------------
@@ -186,6 +202,8 @@ export interface ZoneHandle {
   readonly geometryDigest: string;                            // fnv1a32 over every geometry's position attribute bytes, in build order, 8 hex chars (§10.5.9)
   /** Phase A: the pockets of a town (absent when the spec has none) */
   readonly interiors?: InteriorsHandle;
+  /** Phase D10: the zone's obstacles (absent when the spec has none) */
+  readonly obstacles?: ObstaclesHandle;
   stats(): RenderStats;
   dispose(): void;                                            // idempotent; §10.5.9
 }
@@ -231,7 +249,7 @@ export interface BattleStage {
   dress(at: { readonly x: number; readonly z: number }, terrain: Terrain, participants: readonly string[], hall?: HallBounds): void;   // Phase A: inside a hall, ring/posts/pylons/spectators stay on `hall`
   dressSpectator(x: number, z: number): void;           // ring + beacons only
   undress(ms: number): void;                            // fades and removes the dressing; disposes nothing shared
-  setBattler(ref: BattlerRef, d: SpriteDescriptor | null): void;   // null = empty slot; the two active refs get sharp = true
+  setBattler(ref: BattlerRef, d: SpriteDescriptor | null): void;   // null = empty slot; the active refs get sharp = true (Phase D6: slot = field position 0 / 1, two per side in doubles)
   setPose(ref: BattlerRef, pose: BattlerPose, ms: number): void;
   hurt(ref: BattlerRef, strength: number): void;
   faint(ref: BattlerRef, ms: number): void;

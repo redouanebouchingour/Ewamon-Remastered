@@ -7,6 +7,7 @@
 import type { GroundItemDef, LoreTabletDef, NpcDef, TrainerDef, ZoneDef, ZoneId } from '../types';
 import { SHOP_STOCK_DEFAULT } from './shop';
 import { PROGRESSION_STOCK } from './progressionItems';
+import { OBSTACLES } from './obstacles';
 
 type React = NpcDef['react'];
 
@@ -54,6 +55,9 @@ const tr = (
   rematchDays,
 });
 
+/** Phase D6: this trainer fights 2-on-2 (the key exists only on doubles trainers; x/z alone feed the layout). */
+const doubles = (t: TrainerDef): TrainerDef => ({ ...t, doubles: true });
+
 const it = (id: string, x: number, z: number, item: string, qty = 1): GroundItemDef => ({
   id,
   x,
@@ -74,7 +78,7 @@ const TOWN_SHOP = (extra: readonly string[]): readonly string[] => [...SHOP_STOC
 /** Phase D2/D3: the town's TMs and evolution stones (data/progressionItems.ts). */
 const stockFor = (id: ZoneId): readonly string[] => PROGRESSION_STOCK[id] ?? [];
 
-export const ZONES: readonly ZoneDef[] = [
+const BASE_ZONES: readonly ZoneDef[] = [
   // ───────────────────────── 6.1 mirevale ─────────────────────────
   {
     id: 'mirevale',
@@ -537,7 +541,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     trainers: [
-      tr('galvan_route.rocker', 'Rocker Jinx', -50, -40, 'casual2_female', [['ampmite', 17], ['stormchick', 18]], ['Crank it up. Loud is a register too.'], 980),
+      doubles(tr('galvan_route.rocker', 'Rocker Jinx', -50, -40, 'casual2_female', [['ampmite', 17], ['stormchick', 18]], ['Crank it up. Loud is a register too.'], 980)),
       tr('galvan_route.guard', 'Guard Volt', 40, 60, 'soldier_male', [['gustuff', 18], ['shardling', 19]], ["Span's closed to grey coats. You? Prove it."], 1020),
     ],
     items: [it('gr1', 20, 80, 'superpotion', 2), it('gr2', -70, -70, 'dusk_orb')],
@@ -653,7 +657,7 @@ export const ZONES: readonly ZoneDef[] = [
     trainers: [
       tr('sable_deepcut', 'Sable', -70, 10, 'casual2_male', [['caldermole', 25], ['glimmereen', 23], ['bogmaw', 24]], ["I've got a quota and a brother."], 1200, null),
       tr('deepcut_route.breaker', 'Breaker Hod', 0, -60, 'viking_male', [['pebblit', 22], ['embrock', 23]], ['I break walls. And teams.'], 1200),
-      tr('deepcut_route.digger', 'Digger Sten', 60, -30, 'cowboy_male', [['berkest', 23], ['coalette', 24]], ['The deeper we cut, the colder it gets. Wrong, that.'], 1240),
+      doubles(tr('deepcut_route.digger', 'Digger Sten', 60, -30, 'cowboy_male', [['berkest', 23], ['coalette', 24]], ['The deeper we cut, the colder it gets. Wrong, that.'], 1240)),
     ],
     items: [it('dr1', 30, 70, 'revive'), it('dr2', -50, -60, 'prism_orb')],
     lore: [
@@ -768,7 +772,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     trainers: [
-      tr('hollow_route.medium', 'Medium Sael', -40, 50, 'old_classy_female', [['nettlewisp', 27], ['murkrat', 28]], ['The absent whisper your name. They are not unkind. They are not anything.'], 1500),
+      doubles(tr('hollow_route.medium', 'Medium Sael', -40, 50, 'old_classy_female', [['nettlewisp', 27], ['murkrat', 28]], ['The absent whisper your name. They are not unkind. They are not anything.'], 1500)),
       tr('hollow_route.clerk', 'Provision Clerk Osk', 60, -50, 'suit_male', [['umbrit', 28], ['darkone', 29]], ['The Office welcomes readers. Most leave before the second column.'], 1500),
     ],
     items: [it('hr1', 30, 70, 'full_heal', 2), it('hr2', -80, -70, 'phantom_orb')],
@@ -886,7 +890,7 @@ export const ZONES: readonly ZoneDef[] = [
     ],
     trainers: [
       tr('siege_route.sentinel', 'Sentinel Cor', -30, -50, 'knight_golden_male', [['grubolt', 32], ['coldplate', 33]], ['None pass the wall unproven.'], 2000),
-      tr('siege_route.engineer', 'Salvage Engineer Rue', 50, -60, 'cowboy_female', [['scraphog', 33], ['alloylark', 34]], ['Every hulk here fought for something. Show me what yours fight for.'], 2000),
+      doubles(tr('siege_route.engineer', 'Salvage Engineer Rue', 50, -60, 'cowboy_female', [['scraphog', 33], ['alloylark', 34]], ['Every hulk here fought for something. Show me what yours fight for.'], 2000)),
     ],
     items: [it('sr1', 30, 70, 'revive'), it('sr2', -80, -60, 'max_ether')],
     lore: [
@@ -990,7 +994,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     trainers: [
-      tr('ascent_route.tamer', 'Dragon-Tamer Vir', -20, 40, 'knight_golden_male', [['scalewisp', 38], ['budwing', 39]], ['Few climb this high. Fewer descend.'], 2600),
+      doubles(tr('ascent_route.tamer', 'Dragon-Tamer Vir', -20, 40, 'knight_golden_male', [['scalewisp', 38], ['budwing', 39]], ['Few climb this high. Fewer descend.'], 2600)),
       tr('ascent_route.warden_pilgrim', 'Warden Pilgrim Ilse', 50, 30, 'kimono_male', [['tidalfang', 39], ['glacifang', 40]], ['The shrine above is older than counting. Prove you can count.'], 2600),
     ],
     items: [it('ac1', 30, 70, 'full_heal', 3), it('ac2', -60, 80, 'revive', 2)],
@@ -1296,3 +1300,9 @@ export const ZONES: readonly ZoneDef[] = [
     harvestState: 'harvested',
   },
 ];
+
+/** The 21 zones; Phase D10 merges each zone's Cut / Strength obstacles (data/obstacles.ts) — absent where none. */
+export const ZONES: readonly ZoneDef[] = BASE_ZONES.map((z) => {
+  const obstacles = OBSTACLES[z.id];
+  return obstacles === undefined ? z : { ...z, obstacles };
+});

@@ -110,3 +110,21 @@ installed library that future readers should not have to re-derive. The spec its
   (`QueryBool`); `DexRes.shiny` optional. Every addition optional so pre-D4 payloads stay valid.
 - `ZoneState.weather` already existed (Phase D7 only starts writing it).
 - Tests: `test/shiny.test.ts` (4).
+
+## Phase D6 — doubles (2026-10-06)
+
+- `BattleActionMsg.pos?: 0 | 1` (the doubles field position; absent = the server fills the lowest waiting one; ignored in
+  singles); the `move` action gains `target?: FieldRefSchema` (`{ side: 0|1, pos: 0|1 }`). `SideSchema.actives?`
+  (tuple of two party indices) and `BattleStateSchema.slots?: 2`. All optional, so singles payloads and parse outputs
+  carry no new keys (`test/doubles.test.ts`).
+
+## Phase D8–D11 — world systems (2026-10-06)
+
+- `MOVEMENT.bikeSpeed` 10.5 (9 keys now), `gaitSpeed(running, bike)`, `speedCap/maxStep(…, bike = false)`,
+  `MoveInput.bike?` (stepMovement rides at bikeSpeed, `running` ignored).
+- `InputMsg.bike?: boolean`; `INTERACT_KINDS` + `'obstacle'`; `FishMsg { angle }` (an empty object would have matched
+  the forged-progressionDelta test, and the heading is what the server samples water along), `FISH_REACH_M` 2.5,
+  `FISH_REFUSALS`; `CLIENT_MESSAGES.fish` (22 keys), limit 1 per 1.5 s.
+- `PlayerState.surfing` / `biking` appended LAST (earlier field indexes unchanged).
+- Tests: `payloads.test.ts` (22 keys, fish cases, obstacle kind, bike flag), `schema.test.ts` (fields),
+  `movement.test.ts` (bike speed / caps).

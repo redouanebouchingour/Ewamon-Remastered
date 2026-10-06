@@ -707,7 +707,13 @@ export interface ZoneSpec {
   readonly water: WaterSpec | null;
   readonly accentType: TypeName | null;                       // gym beacon + arena ring colour
   readonly harvestLevel: HarvestLevel;
+  readonly obstacles?: readonly ObstacleSpec[];               // Phase D10: content `ZoneDef.obstacles` (id, kind, x, z); present only where content has some
 }
+
+/** Phase D10: drawn as its own object (tree: the biome's first scatter tree at 0.55 scale + a hidden stump; boulder: a 1.15 m rock); never merged. */
+export interface ObstacleSpec { readonly id: string; readonly kind: 'tree' | 'boulder'; readonly x: number; readonly z: number }
+/** Phase D10: per-player state on a built zone — a cleared tree shows its stump, a cleared boulder is gone; unknown ids ignored. */
+export interface ObstaclesHandle { readonly ids: readonly string[]; setCleared(id: string, cleared: boolean): void; isCleared(id: string): boolean }
 
 export interface ZoneHandle {
   readonly id: string;
@@ -715,6 +721,7 @@ export interface ZoneHandle {
   readonly collider: TerrainCollider;                         // §10.6
   readonly bounds: { readonly minX: number; readonly maxX: number; readonly minZ: number; readonly maxZ: number };
   readonly geometryDigest: string;                            // fnv1a32 over every geometry's position attribute bytes, in build order, 8 hex chars (§10.5.9)
+  readonly obstacles?: ObstaclesHandle;                       // Phase D10: absent when the spec has none
   stats(): RenderStats;
   dispose(): void;                                            // idempotent; §10.5.9
 }
@@ -830,7 +837,14 @@ export class TerrainCollider {
   /** Footprint blockers registered by the zone builder (spine §3.11 open gap: content does not mark footprints). walkable() stays byte-identical to content. */
   addBlocker(b: Blocker): void;
   blocked(x: number, z: number): boolean;
-  passable(x: number, z: number): boolean;                 // walkable && !blocked (resolveMove adds the surf term)
+  passable(x: number, z: number, surf?: boolean): boolean; // (walkable || (surf && water)) && !blocked — Phase D8 surf mode
+  /** Phase D8: water && !walkable (open water: only a surfer stands here). */
+  onWater(x: number, z: number): boolean;
+  /** Phase D8: the level of the water body under (x, z) (`waterBodies(h, labels)`, the plane the water mesh draws); NaN off water. */
+  waterLevel(x: number, z: number): number;
+  /** Phase D8: feet height — max(level, terrain) on open water, else `sample`. Everyone on open water is surfing (the server refuses it otherwise). */
+  surfaceY(x: number, z: number): number;
+  nearestPassable(x: number, z: number, radius: number, surf?: boolean): readonly [number, number] | null;
 }
 export type Blocker =
   | { readonly kind: 'rect'; readonly x: number; readonly z: number; readonly hw: number; readonly hd: number; readonly yaw: number }   // buildings
@@ -847,6 +861,8 @@ export interface MoveResult { readonly x: number; readonly z: number; readonly y
 /** Pure. Resolves a desired xz displacement against the collider. Never returns a position that is not passable. `surf` = the player holds HM Surf (30-server-netcode.md §30.3). */
 export function resolveMove(c: TerrainCollider, fromX: number, fromZ: number, dx: number, dz: number, surf?: boolean): MoveResult;
 ```
+
+Phase D8 <!-- amended 2026-10-06: Phase D8–D11 world systems -->: with `surf` the solver measures heights with `surfaceY` (the water level on open water) and skips the slope limit on open-water samples, so a surfer floats on a flat surface and climbs back onto a bank or a boardwalk within `stepHeight`; `resolveMoveInto(out, c, …, surf)` likewise. The client passes `surf` only when the player holds HM Surf, the zone's water is not lava (render cannot tell lava from a pond) and the bike is folded.
 
 Rules, in order, with `passable(x, z) = (walkable(x, z) || (surf && water(x, z))) && !blocked(x, z)` — `blocked` is the builder's footprint blockers (oriented rectangles for buildings, circles for trunks, big rocks, posts; §10.5.5): (1) target `(tx, tz) = (fromX + dx, fromZ + dz)`; (2) if `passable(tx, tz)` and `sample(tz) − sample(from) ≤ stepHeight` and `slopeDeg(tx, tz) ≤ slopeLimitDeg` → accept; (3) else try the two axis-separated moves `(dx, 0)` then `(0, dz)` with the same tests → accept the first that passes, `slid = true`; (4) else probe 8 directions **at the step length around the start**, ±22.5°, ±45°, ±67.5°, ±90° from the desired direction (never backwards), smallest angle first, and accept the first passable one, `slid = true`; (5) else stay, `blocked = true`. If the start itself is not passable, the mover steps toward the nearest passable sample within 4 m by **at most the step length**. Invariant: `|result − from| ≤ |(dx, dz)|` — the server counts a step over its speed cap as a rejection and kicks after 30 (render Part 4 H9). <!-- amended 2026-09-30: P4-C4 --> `y = sample(x, z)`. The `slopeLimitDeg 40`, `stepHeight` and the blockers only make prediction **stricter** than the server, whose `validateInput` accepts exactly `walkable || (canSurf && water)` (§30.2.4) — so the client never predicts itself somewhere the server refuses; the reverse is the open footprint gap of spine §3.11 (the server accepts positions the client's blockers refuse). Without the `surf` term the client could never predict a step onto water that the server accepts for an HM Surf holder, and surfing would be unreachable. <!-- amended 2026-09-25: §30.2.4/§30.3/§50.4.5 make water-only samples standable with HM Surf while this solver had no input for it; render follow-up: `resolveMove`/`resolveMoveInto` gain `surf`, the client's Collider adapter passes inventory['HM Surf'] > 0 — findings L2-05, L2-01 -->
 
@@ -947,7 +963,7 @@ export interface BattleStage {
   dress(at: { readonly x: number; readonly z: number }, terrain: Terrain, participants: readonly string[]): void;
   dressSpectator(x: number, z: number): void;           // ring + beacons only
   undress(ms: number): void;                            // sinks the dressing into the ground over ms, then removes it (opaque library materials cannot fade; it rises the same way on dress — amended 2026-09-25, render IMPLEMENTATION-NOTES Q7); disposes nothing shared
-  setBattler(ref: BattlerRef, d: SpriteDescriptor | null): void;   // null = empty slot; the two active refs get sharp = true
+  setBattler(ref: BattlerRef, d: SpriteDescriptor | null): void;   // null = empty slot; the active refs get sharp = true (Phase D6: slot = field position 0 / 1, two per side in doubles)
   setPose(ref: BattlerRef, pose: BattlerPose, ms: number): void;
   hurt(ref: BattlerRef, strength: number): void;
   faint(ref: BattlerRef, ms: number): void;
@@ -974,6 +990,8 @@ export const VFX_IDS: readonly VfxId[];                  // exactly 19 + 4 + 6 +
 
 Every VFX is a slice of one pooled instanced `Sprite` (`count` 4 096 = 8 emitters × 512 particles, additive, `layers 29`, one shared `PointsNodeMaterial` with per-particle `instancedBufferAttribute` for birth/lifetime/colour — a `Points` object rasterises 1-px points on WebGPU, header table) or a pooled alpha-card burst (≤ 8 cards); particles write valid MRT values (the view axis as normal, mask `(1, 0)`) and alpha-test at 0.004, because the pass MRT writes those attachments unblended and a zero normal made GTAO NaN. Pools are allocated in `createRenderer` (§10.1.2 step 7) and never grow. VFX add **no** lights (a light appearing mid-battle recompiles every lit program); impacts pulse the 2 reserved beacons instead, which live under the stage root from `createRenderer` on at intensity 0 with `shadow.autoUpdate = false` while undressed. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES P4, P8, P10, Q8 --> `impact_super` adds a 120 ms `chroma` request (`effects.chroma` gates it) and `impact_crit` a 3-frame white flash on the target (`hurt 1.0`). VFX never writes `mask.y = 1`, so effects blur with the scene and never sharpen; VFX never covers the HUD rects (the HUD is a later overlay pass — Pillar 8 readability gate in `50-verification-budget.md` §50.1 rule 15).
 
+**Doubles** <!-- amended 2026-10-06 Phase D6 -->. In a doubles battle the stage holds four battlers: `BattlerRef.slot` is the field position (0 / 1), never a party index. `battlerSlot(center, yaw, side, slot, count = 2)` keeps the sides 5.5 m apart along the battle axis and spreads each side's two `SLOT_SPACING` (1.8 m) across it, point-symmetric about the ring centre (each side's position 0 on its own left); `Stage.layoutSide` derives `count` from the highest slot a side holds, so one battler per side stays on the axis exactly as in singles. Every foot disc (`STAGE.battlerFootR` 0.55 m, the size-1 contact-shadow decal) lies on the 3.5 m ring top (≈ 2.89 m + 0.55 m from the centre), and in a hall `fitCentre` lists the four foot discs in its need set (they sit inside the 4.0 m ring-fit disc, so they cannot move the centre today; they keep the guarantee if the ring or the spacing changes). VFX anchors, cue targets, `syncFrom` and `projectBattler` are keyed per ref, so `from` / `to` work for either position of either side, an ally included; all four billboards are DOF-sharp. The client maps core refs (party indices) to these positions (`20-client.md` §20.5.4). Proof: `packages/render/test/doubles.test.ts`.
+
 ### 10.7.6 `ActorPool`
 
 ```ts
@@ -999,7 +1017,7 @@ Amended 2026-10-05 (render IMPLEMENTATION-NOTES Part 6; the user's decision of 2
 - **Bodies**: each actor is `SkeletonUtils.clone` of its shape's template (own bones, the template's geometry shared per shape), recycled per shape on despawn; ONE factor for every look (`characters.scale` = 1.55 m / the median bare-head top = 0.6819), so a bare head stands at 1.55 m and hats and helmets stay above it (`heightM` 1.47–1.81 m); a sizeScale-1 creature (~1 m) reaches the chest.
 - **Material** (class `'character'`): ONE `MeshStandardNodeMaterial` for every body and accessory — albedo = the atlas sampled in the actor's tile (`userData.ewaTile`, a per-object uniform, so one program serves every look), × 0.72 with saturation 1.18 (the KayKit swatches are painted for flat renders and clip to white under the noon key), roughness 0.8, metalness 0, geometry normal (flat at harvest level 2), double-sided (capes are single sheets), a warm view-dependent rim (0.22) and an albedo floor (0.05) in `emissive` so a character is never a black cut-out at night (audit M2-gym-dusk-6). `mask` MRT: x 0 (GTAO applies), y = `userData.sharp` (the DOF-sharp local player). Exempt from `materials.threeMaps` by class: no ORM / normal maps (the low-poly gradient style has none).
 - **Animation**: one `AnimationMixer` per actor over the shared clips `idle walk run cheer flinch use` (bound by joint name). Idle / walk / run are blended by the **measured** ground speed (smoothed displacement, τ 0.1 s; < 0.25 m/s stands, walk → run between 1.1 and 1.7 m/s) and each gait clip plays at `speed / (clip ground speed × scale)` — the pipeline measures the planted toe (walk 0.55 m/s, run 2.30 m/s at time scale 1) — so planted feet move with the ground (measured: mean planted-toe drift −0.04 m/s at 0.7 m/s, ≤ 0.13 m/s at the protocol's 4.2 and 7 m/s); `moving` / `running` are hints only. Facing turns toward the heading along the shortest arc (rate 14 / s). Emotes (spine §4.1) while standing, faded at 8 / s, yielding to walking: wave = the right arm raised and waving (procedural, over the idle), happy and heart = `cheer` (a hop), sad = head and chest bowed (procedural), alert = `flinch`, cool = `use`.
-- **Grounding**: feet on the collider; one instanced contact decal for every actor (the §10.4.7 material, 0.85 m, on the ground normal); real shadows from the **nearest 12** bodies within 45 m of the camera (accessories never cast).
+- **Grounding**: feet on the collider; one instanced contact decal for every actor (the §10.4.7 material, 0.85 m, on the ground normal); real shadows from the **nearest 12** bodies within 45 m of the camera (accessories never cast). Phase D8 <!-- amended 2026-10-06: Phase D8–D11 world systems -->: `setGround(sampler, water?)` — the wiring passes the collider's `surfaceY` and `onWater`; an actor on open water (a surfer, local or remote) stands flat on the level and its contact decal gives way to a second instanced mesh, the ripple ring (`RIPPLE`: 1.6 m, two rings expanding at 0.7 Hz and fading, additive white, its own time uniform, class 'decal'; one extra program).
 - **LOD**: accessories hidden beyond 45 m, no shadow beyond 45 m, bodies culled beyond 140 m (the fog); frustum culling on a fixed bounding sphere per body (no per-frame skinned bounds).
 - **Draws**: 1 per body + 1 per visible accessory + 1 decal draw for all actors; measured in the sandbox diorama at noon (render Part 6): 0 / 24 / 48 actors → beauty 73 / 110 / 146, shadow 112 / 158 / 161, programs 112 / 114 / 114, materials 15 / 15 / 15.
 - **Loading**: the manifest, clips and atlas load once per `createRenderer` (`GLTFLoader` + `MeshoptDecoder` + the host's `KTX2Loader`), each shape and accessory once, on first use; until its shape is in, an actor shows its decal and nameplate only. The warm-up frame (§10.1.2 step 8) draws a 23-bone skinned body with the shipped attribute formats and an accessory on the character material, so their programs exist before the first character appears.

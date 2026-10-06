@@ -59,6 +59,8 @@ export interface MSide {
   canCatch: boolean;
   mustSwitch: boolean;
   consumedItems: string[];
+  /** Phase D6: doubles only — party index per field position; absent in singles */
+  actives?: [number, number];
 }
 export interface MState {
   id: string;
@@ -69,6 +71,8 @@ export interface MState {
   rng: RngState;
   ended: BattleOutcome | null;
   zoneId: string;
+  /** Phase D6: 2 in doubles, absent in singles */
+  slots?: 2;
 }
 
 export interface Ctx {
@@ -100,7 +104,7 @@ export function cloneBattler(b: Battler): MBattler {
 }
 
 export function cloneSide(s: Side): MSide {
-  return {
+  const out: MSide = {
     kind: s.kind,
     party: s.party.map(cloneBattler),
     active: s.active,
@@ -110,10 +114,13 @@ export function cloneSide(s: Side): MSide {
     mustSwitch: s.mustSwitch,
     consumedItems: s.consumedItems.slice(),
   };
+  // Phase D6: the key exists only in doubles, so a singles state keeps its exact shape
+  if (s.actives !== undefined) out.actives = [s.actives[0], s.actives[1]];
+  return out;
 }
 
 export function cloneState(s: BattleState): MState {
-  return {
+  const out: MState = {
     id: s.id,
     format: s.format,
     sides: [cloneSide(s.sides[0]), cloneSide(s.sides[1])],
@@ -123,6 +130,8 @@ export function cloneState(s: BattleState): MState {
     ended: s.ended === null ? null : { ...s.ended },
     zoneId: s.zoneId,
   };
+  if (s.slots === 2) out.slots = 2;
+  return out;
 }
 
 // ─── refs and access ────────────────────────────────────────────────────────
@@ -141,6 +150,16 @@ export function active(ctx: Ctx, side: 0 | 1): MBattler {
 }
 
 export const other = otherSide;
+
+/** The battler a Ref names (Ref.slot is a party index). */
+export function at(ctx: Ctx, r: Ref): MBattler {
+  return ctx.st.sides[r.side].party[r.slot]!;
+}
+
+/** Phase D6: whether party index `idx` of `side` stands on the field (singles: the active; doubles: either position). */
+export function onField(side: MSide, idx: number): boolean {
+  return side.actives === undefined ? side.active === idx : side.actives[0] === idx || side.actives[1] === idx;
+}
 
 export function emit(ctx: Ctx, ev: BattleEvent): void {
   ctx.events.push(ev);
@@ -381,10 +400,14 @@ export function refreshDerived(ctx: Ctx, b: MBattler): void {
   if (b.creature.hp > b.maxHp) b.creature.hp = b.maxHp;
 }
 
-/** Every participating, standing battler on the player side opposite `defeatedSide` gains exp for the defeated active. */
-export function awardExp(ctx: Ctx, defeatedSide: 0 | 1): void {
+/**
+ * Every participating, standing battler on the player side opposite the defeated battler gains exp for it (no split:
+ * each gets the full gain — in doubles too, where both positions' battlers are participants).
+ */
+export function awardExp(ctx: Ctx, defeatedRef: Ref): void {
+  const defeatedSide = defeatedRef.side;
   const loser = ctx.st.sides[defeatedSide];
-  const defeated = loser.party[loser.active]!;
+  const defeated = loser.party[defeatedRef.slot]!;
   const winnerSide = other(defeatedSide);
   const winner = ctx.st.sides[winnerSide];
   if (winner.kind !== 'player') return;
@@ -427,7 +450,7 @@ export function checkFaint(ctx: Ctx, target: Ref): boolean {
   if (ctx.fainted[key] === true) return true;
   ctx.fainted[key] = true;
   emit(ctx, { t: 'faint', who: target });
-  if (ctx.st.sides[target.side].active === target.slot) awardExp(ctx, target.side);
+  if (onField(ctx.st.sides[target.side], target.slot)) awardExp(ctx, target);
   return true;
 }
 
@@ -441,8 +464,15 @@ export function resetOnLeave(b: MBattler): void {
 
 /** onSwitchOut hooks for the current active of `side`, then volatile/stage reset. Clears the foe's trap. */
 export function applySwitchOut(ctx: Ctx, side: 0 | 1, reason: 'action' | 'faint'): void {
-  const who = activeRef(ctx, side);
-  const b = active(ctx, side);
+  switchOutAt(ctx, activeRef(ctx, side), reason, null, [activeRef(ctx, other(side))]);
+}
+
+/**
+ * The battler at `who` leaves the field: onSwitchOut hooks (action only), `switchOut` (with `pos` in doubles), reset,
+ * and every trap on `foes` (the opposing battlers on the field) ends.
+ */
+export function switchOutAt(ctx: Ctx, who: Ref, reason: 'action' | 'faint', pos: 0 | 1 | null, foes: readonly Ref[]): void {
+  const b = at(ctx, who);
   if (reason === 'action' && isAlive(b)) {
     const hooks = hooksOfKind(abilityHooks(b, ctx.content), 'onSwitchOut');
     for (let i = 0; i < hooks.length; i++) {
@@ -459,13 +489,15 @@ export function applySwitchOut(ctx: Ctx, side: 0 | 1, reason: 'action' | 'faint'
       }
     }
   }
-  emit(ctx, { t: 'switchOut', who, reason });
+  emit(ctx, pos === null ? { t: 'switchOut', who, reason } : { t: 'switchOut', who, reason, pos });
   resetOnLeave(b);
-  // Trap is cleared when either side's active battler leaves the field.
-  const foe = active(ctx, other(side));
-  if (foe.volatile.trappedTurns > 0) {
-    foe.volatile.trappedTurns = 0;
-    emit(ctx, { t: 'trapEnd', target: activeRef(ctx, other(side)) });
+  // Trap is cleared when either side's active battler leaves the field (doubles: every foe on the field).
+  for (let i = 0; i < foes.length; i++) {
+    const foe = at(ctx, foes[i]!);
+    if (foe.volatile.trappedTurns > 0) {
+      foe.volatile.trappedTurns = 0;
+      emit(ctx, { t: 'trapEnd', target: foes[i]! });
+    }
   }
 }
 
@@ -486,17 +518,35 @@ export function applySwitchIn(ctx: Ctx, side: 0 | 1, to: number): void {
 }
 
 export function fireSwitchInHooks(ctx: Ctx, side: 0 | 1): void {
-  const b = active(ctx, side);
-  const who = activeRef(ctx, side);
+  fireSwitchInHooksAt(ctx, activeRef(ctx, side), [activeRef(ctx, other(side))]);
+}
+
+/** onSwitchIn hooks of the battler at `who` against `foes` (doubles: Intimidate lowers every standing foe). */
+export function fireSwitchInHooksAt(ctx: Ctx, who: Ref, foes: readonly Ref[]): void {
+  const b = at(ctx, who);
   const hooks = hooksOfKind(abilityHooks(b, ctx.content), 'onSwitchIn');
   for (let i = 0; i < hooks.length; i++) {
     const h = hooks[i]!;
-    const foeSide = other(side);
-    const foe = active(ctx, foeSide);
-    if (!isAlive(foe)) continue;
+    let any = false;
+    for (let j = 0; j < foes.length; j++) if (isAlive(at(ctx, foes[j]!))) any = true;
+    if (!any) continue;
     emit(ctx, { t: 'abilityTrigger', who, ability: b.creature.ability, detail: 'onSwitchIn' });
-    changeStage(ctx, activeRef(ctx, foeSide), h.lowerFoe.stat, -h.lowerFoe.stages, who, 'ability');
+    for (let j = 0; j < foes.length; j++) {
+      if (!isAlive(at(ctx, foes[j]!))) continue;
+      changeStage(ctx, foes[j]!, h.lowerFoe.stat, -h.lowerFoe.stages, who, 'ability');
+    }
   }
+}
+
+/** Phase D6: puts party index `to` on field position `pos` of a doubles side (`active` mirrors position 0). No hooks. */
+export function placeAt(ctx: Ctx, side: 0 | 1, pos: 0 | 1, to: number): void {
+  const s = ctx.st.sides[side];
+  const b = s.party[to];
+  if (b === undefined || s.actives === undefined) throw new RangeError(`placeAt: side ${side} has no party slot ${to} / is not doubles`);
+  s.actives[pos] = to;
+  if (pos === 0) s.active = to;
+  b.participated = true;
+  emit(ctx, { t: 'switchIn', who: ref(side, to), pos });
 }
 
 /** First party index with hp > 0 other than `except`, or -1. */

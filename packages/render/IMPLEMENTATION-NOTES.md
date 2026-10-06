@@ -1030,3 +1030,39 @@ needed no change (none pins a town digest).
   `BattleStage.setBattler` passes `desc.isShiny`.
 - VFX: `shiny_sparkle` (orbiting gold stars + one card flash, 30 particles) — `VFX_SHINY_IDS`, `VFX_IDS` is 48
   (`stage.test.ts` updated). Not verified on a GPU in this phase (node tests only).
+
+## Phase D6 — doubles on the battle stage (2026-10-06)
+
+- `battlerSlot` / `Stage.layoutSide` already spread `count` battlers per side; no placement change was needed. Doubles
+  feet stand hypot(2.75, 0.9) ≈ 2.89 m from the ring centre; with `STAGE.battlerFootR` 0.55 m (new; the size-1 contact
+  decal / 2) every foot disc is on the 3.5 m ring top. Each side's position 0 is on its own left (point-symmetric).
+- `fitCentre` now lists the four doubles foot discs (radius `battlerFootR` + margin) in its need set. They are inside the
+  4.0 m ring-fit disc, so no centre moves today (existing hall tests unchanged); the entries keep the guarantee if the
+  ring or `SLOT_SPACING` changes.
+- `layoutSide` takes `count` from the highest slot a side holds: removing slot 1 re-centres slot 0 (singles look). The
+  client never clears a doubles position mid-battle (a battler fainted with no bench stays, fainted, on its slot).
+- VFX anchors / cue targets / `projectBattler` / `syncFrom` were already keyed per ref; verified for all four refs.
+- `contracts.ts`: `setBattler` comment says "the active refs get sharp" (not "the two").
+- Tests: `test/doubles.test.ts` (3) — distinct, mirrored, in-ring feet for several yaws + singles unchanged; four foot
+  discs on a narrow hall's floor after `fitCentre` (hall yaw 0 / 90° / 0.6 rad, axis along / across); a live `Stage` with
+  four billboards (facing, sharp, ring top, VFX anchors for ally → ally, `impact_crit` hurts only its target).
+
+## Phase D8 / D10 — surf mode, water ride, obstacles (2026-10-06)
+
+- **Collider.** `passable(x, z, surf = false)` = `(walkable || (surf && water)) && !blocker`; `onWater` (water && !walkable);
+  `waterLevel` from a lazily built per-sample level grid (`waterBodies(h, labels)` — the new optional `labels` out-param,
+  same bodies, same order); `surfaceY` = max(level, terrain) on open water, else `sample`; `nearestPassable(…, surf)`.
+  Lava: render cannot tell it from a pond, so the client never passes `surf` in a cinder zone.
+- **Solver.** `resolveMoveInto(…, surf = false)` / `resolveMove(…, surf)`: heights from `surfaceY` in surf mode, the slope
+  limit skipped on open water (the level is flat), the result's `y` is the surface.
+- **Actors.** `setGround(sampler, water?)`; the wiring passes `surfaceY` / `onWater` when the ground has them
+  (`StageGround.surfaceY?/onWater?`). On open water the feet stand flat on the level, the contact decal collapses and a
+  second instanced mesh (`ewa:surf-ripples`, the decal plane geometry shared) draws `createRippleMaterial`: two rings
+  expanding at 0.7 Hz and fading, additive-ish white, its own `ewaRippleTime` uniform advanced in `update`, class
+  'decal'. +1 program (the open shader-program overage is unchanged otherwise). `onWater(id)` for tests / audio.
+- **Obstacles.** `ZoneSpec.obstacles?` → `buildObstacles`: each obstacle its own object under the zone root (never merged
+  into the chunk props): a tree is the biome's first scatter tree at `OBSTACLE_TREE_SCALE` 0.55 plus a hidden stump; a
+  boulder a 1.15 m `buildRock`. Library materials only; every geometry recorded (digest + disposal). `ZoneHandle.obstacles`
+  (`ObstaclesHandle`: `ids`, `setCleared`, `isCleared`). No collider footprint / crown is registered for them (movement
+  is content's stamp; the battle camera's occluder scoring ignores them — a small tree, acceptable).
+- Tests: `test/world-systems.test.ts` (5).
