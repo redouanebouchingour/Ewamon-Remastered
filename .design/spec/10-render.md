@@ -491,6 +491,14 @@ export interface SpriteFrame {
   readonly px: readonly [number, number, number, number];     // x, y, w, h level-0 texels, y down (= .px); used only by bindSingle's crop
   readonly footV: number;                  // 0..1 from the bottom of the rect where the feet touch the ground (pipeline value 0.08)
   readonly aspect: number;                 // rect width / height in texels (1 for the 1024² normalised frames)
+  readonly anim?: SpriteAnim;              // amended 2026-10-06: the side's flipbook (animated legendaries / mythicals only)
+}
+/** Amended 2026-10-06 (§10.4.5 flipbook; 40-pipelines.md §40.1.8): every page of an animated source, on the static frame's normalisation. */
+export interface SpriteAnim {
+  readonly atlas: string;                                                   // AnimAtlasSet.id, 'anim-<species>-<side>'
+  readonly rects: readonly (readonly [number, number, number, number])[];  // per page u0, v0, u1, v1 in the anim atlas, v up
+  readonly delaysMs: readonly number[];                                     // display time per page (the source's own delays)
+  readonly staticFrame: number;                                             // the page `rect` shows
 }
 export interface SpriteDescriptor {
   readonly id: string;                     // creature/spawn/battler id (render-side key)
@@ -508,6 +516,17 @@ export interface AtlasSet {
   readonly normal: AtlasMap;               // NoColorSpace; at `normalScale` × the albedo resolution
   readonly emissive: AtlasMap;             // two-valued mask in R; uploaded as RedFormat/R8
   readonly size: 2048;                     // level-0 texels per side; 2 species (4 cells of 1024²) per atlas
+  readonly normalScale: 0.5 | 1;
+}
+/** Amended 2026-10-06: one side's flipbook — a cols × rows grid of `cell`² pages (non-square, ≤ 8192 per edge), 3 maps × 4 levels like an AtlasSet. */
+export interface AnimAtlasSet {
+  readonly id: string;                     // ManifestAnimAtlas.id, 'anim-<species>-<side>'
+  readonly albedo: AtlasMap;
+  readonly normal: AtlasMap;
+  readonly emissive: AtlasMap;
+  readonly width: number;                  // level-0 texels
+  readonly height: number;
+  readonly cell: number;                   // 512
   readonly normalScale: 0.5 | 1;
 }
 ```
@@ -538,6 +557,7 @@ export interface SpritePool {
   bindAtlas(set: AtlasSet): Promise<void>;                 // fetches 3 maps × 4 levels (WebP), one MeshStandardNodeMaterial per atlas
   /** A party single: decodes only `frame.px` (and the matching cells of the mip files) of the creature's home atlas into a private 1024² set keyed `single:<set.id>:<frame.px>`. ≤ 6 live. */
   bindSingle(set: AtlasSet, frame: SpriteFrame): Promise<void>;
+  bindAnimAtlas(set: AnimAtlasSet): Promise<void>;          // amended 2026-10-06: a flipbook atlas (§10.4.5), one material like any atlas; released by releaseAtlas(set.id)
   releaseAtlas(id: string): void;                          // also releases singles keyed on it when no billboard uses them
   acquire(d: SpriteDescriptor): CreatureBillboard;
   readonly uniforms: { readonly harvestLevel: UniformNode<'float', number>; readonly cameraYaw: UniformNode<'float', number>; readonly cameraLean: UniformNode<'float', number> };   // cameraLean: §10.4.4
@@ -601,7 +621,9 @@ mat.map = null;   // the albedo is published as material.userData.ewaAlbedo: _ge
 
 Amended 2026-10-05 (render IMPLEMENTATION-NOTES Part 7): the per-object `glow` (0..1, `BILLBOARD.glowGain` 1.3) is the evolution sequence's white silhouette (§10.7.5). It is part of the one billboard program from the step-8 warm-up on, so a sequence compiles nothing — the warm-up billboard's 4 × 4 neutral set now uses a linear min filter (single level): three 0.186 treats a texture with Nearest min AND mag as unfilterable (`textureLoad`), so the Nearest/Nearest neutral set had compiled a different program from every atlas (Nearest mag, trilinear min), and the first creature drawn compiled the real one; `CreatureBillboard` gains `setGlow(v)`, `setShown(on)` (the group's visibility: a silhouette swap is no material, program or binding change) and `setSizeMul(k)` (a uniform scale about the foot point). <!-- amended 2026-10-05: render IMPLEMENTATION-NOTES Part 7 -->
 
-Dissolve additionally discards `hash(floor(uvRect.mul(1024))).lessThan(userData('dissolve','float'))` texels, so a fainting creature breaks into texel-sized holes rather than fading (Pillar 6: alpha stays binary). Creature emissive pixels output `1.8 × albedo` where the mask is 1. `BloomNode`'s high-pass thresholds **luminance** (`BloomNode.js` lines 12–15: `smoothstep(threshold, threshold + smoothWidth, luminance(rgb))`), so the emissive term alone crosses the 1.15 threshold only where `luminance(albedo_linear) > 1.15 / 1.8 = 0.639` (and contributes fully only above 1.20 / 1.8 = 0.667, the 0.05 smooth width). The §40.1.2 stage-4 mask (HSV value ≥ 0.92, chroma ≥ 0.4) admits warm and green accents that meet it (a `(1, 1, 0.6)` sRGB yellow: luminance 0.95 → 1.71) and saturated reds, blues and violets that do not (`(0.92, 0.52, 0.52)` red: 0.36 → 0.64; `(0.6, 0.6, 1)` blue: 0.37 → 0.66) — those glow in the beauty image but never bloom, at night or noon. The "threshold in the gap" claim therefore holds per hue, not per mask (recommendation R8). <!-- amended 2026-09-25: the draft read 1.8 × albedo ≥ 1.35 as a per-channel floor; bloom is luminance-keyed -->
+Dissolve additionally discards `hash(floor(uvRect.mul(dissolveCells))).lessThan(userData('dissolve','float'))` texels, so a fainting creature breaks into texel-sized holes rather than fading (Pillar 6: alpha stays binary). <!-- amended 2026-10-06 --> `dissolveCells` is a per-object `userData('dissolveCells', 'vec2')`: 1024 per uv unit on a static atlas and a single (unchanged), `512 / (rect width, height in uv)` on a flipbook, so a 512² anim cell gets 1-texel holes — the same share of the creature as the static cell's 2-texel holes.
+
+**Flipbook (amended 2026-10-06; 40-pipelines.md §40.1.8).** A side whose `SpriteFrame.anim` atlas is bound (`SpritePool.bindAnimAtlas`) plays its pages: each billboard advances its own flipbook clock by `dt × timeScale` (the pool's `update`, so hitstop holds it and slow-mo slows it), adds a per-id phase (`hash(id) × loop length`, so two creatures of a species never play in step) and maps the time onto the source's per-page `delaysMs`; when the page changes it writes the four scalars of the per-object `rect` — the same record the static frame uses — and nothing else (no allocation, no program, no material or texture switch, no draw call: the anim atlas is one ordinary atlas material of this graph, and every page lives in it). Lighting, the derived normal map, `maskShadowNode` (the alpha shadow), rim and emissive all sample the current page through `uvRect`; the card, its size, foot point and contact decal are the static frame's (the pages share its normalisation). The flipbook holds on its current page while the creature is fainted (the `faint` pose, or `setFaint(p > 0)` until a pose or `setFaint(0)`), so a fainting creature dissolves still; poses, the hurt flash, `enter`/`exit` dissolves and the evolution sequence (`glow`, `setShown`, `setSizeMul`) are unchanged. Until its anim atlas lands a side shows its static `rect` — the frame-select page, at the same place to the texel — and re-points once; a descriptor without `anim` never waits for or samples a flipbook. Thumbnails stay static. Measured in the sandbox (render IMPLEMENTATION-NOTES Part 8): the 10-legendary lineup and a two-legendary battle draw the same calls (235 / 359) and hold the same programs with flipbooks on as off. Creature emissive pixels output `1.8 × albedo` where the mask is 1. `BloomNode`'s high-pass thresholds **luminance** (`BloomNode.js` lines 12–15: `smoothstep(threshold, threshold + smoothWidth, luminance(rgb))`), so the emissive term alone crosses the 1.15 threshold only where `luminance(albedo_linear) > 1.15 / 1.8 = 0.639` (and contributes fully only above 1.20 / 1.8 = 0.667, the 0.05 smooth width). The §40.1.2 stage-4 mask (HSV value ≥ 0.92, chroma ≥ 0.4) admits warm and green accents that meet it (a `(1, 1, 0.6)` sRGB yellow: luminance 0.95 → 1.71) and saturated reds, blues and violets that do not (`(0.92, 0.52, 0.52)` red: 0.36 → 0.64; `(0.6, 0.6, 1)` blue: 0.37 → 0.66) — those glow in the beauty image but never bloom, at night or noon. The "threshold in the gap" claim therefore holds per hue, not per mask (recommendation R8). <!-- amended 2026-09-25: the draft read 1.8 × albedo ≥ 1.35 as a per-channel floor; bloom is luminance-keyed -->
 
 Per-object parameters through `userData(name, type)` (verified `UserDataNode.js`): `object.userData = { rect: Vector4, hueShift, satMul, lightMul, alphaGlow, hurt, dissolve, sharp, typeColor: Color, bob }` — a preallocated record per billboard, scalar writes only. The dissolve hole mask is folded into the alpha, so `maskShadowNode` punches the same holes in the shadow. Billboards are alpha-tested: they are drawn in a `renderOrder ≥ 1` band so the shadow pass's shared override material does not flip its `alphaTest` between neighbouring solids and cards (§10.5.7).
 
@@ -640,6 +662,7 @@ Dual-typed creatures use `types[0]`. `20-client.md` §20.8.3 colourblind palette
 | Idle bob | `bob = 0.015 · H · sin(2π · 0.5 · t + phase)` — 0.5 Hz, ±1.5 % of height; `phase = hash(id) · 2π` so a party does not bob in unison |
 | Hurt flash | `hurt = strength` at `setHurt`, then `hurt *= exp(−dt / 70 ms)`; visible ≈ 220 ms |
 | Faint dissolve | `dissolve` set by the client's timeline (`KO_HOLD` 900 ms in `20-client.md`), linear 0 → 1 |
+| Flipbook (amended 2026-10-06) | page = the source's per-page delays over `clock + hash(id) × loop`, `clock += dt × timeScale` except while fainted; `rect` rewritten on a page change only |
 | Poses | `lunge`: position +0.9 m toward the foe over 120 ms, back over 180; `windup`: scale y 0.94 then 1.04 over 250 ms; `hurt`: −0.3 m recoil 80 ms + flash; `recoil`: −0.25 m back over 100 ms, return over 150, no flash (the `damage { cause: 'recoil' }` cue); `enter`/`exit`: dissolve 1 → 0 / 0 → 1 over 450/350 ms; `faint`: dissolve + 0.4 m sink; `celebrate`: two 0.15 m hops over 600 ms (battle end, winner's active battler) |
 
 No pose creates a material or geometry; every pose is uniform writes on the shared quad and material.

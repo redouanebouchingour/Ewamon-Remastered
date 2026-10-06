@@ -11,7 +11,7 @@ import { createRoot } from 'react-dom/client';
 import { Vector2 } from 'three/webgpu';
 import { harvestStateFor, zone as zoneDef } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
-import { rendererInternals } from '@ewa/render';
+import { part3Of, rendererInternals } from '@ewa/render';
 import type { BudgetCounts, ZoneDump } from '@ewa/render';
 import { AUDIT_SHOTS, headingConvention, resolveAnchor, setHeadingConvention, shotDef, shotsForZone } from './anchors';
 import type { ResolvedAnchor, ShotId, Variant } from './anchors';
@@ -48,6 +48,10 @@ interface HarnessApi {
   evolve(from: string, to: string, reduced?: boolean): void;
   step(ms: number): void;
   evolution(): unknown;
+  /** Dev hook (CDP drivers): the HarnessWorld itself — `setWild`, `place`, `script`, `startBattle`, `runWhile`. */
+  readonly world: HarnessWorld;
+  /** The live creature billboards: id, side, whether the flipbook plays (§10.4.5), its page, held (faint). */
+  billboards(): { id: string; facing: string; animated: boolean; page: number; paused: boolean; bound: boolean }[];
 }
 
 const params = new URLSearchParams(location.search);
@@ -146,6 +150,9 @@ const api: HarnessApi = {
     for (let i = 0; i < Math.max(1, Math.round(ms / STEP_MS)); i++) world.tick();
   },
   evolution: () => useUiStore.getState().evolution,
+  world,
+  billboards: () =>
+    (part3Of(world.renderer)?.sprites.liveBillboards() ?? []).map((b) => ({ id: b.id, facing: b.facing, animated: b.animated, page: b.animFrame, paused: b.animPaused, bound: b.bound })),
 };
 (window as unknown as { __ewaHarness: HarnessApi }).__ewaHarness = api;
 

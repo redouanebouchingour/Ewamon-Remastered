@@ -4,8 +4,38 @@
  * The client only needs the manifest types; everything else is exported for tests and for
  * other build tools (asset audit, CI checks) that want to reuse a stage.
  */
-export type { SpriteManifestV2, SpriteRectV2, ManifestAtlasV2, ManifestMap, ManifestSpriteV2, SpriteCodec, ValidateOptions } from './manifest.js';
-export { MANIFEST_FILE, serializeManifest, validateManifest, manifestErrors, pxToUv } from './manifest.js';
+export type {
+  SpriteManifestV2,
+  SpriteRectV2,
+  ManifestAtlasV2,
+  ManifestMap,
+  ManifestSpriteV2,
+  ManifestAnimAtlas,
+  ManifestAnimSide,
+  ManifestAnimSprite,
+  SpriteCodec,
+  ValidateOptions,
+} from './manifest.js';
+export { MANIFEST_FILE, serializeManifest, staticManifest, validateManifest, manifestErrors, pxToUv } from './manifest.js';
+
+export type { AnimMasterPlacement, AnimGrid, AnimSideMeta, AnimFrameRasters, AnimSideContext, ProcessedAnimSide, AnimAtlasRasters, AnimJob, AnimEncodeResult } from './anim.js';
+export {
+  AnimCache,
+  ANIM_EXTRA_RUNGS,
+  animLadderRungs,
+  animMasterPlacement,
+  animGrid,
+  animFramePx,
+  animAtlasId,
+  animFileName,
+  animCell,
+  pxToUvRect,
+  unionBbox,
+  displayDelays,
+  processAnimSide,
+  buildAnimAtlasRasters,
+  withAnim,
+} from './anim.js';
 
 export type { QaFlag, AlphaResult, AlphaOptions } from './alpha.js';
 export {
@@ -102,10 +132,10 @@ export type { SpriteMeta, SpriteArtifacts } from './cache.js';
 export { SpriteCache, sha256 } from './cache.js';
 
 export type { BuildOptions, BuildResult, ProcessedSprite, ProcessContext, FrameSelect, AlphaOverrides, AtlasRasters } from './pipeline.js';
-export { runBuild, processSprite, spriteCacheKey, buildAtlasRasters, atlasFileKey, atlasFileName, thumbFileName, resolveAlphaOverride, dirBytes } from './pipeline.js';
+export { runBuild, processSprite, spriteCacheKey, buildAtlasRasters, atlasFileKey, atlasFileName, thumbFileName, resolveAlphaOverride, dirBytes, staticDirBytes } from './pipeline.js';
 
 export type { QaEntry, QaReport, QaAcceptance, QaEncodingSummary, ContactSheetItem } from './qa.js';
-export { buildQaReport, serializeQaReport, isAccepted, renderContactSheet, renderFrameStrip } from './qa.js';
+export { buildQaReport, serializeQaReport, isAccepted, renderContactSheet, renderFrameStrip, renderAnimSheet } from './qa.js';
 
 export type { RgbaImage, GrayImage, Bbox, SpriteSide } from './types.js';
 export {
@@ -126,6 +156,11 @@ export {
   THUMB_SIZE,
   THUMB_MAX_BYTES,
   CONCURRENCY,
+  ANIM_CELL_DIVISOR,
+  ANIM_STAGE_VERSION,
+  ANIM_BUDGET_BYTES,
+  ANIM_MAX_EDGE,
+  ANIM_DIR,
   createRgba,
   createGray,
   compareStrings,

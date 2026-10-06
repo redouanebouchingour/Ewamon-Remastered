@@ -37,7 +37,7 @@ import { TRAINER_BACK_M, createSceneDirector, terrainFor } from '../scene/SceneD
 import type { SceneDirector } from '../scene/SceneDirector';
 import { SpawnViews } from '../scene/SpawnViews';
 import type { SpawnLike } from '../scene/SpawnViews';
-import { createSpriteCatalog, loadCreatureManifest } from '../scene/spriteCatalog';
+import { bindCatalogAtlas, createSpriteCatalog, loadCreatureManifest, speciesAtlases } from '../scene/spriteCatalog';
 import type { SpriteCatalog } from '../scene/spriteCatalog';
 import { zoneSpecFor } from '../scene/zoneSpecFor';
 import { useUiStore } from '../state/ui';
@@ -236,14 +236,14 @@ export class HarnessWorld {
   private async bindAtlases(ids: string[], species: readonly string[]): Promise<void> {
     const cat = this.catalog;
     if (cat === null) return;
-    for (const sp of species) for (const a of cat.atlasesOf(sp)) if (!ids.includes(a)) ids.push(a);
+    for (const sp of species) for (const a of speciesAtlases(cat, sp)) if (!ids.includes(a)) ids.push(a);
     await this.bindIds(ids);
   }
 
   private async bindSpecies(species: readonly string[]): Promise<void> {
     const cat = this.catalog;
     if (cat === null) return;
-    await this.bindIds(species.flatMap((sp) => [...cat.atlasesOf(sp)]));
+    await this.bindIds(species.flatMap((sp) => [...speciesAtlases(cat, sp)]));
   }
 
   private async bindIds(ids: readonly string[]): Promise<void> {
@@ -252,11 +252,11 @@ export class HarnessWorld {
     if (cat === null || p3 === undefined) return;
     await Promise.all(
       ids.filter((id) => !this.bound.has(id)).map(async (id) => {
-        const set = cat.atlas(id);
-        if (set === null) return;
+        const bind = bindCatalogAtlas(p3.sprites, cat, id);
+        if (bind === null) return;
         this.bound.add(id);
         try {
-          await p3.sprites.bindAtlas(set);
+          await bind;
         } catch (e) {
           this.log(`atlas bind failed ${id}: ${String(e)}`);
         }

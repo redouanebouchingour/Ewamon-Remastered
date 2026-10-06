@@ -28,6 +28,18 @@ export interface SpriteFrame {
   readonly px: readonly [number, number, number, number];     // x, y, w, h level-0 texels, y down (= .px); used only by bindSingle's crop
   readonly footV: number;                  // 0..1 from the bottom of the rect where the feet touch the ground (pipeline value 0.08)
   readonly aspect: number;                 // rect width / height in texels (1 for the 1024² normalised frames)
+  readonly anim?: SpriteAnim;              // amended 2026-10-06: the side's flipbook (animated legendaries / mythicals only)
+}
+/**
+ * Amended 2026-10-06 (§10.4.5 flipbook; 40-pipelines.md §40.1.5 `ManifestAnimSide`): every page of an animated source
+ * in its own anim atlas, on the static frame's normalisation — the `rect` above stays the static frame (`staticFrame`),
+ * shown until the anim atlas is bound, and lines up with the flipbook to the texel.
+ */
+export interface SpriteAnim {
+  readonly atlas: string;                                                   // AnimAtlasSet.id, 'anim-<species>-<side>'
+  readonly rects: readonly (readonly [number, number, number, number])[];  // per page u0, v0, u1, v1 in the anim atlas, v up
+  readonly delaysMs: readonly number[];                                     // display time per page (the source's own delays)
+  readonly staticFrame: number;                                             // the page `rect` shows
 }
 export interface SpriteDescriptor {
   readonly id: string;                     // creature/spawn/battler id (render-side key)

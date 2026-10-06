@@ -9,10 +9,10 @@ import { describe, expect, it } from 'vitest';
 import { ALBEDO_LADDER, NORMAL_LADDER } from '../src/encode.js';
 import { loadLegacySpecies } from '../src/legacy.js';
 import type { SpriteManifestV2 } from '../src/manifest.js';
-import { MANIFEST_FILE, manifestErrors } from '../src/manifest.js';
-import { dirBytes } from '../src/pipeline.js';
+import { MANIFEST_FILE, manifestErrors, serializeManifest, staticManifest } from '../src/manifest.js';
+import { dirBytes, staticDirBytes } from '../src/pipeline.js';
 import type { QaReport } from '../src/qa.js';
-import { CREATURES_BUDGET_BYTES, MANIFEST_FOOT_V, MAX_ATLASES_PER_ZONE, MAX_DUPLICATED_SPECIES, THUMB_MAX_BYTES } from '../src/types.js';
+import { ANIM_BUDGET_BYTES, ANIM_DIR, CREATURES_BUDGET_BYTES, MANIFEST_FOOT_V, MAX_ATLASES_PER_ZONE, MAX_DUPLICATED_SPECIES, THUMB_MAX_BYTES } from '../src/types.js';
 import { ZONE_ORDER } from '../src/zones.js';
 import { LEGACY_DIR, REAL_OUT_DIR, REAL_QA_DIR } from './helpers.js';
 
@@ -37,7 +37,20 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
 
   it(`totalBytes ≤ ${CREATURES_BUDGET_BYTES} (35 MiB) and equals the bytes on disk`, () => {
     expect(manifest.totalBytes).toBeLessThanOrEqual(CREATURES_BUDGET_BYTES);
-    expect(dirBytes(REAL_OUT_DIR)).toBe(manifest.totalBytes);
+    // everything outside anim/, minus the bytes the manifest's anim fields add (charged to the anim line, §40.6)
+    const share = Buffer.byteLength(serializeManifest(manifest)) - Buffer.byteLength(serializeManifest(staticManifest(manifest)));
+    expect(staticDirBytes(REAL_OUT_DIR) - share).toBe(manifest.totalBytes);
+    expect(staticDirBytes(REAL_OUT_DIR)).toBeLessThanOrEqual(CREATURES_BUDGET_BYTES);
+    expect(dirBytes(REAL_OUT_DIR)).toBe(manifest.totalBytes + (manifest.animTotalBytes ?? 0));
+  });
+
+  it(`anim/: animTotalBytes ≤ ${ANIM_BUDGET_BYTES} (24 MiB) = the anim files + the manifest's anim share`, () => {
+    expect(manifest.animTotalBytes).toBeDefined();
+    expect(manifest.animTotalBytes!).toBeLessThanOrEqual(ANIM_BUDGET_BYTES);
+    const share = Buffer.byteLength(serializeManifest(manifest)) - Buffer.byteLength(serializeManifest(staticManifest(manifest)));
+    expect(dirBytes(path.join(REAL_OUT_DIR, ANIM_DIR)) + share).toBe(manifest.animTotalBytes);
+    // the file on disk is exactly the pipeline's serialisation
+    expect(readFileSync(MANIFEST_PATH, 'utf8')).toBe(serializeManifest(manifest));
   });
 
   it('is a valid v2 manifest for exactly the 130 species of ewamon.js', () => {
@@ -48,7 +61,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
     const species = existsSync(LEGACY_DIR) ? [...loadLegacySpecies(LEGACY_DIR).keys()].sort() : ids;
     expect(species.length).toBe(SPECIES_COUNT);
     expect(ids).toEqual(species);
-    expect(manifestErrors(manifest, { species, budgetBytes: CREATURES_BUDGET_BYTES })).toEqual([]);
+    expect(manifestErrors(manifest, { species, budgetBytes: CREATURES_BUDGET_BYTES, animBudgetBytes: ANIM_BUDGET_BYTES })).toEqual([]);
     expect(manifest.version).toBe(2);
     expect(manifest.encoding).toBe('webp');
     expect(manifest.spriteSize).toBe(1024);
@@ -121,6 +134,19 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
       }
     }
     for (const s of Object.values(manifest.sprites)) referenced.add(s.thumb);
+    for (const a of manifest.animAtlases ?? []) {
+      for (const k of ['albedo', 'normal', 'emissive'] as const) {
+        const files = [a[k].url, ...a[k].mips];
+        let bytes = 0;
+        for (const f of files) {
+          expect(f.startsWith(`${ANIM_DIR}/`), f).toBe(true);
+          expect(existsSync(path.join(REAL_OUT_DIR, f)), f).toBe(true);
+          bytes += size(f);
+          referenced.add(f);
+        }
+        expect(bytes, `${a.id}.${k}.bytes`).toBe(a[k].bytes);
+      }
+    }
     const onDisk = listFiles(REAL_OUT_DIR);
     expect(onDisk.filter((f) => !referenced.has(f))).toEqual([]);
     expect([...referenced].filter((f) => !onDisk.includes(f))).toEqual([]);

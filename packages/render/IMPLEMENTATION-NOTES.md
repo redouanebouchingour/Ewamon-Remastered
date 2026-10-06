@@ -1053,3 +1053,105 @@ camera, nothing borrowed stays), a second `evolve` cancels the first. Render tot
 3. The atlas billboard's programs used to compile on the first creature drawn in every session (E6, fixed by the
    filterable neutral set); a fresh-profile harness re-run would show it as fewer programs and no first-creature hitch
    (the M2 budget JSONs were not re-captured here).
+
+---
+
+# Part 8 — flipbooks: the animated legendaries (2026-10-06)
+
+Scope: the 10 legendaries / mythicals animated in the original game (GIF / animated WebP) and were frozen on their
+frame-select page. The sprite pipeline now ships every page of each side as a flipbook (40-pipelines.md §40.1.8:
+512² cells, one atlas per side, the static frame's normalisation); render plays it. SPEC: §10.4.1, §10.4.2, §10.4.5,
+§10.4.6 — CHANGELOG 2026-10-06.
+
+## Layout
+
+| File | What |
+|---|---|
+| `contracts.ts` | `SpriteFrame.anim?: SpriteAnim` (`atlas`, `rects` per page, `delaysMs`, `staticFrame`) |
+| `sprites/atlas.ts` | `AnimAtlasSet` (non-square grid, `width`/`height`/`cell`), `loadAnimAtlasTextures`, `chainBytesWH`, `animAtlasSetBytes` |
+| `sprites/tables.ts` | `flipbookTotalMs`, `flipbookFrame(delays, total, t)` (pure, allocation-free, O(pages)), `flipbookPhase01(id)`, `BILLBOARD.dissolveCellsPerFrame` 512 |
+| `sprites/billboard.ts` | `SpritePool.bindAnimAtlas`; `resolve()` prefers a bound flipbook; `CreatureBillboard` flipbook clock, page writes, faint hold, `animated` / `animFrame` / `animPaused`; per-object `dissolveCells` |
+| `stage/battleStage.ts` | `sameFrame` also compares the flipbook atlas |
+| `sandbox/part3.ts` | `?demo=legends` (`&species=`, `&side=back`, `&anim=0`), `?demo=battle&mine=&foe=`; the sandbox adapter maps `anim` like the client's |
+| `test/flipbook.test.ts` | 9 tests (below) |
+
+## Design
+
+**F1 — one write per page.** A flipbook is an ordinary atlas material of the one billboard graph (`createBillboardMaterial`
+on the anim atlas's textures): the per-object `rect` the static frame uses is the only thing a page changes. The
+billboard's `update(dt)` (the pool's per-frame hook, `dt × timeScale`) advances a flipbook clock unless held, adds a per-id
+phase (`flipbookPhase01(id) × loop`, FNV salted apart from the bob phase) and writes `rect` only when
+`flipbookFrame` returns a new page — four scalars on a preallocated `Vector4`. No program, material, texture or draw call
+changes while a flipbook plays; every page of a side lives in its one atlas.
+
+**F2 — static frame first, one re-point.** `resolve(frame)` returns the flipbook material when `frame.anim.atlas` is
+bound; otherwise the static path as before, and a ready static side registers a wait on the anim atlas id so the bind
+landing re-points it once (`resolveWaiting` → `rebind`). The static rect is the frame-select page normalised identically
+(the pipeline's shared transform), so the swap shows no jump (measured below). A descriptor without `anim` never waits.
+
+**F3 — faint holds the page.** `animPaused` = the `faint` pose, or a `setFaint(p > 0)` not yet cleared by a pose or
+`setFaint(0)` (the timeline's resync path and the evolution sequence's dissolves use `setFaint`). Hitstop needs no flag:
+the pool is driven with `dt × timeScale`. Hurt flash, poses, `enter`/`exit` dissolves keep playing the flipbook.
+
+**F4 — dissolve holes per cell.** The hole hash was `floor(uvRect × 1024)` in atlas uv — 2 texels (1/512 of the cell) on a
+2048² static atlas but 3 × 2 texels (6/512 × 4/512 of the cell) on a 3072 × 2048 anim atlas. It now reads a per-object
+`dissolveCells` (vec2): 1024 on static atlases and singles (unchanged), `512 / rect size` on a flipbook (1 anim texel =
+1/512 of the cell). One more `userData` read in the one program; the program count is unchanged (below).
+
+## Measured (sandbox, headless Chrome 154 over CDP, WebGPU, Intel Gen-12, 1280 × 720, loop paused, `frame(16.67)` stepped)
+
+| Run | flipbooks off (`&anim=0`) | flipbooks on |
+|---|---|---|
+| `?demo=legends` (10 species, 2 rows) — draw calls (beauty + shadow) | 235 (87 + 148) | 235 (87 + 148) |
+| — programs / materials | 110 / 15 | 110 / 15 |
+| — sprite atlas cache (estimate) / three `texturesSize` | 468 MB / 1 034 MB | 1 529 MB / 2 808 MB |
+| `?demo=battle&mine=zenryu&foe=raikitsune` — draw calls | 359 (94 + 265) | 359 (94 + 265) |
+| — programs | 114 | 114 |
+
+The billboard program has the same WGSL (vertex `7be5d308`, fragment `8e09143a` by FNV of the cache key) on a static and
+an anim atlas material; the only difference in the program list is which material compiled it first (its name). A
+character-skinning vertex variant differs between any two runs, flipbooks or not. An earlier battle run read 112 / 114:
+compile timing, not repeatable.
+
+- Binding the 10 species' static atlases + 20 flipbooks: 2.9 s warm. GPU per side by the cache estimate: 50 MB
+  (3072 × 2048), 52 MB (2560²), 75 MB (3072²); three's `texturesSize` counts more (≈ 89 MB a side): 20 sides bound at
+  once is 1.8 GB by its count, over the §50.2.2 700 MB cap — the lineup binds every legendary at once, play does not.
+- Pages advance on the source delays: 125 ms pages change after 7–8 frames at 60 fps (`[0×6, 1×8, 2×…]` from page 0).
+- Static ↔ flipbook alignment in the 4 m inspector (raikitsune front, `&anim=0` vs the flipbook stepped to page 0, same
+  camera): same silhouette, position, size and foot line; only the texel size doubles (512 vs 1024 cell under Nearest).
+- No TRAA ghost at page changes: a Laplacian sharpness measure over the creature is flat within a page (18.0–18.2,
+  16.3–16.5, 15.6–15.8 for pages 0 / 1 / 2) and steps only with the content; the first frame of a page is not softer.
+- Feet: across pages the paws stay on the same pixels while the body animates (no slide, no jitter).
+- Battle: the player's zenryu plays its back flipbook, the foe raikitsune its front; `stage.faint(foe)` holds the foe on
+  page 21 while its dissolve runs 0 → 1 and the player's advances 1 → 8; `enter` resumes it.
+- Client harness (`/harness/shots?zone=galvan_route`, the real SpawnViews / BattleController; client notes Part 7):
+  raikitsune as a wild spawn plays its front flipbook (pages 20 → 23 → 0 → 1 over 6 × 133 ms), then as the battle foe;
+  programs 103 (boot) → 103 with the flipbook → 101 in battle.
+
+Frame sequences: `.screenshots/anim-legends/` in the worktree (gitignored): `legends/lineup-00..05.png` +
+`lineup-strip.png`, `inspect/raikitsune-00..05.png`, `align/raikitsune-static.png` / `raikitsune-anim-p0.png` /
+`pair.png` / `raikitsune-f00..17.png` (1-frame steps) / `frames-strip.png` / `feet-strip.png`,
+`battle/zenryu-vs-raikitsune-*.png` + `battle-grid.png`, `harness/galvan_route-raikitsune-{wild,battle}-*.png` +
+`harness-grid.png`.
+
+## Tests
+
+`test/flipbook.test.ts` (9): timing from the delays incl. per-page delays, loop, negative / degenerate time; the phase
+(deterministic, spread over the pages); the static frame until the anim atlas lands then one re-point, one material per
+anim atlas shared by two creatures, `dissolveCells` 3072 × 2048 per uv; 600 frames at 60 fps — every page equals
+`flipbookFrame(t + phase)`, all 24 pages seen, 79–81 rect writes over 10 s (one per page change), never a material
+switch, two ids out of step; faint pose / `setFaint` hold, `enter` / `setFaint(0)` resume, hitstop (`dt 0`) holds, hurt
+keeps playing; `setFacing` to a side whose flipbook is not bound shows its static rect, then re-points; a still creature
+never animates; 20 flipbooks × 3000 frames grow the heap ≤ 64 KB between forced GCs; the anim atlas texture contract
+(4 levels, Nearest mag, trilinear min, no generated mips, half-res normal, byte estimate). Render total: 25 files, 243
+tests.
+
+## Open
+
+1. **GPU memory.** A flipbook side costs 1.5–2.4 static atlases of GPU memory; the client binds both sides with the static
+   atlas and (pre-existing) never releases an atlas, so a session that meets many legendaries — or a party of several —
+   accumulates 100–150 MB per species. Follow-up: bind the side being shown and release flipbooks no billboard uses
+   (the `AtlasCache` already disposes at refs = users = 0).
+2. **Inspector magnification**: at 4 m the flipbook's 512 cell is magnified ≈ 2× the static cell's texels (Nearest, hard
+   texels); a 1024 flipbook would cost ≈ 4× the bytes.
+3. The sandbox lineup binds all 10 legendaries at once and trips the `texturesSize` cap; it is a stress view, not play.

@@ -4,6 +4,11 @@
  * measures every directory on disk; the larger of the two is held to the ceiling, so neither a stale manifest nor
  * stray files can pass under it. Licences must travel (§40.0.2 rule 6, non-negotiable 10).
  *
+ * `creatures/anim/` (amended 2026-10-06) is its own line: the animated legendaries' flipbooks, held to 24 MiB against
+ * `animTotalBytes`. The manifest file lives in `creatures/`, but the bytes its anim fields add (measured here by
+ * re-serialising it without them, exactly as the pipeline writes it) are charged to the anim line, so the static
+ * `creatures/` line keeps measuring the 35 MiB static set.
+ *
  * MB in §40.6 is MiB: the table itself writes 35 MB as 36 700 160 B (and §50.2.2 700 MB as 734 003 200 B).
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
@@ -14,12 +19,16 @@ const MiB = 1024 * 1024;
 /** §40.6 ceilings, bytes. */
 export const CEILINGS = Object.freeze({
   creatures: 36_700_160,
+  creaturesAnim: 24 * MiB,
   models: 12 * MiB,
   materials: 90 * MiB,
   audio: 80 * MiB,
   misc: 2 * MiB,
-  total: 219 * MiB,
+  total: 243 * MiB,
 });
+
+/** The flipbooks' subdirectory of `creatures/` (its own §40.6 line). */
+export const CREATURES_ANIM_DIR = 'anim';
 
 /** `basis/ + icons/ + fonts/ + keyart/` share one line of §40.6. */
 export const MISC_DIRS: readonly string[] = ['basis', 'icons', 'fonts', 'keyart'];
@@ -102,6 +111,37 @@ function manifestTotal(publicDir: string, dir: ManifestDir, errors: string[]): n
   return t;
 }
 
+/**
+ * The anim extension of `creatures.manifest.json`: `animTotalBytes` (null when the manifest has none) and the bytes
+ * its anim fields add to the file — the file's length minus the length of the same JSON without `sprites[*].anim`,
+ * `animAtlases` and `animTotalBytes`, serialised as the pipeline does (2-space indent, trailing LF).
+ */
+export function creaturesAnimShare(publicDir: string): { animTotalBytes: number | null; share: number } {
+  const f = join(publicDir, MANIFESTS.creatures);
+  if (!existsSync(f)) return { animTotalBytes: null, share: 0 };
+  const text = readFileSync(f, 'utf8');
+  let j: Record<string, unknown>;
+  try {
+    j = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return { animTotalBytes: null, share: 0 };
+  }
+  const t = j.animTotalBytes;
+  const sprites = (j.sprites ?? {}) as Record<string, Record<string, unknown>>;
+  let had = t !== undefined || j.animAtlases !== undefined;
+  for (const s of Object.values(sprites)) {
+    if (s && typeof s === 'object' && 'anim' in s) {
+      delete s.anim;
+      had = true;
+    }
+  }
+  if (!had) return { animTotalBytes: null, share: 0 };
+  delete j.animAtlases;
+  delete j.animTotalBytes;
+  const share = Buffer.byteLength(text, 'utf8') - Buffer.byteLength(`${JSON.stringify(j, null, 2)}\n`, 'utf8');
+  return { animTotalBytes: typeof t === 'number' ? t : null, share: Math.max(0, share) };
+}
+
 export function runBytes(publicDir: string): BytesReport {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -109,9 +149,12 @@ export function runBytes(publicDir: string): BytesReport {
     return { version: 1, publicDir, lines: [], missingLicences: [...LICENCES], errors: [`public dir not found: ${publicDir}`], warnings, ok: false };
   }
   const lines: BytesLine[] = [];
+  const anim = creaturesAnimShare(publicDir);
+  const animDisk = dirBytes(join(publicDir, 'creatures', CREATURES_ANIM_DIR));
   for (const dir of ['creatures', 'models', 'materials', 'audio'] as const) {
     const manifestBytes = manifestTotal(publicDir, dir, errors);
-    const diskBytes = dirBytes(join(publicDir, dir));
+    // creatures/: the static set (anim/ and the manifest's anim share go to the next line)
+    const diskBytes = dir === 'creatures' ? dirBytes(join(publicDir, dir)) - animDisk - anim.share : dirBytes(join(publicDir, dir));
     let note: string | null = null;
     if (manifestBytes === null) {
       if (OPTIONAL_MANIFESTS.has(dir)) {
@@ -125,6 +168,16 @@ export function runBytes(publicDir: string): BytesReport {
     const bytes = Math.max(manifestBytes ?? 0, diskBytes);
     const ceiling = CEILINGS[dir];
     lines.push({ line: `${dir}/`, ceiling, manifestBytes, diskBytes, bytes, ok: bytes <= ceiling && note !== 'manifest missing', note });
+    if (dir === 'creatures') {
+      const disk = animDisk + anim.share;
+      let animNote: string | null = null;
+      if (anim.animTotalBytes === null && disk > 0) {
+        animNote = 'anim files without animTotalBytes in creatures.manifest.json';
+        errors.push(`creatures/anim/: ${animNote}`);
+      }
+      const b = Math.max(anim.animTotalBytes ?? 0, disk);
+      lines.push({ line: 'creatures/anim/', ceiling: CEILINGS.creaturesAnim, manifestBytes: anim.animTotalBytes, diskBytes: disk, bytes: b, ok: b <= CEILINGS.creaturesAnim && animNote === null, note: animNote });
+    }
   }
   const misc = MISC_DIRS.reduce((s, d) => s + dirBytes(join(publicDir, d)), 0);
   lines.push({ line: `${MISC_DIRS.map((d) => `${d}/`).join(' + ')}`, ceiling: CEILINGS.misc, manifestBytes: null, diskBytes: misc, bytes: misc, ok: misc <= CEILINGS.misc, note: null });

@@ -60,12 +60,13 @@ the baseline's worst shot fails as `regression.<metric> +N %` even under the cap
 
 | Line | Ceiling | Number held to it |
 |---|---|---|
-| `creatures/` | 36 700 160 B | max(`creatures.manifest.json totalBytes`, bytes on disk) |
+| `creatures/` | 36 700 160 B | max(`creatures.manifest.json totalBytes`, bytes on disk outside `anim/` minus the manifest's anim share) |
+| `creatures/anim/` | 24 MiB | max(`animTotalBytes`, `anim/` on disk + the bytes the manifest's anim fields add — measured by re-serialising it without them) |
 | `models/` | 12 MiB | max(`models.manifest.json totalBytes`, disk) |
 | `materials/` | 90 MiB | max(`materials.manifest.json totalBytes`, disk) |
 | `audio/` | 80 MiB | max(Σ clip `bytes` in `audio/manifest.json`, disk) |
 | `basis/ + icons/ + fonts/ + keyart/` | 2 MiB | disk |
-| total `public/` | 219 MiB | Σ lines + anything outside them |
+| total `public/` | 243 MiB | Σ lines + anything outside them |
 
 §40.6's MB are MiB (it writes 35 MB as 36 700 160 B). `models/CREDITS.txt` and `icons/TABLER-LICENSE.txt` must exist.
 A missing creatures/models/materials manifest fails; a missing audio manifest is a warning until the audio pipeline

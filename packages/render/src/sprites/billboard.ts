@@ -13,6 +13,12 @@
  * - Rim `typeColor · (1 − |N·V|)^3 · 0.6` on the normal-mapped normal + the emissive mask × 1.8 + the alpha shimmer.
  * - `mask` MRT: x = 1 (excluded from GTAO darkening), y = `sharp` (tilt-shift DOF mask, Pillar 1).
  * - Contact decal (§10.4.7): shared flat quad + one shared multiply-blended `MeshBasicNodeMaterial`.
+ * - Flipbooks (amended 2026-10-06): a side whose `SpriteFrame.anim` atlas is bound (`bindAnimAtlas`) plays its pages by
+ *   rewriting the per-object `rect` (four scalars) when the page changes — the page from the billboard's own clock
+ *   (`dt × timeScale`, held while fainted) plus a per-id phase over the source's delays. The anim atlas is one
+ *   ordinary atlas material of the same graph: no program, material switch or draw call while it plays; lighting,
+ *   normals, the alpha shadow, rim and emissive all sample the current page. Until the anim atlas lands the side shows
+ *   its static rect (the frame-select page, normalised identically), then re-points once.
  *
  * Corrections vs the SPEC text (three 0.186, recorded in IMPLEMENTATION-NOTES "Part 3"):
  * - `cameraYaw = atan2(camDir.x, camDir.z)` with `camDir` = camera forward turns the quad's +Z face AWAY from
@@ -33,17 +39,17 @@ import {
   Fn, abs, cameraPosition, cos, dot, float, floor, hash, hue, length, mix, mrt, normalLocal, normalMap, normalView, normalWorld, oneMinus,
   positionLocal, positionWorld, pow, saturation, select, sin, smoothstep, tangentLocal, texture, uniform, userData, uv, vec2, vec3, vec4,
 } from 'three/tsl';
-import type { BattlerPose, SpriteDescriptor, SpriteFrame, TypeName, VariantKey } from '../contracts.js';
+import type { BattlerPose, SpriteAnim, SpriteDescriptor, SpriteFrame, TypeName, VariantKey } from '../contracts.js';
 import type { HarvestLevel } from '../descriptors.js';
 import { LAYERS } from '../descriptors.js';
 import {
-  AtlasCache, assertSingleBudget, browserDecoder, disposeAtlasTextures, loadAtlasTextures, loadSingleTextures, neutralAtlasTextures, singleKey,
-  type AtlasDecoder, type AtlasSet, type AtlasTextures,
+  AtlasCache, assertSingleBudget, browserDecoder, disposeAtlasTextures, loadAnimAtlasTextures, loadAtlasTextures, loadSingleTextures, neutralAtlasTextures,
+  singleKey, type AnimAtlasSet, type AtlasDecoder, type AtlasSet, type AtlasTextures,
 } from './atlas.js';
 import { OVERLAY_ALPHA_CUT, overlayMrt } from './overlayMrt.js';
 import {
-  BILLBOARD, billboardDims, bobOffset, bobPhase, decayHurt, paletteFor, poseDurationMs, POSES, samplePose,
-  type BillboardDims, type PaletteValues, type PoseSample,
+  BILLBOARD, billboardDims, bobOffset, bobPhase, decayHurt, flipbookFrame, flipbookPhase01, flipbookTotalMs, paletteFor, poseDurationMs, POSES,
+  samplePose, type BillboardDims, type PaletteValues, type PoseSample,
 } from './tables.js';
 import { TYPE_COLORS, hexToLinearInto, validateTypeColorTable } from './typeColors.js';
 
@@ -53,6 +59,8 @@ export interface SpritePool {
   bindAtlas(set: AtlasSet): Promise<void>;                 // fetches 3 maps × 4 levels (WebP), one MeshStandardNodeMaterial per atlas
   /** A party single: decodes only `frame.px` (and the matching cells of the mip files) of the creature's home atlas into a private 1024² set keyed `single:<set.id>:<frame.px>`. ≤ 6 live. */
   bindSingle(set: AtlasSet, frame: SpriteFrame): Promise<void>;
+  /** Amended 2026-10-06: a flipbook atlas (`SpriteFrame.anim.atlas`); one material like any atlas. Released by `releaseAtlas(set.id)`. */
+  bindAnimAtlas(set: AnimAtlasSet): Promise<void>;
   releaseAtlas(id: string): void;                          // also releases singles keyed on it when no billboard uses them
   acquire(d: SpriteDescriptor): CreatureBillboard;
   readonly uniforms: { readonly harvestLevel: UniformNode<'float', number>; readonly cameraYaw: UniformNode<'float', number> };
@@ -72,7 +80,9 @@ export interface BillboardUniforms {
 
 /** The per-object record `userData(name, type)` reads (§10.4.5; preallocated, scalar writes only). */
 export interface BillboardUserData {
-  readonly rect: Vector4;          // u0, v0, u1, v1
+  readonly rect: Vector4;          // u0, v0, u1, v1 (a flipbook rewrites it when the page changes)
+  /** Dissolve holes per uv unit (x, y): 1024 on a static atlas / single, 512 / rect size on a flipbook (amended 2026-10-06). */
+  readonly dissolveCells: Vector2;
   readonly size: Vector2;          // width, height (m)
   footV: number;
   scaleY: number;
@@ -138,7 +148,7 @@ export function createBillboardMaterial(tex: AtlasTextures, u: BillboardUniforms
 
   // faint dissolve: texel-sized holes (alpha stays binary) and a raised cut
   const dissolve = f('dissolve');
-  const cell = floor(uvRect.mul(B.dissolveCells));
+  const cell = floor(uvRect.mul(userData('dissolveCells', 'vec2') as unknown as Node<'vec2'>));
   const holes = hash(cell.x.add(cell.y.mul(B.dissolveCells * 4))).lessThan(dissolve);
   const alpha = select(holes, float(0), a.a);
   const cut = float(B.alphaTest).add(dissolve.mul(0.5));
@@ -284,6 +294,10 @@ export class BillboardPool implements SpritePool {
     return this.cache.bind(set.id, () => this.load(set.id, loadAtlasTextures(set, this.decoder))).then((e) => { if (e) this.resolveWaiting(set.id); });
   }
 
+  bindAnimAtlas(set: AnimAtlasSet): Promise<void> {
+    return this.cache.bind(set.id, () => this.load(set.id, loadAnimAtlasTextures(set, this.decoder))).then((e) => { if (e) this.resolveWaiting(set.id); });
+  }
+
   bindSingle(set: AtlasSet, frame: SpriteFrame): Promise<void> {
     const key = singleKey(set.id, frame.px);
     if (!this.cache.has(key)) assertSingleBudget(this.cache.countPrefix('single:'));
@@ -387,17 +401,22 @@ export class BillboardPool implements SpritePool {
   }
 
   /**
-   * Resolves the material for `frame`: its atlas if bound, else a bound single (rect → the whole texture), else
-   * the neutral material with `ready = false` (the billboard stays hidden and is re-pointed when the bind lands).
+   * Resolves the material for `frame`: its flipbook atlas if the frame has one and it is bound (`animated`), else its
+   * atlas if bound, else a bound single (rect → the whole texture), else the neutral material with `ready = false` (the
+   * billboard stays hidden and is re-pointed when the bind lands).
    * @internal
    */
-  resolve(frame: SpriteFrame): { key: string; material: MeshStandardNodeMaterial; rect: readonly [number, number, number, number] | null; ready: boolean } {
+  resolve(frame: SpriteFrame): { key: string; material: MeshStandardNodeMaterial; rect: readonly [number, number, number, number] | null; ready: boolean; animated: boolean } {
+    if (frame.anim !== undefined && frame.anim.rects.length > 0) {
+      const anim = this.cache.get(frame.anim.atlas);
+      if (anim !== null) return { key: frame.anim.atlas, material: anim.material, rect: null, ready: true, animated: true };
+    }
     const atlas = this.cache.get(frame.atlas);
-    if (atlas !== null) return { key: frame.atlas, material: atlas.material, rect: frame.rect, ready: true };
+    if (atlas !== null) return { key: frame.atlas, material: atlas.material, rect: frame.rect, ready: true, animated: false };
     const sk = singleKey(frame.atlas, frame.px);
     const single = this.cache.get(sk);
-    if (single !== null) return { key: sk, material: single.material, rect: [0, 0, 1, 1], ready: true };
-    return { key: this.cache.has(sk) ? sk : frame.atlas, material: this.neutral.material, rect: null, ready: false };
+    if (single !== null) return { key: sk, material: single.material, rect: [0, 0, 1, 1], ready: true, animated: false };
+    return { key: this.cache.has(sk) ? sk : frame.atlas, material: this.neutral.material, rect: null, ready: false, animated: false };
   }
 
   /** @internal */
@@ -427,7 +446,7 @@ export class BillboardPool implements SpritePool {
 
   private makeRig(): Rig {
     const ud: BillboardUserData = {
-      rect: new Vector4(0, 0, 1, 1), size: new Vector2(1, 1.6), footV: 0.08, scaleY: 1, lift: 0, bob: 0,
+      rect: new Vector4(0, 0, 1, 1), dissolveCells: new Vector2(B.dissolveCells, B.dissolveCells), size: new Vector2(1, 1.6), footV: 0.08, scaleY: 1, lift: 0, bob: 0,
       hueShift: 0, satMul: 1, lightMul: 1, alphaGlow: 0, hurt: 0, dissolve: 0, sharp: 0, glow: 0, typeColor: new Color(1, 1, 1), ewaBillboard: true,
     };
     const quad = new Mesh(this.quadGeometry, this.neutral.material);
@@ -487,6 +506,15 @@ export class CreatureBillboard {
   private isAlpha: boolean;
   private sizeMul = 1;
   private disposed = false;
+  /** The bound side's flipbook (null: static rect, or its anim atlas is not bound yet). */
+  private anim: SpriteAnim | null = null;
+  private animTotalMs = 0;
+  private animPage = -1;
+  /** Flipbook clock (ms × timeScale), held while fainted; the per-id phase spreads equal species apart. */
+  private animClockMs = 0;
+  private readonly animPhase01: number;
+  /** `setFaint(p > 0)` holds the flipbook until an explicit pose or `setFaint(0)`. */
+  private faintHold = false;
 
   constructor(pool: SpritePool, d: SpriteDescriptor) {
     if (!(pool instanceof BillboardPool)) throw new TypeError('@ewa/render: CreatureBillboard needs the renderer\'s SpritePool');
@@ -494,6 +522,7 @@ export class CreatureBillboard {
     this.d = d;
     this.id = d.id;
     this.phase = bobPhase(d.id);
+    this.animPhase01 = flipbookPhase01(d.id);
     this.variant = d.variant;
     this.isAlpha = d.isAlpha;
     this.rig = pool.takeRig();
@@ -525,6 +554,7 @@ export class CreatureBillboard {
   setPose(p: BattlerPose, ms: number): void {
     const def = POSES[p] ?? POSES.idle;
     this.pose = p;
+    this.faintHold = false;
     this.poseElapsed = 0;
     this.poseMs = poseDurationMs(p, ms);
     if (def.flash) this.setHurt(1);
@@ -540,6 +570,7 @@ export class CreatureBillboard {
     const p = Number.isFinite(progress) ? Math.min(1, Math.max(0, progress)) : 0;
     if (!Number.isNaN(this.sample.dissolve)) { this.pose = 'idle'; this.poseMs = 0; samplePose('idle', 1, this.sample); }
     this.dissolveBase = p;
+    this.faintHold = p > 0;
     this.applyPose();
   }
 
@@ -552,11 +583,13 @@ export class CreatureBillboard {
     this.applyDims();
   }
 
-  /** Idle bob, flash decay, pose tween — scalar writes only. The pool calls it every frame. */
+  /** Idle bob, flash decay, pose tween, flipbook page — scalar writes only. The pool calls it every frame. */
   update(dtMs: number): void {
     if (this.disposed) return;
     const dt = Number.isFinite(dtMs) && dtMs > 0 ? dtMs : 0;
     this.clockS += dt / 1000;
+    if (!this.animPaused) this.animClockMs += dt;
+    if (this.anim !== null) this.applyAnimPage();
     const ud = this.rig.ud;
     ud.bob = bobOffset(this.dims.heightM, this.clockS, this.phase);
     ud.hurt = decayHurt(ud.hurt, dt);
@@ -626,6 +659,12 @@ export class CreatureBillboard {
   get userDataRecord(): Readonly<BillboardUserData> { return this.rig.ud; }
   /** Whether the atlas material is bound (false while the atlas bind is in flight; the card is hidden). */
   get bound(): boolean { return this.ready; }
+  /** Whether the shown side plays its flipbook (its anim atlas is bound). */
+  get animated(): boolean { return this.anim !== null; }
+  /** The flipbook page shown (−1 when static). */
+  get animFrame(): number { return this.anim !== null ? this.animPage : -1; }
+  /** Whether the flipbook clock is held: the faint pose, or a `setFaint(p > 0)` not yet cleared by a pose or `setFaint(0)`. */
+  get animPaused(): boolean { return this.pose === 'faint' || this.faintHold; }
 
   /** WORLD position of the top of the sprite (HUD bar anchor). Zero allocation. */
   topWorld(out: Vector3): Vector3 {
@@ -667,15 +706,38 @@ export class CreatureBillboard {
     this.key = r.key;
     this.ready = r.ready;
     this.rig.quad.material = r.material;
+    const ud = this.rig.ud;
+    this.anim = r.animated ? fr.anim! : null;
+    this.animPage = -1;
     if (r.ready) {
       this.pool.use(r.key);
-      const rect = r.rect ?? fr.rect;
-      this.rig.ud.rect.set(rect[0], rect[1], rect[2], rect[3]);
+      if (this.anim !== null) {
+        this.animTotalMs = flipbookTotalMs(this.anim.delaysMs);
+        const r0 = this.anim.rects[0]!;
+        ud.dissolveCells.set(B.dissolveCellsPerFrame / Math.max(1e-6, r0[2] - r0[0]), B.dissolveCellsPerFrame / Math.max(1e-6, r0[3] - r0[1]));
+        this.applyAnimPage();
+      } else {
+        const rect = r.rect ?? fr.rect;
+        ud.rect.set(rect[0], rect[1], rect[2], rect[3]);
+        ud.dissolveCells.set(B.dissolveCells, B.dissolveCells);
+        // the static frame shows until the flipbook's atlas lands, then the side re-points once
+        if (fr.anim !== undefined) this.pool.wait(fr.anim.atlas, this);
+      }
     } else {
       this.pool.wait(r.key, this);
     }
     this.applyDims();
     this.applyVisibility();
+  }
+
+  /** The flipbook page for the current clock; writes the rect only when the page changes. Zero allocation. */
+  private applyAnimPage(): void {
+    const a = this.anim!;
+    const page = flipbookFrame(a.delaysMs, this.animTotalMs, this.animClockMs + this.animPhase01 * this.animTotalMs);
+    if (page === this.animPage) return;
+    this.animPage = page;
+    const r = a.rects[page]!;
+    this.rig.ud.rect.set(r[0], r[1], r[2], r[3]);
   }
 
   private applyDims(): void {

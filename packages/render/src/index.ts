@@ -102,7 +102,7 @@ export type { BiomeGenerators, GeoLod, Palette, PropGeo, TreeKind } from './zone
 export type {
   ActorDescriptor, ActorPool, BattlerPose, BattlerRef, BattleStage, Biome, BuildingSpec, CameraRig, Dir, Edge, EvolutionHandle, EvolutionPhase,
   EvolutionRequest, GeneratorSet, HeightfieldData,
-  HudLayer, HudModel, Layout, Marker, Pickup, PropPlacement, SetPieceId, SpriteDescriptor, SpriteFrame, Tablet, Terrain, TerrainColliderLike,
+  HudLayer, HudModel, Layout, Marker, Pickup, PropPlacement, SetPieceId, SpriteAnim, SpriteDescriptor, SpriteFrame, Tablet, Terrain, TerrainColliderLike,
   TypeName, VariantKey, VfxId, WaterSpec, ZoneHandle, ZoneSpec, ActorSpawn, PlanRoadData, ZonePlanData,
 } from './contracts.js';
 export { BasicDioramaRig, NullActorPool, NullBattleStage, NullHudLayer, unimplementedZoneLoader } from './defaults.js';
@@ -110,15 +110,15 @@ export type { ZoneLoader } from './defaults.js';
 
 // ---- part 3: §10.4 creature sprites, §10.7 camera / stage / actors / VFX, §10.9 HUD ----
 export {
-  ATLAS_LEVELS, ATLAS_MAPS, AtlasCache, MAX_SINGLES, SINGLE_TEXELS, atlasSetBytes, browserDecoder, chainBytes, cropForLevel, loadAtlasTextures,
-  loadSingleTextures, singleKey, stampAtlasTexture, textureFromLevels,
+  ATLAS_LEVELS, ATLAS_MAPS, AtlasCache, MAX_SINGLES, SINGLE_TEXELS, animAtlasSetBytes, atlasSetBytes, browserDecoder, chainBytes, chainBytesWH, cropForLevel,
+  loadAnimAtlasTextures, loadAtlasTextures, loadSingleTextures, singleKey, stampAtlasTexture, textureFromLevels,
 } from './sprites/atlas.js';
-export type { AtlasDecoder, AtlasMap, AtlasMapName, AtlasSet, AtlasTextures, Crop, DecodedImage } from './sprites/atlas.js';
+export type { AnimAtlasSet, AtlasDecoder, AtlasMap, AtlasMapName, AtlasSet, AtlasTextures, Crop, DecodedImage } from './sprites/atlas.js';
 export { BillboardPool, CreatureBillboard, createBillboardMaterial, createDecalMaterial, createSpritePool } from './sprites/billboard.js';
 export type { BillboardPoolOptions, BillboardUniforms, BillboardUserData, SpritePool } from './sprites/billboard.js';
 export {
-  ANIM, BATTLER_POSES, BILLBOARD, POSES, VARIANT_KEYS, VARIANT_UNIFORMS, billboardDims, bobOffset, bobPhase, decayHurt, paletteFor as variantPaletteFor,
-  poseDurationMs, samplePose,
+  ANIM, BATTLER_POSES, BILLBOARD, POSES, VARIANT_KEYS, VARIANT_UNIFORMS, billboardDims, bobOffset, bobPhase, decayHurt, flipbookFrame, flipbookPhase01,
+  flipbookTotalMs, paletteFor as variantPaletteFor, poseDurationMs, samplePose,
 } from './sprites/tables.js';
 export type { BillboardDims, PaletteValues, PoseDef, PoseSample, VariantUniforms } from './sprites/tables.js';
 export { TYPE_COLORS, TYPE_NAMES, hexToLinearInto, isTypeName, validateTypeColorTable } from './sprites/typeColors.js';

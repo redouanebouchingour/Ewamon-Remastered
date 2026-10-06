@@ -153,7 +153,8 @@ const DEG = Math.PI / 180;
 function refKey(r: BattlerRef): string { return `${r.side}:${r.slot}`; }
 
 function sameFrame(a: SpriteDescriptor['front'], b: SpriteDescriptor['front']): boolean {
-  return a.atlas === b.atlas && a.rect[0] === b.rect[0] && a.rect[1] === b.rect[1] && a.rect[2] === b.rect[2] && a.rect[3] === b.rect[3];
+  return a.atlas === b.atlas && a.rect[0] === b.rect[0] && a.rect[1] === b.rect[1] && a.rect[2] === b.rect[2] && a.rect[3] === b.rect[3]
+    && a.anim?.atlas === b.anim?.atlas;
 }
 
 /** Same sprite frames and size (variant / alpha may differ: those are uniform writes). */

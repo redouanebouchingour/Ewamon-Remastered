@@ -16,7 +16,7 @@
  */
 import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
-import { BODIES, QUESTS, harvestStateFor, zone as zoneDef } from '@ewa/content';
+import { BODIES, QUESTS, harvestStateFor, staticsFor, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
@@ -59,7 +59,7 @@ import { RemoteInterpolator } from './RemoteInterpolator';
 import { TRAINER_BACK_M, createSceneDirector } from './SceneDirector';
 import type { SceneDirector } from './SceneDirector';
 import { SpawnViews } from './SpawnViews';
-import { createSpriteCatalog, loadCreatureManifest } from './spriteCatalog';
+import { bindCatalogAtlas, createSpriteCatalog, loadCreatureManifest, speciesAtlases } from './spriteCatalog';
 import type { SpriteCatalog } from './spriteCatalog';
 import type { WorldInstance } from './worldHost';
 
@@ -648,19 +648,24 @@ class World implements World3D {
     const p3 = part3Of(this.renderer);
     if (cat === null || p3 === undefined) return;
     const ids = cat.zoneAtlases(zoneId).filter((id) => !this.bound.has(id));
-    // the party's creatures too (battle leads)
-    for (const c of useSessionStore.getState().inventory?.party ?? []) for (const a of cat.atlasesOf(c.speciesId)) if (!this.bound.has(a) && !ids.includes(a)) ids.push(a);
+    const add = (a: string): void => {
+      if (!this.bound.has(a) && !ids.includes(a)) ids.push(a);
+    };
+    // the zone's legendary statics play their flipbooks from the first frame: their anim atlases come with the static set
+    for (const s of staticsFor(zoneId)) for (const a of cat.animAtlasesOf(s.species)) add(a);
+    // the party's creatures too (battle leads), flipbooks included
+    for (const c of useSessionStore.getState().inventory?.party ?? []) for (const a of speciesAtlases(cat, c.speciesId)) add(a);
     if (ids.length === 0) return;
     const total = cat.bytesOf(ids);
     let loaded = 0;
     setWorldBoot({ label: 'Loading creature sprites', loadedBytes: 0, totalBytes: total > 0 ? total : null });
     await Promise.all(
       ids.map(async (id) => {
-        const set = cat.atlas(id);
-        if (set === null) return;
+        const bind = bindCatalogAtlas(p3.sprites, cat, id);
+        if (bind === null) return;
         this.bound.add(id);
         try {
-          await p3.sprites.bindAtlas(set);
+          await bind;
         } catch (e) {
           console.warn('atlas bind failed', id, e);
         }
@@ -675,12 +680,13 @@ class World implements World3D {
     const cat = this.catalog;
     const p3 = this.ready ? part3Of(this.renderer) : undefined;
     if (cat === null || p3 === undefined) return;
-    for (const id of cat.atlasesOf(speciesId)) {
+    // the static atlas and, for an animated legendary / mythical, its flipbooks (the static frame shows until they land)
+    for (const id of speciesAtlases(cat, speciesId)) {
       if (this.bound.has(id)) continue;
-      const set = cat.atlas(id);
-      if (set === null) continue;
+      const bind = bindCatalogAtlas(p3.sprites, cat, id);
+      if (bind === null) continue;
       this.bound.add(id);
-      void p3.sprites.bindAtlas(set).catch((e: unknown) => console.warn('atlas bind failed', id, e));
+      void bind.catch((e: unknown) => console.warn('atlas bind failed', id, e));
     }
   }
 

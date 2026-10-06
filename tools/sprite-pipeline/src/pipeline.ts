@@ -9,6 +9,8 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { AlphaOptions, QaFlag } from './alpha.js';
+import type { AnimEncodeResult, ProcessedAnimSide } from './anim.js';
+import { AnimCache, animAtlasId, animFileName, animJob, encodeAnimUnderBudget, processAnimSide } from './anim.js';
 import { INFORMATIONAL_FLAGS, alphaBbox, cleanTransparentRgb, isSideMismatch, recoverAlpha } from './alpha.js';
 import type { SpriteMeta } from './cache.js';
 import { SpriteCache, sha256 } from './cache.js';
@@ -39,11 +41,13 @@ import { packSquares } from './pack.js';
 import type { ZonePlan } from './plan.js';
 import { planAtlases } from './plan.js';
 import type { QaAcceptance, QaEncodingSummary, QaEntry, QaReport } from './qa.js';
-import { buildQaReport, renderContactSheet, serializeQaReport } from './qa.js';
+import { buildQaReport, renderAnimSheet, renderContactSheet, serializeQaReport } from './qa.js';
 import type { ExcludedFile, SpriteSource } from './sources.js';
 import { compareSources, resolveSources } from './sources.js';
 import type { GrayImage, RgbaImage } from './types.js';
 import {
+  ANIM_BUDGET_BYTES,
+  ANIM_DIR,
   CONCURRENCY,
   CREATURES_BUDGET_BYTES,
   DEFAULT_ATLAS_SIZE,
@@ -95,6 +99,10 @@ export interface BuildOptions {
   /** Per-sprite stage workers (default CONCURRENCY 3). Output-neutral. */
   jobs?: number;
   budgetBytes?: number;
+  /** Build the flipbooks of multiframe sources (default true; §40.1.3 as amended 2026-10-06). */
+  anim?: boolean;
+  /** Ceiling for `animTotalBytes` (default ANIM_BUDGET_BYTES, 24 MiB). */
+  animBudgetBytes?: number;
   log?: (msg: string) => void;
 }
 
@@ -115,6 +123,8 @@ export interface BuildResult {
   totalBytes: number;
   cacheHits: number;
   outFiles: string[];
+  /** The flipbooks (null when no source is multiframe, `anim: false` or `qaOnly`). */
+  anim: { sides: ProcessedAnimSide[]; rung: Rung; totalBytes: number; rungsTried: AnimEncodeResult['rungsTried']; cacheHits: number } | null;
 }
 
 export type FrameSelect = Record<string, number>;
@@ -174,6 +184,7 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
 
   // ---- per-sprite stages -----------------------------------------------------------------
   const sprites: ProcessedSprite[] = [];
+  const animSources: Array<{ src: SpriteSource; frame: number }> = [];
   const missingFrames: string[] = [];
   let cacheHits = 0;
   let done = 0;
@@ -192,6 +203,7 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
         }
         if (!Number.isInteger(chosen) || chosen < 0 || chosen >= frames) throw new Error(`frame-select.json: ${key} = ${chosen} is outside 0..${frames - 1}`);
         frame = chosen;
+        animSources.push({ src, frame });
       }
       const p = await processSprite(src, cache, {
         spriteSize,
@@ -262,9 +274,9 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
     // produced the output on disk, so it is carried over from the previous report, not nulled.
     const prevPath = path.join(opts.qaDir, 'qa-report.json');
     const prev = existsSync(prevPath) ? (JSON.parse(readFileSync(prevPath, 'utf8')) as Partial<QaReport>) : null;
-    const report = writeReport(prev?.encoding ?? null, dirBytes(opts.outDir));
+    const report = writeReport(prev?.encoding ?? null, staticDirBytes(opts.outDir));
     log(`QA: ${report.flagged.length}/${report.total} flagged, ${report.actionable} actionable -> ${opts.qaDir}`);
-    return { manifest: null, report, sprites, plan, rung: null, atlasCount: 0, totalBytes: report.totalBytes, cacheHits, outFiles: [] };
+    return { manifest: null, report, sprites, plan, rung: null, atlasCount: 0, totalBytes: report.totalBytes, cacheHits, outFiles: [], anim: null };
   }
 
   // ---- thumbs ----------------------------------------------------------------------------
@@ -335,6 +347,33 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
   const errors = manifestErrors(chosen.manifest, { species: expectedSpecies, budgetBytes: budget, spriteSize });
   if (errors.length) throw new Error(`internal: manifest failed validation:\n  ${errors.join('\n  ')}`);
 
+  // ---- flipbooks of the multiframe sources (§40.1.3 as amended 2026-10-06) -----------------------------------------
+  const animBudget = opts.animBudgetBytes ?? ANIM_BUDGET_BYTES;
+  const animCache = new AnimCache(opts.cacheDir);
+  let anim: (AnimEncodeResult & { sides: ProcessedAnimSide[]; cacheHits: number }) | null = null;
+  if (opts.anim !== false && animSources.length > 0) {
+    const sides: ProcessedAnimSide[] = [];
+    let animHits = 0;
+    for (const { src, frame } of [...animSources].sort((a, b) => compareSources(a.src, b.src))) {
+      const side = await processAnimSide(src, animCache, {
+        spriteSize,
+        bytes: new Uint8Array(readFileSync(src.abs)),
+        staticFrame: frame,
+        alpha: resolveAlphaOverride(alphaOverrides, src.id, src.side),
+        force: opts.force ?? false,
+        jobs: Math.max(1, opts.jobs ?? CONCURRENCY),
+      });
+      if (side.cached) animHits++;
+      log(`  anim ${src.id}/${src.side}: ${side.meta.pages} pages${side.cached ? ' (cached)' : ''}`);
+      sides.push(side);
+    }
+    const res = await encodeAnimUnderBudget(sides.map(animJob), chosen.manifest, animCache, animBudget, Math.max(1, opts.jobs ?? CONCURRENCY), log);
+    const animErrors = manifestErrors(res.manifest, { species: expectedSpecies, budgetBytes: budget, spriteSize, animBudgetBytes: animBudget });
+    if (animErrors.length) throw new Error(`internal: manifest (with anim) failed validation:\n  ${animErrors.join('\n  ')}`);
+    anim = { ...res, sides, cacheHits: animHits };
+  }
+  const finalManifest = anim ? anim.manifest : chosen.manifest;
+
   // ---- write the output tree -----------------------------------------------------------------
   rmSync(opts.outDir, { recursive: true, force: true });
   mkdirSync(path.join(opts.outDir, 'atlases'), { recursive: true });
@@ -355,17 +394,49 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
     writeFileSync(p, bytes);
     outFiles.push(p);
   }
+  if (anim) {
+    mkdirSync(path.join(opts.outDir, ANIM_DIR), { recursive: true });
+    for (const side of anim.sides) {
+      const files = anim.encoded.get(animAtlasId(side.meta.id, side.meta.side))!;
+      for (const kind of ['albedo', 'normal', 'emissive'] as const) {
+        files[kind].forEach((bytes, level) => {
+          const p = path.join(opts.outDir, animFileName(side.meta.id, side.meta.side, kind, level));
+          writeFileSync(p, bytes);
+          outFiles.push(p);
+        });
+      }
+    }
+  }
   const manifestPath = path.join(opts.outDir, MANIFEST_FILE);
-  writeFileSync(manifestPath, serializeManifest(chosen.manifest));
+  writeFileSync(manifestPath, serializeManifest(finalManifest));
   outFiles.push(manifestPath);
   const onDisk = dirBytes(opts.outDir);
-  if (onDisk !== chosen.totalBytes) throw new Error(`internal: manifest totalBytes ${chosen.totalBytes} != ${onDisk} on disk`);
+  const expected = chosen.totalBytes + (finalManifest.animTotalBytes ?? 0);
+  if (onDisk !== expected) {
+    throw new Error(`internal: manifest totalBytes ${chosen.totalBytes} + animTotalBytes ${finalManifest.animTotalBytes ?? 0} != ${onDisk} on disk`);
+  }
+  if (anim) {
+    const sheet = await renderAnimSheet(
+      anim.sides.map((sd) => ({
+        label: `${sd.meta.side === 'front' ? 'F' : 'B'} ${sd.meta.id.toUpperCase()} ${sd.meta.pages}P ${sd.meta.delays[0]}MS`,
+        framePaths: Array.from({ length: sd.meta.pages }, (_unused, p) => animCache.framePath(sd.hash, p, 'albedo')),
+        staticFrame: sd.meta.staticFrame,
+        cell: sd.meta.cell,
+      })),
+    );
+    writeFileSync(path.join(opts.qaDir, 'anim-sheet.png'), sheet);
+    writeFileSync(path.join(opts.qaDir, 'anim-report.json'), serializeAnimReport(anim, finalManifest));
+  }
 
   const report = writeReport({ albedoQuality: chosen.rung.albedo, normalQuality: chosen.rung.normal, rungsTried, thumbs: thumbSummary }, chosen.totalBytes);
   log(`QA: ${report.flagged.length}/${report.total} flagged, ${report.actionable} actionable -> ${opts.qaDir}`);
   log(`wrote ${jobs.length} atlases, ${ids.length} species, ${(chosen.totalBytes / 1e6).toFixed(2)} MB -> ${opts.outDir}`);
+  if (anim) {
+    const frames = anim.sides.reduce((n, sd) => n + sd.meta.pages, 0);
+    log(`wrote ${anim.sides.length} anim atlases (${frames} frames), ${((finalManifest.animTotalBytes ?? 0) / 1e6).toFixed(2)} MB -> ${path.join(opts.outDir, ANIM_DIR)}`);
+  }
   return {
-    manifest: chosen.manifest,
+    manifest: finalManifest,
     report,
     sprites,
     plan,
@@ -374,7 +445,44 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
     totalBytes: chosen.totalBytes,
     cacheHits,
     outFiles,
+    anim: anim ? { sides: anim.sides, rung: anim.rung, totalBytes: finalManifest.animTotalBytes ?? 0, rungsTried: anim.rungsTried, cacheHits: anim.cacheHits } : null,
   };
+}
+
+/** Every static file under the output: `outDir` without its `anim/` subdirectory (the §40.6 35 MiB line). */
+export function staticDirBytes(outDir: string): number {
+  return dirBytes(outDir) - dirBytes(path.join(outDir, ANIM_DIR));
+}
+
+/** `qa/anim-report.json`: per side the pages, delays, crop, shared transform, grid, bytes and per-frame foot row. */
+function serializeAnimReport(anim: AnimEncodeResult & { sides: ProcessedAnimSide[] }, m: SpriteManifestV2): string {
+  const atlases = new Map((m.animAtlases ?? []).map((a) => [a.id, a]));
+  const sides = anim.sides.map((sd) => {
+    const meta = sd.meta;
+    const a = atlases.get(animAtlasId(meta.id, meta.side))!;
+    const bottoms = meta.frameBboxes.map((b) => (b ? b.y1 : null));
+    return {
+      species: meta.id,
+      side: meta.side,
+      source: meta.source,
+      sourceSize: [meta.sourceWidth, meta.sourceHeight],
+      pages: meta.pages,
+      staticFrame: meta.staticFrame,
+      delays: [...new Set(meta.delays)],
+      loopMs: meta.delays.reduce((n, d) => n + d, 0),
+      staticBbox: meta.staticBbox,
+      union: meta.union,
+      master: meta.master,
+      cell: meta.cell,
+      grid: [a.width / a.cell, a.height / a.cell],
+      atlas: [a.width, a.height],
+      bytes: { albedo: a.albedo.bytes, normal: a.normal.bytes, emissive: a.emissive.bytes, total: a.albedo.bytes + a.normal.bytes + a.emissive.bytes },
+      staticFrameBottom: bottoms[meta.staticFrame],
+      frameBottoms: bottoms,
+      emissivePixels: meta.emissivePixels,
+    };
+  });
+  return `${JSON.stringify({ rung: anim.rung, rungsTried: anim.rungsTried, animTotalBytes: m.animTotalBytes, sides }, null, 2)}\n`;
 }
 
 export function atlasFileName(atlasId: string, kind: TextureKind, level: number): string {

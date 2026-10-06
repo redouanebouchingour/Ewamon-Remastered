@@ -676,3 +676,27 @@ input and the HUD during the sequence and restores them after (and keeps input l
 on Space / Enter / Escape / click only (KeyW passes, a repeat skips once), defers phase callbacks, removes its
 listeners; it refuses to play (null, nothing locked) without a zone or a sprite. Client total: 23 files, 171 tests
 (+ the harness-free suites unchanged); `perf/tick` passes in the full run.
+
+---
+
+# Part 7 — the animated legendaries' flipbooks (2026-10-06; render IMPLEMENTATION-NOTES Part 8)
+
+The sprite pipeline ships every page of the 10 legendaries / mythicals as flipbooks (40-pipelines.md §40.1.8) and the
+billboard plays them (10-render.md §10.4.5). The client's part is the adapter and the binds.
+
+| File | What |
+|---|---|
+| `scene/spriteCatalog.ts` | `sprites[id].anim.<side>` → `SpriteFrame.anim` (`frames → rects`, `delays → delaysMs`, `staticFrame`); `animAtlases` → render `AnimAtlasSet`s (`animAtlas(id)`, `animAtlasesOf(species)`, front first); `bytesOf` covers both kinds; a flipbook whose atlas the manifest does not list stays static. `speciesAtlases(cat, sp)` = static atlases + flipbooks; `bindCatalogAtlas(pool, cat, id)` routes an id to `bindAtlas` / `bindAnimAtlas`. |
+| `scene/World3D.ts` | `bindZoneAtlases`: the zone set + the flipbooks of the zone's legendary statics (content `staticsFor(zoneId)`) + the party's species with their flipbooks; `ensureSpecies` (spawns, battles, evolution, trades) binds a species' flipbooks with its static atlas. The static frame shows until a flipbook lands. |
+| `harness/HarnessWorld.ts`, `harness/main.tsx` | the harness binds the same way; dev hooks `__ewaHarness.world` (the HarnessWorld, for CDP drivers: `setWild`, `place`, `script`, `startBattle`, `runWhile`) and `__ewaHarness.billboards()` (id, side, `animated`, page, `paused`, `bound`) |
+| `test/spriteCatalog.test.ts` | 4 tests: the mapping on an inline manifest, an unlisted flipbook stays static, `bindCatalogAtlas` routing, and on the shipped manifest exactly the 10 animated species animate on both sides with 512² cells and their source delays |
+
+Measured in the harness (`/harness/shots?zone=galvan_route`, served by `scripts/harness/common.ts` `serveDev` on its own
+port, headless Chrome over CDP): raikitsune placed as a wild spawn 4 m in front of the player plays its front flipbook
+(SpawnViews → `ensureSpecies` → static + flipbooks), then as the battle foe of the scripted wild battle (the lead
+bramblecub stays static); programs 103 at boot, 103 with the flipbook, 101 in battle. Shots:
+`.screenshots/anim-legends/harness/` (gitignored).
+
+Open: thumbnails stay static by design; the client never releases an atlas (pre-existing), so flipbooks accumulate
+GPU memory (≈ 100–150 MB per animated species, both sides) over a session — render Part 8, open item 1. Client total: 24
+files, 175 tests.
