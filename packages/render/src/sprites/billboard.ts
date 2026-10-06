@@ -43,8 +43,8 @@ import type { BattlerPose, SpriteAnim, SpriteDescriptor, SpriteFrame, TypeName, 
 import type { HarvestLevel } from '../descriptors.js';
 import { LAYERS } from '../descriptors.js';
 import {
-  AtlasCache, assertSingleBudget, browserDecoder, disposeAtlasTextures, loadAnimAtlasTextures, loadAtlasTextures, loadSingleTextures, neutralAtlasTextures,
-  singleKey, type AnimAtlasSet, type AtlasDecoder, type AtlasSet, type AtlasTextures,
+  AtlasCache, assertSingleBudget, browserDecoder, disposeAtlasTextures, infoOvercountBytes, loadAnimAtlasTextures, loadAtlasTextures, loadSingleTextures,
+  neutralAtlasTextures, singleKey, type AnimAtlasSet, type AtlasDecoder, type AtlasSet, type AtlasTextures,
 } from './atlas.js';
 import { OVERLAY_ALPHA_CUT, overlayMrt } from './overlayMrt.js';
 import {
@@ -270,6 +270,8 @@ export class BillboardPool implements SpritePool {
   private typeTable: Readonly<Record<TypeName, string>> = TYPE_COLORS;
   private warm: Rig | null = null;
   private disposed = false;
+  /** Σ `infoOvercountBytes` of the loaded sets (the level 0 three's `Info` counts twice; the host subtracts it). */
+  private overcount = 0;
 
   constructor(o: BillboardPoolOptions = {}) {
     this.uniforms = {
@@ -288,7 +290,7 @@ export class BillboardPool implements SpritePool {
     const nt = neutralAtlasTextures();
     this.neutral = { textures: nt, material: createBillboardMaterial(nt, this.uniforms, 'neutral') };
     this.cache = new AtlasCache<AtlasEntry>(
-      (e) => { e.material.dispose(); disposeAtlasTextures(e.textures); },
+      (e) => { this.overcount -= infoOvercountBytes(e.textures); e.material.dispose(); disposeAtlasTextures(e.textures); },
       (e) => e.textures.bytes,
     );
   }
@@ -324,6 +326,23 @@ export class BillboardPool implements SpritePool {
 
   /** The live billboards (the pool's own array: read it, never keep or mutate it). Zero allocation. */
   liveBillboards(): readonly CreatureBillboard[] { return this.live; }
+
+  /**
+   * Billboards sampling atlas `id` right now (static or flipbook; 0 when none or unknown). A released atlas stays on
+   * the GPU while this is > 0, so the client's residency bookkeeping never counts it as freed (client
+   * IMPLEMENTATION-NOTES "Creature textures").
+   */
+  atlasUsers(id: string): number { return this.cache.users(id); }
+
+  /** Outstanding binds of atlas `id` (0 when none or unknown). */
+  atlasRefs(id: string): number { return this.cache.refs(id); }
+
+  /**
+   * Bytes three's `Info.texturesSize` counts twice for the loaded sets — each map's level 0, which is both the image and
+   * `mipmaps[0]` (`infoOvercountBytes`). The host subtracts it from the §50.2.2 texture metric (render
+   * IMPLEMENTATION-NOTES Part 9), so a creature atlas reads its GPU bytes (`stats().bytes`), not 1.75 ×.
+   */
+  infoOvercountBytes(): number { return Math.max(0, this.overcount); }
 
   stats(): { readonly live: number; readonly atlases: number; readonly bytes: number } {
     return { live: this.live.length, atlases: this.cache.loaded(), bytes: this.cache.bytes() };
@@ -413,8 +432,8 @@ export class BillboardPool implements SpritePool {
    * billboard stays hidden and is re-pointed when the bind lands).
    * @internal
    */
-  resolve(frame: SpriteFrame): { key: string; material: MeshStandardNodeMaterial; rect: readonly [number, number, number, number] | null; ready: boolean; animated: boolean } {
-    if (frame.anim !== undefined && frame.anim.rects.length > 0) {
+  resolve(frame: SpriteFrame, flipbook = true): { key: string; material: MeshStandardNodeMaterial; rect: readonly [number, number, number, number] | null; ready: boolean; animated: boolean } {
+    if (flipbook && frame.anim !== undefined && frame.anim.rects.length > 0) {
       const anim = this.cache.get(frame.anim.atlas);
       if (anim !== null) return { key: frame.anim.atlas, material: anim.material, rect: null, ready: true, animated: true };
     }
@@ -441,6 +460,8 @@ export class BillboardPool implements SpritePool {
   private async load(_key: string, p: Promise<AtlasTextures>): Promise<AtlasEntry> {
     const textures = await p;
     if (this.upload !== null) { this.upload(textures.albedo); this.upload(textures.normal); this.upload(textures.emissive); }
+    // every loaded set reaches the cache's dispose callback exactly once (released, released in flight, or pool dispose)
+    this.overcount += infoOvercountBytes(textures);
     return { textures, material: createBillboardMaterial(textures, this.uniforms, _key) };
   }
 
@@ -523,6 +544,8 @@ export class CreatureBillboard {
   private readonly animPhase01: number;
   /** `setFaint(p > 0)` holds the flipbook until an explicit pose or `setFaint(0)`. */
   private faintHold = false;
+  /** `setFlipbook(false)`: the static frame even when the side's flipbook is bound (a far creature; client residency). */
+  private flipbookOn = true;
 
   constructor(pool: SpritePool, d: SpriteDescriptor) {
     if (!(pool instanceof BillboardPool)) throw new TypeError('@ewa/render: CreatureBillboard needs the renderer\'s SpritePool');
@@ -651,6 +674,18 @@ export class CreatureBillboard {
    */
   setShown(on: boolean): void { this.object.visible = on; }
 
+  /**
+   * Whether the shown side may play its flipbook (default true). `false` re-points the card to its static frame and stops
+   * sampling (and waiting for) the flipbook atlas, so a released flipbook leaves the GPU while the card stays up — the
+   * client's residency turns it off for a creature too far away to be on screen (client IMPLEMENTATION-NOTES "Creature
+   * textures"). `true` plays it again once its atlas is bound (the same one still → flipbook re-point as a bind).
+   */
+  setFlipbook(on: boolean): void {
+    if (on === this.flipbookOn) return;
+    this.flipbookOn = on;
+    if (!this.disposed) this.bindSide();
+  }
+
   /** Uniform scale of the card about its foot point (the evolution sequence's silhouette "pop"); 1 = the §10.4.3 size. */
   setSizeMul(k: number): void {
     const v = Number.isFinite(k) && k > 0 ? k : 1;
@@ -672,6 +707,8 @@ export class CreatureBillboard {
   get bound(): boolean { return this.ready; }
   /** Whether the shown side plays its flipbook (its anim atlas is bound). */
   get animated(): boolean { return this.anim !== null; }
+  /** Whether the side may play its flipbook (`setFlipbook`). */
+  get flipbookEnabled(): boolean { return this.flipbookOn; }
   /** The flipbook page shown (−1 when static). */
   get animFrame(): number { return this.anim !== null ? this.animPage : -1; }
   /** Whether the flipbook clock is held: the faint pose, or a `setFaint(p > 0)` not yet cleared by a pose or `setFaint(0)`. */
@@ -712,7 +749,7 @@ export class CreatureBillboard {
 
   private bindSide(): void {
     const fr = this.frame();
-    const r = this.pool.resolve(fr);
+    const r = this.pool.resolve(fr, this.flipbookOn);
     if (this.key !== null && this.ready) this.pool.unuse(this.key);
     this.key = r.key;
     this.ready = r.ready;
@@ -732,7 +769,7 @@ export class CreatureBillboard {
         ud.rect.set(rect[0], rect[1], rect[2], rect[3]);
         ud.dissolveCells.set(B.dissolveCells, B.dissolveCells);
         // the static frame shows until the flipbook's atlas lands, then the side re-points once
-        if (fr.anim !== undefined) this.pool.wait(fr.anim.atlas, this);
+        if (fr.anim !== undefined && this.flipbookOn) this.pool.wait(fr.anim.atlas, this);
       }
     } else {
       this.pool.wait(r.key, this);

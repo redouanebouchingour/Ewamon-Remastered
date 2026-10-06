@@ -127,6 +127,7 @@ function build(ctx: HostContext): Part3 {
       hud.tick(real);
     },
     setHarvestLevel(l: HarvestLevel): void { sprites.setHarvestLevel(l); },
+    textureOvercountBytes: () => sprites.infoOvercountBytes(),
     onZone(z: ZoneHandle | null): void {
       bundle.setGround(z === null ? null : z.collider);
       zoneRef = z;

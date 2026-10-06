@@ -12,6 +12,7 @@ import { HudWriter } from '../src/scene/HudWriter';
 import { InteractionTargets } from '../src/scene/interaction';
 import type { HudPrompt } from '../src/scene/HudWriter';
 import { LegendaryViews, STATIC_PREFIX, staticGateFlag, staticTargetId, visibleStatics } from '../src/scene/LegendaryViews';
+import { NO_LEASE } from '../src/scene/creatureTextures';
 import type { LegendaryViewDeps } from '../src/scene/LegendaryViews';
 import { createSceneDirector } from '../src/scene/SceneDirector';
 
@@ -29,12 +30,13 @@ function fakeViews() {
       return {
         object: { removeFromParent: () => live.delete(d.key), visible: true },
         setFacing: () => undefined,
+        setFlipbook: () => undefined,
         setPosition: () => undefined,
         dispose: () => disposed.push(d.key),
       } as unknown as CreatureBillboard;
     },
     descriptor: (sp, key) => ({ key, speciesId: sp }) as unknown as SpriteDescriptor,
-    ensureSpecies: () => undefined,
+    leaseSprites: () => NO_LEASE,
     height: () => 0,
     targets,
     interactKey: () => 'E',

@@ -4,12 +4,16 @@
  * `E` sends `engageSpawn`. A spawn engaged by anyone (`engagedBy !== ''`) is hidden: its battle is on an arena.
  * Render has no world-creature API beyond the pool (`CreatureBillboard.object` "add to the zone/arena root"): the
  * billboards live under one client group in the scene and are disposed before the zone (IMPLEMENTATION-NOTES
- * part 2, S3). Membership changes come from schema callbacks, never from the tick.
+ * part 2, S3). Membership changes come from schema callbacks, never from the tick. Each spawn leases the textures of
+ * the side it shows (the front, `sideFor('wild')`) for as long as it stands, flipbook included; a despawn releases them
+ * (client IMPLEMENTATION-NOTES "Creature textures").
  */
 import type { Group } from 'three/webgpu';
 import { VARIANT_KEYS } from '@ewa/render';
 import type { CreatureBillboard, SpriteDescriptor } from '@ewa/render';
 import { speciesName } from '../data/content';
+import { NO_LEASE, sideFor } from './creatureTextures';
+import type { LeaseSprites, SpriteLease } from './creatureTextures';
 import type { InteractionTargets } from './interaction';
 import { makeInteractable } from './interaction';
 
@@ -30,7 +34,8 @@ export interface SpawnViewDeps {
   readonly parent: Group;
   acquire(d: SpriteDescriptor): CreatureBillboard;
   descriptor(speciesId: string, key: string, variant: SpriteDescriptor['variant'], isAlpha: boolean, isShiny?: boolean): SpriteDescriptor | null;
-  ensureSpecies(speciesId: string): void;
+  /** the textures of the side a spawn shows, held while it stands (`CreatureTextures.show`) */
+  readonly leaseSprites: LeaseSprites;
   height(x: number, z: number): number;
   readonly targets: InteractionTargets;
   interactKey(): string;
@@ -39,7 +44,9 @@ export interface SpawnViewDeps {
 /** render's five variant keys (a string list here would spell a badge id that shares its name) */
 const VARIANTS: ReadonlySet<string> = new Set(VARIANT_KEYS);
 
-interface View { bb: CreatureBillboard | null; x: number; z: number; engaged: boolean }
+interface View { bb: CreatureBillboard | null; lease: SpriteLease; x: number; z: number; engaged: boolean }
+
+const SIDE = sideFor('wild');
 
 export class SpawnViews {
   private readonly views = new Map<string, View>();
@@ -55,14 +62,15 @@ export class SpawnViews {
     const variant = (VARIANTS.has(s.variantKey) ? s.variantKey : 'normal') as SpriteDescriptor['variant'];
     const desc = this.d.descriptor(s.speciesId, `spawn:${s.id}`, variant, s.isAlpha, s.isShiny === true);
     let bb: CreatureBillboard | null = null;
+    let lease = NO_LEASE;
     if (desc !== null) {
-      this.d.ensureSpecies(s.speciesId);
+      lease = this.d.leaseSprites(s.speciesId, SIDE);
       bb = this.d.acquire(desc);
-      bb.setFacing('front');
+      bb.setFacing(SIDE);
       bb.setPosition(s.x, this.d.height(s.x, s.z), s.z);
       this.d.parent.add(bb.object);
     }
-    const view: View = { bb, x: s.x, z: s.z, engaged: s.engagedBy !== '' };
+    const view: View = { bb, lease, x: s.x, z: s.z, engaged: s.engagedBy !== '' };
     this.views.set(s.id, view);
     const label = `${s.isShiny === true ? 'shiny ' : ''}${s.isAlpha ? 'alpha ' : ''}${speciesName(s.speciesId)} Lv ${s.level}`;
     const e = makeInteractable(s.id, 'spawn', s.x, s.z, 'Battle the wild', label, this.d.interactKey());
@@ -101,6 +109,7 @@ export class SpawnViews {
     if (v === undefined) return;
     v.bb?.object.removeFromParent();
     v.bb?.dispose();
+    v.lease.release();
     this.views.delete(id);
     this.d.targets.removeDynamic(id);
   }

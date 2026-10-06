@@ -30,6 +30,7 @@ import type { WorldSession, ZoneRoom } from '../src/net/WorldSession';
 import { InteractionTargets, RANGE } from '../src/scene/interaction';
 import type { HudPrompt } from '../src/scene/HudWriter';
 import { RAID_DEN_SCALE, RAID_PREFIX, RaidDen, raidTargetId } from '../src/scene/RaidViews';
+import { NO_LEASE } from '../src/scene/creatureTextures';
 import type { RaidDenDeps } from '../src/scene/RaidViews';
 import { useNotificationsStore } from '../src/state/notifications';
 import { useSessionStore } from '../src/state/session';
@@ -154,7 +155,7 @@ function fakeDen() {
       descriptors.push(`${sp} ${key}`);
       return { key, speciesId: sp, sizeScale: 1.25 } as unknown as SpriteDescriptor;
     },
-    ensureSpecies: () => undefined,
+    leaseSprites: () => NO_LEASE,
     height: () => 1.5,
     targets,
     interactKey: () => 'E',

@@ -207,6 +207,11 @@ export interface FrameHook {
   setHarvestLevel?(l: HarvestLevel): void;
   /** Called after `loadZone` resolves (part 3: the stage/actors sample the zone's collider for ground heights). */
   onZone?(zone: ZoneHandle | null): void;
+  /**
+   * Bytes `renderer.info.memory.texturesSize` counts twice for this subsystem's textures (part 3: the sprite atlases'
+   * level 0, `BillboardPool.infoOvercountBytes`); subtracted from the §50.2.2 texture metric like the KTX2 correction.
+   */
+  textureOvercountBytes?(): number;
   dispose?(): void;
 }
 
@@ -775,7 +780,7 @@ class RendererHost implements Renderer, HostContext {
 
   private captureBaseline(): void {
     this.refreshSceneCounts();
-    this.baseline = readBudgetCounts(this.renderer.info, this.statsRecord.materials, this.lightCounts.shadow, this.lightCounts.nonShadow, this.materials.residentTextureBytes());
+    this.baseline = readBudgetCounts(this.renderer.info, this.statsRecord.materials, this.lightCounts.shadow, this.lightCounts.nonShadow, this.textureCorrection());
   }
 
   // ---- HostContext ------------------------------------------------------------------------------------
@@ -1006,7 +1011,7 @@ class RendererHost implements Renderer, HostContext {
     }
     // (6) stats — and the frame's counts, kept: three's own rAF loop resets `renderer.info` before the next frame,
     // so `counts()` / `dumpZone()` read after an await would otherwise see an empty frame (B1)
-    copyInfo(this.renderer.info, this.statsRecord, this.materials.residentTextureBytes());
+    copyInfo(this.renderer.info, this.statsRecord, this.textureCorrection());
     this.frameShadowDraws = this.inspector.takeShadowDraws();
     this.frameCounts = this.readCounts();
     // (7) GPU timestamps
@@ -1024,7 +1029,18 @@ class RendererHost implements Renderer, HostContext {
   }
 
   private readCounts(): BudgetCounts {
-    return readBudgetCounts(this.renderer.info, this.statsRecord.materials, this.statsRecord.shadowLights, this.statsRecord.nonShadowLights, this.materials.residentTextureBytes());
+    return readBudgetCounts(this.renderer.info, this.statsRecord.materials, this.statsRecord.shadowLights, this.statsRecord.nonShadowLights, this.textureCorrection());
+  }
+
+  /**
+   * What `Info.texturesSize` gets wrong, as one signed term for §50.2.2's texture metric: + the KTX2 bytes it counts as 1
+   * each (the material library's resident bytes), − what it counts twice (the sprite atlases' level 0, the hooks'
+   * `textureOvercountBytes`; render IMPLEMENTATION-NOTES Part 9). No allocation (runs every frame).
+   */
+  private textureCorrection(): number {
+    let over = 0;
+    for (let i = 0; i < this.hooks.length; i++) over += this.hooks[i]!.textureOvercountBytes?.() ?? 0;
+    return this.materials.residentTextureBytes() - over;
   }
 
   gpuFrameMs(): Promise<number | undefined> { return this.timestamps.resolveNow(); }

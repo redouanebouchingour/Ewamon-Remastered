@@ -6,7 +6,8 @@
  *
  * Flipbooks (amended 2026-10-06): a side with `sprites[id].anim.<side>` gets `SpriteFrame.anim` (`frames → rects`,
  * `delays → delaysMs`, `staticFrame`), and `animAtlases[]` become render `AnimAtlasSet`s (`animAtlas(id)`,
- * `animAtlasesOf(species)`), bound next to the species' static atlas so the creature plays wherever it appears.
+ * `animAtlasesOf(species)`). `sideAtlases(species, side)` names the static atlas and the flipbook ONE side is drawn
+ * from: `creatureTextures.ts` binds the side a view shows, never both (client IMPLEMENTATION-NOTES "Creature textures").
  */
 import type { SpeciesDef, TypeName as CoreTypeName, VariantKey } from '@ewa/core';
 import type { AnimAtlasSet, AtlasSet, SpriteAnim, SpriteDescriptor, SpriteFrame, SpritePool, TypeName } from '@ewa/render';
@@ -75,6 +76,8 @@ export interface SpriteCatalog {
   animAtlas(id: string): AnimAtlasSet | null;
   /** The flipbook atlases of a species' animated sides (front first; [] for a still creature). */
   animAtlasesOf(speciesId: string): readonly string[];
+  /** The atlases ONE side of a species is drawn from: its static atlas and its flipbook (null for a still side); null when unknown. */
+  sideAtlases(speciesId: string, side: 'front' | 'back'): { readonly atlas: string; readonly anim: string | null } | null;
   /** Level-0 bytes (albedo + normal + emissive, mips included when listed) of a set of atlases (static or anim), for the boot bar. */
   bytesOf(ids: readonly string[]): number;
   descriptor(speciesId: string, key: string, variant?: VariantKey, isAlpha?: boolean, isShiny?: boolean): SpriteDescriptor | null;
@@ -120,6 +123,12 @@ export function createSpriteCatalog(m: CreatureManifest, species: (id: string) =
       for (const side of [a.front, a.back]) if (side !== undefined && animSets.has(side.atlas) && !out.includes(side.atlas)) out.push(side.atlas);
       return out;
     },
+    sideAtlases: (speciesId, side) => {
+      const sp = m.sprites[speciesId];
+      if (sp === undefined) return null;
+      const a = sp.anim?.[side];
+      return { atlas: sp[side].atlas, anim: a !== undefined && a.frames.length > 0 && animSets.has(a.atlas) ? a.atlas : null };
+    },
     bytesOf: (ids) => ids.reduce((n, id) => n + (bytes.get(id) ?? 0), 0),
     descriptor(speciesId, key, variant = 'normal', isAlpha = false, isShiny = false) {
       const sp = m.sprites[speciesId];
@@ -140,13 +149,16 @@ export function createSpriteCatalog(m: CreatureManifest, species: (id: string) =
   };
 }
 
-/** A species' static atlases followed by its flipbook atlases: what binding "the creature" means (§10.4.5 flipbook). */
+/**
+ * Every atlas of a species — its static atlases followed by BOTH sides' flipbooks. The world no longer binds this set
+ * (a view binds the one side it shows: `sideAtlases`, `creatureTextures.ts`); the harness's `residency=legacy` replays it.
+ */
 export function speciesAtlases(cat: SpriteCatalog, speciesId: string): readonly string[] {
   const anim = cat.animAtlasesOf(speciesId);
   return anim.length === 0 ? cat.atlasesOf(speciesId) : [...cat.atlasesOf(speciesId), ...anim];
 }
 
-/** Binds a static atlas (`bindAtlas`) or a flipbook atlas (`bindAnimAtlas`) by id; null when the catalog knows neither. */
+/** Binds a static atlas (`bindAtlas`) or a flipbook atlas (`bindAnimAtlas`) by id; null when the catalog knows neither (the harness's legacy residency). */
 export function bindCatalogAtlas(pool: Pick<SpritePool, 'bindAtlas' | 'bindAnimAtlas'>, cat: SpriteCatalog, id: string): Promise<void> | null {
   const set = cat.atlas(id);
   if (set !== null) return pool.bindAtlas(set);

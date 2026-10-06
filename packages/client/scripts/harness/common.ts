@@ -7,7 +7,7 @@
  */
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
-import { createReadStream, existsSync, mkdirSync, rmSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { createServer as createHttpServer } from 'node:http';
 import type { Server } from 'node:http';
 import { createServer as createNetServer } from 'node:net';
@@ -219,14 +219,18 @@ function sleep(ms: number): Promise<void> {
   return new Promise((res) => setTimeout(res, ms));
 }
 
-/** Launches headless Chrome with WebGPU on a free debugging port and a scratch profile; returns the page session. */
+/**
+ * Launches headless Chrome with WebGPU and a scratch profile; returns the page session. The debugging port is Chrome's
+ * own pick (`--remote-debugging-port=0`, read back from the profile's `DevToolsActivePort`): probing a "free" port
+ * first raced other harness runs on the machine — a Chrome that lost the bind left this run talking to (and
+ * navigating) another session's browser on the same port.
+ */
 export async function launchChrome(o: ChromeOptions): Promise<Browser> {
-  const port = await freePort(9470);
-  const profile = join(tmpdir(), `ewa-harness-${process.pid}-${port}`);
+  const profile = join(tmpdir(), `ewa-harness-${process.pid}-${Date.now().toString(36)}`);
   mkdirSync(profile, { recursive: true });
   const exe = o.chrome ?? DEFAULT_CHROME;
   const proc: ChildProcess = spawn(exe, [
-    '--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`,
+    '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
     '--enable-unsafe-webgpu', '--enable-webgpu-developer-features', '--enable-gpu', '--ignore-gpu-blocklist',
     `--window-size=${o.width},${o.height}`, '--force-device-scale-factor=1', '--hide-scrollbars', '--mute-audio',
     '--no-first-run', '--no-default-browser-check', '--disable-extensions',
@@ -235,18 +239,30 @@ export async function launchChrome(o: ChromeOptions): Promise<Browser> {
   ], { stdio: 'ignore', windowsHide: true });
   let exited = false;
   proc.on('exit', () => { exited = true; });
+  const activePort = join(profile, 'DevToolsActivePort');
+  let port = 0;
   let version = '';
   let pageWs = '';
   for (let i = 0; i < 150 && pageWs === ''; i++) {
     if (exited) throw new Error(`chrome exited at start (${exe})`);
     try {
+      if (port === 0) {
+        // the file appears once Chrome listens; its first line is the port this Chrome (and no other) bound
+        const p = existsSync(activePort) ? Number(readFileSync(activePort, 'utf8').split(/\r?\n/)[0]) : 0;
+        if (!Number.isInteger(p) || p <= 0) { await sleep(200); continue; }
+        port = p;
+      }
       const v = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json() as { Browser?: string };
       version = v.Browser ?? '';
-      const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json() as { type: string; webSocketDebuggerUrl: string }[];
-      pageWs = list.find((t) => t.type === 'page')?.webSocketDebuggerUrl ?? '';
+      const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json() as { type: string; url: string; webSocketDebuggerUrl: string }[];
+      pageWs = list.find((t) => t.type === 'page' && t.url === 'about:blank')?.webSocketDebuggerUrl ?? '';
+      if (pageWs === '') await sleep(200);
     } catch { await sleep(200); }
   }
-  if (pageWs === '') throw new Error('chrome did not expose a page target');
+  if (pageWs === '') {
+    proc.kill();
+    throw new Error('chrome did not expose its about:blank page target');
+  }
   const cdp = await Cdp.connect(pageWs);
   await cdp.send('Page.enable');
   await cdp.send('Runtime.enable');
@@ -309,6 +325,8 @@ export interface SessionOptions {
   readonly build: boolean;
   /** §50.6.1 heading convention for the page (default 'words', anchors.ts) */
   readonly headings?: 'words' | 'rig';
+  /** extra query parameters for the page (e.g. `residency=legacy`), appended as given */
+  readonly query?: Readonly<Record<string, string>>;
 }
 
 /** Server + Chrome + the harness page booted for `zone` (renderer, zone, shader warm-up done). */
@@ -328,7 +346,8 @@ export async function openSession(o: SessionOptions): Promise<Session> {
   try {
     browser = await launchChrome({ width: o.width, height: o.height });
     log(`chrome ${browser.version} on debugging port ${browser.port}`);
-    const url = `${server.origin}/harness/${o.route}?zone=${encodeURIComponent(o.zone)}${o.headings === 'rig' ? '&headings=rig' : ''}`;
+    const extra = Object.entries(o.query ?? {}).map(([k, v]) => `&${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('');
+    const url = `${server.origin}/harness/${o.route}?zone=${encodeURIComponent(o.zone)}${o.headings === 'rig' ? '&headings=rig' : ''}${extra}`;
     const t0 = Date.now();
     await browser.cdp.send('Page.navigate', { url });
     let state: { ready: boolean; error: string | null } | null = null;

@@ -1126,3 +1126,63 @@ leave / ineligible window / reopen with a catch try / phase-4 summary / fainted 
 - Not verified live in a browser this phase (unit tests + the server integration tests).
 - Tests: `test/postgame.test.tsx` (8); `dialogue-flow.test.tsx` (Zeon after the title offers the rematch);
   `rankings-profile.test.tsx` (Tower tab).
+
+---
+
+# Creature textures — residency, side binding, budget guard (2026-10-06; render IMPLEMENTATION-NOTES Part 9)
+
+The flipbooks (Part 7) made a known hole expensive: the client bound a species' static atlas AND both flipbook sides
+the first time it saw it, and never released a creature atlas. A flipbook side costs 50–75 MB of GPU memory (88–132 MB
+as three counted it), so every legendary met or carried stayed bound for the session. Now every creature atlas has an
+owner that releases it.
+
+| File | What |
+|---|---|
+| `scene/creatureTextures.ts` (new) | `CreatureTextures` (holds / leases, refcounts, grace + idle LRU, budget guard), `BattleSprites` (the stage's slots), `sideFor` / `stageSide`, `creatureBudget`, `CREATURE_TEXTURES` |
+| `scene/spriteCatalog.ts` | `sideAtlases(species, side)` → `{ atlas, anim }` of ONE side; `speciesAtlases` / `bindCatalogAtlas` stay for the harness's legacy replay only |
+| `scene/SpawnViews.ts`, `RaidViews.ts`, `EvolutionDirector.ts` | the `ensureSpecies` dep is gone: `leaseSprites(species, side)` per view, released when the view goes (despawn, den cleared, sequence done) |
+| `scene/LegendaryViews.ts` | a static leases its front's still part while it stands and its front flipbook only while the player is within 40 m (let go past 52 m): `setViewer(x, z)`, `setFlipbook` on the card |
+| `scene/World3D.ts` | the zone hold (phase 3), the statics' near-arrival flipbook preload, `BattleSprites` on battleStart / resync / `setBattler` / exit, evolution leases + prompt prefetch, `setViewer` at the 2 Hz nameplate cadence, `refresh()` at 1 Hz, `debug().textures`; `bound` / `ensureSpecies` removed |
+| `harness/HarnessWorld.ts`, `harness/main.tsx` | the same wiring; `?residency=legacy` replays the old binding for before / after runs; `loadZone`, `flags`, `party`, `legendaries`, `scriptBattle(mine, foe, level)`, `textureReadout()`; `evolutionPairs(n)` |
+| `scripts/harness/textures.ts` (new, `pnpm harness:textures`) | the (a)–(d) runs below over CDP; `common.ts`: Chrome picks its own debugging port (see "Harness port race") and `openSession({ query })` |
+| `test/creatureTextures.test.ts` (new) | 17 tests (below) |
+
+## Design
+
+**C1 — one side, one owner.** `CreatureTextures.show(species, side)` holds the side's static atlas and, for an animated
+species, that side's flipbook — never the other side's. `sideFor(context)`: overworld spawns, legendary statics, the
+raid den, remote players' creatures, the evolution and inspector close-ups and battle foes show the front; the
+player's battlers the back. `stageSide(stageSlot)` maps render's stage side 0 (the near, viewer's slot — singles and
+doubles) to the back, side 1 to the front (render `battleStage.setBattler`). A lease is taken before the billboard is
+acquired, so the bind is already in flight when the card resolves its side; the card shows the static frame until the
+flipbook lands and re-points once (render Part 8 F2) — no new pop. `show(…, 'still' | 'flipbook')` takes either part.
+
+**C2 — refcounts.** One entry per atlas id; any number of holds on one side bind it once. Holds: every spawn / static /
+den / evolution sequence (both forms' fronts) / battle slot (`BattleSprites.set` on `setBattler`, released on a switch
+and at `exitBattle`), the battle's teams (`BattleSprites.begin`: both parties' static atlases, so a switch-in never
+waits), the zone (its static set + the party's static atlases, §20.10.3 phase 3, for the zone's life). A hold that
+replaces another (zone → zone, battle resync) takes the new refs first, then releases the old hold, then binds: an atlas
+both zones show never idles; one only the old zone showed idles before anything new binds (and the guard may release
+it for the new zone). Party flipbooks are no longer preloaded with the zone: a battle leases the back side it shows.
+
+**C3 — grace and idle LRU.** When the last hold goes an entry idles: it stays bound `graceMs` = 20 s (re-showing the
+same creature costs no upload), while at most `idleAnim` = 2 flipbooks and `idleStatic` = 4 static atlases idle (least
+recently used released first); a timer at the earliest expiry releases the rest to render (`releaseAtlas`). An idle
+entry a billboard still samples (`BillboardPool.atlasUsers` > 0) is never released; it is looked at again a second
+later. `prefetch(species, side)` = bind and idle at once (the evolve prompt's preload).
+
+**C4 — legendary statics play near the player only.** galvan_route's statics stand 222 m apart and the diorama camera's
+ground footprint ends ≈ 24 m from the player (34 m, −52°, 28° FOV at the widest zoom stop): a far static is never on
+screen. `LegendaryViews.setViewer` (World3D: the arrival point before the zone builds, then the 2 Hz nameplate pass)
+leases a static's front flipbook within 40 m and lets it go past 52 m (`CreatureBillboard.setFlipbook(false)` first, so
+render frees it). The zone's phase-3 preload binds the flipbooks of the statics near the arrival point only.
+
+**C5 — budget guard.** Bound creature textures (GPU bytes, render's per-set estimate — what the corrected metric counts,
+render Part 9 R1) stay under `creatureBudget(textureBytes, creatureBytes)` = the §50.2.2 cap (734 003 200 B) − every
+other texture byte the renderer holds now (`RenderStats.textureBytes` − the sprite pool's own bytes) − 16 MiB headroom,
+clamped to [128, 400] MiB (live: render targets grow with the drawing buffer, zone materials differ per zone). Before
+a bind that would pass it, idle entries are released — flipbooks first, then static atlases, least recently used first,
+never one a hold shows or a billboard samples. A flipbook that still does not fit is not bound: the card keeps its
+static frame (render waits on the id) and the flipbook is retried whenever bytes are freed and on `refresh()` (World3D
+1 Hz). A static atlas always binds (a creature is always drawn); an overrun is reported once per atlas.
+

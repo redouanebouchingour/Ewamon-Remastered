@@ -174,6 +174,24 @@ export async function loadSingleTextures(set: AtlasSet, frame: Pick<SpriteFrame,
   return { albedo: albedo!, normal: normal!, emissive: emissive!, bytes: atlasSetBytes(size, set.normalScale), size };
 }
 
+/**
+ * Bytes three 0.186's `Info` counts twice for an uploaded set (render IMPLEMENTATION-NOTES Part 9): `_getTextureMemorySize`
+ * adds the image's level-0 size AND every entry of `mipmaps`, and `mipmaps[0]` IS level 0 here (see the header), so each
+ * map's level 0 is counted twice — `texturesSize` reads 1.75 × the GPU bytes of a four-level chain. This is that level 0
+ * (RGBA8 albedo + RGBA8 normal + R8 emissive at each map's own size); the host subtracts it, like the KTX2 correction.
+ */
+export function infoOvercountBytes(t: AtlasTextures): number {
+  let n = 0;
+  for (const m of ATLAS_MAPS) {
+    const tex = t[m];
+    const levels = (tex.mipmaps ?? []) as unknown as DecodedImage[];
+    const l0 = levels[0];
+    if (l0 === undefined) continue;
+    n += l0.width * l0.height * (m === 'emissive' ? 1 : 4);
+  }
+  return n;
+}
+
 export function disposeAtlasTextures(t: AtlasTextures): void {
   for (const m of ATLAS_MAPS) {
     const tex = t[m];

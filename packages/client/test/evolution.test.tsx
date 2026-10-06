@@ -24,6 +24,7 @@ import { BANNER_ONLY_MS, setEvolutionPlayer } from '../src/app/evolution';
 import type { EvolutionCallbacks, EvolutionPlayer, EvolutionRequest } from '../src/app/evolution';
 import { presentItemUse } from '../src/app/itemUseFeedback';
 import { EvolutionDirector } from '../src/scene/EvolutionDirector';
+import { NO_LEASE } from '../src/scene/creatureTextures';
 import { useNotificationsStore } from '../src/state/notifications';
 import { useSessionStore } from '../src/state/session';
 import { useUiStore } from '../src/state/ui';
@@ -213,11 +214,12 @@ describe('EvolutionDirector: the world is locked while the sequence plays, and r
     const f = fakeStage();
     const inputs: boolean[] = []; const huds: boolean[] = [];
     const deferred: (() => void)[] = [];
-    const ensure = vi.fn();
+    const released: string[] = [];
+    const lease = vi.fn((sp: string) => ({ release: () => released.push(sp) }));
     const target = new EventTarget();
     let battle = false;
     const dir = new EvolutionDirector({
-      stage: f.stage, descriptor: () => DESC, ensureSpecies: ensure, canPlay: () => true, position: () => ({ x: 1, z: 2 }), selfId: () => 'me',
+      stage: f.stage, descriptor: () => DESC, leaseSprites: lease, canPlay: () => true, position: () => ({ x: 1, z: 2 }), selfId: () => 'me',
       reduced: () => true, setInputEnabled: (on) => inputs.push(on), inputAfter: () => !battle, setHudVisible: (on) => huds.push(on), hudVisible: () => true,
       target, defer: (fn) => deferred.push(fn),
     });
@@ -227,7 +229,9 @@ describe('EvolutionDirector: the world is locked while the sequence plays, and r
     expect(dir.active).toBe(true);
     expect(inputs).toEqual([false]);
     expect(huds).toEqual([false]);
-    expect(ensure.mock.calls.map((c) => c[0])).toEqual(['bramblecub', 'briarbear']);   // both atlases asked for
+    // both forms' fronts (flipbooks included) are leased before the sequence starts, released when it ends
+    expect(lease.mock.calls.map((c) => `${String(c[0])}:${String((c as unknown[])[1])}`)).toEqual(['bramblecub:front', 'briarbear:front']);
+    expect(released).toEqual([]);
     expect(f.requests[0]).toMatchObject({ at: { x: 1, z: 2 }, reduced: true, cheer: 'me' });
     expect(dir.faceAngle(3, 0)).toBeCloseTo(0, 9);               // the creature stands at (3, 4): straight +z from (3, 0)
     // render's phase callbacks run on the tick: deferred, never synchronous
@@ -255,6 +259,7 @@ describe('EvolutionDirector: the world is locked while the sequence plays, and r
     // the end restores the input and the HUD, and removes the listeners
     f.finish();
     await run;
+    expect(released.sort()).toEqual(['bramblecub', 'briarbear']);
     expect(dir.active).toBe(false);
     expect(inputs).toEqual([false, true]);
     expect(huds).toEqual([false, true]);
@@ -264,7 +269,7 @@ describe('EvolutionDirector: the world is locked while the sequence plays, and r
     const g = fakeStage();
     const inputs2: boolean[] = [];
     const dir2 = new EvolutionDirector({
-      stage: g.stage, descriptor: () => DESC, ensureSpecies: () => undefined, canPlay: () => true, position: () => ({ x: 0, z: 0 }), selfId: () => 'me',
+      stage: g.stage, descriptor: () => DESC, leaseSprites: () => NO_LEASE, canPlay: () => true, position: () => ({ x: 0, z: 0 }), selfId: () => 'me',
       reduced: () => false, setInputEnabled: (on) => inputs2.push(on), inputAfter: () => !battle, setHudVisible: () => undefined, hudVisible: () => false,
       target, defer: (fn) => fn(),
     });
@@ -279,7 +284,7 @@ describe('EvolutionDirector: the world is locked while the sequence plays, and r
     const f = fakeStage();
     const set = vi.fn();
     const base = {
-      stage: f.stage, ensureSpecies: () => undefined, position: () => ({ x: 0, z: 0 }), selfId: () => 'me', reduced: () => false,
+      stage: f.stage, leaseSprites: () => NO_LEASE, position: () => ({ x: 0, z: 0 }), selfId: () => 'me', reduced: () => false,
       setInputEnabled: set, inputAfter: () => true, setHudVisible: set, hudVisible: () => true, target: new EventTarget(),
     };
     expect(new EvolutionDirector({ ...base, descriptor: () => DESC, canPlay: () => false }).play(REQ, { reveal: () => undefined, leave: () => undefined })).toBeNull();
