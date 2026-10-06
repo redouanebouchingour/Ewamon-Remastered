@@ -1220,3 +1220,56 @@ What would close the gap: a fixed light-slot layout shared by all zones, so that
 - the loss-rate limit.
 
 **Not verified live:** the full client + server path. A real device loss can only be forced with `chrome://gpucrash`.
+
+## Phase E5 — the §50.4.7 test files (2026-10-06)
+
+- `test/no-getimagedata.test.ts` (vitest, 7 tests). Static scan of `client/src` and `render/src`, comments stripped:
+  - no `getImageData` anywhere;
+  - `putImageData` / `createImageData` / `new ImageData` only in the allow-listed `world/minimapDraw.ts`, which paints
+    the minimap base from the heightfield (no sprite import);
+  - `getContext('2d')` only in the HUD layer and the minimap;
+  - no sprite / atlas module draws to a 2D context or reads an RGBA-stride element. Writes from constants are allowed:
+    the 4×4 neutral placeholder and the quad tangent attribute.
+  - At runtime, a `BillboardPool` with a fake decoder: every variant / alpha combination shares one material and one
+    texture, and the 4 palette values (`hueShift`, `satMul`, `lightMul`, `alphaGlow`) are per-object scalars equal
+    to `VARIANT_UNIFORMS`.
+- Playwright: the root config gains the additive `client-e2e` project; the `chrome` project ignores those specs.
+  `playwright.e2e.config.ts` runs the same project without the fuzz `webServer`, whose fixed port 4179 another run may
+  hold. The `client-e2e` Chrome flags:
+  - WebGPU;
+  - no background throttling — two pages run at once;
+  - a 1280×800 viewport.
+- `test/e2e/stack.ts` boots a real server and client, on free ports and never the shared ones:
+  - server: `src/main.ts` through tsx, PGlite in a fresh temp `DATA_DIR`, `WORLD_WEATHER=off`, `SERVER_SEED=e2e`;
+  - client: the in-process Vite dev server, HMR and the watcher off; or, for `first-frame`, `vite build` served
+    statically with an `/api` proxy and `public/` served in place;
+  - `stop()` kills the server's process tree and removes the temp dir.
+- `test/e2e/game.ts`: register through the form, `__ewaWorld.debug()` polling, `walkTo`, `/me` over an independent REST
+  login (never the page's token family), and an A* `planPath` / `walkPath` over the zone's content walkable field.
+  `walkTo` is a straight-line autopilot, and the plaza blocks the straight line from the spawn to Wynn.
+- `slice-e2e.spec.ts`:
+  - two contexts register through the form;
+  - each sees the other as a spawned remote;
+  - a chat line reaches B once;
+  - A's beat with `mirevale.wynn` writes `met_wynn`, checked over REST;
+  - A enters the gym hall by its door warp, and Gardener Fen's battle reaches move selection, with the server's
+    `inBattle` set.
+  The trade, PvP and `verdant_gym` clear in the §50.4.7 row are not driven yet (spec row annotated).
+- `no-dom-in-frame.spec.ts`: 0 mutations in 10 s of idle overworld play. While walking and chatting, mutations come only
+  from the chat input and the notification host. Setup before the windows:
+  - wait for the arrival toasts to expire and the background-compile pill (`WorldBoot`, a loading surface, ~15
+    updates/s while it runs) to disappear;
+  - skip the tutorial card, which advances on events.
+- `first-frame.spec.ts`: a cold `/play` on the production build at 50 Mbit/s with the cache disabled.
+  - Byte budgets before the mark (measured: field materials 4.46 MB, sprites + GLB 1.19 MB).
+  - Hero tier and audio held unanswered until the mark, which still lands.
+  - The 2.5 s limit is asserted only with `EWA_REFERENCE_GPU=1`; on the dev iGPU the mark lands at ≈ 46–48 s
+    (synchronous shader warm-up, a HANDOFF open issue), annotated.
+- `dof-mask.spec.ts` and the `test/dof-mask/` page (offline HarnessWorld on `mire_route`). The scene pass's `mask` MRT is
+  read back exactly with `readRenderTargetPixelsAsync` (HalfFloat; rows padded to 256 bytes, except the last), with
+  the reads awaited one by one because three resolves the copy later.
+  - Silhouette per subject: forced-bit 1 / 0 re-renders at the tick frame's own TRAA jitter index (`_jitterIndex`
+    pinned, then restored), eroded 1 px.
+  - Frames: 300 overworld frames on the player's figure, 300 battle frames on both battlers.
+  - Without the pinned jitter, 1–7 px per frame differed; those were jitter artefacts, not mask defects.
+- **No client defects found.**
