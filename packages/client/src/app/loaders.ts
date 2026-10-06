@@ -6,6 +6,7 @@
  */
 import { redirect } from 'react-router';
 import type { LoaderFunctionArgs } from 'react-router';
+import { LEADERBOARD_MODES } from '@ewa/protocol';
 import type { RouteKey, RouteResponse } from '@ewa/protocol';
 import { ApiFailure, apiFetch, loginRedirect, requireSession } from '../net/api';
 import type { ApiInit } from '../net/api';
@@ -107,7 +108,7 @@ export function playLoader({ request }: LoaderFunctionArgs): Promise<{ readonly 
 export async function dexLoader({ request }: LoaderFunctionArgs) {
   const [dex] = await Promise.all([load(request, 'dex'), sessionReady(request.signal)]);
   useSessionStore.getState().applyProgressionDelta(
-    toProgressionDelta({ dexSeen: dex.seen, dexCaught: dex.caught, dexVariants: dex.variants, dexAlpha: dex.alpha }),
+    toProgressionDelta({ dexSeen: dex.seen, dexCaught: dex.caught, dexVariants: dex.variants, dexAlpha: dex.alpha, dexShiny: dex.shiny ?? [] }),
   );
   return dex;
 }
@@ -149,7 +150,7 @@ export async function guildLoader({ request }: LoaderFunctionArgs) {
   return { q, guilds: await loadOptional(request, 'guilds', { query: { search: q } }) };
 }
 
-export const MARKET_PARAMS = ['search', 'variant', 'isAlpha', 'levelMin', 'levelMax', 'sort', 'page'] as const;
+export const MARKET_PARAMS = ['search', 'variant', 'isAlpha', 'isShiny', 'levelMin', 'levelMax', 'sort', 'page'] as const;
 export type MarketTab = 'browse' | 'mine' | 'bids';
 
 export async function marketLoader({ request }: LoaderFunctionArgs) {
@@ -179,6 +180,55 @@ export async function battlePassLoader({ request }: LoaderFunctionArgs) {
   const [bp] = await Promise.all([load(request, 'battlePass'), sessionReady(request.signal)]);
   useNotificationsStore.getState().setPendingClaims(claimableLevels(bp));
   return bp;
+}
+
+// ---- Phase C4: rankings / history / profiles ---------------------------------------------------------------
+
+export type RankingMode = (typeof LEADERBOARD_MODES)[number];
+export type HistoryTab = 'battles' | 'trades';
+
+const pageOf = (sp: URLSearchParams): number => Math.max(1, Math.floor(Number(sp.get('page') ?? '1')) || 1);
+
+/** `/play/rankings?mode=rating|dex|trainerLevel|towerStreak&page=` → GET /leaderboard (25 rows a page, banned players excluded). */
+export async function rankingsLoader({ request }: LoaderFunctionArgs) {
+  const sp = new URL(request.url).searchParams;
+  const raw = sp.get('mode');
+  const mode: RankingMode = (LEADERBOARD_MODES as readonly string[]).includes(raw ?? '') ? (raw as RankingMode) : 'rating';
+  const page = pageOf(sp);
+  const [res] = await Promise.all([load(request, 'leaderboard', { query: { mode, page } }), sessionReady(request.signal)]);
+  return { mode, page, rows: res.rows };
+}
+
+/** `/play/history?tab=battles|trades&page=` → GET /history/battles or /history/trades (the caller's own, 25 a page). */
+export async function historyLoader({ request }: LoaderFunctionArgs) {
+  const sp = new URL(request.url).searchParams;
+  const tab: HistoryTab = sp.get('tab') === 'trades' ? 'trades' : 'battles';
+  const page = pageOf(sp);
+  if (tab === 'trades') return { tab, page, trades: (await load(request, 'historyTrades', { query: { page } })).rows } as const;
+  return { tab, page, battles: (await load(request, 'historyBattles', { query: { page } })).rows } as const;
+}
+
+/** A public profile, or `null` when the server answers 404 (unknown or banned) / 400 (not a username). */
+async function publicProfile(request: Request, username: string) {
+  try {
+    return await load(request, 'playerPublic', { params: { username: username.toLowerCase() } });
+  } catch (e) {
+    if (e instanceof ApiFailure && (e.error.status === 404 || e.error.status === 400)) return null;
+    throw e;
+  }
+}
+
+/** `/play/profile`: the editable identity comes from the session; the stats, badges and showcase from GET /players/:me. */
+export async function profileLoader({ request }: LoaderFunctionArgs) {
+  await sessionReady(request.signal);
+  const username = useSessionStore.getState().profile?.username ?? '';
+  return { pub: username === '' ? null : await publicProfile(request, username) };
+}
+
+/** `/play/players/:username` → GET /players/:username; `pub: null` renders "No trainer by that name". */
+export async function playerLoader({ request, params }: LoaderFunctionArgs) {
+  const username = params['username'] ?? '';
+  return { username, pub: await publicProfile(request, username) };
 }
 
 // ---- /admin -------------------------------------------------------------------------------------------------

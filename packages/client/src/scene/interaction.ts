@@ -6,10 +6,26 @@
  */
 import type { HudPrompt } from './HudWriter';
 
-export type InteractableKind = 'npc' | 'trainer' | 'item' | 'lore' | 'gym' | 'healer' | 'shop' | 'warp' | 'spawn';
+export type InteractableKind = 'npc' | 'trainer' | 'item' | 'lore' | 'gym' | 'healer' | 'shop' | 'warp' | 'spawn' | 'switch' | 'pc' | 'static' | 'raid' | 'obstacle' | 'fish' | 'tower';
 
+/**
+ * Client ranges stay inside the server's (3 m for npc / item / warp / switch, 4 m for a league trainer at its
+ * `leaderAt`, Phase A): a prompt the client shows is one the server accepts. Shop / healer have no server range (the
+ * interact is a no-op over the room); inside a hall they sit on the keeper / nurse behind the counter, 2.1 m from the
+ * nearest walkable floor, hence 3 m.
+ */
 export const RANGE: Readonly<Record<InteractableKind, number>> = {
-  npc: 2.5, trainer: 2.5, item: 2.5, lore: 2.5, gym: 2.5, healer: 2.5, shop: 2.5, warp: 2.5, spawn: 1.2,
+  npc: 2.5, trainer: 2.5, item: 2.5, lore: 2.5, gym: 3.5, healer: 3, shop: 3, warp: 2.5, spawn: 1.2, switch: 2.5, pc: 2.5,
+  // Phase B1: a legendary static (server INTERACT_RANGE_M = 3 around its snapped point)
+  static: 2.5,
+  // Phase C1: a raid den (server RAID_JOIN_RANGE_M = 8 around the hotspot; raidJoin is checked there)
+  raid: 8,
+  // Phase D10: a Cut tree / Strength boulder (server OBSTACLE_INTERACT_M = 3 from its centre; the stamped disc is ≈ 1.1 m)
+  obstacle: 2.6,
+  // Phase D9: the cast point the director keeps on the water ahead of the player (server FISH_REACH_M = 2.5)
+  fish: 2.6,
+  // Phase D14: the battle tower attendant (server TOWER_RANGE_M = 3 for `tower start`)
+  tower: 2.5,
 };
 export const PLAYER_RANGE = 6;
 
@@ -24,8 +40,8 @@ export interface Interactable {
   enabled: boolean;
 }
 
-export function makeInteractable(id: string, kind: InteractableKind, x: number, z: number, verb: string, target: string, key: string): Interactable {
-  return { id, kind, x, z, range: RANGE[kind], prompt: { key, verb, target }, enabled: true };
+export function makeInteractable(id: string, kind: InteractableKind, x: number, z: number, verb: string, target: string, key: string, range: number = RANGE[kind]): Interactable {
+  return { id, kind, x, z, range, prompt: { key, verb, target }, enabled: true };
 }
 
 export class InteractionTargets {

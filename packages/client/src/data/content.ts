@@ -2,9 +2,23 @@
  * Display lookups over @ewa/content for the DOM screens. Read-only: nothing here decides game truth — stats are
  * shown "at level" with core's calcStat, exactly the numbers the server uses (§20.9.3).
  */
-import { ABILITIES, CONSUMABLES, ITEMS, MOVES, ORBS, SPECIES, allZones, createContentIndex } from '@ewa/content';
+import {
+  ABILITIES,
+  CONSUMABLES,
+  EVOLUTION_STONES,
+  ITEMS,
+  KEY_ITEMS,
+  MOVES,
+  ORBS,
+  SPECIES,
+  TRADE_EVOLVE_RIBBON,
+  allZones,
+  canLearnMachineMove,
+  createContentIndex,
+  tmMoveOf,
+} from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
-import { calcMaxHp, calcStat } from '@ewa/core';
+import { calcMaxHp, calcStat, itemEvolutionTarget, tradeEvolutionTarget } from '@ewa/core';
 import type { AbilityDef, ContentIndex, CreatureInstance, MoveDef, SpeciesDef, TypeName } from '@ewa/core';
 
 let index: ContentIndex | null = null;
@@ -84,7 +98,11 @@ for (const i of ITEMS) {
   // held/key items have no sell price in v1 (server priceOf: sell = none)
   itemMap.set(i.id, { id: i.id, name: i.name, description: i.description, kind: i.slot, price: i.price, sellPrice: 0, usableInBattle: false });
 }
-for (const c of CONSUMABLES) {
+// Phase D1–D3: old_rod + TMs are key items; the evolution stones are consumables
+for (const i of KEY_ITEMS) {
+  itemMap.set(i.id, { id: i.id, name: i.name, description: i.description, kind: i.slot, price: i.price, sellPrice: 0, usableInBattle: false });
+}
+for (const c of [...CONSUMABLES, ...EVOLUTION_STONES]) {
   itemMap.set(c.id, { id: c.id, name: c.name, description: c.description, kind: 'consumable', price: c.price, sellPrice: c.sellPrice, usableInBattle: c.usableInBattle });
 }
 for (const o of ORBS) {
@@ -98,9 +116,40 @@ export function itemInfo(id: string): ItemInfo {
 export const HELD_ITEMS: readonly ItemInfo[] = [...itemMap.values()].filter((i) => i.kind === 'held');
 
 /** Consumable effects the server applies to one creature outside battle (`POST /item/use` with a target). */
-const CREATURE_EFFECTS: ReadonlySet<string> = new Set(['healHp', 'revive', 'cureStatus', 'fullRestore', 'restorePp', 'rareCandy']);
-/** Field items usable on a creature from its panel, in content order. */
-export const CREATURE_ITEMS: readonly ItemInfo[] = CONSUMABLES.filter((c) => CREATURE_EFFECTS.has(c.effect.kind)).map((c) => itemInfo(c.id));
+const CREATURE_EFFECTS: ReadonlySet<string> = new Set(['healHp', 'revive', 'cureStatus', 'fullRestore', 'restorePp', 'rareCandy', 'evolutionStone']);
+/** Field items usable on a creature from its panel, in content order (Phase D3: the evolution stones last). */
+export const CREATURE_ITEMS: readonly ItemInfo[] = [...CONSUMABLES, ...EVOLUTION_STONES].filter((c) => CREATURE_EFFECTS.has(c.effect.kind)).map((c) => itemInfo(c.id));
+
+// ---- Phase D2/D3: TMs, tutors, stones, trade evolutions (display + prompts; the server decides) -----------
+
+export const STONE_IDS: ReadonlySet<string> = new Set(EVOLUTION_STONES.map((s) => s.id));
+
+/** The species `c` becomes with the stone `itemId`, or null (not a stone, or not this creature's stone). */
+export function stoneTarget(itemId: string, c: Pick<CreatureInstance, 'speciesId'>): string | null {
+  const sp = speciesMap.get(c.speciesId);
+  return sp === undefined ? null : itemEvolutionTarget(sp.evolution, itemId);
+}
+
+/** The species a received trade-evolver can become now (the trade wrote its marker), or null. */
+export function tradeEvolveTarget(c: Pick<CreatureInstance, 'speciesId' | 'ribbons'>): string | null {
+  const sp = speciesMap.get(c.speciesId);
+  if (sp === undefined || !c.ribbons.includes(TRADE_EVOLVE_RIBBON)) return null;
+  return tradeEvolutionTarget(sp.evolution);
+}
+
+/** The moves of the TMs in `items`, in TM order. */
+export function ownedTmMoves(items: Readonly<Record<string, number>> | undefined): readonly string[] {
+  return KEY_ITEMS.filter((k) => (items?.[k.id] ?? 0) > 0).map((k) => tmMoveOf(k.id)).filter((m): m is string => m !== null);
+}
+
+/** Why `c` cannot be taught `moveId` by a TM / tutor, or null when it can (mirrors the server's checks). */
+export function teachRefusal(c: Pick<CreatureInstance, 'speciesId' | 'moves'>, moveId: string): string | null {
+  const sp = speciesMap.get(c.speciesId);
+  const mv = moveMap.get(moveId);
+  if (sp === undefined || mv === undefined) return 'Unknown move';
+  if (c.moves.some((m) => m.id === moveId)) return 'Already known';
+  return canLearnMachineMove(sp, mv) ? null : `Needs a ${mv.type}-type`;
+}
 /** True for items whose effect can be applied several times in one request (`qty` > 1). */
 export const MULTI_USE_ITEMS: ReadonlySet<string> = new Set(CONSUMABLES.filter((c) => c.effect.kind === 'rareCandy').map((c) => c.id));
 

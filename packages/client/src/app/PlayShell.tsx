@@ -12,11 +12,17 @@ import { ChallengePrompt } from '../world/ChallengePrompt';
 import { ChatInput } from '../world/ChatInput';
 import { DialogueBox } from '../world/DialogueBox';
 import { EvolutionBanner } from '../world/EvolutionBanner';
+import { FishingPrompt } from '../world/FishingPrompt';
+import { Minimap } from '../world/Minimap';
 import { PostBattlePrompts } from '../world/PostBattlePrompts';
+import { RaidLobby } from '../world/RaidLobby';
+import { TowerModal, TowerStreak } from '../world/TowerModal';
 import { TradeModal } from '../world/TradeModal';
+import { TutorialCard } from '../world/TutorialCard';
 import { setNavigator } from './navigation';
 import { installMessageRouter } from '../net/messageRouter';
 import { getWorldSession } from '../net/WorldSession';
+import { worldCapability } from '../scene/worldHost';
 import { useSettingsStore } from '../state/settings';
 import type { InputAction } from '../state/settings';
 import { useUiStore } from '../state/ui';
@@ -40,9 +46,10 @@ function useWorldConnection(zoneId: ZoneId): void {
 
 const SHORTCUTS: Partial<Record<InputAction, string>> = {
   party: '/play/party',
-  // field items (Rare Candy, potions, revives…) are used from a creature's panel on the Party screen
-  bag: '/play/party',
+  // Phase C5: the Bag screen (field items, potions, Rare Candy, held items)
+  bag: '/play/bag',
   journal: '/play/dex',
+  map: '/play/map',
 };
 
 function isTyping(target: EventTarget | null): boolean {
@@ -131,10 +138,13 @@ function WorldHint() {
         <kbd>{label(binds.party[0])}</kbd> Party
       </span>
       <span>
-        <kbd>{label(binds.bag[0])}</kbd> Items
+        <kbd>{label(binds.bag[0])}</kbd> Bag
       </span>
       <span>
         <kbd>{label(binds.journal[0])}</kbd> Dex
+      </span>
+      <span>
+        <kbd>{label(binds.map[0])}</kbd> Map
       </span>
       <span>
         <kbd>{label(binds.pause[0]) === 'Escape' ? 'Esc' : label(binds.pause[0])}</kbd> Settings
@@ -149,6 +159,7 @@ export function PlayShell() {
   const hudVisible = useUiStore((st) => st.hudVisible);
   // the evolution sequence has the stage: the open panel and the shortcut hint step aside until it ends (§20.5.6)
   const evolving = useUiStore((st) => st.evolution !== null);
+  const inBattle = useUiStore((st) => st.battle !== null);
   useWorldConnection(zoneId as ZoneId);
   useShellHotkeys();
   const pendingPanel = usePendingPanel();
@@ -160,11 +171,20 @@ export function PlayShell() {
         {pendingPanel !== null ? <PanelSkeleton path={pendingPanel} /> : <Outlet />}
       </div>
       {!hasPanel && <WorldHint />}
+      {/* Phase C3: the minimap draws over the live world only (no world → no canvas, as GameCanvas) */}
+      {!hasPanel && !inBattle && worldCapability() && <Minimap />}
+      {/* Phase D12: Prof. Wynn's tutorial steps (live world only, like the minimap) */}
+      {worldCapability() && <TutorialCard />}
       <DialogueBox />
+      <FishingPrompt />
       <ChatInput />
       <BattleOverlay />
       <ChallengePrompt />
       <TradeModal />
+      <RaidLobby />
+      {/* Phase D14: the battle tower (picker / between fights / summary) and the counter over a tower fight */}
+      <TowerModal />
+      <TowerStreak />
       <PostBattlePrompts />
       <EvolutionBanner />
       <ConnectionOverlay />

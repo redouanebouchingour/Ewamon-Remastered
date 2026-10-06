@@ -13,11 +13,18 @@
  * 'grove_stone') are story names, not render `SetPieceId`s, so the set-piece is content's `SET_PIECE_BY_ZONE` (one
  * per zone, in ZONE_ORDER); `ZoneSpec.warps` carries each warp door marker plus an arrival marker `${id}:to` at
  * (toX, toZ), because `Marker` has no destination field.
+ *
+ * Phase A: `spec.interiors` is content's placed pockets flattened to render's `InteriorSpec` (`interiorSpecsFor`;
+ * `[]` outside towns). The pockets' door warps (`<id>.in` / `<id>.out`) are NOT in `spec.warps` — those markers make
+ * render draw a "warp room" at the destination; the pocket itself is the room.
+ *
+ * Phase D10: `spec.obstacles` is content's `ZoneDef.obstacles` (id, kind, x, z) — present only in zones that have
+ * some, so every other zone's spec is unchanged. Which ones a player cleared is per player (`ObstaclesHandle`).
  */
-import { SET_PIECE_BY_ZONE, getHeightfield, zonePlan } from '@ewa/content';
-import type { HarvestState, LinkDir, ZoneDef } from '@ewa/content';
+import { SET_PIECE_BY_ZONE, getHeightfield, interiorsFor, zonePlan } from '@ewa/content';
+import type { HarvestState, LinkDir, ZoneDef, ZoneId } from '@ewa/content';
 import { INTERIOR_SIZE, edgePoint, lightsFromPlan, waterBodies } from '@ewa/render';
-import type { Dir, Edge, HarvestLevel, Marker, WaterSpec, ZonePlanData, ZoneSpec } from '@ewa/render';
+import type { Dir, Edge, HarvestLevel, InteriorSpec, Marker, WaterSpec, ZonePlanData, ZoneSpec } from '@ewa/render';
 
 /** SPEC §10.5.1 `SetPieceId`, one per zone, in ZONE_ORDER order (content's table). */
 export { SET_PIECE_BY_ZONE };
@@ -108,5 +115,39 @@ export function zoneSpecFor(zone: ZoneDef, harvest: HarvestState): ZoneSpec {
     accentType: zone.type,
     harvestLevel: HARVEST_LEVEL[harvest],
     plan: specPlan,
+    interiors: interiorSpecsFor(zone.id),
+    ...(zone.obstacles !== undefined && zone.obstacles.length > 0 ? { obstacles: zone.obstacles.map((o) => ({ id: o.id, kind: o.kind, x: o.x, z: o.z })) } : {}),
   };
+}
+
+/** Content's placed pockets → render `InteriorSpec` (local frames kept; league ids and flags stay client-side). Pure. */
+export function interiorSpecsFor(zoneId: ZoneId): InteriorSpec[] {
+  return interiorsFor(zoneId).map((p) => {
+    const d = p.def;
+    return {
+      id: d.id,
+      building: d.building,
+      template: d.template,
+      theme: d.theme,
+      x: p.at.x,
+      z: p.at.z,
+      yaw: p.at.yaw,
+      floorY: p.at.floorY,
+      w: d.w,
+      d: d.d,
+      footprint: { x: p.footprint.x, z: p.footprint.z, hw: p.footprint.hw, hd: p.footprint.hd },
+      entry: { lx: d.entry.lx, lz: d.entry.lz },
+      exit: { lx: d.exit.lx, lz: d.exit.lz },
+      walls: d.walls.map((w) => ({ lx: w.lx, lz: w.lz, hw: w.hw, hd: w.hd, style: w.style })),
+      gates: d.gates.map((g) => ({ lx: g.rect.lx, lz: g.rect.lz, hw: g.rect.hw, hd: g.rect.hd, id: g.id, style: g.style })),
+      switches: d.switches.map((s) => ({ id: s.id, kind: s.kind, lx: s.lx, lz: s.lz })),
+      rooms: d.rooms.map((r) => ({
+        id: r.id,
+        arena: { lx: r.arena.lx, lz: r.arena.lz },
+        leaderAt: r.leaderAt === null ? null : { lx: r.leaderAt.lx, lz: r.leaderAt.lz },
+        bounds: { lx: r.bounds.lx, lz: r.bounds.lz, hw: r.bounds.hw, hd: r.bounds.hd },
+      })),
+      props: d.props.map((q) => ({ kind: q.kind, lx: q.lx, lz: q.lz, yaw: q.yaw, scale: q.scale })),
+    };
+  });
 }

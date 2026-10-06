@@ -60,6 +60,8 @@ export const PlayerProfileSchema = z.object({
   isAdmin: z.boolean(),
   zoneId: ZoneIdSchema,
   createdAt: IsoDate,
+  /** Phase C6: `players.email_verified_at` is set. Absent (older server) = unknown; verification never gates play. */
+  emailVerified: z.boolean().optional(),
 });
 export type PlayerProfile = z.infer<typeof PlayerProfileSchema>;
 
@@ -92,6 +94,8 @@ export const ListingViewSchema = z.object({
   level: z.number().int().min(1).max(100),
   variantKey: VariantKeySchema,
   isAlpha: z.boolean(),
+  /** Phase D4 */
+  isShiny: z.boolean().optional(),
   startingBid: Money,
   currentBid: Money.nullable(),
   currentBidderId: Uuid.nullable(),
@@ -147,7 +151,8 @@ export type GuildView = z.infer<typeof GuildViewSchema>;
 export const GuildMemberViewSchema = z.object({ playerId: Uuid, username: Username, role: z.enum(GUILD_ROLES), joinedAt: IsoDate });
 export type GuildMemberView = z.infer<typeof GuildMemberViewSchema>;
 
-export const LEADERBOARD_MODES = ['rating', 'dex', 'trainerLevel'] as const;
+/** Phase D14 adds `towerStreak` (best battle tower streak; only players with one). */
+export const LEADERBOARD_MODES = ['rating', 'dex', 'trainerLevel', 'towerStreak'] as const;
 /** TODO(spec): `LeaderboardRow` has no field list in the spec; these are the columns §30.6.3 sorts on plus the showcase-card fields. */
 export const LeaderboardRowSchema = z.object({
   rank: z.number().int().min(1),
@@ -160,6 +165,9 @@ export const LeaderboardRowSchema = z.object({
   trainerLevel: z.number().int().min(1),
   dexCaughtCount: z.number().int().min(0),
   guildTag: z.string().nullable(),
+  /** Phase D14: battle tower streak — best ever and the run in progress (0 / 0 for a player who never ran it) */
+  towerBest: z.number().int().min(0).optional(),
+  towerCurrent: z.number().int().min(0).optional(),
 });
 export type LeaderboardRow = z.infer<typeof LeaderboardRowSchema>;
 
@@ -181,6 +189,8 @@ export const TradeHistoryRowSchema = z.object({
   id: z.number().int(),
   tradeId: Uuid,
   partnerId: Uuid,
+  /** Phase C4 (client history screen): the partner's current username; null once that account is gone */
+  partnerUsername: Username.nullable().optional(),
   sent: z.array(TradedCreature),
   received: z.array(TradedCreature),
   moneySent: Money,
@@ -251,6 +261,16 @@ export const RefreshReq = z.object({ refresh: z.string().min(1) });
 export const LogoutReq = RefreshReq;
 export const AuthRes = z.object({ access: z.string().min(1), refresh: z.string().min(1), player: PlayerProfileSchema });
 export const RefreshRes = z.object({ access: z.string().min(1), refresh: z.string().min(1) });
+/** Phase C6 — the opaque single-use token from an emailed link (32 random bytes, base64url). */
+export const EmailToken = z.string().min(16).max(128);
+/** Phase C6 `POST /auth/forgot` — always 204 (no account enumeration). */
+export const ForgotReq = z.object({ email: Email });
+/** Phase C6 `POST /auth/reset` — 204; every refresh token of the account is revoked. */
+export const ResetReq = z.object({ token: EmailToken, password: Password });
+/** Phase C6 `POST /auth/verify` — 204; idempotent for an already-verified account only through a fresh token. */
+export const VerifyReq = z.object({ token: EmailToken });
+/** Phase C6: 400 body of `/auth/reset` and `/auth/verify` for a token that is unknown, expired or already used. */
+export const BadTokenErr = z.object({ code: z.literal('badToken'), reason: z.enum(['unknown', 'expired', 'used']) });
 
 // ---- me / zone / profile / quests --------------------------------------------------------------------------------
 
@@ -330,6 +350,13 @@ export const SetupReq = z.object({ ability: z.string().min(1).max(40), heldItem:
 /** `CreatureInstance` (spine §4.7) + the held-item inventory counts it touched (P1). */
 export const CreatureSetupRes = CreatureInstanceSchema.extend({ inventoryDelta: InventoryDeltaBodySchema });
 export const EvolveReq = z.object({ into: z.string().min(1).max(40) });
+/**
+ * Phase D3: the evolved creature, plus — for a stone evolution — the stone count it spent (and the creature in
+ * creaturesUpdated). Optional: a level or trade evolution touches no item.
+ */
+export const CreatureEvolveRes = CreatureInstanceSchema.extend({ inventoryDelta: InventoryDeltaBodySchema.optional() });
+/** Phase D2 move tutor: `move` from a tutor NPC in the player's zone; `forget` names the slot it replaces (required when 4 are known). */
+export const TutorReq = z.object({ move: ItemId, forget: ItemId.nullable() });
 export const CreatureFlagsReq = z.object({ favorite: z.boolean().optional(), locked: z.boolean().optional() });
 
 export const ItemUseReq = z.object({ item: ItemId, target: Uuid.nullable(), qty: Qty });
@@ -346,6 +373,8 @@ export const DexRes = z.object({
   caught: StringList,
   variants: z.record(z.string(), z.array(VariantKeySchema)),
   alpha: StringList,
+  /** Phase D4: species of which a shiny was caught */
+  shiny: StringList.optional(),
 });
 export const ShopParams = z.object({ zoneId: ZoneIdSchema });
 export const ShopRes = z.object({ stock: StringList, prices: z.record(z.string(), Money) });
@@ -359,6 +388,8 @@ export const MarketQuery = z.object({
   search: z.string().max(40).optional(),
   variant: VariantKeySchema.optional(),
   isAlpha: QueryBool.optional(),
+  /** Phase D4 */
+  isShiny: QueryBool.optional(),
   levelMin: z.coerce.number().int().min(1).max(100).optional(),
   levelMax: z.coerce.number().int().min(1).max(100).optional(),
   sort: z.enum(MARKET_SORTS).default('endingSoon'),
@@ -472,7 +503,7 @@ export interface RouteDef {
   /** `null` = 204 No Content */
   readonly response: z.ZodType | null;
   /** 30-server-netcode.md §30.6.4 key, when the route has a dedicated limit (else restRead/restWrite). */
-  readonly limit?: 'register' | 'login' | 'refresh' | 'listing' | 'bid' | 'message' | 'friendReq' | 'guildOp';
+  readonly limit?: 'register' | 'login' | 'refresh' | 'listing' | 'bid' | 'message' | 'friendReq' | 'guildOp' | 'forgot' | 'emailToken' | 'resend';
 }
 
 const route = <const R extends RouteDef>(r: R): R => r;
@@ -482,6 +513,10 @@ export const ROUTES = {
   authLogin: route({ method: 'POST', path: '/auth/login', auth: 'none', request: LoginReq, response: AuthRes, limit: 'login' }),
   authRefresh: route({ method: 'POST', path: '/auth/refresh', auth: 'none', request: RefreshReq, response: RefreshRes, limit: 'refresh' }),
   authLogout: route({ method: 'POST', path: '/auth/logout', auth: 'bearer', request: LogoutReq, response: null }),
+  authForgot: route({ method: 'POST', path: '/auth/forgot', auth: 'none', request: ForgotReq, response: null, limit: 'forgot' }),
+  authReset: route({ method: 'POST', path: '/auth/reset', auth: 'none', request: ResetReq, response: null, limit: 'emailToken' }),
+  authVerify: route({ method: 'POST', path: '/auth/verify', auth: 'none', request: VerifyReq, response: null, limit: 'emailToken' }),
+  authResend: route({ method: 'POST', path: '/auth/resend', auth: 'bearer', request: Nothing, response: null, limit: 'resend' }),
   me: route({ method: 'GET', path: '/me', auth: 'bearer', response: MeRes }),
   zoneEnter: route({ method: 'POST', path: '/zone/enter', auth: 'bearer', request: ZoneEnterReq, response: ZoneEnterRes }),
   profile: route({ method: 'POST', path: '/profile', auth: 'bearer', request: ProfileReq, response: PlayerProfileSchema }),
@@ -493,7 +528,8 @@ export const ROUTES = {
   creatureNickname: route({ method: 'POST', path: '/creature/:id/nickname', auth: 'bearer', params: CreatureParams, request: NicknameReq, response: CreatureInstanceSchema }),
   creatureMoves: route({ method: 'POST', path: '/creature/:id/moves', auth: 'bearer', params: CreatureParams, request: MovesReq, response: CreatureInstanceSchema }),
   creatureSetup: route({ method: 'POST', path: '/creature/:id/setup', auth: 'bearer', params: CreatureParams, request: SetupReq, response: CreatureSetupRes }),
-  creatureEvolve: route({ method: 'POST', path: '/creature/:id/evolve', auth: 'bearer', params: CreatureParams, request: EvolveReq, response: CreatureInstanceSchema }),
+  creatureEvolve: route({ method: 'POST', path: '/creature/:id/evolve', auth: 'bearer', params: CreatureParams, request: EvolveReq, response: CreatureEvolveRes }),
+  creatureTutor: route({ method: 'POST', path: '/creature/:id/tutor', auth: 'bearer', params: CreatureParams, request: TutorReq, response: CreatureSetupRes }),
   creatureRelease: route({ method: 'POST', path: '/creature/:id/release', auth: 'bearer', params: CreatureParams, request: Nothing, response: null }),
   creatureFlags: route({ method: 'POST', path: '/creature/:id/flags', auth: 'bearer', params: CreatureParams, request: CreatureFlagsReq, response: CreatureInstanceSchema }),
   itemUse: route({ method: 'POST', path: '/item/use', auth: 'bearer', request: ItemUseReq, response: ItemUseRes }),

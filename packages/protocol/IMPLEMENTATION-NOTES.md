@@ -83,3 +83,67 @@ installed library that future readers should not have to re-derive. The spec its
   apostrophe in `'…Or I'm older…'`), which is the concurrent content agent's WIP. Because protocol references content, `tsc -b`
   stops there; protocol itself is clean (above).
 - `pnpm lint` — protocol `src/` and `test/` clean; the same content parse error is the only other report.
+
+## Phase C3 — `fastTravel` (2026-10-06)
+
+- `CLIENT_MESSAGES.fastTravel = FastTravelMsg { zoneId: z.enum(ZONE_IDS) }` — the 21st client message
+  (`CLIENT_MESSAGE_COUNT` 21); `CLIENT_MESSAGE_LIMITS.fastTravel` 4 / 1 s (the server adds a 3 s cooldown of its own).
+- `FAST_TRAVEL_REFUSALS` — the `error { code: 'notAllowed', detail }` reasons (`notTown`, `notVisited`, `travelGated`,
+  `travelBusy`, `travelCooldown`, `travelBlocked`, `travelFailed`), typed for the server and read by the client so it does
+  not toast an error the server already explained with its own toast. No server message changed: an accepted trip is the
+  ordinary `handover`.
+- `test/payloads.test.ts`: 21 keys in spine order, the valid example and four malformed payloads.
+
+## Phase D2–D3 — tutor route, evolve response (2026-10-06)
+
+- `TutorReq { move, forget: string | null }` and `ROUTES.creatureTutor` (`POST /creature/:id/tutor`, response
+  `CreatureSetupRes` = creature + `inventoryDelta` carrying the new money). 65 routes.
+- `CreatureEvolveRes` = `CreatureInstanceSchema.extend({ inventoryDelta: InventoryDeltaBodySchema.optional() })` replaces
+  the bare creature on `creatureEvolve`: a stone evolution reports the spent stone's count; level / trade evolutions omit
+  it, so older clients reading only the creature fields keep working.
+- `ItemUseRes.events` is loose already; a stone answers `{ t: 'evolveReady', into, item }`.
+
+## Phase D4 — shinies (2026-10-06)
+
+- `CreatureInstanceSchema.isShiny` optional; `SpawnState` gains `@type('boolean') isShiny = false` appended LAST (earlier
+  field indexes unchanged; `schema.test.ts` pins the order); `ListingViewSchema.isShiny` optional; `MarketQuery.isShiny`
+  (`QueryBool`); `DexRes.shiny` optional. Every addition optional so pre-D4 payloads stay valid.
+- `ZoneState.weather` already existed (Phase D7 only starts writing it).
+- Tests: `test/shiny.test.ts` (4).
+
+## Phase D6 — doubles (2026-10-06)
+
+- `BattleActionMsg.pos?: 0 | 1` (the doubles field position; absent = the server fills the lowest waiting one; ignored in
+  singles); the `move` action gains `target?: FieldRefSchema` (`{ side: 0|1, pos: 0|1 }`). `SideSchema.actives?`
+  (tuple of two party indices) and `BattleStateSchema.slots?: 2`. All optional, so singles payloads and parse outputs
+  carry no new keys (`test/doubles.test.ts`).
+
+## Phase D8–D11 — world systems (2026-10-06)
+
+- `MOVEMENT.bikeSpeed` 10.5 (9 keys now), `gaitSpeed(running, bike)`, `speedCap/maxStep(…, bike = false)`,
+  `MoveInput.bike?` (stepMovement rides at bikeSpeed, `running` ignored).
+- `InputMsg.bike?: boolean`; `INTERACT_KINDS` + `'obstacle'`; `FishMsg { angle }` (an empty object would have matched
+  the forged-progressionDelta test, and the heading is what the server samples water along), `FISH_REACH_M` 2.5,
+  `FISH_REFUSALS`; `CLIENT_MESSAGES.fish` (22 keys), limit 1 per 1.5 s.
+- `PlayerState.surfing` / `biking` appended LAST (earlier field indexes unchanged).
+- Tests: `payloads.test.ts` (22 keys, fish cases, obstacle kind, bike flag), `schema.test.ts` (fields),
+  `movement.test.ts` (bike speed / caps).
+
+## Phase D12–D13 — ranked queue (2026-10-06)
+
+- `RankedQueueMsg { action: 'join' | 'leave' }`, `CLIENT_MESSAGES.rankedQueue` (23 keys), limit 4 per 5 s.
+  `RANKED_WINDOW { base 100, step 50, stepMs 10 000, max 400 }` + `rankedWindow(waitedMs)` (shared by the server's
+  matcher and the client's panel).
+- `rankedStatus { state, rating, waitedMs, window, opponent, reason }` appended LAST to `SERVER_MESSAGE_TYPES` (17);
+  `RANKED_STATES`, `RANKED_IDLE_REASONS` (`left`, `busy`, `party`, `cancelled`, `started`).
+- Tests: `payloads.test.ts` (rankedQueue cases, 23 keys, limit, window), `server-messages.test.ts` (example, 17).
+
+## Phase D14 — post-game (2026-10-06)
+
+- `TowerMsg` (`start { picks: 3 ids } | next | quit`), `CLIENT_MESSAGES.tower` (24 keys), limit 4/s; `TOWER_REFUSALS`
+  (`locked`, `tooFar`, `badPicks`, `running`, `noRun`, `inBattle`).
+- `towerState { phase, streak, runWins, best, set, fight, picks, reward }` appended after `rankedStatus` (18 variants);
+  `TOWER_PHASES`.
+- `BattleStateSchema.noExp` (optional literal true). `LEADERBOARD_MODES` gains `towerStreak`; `LeaderboardRow` gains
+  optional `towerBest` / `towerCurrent` (optional so older fixtures stay valid; the server always fills them).
+- Tests: `payloads.test.ts` (tower cases, 24 keys, limit), `server-messages.test.ts` (example, 18).

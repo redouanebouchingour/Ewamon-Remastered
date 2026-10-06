@@ -55,7 +55,9 @@ process), `S<n>` (spec gaps) or `W<n>` (spawn director).
 - **R4 — `ZoneUserData` additions:** `flags`, `badges`, `inventory` (caches the spec's §30.4.8 / §30.2.7
   already assume), `handover` / `arrival` / `handoverCooldownUntil`, `replaced`, `handoverDone`, `moved`,
   `rejects`, `unknown`. `ZoneAuth.ip` carries the socket IP for the per-IP socket count.
-- **R5 — gym marker.** Content has no coordinate for a gym door. The server fixes `LEAGUE_MARKER = (0, −26)`
+- **R5 — gym marker.** *(Superseded by Phase A interiors, 2026-10-06: league trainers are challenged at their
+  `interiorLeaders` spot inside their hall; the marker below is only the fallback for a league trainer with no hall.)*
+  Content has no coordinate for a gym door. The server fixes `LEAGUE_MARKER = (0, −26)`
   (the plaza ring's north side) in every town with a gym and in `solenne` (Wardens / Champion), checked at
   4 m. **Open question for the client/render agents:** place the gym door there, or add `ZoneDef.gymAt` to
   content and point `rooms/interactables.ts` at it.
@@ -563,3 +565,351 @@ spawn rolls each never place a spawn whose sample is inside a footprint or insid
 the room's existing `nearestWalkable` snap places players 0.5 m away at (−50, 0.5). `movement.test.ts`'s thin-wall
 case, vacuous before (mire_route had no thin wall), now runs against a fence / post and got a `dtMs` inside the speed
 cap.
+
+# Phase A interiors (2026-10-06)
+
+Every town building opens into a pocket hall in the zone's own outer band (content `interiors.ts` /
+`interiorIndex.ts`). Walls and screens are stamped `walkable = 0`, so movement validation refuses them unchanged.
+
+- **Interact targets** (`rooms/interactables.ts`): `warp` = `zone.warps ∪ interiorWarps`; `npc` also resolves hall
+  trainers (`interiorTrainers`, plain `TrainerDef`s → `kind: 'trainer'`, flag `trainer:<id>:beaten`, no rematch);
+  `item` also resolves `interiorItems` (same `item:<zone>:<id>` flag); `gym` is checked at the leader's own
+  `interiorLeaders` x/z (4 m) — `LEAGUE_MARKER` is only the fallback for a league trainer without a hall (supersedes
+  R5); new `switch` kind from `interiorSwitches`. Interior NPCs (shopkeepers, residents) are client-local and never
+  resolve.
+- **Battle position** (`ZoneRoom.battleAt`): `interiorArenaFor(zone, x, z) ?? player position`, used for every
+  `startNpc` / `startStatic` (story-beat battles included) and for pvp (the midpoint). Wild battles keep the player
+  position (spawns never stand in a pocket). `BattleSession.yaw` (new, `null` outside a hall) and `battleStart` now
+  carry `x`, `z`, `yaw` for every sender (npc, static, wild, pvp all go through `open`).
+- **Switches** (`case 'switch'`): every `requires` flag held, else toast + `error notAllowed 'switchLocked'`; a
+  non-null `sets` not yet held is written in one transaction (`progress.setFlags`), applied, and sent as
+  `progressionOnly({ flags })`; a `warpTo` teleports through the same snap as warps (`ZoneRoom.teleport`) — also when
+  the flag is already held.
+- **Per-player gates**: `ZoneUserData.closedGates` (the `.solid`s of `gatesClosedFor(zone, flags)`; the shared empty
+  `NO_GATES` in zones without gates) is passed to `validateInput` as `MovePrev.closedGates`; `standable` /
+  `segmentStandable` refuse a sample inside one. It is computed on join (handover arrivals join through the same path)
+  and recomputed by `applyFlags` only when a flag is new and some gate is still shut. `applyFlags` is now the only
+  writer of `ud.flags` after join: the battle-end badge path (`onProgress` → `badge:<id>`) was writing the set
+  directly and now goes through it; battle-end flags (`trainer:<id>:beaten`, `elite:*:beaten`) already did.
+- **Spawn director**: a roll inside a pocket footprint (`interiorFootprintAt`) is skipped like an unwalkable one (no
+  extra draw, seeded sequences outside pockets unchanged).
+- **League order** is unchanged (`leagueRefusal`); the Wardens are now fought at their chambers of `solenne.league`,
+  each chamber gate opening on the previous Warden's `elite:*:beaten`.
+- **Tests**: `test/interiors.test.ts` (10 tests: pure gate validation; spawn rolls never in a pocket; door warps both
+  ways + a hall wall refused; a gate refused → opened by a trainer win → for that player only → open on join from a
+  stored flag; Mira at the hall arena with `battleStart` x/z/yaw and nothing at the old door marker; an open-world
+  battle keeps the position and `yaw: null`; switch `requires` / `sets` once / `warpTo` incl. with the flag held;
+  Solenne Wardens in order with the c1 gate opened by the Veil win; a full Mirevale walk with real inputs → badge).
+  `story-beats.test.ts` now challenges Mira 2.5 m in front of her in the hall (was the (0, −23.5) door marker); the
+  forged-interact "too far" cases (story-beats, authority A6) stand 26 m away inside the hall (the old spot is outside the AOI now → notFound).
+  `footprints.test.ts`'s spawn check uses the STAMPED solids (content drops scatter solids overlapping a pocket from
+  the stamp, `interiorPlan.droppedSolids`) and also asserts no spawn in a pocket.
+- **Open (content/render)**: a dropped scatter solid is dropped when its circle merely OVERLAPS a pocket footprint,
+  so a tree/rock whose centre is outside the footprint (e.g. skyrend `tree@41.82,53.71` between house2 and house3)
+  loses its walk block while — unless render also filters `droppedSolids` — it may still be drawn.
+
+## Phase B1–B3 (quest objectives)
+
+- **`restoreZone`**: `completeBeatInTx` adds a `{ kind: 'restoreZone', zoneId }` quest event beside the `flags` event
+  when `beat.harvest?.to === 'intact'` (both the plain-beat path in ZoneRoom and the battle-beat path in
+  battleSession go through it). Today that is `restore_the_grove` (mire_route) → q10 `restore`, and `solenne`'s restore beat.
+- **`deliverItem`**: `ZoneRoom.onInteract` `case 'npc'` runs one transaction: `deliveriesFor(npcId)` lists the open
+  `deliverItem` objectives of active quests naming that npc; for each, the bag is read from the DB (`inventory.qty`,
+  not the cached `ud.inventory`, which REST purchases do not update); with `qty` or more the items are spent
+  (`inventory.add(-qty)`) and a `{ kind: 'deliver', npcId, item, qty }` event joins the `talkTo` event in the same
+  `advanceQuests` call. Then `inventoryDelta` (new quantities) + `progressionDelta.questProgress`. Short of items:
+  nothing is spent and the player gets an info toast `Bring <qty> × <item name> to deliver.` (deviation: the spec named
+  no feedback). A story beat whose speaker is the npc still runs first (no delivery that interact).
+- No route change: `POST /quests/claim` (all objectives done, grants money / items / creature / flag once, 409
+  `questIncomplete` / `AlreadyClaimed`) already existed in `rest/routes/me.ts`.
+- **Tests**: new `test/quests.test.ts` (5: restoreZone only for its zone and only while q10 is active; `deliveriesFor`
+  only while q08 is active; short → toast + nothing spent; enough → spent in the same tx with `inventoryDelta` +
+  `questProgress`, once; no q08 → items kept; claim 409 until all done, then once). `story-beats.test.ts` + 1
+  (`restore_the_grove` advances q10 `restore`, a beat without harvest does not).
+
+# Phase B progression walker (B5 + B6, 2026-10-06)
+
+The §50.5 M3 walk — one headless account plays Acts I–III through the real server — restored from the WIP commit
+`a6606df` (`test/walker.ts`, `test/pathing.ts`, `test/progression.ts`, `test/progression-act{1,2,3a,3b,3c}.test.ts`)
+and taught the Phase A interiors.
+
+- **Own vitest project.** `vitest.progression.config.ts` (root) runs `packages/server/test/progression-*.test.ts`
+  one file at a time in file-name order (a `BaseSequencer` subclass), with the default config's aliases; root script
+  `pnpm test:progression [leg]`. The default `vitest.config.ts` excludes those files, so `pnpm test` stays fast.
+  `EWA_PROGRESSION_WRITE=1` rewrites a leg's end fixture (`test/fixtures/progression/<leg>.json`); without it the leg
+  compares its end signature (zone, badges, story flags) with the committed one. Each leg starts from the previous
+  leg's fixture. `EWA_WALK_LOG=<file>` streams a live trace.
+- **Halls.** `Walker.walk()` leaves the hall it stands in when the goal lies elsewhere (through `<id>.out`, taking a
+  warp tile first when the exit is beyond a sealed wall) and enters a goal's hall through its door warp (`<id>.in`).
+  `Walker.reachLeader(id)` (used by `goTo('gym', …)`, so `winLeague`, `expectLocked` and league-speaker beats) walks
+  to where the trainer stands for this player (`leaderSpot`: Kirei greets in the foyer until `wardens_met`), clearing
+  the hall on the way: each step is re-planned from the player's real flags (GET /me ∪ `badge:*`) and position — the
+  reachable unbeaten gym trainers and usable unset switches, ranked by content's own `walkInterior` order; when none
+  is reachable, `hop()` takes a warp tile whose landing reaches a goal (Vesperveil's cells; its decoys never qualify).
+  Gym trainers are fought healed (POST /heal works anywhere in a healer town — the halls' nurse counters are client
+  dialogue) with the best lead; a loss heals and retries (twice). `winLeague` now heals **after** reaching the leader
+  (the gym trainers on the way wear the party).
+- **Pathing** (`test/pathing.ts`): `findPath` / `steps` take the player's closed gate solids
+  (`gatesClosedFor(zone, flags)`) and pass them to `standable` / `segmentStandable` — the exact predicate the room
+  uses — so no path crosses a gate the room would refuse. Hall walls are in the heightfield already.
+- **Leg changes.** act1: Mira's pre-beat refusal (`expectLocked(verdant_gym)`) is dropped — she stands behind two gym
+  trainers (L8–10) a fresh L5 starter cannot pass, and her gate flag is set by her own beat `grove_stone`, which plays
+  the moment she is in reach; Karn's and Maren's refusals are still walked (their halls are cleared on the first
+  visit, the refusal is asked at the leader).
+- **Smoke.** `test/progression-halls.test.ts` (same project, ~4 min): every gym hall and the league hall walked with
+  real inputs by a set-up account (five L100 creatures, previous badges and the leader's beats granted through the
+  repos — setup only). It pins the planner on all eight gym designs and on the league hall (Kirei's foyer charge, the
+  four chambers in order).
+- **B6 — `scripts/seed-progression.ts`** (`pnpm --filter @ewa/server seed:progression <leg> <username>
+  [--password <pw>]`; `DATA_DIR` resolved from `packages/server` like the server's `./.data`, or `DATABASE_URL`):
+  loads a leg fixture into a dev account. An existing account keeps its login, look, admin bit and history; its
+  progression rows (creatures, bag, badges, flags, dex, quests, battle pass) and `money / zone / position / title /
+  trainer_exp` are replaced. A missing account is created (`<username>@dev.ewa`, password `correct horse battery`
+  unless `--password`). Creature ids are regenerated; fixture columns the live schema lacks are dropped. Stop a
+  PGlite dev server first (one writer per directory).
+
+## Phase C1 raids (server half)
+
+- **`battleResync { battleId: raidId }`** now goes to every participant twice (`RaidRunner.resyncAll`): at the fight
+  start (lobby → phase 1, right after `setFighting`) with `RaidSession.viewFor(playerId)` — the private battle with the
+  shared boss copied in, `turn 0`, `canCatch false` — and when the catch window opens (the round that fells the boss,
+  after its `raidEvents` and **before** its `inventoryDelta` / `progressionDelta` / `battleEnd`) with
+  `RaidSession.catchStateFor(playerId)`: the §2.15 roll's pre-state (lead at full HP, boss at 1 HP, nobody switching,
+  `ended null`), `canCatch` true only while the participant may still `raidCatch` (damage > 0, no attempt yet).
+  `rollCatch` builds its state from the same private `catchState(p, true)`, so the resync is exactly what the roll
+  starts from. `stateDigest = digestBattleState(state)`. Before this, the client had no `BattleState` to seed a raid
+  battle from (only `raidEvents` + `battleEnd`).
+- No ZoneRoom change: a client-sent `battleResync { battleId: raidId }` still answers `notFound` (the client never
+  sends one for a raid: a raid has no preview / digest check, like pvp).
+- Tests: `raid.test.ts` — the room test asserts both resyncs per participant (fight start: format `raid`, turn 0, own
+  trainerId, full boss HP, digest = `viewFor`; catch window: not ended, boss 1 HP, `canCatch` = damage > 0, ahead of
+  the round's `battleEnd`; none to a non-participant); the pure phases test asserts `catchStateFor` (null for a
+  stranger, `canCatch` false once the attempt is spent).
+
+## Phase C3 — visited flags and fast travel (2026-10-06)
+
+- **Visited.** `onJoin` (fresh join and handover arrival alike) fires `markVisited` when the cached flags lack
+  `visited:<zone>`: one `progress.setFlags` transaction, then `applyFlags` and a `progressionDelta { flags: [flag] }`
+  (asynchronous, like the daily-login grant, so the join never waits on it). Registration writes `visited:` for the
+  starting zone inside the register transaction, so a new account's first join sends nothing and the authority
+  snapshots (A1 / A21 / A22) stay byte-identical.
+- **`fastTravel { zoneId }`** (`ZoneRoom.onFastTravel`) checks, in order: `notTown` (destination kind is not town),
+  `notVisited` (flag cache), `travelGated` (badge gate, belt and braces), `travelBusy` (battle — raids included, they
+  set `battleId` — trade, raid participant, or a crossing in progress), `travelCooldown` (`fastTravelReadyAt`: 3 s
+  after an accepted trip and after any handover arrival). Each refusal is a warn toast + `error notAllowed <reason>`.
+  Accepted: the cooldown starts and `seatHandover(client, dest, dest.spawn)` runs — steps 2–5 of the edge crossing,
+  extracted from `beginHandover` unchanged (reserve on the destination, presence reservation, `handover`,
+  `ud.handover = pending`); the destination validates and acks it exactly like an edge crossing (one position write,
+  `reachZone` quest events). A trip to the zone you stand in teleports to its spawn (`travelBlocked` if nothing
+  walkable is near).
+- `LIMITS.fastTravel` 4 / 1 s (it would otherwise fall to `roomOther`).
+- **Tests.** `test/fast-travel.test.ts` (5): registration marks the start zone; a first join of another zone writes the
+  flag once (row + one delta), a rejoin nothing; an accepted trip from Mire Route = `handover` to Mirevale's spawn, the
+  destination takes the player, the ack writes the row, the arrival starts the cooldown; refusals notVisited / notTown /
+  travelGated, a same-zone hop then travelCooldown, accepted again after 3.1 s; travelBusy in a pvp battle.
+  `test/helpers.ts` `storyOnly` now also drops `visited:`, so story-flag comparisons (world, story-beats, interiors, the
+  progression walk) ignore the new bookkeeping flags.
+- **Found, not fixed (pre-existing):** a page reload within the 20 s reconnect window takes the old avatar over
+  (`existing` in `onJoin`) and keeps `lastSeq: existing.seq`; the new client counts from 1, so every input is
+  `staleSeq` until its seq passes the old one (seen live: ~15 s of rejected movement after a reload).
+
+## Reconnect input seq (2026-10-06, fixes the "found, not fixed" above)
+
+- `ZoneRoom.onJoin` on a takeover (an existing `PlayerState`) now resets `ps.seq = 0` and starts `userData.lastSeq` at
+  0 (spec §30.2.2 step 5 always said `lastSeq: 0`; step 4 now says the takeover resets `ps.seq`). A takeover is always
+  a new client — a reload or a second tab; a Colyseus reconnection (the SDK's own, same client object) goes through
+  `onReconnect`, never `onJoin` — and a new client counts from 1. Resetting only `lastSeq` would not have been enough:
+  the client's reconciler ignores an ack below its last one (`LocalPlayerController.reconcile`), and the join state
+  would have carried the old seq, so the echoed seq restarts with the baseline.
+- Test: `test/authority.test.ts` A14b — seq 400 on the old socket, an abnormal close (the avatar is held for the
+  reconnection window), a fresh `/zone/enter` seat from the same room, then `seq: 1` moves the avatar at once with no
+  `staleSeq` counted. It fails before the fix (the echoed seq stays 400).
+
+## Phase C6 — password reset + email verification (2026-10-06)
+
+- **Routes** (`rest/routes/auth.ts`, protocol `ROUTES.authForgot/authReset/authVerify/authResend`):
+  `POST /auth/forgot { email }` → always 204 (unknown address included); a known, unbanned account gets a 30 min reset
+  token + audit `auth.forgot`. `POST /auth/reset { token, password }` → hashes first (an unknown token costs the same
+  argon2id), then one tx: `consumeEmailToken('reset')` (FOR UPDATE) → `setPasswordHash` → `revokeAll` refresh tokens →
+  `markEmailVerified` (the link proved the address) → audit `auth.passwordReset { revoked }`. `POST /auth/verify
+  { token }` → stamps `email_verified_at` (first stamp kept), audit `auth.emailVerified`. `POST /auth/resend` (bearer) →
+  a fresh 48 h verification link; 409 `alreadyVerified`. Bad tokens → 400 `{ code: 'badToken', reason: 'unknown' |
+  'expired' | 'used' }` (the reason is safe to show: a token is 256 random bits, the reason reveals nothing about
+  accounts). Registration issues a verification token in its transaction and mails it after commit.
+- **Rate limits** (`LIMITS`): `forgot` 5/h per IP (429); `forgotEmail` 3/h per address — over it the 204 is answered and
+  nothing is sent (a 429 there would reveal nothing either, but silence keeps the response uniform); `emailToken` 20 /
+  15 min per IP on reset + verify; `resend` 3/h per player.
+- **Tokens**: 32 random bytes base64url, sha-256 hex in `email_tokens` (persist migration `0002_email_tokens`), single
+  use, and a new token of a kind supersedes every older unused one of that kind (only the newest link works).
+- **Mailer** (`src/mail/mailer.ts`, `ServerDeps.mailer?` → `Runtime.mailer`): SMTP via nodemailer when `SMTP_URL` or
+  `SMTP_HOST` is set; otherwise `fileMailer` writes `DATA_DIR/mail/<iso>-<n>-<reset|verify>.eml` (nodemailer's stream
+  transport composes the MIME, so the file opens in any mail client; the link is in the text part); `NODE_ENV=test`
+  without SMTP → `memoryMailer` (tests read `runtime.mailer.sent`). `deliver()` is fire-and-forget after the response
+  (no SMTP latency in the request, no timing difference between known and unknown addresses beyond the DB lookup);
+  failures are logged with the tag only.
+- **Env** (`env.ts`): `SMTP_URL`, `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER`, `SMTP_PASS`, `SMTP_SECURE`, `MAIL_FROM`,
+  `PUBLIC_WEB_URL` (default `http://localhost:5173`; links are `${PUBLIC_WEB_URL}/reset?token=…`, `/verify?token=…`).
+  Decision: production without SMTP **warns** at boot (`envWarnings`: no SMTP, `@localhost` sender, localhost web URL),
+  never refuses — mail is optional so a deployment stays possible without a mail provider.
+- **Profile**: `PlayerProfile.emailVerified` (optional on the wire, always sent by this server) from
+  `players.email_verified_at`.
+- **Not done**: no periodic purge of used/expired email tokens (persist has `authRepo.purgeEmailTokens`; refresh tokens
+  have no purge job either — one housekeeping job for both is the natural follow-up). A reset does not kick live room
+  sessions; their access tokens lapse within 15 min and the next refresh fails.
+- **Tests**: `test/rest-auth.test.ts` "Phase C6" (6), `test/mailer.test.ts` (4).
+
+## Phase D1–D3 — story grants, TMs + tutor, stone and trade evolutions (2026-10-06)
+
+- **Grants.** `completeBeatInTx` now takes `repos.inventory` and adds `beat.grant` in the beat's transaction (the done flag
+  keeps it once per player); it returns `items` (absolute counts). `ZoneRoom.onInteract` (non-battle beats) updates
+  `ud.inventory` and sends an `inventoryDelta` before the `progressionDelta`; `battleSession` merges them into the battle
+  delta's `items` (the room cache refreshes from `inventoryAll` as before).
+- **`POST /creature/:id/moves`.** Accepts, per id: a move the creature already knows (so a TM/tutor move survives a
+  reorder), a level-learnset move at or below its level, or a `TM_MOVES` move whose `tm:<move>` the player owns and the
+  species can be taught (`canLearnMachineMove`). TMs are never spent.
+- **`POST /creature/:id/tutor { move, forget }`.** Presence zone must hold an NPC whose `tutor` lists `move`
+  (`noTutorHere`) — zone-level like the shop, no distance check (presence has no position); learnable (`notLearnable`);
+  not known (`alreadyKnown`); four moves need `forget` (`movesFull`, `notKnown`). Player row locked; money −
+  `MOVE_TUTOR_PRICE` (`InsufficientFunds` from the repo); audit `creature.tutor`.
+- **Shop.** A key item (TM) buys with `qty: 1` only (`oneAtATime`) and not when already owned (`alreadyOwned`); key
+  items stay unsellable (`priceOf` gives held/key items no sell price).
+- **`POST /item/use` with a stone.** Needs a target and qty 1, checks ownership and that the target reacts
+  (`itemEvolutionTarget`, else `noEffect`), spends nothing and answers `creaturesUpdated: [creature]`, `events:
+  [{ t: 'evolveReady', into, item }]`. Evolution stays an explicit second step.
+- **`POST /creature/:id/evolve`.** Player row locked. In order: core's level `evolveReady`; else a stone evolution while
+  the stone is owned (one spent, response `inventoryDelta.items`); else a trade evolution while the creature carries
+  `TRADE_EVOLVE_RIBBON` (removed by the evolution); else `notReady`. Audit detail gains `via`.
+- **Trades.** `tradeSession.complete` marks each received creature whose species evolves by trade with
+  `TRADE_EVOLVE_RIBBON` (row updated in the same transaction) and lists it in that player's `creaturesUpdated` as well as
+  `creaturesAdded`. The ribbon is the persisted licence, so the evolve prompt can be answered later ("Not now"), not only
+  in the session of the trade. No migration: `ribbons` is an existing jsonb column nothing else used.
+- **Not done**: a quest reward that names a TM the player already owns stacks a second copy (harmless, never used up);
+  no per-NPC distance check for the tutor (zone presence only).
+- Tests: `test/tms-evolution.test.ts` (8). Named so it is NOT matched by the `progression-*.test.ts` exclusion.
+
+## Phase D4/D5/D7 (2026-10-06)
+
+- **D4 shinies.** `shinyFromDraw(u)`: `(u · 2^32) mod 512 === 0` on the ALPHA draw — no extra draw, so every seeded spawn
+  sequence is byte-identical to pre-D4 (`test/shiny.test.ts` pins the digest `8880f1e7` captured by running the HEAD
+  director on the same seed). P = 1/512 exactly; independence from the alpha threshold to 2^-23. `SpawnRecord.isShiny?`
+  (optional so existing literals compile), `SpawnState.isShiny`, `newCreature(…, { isShiny })`, `toInstance` carries it,
+  the catch inserts it and `markCaught(…, isShiny)` marks the dex. Trade / market buy / market expiry / evolve pass the
+  creature's flag to `markCaught`. `GET /marketplace?isShiny=`; `listingView` adds `isShiny` only when true.
+  Statics, trainers, raid bosses: never shiny. No live-ops shiny bonus.
+- **D5 achievements.** `game/quests.ts`: `target` covers the new kinds; `absoluteValue` (`dexCaught` ← `dex.caught`,
+  `loginStreak` ← `streak.days`) max-merges and skips the write when nothing grew; `matches` adds `catchTier`,
+  `completeTrades` (`trade`), `clearRaids` (`raidClear`). Emitters: battle catch (`catch` + isAlpha/isShiny, `dex`),
+  raid catch (`catch` + isAlpha, `dex`), raid rewarded clear (`raidClear`), trade completion (`dex` when creatures were
+  received; `trade` existed), `dailyLogin` (`streak`; `DailyLoginGrant.questProgress`, sent with the join's
+  progressionDelta; the REST login path ignores it — the client reads `/me`). **Not wired**: market purchases and
+  evolutions do not emit `dex` (the next catch / trade catches the absolute count up).
+- **D7 weather.** `game/weather.ts`: `WEATHER_BUCKET_MS = 6 min`, `WEATHER_SCHEDULE` per biome, one draw per
+  (seed, zone, bucket). ZoneRoom writes `state.weather` at create and in tick step 1b when the bucket changes (only when it
+  differs). `BattleDeps.weather(format, at)` → `open()` passes it to `createBattle` and records it in
+  `start.weather`: wild/static/trainer/league outside `interiorAt` pockets, never pvp/raid. `env.WORLD_WEATHER`
+  ('on' | 'off', default 'on'); **`testEnv` defaults to 'off'** so every pre-existing room test (and the progression walk)
+  stays independent of the wall clock — `test/weather.test.ts` turns it on.
+- Tests: `test/shiny.test.ts` (4), `test/achievements.test.ts` (6), `test/weather.test.ts` (6); Phase D5 assertions added to
+  `challenge-trade.test.ts` (trade source) and `raid.test.ts` (raid source). Full `npx vitest run packages/server`: 29 files,
+  218 tests green.
+
+## Phase D6 — doubles (2026-10-06)
+
+- **Start.** `startNpc` opens `slots: 2` when the trainer / league row is `doubles: true` with a team of 2+ AND the
+  player has two usable creatures; otherwise singles (the documented fallback — never a refusal). `open(…, doubles)`
+  writes `slots: 2` into `battle_history.start` so the row replays alone. Wild / static / pvp / raid stay singles.
+- **Actions.** `BattleCoordinator.action(…, pos?)` (ZoneRoom passes `m.pos`). Doubles goes through `actionAt`: `pos`
+  absent → the lowest required position still empty; `actionNotRequired` / `alreadySubmitted` / `validateAction(…, pos)`
+  / `switchToActive` (both positions to one creature) / `noItem` (two uses of one item need two). `pending` holds one
+  `[pos0, pos1]` pair per PLAYER side (NPC sides stay `null`, so `battle_history.actions[i][1] === null` still holds for
+  NPC battles); the turn resolves when every required position of every player seat is in (`sideReady`).
+- **Rate limit.** A doubles turn's two `battleAction`s arrive in one burst; with the shared 4 / 1 s window the second
+  pick was dropped (`rateLimited`) after two quick turns — found by the walker in act3a, a real client bug. `ZoneRoom.dispatch`
+  now counts a `pos: 1` battleAction from a player in a doubles battle in its own window (`LIMITS.battleActionPos1`, 4 / 1 s);
+  singles traffic, and `pos: 1` in a singles battle, stay on the one `battleAction` window. Clients should send `pos`.
+- **Deadline / leave.** `autoPair` fills only missing positions (replacement → the lowest unchosen bench creature;
+  otherwise the first move valid for the position, else forfeit). `forfeitIfActive` has a doubles branch (unreachable in
+  v1: pvp is singles).
+- **Walker** (`test/walker.ts`): `fight()` previews `resolveTurn(state, [pair, null])` and sends one
+  `battleAction { pos }` per required position (each after a limiter advance); `chooseDoubles` = core's
+  `chooseNpcDoubles`, or per required position the best-matchup bench creature in a replacement. Singles path unchanged.
+- **Tests.** `test/doubles.test.ts` (5): doubles start + per-position play + reward/flag + DB replay; singles fallback
+  with one usable creature; draco_gym doubles / a plain trainer singles; per-position rules + deadline fill; and the real
+  room (interact with Rocker Jinx, two `battleAction { pos }` per turn, every digest = the client preview, win).
+  `battle-room.test.ts`'s 12-league suite plays draco_gym and aurelia as doubles (desync 0, replay from the row).
+
+## Phase D8–D11 — world systems (2026-10-06)
+
+- **Movement.** `BIKE_SPEED` / `MAX_BIKE_STEP`; `MovePrev.clearedObstacles?` and `canBike?`; `standable` /
+  `segmentStandable` gain a trailing `cleared` set (default empty — the walker's `pathing.ts` calls are unchanged); a
+  sample stamped by a cleared obstacle (`obstacleAt`) is standable; `bike = input.bike && prev.canBike` picks the bike cap
+  and turns `canSurf` off for that segment; the verdict carries `bike`. `onOpenWater(h, x, z)`.
+- **Room.** `canBike` = owns `bike` && `interiorAt(zone, ps) === null`; `ps.surfing` / `ps.biking` written only on
+  change. `ud.clearedObstacles` from the flags at join, recomputed by `applyFlags` on an `obstacle:` flag.
+- **Fishing.** `onFish`: busy → `busy`; no `old_rod` → `noRod`; in a hall or no open (non-lava) water within 2.5 m along
+  the cast heading of the ACCEPTED pose → `noWater` (a boardwalk counts); `rollFishing` (spawnDirector.ts, the spawn draws
+  over the eligible water slots) from `fishRng` = `createRng(seed:zone:shard:boot:fish)` — its own stream so the root's
+  forks (spawns, battles, raids) are unchanged; none → `nothingBites`; else `startWild` at the player. Bites never join
+  a director (`<zone>:fish:<n>`; `release` of an unknown id is a no-op).
+- **Obstacles.** `findTarget` resolves `obstacle`; `rangeFor` 3 m; `clearObstacle`: `alreadyCleared` / `needHm` /
+  `needType` (party loaded from the repo; fainted members count), flag + hidden item in one transaction, then
+  `inventoryDelta`, `progressionDelta`, success toast.
+- `LIMITS.fish` 1 / 1.5 s.
+- **Test change.** `spawn-director.test.ts`'s 100 000-roll weight test now samples the land slots only: a water slot's
+  roll survives only when one of its 8 position draws lands on water (≈ 0.5 % of mire_route), which it under-represents by
+  design (this was already true of every table with water slots; mire_route simply gained some). `shiny.test.ts`'s pinned
+  pre-D4 spawn-stream digest is now computed over the director's pre-D8 inputs (mire_route's land slots and its field with
+  the obstacle cells un-stamped): the digest is unchanged (`8880f1e7`), so the director code itself did not move.
+- Tests: `test/world-systems.test.ts` (10: pure bike / ridden water / cleared obstacles / rollFishing ×2; live surf,
+  fishing ×2, Cut, bike).
+
+## Phase D12–D13 — ranked queue (2026-10-06)
+
+- **`rooms/matchQueue.ts`.** `MatchQueue` over a structural `RankedKV` (Colyseus `Presence`): entries in the hash
+  `ewa:ranked:queue` (field = playerId), so the queue spans zones / shards / processes and a crossing keeps the place.
+  `tick()` runs on every process each `RANKED_TICK_MS` (1 s, `server.ts` timer; tests also call
+  `runtime.matchQueue.tick()`), never re-entered; only the `ewa:ranked:leader` lease holder (5 s TTL, check-set-check like
+  the raid hotspot owner) pairs. Stale entries (no presence key → the process died) are dropped. Pure `pairUp` (oldest
+  first, smallest gap within BOTH players' `rankedWindow`) and `RankedArena` (the arena room's pending matches).
+- **Arena = Mirevale (deviation from the brief's "Solenne").** Solenne is gated by `ascend` and `onAuth` refuses a
+  seat in a gated zone, so most players could not be handed over there. `RANKED_ARENA` = mirevale (22, 16), spots ±3 m
+  in x (snapped walkable; the east green: no NPC, interior or link edge).
+- **Flow.** Match → arena room picked once (`pickZoneRoom`) → `ewa:ranked:arena:<roomId>` (the arena room records it,
+  20 s expiry) → `ewa:ranked:match` broadcast; each room hosting a player (skipping the destination side of a crossing,
+  `arrival` set) sends `rankedStatus matched` and teleports (same room) or runs `seatHandover(client, zone, spot, roomId)`
+  (new optional `roomId`: `zoneRoomById` instead of `pickZoneRoom`). Busy at match time → `idle busy` + `ewa:ranked:cancel`;
+  other rooms tell the other player `cancelled`; the arena room tells late arrivals in `rankedPass` (tick step 9b).
+  `rankedPass` starts the battle once both are present with `arrival` / `handover` null and no battle: plain
+  `battles.startPvp` (format `pvp`, Elo through the existing §30.4.4 path — once per player; no `ranked` flag on the
+  session: every pvp battle was already rated). Then `idle started` to both.
+- **Queue drops.** A real leave (`removePlayer` when not `movedAway`) leaves the queue and cancels an arena match the
+  player belongs to; `onBattleStart` drops every seat holder from the queue (`idle busy` if they were queued).
+- `LIMITS.rankedQueue` 4 / 5 s. `Runtime.matchQueue` (deps.ts), built in `boot` with the presence driver.
+- Not done: a rejoin of a reconnecting player inside the 20 s window keeps the entry (allowReconnection does not run
+  `removePlayer`), which is intended; a Redis multi-process run was not exercised (LocalPresence only in tests).
+- Tests: `test/ranked.test.ts` (10: 5 pure, 5 live incl. cross-zone handover + Elo once, arrival expiry, widening and cap).
+
+## Phase D14 — post-game (2026-10-06)
+
+- **League rematch.** `ZoneRoom.leagueBeaten(ud, id)`: the champion flag held and the trainer beaten (gym: badge; Warden /
+  Champion: `setsFlags`, plus the champion flag for Zeon). `leagueRefusal` returns null for it (before the Champion every
+  refusal is unchanged — the progression walker's league legs see no difference). The `gym` interact then reads
+  `flagSetAt(league:<id>:rematchAt)`: inside `LEAGUE_REMATCH_COOLDOWN_DAYS` → toast + `error leagueLocked`; otherwise
+  `startNpc({ kind: 'league', league, rematch: leagueRematch(id) })` — team and reward from the rematch row, `rematch: true`
+  on the session. The end transaction's rematch branch pays `npc.reward` and the stage exp, writes no badge and no
+  `setsFlags`, and clears + re-sets the cooldown flag (`setFlags` is insert-or-ignore, so the set time would otherwise stay
+  at the first win). Quest `defeatTrainer` / `win league` still advance.
+- **Battle tower.** `rooms/towerSession.ts` (`TowerSessions`, constructed by every room, only Solenne holds the
+  attendant): `start` / `next` / `quit` / `onLeave` / `onBattleEnd`; `towerTeam(seed, wins)` and `towerPosition(wins)` are
+  pure. `BattleCoordinator.startTower(seat, picks, foes, trainerId, at)` — format `trainer`, `tower: true`, `noExp`, no
+  inventory snapshot (items refused `noItem`), synthetic `tower:` ids (no creature row is written). The end transaction's
+  tower branch: `streaks.recordWin` / `endRun`, the set reward (money + items, audit `tower.reward`) every 7th win, carried in
+  `RewardsSummary.items` (the first non-empty use of that field); the result rides `session.towerResult` to the room's
+  `onEnd` → `TowerSessions.onBattleEnd`. A draw ends the run like a loss.
+- **Not done / honest limits:** the run lives in room memory — a server restart mid-run leaves `current` at its last value
+  until the next `start` resets it (the leaderboard's `best` is unaffected). The tower fight forms where the player stands
+  in the foyer (no arena room there). No live browser verification this phase.
+- `GET /leaderboard?mode=towerStreak` (`streaks.leaderboard`); every mode's rows gain `towerBest` / `towerCurrent`.
+- Tests: `test/postgame.test.ts` (10: rematch content, two coordinator rematches, pure tower rules, four coordinator tower
+  runs incl. 7 wins + reward + retire, a loss, items refused; two live cases through the room — gym rematch refusal /
+  cooldown / rematch team, tower start + leaderboard).

@@ -54,7 +54,8 @@ describe('MOVEMENT constants', () => {
     expect(MOVEMENT.stepMs).toBeCloseTo(16.6667, 3);
     expect(MOVEMENT.sendHz).toBe(20);
     expect(MOVEMENT.maxDtMs).toBe(100);
-    expect(Object.isFrozen(MOVEMENT) || Object.keys(MOVEMENT).length === 8).toBe(true);
+    // Phase D11 added bikeSpeed (9 keys)
+    expect(Object.isFrozen(MOVEMENT) || Object.keys(MOVEMENT).length === 9).toBe(true);
   });
 
   it('§30.2.4 validation companions: +15 %, budget -100..250, 0.02 m slack', () => {
@@ -130,6 +131,20 @@ describe('stepMovement', () => {
     for (let i = 0; i < 3; i++) stepMovement(pose, sprint, MOVEMENT.stepMs, NO_COLLIDER); // 3 steps = 50 ms
     expect(pose.x - x0).toBeCloseTo(MOVEMENT.runSpeed * 0.05, 9);
     expect(pose.x - x0).toBeLessThan(maxStep(true, 50));
+  });
+
+  it('Phase D11: the bicycle rides at bikeSpeed (running ignored) and stays under the bike cap per 50 ms window', () => {
+    expect(MOVEMENT.bikeSpeed).toBe(10.5);
+    expect(speedCap(false, true)).toBeCloseTo(10.5 * 1.15, 10);
+    expect(speedCap(true, true)).toBeCloseTo(speedCap(false, true), 10);
+    const pose = createPose();
+    const ride: MoveInput = { ax: 1, az: 0, running: false, bike: true };
+    for (let i = 0; i < 90; i++) stepMovement(pose, ride, MOVEMENT.stepMs, NO_COLLIDER);
+    expect(Math.hypot(pose.vx, pose.vz)).toBeCloseTo(MOVEMENT.bikeSpeed, 9);
+    const x0 = pose.x;
+    for (let i = 0; i < 3; i++) stepMovement(pose, ride, MOVEMENT.stepMs, NO_COLLIDER);
+    expect(pose.x - x0).toBeLessThan(maxStep(false, 50, true));
+    expect(pose.x - x0).toBeGreaterThan(maxStep(true, 50)); // a bike window is a speed rejection under the run cap
   });
 
   it('accelerates at `accel`, reaches full speed, and stops exactly when the stick is released', () => {

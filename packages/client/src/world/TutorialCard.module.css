@@ -1,0 +1,112 @@
+/*
+ * Phase D12 — Prof. Wynn's step card. Left edge, below the canvas HUD's party strip (top-left) and above the chat
+ * (bottom-left); the minimap and clock own the right. Only the card takes pointer events.
+ */
+.card {
+  position: absolute;
+  inset-block-start: calc(var(--topbar-h) + 96px);
+  inset-inline-start: var(--s-5);
+  z-index: var(--z-panel);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  inline-size: min(320px, 100vw - 2 * var(--s-5));
+  padding: var(--s-4) var(--s-5);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--r-3);
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-2);
+  color: var(--text-hi);
+  pointer-events: auto;
+  animation: enter 180ms var(--ease-out) both;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.eyebrow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin: 0;
+  color: var(--accent);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 600;
+}
+
+.count {
+  color: var(--text-2);
+  font-family: var(--face-mono);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-weight: 600;
+}
+
+.line {
+  margin: var(--s-1) 0 0;
+  color: var(--text-2);
+}
+
+.keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}
+
+.keyRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.glyphs {
+  display: inline-flex;
+  gap: var(--s-1);
+}
+
+.glyphs kbd {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 22px;
+  block-size: 22px;
+  padding: 0 var(--s-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-1);
+  background: var(--bg-1);
+  color: var(--text-hi);
+  font-family: var(--face-mono);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* reduced motion: the card is simply there */
+:global(:root[data-reduced='1']) .card {
+  animation: none;
+}

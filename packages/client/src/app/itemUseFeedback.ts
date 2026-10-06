@@ -5,7 +5,7 @@
  * one inventory writer in `actions.ts`; the events here are display only.
  */
 import type { CreatureInstance } from '@ewa/core';
-import { displayName, itemInfo, speciesName } from '../data/content';
+import { displayName, itemInfo, speciesName, tradeEvolveTarget } from '../data/content';
 import { toast } from '../state/notifications';
 import { useUiStore } from '../state/ui';
 
@@ -18,7 +18,19 @@ export function presentItemUse(itemId: string, qty: number, creature: CreatureIn
   const who = creature === undefined ? '' : displayName(creature);
   const name = itemInfo(itemId).name;
   const levels = events.filter((e) => e.t === 'levelUp').map((e) => Number(e['level']));
+  // Phase D3: a stone is not spent by /item/use — the server answers evolveReady { item } and the confirmed evolve spends it
+  const stone = events.find((e) => e.t === 'evolveReady' && typeof e['item'] === 'string');
+  if (stone !== undefined && creature !== undefined) {
+    const ui = useUiStore.getState();
+    if (!ui.prompts.some((q) => q.kind === 'evolve' && q.creatureId === creature.id)) {
+      ui.enqueuePrompt({ kind: 'evolve', creatureId: creature.id, into: String(stone['into']), item: String(stone['item']) });
+    }
+    toast('info', `${who} reacts to the ${name}.`);
+    return;
+  }
   if (levels.length > 0) toast('success', `${who} grew to Lv ${Math.max(...levels)}!`);
+  // a field item (repel, lure, escape rope) from the Bag has no target creature
+  else if (creature === undefined) toast('success', `Used ${name}.`);
   else toast('success', qty > 1 ? `Used ${qty} × ${name} on ${who}.` : `Used ${name} on ${who}.`);
   if (creature === undefined) return;
   const ui = useUiStore.getState();
@@ -30,5 +42,19 @@ export function presentItemUse(itemId: string, qty: number, creature: CreatureIn
   if (evo !== undefined && !queued.has(`e:${creature.id}`)) {
     ui.enqueuePrompt({ kind: 'evolve', creatureId: creature.id, into: String(evo['into']) });
     toast('info', `${who} is ready to evolve into ${speciesName(String(evo['into']))}.`);
+  }
+}
+
+/**
+ * Phase D3: a completed trade lists the received trade-evolvers in `creaturesUpdated` (the server wrote their trade
+ * marker); each gets one evolve prompt — explicit, like every evolution — unless one is already queued.
+ */
+export function queueTradeEvolutions(creatures: readonly CreatureInstance[]): void {
+  const ui = useUiStore.getState();
+  for (const c of creatures) {
+    const into = tradeEvolveTarget(c);
+    if (into === null || ui.prompts.some((q) => q.kind === 'evolve' && q.creatureId === c.id)) continue;
+    ui.enqueuePrompt({ kind: 'evolve', creatureId: c.id, into, trade: true });
+    toast('info', `${displayName(c)} is reacting to the trade.`);
   }
 }

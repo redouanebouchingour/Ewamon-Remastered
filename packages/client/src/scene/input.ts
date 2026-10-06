@@ -20,6 +20,8 @@ export interface InputCallbacks {
   rotate(dir: -1 | 1): void;
   zoom(dir: -1 | 1): void;
   jump(): void;
+  /** Phase D11: the bike key (World3D mounts / folds the bicycle when allowed) */
+  toggleBike(): void;
   toggleDev(): void;
   /** true while world actions must not fire (battle, dialogue, modal, chat) */
   blocked(): boolean;
@@ -32,7 +34,7 @@ export interface InputCapture {
   dispose(): void;
 }
 
-const EDGE: readonly InputAction[] = ['interact', 'chat', 'emote1', 'emote2', 'emote3', 'emote4', 'emote5', 'emote6', 'challenge', 'rotateLeft', 'rotateRight', 'jump'];
+const EDGE: readonly InputAction[] = ['interact', 'chat', 'emote1', 'emote2', 'emote3', 'emote4', 'emote5', 'emote6', 'challenge', 'rotateLeft', 'rotateRight', 'jump', 'bike'];
 
 export function isTypingTarget(el: Element | null): boolean {
   if (!(el instanceof HTMLElement)) return false;
@@ -83,6 +85,7 @@ export function createInputCapture(target: Window, canvas: HTMLElement | null, c
       case 'rotateLeft': cb.rotate(-1); return;
       case 'rotateRight': cb.rotate(1); return;
       case 'jump': cb.jump(); return;
+      case 'bike': cb.toggleBike(); return;
       default: {
         const n = Number(a.slice('emote'.length));
         if (n >= 1 && n <= 6) cb.emote(n as 1 | 2 | 3 | 4 | 5 | 6);

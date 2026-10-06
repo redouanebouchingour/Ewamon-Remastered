@@ -112,13 +112,19 @@ describe('R1 zone plan (content)', () => {
       const h = s.heightfield;
       const f = FIXTURE.zones[z.id]!;
       expect(s.footprints.baseWalkable / h.walkable.length, `${z.id} terrain walkable (pre-move ratio)`).toBe(f.terrainWalkable);
-      let walk = 0;
-      for (let i = 0; i < h.walkable.length; i++) walk += h.walkable[i]!;
-      expect(s.footprints.baseWalkable - walk).toBe(s.footprints.stamped);
+      // town pockets (interiors) re-stamp their own footprints after the plan; outside towns the count is exact
+      // (plus the Phase D10 obstacle discs, stamped last on samples that were still walkable)
+      if (s.interiors.length === 0) {
+        let walk = 0;
+        for (let i = 0; i < h.walkable.length; i++) walk += h.walkable[i]!;
+        expect(s.footprints.baseWalkable - walk).toBe(s.footprints.stamped + s.obstacleCells.size);
+      }
       expect(s.footprints.stamped).toBeGreaterThan(1000);
       const approach = new Uint8Array(h.walkable.length);
       for (const d of s.plan.doors) samplesIn(h, d.approach, (i) => { approach[i] = 1; });
-      for (const solid of s.plan.solids) {
+      const dropped = new Set(s.interiorPlan.droppedSolids);
+      for (const [k, solid] of s.plan.solids.entries()) {
+        if (dropped.has(k)) continue;                                          // scatter inside a pocket is dropped
         samplesIn(h, solid.shape, (i, x, zz) => {
           if (h.water[i] === 1 || approach[i] === 1) return;
           expect(h.walkable[i], `${z.id} ${solid.source} ${solid.ref} sample (${x}, ${zz})`).toBe(0);

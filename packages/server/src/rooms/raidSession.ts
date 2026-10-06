@@ -326,24 +326,48 @@ export class RaidSession {
   }
 
   /**
+   * Phase C1: a participant's private battle with the shared boss copied in — the `battleResync { battleId: raidId }`
+   * a participant receives when the fight starts (the client seeds its battle view from it). Null for a stranger.
+   */
+  viewFor(playerId: string): BattleState | null {
+    const p = this.participants.get(playerId);
+    return p === undefined ? null : this.withBoss(p.state, this.bossBattler);
+  }
+
+  /**
+   * The catch window's battle for one participant: the §2.15 roll's pre-state (lead at full HP, the boss at 1 HP — a
+   * defeated boss counts as 1 HP — nobody switching, not ended). `canCatch` is true only while the participant may
+   * still `raidCatch` (damage > 0, no attempt yet). Sent as `battleResync` when the window opens (Phase C1).
+   */
+  catchStateFor(playerId: string): BattleState | null {
+    const p = this.participants.get(playerId);
+    if (p === undefined) return null;
+    return this.catchState(p, p.damage > 0 && !p.caughtAttempted);
+  }
+
+  private catchState(p: RaidParticipant, canCatch: boolean): BattleState {
+    const lead = p.state.sides[0].party.find((b) => b.creature.hp > 0) ?? p.state.sides[0].party[0]!;
+    const healedLead: Battler = { ...lead, creature: { ...lead.creature, hp: lead.maxHp } };
+    const boss1: Battler = { ...this.bossBattler, creature: { ...this.bossBattler.creature, hp: 1 } };
+    const s0 = p.state.sides[0];
+    return {
+      ...p.state,
+      ended: null,
+      rng: p.catchRng,
+      sides: [
+        { ...s0, party: [healedLead], active: 0, canCatch, mustSwitch: false },
+        { ...p.state.sides[1], party: [boss1], active: 0, mustSwitch: false },
+      ],
+    };
+  }
+
+  /**
    * The §2.15 roll for an accepted attempt: core's catch with H = 1 (a defeated boss counts as 1 HP), the boss's
    * status bonus and the participant's orb, run as a catch-only `resolveTurn` on a copy of their private battle.
    */
   rollCatch(playerId: string, orb: string): CatchRoll {
     const p = this.participants.get(playerId)!;
-    const lead = p.state.sides[0].party.find((b) => b.creature.hp > 0) ?? p.state.sides[0].party[0]!;
-    const healedLead: Battler = { ...lead, creature: { ...lead.creature, hp: lead.maxHp } };
-    const boss1: Battler = { ...this.bossBattler, creature: { ...this.bossBattler.creature, hp: 1 } };
-    const s0 = p.state.sides[0];
-    const state: BattleState = {
-      ...p.state,
-      ended: null,
-      rng: p.catchRng,
-      sides: [
-        { ...s0, party: [healedLead], active: 0, canCatch: true, mustSwitch: false },
-        { ...p.state.sides[1], party: [boss1], active: 0, mustSwitch: false },
-      ],
-    };
+    const state = this.catchState(p, true);
     const result = resolveTurn(state, [{ kind: 'catch', orb }, null], this.content);
     p.catchRng = result.state.rng;
     const caught = result.events.some((e) => e.t === 'catchResult' && e.caught);
@@ -480,12 +504,25 @@ export class RaidRunner {
     for (const p of this.session.participants.values()) this.deps.host.setFighting(p.playerId, null);
   }
 
+  /** `battleResync { battleId: raidId, state, stateDigest }` to every participant (fight start, catch window). */
+  private resyncAll(stateOf: (playerId: string) => BattleState | null): void {
+    const s = this.session;
+    for (const pid of [...s.participants.keys()].sort()) {
+      const state = stateOf(pid);
+      if (state !== null) this.deps.host.send(pid, { type: 'battleResync', battleId: s.id, state, stateDigest: digestBattleState(state) });
+    }
+  }
+
   /** Room tick step 7: lobby start, deadlines (one transaction per round), catch window end. Never overlaps itself. */
   async tick(now: number): Promise<void> {
     const s = this.session;
     const before = s.phase;
     if (s.tick(now)) {
-      if (before === 0 && s.phase === 1) for (const p of s.participants.values()) this.deps.host.setFighting(p.playerId, s.id);
+      if (before === 0 && s.phase === 1) {
+        for (const p of s.participants.values()) this.deps.host.setFighting(p.playerId, s.id);
+        // Phase C1: each fighter's private battle, so the client has a BattleState to seed its battle view from
+        this.resyncAll((pid) => s.viewFor(pid));
+      }
       if (s.phase === 4) this.releaseFighters();
       return;
     }
@@ -548,7 +585,7 @@ export class RaidRunner {
             o.trainerExp = exp.trainerExp;
             o.trainerLevel = exp.trainerLevel;
             o.rewards = { money, items: {}, trainerExp: TRAINER_EXP.raidClear, ratingDelta: null, badge: null };
-            o.quest = await advanceQuests(tx, repos, pid, [{ kind: 'battle', format: 'raid' }], now);
+            o.quest = await advanceQuests(tx, repos, pid, [{ kind: 'battle', format: 'raid' }, { kind: 'raidClear' }], now);
             await repos.audit.write(tx, { actorId: pid, action: 'raid.clear', subject: s.id, detail: { hotspot: s.hotspot.id, damage: (s.participants.get(pid)?.damage ?? 0) + (round.damage.get(pid) ?? 0) } }, new Date(now));
           }
           if (Object.keys(o.inventory).length > 0) this.inventory.set(pid, await repos.inventory.all(tx, pid));
@@ -569,6 +606,8 @@ export class RaidRunner {
       this.deps.host.send(pid, { type: 'raidEvents', raidId: s.id, round: round.round, events: round.events.get(pid) ?? [], stateDigest: digestBattleState(st) });
       if (round.spectators.has(pid)) this.deps.host.setFighting(pid, null);
     }
+    // Phase C1: the catch window opened — every participant gets its catch battle (canCatch = may still raidCatch)
+    if (s.phase === 3) this.resyncAll((pid) => s.catchStateFor(pid));
     for (const [pid, o] of outs) {
       if (Object.keys(o.inventory).length > 0 || o.money !== null || o.updated.length > 0) {
         this.deps.host.send(pid, { type: 'inventoryDelta', items: o.inventory, money: o.money, creaturesAdded: [], creaturesRemoved: [], creaturesUpdated: o.updated });
@@ -630,7 +669,7 @@ export class RaidRunner {
           newDex = (await repos.progress.markCaught(tx, playerId, roll.creature.speciesId, roll.creature.variantKey, roll.creature.isAlpha, now)).newSpecies;
           const exp = TRAINER_EXP.catch + (newDex ? TRAINER_EXP.catchNewSpecies : 0);
           await repos.players.addTrainerExp(tx, playerId, exp);
-          quest = await advanceQuests(tx, repos, playerId, [{ kind: 'catch', species: roll.creature.speciesId }], nowMs);
+          quest = await advanceQuests(tx, repos, playerId, [{ kind: 'catch', species: roll.creature.speciesId, isAlpha: roll.creature.isAlpha }, { kind: 'dex', caught: await repos.progress.caughtCount(tx, playerId) }], nowMs);
         }
         await repos.audit.write(tx, { actorId: playerId, action: 'raid.catch', subject: s.id, detail: { orb, caught: roll.caught } }, now);
         return { inventory: { [orb]: left }, added, placement, newDex, quest };

@@ -99,6 +99,8 @@ export function createAudioDirector(opts: { readonly createContext?: () => Audio
   let listenerX = 0;
   let listenerZ = 0;
   let listenerY = 0;
+  /** bumped per startTheme call: only the latest call starts sources (the first gesture reaches startTheme twice, via ensureContext and init) */
+  let themeGen = 0;
 
   const st = {
     silent: true, contextReady: false, theme: null as string | null, threat: false, night: 0, harvested: false, ducked: false,
@@ -234,16 +236,27 @@ export function createAudioDirector(opts: { readonly createContext?: () => Audio
     if (ctx === null || manifest === null) return;
     const theme = manifest.themes[themeId];
     if (theme === undefined) return;
-    const refs: Record<StemName, StemRef> = theme.stems;
-    void Promise.all(STEMS.map((n) => fetchBuffer(urlOf(refs[n])))).then((bufs) => {
-      if (ctx === null || st.theme !== themeId) return;
+    const gen = ++themeGen;
+    // tolerate a theme that ships fewer than four layers: an absent layer simply stays silent
+    const refs: Partial<Record<StemName, StemRef>> = theme.stems;
+    const derived = theme.derived ?? [];
+    void Promise.all(STEMS.map((n) => {
+      const r = refs[n];
+      return r !== undefined ? fetchBuffer(urlOf(r)) : Promise.resolve(null);
+    })).then((bufs) => {
+      if (ctx === null || st.theme !== themeId || gen !== themeGen) return;
       const at = ctx.currentTime + MIXER.startOffsetS;
+      const baseLoaded = (bufs[0] ?? null) !== null;
       STEMS.forEach((n, i) => {
         const p = stems.get(n)!;
-        p.buffer = bufs[i] ?? null;
-        p.loopStart = refs[n].loopStartSec;
-        p.loopEnd = refs[n].loopEndSec > refs[n].loopStartSec ? refs[n].loopEndSec : (p.buffer?.duration ?? 0);
+        const r = refs[n];
+        // a layer derived from base (CC0 ingest) is a filtered copy meant to sit under it: never play it alone
+        const orphan = n !== 'base' && !baseLoaded && derived.includes(n);
+        p.buffer = r !== undefined && !orphan ? (bufs[i] ?? null) : null;
+        p.loopStart = r?.loopStartSec ?? 0;
+        p.loopEnd = r !== undefined && r.loopEndSec > r.loopStartSec ? r.loopEndSec : (p.buffer?.duration ?? 0);
         p.scheduled = false;
+        p.nextAt = 0;
         if (p.buffer !== null) {
           const src = ctx!.createBufferSource();
           src.buffer = p.buffer;

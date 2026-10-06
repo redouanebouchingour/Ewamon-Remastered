@@ -27,7 +27,7 @@ export async function runMarketExpiry(deps: MarketExpiryDeps, now: Date = new Da
       for (const r of rows) {
         if (!r.sold || r.buyerId === null) continue;
         await repos.progress.markSeen(tx, r.buyerId, r.speciesId, now);
-        await repos.progress.markCaught(tx, r.buyerId, r.speciesId, r.variantKey, r.isAlpha, now);
+        await repos.progress.markCaught(tx, r.buyerId, r.speciesId, r.variantKey, r.isAlpha, now, r.isShiny === true);
         await repos.players.addTrainerExp(tx, r.buyerId, TRAINER_EXP.tradeComplete);
         await repos.players.addTrainerExp(tx, r.sellerId, TRAINER_EXP.tradeComplete);
       }

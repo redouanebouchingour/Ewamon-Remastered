@@ -23,6 +23,7 @@ import { cx } from '../ui/cx';
 import l from './layout.module.css';
 import s from './SettingsScreen.module.css';
 import { useClosePanel } from './shared';
+import { EmailNudge } from './EmailNudge';
 
 type Tab = 'graphics' | 'audio' | 'accessibility' | 'controls' | 'social';
 const TABS: readonly { readonly key: Tab; readonly label: string }[] = [
@@ -52,6 +53,7 @@ export const ACTION_LABEL: Readonly<Record<InputAction, string>> = {
   run: 'Run (hold)',
   interact: 'Interact',
   jump: 'Jump',
+  bike: 'Bicycle (ride / fold)',
   chat: 'Open chat',
   emote1: 'Emote: wave',
   emote2: 'Emote: happy',
@@ -65,6 +67,7 @@ export const ACTION_LABEL: Readonly<Record<InputAction, string>> = {
   party: 'Open party',
   bag: 'Open bag',
   journal: 'Open journal (dex)',
+  map: 'Open world map',
   pause: 'Pause / settings',
   toggleHud: 'Toggle HUD',
 };
@@ -141,6 +144,9 @@ function AudioTab() {
       <Slider label="Sound effects" value={a.sfx} min={0} max={1} step={0.05} format={pct} onChange={(v) => set('audio', { sfx: v })} />
       <Slider label="Interface" value={a.ui} min={0} max={1} step={0.05} format={pct} onChange={(v) => set('audio', { ui: v })} />
       <Toggle label="Mute when the tab is hidden" checked={a.muteWhenHidden} onChange={(v) => set('audio', { muteWhenHidden: v })} />
+      <p className={l.caption}>
+        Music and sound effects credits: <a href="/audio/CREDITS.txt" target="_blank" rel="noreferrer">audio credits</a> (CC0 sources).
+      </p>
     </div>
   );
 }
@@ -346,6 +352,7 @@ export function SettingsScreen() {
       toolbar={<Tabs<Tab> label="Settings" tabs={TABS} value={tab} onChange={(k) => setParams({ tab: k }, { replace: true })} />}
     >
       <div className={s.wrap}>
+        <EmailNudge />
         {tab === 'graphics' && <GraphicsTab />}
         {tab === 'audio' && <AudioTab />}
         {tab === 'accessibility' && <AccessibilityTab />}

@@ -12,4 +12,6 @@ export class SpawnState extends Schema {
   /** player uuid while a battle holds it; '' = free */
   @type('string') engagedBy = '';
   @type('uint32') despawnAtTick = 0;
+  /** Phase D4: the 1/512 shiny tier (last field: earlier field indexes unchanged) */
+  @type('boolean') isShiny = false;
 }

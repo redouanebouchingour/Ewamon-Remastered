@@ -9,6 +9,8 @@ export interface BattleActions {
   /** the disabled reason for an action (validateAction label), null = allowed */
   check(action: Action): string | null;
   dismissResult(): void;
+  /** Phase D6: doubles — back to the previous position's choice (nothing is sent until every position has picked) */
+  undoPick?(): void;
 }
 
 let current: BattleActions | null = null;

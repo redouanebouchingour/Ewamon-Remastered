@@ -10,8 +10,8 @@
  * No Colyseus import: the room is a `BattleHost` (send + lifecycle hooks), so this module is testable alone.
  */
 import { randomUUID } from 'node:crypto';
-import { league as leagueById, storyBeat as beatById } from '@ewa/content';
-import type { BadgeId, LeagueTrainer, LegendaryStatic, TrainerDef, ZoneDef } from '@ewa/content';
+import { TOWER, league as leagueById, leagueRematchFlag, storyBeat as beatById, towerSetReward } from '@ewa/content';
+import type { BadgeId, LeagueRematch, LeagueTrainer, LegendaryStatic, TrainerDef, ZoneDef } from '@ewa/content';
 import {
   TRAINER_EXP,
   createBattle,
@@ -20,12 +20,13 @@ import {
   eloDelta,
   eloDrawDelta,
   projectBattler,
+  requiredPositions,
   resolveTurn,
   validateAction,
 } from '@ewa/core';
-import type { Action, BattleEvent, BattleFormat, BattleOutcome, BattleState, ContentIndex, CreatureInstance, Rng, RngState, Side, Terrain } from '@ewa/core';
+import type { Action, BattleEvent, BattleFormat, BattleOutcome, BattleState, ContentIndex, CreatureInstance, Rng, RngState, Side, SideChoice, Terrain, WeatherKind } from '@ewa/core';
 import type { QuestProgressEntry, RewardsSummary, ServerMessage } from '@ewa/protocol';
-import type { BattleStartSnapshot, Db, Repos } from '@ewa/persist';
+import type { BattleStartSnapshot, Db, Repos, StreakState } from '@ewa/persist';
 import type { Logger } from '../log';
 import type { RoomMetrics } from '../metrics';
 import { isPersistedId, newCreature, persistableAfterBattle, withSyntheticId } from '../game/creatures';
@@ -39,6 +40,13 @@ export const REPLACEMENT_DEADLINE_MS = 20_000;
 /** The champion id checked anywhere in server code (NON-NEGOTIABLE 11). */
 export const CHAMPION_ID = 'zeon';
 export const CHAMPION_FLAG = 'champion:zeon:beaten';
+
+/** Phase D14: what a finished tower fight wrote — the streak after it and the set reward it paid (null = none). */
+export interface TowerResult {
+  readonly won: boolean;
+  readonly streak: StreakState;
+  readonly reward: { readonly money: number; readonly items: Readonly<Record<string, number>> } | null;
+}
 
 /** null player = wild/NPC/league side */
 export interface Seat {
@@ -57,9 +65,12 @@ export interface BattleSession {
   /** createBattle's seed snapshot, for battle_history.seed */
   readonly seed: RngState;
   /** one entry per resolved resolveTurn, for battle_history.actions */
-  readonly actionsLog: [Action | null, Action | null][];
-  /** actions received for the CURRENT turn */
-  pending: [Action | null, Action | null];
+  readonly actionsLog: [SideChoice, SideChoice][];
+  /**
+   * actions received for the CURRENT turn. Singles: one Action (or null) per side. Phase D6 doubles
+   * (`state.slots === 2`): one `[pos0, pos1]` pair per side, filled position by position.
+   */
+  pending: [SideChoice, SideChoice];
   /** ms; 30 s after the turn opened */
   deadlineAt: number;
   resolving: boolean;
@@ -71,8 +82,11 @@ export interface BattleSession {
   /** §30.4.6 `static`: the LegendaryStatic whose flag is set on win or catch */
   readonly staticSpecies: string | null;
   readonly startedAt: number;
+  /** where the arena forms: a hall's room arena inside an interior (Phase A), else the player's position */
   readonly x: number;
   readonly z: number;
+  /** the hall's battle-axis yaw inside an interior; null in the open world */
+  readonly yaw: number | null;
   // ---- server bookkeeping beyond the spec's shape ----
   /** per-side inventory snapshot (item/orb balance checks at validate time); null for non-player sides */
   inventory: [Record<string, number> | null, Record<string, number> | null];
@@ -80,8 +94,15 @@ export interface BattleSession {
   autoActions: [number, number];
   /** consecutive persistence failures (2 → void) */
   faults: number;
-  /** trainer rematch (half reward) */
+  /** trainer rematch (half reward); Phase D14: also a league rematch (`LEAGUE_REMATCH` team, ×1.5, no badge / setsFlags) */
   readonly rematch: boolean;
+  /**
+   * Phase D14 battle tower: true for a tower fight (format 'trainer', `noExp`, synthetic battlers — nothing about the
+   * creatures is written; the end writes the streak and, every `TOWER.setLength` wins, the set reward). Absent otherwise.
+   */
+  readonly tower?: true;
+  /** Phase D14: the tower result for side 0, set after the end transaction commits (read by the host's `onEnd`) */
+  towerResult?: TowerResult;
   /** the LegendaryStatic flag to set on win/catch */
   readonly staticFlag: string | null;
   /** createBattle's input minus seed, deep-copied before the call — battle_history.start (P6, DB-only replay) */
@@ -106,6 +127,15 @@ export interface BattleDeps {
   readonly zone: ZoneDef;
   readonly host: BattleHost;
   readonly metrics: RoomMetrics;
+  /** Phase D7: the ambient weather a battle of this format forming at this point starts under (absent → 'none') */
+  readonly weather?: (format: BattleFormat, at: BattleAt) => WeatherKind;
+}
+
+/** Where a battle forms (ZoneRoom `battleAt`): a hall arena + its battle-axis yaw inside an interior, else the player. */
+export interface BattleAt {
+  readonly x: number;
+  readonly z: number;
+  readonly yaw?: number | null;
 }
 
 export interface PlayerSeat {
@@ -150,6 +180,8 @@ interface PlayerDelta {
   rewards: RewardsSummary | null;
   beatCompleted: string | null;
   inventoryAll: Record<string, number> | null;
+  /** Phase D14: a finished tower fight's result */
+  tower: TowerResult | null;
 }
 
 function emptyDelta(): PlayerDelta {
@@ -170,6 +202,7 @@ function emptyDelta(): PlayerDelta {
     rewards: null,
     beatCompleted: null,
     inventoryAll: null,
+    tower: null,
   };
 }
 
@@ -189,6 +222,7 @@ export function toInstance(c: CreatureInstance): CreatureInstance {
     heldItem: c.heldItem,
     variantKey: c.variantKey,
     isAlpha: c.isAlpha,
+    ...(c.isShiny === true ? { isShiny: true } : {}),
     caughtAt: c.caughtAt === null ? null : { zoneId: c.caughtAt.zoneId, at: c.caughtAt.at },
     ribbons: [...c.ribbons],
     favorite: c.favorite,
@@ -232,13 +266,63 @@ export function autoAction(state: BattleState, side: 0 | 1, content: ContentInde
   return { kind: 'forfeit' };
 }
 
-/** Sides whose player must act this turn: in a replacement phase only the mustSwitch side(s). */
+/** Phase D6: the doubles deadline / forfeit auto-choice — fills every required position still null in `have`. */
+export function autoPair(state: BattleState, side: 0 | 1, content: ContentIndex, have: readonly [Action | null, Action | null] = [null, null]): [Action | null, Action | null] {
+  const out: [Action | null, Action | null] = [have[0], have[1]];
+  const s = state.sides[side];
+  const a = s.actives!;
+  const taken = (to: number): boolean => out.some((x) => x !== null && x.kind === 'switch' && x.to === to);
+  for (const p of requiredPositions(state, side)) {
+    if (out[p] !== null) continue;
+    if (s.mustSwitch) {
+      const to = s.party.findIndex((b, i) => i !== a[0] && i !== a[1] && b.creature.hp > 0 && !taken(i));
+      out[p] = { kind: 'switch', to };
+      continue;
+    }
+    const b = s.party[a[p]]!;
+    let pick: Action = { kind: 'forfeit' };
+    for (const m of b.creature.moves) {
+      const mv: Action = { kind: 'move', move: m.id };
+      if (m.pp > 0 && validateAction(state, side, mv, content, p) === null) {
+        pick = mv;
+        break;
+      }
+    }
+    out[p] = pick;
+  }
+  return out;
+}
+
+/** Phase D6: true when the session runs a doubles battle. */
+export function isDoubles(session: BattleSession): boolean {
+  return session.state.slots === 2;
+}
+
+/** An empty pending slate (singles `[null, null]`; doubles one null pair per PLAYER side — NPC sides stay null). */
+function emptyPending(state: BattleState, seats: readonly [Seat, Seat]): [SideChoice, SideChoice] {
+  if (state.slots !== 2) return [null, null];
+  return [seats[0].playerId === null ? null : [null, null], seats[1].playerId === null ? null : [null, null]];
+}
+
+/** Whether `side`'s pending choice is complete (singles: non-null; doubles: every required position filled). */
+function sideReady(session: BattleSession, side: 0 | 1): boolean {
+  const p = session.pending[side];
+  if (!isDoubles(session)) return p !== null;
+  const pair = p as readonly [Action | null, Action | null];
+  return requiredPositions(session.state, side).every((q) => pair[q] !== null);
+}
+
+/** Sides whose player must act this turn: in a replacement phase only the mustSwitch side(s). Doubles: sides with a required position. */
 export function mustActSides(session: BattleSession): (0 | 1)[] {
   const st = session.state;
   const replacement = st.sides[0].mustSwitch || st.sides[1].mustSwitch;
   const out: (0 | 1)[] = [];
   for (const seat of session.seats) {
     if (seat.playerId === null) continue;
+    if (st.slots === 2) {
+      if (requiredPositions(st, seat.side).length > 0) out.push(seat.side);
+      continue;
+    }
     if (replacement && !st.sides[seat.side].mustSwitch) continue;
     out.push(seat.side);
   }
@@ -312,18 +396,25 @@ export class BattleCoordinator {
     base: Omit<BattleSession, 'state' | 'seed' | 'actionsLog' | 'pending' | 'deadlineAt' | 'resolving' | 'startedAt' | 'autoActions' | 'faults' | 'start'>,
     sides: readonly [Omit<Side, 'mustSwitch' | 'consumedItems'>, Omit<Side, 'mustSwitch' | 'consumedItems'>],
     seed: RngState,
+    doubles = false,
   ): { session: BattleSession; events: readonly BattleEvent[] } {
     const now = this.deps.clock();
     const terrain = TERRAIN_BY_BIOME[this.deps.zone.biome];
-    const start = JSON.parse(JSON.stringify({ zoneId: base.zoneId, terrain, sides })) as BattleStartSnapshot;
-    const { state, events } = createBattle({ id: base.id, format: base.format, zoneId: base.zoneId, terrain, seed, sides }, this.deps.content);
+    const weather = this.deps.weather?.(base.format, { x: base.x, z: base.z }) ?? 'none';
+    const ambient = weather === 'none' ? {} : { weather };
+    // Phase D6: `slots: 2` rides the start snapshot so a doubles battle replays from its history row alone
+    const slots = doubles ? { slots: 2 as const } : {};
+    // Phase D14: a tower fight awards no exp; the flag rides the snapshot so the history row replays alone
+    const noExp = base.tower === true ? { noExp: true as const } : {};
+    const start = JSON.parse(JSON.stringify({ zoneId: base.zoneId, terrain, sides, ...ambient, ...slots, ...noExp })) as BattleStartSnapshot;
+    const { state, events } = createBattle({ id: base.id, format: base.format, zoneId: base.zoneId, terrain, seed, sides, ...ambient, ...slots, ...noExp }, this.deps.content);
     const session: BattleSession = {
       ...base,
       start,
       state,
       seed,
       actionsLog: [],
-      pending: [null, null],
+      pending: emptyPending(state, base.seats),
       deadlineAt: now + TURN_DEADLINE_MS,
       resolving: false,
       startedAt: now,
@@ -335,20 +426,31 @@ export class BattleCoordinator {
     this.deps.host.onStart(session);
     for (const seat of session.seats) {
       if (seat.playerId === null) continue;
-      this.deps.host.send(seat.playerId, { type: 'battleStart', battleId: session.id, format: session.format, seat: seat.side, state, events, stateDigest: digestBattleState(state) });
+      this.deps.host.send(seat.playerId, {
+        type: 'battleStart',
+        battleId: session.id,
+        format: session.format,
+        seat: seat.side,
+        state,
+        events,
+        stateDigest: digestBattleState(state),
+        x: session.x,
+        z: session.z,
+        yaw: session.yaw,
+      });
     }
     return { session, events };
   }
 
   /** §30.4.4 `wild`: one battler projected from the SpawnRecord. */
-  async startWild(p: PlayerSeat, spawn: SpawnRecord, at: { readonly x: number; readonly z: number }): Promise<StartResult> {
+  async startWild(p: PlayerSeat, spawn: SpawnRecord, at: BattleAt): Promise<StartResult> {
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
     const loaded = await this.loadPlayers([p.playerId], spawn.speciesId);
     const side0 = this.playerSide(loaded.get(p.playerId)!.party, p.playerId, true, true);
     if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
     const wild = withSyntheticId(
-      newCreature(this.deps.content, spawn.speciesId, spawn.level, { ability: spawn.ability, variantKey: spawn.variantKey, isAlpha: spawn.isAlpha }),
+      newCreature(this.deps.content, spawn.speciesId, spawn.level, { ability: spawn.ability, variantKey: spawn.variantKey, isAlpha: spawn.isAlpha, isShiny: spawn.isShiny === true }),
       `wild:${spawn.id}`,
     );
     const side1: Omit<Side, 'mustSwitch' | 'consumedItems'> = { kind: 'wild', party: [projectBattler(wild, this.deps.content)], active: 0, trainerId: null, canFlee: false, canCatch: false };
@@ -365,6 +467,7 @@ export class BattleCoordinator {
         staticFlag: null,
         x: at.x,
         z: at.z,
+        yaw: at.yaw ?? null,
         inventory: [loaded.get(p.playerId)!.inventory, null],
         rematch: false,
       },
@@ -377,7 +480,7 @@ export class BattleCoordinator {
   }
 
   /** §30.4.6 `static`: format wild, canFlee false, canCatch true; flag set on win or catch. */
-  async startStatic(p: PlayerSeat, st: LegendaryStatic, at: { readonly x: number; readonly z: number }): Promise<StartResult> {
+  async startStatic(p: PlayerSeat, st: LegendaryStatic, at: BattleAt): Promise<StartResult> {
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
     const loaded = await this.loadPlayers([p.playerId], st.species);
     const side0 = this.playerSide(loaded.get(p.playerId)!.party, p.playerId, false, true);
@@ -397,6 +500,7 @@ export class BattleCoordinator {
         staticFlag: st.flag,
         x: at.x,
         z: at.z,
+        yaw: at.yaw ?? null,
         inventory: [loaded.get(p.playerId)!.inventory, null],
         rematch: false,
       },
@@ -410,9 +514,12 @@ export class BattleCoordinator {
   /** §30.4.4 `trainer` / `league`: team from content (league: nickname/ability/heldItem verbatim). */
   async startNpc(
     p: PlayerSeat,
-    def: { readonly kind: 'trainer'; readonly trainer: TrainerDef; readonly rematch: boolean } | { readonly kind: 'league'; readonly league: LeagueTrainer },
+    def:
+      | { readonly kind: 'trainer'; readonly trainer: TrainerDef; readonly rematch: boolean }
+      // Phase D14: `rematch` = the post-game rematch row (its team and reward replace the league row's)
+      | { readonly kind: 'league'; readonly league: LeagueTrainer; readonly rematch?: LeagueRematch },
     beatId: string | null,
-    at: { readonly x: number; readonly z: number },
+    at: BattleAt,
   ): Promise<StartResult> {
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
     const content = this.deps.content;
@@ -420,12 +527,16 @@ export class BattleCoordinator {
     const team: CreatureInstance[] =
       def.kind === 'trainer'
         ? def.trainer.team.map((m, i) => withSyntheticId(newCreature(content, m.species, m.level), `npc:${trainerId}:${i}`))
-        : def.league.team.map((m, i) =>
+        : (def.rematch?.team ?? def.league.team).map((m, i) =>
             withSyntheticId(newCreature(content, m.species, m.level, { nickname: m.nickname, ability: m.ability, heldItem: m.heldItem }), `npc:${trainerId}:${i}`),
           );
     const loaded = await this.loadPlayers([p.playerId], team[0]!.speciesId);
     const side0 = this.playerSide(loaded.get(p.playerId)!.party, p.playerId, false, false);
     if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
+    // Phase D6: a trainer authored as doubles (`doubles: true`, ≥ 2 creatures) fights 2-on-2 when the player has two
+    // usable creatures; with one, the battle falls back to singles (never a refusal: doubles is never a gate)
+    const authoredDoubles = (def.kind === 'trainer' ? def.trainer.doubles : def.league.doubles) === true && team.length >= 2;
+    const doubles = authoredDoubles && side0.party.filter((b) => b.creature.hp > 0).length >= 2;
     const side1: Omit<Side, 'mustSwitch' | 'consumedItems'> = {
       kind: 'npc',
       party: team.map((c) => projectBattler(c, content)),
@@ -434,7 +545,7 @@ export class BattleCoordinator {
       canFlee: false,
       canCatch: false,
     };
-    const reward = def.kind === 'trainer' ? (def.rematch ? Math.floor(def.trainer.reward / 2) : def.trainer.reward) : def.league.reward;
+    const reward = def.kind === 'trainer' ? (def.rematch ? Math.floor(def.trainer.reward / 2) : def.trainer.reward) : (def.rematch?.reward ?? def.league.reward);
     const { session } = this.open(
       {
         id: randomUUID(),
@@ -448,18 +559,54 @@ export class BattleCoordinator {
         staticFlag: null,
         x: at.x,
         z: at.z,
+        yaw: at.yaw ?? null,
         inventory: [loaded.get(p.playerId)!.inventory, null],
-        rematch: def.kind === 'trainer' && def.rematch,
+        rematch: def.kind === 'trainer' ? def.rematch : def.rematch !== undefined,
       },
       [side0, side1],
       this.rng.fork().snapshot(),
+      doubles,
     );
     this.sendStartProgress(loaded);
     return { ok: true, session };
   }
 
+  /**
+   * Phase D14 battle tower: `picks` are the player's creatures as they fight (capped, healed, synthetic `tower:` ids —
+   * never persisted), `foes` the generated team. Format 'trainer' with `noExp`; no items (no inventory snapshot), no
+   * flee, no catch. The end transaction writes the streak (and the set reward) instead of trainer rewards.
+   */
+  startTower(p: PlayerSeat, picks: readonly CreatureInstance[], foes: readonly CreatureInstance[], trainerId: string, at: BattleAt): StartResult {
+    if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
+    const content = this.deps.content;
+    const side0: Omit<Side, 'mustSwitch' | 'consumedItems'> = { kind: 'player', party: picks.map((c) => projectBattler(c, content)), active: 0, trainerId: p.playerId, canFlee: false, canCatch: false };
+    const side1: Omit<Side, 'mustSwitch' | 'consumedItems'> = { kind: 'npc', party: foes.map((c) => projectBattler(c, content)), active: 0, trainerId, canFlee: false, canCatch: false };
+    const { session } = this.open(
+      {
+        id: randomUUID(),
+        format: 'trainer',
+        zoneId: this.deps.zone.id,
+        seats: [{ side: 0, playerId: p.playerId, sessionId: p.sessionId }, { side: 1, playerId: null, sessionId: null }],
+        spawnId: null,
+        npc: { trainerId, reward: 0, leagueId: null },
+        beatId: null,
+        staticSpecies: null,
+        staticFlag: null,
+        x: at.x,
+        z: at.z,
+        yaw: at.yaw ?? null,
+        inventory: [null, null],
+        rematch: false,
+        tower: true,
+      },
+      [side0, side1],
+      this.rng.fork().snapshot(),
+    );
+    return { ok: true, session };
+  }
+
   /** §30.4.5 step 3: lock both players in one tx (ascending uuid) to read parties; seed = createRng(battleId). */
-  async startPvp(challenger: PlayerSeat, accepter: PlayerSeat, at: { readonly x: number; readonly z: number }): Promise<StartResult> {
+  async startPvp(challenger: PlayerSeat, accepter: PlayerSeat, at: BattleAt): Promise<StartResult> {
     const busy = (): StartResult | null =>
       this.byPlayer.has(challenger.playerId)
         ? { ok: false, code: 'busy', detail: 'inBattle', playerId: challenger.playerId }
@@ -492,6 +639,7 @@ export class BattleCoordinator {
         staticFlag: null,
         x: at.x,
         z: at.z,
+        yaw: at.yaw ?? null,
         inventory: [loaded.get(challenger.playerId)!.inventory, loaded.get(accepter.playerId)!.inventory],
         rematch: false,
       },
@@ -503,13 +651,18 @@ export class BattleCoordinator {
 
   // ─── actions ────────────────────────────────────────────────────────────────
 
-  /** §30.4.2 `battleAction` handler. null = accepted. */
-  action(playerId: string, battleId: string, turn: number, action: Action): ActionResult {
+  /**
+   * §30.4.2 `battleAction` handler. null = accepted. Phase D6: in a doubles battle `pos` names the field position
+   * the action is for (absent = the lowest required position still waiting); the turn resolves once every required
+   * position of every player seat holds an action. `pos` is ignored in singles.
+   */
+  action(playerId: string, battleId: string, turn: number, action: Action, pos?: 0 | 1): ActionResult {
     const session = this.sessions.get(battleId);
     const seat = session?.seats.find((s) => s.playerId === playerId);
     if (session === undefined || seat === undefined) return { code: 'notFound', detail: null };
     if (session.resolving) return { code: 'notAllowed', detail: 'resolving' };
     if (turn !== session.state.turn + 1) return { code: 'notAllowed', detail: 'wrongTurn' };
+    if (isDoubles(session)) return this.actionAt(session, seat.side, action, pos);
     const side = seat.side;
     const err = validateAction(session.state, side, action, this.deps.content);
     if (err !== null) return { code: 'notAllowed', detail: err };
@@ -521,6 +674,29 @@ export class BattleCoordinator {
     session.pending[side] = action;
     session.autoActions[side] = 0;
     if (mustActSides(session).every((s) => session.pending[s] !== null)) void this.resolveNow(session);
+    return null;
+  }
+
+  /** Phase D6: one position's action in a doubles battle (see `action`). */
+  private actionAt(session: BattleSession, side: 0 | 1, action: Action, pos: 0 | 1 | undefined): ActionResult {
+    const st = session.state;
+    if (!mustActSides(session).includes(side)) return { code: 'notAllowed', detail: 'actionNotRequired' };
+    const pair = session.pending[side] as [Action | null, Action | null];
+    const req = requiredPositions(st, side);
+    const p = pos ?? req.find((q) => pair[q] === null);
+    if (p === undefined) return { code: 'notAllowed', detail: 'alreadySubmitted' };
+    if (!req.includes(p)) return { code: 'notAllowed', detail: 'actionNotRequired' };
+    if (pair[p] !== null) return { code: 'notAllowed', detail: 'alreadySubmitted' };
+    const err = validateAction(st, side, action, this.deps.content, p);
+    if (err !== null) return { code: 'notAllowed', detail: err };
+    const other = pair[p === 0 ? 1 : 0];
+    if (other !== null && other.kind === 'switch' && action.kind === 'switch' && other.to === action.to) return { code: 'notAllowed', detail: 'switchToActive' };
+    const inv = session.inventory[side];
+    const sameItem = other !== null && other.kind === 'item' && action.kind === 'item' && other.item === action.item ? 1 : 0;
+    if (action.kind === 'item' && (inv?.[action.item] ?? 0) < 1 + sameItem) return { code: 'notAllowed', detail: 'noItem' };
+    pair[p] = action;
+    session.autoActions[side] = 0;
+    if (mustActSides(session).every((s) => sideReady(session, s))) void this.resolveNow(session);
     return null;
   }
 
@@ -539,7 +715,8 @@ export class BattleCoordinator {
     session.resolving = true;
     const { content, log, clock } = this.deps;
     const before = session.state;
-    const actions: [Action | null, Action | null] = [session.pending[0], session.pending[1]];
+    const copy = (c: SideChoice): SideChoice => (Array.isArray(c) ? [...(c as readonly (Action | null)[])] as [Action | null, Action | null] : c);
+    const actions: [SideChoice, SideChoice] = [copy(session.pending[0]), copy(session.pending[1])];
     let next: BattleState;
     let events: readonly BattleEvent[];
     try {
@@ -559,7 +736,7 @@ export class BattleCoordinator {
     } catch (e) {
       log.error({ err: e, battleId: session.id }, 'battle turn transaction failed');
       this.deps.metrics.battleFaults += 1;
-      session.pending = [null, null];
+      session.pending = emptyPending(before, session.seats);
       session.resolving = false;
       session.faults += 1;
       if (session.faults >= 2) {
@@ -574,7 +751,7 @@ export class BattleCoordinator {
     session.faults = 0;
     session.actionsLog.push(actions);
     session.state = next;
-    session.pending = [null, null];
+    session.pending = emptyPending(next, session.seats);
     const anyMustSwitch = next.sides[0].mustSwitch || next.sides[1].mustSwitch;
     session.deadlineAt = now + (anyMustSwitch ? REPLACEMENT_DEADLINE_MS : TURN_DEADLINE_MS);
     this.sendAfterCommit(session, next, events, deltas);
@@ -596,7 +773,9 @@ export class BattleCoordinator {
       host.send(pid, { type: 'battleEvents', battleId: session.id, turn: next.turn, events, stateDigest: digest, rng: next.rng });
       const d = deltas.get(pid);
       if (d === undefined) continue;
-      if (d.inventoryAll !== null) session.inventory[seat.side] = d.inventoryAll;
+      if (d.tower !== null && seat.side === 0) session.towerResult = d.tower;
+      // Phase D14: a tower fight keeps its empty item snapshot (no items in the tower)
+      if (d.inventoryAll !== null && session.tower !== true) session.inventory[seat.side] = d.inventoryAll;
       const itemsTouched = Object.keys(d.items).length > 0;
       if (itemsTouched || d.money !== null || d.creaturesAdded.length > 0 || d.creaturesUpdated.length > 0) {
         host.send(pid, {
@@ -640,7 +819,7 @@ export class BattleCoordinator {
     before: BattleState,
     next: BattleState,
     events: readonly BattleEvent[],
-    actionsLog: [Action | null, Action | null][],
+    actionsLog: [SideChoice, SideChoice][],
     nowMs: number,
   ): Promise<Map<string, PlayerDelta>> {
     const { repos } = this.deps;
@@ -705,10 +884,11 @@ export class BattleCoordinator {
           );
           d.creaturesAdded.push(toInstance(inserted));
           d.placement[inserted.id] = partyIndex === -1 ? 'box' : 'party';
-          const { newSpecies } = await repos.progress.markCaught(tx, pid, wild.speciesId, wild.variantKey, wild.isAlpha, now);
+          const { newSpecies } = await repos.progress.markCaught(tx, pid, wild.speciesId, wild.variantKey, wild.isAlpha, now, wild.isShiny === true);
           d.dexCaught.push(wild.speciesId);
           trainerExpGain += TRAINER_EXP.catch + (newSpecies ? TRAINER_EXP.catchNewSpecies : 0);
-          questEvents.push({ kind: 'catch', species: wild.speciesId });
+          questEvents.push({ kind: 'catch', species: wild.speciesId, isAlpha: wild.isAlpha, isShiny: wild.isShiny === true });
+          questEvents.push({ kind: 'dex', caught: await repos.progress.caughtCount(tx, pid) });
         }
 
         // h. markSeen for every opposing species revealed this turn
@@ -724,6 +904,7 @@ export class BattleCoordinator {
         let money = 0;
         let badge: BadgeId | null = null;
         let ratingDelta: number | null = null;
+        let rewardItems: Record<string, number> = {};
         const flagsToSet: string[] = [];
         const outcome = next.ended;
         if (outcome !== null) {
@@ -733,11 +914,33 @@ export class BattleCoordinator {
             if (won) trainerExpGain += TRAINER_EXP.wildWin;
             if (won && session.staticFlag !== null) flagsToSet.push(session.staticFlag);
             if (won) questEvents.push({ kind: 'win', format: 'wild' });
+          } else if (session.tower === true) {
+            // Phase D14: the streak (a draw or a loss ends the run) and, every TOWER.setLength wins, the set reward
+            const streak = won ? await repos.streaks.recordWin(tx, pid, now) : await repos.streaks.endRun(tx, pid, now);
+            let reward: TowerResult['reward'] = null;
+            if (won && streak.current % TOWER.setLength === 0) {
+              reward = towerSetReward(streak.current / TOWER.setLength);
+              money += reward.money;
+              for (const [item, qty] of Object.entries(reward.items)) d.items[item] = await repos.inventory.add(tx, pid, item, qty);
+              rewardItems = { ...reward.items };
+              await repos.audit.write(tx, { actorId: pid, action: 'tower.reward', subject: session.id, detail: { streak: streak.current, money: reward.money, items: reward.items } }, now);
+            }
+            d.tower = { won, streak, reward };
           } else if (session.format === 'trainer' && won && session.npc !== null) {
             money += session.npc.reward;
             trainerExpGain += TRAINER_EXP.trainerWin;
             flagsToSet.push(`trainer:${session.npc.trainerId}:beaten`);
             questEvents.push({ kind: 'defeatTrainer', trainerId: session.npc.trainerId }, { kind: 'win', format: 'trainer' });
+          } else if (session.format === 'league' && won && session.npc?.leagueId != null && session.rematch) {
+            // Phase D14 post-game rematch: ×1.5 reward (carried in npc.reward), the stage's trainer exp, no badge and no
+            // setsFlags; the cooldown flag is cleared and re-set so its set time is this win
+            const lt = leagueById(session.npc.leagueId);
+            money += session.npc.reward;
+            trainerExpGain += lt.stage === 'gym' ? TRAINER_EXP.gymWin : lt.stage === 'elite' ? TRAINER_EXP.eliteWin : TRAINER_EXP.championWin;
+            const flag = leagueRematchFlag(lt.id);
+            await repos.progress.clearFlags(tx, pid, [flag]);
+            flagsToSet.push(flag);
+            questEvents.push({ kind: 'defeatTrainer', trainerId: lt.id }, { kind: 'win', format: 'league' });
           } else if (session.format === 'league' && won && session.npc?.leagueId != null) {
             const lt = leagueById(session.npc.leagueId);
             money += lt.reward;
@@ -777,6 +980,8 @@ export class BattleCoordinator {
           if (session.beatId !== null && side === 0 && side0Won(outcome)) {
             const beat = beatById(session.beatId);
             const done = await completeBeatInTx(tx, repos, pid, beat, now);
+            // Phase D1: granted items ride this battle's inventoryDelta
+            for (const [item, qty] of Object.entries(done.items)) d.items[item] = qty;
             d.flags.push(...done.flags.filter((f) => !d.flags.includes(f)));
             d.questProgress.push(...done.questProgress);
             d.beatCompleted = beat.id;
@@ -790,7 +995,7 @@ export class BattleCoordinator {
         if (questEvents.length > 0) d.questProgress.push(...(await advanceQuests(tx, repos, pid, questEvents, nowMs)));
         if (badge !== null) d.badges = await repos.progress.badges(tx, pid);
         if (outcome !== null) {
-          const rewards: RewardsSummary = { money, items: {}, trainerExp: trainerExpGain, ratingDelta, badge };
+          const rewards: RewardsSummary = { money, items: rewardItems, trainerExp: trainerExpGain, ratingDelta, badge };
           d.rewards = rewards;
           await repos.history.recordBattle(tx, {
             battleId: session.id,
@@ -856,11 +1061,21 @@ export class BattleCoordinator {
       if (!this.sessions.has(session.id)) return;
       const st = session.state;
       const forfeit: Action = { kind: 'forfeit' };
-      const mine = validateAction(st, side, forfeit, this.deps.content) === null ? forfeit : autoAction(st, side, this.deps.content);
       const mustAct = mustActSides(session);
-      session.pending = [null, null];
-      if (mustAct.includes(side)) session.pending[side] = mine;
-      if (mustAct.includes(other)) session.pending[other] = autoAction(st, other, this.deps.content);
+      session.pending = emptyPending(st, session.seats);
+      if (isDoubles(session)) {
+        // Phase D6: the leaver forfeits from its first required position (a replacement phase cannot forfeit: auto-fill)
+        const req = requiredPositions(st, side);
+        const first = req[0];
+        const mine: [Action | null, Action | null] = [null, null];
+        if (first !== undefined && validateAction(st, side, forfeit, this.deps.content, first) === null) mine[first] = forfeit;
+        if (mustAct.includes(side)) session.pending[side] = autoPair(st, side, this.deps.content, mine);
+        if (mustAct.includes(other)) session.pending[other] = autoPair(st, other, this.deps.content);
+      } else {
+        const mine = validateAction(st, side, forfeit, this.deps.content) === null ? forfeit : autoAction(st, side, this.deps.content);
+        if (mustAct.includes(side)) session.pending[side] = mine;
+        if (mustAct.includes(other)) session.pending[other] = autoAction(st, other, this.deps.content);
+      }
       await this.resolveNow(session);
     }
     if (this.sessions.has(session.id)) this.voidBattle(session);
@@ -872,6 +1087,13 @@ export class BattleCoordinator {
       if (session.resolving || now < session.deadlineAt) continue;
       const content = this.deps.content;
       for (const side of mustActSides(session)) {
+        if (isDoubles(session)) {
+          // Phase D6: fill only the positions still waiting
+          if (sideReady(session, side)) continue;
+          session.autoActions[side] += 1;
+          session.pending[side] = autoPair(session.state, side, content, session.pending[side] as [Action | null, Action | null]);
+          continue;
+        }
         if (session.pending[side] !== null) continue;
         session.autoActions[side] += 1;
         let a = autoAction(session.state, side, content);

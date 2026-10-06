@@ -12,6 +12,8 @@ export const MOVEMENT = {
   walkSpeed: 4.2,
   /** units / s (= RUN_SPEED) */
   runSpeed: 7.0,
+  /** units / s on the bicycle (Phase D11: `MoveInput.bike` / `InputMsg.bike`; the server's BIKE_SPEED) */
+  bikeSpeed: 10.5,
   /** units / s^2 toward target velocity */
   accel: 40,
   /** rad / s toward input heading */
@@ -44,14 +46,19 @@ export const MOVEMENT_VALIDATION = {
   segmentSampleM: 0.25,
 } as const;
 
+/** The nominal speed of a gait (m/s): bike (Phase D11) > run > walk. */
+export function gaitSpeed(running: boolean, bike = false): number {
+  return bike ? MOVEMENT.bikeSpeed : running ? MOVEMENT.runSpeed : MOVEMENT.walkSpeed;
+}
+
 /** Maximum accepted displacement per second, including tolerance (m/s). */
-export function speedCap(running: boolean): number {
-  return (running ? MOVEMENT.runSpeed : MOVEMENT.walkSpeed) * MOVEMENT_VALIDATION.speedTolerance;
+export function speedCap(running: boolean, bike = false): number {
+  return gaitSpeed(running, bike) * MOVEMENT_VALIDATION.speedTolerance;
 }
 
 /** Maximum accepted displacement for one input of `dtMs`, including tolerance and quantisation slack (m). */
-export function maxStep(running: boolean, dtMs: number): number {
-  return (speedCap(running) * dtMs) / 1000 + MOVEMENT_VALIDATION.quantisationSlack;
+export function maxStep(running: boolean, dtMs: number, bike = false): number {
+  return (speedCap(running, bike) * dtMs) / 1000 + MOVEMENT_VALIDATION.quantisationSlack;
 }
 
 /** ax/az in [-1,1], normalised by the caller */
@@ -59,6 +66,8 @@ export interface MoveInput {
   readonly ax: number;
   readonly az: number;
   readonly running: boolean;
+  /** Phase D11: riding the bicycle — `MOVEMENT.bikeSpeed`, `running` ignored */
+  readonly bike?: boolean;
 }
 
 /** mutable scratch — the ONLY mutable type in protocol */
@@ -119,7 +128,7 @@ export function stepMovement(pose: MovePose, input: MoveInput, dtMs: number, col
     mag = 1;
   }
 
-  const speed = input.running ? MOVEMENT.runSpeed : MOVEMENT.walkSpeed;
+  const speed = gaitSpeed(input.running, input.bike === true);
   const tvx = ax * speed;
   const tvz = az * speed;
   const dvx = tvx - pose.vx;

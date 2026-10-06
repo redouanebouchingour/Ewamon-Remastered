@@ -30,6 +30,8 @@ export const creatureInstances = pgTable(
     heldItem: varchar('held_item', { length: 32 }),
     variantKey: varchar('variant_key', { length: 8 }).notNull().default('normal'),
     isAlpha: boolean('is_alpha').notNull().default(false),
+    /** Phase D4 (migration 0003): the 1/512 shiny tier */
+    isShiny: boolean('is_shiny').notNull().default(false),
     caughtZoneId: varchar('caught_zone_id', { length: 32 }),
     caughtAt: timestamp('caught_at', { withTimezone: true }),
     ribbons: jsonb('ribbons').$type<string[]>().notNull().default([]),

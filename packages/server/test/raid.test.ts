@@ -17,7 +17,7 @@ import { newCreature } from '../src/game/creatures';
 import { RAID_CATCH_WINDOW_MS, RAID_ENRAGE_HP, RAID_MONEY_PER_LEVEL, RaidSession } from '../src/rooms/raidSession';
 import type { RaidPhase } from '../src/rooms/raidSession';
 import type { ZoneRoom } from '../src/rooms/ZoneRoom';
-import { api, content, enter, ofType, placePlayer, register, sleep, startServer, waitFor } from './helpers';
+import { api, content, enter, ofType, placePlayer, rawQuery, register, sleep, startServer, waitFor } from './helpers';
 import type { Account, Joined, TestServer } from './helpers';
 
 function party(id: string, species: string, level: number): CreatureInstance[] {
@@ -105,7 +105,11 @@ describe('RaidSession (pure)', () => {
     expect(s.participants.get(a)!.damage).toBeGreaterThan(0);
     // #14: one attempt per participant; the orb must be known
     expect(s.catchAttempt(a, 'not_an_orb')).toBe('unknownOrb');
+    // Phase C1: the catch window's battle (battleResync) can catch until the attempt is spent
+    expect(s.catchStateFor(a)).toMatchObject({ ended: null, sides: [{ canCatch: true, mustSwitch: false }, { party: [{ creature: { hp: 1 } }] }] });
+    expect(s.catchStateFor('00000000-0000-4000-8000-00000000ffff')).toBeNull();
     expect(s.catchAttempt(a, 'spark_orb')).toBe('ok');
+    expect(s.catchStateFor(a)!.sides[0].canCatch).toBe(false);
     const roll = s.rollCatch(a, 'spark_orb');
     expect(roll.events.some((e) => e.t === 'catchThrow')).toBe(true);
     expect(roll.stateDigest).toMatch(/^[0-9a-f]{8}$/);
@@ -188,6 +192,20 @@ describe('raids in the room (§30.4.7)', () => {
     await sleep(1100); // every raid* message shares the 4 / s window (§30.6.4 `raid`)
     for (const p of [a, b]) p.j.room.send('raidReady', { raidId: runner.id });
     await waitFor(() => a.j.room.state.raid!.phase === 1, 5000);
+    // Phase C1: the fight start seeds each client's battle view — battleResync { battleId: raidId } with its private battle
+    for (const p of [a, b]) {
+      await waitFor(() => ofType(p.j.msgs, 'battleResync').some((m) => m.battleId === runner.id), 3000);
+      const r = ofType(p.j.msgs, 'battleResync').find((m) => m.battleId === runner.id)!;
+      expect(r.state.format).toBe('raid');
+      expect(r.state.turn).toBe(0);
+      expect(r.state.sides[0].trainerId).toBe(p.acc.id);
+      expect(r.state.sides[0].canCatch).toBe(false);
+      expect(r.state.sides[1].party[0]!.creature.speciesId).toBe('mossling');
+      expect(r.state.sides[1].party[0]!.creature.hp).toBe(runner.session.bossBattler.maxHp);
+      expect(r.stateDigest).toBe(digestBattleState(r.state));
+      expect(r.stateDigest).toBe(digestBattleState(runner.session.viewFor(p.acc.id)!));
+    }
+    expect(ofType(far.j.msgs, 'battleResync')).toHaveLength(0);
     await sleep(1100);
     expect(a.j.room.state.players.get(a.acc.id)!.inBattle).toBe(true);
     // fight: each round both send their first move; raidEvents carry each participant's private digest
@@ -216,8 +234,24 @@ describe('raids in the room (§30.4.7)', () => {
     for (const p of damaged) {
       await waitFor(() => ofType(p.j.msgs, 'battleEnd').some((m) => m.battleId === runner.id), 3000);
       expect(ofType(p.j.msgs, 'battleEnd').find((m) => m.battleId === runner.id)!.rewards).toMatchObject({ money: RAID_MONEY_PER_LEVEL * 3, trainerExp: TRAINER_EXP.raidClear });
+      // Phase D5: the rewarded clear is the `raidClear` event — ach_raid_1 done, ach_raid_10 at 1
+      const ach = await rawQuery(s.db, "select quest_id, count, done from quest_progress where player_id = $1 and quest_id in ('ach_raid_1', 'ach_raid_10') order by quest_id", [p.acc.id]);
+      expect(ach.map((r) => [r['quest_id'], r['count'], r['done']])).toEqual([['ach_raid_1', 1, true], ['ach_raid_10', 1, false]]);
     }
     expect(a.j.room.state.players.get(a.acc.id)!.inBattle).toBe(false);
+    // Phase C1: the catch window opens with a second battleResync to every participant (before the round's battleEnd):
+    // the §2.15 pre-state — not ended, boss at 1 HP, canCatch only with damage dealt
+    for (const p of [a, b]) {
+      await waitFor(() => ofType(p.j.msgs, 'battleResync').filter((m) => m.battleId === runner.id).length === 2, 3000);
+      const r = ofType(p.j.msgs, 'battleResync').filter((m) => m.battleId === runner.id)[1]!;
+      expect(r.state.ended).toBeNull();
+      expect(r.state.sides[0].mustSwitch).toBe(false);
+      expect(r.state.sides[1].party[0]!.creature.hp).toBe(1);
+      expect(r.state.sides[0].canCatch).toBe(runner.session.participants.get(p.acc.id)!.damage > 0);
+      expect(r.stateDigest).toBe(digestBattleState(r.state));
+      const end = p.j.msgs.findIndex((m) => m.type === 'battleEnd' && m.battleId === runner.id);
+      if (end >= 0) expect(p.j.msgs.indexOf(r)).toBeLessThan(end);
+    }
     // the catch window: one attempt per participant; the replay is refused and spends no second orb (#14)
     const catcher = damaged[0]!;
     const orbs0 = (await api(s, 'GET', '/me', catcher.acc.access)).body.inventory.spark_orb as number;

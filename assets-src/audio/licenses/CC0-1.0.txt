@@ -1,0 +1,10 @@
+Creative Commons Zero v1.0 Universal (CC0 1.0) - Public Domain Dedication
+
+Every file under assets-src/audio/cc0/ that .design/audio/sources.json maps is released by its author under CC0 1.0.
+
+Human-readable summary: https://creativecommons.org/publicdomain/zero/1.0/
+Full legal code:        https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+This file is a pointer, not the legal code (nothing has been downloaded yet). When the packs are downloaded,
+replace it with the full legal code text and add each pack's own licence file next to it
+(e.g. KENNEY-<PACK>-License.txt), then run: pnpm --filter @ewa/audio-pipeline credits

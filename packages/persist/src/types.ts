@@ -35,6 +35,8 @@ export interface CreatureInstance {
   readonly heldItem: string | null;
   readonly variantKey: VariantKey;
   readonly isAlpha: boolean;
+  /** Phase D4: present (true) only on a shiny; absent = not shiny */
+  readonly isShiny?: boolean;
   readonly caughtAt: { readonly zoneId: string; readonly at: number } | null;
   readonly ribbons: readonly string[];
   readonly favorite: boolean;
@@ -48,12 +50,16 @@ export type RngState = readonly [number, number, number, number];
 // ---- §2.10 Action --------------------------------------------------------------------------
 
 export type Action =
-  | { readonly kind: 'move'; readonly move: string }
+  // Phase D6: `target` = a doubles field position (absent in singles)
+  | { readonly kind: 'move'; readonly move: string; readonly target?: { readonly side: 0 | 1; readonly pos: 0 | 1 } }
   | { readonly kind: 'switch'; readonly to: number }
   | { readonly kind: 'item'; readonly item: string; readonly target?: number }
   | { readonly kind: 'catch'; readonly orb: string }
   | { readonly kind: 'flee' }
   | { readonly kind: 'forfeit' };
+
+/** Phase D6: one side's entry in a replay's action log — singles: an Action / null; doubles: one per field position. */
+export type ReplayChoice = Action | null | readonly [Action | null, Action | null];
 
 // ---- §3.1 content ids -----------------------------------------------------------------------
 
@@ -128,6 +134,8 @@ export interface ListingView {
   readonly level: number;
   readonly variantKey: VariantKey;
   readonly isAlpha: boolean;
+  /** Phase D4 */
+  readonly isShiny: boolean;
   readonly startingBid: number;
   readonly currentBid: number | null;
   readonly currentBidderId: string | null;
@@ -153,6 +161,8 @@ export interface MarketQuery {
   readonly search?: string;
   readonly variant?: VariantKey;
   readonly isAlpha?: boolean;
+  /** Phase D4 */
+  readonly isShiny?: boolean;
   readonly levelMin?: number;
   readonly levelMax?: number;
   readonly sort?: MarketSort;
@@ -206,6 +216,12 @@ export interface BattleStartSnapshot {
   readonly zoneId: string;
   readonly terrain: string;
   readonly sides: readonly [unknown, unknown];
+  /** Phase D7: the ambient zone weather passed to createBattle; absent = none */
+  readonly weather?: string;
+  /** Phase D6: 2 for a doubles battle (createBattle `slots`); absent = singles */
+  readonly slots?: 2;
+  /** Phase D14: true for a battle tower fight (createBattle `noExp`); absent otherwise */
+  readonly noExp?: true;
 }
 
 export interface TradedCreatureSummary {

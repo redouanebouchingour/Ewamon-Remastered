@@ -13,12 +13,19 @@
  * thread blocks), reads the creature manifest, binds the zone's atlases with a real byte bar, builds the zone and
  * reveals the canvas on its first rendered frame (`performance.mark('ewa:first-frame')`). Phase 5 (hero materials)
  * starts after that, never awaited.
+ *
+ * Phase D8–D11 world systems: prediction surfs where the server would let it (HM Surf held, the zone's water not lava,
+ * not riding — `StepCollider.setSurf`, every fixed step); a 'fish' target rides the first water sample ahead of a
+ * player holding the Old Rod, and E on it runs the `FishingController` prompt (a landed bite sends `fish { angle }`);
+ * Cut / Strength obstacles are pre-checked against the bag and party before the interact goes out; the bike key mounts
+ * the bicycle when owned, outdoors and on land, and it folds itself in a hall or when the item is gone.
  */
 import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
-import { BODIES, QUESTS, harvestStateFor, staticsFor, zone as zoneDef } from '@ewa/content';
+import { BIKE_ITEM, BODIES, POSTGAME_FLAG, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, staticsFor, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
+import { FISH_REACH_M } from '@ewa/protocol';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
 import { ACTOR_POOL_SIZE, createRenderer, heroSurfaces, part3Of } from '@ewa/render';
 import type { CompileProgress, Renderer, SurfaceId, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
@@ -32,6 +39,7 @@ import { battlePanelTop, onBattlePanelTop } from '../battle/panelInset';
 import { createBattleController } from '../battle/BattleController';
 import type { BattleController, BattleView } from '../battle/BattleController';
 import { setBattleActions } from '../battle/controllerRef';
+import { foeIdentity } from '../battle/foe';
 import { STEP_MS } from '../battle/constants';
 import { TIMELINE_SFX } from '../battle/timeline';
 import { MOVE_ANIMS } from '../battle/moveAnims';
@@ -42,28 +50,41 @@ import type { WorldSession, ZoneRoom } from '../net/WorldSession';
 import { onEffectiveSettings, getEffectiveSettings } from '../state/applySettings';
 import { toast, useNotificationsStore } from '../state/notifications';
 import { applyInventoryDelta, partyCanBattle, toInventoryDelta, useSessionStore } from '../state/session';
+import { useQuestTracking } from '../state/questTracking';
 import { useSettingsStore } from '../state/settings';
+import { setFishingActions, useFishingStore } from '../state/fishing';
+import { noteTutorialEvent } from '../state/tutorial';
 import { useUiStore } from '../state/ui';
 import { FONT, TYPE_COLORS } from '../ui/tokens';
 import { createStepCollider } from './collider';
-import { beatDialogue, gymPlan, leaguePostDialogue, leagueSpeaker, npcPlan, storyFlagSet, storyHint, trainerPlan } from './dialogue';
+import type { StepCollider } from './collider';
+import { beatDialogue, gymPlan, leaguePostDialogue, leagueSpeaker, npcPlan, rematchOfBattle, storyFlagSet, trainerPlan } from './dialogue';
+import { questHintFor } from './questHint';
 import type { DialogueLines, InteractPlan } from './dialogue';
 import { HudWriter, partyStrip } from './HudWriter';
 import type { HudNameplates } from './HudWriter';
 import { EvolutionDirector } from './EvolutionDirector';
 import { createInputCapture } from './input';
 import type { InputCapture } from './input';
-import { InteractionTargets, PLAYER_RANGE } from './interaction';
+import { InteractionTargets, PLAYER_RANGE, makeInteractable } from './interaction';
+import type { Interactable } from './interaction';
+import { FishingController } from './fishing';
+import { pocketActorMax } from './interiors';
 import { LocalPlayerController } from './LocalPlayerController';
 import { RemoteInterpolator } from './RemoteInterpolator';
+import { EMOTE_CHEER, EMOTE_SAD, FoeActor, foeSpecOf } from './foeActor';
 import { TRAINER_BACK_M, createSceneDirector } from './SceneDirector';
 import type { SceneDirector } from './SceneDirector';
 import { SpawnViews } from './SpawnViews';
+import { LegendaryViews, staticTargetId } from './LegendaryViews';
+import { RaidDen, raidTargetId } from './RaidViews';
+import { raidInfoOf } from '../battle/raid';
 import { bindCatalogAtlas, createSpriteCatalog, loadCreatureManifest, speciesAtlases } from './spriteCatalog';
 import type { SpriteCatalog } from './spriteCatalog';
 import type { WorldInstance } from './worldHost';
 
 const MAX_STEPS = 4;
+const NO_ITEMS: Readonly<Record<string, number>> = Object.freeze({});
 const HIDDEN_STEP_MS = 250;
 const NAMEPLATE_MS = 500;
 const DEV_MS = 1000;
@@ -99,23 +120,11 @@ function devBuild(): boolean {
 const nextFrame = (): Promise<void> => new Promise((r) => requestAnimationFrame(() => r()));
 
 /**
- * The HUD hint line (≤ 60 chars in the writer): the story beat the player can play next ("Talk to Prof. Wynn
- * (Mirevale)") — the Act I opening has no started quest to point at — else the first started, unfinished quest's
- * first undone objective label, else the next gym badge.
+ * The HUD hint line (≤ 60 chars in the writer): `questHintFor` (Phase B3: the journal's tracked quest first, then the
+ * story beat the player can play next, the first started quest's undone objective, the next gym badge).
  */
 function questHint(): string | null {
-  const p = useSessionStore.getState().progression;
-  if (p === null) return null;
-  const flags = storyFlagSet(p.flags, p.badges as readonly BadgeId[]);
-  const story = storyHint(flags, []);
-  if (story !== null && story.startsWith('Talk to')) return story;
-  for (const q of QUESTS) {
-    const prog = p.quests[q.id];
-    if (prog === undefined || p.questsClaimed.includes(q.id)) continue;
-    const undone = q.objectives.find((o) => !(prog[o.id]?.done ?? false));
-    if (undone !== undefined) return undone.label;
-  }
-  return storyHint(flags, p.badges as readonly BadgeId[]);
+  return questHintFor(useSessionStore.getState().progression, useQuestTracking.getState().tracked);
 }
 
 class World implements World3D {
@@ -131,6 +140,14 @@ class World implements World3D {
   private readonly capture: InputCapture;
   private catalog: SpriteCatalog | null = null;
   private spawns: SpawnViews | null = null;
+  /** Phase B1: legendary statics (the director syncs them on load / flags / unload) */
+  private legendaries: LegendaryViews | null = null;
+  /** Phase C1: the open raid's den (synced from the patch handler) */
+  private raidDen: RaidDen | null = null;
+  /** the last `state.raid` id / phase / hpPct seen by the patch handler (no allocation per patch) */
+  private raidSeenId = '';
+  private raidSeenPhase = -1;
+  private raidSeenHp = -1;
   private readonly clientGroupName = 'ewa:client-creatures';
   private ready = false;
   private running = false;
@@ -148,8 +165,23 @@ class World implements World3D {
   private roomDisposers: (() => void)[] = [];
   private readonly offs: (() => void)[] = [];
   private nameplateLeft = 0;
-  /** the other trainer of a pvp battle (their remote actor stands behind the far battler) */
-  private battleFoe: string | null = null;
+  /**
+   * Phase B7: the trainer at the far slot — a pvp foe's remote avatar, a restaged director actor (route / hall trainer,
+   * league leader) or a temporary `battle:foe` actor with the content look (a story trainer fought from a beat).
+   */
+  private readonly foe = new FoeActor({
+    actors: {
+      spawn: (id, d) => this.ready && this.renderer.actors.spawn(id, d),
+      setTransform: (id, x, z, a, m, r) => this.ready && this.renderer.actors.setTransform(id, x, z, a, m, r),
+      setEmote: (id, n) => this.ready && this.renderer.actors.setEmote(id, n),
+      despawn: (id) => this.ready && this.renderer.actors.despawn(id),
+    },
+    isStatic: (id) => this.ready && this.director.isStaticActor(id),
+    isRemote: (id) => this.remotes.isSpawned(id),
+    restPose: (id) => (this.ready ? this.director.staticPose(id) : null),
+  });
+  /** the prediction collider of the loaded zone (gates are its removable blockers) */
+  private stepCollider: StepCollider | null = null;
   private devLeft = 0;
   private devOn = false;
   private frames = 0;
@@ -164,6 +196,9 @@ class World implements World3D {
   private readBeat: string | null = null;
   /** §20.5.6 the evolution sequence (render's `stage.evolve` + the input lock), built at boot */
   private evolution: EvolutionDirector | null = null;
+  /** Phase D9: the Old Rod's prompt and the cast point it is offered at (kept on the water ahead, every fixed step) */
+  private readonly fishing: FishingController;
+  private readonly fishSpot: Interactable = makeInteractable('fish:spot', 'fish', 0, 0, 'Fish in', 'the water', this.keyLabel('interact'));
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.audio = createAudioDirector();
@@ -176,6 +211,7 @@ class World implements World3D {
       rotate: (dir) => this.ready && this.renderer.camera.setHeading(((this.headingIndex() + dir + 4) & 3) as 0 | 1 | 2 | 3),
       zoom: (dir) => this.ready && this.renderer.camera.setZoomStop(Math.max(0, Math.min(2, this.zoomStop() + dir)) as 0 | 1 | 2),
       jump: () => undefined,
+      toggleBike: () => this.toggleBike(),
       toggleDev: () => {
         if (!this.dev) return;
         this.devOn = !this.devOn;
@@ -183,6 +219,17 @@ class World implements World3D {
       },
       blocked: () => this.worldBlocked(),
     });
+    this.fishSpot.enabled = false;
+    this.fishing = new FishingController({
+      setTimer: (fn, ms) => setTimeout(fn, ms),
+      clearTimer: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+      random: () => Math.random(),
+      reduced: () => getEffectiveSettings().reduced,
+      onPhase: (ph) => useFishingStore.getState().setPhase(ph),
+      onCatch: () => this.ws.send('fish', { angle: this.input.pose.angle }),
+      onMiss: () => undefined,
+    });
+    setFishingActions({ press: () => this.fishing.press(), cancel: () => this.fishing.cancel() });
     this.input = new LocalPlayerController({
       held: this.capture.held,
       cameraYaw: () => this.cameraYaw(),
@@ -213,12 +260,14 @@ class World implements World3D {
       },
       selfId: () => this.ws.selfId,
       raidId: () => this.room?.state.raid?.id ?? null,
+      raidInfo: () => (this.room === null ? null : raidInfoOf(this.room.state, this.ws.selfId)),
       view: null,
     });
     setBattleActions({
       submit: (a) => this.battle.submit(a),
       check: (a) => this.battle.check(a),
       dismissResult: () => this.battle.dismissResult(),
+      undoPick: () => this.battle.undoPick(),
     });
     this.subscribe();
     // dev builds / ?dev=1 only: the console + harness handle (debug(), walkTo(), lastSecond)
@@ -262,6 +311,9 @@ class World implements World3D {
       setInputEnabled: (on) => this.input.setEnabled(on),
       setAccentType: (t) => part3Of(r)?.stage.setAccentType(t),
       reducedMotion: () => getEffectiveSettings().reduced,
+      blockers: () => this.stepCollider,
+      legendaries: () => this.legendaries,
+      obstacles: () => this.stepCollider,
     });
     this.hudWriter.bind(r.hud);
     this.hudWriter.setConnection(useUiStore.getState().connection);
@@ -284,11 +336,32 @@ class World implements World3D {
       this.spawns = new SpawnViews({
         parent: group,
         acquire: (d) => p3.sprites.acquire(d),
-        descriptor: (sp, key, v, a) => this.catalog?.descriptor(sp, key, v, a) ?? null,
+        descriptor: (sp, key, v, a, s) => this.catalog?.descriptor(sp, key, v, a, s) ?? null,
         ensureSpecies: (sp) => this.ensureSpecies(sp),
         height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
         targets: this.targets,
         interactKey: () => this.keyLabel('interact'),
+      });
+      this.legendaries = new LegendaryViews({
+        parent: group,
+        acquire: (d) => p3.sprites.acquire(d),
+        descriptor: (sp, key) => this.catalog?.descriptor(sp, key) ?? null,
+        ensureSpecies: (sp) => this.ensureSpecies(sp),
+        height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
+        targets: this.targets,
+        interactKey: () => this.keyLabel('interact'),
+      });
+      // Phase C1: the boss in the alpha treatment (glow rim) marks the den
+      this.raidDen = new RaidDen({
+        parent: group,
+        acquire: (d) => p3.sprites.acquire(d),
+        descriptor: (sp, key) => this.catalog?.descriptor(sp, key, 'normal', true) ?? null,
+        ensureSpecies: (sp) => this.ensureSpecies(sp),
+        height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
+        targets: this.targets,
+        interactKey: () => this.keyLabel('interact'),
+        dress: (x, z) => p3.stage.dressSpectator(x, z),
+        undress: (x, z) => p3.stage.undressSpectator(x, z),
       });
     }
     this.audio.armOnGesture(window);
@@ -439,6 +512,13 @@ class World implements World3D {
         { fireImmediately: true },
       ),
     );
+    // Phase B3: the journal's Track toggle re-points the hint
+    this.offs.push(
+      useQuestTracking.subscribe(
+        (s) => s.tracked,
+        () => this.hudWriter.setQuestHint(questHint()),
+      ),
+    );
     this.offs.push(
       useUiStore.subscribe(
         (s) => s.connection,
@@ -562,6 +642,7 @@ class World implements World3D {
     const onPatch = (): void => {
       this.remotes.observeTick(state.tick);
       state.players.forEach(this.pushSample);
+      this.syncRaid(state, false);
     };
     this.pushSampleState = state;
     room.onStateChange(onPatch);
@@ -575,10 +656,35 @@ class World implements World3D {
     this.remotes.push(key, this.pushSampleState.tick, p.x, p.z, p.angle, p.moving, p.running);
   };
 
+  /**
+   * Phase C1: `state.raid` → the den (on a new raid / phase) and the battle controller (hpPct, phase, removal). Runs
+   * per applied patch (network callback, not the tick); compares three fields, allocates only on a change.
+   */
+  private syncRaid(state: ZoneState, force: boolean): void {
+    const r = state.raid ?? null;
+    const id = r?.id ?? '';
+    const phase = r?.phase ?? -1;
+    const hp = r?.hpPct ?? -1;
+    if (!force && id === this.raidSeenId && phase === this.raidSeenPhase && hp === this.raidSeenHp) return;
+    const denChanged = force || id !== this.raidSeenId || phase !== this.raidSeenPhase;
+    this.raidSeenId = id;
+    this.raidSeenPhase = phase;
+    this.raidSeenHp = hp;
+    if (denChanged && this.ready && this.zoneLoaded) {
+      this.raidDen?.sync(r === null || id === '' ? null : { id, bossSpecies: r.bossSpecies, bossLevel: r.bossLevel, phase, x: r.x, z: r.z });
+      if (r !== null && id !== '') this.ensureSpecies(r.bossSpecies);
+    }
+    this.battle.onRaidState();
+  }
+
   private detachRoom(): void {
     for (const f of this.roomDisposers) f();
     this.roomDisposers = [];
     this.pushSampleState = null;
+    this.raidDen?.clear();
+    this.raidSeenId = '';
+    this.raidSeenPhase = -1;
+    this.raidSeenHp = -1;
     this.remotes.clear();
     this.spawns?.clear();
     this.input.clear();
@@ -624,8 +730,9 @@ class World implements World3D {
     if (me !== undefined) this.input.reconcile(me.x, me.z, me.angle, me.seq);
     this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, this.input.pose.angle, false, false);
     this.renderer.camera.follow(selfId);
-    // statics took rigs: shrink the remote budget
-    const statics = z.npcs.length + z.trainers.length;
+    // statics took rigs: shrink the remote budget (+ the most any one pocket spawns while the player stands in it,
+    // + Phase B7's temporary battle foe)
+    const statics = z.npcs.length + z.trainers.length + pocketActorMax(zoneId) + 1;
     this.remotes.cap = Math.max(8, ACTOR_POOL_SIZE - 1 - SPECTATOR_RIGS - statics);
     // spawns already in view
     room.state.spawns.forEach((s) => this.spawns?.add(s));
@@ -634,12 +741,20 @@ class World implements World3D {
     this.director.setWeather(room.state.weather as WeatherKind);
     this.input.setEnabled(useUiStore.getState().battle === null);
     this.battle.attach(this.battleView());
+    // Phase C1: a raid already open in this room (or opened while the zone built)
+    this.syncRaid(room.state, true);
   }
 
   private onZoneChanged(h: ZoneHandle | null, z: ZoneDef | null): void {
-    this.input.setCollider(h === null ? null : createStepCollider(h.collider));
+    this.stepCollider = h === null ? null : createStepCollider(h.collider);
+    this.input.setCollider(this.stepCollider);
     this.zone = z;
+    // Phase D9: a cast never survives a zone change; the cast point is a dynamic target of the new zone
+    this.fishing.cancel();
+    this.fishSpot.enabled = false;
+    if (h !== null) this.targets.addDynamic(this.fishSpot);
     this.spawns?.reground();
+    this.raidDen?.reground();
   }
 
   /** §20.10.3 phase 3: the zone's bind set, parallel, real byte progress from the manifest sizes. */
@@ -696,6 +811,7 @@ class World implements World3D {
     switch (m.type) {
       case 'battleStart':
         this.input.setEnabled(false);
+        this.fishing.cancel();
         for (const s of m.state.sides) for (const b of s.party) this.ensureSpecies(b.creature.speciesId);
         useUiStore.getState().setDialogue(null);
         this.battle.onBattleStart(m);
@@ -706,13 +822,16 @@ class World implements World3D {
       case 'battleResync':
         this.input.setEnabled(false);
         for (const s of m.state.sides) for (const b of s.party) this.ensureSpecies(b.creature.speciesId);
+        // Phase C1: a raid's fight starts with this resync — the lobby yields to the battle
+        if (useUiStore.getState().modal === 'raidLobby') useUiStore.getState().closeModal();
         this.battle.onBattleResync(m);
         return;
       case 'battleEnd': {
         // a won gym battle: the leader's `post` lines once the result card is dismissed (then the evolve / learn prompts)
         const b = useUiStore.getState().battle;
         if (b !== null && b.battleId === m.battleId && b.format === 'league' && 'winner' in m.outcome && m.outcome.winner === b.seat) {
-          const post = leaguePostDialogue(b.authoritative.sides[b.seat === 0 ? 1 : 0].trainerId);
+          // Phase D14: a won rematch says its own `post` lines
+          const post = leaguePostDialogue(b.authoritative.sides[b.seat === 0 ? 1 : 0].trainerId, rematchOfBattle(b.authoritative, b.seat));
           if (post !== null) this.showAfterBattle(post, `league:${m.battleId}:post`);
         }
         this.battle.onBattleEnd(m);
@@ -741,6 +860,8 @@ class World implements World3D {
         return;
       }
       case 'raidEvents':
+        // Phase C1: a raid round's (or the catch roll's) events drive the battle view
+        this.battle.onRaidEvents(m);
         return;
       default:
         return;
@@ -805,13 +926,27 @@ class World implements World3D {
     switch (t.kind) {
       case 'npc': {
         const npc = z.npcs.find((n) => n.id === t.id);
-        if (npc === undefined) return;
-        this.runPlan(npcPlan(z.id, npc, this.flags()), npc.id, () => this.ws.send('interact', { targetId: npc.id, kind: 'npc' }));
+        if (npc === undefined) {
+          // Phase A: residents and guides inside the pockets talk client-side (the server has no record of them)
+          const inside = interiorNpcs(z.id).find((n) => n.id === t.id);
+          if (inside !== undefined) ui.setDialogue({ speaker: inside.name, lines: inside.lines, index: 0, targetId: inside.id });
+          return;
+        }
+        const plan = npcPlan(z.id, npc, this.flags());
+        const talk = (): void => this.ws.send('interact', { targetId: npc.id, kind: 'npc' });
+        // Phase D2 move tutor: its lines, then (paging past the last one) the party's Teach section with its moves
+        if (npc.tutor !== undefined && (plan.dialogue === null || plan.dialogue.beatId === null)) {
+          const lines = plan.dialogue?.lines ?? npc.lines;
+          ui.setDialogue({ speaker: npc.name, lines, index: 0, targetId: npc.id, onFinish: () => navigateTo(`/play/party?tutor=${encodeURIComponent(npc.id)}`) });
+          talk();
+          return;
+        }
+        this.runPlan(plan, npc.id, talk);
         return;
       }
       case 'trainer': {
         const plan = trainerPlan(z.id, t.id, this.flags());
-        const tr = z.trainers.find((x) => x.id === t.id);
+        const tr = z.trainers.find((x) => x.id === t.id) ?? interiorTrainers(z.id).find((x) => x.id === t.id);
         if (plan.dialogue === null && tr !== undefined && tr.lines.length > 0) toast('info', `${tr.name}: ${tr.lines[0]}`);
         this.runPlan(plan, t.id, () => this.ws.send('interact', { targetId: t.id, kind: 'npc' }));
         return;
@@ -834,12 +969,36 @@ class World implements World3D {
       case 'warp':
         this.ws.send('interact', { targetId: t.id, kind: 'warp' });
         return;
+      case 'switch':
+        // the server refuses (toast) unless `requires` is held, sets the flag, and may teleport (a snap re-tracks the pocket)
+        this.ws.send('interact', { targetId: t.id, kind: 'switch' });
+        return;
+      case 'pc':
+        navigateTo('/play/box');
+        return;
+      case 'tower': {
+        // Phase D14: the attendant's lines; after the Champion, paging past them opens the tower (picker, or the run)
+        const inside = interiorNpcs(z.id).find((n) => n.id === t.id);
+        const lines = inside?.lines ?? [];
+        const speaker = inside?.name ?? 'Tower Attendant';
+        if (!this.flags().has(POSTGAME_FLAG)) {
+          ui.setDialogue({ speaker, lines, index: 0, targetId: t.id });
+          return;
+        }
+        if (useUiStore.getState().tower !== null) {
+          ui.openModal('tower');
+          return;
+        }
+        ui.setDialogue({ speaker, lines, index: 0, targetId: t.id, onFinish: () => useUiStore.getState().openModal('tower') });
+        return;
+      }
       case 'healer':
         this.ws.send('interact', { targetId: z.id, kind: 'healer' });
         void apiFetch('heal', {})
           .then((res) => {
             applyInventoryDelta(toInventoryDelta({ party: res.party }));
             toast('success', 'Your party is fully healed.');
+            noteTutorialEvent('healed');
           })
           .catch(() => toast('warn', 'The healer cannot help right now.'));
         return;
@@ -850,6 +1009,51 @@ class World implements World3D {
       case 'spawn':
         this.ws.send('engageSpawn', { spawnId: t.id });
         return;
+      case 'obstacle': {
+        // Phase D10: the server re-checks; the same rule here saves a round trip and words the refusal
+        const o = z.obstacles?.find((x) => x.id === t.id);
+        if (o === undefined) return;
+        const inv = useSessionStore.getState().inventory;
+        const types = (inv?.party ?? []).map((c) => speciesDef(c.speciesId)?.types ?? []);
+        const why = obstacleRefusal(o.kind, inv?.items ?? {}, types);
+        if (why !== null) {
+          toast('info', obstacleRefusalText(o.kind, why));
+          return;
+        }
+        this.ws.send('interact', { targetId: o.id, kind: 'obstacle' });
+        return;
+      }
+      case 'fish':
+        // Phase D9: the prompt runs client-side; only a landed bite reaches the server
+        if (!partyCanBattle(useSessionStore.getState().inventory)) {
+          toast('warn', 'Your party needs healing before a battle.');
+          return;
+        }
+        this.fishing.start();
+        return;
+      case 'static':
+        // Phase B1: a legendary static (no flee; BattleMenu reads canFlee=false); the server re-checks gate + flag
+        if (!partyCanBattle(useSessionStore.getState().inventory)) {
+          toast('warn', 'Your party needs healing before a battle.');
+          return;
+        }
+        this.ws.send('interact', { targetId: staticTargetId(t.id), kind: 'static' });
+        return;
+      case 'raid': {
+        // Phase C1: the den — join (lobby, not in yet) and open the lobby; later phases open it as a view
+        const r = this.room?.state.raid ?? null;
+        const raidId = raidTargetId(t.id);
+        if (r === null || r.id !== raidId) return;
+        if (r.phase === 0 && !r.damageBoard.has(this.ws.selfId)) {
+          if (!partyCanBattle(useSessionStore.getState().inventory)) {
+            toast('warn', 'Your party needs healing before a raid.');
+            return;
+          }
+          this.ws.send('raidJoin', { raidId });
+        }
+        ui.openModal('raidLobby', { raidId });
+        return;
+      }
     }
   }
 
@@ -890,7 +1094,74 @@ class World implements World3D {
 
   private worldBlocked(): boolean {
     const ui = useUiStore.getState();
-    return ui.battle !== null || ui.evolution !== null || ui.dialogue !== null || ui.modal !== 'none' || ui.chatOpen || ui.prompts.length > 0 || ui.trade !== null || ui.challenge !== null;
+    return (
+      ui.battle !== null || ui.evolution !== null || ui.dialogue !== null || ui.modal !== 'none' || ui.chatOpen || ui.prompts.length > 0 || ui.trade !== null || ui.challenge !== null ||
+      this.fishing.active
+    );
+  }
+
+  // ---- Phase D8–D11 world systems ---------------------------------------------------------------------------------
+
+  private items(): Readonly<Record<string, number>> {
+    return useSessionStore.getState().inventory?.items ?? NO_ITEMS;
+  }
+
+  /** Phase D8: prediction surfs where the server lets this player (HM Surf, water that is not lava, not riding). */
+  private canSurf(): boolean {
+    return (this.items()['HM Surf'] ?? 0) > 0 && this.zone !== null && this.zone.biome !== 'cinder' && !this.input.biking;
+  }
+
+  /** Phase D11: why the bike cannot come out here (null = it can): the server's bike cap rules. */
+  private bikeRefusal(): string | null {
+    if ((this.items()[BIKE_ITEM] ?? 0) <= 0) return 'You have no bicycle.';
+    if (this.director.pocket !== null) return 'No riding indoors.';
+    if (this.stepCollider?.onWater(this.input.pose.x, this.input.pose.z) === true) return 'You cannot ride on water.';
+    return null;
+  }
+
+  private toggleBike(): void {
+    if (!this.ready || !this.zoneLoaded) return;
+    if (this.input.biking) {
+      this.input.setBike(false);
+      toast('info', 'You fold the bicycle.');
+      return;
+    }
+    const why = this.bikeRefusal();
+    if (why !== null) {
+      toast('info', why);
+      return;
+    }
+    this.input.setBike(true);
+    toast('info', 'You ride the bicycle.');
+  }
+
+  /**
+   * Once per fixed step (allocation-free): the bike folds itself where riding stops being allowed, prediction's surf
+   * mode follows the bag, and the 'fish' target sits on the first water sample ahead (Old Rod held, outdoors, on foot).
+   */
+  private stepWorldSystems(): void {
+    if (this.input.biking && (this.director.pocket !== null || (this.items()[BIKE_ITEM] ?? 0) <= 0)) {
+      this.input.setBike(false);
+      setTimeout(() => toast('info', 'You fold the bicycle.'), 0);
+    }
+    const c = this.stepCollider;
+    if (c !== null) c.setSurf(this.canSurf());
+    const spot = this.fishSpot;
+    spot.enabled = false;
+    const terrain = c?.terrain ?? null;
+    if (terrain === null || this.zone === null || this.zone.biome === 'cinder' || this.input.biking || this.director.pocket !== null || (this.items()['old_rod'] ?? 0) <= 0) return;
+    const pose = this.input.pose;
+    const dx = Math.sin(pose.angle);
+    const dz = Math.cos(pose.angle);
+    for (let d = 0.5; d <= FISH_REACH_M + 1e-9; d += 0.5) {
+      const wx = pose.x + dx * d;
+      const wz = pose.z + dz * d;
+      if (!terrain.water(wx, wz)) continue;
+      spot.x = wx;
+      spot.z = wz;
+      spot.enabled = true;
+      return;
+    }
   }
 
   private cameraYaw(): number {
@@ -916,12 +1187,20 @@ class World implements World3D {
     return {
       enterBattle: (s) => {
         // from the battle state (the BattleSummary patch can arrive after battleStart)
-        this.battleFoe = s.foeId !== this.ws.selfId ? s.foeId : null;
+        this.foe.begin(foeSpecOf(s.foeId, s.foeNpc, this.ws.selfId, (id) => foeIdentity(id)));
+        // Phase C1: the den's boss steps aside while its arena copy fights
+        if (s.format === 'raid') this.raidDen?.setHidden(true);
         void this.director.enterBattle(s);
-        this.audio.setTheme('battle', 400);
+        this.audio.setTheme(s.format === 'raid' ? 'raid' : 'battle', 400);
+      },
+      ended: (foeWon) => {
+        // Phase B7: the winner cheers, the loser bows (the player's own avatar too)
+        this.foe.react(foeWon);
+        if (foeWon !== null) r.actors.setEmote(this.ws.selfId, foeWon ? EMOTE_SAD : EMOTE_CHEER);
       },
       exitBattle: () => {
-        this.battleFoe = null;
+        this.foe.end();
+        this.raidDen?.setHidden(false);
         void this.director.exitBattle();
         if (this.zone !== null) this.audio.setTheme(this.audio.themeFor(this.zone.id, this.zone.biome), 400);
       },
@@ -931,7 +1210,7 @@ class World implements World3D {
           return;
         }
         this.ensureSpecies(c.speciesId);
-        r.stage.setBattler(ref, cat.descriptor(c.speciesId, key, c.variantKey, c.isAlpha));
+        r.stage.setBattler(ref, cat.descriptor(c.speciesId, key, c.variantKey, c.isAlpha, c.isShiny === true));
       },
       setPose: (ref, pose, ms) => r.stage.setPose(ref, pose, ms),
       hurt: (ref, s) => r.stage.hurt(ref, s),
@@ -1027,7 +1306,10 @@ class World implements World3D {
   }
 
   private fixedStep(): void {
+    if (this.ready && this.zoneLoaded) this.stepWorldSystems();
     this.input.step(STEP_MS);
+    // Phase A: pockets are reached only by warps / switch teleports / corrections; the floor test is allocation-free
+    if (this.ready && this.zoneLoaded) this.director.updatePocket(this.input.pose.x, this.input.pose.z);
     this.remotes.step(STEP_MS, this.input.pose.x, this.input.pose.z);
     this.targets.step(this.input.pose.x, this.input.pose.z, this.worldBlocked());
     this.battle.player.step(STEP_MS);
@@ -1055,19 +1337,17 @@ class World implements World3D {
       const selfId = this.ws.selfId;
       const bf = this.director.battleFrame;
       if (bf !== null) {
-        // the trainer stands behind their own creature, facing the foe; a pvp foe behind theirs (the remote
+        // the trainer stands behind their own creature, facing the foe; the foe actor behind theirs (a pvp foe's remote
         // interpolator wrote its server pose this step — both players are frozen in battle, so this only restages it)
         this.renderer.actors.setTransform(selfId, bf.x - bf.fx * TRAINER_BACK_M, bf.z - bf.fz * TRAINER_BACK_M, Math.atan2(bf.fx, bf.fz), false, false);
-        if (this.battleFoe !== null && this.remotes.isSpawned(this.battleFoe)) {
-          this.renderer.actors.setTransform(this.battleFoe, bf.x + bf.fx * TRAINER_BACK_M, bf.z + bf.fz * TRAINER_BACK_M, Math.atan2(-bf.fx, -bf.fz), false, false);
-        }
+        this.foe.stage(bf.x, bf.z, bf.fx, bf.fz, TRAINER_BACK_M);
       } else if (this.evolution?.active === true) {
         // the evolution sequence: the trainer turns to the creature beside them (input is locked meanwhile)
         const rx = this.input.renderX;
         const rz = this.input.renderZ;
         this.renderer.actors.setTransform(selfId, rx, rz, this.evolution.faceAngle(rx, rz), false, false);
       } else {
-        this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, this.input.pose.angle, this.input.moving, this.input.running);
+        this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, this.input.pose.angle, this.input.moving, this.input.running || this.input.biking);
       }
     }
     this.nameplateLeft -= frameDt;
@@ -1075,6 +1355,8 @@ class World implements World3D {
       this.nameplateLeft = NAMEPLATE_MS;
       this.updateNameplates();
     }
+    // the active pocket drops the walls facing the camera (only on a yaw change)
+    if (this.director.pocket !== null) this.director.syncView(this.cameraYaw());
     // (3)
     this.hudWriter.flush();
     // (4)
@@ -1186,7 +1468,8 @@ class World implements World3D {
       remotes: this.remotes.size, spawnedRemotes: this.remotes.spawnedCount, spawns: this.spawns?.size ?? 0,
       spawnList: room === null ? [] : [...room.state.spawns.values()].map((s) => ({ id: s.id, speciesId: s.speciesId, level: s.level, x: s.x, z: s.z, engagedBy: s.engagedBy })),
       target: this.targets.current === null ? null : { id: this.targets.current.id, kind: this.targets.current.kind },
-      battle: ui.battle === null ? null : { phase: ui.battle.phase, turn: ui.battle.turnLabel, log: ui.battle.log.slice(-4).map((l) => l.text), desyncs: ui.battle.desyncs, result: ui.battle.result },
+      battle: ui.battle === null ? null : { phase: ui.battle.phase, turn: ui.battle.turnLabel, log: ui.battle.log.slice(-4).map((l) => l.text), desyncs: ui.battle.desyncs, result: ui.battle.result, raid: ui.battle.raid ?? null },
+      raid: room === null ? null : raidInfoOf(room.state, selfId), raidDen: this.raidDen === null ? null : { id: this.raidDen.raidId, phase: this.raidDen.phase, visible: this.raidDen.visible, dressed: this.raidDen.dressed }, modal: ui.modal,
       dialogue: ui.dialogue, chat: this.hudWriter.current().chat.map((c) => `${c.name}: ${c.text}`), connection: ui.connection,
       hudSetCalls: this.hudWriter.setCalls, lastSecond: this.lastSecond, audio: this.audio.state,
       party: useSessionStore.getState().inventory?.party.map((c) => `${c.speciesId} L${c.level} ${c.hp}hp`) ?? [],
@@ -1219,6 +1502,10 @@ class World implements World3D {
         if (n.until !== null && flags.has(n.until)) continue;
         list.push({ id: n.id, name: n.name, guildTag: '', inBattle: false, d });
       }
+    }
+    for (const a of this.director.pocketActors) {
+      const d = Math.hypot(a.x - sx, a.z - sz);
+      if (d <= 18) list.push({ id: a.id, name: a.name, guildTag: '', inBattle: false, d });
     }
     list.sort((a, b) => a.d - b.d);
     const next: HudNameplates = list.slice(0, 16).map(({ id, name, guildTag, inBattle }) => ({ id, name, guildTag, inBattle }));

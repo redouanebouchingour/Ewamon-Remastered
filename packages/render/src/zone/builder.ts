@@ -14,7 +14,7 @@
  */
 import { Color, Group, LOD, Mesh } from 'three/webgpu';
 import type { BufferGeometry, Material, Object3D , InstancedMesh, Vector3 } from 'three/webgpu';
-import type { BuildingSpec, HeightfieldData, ZoneHandle, ZoneSpec } from '../contracts.js';
+import type { BuildingSpec, HeightfieldData, ObstaclesHandle, ZoneHandle, ZoneSpec } from '../contracts.js';
 import type { LightSource, RenderStats } from '../descriptors.js';
 import type { MaterialLibrary } from '../materials/library.js';
 import { SURFACES, type SurfaceId } from '../materials/surfaces.js';
@@ -27,13 +27,15 @@ import type { Parts} from './geo.js';
 import { Digest, box, beam, card, lathe, releaseShapeCache, trs } from './geo.js';
 import { BIOME_GENERATORS, FENCE_FOOTPRINT, PROP_BLOCKER, SET_PIECE_BUILDERS, buildHousing, buildPropKind } from './generators/index.js';
 import { addPropTier, disposeProp, finish, tiers3 } from './generators/common.js';
-import { buildHouse } from './generators/buildings.js';
+import { DOORWAY_SURFACE, buildHouse } from './generators/buildings.js';
 import { buildBush, buildFlowers, buildGroundTuft, buildImpostorCards, buildLog, buildRock, buildStump, buildTallGrass, buildTree } from './generators/nature.js';
 import { buildPondBank } from './generators/props.js';
+import { buildInterior, interiorSurfaces, type BuiltInterior } from './generators/interiors.js';
+import { InteriorSystem } from './interiors.js';
 import { setSurfaces, type BiomeSet } from './generators/set.js';
 import {
-  FIELD_SIZE, HOUSING_LOCAL, createSplatContext, footprintDistance, inEllipse, layoutOf, roadDistance, scatterClear, splatAt, toWorld,
-  type SplatContext, type SplatFields, type ZoneLayoutPlan,
+  FIELD_SIZE, HOUSING_LOCAL, createSplatContext, footprintDistance, inEllipse, inPocket, layoutOf, roadDistance, scatterClear, splatAt, toWorld,
+  type PocketRect, type SplatContext, type SplatFields, type ZoneLayoutPlan,
 } from './layout.js';
 import { BUILDING_LOD_LEVELS, CHUNK_SIZE, chunkGrid, type ChunkGrid } from './lod.js';
 import { paletteFor } from './palettes.js';
@@ -77,6 +79,10 @@ export interface ZoneHandleImpl extends ZoneHandle {
   readonly info: { readonly triangles: number; readonly chunks: number; readonly instances: number; readonly buildMs: number | null };
   /** Per-frame LOD pick against the main camera. Zero allocation. Returns chunks at the impostor tier. */
   updateLod(camera: Vector3, cameraObject: Object3D): number;
+  /** Every scatter kind's instance matrices (16 floats per instance, all chunks; tests / audit). */
+  scatterInstances(): readonly { readonly kind: string; readonly matrices: Float32Array }[];
+  /** Phase A: the pockets' controller (absent when the spec has none); `step` runs from `updateLod`. */
+  readonly interiors?: InteriorSystem;
 }
 
 const MOVER_R = 0.35;
@@ -152,7 +158,8 @@ function surfaceBounds(geo: PropGeo, test: (s: SurfaceId) => boolean): [number, 
 export function zoneSurfaces(spec: ZoneSpec): SurfaceId[] {
   const set = BIOME_GENERATORS[spec.generators] ?? BIOME_GENERATORS.grove;
   const pal = paletteFor(spec.palette, spec.biome);
-  const out = new Set<SurfaceId>([...setSurfaces(set), ...pal.terrainLayers, pal.plaza]);
+  const out = new Set<SurfaceId>([...setSurfaces(set), ...pal.terrainLayers, pal.plaza, ...interiorSurfaces(spec.interiors ?? [], set, pal)]);
+  if (spec.buildings.length > 0) out.add(DOORWAY_SURFACE);
   return [...out].sort();
 }
 
@@ -185,7 +192,7 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
   const propsRng = prng.fork('props');
   prng.fork('lights');
   const plan = layoutOf(spec);                           // content's zone plan (spec.plan): the builder plans no layout of its own
-  const splat = createSplatContext(plan, spec.buildings, spec.seed);
+  const splat = createSplatContext(plan, spec.buildings, spec.seed, spec.interiors);
   const fieldCells = Math.ceil(FIELD_SIZE[spec.layout] / CHUNK_SIZE);
   const grid: ChunkGrid = chunkGrid((fieldCells + 4) * CHUNK_SIZE);
   const chunks = new ChunkSet(grid);
@@ -314,7 +321,21 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
   dressBoundary(spec, plan, set, splat, partsAt, propsRng.next.bind(propsRng));
   dressWater(spec, plan, set, partsAt);
   if (plan.plaza) { plazaCurb(h, plan, palette, set, partsAt); plazaPattern(h, plan, set, partsAt, spec.seed); }
-  warpRooms(h, plan, set, partsAt);
+  warpRooms(h, plan, set, partsAt, splat.pockets);
+  // 6b. Phase A pockets: one group per town building's hall (hall hidden, canopy shown until `setActive`)
+  const pockets: BuiltInterior[] = [];
+  for (const ip of spec.interiors ?? []) {
+    const made: BufferGeometry[] = [];
+    const b = buildInterior(ip, { zoneSet: set, palette, heightfield: h, material: mat, geometries: made, views });
+    for (const g of made) { record(g); built.triangles += (g.index ? g.index.count : g.getAttribute('position').count) / 3; }
+    root.add(b.root);
+    for (const f of b.footprints) collider.addFootprint({ ...f, hw: f.hw + MOVER_R, hd: f.hd + MOVER_R });
+    if (b.canopyLod) { lods.push(b.canopyLod); lodChunks.push(chunks.at(ip.x, ip.z)); }
+    pockets.push(b);
+  }
+  const interiorSystem = pockets.length > 0 ? new InteriorSystem(pockets) : null;
+  // 6c. Phase D10 obstacles: one object each (never merged), so a cleared one can be swapped per player
+  const obstacles = buildObstacles(spec, set, mat, views, record, root);
   releaseShapeCache();
   const chunkKeys = [...staticParts.keys()].sort((a, b) => a - b);
   for (const key of chunkKeys) {
@@ -361,6 +382,7 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
   if (deps.scene) deps.scene.add(root);
 
   let disposed = false;
+  let lastStepMs = -1;
   const geometries = built.geometries;
   const handle: ZoneHandleImpl = {
     id: spec.id,
@@ -374,9 +396,17 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     geometries,
     instanced: built.instanced,
     info: { triangles: built.triangles, chunks: chunks.records().length, instances, buildMs: null },
+    ...(interiorSystem ? { interiors: interiorSystem } : {}),
+    ...(obstacles ? { obstacles } : {}),
+    scatterInstances: () => fields.map((f) => ({ kind: f.kind.name, matrices: f.instanceData() })),
     stats: () => (deps.stats ? deps.stats() : createRenderStats()),
     updateLod(camera: Vector3, cameraObject: Object3D): number {
       if (disposed) return 0;
+      if (interiorSystem) {
+        const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        interiorSystem.step(lastStepMs < 0 ? 0 : now - lastStepMs);
+        lastStepMs = now;
+      }
       const far = chunks.update(camera, (cameraObject as Object3D & { isCamera?: boolean }).isCamera ? cameraObject as never : null);
       for (let i = 0; i < fields.length; i++) fields[i]!.sync(chunks);
       for (let i = 0; i < lods.length; i++) {
@@ -407,6 +437,72 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     },
   };
   return handle;
+}
+
+/** Phase D10: a small tree's scale on the biome's first scatter tree (a sapling a Cut can fell). */
+export const OBSTACLE_TREE_SCALE = 0.55;
+
+/** fnv1a32 of an id, for per-obstacle seeds that never depend on list order. */
+function idSeed(id: string): number {
+  let h = 0x811c9dc5 | 0;
+  for (let i = 0; i < id.length; i++) { h ^= id.charCodeAt(i); h = Math.imul(h, 0x01000193) | 0; }
+  return h >>> 0;
+}
+
+/**
+ * Phase D10: each obstacle as its own object under the zone root (a tree: the biome's first scatter tree at
+ * OBSTACLE_TREE_SCALE plus a hidden stump; a boulder: a large rock), and the handle that swaps them per player. Library
+ * materials only; every geometry is recorded for the digest and disposal. null when the spec has none.
+ */
+function buildObstacles(
+  spec: ZoneSpec, set: BiomeSet, material: (id: SurfaceId) => Material, views: BufferGeometry[], record: (g: BufferGeometry) => void, root: Group,
+): ObstaclesHandle | null {
+  const list = spec.obstacles ?? [];
+  if (list.length === 0) return null;
+  const h = spec.heightfield;
+  const objs = new Map<string, { readonly standing: Object3D; readonly cleared: Object3D | null; done: boolean }>();
+  for (const o of list) {
+    const seed = (spec.seed ^ idSeed(o.id)) >>> 0;
+    const y = heightClamped(h, o.x, o.z);
+    const tree = set.trees[0];
+    let standing: Object3D;
+    let cleared: Object3D | null = null;
+    if (o.kind === 'tree' && tree !== undefined) {
+      const geo = buildTree(tree.bark, tree.leaf, tree.shape, seed);
+      standing = objectFromGeo(geo, 0, material, `ewa:obstacle:${o.id}`, views, true);
+      standing.scale.setScalar(OBSTACLE_TREE_SCALE);
+      standing.position.set(o.x, y - 0.06, o.z);
+      record(geo.lod0); record(geo.lod1); record(geo.lod2);
+      const sg = buildStump(tree.bark, set.props.wood, seed ^ 0x51);
+      cleared = objectFromGeo(sg, 0, material, `ewa:obstacle:${o.id}:stump`, views, false);
+      cleared.position.set(o.x, y - 0.04, o.z);
+      cleared.visible = false;
+      record(sg.lod0); record(sg.lod1); record(sg.lod2);
+      root.add(cleared);
+    } else {
+      const geo = buildRock(set.rock, seed, { size: 1.15, squash: 0.78, elongate: 1.15, cuts: [3, 5] });
+      standing = objectFromGeo(geo, 0, material, `ewa:obstacle:${o.id}`, views, true);
+      standing.position.set(o.x, y - 0.2, o.z);
+      standing.rotation.y = ((seed & 0xffff) / 0xffff) * Math.PI * 2;
+      record(geo.lod0); record(geo.lod1); record(geo.lod2);
+    }
+    standing.userData = { ...standing.userData, ewaObstacle: o.id };
+    root.add(standing);
+    objs.set(o.id, { standing, cleared, done: false });
+  }
+  return {
+    ids: list.map((o) => o.id),
+    setCleared(id: string, done: boolean): void {
+      const e = objs.get(id);
+      if (e === undefined || e.done === done) return;
+      e.done = done;
+      e.standing.visible = !done;
+      if (e.cleared !== null) e.cleared.visible = done;
+    },
+    isCleared(id: string): boolean {
+      return objs.get(id)?.done === true;
+    },
+  };
 }
 
 /** Set-pieces the movement solver treats as solid (towers, huts, gates…); the rest are walkable or open. */
@@ -569,10 +665,11 @@ function plazaPattern(h: HeightfieldData, plan: ZoneLayoutPlan, set: BiomeSet, p
 }
 
 /** Interior sub-areas at warp arrival markers: a roofless planked room (the camera looks in), low walls, furniture. */
-function warpRooms(h: HeightfieldData, plan: ZoneLayoutPlan, set: BiomeSet, partsAt: PartsAt): void {
+function warpRooms(h: HeightfieldData, plan: ZoneLayoutPlan, set: BiomeSet, partsAt: PartsAt, pockets: readonly PocketRect[]): void {
   for (const w of plan.warpPairs) {
     if (!w.to) continue;
     const [x, z] = w.to;
+    if (inPocket(pockets, x, z, 4)) continue;             // Phase A: the pocket's hall is the room
     const y = heightClamped(h, x, z);
     const t = partsAt(x, z);
     const b = set.building;
@@ -644,6 +741,9 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
   const inPlay = (x: number, z: number): boolean => Math.abs(x) < ih && Math.abs(z) < ih;
   const clumpy = (x: number, z: number, s: number): number => fbm2(x * 0.045, z * 0.045, 3, salt + s);
   const foliageTint = (hh: number): number => Math.floor(hh * foliageN) % Math.max(1, foliageN);
+  // Phase A: nothing centred inside a pocket's outer footprint (content drops exactly those scatter solids)
+  const pockets = splat.pockets;
+  const free = (x: number, z: number): boolean => pockets.length === 0 || !inPocket(pockets, x, z);
 
   // trees ---------------------------------------------------------------------------------------------------
   const treeKinds = set.trees.filter((t) => t.weight > 0);
@@ -681,6 +781,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
     if (inPlay(x, z)) return a * (interiorDensity / marginDensity);
     return a * (hh < 2 ? 1 : 1);
   })) {
+    if (!free(p.x, p.z)) continue;
     const k = pickTree(p.h);
     const s = 0.85 + hash2(Math.round(p.x * 8), Math.round(p.z * 8), salt + 3) * 0.35;
     treeInst[k]!.push({ x: p.x, y: yAt(p.x, p.z) - 0.12, z: p.z, yaw: p.h * 97.3, scale: s, tint: foliageTint(p.h * 3.7 % 1) });
@@ -698,6 +799,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
         const rr = body.r * 1.25 + 2.2 + hash2(k, body.id, salt + 42) * 2.5;
         const x = body.cx + Math.cos(a) * rr; const z = body.cz + Math.sin(a) * rr;
         if (!scatterClear(splat, x, z, 1.2, true) || roadDistance(splat.roads, x, z) < 2.5) continue;
+        if (!free(x, z)) continue;
         wInst.push({ x, y: yAt(x, z) - 0.12, z, yaw: a * 3.1, scale: 0.9 + hash2(k, body.id, salt + 43) * 0.25, tint: 0 });
         if (inPlay(x, z)) collider.addFootprint({ kind: 'circle', x, z, r: 0.5 + MOVER_R });
       }
@@ -723,6 +825,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
     if (inPlay(x, z)) return scatterClear(splat, x, z, 1.2, false) && roadDistance(splat.roads, x, z) > 1.5 ? 0.6 : 0;
     return 1;
   })) {
+    if (!free(p.x, p.z)) continue;
     const big = p.h < 0.45;
     const s = big ? 0.7 + p.h * 1.5 : 0.6 + p.h * 0.8;
     (big ? aInst : bInst).push({ x: p.x, y: yAt(p.x, p.z) - 0.05, z: p.z, yaw: p.h * 131, scale: s, tint: 0 });
@@ -743,6 +846,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
         const off = r.width / 2 + 0.1 + hash2(k, i, salt + 303) * 0.5;
         const x = a[0] + (b[0] - a[0]) * t + px * side * off; const z = a[1] + (b[1] - a[1]) * t + pz * side * off;
         if (Math.max(Math.abs(x), Math.abs(z)) > half - 1) continue;
+        if (!free(x, z)) continue;
         if (plan.plaza && Math.hypot(x - plan.plaza.x, z - plan.plaza.z) < plan.plaza.r + 0.6) continue;
         let blocked = false;
         for (const bb of spec.buildings) if (footprintDistance(bb, x, z) < 0.6) { blocked = true; break; }
@@ -769,6 +873,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
       const nearHouse = spec.buildings.some((b) => { const fd = footprintDistance(b, x, z); return fd > 1.0 && fd < 2.6; });
       return nearHouse ? 0.5 : clumpy(x, z, 21) > 0.1 ? 0.55 : 0.12;
     })) {
+      if (!free(p.x, p.z)) continue;
       inst.push({ x: p.x, y: yAt(p.x, p.z) - 0.05, z: p.z, yaw: p.h * 53, scale: 0.8 + p.h * 0.55, tint: foliageTint(p.h) });
     }
     if (inst.length) out.push({ ...kindFrom('bush', bush, mat, views, true, 3, null, 2), instances: inst });
@@ -786,6 +891,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
       if (nearHouse) return 0.9;
       return clumpy(x, z, 31) > 0.18 ? 0.55 : 0.05;
     })) {
+      if (!free(p.x, p.z)) continue;
       inst.push({ x: p.x, y: yAt(p.x, p.z), z: p.z, yaw: p.h * 71, scale: 0.8 + p.h * 0.5, tint: flower0 + (Math.floor(p.h * 997) % flowerN) });
     }
     if (inst.length) out.push({ ...kindFrom('flower_patch', fl, mat, views, false, 2, null, 0, 'all'), instances: inst });
@@ -807,6 +913,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
       if (f.detail > -0.25) return 0.55;
       return clumpy(x, z, 41) > 0.12 ? 0.8 : 0.12;
     })) {
+      if (!free(p.x, p.z)) continue;
       inst.push({ x: p.x, y: yAt(p.x, p.z), z: p.z, yaw: p.h * 89, scale: 0.75 + p.h * 0.6, tint: flower0 + flowerN + (Math.floor(p.h * 131) % 4) });
     }
     if (inst.length) out.push({ ...kindFrom('grass_tuft', { ...tuft, lod1: tuft.lod0 }, mat, views, false, 2, null, 0), instances: inst });
@@ -825,6 +932,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
         const edge = Math.hypot(dx / e.rx, dz / e.rz);
         return edge > 0.85 + valueNoise(x, z, salt) * 0.1 ? 0.6 : 1;
       })) {
+        if (!free(p.x, p.z)) continue;
         inst.push({ x: p.x, y: yAt(p.x, p.z) - 0.03, z: p.z, yaw: p.h * 61, scale: 0.85 + p.h * 0.5, tint: foliageTint(p.h) });
       }
     }
@@ -839,6 +947,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
     if (inPlay(x, z)) return spec.layout === 'town' ? 0 : scatterClear(splat, x, z, 1.5, false) && roadDistance(splat.roads, x, z) > 3 ? 0.5 : 0;
     return 1;
   })) {
+    if (!free(p.x, p.z)) continue;
     (p.h < 0.55 ? sInst : lInst).push({ x: p.x, y: yAt(p.x, p.z) - 0.05, z: p.z, yaw: p.h * 41, scale: 0.9 + p.h * 0.4, tint: 0 });
   }
   if (sInst.length) out.push({ ...kindFrom('stump', stump, mat, views, false, 3, null, 0), instances: sInst });

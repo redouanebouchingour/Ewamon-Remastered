@@ -3,15 +3,20 @@
  *
  * Part 1 owns the shell behaviour: the navigation blocker (§20.1.3 (a) — one of the two sanctioned `useBlocker`s)
  * and the anchored container. Part 2 (§20.5.6) renders `BattleMenu` — root menu, moves grid, party/bag/orbs lists,
- * the last log lines — and the BattleResultCard. The in-canvas bars / turn label / orb counter are the HUD's.
+ * the last log lines — and the BattleResultCard; Phase B7 adds the VS intro card and the mid-battle banner; Phase C1 the
+ * raid panel (boss HP, round timer, damage board) and the raid summary card. The in-canvas bars / turn label / orb counter are the HUD's.
  */
 import { useEffect, useRef } from 'react';
 import { useBlocker } from 'react-router';
 import { toast } from '../state/notifications';
 import { useUiStore } from '../state/ui';
 import s from './BattleOverlay.module.css';
+import { BattleBanner } from './BattleBanner';
+import { BattleIntroCard } from './BattleIntroCard';
 import { BattleMenu } from './BattleMenu';
 import { BattleResultCard } from './BattleResultCard';
+import { RaidPanel } from './RaidPanel';
+import { RaidSummaryCard } from './RaidSummaryCard';
 import { setBattlePanelTop } from './panelInset';
 
 /** Reports the panel's top edge while mounted (render T2: the battle camera frames the battlers above it). */
@@ -49,14 +54,22 @@ export function BattleOverlay() {
   const ref = useRef<HTMLElement | null>(null);
   usePanelTop(ref, active);
   if (!active) return null;
+  // Phase B7: the VS card and the mid-battle banner sit over the arena, outside the panel (its backdrop-filter would
+  // make it their containing block)
   return (
-    <section ref={ref} className={s.overlay} data-testid="battleoverlay" aria-label="Battle">
-      <BattleBlocker />
-      <p className={s.turn}>{turnLabel}</p>
-      <div className={s.body}>
-        <BattleMenu />
-      </div>
-      <BattleResultCard />
-    </section>
+    <>
+      <BattleIntroCard />
+      <BattleBanner />
+      <RaidPanel />
+      <section ref={ref} className={s.overlay} data-testid="battleoverlay" aria-label="Battle">
+        <BattleBlocker />
+        <p className={s.turn}>{turnLabel}</p>
+        <div className={s.body}>
+          <BattleMenu />
+        </div>
+        <BattleResultCard />
+        <RaidSummaryCard />
+      </section>
+    </>
   );
 }

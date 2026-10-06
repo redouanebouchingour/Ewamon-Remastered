@@ -142,6 +142,8 @@ export const EvolutionSchema: z.ZodType<Evolution> = z.union([
       )
       .min(2),
   }),
+  z.object({ kind: z.literal('item'), item: SnakeId, into: SnakeId }),
+  z.object({ kind: z.literal('trade'), into: SnakeId }),
   z.null(),
 ]);
 
@@ -212,6 +214,7 @@ export const MoveDefSchema: z.ZodType<MoveDef> = z.object({
   effectChance: Int.min(1).max(100),
   target: MoveTargetSchema,
   description: z.string(),
+  spread: z.enum(['foes', 'all']).optional(),
 });
 
 // ─── §2.5 AbilityDef ─────────────────────────────────────────────────────────
@@ -367,7 +370,7 @@ export const ConsumableEffectSchema: z.ZodType<ConsumableEffect> = z.discriminat
   z.object({ kind: z.literal('repel'), steps: PosInt }),
   z.object({ kind: z.literal('lure'), steps: PosInt }),
   z.object({ kind: z.literal('escapeRope') }),
-  z.object({ kind: z.literal('evolutionStone'), species: SnakeId, into: SnakeId }),
+  z.object({ kind: z.literal('evolutionStone') }),
   z.object({ kind: z.literal('sellOnly') }),
 ]);
 
@@ -416,6 +419,7 @@ export const NpcDefSchema: z.ZodType<NpcDef> = z.object({
   when: z.union([Flag, z.null()]),
   until: z.union([Flag, z.null()]),
   react: z.array(z.object({ when: Flag, lines: Lines.min(1) })),
+  tutor: z.array(Id).min(1).optional(),
 });
 
 export const TrainerDefSchema: z.ZodType<TrainerDef> = z.object({
@@ -428,6 +432,7 @@ export const TrainerDefSchema: z.ZodType<TrainerDef> = z.object({
   lines: Lines,
   reward: Money,
   rematchDays: z.union([PosInt, z.null()]),
+  doubles: z.literal(true).optional(),
 });
 
 export const GroundItemDefSchema: z.ZodType<GroundItemDef> = z.object({
@@ -482,6 +487,17 @@ export const ZoneDefSchema: z.ZodType<ZoneDef> = z.object({
     3: z.union([z.string().min(1), z.null()]),
   }),
   harvestState: HarvestStateSchema,
+  obstacles: z
+    .array(
+      z.object({
+        id: Id,
+        kind: z.enum(['tree', 'boulder']),
+        x: Coord,
+        z: Coord,
+        item: z.object({ item: Id, qty: PosInt }).optional(),
+      }),
+    )
+    .optional(),
 });
 
 // ─── §3.2 Encounters ─────────────────────────────────────────────────────────
@@ -535,6 +551,9 @@ export const SpawnTuningSchema: z.ZodType<SpawnTuning> = z.object({
 
 // ─── §3.3 League ─────────────────────────────────────────────────────────────
 
+/** Phase B7: a league trainer's mid-battle banner line (`LeagueTrainer.mid`) fits one banner row. */
+export const MID_LINE_MAX = 140;
+
 export const LeagueTrainerSchema: z.ZodType<LeagueTrainer> = z.object({
   id: SnakeId,
   stage: z.enum(['gym', 'elite', 'champion']),
@@ -547,6 +566,7 @@ export const LeagueTrainerSchema: z.ZodType<LeagueTrainer> = z.object({
   zoneId: ZoneIdSchema,
   pre: Lines.min(1),
   post: Lines.min(1),
+  mid: z.object({ halfHp: z.string().min(1).max(MID_LINE_MAX), lastStand: z.string().min(1).max(MID_LINE_MAX) }).optional(),
   team: z
     .array(
       z.object({
@@ -561,6 +581,7 @@ export const LeagueTrainerSchema: z.ZodType<LeagueTrainer> = z.object({
     .max(6),
   reward: Money,
   setsFlags: z.array(Flag),
+  doubles: z.literal(true).optional(),
 });
 
 export const BadgeDefSchema: z.ZodType<BadgeDef> = z.object({
@@ -585,10 +606,17 @@ export const QuestObjectiveSchema: z.ZodType<QuestObjective> = z.discriminatedUn
   z.object({ kind: z.literal('flag'), flag: Flag }),
   z.object({ kind: z.literal('earnBadge'), badge: BadgeIdSchema }),
   z.object({ kind: z.literal('restoreZone'), zoneId: ZoneIdSchema }),
+  // Phase D5
+  z.object({ kind: z.literal('dexCaught'), count: PosInt }),
+  z.object({ kind: z.literal('catchTier'), tier: z.enum(['alpha', 'shiny']), count: PosInt }),
+  z.object({ kind: z.literal('completeTrades'), count: PosInt }),
+  z.object({ kind: z.literal('clearRaids'), count: PosInt }),
+  z.object({ kind: z.literal('loginStreak'), days: PosInt }),
 ]);
 
 export const QuestDefSchema: z.ZodType<QuestDef> = z.object({
   id: SnakeId,
+  kind: z.enum(['story', 'achievement']).optional(),
   title: z.string().min(1),
   summary: z.string().min(1),
   giver: z.union([Id, z.null()]),
@@ -620,6 +648,7 @@ export const StoryBeatSchema: z.ZodType<StoryBeat> = z.object({
   after: Lines,
   harvest: z.union([z.object({ zoneId: ZoneIdSchema, to: HarvestStateSchema }), z.null()]),
   starter: z.boolean(),
+  grant: z.record(Id, PosInt).optional(),
 });
 
 // ─── §3.6 Live-ops ───────────────────────────────────────────────────────────

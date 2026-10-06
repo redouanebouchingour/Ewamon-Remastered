@@ -4,21 +4,52 @@
     {
       "name": "render-sandbox",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@ewa/render", "sandbox"],
+      "runtimeArgs": [
+        "--filter",
+        "@ewa/render",
+        "sandbox"
+      ],
       "port": 5180
     },
     {
       "name": "ewa-server",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@ewa/server", "start"],
+      "runtimeArgs": [
+        "--filter",
+        "@ewa/server",
+        "start"
+      ],
       "port": 4000,
       "url": "http://localhost:4000"
     },
     {
       "name": "ewa-client",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@ewa/client", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@ewa/client",
+        "dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "ewa-server-alt",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/dev-alt.mjs",
+        "server"
+      ],
+      "port": 4100,
+      "url": "http://localhost:4100"
+    },
+    {
+      "name": "ewa-client-alt",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/dev-alt.mjs",
+        "client"
+      ],
+      "port": 5174
     }
   ]
 }

@@ -15,6 +15,9 @@ import { describeError, statusOf, toActionError } from '../net/errors';
 import type { ActionError } from '../net/errors';
 import { toast, useNotificationsStore } from '../state/notifications';
 import { toInventoryDelta, toProgressionDelta, useSessionStore } from '../state/session';
+import { useQuestTracking } from '../state/questTracking';
+import { noteTutorialEvent } from '../state/tutorial';
+import { questById } from '../data/quests';
 import { presentItemUse } from './itemUseFeedback';
 
 // ---- auth ---------------------------------------------------------------------------------------------
@@ -175,6 +178,19 @@ const CREATURE_HANDLERS: Readonly<Record<string, Handler>> = {
     const moves = Array.isArray(p['moves']) ? (p['moves'] as unknown[]).map(str) : [];
     updated(await apiFetch('creatureMoves', { params: { id: str(p['id']) }, body: { moves } }));
   },
+  /** Phase D2: a TM lesson — the same `POST /creature/:id/moves` (the server checks the owned TM); the TM is kept */
+  async teach(p) {
+    const moves = Array.isArray(p['moves']) ? (p['moves'] as unknown[]).map(str) : [];
+    updated(await apiFetch('creatureMoves', { params: { id: str(p['id']) }, body: { moves } }));
+    toast('success', `${str(p['name'])} learned ${str(p['move'])}!`);
+  },
+  /** Phase D2: a move-tutor lesson for money; the money and the creature come back as an inventoryDelta body */
+  async tutor(p) {
+    const forget = str(p['forget']);
+    const res = await apiFetch('creatureTutor', { params: { id: str(p['id']) }, body: { move: str(p['move']), forget: forget.length === 0 ? null : forget } });
+    withDelta(res);
+    toast('success', `${str(p['name'])} learned ${str(p['move'])}!`);
+  },
   async release(p) {
     const id = str(p['id']);
     await apiFetch('creatureRelease', { params: { id } });
@@ -197,6 +213,7 @@ const CREATURE_HANDLERS: Readonly<Record<string, Handler>> = {
     const res = await apiFetch('heal', {});
     applyInv({ party: res.party });
     toast('success', 'Your party is fully healed.');
+    noteTutorialEvent('healed');
   },
   async useItem(p) {
     const target = str(p['target']);
@@ -209,6 +226,30 @@ const CREATURE_HANDLERS: Readonly<Record<string, Handler>> = {
 
 export const partyAction = runner(CREATURE_HANDLERS);
 export const boxAction = runner(CREATURE_HANDLERS);
+/**
+ * Phase C5 `/play/bag`: `useItem` (with or without a target) is the creature intent; `give` is `setup` with the
+ * creature's current ability and the new held item (the previous one returns to the bag server-side).
+ */
+export const bagAction = runner({
+  useItem: CREATURE_HANDLERS['useItem']!,
+  async give(p) {
+    await CREATURE_HANDLERS['setup']!(p);
+    toast('success', `${itemInfo(str(p['heldItem'])).name} given to ${str(p['name'])}.`);
+  },
+});
+
+/**
+ * Phase C4 `/play/profile`: `POST /profile { title, motto, body }` (the server refines title ∈ TITLES, body ∈ BODIES);
+ * the identity lands through `applyProfile`, the one profile writer after hydrateFromMe.
+ */
+export const profileAction = runner({
+  async save(p) {
+    const res = await apiFetch('profile', { body: { title: str(p['title']), motto: str(p['motto']).trim(), body: str(p['body']) } });
+    useSessionStore.getState().applyProfile({ title: res.title, motto: res.motto, body: res.body });
+    toast('success', 'Profile saved.');
+    return { title: res.title, motto: res.motto, body: res.body };
+  },
+});
 
 export const shopAction = runner({
   async buy(p) {
@@ -247,6 +288,25 @@ export const passAction = runner({
     useSessionStore.getState().applyProgressionDelta(toProgressionDelta({ questProgress: res.questProgress, missionClaimed: { questId, missionId } }));
     toast('success', 'Mission reward claimed.');
     return { questId, missionId };
+  },
+});
+
+/**
+ * Phase B3 `/play/quests`: a story quest's claim — `POST /quests/claim { questId }` (the server re-checks every
+ * objective and grants money / items / creature / flag once; 409 questIncomplete / AlreadyClaimed). The grants go
+ * through the two writers; the quest joins `questsClaimed` (and stops being tracked).
+ */
+export const questAction = runner({
+  async claim(p) {
+    const questId = str(p['questId']);
+    const res = await apiFetch('questsClaim', { body: { questId } });
+    applyInv({ inventory: res.inventory, money: res.money, creaturesAdded: res.creaturesAdded });
+    const def = questById(questId);
+    const flag = def?.rewards.flag ?? null;
+    useSessionStore.getState().applyProgressionDelta(toProgressionDelta({ questProgress: res.questProgress, questClaimed: questId, ...(flag !== null ? { flags: [flag] } : {}) }));
+    if (useQuestTracking.getState().tracked === questId) useQuestTracking.getState().setTracked(null);
+    toast('success', `${def?.title ?? 'Quest'} complete. Rewards claimed.`);
+    return { questId };
   },
 });
 

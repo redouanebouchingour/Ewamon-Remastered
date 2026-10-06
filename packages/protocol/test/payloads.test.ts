@@ -1,5 +1,5 @@
 /**
- * §4.3 / 50.4.3 payloads.test.ts — every one of the 20 CLIENT_MESSAGES schemas accepts its
+ * §4.3 / 50.4.3 payloads.test.ts — every one of the 22 CLIENT_MESSAGES schemas accepts its
  * documented example and rejects ≥ 3 malformed payloads (wrong type, out of range, oversize
  * string / non-uuid / missing field). Unknown keys are STRIPPED (zod v4 `z.object` default), and
  * an unknown message type is a typed 'unknownType' rejection.
@@ -13,6 +13,8 @@ import {
   CLIENT_MSG,
   isClientMessageType,
   parseClientMessage,
+  RANKED_WINDOW,
+  rankedWindow,
 } from '../src/index';
 import type { ClientMessageType } from '../src/index';
 
@@ -39,6 +41,7 @@ const CASES: Record<ClientMessageType, Case> = {
       { seq: 1, x: '0', z: 0, angle: 0, running: false, dtMs: 50 }, // wrong type
       { seq: 1, x: 0, z: 0, angle: 0, running: 'yes', dtMs: 50 },
       { seq: 1, x: 0, z: 0, angle: 0, running: false }, // missing dtMs
+      { seq: 1, x: 0, z: 0, angle: 0, running: false, dtMs: 50, bike: 'yes' }, // Phase D11: bike is a boolean
     ],
   },
   emote: {
@@ -149,18 +152,37 @@ const CASES: Record<ClientMessageType, Case> = {
     valid: { roomId: 'room-abc', seat: 'sess-xyz' },
     invalid: [{ roomId: '', seat: 'sess' }, { roomId: 'room', seat: '' }, { roomId: 1, seat: 'sess' }, { roomId: 'room' }],
   },
+  fastTravel: {
+    valid: { zoneId: 'cinderhold' },
+    invalid: [{ zoneId: 'atlantis' }, { zoneId: '' }, { zoneId: 3 }, {}],
+  },
+  // Phase D9: the cast heading (the server samples water along it from the player's accepted pose)
+  fish: {
+    valid: { angle: 1.25 },
+    invalid: [{}, { angle: '1' }, { angle: Number.NaN }, { angle: Number.POSITIVE_INFINITY }],
+  },
+  // Phase D13: join / leave the ranked queue
+  rankedQueue: {
+    valid: { action: 'join' },
+    invalid: [{}, { action: 'cancel' }, { action: 1 }, { action: null }],
+  },
+  // Phase D14: the battle tower — start with exactly three picks, next, quit
+  tower: {
+    valid: { action: 'start', picks: [U1, U2, 'c3'] },
+    invalid: [{}, { action: 'start' }, { action: 'start', picks: [U1, U2] }, { action: 'start', picks: [U1, U2, U1, U2] }, { action: 'start', picks: [U1, U2, ''] }, { action: 'retire' }],
+  },
 };
 
 describe('§4.3 CLIENT_MESSAGES', () => {
-  it('has exactly 20 keys, in the spine order', () => {
-    expect(Object.keys(CLIENT_MESSAGES)).toHaveLength(20);
-    expect(CLIENT_MESSAGE_COUNT).toBe(20);
+  it('has exactly 24 keys, in the spine order', () => {
+    expect(Object.keys(CLIENT_MESSAGES)).toHaveLength(24);
+    expect(CLIENT_MESSAGE_COUNT).toBe(24);
     expect(CLIENT_MESSAGE_TYPES).toEqual([
       'input', 'emote', 'chat', 'interact', 'engageSpawn',
       'battleAction', 'battleResync', 'challenge', 'challengeReply',
       'tradeRequest', 'tradeReply', 'tradeOffer', 'tradeConfirm', 'tradeCancel',
       'raidJoin', 'raidReady', 'raidAction', 'raidCatch', 'raidLeave',
-      'handoverAck',
+      'handoverAck', 'fastTravel', 'fish', 'rankedQueue', 'tower',
     ]);
     expect(Object.keys(CASES).sort()).toEqual([...CLIENT_MESSAGE_TYPES].sort());
     expect(Object.keys(CLIENT_MESSAGE_LIMITS).sort()).toEqual([...CLIENT_MESSAGE_TYPES].sort());
@@ -245,5 +267,23 @@ describe('§4.3 CLIENT_MESSAGES', () => {
     for (const k of ['raidJoin', 'raidReady', 'raidAction', 'raidCatch', 'raidLeave'] as const) {
       expect(CLIENT_MESSAGE_LIMITS[k]).toEqual({ max: 4, windowMs: 1000 });
     }
+    expect(CLIENT_MESSAGE_LIMITS.fish).toEqual({ max: 1, windowMs: 1500 });
+    expect(CLIENT_MESSAGE_LIMITS.rankedQueue).toEqual({ max: 4, windowMs: 5000 });
+    expect(CLIENT_MESSAGE_LIMITS.tower).toEqual({ max: 4, windowMs: 1000 });
+  });
+
+  it('Phase D13: the ranked window starts at ±100, widens 50 every 10 s and stops at 400', () => {
+    expect(rankedWindow(0)).toBe(RANKED_WINDOW.base);
+    expect(rankedWindow(9_999)).toBe(100);
+    expect(rankedWindow(10_000)).toBe(150);
+    expect(rankedWindow(30_000)).toBe(250);
+    expect(rankedWindow(10 * 60_000)).toBe(RANKED_WINDOW.max);
+    expect(rankedWindow(-5)).toBe(100);
+  });
+
+  it('Phase D10/D11: interact names obstacles; input carries an optional bike flag', () => {
+    expect(CLIENT_MESSAGES.interact.safeParse({ targetId: 'mire_route.thicket', kind: 'obstacle' }).success).toBe(true);
+    const ride = CLIENT_MESSAGES.input.safeParse({ seq: 2, x: 1, z: 1, angle: 0, running: false, dtMs: 50, bike: true });
+    expect(ride.success && ride.data.bike).toBe(true);
   });
 });

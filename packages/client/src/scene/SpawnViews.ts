@@ -21,13 +21,15 @@ export interface SpawnLike {
   readonly z: number;
   readonly variantKey: string;
   readonly isAlpha: boolean;
+  /** Phase D4 (SpawnState.isShiny); absent = false */
+  readonly isShiny?: boolean;
   readonly engagedBy: string;
 }
 
 export interface SpawnViewDeps {
   readonly parent: Group;
   acquire(d: SpriteDescriptor): CreatureBillboard;
-  descriptor(speciesId: string, key: string, variant: SpriteDescriptor['variant'], isAlpha: boolean): SpriteDescriptor | null;
+  descriptor(speciesId: string, key: string, variant: SpriteDescriptor['variant'], isAlpha: boolean, isShiny?: boolean): SpriteDescriptor | null;
   ensureSpecies(speciesId: string): void;
   height(x: number, z: number): number;
   readonly targets: InteractionTargets;
@@ -51,7 +53,7 @@ export class SpawnViews {
   add(s: SpawnLike): void {
     this.remove(s.id);
     const variant = (VARIANTS.has(s.variantKey) ? s.variantKey : 'normal') as SpriteDescriptor['variant'];
-    const desc = this.d.descriptor(s.speciesId, `spawn:${s.id}`, variant, s.isAlpha);
+    const desc = this.d.descriptor(s.speciesId, `spawn:${s.id}`, variant, s.isAlpha, s.isShiny === true);
     let bb: CreatureBillboard | null = null;
     if (desc !== null) {
       this.d.ensureSpecies(s.speciesId);
@@ -62,7 +64,7 @@ export class SpawnViews {
     }
     const view: View = { bb, x: s.x, z: s.z, engaged: s.engagedBy !== '' };
     this.views.set(s.id, view);
-    const label = `${s.isAlpha ? 'alpha ' : ''}${speciesName(s.speciesId)} Lv ${s.level}`;
+    const label = `${s.isShiny === true ? 'shiny ' : ''}${s.isAlpha ? 'alpha ' : ''}${speciesName(s.speciesId)} Lv ${s.level}`;
     const e = makeInteractable(s.id, 'spawn', s.x, s.z, 'Battle the wild', label, this.d.interactKey());
     e.enabled = !view.engaged;
     this.d.targets.addDynamic(e);

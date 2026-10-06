@@ -43,6 +43,8 @@ export const CreatureInstanceSchema = z.object({
   heldItem: z.string().max(40).nullable(),
   variantKey: VariantKeySchema,
   isAlpha: z.boolean(),
+  /** Phase D4: present (true) only on a shiny */
+  isShiny: z.boolean().optional(),
   caughtAt: z.object({ zoneId: z.string(), at: z.number().int() }).nullable(),
   ribbons: z.array(z.string()),
   favorite: z.boolean(),
@@ -89,6 +91,8 @@ export const SideSchema = z.looseObject({
   canCatch: z.boolean(),
   mustSwitch: z.boolean(),
   consumedItems: z.array(z.string()),
+  /** Phase D6: doubles only — party index on field position 0 and 1 */
+  actives: z.tuple([z.number().int().min(0).max(5), z.number().int().min(0).max(5)]).optional(),
 });
 
 /** §2.9 BattleState — the full state (battleStart / battleResync). */
@@ -104,6 +108,10 @@ export const BattleStateSchema = z.looseObject({
   rng: RngStateSchema,
   ended: BattleOutcomeSchema.nullable(),
   zoneId: z.string(),
+  /** Phase D6: 2 in a doubles battle; absent in singles */
+  slots: z.literal(2).optional(),
+  /** Phase D14: true in a battle tower fight (no exp); absent otherwise */
+  noExp: z.literal(true).optional(),
 });
 
 /** §4.4 RewardsSummary */

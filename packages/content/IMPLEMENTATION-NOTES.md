@@ -233,3 +233,157 @@ render keeps that planner (asserted equal to content's plan in render's `zone-la
    as `unwalkable`).
 8. **Audit table.** L2-01 / R1: closed.
 9. **Render prop table.** Fences are solid (`FENCE_FOOTPRINT` 1.865 × 0.065 m plus capsule).
+
+## Phase A — interiors (2026-10-06)
+
+- **Pockets are a layer after the plan.** `planInteriors(zone, plan, base)` runs after `planZone` and never touches
+  `ZoneDef.npcs/trainers/warps` or the plan's rng streams, so `r1-pre-move.json` holds for every zone but Solenne.
+  Scatter solids (tree / willow / rock) whose shape falls in a pocket footprint are dropped from the stamp
+  (`interiorPlan.droppedSolids`); `plan.solids` itself is unchanged, so render must drop them too.
+- **Placement grid.** A 1 m lattice with a summed-area table of blocked cells (buildings + 2.5 m, roads and door paths
+  + 1.5 m, the plaza + 2 m, water bodies + 3 m, the set-piece + 2 m, authored points / spawn / statics / raid hotspots
+  + 3 m, props + 2 m, lights + 1.5 m, other solids + 1 m, linked edges 9 m). Candidates run outermost ring first, then
+  by angle; the biggest halls go first. Tall-grass patches are blocked in a first pass and allowed in a second, lazily
+  built pass (Saltmourn's gym hall needs it: its north band is cut by a pond and a patch, its east/west sides are
+  linked). The 9 m linked-edge clearance keeps the handover arrival line (6.5 m) from snapping into a hall.
+- **Floor height** = mean terrain height over the floor, quantised to 1/64; a 2 m screen band blends back to the
+  terrain; the slope test re-runs one ring outside the screen (only ever turning samples unwalkable).
+- **Solenne.** The league hall stands in the gym slot (door (0, −26), id `solenne.league`, kind 'gym'). The stale
+  `solenne.league_hall` warp (to an unbuilt sub-area at (30, 44)) is removed. Comptroller Varn and Bursar Quill
+  stood at (0, −30) / (6, −34), inside the new hall's footprint; they now flank its door at (±3.5, −22.5) beside
+  the Public Ledger lectern. The hall's front stays 2 m from the lectern (0, −24), so the clearance loop falls back
+  to the full 14 × 12 size, as the gym towns' halls do.
+- **Gym trainers** fight with the leader's own non-legendary species a few levels under the leader's lowest, so no
+  gym adds species to its zone's bind set.
+- **Walker.** `walkInterior` BFSes the stamped field (4-neighbour, inside the pocket) with closed gates' solids as
+  blockers, beats trainers / uses switches within 3 m (leaders 4 m) until a fixpoint. Interaction ranges ignore walls
+  (as the server's do), so every switch carries `requires` for the gates that guard it — the puzzles are enforced by
+  flags, not geometry alone.
+
+## Phase B7 — league mid-battle lines (2026-10-06)
+
+`LeagueTrainer.mid?: { halfHp, lastStand }` (types + `LeagueTrainerSchema`: each non-empty, ≤ `MID_LINE_MAX` 140 chars,
+exported) with new lines for all 12 league trainers in their voices (`pre` / `post`). Presentation only — the server never
+reads them; the client banners `halfHp` when the team's total HP first drops to half and `lastStand` when the last
+creature enters. The lines name no creature: the replacement order is the battle AI's, not the team list's.
+`test/league-mid.test.ts` pins all 12, the length cap, uniqueness and the schema refusal. Not in the SPEC (§3.3 lists
+no such field) — a CHANGELOG entry is owed when the spec is next amended.
+
+## Phase C3 — world map cells and visited flags (2026-10-06)
+
+- **`zoneMapPositions()`** (`src/worldMap.ts`): every zone's map cell, computed — not authored — by a BFS over the
+  4-neighbour `links` from `ZONE_ORDER[0]` (Mirevale at the west edge), n-e-s-w order, `e` = +x, `n` = −y (the same
+  orientation as the handover vectors, n = −z). It throws on a clash or an unreachable zone. The committed world lays
+  out as an 18 × 3 strip: the main road on the middle row, The Rift south of Marrowdig, the Umbral Observatory north of
+  Vesperveil, the Celestial Spire north of Solenne. Also `zoneMapSize()`, `computeMapPositions(zones)`, `MAP_STEP`. No
+  zone data changed (layout seeds, npcs, trainers and warps untouched), so no heightfield or layout moved.
+- **`visited:<ZoneId>`** (`flags.ts`): `visitedFlag(id)`, `VISITED_PREFIX`, `VISITED_FLAGS` (exactly 21). `isKnownFlag`
+  accepts them like the badge sugar (the registry stays the §11 story list); validate's need resolution treats them as
+  settable (the server writes them on join).
+- Tests: `test/worldMap.test.ts` (every zone placed, cells unique, linked zones adjacent in the link direction, the three
+  branches off the road, refusal of a broken layout, the 21 visited flags known and nothing else with the prefix,
+  validate green).
+
+## Phase D1–D3 — story grants, TMs + tutors, evolution stones (2026-10-06)
+
+- **Where the data lives.** `data/items.ts` / `data/consumables.ts` stay the generated legacy tables (17 / 23 rows; the
+  counts tests and validate's `ITEMS.length` rule are unchanged). The Phase D items are hand-authored in
+  `data/progressionItems.ts`: `KEY_ITEMS` (`old_rod` + one TM per `TM_MOVES`, id `tm:<Move id>`, name `TMnn <Move>`,
+  priced by power 2000 / 2500 / 3500 / 5000) and `EVOLUTION_STONES` (six consumables, 3000 / 1500). The ContentIndex's
+  `item()` resolves both; `ContentTables` gained optional `keyItems` / `stones` (default the committed tables).
+- **D1 grants.** `StoryBeat.grant?` (schema: record of id → positive int). Grants: `bloom_after` HM Cut,
+  `drowned_harbour` Old Rod (Maren speaks this beat as harbourmaster; `current_after` is his gym voice), `current_after`
+  HM Surf, `fault_after` HM Strength. Each granting beat got one stage-direction `after` line announcing the gift.
+  Validate: grant items exist; a grant is a source for the "obtainable" checks below.
+- **D2 learnability** (`canLearnMachineMove`): Normal-type move, or a move sharing a type with the species, or one already
+  in the species' level learnset. One rule for TMs and tutors; no per-species compatibility table.
+- **D2 tutors.** `NpcDef.tutor?` (schema: optional non-empty id list). The zones.ts `npc()` helper only writes the key
+  when given, so every other NPC record is unchanged; x/z are untouched, so `plan.test` / heightfield digests hold.
+  Tutors: `vesperveil.lantern_maker` (Shadow Sneak, Spectral Burn, Night Slash, Endeavor) and `skyrend.roost_keeper`
+  (Brave Bird, Sky Pierce, Dragon Rush, Double Edge), each with one new line naming the fee. `MOVE_TUTOR_PRICE` 3000.
+- **Shops.** `PROGRESSION_STOCK` (TMs from Saltmourn, stones from Stormrook, Solenne sells all six) is appended to the
+  town stock in zones.ts. Three quest rewards gained a TM (q05 Cross Poison — sold nowhere else, q06 Giga Drain,
+  q07 Shadow Ball).
+- **D3 families.** `data/evolutions.ts` `STONE_AND_TRADE_EVOLUTIONS` (9): embrock / flampling → ember_stone, stormchick
+  → storm_stone, mossling → tide_stone, seedrift → verdant_stone, berkest → moon_stone, hexroach → dusk_stone, glowtent /
+  resilith → trade. Chosen with no member in any league team or in `packages/server/test/fixtures/progression/*.json`
+  (the walker's parties and boxes). `species.ts` was edited in place and `scripts/migrate-legacy.ts` applies the same
+  table (keeping the legacy level for learnset spacing), so a regeneration reproduces it; `test/progression-items.test.ts`
+  asserts species.ts equals the table.
+- **Roster.** `childrenOf` = core `evolutionChildren`; new `evolveLevelOf` (0 for item / trade) replaces the
+  `evolution?.atLevel` reads (RC-5 / RC-9); `AcquisitionPath` gains `{ kind: 'item', from, item }` / `{ kind: 'trade',
+  from }`. Coverage stays 130/130, 79 directly placed, 67 families.
+- **Validate (new block).** Grant items exist; every TM move exists, is unique, has a priced key item and is sold or
+  rewarded somewhere; key items are `slot: 'key'` without hooks; every stone is used by some `item` evolution and is sold
+  / found / rewarded somewhere (else its species would be unobtainable); an `item` evolution names a stone; tutors stand
+  in towns and teach real moves; a shop never lists an unpriced key item.
+- `TRADE_EVOLVE_RIBBON = 'trade_evolve'` is exported here so server and client share the marker.
+- Tests: `test/progression-items.test.ts` (12); `test/coverage.test.ts` children/atLevel updated for the new kinds plus
+  two path assertions.
+
+## Phase D5 — achievements (2026-10-06)
+
+- `QuestDef.kind?: 'story' | 'achievement'` (absent = story). Objective kinds added: `dexCaught { count }` and
+  `loginStreak { days }` (absolute on the server), `catchTier { tier: 'alpha' | 'shiny', count }`, `completeTrades { count }`,
+  `clearRaids { count }`. Schema + types updated.
+- `data/achievements.ts`: 30 `ACHIEVEMENTS` (dex 10/30/60/90/130, catches 1/10/50/200, alpha, shiny, wins 10/100/500,
+  trainer 50, PvP 1/25, all 8 badges, all 12 league trainers, champion, all 8 statics, trades 1/10/50, raids 1/10/50,
+  streaks 7/30/100). Appended to `QUESTS` (so the server's quest path and `/quests/claim` need no change); `zoneId`
+  'mirevale' (a required field with no meaning here), `act` a rough tier. Exports `ACHIEVEMENTS`, `ACHIEVEMENT_IDS`,
+  `isAchievement`, `STORY_QUESTS` (index.ts; QUESTS without the achievements — defined in index to avoid an import cycle).
+- validate: an achievement must have giver null, no requires, money/item rewards only; `dexCaught` ≤ species count.
+- Tests: `test/achievements.test.ts` (4); `test/counts.test.ts` now checks 12 story + 30 achievements.
+
+## Phase D6 — doubles (2026-10-06)
+
+- `TrainerDef.doubles?: true` / `LeagueTrainer.doubles?: true` (schema `z.literal(true).optional()`; validate: a doubles
+  row needs a team of 2+). Authored: `draco_gym`, `aurelia`, and five Act II/III route trainers (`galvan_route.rocker`,
+  `deepcut_route.digger`, `hollow_route.medium`, `siege_route.engineer`, `ascent_route.tamer`) via a `doubles(tr(…))`
+  wrapper in `data/zones.ts` (x/z untouched, so no layout / heightfield digest moves). None is a story trainer and none is
+  a gate. Pairs of trainers fighting together were not done (single trainers with `doubles: true` only).
+- `data/spreadMoves.ts`: `SPREAD_MOVES` (16 curated ids) laid over the generated `data/moves.ts` (which has no reach);
+  `MOVES` exported from there, so `MOVES[i] === contentIndex.move(id)` still holds. `MoveDefSchema.spread?`; validate:
+  every listed id is a foe-targeted MOVES row carrying that spread.
+
+## Phase D8–D11 — world systems (2026-10-06)
+
+- **Water slots (D8).** mire_route gains `mossling` (day, uncommon, water) and `mudbub` (night, uncommon, water), skyrend
+  `tidalfang` (any, rare, water), umbral_observatory `wraithtide` (night, rare, water). All four species were already
+  placed elsewhere, so `directlyPlaced` stays 79, obtainable 130, families 67; RC rules hold (uncommon weight 5,
+  Ghost at night, no duplicate `species|time|tier` key, ≤ 16 slots). Every non-lava zone with a table and open water
+  now has ≥ 1 water slot (what the Old Rod rolls); ash_route (lava) has none on purpose.
+- **Obstacles (D10).** `ObstacleDef` / `ZoneDef.obstacles?` (schema + validate), data in `data/obstacles.ts` merged into
+  `ZONES` (`BASE_ZONES.map`, so no zone literal changed). `obstacles.ts`: radii (tree 0.7, boulder 0.95) + 0.35 m
+  capsule, `OBSTACLE_HM`, `OBSTACLE_TYPES` (Cut: Grass/Bug/Steel/Dark; Strength: Fighting/Rock/Ground/Steel — decided
+  here), `obstacleFlag`, `obstacleRefusal(Text)`, `stampObstacles`. `buildZoneSurface` stamps them LAST (after
+  `stampInteriors`) on still-walkable samples and keeps `ZoneSurface.obstacleCells` (sample → id); `obstacleAt(h, x, z)`
+  reads it (null for a synthetic field of a zone without obstacles). Obstacles are NOT authored points: neither
+  `plan.ts` nor `heightfield.ts` `authoredPoints` read them (the r1 fixture test is green). Positions were picked by a
+  scratch scan: walkable disc + 1 m, in the spawn's component, ≥ 12 m from every authored point and from the progression
+  walker's saved positions, |z| ≥ 16 on routes (off the road), ≥ 18 m inside the playable edge.
+- **Heightfields changed:** `mire_route`, `tide_route`, `deepcut_route`, `hollow_route`, `ascent_route` (the stamps only;
+  every other zone is byte-identical — `stampObstacles` is a no-op without obstacles). `dist/heightfields` rebuilt.
+- **Bicycle (D11).** `bike` key item (`BIKE_ITEM`, `BIKE_PRICE` 30 000) in `buildKeyItems`, sold in Saltmourn
+  (`PROGRESSION_STOCK.saltmourn` first). No beat grants it, nothing needs it.
+- Tests: `test/encounters.test.ts` (8). `test/plan.test.ts`: the outside-towns stamp count now adds
+  `obstacleCells.size` (the obstacle stamp runs after the footprints).
+
+## Phase D14 — post-game (2026-10-06)
+
+- **League rematches.** `LEAGUE_REMATCH` (`data/league.ts`): one row per `LEAGUE` entry — the trainer's type flavour at
+  Lv 65–75 (originals evolved, a few new faces, the ace last), `pre` / `post` lines in each voice, reward
+  `round(reward × 1.5)`. A legendary appears only where the original team carries it (Sylvane glacinid, Veil bankaiser,
+  Aurelia voltaura, Kirei galaxion, Zeon zenryu). `POSTGAME_FLAG = 'champion:zeon:beaten'`,
+  `LEAGUE_REMATCH_COOLDOWN_DAYS = 1`, `leagueRematchFlag(id)` = `league:<id>:rematchAt` (server bookkeeping, not in the §11
+  registry — like `trainer:<id>:beaten`; nothing in content reads it). Accessor `leagueRematch(id)`.
+- **Battle tower.** `data/tower.ts`: `TOWER { levelCap 50, teamSize 3, setLength 7, attendantId 'solenne.league.tower',
+  trainerId 'tower.challenger', trainerName 'Tower Challenger', pools }` — pools derived from SPECIES at load (fully
+  evolved, non-legendary, BST bands 300–379 / 350–399 / 380–429 / 400+; 20 / 29 / 29 / 21 species), `towerTier(wins)`,
+  `towerSetReward(set)` (money 2 500 × set capped 15 000; rare candy, + max revive, then 2 rare candies + big nugget).
+- **Attendant.** `InteriorNpcRole` gains `tower`; the league hall foyer (`leagueHall`) gains `${building}.tower` at
+  (−6.5, half − 5), beside the nurse. An interior NPC on purpose: a `ZoneDef` NPC would feed Solenne's layout RNG (plan,
+  r1 fixture, heightfield). Interior NPCs stamp nothing — every digest and heightfield is unchanged.
+- **validate.ts:** rematch rows (one per league id, levels, ×1.5, legendary rule, nickname ≤ 16, abilities / items),
+  tower pools (≥ 6, known, non-legendary), set-reward items. Still 130/130, 67 families. The bind-set cap is unchanged
+  (rematch / tower teams are battle-only).
+- Tests: `test/postgame.test.ts` (3).

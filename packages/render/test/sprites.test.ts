@@ -37,6 +37,10 @@ describe('§10.4.6 uniform tables', () => {
     const p = paletteFor('dusk', true, { hueShift: 0, satMul: 0, lightMul: 0, alphaGlow: 0, scale: 0 });
     expect(p).toMatchObject({ satMul: 1.1, lightMul: 0.95, alphaGlow: 1, scale: 1.12 });
     expect(paletteFor('normal', false, p)).toMatchObject({ hueShift: 0, alphaGlow: 0, scale: 1 });
+    // Phase D4: a shiny adds BILLBOARD.shinyGlow (2) to the same value; the quad scale stays the alpha rule
+    expect(paletteFor('dusk', false, p, true)).toMatchObject({ alphaGlow: 2, scale: 1 });
+    expect(paletteFor('dusk', true, p, true)).toMatchObject({ alphaGlow: 3, scale: 1.12 });
+    expect(BILLBOARD.shinyGlow).toBe(2);
   });
 
   it('type colours: the legacy TYPE_COLORS verbatim, all 19 types', () => {
@@ -244,6 +248,15 @@ describe('§10.4.2 BillboardPool / CreatureBillboard', () => {
     expect(qa.userData.rect).toMatchObject({ x: 0.5, y: 0.5, z: 1, w: 1 });
     expect(qb.userData.hueShift).toBeCloseTo(VARIANT_UNIFORMS.dusk.hueShift, 9);
     expect(qb.userData.alphaGlow).toBe(1);
+    // Phase D4: a shiny descriptor writes +2; setVariant without the flag keeps it, with false clears it
+    const sh = pool.acquire(desc('z', 'a-001', { isShiny: true }));
+    const qs = sh.object.children[0] as unknown as { userData: Record<string, unknown> };
+    expect(qs.userData.alphaGlow).toBe(2);
+    sh.setVariant('dawn', true);
+    expect(qs.userData.alphaGlow).toBe(3);
+    sh.setVariant('dawn', false, false);
+    expect(qs.userData.alphaGlow).toBe(0);
+    sh.dispose();
     expect((qb.userData.size as { y: number }).y).toBeCloseTo(1.6 * 1.12, 9);
     b.setFacing('back');
     expect(qb.userData.rect).toMatchObject({ x: 0, y: 0.5, z: 0.5, w: 1 });

@@ -1,5 +1,5 @@
 import { index, integer, jsonb, pgTable, primaryKey, smallint, timestamp, uuid, varchar, bigserial } from 'drizzle-orm/pg-core';
-import type { Action, BattleStartSnapshot, RewardsSummary, RngState, TradedCreatureSummary } from '../types';
+import type { BattleStartSnapshot, ReplayChoice, RewardsSummary, RngState, TradedCreatureSummary } from '../types';
 import { battleFormat } from './enums';
 import { players } from './players';
 
@@ -21,7 +21,7 @@ export const battleHistory = pgTable(
     rewards: jsonb('rewards').$type<RewardsSummary>().notNull(),
     /** replay: seed + actions reproduce the battle */
     seed: jsonb('seed').$type<RngState>().notNull(),
-    actions: jsonb('actions').$type<[Action | null, Action | null][]>().notNull(),
+    actions: jsonb('actions').$type<[ReplayChoice, ReplayChoice][]>().notNull(),
     /** replay: the createBattle input minus seed (zoneId, terrain, both starting sides); null for rows written before migration 0001 */
     start: jsonb('start').$type<BattleStartSnapshot>(),
     /** digestBattleState of the final state — what a replay must reproduce; null for rows before migration 0001 */

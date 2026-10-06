@@ -1,0 +1,236 @@
+/*
+ * Phase C3 world map: a legend row, then a sideways-scrolling board. The board is a gapless grid of fixed cells
+ * (--cols / --rows arrive through cssVars) so the SVG link layer, drawn in cell units, lines up with cell centres.
+ */
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-5);
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.legendHint {
+  margin-inline-start: auto;
+}
+
+.swatch {
+  inline-size: 12px;
+  block-size: 12px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-1);
+  background: var(--bg-2);
+}
+
+.swatchTown {
+  border-color: var(--accent);
+  background: var(--accent-a16);
+}
+
+.swatchRoute {
+  border-radius: var(--r-pill);
+}
+
+.swatchStory {
+  border-color: var(--info);
+  background: var(--info-a16);
+}
+
+.swatchCurrent {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.scroller {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-3);
+  background:
+    radial-gradient(120% 90% at 50% 50%, var(--accent-a08), transparent 70%),
+    var(--bg-1);
+}
+
+.scroller:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 148px);
+  grid-template-rows: repeat(var(--rows), 168px);
+  inline-size: max-content;
+  padding: var(--s-4);
+}
+
+.links {
+  position: absolute;
+  inset: var(--s-4);
+  inline-size: calc(100% - 2 * var(--s-4));
+  block-size: calc(100% - 2 * var(--s-4));
+  pointer-events: none;
+}
+
+.link {
+  stroke: var(--line-2);
+  stroke-width: 3;
+  stroke-dasharray: 4 6;
+  stroke-linecap: round;
+}
+
+.linkKnown {
+  stroke: var(--accent-a32);
+  stroke-width: 4;
+  stroke-dasharray: none;
+}
+
+.nodes {
+  display: contents;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  grid-column: var(--col);
+  grid-row: var(--row);
+  padding: var(--s-3);
+}
+
+.node {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  inline-size: 100%;
+  min-block-size: 112px;
+  padding: var(--s-3);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-2);
+  background: var(--bg-1);
+  color: var(--text-2);
+}
+
+.route {
+  min-block-size: 76px;
+  border-radius: var(--r-pill);
+  padding-inline: var(--s-4);
+}
+
+.visited {
+  border-color: var(--line-2);
+  background: var(--bg-2);
+  color: var(--text-1);
+}
+
+.town.visited {
+  border-color: var(--accent-a32);
+}
+
+.story.visited {
+  border-color: var(--info);
+}
+
+.current {
+  border-color: var(--accent);
+  background: radial-gradient(100% 120% at 0% 0%, var(--accent-a16), transparent 70%), var(--bg-2);
+  box-shadow: var(--shadow-2);
+}
+
+.nodeHead {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-inline-size: 0;
+}
+
+.kindMark {
+  flex: none;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: var(--r-pill);
+  background: var(--line-2);
+}
+
+.town .kindMark {
+  border-radius: var(--r-1);
+}
+
+.visited.town .kindMark,
+.current .kindMark {
+  background: var(--accent);
+}
+
+.visited.story .kindMark {
+  background: var(--info);
+}
+
+.name {
+  min-inline-size: 0;
+  color: var(--text-2);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.visited .name {
+  color: var(--text-hi);
+}
+
+.services {
+  color: var(--text-1);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}
+
+.gate {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--s-1);
+  padding: 0 var(--s-2);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-pill);
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  white-space: nowrap;
+}
+
+.gateOpen {
+  border-color: var(--accent-a32);
+  color: var(--accent);
+}
+
+.nodeFoot {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-block-start: auto;
+}
+
+.nodeFoot:empty {
+  display: none;
+}

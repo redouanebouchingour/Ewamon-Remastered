@@ -3,7 +3,7 @@
  * comes from the director's own `Rng` (the room's `worldRng.fork()`), so the sequence of spawns for a given
  * seed is reproducible by driving `tick` with synthetic `now` values.
  */
-import { ALPHA_CHANCE, ROUTE_TUNING, STORY_TUNING, TOWN_SPAWN_TUNING, VARIANT_CHANCE, isWalkable, isWater } from '@ewa/content';
+import { ALPHA_CHANCE, ROUTE_TUNING, STORY_TUNING, TOWN_SPAWN_TUNING, VARIANT_CHANCE, interiorFootprintAt, isWalkable, isWater } from '@ewa/content';
 import type { EncounterSlot, EncounterTable, Heightfield, SpawnTuning, ZoneDef } from '@ewa/content';
 import type { ContentIndex, Rng, VariantKey } from '@ewa/core';
 import { isLava } from './movement';
@@ -15,6 +15,8 @@ export interface SpawnRecord {
   readonly level: number;
   readonly variantKey: VariantKey;
   readonly isAlpha: boolean;
+  /** Phase D4: the 1/512 shiny tier — the low 9 bits of the alpha draw (no extra draw; absent = false) */
+  readonly isShiny?: boolean;
   /** species.abilities[rng.int(abilities.length)] — one draw at spawn */
   readonly ability: string;
   /** EncounterSlot.medium ?? 'land' */
@@ -47,6 +49,18 @@ export const FEATURED_VARIANT_BONUS = 0.025;
 export const NON_NORMAL_VARIANTS: readonly VariantKey[] = ['dawn', 'dusk', 'verdant', 'ember'];
 export const DEFAULT_LIVE_OPS: LiveOpsMods = { alphaBonus: 0, variantBonus: 0, swarmSpecies: [], swarmWeightBoost: 1, variantPool: NON_NORMAL_VARIANTS };
 
+/** Phase D4: one spawn in SHINY_ODDS is shiny. */
+export const SHINY_ODDS = 512;
+
+/**
+ * Phase D4: shiny from the alpha draw's low bits. `next()` is u32 / 2^32 (exact), so `u * 2^32` is the u32 and
+ * `u32 mod 512 === 0` has probability exactly 1/512. The alpha test reads the high bits (`u < ~0.01`), so the two
+ * are independent to within one part in 2^23 — and the spawn stream gains no draw: every seeded sequence is unchanged.
+ */
+export function shinyFromDraw(u: number): boolean {
+  return (u * 4294967296) % SHINY_ODDS === 0;
+}
+
 /** Engage range (§30.3): distance ≤ 3.0 m. */
 export const ENGAGE_RANGE_M = 3.0;
 export const MIN_SPAWN_SPACING_M = 6;
@@ -69,6 +83,66 @@ export function isDay(timeOfDay: number): boolean {
 export function slotEligible(slot: EncounterSlot, timeOfDay: number): boolean {
   if (slot.timeOfDay === 'any') return true;
   return slot.timeOfDay === (isDay(timeOfDay) ? 'day' : 'night');
+}
+
+/**
+ * Phase D9 — a bite on the Old Rod: one of `table`'s `water` slots eligible at `timeOfDay`, rolled with the same draws
+ * as a spawn (slot, level, alpha + shiny, variant, ability; swarm and event bonuses included) from `rng` (the room's
+ * fishing stream), placed at the cast point `at`. Never enters a director's population: the battle holds it and the
+ * room's release of an unknown id is a no-op. null when the table has no eligible water slot (nothing bites).
+ */
+export function rollFishing(
+  table: EncounterTable | null,
+  rng: Rng,
+  content: ContentIndex,
+  timeOfDay: number,
+  at: { readonly x: number; readonly z: number },
+  id: string,
+  now: number,
+  mods: LiveOpsMods = DEFAULT_LIVE_OPS,
+): SpawnRecord | null {
+  if (table === null) return null;
+  const eligible = table.slots.filter((s) => (s.medium ?? 'land') === 'water' && slotEligible(s, timeOfDay));
+  if (eligible.length === 0) return null;
+  const swarm = new Set(mods.swarmSpecies);
+  const weights = eligible.map((s) => s.weight * (swarm.has(s.species) ? mods.swarmWeightBoost : 1));
+  let total = 0;
+  for (const w of weights) total += w;
+  let pickAt = rng.next() * total;
+  let slot = eligible[eligible.length - 1]!;
+  for (let i = 0; i < eligible.length; i++) {
+    pickAt -= weights[i]!;
+    if (pickAt < 0) {
+      slot = eligible[i]!;
+      break;
+    }
+  }
+  const level = slot.levelMin + rng.int(slot.levelMax - slot.levelMin + 1);
+  const featured = mods.featuredSpecies?.includes(slot.species) === true;
+  const alphaDraw = rng.next();
+  const isAlpha = slot.tier === 'alpha' || alphaDraw < ALPHA_CHANCE + mods.alphaBonus + (featured ? FEATURED_ALPHA_BONUS : 0);
+  const isShiny = shinyFromDraw(alphaDraw);
+  let variantKey: VariantKey = 'normal';
+  const pool = mods.variantPool.length > 0 ? mods.variantPool : NON_NORMAL_VARIANTS;
+  if (rng.next() < VARIANT_CHANCE + mods.variantBonus + (featured ? FEATURED_VARIANT_BONUS : 0)) variantKey = rng.pick(pool);
+  const species = content.species(slot.species);
+  const ability = species.abilities[rng.int(species.abilities.length)]!;
+  return {
+    id,
+    speciesId: slot.species,
+    level,
+    variantKey,
+    isAlpha,
+    isShiny,
+    ability,
+    medium: 'water',
+    x: at.x,
+    z: at.z,
+    bornAt: now,
+    engagedBy: null,
+    engagedAt: null,
+    despawnAt: now,
+  };
 }
 
 export interface SpawnTickResult {
@@ -160,7 +234,9 @@ export class SpawnDirector {
     // alpha: one draw (an 'alpha' tier slot forces it)
     // Q12: an active event's featured species get +0.01 alpha / +0.025 variant (legacy constants); draws unchanged
     const featured = this.mods.featuredSpecies?.includes(slot.species) === true;
-    const alphaRoll = this.rng.next() < ALPHA_CHANCE + this.mods.alphaBonus + (featured ? FEATURED_ALPHA_BONUS : 0);
+    const alphaDraw = this.rng.next();
+    const alphaRoll = alphaDraw < ALPHA_CHANCE + this.mods.alphaBonus + (featured ? FEATURED_ALPHA_BONUS : 0);
+    const isShiny = shinyFromDraw(alphaDraw);
     const isAlpha = slot.tier === 'alpha' || alphaRoll;
     // variant: one draw, plus one pick on success
     let variantKey: VariantKey = 'normal';
@@ -177,6 +253,8 @@ export class SpawnDirector {
       // a water spawn never lands on lava (audit L2-25; no draw is added, so seeded sequences are unchanged)
       const surfaceOk = medium === 'water' ? isWater(h, x, z) && !isLava(h, x, z) : isWalkable(h, x, z);
       if (!surfaceOk) continue;
+      // never inside an interior pocket (its floor is walkable but only reached through door warps; Phase A)
+      if (interiorFootprintAt(this.zone.id, x, z) !== null) continue;
       let clear = true;
       for (const r of this.records.values()) {
         if (Math.hypot(r.x - x, r.z - z) < MIN_SPAWN_SPACING_M) {
@@ -199,6 +277,7 @@ export class SpawnDirector {
         level,
         variantKey,
         isAlpha,
+        isShiny,
         ability,
         medium,
         x,

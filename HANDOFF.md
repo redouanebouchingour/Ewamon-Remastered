@@ -1,4 +1,4 @@
-# HANDOFF — Ewamon Remastered (as of 2026-09-25)
+# HANDOFF — Ewamon Remastered (as of 2026-10-06)
 
 This file is the single entry point for whoever continues the build. Read it, then
 `.design/PLAN.md` (approved plan) and `.design/SPEC.md` (BINDING contract, assembled from
@@ -46,6 +46,27 @@ This file is the single entry point for whoever continues the build. Read it, th
 | `tools/model-pipeline` | DONE — 4 legendaries + 19 looks, 8.58 MB ≤ 12 MB | `pnpm models` |
 | `tools/asset-audit` | DONE — 17 rules; `--dump`, `--bytes`, baseline gate | `pnpm audit:assets -- --bytes` |
 | `tools/audio-pipeline` | key-less half DONE — `plan`, `generate` refusal, `process`; 366 jobs; **needs the user's `EWA_AUDIO_API_KEY` (Stability Stable Audio 2.5 recommended, ≈ $73)** | `pnpm --filter @ewa/audio-pipeline plan` |
+
+## The finish plan (2026-10-06)
+
+The user approved a five-phase plan to finish the game end to end, committed to `main` as it goes, each phase green
+and playable: **A** interiors + themed gym halls + correct arenas → **B** story-complete (Acts I–III and all 12
+league fights pass headless) → **C** missing UI (raids, quest journal, world map + minimap + fast travel, rankings /
+history / profile, bag, password reset) → **D** systems (TMs, evolution items, shinies, achievements, doubles, weather,
+surf + fishing, Cut/Strength, bike, tutorial, ranked queue, post-game) → **E** art, CC0 audio, release.
+
+| Phase | State | Proof |
+|---|---|---|
+| A — interiors, gym halls, puzzles, arenas | DONE (commit `d0f06d5` + polish) | `packages/{content,server,render,client}/test/interiors.test.ts`; live: entered the Mirevale gym, fought a gym trainer at the hall arena, healed at the nurse inside the healer |
+| B — story-complete | next | — |
+
+Dev tips learned in Phase A:
+- Another session may hold ports 4000/2567/5173. `.claude/launch.json` has `ewa-server-alt` / `ewa-client-alt`
+  (REST 4100, WS 2667, client 5174, PGlite in `packages/server/.data-alt`) launched through a small Node script.
+- The Browser pane stops the game loop while hidden; drive a headless Chrome over CDP instead (`--headless=new
+  --remote-debugging-port=… --enable-unsafe-webgpu`). `window.__ewaWorld.walkTo(x, z)` walks the real prediction +
+  server path; `window.__ewaWorld.debug()` snapshots pose, server pose, target, battle, toasts and party.
+- A lost battle leaves the party at 0 HP by design (spec §30: walk back to a healer).
 
 ## Known open issues (render)
 

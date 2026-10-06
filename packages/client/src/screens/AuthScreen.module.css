@@ -164,6 +164,15 @@
   inline-size: 100%;
 }
 
+/* Phase C6: the "Forgot your password?" link under the login fields */
+.forgot {
+  align-self: flex-end;
+  margin-block-start: calc(var(--s-3) * -1);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 600;
+}
+
 .switch {
   color: var(--text-2);
   font-size: var(--t-body);

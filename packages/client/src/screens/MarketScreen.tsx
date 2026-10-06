@@ -1,6 +1,6 @@
 /**
  * `/play/market` (SPEC §20.9.9). Tabs Browse · My listings · My bids. Every filter is a URL param (`search,
- * variant, isAlpha, levelMin, levelMax, sort, page`) so the back button restores it; results as Table rows
+ * variant, isAlpha, isShiny (Phase D4), levelMin, levelMax, sort, page`) so the back button restores it; results as Table rows
  * (sprite, species/level, variant/alpha chips, current bid, buy-now, time left mono). `/play/market/:listingId`
  * renders the detail beside the table. List-from-box modal: starting bid ≥ 100, optional buy-now, 12/24/48 h,
  * the 5 % fee shown before confirm. Refresh keeps the previous page at 0.6 opacity. 404 (server part 2) → "not
@@ -52,6 +52,7 @@ export const listingColumns = (): TableColumn<ListingView>[] => [
             <span className={l.caption}>Lv {r.level}</span>
             {r.variantKey !== 'normal' && <Pill tone="info">{r.variantKey}</Pill>}
             {r.isAlpha && <Pill tone="danger">Alpha</Pill>}
+            {r.isShiny === true && <Pill tone="warn">Shiny</Pill>}
           </span>
         </span>
       </span>
@@ -202,6 +203,17 @@ export function MarketScreen() {
                   { value: 'false', label: 'No alphas' },
                 ]}
                 onChange={(v) => setParam('isAlpha', v)}
+              />
+              <Select
+                label="Shiny"
+                hideLabel
+                value={params.get('isShiny') ?? ''}
+                options={[
+                  { value: '', label: 'Shiny or not' },
+                  { value: 'true', label: 'Shiny only' },
+                  { value: 'false', label: 'No shinies' },
+                ]}
+                onChange={(v) => setParam('isShiny', v)}
               />
               <TextField label="Min level" hideLabel type="number" placeholder="Lv min" value={params.get('levelMin') ?? ''} onChange={(v) => setParam('levelMin', v)} className={s.level} min={1} max={100} />
               <TextField label="Max level" hideLabel type="number" placeholder="Lv max" value={params.get('levelMax') ?? ''} onChange={(v) => setParam('levelMax', v)} className={s.level} min={1} max={100} />

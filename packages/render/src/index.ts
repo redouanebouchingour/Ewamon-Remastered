@@ -104,6 +104,8 @@ export type {
   EvolutionRequest, GeneratorSet, HeightfieldData,
   HudLayer, HudModel, Layout, Marker, Pickup, PropPlacement, SetPieceId, SpriteAnim, SpriteDescriptor, SpriteFrame, Tablet, Terrain, TerrainColliderLike,
   TypeName, VariantKey, VfxId, WaterSpec, ZoneHandle, ZoneSpec, ActorSpawn, PlanRoadData, ZonePlanData,
+  HallBounds, InteriorLocalPoint, InteriorLocalRect, InteriorSpec, InteriorTemplateId, InteriorThemeId, InteriorsHandle,
+  ObstacleSpec, ObstaclesHandle,
 } from './contracts.js';
 export { BasicDioramaRig, NullActorPool, NullBattleStage, NullHudLayer, unimplementedZoneLoader } from './defaults.js';
 export type { ZoneLoader } from './defaults.js';
@@ -135,7 +137,7 @@ export type { CameraWork, CueKind, OrbitPose } from './camera/battle.js';
 export { BOKEH_PX, FOCAL_LENGTH_M, TILT_DEG, TiltShiftDOF, circleOfConfusionPx, groundOffPlaneM } from './camera/dof.js';
 export { CAPACITY as VFX_CAPACITY, EMITTERS as VFX_EMITTERS, MAX_PARTICLES as VFX_MAX_PARTICLES, VFX_IDS, VFX_TABLE, VfxSystem, isVfxId } from './stage/vfx.js';
 export type { SequenceVfxRecipe, VfxAnchor, VfxPhase, VfxRecipe } from './stage/vfx.js';
-export { ACTOR_POOL_SIZE, CHARACTER, CharacterPool, EMOTE_CLIPS, EMOTE_MS, EMOTE_NAMES } from './stage/actors.js';
+export { ACTOR_POOL_SIZE, CHARACTER, CharacterPool, EMOTE_CLIPS, EMOTE_MS, EMOTE_NAMES, RIPPLE } from './stage/actors.js';
 export type { ActorPoolOptions, EmoteId, GroundSampler } from './stage/actors.js';
 export { CHARACTER_MATERIAL, createCharacterMaterial } from './stage/characterMaterial.js';
 export type { CharacterMaterial, CharacterMaterialUniforms } from './stage/characterMaterial.js';

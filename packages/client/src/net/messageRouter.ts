@@ -3,14 +3,17 @@
  * session writers; everything a scene owns (battle*, chat, storyBeat, raidEvents) is left for part 2's
  * World3D / BattleController, which subscribe to the same `WorldSession.onMessage`.
  */
+import { FAST_TRAVEL_REFUSALS } from '@ewa/protocol';
 import type { ServerMessage } from '@ewa/protocol';
+import { queueTradeEvolutions } from '../app/itemUseFeedback';
 import { toast, useNotificationsStore } from '../state/notifications';
+import { rankedStatusText, useRankedStore } from '../state/ranked';
 import { applyInventoryDelta, applyProgressionDelta } from '../state/session';
 import { useUiStore } from '../state/ui';
 import type { WorldSession } from './WorldSession';
 
-/** refusals the server already explained with its own toast (e.g. a league gate: toast + error leagueLocked) */
-const EXPLAINED_DETAILS: ReadonlySet<string> = new Set(['leagueLocked']);
+/** refusals the server already explained with its own toast (e.g. a league gate: toast + error leagueLocked; Phase C3 fast travel) */
+const EXPLAINED_DETAILS: ReadonlySet<string> = new Set(['leagueLocked', ...FAST_TRAVEL_REFUSALS]);
 
 const ERROR_TEXT: Readonly<Record<string, string>> = {
   notAllowed: 'That is not allowed right now.',
@@ -18,6 +21,17 @@ const ERROR_TEXT: Readonly<Record<string, string>> = {
   busy: 'Busy — try again in a moment.',
   invalidPayload: 'The server rejected that request.',
   internal: 'The server hit a problem. Try again.',
+};
+
+/** Phase C1: refusal details with their own copy (the raid flow's raidJoin / raidCatch answers among them) */
+const DETAIL_TEXT: Readonly<Record<string, string>> = {
+  tooFar: 'You are too far away — walk closer.',
+  badges: 'You need more badges for that.',
+  full: 'That raid is full.',
+  started: 'That raid has already started.',
+  noParty: 'Your party needs healing first.',
+  noWindow: 'The catch window has closed.',
+  noOrb: 'You have no orb of that kind.',
 };
 
 /**
@@ -57,9 +71,11 @@ export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'han
       if (tradeReceiptPending) {
         tradeReceiptPending = false;
         applyInventoryDelta(m.placement !== undefined ? m : { ...m, addedTo: 'box' });
+        queueTradeEvolutions(m.creaturesUpdated);
         return;
       }
       applyInventoryDelta(m);
+      queueTradeEvolutions(m.creaturesUpdated);
       return;
     case 'progressionDelta':
       applyProgressionDelta(m);
@@ -70,6 +86,10 @@ export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'han
     case 'error':
       if (m.code === 'rateLimited') return; // one per window; the UI already disables repeat actions
       if (m.detail !== null && EXPLAINED_DETAILS.has(m.detail)) return; // found live: two toasts for one gym refusal
+      if (m.detail !== null && m.code !== 'internal' && DETAIL_TEXT[m.detail] !== undefined) {
+        toast('warn', DETAIL_TEXT[m.detail]!);
+        return;
+      }
       toast('warn', m.detail !== null && m.detail.length > 0 && m.code !== 'internal' ? `${ERROR_TEXT[m.code] ?? 'Refused'} (${m.detail})` : (ERROR_TEXT[m.code] ?? 'Refused.'));
       return;
     case 'dm':
@@ -95,6 +115,24 @@ export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'han
     case 'handover':
       void ws.handover(m);
       return;
+    case 'towerState': {
+      // Phase D14: a fight starting closes the tower modal (the battle covers it); a win / loss / retirement opens it
+      // (it waits under the battle until the result card is dismissed: TowerModal renders only with no battle open)
+      const { type: _t, ...tower } = m;
+      const ui = useUiStore.getState();
+      ui.setTower(tower);
+      if (m.phase === 'fighting') {
+        if (ui.modal === 'tower') ui.closeModal();
+      } else ui.openModal('tower');
+      return;
+    }
+    case 'rankedStatus': {
+      // Phase D13: the queue panel's state + one toast per change worth telling (match found, refusals, cancelled)
+      useRankedStore.getState().apply(m);
+      const t = rankedStatusText(m);
+      if (t !== null) toast(t.level, t.text);
+      return;
+    }
     default:
       // battleStart / battleEvents / battleResync / battleEnd / raidEvents / chat / storyBeat: part 2 (scene)
       return;
@@ -102,5 +140,13 @@ export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'han
 }
 
 export function installMessageRouter(ws: WorldSession): () => void {
-  return ws.onMessage((m) => routeServerMessage(m, ws));
+  const offMessages = ws.onMessage((m) => routeServerMessage(m, ws));
+  // Phase D13: the server drops a queue entry when the connection really ends; so does the panel
+  const offRoom = ws.onRoom((room) => {
+    if (room === null) useRankedStore.getState().reset();
+  });
+  return () => {
+    offMessages();
+    offRoom();
+  };
 }

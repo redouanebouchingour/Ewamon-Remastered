@@ -23,6 +23,8 @@ export interface Profile {
   readonly isAdmin: boolean;
   /** unix ms */
   readonly createdAt: number;
+  /** Phase C6: false = unverified (the settings nudge shows); absent = unknown (an older server) */
+  readonly emailVerified?: boolean;
 }
 
 export type QuestState = Readonly<Record<string, Readonly<Record<string, { readonly count: number; readonly done: boolean }>>>>;
@@ -36,6 +38,8 @@ export interface Progression {
   readonly dexCaught: readonly string[];
   readonly dexVariants: Readonly<Record<string, readonly VariantKey[]>>;
   readonly dexAlpha: readonly string[];
+  /** Phase D4: species of which a shiny was caught (GET /dex `shiny`) */
+  readonly dexShiny?: readonly string[];
   readonly flags: readonly string[];
   /** questId -> objectiveId -> progress */
   readonly quests: QuestState;
@@ -96,8 +100,12 @@ export function partyCanBattle(inv: Inventory | null): boolean {
 export type ProgressionDelta = ServerMessageOf<'progressionDelta'> & {
   readonly dexVariants?: Readonly<Record<string, readonly VariantKey[]>>;
   readonly dexAlpha?: readonly string[];
+  /** Phase D4 (REST-only, like dexAlpha) */
+  readonly dexShiny?: readonly string[];
   /** POST /quests/claim of a daily / weekly mission (REST-only, like the dex extras) */
   readonly missionClaimed?: { readonly questId: string; readonly missionId: string };
+  /** Phase B3: POST /quests/claim of a story quest (REST-only) — appended to `questsClaimed` */
+  readonly questClaimed?: string;
 };
 
 /**
@@ -131,6 +139,10 @@ export interface SessionState {
   hydrateFromMe(me: MeResponse): void;
   applyProgressionDelta(d: ProgressionDelta): void;
   applyInventoryDelta(d: InventoryDelta): void;
+  /** Phase C4: the identity fields a `POST /profile` response carries (title / motto / body) — not progression */
+  applyProfile(p: Pick<Profile, 'title' | 'motto' | 'body'>): void;
+  /** Phase C6: `POST /auth/verify` succeeded (or `/auth/resend` answered `alreadyVerified`) */
+  markEmailVerified(): void;
   setTokens(access: string, accessExp: number): void;
   setZone(zoneId: ZoneId): void;
   clearSession(): void;
@@ -198,6 +210,7 @@ export const useSessionStore = create<SessionState>()(
           body: me.body,
           isAdmin: me.isAdmin,
           createdAt: Date.parse(me.createdAt),
+          ...(me.emailVerified !== undefined ? { emailVerified: me.emailVerified } : {}),
         },
         progression: {
           badges: [...me.badges],
@@ -209,6 +222,7 @@ export const useSessionStore = create<SessionState>()(
           dexCaught: prev?.dexCaught ?? [],
           dexVariants: prev?.dexVariants ?? {},
           dexAlpha: prev?.dexAlpha ?? [],
+          dexShiny: prev?.dexShiny ?? [],
           flags: storyFlags(me.flags),
           quests,
           questsClaimed: me.quests.filter((q) => q.claimed).map((q) => q.id),
@@ -239,8 +253,10 @@ export const useSessionStore = create<SessionState>()(
           dexCaught: union(p.dexCaught, d.dexCaught),
           dexVariants: d.dexVariants ?? p.dexVariants,
           dexAlpha: d.dexAlpha ?? p.dexAlpha,
+          dexShiny: d.dexShiny ?? p.dexShiny ?? [],
           flags: union(p.flags, d.flags === null ? null : storyFlags(d.flags)),
           quests: d.questProgress === null ? p.quests : questsFrom(d.questProgress, p.quests),
+          questsClaimed: d.questClaimed === undefined || p.questsClaimed.includes(d.questClaimed) ? p.questsClaimed : [...p.questsClaimed, d.questClaimed],
           missions:
             d.missionClaimed === undefined
               ? p.missions
@@ -275,6 +291,18 @@ export const useSessionStore = create<SessionState>()(
           box,
         },
       });
+    },
+
+    applyProfile(p) {
+      const cur = get().profile;
+      if (cur === null) return;
+      set({ profile: { ...cur, title: p.title, motto: p.motto, body: p.body } });
+    },
+
+    markEmailVerified() {
+      const cur = get().profile;
+      if (cur === null || cur.emailVerified === true) return;
+      set({ profile: { ...cur, emailVerified: true } });
     },
 
     setTokens(access, accessExp) {
@@ -331,8 +359,11 @@ export function toProgressionDelta(res: {
   readonly dexCaught?: readonly string[];
   readonly dexVariants?: Readonly<Record<string, readonly VariantKey[]>>;
   readonly dexAlpha?: readonly string[];
+  readonly dexShiny?: readonly string[];
   readonly questProgress?: readonly QuestProgressEntry[];
   readonly missionClaimed?: { readonly questId: string; readonly missionId: string };
+  readonly questClaimed?: string;
+  readonly flags?: readonly string[];
 }): ProgressionDelta {
   return {
     type: 'progressionDelta',
@@ -342,11 +373,13 @@ export function toProgressionDelta(res: {
     rating: null,
     dexSeen: res.dexSeen ?? null,
     dexCaught: res.dexCaught ?? null,
-    flags: null,
+    flags: res.flags ?? null,
     questProgress: res.questProgress ?? null,
     ...(res.dexVariants !== undefined ? { dexVariants: res.dexVariants } : {}),
     ...(res.dexAlpha !== undefined ? { dexAlpha: res.dexAlpha } : {}),
+    ...(res.dexShiny !== undefined ? { dexShiny: res.dexShiny } : {}),
     ...(res.missionClaimed !== undefined ? { missionClaimed: res.missionClaimed } : {}),
+    ...(res.questClaimed !== undefined ? { questClaimed: res.questClaimed } : {}),
   };
 }
 

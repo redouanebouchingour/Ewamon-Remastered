@@ -2,7 +2,8 @@
  * `/play/dex` — witnessing framing (SPEC §20.9.5). "Witnessed N / 130" in the display face with a segmented bar
  * (caught solid, seen-only hatched, unknown empty) — the largest number in the UI. A 6-column grid in dexNumber
  * order: unknown = silhouette `#???`, seen = desaturated + name, caught = full colour with variant chips and an
- * alpha mark. Filters in the URL (`?type=&state=caught|seen|unknown&q=`); `?id=` selects an entry.
+ * alpha mark, and a sparkle mark for a shiny catch (Phase D4). Filters in the URL
+ * (`?type=&state=caught|seen|unknown|shiny&q=`); `?id=` selects an entry.
  */
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
@@ -25,14 +26,17 @@ import l from './layout.module.css';
 import { useClosePanel } from './shared';
 
 type DexState = 'caught' | 'seen' | 'unknown';
+/** the State filter: a dex state, everything, or the species with a shiny catch (Phase D4) */
+type StateFilter = DexState | 'all' | 'shiny';
 const EMPTY: readonly string[] = [];
 const NO_VARIANTS: Readonly<Record<string, readonly VariantKey[]>> = {};
 
-function DexDetail({ sp, state, variants, alpha, recordedIn }: {
+function DexDetail({ sp, state, variants, alpha, shiny, recordedIn }: {
   readonly sp: SpeciesDef;
   readonly state: DexState;
   readonly variants: readonly VariantKey[];
   readonly alpha: boolean;
+  readonly shiny: boolean;
   readonly recordedIn: readonly string[];
 }) {
   const seenSet = useSessionStore((st) => st.progression?.dexSeen ?? EMPTY);
@@ -100,6 +104,11 @@ function DexDetail({ sp, state, variants, alpha, recordedIn }: {
                 <Icon name="alpha" size="sm" /> Alpha
               </span>
             )}
+            {shiny && (
+              <span className={s.shiny}>
+                <Icon name="sparkle" size="sm" /> Shiny
+              </span>
+            )}
           </div>
         </section>
       )}
@@ -127,6 +136,7 @@ export function DexScreen() {
   const caught = useSessionStore((st) => st.progression?.dexCaught ?? EMPTY);
   const variants = useSessionStore((st) => st.progression?.dexVariants ?? NO_VARIANTS);
   const alphaIds = useSessionStore((st) => st.progression?.dexAlpha ?? EMPTY);
+  const shinyIds = useSessionStore((st) => st.progression?.dexShiny ?? EMPTY);
   const party = useSessionStore((st) => st.inventory?.party);
   const box = useSessionStore((st) => st.inventory?.box);
   const [params, setParams] = useSearchParams();
@@ -137,7 +147,7 @@ export function DexScreen() {
 
   const q = params.get('q') ?? '';
   const type = (params.get('type') ?? '') as TypeName | '';
-  const stateFilter = (params.get('state') ?? 'all') as DexState | 'all';
+  const stateFilter = (params.get('state') ?? 'all') as StateFilter;
   const setParam = (k: string, v: string): void =>
     setParams(
       (p) => {
@@ -151,7 +161,9 @@ export function DexScreen() {
   const needle = q.trim().toLowerCase();
   const entries = SPECIES_BY_DEX.filter((sp) => {
     const st = stateOf(sp.id);
-    if (stateFilter !== 'all' && st !== stateFilter) return false;
+    if (stateFilter === 'shiny') {
+      if (!shinyIds.includes(sp.id)) return false;
+    } else if (stateFilter !== 'all' && st !== stateFilter) return false;
     if (type !== '' && (st === 'unknown' || !(sp.types as readonly string[]).includes(type))) return false;
     if (needle.length > 0) {
       if (st === 'unknown') return String(sp.dexNumber).includes(needle);
@@ -193,6 +205,7 @@ export function DexScreen() {
               { value: 'caught', label: 'Recorded' },
               { value: 'seen', label: 'Seen' },
               { value: 'unknown', label: 'Unknown' },
+              { value: 'shiny', label: 'Shiny' },
             ]}
             onChange={(v) => setParam('state', v)}
           />
@@ -249,6 +262,7 @@ export function DexScreen() {
                   >
                     <span className={s.num}>#{String(sp.dexNumber).padStart(3, '0')}</span>
                     {alphaIds.includes(sp.id) && <Icon name="alpha" size="sm" className={s.alphaMark} label="Alpha recorded" />}
+                    {shinyIds.includes(sp.id) && <Icon name="sparkle" size="sm" className={cx(s.shinyMark, alphaIds.includes(sp.id) && s.shinyMarkShift)} label="Shiny recorded" />}
                     <CreatureSprite speciesId={sp.id} size="lg" silhouette={st === 'unknown'} desaturate={st === 'seen'} />
                     <span className={s.name}>{st === 'unknown' ? '???' : sp.name}</span>
                     {st === 'caught' && v.length > 0 && (
@@ -265,7 +279,7 @@ export function DexScreen() {
           </ol>
         )}
         {selected !== null && (
-          <DexDetail sp={selected} state={stateOf(selected.id)} variants={variants[selected.id] ?? []} alpha={alphaIds.includes(selected.id)} recordedIn={recordedIn} />
+          <DexDetail sp={selected} state={stateOf(selected.id)} variants={variants[selected.id] ?? []} alpha={alphaIds.includes(selected.id)} shiny={shinyIds.includes(selected.id)} recordedIn={recordedIn} />
         )}
       </div>
     </Panel>

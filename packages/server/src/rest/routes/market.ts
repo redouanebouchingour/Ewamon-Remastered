@@ -24,6 +24,7 @@ export function listingView(l: PersistListing): ListingView {
     level: l.level,
     variantKey: l.variantKey,
     isAlpha: l.isAlpha,
+    ...(l.isShiny ? { isShiny: true } : {}),
     startingBid: l.startingBid,
     currentBid: l.currentBid,
     currentBidderId: l.currentBidderId,
@@ -56,6 +57,7 @@ export function registerMarketRoutes(app: FastifyInstance, deps: RestDeps): void
         ...(q.search !== undefined ? { search: q.search.slice(0, SEARCH_CAP) } : {}),
         ...(q.variant !== undefined ? { variant: q.variant } : {}),
         ...(q.isAlpha !== undefined ? { isAlpha: q.isAlpha } : {}),
+        ...(q.isShiny !== undefined ? { isShiny: q.isShiny } : {}),
         ...(q.levelMin !== undefined ? { levelMin: q.levelMin } : {}),
         ...(q.levelMax !== undefined ? { levelMax: q.levelMax } : {}),
         sort: q.sort,
@@ -124,7 +126,7 @@ export function registerMarketRoutes(app: FastifyInstance, deps: RestDeps): void
       const l = await repos.market.buyNow(tx, id, me, now);
       const c = await creatureOf(tx, l.creatureId);
       await repos.progress.markSeen(tx, me, c.speciesId, now);
-      await repos.progress.markCaught(tx, me, c.speciesId, c.variantKey, c.isAlpha, now);
+      await repos.progress.markCaught(tx, me, c.speciesId, c.variantKey, c.isAlpha, now, c.isShiny === true);
       await repos.players.addTrainerExp(tx, me, TRAINER_EXP.tradeComplete);
       await repos.players.addTrainerExp(tx, l.sellerId, TRAINER_EXP.tradeComplete);
       return { l, c, money: await moneyOf(tx, me) };

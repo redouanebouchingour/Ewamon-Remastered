@@ -8,6 +8,11 @@
  * anchors each bar to `stage.projectBattler(ref)`. Render's stage side 0 is the near (viewer's) position, so the
  * setters take CORE sides and map them through the viewer's seat (`setSeat`): the seat-1 player of a pvp battle sees
  * their own creature near, like everyone else.
+ *
+ * Phase D6 doubles (`setLayout(true)`): four bars keyed to the stage refs (side, slot = field position 0 / 1), in the
+ * order near 0, near 1, far 0, far 1 (`STAGE_REFS_DOUBLES`); every setter takes the field position as its last
+ * argument (default 0). Render's HudLayer anchors each bar over its own battler and keeps the four apart. Singles keeps
+ * the two bars [near, far] exactly as before.
  */
 import type { StatKey } from '@ewa/core';
 import { STAT_SHORT } from './timeline';
@@ -31,10 +36,19 @@ export interface BattleHudModel {
   shakes: number;
 }
 
-/** The two stage positions (one active battler per side in v1 formats). */
+/** The singles stage refs: one active battler per stage side, at render slot 0 (index = stage side). */
 export const STAGE_REFS: readonly [{ readonly side: 0; readonly slot: 0 }, { readonly side: 1; readonly slot: 0 }] = [
   { side: 0, slot: 0 },
   { side: 1, slot: 0 },
+];
+
+type StageRef = { readonly side: 0 | 1; readonly slot: 0 | 1 };
+/** Phase D6: the doubles stage refs — render slot = field position; index = stage side × 2 + position. */
+export const STAGE_REFS_DOUBLES: readonly [StageRef, StageRef, StageRef, StageRef] = [
+  { side: 0, slot: 0 },
+  { side: 0, slot: 1 },
+  { side: 1, slot: 0 },
+  { side: 1, slot: 1 },
 ];
 
 const STAT_ORDER: readonly StatKey[] = ['atk', 'def', 'spd', 'acc', 'eva'];
@@ -43,23 +57,26 @@ export const CANVAS_TURN_LABEL = false;
 
 const NO_TYPES: readonly string[] = Object.freeze([]);
 
-function makeModel(): BattleHudModel {
+function makeModel(doubles = false): BattleHudModel {
+  const refs: readonly { readonly side: 0 | 1; readonly slot: number }[] = doubles ? STAGE_REFS_DOUBLES : STAGE_REFS;
   return {
-    bars: [0, 1].map((side) => ({ who: STAGE_REFS[side as 0 | 1], name: '', level: 1, hp: 0, maxHp: 1, status: null, stages: '', showNumbers: side === 0, types: NO_TYPES })),
+    bars: refs.map((who) => ({ who, name: '', level: 1, hp: 0, maxHp: 1, status: null, stages: '', showNumbers: who.side === 0, types: NO_TYPES })),
     turnLabel: '',
     shakes: 0,
   };
 }
 
 export class BattleHud {
-  private readonly buffers: readonly [BattleHudModel, BattleHudModel] = [makeModel(), makeModel()];
+  private buffers: readonly [BattleHudModel, BattleHudModel] = [makeModel(), makeModel()];
   private front = 0;
   private dirty = false;
   private active = false;
-  /** stage deltas per side, STAT_ORDER order */
-  private readonly stagesBySide: readonly [Int8Array, Int8Array] = [new Int8Array(5), new Int8Array(5)];
+  /** stage deltas per bar, STAT_ORDER order */
+  private readonly stagesByBar: readonly Int8Array[] = [new Int8Array(5), new Int8Array(5), new Int8Array(5), new Int8Array(5)];
   /** the viewer's core side (stage position 0) */
   private seat: 0 | 1 = 0;
+  /** Phase D6: four bars (two per side) */
+  private doubles = false;
 
   constructor(private readonly sink: (m: BattleHudModel | null) => void) {}
 
@@ -72,7 +89,7 @@ export class BattleHud {
     const b = this.back();
     if (this.dirty) return b;
     const f = this.buffers[this.front]!;
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < f.bars.length; i++) {
       const src = f.bars[i]!;
       const dst = b.bars[i]!;
       dst.name = src.name; dst.level = src.level; dst.hp = src.hp; dst.maxHp = src.maxHp;
@@ -93,42 +110,62 @@ export class BattleHud {
     this.seat = seat;
   }
 
-  /** Stage position (bar index) of a core side. */
-  private at(side: 0 | 1): 0 | 1 {
-    return (side ^ this.seat) as 0 | 1;
+  /**
+   * Phase D6: two bars (singles) or four (doubles). Call at battle start, before the first setBar; a change rebuilds
+   * both buffers (the only allocation, once per battle).
+   */
+  setLayout(doubles: boolean): void {
+    if (doubles === this.doubles) return;
+    this.doubles = doubles;
+    this.buffers = [makeModel(doubles), makeModel(doubles)];
+    this.front = 0;
+    this.dirty = false;
+    for (const s of this.stagesByBar) s.fill(0);
+  }
+
+  get isDoubles(): boolean {
+    return this.doubles;
+  }
+
+  /** Bar index of a core side's field position (singles: the stage side). */
+  private at(side: 0 | 1, pos: 0 | 1 = 0): number {
+    const st = side ^ this.seat;
+    return this.doubles ? st * 2 + pos : st;
   }
 
   /** Full bar reset (battle start, switch-in, resync). */
-  setBar(side: 0 | 1, name: string, level: number, hp: number, maxHp: number, status: string | null, showNumbers: boolean, types: readonly string[] = NO_TYPES): void {
-    const bar = this.prepare().bars[this.at(side)]!;
+  setBar(side: 0 | 1, name: string, level: number, hp: number, maxHp: number, status: string | null, showNumbers: boolean, types: readonly string[] = NO_TYPES, pos: 0 | 1 = 0): void {
+    const i = this.at(side, pos);
+    const bar = this.prepare().bars[i]!;
     bar.name = name; bar.level = level; bar.hp = hp; bar.maxHp = Math.max(1, maxHp); bar.status = status; bar.showNumbers = showNumbers; bar.types = types;
-    this.stagesBySide[side].fill(0);
+    this.stagesByBar[i]!.fill(0);
     bar.stages = '';
     this.active = true;
   }
 
-  setHp(side: 0 | 1, hp: number, maxHp: number): void {
-    const bar = this.prepare().bars[this.at(side)]!;
+  setHp(side: 0 | 1, hp: number, maxHp: number, pos: 0 | 1 = 0): void {
+    const bar = this.prepare().bars[this.at(side, pos)]!;
     bar.hp = hp;
     if (maxHp > 0) bar.maxHp = maxHp;
   }
 
-  setLevel(side: 0 | 1, level: number, maxHp: number): void {
-    const bar = this.prepare().bars[this.at(side)]!;
+  setLevel(side: 0 | 1, level: number, maxHp: number, pos: 0 | 1 = 0): void {
+    const bar = this.prepare().bars[this.at(side, pos)]!;
     bar.level = level;
     if (maxHp > 0) bar.maxHp = maxHp;
   }
 
-  setStatus(side: 0 | 1, status: string | null): void {
-    this.prepare().bars[this.at(side)]!.status = status;
+  setStatus(side: 0 | 1, status: string | null, pos: 0 | 1 = 0): void {
+    this.prepare().bars[this.at(side, pos)]!.status = status;
   }
 
-  addStage(side: 0 | 1, stat: string, delta: number): void {
+  addStage(side: 0 | 1, stat: string, delta: number, pos: 0 | 1 = 0): void {
     const i = STAT_ORDER.indexOf(stat as StatKey);
     if (i < 0) return;
-    const s = this.stagesBySide[side];
+    const b = this.at(side, pos);
+    const s = this.stagesByBar[b]!;
     s[i] = Math.max(-6, Math.min(6, s[i]! + delta));
-    this.prepare().bars[this.at(side)]!.stages = this.stageText(side);
+    this.prepare().bars[b]!.stages = this.stageText(b);
   }
 
   setShakes(n: number): void {
@@ -145,8 +182,8 @@ export class BattleHud {
     b.turnLabel = CANVAS_TURN_LABEL ? label : '';
   }
 
-  private stageText(side: 0 | 1): string {
-    const s = this.stagesBySide[side];
+  private stageText(bar: number): string {
+    const s = this.stagesByBar[bar]!;
     let out = '';
     for (let i = 0; i < STAT_ORDER.length; i++) {
       const v = s[i]!;
@@ -167,8 +204,7 @@ export class BattleHud {
   clear(): void {
     this.active = false;
     this.dirty = false;
-    this.stagesBySide[0].fill(0);
-    this.stagesBySide[1].fill(0);
+    for (const s of this.stagesByBar) s.fill(0);
     this.sink(null);
   }
 

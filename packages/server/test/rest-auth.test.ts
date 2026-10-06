@@ -6,6 +6,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ProcessMetricsSchema, ROUTES } from '@ewa/protocol';
 import { ARGON2, hashPassword, verifyPassword } from '../src/rest/auth';
+import { RESET_TTL_MS, isMemoryMailer, tokenOf } from '../src/mail/mailer';
+import type { MailMessage, MemoryMailer } from '../src/mail/mailer';
 import { START_MONEY, api, rawQuery, register, startServer, uniqueName } from './helpers';
 import type { TestServer } from './helpers';
 
@@ -167,6 +169,147 @@ describe('auth flow', () => {
     expect(r.body.showcase[0].ownerId).toBeNull();
     expect(r.body).not.toHaveProperty('email');
     expect((await api(s, 'GET', '/players/nobody_at_all', a.access)).status).toBe(404);
+  }, 60_000);
+});
+
+describe('Phase C6: password reset + email verification', () => {
+  let ipSeq = 0;
+  /** every call from its own address unless one is given (the email routes are limited per IP) */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JSON response bodies are asserted field by field
+  async function post(url: string, payload: unknown, opts: { ip?: string; token?: string } = {}): Promise<{ status: number; body: any }> {
+    ipSeq += 1;
+    const res = await s.booted.rest.inject({
+      method: 'POST',
+      url,
+      payload: payload as object,
+      remoteAddress: opts.ip ?? `203.0.113.${ipSeq % 250}`,
+      headers: opts.token !== undefined ? { authorization: `Bearer ${opts.token}` } : {},
+    });
+    return { status: res.statusCode, body: res.body.length > 0 ? res.json() : null };
+  }
+  function mailer(): MemoryMailer {
+    const m = s.booted.runtime.mailer;
+    if (!isMemoryMailer(m)) throw new Error('NODE_ENV=test without SMTP must default to the memory mailer');
+    return m;
+  }
+  function mailsTo(address: string, tag: MailMessage['tag']): MailMessage[] {
+    return mailer().sent.filter((m) => m.to === address && m.tag === tag);
+  }
+  const emailOf = (a: { username: string }): string => `${a.username}@test.ewa`;
+
+  it('registration sends a verification link (non-blocking: /me works and says emailVerified: false)', async () => {
+    const a = await register(s);
+    const mails = mailsTo(emailOf(a), 'verify');
+    expect(mails).toHaveLength(1);
+    expect(mails[0]!.text).toContain('http://localhost:5173/verify?token=');
+    expect(mails[0]!.html).toContain('/verify?token=');
+    const me = await api(s, 'GET', '/me', a.access);
+    expect(me.status).toBe(200);
+    expect(me.body.emailVerified).toBe(false);
+  }, 60_000);
+
+  it('forgot is always 204 — unknown email included — and mails only a known address; 5/h per IP → 429; 3 mails/h per address', async () => {
+    const a = await register(s);
+    const unknown = await post('/auth/forgot', { email: 'nobody-at-all@nowhere.test' });
+    expect(unknown.status).toBe(204);
+    expect(unknown.body).toBeNull();
+    expect(mailer().sent.some((m) => m.to === 'nobody-at-all@nowhere.test')).toBe(false);
+    const known = await post('/auth/forgot', { email: emailOf(a).toUpperCase() });
+    expect(known.status).toBe(204);
+    const mails = mailsTo(emailOf(a), 'reset');
+    expect(mails).toHaveLength(1);
+    expect(mails[0]!.text).toContain('http://localhost:5173/reset?token=');
+    // the token is stored hashed only
+    const rows = await rawQuery(s.db, "select token_hash, kind, expires_at, created_at from email_tokens where player_id = $1 and kind = 'reset'", [a.id]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!['token_hash']).not.toBe(tokenOf(mails[0]!));
+    expect(new Date(String(rows[0]!['expires_at'])).getTime() - new Date(String(rows[0]!['created_at'])).getTime()).toBe(RESET_TTL_MS);
+    // per address: the 2nd and 3rd mail go out, the 4th is answered 204 and dropped
+    for (let i = 0; i < 3; i++) expect((await post('/auth/forgot', { email: emailOf(a) })).status).toBe(204);
+    expect(mailsTo(emailOf(a), 'reset')).toHaveLength(3);
+    // per IP: 5 per hour, the 6th → 429
+    const ip = '203.0.113.251';
+    for (let i = 0; i < 5; i++) expect((await post('/auth/forgot', { email: `ip-probe-${i}@nowhere.test` }, { ip })).status).toBe(204);
+    const limited = await post('/auth/forgot', { email: 'ip-probe-x@nowhere.test' }, { ip });
+    expect(limited.status).toBe(429);
+    expect(limited.body.code).toBe('rateLimited');
+    expect((await post('/auth/forgot', { email: 'not-an-email' })).status).toBe(400);
+  }, 60_000);
+
+  it('reset: sets the new argon2id hash, revokes every refresh token, single use; the old password stops working', async () => {
+    const a = await register(s);
+    const login = await api(s, 'POST', '/auth/login', null, { username: a.username, password: 'correct horse battery' });
+    expect(login.status).toBe(200);
+    expect((await post('/auth/forgot', { email: emailOf(a) })).status).toBe(204);
+    const token = tokenOf(mailsTo(emailOf(a), 'reset').at(-1)!)!;
+    const before = await rawQuery(s.db, 'select password_hash from players where id = $1', [a.id]);
+    const res = await post('/auth/reset', { token, password: 'a brand new passphrase' });
+    expect(res.status).toBe(204);
+    const [row] = await rawQuery(s.db, 'select password_hash, email_verified_at from players where id = $1', [a.id]);
+    expect(String(row!['password_hash']).startsWith('$argon2id$v=19$m=19456,t=2,p=1$')).toBe(true);
+    expect(row!['password_hash']).not.toBe(before[0]!['password_hash']);
+    expect(row!['email_verified_at']).not.toBeNull(); // the reset link proved the address
+    // every refresh token (register's and login's) is revoked
+    const live = await rawQuery(s.db, 'select count(*)::int as n from refresh_tokens where player_id = $1 and revoked_at is null', [a.id]);
+    expect(Number(live[0]!['n'])).toBe(0);
+    expect((await api(s, 'POST', '/auth/refresh', null, { refresh: a.refresh })).status).toBe(401);
+    expect((await api(s, 'POST', '/auth/refresh', null, { refresh: login.body.refresh })).status).toBe(401);
+    // passwords
+    expect((await api(s, 'POST', '/auth/login', null, { username: a.username, password: 'correct horse battery' })).status).toBe(401);
+    expect((await api(s, 'POST', '/auth/login', null, { username: a.username, password: 'a brand new passphrase' })).status).toBe(200);
+    // single use
+    const again = await post('/auth/reset', { token, password: 'yet another passphrase' });
+    expect(again.status).toBe(400);
+    expect(again.body).toEqual({ code: 'badToken', reason: 'used' });
+    const audit = await rawQuery(s.db, "select detail from audit_log where actor_id = $1 and action = 'auth.passwordReset'", [a.id]);
+    expect(audit).toHaveLength(1);
+  }, 60_000);
+
+  it('reset refuses an expired token, an unknown token, a verify token and a short password; nothing changes', async () => {
+    const a = await register(s);
+    const thirtyOneMinAgo = new Date(s.time.clock() - 31 * 60_000);
+    const { token: stale } = await s.repos.db.transaction((tx) => s.repos.auth.issueEmailToken(tx, a.id, 'reset', RESET_TTL_MS, thirtyOneMinAgo));
+    const expired = await post('/auth/reset', { token: stale, password: 'a brand new passphrase' });
+    expect(expired.status).toBe(400);
+    expect(expired.body).toEqual({ code: 'badToken', reason: 'expired' });
+    const unknown = await post('/auth/reset', { token: 'x'.repeat(43), password: 'a brand new passphrase' });
+    expect(unknown.body).toEqual({ code: 'badToken', reason: 'unknown' });
+    const verifyToken = tokenOf(mailsTo(emailOf(a), 'verify').at(-1)!)!;
+    expect((await post('/auth/reset', { token: verifyToken, password: 'a brand new passphrase' })).body).toEqual({ code: 'badToken', reason: 'unknown' });
+    expect((await post('/auth/reset', { token: 'x'.repeat(43), password: 'short' })).status).toBe(400);
+    // the original password still works and its refresh token still rotates
+    expect((await api(s, 'POST', '/auth/login', null, { username: a.username, password: 'correct horse battery' })).status).toBe(200);
+    expect((await api(s, 'POST', '/auth/refresh', null, { refresh: a.refresh })).status).toBe(200);
+  }, 60_000);
+
+  it('verify: the registration link verifies once; /me reports it; a reused link → 400 used', async () => {
+    const a = await register(s);
+    const token = tokenOf(mailsTo(emailOf(a), 'verify')[0]!)!;
+    expect((await post('/auth/verify', { token })).status).toBe(204);
+    const me = await api(s, 'GET', '/me', a.access);
+    expect(me.body.emailVerified).toBe(true);
+    const again = await post('/auth/verify', { token });
+    expect(again.status).toBe(400);
+    expect(again.body).toEqual({ code: 'badToken', reason: 'used' });
+    expect((await post('/auth/verify', {})).status).toBe(400);
+  }, 60_000);
+
+  it('resend: bearer only; a fresh link supersedes the last; 3/h per player → 429; verified → 409 alreadyVerified', async () => {
+    const a = await register(s);
+    expect((await post('/auth/resend', {})).status).toBe(401);
+    for (let i = 0; i < 3; i++) expect((await post('/auth/resend', {}, { token: a.access })).status).toBe(204);
+    const limited = await post('/auth/resend', {}, { token: a.access });
+    expect(limited.status).toBe(429);
+    const mails = mailsTo(emailOf(a), 'verify');
+    expect(mails).toHaveLength(4); // registration + 3 resends
+    // only the newest link works
+    expect((await post('/auth/verify', { token: tokenOf(mails[0]!)! })).body).toEqual({ code: 'badToken', reason: 'used' });
+    expect((await post('/auth/verify', { token: tokenOf(mails[3]!)! })).status).toBe(204);
+    const b = await register(s);
+    expect((await post('/auth/verify', { token: tokenOf(mailsTo(emailOf(b), 'verify')[0]!)! })).status).toBe(204);
+    const done = await post('/auth/resend', {}, { token: b.access });
+    expect(done.status).toBe(409);
+    expect(done.body.code).toBe('alreadyVerified');
   }, 60_000);
 });
 

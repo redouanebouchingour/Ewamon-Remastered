@@ -8,12 +8,17 @@ import { ZONE_ORDER } from '@ewa/content';
 /** url = .webm (Opus 96 kb/s), urlFallback = .m4a (AAC 128 kb/s); chosen once via canPlayType('audio/webm; codecs=opus') */
 export interface AudioClipRef { readonly url: string; readonly urlFallback: string; readonly durationSec: number; readonly bytes: number; readonly hash: string }
 export interface StemRef extends AudioClipRef { readonly loopStartSec: number; readonly loopEndSec: number; readonly lufs: number }
+/**
+ * Phase E4 (`40-pipelines.md` §40.4.8): layers the CC0 ingest derived from a theme's base track — filtered copies,
+ * sample-aligned and level-set under base, sharing its gain. Played like any layer, but never without base.
+ */
+export type DerivedStem = 'threat' | 'biome' | 'night';
 export interface AudioManifest {
   readonly version: 1;
   /** ISO-8601 */
   readonly builtAt: string;
   /** theme ids: one per biome (11) + battle, gym, elite, champion, raid, victory */
-  readonly themes: Readonly<Record<string, { readonly stems: { readonly base: StemRef; readonly threat: StemRef; readonly biome: StemRef; readonly night: StemRef }; readonly bpm: number }>>;
+  readonly themes: Readonly<Record<string, { readonly stems: { readonly base: StemRef; readonly threat: StemRef; readonly biome: StemRef; readonly night: StemRef }; readonly bpm: number; readonly derived?: readonly DerivedStem[] }>>;
   /** clips.length 1..4 round-robin variants */
   readonly sfx: Readonly<Record<string, { readonly clips: readonly AudioClipRef[]; readonly gainDb: number; readonly bus: 'sfx' | 'ui'; readonly maxConcurrent: number }>>;
   /** per-biome bed, looped on the music bus at −12 dB */

@@ -9,7 +9,7 @@ import { Icon } from './Icon';
 import type { IconName } from './Icon';
 import { TypeBadge } from './TypeBadge';
 
-export type CreatureBadge = 'favorite' | 'locked' | 'alpha' | 'listed';
+export type CreatureBadge = 'favorite' | 'locked' | 'alpha' | 'shiny' | 'listed';
 
 /** SPEC §20.2.4 props, plus `caption` (showcase flavour line) and `trailing` (row-end slot). */
 export interface CreatureCardProps {
@@ -24,15 +24,16 @@ export interface CreatureCardProps {
   readonly className?: string;
 }
 
-const BADGE_ICON: Readonly<Record<CreatureBadge, IconName>> = { favorite: 'star', locked: 'lock', alpha: 'alpha', listed: 'tag' };
-const BADGE_LABEL: Readonly<Record<CreatureBadge, string>> = { favorite: 'Favourite', locked: 'Locked', alpha: 'Alpha', listed: 'Listed' };
+const BADGE_ICON: Readonly<Record<CreatureBadge, IconName>> = { favorite: 'star', locked: 'lock', alpha: 'alpha', shiny: 'sparkle', listed: 'tag' };
+const BADGE_LABEL: Readonly<Record<CreatureBadge, string>> = { favorite: 'Favourite', locked: 'Locked', alpha: 'Alpha', shiny: 'Shiny', listed: 'Listed' };
 
-/** favourite / locked / alpha from the instance itself; `listed` only when the caller says so. */
+/** favourite / locked / alpha / shiny (Phase D4) from the instance itself; `listed` only when the caller says so. */
 export function badgesOf(c: CreatureInstance, extra: readonly CreatureBadge[] = []): CreatureBadge[] {
   const out: CreatureBadge[] = [];
   if (c.favorite) out.push('favorite');
   if (c.locked) out.push('locked');
   if (c.isAlpha) out.push('alpha');
+  if (c.isShiny === true) out.push('shiny');
   for (const b of extra) if (!out.includes(b)) out.push(b);
   return out;
 }

@@ -124,6 +124,7 @@ export class HarnessWorld {
       submit: (a) => this.battle.submit(a),
       check: (a) => this.battle.check(a),
       dismissResult: () => this.battle.dismissResult(),
+      undoPick: () => this.battle.undoPick(),
     });
   }
 

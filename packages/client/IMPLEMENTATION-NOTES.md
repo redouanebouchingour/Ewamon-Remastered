@@ -700,3 +700,429 @@ bramblecub stays static); programs 103 at boot, 103 with the flipbook, 101 in ba
 Open: thumbnails stay static by design; the client never releases an atlas (pre-existing), so flipbooks accumulate
 GPU memory (≈ 100–150 MB per animated species, both sides) over a session — render Part 8, open item 1. Client total: 24
 files, 175 tests.
+
+# Phase A interiors — pockets, themed gym halls, puzzles, hall arenas (2026-10-06)
+
+Content places one POCKET per town building (a walled roofless hall in the zone's own outer band, `PlacedInterior`),
+reached only by door warps; the server resolves door warps, gym trainers, switches and league trainers at their
+`leaderAt`. The client half:
+
+- **Render spec.** `zoneSpecFor` adds `interiors: interiorSpecsFor(zone.id)` (content's pockets flattened to render's
+  `InteriorSpec`: local frames kept, gates as rect + id + style, switches id/kind/lx/lz, rooms id/arena/leaderAt/bounds,
+  props; league ids and gate flags stay client-side). `[]` outside towns. Pocket door warps are NOT in `spec.warps`
+  (those markers make render draw a "warp room"; the pocket is the room).
+- **Interactables** (`scene/interiors.ts` `interiorInteractables`, registered with the zone's own): `<id>.in` / `.out`
+  ('Enter Mirevale Gym' / 'Leave Mirevale Gym', kind `warp`); one `gym` per league trainer at its hall `leaderAt`
+  (Solenne: Veil, Aurelia, Kirei, Zeon) — `LEAGUE_MARKER` (0, −26) and the `league[0]` pick are gone; gym trainers
+  (`trainer`, disabled once `trainer:<id>:beaten` is held — the actor stays where it stands); switches (`switch`, prompt
+  split from content's `label`: "Wake" + "the root-stone"; disabled once its flag is held unless it is a teleport tile);
+  the shop keeper (`shop:<npc>`) and nurse (`healer:<npc>`, the league hall's nurse too) instead of the building door
+  (the door fallback remains only for a shop / healer building without a pocket — none today); the healer's `pc` prop
+  (`pc:<interior>`, new kind `pc` → `/play/box`); residents and guides (`npc`, client-local dialogue: `World3D.activate`
+  falls back to `interiorNpcs` and opens the lines without an interact); hidden house items (`item`, same flag scheme).
+- **Ranges** (`RANGE`): gym 3.5 (server 4 at `leaderAt`), shop / healer 3 (the keeper stands behind a counter, 2.1 m
+  from the nearest floor; the server has no range for these), switch / pc 2.5 (server 3). `makeInteractable` takes an
+  optional range.
+- **Pocket tracking** (`SceneDirector.updatePocket`, every fixed step from `World3D.fixedStep`; `FloorIndex` is
+  content's `onFloor` without allocation, so warps, switch teleports and server corrections are all covered without
+  hooking each). Entering: `interiors.setActive(id)`, `camera.setYawBase(pocketYawDeg)`, `setHeading(0)`, `setView`, and
+  the pocket's NPCs / gym trainers / leaders spawn (looks from content; leaders from the `LeagueTrainer`, facing the
+  door). Leaving: `setActive(null)`, `setYawBase(null)`, the heading the player had outside, despawn. The yaw base is the
+  pocket yaw itself: the rig's forward at yaw θ is (−sin θ, −cos θ) and a pocket's local +z (door side) is
+  (sin yaw, cos yaw), so heading 0 looks from the door toward the far end (asserted in `interiors.test.ts`).
+  `World3D.tick` forwards the rig's `dioramaYaw` to `syncView`, which calls `setView` only on change. Tracking pauses
+  during a battle. `setYawBase` is called only when the rig has it (render's implementation was not in the tree yet).
+- **Actor budget.** `remotes.cap` also reserves `pocketActorMax(zone)` (the most any one pocket spawns, ≤ 6).
+- **Gates** (`GateSync`, created per zone load, synced on load and in `refreshFlags`): `gatesClosedFor(zone, flags)` →
+  prediction blockers keyed by gate id with content's `.solid` (the capsule-grown centre-exclusion shape the server
+  tests), plus `interiors.setGateOpen`; switch tiles → `setSwitchOn(id, flags.has(sets))` (flagless tiles stay off). Only
+  changes are pushed. **Deviation:** render's `TerrainCollider.addBlocker` has no removal and render was off limits, so
+  the removable blockers live in the client adapter (`collider.ts`: `addBlocker(id, solid)` / `removeBlocker(id)` /
+  `blockerIds()` / `passable`); the solver runs on a view whose `passable` is `terrain.passable && !inside a closed
+  gate` (resolveMoveInto tests centres only, like the server). The battle camera's `blocked()` does not see gates.
+  Prediction is never looser than the server: a gate opens only after the server's flag reaches the client.
+- **Hall battles.** `BattleController` keeps `battleStart.x / z / yaw` as the arena (the message arrives before the
+  BattleSummary patch; summary, then the predicted self position, remain the fallbacks — a reload's `battleResync`
+  carries none). `BattleView.enterBattle` gains `yaw` and `foeNpc` (an NPC / league side's content id). The director
+  fights an arena that lies on a pocket floor along the hall axis (yaw base = pocket yaw, heading 0, no
+  `pickBattleHeading`), passes `HallBounds` (floor centre, yaw, w/2, d/2) to `stage.dress`, and on exit restores the
+  pocket camera (the in-hall heading) instead of the town default; every static actor's transform is restored. World3D
+  restages the foe trainer actor (gym trainer / leader) behind its creature like a pvp foe (`isStaticActor`).
+- **Dialogue.** `gymPlan` now covers the Wardens and the Champion, mirroring the server's `leagueRefusal` (Warden: not
+  beaten, eight badges, previous Warden beaten; Champion: not beaten, every Warden beaten; story gate) — their `pre`
+  lines open and the challenge is sent on the last page; a refused fight goes straight to the server for its toast.
+- **Fixtures.** `test/zoneSpecFor.test.ts`: `interiors` is excluded from the R1 comparison like `plan`; the snapshot was
+  re-baselined (every zone's digest changes with the new field); Solenne's `specFields` (warps, buildings, props,
+  lights, actors) in `packages/content/test/fixtures/r1-pre-move.json` were re-captured (its plan changed deliberately;
+  `about` says so); its `heightfieldDigest` keeps the pre-move value (the test asserts the stamped field differs). The
+  gym-door test counts Solenne's league hall as its gym-slot building, and "authored points clear of buildings" is now
+  `≥ 2 m`: Solenne's lectern (`lore_solenne_lectern`, (0, −24)) stands exactly 2.0 m in front of the league hall and
+  0.93 m from its `Enter` warp (content placement — the nearer prompt wins; worth moving in content).
+- **Not done / open.** Spectator arenas of other players' hall battles still use `dressSpectator(x, z)` without hall
+  bounds (no contract for it). The pocket camera, `setView`, `setGateOpen` / `setSwitchOn` and hall dressing are coded
+  against the contract with fakes only; the live render implementation was in progress, so nothing here was verified
+  in a browser.
+
+Tests: `test/interiors.test.ts` (7: Mirevale interactables, Solenne's four chambers, pocket tracking yaw base / heading
+/ actors / setView, gates → blockers + renderer as flags change, a closed gate blocking predicted movement on the real
+field, a hall battle, helpers), `battle-controller.test.ts` (+1: battleStart x / z / yaw as the arena),
+`dialogue-flow.test.tsx` (+1: Wardens / Champion), `zoneSpecFor.test.ts` (+1: interiors flattened, deterministic,
+pocket warps not in `spec.warps`), `scene-director.test.ts` (the gym at its `leaderAt`). Client: 23 files, 175 tests
+green; `tsc` (client sources against the other packages' sources) clean; `eslint packages/client` clean.
+
+# Phase B7 — battle presentation: visible opponent, VS intro card, victory / badge card, mid-battle leader lines (2026-10-06)
+
+- **One foe actor** (`scene/foeActor.ts` `FoeActor`, `foeSpecOf`), reusable by raids and the post-game tower: `begin(spec)`
+  picks `remote` (a pvp foe's avatar, restaged only while the interpolator has a rig), `static` (a director actor —
+  route trainer, gym-hall trainer, league leader — restaged), `temporary` (no actor in the zone: a `battle:foe` actor is
+  spawned with the content look — a story trainer fought from a beat in another zone) or `none` (wild / raid boss /
+  legendary static: those sides carry no trainer). `stage(x, z, fx, fz, back)` every frame from `World3D.tick` (the far
+  trainer slot, facing the player; allocation-free), `react(foeWon)` plays the result emote, `end()` stands a static back
+  at its `restPose` (new `SceneDirector.staticPose(id)`; the director's own `restoreStatics` on exit still runs too) and
+  despawns a temporary. World3D's `battleFoe` / `battleFoeStatic` fields are gone. The remote budget reserves one more
+  rig for the temporary (`remotes.cap`).
+- **Identity** (`battle/foe.ts`): `foeIdentity(trainerId, leadSpecies)` resolves LEAGUE → zone trainers → gym-hall
+  trainers (name, title, type, look); a non-league trainer's "type" is its lead creature's primary type (TrainerDef has
+  none). `foeOfState` reads the NPC side.
+- **Emotes.** "cheer" / "sad" are render's emote ids 2 (`happy` → the `cheer` clip) and 3 (`sad` → the procedural bow;
+  KayKit has no downcast clip). They fire when the result card appears (new optional `BattleView.ended(foeWon)`, called
+  from `showResult` — after the final timeline, not at `battleEnd` message time, so the KO plays first). The player's
+  own avatar emotes too (winner cheers, loser bows); caught / fled / draw play nothing.
+- **VS intro card** (`battle/BattleIntroCard.tsx` + module): BattleController writes `ui.battleIntro` at `battleStart`
+  for a trainer / league battle with an NPC trainer — never under effective reduced motion (`deps.reduced()`, the same
+  flag the timeline uses), never on a resync restore. The card shows 1.8 s (`INTRO_MS`, the 600 ms push-in + lead
+  switch-ins; exit in the last 240 ms) and clears the field. **Deviation:** no look thumbnail exists in the DOM (the
+  looks are 3D atlases), so the emblem is the name's monogram on the type colour (`data-type` → `--tc`) plus a
+  TypeBadge. Non-blocking, `role="status"`. It and the banner render beside — not inside — the battle panel (its
+  `backdrop-filter` would be their containing block).
+- **Result card**: a won badge shows its glyph, name and type colour (`badgeIcon.ts` gains `badgeDisplay(id)` — still the
+  only file spelling badge ids); a won league battle shows the concession line. **Deviation:** `concessionLine` uses
+  `post[1]` for gym leaders as asked (content documents it as the concession), but `post[0]` for the Wardens and the
+  Champion — their `post[1]` sends the player on ("Aurelia keeps the count…", "Lean in…"), their concession is
+  `post[0]`. The full `post` dialogue still opens after the card (unchanged), so that one line is seen twice.
+- **Mid-battle lines**: content's `LeagueTrainer.mid { halfHp, lastStand }`. BattleController checks them as the
+  timeline PLAYS (TimelinePlayer's `hp` / `enter` targets, i.e. the damage and switch-in frames), not at message time:
+  `halfHp` once when the foe party's total displayed HP (`hpNow`, every member) is first ≤ 50 % of its total max HP;
+  `lastStand` once when the entering foe creature is the only one with HP left (teams of ≥ 2) — it also retires a
+  pending `halfHp`. The store write is deferred off the tick (`defer`). `ui.battleBanner` + `battleBannerQueue`
+  (`pushBattleBanner` / `dismissBattleBanner` / `clearBattleBanners`): when both lines land close together the second
+  waits for the first's 3 s instead of replacing it. `battle/BattleBanner.tsx` shows each for `BATTLE_BANNER_MS` 3 000
+  between the top bar and the HUD turn-label band. A resync mid-battle re-arms nothing (the flags persist per battle).
+- **Not verified live**: none of the above was driven in a browser this phase (unit / component tests only); the
+  banner and card placement against the in-canvas battle bars at small viewports is unchecked.
+
+Tests: `test/battle-presentation.test.tsx` (10: static restage + restore, temporary spawn + despawn + replacement,
+remote rig gating + no foe for wild, identities + concession lines, intro for league with the card clearing itself,
+intro for trainer and none for wild / reduced motion / resync, mid lines firing once each at the right frame with the
+banner queue, a route trainer never bannering, result card badge + concession, no concession on a loss / Warden
+post[0]); content `test/league-mid.test.ts` (3). Client + content: 36 files, 276 tests green; `pnpm typecheck` clean;
+`eslint packages/client packages/content` clean.
+
+## Phase B1–B3 (legendary statics, quest journal)
+
+- **B1 legendary statics.** `scene/LegendaryViews.ts` owns the billboards (renderer sprite pool under the client
+  group, the `SpawnViews` pattern) and the `static` interactables (`InteractableKind` gained `'static'`, range 2.5 inside
+  the server's 3 m). `visibleStatics(zoneId, flags)`: a static stands when its gate flag is held (`badge:<id>` stays a
+  badge flag; `flag:<f>` → `f`) and its `flag` is not, at `nearestWalkable(h, x, z, 8)` — the server's snap before its
+  range check. Deviation: the SceneDirector does not touch sprites itself; it drives the views through a new optional
+  dep `legendaries: () => { sync(zoneId | null, flags) } | null` (load → sync, `refreshFlags` → sync, unload →
+  sync(null)), so its hunk stays three lines and its tests need no sprite pool. Interactable ids are
+  `static:<species>` (spawn ids are server-generated); `E` sends `interact {kind:'static', targetId: species}` after
+  the same party-can-battle check as a challenge. The win/catch flag arrives in a `progressionDelta`, the
+  progression subscription calls `refreshFlags`, and the static despawns.
+- **B3 quest journal.** `/play/quests` (`screens/QuestScreen.tsx` + module CSS, `questAction` in `app/actions.ts`,
+  NAV entry "Quests" with a new `quest` icon and a ready-to-claim count). Model in `data/quests.ts` mirrors the server
+  rules (active once every `requires` is claimed; count objectives `catchSpecies` / `winBattles`, others done on the
+  first match; claimable when every objective is done). The server route `POST /quests/claim` already existed (server
+  part 1) — no server change. Claim → `applyInventoryDelta` (inventory / money / creaturesAdded) +
+  `applyProgressionDelta` with two REST-only additions: `ProgressionDelta.questClaimed` (appended to
+  `questsClaimed`, deviation D4 pattern like `missionClaimed`) and the reward `flag` in `flags`. The trainer exp the
+  server grants (`TRAINER_EXP.questComplete`) is not in `QuestClaimRes`, so it shows after the next GET /me.
+- **Tracking.** `state/questTracking.ts` (zustand persist `ewa.questTrack`, storage failures fall back to memory) holds
+  one tracked quest id; a claim untracks it. The HUD hint moved out of World3D into `scene/questHint.ts`
+  (`questHintFor(progression, tracked)`): the tracked quest's first undone objective (`label (n/target)` for count
+  objectives) or `Claim “Title” in Quests` once complete; otherwise the previous rule unchanged. World3D subscribes to
+  the tracking store to rewrite the hint.
+- **Not verified live** (unit / component tests only): the static billboards' scale and grounding in the real zones,
+  and the journal's layout at small viewports.
+
+Tests: `test/legendary-statics.test.ts` (4: gate flags, visible set at the snapped point for every static, views
+spawn / prompt / despawn on the flag, director sync on load / refresh / unload); `test/quest-journal.test.tsx` (4:
+status model, hint text, NAV, route render + mocked claim + Track); `routes.test.tsx` renders `/play/quests`.
+
+## Phase C1 raids
+
+- **Den** (`scene/RaidViews.ts`, `RaidDen`): while `room.state.raid` is open (phases 0–3) the boss stands at the
+  hotspot `(x, z)` as a billboard with the renderer's alpha treatment (`descriptor(sp, key, 'normal', true)` →
+  `alphaGlow`) at `RAID_DEN_SCALE` 1.8 × its size, inside a spectator ring (`stage.dressSpectator` — ring + the two
+  glowing beacon pylons; `undressSpectator` on removal). No render change. A `raid` interactable (`InteractableKind`
+  gains `'raid'`, `RANGE.raid` 8 = the server's `RAID_JOIN_RANGE_M`, from the same unsnapped hotspot point the server
+  measures from) prompts "Join raid" in the lobby and "View raid" later (a new prompt object per phase). It goes at
+  phase 4 or when the room drops the raid, and hides (billboard + ring) while the player's own raid battle is on.
+  World3D drives it from its `onStateChange` handler (`syncRaid`: compares id / phase / hpPct, allocates only on a
+  change; forced once after a zone load) — not from the tick.
+- **E on the den**: phase 0 and not yet on the damage board → `raidJoin` (after the party-can-battle check), then
+  `ui.openModal('raidLobby', { raidId })`; later phases open the modal as a read-only view.
+- **Lobby** (`world/RaidLobby.tsx` + CSS module, mounted in PlayShell): all `room.state.raid` through `useRoomState`
+  (boss, phase pill, countdown from `roundEndsInMs` — lobby 90 s / round 20 s / catch window 60 s —, shared HP,
+  trainers = the damage board's keys, names from `state.players` when in AOI). Join → `raidJoin` (disabled with the
+  hotspot's `minBadges` shown when short; full at 8); Ready up → `raidReady`; Leave → `raidLeave`. **Deviation:** the
+  schema has no ready flags, so the modal keeps this player's own Ready in its payload (`{ raidId, ready: true }`);
+  other trainers' readiness is not shown. The modal yields to the battle (`ui.battle !== null`; World3D also closes it
+  on the fight-start `battleResync`).
+- **Battle adapter** (BattleController, format 'raid'; the server half sends the resyncs): the fight-start
+  `battleResync { battleId: raidId }` seeds the battle through the existing restore path (no battleStart / intro);
+  `submit` sends `raidAction { raidId, round }` (validated locally, no preview, like pvp); Run is "Leave raid"
+  (`raidLeave`, confirmed) → summary. `onRaidEvents` patches the state from the round's events (`patchFromEvents`),
+  plays them, and advances the round (`raid.round = m.round + 1`; the round shown — turn label, `BattleUi.raid.round` —
+  catches up when the timeline ends). The boss's bar and HP follow the shared `RaidState.hpPct` × its maxHp at each
+  timeline end and on later hpPct patches (`onRaidState`, called by World3D) — a round's events only carry this
+  player's turn, so other trainers' damage arrives that way. The enrage (`abilityTrigger … 'enraged'`) pushes a banner
+  with the boss's name. The boss is named "the raid boss X" in bars and log lines (not "the wild X").
+- **Catch window**: when the boss falls the second `battleResync` is held until the KO timeline has played, then
+  restores the catch state: turn label "Catch window", the menu leaves only Orbs (one `raidCatch`) and Done (`check`
+  disables the rest with "The boss is down — throw an orb"). A window without a catch try (no damage) goes straight to
+  the summary; one arriving after a fainted player's summary was dismissed reopens the battle only when `canCatch`.
+- **Summary card** (`battle/RaidSummaryCard.tsx` + CSS; `BattleResult.raid: RaidSummary`, BattleResultCard returns
+  null for it): title Caught! / Raid cleared / Your party is out / You left the raid / The raid is over; your damage
+  and place, the board (top 8, you marked), the catch line, and the rewards of `battleEnd { battleId: raidId }` (which
+  now fill the card instead of the old toast; the toast remains for a battleEnd that arrives with no raid battle open).
+  Shown after the catch roll's timeline, when the private battle ends against the player (party out), on Leave / Done,
+  or when the raid ends (phase 4 / dropped — deferred until a playing timeline finishes). "Back to the world" closes the
+  battle, then the evolve / learn-move prompts of the raid.
+- **Raid panel** (`battle/RaidPanel.tsx` + CSS, in BattleOverlay for format 'raid' until the summary): boss + level,
+  phase pill (Enraged in danger tone, the border too), shared HP bar + %, "Round n · Round ends in Ns" (or the catch
+  window's countdown), damage board top 5 (+ you). Top-left under the HUD party strip.
+- Foe actor: none for raids (the Phase B7 `FoeActor` gets `foeId`/`foeNpc` null → `none`); the music theme is `raid`.
+- `messageRouter`: refusal details with their own copy (`tooFar`, `badges`, `full`, `started`, `noParty`, `noWindow`,
+  `noOrb`) instead of "That is not allowed right now. (tooFar)".
+- Model helpers in `battle/raid.ts` (`raidInfoOf`, `boardRows`, `boardFlat`/`unflattenBoard` for useRoomState,
+  `countdownLine`, `raidMinBadges`, the mirrored `RAID_JOIN_RANGE_M` / `RAID_MAX_PLAYERS`).
+- **Verified live** (isolated probe server on REST 4300 / WS 2867 + client 5194, headless Chrome 154 with WebGPU via
+  Playwright; a scratch script booted the real server and called `room.openRaid` with a weak test boss next to the
+  player, because the real hotspots only open in their UTC window and no dev route exists): den + ring + "Join raid"
+  prompt within 8 m; E → lobby, joined (server toast), Ready up → fight start resync → raid battle with the panel;
+  rounds through the battle menu (raidAction, events, panel HP / timer / board); boss down → catch window (Orbs + Done
+  only, boss at 1 HP), a Spark Orb → the roll played → summary "Raid cleared", +100 money / +150 trainer EXP, money
+  updated in the top bar; after dismiss the den stands again (phase 3). A first run with a stronger boss ended with the
+  party fainting: the summary appeared but said "The raid is over" — the raid's phase 4 patch beat the timeline end;
+  fixed (the fainted check now runs before the deferred-end check) and covered by a unit test, not re-run live.
+  Not verified live: two players in one raid, the enrage banner, leaving mid-fight, a fainted player's catch-window
+  reopen, the lobby at small viewports.
+
+Tests: `test/raid.test.tsx` (8: model + board order; den appear / prompts / range / phase / hide / ring / gone;
+lobby join → ready → yields to the battle; badge gate + dropped raid; controller fight start → raidAction → events →
+hpPct bar → enrage banner; boss down → held catch resync → orbs only → raidCatch → summary with rewards → dismiss;
+leave / ineligible window / reopen with a catch try / phase-4 summary / fainted party; raid panel from the room).
+
+## Phase C3 — world map, HUD minimap, fast travel (2026-10-06)
+
+- **`/play/map`** (`screens/MapScreen.tsx`, lazy route, NAV "Map" with a new `map` icon, key `M` — a new `map`
+  `InputAction` defaulting to `KeyM`, in the Controls table and the shortcut hint bar). Zones sit on a gapless grid at
+  content's `zoneMapPositions()` cells (148 × 168 px) so the SVG link layer, drawn in cell units with
+  `vector-effect: non-scaling-stroke`, meets cell centres; the board scrolls sideways and opens centred on the current
+  zone. Each node: name, kind, services (visited towns), the badge gate chip (earned / locked), "You are here", and a
+  Travel button on visited towns other than the current one (`data/worldMap.ts`: `visitedSet` = the server's `visited:`
+  flags plus the session zone; `canTravelTo`), hidden in battle. Travel sends `fastTravel { zoneId }` and closes the
+  panel; the server answers with the ordinary `handover` (WorldSession's existing path) or a refusal toast —
+  `messageRouter` skips the matching `error` (`FAST_TRAVEL_REFUSALS` join `EXPLAINED_DETAILS`).
+- **HUD minimap** (`world/Minimap.tsx` + `world/minimapDraw.ts`): a DOM 2D `<canvas>` (168 CSS px, DPR ≤ 2), top-right
+  under the canvas HUD's clock / quest hint, an `<aside>` of the shell so F1 hides it; not rendered while a panel is
+  open, in battle, or without world capability (jsdom: `routes.test` still finds no canvas). Each view's base — the
+  zone's playable square, or the hall the player stands in (`interiorAt`), drawn in the hall's own frame (placement
+  yaw, door wall at the bottom) to match the hall camera — is rasterised once per view with `createImageData` /
+  `putImageData` (never `getImageData`) from the heightfield's walkable / water bits, plus exits (centroid of the
+  walkable samples on each linked playable edge) and gym / shop / healer door markers from `zonePlan`. A 4 Hz interval
+  blits the base and draws the AOI's other players and the player (heading tick) from `room.state` — preallocated dots,
+  no React state per tick; the HudWriter and render's `HudModel` are untouched (the minimap is not a canvas-HUD field).
+  Roads are not distinguished from other walkable ground (the heightfield has no road bit).
+- **Tests.** `test/world-map.test.tsx` (8): nodes = zones, links join neighbours; visited / travel rules; nav + `M`
+  binding; the route renders 21 zones with their visited state and only "Travel to Cinderhold" for the fixture, which
+  sends `fastTravel` and returns to `/play`; `M` opens the map; the minimap renders in jsdom without a context; the base
+  draws once with `putImageData` and marks Mirevale's east exit + gym / healer; a hall view is centred on the hall with
+  the way out bottom-centre.
+- **Live (own dev server on alternate ports, headless Chrome over CDP, 1440 × 900):** minimap drawn in Mirevale (exits,
+  gym / healer / shop, water, the player); walked into Mire Route (the minimap swapped zones); the map read "2 of 21
+  explored" with Travel on Mirevale only; Travel → handover → standing at Mirevale's spawn (0, 6); entered the Mirevale
+  healer → the minimap showed the hall in the camera's orientation. With Map the top bar has 11 links: they fit with
+  labels at 1440 px but overlapped the money / account cluster by ~22 px at the 1280 px minimum, so under 1400 px the
+  links show icons only (`TopBar.module.css` media query; the label stays for screen readers, `title` for the pointer)
+  — checked live at 1280 × 800.
+
+## Phase C4–C5 — rankings, history, profiles, bag (2026-10-06)
+
+- **Routes** (lazy `/play/*` children, `router.tsx`): `/play/rankings` (`rankingsLoader` → GET /leaderboard?mode=&page=),
+  `/play/history` (`historyLoader` → GET /history/battles or /history/trades by `?tab=`), `/play/profile`
+  (`profileLoader` → the player's own GET /players/:me; `profileAction.save` → POST /profile), `/play/players/:username`
+  (`playerLoader`; 404 / 400 → `pub: null` → "No trainer by that name" inside the panel), `/play/bag` (`bagAction`).
+- **Top bar.** Bag joins NAV (12 links; the < 1400 px icon-only rule still fits at 1280 — checked live). Profile,
+  Rankings and History live in the account menu (`ACCOUNT_LINKS`, new `user` / `trophy` / `clock` icons) above Log out.
+- **Rankings** (`screens/RankingsScreen.tsx`): tabs Rating · Dex · Trainer level bound to `?mode=` (the default `rating`
+  drops the param), the mode's metric column leads, rank 1–3 in the warm tone, the player's own row uses the Table's
+  `selectedKey` highlight plus a "You" pill and a "You are #n on this board" line; every name links to the public
+  profile. Pager Previous / Next (`?page=`) when a page is full (server page size 25). No client re-sorting.
+- **History** (`screens/HistoryScreen.tsx`): battles (result pill, opponent + format + turns + "badge earned", rating
+  delta signed, rewards line, relative time) and trades (partner linked to the profile, what went each way incl. money).
+  **Server/protocol addition:** `TradeHistoryRow.partnerUsername` (optional, nullable — the row only carried
+  `partnerId`); `GET /history/trades` resolves the page's partners with one `players.byIds` lookup
+  (`server/src/rest/routes/catalog.ts`; `server/test/history-routes.test.ts`). No new route was needed.
+- **Profile** (`screens/ProfileScreen.tsx`, shared pieces in `screens/TrainerCard.tsx`): identity card with an in-place
+  editor (Title ∈ content `TITLES`, Look ∈ `BODIES` labelled "Ranger (f)" by id suffix, Motto ≤ 120), a live preview,
+  Save / Reset; stats / badges / showcase come from the player's own public profile (what others see; badges from the
+  session store, which only the server writes). A new session writer `applyProfile({ title, motto, body })` takes the
+  POST /profile response (identity only — not progression or inventory, so `no-client-badge` still holds).
+  **Achievements:** Phase D5 brings `QuestDef kind: 'achievement'`; until then `achievementQuests()` lists the quests
+  no NPC gives (`q11_first_night`, `q12_first_morning`) with progress, or an empty state if none.
+- **Bag** (`screens/BagScreen.tsx`, `data/bag.ts`): Consumables · Orbs · Held items · Key items (sections, not tabs, so
+  everything carried is visible at once; empty groups say "None yet."). Use on a creature (potions, cures, revives, PP,
+  Rare Candy with a quantity stepper) opens a party picker; creatures the server would refuse (`noEffect`) are disabled
+  with the reason (`noEffectReason` mirrors party.ts's rules for display). Field items (repel, lure, escape rope) post
+  `target: null` at once. Give a held item → picker → `POST /creature/:id/setup { ability: current, heldItem }` (the
+  old held item returns server-side; `bagAction.give` reuses the `setup` handler and toasts). Held rows say who already
+  holds one. Orbs say "Throw in battle", key items "Always with you", sell-only goods "Sell at a shop". The picker lists
+  the party only (box creatures keep using their own panel). `presentItemUse` toasts "Used Repel." when there is no
+  target creature.
+- **`B` key** now opens `/play/bag` (it opened Party); the shortcut hint bar reads "B Bag".
+- **Tests.** `test/rankings-profile.test.tsx` (6): account links; rankings default + own row + Dex tab refetch with
+  `mode=dex` + column order + Trainer level "not on this page" + link → public profile; public card; public 404;
+  history battles → trades tab with the partner link; profile edit → POST /profile → `applyProfile` + toast.
+  `test/bag.test.tsx` (8): grouping; use kinds + no-effect reasons; NAV; route groups + actions + "Held by"; potion
+  picker (full-HP disabled) → POST /item/use → inventory + creature + toast; repel with `target: null`; give → setup →
+  heldItem + count; `B` opens and closes the bag and the hint says Bag. `routes.test` renders the five new routes.
+  Server: `test/history-routes.test.ts` (4: trades partnerUsername, battles paging, leaderboard modes, POST /profile).
+- **Live** (own server REST 4400 / WS 2967 + client 5195, headless Chrome 154 via Playwright, 1440 × 900 and 1280 × 800):
+  account menu → Rankings (own row highlighted) → Dex tab → a second account's public card (title, motto, look, stats,
+  badges, showcase) → unknown name → "No trainer by that name"; History empty states for both tabs; Profile title +
+  motto saved (server's public profile read back "Witness | Count the morning."); `B` from the world → Bag; Use Potion
+  picker with the full-HP starter disabled ("Already at full HP"); the 12-link top bar and the account menu at 1280 px.
+  Not verified live: a successful item use / field item / give (fresh accounts have a full-HP starter and no held items),
+  battle and trade rows (covered by the mocked tests), paging past 25 rows.
+
+## Phase D2–D3 — Teach, tutors, stones, trade evolutions (2026-10-06)
+
+- **Item lookups.** `data/content.ts` registers `KEY_ITEMS` (old_rod, TMs → Bag "Key items") and `EVOLUTION_STONES`
+  (consumables; `CREATURE_ITEMS` includes them). Helpers: `stoneTarget`, `tradeEvolveTarget`, `ownedTmMoves`,
+  `teachRefusal` (mirrors the server's checks for display only).
+- **Teach** (`screens/TeachSection.tsx`, inside `CreatureDetail`, so Party and Box both have it): owned TMs (incompatible
+  rows disabled with the reason) → `teach` intent → `POST /creature/:id/moves`; when the URL carries `?tutor=<npcId>` and
+  that tutor stands in the session's zone, its moves at ₽3000 → `tutor` intent → `POST /creature/:id/tutor` (money +
+  creature via the inventoryDelta body). Four known moves → a modal picks the move to forget. Rows are 1px-bordered
+  cards (no accent stripe).
+- **Tutor in the world.** World3D: interacting with an NPC that has `tutor` (and no story beat) shows its lines; paging
+  past the last opens `/play/party?tutor=<npcId>` (Escape just closes). The interact is still sent (talkTo quests).
+- **Stones.** Bag "Use" on a stone → party picker (creatures that do not react are disabled: "Does not react to it");
+  the creature panel offers a stone only to a creature that reacts. `/item/use` answers `evolveReady { item }`;
+  `presentItemUse` queues one evolve prompt with `item` and toasts "<name> reacts to the <stone>". The evolve modal says
+  "Evolving uses one <stone>." and applies the response's optional `inventoryDelta`.
+- **Trade evolutions.** `messageRouter` calls `queueTradeEvolutions(m.creaturesUpdated)` after every `inventoryDelta`:
+  a creature carrying the trade marker whose species evolves by trade gets one evolve prompt (`trade: true`).
+- Error copy for `noTutorHere`, `alreadyKnown`, `movesFull`, `notKnown`, `alreadyOwned`, `oneAtATime`.
+- Not verified live in the browser (mocked tests only): `test/teach-evolve.test.tsx` (6).
+
+## Phase D4/D5/D7 (2026-10-06)
+
+- **D4 shinies.** `SpawnLike.isShiny?` → `descriptor(…, isShiny)` → `SpriteDescriptor.isShiny` (sparkling billboard); the
+  spawn label reads `shiny …`. Battle: `TimelineCtx.shinyOf` (BattleController reads `creature.isShiny`) — a shiny's
+  switch-in adds `shiny_sparkle` (`SHINY_MS 900`) and “… sparkles — it’s a shiny!”; `World3D.setBattler` passes the flag.
+  Dex: `Progression.dexShiny?` (GET /dex `shiny`, REST-only like `dexAlpha`), a sparkle mark on the tile (shifted left of
+  the alpha mark when both) and in the detail, the State filter gains `shiny` (`?state=shiny`). Market: `isShiny` filter
+  (URL param, `MARKET_PARAMS`), `Shiny` pill in rows and the listing detail. `CreatureCard` badge `shiny`. Icon `sparkle`.
+- **D5 achievements.** `data/quests.ts`: `objectiveTarget` covers the new kinds; `achievementQuests()` is now
+  `kind === 'achievement'` only (the shrine's First Night / Morning are story quests again); `storyQuests()`,
+  `achievementProgress()` (single objective → count/target, else objectives done/total). `QuestScreen`: Tabs Story /
+  Achievements (`?tab=achievements`), ready achievements as Claim cards, the rest as progress rows, then Earned.
+  `ProfileScreen`: earned-first list with `N of 30 earned`. `questHint`: achievements never drive the untracked hint.
+- **D7 weather.** `SceneDirector` keeps the overworld weather (`setWeather`) and renders `none` inside a pocket and while
+  a battle owns the stage; leaving either restores it (exitBattle used to force 'none' until the next schedule change).
+  The timeline reads an ambient `weatherSet` (source null, turns 0) with the "continues" text.
+- Tests: `test/achievements-shiny.test.tsx` (5), `interiors.test.ts` "Phase D7", `timeline.test.ts` (ambient text),
+  `rankings-profile.test.tsx` (profile achievements updated). Mocked/jsdom only — not verified live in the browser.
+
+## Phase D6 — doubles battles in the client (2026-10-06)
+
+- **Addressing.** Core refs stay party indices everywhere (timeline frames, HUD callbacks). Stage refs are
+  `{ side: side ^ seat, slot: field position }`. `TimelinePlayer.play(tl, seat, actives)` seeds a party → position map per
+  side from the starting state's `actives`; the `enter` pose frame of a `switchIn { pos }` carries `pos` (the only new
+  keyframe field, absent in singles) and moves the map. `positionOf(side, slot)` (-1 = off the field) routes hp / status /
+  stage / enter in the controller, whose `displayed` is now per side × position. Singles: position 0, byte-identical.
+- **Timeline.** `TimelineCtx.activesOf` / `standing` (doubles only). Idles and the winner's celebrate address every
+  standing field battler; a drain points at whoever the drainer last hit (no source on `heal`); a spread move draws one
+  move VFX per `targets` entry (the 8-emitter pool recycles, never grows); a per-target `moveFailed { target }` immune line
+  names the target. Existing singles timeline tests are unchanged and green.
+- **Selection: collect, then send.** The controller owns `ui.battle.pick { pos, picks }`: `submit` records the choosing
+  position's action and moves on (`requiredPositions`); `undoPick` (menu "Back to X") re-opens the earlier position; when
+  the last required position picks, `validateSideChoice`, then one `battleAction { pos }` per position in position order,
+  then the `[[a0, a1], null]` preview (trainer / league; pvp none). Chosen over send-as-you-go so the first pick can be
+  undone without a server round trip and the preview always sees both actions. A forfeit fills every required position.
+  The cross-position rule "two switches to the same creature" is pre-checked in `check` ("Already chosen").
+- **Targets.** Single-target = `!isSpread(def) && (power > 0 || target === 'foe')`. Candidates: standing foes (position
+  order), then the standing ally; never the user. One candidate → taken without asking. The target is a `FieldRef`
+  (position), not a party index.
+- **HUD.** `BattleHud.setLayout(doubles)` rebuilds the double buffer once per battle with four bars (near 0, near 1,
+  far 0, far 1); setters take the position as a trailing default-0 argument; stage arrows are kept per bar. The bars are
+  canvas (render `HudLayer`, which places ≤ 16 bars without overlap), so the CSS module only gained the target list.
+- **Label.** `ACTION_ERROR_LABEL.badTarget` = "Not a target".
+- **Wiring.** `BattleActions.undoPick?` (World3D and HarnessWorld pass `battle.undoPick`).
+- Tests: `test/doubles.test.tsx` (8): four stage battlers + four bars (two in singles); pick 0 → Back → pick 0 → pick 1 →
+  two `battleAction { pos }` + matching preview digest; same-switch refusal; replacement phase (one pick, `pos: 1`);
+  timeline addressing (damage on foe party 2 at position 1 hurts stage `{1,1}`, switch-in at pos 1 swaps slot 1, bar 4
+  follows); `buildTimeline` doubles frames; the menu's target list (3 targets for Tackle, none for Rock Slide / Bulk Up),
+  Back, and Party ("In battle" ×2, "Already chosen"). Not verified live (no server doubles encounter was available).
+
+## Phase D8–D11 — world systems (2026-10-06)
+
+- **Surf prediction.** `StepCollider.setSurf(on)` / `surfing` / `onWater`; the solver view passes `surf` through and
+  `height` is `surfaceY`. World3D sets surf every fixed step: HM Surf held, zone biome not cinder (lava), bike folded.
+  The render actor pool rides the level for everyone (local and remote) with the ripple.
+- **Fishing.** `scene/fishing.ts` `FishingController` (pure; 1.2–3.2 s wait, 700 ms bite window, 1 000 ms under reduced
+  motion, 900 ms 'missed'), `waterAhead`; `state/fishing.ts` (phase store + reel / cancel actions); `world/FishingPrompt.tsx`
+  + CSS module (a button card: bobbing float / pulsing "!" / "It got away."; frozen under `data-reduced='1'`), mounted in
+  PlayShell after the dialogue box; it owns E / Enter / Space / Escape (window capture) while up. A dynamic 'fish'
+  interactable rides the first water sample ahead (allocation-free per step) when the rod is held, outdoors, on foot.
+  A landed bite sends `fish { angle }`. `worldBlocked()` includes an active cast; a battle start / zone change cancels.
+- **Obstacles.** `zoneSpecFor` passes `obstacles` only where content has some (the snapshot changed for exactly the five
+  obstacle zones; the R1 test excludes the key like `interiors`). SceneDirector: an 'obstacle' interactable per obstacle
+  ('Cut the small tree' / 'Push the boulder') enabled until its flag; `syncObstacles` pushes `ObstaclesHandle.setCleared`
+  and `ObstacleSink.setObstacles(lookup = content obstacleAt, cleared)` on load and when the cleared set changes (new dep
+  `obstacles`, World3D passes its `StepCollider`). `activate` pre-checks `obstacleRefusal` and toasts content's text.
+- **Bike.** `InputAction 'bike'`, default `KeyV` (free), label "Bicycle (ride / fold)", `InputCallbacks.toggleBike`.
+  `LocalPlayerController.setBike/biking`: the step ring stores the gait 0 / 1 / 2 (bike), a message carries `bike` when
+  any step of its window was ridden. World3D mounts only when owned, outside a pocket and not on open water (toasts say
+  why), folds it in a pocket or when the item is gone (toast deferred off the tick); the avatar shows the run gait.
+- Not done: a bicycle mesh and a surf pose (no model in the KayKit set; the rider runs, the surfer stands on the water
+  with the ripple). Not verified live in a browser this phase (unit + server integration tests only).
+- Tests: `test/world-systems.test.ts` (10); `test/zoneSpecFor.test.ts` (R1 excludes `obstacles`, asserts them; snapshot).
+
+## Phase D12–D13 — tutorial and ranked queue (2026-10-06)
+
+- **Tutorial (D12).** `state/tutorial.ts`: seven steps (move 8 m → `met_wynn` → party panel → wild battle → catch →
+  win → heal), events latched per account in a persisted zustand store `ewa.tutorial` (deviation: its own store, not a
+  `SettingsData` section — progress is per account and the settings blob is per browser; same `persist` + safe
+  storage pattern). `pastOpening` = any badge or a flag set by a story beat other than first_witness / mire_rival (from
+  content `STORY`) → marked done on sight. `world/TutorialCard.tsx` (mounted in PlayShell under `worldCapability()`, like
+  the minimap): the tracker reads the own `PlayerState` through `WorldSession.subscribeState` (`MoveMeter`, jumps over
+  6 m and room changes ignored), session flags / dexCaught, the location (`/play/party`) and `ui.battle`
+  (format / result); heals call `noteTutorialEvent('healed')` from `app/actions.ts` and `scene/World3D.ts`. Hidden under
+  battles, dialogue, panels and with the HUD off; reduced motion drops the entry slide (`:root[data-reduced='1']`).
+- **Ranked (D13).** `state/ranked.ts` (written only by `messageRouter` from `rankedStatus`; reset by
+  `installMessageRouter`'s new `onRoom(null)` hook), `screens/RankedPanel.tsx` at the top of `RankingsScreen` (Find a
+  match / elapsed + window / Leave queue / matched). A 'matched' older than 30 s with no battle shows idle again.
+- Not verified live in a browser this phase (unit tests + the server integration tests).
+- Tests: `test/tutorial-ranked.test.tsx` (13).
+
+## Phase D14 — post-game (2026-10-06)
+
+- **Rematches.** `scene/dialogue.ts`: `rematchOffer` (mirrors the server's `leagueBeaten`), `gymPlan` opens the rematch's
+  `pre` lines after the Champion (the cooldown is server-side only: a too-early ask pages through the line, then gets the
+  server's toast), `rematchOfBattle(state, seat)` (NPC party = rematch team), `leaguePostDialogue(id, rematch)`.
+  World3D shows the rematch `post` lines after a won rematch; `BattleResultCard`'s concession is the rematch `post[0]`.
+- **Tower.** `InteractableKind` `tower` (range 2.5) for the attendant (`scene/interiors.ts`); World3D: attendant lines
+  before the Champion, after it the lines then `ui.modal 'tower'` (or straight to the modal mid-run). `state/ui.ts`
+  `tower: TowerUi | null` + `setTower`; `messageRouter` writes `towerState` (fighting closes the modal, the rest open it).
+  `world/TowerModal.tsx` (picker / between fights / summary; `togglePick`, `towerFightLabel`, `towerRewardLine`) and
+  `TowerStreak` (top-left counter during a tower fight), mounted in `PlayShell`; CSS `TowerModal.module.css` (tokens only).
+  `battle/foe.ts` names the tower opponent `TOWER.trainerName`.
+- **Rankings.** Fourth tab "Tower" (`?mode=towerStreak`, leading column Streak = `towerBest`).
+- Not verified live in a browser this phase (unit tests + the server integration tests).
+- Tests: `test/postgame.test.tsx` (8); `dialogue-flow.test.tsx` (Zeon after the title offers the rematch);
+  `rankings-profile.test.tsx` (Tower tab).

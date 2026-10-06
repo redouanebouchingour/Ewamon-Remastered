@@ -22,6 +22,7 @@ export const ACTION_ERROR_LABEL: Readonly<Record<ActionError, string>> = {
   cannotForfeit: 'Run instead',
   mustSwitch: 'Choose a replacement',
   actionNotRequired: 'Waiting',
+  badTarget: 'Not a target', // Phase D6 (doubles): a move aimed at its own user
 };
 
 export function actionErrorLabel(e: ActionError | null): string | null {

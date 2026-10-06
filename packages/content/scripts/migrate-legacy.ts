@@ -20,6 +20,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { STONE_AND_TRADE_EVOLUTIONS } from '../src/data/evolutions';
 import type {
   AbilityDef,
   AbilityHook,
@@ -279,7 +280,7 @@ function migrateLearnset(
   return out;
 }
 
-function migrateEvolution(s: LegacySpecies): Evolution {
+function migrateEvolution(s: LegacySpecies): Extract<Evolution, { kind: 'level' | 'split' }> | null {
   if (s.splitEvolvesInto != null) {
     const branches = s.splitEvolvesInto.map((b) => ({
       into: b.into,
@@ -314,7 +315,9 @@ function clamp(id: string, field: string, v: number, lo: number, hi: number): nu
 }
 
 function migrateSpecies(s: LegacySpecies, dexNumber: number, moveIds: ReadonlySet<string>, parentOf: ReadonlyMap<string, string>): SpeciesDef {
-  const evolution = migrateEvolution(s);
+  // Phase D3: nine families evolve by stone / trade (src/data/evolutions.ts); the legacy level still spaces the learnset
+  const legacyEvolution = migrateEvolution(s);
+  const evolution: Evolution = STONE_AND_TRADE_EVOLUTIONS[s.id] ?? legacyEvolution;
   const evolvesFrom = parentOf.get(s.id) ?? null;
   if ((s.evolvesFrom ?? null) !== evolvesFrom) {
     notes.push(`species '${s.id}': evolvesFrom ${JSON.stringify(s.evolvesFrom ?? null)} in legacy, derived '${evolvesFrom}' from the parent's evolvesInto`);
@@ -348,7 +351,7 @@ function migrateSpecies(s: LegacySpecies, dexNumber: number, moveIds: ReadonlySe
     sizeScale: clamp(s.id, 'sizeScale', s.sizeScale, 0.5, 2.2),
     expYield: s.expYield,
     moves,
-    learnableMoves: migrateLearnset(s.id, moves, s.learnableMoves, evolution?.atLevel ?? null, moveIds),
+    learnableMoves: migrateLearnset(s.id, moves, s.learnableMoves, legacyEvolution?.atLevel ?? null, moveIds),
     abilities: s.abilities,
     role: s.role as SpeciesRole,
     evolution,

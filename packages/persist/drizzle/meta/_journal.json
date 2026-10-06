@@ -15,6 +15,27 @@
       "when": 1790206628441,
       "tag": "0001_battle_replay",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791248897732,
+      "tag": "0002_email_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791250864705,
+      "tag": "0003_shiny",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791257929207,
+      "tag": "0004_player_streaks",
+      "breakpoints": true
     }
   ]
 }

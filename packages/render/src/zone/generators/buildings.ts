@@ -44,6 +44,10 @@ export interface BuildingStyle {
 
 const DEG = Math.PI / 180;
 const THICK = 0.3;
+/** Phase A: an open door shows this dark surface behind the opening (a shared surface every zone with buildings binds). */
+export const DOORWAY_SURFACE: SurfaceId = 'lantern_metal';
+/** How far an open door leaf swings in (rad). */
+const DOOR_SWING = 100 * DEG;
 const BEVEL = 0.04;
 
 interface Opening { readonly x: number; readonly y: number; readonly w: number; readonly h: number; readonly kind: 'door' | 'window' | 'round' | 'arch'; readonly shutters: boolean; readonly box: boolean }
@@ -165,9 +169,19 @@ function dressOpenings(parts: Parts, st: BuildingStyle, w: WallDef, p: Prng): vo
     const m = w.m;
     const bm = (surf: SurfaceId, a: V3, b: V3, width: number, depth: number, c = 0.015): void => beam(parts, surf, a, b, width, depth, c, face);
     if (o.kind === 'door' || o.kind === 'arch') {
-      box(parts, st.door, o.x, y0, -0.18, o.w - 0.02, o.h - 0.01, 0.07, 0, 0.02, m);
-      for (const bx of [x0 + 0.2, o.x, x1 - 0.2]) bm(st.door, frontOf(w, bx, y0 + 0.12, -0.13), frontOf(w, bx, y1 - (o.kind === 'arch' ? o.w / 2 : 0.12), -0.13), 0.09, 0.03, 0.01);
-      box(parts, st.metal, x1 - 0.2, y0 + 1.0, -0.12, 0.05, 0.16, 0.05, 0, 0.012, m);
+      // Phase A: the door stands OPEN — a dark doorway (the hall is reached through it) with the leaf (or both leaves
+      // of an arch) swung in against the inner wall
+      box(parts, DOORWAY_SURFACE, o.x, y0 - 0.02, -1.3, o.w + 0.34, o.h + 0.12, 0.06, 0, 0.01, m);
+      box(parts, DOORWAY_SURFACE, o.x, y0 - 0.02, -0.8, o.w + 0.3, 0.03, 1.0, 0, 0.005, m);
+      for (const sx of [x0 - 0.14, x1 + 0.14]) box(parts, DOORWAY_SURFACE, sx, y0 - 0.02, -0.8, 0.05, o.h + 0.12, 1.0, 0, 0.005, m);
+      const leaves = o.kind === 'arch' ? [[x0 + 0.04, 1], [x1 - 0.04, -1]] as const : [[x1 - 0.04, -1]] as const;
+      const lw = (o.kind === 'arch' ? o.w / 2 : o.w) - 0.03;
+      const lh = o.kind === 'arch' ? o.h - o.w / 2 : o.h - 0.01;
+      for (const [hx, s] of leaves) {
+        const lm = m.clone().multiply(trs(hx, y0, -0.24, s * DOOR_SWING)).multiply(trs(s * lw / 2, 0, -0.04));
+        box(parts, st.door, 0, 0, 0, lw, lh, 0.06, 0, 0.015, lm);
+        box(parts, st.metal, -s * (lw / 2 - 0.12), 1.0, 0.04, 0.05, 0.16, 0.04, 0, 0.01, lm);
+      }
       if (o.kind === 'arch') continue;
       const fr = st.frame ?? st.door;
       bm(fr, frontOf(w, x0 - 0.07, y0, 0.03), frontOf(w, x0 - 0.07, y1 + 0.02, 0.03), 0.14, 0.08, 0.02);
@@ -359,7 +373,7 @@ export function buildHouse(st: BuildingStyle, spec: BuildingSpec, o: HouseOpts =
     dressOpenings(L0, st, wd, p);
     // lod1: flush panes and a door slab on the solid wall
     for (const op of wd.openings) {
-      const surf = op.kind === 'door' || op.kind === 'arch' ? st.door : st.glass;
+      const surf = op.kind === 'door' || op.kind === 'arch' ? DOORWAY_SURFACE : st.glass;
       box(L1, surf, op.x, op.y, 0.005, op.w, op.h, 0.03, 0, 0.01, wd.m);
     }
   }

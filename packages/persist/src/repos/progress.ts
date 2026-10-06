@@ -10,6 +10,8 @@ export interface DexSummary {
   readonly caught: string[];
   readonly variants: Record<string, VariantKey[]>;
   readonly alpha: string[];
+  /** Phase D4: species of which the player caught a shiny */
+  readonly shiny: string[];
 }
 
 export interface QuestObjectiveState {
@@ -72,14 +74,21 @@ export const progressRepo = {
   // ---- dex -----------------------------------------------------------------------------------
   async dex(tx: Tx, playerId: string): Promise<DexSummary> {
     const rows = await tx.select().from(dexEntries).where(eq(dexEntries.playerId, playerId)).orderBy(asc(dexEntries.speciesId));
-    const out: { seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[] } = { seen: [], caught: [], variants: {}, alpha: [] };
+    const out: { seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[]; shiny: string[] } = { seen: [], caught: [], variants: {}, alpha: [], shiny: [] };
     for (const r of rows) {
       out.seen.push(r.speciesId);
       if (r.caughtAt !== null) out.caught.push(r.speciesId);
       if (r.variants.length > 0) out.variants[r.speciesId] = [...r.variants];
       if (r.alphaSeen) out.alpha.push(r.speciesId);
+      if (r.shinyCaught) out.shiny.push(r.speciesId);
     }
     return out;
+  },
+
+  /** Phase D5: distinct species caught (the `dexCaught` achievement value). */
+  async caughtCount(tx: Tx, playerId: string): Promise<number> {
+    const rows = await tx.select({ s: dexEntries.speciesId }).from(dexEntries).where(and(eq(dexEntries.playerId, playerId), isNotNull(dexEntries.caughtAt)));
+    return rows.length;
   },
 
   /** Idempotent. Returns true when the species was new to the player's dex (live-ops `newSpeciesSeen`). */
@@ -92,21 +101,21 @@ export const progressRepo = {
     return res.length > 0;
   },
 
-  /** Records a catch; appends the variant when new; flags alpha. Returns whether the species was new to the caught list. */
-  async markCaught(tx: Tx, playerId: string, speciesId: string, variant: VariantKey, isAlpha: boolean, now: Date): Promise<{ newSpecies: boolean }> {
+  /** Records a catch; appends the variant when new; flags alpha (and shiny, Phase D4). Returns whether the species was new to the caught list. */
+  async markCaught(tx: Tx, playerId: string, speciesId: string, variant: VariantKey, isAlpha: boolean, now: Date, isShiny = false): Promise<{ newSpecies: boolean }> {
     const [existing] = await tx
       .select()
       .from(dexEntries)
       .where(and(eq(dexEntries.playerId, playerId), eq(dexEntries.speciesId, speciesId)))
       .for('update');
     if (!existing) {
-      await tx.insert(dexEntries).values({ playerId, speciesId, seenAt: now, caughtAt: now, variants: [variant], alphaSeen: isAlpha });
+      await tx.insert(dexEntries).values({ playerId, speciesId, seenAt: now, caughtAt: now, variants: [variant], alphaSeen: isAlpha, shinyCaught: isShiny });
       return { newSpecies: true };
     }
     const variants = existing.variants.includes(variant) ? existing.variants : [...existing.variants, variant];
     await tx
       .update(dexEntries)
-      .set({ caughtAt: existing.caughtAt ?? now, variants, alphaSeen: existing.alphaSeen || isAlpha })
+      .set({ caughtAt: existing.caughtAt ?? now, variants, alphaSeen: existing.alphaSeen || isAlpha, shinyCaught: existing.shinyCaught || isShiny })
       .where(and(eq(dexEntries.playerId, playerId), eq(dexEntries.speciesId, speciesId)));
     return { newSpecies: existing.caughtAt === null };
   },

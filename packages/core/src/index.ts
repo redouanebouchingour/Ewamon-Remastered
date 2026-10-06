@@ -16,7 +16,7 @@ export { TYPE_NAMES, typeMultiplier } from './typechart';
 export type { Rarity, SpeciesRole, LearnEntry, Evolution, SpeciesDef } from './types';
 
 // §2.4 MoveDef and the 23 effects
-export type { MoveEffect, MoveTarget, MoveDef } from './types';
+export type { MoveEffect, MoveTarget, MoveSpread, MoveDef } from './types';
 
 // §2.5 AbilityDef and hooks
 export type { StatKey, WeatherKind, MajorStatus, StatusId, AbilityHook, AbilityDef } from './types';
@@ -45,13 +45,15 @@ export type {
   BattleState,
   CreateBattleOpts,
 } from './types';
-export { projectBattler } from './battler';
+export { capLevel, projectBattler } from './battler';
 export { createBattle } from './turn';
 
 // §2.10 Actions and resolveTurn
-export type { Action, ActionError, TurnResult } from './types';
+export type { Action, ActionError, TurnResult, FieldRef, SideChoice } from './types';
 export { validateAction, resolveTurn, InvalidActionError } from './turn';
-export { chooseNpcAction } from './npc';
+export { chooseNpcAction, chooseNpcDoubles } from './npc';
+// Phase D6 doubles helpers
+export { requiredPositions, validateSideChoice, choicePair, isSpread } from './doubles';
 
 // §2.14 Damage
 export type { DamageResult } from './types';
@@ -62,7 +64,7 @@ export { CATCH_B } from './catch';
 
 // §2.16 EXP, levels, evolution
 export type { LevelUpResult } from './types';
-export { MAX_LEVEL, expToLevel, levelForExp, expGain, applyExp, evolve } from './exp';
+export { MAX_LEVEL, expToLevel, levelForExp, expGain, applyExp, evolve, evolutionChildren, itemEvolutionTarget, tradeEvolutionTarget } from './exp';
 
 // §2.17 Elo
 export type { EloResult } from './types';

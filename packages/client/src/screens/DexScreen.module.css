@@ -170,6 +170,18 @@
   color: var(--danger);
 }
 
+/* Phase D4: a shiny catch; sits left of the alpha mark when both are recorded */
+.shinyMark {
+  position: absolute;
+  inset-block-start: var(--s-2);
+  inset-inline-end: var(--s-2);
+  color: var(--warn);
+}
+
+.shinyMarkShift {
+  inset-inline-end: calc(var(--s-2) + var(--s-5));
+}
+
 .name {
   max-inline-size: 100%;
   overflow: hidden;
@@ -287,6 +299,16 @@
   align-items: center;
   gap: var(--s-1);
   color: var(--danger);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+}
+
+.shiny {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  color: var(--warn);
   font-size: var(--t-caption);
   line-height: var(--lh-caption);
   font-weight: 700;

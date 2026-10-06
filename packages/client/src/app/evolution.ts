@@ -111,7 +111,9 @@ export async function playEvolution(req: EvolutionRequest): Promise<void> {
  * then the sequence (not awaited: the caller's modal closes while it plays). Resolves with the evolved creature.
  */
 export async function evolveCreature(c: CreatureInstance, into: string): Promise<CreatureInstance> {
-  const res = await apiFetch('creatureEvolve', { params: { id: c.id }, body: { into } });
+  const { inventoryDelta, ...res } = await apiFetch('creatureEvolve', { params: { id: c.id }, body: { into } });
+  // a stone evolution answers the spent stone's count as an inventoryDelta body (Phase D3)
+  if (inventoryDelta !== undefined) applyInventoryDelta({ type: 'inventoryDelta', ...inventoryDelta });
   applyInventoryDelta(toInventoryDelta({ creaturesUpdated: [res] }));
   void playEvolution({
     creatureId: c.id,

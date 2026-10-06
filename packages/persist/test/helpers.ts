@@ -22,8 +22,10 @@ export const T0 = new Date('2026-09-18T12:00:00.000Z');
 export const at = (offsetMs: number): Date => new Date(T0.getTime() + offsetMs);
 
 const TABLES = [
+  'player_streaks',
   'audit_log',
   'refresh_tokens',
+  'email_tokens',
   'bids',
   'listings',
   'battle_history',

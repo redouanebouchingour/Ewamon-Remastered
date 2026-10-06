@@ -3,7 +3,7 @@
  * §3.4 quest, §3.5 story, §3.6 live-ops and §3.12 body checks. Returns `{ ok, errors, stats }`; the CLI wrapper in
  * scripts/validate-cli.ts prints and exits non-zero. Nothing here touches disk.
  */
-import { TYPE_NAMES } from '@ewa/core';
+import { TYPE_NAMES, evolutionChildren } from '@ewa/core';
 import type { ConsumableDef, ItemDef, MoveDef, OrbDef, SpeciesDef } from '@ewa/core';
 import type {
   BadgeId,
@@ -37,28 +37,33 @@ import {
   schemaErrors,
 } from './schema';
 import { SPECIES } from './data/species';
-import { MOVES } from './data/moves';
+import { MOVES, SPREAD_MOVES } from './data/spreadMoves';
 import { ABILITIES } from './data/abilities';
 import { ITEMS } from './data/items';
 import { ORBS } from './data/orbs';
 import { CONSUMABLES } from './data/consumables';
+import { EVOLUTION_STONES, KEY_ITEMS, TM_MOVES, tmItemId, tmMoveOf } from './data/progressionItems';
 import { TYPE_CHART } from './data/typechart';
 import { ZONES } from './data/zones';
 import { ENCOUNTER_BANDS, ENCOUNTER_TABLES } from './data/encounters';
 import { LEGENDARY_IDS, LEGENDARY_STATICS, MYTHICAL_IDS } from './data/statics';
-import { BADGES, LEAGUE, LEAGUE_STORY_GATES } from './data/league';
+import { BADGES, LEAGUE, LEAGUE_REMATCH, LEAGUE_REMATCH_LEVELS, LEAGUE_REMATCH_REWARD_MULTIPLIER, LEAGUE_STORY_GATES } from './data/league';
+import { TOWER, towerSetReward } from './data/tower';
 import { QUESTS } from './data/quests';
 import { STORY } from './data/story';
 import { DAILY_SWARMS, RAID_HOTSPOTS, SEASONAL_EVENTS } from './data/liveops';
 import { BATTLE_PASS } from './data/battlePass';
 import { BODIES, LOOKS, TITLES } from './data/bodies';
 import { SHOP_STOCK_DEFAULT } from './data/shop';
-import { FLAG_REGISTRY, isKnownFlag } from './flags';
+import { FLAG_REGISTRY, VISITED_FLAGS, badgeFlag, isKnownFlag } from './flags';
 import { computeRosterReport } from './roster';
 import { getZoneSurface, isWalkable, nearestWalkable, playableBounds, reachableWithin, walkableComponent, walkableRatio, waterRatio } from './heightfield';
 import type { ZoneSurface } from './heightfield';
 import { TOWN_LAYOUT, solidContains } from './plan';
+import { checkInterior, interiorDefFor, trainersOf, warpsOf } from './interiors';
 import { beatDoneFlag, BEAT_DONE_PREFIX } from './story';
+import { interiorFootprintAt } from './interiorIndex';
+import { OBSTACLE_INTERACT_M } from './obstacles';
 
 /** Legacy orb prices (§3.10 rule 10: "orb prices are the legacy values"). */
 const LEGACY_ORB_PRICES: Readonly<Record<string, number>> = {
@@ -100,6 +105,10 @@ export interface ContentTables {
   readonly orbs: readonly OrbDef[];
   readonly consumables: readonly ConsumableDef[];
   readonly zones: readonly ZoneDef[];
+  /** Phase D1–D3 key items (old_rod + TMs); default KEY_ITEMS */
+  readonly keyItems?: readonly ItemDef[];
+  /** Phase D3 evolution stones; default EVOLUTION_STONES */
+  readonly stones?: readonly ConsumableDef[];
 }
 
 export const DEFAULT_TABLES: ContentTables = {
@@ -109,6 +118,8 @@ export const DEFAULT_TABLES: ContentTables = {
   orbs: ORBS,
   consumables: CONSUMABLES,
   zones: ZONES,
+  keyItems: KEY_ITEMS,
+  stones: EVOLUTION_STONES,
 };
 
 export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEFAULT_TABLES): ValidationResult {
@@ -117,6 +128,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     errors.push(s);
   };
   const { species, moves, items, orbs, consumables, zones } = tables;
+  const keyItems = tables.keyItems ?? KEY_ITEMS;
+  const stones = tables.stones ?? EVOLUTION_STONES;
 
   // ── 1. schemas ──
   const idOf = (r: unknown): string => String((r as { id?: unknown })?.id ?? '?');
@@ -126,6 +139,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   errors.push(...schemaErrors('ITEMS', ItemDefSchema, items, idOf));
   errors.push(...schemaErrors('ORBS', OrbDefSchema, orbs, idOf));
   errors.push(...schemaErrors('CONSUMABLES', ConsumableDefSchema, consumables, idOf));
+  errors.push(...schemaErrors('KEY_ITEMS', ItemDefSchema, keyItems, idOf));
+  errors.push(...schemaErrors('EVOLUTION_STONES', ConsumableDefSchema, stones, idOf));
   errors.push(...schemaErrors('ZONES', ZoneDefSchema, zones, idOf));
   errors.push(...schemaErrors('ENCOUNTER_TABLES', EncounterTableSchema, ENCOUNTER_TABLES, idOf));
   errors.push(...schemaErrors('LEGENDARY_STATICS', LegendaryStaticSchema, LEGENDARY_STATICS, (r) => String((r as { species?: unknown })?.species)));
@@ -146,9 +161,10 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   const speciesById = new Map(species.map((s) => [s.id, s]));
   const moveIds = new Set(moves.map((m) => m.id));
   const abilityIds = new Set(ABILITIES.map((a) => a.id));
-  const itemIds = new Set(items.map((i) => i.id));
+  const itemIds = new Set([...items, ...keyItems].map((i) => i.id));
   const orbIds = new Set(orbs.map((o) => o.id));
-  const consumableIds = new Set(consumables.map((c) => c.id));
+  const consumableIds = new Set([...consumables, ...stones].map((c) => c.id));
+  const stoneIds = new Set(stones.filter((c) => c.effect.kind === 'evolutionStone').map((c) => c.id));
   const anyItem = (id: string): boolean => itemIds.has(id) || orbIds.has(id) || consumableIds.has(id);
   const zoneById = new Map(zones.map((z) => [z.id, z]));
   const tableIds = new Set(ENCOUNTER_TABLES.map((t) => t.id));
@@ -165,7 +181,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   for (const q of QUESTS) if (q.rewards.flag !== null) setFlags.add(q.rewards.flag);
   for (const l of LEAGUE) for (const f of l.setsFlags) setFlags.add(f);
   for (const s of LEGENDARY_STATICS) setFlags.add(s.flag);
-  const flagResolvable = (f: string): boolean => f.startsWith('badge:') || setFlags.has(f);
+  const flagResolvable = (f: string): boolean => f.startsWith('badge:') || VISITED_FLAGS.has(f) || setFlags.has(f);
   const checkFlag = (where: string, f: string): void => {
     if (!isKnownFlag(f)) err(`${where}: flag '${f}' is not in the §11 registry`);
     if (f.startsWith(BEAT_DONE_PREFIX)) err(`${where}: flag '${f}' uses the reserved beat-done prefix`);
@@ -177,8 +193,9 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     for (const e of s.learnableMoves) if (!moveIds.has(e.move)) err(`species ${s.id}: learnable move '${e.move}' not in MOVES`);
     for (const a of s.abilities) if (!abilityIds.has(a)) err(`species ${s.id}: ability '${a}' not in ABILITIES`);
     if (s.evolution !== null) {
-      const intos = s.evolution.kind === 'level' ? [s.evolution.into] : s.evolution.branches.map((b) => b.into);
+      const intos = evolutionChildren(s.evolution);
       for (const into of intos) if (!speciesById.has(into)) err(`species ${s.id}: evolution.into '${into}' not in SPECIES`);
+      if (s.evolution.kind === 'item' && !stoneIds.has(s.evolution.item)) err(`species ${s.id}: evolution item '${s.evolution.item}' is not an evolution stone`);
       if (s.evolution.kind === 'split') {
         for (const b of s.evolution.branches) {
           if (b.condition !== null && !abilityIds.has(b.condition.ability)) err(`species ${s.id}: split condition ability '${b.condition.ability}' unknown`);
@@ -197,9 +214,21 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     if (z.encounterTable !== null && z.encounterTable !== `enc_${z.id}`) err(`zone ${z.id}: encounterTable must be 'enc_${z.id}'`);
     if (z.shop !== null) for (const id of z.shop) if (!anyItem(id)) err(`zone ${z.id}: shop item '${id}' unknown`);
     for (const gi of z.items) if (!anyItem(gi.item)) err(`zone ${z.id}: ground item '${gi.item}' unknown`);
+    // Phase D10: obstacles — unique ids, a known kind and hidden item, inside the playable interior
+    const obIds = new Set<string>();
+    for (const o of z.obstacles ?? []) {
+      if (obIds.has(o.id)) err(`zone ${z.id}: duplicate obstacle id ${o.id}`);
+      obIds.add(o.id);
+      if (o.kind !== 'tree' && o.kind !== 'boulder') err(`zone ${z.id}: obstacle ${o.id} kind '${String(o.kind)}'`);
+      if (o.item !== undefined && (!anyItem(o.item.item) || !(o.item.qty >= 1))) err(`zone ${z.id}: obstacle ${o.id} item '${o.item.item}' x${o.item.qty} invalid`);
+      const lim = ZONE_SIZE[z.kind] / 2 - ZONE_MARGIN - 4;
+      if (Math.abs(o.x) > lim || Math.abs(o.z) > lim) err(`zone ${z.id}: obstacle ${o.id} (${o.x}, ${o.z}) outside ±${lim}`);
+    }
     for (const t of z.trainers) {
       for (const m of t.team) if (!speciesById.has(m.species)) err(`trainer ${t.id}: species '${m.species}' unknown`);
       if (!looks.has(t.look)) err(`trainer ${t.id}: look '${t.look}' not in LOOKS`);
+      // Phase D6: a doubles trainer brings two creatures to the field
+      if (t.doubles === true && t.team.length < 2) err(`trainer ${t.id}: doubles needs a team of 2+`);
     }
     for (const n of z.npcs) {
       if (!looks.has(n.look)) err(`npc ${n.id}: look '${n.look}' not in LOOKS`);
@@ -218,6 +247,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     for (const s of t.slots) if (!speciesById.has(s.species)) err(`table ${t.id}: species '${s.species}' unknown`);
   }
   for (const l of LEAGUE) {
+    if (l.doubles === true && l.team.length < 2) err(`league ${l.id}: doubles needs a team of 2+`);
     for (const m of l.team) {
       if (!speciesById.has(m.species)) err(`league ${l.id}: species '${m.species}' unknown`);
       if (m.ability !== null && !abilityIds.has(m.ability)) err(`league ${l.id}: ability '${m.ability}' unknown`);
@@ -226,6 +256,47 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     if (!looks.has(l.look)) err(`league ${l.id}: look '${l.look}' not in LOOKS`);
     if (!zoneById.has(l.zoneId)) err(`league ${l.id}: zone '${l.zoneId}' unknown`);
     for (const f of l.setsFlags) checkFlag(`league ${l.id}.setsFlags`, f);
+  }
+  // Phase D14 post-game: one rematch per league row — Lv 65–75, reward ×1.5, no legendary the original lacks
+  {
+    const seen = new Set<string>();
+    for (const r of LEAGUE_REMATCH) {
+      const lt = LEAGUE.find((l) => l.id === r.leagueId);
+      if (lt === undefined) {
+        err(`rematch ${r.leagueId}: not a LEAGUE id`);
+        continue;
+      }
+      if (seen.has(r.leagueId)) err(`rematch ${r.leagueId}: second rematch row`);
+      seen.add(r.leagueId);
+      if (r.team.length < 1 || r.team.length > 6) err(`rematch ${r.leagueId}: team of ${r.team.length} (1..6)`);
+      if (lt.doubles === true && r.team.length < 2) err(`rematch ${r.leagueId}: doubles needs a team of 2+`);
+      if (r.reward !== Math.round(lt.reward * LEAGUE_REMATCH_REWARD_MULTIPLIER)) err(`rematch ${r.leagueId}: reward ${r.reward} ≠ round(${lt.reward} × ${LEAGUE_REMATCH_REWARD_MULTIPLIER})`);
+      if (r.pre.length === 0 || r.post.length === 0 || [...r.pre, ...r.post].some((x) => x.length === 0)) err(`rematch ${r.leagueId}: pre / post need non-empty lines`);
+      for (const mem of r.team) {
+        if (!speciesById.has(mem.species)) err(`rematch ${r.leagueId}: species '${mem.species}' unknown`);
+        if (!Number.isInteger(mem.level) || mem.level < LEAGUE_REMATCH_LEVELS.min || mem.level > LEAGUE_REMATCH_LEVELS.max)
+          err(`rematch ${r.leagueId}: ${mem.species} Lv ${mem.level} outside ${LEAGUE_REMATCH_LEVELS.min}–${LEAGUE_REMATCH_LEVELS.max}`);
+        if ((legendary.has(mem.species) || mythical.has(mem.species)) && !lt.team.some((o) => o.species === mem.species))
+          err(`rematch ${r.leagueId}: legendary '${mem.species}' is not on the original team`);
+        if (mem.nickname !== null && (mem.nickname.length === 0 || mem.nickname.length > 16)) err(`rematch ${r.leagueId}: nickname '${mem.nickname}' (1..16 chars)`);
+        if (mem.ability !== null && !abilityIds.has(mem.ability)) err(`rematch ${r.leagueId}: ability '${mem.ability}' unknown`);
+        if (mem.heldItem !== null && !itemIds.has(mem.heldItem)) err(`rematch ${r.leagueId}: held item '${mem.heldItem}' unknown`);
+      }
+    }
+    for (const l of LEAGUE) if (!seen.has(l.id)) err(`league ${l.id}: no LEAGUE_REMATCH row`);
+  }
+  // Phase D14 battle tower: pools of non-legendary species, big enough for distinct 3-creature teams
+  {
+    if (!Number.isInteger(TOWER.levelCap) || TOWER.levelCap < 1 || TOWER.levelCap > 100) err(`tower: levelCap ${TOWER.levelCap}`);
+    if (TOWER.pools.length === 0) err('tower: no pools');
+    TOWER.pools.forEach((pool, t) => {
+      if (pool.length < TOWER.teamSize * 2) err(`tower: pool ${t} has ${pool.length} species (< ${TOWER.teamSize * 2})`);
+      for (const id of pool) {
+        if (!speciesById.has(id)) err(`tower: pool ${t} species '${id}' unknown`);
+        if (legendary.has(id) || mythical.has(id)) err(`tower: pool ${t} carries legendary '${id}'`);
+      }
+    });
+    for (let set = 1; set <= 4; set++) for (const id of Object.keys(towerSetReward(set).items).sort()) if (!anyItem(id)) err(`tower: set ${set} reward item '${id}' unknown`);
   }
   for (const q of QUESTS) {
     const zone = zoneById.get(q.zoneId);
@@ -244,6 +315,16 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
         checkFlag(`quest ${q.id}/${o.id}`, ob.flag);
         if (!flagResolvable(ob.flag)) err(`quest ${q.id}/${o.id}: flag '${ob.flag}' is never set`);
       }
+    }
+    // Phase D5 achievements: auto-offered, never chained, money/items only; the dex target fits the roster
+    if (q.kind === 'achievement') {
+      if (q.giver !== null) err(`achievement ${q.id}: giver must be null`);
+      if (q.requires.length > 0) err(`achievement ${q.id}: requires must be empty (tiers count independently)`);
+      if (q.rewards.creature !== null || q.rewards.flag !== null) err(`achievement ${q.id}: rewards are money and items only`);
+    }
+    for (const o of q.objectives) {
+      const ob = o.objective;
+      if (ob.kind === 'dexCaught' && ob.count > speciesById.size) err(`quest ${q.id}/${o.id}: dexCaught ${ob.count} > ${speciesById.size} species`);
     }
     for (const id of Object.keys(q.rewards.items).sort()) if (!anyItem(id)) err(`quest ${q.id}: reward item '${id}' unknown`);
     if (q.rewards.creature !== null && !speciesById.has(q.rewards.creature.species)) err(`quest ${q.id}: reward species unknown`);
@@ -288,6 +369,12 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   // ── 3. counts ──
   if (species.length !== 130) err(`SPECIES.length ${species.length} !== 130`);
   if (moves.length !== 193) err(`MOVES.length ${moves.length} !== 193`);
+  // Phase D6: every curated spread move exists, and only damaging or foe-targeted moves spread
+  for (const [id, sp] of Object.entries(SPREAD_MOVES).sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+    const m = moves.find((x) => x.id === id);
+    if (m === undefined) err(`SPREAD_MOVES: '${id}' not in MOVES`);
+    else if (m.spread !== sp || m.target !== 'foe') err(`SPREAD_MOVES: '${id}' must be a foe-targeted move carrying spread '${sp}'`);
+  }
   if (TYPE_NAMES.length !== 19) err(`TYPE_NAMES.length ${TYPE_NAMES.length} !== 19`);
   if (ABILITIES.length !== 25) err(`ABILITIES.length ${ABILITIES.length} !== 25`);
   if (items.length !== 17) err(`ITEMS.length ${items.length} !== 17`);
@@ -336,8 +423,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     const parentOf = new Map<string, string>();
     for (const s of species) {
       if (s.evolution === null) continue;
-      if (s.evolution.atLevel < 2 || s.evolution.atLevel > 99) err(`species ${s.id}: evolution.atLevel ${s.evolution.atLevel} outside 2..99`);
-      const intos = s.evolution.kind === 'level' ? [s.evolution.into] : s.evolution.branches.map((b) => b.into);
+      if ((s.evolution.kind === 'level' || s.evolution.kind === 'split') && (s.evolution.atLevel < 2 || s.evolution.atLevel > 99)) err(`species ${s.id}: evolution.atLevel ${s.evolution.atLevel} outside 2..99`);
+      const intos = evolutionChildren(s.evolution);
       for (const into of intos) {
         const child = speciesById.get(into);
         if (child !== undefined && child.evolvesFrom !== s.id) err(`species ${into}: evolvesFrom '${child.evolvesFrom}' but ${s.id} evolves into it`);
@@ -353,7 +440,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     for (const s of species) {
       if (s.evolvesFrom !== null) {
         const p = speciesById.get(s.evolvesFrom);
-        const pIntos = p?.evolution === null || p === undefined ? [] : p.evolution.kind === 'level' ? [p.evolution.into] : p.evolution.branches.map((b) => b.into);
+        const pIntos = p === undefined ? [] : evolutionChildren(p.evolution);
         if (!pIntos.includes(s.id)) err(`species ${s.id}: evolvesFrom '${s.evolvesFrom}' does not evolve into it`);
       }
       // root reachable without cycles
@@ -558,7 +645,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     for (const s of harvestZones.values()) if (s.has('harvested') && s.has('intact')) restoration = true;
     if (!restoration) err('story: no zone has both a harvested and an intact harvest beat');
     for (const b of STORY) if (setFlags.has(beatDoneFlag(b.id))) err(`story: authored flag collides with done marker of ${b.id}`);
-    // bible §6.1: a story-gated league interaction waits for a flag its own pre-fight beat (same zone, speaker = the league id) sets
+    // bible §6.1: a story-gated league interaction waits for a flag a pre-fight beat of the leader's town sets — one
+    // that does not itself need what the fight awards (its badge, its setsFlags), or the fight could never open
     for (const [leagueId, flag] of Object.entries(LEAGUE_STORY_GATES).sort(([a], [b]) => (a < b ? -1 : 1))) {
       const lt = LEAGUE.find((l) => l.id === leagueId);
       if (lt === undefined) {
@@ -566,7 +654,10 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
         continue;
       }
       checkFlag(`LEAGUE_STORY_GATES.${leagueId}`, flag);
-      if (!STORY.some((b) => b.zoneId === lt.zoneId && b.speaker === leagueId && b.set.includes(flag))) err(`LEAGUE_STORY_GATES.${leagueId}: '${flag}' is not set by a beat ${leagueId} speaks in ${lt.zoneId}`);
+      const awards = new Set<string>([...(lt.badge === null ? [] : [badgeFlag(lt.badge)]), ...lt.setsFlags]);
+      const setters = STORY.filter((b) => b.zoneId === lt.zoneId && b.set.includes(flag));
+      if (setters.length === 0) err(`LEAGUE_STORY_GATES.${leagueId}: '${flag}' is not set by a beat in ${lt.zoneId}`);
+      else if (!setters.some((b) => !b.need.some((n) => awards.has(n)))) err(`LEAGUE_STORY_GATES.${leagueId}: '${flag}' is only set by a beat that needs the fight's own award`);
     }
   }
 
@@ -647,6 +738,25 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
       for (const w of z.warps) { target(`warp ${w.id}`, w.x, w.z, INTERACT_RANGE_M); target(`warp ${w.id} target`, w.toX, w.toZ, INTERACT_RANGE_M); }
       for (const s of LEGENDARY_STATICS) if (s.zoneId === z.id) target(`static ${s.species}`, s.x, s.z, INTERACT_RANGE_M);
       for (const r of RAID_HOTSPOTS) if (r.zoneId === z.id) target(`raid ${r.id}`, r.x, r.z, RAID_RANGE_M);
+      // Phase D10: an obstacle stands on ground its stamp made unwalkable (no stamp = it sits on nothing walkable),
+      // clear of the interiors and ≥ 6 m from every authored point, and is reachable at its interact range; the
+      // checks above already ran on the stamped field, so no story target is cut off behind one
+      for (const o of z.obstacles ?? []) {
+        let stamped = 0;
+        for (const id of surface.obstacleCells.values()) if (id === o.id) stamped++;
+        if (stamped === 0) err(`zone ${z.id}: obstacle ${o.id} stamps no walkable sample`);
+        if (interiorFootprintAt(z.id, o.x, o.z) !== null) err(`zone ${z.id}: obstacle ${o.id} stands in an interior pocket`);
+        const near: (readonly [string, number, number])[] = [['spawn', z.spawn.x, z.spawn.z]];
+        for (const n of z.npcs) near.push([n.id, n.x, n.z]);
+        for (const t of z.trainers) near.push([t.id, t.x, t.z]);
+        for (const i of z.items) near.push([i.id, i.x, i.z]);
+        for (const l of z.lore) near.push([l.id, l.x, l.z]);
+        for (const w of z.warps) { near.push([w.id, w.x, w.z]); near.push([`${w.id} target`, w.toX, w.toZ]); }
+        for (const st of LEGENDARY_STATICS) if (st.zoneId === z.id) near.push([st.species, st.x, st.z]);
+        for (const r of RAID_HOTSPOTS) if (r.zoneId === z.id) near.push([r.id, r.x, r.z]);
+        for (const [what, px, pz] of near) if (Math.hypot(px - o.x, pz - o.z) < 6) err(`zone ${z.id}: obstacle ${o.id} within 6 m of ${what}`);
+        if (reach !== null && !reachableWithin(h, reach, o.x, o.z, OBSTACLE_INTERACT_M)) err(`zone ${z.id}: obstacle ${o.id} is not reachable from the spawn`);
+      }
       if (reach !== null) {
         if (LEAGUE.some((l) => l.zoneId === z.id)) {
           if (!reachableWithin(h, reach, LEAGUE_DOOR.x, LEAGUE_DOOR.z, GYM_RANGE_M)) err(`zone ${z.id}: the league door (${LEAGUE_DOOR.x}, ${LEAGUE_DOOR.z}) is not reachable from the spawn`);
@@ -678,6 +788,33 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
           if (!ok) err(`zone ${z.id}: link ${dir} → ${z.links[dir]} has no reachable sample in its handover band`);
         }
       }
+      // interiors: every town building has a pocket; every pocket's puzzle, warps, arena and points hold up
+      for (const b of surface.plan.buildings) {
+        if (z.kind === 'town' && interiorDefFor(z, b) === null) err(`zone ${z.id}: building ${b.id} has no interior template`);
+      }
+      for (const u of surface.interiorPlan.unplaced) err(`zone ${z.id}: no pocket fits the interior of ${u}`);
+      const pockets = surface.interiors;
+      for (let a = 0; a < pockets.length; a++) {
+        const p = pockets[a]!;
+        const f = p.footprint;
+        const bnd = ZONE_SIZE[z.kind] / 2 - ZONE_MARGIN;
+        if (Math.abs(f.x) + f.hw > bnd || Math.abs(f.z) + f.hd > bnd) err(`zone ${z.id}: pocket ${p.def.id} leaves the playable interior`);
+        for (let b = a + 1; b < pockets.length; b++) {
+          const q = pockets[b]!.footprint;
+          if (Math.abs(f.x - q.x) < f.hw + q.hw && Math.abs(f.z - q.z) < f.hd + q.hd) err(`zone ${z.id}: pockets ${p.def.id} and ${pockets[b]!.def.id} overlap`);
+        }
+        for (const e of checkInterior(h, p)) err(`zone ${z.id}: ${e}`);
+        for (const w of warpsOf(p)) { if (reach !== null && w.id.endsWith('.in')) target(`warp ${w.id}`, w.x, w.z, INTERACT_RANGE_M); }
+        for (const t of trainersOf(p)) {
+          if (t.team.length < 1 || t.team.length > 6) err(`zone ${z.id}: interior trainer ${t.id} team size ${t.team.length}`);
+          for (const m of t.team) {
+            if (!speciesById.has(m.species)) err(`zone ${z.id}: interior trainer ${t.id} species '${m.species}' unknown`);
+            if (m.level < 1 || m.level > 100) err(`zone ${z.id}: interior trainer ${t.id} level ${m.level}`);
+          }
+          if (!LOOKS.includes(t.look)) err(`zone ${z.id}: interior trainer ${t.id} look '${t.look}' unknown`);
+        }
+        for (const it of p.def.items) if (!items.some((x) => x.id === it.item) && !consumables.some((x) => x.id === it.item)) err(`zone ${z.id}: interior item ${it.id} '${it.item}' unknown`);
+      }
       const t = ENCOUNTER_TABLES.find((x) => x.zoneId === z.id);
       if (t !== undefined && t.slots.some((s) => s.medium === 'water')) {
         if (water === 0) err(`zone ${z.id}: table has water slots but the heightfield has no water samples`);
@@ -685,6 +822,53 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
         let boardwalk = false;
         for (let i = 0; i < h.walkable.length && !boardwalk; i++) if (h.walkable[i] === 1 && h.water[i] === 1) boardwalk = true;
         if (!boardwalk) err(`zone ${z.id}: no sample is both walkable and water (boardwalk)`);
+      }
+    }
+  }
+
+  // ── Phase D1–D3: story grants, TMs, tutors, evolution stones ──
+  {
+    for (const b of STORY) {
+      for (const id of Object.keys(b.grant ?? {}).sort()) if (!anyItem(id)) err(`beat ${b.id}: grant item '${id}' unknown`);
+    }
+    const tmIds = new Set<string>();
+    for (const m of TM_MOVES) {
+      if (!moveIds.has(m)) err(`TM_MOVES: '${m}' not in MOVES`);
+      if (tmIds.has(m)) err(`TM_MOVES: duplicate '${m}'`);
+      tmIds.add(m);
+    }
+    for (const k of keyItems) {
+      if (k.slot !== 'key' || k.hooks.length > 0) err(`key item ${k.id}: must be slot 'key' with no hooks`);
+      const mv = tmMoveOf(k.id);
+      if (mv !== null && !tmIds.has(mv)) err(`key item ${k.id}: '${mv}' is not in TM_MOVES`);
+      if (mv !== null && k.price === null) err(`key item ${k.id}: a TM needs a price`);
+    }
+    for (const m of TM_MOVES) if (!itemIds.has(tmItemId(m))) err(`TM_MOVES: '${m}' has no key item '${tmItemId(m)}'`);
+    // where an item can come from: a shop, a ground item, a quest or battle-pass reward, a story grant
+    const sources = new Set<string>();
+    for (const z of zones) {
+      for (const id of z.shop ?? []) sources.add(id);
+      for (const gi of z.items) sources.add(gi.item);
+    }
+    for (const q of QUESTS) for (const id of Object.keys(q.rewards.items).sort()) sources.add(id);
+    for (const bp of BATTLE_PASS) for (const id of Object.keys(bp.items).sort()) sources.add(id);
+    for (const b of STORY) for (const id of Object.keys(b.grant ?? {}).sort()) sources.add(id);
+    for (const m of TM_MOVES) if (!sources.has(tmItemId(m))) err(`TM ${m}: not sold, found or rewarded anywhere`);
+    const usedStones = new Set<string>();
+    for (const s of species) if (s.evolution !== null && s.evolution.kind === 'item') usedStones.add(s.evolution.item);
+    for (const id of stoneIds) {
+      if (!usedStones.has(id)) err(`stone ${id}: no species evolves with it`);
+      if (!sources.has(id)) err(`stone ${id}: not sold, found or rewarded anywhere (the species it evolves would be unobtainable)`);
+    }
+    for (const z of zones) {
+      for (const id of z.shop ?? []) {
+        const k = keyItems.find((x) => x.id === id);
+        if (k !== undefined && k.price === null) err(`zone ${z.id}: shop sells key item '${id}' that has no price`);
+      }
+      for (const n of z.npcs) {
+        if (n.tutor === undefined) continue;
+        if (z.kind !== 'town') err(`npc ${n.id}: tutors stand in towns`);
+        for (const m of n.tutor) if (!moveIds.has(m)) err(`npc ${n.id}: tutor move '${m}' not in MOVES`);
       }
     }
   }

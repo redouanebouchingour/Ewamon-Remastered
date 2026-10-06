@@ -13,6 +13,7 @@
     "build": "pnpm -r --filter \"{packages/*}\" build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:progression": "vitest run --config vitest.progression.config.ts",
     "test:browser": "playwright test",
     "test:lint-rules": "vitest run --config eslint/vitest.config.ts",
     "typecheck": "tsc -b --pretty",

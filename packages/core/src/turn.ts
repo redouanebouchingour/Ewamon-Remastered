@@ -11,6 +11,7 @@ import {
   active,
   activeRef,
   anyAlive,
+  at,
   applySwitchIn,
   applySwitchOut,
   changeStage,
@@ -31,11 +32,12 @@ import {
   rollPercent,
   tryApplyStatus,
 } from './engine';
-import type { Ctx, MBattler, MState } from './engine';
+import type { Ctx, MBattler, MSide, MState } from './engine';
 import { blocksStatusMoves, consumableFor, hasChoiceLock, heldHooks, heldHooksOfKind } from './items';
 import { chooseNpcAction } from './npc';
 import { createRng } from './rng';
 import { otherSide } from './side';
+import { createDoubles, resolveDoublesTurn, validateDoublesAction } from './doubles';
 import { effectiveSpeed } from './speed';
 import { applyRatio, calcStat, ratioOf, stageRatio } from './stats';
 import { hasStatus } from './status';
@@ -48,7 +50,9 @@ import type {
   ContentIndex,
   CreateBattleOpts,
   MoveDef,
+  Ref,
   Side,
+  SideChoice,
   TurnResult,
 } from './types';
 
@@ -56,16 +60,16 @@ import type {
 
 const SIDES: readonly (0 | 1)[] = [0, 1];
 
-function makeCtx(state: BattleState, content: ContentIndex): Ctx {
+export function makeCtx(state: BattleState, content: ContentIndex): Ctx {
   return { st: cloneState(state), events: [], rng: createRng(state.rng), content, fainted: {} };
 }
 
-function finish(ctx: Ctx): TurnResult {
+export function finish(ctx: Ctx): TurnResult {
   ctx.st.rng = ctx.rng.snapshot();
   return { state: ctx.st as unknown as BattleState, events: ctx.events };
 }
 
-function asState(st: MState): BattleState {
+export function asState(st: MState): BattleState {
   return st as unknown as BattleState;
 }
 
@@ -81,7 +85,7 @@ export class InvalidActionError extends Error {
   }
 }
 
-function endBattle(ctx: Ctx, outcome: BattleOutcome): void {
+export function endBattle(ctx: Ctx, outcome: BattleOutcome): void {
   ctx.st.ended = outcome;
   ctx.st.sides[0].mustSwitch = false;
   ctx.st.sides[1].mustSwitch = false;
@@ -92,7 +96,10 @@ function endBattle(ctx: Ctx, outcome: BattleOutcome): void {
 
 /** Applies onSwitchIn hooks for both leads (side 0 first) and returns those events. */
 export function createBattle(o: CreateBattleOpts, content: ContentIndex): TurnResult {
+  // Phase D6: doubles has its own construction; slots absent / 1 runs the unchanged singles path below
+  if (o.slots === 2) return createDoubles(o, content);
   const rng = createRng(o.seed);
+  const ambient = o.weather ?? 'none';
   const sides: readonly [Side, Side] = [
     { ...o.sides[0], mustSwitch: false, consumedItems: [] },
     { ...o.sides[1], mustSwitch: false, consumedItems: [] },
@@ -101,13 +108,16 @@ export function createBattle(o: CreateBattleOpts, content: ContentIndex): TurnRe
     id: o.id,
     format: o.format,
     sides,
-    field: { weather: { kind: 'none', turns: 0 }, terrain: o.terrain },
+    field: { weather: { kind: ambient, turns: 0 }, terrain: o.terrain },
     turn: 0,
     rng: rng.snapshot(),
     ended: null,
     zoneId: o.zoneId,
+    ...(o.noExp === true ? { noExp: true as const } : {}),
   };
   const ctx = makeCtx(state, content);
+  // Phase D7: ambient zone weather (turns 0 = no countdown); announced before the leads' switch-in hooks
+  if (ambient !== 'none') emit(ctx, { t: 'weatherSet', kind: ambient, turns: 0, source: null });
   for (let i = 0; i < SIDES.length; i++) placeActive(ctx, SIDES[i]!, ctx.st.sides[SIDES[i]!].active);
   for (let i = 0; i < SIDES.length; i++) fireSwitchInHooks(ctx, SIDES[i]!);
   return finish(ctx);
@@ -115,7 +125,7 @@ export function createBattle(o: CreateBattleOpts, content: ContentIndex): TurnRe
 
 // ─── validateAction ─────────────────────────────────────────────────────────
 
-function validateSwitch(state: BattleState, side: 0 | 1, to: number, checkTrap: boolean): ActionError | null {
+export function validateSwitch(state: BattleState, side: 0 | 1, to: number, checkTrap: boolean): ActionError | null {
   const s = state.sides[side];
   if (!Number.isInteger(to) || to < 0 || to >= s.party.length) return 'badSwitchIndex';
   if (to === s.active) return 'switchToActive';
@@ -124,7 +134,7 @@ function validateSwitch(state: BattleState, side: 0 | 1, to: number, checkTrap: 
   return null;
 }
 
-function validateItem(
+export function validateItem(
   state: BattleState,
   side: 0 | 1,
   item: string,
@@ -162,13 +172,17 @@ function validateItem(
  * without it the structural checks run (pp, choice lock, switch indices, trap, flee/forfeit/catch permissions,
  * mustSwitch phase) and the id-resolving ones (`unknownMove` against content, `statusMoveBlocked`, all item
  * checks, `unknownOrb`) are skipped. resolveTurn always passes content.
+ *
+ * Phase D6: `pos` names the field position (0/1) the action is for in a doubles battle; ignored in singles.
  */
 export function validateAction(
   state: BattleState,
   side: 0 | 1,
   action: Action | null,
   content: ContentIndex | null = null,
+  pos: 0 | 1 = 0,
 ): ActionError | null {
+  if (state.slots === 2) return validateDoublesAction(state, side, action, content, pos);
   if (state.ended !== null) return 'battleEnded';
   const s = state.sides[side];
   const o = state.sides[otherSide(side)];
@@ -187,25 +201,8 @@ export function validateAction(
   const b = s.party[s.active];
   if (b === undefined) return 'badSwitchIndex';
   switch (action.kind) {
-    case 'move': {
-      let slot = -1;
-      for (let i = 0; i < b.creature.moves.length; i++) if (b.creature.moves[i]!.id === action.move) slot = i;
-      if (slot === -1) return 'unknownMove';
-      let md: MoveDef | null = null;
-      if (content !== null) {
-        try {
-          md = content.move(action.move);
-        } catch (_e) {
-          return 'unknownMove';
-        }
-      }
-      if (b.creature.moves[slot]!.pp <= 0) return 'noPp';
-      if (b.volatile.choiceLockedMove !== null && b.volatile.choiceLockedMove !== action.move) return 'choiceLocked';
-      if (content !== null && md !== null && md.power === 0 && blocksStatusMoves(heldHooks(b, content))) {
-        return 'statusMoveBlocked';
-      }
-      return null;
-    }
+    case 'move':
+      return validateMoveChoice(b, action.move, content);
     case 'switch':
       return validateSwitch(state, side, action.to, true);
     case 'item':
@@ -231,6 +228,27 @@ export function validateAction(
   }
 }
 
+/** The `move` checks of validateAction for battler `b` (shared with doubles). */
+export function validateMoveChoice(b: BattleState['sides'][0]['party'][number], move: string, content: ContentIndex | null): ActionError | null {
+  let slot = -1;
+  for (let i = 0; i < b.creature.moves.length; i++) if (b.creature.moves[i]!.id === move) slot = i;
+  if (slot === -1) return 'unknownMove';
+  let md: MoveDef | null = null;
+  if (content !== null) {
+    try {
+      md = content.move(move);
+    } catch (_e) {
+      return 'unknownMove';
+    }
+  }
+  if (b.creature.moves[slot]!.pp <= 0) return 'noPp';
+  if (b.volatile.choiceLockedMove !== null && b.volatile.choiceLockedMove !== move) return 'choiceLocked';
+  if (content !== null && md !== null && md.power === 0 && blocksStatusMoves(heldHooks(b, content))) {
+    return 'statusMoveBlocked';
+  }
+  return null;
+}
+
 // ─── ordering ───────────────────────────────────────────────────────────────
 
 interface Actor {
@@ -254,7 +272,12 @@ function order(ctx: Ctx, actors: readonly Actor[]): readonly Actor[] {
 // ─── items ──────────────────────────────────────────────────────────────────
 
 function useItem(ctx: Ctx, side: 0 | 1, def: ConsumableDef, targetIdx: number): 'ended' | null {
-  const who = activeRef(ctx, side);
+  return useItemAt(ctx, activeRef(ctx, side), def, targetIdx);
+}
+
+/** The battler at `who` uses consumable `def` on party index `targetIdx` of its own side. */
+export function useItemAt(ctx: Ctx, who: Ref, def: ConsumableDef, targetIdx: number): 'ended' | null {
+  const side = who.side;
   const tRef = ref(side, targetIdx);
   const t = ctx.st.sides[side].party[targetIdx]!;
   emit(ctx, { t: 'itemUsed', who, item: def.id, target: tRef, consumedHeld: false });
@@ -299,19 +322,18 @@ function useItem(ctx: Ctx, side: 0 | 1, def: ConsumableDef, targetIdx: number): 
 
 // ─── moves ──────────────────────────────────────────────────────────────────
 
-function confusionSelfHit(ctx: Ctx, side: 0 | 1, b: MBattler): void {
+function confusionSelfHit(ctx: Ctx, who: Ref, b: MBattler): void {
   const sp = ctx.content.species(b.creature.speciesId);
   const L = b.creature.level;
   const A = applyRatio(calcStat(sp.baseAtk, L), stageRatio(b.stages.atk));
   const D = Math.max(1, applyRatio(calcStat(sp.baseDef, L), stageRatio(b.stages.def)));
   const base = Math.floor(Math.floor((Math.floor((2 * L) / 5 + 2) * 40 * A) / D) / 50) + 2;
-  dealDamage(ctx, activeRef(ctx, side), Math.max(1, base), 'confusion', activeRef(ctx, side), null);
+  dealDamage(ctx, who, Math.max(1, base), 'confusion', who, null);
 }
 
-/** Pre-action checks in §2.11 order. Returns true when the battler may act. */
-function canAct(ctx: Ctx, side: 0 | 1): boolean {
-  const b = active(ctx, side);
-  const who = activeRef(ctx, side);
+/** Pre-action checks in §2.11 order for the battler at `who`. Returns true when the battler may act. */
+export function canActAt(ctx: Ctx, who: Ref): boolean {
+  const b = at(ctx, who);
   if (!isAlive(b)) return false;
   if (b.volatile.flinched) {
     b.volatile.flinched = false;
@@ -349,7 +371,7 @@ function canAct(ctx: Ctx, side: 0 | 1): boolean {
     } else if (rollPercent(ctx, 33)) {
       b.volatile.movedThisTurn = true;
       emit(ctx, { t: 'statusTick', target: who, status: 'confuse', detail: 'confused' });
-      confusionSelfHit(ctx, side, b);
+      confusionSelfHit(ctx, who, b);
       checkFaint(ctx, who);
       return false;
     }
@@ -358,13 +380,18 @@ function canAct(ctx: Ctx, side: 0 | 1): boolean {
 }
 
 function executeMove(ctx: Ctx, side: 0 | 1, moveId: string): void {
-  if (!canAct(ctx, side)) return;
-  const b = active(ctx, side);
-  const who = activeRef(ctx, side);
+  executeMoveAt(ctx, activeRef(ctx, side), moveId, activeRef(ctx, other(side)));
+}
+
+/**
+ * One single-target move by the battler at `who` aimed at `foeRef` (singles: the foe's active; doubles: the resolved
+ * target, possibly the ally). Pre-action checks, PP, moveUsed, accuracy, damage, effect, contact, Weakness Policy, faints.
+ */
+export function executeMoveAt(ctx: Ctx, who: Ref, moveId: string, foeRef: Ref): void {
+  if (!canActAt(ctx, who)) return;
+  const b = at(ctx, who);
   const move = ctx.content.move(moveId);
-  const foeSide = other(side);
-  const foe = active(ctx, foeSide);
-  const foeRef = activeRef(ctx, foeSide);
+  const foe = at(ctx, foeRef);
   // A damaging move always hits the foe; `target` only steers power-0 moves (self/field) — see IMPLEMENTATION-NOTES.
   const hitsFoe = move.power > 0 || move.target === 'foe';
   const targetRef = hitsFoe ? foeRef : who;
@@ -399,7 +426,7 @@ function executeMove(ctx: Ctx, side: 0 | 1, moveId: string): void {
   }
 
   if (!hitsFoe) {
-    applyEffect(ctx, side, move, 0);
+    applyEffect(ctx, who, foeRef, move, 0);
     return;
   }
 
@@ -443,7 +470,7 @@ function executeMove(ctx: Ctx, side: 0 | 1, moveId: string): void {
   }
 
   // Effect
-  applyEffect(ctx, side, move, dealt);
+  applyEffect(ctx, who, foeRef, move, dealt);
 
   // Contact hooks (defender's ability reacts to the attacker's touch)
   if (move.power > 0 && move.contact && isAlive(b)) {
@@ -481,63 +508,70 @@ function executeMove(ctx: Ctx, side: 0 | 1, moveId: string): void {
   checkFaint(ctx, who);
 }
 
-function applyEffect(ctx: Ctx, side: 0 | 1, move: MoveDef, dealt: number): void {
+/** The move's §2.4 effect by `who` against `def` (singles: the foe's active). */
+export function applyEffect(ctx: Ctx, who: Ref, def: Ref, move: MoveDef, dealt: number): void {
   if (move.effect === null) return;
-  if (effectTargetsDefender(move.effect) && !isAlive(active(ctx, other(side)))) return;
+  if (effectTargetsDefender(move.effect) && !isAlive(at(ctx, def))) return;
   // "always" effects (§2.4 table) never roll; chance-gated ones roll once when effectChance < 100.
   if (!effectAlwaysApplies(move.effect) && move.effectChance < 100 && !rollPercent(ctx, move.effectChance)) return;
-  EFFECT_HANDLERS[move.effect](ctx, side, move, dealt);
+  EFFECT_HANDLERS[move.effect](ctx, who, def, move, dealt);
 }
 
 // ─── end of turn ────────────────────────────────────────────────────────────
 
-function chip(ctx: Ctx, side: 0 | 1, den: number, cause: 'burn' | 'poison' | 'trap' | 'sand' | 'hail'): void {
-  const b = active(ctx, side);
+function chip(ctx: Ctx, who: Ref, den: number, cause: 'burn' | 'poison' | 'trap' | 'sand' | 'hail'): void {
+  const b = at(ctx, who);
   if (!isAlive(b)) return;
-  dealDamage(ctx, activeRef(ctx, side), Math.max(1, Math.floor(b.maxHp / den)), cause, null, null);
+  dealDamage(ctx, who, Math.max(1, Math.floor(b.maxHp / den)), cause, null, null);
 }
 
 function endOfTurn(ctx: Ctx): void {
+  endOfTurnAt(ctx, [activeRef(ctx, 0), activeRef(ctx, 1)]);
+}
+
+/**
+ * §2.11 step 7 over the battlers on the field, in field order (singles: side 0's active, side 1's; doubles: side 0
+ * position 0, position 1, then side 1's) — each phase runs over every one of them before the next phase.
+ */
+export function endOfTurnAt(ctx: Ctx, field: readonly Ref[]): void {
   const st = ctx.st;
   // weather damage
   const w = st.field.weather.kind;
   if (w === 'sand' || w === 'hail') {
-    for (let i = 0; i < SIDES.length; i++) {
-      const side = SIDES[i]!;
-      const b = active(ctx, side);
+    for (let i = 0; i < field.length; i++) {
+      const who = field[i]!;
+      const b = at(ctx, who);
       if (!isAlive(b)) continue;
       const types = ctx.content.species(b.creature.speciesId).types;
       const immune =
         w === 'sand'
           ? types.indexOf('Rock') !== -1 || types.indexOf('Ground') !== -1 || types.indexOf('Steel') !== -1
           : types.indexOf('Ice') !== -1;
-      if (!immune) chip(ctx, side, 16, w);
+      if (!immune) chip(ctx, who, 16, w);
     }
   }
   // burn
-  for (let i = 0; i < SIDES.length; i++) {
-    const side = SIDES[i]!;
-    if (hasStatus(active(ctx, side).creature.status, 'burn')) chip(ctx, side, 16, 'burn');
+  for (let i = 0; i < field.length; i++) {
+    if (hasStatus(at(ctx, field[i]!).creature.status, 'burn')) chip(ctx, field[i]!, 16, 'burn');
   }
   // poison
-  for (let i = 0; i < SIDES.length; i++) {
-    const side = SIDES[i]!;
-    if (hasStatus(active(ctx, side).creature.status, 'poison')) chip(ctx, side, 8, 'poison');
+  for (let i = 0; i < field.length; i++) {
+    if (hasStatus(at(ctx, field[i]!).creature.status, 'poison')) chip(ctx, field[i]!, 8, 'poison');
   }
   // trap
-  for (let i = 0; i < SIDES.length; i++) {
-    const side = SIDES[i]!;
-    const b = active(ctx, side);
+  for (let i = 0; i < field.length; i++) {
+    const who = field[i]!;
+    const b = at(ctx, who);
     if (b.volatile.trappedTurns > 0 && isAlive(b)) {
-      chip(ctx, side, 8, 'trap');
+      chip(ctx, who, 8, 'trap');
       b.volatile.trappedTurns -= 1;
-      if (b.volatile.trappedTurns === 0) emit(ctx, { t: 'trapEnd', target: activeRef(ctx, side) });
+      if (b.volatile.trappedTurns === 0) emit(ctx, { t: 'trapEnd', target: who });
     }
   }
   // berries
-  for (let i = 0; i < SIDES.length; i++) {
-    const side = SIDES[i]!;
-    const b = active(ctx, side);
+  for (let i = 0; i < field.length; i++) {
+    const who = field[i]!;
+    const b = at(ctx, who);
     if (!isAlive(b) || b.volatile.berryConsumed || b.creature.heldItem === null) continue;
     const berries = heldHooksOfKind(heldHooks(b, ctx.content), 'berry');
     for (let j = 0; j < berries.length; j++) {
@@ -547,27 +581,27 @@ function endOfTurn(ctx: Ctx): void {
       const item = b.creature.heldItem;
       if (item === null) break;
       const amt = h.heal.kind === 'fraction' ? fractionOfMax(b, h.heal.value) : h.heal.value;
-      emit(ctx, { t: 'heldItemTrigger', who: activeRef(ctx, side), item, consumed: true });
-      healBattler(ctx, activeRef(ctx, side), amt, 'berry', item);
+      emit(ctx, { t: 'heldItemTrigger', who, item, consumed: true });
+      healBattler(ctx, who, amt, 'berry', item);
       b.volatile.berryConsumed = true;
       b.creature.heldItem = null;
       break;
     }
   }
   // endOfTurn abilities (Speed Boost)
-  for (let i = 0; i < SIDES.length; i++) {
-    const side = SIDES[i]!;
-    const b = active(ctx, side);
+  for (let i = 0; i < field.length; i++) {
+    const who = field[i]!;
+    const b = at(ctx, who);
     if (!isAlive(b)) continue;
     const hooks = hooksOfKind(abilityHooks(b, ctx.content), 'endOfTurn');
     for (let j = 0; j < hooks.length; j++) {
       const h = hooks[j]!;
-      emit(ctx, { t: 'abilityTrigger', who: activeRef(ctx, side), ability: b.creature.ability, detail: 'endOfTurn' });
-      changeStage(ctx, activeRef(ctx, side), h.raise.stat, h.raise.stages, activeRef(ctx, side), 'ability');
+      emit(ctx, { t: 'abilityTrigger', who, ability: b.creature.ability, detail: 'endOfTurn' });
+      changeStage(ctx, who, h.raise.stat, h.raise.stages, who, 'ability');
     }
   }
-  // weather countdown
-  if (st.field.weather.kind !== 'none') {
+  // weather countdown (turns 0 = ambient zone weather, Phase D7: no countdown, no tick)
+  if (st.field.weather.kind !== 'none' && st.field.weather.turns > 0) {
     const kind = st.field.weather.kind;
     const left = st.field.weather.turns - 1;
     if (left <= 0) {
@@ -579,19 +613,28 @@ function endOfTurn(ctx: Ctx): void {
     }
   }
   // faint checks
-  for (let i = 0; i < SIDES.length; i++) checkFaint(ctx, activeRef(ctx, SIDES[i]!));
+  for (let i = 0; i < field.length; i++) checkFaint(ctx, field[i]!);
   // mustSwitch
   for (let i = 0; i < SIDES.length; i++) {
     const side = SIDES[i]!;
     const s = st.sides[side];
-    s.mustSwitch = !isAlive(active(ctx, side)) && firstAlive(s, s.active) !== -1;
+    s.mustSwitch = needsReplacement(s);
     if (s.mustSwitch) emit(ctx, { t: 'switchRequired', side });
   }
   st.turn += 1;
   emit(ctx, { t: 'turnEnd', turn: st.turn });
 }
 
-function checkEnd(ctx: Ctx): void {
+/** Singles: the active fainted and a replacement stands. Doubles: a position holds a fainted battler and a bench creature stands. */
+export function needsReplacement(s: MSide): boolean {
+  if (s.actives === undefined) return !isAlive(s.party[s.active]!) && firstAlive(s, s.active) !== -1;
+  const a = s.actives;
+  if (isAlive(s.party[a[0]]!) && isAlive(s.party[a[1]]!)) return false;
+  for (let i = 0; i < s.party.length; i++) if (i !== a[0] && i !== a[1] && isAlive(s.party[i]!)) return true;
+  return false;
+}
+
+export function checkEnd(ctx: Ctx): void {
   const a0 = anyAlive(ctx.st.sides[0]);
   const a1 = anyAlive(ctx.st.sides[1]);
   if (a0 && a1) return;
@@ -604,16 +647,21 @@ function checkEnd(ctx: Ctx): void {
 
 export function resolveTurn(
   state: BattleState,
-  actions: readonly [Action | null, Action | null],
+  actions: readonly [SideChoice, SideChoice],
   content: ContentIndex,
 ): TurnResult {
   if (state.ended !== null) throw new InvalidActionError(0, 'battleEnded');
+  // Phase D6: a doubles battle resolves in doubles.ts; slots absent runs the unchanged singles path below
+  if (state.slots === 2) return resolveDoublesTurn(state, actions, content);
+  const a0in = actions[0];
+  const a1in = actions[1];
+  if (Array.isArray(a0in) || Array.isArray(a1in)) throw new TypeError('resolveTurn: per-position choices are for doubles battles only');
   const ctx = makeCtx(state, content);
   const st = ctx.st;
   const replacement = st.sides[0].mustSwitch || st.sides[1].mustSwitch;
 
   // NPC sides never pass actions: choose deterministically from the battle rng.
-  const acts: [Action | null, Action | null] = [actions[0], actions[1]];
+  const acts: [Action | null, Action | null] = [a0in as Action | null, a1in as Action | null];
   for (let i = 0; i < SIDES.length; i++) {
     const side = SIDES[i]!;
     if (acts[side] !== null || st.sides[side].kind === 'player') continue;

@@ -15,15 +15,18 @@ import { WebSocketTransport } from '@colyseus/ws-transport';
 import { fnv1a32 } from '@ewa/core';
 import type { FastifyInstance } from 'fastify';
 import type { AccessClaims, BanCache, ServerDeps } from './deps';
+import { envWarnings } from './env';
 import { startMarketExpiry } from './jobs/marketExpiry';
 import { startLiveOpsRollover } from './liveops/rollover';
+import { createMailer } from './mail/mailer';
 import { MetricsRegistry, timedDb } from './metrics';
 import { buildRest } from './rest/app';
 import type { RestDeps } from './rest/http';
 import { localRateLimiter, presenceRateLimiter } from './rest/rateLimit';
+import { MatchQueue, RANKED_ARENA, RANKED_TICK_MS } from './rooms/matchQueue';
 import { PresenceMirror } from './rooms/presenceMirror';
 import { PresenceStore } from './rooms/presenceStore';
-import { ZONE_ROOM } from './rooms/matchmaking';
+import { ZONE_ROOM, pickZoneRoom } from './rooms/matchmaking';
 import { bindZoneRoom, refuseDirectMatchmaking } from './rooms/ZoneRoom';
 
 export const MAX_SOCKETS_PER_IP = 8;
@@ -73,6 +76,7 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
   const { env, log } = deps;
   const worldSeed = env.SERVER_SEED ?? String(fnv1a32(`${process.pid}:${deps.clock()}`));
   if (env.SERVER_SEED === undefined) log.info({ worldSeed }, 'SERVER_SEED absent — derived world seed');
+  for (const w of envWarnings(env)) log.warn(w);
 
   // 1. presence / driver — the `colyseus` bundle (auth, tools, monitor, playground, redis) is imported only
   //    when Redis is configured, so a dev/test process never loads it
@@ -96,6 +100,16 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
 
   let verify: ((token: string) => AccessClaims) | null = null;
   const metrics = new MetricsRegistry(deps.clock);
+  const ticket = randomBytes(24).toString('base64url');
+  // Phase D13: the queue lives in presence (any shard / process adds and drops entries); the lease holder matches
+  const matchQueue = new MatchQueue(presence, {
+    clock: deps.clock,
+    arenaRoom: async () => {
+      const room = await pickZoneRoom(RANKED_ARENA.zoneId, ticket);
+      return { roomId: room.roomId };
+    },
+    isOnline: async (playerId) => (await presenceMirror.lookup(playerId)) !== null,
+  });
   const runtime: RestDeps = {
     ...deps,
     // every transaction the server runs is timed (§30.10.2 db.txPerSec / txP99Ms / poolInUse)
@@ -106,8 +120,10 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
     metrics,
     bans,
     limiter,
-    ticket: randomBytes(24).toString('base64url'),
+    ticket,
     worldSeed,
+    mailer: deps.mailer ?? createMailer(env, log),
+    matchQueue,
     verifyAccess: (token) => {
       if (verify === null) throw new Error('verifier not ready');
       return verify(token);
@@ -153,6 +169,7 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
     setInterval(() => void bans.refresh().catch((e: unknown) => log.warn({ err: e }, 'ban cache refresh failed')), BAN_REFRESH_MS),
     setInterval(() => local.sweep(), RATE_SWEEP_MS),
     setInterval(() => presenceMirror.sweep(), PRESENCE_SWEEP_MS),
+    setInterval(() => void matchQueue.tick().catch((e: unknown) => log.warn({ err: e }, 'ranked matcher pass failed')), RANKED_TICK_MS),
   ];
   for (const t of timers) t.unref();
   const jobs: { stop(): void }[] = [startMarketExpiry(deps), startLiveOpsRollover({ ...deps, bus: runtime.bus })];

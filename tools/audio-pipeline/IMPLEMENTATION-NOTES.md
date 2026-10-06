@@ -41,3 +41,102 @@ The SPEC is not edited. Every place where this implementation does something oth
   the webm hash serves both `url` and `urlFallback`.
 - `requestHash` includes the provider name, so switching provider re-plans every job.
 - Seeds in the source manifest are the first 4 bytes of `sha256(<job id stem>)`; sfx variant *i* uses seed + *i*.
+
+## Phase E4 ingest (2026-10-06): CC0 sources instead of a paid provider
+
+The user chose CC0 packs (orchestral/adventure) over Stable Audio. **Nothing was downloaded**: the candidate list is
+`.design/audio/sources.candidates.md` (41 downloads awaiting approval), and `.design/audio/sources.json` is an empty
+mapping (`$comment` only) until the files exist. Spec: `.design/spec/40-pipelines.md` §40.4.8.
+
+### Commands
+
+- `ingest` (`src/ingest.ts`): for every job `sources.json` covers, it decodes the file with ffmpeg (wav, ogg, mp3, flac, or anything else ffmpeg reads) to 48 kHz float, applies `trim` and `gainDb`, and shapes the audio (below). It writes `rawWavPath(cache, requestHash)` plus a `jobs.json` record `{ provider: 'cc0', source: { file, sha256, role: direct|layer|variant, from? } }`, and saves incrementally. Outputs: `qa/ingest-report.json` (coverage, ingested, cached, missing, blocked, failed, overrides, stretch ratios) and the credits. It exits 1 when anything is missing or failed, but every other job is still ingested. A missing file is a report line, never a throw.
+- `credits` (`src/credits.ts`) writes `assets-src/audio/CREDITS.md` (one row per source file: title, author, licence, page, file, the jobs it fills, with derived jobs counted) and the licence texts listed from `assets-src/audio/licenses/`. It also writes `public/audio/CREDITS.txt`, which the client ships; Settings → Audio links to it. `ingest` runs it at the end. The output is deterministic, with no dates.
+- `--provider cc0` (or `EWA_AUDIO_PROVIDER=cc0`) changes three commands:
+  - `plan` and `process` use the source salts and tempo overrides, so `process` finds the ingested WAVs.
+  - `plan` writes `qa/plan-cc0.json`, so the committed `plan.json` (Stable Audio) is not replaced.
+  - `generate` prints that cc0 has no generator.
+  - `all` runs plan → ingest → process.
+  - `pnpm … cc0` is `all --provider cc0 --placeholders`: unmapped jobs stay placeholders.
+
+### sources.json
+
+Format: `{ "<jobId>": { file, licence: "CC0-1.0", author, url, title?, licenceFile?, trim?: [s, e], gainDb?, bpm?, bars?, crossfadeSec?, derive?, note? } }`.
+- Keys starting with `$` are ignored.
+- Validation is in `src/sources.ts`. Entries with problems are dropped and reported:
+  - a licence other than `CC0-1.0`
+  - a key that is not a job id
+  - `bpm`/`bars`/`derive` outside a theme's base entry
+  - `crossfadeSec` outside themes
+  - `..` or an absolute path in `file`
+- Malformed JSON is a config error (exit 1, message).
+
+### requestHash and the cache
+
+`requestHash(provider, kind, prompt, salt?)` appends the salt only when one exists, so **every provider-generated hash is unchanged** (a test pins this). The salts:
+- direct job: `sha256('cc0', INGEST_RECIPE, sha256(file bytes), JSON(trim, gainDb, bpm, bars, crossfadeSec))`
+- derived layer: `sha256(base salt, 'layer', layer, DERIVE_RECIPE)`
+- sfx variant: `sha256(sibling salt, 'variant', ratio)`
+
+What re-ingests:
+- A swapped or edited file re-ingests exactly the jobs made from it (a test covers this).
+- Editing attribution (author, url, title, note) re-ingests nothing.
+- Bumping `INGEST_RECIPE` / `DERIVE_RECIPE` re-ingests everything affected.
+
+Salted jobs ignore `rerolls.json`, because a fixed file cannot be re-rolled.
+
+### Shaping
+
+| Kind | What the ingest writes |
+|---|---|
+| theme stem | The region (`trim`, default the whole file) is one seamless loop; `crossfadeSec` bakes a seam fade from the audio just before `trim[0]` (`bakeSeamCrossfade`). It is conformed to the theme's nominal loop `bars × 240 / bpm`: equal ±2 samples passes through; up to ±6 % is time-stretched with ffmpeg `atempo` over three tiled periods, keeping the middle one so the stretched loop still joins itself; beyond that, a clear error says to set `trim` to whole bars or declare `bpm`/`bars`. It is then laid out like a generated stem: 0.5 s of the loop's own tail, then the loop, repeated to `(bars + 2) × 240 / bpm + 2` s. That is periodic by construction, so `findLoop` scores ≈ 1. |
+| tempo override | A base entry's `bpm`/`bars` re-time the theme (`applySourceOverrides`: theme bpm/bars and every stem prompt's bpm + durationSec). `process` finds the loop at the track's real length and writes the real `bpm` to the output manifest, instead of forcing a track written at 128 bpm onto the bible's 96. `bars` may be any integer 2–64 here, because the client reads loop points, not bars. |
+| derived layers | Used when a theme has only a base track (`derive` defaults to true). Each layer is an ffmpeg-filtered copy of the same periodic signal. The kept window starts ≥ 8 s into the filtered stream at the same loop phase, so the filters are in steady state and the copies stay periodic and sample-aligned with base. RMS is set relative to base over the loop. The layers follow the roles in audio-bible §3.1:<br>• **threat**: 110 Hz–7 kHz band → slow-attack compressor (transients punch through) → a decaying eighth-note gate locked to the loop downbeat (depth 0.65); −6 dB.<br>• **biome**: above 2.2 kHz (two poles), widened (`extrastereo=m=2`), eighth- and quarter-note echoes; −10 dB. The harvested 1 200 Hz low-pass removes it entirely, as the bible intends.<br>• **night**: below 1 kHz (two poles), widened, 1-, 2- and 3-beat echoes as a soft wash; −9 dB. |
+| ambience | Stereo, trimmed, cut to the bed's `durationSec`. Must be ≥ 6.5 s for process's 2 s loop cross-fade. |
+| sfx / ui | Mono, trimmed. A clip longer than the id's `durationSec` (after its −50 dBFS lead-in) fades out over min(0.25 s, 30 %) and is cut there, so process's cap is not an abrupt cut. A missing variant is a sibling's clip pitch-shifted (`asetrate` + `aresample`; ratios ±1 then ±2 semitones, `VARIANT_PITCH`). |
+
+### Deviations / decisions
+
+| # | Decision | Why |
+|---|---|---|
+| E4-1 | Stems for single-track themes are **derived in ingest**, not handled by single-stem themes in the client | Derivation keeps the four-stem contract (§20.7.3/§20.7.4), threat/night still change the music in battle and at night, and nothing downstream changes. The alternative (themes with only `base`) would make every CC0 theme lose its battle intensity and night colour. The client was still made tolerant of absent layers (below) as a safety net. |
+| E4-2 | `process`: derived layers skip `alignLag` and **take the base layer's static gain** (`normaliseClip(..., fixedGainDb)`); base is normalised first | Independent normalisation to −16 LUFS would raise a −10 dB "air" layer by 10 dB and turn base + biome into a +6 dB coherent doubling. With linked gain, the relations ingest set (−6/−10/−9 dB) survive. The output theme gets `derived: ['threat','biome','night']` (optional field; the client type has it as `DerivedStem[]`). |
+| E4-3 | `process`: a CC0 source is **fixed**: loop / true-peak rejections are flagged with the gain clamped, never queued for a re-roll | A re-roll bumps the seed, which for a salted job only changes the hash and then finds no WAV. |
+| E4-4 | Licence must be exactly `CC0-1.0` | The user's decision. CC-BY items are listed as excluded in the candidates file. |
+| E4-5 | One file per job; no multi-file mixing in `sources.json` | Keeps the hash and credits model simple. Beds or sfx that need layering are premixed into `assets-src/audio/cc0/mix/` (noted in the candidates file). |
+| E4-6 | `assets-src/audio/cc0/` is gitignored; `assets-src/audio/licenses/` and `CREDITS.md` are tracked | Same policy as the creature and model sources (re-fetchable from the URLs in `sources.json`). `licenses/CC0-1.0.txt` is a pointer to the legal code for now; replace it with the full text and add each pack's own licence file when downloading. |
+
+### Client (`packages/client/src/audio/`)
+
+- `manifest.ts` adds `DerivedStem` and the optional theme field `derived`.
+- `AudioDirector.startTheme` now handles three cases:
+  - **Absent layer:** a layer missing from the theme stays silent instead of throwing.
+  - **Derived layer without base:** it is never played (a filtered copy alone sounds broken). A generated layer still plays without base, as before.
+  - **Double start (pre-existing bug, fixed):** the first user gesture reached `startTheme` twice, once via `ensureContext` and once via `init`. Every stem started twice, at double level, and the loop scheduler tracked only one copy. A generation token now lets only the latest call start sources.
+- Tests: `packages/client/test/audio-stems.test.ts`, using a fake AudioContext.
+
+### Tests
+
+`test/ingest.test.ts` (14 tests; the ffmpeg-gated ones skip with a reason when ffmpeg is missing). Every fixture is synthesised in the test. Ogg and FLAC inputs are transcoded locally with ffmpeg. The tests cover:
+- validation and classification
+- coverage
+- salts (unsalted hashes unchanged, content change, attribution vs trim)
+- tempo overrides
+- credits rows / markdown / text
+- `conformLoop` (stretch 2 %, refuse above 6 %)
+- derived layers: 4 equal lengths, periodic ≥ 0.999, differ from base
+- `fitSfx`
+- ingest: WAVs + records + layer levels within ±0.5 dB of the recipe + credits files
+- re-ingest is all cache hits
+- an edited file re-ingests only its 2 jobs
+- `process --provider cc0` gives a complete manifest: one shared loop at nominal ± 5 ms, `derived` flagged, threat ≥ 3 LU under base
+- missing files reported with their derived siblings blocked
+- an absent `sources.json`
+
+### Not done here (needs the user's download approval)
+
+- Downloading the packs.
+- Writing the real `sources.json`. Choosing loop windows (`trim` + `bpm`/`bars`) is a listening task.
+- Premixing the multi-file beds.
+- The full CC0 legal code text plus the per-pack licence files.
+- A real `process` run into `packages/client/public/audio/`.

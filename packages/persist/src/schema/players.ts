@@ -10,6 +10,8 @@ export const players = pgTable(
     email: varchar('email', { length: 254 }).notNull(),
     /** argon2id (hash-wasm), m=19456 t=2 p=1 — hashed by the server, opaque here. */
     passwordHash: text('password_hash').notNull(),
+    /** Phase C6: set by POST /auth/verify; null = unverified. Never gates play (a nudge only). */
+    emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
     money: integer('money').notNull().default(3000),
     zoneId: varchar('zone_id', { length: 32 }).notNull().default('mirevale'),
     x: real('x').notNull().default(0),

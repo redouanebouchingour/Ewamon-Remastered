@@ -4,8 +4,10 @@
  * (town ±64 · route ±104 · story ±84, §3.1) and are cleared to walkable by the heightfield builder (§3.11).
  * NPC ids follow roster-coverage §12.1's `<zoneId>.<role>`; `react` lists most-progressed first (bible §9.9).
  */
-import type { GroundItemDef, LoreTabletDef, NpcDef, TrainerDef, ZoneDef } from '../types';
+import type { GroundItemDef, LoreTabletDef, NpcDef, TrainerDef, ZoneDef, ZoneId } from '../types';
 import { SHOP_STOCK_DEFAULT } from './shop';
+import { PROGRESSION_STOCK } from './progressionItems';
+import { OBSTACLES } from './obstacles';
 
 type React = NpcDef['react'];
 
@@ -16,7 +18,7 @@ const npc = (
   z: number,
   look: string,
   lines: readonly string[],
-  o: { when?: string; until?: string; react?: React } = {},
+  o: { when?: string; until?: string; react?: React; tutor?: readonly string[] } = {},
 ): NpcDef => ({
   id,
   name,
@@ -27,6 +29,8 @@ const npc = (
   when: o.when ?? null,
   until: o.until ?? null,
   react: o.react ?? [],
+  // Phase D2 move tutor: the key exists only on tutors (x/z alone feed the layout)
+  ...(o.tutor !== undefined ? { tutor: o.tutor } : {}),
 });
 
 const tr = (
@@ -51,6 +55,9 @@ const tr = (
   rematchDays,
 });
 
+/** Phase D6: this trainer fights 2-on-2 (the key exists only on doubles trainers; x/z alone feed the layout). */
+const doubles = (t: TrainerDef): TrainerDef => ({ ...t, doubles: true });
+
 const it = (id: string, x: number, z: number, item: string, qty = 1): GroundItemDef => ({
   id,
   x,
@@ -68,8 +75,10 @@ const lo = (id: string, x: number, z: number, title: string, text: readonly stri
 });
 
 const TOWN_SHOP = (extra: readonly string[]): readonly string[] => [...SHOP_STOCK_DEFAULT, ...extra];
+/** Phase D2/D3: the town's TMs and evolution stones (data/progressionItems.ts). */
+const stockFor = (id: ZoneId): readonly string[] => PROGRESSION_STOCK[id] ?? [];
 
-export const ZONES: readonly ZoneDef[] = [
+const BASE_ZONES: readonly ZoneDef[] = [
   // ───────────────────────── 6.1 mirevale ─────────────────────────
   {
     id: 'mirevale',
@@ -380,7 +389,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     warps: [{ id: 'saltmourn.hut_door', x: 30, z: 44, toX: -40, toZ: 44, label: "Harbourmaster's hut" }],
-    shop: TOWN_SHOP(['tide_orb']),
+    shop: TOWN_SHOP(['tide_orb', ...stockFor('saltmourn')]),
     healer: true,
     gym: 'tidal_gym',
     storyRole: {
@@ -493,7 +502,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     warps: [],
-    shop: TOWN_SHOP([]),
+    shop: TOWN_SHOP(stockFor('stormrook')),
     healer: true,
     gym: 'volt_gym',
     storyRole: {
@@ -532,7 +541,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     trainers: [
-      tr('galvan_route.rocker', 'Rocker Jinx', -50, -40, 'casual2_female', [['ampmite', 17], ['stormchick', 18]], ['Crank it up. Loud is a register too.'], 980),
+      doubles(tr('galvan_route.rocker', 'Rocker Jinx', -50, -40, 'casual2_female', [['ampmite', 17], ['stormchick', 18]], ['Crank it up. Loud is a register too.'], 980)),
       tr('galvan_route.guard', 'Guard Volt', 40, 60, 'soldier_male', [['gustuff', 18], ['shardling', 19]], ["Span's closed to grey coats. You? Prove it."], 1020),
     ],
     items: [it('gr1', 20, 80, 'superpotion', 2), it('gr2', -70, -70, 'dusk_orb')],
@@ -608,7 +617,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     warps: [],
-    shop: TOWN_SHOP(['prism_orb']),
+    shop: TOWN_SHOP(['prism_orb', ...stockFor('marrowdig')]),
     healer: true,
     gym: 'stone_gym',
     storyRole: {
@@ -648,7 +657,7 @@ export const ZONES: readonly ZoneDef[] = [
     trainers: [
       tr('sable_deepcut', 'Sable', -70, 10, 'casual2_male', [['caldermole', 25], ['glimmereen', 23], ['bogmaw', 24]], ["I've got a quota and a brother."], 1200, null),
       tr('deepcut_route.breaker', 'Breaker Hod', 0, -60, 'viking_male', [['pebblit', 22], ['embrock', 23]], ['I break walls. And teams.'], 1200),
-      tr('deepcut_route.digger', 'Digger Sten', 60, -30, 'cowboy_male', [['berkest', 23], ['coalette', 24]], ['The deeper we cut, the colder it gets. Wrong, that.'], 1240),
+      doubles(tr('deepcut_route.digger', 'Digger Sten', 60, -30, 'cowboy_male', [['berkest', 23], ['coalette', 24]], ['The deeper we cut, the colder it gets. Wrong, that.'], 1240)),
     ],
     items: [it('dr1', 30, 70, 'revive'), it('dr2', -50, -60, 'prism_orb')],
     lore: [
@@ -698,7 +707,8 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
       npc('vesperveil.lantern_maker', 'a lantern-maker', 10, 20, 'casual_male', [
         "Memory's loose here. Always was. Ghosts are just recollections that decided not to be certain. I make lanterns so they can find the way back to the hedge.",
-      ]),
+        'I teach a little, too. Three thousand a lesson — the lanterns do not pay for themselves.',
+      ], { tutor: ['Shadow Sneak', 'Spectral Burn', 'Night Slash', 'Endeavor'] }),
       npc('vesperveil.gravetender', 'the gravetender', -30, 30, 'old_classy_male', [
         "Nothing's buried here. There's nothing to bury — this is where things that never were come to be almost.",
       ], {
@@ -720,7 +730,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     warps: [],
-    shop: TOWN_SHOP(['phantom_orb']),
+    shop: TOWN_SHOP(['phantom_orb', ...stockFor('vesperveil')]),
     healer: true,
     gym: 'phantom_gym',
     storyRole: {
@@ -762,7 +772,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     trainers: [
-      tr('hollow_route.medium', 'Medium Sael', -40, 50, 'old_classy_female', [['nettlewisp', 27], ['murkrat', 28]], ['The absent whisper your name. They are not unkind. They are not anything.'], 1500),
+      doubles(tr('hollow_route.medium', 'Medium Sael', -40, 50, 'old_classy_female', [['nettlewisp', 27], ['murkrat', 28]], ['The absent whisper your name. They are not unkind. They are not anything.'], 1500)),
       tr('hollow_route.clerk', 'Provision Clerk Osk', 60, -50, 'suit_male', [['umbrit', 28], ['darkone', 29]], ['The Office welcomes readers. Most leave before the second column.'], 1500),
     ],
     items: [it('hr1', 30, 70, 'full_heal', 2), it('hr2', -80, -70, 'phantom_orb')],
@@ -841,7 +851,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     warps: [],
-    shop: TOWN_SHOP(['max_potion']),
+    shop: TOWN_SHOP(['max_potion', ...stockFor('forgewall')]),
     healer: true,
     gym: 'iron_gym',
     storyRole: {
@@ -880,7 +890,7 @@ export const ZONES: readonly ZoneDef[] = [
     ],
     trainers: [
       tr('siege_route.sentinel', 'Sentinel Cor', -30, -50, 'knight_golden_male', [['grubolt', 32], ['coldplate', 33]], ['None pass the wall unproven.'], 2000),
-      tr('siege_route.engineer', 'Salvage Engineer Rue', 50, -60, 'cowboy_female', [['scraphog', 33], ['alloylark', 34]], ['Every hulk here fought for something. Show me what yours fight for.'], 2000),
+      doubles(tr('siege_route.engineer', 'Salvage Engineer Rue', 50, -60, 'cowboy_female', [['scraphog', 33], ['alloylark', 34]], ['Every hulk here fought for something. Show me what yours fight for.'], 2000)),
     ],
     items: [it('sr1', 30, 70, 'revive'), it('sr2', -80, -60, 'max_ether')],
     lore: [
@@ -928,7 +938,8 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
       npc('skyrend.roost_keeper', 'a roost-keeper', 30, 20, 'cowboy_male', [
         'Scalewisp on the cliffs, glacifang after dark. Dragons are the register of things that were certain from the start. Nothing up here was ever a cub.',
-      ]),
+        "I'll drill a move into anything that can fly or fight for it. Three thousand, paid up front.",
+      ], { tutor: ['Brave Bird', 'Sky Pierce', 'Dragon Rush', 'Double Edge'] }),
       npc('skyrend.pilgrim', 'a Warden pilgrim', -20, 20, 'kimono_male', [
         "The Wardens hold no office and want none. They counted the sky for three hundred years and built twelve devices. That's their whole answer to the Provision. It's a slow answer.",
       ]),
@@ -948,7 +959,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     warps: [],
-    shop: TOWN_SHOP(['mythos_orb', 'max_revive']),
+    shop: TOWN_SHOP(['mythos_orb', 'max_revive', ...stockFor('skyrend')]),
     healer: true,
     gym: 'draco_gym',
     storyRole: { 1: null, 2: null, 3: 'The star-counts; the Wardens explained; the Ascend Badge as judgement.' },
@@ -983,7 +994,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     trainers: [
-      tr('ascent_route.tamer', 'Dragon-Tamer Vir', -20, 40, 'knight_golden_male', [['scalewisp', 38], ['budwing', 39]], ['Few climb this high. Fewer descend.'], 2600),
+      doubles(tr('ascent_route.tamer', 'Dragon-Tamer Vir', -20, 40, 'knight_golden_male', [['scalewisp', 38], ['budwing', 39]], ['Few climb this high. Fewer descend.'], 2600)),
       tr('ascent_route.warden_pilgrim', 'Warden Pilgrim Ilse', 50, 30, 'kimono_male', [['tidalfang', 39], ['glacifang', 40]], ['The shrine above is older than counting. Prove you can count.'], 2600),
     ],
     items: [it('ac1', 30, 70, 'full_heal', 3), it('ac2', -60, 80, 'revive', 2)],
@@ -1022,7 +1033,7 @@ export const ZONES: readonly ZoneDef[] = [
     gate: 'ascend',
     encounterTable: 'enc_solenne',
     npcs: [
-      npc('solenne.comptroller_varn', 'Comptroller Odile Varn', 0, -30, 'old_classy_female', [
+      npc('solenne.comptroller_varn', 'Comptroller Odile Varn', -3.5, -22.5, 'old_classy_female', [
         'I have never asked you to trust me. I have asked you to read.',
         'Thirty days.',
       ], { when: 'badge:ascend', until: 'spire_confronted' }),
@@ -1032,7 +1043,7 @@ export const ZONES: readonly ZoneDef[] = [
           { when: 'saw_capital_thinning', lines: ["The, the — I've lived here fifty years."] },
         ],
       }),
-      npc('solenne.bursar_quill', 'Bursar Elias Quill', 6, -34, 'suit_male', ["I've added a column.", 'Costs that appear on paper get argued about.'], { when: 'name_held' }),
+      npc('solenne.bursar_quill', 'Bursar Elias Quill', 3.5, -22.5, 'suit_male', ["I've added a column.", 'Costs that appear on paper get argued about.'], { when: 'name_held' }),
       npc('solenne.hospital_nurse', 'a nurse at the Provision Hospital', 34, 20, 'doctor_female_young', [
         "Dispensary's stocked. Always has been. I've worked here twenty years.",
       ], {
@@ -1050,14 +1061,14 @@ export const ZONES: readonly ZoneDef[] = [
         "'Twelfth of Winter. The lens. I have done a thing and the sacks are full. I will do it again tomorrow and write both down.'",
         'He wrote both down. Every Comptroller since has. Read the second column.',
       ]),
-      lo('lore_solenne_lectern', 0, -24, 'The Public Ledger', [
+      lo('lore_solenne_lectern', -7, -20, 'The Public Ledger', [
         'Working copy at the Observatory; this copy monthly by courier. 1,400 pages. Two columns.',
         'Anyone may read. Register notation on the draw side: species, place, count.',
         'If you can read it, you are one of thirteen people in Ewa who can. Twelve carry devices. One is the Comptroller.',
       ]),
     ],
-    warps: [{ id: 'solenne.league_hall', x: 30, z: -10, toX: 30, toZ: 44, label: 'League hall' }],
-    shop: TOWN_SHOP(['mythos_orb', 'max_potion', 'full_restore', 'max_revive', 'max_ether', 'rarecandy']),
+    warps: [],
+    shop: TOWN_SHOP(['mythos_orb', 'max_potion', 'full_restore', 'max_revive', 'max_ether', 'rarecandy', ...stockFor('solenne')]),
     healer: true,
     gym: null,
     storyRole: {
@@ -1289,3 +1300,9 @@ export const ZONES: readonly ZoneDef[] = [
     harvestState: 'harvested',
   },
 ];
+
+/** The 21 zones; Phase D10 merges each zone's Cut / Strength obstacles (data/obstacles.ts) — absent where none. */
+export const ZONES: readonly ZoneDef[] = BASE_ZONES.map((z) => {
+  const obstacles = OBSTACLES[z.id];
+  return obstacles === undefined ? z : { ...z, obstacles };
+});

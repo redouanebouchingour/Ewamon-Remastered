@@ -20,6 +20,7 @@ import type { Rng, RngState } from '@ewa/core';
 import type { Heightfield } from './heightfield';
 import type { Biome, ZoneDef, ZoneId, ZoneKind } from './types';
 import { ZONE_MARGIN, ZONE_SIZE } from './types';
+import { LEAGUE } from './data/league';
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
@@ -782,18 +783,21 @@ function planBuildings(zone: ZoneDef, L: LayoutCore, rng: Rng): PlanBuilding[] {
 
   if (zone.kind !== 'town') return out;
 
-  if (zone.gym !== null) {
+  // the league hall (Wardens + Champion) stands in the gym slot of the town that hosts them (solenne)
+  const leagueHall = zone.gym === null && LEAGUE.some((l) => l.zoneId === zone.id && l.stage !== 'gym');
+  if (zone.gym !== null || leagueHall) {
     // the door is fixed (the server's (0, −26)); the hall shrinks until every authored point is clear of it
     const [gx, gz] = T.gymDoor;
     const seed = u32(rng);
+    const id = leagueHall ? `${zone.id}.league` : `${zone.id}.gym`;
     let gym: PlanBuilding | null = null;
     for (let d = T.gymD; d >= 5 && gym === null; d -= 0.5) {
       for (let w = T.gymW; w >= 8 && gym === null; w -= 0.5) {
-        const b: PlanBuilding = { id: `${zone.id}.gym`, kind: 'gym', x: gx, z: gz - d / 2, yaw: 0, w, d, floors: 2, roof: landmarkRoof, seed };
+        const b: PlanBuilding = { id, kind: 'gym', x: gx, z: gz - d / 2, yaw: 0, w, d, floors: 2, roof: landmarkRoof, seed };
         if (clearOfPoints(b)) gym = b;
       }
     }
-    out.push(gym ?? { id: `${zone.id}.gym`, kind: 'gym', x: gx, z: gz - T.gymD / 2, yaw: 0, w: T.gymW, d: T.gymD, floors: 2, roof: landmarkRoof, seed });
+    out.push(gym ?? { id, kind: 'gym', x: gx, z: gz - T.gymD / 2, yaw: 0, w: T.gymW, d: T.gymD, floors: 2, roof: landmarkRoof, seed });
   }
   const lane = L.roads.find((r) => r.id === 'road_s' || r.id === 'lane_s');
   const flank = (kind: 'shop' | 'healer', side: -1 | 1): void => {

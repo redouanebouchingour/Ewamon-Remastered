@@ -342,3 +342,29 @@
   background: var(--bg-3);
   color: var(--text-hi);
 }
+
+/*
+ * Phase C3: eleven links (Map joined) no longer fit beside the brand, zone chip and money / level / account cluster
+ * under ~1400 px; there the links show their icons only (the label stays for screen readers, `title` for the pointer).
+ */
+@media (max-width: 1400px) {
+  .linkLabel {
+    position: absolute;
+    overflow: hidden;
+    inline-size: 1px;
+    block-size: 1px;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .link {
+    padding: 0 var(--s-3);
+  }
+}
+
+.menuRule {
+  display: block;
+  block-size: 1px;
+  margin: var(--s-2) 0;
+  background: var(--line-1);
+}

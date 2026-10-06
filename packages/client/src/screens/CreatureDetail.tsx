@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { CreatureInstance } from '@ewa/core';
-import { CREATURE_ITEMS, HELD_ITEMS, MULTI_USE_ITEMS, ability as abilityDef, displayName, itemInfo, maxHpOf, move as moveDef, species, statsOf } from '../data/content';
+import { CREATURE_ITEMS, HELD_ITEMS, MULTI_USE_ITEMS, STONE_IDS, ability as abilityDef, displayName, itemInfo, maxHpOf, move as moveDef, species, statsOf, stoneTarget } from '../data/content';
 import { useSessionStore } from '../state/session';
 import { Button } from '../ui/Button';
 import { badgesOf } from '../ui/CreatureCard';
@@ -23,6 +23,7 @@ import { TypeBadge } from '../ui/TypeBadge';
 import l from './layout.module.css';
 import s from './CreatureDetail.module.css';
 import type { IntentFetcher } from './shared';
+import { TeachSection } from './TeachSection';
 
 export interface CreatureDetailProps {
   readonly creature: CreatureInstance;
@@ -63,7 +64,8 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
   const nickDirty = nickname.trim() !== (c.nickname ?? '');
   const currentAbility = abilityDef(abilityId);
   // field items the player owns that work on a creature (Rare Candy, potions, revives, status cures, PP)
-  const usable = CREATURE_ITEMS.filter((i) => (items?.[i.id] ?? 0) > 0);
+  // Phase D3: an evolution stone is offered only to a creature that reacts to it
+  const usable = CREATURE_ITEMS.filter((i) => (items?.[i.id] ?? 0) > 0 && (!STONE_IDS.has(i.id) || stoneTarget(i.id, c) !== null));
   const useItem = usable.find((i) => i.id === useId) ?? usable[0];
   const owned = useItem === undefined ? 0 : (items?.[useItem.id] ?? 0);
   const multi = useItem !== undefined && MULTI_USE_ITEMS.has(useItem.id);
@@ -118,6 +120,8 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
           })}
         </div>
       </section>
+
+      <TeachSection creature={c} fetcher={fetcher} />
 
       <section className={l.section}>
         <h4 className={l.sectionTitle}>Use an item</h4>

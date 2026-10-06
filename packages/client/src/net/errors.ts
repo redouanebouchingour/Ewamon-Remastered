@@ -38,6 +38,13 @@ const MESSAGES: Readonly<Record<string, string>> = {
   notHoldable: 'That item cannot be held.',
   badAbility: 'It cannot have that ability.',
   notReady: 'It is not ready to evolve.',
+  // Phase D2
+  noTutorHere: 'No tutor here teaches that move.',
+  alreadyKnown: 'It already knows that move.',
+  movesFull: 'It knows four moves. Choose one to forget.',
+  notKnown: 'It does not know that move.',
+  alreadyOwned: 'You already have that. TMs are never used up.',
+  oneAtATime: 'One at a time.',
   notAtHealer: 'Find a healer first.',
   notUsable: 'That item cannot be used here.',
   notUsableHere: 'That item cannot be used here.',

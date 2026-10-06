@@ -16,6 +16,11 @@ export const LIMITS = {
   register: { max: 5, windowMs: 3_600_000 }, // per IP
   login: { max: 10, windowMs: 900_000 }, // per IP and per username_lower (both must pass)
   refresh: { max: 30, windowMs: 900_000 }, // per IP
+  // Phase C6 email routes
+  forgot: { max: 5, windowMs: 3_600_000 }, // POST /auth/forgot per IP (429 when exceeded)
+  forgotEmail: { max: 3, windowMs: 3_600_000 }, // reset mails per address: over it the 204 is answered but nothing is sent
+  emailToken: { max: 20, windowMs: 900_000 }, // POST /auth/reset + /auth/verify per IP
+  resend: { max: 3, windowMs: 3_600_000 }, // POST /auth/resend per player
   listing: { max: 5, windowMs: 3_600_000 }, // per player (MARKET.listMaxPerHour)
   bid: { max: 30, windowMs: 3_600_000 }, // per player (MARKET.bidMaxPerHour)
   message: { max: 20, windowMs: 60_000 }, // DMs per player
@@ -30,10 +35,22 @@ export const LIMITS = {
   interact: { max: 4, windowMs: 1_000 },
   engageSpawn: { max: 2, windowMs: 1_000 },
   battleAction: { max: 4, windowMs: 1_000 },
+  /**
+   * Phase D6: a doubles battle's position-1 `battleAction` counts in its own window, so the two per-turn actions a
+   * client sends back to back (one burst, one timestamp) never starve each other. Used only when the sender is in a
+   * doubles battle and names `pos: 1`; singles traffic stays on `battleAction` alone (4 / 1 s, unchanged).
+   */
+  battleActionPos1: { max: 4, windowMs: 1_000 },
   battleResync: { max: 4, windowMs: 1_000 },
   challenge: { max: 3, windowMs: 5_000 },
   tradeRequest: { max: 3, windowMs: 5_000 },
   raid: { max: 4, windowMs: 1_000 },
+  /** Phase C3 fast travel (the 3 s server cooldown answers anything faster with `cooldown`) */
+  fastTravel: { max: 4, windowMs: 1_000 },
+  /** Phase D9: one Old Rod cast per 1.5 s (protocol CLIENT_MESSAGE_LIMITS.fish) */
+  fish: { max: 1, windowMs: 1_500 },
+  /** Phase D13: ranked queue join / leave (protocol CLIENT_MESSAGE_LIMITS.rankedQueue) */
+  rankedQueue: { max: 4, windowMs: 5_000 },
   /** every room message the spine gives no row (challengeReply, trade*, handoverAck): the generic 4 / 1 s of protocol's CLIENT_MESSAGE_LIMITS */
   roomOther: { max: 4, windowMs: 1_000 },
 } as const satisfies Record<string, Limit>;

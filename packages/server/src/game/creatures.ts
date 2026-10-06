@@ -33,6 +33,8 @@ export interface CreatureOpts {
   readonly ability?: string | null;
   readonly variantKey?: VariantKey;
   readonly isAlpha?: boolean;
+  /** Phase D4: only a true value is written (absent = not shiny) */
+  readonly isShiny?: boolean;
   readonly heldItem?: string | null;
   readonly nickname?: string | null;
   readonly caughtAt?: { readonly zoneId: string; readonly at: number } | null;
@@ -58,6 +60,7 @@ export function newCreature(content: ContentIndex, speciesId: string, level: num
     heldItem: o.heldItem ?? null,
     variantKey: o.variantKey ?? 'normal',
     isAlpha: o.isAlpha ?? false,
+    ...(o.isShiny === true ? { isShiny: true } : {}),
     caughtAt: o.caughtAt ?? null,
     ribbons: [],
     favorite: false,

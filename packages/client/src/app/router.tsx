@@ -51,6 +51,31 @@ export const routes: RouteObject[] = [
       return { element: <AuthScreen mode="register" />, action: a.registerAction };
     },
   },
+  // Phase C6: password reset and email verification (the links in the emails); no session needed
+  {
+    path: '/forgot',
+    hydrateFallbackElement: <Blank />,
+    lazy: async () => {
+      const m = await import('../screens/AccountScreens');
+      return { Component: m.ForgotScreen, action: m.forgotAction };
+    },
+  },
+  {
+    path: '/reset',
+    hydrateFallbackElement: <Blank />,
+    lazy: async () => {
+      const m = await import('../screens/AccountScreens');
+      return { Component: m.ResetScreen, action: m.resetAction };
+    },
+  },
+  {
+    path: '/verify',
+    hydrateFallbackElement: <Blank />,
+    lazy: async () => {
+      const m = await import('../screens/AccountScreens');
+      return { Component: m.VerifyScreen, loader: m.verifyLoader };
+    },
+  },
   {
     id: 'canvas-host',
     // no loader, no errorElement (rule 1); the boot screen covers the moment its module is still loading
@@ -140,6 +165,54 @@ export const routes: RouteObject[] = [
             lazy: async () => {
               const [{ BattlePassScreen }, l, a] = await Promise.all([import('../screens/BattlePassScreen'), loaders(), actions()]);
               return { Component: BattlePassScreen, loader: l.battlePassLoader, action: a.passAction };
+            },
+          }),
+          child({
+            path: 'quests',
+            lazy: async () => {
+              const [{ QuestScreen }, a] = await Promise.all([import('../screens/QuestScreen'), actions()]);
+              return { Component: QuestScreen, action: a.questAction };
+            },
+          }),
+          child({
+            path: 'map',
+            lazy: async () => ({ Component: (await import('../screens/MapScreen')).MapScreen }),
+          }),
+          // Phase C5: the bag (key B)
+          child({
+            path: 'bag',
+            lazy: async () => {
+              const [{ BagScreen }, a] = await Promise.all([import('../screens/BagScreen'), actions()]);
+              return { Component: BagScreen, action: a.bagAction };
+            },
+          }),
+          // Phase C4: rankings, history, the own profile and public profiles
+          child({
+            path: 'rankings',
+            lazy: async () => {
+              const [{ RankingsScreen }, l] = await Promise.all([import('../screens/RankingsScreen'), loaders()]);
+              return { Component: RankingsScreen, loader: l.rankingsLoader };
+            },
+          }),
+          child({
+            path: 'history',
+            lazy: async () => {
+              const [{ HistoryScreen }, l] = await Promise.all([import('../screens/HistoryScreen'), loaders()]);
+              return { Component: HistoryScreen, loader: l.historyLoader };
+            },
+          }),
+          child({
+            path: 'profile',
+            lazy: async () => {
+              const [{ ProfileScreen }, l, a] = await Promise.all([import('../screens/ProfileScreen'), loaders(), actions()]);
+              return { Component: ProfileScreen, loader: l.profileLoader, action: a.profileAction };
+            },
+          }),
+          child({
+            path: 'players/:username',
+            lazy: async () => {
+              const [{ PlayerScreen }, l] = await Promise.all([import('../screens/PlayerScreen'), loaders()]);
+              return { Component: PlayerScreen, loader: l.playerLoader };
             },
           }),
           child({

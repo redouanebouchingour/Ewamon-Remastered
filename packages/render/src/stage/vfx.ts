@@ -30,7 +30,7 @@ import { LAYERS } from '../descriptors.js';
 import { OVERLAY_ALPHA_CUT, overlayMrt } from '../sprites/overlayMrt.js';
 import { TYPE_COLORS, TYPE_NAMES, hexToLinearInto, typeVfxSuffix } from '../sprites/typeColors.js';
 
-// ---- the id table (§10.7.5, exactly 19 + 4 + 6 + 5 + 4 + 4 + 5 = 47) --------------------------------------------
+// ---- the id table (§10.7.5, exactly 19 + 4 + 6 + 5 + 4 + 4 + 5 = 47, + 1 shiny burst since Phase D4 = 48) ------------
 
 export const VFX_TYPE_IDS: readonly VfxId[] = Object.freeze(TYPE_NAMES.map((t) => `type_${typeVfxSuffix(t)}` as VfxId));
 export const VFX_IMPACT_IDS: readonly VfxId[] = Object.freeze(['impact_normal', 'impact_super', 'impact_resist', 'impact_crit'] as const);
@@ -39,9 +39,11 @@ export const VFX_STAT_IDS: readonly VfxId[] = Object.freeze(['stat_up', 'stat_do
 export const VFX_WEATHER_IDS: readonly VfxId[] = Object.freeze(['weather_sun', 'weather_rain', 'weather_sand', 'weather_hail'] as const);
 export const VFX_ORB_IDS: readonly VfxId[] = Object.freeze(['orb_throw', 'orb_shake', 'orb_catch', 'orb_break'] as const);
 export const VFX_MISC_IDS: readonly VfxId[] = Object.freeze(['switch_out', 'switch_in', 'faint', 'trap', 'flinch'] as const);
+/** Phase D4: the shiny encounter burst (the one id beyond the §10.7.5 47). */
+export const VFX_SHINY_IDS: readonly VfxId[] = Object.freeze(['shiny_sparkle'] as const);
 
 export const VFX_IDS: readonly VfxId[] = Object.freeze([
-  ...VFX_TYPE_IDS, ...VFX_IMPACT_IDS, ...VFX_STATUS_IDS, ...VFX_STAT_IDS, ...VFX_WEATHER_IDS, ...VFX_ORB_IDS, ...VFX_MISC_IDS,
+  ...VFX_TYPE_IDS, ...VFX_IMPACT_IDS, ...VFX_STATUS_IDS, ...VFX_STAT_IDS, ...VFX_WEATHER_IDS, ...VFX_ORB_IDS, ...VFX_MISC_IDS, ...VFX_SHINY_IDS,
 ]);
 
 export function isVfxId(s: string): s is VfxId {
@@ -184,6 +186,8 @@ export const VFX_TABLE: Readonly<Record<VfxId, VfxRecipe>> = Object.freeze({
   switch_in: R('switch_in', [P({ motion: 'burst', anchor: 'to', count: 120, color: '#ffffff', color2: '#ffe0e0', shape: 'pixel', speed: 2.8, lifeMs: 450, size: 0.1 }), P({ motion: 'ring', anchor: 'to', count: 3, color: '#ffffff', shape: 'ring', size: 1.1, sizeEnd: 2.6, speed: 0, lifeMs: 380, height: 0.1 })], { defaultMs: 450 }),
   faint: R('faint', [P({ motion: 'ring', anchor: 'to', count: 90, color: '#b8b0a0', shape: 'pixel', speed: 1.4, gravity: 0.5, lifeMs: 900, spreadMs: 400, height: 0.05, intensity: 0.9, size: 0.14 })], { defaultMs: 900 }),
   trap: R('trap', [P({ motion: 'orbit', anchor: 'to', count: 48, color: '#c9a24a', color2: '#ffe0a0', shape: 'pixel', speed: 0, swirl: 4, radius: 0.9, lifeMs: 1100, spreadMs: 200, height: 0.5, drag: 0.001 })], { defaultMs: 1000 }),
+  // Phase D4: a shiny's encounter burst — gold stars ringing and rising round the creature, one card flash
+  shiny_sparkle: R('shiny_sparkle', [P({ motion: 'orbit', anchor: 'to', count: 28, color: '#fff3b8', color2: '#ffffff', shape: 'star', speed: 0, swirl: 3.2, radius: 0.85, lifeMs: 1000, spreadMs: 260, height: 0.9, size: 0.24, sizeEnd: 0.06, intensity: 2.2, drag: 0.001 }), P({ motion: 'burst', anchor: 'to', count: 2, color: '#ffffff', shape: 'star', size: 1.2, sizeEnd: 0.1, speed: 0, lifeMs: 260, height: 0.9, intensity: 2 })], { beaconPulse: 0.5, defaultMs: 1100 }),
   flinch: R('flinch', [P({ motion: 'burst', anchor: 'to', count: 5, color: '#ffffff', shape: 'star', speed: 1.1, lifeMs: 360, height: 1.3, size: 0.3, sizeEnd: 0.6 })], { defaultMs: 400 }),
 }) as Readonly<Record<VfxId, VfxRecipe>>;
 

@@ -35,6 +35,7 @@ export {
   NO_COLLIDER,
   speedCap,
   maxStep,
+  gaitSpeed,
   createPose,
   wrapAngle,
   stepMovement,

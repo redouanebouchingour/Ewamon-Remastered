@@ -1,0 +1,75 @@
+/* Phase D13 ranked queue block above the leaderboard: heading + rating on one line, then the queue state. */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-2);
+  background: var(--bg-1);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+}
+
+.title {
+  margin: 0;
+  color: var(--text-hi);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-weight: 600;
+}
+
+.rating {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+}
+
+.ratingValue,
+.statValue {
+  color: var(--text-hi);
+  font-family: var(--face-mono);
+  font-size: var(--t-mono);
+  line-height: var(--lh-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.copy {
+  margin: 0;
+  max-inline-size: 60ch;
+  color: var(--text-2);
+}
+
+.opponent {
+  color: var(--text-hi);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.stats {
+  display: flex;
+  gap: var(--s-8);
+  margin: 0;
+}
+
+.stats dd {
+  margin: 0;
+}

@@ -19,6 +19,9 @@ import { ZONE_MARGIN, ZONE_SIZE } from './types';
 import { ZONES } from './data/zones';
 import { planZone, stampFootprints } from './plan';
 import type { FootprintStamp, ZonePlan } from './plan';
+import { planInteriors, stampInteriors } from './interiors';
+import type { InteriorPlan, PlacedInterior } from './interiors';
+import { stampObstacles } from './obstacles';
 
 export interface Heightfield {
   readonly zoneId: ZoneId;
@@ -209,6 +212,11 @@ export interface ZoneSurface {
   readonly heightfield: Heightfield;
   readonly plan: ZonePlan;
   readonly footprints: FootprintStamp;
+  /** the town's pockets (one per building), placed after the plan; [] outside towns */
+  readonly interiors: readonly PlacedInterior[];
+  readonly interiorPlan: InteriorPlan;
+  /** Phase D10: sample index → the obstacle whose stamp made it unwalkable (empty in zones without obstacles) */
+  readonly obstacleCells: ReadonlyMap<number, string>;
 }
 
 /** Deterministic from zone.layoutSeed, zone.kind and zone.biome (value noise + the layout's footprints). */
@@ -223,9 +231,14 @@ export function buildHeightfield(zone: ZoneDef): Heightfield {
 export function buildZoneSurface(zone: ZoneDef): ZoneSurface {
   const base = buildTerrainField(zone);
   const plan = planZone(zone, base);
-  const footprints = stampFootprints(base, plan);
+  const interiorPlan = planInteriors(zone, plan, base);
+  const dropped = new Set(interiorPlan.droppedSolids);
+  const footprints = stampFootprints(base, dropped.size === 0 ? plan : { solids: plan.solids.filter((_, i) => !dropped.has(i)), doors: plan.doors });
+  stampInteriors(base, interiorPlan.interiors, MAX_SLOPE);
+  // Phase D10: Cut / Strength obstacles last (a no-op without `zone.obstacles`, so other digests are unchanged)
+  const obstacleCells = stampObstacles(base, zone.obstacles);
   const digest = digestHeightfield(base.heights, base.walkable, base.water);
-  return { heightfield: { ...base, digest }, plan, footprints };
+  return { heightfield: { ...base, digest }, plan, footprints, interiors: interiorPlan.interiors, interiorPlan, obstacleCells };
 }
 
 /** Terrain only: noise, kind feature, ponds, clearings; walkable = margin, slope and open water. `digest` is ''. */
@@ -466,6 +479,18 @@ export function isWalkable(h: Heightfield, x: number, z: number): boolean {
 export function isWater(h: Heightfield, x: number, z: number): boolean {
   if (!inField(h, x, z)) return false;
   return h.water[nearestIndex(h, x, z)] === 1;
+}
+
+/**
+ * Phase D10: the obstacle whose stamp covers the nearest sample of (x, z), or null — the samples a player who cleared
+ * it may stand on again. Only meaningful for the zone's own memoised field (a synthetic test field answers null
+ * unless its zone has obstacles).
+ */
+export function obstacleAt(h: Heightfield, x: number, z: number): string | null {
+  if (!inField(h, x, z) || !ZONE_BY_ID.has(h.zoneId)) return null;
+  const cells = getZoneSurface(h.zoneId).obstacleCells;
+  if (cells.size === 0) return null;
+  return cells.get(nearestIndex(h, x, z)) ?? null;
 }
 
 /** Nearest walkable sample centre within `radius` metres (spiral, 0.5 m ring step); null when none. */

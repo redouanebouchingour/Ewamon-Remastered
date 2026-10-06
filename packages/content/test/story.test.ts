@@ -131,8 +131,9 @@ describe('story (§3.5)', () => {
     flags.add('badge:bloom');
     run('mirevale', 'bloom_after');
     expect(nextStoryBeat('mirevale', flags)).toBeNull();
-    // only the bible's gate exists
-    expect(leagueStoryGate('blaze_gym')).toBeNull();
-    expect(leagueStoryGate('zeon')).toBeNull();
+    // every leader waits for its town's preamble beat (M3 progression audit; gates-reachable.test.ts plays them all)
+    expect(leagueStoryGate('blaze_gym')).toBe('heard_grey_year');
+    expect(leagueStoryGate('zeon')).toBe('wardens_met');
+    expect(leagueStoryGate('no_such_league')).toBeNull();
   });
 });

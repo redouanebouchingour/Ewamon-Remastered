@@ -152,6 +152,8 @@ export type Evolution =
   | { readonly kind: 'split'; readonly atLevel: number;
       readonly branches: readonly { readonly into: string;
         readonly condition: { readonly kind: 'ability'; readonly ability: string } | null }[] }
+  | { readonly kind: 'item'; readonly item: string; readonly into: string }   // Phase D3: an evolution stone, any level
+  | { readonly kind: 'trade'; readonly into: string }                         // Phase D3: when traded
   | null;
 
 export interface SpeciesDef {
@@ -180,6 +182,8 @@ Legacy `learnableMoves` is a flat string list with no levels. Migration rule for
 
 The `split` evolution exists exactly once in legacy (`Lightning Rod → aonred`, default `→ darkyon`); its branch with `condition: null` is the default and must be last.
 
+**Phase D3 — stone and trade evolutions.** `item` and `trade` are never level-triggered: `applyExp` reports no `evolveReady` for them, and their species keep their legacy learnset (spaced by the legacy level). Core exports `itemEvolutionTarget(evolution, item)`, `tradeEvolutionTarget(evolution)` and `evolutionChildren(evolution)` (every target, any trigger); `evolve` is trigger-agnostic. Nine families use them (`packages/content/src/data/evolutions.ts`, applied by the generator): `embrock`, `flampling` → Ember Stone; `stormchick` → Storm Stone; `mossling` → Tide Stone; `seedrift` → Verdant Stone; `berkest` → Moon Stone; `hexroach` → Dusk Stone; `glowtent`, `resilith` → trade. None is in a league team or in the progression walker's parties. Eviolite and the speed tie-break keep reading `evolution !== null`, so battle semantics (and the fuzz digests) are unchanged. The roster report's `AcquisitionPath` gains `{ kind: 'item', from, item }` and `{ kind: 'trade', from }`; validate requires every stone an `item` evolution names to be sold, found or rewarded somewhere.
+
 ### 2.4 MoveDef and the 23 effects
 
 ```ts
@@ -189,6 +193,7 @@ export type MoveEffect =
   | 'raise_all' | 'trap' | 'weather' | 'sleep' | 'lower_spAtk' | 'raise_atk' | 'raise_spd';
 
 export type MoveTarget = 'foe' | 'self' | 'field';
+export type MoveSpread = 'foes' | 'all';   // Phase D6: doubles reach — 'foes' both foes, 'all' every other battler (ally too)
 
 export interface MoveDef {
   readonly id: string;              // the legacy display name, e.g. 'Vine Lash' — ids ARE names
@@ -202,6 +207,7 @@ export interface MoveDef {
   readonly effectChance: number;    // 1..100, applied AFTER the move hits (see table)
   readonly target: MoveTarget;      // 'field' for weather/sun; 'self' for raise_*/heal; else 'foe'. Read ONLY when power === 0 (see below)
   readonly description: string;
+  readonly spread?: MoveSpread;     // Phase D6: absent = single target; read only in doubles (content's curated SPREAD_MOVES)
 }
 ```
 
@@ -360,7 +366,7 @@ export type ConsumableEffect =
   | { readonly kind: 'repel'; readonly steps: number }
   | { readonly kind: 'lure'; readonly steps: number }
   | { readonly kind: 'escapeRope' }
-  | { readonly kind: 'evolutionStone'; readonly species: string; readonly into: string } // reserved; zero entries in v1
+  | { readonly kind: 'evolutionStone' } // Phase D3: the species it evolves name it in SpeciesDef.evolution { kind: 'item', item }
   | { readonly kind: 'sellOnly' };
 
 export interface ConsumableDef {
@@ -392,6 +398,17 @@ The 17 held/key items and their hooks (Sp.Atk / Sp.Def do not exist; the two "sp
 | Weakness Policy | held | `onSuperEffectiveHit { raise: { atk, 2 }, consume: true }` |
 | Speed Scarf | held | `statMul { spd, 1.1 }` |
 | HM Surf / HM Cut / HM Strength | key | none; `fieldVerb` set |
+
+**Phase D1–D3 items** (hand-authored in `packages/content/src/data/progressionItems.ts`; the generated `ITEMS` stays 17 and `CONSUMABLES` 23):
+
+| Item | kind | notes |
+|---|---|---|
+| `old_rod` | ItemDef, `key` | Maren's gift at `drowned_harbour`; cast with the client's timing prompt, a landed bite sends `fish { angle }` (§4.3, Phase D9); `fieldVerb` stays null (the verb is the message) |
+| `bike` (Bicycle) | ItemDef, `key`, 30 000 (`BIKE_PRICE`) | Phase D11: sold in Saltmourn only (`PROGRESSION_STOCK`), never granted, never a gate; ridden outdoors on land (`InputMsg.bike`, `MOVEMENT.bikeSpeed` 10.5 m/s) |
+| `tm:<Move>` × 39 (`TM_MOVES`) | ItemDef, `key`, priced 2000–5000 by power | reusable: `POST /creature/:id/moves` accepts a TM move while the TM is owned; the shop sells one copy (`alreadyOwned`, `oneAtATime`); key items are never sold back. Sold from Saltmourn on (`PROGRESSION_STOCK`), three are quest rewards |
+| `ember_stone`, `tide_stone`, `storm_stone`, `verdant_stone`, `moon_stone`, `dusk_stone` | ConsumableDef, `evolutionStone`, 3000 / 1500, not in battle | `POST /item/use` on a creature that reacts answers `evolveReady { into, item }` without spending; the confirmed `POST /creature/:id/evolve` spends one. Sold from Stormrook on |
+
+Machine / tutor learnability (`canLearnMachineMove`): the move is Normal-type, or shares a type with the species, or is in the species' level learnset. Moves the creature already knows are always accepted by `POST /creature/:id/moves` (a taught move stays).
 
 Orbs: the 10 legacy rows verbatim (`spark_orb 1.0`, `crest_orb 1.75`, `prism_orb 2.5`, `aether_orb 999 maxStack 1`, `mythos_orb 1.5 + alpha_or_variant ×4`, `verdant_orb / ember_orb / tide_orb / dusk_orb / phantom_orb 1.0 + type ×3` for Grass / Fire / Water / Dark / Ghost). Legacy aliases `ewamon_ball, great_ball, ultra_ball, ultraball, master_ball` are **not** carried: there is no old database.
 
@@ -456,6 +473,7 @@ export interface CreatureInstance {
   readonly heldItem: string | null;
   readonly variantKey: VariantKey;
   readonly isAlpha: boolean;
+  readonly isShiny?: boolean;          // Phase D4: the 1/512 tier; present (true) only on a shiny, absent otherwise; no battle effect
   readonly caughtAt: { readonly zoneId: string; readonly at: number } | null; // at = unix ms; null = starter/gift
   readonly ribbons: readonly string[];
   readonly favorite: boolean;
@@ -497,6 +515,8 @@ export interface Battler {
 }
 
 export function projectBattler(c: CreatureInstance, content: ContentIndex): Battler;
+/** Phase D14 (battle tower): level min(level, cap) (exp clamped to that level when lowered), full hp, no status, full pp; pure, the input untouched. */
+export function capLevel(c: CreatureInstance, cap: number, content: ContentIndex): CreatureInstance;
 
 export type BattleFormat = 'wild' | 'trainer' | 'league' | 'pvp' | 'raid';
 export type SideKind = 'player' | 'wild' | 'npc';
@@ -508,8 +528,9 @@ export interface Side {
   readonly trainerId: string | null;       // player uuid, or content id of the NPC/league trainer
   readonly canFlee: boolean;               // wild: player side true; trainer/league/pvp: false
   readonly canCatch: boolean;              // wild + raid catch window: player side true
-  readonly mustSwitch: boolean;            // active fainted and a replacement exists
+  readonly mustSwitch: boolean;            // active fainted and a replacement exists (doubles: a position holds a fainted battler and a bench creature stands)
   readonly consumedItems: readonly string[]; // consumable ids used this battle (raid/pvp limits)
+  readonly actives?: readonly [number, number]; // Phase D6, doubles only: party index on field position 0 / 1; `active` mirrors actives[0]
 }
 
 export type Terrain = 'none' | 'grove' | 'cinder' | 'salt' | 'storm' | 'marrow' | 'vesper' | 'forge' | 'sky' | 'shrine' | 'rift';
@@ -534,6 +555,8 @@ export interface BattleState {
   readonly rng: RngState;
   readonly ended: BattleOutcome | null;
   readonly zoneId: string;
+  readonly slots?: 2;             // Phase D6: present only in a doubles battle; absent = singles (state byte-identical to pre-D6)
+  readonly noExp?: true;          // Phase D14: present only in a battle tower fight — no battler gains exp (CreateBattleOpts.noExp); absent = byte-identical to pre-D14
 }
 
 export interface CreateBattleOpts {
@@ -543,6 +566,8 @@ export interface CreateBattleOpts {
   readonly terrain: Terrain;
   readonly seed: RngState | number | string;
   readonly sides: readonly [Omit<Side, 'mustSwitch' | 'consumedItems'>, Omit<Side, 'mustSwitch' | 'consumedItems'>];
+  readonly weather?: WeatherKind;      // Phase D7: ambient zone weather — field.weather = { kind, turns: 0 } (turns 0 = no countdown, no weatherTick) and one weatherSet { turns: 0, source: null } before the switch-in hooks; a move's weather replaces it for 5 turns; absent / 'none' = byte-identical state and events (fuzz digests unchanged)
+  readonly slots?: 1 | 2;              // Phase D6: 2 = doubles (trainer / league / pvp only; each side needs two standing creatures — its `actives`, else `active` + the lowest other standing one; RangeError otherwise); absent / 1 = singles, byte-identical
 }
 /** Applies onSwitchIn hooks for both leads (side 0 first) and returns those events. */
 export function createBattle(o: CreateBattleOpts, content: ContentIndex): TurnResult;
@@ -551,8 +576,10 @@ export function createBattle(o: CreateBattleOpts, content: ContentIndex): TurnRe
 ### 2.10 Actions and resolveTurn
 
 ```ts
+export interface FieldRef { readonly side: 0 | 1; readonly pos: 0 | 1 } // Phase D6: a field position (NOT a party index)
+
 export type Action =
-  | { readonly kind: 'move'; readonly move: string }          // must be in active.creature.moves with pp > 0
+  | { readonly kind: 'move'; readonly move: string; readonly target?: FieldRef } // must be in active.creature.moves with pp > 0; target: doubles only (foe or ally position; absent = first standing foe)
   | { readonly kind: 'switch'; readonly to: number }          // party index, not active, hp > 0
   | { readonly kind: 'item'; readonly item: string; readonly target?: number } // consumable id; target = party index (default active)
   | { readonly kind: 'catch'; readonly orb: string }
@@ -563,7 +590,11 @@ export type ActionError =
   | 'battleEnded' | 'unknownMove' | 'noPp' | 'choiceLocked' | 'statusMoveBlocked'
   | 'badSwitchIndex' | 'switchToFainted' | 'switchToActive' | 'trapped'
   | 'unknownItem' | 'itemNotUsableInBattle' | 'badItemTarget'
-  | 'cannotCatch' | 'unknownOrb' | 'cannotFlee' | 'cannotForfeit' | 'mustSwitch' | 'actionNotRequired';
+  | 'cannotCatch' | 'unknownOrb' | 'cannotFlee' | 'cannotForfeit' | 'mustSwitch' | 'actionNotRequired'
+  | 'badTarget';   // Phase D6: a doubles move target at the user itself / not a field position
+
+/** Phase D6: one side's input to resolveTurn — singles an Action / null; doubles one entry per field position (a bare Action = position 0). */
+export type SideChoice = Action | null | readonly [Action | null, Action | null];
 
 /**
  * null = valid. Pure. The server calls this before resolveTurn; resolveTurn throws InvalidActionError on an invalid action.
@@ -571,7 +602,7 @@ export type ActionError =
  * the move's power), `unknownItem`, `itemNotUsableInBattle`, `badItemTarget` (revive vs fainted) and `unknownOrb` need it.
  * resolveTurn always passes content.
  */
-export function validateAction(state: BattleState, side: 0 | 1, action: Action | null, content?: ContentIndex | null): ActionError | null;
+export function validateAction(state: BattleState, side: 0 | 1, action: Action | null, content?: ContentIndex | null, pos?: 0 | 1): ActionError | null; // pos: Phase D6, the doubles position (default 0; ignored in singles)
 
 /** Thrown by resolveTurn. `code: 'battleEnded'` with `side: 0` when called on an ended battle. */
 export class InvalidActionError extends Error { readonly side: 0 | 1; readonly code: ActionError }
@@ -586,12 +617,17 @@ export interface TurnResult { readonly state: BattleState; readonly events: read
  */
 export function resolveTurn(
   state: BattleState,
-  actions: readonly [Action | null, Action | null],
+  actions: readonly [SideChoice, SideChoice],   // Phase D6: singles passes Action | null per side (an array throws TypeError); doubles one pair per side
   content: ContentIndex,
 ): TurnResult;
 
 /** Deterministic NPC policy. Wild: uniform pick among moves with pp > 0. NPC trainer: highest expected damage, rng tiebreak. */
-export function chooseNpcAction(state: BattleState, side: 0 | 1, content: ContentIndex, rng: Rng): Action;
+export function chooseNpcAction(state: BattleState, side: 0 | 1, content: ContentIndex, rng: Rng, pos?: 0 | 1): Action; // doubles: position `pos` of chooseNpcDoubles
+
+// Phase D6 — doubles helpers
+export function chooseNpcDoubles(state: BattleState, side: 0 | 1, content: ContentIndex, rng: Rng): [Action | null, Action | null];
+export function requiredPositions(state: BattleState, side: 0 | 1): (0 | 1)[];
+export function validateSideChoice(state: BattleState, side: 0 | 1, choice: SideChoice, content?: ContentIndex | null): { readonly pos: 0 | 1; readonly code: ActionError } | null;
 ```
 
 Server rule: for `wild`, `trainer`, `league` and `raid`, the server passes `null` for the NPC side and core calls `chooseNpcAction` internally with the battle rng (so the choice is part of the deterministic stream). For `pvp`, both actions must be non-null (or the replacement-phase exception). `validateAction(state, side, null)` is therefore valid for every non-player side in every phase; for a player side `null` is valid only in the replacement-phase exception. <!-- amended 2026-09-25: the resolveTurn comment said "ONLY when … replacement phase", which contradicted this rule; folded packages/core IMPLEMENTATION-NOTES item 14 -->
@@ -599,6 +635,16 @@ Server rule: for `wild`, `trainer`, `league` and `raid`, the server passes `null
 The §2.20 fuzz digest committed in `packages/core/test/fuzz-digests.json` is, per seed, `fnv1a32` over the joined per-turn `digestBattleState` values (the `createBattle` state first), so it captures every turn, not only the final state (`packages/core/test/fuzz.ts`). <!-- amended 2026-09-25: core IMPLEMENTATION-NOTES item 17 -->
 
 **Sleep counter** (§2.4 `sleep`, §2.11 step 6, as implemented and pinned by the fuzz digests): the counter decrements at the start of every sleeper action, including an action later in the same turn the status landed, and the action that brings it to 0 is taken normally (`statusCured`, then the move). A sleep of `N = 1 + rng.int(3)` therefore skips exactly `N − 1` of the sleeper's actions — 0, 1 or 2 — not `N`. <!-- amended 2026-09-25: core IMPLEMENTATION-NOTES item 15 — the §2.4 row "cannot act for 1 + rng.int(3) turns" read as N skipped actions; changing the feel is a semantics change (fuzz digests), see .design/audits/spec-verification.md -->
+
+**Doubles (Phase D6, `slots: 2`).** <!-- amended 2026-10-06 Phase D6 --> Doubles has its own resolution path; with `slots` absent or 1 nothing above changes and `packages/core/test/fuzz-digests.json` is byte-identical (a 300-seed doubles fuzz is committed separately in `packages/core/test/doubles-fuzz-digests.json`, built by `test/doubles-fuzz.ts` over the legacy fixture with a spread overlay). The rules, each pinned by `packages/core/test/doubles.test.ts`:
+- **Field.** `Side.actives` holds the party index on positions 0 and 1 (`active` mirrors position 0). A battler that faints with no bench left stays on its position at hp 0: it takes no action and is skipped by every rule. Event `Ref.slot` stays a party index; `switchIn` / `switchOut` carry `pos` in doubles.
+- **Required positions** (`requiredPositions`): in a normal turn every position whose battler stands; in a replacement phase the fainted positions in order, as many as the bench can fill (the player picks only who comes in); while the other side replaces, none. Two positions may not switch to the same creature (`switchToActive`). Catch and flee do not exist in doubles (`cannotCatch` / `cannotFlee`).
+- **Order.** Replacement phase as singles (all leavers, all newcomers, then hooks; side 0 position 0 first). Otherwise forfeit (any position forfeits its side; side 0 first) → switches → items → moves, each step across all four positions by priority (moves only) desc, then effective speed desc; each group of exact ties is shuffled with the battle rng (`rng.shuffle`, size − 1 draws).
+- **Targets.** A single-target move aims at `Action.target` (foe or ally; not the user), default the first standing foe. A foe target that has fainted retargets to the other standing foe; a fainted ally target fails (`moveFailed { reason: 'noTarget' }`). Self / field status moves take no target.
+- **Spread** (`MoveDef.spread`): `'foes'` hits each standing foe, `'all'` each other standing battler (foe pos 0, foe pos 1, ally), in that order; one accuracy roll, damage roll and defender-effect roll per target (`moveUsed.targets` lists them; a per-target failure is `moveFailed { target }`). When 2+ targets are aimed at, each damage is `max(1, floor(dmg × 3 / 4))` after the whole §2.14 pipeline. Attacker-side effects (raise_*, heal, weather, recoil, drain) apply once after the last target with the total dealt, if at least one target was hit. In singles `spread` is ignored.
+- **Abilities.** Intimidate lowers every standing foe (one `abilityTrigger`); a battler leaving the field ends every foe's trap.
+- **EXP.** Unchanged and unsplit: every participating standing battler of the winning player side gains the full §2.16 yield of each foe that faints; both positions' battlers are participants.
+- **NPC policy** (`chooseNpcDoubles`, position 0 first): a replacement takes the bench in ascending order; otherwise per standing position the best (move, target) pair by expected damage — a spread move scores the sum over the foes it reaches (×0.75 at 2+ targets, minus the ally's share for `'all'`) — rng tiebreak; no usable move → the lowest unchosen bench creature (not trapped), else flee / forfeit.
 
 ### 2.11 Turn resolution order
 
@@ -776,10 +822,10 @@ export interface Ref { readonly side: 0 | 1; readonly slot: number }
 
 export type BattleEvent =
   | { readonly t: 'turnStart'; readonly turn: number }
-  | { readonly t: 'switchOut'; readonly who: Ref; readonly reason: 'action' | 'faint' }
-  | { readonly t: 'switchIn'; readonly who: Ref }
+  | { readonly t: 'switchOut'; readonly who: Ref; readonly reason: 'action' | 'faint'; readonly pos?: 0 | 1 }   // pos: Phase D6, doubles only
+  | { readonly t: 'switchIn'; readonly who: Ref; readonly pos?: 0 | 1 }
   | { readonly t: 'abilityTrigger'; readonly who: Ref; readonly ability: string; readonly detail: string }
-  | { readonly t: 'moveUsed'; readonly who: Ref; readonly move: string; readonly target: Ref; readonly ppLeft: number }
+  | { readonly t: 'moveUsed'; readonly who: Ref; readonly move: string; readonly target: Ref; readonly ppLeft: number; readonly targets?: readonly Ref[] } // targets: Phase D6, a doubles spread move
   | { readonly t: 'moveMissed'; readonly who: Ref; readonly move: string; readonly target: Ref }
   | { readonly t: 'moveFailed'; readonly who: Ref; readonly move: string | null;
       readonly reason: 'fullHp' | 'noTarget' | 'trapped' | 'noEffect' | 'immune' | 'wonderGuard' }
@@ -889,11 +935,13 @@ export interface NpcDef {
   readonly when: string | null;                // story flag required to appear
   readonly until: string | null;               // story flag that removes them
   readonly react: readonly { readonly when: string; readonly lines: readonly string[] }[];
+  readonly tutor?: readonly string[];          // Phase D2: move ids this NPC teaches for MOVE_TUTOR_PRICE (3000); data only, x/z alone feed the layout
 }
 export interface TrainerDef {
   readonly id: string; readonly name: string; readonly x: number; readonly z: number; readonly look: string;
   readonly team: readonly { readonly species: string; readonly level: number }[]; // 1..6
   readonly lines: readonly string[]; readonly reward: number; readonly rematchDays: number | null;
+  readonly doubles?: true;   // Phase D6: fights 2-on-2 (team ≥ 2; the player needs 2 usable creatures, else singles); never a gate
 }
 export interface GroundItemDef { readonly id: string; readonly x: number; readonly z: number; readonly item: string; readonly qty: number }
 export interface LoreTabletDef { readonly id: string; readonly x: number; readonly z: number; readonly title: string; readonly text: readonly string[] }
@@ -923,8 +971,19 @@ export interface ZoneDef {
   readonly gym: string | null;                 // gym id
   readonly storyRole: Readonly<Record<Act, string | null>>; // one-line role per act, or null
   readonly harvestState: HarvestState;         // the zone's DEFAULT; the effective state is per player, from story flags (§3.5 harvestStateFor)
+  readonly obstacles?: readonly ObstacleDef[];  // Phase D10: Cut / Strength obstacles; absent = none
+}
+
+/** Phase D10 (data/obstacles.ts, merged into ZONES). x/z never feed the layout: not an authored point (no clearing, no building moves). */
+export interface ObstacleDef {
+  readonly id: string;                          // `<zoneId>.<name>`; cleared flag `obstacle:<zoneId>:<id>` (content `obstacleFlag`)
+  readonly kind: 'tree' | 'boulder';            // tree: HM Cut + a Grass / Bug / Steel / Dark member; boulder: HM Strength + a Fighting / Rock / Ground / Steel member
+  readonly x: number; readonly z: number;
+  readonly item?: { readonly item: string; readonly qty: number };   // hidden behind / under it, granted once with the clearing
 }
 ```
+
+**Obstacles** (Phase D10) <!-- amended 2026-10-06: Phase D8–D11 world systems --> — shortcuts and treasure only, never a story gate. The disc `OBSTACLE_RADIUS[kind]` (tree 0.7 m, boulder 0.95 m) + the 0.35 m capsule is stamped `walkable = 0` as the **last** step of the heightfield build (§3.11), on samples that were still walkable, and the stamp records which obstacle owns each sample (`ZoneSurface.obstacleCells`, `obstacleAt(h, x, z)`); zones without obstacles are byte-identical. A player who holds the cleared flag stands on exactly those samples again (server `standable`, client collider) — per player; others still see the prop. Validate: unique ids, a known kind and item, inside ±(interior − 4 m), outside every interior pocket, ≥ 6 m from every authored point, a non-empty stamp, reachable from the spawn within `OBSTACLE_INTERACT_M` = 3 m — and every other reachability rule runs on the stamped field, so no story target can sit behind one. Shipped: `mire_route.thicket` (tree), `tide_route.driftwood` (tree), `deepcut_route.rockfall` + `.cairn` (boulders), `hollow_route.briar` (tree) + `.tomb_stone` (boulder), `ascent_route.scree` (boulder), each hiding an item.
 
 <!-- reconciled 2026-09-18: ZoneDef gains `spawn` (30-server-netcode.md OQ 4) and `warps` (the `warp` InteractMsg kind had no data); `shop`/`healer`/`gym` already existed -->
 Zone extents (one table, used by content's heightfield, the server's bounds check and render's `ZoneSpec.size`): the heightfield is a square field of **160 m (town) · 240 m (route) · 200 m (story)**; the outer **16 m** on every side is scenery with `walkable = 0`; the playable interior is therefore **±64 (town) · ±104 (route) · ±84 (story)** and every authored coordinate (`npcs`, `trainers`, `items`, `lore`, `warps`, `spawn`, statics, raid hotspots) must lie inside it — `validate.ts` snaps a coordinate on or outside the interior inward with `nearestWalkable(h, x, z, 8)` and fails when none is found. <!-- reconciled 2026-09-18: 20-client.md §20.4.4 (±64 / 128×64 / ±48), 10-render.md §10.5.1 (128×128 / 256×128 / 96×96) and 30-server-netcode.md §30.2.3 (160 / 240 / 200) disagreed; the server's field sizes stand because roster-coverage.md's static/hotspot coordinates (z up to 104 on routes, 84 in story zones) need them -->
@@ -964,7 +1023,7 @@ export type EncounterTier = 'common' | 'uncommon' | 'rare' | 'alpha';
 export interface EncounterSlot {
   readonly species: string; readonly weight: number; readonly levelMin: number; readonly levelMax: number;
   readonly timeOfDay: 'day' | 'night' | 'any'; readonly tier: EncounterTier;
-  readonly medium?: 'land' | 'water';  // default 'land'. 'water' slots spawn on a Heightfield `water` sample and can be engaged only from a water sample (HM Surf, fieldVerb 'surf', or a boardwalk cell the layout marks both walkable and water)
+  readonly medium?: 'land' | 'water';  // default 'land'. 'water' slots spawn on a Heightfield `water` sample and can be engaged only from a water sample (HM Surf, fieldVerb 'surf', or a boardwalk cell the layout marks both walkable and water); they are also what the Old Rod rolls (`fish`, §4.3; Phase D9) — every non-lava zone with a table and open water has at least one (Phase D8 added mire_route mossling / mudbub, skyrend tidalfang, umbral_observatory wraithtide)
 }
 export interface EncounterTable { readonly id: string; readonly zoneId: ZoneId; readonly slots: readonly EncounterSlot[] }
 /** Table id convention `enc_<zoneId>`. Exactly 15: the 8 routes, the 3 town tables (saltmourn, skyrend, solenne) and the 4 story tables (eclipse_shrine, umbral_observatory, celestial_spire, the_rift). The 6 other towns have `encounterTable: null`. */
@@ -1009,12 +1068,40 @@ export interface LeagueTrainer {
   readonly team: readonly { readonly species: string; readonly level: number; readonly nickname: string | null; readonly ability: string | null; readonly heldItem: string | null }[];
   readonly reward: number;
   readonly setsFlags: readonly string[];
+  readonly mid?: { readonly halfHp: string; readonly lastStand: string };   // added 2026-10-06 (Phase B7): mid-battle lines, ≤ 140 chars, all 12 rows
+  readonly doubles?: true;             // Phase D6: fights 2-on-2 (draco_gym, aurelia); see TrainerDef.doubles
 }
 export const LEAGUE: readonly LeagueTrainer[];  // 12 entries; champion id is exactly 'zeon'
 export const BADGES: readonly { readonly id: BadgeId; readonly name: string; readonly type: TypeName; readonly gym: string }[];
 ```
 
 `validate.ts`: 8 gyms with the 8 badges in `BadgeId` order; 3 elite; exactly one champion with `id === 'zeon'` (the legacy `defeatedSet.has("goku")` check is not reproducible here — there is no `goku`). Gym team levels are monotonically non-decreasing across `order`.
+
+**Post-game (Phase D14, amended 2026-10-06).** Everything below unlocks with `champion:zeon:beaten` (`POSTGAME_FLAG`) and is never a story gate:
+
+```ts
+export interface LeagueRematch {
+  readonly leagueId: string;                       // = LeagueTrainer.id; exactly one row per LEAGUE entry
+  readonly team: readonly LeagueTeamMember[];      // Lv 65–75 (LEAGUE_REMATCH_LEVELS); a legendary only if the original team carries it
+  readonly pre: readonly string[]; readonly post: readonly string[];   // the rematch prompt / the line after a won rematch
+  readonly reward: number;                         // = round(LeagueTrainer.reward × LEAGUE_REMATCH_REWARD_MULTIPLIER 1.5)
+}
+export const LEAGUE_REMATCH: readonly LeagueRematch[];          // 12 rows
+export const LEAGUE_REMATCH_COOLDOWN_DAYS = 1;                   // between two rematch WINS against the same trainer
+export function leagueRematchFlag(leagueId: string): string;     // `league:<id>:rematchAt` — server bookkeeping, cleared + re-set on every rematch win so its set time moves
+export const POSTGAME_FLAG = 'champion:zeon:beaten';
+export interface TowerDef {
+  readonly levelCap: 50; readonly teamSize: 3; readonly setLength: 7;
+  readonly attendantId: 'solenne.league.tower';    // the league hall foyer's InteriorNpc, role 'tower'
+  readonly trainerId: 'tower.challenger'; readonly trainerName: 'Tower Challenger';
+  readonly pools: readonly (readonly string[])[];   // 4 tiers of non-legendary fully evolved species, banded by base-stat total
+}
+export const TOWER: TowerDef;
+export function towerTier(wins: number): number;                 // min(pools.length − 1, floor(wins / setLength))
+export function towerSetReward(set: number): { money: number; items: Record<string, number> };   // money 2 500 × set (≤ 15 000) + items
+```
+
+`validate.ts` adds: one rematch per league row, levels in range, reward ×1.5, legendary rule, nickname ≤ 16; every tower pool ≥ 6 species, all known and non-legendary; every set-reward item known. The bind-set cap (§3.10 rule 11) is unchanged — rematch and tower teams are battle-only.
 
 ### 3.4 Quests
 
@@ -1029,10 +1116,19 @@ export type QuestObjective =
   | { readonly kind: 'deliverItem'; readonly item: string; readonly qty: number; readonly npcId: string }
   | { readonly kind: 'flag'; readonly flag: string }
   | { readonly kind: 'earnBadge'; readonly badge: BadgeId }
-  | { readonly kind: 'restoreZone'; readonly zoneId: ZoneId };
+  | { readonly kind: 'restoreZone'; readonly zoneId: ZoneId }
+  // Phase D5 achievements; dexCaught / loginStreak are absolute (progress = the event's value, max-merged)
+  | { readonly kind: 'dexCaught'; readonly count: number }
+  | { readonly kind: 'catchTier'; readonly tier: 'alpha' | 'shiny'; readonly count: number }
+  | { readonly kind: 'completeTrades'; readonly count: number }
+  | { readonly kind: 'clearRaids'; readonly count: number }
+  | { readonly kind: 'loginStreak'; readonly days: number };
+
+export type QuestKind = 'story' | 'achievement';   // Phase D5
 
 export interface QuestDef {
   readonly id: string; readonly title: string; readonly summary: string;
+  readonly kind?: QuestKind;           // Phase D5; absent = 'story'. 'achievement' rows: giver null, requires [], money/item rewards only
   readonly giver: string | null;       // npc id; null = auto-offered
   readonly zoneId: ZoneId;
   readonly act: Act;
@@ -1040,7 +1136,9 @@ export interface QuestDef {
   readonly objectives: readonly { readonly id: string; readonly label: string; readonly objective: QuestObjective }[];
   readonly rewards: { readonly money: number; readonly items: Readonly<Record<string, number>>; readonly creature: { readonly species: string; readonly level: number } | null; readonly flag: string | null };
 }
-export const QUESTS: readonly QuestDef[];
+export const QUESTS: readonly QuestDef[];            // the 12 story quests, then the 30 ACHIEVEMENTS (Phase D5)
+export const ACHIEVEMENTS: readonly QuestDef[];      // Phase D5: dex 10/30/60/90/130, catches 1/10/50/200, alpha, shiny, wins 10/100/500, trainer 50, PvP 1/25, 8 badges, 12 league trainers, champion, 8 statics, trades 1/10/50, raids 1/10/50, streaks 7/30/100
+export const STORY_QUESTS: readonly QuestDef[];      // QUESTS without the achievements
 ```
 
 Every `zoneId` is a `ZoneId`; the legacy quests keyed to `bloom-route`/`ember-town` (which never fired) are not carried.
@@ -1060,6 +1158,7 @@ export interface StoryBeat {
   readonly after: readonly string[];   // lines after the battle / on completion
   readonly harvest: { readonly zoneId: ZoneId; readonly to: HarvestState } | null; // the beat changes a zone's render state
   readonly starter: boolean;           // exactly one beat has this
+  readonly grant?: Readonly<Record<string, number>>; // Phase D1: items added when the beat completes (same transaction), sent as inventoryDelta; never a gate
 }
 export const STORY: readonly StoryBeat[];
 
@@ -1132,6 +1231,7 @@ Fails the build on the first of:
 1. Any zod schema failure over `SPECIES`, `MOVES`, `ABILITIES`, `ITEMS`, `ORBS`, `CONSUMABLES`, `ZONES`, `ENCOUNTER_TABLES`, `LEAGUE`, `QUESTS`, `STORY`, `SEASONAL_EVENTS`, `DAILY_SWARMS`, `RAID_HOTSPOTS`, `BATTLE_PASS`.
 2. Dangling id: species `moves`/`learnableMoves` → `MOVES`; species `abilities` → `ABILITIES`; `evolution.into`/`evolvesFrom` → `SPECIES`; zone `links` → `ZONES`; zone `gym` → `LEAGUE`; `encounterTable` → `ENCOUNTER_TABLES`; encounter/trainer/league/quest/swarm/raid/static `species` → `SPECIES`; shop stock, ground items, quest rewards, battle-pass items → `CONSUMABLES ∪ ORBS ∪ ITEMS`; story `speaker`/`battle.trainerId` → npcs/trainers/league; quest `giver` → an `NpcDef.id` of the quest's `zoneId` or `null`; quest `talkTo`/`deliverItem` `npcId` and `defeatTrainer` `trainerId` → npcs/trainers; `LegendaryStatic.when` → a `badge:` or a flag set by some beat/quest/league row; every `zoneId` anywhere → `ZoneId` (zod enum, build time). <!-- reconciled 2026-09-18: statics, quest givers and flag gates added (roster-coverage OQ 5, legacy-render-audit Q23) -->
 3. Counts: `SPECIES.length === 130`, `MOVES.length === 193`, `TYPE_NAMES.length === 19`, `ABILITIES.length === 25`, `ITEMS.length === 17`, `ORBS.length === 10`, `ZONES.length === 21`, `LEAGUE.length === 12`, `BATTLE_PASS.length === 100`, dex numbers dense 1..130.
+   Phase D6 <!-- amended 2026-10-06 Phase D6 -->: every `SPREAD_MOVES` id (content `data/spreadMoves.ts`, 16 curated moves laid over the generated `MOVES`: Rock Slide, Heat Wave, Blizzard, Dazzling Gleam, Snarl, Twister, Powder Snow, Frozen Tempest, Gem Storm, Growl, String Shot → `'foes'`; Earthquake, Discharge, Bulldoze, Petal Blizzard, Sparkling Aria → `'all'`) is a foe-targeted MOVES row carrying that `spread`; a `doubles: true` trainer / league row has a team of 2+. Authored doubles (all optional, never gates): `draco_gym` (Sylvane), `aurelia` (Warden 2), and the route trainers `galvan_route.rocker`, `deepcut_route.digger`, `hollow_route.medium`, `siege_route.engineer`, `ascent_route.tamer`.
 4. Move effect keys ⊆ the 23 `MoveEffect` values after the `lower_spAtk → lower_atk` rewrite; `effect === 'first'` implies `priority === 1` and vice-versa.
 5. `learnableMoves` sorted by level, includes every default move at level 1, no duplicates.
 6. `evolution.atLevel` in 2..99; `evolvesFrom` consistency both ways; a split evolution's `null`-condition branch is last; all 67 evolution families form trees rooted at a species with `evolvesFrom === null`.
@@ -1191,6 +1291,53 @@ export const BODIES: readonly BodyDef[];   // ≥ 10 rows; 'ranger_m' is the per
 export const TITLES: readonly string[];    // `POST /profile` accepts only these (default 'Rookie Trainer' must exist)
 ```
 
+### 3.13 Interiors — every town building opens into a hall
+<!-- added 2026-10-06 (Phase A): interiors, themed gym halls, puzzles, correct arenas -->
+Every town building (gym, Solenne's league hall, shop, healer, houses) opens into a **pocket**: a walled, roofless hall
+standing in the zone's own playable outer band, reached only through door warps. Pockets are a layer laid out after
+the zone plan (`planInteriors(zone, plan, base)`; `ZoneDef`, the plan and its rng streams are untouched), placed by a
+deterministic greedy scan (outermost ring first, then angle) clear of buildings, roads, the plaza, water, the set-piece,
+authored points, props and lights, ≥ 9 m from every linked edge (the 6 m handover trigger and 6.5 m arrival line stay
+outside), tall-grass patches avoided unless no other spot fits. Yaw is a multiple of π/2, the long axis runs along the
+nearer side, the door (local +z) faces the town centre.
+```ts
+export interface InteriorDef {           // authored in the hall's LOCAL frame: origin at the floor centre, door in the +z wall
+  readonly id: string;                   // = the building id: '<zone>.gym' | '<zone>.league' | '<zone>.shop' | '<zone>.healer' | '<zone>.house<k>'
+  readonly zoneId: ZoneId; readonly building: string;
+  readonly template: 'gym_hall' | 'league_hall' | 'shop' | 'healer' | 'house_s' | 'house_m';
+  readonly theme: 'grove' | 'cinder' | 'salt' | 'storm' | 'marrow' | 'vesper' | 'forge' | 'sky' | 'league' | 'shop' | 'healer' | 'house';
+  readonly label: string; readonly w: number; readonly d: number;   // inner floor extent (gym 20×34, league 20×62, shop/healer 10×8, houses 8×7 / 9×8)
+  readonly entry: LocalPoint; readonly exit: LocalPoint;
+  readonly rooms: readonly InteriorRoom[];    // { id, arena, leader (LeagueTrainer id), leaderAt, bounds }
+  readonly walls: readonly InteriorWall[];    // internal solids (stamped unwalkable)
+  readonly gates: readonly InteriorGate[];    // per-player doors: solid until every `opensWhen` flag is held — never stamped
+  readonly switches: readonly InteriorSwitch[]; // interact { kind: 'switch' }: `requires` ⊆ flags, sets `switch:<zone>:<id>` (or null), optional warpTo
+  readonly trainers: readonly InteriorTrainer[]; // gym trainers; beaten flag `trainer:<id>:beaten`, no rematch
+  readonly npcs: readonly InteriorNpc[];      // shopkeeper / nurse / guide / resident / tower (Phase D14: the battle tower attendant, Solenne league hall foyer) — client-local dialogue
+  readonly items: readonly InteriorItem[];    // pickup flag `item:<zone>:<id>`
+  readonly props: readonly InteriorProp[];
+}
+export interface InteriorPlacement { readonly x: number; readonly z: number; readonly yaw: number; readonly floorY: number }
+```
+Heightfield (§3.11 amended): `planZone → planInteriors → stampFootprints(plan solids minus the scatter that falls in a
+pocket) → stampInteriors` — the floor and a 0.4 m wall flatten to `floorY` (quantised to 1/64), a 2 m screen band blends to
+the terrain, `water = 0` over the footprint; walkable = the floor inset by the capsule radius minus internal walls; walls
+and screen unwalkable. Gates are a per-player overlay (server movement validation, client collider blockers). Phase D10: `→ stampObstacles` follows `stampInteriors` (§3.1 Obstacles); a no-op without `ZoneDef.obstacles`.
+
+Gym halls: a foyer, a puzzle band with 2–3 gym trainers beside gates and one gimmick (grass hedge maze + root-stones,
+fire furnace grates, water tide sluices, electric ordered breakers, rock boulder maze + keystone, ghost teleport tiles,
+steel anvil sequence, dragon bridge gauntlet), then the leader's chamber behind a gated wall at local z = −2 with the
+arena at (0, −9.5) and the leader at (0, −13.7). The league hall: a foyer (nurse, herald) and four 14 m chambers (Veil,
+Aurelia, Kirei, Zeon), each gate opening on the previous Warden's `elite:*` flag; healing between fights. A battle
+started inside a hall forms at the containing room's arena (gym trainers fight in the leader's chamber) on the hall axis
+(`interiorArenaFor`); `battleStart` carries `x`, `z`, `yaw`.
+
+validate (§3.10 amended): every town building has a pocket; pockets disjoint and inside the playable interior; for
+every pocket a progression walker from the entry with no flags (beating reachable trainers, using reachable switches
+whose `requires` it holds, following teleports) reaches every leader, and with every gate closed reaches none (in the
+league hall, none past the first chamber); every arena keeps ≥ 6.5 m of floor and both trainer slots (±4.45 m) on the
+floor; entry → gym arena ≤ 30 m; every npc / item / exit reachable.
+
 ---
 
 ## §4 @ewa/protocol WIRE
@@ -1215,6 +1362,8 @@ export class PlayerState extends Schema {
   @type('boolean') inBattle = false;
   @type('string') guildTag = '';     // '' = none (persist's guildTag is `string | null`; the wire cannot carry null); 3..4 chars (§4.7 /guilds regex)
   @type('uint32') seq = 0;           // last input seq the server applied — the client reconciles against it
+  @type('boolean') surfing = false;  // Phase D8: the accepted pose is on open water (water, not walkable) — remotes ride the level
+  @type('boolean') biking = false;   // Phase D11: the last accepted input was ridden (the bike cap applied)
 }
 
 export class SpawnState extends Schema {
@@ -1227,6 +1376,7 @@ export class SpawnState extends Schema {
   @type('boolean') isAlpha = false;
   @type('string') engagedBy = '';    // player uuid while a battle holds it; '' = free
   @type('uint32') despawnAtTick = 0;
+  @type('boolean') isShiny = false;   // Phase D4; appended last so the earlier field indexes are unchanged
 }
 
 export class BattleSummary extends Schema {
@@ -1253,7 +1403,7 @@ export class RaidState extends Schema {
 export class ZoneState extends Schema {
   @type('uint32') tick = 0;                       // 20 Hz
   @type('float32') timeOfDay = 0;                 // 0..1, one full day = 48 real minutes
-  @type('string') weather = 'none';               // WeatherKind, cosmetic in the overworld; battles set their own
+  @type('string') weather = 'none';               // WeatherKind; Phase D7: the zone's per-biome schedule (30 §30.2.8 step 1b); wild / trainer / league battles outside interiors start under it
   @type('string') harvestState = 'intact';        // the zone's content DEFAULT (ZoneDef.harvestState), same for every viewer; each client renders harvestStateFor(zone, ownFlags) (§3.5) — the story is per player <!-- reconciled 2026-09-18 -->
   @view() @type({ map: PlayerState }) players = new MapSchema<PlayerState>();   // keyed by player uuid
   @view() @type({ map: SpawnState }) spawns = new MapSchema<SpawnState>();     // keyed by spawn id
@@ -1272,14 +1422,17 @@ Cell size **32 world units**; a client sees the 3×3 block around its own cell. 
 import { z } from 'zod';
 
 export const InputMsg = z.object({ seq: z.number().int().min(0).max(0xffffffff), x: z.number(), z: z.number(),   // zod 4: z.number() rejects NaN/±Infinity; .finite() is a deprecated no-op
-  angle: z.number(), running: z.boolean(), dtMs: z.number().int().min(1).max(100) });
+  angle: z.number(), running: z.boolean(), dtMs: z.number().int().min(1).max(100),
+  bike: z.boolean().optional() });   // Phase D11: the window was ridden — the bike cap only for an owner outdoors on land, else run / walk (30-server-netcode.md §30.2.4)
 export const EmoteMsg = z.object({ emote: z.number().int().min(1).max(6) });
 export const ChatMsg = z.object({ text: z.string().min(1).max(120) });
-export const InteractMsg = z.object({ targetId: z.string().min(1).max(64), kind: z.enum(['npc', 'item', 'lore', 'gym', 'healer', 'shop', 'warp', 'static']) });
+export const InteractMsg = z.object({ targetId: z.string().min(1).max(64), kind: z.enum(['npc', 'item', 'lore', 'gym', 'healer', 'shop', 'warp', 'static', 'switch', 'obstacle']) });   // 'switch' Phase A, 'obstacle' Phase D10
 export const EngageSpawnMsg = z.object({ spawnId: z.string().min(1).max(64) });
 export const BattleActionMsg = z.object({ battleId: z.string().uuid(), turn: z.number().int().min(1),
+  pos: z.union([z.literal(0), z.literal(1)]).optional(),   // Phase D6: the doubles field position (absent = the lowest still waiting); ignored in singles
   action: z.discriminatedUnion('kind', [
-    z.object({ kind: z.literal('move'), move: z.string().min(1).max(40) }),
+    z.object({ kind: z.literal('move'), move: z.string().min(1).max(40),
+      target: z.object({ side: z.union([z.literal(0), z.literal(1)]), pos: z.union([z.literal(0), z.literal(1)]) }).optional() }), // Phase D6
     z.object({ kind: z.literal('switch'), to: z.number().int().min(0).max(5) }),
     z.object({ kind: z.literal('item'), item: z.string().min(1).max(40), target: z.number().int().min(0).max(5).optional() }),
     z.object({ kind: z.literal('catch'), orb: z.string().min(1).max(40) }),
@@ -1300,19 +1453,26 @@ export const RaidCatchMsg = z.object({ raidId: z.string().uuid(), orb: z.string(
 export const RaidLeaveMsg = z.object({ raidId: z.string().uuid() });
 export const HandoverAckMsg = z.object({ roomId: z.string().min(1), seat: z.string().min(1) });   // seat = the destination sessionId from the SeatReservation
 export const BattleResyncMsg = z.object({ battleId: z.string().uuid() });                          // §4.5
+export const FastTravelMsg = z.object({ zoneId: z.enum(ZONE_IDS) });                               // §4.6; amended 2026-10-06 (Phase C3)
+export const FishMsg = z.object({ angle: z.number() });   // Phase D9: a landed Old Rod bite; the cast heading (refusals FISH_REACH_M = 2.5, FISH_REFUSALS noRod / noWater / nothingBites)
+export const RankedQueueMsg = z.object({ action: z.enum(['join', 'leave']) });   // Phase D13: the ranked queue (30-server-netcode.md §30.4.5a); answered with `rankedStatus`
+export const TowerMsg = z.discriminatedUnion('action', [                          // Phase D14: the battle tower (30-server-netcode.md §30.4.9); answered with `towerState`
+  z.object({ action: z.literal('start'), picks: z.array(z.string().min(1).max(64)).length(3) }),   // refusals TOWER_REFUSALS locked / tooFar / badPicks / running / noRun / inBattle
+  z.object({ action: z.literal('next') }), z.object({ action: z.literal('quit') }),
+]);
 
 export const CLIENT_MESSAGES = {
   input: InputMsg, emote: EmoteMsg, chat: ChatMsg, interact: InteractMsg, engageSpawn: EngageSpawnMsg,
   battleAction: BattleActionMsg, battleResync: BattleResyncMsg, challenge: ChallengeMsg, challengeReply: ChallengeReplyMsg,
   tradeRequest: TradeRequestMsg, tradeReply: TradeReplyMsg, tradeOffer: TradeOfferMsg, tradeConfirm: TradeConfirmMsg, tradeCancel: TradeCancelMsg,
   raidJoin: RaidJoinMsg, raidReady: RaidReadyMsg, raidAction: RaidActionMsg, raidCatch: RaidCatchMsg, raidLeave: RaidLeaveMsg,
-  handoverAck: HandoverAckMsg,
-} as const;   // exactly 20 keys
+  handoverAck: HandoverAckMsg, fastTravel: FastTravelMsg, fish: FishMsg, rankedQueue: RankedQueueMsg, tower: TowerMsg,
+} as const;   // exactly 24 keys (Phase C3 added fastTravel, Phase D9 fish, Phase D13 rankedQueue, Phase D14 tower)
 export type ClientMessageType = keyof typeof CLIENT_MESSAGES;
 ```
 
 <!-- reconciled 2026-09-18: battleResync (named in §4.5 prose) is now in the block; 50-verification-budget.md §50.4.3 counts 20 -->
-Rate limits (per client, sliding window; excess is dropped with one `error { code: 'rateLimited' }` per window): `input` 30/s, `emote` 1 per 1.5 s, `chat` 4 per 4 s, `interact` 4/s, `engageSpawn` 2/s, `battleAction`/`battleResync` 4/s, `challenge`/`tradeRequest` 3 per 5 s, raid messages 4/s. A message whose `type` is not a `CLIENT_MESSAGES` key gets no reply: the room's `'*'` handler only counts it (`metrics.unknownMessages`) and 5 within 10 s disconnect the client with code 4003 — the `'*'` handler must exist, because `@colyseus/core` 0.18.14 closes the socket with 4002 on the first message that has no handler outside dev mode (`src/RoomMessages.ts` lines 334–342). `invalidPayload` is for a known type with a malformed body; the zod check therefore runs inside the handler wrapper (`safeParse`), never as the `onMessage` validator argument, which disconnects with 4002 on a rejected payload (`src/RoomMessages.ts` lines 189–196). <!-- amended 2026-09-25: "Colyseus drops it … there is no '*' handler" was false for 0.18.14; packages/server IMPLEMENTATION-NOTES R1, R3 -->
+Rate limits (per client, sliding window; excess is dropped with one `error { code: 'rateLimited' }` per window): `input` 30/s, `emote` 1 per 1.5 s, `chat` 4 per 4 s, `interact` 4/s, `engageSpawn` 2/s, `battleAction`/`battleResync` 4/s (Phase D6: in a doubles battle a `battleAction` with `pos: 1` counts in its own 4/s window, so a turn's two back-to-back actions never starve each other; singles unchanged), `challenge`/`tradeRequest` 3 per 5 s, raid messages 4/s, `fastTravel` 4/s (plus its own 3 s server cooldown, §4.6), `fish` 1 per 1.5 s (Phase D9), `rankedQueue` 4 per 5 s (Phase D13), `tower` 4/s (Phase D14). A message whose `type` is not a `CLIENT_MESSAGES` key gets no reply: the room's `'*'` handler only counts it (`metrics.unknownMessages`) and 5 within 10 s disconnect the client with code 4003 — the `'*'` handler must exist, because `@colyseus/core` 0.18.14 closes the socket with 4002 on the first message that has no handler outside dev mode (`src/RoomMessages.ts` lines 334–342). `invalidPayload` is for a known type with a malformed body; the zod check therefore runs inside the handler wrapper (`safeParse`), never as the `onMessage` validator argument, which disconnects with 4002 on a rejected payload (`src/RoomMessages.ts` lines 189–196). <!-- amended 2026-09-25: "Colyseus drops it … there is no '*' handler" was false for 0.18.14; packages/server IMPLEMENTATION-NOTES R1, R3 -->
 
 ### 4.4 Server → client messages
 
@@ -1339,6 +1499,12 @@ export type ServerMessage =
   | { readonly type: 'dm'; readonly id: number; readonly fromId: string; readonly fromName: string; readonly text: string; readonly sentAt: number } // a persisted DM pushed live (30-server-netcode.md §30.7.2)
   | { readonly type: 'storyBeat'; readonly beatId: string; readonly phase: 'start' | 'complete' }                     // §3.5 runtime: the client renders the beat's `lines` on 'start' and `after` on 'complete'
   | { readonly type: 'toast'; readonly level: 'info' | 'success' | 'warn'; readonly text: string }
+  | { readonly type: 'rankedStatus'; readonly state: 'idle' | 'queued' | 'matched'; readonly rating: number; readonly waitedMs: number; readonly window: number;
+      readonly opponent: { readonly name: string; readonly rating: number } | null;
+      readonly reason: 'left' | 'busy' | 'party' | 'cancelled' | 'started' | null }                                // Phase D13 (30-server-netcode.md §30.4.5a); sent last in SERVER_MESSAGE_TYPES
+  | { readonly type: 'towerState'; readonly phase: 'fighting' | 'won' | 'lost' | 'ended'; readonly streak: number; readonly runWins: number; readonly best: number;
+      readonly set: number; readonly fight: number; readonly picks: readonly string[];
+      readonly reward: { readonly money: number; readonly items: Readonly<Record<string, number>> } | null }      // Phase D14 (30-server-netcode.md §30.4.9); after rankedStatus in SERVER_MESSAGE_TYPES (18 variants)
   | { readonly type: 'error'; readonly code: 'rateLimited' | 'invalidPayload' | 'notAllowed' | 'notFound' | 'busy' | 'internal'; readonly detail: string | null };
 
 export interface TradeOffer { readonly playerId: string; readonly creatureIds: readonly string[]; readonly money: number; readonly confirmed: boolean }
@@ -1362,6 +1528,8 @@ Every `battleStart`, `battleEvents`, `battleResync` and `raidEvents` carries `st
 
 Crossing a zone link: the source room sends `handover { roomId, seat, zoneId, x, z }` when the player is within 6 units of the link side's **playable** edge (`playableBounds`, §3.11 — the field edge lies inside the 16 m unwalkable margin and cannot be reached) <!-- amended 2026-09-25: packages/server IMPLEMENTATION-NOTES R7 -->; the client pre-joins the destination via `@colyseus/sdk` `client.consumeSeatReservation` and sends `handoverAck` to the *destination*; the destination marks the player present; the source removes the avatar on receiving the destination's IPC confirm, or after 5 s. The player's authoritative position row is written once, by the destination, on ack. Details in `30-server-netcode.md`.
 
+**Fast travel** <!-- amended 2026-10-06: Phase C3 world map --> — `fastTravel { zoneId }` asks for a free trip to a town's `spawn`. The source room checks, in order: the destination is a town (`notTown`), the player holds `visited:<zoneId>` (`notVisited`), its badge gate is met (`travelGated`), the player is not in a battle, trade, raid or crossing (`travelBusy`), and 3 s have passed since the last accepted trip or any handover arrival (`travelCooldown`). A refusal is a warn `toast` plus `error { code: 'notAllowed', detail: <reason> }` (protocol `FAST_TRAVEL_REFUSALS`). An accepted trip runs the crossing above from step 2 with the destination's `spawn` as the entry point — the same `handover` message, reservation, ack and single position write; a trip to the zone the player stands in teleports to its spawn instead. **Visited flags**: the server writes `visited:<ZoneId>` (content `visitedFlag`, accepted by `isKnownFlag`) the first time a player joins a zone — fresh join or handover arrival — through the room's flag writer and a `progressionDelta { flags }`; registration writes `visited:` for the starting zone.
+
 ### 4.7 REST (Fastify 5, `@fastify/jwt` access tokens 15 min, refresh tokens 30 d in `refresh_tokens`)
 
 All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; the table names the schemas the server and client import.
@@ -1372,6 +1540,10 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /auth/login` | `{ username, password }` | `{ access, refresh, player }` | none |
 | `POST /auth/refresh` | `{ refresh }` | `{ access, refresh }` (rotating) | none |
 | `POST /auth/logout` | `{ refresh }` | `204` | bearer |
+| `POST /auth/forgot` | `{ email }` | `204` always — known or unknown address alike (no enumeration); a known, unbanned account is mailed a single-use reset link `${PUBLIC_WEB_URL}/reset?token=…` valid 30 min; 429 over 5/h per IP; over 3 mails/h per address the 204 is answered and nothing is sent | none |
+| `POST /auth/reset` | `{ token, password: 8..128 }` | `204` — new argon2id hash, **every** refresh token of the account revoked, `email_verified_at` set (the link proved the address), audit `auth.passwordReset`; 400 `{ code: 'badToken', reason: 'unknown' \| 'expired' \| 'used' }` | none |
+| `POST /auth/verify` | `{ token }` | `204` — stamps `players.email_verified_at` (first stamp kept); same 400 `badToken`. Verification never gates play | none |
+| `POST /auth/resend` | — | `204` — a fresh 48 h verification link (supersedes the previous one); 409 `alreadyVerified`; 3/h per player | bearer |
 | `GET /me` | — | `PlayerProfile & { party: CreatureInstance[]; box: CreatureInstance[]; inventory: Record<string, number>; badges; flags; quests; battlePass; presence: { roomId: string \| null; zoneId: ZoneId; shard: number }; unreadDm: Record<string, number>; friendRequests: number; liveOps: LiveOpsSummary }` | bearer |
 | `POST /zone/enter` | `{ zoneId }` | `{ seat: SeatReservation }` — picks/creates the shard (30-server-netcode.md §30.2.6); 403 `{ code: 'gated', badge }` when the zone's `gate` badge is missing; 409 `{ code: 'wrongZone', zoneId }` unless `zoneId` is the player's persisted `zone_id` or live presence zone (crossings are handovers, never a REST call); during a battle the seat is in the battle's own room (a reload rejoins and receives `battleResync`), any other zone 409 `inBattle` | bearer |
 | `POST /profile` | `{ title?: string; motto?: 0..120; body?: string }` (`title ∈ TITLES`, `body ∈ BODIES` ids, §3.12) | `PlayerProfile` | bearer |
@@ -1380,17 +1552,18 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /party/swap` | `{ partyId: string; boxId: string }` | `{ party, box }` | bearer |
 | `POST /party/withdraw` / `POST /party/deposit` | `{ id }` | `{ party, box }` | bearer |
 | `POST /creature/:id/nickname` | `{ nickname: 1..16 | null }` | `CreatureInstance` | bearer |
-| `POST /creature/:id/moves` | `{ moves: string[] }` (1..4, ⊆ learnable at level) | `CreatureInstance` | bearer |
+| `POST /creature/:id/moves` | `{ moves: string[] }` (1..4; each already known, learnable at level, or — Phase D2 — a `TM_MOVES` move whose TM the player owns and the species can be taught) | `CreatureInstance` | bearer |
 | `POST /creature/:id/setup` | `{ ability: string; heldItem: string | null }` | `CreatureInstance & { inventoryDelta: InventoryDeltaBody }` (`CreatureSetupRes`: equipping takes one from the inventory and returns the previously held item) | bearer |
-| `POST /creature/:id/evolve` | `{ into: string }` | `CreatureInstance` | bearer |
+| `POST /creature/:id/evolve` | `{ into: string }` (level: core evolveReady; Phase D3 stone: an owned stone, one spent; trade: the creature carries `TRADE_EVOLVE_RIBBON`, which is removed) | `CreatureInstance & { inventoryDelta? }` (the stone count when one was spent) | bearer |
+| `POST /creature/:id/tutor` | `{ move: string; forget: string | null }` (Phase D2: a tutor NPC of the presence zone teaches `move`; learnable; not yet known; `forget` required at four moves) | `CreatureInstance & { inventoryDelta }` (money − `MOVE_TUTOR_PRICE`) | bearer |
 | `POST /creature/:id/release` | — | `204` (refused when `locked`) | bearer |
 | `POST /creature/:id/flags` | `{ favorite?: boolean; locked?: boolean }` | `CreatureInstance` | bearer |
 | `POST /item/use` | `{ item: string; target: string | null; qty: 1..99 }` | `{ inventory, creaturesUpdated, events }` (server-validated effect) | bearer |
 | `POST /heal` | — | `{ party }` (must be in a `healer: true` zone) | bearer |
-| `GET /dex` | — | `{ seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[] }` | bearer |
+| `GET /dex` | — | `{ seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[]; shiny?: string[] }` (Phase D4 `shiny`: species with a shiny catch) | bearer |
 | `GET /shop/:zoneId` | — | `{ stock: string[]; prices: Record<string, number> }` | bearer |
 | `POST /shop/buy` / `POST /shop/sell` | `{ item: string; qty: 1..99 }` | `{ inventory, money }` | bearer |
-| `GET /marketplace` | query `search, variant, isAlpha, levelMin, levelMax, sort, page, pageSize<=50` | `{ listings: ListingView[]; total }` | bearer |
+| `GET /marketplace` | query `search, variant, isAlpha, isShiny (Phase D4), levelMin, levelMax, sort, page, pageSize<=50` | `{ listings: ListingView[]; total }` (`ListingView.isShiny?` present when true) | bearer |
 | `GET /marketplace/my/active` · `GET /marketplace/my/bids` · `GET /marketplace/:id` | — | `ListingView[]` / `ListingView & { bids: BidView[] }` | bearer |
 | `POST /marketplace/list` | `{ creatureId, startingBid >= 100, buyNowPrice: number | null, durationHours: 12|24|48 }` | `ListingMutationRes` = `ListingView & { inventoryDelta }` (`creaturesRemoved: [creatureId]`) (5/h; 409 `inBattle` during a battle) | bearer |
 | `POST /marketplace/:id/bid` | `{ amount }` | `ListingMutationRes` (`inventoryDelta.money` after escrow) (30/h) | bearer |
@@ -1403,7 +1576,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /guilds?search=` · `GET /guilds/:id` | — | `GuildView[]` / `GuildView & { members }` | bearer |
 | `POST /guilds` | `{ name: 3..24, tag: /^[A-Z0-9]{3,4}$/ }` (costs `GUILD.createCost` 5000, 409 `InsufficientFunds`) | `GuildCreateRes` = `GuildView & { inventoryDelta }` (`money` after the charge) | bearer |
 | `POST /guilds/:id/join` · `/leave` · `/kick` · `/promote` | `{ playerId? }` | `GuildView` | bearer |
-| `GET /leaderboard?mode=rating|dex|trainerLevel&page=` | — | `{ rows: LeaderboardRow[] }` | bearer |
+| `GET /leaderboard?mode=rating|dex|trainerLevel|towerStreak&page=` | — | `{ rows: LeaderboardRow[] }` (Phase D14: `towerStreak` ranks `player_streaks.best` desc, then `current`, then username, players with best > 0 only; every row carries `towerBest?` / `towerCurrent?`) | bearer |
 | `GET /players/:username` | — | `PublicProfile` (allow-list, §5.3) | bearer |
 | `GET /battle-pass` | — | `{ trainerExp, trainerLevel, claimed: number[], mythicalChoice: string | null, rewards: BattlePassReward[] }` | bearer |
 | `POST /battle-pass/claim` | `{ level }` | `{ claimed, inventory, money, creaturesAdded }` | bearer |
@@ -1438,6 +1611,7 @@ export const players = pgTable('players', {
   usernameLower: varchar('username_lower', { length: 20 }).notNull(),
   email: varchar('email', { length: 254 }).notNull(),
   passwordHash: text('password_hash').notNull(),              // @node-rs/argon2, argon2id, m=19456 t=2 p=1
+  emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),   // migration 0002: set by POST /auth/verify (or a reset); null = unverified
   money: integer('money').notNull().default(3000),
   zoneId: varchar('zone_id', { length: 32 }).notNull().default('mirevale'),
   x: real('x').notNull().default(0), z: real('z').notNull().default(6), angle: real('angle').notNull().default(0),
@@ -1476,6 +1650,7 @@ export const creatureInstances = pgTable('creature_instances', {
   heldItem: varchar('held_item', { length: 32 }),
   variantKey: varchar('variant_key', { length: 8 }).notNull().default('normal'),
   isAlpha: boolean('is_alpha').notNull().default(false),
+  isShiny: boolean('is_shiny').notNull().default(false),           // migration 0003_shiny (Phase D4)
   caughtZoneId: varchar('caught_zone_id', { length: 32 }),
   caughtAt: timestamp('caught_at', { withTimezone: true }),
   ribbons: jsonb('ribbons').$type<string[]>().notNull().default([]),
@@ -1517,6 +1692,7 @@ export const dexEntries = pgTable('dex_entries', {
   caughtAt: timestamp('caught_at', { withTimezone: true }),
   variants: jsonb('variants').$type<VariantKey[]>().notNull().default([]),
   alphaSeen: boolean('alpha_seen').notNull().default(false),
+  shinyCaught: boolean('shiny_caught').notNull().default(false),   // migration 0003_shiny (Phase D4)
 }, (t) => [primaryKey({ columns: [t.playerId, t.speciesId] })]);
 
 export const questProgress = pgTable('quest_progress', {
@@ -1570,6 +1746,7 @@ export const listings = pgTable('listings', {
   creatureId: uuid('creature_id').notNull().references(() => creatureInstances.id),
   speciesId: varchar('species_id', { length: 32 }).notNull(),    // denormalised for search
   level: smallint('level').notNull(), variantKey: varchar('variant_key', { length: 8 }).notNull(), isAlpha: boolean('is_alpha').notNull(),
+  isShiny: boolean('is_shiny').notNull().default(false),           // migration 0003_shiny (Phase D4), denormalised for the filter
   startingBid: integer('starting_bid').notNull(),
   currentBid: integer('current_bid'),
   currentBidderId: uuid('current_bidder_id').references(() => players.id),
@@ -1600,7 +1777,7 @@ export const battleHistory = pgTable('battle_history', {
   ratingDelta: integer('rating_delta'),
   rewards: jsonb('rewards').$type<RewardsSummary>().notNull(),
   seed: jsonb('seed').$type<RngState>().notNull(),                  // replay: start + seed + actions reproduce the battle
-  actions: jsonb('actions').$type<[Action | null, Action | null][]>().notNull(),
+  actions: jsonb('actions').$type<[ReplayChoice, ReplayChoice][]>().notNull(),   // Phase D6: ReplayChoice = Action | null | [Action | null, Action | null] (doubles: one pair per player side)
   start: jsonb('start').$type<BattleStartSnapshot>(),               // migration 0001: the createBattle input minus the seed; null before 0001
   finalDigest: varchar('final_digest', { length: 8 }),               // migration 0001: digestBattleState of the final state; null before 0001
   happenedAt: timestamp('happened_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1634,6 +1811,17 @@ export const refreshTokens = pgTable('refresh_tokens', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex('refresh_tokens_hash_uq').on(t.tokenHash), index('refresh_tokens_player_idx').on(t.playerId)]);
 
+// migration 0002_email_tokens (Phase C6): single-use password-reset / email-verification tokens, stored hashed like refresh tokens
+export const emailTokens = pgTable('email_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  kind: varchar('kind', { length: 8 }).$type<'reset' | 'verify'>().notNull(),
+  tokenHash: text('token_hash').notNull(),                        // sha-256 of the opaque token (32 random bytes, base64url)
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),   // reset 30 min, verify 48 h
+  usedAt: timestamp('used_at', { withTimezone: true }),            // consumed, or superseded by a newer token of the same kind
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex('email_tokens_hash_uq').on(t.tokenHash), index('email_tokens_player_kind_idx').on(t.playerId, t.kind), check('email_tokens_kind_ck', sql`${t.kind} in ('reset', 'verify')`)]);
+
 export const auditLog = pgTable('audit_log', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   actorId: uuid('actor_id'),                                      // null = system
@@ -1644,7 +1832,7 @@ export const auditLog = pgTable('audit_log', {
 }, (t) => [index('audit_log_actor_idx').on(t.actorId, t.at), index('audit_log_action_idx').on(t.action, t.at)]);
 ```
 
-`players.x/z` use `real`; `real` is imported from `drizzle-orm/pg-core` alongside the others. `bigserial` likewise. `BattleStartSnapshot` is `{ readonly zoneId: string; readonly terrain: string; readonly sides: readonly [unknown, unknown] }` (the two `createBattle` sides, deep-copied before the call); with it a battle replays from the row alone — `createBattle({ id, format, seed, ...start })` then `resolveTurn` over `actions` reproduces `final_digest`. The original table (seed + actions only) could not replay without the starting parties. <!-- amended 2026-09-25: migration 0001_battle_replay, packages/server IMPLEMENTATION-NOTES S10/P6, packages/persist IMPLEMENTATION-NOTES "Server part 2 additions" --> There is no `party_slots`/`box_slots` table: the `(owner_id, slot_kind, slot_index)` unique index on `creature_instances` *is* the slot model, and a reorder is one transaction that rewrites `slot_index` for the affected rows.
+`players.x/z` use `real`; `real` is imported from `drizzle-orm/pg-core` alongside the others. `bigserial` likewise. `BattleStartSnapshot` is `{ readonly zoneId: string; readonly terrain: string; readonly sides: readonly [unknown, unknown]; readonly weather?: string; readonly slots?: 2; readonly noExp?: true }` (`slots` — Phase D6: a doubles battle; `noExp` — Phase D14: a battle tower fight) (the two `createBattle` sides, deep-copied before the call); with it a battle replays from the row alone — `createBattle({ id, format, seed, ...start })` then `resolveTurn` over `actions` reproduces `final_digest`. The original table (seed + actions only) could not replay without the starting parties. <!-- amended 2026-09-25: migration 0001_battle_replay, packages/server IMPLEMENTATION-NOTES S10/P6, packages/persist IMPLEMENTATION-NOTES "Server part 2 additions" --> There is no `party_slots`/`box_slots` table: the `(owner_id, slot_kind, slot_index)` unique index on `creature_instances` *is* the slot model, and a reorder is one transaction that rewrites `slot_index` for the affected rows.
 
 ### 5.2 Repository interfaces
 
@@ -1730,7 +1918,8 @@ export interface ProgressRepo {
   dex(tx: Tx, playerId: string): Promise<{ seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[] }>;
   markSeen(tx: Tx, playerId: string, speciesId: string, now: Date): Promise<boolean>;   // idempotent; true when the species was new to the dex (live-ops newSpeciesSeen)
   flagSetAt(tx: Tx, playerId: string, flag: string): Promise<Date | null>;              // trainer rematch windows (§30.4.4)
-  markCaught(tx: Tx, playerId: string, speciesId: string, variant: VariantKey, isAlpha: boolean, now: Date): Promise<{ newSpecies: boolean }>;
+  markCaught(tx: Tx, playerId: string, speciesId: string, variant: VariantKey, isAlpha: boolean, now: Date, isShiny?: boolean): Promise<{ newSpecies: boolean }>;   // isShiny (Phase D4) sets dex shiny_caught, never cleared
+  caughtCount(tx: Tx, playerId: string): Promise<number>;   // Phase D5: distinct species caught (the dexCaught achievement value)
   quest(tx: Tx, playerId: string, questId: string): Promise<{ objectiveId: string; count: number; done: boolean; claimedAt: Date | null }[]>;
   advance(tx: Tx, playerId: string, questId: string, objectiveId: string, count: number, done: boolean): Promise<void>;
   claim(tx: Tx, playerId: string, questId: string, now: Date): Promise<boolean>;   // false when already claimed
@@ -1766,7 +1955,7 @@ export interface MarketRepo {
   creatureSlot(tx: Tx, creatureId: string): Promise<{ ownerId: string; slotKind: string; slotIndex: number } | null>;
 }
 export function marketFee(price: number): number;   // floor(price * MARKET.feePercent / 100)
-export interface ClosedListing { readonly id: string; readonly sold: boolean; readonly sellerId: string; readonly buyerId: string | null; readonly creatureId: string; readonly speciesId: string; readonly variantKey: VariantKey; readonly isAlpha: boolean; readonly price: number | null }
+export interface ClosedListing { readonly id: string; readonly sold: boolean; readonly sellerId: string; readonly buyerId: string | null; readonly creatureId: string; readonly speciesId: string; readonly variantKey: VariantKey; readonly isAlpha: boolean; readonly isShiny: boolean; readonly price: number | null }
 
 export interface SocialRepo {
   requestFriend(tx: Tx, requesterId: string, addresseeId: string, now: Date): Promise<'requested' | 'accepted'>;   // a reverse pending request is accepted, not mirrored (friendships_pair_uq); AlreadyFriends
@@ -1814,7 +2003,15 @@ export function hashRefreshToken(token: string): string;   // sha-256 hex; the o
 export interface AuditRepo { write(tx: Tx, e: { actorId: string | null; action: string; subject: string | null; detail: Record<string, unknown> }, now: Date): Promise<void> }
 
 export function escapeLike(s: string): string;   // escapes \ % _ ; callers add their own wildcards and `ESCAPE '\'`
-export interface Repos { players: PlayerRepo; creatures: CreatureRepo; inventory: InventoryRepo; progress: ProgressRepo; market: MarketRepo; social: SocialRepo; history: HistoryRepo; battlePass: BattlePassRepo; auth: AuthRepo; audit: AuditRepo }
+/** Phase D14 (migration 0004_player_streaks): `player_streaks (player_id uuid PK → players cascade, current int ≥ 0, best int ≥ current, updated_at)`, index on best. */
+export interface StreakRepo {
+  get(tx: Tx, playerId: string): Promise<{ current: number; best: number }>;                     // 0 / 0 without a row
+  byPlayers(tx: Tx, ids: readonly string[]): Promise<Map<string, { current: number; best: number }>>;
+  recordWin(tx: Tx, playerId: string, now: Date): Promise<{ current: number; best: number }>;    // upsert current + 1, best = greatest(best, current + 1)
+  endRun(tx: Tx, playerId: string, now: Date): Promise<{ current: number; best: number }>;       // current = 0, best kept
+  leaderboard(tx: Tx, page: number, pageSize: number): Promise<{ player: PlayerRow; current: number; best: number }[]>;   // best > 0, banned excluded, best desc, current desc, username_lower
+}
+export interface Repos { players: PlayerRepo; creatures: CreatureRepo; inventory: InventoryRepo; progress: ProgressRepo; market: MarketRepo; social: SocialRepo; history: HistoryRepo; battlePass: BattlePassRepo; auth: AuthRepo; audit: AuditRepo; streaks: StreakRepo }
 /** Repositories are stateless (every method takes `tx`); `db` is returned alongside so one handle can be carried around. */
 export function createRepos(db: Db): Repos & { readonly db: Db };
 ```
@@ -1887,4 +2084,4 @@ Lock order, global, so no two transactions can deadlock: (1) `listings` row (`FO
 - **Legacy story, quests, seasonal events, swarms and hotspots.** Their zone ids do not exist; the story bible supplies new beats.
 - **Auto-evolution and auto-forget.** Both are explicit player choices via REST.
 - **Optimistic-concurrency retry wrappers.** Row locks replace them; a `version` column remains for diagnostics only.
-- **Evolution stones.** The `ConsumableEffect` kind is reserved; zero items ship.
+- ~~**Evolution stones.**~~ Shipped in Phase D3 (six stones, §2.3 / §2.6).

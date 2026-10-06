@@ -381,8 +381,26 @@ async function main(): Promise<void> {
   if (zoneId) {
     const harvest = (params.get('harvest') ?? 'intact') as 'intact' | 'thinning' | 'harvested';
     const def = contentZone(zoneId);
-    const spec = zoneSpecFor(def, harvest);
-    const fx = Number(params.get('x') ?? def.spawn.x); const fz = Number(params.get('z') ?? def.spawn.z);
+    const spec0 = zoneSpecFor(def, harvest);
+    // `&interiors=0`: the zone without its Phase A pockets (A/B for the program / draw counts)
+    const spec = params.get('interiors') === '0' ? { ...spec0, interiors: [] } : spec0;
+    // Phase A: `&interior=<pocket id>` (e.g. mirevale.gym) shows that pocket's hall (setActive), turns the camera to the
+    // hall axis (setYawBase) and frames the hall (`&at=arena` frames the first battle room's arena instead)
+    const interior = spec.interiors?.find((p) => p.id === params.get('interior')) ?? null;
+    let ix = def.spawn.x; let iz = def.spawn.z;
+    if (interior) {
+      const room = interior.rooms[0];
+      const lx = params.get('at') === 'arena' && room ? room.arena.lx : 0; const lz = params.get('at') === 'arena' && room ? room.arena.lz : 0;
+      const c = Math.cos(interior.yaw); const sn = Math.sin(interior.yaw);
+      ix = interior.x + c * lx + sn * lz; iz = interior.z - sn * lx + c * lz;
+      rig.setYawBase((interior.yaw * 180) / Math.PI);
+      if (room) (window as unknown as { __ewaInterior: unknown }).__ewaInterior = {
+        id: interior.id,
+        arena: { x: interior.x + c * room.arena.lx + sn * room.arena.lz, z: interior.z - sn * room.arena.lx + c * room.arena.lz },
+        hall: { x: interior.x + c * room.bounds.lx + sn * room.bounds.lz, z: interior.z - sn * room.bounds.lx + c * room.bounds.lz, yaw: interior.yaw, hw: room.bounds.hw, hd: room.bounds.hd },
+      };
+    }
+    const fx = Number(params.get('x') ?? ix); const fz = Number(params.get('z') ?? iz);
     rig.setHeading((Number(params.get('h') ?? 0) & 3) as 0 | 1 | 2 | 3);
     rig.setZoomStop(Math.max(0, Math.min(2, Number(params.get('zoom') ?? 1))) as 0 | 1 | 2);
     for (let i = 0; i < 30; i++) rig.update(16);     // settle the heading / zoom eases (the predicted view reads them)
@@ -398,6 +416,13 @@ async function main(): Promise<void> {
     programsAtLoad = programCodes(r);
     console.info(`[sandbox] loaded ${zoneId} in ${(performance.now() - t0).toFixed(0)} ms`, zoneHandle.info);
     rig.setFocus(fx, zoneHandle.collider.sampleClamped(fx, fz), fz);
+    if (interior && zoneHandle.interiors) {
+      zoneHandle.interiors.setActive(interior.id);
+      zoneHandle.interiors.setView(((interior.yaw * 180) / Math.PI + 90 * (Number(params.get('h') ?? 0) & 3)) * (Math.PI / 180));
+      for (const g of params.get('open') === '1' ? interior.gates : []) zoneHandle.interiors.setGateOpen(g.id, true);
+      for (const sw of params.get('on') === '1' ? interior.switches : []) zoneHandle.interiors.setSwitchOn(sw.id, true);
+      zoneHandle.interiors.settle();
+    }
     // the first zone frame: CPU time of frame() and until the GPU queue drained (sync pipeline compiles land here);
     // `&hold=1` defers it (and the loop) until `__ewaSandbox.release()`, so it can run under the CDP profiler
     firstZoneFrame = async (): Promise<void> => {

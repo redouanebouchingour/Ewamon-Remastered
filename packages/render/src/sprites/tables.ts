@@ -25,6 +25,16 @@ export const BILLBOARD = Object.freeze({
   shimmerAmp: 0.25,
   shimmerRate: 3.0,
   shimmerBands: 8.0,
+  /**
+   * Phase D4 shiny sparkle: `alphaGlow` carries +2 for a shiny (alpha keeps its 0/1 in the remainder), so no
+   * per-object field is added. Twinkle cells of 1/sparkleCells of the card re-hash sparkleRate times a second;
+   * the top sparkleDensity of each draw lights at sparkleGain × a warm white.
+   */
+  shinyGlow: 2,
+  sparkleCells: 14,
+  sparkleRate: 5,
+  sparkleDensity: 0.06,
+  sparkleGain: 2.4,
   hurtFlashMix: 0.85,
   /**
    * Evolution glow (§10.7.5 evolution sequence): `glow` 0..1 mixes the lit albedo to white and adds `glow × glowGain`
@@ -86,12 +96,12 @@ export const VARIANT_KEYS: readonly VariantKey[] = Object.freeze(['normal', 'daw
 /** The four per-object palette values (`hueShift`, `satMul`, `lightMul`, `alphaGlow`) plus the quad scale. */
 export interface PaletteValues { hueShift: number; satMul: number; lightMul: number; alphaGlow: number; scale: number }
 
-export function paletteFor(variant: VariantKey, isAlpha: boolean, out: PaletteValues): PaletteValues {
+export function paletteFor(variant: VariantKey, isAlpha: boolean, out: PaletteValues, isShiny = false): PaletteValues {
   const p = VARIANT_UNIFORMS[variant] ?? VARIANT_UNIFORMS.normal;
   out.hueShift = p.hueShift;
   out.satMul = p.satMul;
   out.lightMul = p.lightMul;
-  out.alphaGlow = isAlpha ? 1 : 0;
+  out.alphaGlow = (isAlpha ? 1 : 0) + (isShiny ? BILLBOARD.shinyGlow : 0);
   out.scale = isAlpha ? BILLBOARD.alphaScale : 1;
   return out;
 }

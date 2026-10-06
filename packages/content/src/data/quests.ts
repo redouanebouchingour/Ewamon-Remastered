@@ -3,6 +3,7 @@
  * and the `requires` chain in list order (q11/q12 chain on the mythical flags, not on q10).
  */
 import type { QuestDef } from '../types';
+import { ACHIEVEMENTS } from './achievements';
 
 export const QUESTS: readonly QuestDef[] = [
   {
@@ -75,7 +76,7 @@ export const QUESTS: readonly QuestDef[] = [
       { id: 'ampmite', label: 'Witness an ampmite', objective: { kind: 'catchSpecific', species: 'ampmite' } },
       { id: 'circuit', label: 'Earn the Circuit Badge', objective: { kind: 'earnBadge', badge: 'circuit' } },
     ],
-    rewards: { money: 2200, items: { dusk_orb: 3, hyper_potion: 2 }, creature: null, flag: null },
+    rewards: { money: 2200, items: { dusk_orb: 3, hyper_potion: 2, 'tm:Cross Poison': 1 }, creature: null, flag: null },
   },
   {
     id: 'q06_the_deep_cut',
@@ -90,7 +91,7 @@ export const QUESTS: readonly QuestDef[] = [
       { id: 'yahit', label: 'Witness a yahit', objective: { kind: 'catchSpecific', species: 'yahit' } },
       { id: 'witness_30', label: 'Witness 30 species', objective: { kind: 'catchSpecies', count: 30 } },
     ],
-    rewards: { money: 3000, items: { prism_orb: 3, rarecandy: 1 }, creature: null, flag: null },
+    rewards: { money: 3000, items: { prism_orb: 3, rarecandy: 1, 'tm:Giga Drain': 1 }, creature: null, flag: null },
   },
   {
     id: 'q07_lens_and_latch',
@@ -105,7 +106,7 @@ export const QUESTS: readonly QuestDef[] = [
       { id: 'miscarmen', label: 'Witness a miscarmen (night)', objective: { kind: 'catchSpecific', species: 'miscarmen' } },
       { id: 'witness_45', label: 'Witness 45 species', objective: { kind: 'catchSpecies', count: 45 } },
     ],
-    rewards: { money: 4000, items: { phantom_orb: 3, full_heal: 3 }, creature: null, flag: null },
+    rewards: { money: 4000, items: { phantom_orb: 3, full_heal: 3, 'tm:Shadow Ball': 1 }, creature: null, flag: null },
   },
   {
     id: 'q08_anvil_debt',
@@ -182,4 +183,6 @@ export const QUESTS: readonly QuestDef[] = [
     ],
     rewards: { money: 15000, items: {}, creature: { species: 'lumyth', level: 60 }, flag: 'mythical_morning' },
   },
+  // Phase D5: the achievements (kind 'achievement', giver null) ride the same list, so they auto-progress and claim
+  ...ACHIEVEMENTS,
 ];

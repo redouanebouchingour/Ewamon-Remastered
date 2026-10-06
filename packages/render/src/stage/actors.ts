@@ -12,7 +12,9 @@
  *   toe), so planted feet move with the ground; emotes (spine §4.1) play a clip over the blend while standing.
  *   Facing is smoothed toward the actor's heading (shortest arc).
  * - Grounding: feet on the collider; one instanced contact decal for every actor (the §10.4.7 material) on the
- *   ground normal; real shadows from the nearest `shadowCasters` actors within `shadowRangeM` of the camera.
+ *   ground normal; real shadows from the nearest `shadowCasters` actors within `shadowRangeM` of the camera. Phase D8:
+ *   on open water (`setGround`'s water probe: a surfer) the feet ride the sampler's water level and the contact decal
+ *   gives way to an instanced ripple ring (two expanding rings, its own time uniform).
  * - LOD: beyond `accessoryRangeM` no accessory, beyond `shadowRangeM` no shadow, beyond `cullRangeM` hidden.
  * - Loading: while its shape (or the clips / atlas) loads an actor shows only its decal and nameplate; a look id the
  *   manifest lacks resolves to its base look, else to a deterministic base look (`resolveLook`).
@@ -21,16 +23,17 @@
  * cards are the HUD's (§10.9), anchored at the head joint (`screenPositions` / `projectHead`).
  */
 import {
-  AnimationMixer, Bone, BufferAttribute, BufferGeometry, Euler, Group, InstancedMesh, LoopOnce, LoopRepeat, Matrix4, Mesh, PlaneGeometry,
+  AnimationMixer, Bone, BufferAttribute, BufferGeometry, Euler, Group, InstancedMesh, LoopOnce, LoopRepeat, Matrix4, Mesh, MeshBasicNodeMaterial, PlaneGeometry,
   PropertyBinding, Quaternion, Skeleton, SkinnedMesh, Sphere, Vector3,
 } from 'three/webgpu';
-import type { AnimationAction, AnimationClip, MeshBasicNodeMaterial, MeshStandardNodeMaterial, Object3D, PerspectiveCamera, UniformNode } from 'three/webgpu';
-import { uniform } from 'three/tsl';
+import type { AnimationAction, AnimationClip, MeshStandardNodeMaterial, Object3D, PerspectiveCamera, UniformNode } from 'three/webgpu';
+import { abs, fract, length, oneMinus, smoothstep, uniform, uv, vec4 } from 'three/tsl';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import type { ActorDescriptor, ActorPool } from '../contracts.js';
 import { LAYERS } from '../descriptors.js';
 import { isDevBuild } from '../env.js';
 import { createDecalMaterial, type BillboardUniforms } from '../sprites/billboard.js';
+import { OVERLAY_ALPHA_CUT, overlayMrt } from '../sprites/overlayMrt.js';
 import { BILLBOARD, hash01 } from '../sprites/tables.js';
 import { createCharacterMaterial, type CharacterMaterial } from './characterMaterial.js';
 import { resolveLook, type AccessoryTemplate, type CharacterSet, type CharacterSource, type LookRef, type ShapeTemplate } from './looks.js';
@@ -98,6 +101,38 @@ export const EMOTE_POSE = Object.freeze({
 
 /** Ground height sampler (the zone collider); flat 0 when unset. */
 export type GroundSampler = (x: number, z: number) => number;
+/** Phase D8: true on an open-water sample (the collider's `onWater`): the actor is surfing. */
+export type WaterProbe = (x: number, z: number) => boolean;
+
+/** Phase D8 ripple ring under a surfer (m, Hz, opacity). */
+export const RIPPLE = Object.freeze({ sizeM: 1.6, hz: 0.7, width: 0.09, opacity: 0.55, liftM: 0.015 });
+
+/**
+ * Phase D8: two rings expanding from the centre and fading as they grow (time = `t` seconds). Additive white over the
+ * water, depth-tested, no depth write; class 'decal' (no three-map audit). One program for every surfer.
+ */
+export function createRippleMaterial(t: UniformNode<'float', number>, harvestLevel: UniformNode<'float', number>): MeshBasicNodeMaterial {
+  const m = new MeshBasicNodeMaterial();
+  const d = length(uv().sub(0.5)).mul(2);
+  const h = harvestLevel.clamp(0, 2).div(2);
+  const ring = (phase: number) => {
+    const r = fract(t.mul(RIPPLE.hz).add(phase));
+    return smoothstep(RIPPLE.width, 0, abs(d.sub(r))).mul(oneMinus(r));
+  };
+  m.colorNode = vec4(1, 1, 1, 1);
+  m.opacityNode = ring(0).add(ring(0.5)).mul(RIPPLE.opacity).mul(oneMinus(h.mul(0.5)));
+  m.transparent = true;
+  m.depthWrite = false;
+  m.polygonOffset = true;
+  m.polygonOffsetFactor = -2;
+  m.polygonOffsetUnits = -2;
+  m.fog = false;
+  m.mrtNode = overlayMrt(false);
+  m.alphaTest = OVERLAY_ALPHA_CUT;
+  m.name = 'ewa:surf-ripple';
+  m.userData = { ewaClass: 'decal' };
+  return m;
+}
 
 interface ActorUserData { sharp: number; ewaTile: number; ewaActor: string }
 interface AccessoryUserData { sharp: number; ewaTile: number }
@@ -195,6 +230,13 @@ export class CharacterPool implements ActorPool {
   private readonly decalGeometry: PlaneGeometry;
   private readonly decalMaterial: MeshBasicNodeMaterial;
   private readonly decals: InstancedMesh;
+  /** Phase D8: ripple rings under surfers (one instance slot per rig, zero-scaled off water) */
+  private readonly rippleMaterial: MeshBasicNodeMaterial;
+  private readonly ripples: InstancedMesh;
+  private readonly rippleTime = uniform(0).setName('ewaRippleTime');
+  private water: WaterProbe | null = null;
+  private readonly wet = new Uint8Array(ACTOR_POOL_SIZE);
+  private dirtyRipples = false;
   private readonly rigs: Rig[] = [];
   private readonly byId = new Map<string, Rig>();
   private set: CharacterSet | null = null;
@@ -242,6 +284,18 @@ export class CharacterPool implements ActorPool {
     for (let i = 0; i < ACTOR_POOL_SIZE; i++) this.decals.setMatrixAt(i, ZERO_SCALE);
     this.decals.count = 0;
     this.root.add(this.decals);
+    this.rippleMaterial = createRippleMaterial(this.rippleTime, o.harvestLevel);
+    this.ripples = new InstancedMesh(this.decalGeometry, this.rippleMaterial, ACTOR_POOL_SIZE);
+    this.ripples.name = 'ewa:surf-ripples';
+    this.ripples.userData = { ewaDecal: true };
+    this.ripples.renderOrder = BILLBOARD.decalRenderOrder;
+    this.ripples.layers.set(LAYERS.decals);
+    this.ripples.castShadow = false;
+    this.ripples.receiveShadow = false;
+    this.ripples.frustumCulled = false;
+    for (let i = 0; i < ACTOR_POOL_SIZE; i++) this.ripples.setMatrixAt(i, ZERO_SCALE);
+    this.ripples.count = 0;
+    this.root.add(this.ripples);
     for (let i = 0; i < ACTOR_POOL_SIZE; i++) { this.rigs.push(this.makeRig(i)); this.order.push(i); }
 
     this.source = o.source ?? null;
@@ -263,7 +317,18 @@ export class CharacterPool implements ActorPool {
     })().catch((e: unknown) => { warn(`characters unavailable (${e instanceof Error ? e.message : String(e)})`); return false; });
   }
 
-  setGround(g: GroundSampler | null): void { this.ground = g; for (const r of this.rigs) if (r.id !== null) this.place(r); }
+  /** `water` (Phase D8): the open-water probe; an actor on open water rides `g` (the surface level) with a ripple. */
+  setGround(g: GroundSampler | null, water: WaterProbe | null = null): void {
+    this.ground = g;
+    this.water = water;
+    for (const r of this.rigs) if (r.id !== null) this.place(r);
+  }
+
+  /** Phase D8: true while `id` stands on open water (tests, the client's ripple audio). */
+  onWater(id: string): boolean {
+    const r = this.byId.get(id);
+    return r !== undefined && this.water !== null && this.water(r.feet.x, r.feet.z);
+  }
   setCamera(c: PerspectiveCamera): void { this.camera = c; }
 
   // ---- §10.7.6 -------------------------------------------------------------------------------------------------
@@ -323,7 +388,10 @@ export class CharacterPool implements ActorPool {
     if (r.inst !== null) this.releaseInstance(r);
     r.lookRef = null; r.lookId = null; r.look = '';
     this.decals.setMatrixAt(r.slot, ZERO_SCALE);
+    this.ripples.setMatrixAt(r.slot, ZERO_SCALE);
+    this.wet[r.slot] = 0;
     this.dirtyDecals = true;
+    this.dirtyRipples = true;
     this.refreshCounts();
   }
 
@@ -358,6 +426,9 @@ export class CharacterPool implements ActorPool {
     this.accessories.clear();
     this.decals.removeFromParent();
     this.decals.dispose();
+    this.ripples.removeFromParent();
+    this.ripples.dispose();
+    this.rippleMaterial.dispose();
     this.decalGeometry.dispose();
     this.decalMaterial.dispose();
     if (this.warm !== null) {
@@ -380,6 +451,7 @@ export class CharacterPool implements ActorPool {
     if (this.disposed) return;
     const dtMs = Number.isFinite(dtScaledMs) ? Math.max(0, dtScaledMs) : 0;
     const dt = dtMs / 1000;
+    this.rippleTime.value = (this.rippleTime.value + dt) % 1000;
     const C = CHARACTER;
     const cam = this.camera;
     const kGait = 1 - Math.exp(-dt * C.gaitBlendRate);
@@ -440,6 +512,7 @@ export class CharacterPool implements ActorPool {
     }
     this.pickShadowCasters();
     if (this.dirtyDecals) { this.decals.instanceMatrix.needsUpdate = true; this.dirtyDecals = false; }
+    if (this.dirtyRipples) { this.ripples.instanceMatrix.needsUpdate = true; this.dirtyRipples = false; }
   }
 
   /** Projects the head anchor of `id` to CSS px into `out[offset..offset+1]`; false when absent or behind the camera. */
@@ -791,6 +864,23 @@ export class CharacterPool implements ActorPool {
       if (!Number.isFinite(r.groundN.x + r.groundN.z) || r.groundN.lengthSq() < 1e-8) r.groundN.set(0, 1, 0);
       r.groundN.normalize();
     }
+    const wet = this.water !== null && this.water(r.feet.x, r.feet.z);
+    if (wet) {
+      // a surfer: flat on the level, a ripple instead of the contact shadow
+      r.groundN.set(0, 1, 0);
+      this.decals.setMatrixAt(r.slot, ZERO_SCALE);
+      _s.set(RIPPLE.sizeM, RIPPLE.sizeM, 1);
+      _p.copy(r.feet);
+      _p.y += RIPPLE.liftM;
+      _m.compose(_p, _qFlat, _s);
+      this.ripples.setMatrixAt(r.slot, _m);
+      this.wet[r.slot] = 1;
+      this.dirtyRipples = true;
+      this.dirtyDecals = true;
+      if (r.inst !== null) r.inst.root.position.copy(r.feet);
+      return;
+    }
+    if (this.wet[r.slot] === 1) { this.wet[r.slot] = 0; this.ripples.setMatrixAt(r.slot, ZERO_SCALE); this.dirtyRipples = true; }
     _q.setFromUnitVectors(_up, r.groundN).multiply(_qFlat);
     _s.set(CHARACTER.decalM, CHARACTER.decalM, 1);
     _p.copy(r.feet);
@@ -806,6 +896,7 @@ export class CharacterPool implements ActorPool {
     let top = 0;
     for (const x of this.rigs) if (x.id !== null) top = x.slot + 1;
     this.decals.count = top;
+    this.ripples.count = top;
   }
 
   /** The head anchor: the head joint's world position raised to the look's top (+ margin), projected. */

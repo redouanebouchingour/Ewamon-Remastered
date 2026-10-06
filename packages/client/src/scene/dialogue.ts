@@ -5,8 +5,9 @@
  *   : (the first `react` whose `when` flag is held, else NpcDef.lines)
  * Badges read as `badge:<id>` flags (the server materialises them the same way for nextStoryBeat). Pure.
  */
-import { LEAGUE, STORY, badgeFlag, beatDoneFlag, beatEligible, leagueStoryGate, nextStoryBeat, storyBeat, zone } from '@ewa/content';
-import type { BadgeId, NpcDef, StoryBeat, ZoneId } from '@ewa/content';
+import { LEAGUE, LEAGUE_REMATCH, POSTGAME_FLAG, STORY, badgeFlag, beatDoneFlag, beatEligible, leagueStoryGate, nextStoryBeat, storyBeat, zone } from '@ewa/content';
+import type { BadgeId, LeagueRematch, NpcDef, StoryBeat, ZoneId } from '@ewa/content';
+import type { BattleState } from '@ewa/core';
 
 export interface DialogueLines {
   readonly speaker: string;
@@ -92,9 +93,16 @@ export function trainerPlan(zoneId: ZoneId, trainerId: string, flags: ReadonlySe
 }
 
 /**
- * The gym door. A beat Mira speaks (grove_stone, bloom_after) runs first, exactly like the server (§30.4.8 step 1).
- * Otherwise a gym the server will let the player fight opens the leader's `pre` lines and challenges on finish; one
- * it will refuse (badge held, story gate, previous badge missing) is sent at once for the server's toast.
+ * A league trainer, challenged where it waits in its hall (Phase A: the gym leader at its `leaderAt`, the Wardens and
+ * the Champion in Solenne's league chambers). A beat the trainer speaks (grove_stone, bloom_after) runs first, exactly
+ * like the server (§30.4.8 step 1). Otherwise a fight the server will accept opens the trainer's `pre` lines and
+ * challenges on finish; one it will refuse is sent at once for the server's toast. The refusal rules mirror the
+ * server's `leagueRefusal`: gyms — badge held, story gate, previous badge missing; Wardens — already beaten, fewer than
+ * eight badges, the previous Warden not beaten; the Champion — already beaten, any Warden not beaten.
+ *
+ * Phase D14 post-game: once the Champion has fallen, a beaten trainer offers a rematch — its `LEAGUE_REMATCH.pre`
+ * lines, then the challenge. The client cannot see the server's cooldown (`league:<id>:rematchAt` set time); a rematch
+ * asked too soon is refused with the server's toast after the prompt.
  */
 export function gymPlan(zoneId: ZoneId, leagueId: string, flags: ReadonlySet<string>, badges: readonly BadgeId[]): InteractPlan {
   const beat = nextStoryBeat(zoneId, flags);
@@ -102,21 +110,60 @@ export function gymPlan(zoneId: ZoneId, leagueId: string, flags: ReadonlySet<str
     if (beat.lines.length === 0) return SEND_NOW;
     return { dialogue: { speaker: leagueSpeaker(leagueId), lines: beat.lines, beatId: beat.id }, sendOnFinish: beat.battle !== null };
   }
+  const rematch = rematchOffer(leagueId, flags, badges);
+  if (rematch !== null) return { dialogue: { speaker: leagueSpeaker(leagueId), lines: rematch.pre, beatId: null }, sendOnFinish: true };
   const lt = LEAGUE.find((l) => l.id === leagueId);
-  if (lt === undefined || lt.stage !== 'gym' || lt.badge === null || lt.pre.length === 0) return SEND_NOW;
-  if (badges.includes(lt.badge)) return SEND_NOW;
+  if (lt === undefined || lt.pre.length === 0) return SEND_NOW;
   const gate = leagueStoryGate(lt.id);
   if (gate !== null && !flags.has(gate)) return SEND_NOW;
-  const prev = LEAGUE.find((l) => l.stage === 'gym' && l.order === lt.order - 1);
-  if (prev?.badge != null && !badges.includes(prev.badge)) return SEND_NOW;
+  const beaten = (l: { readonly setsFlags: readonly string[] }): boolean => l.setsFlags.length > 0 && l.setsFlags.every((f) => flags.has(f));
+  if (lt.stage === 'gym') {
+    if (lt.badge === null || badges.includes(lt.badge)) return SEND_NOW;
+    const prev = LEAGUE.find((l) => l.stage === 'gym' && l.order === lt.order - 1);
+    if (prev?.badge != null && !badges.includes(prev.badge)) return SEND_NOW;
+  } else {
+    if (beaten(lt)) return SEND_NOW;
+    const elites = LEAGUE.filter((l) => l.stage === 'elite');
+    if (lt.stage === 'elite') {
+      if (badges.length < 8) return SEND_NOW;
+      const prev = elites.find((l) => l.order === lt.order - 1);
+      if (prev !== undefined && !beaten(prev)) return SEND_NOW;
+    } else if (elites.some((l) => !beaten(l))) return SEND_NOW;
+  }
   return { dialogue: { speaker: leagueSpeaker(lt.id), lines: lt.pre, beatId: null }, sendOnFinish: true };
 }
 
-/** A won league battle: the leader's `post` lines (the concession line is post[1], bible §4.4). */
-export function leaguePostDialogue(leagueId: string | null): DialogueLines | null {
+/**
+ * Phase D14: the rematch this league trainer offers now — the Champion has fallen (`POSTGAME_FLAG`) and this trainer
+ * is beaten (gym: its badge held; Warden / Champion: its `setsFlags`, plus the champion flag for Zeon) — else null.
+ * Mirrors the server's `leagueBeaten`.
+ */
+export function rematchOffer(leagueId: string, flags: ReadonlySet<string>, badges: readonly BadgeId[]): LeagueRematch | null {
+  if (!flags.has(POSTGAME_FLAG)) return null;
+  const lt = LEAGUE.find((l) => l.id === leagueId);
+  const r = LEAGUE_REMATCH.find((x) => x.leagueId === leagueId);
+  if (lt === undefined || r === undefined) return null;
+  if (lt.stage === 'gym') return lt.badge !== null && badges.includes(lt.badge) ? r : null;
+  const need = lt.id === 'zeon' ? [...lt.setsFlags, POSTGAME_FLAG] : lt.setsFlags;
+  return need.length > 0 && need.every((f) => flags.has(f)) ? r : null;
+}
+
+/** Phase D14: the rematch row whose team the NPC side of this league battle fights with, else null (a first fight). */
+export function rematchOfBattle(state: BattleState, seat: 0 | 1): LeagueRematch | null {
+  const side = state.sides[seat === 0 ? 1 : 0];
+  if (side.kind !== 'npc' || side.trainerId === null) return null;
+  const r = LEAGUE_REMATCH.find((x) => x.leagueId === side.trainerId);
+  if (r === undefined || r.team.length !== side.party.length) return null;
+  return r.team.every((m, i) => side.party[i]?.creature.speciesId === m.species && side.party[i]?.creature.level === m.level) ? r : null;
+}
+
+/** A won league battle: the leader's `post` lines (the concession line is post[1], bible §4.4); a rematch's own `post`. */
+export function leaguePostDialogue(leagueId: string | null, rematch: LeagueRematch | null = null): DialogueLines | null {
   const lt = leagueId === null ? undefined : LEAGUE.find((l) => l.id === leagueId);
-  if (lt === undefined || lt.post.length === 0) return null;
-  return { speaker: leagueSpeaker(lt.id), lines: lt.post, beatId: null };
+  if (lt === undefined) return null;
+  const lines = rematch !== null && rematch.leagueId === lt.id ? rematch.post : lt.post;
+  if (lines.length === 0) return null;
+  return { speaker: leagueSpeaker(lt.id), lines, beatId: null };
 }
 
 /**

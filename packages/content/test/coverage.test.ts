@@ -16,8 +16,10 @@ import {
 } from '../src/index';
 
 const byId = new Map<string, SpeciesDef>(SPECIES.map((s) => [s.id, s]));
+// Phase D3: stone (`item`) and `trade` evolutions lead to their `into` like a level evolution
 const children = (s: SpeciesDef): string[] =>
-  s.evolution === null ? [] : s.evolution.kind === 'level' ? [s.evolution.into] : s.evolution.branches.map((b) => b.into);
+  s.evolution === null ? [] : s.evolution.kind === 'split' ? s.evolution.branches.map((b) => b.into) : [s.evolution.into];
+const atLevel = (s: SpeciesDef): number => (s.evolution !== null && (s.evolution.kind === 'level' || s.evolution.kind === 'split') ? s.evolution.atLevel : 0);
 
 describe('roster coverage (independent)', () => {
   const E = new Set<string>();
@@ -78,7 +80,7 @@ describe('roster coverage (independent)', () => {
         if (sp.types.includes('Ghost') || sp.types.includes('Dark')) expect(s.timeOfDay).toBe('night');
         if (sp.evolvesFrom !== null && children(sp).length > 0) {
           const parent = byId.get(sp.evolvesFrom)!;
-          expect(s.levelMin).toBeGreaterThanOrEqual((parent.evolution?.atLevel ?? 0) + 2);
+          expect(s.levelMin).toBeGreaterThanOrEqual(atLevel(parent) + 2);
         }
       }
     }
@@ -94,5 +96,8 @@ describe('roster coverage (independent)', () => {
     expect(r.stats.roster.paths['thornback']?.kind).toBe('raid');
     expect(r.stats.roster.paths['galaxion']).toEqual({ kind: 'static', zoneId: 'umbral_observatory', when: 'flag:ledger_read' });
     expect(r.stats.roster.paths['lumyth']).toEqual({ kind: 'quest', questId: 'q12_first_morning' });
+    // Phase D3 acquisition paths
+    expect(r.stats.roster.paths['magmolith']).toEqual({ kind: 'item', from: 'embrock', item: 'ember_stone' });
+    expect(r.stats.roster.paths['toxiveil']).toEqual({ kind: 'trade', from: 'glowtent' });
   });
 });

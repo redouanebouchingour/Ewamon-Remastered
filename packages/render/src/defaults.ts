@@ -12,7 +12,7 @@
 import { Vector3 } from 'three/webgpu';
 import type { PerspectiveCamera } from 'three/webgpu';
 import type {
-  ActorPool, BattleStage, CameraRig, EvolutionHandle, HudLayer, ZoneHandle, ZoneSpec,
+  ActorPool, BattleStage, CameraRig, EvolutionHandle, HallBounds, HudLayer, Terrain, ZoneHandle, ZoneSpec,
 } from './contracts.js';
 import type { EffectsFlags } from './descriptors.js';
 import { shakeAllowed } from './post/effects.js';
@@ -44,6 +44,11 @@ export class BasicDioramaRig implements CameraRig {
   setFocus(x: number, y: number, z: number): void { this.focus.set(x, y, z); }
 
   setHeading(h: 0 | 1 | 2 | 3): void { this.heading = h; }
+  private yawBaseDeg: number = PLACEHOLDER_POSE.yawBaseDeg;
+  /** Phase A: headings become `deg` + 90°·k; null restores −35°. */
+  setYawBase(deg: number | null): void { this.yawBaseDeg = deg === null || !Number.isFinite(deg) ? PLACEHOLDER_POSE.yawBaseDeg : deg; }
+  /** The diorama yaw (radians) of the current heading — what the battle stage stages along. */
+  get dioramaYaw(): number { return (this.yawBaseDeg + 90 * this.heading) * DEG; }
   setZoomStop(z: 0 | 1 | 2): void { this.zoom = z; }
   follow(actorId: string | null): void { this.followed = actorId; }
   get followedActor(): string | null { return this.followed; }
@@ -70,7 +75,7 @@ export class BasicDioramaRig implements CameraRig {
   update(dtMs: number): void {
     this.clock += dtMs;
     const P = PLACEHOLDER_POSE;
-    const yaw = (P.yawBaseDeg + 90 * this.heading + (this.battle ? P.battleYawOffsetDeg : 0)) * DEG;
+    const yaw = (this.yawBaseDeg + 90 * this.heading + (this.battle ? P.battleYawOffsetDeg : 0)) * DEG;
     const pitch = (this.battle ? P.battlePitchDeg : P.pitchDeg) * DEG;
     const dist = this.battle ? P.battleDistance : P.distances[this.zoom];
     const c = Math.cos(pitch);
@@ -96,7 +101,7 @@ export class BasicDioramaRig implements CameraRig {
 }
 
 export class NullBattleStage implements BattleStage {
-  dress(): void {} dressSpectator(): void {} undress(): void {} setBattler(): void {} setPose(): void {} hurt(): void {}
+  dress(_at: { readonly x: number; readonly z: number }, _terrain: Terrain, _participants: readonly string[], _hall?: HallBounds): void {} dressSpectator(): void {} undress(): void {} setBattler(): void {} setPose(): void {} hurt(): void {}
   faint(): void {} setWeather(): void {} vfx(): void {} prewarm(): void {} syncFrom(): void {} setTypeColors(): void {}
   inspect(): void {} dispose(): void {}
   evolve(): EvolutionHandle {

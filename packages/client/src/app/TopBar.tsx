@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router';
 import { BADGE_CASE } from '../data/badgeIcon';
 import { zoneName } from '../data/content';
+import { readyCount } from '../data/quests';
 import { apiFetch, endSession } from '../net/api';
 import { getRefreshToken } from '../net/tokens';
 import { useRoomState } from '../net/useRoomState';
@@ -21,13 +22,23 @@ import s from './TopBar.module.css';
 export const NAV: readonly { readonly to: string; readonly label: string; readonly icon: IconName }[] = [
   { to: '/play/party', label: 'Party', icon: 'party' },
   { to: '/play/box', label: 'Box', icon: 'box' },
+  { to: '/play/bag', label: 'Bag', icon: 'bag' },
   { to: '/play/dex', label: 'Dex', icon: 'dex' },
   { to: '/play/shop', label: 'Shop', icon: 'shop' },
   { to: '/play/social', label: 'Social', icon: 'social' },
   { to: '/play/guild', label: 'Guild', icon: 'guild' },
   { to: '/play/market', label: 'Market', icon: 'market' },
   { to: '/play/pass', label: 'Pass', icon: 'pass' },
+  { to: '/play/quests', label: 'Quests', icon: 'quest' },
+  { to: '/play/map', label: 'Map', icon: 'map' },
   { to: '/play/settings', label: 'Settings', icon: 'settings' },
+];
+
+/** Phase C4: the trainer's own pages live in the account menu (the nav row is full under 1400 px). */
+export const ACCOUNT_LINKS: readonly { readonly to: string; readonly label: string; readonly icon: IconName }[] = [
+  { to: '/play/profile', label: 'Profile', icon: 'user' },
+  { to: '/play/rankings', label: 'Rankings', icon: 'trophy' },
+  { to: '/play/history', label: 'History', icon: 'clock' },
 ];
 
 export const formatMoney = (n: number): string => n.toLocaleString('en-US');
@@ -36,7 +47,8 @@ function useNavCounts(): Readonly<Record<string, number>> {
   const unread = useNotificationsStore((st) => Object.values(st.unreadDm).reduce((a, b) => a + b, 0));
   const requests = useNotificationsStore((st) => st.friendRequests);
   const claims = useNotificationsStore((st) => st.pendingBattlePassClaims);
-  return { '/play/social': unread + requests, '/play/pass': claims };
+  const quests = useSessionStore((st) => readyCount(st.progression));
+  return { '/play/social': unread + requests, '/play/pass': claims, '/play/quests': quests };
 }
 
 function ZoneChip() {
@@ -99,6 +111,10 @@ function Account() {
   const isAdmin = useSessionStore((st) => st.profile?.isAdmin ?? false);
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  const go = (to: string): void => {
+    setOpen(false);
+    void navigate(to);
+  };
   const logout = async (): Promise<void> => {
     const refresh = getRefreshToken();
     if (refresh !== null) await apiFetch('authLogout', { body: { refresh } }).catch(() => undefined);
@@ -117,6 +133,12 @@ function Account() {
       {open && (
         <div className={s.menu} role="menu" onMouseLeave={() => setOpen(false)}>
           <BadgeCase />
+          {ACCOUNT_LINKS.map((a) => (
+            <button key={a.to} type="button" role="menuitem" className={s.menuItem} onClick={() => go(a.to)}>
+              <Icon name={a.icon} size="sm" /> {a.label}
+            </button>
+          ))}
+          <span className={s.menuRule} role="separator" />
           {isAdmin && (
             <button type="button" role="menuitem" className={s.menuItem} onClick={() => void navigate('/admin')}>
               <Icon name="shield" size="sm" /> Admin
@@ -148,9 +170,9 @@ export function TopBar() {
         {NAV.map((n) => {
           const count = counts[n.to] ?? 0;
           return (
-            <NavLink key={n.to} to={n.to} className={({ isActive }) => cx(s.link, isActive && s.active)}>
+            <NavLink key={n.to} to={n.to} className={({ isActive }) => cx(s.link, isActive && s.active)} title={n.label}>
               <Icon name={n.icon} size="sm" />
-              <span>{n.label}</span>
+              <span className={s.linkLabel}>{n.label}</span>
               {count > 0 && (
                 <span className={s.count} aria-label={`${count} new`}>
                   {count > 99 ? '99+' : count}

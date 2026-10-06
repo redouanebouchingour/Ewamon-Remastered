@@ -26,10 +26,14 @@ export function expGain(defeated: SpeciesDef, defeatedLevel: number, trainerBatt
   return x;
 }
 
-/** Resolves the evolution target for a creature at its current species, given its ability. Null when none. */
+/**
+ * Resolves the LEVEL evolution target for a creature at its current species, given its ability. Null when none —
+ * and always null for the Phase D3 `item` / `trade` kinds, which no level reaches.
+ */
 export function evolutionTarget(evolution: Evolution, ability: string): string | null {
   if (evolution === null) return null;
   if (evolution.kind === 'level') return evolution.into;
+  if (evolution.kind === 'item' || evolution.kind === 'trade') return null;
   for (let i = 0; i < evolution.branches.length; i++) {
     const br = evolution.branches[i]!;
     if (br.condition === null) return br.into;
@@ -63,7 +67,7 @@ export function applyExp(c: CreatureInstance, gained: number, content: ContentIn
   }
 
   let evolveReady: string | null = null;
-  if (sp.evolution !== null && newLevel >= sp.evolution.atLevel) {
+  if (sp.evolution !== null && (sp.evolution.kind === 'level' || sp.evolution.kind === 'split') && newLevel >= sp.evolution.atLevel) {
     evolveReady = evolutionTarget(sp.evolution, c.ability);
   }
 
@@ -73,6 +77,26 @@ export function applyExp(c: CreatureInstance, gained: number, content: ContentIn
     learnable,
     evolveReady,
   };
+}
+
+/**
+ * Phase D3: the species `item` evolves into when the player uses it, or null (no stone evolution, or another
+ * stone). Independent of level: a stone works at any level.
+ */
+export function itemEvolutionTarget(evolution: Evolution, item: string): string | null {
+  return evolution !== null && evolution.kind === 'item' && evolution.item === item ? evolution.into : null;
+}
+
+/** Phase D3: the species a trade evolves this one into, or null when it has no trade evolution. */
+export function tradeEvolutionTarget(evolution: Evolution): string | null {
+  return evolution !== null && evolution.kind === 'trade' ? evolution.into : null;
+}
+
+/** Every species `evolution` can lead to, whatever the trigger (split branches in order). */
+export function evolutionChildren(evolution: Evolution): readonly string[] {
+  if (evolution === null) return [];
+  if (evolution.kind === 'split') return evolution.branches.map((b) => b.into);
+  return [evolution.into];
 }
 
 /** Species swap; nickname kept unless it equalled the old species name; moves kept; hp scaled by the new maxHp ratio. */

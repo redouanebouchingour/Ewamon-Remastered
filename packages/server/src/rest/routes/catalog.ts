@@ -59,6 +59,16 @@ export function priceOf(deps: RestDeps, item: string): Priced | null {
   return { buy: def.price, sell: null };
 }
 
+/** Phase D2: `slot: 'key'` items (TMs, old_rod, the HMs) — never stacked, never sold back. */
+export function isKeyItem(deps: RestDeps, item: string): boolean {
+  try {
+    const def = deps.content.item(item);
+    return 'slot' in def && def.slot === 'key';
+  } catch (_e) {
+    return false;
+  }
+}
+
 export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): void {
   const { repos, content, clock } = deps;
   const bearer = { onRequest: requireAuth(deps), preHandler: rateLimit(deps) };
@@ -91,9 +101,13 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
     if (stock === null || !stock.includes(body.item)) throw new HttpError(409, 'notInStock');
     const price = priceOf(deps, body.item)?.buy ?? null;
     if (price === null) throw new HttpError(409, 'notForSale');
+    // Phase D2: a key item (a TM) is reusable — one copy, bought once
+    const key = isKeyItem(deps, body.item);
+    if (key && body.qty !== 1) throw new HttpError(409, 'oneAtATime');
     const now = new Date(clock());
     const res = await repos.db.transaction(async (tx) => {
       await repos.players.lock(tx, id);
+      if (key && (await repos.inventory.qty(tx, id, body.item)) > 0) throw new HttpError(409, 'alreadyOwned');
       const money = await repos.players.addMoney(tx, id, -price * body.qty);
       await repos.inventory.add(tx, id, body.item, body.qty);
       await repos.audit.write(tx, { actorId: id, action: 'shop.buy', subject: body.item, detail: { qty: body.qty, price } }, now);
@@ -207,12 +221,18 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
 
   app.get('/history/trades', bearer, async (req) => {
     const { page } = PageQuery.parse(req.query);
-    const rows = await repos.db.transaction((tx) => repos.history.trades(tx, req.user.sub, page, HISTORY_PAGE));
+    const { rows, names } = await repos.db.transaction(async (tx) => {
+      const rows = await repos.history.trades(tx, req.user.sub, page, HISTORY_PAGE);
+      // the partner's username for the client's history list (one lookup per page, not per row)
+      const partners = rows.length === 0 ? [] : await repos.players.byIds(tx, [...new Set(rows.map((r) => r.partnerId))]);
+      return { rows, names: new Map(partners.map((p) => [p.id, p.username])) };
+    });
     return out(deps, TradeHistoryRes, {
       rows: rows.map((r) => ({
         id: r.id,
         tradeId: r.tradeId,
         partnerId: r.partnerId,
+        partnerUsername: names.get(r.partnerId) ?? null,
         sent: r.sent as never,
         received: r.received as never,
         moneySent: r.moneySent,
@@ -238,12 +258,17 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
   app.get('/leaderboard', bearer, async (req) => {
     const q = LeaderboardQuery.parse(req.query);
     const rows = await repos.db.transaction(async (tx) => {
-      // §30.6.3: rating (ties peak, username) / dex caught count / trainer exp; banned excluded in SQL
-      const players = await repos.players.leaderboard(tx, q.mode, q.page, LEADERBOARD_PAGE);
+      // §30.6.3: rating (ties peak, username) / dex caught count / trainer exp; banned excluded in SQL. Phase D14
+      // `towerStreak`: best battle tower streak desc (then current, then username), players with a best > 0 only
+      const board = q.mode === 'towerStreak' ? await repos.streaks.leaderboard(tx, q.page, LEADERBOARD_PAGE) : null;
+      const mode = q.mode;
+      const players = mode === 'towerStreak' ? (board ?? []).map((r) => r.player) : await repos.players.leaderboard(tx, mode, q.page, LEADERBOARD_PAGE);
+      const streaks = board !== null ? new Map(board.map((r) => [r.player.id, { current: r.current, best: r.best }])) : await repos.streaks.byPlayers(tx, players.map((p) => p.id));
       const out = [];
       for (let i = 0; i < players.length; i++) {
         const p = players[i]!;
         const guild = await repos.social.guildOf(tx, p.id);
+        const streak = streaks.get(p.id);
         out.push({
           rank: (q.page - 1) * LEADERBOARD_PAGE + i + 1,
           id: p.id,
@@ -255,6 +280,8 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
           trainerLevel: trainerLevelFor(p.trainerExp),
           dexCaughtCount: (await repos.progress.dex(tx, p.id)).caught.length,
           guildTag: guild?.tag ?? null,
+          towerBest: streak?.best ?? 0,
+          towerCurrent: streak?.current ?? 0,
         });
       }
       return out;

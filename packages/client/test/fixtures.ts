@@ -1,7 +1,7 @@
 /** Shared fixtures for the client tests: schema-valid REST bodies and a fake JWT. */
 import { BATTLE_PASS } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
-import type { MeResponse } from '@ewa/protocol';
+import type { MeResponse, PublicProfile } from '@ewa/protocol';
 
 export const PLAYER_ID = '11111111-1111-4111-8111-111111111111';
 
@@ -73,4 +73,25 @@ export function meFixture(over: Partial<MeResponse> = {}): MeResponse {
 
 export function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...headers } });
+}
+
+/** Phase C4: a GET /players/:username body (the §5.3 allow-list) for the fixture player unless overridden. */
+export function publicProfileFixture(over: Partial<PublicProfile> = {}): PublicProfile {
+  return {
+    id: PLAYER_ID,
+    username: 'qa_tester',
+    title: 'Rookie Trainer',
+    motto: '',
+    body: 'ranger_m',
+    rating: 1000,
+    peakRating: 1000,
+    tier: 'bronze',
+    trainerLevel: 1,
+    badges: [],
+    guildTag: null,
+    dexCaughtCount: 1,
+    showcase: [{ ...creature('bramblecub'), ownerId: null }] as unknown as PublicProfile['showcase'],
+    createdAt: '2026-09-20T10:00:00.000Z',
+    ...over,
+  };
 }

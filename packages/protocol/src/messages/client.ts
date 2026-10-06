@@ -1,12 +1,13 @@
 /**
  * §4.3 Client → server messages. zod v4 schemas; every payload is validated before any handler
  * runs (the room registers each with `onMessage(name, schema, handler)`; zod v4 implements
- * Standard Schema). Exactly 20 keys in CLIENT_MESSAGES — a `type` outside them has no handler.
+ * Standard Schema). Exactly 24 keys in CLIENT_MESSAGES (Phase C3 added `fastTravel`, Phase D9 `fish`, Phase D13 `rankedQueue`, Phase D14 `tower`) — a `type` outside them has no handler.
  *
  * zod v4 `z.number()` already rejects NaN/±Infinity (`.finite()` is a deprecated no-op), so the
  * spine's `.finite()` calls are satisfied by the default. Objects STRIP unknown keys (zod default).
  */
 import { z } from 'zod';
+import { ZONE_IDS } from '../types';
 
 export const InputMsg = z.object({
   seq: z.number().int().min(0).max(0xffffffff),
@@ -15,17 +16,27 @@ export const InputMsg = z.object({
   angle: z.number(),
   running: z.boolean(),
   dtMs: z.number().int().min(1).max(100),
+  /**
+   * Phase D11: the message's displacement was ridden on the bicycle (cap `MOVEMENT.bikeSpeed × 1.15`). The server
+   * grants the bike cap only to an owner standing outdoors on land along the whole segment; otherwise the run / walk
+   * cap applies (a faster step is a `speed` rejection). Absent = false.
+   */
+  bike: z.boolean().optional(),
 });
 export const EmoteMsg = z.object({ emote: z.number().int().min(1).max(6) });
 export const ChatMsg = z.object({ text: z.string().min(1).max(120) });
 
-export const INTERACT_KINDS = ['npc', 'item', 'lore', 'gym', 'healer', 'shop', 'warp', 'static'] as const;
+/** Phase D10 adds `obstacle` (a Cut tree / Strength boulder of `ZoneDef.obstacles`, by id). */
+export const INTERACT_KINDS = ['npc', 'item', 'lore', 'gym', 'healer', 'shop', 'warp', 'static', 'switch', 'obstacle'] as const;
 export type InteractKind = (typeof INTERACT_KINDS)[number];
 export const InteractMsg = z.object({ targetId: z.string().min(1).max(64), kind: z.enum(INTERACT_KINDS) });
 export const EngageSpawnMsg = z.object({ spawnId: z.string().min(1).max(64) });
 
+/** Phase D6: a field position — the doubles move target (`pos` 0/1 is a position on the field, not a party index). */
+export const FieldRefSchema = z.object({ side: z.union([z.literal(0), z.literal(1)]), pos: z.union([z.literal(0), z.literal(1)]) });
 export const BattleActionSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('move'), move: z.string().min(1).max(40) }),
+  // Phase D6: `target` (doubles only, optional; ignored in singles) — the foe or ally position a single-target move aims at
+  z.object({ kind: z.literal('move'), move: z.string().min(1).max(40), target: FieldRefSchema.optional() }),
   z.object({ kind: z.literal('switch'), to: z.number().int().min(0).max(5) }),
   z.object({
     kind: z.literal('item'),
@@ -40,6 +51,12 @@ export const BattleActionMsg = z.object({
   battleId: z.string().uuid(),
   turn: z.number().int().min(1),
   action: BattleActionSchema,
+  /**
+   * Phase D6: the field position (0/1) this action is for in a doubles battle — one message per position. Absent in a
+   * doubles battle = the lowest position still waiting for an action (so a client that sends two plain messages works).
+   * Ignored in singles.
+   */
+  pos: z.union([z.literal(0), z.literal(1)]).optional(),
 });
 export const ChallengeMsg = z.object({ targetId: z.string().uuid() });
 export const ChallengeReplyMsg = z.object({ fromId: z.string().uuid(), accept: z.boolean() });
@@ -64,6 +81,54 @@ export const RaidCatchMsg = z.object({ raidId: z.string().uuid(), orb: z.string(
 export const RaidLeaveMsg = z.object({ raidId: z.string().uuid() });
 /** seat = the destination sessionId from the SeatReservation */
 export const HandoverAckMsg = z.object({ roomId: z.string().min(1), seat: z.string().min(1) });
+/** Phase C3: free fast travel to a visited town — the server answers with a `handover` to that zone's spawn. */
+export const FastTravelMsg = z.object({ zoneId: z.enum(ZONE_IDS) });
+/**
+ * Phase C3: the `error { code: 'notAllowed', detail }` reasons a `fastTravel` can be refused with (each with a warn
+ * toast of its own, so the client does not toast the error again).
+ */
+export const FAST_TRAVEL_REFUSALS = ['notTown', 'notVisited', 'travelGated', 'travelBusy', 'travelCooldown', 'travelBlocked', 'travelFailed'] as const;
+export type FastTravelRefusal = (typeof FAST_TRAVEL_REFUSALS)[number];
+/**
+ * Phase D9: a successful cast of the Old Rod (the client's timing prompt). `angle` is the heading the line was cast
+ * along (radians, the `input` convention: 0 = +z). The server checks the rod and a water (non-lava) sample within
+ * `FISH_REACH_M` of the player's ACCEPTED position along that heading, rolls one of the zone's `water` slots from its
+ * own rng and starts that wild battle like an engaged spawn. Refusals: `error { code: 'notAllowed', detail }` with a
+ * `FISH_REFUSALS` reason (and a toast for each).
+ */
+export const FishMsg = z.object({ angle: z.number() });
+/** Phase D9: how far ahead of the player a cast reaches water (m). */
+export const FISH_REACH_M = 2.5;
+export const FISH_REFUSALS = ['noRod', 'noWater', 'nothingBites'] as const;
+export type FishRefusal = (typeof FISH_REFUSALS)[number];
+/**
+ * Phase D13: join or leave the ranked queue. The server answers every one with `rankedStatus` (queued / idle with a
+ * `RankedIdleReason`); a match moves both players into the ranked arena (`RANKED_ARENA`) through the handover path and
+ * starts a `pvp` battle there (Elo applies as for every pvp battle).
+ */
+export const RankedQueueMsg = z.object({ action: z.enum(['join', 'leave']) });
+/**
+ * Phase D13: the rating window two queued players must both fall within (|Δrating| ≤ the smaller of their windows):
+ * `base` at once, `step` wider for every `stepMs` waited, never more than `max` (a larger gap never matches).
+ */
+export const RANKED_WINDOW = { base: 100, step: 50, stepMs: 10_000, max: 400 } as const;
+export function rankedWindow(waitedMs: number): number {
+  const steps = Math.floor(Math.max(0, waitedMs) / RANKED_WINDOW.stepMs);
+  return Math.min(RANKED_WINDOW.max, RANKED_WINDOW.base + steps * RANKED_WINDOW.step);
+}
+/**
+ * Phase D14 battle tower (post-game; Solenne's league hall foyer). `start` names three distinct party creature ids —
+ * the server checks the champion flag, the attendant's 3 m, not busy, the picks in the party — then runs the first
+ * fight; `next` runs the next fight after a win; `quit` retires between fights. Answers: `towerState`, or
+ * `error { code: 'notAllowed', detail: TowerRefusal }` with a toast.
+ */
+export const TowerMsg = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('start'), picks: z.array(z.string().min(1).max(64)).length(3) }),
+  z.object({ action: z.literal('next') }),
+  z.object({ action: z.literal('quit') }),
+]);
+export const TOWER_REFUSALS = ['locked', 'tooFar', 'badPicks', 'running', 'noRun', 'inBattle'] as const;
+export type TowerRefusal = (typeof TOWER_REFUSALS)[number];
 /** §4.5 */
 export const BattleResyncMsg = z.object({ battleId: z.string().uuid() });
 
@@ -88,7 +153,11 @@ export const CLIENT_MESSAGES = {
   raidCatch: RaidCatchMsg,
   raidLeave: RaidLeaveMsg,
   handoverAck: HandoverAckMsg,
-} as const; // exactly 20 keys
+  fastTravel: FastTravelMsg,
+  fish: FishMsg,
+  rankedQueue: RankedQueueMsg,
+  tower: TowerMsg,
+} as const; // exactly 24 keys
 
 export type ClientMessageType = keyof typeof CLIENT_MESSAGES;
 export type ClientPayload<T extends ClientMessageType> = z.infer<(typeof CLIENT_MESSAGES)[T]>;
@@ -98,7 +167,7 @@ export type ClientMessage = {
 export type BattleAction = z.infer<typeof BattleActionSchema>;
 
 export const CLIENT_MESSAGE_TYPES = Object.freeze(Object.keys(CLIENT_MESSAGES) as ClientMessageType[]);
-export const CLIENT_MESSAGE_COUNT = 20;
+export const CLIENT_MESSAGE_COUNT = 24;
 
 /**
  * §4.3 rate limits (per client, sliding window; excess dropped with ONE `error { code: 'rateLimited' }`
@@ -125,6 +194,13 @@ export const CLIENT_MESSAGE_LIMITS: Readonly<Record<ClientMessageType, { readonl
   raidCatch: { max: 4, windowMs: 1_000 },
   raidLeave: { max: 4, windowMs: 1_000 },
   handoverAck: { max: 4, windowMs: 1_000 },
+  fastTravel: { max: 4, windowMs: 1_000 },
+  /** Phase D9: one cast per 1.5 s (the prompt itself takes longer) */
+  fish: { max: 1, windowMs: 1_500 },
+  /** Phase D13: join / leave, 4 per 5 s */
+  rankedQueue: { max: 4, windowMs: 5_000 },
+  /** Phase D14: start / next / quit */
+  tower: { max: 4, windowMs: 1_000 },
 };
 
 export function isClientMessageType(type: unknown): type is ClientMessageType {

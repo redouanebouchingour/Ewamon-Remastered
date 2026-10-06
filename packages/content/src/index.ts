@@ -3,18 +3,19 @@
  * Nothing here is loaded at runtime from disk or network: it is a compiled module.
  */
 import type { AbilityDef, ConsumableDef, ContentIndex, ItemDef, MoveDef, OrbDef, SpeciesDef } from '@ewa/core';
-import type { EncounterTable, LeagueTrainer, LegendaryStatic, QuestDef, StoryBeat, ZoneDef, ZoneId } from './types';
+import type { EncounterTable, LeagueRematch, LeagueTrainer, LegendaryStatic, QuestDef, StoryBeat, ZoneDef, ZoneId } from './types';
 import { SPECIES } from './data/species';
-import { MOVES } from './data/moves';
+import { MOVES } from './data/spreadMoves';
 import { ABILITIES } from './data/abilities';
 import { ITEMS } from './data/items';
 import { ORBS } from './data/orbs';
 import { CONSUMABLES } from './data/consumables';
+import { EVOLUTION_STONES, KEY_ITEMS } from './data/progressionItems';
 import { TYPE_CHART } from './data/typechart';
 import { ZONES } from './data/zones';
 import { ENCOUNTER_TABLES } from './data/encounters';
 import { LEGENDARY_STATICS } from './data/statics';
-import { LEAGUE } from './data/league';
+import { LEAGUE, LEAGUE_REMATCH } from './data/league';
 import { QUESTS } from './data/quests';
 import { STORY } from './data/story';
 import { getHeightfield } from './heightfield';
@@ -35,7 +36,26 @@ export type {
   EncounterTier,
   GroundItemDef,
   HarvestState,
+  InteriorDef,
+  InteriorGate,
+  InteriorGateStyle,
+  InteriorItem,
+  InteriorNpc,
+  InteriorNpcRole,
+  InteriorPlacement,
+  InteriorProp,
+  InteriorRoom,
+  InteriorSwitch,
+  InteriorSwitchKind,
+  InteriorTemplate,
+  InteriorTheme,
+  InteriorTrainer,
+  InteriorWall,
+  InteriorWallStyle,
+  LocalPoint,
+  LocalRect,
   LeagueStage,
+  LeagueRematch,
   LeagueTeamMember,
   LeagueTrainer,
   LegendaryStatic,
@@ -43,6 +63,8 @@ export type {
   LoreTabletDef,
   Medium,
   NpcDef,
+  ObstacleDef,
+  ObstacleKind,
   QuestDef,
   QuestObjective,
   RaidHotspot,
@@ -52,6 +74,7 @@ export type {
   StaticGate,
   StoryBeat,
   TimeOfDay,
+  TowerDef,
   TrainerDef,
   ValidationResult,
   ValidationStats,
@@ -68,11 +91,26 @@ export { BADGE_ORDER, ZONE_MARGIN, ZONE_ORDER, ZONE_SIZE } from './types';
 
 // ─── §2 definition tables (generated from legacy) ────────────────────────────
 export { SPECIES } from './data/species';
-export { MOVES } from './data/moves';
+export { MOVES } from './data/spreadMoves';
+export { SPREAD_MOVES } from './data/spreadMoves';
 export { ABILITIES } from './data/abilities';
 export { ITEMS } from './data/items';
 export { ORBS } from './data/orbs';
 export { CONSUMABLES } from './data/consumables';
+export {
+  BIKE_ITEM,
+  BIKE_PRICE,
+  EVOLUTION_STONES,
+  KEY_ITEMS,
+  MOVE_TUTOR_PRICE,
+  PROGRESSION_STOCK,
+  TM_MOVES,
+  TM_PREFIX,
+  TRADE_EVOLVE_RIBBON,
+  canLearnMachineMove,
+  tmItemId,
+  tmMoveOf,
+} from './data/progressionItems';
 export { TYPE_CHART } from './data/typechart';
 
 // ─── §3 world tables ─────────────────────────────────────────────────────────
@@ -87,14 +125,28 @@ export {
   VARIANT_CHANCE,
 } from './data/encounters';
 export { LEGENDARY_IDS, LEGENDARY_STATICS, MYTHICAL_IDS } from './data/statics';
-export { BADGES, LEAGUE, LEAGUE_STORY_GATES } from './data/league';
+export {
+  BADGES,
+  LEAGUE,
+  LEAGUE_REMATCH,
+  LEAGUE_REMATCH_COOLDOWN_DAYS,
+  LEAGUE_REMATCH_LEVELS,
+  LEAGUE_REMATCH_REWARD_MULTIPLIER,
+  LEAGUE_STORY_GATES,
+  POSTGAME_FLAG,
+  leagueRematchFlag,
+} from './data/league';
+export { TOWER, towerSetReward, towerTier } from './data/tower';
 export { QUESTS } from './data/quests';
+export { ACHIEVEMENTS, ACHIEVEMENT_IDS, isAchievement } from './data/achievements';
+/** Phase D5: the story quests (QUESTS without the achievements). */
+export const STORY_QUESTS: readonly QuestDef[] = QUESTS.filter((q) => q.kind !== 'achievement');
 export { STORY } from './data/story';
 export { DAILY_SWARMS, RAID_HOTSPOTS, SEASONAL_EVENTS, VARIANT_PALETTES, WEEKDAY_VARIANT } from './data/liveops';
 export { BATTLE_PASS } from './data/battlePass';
 export { MARKET, SHOP_STOCK_DEFAULT } from './data/shop';
 export { BODIES, LOOKS, TITLES } from './data/bodies';
-export { BADGE_FLAGS, FLAG_IDS, FLAG_REGISTRY, badgeFlag, isKnownFlag } from './flags';
+export { BADGE_FLAGS, FLAG_IDS, FLAG_REGISTRY, VISITED_FLAGS, VISITED_PREFIX, badgeFlag, isKnownFlag, visitedFlag } from './flags';
 export type { FlagEntry } from './flags';
 
 // ─── schemas ─────────────────────────────────────────────────────────────────
@@ -118,6 +170,7 @@ export {
   isWalkable,
   isWater,
   nearestWalkable,
+  obstacleAt,
   playableBounds,
   reachableWithin,
   sampleHeight,
@@ -127,6 +180,22 @@ export {
   zonePlan,
   zoneSizeFor,
 } from './heightfield';
+
+// ─── Phase D10: Cut / Strength obstacles ─────────────────────────────────────
+export {
+  OBSTACLE_CAPSULE_M,
+  OBSTACLE_HM,
+  OBSTACLE_INTERACT_M,
+  OBSTACLE_PREFIX,
+  OBSTACLE_RADIUS,
+  OBSTACLE_TYPES,
+  obstacleFlag,
+  obstacleRefusal,
+  obstacleRefusalText,
+  obstacleStampRadius,
+  stampObstacles,
+} from './obstacles';
+export type { ObstacleRefusal, StampField } from './obstacles';
 
 // ─── the zone plan (layout, buildings, lights, props, footprints; audit R1) ───
 export type {
@@ -188,8 +257,50 @@ export {
   waterBodies,
 } from './plan';
 
+// ─── interiors (pockets reached by door warps) ───────────────────────────────
+export type { InteriorPlan, InteriorWalk, PlacedInterior, WorldGate, WorldLeader, WorldSwitch } from './interiors';
+export {
+  ARENA_CLEARANCE_M,
+  ARENA_SLOT_M,
+  INTERIOR_EDGE_CLEAR_M,
+  INTERIOR_SCREEN_M,
+  INTERIOR_WALL_H,
+  INTERIOR_WALL_T,
+  checkInterior,
+  inFootprint,
+  interiorDefFor,
+  leaderSpot,
+  localToWorld,
+  localYawToWorld,
+  onFloor,
+  planInteriors,
+  rectToWorld,
+  stampInteriors,
+  walkInterior,
+  worldToLocal,
+} from './interiors';
+export {
+  gatesClosedFor,
+  interiorArenaFor,
+  interiorAt,
+  interiorFootprintAt,
+  interiorGates,
+  interiorItems,
+  interiorLeaders,
+  interiorNpcs,
+  interiorSwitches,
+  interiorTrainers,
+  interiorWarps,
+  interiorsFor,
+} from './interiorIndex';
+export { GYM_HALL, LEAGUE_HALL, interiorTrainerFlag, switchFlag } from './data/interiors';
+
+// ─── Phase C3 world map ──────────────────────────────────────────────────────
+export type { MapCell } from './worldMap';
+export { MAP_STEP, computeMapPositions, zoneMapPositions, zoneMapSize } from './worldMap';
+
 // ─── roster + validate ───────────────────────────────────────────────────────
-export { childrenOf, computeRosterReport, stageOf } from './roster';
+export { childrenOf, computeRosterReport, evolveLevelOf, stageOf } from './roster';
 export type { RosterInputs, Stage } from './roster';
 export { DEFAULT_TABLES, validate } from './validate';
 export type { ContentTables, ValidateOptions } from './validate';
@@ -233,6 +344,11 @@ export function staticsFor(zoneId: ZoneId): readonly LegendaryStatic[] {
 export function league(id: string): LeagueTrainer {
   return must(leagueById, 'league trainer', id);
 }
+const rematchById: ReadonlyMap<string, LeagueRematch> = new Map(LEAGUE_REMATCH.map((r) => [r.leagueId, r]));
+/** Phase D14: the league trainer's post-game rematch (throws RangeError on an unknown id). */
+export function leagueRematch(leagueId: string): LeagueRematch {
+  return must(rematchById, 'league rematch', leagueId);
+}
 export function quest(id: string): QuestDef {
   return must(questById, 'quest', id);
 }
@@ -254,6 +370,9 @@ const abilityById: ReadonlyMap<string, AbilityDef> = new Map(ABILITIES.map((a) =
 const itemById: ReadonlyMap<string, ItemDef | ConsumableDef> = new Map<string, ItemDef | ConsumableDef>([
   ...ITEMS.map((i): [string, ItemDef | ConsumableDef] => [i.id, i]),
   ...CONSUMABLES.map((c): [string, ItemDef | ConsumableDef] => [c.id, c]),
+  // Phase D1–D3: old_rod + TMs (key) and the six evolution stones (consumables)
+  ...KEY_ITEMS.map((i): [string, ItemDef | ConsumableDef] => [i.id, i]),
+  ...EVOLUTION_STONES.map((c): [string, ItemDef | ConsumableDef] => [c.id, c]),
 ]);
 const orbById: ReadonlyMap<string, OrbDef> = new Map(ORBS.map((o) => [o.id, o]));
 const speciesByDex: readonly SpeciesDef[] = [...SPECIES].sort((a, b) => a.dexNumber - b.dexNumber);

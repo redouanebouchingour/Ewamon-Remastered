@@ -1,0 +1,29 @@
+/* Phase C6 — the non-blocking "confirm your email" nudge (settings panel) */
+.nudge {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  margin-block-end: var(--s-5);
+  padding: var(--s-4) var(--s-5);
+  border: 1px solid var(--info-a16);
+  border-radius: var(--r-2);
+  background: var(--info-a16);
+  color: var(--text-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+
+.nudgeIcon {
+  flex: none;
+  color: var(--info);
+}
+
+.nudgeText {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.nudgeText strong {
+  color: var(--text-hi);
+  font-weight: 600;
+}

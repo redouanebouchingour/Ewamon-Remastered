@@ -74,6 +74,11 @@ export interface NpcDef {
   /** story flag that removes them */
   readonly until: string | null;
   readonly react: readonly { readonly when: string; readonly lines: readonly string[] }[];
+  /**
+   * Phase D2: a move tutor — the move ids this NPC teaches for `MOVE_TUTOR_PRICE` each (`POST /creature/:id/tutor`).
+   * Data only: x/z alone feed the layout, so the field never moves a building or a tree.
+   */
+  readonly tutor?: readonly string[];
 }
 
 export interface TrainerDef {
@@ -87,6 +92,11 @@ export interface TrainerDef {
   readonly lines: readonly string[];
   readonly reward: number;
   readonly rematchDays: number | null;
+  /**
+   * Phase D6: fights 2-on-2 (needs ≥ 2 team members; the player needs 2 usable creatures, else the battle falls back to
+   * singles). Optional, absent = singles; never a story gate.
+   */
+  readonly doubles?: true;
 }
 
 export interface GroundItemDef {
@@ -113,6 +123,178 @@ export interface WarpDef {
   readonly toX: number;
   readonly toZ: number;
   readonly label: string;
+}
+
+/**
+ * Phase D10: a field obstacle — a small tree (HM Cut) or a boulder (HM Strength). Its disc is stamped unwalkable into
+ * the heightfield (after the plan's footprints and the interiors); a player who cleared it (`obstacle:<zone>:<id>`)
+ * walks through those samples (server `standable`, client collider). Never on a story path: shortcuts and treasure
+ * only. `item` is a ground item hidden behind / under it, granted once with the clearing. x/z never feed the layout
+ * (not an authored point: no clearing is flattened round it, no building moves).
+ */
+export type ObstacleKind = 'tree' | 'boulder';
+export interface ObstacleDef {
+  readonly id: string;
+  readonly kind: ObstacleKind;
+  readonly x: number;
+  readonly z: number;
+  readonly item?: { readonly item: string; readonly qty: number };
+}
+
+// ─── interiors (pockets inside the zone, reached by door warps) ──────────────
+
+export type InteriorTemplate = 'gym_hall' | 'league_hall' | 'shop' | 'healer' | 'house_s' | 'house_m';
+export type InteriorTheme =
+  | 'grove'
+  | 'cinder'
+  | 'salt'
+  | 'storm'
+  | 'marrow'
+  | 'vesper'
+  | 'forge'
+  | 'sky'
+  | 'league'
+  | 'shop'
+  | 'healer'
+  | 'house';
+
+/** A point in an interior's local frame: origin at the floor centre, the door on the local +z wall. Metres. */
+export interface LocalPoint {
+  readonly lx: number;
+  readonly lz: number;
+}
+/** An axis-aligned rectangle in the interior's local frame: centre and half extents (x, z). Metres. */
+export interface LocalRect {
+  readonly lx: number;
+  readonly lz: number;
+  readonly hw: number;
+  readonly hd: number;
+}
+
+export type InteriorWallStyle = 'wall' | 'hedge' | 'grate' | 'channel' | 'boulder' | 'chasm' | 'iron' | 'counter' | 'rail';
+/** A solid inside the hall (the physical extent; the walkable mask grows it by the capsule radius). */
+export interface InteriorWall extends LocalRect {
+  readonly style: InteriorWallStyle;
+}
+
+/** A battle room: the arena forms at `arena` (the hall axis is the battle axis); `leader` waits at `leaderAt`. */
+export interface InteriorRoom {
+  readonly id: string;
+  readonly arena: LocalPoint;
+  /** LeagueTrainer id fought here, or null */
+  readonly leader: string | null;
+  readonly leaderAt: LocalPoint | null;
+  readonly bounds: LocalRect;
+  /**
+   * Until the player holds `until`, the leader waits at `at` instead (league hall: the Warden who gives the league's
+   * story charge greets the player in the foyer, where the beat she speaks can play, then takes her chamber).
+   */
+  readonly greet?: { readonly at: LocalPoint; readonly until: string } | null;
+}
+
+export type InteriorGateStyle = 'hedge' | 'grate' | 'sluice' | 'barrier' | 'boulder' | 'rune' | 'portcullis';
+/** A per-player door: solid until the player holds every flag of `opensWhen` (never stamped into the heightfield). */
+export interface InteriorGate {
+  readonly id: string;
+  readonly rect: LocalRect;
+  readonly opensWhen: readonly string[];
+  readonly style: InteriorGateStyle;
+}
+
+export type InteriorSwitchKind = 'rootstone' | 'furnace' | 'lever' | 'breaker' | 'keystone' | 'tile' | 'anvil';
+/**
+ * `interact { kind: 'switch' }`: refused unless the player holds every flag of `requires`; then sets `sets` (a
+ * `switch:<zone>:<id>` flag, or null for a plain teleport tile) and, when `warpTo` is given, teleports there.
+ */
+export interface InteriorSwitch {
+  /** globally unique: `<interior id>.<local id>` */
+  readonly id: string;
+  readonly kind: InteriorSwitchKind;
+  readonly lx: number;
+  readonly lz: number;
+  readonly sets: string | null;
+  readonly requires: readonly string[];
+  readonly warpTo: LocalPoint | null;
+  readonly label: string;
+}
+
+export interface InteriorTrainer {
+  /** globally unique: `<interior id>.<local id>`; beaten flag `trainer:<id>:beaten` */
+  readonly id: string;
+  readonly name: string;
+  readonly lx: number;
+  readonly lz: number;
+  /** local yaw the trainer faces (0 = toward local +z, the door) */
+  readonly facing: number;
+  readonly look: string;
+  readonly team: readonly { readonly species: string; readonly level: number }[];
+  readonly lines: readonly string[];
+  readonly reward: number;
+}
+
+/** Phase D14 adds `tower`: the battle tower attendant (Solenne's league hall foyer). */
+export type InteriorNpcRole = 'shopkeeper' | 'nurse' | 'resident' | 'guide' | 'tower';
+export interface InteriorNpc {
+  readonly id: string;
+  readonly name: string;
+  readonly lx: number;
+  readonly lz: number;
+  readonly facing: number;
+  readonly look: string;
+  readonly lines: readonly string[];
+  readonly role: InteriorNpcRole;
+}
+
+export interface InteriorItem {
+  readonly id: string;
+  readonly lx: number;
+  readonly lz: number;
+  readonly item: string;
+  readonly qty: number;
+}
+
+/** Furniture and dressing; `solid` props are also listed in `walls` (style 'wall' or 'counter'). */
+export interface InteriorProp {
+  readonly kind: string;
+  readonly lx: number;
+  readonly lz: number;
+  readonly yaw: number;
+  readonly scale: number;
+}
+
+export interface InteriorDef {
+  /** = the building id (`<zone>.gym`, `<zone>.league`, `<zone>.shop`, `<zone>.healer`, `<zone>.house<k>`) */
+  readonly id: string;
+  readonly zoneId: ZoneId;
+  readonly building: string;
+  readonly template: InteriorTemplate;
+  readonly theme: InteriorTheme;
+  /** the prompt names it: "Enter <label>" */
+  readonly label: string;
+  /** inner floor extent along local x (w) and local z (d); the door is the centre of the +z wall */
+  readonly w: number;
+  readonly d: number;
+  /** where a player arrives through the door */
+  readonly entry: LocalPoint;
+  /** the 'Leave' marker by the door */
+  readonly exit: LocalPoint;
+  readonly rooms: readonly InteriorRoom[];
+  readonly walls: readonly InteriorWall[];
+  readonly gates: readonly InteriorGate[];
+  readonly switches: readonly InteriorSwitch[];
+  readonly trainers: readonly InteriorTrainer[];
+  readonly npcs: readonly InteriorNpc[];
+  readonly items: readonly InteriorItem[];
+  readonly props: readonly InteriorProp[];
+}
+
+/** Where a pocket stands in its zone: the local origin's world position, its yaw, and the flattened floor height. */
+export interface InteriorPlacement {
+  readonly x: number;
+  readonly z: number;
+  /** multiple of π/2 */
+  readonly yaw: number;
+  readonly floorY: number;
 }
 
 export type LinkDir = 'n' | 'e' | 's' | 'w';
@@ -152,6 +334,8 @@ export interface ZoneDef {
   readonly storyRole: Readonly<Record<Act, string | null>>;
   /** the zone's DEFAULT; the effective state is per player, from story flags (§3.5 harvestStateFor) */
   readonly harvestState: HarvestState;
+  /** Phase D10: Cut / Strength obstacles (shortcuts and treasure, never a story gate); absent = none */
+  readonly obstacles?: readonly ObstacleDef[];
 }
 
 /** §3.1 extents: field side in metres per zone kind. */
@@ -235,9 +419,53 @@ export interface LeagueTrainer {
   readonly zoneId: ZoneId;
   readonly pre: readonly string[];
   readonly post: readonly string[];
+  /**
+   * Phase B7: mid-battle lines (each non-empty, ≤ 140 chars) the client shows as a transient banner — `halfHp` once
+   * when the trainer's team's TOTAL remaining HP first drops to half or below, `lastStand` once when the last
+   * creature enters. Presentation only; the server never reads them.
+   */
+  readonly mid?: { readonly halfHp: string; readonly lastStand: string };
   readonly team: readonly LeagueTeamMember[];
   readonly reward: number;
   readonly setsFlags: readonly string[];
+  /** Phase D6: fights 2-on-2 (see TrainerDef.doubles); optional, absent = singles */
+  readonly doubles?: true;
+}
+
+/**
+ * Phase D14 post-game: a league trainer's rematch (`LEAGUE_REMATCH`, one per `LEAGUE` row). Challengeable only once the
+ * player holds `champion:zeon:beaten` and has beaten the trainer; at most once per `LEAGUE_REMATCH_COOLDOWN_DAYS`
+ * (the server's `league:<id>:rematchAt` flag, refreshed on each rematch win). No badge, no `setsFlags`; the reward is
+ * the trainer's ×1.5. Never a story gate.
+ */
+export interface LeagueRematch {
+  /** = LeagueTrainer.id */
+  readonly leagueId: string;
+  /** Lv 65–75; non-legendary unless the original team carries that legendary */
+  readonly team: readonly LeagueTeamMember[];
+  /** the rematch prompt (client dialogue before the fight) */
+  readonly pre: readonly string[];
+  /** after a won rematch (client dialogue + the result card's concession line) */
+  readonly post: readonly string[];
+  /** = round(LeagueTrainer.reward × 1.5) */
+  readonly reward: number;
+}
+
+/**
+ * Phase D14 battle tower (Solenne league hall foyer): 3v3 at a level cap, generated opponents by streak tier, a set of
+ * `setLength` fights with a reward at the end of each set. `pools[t]` serves streaks `[t × setLength, (t + 1) ×
+ * setLength)`; the last pool serves every longer streak.
+ */
+export interface TowerDef {
+  readonly levelCap: number;
+  readonly teamSize: number;
+  readonly setLength: number;
+  /** the interior NPC (role 'tower') players talk to */
+  readonly attendantId: string;
+  /** the NPC side's `trainerId` in every tower fight, and the name the client shows for it */
+  readonly trainerId: string;
+  readonly trainerName: string;
+  readonly pools: readonly (readonly string[])[];
 }
 
 export interface BadgeDef {
@@ -259,10 +487,21 @@ export type QuestObjective =
   | { readonly kind: 'deliverItem'; readonly item: string; readonly qty: number; readonly npcId: string }
   | { readonly kind: 'flag'; readonly flag: string }
   | { readonly kind: 'earnBadge'; readonly badge: BadgeId }
-  | { readonly kind: 'restoreZone'; readonly zoneId: ZoneId };
+  | { readonly kind: 'restoreZone'; readonly zoneId: ZoneId }
+  // Phase D5 (achievements). dexCaught / loginStreak are absolute: progress = the value the event reports (max-merged).
+  | { readonly kind: 'dexCaught'; readonly count: number }
+  | { readonly kind: 'catchTier'; readonly tier: 'alpha' | 'shiny'; readonly count: number }
+  | { readonly kind: 'completeTrades'; readonly count: number }
+  | { readonly kind: 'clearRaids'; readonly count: number }
+  | { readonly kind: 'loginStreak'; readonly days: number };
+
+/** Phase D5: 'achievement' = an auto-progressing milestone (giver null, no requires, its own journal tab). */
+export type QuestKind = 'story' | 'achievement';
 
 export interface QuestDef {
   readonly id: string;
+  /** Phase D5; absent = 'story' */
+  readonly kind?: QuestKind;
   readonly title: string;
   readonly summary: string;
   /** npc id; null = auto-offered */
@@ -305,6 +544,11 @@ export interface StoryBeat {
   readonly harvest: { readonly zoneId: ZoneId; readonly to: HarvestState } | null;
   /** exactly one beat has this */
   readonly starter: boolean;
+  /**
+   * Phase D1: items handed over when the beat completes (item id → qty), in the same transaction as its flags; they
+   * reach the client as an `inventoryDelta`. Never a gate: nothing may `need` an item.
+   */
+  readonly grant?: Readonly<Record<string, number>>;
 }
 
 // ─── §3.6 Live-ops ───────────────────────────────────────────────────────────
@@ -380,6 +624,10 @@ export interface BodyDef {
 export type AcquisitionPath =
   | { readonly kind: 'wild'; readonly zones: readonly ZoneId[] }
   | { readonly kind: 'evolve'; readonly from: string; readonly atLevel: number }
+  /** Phase D3: evolves from `from` with the stone `item` (sold / found — validate checks it is obtainable) */
+  | { readonly kind: 'item'; readonly from: string; readonly item: string }
+  /** Phase D3: evolves from `from` when traded */
+  | { readonly kind: 'trade'; readonly from: string }
   | { readonly kind: 'static'; readonly zoneId: ZoneId; readonly when: StaticGate }
   | { readonly kind: 'quest'; readonly questId: string }
   | { readonly kind: 'raid'; readonly zones: readonly ZoneId[] };

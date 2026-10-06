@@ -224,6 +224,8 @@ describe('trades (§30.8.3, §30.5.1 #21)', () => {
     // server finding (b): received creatures are placed in the box, and the delta says so
     expect(ofType(a.j.msgs, 'inventoryDelta').at(-1)!.placement).toEqual({ [cb]: 'box' });
     expect(ofType(b.j.msgs, 'progressionDelta').at(-1)).toMatchObject({ dexCaught: ['glimp'], trainerExp: START_EXP + TRAINER_EXP.tradeComplete });
+    // Phase D5: the completed trade is the `trade` event — ach_trade_1 is done for both sides
+    for (const p of [a, b]) expect(ofType(p.j.msgs, 'progressionDelta').some((m) => m.questProgress?.some((q) => q.questId === 'ach_trade_1' && q.done) === true)).toBe(true);
     // both are free again: a new request works
     await sleep(1000);
     a.j.room.send('tradeRequest', { targetId: b.acc.id });
