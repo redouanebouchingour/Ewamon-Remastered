@@ -8,6 +8,7 @@ import type { AuthContext, Client } from '@colyseus/core';
 import { StateView } from '@colyseus/schema';
 import {
   OBSTACLE_PREFIX,
+  arrivalPoint,
   badgeFlag,
   encounterTableFor,
   gatesClosedFor,
@@ -437,8 +438,12 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.subscribePlayer(playerId);
 
     // 3. position
+    // a join with no position of its own in this zone lands on the zone's arrival point (content `arrivalPoint`: a
+    // town's plaza, facing its centre; Mirevale's and every other zone's spawn), as fast travel and the rope do
+    const land = arrivalPoint(this.zone.id);
     let x: number;
     let z: number;
+    let facing: number | null = null;
     let fallback = false;
     if (existing !== undefined) {
       x = existing.x;
@@ -446,18 +451,21 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     } else if (arrival !== null) {
       x = arrival.x;
       z = arrival.z;
+      // a fast-travel arrival is the arrival point itself (an edge entry never is: it stands 6.5 m inside an edge)
+      if (x === land.x && z === land.z) facing = land.angle;
     } else if (row.zoneId === this.zone.id) {
       x = row.x;
       z = row.z;
     } else {
-      x = this.zone.spawn.x;
-      z = this.zone.spawn.z;
+      x = land.x;
+      z = land.z;
+      facing = land.angle;
       fallback = true;
     }
     if (!isWalkable(this.heightfield, x, z)) {
-      const snapped = nearestWalkable(this.heightfield, x, z, 8) ?? nearestWalkable(this.heightfield, this.zone.spawn.x, this.zone.spawn.z, 8);
-      x = snapped?.[0] ?? this.zone.spawn.x;
-      z = snapped?.[1] ?? this.zone.spawn.z;
+      const snapped = nearestWalkable(this.heightfield, x, z, 8) ?? nearestWalkable(this.heightfield, land.x, land.z, 8);
+      x = snapped?.[0] ?? land.x;
+      z = snapped?.[1] ?? land.z;
       fallback = true;
     }
 
@@ -468,7 +476,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       ps.name = username;
       ps.x = x;
       ps.z = z;
-      ps.angle = row.zoneId === this.zone.id ? row.angle : 0;
+      ps.angle = facing ?? (row.zoneId === this.zone.id ? row.angle : 0);
       ps.body = row.body;
       ps.guildTag = loaded.guildTag ?? '';
       this.state.players.set(playerId, ps);
@@ -701,15 +709,20 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     return party.find((c) => c.hp > 0)?.level ?? 0;
   }
 
-  /** §30.6.3 escape rope: authoritative teleport to the zone's spawn point (snapped), not during a battle. */
+  /**
+   * §30.6.3 escape rope: authoritative teleport to the zone's arrival point (content `arrivalPoint`; on a route — the
+   * only place the rope works — that is its spawn), snapped, not during a battle.
+   */
   private onTeleport(playerId: string): void {
     const c = this.clientOf(playerId);
     const ps = this.state.players.get(playerId);
     if (c?.userData === undefined || ps === undefined || c.userData.battleId !== null) return;
-    const p = isWalkable(this.heightfield, this.zone.spawn.x, this.zone.spawn.z) ? ([this.zone.spawn.x, this.zone.spawn.z] as const) : nearestWalkable(this.heightfield, this.zone.spawn.x, this.zone.spawn.z, 8);
+    const land = arrivalPoint(this.zone.id);
+    const p = isWalkable(this.heightfield, land.x, land.z) ? ([land.x, land.z] as const) : nearestWalkable(this.heightfield, land.x, land.z, 8);
     if (p === null) return;
     ps.x = p[0];
     ps.z = p[1];
+    ps.angle = land.angle;
     ps.moving = false;
     c.userData.moved = true;
     c.userData.handoverCooldownUntil = this.now() + HANDOVER_COOLDOWN_MS;
@@ -1910,10 +1923,11 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   }
 
   /**
-   * Phase C3 fast travel: a handover to a visited town's `spawn`, free. Refused (toast + `error notAllowed <reason>`)
+   * Phase C3 fast travel: a handover to a visited town's arrival point (content `arrivalPoint`: on its plaza, facing
+   * the centre — not its `spawn`, which is on the west road in eight of the nine towns), free. Refused (toast + `error notAllowed <reason>`)
    * when the destination is not a town (`notTown`), not visited (`notVisited`), gated by a badge the player lacks
    * (`travelGated`), or while battling / trading / in a raid / mid-crossing (`travelBusy`), or inside the 3 s cooldown
-   * (`travelCooldown`). Travelling to the zone the player stands in teleports them to its spawn.
+   * (`travelCooldown`). Travelling to the zone the player stands in teleports them to its arrival point.
    */
   private async onFastTravel(client: ZoneClient, m: ClientPayload<'fastTravel'>): Promise<void> {
     const ud = client.userData!;
@@ -1933,12 +1947,14 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     }
     if (now < ud.fastTravelReadyAt) return refuse('travelCooldown', 'Catch your breath before travelling again.');
     ud.fastTravelReadyAt = now + FAST_TRAVEL_COOLDOWN_MS;
+    const land = arrivalPoint(dest.id);
     if (dest.id === this.zone.id) {
-      if (!this.teleport(ud, ps, dest.spawn.x, dest.spawn.z)) return refuse('travelBlocked', 'Something blocks the way.');
+      if (!this.teleport(ud, ps, land.x, land.z)) return refuse('travelBlocked', 'Something blocks the way.');
+      ps.angle = land.angle;
       this.sendMsg(client, { type: 'toast', level: 'info', text: `Back at ${dest.name}.` });
       return;
     }
-    if (!(await this.seatHandover(client, dest.id, dest.spawn))) refuse('travelFailed', 'Travel failed — staying here.');
+    if (!(await this.seatHandover(client, dest.id, land))) refuse('travelFailed', 'Travel failed — staying here.');
   }
 
   private pushBack(ps: PlayerState, vx: number, vz: number): void {

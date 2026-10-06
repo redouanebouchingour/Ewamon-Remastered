@@ -3,7 +3,7 @@
  * reproducible from its file name. Pins every resolved position of the M2 slice, the heading mapping and the rules.
  */
 import { describe, expect, it } from 'vitest';
-import { ZONES, getHeightfield, isWalkable, zone } from '@ewa/content';
+import { ZONES, arrivalPoint, getHeightfield, isWalkable, zone, zonePlan } from '@ewa/content';
 import { headingYaw } from '@ewa/render';
 import { AUDIT_SHOTS, doorFrameOffset, resolveAnchor, rigHeading, shotFileStem, shotsForZone, viewForward } from '../src/harness/anchors';
 import type { ResolvedAnchor, ShotId } from '../src/harness/anchors';
@@ -126,6 +126,27 @@ describe('M3 audit set (§50.5 M3: six shots in every zone)', () => {
     // the slice's M3 anchors are its M2 anchors
     expect(resolveAnchor(shotsForZone('mirevale', 'M3').find((s) => s.id === 'gym-dusk')!, specs.mirevale)).toEqual(anchor('gym-dusk'));
     expect(resolveAnchor(shotsForZone('mire_route', 'M3').find((s) => s.id === 'battle')!, specs.mire_route)).toEqual(anchor('battle'));
+  });
+
+  it('spawn-noon stands on the arrival point: the plaza in every town (Mirevale keeps its spawn (0, 6)), the spawn elsewhere', () => {
+    for (const z of ZONES) {
+      const a = resolveAnchor(shotsForZone(z.id, 'M3').find((s) => s.id === 'spawn-noon')!, zoneSpecFor(zone(z.id), 'intact'))!;
+      const arr = arrivalPoint(z.id);
+      expect([a.x, a.z], z.id).toEqual([arr.x, arr.z]);
+      expect(a.snapped, z.id).toBe(false);
+      if (z.kind !== 'town' || z.id === 'mirevale') {
+        expect([a.x, a.z], z.id).toEqual([z.spawn.x, z.spawn.z]);
+        expect(a.rule, z.id).toBe('ZoneDef.spawn');
+        continue;
+      }
+      const plaza = zonePlan(z.id).plaza!;
+      expect(Math.hypot(a.x - plaza.x, a.z - plaza.z), z.id).toBeLessThanOrEqual(plaza.r);
+      expect(a.rule, z.id).toMatch(/^arrivalPoint \(plaza ring/);
+      expect(a.base.name).toBe('arrival');
+    }
+    // the M2 slice's spawn shot is unchanged (the committed M2 Mirevale shots stay valid)
+    expect(resolveAnchor(shotsForZone('mirevale', 'M3').find((s) => s.id === 'spawn-noon')!, specs.mirevale)).toEqual(anchor('spawn-noon'));
+    expect(anchor('spawn-noon')).toMatchObject({ x: 0, z: 6, rule: 'ZoneDef.spawn', base: { name: 'spawn', x: 0, z: 6 } });
   });
 
   it('a link-east fallback turns the view toward the edge it uses', () => {

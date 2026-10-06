@@ -64,6 +64,7 @@ import { checkInterior, interiorDefFor, trainersOf, warpsOf } from './interiors'
 import { beatDoneFlag, BEAT_DONE_PREFIX } from './story';
 import { interiorFootprintAt } from './interiorIndex';
 import { OBSTACLE_INTERACT_M } from './obstacles';
+import { arrivalPointFor } from './arrival';
 
 /** Legacy orb prices (§3.10 rule 10: "orb prices are the legacy values"). */
 const LEGACY_ORB_PRICES: Readonly<Record<string, number>> = {
@@ -731,6 +732,15 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
         snap(what, x, zz);
         if (reach !== null && !reachableWithin(h, reach, x, zz, range)) err(`zone ${z.id}: ${what} (${x}, ${zz}) is not reachable from the spawn within ${range} m`);
       };
+      // the arrival point (fast travel, escape rope, fallback join; `arrival.ts`): walkable and reachable from the spawn
+      try {
+        const arr = arrivalPointFor(z, surface);
+        const ai = Math.round((arr.z - h.originZ) / h.step) * h.res + Math.round((arr.x - h.originX) / h.step);
+        if (!isWalkable(h, arr.x, arr.z)) err(`zone ${z.id}: arrival point (${arr.x}, ${arr.z}) is not walkable`);
+        else if (reach !== null && reach[ai] !== 1) err(`zone ${z.id}: arrival point (${arr.x}, ${arr.z}) is not reachable from the spawn`);
+      } catch (e) {
+        err(`zone ${z.id}: ${String(e)}`);
+      }
       for (const n of z.npcs) target(`npc ${n.id}`, n.x, n.z, INTERACT_RANGE_M);
       for (const t of z.trainers) target(`trainer ${t.id}`, t.x, t.z, INTERACT_RANGE_M);
       for (const i of z.items) target(`item ${i.id}`, i.x, i.z, INTERACT_RANGE_M);

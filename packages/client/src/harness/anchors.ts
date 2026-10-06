@@ -4,7 +4,10 @@
  * three construction, no clock — `test/harness-anchors.test.ts` pins every resolved position.
  *
  * Resolution rules (each is recorded in the shot sidecar as `anchor.rule`):
- * - `spawn-noon`: `ZoneDef.spawn` (mirevale `(0, 6)`).
+ * - `spawn-noon`: where a player arrives, content `arrivalPoint` — `ZoneDef.spawn` in Mirevale (`(0, 6)`, already on its
+ *   plaza, so the committed M2 shots stand) and in every route and story zone; in the other eight towns a plaza-ring
+ *   point (their `spawn` is on the west road at `(−50, 0)` / `(−50, −6)`, 50 m from the plaza, with nothing of the town
+ *   in frame — M3 audit §1, M3-all-2).
  * - `gym-dusk`: the gym building's door (`doorOf`, the server's league marker `(0, −26)`) + `(0, +8)` in the DOOR frame
  *   (+z = the door's outward normal, +x = that normal turned −90° about y, so a door facing +z reads in world axes).
  * - `sprite-edge`: the encounter table's first `common` slot is the creature; its spawn point is the road-side edge of
@@ -28,7 +31,7 @@
  * words' reading (shot 2 looks at the gym, shot 3 at the creature ahead in +x, shot 6 at the east edge), so the
  * harness drives rig heading `(spec + 2) & 3` and records both.
  */
-import { ENCOUNTER_TABLES, getHeightfield, isWalkable, isWater, nearestWalkable, zone as zoneDef } from '@ewa/content';
+import { ENCOUNTER_TABLES, arrivalPoint, getHeightfield, isWalkable, isWater, nearestWalkable, zone as zoneDef } from '@ewa/content';
 import type { EncounterSlot, ZoneDef, ZoneId } from '@ewa/content';
 import { HANDOVER_INSET, doorOf, edgePoint, headingYaw, planLayout } from '@ewa/render';
 import type { BuildingSpec, ZoneSpec } from '@ewa/render';
@@ -150,10 +153,19 @@ export function tableAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | nul
   const base = { layoutSeed: z.layoutSeed >>> 0, shot: shot.id, zone: z.id, heading };
   switch (shot.id) {
     case 'spawn-noon': {
-      const p = snapWalkable(z, z.spawn.x, z.spawn.z);
+      const arr = arrivalPoint(z.id);
+      if (arr.rule === 'spawn') {
+        const p = snapWalkable(z, z.spawn.x, z.spawn.z);
+        return {
+          ...base, x: p.x, z: p.z, snapped: p.snapped, raw: p.raw, rule: 'ZoneDef.spawn', base: { name: 'spawn', x: z.spawn.x, z: z.spawn.z },
+          offset: null, wild: null, worldReading: null,
+        };
+      }
+      const p = snapWalkable(z, arr.x, arr.z);
       return {
-        ...base, x: p.x, z: p.z, snapped: p.snapped, raw: p.raw, rule: 'ZoneDef.spawn', base: { name: 'spawn', x: z.spawn.x, z: z.spawn.z },
-        offset: null, wild: null, worldReading: null,
+        ...base, x: p.x, z: p.z, snapped: p.snapped, raw: p.raw,
+        rule: `arrivalPoint (${arr.rule}, facing the plaza centre; ZoneDef.spawn (${z.spawn.x}, ${z.spawn.z}) is on the road outside the town)`,
+        base: { name: 'arrival', x: arr.x, z: arr.z }, offset: null, wild: null, worldReading: null,
       };
     }
     case 'gym-dusk':

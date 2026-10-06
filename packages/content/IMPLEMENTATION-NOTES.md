@@ -414,3 +414,32 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   - `ALPHA_CHANCE` / `VARIANT_CHANCE`
   - a 100 000-roll seeded sample of `mire_route` (the spawn director's weighted pick) within ±1.5 pp of every slot
 - No content defects were found.
+
+## Town arrival point (2026-10-06)
+
+- **Problem** (M3 render audit §1, M3-all-2): eight of the nine towns put `ZoneDef.spawn` on the west road at
+  `(−50, 0)` (`saltmourn` `(−50, −6)`), 50 m from the plaza, so fast travel, the escape rope, a fallback join and the
+  harness's `spawn-noon` shot all landed with nothing of the town in frame. `spawn` cannot move: `heightfield.ts`
+  `authoredPoints` includes it, so it seeds a clearing and keeps ponds off it; moving it reshuffles ponds → roads →
+  buildings → interiors → `r1-pre-move.json` and the walker's recorded legs.
+- **`src/arrival.ts`**: `arrivalPoint(zoneId)` (memoised) / `arrivalPointFor(zone, surface)` →
+  `{ zoneId, x, z, angle, rule }`. Mirevale and every non-town: the spawn (`rule: 'spawn'`; Mirevale faces the plaza
+  centre, −π; others angle 0). Other towns: the first candidate on the ring `plaza.r − 3` = 11 m, at
+  `0°, ±30°, ±60°, … 180°` from +z (due south first: the default camera, rig heading 0, looks ≈ −z across the plaza
+  at the set-piece and the gym), snapped to its nearest sample (else `nearestWalkable` 2 m), accepted when the sample
+  and its 8 neighbours are walkable and in the spawn's 4-neighbour component, it is inside the plaza, outside every
+  pocket footprint and plan solid and ≥ 1 m outside the set-piece's keep-clear extent, and ≥ `ARRIVAL_CLEARANCE_M`
+  2.5 m from every authored point (spawn, npcs, trainers, items, lore, warps + targets, pocket door warps, statics,
+  raid hotspots, obstacles). `angle` = `atan2(dx, dz)` toward the plaza centre, wrapped to [−π, π).
+- It is **not** an authored point: nothing in the layout keeps it clear, so every heightfield digest, the zone plans
+  and the R1 fixture are unchanged (validate prints the same digests).
+- Shipped (the `(0, 11)` candidate is blocked by the market stall at ≈ `(−2, 9.5)` and its crates / barrels in six towns):
+
+  | town | arrival | rule | angle |
+  |---|---|---|---|
+  | mirevale | (0, 6) | spawn | −π |
+  | stormrook, marrowdig | (0, 11) | plaza ring 0° | −π |
+  | cinderhold, saltmourn, vesperveil, forgewall, skyrend, solenne | (5.5, 9.5) | plaza ring 30° | −2.6168 |
+
+- `validate` rule 12: every zone's arrival point is walkable and in the spawn's walkable component (a town with no
+  usable candidate is reported, not thrown). Tests: `test/arrival.test.ts`.

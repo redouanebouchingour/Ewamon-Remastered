@@ -945,3 +945,18 @@ and taught the Phase A interiors.
   within 3 m — in Vesperveil the walker leaves the leader chamber via `decoy_1` (W cell, z 5.2) from the south side of
   the z = 4 wall instead of the `return` tile. Content's own `walkInterior` (`reachNear`, 3 m) has the same
   semantics, so this is consistent; a line-of-sight rule would be a design change.
+
+## Town arrival point (2026-10-06)
+
+- Fast travel (`onFastTravel`: the handover's entry point and the same-zone hop), the escape rope (`onTeleport`) and
+  a fallback join (`onJoin` step 3 when the row is for another zone, and the last resort of its unwalkable snap) use
+  content `arrivalPoint(zone.id)` instead of `zone.spawn`: the plaza in the eight towns whose spawn is on the west
+  road, Mirevale's spawn `(0, 6)`, every other zone's spawn (so the rope, route-only, is unchanged).
+- Facing: the avatar takes `arrivalPoint.angle` (toward the plaza centre) on a fallback join, a rope or a same-zone
+  hop, and on a handover arrival whose `(x, z)` equals the arrival point (= a fast-travel arrival; an edge entry stands
+  6.5 m inside an edge and never matches). The handover reservation carries no angle, so this keeps the protocol as is.
+- Unchanged on purpose: `entryPoint` (edge handovers, including its `dest.spawn` last resort), `rankedArenaSpots`
+  (Mirevale), and so every path the progression walker takes (it enters through its persisted row and crosses edges;
+  `progression-halls.test.ts` re-run green).
+- Tests: `test/fast-travel.test.ts` (cinderhold: handover to the arrival point, landing + facing, same-zone hop; a
+  fallback join lands there), `test/fixes.test.ts` (the rope on a route = its spawn).

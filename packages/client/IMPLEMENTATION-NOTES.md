@@ -1443,3 +1443,18 @@ Why: a party flipbook only ever shows its back, in battle (bound by the battle w
 Evidence: client IMPLEMENTATION-NOTES "Creature textures" (galvan_route loaded with both statics standing: 1471 → 878 MB raw, 990 → 652 MB corrected).
 Affects: `packages/client/src/scene/World3D.ts` (`bindZoneAtlases`), `harness/HarnessWorld.ts`; galvan_route's phase-3 payload drops by the flipbooks of statics away from the arrival point (≈ 4.7 MB → 0–2.4 MB); Mirevale unchanged.
 ```
+
+## Town arrival point (2026-10-06)
+
+- The harness `spawn-noon` anchor (`src/harness/anchors.ts` `tableAnchor`) stands on content `arrivalPoint(zone)`:
+  unchanged where it is the spawn (Mirevale `(0, 6)` with rule `ZoneDef.spawn`, so the committed M2 Mirevale shots stay
+  valid; every route and story zone), and in the eight other towns their plaza-ring point (rule
+  `arrivalPoint (plaza ring <deg>°, …)`, `base.name` `arrival`): `stormrook` / `marrowdig` `(0, 11)`, the other six
+  `(5.5, 9.5)`. Shot headings are unchanged. The other fallbacks that read the spawn (`lamps-night` without a shop,
+  the staged creature of `sprite-edge` / `battle` without a table) still do — they are outside this change.
+- The committed M3 `spawn-noon` sidecars / PNGs of those eight towns (`spawn-noon--50_0*`, saltmourn `--50_-6*`) are
+  stale until `pnpm --filter @ewa/client harness:shots -- --set M3 --zone <town>` re-runs (not re-shot here).
+- Not touched: `HarnessWorld` still boots / loads a zone at `zone.spawn` before placing the player at the anchor, and
+  the live `SceneDirector` load focus falls back to `zone.spawn` only without a focus; the server puts a fast-travel
+  arrival on the arrival point and the client follows the authoritative pose.
+- Test: `test/harness-anchors.test.ts` ("spawn-noon stands on the arrival point …").

@@ -181,6 +181,10 @@ export {
   zoneSizeFor,
 } from './heightfield';
 
+// ─── town arrival point (fast travel, escape rope, fallback join; M3 audit §1) ───
+export type { ArrivalPoint } from './arrival';
+export { ARRIVAL_CLEARANCE_M, ARRIVAL_RIM_INSET_M, arrivalPoint, arrivalPointFor } from './arrival';
+
 // ─── Phase D10: Cut / Strength obstacles ─────────────────────────────────────
 export {
   OBSTACLE_CAPSULE_M,

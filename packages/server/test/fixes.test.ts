@@ -158,7 +158,7 @@ describe('P6 database-only replay', () => {
 export type _Msg = ServerMessage;
 
 describe('field items (§30.6.3 part-1 seam)', () => {
-  it('escape rope: route only, one orb of rope spent, the room teleports to the zone spawn; repel/lure set a metre counter', async () => {
+  it('escape rope: route only, one orb of rope spent, the room teleports to the zone arrival point (a route spawn); repel/lure set a metre counter', async () => {
     const acc = await register(s);
     await s.repos.db.transaction(async (tx) => {
       await s.repos.inventory.add(tx, acc.id, 'escape_rope', 2);
@@ -170,14 +170,15 @@ describe('field items (§30.6.3 part-1 seam)', () => {
     expect((await api(s, 'POST', '/item/use', acc.access, { item: 'escape_rope', target: null, qty: 1 })).body.code).toBe('notUsableHere');
     await town.room.leave(true);
     await sleep(200);
-    const { getHeightfield, nearestWalkable, zone } = await import('@ewa/content');
+    const { arrivalPoint, getHeightfield, nearestWalkable, zone } = await import('@ewa/content');
     const p = nearestWalkable(getHeightfield('mire_route'), 60, 40, 12)!;
     await s.repos.db.transaction((tx) => s.repos.players.setPosition(tx, acc.id, 'mire_route', p[0], p[1], 0));
     const j = await enter(s, acc, 'mire_route');
     const r = await api(s, 'POST', '/item/use', acc.access, { item: 'escape_rope', target: null, qty: 1 });
     expect(r.status).toBe(200);
     expect(r.body.inventory.escape_rope).toBe(1);
-    const spawn = zone('mire_route').spawn;
+    const spawn = arrivalPoint('mire_route');
+    expect([spawn.x, spawn.z]).toEqual([zone('mire_route').spawn.x, zone('mire_route').spawn.z]);
     await waitFor(() => Math.hypot(j.room.state.players.get(acc.id)!.x - spawn.x, j.room.state.players.get(acc.id)!.z - spawn.z) < 9, 3000);
     expect((await api(s, 'POST', '/item/use', acc.access, { item: 'escape_rope', target: null, qty: 2 })).body.code).toBe('oneAtATime');
     const room = roomOf(j);
