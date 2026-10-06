@@ -6,6 +6,7 @@ import type { ContentIndex } from '@ewa/core';
 import type { Db, Repos } from '@ewa/persist';
 import type { Env } from './env';
 import type { Logger } from './log';
+import type { Mailer } from './mail/mailer';
 import type { MetricsRegistry } from './metrics';
 import type { PresenceMirror } from './rooms/presenceMirror';
 import type { PresenceStore } from './rooms/presenceStore';
@@ -18,6 +19,8 @@ export interface ServerDeps {
   readonly log: Logger;
   /** Date.now, injected so tests can freeze it */
   readonly clock: () => number;
+  /** Phase C6 outgoing mail; absent → `createMailer(env)` at boot (SMTP, else .eml files, memory under NODE_ENV=test) */
+  readonly mailer?: Mailer;
 }
 
 /** JWT access-token payload (§30.6.1): `{ sub: playerId, usr: username, adm: boolean }`. */
@@ -53,6 +56,8 @@ export interface Runtime {
   readonly ticket: string;
   /** SERVER_SEED or the derived boot seed */
   readonly worldSeed: string;
+  /** Phase C6: the resolved mailer (ServerDeps.mailer or the env default) */
+  readonly mailer: Mailer;
 }
 
 export type RoomDeps = ServerDeps & Runtime;

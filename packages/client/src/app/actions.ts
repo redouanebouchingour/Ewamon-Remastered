@@ -211,6 +211,30 @@ const CREATURE_HANDLERS: Readonly<Record<string, Handler>> = {
 
 export const partyAction = runner(CREATURE_HANDLERS);
 export const boxAction = runner(CREATURE_HANDLERS);
+/**
+ * Phase C5 `/play/bag`: `useItem` (with or without a target) is the creature intent; `give` is `setup` with the
+ * creature's current ability and the new held item (the previous one returns to the bag server-side).
+ */
+export const bagAction = runner({
+  useItem: CREATURE_HANDLERS['useItem']!,
+  async give(p) {
+    await CREATURE_HANDLERS['setup']!(p);
+    toast('success', `${itemInfo(str(p['heldItem'])).name} given to ${str(p['name'])}.`);
+  },
+});
+
+/**
+ * Phase C4 `/play/profile`: `POST /profile { title, motto, body }` (the server refines title ∈ TITLES, body ∈ BODIES);
+ * the identity lands through `applyProfile`, the one profile writer after hydrateFromMe.
+ */
+export const profileAction = runner({
+  async save(p) {
+    const res = await apiFetch('profile', { body: { title: str(p['title']), motto: str(p['motto']).trim(), body: str(p['body']) } });
+    useSessionStore.getState().applyProfile({ title: res.title, motto: res.motto, body: res.body });
+    toast('success', 'Profile saved.');
+    return { title: res.title, motto: res.motto, body: res.body };
+  },
+});
 
 export const shopAction = runner({
   async buy(p) {

@@ -1779,6 +1779,10 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /auth/login` | `{ username, password }` | `{ access, refresh, player }` | none |
 | `POST /auth/refresh` | `{ refresh }` | `{ access, refresh }` (rotating) | none |
 | `POST /auth/logout` | `{ refresh }` | `204` | bearer |
+| `POST /auth/forgot` | `{ email }` | `204` always — known or unknown address alike (no enumeration); a known, unbanned account is mailed a single-use reset link `${PUBLIC_WEB_URL}/reset?token=…` valid 30 min; 429 over 5/h per IP; over 3 mails/h per address the 204 is answered and nothing is sent | none |
+| `POST /auth/reset` | `{ token, password: 8..128 }` | `204` — new argon2id hash, **every** refresh token of the account revoked, `email_verified_at` set (the link proved the address), audit `auth.passwordReset`; 400 `{ code: 'badToken', reason: 'unknown' \| 'expired' \| 'used' }` | none |
+| `POST /auth/verify` | `{ token }` | `204` — stamps `players.email_verified_at` (first stamp kept); same 400 `badToken`. Verification never gates play | none |
+| `POST /auth/resend` | — | `204` — a fresh 48 h verification link (supersedes the previous one); 409 `alreadyVerified`; 3/h per player | bearer |
 | `GET /me` | — | `PlayerProfile & { party: CreatureInstance[]; box: CreatureInstance[]; inventory: Record<string, number>; badges; flags; quests; battlePass; presence: { roomId: string \| null; zoneId: ZoneId; shard: number }; unreadDm: Record<string, number>; friendRequests: number; liveOps: LiveOpsSummary }` | bearer |
 | `POST /zone/enter` | `{ zoneId }` | `{ seat: SeatReservation }` — picks/creates the shard (30-server-netcode.md §30.2.6); 403 `{ code: 'gated', badge }` when the zone's `gate` badge is missing; 409 `{ code: 'wrongZone', zoneId }` unless `zoneId` is the player's persisted `zone_id` or live presence zone (crossings are handovers, never a REST call); during a battle the seat is in the battle's own room (a reload rejoins and receives `battleResync`), any other zone 409 `inBattle` | bearer |
 | `POST /profile` | `{ title?: string; motto?: 0..120; body?: string }` (`title ∈ TITLES`, `body ∈ BODIES` ids, §3.12) | `PlayerProfile` | bearer |
@@ -1845,6 +1849,7 @@ export const players = pgTable('players', {
   usernameLower: varchar('username_lower', { length: 20 }).notNull(),
   email: varchar('email', { length: 254 }).notNull(),
   passwordHash: text('password_hash').notNull(),              // @node-rs/argon2, argon2id, m=19456 t=2 p=1
+  emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),   // migration 0002: set by POST /auth/verify (or a reset); null = unverified
   money: integer('money').notNull().default(3000),
   zoneId: varchar('zone_id', { length: 32 }).notNull().default('mirevale'),
   x: real('x').notNull().default(0), z: real('z').notNull().default(6), angle: real('angle').notNull().default(0),
@@ -2040,6 +2045,17 @@ export const refreshTokens = pgTable('refresh_tokens', {
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex('refresh_tokens_hash_uq').on(t.tokenHash), index('refresh_tokens_player_idx').on(t.playerId)]);
+
+// migration 0002_email_tokens (Phase C6): single-use password-reset / email-verification tokens, stored hashed like refresh tokens
+export const emailTokens = pgTable('email_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  kind: varchar('kind', { length: 8 }).$type<'reset' | 'verify'>().notNull(),
+  tokenHash: text('token_hash').notNull(),                        // sha-256 of the opaque token (32 random bytes, base64url)
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),   // reset 30 min, verify 48 h
+  usedAt: timestamp('used_at', { withTimezone: true }),            // consumed, or superseded by a newer token of the same kind
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex('email_tokens_hash_uq').on(t.tokenHash), index('email_tokens_player_kind_idx').on(t.playerId, t.kind), check('email_tokens_kind_ck', sql`${t.kind} in ('reset', 'verify')`)]);
 
 export const auditLog = pgTable('audit_log', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
@@ -3591,6 +3607,9 @@ Inputs: `00-spine.md`; `PLAN.md` (UI/UX, multiplayer, combat presentation paragr
 | `/` | `LandingPage` | — | Redirects to `/play` when a refresh token exists |
 | `/login` | `AuthScreen mode="login"` | — | `action`: `POST /auth/login` |
 | `/register` | `AuthScreen mode="register"` | — | `action`: `POST /auth/register` |
+| `/forgot` | `ForgotScreen` (Phase C6) | — | `action`: `POST /auth/forgot`; always the same "if an account uses it, a link is on its way" confirmation |
+| `/reset?token=` | `ResetScreen` (Phase C6) | — | `action`: `POST /auth/reset` (new password twice); success ends this browser's session (the server revoked every refresh token) |
+| `/verify?token=` | `VerifyScreen` (Phase C6) | `POST /auth/verify` once per navigation | confirmed / `badToken` reason; never gates play |
 | `/play` | `PlayShell` (layout: `GameCanvas` + `Outlet` + `NotificationHost`) | `requireSession()` → `GET /me` | `shouldRevalidate: () => false`; `hydrateFallbackElement: <BootScreen/>` |
 | `/play/party` | `PartyScreen` | none (reads store) | actions via `useFetcher` |
 | `/play/box` | `BoxScreen` | none (reads store; box pages from `/me`) | |
@@ -4388,7 +4407,7 @@ The Settings › Controls table lists every `InputAction` with up to two binding
 
 Each screen: information hierarchy in one paragraph, then its states. All `/play/*` screens render as the anchored right panel (§20.2.3) over the live world.
 
-**20.9.1 Auth** (`/login`, `/register`). Full-bleed static key-art (`public/keyart/mirevale.ktx2`-derived JPEG, 1440p) with a 420 px `Card` centred-right. Primary: username + password (+ email + starter picker on register). The starter picker is three `CreatureCard variant="showcase"` for `bramblecub / glimfin / cindercap` with type badges and a two-line flavour each; the selection is the largest element on the register form. Secondary: the switch link (login ↔ register). Errors from the action render inline under the field they concern (`username taken`, `bad credentials`); network errors as a single `danger` line above the button. No password rules beyond 8..128 are displayed until violated.
+**20.9.1 Auth** (`/login`, `/register`). Full-bleed static key-art (`public/keyart/mirevale.ktx2`-derived JPEG, 1440p) with a 420 px `Card` centred-right. Primary: username + password (+ email + starter picker on register). The starter picker is three `CreatureCard variant="showcase"` for `bramblecub / glimfin / cindercap` with type badges and a two-line flavour each; the selection is the largest element on the register form. Secondary: the switch link (login ↔ register). Errors from the action render inline under the field they concern (`username taken`, `bad credentials`); network errors as a single `danger` line above the button. No password rules beyond 8..128 are displayed until violated. The login card links "Forgot your password?" to `/forgot`; `/forgot`, `/reset` and `/verify` reuse this layout (key art, story column, card). While `PlayerProfile.emailVerified === false` the settings panel shows a one-line, non-blocking "Confirm your email" notice with "Resend link" (`POST /auth/resend`) (Phase C6).
 
 **20.9.2 World** (`/play`). The canvas is the screen. HUD per §20.6. DOM elements present: a 56 px top bar with the nav (`Party · Box · Dex · Shop · Social · Guild · Market · Pass · Settings`, `NavLink`s with unread counts), the money counter (mono, tabular), the trainer level pip; the chat input (hidden until `T`); toasts bottom-right; `DialogueBox` bottom-centre (`--t-body-lg`, speaker in display face, `Enter`/`E` advances, ≤ 3 lines visible, remaining count shown). Empty: a zone with no other players shows nothing extra. Loading: `BootScreen` (§20.10.4) only before the first `/me`; a zone change shows only the banner. Error: `ConnectionOverlay` after 2 s disconnected (§20.3.4).
 
@@ -4625,11 +4644,22 @@ export const EnvSchema = z.object({
   TICK_HZ: z.literal('20').default('20'),                       // not configurable in v1; present so the value is visible
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
   ADMIN_BOOTSTRAP_USERNAME: z.string().optional(),              // dev only: sets is_admin on this username at boot
+  // Phase C6 mail — all optional
+  SMTP_URL: z.string().url().optional(),                        // smtp(s)://user:pass@host:port; wins over the SMTP_HOST group
+  SMTP_HOST: z.string().min(1).optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_USER: z.string().min(1).optional(),
+  SMTP_PASS: z.string().min(1).optional(),
+  SMTP_SECURE: z.enum(['true', 'false']).default('false'),      // 'true' = implicit TLS (465)
+  MAIL_FROM: z.string().min(3).default('Ewamon <no-reply@localhost>'),
+  PUBLIC_WEB_URL: z.string().url().default('http://localhost:5173'),   // origin of the links in emails
 });
 export type Env = z.infer<typeof EnvSchema>;
 ```
 
 `NODE_ENV=production` additionally requires `DATABASE_URL`, `PUBLIC_ADDRESS` when `REDIS_URL` is set, and refuses `ADMIN_BOOTSTRAP_USERNAME`.
+
+Mail is optional by design (Phase C6): production without SMTP, with the `@localhost` `MAIL_FROM` or with a localhost `PUBLIC_WEB_URL` boots with a **warning** (`envWarnings`), never a refusal. The `Mailer` (`ServerDeps.mailer`, `src/mail/mailer.ts`) is nodemailer SMTP when `SMTP_URL`/`SMTP_HOST` is set; otherwise the dev transport writes each message as an `.eml` file under `DATA_DIR/mail` (nodemailer composes the MIME), and `NODE_ENV=test` defaults to an in-memory mailer. Delivery is fire-and-forget after the response: a request never waits on SMTP, and a failure is logged without the address.
 
 ---
 
@@ -4687,7 +4717,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
 1. Load `players` row (`repos.players.byId`) + party (`repos.creatures.party`). A player with zero party members is refused (`ServerError(409, 'noParty')`) — cannot happen after registration, guards a corrupt row.
 2. Multi-tab collapse: if `state.players.has(auth.playerId)` — another socket of the same player is already in this room — the **older** client is sent `error { code: 'busy', detail: 'replaced' }` and `client.leave(4101)` (`CLOSE_CODES.replaced`; 4001 is Colyseus' own `SERVER_SHUTDOWN`, so a restart would read as "another tab took over" — amended 2026-09-25, server IMPLEMENTATION-NOTES P4); the new one takes over the existing `PlayerState` (position kept). Across rooms: `PresenceStore.enter(playerId, roomId)`; if the player is present in a different room, that room is told via `presence.publish('ewa:kick', { playerId, exceptRoomId })` and drops the older session. One avatar per player, everywhere, always.
 3. Position: `options.handover` present and `fromRoomId` matches a pending handover for this player (§30.2.7) → `(x, z)` from the handover, else from the row when `row.zoneId === this.zone.id`, else the zone's spawn point `zone.spawn` (spine §3.1 `ZoneDef.spawn`; `mirevale` is `{ x: 0, z: 6 }`, the `players.z` default). The position is then **snapped**: `isWalkable(heightfield, x, z) ? (x, z) : nearestWalkable(heightfield, x, z, 8)` (spiral search, 0.5 m step). <!-- reconciled 2026-09-18: ZoneDef.spawn exists (OQ 4) -->
-4. `const ps = new PlayerState(); ps.id = playerId; ps.name = username; ps.x = x; ps.z = z; ps.body = row.body; ps.guildTag = guildTag ?? ''; state.players.set(playerId, ps)`.
+4. Takeover (step 2 found a `PlayerState`): reuse it — position kept — and reset `ps.seq = 0`, because the new socket is always a new client (a reload or another tab; a Colyseus reconnection never reaches `onJoin`) whose input seqs start at 1; keeping the old seq as the stale-seq baseline froze a reload inside the 20 s reconnection window until the new count caught up. Otherwise `const ps = new PlayerState(); ps.id = playerId; ps.name = username; ps.x = x; ps.z = z; ps.body = row.body; ps.guildTag = guildTag ?? ''; state.players.set(playerId, ps)`.
 5. `client.view = new StateView(); client.view.add(ps)` (after step 4's `state.players.set` — `StateView.add` throws on a detached instance); `client.userData = { playerId, cell: null, lastSeq: 0, budgetMs: 0, lastInputAt: clock(), battleId: null, tradeId: null, limiter: createLimiterState(), … }`. The viewer is registered and the avatar placed in the AOI grid immediately, so a `chat`/`interact` arriving before the first tick finds its cell and audience (amended 2026-09-25, server IMPLEMENTATION-NOTES R11).
 6. Send `toast { level: 'info', text: zone.name }` is **not** done here — the client reads `state.harvestState` and the zone name from content. Nothing is sent on join except the schema.
 7. `repos.players.setPosition(tx, playerId, zone.id, x, z, angle)` only when the position came from step 3's fallback branches (row was for another zone, or snapped). Handover writes are the destination's job (§30.2.7).
@@ -5137,6 +5167,7 @@ export async function rotateTokens(tx: Tx, fastify: FastifyInstance, refresh: st
 - `POST /auth/register`: `username` `/^[a-z0-9_]{3,20}$/` (stored as given; `username_lower` for uniqueness), `email` zod `.email()` lowercased, `password` 8..128, `starter ∈ {bramblecub, glimfin, cindercap}`. One tx: `players.create`, starter `creatures.insert` at level 5 (`moves` = species default 4, `ability` index 0, `hp = maxHp`), `inventory.add` `potion 5`, `spark_orb 10`, `markSeen/markCaught(starter)`, `issueTokens`. Duplicate username/email → 409 `{ code: 'taken', field }` (both checked by the unique index; the error is mapped, never pre-checked-then-inserted).
 - `POST /auth/login`: `byUsername(lower)`; on a missing row still run `verifyPassword` against a fixed dummy PHC so timing does not reveal existence; 401 `{ code: 'badCredentials' }` for both cases; `banned_at` → 403 `{ code: 'banned', reason }`; `last_seen_at = now`; `dailyLogin` trainer exp if the UTC day changed (§30.9.1).
 - `POST /auth/refresh`, `POST /auth/logout` (revokes the presented refresh token; the access token expires by itself within 15 min).
+- Phase C6 email routes (spine §4.7 rows, `email_tokens` §5.1): registration issues a 48 h verification token in its transaction and mails the link after commit. `POST /auth/forgot` lowercases the address, applies the per-address cap (`forgotEmail`) silently, and for a known unbanned account issues a 30 min reset token + audit `auth.forgot`. `POST /auth/reset` hashes the new password first (so an unknown token costs the same), then in one tx: `consumeEmailToken(reset)` under `FOR UPDATE` → `setPasswordHash` → `revokeAll` refresh tokens → `markEmailVerified` → audit `auth.passwordReset`. A new token of a kind supersedes (marks used) every older unused one of that kind. Tokens are 32 random bytes base64url, stored as sha-256 hex, single use.
 
 ### 30.6.3 Route table
 
@@ -5169,6 +5200,10 @@ export const LIMITS = {
   guildOp:   { max: 10, windowMs: 60_000 },
   restRead:  { max: 240, windowMs: 60_000 },     // every GET, per player
   restWrite: { max: 60,  windowMs: 60_000 },     // every other POST, per player
+  forgot:    { max: 5,  windowMs: 3_600_000 },   // POST /auth/forgot per IP (429)
+  forgotEmail: { max: 3, windowMs: 3_600_000 },  // reset mails per address: over it 204 and nothing sent
+  emailToken: { max: 20, windowMs: 900_000 },    // POST /auth/reset + /auth/verify per IP
+  resend:    { max: 3,  windowMs: 3_600_000 },   // POST /auth/resend per player
   // room messages (per client), from the spine §4.3, restated so one table holds them all:
   input:     { max: 30, windowMs: 1_000 },
   emote:     { max: 1,  windowMs: 1_500 },       // spine §4.3: 1 per 1.5 s (reconciled 2026-09-18: the earlier 6 / 5 s row is gone)

@@ -23,6 +23,8 @@ export interface Profile {
   readonly isAdmin: boolean;
   /** unix ms */
   readonly createdAt: number;
+  /** Phase C6: false = unverified (the settings nudge shows); absent = unknown (an older server) */
+  readonly emailVerified?: boolean;
 }
 
 export type QuestState = Readonly<Record<string, Readonly<Record<string, { readonly count: number; readonly done: boolean }>>>>;
@@ -133,6 +135,10 @@ export interface SessionState {
   hydrateFromMe(me: MeResponse): void;
   applyProgressionDelta(d: ProgressionDelta): void;
   applyInventoryDelta(d: InventoryDelta): void;
+  /** Phase C4: the identity fields a `POST /profile` response carries (title / motto / body) — not progression */
+  applyProfile(p: Pick<Profile, 'title' | 'motto' | 'body'>): void;
+  /** Phase C6: `POST /auth/verify` succeeded (or `/auth/resend` answered `alreadyVerified`) */
+  markEmailVerified(): void;
   setTokens(access: string, accessExp: number): void;
   setZone(zoneId: ZoneId): void;
   clearSession(): void;
@@ -200,6 +206,7 @@ export const useSessionStore = create<SessionState>()(
           body: me.body,
           isAdmin: me.isAdmin,
           createdAt: Date.parse(me.createdAt),
+          ...(me.emailVerified !== undefined ? { emailVerified: me.emailVerified } : {}),
         },
         progression: {
           badges: [...me.badges],
@@ -278,6 +285,18 @@ export const useSessionStore = create<SessionState>()(
           box,
         },
       });
+    },
+
+    applyProfile(p) {
+      const cur = get().profile;
+      if (cur === null) return;
+      set({ profile: { ...cur, title: p.title, motto: p.motto, body: p.body } });
+    },
+
+    markEmailVerified() {
+      const cur = get().profile;
+      if (cur === null || cur.emailVerified === true) return;
+      set({ profile: { ...cur, emailVerified: true } });
     },
 
     setTokens(access, accessExp) {

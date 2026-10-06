@@ -58,6 +58,7 @@ export { auditRepo, authRepo, battlePassRepo, creatureRepo, historyRepo, invento
 export type { AuditRepo, AuthRepo, BattlePassRepo, CreatureRepo, HistoryRepo, InventoryRepo, MarketRepo, PlayerRepo, ProgressRepo, SocialRepo };
 export type { AuditEntry } from './audit';
 export { hashRefreshToken } from './auth';
+export type { EmailTokenRefusal } from './auth';
 export { BATTLE_PASS_MAX_LEVEL, BATTLE_PASS_MYTHICAL_LEVEL } from './battlePass';
 export type { CreatureRecord } from './creatureMap';
 export { creatureToColumns, rowToCreature, rowToRecord } from './creatureMap';

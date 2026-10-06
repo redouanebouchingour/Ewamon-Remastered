@@ -16,6 +16,11 @@ export const LIMITS = {
   register: { max: 5, windowMs: 3_600_000 }, // per IP
   login: { max: 10, windowMs: 900_000 }, // per IP and per username_lower (both must pass)
   refresh: { max: 30, windowMs: 900_000 }, // per IP
+  // Phase C6 email routes
+  forgot: { max: 5, windowMs: 3_600_000 }, // POST /auth/forgot per IP (429 when exceeded)
+  forgotEmail: { max: 3, windowMs: 3_600_000 }, // reset mails per address: over it the 204 is answered but nothing is sent
+  emailToken: { max: 20, windowMs: 900_000 }, // POST /auth/reset + /auth/verify per IP
+  resend: { max: 3, windowMs: 3_600_000 }, // POST /auth/resend per player
   listing: { max: 5, windowMs: 3_600_000 }, // per player (MARKET.listMaxPerHour)
   bid: { max: 30, windowMs: 3_600_000 }, // per player (MARKET.bidMaxPerHour)
   message: { max: 20, windowMs: 60_000 }, // DMs per player

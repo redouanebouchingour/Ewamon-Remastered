@@ -29,6 +29,18 @@ export const EnvSchema = z.object({
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
   /** dev only: sets is_admin on this username at boot */
   ADMIN_BOOTSTRAP_USERNAME: z.string().optional(),
+  // ---- Phase C6 mail (password reset + email verification) ----
+  /** `smtp(s)://user:pass@host:port` — wins over the SMTP_HOST group. Neither set → mail is written as .eml under DATA_DIR/mail. */
+  SMTP_URL: z.string().url().optional(),
+  SMTP_HOST: z.string().min(1).optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_USER: z.string().min(1).optional(),
+  SMTP_PASS: z.string().min(1).optional(),
+  /** 'true' = implicit TLS (port 465); default: STARTTLS when the server offers it */
+  SMTP_SECURE: z.enum(['true', 'false']).default('false'),
+  MAIL_FROM: z.string().min(3).default('Ewamon <no-reply@localhost>'),
+  /** the web client's origin, for the links in emails (`${PUBLIC_WEB_URL}/reset?token=…`) */
+  PUBLIC_WEB_URL: z.string().url().default('http://localhost:5173'),
 });
 export type Env = z.infer<typeof EnvSchema>;
 
@@ -47,6 +59,24 @@ export function parseEnv(source: Readonly<Record<string, string | undefined>>): 
     if (problems.length > 0) throw new Error(`invalid environment: ${problems.join('; ')}`);
   }
   return env;
+}
+
+/** Phase C6: true when SMTP_URL or SMTP_HOST is set (else the dev .eml transport is used). */
+export function smtpConfigured(env: Pick<Env, 'SMTP_URL' | 'SMTP_HOST'>): boolean {
+  return env.SMTP_URL !== undefined || env.SMTP_HOST !== undefined;
+}
+
+/**
+ * Non-fatal configuration findings logged at boot. Mail is optional by design (a deployment without SMTP still
+ * runs; reset/verification emails then land as .eml files under DATA_DIR/mail), so production only WARNS.
+ */
+export function envWarnings(env: Env): string[] {
+  const out: string[] = [];
+  if (env.NODE_ENV !== 'production') return out;
+  if (!smtpConfigured(env)) out.push('SMTP is not configured (SMTP_URL or SMTP_HOST): password-reset and verification emails are written to DATA_DIR/mail instead of being sent');
+  if (smtpConfigured(env) && env.MAIL_FROM.includes('@localhost')) out.push('MAIL_FROM still uses the @localhost default');
+  if (/^https?:\/\/(localhost|127\.)/.test(env.PUBLIC_WEB_URL)) out.push('PUBLIC_WEB_URL points at localhost: links in emails will not work for players');
+  return out;
 }
 
 export function corsOrigins(env: Pick<Env, 'CORS_ORIGINS'>): string[] {

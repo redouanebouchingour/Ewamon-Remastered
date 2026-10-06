@@ -1,0 +1,114 @@
+/* Phase C4 /play/profile: identity card with its editor beside the stats; badges, showcase, achievements below. */
+
+.publicLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  block-size: var(--control-md);
+  padding: 0 var(--s-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-2);
+  color: var(--text-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  white-space: nowrap;
+}
+
+.publicLink:hover {
+  border-color: var(--line-2);
+  background: var(--light-a06);
+  color: var(--text-hi);
+}
+
+.top {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--s-6);
+  align-items: start;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  padding: var(--s-5);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-3);
+  background: var(--bg-2);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding-block-start: var(--s-5);
+  border-top: 1px solid var(--line-1);
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+
+.formFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+}
+
+.achievements {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.achievement {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-3);
+  background: var(--bg-2);
+}
+
+.achievementMark {
+  display: grid;
+  place-items: center;
+  inline-size: 32px;
+  block-size: 32px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-pill);
+  color: var(--text-2);
+}
+
+.earned .achievementMark {
+  border-color: var(--accent);
+  background: var(--accent-a16);
+  color: var(--accent);
+}
+
+.achievementText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-inline-size: 0;
+}
+
+.achievementTitle {
+  color: var(--text-hi);
+  font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+  .top,
+  .achievements {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

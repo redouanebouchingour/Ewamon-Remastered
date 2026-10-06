@@ -22,6 +22,7 @@ import s from './TopBar.module.css';
 export const NAV: readonly { readonly to: string; readonly label: string; readonly icon: IconName }[] = [
   { to: '/play/party', label: 'Party', icon: 'party' },
   { to: '/play/box', label: 'Box', icon: 'box' },
+  { to: '/play/bag', label: 'Bag', icon: 'bag' },
   { to: '/play/dex', label: 'Dex', icon: 'dex' },
   { to: '/play/shop', label: 'Shop', icon: 'shop' },
   { to: '/play/social', label: 'Social', icon: 'social' },
@@ -31,6 +32,13 @@ export const NAV: readonly { readonly to: string; readonly label: string; readon
   { to: '/play/quests', label: 'Quests', icon: 'quest' },
   { to: '/play/map', label: 'Map', icon: 'map' },
   { to: '/play/settings', label: 'Settings', icon: 'settings' },
+];
+
+/** Phase C4: the trainer's own pages live in the account menu (the nav row is full under 1400 px). */
+export const ACCOUNT_LINKS: readonly { readonly to: string; readonly label: string; readonly icon: IconName }[] = [
+  { to: '/play/profile', label: 'Profile', icon: 'user' },
+  { to: '/play/rankings', label: 'Rankings', icon: 'trophy' },
+  { to: '/play/history', label: 'History', icon: 'clock' },
 ];
 
 export const formatMoney = (n: number): string => n.toLocaleString('en-US');
@@ -103,6 +111,10 @@ function Account() {
   const isAdmin = useSessionStore((st) => st.profile?.isAdmin ?? false);
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  const go = (to: string): void => {
+    setOpen(false);
+    void navigate(to);
+  };
   const logout = async (): Promise<void> => {
     const refresh = getRefreshToken();
     if (refresh !== null) await apiFetch('authLogout', { body: { refresh } }).catch(() => undefined);
@@ -121,6 +133,12 @@ function Account() {
       {open && (
         <div className={s.menu} role="menu" onMouseLeave={() => setOpen(false)}>
           <BadgeCase />
+          {ACCOUNT_LINKS.map((a) => (
+            <button key={a.to} type="button" role="menuitem" className={s.menuItem} onClick={() => go(a.to)}>
+              <Icon name={a.icon} size="sm" /> {a.label}
+            </button>
+          ))}
+          <span className={s.menuRule} role="separator" />
           {isAdmin && (
             <button type="button" role="menuitem" className={s.menuItem} onClick={() => void navigate('/admin')}>
               <Icon name="shield" size="sm" /> Admin

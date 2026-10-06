@@ -153,6 +153,16 @@ export const playerRepo = {
     if (res.length === 0) fail('NotFound', `player ${id}`);
   },
 
+  /** Phase C6: stamps `email_verified_at` once (a second verification keeps the first stamp). true = newly verified. */
+  async markEmailVerified(tx: Tx, id: string, now: Date): Promise<boolean> {
+    const res = await tx
+      .update(players)
+      .set({ emailVerifiedAt: now })
+      .where(and(eq(players.id, id), isNull(players.emailVerifiedAt)))
+      .returning({ id: players.id });
+    return res.length > 0;
+  },
+
   async touchLastSeen(tx: Tx, id: string, now: Date): Promise<void> {
     await tx.update(players).set({ lastSeenAt: now }).where(eq(players.id, id));
   },

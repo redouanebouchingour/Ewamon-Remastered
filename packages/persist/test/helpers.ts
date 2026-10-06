@@ -24,6 +24,7 @@ export const at = (offsetMs: number): Date => new Date(T0.getTime() + offsetMs);
 const TABLES = [
   'audit_log',
   'refresh_tokens',
+  'email_tokens',
   'bids',
   'listings',
   'battle_history',

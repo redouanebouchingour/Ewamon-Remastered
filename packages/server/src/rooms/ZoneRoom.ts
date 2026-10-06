@@ -423,6 +423,12 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       ps.body = row.body;
       ps.guildTag = loaded.guildTag ?? '';
       this.state.players.set(playerId, ps);
+    } else {
+      // A takeover is always a NEW client (a reload or a second tab; a Colyseus reconnection never reaches onJoin),
+      // and a new client counts input seqs from 1. Keeping the old socket's seq as the stale baseline froze a
+      // reload inside the 20 s window until the new count caught up; the echoed seq restarts at 0 with it so the
+      // client's reconciler (which ignores acks below its last one) accepts the first new ack.
+      ps.seq = 0;
     }
     this.owner.set(playerId, client.sessionId);
 
@@ -434,7 +440,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     client.userData = {
       playerId,
       cell: null,
-      lastSeq: existing?.seq ?? 0,
+      lastSeq: 0,
       budgetMs: 0,
       lastInputAt: this.now(),
       battleId: this.battles.ofPlayer(playerId)?.id ?? null,

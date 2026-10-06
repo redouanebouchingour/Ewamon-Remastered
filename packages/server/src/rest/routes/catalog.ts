@@ -207,12 +207,18 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
 
   app.get('/history/trades', bearer, async (req) => {
     const { page } = PageQuery.parse(req.query);
-    const rows = await repos.db.transaction((tx) => repos.history.trades(tx, req.user.sub, page, HISTORY_PAGE));
+    const { rows, names } = await repos.db.transaction(async (tx) => {
+      const rows = await repos.history.trades(tx, req.user.sub, page, HISTORY_PAGE);
+      // the partner's username for the client's history list (one lookup per page, not per row)
+      const partners = rows.length === 0 ? [] : await repos.players.byIds(tx, [...new Set(rows.map((r) => r.partnerId))]);
+      return { rows, names: new Map(partners.map((p) => [p.id, p.username])) };
+    });
     return out(deps, TradeHistoryRes, {
       rows: rows.map((r) => ({
         id: r.id,
         tradeId: r.tradeId,
         partnerId: r.partnerId,
+        partnerUsername: names.get(r.partnerId) ?? null,
         sent: r.sent as never,
         received: r.received as never,
         moneySent: r.moneySent,

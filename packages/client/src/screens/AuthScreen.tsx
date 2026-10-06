@@ -108,6 +108,11 @@ export function AuthScreen({ mode }: AuthScreenProps) {
               icon="lock"
             />
           </div>
+          {!register && (
+            <Link to="/forgot" className={s.forgot}>
+              Forgot your password?
+            </Link>
+          )}
           {result?.formError !== undefined && <FormError>{result.formError}</FormError>}
           <Button type="submit" variant="primary" size="lg" busy={submitting} className={s.submit}>
             {register ? 'Create trainer and play' : 'Log in'}

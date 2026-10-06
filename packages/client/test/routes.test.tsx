@@ -17,7 +17,7 @@ import type { WorldSession } from '../src/net/WorldSession';
 import { setWorldCapabilityOverride } from '../src/scene/worldHost';
 import { useNotificationsStore } from '../src/state/notifications';
 import { useSessionStore } from '../src/state/session';
-import { inOneHour, json, makeJwt, meFixture } from './fixtures';
+import { inOneHour, json, makeJwt, meFixture, publicProfileFixture } from './fixtures';
 
 // jsdom's AbortSignal is not the one Node's Request accepts; React Router builds a Request per navigation.
 beforeAll(() => {
@@ -61,6 +61,9 @@ function respond(url: string): Response {
   if (path === '/dex') return json({ seen: ['glimfin'], caught: ['bramblecub'], variants: { bramblecub: ['normal'] }, alpha: [] });
   if (path === '/shop/mirevale') return json({ stock: ['potion', 'spark_orb'], prices: { potion: 150, spark_orb: 200 } });
   if (path === '/battle-pass') return json(meFixture().battlePass);
+  if (path === '/leaderboard') return json({ rows: [] });
+  if (path === '/history/battles' || path === '/history/trades') return json({ rows: [] });
+  if (path === '/players/qa_tester') return json(publicProfileFixture());
   if (path === '/auth/refresh') return json({ access: makeJwt(inOneHour()), refresh: 'r2' });
   return notFoundRoute(); // friends, messages, guilds, marketplace, admin stats/players: server part 2
 }
@@ -108,6 +111,11 @@ describe('every route renders', () => {
     ['/play/pass', 'panel'],
     ['/play/quests', 'panel'],
     ['/play/settings', 'panel'],
+    ['/play/bag', 'panel'],
+    ['/play/rankings', 'panel'],
+    ['/play/history', 'panel'],
+    ['/play/profile', 'panel'],
+    ['/play/players/qa_tester', 'panel'],
   ])('%s', async (path, testId) => {
     mount([path]);
     // the first lazy route transforms PlayShell's whole module graph (part 2's world modals / battle DOM) on a cold

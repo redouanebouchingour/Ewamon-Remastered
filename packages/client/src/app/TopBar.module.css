@@ -361,3 +361,10 @@
     padding: 0 var(--s-3);
   }
 }
+
+.menuRule {
+  display: block;
+  block-size: 1px;
+  margin: var(--s-2) 0;
+  background: var(--line-1);
+}

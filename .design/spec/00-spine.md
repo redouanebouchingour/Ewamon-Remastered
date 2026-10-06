@@ -1423,6 +1423,10 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /auth/login` | `{ username, password }` | `{ access, refresh, player }` | none |
 | `POST /auth/refresh` | `{ refresh }` | `{ access, refresh }` (rotating) | none |
 | `POST /auth/logout` | `{ refresh }` | `204` | bearer |
+| `POST /auth/forgot` | `{ email }` | `204` always — known or unknown address alike (no enumeration); a known, unbanned account is mailed a single-use reset link `${PUBLIC_WEB_URL}/reset?token=…` valid 30 min; 429 over 5/h per IP; over 3 mails/h per address the 204 is answered and nothing is sent | none |
+| `POST /auth/reset` | `{ token, password: 8..128 }` | `204` — new argon2id hash, **every** refresh token of the account revoked, `email_verified_at` set (the link proved the address), audit `auth.passwordReset`; 400 `{ code: 'badToken', reason: 'unknown' \| 'expired' \| 'used' }` | none |
+| `POST /auth/verify` | `{ token }` | `204` — stamps `players.email_verified_at` (first stamp kept); same 400 `badToken`. Verification never gates play | none |
+| `POST /auth/resend` | — | `204` — a fresh 48 h verification link (supersedes the previous one); 409 `alreadyVerified`; 3/h per player | bearer |
 | `GET /me` | — | `PlayerProfile & { party: CreatureInstance[]; box: CreatureInstance[]; inventory: Record<string, number>; badges; flags; quests; battlePass; presence: { roomId: string \| null; zoneId: ZoneId; shard: number }; unreadDm: Record<string, number>; friendRequests: number; liveOps: LiveOpsSummary }` | bearer |
 | `POST /zone/enter` | `{ zoneId }` | `{ seat: SeatReservation }` — picks/creates the shard (30-server-netcode.md §30.2.6); 403 `{ code: 'gated', badge }` when the zone's `gate` badge is missing; 409 `{ code: 'wrongZone', zoneId }` unless `zoneId` is the player's persisted `zone_id` or live presence zone (crossings are handovers, never a REST call); during a battle the seat is in the battle's own room (a reload rejoins and receives `battleResync`), any other zone 409 `inBattle` | bearer |
 | `POST /profile` | `{ title?: string; motto?: 0..120; body?: string }` (`title ∈ TITLES`, `body ∈ BODIES` ids, §3.12) | `PlayerProfile` | bearer |
@@ -1489,6 +1493,7 @@ export const players = pgTable('players', {
   usernameLower: varchar('username_lower', { length: 20 }).notNull(),
   email: varchar('email', { length: 254 }).notNull(),
   passwordHash: text('password_hash').notNull(),              // @node-rs/argon2, argon2id, m=19456 t=2 p=1
+  emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),   // migration 0002: set by POST /auth/verify (or a reset); null = unverified
   money: integer('money').notNull().default(3000),
   zoneId: varchar('zone_id', { length: 32 }).notNull().default('mirevale'),
   x: real('x').notNull().default(0), z: real('z').notNull().default(6), angle: real('angle').notNull().default(0),
@@ -1684,6 +1689,17 @@ export const refreshTokens = pgTable('refresh_tokens', {
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex('refresh_tokens_hash_uq').on(t.tokenHash), index('refresh_tokens_player_idx').on(t.playerId)]);
+
+// migration 0002_email_tokens (Phase C6): single-use password-reset / email-verification tokens, stored hashed like refresh tokens
+export const emailTokens = pgTable('email_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  kind: varchar('kind', { length: 8 }).$type<'reset' | 'verify'>().notNull(),
+  tokenHash: text('token_hash').notNull(),                        // sha-256 of the opaque token (32 random bytes, base64url)
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),   // reset 30 min, verify 48 h
+  usedAt: timestamp('used_at', { withTimezone: true }),            // consumed, or superseded by a newer token of the same kind
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex('email_tokens_hash_uq').on(t.tokenHash), index('email_tokens_player_kind_idx').on(t.playerId, t.kind), check('email_tokens_kind_ck', sql`${t.kind} in ('reset', 'verify')`)]);
 
 export const auditLog = pgTable('audit_log', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),

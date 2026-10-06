@@ -858,3 +858,52 @@ leave / ineligible window / reopen with a catch try / phase-4 summary / fainted 
   labels at 1440 px but overlapped the money / account cluster by ~22 px at the 1280 px minimum, so under 1400 px the
   links show icons only (`TopBar.module.css` media query; the label stays for screen readers, `title` for the pointer)
   — checked live at 1280 × 800.
+
+## Phase C4–C5 — rankings, history, profiles, bag (2026-10-06)
+
+- **Routes** (lazy `/play/*` children, `router.tsx`): `/play/rankings` (`rankingsLoader` → GET /leaderboard?mode=&page=),
+  `/play/history` (`historyLoader` → GET /history/battles or /history/trades by `?tab=`), `/play/profile`
+  (`profileLoader` → the player's own GET /players/:me; `profileAction.save` → POST /profile), `/play/players/:username`
+  (`playerLoader`; 404 / 400 → `pub: null` → "No trainer by that name" inside the panel), `/play/bag` (`bagAction`).
+- **Top bar.** Bag joins NAV (12 links; the < 1400 px icon-only rule still fits at 1280 — checked live). Profile,
+  Rankings and History live in the account menu (`ACCOUNT_LINKS`, new `user` / `trophy` / `clock` icons) above Log out.
+- **Rankings** (`screens/RankingsScreen.tsx`): tabs Rating · Dex · Trainer level bound to `?mode=` (the default `rating`
+  drops the param), the mode's metric column leads, rank 1–3 in the warm tone, the player's own row uses the Table's
+  `selectedKey` highlight plus a "You" pill and a "You are #n on this board" line; every name links to the public
+  profile. Pager Previous / Next (`?page=`) when a page is full (server page size 25). No client re-sorting.
+- **History** (`screens/HistoryScreen.tsx`): battles (result pill, opponent + format + turns + "badge earned", rating
+  delta signed, rewards line, relative time) and trades (partner linked to the profile, what went each way incl. money).
+  **Server/protocol addition:** `TradeHistoryRow.partnerUsername` (optional, nullable — the row only carried
+  `partnerId`); `GET /history/trades` resolves the page's partners with one `players.byIds` lookup
+  (`server/src/rest/routes/catalog.ts`; `server/test/history-routes.test.ts`). No new route was needed.
+- **Profile** (`screens/ProfileScreen.tsx`, shared pieces in `screens/TrainerCard.tsx`): identity card with an in-place
+  editor (Title ∈ content `TITLES`, Look ∈ `BODIES` labelled "Ranger (f)" by id suffix, Motto ≤ 120), a live preview,
+  Save / Reset; stats / badges / showcase come from the player's own public profile (what others see; badges from the
+  session store, which only the server writes). A new session writer `applyProfile({ title, motto, body })` takes the
+  POST /profile response (identity only — not progression or inventory, so `no-client-badge` still holds).
+  **Achievements:** Phase D5 brings `QuestDef kind: 'achievement'`; until then `achievementQuests()` lists the quests
+  no NPC gives (`q11_first_night`, `q12_first_morning`) with progress, or an empty state if none.
+- **Bag** (`screens/BagScreen.tsx`, `data/bag.ts`): Consumables · Orbs · Held items · Key items (sections, not tabs, so
+  everything carried is visible at once; empty groups say "None yet."). Use on a creature (potions, cures, revives, PP,
+  Rare Candy with a quantity stepper) opens a party picker; creatures the server would refuse (`noEffect`) are disabled
+  with the reason (`noEffectReason` mirrors party.ts's rules for display). Field items (repel, lure, escape rope) post
+  `target: null` at once. Give a held item → picker → `POST /creature/:id/setup { ability: current, heldItem }` (the
+  old held item returns server-side; `bagAction.give` reuses the `setup` handler and toasts). Held rows say who already
+  holds one. Orbs say "Throw in battle", key items "Always with you", sell-only goods "Sell at a shop". The picker lists
+  the party only (box creatures keep using their own panel). `presentItemUse` toasts "Used Repel." when there is no
+  target creature.
+- **`B` key** now opens `/play/bag` (it opened Party); the shortcut hint bar reads "B Bag".
+- **Tests.** `test/rankings-profile.test.tsx` (6): account links; rankings default + own row + Dex tab refetch with
+  `mode=dex` + column order + Trainer level "not on this page" + link → public profile; public card; public 404;
+  history battles → trades tab with the partner link; profile edit → POST /profile → `applyProfile` + toast.
+  `test/bag.test.tsx` (8): grouping; use kinds + no-effect reasons; NAV; route groups + actions + "Held by"; potion
+  picker (full-HP disabled) → POST /item/use → inventory + creature + toast; repel with `target: null`; give → setup →
+  heldItem + count; `B` opens and closes the bag and the hint says Bag. `routes.test` renders the five new routes.
+  Server: `test/history-routes.test.ts` (4: trades partnerUsername, battles paging, leaderboard modes, POST /profile).
+- **Live** (own server REST 4400 / WS 2967 + client 5195, headless Chrome 154 via Playwright, 1440 × 900 and 1280 × 800):
+  account menu → Rankings (own row highlighted) → Dex tab → a second account's public card (title, motto, look, stats,
+  badges, showcase) → unknown name → "No trainer by that name"; History empty states for both tabs; Profile title +
+  motto saved (server's public profile read back "Witness | Count the morning."); `B` from the world → Bag; Use Potion
+  picker with the full-HP starter disabled ("Already at full HP"); the 12-link top bar and the account menu at 1280 px.
+  Not verified live: a successful item use / field item / give (fresh accounts have a full-HP starter and no held items),
+  battle and trade rows (covered by the mocked tests), paging past 25 rows.

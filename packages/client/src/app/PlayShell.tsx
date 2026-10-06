@@ -42,8 +42,8 @@ function useWorldConnection(zoneId: ZoneId): void {
 
 const SHORTCUTS: Partial<Record<InputAction, string>> = {
   party: '/play/party',
-  // field items (Rare Candy, potions, revives…) are used from a creature's panel on the Party screen
-  bag: '/play/party',
+  // Phase C5: the Bag screen (field items, potions, Rare Candy, held items)
+  bag: '/play/bag',
   journal: '/play/dex',
   map: '/play/map',
 };
@@ -134,7 +134,7 @@ function WorldHint() {
         <kbd>{label(binds.party[0])}</kbd> Party
       </span>
       <span>
-        <kbd>{label(binds.bag[0])}</kbd> Items
+        <kbd>{label(binds.bag[0])}</kbd> Bag
       </span>
       <span>
         <kbd>{label(binds.journal[0])}</kbd> Dex

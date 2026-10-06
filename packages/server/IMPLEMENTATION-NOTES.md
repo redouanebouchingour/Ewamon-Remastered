@@ -712,3 +712,48 @@ and taught the Phase A interiors.
 - **Found, not fixed (pre-existing):** a page reload within the 20 s reconnect window takes the old avatar over
   (`existing` in `onJoin`) and keeps `lastSeq: existing.seq`; the new client counts from 1, so every input is
   `staleSeq` until its seq passes the old one (seen live: ~15 s of rejected movement after a reload).
+
+## Reconnect input seq (2026-10-06, fixes the "found, not fixed" above)
+
+- `ZoneRoom.onJoin` on a takeover (an existing `PlayerState`) now resets `ps.seq = 0` and starts `userData.lastSeq` at
+  0 (spec §30.2.2 step 5 always said `lastSeq: 0`; step 4 now says the takeover resets `ps.seq`). A takeover is always
+  a new client — a reload or a second tab; a Colyseus reconnection (the SDK's own, same client object) goes through
+  `onReconnect`, never `onJoin` — and a new client counts from 1. Resetting only `lastSeq` would not have been enough:
+  the client's reconciler ignores an ack below its last one (`LocalPlayerController.reconcile`), and the join state
+  would have carried the old seq, so the echoed seq restarts with the baseline.
+- Test: `test/authority.test.ts` A14b — seq 400 on the old socket, an abnormal close (the avatar is held for the
+  reconnection window), a fresh `/zone/enter` seat from the same room, then `seq: 1` moves the avatar at once with no
+  `staleSeq` counted. It fails before the fix (the echoed seq stays 400).
+
+## Phase C6 — password reset + email verification (2026-10-06)
+
+- **Routes** (`rest/routes/auth.ts`, protocol `ROUTES.authForgot/authReset/authVerify/authResend`):
+  `POST /auth/forgot { email }` → always 204 (unknown address included); a known, unbanned account gets a 30 min reset
+  token + audit `auth.forgot`. `POST /auth/reset { token, password }` → hashes first (an unknown token costs the same
+  argon2id), then one tx: `consumeEmailToken('reset')` (FOR UPDATE) → `setPasswordHash` → `revokeAll` refresh tokens →
+  `markEmailVerified` (the link proved the address) → audit `auth.passwordReset { revoked }`. `POST /auth/verify
+  { token }` → stamps `email_verified_at` (first stamp kept), audit `auth.emailVerified`. `POST /auth/resend` (bearer) →
+  a fresh 48 h verification link; 409 `alreadyVerified`. Bad tokens → 400 `{ code: 'badToken', reason: 'unknown' |
+  'expired' | 'used' }` (the reason is safe to show: a token is 256 random bits, the reason reveals nothing about
+  accounts). Registration issues a verification token in its transaction and mails it after commit.
+- **Rate limits** (`LIMITS`): `forgot` 5/h per IP (429); `forgotEmail` 3/h per address — over it the 204 is answered and
+  nothing is sent (a 429 there would reveal nothing either, but silence keeps the response uniform); `emailToken` 20 /
+  15 min per IP on reset + verify; `resend` 3/h per player.
+- **Tokens**: 32 random bytes base64url, sha-256 hex in `email_tokens` (persist migration `0002_email_tokens`), single
+  use, and a new token of a kind supersedes every older unused one of that kind (only the newest link works).
+- **Mailer** (`src/mail/mailer.ts`, `ServerDeps.mailer?` → `Runtime.mailer`): SMTP via nodemailer when `SMTP_URL` or
+  `SMTP_HOST` is set; otherwise `fileMailer` writes `DATA_DIR/mail/<iso>-<n>-<reset|verify>.eml` (nodemailer's stream
+  transport composes the MIME, so the file opens in any mail client; the link is in the text part); `NODE_ENV=test`
+  without SMTP → `memoryMailer` (tests read `runtime.mailer.sent`). `deliver()` is fire-and-forget after the response
+  (no SMTP latency in the request, no timing difference between known and unknown addresses beyond the DB lookup);
+  failures are logged with the tag only.
+- **Env** (`env.ts`): `SMTP_URL`, `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER`, `SMTP_PASS`, `SMTP_SECURE`, `MAIL_FROM`,
+  `PUBLIC_WEB_URL` (default `http://localhost:5173`; links are `${PUBLIC_WEB_URL}/reset?token=…`, `/verify?token=…`).
+  Decision: production without SMTP **warns** at boot (`envWarnings`: no SMTP, `@localhost` sender, localhost web URL),
+  never refuses — mail is optional so a deployment stays possible without a mail provider.
+- **Profile**: `PlayerProfile.emailVerified` (optional on the wire, always sent by this server) from
+  `players.email_verified_at`.
+- **Not done**: no periodic purge of used/expired email tokens (persist has `authRepo.purgeEmailTokens`; refresh tokens
+  have no purge job either — one housekeeping job for both is the natural follow-up). A reset does not kick live room
+  sessions; their access tokens lapse within 15 min and the next refresh fails.
+- **Tests**: `test/rest-auth.test.ts` "Phase C6" (6), `test/mailer.test.ts` (4).

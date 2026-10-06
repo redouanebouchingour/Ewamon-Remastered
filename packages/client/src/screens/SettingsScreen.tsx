@@ -23,6 +23,7 @@ import { cx } from '../ui/cx';
 import l from './layout.module.css';
 import s from './SettingsScreen.module.css';
 import { useClosePanel } from './shared';
+import { EmailNudge } from './EmailNudge';
 
 type Tab = 'graphics' | 'audio' | 'accessibility' | 'controls' | 'social';
 const TABS: readonly { readonly key: Tab; readonly label: string }[] = [
@@ -347,6 +348,7 @@ export function SettingsScreen() {
       toolbar={<Tabs<Tab> label="Settings" tabs={TABS} value={tab} onChange={(k) => setParams({ tab: k }, { replace: true })} />}
     >
       <div className={s.wrap}>
+        <EmailNudge />
         {tab === 'graphics' && <GraphicsTab />}
         {tab === 'audio' && <AudioTab />}
         {tab === 'accessibility' && <AccessibilityTab />}

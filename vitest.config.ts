@@ -24,7 +24,9 @@ export default defineConfig({
     include: ['packages/*/test/**/*.test.ts', 'packages/*/test/**/*.test.tsx', 'tools/*/test/**/*.test.ts'],
     // tools/character-pipeline (the pixel-art characters) is superseded by the KayKit 3D set (render §10.7.7,
     // 2026-10-05): its output is no longer shipped, so its budget tests leave the default run
-    exclude: [...configDefaults.exclude, 'tools/character-pipeline/**'],
+    // The progression walk (packages/server/test/progression-*.test.ts) plays Acts I–III in real time — tens of
+    // minutes per leg — so it runs in its own project: `pnpm test:progression` (vitest.progression.config.ts).
+    exclude: [...configDefaults.exclude, 'tools/character-pipeline/**', 'packages/server/test/progression-*.test.ts'],
     environment: 'node',
     reporters: 'default',
     testTimeout: 60000,

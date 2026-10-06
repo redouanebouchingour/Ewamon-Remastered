@@ -19,6 +19,8 @@ export function presentItemUse(itemId: string, qty: number, creature: CreatureIn
   const name = itemInfo(itemId).name;
   const levels = events.filter((e) => e.t === 'levelUp').map((e) => Number(e['level']));
   if (levels.length > 0) toast('success', `${who} grew to Lv ${Math.max(...levels)}!`);
+  // a field item (repel, lure, escape rope) from the Bag has no target creature
+  else if (creature === undefined) toast('success', `Used ${name}.`);
   else toast('success', qty > 1 ? `Used ${qty} × ${name} on ${who}.` : `Used ${name} on ${who}.`);
   if (creature === undefined) return;
   const ui = useUiStore.getState();

@@ -1,0 +1,52 @@
+/* Phase C6 — /forgot, /reset, /verify. The page, story column and card come from AuthScreen.module.css. */
+
+.body {
+  color: var(--text-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+
+.body strong {
+  color: var(--text-hi);
+  font-weight: 600;
+}
+
+.status {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-4);
+}
+
+.statusMark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: var(--r-pill);
+  background: var(--accent-a16);
+  color: var(--accent);
+}
+
+.statusMarkWarn {
+  background: var(--danger-a16);
+  color: var(--danger);
+}
+
+.statusText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.note {
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}

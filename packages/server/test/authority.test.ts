@@ -5,7 +5,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { matchMaker } from '@colyseus/core';
-import { getHeightfield, interiorLeaders, nearestWalkable, zone } from '@ewa/content';
+import { getHeightfield, interiorLeaders, isWalkable, nearestWalkable, zone } from '@ewa/content';
 import { CLOSE_CODES } from '@ewa/protocol';
 import type { ZoneId } from '@ewa/content';
 import type { ZoneRoom } from '../src/rooms/ZoneRoom';
@@ -129,6 +129,36 @@ describe('room messages (§30.5.1)', () => {
     expect([...room.state.players.keys()].filter((k) => k === acc.id)).toHaveLength(1);
     await sleep(300);
     expect(room.state.players.has(acc.id)).toBe(true); // the old socket's leave did not remove the avatar
+    await j2.room.leave(true);
+  }, 60_000);
+
+  it('A14b: a reload inside the 20 s reconnection window takes over the avatar and moves at once — the new client counts seqs from 1', async () => {
+    const { acc, j } = await inZone('mirevale', 0, 6);
+    const me = j.room.state.players.get(acc.id)!;
+    // the old tab has sent a few hundred inputs
+    j.room.send('input', { seq: 400, x: me.x, z: me.z, angle: 0, running: false, dtMs: 50 });
+    await waitFor(() => j.room.state.players.get(acc.id)!.seq === 400, 3000);
+    // "reload": the socket drops without consent (the avatar is kept for the reconnection window) …
+    j.room.connection.close();
+    await sleep(200);
+    expect(roomOf(j).state.players.get(acc.id)?.seq).toBe(400); // the avatar (and its old seq) is still held
+    // … and the reloaded page joins with a fresh seat and a fresh seq counter
+    const r = await api(s, 'POST', '/zone/enter', acc.access, { zoneId: 'mirevale' });
+    expect(r.status).toBe(200);
+    expect(r.body.seat.roomId).toBe(j.room.roomId);
+    const j2 = await joinSeat(s, acc.access, r.body.seat);
+    await waitFor(() => j2.room.state.players?.get(acc.id) !== undefined, 5000);
+    const p2 = j2.room.state.players.get(acc.id)!;
+    expect(p2.seq).toBe(0); // the echoed seq restarts with the new client
+    const h = getHeightfield('mirevale');
+    const step = [0.2, -0.2].map((dx) => p2.x + dx).find((x) => isWalkable(h, x, p2.z)) ?? p2.x;
+    const x0 = p2.x;
+    const staleBefore = roomOf(j2).metrics.rejectedInputs.staleSeq;
+    j2.room.send('input', { seq: 1, x: step, z: p2.z, angle: 0, running: false, dtMs: 50 });
+    await waitFor(() => j2.room.state.players.get(acc.id)!.seq === 1, 3000);
+    expect(j2.room.state.players.get(acc.id)!.x).toBeCloseTo(step, 5);
+    expect(step).not.toBe(x0);
+    expect(roomOf(j2).metrics.rejectedInputs.staleSeq).toBe(staleBefore);
     await j2.room.leave(true);
   }, 60_000);
 

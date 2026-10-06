@@ -15,8 +15,10 @@ import { WebSocketTransport } from '@colyseus/ws-transport';
 import { fnv1a32 } from '@ewa/core';
 import type { FastifyInstance } from 'fastify';
 import type { AccessClaims, BanCache, ServerDeps } from './deps';
+import { envWarnings } from './env';
 import { startMarketExpiry } from './jobs/marketExpiry';
 import { startLiveOpsRollover } from './liveops/rollover';
+import { createMailer } from './mail/mailer';
 import { MetricsRegistry, timedDb } from './metrics';
 import { buildRest } from './rest/app';
 import type { RestDeps } from './rest/http';
@@ -73,6 +75,7 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
   const { env, log } = deps;
   const worldSeed = env.SERVER_SEED ?? String(fnv1a32(`${process.pid}:${deps.clock()}`));
   if (env.SERVER_SEED === undefined) log.info({ worldSeed }, 'SERVER_SEED absent — derived world seed');
+  for (const w of envWarnings(env)) log.warn(w);
 
   // 1. presence / driver — the `colyseus` bundle (auth, tools, monitor, playground, redis) is imported only
   //    when Redis is configured, so a dev/test process never loads it
@@ -108,6 +111,7 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
     limiter,
     ticket: randomBytes(24).toString('base64url'),
     worldSeed,
+    mailer: deps.mailer ?? createMailer(env, log),
     verifyAccess: (token) => {
       if (verify === null) throw new Error('verifier not ready');
       return verify(token);

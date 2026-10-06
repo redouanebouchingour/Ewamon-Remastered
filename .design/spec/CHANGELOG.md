@@ -6,6 +6,18 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-06 Phase C6 (password reset + email verification over SMTP) and the reconnect input-seq fix. -->
+
+## 2026-10-06 — `00-spine.md` §4.7, §5.1; `30-server-netcode.md` §30.1.2, §30.6.2, §30.6.4; `20-client.md` §20.1.1, §20.9.1 — password reset + email verification: `POST /auth/forgot|reset|verify|resend`, `players.email_verified_at`, `email_tokens` (migration `0002_email_tokens`), optional SMTP env, `/forgot` `/reset` `/verify` screens
+Why: Phase C asked for password reset; a reset needs a proven address, so verification ships with it. Mail stays optional so a deployment without SMTP still runs (production warns, never refuses; the dev transport writes `.eml` files under `DATA_DIR/mail`). Verification never gates play.
+Evidence: `packages/persist/test/email-tokens.test.ts` (hash-only storage, single use, kind-bound, expiry, supersede, purge, `markEmailVerified`), `packages/persist/test/migrations.test.ts` (0002 column, table, indexes, kind check); `packages/server/test/rest-auth.test.ts` "Phase C6" (forgot always 204 incl. unknown email, per-IP 429, per-address cap; reset happy path revokes every refresh token, old password refused, reuse → `used`, expired → `expired`; verify once; resend 3/h → 429, `alreadyVerified`); `packages/server/test/mailer.test.ts` (env warnings, transports, `.eml` MIME); `packages/protocol/test/rest.test.ts` (64 routes); `packages/client/test/account-recovery.test.tsx`.
+Affects: `@ewa/protocol` (`ForgotReq`, `ResetReq`, `VerifyReq`, `BadTokenErr`, `EmailToken`, `PlayerProfile.emailVerified?`, four `ROUTES`), `@ewa/persist` (`authRepo.issueEmailToken / consumeEmailToken / purgeEmailTokens`, `playerRepo.markEmailVerified`), the server (`ServerDeps.mailer`, `src/mail/mailer.ts`, `LIMITS.forgot / forgotEmail / emailToken / resend`, `envWarnings`, `nodemailer` dependency), the client (routes, `AccountScreens`, `EmailNudge`, `Profile.emailVerified`).
+
+## 2026-10-06 — `30-server-netcode.md` §30.2.2 onJoin step 4 — a takeover resets `ps.seq` (and `userData.lastSeq` is 0, as step 5 already said)
+Why: reloading inside the 20 s reconnection window reused the avatar with the old socket's seq as the stale-seq baseline while the new client counts from 1, so every input was dropped as `staleSeq` (~15 s frozen) and the client's reconciler ignored the low acks.
+Evidence: `packages/server/test/authority.test.ts` A14b (fails before the fix: the echoed seq stayed 400).
+Affects: `ZoneRoom.onJoin`; server IMPLEMENTATION-NOTES "Reconnect input seq".
+
 <!-- 2026-10-06 Phase C3 (world map, minimap, fast travel): the user's decision "world map + HUD minimap + free fast travel to visited towns". -->
 
 ## 2026-10-06 — `00-spine.md` §4.3, §4.6 — `fastTravel { zoneId }` (21st client message, 4/s) and `visited:<ZoneId>` flags

@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import {
   AuthRes,
+  BadTokenErr,
   BanReq,
   BattlePassClaimReq,
   BattlePassStateSchema,
@@ -24,6 +25,7 @@ import {
   ListCreateReq,
   ListingDetailRes,
   ListingViewSchema,
+  ForgotReq,
   LoginReq,
   MarketQuery,
   MeRes,
@@ -41,12 +43,14 @@ import {
   ROUTES,
   ROUTE_KEYS,
   RegisterReq,
+  ResetReq,
   RestErrorSchema,
   SendMessageReq,
   SetupReq,
   ShopTradeReq,
   USERNAME_RE,
   UnbanReq,
+  VerifyReq,
   ZoneEnterReq,
   ZoneEnterRes,
   ZoneGatedErr,
@@ -90,6 +94,22 @@ describe('§4.7 auth', () => {
     ok(LoginReq, { username: 'ash_k', password: 'pikachu12' });
     bad(LoginReq, { username: '', password: 'pikachu12' });
     bad(LoginReq, { username: 'ash_k' });
+  });
+
+  it('Phase C6 email routes: forgot / reset / verify bodies, emailVerified on the profile, the badToken error', () => {
+    ok(ForgotReq, { email: 'ash@example.com' });
+    bad(ForgotReq, { email: 'nope' });
+    const token = 'A'.repeat(43);
+    ok(ResetReq, { token, password: 'pikachu12' });
+    bad(ResetReq, { token, password: 'short' });
+    bad(ResetReq, { token: 'x', password: 'pikachu12' });
+    ok(VerifyReq, { token });
+    bad(VerifyReq, {});
+    ok(AuthRes, { access: 'a.b.c', refresh: 'r', player: { ...profile, emailVerified: false } });
+    ok(BadTokenErr, { code: 'badToken', reason: 'expired' });
+    bad(BadTokenErr, { code: 'badToken', reason: 'stolen' });
+    expect(ROUTES.authForgot).toMatchObject({ auth: 'none', response: null, limit: 'forgot' });
+    expect(ROUTES.authResend).toMatchObject({ auth: 'bearer', response: null, limit: 'resend' });
   });
 });
 
@@ -334,7 +354,8 @@ describe('route table', () => {
     }
     const paths = ROUTE_KEYS.map((k: RouteKey) => `${ROUTES[k].method} ${ROUTES[k].path}`);
     for (const must of [
-      'POST /auth/register', 'POST /auth/login', 'POST /auth/refresh', 'POST /auth/logout', 'GET /me', 'POST /zone/enter', 'POST /profile',
+      'POST /auth/register', 'POST /auth/login', 'POST /auth/refresh', 'POST /auth/logout',
+      'POST /auth/forgot', 'POST /auth/reset', 'POST /auth/verify', 'POST /auth/resend', 'GET /me', 'POST /zone/enter', 'POST /profile',
       'POST /quests/claim', 'POST /party/reorder', 'POST /party/swap', 'POST /party/withdraw', 'POST /party/deposit',
       'POST /creature/:id/nickname', 'POST /creature/:id/moves', 'POST /creature/:id/setup', 'POST /creature/:id/evolve',
       'POST /creature/:id/release', 'POST /creature/:id/flags', 'POST /item/use', 'POST /heal', 'GET /dex', 'GET /shop/:zoneId',
@@ -349,7 +370,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(60);
+    expect(ROUTE_KEYS).toHaveLength(64); // 60 of §4.7 + the four Phase C6 email routes
     expect(ROUTES.authRegister.auth).toBe('none');
     expect(ROUTES.health.auth).toBe('none');
     expect(ROUTES.adminBan.auth).toBe('admin');

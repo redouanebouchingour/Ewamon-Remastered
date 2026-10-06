@@ -143,6 +143,7 @@ export function toProfile(row: PlayerRow): PlayerProfile {
     isAdmin: row.isAdmin,
     zoneId: row.zoneId as PlayerProfile['zoneId'],
     createdAt: iso(row.createdAt),
+    emailVerified: row.emailVerifiedAt !== null,
   };
 }
 

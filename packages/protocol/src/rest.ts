@@ -60,6 +60,8 @@ export const PlayerProfileSchema = z.object({
   isAdmin: z.boolean(),
   zoneId: ZoneIdSchema,
   createdAt: IsoDate,
+  /** Phase C6: `players.email_verified_at` is set. Absent (older server) = unknown; verification never gates play. */
+  emailVerified: z.boolean().optional(),
 });
 export type PlayerProfile = z.infer<typeof PlayerProfileSchema>;
 
@@ -181,6 +183,8 @@ export const TradeHistoryRowSchema = z.object({
   id: z.number().int(),
   tradeId: Uuid,
   partnerId: Uuid,
+  /** Phase C4 (client history screen): the partner's current username; null once that account is gone */
+  partnerUsername: Username.nullable().optional(),
   sent: z.array(TradedCreature),
   received: z.array(TradedCreature),
   moneySent: Money,
@@ -251,6 +255,16 @@ export const RefreshReq = z.object({ refresh: z.string().min(1) });
 export const LogoutReq = RefreshReq;
 export const AuthRes = z.object({ access: z.string().min(1), refresh: z.string().min(1), player: PlayerProfileSchema });
 export const RefreshRes = z.object({ access: z.string().min(1), refresh: z.string().min(1) });
+/** Phase C6 — the opaque single-use token from an emailed link (32 random bytes, base64url). */
+export const EmailToken = z.string().min(16).max(128);
+/** Phase C6 `POST /auth/forgot` — always 204 (no account enumeration). */
+export const ForgotReq = z.object({ email: Email });
+/** Phase C6 `POST /auth/reset` — 204; every refresh token of the account is revoked. */
+export const ResetReq = z.object({ token: EmailToken, password: Password });
+/** Phase C6 `POST /auth/verify` — 204; idempotent for an already-verified account only through a fresh token. */
+export const VerifyReq = z.object({ token: EmailToken });
+/** Phase C6: 400 body of `/auth/reset` and `/auth/verify` for a token that is unknown, expired or already used. */
+export const BadTokenErr = z.object({ code: z.literal('badToken'), reason: z.enum(['unknown', 'expired', 'used']) });
 
 // ---- me / zone / profile / quests --------------------------------------------------------------------------------
 
@@ -472,7 +486,7 @@ export interface RouteDef {
   /** `null` = 204 No Content */
   readonly response: z.ZodType | null;
   /** 30-server-netcode.md §30.6.4 key, when the route has a dedicated limit (else restRead/restWrite). */
-  readonly limit?: 'register' | 'login' | 'refresh' | 'listing' | 'bid' | 'message' | 'friendReq' | 'guildOp';
+  readonly limit?: 'register' | 'login' | 'refresh' | 'listing' | 'bid' | 'message' | 'friendReq' | 'guildOp' | 'forgot' | 'emailToken' | 'resend';
 }
 
 const route = <const R extends RouteDef>(r: R): R => r;
@@ -482,6 +496,10 @@ export const ROUTES = {
   authLogin: route({ method: 'POST', path: '/auth/login', auth: 'none', request: LoginReq, response: AuthRes, limit: 'login' }),
   authRefresh: route({ method: 'POST', path: '/auth/refresh', auth: 'none', request: RefreshReq, response: RefreshRes, limit: 'refresh' }),
   authLogout: route({ method: 'POST', path: '/auth/logout', auth: 'bearer', request: LogoutReq, response: null }),
+  authForgot: route({ method: 'POST', path: '/auth/forgot', auth: 'none', request: ForgotReq, response: null, limit: 'forgot' }),
+  authReset: route({ method: 'POST', path: '/auth/reset', auth: 'none', request: ResetReq, response: null, limit: 'emailToken' }),
+  authVerify: route({ method: 'POST', path: '/auth/verify', auth: 'none', request: VerifyReq, response: null, limit: 'emailToken' }),
+  authResend: route({ method: 'POST', path: '/auth/resend', auth: 'bearer', request: Nothing, response: null, limit: 'resend' }),
   me: route({ method: 'GET', path: '/me', auth: 'bearer', response: MeRes }),
   zoneEnter: route({ method: 'POST', path: '/zone/enter', auth: 'bearer', request: ZoneEnterReq, response: ZoneEnterRes }),
   profile: route({ method: 'POST', path: '/profile', auth: 'bearer', request: ProfileReq, response: PlayerProfileSchema }),

@@ -83,3 +83,11 @@ export function trackedHint(q: QuestDef, p: QuestProgress | null): string | null
   if (o === undefined) return null;
   return o.target > 1 ? `${o.label} (${o.count}/${o.target})` : o.label;
 }
+
+/**
+ * Phase C4 — the profile's achievements list. Phase D5 adds achievements as `QuestDef kind: 'achievement'`; until then
+ * the quests no NPC gives (the shrine's milestone counts) stand in for them.
+ */
+export function achievementQuests(): readonly QuestDef[] {
+  return QUESTS.filter((q) => (q as { readonly kind?: string }).kind === 'achievement' || q.giver === null);
+}
