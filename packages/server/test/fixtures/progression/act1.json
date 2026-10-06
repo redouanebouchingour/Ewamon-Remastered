@@ -1,14 +1,14 @@
 {
  "leg": "act1",
- "username": "pxaa0j1",
+ "username": "pgyf5s1",
  "rows": {
   "players": [
    {
-    "id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
-    "username": "pxaa0j1",
-    "username_lower": "pxaa0j1",
-    "email": "pxaa0j1@test.ewa",
-    "password_hash": "$argon2id$v=19$m=19456,t=2,p=1$xtDMGg4VAhBlSHoef8KGCQ$10y6MJwCYyrPL/AS/azAB7m/eBRPEHSNWw3jhrSv5Xg",
+    "id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "username": "pgyf5s1",
+    "username_lower": "pgyf5s1",
+    "email": "pgyf5s1@test.ewa",
+    "password_hash": "$argon2id$v=19$m=19456,t=2,p=1$Fnn8nW3ix+q93MgvQ8x9/w$MehimlYKrclYpBrd6b/MCmfcjtBDi7BZlF9Bgu7Toqw",
     "money": 4740,
     "zone_id": "tide_route",
     "x": -32,
@@ -20,201 +20,26 @@
     "rating": 1000,
     "peak_rating": 1000,
     "ranked_matches": 0,
-    "trainer_exp": 6480,
+    "trainer_exp": 2780,
     "is_admin": false,
     "banned_at": null,
     "ban_reason": null,
-    "created_at": "2026-10-06T00:10:38.742Z",
-    "last_seen_at": "2026-10-06T00:10:38.742Z"
+    "created_at": "2026-10-06T09:21:17.916Z",
+    "last_seen_at": "2026-10-06T09:21:17.916Z",
+    "email_verified_at": null
    }
   ],
   "creature_instances": [
    {
-    "id": "07a44d5d-77dd-4a86-ad40-703c57eae7c6",
-    "owner_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
-    "slot_kind": "party",
-    "slot_index": 4,
-    "species_id": "shiveruff",
-    "nickname": null,
-    "level": 14,
-    "exp": 2744,
-    "hp": 54,
-    "moves": [
-     {
-      "id": "Frost Bite",
-      "pp": 20,
-      "ppMax": 20
-     },
-     {
-      "id": "Quick Attack",
-      "pp": 29,
-      "ppMax": 30
-     },
-     {
-      "id": "Growl",
-      "pp": 38,
-      "ppMax": 40
-     },
-     {
-      "id": "Glacier Crash",
-      "pp": 9,
-      "ppMax": 10
-     }
-    ],
-    "status": [],
-    "ability": "Thick Fat",
-    "held_item": null,
-    "variant_key": "normal",
-    "is_alpha": false,
-    "caught_zone_id": "tide_route",
-    "caught_at": "2026-10-06T01:05:43.196Z",
-    "ribbons": [],
-    "favorite": false,
-    "locked": false,
-    "version": 0
-   },
-   {
-    "id": "2dc9d76a-0f0f-4e6a-924c-ce3d349dfc9e",
-    "owner_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
-    "slot_kind": "party",
-    "slot_index": 3,
-    "species_id": "wooltug",
-    "nickname": null,
-    "level": 26,
-    "exp": 18748,
-    "hp": 85,
-    "moves": [
-     {
-      "id": "Body Slam",
-      "pp": 15,
-      "ppMax": 15
-     },
-     {
-      "id": "Slash",
-      "pp": 20,
-      "ppMax": 20
-     },
-     {
-      "id": "Quick Attack",
-      "pp": 30,
-      "ppMax": 30
-     },
-     {
-      "id": "Tackle",
-      "pp": 35,
-      "ppMax": 35
-     }
-    ],
-    "status": [],
-    "ability": "Thick Fat",
-    "held_item": null,
-    "variant_key": "normal",
-    "is_alpha": false,
-    "caught_zone_id": "mire_route",
-    "caught_at": "2026-10-06T00:12:00.142Z",
-    "ribbons": [],
-    "favorite": false,
-    "locked": false,
-    "version": 507
-   },
-   {
-    "id": "3dd851e6-c324-42d2-92f9-1bf5d073358d",
-    "owner_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
-    "slot_kind": "party",
-    "slot_index": 2,
-    "species_id": "bloomduck",
-    "nickname": null,
-    "level": 28,
-    "exp": 23618,
-    "hp": 102,
-    "moves": [
-     {
-      "id": "Petal Blizzard",
-      "pp": 5,
-      "ppMax": 5
-     },
-     {
-      "id": "Peck",
-      "pp": 35,
-      "ppMax": 35
-     },
-     {
-      "id": "Stink Cloud",
-      "pp": 20,
-      "ppMax": 20
-     },
-     {
-      "id": "Leaf Blade",
-      "pp": 15,
-      "ppMax": 15
-     }
-    ],
-    "status": [],
-    "ability": "Chlorophyll",
-    "held_item": null,
-    "variant_key": "normal",
-    "is_alpha": false,
-    "caught_zone_id": "mire_route",
-    "caught_at": "2026-10-06T00:11:42.807Z",
-    "ribbons": [],
-    "favorite": false,
-    "locked": false,
-    "version": 401
-   },
-   {
-    "id": "5de52728-6fdd-4b96-974c-383a87058315",
-    "owner_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
-    "slot_kind": "party",
-    "slot_index": 1,
-    "species_id": "infernomorel",
-    "nickname": null,
-    "level": 37,
-    "exp": 53312,
-    "hp": 129,
-    "moves": [
-     {
-      "id": "Solar Flare",
-      "pp": 5,
-      "ppMax": 5
-     },
-     {
-      "id": "Inferno Rush",
-      "pp": 5,
-      "ppMax": 5
-     },
-     {
-      "id": "Dark Fire",
-      "pp": 10,
-      "ppMax": 10
-     },
-     {
-      "id": "Blaze Tackle",
-      "pp": 10,
-      "ppMax": 10
-     }
-    ],
-    "status": [],
-    "ability": "Flame Body",
-    "held_item": null,
-    "variant_key": "normal",
-    "is_alpha": false,
-    "caught_zone_id": null,
-    "caught_at": null,
-    "ribbons": [],
-    "favorite": false,
-    "locked": false,
-    "version": 3472
-   },
-   {
-    "id": "e784c015-c5cb-407c-be5f-4c8a599020a8",
-    "owner_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "id": "320887ab-31fe-4988-be72-0ba9d345d673",
+    "owner_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "slot_kind": "party",
     "slot_index": 0,
     "species_id": "geoboxer",
     "nickname": null,
     "level": 25,
-    "exp": 16175,
-    "hp": 83,
+    "exp": 16389,
+    "hp": 50,
     "moves": [
      {
       "id": "Close Combat",
@@ -243,412 +68,824 @@
     "variant_key": "normal",
     "is_alpha": false,
     "caught_zone_id": "ash_route",
-    "caught_at": "2026-10-06T00:24:06.204Z",
+    "caught_at": "2026-10-06T09:32:30.419Z",
     "ribbons": [],
     "favorite": false,
     "locked": false,
-    "version": 503
+    "version": 167,
+    "is_shiny": false
+   },
+   {
+    "id": "ba7b1154-04cb-4e21-bbea-b0d72626a4d5",
+    "owner_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "slot_kind": "party",
+    "slot_index": 4,
+    "species_id": "shiveruff",
+    "nickname": null,
+    "level": 14,
+    "exp": 2744,
+    "hp": 54,
+    "moves": [
+     {
+      "id": "Frost Bite",
+      "pp": 17,
+      "ppMax": 20
+     },
+     {
+      "id": "Quick Attack",
+      "pp": 28,
+      "ppMax": 30
+     },
+     {
+      "id": "Growl",
+      "pp": 36,
+      "ppMax": 40
+     },
+     {
+      "id": "Glacier Crash",
+      "pp": 7,
+      "ppMax": 10
+     }
+    ],
+    "status": [],
+    "ability": "Thick Fat",
+    "held_item": null,
+    "variant_key": "normal",
+    "is_alpha": false,
+    "caught_zone_id": "tide_route",
+    "caught_at": "2026-10-06T09:45:55.562Z",
+    "ribbons": [],
+    "favorite": false,
+    "locked": false,
+    "version": 0,
+    "is_shiny": false
+   },
+   {
+    "id": "c35909ad-ec80-4471-9641-31112b342eba",
+    "owner_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "slot_kind": "party",
+    "slot_index": 2,
+    "species_id": "bloomduck",
+    "nickname": null,
+    "level": 29,
+    "exp": 26410,
+    "hp": 105,
+    "moves": [
+     {
+      "id": "Petal Blizzard",
+      "pp": 5,
+      "ppMax": 5
+     },
+     {
+      "id": "Peck",
+      "pp": 35,
+      "ppMax": 35
+     },
+     {
+      "id": "Stink Cloud",
+      "pp": 20,
+      "ppMax": 20
+     },
+     {
+      "id": "Leaf Blade",
+      "pp": 15,
+      "ppMax": 15
+     }
+    ],
+    "status": [],
+    "ability": "Chlorophyll",
+    "held_item": null,
+    "variant_key": "normal",
+    "is_alpha": false,
+    "caught_zone_id": "mire_route",
+    "caught_at": "2026-10-06T09:22:04.067Z",
+    "ribbons": [],
+    "favorite": false,
+    "locked": false,
+    "version": 313,
+    "is_shiny": false
+   },
+   {
+    "id": "d5296937-c556-4002-bb16-435978be1d01",
+    "owner_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "slot_kind": "party",
+    "slot_index": 1,
+    "species_id": "wooltug",
+    "nickname": null,
+    "level": 29,
+    "exp": 25500,
+    "hp": 92,
+    "moves": [
+     {
+      "id": "Body Slam",
+      "pp": 15,
+      "ppMax": 15
+     },
+     {
+      "id": "Endeavor",
+      "pp": 5,
+      "ppMax": 5
+     },
+     {
+      "id": "Slash",
+      "pp": 20,
+      "ppMax": 20
+     },
+     {
+      "id": "Quick Attack",
+      "pp": 30,
+      "ppMax": 30
+     }
+    ],
+    "status": [],
+    "ability": "Thick Fat",
+    "held_item": null,
+    "variant_key": "normal",
+    "is_alpha": false,
+    "caught_zone_id": "mire_route",
+    "caught_at": "2026-10-06T09:22:16.802Z",
+    "ribbons": [],
+    "favorite": false,
+    "locked": false,
+    "version": 417,
+    "is_shiny": false
+   },
+   {
+    "id": "f89a2378-ad9d-408a-832e-37edcbd177fa",
+    "owner_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "slot_kind": "party",
+    "slot_index": 3,
+    "species_id": "pyrecap",
+    "nickname": null,
+    "level": 27,
+    "exp": 20329,
+    "hp": 86,
+    "moves": [
+     {
+      "id": "Inferno Rush",
+      "pp": 5,
+      "ppMax": 5
+     },
+     {
+      "id": "Flame Dash",
+      "pp": 15,
+      "ppMax": 15
+     },
+     {
+      "id": "Blaze Tackle",
+      "pp": 10,
+      "ppMax": 10
+     },
+     {
+      "id": "Fire Fang",
+      "pp": 15,
+      "ppMax": 15
+     }
+    ],
+    "status": [],
+    "ability": "Flame Body",
+    "held_item": null,
+    "variant_key": "normal",
+    "is_alpha": false,
+    "caught_zone_id": null,
+    "caught_at": null,
+    "ribbons": [],
+    "favorite": false,
+    "locked": false,
+    "version": 643,
+    "is_shiny": false
    }
   ],
   "inventory_items": [
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "item_id": "HM Cut",
+    "qty": 1
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "item_id": "HM Surf",
+    "qty": 1
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "item_id": "old_rod",
+    "qty": 1
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "item_id": "potion",
     "qty": 5
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "item_id": "spark_orb",
-    "qty": 13
+    "qty": 9
    }
   ],
   "badges": [
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "badge_id": "bloom",
-    "earned_at": "2026-10-06T00:21:20.305Z"
+    "earned_at": "2026-10-06T09:29:42.036Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "badge_id": "current",
-    "earned_at": "2026-10-06T01:04:52.127Z"
+    "earned_at": "2026-10-06T09:44:57.993Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "badge_id": "ember",
-    "earned_at": "2026-10-06T00:33:02.336Z"
+    "earned_at": "2026-10-06T09:39:13.331Z"
    }
   ],
   "story_flags": [
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "act1_done",
-    "set_at": "2026-10-06T01:04:55.923Z"
+    "set_at": "2026-10-06T09:45:01.875Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "beat:bloom_after:done",
-    "set_at": "2026-10-06T00:21:24.304Z"
+    "set_at": "2026-10-06T09:29:45.907Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "beat:current_after:done",
-    "set_at": "2026-10-06T01:04:55.923Z"
+    "set_at": "2026-10-06T09:45:01.875Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "beat:drowned_harbour:done",
-    "set_at": "2026-10-06T00:35:06.157Z"
+    "set_at": "2026-10-06T09:41:18.007Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "beat:first_harvest:done",
-    "set_at": "2026-10-06T00:23:42.318Z"
+    "set_at": "2026-10-06T09:32:04.700Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "beat:first_witness:done",
-    "set_at": "2026-10-06T00:10:46.447Z"
+    "set_at": "2026-10-06T09:21:26.249Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "beat:forge_gratitude:done",
-    "set_at": "2026-10-06T00:32:49.590Z"
+    "set_at": "2026-10-06T09:39:01.784Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "beat:grove_stone:done",
-    "set_at": "2026-10-06T00:21:12.620Z"
+    "set_at": "2026-10-06T09:29:34.945Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "beat:mire_rival:done",
-    "set_at": "2026-10-06T00:12:17.312Z"
+    "set_at": "2026-10-06T09:22:36.438Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "beat:sable_livery:done",
-    "set_at": "2026-10-06T01:05:38.009Z"
+    "set_at": "2026-10-06T09:45:47.682Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "bloom_spoken",
-    "set_at": "2026-10-06T00:21:24.304Z"
+    "set_at": "2026-10-06T09:29:45.907Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "heard_grey_year",
-    "set_at": "2026-10-06T00:32:49.590Z"
+    "set_at": "2026-10-06T09:39:01.784Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "met_sable",
-    "set_at": "2026-10-06T00:12:17.312Z"
+    "set_at": "2026-10-06T09:22:36.438Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "met_wynn",
-    "set_at": "2026-10-06T00:10:46.447Z"
+    "set_at": "2026-10-06T09:21:26.249Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "sable_livery",
-    "set_at": "2026-10-06T01:05:38.009Z"
+    "set_at": "2026-10-06T09:45:47.682Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "saw_assessment",
-    "set_at": "2026-10-06T00:23:42.318Z"
+    "set_at": "2026-10-06T09:32:04.700Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "saw_old_harbour",
-    "set_at": "2026-10-06T00:35:06.157Z"
+    "set_at": "2026-10-06T09:41:18.007Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "saw_thinning",
-    "set_at": "2026-10-06T00:21:12.620Z"
+    "set_at": "2026-10-06T09:29:34.945Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "streak:1",
-    "set_at": "2026-10-06T00:10:38.742Z"
+    "set_at": "2026-10-06T09:21:17.916Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "streak:last:2026-10-06",
-    "set_at": "2026-10-06T00:10:38.742Z"
+    "set_at": "2026-10-06T09:21:17.916Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "switch:cinderhold:cinderhold.gym.furnace_e",
-    "set_at": "2026-10-06T00:22:58.889Z"
+    "set_at": "2026-10-06T09:31:19.196Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "switch:cinderhold:cinderhold.gym.furnace_w",
-    "set_at": "2026-10-06T00:22:51.109Z"
+    "set_at": "2026-10-06T09:31:11.406Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "switch:mirevale:mirevale.gym.stone_a",
-    "set_at": "2026-10-06T00:20:56.189Z"
+    "set_at": "2026-10-06T09:29:18.898Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "switch:mirevale:mirevale.gym.stone_b",
-    "set_at": "2026-10-06T00:21:02.118Z"
+    "set_at": "2026-10-06T09:29:26.220Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "switch:saltmourn:saltmourn.gym.lever_1",
-    "set_at": "2026-10-06T00:34:12.634Z"
+    "set_at": "2026-10-06T09:40:24.277Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "switch:saltmourn:saltmourn.gym.lever_2",
-    "set_at": "2026-10-06T00:34:30.008Z"
+    "set_at": "2026-10-06T09:40:41.881Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "switch:saltmourn:saltmourn.gym.lever_3",
-    "set_at": "2026-10-06T00:34:38.093Z"
+    "set_at": "2026-10-06T09:40:50.059Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "trainer:cinderhold.gym.t1:beaten",
-    "set_at": "2026-10-06T00:22:33.983Z"
+    "set_at": "2026-10-06T09:30:55.014Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "trainer:cinderhold.gym.t2:beaten",
-    "set_at": "2026-10-06T00:22:45.813Z"
+    "set_at": "2026-10-06T09:31:06.028Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "trainer:mirevale.gym.t1:beaten",
-    "set_at": "2026-10-06T00:20:40.880Z"
+    "set_at": "2026-10-06T09:29:03.454Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "trainer:mirevale.gym.t2:beaten",
-    "set_at": "2026-10-06T00:20:49.882Z"
+    "set_at": "2026-10-06T09:29:12.557Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "trainer:sable_mire:beaten",
-    "set_at": "2026-10-06T00:12:17.312Z"
+    "set_at": "2026-10-06T09:22:36.438Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "trainer:sable_tide:beaten",
-    "set_at": "2026-10-06T01:05:38.009Z"
+    "set_at": "2026-10-06T09:45:47.682Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "trainer:saltmourn.gym.t1:beaten",
-    "set_at": "2026-10-06T00:34:08.472Z"
+    "set_at": "2026-10-06T09:40:20.009Z"
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "trainer:saltmourn.gym.t2:beaten",
-    "set_at": "2026-10-06T00:34:25.829Z"
+    "set_at": "2026-10-06T09:40:37.623Z"
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "flag": "visited:ash_route",
+    "set_at": "2026-10-06T09:31:44.886Z"
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "flag": "visited:cinderhold",
+    "set_at": "2026-10-06T09:30:36.762Z"
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "flag": "visited:mire_route",
+    "set_at": "2026-10-06T09:21:35.722Z"
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "flag": "visited:mirevale",
+    "set_at": "2026-10-06T09:21:17.916Z"
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "flag": "visited:saltmourn",
+    "set_at": "2026-10-06T09:40:02.268Z"
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "flag": "visited:tide_route",
+    "set_at": "2026-10-06T09:45:20.983Z"
    }
   ],
   "dex_entries": [
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "bloomduck",
-    "seen_at": "2026-10-06T00:29:10.800Z",
-    "caught_at": "2026-10-06T00:29:10.800Z",
+    "seen_at": "2026-10-06T09:35:03.840Z",
+    "caught_at": "2026-10-06T09:35:03.840Z",
     "variants": [
      "normal"
     ],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "bloomsprite",
-    "seen_at": "2026-10-06T00:12:29.590Z",
+    "seen_at": "2026-10-06T09:21:37.391Z",
     "caught_at": null,
     "variants": [],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "bramblecub",
-    "seen_at": "2026-10-06T00:20:40.501Z",
+    "seen_at": "2026-10-06T09:29:03.066Z",
     "caught_at": null,
     "variants": [],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "briarbear",
-    "seen_at": "2026-10-06T00:20:49.588Z",
+    "seen_at": "2026-10-06T09:29:12.238Z",
     "caught_at": null,
     "variants": [],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "cindercap",
-    "seen_at": "2026-10-06T00:10:38.742Z",
-    "caught_at": "2026-10-06T00:10:38.742Z",
+    "seen_at": "2026-10-06T09:21:17.916Z",
+    "caught_at": "2026-10-06T09:21:17.916Z",
     "variants": [
      "normal"
     ],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "coalette",
-    "seen_at": "2026-10-06T00:12:14.113Z",
+    "seen_at": "2026-10-06T09:22:32.735Z",
     "caught_at": null,
     "variants": [],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "geoboxer",
-    "seen_at": "2026-10-06T01:02:52.186Z",
-    "caught_at": "2026-10-06T01:02:52.186Z",
+    "seen_at": "2026-10-06T09:43:55.830Z",
+    "caught_at": "2026-10-06T09:43:55.830Z",
     "variants": [
      "normal"
     ],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "glimfin",
-    "seen_at": "2026-10-06T00:34:08.108Z",
+    "seen_at": "2026-10-06T09:40:19.620Z",
     "caught_at": null,
     "variants": [],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "glimp",
-    "seen_at": "2026-10-06T00:12:16.174Z",
+    "seen_at": "2026-10-06T09:22:35.247Z",
     "caught_at": null,
     "variants": [],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
-    "species_id": "infernomorel",
-    "seen_at": "2026-10-06T00:30:49.835Z",
-    "caught_at": "2026-10-06T00:30:49.835Z",
-    "variants": [
-     "normal"
-    ],
-    "alpha_seen": false
-   },
-   {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "moflame",
-    "seen_at": "2026-10-06T00:22:40.461Z",
+    "seen_at": "2026-10-06T09:31:01.577Z",
     "caught_at": null,
     "variants": [],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "mudbub",
-    "seen_at": "2026-10-06T01:05:37.738Z",
+    "seen_at": "2026-10-06T09:45:47.380Z",
     "caught_at": null,
     "variants": [],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "mufflo",
-    "seen_at": "2026-10-06T00:11:52.164Z",
-    "caught_at": "2026-10-06T00:12:00.142Z",
+    "seen_at": "2026-10-06T09:22:14.737Z",
+    "caught_at": "2026-10-06T09:22:16.802Z",
     "variants": [
      "normal"
     ],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "pebfist",
-    "seen_at": "2026-10-06T00:24:05.074Z",
-    "caught_at": "2026-10-06T00:24:06.204Z",
+    "seen_at": "2026-10-06T09:32:27.712Z",
+    "caught_at": "2026-10-06T09:32:30.419Z",
     "variants": [
      "normal"
     ],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "pyrecap",
-    "seen_at": "2026-10-06T00:14:24.863Z",
-    "caught_at": "2026-10-06T00:14:24.863Z",
+    "seen_at": "2026-10-06T09:26:35.749Z",
+    "caught_at": "2026-10-06T09:26:35.749Z",
     "variants": [
      "normal"
     ],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "shiveruff",
-    "seen_at": "2026-10-06T01:05:41.807Z",
-    "caught_at": "2026-10-06T01:05:43.196Z",
+    "seen_at": "2026-10-06T09:45:51.675Z",
+    "caught_at": "2026-10-06T09:45:55.562Z",
     "variants": [
      "normal"
     ],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "smellduck",
-    "seen_at": "2026-10-06T00:11:41.114Z",
-    "caught_at": "2026-10-06T00:11:42.807Z",
+    "seen_at": "2026-10-06T09:22:02.116Z",
+    "caught_at": "2026-10-06T09:22:04.067Z",
     "variants": [
      "normal"
     ],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "snapling",
-    "seen_at": "2026-10-06T00:10:56.585Z",
+    "seen_at": "2026-10-06T09:24:10.137Z",
     "caught_at": null,
     "variants": [],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "tidespine",
-    "seen_at": "2026-10-06T00:34:25.148Z",
+    "seen_at": "2026-10-06T09:40:36.911Z",
     "caught_at": null,
     "variants": [],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "voltide",
-    "seen_at": "2026-10-06T00:34:25.534Z",
+    "seen_at": "2026-10-06T09:40:37.323Z",
     "caught_at": null,
     "variants": [],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "wooltug",
-    "seen_at": "2026-10-06T00:25:50.476Z",
-    "caught_at": "2026-10-06T00:25:50.476Z",
+    "seen_at": "2026-10-06T09:34:19.400Z",
+    "caught_at": "2026-10-06T09:34:19.400Z",
     "variants": [
      "normal"
     ],
-    "alpha_seen": false
+    "alpha_seen": false,
+    "shiny_caught": false
    }
   ],
   "quest_progress": [
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_badges_8",
+    "objective_id": "bloom",
+    "count": 1,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_badges_8",
+    "objective_id": "current",
+    "count": 1,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_badges_8",
+    "objective_id": "ember",
+    "count": 1,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_catch_1",
+    "objective_id": "catch",
+    "count": 1,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_catch_10",
+    "objective_id": "catch",
+    "count": 4,
+    "done": false,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_catch_200",
+    "objective_id": "catch",
+    "count": 4,
+    "done": false,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_catch_50",
+    "objective_id": "catch",
+    "count": 4,
+    "done": false,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_dex_10",
+    "objective_id": "dex",
+    "count": 9,
+    "done": false,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_dex_130",
+    "objective_id": "dex",
+    "count": 9,
+    "done": false,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_dex_30",
+    "objective_id": "dex",
+    "count": 9,
+    "done": false,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_dex_60",
+    "objective_id": "dex",
+    "count": 9,
+    "done": false,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_dex_90",
+    "objective_id": "dex",
+    "count": 9,
+    "done": false,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_league_all",
+    "objective_id": "blaze_gym",
+    "count": 1,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_league_all",
+    "objective_id": "tidal_gym",
+    "count": 1,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_league_all",
+    "objective_id": "verdant_gym",
+    "count": 1,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_streak_100",
+    "objective_id": "streak",
+    "count": 1,
+    "done": false,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_streak_30",
+    "objective_id": "streak",
+    "count": 1,
+    "done": false,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_streak_7",
+    "objective_id": "streak",
+    "count": 1,
+    "done": false,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_trainer_50",
+    "objective_id": "trainers",
+    "count": 8,
+    "done": false,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_win_10",
+    "objective_id": "wins",
+    "count": 10,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_win_100",
+    "objective_id": "wins",
+    "count": 100,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_win_500",
+    "objective_id": "wins",
+    "count": 164,
+    "done": false,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "quest_id": "daily:2026-10-06",
     "objective_id": "daily-catch-one",
     "count": 1,
@@ -656,7 +893,7 @@
     "claimed_at": null
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "quest_id": "daily:2026-10-06",
     "objective_id": "daily-trainer-win",
     "count": 1,
@@ -664,7 +901,7 @@
     "claimed_at": null
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "quest_id": "daily:2026-10-06",
     "objective_id": "daily-zone-scout",
     "count": 2,
@@ -672,7 +909,7 @@
     "claimed_at": null
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "quest_id": "q01_first_witness",
     "objective_id": "reach_mire",
     "count": 1,
@@ -680,7 +917,7 @@
     "claimed_at": null
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "quest_id": "q01_first_witness",
     "objective_id": "witness_3",
     "count": 3,
@@ -688,7 +925,7 @@
     "claimed_at": null
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "quest_id": "q11_first_night",
     "objective_id": "witness_100",
     "count": 4,
@@ -696,7 +933,7 @@
     "claimed_at": null
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "quest_id": "weekly:2026-W41",
     "objective_id": "weekly-challenger",
     "count": 2,
@@ -704,7 +941,7 @@
     "claimed_at": null
    },
    {
-    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "quest_id": "weekly:2026-W41",
     "objective_id": "weekly-frontier-haul",
     "count": 4,

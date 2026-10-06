@@ -100,6 +100,23 @@ async function inTransaction<T>(db: AnyDb, fn: (q: Query) => Promise<T>): Promis
   }
 }
 
+const ISO_TS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+
+/**
+ * The walk's server clock runs ahead of the wall clock (it is advanced for the rate-limit windows), so a fixture can
+ * hold timestamps in the future. Every timestamp is shifted by the same amount so the latest is now (order kept:
+ * GET /me lists badges by earned_at; flag times drive rematch windows).
+ */
+function shiftToNow(fx: Fixture, now: number): Fixture {
+  let latest = 0;
+  for (const rows of Object.values(fx.rows)) for (const r of rows) for (const v of Object.values(r)) if (typeof v === 'string' && ISO_TS.test(v)) latest = Math.max(latest, Date.parse(v));
+  if (latest <= now) return fx;
+  const d = latest - now;
+  const shift = (r: Record<string, unknown>): Record<string, unknown> =>
+    Object.fromEntries(Object.entries(r).map(([k, v]) => [k, typeof v === 'string' && ISO_TS.test(v) ? new Date(Date.parse(v) - d).toISOString() : v]));
+  return { ...fx, rows: Object.fromEntries(Object.entries(fx.rows).map(([t, rows]) => [t, rows.map(shift)])) as Fixture['rows'] };
+}
+
 /** JSON columns (moves, status, ribbons, …) go in as JSON text; everything else verbatim. */
 function sqlValue(v: unknown): unknown {
   return v !== null && typeof v === 'object' ? JSON.stringify(v) : v;
@@ -122,7 +139,7 @@ async function main(): Promise<void> {
   const file = join(HERE, '..', 'test', 'fixtures', 'progression', `${leg}.json`);
   let fx: Fixture;
   try {
-    fx = JSON.parse(readFileSync(file, 'utf8')) as Fixture;
+    fx = shiftToNow(JSON.parse(readFileSync(file, 'utf8')) as Fixture, Date.now());
   } catch {
     usage(`no fixture ${file} — record it with EWA_PROGRESSION_WRITE=1 pnpm test:progression progression-${leg}`);
   }

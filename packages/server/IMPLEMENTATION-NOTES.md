@@ -927,3 +927,21 @@ and taught the Phase A interiors.
   Persist's `setMythicalChoice` now requires the row (`Forbidden` without it), per spine §5.2.
 - Test: `authority.test.ts` A10b (the §50.5 M4 "battle-pass claim/mythical-choice … A10 plus a positive control at
   level 50").
+- **Leg boundary clock** (`progression.ts startLeg`): each leg boots a fresh server whose injected clock starts at
+  wall time, while the previous leg's clock had run hours ahead (the walker advances it for the rate-limit
+  windows). act3c caught it: `circuit` (act2) carried an earlier `earned_at` than `current` (act1), so GET /me's
+  badges (ordered by `earned_at`) came out of story order. `startLeg` now advances the new clock past the snapshot's
+  latest timestamp (`latestTimestamp`); the seed script shifts all of a fixture's timestamps so the latest is now
+  (order kept). A harness defect, not a game one.
+- **Results on main after 9dc5b30 + the D/E phases** (one `pnpm test:progression progression-act` run, fixtures
+  re-recorded with `EWA_PROGRESSION_WRITE=1`): act1 695 s, act2 810 s, act3a 331 s, act3b 393 s, act3c 229 s
+  (≈ 41 min), desyncs 0 throughout; act3c ends with GET /me showing the 8 badges in story order, the three
+  `elite:*:beaten` flags, `champion:zeon:beaten`, all 33 beats and all 8 statics. `progression-halls` 9/9 (254 s).
+  The content/server defects suspected before Phase A (`umbral_observatory.stair`, the `hollis_siege` /
+  `reeve_observatory` story trainers, galaxion's `flag:ledger_read` gate) did not reproduce: those beats, the warp and
+  the static all pass through the room. A static reachability sweep (every npc, trainer, warp and static of all 21
+  zones from every linked edge with the walker's own A*) found nothing unreachable.
+- **Observed, not changed**: interact range is distance-only, so a warp tile can be pressed through a hall wall
+  within 3 m — in Vesperveil the walker leaves the leader chamber via `decoy_1` (W cell, z 5.2) from the south side of
+  the z = 4 wall instead of the `return` tile. Content's own `walkInterior` (`reachNear`, 3 m) has the same
+  semantics, so this is consistent; a line-of-sight rule would be a design change.
