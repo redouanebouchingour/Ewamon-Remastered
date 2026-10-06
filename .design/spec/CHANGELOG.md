@@ -6,6 +6,11 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+## 2026-10-06 — `50-verification-budget.md` M3 checklist — the "8 badges + champion flag" step is met by the headless progression walk
+Why: Phase B (story-complete) — Acts I–III and all 12 league fights must pass headless.
+Evidence: `pnpm test:progression` — act1 695 s, act2 810 s, act3a 331 s, act3b 393 s, act3c 229 s, 0 desyncs; act3c asserts `GET /me` (8 badges in story order, `elite:*:beaten` ×3, `champion:zeon:beaten`, 33 beats, 8 legendaries); `progression-halls` 9/9.
+Affects: the checklist box only (the walker drives the real rooms, movement validation and battles a browser drives).
+
 <!-- 2026-10-06 Phase E5 (the missing §50.4 test suites). -->
 
 ## 2026-10-06 — `50-verification-budget.md` §50.4.4 (`battle-pass.test.ts`, `auth.test.ts` rows) — `setMythicalChoice` refuses without the level-50 row (`Forbidden`); the argon2id read-back stays in the server's `rest-auth.test.ts`

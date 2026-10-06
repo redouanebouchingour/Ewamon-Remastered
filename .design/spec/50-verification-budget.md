@@ -341,7 +341,7 @@ A milestone is done when every box is ticked by the command beside it, run from 
 - [ ] `leak.spec.ts` extended to all 21 zones × 10 cycles, exact baseline.
 - [ ] `harness:shots --set M3` for every zone (6 shots each, 126 files) and `.design/audits/M3-render-audit.md` written and answered.
 - [ ] `pnpm vitest run packages/server/test/battle-room.test.ts` extended with one seeded league battle per `LEAGUE` entry (12), desync counter 0.
-- [ ] Browser step: an account walks `mirevale → the_rift` following gates, clears all 12 league trainers; `GET /me` shows 8 badges and `flags` containing the champion flag set by `zeon`.
+- [x] Browser step: an account walks `mirevale → the_rift` following gates, clears all 12 league trainers; `GET /me` shows 8 badges and `flags` containing the champion flag set by `zeon`. <!-- 2026-10-06: met headless by `pnpm test:progression` (packages/server/test/progression-act{1,2,3a,3b,3c}.test.ts, real rooms + movement + battles, 0 desyncs; act3c asserts GET /me) — the walker drives the server the browser drives -->
 
 ### M4 — Systems
 
