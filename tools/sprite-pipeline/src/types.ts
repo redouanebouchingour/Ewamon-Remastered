@@ -34,13 +34,18 @@ export type SpriteSide = 'front' | 'back';
  * the composed albedo atlas. Atlas stage only: the per-sprite stages are unchanged, so their
  * cache key uses SPRITE_STAGE_VERSION and stays valid.
  * v5: the new stage-4 emissive rule (SPRITE_STAGE_VERSION 3).
+ * v6: atlases composed from the true-colour sprite cache (SPRITE_STAGE_VERSION 4); v2–v5 atlases were composed from
+ * 256-colour dithered palette copies of the stage output.
  */
-export const PIPELINE_VERSION = '5';
+export const PIPELINE_VERSION = '6';
 /**
- * Folded into the per-sprite cache key (stages 1–4). Bump only when those stages change.
+ * Folded into the per-sprite cache key (stages 1–4) and the anim side key. Bump when those stages change or when the
+ * stored form of their output does (every entry written under the old value is then invalid).
  * 3: stage 4 emissive = bright-and-vivid (HSV value + chroma) with a coverage cap.
+ * 4: the cache stores lossless true-colour PNG (`cache.ts` `losslessPng`); 1–3 wrote `png({ effort: 4 })`, which sharp
+ *    turns into a 256-colour dithered palette.
  */
-export const SPRITE_STAGE_VERSION = '3';
+export const SPRITE_STAGE_VERSION = '4';
 /**
  * Every atlas map stores binary alpha: a >= ALPHA_THRESHOLD -> 255, else 0. The billboard
  * alpha-tests at 0.5 (10-render.md §10.4.5) and Pillar 6 requires binary edges, so soft alpha

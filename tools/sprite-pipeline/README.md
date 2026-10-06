@@ -30,7 +30,7 @@ Exactly the 130 species of `.design/legacy/ewamon.js` (keys that carry `frontSpr
 | 6 | Rasters + encode | `pipeline.ts`, `mips.ts`, `encode.ts` | Composites the atlas maps, forces binary alpha, builds mips 1–3 (premultiplied box filter, coverage-preserving, normals renormalised, mask stays two-valued), encodes WebP under the budget ladder, writes thumbnails, the manifest and QA artifacts. |
 | 7 | Flipbooks | `anim.ts` | Every page of the 20 multiframe sides (spec §40.1.8): stage 1 per page, the union crop resampled with the **static frame's own transform** onto the 1024² master (one crop, one size, one offset for every page: no jitter, and the static page lands where the static cell has it), stages 3–4 there, then a 2× reduction to the 512² anim cell. One atlas per side (6 × 4, 5 × 5 or 6 × 6 cells in page order), stage 6 as above, its own ladder (`ANIM_EXTRA_RUNGS`) under the 24 MiB anim budget. |
 
-Every per-sprite result is cached under `.cache/sprites/<hash>/` keyed by the source bytes, `SPRITE_STAGE_VERSION`, sprite size, normal and emissive options, the frame-select entry and the alpha override. Encoded atlas files are cached under `.cache/atlases/<hash>.webp` keyed by `PIPELINE_VERSION`, the encoder settings, the level and the member hashes with placements. A rerun over unchanged inputs does no image work. The cache is gitignored; the output is committed.
+Every per-sprite result is cached under `.cache/sprites/<hash>/` keyed by the source bytes, `SPRITE_STAGE_VERSION`, sprite size, normal and emissive options, the frame-select entry and the alpha override. The stage rasters are stored as lossless true-colour PNG (`cache.ts` `losslessPng`: RGBA8 albedo and normal, 8-bit grey emissive), so a read returns exactly what the stages produced (`test/cache.test.ts`); the atlases are composed from those reads. Bump `SPRITE_STAGE_VERSION` when stages 1–4 or the stored form of their output change, and `PIPELINE_VERSION` when the atlas files change. Encoded atlas files are cached under `.cache/atlases/<hash>.webp` keyed by `PIPELINE_VERSION`, the encoder settings, the level and the member hashes with placements. A rerun over unchanged inputs does no image work. The cache is gitignored; the output is committed.
 
 ## Binary alpha
 
@@ -64,22 +64,25 @@ With soft alpha the bottom rung was 47.3 MB, over budget; the spec's 32 MB estim
 
 ## Output
 
-`packages/client/public/creatures/` after the 2026-09-25 build (`PIPELINE_VERSION` 5):
+`packages/client/public/creatures/` after the 2026-10-06 build (`PIPELINE_VERSION` 6, `SPRITE_STAGE_VERSION` 4: atlases composed from the true-colour cache), with the 2026-09-25 build (`PIPELINE_VERSION` 5, composed from the palette cache) for comparison:
 
-| Item | Value |
-|---|---|
-| Species | 130 (260 sprites), 3 alternate-style files excluded |
-| Atlases | 65 × 2048², no planner duplicates, at most 8 per zone |
-| Rung shipped | albedo q88, normal q92 (the top rung) |
-| Albedo, all levels | 25.46 MB |
-| Normal, all levels | 9.46 MB |
-| Emissive, all levels | 0.46 MB |
-| Thumbs + manifest | 0.87 MB |
-| **Total** | **36.20 MB** of the 36.70 MB (35 MiB) budget |
+| Item | 2026-10-06 (v6) | 2026-09-25 (v5) |
+|---|---|---|
+| Species | 130 (260 sprites), 3 alternate-style files excluded | same |
+| Atlases | 65 × 2048², no planner duplicates, at most 8 per zone | same |
+| Rung shipped | albedo q88, normal q92 (the top rung) | same |
+| Albedo, all levels | 22.61 MB | 25.46 MB |
+| Normal, all levels | 9.50 MB | 9.46 MB |
+| Emissive, all levels | 0.41 MB (byte-identical) | 0.41 MB |
+| Thumbs | 0.70 MB | 0.69 MB |
+| Manifest (static) | 0.18 MB | 0.18 MB |
+| **Total** | **33.39 MB** (33 392 547 B) of the 36.70 MB (35 MiB) budget | 36.20 MB (36 197 860 B) |
 
-Layout: `creatures.manifest.json` (v2), `atlases/a-NNN.{albedo,normal,emissive}[.mipN].webp`, `thumbs/<id>_front.webp`. A clean rebuild with a warm sprite cache takes about 4–6 minutes; a cold run about 25 minutes.
+The albedo is 11 % smaller in true colour: lossy WebP had been spending bits on the palette's dither noise. The ladder never steps up, so the 3.31 MB of headroom stays headroom.
 
-Measured quality at the shipped rung (acceptance test 4–7 inputs): whole-sprite albedo PSNR median 35.8 dB (min 30.7), worst-edge luma error max 37.6, half-res normal mean angular error median 3.3° (max 5.9°), mip coverage exact per cell.
+Layout: `creatures.manifest.json` (v2), `atlases/a-NNN.{albedo,normal,emissive}[.mipN].webp`, `thumbs/<id>_front.webp`. A clean rebuild with a warm sprite cache takes about 4–6 minutes. The cold 2026-10-06 run took 47 min at `--jobs 6` (16 threads): stages 1–4 for 260 sprites ≈ 5 min, thumbs and the 65 static atlases ≈ 14 min, then the flipbooks ≈ 28 min (508 pages recomputed, seven anim ladder rungs encoded).
+
+Measured quality at the shipped rung (acceptance test 4–7 inputs, against the true-colour stage raster): whole-sprite albedo PSNR median 38.9 dB (min 33.1), edge-bad median 5.5 % (max 34 %), interior-bad median 0.3 % (max 4.5 %), worst-edge luma error max 37.6, half-res normal mean angular error median 3.3° (max 5.98°, atlas a-050: 0.02° under the 6° bound; the v5 normal atlas measures the same against this reference), mip coverage exact per cell. The v5 figures (35.8 / 30.7 dB, edge 20 %, interior 2 %) were measured against the dithered palette cache they were built from.
 
 ### Flipbooks (2026-10-06)
 
@@ -93,7 +96,7 @@ Measured quality at the shipped rung (acceptance test 4–7 inputs): whole-sprit
 | Manifest anim share | 0.10 MB (charged to the anim line; `totalBytes` is unchanged) |
 | **Total** | **24.49 MB** (24 487 809 B, 23.35 MiB) of the 25.17 MB (24 MiB) anim budget |
 
-Cache: `.cache/anim/<hash>/pNN.{albedo,normal,emissive}.png` + `meta.json` per side (true-colour PNG, see the deviation below); atlas files share `.cache/atlases/`. A rerun with a warm cache: 93 s for the whole build, 0 anim pages processed. QA: `qa/anim-sheet.png`, `qa/anim-report.json`.
+Cache: `.cache/anim/<hash>/pNN.{albedo,normal,emissive}.png` + `meta.json` per side (the same `losslessPng` as the sprite cache); atlas files share `.cache/atlases/`. A rerun with a warm cache: 93 s for the whole build, 0 anim pages processed. QA: `qa/anim-sheet.png`, `qa/anim-report.json`.
 
 ## QA
 
@@ -105,4 +108,4 @@ Cache: `.cache/anim/<hash>/pNN.{albedo,normal,emissive}.png` + `meta.json` per s
 - The §40.1.6.3 byte arithmetic is replaced by the measured table above (same CHANGELOG entry).
 - Stage 4 emissive rule replaced (CHANGELOG 2026-09-25).
 - Multiframe sources ship as flipbooks (§40.1.8, CHANGELOG 2026-10-06); `frame-select.json` picks the static frame.
-- **Found 2026-10-06, not changed:** `cache.ts` `rgbaToPng` writes `png({ compressionLevel: 6, effort: 4 })`, and sharp's `effort` implies `palette: true`, so every cached static albedo and normal raster is a dithered 256-colour palette PNG (measured: 256 distinct RGBA values in a cached albedo), and the 65 static atlases were composed from those. Fixing it (`palette: false`) changes every static atlas and needs a full rebuild plus a contact-sheet review — outside the byte-identical static set of the flipbook change. The anim cache writes true-colour PNGs (`anim.ts` `exactPng`): per-page re-dithering would boil between frames.
+- **Fixed 2026-10-06 (`SPRITE_STAGE_VERSION` 4, `PIPELINE_VERSION` 6, CHANGELOG 2026-10-06):** until then `cache.ts` wrote the sprite cache with `png({ compressionLevel: 6, effort: 4 })`; sharp's `effort` implies `palette: true`, so every cached albedo and normal was a ≤ 256-colour dithered palette PNG and the 65 static atlases of v2–v5 were composed from those copies. Measured on four front sprites, cache vs stage output: 254–255 distinct RGBA values vs 15 k–198 k, RGB PSNR on opaque texels 32.9 (lumyth) – 48.1 dB (umbrit). Both caches now write `losslessPng`; `test/cache.test.ts` holds the round trip bit-exact. The emissive mask is two-valued and came through the palette unchanged (its 260 files are byte-identical across the rebuild); the flipbooks never went through it (their 240 files are byte-identical too).

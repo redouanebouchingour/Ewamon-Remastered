@@ -274,7 +274,7 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
     // produced the output on disk, so it is carried over from the previous report, not nulled.
     const prevPath = path.join(opts.qaDir, 'qa-report.json');
     const prev = existsSync(prevPath) ? (JSON.parse(readFileSync(prevPath, 'utf8')) as Partial<QaReport>) : null;
-    const report = writeReport(prev?.encoding ?? null, staticDirBytes(opts.outDir));
+    const report = writeReport(prev?.encoding ?? null, staticTotalBytes(opts.outDir));
     log(`QA: ${report.flagged.length}/${report.total} flagged, ${report.actionable} actionable -> ${opts.qaDir}`);
     return { manifest: null, report, sprites, plan, rung: null, atlasCount: 0, totalBytes: report.totalBytes, cacheHits, outFiles: [], anim: null };
   }
@@ -452,6 +452,16 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
 /** Every static file under the output: `outDir` without its `anim/` subdirectory (the §40.6 35 MiB line). */
 export function staticDirBytes(outDir: string): number {
   return dirBytes(outDir) - dirBytes(path.join(outDir, ANIM_DIR));
+}
+
+/**
+ * The static line as the manifest's `totalBytes` counts it: every byte under `outDir` minus `animTotalBytes` (the
+ * `anim/` files and the bytes the manifest's anim fields add). `staticDirBytes` still holds that anim share.
+ */
+function staticTotalBytes(outDir: string): number {
+  const file = path.join(outDir, MANIFEST_FILE);
+  const animTotal = existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as Partial<SpriteManifestV2>).animTotalBytes : undefined;
+  return animTotal === undefined ? staticDirBytes(outDir) : dirBytes(outDir) - animTotal;
 }
 
 /** `qa/anim-report.json`: per side the pages, delays, crop, shared transform, grid, bytes and per-frame foot row. */

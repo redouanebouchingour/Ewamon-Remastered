@@ -30,7 +30,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import type { AlphaOptions } from './alpha.js';
 import { alphaBbox, cleanTransparentRgb, recoverAlpha } from './alpha.js';
-import { sha256 } from './cache.js';
+import { losslessPng, sha256 } from './cache.js';
 import { deriveEmissive, resolveEmissiveOverride } from './emissive.js';
 import type { MapEncodeSettings, Rung, TextureKind } from './encode.js';
 import { decodeToRgba, encodeMaskWebp, encodeRgbaWebp, ladderRungs, mipLevels, settingsFor, settingsKey } from './encode.js';
@@ -244,17 +244,10 @@ export function animSideCacheKey(bytes: Uint8Array, id: string, spriteSize: numb
 }
 
 /**
- * Lossless true-colour PNG. NOT `cache.ts` `rgbaToPng`: its `png({ effort })` makes sharp quantise to a 256-colour
- * palette with dithering (`effort` implies `palette: true`), which on a flipbook re-dithers every page differently —
- * noise that boils between frames although the source pixels do not move.
+ * `.cache/anim/<hash>/{meta.json, pNN.{albedo,normal,emissive}.png}`, written with `cache.ts` `losslessPng` (true-colour,
+ * bit-exact). A palette-quantised cache would re-dither every page differently — noise that boils between frames
+ * although the source pixels do not move.
  */
-function exactPng(img: RgbaImage | GrayImage, channels: 1 | 4): Promise<Buffer> {
-  return sharp(Buffer.from(img.data.buffer, img.data.byteOffset, img.data.byteLength), { raw: { width: img.width, height: img.height, channels } })
-    .png({ compressionLevel: 6, palette: false })
-    .toBuffer();
-}
-
-/** `.cache/anim/<hash>/{meta.json, pNN.{albedo,normal,emissive}.png}` (true-colour, lossless). */
 export class AnimCache {
   constructor(readonly root: string) {}
 
@@ -291,7 +284,7 @@ export class AnimCache {
 
   async writeFrame(hash: string, page: number, f: AnimFrameRasters): Promise<void> {
     mkdirSync(this.dir(hash), { recursive: true });
-    const [a, n, e] = await Promise.all([exactPng(f.albedo, 4), exactPng(f.normal, 4), exactPng(f.emissive, 1)]);
+    const [a, n, e] = await Promise.all([losslessPng(f.albedo), losslessPng(f.normal), losslessPng(f.emissive)]);
     writeFileSync(this.framePath(hash, page, 'albedo'), a);
     writeFileSync(this.framePath(hash, page, 'normal'), n);
     writeFileSync(this.framePath(hash, page, 'emissive'), e);
