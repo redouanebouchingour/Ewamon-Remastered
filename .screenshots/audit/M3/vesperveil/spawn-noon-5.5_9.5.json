@@ -1,22 +1,22 @@
 {
   "set": "M3",
-  "zone": "skyrend",
+  "zone": "vesperveil",
   "shot": "spawn-noon",
   "n": 1,
   "table": {
     "n": 1,
     "id": "spawn-noon",
-    "zone": "skyrend",
+    "zone": "vesperveil",
     "heading": 0,
     "timeOfDay": 0.5,
     "zoomStop": 1,
     "state": "overworld, player idle"
   },
-  "layoutSeed": 1293811727,
+  "layoutSeed": 1293811723,
   "anchor": {
-    "layoutSeed": 1293811727,
+    "layoutSeed": 1293811723,
     "shot": "spawn-noon",
-    "zone": "skyrend",
+    "zone": "vesperveil",
     "heading": {
       "spec": 0,
       "rig": 2,
@@ -26,18 +26,18 @@
       ],
       "convention": "words"
     },
-    "x": -50,
-    "z": 0,
+    "x": 5.5,
+    "z": 9.5,
     "snapped": false,
     "raw": [
-      -50,
-      0
+      5.5,
+      9.5
     ],
-    "rule": "ZoneDef.spawn",
+    "rule": "arrivalPoint (plaza ring 30°, facing the plaza centre; ZoneDef.spawn (-50, 0) is on the road outside the town)",
     "base": {
-      "name": "spawn",
-      "x": -50,
-      "z": 0
+      "name": "arrival",
+      "x": 5.5,
+      "z": 9.5
     },
     "offset": null,
     "wild": null,
@@ -72,13 +72,13 @@
   "variants": [
     {
       "variant": "full",
-      "file": "spawn-noon--50_0-full.png",
+      "file": "spawn-noon-5.5_9.5-full.png",
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 199.7,
+        "meanLuma": 106.9,
         "blackShare": 0,
-        "greyShare": 0,
+        "greyShare": 0.0001,
         "levels": {
           "zero": 0,
           "full": 0,
@@ -95,14 +95,14 @@
           "zoomStop": 1,
           "mode": "diorama",
           "position": [
-            -40.819,
-            19.379,
-            -13.112
+            14.681,
+            21.113,
+            -3.612
           ],
           "focus": [
-            -50,
-            -1.109,
-            0
+            5.5,
+            0.625,
+            9.5
           ],
           "shotBlend": 0
         },
@@ -131,25 +131,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 211,
-          "triangles": 683348,
-          "texturesSize": 725378884,
-          "textures": 168,
-          "geometries": 462,
-          "programs": 107,
-          "renderTargets": 36,
-          "attributes": 1590,
-          "attributesSize": 129306724,
-          "materials": 18,
-          "shadowLights": 3,
+          "drawCalls": 272,
+          "triangles": 600538,
+          "texturesSize": 500197030,
+          "textures": 156,
+          "geometries": 444,
+          "programs": 103,
+          "renderTargets": 35,
+          "attributes": 1456,
+          "attributesSize": 91002360,
+          "materials": 17,
+          "shadowLights": 2,
           "nonShadowLights": 20,
-          "beautyDrawCalls": 83,
-          "shadowDrawCalls": 128
+          "beautyDrawCalls": 106,
+          "shadowDrawCalls": 166
         },
         "settle": {
           "frames": 45,
           "stable": true,
-          "programs": 107
+          "programs": 103
         },
         "rects": {
           "player": [
@@ -162,7 +162,9 @@
         },
         "hud": {
           "partySlots": 1,
-          "nameplates": [],
+          "nameplates": [
+            "a lantern-maker"
+          ],
           "prompt": null,
           "timeOfDay": 0.5,
           "battleBars": null
@@ -174,13 +176,13 @@
     },
     {
       "variant": "reduced",
-      "file": "spawn-noon--50_0-reduced.png",
+      "file": "spawn-noon-5.5_9.5-reduced.png",
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 198.7,
+        "meanLuma": 105.8,
         "blackShare": 0,
-        "greyShare": 0,
+        "greyShare": 0.0001,
         "levels": {
           "zero": 0,
           "full": 0,
@@ -197,14 +199,14 @@
           "zoomStop": 1,
           "mode": "diorama",
           "position": [
-            -40.819,
-            19.379,
-            -13.112
+            14.681,
+            21.113,
+            -3.612
           ],
           "focus": [
-            -50,
-            -1.109,
-            0
+            5.5,
+            0.625,
+            9.5
           ],
           "shotBlend": 0
         },
@@ -230,20 +232,20 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 200,
-          "triangles": 683337,
-          "texturesSize": 649562888,
-          "textures": 156,
-          "geometries": 462,
+          "drawCalls": 261,
+          "triangles": 600527,
+          "texturesSize": 424381034,
+          "textures": 144,
+          "geometries": 444,
           "programs": 99,
-          "renderTargets": 26,
-          "attributes": 1698,
-          "attributesSize": 136641892,
-          "materials": 18,
-          "shadowLights": 3,
+          "renderTargets": 25,
+          "attributes": 1456,
+          "attributesSize": 91002360,
+          "materials": 17,
+          "shadowLights": 2,
           "nonShadowLights": 20,
-          "beautyDrawCalls": 72,
-          "shadowDrawCalls": 128
+          "beautyDrawCalls": 95,
+          "shadowDrawCalls": 166
         },
         "settle": {
           "frames": 45,
@@ -261,7 +263,9 @@
         },
         "hud": {
           "partySlots": 1,
-          "nameplates": [],
+          "nameplates": [
+            "a lantern-maker"
+          ],
           "prompt": null,
           "timeOfDay": 0.5,
           "battleBars": null
@@ -273,7 +277,7 @@
     },
     {
       "variant": "mask",
-      "file": "spawn-noon--50_0-mask.png",
+      "file": "spawn-noon-5.5_9.5-mask.png",
       "png": {
         "width": 1440,
         "height": 900,
@@ -299,14 +303,14 @@
           "zoomStop": 1,
           "mode": "diorama",
           "position": [
-            -40.819,
-            19.379,
-            -13.112
+            14.681,
+            21.113,
+            -3.612
           ],
           "focus": [
-            -50,
-            -1.109,
-            0
+            5.5,
+            0.625,
+            9.5
           ],
           "shotBlend": 0
         },
@@ -335,20 +339,20 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 211,
-          "triangles": 683348,
-          "texturesSize": 725378892,
-          "textures": 170,
-          "geometries": 462,
+          "drawCalls": 272,
+          "triangles": 600538,
+          "texturesSize": 500197038,
+          "textures": 158,
+          "geometries": 444,
           "programs": 111,
-          "renderTargets": 36,
-          "attributes": 1698,
-          "attributesSize": 136641892,
-          "materials": 18,
-          "shadowLights": 3,
+          "renderTargets": 35,
+          "attributes": 1456,
+          "attributesSize": 91002360,
+          "materials": 17,
+          "shadowLights": 2,
           "nonShadowLights": 20,
-          "beautyDrawCalls": 83,
-          "shadowDrawCalls": 128
+          "beautyDrawCalls": 106,
+          "shadowDrawCalls": 166
         },
         "settle": {
           "frames": 45,
@@ -366,7 +370,9 @@
         },
         "hud": {
           "partySlots": 1,
-          "nameplates": [],
+          "nameplates": [
+            "a lantern-maker"
+          ],
           "prompt": null,
           "timeOfDay": 0.5,
           "battleBars": null

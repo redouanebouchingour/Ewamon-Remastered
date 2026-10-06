@@ -1,22 +1,22 @@
 {
   "set": "M3",
-  "zone": "forgewall",
+  "zone": "stormrook",
   "shot": "spawn-noon",
   "n": 1,
   "table": {
     "n": 1,
     "id": "spawn-noon",
-    "zone": "forgewall",
+    "zone": "stormrook",
     "heading": 0,
     "timeOfDay": 0.5,
     "zoomStop": 1,
     "state": "overworld, player idle"
   },
-  "layoutSeed": 1293811725,
+  "layoutSeed": 1293811719,
   "anchor": {
-    "layoutSeed": 1293811725,
+    "layoutSeed": 1293811719,
     "shot": "spawn-noon",
-    "zone": "forgewall",
+    "zone": "stormrook",
     "heading": {
       "spec": 0,
       "rig": 2,
@@ -26,18 +26,18 @@
       ],
       "convention": "words"
     },
-    "x": -50,
-    "z": 0,
+    "x": 0,
+    "z": 11,
     "snapped": false,
     "raw": [
-      -50,
-      0
+      0,
+      11
     ],
-    "rule": "ZoneDef.spawn",
+    "rule": "arrivalPoint (plaza ring 0°, facing the plaza centre; ZoneDef.spawn (-50, 0) is on the road outside the town)",
     "base": {
-      "name": "spawn",
-      "x": -50,
-      "z": 0
+      "name": "arrival",
+      "x": 0,
+      "z": 11
     },
     "offset": null,
     "wild": null,
@@ -72,13 +72,13 @@
   "variants": [
     {
       "variant": "full",
-      "file": "spawn-noon--50_0-full.png",
+      "file": "spawn-noon-0_11-full.png",
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 92.1,
+        "meanLuma": 104.1,
         "blackShare": 0,
-        "greyShare": 0.0014,
+        "greyShare": 0.0003,
         "levels": {
           "zero": 0,
           "full": 0,
@@ -95,14 +95,14 @@
           "zoomStop": 1,
           "mode": "diorama",
           "position": [
-            -40.819,
-            19.676,
-            -13.112
+            9.181,
+            21.379,
+            -2.112
           ],
           "focus": [
-            -50,
-            -0.812,
-            0
+            0,
+            0.891,
+            11
           ],
           "shotBlend": 0
         },
@@ -131,25 +131,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 202,
-          "triangles": 545162,
-          "texturesSize": 725379050,
-          "textures": 172,
-          "geometries": 450,
-          "programs": 105,
+          "drawCalls": 307,
+          "triangles": 703699,
+          "texturesSize": 505440076,
+          "textures": 162,
+          "geometries": 439,
+          "programs": 109,
           "renderTargets": 35,
-          "attributes": 1603,
-          "attributesSize": 92687860,
-          "materials": 19,
+          "attributes": 1431,
+          "attributesSize": 109987212,
+          "materials": 18,
           "shadowLights": 2,
-          "nonShadowLights": 19,
-          "beautyDrawCalls": 76,
-          "shadowDrawCalls": 126
+          "nonShadowLights": 18,
+          "beautyDrawCalls": 120,
+          "shadowDrawCalls": 187
         },
         "settle": {
           "frames": 45,
           "stable": true,
-          "programs": 105
+          "programs": 109
         },
         "rects": {
           "player": [
@@ -162,7 +162,10 @@
         },
         "hud": {
           "partySlots": 1,
-          "nameplates": [],
+          "nameplates": [
+            "a child",
+            "Bursar's courier Ilse Penn"
+          ],
           "prompt": null,
           "timeOfDay": 0.5,
           "battleBars": null
@@ -174,13 +177,13 @@
     },
     {
       "variant": "reduced",
-      "file": "spawn-noon--50_0-reduced.png",
+      "file": "spawn-noon-0_11-reduced.png",
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 91.1,
+        "meanLuma": 103.1,
         "blackShare": 0,
-        "greyShare": 0.0015,
+        "greyShare": 0.0007,
         "levels": {
           "zero": 0,
           "full": 0,
@@ -197,14 +200,14 @@
           "zoomStop": 1,
           "mode": "diorama",
           "position": [
-            -40.819,
-            19.676,
-            -13.112
+            9.181,
+            21.379,
+            -2.112
           ],
           "focus": [
-            -50,
-            -0.812,
-            0
+            0,
+            0.891,
+            11
           ],
           "shotBlend": 0
         },
@@ -230,25 +233,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 191,
-          "triangles": 545151,
-          "texturesSize": 649563054,
-          "textures": 160,
-          "geometries": 450,
-          "programs": 97,
+          "drawCalls": 296,
+          "triangles": 703688,
+          "texturesSize": 429624080,
+          "textures": 150,
+          "geometries": 439,
+          "programs": 105,
           "renderTargets": 25,
-          "attributes": 1715,
-          "attributesSize": 100570612,
-          "materials": 19,
+          "attributes": 1431,
+          "attributesSize": 109987212,
+          "materials": 18,
           "shadowLights": 2,
-          "nonShadowLights": 19,
-          "beautyDrawCalls": 65,
-          "shadowDrawCalls": 126
+          "nonShadowLights": 18,
+          "beautyDrawCalls": 109,
+          "shadowDrawCalls": 187
         },
         "settle": {
           "frames": 45,
           "stable": true,
-          "programs": 97
+          "programs": 105
         },
         "rects": {
           "player": [
@@ -261,7 +264,10 @@
         },
         "hud": {
           "partySlots": 1,
-          "nameplates": [],
+          "nameplates": [
+            "a child",
+            "Bursar's courier Ilse Penn"
+          ],
           "prompt": null,
           "timeOfDay": 0.5,
           "battleBars": null
@@ -273,7 +279,7 @@
     },
     {
       "variant": "mask",
-      "file": "spawn-noon--50_0-mask.png",
+      "file": "spawn-noon-0_11-mask.png",
       "png": {
         "width": 1440,
         "height": 900,
@@ -299,14 +305,14 @@
           "zoomStop": 1,
           "mode": "diorama",
           "position": [
-            -40.819,
-            19.676,
-            -13.112
+            9.181,
+            21.379,
+            -2.112
           ],
           "focus": [
-            -50,
-            -0.812,
-            0
+            0,
+            0.891,
+            11
           ],
           "shotBlend": 0
         },
@@ -335,25 +341,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 202,
-          "triangles": 545162,
-          "texturesSize": 725379058,
-          "textures": 174,
-          "geometries": 450,
-          "programs": 109,
+          "drawCalls": 307,
+          "triangles": 703699,
+          "texturesSize": 505440084,
+          "textures": 164,
+          "geometries": 439,
+          "programs": 117,
           "renderTargets": 35,
-          "attributes": 1715,
-          "attributesSize": 100570612,
-          "materials": 19,
+          "attributes": 1431,
+          "attributesSize": 109987212,
+          "materials": 18,
           "shadowLights": 2,
-          "nonShadowLights": 19,
-          "beautyDrawCalls": 76,
-          "shadowDrawCalls": 126
+          "nonShadowLights": 18,
+          "beautyDrawCalls": 120,
+          "shadowDrawCalls": 187
         },
         "settle": {
           "frames": 45,
           "stable": true,
-          "programs": 109
+          "programs": 117
         },
         "rects": {
           "player": [
@@ -366,7 +372,10 @@
         },
         "hud": {
           "partySlots": 1,
-          "nameplates": [],
+          "nameplates": [
+            "a child",
+            "Bursar's courier Ilse Penn"
+          ],
           "prompt": null,
           "timeOfDay": 0.5,
           "battleBars": null

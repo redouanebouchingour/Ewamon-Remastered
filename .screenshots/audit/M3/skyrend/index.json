@@ -2,7 +2,7 @@
   "set": "M3",
   "zone": "skyrend",
   "layoutSeed": 1293811727,
-  "generatedAt": "2026-10-06T10:42:29.675Z",
+  "generatedAt": "2026-10-06T17:15:30.607Z",
   "resolution": {
     "width": 1440,
     "height": 900,
@@ -29,22 +29,22 @@
     "description": "Intel(R) UHD Graphics"
   },
   "chrome": "Chrome/154.0.8037.98",
-  "bootMs": 139877,
+  "bootMs": 31621,
   "harvest": "intact",
   "headingConvention": "words",
   "shots": [
     {
       "shot": "spawn-noon",
       "n": 1,
-      "x": -50,
-      "z": 0,
+      "x": 5.5,
+      "z": 9.5,
       "layoutSeed": 1293811727,
       "files": [
-        "spawn-noon--50_0-full.png",
-        "spawn-noon--50_0-reduced.png",
-        "spawn-noon--50_0-mask.png"
+        "spawn-noon-5.5_9.5-full.png",
+        "spawn-noon-5.5_9.5-reduced.png",
+        "spawn-noon-5.5_9.5-mask.png"
       ],
-      "sidecar": "spawn-noon--50_0.json",
+      "sidecar": "spawn-noon-5.5_9.5.json",
       "checks": []
     },
     {

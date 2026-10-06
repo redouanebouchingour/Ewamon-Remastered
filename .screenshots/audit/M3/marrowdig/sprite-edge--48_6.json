@@ -86,7 +86,7 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 166.5,
+        "meanLuma": 162.9,
         "blackShare": 0,
         "greyShare": 0,
         "levels": {
@@ -143,13 +143,13 @@
         "counts": {
           "drawCalls": 210,
           "triangles": 658016,
-          "texturesSize": 464676451,
-          "textures": 156,
-          "geometries": 383,
-          "programs": 107,
+          "texturesSize": 463627883,
+          "textures": 157,
+          "geometries": 386,
+          "programs": 109,
           "renderTargets": 36,
-          "attributes": 1497,
-          "attributesSize": 128554120,
+          "attributes": 1322,
+          "attributesSize": 114069120,
           "materials": 15,
           "shadowLights": 3,
           "nonShadowLights": 20,
@@ -159,7 +159,7 @@
         "settle": {
           "frames": 45,
           "stable": true,
-          "programs": 107
+          "programs": 109
         },
         "rects": {
           "player": [
@@ -188,7 +188,7 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 166.5,
+        "meanLuma": 162.9,
         "blackShare": 0,
         "greyShare": 0,
         "levels": {
@@ -242,13 +242,13 @@
         "counts": {
           "drawCalls": 199,
           "triangles": 658005,
-          "texturesSize": 388860455,
-          "textures": 144,
-          "geometries": 383,
-          "programs": 95,
+          "texturesSize": 387811887,
+          "textures": 145,
+          "geometries": 386,
+          "programs": 97,
           "renderTargets": 26,
-          "attributes": 1505,
-          "attributesSize": 129078920,
+          "attributes": 1322,
+          "attributesSize": 114069120,
           "materials": 15,
           "shadowLights": 3,
           "nonShadowLights": 20,
@@ -258,7 +258,7 @@
         "settle": {
           "frames": 45,
           "stable": true,
-          "programs": 95
+          "programs": 97
         },
         "rects": {
           "player": [
@@ -347,13 +347,13 @@
         "counts": {
           "drawCalls": 210,
           "triangles": 658016,
-          "texturesSize": 464676459,
-          "textures": 158,
-          "geometries": 383,
-          "programs": 107,
+          "texturesSize": 463627891,
+          "textures": 159,
+          "geometries": 386,
+          "programs": 109,
           "renderTargets": 36,
-          "attributes": 1505,
-          "attributesSize": 129078920,
+          "attributes": 1322,
+          "attributesSize": 114069120,
           "materials": 15,
           "shadowLights": 3,
           "nonShadowLights": 20,
@@ -363,7 +363,7 @@
         "settle": {
           "frames": 45,
           "stable": true,
-          "programs": 107
+          "programs": 109
         },
         "rects": {
           "player": [

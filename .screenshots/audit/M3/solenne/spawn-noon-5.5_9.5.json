@@ -1,22 +1,22 @@
 {
   "set": "M3",
-  "zone": "saltmourn",
+  "zone": "solenne",
   "shot": "spawn-noon",
   "n": 1,
   "table": {
     "n": 1,
     "id": "spawn-noon",
-    "zone": "saltmourn",
+    "zone": "solenne",
     "heading": 0,
     "timeOfDay": 0.5,
     "zoomStop": 1,
     "state": "overworld, player idle"
   },
-  "layoutSeed": 1293811717,
+  "layoutSeed": 1293811729,
   "anchor": {
-    "layoutSeed": 1293811717,
+    "layoutSeed": 1293811729,
     "shot": "spawn-noon",
-    "zone": "saltmourn",
+    "zone": "solenne",
     "heading": {
       "spec": 0,
       "rig": 2,
@@ -26,18 +26,18 @@
       ],
       "convention": "words"
     },
-    "x": -50,
-    "z": -6,
+    "x": 5.5,
+    "z": 9.5,
     "snapped": false,
     "raw": [
-      -50,
-      -6
+      5.5,
+      9.5
     ],
-    "rule": "ZoneDef.spawn",
+    "rule": "arrivalPoint (plaza ring 30°, facing the plaza centre; ZoneDef.spawn (-50, 0) is on the road outside the town)",
     "base": {
-      "name": "spawn",
-      "x": -50,
-      "z": -6
+      "name": "arrival",
+      "x": 5.5,
+      "z": 9.5
     },
     "offset": null,
     "wild": null,
@@ -72,13 +72,13 @@
   "variants": [
     {
       "variant": "full",
-      "file": "spawn-noon--50_-6-full.png",
+      "file": "spawn-noon-5.5_9.5-full.png",
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 137.9,
+        "meanLuma": 161.6,
         "blackShare": 0,
-        "greyShare": 0.0002,
+        "greyShare": 0,
         "levels": {
           "zero": 0,
           "full": 0,
@@ -95,14 +95,14 @@
           "zoomStop": 1,
           "mode": "diorama",
           "position": [
-            -40.819,
-            20.895,
-            -19.112
+            14.681,
+            20.254,
+            -3.612
           ],
           "focus": [
-            -50,
-            0.406,
-            -6
+            5.5,
+            -0.234,
+            9.5
           ],
           "shotBlend": 0
         },
@@ -131,25 +131,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 238,
-          "triangles": 640614,
-          "texturesSize": 713844299,
-          "textures": 157,
-          "geometries": 460,
-          "programs": 105,
-          "renderTargets": 34,
-          "attributes": 1676,
-          "attributesSize": 107456948,
-          "materials": 18,
+          "drawCalls": 337,
+          "triangles": 623521,
+          "texturesSize": 647522456,
+          "textures": 187,
+          "geometries": 461,
+          "programs": 109,
+          "renderTargets": 36,
+          "attributes": 1452,
+          "attributesSize": 95690408,
+          "materials": 20,
           "shadowLights": 3,
-          "nonShadowLights": 16,
-          "beautyDrawCalls": 82,
-          "shadowDrawCalls": 156
+          "nonShadowLights": 19,
+          "beautyDrawCalls": 125,
+          "shadowDrawCalls": 212
         },
         "settle": {
           "frames": 45,
           "stable": true,
-          "programs": 105
+          "programs": 109
         },
         "rects": {
           "player": [
@@ -174,13 +174,13 @@
     },
     {
       "variant": "reduced",
-      "file": "spawn-noon--50_-6-reduced.png",
+      "file": "spawn-noon-5.5_9.5-reduced.png",
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 131.8,
+        "meanLuma": 158.6,
         "blackShare": 0,
-        "greyShare": 0.0001,
+        "greyShare": 0,
         "levels": {
           "zero": 0,
           "full": 0,
@@ -197,14 +197,14 @@
           "zoomStop": 1,
           "mode": "diorama",
           "position": [
-            -40.819,
-            20.895,
-            -19.112
+            14.681,
+            20.254,
+            -3.612
           ],
           "focus": [
-            -50,
-            0.406,
-            -6
+            5.5,
+            -0.234,
+            9.5
           ],
           "shotBlend": 0
         },
@@ -230,25 +230,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 227,
-          "triangles": 640603,
-          "texturesSize": 638028303,
-          "textures": 145,
-          "geometries": 460,
-          "programs": 97,
-          "renderTargets": 24,
-          "attributes": 1808,
-          "attributesSize": 116540596,
-          "materials": 18,
+          "drawCalls": 326,
+          "triangles": 623510,
+          "texturesSize": 571706460,
+          "textures": 175,
+          "geometries": 461,
+          "programs": 105,
+          "renderTargets": 26,
+          "attributes": 1452,
+          "attributesSize": 95690408,
+          "materials": 20,
           "shadowLights": 3,
-          "nonShadowLights": 16,
-          "beautyDrawCalls": 71,
-          "shadowDrawCalls": 156
+          "nonShadowLights": 19,
+          "beautyDrawCalls": 114,
+          "shadowDrawCalls": 212
         },
         "settle": {
           "frames": 45,
           "stable": true,
-          "programs": 97
+          "programs": 105
         },
         "rects": {
           "player": [
@@ -273,7 +273,7 @@
     },
     {
       "variant": "mask",
-      "file": "spawn-noon--50_-6-mask.png",
+      "file": "spawn-noon-5.5_9.5-mask.png",
       "png": {
         "width": 1440,
         "height": 900,
@@ -299,14 +299,14 @@
           "zoomStop": 1,
           "mode": "diorama",
           "position": [
-            -40.819,
-            20.895,
-            -19.112
+            14.681,
+            20.254,
+            -3.612
           ],
           "focus": [
-            -50,
-            0.406,
-            -6
+            5.5,
+            -0.234,
+            9.5
           ],
           "shotBlend": 0
         },
@@ -335,25 +335,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 238,
-          "triangles": 640614,
-          "texturesSize": 713844307,
-          "textures": 159,
-          "geometries": 460,
-          "programs": 109,
-          "renderTargets": 34,
-          "attributes": 1808,
-          "attributesSize": 116540596,
-          "materials": 18,
+          "drawCalls": 337,
+          "triangles": 623521,
+          "texturesSize": 647522464,
+          "textures": 189,
+          "geometries": 461,
+          "programs": 117,
+          "renderTargets": 36,
+          "attributes": 1452,
+          "attributesSize": 95690408,
+          "materials": 20,
           "shadowLights": 3,
-          "nonShadowLights": 16,
-          "beautyDrawCalls": 82,
-          "shadowDrawCalls": 156
+          "nonShadowLights": 19,
+          "beautyDrawCalls": 125,
+          "shadowDrawCalls": 212
         },
         "settle": {
           "frames": 45,
           "stable": true,
-          "programs": 109
+          "programs": 117
         },
         "rects": {
           "player": [

@@ -137,13 +137,13 @@
         "counts": {
           "drawCalls": 155,
           "triangles": 528697,
-          "texturesSize": 554854442,
-          "textures": 181,
-          "geometries": 517,
-          "programs": 121,
+          "texturesSize": 478308402,
+          "textures": 182,
+          "geometries": 519,
+          "programs": 119,
           "renderTargets": 36,
-          "attributes": 2111,
-          "attributesSize": 135679500,
+          "attributes": 1611,
+          "attributesSize": 102477004,
           "materials": 18,
           "shadowLights": 3,
           "nonShadowLights": 17,
@@ -151,9 +151,9 @@
           "shadowDrawCalls": 77
         },
         "settle": {
-          "frames": 90,
+          "frames": 45,
           "stable": true,
-          "programs": 121
+          "programs": 119
         },
         "rects": {
           "player": [
@@ -175,7 +175,7 @@
         "notes": [
           "neighbour skirt staged (render E3, audit M2-link-east-1): beyond the field edge on each linked side the skirt is the neighbour zone's own terrain — its heightfield and road / plaza layers at 2 m, no props — from `ZoneSpec.neighbours` (SceneDirector `withNeighbours`); the neighbour's props, actors and creatures stream in at the handover (Renderer.loadZone holds one zone)"
         ],
-        "frame": 2048
+        "frame": 1463
       }
     },
     {
@@ -238,13 +238,13 @@
         "counts": {
           "drawCalls": 144,
           "triangles": 528686,
-          "texturesSize": 479038446,
-          "textures": 169,
-          "geometries": 517,
-          "programs": 109,
+          "texturesSize": 402492406,
+          "textures": 170,
+          "geometries": 519,
+          "programs": 107,
           "renderTargets": 26,
-          "attributes": 2127,
-          "attributesSize": 136729100,
+          "attributes": 1611,
+          "attributesSize": 102477004,
           "materials": 18,
           "shadowLights": 3,
           "nonShadowLights": 17,
@@ -252,9 +252,9 @@
           "shadowDrawCalls": 77
         },
         "settle": {
-          "frames": 90,
+          "frames": 45,
           "stable": true,
-          "programs": 109
+          "programs": 107
         },
         "rects": {
           "player": [
@@ -276,7 +276,7 @@
         "notes": [
           "neighbour skirt staged (render E3, audit M2-link-east-1): beyond the field edge on each linked side the skirt is the neighbour zone's own terrain — its heightfield and road / plaza layers at 2 m, no props — from `ZoneSpec.neighbours` (SceneDirector `withNeighbours`); the neighbour's props, actors and creatures stream in at the handover (Renderer.loadZone holds one zone)"
         ],
-        "frame": 2138
+        "frame": 1508
       }
     },
     {
@@ -296,7 +296,7 @@
       },
       "checks": [],
       "maskCoverage": {
-        "player": 0.5551,
+        "player": 0.5586,
         "battlers": []
       },
       "stage": {
@@ -345,13 +345,13 @@
         "counts": {
           "drawCalls": 155,
           "triangles": 528697,
-          "texturesSize": 554854450,
-          "textures": 183,
-          "geometries": 517,
-          "programs": 121,
+          "texturesSize": 478308410,
+          "textures": 184,
+          "geometries": 519,
+          "programs": 119,
           "renderTargets": 36,
-          "attributes": 2127,
-          "attributesSize": 136729100,
+          "attributes": 1611,
+          "attributesSize": 102477004,
           "materials": 18,
           "shadowLights": 3,
           "nonShadowLights": 17,
@@ -359,9 +359,9 @@
           "shadowDrawCalls": 77
         },
         "settle": {
-          "frames": 90,
+          "frames": 45,
           "stable": true,
-          "programs": 121
+          "programs": 119
         },
         "rects": {
           "player": [
@@ -383,7 +383,7 @@
         "notes": [
           "neighbour skirt staged (render E3, audit M2-link-east-1): beyond the field edge on each linked side the skirt is the neighbour zone's own terrain — its heightfield and road / plaza layers at 2 m, no props — from `ZoneSpec.neighbours` (SceneDirector `withNeighbours`); the neighbour's props, actors and creatures stream in at the handover (Renderer.loadZone holds one zone)"
         ],
-        "frame": 2228
+        "frame": 1553
       }
     }
   ]

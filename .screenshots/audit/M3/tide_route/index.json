@@ -2,7 +2,7 @@
   "set": "M3",
   "zone": "tide_route",
   "layoutSeed": 1293811718,
-  "generatedAt": "2026-10-06T06:45:23.942Z",
+  "generatedAt": "2026-10-06T16:36:21.745Z",
   "resolution": {
     "width": 1440,
     "height": 900,
@@ -29,7 +29,7 @@
     "description": "Intel(R) UHD Graphics"
   },
   "chrome": "Chrome/154.0.8037.98",
-  "bootMs": 59696,
+  "bootMs": 18088,
   "harvest": "thinning",
   "headingConvention": "words",
   "shots": [

@@ -2,7 +2,7 @@
   "set": "M3",
   "zone": "hollow_route",
   "layoutSeed": 1293811724,
-  "generatedAt": "2026-10-06T10:02:44.234Z",
+  "generatedAt": "2026-10-06T17:01:38.509Z",
   "resolution": {
     "width": 1440,
     "height": 900,
@@ -29,7 +29,7 @@
     "description": "Intel(R) UHD Graphics"
   },
   "chrome": "Chrome/154.0.8037.98",
-  "bootMs": 66762,
+  "bootMs": 26320,
   "harvest": "thinning",
   "headingConvention": "words",
   "shots": [

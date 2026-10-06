@@ -1,22 +1,22 @@
 {
   "set": "M3",
-  "zone": "marrowdig",
+  "zone": "cinderhold",
   "shot": "spawn-noon",
   "n": 1,
   "table": {
     "n": 1,
     "id": "spawn-noon",
-    "zone": "marrowdig",
+    "zone": "cinderhold",
     "heading": 0,
     "timeOfDay": 0.5,
     "zoomStop": 1,
     "state": "overworld, player idle"
   },
-  "layoutSeed": 1293811721,
+  "layoutSeed": 1293811715,
   "anchor": {
-    "layoutSeed": 1293811721,
+    "layoutSeed": 1293811715,
     "shot": "spawn-noon",
-    "zone": "marrowdig",
+    "zone": "cinderhold",
     "heading": {
       "spec": 0,
       "rig": 2,
@@ -26,18 +26,18 @@
       ],
       "convention": "words"
     },
-    "x": -50,
-    "z": 0,
+    "x": 5.5,
+    "z": 9.5,
     "snapped": false,
     "raw": [
-      -50,
-      0
+      5.5,
+      9.5
     ],
-    "rule": "ZoneDef.spawn",
+    "rule": "arrivalPoint (plaza ring 30°, facing the plaza centre; ZoneDef.spawn (-50, 0) is on the road outside the town)",
     "base": {
-      "name": "spawn",
-      "x": -50,
-      "z": 0
+      "name": "arrival",
+      "x": 5.5,
+      "z": 9.5
     },
     "offset": null,
     "wild": null,
@@ -72,13 +72,13 @@
   "variants": [
     {
       "variant": "full",
-      "file": "spawn-noon--50_0-full.png",
+      "file": "spawn-noon-5.5_9.5-full.png",
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 166.3,
+        "meanLuma": 94.7,
         "blackShare": 0,
-        "greyShare": 0,
+        "greyShare": 0.0004,
         "levels": {
           "zero": 0,
           "full": 0,
@@ -95,14 +95,14 @@
           "zoomStop": 1,
           "mode": "diorama",
           "position": [
-            -40.819,
-            21.316,
-            -13.112
+            14.681,
+            19.676,
+            -3.612
           ],
           "focus": [
-            -50,
-            0.828,
-            0
+            5.5,
+            -0.812,
+            9.5
           ],
           "shotBlend": 0
         },
@@ -131,20 +131,20 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 199,
-          "triangles": 699504,
-          "texturesSize": 464676427,
-          "textures": 150,
-          "geometries": 382,
+          "drawCalls": 264,
+          "triangles": 692523,
+          "texturesSize": 496002643,
+          "textures": 153,
+          "geometries": 385,
           "programs": 101,
-          "renderTargets": 36,
-          "attributes": 1428,
-          "attributesSize": 122847544,
-          "materials": 15,
-          "shadowLights": 3,
-          "nonShadowLights": 20,
-          "beautyDrawCalls": 75,
-          "shadowDrawCalls": 124
+          "renderTargets": 35,
+          "attributes": 1351,
+          "attributesSize": 105341144,
+          "materials": 18,
+          "shadowLights": 2,
+          "nonShadowLights": 18,
+          "beautyDrawCalls": 98,
+          "shadowDrawCalls": 166
         },
         "settle": {
           "frames": 45,
@@ -162,7 +162,9 @@
         },
         "hud": {
           "partySlots": 1,
-          "nameplates": [],
+          "nameplates": [
+            "Brann Sorrel, yardmaster"
+          ],
           "prompt": null,
           "timeOfDay": 0.5,
           "battleBars": null
@@ -174,13 +176,13 @@
     },
     {
       "variant": "reduced",
-      "file": "spawn-noon--50_0-reduced.png",
+      "file": "spawn-noon-5.5_9.5-reduced.png",
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 165.3,
+        "meanLuma": 94.4,
         "blackShare": 0,
-        "greyShare": 0,
+        "greyShare": 0.0005,
         "levels": {
           "zero": 0,
           "full": 0,
@@ -197,14 +199,14 @@
           "zoomStop": 1,
           "mode": "diorama",
           "position": [
-            -40.819,
-            21.316,
-            -13.112
+            14.681,
+            19.676,
+            -3.612
           ],
           "focus": [
-            -50,
-            0.828,
-            0
+            5.5,
+            -0.812,
+            9.5
           ],
           "shotBlend": 0
         },
@@ -230,25 +232,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 188,
-          "triangles": 699493,
-          "texturesSize": 388860431,
-          "textures": 138,
-          "geometries": 382,
-          "programs": 93,
-          "renderTargets": 26,
-          "attributes": 1484,
-          "attributesSize": 127787320,
-          "materials": 15,
-          "shadowLights": 3,
-          "nonShadowLights": 20,
-          "beautyDrawCalls": 64,
-          "shadowDrawCalls": 124
+          "drawCalls": 253,
+          "triangles": 692512,
+          "texturesSize": 420186647,
+          "textures": 141,
+          "geometries": 385,
+          "programs": 97,
+          "renderTargets": 25,
+          "attributes": 1351,
+          "attributesSize": 105341144,
+          "materials": 18,
+          "shadowLights": 2,
+          "nonShadowLights": 18,
+          "beautyDrawCalls": 87,
+          "shadowDrawCalls": 166
         },
         "settle": {
           "frames": 45,
           "stable": true,
-          "programs": 93
+          "programs": 97
         },
         "rects": {
           "player": [
@@ -261,7 +263,9 @@
         },
         "hud": {
           "partySlots": 1,
-          "nameplates": [],
+          "nameplates": [
+            "Brann Sorrel, yardmaster"
+          ],
           "prompt": null,
           "timeOfDay": 0.5,
           "battleBars": null
@@ -273,7 +277,7 @@
     },
     {
       "variant": "mask",
-      "file": "spawn-noon--50_0-mask.png",
+      "file": "spawn-noon-5.5_9.5-mask.png",
       "png": {
         "width": 1440,
         "height": 900,
@@ -288,7 +292,7 @@
       },
       "checks": [],
       "maskCoverage": {
-        "player": 0.5566,
+        "player": 0.5577,
         "battlers": []
       },
       "stage": {
@@ -299,14 +303,14 @@
           "zoomStop": 1,
           "mode": "diorama",
           "position": [
-            -40.819,
-            21.316,
-            -13.112
+            14.681,
+            19.676,
+            -3.612
           ],
           "focus": [
-            -50,
-            0.828,
-            0
+            5.5,
+            -0.812,
+            9.5
           ],
           "shotBlend": 0
         },
@@ -335,25 +339,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 199,
-          "triangles": 699504,
-          "texturesSize": 464676435,
-          "textures": 152,
-          "geometries": 382,
-          "programs": 105,
-          "renderTargets": 36,
-          "attributes": 1484,
-          "attributesSize": 127787320,
-          "materials": 15,
-          "shadowLights": 3,
-          "nonShadowLights": 20,
-          "beautyDrawCalls": 75,
-          "shadowDrawCalls": 124
+          "drawCalls": 264,
+          "triangles": 692523,
+          "texturesSize": 496002651,
+          "textures": 155,
+          "geometries": 385,
+          "programs": 109,
+          "renderTargets": 35,
+          "attributes": 1351,
+          "attributesSize": 105341144,
+          "materials": 18,
+          "shadowLights": 2,
+          "nonShadowLights": 18,
+          "beautyDrawCalls": 98,
+          "shadowDrawCalls": 166
         },
         "settle": {
           "frames": 45,
           "stable": true,
-          "programs": 105
+          "programs": 109
         },
         "rects": {
           "player": [
@@ -366,7 +370,9 @@
         },
         "hud": {
           "partySlots": 1,
-          "nameplates": [],
+          "nameplates": [
+            "Brann Sorrel, yardmaster"
+          ],
           "prompt": null,
           "timeOfDay": 0.5,
           "battleBars": null
