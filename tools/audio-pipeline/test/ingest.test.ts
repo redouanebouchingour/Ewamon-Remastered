@@ -219,6 +219,33 @@ describe('sources.json validation and classification', () => {
     expect(txt).toContain('https://example.org/ui');
     expect(renderCreditsText([])).toContain('No third-party audio');
   });
+
+  it('a premix is credited through its parts (one row each, its jobs and derived siblings included); parts never change the salt', () => {
+    const premix = {
+      'sfx/hit_normal_1': {
+        file: 'mix/hit.wav', licence: 'CC0-1.0', author: 'Kenney (kenney.nl); rubberduck', url: 'https://example.org/a', title: 'Premix: hit',
+        parts: [
+          { file: 'packs/a/punch.ogg', author: 'Part A', url: 'https://example.org/a', title: 'Punch' },
+          { file: 'packs/b/crack.ogg', author: 'Part B', url: 'https://example.org/b', licenceFile: 'B-License.txt' },
+        ],
+      },
+    };
+    const loaded = validateSources(premix, manifest);
+    expect(loaded.problems).toEqual([]);
+    const rows = creditRows(loaded.entries, classifyJobs(manifest, loaded.entries));
+    expect(rows.map((r) => [r.file, r.author, r.title, r.licenceFile])).toEqual([
+      ['packs/a/punch.ogg', 'Part A', 'Punch', null],
+      ['packs/b/crack.ogg', 'Part B', 'crack', 'B-License.txt'],
+    ]);
+    expect(rows[0]!.direct).toEqual(['sfx/hit_normal_1']);
+    expect(rows[0]!.derived.length).toBeGreaterThan(0); // hit_normal_2/_3 are pitch-shifted from the premix
+    const bare = { 'sfx/hit_normal_1': { ...premix['sfx/hit_normal_1'], parts: undefined } };
+    const hashes: Record<string, string> = { 'mix/hit.wav': 'f'.repeat(64) };
+    const salt = (s: object): string | undefined =>
+      resolveCc0(manifest, { ...validateSources(s, manifest), file: 'x', exists: true }, '/cc0', (f) => hashes[path.relative('/cc0', f).split(path.sep).join('/')] ?? null).salts['sfx/hit_normal_1'];
+    expect(salt(premix)).toBe(salt(bare));
+    expect(validateSources({ 'sfx/hit_normal_1': { ...premix['sfx/hit_normal_1'], parts: [{ file: '../x.ogg', author: 'a', url: 'https://e.org' }] } }, manifest).problems.length).toBe(1);
+  });
 });
 
 // ─── ffmpeg ─────────────────────────────────────────────────────────────────

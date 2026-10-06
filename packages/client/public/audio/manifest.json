@@ -1,0 +1,4220 @@
+{
+  "ambience": {
+    "capital": {
+      "bytes": 625151,
+      "durationSec": 60,
+      "hash": "489a0993071b143b57bb55bc3addf4ecd579671ba36b2ba549a9377b98ce0aa2",
+      "loopEndSec": 60,
+      "loopStartSec": 0,
+      "lufs": -16,
+      "url": "/audio/ambience/capital.webm?v=489a0993",
+      "urlFallback": "/audio/ambience/capital.m4a?v=489a0993"
+    },
+    "cinder": {
+      "bytes": 625250,
+      "durationSec": 60,
+      "hash": "a87903e432278874fa27e2b13b3d02881e409ae40e8962a733d64b2dbb11f7a5",
+      "loopEndSec": 60,
+      "loopStartSec": 0,
+      "lufs": -16,
+      "url": "/audio/ambience/cinder.webm?v=a87903e4",
+      "urlFallback": "/audio/ambience/cinder.m4a?v=a87903e4"
+    },
+    "forge": {
+      "bytes": 625250,
+      "durationSec": 60,
+      "hash": "21dcf8ba25bc7983ae6fd6bcd982962231ccf55d996dccd816592619af4247fe",
+      "loopEndSec": 60,
+      "loopStartSec": 0,
+      "lufs": -16,
+      "url": "/audio/ambience/forge.webm?v=21dcf8ba",
+      "urlFallback": "/audio/ambience/forge.m4a?v=21dcf8ba"
+    },
+    "grove": {
+      "bytes": 625157,
+      "durationSec": 60,
+      "hash": "773388f59b744be539a2251ac6a9132d9fd5e5643fb64fc84c8881b12ffbddb9",
+      "loopEndSec": 60,
+      "loopStartSec": 0,
+      "lufs": -16,
+      "url": "/audio/ambience/grove.webm?v=773388f5",
+      "urlFallback": "/audio/ambience/grove.m4a?v=773388f5"
+    },
+    "marrow": {
+      "bytes": 625142,
+      "durationSec": 60,
+      "hash": "82a3e3c79a44bcb2f853c081490690fcc142ca50947d7eae30edc40374f3345f",
+      "loopEndSec": 60,
+      "loopStartSec": 0,
+      "lufs": -16,
+      "url": "/audio/ambience/marrow.webm?v=82a3e3c7",
+      "urlFallback": "/audio/ambience/marrow.m4a?v=82a3e3c7"
+    },
+    "rift": {
+      "bytes": 625071,
+      "durationSec": 60,
+      "hash": "eae8bee21f6d34d9357b30f3c15b166925e322ea00cab58eea1d2815ef28c89b",
+      "loopEndSec": 60,
+      "loopStartSec": 0,
+      "lufs": -16,
+      "url": "/audio/ambience/rift.webm?v=eae8bee2",
+      "urlFallback": "/audio/ambience/rift.m4a?v=eae8bee2"
+    },
+    "salt": {
+      "bytes": 625250,
+      "durationSec": 60,
+      "hash": "f3e448485588c0f17283498abdbb085068ce83bb9a7879264b8abfe693a9452b",
+      "loopEndSec": 60,
+      "loopStartSec": 0,
+      "lufs": -16,
+      "url": "/audio/ambience/salt.webm?v=f3e44848",
+      "urlFallback": "/audio/ambience/salt.m4a?v=f3e44848"
+    },
+    "shrine": {
+      "bytes": 625167,
+      "durationSec": 60,
+      "hash": "bf19bf4142edf909bc10a00b20649a779055d8a6ab37ea33eef014c37d5f1b4f",
+      "loopEndSec": 60,
+      "loopStartSec": 0,
+      "lufs": -16,
+      "url": "/audio/ambience/shrine.webm?v=bf19bf41",
+      "urlFallback": "/audio/ambience/shrine.m4a?v=bf19bf41"
+    },
+    "sky": {
+      "bytes": 625250,
+      "durationSec": 60,
+      "hash": "1961eb57612386b5a6113b9113c7d0e79c217705c3060f6229a690951bd24c39",
+      "loopEndSec": 60,
+      "loopStartSec": 0,
+      "lufs": -16,
+      "url": "/audio/ambience/sky.webm?v=1961eb57",
+      "urlFallback": "/audio/ambience/sky.m4a?v=1961eb57"
+    },
+    "storm": {
+      "bytes": 625208,
+      "durationSec": 60,
+      "hash": "dac5a5e92284c4f69735d9e2f1d1a4b9b820d902cb491a6231f15f9488ea8bec",
+      "loopEndSec": 60,
+      "loopStartSec": 0,
+      "lufs": -16,
+      "url": "/audio/ambience/storm.webm?v=dac5a5e9",
+      "urlFallback": "/audio/ambience/storm.m4a?v=dac5a5e9"
+    },
+    "vesper": {
+      "bytes": 625159,
+      "durationSec": 60,
+      "hash": "38fd9649a6639b292bf1e7088f4fbf0c96c6ea5a3c1290340df742194d4d2f79",
+      "loopEndSec": 60,
+      "loopStartSec": 0,
+      "lufs": -16,
+      "url": "/audio/ambience/vesper.webm?v=38fd9649",
+      "urlFallback": "/audio/ambience/vesper.m4a?v=38fd9649"
+    }
+  },
+  "builtAt": "2026-10-06T16:32:27.078Z",
+  "sfx": {
+    "anvil_strike": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4840,
+          "durationSec": 0.487,
+          "hash": "20528c800122ebf43d9f1408e7177a982040ba0247dee847ede98c2fe710d5d6",
+          "url": "/audio/sfx/anvil_strike_1.webm?v=20528c80",
+          "urlFallback": "/audio/sfx/anvil_strike_1.m4a?v=20528c80"
+        },
+        {
+          "bytes": 9144,
+          "durationSec": 1.003,
+          "hash": "dbcffccd3b2f20c6547094d4ec15db82d953c1ef1a2447b3375c21802b6b382d",
+          "url": "/audio/sfx/anvil_strike_2.webm?v=dbcffccd",
+          "urlFallback": "/audio/sfx/anvil_strike_2.m4a?v=dbcffccd"
+        }
+      ],
+      "gainDb": -8,
+      "maxConcurrent": 2
+    },
+    "bell_toll": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 30211,
+          "durationSec": 3.5,
+          "hash": "9495d8fc7723cd1d8b2f4e962d2ad46c2e19c3217bf27d073c6faab9c8850e69",
+          "url": "/audio/sfx/bell_toll_1.webm?v=9495d8fc",
+          "urlFallback": "/audio/sfx/bell_toll_1.m4a?v=9495d8fc"
+        }
+      ],
+      "gainDb": -8,
+      "maxConcurrent": 1
+    },
+    "cry_bug": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5198,
+          "durationSec": 0.55,
+          "hash": "ab0fb95b280a555d96e948f592e66248fb796ff8112f4b054e9209538720acd1",
+          "url": "/audio/sfx/cry_bug_1.webm?v=ab0fb95b",
+          "urlFallback": "/audio/sfx/cry_bug_1.m4a?v=ab0fb95b"
+        },
+        {
+          "bytes": 4603,
+          "durationSec": 0.455,
+          "hash": "f4419db58bcbc146808183d0a045ea5a69d2a6a9b58e3d99dd384380e51cba3e",
+          "url": "/audio/sfx/cry_bug_2.webm?v=f4419db5",
+          "urlFallback": "/audio/sfx/cry_bug_2.m4a?v=f4419db5"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_cosmic": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 10890,
+          "durationSec": 1.2,
+          "hash": "4c24ee469c3b329b254d7f07adace24504c5bd19a4dc303a7250b9ef4c4b17ea",
+          "url": "/audio/sfx/cry_cosmic_1.webm?v=4c24ee46",
+          "urlFallback": "/audio/sfx/cry_cosmic_1.m4a?v=4c24ee46"
+        },
+        {
+          "bytes": 10887,
+          "durationSec": 1.2,
+          "hash": "3ed0b51befafe176fc120301a7ecaaf4d46ad00e2d0e35cfe184083c84e7ad37",
+          "url": "/audio/sfx/cry_cosmic_2.webm?v=3ed0b51b",
+          "urlFallback": "/audio/sfx/cry_cosmic_2.m4a?v=3ed0b51b"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_dark": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 6398,
+          "durationSec": 0.693,
+          "hash": "3d76b59903c7649ff44ff36e0bcc8616e792f22e4ff8b008e5b8b325a8fbd9e3",
+          "url": "/audio/sfx/cry_dark_1.webm?v=3d76b599",
+          "urlFallback": "/audio/sfx/cry_dark_1.m4a?v=3d76b599"
+        },
+        {
+          "bytes": 4636,
+          "durationSec": 0.458,
+          "hash": "29ce045df21bd6de7570cf3b0d3068c09775a71c2b9bd4bcf0d10094ce224234",
+          "url": "/audio/sfx/cry_dark_2.webm?v=29ce045d",
+          "urlFallback": "/audio/sfx/cry_dark_2.m4a?v=29ce045d"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_dragon": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 9988,
+          "durationSec": 1.096,
+          "hash": "0f7f2c5956f787eec1526b34f7ee8a345972cc7895f98b86cda4b332def88cbd",
+          "url": "/audio/sfx/cry_dragon_1.webm?v=0f7f2c59",
+          "urlFallback": "/audio/sfx/cry_dragon_1.m4a?v=0f7f2c59"
+        },
+        {
+          "bytes": 8664,
+          "durationSec": 0.946,
+          "hash": "8313a93a7f2ec79b62de9590897515fb856a2bcd45a414539f91884cca30c5ff",
+          "url": "/audio/sfx/cry_dragon_2.webm?v=8313a93a",
+          "urlFallback": "/audio/sfx/cry_dragon_2.m4a?v=8313a93a"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_electric": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 6521,
+          "durationSec": 0.684,
+          "hash": "381d2c1dff92008b8ffe1eacbbe1019e683bb92f3bc8a0a38aaddd9670054de6",
+          "url": "/audio/sfx/cry_electric_1.webm?v=381d2c1d",
+          "urlFallback": "/audio/sfx/cry_electric_1.m4a?v=381d2c1d"
+        },
+        {
+          "bytes": 6350,
+          "durationSec": 0.654,
+          "hash": "c3ebce33b2b74487480a8637789e4f9627fe0154a49cd5cf430bd7c7532588a7",
+          "url": "/audio/sfx/cry_electric_2.webm?v=c3ebce33",
+          "urlFallback": "/audio/sfx/cry_electric_2.m4a?v=c3ebce33"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_fairy": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 3901,
+          "durationSec": 0.381,
+          "hash": "25aa00d0c42806f221abf7ce42882ed53b15cc304f9c7e0e4b6ca806321571fc",
+          "url": "/audio/sfx/cry_fairy_1.webm?v=25aa00d0",
+          "urlFallback": "/audio/sfx/cry_fairy_1.m4a?v=25aa00d0"
+        },
+        {
+          "bytes": 3431,
+          "durationSec": 0.316,
+          "hash": "d628e599b9f5a39e9d1dd10650de91a2a38cbee5aa57a427be4c9d73e08d752f",
+          "url": "/audio/sfx/cry_fairy_2.webm?v=d628e599",
+          "urlFallback": "/audio/sfx/cry_fairy_2.m4a?v=d628e599"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_fighting": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5585,
+          "durationSec": 0.591,
+          "hash": "b484d36202747d0522190659f0d68336dcdb48a0d0ffc6bab5586b5397183560",
+          "url": "/audio/sfx/cry_fighting_1.webm?v=b484d362",
+          "urlFallback": "/audio/sfx/cry_fighting_1.m4a?v=b484d362"
+        },
+        {
+          "bytes": 5161,
+          "durationSec": 0.524,
+          "hash": "c7e72b602e5dd3d41561911ccb487815c66048026974376b8911689f17a48346",
+          "url": "/audio/sfx/cry_fighting_2.webm?v=c7e72b60",
+          "urlFallback": "/audio/sfx/cry_fighting_2.m4a?v=c7e72b60"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_fire": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 7025,
+          "durationSec": 0.745,
+          "hash": "061ae1a6285857977ca01cb6951d343fbed0656c54dcca4069b0343d8fcf5675",
+          "url": "/audio/sfx/cry_fire_1.webm?v=061ae1a6",
+          "urlFallback": "/audio/sfx/cry_fire_1.m4a?v=061ae1a6"
+        },
+        {
+          "bytes": 5254,
+          "durationSec": 0.55,
+          "hash": "7318f8c2bf17313007dbc9ffb9b30679a691671e225e99e19bcbb0245f8427f8",
+          "url": "/audio/sfx/cry_fire_2.webm?v=7318f8c2",
+          "urlFallback": "/audio/sfx/cry_fire_2.m4a?v=7318f8c2"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_flying": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 8874,
+          "durationSec": 0.956,
+          "hash": "8cd106cfb2789cdb141d5cf277b3fc323fdf3fb49395b42f39e9671363a08ea5",
+          "url": "/audio/sfx/cry_flying_1.webm?v=8cd106cf",
+          "urlFallback": "/audio/sfx/cry_flying_1.m4a?v=8cd106cf"
+        },
+        {
+          "bytes": 8853,
+          "durationSec": 0.96,
+          "hash": "d9679d7a17ffcc3f47f30eaf66dd5aa6a752654239f1f48738d78c2812f7847d",
+          "url": "/audio/sfx/cry_flying_2.webm?v=d9679d7a",
+          "urlFallback": "/audio/sfx/cry_flying_2.m4a?v=d9679d7a"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_ghost": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 10805,
+          "durationSec": 1.2,
+          "hash": "c2d5636b43c270d1976ae843bb384bd4777766ea5c0e30c4c010fbeb573db8fd",
+          "url": "/audio/sfx/cry_ghost_1.webm?v=c2d5636b",
+          "urlFallback": "/audio/sfx/cry_ghost_1.m4a?v=c2d5636b"
+        },
+        {
+          "bytes": 10812,
+          "durationSec": 1.2,
+          "hash": "b35f2518fc60b4eb6552940936069d994cb697745628a5eeb8ba0ddd0c745483",
+          "url": "/audio/sfx/cry_ghost_2.webm?v=b35f2518",
+          "urlFallback": "/audio/sfx/cry_ghost_2.m4a?v=b35f2518"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_grass": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4758,
+          "durationSec": 0.485,
+          "hash": "0bed6d609aa8db9e53c060f35fe6ebc8e6e18d67d95b020823e5d079ff6ff1ea",
+          "url": "/audio/sfx/cry_grass_1.webm?v=0bed6d60",
+          "urlFallback": "/audio/sfx/cry_grass_1.m4a?v=0bed6d60"
+        },
+        {
+          "bytes": 4962,
+          "durationSec": 0.495,
+          "hash": "ccff24b8b8ef8c4997a0399d9fa2d68d366a2d3f0b517e9a11c2e709937a3b86",
+          "url": "/audio/sfx/cry_grass_2.webm?v=ccff24b8",
+          "urlFallback": "/audio/sfx/cry_grass_2.m4a?v=ccff24b8"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_ground": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 6016,
+          "durationSec": 0.621,
+          "hash": "995405329657a7d2b35af6c80ce9ee4e45c9c81764c109594d6231fd0bac3d0b",
+          "url": "/audio/sfx/cry_ground_1.webm?v=99540532",
+          "urlFallback": "/audio/sfx/cry_ground_1.m4a?v=99540532"
+        },
+        {
+          "bytes": 7359,
+          "durationSec": 0.774,
+          "hash": "0ff62dbc9ca3e238f6b9f42979bf0da4345859f0c1592c759aaa99f1cd6f6bc1",
+          "url": "/audio/sfx/cry_ground_2.webm?v=0ff62dbc",
+          "urlFallback": "/audio/sfx/cry_ground_2.m4a?v=0ff62dbc"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_ice": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4335,
+          "durationSec": 0.417,
+          "hash": "e941fd4f232f2eb41c4bfa502102aed8feb413c7ff4252e148b75f0f42139b4d",
+          "url": "/audio/sfx/cry_ice_1.webm?v=e941fd4f",
+          "urlFallback": "/audio/sfx/cry_ice_1.m4a?v=e941fd4f"
+        },
+        {
+          "bytes": 5849,
+          "durationSec": 0.595,
+          "hash": "c094db2d7333f035ce5e6fc66c462d297207dc03c183aec4521189ac22c08e7e",
+          "url": "/audio/sfx/cry_ice_2.webm?v=c094db2d",
+          "urlFallback": "/audio/sfx/cry_ice_2.m4a?v=c094db2d"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_normal": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5421,
+          "durationSec": 0.568,
+          "hash": "0fbb79a478b6ae8456a63d544efe6818e97dab32ee281912a8f546ae54067431",
+          "url": "/audio/sfx/cry_normal_1.webm?v=0fbb79a4",
+          "urlFallback": "/audio/sfx/cry_normal_1.m4a?v=0fbb79a4"
+        },
+        {
+          "bytes": 4000,
+          "durationSec": 0.385,
+          "hash": "e2a0790e0ae37996539691714b68c4aebd64115d9a2a227953e8462bbe1c5ed0",
+          "url": "/audio/sfx/cry_normal_2.webm?v=e2a0790e",
+          "urlFallback": "/audio/sfx/cry_normal_2.m4a?v=e2a0790e"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_poison": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 6058,
+          "durationSec": 0.647,
+          "hash": "90bec03d9e49f3a6c675de7f14ff94223bd27991b1ca353a840a4c2ac1f407b6",
+          "url": "/audio/sfx/cry_poison_1.webm?v=90bec03d",
+          "urlFallback": "/audio/sfx/cry_poison_1.m4a?v=90bec03d"
+        },
+        {
+          "bytes": 6015,
+          "durationSec": 0.614,
+          "hash": "b5f7fc5d556fc492c181f5ad303761f618f1df28570f70906520f2bfa02730c9",
+          "url": "/audio/sfx/cry_poison_2.webm?v=b5f7fc5d",
+          "urlFallback": "/audio/sfx/cry_poison_2.m4a?v=b5f7fc5d"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_psychic": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 6858,
+          "durationSec": 0.716,
+          "hash": "f9a2c8cfb6e9aeb6cec5dea7070367b3f329b9357b5432a964bf1ae478be16fd",
+          "url": "/audio/sfx/cry_psychic_1.webm?v=f9a2c8cf",
+          "urlFallback": "/audio/sfx/cry_psychic_1.m4a?v=f9a2c8cf"
+        },
+        {
+          "bytes": 4506,
+          "durationSec": 0.441,
+          "hash": "5a1ebfb123c4a0ee0096a47420157ec481a79d823f3b7b75f62b42c321d837b3",
+          "url": "/audio/sfx/cry_psychic_2.webm?v=5a1ebfb1",
+          "urlFallback": "/audio/sfx/cry_psychic_2.m4a?v=5a1ebfb1"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_rock": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5427,
+          "durationSec": 0.571,
+          "hash": "b2ea2695fd377c36c8d90b75b314b70df06e987f26014bc0d3bae12a4fc84813",
+          "url": "/audio/sfx/cry_rock_1.webm?v=b2ea2695",
+          "urlFallback": "/audio/sfx/cry_rock_1.m4a?v=b2ea2695"
+        },
+        {
+          "bytes": 5848,
+          "durationSec": 0.601,
+          "hash": "c2836102940cad978da72645d2f230e2b2170213d36e9914e49020a2d41b0973",
+          "url": "/audio/sfx/cry_rock_2.webm?v=c2836102",
+          "urlFallback": "/audio/sfx/cry_rock_2.m4a?v=c2836102"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_steel": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 6186,
+          "durationSec": 0.639,
+          "hash": "e36874a2509b6e363284af3af8c93c51b5d679ba62cf0e079a591c73f3ec47b2",
+          "url": "/audio/sfx/cry_steel_1.webm?v=e36874a2",
+          "urlFallback": "/audio/sfx/cry_steel_1.m4a?v=e36874a2"
+        },
+        {
+          "bytes": 8431,
+          "durationSec": 0.922,
+          "hash": "bb46dd8d259b5018a4d96f6fc49268ddfe3af4710860518a68b0fd77b1ecbfcd",
+          "url": "/audio/sfx/cry_steel_2.webm?v=bb46dd8d",
+          "urlFallback": "/audio/sfx/cry_steel_2.m4a?v=bb46dd8d"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "cry_water": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 8598,
+          "durationSec": 0.941,
+          "hash": "81f87b0e1ff2786ba17aedba77ed0fb43a707e914d5ca6820bf3188308a1f0c5",
+          "url": "/audio/sfx/cry_water_1.webm?v=81f87b0e",
+          "urlFallback": "/audio/sfx/cry_water_1.m4a?v=81f87b0e"
+        },
+        {
+          "bytes": 8429,
+          "durationSec": 0.922,
+          "hash": "999765b90b694b8634267784012a4d838ce260e64fae682fa02d66d0ffba9c11",
+          "url": "/audio/sfx/cry_water_2.webm?v=999765b9",
+          "urlFallback": "/audio/sfx/cry_water_2.m4a?v=999765b9"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "door_close": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 6460,
+          "durationSec": 0.675,
+          "hash": "a205c8c7438fabe6eaccb746ec715682511920e6a37910b2a17f11c6a8a0a325",
+          "url": "/audio/sfx/door_close_1.webm?v=a205c8c7",
+          "urlFallback": "/audio/sfx/door_close_1.m4a?v=a205c8c7"
+        }
+      ],
+      "gainDb": -8,
+      "maxConcurrent": 2
+    },
+    "door_heavy": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 14237,
+          "durationSec": 1.6,
+          "hash": "f265b4b595c30474999cf15dc859a883d87a66b989bd910aec10f8c24ead1239",
+          "url": "/audio/sfx/door_heavy_1.webm?v=f265b4b5",
+          "urlFallback": "/audio/sfx/door_heavy_1.m4a?v=f265b4b5"
+        }
+      ],
+      "gainDb": -8,
+      "maxConcurrent": 1
+    },
+    "door_open": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 8273,
+          "durationSec": 0.9,
+          "hash": "f96b87333074a248497a50387e3b6d58a6c2b619b0b9f6c797d8ef5902aa2918",
+          "url": "/audio/sfx/door_open_1.webm?v=f96b8733",
+          "urlFallback": "/audio/sfx/door_open_1.m4a?v=f96b8733"
+        },
+        {
+          "bytes": 8302,
+          "durationSec": 0.9,
+          "hash": "d3e3c3466167b9edb94a696a3828540739b37ceae67433523711bb8f04eaecec",
+          "url": "/audio/sfx/door_open_2.webm?v=d3e3c346",
+          "urlFallback": "/audio/sfx/door_open_2.m4a?v=d3e3c346"
+        }
+      ],
+      "gainDb": -8,
+      "maxConcurrent": 2
+    },
+    "faint": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 11642,
+          "durationSec": 1.3,
+          "hash": "b9c103b4865bd8f1a5072beccbd19b4559db92143fe04e2b40b94de5538ca6d2",
+          "url": "/audio/sfx/faint_1.webm?v=b9c103b4",
+          "urlFallback": "/audio/sfx/faint_1.m4a?v=b9c103b4"
+        },
+        {
+          "bytes": 11645,
+          "durationSec": 1.3,
+          "hash": "a0fbb3f1e0fe40d6de98d9208d5d5f20b2a2940a569cbd420df416918a8bf0c7",
+          "url": "/audio/sfx/faint_2.webm?v=a0fbb3f1",
+          "urlFallback": "/audio/sfx/faint_2.m4a?v=a0fbb3f1"
+        }
+      ],
+      "gainDb": -2,
+      "maxConcurrent": 2
+    },
+    "flee": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 9207,
+          "durationSec": 1,
+          "hash": "1ddfff72ec660046e6f9bea2b588f6f83c8c61ce4afd95443fcbc2c447a45ced",
+          "url": "/audio/sfx/flee_1.webm?v=1ddfff72",
+          "urlFallback": "/audio/sfx/flee_1.m4a?v=1ddfff72"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 1
+    },
+    "grass_rustle": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5545,
+          "durationSec": 0.6,
+          "hash": "b9e1e5abd9d27ed5db1dabd7210997a0f28ea1aac407b3083cacb70dfa7fed6a",
+          "url": "/audio/sfx/grass_rustle_1.webm?v=b9e1e5ab",
+          "urlFallback": "/audio/sfx/grass_rustle_1.m4a?v=b9e1e5ab"
+        },
+        {
+          "bytes": 5539,
+          "durationSec": 0.6,
+          "hash": "8e4fd1f1c17bfcfdd8761145a2acc9d59b12f0cbe5632086bd79048a8cd133bf",
+          "url": "/audio/sfx/grass_rustle_2.webm?v=8e4fd1f1",
+          "urlFallback": "/audio/sfx/grass_rustle_2.m4a?v=8e4fd1f1"
+        },
+        {
+          "bytes": 5304,
+          "durationSec": 0.544,
+          "hash": "f42d3e2bd4a0425c66506a30fe48101a6def01b602969f30035dccaa38f24684",
+          "url": "/audio/sfx/grass_rustle_3.webm?v=f42d3e2b",
+          "urlFallback": "/audio/sfx/grass_rustle_3.m4a?v=f42d3e2b"
+        }
+      ],
+      "gainDb": -10,
+      "maxConcurrent": 3
+    },
+    "hit_crit": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4806,
+          "durationSec": 0.474,
+          "hash": "fdcec08e13847c1edd5af166f5d1c06668a219668600ae147ab18e70f0dedece",
+          "url": "/audio/sfx/hit_crit_1.webm?v=fdcec08e",
+          "urlFallback": "/audio/sfx/hit_crit_1.m4a?v=fdcec08e"
+        },
+        {
+          "bytes": 5292,
+          "durationSec": 0.536,
+          "hash": "e2760889211074524cf3e2f008af1f9697896b22de2852ec6eed6889c7800797",
+          "url": "/audio/sfx/hit_crit_2.webm?v=e2760889",
+          "urlFallback": "/audio/sfx/hit_crit_2.m4a?v=e2760889"
+        }
+      ],
+      "gainDb": 1,
+      "maxConcurrent": 2
+    },
+    "hit_normal": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4282,
+          "durationSec": 0.431,
+          "hash": "5a0f83aa8bf613c71dcd86a42d0cf991727379f386bb81b56a4756b8b8536565",
+          "url": "/audio/sfx/hit_normal_1.webm?v=5a0f83aa",
+          "urlFallback": "/audio/sfx/hit_normal_1.m4a?v=5a0f83aa"
+        },
+        {
+          "bytes": 4124,
+          "durationSec": 0.402,
+          "hash": "2e7783ec37523929acb5a4e20e02a358e1480c5138fd3e6dd8c67800c609da6e",
+          "url": "/audio/sfx/hit_normal_2.webm?v=2e7783ec",
+          "urlFallback": "/audio/sfx/hit_normal_2.m4a?v=2e7783ec"
+        },
+        {
+          "bytes": 4435,
+          "durationSec": 0.45,
+          "hash": "d5297c6e54476b6e0218c300997acbeb9ad9491711c8983f68a649a2f44ef080",
+          "url": "/audio/sfx/hit_normal_3.webm?v=d5297c6e",
+          "urlFallback": "/audio/sfx/hit_normal_3.m4a?v=d5297c6e"
+        }
+      ],
+      "gainDb": 0,
+      "maxConcurrent": 3
+    },
+    "hit_super": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5812,
+          "durationSec": 0.6,
+          "hash": "8f1b50740a6e426e6d882246382488c1ae37c85f92cb30f8aa56070d6d09bea0",
+          "url": "/audio/sfx/hit_super_1.webm?v=8f1b5074",
+          "urlFallback": "/audio/sfx/hit_super_1.m4a?v=8f1b5074"
+        },
+        {
+          "bytes": 5279,
+          "durationSec": 0.536,
+          "hash": "ac45ab3dd807e3cddc5b15e34eb0aa994c6aeabae11f95d56e3595288ab64edb",
+          "url": "/audio/sfx/hit_super_2.webm?v=ac45ab3d",
+          "urlFallback": "/audio/sfx/hit_super_2.m4a?v=ac45ab3d"
+        },
+        {
+          "bytes": 4625,
+          "durationSec": 0.458,
+          "hash": "34105fcea967a2c1f1bbabac639c01dd8807bee35139df5564b3a21876aa8f45",
+          "url": "/audio/sfx/hit_super_3.webm?v=34105fce",
+          "urlFallback": "/audio/sfx/hit_super_3.m4a?v=34105fce"
+        }
+      ],
+      "gainDb": 1,
+      "maxConcurrent": 3
+    },
+    "hit_weak": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4170,
+          "durationSec": 0.4,
+          "hash": "c418aadb2575555ea3d94a09c7489469699df252f27ce91d6a66bd6a55badc70",
+          "url": "/audio/sfx/hit_weak_1.webm?v=c418aadb",
+          "urlFallback": "/audio/sfx/hit_weak_1.m4a?v=c418aadb"
+        },
+        {
+          "bytes": 4170,
+          "durationSec": 0.4,
+          "hash": "ecd458c37a235a7c8b98471710f00dee97235199510b864b4ba621ee7c937cba",
+          "url": "/audio/sfx/hit_weak_2.webm?v=ecd458c3",
+          "urlFallback": "/audio/sfx/hit_weak_2.m4a?v=ecd458c3"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "hurt_bug": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 3329,
+          "durationSec": 0.304,
+          "hash": "b5feaee288f6d002c9adb51ac8997230154985ee7c9b628037dd5cd23325cdb0",
+          "url": "/audio/sfx/hurt_bug_1.webm?v=b5feaee2",
+          "urlFallback": "/audio/sfx/hurt_bug_1.m4a?v=b5feaee2"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_cosmic": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4958,
+          "durationSec": 0.5,
+          "hash": "6ed9ff1cd65e848226f9740bfd918d9627b98f39268e27ecbf9c8a0274f3b601",
+          "url": "/audio/sfx/hurt_cosmic_1.webm?v=6ed9ff1c",
+          "urlFallback": "/audio/sfx/hurt_cosmic_1.m4a?v=6ed9ff1c"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_dark": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4935,
+          "durationSec": 0.5,
+          "hash": "9764c84683274d4992ebc7cc70f37079bea87878cdc0df7073658ff4a543a9c4",
+          "url": "/audio/sfx/hurt_dark_1.webm?v=9764c846",
+          "urlFallback": "/audio/sfx/hurt_dark_1.m4a?v=9764c846"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_dragon": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5009,
+          "durationSec": 0.5,
+          "hash": "04ec514a3b401c7c75fc05187aadc7bc586d6c24b431139aecec5b986db8cf4f",
+          "url": "/audio/sfx/hurt_dragon_1.webm?v=04ec514a",
+          "urlFallback": "/audio/sfx/hurt_dragon_1.m4a?v=04ec514a"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_electric": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4336,
+          "durationSec": 0.421,
+          "hash": "c2dc0756c8e68951ab3cb1b4bec72fde119d0f83f9e5e6a249c1b979212cead5",
+          "url": "/audio/sfx/hurt_electric_1.webm?v=c2dc0756",
+          "urlFallback": "/audio/sfx/hurt_electric_1.m4a?v=c2dc0756"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_fairy": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 2856,
+          "durationSec": 0.272,
+          "hash": "520531392c269adb78981605ee68cb0d17fa7cf212ea275713c1508caacc2a9b",
+          "url": "/audio/sfx/hurt_fairy_1.webm?v=52053139",
+          "urlFallback": "/audio/sfx/hurt_fairy_1.m4a?v=52053139"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_fighting": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4437,
+          "durationSec": 0.44,
+          "hash": "8bf84591122e6f402c6dd0fad87c34db29dc27545d279a9c1e1c0453be837fbb",
+          "url": "/audio/sfx/hurt_fighting_1.webm?v=8bf84591",
+          "urlFallback": "/audio/sfx/hurt_fighting_1.m4a?v=8bf84591"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_fire": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4645,
+          "durationSec": 0.462,
+          "hash": "67627895ce7f213d45118c405acb9b0908bfd1a51544215295a49df44650daef",
+          "url": "/audio/sfx/hurt_fire_1.webm?v=67627895",
+          "urlFallback": "/audio/sfx/hurt_fire_1.m4a?v=67627895"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_flying": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4489,
+          "durationSec": 0.447,
+          "hash": "67ae3a3af07b801e7747409433d6f43596f08329272c9ab0423075761136b2aa",
+          "url": "/audio/sfx/hurt_flying_1.webm?v=67ae3a3a",
+          "urlFallback": "/audio/sfx/hurt_flying_1.m4a?v=67ae3a3a"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_ghost": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5009,
+          "durationSec": 0.5,
+          "hash": "95eeee649fdbe790364a7ef4445ee42dbcb84296b5c647ea7a654a99effa80c6",
+          "url": "/audio/sfx/hurt_ghost_1.webm?v=95eeee64",
+          "urlFallback": "/audio/sfx/hurt_ghost_1.m4a?v=95eeee64"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_grass": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 3782,
+          "durationSec": 0.366,
+          "hash": "d76efc802590c3d4ed688677209ae04aa90400627ff420b12410031a0363ef19",
+          "url": "/audio/sfx/hurt_grass_1.webm?v=d76efc80",
+          "urlFallback": "/audio/sfx/hurt_grass_1.m4a?v=d76efc80"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_ground": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5010,
+          "durationSec": 0.5,
+          "hash": "675384b5ebbad08af48d92d2c89b7bcd967f410a0274207df27fb4badb2f043b",
+          "url": "/audio/sfx/hurt_ground_1.webm?v=675384b5",
+          "urlFallback": "/audio/sfx/hurt_ground_1.m4a?v=675384b5"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_ice": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4504,
+          "durationSec": 0.44,
+          "hash": "56954b0dcae5f42ea2a1c5229db7a98ef0985a5c7d4ef5ff5bf4b3ed7ee3010c",
+          "url": "/audio/sfx/hurt_ice_1.webm?v=56954b0d",
+          "urlFallback": "/audio/sfx/hurt_ice_1.m4a?v=56954b0d"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_normal": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4570,
+          "durationSec": 0.457,
+          "hash": "40914a78e877223e84fcde667ee3eeadac475cd40e1e11eb3473f38ad11b397a",
+          "url": "/audio/sfx/hurt_normal_1.webm?v=40914a78",
+          "urlFallback": "/audio/sfx/hurt_normal_1.m4a?v=40914a78"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_poison": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 3829,
+          "durationSec": 0.373,
+          "hash": "2375ad65e2bec19a485fd2b2d57b1b3f3b396867ff14640f8e67e7901465c0bf",
+          "url": "/audio/sfx/hurt_poison_1.webm?v=2375ad65",
+          "urlFallback": "/audio/sfx/hurt_poison_1.m4a?v=2375ad65"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_psychic": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4967,
+          "durationSec": 0.5,
+          "hash": "650802d3b2a35e16b7c5f1eb559147b7e8cf54ddbd2fb740b956e1b2514db6db",
+          "url": "/audio/sfx/hurt_psychic_1.webm?v=650802d3",
+          "urlFallback": "/audio/sfx/hurt_psychic_1.m4a?v=650802d3"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_rock": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5010,
+          "durationSec": 0.5,
+          "hash": "a4d1ad6a092a477d241a9774f2129b9a84491ef8e4706b9bd631a1fc4d5d5135",
+          "url": "/audio/sfx/hurt_rock_1.webm?v=a4d1ad6a",
+          "urlFallback": "/audio/sfx/hurt_rock_1.m4a?v=a4d1ad6a"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_steel": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4170,
+          "durationSec": 0.395,
+          "hash": "1f3e4e678d4becdda71d71bd7293e2496f0679f6fb9fe8acaa3975cbf22ef578",
+          "url": "/audio/sfx/hurt_steel_1.webm?v=1f3e4e67",
+          "urlFallback": "/audio/sfx/hurt_steel_1.m4a?v=1f3e4e67"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "hurt_water": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4909,
+          "durationSec": 0.5,
+          "hash": "ecdb3b9f95fe7a0890acc93946260b3de387ce2275c895986c379b47a49d3984",
+          "url": "/audio/sfx/hurt_water_1.webm?v=ecdb3b9f",
+          "urlFallback": "/audio/sfx/hurt_water_1.m4a?v=ecdb3b9f"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "impact_bug": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 3980,
+          "durationSec": 0.383,
+          "hash": "bfae9b1830be904d76bbec75fbd7b3d280273115ac1132c6f0ac65aa93a653b5",
+          "url": "/audio/sfx/impact_bug_1.webm?v=bfae9b18",
+          "urlFallback": "/audio/sfx/impact_bug_1.m4a?v=bfae9b18"
+        },
+        {
+          "bytes": 3662,
+          "durationSec": 0.348,
+          "hash": "dd7c2d1156d66005252efe4d989e52c1e11abec972fcd745392381d67d3f03d2",
+          "url": "/audio/sfx/impact_bug_2.webm?v=dd7c2d11",
+          "urlFallback": "/audio/sfx/impact_bug_2.m4a?v=dd7c2d11"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_cosmic": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5850,
+          "durationSec": 0.6,
+          "hash": "b0906893ead04de496bfcdd808176d1c47299a665d057385f3fd3aa83ffab039",
+          "url": "/audio/sfx/impact_cosmic_1.webm?v=b0906893",
+          "urlFallback": "/audio/sfx/impact_cosmic_1.m4a?v=b0906893"
+        },
+        {
+          "bytes": 5513,
+          "durationSec": 0.568,
+          "hash": "6650f6c2b45a11649de328bd03838086de5740ae10195f8c76d9a7a886919862",
+          "url": "/audio/sfx/impact_cosmic_2.webm?v=6650f6c2",
+          "urlFallback": "/audio/sfx/impact_cosmic_2.m4a?v=6650f6c2"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_dark": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4362,
+          "durationSec": 0.45,
+          "hash": "b4a43b1cd7342b8fb82d790ce76c14ee0ed7f197d4a9aa05abd79e17e031d49f",
+          "url": "/audio/sfx/impact_dark_1.webm?v=b4a43b1c",
+          "urlFallback": "/audio/sfx/impact_dark_1.m4a?v=b4a43b1c"
+        },
+        {
+          "bytes": 5561,
+          "durationSec": 0.582,
+          "hash": "fd5414d0167c6424e601b0fc21f232df417eb5f74382609dd24c1a7cea042cb8",
+          "url": "/audio/sfx/impact_dark_2.webm?v=fd5414d0",
+          "urlFallback": "/audio/sfx/impact_dark_2.m4a?v=fd5414d0"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_dragon": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5816,
+          "durationSec": 0.6,
+          "hash": "0e33533b93971c9837946edc706cafcd3b4703946cbd8ad02818e864fc34cba7",
+          "url": "/audio/sfx/impact_dragon_1.webm?v=0e33533b",
+          "urlFallback": "/audio/sfx/impact_dragon_1.m4a?v=0e33533b"
+        },
+        {
+          "bytes": 5371,
+          "durationSec": 0.566,
+          "hash": "ff6f581f7def62ff78d002cf62c53ab5a0a687f166b5d06e5d47b8d9e6ecdc09",
+          "url": "/audio/sfx/impact_dragon_2.webm?v=ff6f581f",
+          "urlFallback": "/audio/sfx/impact_dragon_2.m4a?v=ff6f581f"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_electric": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5787,
+          "durationSec": 0.6,
+          "hash": "386c606ca6c383c24f0e4e8aa5c60de0760e53ca42a75372865b96a4e620d469",
+          "url": "/audio/sfx/impact_electric_1.webm?v=386c606c",
+          "urlFallback": "/audio/sfx/impact_electric_1.m4a?v=386c606c"
+        },
+        {
+          "bytes": 5778,
+          "durationSec": 0.6,
+          "hash": "09d72e810f9432cf47eceffecd801dc657d262c0c328607ff5dd863a1c016037",
+          "url": "/audio/sfx/impact_electric_2.webm?v=09d72e81",
+          "urlFallback": "/audio/sfx/impact_electric_2.m4a?v=09d72e81"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_fairy": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5850,
+          "durationSec": 0.6,
+          "hash": "29fa38739239db896d6f1b32aa92c180bf1d7703ef450ff5af9f9c3680f3a593",
+          "url": "/audio/sfx/impact_fairy_1.webm?v=29fa3873",
+          "urlFallback": "/audio/sfx/impact_fairy_1.m4a?v=29fa3873"
+        },
+        {
+          "bytes": 5850,
+          "durationSec": 0.6,
+          "hash": "df7d271cd0ddacf800f96260cd146d17dd37e8cce29347f312ab5bca370cb03f",
+          "url": "/audio/sfx/impact_fairy_2.webm?v=df7d271c",
+          "urlFallback": "/audio/sfx/impact_fairy_2.m4a?v=df7d271c"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_fighting": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4800,
+          "durationSec": 0.474,
+          "hash": "c36799c063e0e91330d807b04e3f3fd5642445fcd881c305c0b4cc3dcc25fe8b",
+          "url": "/audio/sfx/impact_fighting_1.webm?v=c36799c0",
+          "urlFallback": "/audio/sfx/impact_fighting_1.m4a?v=c36799c0"
+        },
+        {
+          "bytes": 5292,
+          "durationSec": 0.536,
+          "hash": "0e2458f9d9ea3b6aa3f6ce2d1a4b10afc07af7debed0c2db374cf14789e604bc",
+          "url": "/audio/sfx/impact_fighting_2.webm?v=0e2458f9",
+          "urlFallback": "/audio/sfx/impact_fighting_2.m4a?v=0e2458f9"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_fire": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5749,
+          "durationSec": 0.6,
+          "hash": "e848d9fcbf9a4e357a18595803e0899f0fb177d00581629aaa4be0b5da86cbab",
+          "url": "/audio/sfx/impact_fire_1.webm?v=e848d9fc",
+          "urlFallback": "/audio/sfx/impact_fire_1.m4a?v=e848d9fc"
+        },
+        {
+          "bytes": 5850,
+          "durationSec": 0.6,
+          "hash": "ed3154d5810c3b40d394f360c2bf8cd3473672e75e6e47a05701e07b01175419",
+          "url": "/audio/sfx/impact_fire_2.webm?v=ed3154d5",
+          "urlFallback": "/audio/sfx/impact_fire_2.m4a?v=ed3154d5"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_flying": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 2321,
+          "durationSec": 0.188,
+          "hash": "776c47682fab938e5779916098a0fe0e477bf140d6ca402691da683b408d7092",
+          "url": "/audio/sfx/impact_flying_1.webm?v=776c4768",
+          "urlFallback": "/audio/sfx/impact_flying_1.m4a?v=776c4768"
+        },
+        {
+          "bytes": 2322,
+          "durationSec": 0.178,
+          "hash": "3104c26bc9156193d39351eb372eabb5ea9515a0f9dcf4373f56a147849f4414",
+          "url": "/audio/sfx/impact_flying_2.webm?v=3104c26b",
+          "urlFallback": "/audio/sfx/impact_flying_2.m4a?v=3104c26b"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_ghost": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5845,
+          "durationSec": 0.6,
+          "hash": "12e9723b4e4f032645a1a88dfc3d70d161f7b9ea647c88b4d01b18d4ac13ffae",
+          "url": "/audio/sfx/impact_ghost_1.webm?v=12e9723b",
+          "urlFallback": "/audio/sfx/impact_ghost_1.m4a?v=12e9723b"
+        },
+        {
+          "bytes": 5510,
+          "durationSec": 0.566,
+          "hash": "a3693c05b2aa7769774d2d4308c3a3b6a9c46fd8ef3c328d0ddaea1f090f8f5f",
+          "url": "/audio/sfx/impact_ghost_2.webm?v=a3693c05",
+          "urlFallback": "/audio/sfx/impact_ghost_2.m4a?v=a3693c05"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_grass": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4926,
+          "durationSec": 0.509,
+          "hash": "79a2ca8fc495b803e664fe6ae4270b6558a30d04776dbf5bcd7bd9a8a3a2a3f3",
+          "url": "/audio/sfx/impact_grass_1.webm?v=79a2ca8f",
+          "urlFallback": "/audio/sfx/impact_grass_1.m4a?v=79a2ca8f"
+        },
+        {
+          "bytes": 4809,
+          "durationSec": 0.481,
+          "hash": "4ba6c8a67c44ea2f08657b14ed300e711dc61dc0c29c60baf2dcea160c3a57f1",
+          "url": "/audio/sfx/impact_grass_2.webm?v=4ba6c8a6",
+          "urlFallback": "/audio/sfx/impact_grass_2.m4a?v=4ba6c8a6"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_ground": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5850,
+          "durationSec": 0.6,
+          "hash": "1b78f9842f7ceef95b17716cf6651cde64b3308358011fc3ad16afd2a72431bf",
+          "url": "/audio/sfx/impact_ground_1.webm?v=1b78f984",
+          "urlFallback": "/audio/sfx/impact_ground_1.m4a?v=1b78f984"
+        },
+        {
+          "bytes": 5850,
+          "durationSec": 0.6,
+          "hash": "32f0cd8ee6eaacce439bfb78ba81041b091d50337472f13ca47743767fca208c",
+          "url": "/audio/sfx/impact_ground_2.webm?v=32f0cd8e",
+          "urlFallback": "/audio/sfx/impact_ground_2.m4a?v=32f0cd8e"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_ice": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4253,
+          "durationSec": 0.429,
+          "hash": "c9d4be8c92b1f58db42cc3dfe0e6f805a875a8616c8cc6c8a993c8adc86a3c17",
+          "url": "/audio/sfx/impact_ice_1.webm?v=c9d4be8c",
+          "urlFallback": "/audio/sfx/impact_ice_1.m4a?v=c9d4be8c"
+        },
+        {
+          "bytes": 4137,
+          "durationSec": 0.396,
+          "hash": "cc88862c71d5412beddca3b531cc73ffe4c59f1c20386ca7633568841b4ef4ae",
+          "url": "/audio/sfx/impact_ice_2.webm?v=cc88862c",
+          "urlFallback": "/audio/sfx/impact_ice_2.m4a?v=cc88862c"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_normal": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5422,
+          "durationSec": 0.569,
+          "hash": "0b262b4d8bce2cf376f4de730f276fdcec3d92e121b54d05d65ca24273d2a856",
+          "url": "/audio/sfx/impact_normal_1.webm?v=0b262b4d",
+          "urlFallback": "/audio/sfx/impact_normal_1.m4a?v=0b262b4d"
+        },
+        {
+          "bytes": 4989,
+          "durationSec": 0.498,
+          "hash": "55609d7a9ba394876ddde0670a3eadef234480ac6cd209c72a0bdef93bb78aee",
+          "url": "/audio/sfx/impact_normal_2.webm?v=55609d7a",
+          "urlFallback": "/audio/sfx/impact_normal_2.m4a?v=55609d7a"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_poison": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4669,
+          "durationSec": 0.473,
+          "hash": "91b4dad2ae3e5c62156297ab7d229e25b0a3a2e9d1aed2e1a60529b0d3323fce",
+          "url": "/audio/sfx/impact_poison_1.webm?v=91b4dad2",
+          "urlFallback": "/audio/sfx/impact_poison_1.m4a?v=91b4dad2"
+        },
+        {
+          "bytes": 4673,
+          "durationSec": 0.456,
+          "hash": "e3574d12639c49fb021468eb4193b762496129ac13223c432d5e32a75fd6f8fa",
+          "url": "/audio/sfx/impact_poison_2.webm?v=e3574d12",
+          "urlFallback": "/audio/sfx/impact_poison_2.m4a?v=e3574d12"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_psychic": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5850,
+          "durationSec": 0.6,
+          "hash": "622579fc15d7d057262377576961297c5e50c7f22d1cd0e631e7aedc8ea11a15",
+          "url": "/audio/sfx/impact_psychic_1.webm?v=622579fc",
+          "urlFallback": "/audio/sfx/impact_psychic_1.m4a?v=622579fc"
+        },
+        {
+          "bytes": 4674,
+          "durationSec": 0.456,
+          "hash": "414232d1cc500e95c96c0ebcff53edd765cea189b9e0d1dc305a697e20d5955f",
+          "url": "/audio/sfx/impact_psychic_2.webm?v=414232d1",
+          "urlFallback": "/audio/sfx/impact_psychic_2.m4a?v=414232d1"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_rock": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5835,
+          "durationSec": 0.6,
+          "hash": "85aaedf36a94438d5ace7cee6eba93816dc8e9a776bd6aadd9f9a64a8c20ba05",
+          "url": "/audio/sfx/impact_rock_1.webm?v=85aaedf3",
+          "urlFallback": "/audio/sfx/impact_rock_1.m4a?v=85aaedf3"
+        },
+        {
+          "bytes": 5850,
+          "durationSec": 0.6,
+          "hash": "9a4233ecfc537501c116f34c9b8e66f3c8700243fb4e62a95337eef90fb00ff8",
+          "url": "/audio/sfx/impact_rock_2.webm?v=9a4233ec",
+          "urlFallback": "/audio/sfx/impact_rock_2.m4a?v=9a4233ec"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_steel": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 2992,
+          "durationSec": 0.269,
+          "hash": "675b9b9014b3878a7912c029cdb697a093fac9e167cb8f56391a4978d7e76132",
+          "url": "/audio/sfx/impact_steel_1.webm?v=675b9b90",
+          "urlFallback": "/audio/sfx/impact_steel_1.m4a?v=675b9b90"
+        },
+        {
+          "bytes": 3834,
+          "durationSec": 0.356,
+          "hash": "9487b2b3c42f3646bf7cece961e6a5681d78f873096ff5e29b97a319222b28fc",
+          "url": "/audio/sfx/impact_steel_2.webm?v=9487b2b3",
+          "urlFallback": "/audio/sfx/impact_steel_2.m4a?v=9487b2b3"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "impact_water": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5740,
+          "durationSec": 0.6,
+          "hash": "43359fff7643a5cc867c459c071c0dbf0781ac3d9509c69c594d6fdec4e3cd89",
+          "url": "/audio/sfx/impact_water_1.webm?v=43359fff",
+          "urlFallback": "/audio/sfx/impact_water_1.m4a?v=43359fff"
+        },
+        {
+          "bytes": 5849,
+          "durationSec": 0.6,
+          "hash": "ee5a9824b5548030380466196dcf8295645e7151a78b7e3723e84796443cef9d",
+          "url": "/audio/sfx/impact_water_2.webm?v=ee5a9824",
+          "urlFallback": "/audio/sfx/impact_water_2.m4a?v=ee5a9824"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 3
+    },
+    "lens_hum": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 25994,
+          "durationSec": 2.994,
+          "hash": "2a8162d36130933fa5b49df359f70de007361c7faa82975846fd71c9ef7758f0",
+          "url": "/audio/sfx/lens_hum_1.webm?v=2a8162d3",
+          "urlFallback": "/audio/sfx/lens_hum_1.m4a?v=2a8162d3"
+        }
+      ],
+      "gainDb": -8,
+      "maxConcurrent": 1
+    },
+    "lore_tablet": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 17505,
+          "durationSec": 2,
+          "hash": "a0eb3acfe6f6dd0c31dd8b6c9d31a589fd8d64aaeba40c2efa4cf2876f8c3926",
+          "url": "/audio/sfx/lore_tablet_1.webm?v=a0eb3acf",
+          "urlFallback": "/audio/sfx/lore_tablet_1.m4a?v=a0eb3acf"
+        }
+      ],
+      "gainDb": -10,
+      "maxConcurrent": 1
+    },
+    "move_bug": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 7530,
+          "durationSec": 0.8,
+          "hash": "7668918e70c2fc7ce38ad5d19d6de276e6488425867fb5fddc3e00eb44643a77",
+          "url": "/audio/sfx/move_bug_1.webm?v=7668918e",
+          "urlFallback": "/audio/sfx/move_bug_1.m4a?v=7668918e"
+        },
+        {
+          "bytes": 7194,
+          "durationSec": 0.755,
+          "hash": "7bee955070c71caaca3cc88dd0e990cb79f5dbbe8a58c397f1ec004f85aa7b0e",
+          "url": "/audio/sfx/move_bug_2.webm?v=7bee9550",
+          "urlFallback": "/audio/sfx/move_bug_2.m4a?v=7bee9550"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_cosmic": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 7529,
+          "durationSec": 0.8,
+          "hash": "682b2ed59160f5dd92b089856e5c6507455782f9574154f6b58b7bc35afb0b03",
+          "url": "/audio/sfx/move_cosmic_1.webm?v=682b2ed5",
+          "urlFallback": "/audio/sfx/move_cosmic_1.m4a?v=682b2ed5"
+        },
+        {
+          "bytes": 7194,
+          "durationSec": 0.755,
+          "hash": "4a382f6d0a129ac6ce9323ba868aa624678c1438d9a7061e42de310661775f80",
+          "url": "/audio/sfx/move_cosmic_2.webm?v=4a382f6d",
+          "urlFallback": "/audio/sfx/move_cosmic_2.m4a?v=4a382f6d"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_dark": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 7502,
+          "durationSec": 0.8,
+          "hash": "e4eb4399c48f3be86265ba97ab080154d975f95dad47c86693145a7e5474ace0",
+          "url": "/audio/sfx/move_dark_1.webm?v=e4eb4399",
+          "urlFallback": "/audio/sfx/move_dark_1.m4a?v=e4eb4399"
+        },
+        {
+          "bytes": 7194,
+          "durationSec": 0.755,
+          "hash": "ef617bd112f516b4aa3aa13cb936a2dc307fd074b5e155764df212d7f984b422",
+          "url": "/audio/sfx/move_dark_2.webm?v=ef617bd1",
+          "urlFallback": "/audio/sfx/move_dark_2.m4a?v=ef617bd1"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_dragon": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 6522,
+          "durationSec": 0.677,
+          "hash": "18bedd9953db1312344dc9ea1fb7cb472b00c603f10b04e34424107b96e49829",
+          "url": "/audio/sfx/move_dragon_1.webm?v=18bedd99",
+          "urlFallback": "/audio/sfx/move_dragon_1.m4a?v=18bedd99"
+        },
+        {
+          "bytes": 6186,
+          "durationSec": 0.639,
+          "hash": "0aeaba0f6dd992194831cb2e377ce3c5a4b238691d97fdef83db668aff87dec3",
+          "url": "/audio/sfx/move_dragon_2.webm?v=0aeaba0f",
+          "urlFallback": "/audio/sfx/move_dragon_2.m4a?v=0aeaba0f"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_electric": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 7479,
+          "durationSec": 0.8,
+          "hash": "267e6a74f70b8dcfa2421b05b4e36eb5761f80624b67cea4218df51e2400f9f5",
+          "url": "/audio/sfx/move_electric_1.webm?v=267e6a74",
+          "urlFallback": "/audio/sfx/move_electric_1.m4a?v=267e6a74"
+        },
+        {
+          "bytes": 3763,
+          "durationSec": 0.367,
+          "hash": "588a8e5bbdd518ec025fa12e3d97ab8714fc97bd8376791e45241b5625788619",
+          "url": "/audio/sfx/move_electric_2.webm?v=588a8e5b",
+          "urlFallback": "/audio/sfx/move_electric_2.m4a?v=588a8e5b"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_fairy": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 7430,
+          "durationSec": 0.8,
+          "hash": "6d5cac878e17486971c47c49f2b55ca948a4bfb0381d188125d820138ed5382f",
+          "url": "/audio/sfx/move_fairy_1.webm?v=6d5cac87",
+          "urlFallback": "/audio/sfx/move_fairy_1.m4a?v=6d5cac87"
+        },
+        {
+          "bytes": 7530,
+          "durationSec": 0.8,
+          "hash": "56ee2faf9fc07a61d822c7a330c84847621c872dbc21534f9e0d3446f04cc210",
+          "url": "/audio/sfx/move_fairy_2.webm?v=56ee2faf",
+          "urlFallback": "/audio/sfx/move_fairy_2.m4a?v=56ee2faf"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_fighting": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 1986,
+          "durationSec": 0.139,
+          "hash": "36397b4f8b927e3ec52636484a8228720b37e51564d96cd617988cc4dafeb584",
+          "url": "/audio/sfx/move_fighting_1.webm?v=36397b4f",
+          "urlFallback": "/audio/sfx/move_fighting_1.m4a?v=36397b4f"
+        },
+        {
+          "bytes": 1818,
+          "durationSec": 0.12,
+          "hash": "c5220355472c28859e69668b8ac6b7a9d42f5eee2ad87eb84d30959ebc83c35d",
+          "url": "/audio/sfx/move_fighting_2.webm?v=c5220355",
+          "urlFallback": "/audio/sfx/move_fighting_2.m4a?v=c5220355"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_fire": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 7416,
+          "durationSec": 0.8,
+          "hash": "5dafbc570d80fb0ba30b6ad8e8faab0e68f220a3a6ec94d952e62739596bbb55",
+          "url": "/audio/sfx/move_fire_1.webm?v=5dafbc57",
+          "urlFallback": "/audio/sfx/move_fire_1.m4a?v=5dafbc57"
+        },
+        {
+          "bytes": 7530,
+          "durationSec": 0.8,
+          "hash": "e54b5315e4c2baff4831aa95db572ff283865dfa1bc2ac9b47486d68c0aed7a3",
+          "url": "/audio/sfx/move_fire_2.webm?v=e54b5315",
+          "urlFallback": "/audio/sfx/move_fire_2.m4a?v=e54b5315"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_flying": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 7276,
+          "durationSec": 0.787,
+          "hash": "e7bf94160c67d0ed78caeed04e4b24d8dd47064842904432fd35c5bc5fd2cc59",
+          "url": "/audio/sfx/move_flying_1.webm?v=e7bf9416",
+          "urlFallback": "/audio/sfx/move_flying_1.m4a?v=e7bf9416"
+        },
+        {
+          "bytes": 6931,
+          "durationSec": 0.743,
+          "hash": "b202968ac4a6f97bd038ddd574a5d1907c9d18e9beeef90845104d9c45ab6134",
+          "url": "/audio/sfx/move_flying_2.webm?v=b202968a",
+          "urlFallback": "/audio/sfx/move_flying_2.m4a?v=b202968a"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_ghost": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 7530,
+          "durationSec": 0.796,
+          "hash": "b06e93e36f30aa6291a424d80fd28a1cd8ae39cfffe0a963df0cc0c0dbfa4c39",
+          "url": "/audio/sfx/move_ghost_1.webm?v=b06e93e3",
+          "urlFallback": "/audio/sfx/move_ghost_1.m4a?v=b06e93e3"
+        },
+        {
+          "bytes": 7425,
+          "durationSec": 0.8,
+          "hash": "18b678c5d11c48ced4c339de0017132412882fae33ca2f401841d15c1b424dde",
+          "url": "/audio/sfx/move_ghost_2.webm?v=18b678c5",
+          "urlFallback": "/audio/sfx/move_ghost_2.m4a?v=18b678c5"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_grass": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 7192,
+          "durationSec": 0.761,
+          "hash": "416209acc2dc30a940e1977535f75bc7508f88428571d65d80c0c941ee31f1ab",
+          "url": "/audio/sfx/move_grass_1.webm?v=416209ac",
+          "urlFallback": "/audio/sfx/move_grass_1.m4a?v=416209ac"
+        },
+        {
+          "bytes": 6856,
+          "durationSec": 0.718,
+          "hash": "4a4b05435c82fe8368037e5f49e8dd1f1a1c83519ee15e80adc64ca9418c47cc",
+          "url": "/audio/sfx/move_grass_2.webm?v=4a4b0543",
+          "urlFallback": "/audio/sfx/move_grass_2.m4a?v=4a4b0543"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_ground": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 7522,
+          "durationSec": 0.8,
+          "hash": "2269455d058ed671fbc4c931bf31b48f00906774514d14dedb1d6b772c154cb6",
+          "url": "/audio/sfx/move_ground_1.webm?v=2269455d",
+          "urlFallback": "/audio/sfx/move_ground_1.m4a?v=2269455d"
+        },
+        {
+          "bytes": 7452,
+          "durationSec": 0.8,
+          "hash": "2eac4a694609c01bae3c69976f8378f0851ef829b14789b9919efe0c70403ce8",
+          "url": "/audio/sfx/move_ground_2.webm?v=2eac4a69",
+          "urlFallback": "/audio/sfx/move_ground_2.m4a?v=2eac4a69"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_ice": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 7523,
+          "durationSec": 0.8,
+          "hash": "a967eeffcf8eb21e8f2739a7e380bc4b7ccfe2f0b74425c13dc3399a9e94750d",
+          "url": "/audio/sfx/move_ice_1.webm?v=a967eeff",
+          "urlFallback": "/audio/sfx/move_ice_1.m4a?v=a967eeff"
+        },
+        {
+          "bytes": 7194,
+          "durationSec": 0.755,
+          "hash": "8f1d839f6b35be267bd7ed806859221e2fc625d289d1c2c4a5e84fdea3739219",
+          "url": "/audio/sfx/move_ice_2.webm?v=8f1d839f",
+          "urlFallback": "/audio/sfx/move_ice_2.m4a?v=8f1d839f"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_normal": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 2397,
+          "durationSec": 0.212,
+          "hash": "caf82618d1f350f4da8f86d3970d52285e66570c35aaadb7627e82b70bffbb82",
+          "url": "/audio/sfx/move_normal_1.webm?v=caf82618",
+          "urlFallback": "/audio/sfx/move_normal_1.m4a?v=caf82618"
+        },
+        {
+          "bytes": 6077,
+          "durationSec": 0.635,
+          "hash": "1c7c14e51bd9ef0523e7cbfb3f9a1cad26ac2cc2a47f2fb782e96c58ddcf17d5",
+          "url": "/audio/sfx/move_normal_2.webm?v=1c7c14e5",
+          "urlFallback": "/audio/sfx/move_normal_2.m4a?v=1c7c14e5"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_poison": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 5215,
+          "durationSec": 0.547,
+          "hash": "a49c5a0e217b06bb667a57cb3cad13b2cd12db5df6cf91390672e4414631ef15",
+          "url": "/audio/sfx/move_poison_1.webm?v=a49c5a0e",
+          "urlFallback": "/audio/sfx/move_poison_1.m4a?v=a49c5a0e"
+        },
+        {
+          "bytes": 4338,
+          "durationSec": 0.418,
+          "hash": "8d0c0cf31e60ceae013813da567ef33856adddfa96e9482efebcdb70e1a5342c",
+          "url": "/audio/sfx/move_poison_2.webm?v=8d0c0cf3",
+          "urlFallback": "/audio/sfx/move_poison_2.m4a?v=8d0c0cf3"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_psychic": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4673,
+          "durationSec": 0.466,
+          "hash": "98e73c011fadd65ddb5ed87ae8a58d1fc9032dda9baf017afcfc71ff04f5204c",
+          "url": "/audio/sfx/move_psychic_1.webm?v=98e73c01",
+          "urlFallback": "/audio/sfx/move_psychic_1.m4a?v=98e73c01"
+        },
+        {
+          "bytes": 2994,
+          "durationSec": 0.258,
+          "hash": "47b4fa10ec9c838160e03a67dc8662fbb7849af79dc0eb31cb33055510c03075",
+          "url": "/audio/sfx/move_psychic_2.webm?v=47b4fa10",
+          "urlFallback": "/audio/sfx/move_psychic_2.m4a?v=47b4fa10"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_rock": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 6345,
+          "durationSec": 0.665,
+          "hash": "b6896f91530f7a927587f2b90e7c63d7e987ac73e28285a5a8ca586918da163f",
+          "url": "/audio/sfx/move_rock_1.webm?v=b6896f91",
+          "urlFallback": "/audio/sfx/move_rock_1.m4a?v=b6896f91"
+        },
+        {
+          "bytes": 6687,
+          "durationSec": 0.698,
+          "hash": "8e2ba47a31c4323b6529dc86ddbe6d1f982d403af259104e32ec1d31318f1ce2",
+          "url": "/audio/sfx/move_rock_2.webm?v=8e2ba47a",
+          "urlFallback": "/audio/sfx/move_rock_2.m4a?v=8e2ba47a"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_steel": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4761,
+          "durationSec": 0.541,
+          "hash": "ea6e873b2a4d6315cd193cff912ab2ed2419da6e9914c38d2368122b7fbaeb27",
+          "url": "/audio/sfx/move_steel_1.webm?v=ea6e873b",
+          "urlFallback": "/audio/sfx/move_steel_1.m4a?v=ea6e873b"
+        },
+        {
+          "bytes": 3589,
+          "durationSec": 0.352,
+          "hash": "b7c44bc61fd036f729a7615f288c2f7b0ce15709aeda90f25c5d19f36150700a",
+          "url": "/audio/sfx/move_steel_2.webm?v=b7c44bc6",
+          "urlFallback": "/audio/sfx/move_steel_2.m4a?v=b7c44bc6"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "move_water": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 7530,
+          "durationSec": 0.8,
+          "hash": "09802449be14129e2563120794ef2c99a9bf21e5a481457c65d46fef215dc032",
+          "url": "/audio/sfx/move_water_1.webm?v=09802449",
+          "urlFallback": "/audio/sfx/move_water_1.m4a?v=09802449"
+        },
+        {
+          "bytes": 7194,
+          "durationSec": 0.755,
+          "hash": "93240b4257c11aa291fa339c5c918bcc700ffd78a95cbb3e27d2bd93278907c9",
+          "url": "/audio/sfx/move_water_2.webm?v=93240b42",
+          "urlFallback": "/audio/sfx/move_water_2.m4a?v=93240b42"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "orb_break": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 8369,
+          "durationSec": 0.9,
+          "hash": "85368fc7f93eb599be2937dab9cb7595983489ac78fdfcb0e92b6ea4d9c8facf",
+          "url": "/audio/sfx/orb_break_1.webm?v=85368fc7",
+          "urlFallback": "/audio/sfx/orb_break_1.m4a?v=85368fc7"
+        },
+        {
+          "bytes": 8365,
+          "durationSec": 0.9,
+          "hash": "3554cb1f4d524763eeea109a9e4982a1d047ad9bb71360d6fa3426140724107a",
+          "url": "/audio/sfx/orb_break_2.webm?v=3554cb1f",
+          "urlFallback": "/audio/sfx/orb_break_2.m4a?v=3554cb1f"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 1
+    },
+    "orb_catch": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 8141,
+          "durationSec": 0.889,
+          "hash": "f7ec8007d8508a330133d117232c3faf4a657e4716febde676753fb419c98963",
+          "url": "/audio/sfx/orb_catch_1.webm?v=f7ec8007",
+          "urlFallback": "/audio/sfx/orb_catch_1.m4a?v=f7ec8007"
+        }
+      ],
+      "gainDb": -2,
+      "maxConcurrent": 1
+    },
+    "orb_shake": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4988,
+          "durationSec": 0.5,
+          "hash": "ee182ab8eef4210d18b02305b29864e6ad094bdb168f3a1a97582836ccc76b59",
+          "url": "/audio/sfx/orb_shake_1.webm?v=ee182ab8",
+          "urlFallback": "/audio/sfx/orb_shake_1.m4a?v=ee182ab8"
+        },
+        {
+          "bytes": 4939,
+          "durationSec": 0.5,
+          "hash": "534eb4745776e457568d94a1599f81338c9bf27ce54fa207760f4a5b60192a97",
+          "url": "/audio/sfx/orb_shake_2.webm?v=534eb474",
+          "urlFallback": "/audio/sfx/orb_shake_2.m4a?v=534eb474"
+        },
+        {
+          "bytes": 4916,
+          "durationSec": 0.5,
+          "hash": "bea658e7498405a547d3e7b5b5c2986be32f23d5b5aac9b043ddad8e48e4bca4",
+          "url": "/audio/sfx/orb_shake_3.webm?v=bea658e7",
+          "urlFallback": "/audio/sfx/orb_shake_3.m4a?v=bea658e7"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 1
+    },
+    "orb_throw": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 6705,
+          "durationSec": 0.736,
+          "hash": "c22a6823fb7aaf5f1b0169ef329949722d7937ca16bcbe72878db8f1f17e8f1d",
+          "url": "/audio/sfx/orb_throw_1.webm?v=c22a6823",
+          "urlFallback": "/audio/sfx/orb_throw_1.m4a?v=c22a6823"
+        },
+        {
+          "bytes": 6687,
+          "durationSec": 0.695,
+          "hash": "624bd2b36c156c109288bc8553caf6203f15de17c92ca48bfe2013e823cb44c7",
+          "url": "/audio/sfx/orb_throw_2.webm?v=624bd2b3",
+          "urlFallback": "/audio/sfx/orb_throw_2.m4a?v=624bd2b3"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 2
+    },
+    "pylon_crackle": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 8770,
+          "durationSec": 0.954,
+          "hash": "602ce61b336f27798cf2f55bdf3d478976e498b01a6ccc8361b224ab6d35424a",
+          "url": "/audio/sfx/pylon_crackle_1.webm?v=602ce61b",
+          "urlFallback": "/audio/sfx/pylon_crackle_1.m4a?v=602ce61b"
+        },
+        {
+          "bytes": 8803,
+          "durationSec": 0.956,
+          "hash": "80248d0b0be620298beed689183e0af214016d73da44773f3a482bc95f9be244",
+          "url": "/audio/sfx/pylon_crackle_2.webm?v=80248d0b",
+          "urlFallback": "/audio/sfx/pylon_crackle_2.m4a?v=80248d0b"
+        }
+      ],
+      "gainDb": -10,
+      "maxConcurrent": 2
+    },
+    "raid_phase": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 17553,
+          "durationSec": 2,
+          "hash": "f0ee9f4bbd8b26afedf75d37d0db05d646046b7671cdcfe5b048178f2fac5411",
+          "url": "/audio/sfx/raid_phase_1.webm?v=f0ee9f4b",
+          "urlFallback": "/audio/sfx/raid_phase_1.m4a?v=f0ee9f4b"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 1
+    },
+    "raid_roar": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 21305,
+          "durationSec": 2.453,
+          "hash": "28dea1d15087047b515b54f30069d6b4858aabe9de31b9c179f06ecb1472103b",
+          "url": "/audio/sfx/raid_roar_1.webm?v=28dea1d1",
+          "urlFallback": "/audio/sfx/raid_roar_1.m4a?v=28dea1d1"
+        }
+      ],
+      "gainDb": 0,
+      "maxConcurrent": 1
+    },
+    "spawn_shimmer": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 10890,
+          "durationSec": 1.2,
+          "hash": "1c3cde41450f3ece3e25059595d0929e4f68377f227db450b46fd2ec9448f74f",
+          "url": "/audio/sfx/spawn_shimmer_1.webm?v=1c3cde41",
+          "urlFallback": "/audio/sfx/spawn_shimmer_1.m4a?v=1c3cde41"
+        },
+        {
+          "bytes": 10890,
+          "durationSec": 1.2,
+          "hash": "c002ed47c7b00f0fc6b0ad600dbcb20c74c2544a096b4945c76189ab80fcaf17",
+          "url": "/audio/sfx/spawn_shimmer_2.webm?v=c002ed47",
+          "urlFallback": "/audio/sfx/spawn_shimmer_2.m4a?v=c002ed47"
+        }
+      ],
+      "gainDb": -10,
+      "maxConcurrent": 3
+    },
+    "splash": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 6559,
+          "durationSec": 0.709,
+          "hash": "24640abf25b931886093e342e66d36c37a204984268b35742737d1bf4c24e80b",
+          "url": "/audio/sfx/splash_1.webm?v=24640abf",
+          "urlFallback": "/audio/sfx/splash_1.m4a?v=24640abf"
+        },
+        {
+          "bytes": 7189,
+          "durationSec": 0.757,
+          "hash": "32633c751180e17e76cba808815f7f93eba0a5d66b84608ec2c4d86e8cc94877",
+          "url": "/audio/sfx/splash_2.webm?v=32633c75",
+          "urlFallback": "/audio/sfx/splash_2.m4a?v=32633c75"
+        }
+      ],
+      "gainDb": -8,
+      "maxConcurrent": 2
+    },
+    "spotted": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 2993,
+          "durationSec": 0.271,
+          "hash": "1ea9c4f01e01bf045019f7603135a1a34474af6112b1c116b5b997801d9dd7a8",
+          "url": "/audio/sfx/spotted_1.webm?v=1ea9c4f0",
+          "urlFallback": "/audio/sfx/spotted_1.m4a?v=1ea9c4f0"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 1
+    },
+    "stage_down": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 6113,
+          "durationSec": 0.653,
+          "hash": "fcb0f1448aa6be7ed187ddab76998b772d96391bee30291b2eede01762d0dea0",
+          "url": "/audio/sfx/stage_down_1.webm?v=fcb0f144",
+          "urlFallback": "/audio/sfx/stage_down_1.m4a?v=fcb0f144"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "stage_up": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 4170,
+          "durationSec": 0.405,
+          "hash": "d0efcd10f64748f8333f3b131933eea37cb78a255afdf2d47bc560c07a7c8a80",
+          "url": "/audio/sfx/stage_up_1.webm?v=d0efcd10",
+          "urlFallback": "/audio/sfx/stage_up_1.m4a?v=d0efcd10"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "status_burn": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 9198,
+          "durationSec": 1,
+          "hash": "bd623294eaf4cbe3e73f76ee721372eaa622dc31139385037e8493ceac64a31e",
+          "url": "/audio/sfx/status_burn_1.webm?v=bd623294",
+          "urlFallback": "/audio/sfx/status_burn_1.m4a?v=bd623294"
+        },
+        {
+          "bytes": 6183,
+          "durationSec": 0.651,
+          "hash": "5195207881513bc1c16a1859c67983ae6abcbb87eb310c9fd6bb9c476c4a1aa4",
+          "url": "/audio/sfx/status_burn_2.webm?v=51952078",
+          "urlFallback": "/audio/sfx/status_burn_2.m4a?v=51952078"
+        }
+      ],
+      "gainDb": -5,
+      "maxConcurrent": 2
+    },
+    "status_confuse": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 9164,
+          "durationSec": 1,
+          "hash": "a776b41c4cd40c908e134a99b1246759a8a524dac3acf13fef19a5716ba9fc46",
+          "url": "/audio/sfx/status_confuse_1.webm?v=a776b41c",
+          "urlFallback": "/audio/sfx/status_confuse_1.m4a?v=a776b41c"
+        },
+        {
+          "bytes": 9092,
+          "durationSec": 1,
+          "hash": "fa013323224b073a607b0388897ffdeead2e1e323b42f334d76f5748bc4710cd",
+          "url": "/audio/sfx/status_confuse_2.webm?v=fa013323",
+          "urlFallback": "/audio/sfx/status_confuse_2.m4a?v=fa013323"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "status_freeze": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 9062,
+          "durationSec": 1,
+          "hash": "5aa9c67f0f62e9f1a52866f30ad92b50ca58a27eeba7bfb609784c4ec45dffaa",
+          "url": "/audio/sfx/status_freeze_1.webm?v=5aa9c67f",
+          "urlFallback": "/audio/sfx/status_freeze_1.m4a?v=5aa9c67f"
+        },
+        {
+          "bytes": 8597,
+          "durationSec": 0.949,
+          "hash": "2a794db2218c645cded3576dac19e40505f245b3fb348eb3f22c99b816b7be86",
+          "url": "/audio/sfx/status_freeze_2.webm?v=2a794db2",
+          "urlFallback": "/audio/sfx/status_freeze_2.m4a?v=2a794db2"
+        }
+      ],
+      "gainDb": -5,
+      "maxConcurrent": 2
+    },
+    "status_heal": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 10491,
+          "durationSec": 1.167,
+          "hash": "9b390b95fc2453ab1d0dbbf2a330eef6a9b70c7188fa8139048e1fe941277a29",
+          "url": "/audio/sfx/status_heal_1.webm?v=9b390b95",
+          "urlFallback": "/audio/sfx/status_heal_1.m4a?v=9b390b95"
+        },
+        {
+          "bytes": 9943,
+          "durationSec": 1.111,
+          "hash": "76423fe60de63d200258b60c235481f6f6556986beddd64b0bb624477e7adefa",
+          "url": "/audio/sfx/status_heal_2.webm?v=76423fe6",
+          "urlFallback": "/audio/sfx/status_heal_2.m4a?v=76423fe6"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "status_paralyze": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 8366,
+          "durationSec": 0.913,
+          "hash": "a0f4783309c665338d12659ccdfbff8d80f5b252bd50ad152a72a46bcd468b21",
+          "url": "/audio/sfx/status_paralyze_1.webm?v=a0f47833",
+          "urlFallback": "/audio/sfx/status_paralyze_1.m4a?v=a0f47833"
+        },
+        {
+          "bytes": 9210,
+          "durationSec": 1,
+          "hash": "83f65c24445fc5290223a49c7246903bbfad12ecb17b8f7d375dedd53092bc0d",
+          "url": "/audio/sfx/status_paralyze_2.webm?v=83f65c24",
+          "urlFallback": "/audio/sfx/status_paralyze_2.m4a?v=83f65c24"
+        }
+      ],
+      "gainDb": -5,
+      "maxConcurrent": 2
+    },
+    "status_poison": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 6687,
+          "durationSec": 0.71,
+          "hash": "be5c24d0568b93f912a1e220129c610f4b26b44c7357db74197bf3e3c442e249",
+          "url": "/audio/sfx/status_poison_1.webm?v=be5c24d0",
+          "urlFallback": "/audio/sfx/status_poison_1.m4a?v=be5c24d0"
+        },
+        {
+          "bytes": 6688,
+          "durationSec": 0.696,
+          "hash": "29d8f5a7afb919e173d60fa6360d0307ec5aa8bb1baa71b008005e6313558c88",
+          "url": "/audio/sfx/status_poison_2.webm?v=29d8f5a7",
+          "urlFallback": "/audio/sfx/status_poison_2.m4a?v=29d8f5a7"
+        }
+      ],
+      "gainDb": -5,
+      "maxConcurrent": 2
+    },
+    "status_sleep": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 9775,
+          "durationSec": 1.088,
+          "hash": "e5634ed889b8a58297bc55c319f5c89ad8c7a1d842a6bb7d63e45677ff253e6f",
+          "url": "/audio/sfx/status_sleep_1.webm?v=e5634ed8",
+          "urlFallback": "/audio/sfx/status_sleep_1.m4a?v=e5634ed8"
+        },
+        {
+          "bytes": 9272,
+          "durationSec": 1.027,
+          "hash": "f17db6cd89ec61c67e42a22ea573444b5685a16e3678179ea060c3454f0672ad",
+          "url": "/audio/sfx/status_sleep_2.webm?v=f17db6cd",
+          "urlFallback": "/audio/sfx/status_sleep_2.m4a?v=f17db6cd"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 2
+    },
+    "step_ash": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 3660,
+          "durationSec": 0.35,
+          "hash": "c1e37cbb0026ec9e08c78da0b0a7d4339eba4906915983188dc9016f0b5e1f03",
+          "url": "/audio/sfx/step_ash_1.webm?v=c1e37cbb",
+          "urlFallback": "/audio/sfx/step_ash_1.m4a?v=c1e37cbb"
+        },
+        {
+          "bytes": 3665,
+          "durationSec": 0.35,
+          "hash": "1a9569ee3ab1e73a6ce51f20e6f1c21c08398596f2712c95c4b894e13ba7d7a7",
+          "url": "/audio/sfx/step_ash_2.webm?v=1a9569ee",
+          "urlFallback": "/audio/sfx/step_ash_2.m4a?v=1a9569ee"
+        },
+        {
+          "bytes": 3664,
+          "durationSec": 0.35,
+          "hash": "85637705cd49c804c3927c82990d281b5596449254f5116f41c2d6ee8cf11958",
+          "url": "/audio/sfx/step_ash_3.webm?v=85637705",
+          "urlFallback": "/audio/sfx/step_ash_3.m4a?v=85637705"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 4
+    },
+    "step_dirt": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 2727,
+          "durationSec": 0.239,
+          "hash": "1b57d96f5798afc107d01fb1df319b60c4b4ff01950ea002071eb12128d9e0ff",
+          "url": "/audio/sfx/step_dirt_1.webm?v=1b57d96f",
+          "urlFallback": "/audio/sfx/step_dirt_1.m4a?v=1b57d96f"
+        },
+        {
+          "bytes": 3071,
+          "durationSec": 0.282,
+          "hash": "a8aa53997e3b4ff8b180a2360e157816fbc3703cf80d1c0f49ef21eb90c325d2",
+          "url": "/audio/sfx/step_dirt_2.webm?v=a8aa5399",
+          "urlFallback": "/audio/sfx/step_dirt_2.m4a?v=a8aa5399"
+        },
+        {
+          "bytes": 2717,
+          "durationSec": 0.242,
+          "hash": "7bc71bf6572b885dc46750e79c7c5a8b3133e53baed27a698bb76f45a1988bb5",
+          "url": "/audio/sfx/step_dirt_3.webm?v=7bc71bf6",
+          "urlFallback": "/audio/sfx/step_dirt_3.m4a?v=7bc71bf6"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 4
+    },
+    "step_flat": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 2153,
+          "durationSec": 0.167,
+          "hash": "c70531bcf268db151b3d731ca74b4537c50fddecb33e0d8007fdc9d6473fe2d8",
+          "url": "/audio/sfx/step_flat_1.webm?v=c70531bc",
+          "urlFallback": "/audio/sfx/step_flat_1.m4a?v=c70531bc"
+        },
+        {
+          "bytes": 1986,
+          "durationSec": 0.142,
+          "hash": "8d7980286b39d84ab4dd28f2d58bf341601cedcd0a19db5453743c2ae9ac191d",
+          "url": "/audio/sfx/step_flat_2.webm?v=8d798028",
+          "urlFallback": "/audio/sfx/step_flat_2.m4a?v=8d798028"
+        },
+        {
+          "bytes": 1986,
+          "durationSec": 0.142,
+          "hash": "8d7980286b39d84ab4dd28f2d58bf341601cedcd0a19db5453743c2ae9ac191d",
+          "url": "/audio/sfx/step_flat_3.webm?v=8d798028",
+          "urlFallback": "/audio/sfx/step_flat_3.m4a?v=8d798028"
+        }
+      ],
+      "gainDb": -16,
+      "maxConcurrent": 4
+    },
+    "step_grass": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 3665,
+          "durationSec": 0.35,
+          "hash": "880569797472600966cb693ae62c4e6645cce5b6f755d75c7ef13d121da7a132",
+          "url": "/audio/sfx/step_grass_1.webm?v=88056979",
+          "urlFallback": "/audio/sfx/step_grass_1.m4a?v=88056979"
+        },
+        {
+          "bytes": 3664,
+          "durationSec": 0.35,
+          "hash": "f413d7ac216c50d7e2d20b77bc4d4a1ee75521b3293f53aa587de9231611dc2c",
+          "url": "/audio/sfx/step_grass_2.webm?v=f413d7ac",
+          "urlFallback": "/audio/sfx/step_grass_2.m4a?v=f413d7ac"
+        },
+        {
+          "bytes": 3664,
+          "durationSec": 0.35,
+          "hash": "309f7660e2f73b177adb60d2d404bc218ddc78651ae1f49bce98fefc7ee2b8cd",
+          "url": "/audio/sfx/step_grass_3.webm?v=309f7660",
+          "urlFallback": "/audio/sfx/step_grass_3.m4a?v=309f7660"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 4
+    },
+    "step_gravel": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 3542,
+          "durationSec": 0.35,
+          "hash": "fa6600bd38a344d66439ab0031e3d3c33e7a8e40efbdabce1ad47eab979d2c8d",
+          "url": "/audio/sfx/step_gravel_1.webm?v=fa6600bd",
+          "urlFallback": "/audio/sfx/step_gravel_1.m4a?v=fa6600bd"
+        },
+        {
+          "bytes": 3665,
+          "durationSec": 0.35,
+          "hash": "e308615b2bc4609021013ee6a72d931963ccbba2a97aded3f60d807077ab7402",
+          "url": "/audio/sfx/step_gravel_2.webm?v=e308615b",
+          "urlFallback": "/audio/sfx/step_gravel_2.m4a?v=e308615b"
+        },
+        {
+          "bytes": 3622,
+          "durationSec": 0.35,
+          "hash": "9d9f2d64ff35b9329488b2d3d25113a707a8f16ec36f053ea46dbad6844e5fe1",
+          "url": "/audio/sfx/step_gravel_3.webm?v=9d9f2d64",
+          "urlFallback": "/audio/sfx/step_gravel_3.m4a?v=9d9f2d64"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 4
+    },
+    "step_metal": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 2875,
+          "durationSec": 0.271,
+          "hash": "2edb07fbf8dc5130a27c0cb9bbb482318f9718374a0741e8c466b03e6afab31a",
+          "url": "/audio/sfx/step_metal_1.webm?v=2edb07fb",
+          "urlFallback": "/audio/sfx/step_metal_1.m4a?v=2edb07fb"
+        },
+        {
+          "bytes": 3569,
+          "durationSec": 0.35,
+          "hash": "d56d8b1080d638aaf2b0e71de1282b992e7b01c715434a01ef8023f562b4c7f3",
+          "url": "/audio/sfx/step_metal_2.webm?v=d56d8b10",
+          "urlFallback": "/audio/sfx/step_metal_2.m4a?v=d56d8b10"
+        },
+        {
+          "bytes": 2489,
+          "durationSec": 0.211,
+          "hash": "cb06ddde581c17738ceed6524eae0c2150f643d1731792ce048c056dc4e7932b",
+          "url": "/audio/sfx/step_metal_3.webm?v=cb06ddde",
+          "urlFallback": "/audio/sfx/step_metal_3.m4a?v=cb06ddde"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 4
+    },
+    "step_salt": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 3390,
+          "durationSec": 0.332,
+          "hash": "9fc82375a5f1768642c9e9211b83f6c5debc58bd98dc2cca25f17d55074ba158",
+          "url": "/audio/sfx/step_salt_1.webm?v=9fc82375",
+          "urlFallback": "/audio/sfx/step_salt_1.m4a?v=9fc82375"
+        },
+        {
+          "bytes": 3374,
+          "durationSec": 0.332,
+          "hash": "20504cf87169a6ed57d7df42260a62076740e194e48baa0df77fdc261b51e49f",
+          "url": "/audio/sfx/step_salt_2.webm?v=20504cf8",
+          "urlFallback": "/audio/sfx/step_salt_2.m4a?v=20504cf8"
+        },
+        {
+          "bytes": 3390,
+          "durationSec": 0.332,
+          "hash": "1e10985945864abce9662937c1797c760eceaffc39fc94d55acac1cf02877227",
+          "url": "/audio/sfx/step_salt_3.webm?v=1e109859",
+          "urlFallback": "/audio/sfx/step_salt_3.m4a?v=1e109859"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 4
+    },
+    "step_sand": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 3665,
+          "durationSec": 0.35,
+          "hash": "3da6f18a7a59a8570a9040fe4a2d914eb616ec11e114d9183f76adfde8491718",
+          "url": "/audio/sfx/step_sand_1.webm?v=3da6f18a",
+          "urlFallback": "/audio/sfx/step_sand_1.m4a?v=3da6f18a"
+        },
+        {
+          "bytes": 3665,
+          "durationSec": 0.35,
+          "hash": "fc612e1239207d0a6e186807fb9f6ff6361f92b233c17f8e8937db169d7b3484",
+          "url": "/audio/sfx/step_sand_2.webm?v=fc612e12",
+          "urlFallback": "/audio/sfx/step_sand_2.m4a?v=fc612e12"
+        },
+        {
+          "bytes": 3664,
+          "durationSec": 0.35,
+          "hash": "8e1e1ecec94db349670ccbabf227237c55da154b6400bba23bd082cb86f5222a",
+          "url": "/audio/sfx/step_sand_3.webm?v=8e1e1ece",
+          "urlFallback": "/audio/sfx/step_sand_3.m4a?v=8e1e1ece"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 4
+    },
+    "step_snow": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 3665,
+          "durationSec": 0.35,
+          "hash": "145ac4580e0b286f4d23ab9e2d4e9da26bbb2b657f926b1c7f54bfe04456800d",
+          "url": "/audio/sfx/step_snow_1.webm?v=145ac458",
+          "urlFallback": "/audio/sfx/step_snow_1.m4a?v=145ac458"
+        },
+        {
+          "bytes": 3664,
+          "durationSec": 0.35,
+          "hash": "bf71356eeaa107ab661008ed92e0c132cdfac7baad987dde64554db253cac104",
+          "url": "/audio/sfx/step_snow_2.webm?v=bf71356e",
+          "urlFallback": "/audio/sfx/step_snow_2.m4a?v=bf71356e"
+        },
+        {
+          "bytes": 3665,
+          "durationSec": 0.35,
+          "hash": "7930da9f99ce88db764da5f312f16d53ae2db30e5cfd78a373a46bb199843c9f",
+          "url": "/audio/sfx/step_snow_3.webm?v=7930da9f",
+          "urlFallback": "/audio/sfx/step_snow_3.m4a?v=7930da9f"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 4
+    },
+    "step_stone": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 1650,
+          "durationSec": 0.103,
+          "hash": "6f03c387763c7a027dbf535c468e44e3b7163752478ab32140fcf85d2c15ef47",
+          "url": "/audio/sfx/step_stone_1.webm?v=6f03c387",
+          "urlFallback": "/audio/sfx/step_stone_1.m4a?v=6f03c387"
+        },
+        {
+          "bytes": 1650,
+          "durationSec": 0.105,
+          "hash": "99e627e4d3e38abc09e9bf5496cd7dc489edcdae36f517b24f0ea0be59889e1f",
+          "url": "/audio/sfx/step_stone_2.webm?v=99e627e4",
+          "urlFallback": "/audio/sfx/step_stone_2.m4a?v=99e627e4"
+        },
+        {
+          "bytes": 1649,
+          "durationSec": 0.11,
+          "hash": "579c41d752163fe5a71f32c64a81ed5a789f4919b677edfd297971e58abca976",
+          "url": "/audio/sfx/step_stone_3.webm?v=579c41d7",
+          "urlFallback": "/audio/sfx/step_stone_3.m4a?v=579c41d7"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 4
+    },
+    "step_water": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 3162,
+          "durationSec": 0.28,
+          "hash": "6679ce6d1f52eaf46b4cca4e70bc683949b0f86c7135b7537e98381fd38a8f7c",
+          "url": "/audio/sfx/step_water_1.webm?v=6679ce6d",
+          "urlFallback": "/audio/sfx/step_water_1.m4a?v=6679ce6d"
+        },
+        {
+          "bytes": 3665,
+          "durationSec": 0.35,
+          "hash": "7b767c714cd7d71a36bb754c16537f122e5e5d805d0615003b5828ad3342c11e",
+          "url": "/audio/sfx/step_water_2.webm?v=7b767c71",
+          "urlFallback": "/audio/sfx/step_water_2.m4a?v=7b767c71"
+        },
+        {
+          "bytes": 3545,
+          "durationSec": 0.35,
+          "hash": "20b3db8d889864ff8969efa51613216d9c115dabbd97427639c8c2ae8dd6eb82",
+          "url": "/audio/sfx/step_water_3.webm?v=20b3db8d",
+          "urlFallback": "/audio/sfx/step_water_3.m4a?v=20b3db8d"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 4
+    },
+    "step_wood": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 2993,
+          "durationSec": 0.271,
+          "hash": "5580b3e17ed3549f908d53adfab3bb39758d19d550623e1790d547bf73650718",
+          "url": "/audio/sfx/step_wood_1.webm?v=5580b3e1",
+          "urlFallback": "/audio/sfx/step_wood_1.m4a?v=5580b3e1"
+        },
+        {
+          "bytes": 2825,
+          "durationSec": 0.249,
+          "hash": "c2db49123cacfa8a16b01e9b39baae2972301a8759eb2be98d67cf8b5f9f542d",
+          "url": "/audio/sfx/step_wood_2.webm?v=c2db4912",
+          "urlFallback": "/audio/sfx/step_wood_2.m4a?v=c2db4912"
+        },
+        {
+          "bytes": 2825,
+          "durationSec": 0.249,
+          "hash": "af70ff556f488653e97efc3f7c5c27025c0a472912109bf5b6fe91f8f44db373",
+          "url": "/audio/sfx/step_wood_3.webm?v=af70ff55",
+          "urlFallback": "/audio/sfx/step_wood_3.m4a?v=af70ff55"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 4
+    },
+    "switch": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 6681,
+          "durationSec": 0.708,
+          "hash": "2e91b9f6e69af817ed88769a59793c413cab338676401e2af21899cff0dfea56",
+          "url": "/audio/sfx/switch_1.webm?v=2e91b9f6",
+          "urlFallback": "/audio/sfx/switch_1.m4a?v=2e91b9f6"
+        },
+        {
+          "bytes": 6302,
+          "durationSec": 0.668,
+          "hash": "f61aa94b9420ddffb954f6eb6be859d84dc21b1add4991ab78fff1393b79adbd",
+          "url": "/audio/sfx/switch_2.webm?v=f61aa94b",
+          "urlFallback": "/audio/sfx/switch_2.m4a?v=f61aa94b"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 2
+    },
+    "thunder": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 30170,
+          "durationSec": 3.5,
+          "hash": "481d1ef06dbce3d3851e04e585662e27cc93493c703009d7ca899fa2e252a552",
+          "url": "/audio/sfx/thunder_1.webm?v=481d1ef0",
+          "urlFallback": "/audio/sfx/thunder_1.m4a?v=481d1ef0"
+        },
+        {
+          "bytes": 30114,
+          "durationSec": 3.5,
+          "hash": "1226838a4493c00a6742f65913fd6c0a0d9952b1fa68fa93c4a3550b4f4e0c28",
+          "url": "/audio/sfx/thunder_2.webm?v=1226838a",
+          "urlFallback": "/audio/sfx/thunder_2.m4a?v=1226838a"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 1
+    },
+    "ui_back": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 1481,
+          "durationSec": 0.091,
+          "hash": "d8f3197ee52df8e4835d606893219faab93d059e48868c2b1ce47a88f67b3b89",
+          "url": "/audio/sfx/ui_back_1.webm?v=d8f3197e",
+          "urlFallback": "/audio/sfx/ui_back_1.m4a?v=d8f3197e"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 1
+    },
+    "ui_badge": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 10476,
+          "durationSec": 1.163,
+          "hash": "9c4be3ffa4f161fc31ac71364c1062471e775d1f3553c9416fc579b5688bfa1f",
+          "url": "/audio/sfx/ui_badge_1.webm?v=9c4be3ff",
+          "urlFallback": "/audio/sfx/ui_badge_1.m4a?v=9c4be3ff"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 1
+    },
+    "ui_click": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 1650,
+          "durationSec": 0.097,
+          "hash": "3cdd9e068db4103578b26568f27d3ee3a037390a2cb917f2ea2600001698a765",
+          "url": "/audio/sfx/ui_click_1.webm?v=3cdd9e06",
+          "urlFallback": "/audio/sfx/ui_click_1.m4a?v=3cdd9e06"
+        },
+        {
+          "bytes": 1482,
+          "durationSec": 0.083,
+          "hash": "18f12eb156970d5dfa7873d5882512043fbd77cc7effbaed8096e0d2d7192a8e",
+          "url": "/audio/sfx/ui_click_2.webm?v=18f12eb1",
+          "urlFallback": "/audio/sfx/ui_click_2.m4a?v=18f12eb1"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 2
+    },
+    "ui_close": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 2562,
+          "durationSec": 0.231,
+          "hash": "9e6e2ddd07e0d925af019414456174e5e5f7e5b229ec65b37a665a4b7351f32f",
+          "url": "/audio/sfx/ui_close_1.webm?v=9e6e2ddd",
+          "urlFallback": "/audio/sfx/ui_close_1.m4a?v=9e6e2ddd"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 1
+    },
+    "ui_confirm": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 3132,
+          "durationSec": 0.29,
+          "hash": "618063654b82164a7438370ebcef86043d794119f760f9ab586c2c3870d326a5",
+          "url": "/audio/sfx/ui_confirm_1.webm?v=61806365",
+          "urlFallback": "/audio/sfx/ui_confirm_1.m4a?v=61806365"
+        }
+      ],
+      "gainDb": -12,
+      "maxConcurrent": 1
+    },
+    "ui_dialogue_advance": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 1146,
+          "durationSec": 0.04,
+          "hash": "456c764e2628813d0c487eaaf757d163e66aa0341c8b36f77a97f9fefaf324e2",
+          "url": "/audio/sfx/ui_dialogue_advance_1.webm?v=456c764e",
+          "urlFallback": "/audio/sfx/ui_dialogue_advance_1.m4a?v=456c764e"
+        }
+      ],
+      "gainDb": -16,
+      "maxConcurrent": 1
+    },
+    "ui_error": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 4071,
+          "durationSec": 0.4,
+          "hash": "6d68423dde9e25f08d8ed040ea7218614b288f35e8a07e50a74a93dad489b22c",
+          "url": "/audio/sfx/ui_error_1.webm?v=6d68423d",
+          "urlFallback": "/audio/sfx/ui_error_1.m4a?v=6d68423d"
+        }
+      ],
+      "gainDb": -10,
+      "maxConcurrent": 1
+    },
+    "ui_evolve_done": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 18555,
+          "durationSec": 2.13,
+          "hash": "fb92e4a5db4b8fcffae52e4e64459552469c763bd9ad73741a869580d2c4a339",
+          "url": "/audio/sfx/ui_evolve_done_1.webm?v=fb92e4a5",
+          "urlFallback": "/audio/sfx/ui_evolve_done_1.m4a?v=fb92e4a5"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 1
+    },
+    "ui_evolve_start": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 26191,
+          "durationSec": 3.176,
+          "hash": "2f6f8465144a0dd409a08a61adc7189dbf26c53243447a4848560330ec44bd9d",
+          "url": "/audio/sfx/ui_evolve_start_1.webm?v=2f6f8465",
+          "urlFallback": "/audio/sfx/ui_evolve_start_1.m4a?v=2f6f8465"
+        }
+      ],
+      "gainDb": -8,
+      "maxConcurrent": 1
+    },
+    "ui_heal": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 16077,
+          "durationSec": 1.822,
+          "hash": "2442a4816e06f0e02e4c8c64270349480ac5a86219cbd7cc7491eb1d02d5e169",
+          "url": "/audio/sfx/ui_heal_1.webm?v=2442a481",
+          "urlFallback": "/audio/sfx/ui_heal_1.m4a?v=2442a481"
+        }
+      ],
+      "gainDb": -8,
+      "maxConcurrent": 1
+    },
+    "ui_item_get": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 7481,
+          "durationSec": 0.797,
+          "hash": "dc66501a11385122ae83a319135ef5c9bf2131ec981391e3355c45986a67e147",
+          "url": "/audio/sfx/ui_item_get_1.webm?v=dc66501a",
+          "urlFallback": "/audio/sfx/ui_item_get_1.m4a?v=dc66501a"
+        }
+      ],
+      "gainDb": -8,
+      "maxConcurrent": 1
+    },
+    "ui_item_use": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 4672,
+          "durationSec": 0.466,
+          "hash": "56030acfb18681c84b875988653a5e00608e909e7291cfaf80b8f7580b8115e7",
+          "url": "/audio/sfx/ui_item_use_1.webm?v=56030acf",
+          "urlFallback": "/audio/sfx/ui_item_use_1.m4a?v=56030acf"
+        }
+      ],
+      "gainDb": -12,
+      "maxConcurrent": 1
+    },
+    "ui_levelup": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 12304,
+          "durationSec": 1.387,
+          "hash": "16ba5dc5e91e0767d1a98e7f240aa8cc59fe3fe3a6b252b93ad1ecf8ea53da65",
+          "url": "/audio/sfx/ui_levelup_1.webm?v=16ba5dc5",
+          "urlFallback": "/audio/sfx/ui_levelup_1.m4a?v=16ba5dc5"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 1
+    },
+    "ui_notify": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 3158,
+          "durationSec": 0.276,
+          "hash": "536eb7a1bfbc184f4319fa830c7c844c63efc4cff5b77042058c6edd6d3d621a",
+          "url": "/audio/sfx/ui_notify_1.webm?v=536eb7a1",
+          "urlFallback": "/audio/sfx/ui_notify_1.m4a?v=536eb7a1"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 1
+    },
+    "ui_open": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 1984,
+          "durationSec": 0.151,
+          "hash": "5490e47319d57a9fb0e709bf9040282acbf7470dcc9cbac9eeb4f62a674423a6",
+          "url": "/audio/sfx/ui_open_1.webm?v=5490e473",
+          "urlFallback": "/audio/sfx/ui_open_1.m4a?v=5490e473"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 1
+    },
+    "ui_quest": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 6689,
+          "durationSec": 0.701,
+          "hash": "d9ee3a4066666bc4b66b1e5d76e49f5228e37081460ac06848406d0995022261",
+          "url": "/audio/sfx/ui_quest_1.webm?v=d9ee3a40",
+          "urlFallback": "/audio/sfx/ui_quest_1.m4a?v=d9ee3a40"
+        }
+      ],
+      "gainDb": -10,
+      "maxConcurrent": 1
+    },
+    "ui_quest_done": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 8950,
+          "durationSec": 0.993,
+          "hash": "a284b0196f8cb33a0379287a9840b03991446d998ab49f615b223fc28b927442",
+          "url": "/audio/sfx/ui_quest_done_1.webm?v=a284b019",
+          "urlFallback": "/audio/sfx/ui_quest_done_1.m4a?v=a284b019"
+        }
+      ],
+      "gainDb": -8,
+      "maxConcurrent": 1
+    },
+    "ui_save": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 3498,
+          "durationSec": 0.325,
+          "hash": "c63d9753383add9dd5dcb3b49f7d6cde3a8bd6b035ef513140836b19820139e0",
+          "url": "/audio/sfx/ui_save_1.webm?v=c63d9753",
+          "urlFallback": "/audio/sfx/ui_save_1.m4a?v=c63d9753"
+        }
+      ],
+      "gainDb": -14,
+      "maxConcurrent": 1
+    },
+    "ui_shop_buy": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 3376,
+          "durationSec": 0.323,
+          "hash": "dd92d9f4f46f3a7a23e6368fc16facf8e757aa217c33745ab3dc2c1b5f97f55a",
+          "url": "/audio/sfx/ui_shop_buy_1.webm?v=dd92d9f4",
+          "urlFallback": "/audio/sfx/ui_shop_buy_1.m4a?v=dd92d9f4"
+        },
+        {
+          "bytes": 4168,
+          "durationSec": 0.404,
+          "hash": "85a3ab717fe92b2ee543c1a466b5f5583ea619e348661b20a27c8f6f9b0c3815",
+          "url": "/audio/sfx/ui_shop_buy_2.webm?v=85a3ab71",
+          "urlFallback": "/audio/sfx/ui_shop_buy_2.m4a?v=85a3ab71"
+        }
+      ],
+      "gainDb": -10,
+      "maxConcurrent": 2
+    },
+    "ui_shop_deny": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 3214,
+          "durationSec": 0.31,
+          "hash": "3721d77095e4181d95ab19b3596de2cd8cbaf09c1344af1f559ece0b0f30d3e8",
+          "url": "/audio/sfx/ui_shop_deny_1.webm?v=3721d770",
+          "urlFallback": "/audio/sfx/ui_shop_deny_1.m4a?v=3721d770"
+        }
+      ],
+      "gainDb": -10,
+      "maxConcurrent": 1
+    },
+    "ui_shop_sell": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 5850,
+          "durationSec": 0.597,
+          "hash": "6bd285246bc3530bf5a7652d3389c22a39a141885f1cb7f81621760d613b9e61",
+          "url": "/audio/sfx/ui_shop_sell_1.webm?v=6bd28524",
+          "urlFallback": "/audio/sfx/ui_shop_sell_1.m4a?v=6bd28524"
+        }
+      ],
+      "gainDb": -10,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_beat": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 25947,
+          "durationSec": 3,
+          "hash": "768c00e4f67032cc7034817b18ef4047fa77bac3bdc1e6b0edbeb8169f663f24",
+          "url": "/audio/sfx/ui_stinger_beat_1.webm?v=768c00e4",
+          "urlFallback": "/audio/sfx/ui_stinger_beat_1.m4a?v=768c00e4"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_catch": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 8633,
+          "durationSec": 0.951,
+          "hash": "c967c0bb6caecb80b062f101fbdaceb8e8001e5a10ee5c232e85f35cea26afa8",
+          "url": "/audio/sfx/ui_stinger_catch_1.webm?v=c967c0bb",
+          "urlFallback": "/audio/sfx/ui_stinger_catch_1.m4a?v=c967c0bb"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_defeat": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 8943,
+          "durationSec": 0.992,
+          "hash": "100733d11d2aa0eef020501cc9131a722b81ec966b80bd9174ee3a0c50143ff8",
+          "url": "/audio/sfx/ui_stinger_defeat_1.webm?v=100733d1",
+          "urlFallback": "/audio/sfx/ui_stinger_defeat_1.m4a?v=100733d1"
+        }
+      ],
+      "gainDb": -5,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_intro_champion": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 34330,
+          "durationSec": 4,
+          "hash": "a941088a7c145146a5970fc716ed870d6f0b62211c4143b6622f39625b28f250",
+          "url": "/audio/sfx/ui_stinger_intro_champion_1.webm?v=a941088a",
+          "urlFallback": "/audio/sfx/ui_stinger_intro_champion_1.m4a?v=a941088a"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_intro_elite": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 30133,
+          "durationSec": 3.5,
+          "hash": "937b7c265dcee77046d2324e0b73d48c5f9f2d73d4b276a451f383e5d0bd1b73",
+          "url": "/audio/sfx/ui_stinger_intro_elite_1.webm?v=937b7c26",
+          "urlFallback": "/audio/sfx/ui_stinger_intro_elite_1.m4a?v=937b7c26"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_intro_gym": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 25958,
+          "durationSec": 3,
+          "hash": "f146b213851eee9ae97fd8e6b5223402ac249bae8789542e1a8112b080964d40",
+          "url": "/audio/sfx/ui_stinger_intro_gym_1.webm?v=f146b213",
+          "urlFallback": "/audio/sfx/ui_stinger_intro_gym_1.m4a?v=f146b213"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_intro_legendary": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 34411,
+          "durationSec": 4,
+          "hash": "7a29eb028bd58bb97e5c9d47acd7b32d440649cc61ef72634491f88193306ce1",
+          "url": "/audio/sfx/ui_stinger_intro_legendary_1.webm?v=7a29eb02",
+          "urlFallback": "/audio/sfx/ui_stinger_intro_legendary_1.m4a?v=7a29eb02"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_intro_raid": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 30141,
+          "durationSec": 3.5,
+          "hash": "db0fb3370b39f7fae31b6bacf789a1ed88030b64e93d1f4f2ffb87181deeae8d",
+          "url": "/audio/sfx/ui_stinger_intro_raid_1.webm?v=db0fb337",
+          "urlFallback": "/audio/sfx/ui_stinger_intro_raid_1.m4a?v=db0fb337"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_intro_trainer": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 21704,
+          "durationSec": 2.5,
+          "hash": "179d9650546bb892a6c987cb2c689ec543b8e7f5676d0f6e9f1191c6693937d1",
+          "url": "/audio/sfx/ui_stinger_intro_trainer_1.webm?v=179d9650",
+          "urlFallback": "/audio/sfx/ui_stinger_intro_trainer_1.m4a?v=179d9650"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_intro_wild": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 17517,
+          "durationSec": 2,
+          "hash": "67e8a9864a0121607a8659a819d85fea4515bbf96862e685a1a3ade469ef357d",
+          "url": "/audio/sfx/ui_stinger_intro_wild_1.webm?v=67e8a986",
+          "urlFallback": "/audio/sfx/ui_stinger_intro_wild_1.m4a?v=67e8a986"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_restored": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 34411,
+          "durationSec": 4,
+          "hash": "64ca9eb74b716c055292090a05501d81eb32b70e4a95b7dc115d3358ce073ce6",
+          "url": "/audio/sfx/ui_stinger_restored_1.webm?v=64ca9eb7",
+          "urlFallback": "/audio/sfx/ui_stinger_restored_1.m4a?v=64ca9eb7"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_thinning": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 34352,
+          "durationSec": 4,
+          "hash": "a90a92351aad6369625386f132afb3e70a42d72b42520b169e3ec7e61ee1f5a3",
+          "url": "/audio/sfx/ui_stinger_thinning_1.webm?v=a90a9235",
+          "urlFallback": "/audio/sfx/ui_stinger_thinning_1.m4a?v=a90a9235"
+        }
+      ],
+      "gainDb": -5,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_title": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 21811,
+          "durationSec": 2.5,
+          "hash": "a5ed5f74fb52275138a062df0658f60a4c7111f5e8a137226525afc367d1d3dd",
+          "url": "/audio/sfx/ui_stinger_title_1.webm?v=a5ed5f74",
+          "urlFallback": "/audio/sfx/ui_stinger_title_1.m4a?v=a5ed5f74"
+        }
+      ],
+      "gainDb": -8,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_victory_champion": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 34363,
+          "durationSec": 4,
+          "hash": "0f637490a4653931c91d08115f4efbae40a5d01cae6ab4a2e328c80fc240e393",
+          "url": "/audio/sfx/ui_stinger_victory_champion_1.webm?v=0f637490",
+          "urlFallback": "/audio/sfx/ui_stinger_victory_champion_1.m4a?v=0f637490"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_victory_gym": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 30120,
+          "durationSec": 3.5,
+          "hash": "8a44ad7596dfaa5e31f5380e701aef7853eee408d67f78a40d1cde784fb637b6",
+          "url": "/audio/sfx/ui_stinger_victory_gym_1.webm?v=8a44ad75",
+          "urlFallback": "/audio/sfx/ui_stinger_victory_gym_1.m4a?v=8a44ad75"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_victory_legendary": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 34322,
+          "durationSec": 4,
+          "hash": "1db6a331e2082d112b78bc6578e65935b846fd015a6e9c046a4fcc6355279ed1",
+          "url": "/audio/sfx/ui_stinger_victory_legendary_1.webm?v=1db6a331",
+          "urlFallback": "/audio/sfx/ui_stinger_victory_legendary_1.m4a?v=1db6a331"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_victory_raid": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 34348,
+          "durationSec": 4,
+          "hash": "deb06d11a7051b242aba0186defc40331f1af093ca17c3c5b5f2e4c02e9039f1",
+          "url": "/audio/sfx/ui_stinger_victory_raid_1.webm?v=deb06d11",
+          "urlFallback": "/audio/sfx/ui_stinger_victory_raid_1.m4a?v=deb06d11"
+        }
+      ],
+      "gainDb": -3,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_victory_trainer": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 25908,
+          "durationSec": 3,
+          "hash": "eda2501cd2411d2d3268d3fa74684d4435d77afa03b311019c5ed80e4462d794",
+          "url": "/audio/sfx/ui_stinger_victory_trainer_1.webm?v=eda2501c",
+          "urlFallback": "/audio/sfx/ui_stinger_victory_trainer_1.m4a?v=eda2501c"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 1
+    },
+    "ui_stinger_victory_wild": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 21730,
+          "durationSec": 2.5,
+          "hash": "6eeed66e290da168cec147ee307ec6e25f8351a2e0c263bba9fdf28bf406bcf7",
+          "url": "/audio/sfx/ui_stinger_victory_wild_1.webm?v=6eeed66e",
+          "urlFallback": "/audio/sfx/ui_stinger_victory_wild_1.m4a?v=6eeed66e"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 1
+    },
+    "ui_tab": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 1314,
+          "durationSec": 0.055,
+          "hash": "1205c404cac9ec627e84ea3046db4d6e218cd529dd433612d3a15a5f8bd907f2",
+          "url": "/audio/sfx/ui_tab_1.webm?v=1205c404",
+          "urlFallback": "/audio/sfx/ui_tab_1.m4a?v=1205c404"
+        }
+      ],
+      "gainDb": -16,
+      "maxConcurrent": 1
+    },
+    "ui_toast": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 5157,
+          "durationSec": 0.531,
+          "hash": "9409901a6cdb8273b18bc8b954a7c4a9197175bc38701dbca68a9c62b117010a",
+          "url": "/audio/sfx/ui_toast_1.webm?v=9409901a",
+          "urlFallback": "/audio/sfx/ui_toast_1.m4a?v=9409901a"
+        }
+      ],
+      "gainDb": -12,
+      "maxConcurrent": 1
+    },
+    "ui_trade": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 12798,
+          "durationSec": 1.438,
+          "hash": "537a626a62c1a315c3fba27d7890b2c2a4a5634e50d20813f00ac36c05f725b1",
+          "url": "/audio/sfx/ui_trade_1.webm?v=537a626a",
+          "urlFallback": "/audio/sfx/ui_trade_1.m4a?v=537a626a"
+        }
+      ],
+      "gainDb": -10,
+      "maxConcurrent": 1
+    },
+    "ui_type": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 736,
+          "durationSec": 0.012,
+          "hash": "b91602338cac50bb4ec0540c5e1c925dcc34df4517fa1d21dd6f59c5dfbcfc53",
+          "url": "/audio/sfx/ui_type_1.webm?v=b9160233",
+          "urlFallback": "/audio/sfx/ui_type_1.m4a?v=b9160233"
+        },
+        {
+          "bytes": 732,
+          "durationSec": 0.007,
+          "hash": "069c9c8459d53e92265810c586c1a817b5a367520e9dfd64e246eefaaa56d4d4",
+          "url": "/audio/sfx/ui_type_2.webm?v=069c9c84",
+          "urlFallback": "/audio/sfx/ui_type_2.m4a?v=069c9c84"
+        },
+        {
+          "bytes": 978,
+          "durationSec": 0.022,
+          "hash": "f5f3ac8f6f381df4287d02bfd101b1dcea836f56caf0e859dc45be94b10d8c26",
+          "url": "/audio/sfx/ui_type_3.webm?v=f5f3ac8f",
+          "urlFallback": "/audio/sfx/ui_type_3.m4a?v=f5f3ac8f"
+        }
+      ],
+      "gainDb": -22,
+      "maxConcurrent": 2
+    },
+    "ui_witness": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 14248,
+          "durationSec": 1.6,
+          "hash": "74b5fc6cdc306f1f2af8c6313e9c73350491f8858426db7b8e44e7fb0081bf33",
+          "url": "/audio/sfx/ui_witness_1.webm?v=74b5fc6c",
+          "urlFallback": "/audio/sfx/ui_witness_1.m4a?v=74b5fc6c"
+        }
+      ],
+      "gainDb": -8,
+      "maxConcurrent": 1
+    },
+    "warp": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 7468,
+          "durationSec": 0.8,
+          "hash": "ce349d6acff2d99976b6db8c47df57bc879297bd28db06992a0a12f6b23c83d2",
+          "url": "/audio/sfx/warp_1.webm?v=ce349d6a",
+          "urlFallback": "/audio/sfx/warp_1.m4a?v=ce349d6a"
+        }
+      ],
+      "gainDb": -10,
+      "maxConcurrent": 1
+    },
+    "weather_hail": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 26011,
+          "durationSec": 3,
+          "hash": "c9d5a8e8ff0f648147b8e7ef1f5f0b5d0b2a918b14bb834848fc73244092c53a",
+          "url": "/audio/sfx/weather_hail_1.webm?v=c9d5a8e8",
+          "urlFallback": "/audio/sfx/weather_hail_1.m4a?v=c9d5a8e8"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 1
+    },
+    "weather_rain": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 25935,
+          "durationSec": 3,
+          "hash": "bdca03b84f4ef80e0dfdc1aea78401fce034a9b7d32d24c4a8f08b5ca0145688",
+          "url": "/audio/sfx/weather_rain_1.webm?v=bdca03b8",
+          "urlFallback": "/audio/sfx/weather_rain_1.m4a?v=bdca03b8"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 1
+    },
+    "weather_sand": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 25955,
+          "durationSec": 3,
+          "hash": "a204a1e11862e01aafcfd41155690b28566dba4187dfd1520130c193ad5ceed8",
+          "url": "/audio/sfx/weather_sand_1.webm?v=a204a1e1",
+          "urlFallback": "/audio/sfx/weather_sand_1.m4a?v=a204a1e1"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 1
+    },
+    "weather_sun": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 21810,
+          "durationSec": 2.5,
+          "hash": "b9db65dc5c0d65f56b1f397b8e74c3c8bdf719fa236deab4619e4cf825a8ab4f",
+          "url": "/audio/sfx/weather_sun_1.webm?v=b9db65dc",
+          "urlFallback": "/audio/sfx/weather_sun_1.m4a?v=b9db65dc"
+        }
+      ],
+      "gainDb": -6,
+      "maxConcurrent": 1
+    },
+    "wind_gust": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 21745,
+          "durationSec": 2.5,
+          "hash": "b0e23c21f56a43ddd528eed2c94abf558eadc8459b64cb51d1883c019ebc0c4a",
+          "url": "/audio/sfx/wind_gust_1.webm?v=b0e23c21",
+          "urlFallback": "/audio/sfx/wind_gust_1.m4a?v=b0e23c21"
+        },
+        {
+          "bytes": 21792,
+          "durationSec": 2.5,
+          "hash": "5456c3a22baaa36cca27438ee2a3c06ce09710a714939128e78baac34b6c22aa",
+          "url": "/audio/sfx/wind_gust_2.webm?v=5456c3a2",
+          "urlFallback": "/audio/sfx/wind_gust_2.m4a?v=5456c3a2"
+        }
+      ],
+      "gainDb": -8,
+      "maxConcurrent": 2
+    }
+  },
+  "themes": {
+    "battle": {
+      "bpm": 145.966904,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 491228,
+          "durationSec": 39.531,
+          "hash": "19aa328af6fa9927d5288b91b4616d26837c6a16dbd216b6a70f9cafde767bc1",
+          "loopEndSec": 39.511,
+          "loopStartSec": 0.05,
+          "lufs": -16,
+          "url": "/audio/themes/battle/base.webm?v=19aa328a",
+          "urlFallback": "/audio/themes/battle/base.m4a?v=19aa328a"
+        },
+        "biome": {
+          "bytes": 491213,
+          "durationSec": 39.531,
+          "hash": "c1866d331d734d55b6832e457bc85071d6623b86ef45af7e44bfea28ebdd024a",
+          "loopEndSec": 39.511,
+          "loopStartSec": 0.05,
+          "lufs": -22.77,
+          "url": "/audio/themes/battle/biome.webm?v=c1866d33",
+          "urlFallback": "/audio/themes/battle/biome.m4a?v=c1866d33"
+        },
+        "night": {
+          "bytes": 491173,
+          "durationSec": 39.531,
+          "hash": "c0153c0f977531816867ba8da780010a9240d9a32ed4908b62ecf9571ae83215",
+          "loopEndSec": 39.511,
+          "loopStartSec": 0.05,
+          "lufs": -25.87,
+          "url": "/audio/themes/battle/night.webm?v=c0153c0f",
+          "urlFallback": "/audio/themes/battle/night.m4a?v=c0153c0f"
+        },
+        "threat": {
+          "bytes": 491204,
+          "durationSec": 39.531,
+          "hash": "e51bba7e7ffece7b6103066122e6f42a389269e00c55c7cfb3913de565f53ed7",
+          "loopEndSec": 39.511,
+          "loopStartSec": 0.05,
+          "lufs": -21.79,
+          "url": "/audio/themes/battle/threat.webm?v=e51bba7e",
+          "urlFallback": "/audio/themes/battle/threat.m4a?v=e51bba7e"
+        }
+      }
+    },
+    "capital": {
+      "bpm": 104.000217,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 459646,
+          "durationSec": 36.993,
+          "hash": "e0e8b0635f5454ee9a911ba154a0f2431037e48b5489aaa159b168d755965d9a",
+          "loopEndSec": 36.973,
+          "loopStartSec": 0.05,
+          "lufs": -17.87,
+          "url": "/audio/themes/capital/base.webm?v=e0e8b063",
+          "urlFallback": "/audio/themes/capital/base.m4a?v=e0e8b063"
+        },
+        "biome": {
+          "bytes": 459694,
+          "durationSec": 36.993,
+          "hash": "d190dd7ce9f50b3714c2c785f7b077c2783b0d1077aa266564ba95f1a9425cd9",
+          "loopEndSec": 36.973,
+          "loopStartSec": 0.05,
+          "lufs": -23.95,
+          "url": "/audio/themes/capital/biome.webm?v=d190dd7c",
+          "urlFallback": "/audio/themes/capital/biome.m4a?v=d190dd7c"
+        },
+        "night": {
+          "bytes": 459729,
+          "durationSec": 36.993,
+          "hash": "e6813e2fb4d9b2f6bfdba41b64c41d811defdd85004f315bda30511b1d56e357",
+          "loopEndSec": 36.973,
+          "loopStartSec": 0.05,
+          "lufs": -27.36,
+          "url": "/audio/themes/capital/night.webm?v=e6813e2f",
+          "urlFallback": "/audio/themes/capital/night.m4a?v=e6813e2f"
+        },
+        "threat": {
+          "bytes": 459729,
+          "durationSec": 36.993,
+          "hash": "7e457b00e73150526c216fc64afab32c9dbcfb7d107bf3329050ffe5187f2b85",
+          "loopEndSec": 36.973,
+          "loopStartSec": 0.05,
+          "lufs": -23.42,
+          "url": "/audio/themes/capital/threat.webm?v=7e457b00",
+          "urlFallback": "/audio/themes/capital/threat.m4a?v=7e457b00"
+        }
+      }
+    },
+    "champion": {
+      "bpm": 174.997975,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 614248,
+          "durationSec": 49.442,
+          "hash": "2dfd62fb9d6e09d8bdeb139b72369664329e9ffc04a4bfd818f8c8786ea1ccc2",
+          "loopEndSec": 49.422,
+          "loopStartSec": 0.05,
+          "lufs": -16.01,
+          "url": "/audio/themes/champion/base.webm?v=2dfd62fb",
+          "urlFallback": "/audio/themes/champion/base.m4a?v=2dfd62fb"
+        },
+        "biome": {
+          "bytes": 614218,
+          "durationSec": 49.442,
+          "hash": "9b4e31ddc492f972607b1c8c7fe88dd341594196e432b75a7c059e68a9c3a797",
+          "loopEndSec": 49.422,
+          "loopStartSec": 0.05,
+          "lufs": -21.41,
+          "url": "/audio/themes/champion/biome.webm?v=9b4e31dd",
+          "urlFallback": "/audio/themes/champion/biome.m4a?v=9b4e31dd"
+        },
+        "night": {
+          "bytes": 614212,
+          "durationSec": 49.442,
+          "hash": "70d44060179fcbf9ae5201d0d2c8d4d5505aff73aa48a22e3b42c00fb0954eca",
+          "loopEndSec": 49.422,
+          "loopStartSec": 0.05,
+          "lufs": -25.79,
+          "url": "/audio/themes/champion/night.webm?v=70d44060",
+          "urlFallback": "/audio/themes/champion/night.m4a?v=70d44060"
+        },
+        "threat": {
+          "bytes": 614202,
+          "durationSec": 49.442,
+          "hash": "27b4e49e898580e5ad374c11605cc8f63e221cf5fe893a59797d0eed81ce4d8f",
+          "loopEndSec": 49.422,
+          "loopStartSec": 0.05,
+          "lufs": -20.85,
+          "url": "/audio/themes/champion/threat.webm?v=27b4e49e",
+          "urlFallback": "/audio/themes/champion/threat.m4a?v=27b4e49e"
+        }
+      }
+    },
+    "cinder": {
+      "bpm": 120,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 398564,
+          "durationSec": 32.07,
+          "hash": "6b3ce966dc6eac11b7bb3dac9d34a2086097f14574b9c30a8272c2fe890f3185",
+          "loopEndSec": 32.05,
+          "loopStartSec": 0.05,
+          "lufs": -16.01,
+          "url": "/audio/themes/cinder/base.webm?v=6b3ce966",
+          "urlFallback": "/audio/themes/cinder/base.m4a?v=6b3ce966"
+        },
+        "biome": {
+          "bytes": 398525,
+          "durationSec": 32.07,
+          "hash": "e07afefce31a0f633a384de0dc1ec397bc00967a21012f5ad88d4b06903bbf13",
+          "loopEndSec": 32.05,
+          "loopStartSec": 0.05,
+          "lufs": -20.66,
+          "url": "/audio/themes/cinder/biome.webm?v=e07afefc",
+          "urlFallback": "/audio/themes/cinder/biome.m4a?v=e07afefc"
+        },
+        "night": {
+          "bytes": 398694,
+          "durationSec": 32.07,
+          "hash": "ef7a2b9dbda84806db79219f6d7baa7c4eb6a5f3497f7e8de244b46efabb118b",
+          "loopEndSec": 32.05,
+          "loopStartSec": 0.05,
+          "lufs": -25,
+          "url": "/audio/themes/cinder/night.webm?v=ef7a2b9d",
+          "urlFallback": "/audio/themes/cinder/night.m4a?v=ef7a2b9d"
+        },
+        "threat": {
+          "bytes": 398670,
+          "durationSec": 32.07,
+          "hash": "9c5aea3dc5ade302b2b910f520d43a54ff431a2aacf9859ed9a22977df352626",
+          "loopEndSec": 32.05,
+          "loopStartSec": 0.05,
+          "lufs": -20.95,
+          "url": "/audio/themes/cinder/threat.webm?v=9c5aea3d",
+          "urlFallback": "/audio/themes/cinder/threat.m4a?v=9c5aea3d"
+        }
+      }
+    },
+    "elite": {
+      "bpm": 128,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 187802,
+          "durationSec": 15.07,
+          "hash": "514cc2a0656c4d38ab076fbd708ceaee7c5eed5920d48b76189f4216b00ba028",
+          "loopEndSec": 15.05,
+          "loopStartSec": 0.05,
+          "lufs": -16.53,
+          "url": "/audio/themes/elite/base.webm?v=514cc2a0",
+          "urlFallback": "/audio/themes/elite/base.m4a?v=514cc2a0"
+        },
+        "biome": {
+          "bytes": 187681,
+          "durationSec": 15.07,
+          "hash": "f32d756c929e92dd9e6d4e1b9dd2a7e315963d8c02ded9ba5319356be62f88e4",
+          "loopEndSec": 15.05,
+          "loopStartSec": 0.05,
+          "lufs": -21.59,
+          "url": "/audio/themes/elite/biome.webm?v=f32d756c",
+          "urlFallback": "/audio/themes/elite/biome.m4a?v=f32d756c"
+        },
+        "night": {
+          "bytes": 187791,
+          "durationSec": 15.07,
+          "hash": "b0e7015030cb639518a89ba7f2c076fe2b707c0b89d8137f78a09bf38b5da6ae",
+          "loopEndSec": 15.05,
+          "loopStartSec": 0.05,
+          "lufs": -25.96,
+          "url": "/audio/themes/elite/night.webm?v=b0e70150",
+          "urlFallback": "/audio/themes/elite/night.m4a?v=b0e70150"
+        },
+        "threat": {
+          "bytes": 187758,
+          "durationSec": 15.07,
+          "hash": "82b069e2ec73039aca964d7860bbf306d14ad042c0c4de75c15bf7c8c0b5ea52",
+          "loopEndSec": 15.05,
+          "loopStartSec": 0.05,
+          "lufs": -21.55,
+          "url": "/audio/themes/elite/threat.webm?v=82b069e2",
+          "urlFallback": "/audio/themes/elite/threat.m4a?v=82b069e2"
+        }
+      }
+    },
+    "forge": {
+      "bpm": 80,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 448323,
+          "durationSec": 36.07,
+          "hash": "06ec7064632645878f7145ed1080bce16f9a2b5ed22f4fbd0e3041ddc4bcb8ea",
+          "loopEndSec": 36.05,
+          "loopStartSec": 0.05,
+          "lufs": -16,
+          "url": "/audio/themes/forge/base.webm?v=06ec7064",
+          "urlFallback": "/audio/themes/forge/base.m4a?v=06ec7064"
+        },
+        "biome": {
+          "bytes": 448323,
+          "durationSec": 36.07,
+          "hash": "344742947ab5564dbeb7a5044ffd0fbbfc73f5a6121b53de7fbbe0ad5e3ef54d",
+          "loopEndSec": 36.05,
+          "loopStartSec": 0.05,
+          "lufs": -22.28,
+          "url": "/audio/themes/forge/biome.webm?v=34474294",
+          "urlFallback": "/audio/themes/forge/biome.m4a?v=34474294"
+        },
+        "night": {
+          "bytes": 448212,
+          "durationSec": 36.07,
+          "hash": "1354e23b993e0b0f88b7fb19eda1b290160a975770c47da47c7bf1436819b5ad",
+          "loopEndSec": 36.05,
+          "loopStartSec": 0.05,
+          "lufs": -25.39,
+          "url": "/audio/themes/forge/night.webm?v=1354e23b",
+          "urlFallback": "/audio/themes/forge/night.m4a?v=1354e23b"
+        },
+        "threat": {
+          "bytes": 448240,
+          "durationSec": 36.07,
+          "hash": "21f8c5e13d55b730bd1f20c9c6e94ad18562884790030dbeaf5708b56ae15759",
+          "loopEndSec": 36.05,
+          "loopStartSec": 0.05,
+          "lufs": -20.64,
+          "url": "/audio/themes/forge/threat.webm?v=21f8c5e1",
+          "urlFallback": "/audio/themes/forge/threat.m4a?v=21f8c5e1"
+        }
+      }
+    },
+    "grove": {
+      "bpm": 92.795463,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 386654,
+          "durationSec": 31.106,
+          "hash": "d0de3fd19ec81a70caed63411b41c09c5eea3b3972c9ca1c75b2addfb8309b06",
+          "loopEndSec": 31.086,
+          "loopStartSec": 0.05,
+          "lufs": -16,
+          "url": "/audio/themes/grove/base.webm?v=d0de3fd1",
+          "urlFallback": "/audio/themes/grove/base.m4a?v=d0de3fd1"
+        },
+        "biome": {
+          "bytes": 386789,
+          "durationSec": 31.106,
+          "hash": "102c65000fa7d2711573db9f60563427bb38fc5a24f23d3d3f7457d4ca93a267",
+          "loopEndSec": 31.086,
+          "loopStartSec": 0.05,
+          "lufs": -22.78,
+          "url": "/audio/themes/grove/biome.webm?v=102c6500",
+          "urlFallback": "/audio/themes/grove/biome.m4a?v=102c6500"
+        },
+        "night": {
+          "bytes": 386714,
+          "durationSec": 31.106,
+          "hash": "c2a84e4a6ff47d7e5bc82055f531f06e0c00cc399a596663aec4573a2e2aac58",
+          "loopEndSec": 31.086,
+          "loopStartSec": 0.05,
+          "lufs": -25.41,
+          "url": "/audio/themes/grove/night.webm?v=c2a84e4a",
+          "urlFallback": "/audio/themes/grove/night.m4a?v=c2a84e4a"
+        },
+        "threat": {
+          "bytes": 386645,
+          "durationSec": 31.106,
+          "hash": "3d872e2e03353d81971bbe914bb2fd5f8254cb2b7e04c43ec08a4c357b3b226a",
+          "loopEndSec": 31.086,
+          "loopStartSec": 0.05,
+          "lufs": -21.92,
+          "url": "/audio/themes/grove/threat.webm?v=3d872e2e",
+          "urlFallback": "/audio/themes/grove/threat.m4a?v=3d872e2e"
+        }
+      }
+    },
+    "gym": {
+      "bpm": 144,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 249679,
+          "durationSec": 20.07,
+          "hash": "601e94da06ed91b8bd9d090a14fec65d49f7f10fc7669d52717236f0cc8dcddf",
+          "loopEndSec": 20.05,
+          "loopStartSec": 0.05,
+          "lufs": -16,
+          "url": "/audio/themes/gym/base.webm?v=601e94da",
+          "urlFallback": "/audio/themes/gym/base.m4a?v=601e94da"
+        },
+        "biome": {
+          "bytes": 249721,
+          "durationSec": 20.07,
+          "hash": "6a1368b54f180cb6e4ecc49983e84637b4bfbc0df2b02e8e3fcc0d3842677917",
+          "loopEndSec": 20.05,
+          "loopStartSec": 0.05,
+          "lufs": -22.36,
+          "url": "/audio/themes/gym/biome.webm?v=6a1368b5",
+          "urlFallback": "/audio/themes/gym/biome.m4a?v=6a1368b5"
+        },
+        "night": {
+          "bytes": 249832,
+          "durationSec": 20.07,
+          "hash": "a5dc2243dd3d5d0ead5e2fc498700dbd485818a93d7b399c94e877d4df12f466",
+          "loopEndSec": 20.05,
+          "loopStartSec": 0.05,
+          "lufs": -25.36,
+          "url": "/audio/themes/gym/night.webm?v=a5dc2243",
+          "urlFallback": "/audio/themes/gym/night.m4a?v=a5dc2243"
+        },
+        "threat": {
+          "bytes": 249668,
+          "durationSec": 20.07,
+          "hash": "2cf6df46cb6cc9a609d5fd3164be2441458e6d0ca3c8603a787d18a12ee84370",
+          "loopEndSec": 20.05,
+          "loopStartSec": 0.05,
+          "lufs": -21.82,
+          "url": "/audio/themes/gym/threat.webm?v=2cf6df46",
+          "urlFallback": "/audio/themes/gym/threat.m4a?v=2cf6df46"
+        }
+      }
+    },
+    "marrow": {
+      "bpm": 99.661862,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 419869,
+          "durationSec": 33.784,
+          "hash": "3b39012fe3920e104748ca9199553371b0e53186a73f00c82ab0c882fb0b8167",
+          "loopEndSec": 33.764,
+          "loopStartSec": 0.05,
+          "lufs": -16,
+          "url": "/audio/themes/marrow/base.webm?v=3b39012f",
+          "urlFallback": "/audio/themes/marrow/base.m4a?v=3b39012f"
+        },
+        "biome": {
+          "bytes": 419853,
+          "durationSec": 33.784,
+          "hash": "ef1109338b18c7ac62d5b3e98b29f62825f75cbb86be70f625c7a1df3e819ab8",
+          "loopEndSec": 33.764,
+          "loopStartSec": 0.05,
+          "lufs": -21.52,
+          "url": "/audio/themes/marrow/biome.webm?v=ef110933",
+          "urlFallback": "/audio/themes/marrow/biome.m4a?v=ef110933"
+        },
+        "night": {
+          "bytes": 419947,
+          "durationSec": 33.784,
+          "hash": "04b205280ba18af32abf8860f48944be13f4e80006d821f44ea84bd14c7d42a6",
+          "loopEndSec": 33.764,
+          "loopStartSec": 0.05,
+          "lufs": -24.88,
+          "url": "/audio/themes/marrow/night.webm?v=04b20528",
+          "urlFallback": "/audio/themes/marrow/night.m4a?v=04b20528"
+        },
+        "threat": {
+          "bytes": 419929,
+          "durationSec": 33.784,
+          "hash": "8d7ae8bf6e4767bc57e24f2a944a82bfecca46ea8e8e20b29fc701b8099bf4c3",
+          "loopEndSec": 33.764,
+          "loopStartSec": 0.05,
+          "lufs": -20.88,
+          "url": "/audio/themes/marrow/threat.webm?v=8d7ae8bf",
+          "urlFallback": "/audio/themes/marrow/threat.m4a?v=8d7ae8bf"
+        }
+      }
+    },
+    "raid": {
+      "bpm": 160,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 448227,
+          "durationSec": 36.07,
+          "hash": "5b96cd062ca9396d3cb6eb6e292fb5f9396294e2316aab9a23edae0521d774a1",
+          "loopEndSec": 36.05,
+          "loopStartSec": 0.05,
+          "lufs": -16,
+          "url": "/audio/themes/raid/base.webm?v=5b96cd06",
+          "urlFallback": "/audio/themes/raid/base.m4a?v=5b96cd06"
+        },
+        "biome": {
+          "bytes": 448242,
+          "durationSec": 36.07,
+          "hash": "12db58ac00ced99ea31094373beb5f6fbe9ddee27a320b8907a16faa6dafda77",
+          "loopEndSec": 36.05,
+          "loopStartSec": 0.05,
+          "lufs": -22.16,
+          "url": "/audio/themes/raid/biome.webm?v=12db58ac",
+          "urlFallback": "/audio/themes/raid/biome.m4a?v=12db58ac"
+        },
+        "night": {
+          "bytes": 448323,
+          "durationSec": 36.07,
+          "hash": "f894daa902ff567613b21ff699502c3d2a65bc52e7b9a83d204b171e41f13c5d",
+          "loopEndSec": 36.05,
+          "loopStartSec": 0.05,
+          "lufs": -25.64,
+          "url": "/audio/themes/raid/night.webm?v=f894daa9",
+          "urlFallback": "/audio/themes/raid/night.m4a?v=f894daa9"
+        },
+        "threat": {
+          "bytes": 448224,
+          "durationSec": 36.07,
+          "hash": "b2027cf3663272bf40cb094b9633587b9d1ab6c508590347f7dc8d29906b05c3",
+          "loopEndSec": 36.05,
+          "loopStartSec": 0.05,
+          "lufs": -21.75,
+          "url": "/audio/themes/raid/threat.webm?v=b2027cf3",
+          "urlFallback": "/audio/themes/raid/threat.m4a?v=b2027cf3"
+        }
+      }
+    },
+    "rift": {
+      "bpm": 60,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 398598,
+          "durationSec": 32.07,
+          "hash": "5c76618d9de92a0a8b8e3baf457352d314f55d58a1487675a1e091ef3842e153",
+          "loopEndSec": 32.05,
+          "loopStartSec": 0.05,
+          "lufs": -15.99,
+          "url": "/audio/themes/rift/base.webm?v=5c76618d",
+          "urlFallback": "/audio/themes/rift/base.m4a?v=5c76618d"
+        },
+        "biome": {
+          "bytes": 398693,
+          "durationSec": 32.07,
+          "hash": "c01bbc6b4f148c70e9cb021bd4ca1e31b783de03015fdeb643e4edd8ca0b8c32",
+          "loopEndSec": 32.05,
+          "loopStartSec": 0.05,
+          "lufs": -22.62,
+          "url": "/audio/themes/rift/biome.webm?v=c01bbc6b",
+          "urlFallback": "/audio/themes/rift/biome.m4a?v=c01bbc6b"
+        },
+        "night": {
+          "bytes": 398553,
+          "durationSec": 32.07,
+          "hash": "e7c0535c995731a33b0b89770223b15751b148a2dbabf553f7f0cd8d2303df65",
+          "loopEndSec": 32.05,
+          "loopStartSec": 0.05,
+          "lufs": -24.98,
+          "url": "/audio/themes/rift/night.webm?v=e7c0535c",
+          "urlFallback": "/audio/themes/rift/night.m4a?v=e7c0535c"
+        },
+        "threat": {
+          "bytes": 398600,
+          "durationSec": 32.07,
+          "hash": "f42bded56f9b9b4d94922b45f74e2b2b90651e842f95508f2aab383279561ff5",
+          "loopEndSec": 32.05,
+          "loopStartSec": 0.05,
+          "lufs": -21.99,
+          "url": "/audio/themes/rift/threat.webm?v=f42bded5",
+          "urlFallback": "/audio/themes/rift/threat.m4a?v=f42bded5"
+        }
+      }
+    },
+    "salt": {
+      "bpm": 160,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 299244,
+          "durationSec": 24.07,
+          "hash": "bfd1af0d6c437ff6cc5743e61b3f9abe7df486d7cab7b333308857767cee36c5",
+          "loopEndSec": 24.05,
+          "loopStartSec": 0.05,
+          "lufs": -16,
+          "url": "/audio/themes/salt/base.webm?v=bfd1af0d",
+          "urlFallback": "/audio/themes/salt/base.m4a?v=bfd1af0d"
+        },
+        "biome": {
+          "bytes": 299256,
+          "durationSec": 24.07,
+          "hash": "3587d1517dd5829b1085270a30c86ec6383a94479a4711af8d86ead25c782556",
+          "loopEndSec": 24.05,
+          "loopStartSec": 0.05,
+          "lufs": -20.94,
+          "url": "/audio/themes/salt/biome.webm?v=3587d151",
+          "urlFallback": "/audio/themes/salt/biome.m4a?v=3587d151"
+        },
+        "night": {
+          "bytes": 299301,
+          "durationSec": 24.07,
+          "hash": "98b7ce9382ae815f3d2e9182fe606acefb30738d34e82799ee6007447d6557cb",
+          "loopEndSec": 24.05,
+          "loopStartSec": 0.05,
+          "lufs": -25.37,
+          "url": "/audio/themes/salt/night.webm?v=98b7ce93",
+          "urlFallback": "/audio/themes/salt/night.m4a?v=98b7ce93"
+        },
+        "threat": {
+          "bytes": 299338,
+          "durationSec": 24.07,
+          "hash": "c2fe90f1bd45cc016b9d336bd31e4ab3ca5c4ccdc40707ac78b43a78c60f2fbb",
+          "loopEndSec": 24.05,
+          "loopStartSec": 0.05,
+          "lufs": -22.01,
+          "url": "/audio/themes/salt/threat.webm?v=c2fe90f1",
+          "urlFallback": "/audio/themes/salt/threat.m4a?v=c2fe90f1"
+        }
+      }
+    },
+    "shrine": {
+      "bpm": 86.100371,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 313103,
+          "durationSec": 25.157,
+          "hash": "d7616ff8af315ba7cfff388bf687dc21215a9754691568a05c5bac4ab2ae4c46",
+          "loopEndSec": 25.137,
+          "loopStartSec": 0.05,
+          "lufs": -16,
+          "url": "/audio/themes/shrine/base.webm?v=d7616ff8",
+          "urlFallback": "/audio/themes/shrine/base.m4a?v=d7616ff8"
+        },
+        "biome": {
+          "bytes": 312973,
+          "durationSec": 25.157,
+          "hash": "9bfa2bb4b8ebc19d4fb62e97551c6256606b61fd59b72edf6cfe6c392d33ba79",
+          "loopEndSec": 25.137,
+          "loopStartSec": 0.05,
+          "lufs": -22.47,
+          "url": "/audio/themes/shrine/biome.webm?v=9bfa2bb4",
+          "urlFallback": "/audio/themes/shrine/biome.m4a?v=9bfa2bb4"
+        },
+        "night": {
+          "bytes": 313018,
+          "durationSec": 25.157,
+          "hash": "10ee5247ea3ec6b7b7404a951b939c88eb6e2a4a659d42d8fdd8c92c5c16190b",
+          "loopEndSec": 25.137,
+          "loopStartSec": 0.05,
+          "lufs": -24.84,
+          "url": "/audio/themes/shrine/night.webm?v=10ee5247",
+          "urlFallback": "/audio/themes/shrine/night.m4a?v=10ee5247"
+        },
+        "threat": {
+          "bytes": 312989,
+          "durationSec": 25.157,
+          "hash": "4a58e04abee0e79306abf53649d84da7ab6b1f4d17f99f2a6f5a46f15c3bec1d",
+          "loopEndSec": 25.137,
+          "loopStartSec": 0.05,
+          "lufs": -21.44,
+          "url": "/audio/themes/shrine/threat.webm?v=4a58e04a",
+          "urlFallback": "/audio/themes/shrine/threat.m4a?v=4a58e04a"
+        }
+      }
+    },
+    "sky": {
+      "bpm": 120,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 200155,
+          "durationSec": 16.07,
+          "hash": "60e7c24b775aaad40f54a2b58ffd241ef5e73b01c6605cc2af7314ed2d1832af",
+          "loopEndSec": 16.05,
+          "loopStartSec": 0.05,
+          "lufs": -16,
+          "url": "/audio/themes/sky/base.webm?v=60e7c24b",
+          "urlFallback": "/audio/themes/sky/base.m4a?v=60e7c24b"
+        },
+        "biome": {
+          "bytes": 200042,
+          "durationSec": 16.07,
+          "hash": "3e45f9164a18172ea57e3cd24e0e264fc3d45ca4090a7a02715b98106aa6ead7",
+          "loopEndSec": 16.05,
+          "loopStartSec": 0.05,
+          "lufs": -22.52,
+          "url": "/audio/themes/sky/biome.webm?v=3e45f916",
+          "urlFallback": "/audio/themes/sky/biome.m4a?v=3e45f916"
+        },
+        "night": {
+          "bytes": 200202,
+          "durationSec": 16.07,
+          "hash": "87e6ab10cda1a17544581052e95bd2838eed7959d02414ac108e73ec58d86587",
+          "loopEndSec": 16.05,
+          "loopStartSec": 0.05,
+          "lufs": -25.14,
+          "url": "/audio/themes/sky/night.webm?v=87e6ab10",
+          "urlFallback": "/audio/themes/sky/night.m4a?v=87e6ab10"
+        },
+        "threat": {
+          "bytes": 200160,
+          "durationSec": 16.07,
+          "hash": "52042817527fbbdf7bec835fcb38601d22b2788930a1fddf02489826eb7f46b7",
+          "loopEndSec": 16.05,
+          "loopStartSec": 0.05,
+          "lufs": -21.81,
+          "url": "/audio/themes/sky/threat.webm?v=52042817",
+          "urlFallback": "/audio/themes/sky/threat.m4a?v=52042817"
+        }
+      }
+    },
+    "storm": {
+      "bpm": 116.00087,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 514925,
+          "durationSec": 41.449,
+          "hash": "c985d313f522ae1949aa8b6ba9c4a067987da7594fcae5e066c0a916b6014c1f",
+          "loopEndSec": 41.429,
+          "loopStartSec": 0.05,
+          "lufs": -16,
+          "url": "/audio/themes/storm/base.webm?v=c985d313",
+          "urlFallback": "/audio/themes/storm/base.m4a?v=c985d313"
+        },
+        "biome": {
+          "bytes": 514949,
+          "durationSec": 41.449,
+          "hash": "44fff8e1039f60a3b43d007037153b115b182eac541cd6bc99203f165a97022a",
+          "loopEndSec": 41.429,
+          "loopStartSec": 0.05,
+          "lufs": -22.27,
+          "url": "/audio/themes/storm/biome.webm?v=44fff8e1",
+          "urlFallback": "/audio/themes/storm/biome.m4a?v=44fff8e1"
+        },
+        "night": {
+          "bytes": 515066,
+          "durationSec": 41.449,
+          "hash": "4cc056081eba72463e3b6dc18dc3bcb1727dac627cd2415f5c69f89a21f94cc1",
+          "loopEndSec": 41.429,
+          "loopStartSec": 0.05,
+          "lufs": -25.91,
+          "url": "/audio/themes/storm/night.webm?v=4cc05608",
+          "urlFallback": "/audio/themes/storm/night.m4a?v=4cc05608"
+        },
+        "threat": {
+          "bytes": 514985,
+          "durationSec": 41.449,
+          "hash": "282ef62096b21bb71723ad606ba3c58fcda4e645cb75d9305c4912d1bbcde69a",
+          "loopEndSec": 41.429,
+          "loopStartSec": 0.05,
+          "lufs": -21.4,
+          "url": "/audio/themes/storm/threat.webm?v=282ef620",
+          "urlFallback": "/audio/themes/storm/threat.m4a?v=282ef620"
+        }
+      }
+    },
+    "vesper": {
+      "bpm": 66.666667,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 448226,
+          "durationSec": 36.07,
+          "hash": "61af62bbb48250d8c075959b08d5b02ac5ebe547d1f5b46bca8a03fd90708a88",
+          "loopEndSec": 36.05,
+          "loopStartSec": 0.05,
+          "lufs": -16.32,
+          "url": "/audio/themes/vesper/base.webm?v=61af62bb",
+          "urlFallback": "/audio/themes/vesper/base.m4a?v=61af62bb"
+        },
+        "biome": {
+          "bytes": 448159,
+          "durationSec": 36.07,
+          "hash": "f991708774da8bfc081c529448756d0925d90745125bbf73994d9418e23d85ac",
+          "loopEndSec": 36.05,
+          "loopStartSec": 0.05,
+          "lufs": -21.39,
+          "url": "/audio/themes/vesper/biome.webm?v=f9917087",
+          "urlFallback": "/audio/themes/vesper/biome.m4a?v=f9917087"
+        },
+        "night": {
+          "bytes": 448203,
+          "durationSec": 36.07,
+          "hash": "775801bb34f633fe075c63f88f08f316c79423fb86f97b3912b40ab378c4c89a",
+          "loopEndSec": 36.05,
+          "loopStartSec": 0.05,
+          "lufs": -25.33,
+          "url": "/audio/themes/vesper/night.webm?v=775801bb",
+          "urlFallback": "/audio/themes/vesper/night.m4a?v=775801bb"
+        },
+        "threat": {
+          "bytes": 448202,
+          "durationSec": 36.07,
+          "hash": "6ad8937332c98ffe0d42bf85d6af14885564feb84940eacfc4b80148a563593d",
+          "loopEndSec": 36.05,
+          "loopStartSec": 0.05,
+          "lufs": -22.1,
+          "url": "/audio/themes/vesper/threat.webm?v=6ad89373",
+          "urlFallback": "/audio/themes/vesper/threat.m4a?v=6ad89373"
+        }
+      }
+    },
+    "victory": {
+      "bpm": 110.002037,
+      "derived": [
+        "threat",
+        "biome",
+        "night"
+      ],
+      "stems": {
+        "base": {
+          "bytes": 245332,
+          "durationSec": 19.706,
+          "hash": "3dbd91c0c23c3b4a199b2e6cd304545f9c3fdbf0783b121bf2da26a855d80b7d",
+          "loopEndSec": 19.686,
+          "loopStartSec": 0.05,
+          "lufs": -16,
+          "url": "/audio/themes/victory/base.webm?v=3dbd91c0",
+          "urlFallback": "/audio/themes/victory/base.m4a?v=3dbd91c0"
+        },
+        "biome": {
+          "bytes": 245339,
+          "durationSec": 19.706,
+          "hash": "d44440e69c09a52db85d83dc7c5f3af33ec7c0c5e9ca4e85d701f3f54194041f",
+          "loopEndSec": 19.686,
+          "loopStartSec": 0.05,
+          "lufs": -22.54,
+          "url": "/audio/themes/victory/biome.webm?v=d44440e6",
+          "urlFallback": "/audio/themes/victory/biome.m4a?v=d44440e6"
+        },
+        "night": {
+          "bytes": 245339,
+          "durationSec": 19.706,
+          "hash": "21bc0cd87cb50c11cf70cfbc645383705645592dc571178fdf773ac83b83968c",
+          "loopEndSec": 19.686,
+          "loopStartSec": 0.05,
+          "lufs": -26.15,
+          "url": "/audio/themes/victory/night.webm?v=21bc0cd8",
+          "urlFallback": "/audio/themes/victory/night.m4a?v=21bc0cd8"
+        },
+        "threat": {
+          "bytes": 245339,
+          "durationSec": 19.706,
+          "hash": "5b283604d62d307bab740da17afff00a58ed7d0d3e2b41e202e3d02457cba82c",
+          "loopEndSec": 19.686,
+          "loopStartSec": 0.05,
+          "lufs": -21.63,
+          "url": "/audio/themes/victory/threat.webm?v=5b283604",
+          "urlFallback": "/audio/themes/victory/threat.m4a?v=5b283604"
+        }
+      }
+    }
+  },
+  "version": 1,
+  "zoneThemes": {
+    "ascent_route": "sky",
+    "ash_route": "cinder",
+    "celestial_spire": "shrine",
+    "cinderhold": "cinder",
+    "deepcut_route": "marrow",
+    "eclipse_shrine": "shrine",
+    "forgewall": "forge",
+    "galvan_route": "storm",
+    "hollow_route": "vesper",
+    "marrowdig": "marrow",
+    "mire_route": "grove",
+    "mirevale": "grove",
+    "saltmourn": "salt",
+    "siege_route": "forge",
+    "skyrend": "sky",
+    "solenne": "capital",
+    "stormrook": "storm",
+    "the_rift": "rift",
+    "tide_route": "salt",
+    "umbral_observatory": "vesper",
+    "vesperveil": "vesper"
+  }
+}

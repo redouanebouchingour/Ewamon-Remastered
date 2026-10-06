@@ -1,0 +1,1041 @@
+{
+  "bytes": {
+    "budget": 83886080,
+    "m4a": 40989656,
+    "total": 76262417,
+    "webm": 35272761
+  },
+  "clips": 366,
+  "flagged": [
+    {
+      "id": "sfx/anvil_strike_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.45"
+    },
+    {
+      "id": "sfx/anvil_strike_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -25.53"
+    },
+    {
+      "id": "sfx/bell_toll_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -28.52"
+    },
+    {
+      "id": "sfx/cry_bug_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -28.84"
+    },
+    {
+      "id": "sfx/cry_bug_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.38"
+    },
+    {
+      "id": "sfx/cry_dark_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.58"
+    },
+    {
+      "id": "sfx/cry_dark_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.24"
+    },
+    {
+      "id": "sfx/cry_dragon_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.09"
+    },
+    {
+      "id": "sfx/cry_dragon_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -24.15"
+    },
+    {
+      "id": "sfx/cry_electric_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -25.11"
+    },
+    {
+      "id": "sfx/cry_electric_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.96"
+    },
+    {
+      "id": "sfx/cry_fighting_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.1"
+    },
+    {
+      "id": "sfx/cry_fire_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.5"
+    },
+    {
+      "id": "sfx/cry_grass_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.7"
+    },
+    {
+      "id": "sfx/cry_ice_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.59"
+    },
+    {
+      "id": "sfx/cry_ice_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.87"
+    },
+    {
+      "id": "sfx/cry_normal_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.92"
+    },
+    {
+      "id": "sfx/cry_poison_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.51"
+    },
+    {
+      "id": "sfx/cry_poison_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.85"
+    },
+    {
+      "id": "sfx/cry_steel_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.25"
+    },
+    {
+      "id": "sfx/cry_steel_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.7"
+    },
+    {
+      "id": "sfx/cry_water_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.47"
+    },
+    {
+      "id": "sfx/cry_water_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.87"
+    },
+    {
+      "id": "sfx/door_heavy_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -25.45"
+    },
+    {
+      "id": "sfx/door_open_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.22"
+    },
+    {
+      "id": "sfx/door_open_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.56"
+    },
+    {
+      "id": "sfx/faint_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.95"
+    },
+    {
+      "id": "sfx/faint_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.97"
+    },
+    {
+      "id": "sfx/flee_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.28"
+    },
+    {
+      "id": "sfx/grass_rustle_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.86"
+    },
+    {
+      "id": "sfx/grass_rustle_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -29.6"
+    },
+    {
+      "id": "sfx/grass_rustle_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -28.14"
+    },
+    {
+      "id": "sfx/hit_crit_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -24.36"
+    },
+    {
+      "id": "sfx/hit_crit_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.68"
+    },
+    {
+      "id": "sfx/hit_normal_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.55"
+    },
+    {
+      "id": "sfx/hit_normal_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.45"
+    },
+    {
+      "id": "sfx/hit_normal_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -24.21"
+    },
+    {
+      "id": "sfx/hit_super_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.89"
+    },
+    {
+      "id": "sfx/hit_super_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.86"
+    },
+    {
+      "id": "sfx/hit_super_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.93"
+    },
+    {
+      "id": "sfx/hit_weak_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.77"
+    },
+    {
+      "id": "sfx/hit_weak_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.39"
+    },
+    {
+      "id": "sfx/hurt_bug_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.37"
+    },
+    {
+      "id": "sfx/hurt_dark_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -26.99"
+    },
+    {
+      "id": "sfx/hurt_electric_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.85"
+    },
+    {
+      "id": "sfx/hurt_ghost_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.45"
+    },
+    {
+      "id": "sfx/hurt_grass_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.19"
+    },
+    {
+      "id": "sfx/hurt_ice_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.56"
+    },
+    {
+      "id": "sfx/hurt_normal_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.82"
+    },
+    {
+      "id": "sfx/hurt_poison_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.28"
+    },
+    {
+      "id": "sfx/hurt_steel_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.29"
+    },
+    {
+      "id": "sfx/hurt_water_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.96"
+    },
+    {
+      "id": "sfx/impact_bug_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.75"
+    },
+    {
+      "id": "sfx/impact_bug_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.47"
+    },
+    {
+      "id": "sfx/impact_dark_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.36"
+    },
+    {
+      "id": "sfx/impact_dark_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.48"
+    },
+    {
+      "id": "sfx/impact_electric_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.95"
+    },
+    {
+      "id": "sfx/impact_electric_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.16"
+    },
+    {
+      "id": "sfx/impact_fairy_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.37"
+    },
+    {
+      "id": "sfx/impact_fairy_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -28.06"
+    },
+    {
+      "id": "sfx/impact_fighting_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.33"
+    },
+    {
+      "id": "sfx/impact_fighting_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.96"
+    },
+    {
+      "id": "sfx/impact_fire_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.08"
+    },
+    {
+      "id": "sfx/impact_flying_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.99"
+    },
+    {
+      "id": "sfx/impact_flying_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -24.82"
+    },
+    {
+      "id": "sfx/impact_ghost_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -26.4"
+    },
+    {
+      "id": "sfx/impact_ghost_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -26.43"
+    },
+    {
+      "id": "sfx/impact_grass_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.75"
+    },
+    {
+      "id": "sfx/impact_grass_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.85"
+    },
+    {
+      "id": "sfx/impact_ground_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -26.81"
+    },
+    {
+      "id": "sfx/impact_ground_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.74"
+    },
+    {
+      "id": "sfx/impact_ice_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -29.75"
+    },
+    {
+      "id": "sfx/impact_ice_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -28.65"
+    },
+    {
+      "id": "sfx/impact_normal_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.28"
+    },
+    {
+      "id": "sfx/impact_normal_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.67"
+    },
+    {
+      "id": "sfx/impact_poison_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -33.42"
+    },
+    {
+      "id": "sfx/impact_poison_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -29.36"
+    },
+    {
+      "id": "sfx/impact_rock_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -25.99"
+    },
+    {
+      "id": "sfx/impact_rock_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -26.09"
+    },
+    {
+      "id": "sfx/impact_steel_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.35"
+    },
+    {
+      "id": "sfx/impact_steel_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -28.65"
+    },
+    {
+      "id": "sfx/impact_water_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -30.03"
+    },
+    {
+      "id": "sfx/impact_water_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -32.12"
+    },
+    {
+      "id": "sfx/move_bug_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.93"
+    },
+    {
+      "id": "sfx/move_bug_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.01"
+    },
+    {
+      "id": "sfx/move_dark_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.73"
+    },
+    {
+      "id": "sfx/move_dark_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.96"
+    },
+    {
+      "id": "sfx/move_fighting_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -25.75"
+    },
+    {
+      "id": "sfx/move_fighting_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -24.75"
+    },
+    {
+      "id": "sfx/move_fire_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.2"
+    },
+    {
+      "id": "sfx/move_grass_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -29.97"
+    },
+    {
+      "id": "sfx/move_grass_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -30.25"
+    },
+    {
+      "id": "sfx/move_normal_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -25.75"
+    },
+    {
+      "id": "sfx/move_normal_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -28.4"
+    },
+    {
+      "id": "sfx/move_poison_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -28.5"
+    },
+    {
+      "id": "sfx/move_poison_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -24.81"
+    },
+    {
+      "id": "sfx/move_psychic_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.38"
+    },
+    {
+      "id": "sfx/move_rock_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -29.82"
+    },
+    {
+      "id": "sfx/move_rock_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.81"
+    },
+    {
+      "id": "sfx/move_steel_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.46"
+    },
+    {
+      "id": "sfx/orb_break_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -24.05"
+    },
+    {
+      "id": "sfx/orb_break_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.17"
+    },
+    {
+      "id": "sfx/orb_catch_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.46"
+    },
+    {
+      "id": "sfx/orb_shake_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -26.53"
+    },
+    {
+      "id": "sfx/orb_shake_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -26.93"
+    },
+    {
+      "id": "sfx/orb_shake_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -28.79"
+    },
+    {
+      "id": "sfx/orb_throw_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -30.22"
+    },
+    {
+      "id": "sfx/orb_throw_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -30.39"
+    },
+    {
+      "id": "sfx/raid_phase_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.7"
+    },
+    {
+      "id": "sfx/splash_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -29.1"
+    },
+    {
+      "id": "sfx/splash_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.75"
+    },
+    {
+      "id": "sfx/status_burn_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.72"
+    },
+    {
+      "id": "sfx/status_confuse_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.6"
+    },
+    {
+      "id": "sfx/status_confuse_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.03"
+    },
+    {
+      "id": "sfx/status_freeze_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.29"
+    },
+    {
+      "id": "sfx/status_freeze_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.22"
+    },
+    {
+      "id": "sfx/status_poison_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.83"
+    },
+    {
+      "id": "sfx/status_poison_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.92"
+    },
+    {
+      "id": "sfx/step_ash_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -29.95"
+    },
+    {
+      "id": "sfx/step_ash_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -29.36"
+    },
+    {
+      "id": "sfx/step_ash_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.93"
+    },
+    {
+      "id": "sfx/step_dirt_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -28.67"
+    },
+    {
+      "id": "sfx/step_dirt_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -26.83"
+    },
+    {
+      "id": "sfx/step_dirt_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -29.97"
+    },
+    {
+      "id": "sfx/step_flat_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -30.65"
+    },
+    {
+      "id": "sfx/step_flat_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.15"
+    },
+    {
+      "id": "sfx/step_flat_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.15"
+    },
+    {
+      "id": "sfx/step_grass_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -30.75"
+    },
+    {
+      "id": "sfx/step_grass_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -29.85"
+    },
+    {
+      "id": "sfx/step_grass_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -30.35"
+    },
+    {
+      "id": "sfx/step_gravel_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.59"
+    },
+    {
+      "id": "sfx/step_gravel_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -24.95"
+    },
+    {
+      "id": "sfx/step_gravel_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -24.85"
+    },
+    {
+      "id": "sfx/step_metal_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.85"
+    },
+    {
+      "id": "sfx/step_metal_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -24.15"
+    },
+    {
+      "id": "sfx/step_metal_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.05"
+    },
+    {
+      "id": "sfx/step_salt_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.75"
+    },
+    {
+      "id": "sfx/step_salt_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -24.15"
+    },
+    {
+      "id": "sfx/step_salt_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.25"
+    },
+    {
+      "id": "sfx/step_sand_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.38"
+    },
+    {
+      "id": "sfx/step_sand_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -28.13"
+    },
+    {
+      "id": "sfx/step_sand_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -26.31"
+    },
+    {
+      "id": "sfx/step_snow_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -28.06"
+    },
+    {
+      "id": "sfx/step_snow_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -24.75"
+    },
+    {
+      "id": "sfx/step_snow_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -25.12"
+    },
+    {
+      "id": "sfx/step_stone_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -30.55"
+    },
+    {
+      "id": "sfx/step_stone_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -31.95"
+    },
+    {
+      "id": "sfx/step_stone_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -32.05"
+    },
+    {
+      "id": "sfx/step_water_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -25.5"
+    },
+    {
+      "id": "sfx/step_water_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.45"
+    },
+    {
+      "id": "sfx/step_water_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -24.94"
+    },
+    {
+      "id": "sfx/step_wood_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.45"
+    },
+    {
+      "id": "sfx/step_wood_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -26.35"
+    },
+    {
+      "id": "sfx/step_wood_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -26.05"
+    },
+    {
+      "id": "sfx/switch_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.93"
+    },
+    {
+      "id": "sfx/switch_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.28"
+    },
+    {
+      "id": "sfx/thunder_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21"
+    },
+    {
+      "id": "sfx/thunder_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.17"
+    },
+    {
+      "id": "sfx/ui_back_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -26.55"
+    },
+    {
+      "id": "sfx/ui_click_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -33.65"
+    },
+    {
+      "id": "sfx/ui_click_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -34.25"
+    },
+    {
+      "id": "sfx/ui_close_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -28.41"
+    },
+    {
+      "id": "sfx/ui_dialogue_advance_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -26.65"
+    },
+    {
+      "id": "sfx/ui_error_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.74"
+    },
+    {
+      "id": "sfx/ui_item_use_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.17"
+    },
+    {
+      "id": "sfx/ui_notify_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.55"
+    },
+    {
+      "id": "sfx/ui_open_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -28.45"
+    },
+    {
+      "id": "sfx/ui_quest_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -27.9"
+    },
+    {
+      "id": "sfx/ui_save_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.34"
+    },
+    {
+      "id": "sfx/ui_shop_buy_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -25"
+    },
+    {
+      "id": "sfx/ui_shop_buy_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -31.01"
+    },
+    {
+      "id": "sfx/ui_shop_deny_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -28.69"
+    },
+    {
+      "id": "sfx/ui_stinger_thinning_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -25.29"
+    },
+    {
+      "id": "sfx/ui_tab_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -23.35"
+    },
+    {
+      "id": "sfx/ui_toast_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -26.07"
+    },
+    {
+      "id": "sfx/ui_type_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -31.75"
+    },
+    {
+      "id": "sfx/ui_type_2",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -32.05"
+    },
+    {
+      "id": "sfx/ui_type_3",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -33.75"
+    },
+    {
+      "id": "sfx/weather_rain_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -22.75"
+    },
+    {
+      "id": "themes/capital/base",
+      "reason": "gain clamped to the -1 dBTP ceiling; lufs -17.87"
+    },
+    {
+      "id": "themes/cinder/biome",
+      "reason": "gain clamped to the -1 dBTP ceiling; lufs -20.66"
+    },
+    {
+      "id": "themes/elite/base",
+      "reason": "gain clamped to the -1 dBTP ceiling; lufs -16.53"
+    },
+    {
+      "id": "themes/forge/biome",
+      "reason": "gain clamped to the -1 dBTP ceiling; lufs -22.28"
+    },
+    {
+      "id": "themes/vesper/base",
+      "reason": "gain clamped to the -1 dBTP ceiling; lufs -16.32"
+    }
+  ],
+  "ok": true,
+  "placeholders": [],
+  "rejected": [],
+  "themes": {
+    "battle": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 39.461,
+      "loopStartSec": 0.965917,
+      "nominalSec": 39.461,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "capital": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 36.923,
+      "loopStartSec": 0.925125,
+      "nominalSec": 36.923,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "champion": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 49.372,
+      "loopStartSec": 0.414792,
+      "nominalSec": 49.372,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "cinder": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 32,
+      "loopStartSec": 0.249354,
+      "nominalSec": 32,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "elite": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 15,
+      "loopStartSec": 0.249958,
+      "nominalSec": 15,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "forge": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 36,
+      "loopStartSec": 0.249708,
+      "nominalSec": 36,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "grove": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 31.036,
+      "loopStartSec": 0.36425,
+      "nominalSec": 31.036,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "gym": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 20,
+      "loopStartSec": 0.249438,
+      "nominalSec": 20,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "marrow": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 33.714,
+      "loopStartSec": 0.534729,
+      "nominalSec": 33.714,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "raid": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 36,
+      "loopStartSec": 0.249813,
+      "nominalSec": 36,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "rift": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 32,
+      "loopStartSec": 0.249438,
+      "nominalSec": 32,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "salt": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 24,
+      "loopStartSec": 0.250563,
+      "nominalSec": 24,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "shrine": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 25.087,
+      "loopStartSec": 0.983875,
+      "nominalSec": 25.087,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "sky": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 16,
+      "loopStartSec": 0.250167,
+      "nominalSec": 16,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "storm": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 41.379,
+      "loopStartSec": 0.345021,
+      "nominalSec": 41.379,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "vesper": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 36,
+      "loopStartSec": 0.248917,
+      "nominalSec": 36,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    },
+    "victory": {
+      "align": {
+        "base": 0,
+        "biome": 0,
+        "night": 0,
+        "threat": 0
+      },
+      "loopSec": 19.636,
+      "loopStartSec": 0.305188,
+      "nominalSec": 19.636,
+      "scores": {
+        "base": 1,
+        "biome": 1,
+        "night": 1,
+        "threat": 1
+      }
+    }
+  }
+}

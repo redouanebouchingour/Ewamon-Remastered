@@ -743,7 +743,7 @@ Stems are generated a little longer than the loop (`durationSec = bars × 4 × 6
 | `<id>.webm` | `ffmpeg -i in.wav -c:a libopus -b:a 96k -vbr on -application audio -frame_duration 20 -f webm` (sfx: `-b:a 64k -ac 1`) | Opus in WebM is what `canPlayType('audio/webm; codecs=opus')` tests; `.ogg` Opus is not accepted by Safari's `decodeAudioData`, so the container is WebM, not the task's `.ogg` — same codec |
 | `<id>.m4a` | `ffmpeg -i in.wav -c:a aac -b:a 128k -movflags +faststart` | the fallback |
 
-Opus adds 312 samples of encoder delay (6.5 ms at 48 kHz); `loopStartSec`/`loopEndSec` are shifted by the decoded pre-skip read back with `ffprobe -show_streams` (`initial_padding`) so they refer to the decoded buffer the client actually loops. Determinism: ffmpeg's Opus/AAC encoders are deterministic for identical input and flags; `-fflags +bitexact -flags:a +bitexact` strips the encoder tag and date so the files hash-stable.
+Opus adds 312 samples of encoder delay (6.5 ms at 48 kHz). Browsers trim that pre-skip in `decodeAudioData` (WebM `CodecDelay`), so the decoded buffer starts at the first input sample and `loopStartSec`/`loopEndSec` are written **unshifted**; the m4a fallback's AAC priming is removed by its edit list. <!-- amended 2026-10-06: Phase E4 measurement, see CHANGELOG --> Determinism: ffmpeg's Opus/AAC encoders are deterministic for identical input and flags; `-fflags +bitexact -flags:a +bitexact` strips the encoder tag and date so the files hash-stable.
 
 ### 40.4.6 Output — `public/audio/manifest.json` (the exact `20-client.md` §20.7.4 shape, produced here)
 
@@ -762,7 +762,7 @@ The game's audio comes from CC0 packs (user decision, Phase E4), mapped onto the
 **`.design/audio/sources.json`** maps job ids (§40.4.6 layout: `themes/<t>/<layer>`, `ambience/<biome>`, `sfx/<id>_<n>`) to one file each:
 
 - **Required fields:** `file` (path under `assets-src/audio/cc0/`), `licence` (exactly `"CC0-1.0"`; anything else is refused), `author`, `url`.
-- **Optional fields:** `title`, `licenceFile`, `trim: [startSec, endSec]`, `gainDb`, `note`.
+- **Optional fields:** `title`, `licenceFile`, `trim: [startSec, endSec]`, `gainDb`, `note`, `parts`. A premix (several CC0 files mixed into one under `assets-src/audio/cc0/mix/` by a tool, because a job takes one file) lists its sources in `parts: [{ file, author, url, title?, licenceFile? }]`; the credits then show one row per part instead of the premix. Like the other attribution fields, `parts` never changes the request hash. <!-- amended 2026-10-06: Phase E4 downloads, see CHANGELOG -->
 - **Theme-only fields:** `crossfadeSec` (theme entries), and `bpm`, `bars` and `derive` (base entries only).
 
 Keys starting with `$` are comments. Invalid entries are reported and skipped.

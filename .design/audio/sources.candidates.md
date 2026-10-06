@@ -5,7 +5,7 @@ Scope: music (17 themes), ambience (11 beds), sfx (174 ids, 287 variants) from `
 
 ## How to read this
 
-- **Nothing has been downloaded.** Only HTML pages were read: product pages, licence pages and search listings.
+- **Downloaded 2026-10-06** after the user approved this list. See "Download status" below; the record is `assets-src/audio/cc0/DOWNLOADS.json` (gitignored), the mapping `.design/audio/sources.json`.
 - **Each row in the summary table is one download.** The user approves each one separately. Rows marked *(alt)* in the per-theme sections are fallbacks and are **not** counted in the totals.
 - **Licence evidence** quotes the licence field on each page as the page shows it:
   - OpenGameArt (OGA): the "License(s)" field.
@@ -16,6 +16,23 @@ Scope: music (17 themes), ambience (11 beds), sfx (174 ids, 287 variants) from `
 - **OGA search caveat:** the CC0 filter on the OGA advanced search let CC-BY items through (e.g. Alexandr Zhelanov's "Ancient Temple", CC-BY 4.0). Every OGA item below was checked on its own page. Do not trust the search filter alone.
 - **Freesound:** you need a free freesound.org account and login to download, even for CC0 sounds.
 - **Durations** are mostly not shown on OGA pages. "Loop: yes" means the page or its tags say the file loops. Everything else needs a loop point or crossfade from the pipeline.
+
+
+## Download status (2026-10-06)
+
+| Rows | Status |
+|---|---|
+| K1–K7 | **fetched** (0.4–5.6 MB each; page: "License: Creative Commons CC0"); each pack's `License.txt` is in `assets-src/audio/licenses/KENNEY-<pack>-License.txt` |
+| R1–R8 | **fetched** (page: "License(s): CC0") |
+| M1–M17 | **fetched**. M8 is the V2 wav, M9 is `entering_the_volcano.wav`, M14 is the flac, M16 is the mp3. M17 was taken under the CC0 option |
+| A1, A3–A6 | **fetched** |
+| S1 (itch.io, lentikula) | **skipped.** The itch download flow returned Cloudflare 522/525 and then redirected back to the item page. **Substituted** with 7 CC0 OpenGameArt items: Magic Spell SFX (JaggedStone), Freeze Spell (artisticdude), Cure Magic (Someoneman), Teleport Spell (Ogrebane), Ghost breath (qubodup), Earth Element Magic Spell (qubodup), RPG Sound Pack (artisticdude). Each page reads "License(s): CC0" |
+| A2 (Freesound) | **skipped** (needs a login). **Substituted** with OGA "Beach Ocean Waves" and "Water Waves" (qubodup; "License(s): CC0") |
+| A7 (Freesound) | **skipped** (login). The capital bed is premixed from the R4/R5/R8/K3/K4 files already fetched |
+| A8 (Freesound) | **skipped** (login; its licence was unverified anyway). The shrine bed is premixed from A5/A6/K3/K6 |
+| *(alt)* rows | not downloaded |
+
+The total is 58 files and 227 MB. Coverage is 366 of 366 jobs. Loop windows, premixes, the budget (72.7 MiB) and listening caveats are in `tools/audio-pipeline/IMPLEMENTATION-NOTES.md`, "Phase E4 downloads".
 
 ---
 

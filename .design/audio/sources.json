@@ -1,3 +1,4016 @@
 {
-  "$comment": "Phase E4: jobId -> CC0 source file under assets-src/audio/cc0/ (+ attribution). Empty until the user approves the downloads listed in sources.candidates.md. Format: tools/audio-pipeline/IMPLEMENTATION-NOTES.md, 'Phase E4 ingest'."
+  "$comment": "Phase E4: jobId -> CC0 source file under assets-src/audio/cc0/ (+ attribution). Generated from the approved downloads (assets-src/audio/cc0/DOWNLOADS.json) and premixes (mix/, credited through `parts`). Theme windows: whole bars at each track's own tempo, found by self-similarity analysis; see tools/audio-pipeline/IMPLEMENTATION-NOTES.md \"Phase E4 downloads\".",
+  "themes/battle/base": {
+    "file": "music/battleThemeA.mp3",
+    "licence": "CC0-1.0",
+    "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+    "url": "https://opengameart.org/content/battle-theme-a",
+    "title": "Battle Theme A",
+    "trim": [
+      28.816,
+      68.277
+    ],
+    "bpm": 145.966904,
+    "bars": 24,
+    "crossfadeSec": 1,
+    "note": "loop window 28.816–68.277 s; seam corr ≈0.4 (variation, not an exact repeat)"
+  },
+  "themes/gym/base": {
+    "file": "music/battleThemeB.mp3",
+    "licence": "CC0-1.0",
+    "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+    "url": "https://opengameart.org/content/battle-theme-b-for-rpg",
+    "title": "Battle Theme B for RPG",
+    "trim": [
+      2.09,
+      22.09
+    ],
+    "bpm": 144,
+    "bars": 12,
+    "crossfadeSec": 0.75,
+    "note": "loop window 2.09–22.090 s; seam corr 0.67/0.53"
+  },
+  "themes/champion/base": {
+    "file": "music/junkala-epic-boss-battle-loop.wav",
+    "licence": "CC0-1.0",
+    "author": "Juhani Junkala (SubspaceAudio)",
+    "url": "https://opengameart.org/content/boss-battle-music",
+    "title": "Epic Boss Battle [Seamlessly Looping]",
+    "trim": [
+      51.386,
+      100.758
+    ],
+    "bpm": 174.997975,
+    "bars": 36,
+    "crossfadeSec": 2,
+    "note": "loop window 51.386–100.758 s; through-composed; the shipped 123 s loop is over budget, so a 36-bar window with a 2 s seam fade (weak seam)"
+  },
+  "themes/elite/base": {
+    "file": "music/dramatic-boss-encounter.wav",
+    "licence": "CC0-1.0",
+    "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+    "url": "https://opengameart.org/content/dramatic-boss-encounter",
+    "title": "Dramatic Boss Encounter",
+    "trim": [
+      4.923,
+      19.923
+    ],
+    "bpm": 128,
+    "bars": 8,
+    "crossfadeSec": 0.5,
+    "note": "loop window 4.923–19.923 s; clean 8-bar repeat (corr 0.74); short"
+  },
+  "themes/raid/base": {
+    "file": "music/determined_pursuit_loop.wav",
+    "licence": "CC0-1.0",
+    "author": "Emma_MA",
+    "url": "https://opengameart.org/content/determined-pursuit-epic-orchestra-loop",
+    "title": "Determined Pursuit (epic orchestra loop)",
+    "trim": [
+      50.968,
+      86.968
+    ],
+    "bpm": 160,
+    "bars": 24,
+    "note": "loop window 50.968–86.968 s; exact repeat (corr 1.00)"
+  },
+  "themes/victory/base": {
+    "file": "music/Victory1.mp3",
+    "licence": "CC0-1.0",
+    "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+    "url": "https://opengameart.org/content/victory-theme-for-rpg",
+    "title": "Victory Theme for RPG",
+    "trim": [
+      19.365,
+      39.001
+    ],
+    "bpm": 110.002037,
+    "bars": 9,
+    "crossfadeSec": 1,
+    "note": "loop window 19.365–39.001 s; seam corr ≈0.35; 9 bars"
+  },
+  "themes/grove/base": {
+    "file": "music/TownTheme.mp3",
+    "licence": "CC0-1.0",
+    "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+    "url": "https://opengameart.org/content/town-theme-rpg",
+    "title": "Town Theme RPG",
+    "trim": [
+      43.236,
+      74.272
+    ],
+    "bpm": 92.795463,
+    "bars": 12,
+    "crossfadeSec": 2,
+    "note": "loop window 43.236–74.272 s; through-composed (no repeat found); 2 s seam fade — needs a listen"
+  },
+  "themes/capital/base": {
+    "file": "music/new_sunrise_V2.wav",
+    "licence": "CC0-1.0",
+    "author": "nene",
+    "url": "https://opengameart.org/content/new-sunrise",
+    "title": "New Sunrise (V2)",
+    "trim": [
+      44.954,
+      81.877
+    ],
+    "bpm": 104.000217,
+    "bars": 16,
+    "crossfadeSec": 0.5,
+    "note": "loop window 44.954–81.877 s; strong repeat (corr 0.87–0.90)"
+  },
+  "themes/cinder/base": {
+    "file": "music/entering_the_volcano.wav",
+    "licence": "CC0-1.0",
+    "author": "Umplix",
+    "url": "https://opengameart.org/content/ambience-of-a-fallen-age",
+    "title": "Ambience of a Fallen Age: Entering the Volcano",
+    "trim": [
+      54.102,
+      86.102
+    ],
+    "bpm": 120,
+    "bars": 16,
+    "crossfadeSec": 1,
+    "note": "loop window 54.102–86.102 s; repeat corr 0.77–0.80"
+  },
+  "themes/forge/base": {
+    "file": "music/Factory.ogg",
+    "licence": "CC0-1.0",
+    "author": "yd",
+    "url": "https://opengameart.org/content/factory-ambiance",
+    "title": "Factory Ambiance",
+    "trim": [
+      26.099,
+      62.099
+    ],
+    "bpm": 80,
+    "bars": 12,
+    "crossfadeSec": 1,
+    "note": "loop window 26.099–62.099 s; repeat corr 0.85/0.56"
+  },
+  "themes/marrow/base": {
+    "file": "music/song18-crystal-cave.mp3",
+    "licence": "CC0-1.0",
+    "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+    "url": "https://opengameart.org/content/crystal-cave-song18",
+    "title": "Crystal Cave (song18)",
+    "trim": [
+      4.156,
+      37.87
+    ],
+    "bpm": 99.661862,
+    "bars": 14,
+    "crossfadeSec": 1.5,
+    "note": "loop window 4.156–37.870 s; weak seam (corr 0.45 at the seam); needs a listen"
+  },
+  "themes/rift/base": {
+    "file": "mix/theme_rift.wav",
+    "licence": "CC0-1.0",
+    "author": "Juhani Junkala (SubspaceAudio)",
+    "url": "https://opengameart.org/content/horror-atmosphere",
+    "title": "Premix: theme_rift",
+    "trim": [
+      6,
+      38
+    ],
+    "bpm": 60,
+    "bars": 8,
+    "crossfadeSec": 2,
+    "note": "loop window 6–38.000 s; no pulse in the source; 32 s window (8 bars at the bible tempo) of a 1 kHz low-passed premix, 2 s seam fade",
+    "parts": [
+      {
+        "file": "music/junkala-post-apocalyptic-wastelands-loop.ogg",
+        "author": "Juhani Junkala (SubspaceAudio)",
+        "url": "https://opengameart.org/content/horror-atmosphere",
+        "title": "Post Apocalyptic Wastelands [Loop Ready]"
+      }
+    ]
+  },
+  "themes/salt/base": {
+    "file": "music/seaside-village.flac",
+    "licence": "CC0-1.0",
+    "author": "KarateStudios",
+    "url": "https://opengameart.org/content/seaside-village",
+    "title": "Seaside Village",
+    "trim": [
+      43.561,
+      67.561
+    ],
+    "bpm": 160,
+    "bars": 16,
+    "crossfadeSec": 1,
+    "note": "loop window 43.561–67.561 s; repeat corr 0.50/0.39"
+  },
+  "themes/shrine/base": {
+    "file": "music/DarkShrineLoop.flac",
+    "licence": "CC0-1.0",
+    "author": "qubodup (after yd)",
+    "url": "https://opengameart.org/content/dark-shrine-loop",
+    "title": "Dark Shrine Loop",
+    "trim": [
+      5.016,
+      30.103
+    ],
+    "bpm": 86.100371,
+    "bars": 9,
+    "crossfadeSec": 1.5,
+    "note": "loop window 5.016–30.103 s; repeat corr 0.67 at the seam; 9 bars"
+  },
+  "themes/sky/base": {
+    "file": "music/rise_of_the_early_dawn.mp3",
+    "licence": "CC0-1.0",
+    "author": "antonioraymond71",
+    "url": "https://opengameart.org/content/rise-of-the-early-dawn",
+    "title": "Rise Of The Early Dawn",
+    "trim": [
+      69.567,
+      85.567
+    ],
+    "bpm": 120,
+    "bars": 8,
+    "crossfadeSec": 0.5,
+    "note": "loop window 69.567–85.567 s; clean 8-bar repeat (corr 0.86–0.90); short"
+  },
+  "themes/storm/base": {
+    "file": "music/energystorm.mp3",
+    "licence": "CC0-1.0",
+    "author": "iamoneabe",
+    "url": "https://opengameart.org/content/energy-storm",
+    "title": "Energy Storm",
+    "trim": [
+      35.619,
+      76.998
+    ],
+    "bpm": 116.00087,
+    "bars": 20,
+    "crossfadeSec": 0.5,
+    "note": "loop window 35.619–76.998 s; strong repeat (corr 0.90–0.95)"
+  },
+  "themes/vesper/base": {
+    "file": "music/creepy-forest.ogg",
+    "licence": "CC0-1.0",
+    "author": "Brandon Morris (Augmentality)",
+    "url": "https://opengameart.org/content/creepy-forest-f",
+    "title": "Creepy Forest (F)",
+    "trim": [
+      29.931,
+      65.931
+    ],
+    "bpm": 66.666667,
+    "bars": 10,
+    "crossfadeSec": 1,
+    "note": "loop window 29.931–65.931 s; repeat corr 0.80/0.81; dual-licensed OGA-BY 3.0 / CC0 on its page; taken under the CC0 option"
+  },
+  "ambience/grove": {
+    "file": "mix/bed_grove.wav",
+    "licence": "CC0-1.0",
+    "author": "Kresiek The Furry",
+    "url": "https://opengameart.org/content/amb-morning-sounds-perfect-loop",
+    "title": "Premix: bed_grove",
+    "parts": [
+      {
+        "file": "ambience/amb_morning.ogg",
+        "author": "Kresiek The Furry",
+        "url": "https://opengameart.org/content/amb-morning-sounds-perfect-loop",
+        "title": "AMB Morning Sounds (Perfect Loop)"
+      }
+    ]
+  },
+  "ambience/marrow": {
+    "file": "mix/bed_marrow.wav",
+    "licence": "CC0-1.0",
+    "author": "JaggedStone; Kenney (kenney.nl); rubberduck",
+    "url": "https://opengameart.org/content/loopable-dungeon-ambience",
+    "title": "Premix: bed_marrow",
+    "parts": [
+      {
+        "file": "ambience/dungeon_ambient_1.ogg",
+        "author": "JaggedStone",
+        "url": "https://opengameart.org/content/loopable-dungeon-ambience",
+        "title": "Loopable Dungeon Ambience"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactMining_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactMining_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactMining_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactMining_001",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactMining_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactMining_002",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactMining_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactMining_004",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/wood_squeak_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: wood_squeak_02"
+      }
+    ]
+  },
+  "ambience/salt": {
+    "file": "mix/bed_salt.wav",
+    "licence": "CC0-1.0",
+    "author": "SketchMan3; Kenney (kenney.nl); rubberduck; qubodup (from jasinski, Freesound #18363); qubodup (from transitking, Freesound #11505)",
+    "url": "https://opengameart.org/content/wind-whoosh-loop",
+    "title": "Premix: bed_salt",
+    "parts": [
+      {
+        "file": "ambience/wind-woosh-loop.ogg",
+        "author": "SketchMan3",
+        "url": "https://opengameart.org/content/wind-whoosh-loop",
+        "title": "wind whoosh loop"
+      },
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/creak1.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: creak1",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      },
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/creak2.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: creak2",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      },
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/creak3.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: creak3",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_loop_water_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_loop_water_02"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_loop_water_03.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_loop_water_03"
+      },
+      {
+        "file": "subs/beach-ocean-waves/wave_01_cc0-18363__jasinski__alkaibeach.flac",
+        "author": "qubodup (from jasinski, Freesound #18363)",
+        "url": "https://opengameart.org/content/beach-ocean-waves",
+        "title": "Beach Ocean Waves: wave_01_cc0-18363__jasinski__alkaibeach"
+      },
+      {
+        "file": "subs/beach-ocean-waves/wave_02_cc0-18363__jasinski__alkaibeach.flac",
+        "author": "qubodup (from jasinski, Freesound #18363)",
+        "url": "https://opengameart.org/content/beach-ocean-waves",
+        "title": "Beach Ocean Waves: wave_02_cc0-18363__jasinski__alkaibeach"
+      },
+      {
+        "file": "subs/beach-ocean-waves/wave_03_cc0-18363__jasinski__alkaibeach.flac",
+        "author": "qubodup (from jasinski, Freesound #18363)",
+        "url": "https://opengameart.org/content/beach-ocean-waves",
+        "title": "Beach Ocean Waves: wave_03_cc0-18363__jasinski__alkaibeach"
+      },
+      {
+        "file": "subs/water-waves/wave_01_cc0-11505__transitking__wavesound.flac",
+        "author": "qubodup (from transitking, Freesound #11505)",
+        "url": "https://opengameart.org/content/water-waves",
+        "title": "Water Waves: wave_01_cc0-11505__transitking__wavesound"
+      },
+      {
+        "file": "subs/water-waves/wave_02_cc0-11505__transitking__wavesound.flac",
+        "author": "qubodup (from transitking, Freesound #11505)",
+        "url": "https://opengameart.org/content/water-waves",
+        "title": "Water Waves: wave_02_cc0-11505__transitking__wavesound"
+      },
+      {
+        "file": "subs/water-waves/wave_03_cc0-11505__transitking__wavesound.flac",
+        "author": "qubodup (from transitking, Freesound #11505)",
+        "url": "https://opengameart.org/content/water-waves",
+        "title": "Water Waves: wave_03_cc0-11505__transitking__wavesound"
+      },
+      {
+        "file": "subs/water-waves/wave_04_cc0-11505__transitking__wavesound.flac",
+        "author": "qubodup (from transitking, Freesound #11505)",
+        "url": "https://opengameart.org/content/water-waves",
+        "title": "Water Waves: wave_04_cc0-11505__transitking__wavesound"
+      }
+    ]
+  },
+  "ambience/storm": {
+    "file": "mix/bed_storm.wav",
+    "licence": "CC0-1.0",
+    "author": "kindland; SketchMan3; Kenney (kenney.nl); rubberduck",
+    "url": "https://opengameart.org/content/rain-and-thunders",
+    "title": "Premix: bed_storm",
+    "parts": [
+      {
+        "file": "ambience/Dark_Rainy_Night.ogg",
+        "author": "kindland",
+        "url": "https://opengameart.org/content/rain-and-thunders",
+        "title": "rain and thunders"
+      },
+      {
+        "file": "ambience/wind-woosh-loop.ogg",
+        "author": "SketchMan3",
+        "url": "https://opengameart.org/content/wind-whoosh-loop",
+        "title": "wind whoosh loop"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/forceField_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: forceField_000",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/forceField_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: forceField_003",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_01"
+      }
+    ]
+  },
+  "ambience/vesper": {
+    "file": "mix/bed_vesper.wav",
+    "licence": "CC0-1.0",
+    "author": "Wolfgang_; SketchMan3; Kenney (kenney.nl); qubodup (from jasinski, Freesound #18363)",
+    "url": "https://opengameart.org/content/crickets-ambient-noise-loopable",
+    "title": "Premix: bed_vesper",
+    "parts": [
+      {
+        "file": "ambience/crickets.mp3",
+        "author": "Wolfgang_",
+        "url": "https://opengameart.org/content/crickets-ambient-noise-loopable",
+        "title": "Crickets Ambient Noise - loopable"
+      },
+      {
+        "file": "ambience/wind-woosh-loop.ogg",
+        "author": "SketchMan3",
+        "url": "https://opengameart.org/content/wind-whoosh-loop",
+        "title": "wind whoosh loop"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactBell_heavy_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactBell_heavy_001",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "subs/beach-ocean-waves/wave_01_cc0-18363__jasinski__alkaibeach.flac",
+        "author": "qubodup (from jasinski, Freesound #18363)",
+        "url": "https://opengameart.org/content/beach-ocean-waves",
+        "title": "Beach Ocean Waves: wave_01_cc0-18363__jasinski__alkaibeach"
+      },
+      {
+        "file": "subs/beach-ocean-waves/wave_03_cc0-18363__jasinski__alkaibeach.flac",
+        "author": "qubodup (from jasinski, Freesound #18363)",
+        "url": "https://opengameart.org/content/beach-ocean-waves",
+        "title": "Beach Ocean Waves: wave_03_cc0-18363__jasinski__alkaibeach"
+      },
+      {
+        "file": "subs/beach-ocean-waves/wave_04_cc0-18363__jasinski__alkaibeach.flac",
+        "author": "qubodup (from jasinski, Freesound #18363)",
+        "url": "https://opengameart.org/content/beach-ocean-waves",
+        "title": "Beach Ocean Waves: wave_04_cc0-18363__jasinski__alkaibeach"
+      }
+    ]
+  },
+  "ambience/sky": {
+    "file": "mix/bed_sky.wav",
+    "licence": "CC0-1.0",
+    "author": "SketchMan3; rubberduck",
+    "url": "https://opengameart.org/content/wind-whoosh-loop",
+    "title": "Premix: bed_sky",
+    "parts": [
+      {
+        "file": "ambience/wind-woosh-loop.ogg",
+        "author": "SketchMan3",
+        "url": "https://opengameart.org/content/wind-whoosh-loop",
+        "title": "wind whoosh loop"
+      },
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/wood_cracking_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: wood_cracking_01"
+      },
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/wood_cracking_03.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: wood_cracking_03"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_01"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_02"
+      }
+    ]
+  },
+  "ambience/capital": {
+    "file": "mix/bed_capital.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: bed_capital",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_concrete_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_concrete_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_concrete_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_concrete_001",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_concrete_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_concrete_002",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_concrete_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_concrete_003",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_concrete_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_concrete_004",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/cloth1.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: cloth1",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      },
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/cloth3.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: cloth3",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      },
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/clothBelt.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: clothBelt",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      },
+      {
+        "file": "rubberduck/100-CC0-SFX/bell_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx",
+        "title": "100 CC0 SFX: bell_01"
+      },
+      {
+        "file": "rubberduck/100-CC0-SFX/bell_03.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx",
+        "title": "100 CC0 SFX: bell_03"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_loop_highway.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_loop_highway"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_loop_water_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_loop_water_01"
+      },
+      {
+        "file": "rubberduck/sfx_loops/water_flowing.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/30-cc0-sfx-loops",
+        "title": "30 CC0 SFX loops: water_flowing"
+      }
+    ]
+  },
+  "ambience/shrine": {
+    "file": "mix/bed_shrine.wav",
+    "licence": "CC0-1.0",
+    "author": "Wolfgang_; SketchMan3; Kenney (kenney.nl)",
+    "url": "https://opengameart.org/content/crickets-ambient-noise-loopable",
+    "title": "Premix: bed_shrine",
+    "parts": [
+      {
+        "file": "ambience/crickets.mp3",
+        "author": "Wolfgang_",
+        "url": "https://opengameart.org/content/crickets-ambient-noise-loopable",
+        "title": "Crickets Ambient Noise - loopable"
+      },
+      {
+        "file": "ambience/wind-woosh-loop.ogg",
+        "author": "SketchMan3",
+        "url": "https://opengameart.org/content/wind-whoosh-loop",
+        "title": "wind whoosh loop"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_light_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_light_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_light_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_light_001",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_light_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_light_002",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_light_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_light_003",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_light_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_light_004",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/spaceEngineLow_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: spaceEngineLow_002",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      }
+    ]
+  },
+  "ambience/forge": {
+    "file": "mix/bed_forge.wav",
+    "licence": "CC0-1.0",
+    "author": "SketchMan3; Kenney (kenney.nl); rubberduck",
+    "url": "https://opengameart.org/content/wind-whoosh-loop",
+    "title": "Premix: bed_forge",
+    "parts": [
+      {
+        "file": "ambience/wind-woosh-loop.ogg",
+        "author": "SketchMan3",
+        "url": "https://opengameart.org/content/wind-whoosh-loop",
+        "title": "wind whoosh loop"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactSoft_heavy_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactSoft_heavy_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/metal_hit_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: metal_hit_01"
+      },
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/metal_hit_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: metal_hit_02"
+      },
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/metal_hit_03.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: metal_hit_03"
+      },
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/metal_hit_04.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: metal_hit_04"
+      },
+      {
+        "file": "rubberduck/80-CC0-RPG-SFX/chain_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/node/86018",
+        "title": "80 CC0 RPG SFX: chain_02"
+      },
+      {
+        "file": "rubberduck/sfx_loops/machine_08.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/30-cc0-sfx-loops",
+        "title": "30 CC0 SFX loops: machine_08"
+      },
+      {
+        "file": "rubberduck/sfx_loops/machine_11.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/30-cc0-sfx-loops",
+        "title": "30 CC0 SFX loops: machine_11"
+      },
+      {
+        "file": "rubberduck/sfx_loops/noise_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/30-cc0-sfx-loops",
+        "title": "30 CC0 SFX loops: noise_01"
+      }
+    ]
+  },
+  "ambience/cinder": {
+    "file": "mix/bed_cinder.wav",
+    "licence": "CC0-1.0",
+    "author": "SketchMan3; Kenney (kenney.nl); Umplix; rubberduck",
+    "url": "https://opengameart.org/content/wind-whoosh-loop",
+    "title": "Premix: bed_cinder",
+    "parts": [
+      {
+        "file": "ambience/wind-woosh-loop.ogg",
+        "author": "SketchMan3",
+        "url": "https://opengameart.org/content/wind-whoosh-loop",
+        "title": "wind whoosh loop"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/thrusterFire_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: thrusterFire_000",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "music/entering_the_volcano.wav",
+        "author": "Umplix",
+        "url": "https://opengameart.org/content/ambience-of-a-fallen-age",
+        "title": "Ambience of a Fallen Age: Entering the Volcano"
+      },
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/hammer_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: hammer_01"
+      },
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/hammer_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: hammer_02"
+      },
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/hammer_03.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: hammer_03"
+      },
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/hammer_04.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: hammer_04"
+      },
+      {
+        "file": "rubberduck/80-CC0-RPG-SFX/spell_fire_06.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/node/86018",
+        "title": "80 CC0 RPG SFX: spell_fire_06"
+      },
+      {
+        "file": "rubberduck/80-CC0-RPG-SFX/spell_fire_07.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/node/86018",
+        "title": "80 CC0 RPG SFX: spell_fire_07"
+      },
+      {
+        "file": "rubberduck/sfx_loops/water_boiling.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/30-cc0-sfx-loops",
+        "title": "30 CC0 SFX loops: water_boiling"
+      }
+    ]
+  },
+  "ambience/rift": {
+    "file": "mix/bed_rift.wav",
+    "licence": "CC0-1.0",
+    "author": "SketchMan3; Juhani Junkala (SubspaceAudio); rubberduck",
+    "url": "https://opengameart.org/content/wind-whoosh-loop",
+    "title": "Premix: bed_rift",
+    "parts": [
+      {
+        "file": "ambience/wind-woosh-loop.ogg",
+        "author": "SketchMan3",
+        "url": "https://opengameart.org/content/wind-whoosh-loop",
+        "title": "wind whoosh loop"
+      },
+      {
+        "file": "music/junkala-post-apocalyptic-wastelands-loop.ogg",
+        "author": "Juhani Junkala (SubspaceAudio)",
+        "url": "https://opengameart.org/content/horror-atmosphere",
+        "title": "Post Apocalyptic Wastelands [Loop Ready]"
+      },
+      {
+        "file": "rubberduck/100-CC0-SFX/plop_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx",
+        "title": "100 CC0 SFX: plop_01"
+      },
+      {
+        "file": "rubberduck/100-CC0-SFX/plop_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx",
+        "title": "100 CC0 SFX: plop_02"
+      },
+      {
+        "file": "rubberduck/water-splash-slime-sfx/bubble_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+        "title": "40 CC0 water / splash / slime SFX: bubble_02"
+      }
+    ]
+  },
+  "sfx/ui_back_1": {
+    "file": "kenney/kenney_interface-sounds/Audio/back_002.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds: back_002",
+    "licenceFile": "KENNEY-interface-sounds-License.txt"
+  },
+  "sfx/ui_badge_1": {
+    "file": "kenney/kenney_music-jingles/Audio/Hit jingles/jingles_HIT15.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/music-jingles",
+    "title": "Music Jingles: jingles_HIT15",
+    "licenceFile": "KENNEY-music-jingles-License.txt"
+  },
+  "sfx/ui_click_1": {
+    "file": "kenney/kenney_interface-sounds/Audio/click_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds: click_001",
+    "licenceFile": "KENNEY-interface-sounds-License.txt"
+  },
+  "sfx/ui_click_2": {
+    "file": "kenney/kenney_ui-audio/Audio/click3.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/ui-audio",
+    "title": "UI Audio: click3",
+    "licenceFile": "KENNEY-ui-audio-License.txt"
+  },
+  "sfx/ui_close_1": {
+    "file": "kenney/kenney_rpg-audio/Audio/bookClose.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio: bookClose",
+    "licenceFile": "KENNEY-rpg-audio-License.txt"
+  },
+  "sfx/ui_confirm_1": {
+    "file": "kenney/kenney_interface-sounds/Audio/confirmation_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds: confirmation_001",
+    "licenceFile": "KENNEY-interface-sounds-License.txt"
+  },
+  "sfx/ui_dialogue_advance_1": {
+    "file": "kenney/kenney_interface-sounds/Audio/select_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds: select_001",
+    "licenceFile": "KENNEY-interface-sounds-License.txt"
+  },
+  "sfx/ui_error_1": {
+    "file": "kenney/kenney_interface-sounds/Audio/error_003.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds: error_003",
+    "licenceFile": "KENNEY-interface-sounds-License.txt"
+  },
+  "sfx/ui_evolve_done_1": {
+    "file": "subs/cure-magic/Cure6.wav",
+    "licence": "CC0-1.0",
+    "author": "Someoneman",
+    "url": "https://opengameart.org/content/cure-magic",
+    "title": "Cure Magic: Cure6",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/ui_evolve_start_1": {
+    "file": "subs/rpg-sound-pack/pack/battle/spell.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: spell",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/ui_heal_1": {
+    "file": "subs/cure-magic/Cure1.wav",
+    "licence": "CC0-1.0",
+    "author": "Someoneman",
+    "url": "https://opengameart.org/content/cure-magic",
+    "title": "Cure Magic: Cure1",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/ui_item_get_1": {
+    "file": "kenney/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI10.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/music-jingles",
+    "title": "Music Jingles: jingles_PIZZI10",
+    "licenceFile": "KENNEY-music-jingles-License.txt"
+  },
+  "sfx/ui_item_use_1": {
+    "file": "subs/rpg-sound-pack/pack/inventory/bottle.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: bottle",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/ui_levelup_1": {
+    "file": "kenney/kenney_music-jingles/Audio/Steel jingles/jingles_STEEL02.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/music-jingles",
+    "title": "Music Jingles: jingles_STEEL02",
+    "licenceFile": "KENNEY-music-jingles-License.txt"
+  },
+  "sfx/ui_notify_1": {
+    "file": "kenney/kenney_interface-sounds/Audio/glass_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds: glass_001",
+    "licenceFile": "KENNEY-interface-sounds-License.txt"
+  },
+  "sfx/ui_open_1": {
+    "file": "kenney/kenney_rpg-audio/Audio/bookOpen.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio: bookOpen",
+    "licenceFile": "KENNEY-rpg-audio-License.txt"
+  },
+  "sfx/ui_quest_1": {
+    "file": "kenney/kenney_rpg-audio/Audio/bookFlip1.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio: bookFlip1",
+    "licenceFile": "KENNEY-rpg-audio-License.txt"
+  },
+  "sfx/ui_quest_done_1": {
+    "file": "kenney/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI12.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/music-jingles",
+    "title": "Music Jingles: jingles_PIZZI12",
+    "licenceFile": "KENNEY-music-jingles-License.txt"
+  },
+  "sfx/ui_save_1": {
+    "file": "kenney/kenney_interface-sounds/Audio/scratch_004.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds: scratch_004",
+    "licenceFile": "KENNEY-interface-sounds-License.txt"
+  },
+  "sfx/ui_shop_buy_1": {
+    "file": "kenney/kenney_rpg-audio/Audio/handleCoins2.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio: handleCoins2",
+    "licenceFile": "KENNEY-rpg-audio-License.txt"
+  },
+  "sfx/ui_shop_buy_2": {
+    "file": "rubberduck/80-CC0-RPG-SFX/item_coins_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/node/86018",
+    "title": "80 CC0 RPG SFX: item_coins_01"
+  },
+  "sfx/ui_shop_deny_1": {
+    "file": "kenney/kenney_rpg-audio/Audio/handleSmallLeather.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio: handleSmallLeather",
+    "licenceFile": "KENNEY-rpg-audio-License.txt"
+  },
+  "sfx/ui_shop_sell_1": {
+    "file": "subs/rpg-sound-pack/pack/inventory/coin.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: coin",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/ui_tab_1": {
+    "file": "kenney/kenney_interface-sounds/Audio/tick_004.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds: tick_004",
+    "licenceFile": "KENNEY-interface-sounds-License.txt"
+  },
+  "sfx/ui_toast_1": {
+    "file": "rubberduck/100-CC0-SFX/bell_02.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/100-cc0-sfx",
+    "title": "100 CC0 SFX: bell_02"
+  },
+  "sfx/ui_trade_1": {
+    "file": "subs/magic-spell-sfx/magical_5.ogg",
+    "licence": "CC0-1.0",
+    "author": "JaggedStone",
+    "url": "https://opengameart.org/content/magic-spell-sfx",
+    "title": "Magic Spell SFX: magical_5",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/ui_type_1": {
+    "file": "kenney/kenney_interface-sounds/Audio/click_002.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds: click_002",
+    "licenceFile": "KENNEY-interface-sounds-License.txt"
+  },
+  "sfx/ui_type_2": {
+    "file": "kenney/kenney_interface-sounds/Audio/click_003.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds: click_003",
+    "licenceFile": "KENNEY-interface-sounds-License.txt"
+  },
+  "sfx/ui_type_3": {
+    "file": "kenney/kenney_interface-sounds/Audio/click_004.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds: click_004",
+    "licenceFile": "KENNEY-interface-sounds-License.txt"
+  },
+  "sfx/ui_witness_1": {
+    "file": "mix/ui_witness_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "Premix: ui_witness_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/metalClick.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: metalClick",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      },
+      {
+        "file": "rubberduck/100-CC0-SFX/bell_03.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx",
+        "title": "100 CC0 SFX: bell_03"
+      }
+    ]
+  },
+  "sfx/ui_stinger_beat_1": {
+    "file": "music/song18-crystal-cave.mp3",
+    "licence": "CC0-1.0",
+    "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+    "url": "https://opengameart.org/content/crystal-cave-song18",
+    "title": "Crystal Cave (song18)",
+    "trim": [
+      7.15,
+      10.4
+    ]
+  },
+  "sfx/ui_stinger_catch_1": {
+    "file": "kenney/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI02.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/music-jingles",
+    "title": "Music Jingles: jingles_PIZZI02",
+    "licenceFile": "KENNEY-music-jingles-License.txt"
+  },
+  "sfx/ui_stinger_defeat_1": {
+    "file": "kenney/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI01.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/music-jingles",
+    "title": "Music Jingles: jingles_PIZZI01",
+    "licenceFile": "KENNEY-music-jingles-License.txt"
+  },
+  "sfx/ui_stinger_intro_champion_1": {
+    "file": "music/new_sunrise_V2.wav",
+    "licence": "CC0-1.0",
+    "author": "nene",
+    "url": "https://opengameart.org/content/new-sunrise",
+    "title": "New Sunrise (V2)",
+    "trim": [
+      33.6,
+      37.85
+    ]
+  },
+  "sfx/ui_stinger_intro_elite_1": {
+    "file": "music/junkala-epic-boss-battle-loop.wav",
+    "licence": "CC0-1.0",
+    "author": "Juhani Junkala (SubspaceAudio)",
+    "url": "https://opengameart.org/content/boss-battle-music",
+    "title": "Epic Boss Battle [Seamlessly Looping]",
+    "trim": [
+      0.25,
+      4
+    ]
+  },
+  "sfx/ui_stinger_intro_gym_1": {
+    "file": "music/dramatic-boss-encounter.wav",
+    "licence": "CC0-1.0",
+    "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+    "url": "https://opengameart.org/content/dramatic-boss-encounter",
+    "title": "Dramatic Boss Encounter",
+    "trim": [
+      2.05,
+      5.3
+    ]
+  },
+  "sfx/ui_stinger_intro_legendary_1": {
+    "file": "music/junkala-post-apocalyptic-wastelands-loop.ogg",
+    "licence": "CC0-1.0",
+    "author": "Juhani Junkala (SubspaceAudio)",
+    "url": "https://opengameart.org/content/horror-atmosphere",
+    "title": "Post Apocalyptic Wastelands [Loop Ready]",
+    "trim": [
+      9.9,
+      14.15
+    ]
+  },
+  "sfx/ui_stinger_intro_raid_1": {
+    "file": "music/determined_pursuit_loop.wav",
+    "licence": "CC0-1.0",
+    "author": "Emma_MA",
+    "url": "https://opengameart.org/content/determined-pursuit-epic-orchestra-loop",
+    "title": "Determined Pursuit (epic orchestra loop)",
+    "trim": [
+      0.7,
+      4.45
+    ]
+  },
+  "sfx/ui_stinger_intro_trainer_1": {
+    "file": "music/battleThemeB.mp3",
+    "licence": "CC0-1.0",
+    "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+    "url": "https://opengameart.org/content/battle-theme-b-for-rpg",
+    "title": "Battle Theme B for RPG",
+    "trim": [
+      0,
+      2.75
+    ]
+  },
+  "sfx/ui_stinger_intro_wild_1": {
+    "file": "music/battleThemeA.mp3",
+    "licence": "CC0-1.0",
+    "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+    "url": "https://opengameart.org/content/battle-theme-a",
+    "title": "Battle Theme A",
+    "trim": [
+      0.42,
+      2.67
+    ]
+  },
+  "sfx/ui_stinger_restored_1": {
+    "file": "music/song18-crystal-cave.mp3",
+    "licence": "CC0-1.0",
+    "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+    "url": "https://opengameart.org/content/crystal-cave-song18",
+    "title": "Crystal Cave (song18)",
+    "trim": [
+      41,
+      45.25
+    ]
+  },
+  "sfx/ui_stinger_thinning_1": {
+    "file": "mix/ui_stinger_thinning_1.wav",
+    "licence": "CC0-1.0",
+    "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+    "url": "https://opengameart.org/content/crystal-cave-song18",
+    "title": "Premix: ui_stinger_thinning_1",
+    "parts": [
+      {
+        "file": "music/song18-crystal-cave.mp3",
+        "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+        "url": "https://opengameart.org/content/crystal-cave-song18",
+        "title": "Crystal Cave (song18)"
+      }
+    ]
+  },
+  "sfx/ui_stinger_title_1": {
+    "file": "music/TownTheme.mp3",
+    "licence": "CC0-1.0",
+    "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+    "url": "https://opengameart.org/content/town-theme-rpg",
+    "title": "Town Theme RPG",
+    "trim": [
+      0,
+      2.75
+    ]
+  },
+  "sfx/ui_stinger_victory_champion_1": {
+    "file": "music/new_sunrise_V2.wav",
+    "licence": "CC0-1.0",
+    "author": "nene",
+    "url": "https://opengameart.org/content/new-sunrise",
+    "title": "New Sunrise (V2)",
+    "trim": [
+      116.2,
+      120.45
+    ]
+  },
+  "sfx/ui_stinger_victory_gym_1": {
+    "file": "music/new_sunrise_V2.wav",
+    "licence": "CC0-1.0",
+    "author": "nene",
+    "url": "https://opengameart.org/content/new-sunrise",
+    "title": "New Sunrise (V2)",
+    "trim": [
+      87.95,
+      91.7
+    ]
+  },
+  "sfx/ui_stinger_victory_legendary_1": {
+    "file": "music/rise_of_the_early_dawn.mp3",
+    "licence": "CC0-1.0",
+    "author": "antonioraymond71",
+    "url": "https://opengameart.org/content/rise-of-the-early-dawn",
+    "title": "Rise Of The Early Dawn",
+    "trim": [
+      0,
+      4.25
+    ]
+  },
+  "sfx/ui_stinger_victory_raid_1": {
+    "file": "music/new_sunrise_V2.wav",
+    "licence": "CC0-1.0",
+    "author": "nene",
+    "url": "https://opengameart.org/content/new-sunrise",
+    "title": "New Sunrise (V2)",
+    "trim": [
+      107.5,
+      111.75
+    ]
+  },
+  "sfx/ui_stinger_victory_trainer_1": {
+    "file": "music/Victory1.mp3",
+    "licence": "CC0-1.0",
+    "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+    "url": "https://opengameart.org/content/victory-theme-for-rpg",
+    "title": "Victory Theme for RPG",
+    "trim": [
+      6.22,
+      9.47
+    ]
+  },
+  "sfx/ui_stinger_victory_wild_1": {
+    "file": "music/Victory1.mp3",
+    "licence": "CC0-1.0",
+    "author": "cynicmusic (cynicmusic.com / pixelsphere.org)",
+    "url": "https://opengameart.org/content/victory-theme-for-rpg",
+    "title": "Victory Theme for RPG",
+    "trim": [
+      1.85,
+      4.6
+    ]
+  },
+  "sfx/step_grass_1": {
+    "file": "kenney/kenney_impact-sounds/Audio/footstep_grass_000.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: footstep_grass_000",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_grass_2": {
+    "file": "kenney/kenney_impact-sounds/Audio/footstep_grass_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: footstep_grass_001",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_grass_3": {
+    "file": "kenney/kenney_impact-sounds/Audio/footstep_grass_002.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: footstep_grass_002",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_snow_1": {
+    "file": "kenney/kenney_impact-sounds/Audio/footstep_snow_000.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: footstep_snow_000",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_snow_2": {
+    "file": "kenney/kenney_impact-sounds/Audio/footstep_snow_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: footstep_snow_001",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_snow_3": {
+    "file": "kenney/kenney_impact-sounds/Audio/footstep_snow_002.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: footstep_snow_002",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_wood_1": {
+    "file": "kenney/kenney_impact-sounds/Audio/footstep_wood_000.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: footstep_wood_000",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_wood_2": {
+    "file": "kenney/kenney_impact-sounds/Audio/footstep_wood_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: footstep_wood_001",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_wood_3": {
+    "file": "kenney/kenney_impact-sounds/Audio/footstep_wood_002.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: footstep_wood_002",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_stone_1": {
+    "file": "kenney/kenney_impact-sounds/Audio/footstep_concrete_000.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: footstep_concrete_000",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_stone_2": {
+    "file": "kenney/kenney_impact-sounds/Audio/footstep_concrete_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: footstep_concrete_001",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_stone_3": {
+    "file": "kenney/kenney_impact-sounds/Audio/footstep_concrete_002.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: footstep_concrete_002",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_flat_1": {
+    "file": "kenney/kenney_impact-sounds/Audio/footstep_carpet_000.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: footstep_carpet_000",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_flat_2": {
+    "file": "kenney/kenney_impact-sounds/Audio/footstep_carpet_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: footstep_carpet_001",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_flat_3": {
+    "file": "kenney/kenney_impact-sounds/Audio/footstep_carpet_002.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: footstep_carpet_002",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_dirt_1": {
+    "file": "kenney/kenney_rpg-audio/Audio/footstep00.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio: footstep00",
+    "licenceFile": "KENNEY-rpg-audio-License.txt"
+  },
+  "sfx/step_dirt_2": {
+    "file": "kenney/kenney_rpg-audio/Audio/footstep01.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio: footstep01",
+    "licenceFile": "KENNEY-rpg-audio-License.txt"
+  },
+  "sfx/step_dirt_3": {
+    "file": "kenney/kenney_rpg-audio/Audio/footstep02.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio: footstep02",
+    "licenceFile": "KENNEY-rpg-audio-License.txt"
+  },
+  "sfx/step_metal_1": {
+    "file": "rubberduck/100-CC0-wood-metal-SFX/metal_sheet_05.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+    "title": "100 CC0 metal and wood SFX: metal_sheet_05"
+  },
+  "sfx/step_metal_2": {
+    "file": "rubberduck/100-CC0-wood-metal-SFX/metal_sheet_04.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+    "title": "100 CC0 metal and wood SFX: metal_sheet_04"
+  },
+  "sfx/step_metal_3": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactMetal_light_004.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactMetal_light_004",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/step_water_1": {
+    "file": "rubberduck/sfx_100_v2/sfx100v2_footstep_wet_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/100-cc0-sfx-2",
+    "title": "100 CC0 SFX #2: sfx100v2_footstep_wet_01"
+  },
+  "sfx/step_water_2": {
+    "file": "rubberduck/sfx_100_v2/sfx100v2_footstep_wet_02.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/100-cc0-sfx-2",
+    "title": "100 CC0 SFX #2: sfx100v2_footstep_wet_02"
+  },
+  "sfx/step_water_3": {
+    "file": "rubberduck/sfx_100_v2/sfx100v2_footstep_wet_03.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/100-cc0-sfx-2",
+    "title": "100 CC0 SFX #2: sfx100v2_footstep_wet_03"
+  },
+  "sfx/step_sand_1": {
+    "file": "mix/step_sand_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: step_sand_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_snow_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_snow_003",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/footstep01.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: footstep01",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      }
+    ]
+  },
+  "sfx/step_sand_2": {
+    "file": "mix/step_sand_2.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: step_sand_2",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_snow_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_snow_004",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/footstep02.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: footstep02",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      }
+    ]
+  },
+  "sfx/step_sand_3": {
+    "file": "mix/step_sand_3.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: step_sand_3",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_snow_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_snow_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/footstep03.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: footstep03",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      }
+    ]
+  },
+  "sfx/step_gravel_1": {
+    "file": "mix/step_gravel_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "Premix: step_gravel_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/footstep04.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: footstep04",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_stones_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_stones_01"
+      }
+    ]
+  },
+  "sfx/step_gravel_2": {
+    "file": "mix/step_gravel_2.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "Premix: step_gravel_2",
+    "parts": [
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/footstep05.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: footstep05",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_stones_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_stones_02"
+      }
+    ]
+  },
+  "sfx/step_gravel_3": {
+    "file": "mix/step_gravel_3.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "Premix: step_gravel_3",
+    "parts": [
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/footstep06.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: footstep06",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_stones_03.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_stones_03"
+      }
+    ]
+  },
+  "sfx/step_salt_1": {
+    "file": "mix/step_salt_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: step_salt_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_concrete_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_concrete_001",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_snow_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_snow_004",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/step_salt_2": {
+    "file": "mix/step_salt_2.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: step_salt_2",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_concrete_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_concrete_002",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_snow_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_snow_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/step_salt_3": {
+    "file": "mix/step_salt_3.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: step_salt_3",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_concrete_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_concrete_003",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_snow_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_snow_001",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/step_ash_1": {
+    "file": "mix/step_ash_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: step_ash_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_concrete_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_concrete_002",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_snow_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_snow_003",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/step_ash_2": {
+    "file": "mix/step_ash_2.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: step_ash_2",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_concrete_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_concrete_003",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_snow_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_snow_004",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/step_ash_3": {
+    "file": "mix/step_ash_3.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: step_ash_3",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_concrete_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_concrete_004",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_snow_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_snow_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/grass_rustle_1": {
+    "file": "mix/grass_rustle_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: grass_rustle_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_grass_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_grass_002",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/cloth2.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: cloth2",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      }
+    ]
+  },
+  "sfx/grass_rustle_2": {
+    "file": "mix/grass_rustle_2.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: grass_rustle_2",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_grass_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_grass_003",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/cloth3.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: cloth3",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      }
+    ]
+  },
+  "sfx/grass_rustle_3": {
+    "file": "mix/grass_rustle_3.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: grass_rustle_3",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_grass_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_grass_004",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/cloth4.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: cloth4",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      }
+    ]
+  },
+  "sfx/hit_normal_1": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactPunch_medium_000.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactPunch_medium_000",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/hit_normal_2": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactPunch_medium_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactPunch_medium_001",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/hit_normal_3": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactPunch_medium_002.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactPunch_medium_002",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/hit_super_1": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactPunch_heavy_000.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactPunch_heavy_000",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/hit_super_2": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactPunch_heavy_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactPunch_heavy_001",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/hit_super_3": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactPunch_heavy_002.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactPunch_heavy_002",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/hit_weak_1": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactSoft_heavy_000.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactSoft_heavy_000",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/hit_weak_2": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactSoft_heavy_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactSoft_heavy_001",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/hit_crit_1": {
+    "file": "mix/hit_crit_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: hit_crit_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_heavy_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_heavy_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactMetal_light_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactMetal_light_001",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactPunch_heavy_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactPunch_heavy_003",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/hit_crit_2": {
+    "file": "mix/hit_crit_2.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: hit_crit_2",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_heavy_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_heavy_002",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactMetal_light_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactMetal_light_003",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactPunch_heavy_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactPunch_heavy_004",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/faint_1": {
+    "file": "mix/faint_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Premix: faint_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_digital-audio/Audio/lowDown.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/digital-audio",
+        "title": "Digital Audio: lowDown",
+        "licenceFile": "KENNEY-digital-audio-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactSoft_heavy_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactSoft_heavy_003",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_02"
+      }
+    ]
+  },
+  "sfx/faint_2": {
+    "file": "mix/faint_2.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Premix: faint_2",
+    "parts": [
+      {
+        "file": "kenney/kenney_digital-audio/Audio/lowDown.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/digital-audio",
+        "title": "Digital Audio: lowDown",
+        "licenceFile": "KENNEY-digital-audio-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactSoft_heavy_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactSoft_heavy_004",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_02"
+      }
+    ]
+  },
+  "sfx/flee_1": {
+    "file": "mix/flee_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: flee_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_grass_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_grass_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_grass_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_grass_001",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_grass_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_grass_002",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_grass_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_grass_004",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_02"
+      }
+    ]
+  },
+  "sfx/switch_1": {
+    "file": "mix/switch_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Premix: switch_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_digital-audio/Audio/phaserUp1.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/digital-audio",
+        "title": "Digital Audio: phaserUp1",
+        "licenceFile": "KENNEY-digital-audio-License.txt"
+      },
+      {
+        "file": "kenney/kenney_interface-sounds/Audio/drop_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/interface-sounds",
+        "title": "Interface Sounds: drop_002",
+        "licenceFile": "KENNEY-interface-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/metalClick.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: metalClick",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_03.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_03"
+      }
+    ]
+  },
+  "sfx/orb_throw_1": {
+    "file": "mix/orb_throw_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); artisticdude",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: orb_throw_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGeneric_light_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGeneric_light_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "subs/rpg-sound-pack/pack/battle/swing.wav",
+        "author": "artisticdude",
+        "url": "https://opengameart.org/content/rpg-sound-pack",
+        "title": "RPG Sound Pack: swing"
+      },
+      {
+        "file": "subs/rpg-sound-pack/pack/battle/swing2.wav",
+        "author": "artisticdude",
+        "url": "https://opengameart.org/content/rpg-sound-pack",
+        "title": "RPG Sound Pack: swing2"
+      }
+    ]
+  },
+  "sfx/orb_shake_1": {
+    "file": "mix/orb_shake_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: orb_shake_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactPlate_light_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactPlate_light_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactPlate_light_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactPlate_light_002",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/orb_shake_2": {
+    "file": "mix/orb_shake_2.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: orb_shake_2",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactPlate_light_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactPlate_light_001",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactPlate_light_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactPlate_light_003",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/orb_shake_3": {
+    "file": "mix/orb_shake_3.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: orb_shake_3",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactPlate_light_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactPlate_light_002",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactPlate_light_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactPlate_light_004",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/orb_catch_1": {
+    "file": "mix/orb_catch_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Premix: orb_catch_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_digital-audio/Audio/zap1.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/digital-audio",
+        "title": "Digital Audio: zap1",
+        "licenceFile": "KENNEY-digital-audio-License.txt"
+      },
+      {
+        "file": "kenney/kenney_interface-sounds/Audio/confirmation_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/interface-sounds",
+        "title": "Interface Sounds: confirmation_002",
+        "licenceFile": "KENNEY-interface-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/metalLatch.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: metalLatch",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      }
+    ]
+  },
+  "sfx/orb_break_1": {
+    "file": "mix/orb_break_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck; JaggedStone",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: orb_break_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_light_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_light_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_03.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_03"
+      },
+      {
+        "file": "subs/magic-spell-sfx/magical_2.ogg",
+        "author": "JaggedStone",
+        "url": "https://opengameart.org/content/magic-spell-sfx",
+        "title": "Magic Spell SFX: magical_2"
+      }
+    ]
+  },
+  "sfx/orb_break_2": {
+    "file": "mix/orb_break_2.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck; JaggedStone",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: orb_break_2",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_light_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_light_002",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_03.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_03"
+      },
+      {
+        "file": "subs/magic-spell-sfx/magical_5.ogg",
+        "author": "JaggedStone",
+        "url": "https://opengameart.org/content/magic-spell-sfx",
+        "title": "Magic Spell SFX: magical_5"
+      }
+    ]
+  },
+  "sfx/stage_up_1": {
+    "file": "kenney/kenney_digital-audio/Audio/highUp.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Digital Audio: highUp",
+    "licenceFile": "KENNEY-digital-audio-License.txt"
+  },
+  "sfx/stage_down_1": {
+    "file": "kenney/kenney_digital-audio/Audio/lowDown.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Digital Audio: lowDown",
+    "licenceFile": "KENNEY-digital-audio-License.txt"
+  },
+  "sfx/status_burn_1": {
+    "file": "rubberduck/80-CC0-RPG-SFX/spell_fire_06.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/node/86018",
+    "title": "80 CC0 RPG SFX: spell_fire_06"
+  },
+  "sfx/status_burn_2": {
+    "file": "rubberduck/80-CC0-RPG-SFX/spell_fire_07.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/node/86018",
+    "title": "80 CC0 RPG SFX: spell_fire_07"
+  },
+  "sfx/status_confuse_1": {
+    "file": "kenney/kenney_digital-audio/Audio/spaceTrash1.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Digital Audio: spaceTrash1",
+    "licenceFile": "KENNEY-digital-audio-License.txt"
+  },
+  "sfx/status_confuse_2": {
+    "file": "kenney/kenney_digital-audio/Audio/spaceTrash3.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Digital Audio: spaceTrash3",
+    "licenceFile": "KENNEY-digital-audio-License.txt"
+  },
+  "sfx/status_freeze_1": {
+    "file": "subs/freeze-spell/freeze.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/freeze-spell-0",
+    "title": "Freeze Spell: freeze",
+    "trim": [
+      0,
+      1.3
+    ],
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/status_heal_1": {
+    "file": "subs/cure-magic/Cure2.wav",
+    "licence": "CC0-1.0",
+    "author": "Someoneman",
+    "url": "https://opengameart.org/content/cure-magic",
+    "title": "Cure Magic: Cure2",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/status_heal_2": {
+    "file": "subs/cure-magic/Cure4.wav",
+    "licence": "CC0-1.0",
+    "author": "Someoneman",
+    "url": "https://opengameart.org/content/cure-magic",
+    "title": "Cure Magic: Cure4",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/status_paralyze_1": {
+    "file": "kenney/kenney_digital-audio/Audio/zap1.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Digital Audio: zap1",
+    "licenceFile": "KENNEY-digital-audio-License.txt"
+  },
+  "sfx/status_paralyze_2": {
+    "file": "kenney/kenney_digital-audio/Audio/zap2.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Digital Audio: zap2",
+    "licenceFile": "KENNEY-digital-audio-License.txt"
+  },
+  "sfx/status_poison_1": {
+    "file": "subs/rpg-sound-pack/pack/inventory/bubble3.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: bubble3",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/status_poison_2": {
+    "file": "rubberduck/water-splash-slime-sfx/bubble_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+    "title": "40 CC0 water / splash / slime SFX: bubble_01"
+  },
+  "sfx/status_sleep_1": {
+    "file": "mix/status_sleep_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Premix: status_sleep_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_digital-audio/Audio/highDown.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/digital-audio",
+        "title": "Digital Audio: highDown",
+        "licenceFile": "KENNEY-digital-audio-License.txt"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_02"
+      }
+    ]
+  },
+  "sfx/weather_rain_1": {
+    "file": "mix/weather_rain_1.wav",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+    "title": "Premix: weather_rain_1",
+    "parts": [
+      {
+        "file": "rubberduck/water-splash-slime-sfx/loop_rain.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+        "title": "40 CC0 water / splash / slime SFX: loop_rain"
+      }
+    ]
+  },
+  "sfx/weather_hail_1": {
+    "file": "mix/weather_hail_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: weather_hail_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_light_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_light_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_light_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_light_001",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_light_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_light_002",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_light_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_light_003",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_light_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_light_004",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_01"
+      }
+    ]
+  },
+  "sfx/weather_sand_1": {
+    "file": "mix/weather_sand_1.wav",
+    "licence": "CC0-1.0",
+    "author": "SketchMan3; rubberduck",
+    "url": "https://opengameart.org/content/wind-whoosh-loop",
+    "title": "Premix: weather_sand_1",
+    "parts": [
+      {
+        "file": "ambience/wind-woosh-loop.ogg",
+        "author": "SketchMan3",
+        "url": "https://opengameart.org/content/wind-whoosh-loop",
+        "title": "wind whoosh loop"
+      },
+      {
+        "file": "rubberduck/sfx_loops/noise_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/30-cc0-sfx-loops",
+        "title": "30 CC0 SFX loops: noise_01"
+      }
+    ]
+  },
+  "sfx/weather_sun_1": {
+    "file": "mix/weather_sun_1.wav",
+    "licence": "CC0-1.0",
+    "author": "rubberduck; JaggedStone",
+    "url": "https://opengameart.org/content/100-cc0-sfx-2",
+    "title": "Premix: weather_sun_1",
+    "parts": [
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_01"
+      },
+      {
+        "file": "subs/magic-spell-sfx/magical_3.ogg",
+        "author": "JaggedStone",
+        "url": "https://opengameart.org/content/magic-spell-sfx",
+        "title": "Magic Spell SFX: magical_3"
+      }
+    ]
+  },
+  "sfx/spotted_1": {
+    "file": "kenney/kenney_music-jingles/Audio/Hit jingles/jingles_HIT00.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/music-jingles",
+    "title": "Music Jingles: jingles_HIT00",
+    "licenceFile": "KENNEY-music-jingles-License.txt"
+  },
+  "sfx/thunder_1": {
+    "file": "rubberduck/sfx_100_v2/sfx100v2_thunder_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/100-cc0-sfx-2",
+    "title": "100 CC0 SFX #2: sfx100v2_thunder_01",
+    "trim": [
+      0,
+      4
+    ]
+  },
+  "sfx/thunder_2": {
+    "file": "ambience/Dark_Rainy_Night.ogg",
+    "licence": "CC0-1.0",
+    "author": "kindland",
+    "url": "https://opengameart.org/content/rain-and-thunders",
+    "title": "rain and thunders",
+    "trim": [
+      33.7,
+      38.2
+    ]
+  },
+  "sfx/wind_gust_1": {
+    "file": "rubberduck/sfx_100_v2/sfx100v2_air_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/100-cc0-sfx-2",
+    "title": "100 CC0 SFX #2: sfx100v2_air_01"
+  },
+  "sfx/wind_gust_2": {
+    "file": "mix/wind_gust_2.wav",
+    "licence": "CC0-1.0",
+    "author": "SketchMan3",
+    "url": "https://opengameart.org/content/wind-whoosh-loop",
+    "title": "Premix: wind_gust_2",
+    "parts": [
+      {
+        "file": "ambience/wind-woosh-loop.ogg",
+        "author": "SketchMan3",
+        "url": "https://opengameart.org/content/wind-whoosh-loop",
+        "title": "wind whoosh loop"
+      }
+    ]
+  },
+  "sfx/raid_phase_1": {
+    "file": "mix/raid_phase_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: raid_phase_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_heavy_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_heavy_001",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/lowFrequency_explosion_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: lowFrequency_explosion_000",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/spaceEngineLow_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: spaceEngineLow_000",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/raid_roar_1": {
+    "file": "mix/raid_roar_1.wav",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/node/86018",
+    "title": "Premix: raid_roar_1",
+    "parts": [
+      {
+        "file": "rubberduck/80-CC0-RPG-SFX/creature_roar_03.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/node/86018",
+        "title": "80 CC0 RPG SFX: creature_roar_03"
+      },
+      {
+        "file": "rubberduck/80-CC0-creature-sfx-2/monster_20.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+        "title": "80 CC0 creature SFX #2: monster_20"
+      },
+      {
+        "file": "rubberduck/80-CC0-creature-sfx-2/roar_05.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+        "title": "80 CC0 creature SFX #2: roar_05"
+      }
+    ]
+  },
+  "sfx/anvil_strike_1": {
+    "file": "rubberduck/100-CC0-wood-metal-SFX/hammer_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+    "title": "100 CC0 metal and wood SFX: hammer_01"
+  },
+  "sfx/anvil_strike_2": {
+    "file": "rubberduck/100-CC0-SFX/metal_04.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/100-cc0-sfx",
+    "title": "100 CC0 SFX: metal_04"
+  },
+  "sfx/bell_toll_1": {
+    "file": "mix/bell_toll_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: bell_toll_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactBell_heavy_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactBell_heavy_001",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/door_close_1": {
+    "file": "kenney/kenney_rpg-audio/Audio/doorClose_1.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio: doorClose_1",
+    "licenceFile": "KENNEY-rpg-audio-License.txt"
+  },
+  "sfx/door_heavy_1": {
+    "file": "mix/door_heavy_1.wav",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+    "title": "Premix: door_heavy_1",
+    "parts": [
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/metal_open_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: metal_open_01"
+      },
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/metal_slam_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: metal_slam_01"
+      }
+    ]
+  },
+  "sfx/door_open_1": {
+    "file": "kenney/kenney_rpg-audio/Audio/doorOpen_1.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio: doorOpen_1",
+    "licenceFile": "KENNEY-rpg-audio-License.txt"
+  },
+  "sfx/door_open_2": {
+    "file": "kenney/kenney_rpg-audio/Audio/doorOpen_2.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio: doorOpen_2",
+    "licenceFile": "KENNEY-rpg-audio-License.txt"
+  },
+  "sfx/lens_hum_1": {
+    "file": "mix/lens_hum_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Premix: lens_hum_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_digital-audio/Audio/phaserUp1.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/digital-audio",
+        "title": "Digital Audio: phaserUp1",
+        "licenceFile": "KENNEY-digital-audio-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/spaceEngineSmall_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: spaceEngineSmall_000",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/lore_tablet_1": {
+    "file": "mix/lore_tablet_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck; JaggedStone",
+    "url": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Premix: lore_tablet_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/spaceEngineLow_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: spaceEngineLow_004",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/80-CC0-RPG-SFX/stones_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/node/86018",
+        "title": "80 CC0 RPG SFX: stones_02"
+      },
+      {
+        "file": "subs/magic-spell-sfx/magical_3.ogg",
+        "author": "JaggedStone",
+        "url": "https://opengameart.org/content/magic-spell-sfx",
+        "title": "Magic Spell SFX: magical_3"
+      }
+    ]
+  },
+  "sfx/pylon_crackle_1": {
+    "file": "kenney/kenney_sci-fi-sounds/Audio/forceField_000.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-fi Sounds: forceField_000",
+    "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+  },
+  "sfx/pylon_crackle_2": {
+    "file": "kenney/kenney_sci-fi-sounds/Audio/forceField_003.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-fi Sounds: forceField_003",
+    "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+  },
+  "sfx/spawn_shimmer_1": {
+    "file": "subs/magic-spell-sfx/magical_1_0.ogg",
+    "licence": "CC0-1.0",
+    "author": "JaggedStone",
+    "url": "https://opengameart.org/content/magic-spell-sfx",
+    "title": "Magic Spell SFX: magical_1_0",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/spawn_shimmer_2": {
+    "file": "subs/cure-magic/Cure5.wav",
+    "licence": "CC0-1.0",
+    "author": "Someoneman",
+    "url": "https://opengameart.org/content/cure-magic",
+    "title": "Cure Magic: Cure5",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/splash_1": {
+    "file": "rubberduck/water-splash-slime-sfx/splash_02.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+    "title": "40 CC0 water / splash / slime SFX: splash_02"
+  },
+  "sfx/splash_2": {
+    "file": "rubberduck/water-splash-slime-sfx/splash_03.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+    "title": "40 CC0 water / splash / slime SFX: splash_03"
+  },
+  "sfx/warp_1": {
+    "file": "subs/teleport-spell/teleport.wav",
+    "licence": "CC0-1.0",
+    "author": "Ogrebane",
+    "url": "https://opengameart.org/content/teleport-spell",
+    "title": "Teleport Spell: teleport",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/cry_normal_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/cute_09.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: cute_09"
+  },
+  "sfx/cry_normal_2": {
+    "file": "rubberduck/80-CC0-creature-SFX/barking_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: barking_01"
+  },
+  "sfx/cry_fire_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/monster_03.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: monster_03"
+  },
+  "sfx/cry_fire_2": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/monster_09.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: monster_09"
+  },
+  "sfx/cry_water_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/burble_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: burble_01"
+  },
+  "sfx/cry_water_2": {
+    "file": "rubberduck/80-CC0-creature-SFX/burble_02.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: burble_02"
+  },
+  "sfx/cry_grass_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/misc_04.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: misc_04"
+  },
+  "sfx/cry_grass_2": {
+    "file": "rubberduck/80-CC0-creature-SFX/misc_08.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: misc_08"
+  },
+  "sfx/cry_electric_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/alien_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: alien_01"
+  },
+  "sfx/cry_electric_2": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/alien_08.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: alien_08"
+  },
+  "sfx/cry_ice_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/alien_06.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: alien_06"
+  },
+  "sfx/cry_ice_2": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/alien_10.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: alien_10"
+  },
+  "sfx/cry_fighting_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/grunt_05.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: grunt_05"
+  },
+  "sfx/cry_fighting_2": {
+    "file": "rubberduck/80-CC0-creature-SFX/grunt_02.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: grunt_02"
+  },
+  "sfx/cry_poison_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/spit_02.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: spit_02"
+  },
+  "sfx/cry_poison_2": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/slime_08.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: slime_08"
+  },
+  "sfx/cry_ground_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/grunt_03.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: grunt_03"
+  },
+  "sfx/cry_ground_2": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/grunt_07.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: grunt_07"
+  },
+  "sfx/cry_flying_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/scream_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: scream_01"
+  },
+  "sfx/cry_flying_2": {
+    "file": "rubberduck/80-CC0-creature-SFX/scream_02.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: scream_02"
+  },
+  "sfx/cry_psychic_1": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/misc_11.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: misc_11"
+  },
+  "sfx/cry_psychic_2": {
+    "file": "rubberduck/80-CC0-creature-SFX/weird_02.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: weird_02"
+  },
+  "sfx/cry_bug_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/bug_02.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: bug_02"
+  },
+  "sfx/cry_bug_2": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/bug_07.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: bug_07"
+  },
+  "sfx/cry_rock_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/troll_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: troll_01"
+  },
+  "sfx/cry_rock_2": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/monster_12.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: monster_12"
+  },
+  "sfx/cry_ghost_1": {
+    "file": "subs/rpg-sound-pack/pack/NPC/shade/shade12.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: shade12",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/cry_ghost_2": {
+    "file": "subs/rpg-sound-pack/pack/NPC/shade/shade9.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: shade9",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/cry_dragon_1": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/roar_05.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: roar_05"
+  },
+  "sfx/cry_dragon_2": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/roar_06.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: roar_06"
+  },
+  "sfx/cry_dark_1": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/monster_16.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: monster_16"
+  },
+  "sfx/cry_dark_2": {
+    "file": "rubberduck/80-CC0-creature-SFX/roar_03.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: roar_03"
+  },
+  "sfx/cry_steel_1": {
+    "file": "mix/cry_steel_1.wav",
+    "licence": "CC0-1.0",
+    "author": "rubberduck; artisticdude",
+    "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+    "title": "Premix: cry_steel_1",
+    "parts": [
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/metal_spring_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: metal_spring_01"
+      },
+      {
+        "file": "subs/rpg-sound-pack/pack/NPC/ogre/ogre2.wav",
+        "author": "artisticdude",
+        "url": "https://opengameart.org/content/rpg-sound-pack",
+        "title": "RPG Sound Pack: ogre2"
+      }
+    ]
+  },
+  "sfx/cry_steel_2": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/weird_06.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: weird_06"
+  },
+  "sfx/cry_fairy_1": {
+    "file": "mix/cry_fairy_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "title": "Premix: cry_fairy_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_interface-sounds/Audio/glass_005.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/interface-sounds",
+        "title": "Interface Sounds: glass_005",
+        "licenceFile": "KENNEY-interface-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/80-CC0-creature-SFX/cute_04.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+        "title": "80 CC0 creature SFX: cute_04"
+      }
+    ]
+  },
+  "sfx/cry_fairy_2": {
+    "file": "mix/cry_fairy_2.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "title": "Premix: cry_fairy_2",
+    "parts": [
+      {
+        "file": "kenney/kenney_interface-sounds/Audio/glass_006.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/interface-sounds",
+        "title": "Interface Sounds: glass_006",
+        "licenceFile": "KENNEY-interface-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/80-CC0-creature-SFX/cute_06.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+        "title": "80 CC0 creature SFX: cute_06"
+      }
+    ]
+  },
+  "sfx/cry_cosmic_1": {
+    "file": "mix/cry_cosmic_1.wav",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "Premix: cry_cosmic_1",
+    "parts": [
+      {
+        "file": "rubberduck/80-CC0-creature-SFX/monster_04.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+        "title": "80 CC0 creature SFX: monster_04"
+      }
+    ]
+  },
+  "sfx/cry_cosmic_2": {
+    "file": "mix/cry_cosmic_2.wav",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "Premix: cry_cosmic_2",
+    "parts": [
+      {
+        "file": "rubberduck/80-CC0-creature-SFX/monster_07.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+        "title": "80 CC0 creature SFX: monster_07"
+      }
+    ]
+  },
+  "sfx/hurt_normal_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/hurt_03.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: hurt_03"
+  },
+  "sfx/hurt_fire_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/hurt_02.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: hurt_02"
+  },
+  "sfx/hurt_water_1": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/slime_02.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: slime_02"
+  },
+  "sfx/hurt_grass_1": {
+    "file": "rubberduck/100-CC0-wood-metal-SFX/wood_squeak_02.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+    "title": "100 CC0 metal and wood SFX: wood_squeak_02"
+  },
+  "sfx/hurt_electric_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/alien_05.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: alien_05"
+  },
+  "sfx/hurt_ice_1": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/alien_12.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: alien_12"
+  },
+  "sfx/hurt_fighting_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/hurt_05.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: hurt_05"
+  },
+  "sfx/hurt_poison_1": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/slime_07.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: slime_07"
+  },
+  "sfx/hurt_ground_1": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/grunt_08.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: grunt_08"
+  },
+  "sfx/hurt_flying_1": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/misc_17.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: misc_17"
+  },
+  "sfx/hurt_psychic_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/weird_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: weird_01"
+  },
+  "sfx/hurt_bug_1": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/bug_12.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: bug_12"
+  },
+  "sfx/hurt_rock_1": {
+    "file": "subs/rpg-sound-pack/pack/NPC/giant/giant4.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: giant4",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/hurt_ghost_1": {
+    "file": "subs/rpg-sound-pack/pack/NPC/shade/shade14.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: shade14",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/hurt_dragon_1": {
+    "file": "rubberduck/80-CC0-RPG-SFX/creature_hurt_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/node/86018",
+    "title": "80 CC0 RPG SFX: creature_hurt_01"
+  },
+  "sfx/hurt_dark_1": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/monster_14.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: monster_14"
+  },
+  "sfx/hurt_steel_1": {
+    "file": "rubberduck/80-CC0-creature-sfx-2/monster_15.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+    "title": "80 CC0 creature SFX #2: monster_15"
+  },
+  "sfx/hurt_fairy_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/cute_07.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: cute_07"
+  },
+  "sfx/hurt_cosmic_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/weird_05.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: weird_05"
+  },
+  "sfx/move_normal_1": {
+    "file": "subs/rpg-sound-pack/pack/battle/swing.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: swing",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/move_normal_2": {
+    "file": "kenney/kenney_rpg-audio/Audio/cloth1.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio: cloth1",
+    "licenceFile": "KENNEY-rpg-audio-License.txt"
+  },
+  "sfx/impact_normal_1": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactSoft_heavy_002.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactSoft_heavy_002",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/impact_normal_2": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactSoft_heavy_004.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactSoft_heavy_004",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/move_fire_1": {
+    "file": "rubberduck/80-CC0-RPG-SFX/spell_fire_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/node/86018",
+    "title": "80 CC0 RPG SFX: spell_fire_01"
+  },
+  "sfx/move_fire_2": {
+    "file": "rubberduck/80-CC0-RPG-SFX/spell_fire_02.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/node/86018",
+    "title": "80 CC0 RPG SFX: spell_fire_02"
+  },
+  "sfx/impact_fire_1": {
+    "file": "kenney/kenney_sci-fi-sounds/Audio/explosionCrunch_000.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-fi Sounds: explosionCrunch_000",
+    "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+  },
+  "sfx/impact_fire_2": {
+    "file": "rubberduck/80-CC0-RPG-SFX/spell_fire_05.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/node/86018",
+    "title": "80 CC0 RPG SFX: spell_fire_05"
+  },
+  "sfx/move_water_1": {
+    "file": "mix/move_water_1.wav",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/100-cc0-sfx-2",
+    "title": "Premix: move_water_1",
+    "parts": [
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_loop_water_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_loop_water_01"
+      }
+    ]
+  },
+  "sfx/impact_water_1": {
+    "file": "rubberduck/water-splash-slime-sfx/splash_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+    "title": "40 CC0 water / splash / slime SFX: splash_01"
+  },
+  "sfx/impact_water_2": {
+    "file": "rubberduck/water-splash-slime-sfx/splash_05.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+    "title": "40 CC0 water / splash / slime SFX: splash_05"
+  },
+  "sfx/move_grass_1": {
+    "file": "mix/move_grass_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: move_grass_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_grass_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_grass_003",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_rpg-audio/Audio/cloth2.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/rpg-audio",
+        "title": "RPG Audio: cloth2",
+        "licenceFile": "KENNEY-rpg-audio-License.txt"
+      },
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/wood_cracking_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: wood_cracking_01"
+      }
+    ]
+  },
+  "sfx/impact_grass_1": {
+    "file": "mix/impact_grass_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: impact_grass_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/footstep_grass_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: footstep_grass_004",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/100-CC0-wood-metal-SFX/wood_hit_03.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+        "title": "100 CC0 metal and wood SFX: wood_hit_03"
+      }
+    ]
+  },
+  "sfx/move_electric_1": {
+    "file": "kenney/kenney_sci-fi-sounds/Audio/forceField_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-fi Sounds: forceField_001",
+    "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+  },
+  "sfx/move_electric_2": {
+    "file": "kenney/kenney_digital-audio/Audio/phaserUp2.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Digital Audio: phaserUp2",
+    "licenceFile": "KENNEY-digital-audio-License.txt"
+  },
+  "sfx/impact_electric_1": {
+    "file": "kenney/kenney_sci-fi-sounds/Audio/laserLarge_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-fi Sounds: laserLarge_001",
+    "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+  },
+  "sfx/impact_electric_2": {
+    "file": "kenney/kenney_sci-fi-sounds/Audio/laserLarge_003.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-fi Sounds: laserLarge_003",
+    "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+  },
+  "sfx/move_ice_1": {
+    "file": "mix/move_ice_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "title": "Premix: move_ice_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_interface-sounds/Audio/glass_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/interface-sounds",
+        "title": "Interface Sounds: glass_002",
+        "licenceFile": "KENNEY-interface-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_interface-sounds/Audio/glass_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/interface-sounds",
+        "title": "Interface Sounds: glass_003",
+        "licenceFile": "KENNEY-interface-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_interface-sounds/Audio/glass_005.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/interface-sounds",
+        "title": "Interface Sounds: glass_005",
+        "licenceFile": "KENNEY-interface-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_interface-sounds/Audio/glass_006.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/interface-sounds",
+        "title": "Interface Sounds: glass_006",
+        "licenceFile": "KENNEY-interface-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_02"
+      }
+    ]
+  },
+  "sfx/impact_ice_1": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactGlass_heavy_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactGlass_heavy_001",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/impact_ice_2": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactGlass_heavy_004.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactGlass_heavy_004",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/move_fighting_1": {
+    "file": "subs/rpg-sound-pack/pack/battle/swing2.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: swing2",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/move_fighting_2": {
+    "file": "subs/rpg-sound-pack/pack/battle/swing3.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: swing3",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/impact_fighting_1": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactPunch_heavy_003.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactPunch_heavy_003",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/impact_fighting_2": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactPunch_heavy_004.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactPunch_heavy_004",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/move_poison_1": {
+    "file": "rubberduck/water-splash-slime-sfx/bubble_03.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+    "title": "40 CC0 water / splash / slime SFX: bubble_03"
+  },
+  "sfx/move_poison_2": {
+    "file": "subs/rpg-sound-pack/pack/inventory/bubble2.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: bubble2",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/impact_poison_1": {
+    "file": "rubberduck/water-splash-slime-sfx/slime_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+    "title": "40 CC0 water / splash / slime SFX: slime_01"
+  },
+  "sfx/impact_poison_2": {
+    "file": "rubberduck/water-splash-slime-sfx/slime_05.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+    "title": "40 CC0 water / splash / slime SFX: slime_05"
+  },
+  "sfx/move_ground_1": {
+    "file": "mix/move_ground_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: move_ground_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactMining_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactMining_003",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/spaceEngineLow_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: spaceEngineLow_001",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/move_ground_2": {
+    "file": "subs/earth-element-magic-spell/Earth_Element_Magic_Spell_3.ogg",
+    "licence": "CC0-1.0",
+    "author": "qubodup",
+    "url": "https://opengameart.org/content/earth-element-magic-spell",
+    "title": "Earth Element Magic Spell: Earth_Element_Magic_Spell_3",
+    "trim": [
+      0,
+      1
+    ],
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/impact_ground_1": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactMining_000.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactMining_000",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/impact_ground_2": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactMining_002.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactMining_002",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/move_flying_1": {
+    "file": "mix/move_flying_1.wav",
+    "licence": "CC0-1.0",
+    "author": "rubberduck; artisticdude",
+    "url": "https://opengameart.org/content/100-cc0-sfx-2",
+    "title": "Premix: move_flying_1",
+    "parts": [
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_02"
+      },
+      {
+        "file": "subs/rpg-sound-pack/pack/inventory/cloth-heavy.wav",
+        "author": "artisticdude",
+        "url": "https://opengameart.org/content/rpg-sound-pack",
+        "title": "RPG Sound Pack: cloth-heavy"
+      }
+    ]
+  },
+  "sfx/impact_flying_1": {
+    "file": "mix/impact_flying_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); artisticdude",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: impact_flying_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactSoft_medium_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactSoft_medium_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "subs/rpg-sound-pack/pack/battle/swing3.wav",
+        "author": "artisticdude",
+        "url": "https://opengameart.org/content/rpg-sound-pack",
+        "title": "RPG Sound Pack: swing3"
+      }
+    ]
+  },
+  "sfx/move_psychic_1": {
+    "file": "kenney/kenney_digital-audio/Audio/phaserUp1.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Digital Audio: phaserUp1",
+    "licenceFile": "KENNEY-digital-audio-License.txt"
+  },
+  "sfx/move_psychic_2": {
+    "file": "kenney/kenney_digital-audio/Audio/phaserUp5.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Digital Audio: phaserUp5",
+    "licenceFile": "KENNEY-digital-audio-License.txt"
+  },
+  "sfx/impact_psychic_1": {
+    "file": "kenney/kenney_sci-fi-sounds/Audio/forceField_002.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-fi Sounds: forceField_002",
+    "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+  },
+  "sfx/impact_psychic_2": {
+    "file": "kenney/kenney_digital-audio/Audio/lowRandom.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Digital Audio: lowRandom",
+    "licenceFile": "KENNEY-digital-audio-License.txt"
+  },
+  "sfx/move_bug_1": {
+    "file": "mix/move_bug_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Premix: move_bug_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/engineCircular_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: engineCircular_001",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/impact_bug_1": {
+    "file": "subs/rpg-sound-pack/pack/NPC/beetle/bite-small.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: bite-small",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/impact_bug_2": {
+    "file": "subs/rpg-sound-pack/pack/NPC/beetle/bite-small2.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: bite-small2",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/move_rock_1": {
+    "file": "rubberduck/80-CC0-RPG-SFX/stones_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/node/86018",
+    "title": "80 CC0 RPG SFX: stones_01"
+  },
+  "sfx/move_rock_2": {
+    "file": "rubberduck/80-CC0-RPG-SFX/stones_02.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/node/86018",
+    "title": "80 CC0 RPG SFX: stones_02"
+  },
+  "sfx/impact_rock_1": {
+    "file": "rubberduck/80-CC0-RPG-SFX/stones_03.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/node/86018",
+    "title": "80 CC0 RPG SFX: stones_03"
+  },
+  "sfx/impact_rock_2": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactMining_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactMining_001",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/move_ghost_1": {
+    "file": "mix/move_ghost_1.wav",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/100-cc0-sfx-2",
+    "title": "Premix: move_ghost_1",
+    "parts": [
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_01"
+      }
+    ]
+  },
+  "sfx/move_ghost_2": {
+    "file": "mix/move_ghost_2.wav",
+    "licence": "CC0-1.0",
+    "author": "qubodup",
+    "url": "https://opengameart.org/content/ghost-breath",
+    "title": "Premix: move_ghost_2",
+    "parts": [
+      {
+        "file": "subs/ghost-breath/ghostbreath.flac",
+        "author": "qubodup",
+        "url": "https://opengameart.org/content/ghost-breath",
+        "title": "Ghost breath: ghostbreath"
+      }
+    ]
+  },
+  "sfx/impact_ghost_1": {
+    "file": "mix/impact_ghost_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Premix: impact_ghost_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactWood_heavy_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactWood_heavy_001",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      }
+    ]
+  },
+  "sfx/move_dragon_1": {
+    "file": "mix/move_dragon_1.wav",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "Premix: move_dragon_1",
+    "parts": [
+      {
+        "file": "rubberduck/80-CC0-creature-SFX/breath.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+        "title": "80 CC0 creature SFX: breath"
+      },
+      {
+        "file": "rubberduck/80-CC0-creature-sfx-2/roar_04.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+        "title": "80 CC0 creature SFX #2: roar_04"
+      }
+    ]
+  },
+  "sfx/impact_dragon_1": {
+    "file": "mix/impact_dragon_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck",
+    "url": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Premix: impact_dragon_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/explosionCrunch_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: explosionCrunch_002",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/80-CC0-creature-sfx-2/roar_06.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+        "title": "80 CC0 creature SFX #2: roar_06"
+      }
+    ]
+  },
+  "sfx/move_dark_1": {
+    "file": "mix/move_dark_1.wav",
+    "licence": "CC0-1.0",
+    "author": "rubberduck; artisticdude",
+    "url": "https://opengameart.org/content/100-cc0-sfx-2",
+    "title": "Premix: move_dark_1",
+    "parts": [
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_01"
+      },
+      {
+        "file": "subs/rpg-sound-pack/pack/battle/magic1.wav",
+        "author": "artisticdude",
+        "url": "https://opengameart.org/content/rpg-sound-pack",
+        "title": "RPG Sound Pack: magic1"
+      }
+    ]
+  },
+  "sfx/impact_dark_1": {
+    "file": "rubberduck/80-CC0-creature-SFX/eat_04.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: eat_04"
+  },
+  "sfx/impact_dark_2": {
+    "file": "rubberduck/80-CC0-creature-SFX/eat_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "title": "80 CC0 creature SFX: eat_01"
+  },
+  "sfx/move_steel_1": {
+    "file": "subs/rpg-sound-pack/pack/battle/sword-unsheathe.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: sword-unsheathe",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/move_steel_2": {
+    "file": "subs/rpg-sound-pack/pack/battle/sword-unsheathe2.wav",
+    "licence": "CC0-1.0",
+    "author": "artisticdude",
+    "url": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack: sword-unsheathe2",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/impact_steel_1": {
+    "file": "rubberduck/100-CC0-wood-metal-SFX/metal_hit_01.ogg",
+    "licence": "CC0-1.0",
+    "author": "rubberduck",
+    "url": "https://opengameart.org/content/100-cc0-metal-and-wood-sfx",
+    "title": "100 CC0 metal and wood SFX: metal_hit_01"
+  },
+  "sfx/impact_steel_2": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactMetal_heavy_001.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactMetal_heavy_001",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/move_fairy_1": {
+    "file": "subs/magic-spell-sfx/magical_2.ogg",
+    "licence": "CC0-1.0",
+    "author": "JaggedStone",
+    "url": "https://opengameart.org/content/magic-spell-sfx",
+    "title": "Magic Spell SFX: magical_2",
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/move_fairy_2": {
+    "file": "subs/cure-magic/Cure3.wav",
+    "licence": "CC0-1.0",
+    "author": "Someoneman",
+    "url": "https://opengameart.org/content/cure-magic",
+    "title": "Cure Magic: Cure3",
+    "trim": [
+      0,
+      1
+    ],
+    "note": "substitute for an approved item that needed a login (Phase E4 notes)"
+  },
+  "sfx/impact_fairy_1": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactBell_heavy_002.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactBell_heavy_002",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/impact_fairy_2": {
+    "file": "kenney/kenney_impact-sounds/Audio/impactBell_heavy_003.ogg",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds: impactBell_heavy_003",
+    "licenceFile": "KENNEY-impact-sounds-License.txt"
+  },
+  "sfx/move_cosmic_1": {
+    "file": "mix/move_cosmic_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); JaggedStone",
+    "url": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Premix: move_cosmic_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/spaceEngineLow_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: spaceEngineLow_003",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "subs/magic-spell-sfx/magical_3.ogg",
+        "author": "JaggedStone",
+        "url": "https://opengameart.org/content/magic-spell-sfx",
+        "title": "Magic Spell SFX: magical_3"
+      }
+    ]
+  },
+  "sfx/impact_cosmic_1": {
+    "file": "mix/impact_cosmic_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl)",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "title": "Premix: impact_cosmic_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_interface-sounds/Audio/glass_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/interface-sounds",
+        "title": "Interface Sounds: glass_004",
+        "licenceFile": "KENNEY-interface-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/lowFrequency_explosion_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: lowFrequency_explosion_001",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      }
+    ]
+  }
 }

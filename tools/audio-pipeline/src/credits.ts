@@ -22,18 +22,29 @@ export interface CreditRow {
   readonly derived: readonly string[];
 }
 
-/** One row per distinct source file, sorted by author then file. */
+/** The files an entry credits: its own file, or each part of a premix (with the part's attribution). */
+function credited(e: SourceEntry): { file: string; e: SourceEntry }[] {
+  if (e.parts === undefined || e.parts.length === 0) return [{ file: e.file, e }];
+  return e.parts.map((p) => ({
+    file: p.file,
+    e: { file: p.file, licence: e.licence, author: p.author, url: p.url, ...(p.title !== undefined ? { title: p.title } : {}), ...(p.licenceFile !== undefined ? { licenceFile: p.licenceFile } : {}) },
+  }));
+}
+
+/** One row per distinct source file (a premix is credited through its parts), sorted by author then file. */
 export function creditRows(sources: SourcesFile, classified: readonly ClassifiedJob[]): CreditRow[] {
   const rows = new Map<string, { e: SourceEntry; direct: string[]; derived: string[] }>();
-  for (const [id, e] of Object.entries(sources)) {
-    const r = rows.get(e.file) ?? { e, direct: [], derived: [] };
-    r.direct.push(id);
-    rows.set(e.file, r);
+  for (const [id, entry] of Object.entries(sources)) {
+    for (const { file, e } of credited(entry)) {
+      const r = rows.get(file) ?? { e, direct: [], derived: [] };
+      if (!r.direct.includes(id)) r.direct.push(id);
+      rows.set(file, r);
+    }
   }
   for (const c of classified) {
     if (c.role.kind !== 'layer' && c.role.kind !== 'variant') continue;
     const from = sources[c.role.from];
-    if (from !== undefined) rows.get(from.file)?.derived.push(c.id);
+    if (from !== undefined) for (const { file } of credited(from)) rows.get(file)?.derived.push(c.id);
   }
   return [...rows.entries()]
     .map(([file, r]) => ({

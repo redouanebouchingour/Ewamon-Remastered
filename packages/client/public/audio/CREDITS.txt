@@ -1,3 +1,1305 @@
 EWAMON REMASTERED - AUDIO CREDITS
 
-No third-party audio is used in this build.
+Music, ambience and sound effects from the following sources, all released under
+CC0 1.0 Universal (public domain dedication): https://creativecommons.org/publicdomain/zero/1.0/
+No attribution is required; credited with thanks.
+
+Rise Of The Early Dawn - antonioraymond71
+  https://opengameart.org/content/rise-of-the-early-dawn
+  Licence: CC0-1.0
+
+Freeze Spell: freeze - artisticdude
+  https://opengameart.org/content/freeze-spell-0
+  Licence: CC0-1.0
+
+RPG Sound Pack: bite-small - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: bite-small2 - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: giant4 - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: ogre2 - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: shade12 - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: shade14 - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: shade9 - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: magic1 - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: spell - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: swing - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: swing2 - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: swing3 - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: sword-unsheathe - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: sword-unsheathe2 - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: bottle - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: bubble2 - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: bubble3 - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: cloth-heavy - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+RPG Sound Pack: coin - artisticdude
+  https://opengameart.org/content/rpg-sound-pack
+  Licence: CC0-1.0
+
+Creepy Forest (F) - Brandon Morris (Augmentality)
+  https://opengameart.org/content/creepy-forest-f
+  Licence: CC0-1.0
+
+Town Theme RPG - cynicmusic (cynicmusic.com / pixelsphere.org)
+  https://opengameart.org/content/town-theme-rpg
+  Licence: CC0-1.0
+
+Victory Theme for RPG - cynicmusic (cynicmusic.com / pixelsphere.org)
+  https://opengameart.org/content/victory-theme-for-rpg
+  Licence: CC0-1.0
+
+Battle Theme A - cynicmusic (cynicmusic.com / pixelsphere.org)
+  https://opengameart.org/content/battle-theme-a
+  Licence: CC0-1.0
+
+Battle Theme B for RPG - cynicmusic (cynicmusic.com / pixelsphere.org)
+  https://opengameart.org/content/battle-theme-b-for-rpg
+  Licence: CC0-1.0
+
+Dramatic Boss Encounter - cynicmusic (cynicmusic.com / pixelsphere.org)
+  https://opengameart.org/content/dramatic-boss-encounter
+  Licence: CC0-1.0
+
+Crystal Cave (song18) - cynicmusic (cynicmusic.com / pixelsphere.org)
+  https://opengameart.org/content/crystal-cave-song18
+  Licence: CC0-1.0
+
+Determined Pursuit (epic orchestra loop) - Emma_MA
+  https://opengameart.org/content/determined-pursuit-epic-orchestra-loop
+  Licence: CC0-1.0
+
+Energy Storm - iamoneabe
+  https://opengameart.org/content/energy-storm
+  Licence: CC0-1.0
+
+Loopable Dungeon Ambience - JaggedStone
+  https://opengameart.org/content/loopable-dungeon-ambience
+  Licence: CC0-1.0
+
+Magic Spell SFX: magical_1_0 - JaggedStone
+  https://opengameart.org/content/magic-spell-sfx
+  Licence: CC0-1.0
+
+Magic Spell SFX: magical_2 - JaggedStone
+  https://opengameart.org/content/magic-spell-sfx
+  Licence: CC0-1.0
+
+Magic Spell SFX: magical_3 - JaggedStone
+  https://opengameart.org/content/magic-spell-sfx
+  Licence: CC0-1.0
+
+Magic Spell SFX: magical_5 - JaggedStone
+  https://opengameart.org/content/magic-spell-sfx
+  Licence: CC0-1.0
+
+Epic Boss Battle [Seamlessly Looping] - Juhani Junkala (SubspaceAudio)
+  https://opengameart.org/content/boss-battle-music
+  Licence: CC0-1.0
+
+Post Apocalyptic Wastelands [Loop Ready] - Juhani Junkala (SubspaceAudio)
+  https://opengameart.org/content/horror-atmosphere
+  Licence: CC0-1.0
+
+Seaside Village - KarateStudios
+  https://opengameart.org/content/seaside-village
+  Licence: CC0-1.0
+
+Digital Audio: highDown - Kenney (kenney.nl)
+  https://kenney.nl/assets/digital-audio
+  Licence: CC0-1.0
+
+Digital Audio: highUp - Kenney (kenney.nl)
+  https://kenney.nl/assets/digital-audio
+  Licence: CC0-1.0
+
+Digital Audio: lowDown - Kenney (kenney.nl)
+  https://kenney.nl/assets/digital-audio
+  Licence: CC0-1.0
+
+Digital Audio: lowRandom - Kenney (kenney.nl)
+  https://kenney.nl/assets/digital-audio
+  Licence: CC0-1.0
+
+Digital Audio: phaserUp1 - Kenney (kenney.nl)
+  https://kenney.nl/assets/digital-audio
+  Licence: CC0-1.0
+
+Digital Audio: phaserUp2 - Kenney (kenney.nl)
+  https://kenney.nl/assets/digital-audio
+  Licence: CC0-1.0
+
+Digital Audio: phaserUp5 - Kenney (kenney.nl)
+  https://kenney.nl/assets/digital-audio
+  Licence: CC0-1.0
+
+Digital Audio: spaceTrash1 - Kenney (kenney.nl)
+  https://kenney.nl/assets/digital-audio
+  Licence: CC0-1.0
+
+Digital Audio: spaceTrash3 - Kenney (kenney.nl)
+  https://kenney.nl/assets/digital-audio
+  Licence: CC0-1.0
+
+Digital Audio: zap1 - Kenney (kenney.nl)
+  https://kenney.nl/assets/digital-audio
+  Licence: CC0-1.0
+
+Digital Audio: zap2 - Kenney (kenney.nl)
+  https://kenney.nl/assets/digital-audio
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_carpet_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_carpet_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_carpet_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_concrete_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_concrete_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_concrete_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_concrete_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_concrete_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_grass_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_grass_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_grass_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_grass_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_grass_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_snow_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_snow_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_snow_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_snow_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_snow_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_wood_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_wood_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: footstep_wood_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactBell_heavy_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactBell_heavy_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactBell_heavy_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactGeneric_light_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactGlass_heavy_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactGlass_heavy_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactGlass_heavy_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactGlass_heavy_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactGlass_light_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactGlass_light_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactGlass_light_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactGlass_light_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactGlass_light_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactMetal_heavy_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactMetal_light_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactMetal_light_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactMetal_light_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactMining_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactMining_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactMining_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactMining_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactMining_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactPlate_light_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactPlate_light_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactPlate_light_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactPlate_light_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactPlate_light_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactPunch_heavy_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactPunch_heavy_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactPunch_heavy_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactPunch_heavy_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactPunch_heavy_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactPunch_medium_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactPunch_medium_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactPunch_medium_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactSoft_heavy_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactSoft_heavy_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactSoft_heavy_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactSoft_heavy_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactSoft_heavy_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactSoft_medium_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactWood_heavy_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: back_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: click_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: click_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: click_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: click_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: confirmation_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: confirmation_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: drop_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: error_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: glass_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: glass_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: glass_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: glass_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: glass_005 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: glass_006 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: scratch_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: select_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Interface Sounds: tick_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/interface-sounds
+  Licence: CC0-1.0
+
+Music Jingles: jingles_HIT00 - Kenney (kenney.nl)
+  https://kenney.nl/assets/music-jingles
+  Licence: CC0-1.0
+
+Music Jingles: jingles_HIT15 - Kenney (kenney.nl)
+  https://kenney.nl/assets/music-jingles
+  Licence: CC0-1.0
+
+Music Jingles: jingles_PIZZI01 - Kenney (kenney.nl)
+  https://kenney.nl/assets/music-jingles
+  Licence: CC0-1.0
+
+Music Jingles: jingles_PIZZI02 - Kenney (kenney.nl)
+  https://kenney.nl/assets/music-jingles
+  Licence: CC0-1.0
+
+Music Jingles: jingles_PIZZI10 - Kenney (kenney.nl)
+  https://kenney.nl/assets/music-jingles
+  Licence: CC0-1.0
+
+Music Jingles: jingles_PIZZI12 - Kenney (kenney.nl)
+  https://kenney.nl/assets/music-jingles
+  Licence: CC0-1.0
+
+Music Jingles: jingles_STEEL02 - Kenney (kenney.nl)
+  https://kenney.nl/assets/music-jingles
+  Licence: CC0-1.0
+
+RPG Audio: bookClose - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: bookFlip1 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: bookOpen - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: cloth1 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: cloth2 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: cloth3 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: cloth4 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: clothBelt - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: creak1 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: creak2 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: creak3 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: doorClose_1 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: doorOpen_1 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: doorOpen_2 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: footstep00 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: footstep01 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: footstep02 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: footstep03 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: footstep04 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: footstep05 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: footstep06 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: handleCoins2 - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: handleSmallLeather - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: metalClick - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+RPG Audio: metalLatch - Kenney (kenney.nl)
+  https://kenney.nl/assets/rpg-audio
+  Licence: CC0-1.0
+
+Sci-fi Sounds: engineCircular_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: explosionCrunch_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: explosionCrunch_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: forceField_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: forceField_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: forceField_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: forceField_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: laserLarge_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: laserLarge_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: lowFrequency_explosion_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: lowFrequency_explosion_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: spaceEngineLow_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: spaceEngineLow_001 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: spaceEngineLow_002 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: spaceEngineLow_003 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: spaceEngineLow_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: spaceEngineSmall_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+Sci-fi Sounds: thrusterFire_000 - Kenney (kenney.nl)
+  https://kenney.nl/assets/sci-fi-sounds
+  Licence: CC0-1.0
+
+UI Audio: click3 - Kenney (kenney.nl)
+  https://kenney.nl/assets/ui-audio
+  Licence: CC0-1.0
+
+rain and thunders - kindland
+  https://opengameart.org/content/rain-and-thunders
+  Licence: CC0-1.0
+
+AMB Morning Sounds (Perfect Loop) - Kresiek The Furry
+  https://opengameart.org/content/amb-morning-sounds-perfect-loop
+  Licence: CC0-1.0
+
+New Sunrise (V2) - nene
+  https://opengameart.org/content/new-sunrise
+  Licence: CC0-1.0
+
+Teleport Spell: teleport - Ogrebane
+  https://opengameart.org/content/teleport-spell
+  Licence: CC0-1.0
+
+Earth Element Magic Spell: Earth_Element_Magic_Spell_3 - qubodup
+  https://opengameart.org/content/earth-element-magic-spell
+  Licence: CC0-1.0
+
+Ghost breath: ghostbreath - qubodup
+  https://opengameart.org/content/ghost-breath
+  Licence: CC0-1.0
+
+Dark Shrine Loop - qubodup (after yd)
+  https://opengameart.org/content/dark-shrine-loop
+  Licence: CC0-1.0
+
+Beach Ocean Waves: wave_01_cc0-18363__jasinski__alkaibeach - qubodup (from jasinski, Freesound #18363)
+  https://opengameart.org/content/beach-ocean-waves
+  Licence: CC0-1.0
+
+Beach Ocean Waves: wave_02_cc0-18363__jasinski__alkaibeach - qubodup (from jasinski, Freesound #18363)
+  https://opengameart.org/content/beach-ocean-waves
+  Licence: CC0-1.0
+
+Beach Ocean Waves: wave_03_cc0-18363__jasinski__alkaibeach - qubodup (from jasinski, Freesound #18363)
+  https://opengameart.org/content/beach-ocean-waves
+  Licence: CC0-1.0
+
+Beach Ocean Waves: wave_04_cc0-18363__jasinski__alkaibeach - qubodup (from jasinski, Freesound #18363)
+  https://opengameart.org/content/beach-ocean-waves
+  Licence: CC0-1.0
+
+Water Waves: wave_01_cc0-11505__transitking__wavesound - qubodup (from transitking, Freesound #11505)
+  https://opengameart.org/content/water-waves
+  Licence: CC0-1.0
+
+Water Waves: wave_02_cc0-11505__transitking__wavesound - qubodup (from transitking, Freesound #11505)
+  https://opengameart.org/content/water-waves
+  Licence: CC0-1.0
+
+Water Waves: wave_03_cc0-11505__transitking__wavesound - qubodup (from transitking, Freesound #11505)
+  https://opengameart.org/content/water-waves
+  Licence: CC0-1.0
+
+Water Waves: wave_04_cc0-11505__transitking__wavesound - qubodup (from transitking, Freesound #11505)
+  https://opengameart.org/content/water-waves
+  Licence: CC0-1.0
+
+100 CC0 SFX: bell_01 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx
+  Licence: CC0-1.0
+
+100 CC0 SFX: bell_02 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx
+  Licence: CC0-1.0
+
+100 CC0 SFX: bell_03 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx
+  Licence: CC0-1.0
+
+100 CC0 SFX: metal_04 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx
+  Licence: CC0-1.0
+
+100 CC0 SFX: plop_01 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx
+  Licence: CC0-1.0
+
+100 CC0 SFX: plop_02 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: hammer_01 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: hammer_02 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: hammer_03 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: hammer_04 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: metal_hit_01 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: metal_hit_02 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: metal_hit_03 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: metal_hit_04 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: metal_open_01 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: metal_sheet_04 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: metal_sheet_05 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: metal_slam_01 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: metal_spring_01 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: wood_cracking_01 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: wood_cracking_03 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: wood_hit_03 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: wood_squeak_02 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+80 CC0 RPG SFX: chain_02 - rubberduck
+  https://opengameart.org/node/86018
+  Licence: CC0-1.0
+
+80 CC0 RPG SFX: creature_hurt_01 - rubberduck
+  https://opengameart.org/node/86018
+  Licence: CC0-1.0
+
+80 CC0 RPG SFX: creature_roar_03 - rubberduck
+  https://opengameart.org/node/86018
+  Licence: CC0-1.0
+
+80 CC0 RPG SFX: item_coins_01 - rubberduck
+  https://opengameart.org/node/86018
+  Licence: CC0-1.0
+
+80 CC0 RPG SFX: spell_fire_01 - rubberduck
+  https://opengameart.org/node/86018
+  Licence: CC0-1.0
+
+80 CC0 RPG SFX: spell_fire_02 - rubberduck
+  https://opengameart.org/node/86018
+  Licence: CC0-1.0
+
+80 CC0 RPG SFX: spell_fire_05 - rubberduck
+  https://opengameart.org/node/86018
+  Licence: CC0-1.0
+
+80 CC0 RPG SFX: spell_fire_06 - rubberduck
+  https://opengameart.org/node/86018
+  Licence: CC0-1.0
+
+80 CC0 RPG SFX: spell_fire_07 - rubberduck
+  https://opengameart.org/node/86018
+  Licence: CC0-1.0
+
+80 CC0 RPG SFX: stones_01 - rubberduck
+  https://opengameart.org/node/86018
+  Licence: CC0-1.0
+
+80 CC0 RPG SFX: stones_02 - rubberduck
+  https://opengameart.org/node/86018
+  Licence: CC0-1.0
+
+80 CC0 RPG SFX: stones_03 - rubberduck
+  https://opengameart.org/node/86018
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: alien_01 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: alien_05 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: alien_06 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: barking_01 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: breath - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: bug_02 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: burble_01 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: burble_02 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: cute_04 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: cute_06 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: cute_07 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: cute_09 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: eat_01 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: eat_04 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: grunt_02 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: grunt_03 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: grunt_05 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: hurt_02 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: hurt_03 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: hurt_05 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: misc_04 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: misc_08 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: monster_03 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: monster_04 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: monster_07 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: roar_03 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: scream_01 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: scream_02 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: spit_02 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: troll_01 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: weird_01 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: weird_02 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX: weird_05 - rubberduck
+  https://opengameart.org/content/80-cc0-creature-sfx
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: alien_08 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: alien_10 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: alien_12 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: bug_07 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: bug_12 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: grunt_07 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: grunt_08 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: misc_11 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: misc_17 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: monster_09 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: monster_12 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: monster_14 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: monster_15 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: monster_16 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: monster_20 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: roar_04 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: roar_05 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: roar_06 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: slime_02 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: slime_07 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: slime_08 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+80 CC0 creature SFX #2: weird_06 - rubberduck
+  https://opengameart.org/content/80-cc0-creture-sfx-2
+  Licence: CC0-1.0
+
+100 CC0 SFX #2: sfx100v2_air_01 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx-2
+  Licence: CC0-1.0
+
+100 CC0 SFX #2: sfx100v2_air_02 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx-2
+  Licence: CC0-1.0
+
+100 CC0 SFX #2: sfx100v2_air_03 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx-2
+  Licence: CC0-1.0
+
+100 CC0 SFX #2: sfx100v2_footstep_wet_01 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx-2
+  Licence: CC0-1.0
+
+100 CC0 SFX #2: sfx100v2_footstep_wet_02 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx-2
+  Licence: CC0-1.0
+
+100 CC0 SFX #2: sfx100v2_footstep_wet_03 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx-2
+  Licence: CC0-1.0
+
+100 CC0 SFX #2: sfx100v2_loop_highway - rubberduck
+  https://opengameart.org/content/100-cc0-sfx-2
+  Licence: CC0-1.0
+
+100 CC0 SFX #2: sfx100v2_loop_water_01 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx-2
+  Licence: CC0-1.0
+
+100 CC0 SFX #2: sfx100v2_loop_water_02 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx-2
+  Licence: CC0-1.0
+
+100 CC0 SFX #2: sfx100v2_loop_water_03 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx-2
+  Licence: CC0-1.0
+
+100 CC0 SFX #2: sfx100v2_stones_01 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx-2
+  Licence: CC0-1.0
+
+100 CC0 SFX #2: sfx100v2_stones_02 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx-2
+  Licence: CC0-1.0
+
+100 CC0 SFX #2: sfx100v2_stones_03 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx-2
+  Licence: CC0-1.0
+
+100 CC0 SFX #2: sfx100v2_thunder_01 - rubberduck
+  https://opengameart.org/content/100-cc0-sfx-2
+  Licence: CC0-1.0
+
+30 CC0 SFX loops: machine_08 - rubberduck
+  https://opengameart.org/content/30-cc0-sfx-loops
+  Licence: CC0-1.0
+
+30 CC0 SFX loops: machine_11 - rubberduck
+  https://opengameart.org/content/30-cc0-sfx-loops
+  Licence: CC0-1.0
+
+30 CC0 SFX loops: noise_01 - rubberduck
+  https://opengameart.org/content/30-cc0-sfx-loops
+  Licence: CC0-1.0
+
+30 CC0 SFX loops: water_boiling - rubberduck
+  https://opengameart.org/content/30-cc0-sfx-loops
+  Licence: CC0-1.0
+
+30 CC0 SFX loops: water_flowing - rubberduck
+  https://opengameart.org/content/30-cc0-sfx-loops
+  Licence: CC0-1.0
+
+40 CC0 water / splash / slime SFX: bubble_01 - rubberduck
+  https://opengameart.org/content/40-cc0-water-splash-slime-sfx
+  Licence: CC0-1.0
+
+40 CC0 water / splash / slime SFX: bubble_02 - rubberduck
+  https://opengameart.org/content/40-cc0-water-splash-slime-sfx
+  Licence: CC0-1.0
+
+40 CC0 water / splash / slime SFX: bubble_03 - rubberduck
+  https://opengameart.org/content/40-cc0-water-splash-slime-sfx
+  Licence: CC0-1.0
+
+40 CC0 water / splash / slime SFX: loop_rain - rubberduck
+  https://opengameart.org/content/40-cc0-water-splash-slime-sfx
+  Licence: CC0-1.0
+
+40 CC0 water / splash / slime SFX: slime_01 - rubberduck
+  https://opengameart.org/content/40-cc0-water-splash-slime-sfx
+  Licence: CC0-1.0
+
+40 CC0 water / splash / slime SFX: slime_05 - rubberduck
+  https://opengameart.org/content/40-cc0-water-splash-slime-sfx
+  Licence: CC0-1.0
+
+40 CC0 water / splash / slime SFX: splash_01 - rubberduck
+  https://opengameart.org/content/40-cc0-water-splash-slime-sfx
+  Licence: CC0-1.0
+
+40 CC0 water / splash / slime SFX: splash_02 - rubberduck
+  https://opengameart.org/content/40-cc0-water-splash-slime-sfx
+  Licence: CC0-1.0
+
+40 CC0 water / splash / slime SFX: splash_03 - rubberduck
+  https://opengameart.org/content/40-cc0-water-splash-slime-sfx
+  Licence: CC0-1.0
+
+40 CC0 water / splash / slime SFX: splash_05 - rubberduck
+  https://opengameart.org/content/40-cc0-water-splash-slime-sfx
+  Licence: CC0-1.0
+
+wind whoosh loop - SketchMan3
+  https://opengameart.org/content/wind-whoosh-loop
+  Licence: CC0-1.0
+
+Cure Magic: Cure1 - Someoneman
+  https://opengameart.org/content/cure-magic
+  Licence: CC0-1.0
+
+Cure Magic: Cure2 - Someoneman
+  https://opengameart.org/content/cure-magic
+  Licence: CC0-1.0
+
+Cure Magic: Cure3 - Someoneman
+  https://opengameart.org/content/cure-magic
+  Licence: CC0-1.0
+
+Cure Magic: Cure4 - Someoneman
+  https://opengameart.org/content/cure-magic
+  Licence: CC0-1.0
+
+Cure Magic: Cure5 - Someoneman
+  https://opengameart.org/content/cure-magic
+  Licence: CC0-1.0
+
+Cure Magic: Cure6 - Someoneman
+  https://opengameart.org/content/cure-magic
+  Licence: CC0-1.0
+
+Ambience of a Fallen Age: Entering the Volcano - Umplix
+  https://opengameart.org/content/ambience-of-a-fallen-age
+  Licence: CC0-1.0
+
+Crickets Ambient Noise - loopable - Wolfgang_
+  https://opengameart.org/content/crickets-ambient-noise-loopable
+  Licence: CC0-1.0
+
+Factory Ambiance - yd
+  https://opengameart.org/content/factory-ambiance
+  Licence: CC0-1.0

@@ -57,6 +57,20 @@ export interface SourceEntry {
   readonly derive?: boolean;
   /** free text, ignored by the pipeline */
   readonly note?: string;
+  /**
+   * A premix (`mix/…`, several CC0 files mixed into one by a tool) credits its parts instead of itself: one credit
+   * row per part. Attribution only — like author/url/title it never changes the job's salt.
+   */
+  readonly parts?: readonly SourcePart[];
+}
+
+/** One source file inside a premix (credited in its own row). */
+export interface SourcePart {
+  readonly file: string;
+  readonly author: string;
+  readonly url: string;
+  readonly title?: string;
+  readonly licenceFile?: string;
 }
 
 export type SourcesFile = Readonly<Record<string, SourceEntry>>;
@@ -83,6 +97,10 @@ export const SourceEntrySchema: z.ZodType<SourceEntry> = z.strictObject({
   crossfadeSec: z.number().min(0).max(4).optional(),
   derive: z.boolean().optional(),
   note: z.string().optional(),
+  parts: z
+    .array(z.strictObject({ file: RelPath, author: z.string().min(1), url: z.string().url(), title: z.string().min(1).optional(), licenceFile: RelPath.optional() }))
+    .min(1)
+    .optional(),
 });
 
 export interface LoadedSources {

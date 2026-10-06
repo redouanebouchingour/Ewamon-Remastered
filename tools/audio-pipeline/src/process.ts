@@ -159,6 +159,14 @@ export async function normaliseClip(
   return { gainDb: round(gainDb, 3), lufs: round(post.integrated, 2), truePeakDb: round(post.truePeak, 2), overshoot, clamped };
 }
 
+/**
+ * §40.4.5 shifts loop points by the Opus pre-skip. Measured in Chrome (Phase E4, headless, the shipped webm files):
+ * `decodeAudioData` already trims the pre-skip (a 60 s bed decodes to exactly 2 880 000 frames), so the shifted
+ * loopEnd fell 6.5 ms past the buffer end on every bed. WebM `CodecDelay` is honoured by Chrome and Firefox and the
+ * m4a fallback has no shift, so loop points are written unshifted (IMPLEMENTATION-NOTES D14).
+ */
+export const LOOP_POINTS_INCLUDE_PRESKIP = false;
+
 async function encodeClip(finalWav: string, outDir: string, relBase: string, profile: EncodeProfile, urlBase: string): Promise<{ webmBytes: Uint8Array; hash: string; url: string; urlFallback: string; preSkip: number }> {
   const webm = path.join(outDir, `${relBase}.webm`);
   const m4a = path.join(outDir, `${relBase}.m4a`);
@@ -308,7 +316,7 @@ export async function runProcess(opts: ProcessOptions): Promise<ProcessResult> {
         }
         if (n.clamped) flagged.push({ id: src.job.id, reason: `gain clamped to the ${TP_CEILING.stem} dBTP ceiling; lufs ${n.lufs}` });
         const enc = await encodeClip(f, paths.out, `themes/${t.id}/${layer}`, 'stem', urlBase);
-        const shift = enc.preSkip / SAMPLE_RATE;
+        const shift = LOOP_POINTS_INCLUDE_PRESKIP ? enc.preSkip / SAMPLE_RATE : 0;
         clips.set(src.job.id, {
           id: src.job.id,
           ref: { url: enc.url, urlFallback: enc.urlFallback, durationSec: round(frames(audio) / SAMPLE_RATE, 3), bytes: enc.webmBytes.byteLength, hash: enc.hash },
@@ -343,7 +351,7 @@ export async function runProcess(opts: ProcessOptions): Promise<ProcessResult> {
     }
     if (n.clamped) flagged.push({ id: src.job.id, reason: `gain clamped to the ${TP_CEILING.ambience} dBTP ceiling; lufs ${n.lufs}` });
     const enc = await encodeClip(f, paths.out, `ambience/${a.biome}`, 'ambience', urlBase);
-    const shift = enc.preSkip / SAMPLE_RATE;
+    const shift = LOOP_POINTS_INCLUDE_PRESKIP ? enc.preSkip / SAMPLE_RATE : 0;
     const len = frames(audio) / SAMPLE_RATE;
     clips.set(src.job.id, {
       id: src.job.id,

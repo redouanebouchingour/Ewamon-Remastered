@@ -6,6 +6,18 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-06 Phase E4 downloads: the CC0 audio is in. Two entries. -->
+
+## 2026-10-06 — `40-pipelines.md` §40.4.5 — loop points are written without the Opus pre-skip shift
+Why: §40.4.5 shifted `loopStartSec`/`loopEndSec` by the 312-sample Opus pre-skip on the premise that the decoded buffer keeps it. Chrome's `decodeAudioData` trims it (WebM `CodecDelay`), so every bed's shifted `loopEndSec` (60.0065 s) fell past its decoded buffer (60.000 s) and every stem looped 6.5 ms late. This was the open risk in audio-pipeline IMPLEMENTATION-NOTES D14.
+Evidence: headless Chrome against the shipped `public/audio/` (client's own `loadAudioManifest` / `AudioDirector` via Vite): all 366 clips decode, a 60 s bed decodes to exactly 2 880 000 frames, and the 11 beds' `loopEndSec` exceeded the buffer before the change; none do after it. Decoded theme seams (base layer, 15 ms after loopStart vs after loopEnd) correlate at 0.96–0.998 for all 17 themes.
+Affects: `tools/audio-pipeline/src/process.ts` (`LOOP_POINTS_INCLUDE_PRESKIP = false`); the client applies no offset (OQ-5, unchanged).
+
+## 2026-10-06 — `40-pipelines.md` §40.4.8 — `sources.json` entries may list a premix's `parts`
+Why: a job takes one file. Beds and layered sfx designs built from several CC0 files are premixed into `assets-src/audio/cc0/mix/`, and each contributing author must be credited, not the premix.
+Evidence: `tools/audio-pipeline/test/ingest.test.ts` ("a premix is credited through its parts"); `assets-src/audio/CREDITS.md` generated from the real mapping.
+Affects: `tools/audio-pipeline/src/{sources,credits}.ts`; `.design/audio/sources.json`.
+
 <!-- 2026-10-06 handover II: shared scatter builds, kept builds and pipelines, a time-sliced prepare. Two entries. -->
 
 ## 2026-10-06 — `10-render.md` §10.5.7 (scatter draws are `ScatterMesh`es reading their instances from geometry attributes), §10.5.9 (their `dispose()`), §10.1.2 "Handover prepare" (the build is time-sliced; node builds and pipelines carry across a crossing) — one node build per scatter material × layout; the prepare holds no frame

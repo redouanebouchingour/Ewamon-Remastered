@@ -165,6 +165,12 @@ export function findLoop(mono: Float32Array, sampleRate: number, opts: FindLoopO
     .filter((b, i) => b.r >= 0 && b.r >= (perL[i - 1]?.r ?? -1) && b.r >= (perL[i + 1]?.r ?? -1))
     .sort((a, b) => b.r - a.r || Math.abs(a.L * HOP_SEC - nominal) - Math.abs(b.L * HOP_SEC - nominal))
     .slice(0, REFINE_CANDIDATES);
+  // The nominal length is always refined too. Dense material can fill the five coarse slots with aliases whose
+  // ±1.5-hop fine windows all miss the true L (seen on a CC0 arpeggio: coarse peak 2 hops off, fine window short
+  // by 1 ms, so a 46 ms alias won at 0.73), and a CC0 stem is periodic at nominal by construction (ingest).
+  const nominalHop = toHop(nominal);
+  const atNominal = perL[nominalHop - lMin];
+  if (atNominal !== undefined && atNominal.r >= 0 && !peaks.some((p) => p.L === nominalHop)) peaks.push(atNominal);
 
   // ── fine: 1 ms hops, 10 ms RMS window, ±1.5 coarse hops around each candidate; the best fine score wins ──
   const f = onsetEnvelope(mono, sampleRate, FINE_HOP_SEC, HOP_SEC);
