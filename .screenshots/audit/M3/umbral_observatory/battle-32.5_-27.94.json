@@ -1,0 +1,518 @@
+{
+  "set": "M3",
+  "zone": "umbral_observatory",
+  "shot": "battle",
+  "n": 5,
+  "table": {
+    "n": 5,
+    "id": "battle",
+    "zone": "umbral_observatory",
+    "heading": null,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "turn 2 of a scripted wild battle, HUD live, a damage cue mid-flight"
+  },
+  "layoutSeed": 1293811731,
+  "anchor": {
+    "layoutSeed": 1293811731,
+    "shot": "battle",
+    "zone": "umbral_observatory",
+    "heading": {
+      "spec": null,
+      "rig": null,
+      "viewForward": null,
+      "convention": "words"
+    },
+    "x": 32.500325138891064,
+    "z": -27.93641686812291,
+    "snapped": false,
+    "raw": [
+      32.500325138891064,
+      -27.93641686812291
+    ],
+    "rule": "BattleSummary.x/z = the engaging player's position: from the sprite-edge anchor toward the darkone spawn, stopping 2.5 m from it (ENGAGE_RANGE_M 3.0)",
+    "base": {
+      "name": "darkone spawn",
+      "x": 33.88707562945414,
+      "z": -30.016542603967522
+    },
+    "offset": null,
+    "wild": {
+      "speciesId": "darkone",
+      "level": 42,
+      "slotIndex": 0,
+      "x": 33.88707562945414,
+      "z": -30.016542603967522
+    },
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "battle-32.5_-27.94-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 80.7,
+        "blackShare": 0,
+        "greyShare": 0.0001,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 2,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            38.321,
+            5.222,
+            -40.186
+          ],
+          "focus": [
+            34.078,
+            -0.553,
+            -30.189
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 314,
+          "triangles": 989712,
+          "texturesSize": 759850374,
+          "textures": 164,
+          "geometries": 185,
+          "programs": 111,
+          "renderTargets": 35,
+          "attributes": 1184,
+          "attributesSize": 57017888,
+          "materials": 10,
+          "shadowLights": 2,
+          "nonShadowLights": 5,
+          "beautyDrawCalls": 119,
+          "shadowDrawCalls": 195
+        },
+        "settle": {
+          "frames": 230,
+          "stable": true,
+          "programs": 111
+        },
+        "rects": {
+          "player": [
+            592,
+            375,
+            724,
+            674
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                610,
+                306,
+                817,
+                455
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                779,
+                73,
+                911,
+                188
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a lens-technician"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Darkone L42 111/112"
+          ]
+        },
+        "battle": {
+          "seed": 12,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 683.333,
+          "timelineMs": 3110,
+          "framesIntro": 74,
+          "framesTurn1": 112,
+          "framesToImpact": 35,
+          "afterImpactMs": 150,
+          "log": [
+            "Bramblecub used Tackle!",
+            "The wild Darkone used Volt Crash!",
+            "It’s not very effective…"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 2
+        },
+        "notes": [],
+        "frame": 934
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "battle-32.5_-27.94-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 77.8,
+        "blackShare": 0,
+        "greyShare": 0.0001,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 2,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            38.321,
+            5.222,
+            -40.186
+          ],
+          "focus": [
+            34.078,
+            -0.553,
+            -30.189
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 303,
+          "triangles": 989701,
+          "texturesSize": 684034378,
+          "textures": 152,
+          "geometries": 185,
+          "programs": 99,
+          "renderTargets": 25,
+          "attributes": 1216,
+          "attributesSize": 59128864,
+          "materials": 10,
+          "shadowLights": 2,
+          "nonShadowLights": 5,
+          "beautyDrawCalls": 108,
+          "shadowDrawCalls": 195
+        },
+        "settle": {
+          "frames": 227,
+          "stable": true,
+          "programs": 99
+        },
+        "rects": {
+          "player": [
+            591,
+            373,
+            723,
+            671
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                614,
+                296,
+                818,
+                453
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                778,
+                71,
+                910,
+                185
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a lens-technician"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Darkone L42 111/112"
+          ]
+        },
+        "battle": {
+          "seed": 12,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 733.333,
+          "timelineMs": 3060,
+          "framesIntro": 74,
+          "framesTurn1": 109,
+          "framesToImpact": 35,
+          "afterImpactMs": 150,
+          "log": [
+            "Bramblecub used Tackle!",
+            "The wild Darkone used Volt Crash!",
+            "It’s not very effective…"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 2
+        },
+        "notes": [],
+        "frame": 1191
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "battle-32.5_-27.94-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 8,
+        "blackShare": 0.9686,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9686,
+          "full": 0.0314,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.7127,
+        "battlers": [
+          {
+            "side": 0,
+            "full": 0.5274
+          },
+          {
+            "side": 1,
+            "full": 0.1564
+          }
+        ]
+      },
+      "stage": {
+        "shot": "battle",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 2,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            38.321,
+            5.222,
+            -40.186
+          ],
+          "focus": [
+            34.078,
+            -0.553,
+            -30.189
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 316,
+          "triangles": 998395,
+          "texturesSize": 759850382,
+          "textures": 166,
+          "geometries": 185,
+          "programs": 111,
+          "renderTargets": 35,
+          "attributes": 1216,
+          "attributesSize": 59128864,
+          "materials": 10,
+          "shadowLights": 2,
+          "nonShadowLights": 5,
+          "beautyDrawCalls": 119,
+          "shadowDrawCalls": 197
+        },
+        "settle": {
+          "frames": 230,
+          "stable": true,
+          "programs": 111
+        },
+        "rects": {
+          "player": [
+            590,
+            372,
+            721,
+            671
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                607,
+                303,
+                815,
+                452
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                776,
+                70,
+                909,
+                184
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a lens-technician"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Darkone L42 111/112"
+          ]
+        },
+        "battle": {
+          "seed": 12,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 683.333,
+          "timelineMs": 3110,
+          "framesIntro": 74,
+          "framesTurn1": 112,
+          "framesToImpact": 35,
+          "afterImpactMs": 150,
+          "log": [
+            "Bramblecub used Tackle!",
+            "The wild Darkone used Volt Crash!",
+            "It’s not very effective…"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 2
+        },
+        "notes": [],
+        "frame": 1451
+      }
+    }
+  ]
+}

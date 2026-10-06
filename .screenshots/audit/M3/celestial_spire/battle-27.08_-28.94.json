@@ -1,0 +1,512 @@
+{
+  "set": "M3",
+  "zone": "celestial_spire",
+  "shot": "battle",
+  "n": 5,
+  "table": {
+    "n": 5,
+    "id": "battle",
+    "zone": "celestial_spire",
+    "heading": null,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "turn 2 of a scripted wild battle, HUD live, a damage cue mid-flight"
+  },
+  "layoutSeed": 1293811732,
+  "anchor": {
+    "layoutSeed": 1293811732,
+    "shot": "battle",
+    "zone": "celestial_spire",
+    "heading": {
+      "spec": null,
+      "rig": null,
+      "viewForward": null,
+      "convention": "words"
+    },
+    "x": 27.084762405534573,
+    "z": -28.935473594354967,
+    "snapped": false,
+    "raw": [
+      27.084762405534573,
+      -28.935473594354967
+    ],
+    "rule": "BattleSummary.x/z = the engaging player's position: from the sprite-edge anchor toward the gustuff spawn, stopping 2.5 m from it (ENGAGE_RANGE_M 3.0)",
+    "base": {
+      "name": "gustuff spawn",
+      "x": 28.471512896097646,
+      "z": -31.015599330199578
+    },
+    "offset": null,
+    "wild": {
+      "speciesId": "gustuff",
+      "level": 50,
+      "slotIndex": 0,
+      "x": 28.471512896097646,
+      "z": -31.015599330199578
+    },
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "battle-27.08_-28.94-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 82,
+        "blackShare": 0,
+        "greyShare": 0.0003,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            17.354,
+            6.443,
+            -33.249
+          ],
+          "focus": [
+            27.366,
+            0.603,
+            -28.738
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 216,
+          "triangles": 996476,
+          "texturesSize": 569008878,
+          "textures": 140,
+          "geometries": 164,
+          "programs": 109,
+          "renderTargets": 35,
+          "attributes": 858,
+          "attributesSize": 44439188,
+          "materials": 6,
+          "shadowLights": 2,
+          "nonShadowLights": 5,
+          "beautyDrawCalls": 94,
+          "shadowDrawCalls": 122
+        },
+        "settle": {
+          "frames": 209,
+          "stable": true,
+          "programs": 109
+        },
+        "rects": {
+          "player": [
+            415,
+            496,
+            608,
+            887
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                476,
+                394,
+                736,
+                588
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                714,
+                81,
+                843,
+                191
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 31/31",
+            "The wild Gustuff L50 136/136"
+          ]
+        },
+        "battle": {
+          "seed": 5,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 383.333,
+          "timelineMs": 2050,
+          "framesIntro": 74,
+          "framesTurn1": 112,
+          "framesToImpact": 14,
+          "afterImpactMs": 150,
+          "log": [
+            "But its HP is already full!",
+            "Bramblecub used Tackle!",
+            "The wild Gustuff used Roost!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 913
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "battle-27.08_-28.94-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 80.9,
+        "blackShare": 0,
+        "greyShare": 0.0002,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            17.354,
+            6.443,
+            -33.249
+          ],
+          "focus": [
+            27.366,
+            0.603,
+            -28.738
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 205,
+          "triangles": 996465,
+          "texturesSize": 493192882,
+          "textures": 128,
+          "geometries": 164,
+          "programs": 97,
+          "renderTargets": 25,
+          "attributes": 878,
+          "attributesSize": 47263892,
+          "materials": 6,
+          "shadowLights": 2,
+          "nonShadowLights": 5,
+          "beautyDrawCalls": 83,
+          "shadowDrawCalls": 122
+        },
+        "settle": {
+          "frames": 206,
+          "stable": true,
+          "programs": 97
+        },
+        "rects": {
+          "player": [
+            415,
+            496,
+            608,
+            887
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                476,
+                394,
+                736,
+                588
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                714,
+                81,
+                843,
+                191
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 31/31",
+            "The wild Gustuff L50 136/136"
+          ]
+        },
+        "battle": {
+          "seed": 5,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 383.333,
+          "timelineMs": 2000,
+          "framesIntro": 74,
+          "framesTurn1": 109,
+          "framesToImpact": 14,
+          "afterImpactMs": 150,
+          "log": [
+            "But its HP is already full!",
+            "Bramblecub used Tackle!",
+            "The wild Gustuff used Roost!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1149
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "battle-27.08_-28.94-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 14.1,
+        "blackShare": 0.9448,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9448,
+          "full": 0.0552,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.6273,
+        "battlers": [
+          {
+            "side": 0,
+            "full": 0.527
+          },
+          {
+            "side": 1,
+            "full": 0.3824
+          }
+        ]
+      },
+      "stage": {
+        "shot": "battle",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            17.354,
+            6.443,
+            -33.249
+          ],
+          "focus": [
+            27.366,
+            0.603,
+            -28.738
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 216,
+          "triangles": 996476,
+          "texturesSize": 569008886,
+          "textures": 142,
+          "geometries": 164,
+          "programs": 109,
+          "renderTargets": 35,
+          "attributes": 878,
+          "attributesSize": 47263892,
+          "materials": 6,
+          "shadowLights": 2,
+          "nonShadowLights": 5,
+          "beautyDrawCalls": 94,
+          "shadowDrawCalls": 122
+        },
+        "settle": {
+          "frames": 209,
+          "stable": true,
+          "programs": 109
+        },
+        "rects": {
+          "player": [
+            415,
+            496,
+            608,
+            887
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                476,
+                394,
+                736,
+                588
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                714,
+                81,
+                843,
+                191
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 31/31",
+            "The wild Gustuff L50 136/136"
+          ]
+        },
+        "battle": {
+          "seed": 5,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 383.333,
+          "timelineMs": 2050,
+          "framesIntro": 74,
+          "framesTurn1": 112,
+          "framesToImpact": 14,
+          "afterImpactMs": 150,
+          "log": [
+            "But its HP is already full!",
+            "Bramblecub used Tackle!",
+            "The wild Gustuff used Roost!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1388
+      }
+    }
+  ]
+}

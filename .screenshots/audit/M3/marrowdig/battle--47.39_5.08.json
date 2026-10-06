@@ -1,0 +1,512 @@
+{
+  "set": "M3",
+  "zone": "marrowdig",
+  "shot": "battle",
+  "n": 5,
+  "table": {
+    "n": 5,
+    "id": "battle",
+    "zone": "marrowdig",
+    "heading": null,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "turn 2 of a scripted wild battle, HUD live, a damage cue mid-flight"
+  },
+  "layoutSeed": 1293811721,
+  "anchor": {
+    "layoutSeed": 1293811721,
+    "shot": "battle",
+    "zone": "marrowdig",
+    "heading": {
+      "spec": null,
+      "rig": null,
+      "viewForward": null,
+      "convention": "words"
+    },
+    "x": -47.386750490563074,
+    "z": 5.080125735844609,
+    "snapped": false,
+    "raw": [
+      -47.386750490563074,
+      5.080125735844609
+    ],
+    "rule": "fallback: no encounter table — deepcut_route:enc_deepcut_route slot 0 (pebblit) staged at spawn + (4, 3); the player engages 2.5 m from it",
+    "base": {
+      "name": "pebblit (staged)",
+      "x": -46,
+      "z": 3
+    },
+    "offset": null,
+    "wild": {
+      "speciesId": "pebblit",
+      "level": 20,
+      "slotIndex": 0,
+      "x": -46,
+      "z": 3
+    },
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "battle--47.39_5.08-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 120,
+        "blackShare": 0,
+        "greyShare": 0.0006,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -58.824,
+            6.881,
+            -0.396
+          ],
+          "focus": [
+            -49.639,
+            1.576,
+            3.503
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 426,
+          "triangles": 1173970,
+          "texturesSize": 466773797,
+          "textures": 169,
+          "geometries": 391,
+          "programs": 109,
+          "renderTargets": 36,
+          "attributes": 1568,
+          "attributesSize": 132747108,
+          "materials": 15,
+          "shadowLights": 3,
+          "nonShadowLights": 20,
+          "beautyDrawCalls": 151,
+          "shadowDrawCalls": 275
+        },
+        "settle": {
+          "frames": 271,
+          "stable": true,
+          "programs": 109
+        },
+        "rects": {
+          "player": [
+            581,
+            392,
+            725,
+            714
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                599,
+                256,
+                826,
+                418
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                801,
+                44,
+                905,
+                134
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Pebblit L20 62/63"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 650,
+          "timelineMs": 4050,
+          "framesIntro": 74,
+          "framesTurn1": 155,
+          "framesToImpact": 33,
+          "afterImpactMs": 150,
+          "log": [
+            "It’s not very effective…",
+            "The wild Pebblit used Ancient Power!",
+            "The wild Pebblit’s Attack rose!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 975
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "battle--47.39_5.08-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 115.9,
+        "blackShare": 0,
+        "greyShare": 0.0002,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -58.824,
+            6.881,
+            -0.396
+          ],
+          "focus": [
+            -49.639,
+            1.576,
+            3.503
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 415,
+          "triangles": 1173959,
+          "texturesSize": 390957801,
+          "textures": 157,
+          "geometries": 391,
+          "programs": 97,
+          "renderTargets": 26,
+          "attributes": 1568,
+          "attributesSize": 132747108,
+          "materials": 15,
+          "shadowLights": 3,
+          "nonShadowLights": 20,
+          "beautyDrawCalls": 140,
+          "shadowDrawCalls": 275
+        },
+        "settle": {
+          "frames": 268,
+          "stable": true,
+          "programs": 97
+        },
+        "rects": {
+          "player": [
+            580,
+            393,
+            723,
+            715
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                604,
+                248,
+                827,
+                419
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                799,
+                45,
+                903,
+                135
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Pebblit L20 62/63"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 700,
+          "timelineMs": 4000,
+          "framesIntro": 74,
+          "framesTurn1": 152,
+          "framesToImpact": 33,
+          "afterImpactMs": 150,
+          "log": [
+            "It’s not very effective…",
+            "The wild Pebblit used Ancient Power!",
+            "The wild Pebblit’s Attack rose!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1273
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "battle--47.39_5.08-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 9.6,
+        "blackShare": 0.9624,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9624,
+          "full": 0.0376,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.7128,
+        "battlers": [
+          {
+            "side": 0,
+            "full": 0.4282
+          },
+          {
+            "side": 1,
+            "full": 0.1553
+          }
+        ]
+      },
+      "stage": {
+        "shot": "battle",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -58.824,
+            6.881,
+            -0.396
+          ],
+          "focus": [
+            -49.639,
+            1.576,
+            3.503
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 425,
+          "triangles": 1173678,
+          "texturesSize": 466773805,
+          "textures": 171,
+          "geometries": 391,
+          "programs": 109,
+          "renderTargets": 36,
+          "attributes": 1568,
+          "attributesSize": 132747108,
+          "materials": 15,
+          "shadowLights": 3,
+          "nonShadowLights": 20,
+          "beautyDrawCalls": 150,
+          "shadowDrawCalls": 275
+        },
+        "settle": {
+          "frames": 271,
+          "stable": true,
+          "programs": 109
+        },
+        "rects": {
+          "player": [
+            581,
+            391,
+            724,
+            713
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                599,
+                255,
+                826,
+                418
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                800,
+                43,
+                904,
+                133
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Pebblit L20 62/63"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 650,
+          "timelineMs": 4050,
+          "framesIntro": 74,
+          "framesTurn1": 155,
+          "framesToImpact": 33,
+          "afterImpactMs": 150,
+          "log": [
+            "It’s not very effective…",
+            "The wild Pebblit used Ancient Power!",
+            "The wild Pebblit’s Attack rose!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1574
+      }
+    }
+  ]
+}

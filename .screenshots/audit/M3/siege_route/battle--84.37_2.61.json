@@ -1,0 +1,512 @@
+{
+  "set": "M3",
+  "zone": "siege_route",
+  "shot": "battle",
+  "n": 5,
+  "table": {
+    "n": 5,
+    "id": "battle",
+    "zone": "siege_route",
+    "heading": null,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "turn 2 of a scripted wild battle, HUD live, a damage cue mid-flight"
+  },
+  "layoutSeed": 1293811726,
+  "anchor": {
+    "layoutSeed": 1293811726,
+    "shot": "battle",
+    "zone": "siege_route",
+    "heading": {
+      "spec": null,
+      "rig": null,
+      "viewForward": null,
+      "convention": "words"
+    },
+    "x": -84.36605844010607,
+    "z": 2.6087874271597222,
+    "snapped": false,
+    "raw": [
+      -84.36605844010607,
+      2.6087874271597222
+    ],
+    "rule": "BattleSummary.x/z = the engaging player's position: from the sprite-edge anchor toward the grubolt spawn, stopping 2.5 m from it (ENGAGE_RANGE_M 3.0)",
+    "base": {
+      "name": "grubolt spawn",
+      "x": -82.979307949543,
+      "z": 0.5286616913151132
+    },
+    "offset": null,
+    "wild": {
+      "speciesId": "grubolt",
+      "level": 30,
+      "slotIndex": 0,
+      "x": -82.979307949543,
+      "z": 0.5286616913151132
+    },
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "battle--84.37_2.61-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 95,
+        "blackShare": 0,
+        "greyShare": 0.0019,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -89.842,
+            4.881,
+            14.046
+          ],
+          "focus": [
+            -85.943,
+            -0.424,
+            4.861
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 291,
+          "triangles": 890251,
+          "texturesSize": 831022968,
+          "textures": 185,
+          "geometries": 231,
+          "programs": 113,
+          "renderTargets": 35,
+          "attributes": 1231,
+          "attributesSize": 55433284,
+          "materials": 10,
+          "shadowLights": 2,
+          "nonShadowLights": 8,
+          "beautyDrawCalls": 121,
+          "shadowDrawCalls": 170
+        },
+        "settle": {
+          "frames": 260,
+          "stable": true,
+          "programs": 113
+        },
+        "rects": {
+          "player": [
+            578,
+            319,
+            726,
+            653
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                601,
+                295,
+                828,
+                458
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                802,
+                85,
+                905,
+                174
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 10/31",
+            "The wild Grubolt L6 30/32"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 516.667,
+          "timelineMs": 3560,
+          "framesIntro": 74,
+          "framesTurn1": 152,
+          "framesToImpact": 25,
+          "afterImpactMs": 150,
+          "log": [
+            "Bramblecub used Tackle!",
+            "It’s not very effective…",
+            "The wild Grubolt used Signal Beam!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 0
+        },
+        "notes": [],
+        "frame": 964
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "battle--84.37_2.61-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 91.2,
+        "blackShare": 0,
+        "greyShare": 0.0028,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -89.842,
+            4.881,
+            14.046
+          ],
+          "focus": [
+            -85.943,
+            -0.424,
+            4.861
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 280,
+          "triangles": 890240,
+          "texturesSize": 755206972,
+          "textures": 173,
+          "geometries": 231,
+          "programs": 101,
+          "renderTargets": 25,
+          "attributes": 1231,
+          "attributesSize": 55433284,
+          "materials": 10,
+          "shadowLights": 2,
+          "nonShadowLights": 8,
+          "beautyDrawCalls": 110,
+          "shadowDrawCalls": 170
+        },
+        "settle": {
+          "frames": 257,
+          "stable": true,
+          "programs": 101
+        },
+        "rects": {
+          "player": [
+            575,
+            321,
+            723,
+            655
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                604,
+                289,
+                827,
+                460
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                799,
+                87,
+                902,
+                176
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 10/31",
+            "The wild Grubolt L6 30/32"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 566.667,
+          "timelineMs": 3200,
+          "framesIntro": 74,
+          "framesTurn1": 149,
+          "framesToImpact": 25,
+          "afterImpactMs": 150,
+          "log": [
+            "Bramblecub used Tackle!",
+            "It’s not very effective…",
+            "The wild Grubolt used Signal Beam!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 0
+        },
+        "notes": [],
+        "frame": 1251
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "battle--84.37_2.61-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 8.3,
+        "blackShare": 0.9674,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9674,
+          "full": 0.0326,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.682,
+        "battlers": [
+          {
+            "side": 0,
+            "full": 0.5156
+          },
+          {
+            "side": 1,
+            "full": 0.1599
+          }
+        ]
+      },
+      "stage": {
+        "shot": "battle",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -89.842,
+            4.881,
+            14.046
+          ],
+          "focus": [
+            -85.943,
+            -0.424,
+            4.861
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 292,
+          "triangles": 897729,
+          "texturesSize": 831022976,
+          "textures": 187,
+          "geometries": 231,
+          "programs": 113,
+          "renderTargets": 35,
+          "attributes": 1231,
+          "attributesSize": 55433284,
+          "materials": 10,
+          "shadowLights": 2,
+          "nonShadowLights": 8,
+          "beautyDrawCalls": 121,
+          "shadowDrawCalls": 171
+        },
+        "settle": {
+          "frames": 260,
+          "stable": true,
+          "programs": 113
+        },
+        "rects": {
+          "player": [
+            577,
+            318,
+            725,
+            652
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                600,
+                294,
+                827,
+                457
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                801,
+                83,
+                904,
+                173
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 10/31",
+            "The wild Grubolt L6 30/32"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 516.667,
+          "timelineMs": 3560,
+          "framesIntro": 74,
+          "framesTurn1": 152,
+          "framesToImpact": 25,
+          "afterImpactMs": 150,
+          "log": [
+            "Bramblecub used Tackle!",
+            "It’s not very effective…",
+            "The wild Grubolt used Signal Beam!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 0
+        },
+        "notes": [],
+        "frame": 1541
+      }
+    }
+  ]
+}

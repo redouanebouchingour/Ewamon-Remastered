@@ -1,0 +1,396 @@
+{
+  "set": "M3",
+  "zone": "stormrook",
+  "shot": "lamps-night",
+  "n": 4,
+  "table": {
+    "n": 4,
+    "id": "lamps-night",
+    "zone": "stormrook",
+    "heading": 3,
+    "timeOfDay": 0.05,
+    "zoomStop": 1,
+    "state": "overworld, night light set, >= 3 lamps in frame"
+  },
+  "layoutSeed": 1293811719,
+  "anchor": {
+    "layoutSeed": 1293811719,
+    "shot": "lamps-night",
+    "zone": "stormrook",
+    "heading": {
+      "spec": 3,
+      "rig": 1,
+      "viewForward": [
+        -0.8192,
+        -0.5736
+      ],
+      "convention": "words"
+    },
+    "x": 1.6872650612718587,
+    "z": 21.85141867602949,
+    "snapped": false,
+    "raw": [
+      1.6872650612718587,
+      21.85141867602949
+    ],
+    "rule": "doorOf(stormrook.shop) + (4, 6) in the door frame (+z = outward normal (-0.2577, -0.9662))",
+    "base": {
+      "name": "stormrook.shop door",
+      "x": 7.098180723038837,
+      "z": 26.61817771139564
+    },
+    "offset": {
+      "dx": 4,
+      "dz": 6,
+      "frame": "door"
+    },
+    "wild": null,
+    "worldReading": [
+      11.1,
+      32.62
+    ]
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "lamps-night-1.69_21.85-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 31.2,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "lamps-night",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 1,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            14.8,
+            21.379,
+            31.033
+          ],
+          "focus": [
+            1.687,
+            0.891,
+            21.851
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.05,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 306,
+          "triangles": 708749,
+          "texturesSize": 604006252,
+          "textures": 168,
+          "geometries": 437,
+          "programs": 119,
+          "renderTargets": 33,
+          "attributes": 1703,
+          "attributesSize": 128385676,
+          "materials": 18,
+          "shadowLights": 2,
+          "nonShadowLights": 18,
+          "beautyDrawCalls": 117,
+          "shadowDrawCalls": 189
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 119
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "Bursar's courier Ilse Penn",
+            "a child"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.05,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 584
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "lamps-night-1.69_21.85-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 30.1,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "lamps-night",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 1,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            14.8,
+            21.379,
+            31.033
+          ],
+          "focus": [
+            1.687,
+            0.891,
+            21.851
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.05,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 295,
+          "triangles": 708738,
+          "texturesSize": 528190256,
+          "textures": 156,
+          "geometries": 437,
+          "programs": 107,
+          "renderTargets": 23,
+          "attributes": 1731,
+          "attributesSize": 130348172,
+          "materials": 18,
+          "shadowLights": 2,
+          "nonShadowLights": 18,
+          "beautyDrawCalls": 106,
+          "shadowDrawCalls": 189
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 107
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "Bursar's courier Ilse Penn",
+            "a child"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.05,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 629
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "lamps-night-1.69_21.85-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 0.7,
+        "blackShare": 0.9971,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9971,
+          "full": 0.0029,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.5603,
+        "battlers": []
+      },
+      "stage": {
+        "shot": "lamps-night",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 1,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            14.8,
+            21.379,
+            31.033
+          ],
+          "focus": [
+            1.687,
+            0.891,
+            21.851
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.05,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 306,
+          "triangles": 708749,
+          "texturesSize": 604006260,
+          "textures": 170,
+          "geometries": 437,
+          "programs": 119,
+          "renderTargets": 33,
+          "attributes": 1731,
+          "attributesSize": 130348172,
+          "materials": 18,
+          "shadowLights": 2,
+          "nonShadowLights": 18,
+          "beautyDrawCalls": 117,
+          "shadowDrawCalls": 189
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 119
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "Bursar's courier Ilse Penn",
+            "a child"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.05,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 674
+      }
+    }
+  ]
+}

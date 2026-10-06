@@ -1,0 +1,512 @@
+{
+  "set": "M3",
+  "zone": "ash_route",
+  "shot": "battle",
+  "n": 5,
+  "table": {
+    "n": 5,
+    "id": "battle",
+    "zone": "ash_route",
+    "heading": null,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "turn 2 of a scripted wild battle, HUD live, a damage cue mid-flight"
+  },
+  "layoutSeed": 1293811716,
+  "anchor": {
+    "layoutSeed": 1293811716,
+    "shot": "battle",
+    "zone": "ash_route",
+    "heading": {
+      "spec": null,
+      "rig": null,
+      "viewForward": null,
+      "convention": "words"
+    },
+    "x": -87.59668855105535,
+    "z": 1.7504347227973307,
+    "snapped": false,
+    "raw": [
+      -87.59668855105535,
+      1.7504347227973307
+    ],
+    "rule": "BattleSummary.x/z = the engaging player's position: from the sprite-edge anchor toward the flampling spawn, stopping 2.5 m from it (ENGAGE_RANGE_M 3.0)",
+    "base": {
+      "name": "flampling spawn",
+      "x": -86.20993806049228,
+      "z": -0.3296910130472783
+    },
+    "offset": null,
+    "wild": {
+      "speciesId": "flampling",
+      "level": 7,
+      "slotIndex": 0,
+      "x": -86.20993806049228,
+      "z": -0.3296910130472783
+    },
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "battle--87.6_1.75-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 88,
+        "blackShare": 0,
+        "greyShare": 0.0002,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -97.048,
+            6.066,
+            -1.894
+          ],
+          "focus": [
+            -87.28,
+            0.48,
+            1.972
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 232,
+          "triangles": 813554,
+          "texturesSize": 549217587,
+          "textures": 158,
+          "geometries": 230,
+          "programs": 109,
+          "renderTargets": 35,
+          "attributes": 1073,
+          "attributesSize": 53012984,
+          "materials": 11,
+          "shadowLights": 2,
+          "nonShadowLights": 9,
+          "beautyDrawCalls": 103,
+          "shadowDrawCalls": 129
+        },
+        "settle": {
+          "frames": 218,
+          "stable": true,
+          "programs": 109
+        },
+        "rects": {
+          "player": [
+            332,
+            489,
+            552,
+            904
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                406,
+                380,
+                706,
+                562
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                740,
+                57,
+                849,
+                151
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Flampling L7 29/33"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 433.333,
+          "timelineMs": 2482.581,
+          "framesIntro": 74,
+          "framesTurn1": 115,
+          "framesToImpact": 20,
+          "afterImpactMs": 150,
+          "log": [
+            "It’s super effective!",
+            "Bramblecub used Tackle!",
+            "The wild Flampling used Aerial Ace!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 922
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "battle--87.6_1.75-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 86.4,
+        "blackShare": 0,
+        "greyShare": 0.0002,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -97.048,
+            6.066,
+            -1.894
+          ],
+          "focus": [
+            -87.28,
+            0.48,
+            1.972
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 221,
+          "triangles": 813543,
+          "texturesSize": 473401591,
+          "textures": 146,
+          "geometries": 230,
+          "programs": 97,
+          "renderTargets": 25,
+          "attributes": 1073,
+          "attributesSize": 53012984,
+          "materials": 11,
+          "shadowLights": 2,
+          "nonShadowLights": 9,
+          "beautyDrawCalls": 92,
+          "shadowDrawCalls": 129
+        },
+        "settle": {
+          "frames": 212,
+          "stable": true,
+          "programs": 97
+        },
+        "rects": {
+          "player": [
+            332,
+            489,
+            552,
+            904
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                416,
+                366,
+                706,
+                562
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                740,
+                57,
+                849,
+                151
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Flampling L7 29/33"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 483.333,
+          "timelineMs": 2432.581,
+          "framesIntro": 74,
+          "framesTurn1": 109,
+          "framesToImpact": 20,
+          "afterImpactMs": 150,
+          "log": [
+            "It’s super effective!",
+            "Bramblecub used Tackle!",
+            "The wild Flampling used Aerial Ace!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1164
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "battle--87.6_1.75-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 14.3,
+        "blackShare": 0.9439,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9439,
+          "full": 0.0561,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.5968,
+        "battlers": [
+          {
+            "side": 0,
+            "full": 0.3795
+          },
+          {
+            "side": 1,
+            "full": 0.1792
+          }
+        ]
+      },
+      "stage": {
+        "shot": "battle",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -97.048,
+            6.066,
+            -1.894
+          ],
+          "focus": [
+            -87.28,
+            0.48,
+            1.972
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 232,
+          "triangles": 813554,
+          "texturesSize": 549217595,
+          "textures": 160,
+          "geometries": 230,
+          "programs": 109,
+          "renderTargets": 35,
+          "attributes": 1073,
+          "attributesSize": 53012984,
+          "materials": 11,
+          "shadowLights": 2,
+          "nonShadowLights": 9,
+          "beautyDrawCalls": 103,
+          "shadowDrawCalls": 129
+        },
+        "settle": {
+          "frames": 218,
+          "stable": true,
+          "programs": 109
+        },
+        "rects": {
+          "player": [
+            331,
+            489,
+            551,
+            904
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                406,
+                379,
+                706,
+                562
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                739,
+                57,
+                849,
+                151
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Flampling L7 29/33"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 433.333,
+          "timelineMs": 2482.581,
+          "framesIntro": 74,
+          "framesTurn1": 115,
+          "framesToImpact": 20,
+          "afterImpactMs": 150,
+          "log": [
+            "It’s super effective!",
+            "Bramblecub used Tackle!",
+            "The wild Flampling used Aerial Ace!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1412
+      }
+    }
+  ]
+}

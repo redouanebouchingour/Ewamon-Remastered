@@ -1,0 +1,512 @@
+{
+  "set": "M3",
+  "zone": "tide_route",
+  "shot": "battle",
+  "n": 5,
+  "table": {
+    "n": 5,
+    "id": "battle",
+    "zone": "tide_route",
+    "heading": null,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "turn 2 of a scripted wild battle, HUD live, a damage cue mid-flight"
+  },
+  "layoutSeed": 1293811718,
+  "anchor": {
+    "layoutSeed": 1293811718,
+    "shot": "battle",
+    "zone": "tide_route",
+    "heading": {
+      "spec": null,
+      "rig": null,
+      "viewForward": null,
+      "convention": "words"
+    },
+    "x": -88.21613809947864,
+    "z": -0.9896274627604917,
+    "snapped": false,
+    "raw": [
+      -88.21613809947864,
+      -0.9896274627604917
+    ],
+    "rule": "BattleSummary.x/z = the engaging player's position: from the sprite-edge anchor toward the mudbub spawn, stopping 2.5 m from it (ENGAGE_RANGE_M 3.0)",
+    "base": {
+      "name": "mudbub spawn",
+      "x": -86.82938760891557,
+      "z": -3.0697531986051008
+    },
+    "offset": null,
+    "wild": {
+      "speciesId": "mudbub",
+      "level": 11,
+      "slotIndex": 0,
+      "x": -86.82938760891557,
+      "z": -3.0697531986051008
+    },
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "battle--88.22_-0.99-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 119.1,
+        "blackShare": 0,
+        "greyShare": 0.0064,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -100.263,
+            5.679,
+            -6.724
+          ],
+          "focus": [
+            -90.469,
+            0.022,
+            -2.567
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 294,
+          "triangles": 752379,
+          "texturesSize": 770336466,
+          "textures": 176,
+          "geometries": 242,
+          "programs": 115,
+          "renderTargets": 35,
+          "attributes": 1337,
+          "attributesSize": 75389900,
+          "materials": 11,
+          "shadowLights": 2,
+          "nonShadowLights": 8,
+          "beautyDrawCalls": 132,
+          "shadowDrawCalls": 162
+        },
+        "settle": {
+          "frames": 231,
+          "stable": true,
+          "programs": 115
+        },
+        "rects": {
+          "player": [
+            589,
+            340,
+            726,
+            650
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                609,
+                315,
+                821,
+                467
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                785,
+                87,
+                911,
+                196
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 15/31",
+            "The wild Mudbub L11 42/46"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 600,
+          "timelineMs": 3460,
+          "framesIntro": 74,
+          "framesTurn1": 118,
+          "framesToImpact": 30,
+          "afterImpactMs": 150,
+          "log": [
+            "Bramblecub’s Defense fell!",
+            "Bramblecub used Tackle!",
+            "The wild Mudbub used Scald!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 935
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "battle--88.22_-0.99-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 113.2,
+        "blackShare": 0,
+        "greyShare": 0.0035,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -100.263,
+            5.679,
+            -6.724
+          ],
+          "focus": [
+            -90.469,
+            0.022,
+            -2.567
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 283,
+          "triangles": 752368,
+          "texturesSize": 694520470,
+          "textures": 164,
+          "geometries": 242,
+          "programs": 103,
+          "renderTargets": 25,
+          "attributes": 1345,
+          "attributesSize": 75914700,
+          "materials": 11,
+          "shadowLights": 2,
+          "nonShadowLights": 8,
+          "beautyDrawCalls": 121,
+          "shadowDrawCalls": 162
+        },
+        "settle": {
+          "frames": 228,
+          "stable": true,
+          "programs": 103
+        },
+        "rects": {
+          "player": [
+            586,
+            342,
+            723,
+            652
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                612,
+                309,
+                820,
+                469
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                783,
+                89,
+                908,
+                198
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 15/31",
+            "The wild Mudbub L11 42/46"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 650,
+          "timelineMs": 3360,
+          "framesIntro": 74,
+          "framesTurn1": 115,
+          "framesToImpact": 30,
+          "afterImpactMs": 150,
+          "log": [
+            "Bramblecub used Tackle!",
+            "The wild Mudbub used Scald!",
+            "It’s not very effective…"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1193
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "battle--88.22_-0.99-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 8.2,
+        "blackShare": 0.9677,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9677,
+          "full": 0.0323,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.7253,
+        "battlers": [
+          {
+            "side": 0,
+            "full": 0.6296
+          },
+          {
+            "side": 1,
+            "full": 0.211
+          }
+        ]
+      },
+      "stage": {
+        "shot": "battle",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -100.263,
+            5.679,
+            -6.724
+          ],
+          "focus": [
+            -90.469,
+            0.022,
+            -2.567
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 294,
+          "triangles": 752379,
+          "texturesSize": 770336474,
+          "textures": 178,
+          "geometries": 242,
+          "programs": 115,
+          "renderTargets": 35,
+          "attributes": 1345,
+          "attributesSize": 75914700,
+          "materials": 11,
+          "shadowLights": 2,
+          "nonShadowLights": 8,
+          "beautyDrawCalls": 132,
+          "shadowDrawCalls": 162
+        },
+        "settle": {
+          "frames": 231,
+          "stable": true,
+          "programs": 115
+        },
+        "rects": {
+          "player": [
+            588,
+            339,
+            725,
+            649
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                608,
+                314,
+                820,
+                466
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                784,
+                86,
+                910,
+                195
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 15/31",
+            "The wild Mudbub L11 42/46"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 600,
+          "timelineMs": 3460,
+          "framesIntro": 74,
+          "framesTurn1": 118,
+          "framesToImpact": 30,
+          "afterImpactMs": 150,
+          "log": [
+            "Bramblecub’s Defense fell!",
+            "Bramblecub used Tackle!",
+            "The wild Mudbub used Scald!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1454
+      }
+    }
+  ]
+}

@@ -1,0 +1,512 @@
+{
+  "set": "M3",
+  "zone": "the_rift",
+  "shot": "battle",
+  "n": 5,
+  "table": {
+    "n": 5,
+    "id": "battle",
+    "zone": "the_rift",
+    "heading": null,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "turn 2 of a scripted wild battle, HUD live, a damage cue mid-flight"
+  },
+  "layoutSeed": 1293811733,
+  "anchor": {
+    "layoutSeed": 1293811733,
+    "shot": "battle",
+    "zone": "the_rift",
+    "heading": {
+      "spec": null,
+      "rig": null,
+      "viewForward": null,
+      "convention": "words"
+    },
+    "x": 27.923889246076193,
+    "z": -31.67528342917268,
+    "snapped": false,
+    "raw": [
+      27.923889246076193,
+      -31.67528342917268
+    ],
+    "rule": "BattleSummary.x/z = the engaging player's position: from the sprite-edge anchor toward the umbrit spawn, stopping 2.5 m from it (ENGAGE_RANGE_M 3.0)",
+    "base": {
+      "name": "umbrit spawn",
+      "x": 29.310639736639267,
+      "z": -33.75540916501729
+    },
+    "offset": null,
+    "wild": {
+      "speciesId": "umbrit",
+      "level": 55,
+      "slotIndex": 0,
+      "x": 29.310639736639267,
+      "z": -33.75540916501729
+    },
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "battle-27.92_-31.68-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 71.1,
+        "blackShare": 0,
+        "greyShare": 0.0033,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            17.913,
+            7.247,
+            -35.818
+          ],
+          "focus": [
+            28.311,
+            1.241,
+            -31.404
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 227,
+          "triangles": 1148873,
+          "texturesSize": 600334920,
+          "textures": 137,
+          "geometries": 176,
+          "programs": 107,
+          "renderTargets": 35,
+          "attributes": 947,
+          "attributesSize": 60781292,
+          "materials": 5,
+          "shadowLights": 2,
+          "nonShadowLights": 5,
+          "beautyDrawCalls": 104,
+          "shadowDrawCalls": 123
+        },
+        "settle": {
+          "frames": 362,
+          "stable": true,
+          "programs": 107
+        },
+        "rects": {
+          "player": [
+            394,
+            492,
+            586,
+            868
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                463,
+                370,
+                717,
+                561
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                711,
+                45,
+                856,
+                176
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 31/31",
+            "The wild Umbrit L55 126/130"
+          ]
+        },
+        "battle": {
+          "seed": 5,
+          "move": "Nature Drain",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 1950,
+          "timelineMs": 2770,
+          "framesIntro": 74,
+          "framesTurn1": 168,
+          "framesToImpact": 111,
+          "afterImpactMs": 150,
+          "log": [
+            "The wild Umbrit’s Attack rose!",
+            "Bramblecub used Nature Drain!",
+            "The wild Umbrit had its energy drained!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1066
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "battle-27.92_-31.68-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 70.2,
+        "blackShare": 0,
+        "greyShare": 0.0033,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            17.913,
+            7.247,
+            -35.818
+          ],
+          "focus": [
+            28.311,
+            1.241,
+            -31.404
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 216,
+          "triangles": 1148862,
+          "texturesSize": 524518924,
+          "textures": 125,
+          "geometries": 176,
+          "programs": 95,
+          "renderTargets": 25,
+          "attributes": 971,
+          "attributesSize": 64053740,
+          "materials": 5,
+          "shadowLights": 2,
+          "nonShadowLights": 5,
+          "beautyDrawCalls": 93,
+          "shadowDrawCalls": 123
+        },
+        "settle": {
+          "frames": 359,
+          "stable": true,
+          "programs": 95
+        },
+        "rects": {
+          "player": [
+            394,
+            492,
+            586,
+            868
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                463,
+                370,
+                717,
+                561
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                711,
+                50,
+                854,
+                176
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 31/31",
+            "The wild Umbrit L55 126/130"
+          ]
+        },
+        "battle": {
+          "seed": 5,
+          "move": "Nature Drain",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 2000,
+          "timelineMs": 2720,
+          "framesIntro": 74,
+          "framesTurn1": 165,
+          "framesToImpact": 111,
+          "afterImpactMs": 150,
+          "log": [
+            "The wild Umbrit’s Attack rose!",
+            "Bramblecub used Nature Drain!",
+            "The wild Umbrit had its energy drained!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1455
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "battle-27.92_-31.68-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 13,
+        "blackShare": 0.949,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.949,
+          "full": 0.051,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.6145,
+        "battlers": [
+          {
+            "side": 0,
+            "full": 0.5018
+          },
+          {
+            "side": 1,
+            "full": 0.1424
+          }
+        ]
+      },
+      "stage": {
+        "shot": "battle",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            17.913,
+            7.247,
+            -35.818
+          ],
+          "focus": [
+            28.311,
+            1.241,
+            -31.404
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 227,
+          "triangles": 1148873,
+          "texturesSize": 600334928,
+          "textures": 139,
+          "geometries": 176,
+          "programs": 107,
+          "renderTargets": 35,
+          "attributes": 971,
+          "attributesSize": 64053740,
+          "materials": 5,
+          "shadowLights": 2,
+          "nonShadowLights": 5,
+          "beautyDrawCalls": 104,
+          "shadowDrawCalls": 123
+        },
+        "settle": {
+          "frames": 362,
+          "stable": true,
+          "programs": 107
+        },
+        "rects": {
+          "player": [
+            394,
+            492,
+            586,
+            868
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                463,
+                370,
+                717,
+                561
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                711,
+                45,
+                856,
+                176
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 31/31",
+            "The wild Umbrit L55 126/130"
+          ]
+        },
+        "battle": {
+          "seed": 5,
+          "move": "Nature Drain",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 1950,
+          "timelineMs": 2770,
+          "framesIntro": 74,
+          "framesTurn1": 168,
+          "framesToImpact": 111,
+          "afterImpactMs": 150,
+          "log": [
+            "The wild Umbrit’s Attack rose!",
+            "Bramblecub used Nature Drain!",
+            "The wild Umbrit had its energy drained!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1847
+      }
+    }
+  ]
+}

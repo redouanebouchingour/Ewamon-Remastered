@@ -1,0 +1,384 @@
+{
+  "set": "M3",
+  "zone": "eclipse_shrine",
+  "shot": "gym-dusk",
+  "n": 2,
+  "table": {
+    "n": 2,
+    "id": "gym-dusk",
+    "zone": "eclipse_shrine",
+    "heading": 2,
+    "timeOfDay": 0.8,
+    "zoomStop": 1,
+    "state": "overworld, gym beacon lit"
+  },
+  "layoutSeed": 1293811730,
+  "anchor": {
+    "layoutSeed": 1293811730,
+    "shot": "gym-dusk",
+    "zone": "eclipse_shrine",
+    "heading": {
+      "spec": 2,
+      "rig": 0,
+      "viewForward": [
+        0.5736,
+        -0.8192
+      ],
+      "convention": "words"
+    },
+    "x": 0,
+    "z": 16,
+    "snapped": false,
+    "raw": [
+      0,
+      16
+    ],
+    "rule": "fallback: no gym — set-piece eclipse_engine + (0, 16) world (its keep-clear extent + 8 m)",
+    "base": {
+      "name": "eclipse_engine",
+      "x": 0,
+      "z": 0
+    },
+    "offset": {
+      "dx": 0,
+      "dz": 16,
+      "frame": "world"
+    },
+    "wild": null,
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "gym-dusk-0_16-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 44.7,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "gym-dusk",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -9.181,
+            20.41,
+            29.112
+          ],
+          "focus": [
+            0,
+            -0.078,
+            16
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.8,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 92,
+          "triangles": 671671,
+          "texturesSize": 740974970,
+          "textures": 118,
+          "geometries": 169,
+          "programs": 105,
+          "renderTargets": 35,
+          "attributes": 844,
+          "attributesSize": 44530584,
+          "materials": 6,
+          "shadowLights": 2,
+          "nonShadowLights": 9,
+          "beautyDrawCalls": 64,
+          "shadowDrawCalls": 28
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 105
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.8,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 240
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "gym-dusk-0_16-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 44.3,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "gym-dusk",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -9.181,
+            20.41,
+            29.112
+          ],
+          "focus": [
+            0,
+            -0.078,
+            16
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.8,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 81,
+          "triangles": 671660,
+          "texturesSize": 665158974,
+          "textures": 106,
+          "geometries": 169,
+          "programs": 93,
+          "renderTargets": 25,
+          "attributes": 848,
+          "attributesSize": 44792984,
+          "materials": 6,
+          "shadowLights": 2,
+          "nonShadowLights": 9,
+          "beautyDrawCalls": 53,
+          "shadowDrawCalls": 28
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 93
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.8,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 285
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "gym-dusk-0_16-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 0.7,
+        "blackShare": 0.9971,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9971,
+          "full": 0.0029,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.5569,
+        "battlers": []
+      },
+      "stage": {
+        "shot": "gym-dusk",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -9.181,
+            20.41,
+            29.112
+          ],
+          "focus": [
+            0,
+            -0.078,
+            16
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.8,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 92,
+          "triangles": 671671,
+          "texturesSize": 740974978,
+          "textures": 120,
+          "geometries": 169,
+          "programs": 105,
+          "renderTargets": 35,
+          "attributes": 848,
+          "attributesSize": 44792984,
+          "materials": 6,
+          "shadowLights": 2,
+          "nonShadowLights": 9,
+          "beautyDrawCalls": 64,
+          "shadowDrawCalls": 28
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 105
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.8,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 330
+      }
+    }
+  ]
+}

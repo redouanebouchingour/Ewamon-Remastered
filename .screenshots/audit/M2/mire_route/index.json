@@ -2,7 +2,7 @@
   "set": "M2",
   "zone": "mire_route",
   "layoutSeed": 1293811714,
-  "generatedAt": "2026-10-06T06:14:19.403Z",
+  "generatedAt": "2026-10-06T13:21:28.134Z",
   "resolution": {
     "width": 1440,
     "height": 900,
@@ -29,7 +29,7 @@
     "description": "Intel(R) UHD Graphics"
   },
   "chrome": "Chrome/154.0.8037.98",
-  "bootMs": 58715,
+  "bootMs": 30458,
   "harvest": "intact",
   "headingConvention": "words",
   "shots": [

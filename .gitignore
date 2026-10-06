@@ -38,3 +38,5 @@ tools/model-pipeline/.cache/
 tools/asset-audit/.cache/
 tools/asset-audit/.audit/report.json
 .cdp-shots/
+# M3 shot PNGs (~350 MB) are regenerated with `pnpm --filter @ewa/client harness:shots --set M3`; only the JSON sidecars are committed
+.screenshots/audit/M3/**/*.png

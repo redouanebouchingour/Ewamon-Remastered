@@ -1,0 +1,512 @@
+{
+  "set": "M3",
+  "zone": "ascent_route",
+  "shot": "battle",
+  "n": 5,
+  "table": {
+    "n": 5,
+    "id": "battle",
+    "zone": "ascent_route",
+    "heading": null,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "turn 2 of a scripted wild battle, HUD live, a damage cue mid-flight"
+  },
+  "layoutSeed": 1293811728,
+  "anchor": {
+    "layoutSeed": 1293811728,
+    "shot": "battle",
+    "zone": "ascent_route",
+    "heading": {
+      "spec": null,
+      "rig": null,
+      "viewForward": null,
+      "convention": "words"
+    },
+    "x": -85.22868134935395,
+    "z": 2.390215009009818,
+    "snapped": false,
+    "raw": [
+      -85.22868134935395,
+      2.390215009009818
+    ],
+    "rule": "BattleSummary.x/z = the engaging player's position: from the sprite-edge anchor toward the scalewisp spawn, stopping 2.5 m from it (ENGAGE_RANGE_M 3.0)",
+    "base": {
+      "name": "scalewisp spawn",
+      "x": -83.84193085879087,
+      "z": 0.3100892731652092
+    },
+    "offset": null,
+    "wild": {
+      "speciesId": "scalewisp",
+      "level": 35,
+      "slotIndex": 0,
+      "x": -83.84193085879087,
+      "z": 0.3100892731652092
+    },
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "battle--85.23_2.39-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 153.3,
+        "blackShare": 0,
+        "greyShare": 0.0002,
+        "levels": {
+          "zero": 0,
+          "full": 0.0001,
+          "mid": 0.9999
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -95.091,
+            4.29,
+            -1.417
+          ],
+          "focus": [
+            -84.912,
+            -1.531,
+            2.612
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 268,
+          "triangles": 798949,
+          "texturesSize": 823682604,
+          "textures": 173,
+          "geometries": 242,
+          "programs": 113,
+          "renderTargets": 35,
+          "attributes": 1256,
+          "attributesSize": 61093788,
+          "materials": 11,
+          "shadowLights": 2,
+          "nonShadowLights": 9,
+          "beautyDrawCalls": 116,
+          "shadowDrawCalls": 152
+        },
+        "settle": {
+          "frames": 295,
+          "stable": true,
+          "programs": 113
+        },
+        "rects": {
+          "player": [
+            358,
+            501,
+            562,
+            891
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                426,
+                422,
+                707,
+                591
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                727,
+                83,
+                857,
+                193
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Scalewisp L35 89/90"
+          ]
+        },
+        "battle": {
+          "seed": 4,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 433.333,
+          "timelineMs": 4060,
+          "framesIntro": 74,
+          "framesTurn1": 192,
+          "framesToImpact": 20,
+          "afterImpactMs": 150,
+          "log": [
+            "The wild Scalewisp’s Speed Boost — endOfTurn",
+            "The wild Scalewisp’s Speed rose!",
+            "The wild Scalewisp used Aerial Ace!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 999
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "battle--85.23_2.39-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 151.1,
+        "blackShare": 0,
+        "greyShare": 0.0008,
+        "levels": {
+          "zero": 0,
+          "full": 0.0006,
+          "mid": 0.9994
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -95.091,
+            4.29,
+            -1.417
+          ],
+          "focus": [
+            -84.912,
+            -1.531,
+            2.612
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 257,
+          "triangles": 798938,
+          "texturesSize": 747866608,
+          "textures": 161,
+          "geometries": 242,
+          "programs": 101,
+          "renderTargets": 25,
+          "attributes": 1264,
+          "attributesSize": 61618588,
+          "materials": 11,
+          "shadowLights": 2,
+          "nonShadowLights": 9,
+          "beautyDrawCalls": 105,
+          "shadowDrawCalls": 152
+        },
+        "settle": {
+          "frames": 292,
+          "stable": true,
+          "programs": 101
+        },
+        "rects": {
+          "player": [
+            358,
+            501,
+            561,
+            891
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                436,
+                409,
+                707,
+                591
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                727,
+                83,
+                856,
+                194
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Scalewisp L35 89/90"
+          ]
+        },
+        "battle": {
+          "seed": 4,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 483.333,
+          "timelineMs": 4010,
+          "framesIntro": 74,
+          "framesTurn1": 189,
+          "framesToImpact": 20,
+          "afterImpactMs": 150,
+          "log": [
+            "The wild Scalewisp’s Speed Boost — endOfTurn",
+            "The wild Scalewisp’s Speed rose!",
+            "The wild Scalewisp used Aerial Ace!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1321
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "battle--85.23_2.39-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 12.2,
+        "blackShare": 0.9523,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9523,
+          "full": 0.0477,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.594,
+        "battlers": [
+          {
+            "side": 0,
+            "full": 0.3186
+          },
+          {
+            "side": 1,
+            "full": 0.3329
+          }
+        ]
+      },
+      "stage": {
+        "shot": "battle",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -95.091,
+            4.29,
+            -1.417
+          ],
+          "focus": [
+            -84.912,
+            -1.531,
+            2.612
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 268,
+          "triangles": 798949,
+          "texturesSize": 823682612,
+          "textures": 175,
+          "geometries": 242,
+          "programs": 113,
+          "renderTargets": 35,
+          "attributes": 1264,
+          "attributesSize": 61618588,
+          "materials": 11,
+          "shadowLights": 2,
+          "nonShadowLights": 9,
+          "beautyDrawCalls": 116,
+          "shadowDrawCalls": 152
+        },
+        "settle": {
+          "frames": 295,
+          "stable": true,
+          "programs": 113
+        },
+        "rects": {
+          "player": [
+            358,
+            501,
+            561,
+            891
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                426,
+                422,
+                707,
+                591
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                727,
+                83,
+                857,
+                193
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Scalewisp L35 89/90"
+          ]
+        },
+        "battle": {
+          "seed": 4,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 433.333,
+          "timelineMs": 4060,
+          "framesIntro": 74,
+          "framesTurn1": 192,
+          "framesToImpact": 20,
+          "afterImpactMs": 150,
+          "log": [
+            "The wild Scalewisp’s Speed Boost — endOfTurn",
+            "The wild Scalewisp’s Speed rose!",
+            "The wild Scalewisp used Aerial Ace!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1646
+      }
+    }
+  ]
+}

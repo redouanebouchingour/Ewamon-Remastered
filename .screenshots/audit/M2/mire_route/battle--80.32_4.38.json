@@ -79,7 +79,7 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 102.5,
+        "meanLuma": 101.9,
         "blackShare": 0,
         "greyShare": 0,
         "levels": {
@@ -136,10 +136,10 @@
         "counts": {
           "drawCalls": 322,
           "triangles": 1420972,
-          "texturesSize": 672032762,
+          "texturesSize": 546203642,
           "textures": 175,
           "geometries": 273,
-          "programs": 121,
+          "programs": 117,
           "renderTargets": 36,
           "attributes": 1527,
           "attributesSize": 76144032,
@@ -152,7 +152,7 @@
         "settle": {
           "frames": 220,
           "stable": true,
-          "programs": 121
+          "programs": 117
         },
         "rects": {
           "player": [
@@ -221,9 +221,9 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 101.5,
+        "meanLuma": 101.2,
         "blackShare": 0,
-        "greyShare": 0.0001,
+        "greyShare": 0.0003,
         "levels": {
           "zero": 0,
           "full": 0,
@@ -275,10 +275,10 @@
         "counts": {
           "drawCalls": 326,
           "triangles": 1324308,
-          "texturesSize": 596216766,
+          "texturesSize": 470387646,
           "textures": 163,
           "geometries": 273,
-          "programs": 109,
+          "programs": 105,
           "renderTargets": 26,
           "attributes": 1579,
           "attributesSize": 79735968,
@@ -291,7 +291,7 @@
         "settle": {
           "frames": 214,
           "stable": true,
-          "programs": 109
+          "programs": 105
         },
         "rects": {
           "player": [
@@ -371,15 +371,15 @@
       },
       "checks": [],
       "maskCoverage": {
-        "player": 0.6086,
+        "player": 0.6087,
         "battlers": [
           {
             "side": 0,
-            "full": 0.5562
+            "full": 0.5565
           },
           {
             "side": 1,
-            "full": 0.3759
+            "full": 0.3758
           }
         ]
       },
@@ -429,10 +429,10 @@
         "counts": {
           "drawCalls": 337,
           "triangles": 1324319,
-          "texturesSize": 672032770,
+          "texturesSize": 546203650,
           "textures": 177,
           "geometries": 273,
-          "programs": 121,
+          "programs": 117,
           "renderTargets": 36,
           "attributes": 1579,
           "attributesSize": 79735968,
@@ -445,7 +445,7 @@
         "settle": {
           "frames": 220,
           "stable": true,
-          "programs": 121
+          "programs": 117
         },
         "rects": {
           "player": [

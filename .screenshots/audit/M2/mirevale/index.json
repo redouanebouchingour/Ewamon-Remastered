@@ -2,7 +2,7 @@
   "set": "M2",
   "zone": "mirevale",
   "layoutSeed": 1293811713,
-  "generatedAt": "2026-10-06T06:07:51.734Z",
+  "generatedAt": "2026-10-06T13:19:17.255Z",
   "resolution": {
     "width": 1440,
     "height": 900,
@@ -29,7 +29,7 @@
     "description": "Intel(R) UHD Graphics"
   },
   "chrome": "Chrome/154.0.8037.98",
-  "bootMs": 78858,
+  "bootMs": 37501,
   "harvest": "intact",
   "headingConvention": "words",
   "shots": [

@@ -1,0 +1,432 @@
+{
+  "set": "M3",
+  "zone": "skyrend",
+  "shot": "sprite-edge",
+  "n": 3,
+  "table": {
+    "n": 3,
+    "id": "sprite-edge",
+    "zone": "skyrend",
+    "heading": 1,
+    "timeOfDay": 0.5,
+    "zoomStop": 0,
+    "state": "wild creature in frame at 1.3x magnification (camera zoomed one step in)"
+  },
+  "layoutSeed": 1293811727,
+  "anchor": {
+    "layoutSeed": 1293811727,
+    "shot": "sprite-edge",
+    "zone": "skyrend",
+    "heading": {
+      "spec": 1,
+      "rig": 3,
+      "viewForward": [
+        0.8192,
+        0.5736
+      ],
+      "convention": "words"
+    },
+    "x": 38.87321062545442,
+    "z": 19.81408664660183,
+    "snapped": false,
+    "raw": [
+      38.87321062545442,
+      19.81408664660183
+    ],
+    "rule": "enc_skyrend slot 0 (scalewisp, first 'common') at the road-side edge of grassPatches[0] (centre + 1.5 m past rz toward roadZ) + (-2, +3) world",
+    "base": {
+      "name": "scalewisp spawn",
+      "x": 40.87321062545442,
+      "z": 16.81408664660183
+    },
+    "offset": {
+      "dx": -2,
+      "dz": 3,
+      "frame": "world"
+    },
+    "wild": {
+      "speciesId": "scalewisp",
+      "level": 38,
+      "slotIndex": 0,
+      "x": 40.87321062545442,
+      "z": 16.81408664660183
+    },
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "sprite-edge-38.87_19.81-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 174.9,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "sprite-edge",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 0,
+          "mode": "diorama",
+          "position": [
+            28.787,
+            17.409,
+            12.752
+          ],
+          "focus": [
+            38.873,
+            1.649,
+            19.814
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 149,
+          "triangles": 445220,
+          "texturesSize": 725378908,
+          "textures": 174,
+          "geometries": 463,
+          "programs": 113,
+          "renderTargets": 36,
+          "attributes": 1703,
+          "attributesSize": 136935812,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 20,
+          "beautyDrawCalls": 75,
+          "shadowDrawCalls": 74
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 113
+        },
+        "rects": {
+          "player": [
+            682,
+            327,
+            758,
+            478
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a roost-keeper"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 375
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "sprite-edge-38.87_19.81-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 172.6,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "sprite-edge",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 0,
+          "mode": "diorama",
+          "position": [
+            28.787,
+            17.409,
+            12.752
+          ],
+          "focus": [
+            38.873,
+            1.649,
+            19.814
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 138,
+          "triangles": 445209,
+          "texturesSize": 649562912,
+          "textures": 162,
+          "geometries": 463,
+          "programs": 101,
+          "renderTargets": 26,
+          "attributes": 1707,
+          "attributesSize": 137198212,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 20,
+          "beautyDrawCalls": 64,
+          "shadowDrawCalls": 74
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 101
+        },
+        "rects": {
+          "player": [
+            682,
+            327,
+            758,
+            478
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a roost-keeper"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 420
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "sprite-edge-38.87_19.81-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 1.2,
+        "blackShare": 0.9952,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9952,
+          "full": 0.0048,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.5417,
+        "battlers": []
+      },
+      "stage": {
+        "shot": "sprite-edge",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 0,
+          "mode": "diorama",
+          "position": [
+            28.787,
+            17.409,
+            12.752
+          ],
+          "focus": [
+            38.873,
+            1.649,
+            19.814
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 149,
+          "triangles": 445220,
+          "texturesSize": 725378916,
+          "textures": 176,
+          "geometries": 463,
+          "programs": 113,
+          "renderTargets": 36,
+          "attributes": 1707,
+          "attributesSize": 137198212,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 20,
+          "beautyDrawCalls": 75,
+          "shadowDrawCalls": 74
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 113
+        },
+        "rects": {
+          "player": [
+            682,
+            327,
+            758,
+            478
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a roost-keeper"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 465
+      }
+    }
+  ],
+  "edgeScan": {
+    "species": "scalewisp",
+    "rect": [
+      -97,
+      -280,
+      1537,
+      1101
+    ],
+    "frameTexels": 1024,
+    "magnification": 1.349,
+    "magnificationStock": 0.384,
+    "cameraDistance": 3.997,
+    "fovDeg": 8.109,
+    "frames": 53,
+    "scan": {
+      "rect": [
+        1,
+        1,
+        1439,
+        899
+      ],
+      "silhouettePx": 690889,
+      "boundaryPx": 7016,
+      "straightPx": 6544,
+      "sampled": 200,
+      "intermediateSampled": 0,
+      "intermediateInRect": 0,
+      "want": 200,
+      "pass": true
+    },
+    "files": [
+      "sprite-edge-38.87_19.81-edgemask.png",
+      "sprite-edge-38.87_19.81-output.png"
+    ],
+    "checks": []
+  }
+}

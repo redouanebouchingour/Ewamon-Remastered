@@ -1,0 +1,512 @@
+{
+  "set": "M3",
+  "zone": "stormrook",
+  "shot": "battle",
+  "n": 5,
+  "table": {
+    "n": 5,
+    "id": "battle",
+    "zone": "stormrook",
+    "heading": null,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "turn 2 of a scripted wild battle, HUD live, a damage cue mid-flight"
+  },
+  "layoutSeed": 1293811719,
+  "anchor": {
+    "layoutSeed": 1293811719,
+    "shot": "battle",
+    "zone": "stormrook",
+    "heading": {
+      "spec": null,
+      "rig": null,
+      "viewForward": null,
+      "convention": "words"
+    },
+    "x": -47.386750490563074,
+    "z": 5.080125735844609,
+    "snapped": false,
+    "raw": [
+      -47.386750490563074,
+      5.080125735844609
+    ],
+    "rule": "fallback: no encounter table — galvan_route:enc_galvan_route slot 0 (ampmite) staged at spawn + (4, 3); the player engages 2.5 m from it",
+    "base": {
+      "name": "ampmite (staged)",
+      "x": -46,
+      "z": 3
+    },
+    "offset": null,
+    "wild": {
+      "speciesId": "ampmite",
+      "level": 15,
+      "slotIndex": 0,
+      "x": -46,
+      "z": 3
+    },
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "battle--47.39_5.08-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 93.1,
+        "blackShare": 0,
+        "greyShare": 0.0003,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -52.776,
+            4.667,
+            16.314
+          ],
+          "focus": [
+            -48.964,
+            -0.521,
+            7.333
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 390,
+          "triangles": 1064643,
+          "texturesSize": 608200734,
+          "textures": 179,
+          "geometries": 442,
+          "programs": 117,
+          "renderTargets": 35,
+          "attributes": 1755,
+          "attributesSize": 131372432,
+          "materials": 18,
+          "shadowLights": 2,
+          "nonShadowLights": 18,
+          "beautyDrawCalls": 135,
+          "shadowDrawCalls": 255
+        },
+        "settle": {
+          "frames": 219,
+          "stable": true,
+          "programs": 117
+        },
+        "rects": {
+          "player": [
+            572,
+            290,
+            725,
+            633
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                596,
+                266,
+                828,
+                432
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                806,
+                61,
+                902,
+                143
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Ampmite L15 49/51"
+          ]
+        },
+        "battle": {
+          "seed": 5,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 450,
+          "timelineMs": 2410,
+          "framesIntro": 74,
+          "framesTurn1": 115,
+          "framesToImpact": 21,
+          "afterImpactMs": 150,
+          "log": [
+            "It’s not very effective…",
+            "Bramblecub used Tackle!",
+            "The wild Ampmite used Bug Bite!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 0
+        },
+        "notes": [],
+        "frame": 923
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "battle--47.39_5.08-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 89.7,
+        "blackShare": 0,
+        "greyShare": 0.0007,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -52.776,
+            4.667,
+            16.314
+          ],
+          "focus": [
+            -48.964,
+            -0.521,
+            7.333
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 381,
+          "triangles": 1065912,
+          "texturesSize": 532384738,
+          "textures": 167,
+          "geometries": 442,
+          "programs": 105,
+          "renderTargets": 25,
+          "attributes": 1755,
+          "attributesSize": 131372432,
+          "materials": 18,
+          "shadowLights": 2,
+          "nonShadowLights": 18,
+          "beautyDrawCalls": 124,
+          "shadowDrawCalls": 257
+        },
+        "settle": {
+          "frames": 213,
+          "stable": true,
+          "programs": 105
+        },
+        "rects": {
+          "player": [
+            571,
+            288,
+            724,
+            631
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                601,
+                255,
+                830,
+                430
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                805,
+                58,
+                901,
+                141
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Ampmite L15 49/51"
+          ]
+        },
+        "battle": {
+          "seed": 5,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 500,
+          "timelineMs": 2360,
+          "framesIntro": 74,
+          "framesTurn1": 109,
+          "framesToImpact": 21,
+          "afterImpactMs": 150,
+          "log": [
+            "It’s not very effective…",
+            "Bramblecub used Tackle!",
+            "The wild Ampmite used Bug Bite!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 0
+        },
+        "notes": [],
+        "frame": 1166
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "battle--47.39_5.08-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 9.3,
+        "blackShare": 0.9636,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9636,
+          "full": 0.0364,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.6988,
+        "battlers": [
+          {
+            "side": 0,
+            "full": 0.5841
+          },
+          {
+            "side": 1,
+            "full": 0.2236
+          }
+        ]
+      },
+      "stage": {
+        "shot": "battle",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -52.776,
+            4.667,
+            16.314
+          ],
+          "focus": [
+            -48.964,
+            -0.521,
+            7.333
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 392,
+          "triangles": 1065923,
+          "texturesSize": 608200742,
+          "textures": 181,
+          "geometries": 442,
+          "programs": 117,
+          "renderTargets": 35,
+          "attributes": 1755,
+          "attributesSize": 131372432,
+          "materials": 18,
+          "shadowLights": 2,
+          "nonShadowLights": 18,
+          "beautyDrawCalls": 135,
+          "shadowDrawCalls": 257
+        },
+        "settle": {
+          "frames": 219,
+          "stable": true,
+          "programs": 117
+        },
+        "rects": {
+          "player": [
+            569,
+            287,
+            722,
+            630
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                593,
+                262,
+                825,
+                429
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                803,
+                57,
+                899,
+                140
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Ampmite L15 49/51"
+          ]
+        },
+        "battle": {
+          "seed": 5,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 450,
+          "timelineMs": 2410,
+          "framesIntro": 74,
+          "framesTurn1": 115,
+          "framesToImpact": 21,
+          "afterImpactMs": 150,
+          "log": [
+            "It’s not very effective…",
+            "Bramblecub used Tackle!",
+            "The wild Ampmite used Bug Bite!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 0
+        },
+        "notes": [],
+        "frame": 1415
+      }
+    }
+  ]
+}

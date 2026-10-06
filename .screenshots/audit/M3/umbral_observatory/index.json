@@ -1,0 +1,123 @@
+{
+  "set": "M3",
+  "zone": "umbral_observatory",
+  "layoutSeed": 1293811731,
+  "generatedAt": "2026-10-06T10:54:42.266Z",
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "bootMs": 73048,
+  "harvest": "harvested",
+  "headingConvention": "words",
+  "shots": [
+    {
+      "shot": "spawn-noon",
+      "n": 1,
+      "x": 0,
+      "z": 70,
+      "layoutSeed": 1293811731,
+      "files": [
+        "spawn-noon-0_70-full.png",
+        "spawn-noon-0_70-reduced.png",
+        "spawn-noon-0_70-mask.png"
+      ],
+      "sidecar": "spawn-noon-0_70.json",
+      "checks": []
+    },
+    {
+      "shot": "gym-dusk",
+      "n": 2,
+      "x": 0,
+      "z": 17,
+      "layoutSeed": 1293811731,
+      "files": [
+        "gym-dusk-0_17-full.png",
+        "gym-dusk-0_17-reduced.png",
+        "gym-dusk-0_17-mask.png"
+      ],
+      "sidecar": "gym-dusk-0_17.json",
+      "checks": []
+    },
+    {
+      "shot": "sprite-edge",
+      "n": 3,
+      "x": 31.887075629454138,
+      "z": -27.016542603967522,
+      "layoutSeed": 1293811731,
+      "files": [
+        "sprite-edge-31.89_-27.02-full.png",
+        "sprite-edge-31.89_-27.02-reduced.png",
+        "sprite-edge-31.89_-27.02-mask.png",
+        "sprite-edge-31.89_-27.02-edgemask.png",
+        "sprite-edge-31.89_-27.02-output.png"
+      ],
+      "sidecar": "sprite-edge-31.89_-27.02.json",
+      "checks": []
+    },
+    {
+      "shot": "lamps-night",
+      "n": 4,
+      "x": 8.008,
+      "z": 68.353,
+      "layoutSeed": 1293811731,
+      "files": [
+        "lamps-night-8.01_68.35-full.png",
+        "lamps-night-8.01_68.35-reduced.png",
+        "lamps-night-8.01_68.35-mask.png"
+      ],
+      "sidecar": "lamps-night-8.01_68.35.json",
+      "checks": []
+    },
+    {
+      "shot": "battle",
+      "n": 5,
+      "x": 32.500325138891064,
+      "z": -27.93641686812291,
+      "layoutSeed": 1293811731,
+      "files": [
+        "battle-32.5_-27.94-full.png",
+        "battle-32.5_-27.94-reduced.png",
+        "battle-32.5_-27.94-mask.png"
+      ],
+      "sidecar": "battle-32.5_-27.94.json",
+      "checks": []
+    },
+    {
+      "shot": "link-east",
+      "n": 6,
+      "x": 0,
+      "z": 78,
+      "layoutSeed": 1293811731,
+      "files": [
+        "link-east-0_78-full.png",
+        "link-east-0_78-reduced.png",
+        "link-east-0_78-mask.png"
+      ],
+      "sidecar": "link-east-0_78.json",
+      "checks": []
+    }
+  ]
+}

@@ -1,0 +1,521 @@
+{
+  "set": "M3",
+  "zone": "mirevale",
+  "shot": "battle",
+  "n": 5,
+  "table": {
+    "n": 5,
+    "id": "battle",
+    "zone": "mirevale",
+    "heading": null,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "turn 2 of a scripted wild battle, HUD live, a damage cue mid-flight"
+  },
+  "layoutSeed": 1293811713,
+  "anchor": {
+    "layoutSeed": 1293811713,
+    "shot": "battle",
+    "zone": "mirevale",
+    "heading": {
+      "spec": null,
+      "rig": null,
+      "viewForward": null,
+      "convention": "words"
+    },
+    "x": 3,
+    "z": 11,
+    "snapped": true,
+    "raw": [
+      2.613249509436927,
+      11.080125735844609
+    ],
+    "rule": "fallback: no encounter table — mire_route:enc_mire_route slot 0 (mossling) staged at spawn + (4, 3); the player engages 2.5 m from it",
+    "base": {
+      "name": "mossling (staged)",
+      "x": 4,
+      "z": 9
+    },
+    "offset": null,
+    "wild": {
+      "speciesId": "mossling",
+      "level": 2,
+      "slotIndex": 0,
+      "x": 4,
+      "z": 9
+    },
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "battle-3_11-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 101.8,
+        "blackShare": 0,
+        "greyShare": 0.0001,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 1,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            12.808,
+            6.274,
+            15.056
+          ],
+          "focus": [
+            2.613,
+            0.385,
+            10.729
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 666,
+          "triangles": 1221187,
+          "texturesSize": 554854430,
+          "textures": 178,
+          "geometries": 517,
+          "programs": 121,
+          "renderTargets": 36,
+          "attributes": 2095,
+          "attributesSize": 134629900,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17,
+          "beautyDrawCalls": 176,
+          "shadowDrawCalls": 490
+        },
+        "settle": {
+          "frames": 220,
+          "stable": true,
+          "programs": 121
+        },
+        "rects": {
+          "player": [
+            383,
+            493,
+            582,
+            882
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                459,
+                409,
+                718,
+                601
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                717,
+                79,
+                851,
+                199
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a child",
+            "the berry-gardener"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 30/31",
+            "The wild Mossling L2 14/24"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 466.667,
+          "timelineMs": 1910,
+          "framesIntro": 74,
+          "framesTurn1": 115,
+          "framesToImpact": 22,
+          "afterImpactMs": 150,
+          "log": [
+            "The wild Mossling used Vine Lash!",
+            "It’s not very effective…",
+            "Bramblecub used Tackle!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 1
+        },
+        "notes": [],
+        "frame": 1464
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "battle-3_11-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 99.3,
+        "blackShare": 0,
+        "greyShare": 0.0002,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 1,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            12.808,
+            6.274,
+            15.056
+          ],
+          "focus": [
+            2.613,
+            0.385,
+            10.729
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 655,
+          "triangles": 1221176,
+          "texturesSize": 479038434,
+          "textures": 166,
+          "geometries": 517,
+          "programs": 109,
+          "renderTargets": 26,
+          "attributes": 2111,
+          "attributesSize": 135679500,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17,
+          "beautyDrawCalls": 165,
+          "shadowDrawCalls": 490
+        },
+        "settle": {
+          "frames": 214,
+          "stable": true,
+          "programs": 109
+        },
+        "rects": {
+          "player": [
+            383,
+            492,
+            582,
+            881
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                459,
+                409,
+                717,
+                601
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                717,
+                84,
+                848,
+                199
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a child",
+            "the berry-gardener"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 30/31",
+            "The wild Mossling L2 14/24"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 516.667,
+          "timelineMs": 1860,
+          "framesIntro": 74,
+          "framesTurn1": 109,
+          "framesToImpact": 22,
+          "afterImpactMs": 150,
+          "log": [
+            "The wild Mossling used Vine Lash!",
+            "It’s not very effective…",
+            "Bramblecub used Tackle!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 1
+        },
+        "notes": [],
+        "frame": 1708
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "battle-3_11-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 14.1,
+        "blackShare": 0.9446,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9446,
+          "full": 0.0554,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.6081,
+        "battlers": [
+          {
+            "side": 0,
+            "full": 0.5566
+          },
+          {
+            "side": 1,
+            "full": 0.3736
+          }
+        ]
+      },
+      "stage": {
+        "shot": "battle",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 1,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            12.808,
+            6.274,
+            15.056
+          ],
+          "focus": [
+            2.613,
+            0.385,
+            10.729
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 666,
+          "triangles": 1221187,
+          "texturesSize": 554854438,
+          "textures": 180,
+          "geometries": 517,
+          "programs": 121,
+          "renderTargets": 36,
+          "attributes": 2111,
+          "attributesSize": 135679500,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17,
+          "beautyDrawCalls": 176,
+          "shadowDrawCalls": 490
+        },
+        "settle": {
+          "frames": 220,
+          "stable": true,
+          "programs": 121
+        },
+        "rects": {
+          "player": [
+            383,
+            492,
+            582,
+            881
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                459,
+                409,
+                717,
+                601
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                717,
+                78,
+                851,
+                199
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a child",
+            "the berry-gardener"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 30/31",
+            "The wild Mossling L2 14/24"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 466.667,
+          "timelineMs": 1910,
+          "framesIntro": 74,
+          "framesTurn1": 115,
+          "framesToImpact": 22,
+          "afterImpactMs": 150,
+          "log": [
+            "The wild Mossling used Vine Lash!",
+            "It’s not very effective…",
+            "Bramblecub used Tackle!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 1
+        },
+        "notes": [],
+        "frame": 1958
+      }
+    }
+  ]
+}

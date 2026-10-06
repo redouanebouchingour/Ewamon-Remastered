@@ -1,0 +1,393 @@
+{
+  "set": "M3",
+  "zone": "hollow_route",
+  "shot": "gym-dusk",
+  "n": 2,
+  "table": {
+    "n": 2,
+    "id": "gym-dusk",
+    "zone": "hollow_route",
+    "heading": 2,
+    "timeOfDay": 0.8,
+    "zoomStop": 1,
+    "state": "overworld, gym beacon lit"
+  },
+  "layoutSeed": 1293811724,
+  "anchor": {
+    "layoutSeed": 1293811724,
+    "shot": "gym-dusk",
+    "zone": "hollow_route",
+    "heading": {
+      "spec": 2,
+      "rig": 0,
+      "viewForward": [
+        0.5736,
+        -0.8192
+      ],
+      "convention": "words"
+    },
+    "x": 0.5,
+    "z": 21,
+    "snapped": true,
+    "raw": [
+      0,
+      20.990570845229087
+    ],
+    "rule": "fallback: no gym — set-piece hollow_lantern_road + (0, 22) world (its keep-clear extent + 8 m)",
+    "base": {
+      "name": "hollow_lantern_road",
+      "x": 0,
+      "z": -1.009429154770912
+    },
+    "offset": {
+      "dx": 0,
+      "dz": 22,
+      "frame": "world"
+    },
+    "wild": null,
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "gym-dusk-0.5_21-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 82.2,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "gym-dusk",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -8.681,
+            20.738,
+            34.112
+          ],
+          "focus": [
+            0.5,
+            0.25,
+            21
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.8,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 136,
+          "triangles": 742783,
+          "texturesSize": 819487928,
+          "textures": 151,
+          "geometries": 243,
+          "programs": 109,
+          "renderTargets": 35,
+          "attributes": 1330,
+          "attributesSize": 61967340,
+          "materials": 10,
+          "shadowLights": 2,
+          "nonShadowLights": 10,
+          "beautyDrawCalls": 79,
+          "shadowDrawCalls": 57
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 109
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a Grey Year pilgrim",
+            "Assessor Neve Odell"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.8,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 240
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "gym-dusk-0.5_21-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 81,
+        "blackShare": 0,
+        "greyShare": 0.0001,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "gym-dusk",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -8.681,
+            20.738,
+            34.112
+          ],
+          "focus": [
+            0.5,
+            0.25,
+            21
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.8,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 125,
+          "triangles": 742772,
+          "texturesSize": 743671932,
+          "textures": 139,
+          "geometries": 243,
+          "programs": 97,
+          "renderTargets": 25,
+          "attributes": 1330,
+          "attributesSize": 61967340,
+          "materials": 10,
+          "shadowLights": 2,
+          "nonShadowLights": 10,
+          "beautyDrawCalls": 68,
+          "shadowDrawCalls": 57
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 97
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a Grey Year pilgrim",
+            "Assessor Neve Odell"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.8,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 285
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "gym-dusk-0.5_21-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 0.7,
+        "blackShare": 0.9972,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9972,
+          "full": 0.0028,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.5431,
+        "battlers": []
+      },
+      "stage": {
+        "shot": "gym-dusk",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -8.681,
+            20.738,
+            34.112
+          ],
+          "focus": [
+            0.5,
+            0.25,
+            21
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.8,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 136,
+          "triangles": 742783,
+          "texturesSize": 819487936,
+          "textures": 153,
+          "geometries": 243,
+          "programs": 109,
+          "renderTargets": 35,
+          "attributes": 1330,
+          "attributesSize": 61967340,
+          "materials": 10,
+          "shadowLights": 2,
+          "nonShadowLights": 10,
+          "beautyDrawCalls": 79,
+          "shadowDrawCalls": 57
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 109
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a Grey Year pilgrim",
+            "Assessor Neve Odell"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.8,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 330
+      }
+    }
+  ]
+}

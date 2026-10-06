@@ -1,0 +1,390 @@
+{
+  "set": "M3",
+  "zone": "saltmourn",
+  "shot": "gym-dusk",
+  "n": 2,
+  "table": {
+    "n": 2,
+    "id": "gym-dusk",
+    "zone": "saltmourn",
+    "heading": 2,
+    "timeOfDay": 0.8,
+    "zoomStop": 1,
+    "state": "overworld, gym beacon lit"
+  },
+  "layoutSeed": 1293811717,
+  "anchor": {
+    "layoutSeed": 1293811717,
+    "shot": "gym-dusk",
+    "zone": "saltmourn",
+    "heading": {
+      "spec": 2,
+      "rig": 0,
+      "viewForward": [
+        0.5736,
+        -0.8192
+      ],
+      "convention": "words"
+    },
+    "x": 0,
+    "z": -18,
+    "snapped": false,
+    "raw": [
+      0,
+      -18
+    ],
+    "rule": "doorOf(saltmourn.gym) + (0, 8) in the door frame (+z = outward normal (0, 1))",
+    "base": {
+      "name": "saltmourn.gym door",
+      "x": 0,
+      "z": -26
+    },
+    "offset": {
+      "dx": 0,
+      "dz": 8,
+      "frame": "door"
+    },
+    "wild": null,
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "gym-dusk-0_-18-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 107.5,
+        "blackShare": 0,
+        "greyShare": 0.0006,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "gym-dusk",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -9.181,
+            20.301,
+            -4.888
+          ],
+          "focus": [
+            0,
+            -0.187,
+            -18
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.8,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 304,
+          "triangles": 726603,
+          "texturesSize": 713844311,
+          "textures": 160,
+          "geometries": 461,
+          "programs": 109,
+          "renderTargets": 34,
+          "attributes": 1813,
+          "attributesSize": 116740796,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 16,
+          "beautyDrawCalls": 99,
+          "shadowDrawCalls": 205
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 109
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "Assessor Wren Tally"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.8,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 240
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "gym-dusk-0_-18-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 106.4,
+        "blackShare": 0,
+        "greyShare": 0.0007,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "gym-dusk",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -9.181,
+            20.301,
+            -4.888
+          ],
+          "focus": [
+            0,
+            -0.187,
+            -18
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.8,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 293,
+          "triangles": 726592,
+          "texturesSize": 638028315,
+          "textures": 148,
+          "geometries": 461,
+          "programs": 97,
+          "renderTargets": 24,
+          "attributes": 1813,
+          "attributesSize": 116740796,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 16,
+          "beautyDrawCalls": 88,
+          "shadowDrawCalls": 205
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 97
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "Assessor Wren Tally"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.8,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 285
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "gym-dusk-0_-18-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 0.7,
+        "blackShare": 0.9971,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9971,
+          "full": 0.0029,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.5569,
+        "battlers": []
+      },
+      "stage": {
+        "shot": "gym-dusk",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -9.181,
+            20.301,
+            -4.888
+          ],
+          "focus": [
+            0,
+            -0.187,
+            -18
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.8,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 304,
+          "triangles": 726603,
+          "texturesSize": 713844319,
+          "textures": 162,
+          "geometries": 461,
+          "programs": 109,
+          "renderTargets": 34,
+          "attributes": 1813,
+          "attributesSize": 116740796,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 16,
+          "beautyDrawCalls": 99,
+          "shadowDrawCalls": 205
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 109
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "Assessor Wren Tally"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.8,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 330
+      }
+    }
+  ]
+}

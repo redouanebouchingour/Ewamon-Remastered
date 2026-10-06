@@ -1,0 +1,380 @@
+{
+  "set": "M3",
+  "zone": "solenne",
+  "shot": "spawn-noon",
+  "n": 1,
+  "table": {
+    "n": 1,
+    "id": "spawn-noon",
+    "zone": "solenne",
+    "heading": 0,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "overworld, player idle"
+  },
+  "layoutSeed": 1293811729,
+  "anchor": {
+    "layoutSeed": 1293811729,
+    "shot": "spawn-noon",
+    "zone": "solenne",
+    "heading": {
+      "spec": 0,
+      "rig": 2,
+      "viewForward": [
+        -0.5736,
+        0.8192
+      ],
+      "convention": "words"
+    },
+    "x": -50,
+    "z": 0.5,
+    "snapped": true,
+    "raw": [
+      -50,
+      0
+    ],
+    "rule": "ZoneDef.spawn",
+    "base": {
+      "name": "spawn",
+      "x": -50,
+      "z": 0
+    },
+    "offset": null,
+    "wild": null,
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "spawn-noon--50_0.5-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 134.1,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "spawn-noon",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 2,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -40.819,
+            20.848,
+            -12.612
+          ],
+          "focus": [
+            -50,
+            0.359,
+            0.5
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 246,
+          "triangles": 524072,
+          "texturesSize": 648571024,
+          "textures": 186,
+          "geometries": 458,
+          "programs": 109,
+          "renderTargets": 36,
+          "attributes": 1687,
+          "attributesSize": 111495064,
+          "materials": 20,
+          "shadowLights": 3,
+          "nonShadowLights": 19,
+          "beautyDrawCalls": 92,
+          "shadowDrawCalls": 154
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 109
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 105
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "spawn-noon--50_0.5-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 127.9,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "spawn-noon",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 2,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -40.819,
+            20.848,
+            -12.612
+          ],
+          "focus": [
+            -50,
+            0.359,
+            0.5
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 235,
+          "triangles": 524061,
+          "texturesSize": 572755028,
+          "textures": 174,
+          "geometries": 458,
+          "programs": 101,
+          "renderTargets": 26,
+          "attributes": 1831,
+          "attributesSize": 121227160,
+          "materials": 20,
+          "shadowLights": 3,
+          "nonShadowLights": 19,
+          "beautyDrawCalls": 81,
+          "shadowDrawCalls": 154
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 101
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 150
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "spawn-noon--50_0.5-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 0.7,
+        "blackShare": 0.9972,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9972,
+          "full": 0.0028,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.5315,
+        "battlers": []
+      },
+      "stage": {
+        "shot": "spawn-noon",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 2,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -40.819,
+            20.848,
+            -12.612
+          ],
+          "focus": [
+            -50,
+            0.359,
+            0.5
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 246,
+          "triangles": 524072,
+          "texturesSize": 648571032,
+          "textures": 188,
+          "geometries": 458,
+          "programs": 113,
+          "renderTargets": 36,
+          "attributes": 1831,
+          "attributesSize": 121227160,
+          "materials": 20,
+          "shadowLights": 3,
+          "nonShadowLights": 19,
+          "beautyDrawCalls": 92,
+          "shadowDrawCalls": 154
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 113
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 195
+      }
+    }
+  ]
+}

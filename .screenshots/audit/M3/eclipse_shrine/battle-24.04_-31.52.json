@@ -1,0 +1,512 @@
+{
+  "set": "M3",
+  "zone": "eclipse_shrine",
+  "shot": "battle",
+  "n": 5,
+  "table": {
+    "n": 5,
+    "id": "battle",
+    "zone": "eclipse_shrine",
+    "heading": null,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "turn 2 of a scripted wild battle, HUD live, a damage cue mid-flight"
+  },
+  "layoutSeed": 1293811730,
+  "anchor": {
+    "layoutSeed": 1293811730,
+    "shot": "battle",
+    "zone": "eclipse_shrine",
+    "heading": {
+      "spec": null,
+      "rig": null,
+      "viewForward": null,
+      "convention": "words"
+    },
+    "x": 24.04067903993073,
+    "z": -31.52141989155205,
+    "snapped": false,
+    "raw": [
+      24.04067903993073,
+      -31.52141989155205
+    ],
+    "rule": "BattleSummary.x/z = the engaging player's position: from the sprite-edge anchor toward the zaptus spawn, stopping 2.5 m from it (ENGAGE_RANGE_M 3.0)",
+    "base": {
+      "name": "zaptus spawn",
+      "x": 25.427429530493804,
+      "z": -33.60154562739666
+    },
+    "offset": null,
+    "wild": {
+      "speciesId": "zaptus",
+      "level": 45,
+      "slotIndex": 0,
+      "x": 25.427429530493804,
+      "z": -33.60154562739666
+    },
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "battle-24.04_-31.52-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 80.5,
+        "blackShare": 0,
+        "greyShare": 0.0023,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            18.392,
+            5.709,
+            -19.678
+          ],
+          "focus": [
+            22.463,
+            0.169,
+            -29.269
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 244,
+          "triangles": 1004407,
+          "texturesSize": 745169646,
+          "textures": 140,
+          "geometries": 176,
+          "programs": 109,
+          "renderTargets": 35,
+          "attributes": 882,
+          "attributesSize": 46135124,
+          "materials": 6,
+          "shadowLights": 2,
+          "nonShadowLights": 9,
+          "beautyDrawCalls": 108,
+          "shadowDrawCalls": 136
+        },
+        "settle": {
+          "frames": 235,
+          "stable": true,
+          "programs": 109
+        },
+        "rects": {
+          "player": [
+            586,
+            353,
+            725,
+            665
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                605,
+                281,
+                822,
+                437
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                790,
+                58,
+                909,
+                161
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Zaptus L45 106/108"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 700,
+          "timelineMs": 3130,
+          "framesIntro": 74,
+          "framesTurn1": 116,
+          "framesToImpact": 36,
+          "afterImpactMs": 150,
+          "log": [
+            "Bramblecub’s Attack fell!",
+            "Bramblecub used Tackle!",
+            "The wild Zaptus used Psych Wave!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 0
+        },
+        "notes": [],
+        "frame": 939
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "battle-24.04_-31.52-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 78.1,
+        "blackShare": 0,
+        "greyShare": 0.0004,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            18.392,
+            5.709,
+            -19.678
+          ],
+          "focus": [
+            22.463,
+            0.169,
+            -29.269
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 233,
+          "triangles": 1004396,
+          "texturesSize": 669353650,
+          "textures": 128,
+          "geometries": 176,
+          "programs": 97,
+          "renderTargets": 25,
+          "attributes": 906,
+          "attributesSize": 49303892,
+          "materials": 6,
+          "shadowLights": 2,
+          "nonShadowLights": 9,
+          "beautyDrawCalls": 97,
+          "shadowDrawCalls": 136
+        },
+        "settle": {
+          "frames": 232,
+          "stable": true,
+          "programs": 97
+        },
+        "rects": {
+          "player": [
+            585,
+            354,
+            723,
+            666
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                609,
+                275,
+                822,
+                438
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                788,
+                59,
+                907,
+                162
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Zaptus L45 106/108"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 750,
+          "timelineMs": 3080,
+          "framesIntro": 74,
+          "framesTurn1": 113,
+          "framesToImpact": 36,
+          "afterImpactMs": 150,
+          "log": [
+            "Bramblecub’s Attack fell!",
+            "Bramblecub used Tackle!",
+            "The wild Zaptus used Psych Wave!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 0
+        },
+        "notes": [],
+        "frame": 1201
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "battle-24.04_-31.52-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 7.3,
+        "blackShare": 0.9714,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9714,
+          "full": 0.0286,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.6867,
+        "battlers": [
+          {
+            "side": 0,
+            "full": 0.2836
+          },
+          {
+            "side": 1,
+            "full": 0.2792
+          }
+        ]
+      },
+      "stage": {
+        "shot": "battle",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            18.392,
+            5.709,
+            -19.678
+          ],
+          "focus": [
+            22.463,
+            0.169,
+            -29.269
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 244,
+          "triangles": 1004407,
+          "texturesSize": 745169654,
+          "textures": 142,
+          "geometries": 176,
+          "programs": 109,
+          "renderTargets": 35,
+          "attributes": 906,
+          "attributesSize": 49303892,
+          "materials": 6,
+          "shadowLights": 2,
+          "nonShadowLights": 9,
+          "beautyDrawCalls": 108,
+          "shadowDrawCalls": 136
+        },
+        "settle": {
+          "frames": 235,
+          "stable": true,
+          "programs": 109
+        },
+        "rects": {
+          "player": [
+            586,
+            352,
+            724,
+            665
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                605,
+                281,
+                821,
+                436
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                789,
+                57,
+                908,
+                160
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Zaptus L45 106/108"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 700,
+          "timelineMs": 3130,
+          "framesIntro": 74,
+          "framesTurn1": 116,
+          "framesToImpact": 36,
+          "afterImpactMs": 150,
+          "log": [
+            "Bramblecub’s Attack fell!",
+            "Bramblecub used Tackle!",
+            "The wild Zaptus used Psych Wave!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 0
+        },
+        "notes": [],
+        "frame": 1466
+      }
+    }
+  ]
+}

@@ -1,0 +1,512 @@
+{
+  "set": "M3",
+  "zone": "solenne",
+  "shot": "battle",
+  "n": 5,
+  "table": {
+    "n": 5,
+    "id": "battle",
+    "zone": "solenne",
+    "heading": null,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "turn 2 of a scripted wild battle, HUD live, a damage cue mid-flight"
+  },
+  "layoutSeed": 1293811729,
+  "anchor": {
+    "layoutSeed": 1293811729,
+    "shot": "battle",
+    "zone": "solenne",
+    "heading": {
+      "spec": null,
+      "rig": null,
+      "viewForward": null,
+      "convention": "words"
+    },
+    "x": -26.823215716229118,
+    "z": 44.008536148456045,
+    "snapped": false,
+    "raw": [
+      -26.823215716229118,
+      44.008536148456045
+    ],
+    "rule": "BattleSummary.x/z = the engaging player's position: from the sprite-edge anchor toward the glimp spawn, stopping 2.5 m from it (ENGAGE_RANGE_M 3.0)",
+    "base": {
+      "name": "glimp spawn",
+      "x": -25.436465225666044,
+      "z": 41.928410412611434
+    },
+    "offset": null,
+    "wild": {
+      "speciesId": "glimp",
+      "level": 40,
+      "slotIndex": 0,
+      "x": -25.436465225666044,
+      "z": 41.928410412611434
+    },
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "battle--26.82_44.01-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 97.3,
+        "blackShare": 0,
+        "greyShare": 0.0005,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -39.911,
+            6.974,
+            48.01
+          ],
+          "focus": [
+            -26.823,
+            -0.303,
+            44.009
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 429,
+          "triangles": 1087744,
+          "texturesSize": 649619735,
+          "textures": 202,
+          "geometries": 465,
+          "programs": 119,
+          "renderTargets": 36,
+          "attributes": 1914,
+          "attributesSize": 125940160,
+          "materials": 20,
+          "shadowLights": 3,
+          "nonShadowLights": 19,
+          "beautyDrawCalls": 150,
+          "shadowDrawCalls": 279
+        },
+        "settle": {
+          "frames": 232,
+          "stable": true,
+          "programs": 119
+        },
+        "rects": {
+          "player": [
+            167,
+            309,
+            312,
+            559
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                326,
+                308,
+                544,
+                440
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                924,
+                171,
+                1026,
+                253
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Glimp L40 98/100"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 650,
+          "timelineMs": 3070,
+          "framesIntro": 74,
+          "framesTurn1": 116,
+          "framesToImpact": 33,
+          "afterImpactMs": 150,
+          "log": [
+            "The wild Glimp’s Defense rose!",
+            "Bramblecub used Tackle!",
+            "The wild Glimp used Dazzling Gleam!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 936
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "battle--26.82_44.01-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 95,
+        "blackShare": 0,
+        "greyShare": 0.0003,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -40.501,
+            6.974,
+            44.486
+          ],
+          "focus": [
+            -26.823,
+            -0.303,
+            44.009
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 412,
+          "triangles": 1065457,
+          "texturesSize": 573803739,
+          "textures": 190,
+          "geometries": 465,
+          "programs": 107,
+          "renderTargets": 26,
+          "attributes": 1914,
+          "attributesSize": 125940160,
+          "materials": 20,
+          "shadowLights": 3,
+          "nonShadowLights": 19,
+          "beautyDrawCalls": 128,
+          "shadowDrawCalls": 284
+        },
+        "settle": {
+          "frames": 229,
+          "stable": true,
+          "programs": 107
+        },
+        "rects": {
+          "player": [
+            242,
+            374,
+            389,
+            641
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                383,
+                348,
+                587,
+                485
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                847,
+                164,
+                944,
+                243
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Glimp L40 98/100"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 700,
+          "timelineMs": 3020,
+          "framesIntro": 74,
+          "framesTurn1": 113,
+          "framesToImpact": 33,
+          "afterImpactMs": 150,
+          "log": [
+            "The wild Glimp’s Defense rose!",
+            "Bramblecub used Tackle!",
+            "The wild Glimp used Dazzling Gleam!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1195
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "battle--26.82_44.01-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 6.9,
+        "blackShare": 0.9731,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9731,
+          "full": 0.0269,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.5006,
+        "battlers": [
+          {
+            "side": 0,
+            "full": 0.4043
+          },
+          {
+            "side": 1,
+            "full": 0.382
+          }
+        ]
+      },
+      "stage": {
+        "shot": "battle",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -40.501,
+            6.974,
+            44.486
+          ],
+          "focus": [
+            -26.823,
+            -0.303,
+            44.009
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 428,
+          "triangles": 1065992,
+          "texturesSize": 649619743,
+          "textures": 204,
+          "geometries": 465,
+          "programs": 119,
+          "renderTargets": 36,
+          "attributes": 1914,
+          "attributesSize": 125940160,
+          "materials": 20,
+          "shadowLights": 3,
+          "nonShadowLights": 19,
+          "beautyDrawCalls": 139,
+          "shadowDrawCalls": 289
+        },
+        "settle": {
+          "frames": 232,
+          "stable": true,
+          "programs": 119
+        },
+        "rects": {
+          "player": [
+            254,
+            355,
+            401,
+            621
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                381,
+                336,
+                598,
+                466
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                858,
+                143,
+                956,
+                224
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Glimp L40 98/100"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 650,
+          "timelineMs": 3070,
+          "framesIntro": 74,
+          "framesTurn1": 116,
+          "framesToImpact": 33,
+          "afterImpactMs": 150,
+          "log": [
+            "The wild Glimp’s Defense rose!",
+            "Bramblecub used Tackle!",
+            "The wild Glimp used Dazzling Gleam!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 1457
+      }
+    }
+  ]
+}

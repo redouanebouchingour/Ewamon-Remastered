@@ -1,0 +1,390 @@
+{
+  "set": "M3",
+  "zone": "vesperveil",
+  "shot": "link-east",
+  "n": 6,
+  "table": {
+    "n": 6,
+    "id": "link-east",
+    "zone": "vesperveil",
+    "heading": 1,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "overworld; the neighbouring zone streaming in must be visible"
+  },
+  "layoutSeed": 1293811723,
+  "anchor": {
+    "layoutSeed": 1293811723,
+    "shot": "link-east",
+    "zone": "vesperveil",
+    "heading": {
+      "spec": 1,
+      "rig": 3,
+      "viewForward": [
+        0.8192,
+        0.5736
+      ],
+      "convention": "words"
+    },
+    "x": 58,
+    "z": 0,
+    "snapped": false,
+    "raw": [
+      58,
+      0
+    ],
+    "rule": "edgePoint(town, 'e') - 6 m along x (the links.e handover line, neighbour hollow_route)",
+    "base": {
+      "name": "links.e edge (hollow_route)",
+      "x": 64,
+      "z": 0
+    },
+    "offset": {
+      "dx": -6,
+      "dz": 0,
+      "frame": "world"
+    },
+    "wild": null,
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "link-east-58_0-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 103.1,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "link-east",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            44.888,
+            21.051,
+            -9.181
+          ],
+          "focus": [
+            58,
+            0.563,
+            0
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 123,
+          "triangles": 399907,
+          "texturesSize": 602957700,
+          "textures": 176,
+          "geometries": 451,
+          "programs": 113,
+          "renderTargets": 35,
+          "attributes": 1854,
+          "attributesSize": 116096324,
+          "materials": 17,
+          "shadowLights": 2,
+          "nonShadowLights": 20,
+          "beautyDrawCalls": 69,
+          "shadowDrawCalls": 54
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 113
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [
+          "neighbour skirt staged (render E3, audit M2-link-east-1): beyond the field edge on each linked side the skirt is the neighbour zone's own terrain — its heightfield and road / plaza layers at 2 m, no props — from `ZoneSpec.neighbours` (SceneDirector `withNeighbours`); the neighbour's props, actors and creatures stream in at the handover (Renderer.loadZone holds one zone)"
+        ],
+        "frame": 1757
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "link-east-58_0-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 100.7,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "link-east",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            44.888,
+            21.051,
+            -9.181
+          ],
+          "focus": [
+            58,
+            0.563,
+            0
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 112,
+          "triangles": 399896,
+          "texturesSize": 527141704,
+          "textures": 164,
+          "geometries": 451,
+          "programs": 101,
+          "renderTargets": 25,
+          "attributes": 1854,
+          "attributesSize": 116096324,
+          "materials": 17,
+          "shadowLights": 2,
+          "nonShadowLights": 20,
+          "beautyDrawCalls": 58,
+          "shadowDrawCalls": 54
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 101
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [
+          "neighbour skirt staged (render E3, audit M2-link-east-1): beyond the field edge on each linked side the skirt is the neighbour zone's own terrain — its heightfield and road / plaza layers at 2 m, no props — from `ZoneSpec.neighbours` (SceneDirector `withNeighbours`); the neighbour's props, actors and creatures stream in at the handover (Renderer.loadZone holds one zone)"
+        ],
+        "frame": 1802
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "link-east-58_0-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 0.7,
+        "blackShare": 0.9971,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9971,
+          "full": 0.0029,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.562,
+        "battlers": []
+      },
+      "stage": {
+        "shot": "link-east",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            44.888,
+            21.051,
+            -9.181
+          ],
+          "focus": [
+            58,
+            0.563,
+            0
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 123,
+          "triangles": 399907,
+          "texturesSize": 602957708,
+          "textures": 178,
+          "geometries": 451,
+          "programs": 113,
+          "renderTargets": 35,
+          "attributes": 1854,
+          "attributesSize": 116096324,
+          "materials": 17,
+          "shadowLights": 2,
+          "nonShadowLights": 20,
+          "beautyDrawCalls": 69,
+          "shadowDrawCalls": 54
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 113
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [
+          "neighbour skirt staged (render E3, audit M2-link-east-1): beyond the field edge on each linked side the skirt is the neighbour zone's own terrain — its heightfield and road / plaza layers at 2 m, no props — from `ZoneSpec.neighbours` (SceneDirector `withNeighbours`); the neighbour's props, actors and creatures stream in at the handover (Renderer.loadZone holds one zone)"
+        ],
+        "frame": 1847
+      }
+    }
+  ]
+}

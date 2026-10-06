@@ -1,0 +1,2443 @@
+{
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0",
+    "chrome": "Chrome/154.0.8037.98",
+    "resolution": {
+      "width": 1440,
+      "height": 900,
+      "devicePixelRatio": 1
+    },
+    "note": "dev machine; the §50.2 reference machine is 2560x1440 on an RTX 3060 / RX 6600"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics",
+    "info": {
+      "vendor": "intel",
+      "architecture": "gen-12lp",
+      "device": "0xa7a8",
+      "description": "Intel(R) UHD Graphics"
+    }
+  },
+  "zone": "tide_route",
+  "layoutSeed": 1293811718,
+  "generatedAt": "2026-10-06T12:28:51.438Z",
+  "complete": true,
+  "options": {
+    "frames": 20,
+    "warmup": 10,
+    "diffFrames": 20,
+    "differential": false,
+    "budgetMs": false,
+    "reportOnly": false,
+    "shots": [
+      "spawn-noon",
+      "gym-dusk",
+      "sprite-edge",
+      "lamps-night",
+      "battle",
+      "link-east"
+    ]
+  },
+  "table": {
+    "sim": {
+      "target": 0.6,
+      "ceiling": 1
+    },
+    "opaque": {
+      "target": 2.6,
+      "ceiling": 3.4
+    },
+    "sprites": {
+      "target": 0.8,
+      "ceiling": 1.2
+    },
+    "shadows": {
+      "target": 2,
+      "ceiling": 2.6
+    },
+    "gtao": {
+      "target": 1.2,
+      "ceiling": 1.6
+    },
+    "traa": {
+      "target": 0.7,
+      "ceiling": 1
+    },
+    "bloom": {
+      "target": 0.7,
+      "ceiling": 1
+    },
+    "dof": {
+      "target": 0.9,
+      "ceiling": 1.3
+    },
+    "grade": {
+      "target": 0.5,
+      "ceiling": 0.7
+    },
+    "total": {
+      "target": 10,
+      "ceiling": 13.5
+    }
+  },
+  "baseline": {
+    "drawCalls": 528,
+    "triangles": 9282,
+    "texturesSize": 310926892,
+    "textures": 63,
+    "geometries": 30,
+    "programs": 89,
+    "renderTargets": 35,
+    "attributes": 87,
+    "attributesSize": 676268,
+    "materials": 0,
+    "shadowLights": 2,
+    "nonShadowLights": 0
+  },
+  "shots": [
+    {
+      "id": "spawn-noon",
+      "counts": {
+        "drawCalls": 135,
+        "triangles": 345194,
+        "texturesSize": 591029669,
+        "textures": 154,
+        "geometries": 234,
+        "programs": 103,
+        "renderTargets": 35,
+        "attributes": 1134,
+        "attributesSize": 59797472,
+        "materials": 11,
+        "shadowLights": 2,
+        "nonShadowLights": 8,
+        "beautyDrawCalls": 87,
+        "shadowDrawCalls": 48
+      },
+      "passMs": null,
+      "totalMs": {
+        "median": 28.663,
+        "p95": 60.017
+      },
+      "simMs": 0
+    },
+    {
+      "id": "gym-dusk",
+      "counts": {
+        "drawCalls": 142,
+        "triangles": 368501,
+        "texturesSize": 591029673,
+        "textures": 155,
+        "geometries": 235,
+        "programs": 103,
+        "renderTargets": 35,
+        "attributes": 1139,
+        "attributesSize": 59997672,
+        "materials": 11,
+        "shadowLights": 2,
+        "nonShadowLights": 8,
+        "beautyDrawCalls": 83,
+        "shadowDrawCalls": 59
+      },
+      "passMs": null,
+      "totalMs": {
+        "median": 25.409,
+        "p95": 49.654
+      },
+      "simMs": 0
+    },
+    {
+      "id": "sprite-edge",
+      "counts": {
+        "drawCalls": 132,
+        "triangles": 418132,
+        "texturesSize": 591029677,
+        "textures": 156,
+        "geometries": 235,
+        "programs": 105,
+        "renderTargets": 35,
+        "attributes": 1139,
+        "attributesSize": 59997672,
+        "materials": 11,
+        "shadowLights": 2,
+        "nonShadowLights": 8,
+        "beautyDrawCalls": 80,
+        "shadowDrawCalls": 52
+      },
+      "passMs": null,
+      "totalMs": {
+        "median": 31.085,
+        "p95": 49.537
+      },
+      "simMs": 0.05
+    },
+    {
+      "id": "lamps-night",
+      "counts": {
+        "drawCalls": 134,
+        "triangles": 331351,
+        "texturesSize": 591029681,
+        "textures": 157,
+        "geometries": 235,
+        "programs": 105,
+        "renderTargets": 35,
+        "attributes": 1139,
+        "attributesSize": 59997672,
+        "materials": 11,
+        "shadowLights": 2,
+        "nonShadowLights": 8,
+        "beautyDrawCalls": 85,
+        "shadowDrawCalls": 49
+      },
+      "passMs": null,
+      "totalMs": {
+        "median": 27.676,
+        "p95": 33.351
+      },
+      "simMs": 0.1
+    },
+    {
+      "id": "battle",
+      "counts": {
+        "drawCalls": 286,
+        "triangles": 719401,
+        "texturesSize": 594175662,
+        "textures": 167,
+        "geometries": 242,
+        "programs": 103,
+        "renderTargets": 35,
+        "attributes": 1169,
+        "attributesSize": 61019852,
+        "materials": 11,
+        "shadowLights": 2,
+        "nonShadowLights": 8,
+        "beautyDrawCalls": 125,
+        "shadowDrawCalls": 161
+      },
+      "passMs": null,
+      "totalMs": {
+        "median": 41.298,
+        "p95": 60.635
+      },
+      "simMs": 0
+    },
+    {
+      "id": "link-east",
+      "counts": {
+        "drawCalls": 130,
+        "triangles": 373317,
+        "texturesSize": 594175666,
+        "textures": 168,
+        "geometries": 243,
+        "programs": 103,
+        "renderTargets": 35,
+        "attributes": 1174,
+        "attributesSize": 61206532,
+        "materials": 11,
+        "shadowLights": 2,
+        "nonShadowLights": 8,
+        "beautyDrawCalls": 87,
+        "shadowDrawCalls": 43
+      },
+      "passMs": null,
+      "totalMs": {
+        "median": 41.35,
+        "p95": 88.595
+      },
+      "simMs": 0
+    }
+  ],
+  "worst": {
+    "totalMs": "link-east",
+    "drawCalls": "battle",
+    "triangles": "battle"
+  },
+  "violations": [],
+  "dump": {
+    "file": "tide_route.dump.json",
+    "at": "battle"
+  },
+  "detail": [
+    {
+      "id": "spawn-noon",
+      "anchor": {
+        "layoutSeed": 1293811718,
+        "shot": "spawn-noon",
+        "zone": "tide_route",
+        "heading": {
+          "spec": 0,
+          "rig": 2,
+          "viewForward": [
+            -0.5736,
+            0.8192
+          ],
+          "convention": "words"
+        },
+        "x": -92,
+        "z": 0,
+        "snapped": false,
+        "raw": [
+          -92,
+          0
+        ],
+        "rule": "ZoneDef.spawn",
+        "base": {
+          "name": "spawn",
+          "x": -92,
+          "z": 0
+        },
+        "offset": null,
+        "wild": null,
+        "worldReading": null
+      },
+      "stage": {
+        "shot": "spawn-noon",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 2,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -82.819,
+            20.41,
+            -13.112
+          ],
+          "focus": [
+            -92,
+            -0.078,
+            0
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 135,
+          "triangles": 345194,
+          "texturesSize": 591029669,
+          "textures": 154,
+          "geometries": 234,
+          "programs": 103,
+          "renderTargets": 35,
+          "attributes": 1134,
+          "attributesSize": 59797472,
+          "materials": 11,
+          "shadowLights": 2,
+          "nonShadowLights": 8,
+          "beautyDrawCalls": 87,
+          "shadowDrawCalls": 48
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 103
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 150
+      },
+      "counts": {
+        "drawCalls": 135,
+        "triangles": 345194,
+        "texturesSize": 591029669,
+        "textures": 154,
+        "geometries": 234,
+        "programs": 103,
+        "renderTargets": 35,
+        "attributes": 1134,
+        "attributesSize": 59797472,
+        "materials": 11,
+        "shadowLights": 2,
+        "nonShadowLights": 8,
+        "beautyDrawCalls": 87,
+        "shadowDrawCalls": 48
+      },
+      "countsMax": {
+        "drawCalls": 135,
+        "triangles": 345194
+      },
+      "countsMin": {
+        "drawCalls": 135,
+        "triangles": 345194
+      },
+      "passMs": null,
+      "passMsMethod": "none",
+      "withoutMs": {},
+      "passMsPerContext": {
+        "opaque": 18.853,
+        "sprites": null,
+        "shadows": 1.145,
+        "gtao": 2.46,
+        "traa": 1.564,
+        "bloom": 0.439,
+        "dof": 2.999,
+        "grade": 0.966
+      },
+      "contexts": [
+        {
+          "target": "canvas",
+          "pass": "grade",
+          "ms": 0.426
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "grade",
+          "ms": 0.409
+        },
+        {
+          "target": "DepthOfField.NearField",
+          "pass": "dof",
+          "ms": 0.314
+        },
+        {
+          "target": "output",
+          "pass": "opaque",
+          "ms": 18.681
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.159
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.342
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.391
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.246
+        },
+        {
+          "target": "DepthOfField.NearFieldBlurred",
+          "pass": "dof",
+          "ms": 0.049
+        },
+        {
+          "target": "GaussianBlurNode.horizontal",
+          "pass": "dof",
+          "ms": 0.481
+        },
+        {
+          "target": "GaussianBlurNode.vertical",
+          "pass": "dof",
+          "ms": 0.376
+        },
+        {
+          "target": "DepthOfField.Blur64",
+          "pass": "dof",
+          "ms": 0.523
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "dof",
+          "ms": 0.187
+        },
+        {
+          "target": "TRAANode.resolve",
+          "pass": "traa",
+          "ms": 1.256
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "traa",
+          "ms": 0.286
+        },
+        {
+          "target": "GTAONode.AO",
+          "pass": "gtao",
+          "ms": 2.469
+        },
+        {
+          "target": "UnrealBloomPass.bright",
+          "pass": "bloom",
+          "ms": 0.114
+        },
+        {
+          "target": "UnrealBloomPass.h0",
+          "pass": "bloom",
+          "ms": 0.065
+        },
+        {
+          "target": "UnrealBloomPass.v0",
+          "pass": "bloom",
+          "ms": 0.067
+        },
+        {
+          "target": "UnrealBloomPass.h1",
+          "pass": "bloom",
+          "ms": 0.045
+        },
+        {
+          "target": "UnrealBloomPass.v1",
+          "pass": "bloom",
+          "ms": 0.028
+        },
+        {
+          "target": "UnrealBloomPass.h2",
+          "pass": "bloom",
+          "ms": 0.023
+        },
+        {
+          "target": "UnrealBloomPass.v2",
+          "pass": "bloom",
+          "ms": 0.014
+        },
+        {
+          "target": "UnrealBloomPass.h3",
+          "pass": "bloom",
+          "ms": 0.01
+        },
+        {
+          "target": "UnrealBloomPass.v3",
+          "pass": "bloom",
+          "ms": 0.009
+        },
+        {
+          "target": "UnrealBloomPass.h4",
+          "pass": "bloom",
+          "ms": 0.009
+        },
+        {
+          "target": "UnrealBloomPass.v4",
+          "pass": "bloom",
+          "ms": 0.008
+        },
+        {
+          "target": "UnrealBloomPass.h0",
+          "pass": "bloom",
+          "ms": 0.069
+        },
+        {
+          "target": "DepthOfField.Blur16Near",
+          "pass": "dof",
+          "ms": 0.142
+        },
+        {
+          "target": "DepthOfField.Blur64",
+          "pass": "dof",
+          "ms": 0.52
+        },
+        {
+          "target": "DepthOfField.Blur16Far",
+          "pass": "dof",
+          "ms": 0.141
+        },
+        {
+          "target": "DepthOfField.Composite",
+          "pass": "dof",
+          "ms": 0.188
+        },
+        {
+          "target": "canvas",
+          "pass": "grade",
+          "ms": 0.103
+        }
+      ],
+      "totalMs": {
+        "median": 28.663,
+        "p95": 60.017,
+        "n": 20
+      },
+      "gpuMs": {
+        "median": 28.663,
+        "p95": 60.017,
+        "n": 20
+      },
+      "cpuFrameMs": {
+        "median": 20.3,
+        "p95": 22.9,
+        "n": 20
+      },
+      "simMs": {
+        "median": 0,
+        "p95": 0.1,
+        "n": 20
+      },
+      "programsBefore": 103,
+      "programsAfter": 103,
+      "frames": 20,
+      "warmup": 10,
+      "diffFrames": 20,
+      "wallMs": 11601
+    },
+    {
+      "id": "gym-dusk",
+      "anchor": {
+        "layoutSeed": 1293811718,
+        "shot": "gym-dusk",
+        "zone": "tide_route",
+        "heading": {
+          "spec": 2,
+          "rig": 0,
+          "viewForward": [
+            0.5736,
+            -0.8192
+          ],
+          "convention": "words"
+        },
+        "x": 0,
+        "z": 17.43617967119392,
+        "snapped": false,
+        "raw": [
+          0,
+          17.43617967119392
+        ],
+        "rule": "fallback: no gym — set-piece tide_wreck + (0, 17) world (its keep-clear extent + 8 m)",
+        "base": {
+          "name": "tide_wreck",
+          "x": 0,
+          "z": 0.4361796711939181
+        },
+        "offset": {
+          "dx": 0,
+          "dz": 17,
+          "frame": "world"
+        },
+        "wild": null,
+        "worldReading": null
+      },
+      "stage": {
+        "shot": "gym-dusk",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -9.181,
+            20.274,
+            30.549
+          ],
+          "focus": [
+            0,
+            -0.215,
+            17.436
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.8,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 142,
+          "triangles": 368501,
+          "texturesSize": 591029673,
+          "textures": 155,
+          "geometries": 235,
+          "programs": 103,
+          "renderTargets": 35,
+          "attributes": 1139,
+          "attributesSize": 59997672,
+          "materials": 11,
+          "shadowLights": 2,
+          "nonShadowLights": 8,
+          "beautyDrawCalls": 83,
+          "shadowDrawCalls": 59
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 103
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.8,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 302
+      },
+      "counts": {
+        "drawCalls": 142,
+        "triangles": 368501,
+        "texturesSize": 591029673,
+        "textures": 155,
+        "geometries": 235,
+        "programs": 103,
+        "renderTargets": 35,
+        "attributes": 1139,
+        "attributesSize": 59997672,
+        "materials": 11,
+        "shadowLights": 2,
+        "nonShadowLights": 8,
+        "beautyDrawCalls": 83,
+        "shadowDrawCalls": 59
+      },
+      "countsMax": {
+        "drawCalls": 142,
+        "triangles": 368501
+      },
+      "countsMin": {
+        "drawCalls": 142,
+        "triangles": 368501
+      },
+      "passMs": null,
+      "passMsMethod": "none",
+      "withoutMs": {},
+      "passMsPerContext": {
+        "opaque": 15.526,
+        "sprites": null,
+        "shadows": 1.326,
+        "gtao": 2.458,
+        "traa": 1.529,
+        "bloom": 0.432,
+        "dof": 3.042,
+        "grade": 0.963
+      },
+      "contexts": [
+        {
+          "target": "canvas",
+          "pass": "grade",
+          "ms": 0.428
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "grade",
+          "ms": 0.428
+        },
+        {
+          "target": "DepthOfField.NearField",
+          "pass": "dof",
+          "ms": 0.317
+        },
+        {
+          "target": "output",
+          "pass": "opaque",
+          "ms": 14.122
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.172
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.565
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.383
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.205
+        },
+        {
+          "target": "DepthOfField.NearFieldBlurred",
+          "pass": "dof",
+          "ms": 0.05
+        },
+        {
+          "target": "GaussianBlurNode.horizontal",
+          "pass": "dof",
+          "ms": 0.477
+        },
+        {
+          "target": "GaussianBlurNode.vertical",
+          "pass": "dof",
+          "ms": 0.379
+        },
+        {
+          "target": "DepthOfField.Blur64",
+          "pass": "dof",
+          "ms": 0.529
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "dof",
+          "ms": 0.242
+        },
+        {
+          "target": "TRAANode.resolve",
+          "pass": "traa",
+          "ms": 1.223
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "traa",
+          "ms": 0.294
+        },
+        {
+          "target": "GTAONode.AO",
+          "pass": "gtao",
+          "ms": 2.458
+        },
+        {
+          "target": "UnrealBloomPass.bright",
+          "pass": "bloom",
+          "ms": 0.114
+        },
+        {
+          "target": "UnrealBloomPass.h0",
+          "pass": "bloom",
+          "ms": 0.071
+        },
+        {
+          "target": "UnrealBloomPass.v0",
+          "pass": "bloom",
+          "ms": 0.068
+        },
+        {
+          "target": "UnrealBloomPass.h1",
+          "pass": "bloom",
+          "ms": 0.045
+        },
+        {
+          "target": "UnrealBloomPass.v1",
+          "pass": "bloom",
+          "ms": 0.029
+        },
+        {
+          "target": "UnrealBloomPass.h2",
+          "pass": "bloom",
+          "ms": 0.024
+        },
+        {
+          "target": "UnrealBloomPass.v2",
+          "pass": "bloom",
+          "ms": 0.014
+        },
+        {
+          "target": "UnrealBloomPass.h3",
+          "pass": "bloom",
+          "ms": 0.011
+        },
+        {
+          "target": "UnrealBloomPass.v3",
+          "pass": "bloom",
+          "ms": 0.009
+        },
+        {
+          "target": "UnrealBloomPass.h4",
+          "pass": "bloom",
+          "ms": 0.009
+        },
+        {
+          "target": "UnrealBloomPass.v4",
+          "pass": "bloom",
+          "ms": 0.008
+        },
+        {
+          "target": "UnrealBloomPass.h0",
+          "pass": "bloom",
+          "ms": 0.069
+        },
+        {
+          "target": "DepthOfField.Blur16Near",
+          "pass": "dof",
+          "ms": 0.143
+        },
+        {
+          "target": "DepthOfField.Blur64",
+          "pass": "dof",
+          "ms": 0.545
+        },
+        {
+          "target": "DepthOfField.Blur16Far",
+          "pass": "dof",
+          "ms": 0.141
+        },
+        {
+          "target": "DepthOfField.Composite",
+          "pass": "dof",
+          "ms": 0.196
+        },
+        {
+          "target": "canvas",
+          "pass": "grade",
+          "ms": 0.106
+        }
+      ],
+      "totalMs": {
+        "median": 25.409,
+        "p95": 49.654,
+        "n": 20
+      },
+      "gpuMs": {
+        "median": 25.409,
+        "p95": 49.654,
+        "n": 20
+      },
+      "cpuFrameMs": {
+        "median": 21.05,
+        "p95": 24.5,
+        "n": 20
+      },
+      "simMs": {
+        "median": 0,
+        "p95": 0.1,
+        "n": 20
+      },
+      "programsBefore": 103,
+      "programsAfter": 103,
+      "frames": 20,
+      "warmup": 10,
+      "diffFrames": 20,
+      "wallMs": 10710
+    },
+    {
+      "id": "sprite-edge",
+      "anchor": {
+        "layoutSeed": 1293811718,
+        "shot": "sprite-edge",
+        "zone": "tide_route",
+        "heading": {
+          "spec": 1,
+          "rig": 3,
+          "viewForward": [
+            0.8192,
+            0.5736
+          ],
+          "convention": "words"
+        },
+        "x": -88.82938760891557,
+        "z": -0.06975319860510076,
+        "snapped": false,
+        "raw": [
+          -88.82938760891557,
+          -0.06975319860510076
+        ],
+        "rule": "enc_tide_route slot 0 (mudbub, first 'common') at the road-side edge of grassPatches[0] (centre + 1.5 m past rz toward roadZ) + (-2, +3) world",
+        "base": {
+          "name": "mudbub spawn",
+          "x": -86.82938760891557,
+          "z": -3.0697531986051008
+        },
+        "offset": {
+          "dx": -2,
+          "dz": 3,
+          "frame": "world"
+        },
+        "wild": {
+          "speciesId": "mudbub",
+          "level": 11,
+          "slotIndex": 0,
+          "x": -86.82938760891557,
+          "z": -3.0697531986051008
+        },
+        "worldReading": null
+      },
+      "stage": {
+        "shot": "sprite-edge",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 0,
+          "mode": "diorama",
+          "position": [
+            -98.916,
+            15.682,
+            -7.132
+          ],
+          "focus": [
+            -88.829,
+            -0.078,
+            -0.07
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 132,
+          "triangles": 418132,
+          "texturesSize": 591029677,
+          "textures": 156,
+          "geometries": 235,
+          "programs": 105,
+          "renderTargets": 35,
+          "attributes": 1139,
+          "attributesSize": 59997672,
+          "materials": 11,
+          "shadowLights": 2,
+          "nonShadowLights": 8,
+          "beautyDrawCalls": 80,
+          "shadowDrawCalls": 52
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 105
+        },
+        "rects": {
+          "player": [
+            682,
+            327,
+            758,
+            478
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 454
+      },
+      "counts": {
+        "drawCalls": 132,
+        "triangles": 418132,
+        "texturesSize": 591029677,
+        "textures": 156,
+        "geometries": 235,
+        "programs": 105,
+        "renderTargets": 35,
+        "attributes": 1139,
+        "attributesSize": 59997672,
+        "materials": 11,
+        "shadowLights": 2,
+        "nonShadowLights": 8,
+        "beautyDrawCalls": 80,
+        "shadowDrawCalls": 52
+      },
+      "countsMax": {
+        "drawCalls": 132,
+        "triangles": 418132
+      },
+      "countsMin": {
+        "drawCalls": 132,
+        "triangles": 418132
+      },
+      "passMs": null,
+      "passMsMethod": "none",
+      "withoutMs": {},
+      "passMsPerContext": {
+        "opaque": 21.077,
+        "sprites": null,
+        "shadows": 1.356,
+        "gtao": 2.465,
+        "traa": 1.533,
+        "bloom": 0.425,
+        "dof": 2.99,
+        "grade": 0.961
+      },
+      "contexts": [
+        {
+          "target": "canvas",
+          "pass": "grade",
+          "ms": 0.428
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "grade",
+          "ms": 0.42
+        },
+        {
+          "target": "DepthOfField.NearField",
+          "pass": "dof",
+          "ms": 0.312
+        },
+        {
+          "target": "output",
+          "pass": "opaque",
+          "ms": 20.532
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.726
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.383
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.36
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.244
+        },
+        {
+          "target": "DepthOfField.NearFieldBlurred",
+          "pass": "dof",
+          "ms": 0.049
+        },
+        {
+          "target": "GaussianBlurNode.horizontal",
+          "pass": "dof",
+          "ms": 0.468
+        },
+        {
+          "target": "GaussianBlurNode.vertical",
+          "pass": "dof",
+          "ms": 0.378
+        },
+        {
+          "target": "DepthOfField.Blur64",
+          "pass": "dof",
+          "ms": 0.528
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "dof",
+          "ms": 0.214
+        },
+        {
+          "target": "TRAANode.resolve",
+          "pass": "traa",
+          "ms": 1.261
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "traa",
+          "ms": 0.283
+        },
+        {
+          "target": "GTAONode.AO",
+          "pass": "gtao",
+          "ms": 2.462
+        },
+        {
+          "target": "UnrealBloomPass.bright",
+          "pass": "bloom",
+          "ms": 0.073
+        },
+        {
+          "target": "UnrealBloomPass.h0",
+          "pass": "bloom",
+          "ms": 0.067
+        },
+        {
+          "target": "UnrealBloomPass.v0",
+          "pass": "bloom",
+          "ms": 0.072
+        },
+        {
+          "target": "UnrealBloomPass.h1",
+          "pass": "bloom",
+          "ms": 0.045
+        },
+        {
+          "target": "UnrealBloomPass.v1",
+          "pass": "bloom",
+          "ms": 0.03
+        },
+        {
+          "target": "UnrealBloomPass.h2",
+          "pass": "bloom",
+          "ms": 0.023
+        },
+        {
+          "target": "UnrealBloomPass.v2",
+          "pass": "bloom",
+          "ms": 0.014
+        },
+        {
+          "target": "UnrealBloomPass.h3",
+          "pass": "bloom",
+          "ms": 0.01
+        },
+        {
+          "target": "UnrealBloomPass.v3",
+          "pass": "bloom",
+          "ms": 0.009
+        },
+        {
+          "target": "UnrealBloomPass.h4",
+          "pass": "bloom",
+          "ms": 0.009
+        },
+        {
+          "target": "UnrealBloomPass.v4",
+          "pass": "bloom",
+          "ms": 0.009
+        },
+        {
+          "target": "UnrealBloomPass.h0",
+          "pass": "bloom",
+          "ms": 0.068
+        },
+        {
+          "target": "DepthOfField.Blur16Near",
+          "pass": "dof",
+          "ms": 0.144
+        },
+        {
+          "target": "DepthOfField.Blur64",
+          "pass": "dof",
+          "ms": 0.536
+        },
+        {
+          "target": "DepthOfField.Blur16Far",
+          "pass": "dof",
+          "ms": 0.143
+        },
+        {
+          "target": "DepthOfField.Composite",
+          "pass": "dof",
+          "ms": 0.214
+        },
+        {
+          "target": "canvas",
+          "pass": "grade",
+          "ms": 0.471
+        }
+      ],
+      "totalMs": {
+        "median": 31.085,
+        "p95": 49.537,
+        "n": 20
+      },
+      "gpuMs": {
+        "median": 31.085,
+        "p95": 49.537,
+        "n": 20
+      },
+      "cpuFrameMs": {
+        "median": 20.85,
+        "p95": 27.8,
+        "n": 20
+      },
+      "simMs": {
+        "median": 0.05,
+        "p95": 0.1,
+        "n": 20
+      },
+      "programsBefore": 105,
+      "programsAfter": 105,
+      "frames": 20,
+      "warmup": 10,
+      "diffFrames": 20,
+      "wallMs": 18815
+    },
+    {
+      "id": "lamps-night",
+      "anchor": {
+        "layoutSeed": 1293811718,
+        "shot": "lamps-night",
+        "zone": "tide_route",
+        "heading": {
+          "spec": 3,
+          "rig": 1,
+          "viewForward": [
+            -0.8192,
+            -0.5736
+          ],
+          "convention": "words"
+        },
+        "x": -69.868,
+        "z": 6.298,
+        "snapped": false,
+        "raw": [
+          -69.868,
+          6.298
+        ],
+        "rule": "fallback: no shop — light tide_route.light.road_main_0 (nearest the spawn) + (2, 3) world",
+        "base": {
+          "name": "tide_route.light.road_main_0",
+          "x": -71.868,
+          "z": 3.298
+        },
+        "offset": {
+          "dx": 2,
+          "dz": 3,
+          "frame": "world"
+        },
+        "wild": null,
+        "worldReading": null
+      },
+      "stage": {
+        "shot": "lamps-night",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 1,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -56.756,
+            20.586,
+            15.479
+          ],
+          "focus": [
+            -69.868,
+            0.098,
+            6.298
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.05,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 134,
+          "triangles": 331351,
+          "texturesSize": 591029681,
+          "textures": 157,
+          "geometries": 235,
+          "programs": 105,
+          "renderTargets": 35,
+          "attributes": 1139,
+          "attributesSize": 59997672,
+          "materials": 11,
+          "shadowLights": 2,
+          "nonShadowLights": 8,
+          "beautyDrawCalls": 85,
+          "shadowDrawCalls": 49
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 105
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.05,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 606
+      },
+      "counts": {
+        "drawCalls": 134,
+        "triangles": 331351,
+        "texturesSize": 591029681,
+        "textures": 157,
+        "geometries": 235,
+        "programs": 105,
+        "renderTargets": 35,
+        "attributes": 1139,
+        "attributesSize": 59997672,
+        "materials": 11,
+        "shadowLights": 2,
+        "nonShadowLights": 8,
+        "beautyDrawCalls": 85,
+        "shadowDrawCalls": 49
+      },
+      "countsMax": {
+        "drawCalls": 134,
+        "triangles": 331351
+      },
+      "countsMin": {
+        "drawCalls": 134,
+        "triangles": 331351
+      },
+      "passMs": null,
+      "passMsMethod": "none",
+      "withoutMs": {},
+      "passMsPerContext": {
+        "opaque": 17.921,
+        "sprites": null,
+        "shadows": 1.259,
+        "gtao": 2.463,
+        "traa": 1.56,
+        "bloom": 0.459,
+        "dof": 3.001,
+        "grade": 0.961
+      },
+      "contexts": [
+        {
+          "target": "canvas",
+          "pass": "grade",
+          "ms": 0.43
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "grade",
+          "ms": 0.426
+        },
+        {
+          "target": "DepthOfField.NearField",
+          "pass": "dof",
+          "ms": 0.319
+        },
+        {
+          "target": "output",
+          "pass": "opaque",
+          "ms": 17.977
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.257
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.494
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.346
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.183
+        },
+        {
+          "target": "DepthOfField.NearFieldBlurred",
+          "pass": "dof",
+          "ms": 0.05
+        },
+        {
+          "target": "GaussianBlurNode.horizontal",
+          "pass": "dof",
+          "ms": 0.469
+        },
+        {
+          "target": "GaussianBlurNode.vertical",
+          "pass": "dof",
+          "ms": 0.383
+        },
+        {
+          "target": "DepthOfField.Blur64",
+          "pass": "dof",
+          "ms": 0.54
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "dof",
+          "ms": 0.21
+        },
+        {
+          "target": "TRAANode.resolve",
+          "pass": "traa",
+          "ms": 1.288
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "traa",
+          "ms": 0.294
+        },
+        {
+          "target": "GTAONode.AO",
+          "pass": "gtao",
+          "ms": 2.465
+        },
+        {
+          "target": "UnrealBloomPass.bright",
+          "pass": "bloom",
+          "ms": 0.072
+        },
+        {
+          "target": "UnrealBloomPass.h0",
+          "pass": "bloom",
+          "ms": 0.067
+        },
+        {
+          "target": "UnrealBloomPass.v0",
+          "pass": "bloom",
+          "ms": 0.067
+        },
+        {
+          "target": "UnrealBloomPass.h1",
+          "pass": "bloom",
+          "ms": 0.048
+        },
+        {
+          "target": "UnrealBloomPass.v1",
+          "pass": "bloom",
+          "ms": 0.027
+        },
+        {
+          "target": "UnrealBloomPass.h2",
+          "pass": "bloom",
+          "ms": 0.024
+        },
+        {
+          "target": "UnrealBloomPass.v2",
+          "pass": "bloom",
+          "ms": 0.013
+        },
+        {
+          "target": "UnrealBloomPass.h3",
+          "pass": "bloom",
+          "ms": 0.012
+        },
+        {
+          "target": "UnrealBloomPass.v3",
+          "pass": "bloom",
+          "ms": 0.008
+        },
+        {
+          "target": "UnrealBloomPass.h4",
+          "pass": "bloom",
+          "ms": 0.009
+        },
+        {
+          "target": "UnrealBloomPass.v4",
+          "pass": "bloom",
+          "ms": 0.008
+        },
+        {
+          "target": "UnrealBloomPass.h0",
+          "pass": "bloom",
+          "ms": 0.07
+        },
+        {
+          "target": "DepthOfField.Blur16Near",
+          "pass": "dof",
+          "ms": 0.145
+        },
+        {
+          "target": "DepthOfField.Blur64",
+          "pass": "dof",
+          "ms": 0.545
+        },
+        {
+          "target": "DepthOfField.Blur16Far",
+          "pass": "dof",
+          "ms": 0.142
+        },
+        {
+          "target": "DepthOfField.Composite",
+          "pass": "dof",
+          "ms": 0.197
+        },
+        {
+          "target": "canvas",
+          "pass": "grade",
+          "ms": 0.104
+        }
+      ],
+      "totalMs": {
+        "median": 27.676,
+        "p95": 33.351,
+        "n": 20
+      },
+      "gpuMs": {
+        "median": 27.676,
+        "p95": 33.351,
+        "n": 20
+      },
+      "cpuFrameMs": {
+        "median": 21.2,
+        "p95": 25.6,
+        "n": 20
+      },
+      "simMs": {
+        "median": 0.1,
+        "p95": 0.1,
+        "n": 20
+      },
+      "programsBefore": 105,
+      "programsAfter": 105,
+      "frames": 20,
+      "warmup": 10,
+      "diffFrames": 20,
+      "wallMs": 12918
+    },
+    {
+      "id": "battle",
+      "anchor": {
+        "layoutSeed": 1293811718,
+        "shot": "battle",
+        "zone": "tide_route",
+        "heading": {
+          "spec": null,
+          "rig": null,
+          "viewForward": null,
+          "convention": "words"
+        },
+        "x": -88.21613809947864,
+        "z": -0.9896274627604917,
+        "snapped": false,
+        "raw": [
+          -88.21613809947864,
+          -0.9896274627604917
+        ],
+        "rule": "BattleSummary.x/z = the engaging player's position: from the sprite-edge anchor toward the mudbub spawn, stopping 2.5 m from it (ENGAGE_RANGE_M 3.0)",
+        "base": {
+          "name": "mudbub spawn",
+          "x": -86.82938760891557,
+          "z": -3.0697531986051008
+        },
+        "offset": null,
+        "wild": {
+          "speciesId": "mudbub",
+          "level": 11,
+          "slotIndex": 0,
+          "x": -86.82938760891557,
+          "z": -3.0697531986051008
+        },
+        "worldReading": null
+      },
+      "stage": {
+        "shot": "battle",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -100.263,
+            5.679,
+            -6.724
+          ],
+          "focus": [
+            -90.469,
+            0.022,
+            -2.567
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 294,
+          "triangles": 752379,
+          "texturesSize": 594175662,
+          "textures": 167,
+          "geometries": 242,
+          "programs": 103,
+          "renderTargets": 35,
+          "attributes": 1169,
+          "attributesSize": 61019852,
+          "materials": 11,
+          "shadowLights": 2,
+          "nonShadowLights": 8,
+          "beautyDrawCalls": 132,
+          "shadowDrawCalls": 162
+        },
+        "settle": {
+          "frames": 231,
+          "stable": true,
+          "programs": 103
+        },
+        "rects": {
+          "player": [
+            589,
+            340,
+            726,
+            650
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                609,
+                315,
+                821,
+                467
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                785,
+                87,
+                911,
+                196
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 15/31",
+            "The wild Mudbub L11 42/46"
+          ]
+        },
+        "battle": {
+          "seed": 1,
+          "move": "Tackle",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 600,
+          "timelineMs": 3460,
+          "framesIntro": 74,
+          "framesTurn1": 118,
+          "framesToImpact": 30,
+          "afterImpactMs": 150,
+          "log": [
+            "Bramblecub’s Defense fell!",
+            "Bramblecub used Tackle!",
+            "The wild Mudbub used Scald!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 3
+        },
+        "notes": [],
+        "frame": 929
+      },
+      "counts": {
+        "drawCalls": 286,
+        "triangles": 719401,
+        "texturesSize": 594175662,
+        "textures": 167,
+        "geometries": 242,
+        "programs": 103,
+        "renderTargets": 35,
+        "attributes": 1169,
+        "attributesSize": 61019852,
+        "materials": 11,
+        "shadowLights": 2,
+        "nonShadowLights": 8,
+        "beautyDrawCalls": 125,
+        "shadowDrawCalls": 161
+      },
+      "countsMax": {
+        "drawCalls": 286,
+        "triangles": 719401
+      },
+      "countsMin": {
+        "drawCalls": 286,
+        "triangles": 719401
+      },
+      "passMs": null,
+      "passMsMethod": "none",
+      "withoutMs": {},
+      "passMsPerContext": {
+        "opaque": 31.03,
+        "sprites": null,
+        "shadows": 1.891,
+        "gtao": 2.434,
+        "traa": 1.54,
+        "bloom": 0.442,
+        "dof": 3.038,
+        "grade": 0.951
+      },
+      "contexts": [
+        {
+          "target": "canvas",
+          "pass": "grade",
+          "ms": 0.427
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "grade",
+          "ms": 0.416
+        },
+        {
+          "target": "DepthOfField.NearField",
+          "pass": "dof",
+          "ms": 0.324
+        },
+        {
+          "target": "output",
+          "pass": "opaque",
+          "ms": 26.301
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.401
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.436
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.378
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.194
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.235
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.235
+        },
+        {
+          "target": "DepthOfField.NearFieldBlurred",
+          "pass": "dof",
+          "ms": 0.05
+        },
+        {
+          "target": "GaussianBlurNode.horizontal",
+          "pass": "dof",
+          "ms": 0.48
+        },
+        {
+          "target": "GaussianBlurNode.vertical",
+          "pass": "dof",
+          "ms": 0.375
+        },
+        {
+          "target": "DepthOfField.Blur64",
+          "pass": "dof",
+          "ms": 0.536
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "dof",
+          "ms": 0.193
+        },
+        {
+          "target": "TRAANode.resolve",
+          "pass": "traa",
+          "ms": 1.222
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "traa",
+          "ms": 0.314
+        },
+        {
+          "target": "GTAONode.AO",
+          "pass": "gtao",
+          "ms": 2.432
+        },
+        {
+          "target": "UnrealBloomPass.bright",
+          "pass": "bloom",
+          "ms": 0.122
+        },
+        {
+          "target": "UnrealBloomPass.h0",
+          "pass": "bloom",
+          "ms": 0.064
+        },
+        {
+          "target": "UnrealBloomPass.v0",
+          "pass": "bloom",
+          "ms": 0.067
+        },
+        {
+          "target": "UnrealBloomPass.h1",
+          "pass": "bloom",
+          "ms": 0.048
+        },
+        {
+          "target": "UnrealBloomPass.v1",
+          "pass": "bloom",
+          "ms": 0.027
+        },
+        {
+          "target": "UnrealBloomPass.h2",
+          "pass": "bloom",
+          "ms": 0.024
+        },
+        {
+          "target": "UnrealBloomPass.v2",
+          "pass": "bloom",
+          "ms": 0.013
+        },
+        {
+          "target": "UnrealBloomPass.h3",
+          "pass": "bloom",
+          "ms": 0.011
+        },
+        {
+          "target": "UnrealBloomPass.v3",
+          "pass": "bloom",
+          "ms": 0.008
+        },
+        {
+          "target": "UnrealBloomPass.h4",
+          "pass": "bloom",
+          "ms": 0.01
+        },
+        {
+          "target": "UnrealBloomPass.v4",
+          "pass": "bloom",
+          "ms": 0.008
+        },
+        {
+          "target": "UnrealBloomPass.h0",
+          "pass": "bloom",
+          "ms": 0.069
+        },
+        {
+          "target": "DepthOfField.Blur16Near",
+          "pass": "dof",
+          "ms": 0.143
+        },
+        {
+          "target": "DepthOfField.Blur64",
+          "pass": "dof",
+          "ms": 0.541
+        },
+        {
+          "target": "DepthOfField.Blur16Far",
+          "pass": "dof",
+          "ms": 0.142
+        },
+        {
+          "target": "DepthOfField.Composite",
+          "pass": "dof",
+          "ms": 0.187
+        },
+        {
+          "target": "canvas",
+          "pass": "grade",
+          "ms": 0.106
+        }
+      ],
+      "totalMs": {
+        "median": 41.298,
+        "p95": 60.635,
+        "n": 20
+      },
+      "gpuMs": {
+        "median": 41.298,
+        "p95": 60.635,
+        "n": 20
+      },
+      "cpuFrameMs": {
+        "median": 30.6,
+        "p95": 45.9,
+        "n": 20
+      },
+      "simMs": {
+        "median": 0,
+        "p95": 0,
+        "n": 20
+      },
+      "programsBefore": 103,
+      "programsAfter": 103,
+      "frames": 20,
+      "warmup": 10,
+      "diffFrames": 20,
+      "wallMs": 42093
+    },
+    {
+      "id": "link-east",
+      "anchor": {
+        "layoutSeed": 1293811718,
+        "shot": "link-east",
+        "zone": "tide_route",
+        "heading": {
+          "spec": 1,
+          "rig": 3,
+          "viewForward": [
+            0.8192,
+            0.5736
+          ],
+          "convention": "words"
+        },
+        "x": 98,
+        "z": 0,
+        "snapped": false,
+        "raw": [
+          98,
+          0
+        ],
+        "rule": "edgePoint(route, 'e') - 6 m along x (the links.e handover line, neighbour stormrook)",
+        "base": {
+          "name": "links.e edge (stormrook)",
+          "x": 104,
+          "z": 0
+        },
+        "offset": {
+          "dx": -6,
+          "dz": 0,
+          "frame": "world"
+        },
+        "wild": null,
+        "worldReading": null
+      },
+      "stage": {
+        "shot": "link-east",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 3,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            84.888,
+            21.051,
+            -9.181
+          ],
+          "focus": [
+            98,
+            0.563,
+            0
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 130,
+          "triangles": 373317,
+          "texturesSize": 594175666,
+          "textures": 168,
+          "geometries": 243,
+          "programs": 103,
+          "renderTargets": 35,
+          "attributes": 1174,
+          "attributesSize": 61206532,
+          "materials": 11,
+          "shadowLights": 2,
+          "nonShadowLights": 8,
+          "beautyDrawCalls": 87,
+          "shadowDrawCalls": 43
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 103
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [
+          "neighbour skirt staged (render E3, audit M2-link-east-1): beyond the field edge on each linked side the skirt is the neighbour zone's own terrain — its heightfield and road / plaza layers at 2 m, no props — from `ZoneSpec.neighbours` (SceneDirector `withNeighbours`); the neighbour's props, actors and creatures stream in at the handover (Renderer.loadZone holds one zone)"
+        ],
+        "frame": 1081
+      },
+      "counts": {
+        "drawCalls": 130,
+        "triangles": 373317,
+        "texturesSize": 594175666,
+        "textures": 168,
+        "geometries": 243,
+        "programs": 103,
+        "renderTargets": 35,
+        "attributes": 1174,
+        "attributesSize": 61206532,
+        "materials": 11,
+        "shadowLights": 2,
+        "nonShadowLights": 8,
+        "beautyDrawCalls": 87,
+        "shadowDrawCalls": 43
+      },
+      "countsMax": {
+        "drawCalls": 130,
+        "triangles": 373317
+      },
+      "countsMin": {
+        "drawCalls": 130,
+        "triangles": 373317
+      },
+      "passMs": null,
+      "passMsMethod": "none",
+      "withoutMs": {},
+      "passMsPerContext": {
+        "opaque": 31.584,
+        "sprites": null,
+        "shadows": 1.327,
+        "gtao": 2.459,
+        "traa": 1.528,
+        "bloom": 0.469,
+        "dof": 2.961,
+        "grade": 0.943
+      },
+      "contexts": [
+        {
+          "target": "canvas",
+          "pass": "grade",
+          "ms": 0.427
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "grade",
+          "ms": 0.405
+        },
+        {
+          "target": "DepthOfField.NearField",
+          "pass": "dof",
+          "ms": 0.324
+        },
+        {
+          "target": "output",
+          "pass": "opaque",
+          "ms": 78.96
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.3
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.455
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.357
+        },
+        {
+          "target": "ShadowMap",
+          "pass": "shadows",
+          "ms": 0.231
+        },
+        {
+          "target": "DepthOfField.NearFieldBlurred",
+          "pass": "dof",
+          "ms": 0.05
+        },
+        {
+          "target": "GaussianBlurNode.horizontal",
+          "pass": "dof",
+          "ms": 0.482
+        },
+        {
+          "target": "GaussianBlurNode.vertical",
+          "pass": "dof",
+          "ms": 0.376
+        },
+        {
+          "target": "DepthOfField.Blur64",
+          "pass": "dof",
+          "ms": 0.523
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "dof",
+          "ms": 0.195
+        },
+        {
+          "target": "TRAANode.resolve",
+          "pass": "traa",
+          "ms": 1.228
+        },
+        {
+          "target": "rt1440x900",
+          "pass": "traa",
+          "ms": 0.274
+        },
+        {
+          "target": "GTAONode.AO",
+          "pass": "gtao",
+          "ms": 2.459
+        },
+        {
+          "target": "UnrealBloomPass.bright",
+          "pass": "bloom",
+          "ms": 0.105
+        },
+        {
+          "target": "UnrealBloomPass.h0",
+          "pass": "bloom",
+          "ms": 0.066
+        },
+        {
+          "target": "UnrealBloomPass.v0",
+          "pass": "bloom",
+          "ms": 0.07
+        },
+        {
+          "target": "UnrealBloomPass.h1",
+          "pass": "bloom",
+          "ms": 0.049
+        },
+        {
+          "target": "UnrealBloomPass.v1",
+          "pass": "bloom",
+          "ms": 0.029
+        },
+        {
+          "target": "UnrealBloomPass.h2",
+          "pass": "bloom",
+          "ms": 0.023
+        },
+        {
+          "target": "UnrealBloomPass.v2",
+          "pass": "bloom",
+          "ms": 0.013
+        },
+        {
+          "target": "UnrealBloomPass.h3",
+          "pass": "bloom",
+          "ms": 0.011
+        },
+        {
+          "target": "UnrealBloomPass.v3",
+          "pass": "bloom",
+          "ms": 0.008
+        },
+        {
+          "target": "UnrealBloomPass.h4",
+          "pass": "bloom",
+          "ms": 0.01
+        },
+        {
+          "target": "UnrealBloomPass.v4",
+          "pass": "bloom",
+          "ms": 0.008
+        },
+        {
+          "target": "UnrealBloomPass.h0",
+          "pass": "bloom",
+          "ms": 0.069
+        },
+        {
+          "target": "DepthOfField.Blur16Near",
+          "pass": "dof",
+          "ms": 0.143
+        },
+        {
+          "target": "DepthOfField.Blur64",
+          "pass": "dof",
+          "ms": 0.516
+        },
+        {
+          "target": "DepthOfField.Blur16Far",
+          "pass": "dof",
+          "ms": 0.141
+        },
+        {
+          "target": "DepthOfField.Composite",
+          "pass": "dof",
+          "ms": 0.185
+        },
+        {
+          "target": "canvas",
+          "pass": "grade",
+          "ms": 0.104
+        }
+      ],
+      "totalMs": {
+        "median": 41.35,
+        "p95": 88.595,
+        "n": 20
+      },
+      "gpuMs": {
+        "median": 41.35,
+        "p95": 88.595,
+        "n": 20
+      },
+      "cpuFrameMs": {
+        "median": 16.15,
+        "p95": 38,
+        "n": 20
+      },
+      "simMs": {
+        "median": 0,
+        "p95": 0.1,
+        "n": 20
+      },
+      "programsBefore": 103,
+      "programsAfter": 103,
+      "frames": 20,
+      "warmup": 10,
+      "diffFrames": 20,
+      "wallMs": 16651
+    }
+  ],
+  "pageLog": [
+    "25.2s compile boot: 88 objects in 20138 ms",
+    "25.7s renderer ready in 23286 ms (backend webgpu, adapter Intel(R) UHD Graphics, timestamp-query true)",
+    "59.5s compile zone tide_route: 271 objects in 26516 ms",
+    "59.5s zone tide_route loaded in 32456 ms (layoutSeed 1293811718, harvest thinning)",
+    "68.9s boot settle: 60 frames, programs 103, stable true",
+    "79.6s spawn-noon: T_all 20 frames",
+    "90.4s gym-dusk: T_all 20 frames",
+    "109.5s sprite-edge: T_all 20 frames",
+    "122.5s lamps-night: T_all 20 frames",
+    "163.4s battle: T_all 20 frames",
+    "180.7s link-east: T_all 20 frames"
+  ],
+  "bootMs": 69067,
+  "wallMs": 185986
+}

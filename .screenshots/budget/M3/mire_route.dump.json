@@ -1,0 +1,2765 @@
+{
+  "zone": "mire_route",
+  "harvestLevel": 0,
+  "materials": [
+    {
+      "uuid": "86f20674-300a-4adc-ae86-c39c66d3b7e8",
+      "cls": "standard",
+      "surface": "dirt",
+      "maps": {
+        "albedo": true,
+        "orm": true,
+        "normal": true
+      },
+      "ktx2": true,
+      "side": 0
+    },
+    {
+      "uuid": "bf225a1b-de9b-4f50-8806-6a9523b52634",
+      "cls": "standard",
+      "surface": "grove_moss",
+      "maps": {
+        "albedo": true,
+        "orm": true,
+        "normal": true
+      },
+      "ktx2": true,
+      "side": 0
+    },
+    {
+      "uuid": "103232c7-8230-4a00-a033-0131613fc370",
+      "cls": "standard",
+      "surface": "path_gravel",
+      "maps": {
+        "albedo": true,
+        "orm": true,
+        "normal": true
+      },
+      "ktx2": true,
+      "side": 0
+    },
+    {
+      "uuid": "15a5399e-0df7-42e1-af9f-6ab86f56f55d",
+      "cls": "physical",
+      "surface": "cobble",
+      "maps": {
+        "albedo": true,
+        "orm": true,
+        "normal": true
+      },
+      "ktx2": true,
+      "side": 0
+    },
+    {
+      "uuid": "372348d1-cea9-4ff8-abac-46a3fc922c81",
+      "cls": "water",
+      "surface": "water_pond",
+      "maps": {
+        "albedo": true,
+        "orm": true,
+        "normal": true
+      },
+      "ktx2": true,
+      "side": 0
+    },
+    {
+      "uuid": "6bb01ea7-c6a1-47d7-adcb-985ae7085866",
+      "cls": "standard",
+      "surface": "timber",
+      "maps": {
+        "albedo": true,
+        "orm": true,
+        "normal": true
+      },
+      "ktx2": true,
+      "side": 0
+    },
+    {
+      "uuid": "853ea154-114c-4fc6-818e-932d63397c5f",
+      "cls": "standard",
+      "surface": "lantern_metal",
+      "maps": {
+        "albedo": true,
+        "orm": true,
+        "normal": true
+      },
+      "ktx2": true,
+      "side": 0
+    },
+    {
+      "uuid": "a4b3ddc3-f615-4dc4-b515-a49564efb5cc",
+      "cls": "emissive",
+      "surface": "glass_warm",
+      "maps": {
+        "albedo": true,
+        "orm": true,
+        "normal": true
+      },
+      "ktx2": true,
+      "side": 0
+    },
+    {
+      "uuid": "da386d83-2c4b-4ddf-9a0e-bef11fa5811d",
+      "cls": "card",
+      "surface": "tall_grass",
+      "maps": {
+        "albedo": true,
+        "orm": true,
+        "normal": true
+      },
+      "ktx2": true,
+      "side": 2
+    },
+    {
+      "uuid": "4b13f226-c590-41c1-b207-1d7106f0f709",
+      "cls": "standard",
+      "surface": "grove_bark",
+      "maps": {
+        "albedo": true,
+        "orm": true,
+        "normal": true
+      },
+      "ktx2": true,
+      "side": 0
+    },
+    {
+      "uuid": "1eac0502-40d3-43c6-8ad1-59b4229860cd",
+      "cls": "standard",
+      "surface": "stone_wall",
+      "maps": {
+        "albedo": true,
+        "orm": true,
+        "normal": true
+      },
+      "ktx2": true,
+      "side": 0
+    },
+    {
+      "uuid": "d8fa47d3-e720-4fce-a34d-de86fdea154c",
+      "cls": "card",
+      "surface": "grove_leaf_canopy",
+      "maps": {
+        "albedo": true,
+        "orm": true,
+        "normal": true
+      },
+      "ktx2": true,
+      "side": 2
+    },
+    {
+      "uuid": "09f1d5d3-b1a2-4907-987e-dd9e888bb5fe",
+      "cls": "standard",
+      "surface": "lichen_stone",
+      "maps": {
+        "albedo": true,
+        "orm": true,
+        "normal": true
+      },
+      "ktx2": true,
+      "side": 0
+    },
+    {
+      "uuid": "c0a14570-e846-4d2e-ae84-b3dc82b5ef3b",
+      "cls": "standard",
+      "surface": "plaster",
+      "maps": {
+        "albedo": true,
+        "orm": true,
+        "normal": true
+      },
+      "ktx2": true,
+      "side": 0
+    }
+  ],
+  "geometries": [
+    {
+      "uuid": "af71ca91-9aa7-4048-b39c-908ec53df77b",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 4870,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "c37bd2de-ae1c-4d6d-80f9-03a99ccc54c3",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6510,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "e9a47f67-faa4-4b66-a15c-4958495d596f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6526,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "b777b7e8-95d2-427e-9fe9-96b1215ae7ed",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6452,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "144dc4b9-a511-418e-822d-161da84cb181",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6558,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "516bf0b2-469a-43bf-8477-c4e5ed5d144a",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6452,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "04ca7002-6326-4835-be48-d934c4644b35",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6472,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "d2fd0a09-97cd-4df2-a396-8fc458385d8e",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 4892,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "60559377-b047-4db8-9998-2c10c961ae9f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6594,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "66a4ba9e-b761-49fc-8417-6c2a4043530a",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8332,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "87b53007-cefc-4633-9f80-6ee8e598d85e",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8332,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "8dea4eca-f823-432e-8b2f-97a9d449506f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8376,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "bd4645b2-fcbf-4a12-bafd-38059920d1f0",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8440,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "06de43d9-897c-4e82-b1f3-a8a59a2991d8",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8284,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "df43d3f9-09c8-47d5-88f8-0ccc981a22f9",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8288,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "1a3124bd-f5a7-487d-ac4e-7d33ef3acbba",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6540,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "30bfb37b-ab51-415c-b3fa-f777ff731b36",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6702,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "ae9f730d-d5ee-40e6-8b47-0a4d0ad42bf2",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8484,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "24994fec-5fca-46c2-ab2e-444826c51dd6",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8530,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "becc86d5-ae09-4da7-89c3-5bb2d74fd173",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8584,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "8cfac4bb-a0c2-415c-a00f-9f6970b917be",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8576,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "2e2b8fb3-1486-4860-8246-c3532fc59000",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8508,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "e13b4299-ffc7-44c7-8e65-0ccbc028b003",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8394,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "8ddae8de-8ce1-48cd-8873-0bc8613b49a3",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6470,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "1736dae6-7c1c-4842-b4d7-5d4f7143e94e",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6706,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "4f418417-5033-4d02-a79b-844274455318",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8638,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "bafdc504-6b1d-4826-8638-250079946d23",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 9022,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "3c58d4cf-37b1-4e4e-8c8e-055f37edb96c",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8832,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "c713d17d-44c1-42c2-81c5-ed58857dd034",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8900,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "25dfda66-f1af-4d0e-a4a2-20fb681f6505",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8822,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "90c42d86-e11c-4825-a142-21e323a3464e",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8848,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "9f557a1c-7d5d-45c4-8f3d-e7771441bbe4",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6774,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "c810bb19-0ca7-4790-8d5c-3c14f381b1fb",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 7004,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "b9245a87-b19a-43bd-a41f-f9936fe13085",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 9140,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "036df5ae-7bc4-4dea-8553-45bea7b85211",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8746,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "f8c5b4f0-78ad-4a93-91d9-52be6b70b6ed",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8794,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "6223440d-425e-4a9a-a43a-881efe1458a5",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8874,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "cad468b0-f7ba-4f76-85af-492575a29e4a",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8982,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "e6158e23-50cf-4aeb-9b2e-54ab12922f56",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8750,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "47cb08dd-80c6-454a-8117-fb4fa1939f44",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6792,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "9731c0d3-7fe8-4270-910f-95f000e46540",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6492,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "825de72b-896c-4df2-a94f-ce878edab35f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8304,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "ff2f3742-b30d-4697-a671-85550f6c1c98",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8272,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "3c53714d-2255-4e99-a071-75ee805350a8",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8336,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "7d018c05-cc04-405d-a16e-6a950d43dc9d",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8532,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "ec04a421-03ce-4b24-bfc0-5b8de309486a",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8300,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "864fab00-abee-41d1-a56f-990b421ef384",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8340,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "6dad5c9e-1339-465e-a1bd-38475c3e436e",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6472,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "5144a85b-d786-464c-816a-105854e3cd7f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6438,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "76ed3037-8420-41b2-9b12-203726fbe1bf",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8500,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "00717af1-3e07-42b2-a686-3142faf2d86b",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8492,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "37b3d6b2-2a44-4540-9160-7071b7fd6016",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8374,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "2c1952c0-30a1-4f44-b478-805b4831aabd",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8648,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "6a31b7cc-dcc8-466c-8211-79d2d569bad3",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8794,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "0e89d24c-503d-4039-af3a-ee74f70915f5",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8454,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "4dd10777-e37b-44c7-a755-41374855026a",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6504,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "08e16b7c-60ae-4911-975e-3719d1c3e257",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 4840,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "4dedaa08-4506-4e50-ab9b-b3602b3889ab",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6526,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "b672af63-7554-4a46-bb76-9319d01c720b",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6442,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "119d4a25-f612-43e8-aa0e-1a0a546bbf9a",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6624,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "1358e10d-d69b-406b-9c82-8b332b492cb3",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6544,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "3d91f840-a97f-42f1-bb61-f34f8266c588",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6562,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "ad8b5897-fef4-48f1-af7b-45af15f30d3f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 6566,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "4d742c93-2e5b-4a0b-8f72-e04ed00773ca",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 4892,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "0ba3756d-c1f8-44da-af98-39eb032cceb1",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "1c37836a-4d71-42ce-9534-81b4caed494d",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "78a36fe7-5925-4de0-8fa1-dd3443960721",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1004,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "aa8fe807-8637-4da8-9dd1-5f2babcc5946",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "16bafd9b-538d-4c8e-8e7b-f7fd5c8863b9",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "ba8c5227-3d90-46c8-9587-eb0386d4c71b",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1004,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "cce39985-643e-4b72-b9b8-ba229037efc2",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "bc03bd98-f427-4f2e-a9c9-1bf76b1a81be",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "80d86d8d-4f1d-4b25-b827-55d81b5dfdfa",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "81c25ab3-0a9c-4d4d-b10e-1d5b0eb41204",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "aee85847-13ac-4173-a15c-5cfbdd214c92",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "5166e206-9dd8-4dc3-a8b0-21a674893713",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "b2c297dd-09e8-4801-9fc0-c9bde4e86cb8",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "1fd443fd-bbf6-499e-998e-c6304f664a34",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1012,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "39d7c637-9134-4240-b872-2a6c1e2998e3",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "fd3b8245-94d1-4f68-87b3-3421a2335ced",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "8b8345aa-cb5b-4374-936b-44f03aedb581",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "af3c09ae-ad7a-4fd6-a61d-54e0c01deeb4",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "f9374e1a-adef-4474-b511-66d5ba52c12f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "ad7f9351-e161-4674-abdc-0427b22d71a3",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "40571ade-3b95-452d-9228-d12fd34e59e4",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "2e2001f5-9113-45ae-aeab-f650adfb04bc",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 998,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "3847eea7-47ce-4e6e-a546-9a51b99d71c0",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 248,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "213163a3-0864-400c-9706-5bfa9cfac0f1",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 248,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "61c41885-e77a-485a-882c-ae26a37e2a3f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "26eccff5-deeb-46d1-ad5d-3de734426805",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 992,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "f70398ce-c4a1-4f95-b9d8-38b337d960c0",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1304,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "9d3d8ead-4fd0-49a9-987f-8de276454810",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1260,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "22516298-5251-4e20-894f-7bf66070aa3f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1258,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "b5a62552-5f5a-40ed-8981-ba349ec5fb74",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1344,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "14d73fdb-a8fb-49bb-b461-ad4c3e153f5a",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1680,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "0e72eda0-c35b-4124-bf2b-c38a43106988",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1644,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "408f7ff6-4920-4ef1-a409-865ef5483782",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1550,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "c3dccff3-3d74-4586-86ba-96f08644e348",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1604,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "4faf4222-3236-4bb0-b533-9026b3bd2b91",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1206,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "6bc06012-4b29-4252-b64d-69f59f587be9",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1234,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "a7039eb8-4279-4a70-887d-81035b395dec",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1038,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "46d4eaef-09b8-47a7-a981-b9e30a74872f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1096,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "7961bd59-a974-4018-9d33-34805f4e0012",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 434,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "95c3ab81-1ebb-4dae-9831-cae3576ee0c5",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 440,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "b1936360-bd3e-4529-9323-dd1f852179d7",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1264,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "ab2eff5c-7893-4cb5-adce-54ae7fc587b4",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 980,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "3009ce95-1b88-47f2-adbb-b1036cfc1a04",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 11392,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "8067e679-02e7-4c2b-958c-0772791c07c5",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 11392,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "3a773786-4b73-4784-ab75-b959eedb597b",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 11392,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "05d2b675-46dd-48b5-90cf-4232880da41a",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 4220,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "fb560770-f5b1-4e91-85c0-819f6783e112",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 4220,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "240d4b12-ad52-4673-b203-40f32f14be46",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 4220,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "d223965f-f9e5-427d-bf85-7f384a37ddbd",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 580,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "f5e42545-bea0-4169-a726-4ba27c01d117",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 580,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "8ded5051-5607-42f7-be13-e2ee672fcf2a",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 580,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "1d861f9f-db52-4bc1-a77d-ab13e2afc9c3",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 120,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "3f82cadc-3cb9-4ab5-a3a3-2d385bb38064",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 860,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "006374ee-7e0c-40fb-91a3-9a8b9cd3a04f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 860,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "6c5579e5-023a-4604-bef0-4ed6790607b4",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 268,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "f517db5d-21df-49ec-89d3-a7713e9c2bf7",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 220,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "fb0032aa-061a-4954-a4ef-44544bbfed03",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 132,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "9251dfcd-0e30-4fef-aa8e-8358404ba36f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 16412,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "31355622-d38b-4450-b125-75d7be8be17c",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8316,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "ac0964c2-25c9-4566-9270-137d5cbc8b79",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 2916,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "25b9203d-7f42-45e0-9dc8-a1522ffbadb2",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1956,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "a3a8638f-a41c-4d44-9b92-8ee39c43688d",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1956,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "4ea8e225-3223-4695-9ffe-a757120b4059",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1126,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "986ba2b1-fc02-4af1-b00e-9e14971aeaa3",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1126,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "4a4f8e43-99e3-40ea-8cc0-024d5b154a35",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 290,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "b2f7c452-3638-4c0b-b805-07d86126c6f1",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 290,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "6bc777de-3176-4186-a49b-ecde1e9c1f7f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 900,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "4df62b10-9174-4a61-87e7-f427d4051c2e",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 900,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "39d5929d-36f4-4bfe-9a0b-b2c3ba7f22ab",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 510,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "3ef1b4f3-f03d-4d33-bfb2-1be9fff14dad",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 510,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "f765bca1-0393-477c-a2ef-08d7056b74dc",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 246,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "2167fc96-9833-403d-956b-f996995a5c66",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 246,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "926b62e4-be42-4219-a7a3-8efa3f05fe81",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 440,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "e71357bb-fc9a-4919-96c0-186a1f3018c6",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 320,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "41dec3a8-9b92-45f2-b452-aaea00752467",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 232,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "7d288726-f9e3-4101-9def-f79836b4b394",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1436,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "0de7ffea-a034-4df0-8263-a37c8563923c",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1436,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "33dc3bfd-b00f-4bb0-a500-5999641fe9c0",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 950,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "dc6e8bf6-e21c-4388-8827-18036c04550b",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 950,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "23c5ad11-f117-4125-9d23-5981c0e50865",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 510,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "cfbab256-d9b2-47d2-9a17-6c133f3d86ee",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 510,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "e7fc714b-06dc-4205-b5a3-566e664fed5c",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 900,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "f1e8840b-b2cd-4372-9d56-bde17df47e4a",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 900,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "e3fe6906-a948-4f27-92f7-35df4de154e4",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 510,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "c381c9ba-8ea9-4fbe-912a-f01d257a8097",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 510,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "596902fe-190e-43be-8e48-4f2dcbecb87d",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 246,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "f94bd618-5ca6-4244-b681-c448cd955d65",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 246,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "bba9747d-f4e6-4a11-9dab-537ab4a5c902",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 144,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "20cb93d9-3134-41bd-9f75-60b42c2f8d5d",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 96,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "59d9943c-04bb-4f46-af8c-22b84b7633ef",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 72,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "9a1f421f-37a5-4c14-90ca-8402bfcaa149",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 288,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "59484c5f-0462-4075-bb30-f8bfca330a48",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 144,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "c1c17009-25e5-40db-9fbf-97b26a545d4a",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 108,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "c2568255-9caf-4675-b209-31c37e078203",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 900,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "843f98a9-68af-48e9-a409-3cff02418a6b",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 900,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "5245e2d6-1281-4f28-9f8d-ffe67e0de634",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 510,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "3a88c00f-8059-4319-9438-27f72805b81d",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 510,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "6c2e2a2e-76dd-4e71-9518-a0f1df98dea8",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 246,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "f023f6c1-fc51-4fa8-b6da-83de4a5e093c",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 246,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "d84ead7b-dd38-4419-b06b-72017d85fd76",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 120,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "6bc45b7b-ea51-4343-8649-de99a3fec12d",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 48,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "f14f5bf7-2fbe-4a5c-8e2c-8d6372c4faaf",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 36,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "6295009e-d6c0-4ec1-8b9e-e2f0c72df2a3",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1436,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "fc5459fc-5b9d-4a6c-ad52-8df2c5e25334",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 1436,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "5a2b5679-191c-40cf-8962-960bdf994e27",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 950,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "9af89446-b9e2-4faf-9be2-c2baeb0a22b8",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 950,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "2d3d65c6-561b-49d7-9aff-d2a7741e9af5",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 510,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "8182407d-d132-4c42-a7ec-3a08e4cb806e",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 510,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "3c7cae43-cdc8-4d8d-ac90-fdeef3abfbd8",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 144,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "12c09aa1-1d91-4ccb-ac3e-9607d471f1ad",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 96,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "27386cdc-097a-47da-9363-de1334ba503b",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 72,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "d4c02dd3-e207-4a0d-9ec1-9aed5e62cde9",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 900,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "abb1c12c-f593-4192-af0c-268c5bae5506",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 900,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "35a05c39-a658-483c-ae35-7cd7c15ae488",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 510,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "a2c811a8-12ca-4b7e-a9f1-eba8207c3020",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 510,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "f9813788-873a-4a92-adc6-df02f02868f4",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 246,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "c7db8d89-3452-4e0c-9f88-f8662bdef03f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 246,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "c68d58ae-57ce-44c0-9d7c-d3afdab029e3",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 900,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "4d79ba43-7aa5-4a7a-a43e-ba9d84fc74e1",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 900,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "337ae8a2-3c10-45bf-8c2c-38838dfc84a5",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 510,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "3ae2d717-430f-433b-b280-b68e1df644b3",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 510,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "3f718ac0-9796-4f77-ac85-7a56e5cdba22",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 246,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "09389be2-8380-4ad4-852f-b2f4f0f1e55e",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 246,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "14aff49a-e5a4-4eaa-aa14-d399c46c166c",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 288,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "c134162c-c55a-4926-927e-075d9cb78d99",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 144,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "513ee567-caa4-4eff-a9e5-ef6efd416329",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 108,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "03c81edf-987e-4b82-98d4-70a5bdfb8271",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 15364,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "276a5ec3-0b15-4170-86dd-92d99228d6ee",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 7880,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "400455b1-37cc-4614-ab36-f23741f64307",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 2636,
+      "instanced": 1,
+      "sharedBy": 1,
+      "kind": null,
+      "instancedMesh": false
+    },
+    {
+      "uuid": "55becb74-ed01-4f2b-b0a2-24e4139df2b0",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 860,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "tree_willow",
+      "tier": 0,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "833828f4-98e6-4d9d-9be4-feeab18ce200",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 860,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "tree_willow",
+      "tier": 0,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "acf2bbc7-d71d-4e1d-8eae-3afe759eacec",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 144,
+      "instanced": 2,
+      "sharedBy": 1,
+      "kind": "tree_willow",
+      "tier": 1,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "b8833da6-0a9f-4b6c-8c46-46ab705375c0",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 144,
+      "instanced": 2,
+      "sharedBy": 1,
+      "kind": "tree_willow",
+      "tier": 1,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "918def6b-4bda-4022-93c6-d2ef0ffa96e6",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 66,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "tree_willow",
+      "tier": 2,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "d1052360-c811-4071-8e21-5c2bd8aebadd",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 66,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "tree_willow",
+      "tier": 2,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "86fec1ab-b836-4a84-bb64-ed7c59957d94",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 4,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "tree_willow",
+      "tier": 3,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "04717a2f-8c8b-4ff5-a84a-dc53b6483437",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 860,
+      "instanced": 59,
+      "sharedBy": 1,
+      "kind": "tree_oak",
+      "tier": 0,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "4ddfd796-ff42-432a-93b2-4b4350a38698",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 860,
+      "instanced": 59,
+      "sharedBy": 1,
+      "kind": "tree_oak",
+      "tier": 0,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "dbb27f1b-9726-441b-8fbb-22c90a1fc0f9",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 144,
+      "instanced": 101,
+      "sharedBy": 1,
+      "kind": "tree_oak",
+      "tier": 1,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "dc789768-4a42-4de7-b6cd-d7e07958669d",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 144,
+      "instanced": 101,
+      "sharedBy": 1,
+      "kind": "tree_oak",
+      "tier": 1,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "2f04009e-4ab4-4043-966d-3f7d986c250f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 66,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "tree_oak",
+      "tier": 2,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "72fc3746-92f3-455b-9ffc-375e9c2ba0f5",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 66,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "tree_oak",
+      "tier": 2,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "c2947437-2bae-43ed-a9ef-35556980b17d",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 4,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "tree_oak",
+      "tier": 3,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "4ffa2fbf-6b1b-4db1-a2e0-0e0a1d5a77d2",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 668,
+      "instanced": 42,
+      "sharedBy": 1,
+      "kind": "tree_birch",
+      "tier": 0,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "e554141a-c60c-454c-b0c6-b1654fd856fc",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 668,
+      "instanced": 42,
+      "sharedBy": 1,
+      "kind": "tree_birch",
+      "tier": 0,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "74d84f13-8bca-4bc5-922b-71ec71a6f600",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 136,
+      "instanced": 77,
+      "sharedBy": 1,
+      "kind": "tree_birch",
+      "tier": 1,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "feb5232a-5035-43e0-940c-e1bdb461d2c3",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 136,
+      "instanced": 77,
+      "sharedBy": 1,
+      "kind": "tree_birch",
+      "tier": 1,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "df8e8043-9f14-4f2e-ac9b-715ad1c5899c",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 64,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "tree_birch",
+      "tier": 2,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "2c1e7a4c-d550-4748-90c3-a005690bc461",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 64,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "tree_birch",
+      "tier": 2,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "87d534a7-e714-4b20-a7c2-aab5d7b6b928",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 4,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "tree_birch",
+      "tier": 3,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "f3fb535b-9048-4f80-85ac-612ba2462903",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 288,
+      "instanced": 12,
+      "sharedBy": 1,
+      "kind": "rock_a",
+      "tier": 0,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "648d10d5-a54d-4fe2-a7e9-6e518995dd59",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 144,
+      "instanced": 22,
+      "sharedBy": 1,
+      "kind": "rock_a",
+      "tier": 1,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "9a9c8324-364a-427e-b071-710f027a0f34",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 108,
+      "instanced": 0,
+      "sharedBy": 2,
+      "kind": "rock_a",
+      "tier": 2,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "9a9c8324-364a-427e-b071-710f027a0f34",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 108,
+      "instanced": 0,
+      "sharedBy": 2,
+      "kind": "rock_a",
+      "tier": 3,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "b24a731f-3048-4d7e-abf5-190821e25e61",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 288,
+      "instanced": 99,
+      "sharedBy": 1,
+      "kind": "rock_b",
+      "tier": 0,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "f51cfb9e-ded2-4f6a-9370-b046389b600c",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 144,
+      "instanced": 113,
+      "sharedBy": 1,
+      "kind": "rock_b",
+      "tier": 1,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "baa68183-85ce-45db-806e-b0cdd499cd38",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 108,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "rock_b",
+      "tier": 2,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "d4bfaccc-59ea-473a-9bf3-361a8759ea0e",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 64,
+      "instanced": 65,
+      "sharedBy": 1,
+      "kind": "bush",
+      "tier": 0,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "40351fc3-05dd-4ff8-b8fe-ac94118bae0f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 32,
+      "instanced": 84,
+      "sharedBy": 1,
+      "kind": "bush",
+      "tier": 1,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "fa1081fd-f0da-4064-b512-f3db459c8afe",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 12,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "bush",
+      "tier": 2,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "d4a146dd-c8d6-4ef4-aac1-fd23478f5093",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 300,
+      "instanced": 70,
+      "sharedBy": 1,
+      "kind": "flower_patch",
+      "tier": 0,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "32327842-3540-46d2-b396-e2287ae0e56c",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 150,
+      "instanced": 37,
+      "sharedBy": 1,
+      "kind": "flower_patch",
+      "tier": 1,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "94dc3b7f-0c75-45be-8fe4-08f5bb32b4bb",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 20,
+      "instanced": 567,
+      "sharedBy": 2,
+      "kind": "grass_tuft",
+      "tier": 0,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "94dc3b7f-0c75-45be-8fe4-08f5bb32b4bb",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 20,
+      "instanced": 641,
+      "sharedBy": 2,
+      "kind": "grass_tuft",
+      "tier": 1,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "d1f7ed22-9ffc-47cb-bbe4-cecf63f96553",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 12,
+      "instanced": 266,
+      "sharedBy": 1,
+      "kind": "tall_grass",
+      "tier": 0,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "aaea7d05-6fc2-4404-b634-71b17e133ce5",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 8,
+      "instanced": 22,
+      "sharedBy": 1,
+      "kind": "tall_grass",
+      "tier": 1,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "1bafbab5-26ab-4b44-aee8-6a809e95b6a7",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 120,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "stump",
+      "tier": 0,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "243cdd7f-4502-4608-a86f-ac7477e2488f",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 48,
+      "instanced": 3,
+      "sharedBy": 1,
+      "kind": "stump",
+      "tier": 1,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "4e850c47-8ef8-412b-ac99-eafb0c7e6d88",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 36,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "stump",
+      "tier": 2,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "6b3f8147-b363-4e30-8cf7-8b12102cb45b",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 144,
+      "instanced": 2,
+      "sharedBy": 1,
+      "kind": "log",
+      "tier": 0,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "29217c1b-30c1-4bb7-87b3-7f882fea7a29",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 96,
+      "instanced": 2,
+      "sharedBy": 1,
+      "kind": "log",
+      "tier": 1,
+      "instancedMesh": true
+    },
+    {
+      "uuid": "f82ff62c-55d1-401b-bac8-8bf10aee1a4b",
+      "type": "BufferGeometry",
+      "parameters": null,
+      "triangles": 72,
+      "instanced": 0,
+      "sharedBy": 1,
+      "kind": "log",
+      "tier": 2,
+      "instancedMesh": true
+    }
+  ],
+  "lights": [
+    {
+      "id": "mire_route.light.setpiece0",
+      "type": "SpotLight",
+      "castShadow": true,
+      "position": [
+        -7.4,
+        2.736,
+        0.372
+      ],
+      "housingDistance": 0
+    },
+    {
+      "id": "mire_route.light.setpiece1",
+      "type": "SpotLight",
+      "castShadow": false,
+      "position": [
+        7.4,
+        2.736,
+        -3.728
+      ],
+      "housingDistance": 0
+    },
+    {
+      "id": "mire_route.light.road_main_0",
+      "type": "SpotLight",
+      "castShadow": false,
+      "position": [
+        -71.4,
+        2.745,
+        3.245
+      ],
+      "housingDistance": 0
+    },
+    {
+      "id": "mire_route.light.road_main_1",
+      "type": "SpotLight",
+      "castShadow": false,
+      "position": [
+        -29.994,
+        2.354,
+        -1.122
+      ],
+      "housingDistance": 0
+    },
+    {
+      "id": "mire_route.light.road_main_2",
+      "type": "SpotLight",
+      "castShadow": false,
+      "position": [
+        10.887,
+        3.163,
+        3.674
+      ],
+      "housingDistance": 0
+    },
+    {
+      "id": "mire_route.light.road_main_3",
+      "type": "SpotLight",
+      "castShadow": false,
+      "position": [
+        52.841,
+        3.506,
+        -3.916
+      ],
+      "housingDistance": 0
+    },
+    {
+      "id": "mire_route.light.road_main_4",
+      "type": "SpotLight",
+      "castShadow": false,
+      "position": [
+        94.818,
+        1.886,
+        1.344
+      ],
+      "housingDistance": 0
+    },
+    {
+      "id": "mire_route.light.clearing_-60",
+      "type": "SpotLight",
+      "castShadow": false,
+      "position": [
+        -56.32,
+        3.274,
+        30.789
+      ],
+      "housingDistance": 0
+    },
+    {
+      "id": "mire_route.light.clearing_-3",
+      "type": "SpotLight",
+      "castShadow": false,
+      "position": [
+        0.764,
+        2.316,
+        33.229
+      ],
+      "housingDistance": 0
+    },
+    {
+      "id": "mire_route.light.clearing_52",
+      "type": "SpotLight",
+      "castShadow": false,
+      "position": [
+        55.693,
+        3.398,
+        32.608
+      ],
+      "housingDistance": 0
+    }
+  ],
+  "sprites": [
+    {
+      "atlas": "a-000",
+      "magFilter": 1003,
+      "anisotropy": 1
+    },
+    {
+      "atlas": "a-004",
+      "magFilter": 1003,
+      "anisotropy": 1
+    }
+  ],
+  "counts": {
+    "drawCalls": 325,
+    "triangles": 1441598,
+    "texturesSize": 546203642,
+    "textures": 175,
+    "geometries": 274,
+    "programs": 109,
+    "renderTargets": 36,
+    "attributes": 1364,
+    "attributesSize": 62722456,
+    "materials": 14,
+    "shadowLights": 3,
+    "nonShadowLights": 9
+  },
+  "shadowDrawCalls": 206,
+  "culledChunks": 43,
+  "lightIds": [
+    "mire_route.light.clearing_-3",
+    "mire_route.light.clearing_-60",
+    "mire_route.light.clearing_52",
+    "mire_route.light.road_main_0",
+    "mire_route.light.road_main_1",
+    "mire_route.light.road_main_2",
+    "mire_route.light.road_main_3",
+    "mire_route.light.road_main_4",
+    "mire_route.light.setpiece0",
+    "mire_route.light.setpiece1"
+  ],
+  "lightSources": [
+    {
+      "id": "mire_route.light.clearing_-3:housing",
+      "lightDistance": 0
+    },
+    {
+      "id": "mire_route.light.clearing_-60:housing",
+      "lightDistance": 0
+    },
+    {
+      "id": "mire_route.light.clearing_52:housing",
+      "lightDistance": 0
+    },
+    {
+      "id": "mire_route.light.road_main_0:housing",
+      "lightDistance": 0
+    },
+    {
+      "id": "mire_route.light.road_main_1:housing",
+      "lightDistance": 0
+    },
+    {
+      "id": "mire_route.light.road_main_2:housing",
+      "lightDistance": 0
+    },
+    {
+      "id": "mire_route.light.road_main_3:housing",
+      "lightDistance": 0
+    },
+    {
+      "id": "mire_route.light.road_main_4:housing",
+      "lightDistance": 0
+    }
+  ]
+}

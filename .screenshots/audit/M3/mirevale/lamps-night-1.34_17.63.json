@@ -1,0 +1,396 @@
+{
+  "set": "M3",
+  "zone": "mirevale",
+  "shot": "lamps-night",
+  "n": 4,
+  "table": {
+    "n": 4,
+    "id": "lamps-night",
+    "zone": "mirevale",
+    "heading": 3,
+    "timeOfDay": 0.05,
+    "zoomStop": 1,
+    "state": "overworld, night light set, >= 3 lamps in frame"
+  },
+  "layoutSeed": 1293811713,
+  "anchor": {
+    "layoutSeed": 1293811713,
+    "shot": "lamps-night",
+    "zone": "mirevale",
+    "heading": {
+      "spec": 3,
+      "rig": 1,
+      "viewForward": [
+        -0.8192,
+        -0.5736
+      ],
+      "convention": "words"
+    },
+    "x": 1.3396833415445215,
+    "z": 17.63296866606593,
+    "snapped": false,
+    "raw": [
+      1.3396833415445215,
+      17.63296866606593
+    ],
+    "rule": "doorOf(mirevale.shop) + (4, 6) in the door frame (+z = outward normal (-0.2993, -0.9541))",
+    "base": {
+      "name": "mirevale.shop door",
+      "x": 6.952309739119363,
+      "z": 22.16048729344297
+    },
+    "offset": {
+      "dx": 4,
+      "dz": 6,
+      "frame": "door"
+    },
+    "wild": null,
+    "worldReading": [
+      10.95,
+      28.16
+    ]
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "lamps-night-1.34_17.63-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 29.4,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "lamps-night",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 1,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            14.452,
+            20.863,
+            26.814
+          ],
+          "focus": [
+            1.34,
+            0.375,
+            17.633
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.05,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 391,
+          "triangles": 712504,
+          "texturesSize": 551708607,
+          "textures": 170,
+          "geometries": 513,
+          "programs": 123,
+          "renderTargets": 34,
+          "attributes": 2047,
+          "attributesSize": 131783140,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17,
+          "beautyDrawCalls": 146,
+          "shadowDrawCalls": 245
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 123
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a child",
+            "the berry-gardener"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.05,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 1034
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "lamps-night-1.34_17.63-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 28.8,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "lamps-night",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 1,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            14.452,
+            20.863,
+            26.814
+          ],
+          "focus": [
+            1.34,
+            0.375,
+            17.633
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.05,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 380,
+          "triangles": 712493,
+          "texturesSize": 475892611,
+          "textures": 158,
+          "geometries": 513,
+          "programs": 111,
+          "renderTargets": 24,
+          "attributes": 2075,
+          "attributesSize": 133619940,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17,
+          "beautyDrawCalls": 135,
+          "shadowDrawCalls": 245
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 111
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a child",
+            "the berry-gardener"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.05,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 1124
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "lamps-night-1.34_17.63-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 0.7,
+        "blackShare": 0.9971,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9971,
+          "full": 0.0029,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.5606,
+        "battlers": []
+      },
+      "stage": {
+        "shot": "lamps-night",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 1,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            14.452,
+            20.863,
+            26.814
+          ],
+          "focus": [
+            1.34,
+            0.375,
+            17.633
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.05,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 391,
+          "triangles": 712504,
+          "texturesSize": 551708615,
+          "textures": 172,
+          "geometries": 513,
+          "programs": 123,
+          "renderTargets": 34,
+          "attributes": 2075,
+          "attributesSize": 133619940,
+          "materials": 18,
+          "shadowLights": 3,
+          "nonShadowLights": 17,
+          "beautyDrawCalls": 146,
+          "shadowDrawCalls": 245
+        },
+        "settle": {
+          "frames": 90,
+          "stable": true,
+          "programs": 123
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [
+            "a child",
+            "the berry-gardener"
+          ],
+          "prompt": null,
+          "timeOfDay": 0.05,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 1214
+      }
+    }
+  ]
+}

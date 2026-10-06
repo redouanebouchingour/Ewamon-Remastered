@@ -1,0 +1,384 @@
+{
+  "set": "M3",
+  "zone": "siege_route",
+  "shot": "lamps-night",
+  "n": 4,
+  "table": {
+    "n": 4,
+    "id": "lamps-night",
+    "zone": "siege_route",
+    "heading": 3,
+    "timeOfDay": 0.05,
+    "zoomStop": 1,
+    "state": "overworld, night light set, >= 3 lamps in frame"
+  },
+  "layoutSeed": 1293811726,
+  "anchor": {
+    "layoutSeed": 1293811726,
+    "shot": "lamps-night",
+    "zone": "siege_route",
+    "heading": {
+      "spec": 3,
+      "rig": 1,
+      "viewForward": [
+        -0.8192,
+        -0.5736
+      ],
+      "convention": "words"
+    },
+    "x": -70.332,
+    "z": 5.1370000000000005,
+    "snapped": false,
+    "raw": [
+      -70.332,
+      5.1370000000000005
+    ],
+    "rule": "fallback: no shop — light siege_route.light.road_main_0 (nearest the spawn) + (2, 3) world",
+    "base": {
+      "name": "siege_route.light.road_main_0",
+      "x": -72.332,
+      "z": 2.137
+    },
+    "offset": {
+      "dx": 2,
+      "dz": 3,
+      "frame": "world"
+    },
+    "wild": null,
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "lamps-night--70.33_5.14-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 23.7,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "lamps-night",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 1,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -57.22,
+            19.895,
+            14.318
+          ],
+          "focus": [
+            -70.332,
+            -0.594,
+            5.137
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.05,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 124,
+          "triangles": 413419,
+          "texturesSize": 826828320,
+          "textures": 170,
+          "geometries": 223,
+          "programs": 115,
+          "renderTargets": 35,
+          "attributes": 1180,
+          "attributesSize": 53067584,
+          "materials": 10,
+          "shadowLights": 2,
+          "nonShadowLights": 8,
+          "beautyDrawCalls": 83,
+          "shadowDrawCalls": 41
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 115
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.05,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 584
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "lamps-night--70.33_5.14-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 23.6,
+        "blackShare": 0,
+        "greyShare": 0,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "lamps-night",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 1,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -57.22,
+            19.895,
+            14.318
+          ],
+          "focus": [
+            -70.332,
+            -0.594,
+            5.137
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.05,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 113,
+          "triangles": 413408,
+          "texturesSize": 751012324,
+          "textures": 158,
+          "geometries": 223,
+          "programs": 103,
+          "renderTargets": 25,
+          "attributes": 1196,
+          "attributesSize": 54117184,
+          "materials": 10,
+          "shadowLights": 2,
+          "nonShadowLights": 8,
+          "beautyDrawCalls": 72,
+          "shadowDrawCalls": 41
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 103
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.05,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 629
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "lamps-night--70.33_5.14-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 0.7,
+        "blackShare": 0.9971,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9971,
+          "full": 0.0029,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.5593,
+        "battlers": []
+      },
+      "stage": {
+        "shot": "lamps-night",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 1,
+          "zoomStop": 1,
+          "mode": "diorama",
+          "position": [
+            -57.22,
+            19.895,
+            14.318
+          ],
+          "focus": [
+            -70.332,
+            -0.594,
+            5.137
+          ],
+          "shotBlend": 0
+        },
+        "timeOfDay": 0.05,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 124,
+          "triangles": 413419,
+          "texturesSize": 826828328,
+          "textures": 172,
+          "geometries": 223,
+          "programs": 115,
+          "renderTargets": 35,
+          "attributes": 1196,
+          "attributesSize": 54117184,
+          "materials": 10,
+          "shadowLights": 2,
+          "nonShadowLights": 8,
+          "beautyDrawCalls": 83,
+          "shadowDrawCalls": 41
+        },
+        "settle": {
+          "frames": 45,
+          "stable": true,
+          "programs": 115
+        },
+        "rects": {
+          "player": [
+            691,
+            356,
+            749,
+            472
+          ],
+          "battlers": []
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.05,
+          "battleBars": null
+        },
+        "battle": null,
+        "notes": [],
+        "frame": 674
+      }
+    }
+  ]
+}

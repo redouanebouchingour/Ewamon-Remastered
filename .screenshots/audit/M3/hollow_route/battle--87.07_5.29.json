@@ -1,0 +1,512 @@
+{
+  "set": "M3",
+  "zone": "hollow_route",
+  "shot": "battle",
+  "n": 5,
+  "table": {
+    "n": 5,
+    "id": "battle",
+    "zone": "hollow_route",
+    "heading": null,
+    "timeOfDay": 0.5,
+    "zoomStop": 1,
+    "state": "turn 2 of a scripted wild battle, HUD live, a damage cue mid-flight"
+  },
+  "layoutSeed": 1293811724,
+  "anchor": {
+    "layoutSeed": 1293811724,
+    "shot": "battle",
+    "zone": "hollow_route",
+    "heading": {
+      "spec": null,
+      "rig": null,
+      "viewForward": null,
+      "convention": "words"
+    },
+    "x": -87.06945717071191,
+    "z": 5.293398382545931,
+    "snapped": false,
+    "raw": [
+      -87.06945717071191,
+      5.293398382545931
+    ],
+    "rule": "BattleSummary.x/z = the engaging player's position: from the sprite-edge anchor toward the nettlewisp spawn, stopping 2.5 m from it (ENGAGE_RANGE_M 3.0)",
+    "base": {
+      "name": "nettlewisp spawn",
+      "x": -85.68270668014884,
+      "z": 3.2132726467013217
+    },
+    "offset": null,
+    "wild": {
+      "speciesId": "nettlewisp",
+      "level": 25,
+      "slotIndex": 0,
+      "x": -85.68270668014884,
+      "z": 3.2132726467013217
+    },
+    "worldReading": null
+  },
+  "resolution": {
+    "width": 1440,
+    "height": 900,
+    "devicePixelRatio": 1
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cores": 16,
+    "memoryGB": 24,
+    "os": "win32 10.0.26200",
+    "node": "v24.14.0"
+  },
+  "adapter": {
+    "backend": "webgpu",
+    "timestampQuery": true,
+    "maxTextureSize": 8192,
+    "ktx2": "bc7",
+    "adapter": "Intel(R) UHD Graphics"
+  },
+  "adapterInfo": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "0xa7a8",
+    "description": "Intel(R) UHD Graphics"
+  },
+  "chrome": "Chrome/154.0.8037.98",
+  "variants": [
+    {
+      "variant": "full",
+      "file": "battle--87.07_5.29-full.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 97.4,
+        "blackShare": 0,
+        "greyShare": 0.0002,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "full",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -90.066,
+            6.072,
+            17.645
+          ],
+          "focus": [
+            -88.647,
+            0.649,
+            7.546
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 285,
+          "triangles": 1285237,
+          "texturesSize": 823682604,
+          "textures": 173,
+          "geometries": 249,
+          "programs": 113,
+          "renderTargets": 35,
+          "attributes": 1357,
+          "attributesSize": 63013020,
+          "materials": 10,
+          "shadowLights": 2,
+          "nonShadowLights": 10,
+          "beautyDrawCalls": 121,
+          "shadowDrawCalls": 164
+        },
+        "settle": {
+          "frames": 317,
+          "stable": true,
+          "programs": 113
+        },
+        "rects": {
+          "player": [
+            505,
+            369,
+            657,
+            684
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                591,
+                252,
+                824,
+                412
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                951,
+                51,
+                1070,
+                150
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Nettlewisp L25 74/75"
+          ]
+        },
+        "battle": {
+          "seed": 2,
+          "move": "Nature Drain",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 700,
+          "timelineMs": 3130,
+          "framesIntro": 74,
+          "framesTurn1": 198,
+          "framesToImpact": 36,
+          "afterImpactMs": 150,
+          "log": [
+            "It’s not very effective…",
+            "The wild Nettlewisp had its energy drained!",
+            "The wild Nettlewisp used Hex!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 0
+        },
+        "notes": [],
+        "frame": 1021
+      }
+    },
+    {
+      "variant": "reduced",
+      "file": "battle--87.07_5.29-reduced.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 103.1,
+        "blackShare": 0,
+        "greyShare": 0.0001,
+        "levels": {
+          "zero": 0,
+          "full": 0,
+          "mid": 1
+        }
+      },
+      "checks": [],
+      "maskCoverage": null,
+      "stage": {
+        "shot": "battle",
+        "variant": "reduced",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -91.717,
+            4.827,
+            14.778
+          ],
+          "focus": [
+            -88.647,
+            0.649,
+            7.546
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": false,
+          "bloom": true,
+          "grain": false,
+          "chroma": false,
+          "shake": false,
+          "hitstop": false,
+          "slowmo": false,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "aces",
+          "grade",
+          "vignette",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 273,
+          "triangles": 1328868,
+          "texturesSize": 747866608,
+          "textures": 161,
+          "geometries": 249,
+          "programs": 101,
+          "renderTargets": 25,
+          "attributes": 1361,
+          "attributesSize": 63275420,
+          "materials": 10,
+          "shadowLights": 2,
+          "nonShadowLights": 10,
+          "beautyDrawCalls": 113,
+          "shadowDrawCalls": 160
+        },
+        "settle": {
+          "frames": 314,
+          "stable": true,
+          "programs": 101
+        },
+        "rects": {
+          "player": [
+            531,
+            459,
+            725,
+            889
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                570,
+                279,
+                858,
+                499
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                807,
+                51,
+                940,
+                166
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Nettlewisp L25 74/75"
+          ]
+        },
+        "battle": {
+          "seed": 2,
+          "move": "Nature Drain",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 750,
+          "timelineMs": 3080,
+          "framesIntro": 74,
+          "framesTurn1": 195,
+          "framesToImpact": 36,
+          "afterImpactMs": 150,
+          "log": [
+            "It’s not very effective…",
+            "The wild Nettlewisp had its energy drained!",
+            "The wild Nettlewisp used Hex!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 0
+        },
+        "notes": [],
+        "frame": 1365
+      }
+    },
+    {
+      "variant": "mask",
+      "file": "battle--87.07_5.29-mask.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "meanLuma": 17.1,
+        "blackShare": 0.9328,
+        "greyShare": 1,
+        "levels": {
+          "zero": 0.9328,
+          "full": 0.0672,
+          "mid": 0
+        }
+      },
+      "checks": [],
+      "maskCoverage": {
+        "player": 0.7009,
+        "battlers": [
+          {
+            "side": 0,
+            "full": 0.442
+          },
+          {
+            "side": 1,
+            "full": 0.2901
+          }
+        ]
+      },
+      "stage": {
+        "shot": "battle",
+        "variant": "mask",
+        "camera": {
+          "rigHeading": 0,
+          "zoomStop": 1,
+          "mode": "battle",
+          "position": [
+            -91.717,
+            4.827,
+            14.778
+          ],
+          "focus": [
+            -88.647,
+            0.649,
+            7.546
+          ],
+          "shotBlend": 1
+        },
+        "timeOfDay": 0.5,
+        "effects": {
+          "dof": true,
+          "bloom": true,
+          "grain": true,
+          "chroma": true,
+          "shake": true,
+          "hitstop": true,
+          "slowmo": true,
+          "taa": true
+        },
+        "postPlan": [
+          "scene",
+          "gtao",
+          "traa",
+          "bloom",
+          "dof",
+          "chroma",
+          "aces",
+          "grade",
+          "vignette",
+          "grain",
+          "output"
+        ],
+        "counts": {
+          "drawCalls": 282,
+          "triangles": 1322373,
+          "texturesSize": 823682612,
+          "textures": 175,
+          "geometries": 249,
+          "programs": 113,
+          "renderTargets": 35,
+          "attributes": 1361,
+          "attributesSize": 63275420,
+          "materials": 10,
+          "shadowLights": 2,
+          "nonShadowLights": 10,
+          "beautyDrawCalls": 122,
+          "shadowDrawCalls": 160
+        },
+        "settle": {
+          "frames": 317,
+          "stable": true,
+          "programs": 113
+        },
+        "rects": {
+          "player": [
+            533,
+            454,
+            727,
+            884
+          ],
+          "battlers": [
+            {
+              "side": 0,
+              "rect": [
+                565,
+                284,
+                856,
+                495
+              ]
+            },
+            {
+              "side": 1,
+              "rect": [
+                810,
+                46,
+                943,
+                162
+              ]
+            }
+          ]
+        },
+        "hud": {
+          "partySlots": 1,
+          "nameplates": [],
+          "prompt": null,
+          "timeOfDay": 0.5,
+          "battleBars": [
+            "Bramblecub L5 0/31",
+            "The wild Nettlewisp L25 74/75"
+          ]
+        },
+        "battle": {
+          "seed": 2,
+          "move": "Nature Drain",
+          "turn": 2,
+          "phase": "playing",
+          "cursorMs": 700,
+          "timelineMs": 3130,
+          "framesIntro": 74,
+          "framesTurn1": 198,
+          "framesToImpact": 36,
+          "afterImpactMs": 150,
+          "log": [
+            "It’s not very effective…",
+            "The wild Nettlewisp had its energy drained!",
+            "The wild Nettlewisp used Hex!"
+          ],
+          "turnLabel": "Turn 2",
+          "heading": 0
+        },
+        "notes": [],
+        "frame": 1712
+      }
+    }
+  ]
+}
