@@ -21,8 +21,8 @@ async function dumpOf(id: 'mirevale' | 'mire_route') {
   const rig = new LightRig(scene);
   const spec = realSpec(id);
   const h = buildZone(spec, { materials: lib, lighting: rig, scene });
-  const d = dumpZone({ zone: id, harvestLevel: 0, root: h.group, library: lib, counts });
-  return { spec, h, d };
+  const d = dumpZone({ zone: id, harvestLevel: 0, root: h.group, library: lib, counts, extraLights: rig.slotLightsInUse() });
+  return { spec, h, d, rig };
 }
 
 describe('dumpZone sprites (H2)', () => {
@@ -73,12 +73,12 @@ describe('dumpZone on the slice zones', () => {
   }, 60_000);
 
   it('a housing moved away from its light fails direction 2 (and a light without a glowing part fails direction 1)', async () => {
-    const { h, d } = await dumpOf('mirevale');
+    const { h, d, rig } = await dumpOf('mirevale');
     const tags = h.group.userData[HOUSINGS_KEY] as HousingTag[];
     const moved = tags.map((t, k) => (k === 0 ? { ...t, min: [t.min[0] + 5, t.min[1], t.min[2]] as const, max: [t.max[0] + 5, t.max[1], t.max[2]] as const } : t));
     h.group.userData[HOUSINGS_KEY] = moved;
     const lib = await mockLibrary();
-    const d2 = dumpZone({ zone: 'mirevale', harvestLevel: 0, root: h.group, library: lib, counts });
+    const d2 = dumpZone({ zone: 'mirevale', harvestLevel: 0, root: h.group, library: lib, counts, extraLights: rig.slotLightsInUse() });
     const row = d2.lightSources.find((s) => s.id === tags[0]!.id)!;
     expect(row.lightDistance).toBeGreaterThan(4);
     expect(d.lightSources.find((s) => s.id === tags[0]!.id)!.lightDistance).toBeLessThanOrEqual(0.6);

@@ -18,7 +18,8 @@ import { inflateSync } from 'node:zlib';
 
 export const CLIENT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const REPO_ROOT = resolve(CLIENT_DIR, '..', '..');
-const BUILD_DIR = join(CLIENT_DIR, 'dist', 'harness');
+/** `EWA_HARNESS_BUILD_DIR` (absolute) lets a second session build and serve its own bundle beside a running one. */
+const BUILD_DIR = resolve(process.env['EWA_HARNESS_BUILD_DIR'] ?? join(CLIENT_DIR, 'dist', 'harness'));
 const PUBLIC_DIR = join(CLIENT_DIR, 'public');
 const HARNESS_HTML = join(CLIENT_DIR, 'harness', 'index.html');
 

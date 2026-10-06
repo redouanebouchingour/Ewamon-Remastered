@@ -33,7 +33,7 @@ import type {
   ActorPool, BattleStage, CameraRig, HudLayer, ZoneHandle, ZoneSpec,
 } from './contracts.js';
 import type { ZoneLoader } from './defaults.js';
-import { zoneSystemFor } from './zone/system.js';
+import { zoneSystemFor, type PreparedZone } from './zone/system.js';
 import { PART3_SUBSYSTEMS } from './stage/wiring.js';
 import {
   ALL_EFFECTS, LAYERS, type Backend, type BudgetCounts, type BudgetPass, type EffectsFlags, type HarvestLevel, type RenderCaps,
@@ -45,7 +45,7 @@ import { SURFACES, SURFACE_IDS } from './materials/surfaces.js';
 import { WATER_DEPTH_ATTRIBUTE } from './materials/graph.js';
 import { DayCycle, daylight, GROVE_LIGHTING, type LightingPalette } from './lighting/daycycle.js';
 import { createHeightFog, type HeightFog } from './lighting/fog.js';
-import { LightRig } from './lighting/rig.js';
+import { LightRig, createLightingLayout } from './lighting/rig.js';
 import { SkyController } from './lighting/sky.js';
 import { PrecipitationSheet, weatherParams } from './lighting/weather.js';
 import { coerceTimeScale } from './post/effects.js';
@@ -145,6 +145,16 @@ export interface Renderer {
    * sets resident (shared surfaces are not fetched / transcoded again), then `loadZone(next)` as usual.
    */
   prepareHandover?(next: ZoneSpec): void;
+  /**
+   * Handover addition (SPEC §10.1.2 "Handover keep" as amended 2026-10-06): builds `next` off the scene while the
+   * current zone stays up and compiles it in the background (valid because the fixed light layout makes a compile
+   * now key-identical to `next`'s own frames). The next `loadZone` of the same zone (id, seed, harvest level) adopts it:
+   * no build, and only what is still uncompiled is compiled. Resolves when it is fully compiled (or dropped); a prepare
+   * of another zone, a `loadZone` of another zone or `dropPrepared()` drops it. One prepared zone at a time.
+   */
+  prepareZone?(next: ZoneSpec, opts?: LoadZoneOptions): Promise<void>;
+  /** Drops the prepared zone, if any (its geometry, instance buffers and render objects are released). */
+  dropPrepared?(): void;
   /** E6 addition: the lost-device info once `GPUDevice.lost` resolved (then `frame()` renders nothing); null while alive. */
   readonly deviceLost?: DeviceLostInfo | null;
   setTimeOfDay(t: number): void;               // 0..1; §10.3.5
@@ -342,6 +352,7 @@ export async function createRenderer(o: RendererOptions, subsystems: RendererSub
   gpu.shadowMap.enabled = true;
   gpu.shadowMap.transmitted = false;
   gpu.info.autoReset = true;
+  gpu.lighting = createLightingLayout();   // the fixed light layout (§10.3.2 as amended 2026-10-06: handover)
   // 5.
   const ktx2 = new KTX2Loader().setTranscoderPath(o.transcoderPath ?? '/basis/').detectSupport(gpu);
   const dev = readDeviceCaps(gpu, backend);
@@ -392,7 +403,14 @@ const SCENE_PASS_CALL_DEPTH = 2;
 interface CompileStat { readonly objects: number; readonly ms: number | null; readonly groups: number; readonly units: number }
 
 /** One compile run: the boot, or one zone's phases 1 + 2 (cancelled when that zone is disposed; T4). */
-interface CompileRun { cancelled: boolean }
+interface CompileRun { cancelled: boolean; /** a prepared zone's run once its zone is adopted: no background slots */ urgent?: boolean }
+
+/** A zone being prepared off-scene (handover (b)): its build, its compile run and when that run ends. */
+interface PreparedRecord { readonly spec: ZoneSpec; readonly ready: Promise<PreparedZone | null>; readonly run: CompileRun; readonly done: Promise<void> }
+
+function sameZone(a: ZoneSpec, b: ZoneSpec): boolean {
+  return a.id === b.id && a.seed === b.seed && a.harvestLevel === b.harvestLevel;
+}
 /** One `compileAsync` root; `owned` = zone meshes (released again when their zone is disposed mid-compile). */
 interface CompileItem { readonly object: Object3D; readonly owned: boolean }
 /** Thrown inside three's compile loop for a unit whose zone was disposed: nothing further is built for it (T4). */
@@ -666,7 +684,8 @@ class RendererHost implements Renderer, HostContext {
       const worker = async (): Promise<void> => {
         while (!run.cancelled && next < items.length) {
           const item = items[next++]!;
-          if (background) await backgroundSlot();
+          if (item.owned && !this.isGated(item.object)) { done++; continue; }   // compiled by another run meanwhile
+          if (background && run.urgent !== true) await backgroundSlot();
           if (run.cancelled) break;
           objects += await this.compileUnit(item, run);
           if (!run.cancelled) this.ungate(item.object);
@@ -731,6 +750,12 @@ class RendererHost implements Renderer, HostContext {
 
   private ungate(o: Object3D): void {
     o.traverse((x) => { const m = this.gated.get(x); if (m !== undefined) { x.layers.mask = m; this.gated.delete(x); } });
+  }
+
+  private isGated(o: Object3D): boolean {
+    let g = false;
+    o.traverse((x) => { if (!g && this.gated.has(x)) g = true; });
+    return g;
   }
 
   /** The compile run a mesh belongs to (the node-build abort check). */
@@ -902,6 +927,52 @@ class RendererHost implements Renderer, HostContext {
 
   // ---- Renderer ------------------------------------------------------------------------------------------
 
+  /** Handover (b): the zone prepared off-scene, if any. */
+  private prepared: PreparedRecord | null = null;
+
+  prepareZone(next: ZoneSpec, opts: LoadZoneOptions = {}): Promise<void> {
+    if (this.disposed || !this.precompileEnabled) return Promise.resolve();
+    const zones = this.zones as ZoneLoader & { prepare?(s: ZoneSpec): Promise<PreparedZone> };
+    if (typeof zones.prepare !== 'function') return Promise.resolve();
+    if (this.prepared !== null) {
+      if (sameZone(this.prepared.spec, next)) return this.prepared.done;
+      this.dropPrepared();
+    }
+    const run: CompileRun = { cancelled: false };
+    const ready = zones.prepare(next).then((z) => {
+      if (run.cancelled || this.disposed) { z.drop(); return null; }
+      return z;
+    }, (e: unknown) => {
+      if (isDevBuild()) console.error(`@ewa/render: prepareZone('${next.id}') failed`, e);
+      return null;
+    });
+    const done = ready.then(async (z) => {
+      if (z === null || run.cancelled) return;
+      // every unit gated (a frame after the adoption never compiles one synchronously), nearest the arrival first
+      const units = planZoneCompile(z.handle.group, this.predictView(z.handle, opts.focus ?? null));
+      for (const u of units) this.gate(u.object);
+      const items: CompileItem[] = [...orderUnits(units.filter((u) => u.near)), ...units.filter((u) => !u.near).sort((a, b) => a.distance - b.distance)]
+        .map((u) => ({ object: u.object, owned: true }));
+      await this.compileQueue('background', next.id, items, BACKGROUND_CONCURRENCY, run, true);
+    }).catch((e: unknown) => { if (isDevBuild()) console.error(`@ewa/render: prepareZone('${next.id}') compile failed`, e); });
+    this.prepared = { spec: next, ready, run, done };
+    return done;
+  }
+
+  dropPrepared(): void {
+    const p = this.prepared;
+    if (p === null) return;
+    this.prepared = null;
+    p.run.cancelled = true;
+    void p.ready.then((z) => {
+      if (z === null) return;
+      const mine: Object3D[] = [];
+      z.handle.group.traverse((o) => { if (this.gated.has(o)) mine.push(o); });
+      z.drop();
+      for (const o of mine) this.gated.delete(o);
+    });
+  }
+
   async loadZone(spec: ZoneSpec, opts: LoadZoneOptions = {}): Promise<ZoneHandle> {
     if (this.disposed) throw new Error('@ewa/render: loadZone after dispose()');
     if (this.loading || (this.zone !== null && !isDisposedHandle(this.zone))) {
@@ -910,6 +981,12 @@ class RendererHost implements Renderer, HostContext {
     this.loading = true;
     if (this.rekeyRun !== null) { this.rekeyRun.cancelled = true; this.rekeyRun = null; }   // E3: the new zone re-keys them
     try {
+      // handover (b): adopt the zone prepared off-scene for this spec (any other prepared zone is dropped)
+      const prepared = this.prepared !== null && sameZone(this.prepared.spec, spec) ? this.prepared : null;
+      if (prepared === null) this.dropPrepared();
+      else this.prepared = null;
+      const pz = prepared !== null ? await prepared.ready : null;
+      if (prepared !== null && pz !== null) return await this.adoptPrepared(spec, prepared, pz, opts);
       let openHero: () => void = () => {};
       const heroGate = new Promise<void>((res) => { openHero = res; });
       const handle = await this.zones.load(spec, { heroGate });
@@ -941,6 +1018,33 @@ class RendererHost implements Renderer, HostContext {
     } finally {
       this.loading = false;
     }
+  }
+
+  /**
+   * Handover (b): the prepared zone becomes the current one. Its root joins the scene with every unit its background
+   * run has not compiled yet still gated; phase 1 compiles the still-gated units of the first view (the run goes on
+   * without background slots, units it already compiled are skipped), then `loadZone` resolves as usual.
+   */
+  private async adoptPrepared(spec: ZoneSpec, prepared: PreparedRecord, pz: PreparedZone, opts: LoadZoneOptions): Promise<ZoneHandle> {
+    const handle = pz.adopt();
+    this.zone = handle;
+    const run = prepared.run;
+    run.urgent = true;
+    this.watchDispose(handle, run);
+    try {
+      const view = this.backgroundEnabled ? this.predictView(handle, opts.focus ?? null) : null;
+      const near = planZoneCompile(handle.group, view).filter((u) => (view === null || u.near) && this.isGated(u.object));
+      await this.compileQueue('zone', spec.id, orderUnits(near).map((u) => ({ object: u.object, owned: true })), COMPILE_CONCURRENCY, run, false);
+      if (!this.backgroundEnabled) await prepared.done;
+      else this.background = Promise.all([this.background, prepared.done]).then(() => undefined);
+    } finally {
+      pz.openHero();
+    }
+    for (const h of this.hooks) h.onZone?.(handle);
+    this.setHarvestLevel(spec.harvestLevel);
+    MaterialBudget.assert(handle.group, 48);
+    this.refreshSceneCounts();
+    return handle;
   }
 
   prepareHandover(next: ZoneSpec): void {
@@ -1146,6 +1250,7 @@ class RendererHost implements Renderer, HostContext {
     this.hud.dispose();
     this.stage.dispose();
     this.actors.dispose();
+    this.dropPrepared();
     if (this.zone !== null) this.zone.dispose();
     this.zone = null;
     for (const h of this.hooks) h.dispose?.();
@@ -1168,6 +1273,7 @@ class RendererHost implements Renderer, HostContext {
     const counts = this.frameCounts ?? this.readCounts();
     return dumpZone({
       zone: zoneId, harvestLevel: this.harvest, root, library: this.materials, counts, culledChunks: culled, spriteScan: this.scene,
+      extraLights: this.zone !== null && !isDisposedHandle(this.zone) ? this.lighting.slotLightsInUse() : [],
       ...(this.frameCounts !== null ? { shadowDrawCalls: this.frameShadowDraws } : {}),
     });
   }

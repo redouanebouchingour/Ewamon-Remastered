@@ -85,6 +85,12 @@ export interface HandoverResult {
   readonly fade: false;
   readonly zone: string | null;
   readonly programs: number;
+  /** programs with the source zone loaded, right before the crossing (fixed light layout: the destination adds few) */
+  readonly programsBefore: number;
+  /** programs once the destination's background compile ended (`compileIdle()`) */
+  readonly programsSettled: number;
+  /** preloaded: the off-scene prepare of the destination (`prepareZone`) before the crossing, with its frame gaps */
+  readonly prepare: { readonly ms: number; readonly frames: number; readonly maxFrameMs: number; readonly framesOver33: number; readonly framesOver100: number } | null;
   readonly backgroundCompile: boolean;
 }
 
@@ -700,13 +706,26 @@ export class HarnessWorld {
     const next = zoneDef(to);
     const harvest = harvestStateFor(to, this.flags);
     let preloaded: SpriteLease = NO_LEASE;
-    if (o.preload) {
-      await this.renderer.materials.preload(zoneSurfaces(withNeighbours(zoneSpecFor(next, harvest), next)));
-      preloaded = await this.bindZone(to, []);
-    }
+    let prepare: HandoverResult['prepare'] = null;
     const [ax0, az0] = edgePoint(next.kind, opp);
     const [aix, aiz] = inward(opp, 8);
     const arrival = { x: ax0 + aix, z: az0 + aiz };
+    if (o.preload) {
+      await this.renderer.materials.preload(zoneSurfaces(withNeighbours(zoneSpecFor(next, harvest), next)));
+      preloaded = await this.bindZone(to, []);
+      // handover (b): the destination built and compiled off the scene while this zone is up (World3D does it near an
+      // edge); the world keeps ticking meanwhile, and those frame gaps are recorded too
+      const pg: number[] = [];
+      let pl = performance.now();
+      let ticking = true;
+      const tickLoop = (now: number): void => { if (!ticking) return; pg.push(now - pl); pl = now; this.tick(); requestAnimationFrame(tickLoop); };
+      requestAnimationFrame(tickLoop);
+      const tp = performance.now();
+      await this.director.prepareZone(to, harvest, arrival);
+      prepare = { ms: Math.round(performance.now() - tp), frames: pg.length, maxFrameMs: Math.round(Math.max(0, ...pg) * 10) / 10, framesOver33: pg.filter((g) => g > 33).length, framesOver100: pg.filter((g) => g > 100).length };
+      ticking = false;
+      await this.settle(30, 10, 600);
+    }
     const gaps: number[] = [];
     let last = performance.now();
     let firstFrameAt: number | null = null;
@@ -725,6 +744,7 @@ export class HarnessWorld {
       }
       requestAnimationFrame(loop);
     };
+    const programsBefore = this.renderer.renderer.info.memory.programs;
     const t0 = performance.now();
     requestAnimationFrame(loop);
     try {
@@ -739,12 +759,15 @@ export class HarnessWorld {
     this.place(arrival.x, arrival.z, 0);
     loaded = true;
     await done;
+    const programs = this.renderer.renderer.info.memory.programs;
+    await this.renderer.compileIdle?.();
+    const programsSettled = this.renderer.renderer.info.memory.programs;
     const sorted = [...gaps].sort((a, b) => a - b);
     const r1 = (v: number): number => Math.round(v * 10) / 10;
     return {
       from: from.id, to, preloaded: o.preload, firstFrameMs: firstFrameAt === null ? null : r1(firstFrameAt - t0), loadMs: r1(loadMs), frames: gaps.length,
       maxFrameMs: r1(sorted[sorted.length - 1] ?? 0), p95FrameMs: r1(sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] ?? 0),
-      framesOver33: gaps.filter((g) => g > 33).length, fade: false, zone: this.director.currentZone, programs: this.renderer.renderer.info.memory.programs,
+      framesOver33: gaps.filter((g) => g > 33).length, fade: false, zone: this.director.currentZone, programs, programsBefore, programsSettled, prepare,
       backgroundCompile: this.backgroundCompile,
     };
   }

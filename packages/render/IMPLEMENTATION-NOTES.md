@@ -1529,11 +1529,33 @@ Tests updated: `daycycle.test.ts`, `lighting.test.ts`, `post-graph.test.ts`, `st
   The fix that would make every town read like Mirevale belongs to content: a spawn on or beside the plaza (as in
   Mirevale), or solid props and trees along the entry street in `planProps`. The heightfield, the server and the
   progression walker change with it. Not done here, because another agent's walker reads the same content.
-- Tufts are still the crossed-card "X" clumps, and the `tall_grass` bushes in salt, cinder and marrow read as big
-  tufts.
+- Tufts are still the crossed-card "X" clumps, and the `tall_grass` bushes in salt read as big tufts (cinder and
+  marrow lost theirs after the first M3 shots: green clumps on ash and canyon sand read wrong).
 - Shrine scree uses `eclipse_stone` on an `eclipse_stone` floor and nearly vanishes; only the shards read.
 - House skirts are low and small, because they must fit the 0.47 m pad. They read at zoom 0 and barely at the default
   stop.
+
+## Also in this phase
+
+- **Interior rugs** (live report, Solenne league foyer at dusk: the `rug` read as a flat white slab — 4.2 × 2.8 m of
+  the `sun_marble` runner). `generators/interiors.ts`: `ThemeKit.rug`, a muted non-card surface the theme already binds
+  (`ThemeRow.rug`: grove `thatch`, forge `charred_timber`, sky `dragon_scale_tile`, league `grove_moss`; else the
+  row's runner; shop / healer / house: the zone's cloth, else its wood — never an alpha card, the cloth surfaces are
+  banner / sail / flag cards). The rug is 2.4 × 1.6 m before the prop scale, with a trim border, two inner bands and
+  end fringes. Verified in the sandbox (`?zone=solenne&interior=solenne.league&x=51&z=-7`). Commit `5611ede`.
+- **Harness battle script** (`client/src/harness/battleScript.ts`): the lead's first damaging move first (the M2
+  choice), then the others weakest first; the wild level raised by 2 up to +10, then lowered to 6 / 4 / 2; last resort
+  a turn 2 with only a move used. Needed for the M3 battle shots of vesperveil / hollow / forgewall / siege.
+- **M3 measurements**: budget JSON `.screenshots/budget/M3/<zone>.json` + `.dump.json`, shots
+  `.screenshots/audit/M3/<zone>/`; both untracked by design until committed with the audit.
+
+## PROGRESS (resume point after a restart)
+
+- Done (2026-10-06 13:35 UTC): E2 code + spec + tests; E1 dressing + spec + tests; harness M3 set; all 21 budgets on
+  the 12:10 bundle (0 count violations; `audit:assets` 17/17 except `lights.housing` in galvan / siege / umbral, a
+  set-piece light table mismatch that predates E1); 126 M3 shots; M2 re-shot; `.design/audits/M3-render-audit.md`.
+- Left open (in the audit): content spawn / entry street (M3-all-2), per-biome tuft surface (M3-all-3), the gym-dusk
+  fallback rule (M3-all-5), set-piece housings (M3-all-6), noon highlights (M3-all-10), a second, independent audit.
 
 ---
 
@@ -1617,3 +1639,166 @@ Why: the client's residency (20-client.md §20.4.4, entry below) must not count 
 Evidence: render IMPLEMENTATION-NOTES Part 9 R2–R3; `test/residency.test.ts`; client `test/creatureTextures.test.ts` (end to end on `BillboardPool`).
 Affects: `packages/render/src/sprites/billboard.ts`, `renderer.ts`, `stage/wiring.ts`; no program, material, draw-call or allocation-per-frame change.
 ```
+
+# Handover: fixed light layout (2026-10-06)
+
+The zone handover took 6–9 s on the dev iGPU (Intel Gen-12) to the first destination frame, against the SPEC's 250 ms
+(preloaded) / 1 500 ms (not preloaded). This phase fixes it in two steps: (a) a fixed light layout, then (b) preparing
+the destination off the scene before the crossing, which (a) makes possible.
+
+## Cause
+
+- three 0.186's `LightsNode.customCacheKey` hashes every scene light's `id` and `castShadow` into the cache key of
+  every lit render object, and `setupLightsNode` emits one light node per light into each lit program.
+- Each zone created its own `SpotLight` / `PointLight` objects. So on a zone's first frame every lit render object was
+  a new node build, and a zone with a different light count or kind mix added program variants.
+- Measured before (harness, mirevale → mire_route): first destination frame 6.4–8.9 s, programs 109 → 119–125 at the
+  first frame → 113 settled.
+
+## (a) The fixed light layout
+
+**`lighting/layout.ts`** is set as the renderer's `lighting` at §10.1.2 step 4 (`createLightingLayout()` in `rig.ts`).
+- `LayoutLightsNode` (a `LightsNode`):
+  - Every non-shadow `PointLight` / `SpotLight` without `map` / `colorNode` goes to ONE `LocalLightsNode`.
+  - Everything else keeps a stock light node per light: the sun with its CSM, the hemisphere, shadow casters.
+  - `customCacheKey` hashes only the own-path lights, so a zone's lamps, windows, braziers and crystals never change a
+    key or a program.
+- `LocalLightsNode` stores 4 `vec4` per light in one `uniformArray` (capacity 32), updated per render call in view
+  space, and loops over them by a uniform count:
+  - row 0: view position + cutoff distance;
+  - row 1: view axis (target → light) + decay;
+  - row 2: colour × intensity + cos outer;
+  - row 3: cos inner.
+
+  The math is three's `SpotLightNode` / `PointLightNode`: `getDistanceAttenuation`, then
+  `smoothstep(cosOuter, cosInner, dot(L, axis))`. A point light uses cone cosines −2 / −1, which makes the cone factor
+  exactly 1.
+- **Why not three's `DynamicLighting` addon** (the first attempt): it keeps 3–4 `uniformArray`s per light type, each a
+  uniform buffer. The lit fragment stages reached 13 uniform buffers, over WebGPU's 12, and every lit pipeline failed
+  validation ("The number of uniform buffers (13) in the Fragment stage exceeds the maximum per-stage limit (12)"). A
+  first harness "after" run with it measured nothing real.
+
+**The shadow slots** (`rig.ts`): shadow-casting lights stay one node each, keyed by id. They are therefore a fixed pool
+in the scene from construction, in `LightRig.layout`: the sun, the hemisphere, the arena's 2 beacons (already
+persistent), and `LIGHT_LAYOUT.shadowSpotSlots = 2` spot slots.
+- A zone's shadow-map caster (`castsShadowMap`: spot kinds with `castShadow`) borrows a free slot, positioned in world
+  space.
+- `releasePunctuals` puts the slot back to idle: intensity 0, `shadow.autoUpdate = false` (never rendered), a 1×1 map
+  (`shadow.map.setSize(1, 1)`).
+- Non-shadow lights are still created and disposed per zone under the zone root (free under the layout).
+- Why 2 and not 6 (8 − 2 beacons):
+  - every slot is a shadow map that every lit fragment samples, lit or not;
+  - with 6 slots, 4 cascades + 2 beacons + 6 slots took the billboard material to 17 sampled textures (> 16; second
+    validation error of the first attempt);
+  - content's maximum is 1 per zone. The survey of all 21 zones (intact): max 1 shadow-casting spot, 0 shadow-casting
+    point lights, 20 non-shadow spots, 18 non-shadow points, 21 lights.
+- `castsShadowMap` is now spot kinds only. A `castShadow` lava / fire point light counts against the budget but renders
+  no map, as brazier / crystal / candle already did; no zone has one.
+- The dev budget check throws at the 3rd shadow-map caster (no free slot). The 8 / 24 counts are unchanged.
+
+**Stats / dump.**
+- `countPunctualLights` skips idle slots (`userData.ewaIdle`).
+- `dumpZone` takes `extraLights`; the renderer passes `LightRig.slotLightsInUse()` while a zone is loaded. The housing
+  checks and `lightIds` therefore see the zone's shadow caster as before.
+
+**Measured after (a) alone** (harness, same machine load):
+- first destination frame: preloaded 5.9 s, cold 5.0 s;
+- programs: 109 → 109 → 109.
+
+The light set was not the main cost. Node-build instrumentation (sandbox, wrapping `NodeManager._createNodeBuilder`)
+showed the remaining 76 builds / 5.4 s of the crossing:
+- 49 scatter `InstancedMesh` builds = 4.3 s. three's `RenderObject.getMaterialCacheKey` adds `object.uuid` for every
+  `InstancedMesh`, because its instance buffers live in the node graph, so each one is its own build whatever the
+  lights.
+- 11 plain meshes = 1.0 s.
+- 16 shadow-pass builds = 36 ms.
+
+## (b) Preparing the destination off the scene
+
+This is valid only because of (a): a compile made while zone A is up now has the same light key as zone B's frames.
+- **`Renderer.prepareZone(next, { focus })`**:
+  - `ZoneSystem.prepare` builds `next` with `scene: null` and deferred lights. The builder's `createPunctuals` returns
+    the array it keeps, filled at adoption. A light of `next` would light the current zone: every zone is laid out
+    around the origin.
+  - The hero tier is gated until adoption.
+  - `next`'s surfaces stay resident through the current zone's dispose (`preparedKeep`).
+  - The renderer gates every unit and compiles them in the background, nearest the arrival first (the same
+    `compileQueue`).
+- **`loadZone`** of the same zone (id, seed, harvest level) adopts it (`adoptPrepared`):
+  - the root joins the scene, the lights are created and the palette applied;
+  - phase 1 compiles only the first-view units the background run has not finished;
+  - the run continues without background slots (`CompileRun.urgent`), skipping units already ungated.
+- **Dropping**: a prepare of another zone, a `loadZone` of another zone, `dropPrepared()` or `dispose()` drops it.
+  Dropping while a zone is current keeps that zone's surfaces in the eviction.
+- **Client**:
+  - `SceneDirector.prepareZone(id, harvest, focus)`;
+  - World3D `prepareNearEdge`: within `PREPARE_EDGE_M` = 48 m of a link's edge point, checked every 30 fixed steps
+    outside battles, it prepares that zone at the arrival 8 m inside its opposite edge;
+  - the harness's preloaded handover prepares and records the prepare's frame gaps (`HandoverResult.prepare`).
+
+## Measured
+
+Intel Gen-12 iGPU, headless Chrome; other sessions' harness Chromes were running throughout. Before and after use two
+harness bundles built from the same tree, without and with this change (`EWA_HARNESS_BUILD_DIR` +
+`EWA_HARNESS_NO_BUILD`, two runs each; the third "after" value is the spec's own build path, run last).
+
+| | before | after |
+|---|---|---|
+| handover preloaded: first destination frame (SPEC ≤ 250 ms) | 6 402 / 8 895 ms | **105 / 68 / 196 ms** (`loadZone` 36 / 17 / 45 ms) |
+| handover not preloaded (SPEC ≤ 1 500 ms) | 7 734 / 8 562 ms | **3 781 / 3 742 / 4 659 ms** |
+| programs: before the crossing → first destination frame → settled | 109 → 119 / 125 → 113 | **109 → 109 → 109** |
+| the prepare (preloaded only, in the background before the crossing) | — | 3.9 / 2.9 / 7.6 s; longest frame 1 083 / 833 / 1 716 ms (the synchronous `buildZone`, 0.9 s in the sandbox), other frames at the idle rate |
+| `first-frame.spec.ts` mark (SPEC ≤ 2 500 ms on the reference GPU) | 64.0 / 34.4 s | **24.9 / 25.9 s** |
+
+Notes on the table:
+- Frames over 33 ms remain the norm on this iGPU under that load: its idle frame is 70–130 ms with the full post chain.
+  The "no frame > 33 ms" check is therefore meaningful only on the reference GPU.
+- The not-preloaded crossing is still over 1 500 ms. It still builds the destination (0.9 s) and node-builds every
+  scatter `InstancedMesh` and the new plain meshes (≈ 2.5 s here).
+
+**Sandbox** (`?zone=mirevale&track=1`, layout on):
+- programs 89 after step 8, 107 with Mirevale;
+- a prepared mire_route adopted in 2 ms (phase 1: 0 units), programs 107;
+- a cold cinderhold after it: phase 1 4.1 s, programs 99;
+- render targets 35 after step 8 (the 2 idle slots) and 36 with Mirevale.
+
+**Leaks:**
+- `leakCycle(3)`: geometries, programs, render targets, attributes and attribute bytes are ±0 after every unload.
+  Textures +1 from the second round on: the known water-normal re-init (HANDOFF open issue, not new).
+- Prepare → drop with Mirevale loaded: geometries 506 → 740 → 506, attributes 1 840 → 3 007 → 1 840, programs 107
+  throughout. The drop's eviction releases Mirevale's retired field sets (−33 compressed textures, H5c), as any
+  eviction does.
+
+**Visuals:** harness `stage()` shots (spawn-noon, gym-dusk, lamps-night) on mirevale and cinderhold, before vs after
+bundle:
+- mean |Δ| 0.2–0.7 / 255;
+- two runs of the before bundle differ by 0.8–5.5 / 255 (TRAA and day-cycle timing);
+- the lamp pools match (lamps-night).
+
+The warm re-key after an unload (Phase E3) now compiles nothing new, since no zone changes the light set. It is kept
+as a guard.
+
+## Tests
+
+- `test/light-layout.test.ts` (4):
+  - the layout key equals the boot key with the lights of 6 zones, while the stock `LightsNode` key differs for each;
+  - slots and idle counting;
+  - the loop's rows (view-space position, cone cosines, point light cone factor 1) and its key;
+  - `ZoneSystem.prepare` / `adopt` / `drop`: off the scene, lights deferred, the current zone's sets kept on drop, the
+    prepared sets kept through the current zone's dispose.
+- `lighting.test.ts`: `castsShadowMap` spot-only; a borrowed slot goes idle and is never disposed; the 3rd shadow-map
+  caster throws.
+- `zone-dispose.test.ts`: lights under the root + borrowed slots = `spec.lights`; the slot idles on dispose.
+- `zone-dump.test.ts`: the dump gets `extraLights`.
+- Client: no new vitest. `handover-hitch.spec.ts` records `programsBefore` / `programsSettled` / `prepare`, and
+  `EWA_HARNESS_NO_BUILD=1` serves a pre-built bundle (A/B).
+
+## Open
+
+- **The not-preloaded crossing (3.7 s)** builds the zone synchronously and node-builds every scatter `InstancedMesh`
+  (uuid-keyed). The fix: scatter instancing whose instance buffers are geometry attributes, read by name, so all
+  scatter meshes of a material share one node build. That touches the material graph, the shadow pass and the TRAA
+  velocity path.
+- **The prepare's one long frame** (0.8–1.1 s) is `buildZone`. Splitting the build into yielding steps would remove it.
+- **Slots**: a zone with more than 2 shadow-map casters needs `LIGHT_LAYOUT.shadowSpotSlots` raised, within the
+  16-sampled-texture budget (≤ 5 with the current billboard material).

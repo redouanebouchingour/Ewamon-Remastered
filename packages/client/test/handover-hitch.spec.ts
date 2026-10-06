@@ -30,7 +30,8 @@ let server: PageServer | null = null;
 
 test.beforeAll(async () => {
   test.setTimeout(300_000);
-  await buildHarness();
+  // `EWA_HARNESS_NO_BUILD=1`: serve the bundle already in `EWA_HARNESS_BUILD_DIR` (an A/B of two builds)
+  if (process.env['EWA_HARNESS_NO_BUILD'] !== '1') await buildHarness();
   server = await serveBuild(await freePort(5241));
 });
 

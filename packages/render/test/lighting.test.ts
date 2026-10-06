@@ -3,7 +3,7 @@ import { Group, PointLight, Scene, SpotLight } from 'three/webgpu';
 import type { LightSource } from '../src/descriptors.js';
 import { LIGHT_BUDGET } from '../src/descriptors.js';
 import {
-  CASCADE_SPLITS_M, CSM_OPTIONS, LightRig, SPEC_LIGHT_UNIT, SPOT_PARAMS, SUN_SHADOW, assertLightBudget, cascadeBreaks, castsShadowMap,
+  CASCADE_SPLITS_M, CSM_OPTIONS, LIGHT_LAYOUT, LightRig, SPEC_LIGHT_UNIT, SPOT_PARAMS, SUN_SHADOW, assertLightBudget, cascadeBreaks, castsShadowMap,
   flickerFactor, lightTypeFor,
 } from '../src/lighting/rig.js';
 import { heightFogFactor } from '../src/lighting/fog.js';
@@ -42,11 +42,12 @@ describe('§10.3.2 light budget', () => {
     expect(assertLightBudget([src('a', true)], { shadow: 7, nonShadow: 3 })).toEqual({ shadow: 8, nonShadow: 3 });
   });
 
-  it('maps kinds to Spot (−Y) vs Point lights, and only lava/fire point lights render shadow maps', () => {
+  it('maps kinds to Spot (−Y) vs Point lights, and only spot kinds render shadow maps (fixed layout, amended 2026-10-06)', () => {
     for (const k of ['lamp', 'lantern', 'beacon', 'window'] as const) expect(lightTypeFor(k)).toBe('SpotLight');
     for (const k of ['brazier', 'forge', 'lava', 'crystal', 'candle', 'fire'] as const) expect(lightTypeFor(k)).toBe('PointLight');
     expect(castsShadowMap({ kind: 'lantern', castShadow: true })).toBe(true);
-    expect(castsShadowMap({ kind: 'lava', castShadow: true })).toBe(true);
+    expect(castsShadowMap({ kind: 'lava', castShadow: true })).toBe(false);
+    expect(castsShadowMap({ kind: 'fire', castShadow: true })).toBe(false);
     expect(castsShadowMap({ kind: 'brazier', castShadow: true })).toBe(false);
     expect(castsShadowMap({ kind: 'lantern', castShadow: false })).toBe(false);
   });
@@ -98,14 +99,19 @@ describe('§10.3.1 sun + 4 cascades', () => {
 });
 
 describe('punctual lights (§10.3.2, §10.2.6)', () => {
-  it('creates, multiplies, disables and releases (disposing) lights', () => {
+  it('creates, multiplies, disables and releases lights (a shadow caster borrows a layout slot)', () => {
     const rig = new LightRig(new Scene());
     const parent = new Group();
     const h = rig.createPunctuals([src('lamp', true), { ...src('fire', false, 'brazier'), intensity: 4, flicker: { amplitude: 0.1, hz: 5 } }], parent);
     expect(h[0]!.light).toBeInstanceOf(SpotLight);
     expect(h[1]!.light).toBeInstanceOf(PointLight);
+    expect(h[0]!.slot).toBe(0);
+    expect(h[0]!.light.parent).toBe(rig.layout);                  // the slot stays in the layout group
+    expect(h[0]!.light.castShadow).toBe(true);
+    expect(h[1]!.light.castShadow).toBe(false);                   // batched by the layout
     expect(h[0]!.target!.position.y).toBeCloseTo(1.5, 9);       // pointing −Y
-    expect(parent.children.length).toBe(3);                       // 2 lights + 1 spot target
+    expect(parent.children.length).toBe(1);                       // the zone's own point light
+    expect(rig.slotLightsInUse()).toEqual([h[0]!.light]);
     expect(rig.counts()).toEqual({ shadow: 1, nonShadow: 1 });
 
     rig.setPunctualMultiplier(0.5);
@@ -115,20 +121,32 @@ describe('punctual lights (§10.3.2, §10.2.6)', () => {
     rig.update(1.3);
     expect(h[0]!.light.intensity).toBe(0);
     expect(h[1]!.light.intensity).toBe(0);
-    expect(parent.children.length).toBe(3);                       // objects are not removed
+    expect(parent.children.length).toBe(1);                       // objects are not removed
 
-    const spy = vi.spyOn(h[0]!.light, 'dispose');
+    const slotDispose = vi.spyOn(h[0]!.light, 'dispose');
+    const ownDispose = vi.spyOn(h[1]!.light, 'dispose');
     rig.releasePunctuals([h[0]!]);
-    expect(spy).toHaveBeenCalledTimes(1);
-    expect(parent.children.length).toBe(1);
+    expect(slotDispose).not.toHaveBeenCalled();                   // a slot is never disposed: it goes idle
+    expect(h[0]!.light.parent).toBe(rig.layout);
+    expect(h[0]!.light.castShadow).toBe(true);
+    expect(h[0]!.light.intensity).toBe(0);
+    expect((h[0]!.light as SpotLight).shadow.autoUpdate).toBe(false);
+    expect((h[0]!.light as SpotLight).shadow.mapSize.x).toBe(LIGHT_LAYOUT.idleShadowMap);
+    expect(rig.slotLightsInUse()).toEqual([]);
     expect(rig.counts()).toEqual({ shadow: 0, nonShadow: 1 });
+    rig.releasePunctuals([h[1]!]);
+    expect(ownDispose).toHaveBeenCalledTimes(1);
+    expect(parent.children.length).toBe(0);
     rig.dispose();
   });
 
-  it('refuses a 9th shadow caster in dev', () => {
+  it('refuses a 3rd shadow-map caster in dev (the layout has 2 slots); map-less casters count up to 8', () => {
+    expect(LIGHT_LAYOUT.shadowSpotSlots).toBe(2);
     const rig = new LightRig(new Scene());
-    rig.createPunctuals(Array.from({ length: 8 }, (_, i) => src(`s${i}`, true)), new Group());
+    rig.createPunctuals(Array.from({ length: 2 }, (_, i) => src(`s${i}`, true)), new Group());
     expect(() => rig.createPunctuals([src('extra', true)], new Group())).toThrow('light budget');
+    rig.createPunctuals(Array.from({ length: 6 }, (_, i) => src(`b${i}`, true, 'brazier')), new Group());
+    expect(() => rig.createPunctuals([src('b6', true, 'brazier')], new Group())).toThrow('light budget');
     rig.dispose();
   });
 });

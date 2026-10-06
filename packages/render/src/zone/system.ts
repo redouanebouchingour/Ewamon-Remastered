@@ -6,7 +6,8 @@
  */
 import type { Object3D } from 'three/webgpu';
 import type { ZoneSpec } from '../contracts.js';
-import type { HarvestLevel } from '../descriptors.js';
+import type { HarvestLevel, LightSource } from '../descriptors.js';
+import type { PunctualHandle } from '../lighting/rig.js';
 import type { SurfaceId } from '../materials/surfaces.js';
 import type { FrameHook, HostContext } from '../renderer.js';
 import { loadZone, zoneSurfaces, type ZoneHandleImpl } from './builder.js';
@@ -16,6 +17,8 @@ export class ZoneSystem implements FrameHook {
   private current: ZoneHandleImpl | null = null;
   private culled = 0;
   private pendingKeep: readonly SurfaceId[] = [];
+  /** Handover (b): the surfaces of a zone prepared off-scene; every dispose keeps them resident until it is adopted or dropped. */
+  private preparedKeep: readonly SurfaceId[] = [];
   private loads = 0;
 
   constructor(private readonly ctx: HostContext, private readonly clock: (() => number) | null = null) {}
@@ -31,7 +34,7 @@ export class ZoneSystem implements FrameHook {
         lighting: ctx.lighting,
         scene: ctx.scene,
         stats: () => ctx.statsRecord,
-        nextKeep: () => this.pendingKeep,
+        nextKeep: () => this.keep(),
         releaseGpu: (root) => releaseZoneAttributes(ctx, root),
         ...(opts.heroGate ? { heroGate: opts.heroGate } : {}),
       }, this.clock ?? undefined);
@@ -54,6 +57,60 @@ export class ZoneSystem implements FrameHook {
     this.pendingKeep = zoneSurfaces(next);
   }
 
+  private keep(): readonly SurfaceId[] {
+    if (this.preparedKeep.length === 0) return this.pendingKeep;
+    if (this.pendingKeep.length === 0) return this.preparedKeep;
+    return [...new Set([...this.pendingKeep, ...this.preparedKeep])];
+  }
+
+  /**
+   * Handover (b): builds `spec` OFF the scene while the current zone stays up — its root is not added, its lights are not
+   * created (a light of the next zone would light this one: every zone is laid out around the origin), its hero tier
+   * waits. `adopt` makes it the current zone; `drop` disposes it. Its surfaces stay resident through the current zone's
+   * dispose. The renderer compiles it meanwhile (`Renderer.prepareZone`).
+   */
+  async prepare(spec: ZoneSpec): Promise<PreparedZone> {
+    const ctx = this.ctx;
+    const lights = deferredLights(ctx.lighting);
+    let openHero!: () => void;
+    const heroGate = new Promise<void>((res) => { openHero = res; });
+    this.preparedKeep = zoneSurfaces(spec);
+    const handle = await loadZone(spec, {
+      materials: ctx.materials,
+      lighting: lights.deps,
+      scene: null,
+      stats: () => ctx.statsRecord,
+      // dropped unadopted, it must not evict the CURRENT zone's sets (adopted, it is the current zone: disposed first)
+      nextKeep: () => { const cur = this.zone(); return cur !== null && cur !== handle ? [...new Set([...this.keep(), ...cur.surfaces])] : this.keep(); },
+      releaseGpu: (root) => releaseZoneAttributes(ctx, root),
+      heroGate,
+    }, this.clock ?? undefined);
+    let state: 'prepared' | 'adopted' | 'dropped' = 'prepared';
+    return {
+      spec,
+      handle,
+      adopt: (): ZoneHandleImpl => {
+        if (state !== 'prepared') throw new Error(`@ewa/render: prepared zone '${spec.id}' is ${state}`);
+        state = 'adopted';
+        this.preparedKeep = [];
+        this.pendingKeep = [];   // `prepareHandover`'s keep was for this zone: it is loaded now
+        ctx.scene.add(handle.group);
+        lights.activate();
+        ctx.setLightingPalette(lightingPaletteOf(handle.palette));
+        ctx.setGrade(gradeOf(handle.palette));
+        this.current = handle;
+        return handle;
+      },
+      openHero: () => openHero(),
+      drop: (): void => {
+        if (state !== 'prepared') return;
+        state = 'dropped';
+        this.preparedKeep = [];
+        handle.dispose();
+      },
+    };
+  }
+
   /** The loaded zone (null when none / disposed). */
   zone(): ZoneHandleImpl | null { return this.current !== null && !this.current.disposed ? this.current : null; }
 
@@ -73,6 +130,38 @@ export class ZoneSystem implements FrameHook {
     if (this.current !== null) this.current.dispose();
     this.current = null;
   }
+}
+
+/** Handover (b): a zone built off the scene (`ZoneSystem.prepare`). */
+export interface PreparedZone {
+  readonly spec: ZoneSpec;
+  readonly handle: ZoneHandleImpl;
+  /** Adds the root to the scene, creates its lights, applies its palette; it is the current zone from now on. */
+  adopt(): ZoneHandleImpl;
+  /** Lets its hero texture tier stream (after the adopting load's phase 1). */
+  openHero(): void;
+  /** Disposes it unless adopted (idempotent). */
+  drop(): void;
+}
+
+/**
+ * The builder's light dependency for a prepared zone: `createPunctuals` only records the request and returns the array
+ * the builder keeps (and releases on dispose); `activate` fills it with the real lights once the zone is adopted.
+ */
+function deferredLights(rig: HostContext['lighting']): { deps: { createPunctuals(s: readonly LightSource[], parent: Object3D): PunctualHandle[]; releasePunctuals(h: readonly PunctualHandle[]): void }; activate(): void } {
+  let pending: { sources: readonly LightSource[]; parent: Object3D; out: PunctualHandle[] } | null = null;
+  return {
+    deps: {
+      createPunctuals: (sources, parent) => { const out: PunctualHandle[] = []; pending = { sources, parent, out }; return out; },
+      releasePunctuals: (h) => rig.releasePunctuals(h),
+    },
+    activate: () => {
+      if (pending === null) return;
+      const p = pending;
+      pending = null;
+      p.out.push(...rig.createPunctuals(p.sources, p.parent));
+    },
+  };
 }
 
 interface RenderObjectLike { readonly object: Object3D; getAttributes(): readonly object[] }

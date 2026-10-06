@@ -135,6 +135,11 @@ export function pickBattleHeading(c: Pick<TerrainCollider, 'blocked'> | null, x:
 export interface SceneDirector {
   /** `focus`: where the player will stand (render T4 compiles what the first view there draws before resolving). */
   loadZone(id: ZoneId, harvestState: HarvestState, focus?: { readonly x: number; readonly z: number } | null): Promise<void>;
+  /**
+   * Handover (render `prepareZone`): builds and compiles `id` off the scene while the current zone stays up, so the
+   * crossing's `loadZone(id, …)` adopts it. Resolves when it is compiled; a no-op on a renderer without it.
+   */
+  prepareZone(id: ZoneId, harvestState: HarvestState, focus?: { readonly x: number; readonly z: number } | null): Promise<void>;
   unloadZone(): void;
   /** `yaw`: the hall battle axis from `battleStart` (null / absent outside a hall; the arena's pocket decides anyway). */
   enterBattle(summary: { readonly battleId: string; readonly x: number; readonly z: number; readonly format: BattleFormat; readonly yaw?: number | null }): Promise<void>;
@@ -443,6 +448,11 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
       return activeActors;
     },
 
+    prepareZone(id, h, focus = null) {
+      if (id === current) return Promise.resolve();
+      const z = zoneDef(id);
+      return d.renderer.prepareZone?.(withNeighbours(zoneSpecFor(z, h), z), { focus }) ?? Promise.resolve();
+    },
     loadZone(id, h, focus = null) {
       const run = async (): Promise<void> => {
         if (loading !== null) await loading.catch(() => undefined);

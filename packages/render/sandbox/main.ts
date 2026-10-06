@@ -504,6 +504,14 @@ async function main(): Promise<void> {
       await (r.compileIdle?.() ?? Promise.resolve());
       return { phase1Ms: phase1, totalMs: Math.round(performance.now() - th), programs: r.renderer.info.memory.programs };
     },
+    /** Handover (b): builds + compiles `next` off the scene (`Renderer.prepareZone`); the next `handover(next)` adopts it. */
+    prepare: async (next: string, x?: number, z?: number) => {
+      const def2 = contentZone(next as ZoneId);
+      const spec2 = new URLSearchParams(location.search).get('neighbours') === '0' ? zoneSpecFor(def2, 'intact') : withNeighbours(zoneSpecFor(def2, 'intact'), def2);
+      const th = performance.now();
+      await r.prepareZone?.(spec2, { focus: { x: x ?? def2.spawn.x, z: z ?? def2.spawn.z } });
+      return { prepareMs: Math.round(performance.now() - th), programs: r.renderer.info.memory.programs };
+    },
     /** `?pipes=1`: render pipelines created per phase (count, summed / wall ms, the slowest). */
     pipes: () => pipeSummary(),
     pipeRecs: () => pipeRecs.map((p) => ({ ...p, t0: Math.round(p.t0), dt: Math.round(p.dt) })),

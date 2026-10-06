@@ -1458,3 +1458,23 @@ Affects: `packages/client/src/scene/World3D.ts` (`bindZoneAtlases`), `harness/Ha
   the live `SceneDirector` load focus falls back to `zone.spawn` only without a focus; the server puts a fast-travel
   arrival on the arrival point and the client follows the authoritative pose.
 - Test: `test/harness-anchors.test.ts` ("spawn-noon stands on the arrival point …").
+
+## Handover prepare (2026-10-06)
+
+Render's fixed light layout makes a compile done in one zone valid for the next. The render notes, "Handover: fixed
+light layout", give the design and the numbers.
+
+- **`SceneDirector.prepareZone(id, harvest, focus)`** passes `withNeighbours(zoneSpecFor(…))` to
+  `renderer.prepareZone`. The crossing's `loadZone(id, …)` then adopts the prepared zone (same id, seed and harvest
+  level).
+- **World3D `prepareNearEdge`**, every 30 fixed steps, outside battles:
+  - within 48 m of a link's edge point, it prepares that linked zone at the arrival 8 m inside its opposite edge;
+  - one zone at a time; a zone change forgets it;
+  - the build costs one long frame (about 1 s on the dev iGPU) while walking toward the edge, instead of the whole
+    crossing.
+- **Harness**: `handover(to, { preload: true })` also prepares, and `HandoverResult` gains `prepare` (ms, frame gaps),
+  `programsBefore` and `programsSettled`.
+- **Spec run options**: `EWA_HARNESS_BUILD_DIR` (common.ts) lets a second session build and serve its own bundle, and
+  `EWA_HARNESS_NO_BUILD=1` makes `handover-hitch.spec.ts` serve it as is (A/B of two bundles).
+- **Measured** (`handover-hitch.spec.ts`, dev iGPU): first destination frame preloaded 6.4–8.9 s → 68–196 ms; not
+  preloaded 7.7–8.6 s → 3.7–4.7 s. `first-frame.spec.ts`: 34–64 s → 25–26 s.

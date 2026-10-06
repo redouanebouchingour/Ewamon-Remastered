@@ -44,7 +44,8 @@ export { createSharedUniforms, harvestBlend, stepWetness, toHarvestLevel } from 
 
 // ---- §10.3 lighting ----
 export {
-  CASCADE_SPLITS_M, CSM_OPTIONS, LightRig, SPOT_PARAMS, SUN_SHADOW, assertLightBudget, castsShadowMap, flickerFactor, lightTypeFor,
+  CASCADE_SPLITS_M, CSM_OPTIONS, LIGHT_LAYOUT, LightRig, SPOT_PARAMS, SUN_SHADOW, assertLightBudget, castsShadowMap, createLightingLayout,
+  flickerFactor, lightTypeFor,
 } from './lighting/rig.js';
 export type { LightCounts, PunctualHandle } from './lighting/rig.js';
 export {

@@ -7,14 +7,20 @@
  * - Punctual lights are created from `LightSource` descriptors (`createPunctuals`), parented by the
  *   caller (the zone root, so the zone's disposal owns them) and registered here so the day cycle
  *   multiplier, harvest switch and flicker reach them. Budget: 8 shadow-casting + 24 non-shadowing.
+ * - The fixed light layout (handover, SPEC §10.3.2 as amended 2026-10-06): the renderer's `lighting` is the
+ *   layout (`createLightingLayout`, `layout.ts`), which loops over every non-shadow Spot / Point light in one uniform
+ *   array, so a zone's own non-shadow lights never change a program or a cache key. Shadow-casting lights keep one
+ *   light node each, keyed by light id, so they are a fixed pool owned here and in the scene from boot: 2
+ *   shadow-casting spot slots that a zone borrows. Every zone therefore renders with the boot's light set.
  *
  * `CSMShadowNode.updateFrustums()` dereferences its `camera`, which the node only receives on its
  * first build (`setup` → `_init(builder)`); calling it before the first render throws, so
  * `updateFrustums()` here is a guarded no-op until then (implementation note).
  */
-import { DirectionalLight, HemisphereLight, Object3D, PointLight, SpotLight } from 'three/webgpu';
+import { DirectionalLight, Group, HemisphereLight, Object3D, PointLight, SpotLight, Vector3 as V3 } from 'three/webgpu';
 import type { Scene, Vector3 } from 'three/webgpu';
 import { CSMShadowNode } from 'three/addons/csm/CSMShadowNode.js';
+import { LightLayout } from './layout.js';
 import { LIGHT_BUDGET, type LightKind, type LightSource } from '../descriptors.js';
 import { isDevBuild } from '../env.js';
 
@@ -47,21 +53,40 @@ export function cascadeBreaks(far: number, breaks: number[]): number[] {
 // ---- §10.3.2 local lights ------------------------------------------------------------------------------
 
 export const SPOT_PARAMS = Object.freeze({ angle: 0.87, penumbra: 0.5, mapSize: 512, bias: -0.0006, normalBias: 0.03, radius: 2 });
-export const POINT_SHADOW_MAP = 256;
 export const LIGHT_DECAY = 2;
 
+/**
+ * The fixed light layout (handover; SPEC §10.3.2 as amended 2026-10-06).
+ * - `shadowSpotSlots`: the shadow-map casters a zone may place. Every slot is a shadow map every lit fragment samples
+ *   (PCF) whether lit or not, and WebGPU's default 16 sampled textures per fragment stage bound the scene's shadow
+ *   maps: the billboard material already samples 5 textures + the environment, so 4 cascades + 2 beacons + 6 slots
+ *   measured 17. 2 covers every zone (content max 1) with one spare.
+ * - `maxLocalLights`: the uniform-array capacity of the looped non-shadow lights (24 per zone, with headroom; the
+ *   loop runs over the lights present, not the capacity).
+ * - `idleShadowMap`: the map size of a slot no zone uses (never rendered).
+ */
+export const LIGHT_LAYOUT = Object.freeze({ reservedShadowLights: 2, shadowSpotSlots: 2, maxLocalLights: 32, idleShadowMap: 1 });
+
+/** The renderer's `lighting` (set at §10.1.2 step 4): non-shadow lights looped from one uniform array (`layout.ts`). */
+export function createLightingLayout(): LightLayout {
+  return new LightLayout(LIGHT_LAYOUT.maxLocalLights);
+}
+
 const SPOT_KINDS: ReadonlySet<LightKind> = new Set<LightKind>(['lamp', 'lantern', 'beacon', 'window']);
-const POINT_SHADOW_KINDS: ReadonlySet<LightKind> = new Set<LightKind>(['lava', 'fire']);
 
 /** `lamp`/`lantern`/`beacon`/`window` → SpotLight pointing −Y; the rest → PointLight. */
 export function lightTypeFor(kind: LightKind): 'SpotLight' | 'PointLight' {
   return SPOT_KINDS.has(kind) ? 'SpotLight' : 'PointLight';
 }
 
-/** Whether the created light actually renders a shadow map (PointLight casters only for lava/fire). */
+/**
+ * Whether the light renders a shadow map: spot kinds only (a layout slot). Amended 2026-10-06: a `castShadow`
+ * point light (lava / fire, like brazier / crystal / candle before) counts against the shadow budget but renders
+ * none. A cube-map slot in the fixed layout would cost every lit fragment 6 faces of shadow lookups for a kind no
+ * zone casts with (content survey, render IMPLEMENTATION-NOTES "Handover: fixed light layout").
+ */
 export function castsShadowMap(s: Pick<LightSource, 'kind' | 'castShadow'>): boolean {
-  if (!s.castShadow) return false;
-  return lightTypeFor(s.kind) === 'SpotLight' || POINT_SHADOW_KINDS.has(s.kind);
+  return s.castShadow && lightTypeFor(s.kind) === 'SpotLight';
 }
 
 export interface LightCounts { shadow: number; nonShadow: number }
@@ -101,13 +126,29 @@ export interface PunctualHandle {
   readonly light: PointLight | SpotLight;
   /** The spot target (a sibling object 1 m below the light), null for point lights. */
   readonly target: Object3D | null;
+  /** The layout's shadow slot this source borrows (its `light` is the slot's), or null for a light of its own. */
+  readonly slot: number | null;
 }
+
+/** Applies the §10.3.1 local spot-shadow parameters. */
+function spotShadow(spot: SpotLight, mapSize: number): void {
+  spot.shadow.mapSize.set(mapSize, mapSize);
+  spot.shadow.bias = SPOT_PARAMS.bias;
+  spot.shadow.normalBias = SPOT_PARAMS.normalBias;
+  spot.shadow.radius = SPOT_PARAMS.radius;
+}
+
+const _p = new V3();
 
 export class LightRig {
   readonly sun: DirectionalLight;
   readonly csm: CSMShadowNode;
   readonly hemi: HemisphereLight;
   private readonly handles: PunctualHandle[] = [];
+  /** The fixed layout's shadow slots and their targets, in the scene from construction to dispose. */
+  readonly layout: Group;
+  private readonly slots: SpotLight[] = [];
+  private readonly slotUsed: boolean[] = [];
   private punctualMul = 1;
   private punctualOn = true;
   private disposed = false;
@@ -133,6 +174,25 @@ export class LightRig {
     this.hemi = new HemisphereLight(0x9fb8d8, 0x4a5236, HEMI_INTENSITY * SPEC_LIGHT_UNIT);
     this.hemi.name = 'ewa:hemi';
     scene.add(this.hemi);
+
+    // the fixed layout: never removed, never hidden (an invisible parent drops a light from the light set, C13)
+    this.layout = new Group();
+    this.layout.name = 'ewa:light-layout';
+    for (let i = 0; i < LIGHT_LAYOUT.shadowSpotSlots; i++) {
+      const spot = new SpotLight(0xffffff, 0, 1, SPOT_PARAMS.angle, SPOT_PARAMS.penumbra, LIGHT_DECAY);
+      spot.castShadow = true;
+      spotShadow(spot, LIGHT_LAYOUT.idleShadowMap);
+      spot.shadow.autoUpdate = false;
+      spot.shadow.needsUpdate = false;
+      spot.name = `ewa:light-slot:${i}`;
+      spot.userData = { ewaSlot: i, ewaIdle: true };
+      spot.target.name = `ewa:light-slot-target:${i}`;
+      spot.target.position.set(0, -1, 0);
+      this.layout.add(spot, spot.target);
+      this.slots.push(spot);
+      this.slotUsed.push(false);
+    }
+    scene.add(this.layout);
   }
 
   /** §10.3.1: the sun follows the camera focus so the cascades follow the player. */
@@ -170,45 +230,61 @@ export class LightRig {
   }
 
   /**
-   * Creates one light per source, parents it (and a spot's target) under `parent`, registers it and
-   * returns the handles. Throws `RangeError('light budget')` in dev when the registered total would
-   * exceed 8 / 24 (prod: logs and creates the lights anyway, the audit then fails).
+   * Creates one light per non-shadow source, parented (with a spot's target) under `parent`; a shadow-casting spot
+   * source borrows a free layout slot instead (the slot stays in the layout group, positioned in world space). All
+   * are registered. Throws `RangeError('light budget')` in dev when the registered total would exceed 8 / 24 or the
+   * slots run out (prod: logs; a source without a slot gets an unshadowed light of its own, the audit then fails).
    */
   createPunctuals(sources: readonly LightSource[], parent: Object3D): PunctualHandle[] {
     try {
       assertLightBudget(sources, this.counts());
+      let want = 0;
+      for (const s of sources) if (castsShadowMap(s)) want++;
+      if (want > this.slotUsed.filter((u) => !u).length) throw new RangeError('light budget');
     } catch (e) {
       if (isDevBuild()) throw e;
       console.error('@ewa/render: light budget exceeded (§10.3.2)');
     }
+    parent.updateWorldMatrix(true, false);
     const out: PunctualHandle[] = [];
     for (const s of sources) {
       const [x, y, z] = s.position;
-      let light: PointLight | SpotLight;
-      let target: Object3D | null = null;
-      if (lightTypeFor(s.kind) === 'SpotLight') {
-        const spot = new SpotLight(s.color, s.intensity, s.range, SPOT_PARAMS.angle, SPOT_PARAMS.penumbra, LIGHT_DECAY);
-        target = new Object3D();
-        target.name = `ewa:light-target:${s.id}`;
-        target.position.set(x, y - 1, z);   // pointing −Y
-        spot.target = target;
-        spot.shadow.mapSize.set(SPOT_PARAMS.mapSize, SPOT_PARAMS.mapSize);
-        spot.shadow.bias = SPOT_PARAMS.bias;
-        spot.shadow.normalBias = SPOT_PARAMS.normalBias;
-        spot.shadow.radius = SPOT_PARAMS.radius;
-        light = spot;
+      const slot = castsShadowMap(s) ? this.slotUsed.indexOf(false) : -1;
+      let h: PunctualHandle;
+      if (slot >= 0) {
+        const spot = this.slots[slot]!;
+        this.slotUsed[slot] = true;
+        spot.color.set(s.color);
+        spot.distance = s.range;
+        spot.position.copy(_p.set(x, y, z).applyMatrix4(parent.matrixWorld));
+        spot.target.position.copy(_p.set(x, y - 1, z).applyMatrix4(parent.matrixWorld));   // pointing −Y
+        spotShadow(spot, SPOT_PARAMS.mapSize);
+        spot.shadow.autoUpdate = true;
+        spot.shadow.needsUpdate = true;
+        spot.name = `ewa:light:${s.id}`;
+        spot.userData = { ewaLightId: s.id, ewaLightKind: s.kind, ewaSlot: slot, ewaIdle: false };
+        h = { source: s, light: spot, target: spot.target, slot };
       } else {
-        const point = new PointLight(s.color, s.intensity, s.range, LIGHT_DECAY);
-        point.shadow.mapSize.set(POINT_SHADOW_MAP, POINT_SHADOW_MAP);
-        light = point;
+        let light: PointLight | SpotLight;
+        let target: Object3D | null = null;
+        if (lightTypeFor(s.kind) === 'SpotLight') {
+          const spot = new SpotLight(s.color, s.intensity, s.range, SPOT_PARAMS.angle, SPOT_PARAMS.penumbra, LIGHT_DECAY);
+          target = new Object3D();
+          target.name = `ewa:light-target:${s.id}`;
+          target.position.set(x, y - 1, z);   // pointing −Y
+          spot.target = target;
+          light = spot;
+        } else {
+          light = new PointLight(s.color, s.intensity, s.range, LIGHT_DECAY);
+        }
+        light.name = `ewa:light:${s.id}`;
+        light.userData = { ewaLightId: s.id, ewaLightKind: s.kind };
+        light.castShadow = false;   // looped by the layout (createLightingLayout): adding or removing it changes no program
+        light.position.set(x, y, z);
+        parent.add(light);
+        if (target !== null) parent.add(target);
+        h = { source: s, light, target, slot: null };
       }
-      light.name = `ewa:light:${s.id}`;
-      light.userData = { ewaLightId: s.id, ewaLightKind: s.kind };
-      light.castShadow = castsShadowMap(s);
-      light.position.set(x, y, z);
-      parent.add(light);
-      if (target !== null) parent.add(target);
-      const h: PunctualHandle = { source: s, light, target };
       this.handles.push(h);
       out.push(h);
     }
@@ -216,16 +292,35 @@ export class LightRig {
     return out;
   }
 
-  /** Unregisters, detaches and disposes the lights (frees their shadow maps via `LightShadow.dispose`). */
+  /** Unregisters the handles: own lights are detached and disposed (`LightShadow.dispose`); a borrowed slot goes idle. */
   releasePunctuals(handles: readonly PunctualHandle[]): void {
     for (const h of handles) {
       const i = this.handles.indexOf(h);
       if (i < 0) continue;
       this.handles.splice(i, 1);
+      if (h.slot !== null) { this.idleSlot(h.slot); continue; }
       h.light.removeFromParent();
       h.target?.removeFromParent();
       h.light.dispose();
     }
+  }
+
+  /** A slot no zone uses: dark, never rendered, its map shrunk back to the idle size (the boot's memory). */
+  private idleSlot(k: number): void {
+    const spot = this.slots[k]!;
+    this.slotUsed[k] = false;
+    spot.intensity = 0;
+    spot.shadow.autoUpdate = false;
+    spot.shadow.needsUpdate = false;
+    spotShadow(spot, LIGHT_LAYOUT.idleShadowMap);
+    (spot.shadow.map as { setSize?(w: number, h: number): void } | null)?.setSize?.(LIGHT_LAYOUT.idleShadowMap, LIGHT_LAYOUT.idleShadowMap);
+    spot.name = `ewa:light-slot:${k}`;
+    spot.userData = { ewaSlot: k, ewaIdle: true };
+  }
+
+  /** The layout slots a zone currently borrows (the zone dump lists them with the zone's own lights). */
+  slotLightsInUse(): readonly SpotLight[] {
+    return this.slots.filter((_, k) => this.slotUsed[k] === true);
   }
 
   handlesList(): readonly PunctualHandle[] { return this.handles; }
@@ -253,7 +348,8 @@ export class LightRig {
     if (this.disposed) return;
     this.disposed = true;
     this.releasePunctuals([...this.handles]);
-    this.scene.remove(this.sun, this.sun.target, this.hemi);
+    this.scene.remove(this.sun, this.sun.target, this.hemi, this.layout);
+    for (const l of this.slots) l.dispose();
     this.csm.dispose();
     this.sun.dispose();
     this.hemi.dispose();

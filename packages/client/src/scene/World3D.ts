@@ -32,7 +32,7 @@ import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import { FISH_REACH_M } from '@ewa/protocol';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
-import { ACTOR_POOL_SIZE, createRenderer, heroSurfaces, part3Of } from '@ewa/render';
+import { ACTOR_POOL_SIZE, createRenderer, edgePoint, heroSurfaces, part3Of } from '@ewa/render';
 import type { CompileProgress, Renderer, SurfaceId, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
 import { createAudioDirector } from '../audio/AudioDirector';
 import type { AudioDirector } from '../audio/AudioDirector';
@@ -96,6 +96,12 @@ import type { WorldInstance } from './worldHost';
 const MAX_STEPS = 4;
 const NO_ITEMS: Readonly<Record<string, number>> = Object.freeze({});
 const HIDDEN_STEP_MS = 250;
+/**
+ * Handover (render `prepareZone`): within this distance of a link's edge point the linked zone is built and compiled
+ * off the scene, so the crossing adopts it instead of building and compiling it then. Checked every 30 fixed steps.
+ */
+const PREPARE_EDGE_M = 48;
+const OPPOSITE_DIR = { n: 's', s: 'n', e: 'w', w: 'e' } as const;
 const NAMEPLATE_MS = 500;
 const DEV_MS = 1000;
 /** actor-pool budget: statics + the local avatar + the 6 arena spectators come first (render §10.7.6: 48 rigs) */
@@ -869,7 +875,35 @@ class World implements World3D {
     this.syncRaid(room.state, true);
   }
 
+  private prepareSteps = 0;
+  private preparedFor: ZoneId | null = null;
+
+  /** Handover: prepares the linked zone whose edge point the player is within `PREPARE_EDGE_M` of (one at a time). */
+  private prepareNearEdge(): void {
+    if (++this.prepareSteps < 30) return;
+    this.prepareSteps = 0;
+    const z = this.zone;
+    if (z === null || this.director.inBattle) return;
+    const { x, z: pz } = this.input.pose;
+    for (const d of ['n', 'e', 's', 'w'] as const) {
+      const to = z.links[d];
+      if (to === undefined) continue;
+      const [ex, ez] = edgePoint(z.kind, d);
+      if (Math.hypot(x - ex, pz - ez) > PREPARE_EDGE_M) continue;
+      if (this.preparedFor === to) return;
+      this.preparedFor = to;
+      const next = zoneDef(to);
+      const back = OPPOSITE_DIR[d];
+      const [ax, az] = edgePoint(next.kind, back);
+      const k = 8;   // the arrival stands ~8 m inside the destination's edge (spine §4.6)
+      const arrival = { x: ax + (back === 'e' ? -k : back === 'w' ? k : 0), z: az + (back === 's' ? -k : back === 'n' ? k : 0) };
+      void this.director.prepareZone(to, harvestStateFor(to, this.flags()), arrival).catch(() => undefined);
+      return;
+    }
+  }
+
   private onZoneChanged(h: ZoneHandle | null, z: ZoneDef | null): void {
+    this.preparedFor = null;
     this.stepCollider = h === null ? null : createStepCollider(h.collider);
     this.input.setCollider(this.stepCollider);
     this.zone = z;
@@ -1426,6 +1460,7 @@ class World implements World3D {
     this.input.step(STEP_MS);
     // Phase A: pockets are reached only by warps / switch teleports / corrections; the floor test is allocation-free
     if (this.ready && this.zoneLoaded) this.director.updatePocket(this.input.pose.x, this.input.pose.z);
+    if (this.ready && this.zoneLoaded) this.prepareNearEdge();
     this.remotes.step(STEP_MS, this.input.pose.x, this.input.pose.z);
     this.targets.step(this.input.pose.x, this.input.pose.z, this.worldBlocked());
     this.battle.player.step(STEP_MS);
