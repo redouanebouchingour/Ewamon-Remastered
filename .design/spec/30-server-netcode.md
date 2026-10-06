@@ -102,6 +102,7 @@ export const EnvSchema = z.object({
   CORS_ORIGINS: z.string().default('http://localhost:5173'),   // comma-separated exact origins
   TRUST_PROXY: z.union([z.literal('false'), z.literal('loopback'), z.string()]).default('loopback'),
   SERVER_SEED: z.string().min(1).optional(),                    // world rng seed; absent → fnv1a32(`${processId}:${bootMs}`) logged at boot
+  WORLD_WEATHER: z.enum(['on', 'off']).default('on'),           // Phase D7: the overworld weather schedule; testEnv sets 'off'
   ZONE_CAPACITY: z.coerce.number().int().min(2).max(500).default(200),
   TICK_HZ: z.literal('20').default('20'),                       // not configurable in v1; present so the value is visible
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
@@ -303,6 +304,8 @@ Invariant: at every instant the player exists in at least one room's `state.play
 
 ```
 1. state.tick += 1; state.timeOfDay = (clock() % DAY_LENGTH_MS) / DAY_LENGTH_MS
+1b. Phase D7 weather: when weatherBucket(now) changed, state.weather = weatherAt(SERVER_SEED, zone, now) (written only when it differs;
+   env WORLD_WEATHER 'off' keeps 'none' — testEnv defaults to 'off' so room tests stay clock-independent)
 2. for each client: userData.budgetMs = min(BUDGET_MAX_MS, budgetMs + TICK_MS)
    (inputs are applied when they arrive, in onMessage('input'); the tick only refills budget)
 3. emote timers: any PlayerState with emote !== 0 whose emoteSetAt + 2000 <= now → emote = 0
@@ -326,6 +329,7 @@ Step 7 may `await` (one DB transaction per resolved turn). The tick callback is 
 export interface SpawnRecord {
   readonly id: string;              // `${zoneId}:${counter}` — counter is per-director, monotonic
   readonly speciesId: string; readonly level: number; readonly variantKey: VariantKey; readonly isAlpha: boolean;
+  readonly isShiny?: boolean;       // Phase D4: shinyFromDraw(alpha draw) — the low 9 bits of the alpha draw's u32 are 0 (1/512); no extra draw
   readonly ability: string;         // species.abilities[rng.int(abilities.length)] — one draw at spawn (spine §3.2, roster-coverage A3)
   readonly medium: 'land' | 'water';// EncounterSlot.medium ?? 'land'
   readonly x: number; readonly z: number;
@@ -357,6 +361,7 @@ Rules:
 - **Day/night.** `timeOfDay` in `[0.25, 0.75)` is day, else night (dawn at 06:00, dusk at 18:00 of the 48-minute day). A roll considers slots whose `timeOfDay` is `'any'` or matches. A spawn born in the day is not despawned at dusk; it lives out `lifetimeMs`.
 - **Roll.** Weight-proportional pick over eligible slots (weights multiplied by `swarmWeightBoost` for `swarmSpecies`); `level = levelMin + rng.int(levelMax - levelMin + 1)`. One `rng.pick`-equivalent draw for the slot, one for the level.
 - **Alpha.** `rng.next() < ALPHA_CHANCE + alphaBonus` where `ALPHA_CHANCE = 0.02` (content §3.2) — **not** 1/120: the content constant is the source of truth and 1/120 (0.0083) is the legacy value this replaces. A slot with `tier: 'alpha'` forces `isAlpha = true`. One draw.
+- **Shiny (Phase D4).** No draw of its own: `isShiny = (u * 2^32) mod 512 === 0` where `u` is the alpha draw (`next()` is `u32 / 2^32`, exact), so P = 1/512 exactly, independent of the alpha threshold (which reads the high bits) to within 2^-23, and every seeded spawn sequence is byte-identical to pre-D4 (`shiny.test.ts` pins the digest). `SpawnState.isShiny` mirrors it; `startWild` projects it (`CreatureInstance.isShiny`); the catch persists it (`creature_instances.is_shiny`) and `markCaught(…, isShiny)` sets `dex_entries.shiny_caught`. Statics, trainers and raid bosses are never shiny.
 - **Variant.** `rng.next() < VARIANT_CHANCE + variantBonus` (0.03 base) → `rng.pick(variantPool)`; `variantPool` is `WEEKDAY_VARIANT[weekday]` when non-null, else the 4 non-normal keys. Two draws when the first succeeds, one otherwise.
 - **Position.** Up to 8 attempts: `x = originX + 1 + rng.next() * (size - 2)`, same for `z`, accepted if (`medium === 'water' ? isWater : isWalkable`) and ≥ 6 m from every other spawn and ≥ 10 m from every player. Failure → no spawn this tick. (The 16 m margin is `walkable = 0`, so spawns never land in scenery.)
 - **Cadence.** When `all.length < targetCount` and `now >= nextSpawnAt`: spawn one, `nextSpawnAt = now + respawnMinMs + rng.int(respawnMaxMs - respawnMinMs + 1)`. At most one spawn per tick. Until the director first reaches `targetCount` the delay is not waited (one spawn per tick, so a fresh room is populated in < 1 s); the delay draw is consumed either way, so seeded sequences are unchanged (amended 2026-09-25, server IMPLEMENTATION-NOTES W1).
@@ -434,6 +439,14 @@ A transaction failure rolls everything back and the session keeps `before` as it
 `battleResync { battleId }`: answers `battleResync { battleId, state: session.state, stateDigest }` only to a seat holder; the full `BattleState` for the opposing side includes its party — for **pvp** the opposing side's unrevealed party members are sent with `hp`, `moves`, `heldItem`, `ability` intact (Pokémon-style team preview is a client choice; hiding them would require a projection the spine does not define). Accepted for v1 — spine §4.5 (reconciled 2026-09-18).
 
 **Deadline.** `battles.tick(now)`: for a session with `now >= deadlineAt && !resolving`: for each seat that must act and has `pending === null` — replacement phase → `switch` to the lowest-index `hp > 0` party member; otherwise `{ kind: 'move', move: firstMoveWithPp }` or, if no PP anywhere, `{ kind: 'move', move: active.moves[0].id }` (core's struggle rule, if any, is core's; the spine defines none, so `validateAction` fails on `noPp` and the fallback is `forfeit` for pvp and `flee` for wild — `flee` fails when trapped, in which case the wild side simply acts). Then `resolveNow`. Two consecutive deadline auto-actions by the same player in a pvp battle = forfeit.
+
+### 30.4.3a Battle weather (Phase D7)
+
+`BattleDeps.weather(format, at)` names the ambient weather `open()` passes to `createBattle` (and records in `battle_history.start.weather`): `ZoneState.weather` for `wild` (incl. statics), `trainer` and `league` battles whose arena point is outside every interior pocket (`interiorAt(zone, x, z) === null` — halls are indoors, so every league fight and every gym-hall trainer fight starts with none); `none` for `pvp` (rating fairness) and raids. The schedule (`game/weather.ts`): `WEATHER_BUCKET_MS = 6 min`; each bucket's weather is one weighted draw from `createRng(`${SERVER_SEED}:weather:${zoneId}:${bucket}`)` over the biome's `WEATHER_SCHEDULE` weights (every zone, towns included).
+
+### 30.4.3b Achievement events (Phase D5)
+
+`advanceQuests` events added: `catch { isAlpha?, isShiny? }` (battle catch, raid catch), `dex { caught }` after a battle catch, a raid catch and a trade that received creatures (`progress.caughtCount`), `raidClear` with the raid's rewarded clear, `streak { days }` from `dailyLogin` (its `questProgress` rides the join's `progressionDelta`); `trade` already existed. `dexCaught` / `loginStreak` objectives are absolute (max-merged, an unchanged value writes nothing); the rest count +1 per matching event. Market purchases and evolutions do not emit `dex`; the next catch or trade catches the count up.
 
 ### 30.4.4 Formats
 

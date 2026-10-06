@@ -51,6 +51,10 @@ export type Evolution =
   | { readonly kind: 'split'; readonly atLevel: number;
       readonly branches: readonly { readonly into: string;
         readonly condition: { readonly kind: 'ability'; readonly ability: string } | null }[] }
+  // Phase D3: stone and trade evolutions. Never level-triggered (`applyExp` reports no `evolveReady` for them);
+  // the server evolves on an explicit request, resolved by `itemEvolutionTarget` / `tradeEvolutionTarget`.
+  | { readonly kind: 'item'; readonly item: string; readonly into: string }
+  | { readonly kind: 'trade'; readonly into: string }
   | null;
 
 export interface SpeciesDef {
@@ -180,7 +184,7 @@ export type ConsumableEffect =
   | { readonly kind: 'repel'; readonly steps: number }
   | { readonly kind: 'lure'; readonly steps: number }
   | { readonly kind: 'escapeRope' }
-  | { readonly kind: 'evolutionStone'; readonly species: string; readonly into: string } // reserved; zero entries in v1
+  | { readonly kind: 'evolutionStone' } // Phase D3: the species it evolves name it in SpeciesDef.evolution { kind: 'item', item }
   | { readonly kind: 'sellOnly' };
 
 export interface ConsumableDef {
@@ -216,6 +220,8 @@ export interface CreatureInstance {
   readonly heldItem: string | null;
   readonly variantKey: VariantKey;
   readonly isAlpha: boolean;
+  /** Phase D4: the 1/512 shiny tier; present (true) only on a shiny, absent otherwise (no effect on battle maths) */
+  readonly isShiny?: boolean;
   readonly caughtAt: { readonly zoneId: string; readonly at: number } | null; // at = unix ms; null = starter/gift
   readonly ribbons: readonly string[];
   readonly favorite: boolean;
@@ -291,6 +297,12 @@ export interface CreateBattleOpts {
   readonly terrain: Terrain;
   readonly seed: RngState | number | string;
   readonly sides: readonly [Omit<Side, 'mustSwitch' | 'consumedItems'>, Omit<Side, 'mustSwitch' | 'consumedItems'>];
+  /**
+   * Phase D7: the zone's overworld weather. Ambient: `field.weather = { kind, turns: 0 }` (turns 0 = no countdown)
+   * and one `weatherSet { source: null, turns: 0 }` before the switch-in hooks. A move's weather replaces it for
+   * 5 turns as usual. Absent or 'none' → the state and events are byte-identical to a battle without the field.
+   */
+  readonly weather?: WeatherKind;
 }
 
 // ─── §2.10 Actions ───────────────────────────────────────────────────────────

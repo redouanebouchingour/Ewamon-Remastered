@@ -496,7 +496,7 @@ export class Stage implements BattleStage {
     }
     if (have !== undefined && have.id === desc.id && sameSprite(have.bb.descriptor, desc)) {
       // the same creature (the client rebuilds descriptor objects): keep the billboard, refresh the palette
-      have.bb.setVariant(desc.variant, desc.isAlpha);
+      have.bb.setVariant(desc.variant, desc.isAlpha, desc.isShiny === true);
       return;
     }
     if (have !== undefined) { have.bb.dispose(); this.removeFromList(have); }

@@ -5,6 +5,7 @@
  */
 import { FAST_TRAVEL_REFUSALS } from '@ewa/protocol';
 import type { ServerMessage } from '@ewa/protocol';
+import { queueTradeEvolutions } from '../app/itemUseFeedback';
 import { toast, useNotificationsStore } from '../state/notifications';
 import { applyInventoryDelta, applyProgressionDelta } from '../state/session';
 import { useUiStore } from '../state/ui';
@@ -69,9 +70,11 @@ export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'han
       if (tradeReceiptPending) {
         tradeReceiptPending = false;
         applyInventoryDelta(m.placement !== undefined ? m : { ...m, addedTo: 'box' });
+        queueTradeEvolutions(m.creaturesUpdated);
         return;
       }
       applyInventoryDelta(m);
+      queueTradeEvolutions(m.creaturesUpdated);
       return;
     case 'progressionDelta':
       applyProgressionDelta(m);

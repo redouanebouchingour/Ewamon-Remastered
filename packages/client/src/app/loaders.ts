@@ -108,7 +108,7 @@ export function playLoader({ request }: LoaderFunctionArgs): Promise<{ readonly 
 export async function dexLoader({ request }: LoaderFunctionArgs) {
   const [dex] = await Promise.all([load(request, 'dex'), sessionReady(request.signal)]);
   useSessionStore.getState().applyProgressionDelta(
-    toProgressionDelta({ dexSeen: dex.seen, dexCaught: dex.caught, dexVariants: dex.variants, dexAlpha: dex.alpha }),
+    toProgressionDelta({ dexSeen: dex.seen, dexCaught: dex.caught, dexVariants: dex.variants, dexAlpha: dex.alpha, dexShiny: dex.shiny ?? [] }),
   );
   return dex;
 }
@@ -150,7 +150,7 @@ export async function guildLoader({ request }: LoaderFunctionArgs) {
   return { q, guilds: await loadOptional(request, 'guilds', { query: { search: q } }) };
 }
 
-export const MARKET_PARAMS = ['search', 'variant', 'isAlpha', 'levelMin', 'levelMax', 'sort', 'page'] as const;
+export const MARKET_PARAMS = ['search', 'variant', 'isAlpha', 'isShiny', 'levelMin', 'levelMax', 'sort', 'page'] as const;
 export type MarketTab = 'browse' | 'mine' | 'bids';
 
 export async function marketLoader({ request }: LoaderFunctionArgs) {

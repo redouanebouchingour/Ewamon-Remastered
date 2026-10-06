@@ -152,6 +152,8 @@ export type Evolution =
   | { readonly kind: 'split'; readonly atLevel: number;
       readonly branches: readonly { readonly into: string;
         readonly condition: { readonly kind: 'ability'; readonly ability: string } | null }[] }
+  | { readonly kind: 'item'; readonly item: string; readonly into: string }   // Phase D3: an evolution stone, any level
+  | { readonly kind: 'trade'; readonly into: string }                         // Phase D3: when traded
   | null;
 
 export interface SpeciesDef {
@@ -179,6 +181,8 @@ export interface SpeciesDef {
 Legacy `learnableMoves` is a flat string list with no levels. Migration rule for content: the species' default `moves` get level 1; the remaining entries get levels `evolvesAt`-aware — spaced evenly between 5 and `min(evolution.atLevel ?? 40, 60)` in list order, rounded to a multiple of 3. The generated table is committed as data, validated, and thereafter hand-edited; the generator is a one-shot tool, not a runtime rule.
 
 The `split` evolution exists exactly once in legacy (`Lightning Rod → aonred`, default `→ darkyon`); its branch with `condition: null` is the default and must be last.
+
+**Phase D3 — stone and trade evolutions.** `item` and `trade` are never level-triggered: `applyExp` reports no `evolveReady` for them, and their species keep their legacy learnset (spaced by the legacy level). Core exports `itemEvolutionTarget(evolution, item)`, `tradeEvolutionTarget(evolution)` and `evolutionChildren(evolution)` (every target, any trigger); `evolve` is trigger-agnostic. Nine families use them (`packages/content/src/data/evolutions.ts`, applied by the generator): `embrock`, `flampling` → Ember Stone; `stormchick` → Storm Stone; `mossling` → Tide Stone; `seedrift` → Verdant Stone; `berkest` → Moon Stone; `hexroach` → Dusk Stone; `glowtent`, `resilith` → trade. None is in a league team or in the progression walker's parties. Eviolite and the speed tie-break keep reading `evolution !== null`, so battle semantics (and the fuzz digests) are unchanged. The roster report's `AcquisitionPath` gains `{ kind: 'item', from, item }` and `{ kind: 'trade', from }`; validate requires every stone an `item` evolution names to be sold, found or rewarded somewhere.
 
 ### 2.4 MoveDef and the 23 effects
 
@@ -360,7 +364,7 @@ export type ConsumableEffect =
   | { readonly kind: 'repel'; readonly steps: number }
   | { readonly kind: 'lure'; readonly steps: number }
   | { readonly kind: 'escapeRope' }
-  | { readonly kind: 'evolutionStone'; readonly species: string; readonly into: string } // reserved; zero entries in v1
+  | { readonly kind: 'evolutionStone' } // Phase D3: the species it evolves name it in SpeciesDef.evolution { kind: 'item', item }
   | { readonly kind: 'sellOnly' };
 
 export interface ConsumableDef {
@@ -392,6 +396,16 @@ The 17 held/key items and their hooks (Sp.Atk / Sp.Def do not exist; the two "sp
 | Weakness Policy | held | `onSuperEffectiveHit { raise: { atk, 2 }, consume: true }` |
 | Speed Scarf | held | `statMul { spd, 1.1 }` |
 | HM Surf / HM Cut / HM Strength | key | none; `fieldVerb` set |
+
+**Phase D1–D3 items** (hand-authored in `packages/content/src/data/progressionItems.ts`; the generated `ITEMS` stays 17 and `CONSUMABLES` 23):
+
+| Item | kind | notes |
+|---|---|---|
+| `old_rod` | ItemDef, `key` | Maren's gift at `drowned_harbour`; `fieldVerb: null` until fishing ships |
+| `tm:<Move>` × 39 (`TM_MOVES`) | ItemDef, `key`, priced 2000–5000 by power | reusable: `POST /creature/:id/moves` accepts a TM move while the TM is owned; the shop sells one copy (`alreadyOwned`, `oneAtATime`); key items are never sold back. Sold from Saltmourn on (`PROGRESSION_STOCK`), three are quest rewards |
+| `ember_stone`, `tide_stone`, `storm_stone`, `verdant_stone`, `moon_stone`, `dusk_stone` | ConsumableDef, `evolutionStone`, 3000 / 1500, not in battle | `POST /item/use` on a creature that reacts answers `evolveReady { into, item }` without spending; the confirmed `POST /creature/:id/evolve` spends one. Sold from Stormrook on |
+
+Machine / tutor learnability (`canLearnMachineMove`): the move is Normal-type, or shares a type with the species, or is in the species' level learnset. Moves the creature already knows are always accepted by `POST /creature/:id/moves` (a taught move stays).
 
 Orbs: the 10 legacy rows verbatim (`spark_orb 1.0`, `crest_orb 1.75`, `prism_orb 2.5`, `aether_orb 999 maxStack 1`, `mythos_orb 1.5 + alpha_or_variant ×4`, `verdant_orb / ember_orb / tide_orb / dusk_orb / phantom_orb 1.0 + type ×3` for Grass / Fire / Water / Dark / Ghost). Legacy aliases `ewamon_ball, great_ball, ultra_ball, ultraball, master_ball` are **not** carried: there is no old database.
 
@@ -456,6 +470,7 @@ export interface CreatureInstance {
   readonly heldItem: string | null;
   readonly variantKey: VariantKey;
   readonly isAlpha: boolean;
+  readonly isShiny?: boolean;          // Phase D4: the 1/512 tier; present (true) only on a shiny, absent otherwise; no battle effect
   readonly caughtAt: { readonly zoneId: string; readonly at: number } | null; // at = unix ms; null = starter/gift
   readonly ribbons: readonly string[];
   readonly favorite: boolean;
@@ -543,6 +558,7 @@ export interface CreateBattleOpts {
   readonly terrain: Terrain;
   readonly seed: RngState | number | string;
   readonly sides: readonly [Omit<Side, 'mustSwitch' | 'consumedItems'>, Omit<Side, 'mustSwitch' | 'consumedItems'>];
+  readonly weather?: WeatherKind;      // Phase D7: ambient zone weather — field.weather = { kind, turns: 0 } (turns 0 = no countdown, no weatherTick) and one weatherSet { turns: 0, source: null } before the switch-in hooks; a move's weather replaces it for 5 turns; absent / 'none' = byte-identical state and events (fuzz digests unchanged)
 }
 /** Applies onSwitchIn hooks for both leads (side 0 first) and returns those events. */
 export function createBattle(o: CreateBattleOpts, content: ContentIndex): TurnResult;
@@ -889,6 +905,7 @@ export interface NpcDef {
   readonly when: string | null;                // story flag required to appear
   readonly until: string | null;               // story flag that removes them
   readonly react: readonly { readonly when: string; readonly lines: readonly string[] }[];
+  readonly tutor?: readonly string[];          // Phase D2: move ids this NPC teaches for MOVE_TUTOR_PRICE (3000); data only, x/z alone feed the layout
 }
 export interface TrainerDef {
   readonly id: string; readonly name: string; readonly x: number; readonly z: number; readonly look: string;
@@ -1030,10 +1047,19 @@ export type QuestObjective =
   | { readonly kind: 'deliverItem'; readonly item: string; readonly qty: number; readonly npcId: string }
   | { readonly kind: 'flag'; readonly flag: string }
   | { readonly kind: 'earnBadge'; readonly badge: BadgeId }
-  | { readonly kind: 'restoreZone'; readonly zoneId: ZoneId };
+  | { readonly kind: 'restoreZone'; readonly zoneId: ZoneId }
+  // Phase D5 achievements; dexCaught / loginStreak are absolute (progress = the event's value, max-merged)
+  | { readonly kind: 'dexCaught'; readonly count: number }
+  | { readonly kind: 'catchTier'; readonly tier: 'alpha' | 'shiny'; readonly count: number }
+  | { readonly kind: 'completeTrades'; readonly count: number }
+  | { readonly kind: 'clearRaids'; readonly count: number }
+  | { readonly kind: 'loginStreak'; readonly days: number };
+
+export type QuestKind = 'story' | 'achievement';   // Phase D5
 
 export interface QuestDef {
   readonly id: string; readonly title: string; readonly summary: string;
+  readonly kind?: QuestKind;           // Phase D5; absent = 'story'. 'achievement' rows: giver null, requires [], money/item rewards only
   readonly giver: string | null;       // npc id; null = auto-offered
   readonly zoneId: ZoneId;
   readonly act: Act;
@@ -1041,7 +1067,9 @@ export interface QuestDef {
   readonly objectives: readonly { readonly id: string; readonly label: string; readonly objective: QuestObjective }[];
   readonly rewards: { readonly money: number; readonly items: Readonly<Record<string, number>>; readonly creature: { readonly species: string; readonly level: number } | null; readonly flag: string | null };
 }
-export const QUESTS: readonly QuestDef[];
+export const QUESTS: readonly QuestDef[];            // the 12 story quests, then the 30 ACHIEVEMENTS (Phase D5)
+export const ACHIEVEMENTS: readonly QuestDef[];      // Phase D5: dex 10/30/60/90/130, catches 1/10/50/200, alpha, shiny, wins 10/100/500, trainer 50, PvP 1/25, 8 badges, 12 league trainers, champion, 8 statics, trades 1/10/50, raids 1/10/50, streaks 7/30/100
+export const STORY_QUESTS: readonly QuestDef[];      // QUESTS without the achievements
 ```
 
 Every `zoneId` is a `ZoneId`; the legacy quests keyed to `bloom-route`/`ember-town` (which never fired) are not carried.
@@ -1061,6 +1089,7 @@ export interface StoryBeat {
   readonly after: readonly string[];   // lines after the battle / on completion
   readonly harvest: { readonly zoneId: ZoneId; readonly to: HarvestState } | null; // the beat changes a zone's render state
   readonly starter: boolean;           // exactly one beat has this
+  readonly grant?: Readonly<Record<string, number>>; // Phase D1: items added when the beat completes (same transaction), sent as inventoryDelta; never a gate
 }
 export const STORY: readonly StoryBeat[];
 
@@ -1275,6 +1304,7 @@ export class SpawnState extends Schema {
   @type('boolean') isAlpha = false;
   @type('string') engagedBy = '';    // player uuid while a battle holds it; '' = free
   @type('uint32') despawnAtTick = 0;
+  @type('boolean') isShiny = false;   // Phase D4; appended last so the earlier field indexes are unchanged
 }
 
 export class BattleSummary extends Schema {
@@ -1301,7 +1331,7 @@ export class RaidState extends Schema {
 export class ZoneState extends Schema {
   @type('uint32') tick = 0;                       // 20 Hz
   @type('float32') timeOfDay = 0;                 // 0..1, one full day = 48 real minutes
-  @type('string') weather = 'none';               // WeatherKind, cosmetic in the overworld; battles set their own
+  @type('string') weather = 'none';               // WeatherKind; Phase D7: the zone's per-biome schedule (30 §30.2.8 step 1b); wild / trainer / league battles outside interiors start under it
   @type('string') harvestState = 'intact';        // the zone's content DEFAULT (ZoneDef.harvestState), same for every viewer; each client renders harvestStateFor(zone, ownFlags) (§3.5) — the story is per player <!-- reconciled 2026-09-18 -->
   @view() @type({ map: PlayerState }) players = new MapSchema<PlayerState>();   // keyed by player uuid
   @view() @type({ map: SpawnState }) spawns = new MapSchema<SpawnState>();     // keyed by spawn id
@@ -1435,17 +1465,18 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /party/swap` | `{ partyId: string; boxId: string }` | `{ party, box }` | bearer |
 | `POST /party/withdraw` / `POST /party/deposit` | `{ id }` | `{ party, box }` | bearer |
 | `POST /creature/:id/nickname` | `{ nickname: 1..16 | null }` | `CreatureInstance` | bearer |
-| `POST /creature/:id/moves` | `{ moves: string[] }` (1..4, ⊆ learnable at level) | `CreatureInstance` | bearer |
+| `POST /creature/:id/moves` | `{ moves: string[] }` (1..4; each already known, learnable at level, or — Phase D2 — a `TM_MOVES` move whose TM the player owns and the species can be taught) | `CreatureInstance` | bearer |
 | `POST /creature/:id/setup` | `{ ability: string; heldItem: string | null }` | `CreatureInstance & { inventoryDelta: InventoryDeltaBody }` (`CreatureSetupRes`: equipping takes one from the inventory and returns the previously held item) | bearer |
-| `POST /creature/:id/evolve` | `{ into: string }` | `CreatureInstance` | bearer |
+| `POST /creature/:id/evolve` | `{ into: string }` (level: core evolveReady; Phase D3 stone: an owned stone, one spent; trade: the creature carries `TRADE_EVOLVE_RIBBON`, which is removed) | `CreatureInstance & { inventoryDelta? }` (the stone count when one was spent) | bearer |
+| `POST /creature/:id/tutor` | `{ move: string; forget: string | null }` (Phase D2: a tutor NPC of the presence zone teaches `move`; learnable; not yet known; `forget` required at four moves) | `CreatureInstance & { inventoryDelta }` (money − `MOVE_TUTOR_PRICE`) | bearer |
 | `POST /creature/:id/release` | — | `204` (refused when `locked`) | bearer |
 | `POST /creature/:id/flags` | `{ favorite?: boolean; locked?: boolean }` | `CreatureInstance` | bearer |
 | `POST /item/use` | `{ item: string; target: string | null; qty: 1..99 }` | `{ inventory, creaturesUpdated, events }` (server-validated effect) | bearer |
 | `POST /heal` | — | `{ party }` (must be in a `healer: true` zone) | bearer |
-| `GET /dex` | — | `{ seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[] }` | bearer |
+| `GET /dex` | — | `{ seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[]; shiny?: string[] }` (Phase D4 `shiny`: species with a shiny catch) | bearer |
 | `GET /shop/:zoneId` | — | `{ stock: string[]; prices: Record<string, number> }` | bearer |
 | `POST /shop/buy` / `POST /shop/sell` | `{ item: string; qty: 1..99 }` | `{ inventory, money }` | bearer |
-| `GET /marketplace` | query `search, variant, isAlpha, levelMin, levelMax, sort, page, pageSize<=50` | `{ listings: ListingView[]; total }` | bearer |
+| `GET /marketplace` | query `search, variant, isAlpha, isShiny (Phase D4), levelMin, levelMax, sort, page, pageSize<=50` | `{ listings: ListingView[]; total }` (`ListingView.isShiny?` present when true) | bearer |
 | `GET /marketplace/my/active` · `GET /marketplace/my/bids` · `GET /marketplace/:id` | — | `ListingView[]` / `ListingView & { bids: BidView[] }` | bearer |
 | `POST /marketplace/list` | `{ creatureId, startingBid >= 100, buyNowPrice: number | null, durationHours: 12|24|48 }` | `ListingMutationRes` = `ListingView & { inventoryDelta }` (`creaturesRemoved: [creatureId]`) (5/h; 409 `inBattle` during a battle) | bearer |
 | `POST /marketplace/:id/bid` | `{ amount }` | `ListingMutationRes` (`inventoryDelta.money` after escrow) (30/h) | bearer |
@@ -1532,6 +1563,7 @@ export const creatureInstances = pgTable('creature_instances', {
   heldItem: varchar('held_item', { length: 32 }),
   variantKey: varchar('variant_key', { length: 8 }).notNull().default('normal'),
   isAlpha: boolean('is_alpha').notNull().default(false),
+  isShiny: boolean('is_shiny').notNull().default(false),           // migration 0003_shiny (Phase D4)
   caughtZoneId: varchar('caught_zone_id', { length: 32 }),
   caughtAt: timestamp('caught_at', { withTimezone: true }),
   ribbons: jsonb('ribbons').$type<string[]>().notNull().default([]),
@@ -1573,6 +1605,7 @@ export const dexEntries = pgTable('dex_entries', {
   caughtAt: timestamp('caught_at', { withTimezone: true }),
   variants: jsonb('variants').$type<VariantKey[]>().notNull().default([]),
   alphaSeen: boolean('alpha_seen').notNull().default(false),
+  shinyCaught: boolean('shiny_caught').notNull().default(false),   // migration 0003_shiny (Phase D4)
 }, (t) => [primaryKey({ columns: [t.playerId, t.speciesId] })]);
 
 export const questProgress = pgTable('quest_progress', {
@@ -1626,6 +1659,7 @@ export const listings = pgTable('listings', {
   creatureId: uuid('creature_id').notNull().references(() => creatureInstances.id),
   speciesId: varchar('species_id', { length: 32 }).notNull(),    // denormalised for search
   level: smallint('level').notNull(), variantKey: varchar('variant_key', { length: 8 }).notNull(), isAlpha: boolean('is_alpha').notNull(),
+  isShiny: boolean('is_shiny').notNull().default(false),           // migration 0003_shiny (Phase D4), denormalised for the filter
   startingBid: integer('starting_bid').notNull(),
   currentBid: integer('current_bid'),
   currentBidderId: uuid('current_bidder_id').references(() => players.id),
@@ -1797,7 +1831,8 @@ export interface ProgressRepo {
   dex(tx: Tx, playerId: string): Promise<{ seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[] }>;
   markSeen(tx: Tx, playerId: string, speciesId: string, now: Date): Promise<boolean>;   // idempotent; true when the species was new to the dex (live-ops newSpeciesSeen)
   flagSetAt(tx: Tx, playerId: string, flag: string): Promise<Date | null>;              // trainer rematch windows (§30.4.4)
-  markCaught(tx: Tx, playerId: string, speciesId: string, variant: VariantKey, isAlpha: boolean, now: Date): Promise<{ newSpecies: boolean }>;
+  markCaught(tx: Tx, playerId: string, speciesId: string, variant: VariantKey, isAlpha: boolean, now: Date, isShiny?: boolean): Promise<{ newSpecies: boolean }>;   // isShiny (Phase D4) sets dex shiny_caught, never cleared
+  caughtCount(tx: Tx, playerId: string): Promise<number>;   // Phase D5: distinct species caught (the dexCaught achievement value)
   quest(tx: Tx, playerId: string, questId: string): Promise<{ objectiveId: string; count: number; done: boolean; claimedAt: Date | null }[]>;
   advance(tx: Tx, playerId: string, questId: string, objectiveId: string, count: number, done: boolean): Promise<void>;
   claim(tx: Tx, playerId: string, questId: string, now: Date): Promise<boolean>;   // false when already claimed
@@ -1833,7 +1868,7 @@ export interface MarketRepo {
   creatureSlot(tx: Tx, creatureId: string): Promise<{ ownerId: string; slotKind: string; slotIndex: number } | null>;
 }
 export function marketFee(price: number): number;   // floor(price * MARKET.feePercent / 100)
-export interface ClosedListing { readonly id: string; readonly sold: boolean; readonly sellerId: string; readonly buyerId: string | null; readonly creatureId: string; readonly speciesId: string; readonly variantKey: VariantKey; readonly isAlpha: boolean; readonly price: number | null }
+export interface ClosedListing { readonly id: string; readonly sold: boolean; readonly sellerId: string; readonly buyerId: string | null; readonly creatureId: string; readonly speciesId: string; readonly variantKey: VariantKey; readonly isAlpha: boolean; readonly isShiny: boolean; readonly price: number | null }
 
 export interface SocialRepo {
   requestFriend(tx: Tx, requesterId: string, addresseeId: string, now: Date): Promise<'requested' | 'accepted'>;   // a reverse pending request is accepted, not mirrored (friendships_pair_uq); AlreadyFriends
@@ -1954,4 +1989,4 @@ Lock order, global, so no two transactions can deadlock: (1) `listings` row (`FO
 - **Legacy story, quests, seasonal events, swarms and hotspots.** Their zone ids do not exist; the story bible supplies new beats.
 - **Auto-evolution and auto-forget.** Both are explicit player choices via REST.
 - **Optimistic-concurrency retry wrappers.** Row locks replace them; a `version` column remains for diagnostics only.
-- **Evolution stones.** The `ConsumableEffect` kind is reserved; zero items ship.
+- ~~**Evolution stones.**~~ Shipped in Phase D3 (six stones, §2.3 / §2.6).

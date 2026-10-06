@@ -10,6 +10,7 @@ import { ABILITIES } from './data/abilities';
 import { ITEMS } from './data/items';
 import { ORBS } from './data/orbs';
 import { CONSUMABLES } from './data/consumables';
+import { EVOLUTION_STONES, KEY_ITEMS } from './data/progressionItems';
 import { TYPE_CHART } from './data/typechart';
 import { ZONES } from './data/zones';
 import { ENCOUNTER_TABLES } from './data/encounters';
@@ -91,6 +92,18 @@ export { ABILITIES } from './data/abilities';
 export { ITEMS } from './data/items';
 export { ORBS } from './data/orbs';
 export { CONSUMABLES } from './data/consumables';
+export {
+  EVOLUTION_STONES,
+  KEY_ITEMS,
+  MOVE_TUTOR_PRICE,
+  PROGRESSION_STOCK,
+  TM_MOVES,
+  TM_PREFIX,
+  TRADE_EVOLVE_RIBBON,
+  canLearnMachineMove,
+  tmItemId,
+  tmMoveOf,
+} from './data/progressionItems';
 export { TYPE_CHART } from './data/typechart';
 
 // ─── §3 world tables ─────────────────────────────────────────────────────────
@@ -107,6 +120,9 @@ export {
 export { LEGENDARY_IDS, LEGENDARY_STATICS, MYTHICAL_IDS } from './data/statics';
 export { BADGES, LEAGUE, LEAGUE_STORY_GATES } from './data/league';
 export { QUESTS } from './data/quests';
+export { ACHIEVEMENTS, ACHIEVEMENT_IDS, isAchievement } from './data/achievements';
+/** Phase D5: the story quests (QUESTS without the achievements). */
+export const STORY_QUESTS: readonly QuestDef[] = QUESTS.filter((q) => q.kind !== 'achievement');
 export { STORY } from './data/story';
 export { DAILY_SWARMS, RAID_HOTSPOTS, SEASONAL_EVENTS, VARIANT_PALETTES, WEEKDAY_VARIANT } from './data/liveops';
 export { BATTLE_PASS } from './data/battlePass';
@@ -249,7 +265,7 @@ export type { MapCell } from './worldMap';
 export { MAP_STEP, computeMapPositions, zoneMapPositions, zoneMapSize } from './worldMap';
 
 // ─── roster + validate ───────────────────────────────────────────────────────
-export { childrenOf, computeRosterReport, stageOf } from './roster';
+export { childrenOf, computeRosterReport, evolveLevelOf, stageOf } from './roster';
 export type { RosterInputs, Stage } from './roster';
 export { DEFAULT_TABLES, validate } from './validate';
 export type { ContentTables, ValidateOptions } from './validate';
@@ -314,6 +330,9 @@ const abilityById: ReadonlyMap<string, AbilityDef> = new Map(ABILITIES.map((a) =
 const itemById: ReadonlyMap<string, ItemDef | ConsumableDef> = new Map<string, ItemDef | ConsumableDef>([
   ...ITEMS.map((i): [string, ItemDef | ConsumableDef] => [i.id, i]),
   ...CONSUMABLES.map((c): [string, ItemDef | ConsumableDef] => [c.id, c]),
+  // Phase D1–D3: old_rod + TMs (key) and the six evolution stones (consumables)
+  ...KEY_ITEMS.map((i): [string, ItemDef | ConsumableDef] => [i.id, i]),
+  ...EVOLUTION_STONES.map((c): [string, ItemDef | ConsumableDef] => [c.id, c]),
 ]);
 const orbById: ReadonlyMap<string, OrbDef> = new Map(ORBS.map((o) => [o.id, o]));
 const speciesByDex: readonly SpeciesDef[] = [...SPECIES].sort((a, b) => a.dexNumber - b.dexNumber);

@@ -283,3 +283,53 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
 - Tests: `test/worldMap.test.ts` (every zone placed, cells unique, linked zones adjacent in the link direction, the three
   branches off the road, refusal of a broken layout, the 21 visited flags known and nothing else with the prefix,
   validate green).
+
+## Phase D1–D3 — story grants, TMs + tutors, evolution stones (2026-10-06)
+
+- **Where the data lives.** `data/items.ts` / `data/consumables.ts` stay the generated legacy tables (17 / 23 rows; the
+  counts tests and validate's `ITEMS.length` rule are unchanged). The Phase D items are hand-authored in
+  `data/progressionItems.ts`: `KEY_ITEMS` (`old_rod` + one TM per `TM_MOVES`, id `tm:<Move id>`, name `TMnn <Move>`,
+  priced by power 2000 / 2500 / 3500 / 5000) and `EVOLUTION_STONES` (six consumables, 3000 / 1500). The ContentIndex's
+  `item()` resolves both; `ContentTables` gained optional `keyItems` / `stones` (default the committed tables).
+- **D1 grants.** `StoryBeat.grant?` (schema: record of id → positive int). Grants: `bloom_after` HM Cut,
+  `drowned_harbour` Old Rod (Maren speaks this beat as harbourmaster; `current_after` is his gym voice), `current_after`
+  HM Surf, `fault_after` HM Strength. Each granting beat got one stage-direction `after` line announcing the gift.
+  Validate: grant items exist; a grant is a source for the "obtainable" checks below.
+- **D2 learnability** (`canLearnMachineMove`): Normal-type move, or a move sharing a type with the species, or one already
+  in the species' level learnset. One rule for TMs and tutors; no per-species compatibility table.
+- **D2 tutors.** `NpcDef.tutor?` (schema: optional non-empty id list). The zones.ts `npc()` helper only writes the key
+  when given, so every other NPC record is unchanged; x/z are untouched, so `plan.test` / heightfield digests hold.
+  Tutors: `vesperveil.lantern_maker` (Shadow Sneak, Spectral Burn, Night Slash, Endeavor) and `skyrend.roost_keeper`
+  (Brave Bird, Sky Pierce, Dragon Rush, Double Edge), each with one new line naming the fee. `MOVE_TUTOR_PRICE` 3000.
+- **Shops.** `PROGRESSION_STOCK` (TMs from Saltmourn, stones from Stormrook, Solenne sells all six) is appended to the
+  town stock in zones.ts. Three quest rewards gained a TM (q05 Cross Poison — sold nowhere else, q06 Giga Drain,
+  q07 Shadow Ball).
+- **D3 families.** `data/evolutions.ts` `STONE_AND_TRADE_EVOLUTIONS` (9): embrock / flampling → ember_stone, stormchick
+  → storm_stone, mossling → tide_stone, seedrift → verdant_stone, berkest → moon_stone, hexroach → dusk_stone, glowtent /
+  resilith → trade. Chosen with no member in any league team or in `packages/server/test/fixtures/progression/*.json`
+  (the walker's parties and boxes). `species.ts` was edited in place and `scripts/migrate-legacy.ts` applies the same
+  table (keeping the legacy level for learnset spacing), so a regeneration reproduces it; `test/progression-items.test.ts`
+  asserts species.ts equals the table.
+- **Roster.** `childrenOf` = core `evolutionChildren`; new `evolveLevelOf` (0 for item / trade) replaces the
+  `evolution?.atLevel` reads (RC-5 / RC-9); `AcquisitionPath` gains `{ kind: 'item', from, item }` / `{ kind: 'trade',
+  from }`. Coverage stays 130/130, 79 directly placed, 67 families.
+- **Validate (new block).** Grant items exist; every TM move exists, is unique, has a priced key item and is sold or
+  rewarded somewhere; key items are `slot: 'key'` without hooks; every stone is used by some `item` evolution and is sold
+  / found / rewarded somewhere (else its species would be unobtainable); an `item` evolution names a stone; tutors stand
+  in towns and teach real moves; a shop never lists an unpriced key item.
+- `TRADE_EVOLVE_RIBBON = 'trade_evolve'` is exported here so server and client share the marker.
+- Tests: `test/progression-items.test.ts` (12); `test/coverage.test.ts` children/atLevel updated for the new kinds plus
+  two path assertions.
+
+## Phase D5 — achievements (2026-10-06)
+
+- `QuestDef.kind?: 'story' | 'achievement'` (absent = story). Objective kinds added: `dexCaught { count }` and
+  `loginStreak { days }` (absolute on the server), `catchTier { tier: 'alpha' | 'shiny', count }`, `completeTrades { count }`,
+  `clearRaids { count }`. Schema + types updated.
+- `data/achievements.ts`: 30 `ACHIEVEMENTS` (dex 10/30/60/90/130, catches 1/10/50/200, alpha, shiny, wins 10/100/500,
+  trainer 50, PvP 1/25, all 8 badges, all 12 league trainers, champion, all 8 statics, trades 1/10/50, raids 1/10/50,
+  streaks 7/30/100). Appended to `QUESTS` (so the server's quest path and `/quests/claim` need no change); `zoneId`
+  'mirevale' (a required field with no meaning here), `act` a rough tier. Exports `ACHIEVEMENTS`, `ACHIEVEMENT_IDS`,
+  `isAchievement`, `STORY_QUESTS` (index.ts; QUESTS without the achievements — defined in index to avoid an import cycle).
+- validate: an achievement must have giver null, no requires, money/item rewards only; `dexCaught` ≤ species count.
+- Tests: `test/achievements.test.ts` (4); `test/counts.test.ts` now checks 12 story + 30 achievements.

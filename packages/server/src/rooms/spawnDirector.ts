@@ -15,6 +15,8 @@ export interface SpawnRecord {
   readonly level: number;
   readonly variantKey: VariantKey;
   readonly isAlpha: boolean;
+  /** Phase D4: the 1/512 shiny tier — the low 9 bits of the alpha draw (no extra draw; absent = false) */
+  readonly isShiny?: boolean;
   /** species.abilities[rng.int(abilities.length)] — one draw at spawn */
   readonly ability: string;
   /** EncounterSlot.medium ?? 'land' */
@@ -46,6 +48,18 @@ export const FEATURED_VARIANT_BONUS = 0.025;
 
 export const NON_NORMAL_VARIANTS: readonly VariantKey[] = ['dawn', 'dusk', 'verdant', 'ember'];
 export const DEFAULT_LIVE_OPS: LiveOpsMods = { alphaBonus: 0, variantBonus: 0, swarmSpecies: [], swarmWeightBoost: 1, variantPool: NON_NORMAL_VARIANTS };
+
+/** Phase D4: one spawn in SHINY_ODDS is shiny. */
+export const SHINY_ODDS = 512;
+
+/**
+ * Phase D4: shiny from the alpha draw's low bits. `next()` is u32 / 2^32 (exact), so `u * 2^32` is the u32 and
+ * `u32 mod 512 === 0` has probability exactly 1/512. The alpha test reads the high bits (`u < ~0.01`), so the two
+ * are independent to within one part in 2^23 — and the spawn stream gains no draw: every seeded sequence is unchanged.
+ */
+export function shinyFromDraw(u: number): boolean {
+  return (u * 4294967296) % SHINY_ODDS === 0;
+}
 
 /** Engage range (§30.3): distance ≤ 3.0 m. */
 export const ENGAGE_RANGE_M = 3.0;
@@ -160,7 +174,9 @@ export class SpawnDirector {
     // alpha: one draw (an 'alpha' tier slot forces it)
     // Q12: an active event's featured species get +0.01 alpha / +0.025 variant (legacy constants); draws unchanged
     const featured = this.mods.featuredSpecies?.includes(slot.species) === true;
-    const alphaRoll = this.rng.next() < ALPHA_CHANCE + this.mods.alphaBonus + (featured ? FEATURED_ALPHA_BONUS : 0);
+    const alphaDraw = this.rng.next();
+    const alphaRoll = alphaDraw < ALPHA_CHANCE + this.mods.alphaBonus + (featured ? FEATURED_ALPHA_BONUS : 0);
+    const isShiny = shinyFromDraw(alphaDraw);
     const isAlpha = slot.tier === 'alpha' || alphaRoll;
     // variant: one draw, plus one pick on success
     let variantKey: VariantKey = 'normal';
@@ -201,6 +217,7 @@ export class SpawnDirector {
         level,
         variantKey,
         isAlpha,
+        isShiny,
         ability,
         medium,
         x,

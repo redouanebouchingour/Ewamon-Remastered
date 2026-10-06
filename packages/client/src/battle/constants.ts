@@ -31,6 +31,8 @@ export function HP_DRAIN(frac: number): number {
 export const SWITCH_MS = 800;
 export const SWITCH_OUT_MS = 350;
 export const SWITCH_IN_MS = 450;
+/** Phase D4: the shiny sparkle after a shiny's switch-in. */
+export const SHINY_MS = 900;
 
 export const STATUS_MS = 500;
 export const STAGE_MS = 400;

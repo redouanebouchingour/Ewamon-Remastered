@@ -3,7 +3,8 @@
  * is projected in a live battle (§30.6.3). Every effect is computed with @ewa/core (applyExp, evolve,
  * calcMaxHp) — the client never sends a result, only an intent.
  */
-import { applyExp, calcMaxHp, evolve, expToLevel, majorStatus, removeStatus } from '@ewa/core';
+import { MOVE_TUTOR_PRICE, TRADE_EVOLVE_RIBBON, TM_MOVES, canLearnMachineMove, tmItemId } from '@ewa/content';
+import { applyExp, calcMaxHp, evolve, expToLevel, itemEvolutionTarget, majorStatus, removeStatus, tradeEvolutionTarget } from '@ewa/core';
 import type { ConsumableDef, CreatureInstance, ItemDef, StatusId } from '@ewa/core';
 import type { CreatureRecord, Tx } from '@ewa/persist';
 import {
@@ -11,6 +12,7 @@ import {
   CreatureIdReq,
   CreatureInstanceSchema,
   CreatureParams,
+  CreatureEvolveRes,
   CreatureSetupRes,
   EvolveReq,
   ItemUseReq,
@@ -22,6 +24,7 @@ import {
   PartyRes,
   PartySwapReq,
   SetupReq,
+  TutorReq,
 } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
 import { sanitizeChat } from '../../chat/filter';
@@ -125,7 +128,11 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
     return out(deps, CreatureInstanceSchema, c);
   });
 
-  /** 1..4 unique ids, each learnable at or below the creature's level; kept slots keep pp, new ones get ppMax. */
+  /**
+   * 1..4 unique ids; kept slots keep pp, new ones get ppMax. Each id is one the creature already knows (a TM or tutor
+   * move stays once taught), one its species learns at or below its level, or — Phase D2 — a `TM_MOVES` move whose TM
+   * (`tm:<move>`) the player owns and the species can be taught (`canLearnMachineMove`). TMs are never used up.
+   */
   app.post('/creature/:id/moves', bearer, async (req) => {
     const { id: cid } = CreatureParams.parse(req.params);
     const body = MovesReq.parse(req.body);
@@ -135,7 +142,10 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
       const rec = await own(tx, id, cid);
       const sp = content.species(rec.speciesId);
       for (const m of body.moves) {
-        if (!sp.learnableMoves.some((e) => e.move === m && e.level <= rec.level)) throw new HttpError(409, 'notLearnable', { move: m });
+        if (rec.moves.some((s) => s.id === m)) continue;
+        if (sp.learnableMoves.some((e) => e.move === m && e.level <= rec.level)) continue;
+        if (TM_MOVES.includes(m) && (await repos.inventory.qty(tx, id, tmItemId(m))) > 0 && canLearnMachineMove(sp, content.move(m))) continue;
+        throw new HttpError(409, 'notLearnable', { move: m });
       }
       const moves = body.moves.map((m) => rec.moves.find((s) => s.id === m) ?? { id: m, pp: content.move(m).pp, ppMax: content.move(m).pp });
       const next: CreatureInstance = { ...toInstance(rec), moves };
@@ -180,25 +190,88 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
     return out(deps, CreatureSetupRes, { ...c, inventoryDelta: inventoryDeltaBody({ items, creaturesUpdated: [c] }) });
   });
 
-  /** `into` must equal core's evolveReady at the current level and ability (split branch by ability). */
+  /**
+   * `into` must be what the creature can evolve into right now:
+   *   - a level / split evolution: core's evolveReady at the current level and ability (split branch by ability);
+   *   - Phase D3 stone: the species' `{ kind: 'item', item }` target while the player owns the stone — ONE is spent,
+   *     and the response carries the stone count in `inventoryDelta`;
+   *   - Phase D3 trade: the species' `{ kind: 'trade' }` target while the creature carries the trade marker
+   *     (`TRADE_EVOLVE_RIBBON`, written by the trade that delivered it); the marker is removed.
+   */
   app.post('/creature/:id/evolve', bearer, async (req) => {
     const { id: cid } = CreatureParams.parse(req.params);
     const body = EvolveReq.parse(req.body);
     const id = req.user.sub;
     refuseInBattle(deps, id);
     const now = new Date(clock());
-    const c = await repos.db.transaction(async (tx) => {
+    const res = await repos.db.transaction(async (tx) => {
+      await repos.players.lock(tx, id);
       const rec = await own(tx, id, cid);
-      const ready = applyExp(toInstance(rec), 0, content).evolveReady;
-      if (ready === null || ready !== body.into) throw new HttpError(409, 'notReady');
-      const next = evolve(toInstance(rec), body.into, content);
+      const cur = toInstance(rec);
+      const evo = content.species(rec.speciesId).evolution;
+      const items: Record<string, number> = {};
+      let via: 'level' | 'item' | 'trade' = 'level';
+      let next: CreatureInstance;
+      if (applyExp(cur, 0, content).evolveReady === body.into) {
+        next = evolve(cur, body.into, content);
+      } else if (evo !== null && evo.kind === 'item' && itemEvolutionTarget(evo, evo.item) === body.into) {
+        if ((await repos.inventory.qty(tx, id, evo.item)) < 1) throw new HttpError(409, 'notReady', { needs: evo.item });
+        items[evo.item] = await repos.inventory.add(tx, id, evo.item, -1);
+        via = 'item';
+        next = evolve(cur, body.into, content);
+      } else if (tradeEvolutionTarget(evo) === body.into && cur.ribbons.includes(TRADE_EVOLVE_RIBBON)) {
+        via = 'trade';
+        next = { ...evolve(cur, body.into, content), ribbons: cur.ribbons.filter((r) => r !== TRADE_EVOLVE_RIBBON) };
+      } else {
+        throw new HttpError(409, 'notReady');
+      }
       await repos.creatures.update(tx, next);
       await repos.progress.markSeen(tx, id, body.into, now);
-      await repos.progress.markCaught(tx, id, body.into, next.variantKey, next.isAlpha, now);
-      await repos.audit.write(tx, { actorId: id, action: 'creature.evolve', subject: cid, detail: { from: rec.speciesId, into: body.into } }, now);
-      return next;
+      await repos.progress.markCaught(tx, id, body.into, next.variantKey, next.isAlpha, now, next.isShiny === true);
+      await repos.audit.write(tx, { actorId: id, action: 'creature.evolve', subject: cid, detail: { from: rec.speciesId, into: body.into, via } }, now);
+      return { next, items };
     });
-    return out(deps, CreatureInstanceSchema, c);
+    const c = res.next;
+    return out(deps, CreatureEvolveRes, Object.keys(res.items).length > 0 ? { ...c, inventoryDelta: inventoryDeltaBody({ items: res.items, creaturesUpdated: [c] }) } : c);
+  });
+
+  /**
+   * Phase D2 move tutor: `move` must be taught by a tutor NPC (`NpcDef.tutor`) of the zone the player is in, the
+   * species must be able to learn it (`canLearnMachineMove`) and the creature must not know it yet. Costs
+   * `MOVE_TUTOR_PRICE`; with four moves known, `forget` names the one replaced (its slot takes the new move at full pp).
+   */
+  app.post('/creature/:id/tutor', bearer, async (req) => {
+    const { id: cid } = CreatureParams.parse(req.params);
+    const body = TutorReq.parse(req.body);
+    const id = req.user.sub;
+    refuseInBattle(deps, id);
+    const zone = presenceZone(deps, id);
+    if (zone === null || !zone.npcs.some((n) => n.tutor?.includes(body.move) ?? false)) throw new HttpError(409, 'noTutorHere');
+    const now = new Date(clock());
+    const res = await repos.db.transaction(async (tx) => {
+      await repos.players.lock(tx, id);
+      const rec = await own(tx, id, cid);
+      const sp = content.species(rec.speciesId);
+      const mv = content.move(body.move);
+      if (rec.moves.some((m) => m.id === body.move)) throw new HttpError(409, 'alreadyKnown');
+      if (!canLearnMachineMove(sp, mv)) throw new HttpError(409, 'notLearnable', { move: body.move });
+      const slot = { id: mv.id, pp: mv.pp, ppMax: mv.pp };
+      let moves;
+      if (body.forget === null) {
+        if (rec.moves.length >= 4) throw new HttpError(409, 'movesFull');
+        moves = [...rec.moves, slot];
+      } else {
+        if (!rec.moves.some((m) => m.id === body.forget)) throw new HttpError(409, 'notKnown', { move: body.forget });
+        moves = rec.moves.map((m) => (m.id === body.forget ? slot : m));
+      }
+      // the balance check is the repo's: going negative throws (409)
+      const money = await repos.players.addMoney(tx, id, -MOVE_TUTOR_PRICE);
+      const next: CreatureInstance = { ...toInstance(rec), moves };
+      await repos.creatures.update(tx, next);
+      await repos.audit.write(tx, { actorId: id, action: 'creature.tutor', subject: cid, detail: { move: body.move, forget: body.forget, price: MOVE_TUTOR_PRICE, zoneId: zone.id } }, now);
+      return { next, money };
+    });
+    return out(deps, CreatureSetupRes, { ...res.next, inventoryDelta: inventoryDeltaBody({ money: res.money, creaturesUpdated: [res.next] }) });
   });
 
   app.post('/creature/:id/release', bearer, async (req, reply) => {
@@ -260,6 +333,21 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
       if (effect.kind === 'escapeRope') deps.bus.publish('ewa:teleport', { playerId: id, to: 'spawn' });
       else deps.bus.publish('ewa:repel', { playerId: id, kind: effect.kind, steps: effect.steps });
       return out(deps, ItemUseRes, { inventory, creaturesUpdated: [], events: [{ t: 'itemUsed', item: body.item, target: null, qty: 1 }] });
+    }
+    // Phase D3 evolution stone: checks that the target evolves with it and answers `evolveReady { into, item }`; nothing
+    // is spent here — the stone is consumed by the confirmed `POST /creature/:id/evolve` (evolution is never automatic)
+    if (effect.kind === 'evolutionStone') {
+      if (body.target === null) throw new HttpError(409, 'needsTarget');
+      if (body.qty !== 1) throw new HttpError(409, 'oneAtATime');
+      const target = body.target;
+      const r = await repos.db.transaction(async (tx) => {
+        if ((await repos.inventory.qty(tx, id, body.item)) < 1) throw new HttpError(409, 'InsufficientItems');
+        const c = toInstance(await own(tx, id, target));
+        return { c, inventory: await repos.inventory.all(tx, id) };
+      });
+      const into = itemEvolutionTarget(content.species(r.c.speciesId).evolution, body.item);
+      if (into === null) throw new HttpError(409, 'noEffect');
+      return out(deps, ItemUseRes, { inventory: r.inventory, creaturesUpdated: [r.c], events: [{ t: 'evolveReady', into, item: body.item }] });
     }
     const res = await repos.db.transaction(async (tx) => {
       await repos.players.lock(tx, id);

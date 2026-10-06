@@ -213,7 +213,10 @@ describe('/play/profile', () => {
     expect(within(panel).getByRole('button', { name: 'Save profile' }).hasAttribute('disabled')).toBe(true);
     expect(within(panel).getByRole('list', { name: '0 of 8 badges' })).toBeTruthy();
     expect(within(panel).getByRole('region', { name: 'Achievements' })).toBeTruthy();
-    expect(within(panel).getByRole('listitem', { name: /First Night/ })).toBeTruthy();
+    // Phase D5: the achievements are the kind 'achievement' rows (the shrine's First Night is a story quest again)
+    expect(within(panel).getByRole('listitem', { name: /First Catch/ })).toBeTruthy();
+    expect(within(panel).queryByRole('listitem', { name: /First Night/ })).toBeNull();
+    expect(within(panel).getByText('0 of 30 earned')).toBeTruthy();
 
     fireEvent.change(within(panel).getByLabelText('Title'), { target: { value: 'Witness' } });
     fireEvent.change(within(panel).getByLabelText('Look'), { target: { value: 'fisher_f' } });

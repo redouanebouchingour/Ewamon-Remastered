@@ -146,6 +146,10 @@
   color: var(--danger);
 }
 
+.badge_shiny {
+  color: var(--warn);
+}
+
 .badge_listed {
   color: var(--accent);
 }

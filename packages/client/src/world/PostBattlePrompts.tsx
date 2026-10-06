@@ -5,7 +5,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { CreatureInstance } from '@ewa/core';
-import { displayName, move as moveDef, speciesName } from '../data/content';
+import { displayName, itemInfo, move as moveDef, speciesName } from '../data/content';
 import { ApiFailure, apiFetch } from '../net/api';
 import { toast } from '../state/notifications';
 import { applyInventoryDelta, toInventoryDelta, useSessionStore } from '../state/session';
@@ -32,8 +32,10 @@ function Evolve({ p, c }: { readonly p: Extract<QueuedPrompt, { kind: 'evolve' }
   const go = async (): Promise<void> => {
     setBusy(true);
     try {
-      const res = await apiFetch('creatureEvolve', { params: { id: c.id }, body: { into: p.into } });
-      applyInventoryDelta(toInventoryDelta({ creaturesUpdated: [res] }));
+      const { inventoryDelta, ...evolved } = await apiFetch('creatureEvolve', { params: { id: c.id }, body: { into: p.into } });
+      // Phase D3: a stone evolution answers the spent stone's count as an inventoryDelta body
+      if (inventoryDelta !== undefined) applyInventoryDelta({ type: 'inventoryDelta', ...inventoryDelta });
+      applyInventoryDelta(toInventoryDelta({ creaturesUpdated: [evolved] }));
       toast('success', `${displayName(c)} evolved into ${speciesName(p.into)}!`);
       next();
     } catch (e) {
@@ -60,6 +62,8 @@ function Evolve({ p, c }: { readonly p: Extract<QueuedPrompt, { kind: 'evolve' }
     >
       <p className={s.text} data-testid="evolveprompt">
         <strong className={s.name}>{displayName(c)}</strong> is ready to evolve into <strong className={s.name}>{speciesName(p.into)}</strong>.
+        {p.item !== undefined ? ` Evolving uses one ${itemInfo(p.item).name}.` : ''}
+        {p.trade === true ? ' The trade woke something in it.' : ''}
       </p>
     </Modal>
   );

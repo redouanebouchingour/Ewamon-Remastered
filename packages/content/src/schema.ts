@@ -142,6 +142,8 @@ export const EvolutionSchema: z.ZodType<Evolution> = z.union([
       )
       .min(2),
   }),
+  z.object({ kind: z.literal('item'), item: SnakeId, into: SnakeId }),
+  z.object({ kind: z.literal('trade'), into: SnakeId }),
   z.null(),
 ]);
 
@@ -367,7 +369,7 @@ export const ConsumableEffectSchema: z.ZodType<ConsumableEffect> = z.discriminat
   z.object({ kind: z.literal('repel'), steps: PosInt }),
   z.object({ kind: z.literal('lure'), steps: PosInt }),
   z.object({ kind: z.literal('escapeRope') }),
-  z.object({ kind: z.literal('evolutionStone'), species: SnakeId, into: SnakeId }),
+  z.object({ kind: z.literal('evolutionStone') }),
   z.object({ kind: z.literal('sellOnly') }),
 ]);
 
@@ -416,6 +418,7 @@ export const NpcDefSchema: z.ZodType<NpcDef> = z.object({
   when: z.union([Flag, z.null()]),
   until: z.union([Flag, z.null()]),
   react: z.array(z.object({ when: Flag, lines: Lines.min(1) })),
+  tutor: z.array(Id).min(1).optional(),
 });
 
 export const TrainerDefSchema: z.ZodType<TrainerDef> = z.object({
@@ -589,10 +592,17 @@ export const QuestObjectiveSchema: z.ZodType<QuestObjective> = z.discriminatedUn
   z.object({ kind: z.literal('flag'), flag: Flag }),
   z.object({ kind: z.literal('earnBadge'), badge: BadgeIdSchema }),
   z.object({ kind: z.literal('restoreZone'), zoneId: ZoneIdSchema }),
+  // Phase D5
+  z.object({ kind: z.literal('dexCaught'), count: PosInt }),
+  z.object({ kind: z.literal('catchTier'), tier: z.enum(['alpha', 'shiny']), count: PosInt }),
+  z.object({ kind: z.literal('completeTrades'), count: PosInt }),
+  z.object({ kind: z.literal('clearRaids'), count: PosInt }),
+  z.object({ kind: z.literal('loginStreak'), days: PosInt }),
 ]);
 
 export const QuestDefSchema: z.ZodType<QuestDef> = z.object({
   id: SnakeId,
+  kind: z.enum(['story', 'achievement']).optional(),
   title: z.string().min(1),
   summary: z.string().min(1),
   giver: z.union([Id, z.null()]),
@@ -624,6 +634,7 @@ export const StoryBeatSchema: z.ZodType<StoryBeat> = z.object({
   after: Lines,
   harvest: z.union([z.object({ zoneId: ZoneIdSchema, to: HarvestStateSchema }), z.null()]),
   starter: z.boolean(),
+  grant: z.record(Id, PosInt).optional(),
 });
 
 // ─── §3.6 Live-ops ───────────────────────────────────────────────────────────

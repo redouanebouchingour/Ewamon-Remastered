@@ -11,7 +11,8 @@
  * sorted by playerId, `confirmed` excluded) — the one function both client and server call.
  */
 import { randomUUID } from 'node:crypto';
-import { TRAINER_EXP } from '@ewa/core';
+import { SPECIES, TRADE_EVOLVE_RIBBON } from '@ewa/content';
+import { TRAINER_EXP, tradeEvolutionTarget } from '@ewa/core';
 import type { CreatureInstance } from '@ewa/core';
 import type { Db, Repos } from '@ewa/persist';
 import { tradeOfferHash } from '@ewa/protocol';
@@ -20,6 +21,9 @@ import { advanceQuests } from '../game/quests';
 import type { QuestEvent } from '../game/quests';
 import type { Logger } from '../log';
 import { toInstance } from './battleSession';
+
+/** Phase D3: species that evolve by trade — a received one gets `TRADE_EVOLVE_RIBBON` (the evolve prompt's licence). */
+const TRADE_EVOLVERS: ReadonlySet<string> = new Set(SPECIES.filter((s) => tradeEvolutionTarget(s.evolution) !== null).map((s) => s.id));
 
 export const TRADE_IDLE_MS = 120_000;
 export const TRADE_MAX_CREATURES = 6;
@@ -286,7 +290,7 @@ export class TradeCoordinator {
     this.completing.add(t.id);
     const now = new Date(clock());
     const [oa, ob] = t.offers;
-    type Outcome = { money: number; added: CreatureInstance[]; removed: string[]; trainerExp: number; trainerLevel: number; dex: string[]; questProgress: QuestProgressEntry[] };
+    type Outcome = { money: number; added: CreatureInstance[]; updated: CreatureInstance[]; removed: string[]; trainerExp: number; trainerLevel: number; dex: string[]; questProgress: QuestProgressEntry[] };
     let result: Map<string, Outcome>;
     try {
       result = await repos.db.transaction(async (tx) => {
@@ -306,18 +310,26 @@ export class TradeCoordinator {
           [t.b, ob, oa],
         ] as const) {
           const added: CreatureInstance[] = [];
+          const updated: CreatureInstance[] = [];
           const dex: string[] = [];
           const events: QuestEvent[] = [{ kind: 'trade' }];
           for (const id of get.creatureIds) {
-            const c = toInstance((await repos.creatures.byId(tx, id))!);
+            let c = toInstance((await repos.creatures.byId(tx, id))!);
+            // Phase D3: a received trade-evolver is marked; the client queues its evolve prompt from creaturesUpdated
+            if (TRADE_EVOLVERS.has(c.speciesId) && !c.ribbons.includes(TRADE_EVOLVE_RIBBON)) {
+              c = { ...c, ribbons: [...c.ribbons, TRADE_EVOLVE_RIBBON] };
+              await repos.creatures.update(tx, c);
+              updated.push(c);
+            }
             added.push(c);
             if (await repos.progress.markSeen(tx, me, c.speciesId, now)) events.push({ kind: 'seen', species: c.speciesId });
-            await repos.progress.markCaught(tx, me, c.speciesId, c.variantKey, c.isAlpha, now);
+            await repos.progress.markCaught(tx, me, c.speciesId, c.variantKey, c.isAlpha, now, c.isShiny === true);
             if (!dex.includes(c.speciesId)) dex.push(c.speciesId);
           }
+          if (get.creatureIds.length > 0) events.push({ kind: 'dex', caught: await repos.progress.caughtCount(tx, me) });
           const exp = await repos.players.addTrainerExp(tx, me, TRAINER_EXP.tradeComplete);
           const questProgress = await advanceQuests(tx, repos, me, events, now.getTime());
-          out.set(me, { money: (await repos.players.byId(tx, me))!.money, added, removed: [...give.creatureIds], trainerExp: exp.trainerExp, trainerLevel: exp.trainerLevel, dex, questProgress });
+          out.set(me, { money: (await repos.players.byId(tx, me))!.money, added, updated, removed: [...give.creatureIds], trainerExp: exp.trainerExp, trainerLevel: exp.trainerLevel, dex, questProgress });
         }
         return out;
       });
@@ -331,7 +343,7 @@ export class TradeCoordinator {
     this.end(t, 'complete');
     for (const [pid, r] of result) {
       // received creatures are transferred into the receiver's box (persist completeTrade → transferCreature)
-      host.send(pid, { type: 'inventoryDelta', items: {}, money: r.money, creaturesAdded: r.added, creaturesRemoved: r.removed, creaturesUpdated: [], ...(r.added.length > 0 ? { placement: Object.fromEntries(r.added.map((c) => [c.id, 'box' as const])) } : {}) });
+      host.send(pid, { type: 'inventoryDelta', items: {}, money: r.money, creaturesAdded: r.added, creaturesRemoved: r.removed, creaturesUpdated: r.updated, ...(r.added.length > 0 ? { placement: Object.fromEntries(r.added.map((c) => [c.id, 'box' as const])) } : {}) });
       host.send(pid, {
         type: 'progressionDelta',
         badges: null,

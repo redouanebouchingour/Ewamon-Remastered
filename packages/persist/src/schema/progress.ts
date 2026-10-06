@@ -37,6 +37,8 @@ export const dexEntries = pgTable(
     caughtAt: timestamp('caught_at', { withTimezone: true }),
     variants: jsonb('variants').$type<VariantKey[]>().notNull().default([]),
     alphaSeen: boolean('alpha_seen').notNull().default(false),
+    /** Phase D4 (migration 0003): a shiny of this species was caught */
+    shinyCaught: boolean('shiny_caught').notNull().default(false),
   },
   (t) => [primaryKey({ columns: [t.playerId, t.speciesId] })],
 );

@@ -177,6 +177,19 @@ const CREATURE_HANDLERS: Readonly<Record<string, Handler>> = {
     const moves = Array.isArray(p['moves']) ? (p['moves'] as unknown[]).map(str) : [];
     updated(await apiFetch('creatureMoves', { params: { id: str(p['id']) }, body: { moves } }));
   },
+  /** Phase D2: a TM lesson — the same `POST /creature/:id/moves` (the server checks the owned TM); the TM is kept */
+  async teach(p) {
+    const moves = Array.isArray(p['moves']) ? (p['moves'] as unknown[]).map(str) : [];
+    updated(await apiFetch('creatureMoves', { params: { id: str(p['id']) }, body: { moves } }));
+    toast('success', `${str(p['name'])} learned ${str(p['move'])}!`);
+  },
+  /** Phase D2: a move-tutor lesson for money; the money and the creature come back as an inventoryDelta body */
+  async tutor(p) {
+    const forget = str(p['forget']);
+    const res = await apiFetch('creatureTutor', { params: { id: str(p['id']) }, body: { move: str(p['move']), forget: forget.length === 0 ? null : forget } });
+    withDelta(res);
+    toast('success', `${str(p['name'])} learned ${str(p['move'])}!`);
+  },
   async release(p) {
     const id = str(p['id']);
     await apiFetch('creatureRelease', { params: { id } });

@@ -3,6 +3,7 @@
  * `CONSUMABLES`, `ORBS`, `ITEMS` held / key). What each row offers:
  *   - a creature consumable (potions, cures, revives, PP, Rare Candy): Use → a party picker → `POST /item/use { item,
  *     target, qty }` (Rare Candy takes a quantity); creatures it would not affect are disabled with the reason;
+ *   - an evolution stone (Phase D3): the same picker; the server answers evolveReady and the evolve prompt spends it;
  *   - a field item (repel, lure, escape rope): Use → `POST /item/use { target: null, qty: 1 }` at once;
  *   - a held item: Give → a party picker → `POST /creature/:id/setup { ability: current, heldItem }` (the previous
  *     held item returns to the bag server-side);
@@ -11,6 +12,7 @@
  */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import { tmMoveOf } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import { BAG_GROUPS, groupBag, noEffectReason } from '../data/bag';
 import type { BagRow } from '../data/bag';
@@ -126,7 +128,8 @@ function ItemRow({ row, holders, onPick, fetcher }: { readonly row: BagRow; read
       </Button>
     );
   } else {
-    action = <span className={l.caption}>{row.info.kind === 'orb' ? 'Throw in battle' : row.info.kind === 'key' ? 'Always with you' : row.info.sellPrice > 0 ? 'Sell at a shop' : '—'}</span>;
+    const keyHint = tmMoveOf(row.info.id) !== null ? 'Teach from your party' : 'Always with you';
+    action = <span className={l.caption}>{row.info.kind === 'orb' ? 'Throw in battle' : row.info.kind === 'key' ? keyHint : row.info.sellPrice > 0 ? 'Sell at a shop' : '—'}</span>;
   }
   return (
     <li className={s.item} aria-label={`${row.info.name} ×${row.count}`}>

@@ -62,7 +62,7 @@ export { CATCH_B } from './catch';
 
 // §2.16 EXP, levels, evolution
 export type { LevelUpResult } from './types';
-export { MAX_LEVEL, expToLevel, levelForExp, expGain, applyExp, evolve } from './exp';
+export { MAX_LEVEL, expToLevel, levelForExp, expGain, applyExp, evolve, evolutionChildren, itemEvolutionTarget, tradeEvolutionTarget } from './exp';
 
 // §2.17 Elo
 export type { EloResult } from './types';

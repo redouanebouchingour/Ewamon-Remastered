@@ -74,6 +74,11 @@ export interface NpcDef {
   /** story flag that removes them */
   readonly until: string | null;
   readonly react: readonly { readonly when: string; readonly lines: readonly string[] }[];
+  /**
+   * Phase D2: a move tutor — the move ids this NPC teaches for `MOVE_TUTOR_PRICE` each (`POST /creature/:id/tutor`).
+   * Data only: x/z alone feed the layout, so the field never moves a building or a tree.
+   */
+  readonly tutor?: readonly string[];
 }
 
 export interface TrainerDef {
@@ -420,10 +425,21 @@ export type QuestObjective =
   | { readonly kind: 'deliverItem'; readonly item: string; readonly qty: number; readonly npcId: string }
   | { readonly kind: 'flag'; readonly flag: string }
   | { readonly kind: 'earnBadge'; readonly badge: BadgeId }
-  | { readonly kind: 'restoreZone'; readonly zoneId: ZoneId };
+  | { readonly kind: 'restoreZone'; readonly zoneId: ZoneId }
+  // Phase D5 (achievements). dexCaught / loginStreak are absolute: progress = the value the event reports (max-merged).
+  | { readonly kind: 'dexCaught'; readonly count: number }
+  | { readonly kind: 'catchTier'; readonly tier: 'alpha' | 'shiny'; readonly count: number }
+  | { readonly kind: 'completeTrades'; readonly count: number }
+  | { readonly kind: 'clearRaids'; readonly count: number }
+  | { readonly kind: 'loginStreak'; readonly days: number };
+
+/** Phase D5: 'achievement' = an auto-progressing milestone (giver null, no requires, its own journal tab). */
+export type QuestKind = 'story' | 'achievement';
 
 export interface QuestDef {
   readonly id: string;
+  /** Phase D5; absent = 'story' */
+  readonly kind?: QuestKind;
   readonly title: string;
   readonly summary: string;
   /** npc id; null = auto-offered */
@@ -466,6 +482,11 @@ export interface StoryBeat {
   readonly harvest: { readonly zoneId: ZoneId; readonly to: HarvestState } | null;
   /** exactly one beat has this */
   readonly starter: boolean;
+  /**
+   * Phase D1: items handed over when the beat completes (item id → qty), in the same transaction as its flags; they
+   * reach the client as an `inventoryDelta`. Never a gate: nothing may `need` an item.
+   */
+  readonly grant?: Readonly<Record<string, number>>;
 }
 
 // ─── §3.6 Live-ops ───────────────────────────────────────────────────────────
@@ -541,6 +562,10 @@ export interface BodyDef {
 export type AcquisitionPath =
   | { readonly kind: 'wild'; readonly zones: readonly ZoneId[] }
   | { readonly kind: 'evolve'; readonly from: string; readonly atLevel: number }
+  /** Phase D3: evolves from `from` with the stone `item` (sold / found — validate checks it is obtainable) */
+  | { readonly kind: 'item'; readonly from: string; readonly item: string }
+  /** Phase D3: evolves from `from` when traded */
+  | { readonly kind: 'trade'; readonly from: string }
   | { readonly kind: 'static'; readonly zoneId: ZoneId; readonly when: StaticGate }
   | { readonly kind: 'quest'; readonly questId: string }
   | { readonly kind: 'raid'; readonly zones: readonly ZoneId[] };

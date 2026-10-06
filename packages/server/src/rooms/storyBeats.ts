@@ -48,19 +48,24 @@ export function storyTrainerBeat(zoneId: ZoneId, flags: ReadonlySet<string>, tra
 export interface BeatCompletion {
   readonly flags: readonly string[];
   readonly questProgress: readonly QuestProgressEntry[];
+  /** Phase D1: absolute counts of the items `beat.grant` added (empty when the beat grants nothing) — an inventoryDelta's `items` */
+  readonly items: Readonly<Record<string, number>>;
 }
 
 /**
  * Step 4 completion, inside the caller's transaction: `setFlags([...beat.set, beatDoneFlag(beat.id)])`,
  * quest objectives of kind `flag` (and `restoreZone` for a beat with `harvest.to === 'intact'`) advance, audit `story.beat`. Nothing else is persisted for a harvest beat.
+ * Phase D1: `beat.grant` items are added in the same transaction (the done flag makes it once per player).
  */
-export async function completeBeatInTx(tx: Tx, repos: Pick<Repos, 'progress' | 'audit'>, playerId: string, beat: StoryBeat, now: Date): Promise<BeatCompletion> {
+export async function completeBeatInTx(tx: Tx, repos: Pick<Repos, 'progress' | 'audit' | 'inventory'>, playerId: string, beat: StoryBeat, now: Date): Promise<BeatCompletion> {
   const flags = flagsAfterBeat(beat);
   await repos.progress.setFlags(tx, playerId, flags, now);
+  const items: Record<string, number> = {};
+  for (const id of Object.keys(beat.grant ?? {}).sort()) items[id] = await repos.inventory.add(tx, playerId, id, beat.grant![id]!);
   // Phase B2: a beat that returns a zone to `intact` also advances `restoreZone` objectives
   const events: QuestEvent[] = [{ kind: 'flags', flags }];
   if (beat.harvest?.to === 'intact') events.push({ kind: 'restoreZone', zoneId: beat.harvest.zoneId });
   const questProgress = await advanceQuests(tx, repos, playerId, events, now.getTime());
   await repos.audit.write(tx, { actorId: playerId, action: 'story.beat', subject: beat.id, detail: { beatId: beat.id } }, now);
-  return { flags, questProgress };
+  return { flags, questProgress, items };
 }

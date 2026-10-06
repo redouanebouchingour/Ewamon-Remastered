@@ -20,6 +20,7 @@ export function questHintFor(p: Progression | null, tracked: string | null): str
   const story = storyHint(flags, []);
   if (story !== null && story.startsWith('Talk to')) return story;
   for (const q of QUESTS) {
+    if (q.kind === 'achievement') continue; // Phase D5: milestones never drive the untracked hint
     const prog = p.quests[q.id];
     if (prog === undefined || p.questsClaimed.includes(q.id)) continue;
     const undone = q.objectives.find((o) => !(prog[o.id]?.done ?? false));

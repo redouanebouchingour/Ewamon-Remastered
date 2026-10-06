@@ -17,7 +17,7 @@ import { newCreature } from '../src/game/creatures';
 import { RAID_CATCH_WINDOW_MS, RAID_ENRAGE_HP, RAID_MONEY_PER_LEVEL, RaidSession } from '../src/rooms/raidSession';
 import type { RaidPhase } from '../src/rooms/raidSession';
 import type { ZoneRoom } from '../src/rooms/ZoneRoom';
-import { api, content, enter, ofType, placePlayer, register, sleep, startServer, waitFor } from './helpers';
+import { api, content, enter, ofType, placePlayer, rawQuery, register, sleep, startServer, waitFor } from './helpers';
 import type { Account, Joined, TestServer } from './helpers';
 
 function party(id: string, species: string, level: number): CreatureInstance[] {
@@ -234,6 +234,9 @@ describe('raids in the room (§30.4.7)', () => {
     for (const p of damaged) {
       await waitFor(() => ofType(p.j.msgs, 'battleEnd').some((m) => m.battleId === runner.id), 3000);
       expect(ofType(p.j.msgs, 'battleEnd').find((m) => m.battleId === runner.id)!.rewards).toMatchObject({ money: RAID_MONEY_PER_LEVEL * 3, trainerExp: TRAINER_EXP.raidClear });
+      // Phase D5: the rewarded clear is the `raidClear` event — ach_raid_1 done, ach_raid_10 at 1
+      const ach = await rawQuery(s.db, "select quest_id, count, done from quest_progress where player_id = $1 and quest_id in ('ach_raid_1', 'ach_raid_10') order by quest_id", [p.acc.id]);
+      expect(ach.map((r) => [r['quest_id'], r['count'], r['done']])).toEqual([['ach_raid_1', 1, true], ['ach_raid_10', 1, false]]);
     }
     expect(a.j.room.state.players.get(a.acc.id)!.inBattle).toBe(false);
     // Phase C1: the catch window opens with a second battleResync to every participant (before the round's battleEnd):

@@ -197,6 +197,14 @@ function lastAt(tl: Timeline): number {
 }
 
 describe('move animation registry', () => {
+  it('Phase D7: ambient zone weather (source null, turns 0) reads as already falling, a move-set weather as starting', () => {
+    const logs = (e: BattleEvent): string[] => buildTimeline([e], ctxFor(null)).frames.flatMap((f) => (f.k === 'log' ? [f.text] : []));
+    expect(logs({ t: 'weatherSet', kind: 'rain', turns: 0, source: null })).toEqual(['Rain continues to fall.']);
+    expect(logs({ t: 'weatherSet', kind: 'rain', turns: 5, source: A })).toEqual(['It started to rain!']);
+    const frames = buildTimeline([{ t: 'weatherSet', kind: 'sand', turns: 0, source: null }], ctxFor(null)).frames;
+    expect(frames.some((f) => f.k === 'weather' && f.kind === 'sand')).toBe(true);
+  });
+
   it('MOVE_ANIMS has ≥ 40 real move ids and DEFAULT_BY_TYPE covers all 19 types', () => {
     const ids = new Set(MOVES.map((m) => m.id));
     const keys = Object.keys(MOVE_ANIMS);

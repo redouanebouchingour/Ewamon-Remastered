@@ -102,3 +102,27 @@ per effect rather than 22 files; `typechart.test.ts` / `trainerExp.test.ts` stan
 lower_atk`, `effect: 'weaknessPolicy' → null`, `first → priority 1`, contact derivation, default
 `effectChance` per the §2.4 table, the 25 ability hook rows, the 17 held/key items, the 10 orbs, the §2.6
 consumables with `shop.js` prices. It is a test fixture, not `@ewa/content`.
+
+## Phase D1–D3 — stone and trade evolutions (2026-10-06)
+
+- `Evolution` gains `{ kind: 'item', item, into }` and `{ kind: 'trade', into }`. Neither is level-triggered: `applyExp`
+  reads `atLevel` only for `level` / `split`, so it reports `evolveReady: null` for them at any level. `evolutionTarget`
+  (the level resolver) returns null for them.
+- New pure helpers: `itemEvolutionTarget(evolution, item)`, `tradeEvolutionTarget(evolution)`, `evolutionChildren(evolution)`.
+  `evolve` is unchanged and trigger-agnostic; the server decides which trigger applies.
+- `ConsumableEffect.evolutionStone` is now `{ kind: 'evolutionStone' }` (the reserved `species` / `into` fields are gone:
+  the species a stone evolves name it in their own `SpeciesDef.evolution`). `validateAction` already rejects it in battle.
+- Battle semantics untouched: Eviolite and the speed tie-break read `evolution !== null`, still true for the new kinds;
+  `createBattle` / `BattleState` unchanged; `test/fuzz-digests.json` unchanged (the fuzz runs on the legacy fixture).
+- Tests: `test/evolution-items.test.ts` (6).
+
+## Phase D4/D5/D7 (2026-10-06)
+
+- **D7 ambient weather.** `CreateBattleOpts.weather?: WeatherKind`. Present and not 'none': `field.weather = { kind, turns: 0 }`
+  and one `weatherSet { kind, turns: 0, source: null }` is emitted before the switch-in hooks. `turns: 0` with a kind is the
+  new "ambient" state: the end-of-turn countdown now runs only when `turns > 0`, so ambient weather never ticks or ends; a
+  move's weather replaces it with the usual 5 turns (and ends to 'none', not back to the ambient kind). Absent / 'none' →
+  state and events byte-identical; `test/fuzz-digests.json` unchanged (`npx vitest run packages/core` green).
+- **D4.** `CreatureInstance.isShiny?: boolean` — optional, present (true) only on a shiny, no battle effect; the digest
+  omits undefined keys, so non-shiny states hash as before.
+- Tests: `test/weather-ambient.test.ts` (4).

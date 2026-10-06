@@ -6,6 +6,8 @@
  */
 import { TRAINER_EXP } from '@ewa/core';
 import type { Repos, Tx } from '@ewa/persist';
+import type { QuestProgressEntry } from '@ewa/protocol';
+import { advanceQuests } from '../game/quests';
 import { streakReward } from './missions';
 import { DAY_MS, dayKey } from './schedule';
 
@@ -40,6 +42,8 @@ export interface DailyLoginGrant {
   /** absolute counts of the granted items */
   readonly inventory: Readonly<Record<string, number>>;
   readonly flags: readonly string[];
+  /** Phase D5: the `streak` event's touched objectives (loginStreak achievements) */
+  readonly questProgress: readonly QuestProgressEntry[];
 }
 
 /** Grants today's login reward once; null when already granted today. */
@@ -60,5 +64,6 @@ export async function dailyLogin(tx: Tx, repos: Pick<Repos, 'players' | 'progres
   const inventory = Object.keys(reward.items).length > 0 ? await repos.inventory.addMany(tx, playerId, reward.items) : {};
   const exp = await repos.players.addTrainerExp(tx, playerId, TRAINER_EXP.dailyLogin);
   await repos.audit.write(tx, { actorId: playerId, action: 'liveops.login', subject: today, detail: { streak } }, now);
-  return { streak, money, items: reward.items, trainerExp: exp.trainerExp, trainerLevel: exp.trainerLevel, inventory, flags: set };
+  const questProgress = await advanceQuests(tx, repos, playerId, [{ kind: 'streak', days: streak }], nowMs);
+  return { streak, money, items: reward.items, trainerExp: exp.trainerExp, trainerLevel: exp.trainerLevel, inventory, flags: set, questProgress };
 }

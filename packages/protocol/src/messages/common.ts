@@ -43,6 +43,8 @@ export const CreatureInstanceSchema = z.object({
   heldItem: z.string().max(40).nullable(),
   variantKey: VariantKeySchema,
   isAlpha: z.boolean(),
+  /** Phase D4: present (true) only on a shiny */
+  isShiny: z.boolean().optional(),
   caughtAt: z.object({ zoneId: z.string(), at: z.number().int() }).nullable(),
   ribbons: z.array(z.string()),
   favorite: z.boolean(),

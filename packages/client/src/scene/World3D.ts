@@ -303,7 +303,7 @@ class World implements World3D {
       this.spawns = new SpawnViews({
         parent: group,
         acquire: (d) => p3.sprites.acquire(d),
-        descriptor: (sp, key, v, a) => this.catalog?.descriptor(sp, key, v, a) ?? null,
+        descriptor: (sp, key, v, a, s) => this.catalog?.descriptor(sp, key, v, a, s) ?? null,
         ensureSpecies: (sp) => this.ensureSpecies(sp),
         height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
         targets: this.targets,
@@ -868,7 +868,16 @@ class World implements World3D {
           if (inside !== undefined) ui.setDialogue({ speaker: inside.name, lines: inside.lines, index: 0, targetId: inside.id });
           return;
         }
-        this.runPlan(npcPlan(z.id, npc, this.flags()), npc.id, () => this.ws.send('interact', { targetId: npc.id, kind: 'npc' }));
+        const plan = npcPlan(z.id, npc, this.flags());
+        const talk = (): void => this.ws.send('interact', { targetId: npc.id, kind: 'npc' });
+        // Phase D2 move tutor: its lines, then (paging past the last one) the party's Teach section with its moves
+        if (npc.tutor !== undefined && (plan.dialogue === null || plan.dialogue.beatId === null)) {
+          const lines = plan.dialogue?.lines ?? npc.lines;
+          ui.setDialogue({ speaker: npc.name, lines, index: 0, targetId: npc.id, onFinish: () => navigateTo(`/play/party?tutor=${encodeURIComponent(npc.id)}`) });
+          talk();
+          return;
+        }
+        this.runPlan(plan, npc.id, talk);
         return;
       }
       case 'trainer': {
@@ -1031,7 +1040,7 @@ class World implements World3D {
           return;
         }
         this.ensureSpecies(c.speciesId);
-        r.stage.setBattler(ref, cat.descriptor(c.speciesId, key, c.variantKey, c.isAlpha));
+        r.stage.setBattler(ref, cat.descriptor(c.speciesId, key, c.variantKey, c.isAlpha, c.isShiny === true));
       },
       setPose: (ref, pose, ms) => r.stage.setPose(ref, pose, ms),
       hurt: (ref, s) => r.stage.hurt(ref, s),

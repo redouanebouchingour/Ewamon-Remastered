@@ -23,7 +23,7 @@ import {
   resolveTurn,
   validateAction,
 } from '@ewa/core';
-import type { Action, BattleEvent, BattleFormat, BattleOutcome, BattleState, ContentIndex, CreatureInstance, Rng, RngState, Side, Terrain } from '@ewa/core';
+import type { Action, BattleEvent, BattleFormat, BattleOutcome, BattleState, ContentIndex, CreatureInstance, Rng, RngState, Side, Terrain, WeatherKind } from '@ewa/core';
 import type { QuestProgressEntry, RewardsSummary, ServerMessage } from '@ewa/protocol';
 import type { BattleStartSnapshot, Db, Repos } from '@ewa/persist';
 import type { Logger } from '../log';
@@ -109,6 +109,8 @@ export interface BattleDeps {
   readonly zone: ZoneDef;
   readonly host: BattleHost;
   readonly metrics: RoomMetrics;
+  /** Phase D7: the ambient weather a battle of this format forming at this point starts under (absent → 'none') */
+  readonly weather?: (format: BattleFormat, at: BattleAt) => WeatherKind;
 }
 
 /** Where a battle forms (ZoneRoom `battleAt`): a hall arena + its battle-axis yaw inside an interior, else the player. */
@@ -199,6 +201,7 @@ export function toInstance(c: CreatureInstance): CreatureInstance {
     heldItem: c.heldItem,
     variantKey: c.variantKey,
     isAlpha: c.isAlpha,
+    ...(c.isShiny === true ? { isShiny: true } : {}),
     caughtAt: c.caughtAt === null ? null : { zoneId: c.caughtAt.zoneId, at: c.caughtAt.at },
     ribbons: [...c.ribbons],
     favorite: c.favorite,
@@ -325,8 +328,10 @@ export class BattleCoordinator {
   ): { session: BattleSession; events: readonly BattleEvent[] } {
     const now = this.deps.clock();
     const terrain = TERRAIN_BY_BIOME[this.deps.zone.biome];
-    const start = JSON.parse(JSON.stringify({ zoneId: base.zoneId, terrain, sides })) as BattleStartSnapshot;
-    const { state, events } = createBattle({ id: base.id, format: base.format, zoneId: base.zoneId, terrain, seed, sides }, this.deps.content);
+    const weather = this.deps.weather?.(base.format, { x: base.x, z: base.z }) ?? 'none';
+    const ambient = weather === 'none' ? {} : { weather };
+    const start = JSON.parse(JSON.stringify({ zoneId: base.zoneId, terrain, sides, ...ambient })) as BattleStartSnapshot;
+    const { state, events } = createBattle({ id: base.id, format: base.format, zoneId: base.zoneId, terrain, seed, sides, ...ambient }, this.deps.content);
     const session: BattleSession = {
       ...base,
       start,
@@ -369,7 +374,7 @@ export class BattleCoordinator {
     if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
     const wild = withSyntheticId(
-      newCreature(this.deps.content, spawn.speciesId, spawn.level, { ability: spawn.ability, variantKey: spawn.variantKey, isAlpha: spawn.isAlpha }),
+      newCreature(this.deps.content, spawn.speciesId, spawn.level, { ability: spawn.ability, variantKey: spawn.variantKey, isAlpha: spawn.isAlpha, isShiny: spawn.isShiny === true }),
       `wild:${spawn.id}`,
     );
     const side1: Omit<Side, 'mustSwitch' | 'consumedItems'> = { kind: 'wild', party: [projectBattler(wild, this.deps.content)], active: 0, trainerId: null, canFlee: false, canCatch: false };
@@ -730,10 +735,11 @@ export class BattleCoordinator {
           );
           d.creaturesAdded.push(toInstance(inserted));
           d.placement[inserted.id] = partyIndex === -1 ? 'box' : 'party';
-          const { newSpecies } = await repos.progress.markCaught(tx, pid, wild.speciesId, wild.variantKey, wild.isAlpha, now);
+          const { newSpecies } = await repos.progress.markCaught(tx, pid, wild.speciesId, wild.variantKey, wild.isAlpha, now, wild.isShiny === true);
           d.dexCaught.push(wild.speciesId);
           trainerExpGain += TRAINER_EXP.catch + (newSpecies ? TRAINER_EXP.catchNewSpecies : 0);
-          questEvents.push({ kind: 'catch', species: wild.speciesId });
+          questEvents.push({ kind: 'catch', species: wild.speciesId, isAlpha: wild.isAlpha, isShiny: wild.isShiny === true });
+          questEvents.push({ kind: 'dex', caught: await repos.progress.caughtCount(tx, pid) });
         }
 
         // h. markSeen for every opposing species revealed this turn
@@ -802,6 +808,8 @@ export class BattleCoordinator {
           if (session.beatId !== null && side === 0 && side0Won(outcome)) {
             const beat = beatById(session.beatId);
             const done = await completeBeatInTx(tx, repos, pid, beat, now);
+            // Phase D1: granted items ride this battle's inventoryDelta
+            for (const [item, qty] of Object.entries(done.items)) d.items[item] = qty;
             d.flags.push(...done.flags.filter((f) => !d.flags.includes(f)));
             d.questProgress.push(...done.questProgress);
             d.beatCompleted = beat.id;

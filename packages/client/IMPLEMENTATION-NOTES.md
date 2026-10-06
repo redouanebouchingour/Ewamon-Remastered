@@ -907,3 +907,43 @@ leave / ineligible window / reopen with a catch try / phase-4 summary / fainted 
   picker with the full-HP starter disabled ("Already at full HP"); the 12-link top bar and the account menu at 1280 px.
   Not verified live: a successful item use / field item / give (fresh accounts have a full-HP starter and no held items),
   battle and trade rows (covered by the mocked tests), paging past 25 rows.
+
+## Phase D2–D3 — Teach, tutors, stones, trade evolutions (2026-10-06)
+
+- **Item lookups.** `data/content.ts` registers `KEY_ITEMS` (old_rod, TMs → Bag "Key items") and `EVOLUTION_STONES`
+  (consumables; `CREATURE_ITEMS` includes them). Helpers: `stoneTarget`, `tradeEvolveTarget`, `ownedTmMoves`,
+  `teachRefusal` (mirrors the server's checks for display only).
+- **Teach** (`screens/TeachSection.tsx`, inside `CreatureDetail`, so Party and Box both have it): owned TMs (incompatible
+  rows disabled with the reason) → `teach` intent → `POST /creature/:id/moves`; when the URL carries `?tutor=<npcId>` and
+  that tutor stands in the session's zone, its moves at ₽3000 → `tutor` intent → `POST /creature/:id/tutor` (money +
+  creature via the inventoryDelta body). Four known moves → a modal picks the move to forget. Rows are 1px-bordered
+  cards (no accent stripe).
+- **Tutor in the world.** World3D: interacting with an NPC that has `tutor` (and no story beat) shows its lines; paging
+  past the last opens `/play/party?tutor=<npcId>` (Escape just closes). The interact is still sent (talkTo quests).
+- **Stones.** Bag "Use" on a stone → party picker (creatures that do not react are disabled: "Does not react to it");
+  the creature panel offers a stone only to a creature that reacts. `/item/use` answers `evolveReady { item }`;
+  `presentItemUse` queues one evolve prompt with `item` and toasts "<name> reacts to the <stone>". The evolve modal says
+  "Evolving uses one <stone>." and applies the response's optional `inventoryDelta`.
+- **Trade evolutions.** `messageRouter` calls `queueTradeEvolutions(m.creaturesUpdated)` after every `inventoryDelta`:
+  a creature carrying the trade marker whose species evolves by trade gets one evolve prompt (`trade: true`).
+- Error copy for `noTutorHere`, `alreadyKnown`, `movesFull`, `notKnown`, `alreadyOwned`, `oneAtATime`.
+- Not verified live in the browser (mocked tests only): `test/teach-evolve.test.tsx` (6).
+
+## Phase D4/D5/D7 (2026-10-06)
+
+- **D4 shinies.** `SpawnLike.isShiny?` → `descriptor(…, isShiny)` → `SpriteDescriptor.isShiny` (sparkling billboard); the
+  spawn label reads `shiny …`. Battle: `TimelineCtx.shinyOf` (BattleController reads `creature.isShiny`) — a shiny's
+  switch-in adds `shiny_sparkle` (`SHINY_MS 900`) and “… sparkles — it’s a shiny!”; `World3D.setBattler` passes the flag.
+  Dex: `Progression.dexShiny?` (GET /dex `shiny`, REST-only like `dexAlpha`), a sparkle mark on the tile (shifted left of
+  the alpha mark when both) and in the detail, the State filter gains `shiny` (`?state=shiny`). Market: `isShiny` filter
+  (URL param, `MARKET_PARAMS`), `Shiny` pill in rows and the listing detail. `CreatureCard` badge `shiny`. Icon `sparkle`.
+- **D5 achievements.** `data/quests.ts`: `objectiveTarget` covers the new kinds; `achievementQuests()` is now
+  `kind === 'achievement'` only (the shrine's First Night / Morning are story quests again); `storyQuests()`,
+  `achievementProgress()` (single objective → count/target, else objectives done/total). `QuestScreen`: Tabs Story /
+  Achievements (`?tab=achievements`), ready achievements as Claim cards, the rest as progress rows, then Earned.
+  `ProfileScreen`: earned-first list with `N of 30 earned`. `questHint`: achievements never drive the untracked hint.
+- **D7 weather.** `SceneDirector` keeps the overworld weather (`setWeather`) and renders `none` inside a pocket and while
+  a battle owns the stage; leaving either restores it (exitBattle used to force 'none' until the next schedule change).
+  The timeline reads an ambient `weatherSet` (source null, turns 0) with the "continues" text.
+- Tests: `test/achievements-shiny.test.tsx` (5), `interiors.test.ts` "Phase D7", `timeline.test.ts` (ambient text),
+  `rankings-profile.test.tsx` (profile achievements updated). Mocked/jsdom only — not verified live in the browser.

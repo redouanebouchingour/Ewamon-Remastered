@@ -405,6 +405,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     nameOf: (r) => sideName(st, r, seat, deps.content),
     maxHpOf: (r) => st.sides[r.side]?.party[r.slot]?.maxHp ?? 1,
     activeOf: (side) => st.sides[side].active,
+    shinyOf: (r) => creatureAt(st, r.side, r.slot)?.isShiny === true,
     seat,
     instantText: deps.instantText(),
   });

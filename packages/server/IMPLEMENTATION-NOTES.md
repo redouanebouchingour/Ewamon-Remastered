@@ -757,3 +757,58 @@ and taught the Phase A interiors.
   have no purge job either — one housekeeping job for both is the natural follow-up). A reset does not kick live room
   sessions; their access tokens lapse within 15 min and the next refresh fails.
 - **Tests**: `test/rest-auth.test.ts` "Phase C6" (6), `test/mailer.test.ts` (4).
+
+## Phase D1–D3 — story grants, TMs + tutor, stone and trade evolutions (2026-10-06)
+
+- **Grants.** `completeBeatInTx` now takes `repos.inventory` and adds `beat.grant` in the beat's transaction (the done flag
+  keeps it once per player); it returns `items` (absolute counts). `ZoneRoom.onInteract` (non-battle beats) updates
+  `ud.inventory` and sends an `inventoryDelta` before the `progressionDelta`; `battleSession` merges them into the battle
+  delta's `items` (the room cache refreshes from `inventoryAll` as before).
+- **`POST /creature/:id/moves`.** Accepts, per id: a move the creature already knows (so a TM/tutor move survives a
+  reorder), a level-learnset move at or below its level, or a `TM_MOVES` move whose `tm:<move>` the player owns and the
+  species can be taught (`canLearnMachineMove`). TMs are never spent.
+- **`POST /creature/:id/tutor { move, forget }`.** Presence zone must hold an NPC whose `tutor` lists `move`
+  (`noTutorHere`) — zone-level like the shop, no distance check (presence has no position); learnable (`notLearnable`);
+  not known (`alreadyKnown`); four moves need `forget` (`movesFull`, `notKnown`). Player row locked; money −
+  `MOVE_TUTOR_PRICE` (`InsufficientFunds` from the repo); audit `creature.tutor`.
+- **Shop.** A key item (TM) buys with `qty: 1` only (`oneAtATime`) and not when already owned (`alreadyOwned`); key
+  items stay unsellable (`priceOf` gives held/key items no sell price).
+- **`POST /item/use` with a stone.** Needs a target and qty 1, checks ownership and that the target reacts
+  (`itemEvolutionTarget`, else `noEffect`), spends nothing and answers `creaturesUpdated: [creature]`, `events:
+  [{ t: 'evolveReady', into, item }]`. Evolution stays an explicit second step.
+- **`POST /creature/:id/evolve`.** Player row locked. In order: core's level `evolveReady`; else a stone evolution while
+  the stone is owned (one spent, response `inventoryDelta.items`); else a trade evolution while the creature carries
+  `TRADE_EVOLVE_RIBBON` (removed by the evolution); else `notReady`. Audit detail gains `via`.
+- **Trades.** `tradeSession.complete` marks each received creature whose species evolves by trade with
+  `TRADE_EVOLVE_RIBBON` (row updated in the same transaction) and lists it in that player's `creaturesUpdated` as well as
+  `creaturesAdded`. The ribbon is the persisted licence, so the evolve prompt can be answered later ("Not now"), not only
+  in the session of the trade. No migration: `ribbons` is an existing jsonb column nothing else used.
+- **Not done**: a quest reward that names a TM the player already owns stacks a second copy (harmless, never used up);
+  no per-NPC distance check for the tutor (zone presence only).
+- Tests: `test/tms-evolution.test.ts` (8). Named so it is NOT matched by the `progression-*.test.ts` exclusion.
+
+## Phase D4/D5/D7 (2026-10-06)
+
+- **D4 shinies.** `shinyFromDraw(u)`: `(u · 2^32) mod 512 === 0` on the ALPHA draw — no extra draw, so every seeded spawn
+  sequence is byte-identical to pre-D4 (`test/shiny.test.ts` pins the digest `8880f1e7` captured by running the HEAD
+  director on the same seed). P = 1/512 exactly; independence from the alpha threshold to 2^-23. `SpawnRecord.isShiny?`
+  (optional so existing literals compile), `SpawnState.isShiny`, `newCreature(…, { isShiny })`, `toInstance` carries it,
+  the catch inserts it and `markCaught(…, isShiny)` marks the dex. Trade / market buy / market expiry / evolve pass the
+  creature's flag to `markCaught`. `GET /marketplace?isShiny=`; `listingView` adds `isShiny` only when true.
+  Statics, trainers, raid bosses: never shiny. No live-ops shiny bonus.
+- **D5 achievements.** `game/quests.ts`: `target` covers the new kinds; `absoluteValue` (`dexCaught` ← `dex.caught`,
+  `loginStreak` ← `streak.days`) max-merges and skips the write when nothing grew; `matches` adds `catchTier`,
+  `completeTrades` (`trade`), `clearRaids` (`raidClear`). Emitters: battle catch (`catch` + isAlpha/isShiny, `dex`),
+  raid catch (`catch` + isAlpha, `dex`), raid rewarded clear (`raidClear`), trade completion (`dex` when creatures were
+  received; `trade` existed), `dailyLogin` (`streak`; `DailyLoginGrant.questProgress`, sent with the join's
+  progressionDelta; the REST login path ignores it — the client reads `/me`). **Not wired**: market purchases and
+  evolutions do not emit `dex` (the next catch / trade catches the absolute count up).
+- **D7 weather.** `game/weather.ts`: `WEATHER_BUCKET_MS = 6 min`, `WEATHER_SCHEDULE` per biome, one draw per
+  (seed, zone, bucket). ZoneRoom writes `state.weather` at create and in tick step 1b when the bucket changes (only when it
+  differs). `BattleDeps.weather(format, at)` → `open()` passes it to `createBattle` and records it in
+  `start.weather`: wild/static/trainer/league outside `interiorAt` pockets, never pvp/raid. `env.WORLD_WEATHER`
+  ('on' | 'off', default 'on'); **`testEnv` defaults to 'off'** so every pre-existing room test (and the progression walk)
+  stays independent of the wall clock — `test/weather.test.ts` turns it on.
+- Tests: `test/shiny.test.ts` (4), `test/achievements.test.ts` (6), `test/weather.test.ts` (6); Phase D5 assertions added to
+  `challenge-trade.test.ts` (trade source) and `raid.test.ts` (raid source). Full `npx vitest run packages/server`: 29 files,
+  218 tests green.

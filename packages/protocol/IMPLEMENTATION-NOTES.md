@@ -93,3 +93,20 @@ installed library that future readers should not have to re-derive. The spec its
   not toast an error the server already explained with its own toast. No server message changed: an accepted trip is the
   ordinary `handover`.
 - `test/payloads.test.ts`: 21 keys in spine order, the valid example and four malformed payloads.
+
+## Phase D2–D3 — tutor route, evolve response (2026-10-06)
+
+- `TutorReq { move, forget: string | null }` and `ROUTES.creatureTutor` (`POST /creature/:id/tutor`, response
+  `CreatureSetupRes` = creature + `inventoryDelta` carrying the new money). 65 routes.
+- `CreatureEvolveRes` = `CreatureInstanceSchema.extend({ inventoryDelta: InventoryDeltaBodySchema.optional() })` replaces
+  the bare creature on `creatureEvolve`: a stone evolution reports the spent stone's count; level / trade evolutions omit
+  it, so older clients reading only the creature fields keep working.
+- `ItemUseRes.events` is loose already; a stone answers `{ t: 'evolveReady', into, item }`.
+
+## Phase D4 — shinies (2026-10-06)
+
+- `CreatureInstanceSchema.isShiny` optional; `SpawnState` gains `@type('boolean') isShiny = false` appended LAST (earlier
+  field indexes unchanged; `schema.test.ts` pins the order); `ListingViewSchema.isShiny` optional; `MarketQuery.isShiny`
+  (`QueryBool`); `DexRes.shiny` optional. Every addition optional so pre-D4 payloads stay valid.
+- `ZoneState.weather` already existed (Phase D7 only starts writing it).
+- Tests: `test/shiny.test.ts` (4).

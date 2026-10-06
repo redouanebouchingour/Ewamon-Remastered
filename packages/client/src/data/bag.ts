@@ -4,9 +4,9 @@
  * server decides every effect (`POST /item/use` answers 409 `noEffect` / `notUsableHere`); `wouldAffect` only greys
  * out creatures the server would refuse anyway, so a click is never wasted on an obvious no-op.
  */
-import { CONSUMABLES } from '@ewa/content';
+import { CONSUMABLES, EVOLUTION_STONES } from '@ewa/content';
 import type { ConsumableEffect, CreatureInstance } from '@ewa/core';
-import { itemInfo, maxHpOf } from './content';
+import { itemInfo, maxHpOf, stoneTarget } from './content';
 import type { ItemInfo } from './content';
 
 export type BagGroup = 'consumable' | 'orb' | 'held' | 'key';
@@ -18,7 +18,7 @@ export const BAG_GROUPS: readonly { readonly key: BagGroup; readonly label: stri
   { key: 'key', label: 'Key items', hint: 'Kept for good; they open the way in the world.' },
 ];
 
-const effects = new Map<string, ConsumableEffect>(CONSUMABLES.map((c) => [c.id, c.effect]));
+const effects = new Map<string, ConsumableEffect>([...CONSUMABLES, ...EVOLUTION_STONES].map((c) => [c.id, c.effect]));
 
 /** How the item is used from the Bag: on one creature, straight away (field items), given to hold, or not at all. */
 export type BagUse = 'creature' | 'field' | 'give' | 'none';
@@ -36,6 +36,7 @@ export function bagUse(id: string): BagUse {
     case 'fullRestore':
     case 'restorePp':
     case 'rareCandy':
+    case 'evolutionStone':
       return 'creature';
     case 'repel':
     case 'lure':
@@ -89,6 +90,8 @@ export function noEffectReason(id: string, c: CreatureInstance): string | null {
       return c.moves.every((m) => m.pp >= m.ppMax) ? 'PP already full' : null;
     case 'rareCandy':
       return c.level >= 100 ? 'Already level 100' : null;
+    case 'evolutionStone':
+      return stoneTarget(id, c) === null ? 'Does not react to it' : null;
     default:
       return 'Cannot be used on a creature';
   }

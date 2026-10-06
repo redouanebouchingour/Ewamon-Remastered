@@ -78,7 +78,7 @@ describe('§4.1 field layout', () => {
       'id', 'name', 'x', 'z', 'angle', 'moving', 'running', 'body', 'emote', 'inBattle', 'guildTag', 'seq',
     ]);
     expect(fieldNames(SpawnState)).toEqual([
-      'id', 'speciesId', 'level', 'x', 'z', 'variantKey', 'isAlpha', 'engagedBy', 'despawnAtTick',
+      'id', 'speciesId', 'level', 'x', 'z', 'variantKey', 'isAlpha', 'engagedBy', 'despawnAtTick', 'isShiny',
     ]);
     expect(fieldNames(BattleSummary)).toEqual(['id', 'participants', 'format', 'turn', 'x', 'z']);
     expect(fieldNames(RaidState)).toEqual([

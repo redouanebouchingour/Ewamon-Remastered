@@ -153,8 +153,45 @@
   font-weight: 600;
 }
 
+/* Phase D5 achievements tab: one row per milestone in progress — text, bar, figure. */
+.achList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.achRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 200px) auto;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-2);
+  background: var(--bg-2);
+}
+
+.achText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-inline-size: 0;
+}
+
 @media (max-width: 900px) {
   .list {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .achRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .achRow > :nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 }

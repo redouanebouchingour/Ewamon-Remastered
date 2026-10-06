@@ -93,6 +93,7 @@ function endBattle(ctx: Ctx, outcome: BattleOutcome): void {
 /** Applies onSwitchIn hooks for both leads (side 0 first) and returns those events. */
 export function createBattle(o: CreateBattleOpts, content: ContentIndex): TurnResult {
   const rng = createRng(o.seed);
+  const ambient = o.weather ?? 'none';
   const sides: readonly [Side, Side] = [
     { ...o.sides[0], mustSwitch: false, consumedItems: [] },
     { ...o.sides[1], mustSwitch: false, consumedItems: [] },
@@ -101,13 +102,15 @@ export function createBattle(o: CreateBattleOpts, content: ContentIndex): TurnRe
     id: o.id,
     format: o.format,
     sides,
-    field: { weather: { kind: 'none', turns: 0 }, terrain: o.terrain },
+    field: { weather: { kind: ambient, turns: 0 }, terrain: o.terrain },
     turn: 0,
     rng: rng.snapshot(),
     ended: null,
     zoneId: o.zoneId,
   };
   const ctx = makeCtx(state, content);
+  // Phase D7: ambient zone weather (turns 0 = no countdown); announced before the leads' switch-in hooks
+  if (ambient !== 'none') emit(ctx, { t: 'weatherSet', kind: ambient, turns: 0, source: null });
   for (let i = 0; i < SIDES.length; i++) placeActive(ctx, SIDES[i]!, ctx.st.sides[SIDES[i]!].active);
   for (let i = 0; i < SIDES.length; i++) fireSwitchInHooks(ctx, SIDES[i]!);
   return finish(ctx);
@@ -566,8 +569,8 @@ function endOfTurn(ctx: Ctx): void {
       changeStage(ctx, activeRef(ctx, side), h.raise.stat, h.raise.stages, activeRef(ctx, side), 'ability');
     }
   }
-  // weather countdown
-  if (st.field.weather.kind !== 'none') {
+  // weather countdown (turns 0 = ambient zone weather, Phase D7: no countdown, no tick)
+  if (st.field.weather.kind !== 'none' && st.field.weather.turns > 0) {
     const kind = st.field.weather.kind;
     const left = st.field.weather.turns - 1;
     if (left <= 0) {

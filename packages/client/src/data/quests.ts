@@ -1,5 +1,5 @@
 /**
- * Phase B3 — the story quests as the journal and the HUD hint read them: content `QUESTS` + the player's
+ * Phase B3 — the story quests (and, Phase D5, the achievements) as the journal and the HUD hint read them: content `QUESTS` + the player's
  * `progression.quests` (questId → objectiveId → {count, done}) and `questsClaimed`. Mirrors the server's rules
  * (`game/quests.ts`): a quest is active once every `requires` is claimed; count objectives (`catchSpecies`,
  * `winBattles`) need `count`, every other kind is done on its first match; a quest is claimable when every
@@ -13,7 +13,19 @@ import { itemInfo, speciesName, zoneName } from './content';
 export type QuestStatus = 'locked' | 'active' | 'ready' | 'claimed';
 
 export function objectiveTarget(o: QuestObjective): number {
-  return o.kind === 'catchSpecies' || o.kind === 'winBattles' ? o.count : 1;
+  switch (o.kind) {
+    case 'catchSpecies':
+    case 'winBattles':
+    case 'dexCaught':
+    case 'catchTier':
+    case 'completeTrades':
+    case 'clearRaids':
+      return o.count;
+    case 'loginStreak':
+      return o.days;
+    default:
+      return 1;
+  }
 }
 
 export interface ObjectiveView {
@@ -84,10 +96,22 @@ export function trackedHint(q: QuestDef, p: QuestProgress | null): string | null
   return o.target > 1 ? `${o.label} (${o.count}/${o.target})` : o.label;
 }
 
-/**
- * Phase C4 — the profile's achievements list. Phase D5 adds achievements as `QuestDef kind: 'achievement'`; until then
- * the quests no NPC gives (the shrine's milestone counts) stand in for them.
- */
+/** Phase D5 — the achievements (`QuestDef kind: 'achievement'`, content order). */
 export function achievementQuests(): readonly QuestDef[] {
-  return QUESTS.filter((q) => (q as { readonly kind?: string }).kind === 'achievement' || q.giver === null);
+  return QUESTS.filter((q) => q.kind === 'achievement');
+}
+
+/** Phase D5 — the story quests the journal's Story tab lists (everything but the achievements). */
+export function storyQuests(): readonly QuestDef[] {
+  return QUESTS.filter((q) => q.kind !== 'achievement');
+}
+
+/**
+ * Phase D5 — one progress figure per achievement: a single-objective milestone reads its count against its target
+ * (12 / 30 species), a multi-objective one the objectives done (5 / 8 badges).
+ */
+export function achievementProgress(q: QuestDef, p: QuestProgress | null): { readonly value: number; readonly target: number } {
+  const objectives = objectivesOf(q, p);
+  if (objectives.length === 1) return { value: objectives[0]!.count, target: objectives[0]!.target };
+  return { value: objectives.filter((o) => o.done).length, target: objectives.length };
 }

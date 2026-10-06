@@ -35,6 +35,8 @@ export interface CreatureInstance {
   readonly heldItem: string | null;
   readonly variantKey: VariantKey;
   readonly isAlpha: boolean;
+  /** Phase D4: present (true) only on a shiny; absent = not shiny */
+  readonly isShiny?: boolean;
   readonly caughtAt: { readonly zoneId: string; readonly at: number } | null;
   readonly ribbons: readonly string[];
   readonly favorite: boolean;
@@ -128,6 +130,8 @@ export interface ListingView {
   readonly level: number;
   readonly variantKey: VariantKey;
   readonly isAlpha: boolean;
+  /** Phase D4 */
+  readonly isShiny: boolean;
   readonly startingBid: number;
   readonly currentBid: number | null;
   readonly currentBidderId: string | null;
@@ -153,6 +157,8 @@ export interface MarketQuery {
   readonly search?: string;
   readonly variant?: VariantKey;
   readonly isAlpha?: boolean;
+  /** Phase D4 */
+  readonly isShiny?: boolean;
   readonly levelMin?: number;
   readonly levelMax?: number;
   readonly sort?: MarketSort;
@@ -206,6 +212,8 @@ export interface BattleStartSnapshot {
   readonly zoneId: string;
   readonly terrain: string;
   readonly sides: readonly [unknown, unknown];
+  /** Phase D7: the ambient zone weather passed to createBattle; absent = none */
+  readonly weather?: string;
 }
 
 export interface TradedCreatureSummary {

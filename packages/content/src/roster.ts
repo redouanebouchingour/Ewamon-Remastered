@@ -2,6 +2,7 @@
  * Roster coverage — spine §3.10 rule 7 plus roster-coverage.md RC-1 … RC-13 (RC-13's walkability half runs in
  * validate.ts rule 9 where the heightfield is available). Pure; returns the RosterReport with `ruleFailures`.
  */
+import { evolutionChildren } from '@ewa/core';
 import type { SpeciesDef } from '@ewa/core';
 import type {
   AcquisitionPath,
@@ -41,9 +42,13 @@ const TIER_WEIGHT: Readonly<Record<string, readonly [number, number]>> = {
 export type Stage = 'single' | 'base' | 'mid' | 'final';
 
 export function childrenOf(s: SpeciesDef): readonly string[] {
-  if (s.evolution === null) return [];
-  if (s.evolution.kind === 'level') return [s.evolution.into];
-  return s.evolution.branches.map((b) => b.into);
+  return evolutionChildren(s.evolution);
+}
+
+/** The level a species evolves at — 0 for none and for the Phase D3 stone / trade kinds (no level gates them). */
+export function evolveLevelOf(s: SpeciesDef | undefined): number {
+  const e = s?.evolution ?? null;
+  return e !== null && (e.kind === 'level' || e.kind === 'split') ? e.atLevel : 0;
 }
 
 export function stageOf(s: SpeciesDef): Stage {
@@ -104,12 +109,12 @@ export function computeRosterReport(input: RosterInputs): RosterReport {
       if (st === 'final' && sp.id !== 'aonred' && sp.id !== 'darkyon') fail.push(`${t.zoneId}: final form ${sp.id} spawns wild (RC-6)`);
       if (st === 'mid') {
         const parent = byId.get(sp.evolvesFrom!);
-        const at = parent?.evolution?.atLevel ?? 0;
+        const at = evolveLevelOf(parent);
         if (s.levelMin < at + 2) fail.push(`${t.zoneId}: mid ${sp.id} levelMin ${s.levelMin} < evolvesAt+2 (RC-5)`);
       }
       if (nocturnal(sp) && s.timeOfDay !== 'night') fail.push(`${t.zoneId}: Ghost/Dark ${sp.id} not night (RC-7)`);
-      if (kind === 'story' && st === 'base' && (sp.evolution?.atLevel ?? 0) > lo) {
-        fail.push(`${t.zoneId}: story-zone base ${sp.id} evolvesAt ${sp.evolution?.atLevel} > band min ${lo} (RC-9)`);
+      if (kind === 'story' && st === 'base' && evolveLevelOf(sp) > lo) {
+        fail.push(`${t.zoneId}: story-zone base ${sp.id} evolvesAt ${evolveLevelOf(sp)} > band min ${lo} (RC-9)`);
       }
       if (s.levelMin > s.levelMax) fail.push(`${t.zoneId}: ${sp.id} levelMin > levelMax`);
       if (s.levelMin < lo || s.levelMax > hi) fail.push(`${t.zoneId}: ${sp.id} [${s.levelMin},${s.levelMax}] outside band [${lo},${hi}] (RC-2)`);
@@ -227,7 +232,10 @@ export function computeRosterReport(input: RosterInputs): RosterReport {
     else if (rz !== undefined) paths[s.id] = { kind: 'raid', zones: [...rz].sort() };
     else if (s.evolvesFrom !== null) {
       const parent = byId.get(s.evolvesFrom);
-      paths[s.id] = { kind: 'evolve', from: s.evolvesFrom, atLevel: parent?.evolution?.atLevel ?? 0 };
+      const evo = parent?.evolution ?? null;
+      if (evo !== null && evo.kind === 'item') paths[s.id] = { kind: 'item', from: s.evolvesFrom, item: evo.item };
+      else if (evo !== null && evo.kind === 'trade') paths[s.id] = { kind: 'trade', from: s.evolvesFrom };
+      else paths[s.id] = { kind: 'evolve', from: s.evolvesFrom, atLevel: evolveLevelOf(parent) };
     }
   }
 

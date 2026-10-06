@@ -94,6 +94,8 @@ export const ListingViewSchema = z.object({
   level: z.number().int().min(1).max(100),
   variantKey: VariantKeySchema,
   isAlpha: z.boolean(),
+  /** Phase D4 */
+  isShiny: z.boolean().optional(),
   startingBid: Money,
   currentBid: Money.nullable(),
   currentBidderId: Uuid.nullable(),
@@ -344,6 +346,13 @@ export const SetupReq = z.object({ ability: z.string().min(1).max(40), heldItem:
 /** `CreatureInstance` (spine §4.7) + the held-item inventory counts it touched (P1). */
 export const CreatureSetupRes = CreatureInstanceSchema.extend({ inventoryDelta: InventoryDeltaBodySchema });
 export const EvolveReq = z.object({ into: z.string().min(1).max(40) });
+/**
+ * Phase D3: the evolved creature, plus — for a stone evolution — the stone count it spent (and the creature in
+ * creaturesUpdated). Optional: a level or trade evolution touches no item.
+ */
+export const CreatureEvolveRes = CreatureInstanceSchema.extend({ inventoryDelta: InventoryDeltaBodySchema.optional() });
+/** Phase D2 move tutor: `move` from a tutor NPC in the player's zone; `forget` names the slot it replaces (required when 4 are known). */
+export const TutorReq = z.object({ move: ItemId, forget: ItemId.nullable() });
 export const CreatureFlagsReq = z.object({ favorite: z.boolean().optional(), locked: z.boolean().optional() });
 
 export const ItemUseReq = z.object({ item: ItemId, target: Uuid.nullable(), qty: Qty });
@@ -360,6 +369,8 @@ export const DexRes = z.object({
   caught: StringList,
   variants: z.record(z.string(), z.array(VariantKeySchema)),
   alpha: StringList,
+  /** Phase D4: species of which a shiny was caught */
+  shiny: StringList.optional(),
 });
 export const ShopParams = z.object({ zoneId: ZoneIdSchema });
 export const ShopRes = z.object({ stock: StringList, prices: z.record(z.string(), Money) });
@@ -373,6 +384,8 @@ export const MarketQuery = z.object({
   search: z.string().max(40).optional(),
   variant: VariantKeySchema.optional(),
   isAlpha: QueryBool.optional(),
+  /** Phase D4 */
+  isShiny: QueryBool.optional(),
   levelMin: z.coerce.number().int().min(1).max(100).optional(),
   levelMax: z.coerce.number().int().min(1).max(100).optional(),
   sort: z.enum(MARKET_SORTS).default('endingSoon'),
@@ -511,7 +524,8 @@ export const ROUTES = {
   creatureNickname: route({ method: 'POST', path: '/creature/:id/nickname', auth: 'bearer', params: CreatureParams, request: NicknameReq, response: CreatureInstanceSchema }),
   creatureMoves: route({ method: 'POST', path: '/creature/:id/moves', auth: 'bearer', params: CreatureParams, request: MovesReq, response: CreatureInstanceSchema }),
   creatureSetup: route({ method: 'POST', path: '/creature/:id/setup', auth: 'bearer', params: CreatureParams, request: SetupReq, response: CreatureSetupRes }),
-  creatureEvolve: route({ method: 'POST', path: '/creature/:id/evolve', auth: 'bearer', params: CreatureParams, request: EvolveReq, response: CreatureInstanceSchema }),
+  creatureEvolve: route({ method: 'POST', path: '/creature/:id/evolve', auth: 'bearer', params: CreatureParams, request: EvolveReq, response: CreatureEvolveRes }),
+  creatureTutor: route({ method: 'POST', path: '/creature/:id/tutor', auth: 'bearer', params: CreatureParams, request: TutorReq, response: CreatureSetupRes }),
   creatureRelease: route({ method: 'POST', path: '/creature/:id/release', auth: 'bearer', params: CreatureParams, request: Nothing, response: null }),
   creatureFlags: route({ method: 'POST', path: '/creature/:id/flags', auth: 'bearer', params: CreatureParams, request: CreatureFlagsReq, response: CreatureInstanceSchema }),
   itemUse: route({ method: 'POST', path: '/item/use', auth: 'bearer', request: ItemUseReq, response: ItemUseRes }),

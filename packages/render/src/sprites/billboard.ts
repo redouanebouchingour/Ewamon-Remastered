@@ -31,7 +31,7 @@ import {
 import type { Node, Object3D, PerspectiveCamera, Texture, UniformNode } from 'three/webgpu';
 import {
   Fn, abs, cameraPosition, cos, dot, float, floor, hash, hue, length, mix, mrt, normalLocal, normalMap, normalView, normalWorld, oneMinus,
-  positionLocal, positionWorld, pow, saturation, select, sin, smoothstep, tangentLocal, texture, uniform, userData, uv, vec2, vec3, vec4,
+  positionLocal, positionWorld, pow, saturation, select, sin, smoothstep, step, tangentLocal, texture, uniform, userData, uv, vec2, vec3, vec4,
 } from 'three/tsl';
 import type { BattlerPose, SpriteDescriptor, SpriteFrame, TypeName, VariantKey } from '../contracts.js';
 import type { HarvestLevel } from '../descriptors.js';
@@ -153,8 +153,15 @@ export function createBillboardMaterial(tex: AtlasTextures, u: BillboardUniforms
   const V = cameraPosition.sub(positionWorld).normalize();
   const rim = pow(oneMinus(abs(dot(normalWorld, V))), B.rimPower);
   const typeC = userData('typeColor', 'color') as unknown as Node<'vec3'>;
-  const shimmer = f('alphaGlow').mul(B.shimmerAmp).mul(sin(u.animTime.mul(B.shimmerRate).add(uv().y.mul(B.shimmerBands))).mul(0.5).add(0.5));
-  m.emissiveNode = typeC.mul(rim).mul(B.rimStrength).add(a.rgb.mul(em).mul(B.emissiveGain)).add(a.rgb.mul(shimmer)).mul(oneMinus(h));
+  // alphaGlow = alpha (0/1) + shinyGlow (2) for a shiny (Phase D4): decode both from the one per-object value
+  const glow = f('alphaGlow');
+  const shinyOn = step(B.shinyGlow - 0.5, glow);
+  const alphaOn = glow.sub(shinyOn.mul(B.shinyGlow));
+  const shimmer = alphaOn.mul(B.shimmerAmp).mul(sin(u.animTime.mul(B.shimmerRate).add(uv().y.mul(B.shimmerBands))).mul(0.5).add(0.5));
+  const sCell = floor(uv().mul(B.sparkleCells));
+  const twinkle = hash(sCell.x.add(sCell.y.mul(B.sparkleCells * 7)).add(floor(u.animTime.mul(B.sparkleRate)).mul(131)));
+  const sparkle = smoothstep(1 - B.sparkleDensity, 1, twinkle).mul(shinyOn).mul(B.sparkleGain).mul(alpha);
+  m.emissiveNode = typeC.mul(rim).mul(B.rimStrength).add(a.rgb.mul(em).mul(B.emissiveGain)).add(a.rgb.mul(shimmer)).add(vec3(1, 0.93, 0.7).mul(sparkle)).mul(oneMinus(h));
 
   m.mrtNode = mrt({ mask: vec2(1, f('sharp')) });   // x: exclude from GTAO darkening; y: DOF-sharp (§10.8.2)
   m.positionNode = billboardPosition(u);
@@ -480,6 +487,7 @@ export class CreatureBillboard {
   private dissolveBase = 0;
   private variant: VariantKey;
   private isAlpha: boolean;
+  private isShiny: boolean;
   private disposed = false;
 
   constructor(pool: SpritePool, d: SpriteDescriptor) {
@@ -490,12 +498,13 @@ export class CreatureBillboard {
     this.phase = bobPhase(d.id);
     this.variant = d.variant;
     this.isAlpha = d.isAlpha;
+    this.isShiny = d.isShiny === true;
     this.rig = pool.takeRig();
     this.object = this.rig.group;
     this.object.name = `ewa:creature:${d.id}`;
     this.rig.ud.hurt = 0; this.rig.ud.dissolve = 0; this.rig.ud.sharp = 0; this.rig.ud.lift = 0; this.rig.ud.scaleY = 1; this.rig.ud.bob = 0;
     this.object.position.set(0, 0, 0);
-    this.setVariant(d.variant, d.isAlpha);
+    this.setVariant(d.variant, d.isAlpha, this.isShiny);
     this.refreshTypeColor();
     this.bindSide();
     pool.addLive(this);
@@ -537,10 +546,12 @@ export class CreatureBillboard {
     this.applyPose();
   }
 
-  setVariant(v: VariantKey, isAlpha: boolean): void {
+  /** `isShiny` (Phase D4, optional) keeps the current shiny state when omitted. */
+  setVariant(v: VariantKey, isAlpha: boolean, isShiny: boolean = this.isShiny): void {
     this.variant = v;
     this.isAlpha = isAlpha;
-    paletteFor(v, isAlpha, _pal);
+    this.isShiny = isShiny;
+    paletteFor(v, isAlpha, _pal, isShiny);
     const ud = this.rig.ud;
     ud.hueShift = _pal.hueShift; ud.satMul = _pal.satMul; ud.lightMul = _pal.lightMul; ud.alphaGlow = _pal.alphaGlow;
     this.applyDims();

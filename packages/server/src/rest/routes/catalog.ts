@@ -59,6 +59,16 @@ export function priceOf(deps: RestDeps, item: string): Priced | null {
   return { buy: def.price, sell: null };
 }
 
+/** Phase D2: `slot: 'key'` items (TMs, old_rod, the HMs) — never stacked, never sold back. */
+export function isKeyItem(deps: RestDeps, item: string): boolean {
+  try {
+    const def = deps.content.item(item);
+    return 'slot' in def && def.slot === 'key';
+  } catch (_e) {
+    return false;
+  }
+}
+
 export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): void {
   const { repos, content, clock } = deps;
   const bearer = { onRequest: requireAuth(deps), preHandler: rateLimit(deps) };
@@ -91,9 +101,13 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
     if (stock === null || !stock.includes(body.item)) throw new HttpError(409, 'notInStock');
     const price = priceOf(deps, body.item)?.buy ?? null;
     if (price === null) throw new HttpError(409, 'notForSale');
+    // Phase D2: a key item (a TM) is reusable — one copy, bought once
+    const key = isKeyItem(deps, body.item);
+    if (key && body.qty !== 1) throw new HttpError(409, 'oneAtATime');
     const now = new Date(clock());
     const res = await repos.db.transaction(async (tx) => {
       await repos.players.lock(tx, id);
+      if (key && (await repos.inventory.qty(tx, id, body.item)) > 0) throw new HttpError(409, 'alreadyOwned');
       const money = await repos.players.addMoney(tx, id, -price * body.qty);
       await repos.inventory.add(tx, id, body.item, body.qty);
       await repos.audit.write(tx, { actorId: id, action: 'shop.buy', subject: body.item, detail: { qty: body.qty, price } }, now);

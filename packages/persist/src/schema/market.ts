@@ -19,6 +19,8 @@ export const listings = pgTable(
     level: smallint('level').notNull(),
     variantKey: varchar('variant_key', { length: 8 }).notNull(),
     isAlpha: boolean('is_alpha').notNull(),
+    /** Phase D4 (migration 0003); denormalised for the shiny filter */
+    isShiny: boolean('is_shiny').notNull().default(false),
     startingBid: integer('starting_bid').notNull(),
     currentBid: integer('current_bid'),
     currentBidderId: uuid('current_bidder_id').references(() => players.id),

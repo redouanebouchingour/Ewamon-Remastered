@@ -43,7 +43,7 @@ export interface SpriteCatalog {
   atlasesOf(speciesId: string): readonly string[];
   /** Level-0 bytes (albedo + normal + emissive, mips included when listed) of a set of atlases, for the boot bar. */
   bytesOf(ids: readonly string[]): number;
-  descriptor(speciesId: string, key: string, variant?: VariantKey, isAlpha?: boolean): SpriteDescriptor | null;
+  descriptor(speciesId: string, key: string, variant?: VariantKey, isAlpha?: boolean, isShiny?: boolean): SpriteDescriptor | null;
   readonly speciesCount: number;
 }
 
@@ -69,13 +69,13 @@ export function createSpriteCatalog(m: CreatureManifest, species: (id: string) =
       return sp.front.atlas === sp.back.atlas ? [sp.front.atlas] : [sp.front.atlas, sp.back.atlas];
     },
     bytesOf: (ids) => ids.reduce((n, id) => n + (bytes.get(id) ?? 0), 0),
-    descriptor(speciesId, key, variant = 'normal', isAlpha = false) {
+    descriptor(speciesId, key, variant = 'normal', isAlpha = false, isShiny = false) {
       const sp = m.sprites[speciesId];
       if (sp === undefined) return null;
       const def = species(speciesId);
       const t = (def?.types ?? ['Normal']) as readonly CoreTypeName[];
       const types = (t.length > 1 ? [t[0]!, t[1]!] : [t[0]!]) as unknown as readonly [TypeName] | readonly [TypeName, TypeName];
-      return { id: key, front: frame(sp.front), back: frame(sp.back), sizeScale: def?.sizeScale ?? sp.sizeScale, types, variant, isAlpha };
+      return { id: key, front: frame(sp.front), back: frame(sp.back), sizeScale: def?.sizeScale ?? sp.sizeScale, types, variant, isAlpha, ...(isShiny ? { isShiny: true } : {}) };
     },
     get speciesCount() {
       return Object.keys(m.sprites).length;

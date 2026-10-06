@@ -22,6 +22,8 @@ export interface ClosedListing {
   readonly speciesId: string;
   readonly variantKey: VariantKey;
   readonly isAlpha: boolean;
+  /** Phase D4 */
+  readonly isShiny: boolean;
   /** the sale price when sold */
   readonly price: number | null;
 }
@@ -43,6 +45,7 @@ function view(r: ListingRow): ListingView {
     level: r.level,
     variantKey: r.variantKey as VariantKey,
     isAlpha: r.isAlpha,
+    isShiny: r.isShiny,
     startingBid: r.startingBid,
     currentBid: r.currentBid,
     currentBidderId: r.currentBidderId,
@@ -92,6 +95,7 @@ export const marketRepo = {
     if (q.search && q.search.trim()) conds.push(ilike(listings.speciesId, `%${escapeLike(q.search.trim())}%`));
     if (q.variant) conds.push(eq(listings.variantKey, q.variant));
     if (q.isAlpha !== undefined) conds.push(eq(listings.isAlpha, q.isAlpha));
+    if (q.isShiny !== undefined) conds.push(eq(listings.isShiny, q.isShiny));
     if (q.levelMin !== undefined) conds.push(gte(listings.level, clampInt(q.levelMin, 1, 100)));
     if (q.levelMax !== undefined) conds.push(lte(listings.level, clampInt(q.levelMax, 1, 100)));
     const where = and(...conds);
@@ -174,6 +178,7 @@ export const marketRepo = {
         level: c.level,
         variantKey: c.variantKey,
         isAlpha: c.isAlpha,
+        isShiny: c.isShiny === true,
         startingBid: l.startingBid,
         buyNowPrice: l.buyNowPrice,
         status: 'active',
@@ -264,7 +269,7 @@ export const marketRepo = {
       .limit(clampInt(limit, 1, 1000))
       .for('update', { skipLocked: true });
     for (const l of due) {
-      const base = { id: l.id, sellerId: l.sellerId, creatureId: l.creatureId, speciesId: l.speciesId, variantKey: l.variantKey as VariantKey, isAlpha: l.isAlpha };
+      const base = { id: l.id, sellerId: l.sellerId, creatureId: l.creatureId, speciesId: l.speciesId, variantKey: l.variantKey as VariantKey, isAlpha: l.isAlpha, isShiny: l.isShiny };
       if (l.currentBidderId !== null && l.currentBid !== null) {
         await playerRepo.lockMany(tx, [l.sellerId, l.currentBidderId]);
         await settleSale(tx, l, l.currentBidderId, l.currentBid, now);

@@ -455,7 +455,7 @@ Wrap: `dusk (0.80) → night (1.00 ≡ 0.00)`. `punctual multiplier` scales ever
 
 ### 10.3.6 Weather
 
-`setWeather(w)`: `rain` → `wetness` ramps to 1 (4 s), rain sheet (one `LineSegments` of 4 000 streaks animated in the vertex stage from `windTime`, so hitstop freezes it; `layers 29`, no shadow), sun intensity ×0.55, `cloudCoverage 0.85`; `sun` → `cloudCoverage 0.1`, `envIntensity ×1.1`; `sand` → fog density ×2.5, tint `#c9a24a`; `hail` → the same sheet as short bright streaks (WebGPU has neither wide lines nor sized `Points`; header table), tint white, wetness as rain; `none` → defaults. <!-- amended 2026-09-25: `Points` + `pointWidth 3` cannot be drawn on WebGPU — render IMPLEMENTATION-NOTES M10, P8 --> Weather is cosmetic in the overworld (spine §4.1); battles set their own through `BattleStage.setWeather`.
+`setWeather(w)`: `rain` → `wetness` ramps to 1 (4 s), rain sheet (one `LineSegments` of 4 000 streaks animated in the vertex stage from `windTime`, so hitstop freezes it; `layers 29`, no shadow), sun intensity ×0.55, `cloudCoverage 0.85`; `sun` → `cloudCoverage 0.1`, `envIntensity ×1.1`; `sand` → fog density ×2.5, tint `#c9a24a`; `hail` → the same sheet as short bright streaks (WebGPU has neither wide lines nor sized `Points`; header table), tint white, wetness as rain; `none` → defaults. <!-- amended 2026-09-25: `Points` + `pointWidth 3` cannot be drawn on WebGPU — render IMPLEMENTATION-NOTES M10, P8 --> Weather is cosmetic in the overworld (spine §4.1); battles set their own through `BattleStage.setWeather`. Phase D7: the client drives `setWeather` from `ZoneState.weather` (the server's per-biome schedule) and renders `none` inside an interior pocket and while a battle owns the stage.
 
 ### 10.3.7 Height fog (TSL, no raymarch)
 
@@ -499,6 +499,7 @@ export interface SpriteDescriptor {
   readonly types: readonly [TypeName] | readonly [TypeName, TypeName];
   readonly variant: VariantKey;
   readonly isAlpha: boolean;
+  readonly isShiny?: boolean;              // Phase D4 (additive): the sparkle; encoded as alphaGlow + 2 (no new per-object field)
 }
 /** One map of an atlas: WebP level 0 plus pipeline-built levels 1..3 (40-pipelines.md §40.1.6.3). Never KTX2 — see the note below. */
 export interface AtlasMap { readonly url: string; readonly mips: readonly string[] }
@@ -966,8 +967,9 @@ export type VfxId =
   | 'stat_up' | 'stat_down' | 'heal' | 'drain' | 'recoil'
   | 'weather_sun' | 'weather_rain' | 'weather_sand' | 'weather_hail'
   | 'orb_throw' | 'orb_shake' | 'orb_catch' | 'orb_break'
-  | 'switch_out' | 'switch_in' | 'faint' | 'trap' | 'flinch';
-export const VFX_IDS: readonly VfxId[];                  // exactly 19 + 4 + 6 + 5 + 4 + 4 + 5 = 47 entries; the client's MOVE_ANIMS/DEFAULT_BY_TYPE reference only these
+  | 'switch_out' | 'switch_in' | 'faint' | 'trap' | 'flinch'
+  | 'shiny_sparkle';                                     // Phase D4: the shiny encounter burst
+export const VFX_IDS: readonly VfxId[];                  // exactly 19 + 4 + 6 + 5 + 4 + 4 + 5 = 47 entries + 'shiny_sparkle' (Phase D4) = 48; the client's MOVE_ANIMS/DEFAULT_BY_TYPE reference only these
 ```
 
 Every VFX is a slice of one pooled instanced `Sprite` (`count` 4 096 = 8 emitters × 512 particles, additive, `layers 29`, one shared `PointsNodeMaterial` with per-particle `instancedBufferAttribute` for birth/lifetime/colour — a `Points` object rasterises 1-px points on WebGPU, header table) or a pooled alpha-card burst (≤ 8 cards); particles write valid MRT values (the view axis as normal, mask `(1, 0)`) and alpha-test at 0.004, because the pass MRT writes those attachments unblended and a zero normal made GTAO NaN. Pools are allocated in `createRenderer` (§10.1.2 step 7) and never grow. VFX add **no** lights (a light appearing mid-battle recompiles every lit program); impacts pulse the 2 reserved beacons instead, which live under the stage root from `createRenderer` on at intensity 0 with `shadow.autoUpdate = false` while undressed. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES P4, P8, P10, Q8 --> `impact_super` adds a 120 ms `chroma` request (`effects.chroma` gates it) and `impact_crit` a 3-frame white flash on the target (`hurt 1.0`). VFX never writes `mask.y = 1`, so effects blur with the scene and never sharpen; VFX never covers the HUD rects (the HUD is a later overlay pass — Pillar 8 readability gate in `50-verification-budget.md` §50.1 rule 15).

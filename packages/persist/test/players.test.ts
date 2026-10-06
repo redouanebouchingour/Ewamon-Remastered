@@ -184,7 +184,7 @@ describe('ProgressRepo', () => {
       expect(await progressRepo.markCaught(tx, id, 'glimfin', 'normal', false, at(1))).toEqual({ newSpecies: true });
       expect(await progressRepo.markCaught(tx, id, 'glimfin', 'dusk', true, at(2))).toEqual({ newSpecies: false });
       expect(await progressRepo.markCaught(tx, id, 'cindercap', 'ember', false, at(3))).toEqual({ newSpecies: true });
-      expect(await progressRepo.dex(tx, id)).toEqual({ seen: ['cindercap', 'glimfin'], caught: ['cindercap', 'glimfin'], variants: { cindercap: ['ember'], glimfin: ['normal', 'dusk'] }, alpha: ['glimfin'] });
+      expect(await progressRepo.dex(tx, id)).toEqual({ seen: ['cindercap', 'glimfin'], caught: ['cindercap', 'glimfin'], variants: { cindercap: ['ember'], glimfin: ['normal', 'dusk'] }, alpha: ['glimfin'], shiny: [] });
       await progressRepo.setFlags(tx, id, ['met_elder', 'met_elder', 'saw_shrine'], T0);
       expect(await progressRepo.flags(tx, id)).toEqual(['met_elder', 'saw_shrine']);
       await progressRepo.advance(tx, id, 'q1', 'catch3', 2, false);

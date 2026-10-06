@@ -1018,3 +1018,15 @@ needed no change (none pins a town digest).
 2. Canopy knoll edges read as a faceted ramp from close up; the outside of a pocket is mostly seen from 20–34 m.
 3. The rim / canopy of the active pocket do not react to `setView` (rim bushes are ≤ 1.5 m and 1 m outside the
    walls, so they do not cover the floor at the diorama pitch).
+
+## Phase D4 — shiny sparkle + burst (2026-10-06)
+
+- `SpriteDescriptor.isShiny?` (additive). No new per-object field: `paletteFor(variant, isAlpha, out, isShiny = false)`
+  writes `alphaGlow = (isAlpha ? 1 : 0) + (isShiny ? BILLBOARD.shinyGlow (2) : 0)`; the billboard graph decodes
+  `shinyOn = step(1.5, glow)`, `alphaOn = glow − 2·shinyOn` (the alpha shimmer keeps reading 0/1) and adds a sparkle:
+  twinkle cells (`sparkleCells 14`) re-hashed `sparkleRate 5`×/s, the top `sparkleDensity 6 %` lit at `sparkleGain 2.4` ×
+  warm white, masked by the sprite alpha. Same material per atlas (no new program).
+- `CreatureBillboard.setVariant(v, isAlpha, isShiny = current)` — the old two-argument call keeps the shiny state;
+  `BattleStage.setBattler` passes `desc.isShiny`.
+- VFX: `shiny_sparkle` (orbiting gold stars + one card flash, 30 particles) — `VFX_SHINY_IDS`, `VFX_IDS` is 48
+  (`stage.test.ts` updated). Not verified on a GPU in this phase (node tests only).

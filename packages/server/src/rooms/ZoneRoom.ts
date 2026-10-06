@@ -12,6 +12,7 @@ import {
   gatesClosedFor,
   getHeightfield,
   interiorArenaFor,
+  interiorAt,
   interiorGates,
   isWalkable,
   isWater,
@@ -24,7 +25,7 @@ import {
 } from '@ewa/content';
 import type { BadgeId, Heightfield, LinkDir, RaidHotspot, RectSolid, ZoneDef, ZoneId } from '@ewa/content';
 import { createRng } from '@ewa/core';
-import type { Rng } from '@ewa/core';
+import type { Rng, WeatherKind } from '@ewa/core';
 import { BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, PlayerState, RaidState, SpawnState, ZoneState } from '@ewa/protocol';
 import type { ChallengeFailReason, ClientMessageType, ClientPayload, FastTravelRefusal, ServerMessage } from '@ewa/protocol';
 import type { RoomDeps } from '../deps';
@@ -51,6 +52,7 @@ import { advanceQuests, deliveriesFor } from '../game/quests';
 import type { QuestEvent } from '../game/quests';
 import { STREAK_LAST_PREFIX, dailyLogin } from '../liveops/login';
 import { dayKey, hotspotDayKey, hotspotOpen, hotspotsFor, liveOpsModsFor } from '../liveops/schedule';
+import { WEATHER_FORMATS, weatherAt, weatherBucket } from '../game/weather';
 
 export interface ZoneMeta {
   readonly zoneId: ZoneId;
@@ -226,6 +228,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   /** `${hotspotId}:${dayKey}` windows this room already opened (or yielded) — a window opens at most once */
   private readonly raidWindows = new Set<string>();
   private raidCheckAt = 0;
+  /** Phase D7: the weather bucket state.weather was derived for */
+  private weatherBucketAt = Number.NaN;
   /** player uuid → its `ewa:dm:<id>` callback (§30.7.2: DMs pushed live while the player is in this room) */
   private readonly dmSubs = new Map<string, (m: DmPush) => void>();
 
@@ -259,6 +263,9 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const state = new ZoneState();
     state.harvestState = this.zone.harvestState;
     state.timeOfDay = (this.now() % ZoneRoom.DAY_LENGTH_MS) / ZoneRoom.DAY_LENGTH_MS;
+    // Phase D7: the zone's scheduled weather (re-derived in tick step 1 when the bucket turns)
+    this.weatherBucketAt = weatherBucket(this.now());
+    state.weather = deps.env.WORLD_WEATHER === 'off' ? 'none' : weatherAt(deps.worldSeed, this.zone, this.now());
     this.state = state;
     this.metrics = createRoomMetrics(this.roomId, this.zone.id, shard);
     deps.metrics.register(this.metrics);
@@ -281,6 +288,9 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       zone: this.zone,
       host: this.battleHost(),
       metrics: this.metrics,
+      // Phase D7: wild / trainer / league fights take the zone's weather, never inside an interior (halls are indoors)
+      weather: (format, at) =>
+        WEATHER_FORMATS.has(format) && interiorAt(this.zone.id, at.x, at.z) === null ? (this.state.weather as WeatherKind) : 'none',
     });
     this.trades = new TradeCoordinator({
       repos: deps.repos,
@@ -616,7 +626,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     for (const [item, qty] of Object.entries(g.inventory)) client.userData.inventory[item] = qty;
     this.applyFlags(client.userData, g.flags);
     this.sendMsg(client, { type: 'inventoryDelta', items: { ...g.inventory }, money: g.money, creaturesAdded: [], creaturesRemoved: [], creaturesUpdated: [] });
-    this.sendMsg(client, progressionOnly({ trainerExp: g.trainerExp, trainerLevel: g.trainerLevel, flags: [...g.flags] }));
+    this.sendMsg(client, progressionOnly({ trainerExp: g.trainerExp, trainerLevel: g.trainerLevel, flags: [...g.flags], ...(g.questProgress.length > 0 ? { questProgress: [...g.questProgress] } : {}) }));
     this.sendMsg(client, { type: 'toast', level: 'success', text: `Daily login — day ${g.streak} streak` });
   }
 
@@ -894,6 +904,11 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
         }
         const done = await deps.repos.db.transaction((t) => completeBeatInTx(t, deps.repos, ud.playerId, beat, new Date(this.now())));
         this.applyFlags(ud, done.flags);
+        // Phase D1: a beat's `grant` (HM Surf, Old Rod…) arrives as an inventoryDelta before the progression
+        if (Object.keys(done.items).length > 0) {
+          for (const [item, qty] of Object.entries(done.items)) ud.inventory[item] = qty;
+          this.sendMsg(client, { type: 'inventoryDelta', items: { ...done.items }, money: null, creaturesAdded: [], creaturesRemoved: [], creaturesUpdated: [] });
+        }
         this.sendMsg(client, progressionOnly({ flags: [...done.flags], questProgress: done.questProgress.length > 0 ? [...done.questProgress] : null }));
         this.sendMsg(client, { type: 'storyBeat', beatId: beat.id, phase: 'complete' });
         return;
@@ -1595,6 +1610,13 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     // 1.
     state.tick += 1;
     state.timeOfDay = (now % ZoneRoom.DAY_LENGTH_MS) / ZoneRoom.DAY_LENGTH_MS;
+    // 1b. Phase D7 weather: one rng draw per bucket change, the field written only when it differs
+    const bucket = weatherBucket(now);
+    if (bucket !== this.weatherBucketAt && this.deps.env.WORLD_WEATHER !== 'off') {
+      this.weatherBucketAt = bucket;
+      const w = weatherAt(this.deps.worldSeed, this.zone, now);
+      if (state.weather !== w) state.weather = w;
+    }
     // 2. budget refill (inputs are applied when they arrive)
     for (const c of this.clients) if (c.userData !== undefined) c.userData.budgetMs = refillBudget(c.userData.budgetMs, ZoneRoom.TICK_MS);
     // 3. emote timers (+ S8: `moving` clears once inputs stop, so remote avatars stop their walk cycle)
@@ -1701,6 +1723,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     st.z = rec.z;
     st.variantKey = rec.variantKey;
     st.isAlpha = rec.isAlpha;
+    st.isShiny = rec.isShiny === true;
     st.engagedBy = '';
     st.despawnAtTick = this.state.tick + Math.ceil((rec.despawnAt - now) / ZoneRoom.TICK_MS);
     this.state.spawns.set(rec.id, st);

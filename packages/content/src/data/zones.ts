@@ -4,8 +4,9 @@
  * (town ±64 · route ±104 · story ±84, §3.1) and are cleared to walkable by the heightfield builder (§3.11).
  * NPC ids follow roster-coverage §12.1's `<zoneId>.<role>`; `react` lists most-progressed first (bible §9.9).
  */
-import type { GroundItemDef, LoreTabletDef, NpcDef, TrainerDef, ZoneDef } from '../types';
+import type { GroundItemDef, LoreTabletDef, NpcDef, TrainerDef, ZoneDef, ZoneId } from '../types';
 import { SHOP_STOCK_DEFAULT } from './shop';
+import { PROGRESSION_STOCK } from './progressionItems';
 
 type React = NpcDef['react'];
 
@@ -16,7 +17,7 @@ const npc = (
   z: number,
   look: string,
   lines: readonly string[],
-  o: { when?: string; until?: string; react?: React } = {},
+  o: { when?: string; until?: string; react?: React; tutor?: readonly string[] } = {},
 ): NpcDef => ({
   id,
   name,
@@ -27,6 +28,8 @@ const npc = (
   when: o.when ?? null,
   until: o.until ?? null,
   react: o.react ?? [],
+  // Phase D2 move tutor: the key exists only on tutors (x/z alone feed the layout)
+  ...(o.tutor !== undefined ? { tutor: o.tutor } : {}),
 });
 
 const tr = (
@@ -68,6 +71,8 @@ const lo = (id: string, x: number, z: number, title: string, text: readonly stri
 });
 
 const TOWN_SHOP = (extra: readonly string[]): readonly string[] => [...SHOP_STOCK_DEFAULT, ...extra];
+/** Phase D2/D3: the town's TMs and evolution stones (data/progressionItems.ts). */
+const stockFor = (id: ZoneId): readonly string[] => PROGRESSION_STOCK[id] ?? [];
 
 export const ZONES: readonly ZoneDef[] = [
   // ───────────────────────── 6.1 mirevale ─────────────────────────
@@ -380,7 +385,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     warps: [{ id: 'saltmourn.hut_door', x: 30, z: 44, toX: -40, toZ: 44, label: "Harbourmaster's hut" }],
-    shop: TOWN_SHOP(['tide_orb']),
+    shop: TOWN_SHOP(['tide_orb', ...stockFor('saltmourn')]),
     healer: true,
     gym: 'tidal_gym',
     storyRole: {
@@ -493,7 +498,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     warps: [],
-    shop: TOWN_SHOP([]),
+    shop: TOWN_SHOP(stockFor('stormrook')),
     healer: true,
     gym: 'volt_gym',
     storyRole: {
@@ -608,7 +613,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     warps: [],
-    shop: TOWN_SHOP(['prism_orb']),
+    shop: TOWN_SHOP(['prism_orb', ...stockFor('marrowdig')]),
     healer: true,
     gym: 'stone_gym',
     storyRole: {
@@ -698,7 +703,8 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
       npc('vesperveil.lantern_maker', 'a lantern-maker', 10, 20, 'casual_male', [
         "Memory's loose here. Always was. Ghosts are just recollections that decided not to be certain. I make lanterns so they can find the way back to the hedge.",
-      ]),
+        'I teach a little, too. Three thousand a lesson — the lanterns do not pay for themselves.',
+      ], { tutor: ['Shadow Sneak', 'Spectral Burn', 'Night Slash', 'Endeavor'] }),
       npc('vesperveil.gravetender', 'the gravetender', -30, 30, 'old_classy_male', [
         "Nothing's buried here. There's nothing to bury — this is where things that never were come to be almost.",
       ], {
@@ -720,7 +726,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     warps: [],
-    shop: TOWN_SHOP(['phantom_orb']),
+    shop: TOWN_SHOP(['phantom_orb', ...stockFor('vesperveil')]),
     healer: true,
     gym: 'phantom_gym',
     storyRole: {
@@ -841,7 +847,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     warps: [],
-    shop: TOWN_SHOP(['max_potion']),
+    shop: TOWN_SHOP(['max_potion', ...stockFor('forgewall')]),
     healer: true,
     gym: 'iron_gym',
     storyRole: {
@@ -928,7 +934,8 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
       npc('skyrend.roost_keeper', 'a roost-keeper', 30, 20, 'cowboy_male', [
         'Scalewisp on the cliffs, glacifang after dark. Dragons are the register of things that were certain from the start. Nothing up here was ever a cub.',
-      ]),
+        "I'll drill a move into anything that can fly or fight for it. Three thousand, paid up front.",
+      ], { tutor: ['Brave Bird', 'Sky Pierce', 'Dragon Rush', 'Double Edge'] }),
       npc('skyrend.pilgrim', 'a Warden pilgrim', -20, 20, 'kimono_male', [
         "The Wardens hold no office and want none. They counted the sky for three hundred years and built twelve devices. That's their whole answer to the Provision. It's a slow answer.",
       ]),
@@ -948,7 +955,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     warps: [],
-    shop: TOWN_SHOP(['mythos_orb', 'max_revive']),
+    shop: TOWN_SHOP(['mythos_orb', 'max_revive', ...stockFor('skyrend')]),
     healer: true,
     gym: 'draco_gym',
     storyRole: { 1: null, 2: null, 3: 'The star-counts; the Wardens explained; the Ascend Badge as judgement.' },
@@ -1057,7 +1064,7 @@ export const ZONES: readonly ZoneDef[] = [
       ]),
     ],
     warps: [],
-    shop: TOWN_SHOP(['mythos_orb', 'max_potion', 'full_restore', 'max_revive', 'max_ether', 'rarecandy']),
+    shop: TOWN_SHOP(['mythos_orb', 'max_potion', 'full_restore', 'max_revive', 'max_ether', 'rarecandy', ...stockFor('solenne')]),
     healer: true,
     gym: null,
     storyRole: {

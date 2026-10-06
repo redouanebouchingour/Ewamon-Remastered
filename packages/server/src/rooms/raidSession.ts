@@ -585,7 +585,7 @@ export class RaidRunner {
             o.trainerExp = exp.trainerExp;
             o.trainerLevel = exp.trainerLevel;
             o.rewards = { money, items: {}, trainerExp: TRAINER_EXP.raidClear, ratingDelta: null, badge: null };
-            o.quest = await advanceQuests(tx, repos, pid, [{ kind: 'battle', format: 'raid' }], now);
+            o.quest = await advanceQuests(tx, repos, pid, [{ kind: 'battle', format: 'raid' }, { kind: 'raidClear' }], now);
             await repos.audit.write(tx, { actorId: pid, action: 'raid.clear', subject: s.id, detail: { hotspot: s.hotspot.id, damage: (s.participants.get(pid)?.damage ?? 0) + (round.damage.get(pid) ?? 0) } }, new Date(now));
           }
           if (Object.keys(o.inventory).length > 0) this.inventory.set(pid, await repos.inventory.all(tx, pid));
@@ -669,7 +669,7 @@ export class RaidRunner {
           newDex = (await repos.progress.markCaught(tx, playerId, roll.creature.speciesId, roll.creature.variantKey, roll.creature.isAlpha, now)).newSpecies;
           const exp = TRAINER_EXP.catch + (newDex ? TRAINER_EXP.catchNewSpecies : 0);
           await repos.players.addTrainerExp(tx, playerId, exp);
-          quest = await advanceQuests(tx, repos, playerId, [{ kind: 'catch', species: roll.creature.speciesId }], nowMs);
+          quest = await advanceQuests(tx, repos, playerId, [{ kind: 'catch', species: roll.creature.speciesId, isAlpha: roll.creature.isAlpha }, { kind: 'dex', caught: await repos.progress.caughtCount(tx, playerId) }], nowMs);
         }
         await repos.audit.write(tx, { actorId: playerId, action: 'raid.catch', subject: s.id, detail: { orb, caught: roll.caught } }, now);
         return { inventory: { [orb]: left }, added, placement, newDex, quest };

@@ -19,7 +19,7 @@
 import type { BattleEvent, ContentIndex, MoveDef, Ref, StatKey, StatusId, TypeName, WeatherKind } from '@ewa/core';
 import {
   CHROMA_SUPER, COMPRESS_FLOOR, CRIT_SLOWMO, HITSTOP_MS, HP_DRAIN, KO_HOLD, LOG_DWELL_MIN, ORB_GAP, ORB_RESULT, ORB_SHAKE, ORB_THROW, SHAKE_AMP,
-  SHAKE_MS, STAGE_MS, STATUS_MS, SWITCH_IN_MS, SWITCH_OUT_MS, TURN_BUDGET, WEATHER_MS,
+  SHAKE_MS, SHINY_MS, STAGE_MS, STATUS_MS, SWITCH_IN_MS, SWITCH_OUT_MS, TURN_BUDGET, WEATHER_MS,
 } from './constants';
 import type { MoveAnimDef, MoveAnimRegistry } from './moveAnims';
 
@@ -69,6 +69,8 @@ export interface TimelineCtx {
   readonly seat?: 0 | 1;
   /** Settings › battle text speed 'instant' (§20.8.6): LOG_DWELL_MIN = 0 and HP_DRAIN = 0, nothing else changes. */
   readonly instantText?: boolean;
+  /** Phase D4: the battler is a shiny — its switch-in adds the `shiny_sparkle` burst and a line. Default: never. */
+  readonly shinyOf?: (r: Ref) => boolean;
 }
 
 /** Real time a crit slow-mo adds over its timeline span. */
@@ -261,6 +263,11 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         push({ at: t, k: 'vfx', id: 'switch_in', from: e.who, to: e.who, ms: SWITCH_IN_MS, type: typeOf(e.who) });
         push({ at: t, k: 'sfx', id: 'switch', at3d: e.who });
         advance(SWITCH_IN_MS, 'other');
+        if (ctx.shinyOf?.(e.who) === true) {
+          push({ at: t, k: 'vfx', id: 'shiny_sparkle', from: e.who, to: e.who, ms: SHINY_MS, type: typeOf(e.who) });
+          log(`${cap(name(e.who))} sparkles — it’s a shiny!`, 'neutral');
+          advance(SHINY_MS, 'other');
+        }
         break;
       case 'abilityTrigger':
         log(`${cap(name(e.who))}’s ${e.ability}${e.detail.length > 0 && e.detail !== e.ability ? ` — ${e.detail}` : '!'}`);
@@ -390,7 +397,8 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         if (e.kind !== 'none') {
           push({ at: t, k: 'vfx', id: `weather_${e.kind}`, from: null, to: null, ms: WEATHER_MS, type: 'Normal' });
           push({ at: t, k: 'sfx', id: `weather_${e.kind}`, at3d: null });
-          log(WEATHER_TEXT[e.kind].set);
+          // Phase D7: the zone's ambient weather (source null, turns 0) is already there, not newly set
+          log(e.source === null && e.turns === 0 ? WEATHER_TEXT[e.kind].tick : WEATHER_TEXT[e.kind].set);
         } else {
           log('The weather cleared.');
         }

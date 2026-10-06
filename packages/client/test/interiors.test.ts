@@ -303,3 +303,29 @@ describe('Phase A interiors (client)', () => {
     expect(LEAGUE.filter((l) => l.zoneId === 'solenne')).toHaveLength(4);
   });
 });
+
+describe('Phase D7 overworld weather on the client', () => {
+  it('state.weather drives the renderer outdoors; a pocket (indoors) and a battle render none; both restore it', async () => {
+    const { d, log } = await director('mirevale', { current: new Set() });
+    const weather = (): string[] => log.filter((l) => l.startsWith('weather '));
+    d.setWeather('rain');
+    expect(weather().at(-1)).toBe('weather rain');
+    // a battle in the open: the stage owns the weather while it lasts; a schedule change meanwhile is remembered
+    await d.enterBattle({ battleId: 'b', x: 3, z: 4, format: 'wild' });
+    const during = weather().length;
+    d.setWeather('sun');
+    expect(weather().length).toBe(during);
+    await d.exitBattle();
+    expect(weather().at(-1)).toBe('weather sun');
+    // inside the gym hall: none; leaving through the door: the zone weather again
+    const gym = gymOf('mirevale');
+    const [ex, ez] = entryOf(gym);
+    d.updatePocket(ex, ez);
+    expect(weather().at(-1)).toBe('weather none');
+    d.setWeather('rain');
+    expect(weather().at(-1)).toBe('weather none');
+    const door = interiorWarps('mirevale').find((w) => w.id === 'mirevale.gym.out')!;
+    d.updatePocket(door.toX, door.toZ);
+    expect(weather().at(-1)).toBe('weather rain');
+  });
+});

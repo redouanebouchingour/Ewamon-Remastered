@@ -211,6 +211,12 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
   let viewYaw = Number.NaN;
   let activeActors: PocketActor[] = [];
   let gates: GateSync | null = null;
+  /** Phase D7: the zone's overworld weather (state.weather); interiors and battles render none */
+  let overworldWeather: WeatherKind = 'none';
+
+  function applyWeather(): void {
+    if (!inBattle) d.renderer.setWeather(pocket === null ? overworldWeather : 'none');
+  }
 
   function faceOrigin(x: number, z: number): number {
     return Math.atan2(-x, -z);
@@ -254,6 +260,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     else leavePocketActors();
     pocket = p;
     handle?.interiors?.setActive(p.def.id);
+    applyWeather();
     setYawBase(c, pocketYawDeg(p));
     c.setHeading(0);
     viewYaw = Number.NaN;
@@ -280,6 +287,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     pocket = null;
     viewYaw = Number.NaN;
     handle?.interiors?.setActive(null);
+    applyWeather();
     const c = rig();
     setYawBase(c, null);
     c.setHeading(outsideHeading ?? 0);
@@ -457,7 +465,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
       battleHall = null;
       savedHeading = null;
       restoreStatics();
-      d.renderer.setWeather('none');
+      applyWeather();
       if (settleTimer !== null) clearTimeout(settleTimer);
       await new Promise<void>((resolve) => {
         settleTimer = setTimeout(() => {
@@ -474,7 +482,8 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     },
 
     setWeather(w) {
-      if (!inBattle) d.renderer.setWeather(w);
+      overworldWeather = w;
+      applyWeather();
     },
 
     setHarvest(h) {

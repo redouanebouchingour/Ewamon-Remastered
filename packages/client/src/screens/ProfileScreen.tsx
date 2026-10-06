@@ -2,13 +2,13 @@
  * Phase C4 `/play/profile` — the player's own trainer card. The identity (title ∈ content `TITLES`, body ∈ `BODIES`,
  * a free motto ≤ 120) is edited in place and saved with `POST /profile` through `profileAction.save` (the server
  * re-validates every field; the response lands through the session's `applyProfile`). The stats, badges and showcase
- * are the player's own public profile (GET /players/:me) — what other trainers see. Achievements: Phase D5 adds them
- * as `QuestDef kind: 'achievement'`; until then the quests no NPC gives stand in (or an empty state).
+ * are the player's own public profile (GET /players/:me) — what other trainers see. Achievements (Phase D5): the
+ * `QuestDef kind: 'achievement'` rows — earned first, then ready, then by progress; claiming happens in the journal.
  */
 import { useEffect, useState } from 'react';
 import { Link, useLoaderData } from 'react-router';
 import type { profileLoader } from '../app/loaders';
-import { achievementQuests, objectivesOf, questStatus } from '../data/quests';
+import { achievementProgress, achievementQuests, questStatus } from '../data/quests';
 import { BODY_CHOICES, TITLES } from '../data/trainer';
 import { useSessionStore } from '../state/session';
 import { Button } from '../ui/Button';
@@ -30,30 +30,37 @@ function Achievements() {
   const quests = useSessionStore((st) => st.progression?.quests ?? null);
   const claimed = useSessionStore((st) => st.progression?.questsClaimed ?? null);
   const p = quests === null || claimed === null ? null : { quests, questsClaimed: claimed };
-  const list = achievementQuests();
+  const rank = { claimed: 0, ready: 1, active: 2, locked: 3 } as const;
+  const list = achievementQuests()
+    .map((q) => ({ q, status: questStatus(q, p), prog: achievementProgress(q, p) }))
+    .sort((a, b) => rank[a.status] - rank[b.status] || b.prog.value / b.prog.target - a.prog.value / a.prog.target);
   if (list.length === 0) return <EmptyState icon="trophy" title="No achievements yet" hint="Achievements arrive with a later update." />;
+  const earnedCount = list.filter((r) => r.status === 'claimed').length;
   return (
-    <ul className={s.achievements}>
-      {list.map((q) => {
-        const status = questStatus(q, p);
-        const objectives = objectivesOf(q, p);
-        const done = objectives.filter((o) => o.done).length;
-        const earned = status === 'claimed';
-        return (
-          <li key={q.id} className={cx(s.achievement, earned && s.earned)} aria-label={`${q.title}, ${earned ? 'earned' : status === 'ready' ? 'ready to claim' : `${done} of ${objectives.length}`}`}>
-            <span className={s.achievementMark} aria-hidden>
-              <Icon name={earned ? 'check' : status === 'locked' ? 'lock' : 'trophy'} size="sm" />
-            </span>
-            <span className={s.achievementText}>
-              <span className={s.achievementTitle}>{q.title}</span>
-              <span className={l.caption}>{q.summary}</span>
-              {!earned && <ProgressBar size="sm" value={objectives.length === 0 ? 0 : done / objectives.length} label={`${q.title} progress`} valueText={`${done} of ${objectives.length}`} />}
-            </span>
-            {earned ? <Pill tone="accent">Earned</Pill> : status === 'ready' ? <Pill tone="info">Claim in Quests</Pill> : <span className={l.mono}>{done} / {objectives.length}</span>}
-          </li>
-        );
-      })}
-    </ul>
+    <div className={l.stack}>
+      <p className={l.caption}>
+        {earnedCount} of {list.length} earned
+      </p>
+      <ul className={s.achievements}>
+        {list.map(({ q, status, prog }) => {
+          const earned = status === 'claimed';
+          const figure = `${prog.value} of ${prog.target}`;
+          return (
+            <li key={q.id} className={cx(s.achievement, earned && s.earned)} aria-label={`${q.title}, ${earned ? 'earned' : status === 'ready' ? 'ready to claim' : figure}`}>
+              <span className={s.achievementMark} aria-hidden>
+                <Icon name={earned ? 'check' : status === 'locked' ? 'lock' : 'trophy'} size="sm" />
+              </span>
+              <span className={s.achievementText}>
+                <span className={s.achievementTitle}>{q.title}</span>
+                <span className={l.caption}>{q.summary}</span>
+                {!earned && <ProgressBar size="sm" value={prog.target === 0 ? 0 : prog.value / prog.target} label={`${q.title} progress`} valueText={figure} />}
+              </span>
+              {earned ? <Pill tone="accent">Earned</Pill> : status === 'ready' ? <Pill tone="info">Claim in Quests</Pill> : <span className={l.mono}>{prog.value} / {prog.target}</span>}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

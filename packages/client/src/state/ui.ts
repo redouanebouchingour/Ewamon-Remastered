@@ -46,7 +46,8 @@ export interface RaidBattleUi {
 
 /** An explicit post-battle REST prompt (§20.5.6): each is its own modal, in order; never automatic. */
 export type QueuedPrompt =
-  | { readonly kind: 'evolve'; readonly creatureId: string; readonly into: string }
+  /** Phase D3: `item` = the stone the confirmed evolve spends; `trade` = a trade evolution (the trade marked it) */
+  | { readonly kind: 'evolve'; readonly creatureId: string; readonly into: string; readonly item?: string; readonly trade?: boolean }
   | { readonly kind: 'learnMove'; readonly creatureId: string; readonly move: string };
 
 export interface BattleUi {

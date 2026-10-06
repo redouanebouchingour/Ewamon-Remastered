@@ -3,7 +3,7 @@
  * §3.4 quest, §3.5 story, §3.6 live-ops and §3.12 body checks. Returns `{ ok, errors, stats }`; the CLI wrapper in
  * scripts/validate-cli.ts prints and exits non-zero. Nothing here touches disk.
  */
-import { TYPE_NAMES } from '@ewa/core';
+import { TYPE_NAMES, evolutionChildren } from '@ewa/core';
 import type { ConsumableDef, ItemDef, MoveDef, OrbDef, SpeciesDef } from '@ewa/core';
 import type {
   BadgeId,
@@ -42,6 +42,7 @@ import { ABILITIES } from './data/abilities';
 import { ITEMS } from './data/items';
 import { ORBS } from './data/orbs';
 import { CONSUMABLES } from './data/consumables';
+import { EVOLUTION_STONES, KEY_ITEMS, TM_MOVES, tmItemId, tmMoveOf } from './data/progressionItems';
 import { TYPE_CHART } from './data/typechart';
 import { ZONES } from './data/zones';
 import { ENCOUNTER_BANDS, ENCOUNTER_TABLES } from './data/encounters';
@@ -101,6 +102,10 @@ export interface ContentTables {
   readonly orbs: readonly OrbDef[];
   readonly consumables: readonly ConsumableDef[];
   readonly zones: readonly ZoneDef[];
+  /** Phase D1–D3 key items (old_rod + TMs); default KEY_ITEMS */
+  readonly keyItems?: readonly ItemDef[];
+  /** Phase D3 evolution stones; default EVOLUTION_STONES */
+  readonly stones?: readonly ConsumableDef[];
 }
 
 export const DEFAULT_TABLES: ContentTables = {
@@ -110,6 +115,8 @@ export const DEFAULT_TABLES: ContentTables = {
   orbs: ORBS,
   consumables: CONSUMABLES,
   zones: ZONES,
+  keyItems: KEY_ITEMS,
+  stones: EVOLUTION_STONES,
 };
 
 export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEFAULT_TABLES): ValidationResult {
@@ -118,6 +125,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     errors.push(s);
   };
   const { species, moves, items, orbs, consumables, zones } = tables;
+  const keyItems = tables.keyItems ?? KEY_ITEMS;
+  const stones = tables.stones ?? EVOLUTION_STONES;
 
   // ── 1. schemas ──
   const idOf = (r: unknown): string => String((r as { id?: unknown })?.id ?? '?');
@@ -127,6 +136,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   errors.push(...schemaErrors('ITEMS', ItemDefSchema, items, idOf));
   errors.push(...schemaErrors('ORBS', OrbDefSchema, orbs, idOf));
   errors.push(...schemaErrors('CONSUMABLES', ConsumableDefSchema, consumables, idOf));
+  errors.push(...schemaErrors('KEY_ITEMS', ItemDefSchema, keyItems, idOf));
+  errors.push(...schemaErrors('EVOLUTION_STONES', ConsumableDefSchema, stones, idOf));
   errors.push(...schemaErrors('ZONES', ZoneDefSchema, zones, idOf));
   errors.push(...schemaErrors('ENCOUNTER_TABLES', EncounterTableSchema, ENCOUNTER_TABLES, idOf));
   errors.push(...schemaErrors('LEGENDARY_STATICS', LegendaryStaticSchema, LEGENDARY_STATICS, (r) => String((r as { species?: unknown })?.species)));
@@ -147,9 +158,10 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   const speciesById = new Map(species.map((s) => [s.id, s]));
   const moveIds = new Set(moves.map((m) => m.id));
   const abilityIds = new Set(ABILITIES.map((a) => a.id));
-  const itemIds = new Set(items.map((i) => i.id));
+  const itemIds = new Set([...items, ...keyItems].map((i) => i.id));
   const orbIds = new Set(orbs.map((o) => o.id));
-  const consumableIds = new Set(consumables.map((c) => c.id));
+  const consumableIds = new Set([...consumables, ...stones].map((c) => c.id));
+  const stoneIds = new Set(stones.filter((c) => c.effect.kind === 'evolutionStone').map((c) => c.id));
   const anyItem = (id: string): boolean => itemIds.has(id) || orbIds.has(id) || consumableIds.has(id);
   const zoneById = new Map(zones.map((z) => [z.id, z]));
   const tableIds = new Set(ENCOUNTER_TABLES.map((t) => t.id));
@@ -178,8 +190,9 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     for (const e of s.learnableMoves) if (!moveIds.has(e.move)) err(`species ${s.id}: learnable move '${e.move}' not in MOVES`);
     for (const a of s.abilities) if (!abilityIds.has(a)) err(`species ${s.id}: ability '${a}' not in ABILITIES`);
     if (s.evolution !== null) {
-      const intos = s.evolution.kind === 'level' ? [s.evolution.into] : s.evolution.branches.map((b) => b.into);
+      const intos = evolutionChildren(s.evolution);
       for (const into of intos) if (!speciesById.has(into)) err(`species ${s.id}: evolution.into '${into}' not in SPECIES`);
+      if (s.evolution.kind === 'item' && !stoneIds.has(s.evolution.item)) err(`species ${s.id}: evolution item '${s.evolution.item}' is not an evolution stone`);
       if (s.evolution.kind === 'split') {
         for (const b of s.evolution.branches) {
           if (b.condition !== null && !abilityIds.has(b.condition.ability)) err(`species ${s.id}: split condition ability '${b.condition.ability}' unknown`);
@@ -245,6 +258,16 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
         checkFlag(`quest ${q.id}/${o.id}`, ob.flag);
         if (!flagResolvable(ob.flag)) err(`quest ${q.id}/${o.id}: flag '${ob.flag}' is never set`);
       }
+    }
+    // Phase D5 achievements: auto-offered, never chained, money/items only; the dex target fits the roster
+    if (q.kind === 'achievement') {
+      if (q.giver !== null) err(`achievement ${q.id}: giver must be null`);
+      if (q.requires.length > 0) err(`achievement ${q.id}: requires must be empty (tiers count independently)`);
+      if (q.rewards.creature !== null || q.rewards.flag !== null) err(`achievement ${q.id}: rewards are money and items only`);
+    }
+    for (const o of q.objectives) {
+      const ob = o.objective;
+      if (ob.kind === 'dexCaught' && ob.count > speciesById.size) err(`quest ${q.id}/${o.id}: dexCaught ${ob.count} > ${speciesById.size} species`);
     }
     for (const id of Object.keys(q.rewards.items).sort()) if (!anyItem(id)) err(`quest ${q.id}: reward item '${id}' unknown`);
     if (q.rewards.creature !== null && !speciesById.has(q.rewards.creature.species)) err(`quest ${q.id}: reward species unknown`);
@@ -337,8 +360,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     const parentOf = new Map<string, string>();
     for (const s of species) {
       if (s.evolution === null) continue;
-      if (s.evolution.atLevel < 2 || s.evolution.atLevel > 99) err(`species ${s.id}: evolution.atLevel ${s.evolution.atLevel} outside 2..99`);
-      const intos = s.evolution.kind === 'level' ? [s.evolution.into] : s.evolution.branches.map((b) => b.into);
+      if ((s.evolution.kind === 'level' || s.evolution.kind === 'split') && (s.evolution.atLevel < 2 || s.evolution.atLevel > 99)) err(`species ${s.id}: evolution.atLevel ${s.evolution.atLevel} outside 2..99`);
+      const intos = evolutionChildren(s.evolution);
       for (const into of intos) {
         const child = speciesById.get(into);
         if (child !== undefined && child.evolvesFrom !== s.id) err(`species ${into}: evolvesFrom '${child.evolvesFrom}' but ${s.id} evolves into it`);
@@ -354,7 +377,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     for (const s of species) {
       if (s.evolvesFrom !== null) {
         const p = speciesById.get(s.evolvesFrom);
-        const pIntos = p?.evolution === null || p === undefined ? [] : p.evolution.kind === 'level' ? [p.evolution.into] : p.evolution.branches.map((b) => b.into);
+        const pIntos = p === undefined ? [] : evolutionChildren(p.evolution);
         if (!pIntos.includes(s.id)) err(`species ${s.id}: evolvesFrom '${s.evolvesFrom}' does not evolve into it`);
       }
       // root reachable without cycles
@@ -717,6 +740,53 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
         let boardwalk = false;
         for (let i = 0; i < h.walkable.length && !boardwalk; i++) if (h.walkable[i] === 1 && h.water[i] === 1) boardwalk = true;
         if (!boardwalk) err(`zone ${z.id}: no sample is both walkable and water (boardwalk)`);
+      }
+    }
+  }
+
+  // ── Phase D1–D3: story grants, TMs, tutors, evolution stones ──
+  {
+    for (const b of STORY) {
+      for (const id of Object.keys(b.grant ?? {}).sort()) if (!anyItem(id)) err(`beat ${b.id}: grant item '${id}' unknown`);
+    }
+    const tmIds = new Set<string>();
+    for (const m of TM_MOVES) {
+      if (!moveIds.has(m)) err(`TM_MOVES: '${m}' not in MOVES`);
+      if (tmIds.has(m)) err(`TM_MOVES: duplicate '${m}'`);
+      tmIds.add(m);
+    }
+    for (const k of keyItems) {
+      if (k.slot !== 'key' || k.hooks.length > 0) err(`key item ${k.id}: must be slot 'key' with no hooks`);
+      const mv = tmMoveOf(k.id);
+      if (mv !== null && !tmIds.has(mv)) err(`key item ${k.id}: '${mv}' is not in TM_MOVES`);
+      if (mv !== null && k.price === null) err(`key item ${k.id}: a TM needs a price`);
+    }
+    for (const m of TM_MOVES) if (!itemIds.has(tmItemId(m))) err(`TM_MOVES: '${m}' has no key item '${tmItemId(m)}'`);
+    // where an item can come from: a shop, a ground item, a quest or battle-pass reward, a story grant
+    const sources = new Set<string>();
+    for (const z of zones) {
+      for (const id of z.shop ?? []) sources.add(id);
+      for (const gi of z.items) sources.add(gi.item);
+    }
+    for (const q of QUESTS) for (const id of Object.keys(q.rewards.items).sort()) sources.add(id);
+    for (const bp of BATTLE_PASS) for (const id of Object.keys(bp.items).sort()) sources.add(id);
+    for (const b of STORY) for (const id of Object.keys(b.grant ?? {}).sort()) sources.add(id);
+    for (const m of TM_MOVES) if (!sources.has(tmItemId(m))) err(`TM ${m}: not sold, found or rewarded anywhere`);
+    const usedStones = new Set<string>();
+    for (const s of species) if (s.evolution !== null && s.evolution.kind === 'item') usedStones.add(s.evolution.item);
+    for (const id of stoneIds) {
+      if (!usedStones.has(id)) err(`stone ${id}: no species evolves with it`);
+      if (!sources.has(id)) err(`stone ${id}: not sold, found or rewarded anywhere (the species it evolves would be unobtainable)`);
+    }
+    for (const z of zones) {
+      for (const id of z.shop ?? []) {
+        const k = keyItems.find((x) => x.id === id);
+        if (k !== undefined && k.price === null) err(`zone ${z.id}: shop sells key item '${id}' that has no price`);
+      }
+      for (const n of z.npcs) {
+        if (n.tutor === undefined) continue;
+        if (z.kind !== 'town') err(`npc ${n.id}: tutors stand in towns`);
+        for (const m of n.tutor) if (!moveIds.has(m)) err(`npc ${n.id}: tutor move '${m}' not in MOVES`);
       }
     }
   }

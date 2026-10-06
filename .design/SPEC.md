@@ -239,6 +239,8 @@ Companion documents (inputs, not binding): `.design/PLAN.md`, `.design/story-bib
     - [30.4.1 Session](#30.4.1-session)
     - [30.4.2 Message → action](#30.4.2-message-action)
     - [30.4.3 Turn pipeline (one transaction)](#30.4.3-turn-pipeline-one-transaction)
+    - [30.4.3a Battle weather (Phase D7)](#30.4.3a-battle-weather-phase-d7)
+    - [30.4.3b Achievement events (Phase D5)](#30.4.3b-achievement-events-phase-d5)
     - [30.4.4 Formats](#30.4.4-formats)
     - [30.4.5 PvP challenge handshake — presence re-checked before creation](#30.4.5-pvp-challenge-handshake-presence-re-checked-before-creation)
     - [30.4.6 Trainer NPC and league dialogue](#30.4.6-trainer-npc-and-league-dialogue)
@@ -508,6 +510,8 @@ export type Evolution =
   | { readonly kind: 'split'; readonly atLevel: number;
       readonly branches: readonly { readonly into: string;
         readonly condition: { readonly kind: 'ability'; readonly ability: string } | null }[] }
+  | { readonly kind: 'item'; readonly item: string; readonly into: string }   // Phase D3: an evolution stone, any level
+  | { readonly kind: 'trade'; readonly into: string }                         // Phase D3: when traded
   | null;
 
 export interface SpeciesDef {
@@ -535,6 +539,8 @@ export interface SpeciesDef {
 Legacy `learnableMoves` is a flat string list with no levels. Migration rule for content: the species' default `moves` get level 1; the remaining entries get levels `evolvesAt`-aware — spaced evenly between 5 and `min(evolution.atLevel ?? 40, 60)` in list order, rounded to a multiple of 3. The generated table is committed as data, validated, and thereafter hand-edited; the generator is a one-shot tool, not a runtime rule.
 
 The `split` evolution exists exactly once in legacy (`Lightning Rod → aonred`, default `→ darkyon`); its branch with `condition: null` is the default and must be last.
+
+**Phase D3 — stone and trade evolutions.** `item` and `trade` are never level-triggered: `applyExp` reports no `evolveReady` for them, and their species keep their legacy learnset (spaced by the legacy level). Core exports `itemEvolutionTarget(evolution, item)`, `tradeEvolutionTarget(evolution)` and `evolutionChildren(evolution)` (every target, any trigger); `evolve` is trigger-agnostic. Nine families use them (`packages/content/src/data/evolutions.ts`, applied by the generator): `embrock`, `flampling` → Ember Stone; `stormchick` → Storm Stone; `mossling` → Tide Stone; `seedrift` → Verdant Stone; `berkest` → Moon Stone; `hexroach` → Dusk Stone; `glowtent`, `resilith` → trade. None is in a league team or in the progression walker's parties. Eviolite and the speed tie-break keep reading `evolution !== null`, so battle semantics (and the fuzz digests) are unchanged. The roster report's `AcquisitionPath` gains `{ kind: 'item', from, item }` and `{ kind: 'trade', from }`; validate requires every stone an `item` evolution names to be sold, found or rewarded somewhere.
 
 ### 2.4 MoveDef and the 23 effects
 
@@ -716,7 +722,7 @@ export type ConsumableEffect =
   | { readonly kind: 'repel'; readonly steps: number }
   | { readonly kind: 'lure'; readonly steps: number }
   | { readonly kind: 'escapeRope' }
-  | { readonly kind: 'evolutionStone'; readonly species: string; readonly into: string } // reserved; zero entries in v1
+  | { readonly kind: 'evolutionStone' } // Phase D3: the species it evolves name it in SpeciesDef.evolution { kind: 'item', item }
   | { readonly kind: 'sellOnly' };
 
 export interface ConsumableDef {
@@ -748,6 +754,16 @@ The 17 held/key items and their hooks (Sp.Atk / Sp.Def do not exist; the two "sp
 | Weakness Policy | held | `onSuperEffectiveHit { raise: { atk, 2 }, consume: true }` |
 | Speed Scarf | held | `statMul { spd, 1.1 }` |
 | HM Surf / HM Cut / HM Strength | key | none; `fieldVerb` set |
+
+**Phase D1–D3 items** (hand-authored in `packages/content/src/data/progressionItems.ts`; the generated `ITEMS` stays 17 and `CONSUMABLES` 23):
+
+| Item | kind | notes |
+|---|---|---|
+| `old_rod` | ItemDef, `key` | Maren's gift at `drowned_harbour`; `fieldVerb: null` until fishing ships |
+| `tm:<Move>` × 39 (`TM_MOVES`) | ItemDef, `key`, priced 2000–5000 by power | reusable: `POST /creature/:id/moves` accepts a TM move while the TM is owned; the shop sells one copy (`alreadyOwned`, `oneAtATime`); key items are never sold back. Sold from Saltmourn on (`PROGRESSION_STOCK`), three are quest rewards |
+| `ember_stone`, `tide_stone`, `storm_stone`, `verdant_stone`, `moon_stone`, `dusk_stone` | ConsumableDef, `evolutionStone`, 3000 / 1500, not in battle | `POST /item/use` on a creature that reacts answers `evolveReady { into, item }` without spending; the confirmed `POST /creature/:id/evolve` spends one. Sold from Stormrook on |
+
+Machine / tutor learnability (`canLearnMachineMove`): the move is Normal-type, or shares a type with the species, or is in the species' level learnset. Moves the creature already knows are always accepted by `POST /creature/:id/moves` (a taught move stays).
 
 Orbs: the 10 legacy rows verbatim (`spark_orb 1.0`, `crest_orb 1.75`, `prism_orb 2.5`, `aether_orb 999 maxStack 1`, `mythos_orb 1.5 + alpha_or_variant ×4`, `verdant_orb / ember_orb / tide_orb / dusk_orb / phantom_orb 1.0 + type ×3` for Grass / Fire / Water / Dark / Ghost). Legacy aliases `ewamon_ball, great_ball, ultra_ball, ultraball, master_ball` are **not** carried: there is no old database.
 
@@ -812,6 +828,7 @@ export interface CreatureInstance {
   readonly heldItem: string | null;
   readonly variantKey: VariantKey;
   readonly isAlpha: boolean;
+  readonly isShiny?: boolean;          // Phase D4: the 1/512 tier; present (true) only on a shiny, absent otherwise; no battle effect
   readonly caughtAt: { readonly zoneId: string; readonly at: number } | null; // at = unix ms; null = starter/gift
   readonly ribbons: readonly string[];
   readonly favorite: boolean;
@@ -899,6 +916,7 @@ export interface CreateBattleOpts {
   readonly terrain: Terrain;
   readonly seed: RngState | number | string;
   readonly sides: readonly [Omit<Side, 'mustSwitch' | 'consumedItems'>, Omit<Side, 'mustSwitch' | 'consumedItems'>];
+  readonly weather?: WeatherKind;      // Phase D7: ambient zone weather — field.weather = { kind, turns: 0 } (turns 0 = no countdown, no weatherTick) and one weatherSet { turns: 0, source: null } before the switch-in hooks; a move's weather replaces it for 5 turns; absent / 'none' = byte-identical state and events (fuzz digests unchanged)
 }
 /** Applies onSwitchIn hooks for both leads (side 0 first) and returns those events. */
 export function createBattle(o: CreateBattleOpts, content: ContentIndex): TurnResult;
@@ -1245,6 +1263,7 @@ export interface NpcDef {
   readonly when: string | null;                // story flag required to appear
   readonly until: string | null;               // story flag that removes them
   readonly react: readonly { readonly when: string; readonly lines: readonly string[] }[];
+  readonly tutor?: readonly string[];          // Phase D2: move ids this NPC teaches for MOVE_TUTOR_PRICE (3000); data only, x/z alone feed the layout
 }
 export interface TrainerDef {
   readonly id: string; readonly name: string; readonly x: number; readonly z: number; readonly look: string;
@@ -1386,10 +1405,19 @@ export type QuestObjective =
   | { readonly kind: 'deliverItem'; readonly item: string; readonly qty: number; readonly npcId: string }
   | { readonly kind: 'flag'; readonly flag: string }
   | { readonly kind: 'earnBadge'; readonly badge: BadgeId }
-  | { readonly kind: 'restoreZone'; readonly zoneId: ZoneId };
+  | { readonly kind: 'restoreZone'; readonly zoneId: ZoneId }
+  // Phase D5 achievements; dexCaught / loginStreak are absolute (progress = the event's value, max-merged)
+  | { readonly kind: 'dexCaught'; readonly count: number }
+  | { readonly kind: 'catchTier'; readonly tier: 'alpha' | 'shiny'; readonly count: number }
+  | { readonly kind: 'completeTrades'; readonly count: number }
+  | { readonly kind: 'clearRaids'; readonly count: number }
+  | { readonly kind: 'loginStreak'; readonly days: number };
+
+export type QuestKind = 'story' | 'achievement';   // Phase D5
 
 export interface QuestDef {
   readonly id: string; readonly title: string; readonly summary: string;
+  readonly kind?: QuestKind;           // Phase D5; absent = 'story'. 'achievement' rows: giver null, requires [], money/item rewards only
   readonly giver: string | null;       // npc id; null = auto-offered
   readonly zoneId: ZoneId;
   readonly act: Act;
@@ -1397,7 +1425,9 @@ export interface QuestDef {
   readonly objectives: readonly { readonly id: string; readonly label: string; readonly objective: QuestObjective }[];
   readonly rewards: { readonly money: number; readonly items: Readonly<Record<string, number>>; readonly creature: { readonly species: string; readonly level: number } | null; readonly flag: string | null };
 }
-export const QUESTS: readonly QuestDef[];
+export const QUESTS: readonly QuestDef[];            // the 12 story quests, then the 30 ACHIEVEMENTS (Phase D5)
+export const ACHIEVEMENTS: readonly QuestDef[];      // Phase D5: dex 10/30/60/90/130, catches 1/10/50/200, alpha, shiny, wins 10/100/500, trainer 50, PvP 1/25, 8 badges, 12 league trainers, champion, 8 statics, trades 1/10/50, raids 1/10/50, streaks 7/30/100
+export const STORY_QUESTS: readonly QuestDef[];      // QUESTS without the achievements
 ```
 
 Every `zoneId` is a `ZoneId`; the legacy quests keyed to `bloom-route`/`ember-town` (which never fired) are not carried.
@@ -1417,6 +1447,7 @@ export interface StoryBeat {
   readonly after: readonly string[];   // lines after the battle / on completion
   readonly harvest: { readonly zoneId: ZoneId; readonly to: HarvestState } | null; // the beat changes a zone's render state
   readonly starter: boolean;           // exactly one beat has this
+  readonly grant?: Readonly<Record<string, number>>; // Phase D1: items added when the beat completes (same transaction), sent as inventoryDelta; never a gate
 }
 export const STORY: readonly StoryBeat[];
 
@@ -1631,6 +1662,7 @@ export class SpawnState extends Schema {
   @type('boolean') isAlpha = false;
   @type('string') engagedBy = '';    // player uuid while a battle holds it; '' = free
   @type('uint32') despawnAtTick = 0;
+  @type('boolean') isShiny = false;   // Phase D4; appended last so the earlier field indexes are unchanged
 }
 
 export class BattleSummary extends Schema {
@@ -1657,7 +1689,7 @@ export class RaidState extends Schema {
 export class ZoneState extends Schema {
   @type('uint32') tick = 0;                       // 20 Hz
   @type('float32') timeOfDay = 0;                 // 0..1, one full day = 48 real minutes
-  @type('string') weather = 'none';               // WeatherKind, cosmetic in the overworld; battles set their own
+  @type('string') weather = 'none';               // WeatherKind; Phase D7: the zone's per-biome schedule (30 §30.2.8 step 1b); wild / trainer / league battles outside interiors start under it
   @type('string') harvestState = 'intact';        // the zone's content DEFAULT (ZoneDef.harvestState), same for every viewer; each client renders harvestStateFor(zone, ownFlags) (§3.5) — the story is per player <!-- reconciled 2026-09-18 -->
   @view() @type({ map: PlayerState }) players = new MapSchema<PlayerState>();   // keyed by player uuid
   @view() @type({ map: SpawnState }) spawns = new MapSchema<SpawnState>();     // keyed by spawn id
@@ -1791,17 +1823,18 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /party/swap` | `{ partyId: string; boxId: string }` | `{ party, box }` | bearer |
 | `POST /party/withdraw` / `POST /party/deposit` | `{ id }` | `{ party, box }` | bearer |
 | `POST /creature/:id/nickname` | `{ nickname: 1..16 | null }` | `CreatureInstance` | bearer |
-| `POST /creature/:id/moves` | `{ moves: string[] }` (1..4, ⊆ learnable at level) | `CreatureInstance` | bearer |
+| `POST /creature/:id/moves` | `{ moves: string[] }` (1..4; each already known, learnable at level, or — Phase D2 — a `TM_MOVES` move whose TM the player owns and the species can be taught) | `CreatureInstance` | bearer |
 | `POST /creature/:id/setup` | `{ ability: string; heldItem: string | null }` | `CreatureInstance & { inventoryDelta: InventoryDeltaBody }` (`CreatureSetupRes`: equipping takes one from the inventory and returns the previously held item) | bearer |
-| `POST /creature/:id/evolve` | `{ into: string }` | `CreatureInstance` | bearer |
+| `POST /creature/:id/evolve` | `{ into: string }` (level: core evolveReady; Phase D3 stone: an owned stone, one spent; trade: the creature carries `TRADE_EVOLVE_RIBBON`, which is removed) | `CreatureInstance & { inventoryDelta? }` (the stone count when one was spent) | bearer |
+| `POST /creature/:id/tutor` | `{ move: string; forget: string | null }` (Phase D2: a tutor NPC of the presence zone teaches `move`; learnable; not yet known; `forget` required at four moves) | `CreatureInstance & { inventoryDelta }` (money − `MOVE_TUTOR_PRICE`) | bearer |
 | `POST /creature/:id/release` | — | `204` (refused when `locked`) | bearer |
 | `POST /creature/:id/flags` | `{ favorite?: boolean; locked?: boolean }` | `CreatureInstance` | bearer |
 | `POST /item/use` | `{ item: string; target: string | null; qty: 1..99 }` | `{ inventory, creaturesUpdated, events }` (server-validated effect) | bearer |
 | `POST /heal` | — | `{ party }` (must be in a `healer: true` zone) | bearer |
-| `GET /dex` | — | `{ seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[] }` | bearer |
+| `GET /dex` | — | `{ seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[]; shiny?: string[] }` (Phase D4 `shiny`: species with a shiny catch) | bearer |
 | `GET /shop/:zoneId` | — | `{ stock: string[]; prices: Record<string, number> }` | bearer |
 | `POST /shop/buy` / `POST /shop/sell` | `{ item: string; qty: 1..99 }` | `{ inventory, money }` | bearer |
-| `GET /marketplace` | query `search, variant, isAlpha, levelMin, levelMax, sort, page, pageSize<=50` | `{ listings: ListingView[]; total }` | bearer |
+| `GET /marketplace` | query `search, variant, isAlpha, isShiny (Phase D4), levelMin, levelMax, sort, page, pageSize<=50` | `{ listings: ListingView[]; total }` (`ListingView.isShiny?` present when true) | bearer |
 | `GET /marketplace/my/active` · `GET /marketplace/my/bids` · `GET /marketplace/:id` | — | `ListingView[]` / `ListingView & { bids: BidView[] }` | bearer |
 | `POST /marketplace/list` | `{ creatureId, startingBid >= 100, buyNowPrice: number | null, durationHours: 12|24|48 }` | `ListingMutationRes` = `ListingView & { inventoryDelta }` (`creaturesRemoved: [creatureId]`) (5/h; 409 `inBattle` during a battle) | bearer |
 | `POST /marketplace/:id/bid` | `{ amount }` | `ListingMutationRes` (`inventoryDelta.money` after escrow) (30/h) | bearer |
@@ -1888,6 +1921,7 @@ export const creatureInstances = pgTable('creature_instances', {
   heldItem: varchar('held_item', { length: 32 }),
   variantKey: varchar('variant_key', { length: 8 }).notNull().default('normal'),
   isAlpha: boolean('is_alpha').notNull().default(false),
+  isShiny: boolean('is_shiny').notNull().default(false),           // migration 0003_shiny (Phase D4)
   caughtZoneId: varchar('caught_zone_id', { length: 32 }),
   caughtAt: timestamp('caught_at', { withTimezone: true }),
   ribbons: jsonb('ribbons').$type<string[]>().notNull().default([]),
@@ -1929,6 +1963,7 @@ export const dexEntries = pgTable('dex_entries', {
   caughtAt: timestamp('caught_at', { withTimezone: true }),
   variants: jsonb('variants').$type<VariantKey[]>().notNull().default([]),
   alphaSeen: boolean('alpha_seen').notNull().default(false),
+  shinyCaught: boolean('shiny_caught').notNull().default(false),   // migration 0003_shiny (Phase D4)
 }, (t) => [primaryKey({ columns: [t.playerId, t.speciesId] })]);
 
 export const questProgress = pgTable('quest_progress', {
@@ -1982,6 +2017,7 @@ export const listings = pgTable('listings', {
   creatureId: uuid('creature_id').notNull().references(() => creatureInstances.id),
   speciesId: varchar('species_id', { length: 32 }).notNull(),    // denormalised for search
   level: smallint('level').notNull(), variantKey: varchar('variant_key', { length: 8 }).notNull(), isAlpha: boolean('is_alpha').notNull(),
+  isShiny: boolean('is_shiny').notNull().default(false),           // migration 0003_shiny (Phase D4), denormalised for the filter
   startingBid: integer('starting_bid').notNull(),
   currentBid: integer('current_bid'),
   currentBidderId: uuid('current_bidder_id').references(() => players.id),
@@ -2153,7 +2189,8 @@ export interface ProgressRepo {
   dex(tx: Tx, playerId: string): Promise<{ seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[] }>;
   markSeen(tx: Tx, playerId: string, speciesId: string, now: Date): Promise<boolean>;   // idempotent; true when the species was new to the dex (live-ops newSpeciesSeen)
   flagSetAt(tx: Tx, playerId: string, flag: string): Promise<Date | null>;              // trainer rematch windows (§30.4.4)
-  markCaught(tx: Tx, playerId: string, speciesId: string, variant: VariantKey, isAlpha: boolean, now: Date): Promise<{ newSpecies: boolean }>;
+  markCaught(tx: Tx, playerId: string, speciesId: string, variant: VariantKey, isAlpha: boolean, now: Date, isShiny?: boolean): Promise<{ newSpecies: boolean }>;   // isShiny (Phase D4) sets dex shiny_caught, never cleared
+  caughtCount(tx: Tx, playerId: string): Promise<number>;   // Phase D5: distinct species caught (the dexCaught achievement value)
   quest(tx: Tx, playerId: string, questId: string): Promise<{ objectiveId: string; count: number; done: boolean; claimedAt: Date | null }[]>;
   advance(tx: Tx, playerId: string, questId: string, objectiveId: string, count: number, done: boolean): Promise<void>;
   claim(tx: Tx, playerId: string, questId: string, now: Date): Promise<boolean>;   // false when already claimed
@@ -2189,7 +2226,7 @@ export interface MarketRepo {
   creatureSlot(tx: Tx, creatureId: string): Promise<{ ownerId: string; slotKind: string; slotIndex: number } | null>;
 }
 export function marketFee(price: number): number;   // floor(price * MARKET.feePercent / 100)
-export interface ClosedListing { readonly id: string; readonly sold: boolean; readonly sellerId: string; readonly buyerId: string | null; readonly creatureId: string; readonly speciesId: string; readonly variantKey: VariantKey; readonly isAlpha: boolean; readonly price: number | null }
+export interface ClosedListing { readonly id: string; readonly sold: boolean; readonly sellerId: string; readonly buyerId: string | null; readonly creatureId: string; readonly speciesId: string; readonly variantKey: VariantKey; readonly isAlpha: boolean; readonly isShiny: boolean; readonly price: number | null }
 
 export interface SocialRepo {
   requestFriend(tx: Tx, requesterId: string, addresseeId: string, now: Date): Promise<'requested' | 'accepted'>;   // a reverse pending request is accepted, not mirrored (friendships_pair_uq); AlreadyFriends
@@ -2310,7 +2347,7 @@ Lock order, global, so no two transactions can deadlock: (1) `listings` row (`FO
 - **Legacy story, quests, seasonal events, swarms and hotspots.** Their zone ids do not exist; the story bible supplies new beats.
 - **Auto-evolution and auto-forget.** Both are explicit player choices via REST.
 - **Optimistic-concurrency retry wrappers.** Row locks replace them; a `version` column remains for diagnostics only.
-- **Evolution stones.** The `ConsumableEffect` kind is reserved; zero items ship.
+- ~~**Evolution stones.**~~ Shipped in Phase D3 (six stones, §2.3 / §2.6).
 
 ---
 
@@ -2776,7 +2813,7 @@ Wrap: `dusk (0.80) → night (1.00 ≡ 0.00)`. `punctual multiplier` scales ever
 
 ### 10.3.6 Weather
 
-`setWeather(w)`: `rain` → `wetness` ramps to 1 (4 s), rain sheet (one `LineSegments` of 4 000 streaks animated in the vertex stage from `windTime`, so hitstop freezes it; `layers 29`, no shadow), sun intensity ×0.55, `cloudCoverage 0.85`; `sun` → `cloudCoverage 0.1`, `envIntensity ×1.1`; `sand` → fog density ×2.5, tint `#c9a24a`; `hail` → the same sheet as short bright streaks (WebGPU has neither wide lines nor sized `Points`; header table), tint white, wetness as rain; `none` → defaults. <!-- amended 2026-09-25: `Points` + `pointWidth 3` cannot be drawn on WebGPU — render IMPLEMENTATION-NOTES M10, P8 --> Weather is cosmetic in the overworld (spine §4.1); battles set their own through `BattleStage.setWeather`.
+`setWeather(w)`: `rain` → `wetness` ramps to 1 (4 s), rain sheet (one `LineSegments` of 4 000 streaks animated in the vertex stage from `windTime`, so hitstop freezes it; `layers 29`, no shadow), sun intensity ×0.55, `cloudCoverage 0.85`; `sun` → `cloudCoverage 0.1`, `envIntensity ×1.1`; `sand` → fog density ×2.5, tint `#c9a24a`; `hail` → the same sheet as short bright streaks (WebGPU has neither wide lines nor sized `Points`; header table), tint white, wetness as rain; `none` → defaults. <!-- amended 2026-09-25: `Points` + `pointWidth 3` cannot be drawn on WebGPU — render IMPLEMENTATION-NOTES M10, P8 --> Weather is cosmetic in the overworld (spine §4.1); battles set their own through `BattleStage.setWeather`. Phase D7: the client drives `setWeather` from `ZoneState.weather` (the server's per-biome schedule) and renders `none` inside an interior pocket and while a battle owns the stage.
 
 ### 10.3.7 Height fog (TSL, no raymarch)
 
@@ -2820,6 +2857,7 @@ export interface SpriteDescriptor {
   readonly types: readonly [TypeName] | readonly [TypeName, TypeName];
   readonly variant: VariantKey;
   readonly isAlpha: boolean;
+  readonly isShiny?: boolean;              // Phase D4 (additive): the sparkle; encoded as alphaGlow + 2 (no new per-object field)
 }
 /** One map of an atlas: WebP level 0 plus pipeline-built levels 1..3 (40-pipelines.md §40.1.6.3). Never KTX2 — see the note below. */
 export interface AtlasMap { readonly url: string; readonly mips: readonly string[] }
@@ -3287,8 +3325,9 @@ export type VfxId =
   | 'stat_up' | 'stat_down' | 'heal' | 'drain' | 'recoil'
   | 'weather_sun' | 'weather_rain' | 'weather_sand' | 'weather_hail'
   | 'orb_throw' | 'orb_shake' | 'orb_catch' | 'orb_break'
-  | 'switch_out' | 'switch_in' | 'faint' | 'trap' | 'flinch';
-export const VFX_IDS: readonly VfxId[];                  // exactly 19 + 4 + 6 + 5 + 4 + 4 + 5 = 47 entries; the client's MOVE_ANIMS/DEFAULT_BY_TYPE reference only these
+  | 'switch_out' | 'switch_in' | 'faint' | 'trap' | 'flinch'
+  | 'shiny_sparkle';                                     // Phase D4: the shiny encounter burst
+export const VFX_IDS: readonly VfxId[];                  // exactly 19 + 4 + 6 + 5 + 4 + 4 + 5 = 47 entries + 'shiny_sparkle' (Phase D4) = 48; the client's MOVE_ANIMS/DEFAULT_BY_TYPE reference only these
 ```
 
 Every VFX is a slice of one pooled instanced `Sprite` (`count` 4 096 = 8 emitters × 512 particles, additive, `layers 29`, one shared `PointsNodeMaterial` with per-particle `instancedBufferAttribute` for birth/lifetime/colour — a `Points` object rasterises 1-px points on WebGPU, header table) or a pooled alpha-card burst (≤ 8 cards); particles write valid MRT values (the view axis as normal, mask `(1, 0)`) and alpha-test at 0.004, because the pass MRT writes those attachments unblended and a zero normal made GTAO NaN. Pools are allocated in `createRenderer` (§10.1.2 step 7) and never grow. VFX add **no** lights (a light appearing mid-battle recompiles every lit program); impacts pulse the 2 reserved beacons instead, which live under the stage root from `createRenderer` on at intensity 0 with `shadow.autoUpdate = false` while undressed. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES P4, P8, P10, Q8 --> `impact_super` adds a 120 ms `chroma` request (`effects.chroma` gates it) and `impact_crit` a 3-frame white flash on the target (`hurt 1.0`). VFX never writes `mask.y = 1`, so effects blur with the scene and never sharpen; VFX never covers the HUD rects (the HUD is a later overlay pass — Pillar 8 readability gate in `50-verification-budget.md` §50.1 rule 15).
@@ -4415,7 +4454,7 @@ Each screen: information hierarchy in one paragraph, then its states. All `/play
 
 **20.9.4 Box** (`/play/box`). A 10-column tile grid (`CreatureCard variant="tile"`, 72 px) paged 60 per page (`?page=`), with a sticky filter row (search by name/species, type, sort by level/dex/recent). The party strip is pinned at the top of the panel so deposit/withdraw is one drag or two clicks (`POST /party/withdraw`/`deposit`, `POST /party/swap` when the party is full and a slot is targeted). Selecting a tile shows the same detail column as Party. Empty: "Your box is empty — creatures you catch with a full party arrive here." Loading: skeleton grid. Error: toast + retry button in the panel header.
 
-**20.9.5 Dex** (`/play/dex`) — *witnessing framing*. Header: "Witnessed **N / 130**" in display face with a segmented bar (caught solid, seen-only hatched, unknown empty) — this is the theme's win condition, so it is the largest number in the UI. Below: a 6-column grid in `dexNumber` order; unknown species render as a dark silhouette with `#???`; seen species show the sprite desaturated with the name; caught species show full colour with variant chips (up to 4 palette dots) and an alpha mark. Filters in the URL (`?type=&state=caught|seen|unknown&q=`). Selecting an entry opens a right detail: flavour text, types, evolution chain (arrows; unknown stages silhouetted), zones where recorded (from `dexEntries` caught zone), and the line "Recorded — this one cannot be quietly lost." for caught entries versus "Seen, not yet recorded." for seen. Empty: never (130 rows). Loading: skeleton grid. Error: panel retry.
+**20.9.5 Dex** (`/play/dex`) — *witnessing framing*. Header: "Witnessed **N / 130**" in display face with a segmented bar (caught solid, seen-only hatched, unknown empty) — this is the theme's win condition, so it is the largest number in the UI. Below: a 6-column grid in `dexNumber` order; unknown species render as a dark silhouette with `#???`; seen species show the sprite desaturated with the name; caught species show full colour with variant chips (up to 4 palette dots) and an alpha mark, plus a sparkle mark for a shiny catch (Phase D4, GET /dex `shiny` → `Progression.dexShiny`). Filters in the URL (`?type=&state=caught|seen|unknown|shiny&q=`; `shiny` = species with a shiny catch). Selecting an entry opens a right detail: flavour text, types, evolution chain (arrows; unknown stages silhouetted), zones where recorded (from `dexEntries` caught zone), and the line "Recorded — this one cannot be quietly lost." for caught entries versus "Seen, not yet recorded." for seen. Empty: never (130 rows). Loading: skeleton grid. Error: panel retry.
 
 **20.9.6 Shop** (`/play/shop`). Two tabs (`?tab=buy|sell`). Buy: a `Table` of stock (icon, name, one-line effect, price mono) with a quantity stepper (1..99) and a running total against the money counter; the row's buy button is disabled with the caption "Not enough" when `qty × price > money`. Sell: the inventory filtered to `sellPrice > 0`. Each transaction is one `useFetcher` action; the response is applied through `applyInventoryDelta`. Empty: "Nothing to sell." Loading: skeleton table. Error: 404 → "There is no shop here" (the panel still opens, so the URL is honest); other → retry.
 
@@ -4423,7 +4462,9 @@ Each screen: information hierarchy in one paragraph, then its states. All `/play
 
 **20.9.8 Guild** (`/play/guild`). No guild: search (`?q=`) + create form (name 3..24, tag `[A-Z0-9]{3,4}` validated live, the 5 000 founding cost shown on the button and disabled with "Not enough" below it) side by side. <!-- reconciled 2026-09-18: tag {3,4}, cost 5000 --> In a guild: header (name, tag, member count, MOTD editable by leader/officers), a `Table` of members (name, role, trainer level, last seen) with role actions gated by the viewer's role (`kick`/`promote`), and a `Leave` button (`danger`, confirm; leaders must promote first). Empty search: "No guilds match." Loading: skeleton. Error: retry.
 
-**20.9.9 Marketplace** (`/play/market`, `/play/market/:listingId`). Filter bar bound to URL params (`search, variant, isAlpha, levelMin, levelMax, sort, page`); results as `Table` rows (sprite, species/level, variant/alpha chips, current bid, buy-now, time left mono, seller). Tabs `Browse · My listings · My bids`. The detail route shows the creature card, full bid history, a bid field pre-filled with `max(startingBid, currentBid + 50)` and buttons `Bid` / `Buy now` / (own) `Cancel`; list-from-box modal picks a box creature, starting bid ≥ 100, optional buy-now, duration `12 | 24 | 48` h; fee 5 % shown before confirm. Rate-limit responses (`5/h list`, `30/h bid`) render as the exact remaining-time caption. Empty: "No listings match — widen the filters." Loading: skeleton rows; the previous page stays visible under a 0.6 opacity while a new page loads. Error: retry.
+**20.9.9 Marketplace** (`/play/market`, `/play/market/:listingId`). Filter bar bound to URL params (`search, variant, isAlpha, isShiny, levelMin, levelMax, sort, page`; `isShiny` Phase D4); results as `Table` rows (sprite, species/level, variant/alpha/shiny chips, current bid, buy-now, time left mono, seller). Tabs `Browse · My listings · My bids`. The detail route shows the creature card, full bid history, a bid field pre-filled with `max(startingBid, currentBid + 50)` and buttons `Bid` / `Buy now` / (own) `Cancel`; list-from-box modal picks a box creature, starting bid ≥ 100, optional buy-now, duration `12 | 24 | 48` h; fee 5 % shown before confirm. Rate-limit responses (`5/h list`, `30/h bid`) render as the exact remaining-time caption. Empty: "No listings match — widen the filters." Loading: skeleton rows; the previous page stays visible under a 0.6 opacity while a new page loads. Error: retry.
+
+**20.9.9a Quest journal and achievements** (`/play/quests`, Phase B3 + D5). Two tabs (`?tab=` absent = Story, `achievements`). Story: the `STORY_QUESTS` grouped by act (cards with objectives, rewards, Track, Claim), claimed ones in a compact list. Achievements: the `ACHIEVEMENTS` rows — ready ones as cards with Claim (`POST /quests/claim`, the same route action), the rest as one row each (title, summary, a bar and `value / target`: a single-objective milestone reads its count, a multi-objective one the objectives done), then the earned list. The tab labels carry the ready counts; the panel eyebrow sums both. Achievements never drive the untracked HUD hint (a tracked one does). The profile (`/play/profile`) lists the same rows earned-first with `N of 30 earned`. Shinies (Phase D4): a shiny spawn's billboard sparkles (`SpriteDescriptor.isShiny`), its label reads `shiny …`, a shiny battler's switch-in plays `shiny_sparkle` with the line “… sparkles — it’s a shiny!”, and `CreatureCard` shows a sparkle badge.
 
 **20.9.10 Battle Pass** (`/play/pass`). Header: trainer level (display face) and a progress bar to the next 1 000 exp with the exact `exp / 1000` in mono. A horizontal track of 100 reward tiles (virtualised, 10 visible), each `claimable · claimed · locked`; claimable tiles pulse once (160 ms) on entry. Level 50 shows the mythical choice as two `CreatureCard variant="showcase"` (`lumyth / noxmyth`) with "Choose once" — `POST /battle-pass/mythical-choice`. Claim → `POST /battle-pass/claim` → `applyInventoryDelta`. Empty: never. Loading: skeleton track. Error: retry.
 
@@ -4640,6 +4681,7 @@ export const EnvSchema = z.object({
   CORS_ORIGINS: z.string().default('http://localhost:5173'),   // comma-separated exact origins
   TRUST_PROXY: z.union([z.literal('false'), z.literal('loopback'), z.string()]).default('loopback'),
   SERVER_SEED: z.string().min(1).optional(),                    // world rng seed; absent → fnv1a32(`${processId}:${bootMs}`) logged at boot
+  WORLD_WEATHER: z.enum(['on', 'off']).default('on'),           // Phase D7: the overworld weather schedule; testEnv sets 'off'
   ZONE_CAPACITY: z.coerce.number().int().min(2).max(500).default(200),
   TICK_HZ: z.literal('20').default('20'),                       // not configurable in v1; present so the value is visible
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
@@ -4841,6 +4883,8 @@ Invariant: at every instant the player exists in at least one room's `state.play
 
 ```
 1. state.tick += 1; state.timeOfDay = (clock() % DAY_LENGTH_MS) / DAY_LENGTH_MS
+1b. Phase D7 weather: when weatherBucket(now) changed, state.weather = weatherAt(SERVER_SEED, zone, now) (written only when it differs;
+   env WORLD_WEATHER 'off' keeps 'none' — testEnv defaults to 'off' so room tests stay clock-independent)
 2. for each client: userData.budgetMs = min(BUDGET_MAX_MS, budgetMs + TICK_MS)
    (inputs are applied when they arrive, in onMessage('input'); the tick only refills budget)
 3. emote timers: any PlayerState with emote !== 0 whose emoteSetAt + 2000 <= now → emote = 0
@@ -4864,6 +4908,7 @@ Step 7 may `await` (one DB transaction per resolved turn). The tick callback is 
 export interface SpawnRecord {
   readonly id: string;              // `${zoneId}:${counter}` — counter is per-director, monotonic
   readonly speciesId: string; readonly level: number; readonly variantKey: VariantKey; readonly isAlpha: boolean;
+  readonly isShiny?: boolean;       // Phase D4: shinyFromDraw(alpha draw) — the low 9 bits of the alpha draw's u32 are 0 (1/512); no extra draw
   readonly ability: string;         // species.abilities[rng.int(abilities.length)] — one draw at spawn (spine §3.2, roster-coverage A3)
   readonly medium: 'land' | 'water';// EncounterSlot.medium ?? 'land'
   readonly x: number; readonly z: number;
@@ -4895,6 +4940,7 @@ Rules:
 - **Day/night.** `timeOfDay` in `[0.25, 0.75)` is day, else night (dawn at 06:00, dusk at 18:00 of the 48-minute day). A roll considers slots whose `timeOfDay` is `'any'` or matches. A spawn born in the day is not despawned at dusk; it lives out `lifetimeMs`.
 - **Roll.** Weight-proportional pick over eligible slots (weights multiplied by `swarmWeightBoost` for `swarmSpecies`); `level = levelMin + rng.int(levelMax - levelMin + 1)`. One `rng.pick`-equivalent draw for the slot, one for the level.
 - **Alpha.** `rng.next() < ALPHA_CHANCE + alphaBonus` where `ALPHA_CHANCE = 0.02` (content §3.2) — **not** 1/120: the content constant is the source of truth and 1/120 (0.0083) is the legacy value this replaces. A slot with `tier: 'alpha'` forces `isAlpha = true`. One draw.
+- **Shiny (Phase D4).** No draw of its own: `isShiny = (u * 2^32) mod 512 === 0` where `u` is the alpha draw (`next()` is `u32 / 2^32`, exact), so P = 1/512 exactly, independent of the alpha threshold (which reads the high bits) to within 2^-23, and every seeded spawn sequence is byte-identical to pre-D4 (`shiny.test.ts` pins the digest). `SpawnState.isShiny` mirrors it; `startWild` projects it (`CreatureInstance.isShiny`); the catch persists it (`creature_instances.is_shiny`) and `markCaught(…, isShiny)` sets `dex_entries.shiny_caught`. Statics, trainers and raid bosses are never shiny.
 - **Variant.** `rng.next() < VARIANT_CHANCE + variantBonus` (0.03 base) → `rng.pick(variantPool)`; `variantPool` is `WEEKDAY_VARIANT[weekday]` when non-null, else the 4 non-normal keys. Two draws when the first succeeds, one otherwise.
 - **Position.** Up to 8 attempts: `x = originX + 1 + rng.next() * (size - 2)`, same for `z`, accepted if (`medium === 'water' ? isWater : isWalkable`) and ≥ 6 m from every other spawn and ≥ 10 m from every player. Failure → no spawn this tick. (The 16 m margin is `walkable = 0`, so spawns never land in scenery.)
 - **Cadence.** When `all.length < targetCount` and `now >= nextSpawnAt`: spawn one, `nextSpawnAt = now + respawnMinMs + rng.int(respawnMaxMs - respawnMinMs + 1)`. At most one spawn per tick. Until the director first reaches `targetCount` the delay is not waited (one spawn per tick, so a fresh room is populated in < 1 s); the delay draw is consumed either way, so seeded sequences are unchanged (amended 2026-09-25, server IMPLEMENTATION-NOTES W1).
@@ -4972,6 +5018,14 @@ A transaction failure rolls everything back and the session keeps `before` as it
 `battleResync { battleId }`: answers `battleResync { battleId, state: session.state, stateDigest }` only to a seat holder; the full `BattleState` for the opposing side includes its party — for **pvp** the opposing side's unrevealed party members are sent with `hp`, `moves`, `heldItem`, `ability` intact (Pokémon-style team preview is a client choice; hiding them would require a projection the spine does not define). Accepted for v1 — spine §4.5 (reconciled 2026-09-18).
 
 **Deadline.** `battles.tick(now)`: for a session with `now >= deadlineAt && !resolving`: for each seat that must act and has `pending === null` — replacement phase → `switch` to the lowest-index `hp > 0` party member; otherwise `{ kind: 'move', move: firstMoveWithPp }` or, if no PP anywhere, `{ kind: 'move', move: active.moves[0].id }` (core's struggle rule, if any, is core's; the spine defines none, so `validateAction` fails on `noPp` and the fallback is `forfeit` for pvp and `flee` for wild — `flee` fails when trapped, in which case the wild side simply acts). Then `resolveNow`. Two consecutive deadline auto-actions by the same player in a pvp battle = forfeit.
+
+### 30.4.3a Battle weather (Phase D7)
+
+`BattleDeps.weather(format, at)` names the ambient weather `open()` passes to `createBattle` (and records in `battle_history.start.weather`): `ZoneState.weather` for `wild` (incl. statics), `trainer` and `league` battles whose arena point is outside every interior pocket (`interiorAt(zone, x, z) === null` — halls are indoors, so every league fight and every gym-hall trainer fight starts with none); `none` for `pvp` (rating fairness) and raids. The schedule (`game/weather.ts`): `WEATHER_BUCKET_MS = 6 min`; each bucket's weather is one weighted draw from `createRng(`${SERVER_SEED}:weather:${zoneId}:${bucket}`)` over the biome's `WEATHER_SCHEDULE` weights (every zone, towns included).
+
+### 30.4.3b Achievement events (Phase D5)
+
+`advanceQuests` events added: `catch { isAlpha?, isShiny? }` (battle catch, raid catch), `dex { caught }` after a battle catch, a raid catch and a trade that received creatures (`progress.caughtCount`), `raidClear` with the raid's rewarded clear, `streak { days }` from `dailyLogin` (its `questProgress` rides the join's `progressionDelta`); `trade` already existed. `dexCaught` / `loginStreak` objectives are absolute (max-merged, an unchanged value writes nothing); the rest count +1 per matching event. Market purchases and evolutions do not emit `dex`; the next catch or trade catches the count up.
 
 ### 30.4.4 Formats
 
