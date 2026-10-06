@@ -298,3 +298,244 @@ The pre-re-light PNGs are kept in the scratchpad (`phaseE/M2-before/`).
 | M3-cinderhold-2 | Fixed: `DRESSING.cinder/marrow.bush = null` |
 | M3-solenne-1 | Fixed: `ThemeKit.rug` (commit `5611ede`) |
 | the rest | Open (minor) |
+
+---
+
+## Independent review (2026-10-06)
+
+**Reviewer:** independent hostile render reviewer (§50.6). I did not implement `@ewa/render`, the client harness or any content in this repo, and I changed no code, built nothing and ran no server for this review.
+**Material judged:** the 126 committed `-full` PNGs under `.screenshots/audit/M3/<zone>/`, every JSON sidecar beside them, all 21 `index.json`, the 21 `.screenshots/budget/M3/<zone>.json` reports and their dumps' `harvestLevel`, and the M2 shots for comparison. I sampled reduced and mask variants where a finding depends on them: `forgewall/battle--47.39_5.08-mask.png`, `galvan_route/gym-dusk-0_19.84-mask.png`, `saltmourn/sprite-edge--48_0-{reduced,mask}.png` and `skyrend/battle-39.49_18.89-reduced.png`. Pixel numbers below come from the committed 8-bit PNGs or from the sidecars. "By eye" marks a count I made by looking at the image.
+**Bar:** "All towns as good as Mirevale." I judge the towns against Mirevale's six frames taken together: a lawn with flowers, bushes and verges in several greens; warm thatch and timber; a timber-framed gym lit at dusk; lamp pools at night. A town does not pass on prop count alone. Routes are judged against `mire_route`, the slice route. Story zones are judged on whether they read as a place at all.
+
+### R.0 Headline
+
+**No town other than Mirevale meets the bar.** Four are close (marrowdig, vesperveil, forgewall, solenne) and four are below it (cinderhold, saltmourn, stormrook, skyrend). The implementer scored three as "comparable". That score counted props; it did not judge how the frame reads. Two things the implementer's audit does not say change the verdict:
+
+1. **Every one of the 126 shots was taken with the heading convention that SPEC §50.6.1 dropped on 2026-09-30.** Every sidecar says `"convention": "words"` (spec 0 → rig 2, 1 → 3, 2 → 0, 3 → 1). M3-all-11 is therefore not a framing preference: the harness does not follow its own spec, and the spec's table is itself inconsistent (R-all-2). The towns were judged from a frame that no arriving player sees.
+2. **The player's avatar stands between the battle camera and the near battler** in most battle shots, and in `forgewall` it hides most of the battler. The battler mask cannot detect this, because the player also writes mask = 1 (R-all-1). The near-battler and player rects overlap by 0.17–0.56 in 17 of the 21 battle rows. This is a §50.1 readability non-negotiable.
+
+### R.1 Per-zone verdict
+
+The paths are `.screenshots/audit/M3/<zone>/`. "Impl." is the implementer's §1.1 verdict.
+
+#### Towns
+
+| Zone | Verdict | Impl. | Evidence (what the image shows) |
+|---|---|---|---|
+| `mirevale` | **the bar** | — | `spawn-noon-0_6-full`: about 45 % of the frame is the blurred heart-tree crown (occluder fade working, mask 0.4955). The stall, crate, bench, child NPC, flower beds and lawn give the bar. `gym-dusk-0_-18-full`: the timber-framed gym with a lit lantern, flowers in the lawn and a raking warm key; the best single frame in the set. `link-east-58_0-full`: walls, oaks, flowers and a boulder. The bar has weaknesses of its own: a regular cobble grid (M2-spawn-noon-1, unanswered) and X-card tufts (M2-link-east-5, unanswered). |
+| `cinderhold` | **below** | comparable | `spawn-noon-5.5_9.5-full`: the ash ground is one flat grey value carrying green X tufts. The lava-basin set-piece, the town's signature, is a flat pale-yellow blob with soft edges and two dark crust islands, like a fried egg: it has no crust, no flow and no heat gradient (region mean RGB 202/141/111). Its kerb is a ring of glossy black cubes with white scratch speckle, which reads as primitive blocks (line 2). Every material in frame is grey or grey-brown except the lava. `lamps-night-1.34_17.63-full`: red-brown murk, mean luma 26.5. Only `gym-dusk` (brick gym, stone steps, wall lamp) is at the bar. |
+| `saltmourn` | **below** | below | `spawn-noon-5.5_9.5-full`: the thinnest plaza: one stall, a barrel, a bench, one lamp. The lighthouse is a blurred white sliver at the right edge. The paving is a regular grey grid, and saturated green tufts fill the white sand on the left. `sprite-edge--48_0-full`: the staged mudbub stands behind an out-of-focus pine crown in the foreground and cannot be read (R-saltmourn-3). `lamps-night--48.46_7.89-full`: a black blurred pine fills the lower right. `gym-dusk` (white half-timber gym) is good. |
+| `stormrook` | **below** | close | `spawn-noon-0_11-full`: the ground, road, plaza and plaza rim are all one blue-grey flagstone, so the frame is one material at one value. The dome set-piece is a blurred pale blob in the bottom-right corner, and the town is legible only through the stall and the child NPC. `lamps-night-1.69_21.85-full`: one cold crystal lamp in a uniformly dark blue frame (mean 32.8); the town reads as empty at night. `gym-dusk` (stone gym, lit windows) is fine. |
+| `marrowdig` | **close** | comparable | `spawn-noon-0_11-full`: warm sandstone, a stall, a crate, the ore cart on rails, lamps and a house corner; the frame reads. Against it: green tufts on canyon dust, a grey cobble plaza ring that is a foreign material in a sandstone town, and `gym-dusk-0_-18-full`, where the gym façade is blown out to white under bloom haze (mean luma 176 at dusk against 145.6 at noon; R-all-5). **The zone is captured at `harvest: thinning` (dump `harvestLevel` 1)**, so this is not the town's intact look (R-all-7). |
+| `vesperveil` | **close** (nearest) | close | `spawn-noon-5.5_9.5-full`: a green ground, mossy paving with a lichen inlay, a thatched stall, candle lamps and the lantern-maker; the palette is closest to Mirevale's. `gym-dusk-0_-18-full` (half-timber gym, lit windows) and `lamps-night-1.69_21.85-full` (three pools) are at the bar. Against it: the nameplate sits on the HUD badge (M3-vesperveil-2), and the yellow lichen blotches tile across the plaza (M3-vesperveil-1). |
+| `forgewall` | **close** | comparable | `spawn-noon-5.5_9.5-full`: red heraldic stalls give the only real colour accent of any non-Mirevale town, with braziers and a barrel. But the bastion set-piece is a pale blurred block over about 20 % of the frame, and a blurred pine covers the bottom left. `lamps-night-3.56_18.36-full` is the only night frame with ≥ 3 lit housings clearly in frame. `battle--47.39_5.08-full` is the worst battle frame in the set (R-all-1, R-forgewall-2). |
+| `skyrend` | **below** | close | `spawn-noon-5.5_9.5-full`: white snow against white paving (reduced p50 210) with no value structure. The two stalls carry rainbow-striped plank awnings, and their timber, like the crate, is a teal high-frequency stripe that reads as knitted fabric, not wood (R-skyrend-3). The shrine roof is a blurred teal slab. `sprite-edge-38.87_19.81-full`: a bright-green tall-grass patch on snow. `battle-39.49_18.89-full`: the near battler is bleached into the white arena floor (R-all-4). |
+| `solenne` | **close** | close | `spawn-noon-5.5_9.5-full`: the league hall is the strongest building of any town, but in the arrival frame it is a DOF-blurred façade over the right 45 %. The marble plaza is one flat near-white field. `gym-dusk-0_-18-full` (stained glass, lawn flowers, the Clerk) is at the bar. |
+
+#### Routes (against `mire_route`)
+
+| Zone | Verdict | Evidence |
+|---|---|---|
+| `mire_route` | **meets** | `spawn-noon--92_0-full` and `link-east-98_0-full`: flowers, bushes, oaks and verges. `lamps-night--69.4_6.25-full`: the frame is mostly crown, with player mask 0.4021 (M3-mire_route-1, raised below). |
+| `ash_route` | **below** | `spawn-noon--92_0-full` / `sprite-edge--88.21_2.67-full`: a grey ash plain, a grey flagstone road with a red speckled verge band, green X tufts, and bright-green paper tall grass. Monotone. `lamps-night` holds one brazier. |
+| `tide_route` | **below** | `spawn-noon--92_0-full`: white sand under saturated green confetti tufts. `gym-dusk-0_17.44-full`: an empty sand field, **mean luma 195.4 at dusk against 170.3 at noon** (R-all-5). |
+| `galvan_route` | **below** | `spawn-noon--92_0-full` / `link-east-98_0-full`: the wilderness ground layer is the same blue-grey flagstone as the road, like a car park. A blurred pine fills the right 40 % of the spawn frame. `gym-dusk-0_19.84-full`: the player stands inside a pine crown; the mask is stippled and reads 0.4175 (R-all-6). |
+| `deepcut_route` | **below** | `spawn-noon--92_0-full`: the road and the ground carry the same Voronoi crack pattern at two tones. White kerb strips along the road read as paper cut-outs, and green tufts sit on the dust. `gym-dusk-0_15.39-full`: no set-piece, only a white stick structure. |
+| `hollow_route` | **close** | `spawn-noon--92_0-full`: a green ground and a lichen road, but a blurred willow covers the right half. `gym-dusk-0.5_21-full`: an empty lawn with two NPCs at the edges. |
+| `siege_route` | **close** | `spawn-noon--92_0-full`: dark earth, a clean grey brick road, pines and tall grass; it reads, but as a pavement. `lamps-night--70.33_5.14-full` holds one brazier. |
+| `ascent_route` | **below** | `spawn-noon--92_0-full` / `sprite-edge--85.84_3.31-full`: a solid patch of bright-green tall grass on snow, and a flat white road. |
+
+#### Story zones
+
+| Zone | Verdict | Evidence |
+|---|---|---|
+| `eclipse_shrine` | **below** | All six frames show one blue-grey flagstone floor. The road is a dark strip ruled with straight parallel lines, like a grating. The glowing shards are the only interest. |
+| `celestial_spire` | **below** | It is **indistinguishable from eclipse_shrine**: the same floor, the same shards, the same ruled dark road, the same tones (compare the two `spawn-noon` frames). Two story zones share one look (R-story-4). |
+| `umbral_observatory` | **not judgeable at the bar** | Captured at `harvest: harvested` (dump `harvestLevel` 2): flat vertex colour and no punctual lights, by design (spine §1). `lamps-night-8.01_68.35-full` is a uniformly dark violet frame (mean 15.2) with no lit source, and the player is barely visible (R-all-7). |
+| `the_rift` | **not judgeable at the bar** | Captured at `harvestLevel` 2, as above: flat lilac ground and primitive rocks. `lamps-night-1.77_-62.38-full`: mean 18.3 and no light. `battle-27.92_-31.68-full`: the Umbrit is a dark sprite on a near-black ring floor (M3-story-3, raised). |
+
+### R.2 The implementer's findings: agree / disagree
+
+| Id | Impl. severity | Ruling | Reason |
+|---|---|---|---|
+| M3-all-1 | blocker (process) | **agree; partly discharged** | This section is the independent pass. The finding stays open until every M3-* and R-* id below has an answer in the Answers table (§50.6.3). |
+| M3-all-2 | major | **agree with the content route (arrival point); reject "5/8 pass"** | Four of the five "passes" (cinderhold, marrowdig, forgewall, skyrend) rest on a roof corner cropped at the top-left edge. That games the check; see the ruling in R.3. |
+| M3-all-3 | major | **agree; it is a bar blocker in four towns** | Green X tufts on ash, salt, dust and snow are the most visible wrong thing in cinderhold, saltmourn, marrowdig and skyrend. They also appear in five routes. |
+| M3-all-4 | major | **agree** | The same bright tall-grass card patch appears on snow (ascent, skyrend), void stone (eclipse, celestial), lilac rift ground and ash. M2-sprite-edge-2 is unanswered in the M2 table. |
+| M3-all-5 | major | **agree, and wider** | The fallback gym-dusk frames nothing in at least tide, deepcut, hollow, galvan, ascent, eclipse and celestial. In galvan it frames a crown with the player inside it. |
+| M3-all-6 | major | **agree** | It is a dump finding, and I cannot see those lights in the 126 frames. It must be Fixed or answered Spec; an unmotivated light is a Pillar 4 failure. |
+| M3-all-7 | Fixed | **agree at 1440×900 only** | Galvan 625 MiB, solenne 619 and siege 601 are within ~75–100 MiB of the 700 MiB cap at 1440×900. M2-battle-10 (+77 MB of MRT at 2560×1440) is still unanswered, so on the reference resolution galvan sits at about the cap. Re-measure at 2560×1440 before calling it Fixed. |
+| M3-all-8 | minor | **agree, and it has a sibling** | The battler coverage metric is also blind to the player avatar covering a battler (R-all-1). The harness should measure each battler's own visible pixels (an object-id or stencil readback), not "mask = 1 inside the rect". |
+| M3-all-9 | Accepted | **agree** | |
+| M3-all-10 | major | **agree on the diagnosis; reject the fix** | Raising exposure or the sun by 20–30 % globally clips the high-albedo zones further: skyrend noon p50 is already 210, tide noon mean 170, and marrowdig and tide are **brighter at dusk than at noon** (R-all-5). The fix is albedo calibration of `salt sand`, snow, marble and the plaster/limestone surfaces (cap the linear albedo, e.g. ≤ 0.75) together with the key raise. Check: every zone's reduced spawn-noon p99 ≥ 215 and p50 ≤ 170. |
+| M3-all-11 | minor | **disagree on severity: blocker** | See the ruling in R.3. The harness runs every row in the pre-2026-09-30 convention. |
+| M3-mirevale-1 | Fixed | **agree** | Mask 0.4955 in the current shot. |
+| M3-mirevale-2 | minor | agree | |
+| M3-mirevale-3 | minor | **agree, and wider** | Camera-side lamp posts also stand in front of the ring in `solenne/battle` and `cinderhold/battle`. They do not cover a battler, so it stays minor. |
+| M3-cinderhold-1 | open | **close as superseded** | It is replaced by the cinderhold verdict above (R-cinderhold-3). |
+| M3-cinderhold-2 | Fixed | agree | No green bushes in the cinderhold frames; the tufts remain under M3-all-3. |
+| M3-saltmourn-1 | major | agree | |
+| M3-saltmourn-2 | major | **agree; a bar blocker** | |
+| M3-stormrook-1 | minor | **disagree: major** | One material at one value over the whole frame is the "material monotony" the pillars forbid. galvan_route's ground has the same fault (R-galvan-1). |
+| M3-marrowdig-1 | major | agree | |
+| M3-vesperveil-1 | minor | agree | |
+| M3-vesperveil-2 | minor | **disagree: major** | A world nameplate drawn over a HUD element is a Pillar 8 overlap. The HUD reserved boxes (H10) must apply to nameplates. |
+| M3-forgewall-1 | minor | agree | The dark blobs are still visible in `sprite-edge--48_6-full`, top right. |
+| M3-skyrend-1 | major | **agree on the finding; reject M3-all-10's fix for it** | See M3-all-10. |
+| M3-skyrend-2 | minor | **disagree: major** | It goes with R-skyrend-3: the town's whole plaza kit reads as toy fabric. |
+| M3-solenne-1 | Fixed | **not verifiable** | The foyer is not in the 126 shots, and the evidence is a scratchpad PNG from another session. §50.6.3 "Fixed" needs a re-captured shot that a reviewer can open. Commit it, or record the sandbox URL and capture in a sidecar. |
+| M3-mire_route-1 | minor | **disagree: major (line 6)** | Mask 0.4021 is below M2-spawn-noon-9's ≥ 0.45 check. A line-6 finding cannot be Accepted. |
+| M3-routes-1 | major | agree | |
+| M3-routes-2 | minor | agree | The edge scan in the inspector covers Pillar 6 (21/21 pass at 1.349–1.353 texel/px, 0 intermediate values). |
+| M3-story-1 | major | agree | Extended by R-story-4. |
+| M3-story-2 | minor | agree | |
+| M3-story-3 | minor | **disagree: major** | Line 7 cannot be Accepted. The far battler is a dark sprite on a near-black ring floor, and the VFX trail crosses it. |
+
+### R.3 Rulings on the two open questions
+
+**(a) Spawn check "≥ 1 building + 6 props in frame": change it.** As written it can be passed with a cropped roof corner at the frame edge, and Mirevale fails it. It measures neither the bar nor what a player sees. Replace it, for every town including Mirevale, with this check, made on the **arrival view** (see b):
+1. The town's set-piece is in frame, with ≥ 50 % of its silhouette inside the middle 80 % of the frame and in focus (mask or CoC readback, not blurred foreground).
+2. At least one building façade shows a door or a window inside the middle 80 % of the frame. A roof or wall corner at the edge does not count.
+3. At least 6 hand-placed props and at least 1 NPC are in focus.
+4. No single out-of-focus occluder covers more than 20 % of the frame. Today this fails in the Mirevale, solenne, forgewall, stormrook, galvan and hollow spawn rows.
+
+If Mirevale fails the new check from its rig-0 arrival, that is a Mirevale finding, not a reason to weaken the check. The rule goes into §50.6.1 with a CHANGELOG entry, and the harness asserts it in the sidecar `checks` (today `checks` is `[]` in all 126 sidecars).
+
+**(b) M3-all-11, "must the harness spawn heading match the in-game arrival heading?": yes, and that is not enough on its own.**
+- The `spawn-noon` row exists to show what the player sees on arriving. `arrival.ts` puts the arrival point on the plaza's south side precisely so that the default rig 0 faces the set-piece, so the row must use the arrival's own camera. That is rig heading 0 at the default zoom, or the rig a fast-travel or join would carry.
+- The root problem is larger. §50.6.1 as amended 2026-09-30 says headings are the rig's own numbering ("heading 0 looks toward −z"). Every sidecar records `"convention": "words"`, which maps spec h to rig (h + 2) & 3. So **all six rows in all 21 zones are 180° from the amended text**.
+- Changing the harness alone would break the other rows. Under the literal amended table, `gym-dusk` heading 2 = rig 2 looks +z, away from a gym door that lies on −z. The amendment changed the meaning of the digits without remapping them, so the table is now inconsistent.
+- **Ruling (Spec):**
+  - Amend §50.6.1 to give each row its heading as an explicit rig index, chosen per row:
+    - `spawn-noon`: rig 0 (the arrival);
+    - `gym-dusk`: the rig that faces the door, rig 0 for Mirevale;
+    - the others: whatever reproduces today's committed frames.
+  - Write a CHANGELOG entry.
+  - Make the harness record `"convention": "rig"`.
+  - Re-shoot the eight town `spawn-noon` rows and Mirevale's under the new rule.
+- Until that is done, the town verdicts in R.1 are provisional, and nobody can claim the bar is met.
+
+### R.4 Findings the implementer missed
+
+Ids follow the M3 scheme with the `R-` prefix. Line numbers are the §50.6.2 attack lines.
+
+- **R-all-1 · blocker (line 7; may not be Accepted): the player avatar stands between the battle camera and the near battler.**
+  - The near battler's rect overlaps the player rect by 0.42–0.56 in forgewall, galvan, stormrook, deepcut, siege, tide, vesperveil and skyrend (sidecar rects), and by 0.17–0.36 in nine more zones: 17 of 21.
+  - In `forgewall/battle--47.39_5.08-full.png` the player's head and cape hide most of Bramblecub's body; only an ear, a flank and the tail show. In `skyrend/battle-39.49_18.89-full.png` the player's head covers the battler's left side.
+  - The mask variant cannot see this: `forgewall/battle--47.39_5.08-mask.png` shows one merged white silhouette of player plus battler, so `battlers[0].full` reads 0.6725.
+  - M2-battle-5's fix moved the battlers above the panel and put the avatar in front of the near one.
+  - *Fix:* the battle camera's clear-yaw search treats the player avatar as an occluder of side 0 (or the avatar steps aside or dithers during battle, like the occluder fade). The harness measures each battler's own visible pixels.
+  - *Check:* ≥ 90 % of each battler's opaque pixels are visible in every frame of the 600-frame capture, in all 21 battle rows.
+- **R-all-2 · blocker (line 9, harness/spec conformance): every shot uses the dropped heading convention** (`anchor.heading.convention: "words"` in all 126 sidecars), and the amended §50.6.1 table is inconsistent. *Fix and check:* ruling R.3 (b).
+- **R-all-3 · major (line 7): an internal event token leaks into the move-result text.** The battle log reads "The wild Scalewisp's Speed Boost — endOfTurn" (`skyrend/battle-39.49_18.89-full.png` and `ascent_route/battle--85.23_2.39-full.png`; 6 sidecar entries). The hook phase name is printed to the player. *Fix:* the ability-trigger log line maps the hook id to player text. *Check:* no log string in any sidecar matches `/— [a-z]+[A-Z]/`.
+- **R-all-4 · major (line 7): the near battler is bleached into a white arena floor.** In `skyrend/battle-39.49_18.89-full.png`, and in the reduced variant (so not DOF), Bramblecub's white belly and pale greens merge with the snow floor at mean luma 158. `ascent_route/battle--85.23_2.39-full.png` shows the same. *Fix:* the arena floor in snow / salt / marble zones gets a darker trampled-ring surface, and the creature rim lifts against bright floors. *Check:* battler-edge luma contrast ≥ 3:1 against the floor ring around it.
+- **R-all-5 · major (line 1 / line 8): dusk is as bright as noon or brighter on high-albedo ground.**
+  - The full-variant mean luma is higher at dusk than at noon in two zones:
+
+    | Zone | dusk | noon |
+    |---|---|---|
+    | tide_route | 195.4 | 170.3 |
+    | marrowdig | 176 | 145.6 |
+
+  - `marrowdig/gym-dusk-0_-18-full.png`: the gym façade and steps are blown out to white under bloom haze across the top-left third, so the town's most important building has no form.
+  - The golden hour that M3-all-10 credits to Mirevale does not survive white ground. This is the same root as M3-all-10 and needs the same albedo fix.
+  - *Check:* in every zone, gym-dusk reduced mean ≤ 0.8 × spawn-noon reduced mean, and the gym façade p99 is ≤ 245.
+- **R-all-6 · major (line 6; may not be Accepted): the player sits under a blurred occluder below M2's own check.**
+  - `maskCoverage.player` is below the 0.45 that M2-spawn-noon-9 set:
+
+    | Shot | `maskCoverage.player` |
+    |---|---|
+    | `galvan_route/gym-dusk` | 0.4175 |
+    | `skyrend/lamps-night` | 0.4278 |
+    | `ascent_route/gym-dusk` | 0.4272 |
+    | `mire_route/lamps-night` | 0.4021 |
+
+  - In `galvan_route/gym-dusk-0_19.84-full.png` the player stands inside a pine crown, and the mask is stippled over him.
+  - *Fix:* widen the occluder-fade capsule for conifer crowns, or keep fallback anchors out of crowns.
+  - *Check:* ≥ 0.45 in all 105 non-battle rows.
+- **R-all-7 · major (process / line 1): the audit does not record harvest state, and two zones' intact looks have never been audited.**
+  - `index.json` shows `harvest: harvested` (level 2) for `the_rift` and `umbral_observatory`, and `thinning` (level 1) for `marrowdig`, `galvan_route`, `hollow_route` and `tide_route`. The audit judges all of them as if intact.
+  - A town (marrowdig) was scored "comparable to Mirevale" in its thinned state.
+  - The harvested night frames are unreadable: the_rift mean 18.3 and umbral mean 15.2, with no lit source and a near-black player. Pillar 8 holds in the harvested state too.
+  - *Fix:* the harness pins `harvestLevel` per set. M3 shoots level 0 for all 21 zones, plus a harvested row for the zones whose story state starts harvested, and the audit header lists the level per zone.
+  - *Check:* `harvestLevel` is printed in every sidecar, and the player rect mean luma at level-2 night is ≥ 2× its surroundings.
+- **R-all-8 · major (line 3 / staging): M2-lamps-night-3 (≥ 3 lamps in frame) is still unmet and the check was never added.**
+  - By eye, only `forgewall/lamps-night` clearly shows ≥ 3 lit housings.
+  - Fourteen frames show one lit housing or none: ash, tide, galvan, deepcut, hollow, siege, ascent, mire_route, eclipse, celestial, stormrook and saltmourn show one; umbral and the_rift show none.
+  - Every sidecar has `checks: []`.
+  - *Fix and check:* as M2-lamps-night-3.
+- **R-all-9 · major (framing): out-of-focus foreground crowns and set-pieces take whole frames.**
+  - Blurred foreground in the spawn rows:
+
+    | Frame | What covers it | Share |
+    |---|---|---|
+    | `galvan_route/spawn-noon` | pine | ~40 % |
+    | `hollow_route/spawn-noon` | willow | ~45 % |
+    | `solenne/spawn-noon` | the league-hall façade | ~45 % |
+    | `forgewall/spawn-noon` | bastion block | ~20 % |
+    | `forgewall/spawn-noon` | pine | ~15 % |
+    | `saltmourn/lamps-night` | black pine | ~30 % |
+    | `mire_route/gym-dusk` | oak | ~35 % |
+
+  - These are the "framing failures" the M2 verdict ranked fifth, now multiplied across zones.
+  - *Fix:* fallback anchors and the spawn heading avoid placing a tall object between the camera and the focus, and the occluder fade extends to the frame's lower third.
+  - *Check:* no out-of-focus object covers > 20 % of any non-battle frame.
+- **R-all-10 · minor (line 9): the shots run peaks above the published worst.** The commit message and the §2 headline say "programs ≤ 113", but the shot sidecars reach 121 (`solenne/battle`, `sprite-edge`, `lamps-night`, `link-east` full) and 119 in mirevale, mire_route, stormrook and forgewall. That is still under the 128 cap, but the audit should print the shots-run peak beside the budget-run worst (as M2 did) so the history-dependent drift (M2-gym-dusk-8 "Accepted +2/+4") is visible: here it is +8.
+- **R-all-11 · minor (line 7): M2-battle-11 persists.** The full and reduced battle frames are different moments (`skyrend` `cursorMs` 433.3 against 483.3), so the reduced-effects comparison is confounded.
+- **R-all-12 · minor (process): the format deviates from §50.6.2 without a Spec amendment.** The header says the nine lines are "applied per zone, not per shot … as amended 2026-10-06", but no such amendment exists in `50-verification-budget.md` §50.6.2 or in the CHANGELOG. The text still says "for each shot … never omitted", and line 9's per-shot rows are not pasted. Aggregating per zone is a reasonable choice for 126 shots, but it must be a Spec answer with a §50.7 entry, or the audit does not satisfy its own protocol.
+- **R-forgewall-2 · major (Pillar 7, line 2): the terrain cuts through the battle ring.** In `forgewall/battle--47.39_5.08-full.png` a dark earth slope crosses the ring floor diagonally from the right, so half the arena paving is buried and the rope posts on the right stand in earth. The arena does not "dress itself" here; it is swallowed. *Fix:* the arena seat levels a pad (or clips the terrain inside the ring radius + 0.5 m) the way the scatter mask hides grass. *Check:* no terrain pixel inside the ring's rim in any battle row.
+- **R-cinderhold-3 · major (lines 1–2, the town's set-piece):** the lava basin and its kerb read as described in R.1: a flat yellow-white blob with no crust or flow, and glossy black cubes. *Fix:* lava gets a crust-crack emissive mask with a temperature gradient to the rim and a darker cooled skin, and the kerb becomes fractured basalt (Pillar 3). *Check:* lava region luma std-dev ≥ 20/255, and no kerb element with a 4-edge silhouette.
+- **R-saltmourn-3 · major (shot 3 staging, line 4): the staged creature is hidden.** In `saltmourn/sprite-edge--48_0-full.png` the mudbub stands behind an out-of-focus pine crown in the foreground. The edge scan passes in the inspector, but the overworld frame does not show "a wild creature in frame". *Check:* creature rect ≥ 80 % unoccluded in the full variant of every sprite-edge row.
+- **R-skyrend-3 · major (line 1, material monotony):** the stall timber and the crate are one teal high-frequency stripe that reads as knitted fabric, and the awnings are flat rainbow planks (`spawn-noon-5.5_9.5-full.png`, `gym-dusk-0_-18-full.png`). *Fix:* biome timber in a weathered pale-grey or teal-painted wood with grain, and prayer flags as hanging cloth strips on a cord. *Check:* stall timber luma std-dev over a 40 × 40 px face ≤ 25 (stripe noise) and ≥ 6 (grain).
+- **R-galvan-1 · major (line 1):** the route's ground layer is the same flagstone as its road (`spawn-noon--92_0-full.png`, `link-east-98_0-full.png`), so the wilderness reads as paving. This is the M3-stormrook-1 fault on a route. *Check:* road and ground differ in material id and by ≥ 15 % in mean luma.
+- **R-deepcut-1 · minor (line 2):** the white kerb strips along the road are flat paper-white bands with straight cut edges (`spawn-noon--92_0-full.png`, `lamps-night--69.64_0.91-full.png`).
+- **R-story-4 · major (zone identity):** `eclipse_shrine` and `celestial_spire` are visually the same zone: the same floor, the same shards, the same dark ruled road and the same values across all six rows. The ruled road is a band of straight parallel lines that reads as a grating (minor in itself). *Fix:* a distinct surface family and set dressing per story zone. *Check:* a side-by-side of the two spawn rows that a person can tell apart.
+- **R-M2-1 · blocker (gate, §50.6.3): 41 of M2's 51 findings still have no answer in the M2 Answers table.** The M3 shots show many of them unchanged in all 21 zones: the cobble grid (M2-spawn-noon-1), X tufts (M2-link-east-5), paper tall grass (M2-sprite-edge-2), the mannequin character material (M2-battle-1), the unmeasured bloom gap (M2-battle-9) and texture bytes at the reference resolution (M2-battle-10). §5 of this file claims M2-gym-dusk-2 and M2-lamps-night-5 are closed, but the M2 table still shows them blank. §50.6.3 says the M2 findings under lines 1–4 must be Fixed or Spec before M3 multiplies the spec by 21; M3 has already done so.
+
+Lines with nothing to add: **line 5 (soft pixels): none found.** All 21 sprite-edge rows pass the edge scan at 1.349–1.353 texel/px with 0 intermediate values, and no creature in the 126 frames shows bilinear smear. **Line 9 counts: the implementer's §2 table matches the 21 budget JSONs** (I recomputed beauty worst, programs and texture bytes; 0 violations, all `complete: true`). The milliseconds are 20-frame iGPU numbers (`frames 20, warmup 10`), not §50.2.3's 600 / 120, so the M3 budget box ("`--budget-ms 1` … on the reference machine") is **not** met by these files. That is a separate checklist line, noted here so nobody reads §2 as satisfying it.
+
+### R.5 Prioritised fix list (no code; each item names the visible problem and its evidence)
+
+**Blockers.** Each must be Fixed, or Spec where noted, before M3's audit box can be ticked. Lines 6 and 7 may not be Accepted.
+1. **R-all-1:** the player avatar hides the near battler (`forgewall/battle--47.39_5.08-full.png` worst; 17 of 21 battle rows overlap 0.17–0.56), and the mask cannot see it.
+2. **R-all-2 / M3-all-11:** the heading convention. Amend §50.6.1 to give each row an explicit rig index, and re-shoot every `spawn-noon` row at the arrival heading (sidecars `convention: "words"`).
+3. **The Phase E bar, in the four towns below it.** Re-judge from the re-shot arrival views.
+   - **Saltmourn:** a thin plaza and a lighthouse sliver (M3-saltmourn-2; `saltmourn/spawn-noon-5.5_9.5-full.png`).
+   - **Skyrend:** white on white, toy-fabric stalls (M3-skyrend-1/-2, R-skyrend-3; `skyrend/spawn-noon-5.5_9.5-full.png`).
+   - **Cinderhold:** a fried-egg lava and a one-value ash (R-cinderhold-3; `cinderhold/spawn-noon-5.5_9.5-full.png`).
+   - **Stormrook:** one material over the whole frame, and one lamp at night (M3-stormrook-1 raised; `stormrook/spawn-noon-0_11-full.png`, `lamps-night-1.69_21.85-full.png`).
+4. **M3-all-3:** green X tufts on non-grass ground, visible in cinderhold, saltmourn, marrowdig and skyrend (`tide_route/spawn-noon--92_0-full.png` is the starkest). They are the single change that most separates those towns from Mirevale.
+5. **R-M2-1:** answer the 41 open M2 findings, or record them as carried into M3 ids. The M2 gate in §50.6.3 is the precondition for M3.
+6. **M3-all-1 / R-all-12:** every M3-* and R-* id gets an answer, and the per-zone format becomes a Spec amendment with a §50.7 entry.
+
+**Majors.** These must have an answer; the ones marked "line 6/7" cannot be Accepted.
+- R-all-6 (line 6): the player under a crown, mask < 0.45 (`galvan_route/gym-dusk-0_19.84-mask.png`); with M3-mire_route-1 raised.
+- R-all-3 (line 7): the `— endOfTurn` log leak (`skyrend/battle-39.49_18.89-full.png`).
+- R-all-4 (line 7): a bleached battler on snow (`skyrend/battle-39.49_18.89-reduced.png`).
+- M3-story-3, raised (line 7): a dark battler on a dark floor (`the_rift/battle-27.92_-31.68-full.png`).
+- R-forgewall-2: terrain through the battle ring (`forgewall/battle--47.39_5.08-full.png`).
+- R-all-7: harvest state is unpinned and unrecorded; the intact the_rift / umbral are unaudited; harvested nights are unreadable.
+- R-all-5 with M3-all-10: dusk brighter than noon, a blown-out gym (`marrowdig/gym-dusk-0_-18-full.png`, `tide_route/gym-dusk-0_17.44-full.png`), and noon compression. Fix by albedo calibration first, then the key.
+- R-all-9: blurred foreground occluders over 20–45 % of frames (`hollow_route/spawn-noon--92_0-full.png`, `galvan_route/spawn-noon--92_0-full.png`).
+- R-saltmourn-3: the shot-3 creature is hidden behind a pine.
+- R-all-8: one lamp or none in 14 night frames; add the sidecar check.
+- M3-vesperveil-2, raised: a nameplate over the HUD badge.
+- M3-all-4 and M3-routes-1: the same paper tall-grass patch in every biome, including snow and void.
+- M3-all-5: the gym-dusk fallback frames nothing in seven zones.
+- M3-all-6: set-piece lights without housings (galvan, siege, umbral).
+- R-galvan-1: a paved wilderness.
+- R-story-4: eclipse and celestial are indistinguishable. M3-story-1 is part of it.
+- M3-saltmourn-1 and M3-marrowdig-1: the tufts, as M3-all-3.
+- M3-all-7: re-measure the texture bytes at 2560×1440 (galvan 625 MiB at 900p).
+
+**Minors.** M3-mirevale-2, M3-mirevale-3 (extended to solenne and cinderhold), M3-vesperveil-1, M3-forgewall-1, M3-routes-2, M3-story-2, M3-all-8 (folded into R-all-1's metric), R-all-10, R-all-11, R-deepcut-1.
+
+### R.6 Can "`.design/audits/M3-render-audit.md` written and answered" be ticked?
+
+**No.** The audit is now *written*: an implementer record plus this independent pass, which satisfies §50.6's authorship rule for the findings. It is not *answered*. The box can be ticked only after all of the following:
+1. Every M3-* and R-* id above has exactly one answer in the Answers table (Fixed with a re-shot file name, Spec with a CHANGELOG id, or Accepted with a reason and the pillar it trades against). R-all-1, R-all-3, R-all-4, R-all-6, M3-story-3 and M3-mire_route-1 cannot be Accepted.
+2. R-all-2 is answered Spec: §50.6.1 gives explicit rig indices per row, and the harness records `convention: "rig"`. All town `spawn-noon` rows (and any other row whose frame changes) are re-shot, and R.1's town verdicts are re-judged on those frames by a reviewer who is not the implementer.
+3. The four towns below the bar (saltmourn, skyrend, cinderhold, stormrook) reach at least "close", and the user signs off "as good as Mirevale" on the re-shot arrival views. The bar is the user's decision; this review does not certify it, and on the current frames it is not met by any town.
+4. The M2 Answers table has no blank row (R-M2-1).
+
+Separately, these files do not meet M3's budget line (`--budget-ms 1` on the reference machine): see R.4, line 9.
