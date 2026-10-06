@@ -110,6 +110,8 @@ export const BattleStateSchema = z.looseObject({
   zoneId: z.string(),
   /** Phase D6: 2 in a doubles battle; absent in singles */
   slots: z.literal(2).optional(),
+  /** Phase D14: true in a battle tower fight (no exp); absent otherwise */
+  noExp: z.literal(true).optional(),
 });
 
 /** §4.4 RewardsSummary */

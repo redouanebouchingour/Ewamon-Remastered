@@ -305,6 +305,11 @@ export interface BattleState {
   readonly zoneId: string;
   /** Phase D6: present (2) only in a doubles battle; absent = singles (state shape byte-identical to pre-D6) */
   readonly slots?: 2;
+  /**
+   * Phase D14: present (true) only in a battle tower fight — no battler gains exp (no `expGain` / `levelUp` /
+   * `learnMove` / `evolveReady` events). Absent = exp as usual (state shape byte-identical to pre-D14).
+   */
+  readonly noExp?: true;
 }
 
 export interface CreateBattleOpts {
@@ -326,6 +331,8 @@ export interface CreateBattleOpts {
    * byte-identical to pre-D6.
    */
   readonly slots?: 1 | 2;
+  /** Phase D14: true = `BattleState.noExp` (battle tower). Absent / false = byte-identical to pre-D14. */
+  readonly noExp?: boolean;
 }
 
 // ─── §2.10 Actions ───────────────────────────────────────────────────────────

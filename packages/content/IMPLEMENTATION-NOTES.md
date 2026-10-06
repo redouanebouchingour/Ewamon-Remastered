@@ -367,3 +367,23 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   (`PROGRESSION_STOCK.saltmourn` first). No beat grants it, nothing needs it.
 - Tests: `test/encounters.test.ts` (8). `test/plan.test.ts`: the outside-towns stamp count now adds
   `obstacleCells.size` (the obstacle stamp runs after the footprints).
+
+## Phase D14 — post-game (2026-10-06)
+
+- **League rematches.** `LEAGUE_REMATCH` (`data/league.ts`): one row per `LEAGUE` entry — the trainer's type flavour at
+  Lv 65–75 (originals evolved, a few new faces, the ace last), `pre` / `post` lines in each voice, reward
+  `round(reward × 1.5)`. A legendary appears only where the original team carries it (Sylvane glacinid, Veil bankaiser,
+  Aurelia voltaura, Kirei galaxion, Zeon zenryu). `POSTGAME_FLAG = 'champion:zeon:beaten'`,
+  `LEAGUE_REMATCH_COOLDOWN_DAYS = 1`, `leagueRematchFlag(id)` = `league:<id>:rematchAt` (server bookkeeping, not in the §11
+  registry — like `trainer:<id>:beaten`; nothing in content reads it). Accessor `leagueRematch(id)`.
+- **Battle tower.** `data/tower.ts`: `TOWER { levelCap 50, teamSize 3, setLength 7, attendantId 'solenne.league.tower',
+  trainerId 'tower.challenger', trainerName 'Tower Challenger', pools }` — pools derived from SPECIES at load (fully
+  evolved, non-legendary, BST bands 300–379 / 350–399 / 380–429 / 400+; 20 / 29 / 29 / 21 species), `towerTier(wins)`,
+  `towerSetReward(set)` (money 2 500 × set capped 15 000; rare candy, + max revive, then 2 rare candies + big nugget).
+- **Attendant.** `InteriorNpcRole` gains `tower`; the league hall foyer (`leagueHall`) gains `${building}.tower` at
+  (−6.5, half − 5), beside the nurse. An interior NPC on purpose: a `ZoneDef` NPC would feed Solenne's layout RNG (plan,
+  r1 fixture, heightfield). Interior NPCs stamp nothing — every digest and heightfield is unchanged.
+- **validate.ts:** rematch rows (one per league id, levels, ×1.5, legendary rule, nickname ≤ 16, abilities / items),
+  tower pools (≥ 6, known, non-legendary), set-reward items. Still 130/130, 67 families. The bind-set cap is unchanged
+  (rematch / tower teams are battle-only).
+- Tests: `test/postgame.test.ts` (3).

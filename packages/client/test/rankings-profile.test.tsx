@@ -59,6 +59,8 @@ const BOARDS: Readonly<Record<string, LeaderboardRow[]>> = {
   rating: [row(1, OTHER_ID, 'ace_rival', { rating: 1320, tier: 'gold', guildTag: 'MIRE' }), row(2, PLAYER_ID, 'qa_tester')],
   dex: [row(1, PLAYER_ID, 'qa_tester', { dexCaughtCount: 12 }), row(2, OTHER_ID, 'ace_rival', { dexCaughtCount: 9 })],
   trainerLevel: [row(1, OTHER_ID, 'ace_rival', { trainerLevel: 7 })],
+  // Phase D14: the battle tower board
+  towerStreak: [row(1, OTHER_ID, 'ace_rival', { towerBest: 21, towerCurrent: 3 }), row(2, PLAYER_ID, 'qa_tester', { towerBest: 8, towerCurrent: 0 })],
 };
 
 const calls: { url: string; method: string; body: unknown }[] = [];
@@ -162,6 +164,19 @@ describe('/play/rankings', () => {
     const pub = await screen.findByRole('heading', { name: 'ace_rival', level: 2 });
     expect(pub).toBeTruthy();
     expect(screen.getByText('“Never fold.”')).toBeTruthy();
+  });
+});
+
+describe('/play/rankings — Phase D14 tower', () => {
+  it('the Tower tab fetches mode=towerStreak and leads with the best streak', async () => {
+    mount('/play/rankings?mode=towerStreak');
+    const panel = await screen.findByTestId('panel', {}, { timeout: 15000 });
+    await within(panel).findByText('ace_rival');
+    expect(calls.some((c) => c.url.includes('mode=towerStreak'))).toBe(true);
+    expect(within(panel).getByRole('tab', { name: 'Tower' }).getAttribute('aria-selected')).toBe('true');
+    expect(within(panel).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['#', 'Trainer', 'Tier', 'Streak', 'Rating', 'Caught', 'Level']);
+    expect(within(within(panel).getByRole('row', { name: /ace_rival/ })).getByText('21')).toBeTruthy();
+    expect(within(panel).getByText('You are #2 on this board.')).toBeTruthy();
   });
 });
 

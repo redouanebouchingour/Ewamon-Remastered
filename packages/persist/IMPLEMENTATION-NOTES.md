@@ -144,3 +144,12 @@ Tests: `test/shiny.test.ts` (4); `players.test.ts` dex expectation gains `shiny:
 
 - Types only (no migration): `Action` move gains `target?`; `ReplayChoice = Action | null | [Action | null, Action | null]`
   and `battle_history.actions` is `[ReplayChoice, ReplayChoice][]` (jsonb); `BattleStartSnapshot.slots?: 2`.
+
+## Phase D14 — battle tower streaks (2026-10-06)
+
+- Migration `0004_player_streaks` (drizzle-kit generated): `player_streaks (player_id uuid PK → players cascade, current
+  int ≥ 0, best int ≥ current, updated_at)`, index on `best`. Schema `src/schema/streaks.ts`.
+- `streakRepo` (`Repos.streaks`): `get`, `byPlayers`, `recordWin` (upsert current + 1, best = greatest(best, current + 1)),
+  `endRun` (current 0), `leaderboard(page, size)` (best > 0, banned excluded, best desc, current desc, username_lower).
+- `BattleStartSnapshot.noExp?: true` (jsonb, no migration).
+- Tests: `test/streaks.test.ts` (3); `migrations.test.ts` lists `player_streaks`; `helpers.ts` truncates it.

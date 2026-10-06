@@ -1002,3 +1002,37 @@ leave / ineligible window / reopen with a catch try / phase-4 summary / fainted 
 - Not done: a bicycle mesh and a surf pose (no model in the KayKit set; the rider runs, the surfer stands on the water
   with the ripple). Not verified live in a browser this phase (unit + server integration tests only).
 - Tests: `test/world-systems.test.ts` (10); `test/zoneSpecFor.test.ts` (R1 excludes `obstacles`, asserts them; snapshot).
+
+## Phase D12–D13 — tutorial and ranked queue (2026-10-06)
+
+- **Tutorial (D12).** `state/tutorial.ts`: seven steps (move 8 m → `met_wynn` → party panel → wild battle → catch →
+  win → heal), events latched per account in a persisted zustand store `ewa.tutorial` (deviation: its own store, not a
+  `SettingsData` section — progress is per account and the settings blob is per browser; same `persist` + safe
+  storage pattern). `pastOpening` = any badge or a flag set by a story beat other than first_witness / mire_rival (from
+  content `STORY`) → marked done on sight. `world/TutorialCard.tsx` (mounted in PlayShell under `worldCapability()`, like
+  the minimap): the tracker reads the own `PlayerState` through `WorldSession.subscribeState` (`MoveMeter`, jumps over
+  6 m and room changes ignored), session flags / dexCaught, the location (`/play/party`) and `ui.battle`
+  (format / result); heals call `noteTutorialEvent('healed')` from `app/actions.ts` and `scene/World3D.ts`. Hidden under
+  battles, dialogue, panels and with the HUD off; reduced motion drops the entry slide (`:root[data-reduced='1']`).
+- **Ranked (D13).** `state/ranked.ts` (written only by `messageRouter` from `rankedStatus`; reset by
+  `installMessageRouter`'s new `onRoom(null)` hook), `screens/RankedPanel.tsx` at the top of `RankingsScreen` (Find a
+  match / elapsed + window / Leave queue / matched). A 'matched' older than 30 s with no battle shows idle again.
+- Not verified live in a browser this phase (unit tests + the server integration tests).
+- Tests: `test/tutorial-ranked.test.tsx` (13).
+
+## Phase D14 — post-game (2026-10-06)
+
+- **Rematches.** `scene/dialogue.ts`: `rematchOffer` (mirrors the server's `leagueBeaten`), `gymPlan` opens the rematch's
+  `pre` lines after the Champion (the cooldown is server-side only: a too-early ask pages through the line, then gets the
+  server's toast), `rematchOfBattle(state, seat)` (NPC party = rematch team), `leaguePostDialogue(id, rematch)`.
+  World3D shows the rematch `post` lines after a won rematch; `BattleResultCard`'s concession is the rematch `post[0]`.
+- **Tower.** `InteractableKind` `tower` (range 2.5) for the attendant (`scene/interiors.ts`); World3D: attendant lines
+  before the Champion, after it the lines then `ui.modal 'tower'` (or straight to the modal mid-run). `state/ui.ts`
+  `tower: TowerUi | null` + `setTower`; `messageRouter` writes `towerState` (fighting closes the modal, the rest open it).
+  `world/TowerModal.tsx` (picker / between fights / summary; `togglePick`, `towerFightLabel`, `towerRewardLine`) and
+  `TowerStreak` (top-left counter during a tower fight), mounted in `PlayShell`; CSS `TowerModal.module.css` (tokens only).
+  `battle/foe.ts` names the tower opponent `TOWER.trainerName`.
+- **Rankings.** Fourth tab "Tower" (`?mode=towerStreak`, leading column Streak = `towerBest`).
+- Not verified live in a browser this phase (unit tests + the server integration tests).
+- Tests: `test/postgame.test.tsx` (8); `dialogue-flow.test.tsx` (Zeon after the title offers the rematch);
+  `rankings-profile.test.tsx` (Tower tab).

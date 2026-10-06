@@ -16,6 +16,7 @@ import type { ActionError } from '../net/errors';
 import { toast, useNotificationsStore } from '../state/notifications';
 import { toInventoryDelta, toProgressionDelta, useSessionStore } from '../state/session';
 import { useQuestTracking } from '../state/questTracking';
+import { noteTutorialEvent } from '../state/tutorial';
 import { questById } from '../data/quests';
 import { presentItemUse } from './itemUseFeedback';
 
@@ -212,6 +213,7 @@ const CREATURE_HANDLERS: Readonly<Record<string, Handler>> = {
     const res = await apiFetch('heal', {});
     applyInv({ party: res.party });
     toast('success', 'Your party is fully healed.');
+    noteTutorialEvent('healed');
   },
   async useItem(p) {
     const target = str(p['target']);

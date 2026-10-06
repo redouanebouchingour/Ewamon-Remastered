@@ -7,7 +7,7 @@
  * first falls to half, `lastStand` when the last creature enters — no creature is named, since the replacement order
  * is the battle AI's, not the team list's.
  */
-import type { BadgeDef, LeagueTeamMember, LeagueTrainer } from '../types';
+import type { BadgeDef, LeagueRematch, LeagueTeamMember, LeagueTrainer } from '../types';
 
 const m = (species: string, level: number, nickname: string): LeagueTeamMember => ({
   species,
@@ -348,3 +348,111 @@ export const LEAGUE_STORY_GATES: Readonly<Record<string, string>> = {
   kirei: 'wardens_met',
   zeon: 'wardens_met',
 };
+
+// ─── Phase D14: post-game rematches ──────────────────────────────────────────
+
+/** Rematches (and the battle tower) unlock with this flag — the champion's win; never a story gate. */
+export const POSTGAME_FLAG = 'champion:zeon:beaten';
+/** A rematch pays the trainer's reward × this (rounded). */
+export const LEAGUE_REMATCH_REWARD_MULTIPLIER = 1.5;
+/** Days between two rematch wins against the same trainer (the `league:<id>:rematchAt` flag's set time). */
+export const LEAGUE_REMATCH_COOLDOWN_DAYS = 1;
+/** Rematch levels (inclusive). */
+export const LEAGUE_REMATCH_LEVELS = Object.freeze({ min: 65, max: 75 });
+
+/** `league:<id>:rematchAt` — written (cleared and re-set, so its set time moves) by every won rematch. */
+export function leagueRematchFlag(leagueId: string): string {
+  return `league:${leagueId}:rematchAt`;
+}
+
+/**
+ * One rematch per league trainer: the same type flavour at Lv 65–75 — originals evolved, a few new faces of the
+ * trainer's type, the ace last. A legendary appears only where the original team carries that legendary (Sylvane's
+ * glacinid, the Wardens' bankaiser / voltaura / galaxion, Zeon's zenryu). Lines are new writing in each voice.
+ */
+export const LEAGUE_REMATCH: readonly LeagueRematch[] = [
+  {
+    leagueId: 'verdant_gym',
+    team: [m('bloomduck', 66, 'Petalquack'), m('briarvaunt', 66, 'Bramblewisp'), m('verdatide', 67, 'Mossbrook'), m('clementar', 67, 'Rootkeeper'), m('bloomsprite', 68, 'Grovelight'), m('thornback', 70, 'Mossclaw')],
+    pre: ["The Champion, back at my grove. The roots grew while you were away. Let's see if they hold you now."],
+    post: ['Still roots that held. Come back when the grove has grown again.'],
+    reward: 1200,
+  },
+  {
+    leagueId: 'blaze_gym',
+    team: [m('caldermole', 67, 'Ashdigger'), m('magmolith', 68, 'Forgestone'), m('ignispectre', 68, 'Coalghost'), m('solpyre', 69, 'Skyforge'), m('infernomorel', 70, 'Torchveil'), m('moblaze', 72, 'Embermane')],
+    pre: ["I banked the forge for this. A Champion's fire against mine. Burn honest, partner."],
+    post: ["Hot enough, still. The forge stays lit for you. Tomorrow, if you're game."],
+    reward: 1650,
+  },
+  {
+    leagueId: 'tidal_gym',
+    team: [m('frofloe', 67, 'Rimewake'), m('ripshell', 68, 'Keelbreaker'), m('wraithtide', 68, 'Fogbell'), m('kygra', 69, 'Ripplefin'), m('tsunamite', 70, 'Tidecrest'), m('abysspark', 72, 'Breaker')],
+    pre: ['The tide came back in, and so did you. This time I brought the whole crew. Read the wave.'],
+    post: ['You rode it again. The harbour will be here tomorrow. So will I.'],
+    reward: 2250,
+  },
+  {
+    leagueId: 'volt_gym',
+    team: [m('ironcarab', 67, 'Buzzscale'), m('luxtrik', 67, 'Neon Bolt'), m('thundrix', 68, 'Stormwire'), m('abysspark', 68, 'Gridtide'), m('raidori', 70, 'Ampclaw'), m('flowbot', 72, 'Overclock')],
+    pre: ["I re-ran the numbers on you. Every line says I lose. I've rewired the grid anyway. Keep up."],
+    post: ["Overclocked and outclassed, twice now. I'll have new numbers by tomorrow."],
+    reward: 2850,
+  },
+  {
+    leagueId: 'stone_gym',
+    team: [m('chrysotox', 67, 'Slagbiter'), m('resilithorn', 68, 'Quarrythorn'), m('magmolith', 68, 'Ironcore'), m('tsunamite', 68, 'Cliffbreaker'), m('thornback', 70, 'Basaltusk'), m('prismolith', 72, 'Prismwall')],
+    pre: ['The pit went deeper since you left. So did my team. Climb it again.'],
+    post: ['Solid. Still solid. Come back when the wall grows back.'],
+    reward: 3450,
+  },
+  {
+    leagueId: 'phantom_gym',
+    team: [m('briarvaunt', 67, 'Phantom Nett'), m('ignispectre', 68, 'Velvet Hex'), m('voidraith', 68, 'Haunted Veil'), m('necrogeist', 69, 'Graveveil'), m('fedoraith', 70, 'Last Bow'), m('mismagmen', 72, 'Mindveil')],
+    pre: ['The field is quieter since you held your name. Some of them followed you home. Mind them.'],
+    post: ['Head still clear in a haunted field. The whispers will be louder tomorrow.'],
+    reward: 4050,
+  },
+  {
+    leagueId: 'iron_gym',
+    team: [m('ironcarab', 67, 'Rivetshell'), m('glaciarm', 68, 'Frostplate'), m('gemknight', 68, 'Ward Plate'), m('trenchtusk', 69, 'Earthplate'), m('rivetalon', 70, 'Spike Wing'), m('acier', 72, 'Zangrift')],
+    pre: ['A Champion at my anvil. Good. Soft teams still do not leave this room. Show me plating.'],
+    post: ['Tempered, again. The anvil will be hot tomorrow.'],
+    reward: 4800,
+  },
+  {
+    leagueId: 'draco_gym',
+    team: [m('rexaloft', 68, 'Skybud'), m('abyssrake', 69, 'Deepcoil'), m('florasage', 70, 'Canopymaw'), m('blizzraak', 70, 'Frostmaw'), m('pyrothal', 72, 'Solwyrm'), m('glacinid', 73, 'Rimefang')],
+    pre: ['The shrine judged you once and named you holder. Now the sky wants to judge a Champion. Come.'],
+    post: ['The sky answered you again. It does not tire of it. Neither do I.'],
+    reward: 6000,
+  },
+  {
+    leagueId: 'veil',
+    team: [m('mismagmen', 70, 'Veilwhisper'), m('fedoraith', 70, 'Final Bow'), m('voidraith', 71, 'Nullshade'), m('toxshade', 71, 'Blightveil'), m('necrogeist', 72, 'Gravepage'), m('bankaiser', 74, 'Bankaiser')],
+    pre: ['The ledger grew a column for you. I have been writing in it. Let us see if it reads true.'],
+    post: ['Recorded, again. The column grows longer. Come back and lengthen it.'],
+    reward: 9000,
+  },
+  {
+    leagueId: 'aurelia',
+    team: [m('glimmereen', 70, 'Lightmote'), m('cirrileap', 70, 'Skyleap'), m('starwhim', 71, 'Wishfall'), m('gemknight', 71, 'Prismguard'), m('velvetomb', 72, 'Duskbloom'), m('voltaura', 74, 'Voltaura')],
+    pre: ['I recounted. Your number went up. Mine did too. Let us add them together.'],
+    post: ['Counted, whole, again. The second book has room for tomorrow.'],
+    reward: 10500,
+  },
+  {
+    leagueId: 'kirei',
+    team: [m('auroracle', 70, 'Foreseer'), m('starwhim', 70, 'Dreamcount'), m('mismagmen', 71, 'Echoeye'), m('archonosis', 72, 'Mindarch'), m('galaxion', 75, 'Galaxion')],
+    pre: ['Still the loudest of the twelve. Let us find out if it is still the truest.'],
+    post: ['True, again. Loud and true. I will be here to read it tomorrow.'],
+    reward: 12000,
+  },
+  {
+    leagueId: 'zeon',
+    team: [m('florasage', 72, 'Verdant Sage'), m('blizzraak', 72, 'Rimecaller'), m('abyssrake', 73, 'Deepfang'), m('rexaloft', 73, 'Skytyrant'), m('pyrothal', 74, 'Solwyrm'), m('zenryu', 75, 'Zenryu')],
+    pre: ['You hold the room now. I trained a year in a day. Take it from me again, if you can.'],
+    post: ['Held, again. Every one of them. Come back tomorrow and I will hold harder.'],
+    reward: 30000,
+  },
+];

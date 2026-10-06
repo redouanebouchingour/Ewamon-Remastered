@@ -151,7 +151,8 @@ export type GuildView = z.infer<typeof GuildViewSchema>;
 export const GuildMemberViewSchema = z.object({ playerId: Uuid, username: Username, role: z.enum(GUILD_ROLES), joinedAt: IsoDate });
 export type GuildMemberView = z.infer<typeof GuildMemberViewSchema>;
 
-export const LEADERBOARD_MODES = ['rating', 'dex', 'trainerLevel'] as const;
+/** Phase D14 adds `towerStreak` (best battle tower streak; only players with one). */
+export const LEADERBOARD_MODES = ['rating', 'dex', 'trainerLevel', 'towerStreak'] as const;
 /** TODO(spec): `LeaderboardRow` has no field list in the spec; these are the columns §30.6.3 sorts on plus the showcase-card fields. */
 export const LeaderboardRowSchema = z.object({
   rank: z.number().int().min(1),
@@ -164,6 +165,9 @@ export const LeaderboardRowSchema = z.object({
   trainerLevel: z.number().int().min(1),
   dexCaughtCount: z.number().int().min(0),
   guildTag: z.string().nullable(),
+  /** Phase D14: battle tower streak — best ever and the run in progress (0 / 0 for a player who never ran it) */
+  towerBest: z.number().int().min(0).optional(),
+  towerCurrent: z.number().int().min(0).optional(),
 });
 export type LeaderboardRow = z.infer<typeof LeaderboardRowSchema>;
 

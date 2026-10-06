@@ -47,7 +47,8 @@ import { TYPE_CHART } from './data/typechart';
 import { ZONES } from './data/zones';
 import { ENCOUNTER_BANDS, ENCOUNTER_TABLES } from './data/encounters';
 import { LEGENDARY_IDS, LEGENDARY_STATICS, MYTHICAL_IDS } from './data/statics';
-import { BADGES, LEAGUE, LEAGUE_STORY_GATES } from './data/league';
+import { BADGES, LEAGUE, LEAGUE_REMATCH, LEAGUE_REMATCH_LEVELS, LEAGUE_REMATCH_REWARD_MULTIPLIER, LEAGUE_STORY_GATES } from './data/league';
+import { TOWER, towerSetReward } from './data/tower';
 import { QUESTS } from './data/quests';
 import { STORY } from './data/story';
 import { DAILY_SWARMS, RAID_HOTSPOTS, SEASONAL_EVENTS } from './data/liveops';
@@ -255,6 +256,47 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     if (!looks.has(l.look)) err(`league ${l.id}: look '${l.look}' not in LOOKS`);
     if (!zoneById.has(l.zoneId)) err(`league ${l.id}: zone '${l.zoneId}' unknown`);
     for (const f of l.setsFlags) checkFlag(`league ${l.id}.setsFlags`, f);
+  }
+  // Phase D14 post-game: one rematch per league row — Lv 65–75, reward ×1.5, no legendary the original lacks
+  {
+    const seen = new Set<string>();
+    for (const r of LEAGUE_REMATCH) {
+      const lt = LEAGUE.find((l) => l.id === r.leagueId);
+      if (lt === undefined) {
+        err(`rematch ${r.leagueId}: not a LEAGUE id`);
+        continue;
+      }
+      if (seen.has(r.leagueId)) err(`rematch ${r.leagueId}: second rematch row`);
+      seen.add(r.leagueId);
+      if (r.team.length < 1 || r.team.length > 6) err(`rematch ${r.leagueId}: team of ${r.team.length} (1..6)`);
+      if (lt.doubles === true && r.team.length < 2) err(`rematch ${r.leagueId}: doubles needs a team of 2+`);
+      if (r.reward !== Math.round(lt.reward * LEAGUE_REMATCH_REWARD_MULTIPLIER)) err(`rematch ${r.leagueId}: reward ${r.reward} ≠ round(${lt.reward} × ${LEAGUE_REMATCH_REWARD_MULTIPLIER})`);
+      if (r.pre.length === 0 || r.post.length === 0 || [...r.pre, ...r.post].some((x) => x.length === 0)) err(`rematch ${r.leagueId}: pre / post need non-empty lines`);
+      for (const mem of r.team) {
+        if (!speciesById.has(mem.species)) err(`rematch ${r.leagueId}: species '${mem.species}' unknown`);
+        if (!Number.isInteger(mem.level) || mem.level < LEAGUE_REMATCH_LEVELS.min || mem.level > LEAGUE_REMATCH_LEVELS.max)
+          err(`rematch ${r.leagueId}: ${mem.species} Lv ${mem.level} outside ${LEAGUE_REMATCH_LEVELS.min}–${LEAGUE_REMATCH_LEVELS.max}`);
+        if ((legendary.has(mem.species) || mythical.has(mem.species)) && !lt.team.some((o) => o.species === mem.species))
+          err(`rematch ${r.leagueId}: legendary '${mem.species}' is not on the original team`);
+        if (mem.nickname !== null && (mem.nickname.length === 0 || mem.nickname.length > 16)) err(`rematch ${r.leagueId}: nickname '${mem.nickname}' (1..16 chars)`);
+        if (mem.ability !== null && !abilityIds.has(mem.ability)) err(`rematch ${r.leagueId}: ability '${mem.ability}' unknown`);
+        if (mem.heldItem !== null && !itemIds.has(mem.heldItem)) err(`rematch ${r.leagueId}: held item '${mem.heldItem}' unknown`);
+      }
+    }
+    for (const l of LEAGUE) if (!seen.has(l.id)) err(`league ${l.id}: no LEAGUE_REMATCH row`);
+  }
+  // Phase D14 battle tower: pools of non-legendary species, big enough for distinct 3-creature teams
+  {
+    if (!Number.isInteger(TOWER.levelCap) || TOWER.levelCap < 1 || TOWER.levelCap > 100) err(`tower: levelCap ${TOWER.levelCap}`);
+    if (TOWER.pools.length === 0) err('tower: no pools');
+    TOWER.pools.forEach((pool, t) => {
+      if (pool.length < TOWER.teamSize * 2) err(`tower: pool ${t} has ${pool.length} species (< ${TOWER.teamSize * 2})`);
+      for (const id of pool) {
+        if (!speciesById.has(id)) err(`tower: pool ${t} species '${id}' unknown`);
+        if (legendary.has(id) || mythical.has(id)) err(`tower: pool ${t} carries legendary '${id}'`);
+      }
+    });
+    for (let set = 1; set <= 4; set++) for (const id of Object.keys(towerSetReward(set).items).sort()) if (!anyItem(id)) err(`tower: set ${set} reward item '${id}' unknown`);
   }
   for (const q of QUESTS) {
     const zone = zoneById.get(q.zoneId);

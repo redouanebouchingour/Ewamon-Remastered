@@ -157,3 +157,12 @@ consumables with `shop.js` prices. It is a test fixture, not `@ewa/content`.
   replacement per position (incl. 2 fainted / 1 bench), end, forfeit, EXP no split, Intimidate on both foes, NPC policy;
   and a 300-seed doubles fuzz (`test/doubles-fuzz.ts`) with its own committed `test/doubles-fuzz-digests.json`, two
   content instances agreeing and replays matching.
+
+## Phase D14 — battle tower rules (2026-10-06)
+
+- `capLevel(c, cap, content)` (`battler.ts`): level `min(level, cap)`, exp clamped to `expToLevel(level)` when lowered,
+  full hp at that level, no status, full pp. Pure; moves kept as known. Stats follow via `projectBattler`.
+- `CreateBattleOpts.noExp` → `BattleState.noExp: true` (singles and doubles); `awardExp` returns at once when set, so no
+  `expGain` / `levelUp` / `learnMove` / `evolveReady`. `cloneState` carries it. Absent (or false) = the key is not on the
+  state: every committed fuzz digest is unchanged.
+- Tests: `test/tower.test.ts` (5).

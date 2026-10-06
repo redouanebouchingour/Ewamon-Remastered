@@ -180,6 +180,7 @@ export function createDoubles(o: CreateBattleOpts, content: ContentIndex): TurnR
     ended: null,
     zoneId: o.zoneId,
     slots: 2,
+    ...(o.noExp === true ? { noExp: true as const } : {}),
   };
   const ctx = makeCtx(state, content);
   if (ambient !== 'none') emit(ctx, { t: 'weatherSet', kind: ambient, turns: 0, source: null });

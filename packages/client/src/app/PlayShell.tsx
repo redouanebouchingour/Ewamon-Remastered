@@ -15,7 +15,9 @@ import { FishingPrompt } from '../world/FishingPrompt';
 import { Minimap } from '../world/Minimap';
 import { PostBattlePrompts } from '../world/PostBattlePrompts';
 import { RaidLobby } from '../world/RaidLobby';
+import { TowerModal, TowerStreak } from '../world/TowerModal';
 import { TradeModal } from '../world/TradeModal';
+import { TutorialCard } from '../world/TutorialCard';
 import { setNavigator } from './navigation';
 import { installMessageRouter } from '../net/messageRouter';
 import { getWorldSession } from '../net/WorldSession';
@@ -168,6 +170,8 @@ export function PlayShell() {
       {!hasPanel && <WorldHint />}
       {/* Phase C3: the minimap draws over the live world only (no world → no canvas, as GameCanvas) */}
       {!hasPanel && !inBattle && worldCapability() && <Minimap />}
+      {/* Phase D12: Prof. Wynn's tutorial steps (live world only, like the minimap) */}
+      {worldCapability() && <TutorialCard />}
       <DialogueBox />
       <FishingPrompt />
       <ChatInput />
@@ -175,6 +179,9 @@ export function PlayShell() {
       <ChallengePrompt />
       <TradeModal />
       <RaidLobby />
+      {/* Phase D14: the battle tower (picker / between fights / summary) and the counter over a tower fight */}
+      <TowerModal />
+      <TowerStreak />
       <PostBattlePrompts />
       <ConnectionOverlay />
       <NotificationHost />

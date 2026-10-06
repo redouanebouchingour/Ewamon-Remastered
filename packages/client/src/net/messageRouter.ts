@@ -7,6 +7,7 @@ import { FAST_TRAVEL_REFUSALS } from '@ewa/protocol';
 import type { ServerMessage } from '@ewa/protocol';
 import { queueTradeEvolutions } from '../app/itemUseFeedback';
 import { toast, useNotificationsStore } from '../state/notifications';
+import { rankedStatusText, useRankedStore } from '../state/ranked';
 import { applyInventoryDelta, applyProgressionDelta } from '../state/session';
 import { useUiStore } from '../state/ui';
 import type { WorldSession } from './WorldSession';
@@ -114,6 +115,24 @@ export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'han
     case 'handover':
       void ws.handover(m);
       return;
+    case 'towerState': {
+      // Phase D14: a fight starting closes the tower modal (the battle covers it); a win / loss / retirement opens it
+      // (it waits under the battle until the result card is dismissed: TowerModal renders only with no battle open)
+      const { type: _t, ...tower } = m;
+      const ui = useUiStore.getState();
+      ui.setTower(tower);
+      if (m.phase === 'fighting') {
+        if (ui.modal === 'tower') ui.closeModal();
+      } else ui.openModal('tower');
+      return;
+    }
+    case 'rankedStatus': {
+      // Phase D13: the queue panel's state + one toast per change worth telling (match found, refusals, cancelled)
+      useRankedStore.getState().apply(m);
+      const t = rankedStatusText(m);
+      if (t !== null) toast(t.level, t.text);
+      return;
+    }
     default:
       // battleStart / battleEvents / battleResync / battleEnd / raidEvents / chat / storyBeat: part 2 (scene)
       return;
@@ -121,5 +140,13 @@ export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'han
 }
 
 export function installMessageRouter(ws: WorldSession): () => void {
-  return ws.onMessage((m) => routeServerMessage(m, ws));
+  const offMessages = ws.onMessage((m) => routeServerMessage(m, ws));
+  // Phase D13: the server drops a queue entry when the connection really ends; so does the panel
+  const offRoom = ws.onRoom((room) => {
+    if (room === null) useRankedStore.getState().reset();
+  });
+  return () => {
+    offMessages();
+    offRoom();
+  };
 }

@@ -258,12 +258,17 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
   app.get('/leaderboard', bearer, async (req) => {
     const q = LeaderboardQuery.parse(req.query);
     const rows = await repos.db.transaction(async (tx) => {
-      // §30.6.3: rating (ties peak, username) / dex caught count / trainer exp; banned excluded in SQL
-      const players = await repos.players.leaderboard(tx, q.mode, q.page, LEADERBOARD_PAGE);
+      // §30.6.3: rating (ties peak, username) / dex caught count / trainer exp; banned excluded in SQL. Phase D14
+      // `towerStreak`: best battle tower streak desc (then current, then username), players with a best > 0 only
+      const board = q.mode === 'towerStreak' ? await repos.streaks.leaderboard(tx, q.page, LEADERBOARD_PAGE) : null;
+      const mode = q.mode;
+      const players = mode === 'towerStreak' ? (board ?? []).map((r) => r.player) : await repos.players.leaderboard(tx, mode, q.page, LEADERBOARD_PAGE);
+      const streaks = board !== null ? new Map(board.map((r) => [r.player.id, { current: r.current, best: r.best }])) : await repos.streaks.byPlayers(tx, players.map((p) => p.id));
       const out = [];
       for (let i = 0; i < players.length; i++) {
         const p = players[i]!;
         const guild = await repos.social.guildOf(tx, p.id);
+        const streak = streaks.get(p.id);
         out.push({
           rank: (q.page - 1) * LEADERBOARD_PAGE + i + 1,
           id: p.id,
@@ -275,6 +280,8 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
           trainerLevel: trainerLevelFor(p.trainerExp),
           dexCaughtCount: (await repos.progress.dex(tx, p.id)).caught.length,
           guildTag: guild?.tag ?? null,
+          towerBest: streak?.best ?? 0,
+          towerCurrent: streak?.current ?? 0,
         });
       }
       return out;

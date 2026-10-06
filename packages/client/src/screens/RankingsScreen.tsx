@@ -1,8 +1,8 @@
 /**
  * Phase C4 `/play/rankings` — the leaderboard (GET /leaderboard?mode=&page=, 25 rows a page; banned players are
- * excluded server-side). Tabs per mode (Rating · Dex · Trainer level) bound to `?mode=`, the mode's column leads, the
+ * excluded server-side). Tabs per mode (Rating · Dex · Trainer level · Tower, Phase D14) bound to `?mode=`, the mode's column leads, the
  * player's own row is highlighted (Table `selectedKey`) with a "You" pill, and every name links to the public profile.
- * The ranks and numbers are the server's; nothing here re-sorts them.
+ * The ranks and numbers are the server's; nothing here re-sorts them. Phase D13: the ranked queue (RankedPanel) heads it.
  */
 import { Link, useLoaderData, useNavigation, useSearchParams } from 'react-router';
 import type { LeaderboardRow } from '@ewa/protocol';
@@ -18,6 +18,7 @@ import { Table } from '../ui/Table';
 import type { TableColumn } from '../ui/Table';
 import { Tabs } from '../ui/Tabs';
 import l from './layout.module.css';
+import { RankedPanel } from './RankedPanel';
 import s from './RankingsScreen.module.css';
 import { useClosePanel } from './shared';
 import { TrainerAvatar } from './TrainerCard';
@@ -28,6 +29,8 @@ const MODE_TABS: readonly { readonly key: RankingMode; readonly label: string; r
   { key: 'rating', label: 'Rating', blurb: 'Ranked battle rating; ties go to the higher peak.' },
   { key: 'dex', label: 'Dex', blurb: 'Species caught.' },
   { key: 'trainerLevel', label: 'Trainer level', blurb: 'Trainer experience earned.' },
+  // Phase D14: the battle tower (Solenne) — best streak; only trainers who have won a tower fight appear
+  { key: 'towerStreak', label: 'Tower', blurb: 'Best battle tower streak; ties go to the longer run in progress.' },
 ];
 
 function columns(mode: RankingMode, myId: string | null): TableColumn<LeaderboardRow>[] {
@@ -35,6 +38,7 @@ function columns(mode: RankingMode, myId: string | null): TableColumn<Leaderboar
     rating: { key: 'rating', header: 'Rating', width: 96, align: 'end', render: (r) => <span className={l.mono}>{r.rating}</span> },
     dex: { key: 'dex', header: 'Caught', width: 110, align: 'end', render: (r) => <span className={l.mono}>{r.dexCaughtCount} / {DEX_TOTAL}</span> },
     trainerLevel: { key: 'trainerLevel', header: 'Level', width: 80, align: 'end', render: (r) => <span className={l.mono}>{r.trainerLevel}</span> },
+    towerStreak: { key: 'towerStreak', header: 'Streak', width: 96, align: 'end', render: (r) => <span className={l.mono}>{r.towerBest ?? 0}</span> },
   };
   const rest = (['rating', 'dex', 'trainerLevel'] as const).filter((k) => k !== mode).map((k) => ({ ...metric[k], render: (r: LeaderboardRow) => <span className={s.dim}>{metric[k].render(r)}</span> }));
   return [
@@ -85,6 +89,8 @@ export function RankingsScreen() {
       toolbar={<Tabs<RankingMode> label="Ranking" tabs={MODE_TABS.map((t) => ({ key: t.key, label: t.label }))} value={data.mode} onChange={(k) => go(k, 1)} />}
     >
       <div className={l.stack}>
+        {/* Phase D13: the ranked queue sits above the boards */}
+        <RankedPanel />
         <p className={l.caption} aria-live="polite">
           {mine !== undefined ? `You are #${mine.rank} on this board.` : data.rows.length > 0 ? 'You are not on this page.' : ''}
         </p>

@@ -10,8 +10,8 @@
  * No Colyseus import: the room is a `BattleHost` (send + lifecycle hooks), so this module is testable alone.
  */
 import { randomUUID } from 'node:crypto';
-import { league as leagueById, storyBeat as beatById } from '@ewa/content';
-import type { BadgeId, LeagueTrainer, LegendaryStatic, TrainerDef, ZoneDef } from '@ewa/content';
+import { TOWER, league as leagueById, leagueRematchFlag, storyBeat as beatById, towerSetReward } from '@ewa/content';
+import type { BadgeId, LeagueRematch, LeagueTrainer, LegendaryStatic, TrainerDef, ZoneDef } from '@ewa/content';
 import {
   TRAINER_EXP,
   createBattle,
@@ -26,7 +26,7 @@ import {
 } from '@ewa/core';
 import type { Action, BattleEvent, BattleFormat, BattleOutcome, BattleState, ContentIndex, CreatureInstance, Rng, RngState, Side, SideChoice, Terrain, WeatherKind } from '@ewa/core';
 import type { QuestProgressEntry, RewardsSummary, ServerMessage } from '@ewa/protocol';
-import type { BattleStartSnapshot, Db, Repos } from '@ewa/persist';
+import type { BattleStartSnapshot, Db, Repos, StreakState } from '@ewa/persist';
 import type { Logger } from '../log';
 import type { RoomMetrics } from '../metrics';
 import { isPersistedId, newCreature, persistableAfterBattle, withSyntheticId } from '../game/creatures';
@@ -40,6 +40,13 @@ export const REPLACEMENT_DEADLINE_MS = 20_000;
 /** The champion id checked anywhere in server code (NON-NEGOTIABLE 11). */
 export const CHAMPION_ID = 'zeon';
 export const CHAMPION_FLAG = 'champion:zeon:beaten';
+
+/** Phase D14: what a finished tower fight wrote — the streak after it and the set reward it paid (null = none). */
+export interface TowerResult {
+  readonly won: boolean;
+  readonly streak: StreakState;
+  readonly reward: { readonly money: number; readonly items: Readonly<Record<string, number>> } | null;
+}
 
 /** null player = wild/NPC/league side */
 export interface Seat {
@@ -87,8 +94,15 @@ export interface BattleSession {
   autoActions: [number, number];
   /** consecutive persistence failures (2 → void) */
   faults: number;
-  /** trainer rematch (half reward) */
+  /** trainer rematch (half reward); Phase D14: also a league rematch (`LEAGUE_REMATCH` team, ×1.5, no badge / setsFlags) */
   readonly rematch: boolean;
+  /**
+   * Phase D14 battle tower: true for a tower fight (format 'trainer', `noExp`, synthetic battlers — nothing about the
+   * creatures is written; the end writes the streak and, every `TOWER.setLength` wins, the set reward). Absent otherwise.
+   */
+  readonly tower?: true;
+  /** Phase D14: the tower result for side 0, set after the end transaction commits (read by the host's `onEnd`) */
+  towerResult?: TowerResult;
   /** the LegendaryStatic flag to set on win/catch */
   readonly staticFlag: string | null;
   /** createBattle's input minus seed, deep-copied before the call — battle_history.start (P6, DB-only replay) */
@@ -166,6 +180,8 @@ interface PlayerDelta {
   rewards: RewardsSummary | null;
   beatCompleted: string | null;
   inventoryAll: Record<string, number> | null;
+  /** Phase D14: a finished tower fight's result */
+  tower: TowerResult | null;
 }
 
 function emptyDelta(): PlayerDelta {
@@ -186,6 +202,7 @@ function emptyDelta(): PlayerDelta {
     rewards: null,
     beatCompleted: null,
     inventoryAll: null,
+    tower: null,
   };
 }
 
@@ -387,8 +404,10 @@ export class BattleCoordinator {
     const ambient = weather === 'none' ? {} : { weather };
     // Phase D6: `slots: 2` rides the start snapshot so a doubles battle replays from its history row alone
     const slots = doubles ? { slots: 2 as const } : {};
-    const start = JSON.parse(JSON.stringify({ zoneId: base.zoneId, terrain, sides, ...ambient, ...slots })) as BattleStartSnapshot;
-    const { state, events } = createBattle({ id: base.id, format: base.format, zoneId: base.zoneId, terrain, seed, sides, ...ambient, ...slots }, this.deps.content);
+    // Phase D14: a tower fight awards no exp; the flag rides the snapshot so the history row replays alone
+    const noExp = base.tower === true ? { noExp: true as const } : {};
+    const start = JSON.parse(JSON.stringify({ zoneId: base.zoneId, terrain, sides, ...ambient, ...slots, ...noExp })) as BattleStartSnapshot;
+    const { state, events } = createBattle({ id: base.id, format: base.format, zoneId: base.zoneId, terrain, seed, sides, ...ambient, ...slots, ...noExp }, this.deps.content);
     const session: BattleSession = {
       ...base,
       start,
@@ -495,7 +514,10 @@ export class BattleCoordinator {
   /** §30.4.4 `trainer` / `league`: team from content (league: nickname/ability/heldItem verbatim). */
   async startNpc(
     p: PlayerSeat,
-    def: { readonly kind: 'trainer'; readonly trainer: TrainerDef; readonly rematch: boolean } | { readonly kind: 'league'; readonly league: LeagueTrainer },
+    def:
+      | { readonly kind: 'trainer'; readonly trainer: TrainerDef; readonly rematch: boolean }
+      // Phase D14: `rematch` = the post-game rematch row (its team and reward replace the league row's)
+      | { readonly kind: 'league'; readonly league: LeagueTrainer; readonly rematch?: LeagueRematch },
     beatId: string | null,
     at: BattleAt,
   ): Promise<StartResult> {
@@ -505,7 +527,7 @@ export class BattleCoordinator {
     const team: CreatureInstance[] =
       def.kind === 'trainer'
         ? def.trainer.team.map((m, i) => withSyntheticId(newCreature(content, m.species, m.level), `npc:${trainerId}:${i}`))
-        : def.league.team.map((m, i) =>
+        : (def.rematch?.team ?? def.league.team).map((m, i) =>
             withSyntheticId(newCreature(content, m.species, m.level, { nickname: m.nickname, ability: m.ability, heldItem: m.heldItem }), `npc:${trainerId}:${i}`),
           );
     const loaded = await this.loadPlayers([p.playerId], team[0]!.speciesId);
@@ -523,7 +545,7 @@ export class BattleCoordinator {
       canFlee: false,
       canCatch: false,
     };
-    const reward = def.kind === 'trainer' ? (def.rematch ? Math.floor(def.trainer.reward / 2) : def.trainer.reward) : def.league.reward;
+    const reward = def.kind === 'trainer' ? (def.rematch ? Math.floor(def.trainer.reward / 2) : def.trainer.reward) : (def.rematch?.reward ?? def.league.reward);
     const { session } = this.open(
       {
         id: randomUUID(),
@@ -539,13 +561,47 @@ export class BattleCoordinator {
         z: at.z,
         yaw: at.yaw ?? null,
         inventory: [loaded.get(p.playerId)!.inventory, null],
-        rematch: def.kind === 'trainer' && def.rematch,
+        rematch: def.kind === 'trainer' ? def.rematch : def.rematch !== undefined,
       },
       [side0, side1],
       this.rng.fork().snapshot(),
       doubles,
     );
     this.sendStartProgress(loaded);
+    return { ok: true, session };
+  }
+
+  /**
+   * Phase D14 battle tower: `picks` are the player's creatures as they fight (capped, healed, synthetic `tower:` ids —
+   * never persisted), `foes` the generated team. Format 'trainer' with `noExp`; no items (no inventory snapshot), no
+   * flee, no catch. The end transaction writes the streak (and the set reward) instead of trainer rewards.
+   */
+  startTower(p: PlayerSeat, picks: readonly CreatureInstance[], foes: readonly CreatureInstance[], trainerId: string, at: BattleAt): StartResult {
+    if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
+    const content = this.deps.content;
+    const side0: Omit<Side, 'mustSwitch' | 'consumedItems'> = { kind: 'player', party: picks.map((c) => projectBattler(c, content)), active: 0, trainerId: p.playerId, canFlee: false, canCatch: false };
+    const side1: Omit<Side, 'mustSwitch' | 'consumedItems'> = { kind: 'npc', party: foes.map((c) => projectBattler(c, content)), active: 0, trainerId, canFlee: false, canCatch: false };
+    const { session } = this.open(
+      {
+        id: randomUUID(),
+        format: 'trainer',
+        zoneId: this.deps.zone.id,
+        seats: [{ side: 0, playerId: p.playerId, sessionId: p.sessionId }, { side: 1, playerId: null, sessionId: null }],
+        spawnId: null,
+        npc: { trainerId, reward: 0, leagueId: null },
+        beatId: null,
+        staticSpecies: null,
+        staticFlag: null,
+        x: at.x,
+        z: at.z,
+        yaw: at.yaw ?? null,
+        inventory: [null, null],
+        rematch: false,
+        tower: true,
+      },
+      [side0, side1],
+      this.rng.fork().snapshot(),
+    );
     return { ok: true, session };
   }
 
@@ -717,7 +773,9 @@ export class BattleCoordinator {
       host.send(pid, { type: 'battleEvents', battleId: session.id, turn: next.turn, events, stateDigest: digest, rng: next.rng });
       const d = deltas.get(pid);
       if (d === undefined) continue;
-      if (d.inventoryAll !== null) session.inventory[seat.side] = d.inventoryAll;
+      if (d.tower !== null && seat.side === 0) session.towerResult = d.tower;
+      // Phase D14: a tower fight keeps its empty item snapshot (no items in the tower)
+      if (d.inventoryAll !== null && session.tower !== true) session.inventory[seat.side] = d.inventoryAll;
       const itemsTouched = Object.keys(d.items).length > 0;
       if (itemsTouched || d.money !== null || d.creaturesAdded.length > 0 || d.creaturesUpdated.length > 0) {
         host.send(pid, {
@@ -846,6 +904,7 @@ export class BattleCoordinator {
         let money = 0;
         let badge: BadgeId | null = null;
         let ratingDelta: number | null = null;
+        let rewardItems: Record<string, number> = {};
         const flagsToSet: string[] = [];
         const outcome = next.ended;
         if (outcome !== null) {
@@ -855,11 +914,33 @@ export class BattleCoordinator {
             if (won) trainerExpGain += TRAINER_EXP.wildWin;
             if (won && session.staticFlag !== null) flagsToSet.push(session.staticFlag);
             if (won) questEvents.push({ kind: 'win', format: 'wild' });
+          } else if (session.tower === true) {
+            // Phase D14: the streak (a draw or a loss ends the run) and, every TOWER.setLength wins, the set reward
+            const streak = won ? await repos.streaks.recordWin(tx, pid, now) : await repos.streaks.endRun(tx, pid, now);
+            let reward: TowerResult['reward'] = null;
+            if (won && streak.current % TOWER.setLength === 0) {
+              reward = towerSetReward(streak.current / TOWER.setLength);
+              money += reward.money;
+              for (const [item, qty] of Object.entries(reward.items)) d.items[item] = await repos.inventory.add(tx, pid, item, qty);
+              rewardItems = { ...reward.items };
+              await repos.audit.write(tx, { actorId: pid, action: 'tower.reward', subject: session.id, detail: { streak: streak.current, money: reward.money, items: reward.items } }, now);
+            }
+            d.tower = { won, streak, reward };
           } else if (session.format === 'trainer' && won && session.npc !== null) {
             money += session.npc.reward;
             trainerExpGain += TRAINER_EXP.trainerWin;
             flagsToSet.push(`trainer:${session.npc.trainerId}:beaten`);
             questEvents.push({ kind: 'defeatTrainer', trainerId: session.npc.trainerId }, { kind: 'win', format: 'trainer' });
+          } else if (session.format === 'league' && won && session.npc?.leagueId != null && session.rematch) {
+            // Phase D14 post-game rematch: ×1.5 reward (carried in npc.reward), the stage's trainer exp, no badge and no
+            // setsFlags; the cooldown flag is cleared and re-set so its set time is this win
+            const lt = leagueById(session.npc.leagueId);
+            money += session.npc.reward;
+            trainerExpGain += lt.stage === 'gym' ? TRAINER_EXP.gymWin : lt.stage === 'elite' ? TRAINER_EXP.eliteWin : TRAINER_EXP.championWin;
+            const flag = leagueRematchFlag(lt.id);
+            await repos.progress.clearFlags(tx, pid, [flag]);
+            flagsToSet.push(flag);
+            questEvents.push({ kind: 'defeatTrainer', trainerId: lt.id }, { kind: 'win', format: 'league' });
           } else if (session.format === 'league' && won && session.npc?.leagueId != null) {
             const lt = leagueById(session.npc.leagueId);
             money += lt.reward;
@@ -914,7 +995,7 @@ export class BattleCoordinator {
         if (questEvents.length > 0) d.questProgress.push(...(await advanceQuests(tx, repos, pid, questEvents, nowMs)));
         if (badge !== null) d.badges = await repos.progress.badges(tx, pid);
         if (outcome !== null) {
-          const rewards: RewardsSummary = { money, items: {}, trainerExp: trainerExpGain, ratingDelta, badge };
+          const rewards: RewardsSummary = { money, items: rewardItems, trainerExp: trainerExpGain, ratingDelta, badge };
           d.rewards = rewards;
           await repos.history.recordBattle(tx, {
             battleId: session.id,

@@ -22,7 +22,7 @@
  */
 import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
-import { BIKE_ITEM, BODIES, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, zone as zoneDef } from '@ewa/content';
+import { BIKE_ITEM, BODIES, POSTGAME_FLAG, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import { FISH_REACH_M } from '@ewa/protocol';
@@ -52,11 +52,12 @@ import { applyInventoryDelta, partyCanBattle, toInventoryDelta, useSessionStore 
 import { useQuestTracking } from '../state/questTracking';
 import { useSettingsStore } from '../state/settings';
 import { setFishingActions, useFishingStore } from '../state/fishing';
+import { noteTutorialEvent } from '../state/tutorial';
 import { useUiStore } from '../state/ui';
 import { FONT, TYPE_COLORS } from '../ui/tokens';
 import { createStepCollider } from './collider';
 import type { StepCollider } from './collider';
-import { beatDialogue, gymPlan, leaguePostDialogue, leagueSpeaker, npcPlan, storyFlagSet, trainerPlan } from './dialogue';
+import { beatDialogue, gymPlan, leaguePostDialogue, leagueSpeaker, npcPlan, rematchOfBattle, storyFlagSet, trainerPlan } from './dialogue';
 import { questHintFor } from './questHint';
 import type { DialogueLines, InteractPlan } from './dialogue';
 import { HudWriter, partyStrip } from './HudWriter';
@@ -800,7 +801,8 @@ class World implements World3D {
         // a won gym battle: the leader's `post` lines once the result card is dismissed (then the evolve / learn prompts)
         const b = useUiStore.getState().battle;
         if (b !== null && b.battleId === m.battleId && b.format === 'league' && 'winner' in m.outcome && m.outcome.winner === b.seat) {
-          const post = leaguePostDialogue(b.authoritative.sides[b.seat === 0 ? 1 : 0].trainerId);
+          // Phase D14: a won rematch says its own `post` lines
+          const post = leaguePostDialogue(b.authoritative.sides[b.seat === 0 ? 1 : 0].trainerId, rematchOfBattle(b.authoritative, b.seat));
           if (post !== null) this.showAfterBattle(post, `league:${m.battleId}:post`);
         }
         this.battle.onBattleEnd(m);
@@ -945,12 +947,29 @@ class World implements World3D {
       case 'pc':
         navigateTo('/play/box');
         return;
+      case 'tower': {
+        // Phase D14: the attendant's lines; after the Champion, paging past them opens the tower (picker, or the run)
+        const inside = interiorNpcs(z.id).find((n) => n.id === t.id);
+        const lines = inside?.lines ?? [];
+        const speaker = inside?.name ?? 'Tower Attendant';
+        if (!this.flags().has(POSTGAME_FLAG)) {
+          ui.setDialogue({ speaker, lines, index: 0, targetId: t.id });
+          return;
+        }
+        if (useUiStore.getState().tower !== null) {
+          ui.openModal('tower');
+          return;
+        }
+        ui.setDialogue({ speaker, lines, index: 0, targetId: t.id, onFinish: () => useUiStore.getState().openModal('tower') });
+        return;
+      }
       case 'healer':
         this.ws.send('interact', { targetId: z.id, kind: 'healer' });
         void apiFetch('heal', {})
           .then((res) => {
             applyInventoryDelta(toInventoryDelta({ party: res.party }));
             toast('success', 'Your party is fully healed.');
+            noteTutorialEvent('healed');
           })
           .catch(() => toast('warn', 'The healer cannot help right now.'));
         return;

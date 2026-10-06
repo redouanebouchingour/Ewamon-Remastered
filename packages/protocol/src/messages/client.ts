@@ -1,7 +1,7 @@
 /**
  * §4.3 Client → server messages. zod v4 schemas; every payload is validated before any handler
  * runs (the room registers each with `onMessage(name, schema, handler)`; zod v4 implements
- * Standard Schema). Exactly 22 keys in CLIENT_MESSAGES (Phase C3 added `fastTravel`, Phase D9 `fish`) — a `type` outside them has no handler.
+ * Standard Schema). Exactly 24 keys in CLIENT_MESSAGES (Phase C3 added `fastTravel`, Phase D9 `fish`, Phase D13 `rankedQueue`, Phase D14 `tower`) — a `type` outside them has no handler.
  *
  * zod v4 `z.number()` already rejects NaN/±Infinity (`.finite()` is a deprecated no-op), so the
  * spine's `.finite()` calls are satisfied by the default. Objects STRIP unknown keys (zod default).
@@ -101,6 +101,34 @@ export const FishMsg = z.object({ angle: z.number() });
 export const FISH_REACH_M = 2.5;
 export const FISH_REFUSALS = ['noRod', 'noWater', 'nothingBites'] as const;
 export type FishRefusal = (typeof FISH_REFUSALS)[number];
+/**
+ * Phase D13: join or leave the ranked queue. The server answers every one with `rankedStatus` (queued / idle with a
+ * `RankedIdleReason`); a match moves both players into the ranked arena (`RANKED_ARENA`) through the handover path and
+ * starts a `pvp` battle there (Elo applies as for every pvp battle).
+ */
+export const RankedQueueMsg = z.object({ action: z.enum(['join', 'leave']) });
+/**
+ * Phase D13: the rating window two queued players must both fall within (|Δrating| ≤ the smaller of their windows):
+ * `base` at once, `step` wider for every `stepMs` waited, never more than `max` (a larger gap never matches).
+ */
+export const RANKED_WINDOW = { base: 100, step: 50, stepMs: 10_000, max: 400 } as const;
+export function rankedWindow(waitedMs: number): number {
+  const steps = Math.floor(Math.max(0, waitedMs) / RANKED_WINDOW.stepMs);
+  return Math.min(RANKED_WINDOW.max, RANKED_WINDOW.base + steps * RANKED_WINDOW.step);
+}
+/**
+ * Phase D14 battle tower (post-game; Solenne's league hall foyer). `start` names three distinct party creature ids —
+ * the server checks the champion flag, the attendant's 3 m, not busy, the picks in the party — then runs the first
+ * fight; `next` runs the next fight after a win; `quit` retires between fights. Answers: `towerState`, or
+ * `error { code: 'notAllowed', detail: TowerRefusal }` with a toast.
+ */
+export const TowerMsg = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('start'), picks: z.array(z.string().min(1).max(64)).length(3) }),
+  z.object({ action: z.literal('next') }),
+  z.object({ action: z.literal('quit') }),
+]);
+export const TOWER_REFUSALS = ['locked', 'tooFar', 'badPicks', 'running', 'noRun', 'inBattle'] as const;
+export type TowerRefusal = (typeof TOWER_REFUSALS)[number];
 /** §4.5 */
 export const BattleResyncMsg = z.object({ battleId: z.string().uuid() });
 
@@ -127,7 +155,9 @@ export const CLIENT_MESSAGES = {
   handoverAck: HandoverAckMsg,
   fastTravel: FastTravelMsg,
   fish: FishMsg,
-} as const; // exactly 22 keys
+  rankedQueue: RankedQueueMsg,
+  tower: TowerMsg,
+} as const; // exactly 24 keys
 
 export type ClientMessageType = keyof typeof CLIENT_MESSAGES;
 export type ClientPayload<T extends ClientMessageType> = z.infer<(typeof CLIENT_MESSAGES)[T]>;
@@ -137,7 +167,7 @@ export type ClientMessage = {
 export type BattleAction = z.infer<typeof BattleActionSchema>;
 
 export const CLIENT_MESSAGE_TYPES = Object.freeze(Object.keys(CLIENT_MESSAGES) as ClientMessageType[]);
-export const CLIENT_MESSAGE_COUNT = 22;
+export const CLIENT_MESSAGE_COUNT = 24;
 
 /**
  * §4.3 rate limits (per client, sliding window; excess dropped with ONE `error { code: 'rateLimited' }`
@@ -167,6 +197,10 @@ export const CLIENT_MESSAGE_LIMITS: Readonly<Record<ClientMessageType, { readonl
   fastTravel: { max: 4, windowMs: 1_000 },
   /** Phase D9: one cast per 1.5 s (the prompt itself takes longer) */
   fish: { max: 1, windowMs: 1_500 },
+  /** Phase D13: join / leave, 4 per 5 s */
+  rankedQueue: { max: 4, windowMs: 5_000 },
+  /** Phase D14: start / next / quit */
+  tower: { max: 4, windowMs: 1_000 },
 };
 
 export function isClientMessageType(type: unknown): type is ClientMessageType {

@@ -16,8 +16,12 @@ import {
   interiorAt,
   interiorGates,
   isWalkable,
+  LEAGUE_REMATCH_COOLDOWN_DAYS,
+  POSTGAME_FLAG,
   isWater,
   league as leagueById,
+  leagueRematch,
+  leagueRematchFlag,
   leagueStoryGate,
   nearestWalkable,
   obstacleFlag,
@@ -30,8 +34,8 @@ import {
 import type { BadgeId, Heightfield, LinkDir, RaidHotspot, RectSolid, ZoneDef, ZoneId } from '@ewa/content';
 import { createRng } from '@ewa/core';
 import type { Rng, WeatherKind } from '@ewa/core';
-import { BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, FISH_REACH_M, PlayerState, RaidState, SpawnState, ZoneState } from '@ewa/protocol';
-import type { ChallengeFailReason, ClientMessageType, ClientPayload, FastTravelRefusal, FishRefusal, ServerMessage } from '@ewa/protocol';
+import { BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, FISH_REACH_M, PlayerState, RaidState, SpawnState, ZoneState, rankedWindow } from '@ewa/protocol';
+import type { ChallengeFailReason, ClientMessageType, ClientPayload, FastTravelRefusal, FishRefusal, RankedIdleReason, ServerMessage, ServerMessageOf } from '@ewa/protocol';
 import type { RoomDeps } from '../deps';
 import { censor, sanitizeChat } from '../chat/filter';
 import { LOG_EVERY_MS, createRoomMetrics, recordTick, roomLogLine, rollRoomMetrics } from '../metrics';
@@ -44,7 +48,9 @@ import { BattleCoordinator, TERRAIN_BY_BIOME, progressionOnly } from './battleSe
 import type { BattleHost, BattleSession } from './battleSession';
 import { ChallengeStore } from './challengeStore';
 import { findTarget, itemFlag, rangeFor, trainerBeatenFlag } from './interactables';
-import { pickZoneRoom, reserveZoneSeat } from './matchmaking';
+import { pickZoneRoom, reserveZoneSeat, zoneRoomById } from './matchmaking';
+import { RANKED_CANCEL_TOPIC, RANKED_MATCH_TOPIC, RankedArena, rankedArenaTopic } from './matchQueue';
+import type { PendingRanked, RankedCancel, RankedMatch } from './matchQueue';
 import { BIKE_ITEM, NO_CLEARED, NO_GATES, SURF_ITEM, isLava, onOpenWater, refillBudget, validateInput } from './movement';
 import type { RejectReason } from './movement';
 import { SpawnDirector, rollFishing, tuningFor } from './spawnDirector';
@@ -52,6 +58,7 @@ import type { SpawnRecord } from './spawnDirector';
 import { beatFor, completeBeatInTx, flagSet, isStoryTrainer, storyTrainerBeat } from './storyBeats';
 import { RAID_JOIN_RANGE_M, RaidRunner, RaidSession } from './raidSession';
 import { TradeCoordinator } from './tradeSession';
+import { TowerSessions } from './towerSession';
 import { advanceQuests, deliveriesFor } from '../game/quests';
 import type { QuestEvent } from '../game/quests';
 import { STREAK_LAST_PREFIX, dailyLogin } from '../liveops/login';
@@ -243,8 +250,12 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   /** Phase D9: the fishing stream (seeded from the room seed; independent of the room's other forks) */
   private fishRng: Rng | null = null;
   private fishCounter = 0;
+  /** Phase D14: battle tower runs (only Solenne has the attendant; elsewhere every `tower` message is refused) */
+  private tower!: TowerSessions;
   /** player uuid → its `ewa:dm:<id>` callback (§30.7.2: DMs pushed live while the player is in this room) */
   private readonly dmSubs = new Map<string, (m: DmPush) => void>();
+  /** Phase D13: ranked matches this room is the arena for, waiting for both players to arrive */
+  private readonly rankedArena = new RankedArena();
 
   protected get deps(): RoomDeps {
     const d = (this.constructor as typeof ZoneRoom).roomDeps;
@@ -322,6 +333,15 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
         tradeOf: (playerId) => this.clientOf(playerId)?.userData?.tradeId ?? null,
       },
     });
+    this.tower = new TowerSessions({
+      repos: deps.repos,
+      content: deps.content,
+      clock: deps.clock,
+      log: deps.log.child({ roomId: this.roomId, zoneId: this.zone.id, shard }),
+      zoneId: this.zone.id,
+      battles: this.battles,
+      send: (playerId, msg) => this.sendTo(playerId, msg),
+    });
     // 6. messages (R1: zod safeParse in the wrapper; R3: '*' counts unknown types)
     for (const type of Object.keys(CLIENT_MESSAGES) as ClientMessageType[]) {
       this.onMessage(type, (client: ZoneClient, payload: unknown) => this.dispatch(client, type, payload));
@@ -337,6 +357,10 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       if (c?.userData !== undefined) c.userData.repel = { kind: m.kind, steps: m.steps };
     });
     await this.sub('ewa:teleport', (m: { playerId: string }) => this.onTeleport(m.playerId));
+    // Phase D13 ranked queue: matches (every room: move the players it hosts), cancels, and this room's arena matches
+    await this.sub(RANKED_MATCH_TOPIC, (m: RankedMatch) => void this.onRankedMatch(m));
+    await this.sub(RANKED_CANCEL_TOPIC, (m: RankedCancel) => this.onRankedCancel(m));
+    await this.sub(rankedArenaTopic(this.roomId), (m: RankedMatch) => this.rankedArena.add(m));
     // 7.
     this.setTimestep((dt) => this.tick(dt), ZoneRoom.TICK_MS);
   }
@@ -547,6 +571,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const playerId = ud.playerId;
     const ps = this.state.players.get(playerId);
     await this.battles.forfeitIfActive(playerId, 'disconnect').catch((e: unknown) => deps.log.error({ err: e }, 'forfeitIfActive failed'));
+    // Phase D14: leaving ends a tower run (current 0, best kept)
+    await this.tower.onLeave(playerId).catch((e: unknown) => deps.log.error({ err: e }, 'tower onLeave failed'));
     this.trades.cancelFor(playerId);
     this.raid?.leave(playerId);
     for (const c of this.challenges.dropFor(playerId)) {
@@ -567,6 +593,12 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.metrics.players = this.state.players.size;
     // one position write with the last authoritative pose — unless a handover moved the row's owner
     const movedAway = ud.handoverDone || (ud.handover !== null && deps.presenceStore.get(playerId)?.roomId !== this.roomId);
+    // Phase D13: a real leave (not a crossing) drops the queue entry and stops a ranked match waiting here
+    if (!movedAway) {
+      void deps.matchQueue.leave(playerId).catch((e: unknown) => deps.log.warn({ err: e, playerId }, 'ranked queue leave failed'));
+      const pending = this.rankedArena.involving(playerId);
+      if (pending !== null) this.rankedArena.cancel(pending.match.matchId, playerId);
+    }
     if (ps !== undefined && !movedAway) {
       await deps.repos.db
         .transaction((tx) => deps.repos.players.setPosition(tx, playerId, this.zone.id, ps.x, ps.z, ps.angle))
@@ -578,6 +610,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.spawns?.dispose();
     this.battles?.dispose();
     this.trades?.dispose();
+    this.tower?.dispose();
     this.raid = null;
     this.clock.clear();
     for (const [topic, cb] of this.subs) this.presence.unsubscribe(topic, cb);
@@ -780,6 +813,10 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
           return this.onFastTravel(client, data);
         case 'fish':
           return this.onFish(client, data);
+        case 'tower':
+          return this.onTower(client, data);
+        case 'rankedQueue':
+          return this.onRankedQueue(client, data);
         case 'tradeRequest':
           return this.onTrade(client, this.tradeRequestGuard(client) ?? this.trades.request(client.userData!.playerId, (data as ClientPayload<'tradeRequest'>).targetId));
         case 'tradeReply': {
@@ -999,6 +1036,18 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
           this.sendMsg(client, { type: 'toast', level: 'warn', text: refusal });
           return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'leagueLocked' });
         }
+        // Phase D14: after the Champion, a beaten league trainer takes a rematch once per cooldown (its own flag's set time)
+        if (this.leagueBeaten(ud, target.league.id)) {
+          const flag = leagueRematchFlag(target.league.id);
+          const setAt = ud.flags.has(flag) ? await deps.repos.db.transaction((x) => deps.repos.progress.flagSetAt(x, ud.playerId, flag)) : null;
+          if (setAt !== null && this.now() - setAt.getTime() < LEAGUE_REMATCH_COOLDOWN_DAYS * 86_400_000) {
+            this.sendMsg(client, { type: 'toast', level: 'warn', text: `${target.league.name} wants a rest. Come back tomorrow for a rematch.` });
+            return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'leagueLocked' });
+          }
+          const res = await this.battles.startNpc(seat, { kind: 'league', league: target.league, rematch: leagueRematch(target.league.id) }, null, pos);
+          if (!res.ok) this.sendMsg(client, { type: 'error', code: res.code, detail: res.detail });
+          return;
+        }
         const res = await this.battles.startNpc(seat, { kind: 'league', league: target.league }, null, pos);
         if (!res.ok) this.sendMsg(client, { type: 'error', code: res.code, detail: res.detail });
         return;
@@ -1062,6 +1111,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
    */
   private leagueRefusal(ud: ZoneUserData, leagueId: string): string | null {
     const lt = leagueById(leagueId);
+    // Phase D14 post-game: once the Champion has fallen, a beaten trainer is a rematch (the cooldown is the caller's)
+    if (this.leagueBeaten(ud, leagueId)) return null;
     const gate = leagueStoryGate(lt.id);
     if (lt.stage === 'gym' && lt.badge !== null && ud.badges.includes(lt.badge)) return 'You already hold this badge.';
     if (gate !== null && !ud.flags.has(gate)) return `${lt.name} is not taking challengers yet.`;
@@ -1089,6 +1140,18 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       if (elite !== null && !elite.setsFlags.every((f) => ud.flags.has(f))) return 'The Champion waits for those who passed the Wardens.';
     }
     return null;
+  }
+
+  /**
+   * Phase D14: the player holds `champion:zeon:beaten` and has beaten this league trainer (its badge held, or its
+   * `setsFlags` / the champion flag) — the interaction is a rematch. Never true before the Champion falls.
+   */
+  private leagueBeaten(ud: ZoneUserData, leagueId: string): boolean {
+    if (!ud.flags.has(POSTGAME_FLAG)) return false;
+    const lt = leagueById(leagueId);
+    if (lt.stage === 'gym') return lt.badge !== null && ud.badges.includes(lt.badge);
+    const flags = lt.id === 'zeon' ? [...lt.setsFlags, POSTGAME_FLAG] : lt.setsFlags;
+    return flags.length > 0 && flags.every((f) => ud.flags.has(f));
   }
 
   private leagueByStageOrder(stage: 'gym' | 'elite', order: number) {
@@ -1180,6 +1243,23 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
    * FISH_REACH_M of the ACCEPTED position along `angle` (`noWater`); then one of the zone's water slots from the fishing
    * stream (`nothingBites` when the table has none for this time of day), started as a wild battle at the player.
    */
+  /** Phase D14: `tower { start | next | quit }` — the run lives in `TowerSessions` (refusals, streak, rewards). */
+  private async onTower(client: ZoneClient, m: ClientPayload<'tower'>): Promise<void> {
+    const ud = client.userData!;
+    const ps = this.state.players.get(ud.playerId);
+    if (ps === undefined) return;
+    if (m.action === 'quit') return this.tower.quit(ud.playerId);
+    const asker = {
+      seat: { playerId: ud.playerId, sessionId: client.sessionId },
+      flags: ud.flags,
+      x: ps.x,
+      z: ps.z,
+      busy: ud.battleId !== null || ud.tradeId !== null,
+      at: this.battleAt(ps.x, ps.z),
+    };
+    return m.action === 'start' ? this.tower.start(asker, m.picks) : this.tower.next(asker);
+  }
+
   private async onFish(client: ZoneClient, m: ClientPayload<'fish'>): Promise<void> {
     const ud = client.userData!;
     const ps = this.state.players.get(ud.playerId);
@@ -1333,6 +1413,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       const c = this.clientOf(seat.playerId);
       if (c?.userData !== undefined) c.userData.battleId = session.id;
       this.deps.presenceMirror.setBattle(seat.playerId, session.id);
+      // Phase D13: any other battle takes a queued player out of the ranked queue
+      this.dropFromRankedQueue(seat.playerId);
     }
     this.state.battles.set(session.id, summary);
     this.metrics.battles = this.battles.size;
@@ -1340,6 +1422,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
 
   private onBattleEnd(session: BattleSession, outcome: Parameters<BattleHost['onEnd']>[1]): void {
     this.state.battles.delete(session.id);
+    // Phase D14: a tower fight hands its result (already written in the end transaction) to the run
+    if (session.tower === true) void this.tower.onBattleEnd(session, outcome).catch((e: unknown) => this.deps.log.error({ err: e }, 'tower onBattleEnd failed'));
     for (const seat of session.seats) {
       if (seat.playerId === null) continue;
       const ps = this.state.players.get(seat.playerId);
@@ -1595,6 +1679,180 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     }
   }
 
+  // ─── ranked queue (Phase D13) ───────────────────────────────────────────────
+
+  private sendRanked(
+    client: ZoneClient,
+    rating: number,
+    s:
+      | { readonly state: 'idle'; readonly reason: RankedIdleReason }
+      | { readonly state: 'queued'; readonly waitedMs: number }
+      | { readonly state: 'matched'; readonly opponent: { readonly name: string; readonly rating: number } },
+  ): void {
+    const msg: ServerMessageOf<'rankedStatus'> = {
+      type: 'rankedStatus',
+      state: s.state,
+      rating,
+      waitedMs: s.state === 'queued' ? s.waitedMs : 0,
+      window: s.state === 'queued' ? rankedWindow(s.waitedMs) : 0,
+      opponent: s.state === 'matched' ? s.opponent : null,
+      reason: s.state === 'idle' ? s.reason : null,
+    };
+    this.sendMsg(client, msg);
+  }
+
+  /** In a battle, trade, raid, crossing or an arena match already: may neither queue nor be moved to the arena. */
+  private rankedBusy(ud: ZoneUserData): boolean {
+    return (
+      ud.battleId !== null ||
+      ud.tradeId !== null ||
+      ud.handover !== null ||
+      ud.arrival !== null ||
+      this.raid?.isParticipant(ud.playerId) === true ||
+      this.rankedArena.involving(ud.playerId) !== null
+    );
+  }
+
+  /**
+   * `rankedQueue { join | leave }`. Join refusals (`rankedStatus idle`): `busy` (battle / trade / raid / crossing /
+   * an arena match), `party` (no creature with hp > 0). A second join keeps the first entry and its wait.
+   */
+  private async onRankedQueue(client: ZoneClient, m: ClientPayload<'rankedQueue'>): Promise<void> {
+    const deps = this.deps;
+    const ud = client.userData!;
+    const row = await deps.repos.db.transaction(async (tx) => ({
+      player: await deps.repos.players.byId(tx, ud.playerId),
+      party: m.action === 'join' ? await deps.repos.creatures.party(tx, ud.playerId) : [],
+    }));
+    if (client.userData === undefined || row.player === null) return;
+    const rating = row.player.rating;
+    if (m.action === 'leave') {
+      await deps.matchQueue.leave(ud.playerId);
+      return this.sendRanked(client, rating, { state: 'idle', reason: 'left' });
+    }
+    if (this.rankedBusy(ud)) return this.sendRanked(client, rating, { state: 'idle', reason: 'busy' });
+    if (!row.party.some((c) => c.hp > 0)) return this.sendRanked(client, rating, { state: 'idle', reason: 'party' });
+    const now = this.now();
+    const entry = await deps.matchQueue.join({ playerId: ud.playerId, name: row.player.username, rating, joinedAt: now });
+    this.sendRanked(client, entry.rating, { state: 'queued', waitedMs: Math.max(0, now - entry.joinedAt) });
+  }
+
+  private dropFromRankedQueue(playerId: string): void {
+    const deps = this.deps;
+    void deps.matchQueue
+      .leave(playerId)
+      .then(async (removed) => {
+        const c = this.clientOf(playerId);
+        if (!removed || c === undefined) return;
+        const row = await deps.repos.db.transaction((tx) => deps.repos.players.byId(tx, playerId));
+        if (row !== null) this.sendRanked(c, row.rating, { state: 'idle', reason: 'busy' });
+      })
+      .catch((e: unknown) => deps.log.warn({ err: e, playerId }, 'ranked queue drop failed'));
+  }
+
+  /**
+   * A match was made (broadcast): each player this room hosts is told `matched` and moved to the arena — a teleport
+   * when this room IS the arena room, else the handover path into that exact room. A player who became busy since
+   * queueing stops the match (`busy` to them, `RANKED_CANCEL_TOPIC` for everyone else). The destination side of a
+   * crossing in progress (`arrival` set) leaves the player to the source room, which still owns them.
+   */
+  private async onRankedMatch(m: RankedMatch): Promise<void> {
+    for (const seat of m.players) {
+      const c = this.clientOf(seat.playerId);
+      const ud = c?.userData;
+      if (c === undefined || ud === undefined || ud.arrival !== null) continue;
+      const other = m.players[0].playerId === seat.playerId ? m.players[1] : m.players[0];
+      const cancel = (reason: RankedIdleReason): void => {
+        this.sendRanked(c, seat.rating, { state: 'idle', reason });
+        const players: [string, string] = [m.players[0].playerId, m.players[1].playerId];
+        this.presence.publish(RANKED_CANCEL_TOPIC, { matchId: m.matchId, playerId: seat.playerId, players } satisfies RankedCancel);
+      };
+      if (ud.battleId !== null || ud.tradeId !== null || ud.handover !== null || this.raid?.isParticipant(ud.playerId) === true) {
+        cancel('busy');
+        continue;
+      }
+      this.sendRanked(c, seat.rating, { state: 'matched', opponent: { name: other.name, rating: other.rating } });
+      if (m.arenaRoomId === this.roomId) {
+        const ps = this.state.players.get(seat.playerId);
+        if (ps === undefined || !this.teleport(ud, ps, seat.x, seat.z)) cancel('cancelled');
+        else ud.handoverCooldownUntil = this.now() + HANDOVER_COOLDOWN_MS;
+        continue;
+      }
+      if (!(await this.seatHandover(c, m.zoneId, { x: seat.x, z: seat.z }, m.arenaRoomId))) cancel('cancelled');
+    }
+  }
+
+  /** A match fell through: the arena room stops waiting; any room hosting the other player tells them. */
+  private onRankedCancel(m: RankedCancel): void {
+    this.rankedArena.cancel(m.matchId, m.playerId);
+    for (const id of m.players) {
+      if (id === m.playerId) continue;
+      const c = this.clientOf(id);
+      const ud = c?.userData;
+      // mid-crossing players are told by the arena room once they land (rankedPass)
+      if (c === undefined || ud === undefined || ud.arrival !== null || ud.handover !== null || ud.battleId !== null) continue;
+      this.rankedArena.involving(id)?.notified.add(id);
+      void this.deps.repos.db
+        .transaction((tx) => this.deps.repos.players.byId(tx, id))
+        .then((row) => {
+          if (row !== null && this.clientOf(id) === c) this.sendRanked(c, row.rating, { state: 'idle', reason: 'cancelled' });
+        })
+        .catch(() => undefined);
+    }
+  }
+
+  /** Tick step 9b: start each arena match whose players have both landed; expire or wind down cancelled ones. */
+  private rankedPass(now: number): void {
+    for (const p of this.rankedArena.list()) {
+      if (p.starting) continue;
+      const present = p.match.players.filter((s) => {
+        const ud = this.clientOf(s.playerId)?.userData;
+        return ud !== undefined && ud.arrival === null && ud.handover === null;
+      });
+      if (p.cancelled || now >= p.match.expiresAt) {
+        for (const s of present) {
+          if (p.notified.has(s.playerId)) continue;
+          p.notified.add(s.playerId);
+          const c = this.clientOf(s.playerId);
+          if (c !== undefined && c.userData?.battleId === null) this.sendRanked(c, s.rating, { state: 'idle', reason: 'cancelled' });
+        }
+        if (now >= p.match.expiresAt || p.notified.size >= 2) this.rankedArena.delete(p.match.matchId);
+        continue;
+      }
+      if (present.length === 2 && present.every((s) => this.clientOf(s.playerId)?.userData?.battleId === null)) {
+        p.starting = true;
+        void this.startRanked(p).catch((e: unknown) => {
+          this.deps.log.error({ err: e, matchId: p.match.matchId }, 'ranked start failed');
+          this.rankedArena.delete(p.match.matchId);
+        });
+      }
+    }
+  }
+
+  /** Both players stand in the arena: the ordinary pvp start (Elo applies once per player at the end, §30.4.4). */
+  private async startRanked(p: PendingRanked): Promise<void> {
+    const [a, b] = p.match.players;
+    const ca = this.clientOf(a.playerId);
+    const cb = this.clientOf(b.playerId);
+    const pa = this.state.players.get(a.playerId);
+    const pb = this.state.players.get(b.playerId);
+    if (ca === undefined || cb === undefined || pa === undefined || pb === undefined) {
+      p.starting = false;
+      return;
+    }
+    const res = await this.battles.startPvp(
+      { playerId: a.playerId, sessionId: ca.sessionId },
+      { playerId: b.playerId, sessionId: cb.sessionId },
+      this.battleAt((pa.x + pb.x) / 2, (pa.z + pb.z) / 2),
+    );
+    this.rankedArena.delete(p.match.matchId);
+    for (const [s, c] of [[a, ca], [b, cb]] as const) {
+      if (c.userData === undefined) continue;
+      const reason: RankedIdleReason = res.ok ? 'started' : res.detail === 'noUsableParty' && res.playerId === s.playerId ? 'party' : 'cancelled';
+      this.sendRanked(c, s.rating, { state: 'idle', reason });
+    }
+  }
+
   // ─── handover (§30.2.7) ─────────────────────────────────────────────────────
 
   private async beginHandover(client: ZoneClient, dir: LinkDir): Promise<void> {
@@ -1623,13 +1881,14 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
    * destination, record the presence reservation it validates, send the `handover`. False when the reservation failed
    * (`ud.handover` is cleared again).
    */
-  private async seatHandover(client: ZoneClient, destId: ZoneId, entry: { readonly x: number; readonly z: number }): Promise<boolean> {
+  private async seatHandover(client: ZoneClient, destId: ZoneId, entry: { readonly x: number; readonly z: number }, roomId?: string): Promise<boolean> {
     const deps = this.deps;
     const ud = client.userData!;
     ud.handover = 'reserving';
     try {
-      // 2. reserve on the destination (shard 0 by preference)
-      const room = await pickZoneRoom(destId, deps.ticket);
+      // 2. reserve on the destination (shard 0 by preference; Phase D13: a ranked match names its arena room)
+      const room = roomId !== undefined ? await zoneRoomById(roomId) : await pickZoneRoom(destId, deps.ticket);
+      if (room === null) throw new Error(`room ${roomId ?? destId} is gone`);
       const seat = await reserveZoneSeat(room, { zoneId: destId, shard: Number(room.metadata?.shard ?? 0), ticket: deps.ticket, handover: { fromRoomId: this.roomId, x: entry.x, z: entry.z } });
       // 3. the reservation the destination validates
       await this.presence.setex(
@@ -1776,6 +2035,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.trades.tick(now);
     // 9. challenges 45 s TTL
     for (const c of this.challenges.sweep(now)) this.sendTo(c.fromId, { type: 'challengeResult', targetId: c.toId, result: 'expired' });
+    // 9b. Phase D13: ranked matches waiting in this arena room
+    if (this.rankedArena.size > 0) this.rankedPass(now);
     // 10. metrics: tick duration ring (p50/p99), 1 s rates, one info line per room every 60 s
     const ms = performance.now() - t0;
     recordTick(this.metrics, ms);

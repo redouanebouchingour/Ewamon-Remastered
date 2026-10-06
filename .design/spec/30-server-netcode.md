@@ -34,6 +34,7 @@ Behaviours of `@colyseus/core` 0.18.14 / `@colyseus/schema` 5.0.32 this file dep
 | `rooms/raidSession.ts` | `RaidSession` (§30.4.7). |
 | `rooms/tradeSession.ts` | `TradeSession` (§30.8.3). |
 | `rooms/challengeStore.ts` | Pure `ChallengeStore` (§30.4.5) — the legacy `createChallengeStore` shape, ported. |
+| `rooms/matchQueue.ts` | Phase D13 `MatchQueue` (presence-keyed ranked queue + leased matcher), `pairUp`, `RankedArena` (§30.4.5a). |
 | `rooms/storyBeats.ts` | Beat firing and completion on `interact` (§30.4.8); uses content's `nextStoryBeat`/`beatDoneFlag`/`harvestStateFor`. |
 | `rooms/presenceStore.ts` | Pure `PresenceStore` (§30.7.4). |
 | `rest/app.ts` | `buildRest(deps): FastifyInstance` — plugins, hooks, route registration. |
@@ -470,8 +471,8 @@ A transaction failure rolls everything back and the session keeps `before` as it
 |---|---|---|---|---|
 | `wild` | `engageSpawn` accepted | `kind: 'wild'`, one battler projected from the `SpawnRecord` (species default moves at that level via `learnableMoves`, `ability = record.ability` — rolled at spawn, spine §3.2 / roster-coverage A3, reconciled 2026-09-18 — `heldItem null`, `hp = maxHp`), `canFlee` on side 0, `canCatch` on side 0 | money 0; `trainerExp: TRAINER_EXP.wildWin` (+ `catch`/`catchNewSpecies` on catch; the catch ends the battle as `caught`, which is also a win for exp purposes) | — |
 | `trainer` | `interact { kind: 'npc', targetId }` on a `TrainerDef` within 3 m; refused if `story_flags` has `trainer:<id>:beaten` and (`rematchDays === null` or fewer than `rematchDays` days since the flag was set) | `kind: 'npc'`, `trainerId = TrainerDef.id`, team from content (same projection rule) | `money: TrainerDef.reward` (rematch: `floor(reward / 2)`); `trainerExp: trainerWin`; sets flag `trainer:<id>:beaten`; quest `defeatTrainer`/`winBattles` advance | — |
-| `league` | `interact { kind: 'gym', targetId: LeagueTrainer.id }` within 4 m of the gym marker; gyms require the previous badge in order (order 1 needs none); elite require all 8 badges and the previous elite (order); champion requires the 3 elite flags. Refused with `toast` when already beaten (no rematch in v1) | `kind: 'npc'`, `trainerId = LeagueTrainer.id`, team verbatim from content including `nickname/ability/heldItem` | `money: reward`; `badge: LeagueTrainer.badge` via `awardBadge` (audit `badge.award`); `trainerExp: gymWin/eliteWin/championWin` by stage; `setFlags(setsFlags)`; `championWin` additionally sets `champion:zeon:beaten` — the id is `'zeon'`, and the check anywhere in server code is `=== 'zeon'` | — |
-| `pvp` | challenge handshake (§30.4.5) | `kind: 'player'` | `money 0`, `trainerExp: pvpWin` / `pvpLoss` to loser; `ratingDelta` from `eloDelta(winner.rating, loser.rating)` applied with `applyRating` to both, floor 0 (repo); `rankedMatches + 1`; draw → `eloDrawDelta` | yes |
+| `league` | `interact { kind: 'gym', targetId: LeagueTrainer.id }` within 4 m of the gym marker; gyms require the previous badge in order (order 1 needs none); elite require all 8 badges and the previous elite (order); champion requires the 3 elite flags. Refused with `toast` when already beaten — until `champion:zeon:beaten` is held: then an already-beaten trainer (gym: badge held; Warden / Champion: its `setsFlags`) takes a **rematch** (Phase D14) unless `league:<id>:rematchAt` was set less than `LEAGUE_REMATCH_COOLDOWN_DAYS` (1) ago (toast "… wants a rest. Come back tomorrow for a rematch.", `error leagueLocked`) | `kind: 'npc'`, `trainerId = LeagueTrainer.id`, team verbatim from content including `nickname/ability/heldItem` | `money: reward`; `badge: LeagueTrainer.badge` via `awardBadge` (audit `badge.award`); `trainerExp: gymWin/eliteWin/championWin` by stage; `setFlags(setsFlags)`; `championWin` additionally sets `champion:zeon:beaten` — the id is `'zeon'`, and the check anywhere in server code is `=== 'zeon'`. **Rematch** (Phase D14): team = `LEAGUE_REMATCH[id].team` (verbatim, same projection), `money: LeagueRematch.reward` (×1.5), the same stage `trainerExp`, **no** badge, **no** `setsFlags`; `league:<id>:rematchAt` is cleared and re-set in the same transaction (its set time = this win) | — |
+| `pvp` | challenge handshake (§30.4.5) or a ranked match (§30.4.5a) | `kind: 'player'` | `money 0`, `trainerExp: pvpWin` / `pvpLoss` to loser; `ratingDelta` from `eloDelta(winner.rating, loser.rating)` applied with `applyRating` to both, floor 0 (repo); `rankedMatches + 1`; draw → `eloDrawDelta` | yes |
 | `raid` | §30.4.7 | shared boss `Side` | per participant: `trainerExp: raidClear`, `money: 50 * bossLevel`, catch window | — |
 
 Side 0 is always the human player (pvp: the challenger). Losing a `trainer`/`league`/`wild` battle: every party creature keeps its post-battle `hp` (possibly 0); no money is lost (the legacy "blackout fee" is not carried); the client's `20-client.md` sends the player to the last healer on its own initiative via `POST /heal`, which requires being in a `healer: true` zone — so a wiped party in a route means walking back, which is the intended cost.
@@ -499,6 +500,15 @@ export class ChallengeStore {
 3. `challengeReply { fromId, accept: true }` → `store.consume(fromId, me)` must be true; then **re-check every condition of step 1 again against current state** (both present in this room, both not `inBattle`, both not trading, still within 12 m) — a player who walked away, entered a wild battle or disconnected during the 45 s makes the accept fail with `challengeResult { result: 'unavailable' }` to the accepter and nothing to the challenger. Only then `battles.startPvp(challenger, accepter)`: lock both players in one tx (ascending uuid) to read parties; `createBattle` with `seed = createRng(`${battleId}`).snapshot()`; write `BattleSummary`; send `battleStart` to both seats with `seat` 0/1.
 4. `onLeave` of either party while pending → `dropFor` → the other side gets `'unavailable'`.
 
+### 30.4.5a Ranked queue (Phase D13) <!-- amended 2026-10-06: Phase D13 -->
+
+`rooms/matchQueue.ts`. The queue is keyed by player in Colyseus presence, not by room: the hash `ewa:ranked:queue` (field = playerId, value = `{ playerId, name, rating, joinedAt }`), so a queued player keeps their place across zone crossings, shards and processes. Every process ticks a matcher every `RANKED_TICK_MS = 1000`; only the holder of the lease `ewa:ranked:leader` (5 s, refreshed each tick) pairs players.
+
+1. `rankedQueue { action: 'join' }` → the room reads the player row (rating) and party. Refused with `rankedStatus { state: 'idle', reason }`: `busy` (in a battle, trade or raid, mid-crossing, or already in an arena match), `party` (no party creature with `hp > 0`). Otherwise the entry is written (a second join keeps the first entry and its wait) and the player gets `rankedStatus { state: 'queued', waitedMs, window }`. `leave` removes the entry → `idle / left`. A real leave of the room (disconnect, not a crossing) and the start of any other battle remove the entry (the latter answers `idle / busy`).
+2. **Window**: `rankedWindow(waitedMs) = min(400, 100 + 50 · floor(waitedMs / 10 000))` (protocol `RANKED_WINDOW`). Two entries pair when `|Δrating| ≤ min(window(a), window(b))`. `pairUp` walks the entries oldest first; each takes the unpaired entry with the smallest gap (ties: queue order). A gap above 400 never matches. Entries whose player has no presence key are dropped as stale.
+3. **Match**: both entries are removed; the arena room is `pickZoneRoom(RANKED_ARENA.zoneId)` (`mirevale` — the one town without a badge gate — spots at (19, 16) and (25, 16), snapped walkable). The matcher publishes the match to `ewa:ranked:arena:<roomId>` (the arena room records it, expiry `RANKED_ARRIVAL_MS = 20 000`), then broadcasts `ewa:ranked:match`. The room hosting each player (not the destination side of a crossing in progress) sends `rankedStatus { state: 'matched', opponent }` and moves the player: a teleport when it is the arena room, else the §30.2.7 crossing from step 2 into that exact room (`seatHandover(…, roomId)`). A player who became busy stops the match: `idle / busy` to them, `ewa:ranked:cancel` to the rest (the other player gets `idle / cancelled`).
+4. **Start**: the arena room's tick (step 9b) starts the match once both players are present with no crossing pending (handover acked) and not in a battle: `battles.startPvp(side 0 = the longer-waiting player, side 1)` at the midpoint — format `pvp`, so Elo applies exactly once per player through §30.4.4; both get `idle / started` after `battleStart`. A start refused for `noUsableParty` answers `idle / party` to that player and `idle / cancelled` to the other. A match not started by its expiry, or cancelled, sends `idle / cancelled` to whoever stands in the arena room.
+
 ### 30.4.6 Trainer NPC and league dialogue
 
 `interact { kind: 'npc' }` on an `NpcDef` returns nothing over the wire for a plain conversation — lines are content and the client renders them (`when`/`until`/`react` flags come from `GET /me` and `progressionDelta`) — **unless** the NPC is the `speaker` of the player's next story beat in this zone, in which case §30.4.8 runs. The server otherwise acts only on interacts that change state: `TrainerDef` (battle), `gym` (league battle, or a beat whose `speaker` is the gym's league id — §30.4.8 first), `item` (ground item: once per player, flag `item:<zone>:<id>` in `story_flags`, `inventoryDelta`), `healer` (no-op over the room; healing is `POST /heal`), `shop` (no-op; `GET /shop/:zoneId`), `warp` (`ZoneDef.warps[id]`: authoritative teleport to `(toX, toZ)` snapped with `nearestWalkable`, ≤ 3 m check against `(x, z)`; the `seq` echo carries the client), `obstacle` (Phase D10, `ZoneDef.obstacles[id]`, ≤ `OBSTACLE_INTERACT_M` = 3 m from its centre: refused once cleared (`alreadyCleared`), without the kind's HM (`needHm`) or without a party member of one of `OBSTACLE_TYPES[kind]` (`needType`, fainted members count) — each with content's `obstacleRefusalText` as a warn toast; otherwise `obstacle:<zone>:<id>` and the hidden item (once) in one transaction, then `inventoryDelta`, `progressionDelta { flags }` and a success toast; movement accepts the stamped disc for that player from the next input), `static` (a `LegendaryStatic` battle — `format: 'wild'`, `canFlee: false` on the player side (the legendary cannot be run from) and `canCatch: true`; the record's `when` gate is re-checked here, the static is refused once its `flag` is held, and `flag` is set on win **or** catch). Every interact checks distance ≤ 3 m against the content coordinates and AOI membership first; an interact on an entity outside the 3×3 → `error { code: 'notFound' }`. <!-- reconciled 2026-09-18: warps have data (spine §3.1); static rules per story-bible §7.2.1 -->
@@ -517,6 +527,30 @@ On `interact { kind: 'npc' | 'gym', targetId }` (distance and AOI checks passed)
 
 
 `ZoneState.harvestState` is never written by this path. Two players in one room can therefore see the same route as `intact` and `harvested`; each renders its own `harvestStateFor` (spine §3.5). Beats are idempotent per player through the done flag; `authority.test.ts` A17 asserts a forged `interact` on a speaker whose beat's `need` is unmet writes nothing.
+
+### 30.4.9 Battle tower (Phase D14) <!-- amended 2026-10-06: Phase D14 -->
+
+`packages/server/src/rooms/towerSession.ts` (`TowerSessions`, one per zone room; only Solenne holds `TOWER.attendantId`, the
+league hall foyer's interior NPC — elsewhere every `tower` message is refused `tooFar`). One run per player, in memory:
+
+1. `tower { action: 'start', picks }`: refused (`toast` + `error { notAllowed, detail }`) unless `champion:zeon:beaten` is held
+   (`locked`), no run is active (`running`), the player is in no battle / trade (`inBattle`), within `TOWER_RANGE_M` 3 m of the
+   attendant (`tooFar`), and `picks` are three distinct party creature ids (`badPicks`). Then `player_streaks.current = 0`
+   (`endRun`: a run starts at 0) and fight 1 starts.
+2. A fight: the picks as `capLevel(creature, TOWER.levelCap)` copies with synthetic `tower:<id>` ids (fully healed; the stored
+   rows are never written — `isPersistedId` skips them), against `towerTeam(seed = <runId>:<wins>, wins)` — `teamSize` distinct
+   species of `TOWER.pools[towerTier(wins)]`, Lv 50, seeded ability, level-up moves. `BattleCoordinator.startTower`: format
+   `trainer`, `CreateBattleOpts.noExp` (rides the start snapshot), `trainerId = TOWER.trainerId`, no inventory snapshot (items
+   refused `noItem`), no flee, no catch. `towerState { phase: 'fighting' }`.
+3. The end transaction (§30.4.3 step g) writes, instead of trainer rewards: a win → `streaks.recordWin` and, when the new
+   `current` is a multiple of `TOWER.setLength` (7), `towerSetReward(current / 7)` — money + items in the same transaction,
+   audit `tower.reward`, carried in `RewardsSummary.money/items`; a loss or a draw → `streaks.endRun` (current 0, best kept).
+   No exp, no trainer flag, no quest `win`. `towerState { phase: 'won', reward }` or `{ phase: 'lost' }` (run over).
+4. `tower { action: 'next' }` (within 8 m) → the next fight; `tower { action: 'quit' }` between fights → `endRun`, `towerState
+   { phase: 'ended' }`. Leaving the room (or a void / abandoned tower battle) ends the run the same way; a pick that left the
+   party between fights ends it with a toast.
+
+`GET /leaderboard?mode=towerStreak` ranks `player_streaks.best` (§30.6.3).
 
 ### 30.4.7 Raids
 
@@ -672,7 +706,7 @@ The §4.7 table is the route table; this section only pins behaviours the table 
 - `/item/use`: `rareCandy` applies `applyExp(c, expToLevel(level + 1) - exp)`; `repel`/`lure` set a `presence` key `ewa:repel:<playerId>` with the step count that `SpawnDirector.engage` and the client-side encounter filter consult (repel: wild spawns below the lead's level refuse engagement — `'notFound'`-equivalent `toast`); `escapeRope` teleports to the zone's spawn point via the room (`presence.publish('ewa:teleport')`), only in a `route` zone.
 - `/shop/:zoneId` prices: `ConsumableDef.price`/`OrbDef.price` from content; `stock = zone.shop ?? SHOP_STOCK_DEFAULT` when `zone.shop !== null`, 404 when the zone has no shop. Sell = `sellPrice`. Held items (`ItemDef.price !== null`) are sold only in `solenne`.
 - `/players/:username`: `toPublic(row)` + showcase (≤ 3 `favorite` party members, `ownerId` nulled). Unknown → 404. Banned players return 404 too.
-- `/leaderboard`: top 100 by `rating` desc (ties by `peak_rating`, then `username_lower`), or by dex caught count, or `trainer_exp`; banned excluded; `page` of 25.
+- `/leaderboard`: top 100 by `rating` desc (ties by `peak_rating`, then `username_lower`), or by dex caught count, or `trainer_exp`, or (Phase D14 `towerStreak`) by `player_streaks.best` desc (then `current`, then `username_lower`; players with best > 0 only); banned excluded; `page` of 25. Every row carries `towerBest` / `towerCurrent`.
 - Admin: `GET /admin/players?q=` uses `ILIKE '%' || escapeLike(q) || '%' ESCAPE '\'` on `username_lower`; ban writes `banned_at/ban_reason`, revokes refresh tokens, publishes `ewa:kick` so every room drops the player within one tick, audit `admin.ban`. Admins cannot be banned (409).
 
 ### 30.6.4 Rate limits
@@ -939,7 +973,7 @@ Not preserved, on purpose: client-side badge awards laundered through `gymwin_<i
 - **Friend gifts, guild bank, guild chat, guild wars, weekly cups with party rules, mastery chains, profile cosmetics grid** (legacy `liveOps.js`). Titles/motto/body remain; the rest is not v1.
 - **Legacy exploration hotspots / roaming rares** — retired zone ids; the story bible supplies `LEGENDARY_STATICS` instead.
 - **Blackout money penalty on loss.** The walk back is the cost.
-- **Rematches for league trainers, PvP spectating, ranked seasons, matchmaking queue.** PvP is challenge-only in v1.
+- **PvP spectating, ranked seasons, matchmaking queue.** PvP is challenge-only in v1. (League rematches landed in Phase D14, §30.4.4 — amended 2026-10-06.)
 - **Prometheus/OpenTelemetry exporters.** JSON metrics at `/admin/metrics` and pino lines.
 - **`@fastify/rate-limit`.** Not installed; the pure `LIMITS` module is cluster-aware through `Presence` when Redis is present.
 - **Team preview hiding in PvP resync.** The full `BattleState` is sent to both seats (decided, spine §4.5).

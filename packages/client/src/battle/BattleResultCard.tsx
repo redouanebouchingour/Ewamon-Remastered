@@ -12,6 +12,7 @@ import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { battleActions } from './controllerRef';
 import { concessionLine, foeOfState } from './foe';
+import { rematchOfBattle } from '../scene/dialogue';
 import s from './BattleResultCard.module.css';
 
 export function BattleResultCard() {
@@ -35,7 +36,9 @@ export function BattleResultCard() {
   const badge = r.badge === null ? null : badgeDisplay(r.badge);
   const won = o.winner === seat;
   const foe = won && format === 'league' && state !== null ? foeOfState(state, seat) : null;
-  const concession = foe === null ? null : concessionLine(foe.league);
+  // Phase D14: a won rematch concedes with its own line (the first fight's names the badge)
+  const rematch = foe !== null && state !== null ? rematchOfBattle(state, seat) : null;
+  const concession = foe === null ? null : rematch !== null ? (rematch.post[0] ?? null) : concessionLine(foe.league);
   return (
     <Modal
       open

@@ -19,6 +19,8 @@ import { progressRepo } from './progress';
 import type { ProgressRepo } from './progress';
 import { socialRepo } from './social';
 import type { SocialRepo } from './social';
+import { streakRepo } from './streaks';
+import type { StreakRepo } from './streaks';
 
 export interface Repos {
   readonly players: PlayerRepo;
@@ -31,6 +33,8 @@ export interface Repos {
   readonly battlePass: BattlePassRepo;
   readonly auth: AuthRepo;
   readonly audit: AuditRepo;
+  /** Phase D14: battle tower streaks (migration 0004) */
+  readonly streaks: StreakRepo;
 }
 
 /**
@@ -51,11 +55,13 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     battlePass: battlePassRepo,
     auth: authRepo,
     audit: auditRepo,
+    streaks: streakRepo,
   };
 }
 
-export { auditRepo, authRepo, battlePassRepo, creatureRepo, historyRepo, inventoryRepo, marketRepo, playerRepo, progressRepo, socialRepo };
-export type { AuditRepo, AuthRepo, BattlePassRepo, CreatureRepo, HistoryRepo, InventoryRepo, MarketRepo, PlayerRepo, ProgressRepo, SocialRepo };
+export { auditRepo, authRepo, battlePassRepo, creatureRepo, historyRepo, inventoryRepo, marketRepo, playerRepo, progressRepo, socialRepo, streakRepo };
+export type { AuditRepo, AuthRepo, BattlePassRepo, CreatureRepo, HistoryRepo, InventoryRepo, MarketRepo, PlayerRepo, ProgressRepo, SocialRepo, StreakRepo };
+export type { StreakBoardRow, StreakState } from './streaks';
 export type { AuditEntry } from './audit';
 export { hashRefreshToken } from './auth';
 export type { EmailTokenRefusal } from './auth';

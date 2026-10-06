@@ -128,3 +128,22 @@ installed library that future readers should not have to re-derive. The spec its
 - `PlayerState.surfing` / `biking` appended LAST (earlier field indexes unchanged).
 - Tests: `payloads.test.ts` (22 keys, fish cases, obstacle kind, bike flag), `schema.test.ts` (fields),
   `movement.test.ts` (bike speed / caps).
+
+## Phase D12–D13 — ranked queue (2026-10-06)
+
+- `RankedQueueMsg { action: 'join' | 'leave' }`, `CLIENT_MESSAGES.rankedQueue` (23 keys), limit 4 per 5 s.
+  `RANKED_WINDOW { base 100, step 50, stepMs 10 000, max 400 }` + `rankedWindow(waitedMs)` (shared by the server's
+  matcher and the client's panel).
+- `rankedStatus { state, rating, waitedMs, window, opponent, reason }` appended LAST to `SERVER_MESSAGE_TYPES` (17);
+  `RANKED_STATES`, `RANKED_IDLE_REASONS` (`left`, `busy`, `party`, `cancelled`, `started`).
+- Tests: `payloads.test.ts` (rankedQueue cases, 23 keys, limit, window), `server-messages.test.ts` (example, 17).
+
+## Phase D14 — post-game (2026-10-06)
+
+- `TowerMsg` (`start { picks: 3 ids } | next | quit`), `CLIENT_MESSAGES.tower` (24 keys), limit 4/s; `TOWER_REFUSALS`
+  (`locked`, `tooFar`, `badPicks`, `running`, `noRun`, `inBattle`).
+- `towerState { phase, streak, runWins, best, set, fight, picks, reward }` appended after `rankedStatus` (18 variants);
+  `TOWER_PHASES`.
+- `BattleStateSchema.noExp` (optional literal true). `LEADERBOARD_MODES` gains `towerStreak`; `LeaderboardRow` gains
+  optional `towerBest` / `towerCurrent` (optional so older fixtures stay valid; the server always fills them).
+- Tests: `payloads.test.ts` (tower cases, 24 keys, limit), `server-messages.test.ts` (example, 18).

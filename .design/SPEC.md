@@ -244,8 +244,10 @@ Companion documents (inputs, not binding): `.design/PLAN.md`, `.design/story-bib
     - [30.4.3c Doubles (Phase D6)](#30.4.3c-doubles-phase-d6)
     - [30.4.4 Formats](#30.4.4-formats)
     - [30.4.5 PvP challenge handshake — presence re-checked before creation](#30.4.5-pvp-challenge-handshake-presence-re-checked-before-creation)
+    - [30.4.5a Ranked queue (Phase D13)](#30.4.5a-ranked-queue-phase-d13)
     - [30.4.6 Trainer NPC and league dialogue](#30.4.6-trainer-npc-and-league-dialogue)
     - [30.4.8 Story beats — the runtime the bible left to this file](#30.4.8-story-beats-the-runtime-the-bible-left-to-this-file)
+    - [30.4.9 Battle tower (Phase D14)](#30.4.9-battle-tower-phase-d14)
     - [30.4.7 Raids](#30.4.7-raids)
   - [§30.5 AUTHORITY MATRIX](#§30.5-authority-matrix)
     - [30.5.1 Adversarial test list — expected server response](#30.5.1-adversarial-test-list-expected-server-response)
@@ -874,6 +876,8 @@ export interface Battler {
 }
 
 export function projectBattler(c: CreatureInstance, content: ContentIndex): Battler;
+/** Phase D14 (battle tower): level min(level, cap) (exp clamped to that level when lowered), full hp, no status, full pp; pure, the input untouched. */
+export function capLevel(c: CreatureInstance, cap: number, content: ContentIndex): CreatureInstance;
 
 export type BattleFormat = 'wild' | 'trainer' | 'league' | 'pvp' | 'raid';
 export type SideKind = 'player' | 'wild' | 'npc';
@@ -913,6 +917,7 @@ export interface BattleState {
   readonly ended: BattleOutcome | null;
   readonly zoneId: string;
   readonly slots?: 2;             // Phase D6: present only in a doubles battle; absent = singles (state byte-identical to pre-D6)
+  readonly noExp?: true;          // Phase D14: present only in a battle tower fight — no battler gains exp (CreateBattleOpts.noExp); absent = byte-identical to pre-D14
 }
 
 export interface CreateBattleOpts {
@@ -1433,6 +1438,32 @@ export const BADGES: readonly { readonly id: BadgeId; readonly name: string; rea
 
 `validate.ts`: 8 gyms with the 8 badges in `BadgeId` order; 3 elite; exactly one champion with `id === 'zeon'` (the legacy `defeatedSet.has("goku")` check is not reproducible here — there is no `goku`). Gym team levels are monotonically non-decreasing across `order`.
 
+**Post-game (Phase D14, amended 2026-10-06).** Everything below unlocks with `champion:zeon:beaten` (`POSTGAME_FLAG`) and is never a story gate:
+
+```ts
+export interface LeagueRematch {
+  readonly leagueId: string;                       // = LeagueTrainer.id; exactly one row per LEAGUE entry
+  readonly team: readonly LeagueTeamMember[];      // Lv 65–75 (LEAGUE_REMATCH_LEVELS); a legendary only if the original team carries it
+  readonly pre: readonly string[]; readonly post: readonly string[];   // the rematch prompt / the line after a won rematch
+  readonly reward: number;                         // = round(LeagueTrainer.reward × LEAGUE_REMATCH_REWARD_MULTIPLIER 1.5)
+}
+export const LEAGUE_REMATCH: readonly LeagueRematch[];          // 12 rows
+export const LEAGUE_REMATCH_COOLDOWN_DAYS = 1;                   // between two rematch WINS against the same trainer
+export function leagueRematchFlag(leagueId: string): string;     // `league:<id>:rematchAt` — server bookkeeping, cleared + re-set on every rematch win so its set time moves
+export const POSTGAME_FLAG = 'champion:zeon:beaten';
+export interface TowerDef {
+  readonly levelCap: 50; readonly teamSize: 3; readonly setLength: 7;
+  readonly attendantId: 'solenne.league.tower';    // the league hall foyer's InteriorNpc, role 'tower'
+  readonly trainerId: 'tower.challenger'; readonly trainerName: 'Tower Challenger';
+  readonly pools: readonly (readonly string[])[];   // 4 tiers of non-legendary fully evolved species, banded by base-stat total
+}
+export const TOWER: TowerDef;
+export function towerTier(wins: number): number;                 // min(pools.length − 1, floor(wins / setLength))
+export function towerSetReward(set: number): { money: number; items: Record<string, number> };   // money 2 500 × set (≤ 15 000) + items
+```
+
+`validate.ts` adds: one rematch per league row, levels in range, reward ×1.5, legendary rule, nickname ≤ 16; every tower pool ≥ 6 species, all known and non-legendary; every set-reward item known. The bind-set cap (§3.10 rule 11) is unchanged — rematch and tower teams are battle-only.
+
 ### 3.4 Quests
 
 ```ts
@@ -1643,7 +1674,7 @@ export interface InteriorDef {           // authored in the hall's LOCAL frame: 
   readonly gates: readonly InteriorGate[];    // per-player doors: solid until every `opensWhen` flag is held — never stamped
   readonly switches: readonly InteriorSwitch[]; // interact { kind: 'switch' }: `requires` ⊆ flags, sets `switch:<zone>:<id>` (or null), optional warpTo
   readonly trainers: readonly InteriorTrainer[]; // gym trainers; beaten flag `trainer:<id>:beaten`, no rematch
-  readonly npcs: readonly InteriorNpc[];      // shopkeeper / nurse / guide / resident — client-local dialogue
+  readonly npcs: readonly InteriorNpc[];      // shopkeeper / nurse / guide / resident / tower (Phase D14: the battle tower attendant, Solenne league hall foyer) — client-local dialogue
   readonly items: readonly InteriorItem[];    // pickup flag `item:<zone>:<id>`
   readonly props: readonly InteriorProp[];
 }
@@ -1785,19 +1816,24 @@ export const HandoverAckMsg = z.object({ roomId: z.string().min(1), seat: z.stri
 export const BattleResyncMsg = z.object({ battleId: z.string().uuid() });                          // §4.5
 export const FastTravelMsg = z.object({ zoneId: z.enum(ZONE_IDS) });                               // §4.6; amended 2026-10-06 (Phase C3)
 export const FishMsg = z.object({ angle: z.number() });   // Phase D9: a landed Old Rod bite; the cast heading (refusals FISH_REACH_M = 2.5, FISH_REFUSALS noRod / noWater / nothingBites)
+export const RankedQueueMsg = z.object({ action: z.enum(['join', 'leave']) });   // Phase D13: the ranked queue (30-server-netcode.md §30.4.5a); answered with `rankedStatus`
+export const TowerMsg = z.discriminatedUnion('action', [                          // Phase D14: the battle tower (30-server-netcode.md §30.4.9); answered with `towerState`
+  z.object({ action: z.literal('start'), picks: z.array(z.string().min(1).max(64)).length(3) }),   // refusals TOWER_REFUSALS locked / tooFar / badPicks / running / noRun / inBattle
+  z.object({ action: z.literal('next') }), z.object({ action: z.literal('quit') }),
+]);
 
 export const CLIENT_MESSAGES = {
   input: InputMsg, emote: EmoteMsg, chat: ChatMsg, interact: InteractMsg, engageSpawn: EngageSpawnMsg,
   battleAction: BattleActionMsg, battleResync: BattleResyncMsg, challenge: ChallengeMsg, challengeReply: ChallengeReplyMsg,
   tradeRequest: TradeRequestMsg, tradeReply: TradeReplyMsg, tradeOffer: TradeOfferMsg, tradeConfirm: TradeConfirmMsg, tradeCancel: TradeCancelMsg,
   raidJoin: RaidJoinMsg, raidReady: RaidReadyMsg, raidAction: RaidActionMsg, raidCatch: RaidCatchMsg, raidLeave: RaidLeaveMsg,
-  handoverAck: HandoverAckMsg, fastTravel: FastTravelMsg, fish: FishMsg,
-} as const;   // exactly 22 keys (Phase C3 added fastTravel, Phase D9 fish)
+  handoverAck: HandoverAckMsg, fastTravel: FastTravelMsg, fish: FishMsg, rankedQueue: RankedQueueMsg, tower: TowerMsg,
+} as const;   // exactly 24 keys (Phase C3 added fastTravel, Phase D9 fish, Phase D13 rankedQueue, Phase D14 tower)
 export type ClientMessageType = keyof typeof CLIENT_MESSAGES;
 ```
 
 <!-- reconciled 2026-09-18: battleResync (named in §4.5 prose) is now in the block; 50-verification-budget.md §50.4.3 counts 20 -->
-Rate limits (per client, sliding window; excess is dropped with one `error { code: 'rateLimited' }` per window): `input` 30/s, `emote` 1 per 1.5 s, `chat` 4 per 4 s, `interact` 4/s, `engageSpawn` 2/s, `battleAction`/`battleResync` 4/s (Phase D6: in a doubles battle a `battleAction` with `pos: 1` counts in its own 4/s window, so a turn's two back-to-back actions never starve each other; singles unchanged), `challenge`/`tradeRequest` 3 per 5 s, raid messages 4/s, `fastTravel` 4/s (plus its own 3 s server cooldown, §4.6), `fish` 1 per 1.5 s (Phase D9). A message whose `type` is not a `CLIENT_MESSAGES` key gets no reply: the room's `'*'` handler only counts it (`metrics.unknownMessages`) and 5 within 10 s disconnect the client with code 4003 — the `'*'` handler must exist, because `@colyseus/core` 0.18.14 closes the socket with 4002 on the first message that has no handler outside dev mode (`src/RoomMessages.ts` lines 334–342). `invalidPayload` is for a known type with a malformed body; the zod check therefore runs inside the handler wrapper (`safeParse`), never as the `onMessage` validator argument, which disconnects with 4002 on a rejected payload (`src/RoomMessages.ts` lines 189–196). <!-- amended 2026-09-25: "Colyseus drops it … there is no '*' handler" was false for 0.18.14; packages/server IMPLEMENTATION-NOTES R1, R3 -->
+Rate limits (per client, sliding window; excess is dropped with one `error { code: 'rateLimited' }` per window): `input` 30/s, `emote` 1 per 1.5 s, `chat` 4 per 4 s, `interact` 4/s, `engageSpawn` 2/s, `battleAction`/`battleResync` 4/s (Phase D6: in a doubles battle a `battleAction` with `pos: 1` counts in its own 4/s window, so a turn's two back-to-back actions never starve each other; singles unchanged), `challenge`/`tradeRequest` 3 per 5 s, raid messages 4/s, `fastTravel` 4/s (plus its own 3 s server cooldown, §4.6), `fish` 1 per 1.5 s (Phase D9), `rankedQueue` 4 per 5 s (Phase D13), `tower` 4/s (Phase D14). A message whose `type` is not a `CLIENT_MESSAGES` key gets no reply: the room's `'*'` handler only counts it (`metrics.unknownMessages`) and 5 within 10 s disconnect the client with code 4003 — the `'*'` handler must exist, because `@colyseus/core` 0.18.14 closes the socket with 4002 on the first message that has no handler outside dev mode (`src/RoomMessages.ts` lines 334–342). `invalidPayload` is for a known type with a malformed body; the zod check therefore runs inside the handler wrapper (`safeParse`), never as the `onMessage` validator argument, which disconnects with 4002 on a rejected payload (`src/RoomMessages.ts` lines 189–196). <!-- amended 2026-09-25: "Colyseus drops it … there is no '*' handler" was false for 0.18.14; packages/server IMPLEMENTATION-NOTES R1, R3 -->
 
 ### 4.4 Server → client messages
 
@@ -1824,6 +1860,12 @@ export type ServerMessage =
   | { readonly type: 'dm'; readonly id: number; readonly fromId: string; readonly fromName: string; readonly text: string; readonly sentAt: number } // a persisted DM pushed live (30-server-netcode.md §30.7.2)
   | { readonly type: 'storyBeat'; readonly beatId: string; readonly phase: 'start' | 'complete' }                     // §3.5 runtime: the client renders the beat's `lines` on 'start' and `after` on 'complete'
   | { readonly type: 'toast'; readonly level: 'info' | 'success' | 'warn'; readonly text: string }
+  | { readonly type: 'rankedStatus'; readonly state: 'idle' | 'queued' | 'matched'; readonly rating: number; readonly waitedMs: number; readonly window: number;
+      readonly opponent: { readonly name: string; readonly rating: number } | null;
+      readonly reason: 'left' | 'busy' | 'party' | 'cancelled' | 'started' | null }                                // Phase D13 (30-server-netcode.md §30.4.5a); sent last in SERVER_MESSAGE_TYPES
+  | { readonly type: 'towerState'; readonly phase: 'fighting' | 'won' | 'lost' | 'ended'; readonly streak: number; readonly runWins: number; readonly best: number;
+      readonly set: number; readonly fight: number; readonly picks: readonly string[];
+      readonly reward: { readonly money: number; readonly items: Readonly<Record<string, number>> } | null }      // Phase D14 (30-server-netcode.md §30.4.9); after rankedStatus in SERVER_MESSAGE_TYPES (18 variants)
   | { readonly type: 'error'; readonly code: 'rateLimited' | 'invalidPayload' | 'notAllowed' | 'notFound' | 'busy' | 'internal'; readonly detail: string | null };
 
 export interface TradeOffer { readonly playerId: string; readonly creatureIds: readonly string[]; readonly money: number; readonly confirmed: boolean }
@@ -1895,7 +1937,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /guilds?search=` · `GET /guilds/:id` | — | `GuildView[]` / `GuildView & { members }` | bearer |
 | `POST /guilds` | `{ name: 3..24, tag: /^[A-Z0-9]{3,4}$/ }` (costs `GUILD.createCost` 5000, 409 `InsufficientFunds`) | `GuildCreateRes` = `GuildView & { inventoryDelta }` (`money` after the charge) | bearer |
 | `POST /guilds/:id/join` · `/leave` · `/kick` · `/promote` | `{ playerId? }` | `GuildView` | bearer |
-| `GET /leaderboard?mode=rating|dex|trainerLevel&page=` | — | `{ rows: LeaderboardRow[] }` | bearer |
+| `GET /leaderboard?mode=rating|dex|trainerLevel|towerStreak&page=` | — | `{ rows: LeaderboardRow[] }` (Phase D14: `towerStreak` ranks `player_streaks.best` desc, then `current`, then username, players with best > 0 only; every row carries `towerBest?` / `towerCurrent?`) | bearer |
 | `GET /players/:username` | — | `PublicProfile` (allow-list, §5.3) | bearer |
 | `GET /battle-pass` | — | `{ trainerExp, trainerLevel, claimed: number[], mythicalChoice: string | null, rewards: BattlePassReward[] }` | bearer |
 | `POST /battle-pass/claim` | `{ level }` | `{ claimed, inventory, money, creaturesAdded }` | bearer |
@@ -2151,7 +2193,7 @@ export const auditLog = pgTable('audit_log', {
 }, (t) => [index('audit_log_actor_idx').on(t.actorId, t.at), index('audit_log_action_idx').on(t.action, t.at)]);
 ```
 
-`players.x/z` use `real`; `real` is imported from `drizzle-orm/pg-core` alongside the others. `bigserial` likewise. `BattleStartSnapshot` is `{ readonly zoneId: string; readonly terrain: string; readonly sides: readonly [unknown, unknown]; readonly weather?: string; readonly slots?: 2 }` (`slots` — Phase D6: a doubles battle) (the two `createBattle` sides, deep-copied before the call); with it a battle replays from the row alone — `createBattle({ id, format, seed, ...start })` then `resolveTurn` over `actions` reproduces `final_digest`. The original table (seed + actions only) could not replay without the starting parties. <!-- amended 2026-09-25: migration 0001_battle_replay, packages/server IMPLEMENTATION-NOTES S10/P6, packages/persist IMPLEMENTATION-NOTES "Server part 2 additions" --> There is no `party_slots`/`box_slots` table: the `(owner_id, slot_kind, slot_index)` unique index on `creature_instances` *is* the slot model, and a reorder is one transaction that rewrites `slot_index` for the affected rows.
+`players.x/z` use `real`; `real` is imported from `drizzle-orm/pg-core` alongside the others. `bigserial` likewise. `BattleStartSnapshot` is `{ readonly zoneId: string; readonly terrain: string; readonly sides: readonly [unknown, unknown]; readonly weather?: string; readonly slots?: 2; readonly noExp?: true }` (`slots` — Phase D6: a doubles battle; `noExp` — Phase D14: a battle tower fight) (the two `createBattle` sides, deep-copied before the call); with it a battle replays from the row alone — `createBattle({ id, format, seed, ...start })` then `resolveTurn` over `actions` reproduces `final_digest`. The original table (seed + actions only) could not replay without the starting parties. <!-- amended 2026-09-25: migration 0001_battle_replay, packages/server IMPLEMENTATION-NOTES S10/P6, packages/persist IMPLEMENTATION-NOTES "Server part 2 additions" --> There is no `party_slots`/`box_slots` table: the `(owner_id, slot_kind, slot_index)` unique index on `creature_instances` *is* the slot model, and a reorder is one transaction that rewrites `slot_index` for the affected rows.
 
 ### 5.2 Repository interfaces
 
@@ -2322,7 +2364,15 @@ export function hashRefreshToken(token: string): string;   // sha-256 hex; the o
 export interface AuditRepo { write(tx: Tx, e: { actorId: string | null; action: string; subject: string | null; detail: Record<string, unknown> }, now: Date): Promise<void> }
 
 export function escapeLike(s: string): string;   // escapes \ % _ ; callers add their own wildcards and `ESCAPE '\'`
-export interface Repos { players: PlayerRepo; creatures: CreatureRepo; inventory: InventoryRepo; progress: ProgressRepo; market: MarketRepo; social: SocialRepo; history: HistoryRepo; battlePass: BattlePassRepo; auth: AuthRepo; audit: AuditRepo }
+/** Phase D14 (migration 0004_player_streaks): `player_streaks (player_id uuid PK → players cascade, current int ≥ 0, best int ≥ current, updated_at)`, index on best. */
+export interface StreakRepo {
+  get(tx: Tx, playerId: string): Promise<{ current: number; best: number }>;                     // 0 / 0 without a row
+  byPlayers(tx: Tx, ids: readonly string[]): Promise<Map<string, { current: number; best: number }>>;
+  recordWin(tx: Tx, playerId: string, now: Date): Promise<{ current: number; best: number }>;    // upsert current + 1, best = greatest(best, current + 1)
+  endRun(tx: Tx, playerId: string, now: Date): Promise<{ current: number; best: number }>;       // current = 0, best kept
+  leaderboard(tx: Tx, page: number, pageSize: number): Promise<{ player: PlayerRow; current: number; best: number }[]>;   // best > 0, banned excluded, best desc, current desc, username_lower
+}
+export interface Repos { players: PlayerRepo; creatures: CreatureRepo; inventory: InventoryRepo; progress: ProgressRepo; market: MarketRepo; social: SocialRepo; history: HistoryRepo; battlePass: BattlePassRepo; auth: AuthRepo; audit: AuditRepo; streaks: StreakRepo }
 /** Repositories are stateless (every method takes `tx`); `db` is returned alongside so one handle can be carried around. */
 export function createRepos(db: Db): Repos & { readonly db: Db };
 ```
@@ -4530,6 +4580,8 @@ Each screen: information hierarchy in one paragraph, then its states. All `/play
 
 **20.9.2 World** (`/play`). The canvas is the screen. HUD per §20.6. DOM elements present: a 56 px top bar with the nav (`Party · Box · Dex · Shop · Social · Guild · Market · Pass · Settings`, `NavLink`s with unread counts), the money counter (mono, tabular), the trainer level pip; the chat input (hidden until `T`); toasts bottom-right; `DialogueBox` bottom-centre (`--t-body-lg`, speaker in display face, `Enter`/`E` advances, ≤ 3 lines visible, remaining count shown). Empty: a zone with no other players shows nothing extra. Loading: `BootScreen` (§20.10.4) only before the first `/me`; a zone change shows only the banner. Error: `ConnectionOverlay` after 2 s disconnected (§20.3.4).
 
+**20.9.2a Tutorial** (Phase D12) <!-- amended 2026-10-06: Phase D12 -->. Prof. Wynn's step card (`world/TutorialCard.tsx`) over the live world, left edge under the HUD party strip, `--glass` card with the step count (`n of 7`), a title, her line, the step's key glyphs from the player's own bindings (`kbd`), and a ghost "Skip tutorial". Steps, each completed by a real event the client already sees, latched whenever it happens (a step done early is ticked off when it comes up): walk 8 m (the own `PlayerState` across state patches; jumps over 6 m and room changes do not count) → `met_wynn` (the first_witness beat) → the party panel opened → a wild battle started → a catch (`outcome.winner === 'caught'`, or a second `dexCaught` entry) → a win (`caught` or the player's side) → a heal (`POST /heal` from the party screen or the healer). The card is never modal and takes no keys; it hides while a battle, dialogue or `/play/*` panel is up or the HUD is off; it enters with a 180 ms slide that reduced motion removes. Progress persists per account under `ewa.tutorial` (zustand `persist`, localStorage); finishing the last step (one closing toast) or skipping sets `done` and it never shows again for that account. An account already past the opening — any badge, or a flag set by a story beat after `mire_rival` — is marked done on sight. No story beat, flag or message changes.
+
 **20.9.3 Party** (`/play/party`). Left 60 %: six `CreatureCard variant="row"` in slot order (sprite, name/nickname, level, `HpBar`, status, held item icon), keyboard-reorderable (`Alt+↑/↓`) and pointer-draggable; reorder commits with `POST /party/reorder` on drop (optimistic order, revert on error). Right 40 %: the selected creature's detail — stats (`calcStat` from core for display, marked "at level"), four `MoveButton`s with PP, ability + held item selects (`POST /creature/:id/setup`), nickname (`POST /creature/:id/nickname`), favourite/lock toggles (`POST /creature/:id/flags`), release (`danger`, confirm modal, refused when locked). Empty: impossible (party ≥ 1). Loading: none (store). Error: toast.
 
 **20.9.4 Box** (`/play/box`). A 10-column tile grid (`CreatureCard variant="tile"`, 72 px) paged 60 per page (`?page=`), with a sticky filter row (search by name/species, type, sort by level/dex/recent). The party strip is pinned at the top of the panel so deposit/withdraw is one drag or two clicks (`POST /party/withdraw`/`deposit`, `POST /party/swap` when the party is full and a slot is targeted). Selecting a tile shows the same detail column as Party. Empty: "Your box is empty — creatures you catch with a full party arrive here." Loading: skeleton grid. Error: toast + retry button in the panel header.
@@ -4545,6 +4597,10 @@ Each screen: information hierarchy in one paragraph, then its states. All `/play
 **20.9.9 Marketplace** (`/play/market`, `/play/market/:listingId`). Filter bar bound to URL params (`search, variant, isAlpha, isShiny, levelMin, levelMax, sort, page`; `isShiny` Phase D4); results as `Table` rows (sprite, species/level, variant/alpha/shiny chips, current bid, buy-now, time left mono, seller). Tabs `Browse · My listings · My bids`. The detail route shows the creature card, full bid history, a bid field pre-filled with `max(startingBid, currentBid + 50)` and buttons `Bid` / `Buy now` / (own) `Cancel`; list-from-box modal picks a box creature, starting bid ≥ 100, optional buy-now, duration `12 | 24 | 48` h; fee 5 % shown before confirm. Rate-limit responses (`5/h list`, `30/h bid`) render as the exact remaining-time caption. Empty: "No listings match — widen the filters." Loading: skeleton rows; the previous page stays visible under a 0.6 opacity while a new page loads. Error: retry.
 
 **20.9.9a Quest journal and achievements** (`/play/quests`, Phase B3 + D5). Two tabs (`?tab=` absent = Story, `achievements`). Story: the `STORY_QUESTS` grouped by act (cards with objectives, rewards, Track, Claim), claimed ones in a compact list. Achievements: the `ACHIEVEMENTS` rows — ready ones as cards with Claim (`POST /quests/claim`, the same route action), the rest as one row each (title, summary, a bar and `value / target`: a single-objective milestone reads its count, a multi-objective one the objectives done), then the earned list. The tab labels carry the ready counts; the panel eyebrow sums both. Achievements never drive the untracked HUD hint (a tracked one does). The profile (`/play/profile`) lists the same rows earned-first with `N of 30 earned`. Shinies (Phase D4): a shiny spawn's billboard sparkles (`SpriteDescriptor.isShiny`), its label reads `shiny …`, a shiny battler's switch-in plays `shiny_sparkle` with the line “… sparkles — it’s a shiny!”, and `CreatureCard` shows a sparkle badge.
+
+**20.9.9b Rankings and the ranked queue** (`/play/rankings`, Phase C4 + D13) <!-- amended 2026-10-06: Phase D13 -->. Above the leaderboard tabs, the ranked block (`screens/RankedPanel.tsx`): heading "Ranked battle" with the player's rating (mono, from the session), then one of three states driven only by the server's `rankedStatus` (`state/ranked.ts`, written by the message router, reset when the world connection ends): idle — one line of copy and a primary "Find a match" (`rankedQueue { join }`), disabled with a caption in a battle, with no creature able to battle, or offline; queued — "Searching" elapsed `m:ss` (counted locally from `waitedMs`) and "Rating window ±N" (`rankedWindow(elapsed)`), and "Leave queue" (`rankedQueue { leave }`); matched — "Match found: <name> (<rating>). Heading to the arena." (a match that has not become a battle after 30 s reads as idle again). Toasts: match found (success), `busy` / `party` refusals (warn), `cancelled` (info); `left` and `started` are silent. The battle itself is the normal pvp battle (§20.5).
+
+**20.9.9c Post-game: league rematches and the battle tower** (Phase D14) <!-- amended 2026-10-06: Phase D14 -->. Rematches: `scene/dialogue.ts` `rematchOffer(leagueId, flags, badges)` mirrors the server's `leagueBeaten` (the champion flag held and the trainer beaten — gym: its badge; Warden / Champion: its `setsFlags`, plus the champion flag for Zeon); `gymPlan` then opens the rematch's `pre` lines and challenges on finish (the client cannot see the 1-day cooldown — a rematch asked too soon is refused by the server's toast after the lines). A won rematch (`rematchOfBattle(state, seat)`: the NPC party equals the `LEAGUE_REMATCH` team) shows the rematch's `post` lines after the result card, and the result card's concession line is `post[0]`; no badge glyph. The tower: the league hall foyer's Tower Attendant is a `tower` interactable (range 2.5); before the Champion it only talks; after, paging past its line opens `ui.modal 'tower'` (`world/TowerModal.tsx`, rendered only while no battle is open). With no run (`ui.tower null`) it is the picker — the party as `CreatureCard` rows, three picks in click order (a numbered corner tag; a fourth click is ignored, a second click un-picks), "Start run" sends `tower { start, picks }`. The message router writes every `towerState` to `ui.tower`: `fighting` closes the modal (the battle covers the world), `won` / `lost` / `ended` open it — between fights it shows the streak and best (mono), the fight just cleared ("Set s · fight f of 7"), the set reward when one was paid, the tower team, and Next fight (`tower next`) / Retire (`tower quit`); a lost or retired run shows its summary (run wins, best) and Close clears `ui.tower`. During a tower fight `TowerStreak` sits top-left under the top bar: "Battle tower · Set s · fight f of 7 · Streak n" on a `--glass` strip, no motion. The NPC side's name is `TOWER.trainerName`. Rankings (§20.9.9b) gain a fourth tab, Tower (`?mode=towerStreak`), whose leading column is the best streak (`towerBest`).
 
 **20.9.10 Battle Pass** (`/play/pass`). Header: trainer level (display face) and a progress bar to the next 1 000 exp with the exact `exp / 1000` in mono. A horizontal track of 100 reward tiles (virtualised, 10 visible), each `claimable · claimed · locked`; claimable tiles pulse once (160 ms) on entry. Level 50 shows the mythical choice as two `CreatureCard variant="showcase"` (`lumyth / noxmyth`) with "Choose once" — `POST /battle-pass/mythical-choice`. Claim → `POST /battle-pass/claim` → `applyInventoryDelta`. Empty: never. Loading: skeleton track. Error: retry.
 
@@ -4693,6 +4749,7 @@ Behaviours of `@colyseus/core` 0.18.14 / `@colyseus/schema` 5.0.32 this file dep
 | `rooms/raidSession.ts` | `RaidSession` (§30.4.7). |
 | `rooms/tradeSession.ts` | `TradeSession` (§30.8.3). |
 | `rooms/challengeStore.ts` | Pure `ChallengeStore` (§30.4.5) — the legacy `createChallengeStore` shape, ported. |
+| `rooms/matchQueue.ts` | Phase D13 `MatchQueue` (presence-keyed ranked queue + leased matcher), `pairUp`, `RankedArena` (§30.4.5a). |
 | `rooms/storyBeats.ts` | Beat firing and completion on `interact` (§30.4.8); uses content's `nextStoryBeat`/`beatDoneFlag`/`harvestStateFor`. |
 | `rooms/presenceStore.ts` | Pure `PresenceStore` (§30.7.4). |
 | `rest/app.ts` | `buildRest(deps): FastifyInstance` — plugins, hooks, route registration. |
@@ -5129,8 +5186,8 @@ A transaction failure rolls everything back and the session keeps `before` as it
 |---|---|---|---|---|
 | `wild` | `engageSpawn` accepted | `kind: 'wild'`, one battler projected from the `SpawnRecord` (species default moves at that level via `learnableMoves`, `ability = record.ability` — rolled at spawn, spine §3.2 / roster-coverage A3, reconciled 2026-09-18 — `heldItem null`, `hp = maxHp`), `canFlee` on side 0, `canCatch` on side 0 | money 0; `trainerExp: TRAINER_EXP.wildWin` (+ `catch`/`catchNewSpecies` on catch; the catch ends the battle as `caught`, which is also a win for exp purposes) | — |
 | `trainer` | `interact { kind: 'npc', targetId }` on a `TrainerDef` within 3 m; refused if `story_flags` has `trainer:<id>:beaten` and (`rematchDays === null` or fewer than `rematchDays` days since the flag was set) | `kind: 'npc'`, `trainerId = TrainerDef.id`, team from content (same projection rule) | `money: TrainerDef.reward` (rematch: `floor(reward / 2)`); `trainerExp: trainerWin`; sets flag `trainer:<id>:beaten`; quest `defeatTrainer`/`winBattles` advance | — |
-| `league` | `interact { kind: 'gym', targetId: LeagueTrainer.id }` within 4 m of the gym marker; gyms require the previous badge in order (order 1 needs none); elite require all 8 badges and the previous elite (order); champion requires the 3 elite flags. Refused with `toast` when already beaten (no rematch in v1) | `kind: 'npc'`, `trainerId = LeagueTrainer.id`, team verbatim from content including `nickname/ability/heldItem` | `money: reward`; `badge: LeagueTrainer.badge` via `awardBadge` (audit `badge.award`); `trainerExp: gymWin/eliteWin/championWin` by stage; `setFlags(setsFlags)`; `championWin` additionally sets `champion:zeon:beaten` — the id is `'zeon'`, and the check anywhere in server code is `=== 'zeon'` | — |
-| `pvp` | challenge handshake (§30.4.5) | `kind: 'player'` | `money 0`, `trainerExp: pvpWin` / `pvpLoss` to loser; `ratingDelta` from `eloDelta(winner.rating, loser.rating)` applied with `applyRating` to both, floor 0 (repo); `rankedMatches + 1`; draw → `eloDrawDelta` | yes |
+| `league` | `interact { kind: 'gym', targetId: LeagueTrainer.id }` within 4 m of the gym marker; gyms require the previous badge in order (order 1 needs none); elite require all 8 badges and the previous elite (order); champion requires the 3 elite flags. Refused with `toast` when already beaten — until `champion:zeon:beaten` is held: then an already-beaten trainer (gym: badge held; Warden / Champion: its `setsFlags`) takes a **rematch** (Phase D14) unless `league:<id>:rematchAt` was set less than `LEAGUE_REMATCH_COOLDOWN_DAYS` (1) ago (toast "… wants a rest. Come back tomorrow for a rematch.", `error leagueLocked`) | `kind: 'npc'`, `trainerId = LeagueTrainer.id`, team verbatim from content including `nickname/ability/heldItem` | `money: reward`; `badge: LeagueTrainer.badge` via `awardBadge` (audit `badge.award`); `trainerExp: gymWin/eliteWin/championWin` by stage; `setFlags(setsFlags)`; `championWin` additionally sets `champion:zeon:beaten` — the id is `'zeon'`, and the check anywhere in server code is `=== 'zeon'`. **Rematch** (Phase D14): team = `LEAGUE_REMATCH[id].team` (verbatim, same projection), `money: LeagueRematch.reward` (×1.5), the same stage `trainerExp`, **no** badge, **no** `setsFlags`; `league:<id>:rematchAt` is cleared and re-set in the same transaction (its set time = this win) | — |
+| `pvp` | challenge handshake (§30.4.5) or a ranked match (§30.4.5a) | `kind: 'player'` | `money 0`, `trainerExp: pvpWin` / `pvpLoss` to loser; `ratingDelta` from `eloDelta(winner.rating, loser.rating)` applied with `applyRating` to both, floor 0 (repo); `rankedMatches + 1`; draw → `eloDrawDelta` | yes |
 | `raid` | §30.4.7 | shared boss `Side` | per participant: `trainerExp: raidClear`, `money: 50 * bossLevel`, catch window | — |
 
 Side 0 is always the human player (pvp: the challenger). Losing a `trainer`/`league`/`wild` battle: every party creature keeps its post-battle `hp` (possibly 0); no money is lost (the legacy "blackout fee" is not carried); the client's `20-client.md` sends the player to the last healer on its own initiative via `POST /heal`, which requires being in a `healer: true` zone — so a wiped party in a route means walking back, which is the intended cost.
@@ -5158,6 +5215,15 @@ export class ChallengeStore {
 3. `challengeReply { fromId, accept: true }` → `store.consume(fromId, me)` must be true; then **re-check every condition of step 1 again against current state** (both present in this room, both not `inBattle`, both not trading, still within 12 m) — a player who walked away, entered a wild battle or disconnected during the 45 s makes the accept fail with `challengeResult { result: 'unavailable' }` to the accepter and nothing to the challenger. Only then `battles.startPvp(challenger, accepter)`: lock both players in one tx (ascending uuid) to read parties; `createBattle` with `seed = createRng(`${battleId}`).snapshot()`; write `BattleSummary`; send `battleStart` to both seats with `seat` 0/1.
 4. `onLeave` of either party while pending → `dropFor` → the other side gets `'unavailable'`.
 
+### 30.4.5a Ranked queue (Phase D13) <!-- amended 2026-10-06: Phase D13 -->
+
+`rooms/matchQueue.ts`. The queue is keyed by player in Colyseus presence, not by room: the hash `ewa:ranked:queue` (field = playerId, value = `{ playerId, name, rating, joinedAt }`), so a queued player keeps their place across zone crossings, shards and processes. Every process ticks a matcher every `RANKED_TICK_MS = 1000`; only the holder of the lease `ewa:ranked:leader` (5 s, refreshed each tick) pairs players.
+
+1. `rankedQueue { action: 'join' }` → the room reads the player row (rating) and party. Refused with `rankedStatus { state: 'idle', reason }`: `busy` (in a battle, trade or raid, mid-crossing, or already in an arena match), `party` (no party creature with `hp > 0`). Otherwise the entry is written (a second join keeps the first entry and its wait) and the player gets `rankedStatus { state: 'queued', waitedMs, window }`. `leave` removes the entry → `idle / left`. A real leave of the room (disconnect, not a crossing) and the start of any other battle remove the entry (the latter answers `idle / busy`).
+2. **Window**: `rankedWindow(waitedMs) = min(400, 100 + 50 · floor(waitedMs / 10 000))` (protocol `RANKED_WINDOW`). Two entries pair when `|Δrating| ≤ min(window(a), window(b))`. `pairUp` walks the entries oldest first; each takes the unpaired entry with the smallest gap (ties: queue order). A gap above 400 never matches. Entries whose player has no presence key are dropped as stale.
+3. **Match**: both entries are removed; the arena room is `pickZoneRoom(RANKED_ARENA.zoneId)` (`mirevale` — the one town without a badge gate — spots at (19, 16) and (25, 16), snapped walkable). The matcher publishes the match to `ewa:ranked:arena:<roomId>` (the arena room records it, expiry `RANKED_ARRIVAL_MS = 20 000`), then broadcasts `ewa:ranked:match`. The room hosting each player (not the destination side of a crossing in progress) sends `rankedStatus { state: 'matched', opponent }` and moves the player: a teleport when it is the arena room, else the §30.2.7 crossing from step 2 into that exact room (`seatHandover(…, roomId)`). A player who became busy stops the match: `idle / busy` to them, `ewa:ranked:cancel` to the rest (the other player gets `idle / cancelled`).
+4. **Start**: the arena room's tick (step 9b) starts the match once both players are present with no crossing pending (handover acked) and not in a battle: `battles.startPvp(side 0 = the longer-waiting player, side 1)` at the midpoint — format `pvp`, so Elo applies exactly once per player through §30.4.4; both get `idle / started` after `battleStart`. A start refused for `noUsableParty` answers `idle / party` to that player and `idle / cancelled` to the other. A match not started by its expiry, or cancelled, sends `idle / cancelled` to whoever stands in the arena room.
+
 ### 30.4.6 Trainer NPC and league dialogue
 
 `interact { kind: 'npc' }` on an `NpcDef` returns nothing over the wire for a plain conversation — lines are content and the client renders them (`when`/`until`/`react` flags come from `GET /me` and `progressionDelta`) — **unless** the NPC is the `speaker` of the player's next story beat in this zone, in which case §30.4.8 runs. The server otherwise acts only on interacts that change state: `TrainerDef` (battle), `gym` (league battle, or a beat whose `speaker` is the gym's league id — §30.4.8 first), `item` (ground item: once per player, flag `item:<zone>:<id>` in `story_flags`, `inventoryDelta`), `healer` (no-op over the room; healing is `POST /heal`), `shop` (no-op; `GET /shop/:zoneId`), `warp` (`ZoneDef.warps[id]`: authoritative teleport to `(toX, toZ)` snapped with `nearestWalkable`, ≤ 3 m check against `(x, z)`; the `seq` echo carries the client), `obstacle` (Phase D10, `ZoneDef.obstacles[id]`, ≤ `OBSTACLE_INTERACT_M` = 3 m from its centre: refused once cleared (`alreadyCleared`), without the kind's HM (`needHm`) or without a party member of one of `OBSTACLE_TYPES[kind]` (`needType`, fainted members count) — each with content's `obstacleRefusalText` as a warn toast; otherwise `obstacle:<zone>:<id>` and the hidden item (once) in one transaction, then `inventoryDelta`, `progressionDelta { flags }` and a success toast; movement accepts the stamped disc for that player from the next input), `static` (a `LegendaryStatic` battle — `format: 'wild'`, `canFlee: false` on the player side (the legendary cannot be run from) and `canCatch: true`; the record's `when` gate is re-checked here, the static is refused once its `flag` is held, and `flag` is set on win **or** catch). Every interact checks distance ≤ 3 m against the content coordinates and AOI membership first; an interact on an entity outside the 3×3 → `error { code: 'notFound' }`. <!-- reconciled 2026-09-18: warps have data (spine §3.1); static rules per story-bible §7.2.1 -->
@@ -5176,6 +5242,30 @@ On `interact { kind: 'npc' | 'gym', targetId }` (distance and AOI checks passed)
 
 
 `ZoneState.harvestState` is never written by this path. Two players in one room can therefore see the same route as `intact` and `harvested`; each renders its own `harvestStateFor` (spine §3.5). Beats are idempotent per player through the done flag; `authority.test.ts` A17 asserts a forged `interact` on a speaker whose beat's `need` is unmet writes nothing.
+
+### 30.4.9 Battle tower (Phase D14) <!-- amended 2026-10-06: Phase D14 -->
+
+`packages/server/src/rooms/towerSession.ts` (`TowerSessions`, one per zone room; only Solenne holds `TOWER.attendantId`, the
+league hall foyer's interior NPC — elsewhere every `tower` message is refused `tooFar`). One run per player, in memory:
+
+1. `tower { action: 'start', picks }`: refused (`toast` + `error { notAllowed, detail }`) unless `champion:zeon:beaten` is held
+   (`locked`), no run is active (`running`), the player is in no battle / trade (`inBattle`), within `TOWER_RANGE_M` 3 m of the
+   attendant (`tooFar`), and `picks` are three distinct party creature ids (`badPicks`). Then `player_streaks.current = 0`
+   (`endRun`: a run starts at 0) and fight 1 starts.
+2. A fight: the picks as `capLevel(creature, TOWER.levelCap)` copies with synthetic `tower:<id>` ids (fully healed; the stored
+   rows are never written — `isPersistedId` skips them), against `towerTeam(seed = <runId>:<wins>, wins)` — `teamSize` distinct
+   species of `TOWER.pools[towerTier(wins)]`, Lv 50, seeded ability, level-up moves. `BattleCoordinator.startTower`: format
+   `trainer`, `CreateBattleOpts.noExp` (rides the start snapshot), `trainerId = TOWER.trainerId`, no inventory snapshot (items
+   refused `noItem`), no flee, no catch. `towerState { phase: 'fighting' }`.
+3. The end transaction (§30.4.3 step g) writes, instead of trainer rewards: a win → `streaks.recordWin` and, when the new
+   `current` is a multiple of `TOWER.setLength` (7), `towerSetReward(current / 7)` — money + items in the same transaction,
+   audit `tower.reward`, carried in `RewardsSummary.money/items`; a loss or a draw → `streaks.endRun` (current 0, best kept).
+   No exp, no trainer flag, no quest `win`. `towerState { phase: 'won', reward }` or `{ phase: 'lost' }` (run over).
+4. `tower { action: 'next' }` (within 8 m) → the next fight; `tower { action: 'quit' }` between fights → `endRun`, `towerState
+   { phase: 'ended' }`. Leaving the room (or a void / abandoned tower battle) ends the run the same way; a pick that left the
+   party between fights ends it with a toast.
+
+`GET /leaderboard?mode=towerStreak` ranks `player_streaks.best` (§30.6.3).
 
 ### 30.4.7 Raids
 
@@ -5331,7 +5421,7 @@ The §4.7 table is the route table; this section only pins behaviours the table 
 - `/item/use`: `rareCandy` applies `applyExp(c, expToLevel(level + 1) - exp)`; `repel`/`lure` set a `presence` key `ewa:repel:<playerId>` with the step count that `SpawnDirector.engage` and the client-side encounter filter consult (repel: wild spawns below the lead's level refuse engagement — `'notFound'`-equivalent `toast`); `escapeRope` teleports to the zone's spawn point via the room (`presence.publish('ewa:teleport')`), only in a `route` zone.
 - `/shop/:zoneId` prices: `ConsumableDef.price`/`OrbDef.price` from content; `stock = zone.shop ?? SHOP_STOCK_DEFAULT` when `zone.shop !== null`, 404 when the zone has no shop. Sell = `sellPrice`. Held items (`ItemDef.price !== null`) are sold only in `solenne`.
 - `/players/:username`: `toPublic(row)` + showcase (≤ 3 `favorite` party members, `ownerId` nulled). Unknown → 404. Banned players return 404 too.
-- `/leaderboard`: top 100 by `rating` desc (ties by `peak_rating`, then `username_lower`), or by dex caught count, or `trainer_exp`; banned excluded; `page` of 25.
+- `/leaderboard`: top 100 by `rating` desc (ties by `peak_rating`, then `username_lower`), or by dex caught count, or `trainer_exp`, or (Phase D14 `towerStreak`) by `player_streaks.best` desc (then `current`, then `username_lower`; players with best > 0 only); banned excluded; `page` of 25. Every row carries `towerBest` / `towerCurrent`.
 - Admin: `GET /admin/players?q=` uses `ILIKE '%' || escapeLike(q) || '%' ESCAPE '\'` on `username_lower`; ban writes `banned_at/ban_reason`, revokes refresh tokens, publishes `ewa:kick` so every room drops the player within one tick, audit `admin.ban`. Admins cannot be banned (409).
 
 ### 30.6.4 Rate limits
@@ -5598,7 +5688,7 @@ Not preserved, on purpose: client-side badge awards laundered through `gymwin_<i
 - **Friend gifts, guild bank, guild chat, guild wars, weekly cups with party rules, mastery chains, profile cosmetics grid** (legacy `liveOps.js`). Titles/motto/body remain; the rest is not v1.
 - **Legacy exploration hotspots / roaming rares** — retired zone ids; the story bible supplies `LEGENDARY_STATICS` instead.
 - **Blackout money penalty on loss.** The walk back is the cost.
-- **Rematches for league trainers, PvP spectating, ranked seasons, matchmaking queue.** PvP is challenge-only in v1.
+- **PvP spectating, ranked seasons, matchmaking queue.** PvP is challenge-only in v1. (League rematches landed in Phase D14, §30.4.4 — amended 2026-10-06.)
 - **Prometheus/OpenTelemetry exporters.** JSON metrics at `/admin/metrics` and pino lines.
 - **`@fastify/rate-limit`.** Not installed; the pure `LIMITS` module is cluster-aware through `Presence` when Redis is present.
 - **Team preview hiding in PvP resync.** The full `BattleState` is sent to both seats (decided, spine §4.5).

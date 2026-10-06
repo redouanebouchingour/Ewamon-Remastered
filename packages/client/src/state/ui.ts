@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { Action, BattleFormat, BattleOutcome, BattleState, TypeName } from '@ewa/core';
-import type { RewardsSummary, TradeOffer } from '@ewa/protocol';
+import type { RewardsSummary, ServerMessageOf, TradeOffer } from '@ewa/protocol';
 
 /** `battleEnd` for the result card: display only (the rewards reached the session through the delta writers). */
 export interface BattleResult {
@@ -104,7 +104,10 @@ export interface BattleBanner {
   readonly text: string;
 }
 
-export type ModalKind = 'none' | 'evolve' | 'learnMove' | 'trade' | 'challenge' | 'raidLobby' | 'nickname' | 'release' | 'listing';
+export type ModalKind = 'none' | 'evolve' | 'learnMove' | 'trade' | 'challenge' | 'raidLobby' | 'nickname' | 'release' | 'listing' | 'tower';
+
+/** Phase D14 — the battle tower run as the server last described it (`towerState`); null = no run to show. */
+export type TowerUi = Omit<ServerMessageOf<'towerState'>, 'type'>;
 export type Connection = 'connected' | 'reconnecting' | 'offline';
 
 export interface TradeUi {
@@ -157,6 +160,8 @@ export interface UiState {
   /** the banner on screen; the next ones wait in `battleBannerQueue` */
   readonly battleBanner: BattleBanner | null;
   readonly battleBannerQueue: readonly BattleBanner[];
+  /** Phase D14: the battle tower run (written by the message router from `towerState`; cleared when its summary closes) */
+  readonly tower: TowerUi | null;
 
   setBattle(b: BattleUi | null): void;
   setDialogue(d: DialogueUi | null): void;
@@ -178,6 +183,7 @@ export interface UiState {
   dismissBattleBanner(id: number): void;
   /** drops the banner and the queue (the battle ended) */
   clearBattleBanners(): void;
+  setTower(t: TowerUi | null): void;
   reset(): void;
 }
 
@@ -199,6 +205,7 @@ const INITIAL = {
   battleIntro: null,
   battleBanner: null,
   battleBannerQueue: [] as readonly BattleBanner[],
+  tower: null,
 } as const satisfies Partial<UiState>;
 
 const now = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -239,6 +246,7 @@ export const useUiStore = create<UiState>()(
       set({ battleBanner: st.battleBannerQueue[0] ?? null, battleBannerQueue: st.battleBannerQueue.slice(1) });
     },
     clearBattleBanners: () => set({ battleBanner: null, battleBannerQueue: [] }),
+    setTower: (tower) => set({ tower }),
     reset: () => set({ ...INITIAL }),
   })),
 );

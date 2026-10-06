@@ -113,6 +113,7 @@ export function createBattle(o: CreateBattleOpts, content: ContentIndex): TurnRe
     rng: rng.snapshot(),
     ended: null,
     zoneId: o.zoneId,
+    ...(o.noExp === true ? { noExp: true as const } : {}),
   };
   const ctx = makeCtx(state, content);
   // Phase D7: ambient zone weather (turns 0 = no countdown); announced before the leads' switch-in hooks

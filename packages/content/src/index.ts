@@ -3,7 +3,7 @@
  * Nothing here is loaded at runtime from disk or network: it is a compiled module.
  */
 import type { AbilityDef, ConsumableDef, ContentIndex, ItemDef, MoveDef, OrbDef, SpeciesDef } from '@ewa/core';
-import type { EncounterTable, LeagueTrainer, LegendaryStatic, QuestDef, StoryBeat, ZoneDef, ZoneId } from './types';
+import type { EncounterTable, LeagueRematch, LeagueTrainer, LegendaryStatic, QuestDef, StoryBeat, ZoneDef, ZoneId } from './types';
 import { SPECIES } from './data/species';
 import { MOVES } from './data/spreadMoves';
 import { ABILITIES } from './data/abilities';
@@ -15,7 +15,7 @@ import { TYPE_CHART } from './data/typechart';
 import { ZONES } from './data/zones';
 import { ENCOUNTER_TABLES } from './data/encounters';
 import { LEGENDARY_STATICS } from './data/statics';
-import { LEAGUE } from './data/league';
+import { LEAGUE, LEAGUE_REMATCH } from './data/league';
 import { QUESTS } from './data/quests';
 import { STORY } from './data/story';
 import { getHeightfield } from './heightfield';
@@ -55,6 +55,7 @@ export type {
   LocalPoint,
   LocalRect,
   LeagueStage,
+  LeagueRematch,
   LeagueTeamMember,
   LeagueTrainer,
   LegendaryStatic,
@@ -73,6 +74,7 @@ export type {
   StaticGate,
   StoryBeat,
   TimeOfDay,
+  TowerDef,
   TrainerDef,
   ValidationResult,
   ValidationStats,
@@ -123,7 +125,18 @@ export {
   VARIANT_CHANCE,
 } from './data/encounters';
 export { LEGENDARY_IDS, LEGENDARY_STATICS, MYTHICAL_IDS } from './data/statics';
-export { BADGES, LEAGUE, LEAGUE_STORY_GATES } from './data/league';
+export {
+  BADGES,
+  LEAGUE,
+  LEAGUE_REMATCH,
+  LEAGUE_REMATCH_COOLDOWN_DAYS,
+  LEAGUE_REMATCH_LEVELS,
+  LEAGUE_REMATCH_REWARD_MULTIPLIER,
+  LEAGUE_STORY_GATES,
+  POSTGAME_FLAG,
+  leagueRematchFlag,
+} from './data/league';
+export { TOWER, towerSetReward, towerTier } from './data/tower';
 export { QUESTS } from './data/quests';
 export { ACHIEVEMENTS, ACHIEVEMENT_IDS, isAchievement } from './data/achievements';
 /** Phase D5: the story quests (QUESTS without the achievements). */
@@ -330,6 +343,11 @@ export function staticsFor(zoneId: ZoneId): readonly LegendaryStatic[] {
 }
 export function league(id: string): LeagueTrainer {
   return must(leagueById, 'league trainer', id);
+}
+const rematchById: ReadonlyMap<string, LeagueRematch> = new Map(LEAGUE_REMATCH.map((r) => [r.leagueId, r]));
+/** Phase D14: the league trainer's post-game rematch (throws RangeError on an unknown id). */
+export function leagueRematch(leagueId: string): LeagueRematch {
+  return must(rematchById, 'league rematch', leagueId);
 }
 export function quest(id: string): QuestDef {
   return must(questById, 'quest', id);

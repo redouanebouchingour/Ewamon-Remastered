@@ -220,6 +220,8 @@ export interface BattleStartSnapshot {
   readonly weather?: string;
   /** Phase D6: 2 for a doubles battle (createBattle `slots`); absent = singles */
   readonly slots?: 2;
+  /** Phase D14: true for a battle tower fight (createBattle `noExp`); absent otherwise */
+  readonly noExp?: true;
 }
 
 export interface TradedCreatureSummary {

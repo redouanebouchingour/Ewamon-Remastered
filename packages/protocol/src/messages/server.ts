@@ -69,7 +69,22 @@ export interface ChallengeFailReason {
 /** Where each of an `inventoryDelta`'s `creaturesAdded` was placed, by creature id (additive, optional). */
 export type CreaturePlacement = 'party' | 'box';
 export type ToastLevel = 'info' | 'success' | 'warn';
+/**
+ * Phase D13 ranked queue. `idle` reasons: `left` (the player left the queue), `busy` (in a battle, trade, raid or
+ * crossing), `party` (no creature able to battle), `cancelled` (the match fell through: the opponent left, got busy or
+ * did not reach the arena in time), `started` (the ranked battle began).
+ */
+export const RANKED_STATES = ['idle', 'queued', 'matched'] as const;
+export type RankedState = (typeof RANKED_STATES)[number];
+export const RANKED_IDLE_REASONS = ['left', 'busy', 'party', 'cancelled', 'started'] as const;
+export type RankedIdleReason = (typeof RANKED_IDLE_REASONS)[number];
 export type StoryBeatPhase = 'start' | 'complete';
+/**
+ * Phase D14 battle tower: `fighting` (a fight just started), `won` (awaiting `tower next` / `quit`), `lost` (the run is
+ * over), `ended` (retired, or a pick left the party).
+ */
+export const TOWER_PHASES = ['fighting', 'won', 'lost', 'ended'] as const;
+export type TowerPhase = (typeof TOWER_PHASES)[number];
 
 // ---- the union -----------------------------------------------------------------------------------------
 
@@ -148,6 +163,37 @@ export type ServerMessage =
   /** §3.5 runtime: the client renders the beat's `lines` on 'start' and `after` on 'complete' */
   | { readonly type: 'storyBeat'; readonly beatId: string; readonly phase: StoryBeatPhase }
   | { readonly type: 'toast'; readonly level: ToastLevel; readonly text: string }
+  /**
+   * Phase D13: the player's ranked-queue state, sent in answer to every `rankedQueue` and on each change (matched,
+   * cancelled, started). `waitedMs` / `window` describe the queue at send time (0 when not queued); `opponent` is set
+   * while `matched`; `reason` only on `idle`.
+   */
+  | {
+      readonly type: 'rankedStatus';
+      readonly state: RankedState;
+      readonly rating: number;
+      readonly waitedMs: number;
+      readonly window: number;
+      readonly opponent: { readonly name: string; readonly rating: number } | null;
+      readonly reason: RankedIdleReason | null;
+    }
+  /**
+   * Phase D14: the player's battle tower run, on every change. `set` / `fight` (1-based, fight 1..7 of the set) name
+   * the fight starting, just won, lost, or next in line (`ended`); `streak` = player_streaks.current after the event (0
+   * once the run is over); `runWins` = the run's wins; `best` = the best streak ever; `picks` = the run's three party
+   * creature ids; `reward` = the set reward this win paid (every 7th win), else null.
+   */
+  | {
+      readonly type: 'towerState';
+      readonly phase: TowerPhase;
+      readonly streak: number;
+      readonly runWins: number;
+      readonly best: number;
+      readonly set: number;
+      readonly fight: number;
+      readonly picks: readonly string[];
+      readonly reward: { readonly money: number; readonly items: Readonly<Record<string, number>> } | null;
+    }
   | { readonly type: 'error'; readonly code: ServerErrorCode; readonly detail: string | null };
 
 export type ServerMessageType = ServerMessage['type'];
@@ -170,6 +216,8 @@ export const SERVER_MESSAGE_TYPES = [
   'storyBeat',
   'toast',
   'error',
+  'rankedStatus',
+  'towerState',
 ] as const satisfies readonly ServerMessageType[];
 
 // ---- zod (client-side validation) -------------------------------------------------------------------------
@@ -311,6 +359,26 @@ export const ToastMsg = z.object({
   level: z.enum(['info', 'success', 'warn']),
   text: z.string().min(1).max(200),
 });
+export const RankedStatusMsg = z.object({
+  type: z.literal('rankedStatus'),
+  state: z.enum(RANKED_STATES),
+  rating: z.number().int(),
+  waitedMs: z.number().int().min(0),
+  window: z.number().int().min(0),
+  opponent: z.object({ name: z.string().min(1).max(20), rating: z.number().int() }).nullable(),
+  reason: z.enum(RANKED_IDLE_REASONS).nullable(),
+});
+export const TowerStateMsg = z.object({
+  type: z.literal('towerState'),
+  phase: z.enum(TOWER_PHASES),
+  streak: z.number().int().min(0),
+  runWins: z.number().int().min(0),
+  best: z.number().int().min(0),
+  set: z.number().int().min(1),
+  fight: z.number().int().min(1),
+  picks: z.array(z.string().min(1).max(64)).max(6),
+  reward: z.object({ money: z.number().int().min(0), items: ItemCounts }).nullable(),
+});
 export const ErrorMsg = z.object({
   type: z.literal('error'),
   code: z.enum(SERVER_ERROR_CODES),
@@ -334,6 +402,8 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
   StoryBeatMsg,
   ToastMsg,
   ErrorMsg,
+  RankedStatusMsg,
+  TowerStateMsg,
 ]);
 
 /** Schemas by message type — the client picks one when it registers `room.onMessage(type, …)`. */
@@ -354,6 +424,8 @@ export const SERVER_MESSAGES = {
   storyBeat: StoryBeatMsg,
   toast: ToastMsg,
   error: ErrorMsg,
+  rankedStatus: RankedStatusMsg,
+  towerState: TowerStateMsg,
 } as const satisfies Record<ServerMessageType, z.ZodType>;
 
 export type ServerMessageParse =

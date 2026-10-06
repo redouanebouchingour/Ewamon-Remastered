@@ -73,6 +73,8 @@ export interface MState {
   zoneId: string;
   /** Phase D6: 2 in doubles, absent in singles */
   slots?: 2;
+  /** Phase D14: battle tower — no exp is awarded; absent otherwise */
+  noExp?: true;
 }
 
 export interface Ctx {
@@ -131,6 +133,7 @@ export function cloneState(s: BattleState): MState {
     zoneId: s.zoneId,
   };
   if (s.slots === 2) out.slots = 2;
+  if (s.noExp === true) out.noExp = true;
   return out;
 }
 
@@ -410,7 +413,7 @@ export function awardExp(ctx: Ctx, defeatedRef: Ref): void {
   const defeated = loser.party[defeatedRef.slot]!;
   const winnerSide = other(defeatedSide);
   const winner = ctx.st.sides[winnerSide];
-  if (winner.kind !== 'player') return;
+  if (winner.kind !== 'player' || ctx.st.noExp === true) return;
   const gain = expGain(speciesOf(ctx, defeated), defeated.creature.level, loser.kind !== 'wild');
   if (gain <= 0) return;
   for (let slot = 0; slot < winner.party.length; slot++) {

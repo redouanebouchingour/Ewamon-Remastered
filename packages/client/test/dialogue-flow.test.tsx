@@ -10,7 +10,7 @@
  */
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LEAGUE, STORY, beatDoneFlag, zone } from '@ewa/content';
+import { LEAGUE, STORY, beatDoneFlag, leagueRematch, zone } from '@ewa/content';
 import type { BadgeId } from '@ewa/content';
 import { gymPlan, leaguePostDialogue, leagueSpeaker, npcPlan, storyFlagSet, storyHint, trainerPlan } from '../src/scene/dialogue';
 import { useSessionStore } from '../src/state/session';
@@ -87,7 +87,10 @@ describe('interact plans (§20.4.7, §30.4.8 mirrored on the client)', () => {
     // the Champion: every Warden first
     expect(gymPlan('solenne', 'zeon', flags(beaten('veil', 'aurelia'), eight), eight)).toEqual(SEND);
     expect(gymPlan('solenne', 'zeon', flags(beaten('veil', 'aurelia', 'kirei'), eight), eight)).toEqual(pre('zeon'));
-    expect(gymPlan('solenne', 'zeon', flags(beaten('veil', 'aurelia', 'kirei', 'zeon'), eight), eight)).toEqual(SEND);
+    // Phase D14: once the Champion has fallen, every beaten league trainer offers its rematch lines instead
+    const all = flags(beaten('veil', 'aurelia', 'kirei', 'zeon'), eight);
+    expect(gymPlan('solenne', 'zeon', all, eight)).toEqual({ dialogue: { speaker: leagueSpeaker('zeon'), lines: leagueRematch('zeon').pre, beatId: null }, sendOnFinish: true });
+    expect(gymPlan('solenne', 'veil', all, eight).dialogue?.lines).toEqual(leagueRematch('veil').pre);
   });
 
   it('the story hint walks the Act I chain', () => {

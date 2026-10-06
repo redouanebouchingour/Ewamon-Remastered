@@ -862,3 +862,54 @@ and taught the Phase A interiors.
   the obstacle cells un-stamped): the digest is unchanged (`8880f1e7`), so the director code itself did not move.
 - Tests: `test/world-systems.test.ts` (10: pure bike / ridden water / cleared obstacles / rollFishing ×2; live surf,
   fishing ×2, Cut, bike).
+
+## Phase D12–D13 — ranked queue (2026-10-06)
+
+- **`rooms/matchQueue.ts`.** `MatchQueue` over a structural `RankedKV` (Colyseus `Presence`): entries in the hash
+  `ewa:ranked:queue` (field = playerId), so the queue spans zones / shards / processes and a crossing keeps the place.
+  `tick()` runs on every process each `RANKED_TICK_MS` (1 s, `server.ts` timer; tests also call
+  `runtime.matchQueue.tick()`), never re-entered; only the `ewa:ranked:leader` lease holder (5 s TTL, check-set-check like
+  the raid hotspot owner) pairs. Stale entries (no presence key → the process died) are dropped. Pure `pairUp` (oldest
+  first, smallest gap within BOTH players' `rankedWindow`) and `RankedArena` (the arena room's pending matches).
+- **Arena = Mirevale (deviation from the brief's "Solenne").** Solenne is gated by `ascend` and `onAuth` refuses a
+  seat in a gated zone, so most players could not be handed over there. `RANKED_ARENA` = mirevale (22, 16), spots ±3 m
+  in x (snapped walkable; the east green: no NPC, interior or link edge).
+- **Flow.** Match → arena room picked once (`pickZoneRoom`) → `ewa:ranked:arena:<roomId>` (the arena room records it,
+  20 s expiry) → `ewa:ranked:match` broadcast; each room hosting a player (skipping the destination side of a crossing,
+  `arrival` set) sends `rankedStatus matched` and teleports (same room) or runs `seatHandover(client, zone, spot, roomId)`
+  (new optional `roomId`: `zoneRoomById` instead of `pickZoneRoom`). Busy at match time → `idle busy` + `ewa:ranked:cancel`;
+  other rooms tell the other player `cancelled`; the arena room tells late arrivals in `rankedPass` (tick step 9b).
+  `rankedPass` starts the battle once both are present with `arrival` / `handover` null and no battle: plain
+  `battles.startPvp` (format `pvp`, Elo through the existing §30.4.4 path — once per player; no `ranked` flag on the
+  session: every pvp battle was already rated). Then `idle started` to both.
+- **Queue drops.** A real leave (`removePlayer` when not `movedAway`) leaves the queue and cancels an arena match the
+  player belongs to; `onBattleStart` drops every seat holder from the queue (`idle busy` if they were queued).
+- `LIMITS.rankedQueue` 4 / 5 s. `Runtime.matchQueue` (deps.ts), built in `boot` with the presence driver.
+- Not done: a rejoin of a reconnecting player inside the 20 s window keeps the entry (allowReconnection does not run
+  `removePlayer`), which is intended; a Redis multi-process run was not exercised (LocalPresence only in tests).
+- Tests: `test/ranked.test.ts` (10: 5 pure, 5 live incl. cross-zone handover + Elo once, arrival expiry, widening and cap).
+
+## Phase D14 — post-game (2026-10-06)
+
+- **League rematch.** `ZoneRoom.leagueBeaten(ud, id)`: the champion flag held and the trainer beaten (gym: badge; Warden /
+  Champion: `setsFlags`, plus the champion flag for Zeon). `leagueRefusal` returns null for it (before the Champion every
+  refusal is unchanged — the progression walker's league legs see no difference). The `gym` interact then reads
+  `flagSetAt(league:<id>:rematchAt)`: inside `LEAGUE_REMATCH_COOLDOWN_DAYS` → toast + `error leagueLocked`; otherwise
+  `startNpc({ kind: 'league', league, rematch: leagueRematch(id) })` — team and reward from the rematch row, `rematch: true`
+  on the session. The end transaction's rematch branch pays `npc.reward` and the stage exp, writes no badge and no
+  `setsFlags`, and clears + re-sets the cooldown flag (`setFlags` is insert-or-ignore, so the set time would otherwise stay
+  at the first win). Quest `defeatTrainer` / `win league` still advance.
+- **Battle tower.** `rooms/towerSession.ts` (`TowerSessions`, constructed by every room, only Solenne holds the
+  attendant): `start` / `next` / `quit` / `onLeave` / `onBattleEnd`; `towerTeam(seed, wins)` and `towerPosition(wins)` are
+  pure. `BattleCoordinator.startTower(seat, picks, foes, trainerId, at)` — format `trainer`, `tower: true`, `noExp`, no
+  inventory snapshot (items refused `noItem`), synthetic `tower:` ids (no creature row is written). The end transaction's
+  tower branch: `streaks.recordWin` / `endRun`, the set reward (money + items, audit `tower.reward`) every 7th win, carried in
+  `RewardsSummary.items` (the first non-empty use of that field); the result rides `session.towerResult` to the room's
+  `onEnd` → `TowerSessions.onBattleEnd`. A draw ends the run like a loss.
+- **Not done / honest limits:** the run lives in room memory — a server restart mid-run leaves `current` at its last value
+  until the next `start` resets it (the leaderboard's `best` is unaffected). The tower fight forms where the player stands
+  in the foyer (no arena room there). No live browser verification this phase.
+- `GET /leaderboard?mode=towerStreak` (`streaks.leaderboard`); every mode's rows gain `towerBest` / `towerCurrent`.
+- Tests: `test/postgame.test.ts` (10: rematch content, two coordinator rematches, pure tower rules, four coordinator tower
+  runs incl. 7 wins + reward + retire, a loss, items refused; two live cases through the room — gym rematch refusal /
+  cooldown / rematch team, tower start + leaderboard).

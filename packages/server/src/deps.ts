@@ -8,6 +8,7 @@ import type { Env } from './env';
 import type { Logger } from './log';
 import type { Mailer } from './mail/mailer';
 import type { MetricsRegistry } from './metrics';
+import type { MatchQueue } from './rooms/matchQueue';
 import type { PresenceMirror } from './rooms/presenceMirror';
 import type { PresenceStore } from './rooms/presenceStore';
 
@@ -58,6 +59,8 @@ export interface Runtime {
   readonly worldSeed: string;
   /** Phase C6: the resolved mailer (ServerDeps.mailer or the env default) */
   readonly mailer: Mailer;
+  /** Phase D13: the presence-keyed ranked queue (its matcher ticks every RANKED_TICK_MS on the lease holder) */
+  readonly matchQueue: MatchQueue;
 }
 
 export type RoomDeps = ServerDeps & Runtime;

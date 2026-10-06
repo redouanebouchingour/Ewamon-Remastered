@@ -189,7 +189,7 @@ export type HistoryTab = 'battles' | 'trades';
 
 const pageOf = (sp: URLSearchParams): number => Math.max(1, Math.floor(Number(sp.get('page') ?? '1')) || 1);
 
-/** `/play/rankings?mode=rating|dex|trainerLevel&page=` → GET /leaderboard (25 rows a page, banned players excluded). */
+/** `/play/rankings?mode=rating|dex|trainerLevel|towerStreak&page=` → GET /leaderboard (25 rows a page, banned players excluded). */
 export async function rankingsLoader({ request }: LoaderFunctionArgs) {
   const sp = new URL(request.url).searchParams;
   const raw = sp.get('mode');

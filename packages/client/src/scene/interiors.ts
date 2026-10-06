@@ -170,6 +170,8 @@ export function interiorInteractables(zoneId: ZoneId, flags: ReadonlySet<string>
     const p = pockets.find((x) => x.def.id === n.interior);
     if (n.role === 'shopkeeper') out.push(makeInteractable(`shop:${n.id}`, 'shop', n.x, n.z, 'Shop at', p?.def.label ?? n.name, key));
     else if (n.role === 'nurse') out.push(makeInteractable(`healer:${n.id}`, 'healer', n.x, n.z, 'Rest with', n.name, key));
+    // Phase D14: the battle tower attendant (Solenne's league hall foyer)
+    else if (n.role === 'tower') out.push(makeInteractable(n.id, 'tower', n.x, n.z, 'Talk to', n.name, key));
     else out.push(makeInteractable(n.id, 'npc', n.x, n.z, 'Talk to', n.name, key));
   }
   for (const p of pockets) {

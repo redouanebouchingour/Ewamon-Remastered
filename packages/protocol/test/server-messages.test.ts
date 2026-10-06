@@ -54,11 +54,13 @@ const EXAMPLES: { [K in ServerMessageType]: Extract<ServerMessage, { type: K }> 
   storyBeat: { type: 'storyBeat', beatId: 'first_witness', phase: 'start' },
   toast: { type: 'toast', level: 'warn', text: 'The way is barred. Badge required: Bloom' },
   error: { type: 'error', code: 'rateLimited', detail: null },
+  rankedStatus: { type: 'rankedStatus', state: 'matched', rating: 1012, waitedMs: 0, window: 0, opponent: { name: 'misty', rating: 1040 }, reason: null },
+  towerState: { type: 'towerState', phase: 'won', streak: 7, runWins: 7, best: 9, set: 1, fight: 7, picks: ['a', 'b', 'c'], reward: { money: 2500, items: { rarecandy: 1 } } },
 };
 
 describe('§4.4 ServerMessage', () => {
-  it('lists the 16 variants of the §4.4 block, and SERVER_MSG names them', () => {
-    expect(SERVER_MESSAGE_TYPES).toHaveLength(16);
+  it('lists the 18 variants of the §4.4 block (Phase D13 rankedStatus, Phase D14 towerState), and SERVER_MSG names them', () => {
+    expect(SERVER_MESSAGE_TYPES).toHaveLength(18);
     expect(Object.keys(SERVER_MESSAGES).sort()).toEqual([...SERVER_MESSAGE_TYPES].sort());
     expect(Object.keys(EXAMPLES).sort()).toEqual([...SERVER_MESSAGE_TYPES].sort());
     for (const t of SERVER_MESSAGE_TYPES) expect(SERVER_MSG[t]).toBe(t);

@@ -232,7 +232,8 @@ export interface InteriorTrainer {
   readonly reward: number;
 }
 
-export type InteriorNpcRole = 'shopkeeper' | 'nurse' | 'resident' | 'guide';
+/** Phase D14 adds `tower`: the battle tower attendant (Solenne's league hall foyer). */
+export type InteriorNpcRole = 'shopkeeper' | 'nurse' | 'resident' | 'guide' | 'tower';
 export interface InteriorNpc {
   readonly id: string;
   readonly name: string;
@@ -429,6 +430,42 @@ export interface LeagueTrainer {
   readonly setsFlags: readonly string[];
   /** Phase D6: fights 2-on-2 (see TrainerDef.doubles); optional, absent = singles */
   readonly doubles?: true;
+}
+
+/**
+ * Phase D14 post-game: a league trainer's rematch (`LEAGUE_REMATCH`, one per `LEAGUE` row). Challengeable only once the
+ * player holds `champion:zeon:beaten` and has beaten the trainer; at most once per `LEAGUE_REMATCH_COOLDOWN_DAYS`
+ * (the server's `league:<id>:rematchAt` flag, refreshed on each rematch win). No badge, no `setsFlags`; the reward is
+ * the trainer's ×1.5. Never a story gate.
+ */
+export interface LeagueRematch {
+  /** = LeagueTrainer.id */
+  readonly leagueId: string;
+  /** Lv 65–75; non-legendary unless the original team carries that legendary */
+  readonly team: readonly LeagueTeamMember[];
+  /** the rematch prompt (client dialogue before the fight) */
+  readonly pre: readonly string[];
+  /** after a won rematch (client dialogue + the result card's concession line) */
+  readonly post: readonly string[];
+  /** = round(LeagueTrainer.reward × 1.5) */
+  readonly reward: number;
+}
+
+/**
+ * Phase D14 battle tower (Solenne league hall foyer): 3v3 at a level cap, generated opponents by streak tier, a set of
+ * `setLength` fights with a reward at the end of each set. `pools[t]` serves streaks `[t × setLength, (t + 1) ×
+ * setLength)`; the last pool serves every longer streak.
+ */
+export interface TowerDef {
+  readonly levelCap: number;
+  readonly teamSize: number;
+  readonly setLength: number;
+  /** the interior NPC (role 'tower') players talk to */
+  readonly attendantId: string;
+  /** the NPC side's `trainerId` in every tower fight, and the name the client shows for it */
+  readonly trainerId: string;
+  readonly trainerName: string;
+  readonly pools: readonly (readonly string[])[];
 }
 
 export interface BadgeDef {

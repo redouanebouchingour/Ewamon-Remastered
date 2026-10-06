@@ -515,6 +515,8 @@ export interface Battler {
 }
 
 export function projectBattler(c: CreatureInstance, content: ContentIndex): Battler;
+/** Phase D14 (battle tower): level min(level, cap) (exp clamped to that level when lowered), full hp, no status, full pp; pure, the input untouched. */
+export function capLevel(c: CreatureInstance, cap: number, content: ContentIndex): CreatureInstance;
 
 export type BattleFormat = 'wild' | 'trainer' | 'league' | 'pvp' | 'raid';
 export type SideKind = 'player' | 'wild' | 'npc';
@@ -554,6 +556,7 @@ export interface BattleState {
   readonly ended: BattleOutcome | null;
   readonly zoneId: string;
   readonly slots?: 2;             // Phase D6: present only in a doubles battle; absent = singles (state byte-identical to pre-D6)
+  readonly noExp?: true;          // Phase D14: present only in a battle tower fight — no battler gains exp (CreateBattleOpts.noExp); absent = byte-identical to pre-D14
 }
 
 export interface CreateBattleOpts {
@@ -1074,6 +1077,32 @@ export const BADGES: readonly { readonly id: BadgeId; readonly name: string; rea
 
 `validate.ts`: 8 gyms with the 8 badges in `BadgeId` order; 3 elite; exactly one champion with `id === 'zeon'` (the legacy `defeatedSet.has("goku")` check is not reproducible here — there is no `goku`). Gym team levels are monotonically non-decreasing across `order`.
 
+**Post-game (Phase D14, amended 2026-10-06).** Everything below unlocks with `champion:zeon:beaten` (`POSTGAME_FLAG`) and is never a story gate:
+
+```ts
+export interface LeagueRematch {
+  readonly leagueId: string;                       // = LeagueTrainer.id; exactly one row per LEAGUE entry
+  readonly team: readonly LeagueTeamMember[];      // Lv 65–75 (LEAGUE_REMATCH_LEVELS); a legendary only if the original team carries it
+  readonly pre: readonly string[]; readonly post: readonly string[];   // the rematch prompt / the line after a won rematch
+  readonly reward: number;                         // = round(LeagueTrainer.reward × LEAGUE_REMATCH_REWARD_MULTIPLIER 1.5)
+}
+export const LEAGUE_REMATCH: readonly LeagueRematch[];          // 12 rows
+export const LEAGUE_REMATCH_COOLDOWN_DAYS = 1;                   // between two rematch WINS against the same trainer
+export function leagueRematchFlag(leagueId: string): string;     // `league:<id>:rematchAt` — server bookkeeping, cleared + re-set on every rematch win so its set time moves
+export const POSTGAME_FLAG = 'champion:zeon:beaten';
+export interface TowerDef {
+  readonly levelCap: 50; readonly teamSize: 3; readonly setLength: 7;
+  readonly attendantId: 'solenne.league.tower';    // the league hall foyer's InteriorNpc, role 'tower'
+  readonly trainerId: 'tower.challenger'; readonly trainerName: 'Tower Challenger';
+  readonly pools: readonly (readonly string[])[];   // 4 tiers of non-legendary fully evolved species, banded by base-stat total
+}
+export const TOWER: TowerDef;
+export function towerTier(wins: number): number;                 // min(pools.length − 1, floor(wins / setLength))
+export function towerSetReward(set: number): { money: number; items: Record<string, number> };   // money 2 500 × set (≤ 15 000) + items
+```
+
+`validate.ts` adds: one rematch per league row, levels in range, reward ×1.5, legendary rule, nickname ≤ 16; every tower pool ≥ 6 species, all known and non-legendary; every set-reward item known. The bind-set cap (§3.10 rule 11) is unchanged — rematch and tower teams are battle-only.
+
 ### 3.4 Quests
 
 ```ts
@@ -1284,7 +1313,7 @@ export interface InteriorDef {           // authored in the hall's LOCAL frame: 
   readonly gates: readonly InteriorGate[];    // per-player doors: solid until every `opensWhen` flag is held — never stamped
   readonly switches: readonly InteriorSwitch[]; // interact { kind: 'switch' }: `requires` ⊆ flags, sets `switch:<zone>:<id>` (or null), optional warpTo
   readonly trainers: readonly InteriorTrainer[]; // gym trainers; beaten flag `trainer:<id>:beaten`, no rematch
-  readonly npcs: readonly InteriorNpc[];      // shopkeeper / nurse / guide / resident — client-local dialogue
+  readonly npcs: readonly InteriorNpc[];      // shopkeeper / nurse / guide / resident / tower (Phase D14: the battle tower attendant, Solenne league hall foyer) — client-local dialogue
   readonly items: readonly InteriorItem[];    // pickup flag `item:<zone>:<id>`
   readonly props: readonly InteriorProp[];
 }
@@ -1426,19 +1455,24 @@ export const HandoverAckMsg = z.object({ roomId: z.string().min(1), seat: z.stri
 export const BattleResyncMsg = z.object({ battleId: z.string().uuid() });                          // §4.5
 export const FastTravelMsg = z.object({ zoneId: z.enum(ZONE_IDS) });                               // §4.6; amended 2026-10-06 (Phase C3)
 export const FishMsg = z.object({ angle: z.number() });   // Phase D9: a landed Old Rod bite; the cast heading (refusals FISH_REACH_M = 2.5, FISH_REFUSALS noRod / noWater / nothingBites)
+export const RankedQueueMsg = z.object({ action: z.enum(['join', 'leave']) });   // Phase D13: the ranked queue (30-server-netcode.md §30.4.5a); answered with `rankedStatus`
+export const TowerMsg = z.discriminatedUnion('action', [                          // Phase D14: the battle tower (30-server-netcode.md §30.4.9); answered with `towerState`
+  z.object({ action: z.literal('start'), picks: z.array(z.string().min(1).max(64)).length(3) }),   // refusals TOWER_REFUSALS locked / tooFar / badPicks / running / noRun / inBattle
+  z.object({ action: z.literal('next') }), z.object({ action: z.literal('quit') }),
+]);
 
 export const CLIENT_MESSAGES = {
   input: InputMsg, emote: EmoteMsg, chat: ChatMsg, interact: InteractMsg, engageSpawn: EngageSpawnMsg,
   battleAction: BattleActionMsg, battleResync: BattleResyncMsg, challenge: ChallengeMsg, challengeReply: ChallengeReplyMsg,
   tradeRequest: TradeRequestMsg, tradeReply: TradeReplyMsg, tradeOffer: TradeOfferMsg, tradeConfirm: TradeConfirmMsg, tradeCancel: TradeCancelMsg,
   raidJoin: RaidJoinMsg, raidReady: RaidReadyMsg, raidAction: RaidActionMsg, raidCatch: RaidCatchMsg, raidLeave: RaidLeaveMsg,
-  handoverAck: HandoverAckMsg, fastTravel: FastTravelMsg, fish: FishMsg,
-} as const;   // exactly 22 keys (Phase C3 added fastTravel, Phase D9 fish)
+  handoverAck: HandoverAckMsg, fastTravel: FastTravelMsg, fish: FishMsg, rankedQueue: RankedQueueMsg, tower: TowerMsg,
+} as const;   // exactly 24 keys (Phase C3 added fastTravel, Phase D9 fish, Phase D13 rankedQueue, Phase D14 tower)
 export type ClientMessageType = keyof typeof CLIENT_MESSAGES;
 ```
 
 <!-- reconciled 2026-09-18: battleResync (named in §4.5 prose) is now in the block; 50-verification-budget.md §50.4.3 counts 20 -->
-Rate limits (per client, sliding window; excess is dropped with one `error { code: 'rateLimited' }` per window): `input` 30/s, `emote` 1 per 1.5 s, `chat` 4 per 4 s, `interact` 4/s, `engageSpawn` 2/s, `battleAction`/`battleResync` 4/s (Phase D6: in a doubles battle a `battleAction` with `pos: 1` counts in its own 4/s window, so a turn's two back-to-back actions never starve each other; singles unchanged), `challenge`/`tradeRequest` 3 per 5 s, raid messages 4/s, `fastTravel` 4/s (plus its own 3 s server cooldown, §4.6), `fish` 1 per 1.5 s (Phase D9). A message whose `type` is not a `CLIENT_MESSAGES` key gets no reply: the room's `'*'` handler only counts it (`metrics.unknownMessages`) and 5 within 10 s disconnect the client with code 4003 — the `'*'` handler must exist, because `@colyseus/core` 0.18.14 closes the socket with 4002 on the first message that has no handler outside dev mode (`src/RoomMessages.ts` lines 334–342). `invalidPayload` is for a known type with a malformed body; the zod check therefore runs inside the handler wrapper (`safeParse`), never as the `onMessage` validator argument, which disconnects with 4002 on a rejected payload (`src/RoomMessages.ts` lines 189–196). <!-- amended 2026-09-25: "Colyseus drops it … there is no '*' handler" was false for 0.18.14; packages/server IMPLEMENTATION-NOTES R1, R3 -->
+Rate limits (per client, sliding window; excess is dropped with one `error { code: 'rateLimited' }` per window): `input` 30/s, `emote` 1 per 1.5 s, `chat` 4 per 4 s, `interact` 4/s, `engageSpawn` 2/s, `battleAction`/`battleResync` 4/s (Phase D6: in a doubles battle a `battleAction` with `pos: 1` counts in its own 4/s window, so a turn's two back-to-back actions never starve each other; singles unchanged), `challenge`/`tradeRequest` 3 per 5 s, raid messages 4/s, `fastTravel` 4/s (plus its own 3 s server cooldown, §4.6), `fish` 1 per 1.5 s (Phase D9), `rankedQueue` 4 per 5 s (Phase D13), `tower` 4/s (Phase D14). A message whose `type` is not a `CLIENT_MESSAGES` key gets no reply: the room's `'*'` handler only counts it (`metrics.unknownMessages`) and 5 within 10 s disconnect the client with code 4003 — the `'*'` handler must exist, because `@colyseus/core` 0.18.14 closes the socket with 4002 on the first message that has no handler outside dev mode (`src/RoomMessages.ts` lines 334–342). `invalidPayload` is for a known type with a malformed body; the zod check therefore runs inside the handler wrapper (`safeParse`), never as the `onMessage` validator argument, which disconnects with 4002 on a rejected payload (`src/RoomMessages.ts` lines 189–196). <!-- amended 2026-09-25: "Colyseus drops it … there is no '*' handler" was false for 0.18.14; packages/server IMPLEMENTATION-NOTES R1, R3 -->
 
 ### 4.4 Server → client messages
 
@@ -1465,6 +1499,12 @@ export type ServerMessage =
   | { readonly type: 'dm'; readonly id: number; readonly fromId: string; readonly fromName: string; readonly text: string; readonly sentAt: number } // a persisted DM pushed live (30-server-netcode.md §30.7.2)
   | { readonly type: 'storyBeat'; readonly beatId: string; readonly phase: 'start' | 'complete' }                     // §3.5 runtime: the client renders the beat's `lines` on 'start' and `after` on 'complete'
   | { readonly type: 'toast'; readonly level: 'info' | 'success' | 'warn'; readonly text: string }
+  | { readonly type: 'rankedStatus'; readonly state: 'idle' | 'queued' | 'matched'; readonly rating: number; readonly waitedMs: number; readonly window: number;
+      readonly opponent: { readonly name: string; readonly rating: number } | null;
+      readonly reason: 'left' | 'busy' | 'party' | 'cancelled' | 'started' | null }                                // Phase D13 (30-server-netcode.md §30.4.5a); sent last in SERVER_MESSAGE_TYPES
+  | { readonly type: 'towerState'; readonly phase: 'fighting' | 'won' | 'lost' | 'ended'; readonly streak: number; readonly runWins: number; readonly best: number;
+      readonly set: number; readonly fight: number; readonly picks: readonly string[];
+      readonly reward: { readonly money: number; readonly items: Readonly<Record<string, number>> } | null }      // Phase D14 (30-server-netcode.md §30.4.9); after rankedStatus in SERVER_MESSAGE_TYPES (18 variants)
   | { readonly type: 'error'; readonly code: 'rateLimited' | 'invalidPayload' | 'notAllowed' | 'notFound' | 'busy' | 'internal'; readonly detail: string | null };
 
 export interface TradeOffer { readonly playerId: string; readonly creatureIds: readonly string[]; readonly money: number; readonly confirmed: boolean }
@@ -1536,7 +1576,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /guilds?search=` · `GET /guilds/:id` | — | `GuildView[]` / `GuildView & { members }` | bearer |
 | `POST /guilds` | `{ name: 3..24, tag: /^[A-Z0-9]{3,4}$/ }` (costs `GUILD.createCost` 5000, 409 `InsufficientFunds`) | `GuildCreateRes` = `GuildView & { inventoryDelta }` (`money` after the charge) | bearer |
 | `POST /guilds/:id/join` · `/leave` · `/kick` · `/promote` | `{ playerId? }` | `GuildView` | bearer |
-| `GET /leaderboard?mode=rating|dex|trainerLevel&page=` | — | `{ rows: LeaderboardRow[] }` | bearer |
+| `GET /leaderboard?mode=rating|dex|trainerLevel|towerStreak&page=` | — | `{ rows: LeaderboardRow[] }` (Phase D14: `towerStreak` ranks `player_streaks.best` desc, then `current`, then username, players with best > 0 only; every row carries `towerBest?` / `towerCurrent?`) | bearer |
 | `GET /players/:username` | — | `PublicProfile` (allow-list, §5.3) | bearer |
 | `GET /battle-pass` | — | `{ trainerExp, trainerLevel, claimed: number[], mythicalChoice: string | null, rewards: BattlePassReward[] }` | bearer |
 | `POST /battle-pass/claim` | `{ level }` | `{ claimed, inventory, money, creaturesAdded }` | bearer |
@@ -1792,7 +1832,7 @@ export const auditLog = pgTable('audit_log', {
 }, (t) => [index('audit_log_actor_idx').on(t.actorId, t.at), index('audit_log_action_idx').on(t.action, t.at)]);
 ```
 
-`players.x/z` use `real`; `real` is imported from `drizzle-orm/pg-core` alongside the others. `bigserial` likewise. `BattleStartSnapshot` is `{ readonly zoneId: string; readonly terrain: string; readonly sides: readonly [unknown, unknown]; readonly weather?: string; readonly slots?: 2 }` (`slots` — Phase D6: a doubles battle) (the two `createBattle` sides, deep-copied before the call); with it a battle replays from the row alone — `createBattle({ id, format, seed, ...start })` then `resolveTurn` over `actions` reproduces `final_digest`. The original table (seed + actions only) could not replay without the starting parties. <!-- amended 2026-09-25: migration 0001_battle_replay, packages/server IMPLEMENTATION-NOTES S10/P6, packages/persist IMPLEMENTATION-NOTES "Server part 2 additions" --> There is no `party_slots`/`box_slots` table: the `(owner_id, slot_kind, slot_index)` unique index on `creature_instances` *is* the slot model, and a reorder is one transaction that rewrites `slot_index` for the affected rows.
+`players.x/z` use `real`; `real` is imported from `drizzle-orm/pg-core` alongside the others. `bigserial` likewise. `BattleStartSnapshot` is `{ readonly zoneId: string; readonly terrain: string; readonly sides: readonly [unknown, unknown]; readonly weather?: string; readonly slots?: 2; readonly noExp?: true }` (`slots` — Phase D6: a doubles battle; `noExp` — Phase D14: a battle tower fight) (the two `createBattle` sides, deep-copied before the call); with it a battle replays from the row alone — `createBattle({ id, format, seed, ...start })` then `resolveTurn` over `actions` reproduces `final_digest`. The original table (seed + actions only) could not replay without the starting parties. <!-- amended 2026-09-25: migration 0001_battle_replay, packages/server IMPLEMENTATION-NOTES S10/P6, packages/persist IMPLEMENTATION-NOTES "Server part 2 additions" --> There is no `party_slots`/`box_slots` table: the `(owner_id, slot_kind, slot_index)` unique index on `creature_instances` *is* the slot model, and a reorder is one transaction that rewrites `slot_index` for the affected rows.
 
 ### 5.2 Repository interfaces
 
@@ -1963,7 +2003,15 @@ export function hashRefreshToken(token: string): string;   // sha-256 hex; the o
 export interface AuditRepo { write(tx: Tx, e: { actorId: string | null; action: string; subject: string | null; detail: Record<string, unknown> }, now: Date): Promise<void> }
 
 export function escapeLike(s: string): string;   // escapes \ % _ ; callers add their own wildcards and `ESCAPE '\'`
-export interface Repos { players: PlayerRepo; creatures: CreatureRepo; inventory: InventoryRepo; progress: ProgressRepo; market: MarketRepo; social: SocialRepo; history: HistoryRepo; battlePass: BattlePassRepo; auth: AuthRepo; audit: AuditRepo }
+/** Phase D14 (migration 0004_player_streaks): `player_streaks (player_id uuid PK → players cascade, current int ≥ 0, best int ≥ current, updated_at)`, index on best. */
+export interface StreakRepo {
+  get(tx: Tx, playerId: string): Promise<{ current: number; best: number }>;                     // 0 / 0 without a row
+  byPlayers(tx: Tx, ids: readonly string[]): Promise<Map<string, { current: number; best: number }>>;
+  recordWin(tx: Tx, playerId: string, now: Date): Promise<{ current: number; best: number }>;    // upsert current + 1, best = greatest(best, current + 1)
+  endRun(tx: Tx, playerId: string, now: Date): Promise<{ current: number; best: number }>;       // current = 0, best kept
+  leaderboard(tx: Tx, page: number, pageSize: number): Promise<{ player: PlayerRow; current: number; best: number }[]>;   // best > 0, banned excluded, best desc, current desc, username_lower
+}
+export interface Repos { players: PlayerRepo; creatures: CreatureRepo; inventory: InventoryRepo; progress: ProgressRepo; market: MarketRepo; social: SocialRepo; history: HistoryRepo; battlePass: BattlePassRepo; auth: AuthRepo; audit: AuditRepo; streaks: StreakRepo }
 /** Repositories are stateless (every method takes `tx`); `db` is returned alongside so one handle can be carried around. */
 export function createRepos(db: Db): Repos & { readonly db: Db };
 ```

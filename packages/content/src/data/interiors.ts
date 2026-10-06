@@ -813,6 +813,17 @@ export function leagueHall(
         role: 'guide',
         lines: ['Three Wardens, then the Champion. Each door opens for those who passed the last.'],
       },
+      {
+        // Phase D14: the battle tower (post-game; `TOWER.attendantId`). Before the Champion falls it only talks.
+        id: `${building}.tower`,
+        name: 'Tower Attendant',
+        lx: -6.5,
+        lz: half - 5,
+        facing: Math.PI / 2,
+        look: 'suit_male',
+        role: 'tower',
+        lines: ['The battle tower takes three of yours at level fifty, seven fights a set. It opens to the Champion and the Champion\'s equals.'],
+      },
     ],
     items: [],
     props,
