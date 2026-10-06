@@ -15,6 +15,9 @@ pnpm --filter @ewa/audio-pipeline generate       # needs EWA_AUDIO_API_KEY; othe
 pnpm --filter @ewa/audio-pipeline process        # needs ffmpeg ≥ 6.0 with libopus; writes public/audio/
 pnpm --filter @ewa/audio-pipeline placeholders   # process --placeholders: synthesized stand-ins for missing WAVs
 pnpm --filter @ewa/audio-pipeline all            # plan → generate → process, re-rolling rejects (≤ 3 rounds)
+pnpm --filter @ewa/audio-pipeline ingest         # Phase E4: CC0 files (.design/audio/sources.json → assets-src/audio/cc0/) → raw cache + credits
+pnpm --filter @ewa/audio-pipeline credits        # assets-src/audio/CREDITS.md + public/audio/CREDITS.txt from sources.json
+pnpm --filter @ewa/audio-pipeline cc0            # plan → ingest → process --provider cc0 --placeholders (unmapped jobs stay placeholders)
 ```
 
 Flags (after `--`): `--manifest FILE`, `--cache DIR`, `--qa DIR`, `--out DIR`, `--provider NAME` (or

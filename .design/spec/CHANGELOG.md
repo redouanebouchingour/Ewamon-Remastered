@@ -6,6 +6,35 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-06 Phase E4 (CC0 audio, the no-download half). -->
+
+## 2026-10-06 — `40-pipelines.md` §40.4.8 (new) — CC0 ingest: `sources.json` → raw cache with salted request hashes, stem derivation for single-track themes, linked gain + no re-roll for CC0 clips in `process`, optional `derived` theme field in the output manifest, generated credits
+Why: Phase E4. The user chose CC0 packs (orchestral/adventure) over the paid provider, so §40.4.2's `generate` has no input. CC0 tracks rarely ship four stems. Two options were weighed:
+- Single-stem themes in the client would silence `threat` and `night` for every CC0 theme.
+- Deriving the three layers from the base track keeps the four-stem contract of `20-client.md` §20.7.3 / §20.7.4 untouched.
+
+Derivation needs two rules in `process`:
+- Derived layers must keep the levels the ingest gave them. Independent −16 LUFS normalisation would turn a −10 dB air layer into a coherent doubling of base.
+- A fixed file cannot be re-rolled.
+
+The request-hash salt is appended only for CC0 jobs, so no existing hash moves.
+Evidence: `tools/audio-pipeline/test/ingest.test.ts`, synthetic fixtures only, no downloads:
+- re-ingest is a cache hit; an edited file re-ingests exactly its jobs
+- the four stems are equal-length and periodic, with layer levels at the recipe ±0.5 dB
+- `process --provider cc0` builds a complete manifest with one shared loop at nominal ± 5 ms
+- missing files are reported, not thrown
+
+`packages/client/test/audio-stems.test.ts`: a derived layer is never played without its base; a theme with fewer than four layers starts what exists. Implementation notes: `tools/audio-pipeline/IMPLEMENTATION-NOTES.md`, "Phase E4 ingest".
+Affects:
+- `tools/audio-pipeline/src/{sources,ingest,credits}.ts` (new)
+- `jobs.ts` (salted `requestHash`, `CacheRecord.source`), `process.ts` (fixed sources, linked gain), `output-manifest.ts` (`ThemeEntry.derived`), `plan.ts`, `cli.ts`
+- `packages/client/src/audio/manifest.ts` (`DerivedStem`, optional `derived`)
+- `AudioDirector.ts`: tolerant `startTheme`; a generation token fixes the pre-existing double start on the first gesture
+- `SettingsScreen.tsx` (audio credits link)
+- `.design/audio/sources.json`, `.design/audio/sources.candidates.md`, `assets-src/audio/{CREDITS.md,licenses/}`, `packages/client/public/audio/CREDITS.txt`, `.gitignore` (`assets-src/audio/cc0/`)
+
+`20-client.md` §20.7.4 is not edited. The new field is optional and specified in §40.4.8; restating the `AudioManifest` block would break the one-definition rule (§50.7 rule 5).
+
 <!-- 2026-10-06 Phase D14 (post-game: league rematches, battle tower). -->
 
 ## 2026-10-06 — `00-spine.md` §2.9 `BattleState.noExp` + `capLevel`, §3.3 post-game block (`LeagueRematch`, `LEAGUE_REMATCH`, cooldown, `leagueRematchFlag`, `POSTGAME_FLAG`, `TowerDef` / `TOWER`, `towerTier`, `towerSetReward`, validate rules), §3.13 InteriorNpc role `tower`, §4.3 `TowerMsg` / `CLIENT_MESSAGES.tower` (24 keys) / rate limit, §4.4 `towerState` (18 variants), §4.7 `/leaderboard?mode=towerStreak`, §5.1 `BattleStartSnapshot.noExp`, §5.2 `StreakRepo` + `Repos.streaks`; `30-server-netcode.md` §30.4.4 league rematch row, §30.4.9 battle tower (new), §30.6.3 leaderboard `towerStreak`, cut list (league rematches removed); `20-client.md` §20.9.9c post-game (new) — league rematches after the Champion, the battle tower, the tower leaderboard

@@ -89,6 +89,14 @@ export async function measureLoudness(file: string, targetI = -16): Promise<Loud
   return { integrated, truePeak };
 }
 
+/**
+ * Run an ffmpeg audio filter graph over a WAV and write a float32 WAV at `sampleRate` / `channels` (Phase E4 ingest:
+ * time-stretch, layer derivation, variant pitch shifts). Bitexact flags keep the bytes stable.
+ */
+export async function filterWav(inWav: string, outWav: string, af: string, sampleRate: number, channels: number): Promise<void> {
+  await run('ffmpeg', ['-hide_banner', '-nostdin', '-loglevel', 'error', '-y', '-i', inWav, '-af', af, '-ar', String(sampleRate), '-ac', String(channels), '-c:a', 'pcm_f32le', '-fflags', '+bitexact', '-flags:a', '+bitexact', '-map_metadata', '-1', '-f', 'wav', outWav]);
+}
+
 export type EncodeProfile = 'stem' | 'ambience' | 'sfx';
 
 /**

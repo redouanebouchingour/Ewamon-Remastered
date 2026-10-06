@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { ByteEstimate } from './budget.js';
 import { estimateBytes } from './budget.js';
-import type { PlannedJob } from './jobs.js';
+import type { JobSalts, PlannedJob } from './jobs.js';
 import { expandJobs, isCached, readCacheIndex, readRerolls } from './jobs.js';
 import { writeJson } from './json.js';
 import type { PipelinePaths } from './paths.js';
@@ -64,8 +64,8 @@ export function loadSourceManifest(file: string, opts?: ValidateOptions): AudioS
 const r3 = (x: number): number => Math.round(x * 1000) / 1000;
 const r2 = (x: number): number => Math.round(x * 100) / 100;
 
-export function buildPlan(m: AudioSourceManifest, providerName: string, paths: Pick<PipelinePaths, 'cache'>): { report: PlanReport; jobs: PlannedJob[] } {
-  const jobs = expandJobs(m, providerName, paths.cache, readRerolls(paths.cache));
+export function buildPlan(m: AudioSourceManifest, providerName: string, paths: Pick<PipelinePaths, 'cache'>, salts: JobSalts = {}): { report: PlanReport; jobs: PlannedJob[] } {
+  const jobs = expandJobs(m, providerName, paths.cache, readRerolls(paths.cache), salts);
   const index = readCacheIndex(paths.cache);
   const pricing = PRICING[providerName] ?? null;
   const rows: PlanJobRow[] = jobs.map((j) => ({ id: j.id, kind: j.kind, durationSec: j.prompt.durationSec, seed: j.prompt.seed, attempt: j.meta.attempt, requestHash: j.requestHash, cached: isCached(j, index) }));
@@ -128,13 +128,19 @@ export interface RunPlanOptions {
   readonly log?: (line: string) => void;
   /** also print every job row */
   readonly verbose?: boolean;
+  /** Phase E4 (provider 'cc0'): source overrides applied to the manifest and the per-job source salts */
+  readonly prepare?: (m: AudioSourceManifest) => { readonly manifest: AudioSourceManifest; readonly salts: JobSalts };
+  /** file name under qa/ (default plan.json; the cc0 plan writes plan-cc0.json so the committed plan is not replaced) */
+  readonly planFile?: string;
 }
 
 export function runPlan(opts: RunPlanOptions): PlanReport {
   const log = opts.log ?? ((l: string) => console.log(l));
-  const m = loadSourceManifest(opts.paths.manifest, opts.validate);
-  const { report } = buildPlan(m, opts.providerName, opts.paths);
-  writeJson(path.join(opts.paths.qa, 'plan.json'), report);
+  const loaded = loadSourceManifest(opts.paths.manifest, opts.validate);
+  const prepared = opts.prepare?.(loaded) ?? { manifest: loaded, salts: {} };
+  const m = prepared.manifest;
+  const { report } = buildPlan(m, opts.providerName, opts.paths, prepared.salts);
+  writeJson(path.join(opts.paths.qa, opts.planFile ?? 'plan.json'), report);
   const mib = (b: number): string => (b / 1048576).toFixed(2);
   const c = report.counts;
   log(`audio-pipeline plan: ${report.total} jobs = ${c.themes} themes × 4 stems (${c.stems}) + ${c.ambience} ambience + ${c.sfxVariants} sfx variants over ${c.sfxIds + c.uiIds} ids (${c.uiIds} on the ui bus); ${c.zones} zones mapped`);
@@ -146,6 +152,6 @@ export function runPlan(opts: RunPlanOptions): PlanReport {
   if (report.estimatedCost !== null) log(`  estimated cost with ${report.provider}: $${report.estimatedCost.toFixed(2)} now, $${(report.fullCost ?? 0).toFixed(2)} for the whole manifest — ${report.costBasis ?? ''}`);
   log(`  encoded size estimate ${mib(report.bytes.total)} MiB of ${mib(report.bytes.budget)} MiB (stems ${mib(report.bytes.stems)}, ambience ${mib(report.bytes.ambience)}, sfx ${mib(report.bytes.sfx)})`);
   if (opts.verbose === true) for (const j of report.jobs) log(`  ${j.cached ? '✓' : '·'} ${j.id.padEnd(34)} ${j.kind.padEnd(8)} ${j.durationSec.toFixed(3).padStart(7)} s  seed ${j.seed}  ${j.requestHash.slice(0, 12)}`);
-  log(`  wrote ${path.join(opts.paths.qa, 'plan.json')}`);
+  log(`  wrote ${path.join(opts.paths.qa, opts.planFile ?? 'plan.json')}`);
   return report;
 }

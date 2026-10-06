@@ -4,6 +4,10 @@
  * JSON(prompt))` over the canonical (sorted-key) prompt, so a changed word, seed or duration is a new job and an
  * unchanged one is a cache hit.
  *
+ * Phase E4: a job may carry a `salt` (the CC0 ingest folds the source file's content hash, its trim/gain/tempo
+ * settings and the derivation recipe into it, see `sources.ts`). The salt is appended to the hash input only when
+ * present, so every unsalted (provider-generated) hash is byte-for-byte what it was before.
+ *
  * Job ids double as output paths (§40.4.6 layout): `themes/<theme>/<layer>`, `ambience/<biome>`, `sfx/<id>_<n>`.
  */
 import { existsSync, readFileSync } from 'node:fs';
@@ -34,9 +38,12 @@ export interface PlannedJob extends GenerationJob {
 
 export type Rerolls = Readonly<Record<string, number>>;
 
-export function requestHash(providerName: string, kind: AudioKind, prompt: AudioPrompt): string {
-  return sha256Hex(providerName, kind, canonicalJson(prompt));
+export function requestHash(providerName: string, kind: AudioKind, prompt: AudioPrompt, salt?: string): string {
+  return salt === undefined ? sha256Hex(providerName, kind, canonicalJson(prompt)) : sha256Hex(providerName, kind, canonicalJson(prompt), salt);
 }
+
+/** jobId → salt (Phase E4 CC0 sources). Salted jobs ignore `rerolls`: a fixed source cannot be re-rolled. */
+export type JobSalts = Readonly<Record<string, string>>;
 
 function reseed(prompt: AudioPrompt, delta: number): AudioPrompt {
   if (delta === 0) return prompt;
@@ -48,12 +55,13 @@ export function rawWavPath(cacheDir: string, hash: string): string {
 }
 
 /** Every job the manifest implies, sorted by id. `rerolls[jobId] = attempt` bumps that job's seed. */
-export function expandJobs(m: AudioSourceManifest, providerName: string, cacheDir: string, rerolls: Rerolls = {}): PlannedJob[] {
+export function expandJobs(m: AudioSourceManifest, providerName: string, cacheDir: string, rerolls: Rerolls = {}, salts: JobSalts = {}): PlannedJob[] {
   const jobs: PlannedJob[] = [];
   const push = (id: string, kind: AudioKind, base: AudioPrompt, meta: Omit<JobMeta, 'attempt'>, variantDelta: number): void => {
-    const attempt = Math.min(MAX_REROLLS, rerolls[id] ?? 0);
+    const salt = salts[id];
+    const attempt = salt !== undefined ? 0 : Math.min(MAX_REROLLS, rerolls[id] ?? 0);
     const prompt = reseed(base, variantDelta + attempt * REROLL_SEED_STEP);
-    const hash = requestHash(providerName, kind, prompt);
+    const hash = requestHash(providerName, kind, prompt, salt);
     jobs.push({ id, kind, prompt, outWav: rawWavPath(cacheDir, hash), requestHash: hash, meta: { ...meta, attempt } });
   };
   for (const t of m.themes) {
@@ -79,6 +87,18 @@ export interface CacheRecord {
   readonly kind: AudioKind;
   readonly provider: string;
   readonly bytes: number;
+  /** Phase E4 (provider 'cc0'): where the WAV came from. Absent for provider-generated clips. */
+  readonly source?: CacheSource;
+}
+export interface CacheSource {
+  /** path under the cc0 directory, forward slashes */
+  readonly file: string;
+  /** sha256 of the source file's bytes */
+  readonly sha256: string;
+  /** 'direct' = this job's own source; 'layer' = derived from the theme's base track; 'variant' = pitch-shifted sibling */
+  readonly role: 'direct' | 'layer' | 'variant';
+  /** the job id a derived clip was made from */
+  readonly from?: string;
 }
 export interface CacheIndex {
   readonly version: 1;

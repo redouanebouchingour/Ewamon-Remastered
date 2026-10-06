@@ -27,3 +27,22 @@ export const DEFAULT_PATHS: PipelinePaths = {
 export function rel(from: string, to: string): string {
   return path.relative(from, to).split(path.sep).join('/');
 }
+
+/** Phase E4 CC0 ingest locations (`tsx src/cli.ts ingest|credits`). Each takes a flag to override it. */
+export interface IngestPaths {
+  /** `.design/audio/sources.json` — jobId → CC0 source file + attribution */
+  readonly sources: string;
+  /** `assets-src/audio/cc0` — the downloaded packs (gitignored, like the other raw art) */
+  readonly cc0Dir: string;
+  /** `assets-src/audio/licenses` — licence texts, listed in CREDITS */
+  readonly licences: string;
+  /** `assets-src/audio/CREDITS.md` — generated from sources.json */
+  readonly credits: string;
+}
+
+export const DEFAULT_INGEST_PATHS: IngestPaths = {
+  sources: path.join(REPO_ROOT, '.design', 'audio', 'sources.json'),
+  cc0Dir: path.join(REPO_ROOT, 'assets-src', 'audio', 'cc0'),
+  licences: path.join(REPO_ROOT, 'assets-src', 'audio', 'licenses'),
+  credits: path.join(REPO_ROOT, 'assets-src', 'audio', 'CREDITS.md'),
+};

@@ -144,6 +144,9 @@ function AudioTab() {
       <Slider label="Sound effects" value={a.sfx} min={0} max={1} step={0.05} format={pct} onChange={(v) => set('audio', { sfx: v })} />
       <Slider label="Interface" value={a.ui} min={0} max={1} step={0.05} format={pct} onChange={(v) => set('audio', { ui: v })} />
       <Toggle label="Mute when the tab is hidden" checked={a.muteWhenHidden} onChange={(v) => set('audio', { muteWhenHidden: v })} />
+      <p className={l.caption}>
+        Music and sound effects credits: <a href="/audio/CREDITS.txt" target="_blank" rel="noreferrer">audio credits</a> (CC0 sources).
+      </p>
     </div>
   );
 }

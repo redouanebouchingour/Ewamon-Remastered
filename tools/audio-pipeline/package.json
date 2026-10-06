@@ -14,7 +14,10 @@
     "generate": "tsx src/cli.ts generate",
     "process": "tsx src/cli.ts process",
     "placeholders": "tsx src/cli.ts process --placeholders",
-    "all": "tsx src/cli.ts all"
+    "all": "tsx src/cli.ts all",
+    "ingest": "tsx src/cli.ts ingest",
+    "credits": "tsx src/cli.ts credits",
+    "cc0": "tsx src/cli.ts all --provider cc0 --placeholders"
   },
   "dependencies": {
     "@ewa/content": "workspace:*",

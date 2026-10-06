@@ -13,6 +13,12 @@
  * (sfx/ui), true peak by ebur128 — a clip whose post-gain peak would exceed −1 / −3 dBTP is rejected and re-rolled
  * (seed + 1000) up to twice; after that (and always for placeholders) the gain is clamped to the ceiling and the
  * clip is flagged. Output bytes are deterministic (bitexact encoders, fixed parameters, sorted writes).
+ *
+ * Phase E4 (CC0 ingest): a cached WAV whose record names provider 'cc0' is a *fixed* source — it cannot be
+ * re-rolled, so a loop or true-peak rejection is flagged (gain clamped) instead of queued. A stem layer the ingest
+ * derived from its theme's base track is already sample-aligned (no `alignLag`) and takes the base layer's static
+ * gain, so the level relations the ingest set between the layers survive; the theme lists such layers in the output
+ * manifest's optional `derived` field.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
@@ -20,7 +26,7 @@ import path from 'node:path';
 import { AUDIO_BUDGET_BYTES, AMBIENCE_FADE_SEC, STEM_HEAD_SEC, STEM_TAIL_SEC, measureBytes } from './budget.js';
 import type { EncodeProfile } from './ffmpeg.js';
 import { FFMPEG_MISSING_MESSAGE, checkFfmpeg, decodeToPcm, encodeM4a, encodeWebm, measureLoudness, opusPreSkip } from './ffmpeg.js';
-import type { PlannedJob, Rerolls } from './jobs.js';
+import type { JobSalts, PlannedJob, Rerolls } from './jobs.js';
 import { MAX_REROLLS, expandJobs, isCached, readCacheIndex, readRerolls, writeRerolls } from './jobs.js';
 import { sha256Bytes, writeJson } from './json.js';
 import { alignLag, bakeCrossfadeLoop, bakeSeamCrossfade, findLoop, shiftChannels, trimSfx } from './loop.js';
@@ -65,6 +71,8 @@ export interface ProcessOptions {
   readonly log?: (line: string) => void;
   /** prefix of every clip url; the client fetches urls as written and loads the manifest from /audio/ */
   readonly urlBase?: string;
+  /** Phase E4: per-job source salts (provider 'cc0', from `resolveCc0`) so the salted cache hashes match */
+  readonly salts?: JobSalts;
 }
 
 /** Where `public/audio/` is served from (`packages/client/src/audio/manifest.ts` AUDIO_MANIFEST_URL = '/audio/manifest.json'). */
@@ -95,6 +103,15 @@ interface Source {
   readonly job: PlannedJob;
   readonly wav: string;
   readonly placeholder: boolean;
+  /** a CC0 file (or derived from one): no re-roll exists */
+  readonly fixed: boolean;
+  /** a theme layer derived from the theme's base track by the ingest */
+  readonly derived: boolean;
+}
+
+/** A rejected clip is re-rolled only when it is provider-generated and has re-rolls left. */
+function rerollable(src: Source): boolean {
+  return !src.placeholder && !src.fixed && src.job.meta.attempt < MAX_REROLLS;
 }
 
 async function mapPool<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
@@ -119,13 +136,15 @@ export async function normaliseClip(
   workWav: string,
   outWav: string,
   clampOnOvershoot: boolean,
+  /** Phase E4: apply this gain instead of the measured one (a derived layer takes its base layer's gain) */
+  fixedGainDb?: number,
 ): Promise<{ gainDb: number; lufs: number; truePeakDb: number; overshoot: boolean; clamped: boolean }> {
   writeFileSync(workWav, encodeWav(audio, 32));
   const target = TARGET_LUFS[kind];
   const ceiling = TP_CEILING[kind];
   const pre = await measureLoudness(workWav, target);
-  if (!Number.isFinite(pre.integrated)) throw new Error(`audio-pipeline: ${path.basename(outWav)} measures as silence`);
-  let gainDb = target - pre.integrated;
+  if (!Number.isFinite(pre.integrated) && fixedGainDb === undefined) throw new Error(`audio-pipeline: ${path.basename(outWav)} measures as silence`);
+  let gainDb = fixedGainDb ?? target - pre.integrated;
   const overshoot = pre.truePeak + gainDb > ceiling;
   let clamped = false;
   if (overshoot) {
@@ -167,7 +186,7 @@ export async function runProcess(opts: ProcessOptions): Promise<ProcessResult> {
   const { manifest, paths } = opts;
   const urlBase = opts.urlBase ?? DEFAULT_URL_BASE;
   const rerolls: Record<string, number> = { ...readRerolls(paths.cache) };
-  const jobs = expandJobs(manifest, opts.providerName, paths.cache, rerolls as Rerolls);
+  const jobs = expandJobs(manifest, opts.providerName, paths.cache, rerolls as Rerolls, opts.salts);
   const index = readCacheIndex(paths.cache);
 
   // ── resolve a WAV per job ──
@@ -175,14 +194,15 @@ export async function runProcess(opts: ProcessOptions): Promise<ProcessResult> {
   const missing: string[] = [];
   for (const job of jobs) {
     if (isCached(job, index)) {
-      sources.set(job.id, { job, wav: job.outWav, placeholder: false });
+      const rec = index.jobs[job.requestHash];
+      sources.set(job.id, { job, wav: job.outWav, placeholder: false, fixed: rec?.source !== undefined || rec?.provider === 'cc0', derived: rec?.source?.role === 'layer' });
     } else if (opts.placeholders === true) {
       const f = path.join(paths.cache, 'placeholder', `${job.requestHash}.wav`);
       if (!existsSync(f)) {
         mkdirSync(path.dirname(f), { recursive: true });
         writeFileSync(f, encodeWav(synthesizePlaceholder(job), 32));
       }
-      sources.set(job.id, { job, wav: f, placeholder: true });
+      sources.set(job.id, { job, wav: f, placeholder: true, fixed: false, derived: false });
     } else missing.push(job.id);
   }
   if (missing.length > 0) {
@@ -198,10 +218,11 @@ export async function runProcess(opts: ProcessOptions): Promise<ProcessResult> {
   const rejected: Rejection[] = [];
   const flagged: { id: string; reason: string }[] = [];
   const themeReport: Record<string, ProcessReport['themes'][string]> = {};
+  const themeDerived: Record<string, StemLayer[]> = {};
   const reject = (src: Source, reason: string): void => {
     const attempt = src.job.meta.attempt;
-    if (src.placeholder || attempt >= MAX_REROLLS) {
-      flagged.push({ id: src.job.id, reason: `${reason} (accepted after ${attempt} re-roll(s)${src.placeholder ? ', placeholder' : ''})` });
+    if (!rerollable(src)) {
+      flagged.push({ id: src.job.id, reason: `${reason} (accepted after ${attempt} re-roll(s)${src.placeholder ? ', placeholder' : ''}${src.fixed ? ', fixed CC0 source' : ''})` });
       return;
     }
     rejected.push({ id: src.job.id, reason, attempt });
@@ -219,16 +240,16 @@ export async function runProcess(opts: ProcessOptions): Promise<ProcessResult> {
     loops.forEach((l, i) => {
       if (!l.ok) {
         const src = srcs[i]!;
+        if (rerollable(src)) fail = true;
         reject(src, `loop: ${l.reason ?? 'rejected'}`);
-        if (!src.placeholder && src.job.meta.attempt < MAX_REROLLS) fail = true;
       }
     });
     const base = loops[0]!;
     loops.forEach((l, i) => {
       if (i > 0 && Math.abs(l.lengthSec - base.lengthSec) > LAYER_AGREE_SEC) {
         const src = srcs[i]!;
+        if (rerollable(src)) fail = true;
         reject(src, `loop: L ${l.lengthSec.toFixed(4)} s disagrees with base ${base.lengthSec.toFixed(4)} s by > 5 ms`);
-        if (!src.placeholder && src.job.meta.attempt < MAX_REROLLS) fail = true;
       }
     });
     if (fail) return;
@@ -244,7 +265,7 @@ export async function runProcess(opts: ProcessOptions): Promise<ProcessResult> {
       const layer = STEM_LAYERS[i]!;
       let chs = decoded[i]!;
       let lag = 0;
-      if (i > 0) {
+      if (i > 0 && !srcs[i]!.derived) {
         const maxLag = ALIGN_MAX_BEATS * beatSec;
         const a = alignLag(monos[0]!, monos[i]!, SAMPLE_RATE, base.startSec, base.lengthSec, maxLag);
         lag = a.lagSamples;
@@ -274,16 +295,16 @@ export async function runProcess(opts: ProcessOptions): Promise<ProcessResult> {
       });
       finals.push({ sampleRate: SAMPLE_RATE, channels: tail });
     }
-    await Promise.all(
-      finals.map(async (audio, i) => {
+    const finish = async (i: number, fixedGainDb?: number): Promise<number | null> => {
+        const audio = finals[i]!;
         const src = srcs[i]!;
         const layer = STEM_LAYERS[i]!;
         const w = path.join(work, `${safe(src.job.id)}.pre.wav`);
         const f = path.join(work, `${safe(src.job.id)}.wav`);
-        const n = await normaliseClip(audio, 'stem', w, f, src.placeholder || src.job.meta.attempt >= MAX_REROLLS);
+        const n = await normaliseClip(audio, 'stem', w, f, !rerollable(src), fixedGainDb);
         if (n.overshoot && !n.clamped) {
           reject(src, `true peak ${n.truePeakDb.toFixed(2)} dBTP after gain > ${TP_CEILING.stem}`);
-          return;
+          return null;
         }
         if (n.clamped) flagged.push({ id: src.job.id, reason: `gain clamped to the ${TP_CEILING.stem} dBTP ceiling; lufs ${n.lufs}` });
         const enc = await encodeClip(f, paths.out, `themes/${t.id}/${layer}`, 'stem', urlBase);
@@ -293,8 +314,17 @@ export async function runProcess(opts: ProcessOptions): Promise<ProcessResult> {
           ref: { url: enc.url, urlFallback: enc.urlFallback, durationSec: round(frames(audio) / SAMPLE_RATE, 3), bytes: enc.webmBytes.byteLength, hash: enc.hash },
           loop: { loopStartSec: round(start / SAMPLE_RATE + shift, 6), loopEndSec: round(end / SAMPLE_RATE + shift, 6), lufs: n.lufs },
         });
-      }),
-    );
+        return n.gainDb;
+    };
+    const derived = STEM_LAYERS.filter((_, i) => srcs[i]!.derived);
+    if (derived.length === 0) {
+      await Promise.all(finals.map((_, i) => finish(i)));
+    } else {
+      // derived layers share the base layer's static gain (their level under base was set by the ingest)
+      const baseGain = await finish(0);
+      await Promise.all(finals.map((_, i) => (i === 0 ? null : finish(i, srcs[i]!.derived && baseGain !== null ? baseGain : undefined))));
+      themeDerived[t.id] = derived;
+    }
     themeReport[t.id] = { loopStartSec: round(base.startSec, 6), loopSec: round(base.lengthSec, 6), nominalSec: round(base.nominalSec, 6), scores, align };
   });
 
@@ -306,7 +336,7 @@ export async function runProcess(opts: ProcessOptions): Promise<ProcessResult> {
     const audio: PcmAudio = { sampleRate: SAMPLE_RATE, channels: looped };
     const w = path.join(work, `${safe(src.job.id)}.pre.wav`);
     const f = path.join(work, `${safe(src.job.id)}.wav`);
-    const n = await normaliseClip(audio, 'ambience', w, f, src.placeholder || src.job.meta.attempt >= MAX_REROLLS);
+    const n = await normaliseClip(audio, 'ambience', w, f, !rerollable(src));
     if (n.overshoot && !n.clamped) {
       reject(src, `true peak ${n.truePeakDb.toFixed(2)} dBTP after gain > ${TP_CEILING.ambience}`);
       return;
@@ -331,7 +361,7 @@ export async function runProcess(opts: ProcessOptions): Promise<ProcessResult> {
     const kind = job.kind === 'ui' ? 'ui' : 'sfx';
     const w = path.join(work, `${safe(job.id)}.pre.wav`);
     const f = path.join(work, `${safe(job.id)}.wav`);
-    const n = await normaliseClip(audio, kind, w, f, src.placeholder || job.meta.attempt >= MAX_REROLLS);
+    const n = await normaliseClip(audio, kind, w, f, !rerollable(src));
     if (n.overshoot && !n.clamped) {
       reject(src, `true peak ${n.truePeakDb.toFixed(2)} dBTP after gain > ${TP_CEILING[kind]}`);
       return;
@@ -350,7 +380,7 @@ export async function runProcess(opts: ProcessOptions): Promise<ProcessResult> {
   let manifestOut: AudioManifest | null = null;
   const complete = sortedRejected.length === 0 && clips.size === jobs.length;
   if (complete) {
-    manifestOut = assembleManifest(manifest, clips, opts.builtAt ?? new Date().toISOString());
+    manifestOut = assembleManifest(manifest, clips, opts.builtAt ?? new Date().toISOString(), themeDerived);
     writeManifest(path.join(paths.out, 'manifest.json'), manifestOut);
   }
   const report: ProcessReport = {

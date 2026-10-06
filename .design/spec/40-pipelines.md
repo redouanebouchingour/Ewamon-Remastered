@@ -699,6 +699,52 @@ The output manifest type is **`20-client.md` §20.7.4 `AudioManifest`/`AudioClip
 
 `determinism.test.ts`: `process` twice over the same `.cache/audio/raw` → every file byte-identical and the manifest identical after deleting `builtAt`. Budget (§40.6, ≤ 80 MB): 68 stems × 32 bars at 120 bpm = 64 s × 96 kb/s = 0.77 MB + 1.0 MB AAC ≈ 1.8 MB each → 122 MB — **over**. Decision: stems are **16 bars** by default (`bars: 16` unless the bible says 32 for `battle`/`champion`), Opus 96k + AAC 112k → 68 × (0.38 + 0.45) = 56 MB; ambience 11 × 60 s × (0.72 + 0.84) = 17 MB; sfx 250 × ~1.5 s × (12 + 21 KB) ≈ 8 MB. **≈ 81 MB → the AAC fallback for ambience drops to 96k (−1.3 MB) and the raid/victory themes to 8 bars (−1.6 MB): 78 MB.** `budget.test.ts` asserts `Σ bytes(webm) + Σ bytes(m4a) ≤ 83 886 080`.
 
+### 40.4.8 CC0 ingest — the provider-free source path <!-- amended 2026-10-06: Phase E4, see CHANGELOG -->
+
+The game's audio comes from CC0 packs (user decision, Phase E4), mapped onto the unchanged source manifest of §40.4.1. A provider key is not needed. Nothing is downloaded by the tool: the packs are fetched by hand, with the user's approval per download, into `assets-src/audio/cc0/` (gitignored, like the other raw sources). The candidate list is `.design/audio/sources.candidates.md`.
+
+**`.design/audio/sources.json`** maps job ids (§40.4.6 layout: `themes/<t>/<layer>`, `ambience/<biome>`, `sfx/<id>_<n>`) to one file each:
+
+- **Required fields:** `file` (path under `assets-src/audio/cc0/`), `licence` (exactly `"CC0-1.0"`; anything else is refused), `author`, `url`.
+- **Optional fields:** `title`, `licenceFile`, `trim: [startSec, endSec]`, `gainDb`, `note`.
+- **Theme-only fields:** `crossfadeSec` (theme entries), and `bpm`, `bars` and `derive` (base entries only).
+
+Keys starting with `$` are comments. Invalid entries are reported and skipped.
+
+**`ingest`** (new command; needs ffmpeg as in §40.4.5):
+- For every covered job, it decodes the source (any format ffmpeg reads) to 48 kHz float, applies trim and gain, and writes `.cache/audio/raw/<requestHash>.wav`. The `jobs.json` record is `{ provider: 'cc0', source: { file, sha256, role: 'direct' | 'layer' | 'variant', from? } }`.
+- `process --provider cc0` then runs §40.4.3–40.4.6 over these files unchanged, except for the three rules below.
+- Coverage, cache hits, missing files, derived jobs blocked by a missing source, and failures go to `qa/ingest-report.json`. A missing file is reported, never thrown.
+
+**Request hash.** `requestHash = sha256(provider.name, kind, JSON(prompt) [, salt])`. The salt exists only for CC0 jobs, so every provider-generated hash is unchanged. For a direct source it is `sha256('cc0', recipe version, sha256(file bytes), JSON(trim, gainDb, bpm, bars, crossfadeSec))`. Derived jobs salt off their source's salt. As a result:
+- Swapping a file re-processes exactly the jobs made from it.
+- Editing attribution fields re-processes nothing.
+- Salted jobs are never re-rolled.
+
+**Shaping:**
+
+| Job | How a CC0 file becomes the §40.4.2 provider contract |
+|---|---|
+| theme stem | The `trim` region (default: the whole file) is one seamless loop; `crossfadeSec` bakes a seam fade. It is conformed to `bars × 240 / bpm`: time-stretched with ffmpeg `atempo` when within ±6 %, otherwise refused with a message. If the base entry declares `bpm`/`bars`, the theme is re-timed to them (theme `bpm`/`bars` and stem prompt durations; `bars` may be any integer 2–64, since the client reads loop points). The stem is laid out as 0.5 s of the loop's tail, then the loop, repeated to `(bars + 2) × 240 / bpm + 2` s, so §40.4.4 finds the loop with a score of ≈ 1. |
+| derived layers | A theme with only a base source (`derive` defaults to true) gets `threat` / `biome` / `night` as ffmpeg-filtered copies of the same periodic signal. Filters are in steady state and the copies are sample-aligned and level-set by RMS under base:<br>• **threat:** the 110 Hz–7 kHz band, slow-attack compressed, gated by a decaying eighth-note pulse locked to the downbeat; −6 dB.<br>• **biome:** above 2.2 kHz, widened, eighth/quarter echoes; −10 dB. The harvested 1 200 Hz low-pass of §20.7.2 removes it.<br>• **night:** below 1 kHz, widened, 1–3-beat echoes; −9 dB. |
+| ambience | Trimmed and cut to the bed's `durationSec` (≥ 6.5 s); the 2 s loop fade is §40.4.4's. |
+| sfx / ui | Mono, trimmed, faded out to fit the id's `durationSec`. A missing variant of an id that has at least one mapped variant is a sibling pitch-shifted ±1, then ±2 semitones. |
+
+**`process` rules for CC0 sources:**
+1. A cached clip with a `cc0` record cannot be re-rolled. A loop or true-peak rejection is flagged and its gain clamped to the ceiling (as for placeholders).
+2. A derived layer skips phase alignment and takes the **base layer's static gain**, so the relative levels survive the −16 LUFS normalisation (independent normalisation would lift the −10 dB biome layer into a +6 dB coherent doubling of base).
+3. The theme lists those layers in the output manifest as `derived?: ('threat' | 'biome' | 'night')[]`. This is an optional addition to the `20-client.md` §20.7.4 theme entry: absent for generated themes, and ignored by any reader that predates it.
+
+The `AudioDirector` plays derived layers like any layer, never plays a derived layer whose base failed to load, and starts whatever layers a theme ships. `--provider cc0` (or `EWA_AUDIO_PROVIDER=cc0`) changes the other commands:
+- `plan` uses the salts and overrides and writes `qa/plan-cc0.json`.
+- `generate` declines.
+- `all` runs plan → ingest → process.
+
+**Credits.**
+- `credits` (also run by `ingest`) writes `assets-src/audio/CREDITS.md` from `sources.json`: one row per file, with title, author, licence, page URL and the jobs it fills, plus the licence texts in `assets-src/audio/licenses/`.
+- It also writes `public/audio/CREDITS.txt`, which ships with the client and is linked from Settings → Audio. CC0 needs no attribution; the credits are a courtesy and a provenance record.
+- `tools/audio-pipeline/test/ingest.test.ts` covers this section with synthetic fixtures only.
+
 ---
 
 ## §40.5 ASSET AUDIT — `tools/asset-audit`
