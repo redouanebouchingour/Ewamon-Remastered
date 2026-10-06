@@ -149,6 +149,10 @@ export function createRenderer(o: RendererOptions): Promise<Renderer>;
 
 **Pre-compilation and the two-phase zone compile** (amended 2026-09-30). Step 8 pre-compiles its warm-up objects and the persistent scene objects (the battle arena) through `gpu.compileAsync` before its warm-up frame, keeping the scene pass's render target, MRT, render call depth and TRAA's velocity projection set for the whole compile (render Part 4 H4: without each of them the pre-compiled programs differ from the frame's). `loadZone(spec, { focus })` then compiles the zone against **its** light set in two phases. Phase 1 — awaited: the units the first diorama view at `focus` draws (in the predicted view frustum padded 12 m, or within 28 m of the player, at the LOD level and scatter tiers ≤ 1 that view picks) plus the actor, billboard, decal and VFX warm objects; `loadZone` resolves when phase 1 is done. Phase 2 — in the background at low priority, one unit at a time with a `scheduler.postTask('background')` slot before each: the beacon housing and the arena, then the rest of the zone nearest first, then the warm library quads. Every zone unit stays on a gate layer the scene camera does not render until its own compile finished, so no frame ever compiles it synchronously (far units pop in when ready). Disposing the zone cancels its run: in-flight units abort inside the node build and the render objects created after the dispose are released. `onCompileProgress({ phase: 'boot' | 'zone' | 'background', zone, loaded, total, done, ms })` counts units. `Renderer.compileIdle()` resolves when the background phase ended; `RendererOptions.backgroundCompile: false` (and the default for `trackTimestamp` renderers, i.e. the harness) makes `loadZone` resolve only when everything is compiled. The first zone frame then builds only the shadow-pass variants and the post quads. Measured cold on the dev iGPU (fresh profile, no shader cache): see render IMPLEMENTATION-NOTES Part 5 T4. <!-- amended 2026-09-30: P4-C3 (render Part 4 H4) and render Part 5 T4 -->
 
+**Device loss** (amended 2026-10-06, Phase E6). `createRenderer` subscribes to the WebGPU `GPUDevice.lost` promise right after step 3 (before the warm-up, which takes seconds). A loss — any reason except `'destroyed'`, which is `dispose()` destroying its own device — sets `Renderer.deviceLost = { reason, message }`, makes every later `frame()` a no-op and calls `RendererOptions.onDeviceLost(info)` once. A lost renderer is never revived: its owner disposes it (every dispose step tolerates the dead device) and creates a new one on the same canvas. The client does that without unmounting React or touching the session (`20-client.md` §20.4.2). The WebGL2 fallback has no device-lost path (a lost WebGL context is out of scope). Test: `packages/render/test/device-lost.test.ts` (`watchDeviceLost` with a fake device). <!-- amended 2026-10-06: Phase E6 -->
+
+**Handover keep** (amended 2026-10-06, Phase E3). `Renderer.prepareHandover(next)`, called right before the current zone's `dispose()`, makes that dispose's `materials.evictExcept` keep `next`'s surfaces (step 3 of §10.5.9 with `nextKeep` = the next zone's bound set). Shared surfaces, most of a biome's set, are therefore not fetched and transcoded again; `loadZone(next)` follows as usual. `MaterialLibrary.prefetch(ids)` (an addition to §10.2.3) fetches the `field` files of non-resident surfaces into the browser's HTTP cache, one at a time at `priority: 'low'`, with no transcode and no GPU memory; this is the client's phase-5 neighbour prefetch (`20-client.md` §20.10.3). <!-- amended 2026-10-06: Phase E3 -->
+
 ### 10.1.3 Pixel-ratio policy
 
 ```
@@ -422,36 +426,42 @@ sky.cloudCoverage.value = 0.35; sky.cloudDensity.value = 0.4; sky.cloudScale.val
 
 The PMREM is generated from a **separate** `Scene` containing only a second `SkyMesh` (same uniforms) with `showSunDisc.value = 0` (the header of `SkyMesh.js` recommends hiding the disc for environment maps), through `pmrem.fromScene(skyScene, 0, 0.1, 400, { size: 128 })`. `scene.environment = pmremTarget.texture; scene.environmentIntensity = envIntensity(t) × norm` (the sky-radiance normalisation of §10.3.5 "Units"). The **visible** sky is not normalised: at noon its horizon reaches ≈ 5.9 scene-linear, far above the 1.15 bloom threshold, which is acceptable only because no gameplay camera of §10.7 frames the sky (the default top frustum edge is 38° below horizontal, the battle camera's 14°, the inspector's 4°); a free or hostile-audit camera that sees the horizon blooms it (recommendation R9). Re-bake rule: when `|Δ sun elevation| ≥ 2°` since the last bake **or** 20 s of real time have passed, whichever first; at most one bake per frame; a bake at `size 128` costs ≤ 0.6 ms on the reference GPU and is not on the per-pass table (it is amortised inside `opaque`'s remainder). The previous `renderTarget` is reused (`options.renderTarget`), so re-bakes allocate nothing. Harvest level 2 sets `turbidity 20`, `rayleigh 0.2`, `cloudCoverage 0.9`, giving the grey flat sky of a forgotten place.
 
-Hemisphere fill: `new HemisphereLight(skyColor, groundColor, 0.18)` whose colours are sampled from the palette's `skyZenith`/`groundBounce` at the current keyframe; it exists so the shadowed side of a sprite never reads pure black under the noon set (Pillar 5 luminance test needs shadowed pixels that are lit, not clipped).
+Hemisphere fill: one `HemisphereLight` whose colours are sampled from the palette's `skyZenith`/`groundBounce` (blended with the night pair by `daylight`), **normalised to a unit sky** (both divided by the sky colour's largest channel, so the ground keeps its ratio to the sky), and whose intensity is the §10.3.5 `hemi` column × the weather's `envMul` (noon 0.08; it was a fixed 0.18 that, with `envIntensity 0.85`, washed the noon key to ≈ 1.5:1). It exists so the shadowed side of a sprite never reads pure black under the noon set (Pillar 5 luminance test needs shadowed pixels that are lit, not clipped). <!-- amended 2026-10-06: Phase E2, the re-landed M2 re-light (audit M2-spawn-noon-2, M2-gym-dusk-2, M2-lamps-night-5, M2-spawn-noon-13); render IMPLEMENTATION-NOTES "Phase E1–E2" -->
 
 ### 10.3.4 Day/night driver
 
-`timeOfDay t ∈ [0, 1)`, one full day = 48 real minutes (spine §4.1). `t = 0` midnight, `0.25` sunrise, `0.5` noon, `0.75` sunset.
+`timeOfDay t ∈ [0, 1)`, one full day = 48 real minutes (spine §4.1). `t = 0` midnight, `0.17` sunrise, `0.5` noon, `0.83` sunset (the render sun is a look decision: the server's gameplay day, `isDay` 0.25 ≤ t < 0.75, and its spawn tables are unchanged).
 
 ```
-elevationDeg(t) = 70 · sin(2π · (t − 0.25))                     // −70 at midnight, +70 at noon
-azimuthDeg(t)   = 360 · t − 90                                   // rises at +x (east), sets at −x
+f = (t − 0.17) / 0.66                                            // 0 at sunrise … 1 at sunset (the day arc)
+g = wrap(t − 0.83) / 0.34                                        // 0 at sunset … 1 at the next sunrise (the night arc)
+elevationDeg(t) = day ? 70 · sin(π·f) : −60 · sin(π·g)           // +70 at noon, −60 at midnight; t 0.80 (shot 2) ≈ 10° up
+azimuthDeg(t)   = day ? 150 − 120·f : 30 − 240·g                 // 150° at sunrise → 90° (+x) at noon → 30° at sunset; continuous
 sunDir          = (cos(el)·sin(az), sin(el), cos(el)·cos(az))    // unit vector FROM the scene TOWARD the sun
 sun.position    = focus + sunDir · 120; sun.target.position = focus
-moon: elevation −elevationDeg(t), azimuth azimuthDeg(t) + 180
+moon: its own path — elevation day ? −40·sin(π·f) : 40·sin(π·g) (40° up at midnight), azimuth day ? 360 − 60·f : 300 + 60·g
 ```
+
+So `dusk` (0.80) is the golden hour with a raking key from the default heading's right, and the moon's shadows fall ≥ 110° from noon's. <!-- amended 2026-10-06: Phase E2, the re-landed M2 re-light (audit M2-spawn-noon-2, M2-gym-dusk-2, M2-lamps-night-5, M2-spawn-noon-13); render IMPLEMENTATION-NOTES "Phase E1–E2" -->
 
 When `elevationDeg < −4` the `DirectionalLight` **becomes the moon**: same object, colour/intensity from the `moon` row, `csm` unchanged. There is no second directional light. `SkyMesh.sunPosition` follows the real sun even below the horizon (the sky model handles twilight).
 
 ### 10.3.5 Colour-temperature table (6 keyframes, linearly interpolated in sRGB then converted)
 
-| key | t | Kelvin / note | sRGB | sun intensity | envIntensity | punctual multiplier |
-|---|---|---|---|---|---|---|
-| `night` | 0.00 | moon (look decision, not blackbody) | `#8fa6d8` | 0.05 | 0.12 | 1.00 |
-| `predawn` | 0.22 | 2400 K | `#ff9d3f` | 0.15 | 0.20 | 0.80 |
-| `golden_am` | 0.30 | 3200 K | `#ffbb78` | 0.60 | 0.50 | 0.25 |
-| `noon` | 0.50 | 5600 K | `#fff3ef` | 1.00 | 0.85 | 0.00 |
-| `golden_pm` | 0.72 | 3000 K | `#ffb46b` | 0.55 | 0.45 | 0.30 |
-| `dusk` | 0.80 | 2200 K | `#ff932c` | 0.12 | 0.18 | 0.90 |
+| key | t | Kelvin / note | sRGB | sun intensity | envIntensity | hemi | punctual multiplier |
+|---|---|---|---|---|---|---|---|
+| `night` | 0.00 | moon (look decision, not blackbody) | `#9fb4e6` | 0.30 | 0.10 | 0.06 | 1.00 |
+| `predawn` | 0.15 | 2400 K | `#ff9d3f` | 0.10 | 0.18 | 0.07 | 0.80 |
+| `golden_am` | 0.22 | 3000 K | `#ffbd7a` | 0.75 | 0.32 | 0.08 | 0.15 |
+| `noon` | 0.50 | 5200 K | `#fff0dc` | 1.00 | 0.45 | 0.08 | 0.00 |
+| `golden_pm` | 0.74 | 3600 K | `#ffd6a0` | 0.95 | 0.38 | 0.08 | 0.10 |
+| `dusk` | 0.80 | 2400 K, sun 10° up | `#ffa04c` | 0.85 | 0.30 | 0.09 | 0.55 |
+
+A warm key over a cool, low fill: noon key : hemisphere fill 12.5 : 1 and key : (fill + IBL) ≈ 1.9 : 1 (was 1.0 : 1.03). The `night` row is the moon at 0.30 over a 0.06 fill, so the moon casts readable shadows. `daylight` — the factor that blends the palette's night / noon pairs (hemisphere colours, fog colour, the grade's lift) — is the sun's elevation, `smoothstep(−8°, +14°, el)`, not the keyframe sun intensity (which the moon row now shares). Golden hour, `smoothstep(−3°, 2°, el) · (1 − smoothstep(16°, 30°, el))`, tints the fog toward the key colour (up to 45 % of it). <!-- amended 2026-10-06: Phase E2, the re-landed M2 re-light (audit M2-spawn-noon-2, M2-gym-dusk-2, M2-lamps-night-5, M2-spawn-noon-13); render IMPLEMENTATION-NOTES "Phase E1–E2" -->
 
 Wrap: `dusk (0.80) → night (1.00 ≡ 0.00)`. `punctual multiplier` scales every `LightSource.intensity` — lamps are off at noon and full at night (Pillar 4: night is a light-set change).
 
-**Units.** The `sun intensity` column (and the moon row and the 0.18 hemisphere fill of §10.3.3) is in *SPEC light units*: 1.0 lights a white Lambert surface to 1.0 scene-linear. three r155+ lights are physically based — a directional or hemisphere light of intensity `E` yields `ρ·E/π` on a Lambert surface — so the rig writes `value × SPEC_LIGHT_UNIT` with `SPEC_LIGHT_UNIT = π`; `LightSource.intensity` (candela-scaled three intensity) is written unchanged. The `envIntensity` column is also in SPEC units: `scene.environmentIntensity = envIntensity × norm`, `norm = clamp(0.3 / L, 0, 200)`, where `L` is the sky radiance seen by an upward 150° probe — predicted synchronously per bake from a measured `SKY_LUMINANCE_BY_ELEVATION` table and refined by an async 16² readback of the PMREM (which also absorbs weather cloud cover and the harvested sky). Unnormalised, `SkyMesh`'s Preetham radiance is ≈ 1.05 at noon (≈ 2.3 zenith / 5.9 horizon) and 0.0014 after dusk: the IBL supplied ~2/3 of all light and the frame bloomed. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES C15, C16; packages/render/src/lighting/rig.ts line 36, sky.ts lines 17–44 --> Pillar 5 test pair: `noon` vs `dusk` — mean luminance over a billboard's opaque pixels must differ by ≥ 12 %; with sun 1.00 → 0.12 and lamps 0 → 0.9 the difference is designed to be ≥ 35 %. `envIntensity` caps the IBL contribution at ≤ 0.25 scene-linear on a 0.85-albedo surface (0.85 × 0.85 × 0.3 average irradiance ≈ 0.22 — the 0.3 is the sky radiance the normalisation below holds the PMREM to), which is the number behind the 1.10 ceiling in §10.2.1. The directional light fades to 0 across the sun/moon switch (sun: elevation −4°…+2°, moon: +4°…+10°) so the direction flip at −4° does not pop shadows; it is never hidden (toggling `visible` changes the light set and recompiles every lit program).
+**Units.** The `sun intensity` column (and the moon row and the `hemi` column of §10.3.3) is in *SPEC light units*: 1.0 lights a white Lambert surface to 1.0 scene-linear. three r155+ lights are physically based — a directional or hemisphere light of intensity `E` yields `ρ·E/π` on a Lambert surface — so the rig writes `value × SPEC_LIGHT_UNIT` with `SPEC_LIGHT_UNIT = π`; `LightSource.intensity` (candela-scaled three intensity) is written unchanged. The `envIntensity` column is also in SPEC units: `scene.environmentIntensity = envIntensity × norm`, `norm = clamp(0.3 / L, 0, 200)`, where `L` is the sky radiance seen by an upward 150° probe — predicted synchronously per bake from a measured `SKY_LUMINANCE_BY_ELEVATION` table and refined by an async 16² readback of the PMREM (which also absorbs weather cloud cover and the harvested sky). Unnormalised, `SkyMesh`'s Preetham radiance is ≈ 1.05 at noon (≈ 2.3 zenith / 5.9 horizon) and 0.0014 after dusk: the IBL supplied ~2/3 of all light and the frame bloomed. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES C15, C16; packages/render/src/lighting/rig.ts line 36, sky.ts lines 17–44 --> Pillar 5 test pair: `noon` vs `dusk` — mean luminance over a billboard's opaque pixels must differ by ≥ 12 %; with the key's luminance 1.00 → ≈ 0.45 (0.85 × the warmer `#ffa04c`, relative to noon), the IBL 0.45 → 0.30 and lamps 0 → 0.55 the difference is designed to be ≥ 35 % (2026-10-06; it was sun 1.00 → 0.12). `envIntensity` caps the IBL contribution at ≤ 0.25 scene-linear on a 0.85-albedo surface (0.85 × 0.85 × 0.3 average irradiance ≈ 0.22 — the 0.3 is the sky radiance the normalisation below holds the PMREM to), which is the number behind the 1.10 ceiling in §10.2.1. The directional light fades to 0 across the sun/moon switch (sun: elevation −4°…+2°, moon: +4°…+10°) so the direction flip at −4° does not pop shadows; it is never hidden (toggling `visible` changes the light set and recompiles every lit program).
 
 ### 10.3.6 Weather
 
@@ -461,14 +471,14 @@ Wrap: `dusk (0.80) → night (1.00 ≡ 0.00)`. `punctual multiplier` scales ever
 
 ```ts
 const fogFactor = Fn(() => {
-  const dist  = positionView.z.abs();
+  const dist  = positionView.z.abs().sub(u.fogStart).max(0);                             // a clear zone round the camera (amended 2026-10-06)
   const hFall = exp(positionWorld.y.sub(u.fogBase).max(0).mul(u.fogFalloff).negate());   // 1 at/below base height, decays upward
   return oneMinus(exp(dist.mul(u.fogDensity).negate())).mul(hFall);
 });
 scene.fogNode = fog(u.fogColor, fogFactor());
 ```
 
-Palette values for grove: `fogDensity 0.0068` (per m of view depth; the implemented `0.018 × FOG_SCALE 0.38`), `fogBase 0.0` (m), `fogFalloff 0.35` (per m), `fogColor` from the keyframe (`#b9c7a8` noon, `#1a2030` night). The binding number is the fog on the focus: the player's feet sit at `y ≈ 0` (so `hFall = 1`) and 26 m of view depth at the default stop, so `fogFactor = 1 − exp(−26 · density)` — 16 % at 0.0068, 21 % at the far stop (34 m). The draft's 0.018 fogged the feet 37 % (46 % at 34 m), lifting and flattening the whole diorama and washing the inspector close-up; `sand` weather's ×2.5 still reaches 36 % at the default stop by design. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES M19, Z12, open item 4 --> `scene.fogNode` is read by `NodeManager.getFogNode` (verified, line 24). The sky mesh has `fog = false`. Light-shaft cards (≤ 6 per zone, additive alpha cards under lanterns at night, `layers 29`) are the only volumetric suggestion; there is no raymarch (§10.11).
+Palette values for grove: `fogStart 15` (m of view depth before any fog), `fogDensity 0.00486` (per m past it; the implemented `0.018 × FOG_SCALE 0.27`), `fogBase 0.0` (m), `fogFalloff 0.35` (per m), `fogColor` from the keyframe (`#b9c7a8` noon, `#1a2030` night; golden hours pull it toward the key colour, §10.3.5). The binding number is the fog on the focus: the player's feet sit at `y ≈ 0` (so `hFall = 1`) and 26 m of view depth at the default stop, so `fogFactor = 1 − exp(−(26 − 15) · density)` — **5.2 %** (was 16 % at 0.0068 from the eye), 8.8 % at the far stop (34 m), while the skirt hills at 60–150 m still recede (20–48 %). Weather divides `fogStart` by its density multiplier. <!-- amended 2026-10-06: Phase E2, the re-landed M2 re-light (audit M2-spawn-noon-2, M2-gym-dusk-2, M2-lamps-night-5, M2-spawn-noon-13); render IMPLEMENTATION-NOTES "Phase E1–E2" --> The draft's 0.018 fogged the feet 37 % (46 % at 34 m), lifting and flattening the whole diorama and washing the inspector close-up; `sand` weather's ×2.5 still reaches 36 % at the default stop by design. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES M19, Z12, open item 4 --> `scene.fogNode` is read by `NodeManager.getFogNode` (verified, line 24). The sky mesh has `fog = false`. Light-shaft cards (≤ 6 per zone, additive alpha cards under lanterns at night, `layers 29`) are the only volumetric suggestion; there is no raymarch (§10.11).
 
 ---
 
@@ -708,7 +718,11 @@ export interface ZoneSpec {
   readonly accentType: TypeName | null;                       // gym beacon + arena ring colour
   readonly harvestLevel: HarvestLevel;
   readonly obstacles?: readonly ObstacleSpec[];               // Phase D10: content `ZoneDef.obstacles` (id, kind, x, z); present only where content has some
+  readonly neighbours?: Readonly<Partial<Record<Dir, NeighbourSpec>>>;   // Phase E3: the linked zones, keyed by the side of THIS zone they lie on (§10.5.5 skirt)
 }
+
+/** Phase E3: what the skirt needs of a neighbour, in ITS frame; `edge` = its playable-edge point on the shared link (`edgePoint(layout, opposite side)`). */
+export interface NeighbourSpec { readonly id: string; readonly layout: Layout; readonly seed: number; readonly heightfield: HeightfieldData; readonly plan: ZonePlanData; readonly buildings: readonly BuildingSpec[]; readonly interiors?: readonly InteriorSpec[]; readonly edge: { readonly x: number; readonly z: number } }
 
 /** Phase D10: drawn as its own object (tree: the biome's first scatter tree at 0.55 scale + a hidden stump; boulder: a 1.15 m rock); never merged. */
 export interface ObstacleSpec { readonly id: string; readonly kind: 'tree' | 'boulder'; readonly x: number; readonly z: number }
@@ -766,9 +780,13 @@ export function makeSetPiece(id: SetPieceId, seed: number): PropGeo & { readonly
 
 Prop kinds for `PropPlacement.kind` in the grove set: `tree_oak`, `tree_birch`, `tree_willow`, `rock_s`, `rock_m`, `rock_l`, `stump`, `log`, `bush`, `flower_patch`, `sign`, `well`, `cart`, `crate`, `barrel`. Scatter kinds (generated from `layout` + `seed`, not listed in `props`): `tree_*` (density 0.028/m² in the town margin, 0.045 on the route), `rock_*` (0.006), `bush` (0.02), `flower_patch` (0.012), `tall_grass` tufts (2.2/m² inside tall-grass patches).
 
+**Dressing pass** (amended 2026-10-06, Phase E1: "every town as rich as Mirevale"). `zone/generators/dressing.ts` adds, per biome (`DRESSING[biome]`), only what changes nothing a player can walk on — content's zone plan owns every solid and the server's heightfield is stamped from it: (1) walk-through verge clusters along every road and lane (door paths at half the rate): every 1.4 m and side, with probability `vergeRate` (0.70–0.85) × noise, a cluster 1.0–3.6 m past the edge — one or two bushes, 1–4 tufts, a flower patch, small stones; (2) small stones and tufts round each big rock (`rock_a`), and banded free scree in every biome (0.002–0.032 clusters/m²) plus crystal-shard clusters (scatter kind `crystal_shard`, the set's `props.crystal` surface) in marrow, shrine and rift; (3) a walk-through bush leaf for sets without one (salt / cinder / marrow: `tall_grass` clumps; storm / forge: `pine_needle`), kept out of `BiomeSet.bushLeaf` so interiors and hand-placed bushes keep their look; per-biome ground-tuft tints (dry / ashen outside the grove); (4) wall-hugging house dressing (flower boxes, firewood, sacks, pots, kegs, small crates; 2–4 per wall side, never in front of the door, never at a gym) no deeper than 0.46 m, inside the building's collider pad (wall + 0.12 m + the 0.35 m capsule); (5) the town boundary for every biome just outside the walkable square (`half − 16 + 1.2`): dry-stone walls, post-and-rail fences or boulder dykes, with a gate pier either side of each 7.6 m road gap. Everything goes into the existing scatter kinds and per-chunk static meshes and binds only surfaces the set already binds: no draw call, material or program beyond the one shard kind. Measured in `.design/audits/M3-render-audit.md`; test `packages/render/test/dressing.test.ts`. <!-- amended 2026-10-06: Phase E1 -->
+
 ### 10.5.5 Layout
 
 `layout.ts` (pure): `town` = a plaza (radius 14 m, `cobble`) centred at `(0, 0)`, 6–10 buildings on a ring of radius 22–30 m facing the plaza with 4 m gaps, gym at the north-most slot, shop/healer flanking the south road, roads (`path_gravel`, 3.5 m wide) from the plaza to each `edge`; `route` = a 12 m corridor along x with 3–5 tall-grass patches (ellipses 8×5 m) alternating sides, 2–3 clearings, the set-piece at the midpoint; `story` = the set-piece at the origin, a 20 m approach from the single edge. Trainers/npcs/pickups/tablets come from `spec.actors/pickups/tablets` (content positions) and are **not** moved by layout; layout only refuses to place scatter inside a 1.5 m radius of them or inside a building footprint. The terrain splat is geometric: the library has one material per surface, so terrain triangles are clipped on the zero lines of signed layer fields (plaza > path > detail > ground) into per-layer groups of one indexed chunk geometry, and `color` holds the layer albedo (the harvest level-2 colour), not blend weights. Building and prop footprints are **not** in content's `Heightfield.walkable` (spine §3.11 open gap): the builder registers them as `TerrainCollider` blockers (§10.6.2); render never edits `walkable`. <!-- amended 2026-09-25: "the footprints that content's walkable already encodes" was false — render IMPLEMENTATION-NOTES Z5, Z6 -->
+
+**The skirt and the linked neighbours** (amended 2026-10-06, Phase E3; audit M2-link-east-1). Beyond the field, a skirt ring (2 m grid, reach 60 m, not walkable, not in the collider) continues the land, so the world never ends at a cliff of void. By default it rises into hills, with low valleys where roads leave. On a side whose link has a `ZoneSpec.neighbours` entry, the skirt is the neighbour's own terrain instead. The neighbour's `edge` point is laid on this zone's `edges[side]` point, and its heights are offset so the two points meet. Its heights replace the hills over the first 20 m past the field edge, and fade back to the hills over the 16 m inside the neighbour field's own boundary. Its road, plaza and detail layers (`splatAt` on its layout plan) fade in over 3 m. The skirt treeline and rocks keep 4 m clear of its roads. The neighbour's props, actors and lights are not drawn, so this adds no draw call, material or program beyond the skirt's existing terrain groups. The client adds `neighbours` with `withNeighbours(zoneSpecFor(z, h), z)`; `zoneSpecFor` itself, its snapshot, and the digest of a zone built without neighbours are unchanged. Test: `packages/render/test/neighbour-skirt.test.ts`. <!-- amended 2026-10-06: Phase E3 -->
 
 ### 10.5.6 Water
 
@@ -808,7 +826,7 @@ Amended 2026-09-30 (render Part 5 T4): a zone disposed while its background comp
 
 `ZoneHandle.dispose()`: (1) `scene.remove(group)`; (2) traverse `group` **once**, in the reverse of build order, calling `geometry.dispose()` on every geometry the builder created (recorded in a `Set<BufferGeometry>` at build time — shared library geometries such as the billboard quad and the decal plane are **not** in the set and are never disposed here), `dispose()` on every `InstancedMesh` (frees `instanceMatrix`/`instanceColor` attributes), `light.dispose()` on every `PointLight`/`SpotLight` (frees its shadow map through `LightShadow.dispose`); `dispatchEvent({ type: 'dispose' })` on every plain `Mesh` of the zone after its geometries — a plain `Mesh` has no `dispose()`, and its render objects (with the programs they hold) are released only on the object's or the material's `dispose` event, which library materials never fire; and the attribute lists of the zone's render objects, collected before disposal, are deleted from the renderer's attribute map afterwards — attributes a later pass binds (the velocity MRT's previous-instance-matrix buffers, three's wrapped instance colours) are otherwise never freed (measured +141 attributes / 9.8 MB per Mirevale reload before the fix, ±0 after) <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES C22, C26 -->; (3) `materials.evictExcept(nextKeep)` where `nextKeep` is `[]` unless a `loadZone` is already pending (handover pre-load), in which case it is the next zone's bound set; (4) `pool.releaseAtlas` for the zone's atlases (party singles stay); (5) `collider` reference dropped; (6) `disposed = true`. A second call returns immediately.
 
-Assertion (spine-level, `leak.spec.ts` in `50-verification-budget.md` §50.4.6): after `dispose()`, `renderer.info.memory.{geometries, textures, texturesSize, programs, renderTargets, attributes, attributesSize}` equal the baseline captured after §10.1.2 step 8 **exactly (±0)**; after 100 load/unload cycles `renderer.info.memory.total` equals the baseline. Programs return to the baseline after `dispose()` because every material graph exists (warm-compiled) before the first zone and the zone's render objects are released (above); **while** a zone is loaded, `programs` exceeds the baseline by the zone's light-set variants (§10.1.2 step 8: +28 on Mirevale, measured), which is not a leak. A program still alive after `dispose()` is a leak-test failure and therefore a spec violation. <!-- amended 2026-09-25: "programs are constant during a zone load" is impossible in three 0.186, where the light set is part of each program's source — render IMPLEMENTATION-NOTES C11 -->
+Assertion (spine-level, `leak.spec.ts` in `50-verification-budget.md` §50.4.6): after `dispose()`, `renderer.info.memory.{geometries, textures, texturesSize, programs, renderTargets, attributes, attributesSize}` equal the baseline captured after §10.1.2 step 8 **exactly (±0)**; after 100 load/unload cycles `renderer.info.memory.total` equals the baseline. Programs return to the baseline after `dispose()` because every material graph exists (warm-compiled) before the first zone and the zone's render objects are released (above); **while** a zone is loaded, `programs` exceeds the baseline by the zone's light-set variants (§10.1.2 step 8: +28 on Mirevale, measured), which is not a leak. A program still alive after `dispose()` is a leak-test failure and therefore a spec violation. <!-- amended 2026-09-25: "programs are constant during a zone load" is impossible in three 0.186, where the light set is part of each program's source — render IMPLEMENTATION-NOTES C11 --> Amended 2026-10-06 (Phase E3): a zone's compile re-keys the warm objects and the persistent arena to the zone's light set, and after the zone is gone nothing renders them, so they would keep its light-set variants alive (measured +2…+4 on Mirevale). Unless a next `loadZone` starts in the same task (a handover, which re-keys them itself), `dispose()` schedules a background compile of those objects against the zone-less light set, which is the boot's set. The programs assertion is therefore read after `compileIdle()` resolves. Measured on Mirevale: +2 right after `dispose()`, **±0** after `compileIdle()`, with every other counter ±0 throughout. <!-- amended 2026-10-06: Phase E3 -->
 
 `geometryDigest` is `fnv1a32` over the concatenated `position` attribute bytes of every builder-created geometry in build order; `20-client.md` §20.4.4's snapshot test compares it across two builds of the same `ZoneSpec` (determinism), and CI compares it across Node (`layout` only — no GPU) and the browser.
 
@@ -1040,7 +1058,7 @@ scenePass (MRT: output · normal · velocity · mask)
  → ACES
  → grade (lift/gamma/gain from the palette)
  → vignette 0.22
- → grain 0.035
+ → grain 0.052 (zero-mean, luminance-weighted: `post/grain.ts` `GrainNode`)
  → renderOutput (→ sRGB)
  → HUD overlay (second renderer.render, §10.9)
 ```
@@ -1058,7 +1076,7 @@ import { traa } from 'three/addons/tsl/display/TRAANode.js';
 import { smaa } from 'three/addons/tsl/display/SMAANode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js';
-import { film } from 'three/addons/tsl/display/FilmNode.js';
+import { grain } from './grain.js';                           // GrainNode (amended 2026-10-06; three's FilmNode is not used)
 import { chromaticAberration } from 'three/addons/tsl/display/ChromaticAberrationNode.js';
 
 export interface PostUniforms {
@@ -1067,7 +1085,7 @@ export interface PostUniforms {
   readonly chroma: UniformNode<'float', number>;       // 0 at rest; CHROMA_SUPER 0.012 for 120 ms
   readonly lift: UniformNode<'vec3', Vector3>; readonly gamma: UniformNode<'vec3', Vector3>; readonly gain: UniformNode<'vec3', Vector3>;
   readonly vignette: UniformNode<'float', number>;     // 0.22
-  readonly grain: UniformNode<'float', number>;        // 0.035
+  readonly grain: UniformNode<'float', number>;        // 0.052 (GrainNode intensity)
   readonly exposure: UniformNode<'float', number>;     // 1.0
   readonly bokehScale: UniformNode<'float', number>;   // 6 × pixelRatio (§10.7.3)
   readonly vignetteAspect: UniformNode<'float', number>; // height / width, 0.5625 at 16:9
@@ -1114,7 +1132,7 @@ export function buildPostGraph(gpu: WebGPURenderer, scene: Scene, camera: Perspe
   const graded = passes.grade ? pow(aces.mul(u.gain).add(u.lift), vec3(1).div(u.gamma)).clamp(0, 1) : aces;   // lift/gamma/gain: out = (in·gain + lift)^(1/gamma)
   const r = length(screenUV.sub(0.5).mul(vec2(1, u.vignetteAspect)));                  // aspect-corrected radius: vignetteAspect = height / width (0.5625 at 16:9), written on resize
   const vig = passes.grade ? graded.mul(oneMinus(smoothstep(0.35, 0.85, r).mul(u.vignette))) : graded;
-  const grained = f.grain && passes.grade ? film(vec4(vig, 1), u.grain).rgb : vig;
+  const grained = f.grain && passes.grade ? grain(vec4(vig, 1), u.grain).rgb : vig;
 
   const pipeline = new RenderPipeline(gpu, renderOutput(vec4(grained, 1), NoToneMapping, SRGBColorSpace));
   pipeline.outputColorTransform = false;
@@ -1123,7 +1141,7 @@ export function buildPostGraph(gpu: WebGPURenderer, scene: Scene, camera: Perspe
 ```
 
 As implemented the function is split into `planPostGraph` (pure: which stages, which numbers — what `post-graph.test.ts` asserts), `buildPostOutput` (the TSL above) and `PostStack` (one `RenderPipeline`, a persistent scene pass, rebuilds by `outputNode` + `needsUpdate`, and the dispose walk of §10.1.5); the grade also clamps `c·gain + lift` at 0 before `pow`. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES M11, M12, C14 -->
-Grain 0.035 is `film`'s `intensity` mix (verified body: `mix(base, base + base·(noise + 0.1), intensity)`), i.e. ≤ 3.85 % luminance modulation. The `mask` target is read by two consumers (AO exclusion, DOF composite) and by `pillars.spec.ts`. Every uniform in `PostUniforms` is written in `frame()` from the rig and the palette; `setEffects` and `BudgetProbe.setPassEnabled` call `buildPostGraph` again and assign `pipeline.outputNode = …; pipeline.needsUpdate = true` (disposing the previous display nodes), so a disabled pass has **no** render target and **no** cost.
+Grain is `GrainNode` (`post/grain.ts`): `c · (1 + k · (n − 0.5) · 4L(1 − L))` with `n` a per-pixel, per-frame uniform hash, `L` the luminance and `k = 0.052` — zero-mean (σ ≈ 1.5 % at mid-grey), blacks and whites untouched. three 0.186's `film` (`mix(base, base + base·clamp(noise + 0.1, 0, 1), intensity)`) never darkens, so at 0.035 it brightened every pixel by ≈ 2.1 % and toggling reduced effects changed the exposure while the grain itself stayed under one 8-bit level (audit M2-spawn-noon-13). <!-- amended 2026-10-06: Phase E2, the re-landed M2 re-light (audit M2-spawn-noon-2, M2-gym-dusk-2, M2-lamps-night-5, M2-spawn-noon-13); render IMPLEMENTATION-NOTES "Phase E1–E2" --> The `mask` target is read by two consumers (AO exclusion, DOF composite) and by `pillars.spec.ts`. Every uniform in `PostUniforms` is written in `frame()` from the rig and the palette; `setEffects` and `BudgetProbe.setPassEnabled` call `buildPostGraph` again and assign `pipeline.outputNode = …; pipeline.needsUpdate = true` (disposing the previous display nodes), so a disabled pass has **no** render target and **no** cost.
 
 ### 10.8.3 Numbers that are assertions
 
@@ -1135,7 +1153,7 @@ Grain 0.035 is `film`'s `intensity` mix (verified body: `mix(base, base + base·
 | Bloom | threshold 1.15 > 1.10 environment ceiling, < 1.35 creature emissive, < 3.2 housings | asset-audit `materials.albedoCeiling` + `pillars.spec.ts` bloom-gap shot (the brightest non-emissive pixel in the noon shot's beauty target ≤ 1.15) |
 | DOF | tilt 24°, focalLength 6 m, bokehScale 6 px × `pr`, mask over sharp billboards (CoC at the Pillar 1 prop = 2.85 px at `pr 1` — §10.7.3, recommendation R3) | Pillar 1 test |
 | Vignette | 0.22 at the corners (`r = 0.5·√(1 + 0.5625²) ≈ 0.574` → `t = 0.447`, `smoothstep(0.35, 0.85, 0.574) = t²(3 − 2t) = 0.42` → **9.3 %** darkening at the far corner; 22 % is the cap the uniform expresses) <!-- amended 2026-09-25: the draft's 0.36 / 8 % was an arithmetic slip; render IMPLEMENTATION-NOTES M20, the test asserts 9.3 % --> | shot readback in the hostile audit |
-| Grain | 0.035 | reduced effects → the `film` node is absent from the graph |
+| Grain | `GrainNode` 0.052, mean-preserving (amended 2026-10-06) | reduced effects → the `GrainNode` is absent from the graph; `post-graph.test.ts` checks the zero mean |
 
 ### 10.8.4 `ReducedEffects` — always wins
 

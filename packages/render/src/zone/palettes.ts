@@ -4,6 +4,7 @@
  * authored here in the same shape. Pure data.
  */
 import type { LightingPalette } from '../lighting/daycycle.js';
+import { FOG_START_M } from '../lighting/fog.js';
 import type { GradePalette } from '../post/grade.js';
 import type { SurfaceId } from '../materials/surfaces.js';
 import type { Palette } from './types.js';
@@ -59,10 +60,11 @@ const ROWS: Readonly<Record<string, Row>> = {
 
 /**
  * The rows keep the SPEC's §10.3.7 density (0.018) as the reference; at the 26 m default camera distance that
- * fogs the player's feet by 37 % and flattens the diorama (part-1 note M19). The zone palettes scale it so the
- * haze reads on the skirt hills and the far treeline, not on the plaza (IMPLEMENTATION-NOTES Part 2).
+ * fogs the player's feet by 37 % and flattens the diorama (part-1 note M19). The zone palettes scale it (0.27, and
+ * the fog starts 15 m from the camera, §10.3.7 as amended 2026-10-06) so the haze reads on the skirt hills and the
+ * far treeline, not on the plaza: ≤ 6 % at the slice's focus (grove 5.2 %, mire 5.8 %).
  */
-export const FOG_SCALE = 0.38;
+export const FOG_SCALE = 0.27;
 
 function toPalette(r: Row): Palette {
   return Object.freeze({
@@ -94,7 +96,7 @@ export function paletteFor(id: string, biome: string): Palette {
 
 /** The lighting rig's view of a palette (§10.3.5 / §10.3.7). */
 export function lightingPaletteOf(p: Palette): LightingPalette {
-  return { skyZenith: p.skyZenith, skyHorizon: p.skyHorizon, groundBounce: p.groundBounce, fogColor: p.fogColor, fogDensity: p.fogDensity, fogBase: 0, fogFalloff: 0.35 };
+  return { skyZenith: p.skyZenith, skyHorizon: p.skyHorizon, groundBounce: p.groundBounce, fogColor: p.fogColor, fogDensity: p.fogDensity, fogStart: FOG_START_M, fogBase: 0, fogFalloff: 0.35 };
 }
 
 /** The post grade's view of a palette (§10.8.2). */

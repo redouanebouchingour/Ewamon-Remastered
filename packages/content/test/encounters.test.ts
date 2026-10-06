@@ -8,17 +8,26 @@
  * - obstacles: stamped only on walkable samples and recorded per id; the stamp disconnects nothing (the spawn's
  *   component loses exactly the stamped samples it held); flags, refusals and HM / type rules;
  * - the bicycle: a priced key item sold in Saltmourn, never a story gate.
+ *
+ * Phase E5 adds the §50.4.2 base rules: level ranges, weights, the RC-9 story-table rules, the 16-slot / 14-species /
+ * |O(zone)| ≤ 16 caps with the full Z(zone) in bindSets, the medium default, the alpha / variant constants, and a
+ * 100 000-roll seeded sample of mire_route against each slot's weight share.
  */
 import { describe, expect, it } from 'vitest';
+import { createRng } from '@ewa/core';
 import {
+  ALPHA_CHANCE,
   BIKE_ITEM,
   BIKE_PRICE,
+  ENCOUNTER_BANDS,
   ENCOUNTER_TABLES,
   KEY_ITEMS,
+  LEGENDARY_STATICS,
   OBSTACLE_HM,
   OBSTACLE_TYPES,
   SPECIES,
   STORY,
+  VARIANT_CHANCE,
   ZONES,
   getHeightfield,
   getZoneSurface,
@@ -165,5 +174,119 @@ describe('Phase D11 bicycle', () => {
     expect(BIKE_PRICE).toBeGreaterThanOrEqual(20000);
     expect(ZONES.filter((z) => z.shop?.includes(BIKE_ITEM) === true).map((z) => z.id)).toEqual(['saltmourn']);
     for (const b of STORY) expect(b.grant?.[BIKE_ITEM]).toBeUndefined();
+  });
+});
+
+describe('§50.4.2 encounter tables (Phase E5)', () => {
+  const zoneById = new Map(ZONES.map((z) => [z.id, z]));
+  const nocturnal = (id: string): boolean => {
+    const t = byId.get(id)!.types;
+    return t.includes('Ghost') || t.includes('Dark');
+  };
+
+  it('15 tables, one per zone that names one (`enc_<zoneId>`); levelMin ≤ levelMax in 1..100; weights > 0; species exist', () => {
+    expect(ENCOUNTER_TABLES).toHaveLength(15);
+    expect(new Set(ENCOUNTER_TABLES.map((t) => t.zoneId)).size).toBe(15);
+    for (const t of ENCOUNTER_TABLES) {
+      expect(t.id).toBe(`enc_${t.zoneId}`);
+      expect(zoneById.get(t.zoneId)!.encounterTable, t.id).toBe(t.id);
+      for (const s of t.slots) {
+        const what = `${t.id} ${s.species}`;
+        expect(byId.has(s.species), what).toBe(true);
+        expect(Number.isInteger(s.levelMin) && Number.isInteger(s.levelMax), what).toBe(true);
+        expect(s.levelMin, what).toBeGreaterThanOrEqual(1);
+        expect(s.levelMin, what).toBeLessThanOrEqual(s.levelMax);
+        expect(s.levelMax, what).toBeLessThanOrEqual(100);
+        expect(s.weight, what).toBeGreaterThan(0);
+        expect(['day', 'night', 'any'], what).toContain(s.timeOfDay);
+      }
+    }
+    for (const z of ZONES) if (z.encounterTable !== null) expect(ENCOUNTER_TABLES.some((t) => t.id === z.encounterTable), z.id).toBe(true);
+  });
+
+  it('story tables satisfy RC-9: every slot inside the zone band, Ghost / Dark species night-only', () => {
+    const story = ENCOUNTER_TABLES.filter((t) => zoneById.get(t.zoneId)!.kind === 'story');
+    expect(story.length).toBe(4);
+    for (const t of story) {
+      const band = ENCOUNTER_BANDS[t.zoneId];
+      expect(band, `${t.zoneId} band`).toBeDefined();
+      for (const s of t.slots) {
+        expect(s.levelMin, `${t.id} ${s.species}`).toBeGreaterThanOrEqual(band![0]);
+        expect(s.levelMax, `${t.id} ${s.species}`).toBeLessThanOrEqual(band![1]);
+        if (nocturnal(s.species)) expect(s.timeOfDay, `${t.id} ${s.species} is Ghost/Dark`).toBe('night');
+      }
+    }
+  });
+
+  it('≤ 16 slots and ≤ 14 species per table; |O(zone)| = table ∪ statics ≤ 16 for all 21 zones; the full Z(zone) is in bindSets', () => {
+    for (const t of ENCOUNTER_TABLES) {
+      expect(t.slots.length, t.id).toBeLessThanOrEqual(16);
+      expect(new Set(t.slots.map((s) => s.species)).size, t.id).toBeLessThanOrEqual(14);
+    }
+    const { stats } = validate({ skipHeightfields: true });
+    for (const z of ZONES) {
+      const o = new Set<string>();
+      for (const s of ENCOUNTER_TABLES.find((t) => t.zoneId === z.id)?.slots ?? []) o.add(s.species);
+      for (const s of LEGENDARY_STATICS) if (s.zoneId === z.id) o.add(s.species);
+      expect(o.size, `${z.id} overworld species`).toBeLessThanOrEqual(16);
+      // Z(zone) ⊇ O(zone) ∪ trainer teams; reported in full (spine rule 11, amended 2026-09-25)
+      const full = stats.bindSets[z.id];
+      expect(full, z.id).toBeDefined();
+      for (const id of o) expect(full, `${z.id} bindSets has ${id}`).toContain(id);
+      for (const tr of z.trainers) for (const m of tr.team) expect(full, `${z.id} bindSets has ${m.species}`).toContain(m.species);
+      expect([...full!].sort()).toEqual([...full!]);
+    }
+    // the two zones the amendment names cannot meet a cap on Z
+    expect(stats.bindSets.solenne!.length).toBeGreaterThan(16);
+    expect(stats.bindSets.umbral_observatory!.length).toBeGreaterThan(16);
+  });
+
+  it("medium defaults to 'land' (omitted on land slots); every 'water' slot's zone has water samples", () => {
+    let land = 0;
+    let water = 0;
+    for (const t of ENCOUNTER_TABLES) {
+      for (const s of t.slots) {
+        expect(s.medium === undefined || s.medium === 'water', `${t.id} ${s.species}: medium written as '${String(s.medium)}'`).toBe(true);
+        if ((s.medium ?? 'land') === 'land') land++;
+        else water++;
+      }
+      if (t.slots.some((s) => s.medium === 'water')) {
+        const h = getHeightfield(t.zoneId);
+        expect(h.water.some((v) => v === 1), `${t.zoneId} has no water samples`).toBe(true);
+      }
+    }
+    expect(land).toBeGreaterThan(0);
+    expect(water).toBeGreaterThan(0);
+  });
+
+  it('ALPHA_CHANCE 0.02, VARIANT_CHANCE 0.03', () => {
+    expect(ALPHA_CHANCE).toBe(0.02);
+    expect(VARIANT_CHANCE).toBe(0.03);
+  });
+
+  it("a 100 000-roll seeded sample of mire_route lands within ±1.5 pp of each slot's weight share", () => {
+    const t = ENCOUNTER_TABLES.find((x) => x.zoneId === 'mire_route')!;
+    const total = t.slots.reduce((a, s) => a + s.weight, 0);
+    const hits = new Array<number>(t.slots.length).fill(0);
+    const rng = createRng('enc_mire_route:e5');
+    const N = 100_000;
+    for (let n = 0; n < N; n++) {
+      // the spawn director's weighted pick (packages/server/src/rooms/spawnDirector.ts): one next() × total, walk the slots
+      let at = rng.next() * total;
+      let k = t.slots.length - 1;
+      for (let i = 0; i < t.slots.length; i++) {
+        at -= t.slots[i]!.weight;
+        if (at < 0) {
+          k = i;
+          break;
+        }
+      }
+      hits[k]!++;
+    }
+    for (let i = 0; i < t.slots.length; i++) {
+      const share = t.slots[i]!.weight / total;
+      const got = hits[i]! / N;
+      expect(Math.abs(got - share) * 100, `${t.slots[i]!.species}: ${(got * 100).toFixed(2)} % vs ${(share * 100).toFixed(2)} %`).toBeLessThanOrEqual(1.5);
+    }
   });
 });

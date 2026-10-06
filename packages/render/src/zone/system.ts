@@ -45,6 +45,15 @@ export class ZoneSystem implements FrameHook {
     }
   }
 
+  /**
+   * Phase E3: the client is about to dispose the current zone and load `next` (a handover). The dispose's eviction then
+   * keeps `next`'s texture sets resident — shared surfaces (most of a biome's set) are not fetched and transcoded
+   * again. Cleared when the next load finishes.
+   */
+  prepareHandover(next: ZoneSpec): void {
+    this.pendingKeep = zoneSurfaces(next);
+  }
+
   /** The loaded zone (null when none / disposed). */
   zone(): ZoneHandleImpl | null { return this.current !== null && !this.current.disposed ? this.current : null; }
 

@@ -338,12 +338,12 @@ To be filled by the render owner (§50.6.3). Findings under line 6 or 7 cannot b
 | M2-gym-dusk-5 | major | | |
 | M2-gym-dusk-6 | major | | |
 | M2-gym-dusk-7 | major | Spec + Fixed | SPEC §10.5.8 / §50.2.2 / §40.5.2 amended (CHANGELOG 2026-09-30): the 400 cap is beauty + post. Render measures the shadow-map draws per frame (host inspector, render Part 5 B2): `BudgetCounts.beautyDrawCalls` / `shadowDrawCalls`, `dumpZone().shadowDrawCalls` measured; `harness:budget` (`budgetRules.ts`) and `audit:assets` (`budget.counts.drawCalls` = drawCalls − shadowDrawCalls) cap beauty + post, shadows ≤ 564 separately. Re-shot counts (sidecars, 1440×900): gym-dusk 394 = **106** beauty + 288 shadow, lamps-night 395 = **124** + 271, spawn-noon 356 = 109 + 247, link-east 151 = 74 + 77, battle 315 = 114 + 201; all beauty ≤ 400 and shadow ≤ 564. (Programs peak at 128 = the cap in gym-dusk / lamps-night; M2-gym-dusk-8 not addressed here.) Tests: `stats-dispose.test.ts`, asset-audit `rules.test.ts`, `harness-budget.test.ts`. |
-| M2-gym-dusk-8 | major | | |
+| M2-gym-dusk-8 | major | Fixed + Accepted | Phase E3 (render IMPLEMENTATION-NOTES "Programs over the cap after dusk"). Measured cause: not dusk and not a light set — the sandbox reads 107 programs at noon, dusk and night. The harness's mask variant re-rendered the scene pass without TRAA (H4 fact c) at another render-call depth, building a second program for every visible material (+31, kept). **Fixed**: `drawMask` / `drawOutput` sample the MRT texture without re-rendering the scene. `harness:shots` mirevale (spawn-noon, gym-dusk, lamps-night, link-east × full / reduced / mask): programs **109 / 144 / 144 / 144 → 109 / 113 / 113 / 113**, peak 144 → **113 ≤ 128**; sidecars `.screenshots/audit/M2-E3/mirevale/*.json` (after) and `…/mirevale/before/*.json`. **Accepted**: the first full → reduced → full still leaves +2 (sandbox) / +4 (harness), not ±0. It is one extra vertex program per small instanced mesh (character decal, surf ripple) for the second render context that a DOF-less graph creates; it does not grow on further toggles (budget row: programs, 15 under the cap). |
 | M2-sprite-edge-1 | major | | |
 | M2-sprite-edge-2 | major | | |
 | M2-sprite-edge-3 | minor | | |
 | M2-sprite-edge-4 | minor | | |
-| M2-sprite-edge-5 | blocker | | |
+| M2-sprite-edge-5 | blocker | Fixed + Spec | Phase E3: `harness:shots` shot 3 runs the §50.1 #6 edge scan. `stage.inspect` puts the wild mossling in the inspector; the vertical FOV is narrowed until 1 level-0 texel = **1.349 screen px** (stock inspector 0.384×, FOV 8.11°); the zone root and the player are hidden; the pre-TRAA `mask.y` is captured and scanned in Node (`src/harness/edgeScan.ts`; no pixel reads in the client runtime). Result: **200 / 200 sampled straight-edge pixels (of 6 412 straight, 6 867 edge) with 0 intermediate values, 0 intermediate values in the rect: PASS**. Files: `.screenshots/audit/M2-E3/mire_route/sprite-edge--80.94_5.3-edgemask.png`, `…-output.png` (the same frame's `output` MRT), sidecar `edgeScan`. SPEC §50.6.1 amended (CHANGELOG 2026-10-06, `50-verification-budget.md` §50.6.1 entry): the table's "one zoom step in" minifies about 10×, so the proof is the inspector with a narrowed lens. Test `harness-edge-scan.test.ts` (a blended edge fails). |
 | M2-sprite-edge-6 | minor | | |
 | M2-lamps-night-1 | major | | |
 | M2-lamps-night-2 | minor | | |
@@ -362,10 +362,17 @@ To be filled by the render owner (§50.6.3). Findings under line 6 or 7 cannot b
 | M2-battle-9 | major | | |
 | M2-battle-10 | major | | |
 | M2-battle-11 | minor | | |
-| M2-link-east-1 | blocker | | |
+| M2-link-east-1 | blocker | Fixed + Spec | Phase E3, the neighbour skirt (render IMPLEMENTATION-NOTES; SPEC §10.5.1 `ZoneSpec.neighbours`, §10.5.5; CHANGELOG 2026-10-06). On a linked side the skirt beyond the field is the neighbour zone's own terrain: mire_route's heightfield, offset so the link points meet, and its road / plaza / detail layers, with the skirt treeline kept off its road. It adds no mesh, material or program. A full second zone root was rejected: it would double the material, program and draw budgets, and `loadZone` holds one zone. Evidence: `.screenshots/audit/M2-E3/mirevale/skirt-92_0-h1-zoom2-{hills,neighbour}.png` (the same view without / with the neighbour: hills and trees → mire_route's road continuing) and `skirt-join-80_0-h{1,3}-zoom0.png` (the join; the roads meet with a jog of about 1–2 m). Caveat, said plainly: the shot-6 frame itself (`M2-E3/mirevale/link-east-58_0-full.png`, zoom 1 at x = 58) ends at about x = 80, where the skirt begins, so that frame still shows only mirevale's margin; the neighbour is seen at zoom 2 or from the edge. The sidecar note now says what is staged (the skirt) and what is not (the neighbour's props and creatures, which appear at the handover). Test `neighbour-skirt.test.ts`. Handover: `handover-hitch.spec.ts` exists and runs (client IMPLEMENTATION-NOTES Phase E3). |
 | M2-link-east-2 | major | | |
 | M2-link-east-3 | minor | | |
 | M2-link-east-4 | major | | |
 | M2-link-east-5 | major | | |
 | M2-link-east-6 | minor | | |
 | M2-link-east-7 | minor | | |
+
+### Render open items closed alongside (Phase E3, not audit ids)
+
+| item | answer | evidence |
+|---|---|---|
+| Programs +2 after unload (render Part 5 Open 1) | Fixed + Spec | Cause, confirmed by program name: the warm objects kept the unloaded zone's light-set variants. Fix: `scheduleWarmRekey` re-keys them to the zone-less light set in the background, unless a handover follows. Mirevale unload: **+2 → ±0 after `compileIdle()`**; name diff empty; geometries / textures / render targets / attributes ±0. SPEC §10.5.9 amended (CHANGELOG 2026-10-06). |
+| DOF speckle on out-of-focus faces in the 4 m inspector (render Part 4 Open 6, Part 6 Open 3) | Deferred | three 0.186's `DepthOfFieldNode` has no noise. The speckle is its `blur16` 16-tap max filter, which spreads isolated bright texels, and it runs after TRAA, so nothing resolves it. The fix is a custom DOF node with depth-weighted gathering and no max pass; Part 4 Open 6's gather leak needs the same node. It needs inspector A/B shots, and `post/pipeline.ts` was being rewritten by the art pass (grain) during this phase. Diorama distances do not show it. Reason recorded in render IMPLEMENTATION-NOTES Phase E3. |

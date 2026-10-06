@@ -95,6 +95,28 @@ export interface ZoneSpec {
   readonly interiors?: readonly InteriorSpec[];
   /** Phase D10: Cut trees / Strength boulders (content `ZoneDef.obstacles`); absent / [] in most zones. */
   readonly obstacles?: readonly ObstacleSpec[];
+  /**
+   * Phase E3 (audit M2-link-east-1): the linked neighbours, keyed by the side of THIS zone they lie on. The skirt beyond
+   * the field on that side follows the neighbour's terrain (its heightfield and its road / plaza layers, low detail, no
+   * props, no collider), so the world continues into the next zone instead of the generic hills. Absent → hills.
+   */
+  readonly neighbours?: Readonly<Partial<Record<Dir, NeighbourSpec>>>;
+}
+
+/**
+ * Phase E3: what the skirt needs of a neighbour zone (a subset of its own `ZoneSpec`, in ITS frame). The two zones are
+ * joined at the link: the neighbour's `edge` (its playable-edge point on the shared link, `edges[opposite side]`) lands
+ * on this zone's `edges[side]` point, and its heights are offset so the two edge points meet.
+ */
+export interface NeighbourSpec {
+  readonly id: string;
+  readonly layout: Layout;
+  readonly seed: number;
+  readonly heightfield: HeightfieldData;
+  readonly plan: ZonePlanData;
+  readonly buildings: readonly BuildingSpec[];
+  readonly interiors?: readonly InteriorSpec[];
+  readonly edge: { readonly x: number; readonly z: number };
 }
 
 /**

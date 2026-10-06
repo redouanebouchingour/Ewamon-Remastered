@@ -1,11 +1,12 @@
+/**
+ * PlayerRepo money / rating / identity and ProgressRepo. Phase E5 moved toPublic / publicProfile to public.test.ts and
+ * the refresh-token cases to auth.test.ts (§50.4.4 file names).
+ */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { AnyDb } from '../src/db';
-import { authRepo, hashRefreshToken } from '../src/repos/auth';
-import { PUBLIC_PROFILE_KEYS, playerRepo } from '../src/repos/players';
+import { playerRepo } from '../src/repos/players';
 import { progressRepo } from '../src/repos/progress';
-import { socialRepo } from '../src/repos/social';
-import { refreshTokens } from '../src/schema/index';
-import { T0, at, expectPersistError, mkCreature, mkPlayer, openTestDb } from './helpers';
+import { T0, at, expectPersistError, mkPlayer, openTestDb } from './helpers';
 
 let db: AnyDb;
 beforeAll(async () => {
@@ -13,58 +14,6 @@ beforeAll(async () => {
 });
 afterAll(async () => {
   await db.close();
-});
-
-const SPEC_KEYS = ['id', 'username', 'title', 'motto', 'body', 'rating', 'peakRating', 'tier', 'trainerLevel', 'badges', 'guildTag', 'dexCaughtCount', 'showcase', 'createdAt'];
-const FORBIDDEN = ['email', 'passwordHash', 'password_hash', 'password', 'money', 'isAdmin', 'bannedAt', 'banReason', 'refresh', 'refreshToken', 'refreshTokens', 'token', 'tokenHash', 'usernameLower', 'lastSeenAt', 'x', 'z', 'zoneId', 'angle'];
-
-describe('toPublic() is an allow-list (§5.3)', () => {
-  it('Object.keys equals the §5.3 list exactly, in order, and no sensitive value leaks through', async () => {
-    await db.transaction(async (tx) => {
-      const id = await mkPlayer(tx, 'Ranger_Rei');
-      const row = (await playerRepo.byId(tx, id))!;
-      expect(row.email).toBe('ranger_rei@test.local');
-      expect(row.passwordHash).toBe('argon2id$fake');
-      const pub = playerRepo.toPublic(row, { badges: ['bloom'], guildTag: null, dexCaughtCount: 3, showcase: [] });
-      expect(Object.keys(pub)).toEqual(SPEC_KEYS);
-      expect([...PUBLIC_PROFILE_KEYS]).toEqual(SPEC_KEYS);
-      for (const k of FORBIDDEN) expect(pub).not.toHaveProperty(k);
-      const json = JSON.stringify(pub);
-      expect(json).not.toContain('test.local');
-      expect(json).not.toContain('argon2id');
-      expect(pub).toMatchObject({ id, username: 'Ranger_Rei', tier: 'bronze', trainerLevel: 1, badges: ['bloom'], guildTag: null, dexCaughtCount: 3, showcase: [], createdAt: T0 });
-    });
-  });
-
-  it('publicProfile() gathers badges / guild tag / dex count / showcase from the database and nulls ownerId on showcase creatures', async () => {
-    await db.transaction(async (tx) => {
-      const id = await mkPlayer(tx, undefined, 10_000);
-      for (let i = 0; i < 5; i++) await mkCreature(tx, id, { kind: 'party', index: i }, { speciesId: `s${i}` });
-      await progressRepo.awardBadge(tx, id, 'bloom', T0);
-      await progressRepo.awardBadge(tx, id, 'ember', at(1));
-      await progressRepo.markCaught(tx, id, 'bramblecub', 'normal', false, T0);
-      await progressRepo.markCaught(tx, id, 'glimfin', 'dusk', true, T0);
-      await progressRepo.markSeen(tx, id, 'cindercap', T0); // seen only
-      await socialRepo.createGuild(tx, { leaderId: id, name: 'Publics', tag: 'PUB' }, T0);
-      await playerRepo.applyRating(tx, id, 300);
-      await playerRepo.addTrainerExp(tx, id, 4200);
-      const pub = (await playerRepo.publicProfile(tx, id))!;
-      expect(Object.keys(pub)).toEqual(SPEC_KEYS);
-      expect(pub.badges).toEqual(['bloom', 'ember']);
-      expect(pub.guildTag).toBe('PUB');
-      expect(pub.dexCaughtCount).toBe(2);
-      expect(pub.showcase).toHaveLength(3);
-      expect(pub.showcase.map((c) => c.speciesId)).toEqual(['s0', 's1', 's2']);
-      for (const c of pub.showcase) expect(c.ownerId).toBeNull();
-      expect(pub.rating).toBe(1300);
-      expect(pub.tier).toBe('gold');
-      expect(pub.trainerLevel).toBe(5);
-      const json = JSON.stringify(pub);
-      expect(json).not.toContain('@test.local');
-      expect(json).not.toContain('argon2id');
-      expect(await playerRepo.publicProfile(tx, '00000000-0000-0000-0000-000000000000')).toBeNull();
-    });
-  });
 });
 
 describe('PlayerRepo money / rating / identity', () => {
@@ -122,42 +71,6 @@ describe('PlayerRepo money / rating / identity', () => {
       await playerRepo.unban(tx, id);
       expect(await playerRepo.byId(tx, id)).toMatchObject({ bannedAt: null, banReason: null });
       await expectPersistError('NotFound', () => playerRepo.lock(tx, '00000000-0000-0000-0000-000000000000'));
-    });
-  });
-});
-
-describe('AuthRepo refresh tokens — only hashes are stored, rotation is one-shot', () => {
-  it('issue → rotate → replay of the old token fails; revokeAll kills every live token', async () => {
-    await db.transaction(async (tx) => {
-      const id = await mkPlayer(tx);
-      const first = await authRepo.issueRefresh(tx, id, T0);
-      expect(first.expiresAt.getTime()).toBe(T0.getTime() + 30 * 24 * 3_600_000);
-      const stored = await tx.select().from(refreshTokens);
-      expect(stored.map((r) => r.tokenHash)).toEqual([hashRefreshToken(first.token)]);
-      expect(stored[0]!.tokenHash).not.toBe(first.token);
-      const rotated = await authRepo.rotateRefresh(tx, first.token, at(1000));
-      expect(rotated).toMatchObject({ playerId: id });
-      expect(rotated!.token).not.toBe(first.token);
-      expect(await authRepo.rotateRefresh(tx, first.token, at(2000))).toBeNull(); // replay
-      expect(await authRepo.rotateRefresh(tx, rotated!.token, rotated!.expiresAt)).toBeNull(); // expired at `now`
-      const again = await authRepo.rotateRefresh(tx, rotated!.token, at(3000));
-      expect(again).not.toBeNull();
-      expect(await authRepo.revokeAll(tx, id, at(4000))).toBe(1);
-      expect(await authRepo.rotateRefresh(tx, again!.token, at(5000))).toBeNull();
-      expect(await authRepo.purge(tx, at(1_000_000))).toBe(3);
-    });
-  });
-
-  it('ownerOf finds a token in any state (reuse detection) and null for a never-issued one', async () => {
-    await db.transaction(async (tx) => {
-      const id = await mkPlayer(tx);
-      const first = await authRepo.issueRefresh(tx, id, T0);
-      expect(await authRepo.ownerOf(tx, first.token)).toMatchObject({ playerId: id, revokedAt: null });
-      await authRepo.rotateRefresh(tx, first.token, at(1000));
-      const revoked = await authRepo.ownerOf(tx, first.token);
-      expect(revoked?.playerId).toBe(id);
-      expect(revoked?.revokedAt).toEqual(at(1000));
-      expect(await authRepo.ownerOf(tx, 'never-issued')).toBeNull();
     });
   });
 });

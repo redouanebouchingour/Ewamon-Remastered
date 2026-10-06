@@ -171,16 +171,23 @@ describe('§10.3.6 weather, §10.3.7 fog, IBL normalisation, wetness', () => {
   });
 });
 
-describe('§10.3.7 fog as amended 2026-09-25 (IMPLEMENTATION-NOTES Part 4, H8)', () => {
-  it('the zone-less default is the grove palette density 0.0068; feet at 26 m are 16 % fogged, a 4 m close-up 2.7 %', async () => {
+describe('§10.3.7 fog as amended 2026-10-06 (the M2 re-light: a 15 m clear zone, density 0.00486 past it)', () => {
+  it('the zone-less default is the grove palette density; feet at 26 m are 5.2 % fogged, the skirt hills at 60–150 m 20–48 %', async () => {
     const { GROVE_LIGHTING } = await import('../src/lighting/daycycle.js');
-    const { GROVE_FOG_DENSITY, createHeightFog } = await import('../src/lighting/fog.js');
-    const { PALETTES } = await import('../src/zone/palettes.js');
-    expect(GROVE_FOG_DENSITY).toBeCloseTo(0.0068, 4);
+    const { FOG_START_M, GROVE_FOG_DENSITY, createHeightFog } = await import('../src/lighting/fog.js');
+    const { PALETTES, lightingPaletteOf } = await import('../src/zone/palettes.js');
+    expect(FOG_START_M).toBe(15);
+    expect(GROVE_FOG_DENSITY).toBeCloseTo(0.00486, 6);
     expect(GROVE_LIGHTING.fogDensity).toBe(GROVE_FOG_DENSITY);
+    expect(GROVE_LIGHTING.fogStart).toBe(FOG_START_M);
     expect(PALETTES.grove_mirevale!.fogDensity).toBeCloseTo(GROVE_FOG_DENSITY, 12);
-    expect(createHeightFog().uniforms.fogDensity.value).toBe(GROVE_FOG_DENSITY);
-    expect(heightFogFactor(26, 0, GROVE_FOG_DENSITY, 0, 0.35)).toBeCloseTo(0.163, 3);   // SPEC: "16 % at 0.0068"
-    expect(heightFogFactor(4, 0.8, GROVE_FOG_DENSITY, 0, 0.35)).toBeLessThan(0.03);
+    expect(lightingPaletteOf(PALETTES.grove_mirevale!).fogStart).toBe(FOG_START_M);
+    const fog = createHeightFog();
+    expect(fog.uniforms.fogDensity.value).toBe(GROVE_FOG_DENSITY);
+    expect(fog.uniforms.fogStart.value).toBe(FOG_START_M);
+    expect(heightFogFactor(26, 0, GROVE_FOG_DENSITY, 0, 0.35, FOG_START_M)).toBeCloseTo(0.052, 3);
+    expect(heightFogFactor(60, 0, GROVE_FOG_DENSITY, 0, 0.35, FOG_START_M)).toBeCloseTo(0.196, 3);
+    expect(heightFogFactor(150, 0, GROVE_FOG_DENSITY, 0, 0.35, FOG_START_M)).toBeCloseTo(0.481, 3);
+    expect(heightFogFactor(14, 0, GROVE_FOG_DENSITY, 0, 0.35, FOG_START_M)).toBe(0);   // inside the clear zone
   });
 });

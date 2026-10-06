@@ -136,6 +136,10 @@ export const creatureRepo = {
     if (c.ownerId === null) fail('InvalidArgument', 'persisted creatures have an owner');
     const ownerId = c.ownerId;
     await playerRepo.lock(tx, ownerId);
+    // spine §5.2: PartyFull when the party index is taken or the party already has 6 (Phase E5 — was InvalidSlot)
+    if (slot.kind === 'party' && Number.isInteger(slot.index) && (slot.index as number) >= 0 && (slot.index as number) < PARTY_MAX) {
+      if ((await partyCount(tx, ownerId)) >= PARTY_MAX || (await slotTaken(tx, ownerId, 'party', slot.index as number, null))) fail('PartyFull', `party[${slot.index}] is taken`);
+    }
     const slotIndex = await resolveSlot(tx, ownerId, slot.kind, slot.index, null);
     const [row] = await tx
       .insert(ci)

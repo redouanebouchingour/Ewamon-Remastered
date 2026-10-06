@@ -72,7 +72,7 @@
     "device": "0xa7a8",
     "description": "Intel(R) UHD Graphics"
   },
-  "chrome": "Chrome/154.0.8037.93",
+  "chrome": "Chrome/154.0.8037.98",
   "variants": [
     {
       "variant": "full",
@@ -80,7 +80,7 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 147.8,
+        "meanLuma": 112.8,
         "blackShare": 0,
         "greyShare": 0,
         "levels": {
@@ -135,25 +135,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 151,
-          "triangles": 474819,
+          "drawCalls": 155,
+          "triangles": 528697,
           "texturesSize": 493119419,
           "textures": 166,
-          "geometries": 303,
-          "programs": 139,
+          "geometries": 513,
+          "programs": 113,
           "renderTargets": 34,
-          "attributes": 1763,
-          "attributesSize": 109152436,
+          "attributes": 2075,
+          "attributesSize": 133619940,
           "materials": 18,
           "shadowLights": 3,
           "nonShadowLights": 17,
-          "beautyDrawCalls": 74,
+          "beautyDrawCalls": 78,
           "shadowDrawCalls": 77
         },
         "settle": {
           "frames": 90,
           "stable": true,
-          "programs": 139
+          "programs": 113
         },
         "rects": {
           "player": [
@@ -173,7 +173,7 @@
         },
         "battle": null,
         "notes": [
-          "neighbour streaming NOT staged: the client does not prefetch neighbour zones (IMPLEMENTATION-NOTES part 2, §20.10 row: \"phase 5's neighbour-zone prefetch not done\") and Renderer.loadZone rejects a second zone while one is loaded (renderer.ts loadZone); the frame shows the east edge of this zone only"
+          "neighbour skirt staged (render E3, audit M2-link-east-1): beyond the field edge on each linked side the skirt is the neighbour zone's own terrain — its heightfield and road / plaza layers at 2 m, no props — from `ZoneSpec.neighbours` (SceneDirector `withNeighbours`); the neighbour's props, actors and creatures stream in at the handover (Renderer.loadZone holds one zone)"
         ],
         "frame": 960
       }
@@ -184,7 +184,7 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 144.6,
+        "meanLuma": 110.8,
         "blackShare": 0,
         "greyShare": 0,
         "levels": {
@@ -236,25 +236,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 140,
-          "triangles": 474808,
+          "drawCalls": 144,
+          "triangles": 528686,
           "texturesSize": 417303423,
           "textures": 154,
-          "geometries": 303,
-          "programs": 127,
+          "geometries": 513,
+          "programs": 101,
           "renderTargets": 24,
-          "attributes": 1779,
-          "attributesSize": 110202036,
+          "attributes": 2091,
+          "attributesSize": 134669540,
           "materials": 18,
           "shadowLights": 3,
           "nonShadowLights": 17,
-          "beautyDrawCalls": 63,
+          "beautyDrawCalls": 67,
           "shadowDrawCalls": 77
         },
         "settle": {
           "frames": 90,
           "stable": true,
-          "programs": 127
+          "programs": 101
         },
         "rects": {
           "player": [
@@ -274,7 +274,7 @@
         },
         "battle": null,
         "notes": [
-          "neighbour streaming NOT staged: the client does not prefetch neighbour zones (IMPLEMENTATION-NOTES part 2, §20.10 row: \"phase 5's neighbour-zone prefetch not done\") and Renderer.loadZone rejects a second zone while one is loaded (renderer.ts loadZone); the frame shows the east edge of this zone only"
+          "neighbour skirt staged (render E3, audit M2-link-east-1): beyond the field edge on each linked side the skirt is the neighbour zone's own terrain — its heightfield and road / plaza layers at 2 m, no props — from `ZoneSpec.neighbours` (SceneDirector `withNeighbours`); the neighbour's props, actors and creatures stream in at the handover (Renderer.loadZone holds one zone)"
         ],
         "frame": 1050
       }
@@ -343,25 +343,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 151,
-          "triangles": 474819,
+          "drawCalls": 155,
+          "triangles": 528697,
           "texturesSize": 493119427,
           "textures": 168,
-          "geometries": 303,
-          "programs": 139,
+          "geometries": 513,
+          "programs": 113,
           "renderTargets": 34,
-          "attributes": 1779,
-          "attributesSize": 110202036,
+          "attributes": 2091,
+          "attributesSize": 134669540,
           "materials": 18,
           "shadowLights": 3,
           "nonShadowLights": 17,
-          "beautyDrawCalls": 74,
+          "beautyDrawCalls": 78,
           "shadowDrawCalls": 77
         },
         "settle": {
           "frames": 90,
           "stable": true,
-          "programs": 139
+          "programs": 113
         },
         "rects": {
           "player": [
@@ -381,7 +381,7 @@
         },
         "battle": null,
         "notes": [
-          "neighbour streaming NOT staged: the client does not prefetch neighbour zones (IMPLEMENTATION-NOTES part 2, §20.10 row: \"phase 5's neighbour-zone prefetch not done\") and Renderer.loadZone rejects a second zone while one is loaded (renderer.ts loadZone); the frame shows the east edge of this zone only"
+          "neighbour skirt staged (render E3, audit M2-link-east-1): beyond the field edge on each linked side the skirt is the neighbour zone's own terrain — its heightfield and road / plaza layers at 2 m, no props — from `ZoneSpec.neighbours` (SceneDirector `withNeighbours`); the neighbour's props, actors and creatures stream in at the handover (Renderer.loadZone holds one zone)"
         ],
         "frame": 1140
       }

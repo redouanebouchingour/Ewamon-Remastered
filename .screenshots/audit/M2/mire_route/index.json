@@ -2,7 +2,7 @@
   "set": "M2",
   "zone": "mire_route",
   "layoutSeed": 1293811714,
-  "generatedAt": "2026-10-05T20:48:50.494Z",
+  "generatedAt": "2026-10-06T06:14:19.403Z",
   "resolution": {
     "width": 1440,
     "height": 900,
@@ -28,8 +28,8 @@
     "device": "0xa7a8",
     "description": "Intel(R) UHD Graphics"
   },
-  "chrome": "Chrome/154.0.8037.93",
-  "bootMs": 58054,
+  "chrome": "Chrome/154.0.8037.98",
+  "bootMs": 58715,
   "harvest": "intact",
   "headingConvention": "words",
   "shots": [
@@ -42,7 +42,9 @@
       "files": [
         "sprite-edge--80.94_5.3-full.png",
         "sprite-edge--80.94_5.3-reduced.png",
-        "sprite-edge--80.94_5.3-mask.png"
+        "sprite-edge--80.94_5.3-mask.png",
+        "sprite-edge--80.94_5.3-edgemask.png",
+        "sprite-edge--80.94_5.3-output.png"
       ],
       "sidecar": "sprite-edge--80.94_5.3.json",
       "checks": []

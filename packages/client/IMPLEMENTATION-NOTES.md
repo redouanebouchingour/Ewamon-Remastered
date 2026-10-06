@@ -1036,3 +1036,97 @@ leave / ineligible window / reopen with a catch try / phase-4 summary / fainted 
 - Not verified live in a browser this phase (unit tests + the server integration tests).
 - Tests: `test/postgame.test.tsx` (8); `dialogue-flow.test.tsx` (Zeon after the title offers the rematch);
   `rankings-profile.test.tsx` (Tower tab).
+
+## Phase E3 — sprite-edge scan, neighbour skirt + prefetch, handover-hitch, harness programs (2026-10-06)
+
+### Sprite-edge scan (audit M2-sprite-edge-5)
+
+The `sprite-edge` shot of `harness:shots` now ends with the §50.1 #6 edge scan. Pixels are read only in the Node runner, never in the client runtime.
+
+**Page side** (`src/harness/stage.ts` `stageEdgeScan`):
+- Places the player at the shot-3 anchor at noon and calls `stage.inspect` on the shot's wild creature.
+- Narrows the camera's vertical FOV until one level-0 texel covers 1.35 screen px. The camera distance and the sampler are left alone. For reference, the stock 4 m inspector gives 0.38× on mossling's 1024² frame at 900 px.
+- Hides the zone root (the probe's `opaque` switch) and the player's figure (`isolateInspector`), so the inspected billboard is the only DOF-sharp object left.
+- Draws the scene pass's `mask.y` (pre-TRAA).
+
+**Runner side** (`scripts/harness/shots.ts`):
+- Captures `<stem>-edgemask.png`.
+- `src/harness/edgeScan.ts` `scanSpriteEdges` (pure) samples 200 straight-edge pixels evenly. Each sample's 3×3 neighbourhood, and every pixel of the billboard's rect, must hold no value strictly between 0 and 255.
+- Then captures the same frame's `output` MRT (`<stem>-output.png`) and records `edgeScan` in the sidecar (magnification, stock magnification, FOV, distance, counts, checks). A failed check fails the run.
+
+The mask proves the absence of intermediate alpha because blending applies to every colour attachment: an alpha-blended or alpha-to-coverage sprite would leave intermediate values in `mask.y` along its edge.
+
+Result (`.screenshots/audit/M2-E3/mire_route/sprite-edge--80.94_5.3-{edgemask,output}.png` and `.json`): mossling at ×1.349 (stock ×0.384; FOV 28° → 8.11°). 200 / 200 sampled straight-edge pixels (of 6 412 straight, 6 867 edge) show 0 intermediate values, and the rect holds 0 → **PASS**. A first run without the isolation also passed, but its samples included fence and grass occluder edges; that is why the zone root and the player are now hidden. The magnified frame (1 382 px quad) is taller than the 900 px viewport, so the creature's feet are outside the capture. The scan needs edges, not the whole silhouette.
+
+Test: `test/harness-edge-scan.test.ts` (4) uses synthetic silhouettes. A nearest-magnified alpha-tested silhouette passes; a blended edge fails; a sprite too small to give 200 straight-edge pixels fails.
+
+### Harness programs (render Part 6 Open 1 / audit M2-gym-dusk-8)
+
+`drawMask` and `drawOutput` now sample `scenePass.getTexture(…)` as plain textures, so they show the last full frame without re-rendering the scene pass.
+
+The old path rendered the scene without TRAA at another render-call depth, which built a second program for every visible material: +31, alive for the rest of the run. Shots run on mirevale, programs per shot (full / reduced / mask): 109 / 144 / 144 / 144 before, 109 / 113 / 113 / 113 after. The render notes, Phase E3, give the breakdown.
+
+`__ewaHarness.programNames()` was added as a diagnostic.
+
+### Neighbour skirt and prefetch
+
+**Skirt.** `scene/zoneSpecFor.ts` gains `neighbourSpecsFor(zone)` and `withNeighbours(spec, zone)`; render's `ZoneSpec.neighbours` is described in render IMPLEMENTATION-NOTES Phase E3. The SceneDirector builds every zone `withNeighbours`. `zoneSpecFor` and its snapshot are unchanged.
+
+**Handover keep.** Before the old zone's dispose, the SceneDirector calls `renderer.prepareHandover(spec)` whenever a zone is loaded.
+
+**Prefetch** (`scene/prefetch.ts`, the second half of §20.10.3 phase 5):
+- `neighbourPrefetchPlan` (pure) lists the linked zones' surfaces that the current zone does not bind, plus every file of their unbound atlases (mips included).
+- `runPrefetch` fetches them into the HTTP cache: materials first, through `renderer.materials.prefetch`, then atlases. Fetches run one at a time, paced to ≤ 2 MiB/s, and a token cancels the run.
+- World3D starts it after the hero tier and after every handover's first frame. Dev builds log the bytes.
+
+Not measured in a browser: the harness page server sends `cache-control: no-store`, so the prefetch cannot help there. The handover spec's "preloaded" case therefore makes the next zone's field sets and atlases resident instead.
+
+Test: `test/neighbour-prefetch.test.ts` (4).
+
+### handover-hitch.spec.ts (§50.4.7)
+
+The spec builds and serves the harness page itself (`buildHarness` + `serveBuild` on a free port) and opens `/harness/shots?zone=mirevale&bg=1`. With `bg=1` the background compile is on, as in the client; the harness otherwise compiles zones fully.
+
+It calls `__ewaHarness.handover('mire_route', { preload })` (`HarnessWorld.handover`). The player stands 6 m inside the east edge; `director.loadZone(to, …, arrival)` runs with the arrival 8 m inside mire_route's west edge. A requestAnimationFrame loop ticks the world throughout and records every frame gap until 120 frames after the first destination frame.
+
+The SPEC thresholds (≤ 250 ms preloaded and no frame over 33 ms; ≤ 1 500 ms cold) are asserted only with `EWA_REFERENCE_GPU=1`. On this machine the numbers are attached and annotated.
+
+Measured here: `npx playwright test packages/client/test/handover-hitch.spec.ts --trace off`, 2 passed (4.5 min) on the Intel Gen-12 iGPU:
+
+| | first destination frame (SPEC) | `director.loadZone` | frame gaps (max / p95) | frames > 33 ms | programs after |
+|---|---|---|---|---|---|
+| preloaded | **14 472 ms** (≤ 250) | 14 437 ms | 2 379 / 299 ms | 196 of 201 | 123 |
+| not preloaded | **17 908 ms** (≤ 1 500) | 17 526 ms | 3 369 / 426 ms | 205 of 211 | 113 |
+
+Preloading saves about 3.4 s, but the crossing stays far from the SPEC on this machine. Almost all of the time is mire_route's phase-1 compile: the zone's light set is part of every lit program, so a zone with a different light count recompiles every lit structure. The frame gaps come from three's synchronous node builds and the zone build. The harness also renders an empty scene between the old zone's dispose and the new one's phase 1 (no fade element; World3D shows its "Travelling to …" overlay there).
+
+What would close the gap: a fixed light-slot layout shared by all zones, so that every zone's lit programs are identical and a handover compiles nothing; or two zone roots during a handover. Both are architectural changes outside this phase. A first run hit a Playwright trace-artifact `ENOENT` (`out/playwright` was being cleaned by a parallel run); `--trace off --output <dir>` avoids that.
+
+## Phase E6 — GPU device lost (2026-10-06)
+
+`scene/deviceRecovery.ts` `DeviceRecovery` holds the order and the retry policy; World3D supplies the hooks. Every renderer World3D creates passes `onDeviceLost: (info) => void this.recovery.onLost(info)`.
+
+**On a loss:**
+1. **Overlay.** The overlay goes up: "Restoring the renderer (the graphics device was reset)".
+2. **Teardown** (`teardownRenderer`):
+   - runs the renderer-bound subscriptions (`rendererOffs`: the settings → renderer push, the ResizeObserver, the battle-panel inset, render scale) and clears the step collider;
+   - clears the spawn, legendary and raid views and the bound-atlas set;
+   - unloads the zone and disposes the renderer, both guarded because a dead device may throw.
+3. **Rebuild.** `bootRenderer(null, false)` creates the new renderer and everything bound to it: SceneDirector, HUD binding, fonts, size observer, settings push, client creature group and sprite views. The catalog that was already read is reused.
+4. **Reload.** `detachRoom()` + `attachRoom(room)` re-create remotes, spawns and statics from the live schema. Then `enterZone(room, zoneId, 'Restoring <zone>')` loads the current zone at the server's current pose, with the overlay up until its first frame. An open battle is re-dressed by `battle.attach` at the end of `enterZone`.
+
+**What is never touched:** the WorldSession (socket, room, stores), the battle controller, input, audio and React (GameCanvas stays mounted; `worldHost` is not involved).
+
+**Retries.** A rebuild that throws is retried 3 times, 1 s apart. After that, or after more than 3 losses within 60 s, the overlay shows "The graphics device keeps resetting. Reload the page to continue." A loss during a recovery makes it start over once.
+
+`boot()` is now overlay labels + `bootRenderer(manifest, true)` + audio + ready. Its behaviour is unchanged; only the renderer part moved.
+
+**Test.** `test/device-lost.test.ts` (6) wires a fake device through render's `watchDeviceLost` into `DeviceRecovery` with a fake world. It checks:
+- the order: overlay → teardown → new renderer → `loadZone` at the current server position;
+- the overlay is up during the rebuild;
+- the session is untouched;
+- retries, then giving up;
+- folding in a second loss, and stopping when the world is disposed;
+- the loss-rate limit.
+
+**Not verified live:** the full client + server path. A real device loss can only be forced with `chrome://gpucrash`.

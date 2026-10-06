@@ -135,10 +135,15 @@ function buildingOf(spec: ZoneSpec, kind: BuildingSpec['kind']): BuildingSpec | 
 export const ENGAGE_AT_M = 2.5;
 
 /**
- * Resolves one §50.6.1 anchor in `spec`'s zone. Returns null when the zone has no such anchor (no gym, no shop, no
- * encounter table, no east link).
+ * Resolves one §50.6.1 anchor in `spec`'s zone: the table's rule, else (M3 onward, every zone takes all six rows) the
+ * recorded fallback of `fallbackAnchor`. Returns null only when neither applies.
  */
 export function resolveAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | null {
+  return tableAnchor(shot, spec) ?? fallbackAnchor(shot, spec);
+}
+
+/** The table's own rule (§50.6.1, header comment). Null when the zone has no such subject. */
+export function tableAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | null {
   const z = zoneDef(spec.id as ZoneId);
   const rigH = shot.heading === null ? null : rigHeading(shot.heading);
   const heading = { spec: shot.heading, rig: rigH, viewForward: rigH === null ? null : viewForward(rigH), convention: headingConvention() };
@@ -203,6 +208,107 @@ export function resolveAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | n
         rule: `edgePoint(${spec.layout}, 'e') - ${HANDOVER_INSET} m along x (the links.e handover line, neighbour ${spec.edges.e.toZone})`,
         base: { name: `links.e edge (${spec.edges.e.toZone})`, x: ex, z: ez }, offset: { dx: -HANDOVER_INSET, dz: 0, frame: 'world' }, wild: null, worldReading: null,
       };
+    }
+  }
+}
+
+const EDGE_ORDER = ['e', 'w', 'n', 's'] as const;
+/** §50.6.1 heading (words) that looks at each edge: e = 1 (+x), w = 3 (−x), n = 2 (−z), s = 0 (+z). */
+const EDGE_HEADING: Readonly<Record<'e' | 'w' | 'n' | 's', Heading>> = { e: 1, w: 3, n: 2, s: 0 };
+
+/**
+ * M3 fallbacks where a zone lacks the table's subject (each recorded in `rule`, prefixed "fallback:"):
+ * - `gym-dusk` without a gym: the zone's set-piece (its signature) + 8 m past its keep-clear extent along +z;
+ * - `lamps-night` without a shop: the generated light nearest the spawn + (+2, +3) world;
+ * - `sprite-edge` / `battle` without an encounter table (towns, story zones): the first `common` slot of the first
+ *   neighbour (edge order e, w, n, s) that has a table, the creature staged 5 m from the spawn at (+4, +3), snapped;
+ *   the player anchors follow the table rules from that point;
+ * - `link-east` without an east link: the first other link (w, n, s), 6 m inside that edge, the heading turned to look
+ *   at it.
+ */
+export function fallbackAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | null {
+  const z = zoneDef(spec.id as ZoneId);
+  const rigH = shot.heading === null ? null : rigHeading(shot.heading);
+  const heading = { spec: shot.heading, rig: rigH, viewForward: rigH === null ? null : viewForward(rigH), convention: headingConvention() };
+  const base = { layoutSeed: z.layoutSeed >>> 0, shot: shot.id, zone: z.id, heading };
+  switch (shot.id) {
+    case 'spawn-noon': return null;
+    case 'gym-dusk': {
+      const plan = planLayout({
+        seed: spec.seed, layout: spec.layout, heightfield: spec.heightfield, edges: spec.edges, actors: spec.actors, pickups: spec.pickups,
+        tablets: spec.tablets, warps: spec.warps, tallGrass: spec.tallGrass, setPiece: spec.setPiece,
+      });
+      const sp = plan.setPiece;
+      const p = snapWalkable(z, sp.x, sp.z + Math.max(sp.hw, sp.hd) + 8);
+      return {
+        ...base, x: p.x, z: p.z, snapped: p.snapped, raw: p.raw,
+        rule: `fallback: no gym — set-piece ${sp.id} + (0, ${round2(Math.max(sp.hw, sp.hd) + 8)}) world (its keep-clear extent + 8 m)`,
+        base: { name: `${sp.id}`, x: sp.x, z: sp.z }, offset: { dx: 0, dz: round2(Math.max(sp.hw, sp.hd) + 8), frame: 'world' }, wild: null, worldReading: null,
+      };
+    }
+    case 'lamps-night': {
+      let best: { x: number; z: number; id: string } | null = null;
+      let bd = Infinity;
+      for (const l of spec.lights) {
+        const d = Math.hypot(l.position[0] - z.spawn.x, l.position[2] - z.spawn.z);
+        if (d < bd) { bd = d; best = { x: l.position[0], z: l.position[2], id: l.id }; }
+      }
+      if (best === null) return null;
+      const p = snapWalkable(z, best.x + 2, best.z + 3);
+      return {
+        ...base, x: p.x, z: p.z, snapped: p.snapped, raw: p.raw, rule: `fallback: no shop — light ${best.id} (nearest the spawn) + (2, 3) world`,
+        base: { name: best.id, x: best.x, z: best.z }, offset: { dx: 2, dz: 3, frame: 'world' }, wild: null, worldReading: null,
+      };
+    }
+    case 'sprite-edge':
+    case 'battle': {
+      let slot: EncounterSlot | null = null; let slotIndex = -1; let from = '';
+      for (const d of EDGE_ORDER) {
+        const e = spec.edges[d];
+        if (e === undefined) continue;
+        const nz = zoneDef(e.toZone as ZoneId);
+        const table = nz.encounterTable === null ? undefined : ENCOUNTER_TABLES.find((t) => t.id === nz.encounterTable);
+        const i = table?.slots.findIndex((s) => s.tier === 'common' && (s.medium ?? 'land') === 'land') ?? -1;
+        if (table !== undefined && i >= 0) { slot = table.slots[i]!; slotIndex = i; from = `${nz.id}:${table.id}`; break; }
+      }
+      if (slot === null) return null;
+      const s = snapWalkable(z, z.spawn.x + 4, z.spawn.z + 3);
+      const wild = { speciesId: slot.species, level: slot.levelMin, slotIndex, x: s.x, z: s.z };
+      const ax = s.x - 2; const az = s.z + 3;
+      if (shot.id === 'sprite-edge') {
+        const p = snapWalkable(z, ax, az);
+        return {
+          ...base, x: p.x, z: p.z, snapped: p.snapped, raw: p.raw,
+          rule: `fallback: no encounter table — ${from} slot ${slotIndex} (${slot.species}) staged at spawn + (4, 3)${s.snapped ? ' (snapped)' : ''}, + (-2, +3) world`,
+          base: { name: `${slot.species} (staged)`, x: s.x, z: s.z }, offset: { dx: -2, dz: 3, frame: 'world' }, wild, worldReading: null,
+        };
+      }
+      const len = Math.hypot(ax - s.x, az - s.z);
+      const k = ENGAGE_AT_M / len;
+      const p = snapWalkable(z, s.x + (ax - s.x) * k, s.z + (az - s.z) * k);
+      return {
+        ...base, x: p.x, z: p.z, snapped: p.snapped, raw: p.raw,
+        rule: `fallback: no encounter table — ${from} slot ${slotIndex} (${slot.species}) staged at spawn + (4, 3); the player engages ${ENGAGE_AT_M} m from it`,
+        base: { name: `${slot.species} (staged)`, x: s.x, z: s.z }, offset: null, wild, worldReading: null,
+      };
+    }
+    case 'link-east': {
+      for (const d of EDGE_ORDER) {
+        const e = spec.edges[d];
+        if (e === undefined || d === 'e') continue;
+        const [ex, ez] = edgePoint(spec.layout, d);
+        const [ix, iz] = d === 'w' ? [HANDOVER_INSET, 0] : d === 'n' ? [0, HANDOVER_INSET] : [0, -HANDOVER_INSET];
+        const p = snapWalkable(z, ex + ix, ez + iz);
+        const sh = EDGE_HEADING[d];
+        const rh = rigHeading(sh);
+        return {
+          ...base, x: p.x, z: p.z, snapped: p.snapped, raw: p.raw,
+          rule: `fallback: no east link — edgePoint(${spec.layout}, '${d}') ${HANDOVER_INSET} m inside (the links.${d} handover line, neighbour ${e.toZone}); heading turned to look at it`,
+          base: { name: `links.${d} edge (${e.toZone})`, x: ex, z: ez }, offset: { dx: ix, dz: iz, frame: 'world' }, wild: null, worldReading: null,
+          heading: { spec: sh, rig: rh, viewForward: viewForward(rh), convention: headingConvention() },
+        };
+      }
+      return null;
     }
   }
 }

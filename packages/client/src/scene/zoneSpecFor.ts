@@ -21,10 +21,10 @@
  * Phase D10: `spec.obstacles` is content's `ZoneDef.obstacles` (id, kind, x, z) — present only in zones that have
  * some, so every other zone's spec is unchanged. Which ones a player cleared is per player (`ObstaclesHandle`).
  */
-import { SET_PIECE_BY_ZONE, getHeightfield, interiorsFor, zonePlan } from '@ewa/content';
+import { SET_PIECE_BY_ZONE, getHeightfield, interiorsFor, zone as zoneDef, zonePlan } from '@ewa/content';
 import type { HarvestState, LinkDir, ZoneDef, ZoneId } from '@ewa/content';
 import { INTERIOR_SIZE, edgePoint, lightsFromPlan, waterBodies } from '@ewa/render';
-import type { Dir, Edge, HarvestLevel, InteriorSpec, Marker, WaterSpec, ZonePlanData, ZoneSpec } from '@ewa/render';
+import type { Dir, Edge, HarvestLevel, InteriorSpec, Marker, NeighbourSpec, WaterSpec, ZonePlanData, ZoneSpec } from '@ewa/render';
 
 /** SPEC §10.5.1 `SetPieceId`, one per zone, in ZONE_ORDER order (content's table). */
 export { SET_PIECE_BY_ZONE };
@@ -118,6 +118,46 @@ export function zoneSpecFor(zone: ZoneDef, harvest: HarvestState): ZoneSpec {
     interiors: interiorSpecsFor(zone.id),
     ...(zone.obstacles !== undefined && zone.obstacles.length > 0 ? { obstacles: zone.obstacles.map((o) => ({ id: o.id, kind: o.kind, x: o.x, z: o.z })) } : {}),
   };
+}
+
+const OPPOSITE: Readonly<Record<LinkDir, LinkDir>> = { n: 's', s: 'n', e: 'w', w: 'e' };
+
+/**
+ * Phase E3 (audit M2-link-east-1): the linked neighbours' terrain for the skirt (render `ZoneSpec.neighbours`): per link
+ * side, the neighbour's heightfield, layout plan, buildings and pockets, and its edge point on the shared link (its
+ * playable-edge point on the opposite side). Pure (content's cached heightfields and plans). Kept out of `zoneSpecFor`
+ * so its 63-spec snapshot and the geometry digest of a zone built without neighbours stay what they were; the
+ * SceneDirector, the harness and the sandbox add it with `withNeighbours`.
+ */
+export function neighbourSpecsFor(zone: ZoneDef): Partial<Record<Dir, NeighbourSpec>> {
+  const out: Partial<Record<Dir, NeighbourSpec>> = {};
+  for (const d of LINK_DIRS) {
+    const to = zone.links[d];
+    if (to === undefined) continue;
+    const nb = zoneDef(to);
+    const plan = zonePlan(nb.id);
+    const [ex, ez] = edgePoint(nb.kind, OPPOSITE[d]);
+    out[d] = {
+      id: nb.id,
+      layout: nb.kind,
+      seed: nb.layoutSeed >>> 0,
+      heightfield: getHeightfield(nb.id),
+      plan: {
+        plaza: plan.plaza, roads: plan.roads, doorPaths: plan.doorPaths, roadMeander: plan.roadMeander, grassPatches: plan.grassPatches,
+        clearings: plan.clearings, setPiece: plan.setPiece, points: plan.points, warpPairs: plan.warpPairs,
+      },
+      buildings: plan.buildings.map((b) => ({ id: b.id, kind: b.kind, x: b.x, z: b.z, yaw: b.yaw, w: b.w, d: b.d, floors: b.floors, roof: b.roof, seed: b.seed })),
+      interiors: interiorSpecsFor(nb.id),
+      edge: { x: ex, z: ez },
+    };
+  }
+  return out;
+}
+
+/** `spec` plus its zone's neighbours (E3). */
+export function withNeighbours(spec: ZoneSpec, zone: ZoneDef): ZoneSpec {
+  const neighbours = neighbourSpecsFor(zone);
+  return Object.keys(neighbours).length > 0 ? { ...spec, neighbours } : spec;
 }
 
 /** Content's placed pockets → render `InteriorSpec` (local frames kept; league ids and flags stay client-side). Pure. */

@@ -913,3 +913,17 @@ and taught the Phase A interiors.
 - Tests: `test/postgame.test.ts` (10: rematch content, two coordinator rematches, pure tower rules, four coordinator tower
   runs incl. 7 wins + reward + retire, a loss, items refused; two live cases through the room — gym rematch refusal /
   cooldown / rematch team, tower start + leaderboard).
+
+## Phase E5 — mythical choice gate (2026-10-06)
+
+- **Defect fixed.** `POST /battle-pass/mythical-choice` did not check the trainer level, and persist's
+  `setMythicalChoice` created the missing level-50 row. Any account could take a level-50 lumyth / noxmyth at trainer
+  level 1. The client offers the choice in place of a Claim button on the level-50 tile, so the route now does both,
+  in one transaction:
+  1. `trainerLevelFor(exp) < 50` → 409 `levelLocked`, nothing written.
+  2. If level 50 is not claimed yet, it claims it: the row, its 5 000 money and items, and the `battlePass.claim`
+     audit.
+  3. Then the one-time choice. A second choice → 409 `AlreadyClaimed`.
+  Persist's `setMythicalChoice` now requires the row (`Forbidden` without it), per spine §5.2.
+- Test: `authority.test.ts` A10b (the §50.5 M4 "battle-pass claim/mythical-choice … A10 plus a positive control at
+  level 50").

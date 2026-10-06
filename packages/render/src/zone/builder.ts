@@ -22,7 +22,7 @@ import type { PunctualHandle } from '../lighting/rig.js';
 import { HOUSINGS_KEY, createRenderStats, type HousingTag } from '../stats.js';
 import { TerrainCollider } from '../terrain/collider.js';
 import { heightClamped } from '../terrain/field.js';
-import { buildSkirt, buildTerrainChunks, skirtHeightFn, type SkirtOpts, type TerrainLayers } from '../terrain/mesh.js';
+import { buildSkirt, buildTerrainChunks, skirtClearFn, skirtHeightFn, type NeighbourField, type SkirtOpts, type TerrainLayers } from '../terrain/mesh.js';
 import type { Parts} from './geo.js';
 import { Digest, box, beam, card, lathe, releaseShapeCache, trs } from './geo.js';
 import { BIOME_GENERATORS, FENCE_FOOTPRINT, PROP_BLOCKER, SET_PIECE_BUILDERS, buildHousing, buildPropKind } from './generators/index.js';
@@ -31,6 +31,7 @@ import { DOORWAY_SURFACE, buildHouse } from './generators/buildings.js';
 import { buildBush, buildFlowers, buildGroundTuft, buildImpostorCards, buildLog, buildRock, buildStump, buildTallGrass, buildTree } from './generators/nature.js';
 import { buildPondBank } from './generators/props.js';
 import { buildInterior, interiorSurfaces, type BuiltInterior } from './generators/interiors.js';
+import { boundaryPieces, buildShard, buildSkirtItem, dressingFor, rockClusters, screeClusters, skirtPlacements, vergeClusters, type CoverPoint, type DressingStyle } from './generators/dressing.js';
 import { InteriorSystem } from './interiors.js';
 import { setSurfaces, type BiomeSet } from './generators/set.js';
 import {
@@ -221,8 +222,10 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
       else if (Math.abs(end[1]) >= half - 1) exits.push({ dir: end[1] > 0 ? 's' : 'n', offset: end[0] });
     }
   }
-  const skirtOpts: SkirtOpts = { reach: 60, rise: spec.layout === 'route' ? 11 : 14, salt: spec.seed & 0xffff, exits };
+  const neighbours = neighbourFields(spec);
+  const skirtOpts: SkirtOpts = { reach: 60, rise: spec.layout === 'route' ? 11 : 14, salt: spec.seed & 0xffff, exits, ...(neighbours.length > 0 ? { neighbours } : {}) };
   const skirtY = skirtHeightFn(h, skirtOpts);
+  const skirtClear = skirtClearFn(h, skirtOpts);
   for (const c of buildSkirt(h, skirtOpts, layers, mat)) { root.add(c.mesh); record(c.geometry); built.triangles += c.triangles; }
 
   // 3. water
@@ -301,6 +304,23 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     else if (pp.kind === 'fence') collider.addFootprint({ kind: 'rect', x: pp.x, z: pp.z, hw: FENCE_FOOTPRINT.hw + MOVER_R, hd: FENCE_FOOTPRINT.hd + MOVER_R, yaw: pp.yaw });
     else if (r > 0) collider.addFootprint({ kind: 'circle', x: pp.x, z: pp.z, r: r + MOVER_R });
   }
+  // Phase E1: wall-hugging dressing round the town buildings, inside their collider footprints (dressing.ts)
+  const dressing = dressingFor(set.biome);
+  {
+    const near = (x: number, z: number): boolean => {
+      for (const pp of spec.props) if (Math.hypot(pp.x - x, pp.z - z) < (PROP_BLOCKER[pp.kind] ?? 0) + 0.9) return false;
+      for (const l of spec.lights) if (Math.hypot(l.position[0] - x, l.position[2] - z) < 0.9) return false;
+      for (const [px, pz] of plan.points) if (Math.hypot(px - x, pz - z) < 1.3) return false;
+      return true;
+    };
+    for (const b of spec.buildings) {
+      for (const sk of skirtPlacements(b, dressing, near)) {
+        const geo = buildSkirtItem(set, sk.kind, sk.seed);
+        placeProp(geo, sk.x, heightClamped(h, sk.x, sk.z) - 0.02, sk.z, sk.yaw, 1, false);
+        disposeProp(geo);
+      }
+    }
+  }
   // light housings (generated); each one's glowing part is tagged for dumpZone's lightSources (§50.4.6 both directions)
   const housingTags: HousingTag[] = [];
   for (const l of spec.lights) {
@@ -318,7 +338,7 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
     if (base > g + 0.02) { const t = partsAt(x, z, castHousing); for (const p of t) box(p, set.props.stone, x, g - 0.2, z, 0.5, base - g + 0.22, 0.5, 0, 0.04); }
     collider.addFootprint({ kind: 'circle', x, z, r: (gen === 'beacon' ? 0.45 : 0.22) + MOVER_R });
   }
-  dressBoundary(spec, plan, set, splat, partsAt, propsRng.next.bind(propsRng));
+  dressBoundary(spec, plan, set, dressing, partsAt, propsRng.next.bind(propsRng));
   dressWater(spec, plan, set, partsAt);
   if (plan.plaza) { plazaCurb(h, plan, palette, set, partsAt); plazaPattern(h, plan, set, partsAt, spec.seed); }
   warpRooms(h, plan, set, partsAt, splat.pockets);
@@ -356,9 +376,9 @@ export function buildZone(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonl
   }
 
   // 7. scatter
-  const tints = [...palette.scatterTints, ...FLOWER_TINTS, ...GRASS_TINTS].map((hex) => new Color(hex));
+  const tints = [...palette.scatterTints, ...FLOWER_TINTS, ...dressing.grassTints].map((hex) => new Color(hex));
   const flowerTint0 = palette.scatterTints.length;
-  const scatterKinds = buildScatter(spec, plan, set, splat, collider, skirtY, mat, views, (scatterRng.next() * 4294967296) >>> 0, flowerTint0, FLOWER_TINTS.length, palette.scatterTints.length);
+  const scatterKinds = buildScatter(spec, plan, set, dressing, splat, collider, skirtY, mat, views, (scatterRng.next() * 4294967296) >>> 0, flowerTint0, FLOWER_TINTS.length, palette.scatterTints.length, skirtClear);
   for (const sk of scatterKinds) {
     const field = new ScatterField(sk.kind, sk.instances, chunks, root, tints);
     fields.push(field);
@@ -509,8 +529,8 @@ function buildObstacles(
 const SOLID_SET_PIECES = new Set<string>(['cinder_caldera', 'salt_lighthouse', 'storm_coil_tower', 'marrow_mineshaft', 'vesper_witch_hut', 'siege_trebuchet', 'sky_shrine', 'solenne_cathedral', 'eclipse_engine', 'umbral_dome', 'celestial_spire', 'rift_maw', 'tide_wreck']);
 
 const FLOWER_TINTS = ['#ffb3c8', '#ffe07a', '#fff6ea', '#c6adff', '#ffbd7a', '#ff9aa8'];
-/** Ground-clump tints (darker, yellower than the card so clumps sit in the lawn instead of on it). */
-const GRASS_TINTS = ['#c9d49c', '#b9c78c', '#d6d9a2', '#c2cf95'];
+/* Ground-clump tints are per biome since Phase E1 (`DressingStyle.grassTints`; the grove keeps #c9d49c / #b9c78c /
+   #d6d9a2 / #c2cf95, darker and yellower than the card so clumps sit in the lawn instead of on it). */
 
 // ---- boundary / water / plaza / warp dressing ---------------------------------------------------------------
 
@@ -539,35 +559,85 @@ function exitGaps(plan: ZoneLayoutPlan, ih: number): { side: 'n' | 's' | 'e' | '
   return out;
 }
 
-/** Dry-stone walls (grove towns) / fences along the playable boundary with gaps at the exits. */
-function dressBoundary(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat: SplatContext, partsAt: PartsAt, rnd: () => number): void {
-  if (spec.layout !== 'town' || (set.boundary !== 'wall' && set.boundary !== 'fence')) return;
-  void splat;
+/**
+ * The town boundary just outside the walkable square, with gaps (and, Phase E1, gate piers) at the road exits:
+ * dry-stone walls (`wall`: grove, forge, capital), post-and-rail fences (`fence`: salt, vesper), boulder dykes
+ * (`rocks`: cinder, storm, marrow, sky). Nothing here is walkable ground (the heightfield ends at `half − 16`).
+ */
+function dressBoundary(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, style: DressingStyle, partsAt: PartsAt, rnd: () => number): void {
+  if (spec.layout !== 'town' || set.boundary === 'hedge' || set.boundary === 'crystal') return;
   const h = spec.heightfield;
   const ih = plan.half - 16 + 1.2;
-  const gaps = exitGaps(plan, ih);
+  const pieces = boundaryPieces(ih, exitGaps(plan, ih), style, spec.seed);
   const stone = set.props.stone;
-  for (const side of ['n', 's', 'e', 'w'] as const) {
-    const sideGaps = gaps.filter((g) => g.side === side).map((g) => g.at);
-    for (let s = -ih; s < ih; ) {
-      const len = 0.8 + rnd() * 0.5;
-      const mid = s + len / 2;
-      s += len + 0.02;
-      if (sideGaps.some((g) => Math.abs(g - mid) < 3.8)) continue;
-      const [x, z] = side === 'n' ? [mid, -ih] : side === 's' ? [mid, ih] : side === 'e' ? [ih, mid] : [-ih, mid];
-      const yaw = side === 'n' || side === 's' ? 0 : Math.PI / 2;
-      const y = heightClamped(h, x, z);
-      const t = partsAt(x, z);
-      if (set.boundary === 'wall') {
-        box(t[0], stone, x, y - 0.25, z, len, 0.72 + rnd() * 0.08, 0.62, yaw + (rnd() - 0.5) * 0.04, 0.05);
-        box(t[0], stone, x + (rnd() - 0.5) * 0.1, y + 0.47, z, len * (0.55 + rnd() * 0.4), 0.3 + rnd() * 0.08, 0.5, yaw + (rnd() - 0.5) * 0.1, 0.05);
-        box(t[1], stone, x, y - 0.25, z, len, 0.95, 0.6, yaw, 0.04);
-        box(t[2], stone, x, y - 0.25, z, len + 0.02, 0.95, 0.6, yaw, 0.02);
+  const wood = set.props.wood;
+  const rocks = set.boundary === 'rocks'
+    ? [0, 1, 2].map((k) => buildRock(set.rock, spec.seed + 0xb0d + k * 17, { size: 0.85 + k * 0.2, squash: 0.62, elongate: 1.35, cuts: [3, 5] }))
+    : [];
+  const piers = pieces.filter((pc) => pc.kind === 'pier');
+  const nearPier = (x: number, z: number, r: number): boolean => piers.some((pc) => Math.hypot(pc.x - x, pc.z - z) < r);
+  for (const pc of pieces) {
+    const along = pc.yaw === 0 ? [1, 0] : [0, 1];
+    const y = heightClamped(h, pc.x, pc.z);
+    const t = partsAt(pc.x, pc.z);
+    if (pc.kind === 'pier') {
+      const top = set.boundary === 'fence' ? 1.55 : 1.9;
+      if (set.boundary === 'fence') {
+        box(t[0], wood, pc.x, y - 0.3, pc.z, 0.32, top + 0.3, 0.32, pc.yaw, 0.04);
+        box(t[0], wood, pc.x, y + top - 0.02, pc.z, 0.42, 0.12, 0.42, pc.yaw, 0.03);
+        box(t[1], wood, pc.x, y - 0.3, pc.z, 0.32, top + 0.42, 0.32, pc.yaw, 0.03);
+        box(t[2], wood, pc.x, y - 0.3, pc.z, 0.36, top + 0.42, 0.36, pc.yaw, 0.02);
       } else {
-        box(t[0], set.props.wood, x, y - 0.2, z, 0.12, 1.2, 0.12, yaw, 0.02);
+        box(t[0], stone, pc.x, y - 0.3, pc.z, 0.95, 0.5, 0.95, pc.yaw, 0.05);
+        box(t[0], stone, pc.x, y + 0.2, pc.z, 0.78, top - 0.2, 0.78, pc.yaw, 0.04);
+        box(t[0], stone, pc.x, y + top, pc.z, 0.98, 0.16, 0.98, pc.yaw, 0.04);
+        lathe(t[0], stone, [[0.001, 0], [0.22, 0.04], [0.26, 0.18], [0.16, 0.34], [0.001, 0.42]], { segments: 10 }, trs(pc.x, y + top + 0.16, pc.z));
+        box(t[1], stone, pc.x, y - 0.3, pc.z, 0.85, top + 0.46, 0.85, pc.yaw, 0.04);
+        box(t[2], stone, pc.x, y - 0.3, pc.z, 0.9, top + 0.46, 0.9, pc.yaw, 0.02);
+      }
+      continue;
+    }
+    if (set.boundary === 'wall') {
+      // dry-stone blocks of 0.8–1.3 m along the run, a ragged coping course on top
+      for (let s0 = -pc.len / 2; s0 < pc.len / 2 - 0.2;) {
+        const len = Math.min(0.8 + rnd() * 0.5, pc.len / 2 - s0);
+        const mid = s0 + len / 2;
+        s0 += len + 0.02;
+        const x = pc.x + along[0]! * mid; const z = pc.z + along[1]! * mid;
+        const yy = heightClamped(h, x, z);
+        box(t[0], stone, x, yy - 0.25, z, len, 0.72 + rnd() * 0.08, 0.62, pc.yaw + (rnd() - 0.5) * 0.04, 0.05);
+        box(t[0], stone, x + (rnd() - 0.5) * 0.1, yy + 0.47, z, len * (0.55 + rnd() * 0.4), 0.3 + rnd() * 0.08, 0.5, pc.yaw + (rnd() - 0.5) * 0.1, 0.05);
+      }
+      box(t[1], stone, pc.x, y - 0.25, pc.z, pc.len, 0.95, 0.6, pc.yaw, 0.04);
+      box(t[2], stone, pc.x, y - 0.25, pc.z, pc.len + 0.02, 0.95, 0.6, pc.yaw, 0.02);
+    } else if (set.boundary === 'fence') {
+      // posts at both ends of the run (shared with the neighbour), two chamfered rails
+      const ax = pc.x - along[0]! * pc.len / 2; const az = pc.z - along[1]! * pc.len / 2;
+      const bx = pc.x + along[0]! * pc.len / 2; const bz = pc.z + along[1]! * pc.len / 2;
+      const ya = heightClamped(h, ax, az); const yb = heightClamped(h, bx, bz);
+      for (const k of [0, 1] as const) box(t[k], wood, ax, ya - 0.25, az, 0.14, 1.4, 0.14, pc.yaw + (rnd() - 0.5) * 0.08, 0.02);
+      for (const dy of [0.45, 0.95]) beam(t[0], wood, [ax, ya + dy, az], [bx, yb + dy, bz], 0.12, 0.06, 0.015, pc.yaw === 0 ? [0, 0, 1] : [1, 0, 0]);
+      beam(t[1], wood, [ax, ya + 0.8, az], [bx, yb + 0.8, bz], 0.14, 0.07, 0.01, pc.yaw === 0 ? [0, 0, 1] : [1, 0, 0]);
+      box(t[2], wood, pc.x, y - 0.2, pc.z, pc.len, 1.2, 0.1, pc.yaw, 0.01);
+    } else {
+      // boulder dyke: 2–3 rocks squeezed along the run, a smaller one on top now and then
+      const n = 2 + (rnd() < 0.5 ? 1 : 0);
+      for (let k = 0; k < n; k++) {
+        const u = (-0.5 + (k + 0.5) / n) * pc.len + (rnd() - 0.5) * 0.4;
+        const x = pc.x + along[0]! * u + along[1]! * (rnd() - 0.5) * 0.5; const z = pc.z + along[1]! * u + along[0]! * (rnd() - 0.5) * 0.5;
+        const yy = heightClamped(h, x, z);
+        const rk = rocks[Math.floor(rnd() * rocks.length)]!;
+        if (nearPier(x, z, 1.7)) continue;                 // the pier stands on clear ground
+        const m = trs(x, yy - 0.15, z, rnd() * Math.PI * 2, 0.9 + rnd() * 0.45);
+        t[0].add(set.rock, rk.lod0, m); t[1].add(set.rock, rk.lod1, m); t[2].add(set.rock, rk.lod2, m);
+        if (rnd() < 0.3) {
+          const m2 = trs(x + (rnd() - 0.5) * 0.3, yy + 0.55, z + (rnd() - 0.5) * 0.3, rnd() * Math.PI * 2, 0.5 + rnd() * 0.2);
+          t[0].add(set.rock, rk.lod0, m2); t[1].add(set.rock, rk.lod1, m2);
+        }
       }
     }
   }
+  for (const rk of rocks) disposeProp(rk);
 }
 
 /** Stone banks round ponds (skipping the boardwalk arc) and a pier over content's boardwalk strips. */
@@ -704,6 +774,26 @@ function kindFrom(name: string, geo: PropGeo, material: (id: SurfaceId) => Mater
 }
 
 /**
+ * Phase E3 (audit M2-link-east-1): `ZoneSpec.neighbours` → the skirt's neighbour fields. The neighbour's `edge` point is
+ * laid on this zone's `edges[dir]` point (world = neighbour-local + d) and its heights are offset so the two points
+ * meet; its layout plan gives the road / plaza layers that continue into the skirt. Only sides that have both an edge
+ * and a neighbour take part.
+ */
+export function neighbourFields(spec: Pick<ZoneSpec, 'edges' | 'heightfield' | 'neighbours'>): NeighbourField[] {
+  const out: NeighbourField[] = [];
+  for (const dir of ['n', 'e', 's', 'w'] as const) {
+    const nb = spec.neighbours?.[dir];
+    const edge = spec.edges[dir];
+    if (nb === undefined || edge === undefined) continue;
+    const dx = edge.x - nb.edge.x; const dz = edge.z - nb.edge.z;
+    const dy = heightClamped(spec.heightfield, edge.x, edge.z) - heightClamped(nb.heightfield, nb.edge.x, nb.edge.z);
+    const nbPlan = layoutOf({ layout: nb.layout, heightfield: nb.heightfield, plan: nb.plan });
+    out.push({ dir, h: nb.heightfield, dx, dz, dy: Number.isFinite(dy) ? dy : 0, splat: createSplatContext(nbPlan, nb.buildings, nb.seed, nb.interiors) });
+  }
+  return out;
+}
+
+/**
  * Every scatter kind of the zone: trees (interior groves + the margin forest + a treeline on the skirt), willows by
  * water, two rock shapes (+ pebbles along roads), bushes (hedgerows on route boundaries), flower patches, ground
  * tufts, tall grass in the layout's patches, stumps and logs.
@@ -729,7 +819,7 @@ function addCrowns(collider: TerrainCollider, shape: CrownShape | null, instance
   }
 }
 
-function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat: SplatContext, collider: TerrainCollider, skirtY: (x: number, z: number) => number, mat: (id: SurfaceId) => Material, views: BufferGeometry[], seed: number, flower0: number, flowerN: number, foliageN: number): ScatterOut[] {
+function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dressing: DressingStyle, splat: SplatContext, collider: TerrainCollider, skirtY: (x: number, z: number) => number, mat: (id: SurfaceId) => Material, views: BufferGeometry[], seed: number, flower0: number, flowerN: number, foliageN: number, skirtClear: (x: number, z: number) => boolean = () => true): ScatterOut[] {
   const out: ScatterOut[] = [];
   const h = spec.heightfield;
   const half = h.size / 2;
@@ -744,6 +834,26 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
   // Phase A: nothing centred inside a pocket's outer footprint (content drops exactly those scatter solids)
   const pockets = splat.pockets;
   const free = (x: number, z: number): boolean => pockets.length === 0 || !inPocket(pockets, x, z);
+  // Phase E1 walk-through cover (dressing.ts): verge clusters along the roads, scree / shards on open ground, and (after
+  // the rocks) clusters round the big rocks. Kept clear of everything the scatter keeps clear of, plus the hand-placed
+  // props, the light posts, the Cut / Strength obstacles and the inside of the plaza curb.
+  const bushLeaf = set.bushLeaf ?? dressing.bush;
+  const obstacles = spec.obstacles ?? [];
+  const coverClear = (x: number, z: number, r: number): boolean => {
+    if (Math.max(Math.abs(x), Math.abs(z)) > half - 1.5) return false;
+    if (!scatterClear(splat, x, z, r, false) || !free(x, z)) return false;
+    for (const pp of spec.props) if (Math.hypot(pp.x - x, pp.z - z) < r + (PROP_BLOCKER[pp.kind] ?? 0.3) + 0.5) return false;
+    for (const l of spec.lights) if (Math.hypot(l.position[0] - x, l.position[2] - z) < r + 0.6) return false;
+    for (const o of obstacles) if (Math.hypot(o.x - x, o.z - z) < r + 1.4) return false;
+    return true;
+  };
+  const cover: CoverPoint[] = [
+    ...vergeClusters(splat.roads, dressing, { bush: bushLeaf !== null, flower: set.flower !== null }, salt, coverClear),
+    ...screeClusters(half - 1.5, dressing, salt, coverClear),
+  ];
+  const coverOf = (k: CoverPoint['kind']): CoverPoint[] => cover.filter((c) => c.kind === k);
+  const grassTint = (hh: number): number => flower0 + flowerN + (Math.floor(hh * 131) % 4);
+  const bushTint = (hh: number): number => (dressing.bushTint === 'grass' ? grassTint(hh) : foliageTint(hh));
 
   // trees ---------------------------------------------------------------------------------------------------
   const treeKinds = set.trees.filter((t) => t.weight > 0);
@@ -759,7 +869,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
   const treeAccept = (x: number, z: number): number => {
     const d = Math.max(Math.abs(x), Math.abs(z));
     if (d > half + reachTrees) return 0;
-    if (d > half) return 0.9 * Math.max(0.2, 1 - (d - half) / reachTrees);        // treeline on the skirt
+    if (d > half) return skirtClear(x, z) ? 0.9 * Math.max(0.2, 1 - (d - half) / reachTrees) : 0;   // treeline on the skirt (E3: off a neighbour's road)
     if (!inPlay(x, z)) {
       if (roadDistance(splat.roads, x, z) < 3.5) return 0;
       return 1;                                                                   // the margin forest
@@ -823,7 +933,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
   for (const p of jitteredPoints(-half - 20, half + 20, -half - 20, half + 20, set.density.rock * 1.6, salt + 201, (x, z) => {
     if (Math.max(Math.abs(x), Math.abs(z)) > half + 20) return 0;
     if (inPlay(x, z)) return scatterClear(splat, x, z, 1.2, false) && roadDistance(splat.roads, x, z) > 1.5 ? 0.6 : 0;
-    return 1;
+    return Math.max(Math.abs(x), Math.abs(z)) <= half || skirtClear(x, z) ? 1 : 0;
   })) {
     if (!free(p.x, p.z)) continue;
     const big = p.h < 0.45;
@@ -855,14 +965,17 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
       }
     }
   }
+  cover.push(...rockClusters(aInst.filter((r) => r.scale > 0.8), dressing, set.tuft !== null, salt, coverClear));
+  for (const c of coverOf('stone')) bInst.push({ x: c.x, y: yAt(c.x, c.z) - 0.04, z: c.z, yaw: c.h * 113, scale: c.scale, tint: 0 });
   if (aInst.length) out.push({ ...kindFrom('rock_a', rockA, mat, views, true, 3, rockA.lod2, 2), instances: aInst });
   if (bInst.length) out.push({ ...kindFrom('rock_b', rockB, mat, views, false, 3, null, 0), instances: bInst });
 
   // bushes (+ hedgerows along route / story boundaries) -----------------------------------------------------
-  if (set.bushLeaf) {
-    const bush = buildBush(set.bushLeaf, spec.seed ^ 0xb005);
+  if (bushLeaf) {
+    const bush = buildBush(bushLeaf, spec.seed ^ 0xb005);
     const inst: Instance[] = [];
-    for (const p of jitteredPoints(-half - 6, half + 6, -half - 6, half + 6, set.density.bush * 1.4, salt + 401, (x, z) => {
+    const bushDensity = set.density.bush > 0 ? set.density.bush : dressing.bushDensity;
+    for (const p of jitteredPoints(-half - 6, half + 6, -half - 6, half + 6, bushDensity * 1.4, salt + 401, (x, z) => {
       const d = Math.max(Math.abs(x), Math.abs(z));
       if (d > half + 6) return 0;
       if (d > ih && d < ih + 3.5) return roadDistance(splat.roads, x, z) < 3 ? 0 : spec.layout === 'town' ? 0.9 : 1;   // the hedge line
@@ -874,8 +987,9 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
       return nearHouse ? 0.5 : clumpy(x, z, 21) > 0.1 ? 0.55 : 0.12;
     })) {
       if (!free(p.x, p.z)) continue;
-      inst.push({ x: p.x, y: yAt(p.x, p.z) - 0.05, z: p.z, yaw: p.h * 53, scale: 0.8 + p.h * 0.55, tint: foliageTint(p.h) });
+      inst.push({ x: p.x, y: yAt(p.x, p.z) - 0.05, z: p.z, yaw: p.h * 53, scale: 0.8 + p.h * 0.55, tint: bushTint(p.h) });
     }
+    for (const c of coverOf('bush')) inst.push({ x: c.x, y: yAt(c.x, c.z) - 0.05, z: c.z, yaw: c.h * 53, scale: c.scale, tint: bushTint(c.h) });
     if (inst.length) out.push({ ...kindFrom('bush', bush, mat, views, true, 3, null, 2), instances: inst });
   }
 
@@ -894,6 +1008,7 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
       if (!free(p.x, p.z)) continue;
       inst.push({ x: p.x, y: yAt(p.x, p.z), z: p.z, yaw: p.h * 71, scale: 0.8 + p.h * 0.5, tint: flower0 + (Math.floor(p.h * 997) % flowerN) });
     }
+    for (const c of coverOf('flower')) inst.push({ x: c.x, y: yAt(c.x, c.z), z: c.z, yaw: c.h * 71, scale: c.scale, tint: flower0 + (Math.floor(c.h * 997) % flowerN) });
     if (inst.length) out.push({ ...kindFrom('flower_patch', fl, mat, views, false, 2, null, 0, 'all'), instances: inst });
   }
 
@@ -914,8 +1029,9 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
       return clumpy(x, z, 41) > 0.12 ? 0.8 : 0.12;
     })) {
       if (!free(p.x, p.z)) continue;
-      inst.push({ x: p.x, y: yAt(p.x, p.z), z: p.z, yaw: p.h * 89, scale: 0.75 + p.h * 0.6, tint: flower0 + flowerN + (Math.floor(p.h * 131) % 4) });
+      inst.push({ x: p.x, y: yAt(p.x, p.z), z: p.z, yaw: p.h * 89, scale: 0.75 + p.h * 0.6, tint: grassTint(p.h) });
     }
+    for (const c of coverOf('tuft')) inst.push({ x: c.x, y: yAt(c.x, c.z), z: c.z, yaw: c.h * 89, scale: c.scale, tint: grassTint(c.h) });
     if (inst.length) out.push({ ...kindFrom('grass_tuft', { ...tuft, lod1: tuft.lod0 }, mat, views, false, 2, null, 0), instances: inst });
   }
 
@@ -952,6 +1068,14 @@ function buildScatter(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, splat
   }
   if (sInst.length) out.push({ ...kindFrom('stump', stump, mat, views, false, 3, null, 0), instances: sInst });
   if (lInst.length) out.push({ ...kindFrom('log', log, mat, views, false, 3, null, 0), instances: lInst });
+
+  // crystal shards (Phase E1: shrine / rift / marrow open ground; the set's own crystal surface)
+  const shards = coverOf('shard');
+  if (shards.length > 0) {
+    const g = buildShard(set.props.crystal, spec.seed ^ 0x5a4d);
+    const inst = shards.map((c) => ({ x: c.x, y: yAt(c.x, c.z) - 0.03, z: c.z, yaw: c.h * 97, scale: c.scale, tint: 0 }));
+    out.push({ ...kindFrom('crystal_shard', g, mat, views, false, 3, null, 0), instances: inst });
+  }
 
   return out;
 }

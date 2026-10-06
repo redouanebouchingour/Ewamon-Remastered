@@ -81,6 +81,12 @@ export interface MaterialLibrary {
    * `Info` counts every compressed texture as 1 byte, so the host adds this to `RenderStats.textureBytes`.
    */
   residentTextureBytes(): number;
+  /**
+   * Phase E3 addition (§20.10.3 phase 5, "then the neighbouring zone field materials"): fetches the `field` tier files of
+   * `ids` that are not resident into the browser's HTTP cache, one file at a time at `priority: 'low'` — no transcode, no
+   * GPU memory. A handover's `preload` then reads them from the cache. Resolves with the bytes fetched; never rejects.
+   */
+  prefetch?(ids: readonly SurfaceId[]): Promise<number>;
 }
 
 /** Anything that turns a url into a GPU-ready texture (the KTX2 loader in production, a mock in tests). */
@@ -403,6 +409,28 @@ export function createMaterialLibraryWith(deps: LibraryDeps): MaterialLibrary {
     },
 
     residentTextureBytes: () => residentBytes,
+
+    async prefetch(ids) {
+      await ready;
+      const f = (globalThis as { fetch?: (u: string, o?: RequestInit & { priority?: string }) => Promise<Response> }).fetch;
+      if (disposed || f === undefined) return 0;
+      let bytes = 0;
+      for (const id of ids) {
+        if (disposed) break;
+        if (resident.has(setKey(id, 'field')) || resident.has(setKey(id, 'hero'))) continue;
+        const urls = planTierUrls(manifest, deps.baseUrl, id, 'field');
+        if (urls === null) continue;
+        for (const u of [urls.albedo, urls.orm, urls.normal]) {
+          try {
+            const r = await f(u, { priority: 'low' });
+            bytes += (await r.arrayBuffer()).byteLength;
+          } catch {
+            // a prefetch is a hint: the handover's preload fetches it again
+          }
+        }
+      }
+      return bytes;
+    },
 
     disposeAll() {
       if (disposed) return;

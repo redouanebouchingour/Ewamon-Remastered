@@ -153,3 +153,26 @@ Tests: `test/shiny.test.ts` (4); `players.test.ts` dex expectation gains `shiny:
   `endRun` (current 0), `leaderboard(page, size)` (best > 0, banned excluded, best desc, current desc, username_lower).
 - `BattleStartSnapshot.noExp?: true` (jsonb, no migration).
 - Tests: `test/streaks.test.ts` (3); `migrations.test.ts` lists `player_streaks`; `helpers.ts` truncates it.
+
+## Phase E5 — the §50.4.4 test files (2026-10-06)
+
+- **File names now follow §50.4.4.** The slot cases moved from `creatures.test.ts` to `slots.test.ts`, the
+  transfer / release cases to `transfer.test.ts`, the `toPublic` cases from `players.test.ts` to `public.test.ts`
+  and the refresh-token cases to `auth.test.ts`. They moved verbatim; nothing is duplicated. New assertions per row:
+  - `slots.test.ts`: the party-slot duplicate through the unique index; `creature_party_slot_ck` (rejects 6 / 99 / 106,
+    accepts 0..5 and 100..105); a committed 0↔1 swap leaves no row in the staging band; `nextBox` = max + 1.
+  - `transfer.test.ts`: the refusals leave both players' rows byte-identical (`canonicalJson`, row count, audit
+    count); exactly one audit row; `release` of a creature that was ever listed → `InvalidArgument`.
+  - `public.test.ts`: an extra column on the row never reaches the profile; a guildless `guildTag` is null.
+  - `auth.test.ts`: `revoked_at` stamped on rotation; `purge` removes only expired / revoked rows before the cutoff; a
+    frozen clock produces identical rows. The argon2id `m=19456 t=2 p=1` read-back is a server fact (persist stores
+    the PHC opaquely) and stays in `packages/server/test/rest-auth.test.ts`.
+  - `battle-pass.test.ts` and `escape-like.test.ts` are new.
+- `migrate.test.ts` is `migrations.test.ts`; the market / trade / inventory / social rows already matched.
+- **Defect fixed: `insert` into a taken party index threw `InvalidSlot`.** Spine §5.2 says `PartyFull` ("when party
+  index taken / party has 6"). `creatureRepo.insert` now checks this before `resolveSlot`. A party index ≥ 6 is still
+  `InvalidSlot`. No server caller relied on the old code: every caller computes a free index first.
+- **Defect fixed: `setMythicalChoice` created a missing level-50 row.** Spine §5.2 says "requires the level-50 row".
+  Together with a route that never checked the trainer level, this let a level-1 account claim a level-50 mythical
+  through `POST /battle-pass/mythical-choice`. The method now throws `Forbidden` without the row and `AlreadyClaimed`
+  on a second choice. The server route now claims level 50 itself, gated on trainer level (server notes, Phase E5).

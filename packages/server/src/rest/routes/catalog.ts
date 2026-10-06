@@ -183,7 +183,16 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
     const id = req.user.sub;
     const now = new Date(clock());
     const res = await repos.db.transaction(async (tx) => {
-      await repos.players.lock(tx, id);
+      const row = await repos.players.lock(tx, id);
+      // Phase E5: the choice was ungated (a level-1 account could take a level-50 mythical). The client offers the choice
+      // in place of a Claim button on the level-50 tile, so choosing also claims level 50 (row + its money / items).
+      const lvl50 = BATTLE_PASS.find((r) => r.mythicalChoice !== null);
+      if (lvl50 === undefined || lvl50.level > trainerLevelFor(row.trainerExp)) throw new HttpError(409, 'levelLocked');
+      if (await repos.battlePass.claim(tx, id, lvl50.level, now)) {
+        if (lvl50.money > 0) await repos.players.addMoney(tx, id, lvl50.money);
+        if (Object.keys(lvl50.items).length > 0) await repos.inventory.addMany(tx, id, lvl50.items);
+        await repos.audit.write(tx, { actorId: id, action: 'battlePass.claim', subject: String(lvl50.level), detail: {} }, now);
+      }
       await repos.battlePass.setMythicalChoice(tx, id, body.species, now);
       const partySize = (await repos.creatures.party(tx, id)).length;
       const used = new Set((await repos.creatures.byOwner(tx, id)).filter((r) => r.slotKind === 'party').map((r) => r.slotIndex));

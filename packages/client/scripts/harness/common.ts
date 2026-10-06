@@ -309,6 +309,8 @@ export interface SessionOptions {
   readonly build: boolean;
   /** §50.6.1 heading convention for the page (default 'words', anchors.ts) */
   readonly headings?: 'words' | 'rig';
+  /** audit set (default M2 = the table's own zones; M3 onward: all six rows in every zone, shotTable.ts) */
+  readonly set?: string;
 }
 
 /** Server + Chrome + the harness page booted for `zone` (renderer, zone, shader warm-up done). */
@@ -328,7 +330,7 @@ export async function openSession(o: SessionOptions): Promise<Session> {
   try {
     browser = await launchChrome({ width: o.width, height: o.height });
     log(`chrome ${browser.version} on debugging port ${browser.port}`);
-    const url = `${server.origin}/harness/${o.route}?zone=${encodeURIComponent(o.zone)}${o.headings === 'rig' ? '&headings=rig' : ''}`;
+    const url = `${server.origin}/harness/${o.route}?zone=${encodeURIComponent(o.zone)}${o.headings === 'rig' ? '&headings=rig' : ''}${o.set !== undefined && o.set !== 'M2' ? `&set=${encodeURIComponent(o.set)}` : ''}`;
     const t0 = Date.now();
     await browser.cdp.send('Page.navigate', { url });
     let state: { ready: boolean; error: string | null } | null = null;

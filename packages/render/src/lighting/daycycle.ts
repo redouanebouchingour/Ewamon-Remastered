@@ -10,7 +10,7 @@ import type { Vector3 } from 'three/webgpu';
 import type { WeatherKind } from '../descriptors.js';
 import type { SharedUniforms } from '../materials/harvest.js';
 import { stepWetness } from '../materials/harvest.js';
-import { GROVE_FOG_DENSITY, type HeightFog } from './fog.js';
+import { FOG_START_M, GROVE_FOG_DENSITY, type HeightFog } from './fog.js';
 import type { LightRig } from './rig.js';
 import type { SkyController } from './sky.js';
 import { weatherParams, type WeatherParams } from './weather.js';
@@ -32,19 +32,27 @@ export interface DayKeyframe {
   readonly t: number;
   readonly note: string;
   readonly srgb: string;
+  /** Key-light intensity in SPEC light units (the `night` row: the moon's). */
   readonly sun: number;
   readonly env: number;
+  /** Hemisphere fill in SPEC light units, applied to the hemisphere colours normalised to a unit sky (§10.3.3). */
+  readonly hemi: number;
   readonly punctual: number;
 }
 
-/** SPEC §10.3.5, the 6 keyframes (t ascending). `night` doubles as the moon row (§10.3.4). */
+/**
+ * SPEC §10.3.5 as amended 2026-10-06 (the M2 re-light, audit M2-spawn-noon-2 / M2-gym-dusk-2 / M2-lamps-night-5): the
+ * 6 keyframes (t ascending) keyed to the §10.3.4 sun path (sunrise 0.17, noon 0.50, sunset 0.83), so `dusk` (0.80) is
+ * the golden hour with the sun 10° up. A warm key over a cool, low fill: noon key:fill ≥ 3:1. `night` is the moon row
+ * (its own path, §10.3.4) at 0.30 over a 0.06 fill, so the moon casts readable shadows.
+ */
 export const DAY_KEYFRAMES: readonly DayKeyframe[] = Object.freeze([
-  { key: 'night', t: 0.00, note: 'moon (look decision, not blackbody)', srgb: '#8fa6d8', sun: 0.05, env: 0.12, punctual: 1.00 },
-  { key: 'predawn', t: 0.22, note: '2400 K', srgb: '#ff9d3f', sun: 0.15, env: 0.20, punctual: 0.80 },
-  { key: 'golden_am', t: 0.30, note: '3200 K', srgb: '#ffbb78', sun: 0.60, env: 0.50, punctual: 0.25 },
-  { key: 'noon', t: 0.50, note: '5600 K', srgb: '#fff3ef', sun: 1.00, env: 0.85, punctual: 0.00 },
-  { key: 'golden_pm', t: 0.72, note: '3000 K', srgb: '#ffb46b', sun: 0.55, env: 0.45, punctual: 0.30 },
-  { key: 'dusk', t: 0.80, note: '2200 K', srgb: '#ff932c', sun: 0.12, env: 0.18, punctual: 0.90 },
+  { key: 'night', t: 0.00, note: 'moon (look decision, not blackbody)', srgb: '#9fb4e6', sun: 0.30, env: 0.10, hemi: 0.06, punctual: 1.00 },
+  { key: 'predawn', t: 0.15, note: '2400 K', srgb: '#ff9d3f', sun: 0.10, env: 0.18, hemi: 0.07, punctual: 0.80 },
+  { key: 'golden_am', t: 0.22, note: '3000 K', srgb: '#ffbd7a', sun: 0.75, env: 0.32, hemi: 0.08, punctual: 0.15 },
+  { key: 'noon', t: 0.50, note: '5200 K', srgb: '#fff0dc', sun: 1.00, env: 0.45, hemi: 0.08, punctual: 0.00 },
+  { key: 'golden_pm', t: 0.74, note: '3600 K', srgb: '#ffd6a0', sun: 0.95, env: 0.38, hemi: 0.08, punctual: 0.10 },
+  { key: 'dusk', t: 0.80, note: '2400 K, sun 10° up', srgb: '#ffa04c', sun: 0.85, env: 0.30, hemi: 0.09, punctual: 0.55 },
 ] as const);
 
 export const MOON_ROW: DayKeyframe = DAY_KEYFRAMES[0]!;
@@ -63,7 +71,12 @@ export interface DaySample {
   readonly linear: [number, number, number];
   sun: number;
   env: number;
+  hemi: number;
   punctual: number;
+  /** Sun-elevation daylight factor 0..1 (`daylightAt`). */
+  daylight: number;
+  /** Golden-hour weight 0..1 (`goldenAt`). */
+  golden: number;
   /** Bracketing keyframes and the blend factor, for inspection. */
   a: DayKey;
   b: DayKey;
@@ -71,7 +84,7 @@ export interface DaySample {
 }
 
 export function createDaySample(): DaySample {
-  return { srgb: [1, 1, 1], linear: [1, 1, 1], sun: 1, env: 1, punctual: 0, a: 'noon', b: 'noon', f: 0 };
+  return { srgb: [1, 1, 1], linear: [1, 1, 1], sun: 1, env: 1, hemi: 0.08, punctual: 0, daylight: 1, golden: 0, a: 'noon', b: 'noon', f: 0 };
 }
 
 const KEY_SRGB: readonly (readonly [number, number, number])[] = DAY_KEYFRAMES.map((k) => hexToSrgb(k.srgb));
@@ -99,21 +112,62 @@ export function sampleDay(t: number, out: DaySample = createDaySample()): DaySam
   }
   out.sun = lerp(ka.sun, kb.sun, f);
   out.env = lerp(ka.env, kb.env, f);
+  out.hemi = lerp(ka.hemi, kb.hemi, f);
   out.punctual = lerp(ka.punctual, kb.punctual, f);
+  out.daylight = daylightAt(tw);
+  out.golden = goldenAt(tw);
   out.a = ka.key; out.b = kb.key; out.f = f;
   return out;
 }
 
 // ---- §10.3.4 geometry --------------------------------------------------------------------------------
 
-/** `elevationDeg(t) = 70 · sin(2π · (t − 0.25))` — −70 at midnight, +70 at noon. */
+/**
+ * §10.3.4 as amended 2026-10-06: the sun is up from `SUNRISE_T` to `SUNSET_T` (a 0.66 day, symmetric about noon), so
+ * t 0.80 is golden hour (10° up) instead of 21.6° below the horizon. The render-side sun is a look decision; the
+ * server's gameplay day (`isDay`: 0.25 ≤ t < 0.75, spawn tables) is unchanged.
+ */
+export const SUNRISE_T = 0.17;
+export const SUNSET_T = 0.83;
+export const SUN_MAX_ELEVATION_DEG = 70;
+/** Deepest sun elevation (midnight): only the sky model and the switch read it. */
+export const SUN_MIN_ELEVATION_DEG = -60;
+/** The moon's own path: highest at midnight, 40° up. */
+export const MOON_MAX_ELEVATION_DEG = 40;
+
+const DAY_SPAN = SUNSET_T - SUNRISE_T;
+
+/** 0 at sunrise … 1 at sunset (outside [0, 1] at night). */
+function dayFraction(t: number): number { return (wrapTime(t) - SUNRISE_T) / DAY_SPAN; }
+/** 0 at sunset … 1 at the next sunrise (the night arc). */
+function nightFraction(t: number): number { return wrapTime(wrapTime(t) - SUNSET_T) / (1 - DAY_SPAN); }
+function isDayArc(t: number): boolean { const f = dayFraction(t); return f >= 0 && f <= 1; }
+
+/** Sun elevation: `70 · sin(π · f)` over the day arc, `−60 · sin(π · g)` over the night arc. */
 export function sunElevationDeg(t: number): number {
-  return 70 * Math.sin(2 * Math.PI * (wrapTime(t) - 0.25));
+  if (isDayArc(t)) return SUN_MAX_ELEVATION_DEG * Math.sin(Math.PI * dayFraction(t));
+  return SUN_MIN_ELEVATION_DEG * Math.sin(Math.PI * nightFraction(t));
 }
 
-/** `azimuthDeg(t) = 360 · t − 90` — rises at +x (east), sets at −x. */
+/**
+ * Sun azimuth: 150° at sunrise → 90° (+x) at noon → 30° at sunset (from +z toward +x: the default heading sees a
+ * raking key from its right at dusk), and on round the far side through the night. Continuous.
+ */
 export function sunAzimuthDeg(t: number): number {
-  return 360 * wrapTime(t) - 90;
+  if (isDayArc(t)) return 150 - 120 * dayFraction(t);
+  return 30 - 240 * nightFraction(t);
+}
+
+/** Moon elevation: `40 · sin(π · g)` over the night arc (below the horizon by day). */
+export function moonElevationDeg(t: number): number {
+  if (isDayArc(t)) return -MOON_MAX_ELEVATION_DEG * Math.sin(Math.PI * dayFraction(t));
+  return MOON_MAX_ELEVATION_DEG * Math.sin(Math.PI * nightFraction(t));
+}
+
+/** Moon azimuth: 300° at sunset → 360° at sunrise (from −x/+z: its shadows fall ≥ 110° from noon's). */
+export function moonAzimuthDeg(t: number): number {
+  if (isDayArc(t)) return 360 - 60 * dayFraction(t);
+  return 300 + 60 * nightFraction(t);
 }
 
 export interface Vec3Like { x: number; y: number; z: number }
@@ -134,9 +188,9 @@ export function sunDirection(t: number, out: Vec3Like): Vec3Like {
   return directionFromAngles(sunElevationDeg(t), sunAzimuthDeg(t), out);
 }
 
-/** Moon: elevation −elevationDeg(t), azimuth azimuthDeg(t) + 180. */
+/** The moon on its own path (§10.3.4 as amended): `moonElevationDeg`, `moonAzimuthDeg`. */
 export function moonDirection(t: number, out: Vec3Like): Vec3Like {
-  return directionFromAngles(-sunElevationDeg(t), sunAzimuthDeg(t) + 180, out);
+  return directionFromAngles(moonElevationDeg(t), moonAzimuthDeg(t), out);
 }
 
 /** §10.3.4: below this sun elevation the one DirectionalLight becomes the moon. */
@@ -172,10 +226,9 @@ const _dir: Vec3Like = { x: 0, y: 1, z: 0 };
 const MOON_LINEAR: [number, number, number] = hexToSrgb(MOON_ROW.srgb).map(srgbToLinear) as [number, number, number];
 
 /**
- * The single directional light's direction/colour/intensity at `t` (§10.3.4–§10.3.5). Refinement over
- * the SPEC (recorded in the notes): the sun's intensity fades to 0 over elevation [−4°, +2°] and the
- * moon's over its own elevation [+4°, +10°], so the switch at −4° — which flips the light direction —
- * happens at ~0 intensity instead of popping shadows.
+ * The single directional light's direction/colour/intensity at `t` (§10.3.4–§10.3.5): the sun's intensity fades to
+ * 0 over elevation [−4°, +2°] and the moon's over the moon's own elevation [+4°, +10°], so the switch at −4° — which
+ * flips the light direction — happens at ~0 intensity instead of popping shadows.
  */
 export function directionalAt(t: number, day: DaySample, out: DirectionalState = createDirectionalState()): DirectionalState {
   const el = sunElevationDeg(t);
@@ -183,7 +236,7 @@ export function directionalAt(t: number, day: DaySample, out: DirectionalState =
     moonDirection(t, _dir);
     out.isMoon = true;
     out.linear[0] = MOON_LINEAR[0]; out.linear[1] = MOON_LINEAR[1]; out.linear[2] = MOON_LINEAR[2];
-    out.intensity = MOON_ROW.sun * smooth(4, 10, -el);
+    out.intensity = MOON_ROW.sun * smooth(4, 10, moonElevationDeg(t));
   } else {
     sunDirection(t, _dir);
     out.isMoon = false;
@@ -222,6 +275,8 @@ export interface LightingPalette {
   readonly groundBounce: string;
   readonly fogColor: readonly [night: string, noon: string];
   readonly fogDensity: number;
+  /** m of view depth before the fog starts (§10.3.7 as amended 2026-10-06); absent = `FOG_START_M`. */
+  readonly fogStart?: number;
   readonly fogBase: number;
   readonly fogFalloff: number;
 }
@@ -232,7 +287,8 @@ export const GROVE_LIGHTING: LightingPalette = Object.freeze({
   skyHorizon: '#dfe6d6',
   groundBounce: '#5d6b3f',
   fogColor: ['#1a2030', '#b9c7a8'] as const,
-  fogDensity: GROVE_FOG_DENSITY,   // §10.3.7 as amended: 0.0068 (was 0.018; H8)
+  fogDensity: GROVE_FOG_DENSITY,   // §10.3.7 as amended 2026-10-06: 0.00486 past 15 m (was 0.0068 from the eye)
+  fogStart: FOG_START_M,
   fogBase: 0.0,
   fogFalloff: 0.35,
 });
@@ -241,9 +297,27 @@ export const GROVE_LIGHTING: LightingPalette = Object.freeze({
 const NIGHT_SKY = hexToSrgb('#1a2440');
 const NIGHT_GROUND = hexToSrgb('#0c0f14');
 
-/** Daylight factor 0..1 used to blend the palette's night/noon pairs: the keyframe sun intensity. */
+/**
+ * Daylight factor 0..1 used to blend the palette's night/noon pairs (hemisphere colours, fog colour, the grade's lift):
+ * the sun's elevation, 0 at −8° (deep twilight) … 1 at +14° (§10.3.5 as amended 2026-10-06; it was the keyframe sun
+ * intensity, which the moon row now shares).
+ */
 export function daylight(day: DaySample): number {
-  return Math.min(1, Math.max(0, day.sun));
+  return day.daylight;
+}
+
+/** `daylight` of a time of day. Pure. */
+export function daylightAt(t: number): number {
+  return smooth(-8, 14, sunElevationDeg(t));
+}
+
+/**
+ * Golden-hour weight 0..1: 1 while the sun is between 2° and 16° up, easing out by 30° and to 0 at −3°. Tints the fog
+ * toward the key colour (a warm haze at dusk and dawn).
+ */
+export function goldenAt(t: number): number {
+  const el = sunElevationDeg(t);
+  return smooth(-3, 2, el) * (1 - smooth(16, 30, el));
 }
 
 /** Blends two sRGB hex colours in sRGB and returns linear components (no allocation). */
@@ -262,6 +336,8 @@ export interface DayCycleTargets {
 }
 
 const _lin: [number, number, number] = [1, 1, 1];
+const _sky: [number, number, number] = [1, 1, 1];
+const _ground: [number, number, number] = [0, 0, 0];
 
 /**
  * Owns time-of-day + weather state and writes it out each frame. The client calls `setTime` (from the
@@ -329,17 +405,30 @@ export class DayCycle {
     rig.applyDirectional(d.dir, d.linear, d.intensity * w.sunMul);
     rig.setPunctualMultiplier(day.punctual);
 
-    const lit = daylight(day);
+    const lit = day.daylight;
     const p = this.paletteSrgb;
-    rig.setHemisphere(mixSrgbToLinear(NIGHT_SKY, p.zenith, lit, _lin), mixSrgbToLinear(NIGHT_GROUND, p.ground, lit, [0, 0, 0]));
+    // §10.3.3 as amended: the hemisphere colours are normalised to a unit sky (the ground keeps its ratio to the sky)
+    // and the keyframe's `hemi` column carries the level, so the cool fill is a number of the table, not of the palette
+    mixSrgbToLinear(NIGHT_SKY, p.zenith, lit, _sky);
+    mixSrgbToLinear(NIGHT_GROUND, p.ground, lit, _ground);
+    const top = Math.max(_sky[0], _sky[1], _sky[2], 1e-4);
+    for (let c = 0; c < 3; c++) { _sky[c] = _sky[c]! / top; _ground[c] = _ground[c]! / top; }
+    rig.setHemisphere(_sky, _ground, day.hemi * w.envMul);
 
     mixSrgbToLinear(p.fogNight, p.fogNoon, lit, _lin);
+    // golden hours: the haze takes the low sun's colour (up to 45 % of the fog)
+    if (day.golden > 0) {
+      const g = day.golden * 0.45;
+      const luma = 0.2126 * _lin[0] + 0.7152 * _lin[1] + 0.0722 * _lin[2];
+      for (let c = 0; c < 3; c++) _lin[c] = lerp(_lin[c]!, day.linear[c]! * luma * 1.25, g);
+    }
     if (w.fogTint !== null) {
       const tint = w.fogTintSrgb!;
       for (let c = 0; c < 3; c++) _lin[c] = lerp(_lin[c]!, srgbToLinear(tint[c]!), 0.6);
     }
     fog.uniforms.fogColor.value.setRGB(_lin[0], _lin[1], _lin[2]);
     fog.uniforms.fogDensity.value = this.palette.fogDensity * w.fogDensityMul;
+    fog.uniforms.fogStart.value = (this.palette.fogStart ?? FOG_START_M) / Math.max(1, w.fogDensityMul);
     fog.uniforms.fogBase.value = this.palette.fogBase;
     fog.uniforms.fogFalloff.value = this.palette.fogFalloff;
 

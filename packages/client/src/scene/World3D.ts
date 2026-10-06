@@ -78,6 +78,9 @@ import { LegendaryViews, staticTargetId } from './LegendaryViews';
 import { RaidDen, raidTargetId } from './RaidViews';
 import { raidInfoOf } from '../battle/raid';
 import { createSpriteCatalog, loadCreatureManifest } from './spriteCatalog';
+import { DeviceRecovery } from './deviceRecovery';
+import { fetchIntoCache, neighbourPrefetchPlan, runPrefetch } from './prefetch';
+import type { PrefetchToken } from './prefetch';
 import type { SpriteCatalog } from './spriteCatalog';
 import type { WorldInstance } from './worldHost';
 
@@ -274,25 +277,48 @@ class World implements World3D {
 
   async boot(): Promise<void> {
     setWorldBoot({ ready: false, label: 'Starting the renderer', loadedBytes: null, totalBytes: null, error: null });
-    const eff = getEffectiveSettings();
     const manifestP = loadCreatureManifest();
     // let the overlay paint its label before the synchronous shader warm-up blocks the main thread
     setWorldBoot({ label: 'Compiling shaders (first start can take ~20 s on integrated GPUs)' });
     await nextFrame();
     await nextFrame();
-    let r: Renderer;
     try {
-      r = await createRenderer({
-        canvas: this.canvas, pixelRatio: this.pixelRatio(), effects: eff.effects, transcoderPath: '/basis/', clock: () => performance.now(),
-        onCompileProgress: (p) => this.onCompileProgress(p),
-      });
+      if (!(await this.bootRenderer(manifestP, true))) return;
     } catch (e) {
       setWorldBoot({ error: e instanceof Error ? e.message : String(e) });
       throw e;
     }
+    this.audio.armOnGesture(window);
+    void loadAudioManifest().then(async (m) => {
+      if (m !== null && this.dev) {
+        const ids = [...TIMELINE_SFX, ...Object.values(MOVE_ANIMS).map((d) => d.sfx).filter((x): x is string => x !== undefined)];
+        const problems = validateAudioManifest(m, ids);
+        if (problems.length > 0) console.error('audio manifest', problems);
+      }
+      await this.audio.init(m);
+    });
+    this.ready = true;
+    // a room joined while the renderer compiled
+    if (this.room !== null && this.roomZone !== null) void this.enterZone(this.room, this.roomZone);
+    else setWorldBoot({ label: 'Joining the world' });
+  }
+
+  /**
+   * The renderer and everything bound to it: the SceneDirector, the HUD binding, size / settings observers
+   * (`rendererOffs`), the client creature group and its views. Run at boot and again after a lost GPU device (Phase E6,
+   * `deviceRecovery.ts`). Resolves false when the world was disposed while the renderer compiled; throws when
+   * `createRenderer` rejects. `manifest` null = keep the catalog already read.
+   */
+  private async bootRenderer(manifest: ReturnType<typeof loadCreatureManifest> | null, attachBattle: boolean): Promise<boolean> {
+    const eff = getEffectiveSettings();
+    const r = await createRenderer({
+      canvas: this.canvas, pixelRatio: this.pixelRatio(), effects: eff.effects, transcoderPath: '/basis/', clock: () => performance.now(),
+      onCompileProgress: (p) => this.onCompileProgress(p),
+      onDeviceLost: (info) => void this.recovery.onLost(info),
+    });
     if (this.disposed) {
       r.dispose();
-      return;
+      return false;
     }
     this.renderer = r;
     this.director = createSceneDirector({
@@ -315,15 +341,17 @@ class World implements World3D {
     this.hudWriter.setConnection(useUiStore.getState().connection);
     void this.loadFonts();
     this.observeSize();
-    this.offs.push(
+    this.rendererOffs.push(
       onEffectiveSettings((s) => {
         r.setEffects(s.effects);
         r.hud.setScale(s.uiScale);
         r.stage.setTypeColors(TYPE_COLORS[s.colorblind === 'none' ? 'default' : s.colorblind]);
       }),
     );
-    const cat = await manifestP;
-    if (cat !== null) this.catalog = createSpriteCatalog(cat, speciesDef);
+    if (manifest !== null) {
+      const cat = await manifest;
+      if (cat !== null) this.catalog = createSpriteCatalog(cat, speciesDef);
+    }
     const p3 = part3Of(r);
     const group = new Group();
     group.name = this.clientGroupName;
@@ -360,20 +388,77 @@ class World implements World3D {
         undress: (x, z) => p3.stage.undressSpectator(x, z),
       });
     }
-    this.audio.armOnGesture(window);
-    void loadAudioManifest().then(async (m) => {
-      if (m !== null && this.dev) {
-        const ids = [...TIMELINE_SFX, ...Object.values(MOVE_ANIMS).map((d) => d.sfx).filter((x): x is string => x !== undefined)];
-        const problems = validateAudioManifest(m, ids);
-        if (problems.length > 0) console.error('audio manifest', problems);
+    if (attachBattle) this.battle.attach(this.battleView());
+    return true;
+  }
+
+  // ---- Phase E6: a lost GPU device -----------------------------------------------------------------------------
+
+  /** Observers / subscriptions bound to the current renderer (rebuilt with it). */
+  private rendererOffs: (() => void)[] = [];
+
+  /** Recovery order + retry policy (`deviceRecovery.ts`); these hooks are the World's side of it. */
+  private readonly recovery = new DeviceRecovery({
+    teardown: () => this.teardownRenderer(),
+    rebuild: async () => {
+      if (this.disposed) return false;
+      const ok = await this.bootRenderer(null, false);
+      if (ok) this.ready = true;
+      return ok;
+    },
+    reload: async () => {
+      const room = this.room;
+      const zoneId = this.roomZone;
+      if (room === null || zoneId === null) {
+        setWorldBoot({ label: 'Joining the world' });
+        return;
       }
-      await this.audio.init(m);
-    });
-    this.battle.attach(this.battleView());
-    this.ready = true;
-    // a room joined while the renderer compiled
-    if (this.room !== null && this.roomZone !== null) void this.enterZone(this.room, this.roomZone);
-    else setWorldBoot({ label: 'Joining the world' });
+      // remotes, spawns and statics are re-created against the new renderer from the room's current state (the socket
+      // and the stores are untouched); the zone loads where the server has the player now; an open battle is re-dressed
+      // by `battle.attach` at the end of enterZone
+      this.detachRoom();
+      this.attachRoom(room);
+      await this.enterZone(room, zoneId, `Restoring ${zoneDef(zoneId).name}`);
+    },
+    overlay: (label, error) => {
+      if (error !== undefined) setWorldBoot({ ready: false, error });
+      else setWorldBoot({ ready: false, label: label ?? 'Restoring the renderer', loadedBytes: null, totalBytes: null, compile: null, background: null, error: null });
+    },
+    wait: (ms) => new Promise((res) => setTimeout(res, ms)),
+    now: () => performance.now(),
+    log: (m) => console.warn(`[world] ${m}`),
+  });
+
+  /**
+   * E6: drops the dead renderer and everything bound to it. Every call into three is guarded (a dispose on a dead device
+   * may throw); the session, the battle controller, input and audio stay.
+   */
+  private teardownRenderer(): void {
+    const hadRenderer = this.ready;
+    this.ready = false;
+    this.zoneLoaded = false;
+    for (const f of this.rendererOffs) f();
+    this.rendererOffs = [];
+    this.stepCollider = null;
+    this.input.setCollider(null);
+    this.spawns?.clear();
+    this.legendaries?.clear();
+    this.raidDen?.clear();
+    this.spawns = null;
+    this.legendaries = null;
+    this.raidDen = null;
+    this.bound.clear();
+    if (!hadRenderer) return;
+    try {
+      this.director.unloadZone();
+    } catch (e) {
+      console.warn('[world] zone unload on a lost device', e);
+    }
+    try {
+      this.renderer.dispose();
+    } catch (e) {
+      console.warn('[world] renderer dispose on a lost device', e);
+    }
   }
 
   private async loadFonts(): Promise<void> {
@@ -421,13 +506,13 @@ class World implements World3D {
       this.applyBattleInset();
     };
     apply();
-    this.offs.push(onBattlePanelTop(() => this.applyBattleInset()));
+    this.rendererOffs.push(onBattlePanelTop(() => this.applyBattleInset()));
     if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(apply);
       ro.observe(this.canvas);
-      this.offs.push(() => ro.disconnect());
+      this.rendererOffs.push(() => ro.disconnect());
     }
-    this.offs.push(
+    this.rendererOffs.push(
       useSettingsStore.subscribe(
         (s) => s.graphics.renderScale,
         () => this.renderer.setPixelRatio(this.pixelRatio()),
@@ -668,8 +753,8 @@ class World implements World3D {
     this.spectatorArenas.clear();
   }
 
-  /** A room (join / handover) is live and the renderer exists: load its zone. */
-  private async enterZone(room: ZoneRoom, zoneId: ZoneId): Promise<void> {
+  /** A room (join / handover) is live and the renderer exists: load its zone (`label`: the overlay text, E6 recovery). */
+  private async enterZone(room: ZoneRoom, zoneId: ZoneId, label?: string): Promise<void> {
     if (this.director.currentZone === zoneId && this.zoneLoaded) return;
     const z = zoneDef(zoneId);
     this.zone = z;
@@ -682,7 +767,7 @@ class World implements World3D {
     // a handover: the overlay covers the blocking part of the next zone's load (its first frame lifts it again)
     if (this.firstFrame) {
       this.awaitingZoneFrame = true;
-      setWorldBoot({ ready: false, label: `Travelling to ${z.name}`, loadedBytes: null, totalBytes: null, compile: null, background: null });
+      setWorldBoot({ ready: false, label: label ?? `Travelling to ${z.name}`, loadedBytes: null, totalBytes: null, compile: null, background: null });
     }
     // where the player will stand: render compiles what the first view there draws before loadZone resolves (T4)
     const arrival = room.state.players.get(this.ws.selfId);
@@ -1344,7 +1429,10 @@ class World implements World3D {
       }, 0);
     } else if (this.awaitingZoneFrame && this.zoneLoaded) {
       this.awaitingZoneFrame = false;
-      setTimeout(() => setWorldBoot({ ready: true, label: 'Ready', loadedBytes: null, totalBytes: null, compile: null }), 0);
+      setTimeout(() => {
+        setWorldBoot({ ready: true, label: 'Ready', loadedBytes: null, totalBytes: null, compile: null });
+        void this.prefetchNeighbours();   // E3: the new zone's neighbours (a handover / a recovered renderer)
+      }, 0);
     }
   }
 
@@ -1480,16 +1568,41 @@ class World implements World3D {
     this.hudWriter.setNameplates(next);
   }
 
-  /** §20.10.3 phase 5: hero-tier textures of the zone's hero surfaces, swapped in place, never awaited. */
+  /**
+   * §20.10.3 phase 5: hero-tier textures of the zone's hero surfaces, swapped in place, never awaited; then (Phase E3)
+   * the linked neighbours' field materials and atlases into the HTTP cache (`prefetch.ts`), cancelled by a zone change.
+   */
   private startPhase5(): void {
     const handle = this.director.handle;
     if (handle === null) return;
+    let hero: Promise<unknown> = Promise.resolve();
     try {
       const ids = heroSurfaces() as readonly SurfaceId[];
-      void this.renderer.materials.preloadHero(ids).catch(() => undefined);
+      hero = this.renderer.materials.preloadHero(ids).catch(() => undefined);
     } catch (_e) {
       // no hero table
     }
+    void hero.then(() => this.prefetchNeighbours());
+  }
+
+  private prefetchToken: PrefetchToken | null = null;
+
+  /** E3: the neighbour prefetch for the current zone (a previous zone's run is cancelled). */
+  private async prefetchNeighbours(): Promise<void> {
+    if (this.prefetchToken !== null) this.prefetchToken.cancelled = true;
+    const z = this.zone;
+    if (!this.ready || z === null) return;
+    const token: PrefetchToken = { cancelled: false };
+    this.prefetchToken = token;
+    const r = this.renderer;
+    const plan = neighbourPrefetchPlan(z, this.flags(), this.catalog, this.bound);
+    const bytes = await runPrefetch(plan, token, {
+      ...(r.materials.prefetch !== undefined ? { materials: (ids) => r.materials.prefetch!(ids) } : {}),
+      fetch: fetchIntoCache,
+      wait: (ms) => new Promise((res) => setTimeout(res, ms)),
+      now: () => performance.now(),
+    });
+    if (this.dev && !token.cancelled) console.info(`[world] prefetched ${plan.zones.join(', ')}: ${plan.surfaces.length} surfaces, ${plan.atlasUrls.length} atlas files, ${(bytes / 1048576).toFixed(1)} MB`);
   }
 
   dispose(): void {
@@ -1503,6 +1616,8 @@ class World implements World3D {
     this.battle.reset();
     setBattleActions(null);
     this.audio.dispose();
+    for (const f of this.rendererOffs) f();
+    this.rendererOffs = [];
     if (this.ready) {
       this.director.unloadZone();
       this.renderer.dispose();

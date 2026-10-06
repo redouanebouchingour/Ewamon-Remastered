@@ -16,7 +16,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { AUDIT_SHOTS } from '../../src/harness/shotTable';
+import { shotsForZone } from '../../src/harness/shotTable';
 import { PASS_TABLE, countViolations, msViolations } from '../../src/harness/budgetRules';
 import type { Violation } from '../../src/harness/budgetRules';
 import type { ShotBudget } from '../../src/harness/measure';
@@ -40,12 +40,14 @@ async function main(): Promise<void> {
   const out = userPath(argStr(args, 'out', `.screenshots/budget/${zone}.json`));
   const dumpOut = out.replace(/\.json$/i, '') + '.dump.json';
   const want = argStr(args, 'shots', 'all');
-  const tableShots = AUDIT_SHOTS.filter((s) => s.zone === zone);
+  // `--set M3`: all six §50.6.1 rows in this zone (shotTable.ts); default M2 = the table's rows for this zone
+  const set = argStr(args, 'set', 'M2');
+  const tableShots = shotsForZone(zone, set);
   const shots = want === 'all' ? tableShots : tableShots.filter((s) => want.split(',').includes(s.id));
   if (shots.length === 0) throw new Error(`no §50.6.1 shot position belongs to zone ${zone}`);
 
   const t0 = Date.now();
-  const session = await openSession({ zone, route: 'budget', width, height, serve: argStr(args, 'serve', 'build') === 'dev' ? 'dev' : 'build', build: args['no-build'] !== true });
+  const session = await openSession({ zone, route: 'budget', width, height, serve: argStr(args, 'serve', 'build') === 'dev' ? 'dev' : 'build', build: args['no-build'] !== true, set });
   const results: Omit<ShotBudget, 'dump'>[] = [];
   let dump: DumpLike | null = null;
   let dumpAt: string | null = null;

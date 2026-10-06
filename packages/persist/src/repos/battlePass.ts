@@ -35,22 +35,24 @@ export const battlePassRepo = {
     return row?.choice ?? null;
   },
 
-  /** One-time: sets the level-50 row's mythical choice (creating the row if the level was not yet claimed). Throws AlreadyClaimed. */
-  async setMythicalChoice(tx: Tx, playerId: string, species: string, now: Date): Promise<void> {
+  /**
+   * One-time: sets the level-50 row's mythical choice. Requires the level-50 row with mythical_choice null (spine
+   * §5.2): Forbidden without the row, AlreadyClaimed on a second choice. Phase E5: this used to create the missing row,
+   * which — with no trainer-level check in the route — let a level-1 account take a level-50 mythical; the server's
+   * `/battle-pass/mythical-choice` now claims level 50 (trainer-level gated) before calling this.
+   */
+  async setMythicalChoice(tx: Tx, playerId: string, species: string, _now: Date): Promise<void> {
     const [row] = await tx
       .select({ choice: battlePass.mythicalChoice })
       .from(battlePass)
       .where(and(eq(battlePass.playerId, playerId), eq(battlePass.level, BATTLE_PASS_MYTHICAL_LEVEL)))
       .for('update');
-    if (row?.choice) fail('AlreadyClaimed', 'mythical choice already made');
-    if (row) {
-      await tx
-        .update(battlePass)
-        .set({ mythicalChoice: species })
-        .where(and(eq(battlePass.playerId, playerId), eq(battlePass.level, BATTLE_PASS_MYTHICAL_LEVEL)));
-    } else {
-      await tx.insert(battlePass).values({ playerId, level: BATTLE_PASS_MYTHICAL_LEVEL, claimedAt: now, mythicalChoice: species });
-    }
+    if (!row) fail('Forbidden', `battle-pass level ${BATTLE_PASS_MYTHICAL_LEVEL} not claimed`);
+    if (row.choice) fail('AlreadyClaimed', 'mythical choice already made');
+    await tx
+      .update(battlePass)
+      .set({ mythicalChoice: species })
+      .where(and(eq(battlePass.playerId, playerId), eq(battlePass.level, BATTLE_PASS_MYTHICAL_LEVEL)));
   },
 };
 

@@ -6,6 +6,129 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-06 Phase E5 (the missing §50.4 test suites). -->
+
+## 2026-10-06 — `50-verification-budget.md` §50.4.4 (`battle-pass.test.ts`, `auth.test.ts` rows) — `setMythicalChoice` refuses without the level-50 row (`Forbidden`); the argon2id read-back stays in the server's `rest-auth.test.ts`
+Why: Phase E5 wrote the missing `battle-pass.test.ts`, which exposed a defect. `setMythicalChoice` created the missing level-50 row, and `POST /battle-pass/mythical-choice` never checked the trainer level, so any account could take a level-50 mythical at trainer level 1.
+
+Persist now follows spine §5.2 ("requires the level-50 row"). The route claims level 50 itself, gated on trainer level, because the client offers the choice in place of a Claim button. The argon2id parameters are the server's: persist stores the PHC string opaquely.
+Evidence:
+- `packages/persist/test/battle-pass.test.ts` (4)
+- `packages/persist/test/auth.test.ts` (5)
+- `packages/server/test/authority.test.ts` A10b
+- `packages/server/test/rest-auth.test.ts` ("m=19456 t=2 p=1, PHC string…")
+Affects: `packages/persist/src/repos/battlePass.ts`; `packages/server/src/rest/routes/catalog.ts` (`/battle-pass/mythical-choice`).
+
+## 2026-10-06 — `50-verification-budget.md` §50.4.7 (`no-getimagedata`, `dof-mask`, `no-dom-in-frame`, `first-frame`, `slice-e2e` rows) — how each new file reads its row
+Why: Phase E5 wrote these files against the current client, and four rows needed a reading or a status note.
+- **`no-getimagedata`:** the Phase C3 minimap paints its base with `putImageData` (once per zone, from the heightfield, no sprite), so it is allow-listed by name.
+- **`dof-mask`:** a billboard's screen rect also holds background, so "1.0 over the rect" is read as 1.0 over the subject's visible silhouette. The silhouette comes from forced-bit re-renders at the frame's own TRAA jitter offset.
+- **`no-dom-in-frame`:** the background-compile pill and the Phase D12 tutorial card (event-driven) postdate the row.
+- **`first-frame`:** the 2.5 s limit cannot be measured on the dev iGPU (≈ 46–48 s, synchronous shader warm-up). The spec follows the `handover-hitch` precedent and asserts milliseconds only with `EWA_REFERENCE_GPU=1`.
+- **`slice-e2e`:** the trade, PvP and gym clear are not driven yet, and the row says so.
+Evidence:
+- `playwright test -c playwright.e2e.config.ts` — all four Playwright specs pass on the dev machine:
+  - `slice-e2e` (2.6 min)
+  - `no-dom-in-frame` (2.0 min)
+  - `first-frame` (mark 48 s annotated, byte budgets 4.46 / 1.19 MB)
+  - `dof-mask` (600 frames)
+- `vitest run packages/client/test/no-getimagedata.test.ts` (7)
+Affects:
+- `packages/client/test/{slice-e2e,no-dom-in-frame,first-frame,dof-mask}.spec.ts`, `test/e2e/`, `test/dof-mask/`
+- `playwright.config.ts` (additive project `client-e2e`); `playwright.e2e.config.ts` (new, without the fuzz `webServer`)
+
+<!-- 2026-10-06 Phase E3 (render audit blockers + open items) and E6 (GPU device lost). -->
+
+## 2026-10-06 — `10-render.md` §10.1.2 (device loss paragraph) — `GPUDevice.lost` → `Renderer.deviceLost` + `RendererOptions.onDeviceLost`, frames stop, the owner recreates; `20-client.md` §20.4.2 (paragraph) — World3D rebuilds the renderer and reloads the current zone behind the boot overlay
+Why: Phase E6. A driver reset, TDR or GPU-process crash left the canvas dead with no way back short of a page reload. A reload loses the React tree and the WorldSession, and with them an open battle's UI state.
+Evidence:
+- `packages/render/test/device-lost.test.ts` (5) — `watchDeviceLost` with a fake device: one callback; `'destroyed'` and post-dispose losses ignored.
+- `packages/client/test/device-lost.test.ts` (6) — the same wiring into `DeviceRecovery`:
+  - order: overlay → teardown → new renderer → `loadZone` at the server's current position
+  - the session is untouched
+  - retries / give-up, merged losses, the loss-rate limit
+
+Not reproduced on a real GPU.
+Affects:
+- `packages/render/src/renderer.ts` (`watchDeviceLost`, `DeviceLostInfo`, `handleDeviceLost`, `onDeviceLost`, `deviceLost`) and `index.ts`
+- `packages/client/src/scene/deviceRecovery.ts` (new)
+- `World3D.ts` (`bootRenderer`, `teardownRenderer`, `rendererOffs`, `enterZone(label)`)
+
+## 2026-10-06 — `10-render.md` §10.5.1 `ZoneSpec.neighbours` + `NeighbourSpec`, §10.5.5 (skirt paragraph) — the skirt on a linked side is the neighbour zone's terrain and roads (audit M2-link-east-1)
+Why: audit M2-link-east-1 (blocker): "the neighbouring zone streaming in must be visible". Beyond the field, the skirt showed generic hills on every side. `Renderer.loadZone` holds one zone, so a second, LOD-only zone root would duplicate the material, program and draw budgets.
+
+The skirt instead takes the neighbour's heightfield and layout plan, which content already ships (a pure function of the zone): heights offset so the link points meet, road / plaza / detail layers, and scatter kept off its roads. It costs no new mesh, material or program.
+
+`zoneSpecFor` stays unchanged (snapshot, digests); the client adds the field with `withNeighbours`.
+Evidence:
+- `packages/render/test/neighbour-skirt.test.ts` (5)
+- `packages/client/test/neighbour-prefetch.test.ts` (`neighbourSpecsFor`, `withNeighbours`)
+- sandbox A/B, render IMPLEMENTATION-NOTES Phase E3:
+  - mirevale (92, 0) zoom 2: hills and trees → mire_route's road continuing
+  - draws 129 → 131; materials and programs equal
+
+The §50.6.1 shot-6 frame (zoom 1 at x = 58) ends at about x = 80, where the skirt begins.
+Affects:
+- `packages/render/src/{contracts,index}.ts`
+- `terrain/mesh.ts` (`NeighbourField`, `NEIGHBOUR_SKIRT`, `neighbourWeight`, `skirtClearFn`, `skirtHeightFn`)
+- `zone/builder.ts` (`neighbourFields`, scatter skirt clearance)
+- `packages/client/src/scene/{zoneSpecFor,SceneDirector}.ts`
+- `packages/render/sandbox/main.ts` (`&neighbours=0`)
+
+## 2026-10-06 — `10-render.md` §10.1.2 (handover keep paragraph), §10.2.3 addition `MaterialLibrary.prefetch`; `20-client.md` §20.10.3 rules — phase 5's neighbour prefetch implemented, `prepareHandover` keeps the shared texture sets
+Why: §20.10.3 phase 5 asked for the neighbouring zone's field materials and atlases after the hero tier. The client did not do it (client notes part 2, §20.10 row).
+
+On a handover the old zone's dispose also evicted every texture set, so the next zone transcoded the shared grove surfaces again.
+Evidence: `packages/client/test/neighbour-prefetch.test.ts` (plan, pacing, cancel). The handover's effect is measured by `handover-hitch.spec.ts` (next entry).
+Affects:
+- `packages/render/src/renderer.ts` (`prepareHandover`)
+- `zone/system.ts`
+- `materials/library.ts` (`prefetch`)
+- `packages/client/src/scene/{prefetch.ts (new),World3D.ts,SceneDirector.ts}`
+
+## 2026-10-06 — `10-render.md` §10.5.9 — the programs leak assertion is read after `compileIdle()`; after an unload the warm objects are re-keyed to the zone-less light set
+Why: render Part 5 Open 1 — "programs +2 after unload". The cause was confirmed by program names: the warm quads `dirt` / `glass_warm` / `mist_glass`, the character decal and the surf ripple kept the unloaded zone's light-set variants, because nothing renders those objects after the zone is gone.
+Evidence: Mirevale load → unload in the sandbox. Programs are +2 right after `dispose()` and **±0 after `compileIdle()`**; the name diff against the baseline is empty, and geometries / textures / render targets / attributes are ±0. The sandbox's `leakCycle` awaits it.
+Affects: `packages/render/src/renderer.ts` (`scheduleWarmRekey`, cancelled by the next `loadZone`), `packages/render/sandbox/main.ts`.
+
+## 2026-10-06 — `50-verification-budget.md` §50.6.1 (paragraph after the table) — shot 3 runs the sprite-edge scan at ≥ 1.3×; shot 6's neighbour is the skirt; mask variants sample the MRT without re-rendering
+Why:
+- **Audit M2-sprite-edge-5 (blocker).** The table's "one zoom step in" minifies the creature more than 10×. Even the 4 m inspector gives about 0.4× on a 1024² frame at 900 px, so §50.1 #6's 200-edge-pixel test could not run on any shot. The scan now stages the inspector, narrows the FOV to the magnification, isolates the billboard and reads the pre-TRAA `mask.y` in Node.
+- **Programs (render Part 6 Open 1, audit M2-gym-dusk-8).** The harness's mask variant re-rendered the scene pass without TRAA at another render-call depth, which added 31 programs (one per visible material) for the rest of a shots run. That was the "139 after dusk". The light set does not change with the time of day.
+
+Evidence:
+- `.screenshots/audit/M2-E3/mire_route/sprite-edge--80.94_5.3.json` (`edgeScan`), `packages/client/test/harness-edge-scan.test.ts` (4).
+- `harness:shots` mirevale, programs per shot: 109 / 144 / 144 / 144 → 109 / 113 / 113 / 113 (peak 144 → 113, cap 128).
+
+Affects:
+- `packages/client/src/harness/{edgeScan.ts (new),stage.ts,HarnessWorld.ts,main.tsx}`
+- `packages/client/scripts/harness/shots.ts`
+- `packages/render/src/stage/battleStage.ts` (`inspectedBillboard`)
+
+## 2026-10-06 — `50-verification-budget.md` §50.4.7 `handover-hitch.spec.ts` row — the spec exists; its millisecond limits are asserted on the reference GPU only
+Why: §50.4.7 listed the spec, but it did not exist. It can now run: the harness world crosses zones the way World3D does, with the neighbour skirt and the handover keep.
+
+The 250 ms / 33 ms / 1 500 ms limits are reference-machine numbers (§50.2). The dev iGPU spends seconds on a zone's phase-1 compile, so asserting them there would only record a known gap as a failure.
+Evidence: `packages/client/test/handover-hitch.spec.ts`; the measured numbers are in client IMPLEMENTATION-NOTES Phase E3.
+Affects: `packages/client/test/handover-hitch.spec.ts` (new), `packages/client/src/harness/{HarnessWorld.ts (handover, backgroundCompile),main.tsx}`.
+
+<!-- 2026-10-06 Phase E1 + E2 (density pass, M3 shot set, the re-landed art pass). -->
+
+## 2026-10-06 — `50-verification-budget.md` §50.6.1 — from M3 on every zone takes all six audit rows, with recorded fallback anchors where a zone lacks the row's subject
+Why: Phase E1. §50.5 M3 asks for "6 shots each, 126 files", but the §50.6.1 table names only `mirevale` and `mire_route`, so `harness:shots` / `harness:budget` refused the other 19 zones ("no §50.6.1 shot belongs to zone …"). Towns have no encounter table, story zones no gym or shop, several zones no east link; a rule per gap keeps every shot reproducible from committed data.
+Evidence: `packages/client/src/harness/shotTable.ts` (`shotsForZone(zone, set)`, `TABLE_SETS = ['M2']`), `anchors.ts` (`tableAnchor` + `fallbackAnchor`), `stage.ts` (a fallback may turn the heading), `scripts/harness/{common,shots,budget}.ts` (`--set`); `packages/client/test/harness-anchors.test.ts` (all 21 zones resolve six walkable anchors; the slice's M3 anchors equal its M2 anchors; link fallbacks look at their edge).
+Affects: `harness:shots -- --set M3`, `harness:budget -- --set M3`; the M2 set and its committed shots are unchanged.
+
+## 2026-10-06 — `10-render.md` §10.5.4 — the Phase E1 dressing pass (walk-through verge / scree / shard cover, house skirts inside the collider pad, a boundary with gate piers for every town biome)
+Why: Phase E1, the user's "all towns as good as Mirevale". The 21-zone smoke (2026-10-06, before) showed every town but Mirevale spawning at (−50, 0) on a bare road 50 m from its plaza (content's spawn), routes as a road through sparse tufts, barren biomes as bare ground with bright-green tufts, and towns without a boundary except the grove / forge / capital walls. Content owns every solid (the heightfield and the server's movement are stamped from its plan), so the render-side pass may only add cover a player wades through, dressing inside a building's footprint pad, and dressing outside the walkable square.
+Evidence: `packages/render/src/zone/generators/dressing.ts`, `zone/builder.ts` (verge / rock / scree cover into the existing kinds, `crystal_shard`, per-biome tuft tints, `dressBoundary` for wall / fence / rocks with piers, house skirts); `packages/render/test/dressing.test.ts`; client `footprints.test.ts` unchanged (builder footprints still equal content's); before / after smoke and `.design/audits/M3-render-audit.md`.
+Affects: every zone's geometry digest (no test pins a digest); triangles +15–60 % per view, beauty draws +0–16 (one `crystal_shard` kind in marrow / shrine / rift), materials and programs unchanged.
+
+## 2026-10-06 — `10-render.md` §10.3.3, §10.3.4, §10.3.5, §10.3.7, §10.8.1–§10.8.3; `50-verification-budget.md` §50.2.1 — the M2 re-light re-landed: sun path with sunrise 0.17 / sunset 0.83 and the moon on its own path, a warm key over a low normalised hemisphere fill (`hemi` column), fog with a 15 m clear zone (density 0.00486), golden-hour fog tint, zero-mean `GrainNode` 0.052
+Why: Phase E2. The art pass written for audit findings M2-spawn-noon-2 (compressed tonal range: 16 % fog at the focus, hemisphere 0.18 + env 0.85 washing out the key), M2-gym-dusk-2 / M2-lamps-night-5 (t 0.80 had the sun 21.6° below the horizon, the moon mirrored the sun so night shadows matched day's) and M2-spawn-noon-13 (FilmNode only brightens: +2.1 % exposure, reduced effects changed the exposure) was snapshotted in `a6606df` / `aa19fa1` and reverted with them in `3f12cf0`; it never reached the SPEC. Re-landed unchanged in substance (dates moved to 2026-10-06); `lighting/`, `zone/palettes.ts` and `post/` had not changed since the revert, `camera/rig.ts` was never part of it.
+Evidence: `packages/render/src/lighting/{daycycle,fog,rig}.ts`, `zone/palettes.ts`, `post/grain.ts`, `post/pipeline.ts`; tests `daycycle.test.ts` (table, sun / moon paths, switch fade, daylight / golden), `lighting.test.ts` (fog clear zone: 5.2 % at the 26 m focus, 20–48 % on the skirt), `post-graph.test.ts` (GrainNode in the graph, zero mean), `stats-dispose.test.ts` (hemisphere at the `hemi` level, unit sky, weather pulls the clear zone in); re-shot `.screenshots/audit/M2/`.
+Affects: every lit frame; the server's gameplay day (`isDay`, spawn tables) is unchanged; client tests unaffected.
+
 <!-- 2026-10-06 Phase E4 (CC0 audio, the no-download half). -->
 
 ## 2026-10-06 — `40-pipelines.md` §40.4.8 (new) — CC0 ingest: `sources.json` → raw cache with salted request hashes, stem derivation for single-track themes, linked gain + no re-roll for CC0 clips in `process`, optional `derived` theme field in the output manifest, generated credits

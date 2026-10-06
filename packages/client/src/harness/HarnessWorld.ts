@@ -10,13 +10,13 @@
  * transforms → nameplates → HUD flush → one `renderer.frame`. The fixed-step portion is the §50.2.1 `sim` row and is
  * pushed to the probe (`setSimMs`).
  */
-import { Group, LinearSRGBColorSpace, NoToneMapping, Vector3 } from 'three/webgpu';
+import { ACESFilmicToneMapping, Group, LinearSRGBColorSpace, NoToneMapping, SRGBColorSpace, Vector3 } from 'three/webgpu';
 import type { Node } from 'three/webgpu';
-import { float, renderOutput, vec3, vec4 } from 'three/tsl';
+import { float, renderOutput, texture, vec3, vec4 } from 'three/tsl';
 import { BODIES, harvestStateFor, zone as zoneDef } from '@ewa/content';
 import type { HarvestState, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
-import { ALL_EFFECTS, applyReducedEffects, createBudgetProbe, createRenderer, part3Of, rendererInternals } from '@ewa/render';
+import { ALL_EFFECTS, applyReducedEffects, createBudgetProbe, createRenderer, edgePoint, part3Of, rendererInternals, zoneSurfaces } from '@ewa/render';
 import type { BudgetCounts, EffectsFlags, Renderer, RendererProbe, VfxId, WeatherKind, ZoneSpec } from '@ewa/render';
 import { createAudioDirector } from '../audio/AudioDirector';
 import type { AudioDirector } from '../audio/AudioDirector';
@@ -38,7 +38,7 @@ import { SpawnViews } from '../scene/SpawnViews';
 import type { SpawnLike } from '../scene/SpawnViews';
 import { createSpriteCatalog, loadCreatureManifest } from '../scene/spriteCatalog';
 import type { SpriteCatalog } from '../scene/spriteCatalog';
-import { zoneSpecFor } from '../scene/zoneSpecFor';
+import { withNeighbours, zoneSpecFor } from '../scene/zoneSpecFor';
 import { useUiStore } from '../state/ui';
 import { FONT, TYPE_COLORS } from '../ui/tokens';
 import { makeCreature, scriptWildBattle } from './battleScript';
@@ -53,6 +53,28 @@ const NAMEPLATE_MS = 500;
 const NAMEPLATE_RANGE = 18;
 
 export type HarnessLog = (line: string) => void;
+
+/** E3: one measured zone crossing (`handover-hitch.spec.ts`, SPEC §20.10.3 / §50.4.7). */
+export interface HandoverResult {
+  readonly from: string;
+  readonly to: string;
+  readonly preloaded: boolean;
+  /** ms from the crossing (`handoverAck`: the director starts the next zone's load) to the first frame of the new zone */
+  readonly firstFrameMs: number | null;
+  /** `director.loadZone` wall ms (renderer phase 1 + build + texture preload) */
+  readonly loadMs: number;
+  /** frames rendered by the rAF loop from the crossing until `frames` frames after the first destination frame */
+  readonly frames: number;
+  readonly maxFrameMs: number;
+  readonly p95FrameMs: number;
+  /** frame gaps over 33 ms (§20.10.3: none allowed during the crossing) */
+  readonly framesOver33: number;
+  /** the harness has no world-boot overlay: a crossing here never fades the screen (World3D shows "Travelling to …") */
+  readonly fade: false;
+  readonly zone: string | null;
+  readonly programs: number;
+  readonly backgroundCompile: boolean;
+}
 
 const gpuQueue = (r: Renderer): { onSubmittedWorkDone(): Promise<void> } | null =>
   (r.renderer.backend as unknown as { device?: { queue: { onSubmittedWorkDone(): Promise<void> } } }).device?.queue ?? null;
@@ -89,6 +111,7 @@ export class HarnessWorld {
   private battleScript: ScriptedBattle | null = null;
   private maskSaved: Node | null = null;
   private maskNode: Node | null = null;
+  private outputNode: Node | null = null;
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly log: HarnessLog) {
     this.lead = makeCreature(content(), LEAD.speciesId, LEAD.level, 'harness-lead', SELF_ID);
@@ -127,6 +150,9 @@ export class HarnessWorld {
 
   // ---- boot ------------------------------------------------------------------------------------------------------
 
+  /** E3: `?bg=1` — the zone's background compile on (the client's default; the shot / budget harness measures fully compiled zones). */
+  backgroundCompile = false;
+
   async boot(zoneId: ZoneId, extraSpecies: readonly string[]): Promise<void> {
     const t0 = performance.now();
     const r = await createRenderer({
@@ -134,6 +160,7 @@ export class HarnessWorld {
       pixelRatio: typeof devicePixelRatio === 'number' ? devicePixelRatio : 1,
       effects: ALL_EFFECTS,
       trackTimestamp: true,
+      backgroundCompile: this.backgroundCompile,
       transcoderPath: '/basis/',
       clock: () => performance.now(),
       onCompileProgress: (p) => {
@@ -193,6 +220,7 @@ export class HarnessWorld {
     const body = BODIES.find((b) => b.id === SELF_BODY);
     // the same `look:palette` id World3D's lookOf gives the local player
     const look = body === undefined ? 'casual_male' : body.palette ? `${body.look}:${body.palette}` : body.look;
+    this.selfLook = look;
     r.actors.spawn(SELF_ID, { look, name: 'Harness', guildTag: '', isLocal: true });
     this.battle.attach(this.battleView());
     this.probe = createBudgetProbe(r, zoneId);
@@ -222,6 +250,11 @@ export class HarnessWorld {
     if (cat === null) return;
     for (const sp of species) for (const a of cat.atlasesOf(sp)) if (!ids.includes(a)) ids.push(a);
     await this.bindIds(ids);
+  }
+
+  /** E3 sprite-edge scan: binds a species' atlases before its billboard is shown (resolves when bound). */
+  prepareSpecies(species: readonly string[]): Promise<void> {
+    return this.bindSpecies(species);
   }
 
   private async bindSpecies(species: readonly string[]): Promise<void> {
@@ -381,17 +414,40 @@ export class HarnessWorld {
   /**
    * Draws the scene pass's `mask.y` (DOF-sharp, §10.8.2) as greyscale straight to the canvas: one pipeline render
    * with the output node swapped (no HUD overlay, no tone mapping, no transfer function — grey = mask.y × 255).
+   *
+   * Phase E3: the swapped output samples the scene pass's MRT texture as a plain texture (`texture(pass.getTexture)`),
+   * not through its pass texture node, so this render shows the last full frame's mask and does NOT re-render the
+   * scene pass. Re-rendering it here ran the scene without TRAA (no velocity projection, H4 fact c) at another render
+   * call depth, which built a second render object — and a second, TRAA-less program — for every visible material:
+   * +31 programs kept for the rest of the session (the 139–144 of the shots runs after the first mask variant, render
+   * Part 6 Open 1 / audit M2-gym-dusk-8).
    */
   async drawMask(): Promise<void> {
     const host = rendererInternals(this.renderer);
     if (host === undefined) throw new Error('no renderer internals');
     const pipe = host.post.pipeline;
     if (this.maskNode === null) {
-      const m = host.post.nodes.maskT;
+      const m = texture(host.post.nodes.scenePass.getTexture('mask'));
       this.maskNode = renderOutput(vec4(vec3(m.y), float(1)), NoToneMapping, LinearSRGBColorSpace) as unknown as Node;
     }
-    this.maskSaved = pipe.outputNode as unknown as Node;
+    if (this.maskSaved === null) this.maskSaved = pipe.outputNode as unknown as Node;
     pipe.outputNode = this.maskNode as never;
+    pipe.needsUpdate = true;
+    host.post.render();
+    await this.gpuIdle();
+  }
+
+  /**
+   * E3 sprite-edge scan: draws the scene pass's `output` MRT (pre-TRAA, pre-DOF, pre-bloom) to the canvas, tone-mapped
+   * and sRGB-encoded so it can be looked at — the image §10.4.3 defines the soft-pixel test on. Same swap as `drawMask`.
+   */
+  async drawOutput(): Promise<void> {
+    const host = rendererInternals(this.renderer);
+    if (host === undefined) throw new Error('no renderer internals');
+    const pipe = host.post.pipeline;
+    if (this.outputNode === null) this.outputNode = renderOutput(texture(host.post.nodes.scenePass.getTexture('output')), ACESFilmicToneMapping, SRGBColorSpace) as unknown as Node;
+    if (this.maskSaved === null) this.maskSaved = pipe.outputNode as unknown as Node;
+    pipe.outputNode = this.outputNode as never;
     pipe.needsUpdate = true;
     host.post.render();
     await this.gpuIdle();
@@ -412,6 +468,29 @@ export class HarnessWorld {
     const v = p.clone().project(cam);
     const rect = this.canvas.getBoundingClientRect();
     return [(v.x * 0.5 + 0.5) * rect.width, (-v.y * 0.5 + 0.5) * rect.height];
+  }
+
+  private selfLook = 'casual_male';
+
+  /**
+   * E3 sprite-edge scan: hides the zone root (the probe's `opaque` switch) and the player's figure, so the only
+   * DOF-sharp pixels left in `mask.y` are the inspected billboard's and every sampled edge is its silhouette.
+   */
+  isolateInspector(on: boolean): void {
+    this.probe.setPassEnabled('opaque', !on);
+    if (on) this.renderer.actors.despawn(SELF_ID);
+    else {
+      this.renderer.actors.spawn(SELF_ID, { look: this.selfLook, name: 'Harness', guildTag: '', isLocal: true });
+      this.renderer.actors.setTransform(SELF_ID, this.input.renderX, this.input.renderZ, this.input.pose.angle, false, false);
+    }
+  }
+
+  /** E3 sprite-edge scan: the camera's vertical fov before the scan narrowed it (null = untouched). */
+  edgeFov0: number | null = null;
+
+  /** CSS-px rect of world points (the sprite-edge scan's billboard quad). */
+  rectOfWorld(points: readonly Vector3[]): readonly [number, number, number, number] {
+    return this.rectOf(points);
   }
 
   private rectOf(points: readonly Vector3[]): readonly [number, number, number, number] {
@@ -451,6 +530,74 @@ export class HarnessWorld {
       out.push({ side, rect: this.rectOf([feet.clone().addScaledVector(right, -half), feet.clone().addScaledVector(right, half), top.clone().addScaledVector(right, -half), top.clone().addScaledVector(right, half)]) });
     }
     return out;
+  }
+
+  // ---- E3: a measured zone crossing ---------------------------------------------------------------------------------
+
+  /**
+   * Crosses from the loaded zone into its linked neighbour `to` the way World3D does on `handover`: the player stands
+   * 6 m inside the link edge, then `director.loadZone(to, …, arrival)` (which keeps the shared texture sets through the
+   * dispose, `renderer.prepareHandover`) and the player is placed at the arrival, 8 m inside the destination's edge.
+   * A requestAnimationFrame loop ticks the world throughout and records every frame gap. `preload`: the destination's
+   * field materials and creature atlases are made resident first (§20.10.3 phase 5 complete).
+   */
+  async handover(to: ZoneId, o: { readonly preload: boolean; readonly framesAfter?: number }): Promise<HandoverResult> {
+    const from = this.zone;
+    const dir = (['n', 'e', 's', 'w'] as const).find((d) => from.links[d] === to);
+    if (dir === undefined) throw new Error(`${to} is not linked to ${from.id}`);
+    const opp = ({ n: 's', s: 'n', e: 'w', w: 'e' } as const)[dir];
+    const inward = (d: 'n' | 'e' | 's' | 'w', k: number): readonly [number, number] => (d === 'e' ? [-k, 0] : d === 'w' ? [k, 0] : d === 's' ? [0, -k] : [0, k]);
+    const [ex, ez] = edgePoint(from.kind, dir);
+    const [ix, iz] = inward(dir, 6);
+    this.setWild(null);
+    this.setTimeOfDay(0.5);
+    this.place(ex + ix, ez + iz, 0);
+    await this.settle(30, 10, 600);
+    const next = zoneDef(to);
+    const harvest = harvestStateFor(to, this.flags);
+    if (o.preload) {
+      await this.renderer.materials.preload(zoneSurfaces(withNeighbours(zoneSpecFor(next, harvest), next)));
+      await this.bindAtlases([...(this.catalog?.zoneAtlases(to) ?? [])], []);
+    }
+    const [ax0, az0] = edgePoint(next.kind, opp);
+    const [aix, aiz] = inward(opp, 8);
+    const arrival = { x: ax0 + aix, z: az0 + aiz };
+    const gaps: number[] = [];
+    let last = performance.now();
+    let firstFrameAt: number | null = null;
+    let loaded = false;
+    let after = 0;
+    const want = o.framesAfter ?? 120;
+    let stop!: () => void;
+    const done = new Promise<void>((res) => { stop = res; });
+    const loop = (now: number): void => {
+      gaps.push(now - last);
+      last = now;
+      this.tick();
+      if (loaded) {
+        if (firstFrameAt === null) firstFrameAt = performance.now();
+        if (++after >= want) { stop(); return; }
+      }
+      requestAnimationFrame(loop);
+    };
+    const t0 = performance.now();
+    requestAnimationFrame(loop);
+    await this.director.loadZone(to, harvest, arrival);
+    const loadMs = performance.now() - t0;
+    this.zone = next;
+    this.harvest = harvest;
+    this.spec = zoneSpecFor(next, harvest);
+    this.place(arrival.x, arrival.z, 0);
+    loaded = true;
+    await done;
+    const sorted = [...gaps].sort((a, b) => a - b);
+    const r1 = (v: number): number => Math.round(v * 10) / 10;
+    return {
+      from: from.id, to, preloaded: o.preload, firstFrameMs: firstFrameAt === null ? null : r1(firstFrameAt - t0), loadMs: r1(loadMs), frames: gaps.length,
+      maxFrameMs: r1(sorted[sorted.length - 1] ?? 0), p95FrameMs: r1(sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] ?? 0),
+      framesOver33: gaps.filter((g) => g > 33).length, fade: false, zone: this.director.currentZone, programs: this.renderer.renderer.info.memory.programs,
+      backgroundCompile: this.backgroundCompile,
+    };
   }
 
   // ---- the scripted battle -----------------------------------------------------------------------------------------

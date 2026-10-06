@@ -84,3 +84,18 @@ describe('shot-5 scripted wild battle', () => {
     expect(digestBattleState(t2.state)).toBe(s.turns[1].digest);
   });
 });
+
+describe('shot-5 scripted wild battle in the M3 zones', () => {
+  it('finds a script for the first common slot of every zone (another move or a higher wild level when needed; turn 2 may only use a move)', async () => {
+    const { ZONES } = await import('@ewa/content');
+    const { resolveAnchor, shotsForZone } = await import('../src/harness/anchors');
+    const { zoneSpecFor } = await import('../src/scene/zoneSpecFor');
+    for (const z of ZONES) {
+      const a = resolveAnchor(shotsForZone(z.id, 'M3').find((s) => s.id === 'battle')!, zoneSpecFor(z, 'intact'));
+      const s = scriptWildBattle(content(), { playerId: 'p', playerSpecies: 'bramblecub', playerLevel: 5, wildSpecies: a!.wild!.speciesId, wildLevel: a!.wild!.level, zoneId: z.id, terrain: 'grove' });
+      expect(s.turns[0].events.some((e) => e.t === 'damage' && e.cause === 'move'), z.id).toBe(true);
+      expect(s.turns[1].events.some((e) => e.t === 'moveUsed'), z.id).toBe(true);
+      expect(s.wildLevel).toBeGreaterThan(0);
+    }
+  });
+});

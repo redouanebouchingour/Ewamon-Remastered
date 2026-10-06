@@ -1,0 +1,717 @@
+{
+ "leg": "act1",
+ "username": "pxaa0j1",
+ "rows": {
+  "players": [
+   {
+    "id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "username": "pxaa0j1",
+    "username_lower": "pxaa0j1",
+    "email": "pxaa0j1@test.ewa",
+    "password_hash": "$argon2id$v=19$m=19456,t=2,p=1$xtDMGg4VAhBlSHoef8KGCQ$10y6MJwCYyrPL/AS/azAB7m/eBRPEHSNWw3jhrSv5Xg",
+    "money": 4740,
+    "zone_id": "tide_route",
+    "x": -32,
+    "z": 10.5,
+    "angle": 1.5707964,
+    "body": "ranger_m",
+    "title": "Rookie Trainer",
+    "motto": "",
+    "rating": 1000,
+    "peak_rating": 1000,
+    "ranked_matches": 0,
+    "trainer_exp": 6480,
+    "is_admin": false,
+    "banned_at": null,
+    "ban_reason": null,
+    "created_at": "2026-10-06T00:10:38.742Z",
+    "last_seen_at": "2026-10-06T00:10:38.742Z"
+   }
+  ],
+  "creature_instances": [
+   {
+    "id": "07a44d5d-77dd-4a86-ad40-703c57eae7c6",
+    "owner_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "slot_kind": "party",
+    "slot_index": 4,
+    "species_id": "shiveruff",
+    "nickname": null,
+    "level": 14,
+    "exp": 2744,
+    "hp": 54,
+    "moves": [
+     {
+      "id": "Frost Bite",
+      "pp": 20,
+      "ppMax": 20
+     },
+     {
+      "id": "Quick Attack",
+      "pp": 29,
+      "ppMax": 30
+     },
+     {
+      "id": "Growl",
+      "pp": 38,
+      "ppMax": 40
+     },
+     {
+      "id": "Glacier Crash",
+      "pp": 9,
+      "ppMax": 10
+     }
+    ],
+    "status": [],
+    "ability": "Thick Fat",
+    "held_item": null,
+    "variant_key": "normal",
+    "is_alpha": false,
+    "caught_zone_id": "tide_route",
+    "caught_at": "2026-10-06T01:05:43.196Z",
+    "ribbons": [],
+    "favorite": false,
+    "locked": false,
+    "version": 0
+   },
+   {
+    "id": "2dc9d76a-0f0f-4e6a-924c-ce3d349dfc9e",
+    "owner_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "slot_kind": "party",
+    "slot_index": 3,
+    "species_id": "wooltug",
+    "nickname": null,
+    "level": 26,
+    "exp": 18748,
+    "hp": 85,
+    "moves": [
+     {
+      "id": "Body Slam",
+      "pp": 15,
+      "ppMax": 15
+     },
+     {
+      "id": "Slash",
+      "pp": 20,
+      "ppMax": 20
+     },
+     {
+      "id": "Quick Attack",
+      "pp": 30,
+      "ppMax": 30
+     },
+     {
+      "id": "Tackle",
+      "pp": 35,
+      "ppMax": 35
+     }
+    ],
+    "status": [],
+    "ability": "Thick Fat",
+    "held_item": null,
+    "variant_key": "normal",
+    "is_alpha": false,
+    "caught_zone_id": "mire_route",
+    "caught_at": "2026-10-06T00:12:00.142Z",
+    "ribbons": [],
+    "favorite": false,
+    "locked": false,
+    "version": 507
+   },
+   {
+    "id": "3dd851e6-c324-42d2-92f9-1bf5d073358d",
+    "owner_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "slot_kind": "party",
+    "slot_index": 2,
+    "species_id": "bloomduck",
+    "nickname": null,
+    "level": 28,
+    "exp": 23618,
+    "hp": 102,
+    "moves": [
+     {
+      "id": "Petal Blizzard",
+      "pp": 5,
+      "ppMax": 5
+     },
+     {
+      "id": "Peck",
+      "pp": 35,
+      "ppMax": 35
+     },
+     {
+      "id": "Stink Cloud",
+      "pp": 20,
+      "ppMax": 20
+     },
+     {
+      "id": "Leaf Blade",
+      "pp": 15,
+      "ppMax": 15
+     }
+    ],
+    "status": [],
+    "ability": "Chlorophyll",
+    "held_item": null,
+    "variant_key": "normal",
+    "is_alpha": false,
+    "caught_zone_id": "mire_route",
+    "caught_at": "2026-10-06T00:11:42.807Z",
+    "ribbons": [],
+    "favorite": false,
+    "locked": false,
+    "version": 401
+   },
+   {
+    "id": "5de52728-6fdd-4b96-974c-383a87058315",
+    "owner_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "slot_kind": "party",
+    "slot_index": 1,
+    "species_id": "infernomorel",
+    "nickname": null,
+    "level": 37,
+    "exp": 53312,
+    "hp": 129,
+    "moves": [
+     {
+      "id": "Solar Flare",
+      "pp": 5,
+      "ppMax": 5
+     },
+     {
+      "id": "Inferno Rush",
+      "pp": 5,
+      "ppMax": 5
+     },
+     {
+      "id": "Dark Fire",
+      "pp": 10,
+      "ppMax": 10
+     },
+     {
+      "id": "Blaze Tackle",
+      "pp": 10,
+      "ppMax": 10
+     }
+    ],
+    "status": [],
+    "ability": "Flame Body",
+    "held_item": null,
+    "variant_key": "normal",
+    "is_alpha": false,
+    "caught_zone_id": null,
+    "caught_at": null,
+    "ribbons": [],
+    "favorite": false,
+    "locked": false,
+    "version": 3472
+   },
+   {
+    "id": "e784c015-c5cb-407c-be5f-4c8a599020a8",
+    "owner_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "slot_kind": "party",
+    "slot_index": 0,
+    "species_id": "geoboxer",
+    "nickname": null,
+    "level": 25,
+    "exp": 16175,
+    "hp": 83,
+    "moves": [
+     {
+      "id": "Close Combat",
+      "pp": 4,
+      "ppMax": 5
+     },
+     {
+      "id": "Earthquake",
+      "pp": 8,
+      "ppMax": 10
+     },
+     {
+      "id": "Body Slam",
+      "pp": 15,
+      "ppMax": 15
+     },
+     {
+      "id": "Rock Slide",
+      "pp": 10,
+      "ppMax": 10
+     }
+    ],
+    "status": [],
+    "ability": "Intimidate",
+    "held_item": null,
+    "variant_key": "normal",
+    "is_alpha": false,
+    "caught_zone_id": "ash_route",
+    "caught_at": "2026-10-06T00:24:06.204Z",
+    "ribbons": [],
+    "favorite": false,
+    "locked": false,
+    "version": 503
+   }
+  ],
+  "inventory_items": [
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "item_id": "potion",
+    "qty": 5
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "item_id": "spark_orb",
+    "qty": 13
+   }
+  ],
+  "badges": [
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "badge_id": "bloom",
+    "earned_at": "2026-10-06T00:21:20.305Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "badge_id": "current",
+    "earned_at": "2026-10-06T01:04:52.127Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "badge_id": "ember",
+    "earned_at": "2026-10-06T00:33:02.336Z"
+   }
+  ],
+  "story_flags": [
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "act1_done",
+    "set_at": "2026-10-06T01:04:55.923Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "beat:bloom_after:done",
+    "set_at": "2026-10-06T00:21:24.304Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "beat:current_after:done",
+    "set_at": "2026-10-06T01:04:55.923Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "beat:drowned_harbour:done",
+    "set_at": "2026-10-06T00:35:06.157Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "beat:first_harvest:done",
+    "set_at": "2026-10-06T00:23:42.318Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "beat:first_witness:done",
+    "set_at": "2026-10-06T00:10:46.447Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "beat:forge_gratitude:done",
+    "set_at": "2026-10-06T00:32:49.590Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "beat:grove_stone:done",
+    "set_at": "2026-10-06T00:21:12.620Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "beat:mire_rival:done",
+    "set_at": "2026-10-06T00:12:17.312Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "beat:sable_livery:done",
+    "set_at": "2026-10-06T01:05:38.009Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "bloom_spoken",
+    "set_at": "2026-10-06T00:21:24.304Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "heard_grey_year",
+    "set_at": "2026-10-06T00:32:49.590Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "met_sable",
+    "set_at": "2026-10-06T00:12:17.312Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "met_wynn",
+    "set_at": "2026-10-06T00:10:46.447Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "sable_livery",
+    "set_at": "2026-10-06T01:05:38.009Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "saw_assessment",
+    "set_at": "2026-10-06T00:23:42.318Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "saw_old_harbour",
+    "set_at": "2026-10-06T00:35:06.157Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "saw_thinning",
+    "set_at": "2026-10-06T00:21:12.620Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "streak:1",
+    "set_at": "2026-10-06T00:10:38.742Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "streak:last:2026-10-06",
+    "set_at": "2026-10-06T00:10:38.742Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "switch:cinderhold:cinderhold.gym.furnace_e",
+    "set_at": "2026-10-06T00:22:58.889Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "switch:cinderhold:cinderhold.gym.furnace_w",
+    "set_at": "2026-10-06T00:22:51.109Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "switch:mirevale:mirevale.gym.stone_a",
+    "set_at": "2026-10-06T00:20:56.189Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "switch:mirevale:mirevale.gym.stone_b",
+    "set_at": "2026-10-06T00:21:02.118Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "switch:saltmourn:saltmourn.gym.lever_1",
+    "set_at": "2026-10-06T00:34:12.634Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "switch:saltmourn:saltmourn.gym.lever_2",
+    "set_at": "2026-10-06T00:34:30.008Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "switch:saltmourn:saltmourn.gym.lever_3",
+    "set_at": "2026-10-06T00:34:38.093Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "trainer:cinderhold.gym.t1:beaten",
+    "set_at": "2026-10-06T00:22:33.983Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "trainer:cinderhold.gym.t2:beaten",
+    "set_at": "2026-10-06T00:22:45.813Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "trainer:mirevale.gym.t1:beaten",
+    "set_at": "2026-10-06T00:20:40.880Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "trainer:mirevale.gym.t2:beaten",
+    "set_at": "2026-10-06T00:20:49.882Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "trainer:sable_mire:beaten",
+    "set_at": "2026-10-06T00:12:17.312Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "trainer:sable_tide:beaten",
+    "set_at": "2026-10-06T01:05:38.009Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "trainer:saltmourn.gym.t1:beaten",
+    "set_at": "2026-10-06T00:34:08.472Z"
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "flag": "trainer:saltmourn.gym.t2:beaten",
+    "set_at": "2026-10-06T00:34:25.829Z"
+   }
+  ],
+  "dex_entries": [
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "bloomduck",
+    "seen_at": "2026-10-06T00:29:10.800Z",
+    "caught_at": "2026-10-06T00:29:10.800Z",
+    "variants": [
+     "normal"
+    ],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "bloomsprite",
+    "seen_at": "2026-10-06T00:12:29.590Z",
+    "caught_at": null,
+    "variants": [],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "bramblecub",
+    "seen_at": "2026-10-06T00:20:40.501Z",
+    "caught_at": null,
+    "variants": [],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "briarbear",
+    "seen_at": "2026-10-06T00:20:49.588Z",
+    "caught_at": null,
+    "variants": [],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "cindercap",
+    "seen_at": "2026-10-06T00:10:38.742Z",
+    "caught_at": "2026-10-06T00:10:38.742Z",
+    "variants": [
+     "normal"
+    ],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "coalette",
+    "seen_at": "2026-10-06T00:12:14.113Z",
+    "caught_at": null,
+    "variants": [],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "geoboxer",
+    "seen_at": "2026-10-06T01:02:52.186Z",
+    "caught_at": "2026-10-06T01:02:52.186Z",
+    "variants": [
+     "normal"
+    ],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "glimfin",
+    "seen_at": "2026-10-06T00:34:08.108Z",
+    "caught_at": null,
+    "variants": [],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "glimp",
+    "seen_at": "2026-10-06T00:12:16.174Z",
+    "caught_at": null,
+    "variants": [],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "infernomorel",
+    "seen_at": "2026-10-06T00:30:49.835Z",
+    "caught_at": "2026-10-06T00:30:49.835Z",
+    "variants": [
+     "normal"
+    ],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "moflame",
+    "seen_at": "2026-10-06T00:22:40.461Z",
+    "caught_at": null,
+    "variants": [],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "mudbub",
+    "seen_at": "2026-10-06T01:05:37.738Z",
+    "caught_at": null,
+    "variants": [],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "mufflo",
+    "seen_at": "2026-10-06T00:11:52.164Z",
+    "caught_at": "2026-10-06T00:12:00.142Z",
+    "variants": [
+     "normal"
+    ],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "pebfist",
+    "seen_at": "2026-10-06T00:24:05.074Z",
+    "caught_at": "2026-10-06T00:24:06.204Z",
+    "variants": [
+     "normal"
+    ],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "pyrecap",
+    "seen_at": "2026-10-06T00:14:24.863Z",
+    "caught_at": "2026-10-06T00:14:24.863Z",
+    "variants": [
+     "normal"
+    ],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "shiveruff",
+    "seen_at": "2026-10-06T01:05:41.807Z",
+    "caught_at": "2026-10-06T01:05:43.196Z",
+    "variants": [
+     "normal"
+    ],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "smellduck",
+    "seen_at": "2026-10-06T00:11:41.114Z",
+    "caught_at": "2026-10-06T00:11:42.807Z",
+    "variants": [
+     "normal"
+    ],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "snapling",
+    "seen_at": "2026-10-06T00:10:56.585Z",
+    "caught_at": null,
+    "variants": [],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "tidespine",
+    "seen_at": "2026-10-06T00:34:25.148Z",
+    "caught_at": null,
+    "variants": [],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "voltide",
+    "seen_at": "2026-10-06T00:34:25.534Z",
+    "caught_at": null,
+    "variants": [],
+    "alpha_seen": false
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "species_id": "wooltug",
+    "seen_at": "2026-10-06T00:25:50.476Z",
+    "caught_at": "2026-10-06T00:25:50.476Z",
+    "variants": [
+     "normal"
+    ],
+    "alpha_seen": false
+   }
+  ],
+  "quest_progress": [
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "quest_id": "daily:2026-10-06",
+    "objective_id": "daily-catch-one",
+    "count": 1,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "quest_id": "daily:2026-10-06",
+    "objective_id": "daily-trainer-win",
+    "count": 1,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "quest_id": "daily:2026-10-06",
+    "objective_id": "daily-zone-scout",
+    "count": 2,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "quest_id": "q01_first_witness",
+    "objective_id": "reach_mire",
+    "count": 1,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "quest_id": "q01_first_witness",
+    "objective_id": "witness_3",
+    "count": 3,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "quest_id": "q11_first_night",
+    "objective_id": "witness_100",
+    "count": 4,
+    "done": false,
+    "claimed_at": null
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "quest_id": "weekly:2026-W41",
+    "objective_id": "weekly-challenger",
+    "count": 2,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "4157060a-7f8a-4522-aa67-9fb6d5d9f11e",
+    "quest_id": "weekly:2026-W41",
+    "objective_id": "weekly-frontier-haul",
+    "count": 4,
+    "done": false,
+    "claimed_at": null
+   }
+  ],
+  "battle_pass": []
+ }
+}
