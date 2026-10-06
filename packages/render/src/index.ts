@@ -100,8 +100,9 @@ export type { BiomeSet } from './zone/generators/set.js';
 export type { BiomeGenerators, GeoLod, Palette, PropGeo, TreeKind } from './zone/types.js';
 
 export type {
-  ActorDescriptor, ActorPool, BattlerPose, BattlerRef, BattleStage, Biome, BuildingSpec, CameraRig, Dir, Edge, GeneratorSet, HeightfieldData,
-  HudLayer, HudModel, Layout, Marker, Pickup, PropPlacement, SetPieceId, SpriteDescriptor, SpriteFrame, Tablet, Terrain, TerrainColliderLike,
+  ActorDescriptor, ActorPool, BattlerPose, BattlerRef, BattleStage, Biome, BuildingSpec, CameraRig, Dir, Edge, EvolutionHandle, EvolutionPhase,
+  EvolutionRequest, GeneratorSet, HeightfieldData,
+  HudLayer, HudModel, Layout, Marker, Pickup, PropPlacement, SetPieceId, SpriteAnim, SpriteDescriptor, SpriteFrame, Tablet, Terrain, TerrainColliderLike,
   TypeName, VariantKey, VfxId, WaterSpec, ZoneHandle, ZoneSpec, ActorSpawn, PlanRoadData, ZonePlanData,
   HallBounds, InteriorLocalPoint, InteriorLocalRect, InteriorSpec, InteriorTemplateId, InteriorThemeId, InteriorsHandle,
   ObstacleSpec, ObstaclesHandle, NeighbourSpec,
@@ -111,15 +112,15 @@ export type { ZoneLoader } from './defaults.js';
 
 // ---- part 3: §10.4 creature sprites, §10.7 camera / stage / actors / VFX, §10.9 HUD ----
 export {
-  ATLAS_LEVELS, ATLAS_MAPS, AtlasCache, MAX_SINGLES, SINGLE_TEXELS, atlasSetBytes, browserDecoder, chainBytes, cropForLevel, loadAtlasTextures,
-  loadSingleTextures, singleKey, stampAtlasTexture, textureFromLevels,
+  ATLAS_LEVELS, ATLAS_MAPS, AtlasCache, MAX_SINGLES, SINGLE_TEXELS, animAtlasSetBytes, atlasSetBytes, browserDecoder, chainBytes, chainBytesWH, cropForLevel,
+  loadAnimAtlasTextures, loadAtlasTextures, loadSingleTextures, singleKey, stampAtlasTexture, textureFromLevels,
 } from './sprites/atlas.js';
-export type { AtlasDecoder, AtlasMap, AtlasMapName, AtlasSet, AtlasTextures, Crop, DecodedImage } from './sprites/atlas.js';
+export type { AnimAtlasSet, AtlasDecoder, AtlasMap, AtlasMapName, AtlasSet, AtlasTextures, Crop, DecodedImage } from './sprites/atlas.js';
 export { BillboardPool, CreatureBillboard, createBillboardMaterial, createDecalMaterial, createSpritePool } from './sprites/billboard.js';
 export type { BillboardPoolOptions, BillboardUniforms, BillboardUserData, SpritePool } from './sprites/billboard.js';
 export {
-  ANIM, BATTLER_POSES, BILLBOARD, POSES, VARIANT_KEYS, VARIANT_UNIFORMS, billboardDims, bobOffset, bobPhase, decayHurt, paletteFor as variantPaletteFor,
-  poseDurationMs, samplePose,
+  ANIM, BATTLER_POSES, BILLBOARD, POSES, VARIANT_KEYS, VARIANT_UNIFORMS, billboardDims, bobOffset, bobPhase, decayHurt, flipbookFrame, flipbookPhase01,
+  flipbookTotalMs, paletteFor as variantPaletteFor, poseDurationMs, samplePose,
 } from './sprites/tables.js';
 export type { BillboardDims, PaletteValues, PoseDef, PoseSample, VariantUniforms } from './sprites/tables.js';
 export { TYPE_COLORS, TYPE_NAMES, hexToLinearInto, isTypeName, validateTypeColorTable } from './sprites/typeColors.js';
@@ -135,7 +136,7 @@ export {
 export type { CameraWork, CueKind, OrbitPose } from './camera/battle.js';
 export { BOKEH_PX, FOCAL_LENGTH_M, TILT_DEG, TiltShiftDOF, circleOfConfusionPx, groundOffPlaneM } from './camera/dof.js';
 export { CAPACITY as VFX_CAPACITY, EMITTERS as VFX_EMITTERS, MAX_PARTICLES as VFX_MAX_PARTICLES, VFX_IDS, VFX_TABLE, VfxSystem, isVfxId } from './stage/vfx.js';
-export type { VfxAnchor, VfxPhase, VfxRecipe } from './stage/vfx.js';
+export type { SequenceVfxRecipe, VfxAnchor, VfxPhase, VfxRecipe } from './stage/vfx.js';
 export { ACTOR_POOL_SIZE, CHARACTER, CharacterPool, EMOTE_CLIPS, EMOTE_MS, EMOTE_NAMES, RIPPLE } from './stage/actors.js';
 export type { ActorPoolOptions, EmoteId, GroundSampler } from './stage/actors.js';
 export { CHARACTER_MATERIAL, createCharacterMaterial } from './stage/characterMaterial.js';
@@ -146,6 +147,10 @@ export type {
   ShapeTemplate,
 } from './stage/looks.js';
 export { STAGE, Stage, TERRAIN_ACCENT, TERRAIN_SURFACE } from './stage/battleStage.js';
+export {
+  EVOLUTION, EVOLUTION_TIMELINE, EvolutionSequence, alternationHz, evolutionDurationMs, evolutionPhaseAt, evolutionRecipes, sampleEvolution,
+} from './stage/evolution.js';
+export type { EvolutionDeps, EvolutionSample, PhaseSpan } from './stage/evolution.js';
 export type { StageDeps, StageGround } from './stage/battleStage.js';
 export { CanvasHudLayer, FIELD_REGION, HUD, HUD_FIELDS, HUD_REGIONS, browserSurface } from './hud/layer.js';
 export type { HudAnchors, HudField, HudRegion, HudSurface, HudSurfaceFactory, Ref } from './hud/layer.js';

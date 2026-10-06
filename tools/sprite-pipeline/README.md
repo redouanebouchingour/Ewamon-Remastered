@@ -12,7 +12,7 @@ pnpm exec tsx tools/sprite-pipeline/src/cli.ts bench --count 4        # KTX2 vs 
 pnpm exec vitest run tools/sprite-pipeline                            # tests (budget + encoding read the real output)
 ```
 
-Flags: `--only a,b` restricts to species, `--limit N`, `--force` ignores the sprite cache, `--jobs N` sets stage workers (output-neutral). A build exits with code 3 when `qa-report.json` has an actionable flag, and fails outright when a source is missing, a multiframe source has no `frame-select.json` entry, or the output would exceed the budget.
+Flags: `--only a,b` restricts to species, `--limit N`, `--force` ignores the sprite cache, `--jobs N` sets stage workers (output-neutral), `--no-anim` skips the flipbooks. A build exits with code 3 when `qa-report.json` has an actionable flag, and fails outright when a source is missing, a multiframe source has no `frame-select.json` entry, or the output would exceed the budget.
 
 ## The species set
 
@@ -28,6 +28,7 @@ Exactly the 130 species of `.design/legacy/ewamon.js` (keys that carry `frontSpr
 | 4 | Emissive mask | `emissive.ts` | Bright and vivid: HSV value ≥ 0.92 and chroma ≥ 0.4, capped at the most vivid 8 % of opaque texels, eroded 1 px, per-species overrides in `emissive-overrides.ts`. Two-valued. Pale fur never glows; flame creatures glow at accents only. |
 | 5 | Plan + pack | `plan.ts`, `pack.ts`, `zones.ts` | Every species stored once. A global sequence walks the zones in `ZONE_ORDER` (encounter tables, legendary statics, trainers, league), then the species in no zone. Consecutive pairs form 2048² atlases of four 1024² cells (front + back of two species). Each zone binds at most 8 atlases; the planner duplicates species only when a zone would exceed that. |
 | 6 | Rasters + encode | `pipeline.ts`, `mips.ts`, `encode.ts` | Composites the atlas maps, forces binary alpha, builds mips 1–3 (premultiplied box filter, coverage-preserving, normals renormalised, mask stays two-valued), encodes WebP under the budget ladder, writes thumbnails, the manifest and QA artifacts. |
+| 7 | Flipbooks | `anim.ts` | Every page of the 20 multiframe sides (spec §40.1.8): stage 1 per page, the union crop resampled with the **static frame's own transform** onto the 1024² master (one crop, one size, one offset for every page: no jitter, and the static page lands where the static cell has it), stages 3–4 there, then a 2× reduction to the 512² anim cell. One atlas per side (6 × 4, 5 × 5 or 6 × 6 cells in page order), stage 6 as above, its own ladder (`ANIM_EXTRA_RUNGS`) under the 24 MiB anim budget. |
 
 Every per-sprite result is cached under `.cache/sprites/<hash>/` keyed by the source bytes, `SPRITE_STAGE_VERSION`, sprite size, normal and emissive options, the frame-select entry and the alpha override. Encoded atlas files are cached under `.cache/atlases/<hash>.webp` keyed by `PIPELINE_VERSION`, the encoder settings, the level and the member hashes with placements. A rerun over unchanged inputs does no image work. The cache is gitignored; the output is committed.
 
@@ -80,6 +81,20 @@ Layout: `creatures.manifest.json` (v2), `atlases/a-NNN.{albedo,normal,emissive}[
 
 Measured quality at the shipped rung (acceptance test 4–7 inputs): whole-sprite albedo PSNR median 35.8 dB (min 30.7), worst-edge luma error max 37.6, half-res normal mean angular error median 3.3° (max 5.9°), mip coverage exact per cell.
 
+### Flipbooks (2026-10-06)
+
+| Item | Value |
+|---|---|
+| Sides / pages | 20 / 508 (7 WebP species × 2 × 24 at 125 ms; galaxion 2 × 36, glacinid and voltaura 2 × 25 at 100 ms) |
+| Cell | 512² (spriteSize / 2): ≈ 1:1 with the legendaries' 430–561 px battle height |
+| Atlases | 20 (`anim/<species>-<side>.*`, 240 files): 3072 × 2048 (24 pages), 2560² (25), 3072² (36) |
+| Rung shipped | albedo q80, normal q80 (the static ladder's bottom, q80/q85, was 25.38 MB) |
+| Albedo / normal / emissive, all levels | 19.73 / 4.11 / 0.55 MB |
+| Manifest anim share | 0.10 MB (charged to the anim line; `totalBytes` is unchanged) |
+| **Total** | **24.49 MB** (24 487 809 B, 23.35 MiB) of the 25.17 MB (24 MiB) anim budget |
+
+Cache: `.cache/anim/<hash>/pNN.{albedo,normal,emissive}.png` + `meta.json` per side (true-colour PNG, see the deviation below); atlas files share `.cache/atlases/`. A rerun with a warm cache: 93 s for the whole build, 0 anim pages processed. QA: `qa/anim-sheet.png`, `qa/anim-report.json`.
+
 ## QA
 
 `qa/qa-report.json` lists every flag. `clipped`, `nonsquare`, `multiframe` (with a `frame-select.json` entry) and `sidemismatch` are informational. `coverage` needs a reviewed `qa-accept.json` entry (`malice` front is a small creature on a large canvas). `leak` and `empty` can never be accepted; fix the source or add an `alpha-overrides.json` entry. The M1 release rule is `actionable === 0`. `qa/contact-sheet.png` shows every species front and back on the shared ground line.
@@ -89,3 +104,5 @@ Measured quality at the shipped rung (acceptance test 4–7 inputs): whole-sprit
 - Binary alpha in every atlas map and `SPRITE_STAGE_VERSION` for the per-sprite cache key (CHANGELOG 2026-09-24).
 - The §40.1.6.3 byte arithmetic is replaced by the measured table above (same CHANGELOG entry).
 - Stage 4 emissive rule replaced (CHANGELOG 2026-09-25).
+- Multiframe sources ship as flipbooks (§40.1.8, CHANGELOG 2026-10-06); `frame-select.json` picks the static frame.
+- **Found 2026-10-06, not changed:** `cache.ts` `rgbaToPng` writes `png({ compressionLevel: 6, effort: 4 })`, and sharp's `effort` implies `palette: true`, so every cached static albedo and normal raster is a dithered 256-colour palette PNG (measured: 256 distinct RGBA values in a cached albedo), and the 65 static atlases were composed from those. Fixing it (`palette: false`) changes every static atlas and needs a full rebuild plus a contact-sheet review — outside the byte-identical static set of the flipbook change. The anim cache writes true-colour PNGs (`anim.ts` `exactPng`): per-page re-dithering would boil between frames.

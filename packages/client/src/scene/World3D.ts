@@ -22,7 +22,7 @@
  */
 import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
-import { BIKE_ITEM, BODIES, POSTGAME_FLAG, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, zone as zoneDef } from '@ewa/content';
+import { BIKE_ITEM, BODIES, POSTGAME_FLAG, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, staticsFor, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import { FISH_REACH_M } from '@ewa/protocol';
@@ -32,6 +32,7 @@ import type { CompileProgress, Renderer, SurfaceId, VfxId, WeatherKind, ZoneHand
 import { createAudioDirector } from '../audio/AudioDirector';
 import type { AudioDirector } from '../audio/AudioDirector';
 import { loadAudioManifest, validateAudioManifest } from '../audio/manifest';
+import { setEvolutionPlayer } from '../app/evolution';
 import { navigateTo } from '../app/navigation';
 import { getWorldBoot, setWorldBoot } from '../app/bootProgress';
 import { battlePanelTop, onBattlePanelTop } from '../battle/panelInset';
@@ -62,6 +63,7 @@ import { questHintFor } from './questHint';
 import type { DialogueLines, InteractPlan } from './dialogue';
 import { HudWriter, partyStrip } from './HudWriter';
 import type { HudNameplates } from './HudWriter';
+import { EvolutionDirector } from './EvolutionDirector';
 import { createInputCapture } from './input';
 import type { InputCapture } from './input';
 import { InteractionTargets, PLAYER_RANGE, makeInteractable } from './interaction';
@@ -77,7 +79,7 @@ import { SpawnViews } from './SpawnViews';
 import { LegendaryViews, staticTargetId } from './LegendaryViews';
 import { RaidDen, raidTargetId } from './RaidViews';
 import { raidInfoOf } from '../battle/raid';
-import { createSpriteCatalog, loadCreatureManifest } from './spriteCatalog';
+import { bindCatalogAtlas, createSpriteCatalog, loadCreatureManifest, speciesAtlases } from './spriteCatalog';
 import { DeviceRecovery } from './deviceRecovery';
 import { fetchIntoCache, neighbourPrefetchPlan, runPrefetch } from './prefetch';
 import type { PrefetchToken } from './prefetch';
@@ -195,6 +197,8 @@ class World implements World3D {
   private zone: ZoneDef | null = null;
   /** the beat whose lines the player already read before its interact was sent (its `storyBeat start` is no news) */
   private readBeat: string | null = null;
+  /** §20.5.6 the evolution sequence (render's `stage.evolve` + the input lock), built at boot */
+  private evolution: EvolutionDirector | null = null;
   /** Phase D9: the Old Rod's prompt and the cast point it is offered at (kept on the water ahead, every fixed step) */
   private readonly fishing: FishingController;
   private readonly fishSpot: Interactable = makeInteractable('fish:spot', 'fish', 0, 0, 'Fish in', 'the water', this.keyLabel('interact'));
@@ -387,6 +391,24 @@ class World implements World3D {
         dress: (x, z) => p3.stage.dressSpectator(x, z),
         undress: (x, z) => p3.stage.undressSpectator(x, z),
       });
+      // §20.5.6: every evolve path plays render's evolution sequence through this player (app/evolution.ts); rebuilt with
+      // the renderer after a lost device (E6)
+      const evoDirector = new EvolutionDirector({
+        stage: p3.stage,
+        descriptor: (sp, key, v, a) => this.catalog?.descriptor(sp, key, v, a) ?? null,
+        ensureSpecies: (sp) => this.ensureSpecies(sp),
+        canPlay: () => this.zoneLoaded && !this.disposed && useUiStore.getState().battle === null && !this.director.inBattle,
+        position: () => ({ x: this.input.renderX, z: this.input.renderZ }),
+        selfId: () => this.ws.selfId,
+        reduced: () => getEffectiveSettings().reduced,
+        setInputEnabled: (on) => this.input.setEnabled(on),
+        inputAfter: () => useUiStore.getState().battle === null && !this.director.inBattle,
+        setHudVisible: (on) => this.hudWriter.setVisible(on),
+        hudVisible: () => useUiStore.getState().hudVisible,
+        target: window,
+      });
+      this.evolution = evoDirector;
+      setEvolutionPlayer({ play: (req, cb) => evoDirector.play(req, cb), preload: (sp) => this.ensureSpecies(sp) });
     }
     if (attachBattle) this.battle.attach(this.battleView());
     return true;
@@ -435,6 +457,9 @@ class World implements World3D {
    */
   private teardownRenderer(): void {
     const hadRenderer = this.ready;
+    this.evolution?.cancel();
+    this.evolution = null;
+    setEvolutionPlayer(null);
     this.ready = false;
     this.zoneLoaded = false;
     for (const f of this.rendererOffs) f();
@@ -825,19 +850,24 @@ class World implements World3D {
     const p3 = part3Of(this.renderer);
     if (cat === null || p3 === undefined) return;
     const ids = cat.zoneAtlases(zoneId).filter((id) => !this.bound.has(id));
-    // the party's creatures too (battle leads)
-    for (const c of useSessionStore.getState().inventory?.party ?? []) for (const a of cat.atlasesOf(c.speciesId)) if (!this.bound.has(a) && !ids.includes(a)) ids.push(a);
+    const add = (a: string): void => {
+      if (!this.bound.has(a) && !ids.includes(a)) ids.push(a);
+    };
+    // the zone's legendary statics play their flipbooks from the first frame: their anim atlases come with the static set
+    for (const s of staticsFor(zoneId)) for (const a of cat.animAtlasesOf(s.species)) add(a);
+    // the party's creatures too (battle leads), flipbooks included
+    for (const c of useSessionStore.getState().inventory?.party ?? []) for (const a of speciesAtlases(cat, c.speciesId)) add(a);
     if (ids.length === 0) return;
     const total = cat.bytesOf(ids);
     let loaded = 0;
     setWorldBoot({ label: 'Loading creature sprites', loadedBytes: 0, totalBytes: total > 0 ? total : null });
     await Promise.all(
       ids.map(async (id) => {
-        const set = cat.atlas(id);
-        if (set === null) return;
+        const bind = bindCatalogAtlas(p3.sprites, cat, id);
+        if (bind === null) return;
         this.bound.add(id);
         try {
-          await p3.sprites.bindAtlas(set);
+          await bind;
         } catch (e) {
           console.warn('atlas bind failed', id, e);
         }
@@ -852,12 +882,13 @@ class World implements World3D {
     const cat = this.catalog;
     const p3 = this.ready ? part3Of(this.renderer) : undefined;
     if (cat === null || p3 === undefined) return;
-    for (const id of cat.atlasesOf(speciesId)) {
+    // the static atlas and, for an animated legendary / mythical, its flipbooks (the static frame shows until they land)
+    for (const id of speciesAtlases(cat, speciesId)) {
       if (this.bound.has(id)) continue;
-      const set = cat.atlas(id);
-      if (set === null) continue;
+      const bind = bindCatalogAtlas(p3.sprites, cat, id);
+      if (bind === null) continue;
       this.bound.add(id);
-      void p3.sprites.bindAtlas(set).catch((e: unknown) => console.warn('atlas bind failed', id, e));
+      void bind.catch((e: unknown) => console.warn('atlas bind failed', id, e));
     }
   }
 
@@ -1151,7 +1182,7 @@ class World implements World3D {
   private worldBlocked(): boolean {
     const ui = useUiStore.getState();
     return (
-      ui.battle !== null || ui.dialogue !== null || ui.modal !== 'none' || ui.chatOpen || ui.prompts.length > 0 || ui.trade !== null || ui.challenge !== null ||
+      ui.battle !== null || ui.evolution !== null || ui.dialogue !== null || ui.modal !== 'none' || ui.chatOpen || ui.prompts.length > 0 || ui.trade !== null || ui.challenge !== null ||
       this.fishing.active
     );
   }
@@ -1397,6 +1428,11 @@ class World implements World3D {
         // interpolator wrote its server pose this step — both players are frozen in battle, so this only restages it)
         this.renderer.actors.setTransform(selfId, bf.x - bf.fx * TRAINER_BACK_M, bf.z - bf.fz * TRAINER_BACK_M, Math.atan2(bf.fx, bf.fz), false, false);
         this.foe.stage(bf.x, bf.z, bf.fx, bf.fz, TRAINER_BACK_M);
+      } else if (this.evolution?.active === true) {
+        // the evolution sequence: the trainer turns to the creature beside them (input is locked meanwhile)
+        const rx = this.input.renderX;
+        const rz = this.input.renderZ;
+        this.renderer.actors.setTransform(selfId, rx, rz, this.evolution.faceAngle(rx, rz), false, false);
       } else {
         this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, this.input.pose.angle, this.input.moving, this.input.running || this.input.biking);
       }
@@ -1615,6 +1651,8 @@ class World implements World3D {
     this.capture.dispose();
     this.battle.reset();
     setBattleActions(null);
+    setEvolutionPlayer(null);
+    this.evolution?.cancel();
     this.audio.dispose();
     for (const f of this.rendererOffs) f();
     this.rendererOffs = [];

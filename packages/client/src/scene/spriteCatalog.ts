@@ -3,9 +3,13 @@
  * §10.4.1): `uv → rect`, `px`, `footV`, `aspect` per side; atlas maps `{ url, mips }` resolved against
  * `/creatures/`; `normalScale`. Types come from content (the manifest carries none). Pure over the parsed manifest;
  * `loadSpriteCatalog()` fetches it once.
+ *
+ * Flipbooks (amended 2026-10-06): a side with `sprites[id].anim.<side>` gets `SpriteFrame.anim` (`frames → rects`,
+ * `delays → delaysMs`, `staticFrame`), and `animAtlases[]` become render `AnimAtlasSet`s (`animAtlas(id)`,
+ * `animAtlasesOf(species)`), bound next to the species' static atlas so the creature plays wherever it appears.
  */
 import type { SpeciesDef, TypeName as CoreTypeName, VariantKey } from '@ewa/core';
-import type { AtlasSet, SpriteDescriptor, SpriteFrame, TypeName } from '@ewa/render';
+import type { AnimAtlasSet, AtlasSet, SpriteAnim, SpriteDescriptor, SpriteFrame, SpritePool, TypeName } from '@ewa/render';
 
 export const CREATURE_BASE = '/creatures/';
 
@@ -26,12 +30,38 @@ interface ManifestRect {
   readonly footV: number;
   readonly aspect: number;
 }
-interface ManifestSprite { readonly front: ManifestRect; readonly back: ManifestRect; readonly sizeScale: number; readonly home: string; readonly thumb?: string }
+interface ManifestAnimSide {
+  readonly atlas: string;
+  readonly frames: readonly (readonly [number, number, number, number])[];
+  readonly delays: readonly number[];
+  readonly staticFrame: number;
+}
+interface ManifestAnimAtlas {
+  readonly id: string;
+  readonly species: string;
+  readonly side: 'front' | 'back';
+  readonly width: number;
+  readonly height: number;
+  readonly cell: number;
+  readonly albedo: ManifestMap;
+  readonly normal: ManifestMap;
+  readonly emissive: ManifestMap;
+  readonly normalScale: 0.5 | 1;
+}
+interface ManifestSprite {
+  readonly front: ManifestRect;
+  readonly back: ManifestRect;
+  readonly sizeScale: number;
+  readonly home: string;
+  readonly thumb?: string;
+  readonly anim?: { readonly front?: ManifestAnimSide; readonly back?: ManifestAnimSide };
+}
 export interface CreatureManifest {
   readonly version: 2;
   readonly atlases: readonly ManifestAtlas[];
   readonly zones: Readonly<Record<string, readonly string[]>>;
   readonly sprites: Readonly<Record<string, ManifestSprite>>;
+  readonly animAtlases?: readonly ManifestAnimAtlas[];
 }
 
 export interface SpriteCatalog {
@@ -41,23 +71,37 @@ export interface SpriteCatalog {
   zoneAtlases(zoneId: string): readonly string[];
   /** Every atlas a species' two sides live in. */
   atlasesOf(speciesId: string): readonly string[];
-  /** Level-0 bytes (albedo + normal + emissive, mips included when listed) of a set of atlases, for the boot bar. */
+  /** AnimAtlasSet for an anim atlas id (null when unknown). */
+  animAtlas(id: string): AnimAtlasSet | null;
+  /** The flipbook atlases of a species' animated sides (front first; [] for a still creature). */
+  animAtlasesOf(speciesId: string): readonly string[];
+  /** Level-0 bytes (albedo + normal + emissive, mips included when listed) of a set of atlases (static or anim), for the boot bar. */
   bytesOf(ids: readonly string[]): number;
   descriptor(speciesId: string, key: string, variant?: VariantKey, isAlpha?: boolean, isShiny?: boolean): SpriteDescriptor | null;
   readonly speciesCount: number;
 }
 
-function frame(r: ManifestRect): SpriteFrame {
-  return { atlas: r.atlas, rect: r.uv, px: r.px, footV: r.footV, aspect: r.aspect };
+function frame(r: ManifestRect, a: ManifestAnimSide | undefined): SpriteFrame {
+  const f: SpriteFrame = { atlas: r.atlas, rect: r.uv, px: r.px, footV: r.footV, aspect: r.aspect };
+  if (a === undefined || a.frames.length === 0) return f;
+  const anim: SpriteAnim = { atlas: a.atlas, rects: a.frames, delaysMs: a.delays, staticFrame: a.staticFrame };
+  return { ...f, anim };
 }
 
 export function createSpriteCatalog(m: CreatureManifest, species: (id: string) => SpeciesDef | undefined, base: string = CREATURE_BASE): SpriteCatalog {
   const sets = new Map<string, AtlasSet>();
   const bytes = new Map<string, number>();
   const url = (u: string): string => (u.startsWith('/') || u.startsWith('http') ? u : base + u);
+  const map = (x: ManifestMap) => ({ url: url(x.url), mips: x.mips.map(url) });
   for (const a of m.atlases) {
-    const map = (x: ManifestMap) => ({ url: url(x.url), mips: x.mips.map(url) });
     sets.set(a.id, { id: a.id, albedo: map(a.albedo), normal: map(a.normal), emissive: map(a.emissive), size: a.size, normalScale: a.normalScale });
+    bytes.set(a.id, (a.albedo.bytes ?? 0) + (a.normal.bytes ?? 0) + (a.emissive.bytes ?? 0));
+  }
+  const animSets = new Map<string, AnimAtlasSet>();
+  for (const a of m.animAtlases ?? []) {
+    animSets.set(a.id, {
+      id: a.id, albedo: map(a.albedo), normal: map(a.normal), emissive: map(a.emissive), width: a.width, height: a.height, cell: a.cell, normalScale: a.normalScale,
+    });
     bytes.set(a.id, (a.albedo.bytes ?? 0) + (a.normal.bytes ?? 0) + (a.emissive.bytes ?? 0));
   }
   return {
@@ -68,6 +112,14 @@ export function createSpriteCatalog(m: CreatureManifest, species: (id: string) =
       if (sp === undefined) return [];
       return sp.front.atlas === sp.back.atlas ? [sp.front.atlas] : [sp.front.atlas, sp.back.atlas];
     },
+    animAtlas: (id) => animSets.get(id) ?? null,
+    animAtlasesOf: (speciesId) => {
+      const a = m.sprites[speciesId]?.anim;
+      if (a === undefined) return [];
+      const out: string[] = [];
+      for (const side of [a.front, a.back]) if (side !== undefined && animSets.has(side.atlas) && !out.includes(side.atlas)) out.push(side.atlas);
+      return out;
+    },
     bytesOf: (ids) => ids.reduce((n, id) => n + (bytes.get(id) ?? 0), 0),
     descriptor(speciesId, key, variant = 'normal', isAlpha = false, isShiny = false) {
       const sp = m.sprites[speciesId];
@@ -75,12 +127,31 @@ export function createSpriteCatalog(m: CreatureManifest, species: (id: string) =
       const def = species(speciesId);
       const t = (def?.types ?? ['Normal']) as readonly CoreTypeName[];
       const types = (t.length > 1 ? [t[0]!, t[1]!] : [t[0]!]) as unknown as readonly [TypeName] | readonly [TypeName, TypeName];
-      return { id: key, front: frame(sp.front), back: frame(sp.back), sizeScale: def?.sizeScale ?? sp.sizeScale, types, variant, isAlpha, ...(isShiny ? { isShiny: true } : {}) };
+      // a flipbook whose atlas the manifest does not list stays static (never a dangling bind)
+      const anim = (side: 'front' | 'back'): ManifestAnimSide | undefined => {
+        const a = sp.anim?.[side];
+        return a !== undefined && animSets.has(a.atlas) ? a : undefined;
+      };
+      return { id: key, front: frame(sp.front, anim('front')), back: frame(sp.back, anim('back')), sizeScale: def?.sizeScale ?? sp.sizeScale, types, variant, isAlpha, ...(isShiny ? { isShiny: true } : {}) };
     },
     get speciesCount() {
       return Object.keys(m.sprites).length;
     },
   };
+}
+
+/** A species' static atlases followed by its flipbook atlases: what binding "the creature" means (§10.4.5 flipbook). */
+export function speciesAtlases(cat: SpriteCatalog, speciesId: string): readonly string[] {
+  const anim = cat.animAtlasesOf(speciesId);
+  return anim.length === 0 ? cat.atlasesOf(speciesId) : [...cat.atlasesOf(speciesId), ...anim];
+}
+
+/** Binds a static atlas (`bindAtlas`) or a flipbook atlas (`bindAnimAtlas`) by id; null when the catalog knows neither. */
+export function bindCatalogAtlas(pool: Pick<SpritePool, 'bindAtlas' | 'bindAnimAtlas'>, cat: SpriteCatalog, id: string): Promise<void> | null {
+  const set = cat.atlas(id);
+  if (set !== null) return pool.bindAtlas(set);
+  const anim = cat.animAtlas(id);
+  return anim !== null ? pool.bindAnimAtlas(anim) : null;
 }
 
 let pending: Promise<CreatureManifest | null> | null = null;

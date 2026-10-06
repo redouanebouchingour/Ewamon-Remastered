@@ -291,6 +291,7 @@ Companion documents (inputs, not binding): `.design/PLAN.md`, `.design/story-bib
     - [40.1.5 The manifest — `creatures.manifest.json`](#40.1.5-the-manifest-creatures.manifest.json)
     - [40.1.6 Encoding decision for the ≤ 35 MB budget](#40.1.6-encoding-decision-for-the-35-mb-budget)
     - [40.1.7 Determinism and cache](#40.1.7-determinism-and-cache)
+    - [40.1.8 Animated multiframe sources — flipbooks (added 2026-10-06)](#40.1.8-animated-multiframe-sources-flipbooks-added-2026-10-06)
   - [§40.2 MODEL PIPELINE — `tools/model-pipeline`](#§40.2-model-pipeline-toolsmodel-pipeline)
     - [40.2.1 Inputs, measured](#40.2.1-inputs-measured)
     - [40.2.2 Transform sequence (gltf-transform 4.5 `document.transform(...)`, in this order)](#40.2.2-transform-sequence-gltf-transform-4.5-document.transform...-in-this-order)
@@ -2958,6 +2959,14 @@ export interface SpriteFrame {
   readonly px: readonly [number, number, number, number];     // x, y, w, h level-0 texels, y down (= .px); used only by bindSingle's crop
   readonly footV: number;                  // 0..1 from the bottom of the rect where the feet touch the ground (pipeline value 0.08)
   readonly aspect: number;                 // rect width / height in texels (1 for the 1024² normalised frames)
+  readonly anim?: SpriteAnim;              // amended 2026-10-06: the side's flipbook (animated legendaries / mythicals only)
+}
+/** Amended 2026-10-06 (§10.4.5 flipbook; 40-pipelines.md §40.1.8): every page of an animated source, on the static frame's normalisation. */
+export interface SpriteAnim {
+  readonly atlas: string;                                                   // AnimAtlasSet.id, 'anim-<species>-<side>'
+  readonly rects: readonly (readonly [number, number, number, number])[];  // per page u0, v0, u1, v1 in the anim atlas, v up
+  readonly delaysMs: readonly number[];                                     // display time per page (the source's own delays)
+  readonly staticFrame: number;                                             // the page `rect` shows
 }
 export interface SpriteDescriptor {
   readonly id: string;                     // creature/spawn/battler id (render-side key)
@@ -2976,6 +2985,17 @@ export interface AtlasSet {
   readonly normal: AtlasMap;               // NoColorSpace; at `normalScale` × the albedo resolution
   readonly emissive: AtlasMap;             // two-valued mask in R; uploaded as RedFormat/R8
   readonly size: 2048;                     // level-0 texels per side; 2 species (4 cells of 1024²) per atlas
+  readonly normalScale: 0.5 | 1;
+}
+/** Amended 2026-10-06: one side's flipbook — a cols × rows grid of `cell`² pages (non-square, ≤ 8192 per edge), 3 maps × 4 levels like an AtlasSet. */
+export interface AnimAtlasSet {
+  readonly id: string;                     // ManifestAnimAtlas.id, 'anim-<species>-<side>'
+  readonly albedo: AtlasMap;
+  readonly normal: AtlasMap;
+  readonly emissive: AtlasMap;
+  readonly width: number;                  // level-0 texels
+  readonly height: number;
+  readonly cell: number;                   // 512
   readonly normalScale: 0.5 | 1;
 }
 ```
@@ -3006,6 +3026,7 @@ export interface SpritePool {
   bindAtlas(set: AtlasSet): Promise<void>;                 // fetches 3 maps × 4 levels (WebP), one MeshStandardNodeMaterial per atlas
   /** A party single: decodes only `frame.px` (and the matching cells of the mip files) of the creature's home atlas into a private 1024² set keyed `single:<set.id>:<frame.px>`. ≤ 6 live. */
   bindSingle(set: AtlasSet, frame: SpriteFrame): Promise<void>;
+  bindAnimAtlas(set: AnimAtlasSet): Promise<void>;          // amended 2026-10-06: a flipbook atlas (§10.4.5), one material like any atlas; released by releaseAtlas(set.id)
   releaseAtlas(id: string): void;                          // also releases singles keyed on it when no billboard uses them
   acquire(d: SpriteDescriptor): CreatureBillboard;
   readonly uniforms: { readonly harvestLevel: UniformNode<'float', number>; readonly cameraYaw: UniformNode<'float', number>; readonly cameraLean: UniformNode<'float', number> };   // cameraLean: §10.4.4
@@ -3047,7 +3068,8 @@ const hueR = userData('hueShift', 'float'), satM = userData('satMul', 'float'), 
 let c = hue(a.rgb, hueR); c = saturation(c, satM); c = c.mul(litM);
 const flash = userData('hurt', 'float');
 c = mix(c, vec3(1), flash.mul(0.85));
-mat.colorNode     = vec4(mix(c, a.rgb, h), a.a);                 // harvested: raw albedo, no palette (Pillar 5 off means unlit-looking; lighting below)
+const evo = userData('glow', 'float');                           // §10.7.5 evolution sequence: 0 for every other billboard (amended 2026-10-05)
+mat.colorNode     = vec4(mix(mix(c, a.rgb, h), vec3(1), evo), a.a);   // harvested: raw albedo, no palette (Pillar 5 off means unlit-looking; lighting below); evo → white
 mat.normalNode    = mix(normalMap(n, float(1)), normalGeometry, h);   // derived normal lights the sprite (Pillar 5); level 2: flat
 mat.roughnessNode = float(0.85); mat.metalnessNode = float(0);
 mat.alphaTest     = 0.5;
@@ -3058,7 +3080,7 @@ const V     = cameraPosition.sub(positionWorld).normalize();
 const rim   = pow(oneMinus(abs(dot(normalWorld, V))), 3.0);      // normalWorld here is the normal-mapped one (alpha-edge bevel gives outward normals at the silhouette)
 const typeC = userData('typeColor', 'color');                    // 'color', not 'vec3': a vec3 uniform reads .x/.y/.z and a Color uploads NaN
 const shimmer = glow.mul(0.25).mul(sin(pool.uniforms.clock.mul(3.0).add(uv().y.mul(8.0))).mul(0.5).add(0.5));   // pool clock advanced by dt × timeScale (hitstop freezes it), not `time`
-mat.emissiveNode = typeC.mul(rim).mul(0.6).add(a.rgb.mul(em).mul(1.8)).add(a.rgb.mul(shimmer)).mul(oneMinus(h));
+mat.emissiveNode = typeC.mul(rim).mul(0.6).add(a.rgb.mul(em).mul(1.8)).add(a.rgb.mul(shimmer)).mul(oneMinus(h)).add(vec3(evo.mul(1.3)));   // evo: a glowing white silhouette of the card's own alpha
 mat.mrtNode = mrt({ mask: vec2(1, userData('sharp', 'float')) });   // x: exclude from GTAO darkening; y: DOF-sharp (§10.8.2)
 mat.side = FrontSide; mat.shadowSide = DoubleSide; mat.transparent = false; mat.depthWrite = true;
 mat.map = null;   // the albedo is published as material.userData.ewaAlbedo: _getShadowNodes multiplies shadow alpha by map.a sampled at the RAW quad uv (the whole atlas)
@@ -3066,7 +3088,11 @@ mat.map = null;   // the albedo is published as material.userData.ewaAlbedo: _ge
 
 <!-- amended 2026-09-25: typeColor 'vec3' → 'color', shimmer clock, shadowSide DoubleSide (the shadow pass renders FrontSide as BackSide, so a camera-facing card cast no shadow with the sun behind the camera), map null — render IMPLEMENTATION-NOTES P5, P6, P7, Q2 -->
 
-Dissolve additionally discards `hash(floor(uvRect.mul(1024))).lessThan(userData('dissolve','float'))` texels, so a fainting creature breaks into texel-sized holes rather than fading (Pillar 6: alpha stays binary). Creature emissive pixels output `1.8 × albedo` where the mask is 1. `BloomNode`'s high-pass thresholds **luminance** (`BloomNode.js` lines 12–15: `smoothstep(threshold, threshold + smoothWidth, luminance(rgb))`), so the emissive term alone crosses the 1.15 threshold only where `luminance(albedo_linear) > 1.15 / 1.8 = 0.639` (and contributes fully only above 1.20 / 1.8 = 0.667, the 0.05 smooth width). The §40.1.2 stage-4 mask (HSV value ≥ 0.92, chroma ≥ 0.4) admits warm and green accents that meet it (a `(1, 1, 0.6)` sRGB yellow: luminance 0.95 → 1.71) and saturated reds, blues and violets that do not (`(0.92, 0.52, 0.52)` red: 0.36 → 0.64; `(0.6, 0.6, 1)` blue: 0.37 → 0.66) — those glow in the beauty image but never bloom, at night or noon. The "threshold in the gap" claim therefore holds per hue, not per mask (recommendation R8). <!-- amended 2026-09-25: the draft read 1.8 × albedo ≥ 1.35 as a per-channel floor; bloom is luminance-keyed -->
+Amended 2026-10-05 (render IMPLEMENTATION-NOTES Part 7): the per-object `glow` (0..1, `BILLBOARD.glowGain` 1.3) is the evolution sequence's white silhouette (§10.7.5). It is part of the one billboard program from the step-8 warm-up on, so a sequence compiles nothing — the warm-up billboard's 4 × 4 neutral set now uses a linear min filter (single level): three 0.186 treats a texture with Nearest min AND mag as unfilterable (`textureLoad`), so the Nearest/Nearest neutral set had compiled a different program from every atlas (Nearest mag, trilinear min), and the first creature drawn compiled the real one; `CreatureBillboard` gains `setGlow(v)`, `setShown(on)` (the group's visibility: a silhouette swap is no material, program or binding change) and `setSizeMul(k)` (a uniform scale about the foot point). <!-- amended 2026-10-05: render IMPLEMENTATION-NOTES Part 7 -->
+
+Dissolve additionally discards `hash(floor(uvRect.mul(dissolveCells))).lessThan(userData('dissolve','float'))` texels, so a fainting creature breaks into texel-sized holes rather than fading (Pillar 6: alpha stays binary). <!-- amended 2026-10-06 --> `dissolveCells` is a per-object `userData('dissolveCells', 'vec2')`: 1024 per uv unit on a static atlas and a single (unchanged), `512 / (rect width, height in uv)` on a flipbook, so a 512² anim cell gets 1-texel holes — the same share of the creature as the static cell's 2-texel holes.
+
+**Flipbook (amended 2026-10-06; 40-pipelines.md §40.1.8).** A side whose `SpriteFrame.anim` atlas is bound (`SpritePool.bindAnimAtlas`) plays its pages: each billboard advances its own flipbook clock by `dt × timeScale` (the pool's `update`, so hitstop holds it and slow-mo slows it), adds a per-id phase (`hash(id) × loop length`, so two creatures of a species never play in step) and maps the time onto the source's per-page `delaysMs`; when the page changes it writes the four scalars of the per-object `rect` — the same record the static frame uses — and nothing else (no allocation, no program, no material or texture switch, no draw call: the anim atlas is one ordinary atlas material of this graph, and every page lives in it). Lighting, the derived normal map, `maskShadowNode` (the alpha shadow), rim and emissive all sample the current page through `uvRect`; the card, its size, foot point and contact decal are the static frame's (the pages share its normalisation). The flipbook holds on its current page while the creature is fainted (the `faint` pose, or `setFaint(p > 0)` until a pose or `setFaint(0)`), so a fainting creature dissolves still; poses, the hurt flash, `enter`/`exit` dissolves and the evolution sequence (`glow`, `setShown`, `setSizeMul`) are unchanged. Until its anim atlas lands a side shows its static `rect` — the frame-select page, at the same place to the texel — and re-points once; a descriptor without `anim` never waits for or samples a flipbook. Thumbnails stay static. Measured in the sandbox (render IMPLEMENTATION-NOTES Part 8): the 10-legendary lineup and a two-legendary battle draw the same calls (235 / 359) and hold the same programs with flipbooks on as off. Creature emissive pixels output `1.8 × albedo` where the mask is 1. `BloomNode`'s high-pass thresholds **luminance** (`BloomNode.js` lines 12–15: `smoothstep(threshold, threshold + smoothWidth, luminance(rgb))`), so the emissive term alone crosses the 1.15 threshold only where `luminance(albedo_linear) > 1.15 / 1.8 = 0.639` (and contributes fully only above 1.20 / 1.8 = 0.667, the 0.05 smooth width). The §40.1.2 stage-4 mask (HSV value ≥ 0.92, chroma ≥ 0.4) admits warm and green accents that meet it (a `(1, 1, 0.6)` sRGB yellow: luminance 0.95 → 1.71) and saturated reds, blues and violets that do not (`(0.92, 0.52, 0.52)` red: 0.36 → 0.64; `(0.6, 0.6, 1)` blue: 0.37 → 0.66) — those glow in the beauty image but never bloom, at night or noon. The "threshold in the gap" claim therefore holds per hue, not per mask (recommendation R8). <!-- amended 2026-09-25: the draft read 1.8 × albedo ≥ 1.35 as a per-channel floor; bloom is luminance-keyed -->
 
 Per-object parameters through `userData(name, type)` (verified `UserDataNode.js`): `object.userData = { rect: Vector4, hueShift, satMul, lightMul, alphaGlow, hurt, dissolve, sharp, typeColor: Color, bob }` — a preallocated record per billboard, scalar writes only. The dissolve hole mask is folded into the alpha, so `maskShadowNode` punches the same holes in the shadow. Billboards are alpha-tested: they are drawn in a `renderOrder ≥ 1` band so the shadow pass's shared override material does not flip its `alphaTest` between neighbouring solids and cards (§10.5.7).
 
@@ -3105,6 +3131,7 @@ Dual-typed creatures use `types[0]`. `20-client.md` §20.8.3 colourblind palette
 | Idle bob | `bob = 0.015 · H · sin(2π · 0.5 · t + phase)` — 0.5 Hz, ±1.5 % of height; `phase = hash(id) · 2π` so a party does not bob in unison |
 | Hurt flash | `hurt = strength` at `setHurt`, then `hurt *= exp(−dt / 70 ms)`; visible ≈ 220 ms |
 | Faint dissolve | `dissolve` set by the client's timeline (`KO_HOLD` 900 ms in `20-client.md`), linear 0 → 1 |
+| Flipbook (amended 2026-10-06) | page = the source's per-page delays over `clock + hash(id) × loop`, `clock += dt × timeScale` except while fainted; `rect` rewritten on a page change only |
 | Poses | `lunge`: position +0.9 m toward the foe over 120 ms, back over 180; `windup`: scale y 0.94 then 1.04 over 250 ms; `hurt`: −0.3 m recoil 80 ms + flash; `recoil`: −0.25 m back over 100 ms, return over 150, no flash (the `damage { cause: 'recoil' }` cue); `enter`/`exit`: dissolve 1 → 0 / 0 → 1 over 450/350 ms; `faint`: dissolve + 0.4 m sink; `celebrate`: two 0.15 m hops over 600 ms (battle end, winner's active battler) |
 
 No pose creates a material or geometry; every pose is uniform writes on the shared quad and material.
@@ -3448,7 +3475,26 @@ export interface BattleStage {
   syncFrom(hp: readonly { readonly ref: BattlerRef; readonly hpFrac: number }[]): void;   // after battleResync: poses reset, no animation
   setTypeColors(table: Readonly<Record<TypeName, string>>): void;   // colourblind palettes (20-client.md §20.8.3)
   inspect(d: SpriteDescriptor | null): void;            // 4 m close-up pose for the party/dex inspector; null exits
+  /** The evolution sequence (amended 2026-10-05): call only after the server confirmed the evolution; a new call or `dress` cancels a running one. */
+  evolve(r: EvolutionRequest): EvolutionHandle;
   dispose(): void;
+}
+
+/** §10.7.5 evolution sequence phases; `fade` replaces `charge · alternate · peak` under effective reduced effects. */
+export type EvolutionPhase = 'stage' | 'charge' | 'alternate' | 'peak' | 'fade' | 'reveal' | 'hold' | 'exit' | 'done';
+export interface EvolutionRequest {
+  readonly from: SpriteDescriptor;                       // the form before (bound or binding: the sequence waits for both atlases)
+  readonly to: SpriteDescriptor;                         // the form after (the server's species)
+  readonly at?: { readonly x: number; readonly z: number } | null;   // the trainer's feet (default: the camera focus); the creature appears in front of them
+  readonly reduced: boolean;                             // effective reduced effects: a gentle cross-fade, no pulses, no burst, no shake
+  readonly cheer?: string | null;                        // actor id that cheers at the reveal when within 6 m of the creature (the local player)
+  readonly onPhase?: (phase: EvolutionPhase) => void;    // called from the frame hook on every phase entry: keep it cheap (defer store writes)
+}
+export interface EvolutionHandle {
+  readonly phase: EvolutionPhase;
+  readonly done: Promise<'done' | 'cancelled'>;          // after the cleanup: camera released, lights / post / bindings restored
+  skip(): void;                                          // before the reveal → the reveal; during the reveal / hold → the exit
+  cancel(): void;                                        // immediate cleanup (a battle starting, the stage disposed)
 }
 
 export type VfxId =
@@ -3464,6 +3510,35 @@ export const VFX_IDS: readonly VfxId[];                  // exactly 19 + 4 + 6 +
 ```
 
 Every VFX is a slice of one pooled instanced `Sprite` (`count` 4 096 = 8 emitters × 512 particles, additive, `layers 29`, one shared `PointsNodeMaterial` with per-particle `instancedBufferAttribute` for birth/lifetime/colour — a `Points` object rasterises 1-px points on WebGPU, header table) or a pooled alpha-card burst (≤ 8 cards); particles write valid MRT values (the view axis as normal, mask `(1, 0)`) and alpha-test at 0.004, because the pass MRT writes those attachments unblended and a zero normal made GTAO NaN. Pools are allocated in `createRenderer` (§10.1.2 step 7) and never grow. VFX add **no** lights (a light appearing mid-battle recompiles every lit program); impacts pulse the 2 reserved beacons instead, which live under the stage root from `createRenderer` on at intensity 0 with `shadow.autoUpdate = false` while undressed. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES P4, P8, P10, Q8 --> `impact_super` adds a 120 ms `chroma` request (`effects.chroma` gates it) and `impact_crit` a 3-frame white flash on the target (`hurt 1.0`). VFX never writes `mask.y = 1`, so effects blur with the scene and never sharpen; VFX never covers the HUD rects (the HUD is a later overlay pass — Pillar 8 readability gate in `50-verification-budget.md` §50.1 rule 15).
+
+**Sequence effects** (amended 2026-10-05; `stage/evolution.ts` `evolutionRecipes(type, reduced)`): recipes outside the 47-id table (the `VfxId` union and its count are unchanged), built once per sequence with the new form's type colour and spawned through `VfxSystem.spawnRecipe` into the same pooled emitters and the one shared material — nothing allocated on the GPU, no program. Each phase is ≤ 512 particles, cards ≤ 8.
+
+| Recipe | When | Phases |
+|---|---|---|
+| `evolve_motes` | charge → peak (5 000 ms) | rising stars (90, cream / white) + rising soft discs (200, type colour / warm white), swirling up from the feet |
+| `evolve_converge` | peak (500 ms) | 160 stars drawn from a 1.6 m shell into the creature's chest |
+| `evolve_burst` | reveal | one soft flare disc (2.4 m shrinking, 300 ms), a star burst (130, white / gold, 6.5 m/s), two ring cards (1.2 → 2.4 m), rising type-coloured stars (90) |
+| `evolve_motes` (reduced) | fade (2 600 ms) | 60 stars + 90 discs, slower |
+| `evolve_reveal` (reduced) | reveal | 110 rising stars — no burst, no ring cards |
+
+**Evolution sequence** (amended 2026-10-05; render IMPLEMENTATION-NOTES Part 7; the user-approved design). `evolve(request)` plays a creature's evolution in place, beside the trainer; the client calls it only with the species the server returned (`20-client.md` §20.5.6), and every evolve path (the post-battle prompt, Rare Candy, future stones and trades) goes through it. Timeline (ms; `skip()` jumps to the reveal, a second `skip()` to the exit):
+
+| Phase | Full | Reduced | What |
+|---|---|---|---|
+| `stage` | 0–1 100 | 0–1 100 | the camera pushes in on the §10.7.4 inspector pose (pitch −18°, distance `max(4, 2.6 × taller form, the creature + trainer span / (0.8 × the frame width at 1 m))` m, aimed at the middle of that span so both stay in frame); the old form dissolves in (250–750 ms) 1.2 m in front of the trainer and to one side by at least half the wider card + 0.3 m, so a big creature does not hide its trainer — the first of 9 candidate spots whose footprint and ground line toward the camera are clear of the collider's footprints; the world dims (post `exposure` × 0.74, `vignette` → 0.55); a soft light rises under the creature |
+| `charge` | 1 100–2 000 | — | the old form turns into a glowing white silhouette (`glow` 0 → 1); motes rise |
+| `alternate` | 2 000–5 600 | — | the white silhouettes alternate OLD ↔ NEW on a linear ramp from 0.7 to 2.4 full cycles per second (never above 3 Hz); each incoming silhouette pops from 0.88 × to full size over 110 ms; the camera dollies 0.6 m closer |
+| `peak` | 5 600–6 100 | — | the new silhouette held white while sparkles converge on it (the gap that keeps the burst from adding a flash to the alternation's last second) |
+| `fade` | — | 1 100–3 700 | the two forms cross-fade through the dissolve dither under a gentle glow (≤ 0.35, one slow rise and fall) |
+| `reveal` | 6 100–7 000 | 3 700–4 600 | full: the light burst (the light × 2.4 and back, star burst, ring cards, a 0.06 / 300 ms shake that `effects.shake` gates), the glow fades into the new form's colours (held 120 ms, ease-out over 560 ms); reduced: rising sparkles only, no spike, no shake; both: the camera eases back to 0.4 m beyond its start distance (over the reveal and half the hold: the whole new form, room for the banner), the world brightens back, the trainer (`cheer`) plays its `cheer` emote when within 6 m, the new form bounces (`celebrate`, 640 ms) |
+| `hold` | 7 000–8 800 | 4 600–6 400 | the new form idles (the client's DOM banner) |
+| `exit` | 8 800–9 500 | 6 400–7 100 | the camera releases to the diorama pose (700 ms), the creature dissolves out (first 60 %), the light fades |
+
+- **Flashing (WCAG 2.3.1)**: at most 5 silhouette swaps (opposing luminance changes) in any one second, ≥ 214 ms apart, the burst included (test: a luminance proxy of glow × area + light has ≤ 6 opposing changes of ≥ 10 % in every 1 s window); reduced: no swap, the light never exceeds its charge level, no pair of opposing changes in any second.
+- **Light**: the reserved arena beacon 0 (it exists from `createRenderer`, so the light set never changes): a warm spot 1.15 m toward the camera and 0.2 m up, aimed at mid-height (angle 0.6, penumbra 0.9, range 9 m, decay 2, intensity 7 × the phase level). While borrowed its shadow camera renders only `LAYERS.billboards`, and the step-8 warm-up frames render both beacons' shadow maps over the warm group (`Stage.armWarmupShadows`), so the spot-shadow pass programs exist from boot: a sequence compiles nothing (measured: 0 new programs). A main arena still sinking after a battle is finished at once.
+- **Site**: 450 ms into the stage the main arena's two ground-cover slots hide grass inside 1.3 m (back by 2.3 m) and small props inside 1.6 m of the creature, and the prop cutaway hides merged static props within 1.9 m of a point 1 m toward the camera; restored halfway through the exit (§10.5.7, byte-exact).
+- **Atlases**: both billboards are acquired at the start; the stage holds just before its end until both atlases are bound, at most 8 s; past that, with the new form still unbound, the sequence goes straight to the reveal (the new form shows when its bind lands).
+- **Cleanup** (done or cancelled): both billboards disposed (the pool's live count and the atlas refcounts as before), beacon 0's position, target, colour, intensity, cone, range, decay, shadow update and shadow-camera layers restored, post exposure / vignette restored, the site restored; cancelled: the VFX pool cleared and the camera released unless a battle's push-in owns it. `dress`, `inspect`, a second `evolve` and `dispose` cancel a running sequence. Per frame: scalar writes only, no allocation.
 
 **Doubles** <!-- amended 2026-10-06 Phase D6 -->. In a doubles battle the stage holds four battlers: `BattlerRef.slot` is the field position (0 / 1), never a party index. `battlerSlot(center, yaw, side, slot, count = 2)` keeps the sides 5.5 m apart along the battle axis and spreads each side's two `SLOT_SPACING` (1.8 m) across it, point-symmetric about the ring centre (each side's position 0 on its own left); `Stage.layoutSide` derives `count` from the highest slot a side holds, so one battler per side stays on the axis exactly as in singles. Every foot disc (`STAGE.battlerFootR` 0.55 m, the size-1 contact-shadow decal) lies on the 3.5 m ring top (≈ 2.89 m + 0.55 m from the centre), and in a hall `fitCentre` lists the four foot discs in its need set (they sit inside the 4.0 m ring-fit disc, so they cannot move the centre today; they keep the guarantee if the ring or the spacing changes). VFX anchors, cue targets, `syncFrom` and `projectBattler` are keyed per ref, so `from` / `to` work for either position of either side, an ally included; all four billboards are DOF-sharp. The client maps core refs (party indices) to these positions (`20-client.md` §20.5.4). Proof: `packages/render/test/doubles.test.ts`.
 
@@ -4431,6 +4506,8 @@ DOM (`BattleOverlay`, bottom 28 % of the viewport, `Panel` without title): root 
 
 In-canvas (render `HudLayer`, spine Pillar 8: never covered by an effect): both active battlers' HP bars anchored above the billboards with name, level, HP numbers (own side only), status glyph, stage arrows (▲/▼ per stat with count); the turn label; the orb shake counter. The `BattleResultCard` (DOM modal) shows `RewardsSummary` and, for `battleEnd` with `evolveReady`/`learnMove` events in the last turn, the `evolve`/`learnMove` modals queued in order, each an explicit REST call (`POST /creature/:id/evolve`, `POST /creature/:id/moves`) — never automatic.
 
+**The evolution sequence** (amended 2026-10-05; client IMPLEMENTATION-NOTES Part 6, render §10.7.5). Every evolve path — the post-battle prompt, the Party screen's Rare Candy (the server's `evolveReady` item event queues the same prompt, §20.9.3), and later stones and trades — calls `app/evolution.ts` `evolveCreature(creature, into)`: **server truth first** — `POST /creature/:id/evolve` answers, the returned creature goes through the one inventory writer, and only then `playEvolution` stages the response's species; a failed call plays nothing (the `danger` toast names the error code and the prompt stays). The prompt starts binding the new form's atlas when it opens (`preloadEvolution`). World3D registers the player (`scene/EvolutionDirector.ts`): render's `stage.evolve({ from, to, at: the player's feet, reduced: effective reduced effects, cheer: the local player })`. While it plays, `ui.evolution` is set: movement is off and every world action is blocked (`worldBlocked`), the shell hotkeys are ignored, the canvas HUD is hidden (restored to the F1 state after), the open panel and the shortcut hint step aside (§20.9.2), the queued prompts wait, and the avatar faces the creature. A primary click or `Space` / `Enter` / `Escape` skips to the reveal, then to the exit (the keys are swallowed; others pass). Render's phase callbacks arrive from its frame hook and are deferred off the tick (`setTimeout(0)`): `reveal` shows the DOM `EvolutionBanner` — an eyebrow "Evolution" and "<Name> evolved into <Species>!" in the display face (`--t-h2`), bottom-centre over the canvas like a game text box, `role="status"` — replacing the old success toast; `exit` fades it (`--motion-banner`); the end restores the input (unless a battle took over) and clears `ui.evolution`. While the sequence builds up, a caption pill reads "Space or click to skip". Without a world (no zone, a battle) the banner alone shows for 2.6 s. A battle starting cancels the sequence (render's `dress`). <!-- amended 2026-10-05: client IMPLEMENTATION-NOTES Part 6 -->
+
 **Doubles menu and plates** <!-- amended 2026-10-06 Phase D6 -->. The menu picks per field position — position 0, then position 1 — and its prompt names the creature choosing (`What will X do? (1/2)`); "Back to X" re-opens position 0 before anything is sent (choice: collect both, then send — so a mistaken first pick costs nothing). A single-target move (power > 0 or target `'foe'`, not spread) opens a target list: each standing foe, then the standing ally (never the user), hotkeys `1–3`, `Escape` back to the moves; when only one candidate stands it is taken directly. Spread, self and field moves skip it. Party switches the choosing position's creature; both field creatures read "In battle" ("Fainted" for one fainted in place) and a creature the other position already chose this turn is disabled ("Already chosen"); the replacement phase asks once per required position. Orbs and Run (flee) do not exist in doubles; Forfeit forfeits for both positions. In-canvas: four HP plates (`BattleHud.setLayout(true)`; bar order near 0, near 1, far 0, far 1, numbers on the viewer's two), each anchored over its own battler by render's `HudLayer` (which already places up to 16 bars without overlap); singles keeps two.
 
 ---
@@ -4599,11 +4676,11 @@ Each screen: information hierarchy in one paragraph, then its states. All `/play
 
 **20.9.1 Auth** (`/login`, `/register`). Full-bleed static key-art (`public/keyart/mirevale.ktx2`-derived JPEG, 1440p) with a 420 px `Card` centred-right. Primary: username + password (+ email + starter picker on register). The starter picker is three `CreatureCard variant="showcase"` for `bramblecub / glimfin / cindercap` with type badges and a two-line flavour each; the selection is the largest element on the register form. Secondary: the switch link (login ↔ register). Errors from the action render inline under the field they concern (`username taken`, `bad credentials`); network errors as a single `danger` line above the button. No password rules beyond 8..128 are displayed until violated. The login card links "Forgot your password?" to `/forgot`; `/forgot`, `/reset` and `/verify` reuse this layout (key art, story column, card). While `PlayerProfile.emailVerified === false` the settings panel shows a one-line, non-blocking "Confirm your email" notice with "Resend link" (`POST /auth/resend`) (Phase C6).
 
-**20.9.2 World** (`/play`). The canvas is the screen. HUD per §20.6. DOM elements present: a 56 px top bar with the nav (`Party · Box · Dex · Shop · Social · Guild · Market · Pass · Settings`, `NavLink`s with unread counts), the money counter (mono, tabular), the trainer level pip; the chat input (hidden until `T`); toasts bottom-right; `DialogueBox` bottom-centre (`--t-body-lg`, speaker in display face, `Enter`/`E` advances, ≤ 3 lines visible, remaining count shown). Empty: a zone with no other players shows nothing extra. Loading: `BootScreen` (§20.10.4) only before the first `/me`; a zone change shows only the banner. Error: `ConnectionOverlay` after 2 s disconnected (§20.3.4).
+**20.9.2 World** (`/play`). The canvas is the screen. HUD per §20.6. DOM elements present: a 56 px top bar with the nav (`Party · Box · Dex · Shop · Social · Guild · Market · Pass · Settings`, `NavLink`s with unread counts), the money counter (mono, tabular), the trainer level pip; the chat input (hidden until `T`); toasts bottom-right; `DialogueBox` bottom-centre (`--t-body-lg`, speaker in display face, `Enter`/`E` advances, ≤ 3 lines visible, remaining count shown). Empty: a zone with no other players shows nothing extra. Loading: `BootScreen` (§20.10.4) only before the first `/me`; a zone change shows only the banner. Error: `ConnectionOverlay` after 2 s disconnected (§20.3.4). Evolution (amended 2026-10-05, §20.5.6): while the sequence plays, an open `/play/*` panel and the shortcut hint fade out (`visibility: hidden`, so nothing in them takes focus or clicks) and come back where they were; the `EvolutionBanner` sits bottom-centre over the canvas (`--z-toast`, no pointer events).
 
 **20.9.2a Tutorial** (Phase D12) <!-- amended 2026-10-06: Phase D12 -->. Prof. Wynn's step card (`world/TutorialCard.tsx`) over the live world, left edge under the HUD party strip, `--glass` card with the step count (`n of 7`), a title, her line, the step's key glyphs from the player's own bindings (`kbd`), and a ghost "Skip tutorial". Steps, each completed by a real event the client already sees, latched whenever it happens (a step done early is ticked off when it comes up): walk 8 m (the own `PlayerState` across state patches; jumps over 6 m and room changes do not count) → `met_wynn` (the first_witness beat) → the party panel opened → a wild battle started → a catch (`outcome.winner === 'caught'`, or a second `dexCaught` entry) → a win (`caught` or the player's side) → a heal (`POST /heal` from the party screen or the healer). The card is never modal and takes no keys; it hides while a battle, dialogue or `/play/*` panel is up or the HUD is off; it enters with a 180 ms slide that reduced motion removes. Progress persists per account under `ewa.tutorial` (zustand `persist`, localStorage); finishing the last step (one closing toast) or skipping sets `done` and it never shows again for that account. An account already past the opening — any badge, or a flag set by a story beat after `mire_rival` — is marked done on sight. No story beat, flag or message changes.
 
-**20.9.3 Party** (`/play/party`). Left 60 %: six `CreatureCard variant="row"` in slot order (sprite, name/nickname, level, `HpBar`, status, held item icon), keyboard-reorderable (`Alt+↑/↓`) and pointer-draggable; reorder commits with `POST /party/reorder` on drop (optimistic order, revert on error). Right 40 %: the selected creature's detail — stats (`calcStat` from core for display, marked "at level"), four `MoveButton`s with PP, ability + held item selects (`POST /creature/:id/setup`), nickname (`POST /creature/:id/nickname`), favourite/lock toggles (`POST /creature/:id/flags`), release (`danger`, confirm modal, refused when locked). Empty: impossible (party ≥ 1). Loading: none (store). Error: toast.
+**20.9.3 Party** (`/play/party`). Left 60 %: six `CreatureCard variant="row"` in slot order (sprite, name/nickname, level, `HpBar`, status, held item icon), keyboard-reorderable (`Alt+↑/↓`) and pointer-draggable; reorder commits with `POST /party/reorder` on drop (optimistic order, revert on error). Right 40 %: the selected creature's detail — stats (`calcStat` from core for display, marked "at level"), four `MoveButton`s with PP, ability + held item selects (`POST /creature/:id/setup`), nickname (`POST /creature/:id/nickname`), favourite/lock toggles (`POST /creature/:id/flags`), release (`danger`, confirm modal, refused when locked). Empty: impossible (party ≥ 1). Loading: none (store). Error: toast. Field items (amended 2026-10-05): the detail's "Use an item" section uses Rare Candy and the other field items through `POST /item/use`; an `evolveReady` event in the answer queues the explicit evolve prompt (§20.5.6), and accepting it plays the evolution sequence in the world behind the panel, which steps aside until it ends (§20.9.2).
 
 **20.9.4 Box** (`/play/box`). A 10-column tile grid (`CreatureCard variant="tile"`, 72 px) paged 60 per page (`?page=`), with a sticky filter row (search by name/species, type, sort by level/dex/recent). The party strip is pinned at the top of the panel so deposit/withdraw is one drag or two clicks (`POST /party/withdraw`/`deposit`, `POST /party/swap` when the party is full and a slot is targeted). Selecting a tile shows the same detail column as Party. Empty: "Your box is empty — creatures you catch with a full party arrive here." Loading: skeleton grid. Error: toast + retry button in the panel header.
 
@@ -4675,7 +4752,7 @@ Target: a fresh `/play` load on Mirevale, cold cache, 50 Mbit/s, RTX 3060-class 
 | 0 HTML + shell JS + `tokens.css` + 3 fonts (preloaded) | ≤ 180 KB + 360 KB | 450 ms |
 | 1 `/play` chunk + `GET /me`, then `POST /zone/enter` + `consumeSeatReservation` (§20.3.4) | ≤ 900 KB JS; three round trips, the last two overlapping phase 2 | 1 100 ms |
 | 2 zone materials for Mirevale — the **`field` tier** (512² KTX2 albedo/ORM/normal per surface, `10-render.md` §10.2.1) | ≤ 6 MB (Mirevale measured 3.71 MB) | 1 900 ms |
-| 3 creature atlases for Mirevale's bind set (`manifest.zones.mirevale`: 2 atlases, 0.544 MB each with mips) + party singles' home atlases + the player body GLB | ≤ 4 MB (Mirevale ≈ 1.1 MB + singles + GLB; an 8-atlas zone is 4.35 MB before singles — `40-pipelines.md` §40.6, recommendation R12) | 2 350 ms |
+| 3 creature atlases for Mirevale's bind set (`manifest.zones.mirevale`: 2 atlases, 0.544 MB each with mips) + party singles' home atlases + the player body GLB; amended 2026-10-06: + the flipbooks of the zone's legendary statics and of animated party members (0.64–1.81 MB per side, `40-pipelines.md` §40.1.8; none for Mirevale) | ≤ 4 MB (Mirevale ≈ 1.1 MB + singles + GLB; an 8-atlas zone is 4.35 MB before singles — `40-pipelines.md` §40.6, recommendation R12; `galvan_route`'s two legendary statics add ≈ 4.7 MB of flipbooks) | 2 350 ms |
 | **first frame** (zone built, DOF/bloom compiled, HUD fonts ready) | | **≤ 2 500 ms** |
 | 4 (after first frame) audio manifest + zone theme stems + ui sfx | ≤ 5 MB | music starts ≤ 4 000 ms; the world is silent, not blocked |
 | 5 (idle) **`hero` tier** of the current zone's `hero: true` surfaces (`renderer.materials.preloadHero`, ≤ 12 MB, swapped in place), then the neighbouring zone (`mire_route`) field materials + atlases | ≤ 22 MB | streamed at ≤ 2 MB/s in 256 KB `fetch` ranges so it never competes with a handover |
@@ -5789,7 +5866,7 @@ tools/
 - **The species set is exactly the 130 ids in `ewamon.js`** (the object keys that carry `frontSprite`; the 10 `*_orb` keys are items, not species). The manifest's `sprites` record has exactly 130 keys; `budget.test.ts` asserts `Object.keys(manifest.sprites).length === 130` and that the key set equals `Object.keys(SPECIES)` from `@ewa/content`.
 - **Alternate-style files are excluded from the manifest.** The four files `yaschamp(front|back)(boxingstyle|fighterstyle).png` are not species. Today `sources.ts` turns them into pseudo-species `yaschamp@boxingstyle` / `yaschamp@fighterstyle` and ships them (that is why the manifest has 132 ids and why `qa-report.json` shows `missing-side` on `yaschamp@boxingstyle back` and `fallback-source` on `yaschamp back`). Change: unclaimed files are recorded in `qa-report.json` under a new `excluded: { file, reason }[]` array (`reason: 'alternate-style'`) and are not processed. The `@<form>` code path (`parseFormFile`, `findMissingSides`, the `resolveEmissiveOverride` base lookup) is deleted.
 - **`yaschamp` back.** `back/` holds no `yaschamp(back).png`; the run used `yaschamp(back)(boxingstyle).png` as a fallback. That fallback is the canonical back sprite from now on: it is renamed on disk to `yaschamp(back).png` (the other three alternate files stay where they are, excluded). After the rename the `fallback-source` and `missing-side` counts are 0.
-- Animation sheets under `assets-src/creatures/animations/` (`voidraxis_idle*.{webp,png}`, 15 MB) are **not** copied to `public/` any more. They are legacy experiments with no consumer in `10-render.md` (`CreatureBillboard` has no frame animation; poses are uniform writes). `copyAnimations` and `ManifestAnimation` are deleted; the 15 MB leaves the budget.
+- Animation sheets under `assets-src/creatures/animations/` (`voidraxis_idle*.{webp,png}`, 15 MB) are **not** copied to `public/` any more. They are legacy experiments with no consumer in `10-render.md` (`CreatureBillboard` has no frame animation; poses are uniform writes). `copyAnimations` and `ManifestAnimation` are deleted; the 15 MB leaves the budget. <!-- amended 2026-10-06 --> The legendaries' and mythicals' animation is restored from the **multiframe sources themselves** (every page of the 20 GIF / animated WebP sides, §40.1.8) under a separate budget line (§40.6); the legacy sheets stay unshipped.
 
 ### 40.1.2 The six stages — parameters as implemented
 
@@ -5816,7 +5893,7 @@ Cache (`cache.ts`): per sprite `.cache/sprites/<hash>/{albedo,normal,emissive}.p
 |---|---|---|---|---|
 | `clipped` | 76 | The alpha bbox touches at least one edge of the **source** canvas. Normalize still fits the bbox to 881 px and anchors the bottom at 942, so the output is not clipped; the flag says the artist's canvas cut the drawing (usually a tail or wing tip), and there is nothing the pipeline can recover. | informational | None. Reported so a future redraw list exists. Moved into `INFORMATIONAL_FLAGS`. |
 | `nonsquare` | 52 | Source is not square. Normalize makes it square. | informational | None. |
-| `multiframe` | 20 | The source is a multi-page GIF or animated WebP (10 species: `bankaiser, galaxion, glacinid, lumyth, noxmyth, raikitsune, sunjaw, voidraxis, voltaura, zenryu`). `sharp` decodes **page 0** by default and that is what shipped. Page 0 is not necessarily the best frame (it can be a transition pose). | must be decided | `frame-select.json` in `tools/sprite-pipeline/` maps `<id>/<side>` → page index (default 0). Every multiframe source must have an entry, chosen once from a per-source contact strip (`tsx src/cli.ts frames <id>` writes `qa/frames/<id>-<side>.png`, all pages in a row). Build fails on a multiframe source with no entry. The chosen frame is decoded with `sharp(bytes, { page: n })`. The flag stays informational once an entry exists. |
+| `multiframe` | 20 | The source is a multi-page GIF or animated WebP (10 species: `bankaiser, galaxion, glacinid, lumyth, noxmyth, raikitsune, sunjaw, voidraxis, voltaura, zenryu`). <!-- amended 2026-10-06 --> The source **is animated**: every page ships as a flipbook (§40.1.8), and `frame-select.json` picks the **static** frame — the page in the 1024² static cell, shown wherever no flipbook is bound (thumbnail, the first frames before the anim atlas lands, a client without it) and the anchor of the flipbook's shared normalisation. | must be decided | `frame-select.json` in `tools/sprite-pipeline/` maps `<id>/<side>` → page index (default 0; all 20 are 0). Every multiframe source must have an entry, chosen once from a per-source contact strip (`tsx src/cli.ts frames <id>` writes `qa/frames/<id>-<side>.png`, all pages in a row). Build fails on a multiframe source with no entry. The chosen frame is decoded with `sharp(bytes, { page: n })`. The flag stays informational once an entry exists. |
 | `coverage` | 1 | Opaque fraction of the source canvas outside `[0.12, 0.92]` (`malice front`: a small creature on a large canvas). | review | Human looks at the contact sheet; if the alpha is right, add the id to `qa-accept.json` with a one-line reason; the flag is then suppressed. |
 | `leak` | 0 | The border flood reached the centre 20 % of the alpha bbox (a hole in the outline let the background through). | must be resolved | Fix the source or add an `alpha-overrides.json` entry (`{ tolerance?, keyMagenta?, keyWhite? }`) for that id; never accepted. |
 | `empty` | 0 | Nothing recoverable; the raw source was shipped. | must be resolved | Never accepted. |
@@ -5965,6 +6042,37 @@ export interface ManifestSpriteV2 {
   readonly home: string;                                     // atlas id used for the runtime single set
   readonly thumb: string;                                    // thumbs/<id>_front.webp, 128 px (20-client.md §20.10.2 rule 6)
   readonly alt?: Readonly<Record<string, { readonly front: SpriteRectV2; readonly back: SpriteRectV2 }>>;   // only for a planner-duplicated species: its rects in each a-<zoneId>-dup-N atlas (absent in the shipped build: 0 duplicates)
+  readonly anim?: ManifestAnimSprite;                        // amended 2026-10-06: only for a multiframe species (§40.1.8)
+}
+
+export interface ManifestAnimSprite {
+  readonly front?: ManifestAnimSide;
+  readonly back?: ManifestAnimSide;
+}
+
+export interface ManifestAnimSide {
+  readonly atlas: string;                                    // ManifestAnimAtlas.id, 'anim-<species>-<side>'
+  readonly frames: readonly (readonly [number, number, number, number])[];   // uv (u0, v0, u1, v1, v up) per source page, in page order
+  readonly delays: readonly number[];                        // display ms per page (sharp `delay`; < 20 ms shows as 100 ms)
+  readonly staticFrame: number;                              // the frame-select page: the static rect shows this frame
+  readonly footV: number;                                    // 0.08, as the static rect
+  readonly aspect: number;                                   // 1
+  readonly pixelScale: number;                               // anim texels per source px (QA only)
+  readonly source: string;                                   // relative to assets-src/creatures/ (QA only)
+}
+
+export interface ManifestAnimAtlas {
+  readonly id: string;                                       // 'anim-<species>-<side>'
+  readonly species: string;
+  readonly side: 'front' | 'back';
+  readonly width: number;                                    // level-0 texels (cols × cell)
+  readonly height: number;                                   // rows × cell
+  readonly cell: number;                                     // 512 = spriteSize / 2
+  readonly slots: number;                                    // occupied cells = the side's page count
+  readonly albedo: ManifestMap;                              // anim/<species>-<side>.albedo.webp + .m1..m3
+  readonly normal: ManifestMap;                              // half resolution
+  readonly emissive: ManifestMap;
+  readonly normalScale: 0.5;
 }
 
 export interface SpriteManifestV2 {
@@ -5975,12 +6083,16 @@ export interface SpriteManifestV2 {
   readonly atlases: readonly ManifestAtlasV2[];              // sorted by id
   readonly zones: Readonly<Record<string, readonly string[]>>;  // ZoneId -> atlas ids (≤ 8, §40.1.4), all 21 zones present ([] allowed)
   readonly sprites: Readonly<Record<string, ManifestSpriteV2>>;  // exactly the 130 species ids, sorted
-  readonly totalBytes: number;                               // every file under public/creatures/
+  readonly totalBytes: number;                               // every static file under public/creatures/ (all but anim/) + the manifest without its anim fields (amended 2026-10-06)
+  readonly animAtlases?: readonly ManifestAnimAtlas[];       // amended 2026-10-06: sorted by id; present iff some sprite has `anim`
+  readonly animTotalBytes?: number;                          // every file under public/creatures/anim/ + the manifest bytes the anim fields add (§40.6 anim line)
 }
 export const MANIFEST_FILE = 'creatures.manifest.json';
 ```
 
 `validateManifest` additionally asserts: every `atlas` reference resolves; `uv` is consistent with `px` and `size`; `footV === 0.08`; `zones[z].length ≤ 8`; `sprites` keys equal the content species set; `home ∈ atlases`; `totalBytes ≤ 36 700 160`. The manifest is the contract; the client (`20-client.md` §20.4.4 adapter) maps `ManifestSpriteV2` → `SpriteDescriptor` by copying `uv → rect`, `footV`, `aspect` and looking up `AtlasSet` from `atlases`.
+
+<!-- amended 2026-10-06 --> **The anim extension** (§40.1.8) is validated as strictly: `animAtlases` and `animTotalBytes` are present iff some sprite has `anim`; every anim atlas is `anim-<species>-<side>` of a known species, a grid of `spriteSize / 2` cells no larger than 8192 per edge whose last row is the only partial one, `normalScale 0.5`, maps under `anim/` with 3 mips each; it is referenced by exactly one sprite side, whose `frames` are the grid's cells in raster order (one per page, `slots` of them), with one positive integer delay per frame, a `staticFrame` among them, `footV 0.08` and `aspect 1`; `animTotalBytes ≤ 25 165 824`. The serialiser appends the extension after each sprite's existing keys and after `totalBytes`, so `serializeManifest(staticManifest(m))` is byte-identical to the manifest the pipeline wrote before animation existed, and its length is what `totalBytes` counts. The client adapter maps `anim.<side>` → `SpriteFrame.anim` (`frames → rects`, `delays → delaysMs`, `staticFrame`) and `animAtlases` → `AnimAtlasSet`s (`10-render.md` §10.4.1), and binds a species' flipbooks with its static atlas (the zone's legendary statics, the party, every species bound on demand).
 
 ### 40.1.6 Encoding decision for the ≤ 35 MB budget
 
@@ -6040,6 +6152,26 @@ Budget: `260 × (73 + 24 + 3) KB × 1.20 + 0.8 MB thumbs ≈ 32.0 MB ≤ 35 MB`.
 - Cache keys (§40.1.2) gain the frame-select entry, the alpha override, and — for atlas files — the ladder rung actually used, so a rung change rebuilds only the atlases it touches while the sprite stages stay cached.
 - `PIPELINE_VERSION` is bumped for: the stage-1 transparent-RGB rule, the alternate-style exclusion, footV-from-bottom, the 2048² cell, the mip chain, the codec change. Every existing `.cache/sprites/*` entry is therefore invalid and one full rebuild (~25 min at `CONCURRENCY 3` on the machine that produced the current output) follows.
 - Toolchain: `sharp ^0.34.3` (libwebp 1.5 inside) is pinned by `pnpm-lock.yaml`; a lockfile bump that changes libwebp is treated as a `PIPELINE_VERSION` bump with a contact-sheet review, not as a regression.
+
+### 40.1.8 Animated multiframe sources — flipbooks (added 2026-10-06)
+
+The 10 legendaries and mythicals animated in the original game; the rebuild shipped only their frame-select page (§40.1.3). Every page of the 20 sides now ships as a flipbook next to the unchanged static set (the 65 static atlases, the thumbnails and the static manifest are byte-identical to the build before; `anim.ts`).
+
+**Sources** (20 sides, 508 pages): `bankaiser, lumyth, noxmyth, raikitsune, sunjaw, voidraxis, zenryu` — animated WebP, 24 pages, 584–640 px, 125 ms; `galaxion` — GIF, 36 pages, 478–498 × 516–566 px, 100 ms; `glacinid, voltaura` — GIF, 25 pages, 256 px, 100 ms. Delays are sharp's `delay` per page (a missing or < 20 ms delay shows for 100 ms, as browsers do); all sources keep their own alpha.
+
+**One shared normalisation per side, anchored on the static frame.** Stage 1 runs per page at source resolution; the union U of the pages' alpha bboxes is the side's crop. The transform is the static cell's own — `computePlacement` on the frame-select page's bbox (same per-axis scale, horizontal centre and foot line) — applied to U: every page is cropped to U, resampled once to the same size and placed at the same offset on the 1024² master canvas, so a part that does not move in the source does not move by a texel (no jitter, no slide) and the frame-select page lands where the static cell has it (static ↔ flipbook swaps show no jump). Normalising U to its own 0.86 fill instead would have shrunk the creature by up to 11 % (galaxion back: union scale 0.888 × the static one) and lifted its feet, a visible jump on the swap. Under the static transform U fits the cell for all 20 sides (tightest: galaxion back's top at 0.2 texel of the 1024 canvas, sunjaw front's right edge at 989); a side whose U would not fit fails the build.
+
+**Stages 3–4 and the reduction.** The normal and emissive maps run on the master canvas with the static parameters (the static frame's maps equal the static cell's); all three maps are then reduced 2× to the **512² anim cell**: albedo lanczos3 (premultiplied), normal `halfResolutionNormal`, emissive by 2×2 majority. The per-side cache (`.cache/anim/<hash>/pNN.*.png`, key: source bytes, `ANIM_STAGE_VERSION`, `SPRITE_STAGE_VERSION`, sizes, normal and emissive options, the static page, the alpha override) stores true-colour PNGs — the static cache's `png({ effort })` makes sharp quantise to a dithered 256-colour palette, which would re-dither every page differently and boil between frames (found here; the static set is left as it is).
+
+**Why 512.** At the battle camera a `sizeScale 1` creature is 374 px tall (§10.4.3); the 10 animated species are `sizeScale` 1.15–1.5, i.e. 430–561 px, their content (0.86 of the card) 370–483 px. A 512 cell puts 440 texels on that: 0.91–1.19 texels per pixel, sharp without magnifying; the overworld (≈ 160 px × sizeScale) minifies it; only the 4 m inspector magnifies (`NearestFilter`, hard texels as Pillar 6 wants, 2 × the static cell's texel). The WebP sources' content is 547–628 px, so 512 keeps 75–83 % of their linear detail; the 256 px GIFs are upscaled 1.8–2.3×. 1024 would cost ≈ 4× the bytes; 448 would magnify the largest (voidraxis) in battle.
+
+**Packing and stage 6.** One atlas per side, a cols × rows grid in page order with the fewest empty cells (24 pages → 6 × 4 = 3072 × 2048, 25 → 5 × 5 = 2560², 36 → 6 × 6 = 3072²), ≤ 8192 per edge (the minimum `maxTextureSize`, §10.1.1), so a playing animation never switches texture or material. Then exactly the static stage 6: binary alpha, the transparent-RGB rule re-applied, half-resolution normal (256² per cell), coverage-preserving mips 1–3 per cell, WebP (`anim/<species>-<side>.{albedo,normal,emissive}[.m1–3].webp`, 240 files).
+
+**Ladder** (`ANIM_EXTRA_RUNGS`): the static ladder, then albedo / normal q80/q80, q78/q80, q75/q80, q75/q75, the first under the anim ceiling shipping. Measured (`qa/anim-report.json`): q88/q92 32.92 MB, q85/q92 30.27, q82/q92 28.68, q80/q92 27.61, q80/q90 26.84, q80/q85 25.38 (still over 24 MiB: 508 frames are twice the static sprite count and a 512² reduction keeps ≈ 45 % of a painted 1024² cell's bytes), **q80/q80 24.49 MB shipped**: albedo 19.73 MB + normal 4.11 + emissive 0.55 + the manifest's anim share 0.10 = 24 487 809 B (23.35 MiB). Per species (both sides): galaxion 3.53 MB, sunjaw 3.14, bankaiser 2.87, raikitsune 2.72, zenryu 2.62, glacinid 2.24, voltaura 2.02, voidraxis 1.91, lumyth 1.90, noxmyth 1.44. The normal map steps down first: it is seen only through lighting at half resolution, and q92 → q80 halves it.
+
+**GPU memory** per bound side (RGBA8 albedo + RGBA8 half-resolution normal + R8 emissive, 4 levels, the `AtlasCache` estimate): ≈ 50 MB at 3072 × 2048, 52 MB at 2560², 75 MB at 3072² — a side costs about 1.5–2.4 static atlases. The client binds both sides of a species with its static atlas (§40.1.5); a zone with two legendary statics (`galvan_route`) adds ≈ 205 MB, and every animated party member ≈ 100–150 MB (the client never releases atlases, a pre-existing behaviour; see render IMPLEMENTATION-NOTES Part 8).
+
+**QA**: `qa/anim-sheet.png` (every page of every side at 96 px, the shared foot line in red, the static page outlined) and `qa/anim-report.json` (pages, delays, crop, transform, grid, bytes, per-page foot rows). **Tests**: `anim.test.ts` (grid, delays, the transform; a fixture with an animated WebP and a GIF: pages per side, foot line ± 1 texel, zero jitter below a moving part, a bobbing page moves by exactly its source offset × the shared scale, static ↔ anim alignment IoU > 0.95, the static set byte-identical to a build without animation, budget accounting, determinism + full cache, the strict validator on 16 malformed variants), `anim-output.test.ts` (the shipped flipbooks: pages and delays = the sources', binary alpha and mip sizes in every level, the static page on the foot line ± 1 texel, the pages' union = the placed union crop ± 1.5 texels, static ↔ anim IoU > 0.95 on all 20 sides), `budget.test.ts` (both lines).
 
 ---
 
@@ -6537,7 +6669,8 @@ Today `src/cli.ts` is `export {};`. The tool is **headless and GPU-free**: it ne
 ```
 packages/client/public/
 ├─ basis/            basis_transcoder.js, basis_transcoder.wasm, README.md   (present; KTX2Loader.setTranscoderPath('/basis/'))
-├─ creatures/        atlases/a-NNN.{albedo,normal,emissive}.webp + .m1/.m2/.m3.webp mips, thumbs/<id>_front.webp, creatures.manifest.json
+├─ creatures/        atlases/a-NNN.{albedo,normal,emissive}.webp + .m1/.m2/.m3.webp mips, thumbs/<id>_front.webp, creatures.manifest.json,
+│                    anim/<species>-<side>.{albedo,normal,emissive}.webp + mips (the 20 flipbooks, §40.1.8; amended 2026-10-06)
 ├─ models/           legendaries/<id>.glb + <id>.lod1.glb + KTX2, characters/ (15 shapes, 5 accessories, animations.glb, atlas KTX2), CREDITS.txt, models.manifest.json
 ├─ materials/        <surface>_{albedo,orm,normal}.ktx2 (83 × 3), placeholder_*.ktx2, materials.manifest.json
 ├─ audio/            themes/<theme>/<layer>.{webm,m4a}, ambience/<biome>.{webm,m4a}, sfx/<id>_<n>.{webm,m4a}, manifest.json
@@ -6550,12 +6683,13 @@ Nothing under `public/` is hand-edited except `keyart/`, `icons/` and `fonts/`; 
 
 | Directory | Ceiling | Asserted by | Basis of the number |
 |---|---|---|---|
-| `creatures/` | **≤ 35 MB** (36 700 160 B) | `tools/sprite-pipeline/test/budget.test.ts` | measured (§40.1.6.3 as amended 2026-09-24, `PIPELINE_VERSION` 5): 65 atlases with binary alpha at albedo q88 / normal q92 — albedo 25.46 MB + normal 9.46 MB + emissive 0.46 MB (all levels) + thumbs and manifest 0.87 MB = **36.20 MB**, 0.50 MB under the ceiling. The draft's "73 + 24 + 3 KB × 1.20 ≈ 31.2 MB" was 1.5× optimistic <!-- amended 2026-09-25: stale basis after the 2026-09-24 amendment of §40.1.6.3 --> |
+| `creatures/` (all but `anim/`; amended 2026-10-06) | **≤ 35 MB** (36 700 160 B) | `tools/sprite-pipeline/test/budget.test.ts` | measured (§40.1.6.3 as amended 2026-09-24, `PIPELINE_VERSION` 5): 65 atlases with binary alpha at albedo q88 / normal q92 — albedo 25.46 MB + normal 9.46 MB + emissive 0.46 MB (all levels) + thumbs and manifest 0.87 MB = **36.20 MB**, 0.50 MB under the ceiling. The draft's "73 + 24 + 3 KB × 1.20 ≈ 31.2 MB" was 1.5× optimistic <!-- amended 2026-09-25: stale basis after the 2026-09-24 amendment of §40.1.6.3 --> |
 | `models/` | **≤ 12 MB** | `tools/model-pipeline/test/budget.test.ts` | §40.2.6: legendaries ≤ 6.5 + characters ≤ 5.0 + headroom; measured **7.42 MB** (2026-10-05): legendaries 5.61 MB + the KayKit set 1.79 MB (15 shapes 1.62 MB, animations 0.08, atlas 0.05, accessories 0.04) <!-- amended 2026-10-05: KayKit characters replace the Quaternius looks (3.38 MB) --> |
 | `materials/` | **≤ 90 MB** | `tools/material-bake/test/budget.test.ts` | §40.3.5: field 24.9 MB + hero ≤ 60 MB = ≤ 85 MB; the single-tier UASTC layout would be ≈ 143 MB and is why the tiers exist <!-- reconciled 2026-09-18: was 60 MB, which the arithmetic could not meet --> |
 | `audio/` | **≤ 80 MB** | `tools/audio-pipeline/test/budget.test.ts` | §40.4.7: 78 MB at 16-bar stems |
 | `basis/ + icons/ + fonts/ + keyart/` | ≤ 2 MB | `tools/asset-audit --bytes` | transcoder wasm 0.6 MB, fonts 0.36 MB, key art ≤ 0.8 MB |
-| **total `public/`** | **≤ 219 MB** | `tools/asset-audit --bytes` | sum |
+| `creatures/anim/` (added 2026-10-06) | **≤ 24 MiB** (25 165 824 B) | `tools/sprite-pipeline/test/budget.test.ts`, `tools/asset-audit --bytes` | the user-approved separate budget for the animated legendaries (§40.1.8); measured **24.49 MB** (23.35 MiB) at albedo q80 / normal q80: 20 sides, 508 frames — albedo 19.73 MB + normal 4.11 + emissive 0.55 + the manifest's anim share 0.10 (the bytes its anim fields add, counted here so the static line and `totalBytes` stay what they were) |
+| **total `public/`** | **≤ 243 MB** (amended 2026-10-06: 219 + the anim line) | `tools/asset-audit --bytes` | sum |
 
 The per-zone *load* budget is a different number and is `20-client.md` §20.10.3's: phase 2 (`field` materials) ≤ 6 MB — Mirevale 4.5 MB, the largest biome set (cinder, 9 + 6 shared = 15) also 4.5 MB — and phase 3 (creature atlases + party + body GLB) ≤ 4 MB. From the shipped manifest (35.38 MB of atlas maps over 65 atlases = **0.544 MB per atlas**, all levels), phase 3 is `bound atlases × 0.544 MB` + the party singles' home atlases not already bound (≤ 6 × 0.544 MB) + the character set's first shapes, clips and atlas (≈ 0.25–0.5 MB; amended 2026-10-05, was one 0.15–0.22 MB body GLB): Mirevale binds 2 atlases (≈ 1.1 MB + GLB), well inside 4 MB; the 8-atlas zones (`galvan_route`, `solenne`) are 4.35 MB before singles and GLB, **over** the 4 MB phase-3 figure (it is asserted by `first-frame.spec.ts` on Mirevale only; recommendation R12). The draft's "≈ 4.1 MB cold for the 14-species `hollow_route`" used the pre-measurement 73 + 24 + 3 KB per sprite. The `hero` tier (≤ 12 MB per zone) is phase 5. <!-- amended 2026-09-25: stale arithmetic after §40.1.6.3's measured sizes; bind counts from packages/client/public/creatures/creatures.manifest.json `zones` -->
 
@@ -6581,7 +6715,7 @@ The per-zone *load* budget is a different number and is `20-client.md` §20.10.3
 | KTX2 (UASTC or ETC1S) for creature atlases | UASTC is 1 B/texel and measured 1.57× *larger* than lossless WebP on sprites; the bundled encoder refuses > 12 Mpix; ETC1S quantises the alpha slice in 4×4 blocks and cannot keep a 1-texel edge exact | lossy WebP with lossless alpha + pipeline mips (§40.1.6) |
 | Near-lossless WebP for albedo | measured 18–24 % saving at `nearLossless q40–q60` on `mire_route-0` (5 552 → 4 223 KB); cannot reach 35 MB | lossy `q85` with the edge acceptance test |
 | Per-zone duplicated 4096² atlases and `single_<species>` files | 140 placements of 72 species + a second 2048² copy of all 130 ≈ 2.7× the bytes of storing each sprite once | 2048² zone-affinity atlases, `zones[]` bind lists, `home` crop (§40.1.4) |
-| Shipping the `animations/` sheets | no consumer in `10-render.md`; 15 MB | `CreatureBillboard` poses are uniform writes |
+| Shipping the `animations/` sheets | no consumer in `10-render.md`; 15 MB | `CreatureBillboard` poses are uniform writes; the legendaries animate from their multiframe sources instead (§40.1.8, amended 2026-10-06) |
 | Runtime sprite variant re-baking | `00-spine.md` §3.7: palettes are uniforms | `hueShift/satMul/lightMul/alphaGlow` userData |
 | Per-species hand-tuned emissive masks as a first step | 130 × 2 masks to paint | the §40.1.2 stage-4 rule (HSV value ≥ 0.92, chroma ≥ 0.4, 8 % cap; amended 2026-09-25 — was "threshold 0.72") + `EMISSIVE_OVERRIDES` only where the contact sheet shows a miss |
 | Single-tier 1024²/2048² UASTC for all 83 surfaces | ≈ 143 MB against the ceiling | hero 1024² / field 512² tiers (§40.3.5), ≤ 85 MB |

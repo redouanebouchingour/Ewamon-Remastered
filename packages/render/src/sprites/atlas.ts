@@ -14,7 +14,7 @@
  * - `RedFormat` + `UnsignedByteType` maps to `r8unorm`, a valid `copyExternalImageToTexture` destination.
  */
 import {
-  ClampToEdgeWrapping, DataTexture, LinearMipmapLinearFilter, NearestFilter, NoColorSpace, RGBAFormat, RedFormat, SRGBColorSpace, Texture,
+  ClampToEdgeWrapping, DataTexture, LinearFilter, LinearMipmapLinearFilter, NearestFilter, NoColorSpace, RGBAFormat, RedFormat, SRGBColorSpace, Texture,
   UnsignedByteType,
 } from 'three/webgpu';
 import type { SpriteFrame } from '../contracts.js';
@@ -30,6 +30,22 @@ export interface AtlasSet {
   readonly normal: AtlasMap;               // NoColorSpace; at `normalScale` × the albedo resolution
   readonly emissive: AtlasMap;             // two-valued mask in R; uploaded as RedFormat/R8
   readonly size: 2048;                     // level-0 texels per side; 2 species (4 cells of 1024²) per atlas
+  readonly normalScale: 0.5 | 1;
+}
+
+/**
+ * Amended 2026-10-06 (§10.4.5 flipbook; 40-pipelines.md §40.1.5 `ManifestAnimAtlas`): one side of an animated creature,
+ * every page in a cols × rows grid of `cell`² frames (non-square, ≤ 8192 per edge), the same three maps × 4 levels as an
+ * `AtlasSet` and the same sampler contract. Bound with `BillboardPool.bindAnimAtlas`; one material, like any atlas.
+ */
+export interface AnimAtlasSet {
+  readonly id: string;                     // ManifestAnimAtlas.id, 'anim-<species>-<side>'
+  readonly albedo: AtlasMap;
+  readonly normal: AtlasMap;
+  readonly emissive: AtlasMap;
+  readonly width: number;                  // level-0 texels
+  readonly height: number;
+  readonly cell: number;                   // 512
   readonly normalScale: 0.5 | 1;
 }
 
@@ -106,17 +122,31 @@ export function atlasSetBytes(size: number, normalScale: number): number {
   return chainBytes(size, 4) + chainBytes(Math.round(size * normalScale), 4) + chainBytes(size, 1);
 }
 
+/** Bytes of a `width × height` chain: Σ (w / 2^i) × (h / 2^i) × bytesPerTexel over `levels` levels. */
+export function chainBytesWH(width: number, height: number, bytesPerTexel: number, levels: number = ATLAS_LEVELS): number {
+  let n = 0;
+  for (let i = 0; i < levels; i++) n += Math.max(1, width >> i) * Math.max(1, height >> i) * bytesPerTexel;
+  return n;
+}
+
+/** GPU bytes of an anim atlas set (`atlasSetBytes` for a non-square grid). */
+export function animAtlasSetBytes(width: number, height: number, normalScale: number): number {
+  return chainBytesWH(width, height, 4) + chainBytesWH(Math.round(width * normalScale), Math.round(height * normalScale), 4) + chainBytesWH(width, height, 1);
+}
+
 /** Level-`level` crop of a level-0 rect for a map stored at `mapScale` × the albedo resolution. */
 export function cropForLevel(px: Crop, level: number, mapScale: number): Crop {
   const k = mapScale / (1 << level);
   return [Math.round(px[0] * k), Math.round(px[1] * k), Math.max(1, Math.round(px[2] * k)), Math.max(1, Math.round(px[3] * k))];
 }
 
-function mapScaleOf(set: AtlasSet, map: AtlasMapName): number {
+type MapSource = Pick<AtlasSet, AtlasMapName | 'normalScale'>;
+
+function mapScaleOf(set: MapSource, map: AtlasMapName): number {
   return map === 'normal' ? set.normalScale : 1;
 }
 
-async function loadMap(set: AtlasSet, map: AtlasMapName, decoder: AtlasDecoder, px: Crop | null): Promise<Texture> {
+async function loadMap(set: MapSource, map: AtlasMapName, decoder: AtlasDecoder, px: Crop | null): Promise<Texture> {
   const m = set[map];
   const urls = [m.url, ...m.mips.slice(0, ATLAS_LEVELS - 1)];
   const scale = mapScaleOf(set, map);
@@ -128,6 +158,12 @@ async function loadMap(set: AtlasSet, map: AtlasMapName, decoder: AtlasDecoder, 
 export async function loadAtlasTextures(set: AtlasSet, decoder: AtlasDecoder): Promise<AtlasTextures> {
   const [albedo, normal, emissive] = await Promise.all(ATLAS_MAPS.map((m) => loadMap(set, m, decoder, null)));
   return { albedo: albedo!, normal: normal!, emissive: emissive!, bytes: atlasSetBytes(set.size, set.normalScale), size: set.size };
+}
+
+/** Fetches 3 maps × 4 levels of an anim atlas (`BillboardPool.bindAnimAtlas`). `size` is the longer edge. */
+export async function loadAnimAtlasTextures(set: AnimAtlasSet, decoder: AtlasDecoder): Promise<AtlasTextures> {
+  const [albedo, normal, emissive] = await Promise.all(ATLAS_MAPS.map((m) => loadMap(set, m, decoder, null)));
+  return { albedo: albedo!, normal: normal!, emissive: emissive!, bytes: animAtlasSetBytes(set.width, set.height, set.normalScale), size: Math.max(set.width, set.height) };
 }
 
 /** §10.4.1 `bindSingle`: decodes only `frame.px` (and the matching cells of the mip files) into a private set. */
@@ -192,7 +228,11 @@ export function neutralAtlasTextures(): AtlasTextures {
     }
     const t = new DataTexture(data, 4, 4, red ? RedFormat : RGBAFormat, UnsignedByteType);
     stampAtlasTexture(t, map);
-    t.minFilter = NearestFilter;   // a single level
+    // a single level, but FILTERABLE like the atlases' trilinear min filter: three's WGSL builder treats a texture with
+    // Nearest min AND mag as unfilterable (`textureLoad` instead of `textureSample`), so a Nearest/Nearest neutral set
+    // compiled a different billboard program at the step-8 warm-up than every real atlas then needed (the first
+    // creature drawn — or an evolution sequence in a zone without wild creatures — compiled 2 programs; Part 7 E6)
+    t.minFilter = LinearFilter;
     t.name = `ewa_sprite_neutral_${map}`;
     t.needsUpdate = true;
     return t;

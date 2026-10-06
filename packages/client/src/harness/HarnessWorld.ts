@@ -26,6 +26,7 @@ import { setBattleActions } from '../battle/controllerRef';
 import { STEP_MS } from '../battle/constants';
 import { content, maxHpOf, species as speciesDef } from '../data/content';
 import { createStepCollider } from '../scene/collider';
+import { EvolutionDirector } from '../scene/EvolutionDirector';
 import { npcVisible } from '../scene/dialogue';
 import { HudWriter, partyStrip } from '../scene/HudWriter';
 import type { HudNameplates } from '../scene/HudWriter';
@@ -36,7 +37,7 @@ import { TRAINER_BACK_M, createSceneDirector, terrainFor } from '../scene/SceneD
 import type { SceneDirector } from '../scene/SceneDirector';
 import { SpawnViews } from '../scene/SpawnViews';
 import type { SpawnLike } from '../scene/SpawnViews';
-import { createSpriteCatalog, loadCreatureManifest } from '../scene/spriteCatalog';
+import { bindCatalogAtlas, createSpriteCatalog, loadCreatureManifest, speciesAtlases } from '../scene/spriteCatalog';
 import type { SpriteCatalog } from '../scene/spriteCatalog';
 import { withNeighbours, zoneSpecFor } from '../scene/zoneSpecFor';
 import { useUiStore } from '../state/ui';
@@ -86,6 +87,8 @@ export class HarnessWorld {
   probe!: RendererProbe;
   director!: SceneDirector;
   readonly hud = new HudWriter(null);
+  /** §20.5.6 the evolution sequence, as World3D builds it (the harness's `evolve()` plays through `app/evolution.ts`) */
+  evolution: EvolutionDirector | null = null;
   readonly targets: InteractionTargets;
   readonly input: LocalPlayerController;
   readonly remotes: RemoteInterpolator;
@@ -200,6 +203,20 @@ export class HarnessWorld {
     group.name = 'ewa:client-creatures';
     r.scene.add(group);
     if (p3 !== undefined) {
+      this.evolution = new EvolutionDirector({
+        stage: p3.stage,
+        descriptor: (sp, key, v, a) => this.catalog?.descriptor(sp, key, v, a) ?? null,
+        ensureSpecies: (sp) => void this.bindSpecies([sp]),
+        canPlay: () => useUiStore.getState().battle === null && !this.director.inBattle,
+        position: () => ({ x: this.input.renderX, z: this.input.renderZ }),
+        selfId: () => SELF_ID,
+        reduced: () => this.reduced,
+        setInputEnabled: (on) => this.input.setEnabled(on),
+        inputAfter: () => useUiStore.getState().battle === null,
+        setHudVisible: (on) => this.hud.setVisible(on),
+        hudVisible: () => true,
+        target: window,
+      });
       this.spawns = new SpawnViews({
         parent: group,
         acquire: (d) => p3.sprites.acquire(d),
@@ -248,7 +265,7 @@ export class HarnessWorld {
   private async bindAtlases(ids: string[], species: readonly string[]): Promise<void> {
     const cat = this.catalog;
     if (cat === null) return;
-    for (const sp of species) for (const a of cat.atlasesOf(sp)) if (!ids.includes(a)) ids.push(a);
+    for (const sp of species) for (const a of speciesAtlases(cat, sp)) if (!ids.includes(a)) ids.push(a);
     await this.bindIds(ids);
   }
 
@@ -260,7 +277,7 @@ export class HarnessWorld {
   private async bindSpecies(species: readonly string[]): Promise<void> {
     const cat = this.catalog;
     if (cat === null) return;
-    await this.bindIds(species.flatMap((sp) => [...cat.atlasesOf(sp)]));
+    await this.bindIds(species.flatMap((sp) => [...speciesAtlases(cat, sp)]));
   }
 
   private async bindIds(ids: readonly string[]): Promise<void> {
@@ -269,11 +286,11 @@ export class HarnessWorld {
     if (cat === null || p3 === undefined) return;
     await Promise.all(
       ids.filter((id) => !this.bound.has(id)).map(async (id) => {
-        const set = cat.atlas(id);
-        if (set === null) return;
+        const bind = bindCatalogAtlas(p3.sprites, cat, id);
+        if (bind === null) return;
         this.bound.add(id);
         try {
-          await p3.sprites.bindAtlas(set);
+          await bind;
         } catch (e) {
           this.log(`atlas bind failed ${id}: ${String(e)}`);
         }
@@ -333,6 +350,8 @@ export class HarnessWorld {
     const bf = this.director.battleFrame;
     if (bf !== null) {
       this.renderer.actors.setTransform(SELF_ID, bf.x - bf.fx * TRAINER_BACK_M, bf.z - bf.fz * TRAINER_BACK_M, Math.atan2(bf.fx, bf.fz), false, false);
+    } else if (this.evolution?.active === true) {
+      this.renderer.actors.setTransform(SELF_ID, this.input.renderX, this.input.renderZ, this.evolution.faceAngle(this.input.renderX, this.input.renderZ), false, false);
     } else {
       this.renderer.actors.setTransform(SELF_ID, this.input.renderX, this.input.renderZ, this.input.pose.angle, this.input.moving, this.input.running);
     }

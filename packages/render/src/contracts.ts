@@ -28,6 +28,18 @@ export interface SpriteFrame {
   readonly px: readonly [number, number, number, number];     // x, y, w, h level-0 texels, y down (= .px); used only by bindSingle's crop
   readonly footV: number;                  // 0..1 from the bottom of the rect where the feet touch the ground (pipeline value 0.08)
   readonly aspect: number;                 // rect width / height in texels (1 for the 1024² normalised frames)
+  readonly anim?: SpriteAnim;              // amended 2026-10-06: the side's flipbook (animated legendaries / mythicals only)
+}
+/**
+ * Amended 2026-10-06 (§10.4.5 flipbook; 40-pipelines.md §40.1.5 `ManifestAnimSide`): every page of an animated source
+ * in its own anim atlas, on the static frame's normalisation — the `rect` above stays the static frame (`staticFrame`),
+ * shown until the anim atlas is bound, and lines up with the flipbook to the texel.
+ */
+export interface SpriteAnim {
+  readonly atlas: string;                                                   // AnimAtlasSet.id, 'anim-<species>-<side>'
+  readonly rects: readonly (readonly [number, number, number, number])[];  // per page u0, v0, u1, v1 in the anim atlas, v up
+  readonly delaysMs: readonly number[];                                     // display time per page (the source's own delays)
+  readonly staticFrame: number;                                             // the page `rect` shows
 }
 export interface SpriteDescriptor {
   readonly id: string;                     // creature/spawn/battler id (render-side key)
@@ -281,7 +293,26 @@ export interface BattleStage {
   syncFrom(hp: readonly { readonly ref: BattlerRef; readonly hpFrac: number }[]): void;   // after battleResync: poses reset, no animation
   setTypeColors(table: Readonly<Record<TypeName, string>>): void;   // colourblind palettes (20-client.md §20.8.3)
   inspect(d: SpriteDescriptor | null): void;            // 4 m close-up pose for the party/dex inspector; null exits
+  /** The evolution sequence (amended 2026-10-05): call only after the server confirmed the evolution; a new call or `dress` cancels a running one. */
+  evolve(r: EvolutionRequest): EvolutionHandle;
   dispose(): void;
+}
+
+/** §10.7.5 evolution sequence phases; `fade` replaces `charge · alternate · peak` under effective reduced effects. */
+export type EvolutionPhase = 'stage' | 'charge' | 'alternate' | 'peak' | 'fade' | 'reveal' | 'hold' | 'exit' | 'done';
+export interface EvolutionRequest {
+  readonly from: SpriteDescriptor;                       // the form before (bound or binding: the sequence waits for both atlases)
+  readonly to: SpriteDescriptor;                         // the form after (the server's species)
+  readonly at?: { readonly x: number; readonly z: number } | null;   // the trainer's feet (default: the camera focus); the creature appears in front of them
+  readonly reduced: boolean;                             // effective reduced effects: a gentle cross-fade, no pulses, no burst, no shake
+  readonly cheer?: string | null;                        // actor id that cheers at the reveal when within 6 m of the creature (the local player)
+  readonly onPhase?: (phase: EvolutionPhase) => void;    // called from the frame hook on every phase entry: keep it cheap (defer store writes)
+}
+export interface EvolutionHandle {
+  readonly phase: EvolutionPhase;
+  readonly done: Promise<'done' | 'cancelled'>;          // after the cleanup: camera released, lights / post / bindings restored
+  skip(): void;                                          // before the reveal → the reveal; during the reveal / hold → the exit
+  cancel(): void;                                        // immediate cleanup (a battle starting, the stage disposed)
 }
 
 // ---- §10.7.6 ActorPool (verbatim) ---------------------------------------------------------------------------

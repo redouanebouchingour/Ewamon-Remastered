@@ -12,7 +12,7 @@
 import { Vector3 } from 'three/webgpu';
 import type { PerspectiveCamera } from 'three/webgpu';
 import type {
-  ActorPool, BattleStage, CameraRig, HallBounds, HudLayer, Terrain, ZoneHandle, ZoneSpec,
+  ActorPool, BattleStage, CameraRig, EvolutionHandle, HallBounds, HudLayer, Terrain, ZoneHandle, ZoneSpec,
 } from './contracts.js';
 import type { EffectsFlags } from './descriptors.js';
 import { shakeAllowed } from './post/effects.js';
@@ -104,6 +104,9 @@ export class NullBattleStage implements BattleStage {
   dress(_at: { readonly x: number; readonly z: number }, _terrain: Terrain, _participants: readonly string[], _hall?: HallBounds): void {} dressSpectator(): void {} undress(): void {} setBattler(): void {} setPose(): void {} hurt(): void {}
   faint(): void {} setWeather(): void {} vfx(): void {} prewarm(): void {} syncFrom(): void {} setTypeColors(): void {}
   inspect(): void {} dispose(): void {}
+  evolve(): EvolutionHandle {
+    return { phase: 'done', done: Promise.resolve('done'), skip: () => undefined, cancel: () => undefined };
+  }
 }
 
 export class NullHudLayer implements HudLayer {

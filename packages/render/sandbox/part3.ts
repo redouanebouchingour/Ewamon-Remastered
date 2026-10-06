@@ -11,16 +11,27 @@
  * beside them for scale, and walkers / runners circling in front at 1.0, 4.2 and 7.0 m/s (the protocol's walk and run
  * speeds). Controls on `part3.people`: `emote(n)` (all, 0..6), `close(i)` (inspector close-up on look i), `wide()`,
  * `march(on)` (the lineup walks 3 m along its row and back, `&marchSpeed=` m/s), `gait(i)`, `stats()`.
+ *
+ * `?demo=legends` (amended 2026-10-06, §10.4.5 flipbook): the 10 animated legendaries / mythicals (`&species=a,b` to
+ * pick) in two rows facing the camera, static + anim atlases bound (`&anim=0` binds only the static atlases: the A/B
+ * baseline), `&side=back`. Controls on `part3.legends`: `frames()` (each card's flipbook page), `facing(side)`,
+ * `pose(i, pose, ms)`, `faint(i)`, `inspect(i | null)`, `bindAnim()`, `stats()`. `?demo=battle&mine=&foe=` puts any two
+ * species in the arena (their atlases, flipbooks included, are bound first).
  */
 import { Group, Vector3 } from 'three/webgpu';
 import { SPECIES } from '@ewa/content';   // sandbox only (vite alias); the render package never imports content
-import { part3Of, rendererInternals, type AtlasSet, type CreatureBillboard, type FrameHook, type Renderer, type SpriteDescriptor, type TypeName, type VariantKey, type VfxId } from '../src/index.js';
+import { part3Of, rendererInternals, type AnimAtlasSet, type AtlasSet, type CreatureBillboard, type FrameHook, type Renderer, type SpriteDescriptor, type TypeName, type VariantKey, type VfxId } from '../src/index.js';
 
 interface ManifestMap { readonly url: string; readonly mips: readonly string[] }
 interface ManifestAtlas { readonly id: string; readonly species: readonly string[]; readonly size: 2048; readonly albedo: ManifestMap; readonly normal: ManifestMap; readonly emissive: ManifestMap; readonly normalScale: 0.5 | 1 }
 interface ManifestRect { readonly atlas: string; readonly px: readonly [number, number, number, number]; readonly uv: readonly [number, number, number, number]; readonly footV: number; readonly aspect: number }
-interface ManifestSprite { readonly front: ManifestRect; readonly back: ManifestRect; readonly sizeScale: number; readonly home: string }
-interface Manifest { readonly version: 2; readonly atlases: readonly ManifestAtlas[]; readonly zones: Readonly<Record<string, readonly string[]>>; readonly sprites: Readonly<Record<string, ManifestSprite>> }
+interface ManifestAnimSide { readonly atlas: string; readonly frames: readonly (readonly [number, number, number, number])[]; readonly delays: readonly number[]; readonly staticFrame: number }
+interface ManifestAnimAtlas { readonly id: string; readonly width: number; readonly height: number; readonly cell: number; readonly albedo: ManifestMap; readonly normal: ManifestMap; readonly emissive: ManifestMap; readonly normalScale: 0.5 | 1 }
+interface ManifestSprite { readonly front: ManifestRect; readonly back: ManifestRect; readonly sizeScale: number; readonly home: string; readonly anim?: { readonly front?: ManifestAnimSide; readonly back?: ManifestAnimSide } }
+interface Manifest {
+  readonly version: 2; readonly atlases: readonly ManifestAtlas[]; readonly zones: Readonly<Record<string, readonly string[]>>; readonly sprites: Readonly<Record<string, ManifestSprite>>;
+  readonly animAtlases?: readonly ManifestAnimAtlas[];
+}
 
 const BASE = '/creatures/';
 
@@ -40,6 +51,14 @@ function atlasSet(a: ManifestAtlas): AtlasSet {
   return { id: a.id, albedo: m(a.albedo), normal: m(a.normal), emissive: m(a.emissive), size: a.size, normalScale: a.normalScale };
 }
 
+function animAtlasSet(a: ManifestAnimAtlas): AnimAtlasSet {
+  const m = (x: ManifestMap) => ({ url: BASE + x.url, mips: x.mips.map((u) => BASE + u) });
+  return { id: a.id, albedo: m(a.albedo), normal: m(a.normal), emissive: m(a.emissive), width: a.width, height: a.height, cell: a.cell, normalScale: a.normalScale };
+}
+
+/** `&anim=0`: descriptors without flipbooks (the static A/B baseline). */
+const ANIM_ON = new URLSearchParams(location.search).get('anim') !== '0';
+
 function typesOf(id: string): readonly [TypeName] | readonly [TypeName, TypeName] {
   const s = SPECIES.find((x) => x.id === id);
   const t = (s?.types ?? ['Normal']) as readonly TypeName[];
@@ -48,8 +67,12 @@ function typesOf(id: string): readonly [TypeName] | readonly [TypeName, TypeName
 
 function descriptor(man: Manifest, species: string, key: string, variant: VariantKey = 'normal', isAlpha = false): SpriteDescriptor {
   const sp = man.sprites[species]!;
-  const f = (r: ManifestRect) => ({ atlas: r.atlas, rect: r.uv, px: r.px, footV: r.footV, aspect: r.aspect });
-  return { id: key, front: f(sp.front), back: f(sp.back), sizeScale: sp.sizeScale, types: typesOf(species), variant, isAlpha };
+  // the client adapter's mapping (spriteCatalog.ts): frames → rects, delays → delaysMs
+  const f = (r: ManifestRect, a: ManifestAnimSide | undefined) => ({
+    atlas: r.atlas, rect: r.uv, px: r.px, footV: r.footV, aspect: r.aspect,
+    ...(a && ANIM_ON ? { anim: { atlas: a.atlas, rects: a.frames, delaysMs: a.delays, staticFrame: a.staticFrame } } : {}),
+  });
+  return { id: key, front: f(sp.front, sp.anim?.front), back: f(sp.back, sp.anim?.back), sizeScale: sp.sizeScale, types: typesOf(species), variant, isAlpha };
 }
 
 export async function startPart3Demo(r: Renderer, mode: string, api: Record<string, unknown>): Promise<void> {
@@ -68,6 +91,29 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
   const focus = p.rig.focus.clone();
   const out: Record<string, unknown> = { bundle: p, species, manifest: man, tsl: await import('three/tsl'), three: await import('three/webgpu') };
   api.part3 = out;
+  // a species' static atlases + flipbooks, as the client binds them (World3D.ensureSpecies)
+  const bound = new Set(zoneAtlases);
+  const bindSpecies = async (list: readonly string[], withAnim = ANIM_ON): Promise<void> => {
+    const jobs: Promise<void>[] = [];
+    for (const s of list) {
+      const sp = man.sprites[s];
+      if (!sp) continue;
+      for (const id of [sp.front.atlas, sp.back.atlas]) {
+        if (bound.has(id)) continue;
+        bound.add(id);
+        jobs.push(p.sprites.bindAtlas(atlasSet(man.atlases.find((a) => a.id === id)!)));
+      }
+      if (!withAnim) continue;
+      for (const side of [sp.anim?.front, sp.anim?.back]) {
+        const a = side ? man.animAtlases?.find((x) => x.id === side.atlas) : undefined;
+        if (!a || bound.has(a.id)) continue;
+        bound.add(a.id);
+        jobs.push(p.sprites.bindAnimAtlas(animAtlasSet(a)));
+      }
+    }
+    await Promise.all(jobs);
+  };
+  out.bindSpecies = bindSpecies;
 
   // a few walking characters in every mode (KayKit looks, §10.7.7): a walker at 1.0 m/s, the protocol's walk (4.2 m/s,
   // the run clip at × 1.8) and run (7 m/s); an id the manifest does not list resolves to a deterministic base look
@@ -118,6 +164,54 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
       pose: (i: number, pose: Parameters<CreatureBillboard['setPose']>[0]) => cards[i]?.setPose(pose, 0),
       inspect: (i: number | null) => p.stage.inspect(i === null ? null : descriptor(man, species[i]!, `inspect:${species[i]}`)),
     });
+  }
+
+  if (mode === 'legends') {
+    const q = new URLSearchParams(location.search);
+    const list = (q.get('species') ?? 'bankaiser,galaxion,glacinid,lumyth,noxmyth,raikitsune,sunjaw,voidraxis,voltaura,zenryu').split(',').filter((s) => man.sprites[s]);
+    const t1 = performance.now();
+    await bindSpecies(list);
+    console.info(`[part3] legends: bound ${list.length} species (static${ANIM_ON ? ' + flipbooks' : ' only'}) in ${(performance.now() - t1).toFixed(0)} ms`, p.sprites.stats());
+    walkers.forEach((_, i) => p.actors.despawn(`walker${i}`));
+    walkersOn = false;
+    const group = new Group();
+    group.name = 'sandbox:legends';
+    r.scene.add(group);
+    const fwd = p.rig.dioramaForward(new Vector3());
+    const right = new Vector3(-fwd.z, 0, fwd.x);
+    const ground = (x: number, z: number): number => ((api.zone as (() => { collider: { sampleClamped(x: number, z: number): number } } | null) | undefined)?.()?.collider.sampleClamped(x, z) ?? 0);
+    const perRow = Math.ceil(list.length / (list.length > 5 ? 2 : 1));
+    const spacing = Number(q.get('spacing') ?? 2.6);
+    const at = focus.clone().addScaledVector(fwd, Number(q.get('back') ?? 1)).addScaledVector(right, Number(q.get('shift') ?? 0));
+    p.rig.setFocus(at.x, ground(at.x, at.z), at.z);
+    const side = q.get('side') === 'back' ? 'back' : 'front';
+    const cards = list.map((s, i) => {
+      const row = Math.floor(i / perRow); const col = i % perRow;
+      const pos = at.clone().addScaledVector(right, (col - (perRow - 1) / 2) * spacing).addScaledVector(fwd, row * 3.2 - (list.length > perRow ? 1.6 : 0));
+      const bb = p.sprites.acquire(descriptor(man, s, `legend:${s}`));
+      bb.setFacing(side);
+      bb.setPosition(pos.x, ground(pos.x, pos.z), pos.z);
+      bb.setSharp(true);
+      group.add(bb.object);
+      return bb;
+    });
+    p.hud.set({ nameplates: [], chat: [], prompt: null, zoneName: null, questHint: null, party: [] });
+    const legends = {
+      list, cards,
+      frames: () => cards.map((c) => c.animFrame),
+      animated: () => cards.map((c) => c.animated),
+      facing: (sd: 'front' | 'back') => cards.forEach((c) => c.setFacing(sd)),
+      pose: (i: number, pose: Parameters<CreatureBillboard['setPose']>[0], ms = 0) => cards[i]?.setPose(pose, ms),
+      faint: (i: number) => cards[i]?.setPose('faint', 900),
+      inspect: (i: number | null) => p.stage.inspect(i === null ? null : descriptor(man, list[i]!, `inspect:${list[i]}`)),
+      /** Shows / hides the lineup cards (an inspector close-up without the lineup card behind it). */
+      show: (on: boolean) => cards.forEach((c) => c.setShown(on)),
+      /** The inspected billboard's flipbook page (−1 when static / none). */
+      inspectedPage: () => { const live = p.sprites.liveBillboards(); const b = live.find((x) => x.id.startsWith('inspect:')); return b ? b.animFrame : null; },
+      bindAnim: () => bindSpecies(list, true),
+      stats: () => ({ sprites: p.sprites.stats(), programs: r.renderer.info.memory.programs, textures: r.renderer.info.memory.textures }),
+    };
+    Object.assign(out, { legends });
   }
 
   if (mode === 'wild') {
@@ -243,8 +337,9 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
     }
     p.stage.dress(at, 'grove', ['walker0'], hallInfo?.hall);
     p.rig.pushIn(at, 600);
-    const mine = species.includes('mossling') ? 'mossling' : species[0]!;
-    const foe = species.includes('snapling') ? 'snapling' : species[1]!;
+    const mine = q.get('mine') ?? (species.includes('mossling') ? 'mossling' : species[0]!);
+    const foe = q.get('foe') ?? (species.includes('snapling') ? 'snapling' : species[1]!);
+    await bindSpecies([mine, foe]);
     const me = { side: 0 as const, slot: 0 }; const them = { side: 1 as const, slot: 0 };
     p.stage.setBattler(me, descriptor(man, mine, 'battler:mine'));
     p.stage.setBattler(them, descriptor(man, foe, 'battler:foe', 'normal', false));
@@ -299,6 +394,77 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
     out.pause = (on: boolean) => { paused = on; };
     Object.assign(out, { at, turn, loop, battlers: () => [p.stage.battler(me), p.stage.battler(them)] });
     if (new URLSearchParams(location.search).get('auto') !== '0') void loop();
+  }
+
+  if (mode === 'evolve') {
+    // §10.7.5 evolution sequence: `&from=bramblecub&to=briarbear` (default), `&reduced=1`, `&look=`; the local player
+    // stands at the focus facing the camera; `part3.evo.play(reduced?)`, `skip()`, `step(ms)` (with `pause(true)`),
+    // `state()`. `&auto=1` plays once on load.
+    const q = new URLSearchParams(location.search);
+    const from = q.get('from') ?? 'bramblecub'; const to = q.get('to') ?? 'briarbear';
+    const need = new Set([man.sprites[from]?.front.atlas, man.sprites[from]?.back.atlas, man.sprites[to]?.front.atlas, man.sprites[to]?.back.atlas]);
+    const extra = man.atlases.filter((a) => need.has(a.id) && !zoneAtlases.includes(a.id)).map(atlasSet);
+    walkers.forEach((_, i) => p.actors.despawn(`walker${i}`));
+    walkersOn = false;
+    const fwd = p.rig.dioramaForward(new Vector3());
+    const faceCam = Math.atan2(-fwd.x, -fwd.z);
+    const ground = (x: number, z: number): number => ((api.zone as (() => { collider: { sampleClamped(x: number, z: number): number } } | null) | undefined)?.()?.collider.sampleClamped(x, z) ?? 0);
+    const me = { x: focus.x + Number(q.get('dx') ?? 0), z: focus.z + Number(q.get('dz') ?? 0) };
+    p.actors.spawn('me', { look: q.get('look') ?? 'casual_male', name: 'Rowan', guildTag: '', isLocal: true });
+    p.actors.setTransform('me', me.x, me.z, faceCam + Number(q.get('face') ?? 0), false, false);
+    p.rig.setFocus(me.x, ground(me.x, me.z), me.z);
+    p.hud.set({ nameplates: [], chat: [], prompt: null, zoneName: null, questHint: null, party: [] });
+    // a wild creature of the zone a few metres off, as the client's SpawnViews would show one (`&wild=0` hides it):
+    // the atlas billboard programs (beauty + sun shadow) exist before the sequence, as they do in play
+    if (q.get('wild') !== '0') {
+      const wildBb = p.sprites.acquire(descriptor(man, species[1] ?? species[0]!, 'evo:wild'));
+      wildBb.setFacing('front');
+      const wx = me.x - fwd.x * 2 - fwd.z * 5; const wz = me.z - fwd.z * 2 + fwd.x * 5;
+      wildBb.setPosition(wx, ground(wx, wz), wz);
+      r.scene.add(wildBb.object);
+    }
+    const host2 =host as unknown as { post: { uniforms: { exposure: { value: number }; vignette: { value: number } } } };
+    const phases: { phase: string; at: number }[] = [];
+    let handle: ReturnType<typeof p.stage.evolve> | null = null;
+    let clock = 0;
+    // programs three holds (WGSL keys → names): what the sequence compiles, if anything
+    const progs = (): Map<string, string> => {
+      const pr = (r.renderer as unknown as { _pipelines?: { programs?: { vertex: Map<string, { name: string }>; fragment: Map<string, { name: string }> } } })._pipelines?.programs;
+      const m = new Map<string, string>();
+      if (pr) { for (const [k, v] of pr.vertex) m.set(`v:${k}`, `v:${v.name}`); for (const [k, v] of pr.fragment) m.set(`f:${k}`, `f:${v.name}`); }
+      return m;
+    };
+    let progsAtPlay = new Map<string, string>();
+    const newPrograms = (): string[] => { const now = progs(); const outN: string[] = []; for (const [k, n] of now) if (!progsAtPlay.has(k)) outN.push(n); return outN; };
+    const play = (reduced = q.get('reduced') === '1'): void => {
+      void Promise.all(extra.map((s) => p.sprites.bindAtlas(s)));            // the sequence waits for the binds
+      progsAtPlay = progs();
+      phases.length = 0; clock = 0;
+      handle = p.stage.evolve({
+        from: descriptor(man, from, `evo:${from}`), to: descriptor(man, to, `evo:${to}`), at: me, reduced, cheer: 'me',
+        onPhase: (ph) => phases.push({ phase: ph, at: Math.round(clock) }),
+      });
+    };
+    extraTicks.push((dt) => { clock += dt; });
+    const evo = {
+      play,
+      /** Resolves when the zone's background compile is done (measure programs only after it). */
+      idle: async () => { await (r.compileIdle?.() ?? Promise.resolve()); return r.renderer.info.memory.programs; },
+      skip: () => handle?.skip(),
+      /** Advances `ms` of frames at 60 Hz with the loop paused (`__ewaSandbox.pause(true)` first). */
+      step: (ms: number) => { const n = Math.max(1, Math.round(ms / (1000 / 60))); for (let i = 0; i < n; i++) r.frame(1000 / 60); },
+      state: () => {
+        const s = p.stage.evolution;
+        return {
+          phase: handle?.phase ?? null, clock: s?.clock ?? null, bound: s?.bound ?? null, phases: [...phases],
+          sample: s ? { ...s.lastSample } : null, exposure: host2.post.uniforms.exposure.value, vignette: host2.post.uniforms.vignette.value,
+          light: p.stage.beaconLights[0]!.intensity, programs: r.renderer.info.memory.programs, live: p.sprites.stats().live,
+          rig: p.rig.currentMode, blend: p.rig.shotBlend, newPrograms: newPrograms(),
+        };
+      },
+    };
+    Object.assign(out, { evo });
+    if (q.get('auto') === '1') setTimeout(() => play(), 300);
   }
 
   // the sandbox walkers move inside the renderer's frame (before the actor pool's hook), so `shot()` frames animate too

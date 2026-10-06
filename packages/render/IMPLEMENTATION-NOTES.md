@@ -916,6 +916,246 @@ warm-up body. Removed: `test/characters.test.ts` (the pixel path). Render total:
 3. The DOF gather noise reads as a fine speckle on out-of-focus faces in the 4 m inspector close-ups (Part 4 Open 6);
    the diorama distances do not show it.
 
+
+---
+
+# Part 7 — the evolution sequence (2026-10-05)
+
+Scope: the user-approved evolution moment — stage it with the inspector camera, a white glow pulsing between the old
+and new silhouettes with rising sparkles and a soft light under it, a light burst and the new form's bounce; flashing
+≤ 3 per second at every moment (WCAG 2.3.1), a cross-fade under effective reduced effects, skip; played only after the
+server confirmed the evolution (client Part 6). SPEC: §10.4.5, §10.7.5 (+ its VFX table) — CHANGELOG 2026-10-05.
+
+## Layout
+
+| File | What |
+|---|---|
+| `stage/evolution.ts` | `EVOLUTION` numbers, the two timelines (`EVOLUTION_TIMELINE`), the pure `sampleEvolution(t, reduced, out)` (what is shown, glow, dissolve, light, dim, pulse Hz), `alternationHz`, `spotScore`, the sequence effects (`evolutionRecipes`), the runtime `EvolutionSequence` (implements the contract's `EvolutionHandle`) |
+| `stage/battleStage.ts` | `evolve(request)`, `evolution` (the running sequence), the site (`evolutionSite`: main-arena ground-cover slots 0/1 + cutaway slot 0), `armWarmupShadows`; `dress` / `inspect` / `dispose` / a second `evolve` cancel; the frame hook runs the sequence after the beacon writes |
+| `sprites/billboard.ts`, `tables.ts` | the per-object `glow` (`BILLBOARD.glowGain` 1.3), `setGlow`, `setShown`, `setSizeMul`, `widthM` |
+| `stage/vfx.ts` | `spawnRecipe` (any recipe into the pooled emitters), `SequenceVfxRecipe` |
+| `camera/rig.ts` | `inspect(aim, ms, distance?)`, `dollyShot(distance, ms)` (eases the shot distance; the battle framing's ease now has its own duration field), `shotDistance` |
+| `contracts.ts`, `defaults.ts`, `index.ts` | `BattleStage.evolve`, `EvolutionRequest`, `EvolutionHandle`, `EvolutionPhase` (SPEC verbatim); `NullBattleStage.evolve` |
+| `stage/wiring.ts` | the stage gets the post uniforms (`exposure`, `vignette`); the warm-up arms the beacons' shadow maps |
+| `sandbox/part3.ts`, `main.ts` | `?demo=evolve&from=&to=&reduced=&wild=`; `part3.evo.{play, skip, step, state, idle}`; `__ewaSandbox.pause(on)` for deterministic frame stepping |
+| `test/evolution.test.ts` | 9 tests (below) |
+
+## Design
+
+**E1 — timeline** (ms; reduced in brackets): `stage` 0–1100 (same) · `charge` 1100–2000 · `alternate` 2000–5600 ·
+`peak` 5600–6100 [`fade` 1100–3700] · `reveal` 6100–7000 [3700–4600] · `hold` 7000–8800 [4600–6400] · `exit`
+8800–9500 [6400–7100]. Total 9.5 s [7.1 s]. `skip()` before the reveal jumps to it (the skipped phases' one-shot events
+never run; the build-up's motes are cleared and the burst spawns), during the reveal / hold to the exit. The clock is
+real time (the hook's `dtReal`), so a hitstop or slow-mo left over from a battle never stretches it.
+
+**E2 — the silhouettes.** Both forms are billboards from the shared pool at the same feet. `glow` mixes the lit
+albedo to white and adds `glow × 1.3` white emissive: a glowing white silhouette of the card's own binary alpha at any
+time of day (the hurt flash mixes only 85 % into the LIT albedo, grey at dusk). A swap is `setShown` (group visibility):
+no material, program or binding change. Alternation: `showNew = frac(cycles(τ)) ≥ 0.5` with `cycles` the integral of a
+linear 0.7 → 2.4 Hz ramp (5.9 cycles, 12 swaps); each incoming silhouette pops from 0.88 × to full size over 110 ms
+(`setSizeMul`, ease-out). The peak holds the new silhouette still for 500 ms, which keeps the burst out of the
+alternation's last second.
+
+**E3 — WCAG 2.3.1.** Measured on the pure timeline at 1 ms: max 2.4 Hz; at most 5 swaps in any one-second window
+(≥ 214 ms apart); the luminance proxy (glow × area of the shown silhouette, the new one 1.6 × larger, + 0.25 × light)
+has ≤ 6 opposing changes of ≥ 10 % of its range in every 1 s window, burst included (≤ 3 flashes). Reduced: no swap
+(each form shown over one span), the light never above its charge level, no pair of opposing changes in any second.
+
+**E4 — staging.** Placement: 9 candidate spots in front of the trainer (toward the camera) and to the side by at
+least half the wider card + 0.3 m (a 2.2 m-wide Briarbear hid its trainer at 0.6 m); the first scoring 0 wins
+(`spotScore`: not standable +100, a footprint under it +40 / within 0.45 m +10 each, every footprint sample on the
+3.5 m ground line toward the camera +2 — the collider's `blocked` / `passable`). Camera: the §10.7.4 inspector pose
+(pitch −18°) via `rig.inspect(aim, 1100, max(4, 2.6 × taller height, the creature + trainer span / (0.8 × the frame
+width at 1 m)))`, aimed at 0.45 × the taller height and at the middle of the span from the creature's far edge to the
+trainer's outer edge (both in frame — a fixed 25 % shift put the trainer at the frame edge once the spot moved further
+out); a 0.6 m dolly-in over the build-up, a 0.4 m pull-back past the start at the reveal (the whole new form, room for
+the client's bottom banner); H11 crown avoidance applies as for any shot. The site (450 ms in, restored halfway
+through the exit): grass inside 1.3 m (back by 2.3 m) and small props inside 1.6 m via the main arena's ground-cover
+slots 0/1, merged static props within 1.9 m of a point 1 m toward the camera via the cutaway's slot 0 (first runs put
+a market stall's post across the creature). A main arena still sinking after a battle is finished at once.
+
+**E5 — light and dim.** The soft underlight is the reserved arena beacon 0 (from `createRenderer`, so the light set
+never changes, C13): a warm (1, 0.92, 0.78) spot 1.15 m toward the camera, 0.2 m up, aimed at mid-height, angle 0.6,
+penumbra 0.9, range 9 m, decay 2, intensity 7 × the phase level (stage 0.45 → charge 0.7 → peak 1.15 → burst 2.4 with a
+70 ms rise and a 220 ms decay → hold 0.55 → 0). Its shadow camera renders `LAYERS.billboards` only while borrowed. The
+world dims by the post uniforms the stage now receives: `exposure` × 0.74 and `vignette` 0.22 → 0.55, back over the
+reveal (no new pass; the creature's glow is emissive, so it stays bright).
+
+**E6 — no program at sequence time.** First sandbox runs listed 4 new programs (v + f `ShadowMaterial`, v + f
+`ewa:billboard:a-000`) on the sequence's first frame. Root cause (read in `WGSLNodeBuilder.isUnfilterable`): three
+0.186 compiles a texture whose min AND mag filters are Nearest as unfilterable (`textureLoad`), and the warm-up
+billboard's 4 × 4 neutral set had exactly that, so the step-8 warm-up compiled a billboard program (beauty + sun shadow)
+that no atlas uses (Nearest mag, trilinear min); the first atlas billboard drawn — a wild creature in play, or the
+evolution in a zone without wild creatures — compiled the real one. `neutralAtlasTextures` now uses a linear min filter
+(one level, nothing visible changes): boot programs 111 → 107, and with NO creature on screen before it the sequence
+compiles **0 programs** (measured, `&wild=0`). Two more guards: `Stage.armWarmupShadows` (called by the wiring's warm-up
+objects) makes both beacons render their shadow maps over the warm group during the two step-8 frames
+(`shadow.autoUpdate` held true for `STAGE.warmShadowFrames` 2 frames, aimed from (0, 4, 4)), which also readies a
+battle's beacon shadows; and while borrowed, only billboards render into beacon 0's map. Render targets 36 → 36.
+
+**E7 — atlases.** Both billboards are acquired at the start (a billboard whose atlas is still binding stays hidden and
+is re-pointed when the bind lands, §10.4.2). The stage holds 1 ms before its end until both are bound (at most 8 s);
+past that, with the new form unbound, the sequence goes straight to the reveal. The client binds the new species when
+the evolve prompt opens and again at the start.
+
+**E8 — cleanup** (done or cancelled): both billboards disposed (pool live count and atlas refcounts back), beacon 0's
+position, target, colour, intensity, angle, penumbra, distance, decay, `shadow.autoUpdate` and shadow-camera layer mask
+restored, post exposure / vignette restored, the site restored; on cancel the VFX pool is cleared and the camera
+released unless a battle's push-in owns it (`dress` comes after `pushIn` in `SceneDirector.enterBattle`). The trainer
+cheers (`setEmote(id, 2)`, the `cheer` clip) 150 ms into the reveal when within 6 m; the new form plays `celebrate`
+(640 ms) 420 ms in. Per frame: scalar writes on preallocated objects; the phase callback runs once per phase.
+
+**E9 — sequence effects** (`evolutionRecipes(type, reduced)`, recipes outside the 47 `VfxId`s, spawned through
+`spawnRecipe` into the same pooled emitters and material): `evolve_motes` (rising cream stars + type-coloured soft
+discs from charge to peak), `evolve_converge` (stars drawn into the chest at the peak), `evolve_burst` (a soft flare
+disc, a white / gold star burst at 6.5 m/s, two ring cards 1.2 → 2.4 m, rising type-coloured stars); reduced: slower
+motes and `evolve_reveal` (rising stars only). Tuned on the frames: pixel-square motes read as dust (now discs and
+stars), a 3 m flare + 5 m rings washed the whole frame white (now 2.4 m / 2.4 m at lower intensity), the glow's linear
+fade left the creature white until the reveal's end (now ease-out over 560 ms after a 120 ms hold).
+
+## Measured
+
+Sandbox (`?zone=mirevale&x=2&z=8&demo=evolve`, bramblecub → briarbear, headless Chrome 154 over CDP, Intel Gen-12 iGPU,
+1280 × 720, the loop paused and `frame(16.67)` stepped by hand, a screenshot every 150 ms; frames under the session's
+scratchpad, see the client notes for the in-client run):
+
+| | idle (diorama) | stage | alternate | reveal | hold | after |
+|---|---|---|---|---|---|---|
+| beauty + post draws | 128 | 146 | 146 | 148 | 145 | 128 |
+| shadow draws | 263 | 206 | 204 | 203 | 204 | 263 |
+| programs / render targets | 111 / 36 | 109 / 36 | 109 / 36 | 109 / 36 | 109 / 36 | 109 / 36 |
+
+(the program count drops by 2 when three releases unused programs; nothing is added; these runs predate the E6 neutral
+fix, after which the same run reads 107 → 105). After `done`: live billboards
+1 (the wild creature) as before, exposure 1, vignette 0.22, beacon intensity 0, rig `diorama`, blend 0. Day (11:00),
+night (21:30), reduced and skip runs were captured; at night the white silhouettes, the burst halo and the underlit new
+form read strongly.
+
+## Tests
+
+`test/evolution.test.ts` (9): the two timelines (spans, totals 9.5 / 7.1 s, boundaries); WCAG (≤ 3 Hz at every
+millisecond, swaps ≥ 1/6 s apart, ≤ 6 swaps and ≤ 6 opposing luminance changes per 1 s window, the peak holds the new
+silhouette); reduced (one span per form, no spike, glow ≤ 0.35, ≤ 1 change per second, no burst / ring recipes);
+spot scoring; the runtime on a real `Stage` (phases in order and on time to one frame, dim / light / site / cheer /
+glow seen, the shake requested only on the full path, then exact restore of the beacon light snapshot, post uniforms,
+mask and cutaway slots, pool live count, atlas refcounts, rig mode and camera position < 1e-6 m); the atlas gate (holds
+until the bind, then charges; never bound → reveal); skip (→ reveal without the skipped phases' events, → exit);
+reduced runtime (both forms dithered at once, no shake, light ≤ charge level); `dress` cancels (the battle keeps the
+camera, nothing borrowed stays), a second `evolve` cancels the first. Render total: 24 files, 233 tests.
+
+## Open
+
+1. **The spot-shadow pass of other materials** (props, trees in the beacon's cone) is still compiled on a battle's
+   first beacon-shadow frame for materials the warm group does not hold (instanced scatter); the evolution avoids it by
+   rendering billboards only. Not measured for battles here.
+2. **Placement uses footprints only**: a building corner or a tree crown between the camera and the spot is not part of
+   the score (the camera's crown pull-in still applies). A wall right behind the trainer can fill the background.
+3. The atlas billboard's programs used to compile on the first creature drawn in every session (E6, fixed by the
+   filterable neutral set); a fresh-profile harness re-run would show it as fewer programs and no first-creature hitch
+   (the M2 budget JSONs were not re-captured here).
+
+---
+
+# Part 8 — flipbooks: the animated legendaries (2026-10-06)
+
+Scope: the 10 legendaries / mythicals animated in the original game (GIF / animated WebP) and were frozen on their
+frame-select page. The sprite pipeline now ships every page of each side as a flipbook (40-pipelines.md §40.1.8:
+512² cells, one atlas per side, the static frame's normalisation); render plays it. SPEC: §10.4.1, §10.4.2, §10.4.5,
+§10.4.6 — CHANGELOG 2026-10-06.
+
+## Layout
+
+| File | What |
+|---|---|
+| `contracts.ts` | `SpriteFrame.anim?: SpriteAnim` (`atlas`, `rects` per page, `delaysMs`, `staticFrame`) |
+| `sprites/atlas.ts` | `AnimAtlasSet` (non-square grid, `width`/`height`/`cell`), `loadAnimAtlasTextures`, `chainBytesWH`, `animAtlasSetBytes` |
+| `sprites/tables.ts` | `flipbookTotalMs`, `flipbookFrame(delays, total, t)` (pure, allocation-free, O(pages)), `flipbookPhase01(id)`, `BILLBOARD.dissolveCellsPerFrame` 512 |
+| `sprites/billboard.ts` | `SpritePool.bindAnimAtlas`; `resolve()` prefers a bound flipbook; `CreatureBillboard` flipbook clock, page writes, faint hold, `animated` / `animFrame` / `animPaused`; per-object `dissolveCells` |
+| `stage/battleStage.ts` | `sameFrame` also compares the flipbook atlas |
+| `sandbox/part3.ts` | `?demo=legends` (`&species=`, `&side=back`, `&anim=0`), `?demo=battle&mine=&foe=`; the sandbox adapter maps `anim` like the client's |
+| `test/flipbook.test.ts` | 9 tests (below) |
+
+## Design
+
+**F1 — one write per page.** A flipbook is an ordinary atlas material of the one billboard graph (`createBillboardMaterial`
+on the anim atlas's textures): the per-object `rect` the static frame uses is the only thing a page changes. The
+billboard's `update(dt)` (the pool's per-frame hook, `dt × timeScale`) advances a flipbook clock unless held, adds a per-id
+phase (`flipbookPhase01(id) × loop`, FNV salted apart from the bob phase) and writes `rect` only when
+`flipbookFrame` returns a new page — four scalars on a preallocated `Vector4`. No program, material, texture or draw call
+changes while a flipbook plays; every page of a side lives in its one atlas.
+
+**F2 — static frame first, one re-point.** `resolve(frame)` returns the flipbook material when `frame.anim.atlas` is
+bound; otherwise the static path as before, and a ready static side registers a wait on the anim atlas id so the bind
+landing re-points it once (`resolveWaiting` → `rebind`). The static rect is the frame-select page normalised identically
+(the pipeline's shared transform), so the swap shows no jump (measured below). A descriptor without `anim` never waits.
+
+**F3 — faint holds the page.** `animPaused` = the `faint` pose, or a `setFaint(p > 0)` not yet cleared by a pose or
+`setFaint(0)` (the timeline's resync path and the evolution sequence's dissolves use `setFaint`). Hitstop needs no flag:
+the pool is driven with `dt × timeScale`. Hurt flash, poses, `enter`/`exit` dissolves keep playing the flipbook.
+
+**F4 — dissolve holes per cell.** The hole hash was `floor(uvRect × 1024)` in atlas uv — 2 texels (1/512 of the cell) on a
+2048² static atlas but 3 × 2 texels (6/512 × 4/512 of the cell) on a 3072 × 2048 anim atlas. It now reads a per-object
+`dissolveCells` (vec2): 1024 on static atlases and singles (unchanged), `512 / rect size` on a flipbook (1 anim texel =
+1/512 of the cell). One more `userData` read in the one program; the program count is unchanged (below).
+
+## Measured (sandbox, headless Chrome 154 over CDP, WebGPU, Intel Gen-12, 1280 × 720, loop paused, `frame(16.67)` stepped)
+
+| Run | flipbooks off (`&anim=0`) | flipbooks on |
+|---|---|---|
+| `?demo=legends` (10 species, 2 rows) — draw calls (beauty + shadow) | 235 (87 + 148) | 235 (87 + 148) |
+| — programs / materials | 110 / 15 | 110 / 15 |
+| — sprite atlas cache (estimate) / three `texturesSize` | 468 MB / 1 034 MB | 1 529 MB / 2 808 MB |
+| `?demo=battle&mine=zenryu&foe=raikitsune` — draw calls | 359 (94 + 265) | 359 (94 + 265) |
+| — programs | 114 | 114 |
+
+The billboard program has the same WGSL (vertex `7be5d308`, fragment `8e09143a` by FNV of the cache key) on a static and
+an anim atlas material; the only difference in the program list is which material compiled it first (its name). A
+character-skinning vertex variant differs between any two runs, flipbooks or not. An earlier battle run read 112 / 114:
+compile timing, not repeatable.
+
+- Binding the 10 species' static atlases + 20 flipbooks: 2.9 s warm. GPU per side by the cache estimate: 50 MB
+  (3072 × 2048), 52 MB (2560²), 75 MB (3072²); three's `texturesSize` counts more (≈ 89 MB a side): 20 sides bound at
+  once is 1.8 GB by its count, over the §50.2.2 700 MB cap — the lineup binds every legendary at once, play does not.
+- Pages advance on the source delays: 125 ms pages change after 7–8 frames at 60 fps (`[0×6, 1×8, 2×…]` from page 0).
+- Static ↔ flipbook alignment in the 4 m inspector (raikitsune front, `&anim=0` vs the flipbook stepped to page 0, same
+  camera): same silhouette, position, size and foot line; only the texel size doubles (512 vs 1024 cell under Nearest).
+- No TRAA ghost at page changes: a Laplacian sharpness measure over the creature is flat within a page (18.0–18.2,
+  16.3–16.5, 15.6–15.8 for pages 0 / 1 / 2) and steps only with the content; the first frame of a page is not softer.
+- Feet: across pages the paws stay on the same pixels while the body animates (no slide, no jitter).
+- Battle: the player's zenryu plays its back flipbook, the foe raikitsune its front; `stage.faint(foe)` holds the foe on
+  page 21 while its dissolve runs 0 → 1 and the player's advances 1 → 8; `enter` resumes it.
+- Client harness (`/harness/shots?zone=galvan_route`, the real SpawnViews / BattleController; client notes Part 7):
+  raikitsune as a wild spawn plays its front flipbook (pages 20 → 23 → 0 → 1 over 6 × 133 ms), then as the battle foe;
+  programs 103 (boot) → 103 with the flipbook → 101 in battle.
+
+Frame sequences: `.screenshots/anim-legends/` in the worktree (gitignored): `legends/lineup-00..05.png` +
+`lineup-strip.png`, `inspect/raikitsune-00..05.png`, `align/raikitsune-static.png` / `raikitsune-anim-p0.png` /
+`pair.png` / `raikitsune-f00..17.png` (1-frame steps) / `frames-strip.png` / `feet-strip.png`,
+`battle/zenryu-vs-raikitsune-*.png` + `battle-grid.png`, `harness/galvan_route-raikitsune-{wild,battle}-*.png` +
+`harness-grid.png`.
+
+## Tests
+
+`test/flipbook.test.ts` (9): timing from the delays incl. per-page delays, loop, negative / degenerate time; the phase
+(deterministic, spread over the pages); the static frame until the anim atlas lands then one re-point, one material per
+anim atlas shared by two creatures, `dissolveCells` 3072 × 2048 per uv; 600 frames at 60 fps — every page equals
+`flipbookFrame(t + phase)`, all 24 pages seen, 79–81 rect writes over 10 s (one per page change), never a material
+switch, two ids out of step; faint pose / `setFaint` hold, `enter` / `setFaint(0)` resume, hitstop (`dt 0`) holds, hurt
+keeps playing; `setFacing` to a side whose flipbook is not bound shows its static rect, then re-points; a still creature
+never animates; 20 flipbooks × 3000 frames grow the heap ≤ 64 KB between forced GCs; the anim atlas texture contract
+(4 levels, Nearest mag, trilinear min, no generated mips, half-res normal, byte estimate). Render total: 25 files, 243
+tests.
+
+## Open
+
+1. **GPU memory.** A flipbook side costs 1.5–2.4 static atlases of GPU memory; the client binds both sides with the static
+   atlas and (pre-existing) never releases an atlas, so a session that meets many legendaries — or a party of several —
+   accumulates 100–150 MB per species. Follow-up: bind the side being shown and release flipbooks no billboard uses
+   (the `AtlasCache` already disposes at refs = users = 0).
+2. **Inspector magnification**: at 4 m the flipbook's 512 cell is magnified ≈ 2× the static cell's texels (Nearest, hard
+   texels); a 1024 flipbook would cost ≈ 4× the bytes.
+3. The sandbox lineup binds all 10 legendaries at once and trips the `texturesSize` cap; it is a stress view, not play.
+
 ---
 
 # Phase A interiors (2026-10-06)

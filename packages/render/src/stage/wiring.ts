@@ -86,6 +86,7 @@ function build(ctx: HostContext): Part3 {
     parent: ctx.scene, sprites, vfx, rig, actors, materials: ctx.materials, effects: () => ctx.effects(), harvestLevel: () => ctx.harvestLevel(),
     camera: ctx.camera3, viewport, weather: (w) => host.setWeather(w),
     typeColors: (t) => hud.setTypeColors(t),
+    post: ctx.post.uniforms,
   });
   const reveal = new GroundCoverReveal(sprites, () => rig.focus);
   const cutaway = new PropCutaway();
@@ -181,6 +182,7 @@ function warmupObjects(ctx: HostContext): Object3D[] {
   character.position.set(-1, 0, -2);
   const housing = p.stage.warmupHousing();                     // the beacon housing material
   housing.position.set(2, 0, -2);
+  p.stage.armWarmupShadows();                                  // the beacons' spot-shadow pass programs (battles, evolutions)
   return [bb, fx, character, housing];
 }
 

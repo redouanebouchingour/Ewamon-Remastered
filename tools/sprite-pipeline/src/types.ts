@@ -74,6 +74,25 @@ export const THUMB_MAX_BYTES = 6 * 1024;
 /** Per-sprite stage workers. Results are sorted before anything is written. */
 export const CONCURRENCY = 3;
 
+/**
+ * Animated multiframe sources (spec §40.1.3 as amended 2026-10-06, `anim.ts`). Every page of a GIF / animated WebP
+ * ships as a flipbook next to the static set (whose cell stays the frame-select page). The anim cell is
+ * `spriteSize / ANIM_CELL_DIVISOR` = 512 texels: each page is normalised on the static 1024² canvas with the static
+ * frame's own transform (so the two line up exactly), run through stages 3–4 there, then reduced 2×.
+ */
+export const ANIM_CELL_DIVISOR = 2;
+/** Folded into every anim cache key (per-side frames and anim atlas files). Bump when `anim.ts` changes behaviour. */
+export const ANIM_STAGE_VERSION = '1';
+/** Hard ceiling for every file under `public/creatures/anim/` plus the manifest's anim share (24 MiB, spec §40.6). */
+export const ANIM_BUDGET_BYTES = 25_165_824;
+/** Largest anim atlas edge: the 8192 `maxTextureSize` every renderer must have (render §10.1.1; WebP itself allows 16383). */
+export const ANIM_MAX_EDGE = 8192;
+/** Anim atlases live under this subdirectory of the output, outside the static 35 MiB line. */
+export const ANIM_DIR = 'anim';
+/** A page delay below this (ms) is shown as DEFAULT_FRAME_DELAY_MS, as browsers do for GIF / animated WebP. */
+export const MIN_FRAME_DELAY_MS = 20;
+export const DEFAULT_FRAME_DELAY_MS = 100;
+
 export function bboxWidth(b: Bbox): number {
   return b.x1 - b.x0 + 1;
 }

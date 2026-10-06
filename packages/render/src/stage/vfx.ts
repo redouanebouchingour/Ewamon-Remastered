@@ -91,6 +91,12 @@ export interface VfxPhase {
   readonly delay: number;
 }
 
+/**
+ * A recipe outside the 47-id table: the sequence effects of the evolution sequence (`stage/evolution.ts`), built per
+ * sequence (the type colour of the new form) and spawned through `spawnRecipe` into the same pooled emitters.
+ */
+export interface SequenceVfxRecipe extends Omit<VfxRecipe, 'id'> { readonly id: string }
+
 export interface VfxRecipe {
   readonly id: VfxId;
   readonly type: TypeName | null;
@@ -285,11 +291,19 @@ export class VfxSystem {
   spawn(id: VfxId, from: VfxAnchor | null, to: VfxAnchor | null, center: Vector3, ms: number): VfxRecipe {
     const r = VFX_TABLE[id];
     if (r === undefined) throw new RangeError(`@ewa/render: unknown VfxId '${String(id)}'`);
+    this.spawnRecipe(r, from, to, center, ms);
+    return r;
+  }
+
+  /**
+   * Spawns any recipe (a table entry or a `SequenceVfxRecipe`) into the pooled emitters — the same slices, the same
+   * shared material; nothing is allocated on the GPU side.
+   */
+  spawnRecipe(r: VfxRecipe | SequenceVfxRecipe, from: VfxAnchor | null, to: VfxAnchor | null, center: Vector3, ms: number): void {
     const dur = Number.isFinite(ms) && ms > 0 ? ms : r.defaultMs;
     for (const ph of r.phases) this.emitPhase(r, ph, from, to, center, dur);
     if (r.chroma !== null) this.hooks.chroma?.(r.chroma.amount, r.chroma.ms);
     this.spawnCount++;
-    return r;
   }
 
   /** Per frame: advance the VFX clock (seconds × timeScale) and the size-attenuation scale. Zero allocation. */
@@ -344,7 +358,7 @@ export class VfxSystem {
     return out.copy(a.feet).setY(a.feet.y + h);
   }
 
-  private emitPhase(r: VfxRecipe, ph: VfxPhase, from: VfxAnchor | null, to: VfxAnchor | null, center: Vector3, durMs: number): void {
+  private emitPhase(r: VfxRecipe | SequenceVfxRecipe, ph: VfxPhase, from: VfxAnchor | null, to: VfxAnchor | null, center: Vector3, durMs: number): void {
     const n = Math.min(MAX_PARTICLES, Math.max(0, Math.floor(ph.count)));
     if (n === 0) return;
     const em = this.takeEmitter();

@@ -29,6 +29,24 @@
   pointer-events: auto;
 }
 
+/* §20.5.6: while an evolution plays, the panel (the Party screen after a Rare Candy) and the hint step aside */
+.panelSlot,
+.hint {
+  transition:
+    opacity var(--motion-slow) var(--ease-out),
+    visibility 0s;
+}
+
+.shell[data-evolving] > .panelSlot,
+.shell[data-evolving] > .hint {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-slow) var(--ease-out),
+    visibility 0s linear var(--motion-slow);
+}
+
 .panelSlot > * {
   flex: 1 1 auto;
   min-block-size: 0;

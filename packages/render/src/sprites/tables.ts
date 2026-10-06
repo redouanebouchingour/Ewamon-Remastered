@@ -36,8 +36,20 @@ export const BILLBOARD = Object.freeze({
   sparkleDensity: 0.06,
   sparkleGain: 2.4,
   hurtFlashMix: 0.85,
-  /** Dissolve holes: `hash(floor(uvRect × 1024))`. */
+  /**
+   * Evolution glow (§10.7.5 evolution sequence): `glow` 0..1 mixes the lit albedo to white and adds `glow × glowGain`
+   * white emissive (scene-linear, above the 1.15 bloom threshold), so the card reads as a glowing white silhouette of
+   * its own alpha at any time of day. 0 for every other billboard (the term is in the one billboard program from boot).
+   */
+  glowGain: 1.3,
+  /** Dissolve holes: `hash(floor(uvRect × dissolveCells))` — 1024 per uv unit on a 2048² atlas (and on a single). */
   dissolveCells: 1024,
+  /**
+   * Flipbooks (amended 2026-10-06): holes per anim cell edge, so a 512² anim cell gets 1-texel holes — the same share of
+   * the creature (1/512 of the cell) as the 2-texel holes of a 1024² static cell; `dissolveCells` per object becomes
+   * `512 / (rect width, height in uv)`.
+   */
+  dissolveCellsPerFrame: 512,
   /** §10.4.7 contact decal: 1.1 m × sizeScale, opacity 0.55, radial smoothstep(0.5, 0.05). */
   decalSizeM: 1.1,
   decalOpacity: 0.55,
@@ -134,6 +146,36 @@ export function decayHurt(hurt: number, dtMs: number): number {
   if (hurt <= 0) return 0;
   const h = hurt * Math.exp(-Math.max(0, dtMs) / ANIM.hurtTauMs);
   return h < ANIM.hurtFloor ? 0 : h;
+}
+
+// ---- §10.4.5 flipbook (amended 2026-10-06) -------------------------------------------------------------------------
+
+/** Σ delays (ms): one loop of the flipbook. */
+export function flipbookTotalMs(delaysMs: readonly number[]): number {
+  let n = 0;
+  for (let i = 0; i < delaysMs.length; i++) n += delaysMs[i]! > 0 ? delaysMs[i]! : 0;
+  return n;
+}
+
+/**
+ * The page shown at `tMs` on a looping flipbook with per-page `delaysMs` (`totalMs` = `flipbookTotalMs`). Pure,
+ * allocation-free; O(pages). A degenerate flipbook (no positive delay) shows page 0.
+ */
+export function flipbookFrame(delaysMs: readonly number[], totalMs: number, tMs: number): number {
+  if (!(totalMs > 0) || !Number.isFinite(tMs)) return 0;
+  let t = tMs % totalMs;
+  if (t < 0) t += totalMs;
+  for (let i = 0; i < delaysMs.length; i++) {
+    const d = delaysMs[i]! > 0 ? delaysMs[i]! : 0;
+    if (t < d) return i;
+    t -= d;
+  }
+  return delaysMs.length - 1;
+}
+
+/** Per-instance flipbook phase in [0, 1) (FNV of the id, salted so it is independent of the bob phase). */
+export function flipbookPhase01(id: string): number {
+  return hash01(`${id}#flipbook`);
 }
 
 // ---- §10.4.6 poses --------------------------------------------------------------------------------------------

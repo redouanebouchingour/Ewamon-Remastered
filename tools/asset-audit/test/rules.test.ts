@@ -9,7 +9,7 @@ import { join, resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { loadDumps, runAudit } from '../src/audit.js';
 import type { AuditReport } from '../src/audit.js';
-import { CEILINGS, LICENCES, runBytes } from '../src/bytes.js';
+import { CEILINGS, LICENCES, creaturesAnimShare, runBytes } from '../src/bytes.js';
 import { COUNT_CAPS, HOUSING_MAX, MATERIALS_MAX, NON_SHADOW_LIGHTS_MAX, SHADOW_DRAW_CALLS_MAX, SHADOW_LIGHTS_MAX } from '../src/caps.js';
 import { main } from '../src/cli.js';
 import { RULE_IDS } from '../src/registry.js';
@@ -252,10 +252,10 @@ describe('§40.5.3 regression gate', () => {
 describe('§40.6 --bytes roll-up', () => {
   const MiB = 1024 * 1024;
 
-  function fakePublic(o: Partial<Record<'creatures' | 'models' | 'materials', number>> & { audio?: number | null; misc?: number; stray?: number; licences?: boolean } = {}): string {
+  function fakePublic(o: Partial<Record<'creatures' | 'creaturesAnim' | 'models' | 'materials', number>> & { audio?: number | null; misc?: number; stray?: number; licences?: boolean } = {}): string {
     const root = tempDir();
     const man = (dir: string, file: string, body: unknown): void => { mkdirSync(join(root, dir), { recursive: true }); writeFileSync(join(root, dir, file), JSON.stringify(body)); };
-    man('creatures', 'creatures.manifest.json', { totalBytes: o.creatures ?? 30 * MiB });
+    man('creatures', 'creatures.manifest.json', { totalBytes: o.creatures ?? 30 * MiB, ...(o.creaturesAnim !== undefined ? { animTotalBytes: o.creaturesAnim } : {}) });
     man('models', 'models.manifest.json', { totalBytes: o.models ?? 8 * MiB });
     man('materials', 'materials.manifest.json', { totalBytes: o.materials ?? 60 * MiB });
     if (o.audio !== null) {
@@ -282,13 +282,42 @@ describe('§40.6 --bytes roll-up', () => {
 
   it('fails each §40.6 ceiling on its own', () => {
     expect(failing(fakePublic({ creatures: CEILINGS.creatures + 1 }))).toEqual(['creatures/']);
+    expect(failing(fakePublic({ creaturesAnim: CEILINGS.creaturesAnim + 1 }))).toEqual(['creatures/anim/']);
     expect(failing(fakePublic({ models: CEILINGS.models + 1 }))).toEqual(['models/']);
     expect(failing(fakePublic({ materials: CEILINGS.materials + 1 }))).toEqual(['materials/']);
     expect(failing(fakePublic({ audio: CEILINGS.audio + 8 }))).toEqual(['audio/']);
     expect(failing(fakePublic({ misc: CEILINGS.misc + 1 }))).toEqual(['basis/ + icons/ + fonts/ + keyart/']);
-    const full = fakePublic({ creatures: CEILINGS.creatures, models: CEILINGS.models, materials: CEILINGS.materials, audio: CEILINGS.audio, misc: 1024, stray: CEILINGS.misc });
+    const full = fakePublic({ creatures: CEILINGS.creatures, creaturesAnim: CEILINGS.creaturesAnim, models: CEILINGS.models, materials: CEILINGS.materials, audio: CEILINGS.audio, misc: 1024, stray: CEILINGS.misc });
     expect(failing(full)).toEqual(['total public/']);
-    expect(CEILINGS).toEqual({ creatures: 36_700_160, models: 12 * MiB, materials: 90 * MiB, audio: 80 * MiB, misc: 2 * MiB, total: 219 * MiB });
+    expect(CEILINGS).toEqual({ creatures: 36_700_160, creaturesAnim: 24 * MiB, models: 12 * MiB, materials: 90 * MiB, audio: 80 * MiB, misc: 2 * MiB, total: 243 * MiB });
+  });
+
+  it('creatures/anim/ is its own 24 MiB line: anim files + the manifest bytes its anim fields add, charged away from creatures/', () => {
+    const dir = fakePublic();
+    const staticM = { totalBytes: 1000, sprites: { a: { thumb: 't' }, b: { thumb: 'u' } } };
+    const withAnim = { totalBytes: 1000, sprites: { a: { thumb: 't', anim: { front: { atlas: 'anim-a-front', delays: [125, 125] } } }, b: { thumb: 'u' } }, animAtlases: [{ id: 'anim-a-front' }], animTotalBytes: 0 };
+    const ser = (o: unknown): string => `${JSON.stringify(o, null, 2)}\n`;
+    // the manifest counts its own anim share: iterate to the fixed point, as the pipeline does
+    let share = 0;
+    for (let i = 0; i < 4; i++) share = Buffer.byteLength(ser({ ...withAnim, animTotalBytes: 5000 + share })) - Buffer.byteLength(ser(staticM));
+    mkdirSync(join(dir, 'creatures', 'anim'), { recursive: true });
+    writeFileSync(join(dir, 'creatures', 'anim', 'a-front.albedo.webp'), new Uint8Array(5000));
+    const write = (animTotalBytes: number): void => writeFileSync(join(dir, 'creatures', 'creatures.manifest.json'), ser({ ...withAnim, animTotalBytes }));
+    write(5000 + share);
+    const l = (r: ReturnType<typeof runBytes>, name: string) => r.lines.find((x) => x.line === name)!;
+    let r = runBytes(dir);
+    expect(r.ok, r.errors.join(';')).toBe(true);
+    expect(creaturesAnimShare(dir).share).toBe(share);
+    expect(l(r, 'creatures/anim/').diskBytes).toBe(5000 + share);
+    expect(l(r, 'creatures/anim/').manifestBytes).toBe(5000 + share);
+    expect(l(r, 'creatures/').diskBytes).toBe(Buffer.byteLength(ser(staticM)));
+    // over the anim ceiling → only that line fails; the static line is unaffected
+    write(CEILINGS.creaturesAnim + 1);
+    r = runBytes(dir);
+    expect(r.lines.filter((x) => !x.ok).map((x) => x.line)).toEqual(['creatures/anim/']);
+    // anim files with no animTotalBytes in the manifest are an error
+    writeFileSync(join(dir, 'creatures', 'creatures.manifest.json'), JSON.stringify(staticM));
+    expect(runBytes(dir).errors.join(' | ')).toMatch(/anim files without animTotalBytes/);
   });
 
   it('holds the larger of manifest total and disk bytes to the ceiling', () => {

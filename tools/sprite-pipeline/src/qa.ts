@@ -174,6 +174,49 @@ export function renderFrameStrip(pages: RgbaImage[], cell = 256): Promise<Buffer
   return encodePng(strip);
 }
 
+export const ANIM_SHEET_CELL = 96;
+
+export interface AnimSheetRow {
+  label: string;
+  /** Cached anim-cell albedo PNGs, one per page, in page order. */
+  framePaths: string[];
+  staticFrame: number;
+  /** Anim cell edge (the foot line is drawn at round(FOOT_V × cell) scaled to the sheet). */
+  cell: number;
+}
+
+/**
+ * `qa/anim-sheet.png`: one row per animated side, every page at 96 px on a checkerboard, a red foot line across the
+ * whole row (the static cell's, which every page shares) and the static (frame-select) page outlined in yellow.
+ */
+export async function renderAnimSheet(rows: AnimSheetRow[], footV = 0.92): Promise<Buffer> {
+  const c = ANIM_SHEET_CELL;
+  const labelH = GLYPH_H + 5;
+  const cols = Math.max(1, ...rows.map((r) => r.framePaths.length));
+  const rowH = c + labelH;
+  const sheet = createRgba(cols * c, Math.max(1, rows.length) * rowH);
+  drawCheckerboard(sheet, 8);
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r]!;
+    const top = r * rowH;
+    for (let i = 0; i < row.framePaths.length; i++) {
+      const { data, info } = await sharp(row.framePaths[i]!).ensureAlpha().resize(c, c, { kernel: 'lanczos3', fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
+      compositeOver(sheet, new Uint8Array(data.buffer, data.byteOffset, data.byteLength), info.width, info.height, i * c, top + labelH);
+      if (i === row.staticFrame) {
+        fillRect(sheet, i * c, top + labelH, c, 1, [255, 210, 40]);
+        fillRect(sheet, i * c, top + labelH + c - 1, c, 1, [255, 210, 40]);
+        fillRect(sheet, i * c, top + labelH, 1, c, [255, 210, 40]);
+        fillRect(sheet, i * c + c - 1, top + labelH, 1, c, [255, 210, 40]);
+      }
+    }
+    const footY = top + labelH + Math.round(footV * c);
+    fillRect(sheet, 0, footY, row.framePaths.length * c, 1, [220, 40, 40]);
+    fillRect(sheet, 0, top, cols * c, labelH, [24, 24, 28]);
+    drawText(sheet.data, sheet.width, sheet.height, 2, top + 3, row.label, [230, 230, 230]);
+  }
+  return encodePng(sheet);
+}
+
 function nearestResize(src: RgbaImage, w: number, h: number): RgbaImage {
   const out = createRgba(w, h);
   for (let y = 0; y < h; y++) {

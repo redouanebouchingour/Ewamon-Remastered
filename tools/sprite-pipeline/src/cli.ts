@@ -8,7 +8,7 @@
  *   bench   encode a few normalized sprites as KTX2 and lossless WebP, transcode the KTX2
  *           back and report sizes + error metrics (the numbers quoted in README.md)
  *
- * Flags: --only a,b,c   --limit N   --force   --jobs N   --all (frames)   --count N (bench)
+ * Flags: --only a,b,c   --limit N   --force   --jobs N   --no-anim   --all (frames)   --count N (bench)
  *        --assets DIR   --out DIR   --cache DIR   --qa DIR   --legacy DIR   --roster FILE
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -85,12 +85,19 @@ async function main(): Promise<void> {
 
   if (command === 'build' || command === 'qa') {
     const t0 = Date.now();
-    const res = await runBuild({ ...paths, only, limit, jobs, force: flags.force === true, qaOnly: command === 'qa', log });
+    const res = await runBuild({ ...paths, only, limit, jobs, force: flags.force === true, qaOnly: command === 'qa', anim: flags['no-anim'] !== true, log });
     const rung = res.rung ? `albedo q${res.rung.albedo} / normal q${res.rung.normal}` : 'n/a';
     log(
       `done in ${((Date.now() - t0) / 1000).toFixed(1)} s: ${res.sprites.length} sprites, ${res.atlasCount} atlases, ${(res.totalBytes / 1e6).toFixed(2)} MB, ${rung}, ` +
         `${res.report.flagged.length} flagged (${res.report.actionable} actionable), ${res.cacheHits} cache hits`,
     );
+    if (res.anim) {
+      const frames = res.anim.sides.reduce((n, s) => n + s.meta.pages, 0);
+      log(
+        `anim: ${res.anim.sides.length} sides, ${frames} frames, ${(res.anim.totalBytes / 1e6).toFixed(2)} MB (${res.anim.totalBytes} B), ` +
+          `albedo q${res.anim.rung.albedo} / normal q${res.anim.rung.normal}, ${res.anim.cacheHits} sides cached`,
+      );
+    }
     if (res.report.actionable > 0) process.exitCode = 3;
     return;
   }
