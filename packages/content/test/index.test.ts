@@ -29,9 +29,9 @@ describe('createContentIndex()', () => {
     expect(idx.typeChart).toBe(TYPE_CHART);
   });
 
-  it('allSpecies() is sorted by dexNumber and has 133 rows', () => {
+  it('allSpecies() is sorted by dexNumber and has 135 rows', () => {
     const all = idx.allSpecies();
-    expect(all.length).toBe(133);
+    expect(all.length).toBe(135);
     for (let i = 1; i < all.length; i++) expect(all[i]!.dexNumber).toBeGreaterThan(all[i - 1]!.dexNumber);
     expect(all[0]!.id).toBe('smellduck');
   });

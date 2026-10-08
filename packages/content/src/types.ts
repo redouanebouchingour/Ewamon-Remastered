@@ -637,7 +637,7 @@ export interface RosterReport {
   readonly families: number;
   /** |E| in spine rule 7 */
   readonly directlyPlaced: number;
-  /** |R(E) ∪ statics ∪ mythicals| — must be SPECIES.length (133) */
+  /** |R(E) ∪ statics ∪ mythicals| — must be SPECIES.length (135) */
   readonly obtainable: number;
   /** must be [] */
   readonly unobtainable: readonly string[];

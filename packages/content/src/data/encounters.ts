@@ -3,7 +3,8 @@
  * (8 routes, 3 towns, 4 story tables; A1 and A2 accepted per the spec CHANGELOG), plus the spawn constants. Phase D8
  * added water slots where the heightfield has ponds a table did not fish yet (mire_route, skyrend, umbral_observatory)
  * — species already placed elsewhere, so the directly-placed set stayed 79. The post-legacy hollowmane (#131) adds a
- * night rare slot to the_rift and dustcub (#132) an uncommon slot to deepcut_route: 81 placed directly.
+ * night rare slot to the_rift, dustcub (#132) an uncommon slot to deepcut_route and veilpup (#134) a rare slot to
+ * skyrend: 82 placed directly.
  */
 import type { EncounterSlot, EncounterTable, EncounterTier, Medium, SpawnTuning, TimeOfDay, ZoneId } from '../types';
 
@@ -209,6 +210,7 @@ export const ENCOUNTER_TABLES: readonly EncounterTable[] = [
     s('resilith', 3, 40, 44, 'any', 'rare'),
     // Phase D8: the meltwater tarn under the roosts
     s('tidalfang', 3, 39, 44, 'any', 'rare', 'water'),
+    s('veilpup', 2, 38, 41, 'any', 'rare'),
   ]),
   // 6.11 solenne — town static: the suburb park and pond, L40–45
   table('solenne', [

@@ -168,7 +168,7 @@ export function assertRosterCoverage(): RosterReport;
 | siege_route | route | 30–35 | enc_siege_route | 14 | 11 | 48 | 48 | flowbot 2/48 → 5.6 min |
 | ascent_route | route | 35–42 | enc_ascent_route | 14 | 11 | 47 | 40 | serpyre 3/47 → 3.7 min |
 | saltmourn | town | 14–24 | enc_saltmourn | 4 | 6 | 17 | 17 | kygra 2/17 → 2.0 min |
-| skyrend | town | 38–44 | enc_skyrend | 4 | 5 | 19 | 19 | resilith 3/19 → 1.5 min |
+| skyrend | town | 38–44 | enc_skyrend | 4 | 6 | 21 | 21 | veilpup 2/21 → 2.5 min |
 | solenne | town | 40–45 | enc_solenne | 4 | 6 | 26 | 28 | bloomsprite 3/26 → 2.0 min |
 | eclipse_shrine | story | 45–50 | enc_eclipse_shrine | 6 | 9 | 23 | 35 | shardling 5/23 → 1.1 min |
 | umbral_observatory | story | 42–48 | enc_umbral_observatory | 6 | 11 | 27 | 51 | fibrostis 5/27 → 1.3 min |
@@ -336,6 +336,7 @@ The only town whose "static" species are the point of the town. `TOWN_SPAWN_TUNI
 | skyrend | alloylark | 5 | 38 | 42 | day | uncommon | land |
 | skyrend | glacifang | 5 | 39 | 44 | night | uncommon | land |
 | skyrend | resilith | 3 | 40 | 44 | any | rare | land |
+| skyrend | veilpup | 2 | 38 | 41 | any | rare | land |
 
 ### 6.11 solenne — town static: the suburb park and pond, L40–45
 
@@ -412,7 +413,7 @@ The only town whose "static" species are the point of the town. `TOWN_SPAWN_TUNI
 
 Totals (Appendix A): **15 tables, 152 slots, 79 distinct species placed directly**; closure under evolution = 120; plus 8 statics and 2 mythical rewards = **130**.
 
-Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60; `dustcub` (#132, Ground) → `badlander` (#133, Ground/Dark) @30 — deepcut_route `uncommon 5` L20–24. With them the game has 154 slots, 81 species placed directly, **133** obtainable, 69 families.
+Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60; `dustcub` (#132, Ground) → `badlander` (#133, Ground/Dark) @30 — deepcut_route `uncommon 5` L20–24; `veilpup` (#134, Psychic) → `hollowolf` (#135, Psychic/Cosmic) @42 — skyrend `any rare 2` L38–41. With them the game has 155 slots, 82 species placed directly, **135** obtainable, 70 families.
 
 ---
 

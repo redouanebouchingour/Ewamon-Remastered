@@ -68,7 +68,7 @@ export function computeRosterReport(input: RosterInputs): RosterReport {
   const nocturnal = (s: SpeciesDef): boolean => s.types.includes('Ghost') || s.types.includes('Dark');
 
   // roots / families
-  // 69 roots: 59 non-legendary families (57 legacy + hollowmane + dustcub) + the 10 legendary/mythical singles
+  // 70 roots: 60 non-legendary families (57 legacy + hollowmane + dustcub + veilpup) + the 10 legendary/mythical singles
   const roots = input.species.filter((s) => s.evolvesFrom === null);
   const familyCount = roots.length;
 

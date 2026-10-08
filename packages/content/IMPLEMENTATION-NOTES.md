@@ -490,3 +490,22 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   into the legacy moves: 194). The learnset now ends with Night Slash at L39 so every wild hollowmane (L57–60, last four
   level-up moves) knows it; defaults Shadow Sneak / Low Kick / Phantom Strike / Bulk Up. `validate.ts`: a signature move
   exists, replaces a move the species learns, is learned by no species and is not a spread move.
+
+## Post-legacy species: veilpup #134 → hollowolf #135 (2026-10-08)
+
+- A blindfolded wolf line inspired by Gojo Satoru (Jujutsu Kaisen): a cocky pup and the untouchable sorcerer it grows
+  into (Infinity, the red and blue sparks, Hollow Purple). Same source and generator path as hollowmane and dustcub
+  (`.design/additions/species.js`, appended after badlander).
+- **veilpup**: Psychic, rare, 64 / 60 / 56 / 84, catch rate 45, sizeScale 0.8, abilities Keen Eye / Competitive, role
+  Special Attacker. Defaults Quick Attack, Confusion, Bite, Calm Mind; learns Psych Wave 6, Extrasensory 15,
+  Starfall 24, Mind Crush 33, Future Sight 42. Evolves at 42.
+- **hollowolf**: Psychic/Cosmic, rare, 90 / 122 / 80 / 126, catch rate 25, sizeScale 1.2, abilities Levitate / Keen Eye,
+  role Special Attacker. Defaults Extrasensory, Starfall, Mind Crush, Calm Mind; learns Quick Attack 6, Brain Pulse 15,
+  Future Sight 24, Eclipse Void 30, Rift Collapse 39. The first non-legendary Cosmic species (the user approved it); no
+  rule reserves the type. Only existing moves and abilities: MOVES stays 194, ABILITIES 25.
+- **Obtainable**: `enc_skyrend` (the cliff roosts) `any rare 2` L38–41 (below the evolution level; rare weight per
+  RC-3); hollowolf by evolution. Directly placed 81 → 82, obtainable 135, families 70 (60 non-legendary). Skyrend's
+  land table is 6 slots / day 21 / night 21. The first choice, `enc_ascent_route`, made the sprite planner's
+  co-occurrence pairing duplicate 6 species (71 atlases, over the 68 cap); skyrend keeps 68 with none.
+- **Counts**: `validate.ts` rule 3 (135), families (70), `schema.ts` `dexNumber ≤ 135`; `ach_dex_130` targets 135.
+- **Layout**: encounter slots do not feed the zone layout RNG; heightfield digests and `r1-pre-move.json` unchanged.

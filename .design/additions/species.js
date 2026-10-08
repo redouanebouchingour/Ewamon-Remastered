@@ -78,6 +78,43 @@ const EWAMON_SPECIES_ADDITIONS = {
     habitat: [],
     evolvesFrom: "dustcub",
   },
+
+  // A blindfolded wolf line inspired by Gojo Satoru (Jujutsu Kaisen): a cocky pup and the untouchable sorcerer it grows into.
+  veilpup: {
+    id: "veilpup", name: "Veilpup",
+    flavor: "A cocky pup that wears a strip of dark cloth over its eyes, because what it sees without it is too much. It still never bumps into anything, and it grins at every trainer as if it already knows how the fight ends.",
+    type: ["Psychic"],
+    baseHp: 64, baseAtk: 60, baseDef: 56, baseSpd: 84,
+    rarity: "rare", catchRate: 45,
+    sizeScale: 0.8,
+    expYield: 72,
+    moves: ["Quick Attack", "Confusion", "Bite", "Calm Mind"],
+    learnableMoves: ["Psych Wave", "Extrasensory", "Starfall", "Mind Crush", "Future Sight"],
+    abilities: ["Keen Eye", "Competitive"],
+    role: "Special Attacker",
+    frontSprite: "veilpup(front).png",
+    backSprite: "veilpup(back).png",
+    habitat: ["Ascent Route"],
+    evolvesInto: "hollowolf", evolvesAt: 42,
+  },
+
+  hollowolf: {
+    id: "hollowolf", name: "Hollowolf",
+    flavor: "Nothing it does not allow can reach it: blows slow to a stop a hair from its fur. It holds a red spark that pushes and a blue one that pulls, and when it lets the two meet, what lies between them is simply gone.",
+    type: ["Psychic", "Cosmic"],
+    baseHp: 90, baseAtk: 122, baseDef: 80, baseSpd: 126,
+    rarity: "rare", catchRate: 25,
+    sizeScale: 1.2,
+    expYield: 224,
+    moves: ["Extrasensory", "Starfall", "Mind Crush", "Calm Mind"],
+    learnableMoves: ["Quick Attack", "Brain Pulse", "Future Sight", "Eclipse Void", "Rift Collapse"],
+    abilities: ["Levitate", "Keen Eye"],
+    role: "Special Attacker",
+    frontSprite: "hollowolf(front).png",
+    backSprite: "hollowolf(back).png",
+    habitat: [],
+    evolvesFrom: "veilpup",
+  },
 };
 
 module.exports = { EWAMON_SPECIES_ADDITIONS };

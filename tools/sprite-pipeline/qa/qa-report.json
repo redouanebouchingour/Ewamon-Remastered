@@ -1,5 +1,5 @@
 {
-  "total": 268,
+  "total": 272,
   "actionable": 0,
   "informational": 152,
   "excluded": [
@@ -1477,7 +1477,7 @@
       "unbound": []
     },
     "eclipse_shrine": {
-      "atlases": 6,
+      "atlases": 5,
       "duplicated": [],
       "unbound": []
     },
@@ -1487,7 +1487,7 @@
       "unbound": []
     },
     "galvan_route": {
-      "atlases": 7,
+      "atlases": 8,
       "duplicated": [],
       "unbound": []
     },
@@ -1522,7 +1522,7 @@
       "unbound": []
     },
     "skyrend": {
-      "atlases": 5,
+      "atlases": 6,
       "duplicated": [],
       "unbound": []
     },
@@ -1580,22 +1580,22 @@
       {
         "albedo": 88,
         "normal": 92,
-        "totalBytes": 34714778
+        "totalBytes": 35240384
       }
     ],
     "thumbs": {
-      "count": 134,
-      "bytes": 720844,
+      "count": 136,
+      "bytes": 730998,
       "rungs": {
         "q48/aq100/a8": 4,
         "q56/aq100/a8": 3,
         "q64/aq100/a8": 3,
         "q72/aq100/a8": 20,
-        "q80/aq100/a16": 68,
+        "q80/aq100/a16": 70,
         "q80/aq100/a8": 5,
         "q80/aq90": 31
       }
     }
   },
-  "totalBytes": 34714778
+  "totalBytes": 35240384
 }
