@@ -111,7 +111,8 @@ const EWAMON_SPECIES_ADDITIONS = {
     sizeScale: 1.2,
     expYield: 224,
     moves: ["Extrasensory", "Starfall", "Mind Crush", "Calm Mind"],
-    learnableMoves: ["Quick Attack", "Brain Pulse", "Future Sight", "Eclipse Void", "Rift Collapse"],
+    // Rift Collapse is voidraxis's signature move (client battle/signatures.ts), never learned here
+    learnableMoves: ["Quick Attack", "Brain Pulse", "Future Sight", "Eclipse Void"],
     abilities: ["Levitate", "Keen Eye"],
     role: "Special Attacker",
     frontSprite: "hollowolf(front).png",

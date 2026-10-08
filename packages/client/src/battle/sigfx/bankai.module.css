@@ -1,0 +1,249 @@
+/*
+ * Bankai Sever (bankaiser; signatures.ts): clock 2900 ms, keyframe % = ms / 29; impact 1740.
+ * 1050–1250 black spiritual pressure rises round the attacker · 1300–1420 the red line ignites · 1520 a glint runs up
+ * the blade · 1620 the flash-step: afterimages along the line, a white speed line reaching the target at 1680 · a beat
+ * of stillness · 1740 the first cut, 1765 the second (a cross) · 1790–2050 they flare and split open red, spirit
+ * fragments scatter · gone by 2300; ash drifts till 2500.
+ */
+
+.pillar {
+  opacity: 0;
+  transform-origin: 50% 100%;
+  animation: bankai-pillar 2900ms cubic-bezier(0.2, 0.7, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.rush {
+  opacity: 0;
+  animation: bankai-rush 360ms linear infinite;
+}
+
+.rush:nth-child(2n) {
+  animation-duration: 300ms;
+  animation-delay: -120ms;
+}
+
+.rush:nth-child(3n) {
+  animation-duration: 420ms;
+  animation-delay: -250ms;
+}
+
+.rush:nth-child(5n) {
+  animation-delay: -60ms;
+}
+
+.wisp {
+  opacity: 0;
+  transform-origin: 50% 100%;
+  animation: bankai-wisp 520ms linear infinite;
+}
+
+.wisp:nth-child(2n) {
+  animation-duration: 440ms;
+  animation-delay: -200ms;
+}
+
+.wisp:nth-child(3n) {
+  animation-duration: 600ms;
+  animation-delay: -340ms;
+}
+
+.press {
+  opacity: 0;
+  animation: bankai-press 2900ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.p2 {
+  animation-delay: calc(200ms - var(--skip));
+}
+
+.redLine {
+  opacity: 0;
+  animation: bankai-red-line 2900ms linear calc(0ms - var(--skip)) both;
+}
+
+.glint {
+  opacity: 0;
+  animation: bankai-glint 2900ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.streak {
+  opacity: 0;
+  animation: bankai-streak 2900ms linear calc(0ms - var(--skip)) both;
+}
+
+.s2 {
+  animation-delay: calc(15ms - var(--skip));
+}
+
+.s3 {
+  animation-delay: calc(30ms - var(--skip));
+}
+
+/* the afterimages stand upright at a quarter, half and three quarters of the way */
+.at1 {
+  transform: translateX(calc(var(--dist) * 0.24px)) rotate(calc(var(--ang) * -1deg)) scale(0.85);
+}
+
+.at2 {
+  transform: translateX(calc(var(--dist) * 0.48px)) rotate(calc(var(--ang) * -1deg)) scale(0.8);
+}
+
+.at3 {
+  transform: translateX(calc(var(--dist) * 0.72px)) rotate(calc(var(--ang) * -1deg)) scale(0.75);
+}
+
+.ghost {
+  opacity: 0;
+  animation: bankai-ghost 2900ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.g2 {
+  animation-delay: calc(22ms - var(--skip));
+}
+
+.g3 {
+  animation-delay: calc(44ms - var(--skip));
+}
+
+.ring,
+.cut,
+.wound,
+.cross,
+.frag,
+.ash {
+  opacity: 0;
+}
+
+.ring {
+  animation: bankai-ring 2900ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.cut {
+  transform-origin: 0% 50%;
+  animation: bankai-cut 2900ms linear calc(0ms - var(--skip)) both;
+}
+
+.c2,
+.w2 {
+  animation-delay: calc(25ms - var(--skip));
+}
+
+.wound {
+  animation: bankai-wound 2900ms cubic-bezier(0.2, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.cross {
+  animation: bankai-cross 2900ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.frag {
+  animation: bankai-frag 2900ms cubic-bezier(0.15, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.ash {
+  animation: bankai-ash 2900ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.ash:nth-of-type(2n) {
+  animation-delay: calc(90ms - var(--skip));
+}
+
+/* 1050–1250 the pressure rises · held through the charge · 1620–1680 it collapses into the flash-step */
+@keyframes bankai-pillar {
+  0%, 36.2% { opacity: 0; transform: scale(0.8, 0.2); }
+  43.1% { opacity: 1; transform: scale(1, 1); }
+  55.86% { opacity: 1; transform: scale(1, 1.04); }
+  57.93%, 100% { opacity: 0; transform: scale(0.3, 1.15); }
+}
+
+@keyframes bankai-rush {
+  0% { opacity: 0; transform: translateY(240px); }
+  15% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-760px); }
+}
+
+@keyframes bankai-wisp {
+  0% { transform: translateY(30px) scaleY(0.6); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: translateY(-300px) scaleY(1.3); opacity: 0; }
+}
+
+@keyframes bankai-press {
+  0%, 37.9% { opacity: 0; transform: scale(0.4); }
+  38.6% { opacity: 1; }
+  49%, 100% { opacity: 0; transform: scale(1.9); }
+}
+
+/* 1300–1420 the red line draws across the armour, burns through the charge, gone with the pillar */
+@keyframes bankai-red-line {
+  0%, 44.8% { opacity: 0; stroke-dashoffset: 1; }
+  45.2% { opacity: 1; stroke-dashoffset: 1; }
+  49% { opacity: 1; stroke-dashoffset: 0; }
+  55.86% { opacity: 1; stroke-dashoffset: 0; }
+  57.93%, 100% { opacity: 0; stroke-dashoffset: 0; }
+}
+
+@keyframes bankai-glint {
+  0%, 51% { opacity: 0; transform: scale(0) rotate(0deg); }
+  52.4% { opacity: 1; transform: scale(1) rotate(45deg); }
+  53.8%, 100% { opacity: 0; transform: scale(0.3) rotate(90deg); }
+}
+
+/* 1620–1680 the speed line reaches the target · a still beat · thins out after the cut */
+@keyframes bankai-streak {
+  0%, 55.8% { opacity: 0; transform: scale(0.001, 1); }
+  55.86% { opacity: 1; transform: scale(0.001, 1); }
+  57.93% { opacity: 1; transform: scale(calc(var(--dist) / 1000), 1); }
+  60% { opacity: 0.8; transform: scale(calc(var(--dist) / 1000), 0.5); }
+  62.07%, 100% { opacity: 0; transform: scale(calc(var(--dist) / 1000), 0.1); }
+}
+
+@keyframes bankai-ghost {
+  0%, 55.9% { opacity: 0; transform: scale(1, 1); }
+  56% { opacity: 0.85; transform: scale(1, 1); }
+  58.6% { opacity: 0.4; transform: scale(1.18, 0.98); }
+  61%, 100% { opacity: 0; transform: scale(1.3, 0.96); }
+}
+
+@keyframes bankai-ring {
+  0%, 61.6% { opacity: 0; transform: scale(0.3); }
+  62% { opacity: 0.9; }
+  72.4%, 100% { opacity: 0; transform: scale(2.4); }
+}
+
+/* 1740 drawn in 25 ms from one end · 1790–1850 flares · thins out by 2000 */
+@keyframes bankai-cut {
+  0%, 59.95% { opacity: 0; transform: scale(0.001, 1); }
+  60% { opacity: 1; transform: scale(0.02, 1); }
+  60.86% { opacity: 1; transform: scale(1, 1); }
+  63.8% { opacity: 1; transform: scale(1.02, 1.5); }
+  66% { opacity: 0.8; transform: scale(1.03, 0.5); }
+  69%, 100% { opacity: 0; transform: scale(1.03, 0.15); }
+}
+
+/* 1790–1900 the cuts split open, red inside · 2300 closed */
+@keyframes bankai-wound {
+  0%, 61.7% { opacity: 0; transform: scale(1, 0.05); }
+  65.5% { opacity: 1; transform: scale(1.02, 1); }
+  70.7% { opacity: 0.95; transform: scale(1.03, 1.1); }
+  79.3%, 100% { opacity: 0; transform: scale(1.05, 0.2); }
+}
+
+@keyframes bankai-cross {
+  0%, 61.5% { opacity: 0; transform: scale(0.2) rotate(0deg); }
+  62.4% { opacity: 1; transform: scale(1.7) rotate(0deg); }
+  64.8%, 100% { opacity: 0; transform: scale(0.6) rotate(45deg); }
+}
+
+@keyframes bankai-frag {
+  0%, 61.72% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.4); }
+  63% { opacity: 1; transform: translate(calc(var(--tx) * 0.3), calc(var(--ty) * 0.3)) rotate(80deg) scale(1.2); }
+  81%, 100% { opacity: 0; transform: translate(var(--tx), calc(var(--ty) + 60px)) rotate(300deg) scale(0.6); }
+}
+
+@keyframes bankai-ash {
+  0%, 65.5% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  69% { opacity: 0.9; }
+  86%, 100% { opacity: 0; transform: translate(var(--tx), 140px) rotate(220deg); }
+}

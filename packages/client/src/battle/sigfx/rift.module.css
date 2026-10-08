@@ -1,0 +1,182 @@
+/*
+ * Rift Collapse (voidraxis; signatures.ts): clock 3000 ms, keyframe % = ms / 30; impact 1900.
+ * 1100–1350 space cracks round the attacker (staggered) · 1490–1600 a crack runs along the line to the target ·
+ * 1540 the rift tears open over the target as a hairline, 1620–1830 widens, pouring violet light · 1810–1900 an
+ * implosion ring closes · 1850–1900 the rift slams shut into a white seam · 1900 a burst and the shatter web · the space
+ * round the target falls apart into glass shards that drift and fade by 2640.
+ */
+
+.aura {
+  opacity: 0;
+  animation: rift-aura 3000ms ease-in-out calc(0ms - var(--skip)) both;
+}
+
+.crack {
+  opacity: 0;
+  animation: rift-crack 3000ms linear calc(var(--d) - var(--skip)) both;
+}
+
+.stretch {
+  transform: scale(calc(var(--dist) / 1000), 1);
+}
+
+.runner {
+  opacity: 0;
+  animation: rift-runner 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.rift {
+  opacity: 0;
+  animation: rift-tear 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.ray {
+  animation: rift-flicker 300ms ease-in-out calc(var(--d) - var(--skip)) infinite alternate;
+}
+
+.star {
+  animation: rift-twinkle 700ms ease-in-out calc(var(--d) - var(--skip)) infinite alternate;
+}
+
+.pour {
+  opacity: 0;
+  animation: rift-pour 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.seam {
+  opacity: 0;
+  animation: rift-seam 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.implode {
+  opacity: 0;
+  animation: rift-implode 3000ms cubic-bezier(0.5, 0, 0.9, 0.5) calc(0ms - var(--skip)) both;
+}
+
+.burst {
+  opacity: 0;
+  animation: rift-burst 3000ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.burst2 {
+  animation-delay: calc(70ms - var(--skip));
+}
+
+.voidDisc {
+  opacity: 0;
+  animation: rift-void 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.shatter {
+  opacity: 0;
+  animation: rift-shatter 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.shard {
+  opacity: 0;
+  animation: rift-shard 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+/* 1100–1300 a violet haze round the attacker · gone by 1800 */
+@keyframes rift-aura {
+  0%, 36% { opacity: 0; transform: scale(0.7); }
+  43.3% { opacity: 1; transform: scale(1); }
+  52% { opacity: 1; transform: scale(1.04); }
+  60%, 100% { opacity: 0; transform: scale(1.1); }
+}
+
+/* each crack draws out from the attacker 1100–1350 (+ its stagger), holds, fades 1575–1740 */
+@keyframes rift-crack {
+  0%, 36.6% { opacity: 0; stroke-dashoffset: 1; }
+  36.7% { opacity: 1; stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1); }
+  45% { opacity: 1; stroke-dashoffset: 0; }
+  52.5% { opacity: 1; stroke-dashoffset: 0; }
+  58%, 100% { opacity: 0; stroke-dashoffset: 0; }
+}
+
+/* 1490–1600 the crack runs to the target · gone by 1830 */
+@keyframes rift-runner {
+  0%, 49.6% { opacity: 0; stroke-dashoffset: 1; }
+  49.7% { opacity: 1; stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.8, 1); }
+  53.3% { opacity: 1; stroke-dashoffset: 0; }
+  56% { opacity: 1; stroke-dashoffset: 0; }
+  61%, 100% { opacity: 0; stroke-dashoffset: 0; }
+}
+
+/* 1540 a hairline tears top to bottom · 1620–1830 widens · 1850 strains · 1900 slams shut · gone by 1980 */
+@keyframes rift-tear {
+  0%, 51.3% { opacity: 0; transform: scale(0.03, 0.1); }
+  52% { opacity: 1; transform: scale(0.04, 0.5); }
+  54% { opacity: 1; transform: scale(0.08, 1); animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1); }
+  61% { opacity: 1; transform: scale(1, 1); }
+  61.7% { opacity: 1; transform: scale(1.07, 1.02); animation-timing-function: cubic-bezier(0.7, 0, 1, 0.6); }
+  63.3% { opacity: 1; transform: scale(0.02, 1.04); }
+  65% { opacity: 1; transform: scale(0.01, 0.6); }
+  66%, 100% { opacity: 0; transform: scale(0, 0); }
+}
+
+@keyframes rift-flicker {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
+}
+
+@keyframes rift-twinkle {
+  from { opacity: 0.25; }
+  to { opacity: 1; }
+}
+
+/* the violet light pouring out round the rift */
+@keyframes rift-pour {
+  0%, 52% { opacity: 0; transform: scale(0.2, 0.6); }
+  61% { opacity: 1; transform: scale(1, 1); }
+  62.5% { opacity: 1; transform: scale(1.1, 1.05); }
+  63.5% { opacity: 0.9; transform: scale(0.1, 1.1); }
+  66%, 100% { opacity: 0; transform: scale(0, 1); }
+}
+
+/* 1900 the seam where it shut flares white · gone by 2040 */
+@keyframes rift-seam {
+  0%, 62.8% { opacity: 0; transform: scale(1, 0.9); }
+  63.3% { opacity: 1; transform: scale(1.5, 1.05); }
+  65% { opacity: 1; transform: scale(0.6, 0.9); }
+  68%, 100% { opacity: 0; transform: scale(0.2, 0); }
+}
+
+/* 1810–1900 the ring closing on the rift */
+@keyframes rift-implode {
+  0%, 60.3% { opacity: 0; transform: scale(2.6); }
+  61% { opacity: 1; transform: scale(2.4); }
+  63.3% { opacity: 1; transform: scale(0.12); }
+  63.8%, 100% { opacity: 0; transform: scale(0.05); }
+}
+
+@keyframes rift-burst {
+  0%, 63.2% { opacity: 0; transform: scale(0.2); }
+  63.8% { opacity: 1; }
+  74%, 100% { opacity: 0; transform: scale(2.8); }
+}
+
+/* 1900 the space round the target darkens · lifts by 2520 */
+@keyframes rift-void {
+  0%, 63% { opacity: 0; transform: scale(0.4); }
+  64.5% { opacity: 1; transform: scale(1); }
+  76% { opacity: 0.8; transform: scale(1.05); }
+  84%, 100% { opacity: 0; transform: scale(1.1); }
+}
+
+/* 1900 the shatter web flashes on the target · gone by 2190 */
+@keyframes rift-shatter {
+  0%, 63.2% { opacity: 0; transform: scale(0.85); }
+  63.6% { opacity: 1; transform: scale(1); }
+  68% { opacity: 1; transform: scale(1.02); }
+  73%, 100% { opacity: 0; transform: scale(1.06); }
+}
+
+/* the space falls apart: shards appear in place at 1915, then drift out, spin, sink and fade by 2640 */
+@keyframes rift-shard {
+  0%, 63.3% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.9); }
+  63.8% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+  66.7% { opacity: 1; transform: translate(calc(var(--tx) * 0.22), calc(var(--ty) * 0.22)) rotate(calc(var(--r) * 0.15)) scale(1); }
+  75% { opacity: 0.9; transform: translate(calc(var(--tx) * 0.6), calc(var(--ty) * 0.6 + 15px)) rotate(calc(var(--r) * 0.55)) scale(0.9); }
+  88%, 100% { opacity: 0; transform: translate(var(--tx), calc(var(--ty) + 50px)) rotate(var(--r)) scale(0.7); }
+}

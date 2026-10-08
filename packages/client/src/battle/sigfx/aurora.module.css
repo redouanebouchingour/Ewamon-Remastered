@@ -1,0 +1,239 @@
+/*
+ * Aurora Requiem (glacinid; signatures.ts): clock 3000 ms, keyframe % = ms / 30; impact 1900.
+ * 1100–1500 aurora curtains fade in across the sky and snow starts falling; frost glitters round the attacker ·
+ * 1560–1900 an icy trail coils along the line, glints popping as it is drawn · 1870–1910 the crystal seals the
+ * target (a flash, a frost ring) · 1960–2150 a sheen sweeps it · 2200–2300 it cracks · 2320 it shatters into shards
+ * and snow powder · 2350–2700 the sky and the snow fade.
+ */
+
+/* ---- the sky ------------------------------------------------------------------------------------------------------- */
+
+.sky {
+  opacity: 0;
+  animation: aurora-sky 3000ms ease-in-out calc(0ms - var(--skip)) both;
+}
+
+svg .curtain {
+  transform-origin: 50% 100%;
+  animation: aurora-sway 3000ms ease-in-out calc(0ms - var(--skip)) both;
+}
+
+.c1 {
+  animation-direction: reverse;
+}
+
+.c2 {
+  animation-name: aurora-sway-2;
+}
+
+.snow {
+  opacity: 0;
+  animation: aurora-snow 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.flake {
+  animation: aurora-fall 2400ms linear var(--kd) infinite;
+}
+
+/* ---- the charge and the trail -------------------------------------------------------------------------------------- */
+
+.frost {
+  opacity: 0;
+  animation: aurora-frost 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.glitter {
+  opacity: 0;
+  animation: aurora-glitter 3000ms ease-out calc(var(--kd) - var(--skip)) both;
+}
+
+.stretch {
+  transform: scaleX(calc(var(--dist) / 1000));
+}
+
+.trail {
+  opacity: 0;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+  animation: aurora-trail 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.head {
+  opacity: 0;
+  stroke-dasharray: 0.04 1.96;
+  stroke-dashoffset: 0.04;
+  animation: aurora-head 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.glint {
+  opacity: 0;
+  animation: aurora-glint 3000ms ease-out calc(var(--kd) - var(--skip)) both;
+}
+
+/* ---- the crystal --------------------------------------------------------------------------------------------------- */
+
+.ring {
+  opacity: 0;
+  animation: aurora-ring 3000ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.flash {
+  opacity: 0;
+  animation: aurora-flash 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+svg .crystal {
+  opacity: 0;
+  transform-origin: 50% 100%;
+  animation: aurora-crystal 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.sheen {
+  animation: aurora-sheen 3000ms ease-in-out calc(0ms - var(--skip)) both;
+}
+
+.crack {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: aurora-crack 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.crack:nth-child(2) { animation-delay: calc(25ms - var(--skip)); }
+.crack:nth-child(3) { animation-delay: calc(45ms - var(--skip)); }
+.crack:nth-child(4) { animation-delay: calc(60ms - var(--skip)); }
+.crack:nth-child(5) { animation-delay: calc(80ms - var(--skip)); }
+
+.powder {
+  opacity: 0;
+  animation: aurora-powder 3000ms ease-out calc(var(--kd) - var(--skip)) both;
+}
+
+.shard {
+  opacity: 0;
+  animation: aurora-shard 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+/* 1100–1500 in · 2350–2700 out */
+@keyframes aurora-sky {
+  0%, 36.67% { opacity: 0; }
+  50% { opacity: 1; }
+  78.33% { opacity: 1; }
+  90%, 100% { opacity: 0; }
+}
+
+@keyframes aurora-sway {
+  0% { transform: translateX(-60px) skewX(-6deg) scaleY(0.85); }
+  50% { transform: translateX(30px) skewX(4deg) scaleY(1.05); }
+  100% { transform: translateX(70px) skewX(-3deg) scaleY(0.95); }
+}
+
+@keyframes aurora-sway-2 {
+  0% { transform: translateX(50px) skewX(5deg) scaleY(1); }
+  45% { transform: translateX(-20px) skewX(-4deg) scaleY(0.88); }
+  100% { transform: translateX(-70px) skewX(3deg) scaleY(1.04); }
+}
+
+@keyframes aurora-snow {
+  0%, 36.67% { opacity: 0; }
+  48% { opacity: 1; }
+  80% { opacity: 1; }
+  90%, 100% { opacity: 0; }
+}
+
+@keyframes aurora-fall {
+  0% { opacity: 0; transform: translate(0, 0); }
+  12% { opacity: 1; }
+  50% { transform: translate(var(--tx), 190px); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(0, 380px); }
+}
+
+/* 1100–1560 a frost glow round the attacker */
+@keyframes aurora-frost {
+  0%, 36.67% { opacity: 0; transform: scale(0.7); }
+  45% { opacity: 1; transform: scale(1); }
+  52% { opacity: 1; transform: scale(1.02); }
+  58%, 100% { opacity: 0; transform: scale(1.1); }
+}
+
+@keyframes aurora-glitter {
+  0%, 37% { opacity: 0; transform: scale(0) rotate(0deg); }
+  39% { opacity: 1; transform: scale(1.3) rotate(45deg); }
+  42% { opacity: 0.8; transform: scale(0.7) rotate(60deg); }
+  47% { opacity: 1; transform: scale(1.1) rotate(90deg); }
+  53%, 100% { opacity: 0; transform: scale(0) rotate(150deg); }
+}
+
+/* 1560–1900 the coil draws (ease-in towards the target) · lingers · gone by 2160 */
+@keyframes aurora-trail {
+  0%, 52% { opacity: 0; stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.3, 0, 0.75, 1); }
+  52.1% { opacity: 1; }
+  63.33% { opacity: 1; stroke-dashoffset: 0; }
+  65% { opacity: 1; stroke-dashoffset: 0; }
+  72%, 100% { opacity: 0; stroke-dashoffset: 0; }
+}
+
+@keyframes aurora-head {
+  0%, 52% { opacity: 0; stroke-dashoffset: 0.04; animation-timing-function: cubic-bezier(0.3, 0, 0.75, 1); }
+  52.1% { opacity: 1; }
+  63.33% { opacity: 1; stroke-dashoffset: -0.96; }
+  63.6%, 100% { opacity: 0; stroke-dashoffset: -0.96; }
+}
+
+/* a glint where the coil is drawn (--kd after 1560) */
+@keyframes aurora-glint {
+  0%, 52% { opacity: 0; transform: translateX(calc(var(--dist) * var(--f) * 1px)) scale(0) rotate(0deg); }
+  53.3% { opacity: 1; transform: translateX(calc(var(--dist) * var(--f) * 1px)) scale(1.4) rotate(45deg); }
+  58% { opacity: 0.9; transform: translateX(calc(var(--dist) * var(--f) * 1px)) scale(0.8) rotate(90deg); }
+  64% { opacity: 1; transform: translateX(calc(var(--dist) * var(--f) * 1px)) scale(1) rotate(130deg); }
+  70%, 100% { opacity: 0; transform: translateX(calc(var(--dist) * var(--f) * 1px)) scale(0) rotate(180deg); }
+}
+
+@keyframes aurora-ring {
+  0%, 63.33% { opacity: 0; transform: scale(0.3); }
+  63.67% { opacity: 1; }
+  73%, 100% { opacity: 0; transform: scale(2.1); }
+}
+
+@keyframes aurora-flash {
+  0%, 62.67% { opacity: 0; transform: scale(0.4); }
+  63.67% { opacity: 1; transform: scale(1); }
+  69%, 100% { opacity: 0; transform: scale(1.4); }
+}
+
+/* 1870 grows from the target's feet · 1910 sealed · 2200–2320 strains as it cracks · 2320 shatters */
+@keyframes aurora-crystal {
+  0%, 62.33% { opacity: 0; transform: scale(0.6, 0); animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1); }
+  63.67% { opacity: 1; transform: scale(1.06, 1.08); }
+  65.33% { opacity: 1; transform: scale(1, 1); }
+  73.33% { opacity: 1; transform: translateX(0) scale(1, 1); }
+  74.33% { transform: translateX(-4px) scale(1, 1); }
+  75.33% { transform: translateX(4px) scale(1, 1); }
+  76.33% { transform: translateX(-3px) scale(1.01, 1.01); }
+  77.33% { opacity: 1; transform: translateX(0) scale(1.02, 1.02); }
+  78%, 100% { opacity: 0; transform: translateX(0) scale(1.08, 1.05); }
+}
+
+@keyframes aurora-sheen {
+  0%, 65.33% { transform: translateX(-230px); }
+  71.67%, 100% { transform: translateX(230px); }
+}
+
+@keyframes aurora-crack {
+  0%, 73.33% { stroke-dashoffset: 1; }
+  76.67%, 100% { stroke-dashoffset: 0; }
+}
+
+@keyframes aurora-powder {
+  0%, 77.33% { opacity: 0; transform: scale(0.3); }
+  79% { opacity: 0.9; transform: scale(1); }
+  86%, 100% { opacity: 0; transform: scale(1.7); }
+}
+
+/* 2320 the shards fly out, tumble and fall, gone by 2670 */
+@keyframes aurora-shard {
+  0%, 77% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(1); }
+  77.33% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); animation-timing-function: cubic-bezier(0.1, 0.8, 0.3, 1); }
+  80.5% { opacity: 1; transform: translate(calc(var(--tx) * 0.6), calc(var(--ty) * 0.6)) rotate(calc(var(--r) * 0.4)) scale(1); animation-timing-function: cubic-bezier(0.4, 0, 0.8, 0.6); }
+  89%, 100% { opacity: 0; transform: translate(var(--tx), calc(var(--ty) + 140px)) rotate(var(--r)) scale(0.6); }
+}

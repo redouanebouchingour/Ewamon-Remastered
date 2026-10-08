@@ -12,6 +12,9 @@ const EWAMON_MOVE_ADDITIONS = {
   "Hollow Crescent": { power: 110, type: "Ghost", pp: 5, effect: "crit", accuracy: 95 },
   // castlemaw's Rage Form signature move: in Rage Form, Flash Cannon becomes this. Learned by no species.
   "Vendetta Volley": { power: 110, type: "Steel", pp: 5, effect: "burn", accuracy: 90 },
+  // glacinid's signature move (a default move, patches.js): the frost dragon draws an aurora across a calm winter sky
+  // and seals the foe in ice. Learned by glacinid only.
+  "Aurora Requiem": { power: 130, type: "Ice", pp: 5, effect: "freeze", accuracy: 90 },
 };
 
 module.exports = { EWAMON_MOVE_ADDITIONS };

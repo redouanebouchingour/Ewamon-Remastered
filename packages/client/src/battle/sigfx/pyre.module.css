@@ -1,0 +1,255 @@
+/*
+ * Cosmic Pyre (galaxion; signatures.ts): clock 3000 ms, keyframe % = ms / 30; impact 1940.
+ * 1100 a magic circle under the attacker · 1120 + 70·i five star-fires kindle · 1180–1470 the constellation draws ·
+ * 1480–1570 the stars fuse at the chest · 1580 the comet launches, lobbing over the arena (travel along the line, lift
+ * in the world's vertical; its trail is the same flight, later) · 1850 a sigil opens under the target · 1940 lands: a
+ * burst, a shock ring and a pillar of cosmic flame with star sparks and embers · gone by 2750.
+ */
+
+/* ---- the charge ---------------------------------------------------------------------------------------------------- */
+
+.footSigil {
+  opacity: 0;
+  animation: pyre-foot 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.constellation {
+  opacity: 0;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: pyre-constellation 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.starPos {
+  animation: pyre-fuse 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.kindle {
+  opacity: 0;
+  animation: pyre-kindle 3000ms cubic-bezier(0.2, 0.9, 0.3, 1) calc(var(--kd) - var(--skip)) both;
+}
+
+.twinkle {
+  animation: pyre-twinkle 320ms ease-in-out infinite alternate;
+}
+
+.core {
+  opacity: 0;
+  animation: pyre-core 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.coreRing {
+  opacity: 0;
+  animation: pyre-core-ring 3000ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+/* ---- the comet ----------------------------------------------------------------------------------------------------- */
+
+.travel {
+  opacity: 0;
+  animation: pyre-travel 3000ms linear calc(var(--gd) - var(--skip)) both;
+}
+
+.unrot {
+  transform: rotate(calc(var(--ang) * -1deg));
+}
+
+.lift {
+  animation: pyre-lift 3000ms linear calc(var(--gd) - var(--skip)) both;
+}
+
+.head {
+  animation: pyre-head 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.headStar {
+  animation: pyre-spin 400ms linear infinite;
+}
+
+/* ---- the pyre ------------------------------------------------------------------------------------------------------ */
+
+.sigil {
+  opacity: 0;
+  animation: pyre-sigil 3000ms cubic-bezier(0.2, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.shock {
+  opacity: 0;
+  animation: pyre-shock 3000ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.burst {
+  opacity: 0;
+  animation: pyre-burst 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+svg .pillar {
+  opacity: 0;
+  transform-origin: 50% 100%;
+  animation: pyre-pillar 3000ms cubic-bezier(0.2, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+svg .flicker {
+  transform-origin: 50% 100%;
+  animation: pyre-flicker 130ms linear infinite alternate;
+}
+
+.tongue {
+  animation: pyre-tongue 480ms linear infinite;
+}
+
+.tongue:nth-child(2n) {
+  animation-duration: 400ms;
+  animation-delay: -180ms;
+}
+
+.tongue:nth-child(3n) {
+  animation-duration: 560ms;
+  animation-delay: -320ms;
+}
+
+.speck {
+  animation: pyre-twinkle 260ms ease-in-out infinite alternate;
+}
+
+.speck:nth-child(2n) {
+  animation-duration: 340ms;
+  animation-delay: -120ms;
+}
+
+.spark {
+  opacity: 0;
+  animation: pyre-spark 3000ms ease-out calc(var(--kd) - var(--skip)) both;
+}
+
+.ember {
+  opacity: 0;
+  animation: pyre-ember 3000ms ease-out calc(var(--kd) - var(--skip)) both;
+}
+
+/* 1100–1580 the magic circle under the attacker, turning */
+@keyframes pyre-foot {
+  0%, 36.67% { opacity: 0; transform: scale(0.6) rotate(0deg); }
+  40% { opacity: 0.85; transform: scale(1) rotate(20deg); }
+  52.67% { opacity: 0.85; transform: scale(1) rotate(60deg); }
+  58%, 100% { opacity: 0; transform: scale(1.15) rotate(80deg); }
+}
+
+/* 1180–1470 the constellation draws · 1480–1570 it folds into the chest */
+@keyframes pyre-constellation {
+  0%, 39.33% { opacity: 0; stroke-dashoffset: 1; transform: scale(1); }
+  40% { opacity: 0.9; }
+  49% { opacity: 0.9; stroke-dashoffset: 0; transform: scale(1); animation-timing-function: ease-in; }
+  52.33%, 100% { opacity: 0; stroke-dashoffset: 0; transform: scale(0.1); }
+}
+
+/* each star-fire pops in on its own delay (--kd) */
+@keyframes pyre-kindle {
+  0%, 37.33% { opacity: 0; transform: scale(0) rotate(-60deg); }
+  39.33% { opacity: 1; transform: scale(1.5) rotate(0deg); }
+  41%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes pyre-twinkle {
+  from { opacity: 1; transform: scale(1) rotate(0deg); }
+  to { opacity: 0.55; transform: scale(0.75) rotate(20deg); }
+}
+
+/* 1480–1570 all five fuse at the chest (0, −20) */
+@keyframes pyre-fuse {
+  0%, 49.33% { opacity: 1; transform: translate(var(--sx), var(--sy)) scale(1); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  52.33% { opacity: 1; transform: translate(0px, -20px) scale(0.35); }
+  52.67%, 100% { opacity: 0; transform: translate(0px, -20px) scale(0.2); }
+}
+
+/* 1480 the chest flares · 1570 at its brightest · 1580 released */
+@keyframes pyre-core {
+  0%, 49.33% { opacity: 0; transform: scale(0.2); }
+  51% { opacity: 1; transform: scale(0.7); }
+  52.33% { opacity: 1; transform: scale(1.3); }
+  53.33%, 100% { opacity: 0; transform: scale(0.4); }
+}
+
+@keyframes pyre-core-ring {
+  0%, 52.33% { opacity: 0; transform: scale(0.3); }
+  52.67% { opacity: 1; }
+  57.33%, 100% { opacity: 0; transform: scale(2.4); }
+}
+
+/* 1580 → 1940 along the line (the trail runs --gd later) */
+@keyframes pyre-travel {
+  0%, 52.67% { opacity: 0; transform: translateX(0); }
+  53% { opacity: 1; }
+  64.67% { opacity: 1; transform: translateX(calc(var(--dist) * 1px)); }
+  65%, 100% { opacity: 0; transform: translateX(calc(var(--dist) * 1px)); }
+}
+
+/* a parabola in the world's vertical: quadratic out to the apex at 1760, quadratic in to the target */
+@keyframes pyre-lift {
+  0%, 52.67% { transform: translateY(0); animation-timing-function: cubic-bezier(0.333, 0.667, 0.667, 1); }
+  58.67% { transform: translateY(-290px); animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.333); }
+  64.67%, 100% { transform: translateY(0); }
+}
+
+@keyframes pyre-head {
+  0%, 52.67% { transform: scale(0.6); }
+  64.67%, 100% { transform: scale(1.25); }
+}
+
+@keyframes pyre-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(90deg); }
+}
+
+/* 1850 the sigil opens under the target, turns through the pyre, gone by 2750 */
+@keyframes pyre-sigil {
+  0%, 61.67% { opacity: 0; transform: scale(1.5) rotate(-40deg); }
+  64.67% { opacity: 1; transform: scale(1) rotate(0deg); }
+  85% { opacity: 0.9; transform: scale(1) rotate(50deg); }
+  91.67%, 100% { opacity: 0; transform: scale(1.05) rotate(65deg); }
+}
+
+@keyframes pyre-shock {
+  0%, 64.67% { opacity: 0; transform: scale(0.3); }
+  65% { opacity: 1; }
+  74%, 100% { opacity: 0; transform: scale(2.1); }
+}
+
+@keyframes pyre-burst {
+  0%, 64.33% { opacity: 0; transform: scale(0.3); }
+  65.33% { opacity: 1; transform: scale(1); }
+  71%, 100% { opacity: 0; transform: scale(1.8); }
+}
+
+/* 1940 the pillar shoots up from the target's feet · 2250 at full height · 2400–2650 it thins out and rises away */
+@keyframes pyre-pillar {
+  0%, 64.33% { opacity: 0; transform: scale(0.5, 0); }
+  65.33% { opacity: 1; transform: scale(0.8, 0.85); }
+  67.33% { opacity: 1; transform: scale(1.12, 1.05); }
+  75% { opacity: 1; transform: scale(1, 1); }
+  83.33% { opacity: 0.7; transform: scale(0.55, 1.1); }
+  88.33%, 100% { opacity: 0; transform: scale(0.12, 1.2); }
+}
+
+@keyframes pyre-flicker {
+  from { transform: scale(1, 1) skewX(0deg); }
+  to { transform: scale(1.05, 0.97) skewX(2deg); }
+}
+
+@keyframes pyre-tongue {
+  0% { opacity: 0; transform: translateY(40px) scaleY(0.5); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-300px) scaleY(1.2); }
+}
+
+@keyframes pyre-spark {
+  0%, 65% { opacity: 0; transform: scale(0) rotate(0deg); }
+  66.67% { opacity: 1; transform: scale(1.3) rotate(45deg); }
+  72%, 100% { opacity: 0; transform: scale(0) rotate(135deg); }
+}
+
+@keyframes pyre-ember {
+  0%, 65.33% { opacity: 0; transform: translate(0, 0); }
+  68% { opacity: 1; }
+  80%, 100% { opacity: 0; transform: translate(var(--tx), -380px); }
+}

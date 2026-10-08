@@ -1,11 +1,13 @@
 /*
- * Signature move cinematics (signatures.ts, SignatureCinematic.tsx). One clock per cue, from its mount:
- * - the frame (dim, letterbox bars, cut-in band) runs in absolute ms; the band is the first 1120 ms (full cues only);
- * - each move's effect layer runs on its full clock (Hollow Crescent 2800 ms, keyframe % = ms / 28; Vendetta Volley
- *   3000 ms, % = ms / 30) delayed by −var(--skip), so a short cue starts past the band;
- * - the impact beat lands at lead + windup + travel (1780 / 1940 ms), on the timeline's damage frame.
- * Positions come in as unitless px custom properties (cinematicVars): --ax/--ay the attacker's centre, --dx/--dy the
- * target's, --ang/--dist the line between them (deg, local units), --sc/--sa/--sd the line / attacker / target scales.
+ * Signature move cinematics (signatures.ts, SignatureCinematic.tsx): the shared frame and the effect layers' positioning.
+ * One clock per cue, from its mount:
+ * - the frame (dim, letterbox bars, the cut-in band) runs in absolute ms; the band is the first 1120 ms (full cues only);
+ *   the flash and tint fire at --impact, the dim and bars leave before --total;
+ * - each move's effect layer (sigfx/*) runs on its own full clock delayed by −var(--skip), so a short cue starts past
+ *   the band; its impact beat lands at lead + windup + travel, on the timeline's damage frame.
+ * Custom properties come from cinematicVars (cssVars): --ax/--ay the attacker's centre and --dx/--dy the target's
+ * (unitless px), --ang/--dist the line between them (deg, local units), --sc/--sa/--sd the line / attacker / target
+ * scales, --skip / --impact / --total (ms), --gx/--gy the portrait glint, --accent/--deep/--hot the move's palette.
  */
 
 .root {
@@ -27,28 +29,15 @@
 
 .dim {
   opacity: 0;
-  background: radial-gradient(ellipse at 50% 55%, rgb(40 0 10 / 0.25), rgb(8 0 4 / 0.82) 75%);
-  animation: dim-in 200ms linear both, dim-out 400ms linear calc(2300ms - var(--skip)) forwards;
-}
-
-.volley .dim {
-  background: radial-gradient(ellipse at 50% 55%, rgb(40 14 0 / 0.22), rgb(8 4 2 / 0.8) 75%);
-  animation: dim-in 200ms linear both, dim-out 400ms linear calc(2500ms - var(--skip)) forwards;
+  background: radial-gradient(ellipse at 50% 55%, color-mix(in srgb, var(--deep) 30%, transparent), rgb(6 3 6 / 0.82) 75%);
+  animation: dim-in 200ms linear both, dim-out 400ms linear calc(var(--total) - 500ms - var(--skip)) forwards;
 }
 
 .tint {
   opacity: 0;
-  background: #e0193a;
+  background: var(--accent);
   mix-blend-mode: multiply;
-}
-
-.crescent .tint {
-  animation: crescent-tint 2800ms linear calc(0ms - var(--skip)) both;
-}
-
-.volley .tint {
-  background: #ff5a14;
-  animation: volley-tint 3000ms linear calc(0ms - var(--skip)) both;
+  animation: tint 900ms linear calc(var(--impact) + 10ms - var(--skip)) both;
 }
 
 .root > .bar {
@@ -60,36 +49,20 @@
 .root > .top {
   inset-block-start: 0;
   transform: translateY(-100%);
-  animation: bar-top-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both, bar-top-out 350ms ease-in calc(2400ms - var(--skip)) forwards;
+  animation: bar-top-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both, bar-top-out 350ms ease-in calc(var(--total) - 400ms - var(--skip)) forwards;
 }
 
 .root > .bot {
   inset-block-end: 0;
   transform: translateY(100%);
-  animation: bar-bot-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both, bar-bot-out 350ms ease-in calc(2400ms - var(--skip)) forwards;
-}
-
-.volley > .top {
-  animation: bar-top-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both, bar-top-out 350ms ease-in calc(2600ms - var(--skip)) forwards;
-}
-
-.volley > .bot {
-  animation: bar-bot-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both, bar-bot-out 350ms ease-in calc(2600ms - var(--skip)) forwards;
+  animation: bar-bot-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both, bar-bot-out 350ms ease-in calc(var(--total) - 400ms - var(--skip)) forwards;
 }
 
 .flash {
   opacity: 0;
-  background: #fff;
+  background: color-mix(in srgb, var(--hot) 25%, #fff);
   mix-blend-mode: screen;
-}
-
-.crescent .flash {
-  animation: crescent-flash 2800ms linear calc(0ms - var(--skip)) both;
-}
-
-.volley .flash {
-  background: #fff3dc;
-  animation: volley-flash 3000ms linear calc(0ms - var(--skip)) both;
+  animation: flash 300ms linear calc(var(--impact) - 15ms - var(--skip)) both;
 }
 
 @keyframes dim-in {
@@ -100,6 +73,19 @@
 @keyframes dim-out {
   from { opacity: 1; }
   to { opacity: 0; }
+}
+
+@keyframes tint {
+  0% { opacity: 0; }
+  10% { opacity: 0.3; }
+  100% { opacity: 0; }
+}
+
+@keyframes flash {
+  0% { opacity: 0; }
+  10% { opacity: 0.74; }
+  40% { opacity: 0.2; }
+  100% { opacity: 0; }
 }
 
 @keyframes bar-top-in {
@@ -136,28 +122,18 @@
   overflow: hidden;
   clip-path: inset(0 100% 0 0);
   background:
-    linear-gradient(180deg, #e0193a 0 1.1%, transparent 1.1% 98.9%, #e0193a 98.9%),
-    linear-gradient(90deg, #0a0306 0%, #1a040a 45%, #3a0612 100%);
+    linear-gradient(180deg, var(--accent) 0 1.1%, transparent 1.1% 98.9%, var(--accent) 98.9%),
+    linear-gradient(90deg, #08050a 0%, color-mix(in srgb, var(--deep) 55%, #08050a) 45%, var(--deep) 100%);
   animation: band 1120ms linear both;
-}
-
-.volley .band {
-  background:
-    linear-gradient(180deg, #ff6a1a 0 1.1%, transparent 1.1% 98.9%, #ff6a1a 98.9%),
-    linear-gradient(90deg, #0b0706 0%, #22100a 45%, #4a1a08 100%);
 }
 
 .speed {
   position: absolute;
   inset: 0;
   opacity: 0.55;
-  background: repeating-linear-gradient(90deg, transparent 0 40px, rgb(255 74 98 / 0.35) 40px 160px, transparent 160px 220px);
+  background: repeating-linear-gradient(90deg, transparent 0 40px, color-mix(in srgb, var(--hot) 35%, transparent) 40px 160px, transparent 160px 220px);
   mask: repeating-linear-gradient(180deg, #000 0 2px, transparent 2px 13px);
   animation: speed 260ms linear infinite;
-}
-
-.volley .speed {
-  background: repeating-linear-gradient(90deg, transparent 0 40px, rgb(255 140 60 / 0.35) 40px 160px, transparent 160px 220px);
 }
 
 .portrait {
@@ -174,11 +150,7 @@
   inline-size: 100%;
   block-size: 100%;
   image-rendering: pixelated;
-  filter: drop-shadow(0 0 1.2vw rgb(224 25 58 / 0.55));
-}
-
-.volley .portrait img {
-  filter: drop-shadow(0 0 1.2vw rgb(255 106 26 / 0.55));
+  filter: drop-shadow(0 0 1.2vw color-mix(in srgb, var(--accent) 55%, transparent));
 }
 
 .glint {
@@ -193,11 +165,7 @@
 }
 
 .glintCore {
-  fill: #ff4a62;
-}
-
-.volley .glintCore {
-  fill: #ff3a20;
+  fill: var(--hot);
 }
 
 .title {
@@ -215,13 +183,9 @@
   font-weight: 700;
   letter-spacing: 0.32em;
   text-transform: uppercase;
-  fill: #ff4a62;
+  fill: var(--hot);
   opacity: 0;
   animation: kicker 1120ms linear both;
-}
-
-.volley .kicker {
-  fill: #ff9a4a;
 }
 
 .name {
@@ -245,11 +209,7 @@
 }
 
 .nameShadow {
-  fill: #e0193a;
-}
-
-.volley .nameShadow {
-  fill: #ff6a1a;
+  fill: var(--accent);
 }
 
 /* 120–330 wipes in from the left · 980–1080 collapses to a hairline · gone by 1120 */
@@ -300,7 +260,10 @@
   87.5%, 100% { letter-spacing: 0.01em; }
 }
 
-/* ---- effect layers: positioning ---------------------------------------------------------------------------------- */
+/* ---- effect layers: positioning (sigfx/kit.ts) -------------------------------------------------------------------
+ * Every element of an effect layer transforms about its own centre (fill-box) unless it carries `vb`: then about its
+ * local origin (0, 0) — the travel elements, whose translate / scale is in the line's frame. `:where` keeps these
+ * defaults at zero specificity, so an effect module's own rule always wins. */
 
 .fx {
   inline-size: 100%;
@@ -308,7 +271,7 @@
   overflow: visible;
 }
 
-.fx * {
+:where(.fx) * {
   transform-box: fill-box;
   transform-origin: center;
 }
@@ -317,417 +280,29 @@
 .fx .atD,
 .fx .line,
 .fx .rot,
-.fx .blade,
-.fx .ghost {
+.fx .vb {
   transform-box: view-box;
   transform-origin: 0 0;
 }
 
+/* the attacker's centre, scaled to its sprite (500 local units = the sprite's height; its feet at y 250) */
 .atA {
   transform: translate(calc(var(--ax) * 1px), calc(var(--ay) * 1px)) scale(var(--sa));
 }
 
+/* the target's centre, scaled to its sprite (300 local units = the sprite's height; its feet at y 150) */
 .atD {
   transform: translate(calc(var(--dx) * 1px), calc(var(--dy) * 1px)) scale(var(--sd));
 }
 
+/* the line from the attacker (x 0) to the target (x var(--dist)), +x towards the target, 900 units = the viewport height */
 .line {
   transform: translate(calc(var(--ax) * 1px), calc(var(--ay) * 1px)) rotate(calc(var(--ang) * 1deg)) scale(var(--sc));
 }
 
+/* inside .atD: the line's direction (x along the travel) */
 .rot {
   transform: rotate(calc(var(--ang) * 1deg));
-}
-
-/* ---- Hollow Crescent (2800 ms; % = ms / 28) ---------------------------------------------------------------------- */
-
-.fx .aura {
-  transform-origin: 50% 100%;
-  opacity: 0;
-  animation: aura 2800ms linear calc(0ms - var(--skip)) both;
-}
-
-.wisp {
-  animation: wisp 520ms linear infinite;
-}
-
-.wisp:nth-child(2n) {
-  animation-duration: 440ms;
-  animation-delay: -200ms;
-}
-
-.wisp:nth-child(3n) {
-  animation-duration: 600ms;
-  animation-delay: -340ms;
-}
-
-.wisp:nth-child(5n) {
-  animation-delay: -90ms;
-  stroke: #fff;
-  stroke-width: 4;
-}
-
-.chargeRing {
-  opacity: 0;
-  animation: charge-ring 2800ms linear calc(0ms - var(--skip)) both;
-}
-
-.blade {
-  opacity: 0;
-  animation: blade 2800ms linear calc(0ms - var(--skip)) both;
-}
-
-.ghost {
-  opacity: 0;
-  animation: ghost 2800ms linear calc(35ms - var(--skip)) both;
-}
-
-.g2 {
-  animation-delay: calc(70ms - var(--skip));
-}
-
-.g3 {
-  animation-delay: calc(105ms - var(--skip));
-}
-
-.slash {
-  opacity: 0;
-  animation: slash 2800ms linear calc(0ms - var(--skip)) both;
-}
-
-.wound {
-  opacity: 0;
-  animation: wound 2800ms cubic-bezier(0.2, 0.9, 0.3, 1) calc(0ms - var(--skip)) both;
-}
-
-.woundEdge {
-  animation: wound-edge 2800ms linear calc(0ms - var(--skip)) both;
-}
-
-.ring {
-  opacity: 0;
-  animation: ring 2800ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
-}
-
-.r2 {
-  animation-delay: calc(90ms - var(--skip));
-}
-
-.shard {
-  opacity: 0;
-  animation: shard 2800ms cubic-bezier(0.15, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
-}
-
-.ember {
-  opacity: 0;
-}
-
-.crescent .ember {
-  animation: crescent-ember 2800ms ease-out calc(0ms - var(--skip)) both;
-}
-
-/* 1100–1800 the crimson aura round the attacker */
-@keyframes aura {
-  0%, 39.3% { opacity: 0; transform: scaleY(0.4); }
-  50% { opacity: 1; transform: scaleY(1); }
-  60% { opacity: 1; transform: scaleY(1); }
-  66%, 100% { opacity: 0; transform: scaleY(1.2); }
-}
-
-@keyframes wisp {
-  0% { transform: translateY(40px) scaleY(0.5); opacity: 0; }
-  30% { opacity: 1; }
-  100% { transform: translateY(-260px) scaleY(1.2); opacity: 0; }
-}
-
-@keyframes charge-ring {
-  0%, 47% { opacity: 0; transform: scale(2.2); }
-  51.8% { opacity: 1; transform: scale(0.6); }
-  54.3%, 100% { opacity: 0; transform: scale(0.3); }
-}
-
-/* 1150 appears · 1520 pulls back · 1780 lands on the target · 1810 gone */
-@keyframes blade {
-  0%, 41% { opacity: 0; transform: translateX(0) scale(0.2, 0.05); }
-  46% { opacity: 1; transform: translateX(0) scale(0.55, 0.5); }
-  51.8% { opacity: 1; transform: translateX(6px) scale(0.62, 0.62); }
-  54.3% { opacity: 1; transform: translateX(-40px) scale(0.6, 0.66); }
-  63.6% { opacity: 1; transform: translateX(calc(var(--dist) * 1px - 60px)) scale(1.2, 1.25); }
-  64.6%, 100% { opacity: 0; transform: translateX(calc(var(--dist) * 1px - 38px)) scale(1.3, 1.3); }
-}
-
-@keyframes ghost {
-  0%, 54.3% { opacity: 0; transform: translateX(-40px) scale(0.6, 0.66); }
-  55% { opacity: 0.45; }
-  63.6% { opacity: 0.3; transform: translateX(calc(var(--dist) * 1px - 60px)) scale(1.2, 1.25); }
-  64.2%, 100% { opacity: 0; transform: translateX(calc(var(--dist) * 1px - 48px)) scale(1.25, 1.25); }
-}
-
-@keyframes crescent-flash {
-  0%, 63.5% { opacity: 0; }
-  64.6% { opacity: 0.78; }
-  70%, 100% { opacity: 0; }
-}
-
-@keyframes crescent-tint {
-  0%, 64.6% { opacity: 0; }
-  66% { opacity: 0.3; }
-  80%, 100% { opacity: 0; }
-}
-
-/* 1790–1860 a hairline cuts through the target, thinning out by 2120 */
-@keyframes slash {
-  0%, 63.9% { opacity: 0; transform: scale(0, 1); }
-  66.4% { opacity: 1; transform: scale(1, 1); }
-  70% { opacity: 1; transform: scale(1, 0.7); }
-  75.7%, 100% { opacity: 0; transform: scale(1.05, 0); }
-}
-
-/* the crescent's black wound on the target: 1790 in · 2300 out */
-@keyframes wound {
-  0%, 63.9% { opacity: 0; transform: scale(0.7); }
-  66% { opacity: 1; transform: scale(1.12); }
-  75% { opacity: 0.95; transform: scale(1.18); }
-  82.1%, 100% { opacity: 0; transform: scale(1.3, 0.2); }
-}
-
-@keyframes wound-edge {
-  0%, 64% { stroke-dashoffset: 1; opacity: 1; }
-  67% { stroke-dashoffset: 0; opacity: 1; }
-  78% { opacity: 0.8; }
-  82%, 100% { stroke-dashoffset: 0; opacity: 0; }
-}
-
-@keyframes ring {
-  0%, 64.3% { opacity: 0; transform: scale(0.2); }
-  65% { opacity: 1; }
-  76.8%, 100% { opacity: 0; transform: scale(2.6); }
-}
-
-@keyframes shard {
-  0%, 64.3% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.4); }
-  65.5% { opacity: 1; transform: translate(calc(var(--tx) * 0.25), calc(var(--ty) * 0.25)) rotate(60deg) scale(1); }
-  82.1%, 100% { opacity: 0; transform: translate(var(--tx), calc(var(--ty) + 40px)) rotate(240deg) scale(0.6); }
-}
-
-@keyframes crescent-ember {
-  0%, 66% { opacity: 0; transform: translate(0, 0); }
-  70% { opacity: 1; }
-  92%, 100% { opacity: 0; transform: translate(var(--tx), -120px); }
-}
-
-/* ---- Vendetta Volley (3000 ms; % = ms / 30) ---------------------------------------------------------------------
- * rounds leave at 1520 + 46·i (left cannon on even i, right on odd), fly 100 ms; the last lands at 1942 */
-
-.muzzleCharge {
-  opacity: 0;
-  animation: muzzle-charge 3000ms linear calc(0ms - var(--skip)) both;
-}
-
-.muzzle {
-  opacity: 0;
-}
-
-.mL {
-  animation: muzzle-left 3000ms linear calc(0ms - var(--skip)) both;
-}
-
-.mR {
-  animation: muzzle-right 3000ms linear calc(0ms - var(--skip)) both;
-}
-
-.tracer,
-.casing,
-.spark {
-  opacity: 0;
-}
-
-.tracer {
-  animation: tracer 100ms linear;
-}
-
-.t0 { animation-delay: calc(1520ms - var(--skip)); }
-.t1 { animation-delay: calc(1566ms - var(--skip)); }
-.t2 { animation-delay: calc(1612ms - var(--skip)); }
-.t3 { animation-delay: calc(1658ms - var(--skip)); }
-.t4 { animation-delay: calc(1704ms - var(--skip)); }
-.t5 { animation-delay: calc(1750ms - var(--skip)); }
-.t6 { animation-delay: calc(1796ms - var(--skip)); }
-.t7 { animation-delay: calc(1842ms - var(--skip)); }
-
-.casing {
-  animation: casing 520ms cubic-bezier(0.2, 0.7, 0.4, 1);
-}
-
-.c0 { animation-delay: calc(1530ms - var(--skip)); }
-.c1 { animation-delay: calc(1576ms - var(--skip)); }
-.c2 { animation-delay: calc(1622ms - var(--skip)); }
-.c3 { animation-delay: calc(1668ms - var(--skip)); }
-.c4 { animation-delay: calc(1714ms - var(--skip)); }
-.c5 { animation-delay: calc(1760ms - var(--skip)); }
-.c6 { animation-delay: calc(1806ms - var(--skip)); }
-.c7 { animation-delay: calc(1852ms - var(--skip)); }
-
-.spark {
-  animation: spark 160ms ease-out;
-}
-
-.k0 { animation-delay: calc(1620ms - var(--skip)); }
-.k1 { animation-delay: calc(1666ms - var(--skip)); }
-.k2 { animation-delay: calc(1712ms - var(--skip)); }
-.k3 { animation-delay: calc(1758ms - var(--skip)); }
-.k4 { animation-delay: calc(1804ms - var(--skip)); }
-.k5 { animation-delay: calc(1850ms - var(--skip)); }
-.k6 { animation-delay: calc(1896ms - var(--skip)); }
-.k7 { animation-delay: calc(1942ms - var(--skip)); }
-
-.reticle {
-  opacity: 0;
-  stroke: #fff;
-  animation: reticle 3000ms linear calc(0ms - var(--skip)) both;
-}
-
-.fireball,
-.smoke,
-.vring,
-.skull {
-  opacity: 0;
-}
-
-.fireball {
-  animation: fireball 3000ms cubic-bezier(0.2, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
-}
-
-.f2 {
-  animation-delay: calc(60ms - var(--skip));
-}
-
-.smoke {
-  animation: smoke 3000ms ease-out calc(0ms - var(--skip)) both;
-}
-
-.vring {
-  animation: ring-burst 3000ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
-}
-
-.skull {
-  animation: skull 3000ms cubic-bezier(0.2, 0.9, 0.3, 1) calc(0ms - var(--skip)) both;
-}
-
-.volley .ember {
-  animation: volley-ember 3000ms ease-out calc(0ms - var(--skip)) both;
-}
-
-/* 1100–1520 both cannons charge, glowing through the volley */
-@keyframes muzzle-charge {
-  0%, 36.7% { opacity: 0; transform: scale(0); }
-  48.3% { opacity: 1; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.25); }
-  50.7% { opacity: 1; transform: scale(0.9); }
-  64.7% { opacity: 0.8; transform: scale(0.8); }
-  66.7%, 100% { opacity: 0; transform: scale(0.3); }
-}
-
-@keyframes muzzle-left {
-  0%, 50.6% { opacity: 0; transform: scale(0.5); }
-  50.7% { opacity: 1; transform: scale(1.4); }
-  51.6% { opacity: 0; transform: scale(0.7); }
-  53.7% { opacity: 0; transform: scale(0.5); }
-  53.75% { opacity: 1; transform: scale(1.4); }
-  54.7% { opacity: 0; transform: scale(0.7); }
-  56.75% { opacity: 0; transform: scale(0.5); }
-  56.8% { opacity: 1; transform: scale(1.4); }
-  57.75% { opacity: 0; transform: scale(0.7); }
-  59.8% { opacity: 0; transform: scale(0.5); }
-  59.87% { opacity: 1; transform: scale(1.4); }
-  60.8%, 100% { opacity: 0; transform: scale(0.7); }
-}
-
-@keyframes muzzle-right {
-  0%, 52.15% { opacity: 0; transform: scale(0.5); }
-  52.2% { opacity: 1; transform: scale(1.4); }
-  53.15% { opacity: 0; transform: scale(0.7); }
-  55.2% { opacity: 0; transform: scale(0.5); }
-  55.27% { opacity: 1; transform: scale(1.4); }
-  56.2% { opacity: 0; transform: scale(0.7); }
-  58.3% { opacity: 0; transform: scale(0.5); }
-  58.33% { opacity: 1; transform: scale(1.4); }
-  59.3% { opacity: 0; transform: scale(0.7); }
-  61.35% { opacity: 0; transform: scale(0.5); }
-  61.4% { opacity: 1; transform: scale(1.4); }
-  62.35%, 100% { opacity: 0; transform: scale(0.7); }
-}
-
-@keyframes tracer {
-  from { opacity: 1; transform: translateX(80px); }
-  to { opacity: 1; transform: translateX(calc(var(--dist) * 1px)); }
-}
-
-@keyframes casing {
-  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
-  80% { opacity: 1; }
-  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) rotate(540deg); }
-}
-
-@keyframes spark {
-  from { opacity: 1; transform: scale(0.2) rotate(0deg); }
-  to { opacity: 0; transform: scale(0.9) rotate(45deg); }
-}
-
-/* 1100 swings in · 1450 settles · 1500 locks (red) · 1940 the volley lands · gone by 1990 */
-@keyframes reticle {
-  0%, 36.7% { opacity: 0; transform: scale(2.4) rotate(-90deg); stroke: #fff; }
-  48.3% { opacity: 1; transform: scale(1) rotate(0deg); stroke: #fff; }
-  50% { opacity: 1; transform: scale(0.88) rotate(0deg); stroke: #ff3a20; }
-  50.7% { opacity: 1; transform: scale(1); stroke: #ff3a20; }
-  64.7% { opacity: 1; transform: scale(1); stroke: #ff3a20; }
-  66.3%, 100% { opacity: 0; transform: scale(1.3); stroke: #ff3a20; }
-}
-
-@keyframes volley-flash {
-  0%, 64.6% { opacity: 0; }
-  65.7% { opacity: 0.72; }
-  70.7%, 100% { opacity: 0; }
-}
-
-@keyframes volley-tint {
-  0%, 65.7% { opacity: 0; }
-  67% { opacity: 0.28; }
-  80%, 100% { opacity: 0; }
-}
-
-@keyframes fireball {
-  0%, 64.7% { opacity: 0; transform: scale(0.2); }
-  65.7% { opacity: 1; transform: scale(0.9); }
-  75% { opacity: 0.9; transform: scale(1.25); }
-  83.3%, 100% { opacity: 0; transform: scale(1.5); }
-}
-
-@keyframes smoke {
-  0%, 66.3% { opacity: 0; transform: scale(0.5); }
-  76.7% { opacity: 0.9; transform: scale(1.2); }
-  93.3%, 100% { opacity: 0; transform: scale(1.6); }
-}
-
-@keyframes ring-burst {
-  0%, 65% { opacity: 0; transform: scale(0.2); }
-  65.5% { opacity: 1; }
-  76.7%, 100% { opacity: 0; transform: scale(2.6); }
-}
-
-/* the skull mark stamps on at 1960 and fades by 2750 */
-@keyframes skull {
-  0%, 65.3% { opacity: 0; transform: scale(1.8); }
-  68% { opacity: 0.95; transform: scale(0.95); }
-  69.7% { opacity: 0.95; transform: scale(1); }
-  83.3% { opacity: 0.9; transform: scale(1); }
-  91.7%, 100% { opacity: 0; transform: scale(1.05); }
-}
-
-@keyframes volley-ember {
-  0%, 66.7% { opacity: 0; transform: translate(0, 0); }
-  70% { opacity: 1; }
-  95%, 100% { opacity: 0; transform: translate(var(--tx), -160px); }
 }
 
 /* ---- reduced motion: the dim and a still name card, no effect layer, no flash ----------------------------------- */
@@ -739,7 +314,8 @@
 
 .reduced .speed,
 .reduced .portrait,
-.reduced .glint {
+.reduced .glint,
+.reduced .tint {
   animation: none;
 }
 

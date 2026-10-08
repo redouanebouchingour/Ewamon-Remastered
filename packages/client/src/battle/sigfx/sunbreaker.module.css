@@ -1,0 +1,230 @@
+/*
+ * Sunbreaker Barrage (sunjaw; signatures.ts): clock 3000 ms, keyframe % = ms / 30; impact 2000.
+ * 1050–1400 a sun rises behind the attacker, its rays turning, heat sparks rising · fist i leaves at 1520 + 70·i and
+ * flies 130 ms (alternating above / below the line), bursting on the target at 1650 + 70·i; the sixth lands at 2000 ·
+ * a blinding solar disc swells, cracks like glass (2100–2180) and breaks at 2240: heat rings, shards, embers · gone
+ * by 2700.
+ */
+
+.sun {
+  opacity: 0;
+  animation: sun-rise 3000ms cubic-bezier(0.2, 0.7, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.rays {
+  animation: sun-rays 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.rim {
+  animation: sun-rim 140ms ease-in-out infinite alternate;
+}
+
+.rise {
+  opacity: 0;
+  animation: sun-spark 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.rise:nth-of-type(2n) {
+  animation-delay: calc(120ms - var(--skip));
+}
+
+.rise:nth-of-type(3n) {
+  animation-delay: calc(220ms - var(--skip));
+}
+
+.launch,
+.fist,
+.hit,
+.hitRing {
+  opacity: 0;
+}
+
+.launch {
+  animation: sun-launch 120ms ease-out;
+}
+
+.fist {
+  animation: sun-fist 130ms cubic-bezier(0.4, 0, 0.8, 0.6);
+}
+
+.hit {
+  animation: sun-hit 200ms ease-out;
+}
+
+.hitRing {
+  animation: sun-hit-ring 260ms cubic-bezier(0.1, 0.8, 0.3, 1);
+}
+
+.f0 { animation-delay: calc(1520ms - var(--skip)); }
+.f1 { animation-delay: calc(1590ms - var(--skip)); }
+.f2 { animation-delay: calc(1660ms - var(--skip)); }
+.f3 { animation-delay: calc(1730ms - var(--skip)); }
+.f4 { animation-delay: calc(1800ms - var(--skip)); }
+.f5 { animation-delay: calc(1870ms - var(--skip)); }
+
+.l0 { animation-delay: calc(1515ms - var(--skip)); }
+.l1 { animation-delay: calc(1585ms - var(--skip)); }
+.l2 { animation-delay: calc(1655ms - var(--skip)); }
+.l3 { animation-delay: calc(1725ms - var(--skip)); }
+.l4 { animation-delay: calc(1795ms - var(--skip)); }
+.l5 { animation-delay: calc(1865ms - var(--skip)); }
+
+.h0 { animation-delay: calc(1650ms - var(--skip)); }
+.h1 { animation-delay: calc(1720ms - var(--skip)); }
+.h2 { animation-delay: calc(1790ms - var(--skip)); }
+.h3 { animation-delay: calc(1860ms - var(--skip)); }
+.h4 { animation-delay: calc(1930ms - var(--skip)); }
+.h5 { animation-delay: calc(2000ms - var(--skip)); }
+
+.heat,
+.burstRays,
+.burstGlow,
+.burst,
+.cracks,
+.shard,
+.ember {
+  opacity: 0;
+}
+
+.heat {
+  animation: sun-heat 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.q1 {
+  animation-delay: calc(120ms - var(--skip));
+}
+
+.q2 {
+  animation-delay: calc(240ms - var(--skip));
+}
+
+.burstRays {
+  animation: sun-burst-rays 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.burstGlow {
+  animation: sun-burst-glow 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.burst {
+  animation: sun-burst 3000ms cubic-bezier(0.2, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.cracks {
+  animation: sun-cracks 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.crack {
+  animation: sun-crack 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.shard {
+  animation: sun-shard 3000ms cubic-bezier(0.15, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.ember {
+  animation: sun-ember 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+/* 1050–1400 the sun rises behind the attacker · 1520 flares as the barrage starts · fades by 2100 */
+@keyframes sun-rise {
+  0%, 35% { opacity: 0; transform: translateY(220px) scale(0.5); }
+  46.67% { opacity: 1; transform: translateY(0) scale(1); }
+  50% { opacity: 1; transform: translateY(0) scale(1.05); }
+  50.67% { opacity: 1; transform: translateY(0) scale(1.16); }
+  52% { opacity: 1; transform: translateY(0) scale(1); }
+  63.3% { opacity: 0.85; transform: translateY(-10px) scale(1); }
+  70%, 100% { opacity: 0; transform: translateY(-30px) scale(1.1); }
+}
+
+@keyframes sun-rays {
+  0%, 35% { transform: rotate(0deg); }
+  70%, 100% { transform: rotate(110deg); }
+}
+
+@keyframes sun-rim {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+@keyframes sun-spark {
+  0%, 36.7% { opacity: 0; transform: translate(0, 0); }
+  40% { opacity: 1; }
+  60%, 100% { opacity: 0; transform: translate(var(--tx), -320px); }
+}
+
+@keyframes sun-launch {
+  from { opacity: 1; transform: scale(0.3) rotate(0deg); }
+  to { opacity: 0; transform: scale(1.3) rotate(30deg); }
+}
+
+@keyframes sun-fist {
+  from { opacity: 1; transform: translateX(110px) scale(0.7); }
+  to { opacity: 1; transform: translateX(calc(var(--dist) * 1px - 40px)) scale(1.15); }
+}
+
+@keyframes sun-hit {
+  from { opacity: 1; transform: scale(0.3) rotate(0deg); }
+  to { opacity: 0; transform: scale(1.5) rotate(40deg); }
+}
+
+@keyframes sun-hit-ring {
+  from { opacity: 1; transform: scale(0.3); }
+  to { opacity: 0; transform: scale(2.2); }
+}
+
+@keyframes sun-heat {
+  0%, 67.5% { opacity: 0; transform: scale(0.6); }
+  69% { opacity: 0.8; }
+  82%, 100% { opacity: 0; transform: scale(2.1); }
+}
+
+@keyframes sun-burst-rays {
+  0%, 66.6% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  68.3% { opacity: 1; transform: scale(1) rotate(4deg); }
+  76% { opacity: 0.8; transform: scale(1.12) rotate(14deg); }
+  81%, 100% { opacity: 0; transform: scale(1.3) rotate(20deg); }
+}
+
+@keyframes sun-burst-glow {
+  0%, 66.3% { opacity: 0; transform: scale(0.3); }
+  67.3% { opacity: 0.9; transform: scale(1); }
+  74.7% { opacity: 0.75; transform: scale(1.1); }
+  80%, 100% { opacity: 0; transform: scale(1.4); }
+}
+
+/* 2000 the solar disc swells · holds blinding · 2240 breaks apart, gone by 2340 */
+@keyframes sun-burst {
+  0%, 66.5% { opacity: 0; transform: scale(0.15); }
+  68.67% { opacity: 1; transform: scale(1); }
+  73.3% { opacity: 1; transform: scale(1.05); }
+  74.67% { opacity: 1; transform: scale(1.08); }
+  76% { opacity: 0.4; transform: scale(1.2); }
+  78%, 100% { opacity: 0; transform: scale(1.28); }
+}
+
+/* 2100–2180 cracks race across the disc · 2240 split wider as it breaks · gone by 2460 */
+@keyframes sun-cracks {
+  0%, 69.9% { opacity: 0; transform: scale(1); }
+  70% { opacity: 1; transform: scale(1); }
+  74.67% { opacity: 1; transform: scale(1.04); }
+  78% { opacity: 0.85; transform: scale(1.25); }
+  82%, 100% { opacity: 0; transform: scale(1.35); }
+}
+
+@keyframes sun-crack {
+  0%, 70% { stroke-dashoffset: 1; }
+  72.7%, 100% { stroke-dashoffset: 0; }
+}
+
+@keyframes sun-shard {
+  0%, 74.67% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.5); }
+  76% { opacity: 1; transform: translate(calc(var(--tx) * 0.25), calc(var(--ty) * 0.25)) rotate(70deg) scale(1.2); }
+  88%, 100% { opacity: 0; transform: translate(var(--tx), calc(var(--ty) + 60px)) rotate(260deg) scale(0.7); }
+}
+
+@keyframes sun-ember {
+  0%, 72% { opacity: 0; transform: translate(0, 0); }
+  75% { opacity: 1; }
+  90%, 100% { opacity: 0; transform: translate(var(--tx), -170px); }
+}

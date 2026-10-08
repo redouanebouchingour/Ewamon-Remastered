@@ -5,7 +5,7 @@
  * `VFX_IDS` (asserted by timeline.test.ts).
  */
 import type { MoveDef, TypeName } from '@ewa/core';
-import { SIGNATURE_CINEMATICS, signatureAnim } from './signatures';
+import { signatureAnims } from './signatures';
 
 export type AttackerPose = 'lunge' | 'windup' | 'idle';
 export type MoveCamera = 'attacker' | 'defender' | 'impact' | 'wide';
@@ -84,11 +84,9 @@ export const MOVE_ANIMS: Readonly<Record<string, Partial<MoveAnimDef>>> = {
   'String Shot': { windupMs: 240, travelMs: 260, recoverMs: 260, vfx: 'stat_down', camera: 'defender', attackerPose: 'windup' },
   // Dark
   Bite: { windupMs: 180, travelMs: 150, recoverMs: 280, vfx: 'type_dark', attackerPose: 'lunge' },
-  // Ghost — hollowmane's Rage Form signature (it replaces Night Slash): windup / travel are its cinematic's charge and
-  // release (signatures.ts), the crimson rage burst on the target
-  'Hollow Crescent': signatureAnim(SIGNATURE_CINEMATICS['Hollow Crescent']!, { recoverMs: 380, vfx: 'form_rage', attackerPose: 'lunge' }),
-  // Steel — castlemaw's Rage Form signature (it replaces Flash Cannon): both cannons charge, the volley, the rage burst
-  'Vendetta Volley': signatureAnim(SIGNATURE_CINEMATICS['Vendetta Volley']!, { recoverMs: 360, vfx: 'form_rage', attackerPose: 'windup' }),
+  // every signature move (battle forms, legendaries, mythicals): windup / travel are its cinematic's charge and release
+  // (signatures.ts), camera wide
+  ...signatureAnims(),
 };
 
 /** All 19 types present (asserted). Type-level feel; the VFX/SFX default by type name. */

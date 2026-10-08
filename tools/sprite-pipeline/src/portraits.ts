@@ -5,9 +5,9 @@
  *
  *   pnpm --filter @ewa/sprite-pipeline portraits hollowmane_rage castlemaw_rage
  *
- * Reads `assets-src/creatures/front/<id>(front).png`, writes `packages/client/public/signature/<id>.webp`.
+ * Reads `assets-src/creatures/front/<id>(front).{png,webp,gif}` (a GIF's first frame), writes `packages/client/public/signature/<id>.webp`.
  */
-import { mkdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -18,8 +18,9 @@ export const PORTRAIT_SIZE = 256;
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 export async function buildPortrait(id: string, srcDir: string, outDir: string): Promise<string> {
-  const src = path.join(srcDir, `${id}(front).png`);
-  const { data, info } = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const src = ['png', 'webp', 'gif'].map((ext) => path.join(srcDir, `${id}(front).${ext}`)).find((p) => existsSync(p));
+  if (src === undefined) throw new Error(`${id}: no ${id}(front).png|webp|gif in ${srcDir}`);
+  const { data, info } = await sharp(src, { pages: 1 }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const { image, flags } = recoverAlpha({ width: info.width, height: info.height, data: new Uint8Array(data.buffer, data.byteOffset, data.byteLength) });
   if (flags.includes('empty')) throw new Error(`${id}: the background recovery left nothing`);
   const out = path.join(outDir, `${id}.webp`);

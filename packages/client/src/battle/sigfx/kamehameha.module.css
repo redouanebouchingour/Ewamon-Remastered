@@ -1,0 +1,338 @@
+/*
+ * Kamehameha (zenryu; signatures.ts): clock 3200 ms, keyframe % = ms / 32; impact 2100.
+ * 1100–1800 a cyan aura round the attacker, the ki sphere grows at its side, streaks converge, sparks crackle ·
+ * 1800 released: the beam races to the target (300 ms), its head ahead of it · 2100 lands: an explosion, shock rings,
+ * rays, debris · 2420 the beam thins out, gone by 2800 · motes drift away by 2900.
+ */
+
+.aura {
+  opacity: 0;
+  transform-origin: 50% 100%;
+  animation: kame-aura 3200ms linear calc(0ms - var(--skip)) both;
+}
+
+.ring {
+  opacity: 0;
+  animation: kame-ring 660ms ease-out infinite;
+}
+
+.ring:nth-child(2) {
+  animation-delay: -220ms;
+}
+
+.ring:nth-child(3) {
+  animation-delay: -440ms;
+}
+
+.flare {
+  animation: kame-flare 480ms linear infinite;
+}
+
+.flare:nth-child(2n) {
+  animation-duration: 420ms;
+  animation-delay: -180ms;
+}
+
+.flare:nth-child(3n) {
+  animation-duration: 560ms;
+  animation-delay: -300ms;
+}
+
+.streaks {
+  opacity: 0;
+  animation: kame-streaks 3200ms linear calc(0ms - var(--skip)) both;
+}
+
+.streak {
+  opacity: 0;
+  animation: kame-streak 380ms cubic-bezier(0.5, 0, 0.9, 0.6) infinite;
+}
+
+.streaks > g:nth-child(2n) .streak {
+  animation-delay: -150ms;
+  animation-duration: 330ms;
+}
+
+.streaks > g:nth-child(3n) .streak {
+  animation-delay: -260ms;
+  animation-duration: 420ms;
+}
+
+.streaks > g:nth-child(5n) .streak {
+  animation-delay: -90ms;
+}
+
+.sphere {
+  opacity: 0;
+  animation: kame-sphere 3200ms linear calc(0ms - var(--skip)) both;
+}
+
+.core {
+  animation: kame-core 160ms ease-in-out infinite alternate;
+}
+
+.haloGate {
+  opacity: 0;
+  animation: kame-halo-gate 3200ms linear calc(0ms - var(--skip)) both;
+}
+
+.halo {
+  animation: kame-halo 300ms ease-out infinite;
+}
+
+.crackle {
+  opacity: 0;
+  animation: kame-crackle 3200ms linear calc(0ms - var(--skip)) both;
+}
+
+.bolt {
+  opacity: 0;
+  animation: kame-bolt 300ms linear infinite;
+}
+
+.crackle > g:nth-child(2) .bolt { animation-duration: 340ms; animation-delay: -110ms; }
+.crackle > g:nth-child(3) .bolt { animation-duration: 260ms; animation-delay: -60ms; }
+.crackle > g:nth-child(4) .bolt { animation-duration: 380ms; animation-delay: -200ms; }
+.crackle > g:nth-child(5) .bolt { animation-duration: 320ms; animation-delay: -150ms; }
+.crackle > g:nth-child(6) .bolt { animation-duration: 280ms; animation-delay: -30ms; }
+
+.beam {
+  opacity: 0;
+  animation: kame-beam 3200ms linear calc(0ms - var(--skip)) both;
+}
+
+.beamPulse {
+  animation: kame-pulse 90ms ease-in-out infinite alternate;
+}
+
+.edge {
+  animation: kame-edge-a 240ms linear infinite;
+}
+
+.e2 {
+  animation-name: kame-edge-b;
+  animation-duration: 300ms;
+}
+
+.e3 {
+  animation-duration: 180ms;
+  animation-name: kame-edge-c;
+}
+
+.e4 {
+  animation-duration: 200ms;
+  animation-name: kame-edge-c;
+}
+
+.head {
+  opacity: 0;
+  animation: kame-head 3200ms linear calc(0ms - var(--skip)) both;
+}
+
+.blast,
+.shock,
+.ground,
+.rays,
+.debris,
+.mote {
+  opacity: 0;
+}
+
+.blast {
+  animation: kame-blast 3200ms cubic-bezier(0.2, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.blast2 {
+  animation-name: kame-blast-core;
+}
+
+.shock {
+  animation: kame-shock 3200ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.shock2 {
+  animation-delay: calc(90ms - var(--skip));
+}
+
+.ground {
+  animation: kame-ground 3200ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.rays {
+  animation: kame-rays 3200ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.debris {
+  animation: kame-debris 3200ms cubic-bezier(0.15, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.mote {
+  animation: kame-mote 3200ms ease-out calc(0ms - var(--skip)) both;
+}
+
+/* 1050–1180 the aura rises · held through the charge · 1820–1950 fades as the beam fires */
+@keyframes kame-aura {
+  0%, 32.8% { opacity: 0; transform: scaleY(0.5); }
+  36.9% { opacity: 1; transform: scaleY(1); }
+  56.9% { opacity: 1; transform: scaleY(1.05); }
+  60.9%, 100% { opacity: 0; transform: scaleY(1.2); }
+}
+
+@keyframes kame-ring {
+  0% { opacity: 0; transform: translateY(0) scale(0.55); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-440px) scale(1.15); }
+}
+
+@keyframes kame-flare {
+  0% { transform: translateY(40px) scaleY(0.5); opacity: 0; }
+  30% { opacity: 0.9; }
+  100% { transform: translateY(-280px) scaleY(1.2); opacity: 0; }
+}
+
+/* 1120–1800 light pulled inward to the sphere */
+@keyframes kame-streaks {
+  0%, 35% { opacity: 0; }
+  37.5% { opacity: 1; }
+  55% { opacity: 1; }
+  56.25%, 100% { opacity: 0; }
+}
+
+@keyframes kame-streak {
+  0% { opacity: 0; transform: translateX(320px) scaleX(0.4); }
+  25% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(40px) scaleX(1.3); }
+}
+
+/* 1120 a spark · grows through the charge · 1790 pulls in · 1830 flares on release · the beam's root till 2420 */
+@keyframes kame-sphere {
+  0%, 34.4% { opacity: 0; transform: scale(0.05); }
+  35% { opacity: 1; transform: scale(0.12); }
+  46.9% { opacity: 1; transform: scale(0.55); }
+  55% { opacity: 1; transform: scale(0.95); }
+  55.9% { opacity: 1; transform: scale(0.82); }
+  57.2% { opacity: 1; transform: scale(1.4); }
+  59.4% { opacity: 1; transform: scale(1.05); }
+  75.6% { opacity: 1; transform: scale(1.05); }
+  82.8%, 100% { opacity: 0; transform: scale(0.2); }
+}
+
+@keyframes kame-core {
+  from { transform: scale(0.93); }
+  to { transform: scale(1.05); }
+}
+
+@keyframes kame-halo-gate {
+  0%, 35.9% { opacity: 0; }
+  40.6% { opacity: 1; }
+  55.9% { opacity: 1; }
+  57.5%, 100% { opacity: 0; }
+}
+
+@keyframes kame-halo {
+  from { opacity: 0.9; transform: scale(0.9); }
+  to { opacity: 0; transform: scale(1.6); }
+}
+
+/* 1300–1800 crackling round the sphere, fainter round the beam's root till 2550 */
+@keyframes kame-crackle {
+  0%, 40.6% { opacity: 0; }
+  41.9% { opacity: 1; }
+  56.25% { opacity: 1; }
+  59.4% { opacity: 0.6; }
+  76.6% { opacity: 0.6; }
+  79.7%, 100% { opacity: 0; }
+}
+
+@keyframes kame-bolt {
+  0% { opacity: 1; transform: rotate(0deg) scaleX(1); }
+  18% { opacity: 1; transform: rotate(28deg) scaleX(0.75) scaleY(-1); }
+  19%, 100% { opacity: 0; transform: rotate(28deg) scaleX(0.75); }
+}
+
+/* 1800–2100 the beam stretches from the sphere to the target · holds to 2420 · thins out by 2720 · gone 2800 */
+@keyframes kame-beam {
+  0%, 56.1% { opacity: 0; transform: scale(0.001, 0.6); }
+  56.25% { opacity: 1; transform: scale(0.001, 0.6); animation-timing-function: cubic-bezier(0.25, 0.5, 0.45, 1); }
+  65.625% { opacity: 1; transform: scale(calc((var(--dist) - 120) / 1000), 1.1); }
+  67.5% { opacity: 1; transform: scale(calc((var(--dist) - 120) / 1000), 1); }
+  75.6% { opacity: 1; transform: scale(calc((var(--dist) - 120) / 1000), 1); }
+  80% { opacity: 1; transform: scale(calc((var(--dist) - 120) / 1000), 0.45); }
+  85% { opacity: 0.6; transform: scale(calc((var(--dist) - 120) / 1000), 0.06); }
+  87.5%, 100% { opacity: 0; transform: scale(calc((var(--dist) - 120) / 1000), 0.02); }
+}
+
+@keyframes kame-pulse {
+  from { transform: scaleY(0.93); }
+  to { transform: scaleY(1.07); }
+}
+
+@keyframes kame-edge-a {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -130; }
+}
+
+@keyframes kame-edge-b {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -158; }
+}
+
+@keyframes kame-edge-c {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -150; }
+}
+
+/* the head leads the beam: 1800 at the sphere · 2100 on the target · swallowed by the blast at 2150 */
+@keyframes kame-head {
+  0%, 56.1% { opacity: 0; transform: translateX(0) scale(0.6); }
+  56.25% { opacity: 1; transform: translateX(0) scale(0.6); animation-timing-function: cubic-bezier(0.25, 0.5, 0.45, 1); }
+  65.625% { opacity: 1; transform: translateX(calc((var(--dist) - 120) * 1px)) scale(1.25); }
+  67.2%, 100% { opacity: 0; transform: translateX(calc((var(--dist) - 120) * 1px)) scale(1.9); }
+}
+
+/* 2090 the explosion swells · 2450 still burning · 2780 gone */
+@keyframes kame-blast {
+  0%, 65.3% { opacity: 0; transform: scale(0.15); }
+  67.5% { opacity: 1; transform: scale(0.95); }
+  76.6% { opacity: 0.95; transform: scale(1.22); }
+  86.9%, 100% { opacity: 0; transform: scale(1.45); }
+}
+
+@keyframes kame-blast-core {
+  0%, 65.3% { opacity: 0; transform: scale(0.2); }
+  66.9% { opacity: 1; transform: scale(1.15); }
+  75% { opacity: 0.7; transform: scale(0.95); }
+  81.25%, 100% { opacity: 0; transform: scale(0.7); }
+}
+
+@keyframes kame-shock {
+  0%, 65.5% { opacity: 0; transform: scale(0.2); }
+  65.9% { opacity: 1; }
+  78.1%, 100% { opacity: 0; transform: scale(2.8); }
+}
+
+@keyframes kame-ground {
+  0%, 65.6% { opacity: 0; transform: scale(0.3); }
+  66.2% { opacity: 1; }
+  81.25%, 100% { opacity: 0; transform: scale(1.9); }
+}
+
+@keyframes kame-rays {
+  0%, 65.5% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+  66.2% { opacity: 1; transform: scale(0.8) rotate(2deg); }
+  68.1% { opacity: 1; transform: scale(1) rotate(4deg); }
+  75%, 100% { opacity: 0; transform: scale(1.15) rotate(8deg); }
+}
+
+@keyframes kame-debris {
+  0%, 65.6% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.4); }
+  67% { opacity: 1; transform: translate(calc(var(--tx) * 0.3), calc(var(--ty) * 0.3)) rotate(80deg) scale(1.2); }
+  85.9%, 100% { opacity: 0; transform: translate(var(--tx), calc(var(--ty) + 70px)) rotate(300deg) scale(0.7); }
+}
+
+@keyframes kame-mote {
+  0%, 68.75% { opacity: 0; transform: translate(0, 0); }
+  72% { opacity: 1; }
+  90.6%, 100% { opacity: 0; transform: translate(var(--tx), -150px); }
+}

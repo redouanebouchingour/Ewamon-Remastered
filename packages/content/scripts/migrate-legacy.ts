@@ -1,5 +1,5 @@
 /**
- * One-shot generator: .design/legacy/{ewamon.js, shop.js} + .design/additions/{species,moves}.js → packages/content/src/data/{species,moves,
+ * One-shot generator: .design/legacy/{ewamon.js, shop.js} + .design/additions/{species,moves,patches}.js → packages/content/src/data/{species,moves,
  * abilities,items,orbs,consumables,typechart}.ts. Run with `pnpm --filter @ewa/content run migrate`.
  *
  * Rules applied (spine §2.3–§2.6; each is restated in the generated header):
@@ -48,6 +48,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const LEGACY_DIR = resolve(HERE, '../../../.design/legacy');
 const ADDITIONS_FILE = resolve(HERE, '../../../.design/additions/species.js');
 const MOVE_ADDITIONS_FILE = resolve(HERE, '../../../.design/additions/moves.js');
+const PATCHES_FILE = resolve(HERE, '../../../.design/additions/patches.js');
 const OUT_DIR = resolve(HERE, '../src/data');
 
 // ─── legacy shapes ──────────────────────────────────────────────────────────
@@ -67,6 +68,8 @@ interface LegacySpecies {
   expYield: number;
   moves: string[];
   learnableMoves: string[];
+  /** .design/additions/patches.js only: learnable moves pinned to a level (left out of the even spacing) */
+  learnLevels?: Record<string, number>;
   abilities: string[];
   role: string;
   evolvesInto?: string;
@@ -134,7 +137,17 @@ function loadLegacy(): LegacyModule {
   for (const id of Object.keys(moveAdditions)) {
     if (id in legacy.MOVES) throw new Error(`additions: move '${id}' already exists in ewamon.js`);
   }
-  return { ...legacy, EWAMON_SPECIES: { ...legacy.EWAMON_SPECIES, ...additions }, MOVES: { ...legacy.MOVES, ...moveAdditions } };
+  // field patches to legacy species rows (ewamon.js stays verbatim): whole `moves` / `learnableMoves` replacements
+  const addPatches: { exports: { EWAMON_SPECIES_PATCHES?: Record<string, Partial<Pick<LegacySpecies, 'moves' | 'learnableMoves' | 'learnLevels'>>> } } = { exports: {} };
+  (new Function('module', 'exports', readFileSync(PATCHES_FILE, 'utf8')) as (m: typeof addPatches, e: unknown) => void)(addPatches, addPatches.exports);
+  const species: Record<string, LegacySpecies> = { ...legacy.EWAMON_SPECIES };
+  for (const [id, patch] of Object.entries(addPatches.exports.EWAMON_SPECIES_PATCHES ?? {})) {
+    const row = legacy.EWAMON_SPECIES[id];
+    if (row === undefined) throw new Error(`patches: species '${id}' is not a legacy row`);
+    for (const k of Object.keys(patch)) if (k !== 'moves' && k !== 'learnableMoves' && k !== 'learnLevels') throw new Error(`patches: ${id}.${k} cannot be patched`);
+    species[id] = { ...row, ...patch };
+  }
+  return { ...legacy, EWAMON_SPECIES: { ...species, ...additions }, MOVES: { ...legacy.MOVES, ...moveAdditions } };
 }
 
 const notes: string[] = [];
@@ -288,25 +301,34 @@ function migrateLearnset(
   learnable: readonly string[],
   evolveAt: number | null,
   known: ReadonlySet<string>,
+  pins: Readonly<Record<string, number>> = {},
 ): LearnEntry[] {
   const out: LearnEntry[] = moves.map((move) => ({ move, level: 1 }));
   const rest: string[] = [];
+  const pinned: string[] = [];
   for (const m of learnable) {
     if (!known.has(m)) {
       notes.push(`species '${id}': learnable move '${m}' names no MOVES row — dropped`);
       continue;
     }
-    if (moves.includes(m) || rest.includes(m)) continue;
-    rest.push(m);
+    if (moves.includes(m) || rest.includes(m) || pinned.includes(m)) continue;
+    // a pinned move keeps its own level and stays out of the even spacing (the others' levels do not move)
+    if (pins[m] !== undefined) pinned.push(m);
+    else rest.push(m);
   }
+  for (const m of Object.keys(pins)) if (!pinned.includes(m)) throw new Error(`species '${id}': pinned move '${m}' is not a learnable non-default move`);
   const hi = Math.min(evolveAt ?? 40, 60);
   for (let i = 0; i < rest.length; i++) {
     const level = rest.length === 1 ? round3(hi) : round3(5 + ((hi - 5) * i) / (rest.length - 1));
     out.push({ move: rest[i]!, level });
   }
+  for (const m of pinned) out.push({ move: m, level: pins[m]! });
+  // at an equal level a pinned move comes last: it is the newest, so a creature at that level knows it
   const order = (m: string): number => {
     const i = moves.indexOf(m);
-    return i === -1 ? moves.length + rest.indexOf(m) : i;
+    if (i !== -1) return i;
+    const p = pinned.indexOf(m);
+    return p === -1 ? moves.length + rest.indexOf(m) : moves.length + rest.length + p;
   };
   out.sort((a, b) => a.level - b.level || order(a.move) - order(b.move));
   return out;
@@ -385,7 +407,7 @@ function migrateSpecies(s: LegacySpecies, dexNumber: number, moveIds: ReadonlySe
     sizeScale: clamp(s.id, 'sizeScale', s.sizeScale, 0.5, 2.2),
     expYield: s.expYield,
     moves,
-    learnableMoves: migrateLearnset(s.id, moves, s.learnableMoves, legacyEvolution?.atLevel ?? null, moveIds),
+    learnableMoves: migrateLearnset(s.id, moves, s.learnableMoves, legacyEvolution?.atLevel ?? null, moveIds, s.learnLevels),
     abilities: s.abilities,
     role: s.role as SpeciesRole,
     evolution,
@@ -632,7 +654,7 @@ function ser(v: unknown, indent: string): string {
 function header(what: string, extra: readonly string[]): string {
   const lines = [
     `// GENERATED — edit the generator (packages/content/scripts/migrate-legacy.ts), not this file.`,
-    `// Source: .design/legacy/ewamon.js${what === 'consumables' ? ' + shop.js' : ''}${what === 'species' ? ' + .design/additions/species.js' : what === 'moves' ? ' + .design/additions/moves.js' : ''}. Regenerate with \`pnpm --filter @ewa/content run migrate\`.`,
+    `// Source: .design/legacy/ewamon.js${what === 'consumables' ? ' + shop.js' : ''}${what === 'species' ? ' + .design/additions/{species,patches}.js' : what === 'moves' ? ' + .design/additions/moves.js' : ''}. Regenerate with \`pnpm --filter @ewa/content run migrate\`.`,
     ...extra.map((l) => `// ${l}`),
   ];
   return lines.join('\n') + '\n';

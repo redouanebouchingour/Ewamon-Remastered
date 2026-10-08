@@ -1,0 +1,195 @@
+/*
+ * Stellar Devour (noxmyth; signatures.ts): clock 3100 ms, keyframe % = ms / 31; impact 1940.
+ * 1100–1500 a black hole forms in front of the attacker, its accretion disc turning, stars spiralling in · 1580 it
+ * leaves along the line, growing, a violet wake behind · 1940 it engulfs the target: the region darkens, the disc spins
+ * up, light is sucked inward · 2270–2390 it collapses to a point · 2440 pops in a violet ring · dark motes sink away;
+ * nothing left by 2800.
+ */
+
+.carrier {
+  opacity: 0;
+  animation: dev-carry 3100ms linear calc(0ms - var(--skip)) both;
+}
+
+/* the hole's art stays upright whichever way the line points */
+.upright {
+  transform: rotate(calc(var(--ang) * -1deg));
+}
+
+.grow {
+  animation: dev-grow 3100ms linear calc(0ms - var(--skip)) both;
+}
+
+.spin {
+  animation: dev-spin 900ms linear infinite;
+}
+
+.spinB {
+  animation-name: dev-spin-b;
+  animation-duration: 650ms;
+}
+
+.spinFast {
+  animation: dev-spin 260ms linear infinite;
+}
+
+.spinFast.spinB {
+  animation-name: dev-spin-b;
+  animation-duration: 200ms;
+}
+
+.swirl {
+  animation: dev-swirl 480ms cubic-bezier(0.4, 0, 0.9, 0.6) calc(var(--d) - var(--skip));
+}
+
+.infall,
+.streak {
+  opacity: 0;
+}
+
+.infall {
+  animation: dev-infall 480ms cubic-bezier(0.4, 0, 0.9, 0.6) calc(var(--d) - var(--skip));
+}
+
+.wake {
+  opacity: 0;
+  animation: dev-wake 3100ms linear calc(0ms - var(--skip)) both;
+}
+
+.dark {
+  opacity: 0;
+  animation: dev-dark 3100ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.engulf {
+  opacity: 0;
+  animation: dev-engulf 3100ms linear calc(0ms - var(--skip)) both;
+}
+
+.streak {
+  animation: dev-streak 260ms cubic-bezier(0.5, 0, 1, 0.7) calc(var(--d) - var(--skip));
+}
+
+.point {
+  opacity: 0;
+  animation: dev-point 3100ms linear calc(0ms - var(--skip)) both;
+}
+
+.pop {
+  opacity: 0;
+  animation: dev-pop 3100ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.pop2 {
+  animation-delay: calc(70ms - var(--skip));
+}
+
+.popFlat {
+  opacity: 0;
+  animation: dev-pop-flat 3100ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.mote {
+  opacity: 0;
+  animation: dev-mote 3100ms ease-out calc(0ms - var(--skip)) both;
+}
+
+/* in front of the attacker from 1100 · pulls back at 1560 · 1580–1940 carried onto the target (accelerating) · gone */
+@keyframes dev-carry {
+  0%, 34.8% { opacity: 0; transform: translateX(150px); }
+  35.5% { opacity: 1; transform: translateX(150px); }
+  50.3% { opacity: 1; transform: translateX(150px); }
+  51% { opacity: 1; transform: translateX(125px); animation-timing-function: cubic-bezier(0.45, 0, 0.85, 0.7); }
+  62.6% { opacity: 1; transform: translateX(calc(var(--dist) * 1px)); }
+  63.3%, 100% { opacity: 0; transform: translateX(calc(var(--dist) * 1px)); }
+}
+
+@keyframes dev-grow {
+  0%, 35.5% { transform: scale(0); }
+  39% { transform: scale(0.6); }
+  48.4% { transform: scale(1); }
+  50.3% { transform: scale(1.08); }
+  51% { transform: scale(0.95); }
+  62.6%, 100% { transform: scale(1.6); }
+}
+
+@keyframes dev-spin {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -90; }
+}
+
+@keyframes dev-spin-b {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -108; }
+}
+
+@keyframes dev-swirl {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(320deg); }
+}
+
+@keyframes dev-infall {
+  0% { opacity: 0; transform: translateX(var(--r0)) scale(1.3); }
+  20% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(0) scale(0.2); }
+}
+
+/* the wake trails the hole along the line during the travel */
+@keyframes dev-wake {
+  0%, 51% { opacity: 0; transform: translateX(125px) scaleX(0); }
+  53% { opacity: 0.9; transform: translateX(calc(125px + (var(--dist) * 1px - 125px) * 0.08)) scaleX(80); }
+  62.6% { opacity: 0.9; transform: translateX(calc(var(--dist) * 1px)) scaleX(340); }
+  66%, 100% { opacity: 0; transform: translateX(calc(var(--dist) * 1px)) scaleX(60); }
+}
+
+/* 1940 the region round the target darkens · lifts as the hole pops at 2440 */
+@keyframes dev-dark {
+  0%, 62.2% { opacity: 0; transform: scale(0.3); }
+  63.5% { opacity: 1; transform: scale(1); }
+  75% { opacity: 1; transform: scale(1.05); }
+  80%, 100% { opacity: 0; transform: scale(0.6); }
+}
+
+/* 1940 the hole engulfs the target, disc spun up · 2270–2390 collapses to a point, turning */
+@keyframes dev-engulf {
+  0%, 62.3% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  63% { opacity: 1; transform: scale(1.12) rotate(0deg); }
+  64.5% { opacity: 1; transform: scale(1) rotate(0deg); }
+  73.2% { opacity: 1; transform: scale(0.95) rotate(-6deg); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  77% { opacity: 1; transform: scale(0.03) rotate(-40deg); }
+  77.5%, 100% { opacity: 0; transform: scale(0) rotate(-40deg); }
+}
+
+@keyframes dev-streak {
+  0% { opacity: 0; transform: translateX(380px) scaleX(1); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(70px) scaleX(0.3); }
+}
+
+/* the point it collapses to: 2390 in · 2440 pops */
+@keyframes dev-point {
+  0%, 76.6% { opacity: 0; transform: scale(0); }
+  77.4% { opacity: 1; transform: scale(1.4); }
+  78.7% { opacity: 1; transform: scale(0.5); }
+  80.5%, 100% { opacity: 0; transform: scale(2.4); }
+}
+
+@keyframes dev-pop {
+  0%, 78.7% { opacity: 0; transform: scale(0.1); }
+  79.3% { opacity: 1; }
+  89%, 100% { opacity: 0; transform: scale(2.8); }
+}
+
+@keyframes dev-pop-flat {
+  0%, 78.6% { opacity: 0; transform: scale(0, 1); }
+  79.5% { opacity: 1; transform: scale(1, 1); }
+  84.5%, 100% { opacity: 0; transform: scale(1.4, 0.3); }
+}
+
+/* dark motes drift out and sink after the pop: the foe's strength drained */
+@keyframes dev-mote {
+  0%, 78.9% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  81.5% { opacity: 1; transform: translate(calc(var(--tx) * 0.3), calc(var(--ty) * 0.15)) scale(1); }
+  90%, 100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.6); }
+}

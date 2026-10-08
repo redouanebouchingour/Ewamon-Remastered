@@ -1,0 +1,217 @@
+/*
+ * Foxfire Voltage (raikitsune; signatures.ts): clock 3000 ms, keyframe % = ms / 30; impact 1940.
+ * 1100 + 20·i nine wisps fan out behind the attacker (tips outward) · 1250–1560 arcs crackle between them ·
+ * 1560 + 20·i each launches on a 220 ms homing flight (travel along the line × an offset through a high or low
+ * mid-point), striking at 1780 + 20·i; the last at 1940 · 1940 the cage of lightning snaps shut in a burst of blue
+ * fire · 2060–2610 static jitters · gone by 2600.
+ */
+
+/* ---- the fan ------------------------------------------------------------------------------------------------------- */
+
+.aura {
+  opacity: 0;
+  animation: foxfire-aura 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.arcs {
+  opacity: 0;
+  animation: foxfire-arcs 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.arc {
+  animation: foxfire-crackle 90ms steps(2) infinite;
+}
+
+.arcs:nth-child(2n) .arc {
+  animation-duration: 70ms;
+}
+
+.arcs:nth-child(3n) .arc {
+  animation-duration: 120ms;
+}
+
+/* ---- the wisps (each nested group runs --d later) ------------------------------------------------------------------ */
+
+.fly {
+  animation: foxfire-fly 3000ms linear calc(var(--d) - var(--skip)) both;
+}
+
+.unrot {
+  transform: rotate(calc(var(--ang) * -1deg)) scale(calc(var(--sa) / var(--sc)));
+}
+
+.home {
+  animation: foxfire-home 3000ms linear calc(var(--d) - var(--skip)) both;
+}
+
+.size {
+  opacity: 0;
+  animation: foxfire-size 3000ms linear calc(var(--d) - var(--skip)) both;
+}
+
+.aim {
+  animation: foxfire-aim 3000ms ease-out calc(var(--d) - var(--skip)) both;
+}
+
+.flame {
+  animation: foxfire-flame 150ms ease-in-out infinite alternate;
+}
+
+/* ---- the strike ---------------------------------------------------------------------------------------------------- */
+
+.hit {
+  opacity: 0;
+  animation: foxfire-hit 180ms ease-out calc(var(--kd) - var(--skip));
+}
+
+.shock {
+  opacity: 0;
+  animation: foxfire-shock 3000ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.burst {
+  opacity: 0;
+  animation: foxfire-burst 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.fire {
+  opacity: 0;
+  animation: foxfire-fire 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.tongue {
+  animation: foxfire-tongue 420ms linear infinite;
+}
+
+.tongue:nth-child(2n) {
+  animation-duration: 360ms;
+  animation-delay: -150ms;
+}
+
+.tongue:nth-child(3n) {
+  animation-duration: 500ms;
+  animation-delay: -280ms;
+}
+
+.cage {
+  opacity: 0;
+  animation: foxfire-cage 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.bar {
+  animation: foxfire-crackle 80ms steps(2) infinite;
+}
+
+.bar:nth-child(2n) {
+  animation-duration: 110ms;
+}
+
+.static {
+  opacity: 0;
+  animation: foxfire-static 120ms steps(1) calc(var(--kd) - var(--skip)) 3;
+}
+
+/* 1100–1560 a blue spirit glow behind the attacker */
+@keyframes foxfire-aura {
+  0%, 36.67% { opacity: 0; transform: scale(0.6); }
+  43% { opacity: 0.9; transform: scale(1); }
+  52% { opacity: 0.9; transform: scale(1.05); }
+  57%, 100% { opacity: 0; transform: scale(1.1); }
+}
+
+@keyframes foxfire-arcs {
+  0%, 41.67% { opacity: 0; }
+  42.5% { opacity: 1; }
+  51.5% { opacity: 1; }
+  52%, 100% { opacity: 0; }
+}
+
+@keyframes foxfire-crackle {
+  from { opacity: 1; }
+  to { opacity: 0.25; }
+}
+
+/* 1560 → 1780 along the line, accelerating into the target */
+@keyframes foxfire-fly {
+  0%, 52% { transform: translateX(0); animation-timing-function: cubic-bezier(0.45, 0, 0.85, 0.6); }
+  59.33%, 100% { transform: translateX(calc(var(--dist) * 1px)); }
+}
+
+/* 1100 out to the fan · 1560 through the high / low mid-point · 1780 on the target */
+@keyframes foxfire-home {
+  0%, 36.67% { transform: translate(0px, 0px); animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1.15); }
+  41% { transform: translate(var(--fx), var(--fy)); }
+  52% { transform: translate(var(--fx), var(--fy)); animation-timing-function: cubic-bezier(0.3, 0.6, 0.6, 1); }
+  55.67% { transform: translate(var(--mx), var(--my)); animation-timing-function: cubic-bezier(0.4, 0, 0.7, 0.5); }
+  59.33%, 100% { transform: translate(0px, 0px); }
+}
+
+@keyframes foxfire-size {
+  0%, 36.67% { opacity: 0; transform: scale(0); }
+  38% { opacity: 1; }
+  40% { transform: scale(1.2); }
+  42% { transform: scale(1); }
+  51% { opacity: 1; transform: scale(1); }
+  52% { transform: scale(1.25); }
+  59.2% { opacity: 1; transform: scale(calc(var(--sd) / var(--sa) * 0.55)); }
+  59.4%, 100% { opacity: 0; transform: scale(calc(var(--sd) / var(--sa) * 0.55)); }
+}
+
+/* tips outward in the fan; in flight the flame streams back from the target's direction */
+@keyframes foxfire-aim {
+  0%, 52% { transform: rotate(var(--fr)) scale(1, 1); }
+  54.5%, 100% { transform: rotate(calc(var(--ang) * 1deg - 90deg)) scale(0.8, 1.9); }
+}
+
+@keyframes foxfire-flame {
+  from { transform: scale(1, 1); }
+  to { transform: scale(0.92, 1.1); }
+}
+
+@keyframes foxfire-hit {
+  from { opacity: 1; transform: scale(0.3) rotate(0deg); }
+  to { opacity: 0; transform: scale(1.3) rotate(45deg); }
+}
+
+@keyframes foxfire-shock {
+  0%, 64.67% { opacity: 0; transform: scale(0.3); }
+  65% { opacity: 1; }
+  74%, 100% { opacity: 0; transform: scale(2.2); }
+}
+
+@keyframes foxfire-burst {
+  0%, 64.33% { opacity: 0; transform: scale(0.3); }
+  65.33% { opacity: 1; transform: scale(1.05); }
+  72%, 100% { opacity: 0; transform: scale(1.6); }
+}
+
+/* blue fire through the cage, 1940–2450 */
+@keyframes foxfire-fire {
+  0%, 64.67% { opacity: 0; }
+  65.67% { opacity: 1; }
+  76% { opacity: 0.8; }
+  81.67%, 100% { opacity: 0; }
+}
+
+@keyframes foxfire-tongue {
+  0% { opacity: 0; transform: translateY(30px) scaleY(0.5); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-260px) scaleY(1.2); }
+}
+
+/* 1910 the bars close in from wide · 1940 shut (overshoot) · flickering · gone by 2500 */
+@keyframes foxfire-cage {
+  0%, 63.67% { opacity: 0; transform: scale(2.2, 1.05); }
+  64.67% { opacity: 1; transform: scale(0.9, 1); }
+  65.67% { opacity: 1; transform: scale(1.04, 1); }
+  66.67% { opacity: 1; transform: scale(1, 1); }
+  76% { opacity: 0.9; transform: scale(1, 1); }
+  83.33%, 100% { opacity: 0; transform: scale(0.85, 1.08); }
+}
+
+@keyframes foxfire-static {
+  0% { opacity: 1; transform: none; }
+  40% { opacity: 0.3; transform: translate(5px, -4px) rotate(25deg) scale(1.2); }
+  75% { opacity: 1; transform: translate(-4px, 3px) rotate(-15deg); }
+  100% { opacity: 0; transform: none; }
+}

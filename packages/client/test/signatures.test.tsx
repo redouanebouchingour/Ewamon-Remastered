@@ -47,23 +47,33 @@ const hit = (who: Ref, target: Ref, move: string, hpAfter: number): BattleEvent[
 const at = (frames: readonly Keyframe[], pred: (f: Keyframe) => boolean): number => frames.find(pred)?.at ?? Number.NaN;
 
 describe('signature cinematics: data', () => {
-  const signatures = SPECIES.flatMap((s) => (s.battleForm?.signatureMove === undefined ? [] : [{ species: s.id, form: s.battleForm.id, move: s.battleForm.signatureMove.move }]));
+  const forms = SPECIES.flatMap((s) => (s.battleForm?.signatureMove === undefined ? [] : [{ species: s.id, form: s.battleForm.id, move: s.battleForm.signatureMove.move }]));
+  const learners = (move: string): string[] => SPECIES.filter((s) => s.moves.includes(move) || s.learnableMoves.some((e) => e.move === move)).map((s) => s.id);
 
-  it('every signature move in content has a cinematic, and every cinematic is a content signature move', () => {
-    expect(signatures.length).toBeGreaterThan(0);
-    for (const s of signatures) expect(signatureOf(s.move), `${s.species}: ${s.move}`).toBeDefined();
-    expect(Object.keys(SIGNATURE_CINEMATICS).sort()).toEqual(signatures.map((s) => s.move).sort());
+  it('every battle form’s signature move and one move of every legendary / mythical has a cinematic', () => {
+    expect(forms.length).toBeGreaterThan(0);
+    for (const f of forms) expect(signatureOf(f.move), `${f.species}: ${f.move}`).toMatchObject({ species: f.species, portrait: `${f.species}_${f.form}` });
+    const owners = new Set(Object.values(SIGNATURE_CINEMATICS).map((c) => c.species));
+    for (const sp of SPECIES.filter((s) => s.legendary)) expect(owners.has(sp.id), `${sp.id} has no signature move`).toBe(true);
   });
 
-  it('a cinematic shows its own form, has a portrait on disk and sfx from the audio manifest', () => {
+  it('a signature move is its owner’s alone: no other species learns it', () => {
+    for (const [move, c] of Object.entries(SIGNATURE_CINEMATICS)) {
+      expect(content.move(move).id, move).toBe(move);
+      const form = forms.find((f) => f.move === move);
+      // a battle form's move is learned by nobody (the form swaps it in); a legendary's by its owner only
+      expect(learners(move), move).toEqual(form !== undefined ? [] : [c.species]);
+      if (form === undefined) expect(c.portrait, move).toBe(c.species);
+    }
+  });
+
+  it('a cinematic has a portrait on disk, sfx from the audio manifest and its name on two lines', () => {
     const manifest = JSON.parse(readFileSync(resolve(PUBLIC, 'audio', 'manifest.json'), 'utf8')) as { sfx: Record<string, unknown> };
-    for (const s of signatures) {
-      const c = signatureOf(s.move)!;
-      expect(c.portrait).toBe(`${s.species}_${s.form}`);
+    for (const [move, c] of Object.entries(SIGNATURE_CINEMATICS)) {
       expect(existsSync(resolve(PUBLIC, 'signature', `${c.portrait}.webp`)), c.portrait).toBe(true);
       for (const id of c.sfx) expect(manifest.sfx[id], id).toBeDefined();
-      expect(c.lines.join(' ')).toBe(s.move);
-      expect(c.totalMs).toBeGreaterThan(impactAt(c) + 500);
+      expect(c.lines.join(move.includes(' ') ? ' ' : ''), move).toBe(move);
+      expect(c.totalMs, move).toBeGreaterThan(impactAt(c) + 500);
     }
   });
 
@@ -147,6 +157,7 @@ describe('signature cinematics: overlay', () => {
     expect(root.dataset.mode).toBe('full');
     expect(root.querySelector('svg use[href="#ewa-sig-blade-art"]')).not.toBeNull();
     expect(root.querySelector('img')?.getAttribute('src')).toBe('/signature/hollowmane_rage.webp');
+    expect(root.style.getPropertyValue('--accent')).toBe('#e0193a');
     expect(root.textContent).toContain('Crescent');
     act(() => useCinematicStore.getState().aim(1, { x: 100, y: 500, h: 300 }, { x: 900, y: 200, h: 180 }));
     act(() => vi.advanceTimersByTime(signatureOf('Hollow Crescent')!.totalMs - 1));

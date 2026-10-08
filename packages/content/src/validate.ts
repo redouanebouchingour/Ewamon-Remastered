@@ -379,7 +379,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
 
   // ── 3. counts ──
   if (species.length !== 137) err(`SPECIES.length ${species.length} !== 137`);
-  if (moves.length !== 195) err(`MOVES.length ${moves.length} !== 195`); // 193 legacy + Hollow Crescent, Vendetta Volley (.design/additions/moves.js)
+  if (moves.length !== 196) err(`MOVES.length ${moves.length} !== 196`); // 193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem (.design/additions/moves.js)
   // Phase D6: every curated spread move exists, and only damaging or foe-targeted moves spread
   for (const [id, sp] of Object.entries(SPREAD_MOVES).sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
     const m = moves.find((x) => x.id === id);

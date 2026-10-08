@@ -1529,3 +1529,19 @@ light layout", give the design and the numbers.
 - **Verified live** (harness over CDP, WebGPU, mirevale, hollowmane vs castlemaw): both moves aimed at the projected
   battlers, the foe's Vendetta Volley mirrored (line angle 151°). The harness ticks slower than real time, so the
   overlay's wall-clock auto-clear fires early there; the capture re-showed the cue before seeking its animations.
+
+## Signature move cinematics II: the legendaries and mythicals (2026-10-08)
+
+- Ten more cinematics, one per legendary / mythical signature move (content: each is its owner's alone and known
+  whenever it is met — `packages/content/IMPLEMENTATION-NOTES.md`): Cosmic Pyre, Sparking Grace, Sunbreaker Barrage,
+  Foxfire Voltage, Kamehameha, Cosmic Miracle, Stellar Devour, Bankai Sever, Rift Collapse, Aurora Requiem.
+  `SIGNATURE_CINEMATICS` entries now name their owner `species`, a `palette` and the 3D side (`anim`); MOVE_ANIMS takes
+  every entry via `signatureAnims()`; a legendary's cut-in shows its own front sprite (portraits for all ten).
+- The overlay is generic: the frame (dim, bars, band, glint, name, flash, tint) takes the move's palette, impact and
+  total through `cssVars` (`--accent` / `--deep` / `--hot`, `--impact`, `--total`); each effect layer is its own
+  component + module under `battle/sigfx/` (`SIG_FX`), drawn in the shared positioning groups of `sigfx/kit.ts`
+  (`atA` / `atD` / `line` / `rot`, `vb` for local-origin transforms; the defaults sit in `:where(.fx) *`).
+- Dev preview: `/sigfx/?move=<id>` (`sigfx/index.html`, `src/dev/sigfxPreview.tsx`, not a build input) plays one
+  cinematic over a mock arena (`&side=far`, `&mode=short`, `&reduced=1`, `&t=<ms>` frozen; `window.__sigfx.seek`).
+- `signatures.test.tsx` now asserts: every battle form's signature move and every legendary has a cinematic; a
+  legendary's signature move is learned by its owner only (a form's by nobody); the portrait is the species (or the form).

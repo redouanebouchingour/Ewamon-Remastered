@@ -1,0 +1,35 @@
+/* the mock arena behind a signature cinematic preview (sigfxPreview.tsx) */
+.arena {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, #23192f 0%, #4b2c45 34%, #a56350 50%, #3a2a28 50.2%, #241b1c 100%);
+}
+
+.pad {
+  position: absolute;
+  inline-size: calc(var(--h) * 1.3);
+  block-size: calc(var(--h) * 0.32);
+  inset-inline-start: calc(var(--x) - var(--h) * 0.65);
+  inset-block-start: calc(var(--y) + var(--h) * 0.34);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, #6b5a52, #4a3d39 70%, transparent 72%);
+}
+
+.mon {
+  position: absolute;
+  inline-size: var(--h);
+  block-size: var(--h);
+  inset-inline-start: calc(var(--x) - var(--h) / 2);
+  inset-block-start: calc(var(--y) - var(--h) / 2);
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+.label {
+  position: fixed;
+  inset-inline-start: var(--s-3);
+  inset-block-end: var(--s-3);
+  color: var(--text-2);
+  font-family: var(--face-mono);
+  font-size: var(--t-caption);
+}

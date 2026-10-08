@@ -30,8 +30,8 @@ describe('counts', () => {
     expect(dex).toEqual(Array.from({ length: 137 }, (_, i) => i + 1));
     expect(SPECIES.filter((s) => s.legendary).length).toBe(10);
   });
-  it('195 moves (193 legacy + Hollow Crescent, Vendetta Volley), 25 abilities, 17 items, 10 orbs, 23 consumables', () => {
-    expect(MOVES.length).toBe(195);
+  it('196 moves (193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem), 25 abilities, 17 items, 10 orbs, 23 consumables', () => {
+    expect(MOVES.length).toBe(196);
     expect(ABILITIES.length).toBe(25);
     expect(ITEMS.length).toBe(17);
     expect(ORBS.length).toBe(10);

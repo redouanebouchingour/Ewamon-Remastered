@@ -1,0 +1,205 @@
+/*
+ * Vendetta Volley (castlemaw's Rage Form; signatures.ts): clock 3000 ms, keyframe % = ms / 30; impact 1940.
+ * 1100–1520 both cannons charge while a crosshair locks on the target · rounds leave at 1520 + 46·i (left cannon on
+ * even i, right on odd) and fly 100 ms; the last lands at 1942 · a fireball, a ring, the skull mark, embers.
+ */
+
+.muzzleCharge {
+  opacity: 0;
+  animation: muzzle-charge 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.muzzle {
+  opacity: 0;
+}
+
+.mL {
+  animation: muzzle-left 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.mR {
+  animation: muzzle-right 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.tracer,
+.casing,
+.spark {
+  opacity: 0;
+}
+
+.tracer {
+  animation: tracer 100ms linear;
+}
+
+.t0 { animation-delay: calc(1520ms - var(--skip)); }
+.t1 { animation-delay: calc(1566ms - var(--skip)); }
+.t2 { animation-delay: calc(1612ms - var(--skip)); }
+.t3 { animation-delay: calc(1658ms - var(--skip)); }
+.t4 { animation-delay: calc(1704ms - var(--skip)); }
+.t5 { animation-delay: calc(1750ms - var(--skip)); }
+.t6 { animation-delay: calc(1796ms - var(--skip)); }
+.t7 { animation-delay: calc(1842ms - var(--skip)); }
+
+.casing {
+  animation: casing 520ms cubic-bezier(0.2, 0.7, 0.4, 1);
+}
+
+.c0 { animation-delay: calc(1530ms - var(--skip)); }
+.c1 { animation-delay: calc(1576ms - var(--skip)); }
+.c2 { animation-delay: calc(1622ms - var(--skip)); }
+.c3 { animation-delay: calc(1668ms - var(--skip)); }
+.c4 { animation-delay: calc(1714ms - var(--skip)); }
+.c5 { animation-delay: calc(1760ms - var(--skip)); }
+.c6 { animation-delay: calc(1806ms - var(--skip)); }
+.c7 { animation-delay: calc(1852ms - var(--skip)); }
+
+.spark {
+  animation: spark 160ms ease-out;
+}
+
+.k0 { animation-delay: calc(1620ms - var(--skip)); }
+.k1 { animation-delay: calc(1666ms - var(--skip)); }
+.k2 { animation-delay: calc(1712ms - var(--skip)); }
+.k3 { animation-delay: calc(1758ms - var(--skip)); }
+.k4 { animation-delay: calc(1804ms - var(--skip)); }
+.k5 { animation-delay: calc(1850ms - var(--skip)); }
+.k6 { animation-delay: calc(1896ms - var(--skip)); }
+.k7 { animation-delay: calc(1942ms - var(--skip)); }
+
+.reticle {
+  opacity: 0;
+  stroke: #fff;
+  animation: reticle 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.fireball,
+.smoke,
+.vring,
+.skull {
+  opacity: 0;
+}
+
+.fireball {
+  animation: fireball 3000ms cubic-bezier(0.2, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.f2 {
+  animation-delay: calc(60ms - var(--skip));
+}
+
+.smoke {
+  animation: smoke 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.vring {
+  animation: ring-burst 3000ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.skull {
+  animation: skull 3000ms cubic-bezier(0.2, 0.9, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.ember {
+  opacity: 0;
+  animation: volley-ember 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+/* 1100–1520 both cannons charge, glowing through the volley */
+@keyframes muzzle-charge {
+  0%, 36.7% { opacity: 0; transform: scale(0); }
+  48.3% { opacity: 1; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.25); }
+  50.7% { opacity: 1; transform: scale(0.9); }
+  64.7% { opacity: 0.8; transform: scale(0.8); }
+  66.7%, 100% { opacity: 0; transform: scale(0.3); }
+}
+
+@keyframes muzzle-left {
+  0%, 50.6% { opacity: 0; transform: scale(0.5); }
+  50.7% { opacity: 1; transform: scale(1.4); }
+  51.6% { opacity: 0; transform: scale(0.7); }
+  53.7% { opacity: 0; transform: scale(0.5); }
+  53.75% { opacity: 1; transform: scale(1.4); }
+  54.7% { opacity: 0; transform: scale(0.7); }
+  56.75% { opacity: 0; transform: scale(0.5); }
+  56.8% { opacity: 1; transform: scale(1.4); }
+  57.75% { opacity: 0; transform: scale(0.7); }
+  59.8% { opacity: 0; transform: scale(0.5); }
+  59.87% { opacity: 1; transform: scale(1.4); }
+  60.8%, 100% { opacity: 0; transform: scale(0.7); }
+}
+
+@keyframes muzzle-right {
+  0%, 52.15% { opacity: 0; transform: scale(0.5); }
+  52.2% { opacity: 1; transform: scale(1.4); }
+  53.15% { opacity: 0; transform: scale(0.7); }
+  55.2% { opacity: 0; transform: scale(0.5); }
+  55.27% { opacity: 1; transform: scale(1.4); }
+  56.2% { opacity: 0; transform: scale(0.7); }
+  58.3% { opacity: 0; transform: scale(0.5); }
+  58.33% { opacity: 1; transform: scale(1.4); }
+  59.3% { opacity: 0; transform: scale(0.7); }
+  61.35% { opacity: 0; transform: scale(0.5); }
+  61.4% { opacity: 1; transform: scale(1.4); }
+  62.35%, 100% { opacity: 0; transform: scale(0.7); }
+}
+
+@keyframes tracer {
+  from { opacity: 1; transform: translateX(80px); }
+  to { opacity: 1; transform: translateX(calc(var(--dist) * 1px)); }
+}
+
+@keyframes casing {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) rotate(540deg); }
+}
+
+@keyframes spark {
+  from { opacity: 1; transform: scale(0.2) rotate(0deg); }
+  to { opacity: 0; transform: scale(0.9) rotate(45deg); }
+}
+
+/* 1100 swings in · 1450 settles · 1500 locks (red) · 1940 the volley lands · gone by 1990 */
+@keyframes reticle {
+  0%, 36.7% { opacity: 0; transform: scale(2.4) rotate(-90deg); stroke: #fff; }
+  48.3% { opacity: 1; transform: scale(1) rotate(0deg); stroke: #fff; }
+  50% { opacity: 1; transform: scale(0.88) rotate(0deg); stroke: #ff3a20; }
+  50.7% { opacity: 1; transform: scale(1); stroke: #ff3a20; }
+  64.7% { opacity: 1; transform: scale(1); stroke: #ff3a20; }
+  66.3%, 100% { opacity: 0; transform: scale(1.3); stroke: #ff3a20; }
+}
+
+@keyframes fireball {
+  0%, 64.7% { opacity: 0; transform: scale(0.2); }
+  65.7% { opacity: 1; transform: scale(0.9); }
+  75% { opacity: 0.9; transform: scale(1.25); }
+  83.3%, 100% { opacity: 0; transform: scale(1.5); }
+}
+
+@keyframes smoke {
+  0%, 66.3% { opacity: 0; transform: scale(0.5); }
+  76.7% { opacity: 0.9; transform: scale(1.2); }
+  93.3%, 100% { opacity: 0; transform: scale(1.6); }
+}
+
+@keyframes ring-burst {
+  0%, 65% { opacity: 0; transform: scale(0.2); }
+  65.5% { opacity: 1; }
+  76.7%, 100% { opacity: 0; transform: scale(2.6); }
+}
+
+/* the skull mark stamps on at 1960 and fades by 2750 */
+@keyframes skull {
+  0%, 65.3% { opacity: 0; transform: scale(1.8); }
+  68% { opacity: 0.95; transform: scale(0.95); }
+  69.7% { opacity: 0.95; transform: scale(1); }
+  83.3% { opacity: 0.9; transform: scale(1); }
+  91.7%, 100% { opacity: 0; transform: scale(1.05); }
+}
+
+@keyframes volley-ember {
+  0%, 66.7% { opacity: 0; transform: translate(0, 0); }
+  70% { opacity: 1; }
+  95%, 100% { opacity: 0; transform: translate(var(--tx), -160px); }
+}

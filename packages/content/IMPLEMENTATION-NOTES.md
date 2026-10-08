@@ -538,3 +538,22 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   Physical Defender. Defaults Bulldoze, Counter, Mach Punch, Protect; learns Howl 6, Bulk Up 9, Power Jab 15, Slash 21,
   Iron Fist 24, Earthquake 30, Body Slam 36, Close Combat 39. Evolution only: the directly placed count stays 83, the
   families stay 71 (it is not a root), obtainable 137. `families.test.ts` / `index.test.ts` now expect two splits.
+
+## Signature moves of the legendaries and mythicals (2026-10-08)
+
+- **Every legendary / mythical owns one signature move** (the client plays its cinematic, `battle/signatures.ts`):
+  galaxion Cosmic Pyre, voltaura Sparking Grace, sunjaw Sunbreaker Barrage, raikitsune Foxfire Voltage, zenryu
+  Kamehameha, lumyth Cosmic Miracle, noxmyth Stellar Devour, bankaiser Bankai Sever, voidraxis Rift Collapse, and the
+  new **Aurora Requiem** for glacinid (Ice 130, 90 %, 5 PP, freeze 10 % — `.design/additions/moves.js`; 196 moves).
+  No other species learns one: hollowolf drops Rift Collapse (its learnset ends with Eclipse Void, now L39; Brain Pulse
+  18, Future Sight 27), ironcarab's L39 Bankai Sever becomes Six-Blade Storm. The client's `signatures.test.tsx`
+  asserts the exclusivity.
+- **They know it when met.** The signature moves were level-1 defaults, which the server's last-four rule
+  (`movesAtLevel`) pushed out: no wild static, league Warden or the Champion's zenryu ever used one. Each now leaves the
+  defaults (3 defaults) and is pinned as the newest learnable move, at L39 (raikitsune L27: met at L30), at or below
+  every level the creature is met at (statics 30–65, league 54–75, the battle-pass zenryu L100, the mythicals L50).
+- **`.design/additions/patches.js`** (new): field patches to LEGACY species rows, since `ewamon.js` stays verbatim —
+  whole `moves` / `learnableMoves` replacements and `learnLevels` pins. The generator (`migrate-legacy.ts`) applies them
+  after loading the legacy rows (throws on an unknown species or field); a pinned move is left out of the even 5..40
+  spacing, so no other level moves, and sorts last among equal levels (it is the newest). Core's fuzz reads only
+  `ewamon.js`: the digests do not change.
