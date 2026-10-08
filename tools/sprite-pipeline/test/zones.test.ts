@@ -75,7 +75,7 @@ describe('zone sets', () => {
       expect(roster.statics.length).toBe(8);
       expect(roster.encounters.get('hollow_route')!.length).toBe(14);
       const legacy = await loadLegacyData(LEGACY_DIR);
-      expect(legacy.species.size).toBe(136); // 130 legacy + hollowmane, dustcub, badlander, veilpup, hollowolf (.design/additions) + the hollowmane_rage form sprite
+      expect(legacy.species.size).toBe(138); // 130 legacy + hollowmane, dustcub, badlander, veilpup, hollowolf, castlemaw (.design/additions) + the hollowmane_rage and castlemaw_rage form sprites
       const known = new Set(legacy.species.keys());
       const sets = buildZoneSets({ roster, legacy }, known);
       // solenne is the one zone whose Z exceeds the 8-atlas cap even when perfectly packed:

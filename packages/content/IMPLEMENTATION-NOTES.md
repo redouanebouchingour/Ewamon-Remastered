@@ -509,3 +509,20 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   co-occurrence pairing duplicate 6 species (71 atlases, over the 68 cap); skyrend keeps 68 with none.
 - **Counts**: `validate.ts` rule 3 (135), families (70), `schema.ts` `dexNumber ≤ 135`; `ach_dex_130` targets 135.
 - **Layout**: encounter slots do not feed the zone layout RNG; heightfield digests and `r1-pre-move.json` unchanged.
+
+## Post-legacy species: castlemaw #136 (2026-10-08)
+
+- A vigilante inspired by the Punisher (Marvel): a honey badger in a long coat, a skull on its chest, cannon arms and a
+  belt of bone rounds. Same source and generator path as the others (`.design/additions/species.js`, after hollowolf).
+- **castlemaw**: Dark/Steel (the first species with that pairing), single stage, rare, 112 / 128 / 104 / 76, catch rate 8,
+  sizeScale 1.2, abilities Intimidate / Iron Barbs, role Physical Attacker. Defaults Bite, Metal Burst, Snarl, Smart
+  Strike; learns Iron Defense 6, Sucker Punch 15, Flash Cannon 24, Crunch 30, Iron Fist 39.
+- **Rage Form** (`battleForm`, as hollowmane's): below 50 % hp, once per battle; Atk 160 / Def 86 / Spd 104 (max hp,
+  types, ability kept), sheds its negative stages, every foe on the field −1 Defense. Signature move `Vendetta Volley`
+  (Steel 110, 90 %, 5 PP, 30 % burn; `.design/additions/moves.js`, MOVES 194 → 195) replaces Flash Cannon, which every
+  wild one (L44–48, its last four moves) knows. Sprite ids `castlemaw_rage_front|back`.
+- **Obtainable**: `enc_umbral_observatory` `night rare 2` L44–48 (12 slots, day 27 / night 53). Directly placed 82 → 83,
+  obtainable 136, families 71 (61 non-legendary). The first choice, `enc_siege_route`, made the sprite planner
+  duplicate 8 species (73 atlases); umbral_observatory keeps 69 with none.
+- **Counts**: `validate.ts` rule 3 (136, MOVES 195), families (71), `schema.ts` `dexNumber ≤ 136`; `ach_dex_130` targets 136.
+- **Layout**: encounter slots do not feed the zone layout RNG; heightfield digests and `r1-pre-move.json` unchanged.

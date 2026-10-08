@@ -115,6 +115,38 @@ const EWAMON_SPECIES_ADDITIONS = {
     habitat: [],
     evolvesFrom: "veilpup",
   },
+
+  // A lone vigilante inspired by the Punisher (Marvel): a honey badger in a long coat, a skull on its chest, cannon arms
+  // and a belt of bone rounds.
+  castlemaw: {
+    id: "castlemaw", name: "Castlemaw",
+    flavor: "A honey badger that wears the skull of the first thing that ever wronged it. It stalks the grounds of the old observatory at night with its cannon arms loaded and a belt of bone rounds, and it keeps a list. No one has ever seen it forgive.",
+    type: ["Dark", "Steel"],
+    baseHp: 112, baseAtk: 128, baseDef: 104, baseSpd: 76,
+    rarity: "rare", catchRate: 8,
+    sizeScale: 1.2,
+    expYield: 236,
+    moves: ["Bite", "Metal Burst", "Snarl", "Smart Strike"],
+    // Flash Cannon comes at L24 and stays among the last four moves of every wild one (L44–48): in Rage Form it is Vendetta Volley
+    learnableMoves: ["Iron Defense", "Sucker Punch", "Flash Cannon", "Crunch", "Iron Fist"],
+    abilities: ["Intimidate", "Iron Barbs"],
+    role: "Physical Attacker",
+    frontSprite: "castlemaw(front).png",
+    backSprite: "castlemaw(back).png",
+    habitat: ["Umbral Observatory"], evolvesInto: null, evolvesAt: null,
+    // Rage Form: once per battle, the first time it is below half hp and still standing, the skull ignites. Max hp is
+    // kept; it trades guard for power and speed, sheds every weakening, and its glare cracks the foes' guard.
+    battleForm: {
+      id: "rage", name: "Rage Form",
+      hpBelowPct: 50,
+      baseAtk: 160, baseDef: 86, baseSpd: 104,
+      onEnter: { clearNegativeStages: true, lowerFoes: { stat: "def", stages: 1 } },
+      // in Rage Form, Flash Cannon becomes Vendetta Volley (.design/additions/moves.js)
+      signatureMove: { replaces: "Flash Cannon", move: "Vendetta Volley" },
+      frontSprite: "castlemaw_rage(front).png",
+      backSprite: "castlemaw_rage(back).png",
+    },
+  },
 };
 
 module.exports = { EWAMON_SPECIES_ADDITIONS };

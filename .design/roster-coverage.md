@@ -171,7 +171,7 @@ export function assertRosterCoverage(): RosterReport;
 | skyrend | town | 38–44 | enc_skyrend | 4 | 6 | 21 | 21 | veilpup 2/21 → 2.5 min |
 | solenne | town | 40–45 | enc_solenne | 4 | 6 | 26 | 28 | bloomsprite 3/26 → 2.0 min |
 | eclipse_shrine | story | 45–50 | enc_eclipse_shrine | 6 | 9 | 23 | 35 | shardling 5/23 → 1.1 min |
-| umbral_observatory | story | 42–48 | enc_umbral_observatory | 6 | 11 | 27 | 51 | fibrostis 5/27 → 1.3 min |
+| umbral_observatory | story | 42–48 | enc_umbral_observatory | 6 | 12 | 27 | 53 | fibrostis 5/27 → 1.3 min |
 | celestial_spire | story | 50–55 | enc_celestial_spire | 6 | 9 | 44 | 27 | flowbot 2/44 → 5.1 min |
 | the_rift | story | 55–60 | enc_the_rift | 6 | 13 | 26 | 41 | kygra 2/26 → 3.0 min |
 
@@ -378,6 +378,7 @@ The only town whose "static" species are the point of the town. `TOWN_SPAWN_TUNI
 | umbral_observatory | miscarmen | 3 | 43 | 47 | night | rare | land |
 | umbral_observatory | aonred | 2 | 44 | 48 | night | rare | land |
 | umbral_observatory | darkyon | 2 | 44 | 48 | night | rare | land |
+| umbral_observatory | castlemaw | 2 | 44 | 48 | night | rare | land |
 
 ### 6.14 celestial_spire — story, Cosmic, L50–55 (A1)
 
@@ -413,7 +414,7 @@ The only town whose "static" species are the point of the town. `TOWN_SPAWN_TUNI
 
 Totals (Appendix A): **15 tables, 152 slots, 79 distinct species placed directly**; closure under evolution = 120; plus 8 statics and 2 mythical rewards = **130**.
 
-Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60; `dustcub` (#132, Ground) → `badlander` (#133, Ground/Dark) @30 — deepcut_route `uncommon 5` L20–24; `veilpup` (#134, Psychic) → `hollowolf` (#135, Psychic/Cosmic) @42 — skyrend `any rare 2` L38–41. With them the game has 155 slots, 82 species placed directly, **135** obtainable, 70 families.
+Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60; `dustcub` (#132, Ground) → `badlander` (#133, Ground/Dark) @30 — deepcut_route `uncommon 5` L20–24; `veilpup` (#134, Psychic) → `hollowolf` (#135, Psychic/Cosmic) @42 — skyrend `any rare 2` L38–41; `castlemaw` (#136, Dark/Steel single stage, with a Rage Form) — umbral_observatory `night rare 2` L44–48. With them the game has 156 slots, 83 species placed directly, **136** obtainable, 71 families.
 
 ---
 

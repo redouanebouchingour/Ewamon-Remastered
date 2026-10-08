@@ -69,7 +69,10 @@ const FLAT_TOLERANCE = 2;
 const FLAT_MAX_SHARE_OFF = 0.2;            // share of flat texels beyond ±2 per atlas (measured max 0.16)
 const FLAT_MAX_ERR = 12;                   // ≈ 5.4° (measured max 10)
 /** libwebp lossy rewrites RGB under a = 0 texels (sharp exposes no `exact` flag); the raster obeys the rule exactly. */
-const TRANSPARENT_MAX_MEAN_LUMA_ERR = 35;  // per atlas, decoded band texels (measured max 31.3)
+// per atlas, decoded band texels. An atlas mean never exceeds its worst sprite's own band mean, so the bound sits over
+// the worst sprite (hollowmane_rage front 43.1, hollowmane 40.4, solpyre 40.4; atlases 6.8–38.8) and no longer depends
+// on which two species the planner pairs (amended 2026-10-08; was 35 over atlases measuring ≤ 31.3)
+const TRANSPARENT_MAX_MEAN_LUMA_ERR = 45;
 const MIP_COVERAGE_TOLERANCE = 0.01;
 const TRANSPARENT_BAND = 2;
 const TRANSPARENT_TOLERANCE = 12;

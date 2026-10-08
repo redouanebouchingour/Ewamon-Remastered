@@ -1,5 +1,5 @@
 {
-  "total": 272,
+  "total": 276,
   "actionable": 0,
   "informational": 152,
   "excluded": [
@@ -1472,7 +1472,7 @@
       "unbound": []
     },
     "deepcut_route": {
-      "atlases": 7,
+      "atlases": 6,
       "duplicated": [],
       "unbound": []
     },
@@ -1533,10 +1533,10 @@
         "abyssrake",
         "archonosis",
         "auroracle",
-        "bankaiser",
         "blizzraak",
         "cirrileap",
         "florasage",
+        "galaxion",
         "gemknight",
         "glimmereen",
         "pyrothal",
@@ -1563,7 +1563,7 @@
       "unbound": []
     },
     "umbral_observatory": {
-      "atlases": 6,
+      "atlases": 7,
       "duplicated": [],
       "unbound": []
     },
@@ -1580,22 +1580,22 @@
       {
         "albedo": 88,
         "normal": 92,
-        "totalBytes": 35240384
+        "totalBytes": 35930846
       }
     ],
     "thumbs": {
-      "count": 136,
-      "bytes": 730998,
+      "count": 138,
+      "bytes": 742482,
       "rungs": {
         "q48/aq100/a8": 4,
         "q56/aq100/a8": 3,
         "q64/aq100/a8": 3,
-        "q72/aq100/a8": 20,
-        "q80/aq100/a16": 70,
+        "q72/aq100/a8": 21,
+        "q80/aq100/a16": 71,
         "q80/aq100/a8": 5,
         "q80/aq90": 31
       }
     }
   },
-  "totalBytes": 35240384
+  "totalBytes": 35930846
 }

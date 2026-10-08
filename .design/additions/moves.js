@@ -10,6 +10,8 @@ const EWAMON_MOVE_ADDITIONS = {
   // hollowmane's Rage Form signature move (SpeciesDef.battleForm.signatureMove): in Rage Form, Night Slash becomes this.
   // Learned by no species; the replaced slot pays the PP.
   "Hollow Crescent": { power: 110, type: "Ghost", pp: 5, effect: "crit", accuracy: 95 },
+  // castlemaw's Rage Form signature move: in Rage Form, Flash Cannon becomes this. Learned by no species.
+  "Vendetta Volley": { power: 110, type: "Steel", pp: 5, effect: "burn", accuracy: 90 },
 };
 
 module.exports = { EWAMON_MOVE_ADDITIONS };
