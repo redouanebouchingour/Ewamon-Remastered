@@ -6,8 +6,11 @@
  * `ewamon.js` is CommonJS under a `"type": "module"` root, so Node refuses to `require()`
  * it. It has no dependencies, so it is evaluated in a tiny CommonJS shim. `world.js` is real
  * ESM and is imported directly.
+ *
+ * Species added after the migration live in `.design/additions/species.js` (`EWAMON_SPECIES_ADDITIONS`,
+ * the same row shape, a sibling of the legacy directory) and join the species set when that file exists.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import vm from 'node:vm';
@@ -86,7 +89,16 @@ function teamSpecies(team: unknown): string[] {
 
 export function loadLegacySpecies(legacyDir: string): Map<string, LegacySpecies> {
   const ewamon = loadCommonJs(path.join(legacyDir, 'ewamon.js'));
-  return parseSpecies((ewamon.EWAMON_SPECIES ?? {}) as Record<string, unknown>);
+  const raw = { ...((ewamon.EWAMON_SPECIES ?? {}) as Record<string, unknown>) };
+  const additionsFile = path.join(legacyDir, '..', 'additions', 'species.js');
+  if (existsSync(additionsFile)) {
+    const additions = (loadCommonJs(additionsFile).EWAMON_SPECIES_ADDITIONS ?? {}) as Record<string, unknown>;
+    for (const id of Object.keys(additions)) {
+      if (id in raw) throw new Error(`additions: species '${id}' already exists in ewamon.js`);
+      raw[id] = additions[id];
+    }
+  }
+  return parseSpecies(raw);
 }
 
 export async function loadLegacyData(legacyDir: string): Promise<LegacyData> {

@@ -24,10 +24,10 @@ import {
 } from '../src/index';
 
 describe('counts', () => {
-  it('130 species with dense dex numbers', () => {
-    expect(SPECIES.length).toBe(130);
+  it('131 species with dense dex numbers', () => {
+    expect(SPECIES.length).toBe(131);
     const dex = SPECIES.map((s) => s.dexNumber).sort((a, b) => a - b);
-    expect(dex).toEqual(Array.from({ length: 130 }, (_, i) => i + 1));
+    expect(dex).toEqual(Array.from({ length: 131 }, (_, i) => i + 1));
     expect(SPECIES.filter((s) => s.legendary).length).toBe(10);
   });
   it('193 moves, 25 abilities, 17 items, 10 orbs, 23 consumables', () => {

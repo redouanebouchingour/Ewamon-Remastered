@@ -150,7 +150,7 @@ export const EvolutionSchema: z.ZodType<Evolution> = z.union([
 export const SpeciesDefSchema: z.ZodType<SpeciesDef> = z.object({
   id: SnakeId,
   name: z.string().min(1),
-  dexNumber: Int.min(1).max(130),
+  dexNumber: Int.min(1).max(131),
   flavor: z.string(),
   types: z.union([z.tuple([TypeNameSchema]), z.tuple([TypeNameSchema, TypeNameSchema])]),
   baseHp: PosInt,

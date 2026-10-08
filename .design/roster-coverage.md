@@ -173,7 +173,7 @@ export function assertRosterCoverage(): RosterReport;
 | eclipse_shrine | story | 45–50 | enc_eclipse_shrine | 6 | 9 | 23 | 35 | shardling 5/23 → 1.1 min |
 | umbral_observatory | story | 42–48 | enc_umbral_observatory | 6 | 11 | 27 | 51 | fibrostis 5/27 → 1.3 min |
 | celestial_spire | story | 50–55 | enc_celestial_spire | 6 | 9 | 44 | 27 | flowbot 2/44 → 5.1 min |
-| the_rift | story | 55–60 | enc_the_rift | 6 | 12 | 26 | 39 | kygra 2/26 → 3.0 min |
+| the_rift | story | 55–60 | enc_the_rift | 6 | 13 | 26 | 41 | kygra 2/26 → 3.0 min |
 
 Per-slot roll, as §30.3 already fixes: `ALPHA_CHANCE 0.02` on every spawn plus the forced `alpha` slot (weight 1 of ~45 ≈ +2.2 % on routes); `VARIANT_CHANCE 0.03`; swarm species ×`weightBoost` (§12.3).
 
@@ -407,8 +407,11 @@ The only town whose "static" species are the point of the town. `TOWN_SPAWN_TUNI
 | the_rift | acier | 2 | 58 | 60 | any | rare | land |
 | the_rift | ripshell | 2 | 57 | 60 | any | rare | water |
 | the_rift | kygra | 2 | 58 | 60 | day | rare | water |
+| the_rift | hollowmane | 2 | 57 | 60 | night | rare | land |
 
 Totals (Appendix A): **15 tables, 152 slots, 79 distinct species placed directly**; closure under evolution = 120; plus 8 statics and 2 mythical rewards = **130**.
+
+Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60. With it the game has 153 slots, 80 species placed directly, **131** obtainable, 68 families.
 
 ---
 

@@ -368,7 +368,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   for (const f of FLAG_REGISTRY) if (!f.id.includes(':') && !/^[a-z0-9_]+$/.test(f.id)) err(`flag registry: '${f.id}' is not snake_case`);
 
   // ── 3. counts ──
-  if (species.length !== 130) err(`SPECIES.length ${species.length} !== 130`);
+  if (species.length !== 131) err(`SPECIES.length ${species.length} !== 131`);
   if (moves.length !== 193) err(`MOVES.length ${moves.length} !== 193`);
   // Phase D6: every curated spread move exists, and only damaging or foe-targeted moves spread
   for (const [id, sp] of Object.entries(SPREAD_MOVES).sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
@@ -388,7 +388,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   });
   {
     const dex = [...species.map((s) => s.dexNumber)].sort((a, b) => a - b);
-    for (let i = 0; i < dex.length; i++) if (dex[i] !== i + 1) { err(`dex numbers are not dense 1..130 (got ${dex[i]} at ${i})`); break; }
+    for (let i = 0; i < dex.length; i++) if (dex[i] !== i + 1) { err(`dex numbers are not dense 1..131 (got ${dex[i]} at ${i})`); break; }
     const ids = new Set(species.map((s) => s.id));
     if (ids.size !== species.length) err('duplicate species ids');
     if (moveIds.size !== moves.length) err('duplicate move ids');
@@ -450,9 +450,9 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
       while (cur !== undefined && cur.evolvesFrom !== null && hops < 8) { cur = speciesById.get(cur.evolvesFrom); hops++; }
       if (hops >= 8) err(`species ${s.id}: evolution chain has a cycle or exceeds depth`);
     }
-    // roster-coverage: 67 roots (57 non-legendary families + the 10 legendary/mythical singles), each a tree root
+    // roster-coverage: 68 roots (57 non-legendary legacy families + hollowmane + the 10 legendary/mythical singles), each a tree root
     const families = species.filter((s) => s.evolvesFrom === null).length;
-    if (families !== 67) err(`evolution families (roots) ${families} !== 67`);
+    if (families !== 68) err(`evolution families (roots) ${families} !== 68`);
   }
 
   // ── 7 + 8. roster coverage and RC rules ──

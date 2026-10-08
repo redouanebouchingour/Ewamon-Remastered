@@ -18,7 +18,8 @@ import { LEGACY_DIR, REAL_OUT_DIR, REAL_QA_DIR } from './helpers.js';
 
 const MANIFEST_PATH = path.join(REAL_OUT_DIR, MANIFEST_FILE);
 const REPORT_PATH = path.join(REAL_QA_DIR, 'qa-report.json');
-const SPECIES_COUNT = 130;
+// the 130 species of ewamon.js + the post-legacy additions (.design/additions/species.js)
+const SPECIES_COUNT = 131;
 
 function listFiles(dir: string, rel = ''): string[] {
   const out: string[] = [];
@@ -53,7 +54,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
     expect(readFileSync(MANIFEST_PATH, 'utf8')).toBe(serializeManifest(manifest));
   });
 
-  it('is a valid v2 manifest for exactly the 130 species of ewamon.js', () => {
+  it('is a valid v2 manifest for exactly the 131 species of ewamon.js + additions', () => {
     const ids = Object.keys(manifest.sprites);
     expect(ids.length).toBe(SPECIES_COUNT);
     expect(ids).toEqual([...ids].sort());
@@ -156,7 +157,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
   describe.skipIf(!existsSync(REPORT_PATH))('qa-report.json', () => {
     const report = JSON.parse(readFileSync(REPORT_PATH, 'utf8')) as QaReport;
 
-    it('has 0 actionable flags over the 260 sprites, lists the excluded alternate-style files, and no unresolved flag kinds', () => {
+    it('has 0 actionable flags over the 262 sprites, lists the excluded alternate-style files, and no unresolved flag kinds', () => {
       expect(report.total).toBe(2 * SPECIES_COUNT);
       expect(report.actionable).toBe(0);
       for (const e of report.flagged) expect(e.actionable, `${e.species}/${e.side}`).toEqual([]);

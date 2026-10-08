@@ -6,7 +6,7 @@ describe('validate()', () => {
     const r = validate();
     expect(r.errors).toEqual([]);
     expect(r.ok).toBe(true);
-    expect(r.stats.roster.obtainable).toBe(130);
+    expect(r.stats.roster.obtainable).toBe(131);
     expect(r.stats.roster.unobtainable).toEqual([]);
   });
 
@@ -32,10 +32,10 @@ describe('validate()', () => {
     expect(r.errors.some((e) => e.includes(victim.id) && e.includes('Abyssal Nova'))).toBe(true);
   });
 
-  it('mutation: a species dropped from the tables breaks 130/130 coverage', () => {
-    const r = validate({ skipHeightfields: true }, { ...DEFAULT_TABLES, species: SPECIES.slice(0, 129) });
+  it('mutation: a species dropped from the tables breaks 131/131 coverage', () => {
+    const r = validate({ skipHeightfields: true }, { ...DEFAULT_TABLES, species: SPECIES.slice(0, 130) });
     expect(r.ok).toBe(false);
-    expect(r.errors.some((e) => e.includes('SPECIES.length 129'))).toBe(true);
+    expect(r.errors.some((e) => e.includes('SPECIES.length 130'))).toBe(true);
   });
 
   it('mutation: a zone link that is not mirrored fails the graph check', () => {

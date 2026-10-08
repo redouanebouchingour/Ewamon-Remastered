@@ -443,3 +443,20 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
 
 - `validate` rule 12: every zone's arrival point is walkable and in the spawn's walkable component (a town with no
   usable candidate is reported, not thrown). Tests: `test/arrival.test.ts`.
+
+## Post-legacy species: hollowmane #131 (2026-10-08)
+
+- **Source**: `.design/additions/species.js` (`EWAMON_SPECIES_ADDITIONS`, the legacy `EWAMON_SPECIES` row shape).
+  `scripts/migrate-legacy.ts` appends those rows after the legacy ones, so dex numbers continue at 131 and the legacy
+  rules (learnset spacing, clamps, sprite ids) apply unchanged. `ewamon.js` stays a verbatim copy of the old game:
+  core's test content reads only it, so both fuzz digest files are byte-identical. Append new species at the end of
+  the additions file; never reorder (dex = insertion order).
+- **hollowmane**: Ghost/Fighting, single stage, rare, 98 / 134 / 84 / 122, catch rate 6, sizeScale 1.25,
+  abilities Hustle / Guts (the first species to carry either), role Physical Attacker. Defaults Shadow Sneak,
+  Night Slash, Low Kick, Phantom Strike; learns Bulk Up 6, Sucker Punch 15, Crunch 24, Close Combat 30,
+  Poltergeist 39. Inspired by White (Bleach TYBW): the bone mask, the white mane, the red core in the chest.
+- **Obtainable**: `enc_the_rift` `night rare 2` L57–60 (Ghost → night-only, RC rules; the_rift had 12 slots / 12 species,
+  now 13). Directly placed 79 → 80, obtainable 131, families 68 (58 non-legendary).
+- **Counts**: `validate.ts` rule 3 (131) and the family count (68), `schema.ts` `dexNumber ≤ 131`; the dex achievement
+  keeps its persisted id `ach_dex_130` and targets the whole dex (131).
+- **Layout**: encounter slots do not feed the zone layout RNG; every heightfield digest and `r1-pre-move.json` are unchanged.

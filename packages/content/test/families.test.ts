@@ -1,8 +1,8 @@
 /**
- * §50.4.2 `families.test.ts` — evolution trees (spine §2.3 / §3.10 rule 7): exactly 67 trees, each rooted at
+ * §50.4.2 `families.test.ts` — evolution trees (spine §2.3 / §3.10 rule 7): exactly 68 trees, each rooted at
  * `evolvesFrom === null`; parent and child agree (`evolution.into` ⇔ `evolvesFrom`), every species sits in exactly one
  * tree, and no tree has a cycle; every family is completable — its root is obtainable directly (wild, gift, static,
- * quest, battle pass, raid, swarm or a starter) and the closure under `into` reaches all 130; the one `split`
+ * quest, battle pass, raid, swarm or a starter) and the closure under `into` reaches all 131; the one `split`
  * (`darkone`: Lightning Rod → `aonred`, default `darkyon`) carries its `null` (default) branch last.
  */
 import { describe, expect, it } from 'vitest';
@@ -51,9 +51,9 @@ function treeOf(root: SpeciesDef): string[] {
 }
 
 describe('evolution families (§2.3, rule 7)', () => {
-  it('exactly 67 trees, each rooted at evolvesFrom === null; every species in exactly one tree', () => {
-    expect(SPECIES).toHaveLength(130);
-    expect(roots).toHaveLength(67);
+  it('exactly 68 trees, each rooted at evolvesFrom === null; every species in exactly one tree', () => {
+    expect(SPECIES).toHaveLength(131);
+    expect(roots).toHaveLength(68);
     const owner = new Map<string, string>();
     for (const r of roots) {
       for (const id of treeOf(r)) {
@@ -61,7 +61,7 @@ describe('evolution families (§2.3, rule 7)', () => {
         owner.set(id, r.id);
       }
     }
-    expect(owner.size).toBe(130);
+    expect(owner.size).toBe(131);
   });
 
   it('parent and child agree: every `into` names an existing species whose evolvesFrom is the parent, and back', () => {
@@ -78,7 +78,7 @@ describe('evolution families (§2.3, rule 7)', () => {
     }
   });
 
-  it('every family is completable: its root is directly obtainable, and the closure under `into` reaches all 130', () => {
+  it('every family is completable: its root is directly obtainable, and the closure under `into` reaches all 131', () => {
     const direct = directlyObtainable();
     for (const r of roots) expect(direct.has(r.id), `${r.id}: the family root has no wild / gift source`).toBe(true);
     const caught = new Set(direct.keys());

@@ -6,6 +6,18 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-08 a new species: hollowmane (#131). Two entries. -->
+
+## 2026-10-08 — `00-spine.md` §2.3 (`dexNumber` 1..131), §3.4 (`ACHIEVEMENTS` dex target), §3.10 rules 3, 6, 7 — the roster is 131 species / 68 families
+Why: the user added a creature: `hollowmane`, Ghost/Fighting, single stage, rare, abilities Hustle / Guts (the first species to carry either), a night `rare 2` slot in `enc_the_rift` L57–60. `.design/legacy/ewamon.js` stays a verbatim copy of the old game, so post-legacy species live in `.design/additions/species.js` (same row shape); the generator appends them after the legacy rows (dex 131..). Core's test content reads only `ewamon.js`, so `fuzz-digests.json` and `doubles-fuzz-digests.json` are unchanged. The dex achievement keeps its persisted id `ach_dex_130` and now targets the whole dex (131).
+Evidence: `pnpm --filter @ewa/content run validate` (131/131 obtainable, 68 families, 80 placed directly); `packages/content/test/{counts,coverage,families,encounters,validate,index,achievements}.test.ts`; `npx vitest run packages/core` (digests byte-identical).
+Affects: `packages/content/scripts/migrate-legacy.ts`, `src/data/{species,encounters,achievements}.ts`, `src/{validate,schema}.ts`; `.design/roster-coverage.md` §5 / §6.15; `20-client.md` §20.9.5 dex header `N / 131`; `50-verification-budget.md` §50.1 #11, §50.4.2 rows, the milestone checklists.
+
+## 2026-10-08 — `40-pipelines.md` §40.1.1 (species set), §40.1.4 accounting, NON-NEGOTIABLES rule 2 — the sprite set includes `.design/additions/species.js`
+Why: as above; the pipeline's species set must equal `@ewa/content`'s. 131 × 2 = 262 sprites → 66 atlases (the last holds one species). `hollowmane`'s sources are two static PNGs (grey background keyed to alpha before import), so no flipbook and no `frame-select.json` entry.
+Evidence: `tools/sprite-pipeline/test/{budget,zones}.test.ts`; the rebuilt `packages/client/public/creatures/`.
+Affects: `tools/sprite-pipeline/src/legacy.ts` (`loadLegacySpecies` merges the additions); `50-verification-budget.md` §50.4.8 `budget.test.ts` row.
+
 <!-- 2026-10-06 Phase E4 downloads: the CC0 audio is in. Two entries. -->
 
 ## 2026-10-06 — `40-pipelines.md` §40.4.5 — loop points are written without the Opus pre-skip shift

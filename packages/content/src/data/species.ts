@@ -1,5 +1,5 @@
 // GENERATED — edit the generator (packages/content/scripts/migrate-legacy.ts), not this file.
-// Source: .design/legacy/ewamon.js. Regenerate with `pnpm --filter @ewa/content run migrate`.
+// Source: .design/legacy/ewamon.js + .design/additions/species.js. Regenerate with `pnpm --filter @ewa/content run migrate`.
 // dexNumber = legacy insertion order. learnableMoves: defaults at 1, the rest evenly spaced 5..min(evolvesAt ?? 40, 60), ×3-rounded (§2.3).
 // species 'clementar': rarity "epic" → "rare" (no epic Rarity in the spine)
 // species 'lithokrysm': evolvesFrom null in legacy, derived 'pebblit' from the parent's evolvesInto
@@ -4083,5 +4083,38 @@ export const SPECIES: readonly SpeciesDef[] = [
     evolvesFrom: null,
     sprite: { front: 'noxmyth_front', back: 'noxmyth_back' },
     legendary: true,
+  },
+  {
+    id: 'hollowmane',
+    name: 'Hollowmane',
+    dexNumber: 131,
+    flavor: 'Born where a warrior\'s soul was swallowed by its own hunger, it fights on instinct alone. The red core in its chest burns brighter with every wound, and it laughs through its bone mask at anything that hesitates.',
+    types: ['Ghost', 'Fighting'],
+    baseHp: 98,
+    baseAtk: 134,
+    baseDef: 84,
+    baseSpd: 122,
+    rarity: 'rare',
+    catchRate: 6,
+    sizeScale: 1.25,
+    expYield: 240,
+    moves: ['Shadow Sneak', 'Night Slash', 'Low Kick', 'Phantom Strike'],
+    learnableMoves: [
+      { move: 'Shadow Sneak', level: 1 },
+      { move: 'Night Slash', level: 1 },
+      { move: 'Low Kick', level: 1 },
+      { move: 'Phantom Strike', level: 1 },
+      { move: 'Bulk Up', level: 6 },
+      { move: 'Sucker Punch', level: 15 },
+      { move: 'Crunch', level: 24 },
+      { move: 'Close Combat', level: 30 },
+      { move: 'Poltergeist', level: 39 },
+    ],
+    abilities: ['Hustle', 'Guts'],
+    role: 'Physical Attacker',
+    evolution: null,
+    evolvesFrom: null,
+    sprite: { front: 'hollowmane_front', back: 'hollowmane_back' },
+    legendary: false,
   },
 ];

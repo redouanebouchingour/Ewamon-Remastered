@@ -1,9 +1,10 @@
 /**
- * One-shot generator: .design/legacy/{ewamon.js, shop.js} → packages/content/src/data/{species,moves,
+ * One-shot generator: .design/legacy/{ewamon.js, shop.js} + .design/additions/species.js → packages/content/src/data/{species,moves,
  * abilities,items,orbs,consumables,typechart}.ts. Run with `pnpm --filter @ewa/content run migrate`.
  *
  * Rules applied (spine §2.3–§2.6; each is restated in the generated header):
- *  - species dexNumber = legacy object insertion order (1..130); rows emitted in that order.
+ *  - species dexNumber = legacy object insertion order (1..130), then .design/additions/species.js in its
+ *    insertion order (131..); rows emitted in that order.
  *  - learnableMoves: the default `moves` at level 1; every other legacy learnable move gets a level spaced
  *    evenly between 5 and min(evolution.atLevel ?? 40, 60) in legacy list order, rounded to a multiple of 3
  *    (§2.3 migration rule); duplicates and moves that name no MOVES row are dropped and listed in the header.
@@ -43,6 +44,7 @@ import type {
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const LEGACY_DIR = resolve(HERE, '../../../.design/legacy');
+const ADDITIONS_FILE = resolve(HERE, '../../../.design/additions/species.js');
 const OUT_DIR = resolve(HERE, '../src/data');
 
 // ─── legacy shapes ──────────────────────────────────────────────────────────
@@ -102,7 +104,15 @@ function loadLegacy(): LegacyModule {
   const mod: { exports: Partial<LegacyModule> } = { exports: {} };
   const fn = new Function('module', 'exports', src) as (m: typeof mod, e: unknown) => void;
   fn(mod, mod.exports);
-  return mod.exports as LegacyModule;
+  const legacy = mod.exports as LegacyModule;
+  // post-legacy species: same row shape, appended after the legacy rows so dex numbers continue at 131
+  const add: { exports: { EWAMON_SPECIES_ADDITIONS?: Record<string, LegacySpecies> } } = { exports: {} };
+  (new Function('module', 'exports', readFileSync(ADDITIONS_FILE, 'utf8')) as (m: typeof add, e: unknown) => void)(add, add.exports);
+  const additions = add.exports.EWAMON_SPECIES_ADDITIONS ?? {};
+  for (const id of Object.keys(additions)) {
+    if (id in legacy.EWAMON_SPECIES) throw new Error(`additions: species '${id}' already exists in ewamon.js`);
+  }
+  return { ...legacy, EWAMON_SPECIES: { ...legacy.EWAMON_SPECIES, ...additions } };
 }
 
 const notes: string[] = [];
@@ -579,7 +589,7 @@ function ser(v: unknown, indent: string): string {
 function header(what: string, extra: readonly string[]): string {
   const lines = [
     `// GENERATED — edit the generator (packages/content/scripts/migrate-legacy.ts), not this file.`,
-    `// Source: .design/legacy/ewamon.js${what === 'consumables' ? ' + shop.js' : ''}. Regenerate with \`pnpm --filter @ewa/content run migrate\`.`,
+    `// Source: .design/legacy/ewamon.js${what === 'consumables' ? ' + shop.js' : ''}${what === 'species' ? ' + .design/additions/species.js' : ''}. Regenerate with \`pnpm --filter @ewa/content run migrate\`.`,
     ...extra.map((l) => `// ${l}`),
   ];
   return lines.join('\n') + '\n';
