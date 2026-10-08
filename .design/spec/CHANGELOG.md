@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-08 two new species: dustcub (#132) → badlander (#133). One entry. -->
+
+## 2026-10-08 — `00-spine.md` §2.3 (`dexNumber` 1..133), §3.4 (`ACHIEVEMENTS` dex target 133), §3.10 rules 3, 7; `20-client.md` §20.9.5 (`N / 133`); `40-pipelines.md` §40.1.1, §40.1.4 accounting, the budget row, NON-NEGOTIABLES rule 2; `50-verification-budget.md` §50.1 #11, §50.4.2 / §50.4.8 rows, milestone checklists, the roster row — the roster is 133 species / 69 families
+Why: the user added an outlaw line inspired by Arthur Morgan (Red Dead Redemption 2): `dustcub` (Ground, a cowboy badger cub) evolves at 30 into `badlander` (Ground/Dark, a drifter). Both rows are appended to `.design/additions/species.js` after hollowmane (dex 132, 133), use only existing moves and abilities (MOVES 193, ABILITIES 25 unchanged), and `dustcub` spawns on `enc_deepcut_route` `any uncommon 5` L20–24 (RC-3 route uncommon weight); `badlander` is obtainable by evolution. `ewamon.js` is untouched, so both fuzz digest files are byte-identical. Sprites: 133 species + `hollowmane_rage` = 134 entries × 2 = 268 sprites → 67 atlases, 34.71 MB of the 35 MiB ceiling; the 68-atlas assertion leaves room for one more pair.
+Evidence: `pnpm --filter @ewa/content run validate` (133/133 obtainable, 69 families, 81 placed directly); `packages/content/test/{counts,coverage,families,encounters,validate,index,achievements}.test.ts`; `npx vitest run packages/core` (digests unchanged); `tools/sprite-pipeline/test/{budget,zones}.test.ts` and the rebuilt `packages/client/public/creatures/` (67 atlases, 34 714 778 B, 0 actionable QA flags).
+Affects: `.design/additions/species.js`; `packages/content/src/data/{species,encounters,achievements}.ts`, `src/{validate,schema,roster,types}.ts`; `.design/roster-coverage.md` §5 / §6.5; `tools/sprite-pipeline/test/{budget,zones}.test.ts`.
+
 <!-- 2026-10-08 battle forms: hollowmane's rage form. One entry. -->
 
 ## 2026-10-08 — `00-spine.md` §2.3 (`SpeciesDef.battleForm`, `BattleFormDef`), §2.9 (`Battler.form`), §2.19 (`formChange`, 36 kinds); `10-render.md` §10.7.5 (`form_rage`, 49 VFX ids); `20-client.md` timeline keyframe `form`; `40-pipelines.md` §40.1.1 (form sprite keys); `50-verification-budget.md` §50.4.1 `forms.test.ts`, `timeline.test.ts` 36 kinds — mid-battle forms

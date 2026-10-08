@@ -463,3 +463,25 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
 - **Rage Form** (`battleForm`, core `BattleFormDef`; generator `migrateBattleForm`, schema `BattleFormDefSchema`): below
   50 % hp, once per battle — base Atk 162 / Def 66 / Spd 150 (max hp kept), sheds its negative stages, every foe on the
   field −1 Attack. Sprite ids `hollowmane_rage_front|back`; the sprite pipeline ships the art as `hollowmane_rage`.
+
+## Post-legacy species: dustcub #132 → badlander #133 (2026-10-08)
+
+- An outlaw line inspired by Arthur Morgan (Red Dead Redemption 2): a cowboy badger cub and the drifter it grows into.
+  Same source and generator path as hollowmane (`.design/additions/species.js`, appended after it).
+- **dustcub**: Ground, uncommon, 68 / 70 / 58 / 52, catch rate 90, sizeScale 0.78, abilities Sand Veil / Guts, role
+  Physical Attacker. Defaults Tackle, Sand Attack, Mud-Slap, Dark Lasso; learns Bite 6, Howl 9, Bulldoze 15,
+  Night Slash 21, Sucker Punch 24, Crunch 30. Evolves at 30.
+- **badlander**: Ground/Dark, rare, 104 / 118 / 88 / 74, catch rate 30, sizeScale 1.1, abilities Intimidate / Guts,
+  role Physical Attacker. Defaults Dark Lasso, Night Slash, Bulldoze, Sucker Punch; learns Howl 6, Bite 9, Slash 15,
+  Crunch 21, Sand Tomb 24, Earthquake 30, Double Edge 36, Close Combat 39. Only moves and abilities that already
+  existed: MOVES stays 193, ABILITIES 25.
+- **Obtainable**: `enc_deepcut_route` (the canyon, which already has the cowboy trainers) `any uncommon 5` L20–24
+  (RC-3 fixes route uncommon weight at 5); badlander by evolution. Directly placed 80 → 81, obtainable 133,
+  families 69 (59 non-legendary). Deepcut's table is 13 slots / weight 61.
+- **Counts**: `validate.ts` rule 3 (133), families (69), `schema.ts` `dexNumber ≤ 133`; `ach_dex_130` targets 133.
+- **Layout**: encounter slots do not feed the zone layout RNG; heightfield digests and `r1-pre-move.json` unchanged.
+- **Hollow Crescent** (2026-10-08): the Rage Form's signature move (`battleForm.signatureMove`: Night Slash → Hollow
+  Crescent; Ghost 110, 95 %, 5 PP, high critical-hit ratio), from `.design/additions/moves.js` (the generator merges it
+  into the legacy moves: 194). The learnset now ends with Night Slash at L39 so every wild hollowmane (L57–60, last four
+  level-up moves) knows it; defaults Shadow Sneak / Low Kick / Phantom Strike / Bulk Up. `validate.ts`: a signature move
+  exists, replaces a move the species learns, is learned by no species and is not a spread move.

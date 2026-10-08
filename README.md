@@ -9,7 +9,7 @@ guilds and a marketplace. Three.js WebGPU on the client, Colyseus + PostgreSQL o
 | Package | What it is |
 |---|---|
 | `packages/core` | Pure battle rules, rng, exp — imports nothing. 1,000-battle determinism fuzz. |
-| `packages/content` | Typed game data (131 species, 193 moves, 21 zones, league, story, quests), the zone plan, heightfields and interiors; `validate()` is the build gate. |
+| `packages/content` | Typed game data (133 species, 193 moves, 21 zones, league, story, quests), the zone plan, heightfields and interiors; `validate()` is the build gate. |
 | `packages/protocol` | Wire schemas (zod), movement prediction, AOI. |
 | `packages/persist` | Drizzle schema + repos over PGlite (dev) or Postgres. |
 | `packages/server` | Colyseus zone rooms (20 Hz), movement validation, battles, story beats, REST + JWT, trades, raids, social, market, live-ops. |

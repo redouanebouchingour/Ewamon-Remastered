@@ -163,7 +163,7 @@ export function assertRosterCoverage(): RosterReport;
 | ash_route | route | 7–11 | enc_ash_route | 14 | 9 | 37 | 33 | cindercap 3/37 → 2.9 min |
 | tide_route | route | 11–15 | enc_tide_route | 14 | 11 | 48 | 46 | kygra 2/48 → 5.6 min |
 | galvan_route | route | 15–20 | enc_galvan_route | 14 | 10 | 43 | 41 | wooltug 4/43 → 2.5 min |
-| deepcut_route | route | 20–25 | enc_deepcut_route | 14 | 12 | 51 | 56 | pyrecap 2/51 → 6.0 min |
+| deepcut_route | route | 20–25 | enc_deepcut_route | 14 | 13 | 56 | 61 | pyrecap 2/56 → 6.6 min |
 | hollow_route | route | 25–30 | enc_hollow_route | 14 | 15 | 28 | 69 | fibrostis 5/28 → 1.3 min |
 | siege_route | route | 30–35 | enc_siege_route | 14 | 11 | 48 | 48 | flowbot 2/48 → 5.6 min |
 | ascent_route | route | 35–42 | enc_ascent_route | 14 | 11 | 47 | 40 | serpyre 3/47 → 3.7 min |
@@ -254,6 +254,7 @@ Column order is fixed and machine-parsed: `zoneId | species | weight | levelMin 
 | deepcut_route | embrock | 6 | 20 | 23 | any | common | land |
 | deepcut_route | coalette | 5 | 22 | 25 | any | uncommon | land |
 | deepcut_route | berkest | 5 | 21 | 24 | any | uncommon | land |
+| deepcut_route | dustcub | 5 | 20 | 24 | any | uncommon | land |
 | deepcut_route | wooltug | 5 | 20 | 23 | any | uncommon | land |
 | deepcut_route | rimeidol | 5 | 21 | 25 | night | uncommon | land |
 | deepcut_route | yahit | 3 | 22 | 25 | any | rare | land |
@@ -411,7 +412,7 @@ The only town whose "static" species are the point of the town. `TOWN_SPAWN_TUNI
 
 Totals (Appendix A): **15 tables, 152 slots, 79 distinct species placed directly**; closure under evolution = 120; plus 8 statics and 2 mythical rewards = **130**.
 
-Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60. With it the game has 153 slots, 80 species placed directly, **131** obtainable, 68 families.
+Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60; `dustcub` (#132, Ground) → `badlander` (#133, Ground/Dark) @30 — deepcut_route `uncommon 5` L20–24. With them the game has 154 slots, 81 species placed directly, **133** obtainable, 69 families.
 
 ---
 

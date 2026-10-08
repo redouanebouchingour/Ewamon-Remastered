@@ -38,6 +38,43 @@ const EWAMON_SPECIES_ADDITIONS = {
       backSprite: "hollowmane_rage(back).png",
     },
   },
+
+  // An outlaw line inspired by Arthur Morgan (Red Dead Redemption 2): a cowboy cub and the drifter it grows into.
+  dustcub: {
+    id: "dustcub", name: "Dustcub",
+    flavor: "A scrappy badger cub that wanders into canyon camps chewing a stalk of wheat. It practises its lasso on fence posts all day and never backs down from a fight it picked.",
+    type: ["Ground"],
+    baseHp: 68, baseAtk: 70, baseDef: 58, baseSpd: 52,
+    rarity: "uncommon", catchRate: 90,
+    sizeScale: 0.78,
+    expYield: 64,
+    moves: ["Tackle", "Sand Attack", "Mud-Slap", "Dark Lasso"],
+    learnableMoves: ["Bite", "Howl", "Bulldoze", "Night Slash", "Sucker Punch", "Crunch"],
+    abilities: ["Sand Veil", "Guts"],
+    role: "Physical Attacker",
+    frontSprite: "dustcub(front).png",
+    backSprite: "dustcub(back).png",
+    habitat: ["Deepcut Route"],
+    evolvesInto: "badlander", evolvesAt: 30,
+  },
+
+  badlander: {
+    id: "badlander", name: "Badlander",
+    flavor: "A weathered drifter of the badlands. It keeps a ledger of every debt it is owed and every debt it owes, and settles both. Its claws are quick, but its draw is quicker.",
+    type: ["Ground", "Dark"],
+    baseHp: 104, baseAtk: 118, baseDef: 88, baseSpd: 74,
+    rarity: "rare", catchRate: 30,
+    sizeScale: 1.1,
+    expYield: 168,
+    moves: ["Dark Lasso", "Night Slash", "Bulldoze", "Sucker Punch"],
+    learnableMoves: ["Howl", "Bite", "Slash", "Crunch", "Sand Tomb", "Earthquake", "Double Edge", "Close Combat"],
+    abilities: ["Intimidate", "Guts"],
+    role: "Physical Attacker",
+    frontSprite: "badlander(front).png",
+    backSprite: "badlander(back).png",
+    habitat: [],
+    evolvesFrom: "dustcub",
+  },
 };
 
 module.exports = { EWAMON_SPECIES_ADDITIONS };

@@ -16,7 +16,7 @@ Flags: `--only a,b` restricts to species, `--limit N`, `--force` ignores the spr
 
 ## The species set
 
-The 130 species of `.design/legacy/ewamon.js` (keys that carry `frontSprite`) plus the post-legacy rows of `.design/additions/species.js` (`EWAMON_SPECIES_ADDITIONS`; 131 today, with `hollowmane`). `hollowmane`'s sources were delivered as 1024² WebP on a flat grey background; the background was keyed to real alpha (border flood within 24 of the border mean, plus a two-pass defringe of the anti-aliased rim) and saved as `hollowmane(front|back).png` before import, because stage 1's near-white keying would have reached into the white mane. Files are matched by lower-casing and stripping `()_- ` and the extension. The four `yaschamp` alternate-style files are not species: they are listed under `excluded` in `qa-report.json` and not processed. `yaschamp(back).png` is the canonical back sprite (renamed from the boxing-style file, §40.1.1).
+The 130 species of `.design/legacy/ewamon.js` (keys that carry `frontSprite`) plus the post-legacy rows of `.design/additions/species.js` (`EWAMON_SPECIES_ADDITIONS`; 133 today: `hollowmane`, `dustcub`, `badlander`). `hollowmane`'s sources were delivered as 1024² WebP on a flat grey background; the background was keyed to real alpha (border flood within 24 of the border mean, plus a two-pass defringe of the anti-aliased rim) and saved as `hollowmane(front|back).png` before import, because stage 1's near-white keying would have reached into the white mane. `dustcub` and `badlander` came the same way (1024² WebP, grey background, plus a ground shadow and dirt specks): keyed by a border flood within 22 of the border mean, the shadow flooded as low-chroma grey in the bottom 16 %, enclosed background holes ≥ 60 px cleared (the lasso coils), every component but the creature dropped, binary alpha; `dustcub(front)` is mirrored so it faces left like every front sprite. Files are matched by lower-casing and stripping `()_- ` and the extension. The four `yaschamp` alternate-style files are not species: they are listed under `excluded` in `qa-report.json` and not processed. `yaschamp(back).png` is the canonical back sprite (renamed from the boxing-style file, §40.1.1).
 
 ## Stages
 
@@ -65,6 +65,8 @@ With soft alpha the bottom rung was 47.3 MB, over budget; the spec's 32 MB estim
 ## Output
 
 2026-10-08: with `hollowmane` (#131) and its rage form (`hollowmane_rage`, a battle-form entry: `.design/additions/species.js` `battleForm.frontSprite/backSprite`, keyed like the species art) the build is 132 entries / 264 sprites, **66 atlases**, **34.13 MB** (34 134 598 B), albedo q88 / normal q92 (top rung), 0 actionable flags; the anim set is unchanged.
+
+2026-10-08: with `dustcub` (#132) and `badlander` (#133) the build is 134 entries / 268 sprites, **67 atlases**, **34.71 MB** (34 714 778 B), albedo q88 / normal q92 (top rung), 0 actionable flags; the co-occurrence planner re-paired the atlases again (`dustcub` binds into deepcut_route from `a-027`), the anim set is unchanged.
 
 `packages/client/public/creatures/` after the 2026-10-06 build (`PIPELINE_VERSION` 6, `SPRITE_STAGE_VERSION` 4: atlases composed from the true-colour cache), with the 2026-09-25 build (`PIPELINE_VERSION` 5, composed from the palette cache) for comparison:
 

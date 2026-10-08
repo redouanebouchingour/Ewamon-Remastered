@@ -309,7 +309,7 @@
       "id": "a-007",
       "species": [
         "pyrecap",
-        "wooltug"
+        "yahit"
       ],
       "size": 2048,
       "slots": 4,
@@ -322,7 +322,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 292358
+        "bytes": 251510
       },
       "normal": {
         "url": "atlases/a-007.normal.webp",
@@ -333,7 +333,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 120642
+        "bytes": 100954
       },
       "emissive": {
         "url": "atlases/a-007.emissive.webp",
@@ -344,7 +344,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 6910
+        "bytes": 7774
       },
       "normalScale": 0.5
     },
@@ -480,7 +480,7 @@
     {
       "id": "a-011",
       "species": [
-        "shardling",
+        "voltide",
         "wickling"
       ],
       "size": 2048,
@@ -494,7 +494,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 342116
+        "bytes": 259622
       },
       "normal": {
         "url": "atlases/a-011.normal.webp",
@@ -505,7 +505,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 161260
+        "bytes": 108626
       },
       "emissive": {
         "url": "atlases/a-011.emissive.webp",
@@ -516,7 +516,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 9726
+        "bytes": 6312
       },
       "normalScale": 0.5
     },
@@ -609,8 +609,8 @@
     {
       "id": "a-014",
       "species": [
-        "trenchtusk",
-        "voltide"
+        "murkrat",
+        "wraithtide"
       ],
       "size": 2048,
       "slots": 4,
@@ -623,7 +623,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 305536
+        "bytes": 273224
       },
       "normal": {
         "url": "atlases/a-014.normal.webp",
@@ -634,7 +634,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 112864
+        "bytes": 147218
       },
       "emissive": {
         "url": "atlases/a-014.emissive.webp",
@@ -645,15 +645,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 6122
+        "bytes": 2022
       },
       "normalScale": 0.5
     },
     {
       "id": "a-015",
       "species": [
-        "murkrat",
-        "wraithtide"
+        "brookrawl",
+        "glowtent"
       ],
       "size": 2048,
       "slots": 4,
@@ -666,7 +666,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 273224
+        "bytes": 264122
       },
       "normal": {
         "url": "atlases/a-015.normal.webp",
@@ -677,7 +677,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 147218
+        "bytes": 113114
       },
       "emissive": {
         "url": "atlases/a-015.emissive.webp",
@@ -688,15 +688,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 2022
+        "bytes": 4688
       },
       "normalScale": 0.5
     },
     {
       "id": "a-016",
       "species": [
-        "brookrawl",
-        "glowtent"
+        "mudbub",
+        "slushpup"
       ],
       "size": 2048,
       "slots": 4,
@@ -709,7 +709,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 264122
+        "bytes": 226872
       },
       "normal": {
         "url": "atlases/a-016.normal.webp",
@@ -720,7 +720,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 113114
+        "bytes": 110420
       },
       "emissive": {
         "url": "atlases/a-016.emissive.webp",
@@ -731,15 +731,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 4688
+        "bytes": 398
       },
       "normalScale": 0.5
     },
     {
       "id": "a-017",
       "species": [
-        "mudbub",
-        "slushpup"
+        "blizzhowl",
+        "shiveruff"
       ],
       "size": 2048,
       "slots": 4,
@@ -752,7 +752,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 226872
+        "bytes": 444014
       },
       "normal": {
         "url": "atlases/a-017.normal.webp",
@@ -763,7 +763,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 110420
+        "bytes": 150878
       },
       "emissive": {
         "url": "atlases/a-017.emissive.webp",
@@ -774,15 +774,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 398
+        "bytes": 20268
       },
       "normalScale": 0.5
     },
     {
       "id": "a-018",
       "species": [
-        "blizzhowl",
-        "shiveruff"
+        "ampmite",
+        "raidori"
       ],
       "size": 2048,
       "slots": 4,
@@ -795,7 +795,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 444014
+        "bytes": 336028
       },
       "normal": {
         "url": "atlases/a-018.normal.webp",
@@ -806,7 +806,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 150878
+        "bytes": 130632
       },
       "emissive": {
         "url": "atlases/a-018.emissive.webp",
@@ -817,15 +817,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 20268
+        "bytes": 11304
       },
       "normalScale": 0.5
     },
     {
       "id": "a-019",
       "species": [
-        "ampmite",
-        "raidori"
+        "alloylark",
+        "flowbot"
       ],
       "size": 2048,
       "slots": 4,
@@ -838,7 +838,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 336028
+        "bytes": 321880
       },
       "normal": {
         "url": "atlases/a-019.normal.webp",
@@ -849,7 +849,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 130632
+        "bytes": 131178
       },
       "emissive": {
         "url": "atlases/a-019.emissive.webp",
@@ -860,15 +860,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 11304
+        "bytes": 11028
       },
       "normalScale": 0.5
     },
     {
       "id": "a-020",
       "species": [
-        "alloylark",
-        "flowbot"
+        "luxtrik",
+        "trenchtusk"
       ],
       "size": 2048,
       "slots": 4,
@@ -881,7 +881,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 321880
+        "bytes": 333360
       },
       "normal": {
         "url": "atlases/a-020.normal.webp",
@@ -892,7 +892,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 131178
+        "bytes": 130826
       },
       "emissive": {
         "url": "atlases/a-020.emissive.webp",
@@ -903,15 +903,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 11028
+        "bytes": 966
       },
       "normalScale": 0.5
     },
     {
       "id": "a-021",
       "species": [
-        "luxtrik",
-        "yasprime"
+        "darkone",
+        "murmink"
       ],
       "size": 2048,
       "slots": 4,
@@ -924,7 +924,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 402464
+        "bytes": 212014
       },
       "normal": {
         "url": "atlases/a-021.normal.webp",
@@ -935,7 +935,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 151518
+        "bytes": 92496
       },
       "emissive": {
         "url": "atlases/a-021.emissive.webp",
@@ -946,15 +946,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1536
+        "bytes": 4258
       },
       "normalScale": 0.5
     },
     {
       "id": "a-022",
       "species": [
-        "darkone",
-        "murmink"
+        "gustuff",
+        "stormchick"
       ],
       "size": 2048,
       "slots": 4,
@@ -967,7 +967,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 212014
+        "bytes": 339216
       },
       "normal": {
         "url": "atlases/a-022.normal.webp",
@@ -978,7 +978,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 92496
+        "bytes": 146670
       },
       "emissive": {
         "url": "atlases/a-022.emissive.webp",
@@ -989,15 +989,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 4258
+        "bytes": 9754
       },
       "normalScale": 0.5
     },
     {
       "id": "a-023",
       "species": [
-        "gustuff",
-        "stormchick"
+        "raikitsune",
+        "voltaura"
       ],
       "size": 2048,
       "slots": 4,
@@ -1010,7 +1010,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 339216
+        "bytes": 455984
       },
       "normal": {
         "url": "atlases/a-023.normal.webp",
@@ -1021,7 +1021,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 146670
+        "bytes": 166216
       },
       "emissive": {
         "url": "atlases/a-023.emissive.webp",
@@ -1032,15 +1032,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 9754
+        "bytes": 19918
       },
       "normalScale": 0.5
     },
     {
       "id": "a-024",
       "species": [
-        "raikitsune",
-        "voltaura"
+        "shardling",
+        "wooltug"
       ],
       "size": 2048,
       "slots": 4,
@@ -1053,7 +1053,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 455984
+        "bytes": 346938
       },
       "normal": {
         "url": "atlases/a-024.normal.webp",
@@ -1064,7 +1064,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 166216
+        "bytes": 156322
       },
       "emissive": {
         "url": "atlases/a-024.emissive.webp",
@@ -1075,7 +1075,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 19918
+        "bytes": 9064
       },
       "normalScale": 0.5
     },
@@ -1169,7 +1169,7 @@
       "id": "a-027",
       "species": [
         "berkest",
-        "yahit"
+        "dustcub"
       ],
       "size": 2048,
       "slots": 4,
@@ -1182,7 +1182,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 229510
+        "bytes": 315786
       },
       "normal": {
         "url": "atlases/a-027.normal.webp",
@@ -1193,7 +1193,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 103258
+        "bytes": 135948
       },
       "emissive": {
         "url": "atlases/a-027.emissive.webp",
@@ -1204,7 +1204,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 3644
+        "bytes": 2768
       },
       "normalScale": 0.5
     },
@@ -1899,8 +1899,8 @@
     {
       "id": "a-044",
       "species": [
-        "blighthex",
-        "blizzraak"
+        "blizzraak",
+        "bloomduck"
       ],
       "size": 2048,
       "slots": 4,
@@ -1913,7 +1913,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 582520
+        "bytes": 545180
       },
       "normal": {
         "url": "atlases/a-044.normal.webp",
@@ -1924,7 +1924,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 224928
+        "bytes": 213666
       },
       "emissive": {
         "url": "atlases/a-044.emissive.webp",
@@ -1935,15 +1935,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 5028
+        "bytes": 7628
       },
       "normalScale": 0.5
     },
     {
       "id": "a-045",
       "species": [
-        "cirrileap",
-        "clementar"
+        "chrysotox",
+        "cirrileap"
       ],
       "size": 2048,
       "slots": 4,
@@ -1956,7 +1956,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 365028
+        "bytes": 502586
       },
       "normal": {
         "url": "atlases/a-045.normal.webp",
@@ -1967,7 +1967,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 144108
+        "bytes": 192614
       },
       "emissive": {
         "url": "atlases/a-045.emissive.webp",
@@ -1978,15 +1978,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 14804
+        "bytes": 12494
       },
       "normalScale": 0.5
     },
     {
       "id": "a-046",
       "species": [
-        "florasage",
-        "frofloe"
+        "clementar",
+        "florasage"
       ],
       "size": 2048,
       "slots": 4,
@@ -1999,7 +1999,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 455756
+        "bytes": 347702
       },
       "normal": {
         "url": "atlases/a-046.normal.webp",
@@ -2010,7 +2010,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 203018
+        "bytes": 159278
       },
       "emissive": {
         "url": "atlases/a-046.emissive.webp",
@@ -2021,15 +2021,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 4904
+        "bytes": 7094
       },
       "normalScale": 0.5
     },
     {
       "id": "a-047",
       "species": [
-        "gemknight",
-        "geoboxer"
+        "frofloe",
+        "gemknight"
       ],
       "size": 2048,
       "slots": 4,
@@ -2042,7 +2042,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 468196
+        "bytes": 547654
       },
       "normal": {
         "url": "atlases/a-047.normal.webp",
@@ -2053,7 +2053,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 200688
+        "bytes": 227106
       },
       "emissive": {
         "url": "atlases/a-047.emissive.webp",
@@ -2064,15 +2064,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 10316
+        "bytes": 8952
       },
       "normalScale": 0.5
     },
     {
       "id": "a-048",
       "species": [
-        "glaciarm",
-        "glimmereen"
+        "glimmereen",
+        "hollowmane_rage"
       ],
       "size": 2048,
       "slots": 4,
@@ -2085,7 +2085,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 382824
+        "bytes": 401920
       },
       "normal": {
         "url": "atlases/a-048.normal.webp",
@@ -2096,7 +2096,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 158862
+        "bytes": 162776
       },
       "emissive": {
         "url": "atlases/a-048.emissive.webp",
@@ -2107,15 +2107,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 4260
+        "bytes": 1370
       },
       "normalScale": 0.5
     },
     {
       "id": "a-049",
       "species": [
-        "resilithorn",
-        "rexaloft"
+        "rexaloft",
+        "solpyre"
       ],
       "size": 2048,
       "slots": 4,
@@ -2128,7 +2128,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 370580
+        "bytes": 504540
       },
       "normal": {
         "url": "atlases/a-049.normal.webp",
@@ -2139,7 +2139,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 153052
+        "bytes": 204016
       },
       "emissive": {
         "url": "atlases/a-049.emissive.webp",
@@ -2150,15 +2150,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 748
+        "bytes": 10166
       },
       "normalScale": 0.5
     },
     {
       "id": "a-050",
       "species": [
-        "solpyre",
-        "starwhim"
+        "starwhim",
+        "thundrix"
       ],
       "size": 2048,
       "slots": 4,
@@ -2171,7 +2171,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 463782
+        "bytes": 467214
       },
       "normal": {
         "url": "atlases/a-050.normal.webp",
@@ -2182,7 +2182,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 196910
+        "bytes": 200842
       },
       "emissive": {
         "url": "atlases/a-050.emissive.webp",
@@ -2193,15 +2193,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 11788
+        "bytes": 10274
       },
       "normalScale": 0.5
     },
     {
       "id": "a-051",
       "species": [
-        "toxshade",
-        "tsunamite"
+        "toxiveil",
+        "toxshade"
       ],
       "size": 2048,
       "slots": 4,
@@ -2214,7 +2214,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 386340
+        "bytes": 353452
       },
       "normal": {
         "url": "atlases/a-051.normal.webp",
@@ -2225,7 +2225,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 184234
+        "bytes": 168112
       },
       "emissive": {
         "url": "atlases/a-051.emissive.webp",
@@ -2236,15 +2236,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1064
+        "bytes": 7746
       },
       "normalScale": 0.5
     },
     {
       "id": "a-052",
       "species": [
-        "verdatide",
-        "voidraith"
+        "voidraith",
+        "yasprime"
       ],
       "size": 2048,
       "slots": 4,
@@ -2257,7 +2257,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 376080
+        "bytes": 312326
       },
       "normal": {
         "url": "atlases/a-052.normal.webp",
@@ -2268,7 +2268,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 191358
+        "bytes": 158092
       },
       "emissive": {
         "url": "atlases/a-052.emissive.webp",
@@ -2279,7 +2279,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1566
+        "bytes": 1536
       },
       "normalScale": 0.5
     },
@@ -2415,8 +2415,8 @@
     {
       "id": "a-056",
       "species": [
-        "bloomduck",
-        "blossomsail"
+        "badlander",
+        "blighthex"
       ],
       "size": 2048,
       "slots": 4,
@@ -2429,7 +2429,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 383090
+        "bytes": 448198
       },
       "normal": {
         "url": "atlases/a-056.normal.webp",
@@ -2440,7 +2440,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 172064
+        "bytes": 167486
       },
       "emissive": {
         "url": "atlases/a-056.emissive.webp",
@@ -2451,15 +2451,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 6722
+        "bytes": 4194
       },
       "normalScale": 0.5
     },
     {
       "id": "a-057",
       "species": [
-        "bogmaw",
-        "briarvaunt"
+        "blossomsail",
+        "bogmaw"
       ],
       "size": 2048,
       "slots": 4,
@@ -2472,7 +2472,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 387824
+        "bytes": 361040
       },
       "normal": {
         "url": "atlases/a-057.normal.webp",
@@ -2483,7 +2483,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 159952
+        "bytes": 184652
       },
       "emissive": {
         "url": "atlases/a-057.emissive.webp",
@@ -2494,15 +2494,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1492
+        "bytes": 398
       },
       "normalScale": 0.5
     },
     {
       "id": "a-058",
       "species": [
-        "caldermole",
-        "chrysotox"
+        "briarvaunt",
+        "caldermole"
       ],
       "size": 2048,
       "slots": 4,
@@ -2515,7 +2515,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 567792
+        "bytes": 532506
       },
       "normal": {
         "url": "atlases/a-058.normal.webp",
@@ -2526,7 +2526,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 213652
+        "bytes": 192568
       },
       "emissive": {
         "url": "atlases/a-058.emissive.webp",
@@ -2537,15 +2537,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 10934
+        "bytes": 11934
       },
       "normalScale": 0.5
     },
     {
       "id": "a-059",
       "species": [
-        "hollowmane_rage",
-        "ignispectre"
+        "geoboxer",
+        "glaciarm"
       ],
       "size": 2048,
       "slots": 4,
@@ -2558,7 +2558,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 565866
+        "bytes": 458460
       },
       "normal": {
         "url": "atlases/a-059.normal.webp",
@@ -2569,7 +2569,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 241610
+        "bytes": 209614
       },
       "emissive": {
         "url": "atlases/a-059.emissive.webp",
@@ -2580,15 +2580,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 5484
+        "bytes": 4850
       },
       "normalScale": 0.5
     },
     {
       "id": "a-060",
       "species": [
-        "infernomorel",
-        "ironcarab"
+        "ignispectre",
+        "infernomorel"
       ],
       "size": 2048,
       "slots": 4,
@@ -2601,7 +2601,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 317668
+        "bytes": 459660
       },
       "normal": {
         "url": "atlases/a-060.normal.webp",
@@ -2612,7 +2612,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 136410
+        "bytes": 188386
       },
       "emissive": {
         "url": "atlases/a-060.emissive.webp",
@@ -2623,15 +2623,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 12088
+        "bytes": 16826
       },
       "normalScale": 0.5
     },
     {
       "id": "a-061",
       "species": [
-        "lumyth",
-        "magmolith"
+        "ironcarab",
+        "lumyth"
       ],
       "size": 2048,
       "slots": 4,
@@ -2644,7 +2644,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 382394
+        "bytes": 347348
       },
       "normal": {
         "url": "atlases/a-061.normal.webp",
@@ -2655,7 +2655,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 167500
+        "bytes": 154010
       },
       "emissive": {
         "url": "atlases/a-061.emissive.webp",
@@ -2666,15 +2666,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 3344
+        "bytes": 1250
       },
       "normalScale": 0.5
     },
     {
       "id": "a-062",
       "species": [
-        "moblaze",
-        "necrogeist"
+        "magmolith",
+        "moblaze"
       ],
       "size": 2048,
       "slots": 4,
@@ -2687,7 +2687,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 406706
+        "bytes": 332432
       },
       "normal": {
         "url": "atlases/a-062.normal.webp",
@@ -2698,7 +2698,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 162072
+        "bytes": 158662
       },
       "emissive": {
         "url": "atlases/a-062.emissive.webp",
@@ -2709,15 +2709,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 10988
+        "bytes": 10052
       },
       "normalScale": 0.5
     },
     {
       "id": "a-063",
       "species": [
-        "noxmyth",
-        "rambull"
+        "necrogeist",
+        "noxmyth"
       ],
       "size": 2048,
       "slots": 4,
@@ -2730,7 +2730,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 311796
+        "bytes": 409718
       },
       "normal": {
         "url": "atlases/a-063.normal.webp",
@@ -2741,7 +2741,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 136222
+        "bytes": 159098
       },
       "emissive": {
         "url": "atlases/a-063.emissive.webp",
@@ -2752,15 +2752,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 472
+        "bytes": 3660
       },
       "normalScale": 0.5
     },
     {
       "id": "a-064",
       "species": [
-        "thundrix",
-        "toxiveil"
+        "rambull",
+        "resilithorn"
       ],
       "size": 2048,
       "slots": 4,
@@ -2773,7 +2773,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 478014
+        "bytes": 299140
       },
       "normal": {
         "url": "atlases/a-064.normal.webp",
@@ -2784,7 +2784,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 200716
+        "bytes": 131014
       },
       "emissive": {
         "url": "atlases/a-064.emissive.webp",
@@ -2795,15 +2795,15 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 15558
+        "bytes": 728
       },
       "normalScale": 0.5
     },
     {
       "id": "a-065",
       "species": [
-        "velvetomb",
-        "venobulb"
+        "tsunamite",
+        "velvetomb"
       ],
       "size": 2048,
       "slots": 4,
@@ -2816,7 +2816,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 429944
+        "bytes": 384740
       },
       "normal": {
         "url": "atlases/a-065.normal.webp",
@@ -2827,7 +2827,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 175542
+        "bytes": 159414
       },
       "emissive": {
         "url": "atlases/a-065.emissive.webp",
@@ -2838,14 +2838,57 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 1800
+        "bytes": 912
+      },
+      "normalScale": 0.5
+    },
+    {
+      "id": "a-066",
+      "species": [
+        "venobulb",
+        "verdatide"
+      ],
+      "size": 2048,
+      "slots": 4,
+      "albedo": {
+        "url": "atlases/a-066.albedo.webp",
+        "mips": [
+          "atlases/a-066.albedo.m1.webp",
+          "atlases/a-066.albedo.m2.webp",
+          "atlases/a-066.albedo.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 88,
+        "bytes": 526770
+      },
+      "normal": {
+        "url": "atlases/a-066.normal.webp",
+        "mips": [
+          "atlases/a-066.normal.m1.webp",
+          "atlases/a-066.normal.m2.webp",
+          "atlases/a-066.normal.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 92,
+        "bytes": 218538
+      },
+      "emissive": {
+        "url": "atlases/a-066.emissive.webp",
+        "mips": [
+          "atlases/a-066.emissive.m1.webp",
+          "atlases/a-066.emissive.m2.webp",
+          "atlases/a-066.emissive.m3.webp"
+        ],
+        "codec": "webp-lossless",
+        "quality": null,
+        "bytes": 2832
       },
       "normalScale": 0.5
     }
   ],
   "zones": {
     "ascent_route": [
-      "a-018",
+      "a-017",
       "a-032",
       "a-037",
       "a-038",
@@ -2863,9 +2906,9 @@
     "celestial_spire": [
       "a-002",
       "a-004",
-      "a-011",
-      "a-020",
-      "a-023",
+      "a-019",
+      "a-022",
+      "a-024",
       "a-040"
     ],
     "cinderhold": [
@@ -2876,12 +2919,13 @@
       "a-007",
       "a-008",
       "a-009",
+      "a-024",
       "a-025",
       "a-027",
       "a-028"
     ],
     "eclipse_shrine": [
-      "a-011",
+      "a-024",
       "a-030",
       "a-032",
       "a-033",
@@ -2889,25 +2933,24 @@
       "a-053"
     ],
     "forgewall": [
-      "a-014",
+      "a-019",
       "a-020",
       "a-034",
       "a-035"
     ],
     "galvan_route": [
       "a-003",
-      "a-007",
-      "a-011",
       "a-012",
-      "a-019",
+      "a-018",
+      "a-021",
       "a-022",
       "a-023",
       "a-024"
     ],
     "hollow_route": [
       "a-001",
-      "a-015",
-      "a-022",
+      "a-014",
+      "a-021",
       "a-030",
       "a-031",
       "a-032",
@@ -2929,22 +2972,22 @@
       "a-001"
     ],
     "saltmourn": [
+      "a-011",
       "a-012",
       "a-013",
-      "a-014",
-      "a-015"
+      "a-014"
     ],
     "siege_route": [
       "a-008",
-      "a-011",
-      "a-020",
+      "a-019",
+      "a-024",
       "a-025",
       "a-034",
       "a-036",
       "a-037"
     ],
     "skyrend": [
-      "a-020",
+      "a-019",
       "a-038",
       "a-039",
       "a-040",
@@ -2954,20 +2997,20 @@
       "a-000",
       "a-002",
       "a-003",
-      "a-007",
+      "a-023",
       "a-024",
       "a-028",
       "a-029",
       "a-033"
     ],
     "stormrook": [
+      "a-018",
       "a-019",
-      "a-020",
-      "a-021"
+      "a-020"
     ],
     "the_rift": [
       "a-013",
-      "a-015",
+      "a-014",
       "a-032",
       "a-034",
       "a-037",
@@ -2979,12 +3022,12 @@
       "a-004",
       "a-012",
       "a-013",
+      "a-015",
       "a-016",
-      "a-017",
-      "a-018"
+      "a-017"
     ],
     "umbral_observatory": [
-      "a-022",
+      "a-021",
       "a-028",
       "a-030",
       "a-031",
@@ -3129,7 +3172,7 @@
     },
     "alloylark": {
       "front": {
-        "atlas": "a-020",
+        "atlas": "a-019",
         "px": [
           1024,
           0,
@@ -3148,7 +3191,7 @@
         "source": "front/alloylark(front).png"
       },
       "back": {
-        "atlas": "a-020",
+        "atlas": "a-019",
         "px": [
           0,
           0,
@@ -3167,12 +3210,12 @@
         "source": "back/alloylark(back).png"
       },
       "sizeScale": 0.9,
-      "home": "a-020",
+      "home": "a-019",
       "thumb": "thumbs/alloylark_front.webp"
     },
     "ampmite": {
       "front": {
-        "atlas": "a-019",
+        "atlas": "a-018",
         "px": [
           1024,
           0,
@@ -3191,7 +3234,7 @@
         "source": "front/ampmite(front).png"
       },
       "back": {
-        "atlas": "a-019",
+        "atlas": "a-018",
         "px": [
           0,
           0,
@@ -3210,7 +3253,7 @@
         "source": "back/ampmite(back).png"
       },
       "sizeScale": 0.45,
-      "home": "a-019",
+      "home": "a-018",
       "thumb": "thumbs/ampmite_front.webp"
     },
     "aonred": {
@@ -3341,6 +3384,49 @@
       "sizeScale": 1.2,
       "home": "a-043",
       "thumb": "thumbs/auroracle_front.webp"
+    },
+    "badlander": {
+      "front": {
+        "atlas": "a-056",
+        "px": [
+          1024,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0.5,
+          1,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.960742,
+        "source": "front/badlander(front).png"
+      },
+      "back": {
+        "atlas": "a-056",
+        "px": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0.5,
+          0.5,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.976718,
+        "source": "back/badlander(back).png"
+      },
+      "sizeScale": 1.1,
+      "home": "a-056",
+      "thumb": "thumbs/badlander_front.webp"
     },
     "bankaiser": {
       "front": {
@@ -3792,18 +3878,18 @@
     },
     "blighthex": {
       "front": {
-        "atlas": "a-044",
+        "atlas": "a-056",
         "px": [
           1024,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0.5,
+          0,
           1,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -3811,18 +3897,18 @@
         "source": "front/blighthex(front).png"
       },
       "back": {
-        "atlas": "a-044",
+        "atlas": "a-056",
         "px": [
           0,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0,
+          0,
           0.5,
-          0.5,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -3830,12 +3916,12 @@
         "source": "back/blighthex(back).png"
       },
       "sizeScale": 1.15,
-      "home": "a-044",
+      "home": "a-056",
       "thumb": "thumbs/blighthex_front.webp"
     },
     "blizzhowl": {
       "front": {
-        "atlas": "a-018",
+        "atlas": "a-017",
         "px": [
           1024,
           0,
@@ -3854,7 +3940,7 @@
         "source": "front/blizzhowl(front).png"
       },
       "back": {
-        "atlas": "a-018",
+        "atlas": "a-017",
         "px": [
           0,
           0,
@@ -3873,7 +3959,7 @@
         "source": "back/blizzhowl(back).png"
       },
       "sizeScale": 1.15,
-      "home": "a-018",
+      "home": "a-017",
       "thumb": "thumbs/blizzhowl_front.webp"
     },
     "blizzraak": {
@@ -3881,15 +3967,15 @@
         "atlas": "a-044",
         "px": [
           1024,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0,
+          0.5,
           1,
-          0.5
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -3900,15 +3986,15 @@
         "atlas": "a-044",
         "px": [
           0,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0,
-          0,
           0.5,
-          0.5
+          0.5,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -3964,18 +4050,18 @@
     },
     "bloomduck": {
       "front": {
-        "atlas": "a-056",
+        "atlas": "a-044",
         "px": [
           1024,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0.5,
+          0,
           1,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -3983,18 +4069,18 @@
         "source": "front/bloomduck(front).png"
       },
       "back": {
-        "atlas": "a-056",
+        "atlas": "a-044",
         "px": [
           0,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0,
+          0,
           0.5,
-          0.5,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -4002,7 +4088,7 @@
         "source": "back/bloomduck(back).png"
       },
       "sizeScale": 0.95,
-      "home": "a-056",
+      "home": "a-044",
       "thumb": "thumbs/bloomduck_front.webp"
     },
     "bloomsprite": {
@@ -4050,49 +4136,6 @@
     },
     "blossomsail": {
       "front": {
-        "atlas": "a-056",
-        "px": [
-          1024,
-          1024,
-          1024,
-          1024
-        ],
-        "uv": [
-          0.5,
-          0,
-          1,
-          0.5
-        ],
-        "footV": 0.08,
-        "aspect": 1,
-        "pixelScale": 0.480633,
-        "source": "front/blossomsail(front).png"
-      },
-      "back": {
-        "atlas": "a-056",
-        "px": [
-          0,
-          1024,
-          1024,
-          1024
-        ],
-        "uv": [
-          0,
-          0,
-          0.5,
-          0.5
-        ],
-        "footV": 0.08,
-        "aspect": 1,
-        "pixelScale": 0.458854,
-        "source": "back/blossomsail(back).png"
-      },
-      "sizeScale": 0.85,
-      "home": "a-056",
-      "thumb": "thumbs/blossomsail_front.webp"
-    },
-    "bogmaw": {
-      "front": {
         "atlas": "a-057",
         "px": [
           1024,
@@ -4105,6 +4148,49 @@
           0.5,
           1,
           1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.480633,
+        "source": "front/blossomsail(front).png"
+      },
+      "back": {
+        "atlas": "a-057",
+        "px": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0.5,
+          0.5,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.458854,
+        "source": "back/blossomsail(back).png"
+      },
+      "sizeScale": 0.85,
+      "home": "a-057",
+      "thumb": "thumbs/blossomsail_front.webp"
+    },
+    "bogmaw": {
+      "front": {
+        "atlas": "a-057",
+        "px": [
+          1024,
+          1024,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0,
+          1,
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -4115,15 +4201,15 @@
         "atlas": "a-057",
         "px": [
           0,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0,
+          0,
           0.5,
-          0.5,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -4222,18 +4308,18 @@
     },
     "briarvaunt": {
       "front": {
-        "atlas": "a-057",
+        "atlas": "a-058",
         "px": [
           1024,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0,
+          0.5,
           1,
-          0.5
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -4241,18 +4327,18 @@
         "source": "front/briarvaunt(front).png"
       },
       "back": {
-        "atlas": "a-057",
+        "atlas": "a-058",
         "px": [
           0,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0,
-          0,
           0.5,
-          0.5
+          0.5,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -4260,12 +4346,12 @@
         "source": "back/briarvaunt(back).png"
       },
       "sizeScale": 1.05,
-      "home": "a-057",
+      "home": "a-058",
       "thumb": "thumbs/briarvaunt_front.webp"
     },
     "brookrawl": {
       "front": {
-        "atlas": "a-016",
+        "atlas": "a-015",
         "px": [
           1024,
           0,
@@ -4284,7 +4370,7 @@
         "source": "front/brookrawl(front).png"
       },
       "back": {
-        "atlas": "a-016",
+        "atlas": "a-015",
         "px": [
           0,
           0,
@@ -4303,7 +4389,7 @@
         "source": "back/brookrawl(back).png"
       },
       "sizeScale": 0.85,
-      "home": "a-016",
+      "home": "a-015",
       "thumb": "thumbs/brookrawl_front.webp"
     },
     "budwing": {
@@ -4354,15 +4440,15 @@
         "atlas": "a-058",
         "px": [
           1024,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0.5,
+          0,
           1,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -4373,15 +4459,15 @@
         "atlas": "a-058",
         "px": [
           0,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0,
+          0,
           0.5,
-          0.5,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -4394,18 +4480,18 @@
     },
     "chrysotox": {
       "front": {
-        "atlas": "a-058",
+        "atlas": "a-045",
         "px": [
           1024,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0,
+          0.5,
           1,
-          0.5
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -4413,18 +4499,18 @@
         "source": "front/chrysotox(front).png"
       },
       "back": {
-        "atlas": "a-058",
+        "atlas": "a-045",
         "px": [
           0,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0,
-          0,
           0.5,
-          0.5
+          0.5,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -4432,7 +4518,7 @@
         "source": "back/chrysotox(back).png"
       },
       "sizeScale": 1.3,
-      "home": "a-058",
+      "home": "a-045",
       "thumb": "thumbs/chrysotox_front.webp"
     },
     "cindercap": {
@@ -4483,15 +4569,15 @@
         "atlas": "a-045",
         "px": [
           1024,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0.5,
+          0,
           1,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -4502,15 +4588,15 @@
         "atlas": "a-045",
         "px": [
           0,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0,
+          0,
           0.5,
-          0.5,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -4523,18 +4609,18 @@
     },
     "clementar": {
       "front": {
-        "atlas": "a-045",
+        "atlas": "a-046",
         "px": [
           1024,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0,
+          0.5,
           1,
-          0.5
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -4542,18 +4628,18 @@
         "source": "front/clementar(front).png"
       },
       "back": {
-        "atlas": "a-045",
+        "atlas": "a-046",
         "px": [
           0,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0,
-          0,
           0.5,
-          0.5
+          0.5,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -4561,7 +4647,7 @@
         "source": "back/clementar(back).png"
       },
       "sizeScale": 1.3,
-      "home": "a-045",
+      "home": "a-046",
       "thumb": "thumbs/clementar_front.webp"
     },
     "coalette": {
@@ -4652,7 +4738,7 @@
     },
     "darkone": {
       "front": {
-        "atlas": "a-022",
+        "atlas": "a-021",
         "px": [
           1024,
           0,
@@ -4671,7 +4757,7 @@
         "source": "front/darkone(front).png"
       },
       "back": {
-        "atlas": "a-022",
+        "atlas": "a-021",
         "px": [
           0,
           0,
@@ -4690,7 +4776,7 @@
         "source": "back/darkone(back).png"
       },
       "sizeScale": 0.75,
-      "home": "a-022",
+      "home": "a-021",
       "thumb": "thumbs/darkone_front.webp"
     },
     "darkyon": {
@@ -4821,6 +4907,49 @@
       "sizeScale": 0.55,
       "home": "a-002",
       "thumb": "thumbs/dreambud_front.webp"
+    },
+    "dustcub": {
+      "front": {
+        "atlas": "a-027",
+        "px": [
+          1024,
+          1024,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0,
+          1,
+          0.5
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 1.005708,
+        "source": "front/dustcub(front).png"
+      },
+      "back": {
+        "atlas": "a-027",
+        "px": [
+          0,
+          1024,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0,
+          0.5,
+          0.5
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 1.005708,
+        "source": "back/dustcub(back).png"
+      },
+      "sizeScale": 0.78,
+      "home": "a-027",
+      "thumb": "thumbs/dustcub_front.webp"
     },
     "embrock": {
       "front": {
@@ -5042,15 +5171,15 @@
         "atlas": "a-046",
         "px": [
           1024,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0.5,
+          0,
           1,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -5061,15 +5190,15 @@
         "atlas": "a-046",
         "px": [
           0,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0,
+          0,
           0.5,
-          0.5,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -5082,7 +5211,7 @@
     },
     "flowbot": {
       "front": {
-        "atlas": "a-020",
+        "atlas": "a-019",
         "px": [
           1024,
           1024,
@@ -5101,7 +5230,7 @@
         "source": "front/flowbot(front).png"
       },
       "back": {
-        "atlas": "a-020",
+        "atlas": "a-019",
         "px": [
           0,
           1024,
@@ -5120,23 +5249,23 @@
         "source": "back/flowbot(back).png"
       },
       "sizeScale": 1.05,
-      "home": "a-020",
+      "home": "a-019",
       "thumb": "thumbs/flowbot_front.webp"
     },
     "frofloe": {
       "front": {
-        "atlas": "a-046",
+        "atlas": "a-047",
         "px": [
           1024,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0,
+          0.5,
           1,
-          0.5
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -5144,18 +5273,18 @@
         "source": "front/frofloe(front).png"
       },
       "back": {
-        "atlas": "a-046",
+        "atlas": "a-047",
         "px": [
           0,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0,
-          0,
           0.5,
-          0.5
+          0.5,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -5163,7 +5292,7 @@
         "source": "back/frofloe(back).png"
       },
       "sizeScale": 1.1,
-      "home": "a-046",
+      "home": "a-047",
       "thumb": "thumbs/frofloe_front.webp"
     },
     "galaxion": {
@@ -5744,15 +5873,15 @@
         "atlas": "a-047",
         "px": [
           1024,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0.5,
+          0,
           1,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -5763,15 +5892,15 @@
         "atlas": "a-047",
         "px": [
           0,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0,
+          0,
           0.5,
-          0.5,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -5784,18 +5913,18 @@
     },
     "geoboxer": {
       "front": {
-        "atlas": "a-047",
+        "atlas": "a-059",
         "px": [
           1024,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0,
+          0.5,
           1,
-          0.5
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -5803,7 +5932,50 @@
         "source": "front/geoboxer(front).png"
       },
       "back": {
-        "atlas": "a-047",
+        "atlas": "a-059",
+        "px": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0.5,
+          0.5,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.969197,
+        "source": "back/geoboxer(back).png"
+      },
+      "sizeScale": 1.25,
+      "home": "a-059",
+      "thumb": "thumbs/geoboxer_front.webp"
+    },
+    "glaciarm": {
+      "front": {
+        "atlas": "a-059",
+        "px": [
+          1024,
+          1024,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0,
+          1,
+          0.5
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.469116,
+        "source": "front/glaciarm(front).png"
+      },
+      "back": {
+        "atlas": "a-059",
         "px": [
           0,
           1024,
@@ -5818,54 +5990,11 @@
         ],
         "footV": 0.08,
         "aspect": 1,
-        "pixelScale": 0.969197,
-        "source": "back/geoboxer(back).png"
-      },
-      "sizeScale": 1.25,
-      "home": "a-047",
-      "thumb": "thumbs/geoboxer_front.webp"
-    },
-    "glaciarm": {
-      "front": {
-        "atlas": "a-048",
-        "px": [
-          1024,
-          0,
-          1024,
-          1024
-        ],
-        "uv": [
-          0.5,
-          0.5,
-          1,
-          1
-        ],
-        "footV": 0.08,
-        "aspect": 1,
-        "pixelScale": 0.469116,
-        "source": "front/glaciarm(front).png"
-      },
-      "back": {
-        "atlas": "a-048",
-        "px": [
-          0,
-          0,
-          1024,
-          1024
-        ],
-        "uv": [
-          0,
-          0.5,
-          0.5,
-          1
-        ],
-        "footV": 0.08,
-        "aspect": 1,
         "pixelScale": 0.473147,
         "source": "back/glaciarm(back).png"
       },
       "sizeScale": 1.15,
-      "home": "a-048",
+      "home": "a-059",
       "thumb": "thumbs/glaciarm_front.webp"
     },
     "glacifang": {
@@ -6378,15 +6507,15 @@
         "atlas": "a-048",
         "px": [
           1024,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0,
+          0.5,
           1,
-          0.5
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -6397,15 +6526,15 @@
         "atlas": "a-048",
         "px": [
           0,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0,
-          0,
           0.5,
-          0.5
+          0.5,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -6461,7 +6590,7 @@
     },
     "glowtent": {
       "front": {
-        "atlas": "a-016",
+        "atlas": "a-015",
         "px": [
           1024,
           1024,
@@ -6480,7 +6609,7 @@
         "source": "front/glowtent(front).png"
       },
       "back": {
-        "atlas": "a-016",
+        "atlas": "a-015",
         "px": [
           0,
           1024,
@@ -6499,7 +6628,7 @@
         "source": "back/glowtent(back).png"
       },
       "sizeScale": 0.6,
-      "home": "a-016",
+      "home": "a-015",
       "thumb": "thumbs/glowtent_front.webp"
     },
     "grubolt": {
@@ -6547,7 +6676,7 @@
     },
     "gustuff": {
       "front": {
-        "atlas": "a-023",
+        "atlas": "a-022",
         "px": [
           1024,
           0,
@@ -6566,7 +6695,7 @@
         "source": "front/gustuff(front).png"
       },
       "back": {
-        "atlas": "a-023",
+        "atlas": "a-022",
         "px": [
           0,
           0,
@@ -6585,7 +6714,7 @@
         "source": "back/gustuff(back).png"
       },
       "sizeScale": 0.62,
-      "home": "a-023",
+      "home": "a-022",
       "thumb": "thumbs/gustuff_front.webp"
     },
     "hexroach": {
@@ -6676,18 +6805,18 @@
     },
     "hollowmane_rage": {
       "front": {
-        "atlas": "a-059",
+        "atlas": "a-048",
         "px": [
           1024,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0.5,
+          0,
           1,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -6695,18 +6824,18 @@
         "source": "front/hollowmane_rage(front).png"
       },
       "back": {
-        "atlas": "a-059",
+        "atlas": "a-048",
         "px": [
           0,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0,
+          0,
           0.5,
-          0.5,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -6714,53 +6843,10 @@
         "source": "back/hollowmane_rage(back).png"
       },
       "sizeScale": 1.25,
-      "home": "a-059",
+      "home": "a-048",
       "thumb": "thumbs/hollowmane_rage_front.webp"
     },
     "ignispectre": {
-      "front": {
-        "atlas": "a-059",
-        "px": [
-          1024,
-          1024,
-          1024,
-          1024
-        ],
-        "uv": [
-          0.5,
-          0,
-          1,
-          0.5
-        ],
-        "footV": 0.08,
-        "aspect": 1,
-        "pixelScale": 0.469116,
-        "source": "front/ignispectre(front).png"
-      },
-      "back": {
-        "atlas": "a-059",
-        "px": [
-          0,
-          1024,
-          1024,
-          1024
-        ],
-        "uv": [
-          0,
-          0,
-          0.5,
-          0.5
-        ],
-        "footV": 0.08,
-        "aspect": 1,
-        "pixelScale": 0.468368,
-        "source": "back/ignispectre(back).png"
-      },
-      "sizeScale": 1.05,
-      "home": "a-059",
-      "thumb": "thumbs/ignispectre_front.webp"
-    },
-    "infernomorel": {
       "front": {
         "atlas": "a-060",
         "px": [
@@ -6774,6 +6860,49 @@
           0.5,
           1,
           1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.469116,
+        "source": "front/ignispectre(front).png"
+      },
+      "back": {
+        "atlas": "a-060",
+        "px": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0.5,
+          0.5,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.468368,
+        "source": "back/ignispectre(back).png"
+      },
+      "sizeScale": 1.05,
+      "home": "a-060",
+      "thumb": "thumbs/ignispectre_front.webp"
+    },
+    "infernomorel": {
+      "front": {
+        "atlas": "a-060",
+        "px": [
+          1024,
+          1024,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0,
+          1,
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -6784,15 +6913,15 @@
         "atlas": "a-060",
         "px": [
           0,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0,
+          0,
           0.5,
-          0.5,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -6805,18 +6934,18 @@
     },
     "ironcarab": {
       "front": {
-        "atlas": "a-060",
+        "atlas": "a-061",
         "px": [
           1024,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0,
+          0.5,
           1,
-          0.5
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -6824,18 +6953,18 @@
         "source": "front/ironcarab(front).png"
       },
       "back": {
-        "atlas": "a-060",
+        "atlas": "a-061",
         "px": [
           0,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0,
-          0,
           0.5,
-          0.5
+          0.5,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -6843,7 +6972,7 @@
         "source": "back/ironcarab(back).png"
       },
       "sizeScale": 1.2,
-      "home": "a-060",
+      "home": "a-061",
       "thumb": "thumbs/ironcarab_front.webp"
     },
     "kygra": {
@@ -6937,15 +7066,15 @@
         "atlas": "a-061",
         "px": [
           1024,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0.5,
+          0,
           1,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -6956,15 +7085,15 @@
         "atlas": "a-061",
         "px": [
           0,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0,
+          0,
           0.5,
-          0.5,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -7339,7 +7468,7 @@
     },
     "luxtrik": {
       "front": {
-        "atlas": "a-021",
+        "atlas": "a-020",
         "px": [
           1024,
           0,
@@ -7358,7 +7487,7 @@
         "source": "front/luxtrik(front).png"
       },
       "back": {
-        "atlas": "a-021",
+        "atlas": "a-020",
         "px": [
           0,
           0,
@@ -7377,23 +7506,23 @@
         "source": "back/luxtrik(back).png"
       },
       "sizeScale": 0.75,
-      "home": "a-021",
+      "home": "a-020",
       "thumb": "thumbs/luxtrik_front.webp"
     },
     "magmolith": {
       "front": {
-        "atlas": "a-061",
+        "atlas": "a-062",
         "px": [
           1024,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0,
+          0.5,
           1,
-          0.5
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -7401,18 +7530,18 @@
         "source": "front/magmolith(front).png"
       },
       "back": {
-        "atlas": "a-061",
+        "atlas": "a-062",
         "px": [
           0,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0,
-          0,
           0.5,
-          0.5
+          0.5,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -7420,7 +7549,7 @@
         "source": "back/magmolith(back).png"
       },
       "sizeScale": 1.25,
-      "home": "a-061",
+      "home": "a-062",
       "thumb": "thumbs/magmolith_front.webp"
     },
     "malice": {
@@ -7557,15 +7686,15 @@
         "atlas": "a-062",
         "px": [
           1024,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0.5,
+          0,
           1,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -7576,15 +7705,15 @@
         "atlas": "a-062",
         "px": [
           0,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0,
+          0,
           0.5,
-          0.5,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -7683,7 +7812,7 @@
     },
     "mudbub": {
       "front": {
-        "atlas": "a-017",
+        "atlas": "a-016",
         "px": [
           1024,
           0,
@@ -7702,7 +7831,7 @@
         "source": "front/mudbub(front).png"
       },
       "back": {
-        "atlas": "a-017",
+        "atlas": "a-016",
         "px": [
           0,
           0,
@@ -7721,7 +7850,7 @@
         "source": "back/mudbub(back).png"
       },
       "sizeScale": 0.7,
-      "home": "a-017",
+      "home": "a-016",
       "thumb": "thumbs/mudbub_front.webp"
     },
     "mufflo": {
@@ -7769,7 +7898,7 @@
     },
     "murkrat": {
       "front": {
-        "atlas": "a-015",
+        "atlas": "a-014",
         "px": [
           1024,
           0,
@@ -7788,7 +7917,7 @@
         "source": "front/murkrat(front).png"
       },
       "back": {
-        "atlas": "a-015",
+        "atlas": "a-014",
         "px": [
           0,
           0,
@@ -7807,12 +7936,12 @@
         "source": "back/murkrat(back).png"
       },
       "sizeScale": 0.65,
-      "home": "a-015",
+      "home": "a-014",
       "thumb": "thumbs/murkrat_front.webp"
     },
     "murmink": {
       "front": {
-        "atlas": "a-022",
+        "atlas": "a-021",
         "px": [
           1024,
           1024,
@@ -7831,7 +7960,7 @@
         "source": "front/murmink(front).png"
       },
       "back": {
-        "atlas": "a-022",
+        "atlas": "a-021",
         "px": [
           0,
           1024,
@@ -7850,7 +7979,7 @@
         "source": "back/murmink(back).png"
       },
       "sizeScale": 0.78,
-      "home": "a-022",
+      "home": "a-021",
       "thumb": "thumbs/murmink_front.webp"
     },
     "nebucloak": {
@@ -7898,18 +8027,18 @@
     },
     "necrogeist": {
       "front": {
-        "atlas": "a-062",
+        "atlas": "a-063",
         "px": [
           1024,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0,
+          0.5,
           1,
-          0.5
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -7917,18 +8046,18 @@
         "source": "front/necrogeist(front).png"
       },
       "back": {
-        "atlas": "a-062",
+        "atlas": "a-063",
         "px": [
           0,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0,
-          0,
           0.5,
-          0.5
+          0.5,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -7936,7 +8065,7 @@
         "source": "back/necrogeist(back).png"
       },
       "sizeScale": 1.4,
-      "home": "a-062",
+      "home": "a-063",
       "thumb": "thumbs/necrogeist_front.webp"
     },
     "nerohat": {
@@ -8030,15 +8159,15 @@
         "atlas": "a-063",
         "px": [
           1024,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0.5,
+          0,
           1,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -8049,15 +8178,15 @@
         "atlas": "a-063",
         "px": [
           0,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0,
+          0,
           0.5,
-          0.5,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -8647,7 +8776,7 @@
     },
     "raidori": {
       "front": {
-        "atlas": "a-019",
+        "atlas": "a-018",
         "px": [
           1024,
           1024,
@@ -8666,7 +8795,7 @@
         "source": "front/raidori(front).png"
       },
       "back": {
-        "atlas": "a-019",
+        "atlas": "a-018",
         "px": [
           0,
           1024,
@@ -8685,12 +8814,12 @@
         "source": "back/raidori(back).png"
       },
       "sizeScale": 1.4,
-      "home": "a-019",
+      "home": "a-018",
       "thumb": "thumbs/raidori_front.webp"
     },
     "raikitsune": {
       "front": {
-        "atlas": "a-024",
+        "atlas": "a-023",
         "px": [
           1024,
           0,
@@ -8709,7 +8838,7 @@
         "source": "front/raikitsune(front).webp"
       },
       "back": {
-        "atlas": "a-024",
+        "atlas": "a-023",
         "px": [
           0,
           0,
@@ -8728,7 +8857,7 @@
         "source": "back/raikitsune(back).webp"
       },
       "sizeScale": 1.35,
-      "home": "a-024",
+      "home": "a-023",
       "thumb": "thumbs/raikitsune_front.webp",
       "anim": {
         "front": {
@@ -9095,18 +9224,18 @@
     },
     "rambull": {
       "front": {
-        "atlas": "a-063",
+        "atlas": "a-064",
         "px": [
           1024,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0,
+          0.5,
           1,
-          0.5
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -9114,18 +9243,18 @@
         "source": "front/rambull(front).png"
       },
       "back": {
-        "atlas": "a-063",
+        "atlas": "a-064",
         "px": [
           0,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0,
-          0,
           0.5,
-          0.5
+          0.5,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -9133,7 +9262,7 @@
         "source": "back/rambull(back).png"
       },
       "sizeScale": 1.25,
-      "home": "a-063",
+      "home": "a-064",
       "thumb": "thumbs/rambull_front.webp"
     },
     "resilian": {
@@ -9224,50 +9353,7 @@
     },
     "resilithorn": {
       "front": {
-        "atlas": "a-049",
-        "px": [
-          1024,
-          0,
-          1024,
-          1024
-        ],
-        "uv": [
-          0.5,
-          0.5,
-          1,
-          1
-        ],
-        "footV": 0.08,
-        "aspect": 1,
-        "pixelScale": 0.955531,
-        "source": "front/resilithorn(front).png"
-      },
-      "back": {
-        "atlas": "a-049",
-        "px": [
-          0,
-          0,
-          1024,
-          1024
-        ],
-        "uv": [
-          0,
-          0.5,
-          0.5,
-          1
-        ],
-        "footV": 0.08,
-        "aspect": 1,
-        "pixelScale": 0.809743,
-        "source": "back/resilithorn(back).png"
-      },
-      "sizeScale": 1.3,
-      "home": "a-049",
-      "thumb": "thumbs/resilithorn_front.webp"
-    },
-    "rexaloft": {
-      "front": {
-        "atlas": "a-049",
+        "atlas": "a-064",
         "px": [
           1024,
           1024,
@@ -9279,6 +9365,49 @@
           0,
           1,
           0.5
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.955531,
+        "source": "front/resilithorn(front).png"
+      },
+      "back": {
+        "atlas": "a-064",
+        "px": [
+          0,
+          1024,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0,
+          0.5,
+          0.5
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.809743,
+        "source": "back/resilithorn(back).png"
+      },
+      "sizeScale": 1.3,
+      "home": "a-064",
+      "thumb": "thumbs/resilithorn_front.webp"
+    },
+    "rexaloft": {
+      "front": {
+        "atlas": "a-049",
+        "px": [
+          1024,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0.5,
+          1,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -9289,15 +9418,15 @@
         "atlas": "a-049",
         "px": [
           0,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0,
-          0,
           0.5,
-          0.5
+          0.5,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -9611,7 +9740,7 @@
     },
     "shardling": {
       "front": {
-        "atlas": "a-011",
+        "atlas": "a-024",
         "px": [
           1024,
           0,
@@ -9630,7 +9759,7 @@
         "source": "front/shardling(front).png"
       },
       "back": {
-        "atlas": "a-011",
+        "atlas": "a-024",
         "px": [
           0,
           0,
@@ -9649,12 +9778,12 @@
         "source": "back/shardling(back).png"
       },
       "sizeScale": 0.65,
-      "home": "a-011",
+      "home": "a-024",
       "thumb": "thumbs/shardling_front.webp"
     },
     "shiveruff": {
       "front": {
-        "atlas": "a-018",
+        "atlas": "a-017",
         "px": [
           1024,
           1024,
@@ -9673,7 +9802,7 @@
         "source": "front/shiveruff(front).png"
       },
       "back": {
-        "atlas": "a-018",
+        "atlas": "a-017",
         "px": [
           0,
           1024,
@@ -9692,12 +9821,12 @@
         "source": "back/shiveruff(back).png"
       },
       "sizeScale": 0.72,
-      "home": "a-018",
+      "home": "a-017",
       "thumb": "thumbs/shiveruff_front.webp"
     },
     "slushpup": {
       "front": {
-        "atlas": "a-017",
+        "atlas": "a-016",
         "px": [
           1024,
           1024,
@@ -9716,7 +9845,7 @@
         "source": "front/slushpup(front).png"
       },
       "back": {
-        "atlas": "a-017",
+        "atlas": "a-016",
         "px": [
           0,
           1024,
@@ -9735,7 +9864,7 @@
         "source": "back/slushpup(back).png"
       },
       "sizeScale": 0.7,
-      "home": "a-017",
+      "home": "a-016",
       "thumb": "thumbs/slushpup_front.webp"
     },
     "smellduck": {
@@ -9826,50 +9955,7 @@
     },
     "solpyre": {
       "front": {
-        "atlas": "a-050",
-        "px": [
-          1024,
-          0,
-          1024,
-          1024
-        ],
-        "uv": [
-          0.5,
-          0.5,
-          1,
-          1
-        ],
-        "footV": 0.08,
-        "aspect": 1,
-        "pixelScale": 0.447208,
-        "source": "front/solpyre(front).png"
-      },
-      "back": {
-        "atlas": "a-050",
-        "px": [
-          0,
-          0,
-          1024,
-          1024
-        ],
-        "uv": [
-          0,
-          0.5,
-          0.5,
-          1
-        ],
-        "footV": 0.08,
-        "aspect": 1,
-        "pixelScale": 0.447208,
-        "source": "back/solpyre(back).png"
-      },
-      "sizeScale": 1.2,
-      "home": "a-050",
-      "thumb": "thumbs/solpyre_front.webp"
-    },
-    "starwhim": {
-      "front": {
-        "atlas": "a-050",
+        "atlas": "a-049",
         "px": [
           1024,
           1024,
@@ -9881,6 +9967,49 @@
           0,
           1,
           0.5
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.447208,
+        "source": "front/solpyre(front).png"
+      },
+      "back": {
+        "atlas": "a-049",
+        "px": [
+          0,
+          1024,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0,
+          0.5,
+          0.5
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.447208,
+        "source": "back/solpyre(back).png"
+      },
+      "sizeScale": 1.2,
+      "home": "a-049",
+      "thumb": "thumbs/solpyre_front.webp"
+    },
+    "starwhim": {
+      "front": {
+        "atlas": "a-050",
+        "px": [
+          1024,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0.5,
+          1,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -9891,15 +10020,15 @@
         "atlas": "a-050",
         "px": [
           0,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0,
-          0,
           0.5,
-          0.5
+          0.5,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -9912,7 +10041,7 @@
     },
     "stormchick": {
       "front": {
-        "atlas": "a-023",
+        "atlas": "a-022",
         "px": [
           1024,
           1024,
@@ -9931,7 +10060,7 @@
         "source": "front/stormchick(front).png"
       },
       "back": {
-        "atlas": "a-023",
+        "atlas": "a-022",
         "px": [
           0,
           1024,
@@ -9950,7 +10079,7 @@
         "source": "back/stormchick(back).png"
       },
       "sizeScale": 0.55,
-      "home": "a-023",
+      "home": "a-022",
       "thumb": "thumbs/stormchick_front.webp"
     },
     "sunjaw": {
@@ -10403,18 +10532,18 @@
     },
     "thundrix": {
       "front": {
-        "atlas": "a-064",
+        "atlas": "a-050",
         "px": [
           1024,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0.5,
+          0,
           1,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -10422,18 +10551,18 @@
         "source": "front/thundrix(front).png"
       },
       "back": {
-        "atlas": "a-064",
+        "atlas": "a-050",
         "px": [
           0,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0,
+          0,
           0.5,
-          0.5,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -10441,7 +10570,7 @@
         "source": "back/thundrix(back).png"
       },
       "sizeScale": 1.05,
-      "home": "a-064",
+      "home": "a-050",
       "thumb": "thumbs/thundrix_front.webp"
     },
     "tidalfang": {
@@ -10532,49 +10661,6 @@
     },
     "toxiveil": {
       "front": {
-        "atlas": "a-064",
-        "px": [
-          1024,
-          1024,
-          1024,
-          1024
-        ],
-        "uv": [
-          0.5,
-          0,
-          1,
-          0.5
-        ],
-        "footV": 0.08,
-        "aspect": 1,
-        "pixelScale": 0.478804,
-        "source": "front/toxiveil(front).png"
-      },
-      "back": {
-        "atlas": "a-064",
-        "px": [
-          0,
-          1024,
-          1024,
-          1024
-        ],
-        "uv": [
-          0,
-          0,
-          0.5,
-          0.5
-        ],
-        "footV": 0.08,
-        "aspect": 1,
-        "pixelScale": 0.478544,
-        "source": "back/toxiveil(back).png"
-      },
-      "sizeScale": 0.95,
-      "home": "a-064",
-      "thumb": "thumbs/toxiveil_front.webp"
-    },
-    "toxshade": {
-      "front": {
         "atlas": "a-051",
         "px": [
           1024,
@@ -10587,6 +10673,49 @@
           0.5,
           1,
           1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.478804,
+        "source": "front/toxiveil(front).png"
+      },
+      "back": {
+        "atlas": "a-051",
+        "px": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0.5,
+          0.5,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.478544,
+        "source": "back/toxiveil(back).png"
+      },
+      "sizeScale": 0.95,
+      "home": "a-051",
+      "thumb": "thumbs/toxiveil_front.webp"
+    },
+    "toxshade": {
+      "front": {
+        "atlas": "a-051",
+        "px": [
+          1024,
+          1024,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0,
+          1,
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -10597,15 +10726,15 @@
         "atlas": "a-051",
         "px": [
           0,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0,
+          0,
           0.5,
-          0.5,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -10618,18 +10747,18 @@
     },
     "trenchtusk": {
       "front": {
-        "atlas": "a-014",
+        "atlas": "a-020",
         "px": [
           1024,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0.5,
+          0,
           1,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -10637,7 +10766,50 @@
         "source": "front/trenchtusk(front).png"
       },
       "back": {
-        "atlas": "a-014",
+        "atlas": "a-020",
+        "px": [
+          0,
+          1024,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0,
+          0.5,
+          0.5
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.860352,
+        "source": "back/trenchtusk(back).png"
+      },
+      "sizeScale": 1.25,
+      "home": "a-020",
+      "thumb": "thumbs/trenchtusk_front.webp"
+    },
+    "tsunamite": {
+      "front": {
+        "atlas": "a-065",
+        "px": [
+          1024,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0.5,
+          1,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.860352,
+        "source": "front/tsunamite(front).png"
+      },
+      "back": {
+        "atlas": "a-065",
         "px": [
           0,
           0,
@@ -10653,53 +10825,10 @@
         "footV": 0.08,
         "aspect": 1,
         "pixelScale": 0.860352,
-        "source": "back/trenchtusk(back).png"
-      },
-      "sizeScale": 1.25,
-      "home": "a-014",
-      "thumb": "thumbs/trenchtusk_front.webp"
-    },
-    "tsunamite": {
-      "front": {
-        "atlas": "a-051",
-        "px": [
-          1024,
-          1024,
-          1024,
-          1024
-        ],
-        "uv": [
-          0.5,
-          0,
-          1,
-          0.5
-        ],
-        "footV": 0.08,
-        "aspect": 1,
-        "pixelScale": 0.860352,
-        "source": "front/tsunamite(front).png"
-      },
-      "back": {
-        "atlas": "a-051",
-        "px": [
-          0,
-          1024,
-          1024,
-          1024
-        ],
-        "uv": [
-          0,
-          0,
-          0.5,
-          0.5
-        ],
-        "footV": 0.08,
-        "aspect": 1,
-        "pixelScale": 0.860352,
         "source": "back/tsunamite(back).png"
       },
       "sizeScale": 1.3,
-      "home": "a-051",
+      "home": "a-065",
       "thumb": "thumbs/tsunamite_front.webp"
     },
     "umbrit": {
@@ -10750,15 +10879,15 @@
         "atlas": "a-065",
         "px": [
           1024,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0.5,
+          0,
           1,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -10769,15 +10898,15 @@
         "atlas": "a-065",
         "px": [
           0,
-          0,
+          1024,
           1024,
           1024
         ],
         "uv": [
           0,
+          0,
           0.5,
-          0.5,
-          1
+          0.5
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -10790,18 +10919,18 @@
     },
     "venobulb": {
       "front": {
-        "atlas": "a-065",
+        "atlas": "a-066",
         "px": [
           1024,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0,
+          0.5,
           1,
-          0.5
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -10809,18 +10938,18 @@
         "source": "front/venobulb(front).png"
       },
       "back": {
-        "atlas": "a-065",
+        "atlas": "a-066",
         "px": [
           0,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0,
-          0,
           0.5,
-          0.5
+          0.5,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -10828,55 +10957,12 @@
         "source": "back/venobulb(back).png"
       },
       "sizeScale": 1.05,
-      "home": "a-065",
+      "home": "a-066",
       "thumb": "thumbs/venobulb_front.webp"
     },
     "verdatide": {
       "front": {
-        "atlas": "a-052",
-        "px": [
-          1024,
-          0,
-          1024,
-          1024
-        ],
-        "uv": [
-          0.5,
-          0.5,
-          1,
-          1
-        ],
-        "footV": 0.08,
-        "aspect": 1,
-        "pixelScale": 0.449949,
-        "source": "front/verdatide(front).png"
-      },
-      "back": {
-        "atlas": "a-052",
-        "px": [
-          0,
-          0,
-          1024,
-          1024
-        ],
-        "uv": [
-          0,
-          0.5,
-          0.5,
-          1
-        ],
-        "footV": 0.08,
-        "aspect": 1,
-        "pixelScale": 0.449949,
-        "source": "back/verdatide(back).png"
-      },
-      "sizeScale": 1.3,
-      "home": "a-052",
-      "thumb": "thumbs/verdatide_front.webp"
-    },
-    "voidraith": {
-      "front": {
-        "atlas": "a-052",
+        "atlas": "a-066",
         "px": [
           1024,
           1024,
@@ -10888,6 +10974,49 @@
           0,
           1,
           0.5
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.449949,
+        "source": "front/verdatide(front).png"
+      },
+      "back": {
+        "atlas": "a-066",
+        "px": [
+          0,
+          1024,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0,
+          0.5,
+          0.5
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.449949,
+        "source": "back/verdatide(back).png"
+      },
+      "sizeScale": 1.3,
+      "home": "a-066",
+      "thumb": "thumbs/verdatide_front.webp"
+    },
+    "voidraith": {
+      "front": {
+        "atlas": "a-052",
+        "px": [
+          1024,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0.5,
+          1,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -10898,15 +11027,15 @@
         "atlas": "a-052",
         "px": [
           0,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0,
-          0,
           0.5,
-          0.5
+          0.5,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -11324,7 +11453,7 @@
     },
     "voltaura": {
       "front": {
-        "atlas": "a-024",
+        "atlas": "a-023",
         "px": [
           1024,
           1024,
@@ -11343,7 +11472,7 @@
         "source": "front/voltaura(front).gif"
       },
       "back": {
-        "atlas": "a-024",
+        "atlas": "a-023",
         "px": [
           0,
           1024,
@@ -11362,7 +11491,7 @@
         "source": "back/voltaura(back).gif"
       },
       "sizeScale": 1.2,
-      "home": "a-024",
+      "home": "a-023",
       "thumb": "thumbs/voltaura_front.webp",
       "anim": {
         "front": {
@@ -11743,18 +11872,18 @@
     },
     "voltide": {
       "front": {
-        "atlas": "a-014",
+        "atlas": "a-011",
         "px": [
           1024,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0.5,
-          0,
+          0.5,
           1,
-          0.5
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -11762,18 +11891,18 @@
         "source": "front/voltide(front).png"
       },
       "back": {
-        "atlas": "a-014",
+        "atlas": "a-011",
         "px": [
           0,
-          1024,
+          0,
           1024,
           1024
         ],
         "uv": [
           0,
-          0,
           0.5,
-          0.5
+          0.5,
+          1
         ],
         "footV": 0.08,
         "aspect": 1,
@@ -11781,7 +11910,7 @@
         "source": "back/voltide(back).png"
       },
       "sizeScale": 0.95,
-      "home": "a-014",
+      "home": "a-011",
       "thumb": "thumbs/voltide_front.webp"
     },
     "wickling": {
@@ -11829,7 +11958,7 @@
     },
     "wooltug": {
       "front": {
-        "atlas": "a-007",
+        "atlas": "a-024",
         "px": [
           1024,
           1024,
@@ -11848,7 +11977,7 @@
         "source": "front/wooltug(front).png"
       },
       "back": {
-        "atlas": "a-007",
+        "atlas": "a-024",
         "px": [
           0,
           1024,
@@ -11867,12 +11996,12 @@
         "source": "back/wooltug(back).png"
       },
       "sizeScale": 0.9,
-      "home": "a-007",
+      "home": "a-024",
       "thumb": "thumbs/wooltug_front.webp"
     },
     "wraithtide": {
       "front": {
-        "atlas": "a-015",
+        "atlas": "a-014",
         "px": [
           1024,
           1024,
@@ -11891,7 +12020,7 @@
         "source": "front/wraithtide(front).png"
       },
       "back": {
-        "atlas": "a-015",
+        "atlas": "a-014",
         "px": [
           0,
           1024,
@@ -11910,12 +12039,12 @@
         "source": "back/wraithtide(back).png"
       },
       "sizeScale": 1.1,
-      "home": "a-015",
+      "home": "a-014",
       "thumb": "thumbs/wraithtide_front.webp"
     },
     "yahit": {
       "front": {
-        "atlas": "a-027",
+        "atlas": "a-007",
         "px": [
           1024,
           1024,
@@ -11934,7 +12063,7 @@
         "source": "front/yahit(front).png"
       },
       "back": {
-        "atlas": "a-027",
+        "atlas": "a-007",
         "px": [
           0,
           1024,
@@ -11953,7 +12082,7 @@
         "source": "back/yahit(back).png"
       },
       "sizeScale": 1,
-      "home": "a-027",
+      "home": "a-007",
       "thumb": "thumbs/yahit_front.webp"
     },
     "yaschamp": {
@@ -12001,7 +12130,7 @@
     },
     "yasprime": {
       "front": {
-        "atlas": "a-021",
+        "atlas": "a-052",
         "px": [
           1024,
           1024,
@@ -12020,7 +12149,7 @@
         "source": "front/yasprime(front).png"
       },
       "back": {
-        "atlas": "a-021",
+        "atlas": "a-052",
         "px": [
           0,
           1024,
@@ -12039,7 +12168,7 @@
         "source": "back/yasprime(back).png"
       },
       "sizeScale": 1.3,
-      "home": "a-021",
+      "home": "a-052",
       "thumb": "thumbs/yasprime_front.webp"
     },
     "zaptus": {
@@ -12491,7 +12620,7 @@
       }
     }
   },
-  "totalBytes": 34134598,
+  "totalBytes": 34714778,
   "animAtlases": [
     {
       "id": "anim-bankaiser-back",

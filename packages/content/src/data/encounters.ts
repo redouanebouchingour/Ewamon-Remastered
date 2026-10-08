@@ -3,7 +3,7 @@
  * (8 routes, 3 towns, 4 story tables; A1 and A2 accepted per the spec CHANGELOG), plus the spawn constants. Phase D8
  * added water slots where the heightfield has ponds a table did not fish yet (mire_route, skyrend, umbral_observatory)
  * — species already placed elsewhere, so the directly-placed set stayed 79. The post-legacy hollowmane (#131) adds a
- * night rare slot to the_rift: 80 placed directly.
+ * night rare slot to the_rift and dustcub (#132) an uncommon slot to deepcut_route: 81 placed directly.
  */
 import type { EncounterSlot, EncounterTable, EncounterTier, Medium, SpawnTuning, TimeOfDay, ZoneId } from '../types';
 
@@ -137,6 +137,7 @@ export const ENCOUNTER_TABLES: readonly EncounterTable[] = [
     s('embrock', 6, 20, 23, 'any', 'common'),
     s('coalette', 5, 22, 25, 'any', 'uncommon'),
     s('berkest', 5, 21, 24, 'any', 'uncommon'),
+    s('dustcub', 5, 20, 24, 'any', 'uncommon'),
     s('wooltug', 5, 20, 23, 'any', 'uncommon'),
     s('rimeidol', 5, 21, 25, 'night', 'uncommon'),
     s('yahit', 3, 22, 25, 'any', 'rare'),
