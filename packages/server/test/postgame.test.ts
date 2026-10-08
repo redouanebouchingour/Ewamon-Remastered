@@ -105,10 +105,25 @@ async function playOut(c: BattleCoordinator, pid: string, patch?: (st: BattleSta
   if (c.get(s0.id) !== null) throw new Error('battle did not end');
 }
 
-/** A foe side that cannot hurt anyone and falls to one hit (the tower's win path, made deterministic). */
+/**
+ * A foe side that cannot hurt anyone and falls to one hit (the tower's win path, made deterministic whatever team the
+ * run's random id draws): hp 1, last to move, a single self-targeting status move (damage reads the species' base
+ * Attack, not `Battler.atk`, so only the moveset disarms a foe), and no ability or held item (an unknown ability id has
+ * no hooks: Wonder Guard, Flash Fire and the like would otherwise wall the player's first move forever).
+ */
 const weakFoes = (st: BattleState): BattleState => ({
   ...st,
-  sides: [st.sides[0], { ...st.sides[1], party: st.sides[1].party.map((b) => ({ ...b, atk: 1, spd: 1, creature: { ...b.creature, hp: 1 } })) }],
+  sides: [
+    st.sides[0],
+    {
+      ...st.sides[1],
+      party: st.sides[1].party.map((b) => ({
+        ...b,
+        spd: 1,
+        creature: { ...b.creature, hp: 1, ability: 'test:none', heldItem: null, moves: [{ id: 'Calm Mind', pp: 20, ppMax: 20 }] },
+      })),
+    },
+  ],
 });
 
 const FIRE_100 = ['moblaze', 'pyrothal', 'infernomorel', 'solpyre', 'ignispectre', 'rexaloft'].map((species) => ({ species, level: 100 }));
