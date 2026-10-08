@@ -25,7 +25,7 @@ import type { Node, PerspectiveCamera, UniformNode } from 'three/webgpu';
 import {
   Fn, abs, cos, exp, float, instancedBufferAttribute, length, max, min, mix, select, sin, smoothstep, step, uniform, uv, vec3, vec4,
 } from 'three/tsl';
-import type { TypeName, VfxId } from '../contracts.js';
+import type { MoveStyle, TypeName, VfxId } from '../contracts.js';
 import { LAYERS } from '../descriptors.js';
 import { OVERLAY_ALPHA_CUT, overlayMrt } from '../sprites/overlayMrt.js';
 import { TYPE_COLORS, TYPE_NAMES, hexToLinearInto, typeVfxSuffix } from '../sprites/typeColors.js';
@@ -43,9 +43,12 @@ export const VFX_MISC_IDS: readonly VfxId[] = Object.freeze(['switch_out', 'swit
 export const VFX_SHINY_IDS: readonly VfxId[] = Object.freeze(['shiny_sparkle'] as const);
 /** Battle forms (`SpeciesDef.battleForm`): one burst per form. */
 export const VFX_FORM_IDS: readonly VfxId[] = Object.freeze(['form_rage'] as const);
+/** The 14 motion styles of a move (the client's MOVE_STYLE), drawn in the colours of the move's type passed to vfx(). */
+export const MOVE_STYLES: readonly MoveStyle[] = Object.freeze(['slash', 'bite', 'punch', 'tackle', 'beam', 'orb', 'wave', 'rain', 'erupt', 'spray', 'bolt', 'spin', 'shard', 'gust'] as const);
+export const VFX_STYLE_IDS: readonly VfxId[] = Object.freeze(MOVE_STYLES.map((m) => `style_${m}` as VfxId));
 
 export const VFX_IDS: readonly VfxId[] = Object.freeze([
-  ...VFX_TYPE_IDS, ...VFX_IMPACT_IDS, ...VFX_STATUS_IDS, ...VFX_STAT_IDS, ...VFX_WEATHER_IDS, ...VFX_ORB_IDS, ...VFX_MISC_IDS, ...VFX_SHINY_IDS, ...VFX_FORM_IDS,
+  ...VFX_TYPE_IDS, ...VFX_IMPACT_IDS, ...VFX_STATUS_IDS, ...VFX_STAT_IDS, ...VFX_WEATHER_IDS, ...VFX_ORB_IDS, ...VFX_MISC_IDS, ...VFX_SHINY_IDS, ...VFX_FORM_IDS, ...VFX_STYLE_IDS,
 ]);
 
 export function isVfxId(s: string): s is VfxId {
@@ -64,7 +67,10 @@ export type VfxMotion =
   | 'rise'     // column rising from the anchor's feet
   | 'fall'     // falling from above the anchor
   | 'orbit'    // circling the anchor (swirl)
-  | 'field';   // arena-wide (weather)
+  | 'field'    // arena-wide (weather)
+  | 'sweep'    // a diagonal arc across the anchor, facing the attacker, drawn particle by particle (a slash)
+  | 'jaw'      // two rows above and below the anchor closing on it (a bite)
+  | 'trail';   // spaced along the line from → to, each rising in place (a ground wave, a shock trail)
 
 export type VfxShape = 'disc' | 'star' | 'ring' | 'streak' | 'pixel';
 export const SHAPE_INDEX: Readonly<Record<VfxShape, number>> = Object.freeze({ disc: 0, star: 1, ring: 2, streak: 3, pixel: 4 });
@@ -74,9 +80,9 @@ export interface VfxPhase {
   readonly motion: VfxMotion;
   readonly anchor: 'from' | 'to' | 'center';
   readonly count: number;             // ≤ 512 (cards ≤ 8)
-  /** sRGB hex, or 'type' (the recipe's type colour from the stage's table). */
+  /** sRGB hex, 'type' (the spawn's type colour from the stage's table) or 'type2' (that type's accent, TYPE_ACCENT). */
   readonly color: string;
-  readonly color2?: string;           // second colour, mixed per particle
+  readonly color2?: string;           // second colour, mixed per particle (hex, 'type' or 'type2')
   readonly intensity: number;         // HDR multiplier (bloom reads > 1.15)
   readonly lifeMs: number;
   readonly spreadMs: number;          // emission window
@@ -154,6 +160,92 @@ function typeRecipe(t: TypeName): VfxRecipe {
   };
 }
 
+/** A second colour per type for the `style_*` effects ('type2'): the light / dark accent the type flavours use. */
+export const TYPE_ACCENT: Readonly<Record<TypeName, string>> = Object.freeze({
+  Normal: '#ffffff', Fire: '#ffd26a', Water: '#dff4ff', Grass: '#c6e67a', Electric: '#ffffff', Ice: '#ffffff', Fighting: '#ffd8b8',
+  Poison: '#d49aff', Ground: '#6b5638', Flying: '#ffffff', Psychic: '#ffc8e6', Bug: '#e6f08a', Rock: '#5d5040', Ghost: '#c8b8ff',
+  Dragon: '#b4a6ff', Steel: '#ffffff', Fairy: '#ffffff', Dark: '#1a1320', Cosmic: '#e0d0ff',
+});
+
+const DUST = '#d8c8a8';
+
+/**
+ * The 14 `style_*` recipes: a move's motion, in the colours of the type passed to vfx() ('type' / 'type2'). `ms` is
+ * the move's travel: a stream lands at ~0.5 of it, so impact phases start at delay 0.55.
+ */
+function styleRecipe(m: MoveStyle): VfxRecipe {
+  const S = (phases: readonly VfxPhase[], extra: Partial<Pick<VfxRecipe, 'flash' | 'beaconPulse' | 'defaultMs'>> = {}): VfxRecipe => ({
+    id: `style_${m}` as VfxId, type: null, phases, chroma: null, flash: 0, beaconPulse: 0.35, defaultMs: 700, ...extra,
+  });
+  const impact = (o: Partial<VfxPhase> = {}): VfxPhase => P({ motion: 'burst', anchor: 'to', count: 90, color: 'type', color2: 'type2', speed: 3.4, lifeMs: 340, delay: 0.55, height: 0.6, size: 0.14, ...o });
+  const card = (o: Partial<VfxPhase> = {}): VfxPhase => P({ motion: 'burst', anchor: 'to', count: 2, color: '#ffffff', shape: 'star', size: 0.8, sizeEnd: 0.1, speed: 0, lifeMs: 140, delay: 0.55, height: 0.6, intensity: 1.8, ...o });
+  switch (m) {
+    case 'slash': return S([
+      P({ motion: 'sweep', anchor: 'to', count: 90, color: 'type', color2: '#ffffff', shape: 'streak', size: 0.32, sizeEnd: 0.6, lifeMs: 300, spreadMs: 90, radius: 1, height: 0.55, speed: 0.6, drag: 3, intensity: 3, delay: 0.45 }),
+      impact({ count: 60, shape: 'pixel', speed: 3, size: 0.14 }),
+    ]);
+    case 'bite': return S([
+      P({ motion: 'jaw', anchor: 'to', count: 60, color: 'type', color2: '#ffffff', shape: 'star', size: 0.34, sizeEnd: 0.6, lifeMs: 220, spreadMs: 50, radius: 0.85, height: 0.6, speed: 0, drag: 0.001, intensity: 2.8, delay: 0.4 }),
+      impact({ count: 90, shape: 'pixel', speed: 3.4, size: 0.14 }),
+      card({ size: 1.3 }),
+    ]);
+    case 'punch': return S([
+      P({ motion: 'stream', anchor: 'from', count: 30, color: 'type', color2: 'type2', shape: 'streak', size: 0.16, radius: 0.12, speed: 0.3, spreadMs: 80, drag: 0.001, height: 0.6 }),
+      impact({ count: 120, speed: 4.6, lifeMs: 300, size: 0.18 }),
+      P({ motion: 'burst', anchor: 'to', count: 3, color: 'type2', shape: 'ring', size: 0.9, sizeEnd: 3.2, speed: 0, lifeMs: 260, spreadMs: 60, delay: 0.55, height: 0.6, intensity: 1.6 }),
+    ], { beaconPulse: 0.5 });
+    case 'tackle': return S([
+      P({ motion: 'rise', anchor: 'from', count: 50, color: DUST, color2: 'type', shape: 'pixel', gravity: 2, speed: 1.2, lifeMs: 420, spreadMs: 120, radius: 0.5, height: 0.02, size: 0.1, intensity: 1.1 }),
+      impact({ count: 120, speed: 4, height: 0.5, size: 0.18 }),
+      P({ motion: 'ring', anchor: 'to', count: 60, color: DUST, color2: 'type', shape: 'pixel', speed: 2.6, lifeMs: 380, delay: 0.55, height: 0.03, size: 0.1, intensity: 1.1 }),
+    ]);
+    case 'beam': return S([
+      P({ motion: 'stream', anchor: 'from', count: 240, color: 'type', color2: '#ffffff', size: 0.16, sizeEnd: 0.6, radius: 0.05, speed: 0.12, spreadMs: 280, drag: 0.001, height: 0.7, intensity: 2.6 }),
+      P({ motion: 'stream', anchor: 'from', count: 90, color: 'type2', color2: 'type', size: 0.34, sizeEnd: 0.8, radius: 0.12, speed: 0.2, spreadMs: 280, drag: 0.001, height: 0.7, intensity: 1.3 }),
+      impact({ count: 100, speed: 3, lifeMs: 380, height: 0.7 }),
+    ], { beaconPulse: 0.6 });
+    case 'orb': return S([
+      P({ motion: 'stream', anchor: 'from', count: 8, color: 'type', color2: '#ffffff', size: 0.7, sizeEnd: 0.9, radius: 0.02, speed: 0.05, spreadMs: 30, drag: 0.001, height: 0.7, intensity: 2.4 }),
+      P({ motion: 'stream', anchor: 'from', count: 60, color: 'type', color2: 'type2', size: 0.14, radius: 0.14, speed: 0.5, spreadMs: 120, drag: 0.001, height: 0.7 }),
+      impact({ count: 120, speed: 4, lifeMs: 420, height: 0.7 }),
+      P({ motion: 'burst', anchor: 'to', count: 2, color: 'type2', shape: 'ring', size: 0.8, sizeEnd: 2.8, speed: 0, lifeMs: 300, delay: 0.55, height: 0.7, intensity: 1.5 }),
+    ]);
+    case 'wave': return S([
+      P({ motion: 'trail', anchor: 'from', count: 8, color: 'type', color2: 'type2', shape: 'ring', size: 0.9, sizeEnd: 2.4, speed: 0.1, lifeMs: 380, spreadMs: 280, radius: 0.1, height: 0.15, drag: 0.001, intensity: 1.6 }),
+      P({ motion: 'ring', anchor: 'to', count: 90, color: 'type', color2: 'type2', speed: 3.6, lifeMs: 400, delay: 0.55, height: 0.2 }),
+    ], { beaconPulse: 0.5 });
+    case 'rain': return S([
+      P({ motion: 'fall', anchor: 'to', count: 170, color: 'type', color2: 'type2', shape: 'streak', gravity: 6, speed: 4, drag: 0.001, lifeMs: 520, spreadMs: 380, radius: 0.9, height: 2.4, size: 0.24, delay: 0.1, intensity: 2.6 }),
+      impact({ count: 80, shape: 'pixel', speed: 2.4, lifeMs: 340, height: 0.1, delay: 0.6, size: 0.14 }),
+    ]);
+    case 'erupt': return S([
+      P({ motion: 'ring', anchor: 'to', count: 60, color: 'type2', color2: DUST, shape: 'pixel', speed: 2.4, lifeMs: 320, delay: 0.35, height: 0.02, size: 0.14, intensity: 1.4 }),
+      P({ motion: 'rise', anchor: 'to', count: 180, color: 'type', color2: 'type2', shape: 'streak', gravity: 3, speed: 7, drag: 0.5, lifeMs: 500, spreadMs: 120, radius: 0.7, height: 0.02, size: 0.26, delay: 0.45, intensity: 2.6 }),
+    ], { beaconPulse: 0.5 });
+    case 'spray': return S([
+      P({ motion: 'stream', anchor: 'from', count: 210, color: 'type', color2: 'type2', size: 0.18, sizeEnd: 1.3, radius: 0.1, speed: 2.4, spreadMs: 280, drag: 0.6, height: 0.65, intensity: 1.8 }),
+      impact({ count: 60, speed: 2, lifeMs: 360, delay: 0.6 }),
+    ]);
+    case 'bolt': return S([
+      P({ motion: 'fall', anchor: 'to', count: 60, color: 'type', color2: '#ffffff', shape: 'streak', gravity: 0, speed: 12, drag: 0.001, lifeMs: 190, spreadMs: 240, radius: 0.35, height: 2.6, size: 0.36, intensity: 3.4 }),
+      impact({ count: 100, color2: '#ffffff', shape: 'streak', speed: 6, lifeMs: 220, delay: 0.45, size: 0.2 }),
+      card({ size: 1.5, lifeMs: 140, delay: 0.45 }),
+    ], { beaconPulse: 0.7 });
+    case 'spin': return S([
+      P({ motion: 'orbit', anchor: 'to', count: 130, color: 'type', color2: 'type2', swirl: 9, radius: 0.8, speed: 1.3, lifeMs: 620, spreadMs: 260, height: 0.2, drag: 0.001, size: 0.14, delay: 0.3 }),
+      impact({ count: 50, speed: 2.5, lifeMs: 300, delay: 0.7 }),
+    ]);
+    case 'shard': return S([
+      P({ motion: 'stream', anchor: 'from', count: 30, color: 'type', color2: '#ffffff', shape: 'streak', size: 0.34, radius: 0.22, speed: 1.2, spreadMs: 200, drag: 0.001, height: 0.7, intensity: 2.4 }),
+      impact({ count: 80, shape: 'pixel', speed: 3.6, gravity: 4, lifeMs: 380, size: 0.15 }),
+    ]);
+    case 'gust': return S([
+      P({ motion: 'stream', anchor: 'from', count: 110, color: 'type', color2: '#ffffff', shape: 'streak', size: 0.26, radius: 0.6, speed: 1.5, spreadMs: 240, drag: 0.001, height: 0.8, intensity: 1.6 }),
+      P({ motion: 'orbit', anchor: 'to', count: 90, color: 'type', color2: '#ffffff', shape: 'streak', swirl: 10, radius: 0.8, size: 0.22, speed: 0.8, lifeMs: 450, spreadMs: 120, delay: 0.5, height: 0.5, drag: 0.001 }),
+    ]);
+  }
+}
+
 const R = (id: VfxId, phases: readonly VfxPhase[], extra: Partial<Pick<VfxRecipe, 'chroma' | 'flash' | 'beaconPulse' | 'defaultMs'>> = {}): VfxRecipe => ({
   id, type: null, phases, chroma: null, flash: 0, beaconPulse: 0, defaultMs: 600, ...extra,
 });
@@ -196,6 +288,7 @@ export const VFX_TABLE: Readonly<Record<VfxId, VfxRecipe>> = Object.freeze({
     P({ motion: 'rise', anchor: 'to', count: 120, color: '#ff2a44', color2: '#3a0812', shape: 'streak', gravity: -4.5, speed: 1.2, lifeMs: 950, spreadMs: 520, radius: 0.75, height: 0.05, intensity: 2 }),
     P({ motion: 'ring', anchor: 'to', count: 2, color: '#ff4a62', shape: 'ring', size: 1, sizeEnd: 3.6, speed: 0, lifeMs: 440, height: 0.15, intensity: 1.6 }),
   ], { flash: 1, beaconPulse: 1, chroma: { amount: 0.016, ms: 160 }, defaultMs: 1100 }),
+  ...Object.fromEntries(MOVE_STYLES.map((m) => [`style_${m}`, styleRecipe(m)])),
   flinch: R('flinch', [P({ motion: 'burst', anchor: 'to', count: 5, color: '#ffffff', shape: 'star', speed: 1.1, lifeMs: 360, height: 1.3, size: 0.3, sizeEnd: 0.6 })], { defaultMs: 400 }),
 }) as Readonly<Record<VfxId, VfxRecipe>>;
 
@@ -232,6 +325,8 @@ const _o = new Vector3();
 const _v = new Vector3();
 const _a = new Vector3();
 const _b = new Vector3();
+const _d = new Vector3();
+const _r = new Vector3();
 const _c1 = new Color();
 const _c2 = new Color();
 
@@ -296,20 +391,22 @@ export class VfxSystem {
    * Spawns `id` between the anchors (`from` = the acting battler, `to` = the target; `center` = the arena centre)
    * over `ms` (the recipe default when ≤ 0). Returns the recipe (for the stage's flash / beacon / camera cues).
    */
-  spawn(id: VfxId, from: VfxAnchor | null, to: VfxAnchor | null, center: Vector3, ms: number): VfxRecipe {
+  spawn(id: VfxId, from: VfxAnchor | null, to: VfxAnchor | null, center: Vector3, ms: number, type: TypeName | null = null): VfxRecipe {
     const r = VFX_TABLE[id];
     if (r === undefined) throw new RangeError(`@ewa/render: unknown VfxId '${String(id)}'`);
-    this.spawnRecipe(r, from, to, center, ms);
+    this.spawnRecipe(r, from, to, center, ms, type);
     return r;
   }
 
   /**
    * Spawns any recipe (a table entry or a `SequenceVfxRecipe`) into the pooled emitters — the same slices, the same
-   * shared material; nothing is allocated on the GPU side.
+   * shared material; nothing is allocated on the GPU side. A recipe with its own type (`type_*`) keeps its colours;
+   * one without (`style_*`) draws its 'type' / 'type2' phases in `type`'s (default Normal).
    */
-  spawnRecipe(r: VfxRecipe | SequenceVfxRecipe, from: VfxAnchor | null, to: VfxAnchor | null, center: Vector3, ms: number): void {
+  spawnRecipe(r: VfxRecipe | SequenceVfxRecipe, from: VfxAnchor | null, to: VfxAnchor | null, center: Vector3, ms: number, type: TypeName | null = null): void {
     const dur = Number.isFinite(ms) && ms > 0 ? ms : r.defaultMs;
-    for (const ph of r.phases) this.emitPhase(r, ph, from, to, center, dur);
+    const t = r.type ?? type ?? 'Normal';
+    for (const ph of r.phases) this.emitPhase(r.id, ph, t, from, to, center, dur);
     if (r.chroma !== null) this.hooks.chroma?.(r.chroma.amount, r.chroma.ms);
     this.spawnCount++;
   }
@@ -366,19 +463,29 @@ export class VfxSystem {
     return out.copy(a.feet).setY(a.feet.y + h);
   }
 
-  private emitPhase(r: VfxRecipe | SequenceVfxRecipe, ph: VfxPhase, from: VfxAnchor | null, to: VfxAnchor | null, center: Vector3, durMs: number): void {
+  /** A phase colour: a hex, 'type' (the spawn type's colour) or 'type2' (its accent). */
+  private colorOf(c: string, type: TypeName): string {
+    return c === 'type' ? this.typeTable[type] : c === 'type2' ? TYPE_ACCENT[type] : c;
+  }
+
+  private emitPhase(id: string, ph: VfxPhase, type: TypeName, from: VfxAnchor | null, to: VfxAnchor | null, center: Vector3, durMs: number): void {
     const n = Math.min(MAX_PARTICLES, Math.max(0, Math.floor(ph.count)));
     if (n === 0) return;
     const em = this.takeEmitter();
     const rnd = this.rand;
     const t0 = this.nowS + ph.delay * durMs / 1000;
     const spread = ph.spreadMs / 1000;
-    const hexA = ph.color === 'type' ? this.typeTable[r.type ?? 'Normal'] : ph.color;
+    const hexA = this.colorOf(ph.color, type);
     hexToLinearInto(hexA, _c1);
-    hexToLinearInto(ph.color2 ?? hexA, _c2);
+    hexToLinearInto(ph.color2 === undefined ? hexA : this.colorOf(ph.color2, type), _c2);
     // endpoints for travelling motions
     this.anchorPoint('from', from, to, center, ph.height, _a);
     this.anchorPoint('to', from, to, center, ph.height, _b);
+    // the line's horizontal direction (attacker → target) and its right hand, for the sweep / jaw frames
+    _d.set(_b.x - _a.x, 0, _b.z - _a.z);
+    if (_d.lengthSq() < 1e-6) _d.set(1, 0, 0);
+    _d.normalize();
+    _r.set(-_d.z, 0, _d.x);
     const travelS = Math.min(0.6, Math.max(0.12, durMs * 0.5 / 1000));
     const O = this.aOrigin.array as Float32Array; const V = this.aVel.array as Float32Array; const C = this.aColor.array as Float32Array;
     const B = this.aOrbit.array as Float32Array; const M = this.aMisc.array as Float32Array;
@@ -426,10 +533,42 @@ export class VfxSystem {
           _v.set(0, ph.speed * (rnd() - 0.2), 0);
           break;
         }
+        case 'sweep': {
+          // a diagonal arc across the anchor, bulging towards the attacker, drawn from its top to its bottom
+          this.anchorPoint(ph.anchor, from, to, center, ph.height, _o);
+          const u = n > 1 ? k / (n - 1) : 0.5;
+          const s = (u - 0.5) * 2;
+          const bulge = ph.radius * 0.35 * (1 - s * s);
+          _o.x += _r.x * s * ph.radius - _d.x * bulge + (rnd() - 0.5) * 0.04;
+          _o.y += -s * ph.radius * 0.8 + (rnd() - 0.5) * 0.04;
+          _o.z += _r.z * s * ph.radius - _d.z * bulge + (rnd() - 0.5) * 0.04;
+          const sp = ph.speed * (0.5 + rnd());
+          _v.set(_r.x * s * sp, -s * sp * 0.8, _r.z * s * sp);
+          break;
+        }
+        case 'jaw': {
+          // even particles on the upper row, odd on the lower, both closing on the anchor within their life
+          this.anchorPoint(ph.anchor, from, to, center, ph.height, _o);
+          const up = k % 2 === 0 ? 1 : -1;
+          const lat = (rnd() * 2 - 1) * ph.radius;
+          const lift = up * ph.radius * (0.9 + 0.3 * (1 - Math.abs(lat) / Math.max(1e-3, ph.radius)));
+          _o.x += _r.x * lat - _d.x * ph.radius * 0.3;
+          _o.y += lift;
+          _o.z += _r.z * lat - _d.z * ph.radius * 0.3;
+          _v.set(0, -lift / life, 0);
+          break;
+        }
+        case 'trail': {
+          // spaced along from → to (each born in turn), rising a little where it stands
+          const u = n > 1 ? k / (n - 1) : 0.5;
+          _o.set(_a.x + (_b.x - _a.x) * u + Math.cos(ang) * rad, _a.y + (_b.y - _a.y) * u, _a.z + (_b.z - _a.z) * u + Math.sin(ang) * rad);
+          _v.set((rnd() - 0.5) * ph.speed, ph.speed * (0.5 + rnd()), (rnd() - 0.5) * ph.speed);
+          break;
+        }
         case 'field': {
           _o.set(center.x + (rnd() * 2 - 1) * ph.radius, center.y + ph.height * (0.6 + rnd() * 0.4), center.z + (rnd() * 2 - 1) * ph.radius);
           const sp = ph.speed * (0.8 + rnd() * 0.4);
-          if (r.id === 'weather_sand') _v.set(sp, -0.2, sp * 0.3);
+          if (id === 'weather_sand') _v.set(sp, -0.2, sp * 0.3);
           else _v.set(sp * 0.04, -sp, 0);
           break;
         }

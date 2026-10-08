@@ -1545,3 +1545,12 @@ light layout", give the design and the numbers.
   cinematic over a mock arena (`&side=far`, `&mode=short`, `&reduced=1`, `&t=<ms>` frozen; `window.__sigfx.seek`).
 - `signatures.test.tsx` now asserts: every battle form's signature move and every legendary has a cinematic; a
   legendary's signature move is learned by its owner only (a form's by nobody); the portrait is the species (or the form).
+
+## Move motion styles (2026-10-08)
+
+- `battle/moveStyles.ts` `MOVE_STYLE`: every damaging move (166) → one of render's 14 motion styles (assigned from the
+  move's name, contact and type, then reviewed one by one). `createMoveAnimRegistry` puts `style_<style>` in place of a
+  type-default VFX (`type_*` / `impact_normal`); a hand-authored special effect (`drain`, `form_rage` …) stays, status
+  moves keep theirs. The timeline's `vfx` keyframe already carried the move's `type`: `TimelineTargets.vfx`,
+  `BattleView.vfx` and World3D / HarnessWorld now pass it to `BattleStage.vfx`, which colours the style.
+  `moveStyles.test.ts` asserts every damaging move has a style and every style is a VFX id.

@@ -88,7 +88,8 @@ export interface BattleView {
   setBattler(ref: StageRef, c: CreatureInstance | null, key: string, spriteId?: string): void;
   setPose(ref: StageRef, pose: Pose, ms: number): void;
   hurt(ref: StageRef, strength: number): void;
-  vfx(id: string, from: StageRef | null, to: StageRef | null, ms: number): void;
+  /** `type`: the colours of a `style_*` effect (render §10.7.5) */
+  vfx(id: string, from: StageRef | null, to: StageRef | null, ms: number, type?: string): void;
   prewarm(ids: readonly string[]): void;
   syncFrom(hp: readonly { readonly ref: StageRef; readonly hpFrac: number }[]): void;
   setWeather(kind: string): void;
@@ -515,7 +516,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
   const targets: TimelineTargets = {
     setPose: (ref, pose, ms) => view?.setPose(ref, pose, ms),
     hurt: (ref, s) => view?.hurt(ref, s),
-    vfx: (id, from, to, ms) => view?.vfx(id, from, to, ms),
+    vfx: (id, from, to, ms, type) => view?.vfx(id, from, to, ms, type),
     setWeather: (k) => view?.setWeather(k),
     cue: (shot, ms) => view?.cue(shot, ms),
     shake: (amp, ms) => view?.shake(amp, ms),

@@ -575,7 +575,7 @@ export class Stage implements BattleStage {
 
   setWeather(w: WeatherKind): void { this.d.weather?.(w); }
 
-  vfx(id: VfxId, from: BattlerRef | null, to: BattlerRef | null, ms: number): void {
+  vfx(id: VfxId, from: BattlerRef | null, to: BattlerRef | null, ms: number, type?: TypeName): void {
     if (this.disposed) return;
     if (!isVfxId(id)) throw new RangeError(`@ewa/render: unknown VfxId '${String(id)}'`);
     const fb = from !== null ? this.battlers.get(refKey(from)) ?? null : null;
@@ -583,7 +583,7 @@ export class Stage implements BattleStage {
     const fa = fb !== null ? this.anchorOf(fb, this.anchorA) : null;
     const ta = tb !== null ? this.anchorOf(tb, this.anchorB) : null;
     const center = this.main.dressed ? this.main.center : this.d.rig.focus;
-    const r = this.d.vfx.spawn(id, fa, ta, center, ms);
+    const r = this.d.vfx.spawn(id, fa, ta, center, ms, type ?? null);
     if (fb !== null) this.d.rig.setCueTarget('attacker', fb.bb.feet(_v));
     if (tb !== null) { this.d.rig.setCueTarget('defender', tb.bb.feet(_v)); if (id === 'orb_throw') this.d.rig.setCueTarget('throw', tb.bb.feet(_v)); }
     if (r.flash > 0 && tb !== null) tb.bb.setHurt(r.flash);   // impact_crit: white flash on the target (hurt 1.0)

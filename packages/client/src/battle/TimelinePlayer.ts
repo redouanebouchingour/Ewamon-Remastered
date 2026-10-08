@@ -25,7 +25,8 @@ type Cue = 'attacker' | 'defender' | 'impact' | 'wide' | 'ko' | 'throw';
 export interface TimelineTargets {
   setPose(ref: BattlerRef, pose: Pose, ms: number): void;
   hurt(ref: BattlerRef, strength: number): void;
-  vfx(id: string, from: BattlerRef | null, to: BattlerRef | null, ms: number): void;
+  /** `type`: the move's (or the event's) type — the colours of a `style_*` effect */
+  vfx(id: string, from: BattlerRef | null, to: BattlerRef | null, ms: number, type?: string): void;
   setWeather(kind: string): void;
   cue(shot: Cue, ms: number): void;
   shake(amp: number, ms: number): void;
@@ -247,7 +248,7 @@ export class TimelinePlayer {
         t.hurt(this.ref(f.who), 1);
         return;
       case 'vfx':
-        t.vfx(f.id, this.refOrNull(f.from), this.refOrNull(f.to), f.ms);
+        t.vfx(f.id, this.refOrNull(f.from), this.refOrNull(f.to), f.ms, f.type);
         return;
       case 'camera':
         t.cue(f.shot, f.ms);

@@ -415,7 +415,7 @@ Message routing: `room.onMessage('*', (type, payload) => …)` is **not** used; 
 createRenderer({ canvas, pixelRatio, effects, transcoderPath?: '/basis/' });       // forceWebGL/trackTimestamp are harness-only
 Renderer.loadZone(spec: ZoneSpec): Promise<ZoneHandle>;                            // rejects if a zone is loaded and not disposed
 Renderer.camera: CameraRig;      // setHeading(0|1|2|3), setZoomStop(0|1|2), follow(actorId), pushIn(target, ms), release(ms), shake(amp, ms), cue(kind, ms), focus
-Renderer.stage: BattleStage;     // dress(at, terrain, participants), dressSpectator(x, z), undress(ms), setBattler(ref, d), setPose(ref, pose, ms), hurt, faint, setWeather, vfx(id, from, to, ms), prewarm(ids), syncFrom(hp), setTypeColors(table), inspect(d)
+Renderer.stage: BattleStage;     // dress(at, terrain, participants), dressSpectator(x, z), undress(ms), setBattler(ref, d), setPose(ref, pose, ms), hurt, faint, setWeather, vfx(id, from, to, ms, type?), prewarm(ids), syncFrom(hp), setTypeColors(table), inspect(d)
 Renderer.hud: HudLayer;          // set(partial: HudModel), setFonts(body, display), setScale(uiScale)
 Renderer.actors: ActorPool;      // spawn(id, { look, name, guildTag, isLocal }), setTransform(id, x, z, angle, moving, running), setEmote(id, n), despawn(id), feetOf(id, out), screenPositions(out)
 Renderer.materials.preloadHero(ids);                                                // §20.10.3 phase 5 only; never awaited before the first frame
@@ -629,7 +629,7 @@ export const MOVE_ANIMS: Readonly<Record<string, Partial<MoveAnimDef>>>;   // ke
 export const DEFAULT_BY_TYPE: Readonly<Record<TypeName, Partial<MoveAnimDef>>>; // all 19 present; validate.ts-style test asserts coverage
 ```
 
-Every `vfx` value in `MOVE_ANIMS`/`DEFAULT_BY_TYPE`, and every `vfx` id the builder emits for non-move events, is one of the 47 `VFX_IDS` of `10-render.md` §10.7.5; `timeline.test.ts` asserts the set difference is empty. `Keyframe.pose` values map 1:1 onto render's `BattlerPose` (`recoil` and `celebrate` included) and `Keyframe.camera.shot` onto `CameraRig.cue` kinds (`throw` included). <!-- reconciled 2026-09-18 -->
+Every `vfx` value in `MOVE_ANIMS`/`DEFAULT_BY_TYPE`, and every `vfx` id the builder emits for non-move events, is one of the `VFX_IDS` of `10-render.md` §10.7.5; `timeline.test.ts` asserts the set difference is empty. <!-- amended 2026-10-08: move motion styles --> Every damaging move also has a motion style (`MOVE_STYLE`, `battle/moveStyles.ts`, asserted complete by `moveStyles.test.ts`): the registry puts `style_<style>` in place of a type-default VFX (`type_*` / `impact_normal`) — a hand-authored special effect stays — and the timeline's `vfx` keyframe hands its `type` (the move's) to `BattleStage.vfx`, which draws the style in that type's colours. `Keyframe.pose` values map 1:1 onto render's `BattlerPose` (`recoil` and `celebrate` included) and `Keyframe.camera.shot` onto `CameraRig.cue` kinds (`throw` included). <!-- reconciled 2026-09-18 -->
 
 ### 20.5.3 Timing constants (ms unless stated) — `packages/client/src/battle/constants.ts`
 

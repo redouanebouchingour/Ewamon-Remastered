@@ -1022,7 +1022,7 @@ export interface BattleStage {
   hurt(ref: BattlerRef, strength: number): void;
   faint(ref: BattlerRef, ms: number): void;
   setWeather(w: WeatherKind): void;                     // arena-local: the battle's Field.weather
-  vfx(id: VfxId, from: BattlerRef | null, to: BattlerRef | null, ms: number): void;
+  vfx(id: VfxId, from: BattlerRef | null, to: BattlerRef | null, ms: number, type?: TypeName): void;   // <!-- amended 2026-10-08: move motion styles --> `type` colours a `style_*` effect (default Normal); a `type_*` effect keeps its own type's colour
   prewarm(ids: readonly VfxId[]): void;                 // compiles/instantiates the pooled effects (20-client.md preview rule 1)
   syncFrom(hp: readonly { readonly ref: BattlerRef; readonly hpFrac: number }[]): void;   // after battleResync: poses reset, no animation
   setTypeColors(table: Readonly<Record<TypeName, string>>): void;   // colourblind palettes (20-client.md §20.8.3)
@@ -1049,6 +1049,8 @@ export interface EvolutionHandle {
   cancel(): void;                                        // immediate cleanup (a battle starting, the stage disposed)
 }
 
+export type MoveStyle = 'slash' | 'bite' | 'punch' | 'tackle' | 'beam' | 'orb' | 'wave' | 'rain' | 'erupt' | 'spray' | 'bolt' | 'spin' | 'shard' | 'gust';   // <!-- amended 2026-10-08 --> a move's motion style (the client's MOVE_STYLE)
+
 export type VfxId =
   | `type_${Lowercase<TypeName>}`                        // 19 projectile/burst effects, one per type, colour from the type table
   | 'impact_normal' | 'impact_super' | 'impact_resist' | 'impact_crit'
@@ -1058,8 +1060,9 @@ export type VfxId =
   | 'orb_throw' | 'orb_shake' | 'orb_catch' | 'orb_break'
   | 'switch_out' | 'switch_in' | 'faint' | 'trap' | 'flinch'
   | 'shiny_sparkle'                                      // Phase D4: the shiny encounter burst
-  | 'form_rage';                                         // <!-- amended 2026-10-08: battle forms (hollowmane's rage form) --> the rage-form burst (crimson shards, embers, shockwave)
-export const VFX_IDS: readonly VfxId[];                  // exactly 19 + 4 + 6 + 5 + 4 + 4 + 5 = 47 entries + 'shiny_sparkle' (Phase D4) + 'form_rage' = 49; the client's MOVE_ANIMS/DEFAULT_BY_TYPE reference only these
+  | 'form_rage'                                          // <!-- amended 2026-10-08: battle forms (hollowmane's rage form) --> the rage-form burst (crimson shards, embers, shockwave)
+  | `style_${MoveStyle}`;                                // <!-- amended 2026-10-08: move motion styles --> 14 motions (slash, bite, punch, tackle, beam, orb, wave, rain, erupt, spray, bolt, spin, shard, gust) drawn in the `type` passed to vfx()
+export const VFX_IDS: readonly VfxId[];                  // exactly 19 + 4 + 6 + 5 + 4 + 4 + 5 = 47 entries + 'shiny_sparkle' (Phase D4) + 'form_rage' + 14 `style_*` = 63; the client's MOVE_ANIMS/DEFAULT_BY_TYPE/MOVE_STYLE reference only these
 ```
 
 Every VFX is a slice of one pooled instanced `Sprite` (`count` 4 096 = 8 emitters × 512 particles, additive, `layers 29`, one shared `PointsNodeMaterial` with per-particle `instancedBufferAttribute` for birth/lifetime/colour — a `Points` object rasterises 1-px points on WebGPU, header table) or a pooled alpha-card burst (≤ 8 cards); particles write valid MRT values (the view axis as normal, mask `(1, 0)`) and alpha-test at 0.004, because the pass MRT writes those attachments unblended and a zero normal made GTAO NaN. Pools are allocated in `createRenderer` (§10.1.2 step 7) and never grow. VFX add **no** lights (a light appearing mid-battle recompiles every lit program); impacts pulse the 2 reserved beacons instead, which live under the stage root from `createRenderer` on at intensity 0 with `shadow.autoUpdate = false` while undressed. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES P4, P8, P10, Q8 --> `impact_super` adds a 120 ms `chroma` request (`effects.chroma` gates it) and `impact_crit` a 3-frame white flash on the target (`hurt 1.0`). VFX never writes `mask.y = 1`, so effects blur with the scene and never sharpen; VFX never covers the HUD rects (the HUD is a later overlay pass — Pillar 8 readability gate in `50-verification-budget.md` §50.1 rule 15).

@@ -22,7 +22,7 @@ import { BODIES, harvestStateFor, staticsFor, zone as zoneDef } from '@ewa/conte
 import type { HarvestState, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import { ALL_EFFECTS, applyReducedEffects, createBudgetProbe, createRenderer, edgePoint, part3Of, rendererInternals, zoneSurfaces } from '@ewa/render';
-import type { BudgetCounts, EffectsFlags, Renderer, RendererProbe, VfxId, WeatherKind, ZoneSpec } from '@ewa/render';
+import type { BudgetCounts, EffectsFlags, Renderer, RendererProbe, TypeName, VfxId, WeatherKind, ZoneSpec } from '@ewa/render';
 import { createAudioDirector } from '../audio/AudioDirector';
 import type { AudioDirector } from '../audio/AudioDirector';
 import { createBattleController } from '../battle/BattleController';
@@ -845,7 +845,7 @@ export class HarnessWorld {
       },
       setPose: (ref, pose, ms) => r.stage.setPose(ref, pose, ms),
       hurt: (ref, s) => r.stage.hurt(ref, s),
-      vfx: (id, from, to, ms) => r.stage.vfx(id as VfxId, from, to, ms),
+      vfx: (id, from, to, ms, type) => r.stage.vfx(id as VfxId, from, to, ms, type as TypeName | undefined),
       prewarm: (ids) => r.stage.prewarm(ids as readonly VfxId[]),
       syncFrom: (hp) => r.stage.syncFrom(hp),
       setWeather: (k) => r.stage.setWeather(k as WeatherKind),

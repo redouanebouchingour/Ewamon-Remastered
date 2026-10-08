@@ -1949,3 +1949,17 @@ phase 1 ≈ 600 ms, of which ≈ 400 ms main-thread idle (GPU pipelines). After:
   streaks torn upward, a two-ring shockwave; `flash: 1`, `beaconPulse: 1`, chroma 0.016 / 160 ms, 1 100 ms. Played by the
   client's `formChange` timeline; the sprite swap itself is `Stage.setBattler` with the form's descriptor (same id,
   new frames → the billboard is replaced in place).
+
+## Move motion styles: 14 `style_*` VFX (2026-10-08)
+
+- `VfxId` gains `style_${MoveStyle}` (14: slash, bite, punch, tackle, beam, orb, wave, rain, erupt, spray, bolt, spin,
+  shard, gust; `MOVE_STYLES`, `VFX_STYLE_IDS`; 63 ids). Recipes in `stage/vfx.ts` `styleRecipe` draw their phases in
+  'type' (the spawn type's colour from the stage's table, colourblind palettes included) and 'type2' (`TYPE_ACCENT`, the
+  type's light / dark accent). `spawn` / `spawnRecipe` / `BattleStage.vfx` take an optional `type`: a recipe with its
+  own type (`type_*`) keeps it, one without (`style_*`) uses the passed type (default Normal).
+- Three emission motions, CPU-side only (the shader integrates them like every other): `sweep` (a diagonal arc across
+  the target in the plane facing the attacker, born in order — a slash), `jaw` (two rows above and below the target
+  closing on it within their life — a bite), `trail` (spaced along from → to, born in order — a ground wave). The line's
+  horizontal direction and its right hand are computed per phase (`_d`, `_r`; no allocation).
+- Tuned once against the harness battle (WebGPU, CDP): bite, slash, rain, erupt, bolt, shard and gust were too faint
+  at the battle camera's distance — bigger cards, lower spawn heights (rain 2.4 m, bolt 2.6 m), more intensity.

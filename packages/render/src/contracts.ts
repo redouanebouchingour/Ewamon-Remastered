@@ -268,6 +268,9 @@ export interface CameraRig {
 export type Terrain = 'none' | 'grove' | 'cinder' | 'salt' | 'storm' | 'marrow' | 'vesper' | 'forge' | 'sky' | 'shrine' | 'rift';   // text-identical mirror of spine §2.9
 export interface BattlerRef { readonly side: 0 | 1; readonly slot: number }
 
+/** A move's motion style (the client's MOVE_STYLE): the `style_*` effects, drawn in the colours of the move's type. */
+export type MoveStyle = 'slash' | 'bite' | 'punch' | 'tackle' | 'beam' | 'orb' | 'wave' | 'rain' | 'erupt' | 'spray' | 'bolt' | 'spin' | 'shard' | 'gust';
+
 export type VfxId =
   | `type_${Lowercase<TypeName>}`                        // 19 projectile/burst effects, one per type, colour from the type table
   | 'impact_normal' | 'impact_super' | 'impact_resist' | 'impact_crit'
@@ -277,7 +280,8 @@ export type VfxId =
   | 'orb_throw' | 'orb_shake' | 'orb_catch' | 'orb_break'
   | 'switch_out' | 'switch_in' | 'faint' | 'trap' | 'flinch'
   | 'shiny_sparkle'                                      // Phase D4: the encounter burst round a shiny
-  | 'form_rage';                                         // a battle form: hollowmane's rage form (crimson shards, embers, shockwave)
+  | 'form_rage'                                          // a battle form: hollowmane's rage form (crimson shards, embers, shockwave)
+  | `style_${MoveStyle}`;                                // 14 motion styles of a move (slash, bite, beam …), coloured by the `type` passed to vfx()
 
 export interface BattleStage {
   /** Dresses the arena at (x, z): a 7 m ring (surface cobble / the biome's plaza stone), 2 shadow-casting beacons whose colour is accentType, ≤ 6 spectator billboards (npc looks), rope posts; all within the zone's light budget (the 2 beacons are reserved slots). */
@@ -289,7 +293,8 @@ export interface BattleStage {
   hurt(ref: BattlerRef, strength: number): void;
   faint(ref: BattlerRef, ms: number): void;
   setWeather(w: WeatherKind): void;                     // arena-local: the battle's Field.weather
-  vfx(id: VfxId, from: BattlerRef | null, to: BattlerRef | null, ms: number): void;
+  /** `type`: the move's type — the colour of a `style_*` effect (default Normal); a `type_*` effect keeps its own type's colour. */
+  vfx(id: VfxId, from: BattlerRef | null, to: BattlerRef | null, ms: number, type?: TypeName): void;
   prewarm(ids: readonly VfxId[]): void;                 // compiles/instantiates the pooled effects (20-client.md preview rule 1)
   syncFrom(hp: readonly { readonly ref: BattlerRef; readonly hpFrac: number }[]): void;   // after battleResync: poses reset, no animation
   setTypeColors(table: Readonly<Record<TypeName, string>>): void;   // colourblind palettes (20-client.md §20.8.3)

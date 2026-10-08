@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-08 move motion styles: every damaging move gets one of 14 3D particle motions. One entry. -->
+
+## 2026-10-08 — `10-render.md` §10.7.5 (`MoveStyle`, 14 `style_*` VFX ids, 63 in all; `BattleStage.vfx(…, type?)`); `20-client.md` §20.4.1 consumed subset, §20.5.2 (`MOVE_STYLE`); `50-verification-budget.md` §50.4.7 `timeline.test.ts` (63) — move motion styles
+Why: the user asked whether every move should have an animation; the agreed tier was a motion per move rather than a cinematic. Until now every move of a type drew the same `type_*` burst, so Flame Dash, Fire Fang and Heat Wave looked alike. Each damaging move (166) now has one of 14 motions — slash, bite, punch, tackle, beam, orb, wave, rain, erupt, spray, bolt, spin, shard, gust — drawn in its type's colours: render adds the 14 `style_*` recipes (three new particle motions: `sweep`, `jaw`, `trail`; a per-type accent colour, 'type2'), `BattleStage.vfx` takes the move's `type` (optional; a `type_*` recipe keeps its own), the client's `MOVE_STYLE` table names the style and the registry puts it in place of the type default (special effects such as `drain` / `form_rage` stay). Status moves keep their effects. Nothing is allocated on the GPU: the styles are recipes of the same pooled emitters and one material.
+Evidence: `packages/render/test/stage.test.ts` (63 ids, a style spawn takes the passed type's colours, a `type_*` keeps its own); `packages/client/test/moveStyles.test.ts` (every damaging move has a style, every style a VFX id, the registry and the timeline); the 14 styles shot through the harness battle over CDP (WebGPU), tuned once (bite, slash, rain, erupt, bolt, shard, gust were too faint).
+Affects: `packages/render/src/{contracts,stage/vfx,stage/battleStage}.ts`; `packages/client/src/battle/{moveStyles,moveAnims,TimelinePlayer,BattleController}.ts`, `scene/World3D.ts`, `harness/HarnessWorld.ts`; render / client IMPLEMENTATION-NOTES.
+
 <!-- 2026-10-08 the honor ledger: dustcub evolves by honor into lawlander (#137, High Honor) or badlander (Low Honor). One entry. -->
 
 ## 2026-10-08 — `00-spine.md` §2.3 (`Evolution` split condition `honor`, the honor ledger rules, `dexNumber` 1..137), §2.8 (`CreatureInstance.honor`), §2.19 (`honor`, 37 kinds), §3.4 (dex target 137), §3.10 rules 3, 7, the creature table (`honor`, migration 0005_honor); `20-client.md` §20.9.5 (`N / 137`); `40-pipelines.md` §40.1.1, §40.1.4 accounting (70 atlases), the budget row, NON-NEGOTIABLES rule 2; `50-verification-budget.md` counts, roster, `budget.test.ts` rows — dustcub's honor ledger and lawlander

@@ -33,7 +33,7 @@ import type { CreatureInstance } from '@ewa/core';
 import { FISH_REACH_M } from '@ewa/protocol';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
 import { ACTOR_POOL_SIZE, createRenderer, edgePoint, heroSurfaces, part3Of } from '@ewa/render';
-import type { CompileProgress, Renderer, SurfaceId, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
+import type { CompileProgress, Renderer, SurfaceId, TypeName, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
 import { createAudioDirector } from '../audio/AudioDirector';
 import type { AudioDirector } from '../audio/AudioDirector';
 import { loadAudioManifest, validateAudioManifest } from '../audio/manifest';
@@ -1365,7 +1365,7 @@ class World implements World3D {
       },
       setPose: (ref, pose, ms) => r.stage.setPose(ref, pose, ms),
       hurt: (ref, s) => r.stage.hurt(ref, s),
-      vfx: (id, from, to, ms) => r.stage.vfx(id as VfxId, from, to, ms),
+      vfx: (id, from, to, ms, type) => r.stage.vfx(id as VfxId, from, to, ms, type as TypeName | undefined),
       prewarm: (ids) => r.stage.prewarm(ids as readonly VfxId[]),
       syncFrom: (hp) => r.stage.syncFrom(hp),
       setWeather: (k) => r.stage.setWeather(k as WeatherKind),

@@ -1,10 +1,12 @@
 /**
  * SPEC §20.5.2 — the move animation registry. `MOVE_ANIMS` is hand-authored per move id (ids ARE display names in
  * content, e.g. 'Vine Lash'); `DEFAULT_BY_TYPE` covers all 19 types; `createMoveAnimRegistry().get(id, move)` merges
- * defaults ← type default ← the move's own entry, once per move (cached). Every `vfx` is one of render's 47
+ * defaults ← type default ← the move's own entry, once per move (cached). A damaging move's motion style (moveStyles.ts)
+ * then replaces a type-default VFX (`type_*` / `impact_normal`) with its `style_*` effect, drawn in the move type's colours. Every `vfx` is one of render's 47
  * `VFX_IDS` (asserted by timeline.test.ts).
  */
 import type { MoveDef, TypeName } from '@ewa/core';
+import { styleVfxOf } from './moveStyles';
 import { signatureAnims } from './signatures';
 
 export type AttackerPose = 'lunge' | 'windup' | 'idle';
@@ -144,7 +146,10 @@ export function createMoveAnimRegistry(
       const base = defaultAnim(move);
       const t = byType[move.type] ?? {};
       const own = perMove[moveId] ?? {};
-      const merged: MoveAnimDef = { ...base, ...t, ...own };
+      const merged0: MoveAnimDef = { ...base, ...t, ...own };
+      // the move's motion style in place of a type default; a special effect (drain, form_rage …) stays
+      const style = styleVfxOf(moveId);
+      const merged: MoveAnimDef = style !== undefined && (merged0.vfx.startsWith('type_') || merged0.vfx === 'impact_normal') ? { ...merged0, vfx: style } : merged0;
       // self/field moves never travel, whatever a type default says
       const def = move.target === 'self' || move.target === 'field' ? { ...merged, travelMs: own.travelMs ?? 0 } : merged;
       cache.set(moveId, def);
