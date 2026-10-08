@@ -5,8 +5,9 @@
  *   pnpm --filter @ewa/server grant:creature <username> all <level> [--missing] [--shiny]
  *   (env: DATA_DIR — PGlite at DATA_DIR/pglite, default ./.data — or DATABASE_URL)
  *
- * The creature goes to the first free party slot (the box when the party is full or with --box), with the species'
- * default moveset unless --moves names up to four moves (each must exist in content). The dex marks it caught.
+ * The creature goes to the first free party slot (the box when the party is full or with --box), with the moves it
+ * knows at that level (the server's last-four rule, `movesAtLevel`: a legendary's signature move included) unless
+ * --moves names up to four moves (each must exist in content). The dex marks it caught.
  * `all` grants one of every species in dex order, into the box, in one transaction (`--missing`: only the species the
  * player owns none of). PGlite allows one process: stop the server that holds the database first, or the open fails.
  */
@@ -68,7 +69,7 @@ async function main(): Promise<void> {
       const granted: string[] = [];
       for (const sp of [...SPECIES].sort((a, b) => a.dexNumber - b.dexNumber)) {
         if (missingOnly && owned.has(sp.id)) continue;
-        const base = newCreature(content, sp.id, level, { ownerId: player.id, moves: 'default' });
+        const base = newCreature(content, sp.id, level, { ownerId: player.id, moves: 'level' });
         await repos.creatures.insert(tx, shiny ? { ...base, isShiny: true } : base, { kind: 'box', index: 'nextBox' });
         await repos.progress.markCaught(tx, player.id, sp.id, 'normal', false, now, shiny);
         granted.push(sp.id);
@@ -87,7 +88,7 @@ async function main(): Promise<void> {
   const out = await db.transaction(async (tx) => {
     const player = await repos.players.byUsername(tx, username.toLowerCase());
     if (player === null) return null;
-    const base = newCreature(content, speciesId, level, { ownerId: player.id, moves: 'default' });
+    const base = newCreature(content, speciesId, level, { ownerId: player.id, moves: 'level' });
     const c = {
       ...base,
       ...(moveIds !== null ? { moves: moveIds.map((m) => ({ id: m, pp: content.move(m).pp, ppMax: content.move(m).pp })) } : {}),
