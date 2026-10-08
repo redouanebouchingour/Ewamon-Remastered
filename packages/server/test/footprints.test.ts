@@ -81,7 +81,8 @@ describe('the spawn director never places a spawn inside a footprint', () => {
   function drive(z: ZoneDef, seed: string, ticks: number): { x: number; z: number; medium: 'land' | 'water' }[] {
     const d = new SpawnDirector(z, encounterTableFor(z.id), createRng(seed), getHeightfield(z.id), tuningFor(z)!, content);
     const out: { x: number; z: number; medium: 'land' | 'water' }[] = [];
-    // 20 s per tick: past every respawn delay, and each spawn's lifetime ends 9 ticks later, so the population churns
+    // 20 s per tick: past every respawn delay, and each spawn's lifetime (300 s) ends 15 ticks later, so the population
+    // churns and every tick may roll one spawn
     for (let i = 0; i < ticks; i++) for (const r of d.tick(1_000_000 + i * 20_000, (i % 40) / 40).spawned) out.push({ x: r.x, z: r.z, medium: r.medium });
     return out;
   }
@@ -97,7 +98,7 @@ describe('the spawn director never places a spawn inside a footprint', () => {
       const dropped = new Set(getZoneSurface(z.id).interiorPlan.droppedSolids);
       const stamped = plan.solids.filter((_, i) => !dropped.has(i));
       let n = 0;
-      const ticks = Math.round(12_600 / tuningFor(z)!.targetCount);          // ≈ the same number of rolls per zone
+      const ticks = 3_200;   // up to one roll per tick (an all-water table like saltmourn's misses most position attempts)
       for (const seed of ['r1-a', 'r1-b', 'r1-c']) {
         for (const s of drive(z, seed, ticks)) {
           const [cx, cz] = sampleCentre(h, s.x, s.z);

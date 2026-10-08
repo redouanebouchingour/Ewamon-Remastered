@@ -39,7 +39,7 @@ describe('tuningFor', () => {
 });
 
 describe('SpawnDirector', () => {
-  it('reaches targetCount (14 on a route), never exceeds it, at most one spawn per tick', () => {
+  it('reaches targetCount (80 on a route), never exceeds it, at most one spawn per tick', () => {
     const d = director('mire_route');
     const r = drive(d, 400);
     expect(d.all.length).toBe(ROUTE_TUNING.targetCount);

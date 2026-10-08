@@ -1074,9 +1074,9 @@ export const LEGENDARY_STATICS: readonly LegendaryStatic[];   // exactly 8 rows 
 
 /** Spawn cadence per zone kind; 30-server-netcode.md §30.3 consumes these verbatim. */
 export interface SpawnTuning { readonly targetCount: number; readonly respawnMinMs: number; readonly respawnMaxMs: number; readonly lifetimeMs: number; readonly engagedTimeoutMs: number }
-export const ROUTE_TUNING: SpawnTuning = { targetCount: 14, respawnMinMs: 8_000, respawnMaxMs: 20_000, lifetimeMs: 180_000, engagedTimeoutMs: 90_000 };
-export const TOWN_SPAWN_TUNING: SpawnTuning = { targetCount: 4, respawnMinMs: 8_000, respawnMaxMs: 20_000, lifetimeMs: 180_000, engagedTimeoutMs: 90_000 };
-export const STORY_TUNING: SpawnTuning = { targetCount: 6, respawnMinMs: 12_000, respawnMaxMs: 30_000, lifetimeMs: 180_000, engagedTimeoutMs: 90_000 };
+export const ROUTE_TUNING: SpawnTuning = { targetCount: 80, respawnMinMs: 1_500, respawnMaxMs: 3_500, lifetimeMs: 300_000, engagedTimeoutMs: 90_000 };   // amended 2026-10-08: was 14 / 8–20 s / 180 s
+export const TOWN_SPAWN_TUNING: SpawnTuning = { targetCount: 20, respawnMinMs: 2_000, respawnMaxMs: 5_000, lifetimeMs: 300_000, engagedTimeoutMs: 90_000 };   // amended 2026-10-08: was 4 / 8–20 s / 180 s
+export const STORY_TUNING: SpawnTuning = { targetCount: 36, respawnMinMs: 2_000, respawnMaxMs: 5_000, lifetimeMs: 300_000, engagedTimeoutMs: 90_000 };   // amended 2026-10-08: was 6 / 12–30 s / 180 s
 ```
 
 <!-- reconciled 2026-09-18: roster-coverage.md amendments A1 (4 story tables + STORY_TUNING) and A2 (`medium`, Heightfield `water`) accepted; LegendaryStatic/StaticGate moved here from roster-coverage §4.2 so content owns the shape (§3.10 rule 7 referenced a record no section defined) -->

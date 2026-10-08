@@ -117,8 +117,8 @@ export interface LegendaryStatic {
 export const LEGENDARY_STATICS: readonly LegendaryStatic[];   // exactly 8 rows, §7
 
 /** The 5 story-zone tables and the 3 town tables get their own tuning (30-server-netcode.md §30.3 owns SpawnTuning). */
-export const STORY_TUNING = { targetCount: 6, respawnMinMs: 12_000, respawnMaxMs: 30_000, lifetimeMs: 180_000, engagedTimeoutMs: 90_000 } as const;
-export const TOWN_SPAWN_TUNING = { targetCount: 4, respawnMinMs: 8_000, respawnMaxMs: 20_000, lifetimeMs: 180_000, engagedTimeoutMs: 90_000 } as const;
+export const STORY_TUNING = { targetCount: 36, respawnMinMs: 2_000, respawnMaxMs: 5_000, lifetimeMs: 300_000, engagedTimeoutMs: 90_000 } as const;   // amended 2026-10-08: was 6 / 12–30 s / 180 s
+export const TOWN_SPAWN_TUNING = { targetCount: 20, respawnMinMs: 2_000, respawnMaxMs: 5_000, lifetimeMs: 300_000, engagedTimeoutMs: 90_000 } as const;   // amended 2026-10-08: was 4 / 8–20 s / 180 s
 
 export type AcquisitionPath =
   | { readonly kind: 'wild'; readonly zones: readonly ZoneId[] }
@@ -155,25 +155,25 @@ export function assertRosterCoverage(): RosterReport;
 
 ## 5. BANDS, TUNING AND WEIGHT SUMS
 
-`kind` from the spine §3.1 table. `targetCount` from `ROUTE_TUNING` (14), `TOWN_SPAWN_TUNING` (4), `STORY_TUNING` (6). Weight sums are computed by Appendix A from §6 (`daySum` = Σ weight of `any`+`day` slots, `nightSum` = Σ of `any`+`night`). With the cadence in §30.3 a zone below target spawns one creature every 8–20 s (mean 14 s), so the mean wait for a specific slot while the zone is below target is `14 s × Σ / weight`; the last column is that number for the zone's rarest **day** slot.
+`kind` from the spine §3.1 table. `targetCount` from `ROUTE_TUNING` (80), `TOWN_SPAWN_TUNING` (20), `STORY_TUNING` (36) <!-- amended 2026-10-08: denser wild spawns; were 14 / 4 / 6 -->. Weight sums are computed by Appendix A from §6 (`daySum` = Σ weight of `any`+`day` slots, `nightSum` = Σ of `any`+`night`). With the cadence in §30.3 a zone below target spawns one creature every 1.5–3.5 s on a route (mean 2.5 s) and every 2–5 s in a town or story zone (mean 3.5 s), so the mean wait for a specific slot while the zone is below target is `mean × Σ / weight`; the last column is that number for the zone's rarest **day** slot (amended 2026-10-08: was 8–20 s, mean 14 s, for every kind).
 
 | Zone | Kind | Band | Table id | targetCount | Slots | daySum | nightSum | Rarest day slot → mean wait |
 |---|---|---|---|---|---|---|---|---|
-| mire_route | route | 2–6 | enc_mire_route | 14 | 11 | 45 | 44 | bloomsprite 2/45 → 5.3 min |
-| ash_route | route | 7–11 | enc_ash_route | 14 | 9 | 37 | 33 | cindercap 3/37 → 2.9 min |
-| tide_route | route | 11–15 | enc_tide_route | 14 | 11 | 48 | 46 | kygra 2/48 → 5.6 min |
-| galvan_route | route | 15–20 | enc_galvan_route | 14 | 10 | 43 | 41 | wooltug 4/43 → 2.5 min |
-| deepcut_route | route | 20–25 | enc_deepcut_route | 14 | 13 | 56 | 61 | pyrecap 2/56 → 6.6 min |
-| hollow_route | route | 25–30 | enc_hollow_route | 14 | 15 | 28 | 69 | fibrostis 5/28 → 1.3 min |
-| siege_route | route | 30–35 | enc_siege_route | 14 | 11 | 48 | 48 | flowbot 2/48 → 5.6 min |
-| ascent_route | route | 35–42 | enc_ascent_route | 14 | 11 | 47 | 40 | serpyre 3/47 → 3.7 min |
-| saltmourn | town | 14–24 | enc_saltmourn | 4 | 6 | 17 | 17 | kygra 2/17 → 2.0 min |
-| skyrend | town | 38–44 | enc_skyrend | 4 | 6 | 21 | 21 | veilpup 2/21 → 2.5 min |
-| solenne | town | 40–45 | enc_solenne | 4 | 6 | 26 | 28 | bloomsprite 3/26 → 2.0 min |
-| eclipse_shrine | story | 45–50 | enc_eclipse_shrine | 6 | 9 | 23 | 35 | shardling 5/23 → 1.1 min |
-| umbral_observatory | story | 42–48 | enc_umbral_observatory | 6 | 12 | 27 | 53 | fibrostis 5/27 → 1.3 min |
-| celestial_spire | story | 50–55 | enc_celestial_spire | 6 | 9 | 44 | 27 | flowbot 2/44 → 5.1 min |
-| the_rift | story | 55–60 | enc_the_rift | 6 | 13 | 26 | 41 | kygra 2/26 → 3.0 min |
+| mire_route | route | 2–6 | enc_mire_route | 80 | 11 | 45 | 44 | bloomsprite 2/45 → 56 s |
+| ash_route | route | 7–11 | enc_ash_route | 80 | 9 | 37 | 33 | cindercap 3/37 → 31 s |
+| tide_route | route | 11–15 | enc_tide_route | 80 | 11 | 48 | 46 | kygra 2/48 → 60 s |
+| galvan_route | route | 15–20 | enc_galvan_route | 80 | 10 | 43 | 41 | wooltug 4/43 → 27 s |
+| deepcut_route | route | 20–25 | enc_deepcut_route | 80 | 13 | 56 | 61 | pyrecap 2/56 → 70 s |
+| hollow_route | route | 25–30 | enc_hollow_route | 80 | 15 | 28 | 69 | fibrostis 5/28 → 14 s |
+| siege_route | route | 30–35 | enc_siege_route | 80 | 11 | 48 | 48 | flowbot 2/48 → 60 s |
+| ascent_route | route | 35–42 | enc_ascent_route | 80 | 11 | 47 | 40 | serpyre 3/47 → 39 s |
+| saltmourn | town | 14–24 | enc_saltmourn | 20 | 6 | 17 | 17 | kygra 2/17 → 30 s |
+| skyrend | town | 38–44 | enc_skyrend | 20 | 6 | 21 | 21 | veilpup 2/21 → 37 s |
+| solenne | town | 40–45 | enc_solenne | 20 | 6 | 26 | 28 | bloomsprite 3/26 → 30 s |
+| eclipse_shrine | story | 45–50 | enc_eclipse_shrine | 36 | 9 | 23 | 35 | shardling 5/23 → 16 s |
+| umbral_observatory | story | 42–48 | enc_umbral_observatory | 36 | 12 | 27 | 53 | fibrostis 5/27 → 19 s |
+| celestial_spire | story | 50–55 | enc_celestial_spire | 36 | 9 | 44 | 27 | flowbot 2/44 → 77 s |
+| the_rift | story | 55–60 | enc_the_rift | 36 | 13 | 26 | 41 | kygra 2/26 → 46 s |
 
 Per-slot roll, as §30.3 already fixes: `ALPHA_CHANCE 0.02` on every spawn plus the forced `alpha` slot (weight 1 of ~45 ≈ +2.2 % on routes); `VARIANT_CHANCE 0.03`; swarm species ×`weightBoost` (§12.3).
 
@@ -608,14 +608,14 @@ The cost of this roster is server rows and AOI traffic, not frame time. Numbers 
 
 | | route | town (3 with tables) | story | total, one shard each |
 |---|---|---|---|---|
-| Concurrent spawns (`targetCount`) | 14 | 4 | 6 | 8×14 + 3×4 + 4×6 = **148** |
-| Spawn rows a client can see (≤ 3×3 of a 240/160/200 m field) | ≤ 14 | ≤ 4 | ≤ 6 | — |
-| Spawn cadence when below target | 1 per 8–20 s | 1 per 8–20 s | 1 per 12–30 s | — |
-| `SpawnState` bytes per row (schema, ≈) | 64 | 64 | 64 | 9.5 KB resident for all 15 tables |
+| Concurrent spawns (`targetCount`) | 80 | 20 | 36 | 8×80 + 3×20 + 4×36 = **844** <!-- amended 2026-10-08: was 14 / 4 / 6 = 148 --> |
+| Spawn rows a client can see (≤ 3×3 of a 240/160/200 m field; a 96 m view of a 240 m route holds ≈ 16 %) | ≈ 13, ≤ 80 | ≤ 20 | ≤ 36 | — |
+| Spawn cadence when below target | 1 per 1.5–3.5 s | 1 per 2–5 s | 1 per 2–5 s | — |
+| `SpawnState` bytes per row (schema, ≈) | 64 | 64 | 64 | 54 KB resident for all 15 tables |
 | Rng draws per spawn | 2 + 1 alpha + 1–2 variant + ≤ 8 position | same | same | ≤ 13 |
 | Distinct species per table (sprite atlas bind cost, `10-render.md`) | 8–13 | 5–6 | 8–11 | max **13** (hollow_route) |
 
-Hard ceilings: no table exceeds **16 slots** or **14 distinct species** (the per-zone sprite atlas in `PLAN.md`'s pipeline is sized for 16); no zone exceeds `targetCount 14`. `validate.ts` fails a table at 17 slots or 15 species.
+Hard ceilings: no table exceeds **16 slots** or **14 distinct species** (the per-zone sprite atlas in `PLAN.md`'s pipeline is sized for 16); no zone exceeds `targetCount 80` (amended 2026-10-08: was 14; at 14 a route held about 0.1 creatures in the 20 × 17 m diorama view, and a 180 s lifetime against a 14 s mean respawn capped it near 13 anyway). `validate.ts` fails a table at 17 slots or 15 species.
 
 ---
 

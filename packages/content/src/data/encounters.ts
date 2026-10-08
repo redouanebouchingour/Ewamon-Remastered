@@ -13,25 +13,27 @@ export const ALPHA_CHANCE = 0.02;
 /** per spawn roll; palette uniform over the 4 non-normal keys */
 export const VARIANT_CHANCE = 0.03;
 
+// 2026-10-08: denser wild spawns (were 14 / 4 / 6 alive, 8–20 s / 12–30 s, 180 s). A zone's steady population is
+// about lifetime / mean respawn delay, so the delays shrink with the targets or despawns would cap it below them.
 export const ROUTE_TUNING: SpawnTuning = {
-  targetCount: 14,
-  respawnMinMs: 8_000,
-  respawnMaxMs: 20_000,
-  lifetimeMs: 180_000,
+  targetCount: 80,
+  respawnMinMs: 1_500,
+  respawnMaxMs: 3_500,
+  lifetimeMs: 300_000,
   engagedTimeoutMs: 90_000,
 };
 export const TOWN_SPAWN_TUNING: SpawnTuning = {
-  targetCount: 4,
-  respawnMinMs: 8_000,
-  respawnMaxMs: 20_000,
-  lifetimeMs: 180_000,
+  targetCount: 20,
+  respawnMinMs: 2_000,
+  respawnMaxMs: 5_000,
+  lifetimeMs: 300_000,
   engagedTimeoutMs: 90_000,
 };
 export const STORY_TUNING: SpawnTuning = {
-  targetCount: 6,
-  respawnMinMs: 12_000,
-  respawnMaxMs: 30_000,
-  lifetimeMs: 180_000,
+  targetCount: 36,
+  respawnMinMs: 2_000,
+  respawnMaxMs: 5_000,
+  lifetimeMs: 300_000,
   engagedTimeoutMs: 90_000,
 };
 
