@@ -13,7 +13,8 @@
     "dev": "tsx watch --tsconfig tsconfig.dev.json src/main.ts",
     "start": "tsx --tsconfig tsconfig.dev.json src/main.ts",
     "seed:progression": "tsx --tsconfig tsconfig.dev.json scripts/seed-progression.ts",
-    "grant:creature": "tsx --tsconfig tsconfig.dev.json scripts/grant-creature.ts"
+    "grant:creature": "tsx --tsconfig tsconfig.dev.json scripts/grant-creature.ts",
+    "grant:item": "tsx --tsconfig tsconfig.dev.json scripts/grant-item.ts"
   },
   "dependencies": {
     "@colyseus/core": "^0.18.14",
