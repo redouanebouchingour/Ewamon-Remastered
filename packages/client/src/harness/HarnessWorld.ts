@@ -857,6 +857,19 @@ export class HarnessWorld {
       playSfx: (id) => this.audio.play(id, null),
       setBattleHud: (m) => this.hud.setBattle(m),
       setThreat: (on) => this.audio.setThreat(on),
+      // the signature cinematic's aim, as World3D does it
+      project: (ref, out) => {
+        const bb = part3Of(r)?.stage.battler(ref) ?? null;
+        if (bb === null) return false;
+        const rect = this.canvas.getBoundingClientRect();
+        const [tx, ty] = this.project(bb.topWorld(new Vector3()));
+        const [fx, fy] = this.project(bb.feet(new Vector3()));
+        out[0] = rect.left + tx;
+        out[1] = rect.top + ty;
+        out[2] = rect.left + fx;
+        out[3] = rect.top + fy;
+        return true;
+      },
     };
   }
 

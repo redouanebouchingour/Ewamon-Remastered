@@ -27,6 +27,7 @@ import {
   SHAKE_MS, SHINY_MS, STAGE_MS, STATUS_MS, SWITCH_IN_MS, SWITCH_OUT_MS, TURN_BUDGET, WEATHER_MS,
 } from './constants';
 import type { MoveAnimDef, MoveAnimRegistry } from './moveAnims';
+import { leadMs as sigLead, signatureOf } from './signatures';
 
 export type KeyPose = 'idle' | 'windup' | 'lunge' | 'recoil' | 'hurt' | 'faint' | 'enter' | 'exit' | 'celebrate';
 export type CameraShot = 'wide' | 'attacker' | 'defender' | 'impact' | 'ko' | 'throw';
@@ -51,6 +52,9 @@ export type Keyframe =
   | { readonly at: number; readonly k: 'weather'; readonly kind: string }
   | { readonly at: number; readonly k: 'orb'; readonly phase: 'throw' | 'shake' | 'catch' | 'break'; readonly n: number }
   | { readonly at: number; readonly k: 'inputLock'; readonly locked: boolean }
+  // a signature move's cinematic overlay (signatures.ts): 'start' with the cut-in, 'aim' as the charge begins (the
+  // camera has settled: the overlay re-reads the battlers' screen positions)
+  | { readonly at: number; readonly k: 'cinematic'; readonly phase: 'start' | 'aim'; readonly move: string; readonly who: Ref; readonly target: Ref | null; readonly mode: 'full' | 'short' }
   | { readonly at: number; readonly k: 'end' };
 
 export type KeyframeKind = Keyframe['k'];
@@ -83,6 +87,8 @@ export interface TimelineCtx {
   readonly activesOf?: (side: 0 | 1) => readonly [number, number] | undefined;
   /** Phase D6: whether a battler stands at the start of the events (doubles idles skip a fainted-in-place one). Default: yes. */
   readonly standing?: (r: Ref) => boolean;
+  /** Whether this battler already used signature move `move` earlier in the battle (its cinematic plays short). Default: never. */
+  readonly signatureSeen?: (r: Ref, move: string) => boolean;
 }
 
 /** Real time a crit slow-mo adds over its timeline span. */
@@ -198,6 +204,8 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
   let pending: Pending | null = null;
   let catchTarget: Ref | null = null;
   let shakesSeen = 0;
+  /** `side:slot:move` of the signature moves already used in these events (a second use plays short) */
+  const sigSeen = new Set<string>();
 
   const key = (r: Ref): string => `${r.side}:${r.slot}`;
   const scaleOf = (c: Cat): number => (c === 'fixed' ? 1 : c === 'other' ? fOther : fSpec);
@@ -331,15 +339,30 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         log(`${cap(name(e.who))} used ${e.move}!`, 'neutral');
         if (def === null) break;
         const selfish = mv!.target === 'self' || mv!.target === 'field';
+        // a signature move: its cinematic's cut-in, then lead / windup / travel uncompressed so its impact beat lands on
+        // the damage frame (signatures.ts)
+        const sig = selfish ? undefined : signatureOf(e.move);
+        if (sig !== undefined) {
+          const sk = `${key(e.who)}:${e.move}`;
+          const mode = (ctx.signatureSeen?.(e.who, e.move) ?? false) || sigSeen.has(sk) ? 'short' : 'full';
+          sigSeen.add(sk);
+          const target = e.targets !== undefined && e.targets.length > 0 ? e.targets[0]! : e.target;
+          push({ at: t, k: 'cinematic', phase: 'start', move: e.move, who: e.who, target, mode });
+          push({ at: t, k: 'camera', shot: 'wide', ms: Math.round(sigLead(sig, mode) + def.windupMs + def.travelMs + def.recoverMs) });
+          for (const id of sig.sfx) push({ at: t, k: 'sfx', id, at3d: e.who });
+          advance(sigLead(sig, mode), 'fixed');
+          push({ at: t, k: 'cinematic', phase: 'aim', move: e.move, who: e.who, target, mode });
+        }
+        const mf = sig !== undefined ? 1 : fOther;
         if (def.attackerPose !== 'idle') push({ at: t, k: 'pose', who: e.who, pose: def.attackerPose });
         push({ at: t, k: 'sfx', id: def.sfx, at3d: e.who });
         if (def.camera !== 'impact') push({ at: t, k: 'camera', shot: def.camera, ms: Math.round(def.windupMs + def.travelMs + def.recoverMs) });
-        const vfxAt = t + def.windupMs * fOther;
+        const vfxAt = t + def.windupMs * mf;
         if (e.targets !== undefined && e.targets.length > 0 && !selfish) {
           // Phase D6: a doubles spread move travels to every target
           for (const to of e.targets) push({ at: vfxAt, k: 'vfx', id: def.vfx, from: e.who, to, ms: def.travelMs > 0 ? def.travelMs : 500, type });
         } else push({ at: vfxAt, k: 'vfx', id: def.vfx, from: e.who, to: selfish ? e.who : e.target, ms: def.travelMs > 0 ? def.travelMs : 500, type });
-        advance(def.windupMs + def.travelMs, 'other');
+        advance(def.windupMs + def.travelMs, sig !== undefined ? 'fixed' : 'other');
         if (def.camera === 'impact') push({ at: t, k: 'camera', shot: 'impact', ms: Math.round(def.recoverMs + 200) });
         pending = { who: e.who, def };
         break;

@@ -1498,3 +1498,34 @@ light layout", give the design and the numbers.
 - `BattleMenu` shows `formMoveId(...)`'s MoveDef in the replaced slot (hollowmane in Rage Form: Hollow Crescent where
   Night Slash was) and still submits the slot's id; the server executes the signature. `MOVE_ANIMS['Hollow Crescent']`:
   a long windup, a lunge, the `form_rage` burst on the target, the impact camera. Test: `test/battle-forms.test.tsx`.
+
+## Signature move cinematics (2026-10-08)
+
+- **What.** A battle form's signature move (`BattleFormDef.signatureMove`) plays a DOM overlay over the arena:
+  letterbox bars and a dim, a cut-in band (the form's portrait, an eye glint, the move's name), then the move's own
+  SVG/CSS effect aimed from the attacker to the target: Hollow Crescent (a black crescent with a crimson edge, charged
+  in a crimson aura, a hairline cut and a crescent wound) and Vendetta Volley (both cannons charge while a crosshair
+  locks on, eight alternating tracers with muzzle flashes and shell casings, a fireball and a skull mark, embers). The
+  3D stage plays the move underneath as before (poses, the `form_rage` burst, the hit, hitstop, the camera shake).
+- **Data.** `battle/signatures.ts` `SIGNATURE_CINEMATICS` (move id → fx, portrait, name lines, kicker, glint, lead /
+  windup / travel / total ms, cut-in sfx); `MOVE_ANIMS` takes a signature move's windup / travel from it (camera
+  `wide`, so both battlers stay framed). Portraits: `public/signature/<species>_<form>.webp`, 256 px lossless,
+  the source's full canvas, from `pnpm --filter @ewa/sprite-pipeline portraits <ids…>` (`tools/sprite-pipeline/src/portraits.ts`,
+  stage 1's `recoverAlpha`). `signatures.test.tsx` fails when a content signature move has no cinematic or portrait.
+- **Timeline (deviation from §20.5.1: a 19th keyframe kind).** `moveUsed` of a signature move pushes
+  `cinematic { phase: 'start' }`, a `wide` camera cue and the cut-in sfx, spends the lead, pushes
+  `cinematic { phase: 'aim' }`, then plays the move; its lead, windup and travel are `fixed` (never compressed), so the
+  damage frame lands exactly on the overlay's impact beat (lead + windup + travel: 1780 / 1940 ms). A battler's first
+  use in a battle is `full` (lead 1100 ms); later uses (`TimelineCtx.signatureSeen`, the controller's per-battle set,
+  or a second use in the same events) are `short` (lead 250 ms, the overlay's clock starts 850 ms in). Reduced effects
+  change no `at`.
+- **Player / controller / overlay.** `TimelineTargets.cinematic?` (optional) gets 'start' / 'aim' and 'clear' when a
+  timeline is cut short (`finishNow`, `stop`). BattleController projects both battlers through the optional
+  `BattleView.project` (World3D / HarnessWorld: the billboard's top and feet through the battle camera, CSS px) and
+  writes `battle/cinematic.ts` (`useCinematicStore`) off the tick; 'aim' re-reads the points once the camera settled.
+  `SignatureCinematic` (mounted by BattleOverlay) is pure CSS animation keyed by the cue id; positions, the line angle /
+  length, the scales and `--skip` reach the module CSS through `cssVars`; it clears its cue after its total. Under
+  effective reduced motion the band fades in and out with the name, without the effect layer or the flash.
+- **Verified live** (harness over CDP, WebGPU, mirevale, hollowmane vs castlemaw): both moves aimed at the projected
+  battlers, the foe's Vendetta Volley mirrored (line angle 151°). The harness ticks slower than real time, so the
+  overlay's wall-clock auto-clear fires early there; the capture re-showed the cue before seeking its animations.

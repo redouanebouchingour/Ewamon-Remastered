@@ -12,7 +12,8 @@
     "typecheck": "tsc -b",
     "build": "tsx src/cli.ts build",
     "qa": "tsx src/cli.ts qa",
-    "import-legacy": "tsx src/import-legacy.ts"
+    "import-legacy": "tsx src/import-legacy.ts",
+    "portraits": "tsx src/portraits.ts"
   },
   "dependencies": {
     "sharp": "^0.34.3",

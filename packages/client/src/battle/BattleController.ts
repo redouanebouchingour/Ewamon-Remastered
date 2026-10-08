@@ -54,6 +54,8 @@ import { LOG_DWELL_MIN } from './constants';
 import { actionErrorLabel } from './labels';
 import { foeOfState } from './foe';
 import type { FoeIdentity } from './foe';
+import { useCinematicStore } from './cinematic';
+import type { CinematicCue, CinematicPoint } from './cinematic';
 import { createMoveAnimRegistry } from './moveAnims';
 import type { MoveAnimRegistry } from './moveAnims';
 import type { RaidInfo } from './raid';
@@ -98,6 +100,11 @@ export interface BattleView {
   playSfx(id: string, at: StageRef | null): void;
   setBattleHud(m: BattleHudModel | null): void;
   setThreat(on: boolean): void;
+  /**
+   * A battler's sprite on screen, for the signature cinematic's aim: writes [top x, top y, feet x, feet y] in CSS px
+   * (viewport) and returns true, or false when it is not on screen. Optional: without it the overlay uses its layout.
+   */
+  project?(ref: StageRef, out: Float32Array): boolean;
   /**
    * Phase B7: the result card is up (the final timeline has played). `foeWon`: true when the other side won, false
    * when the player did, null for no winner (caught, fled, draw). The world plays the cheer / sad emotes.
@@ -329,6 +336,14 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
   let midLastDone = false;
   let bannerId = 0;
   let raid: RaidRun | null = null;
+  /** `side:slot:move` of every signature move a battler used this battle: a later use plays the short cinematic */
+  const sigUsed = new Set<string>();
+  let cinematicId = 0;
+  const projected = new Float32Array(4);
+  const pointOf = (ref: StageRef | null): CinematicPoint | null => {
+    if (ref === null || view?.project?.(ref, projected) !== true) return null;
+    return { x: (projected[0]! + projected[2]!) / 2, y: (projected[1]! + projected[3]!) / 2, h: Math.max(1, projected[3]! - projected[1]!) };
+  };
 
   const pushBanner = (text: string, speakerName?: string): void => {
     const speaker = speakerName ?? foe?.name ?? '';
@@ -478,6 +493,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     shinyOf: (r) => creatureAt(st, r.side, r.slot)?.isShiny === true,
     activesOf: (side) => (st.slots === 2 ? st.sides[side].actives : undefined),
     standing: (r) => (creatureAt(st, r.side, r.slot)?.hp ?? 0) > 0,
+    signatureSeen: (r, move) => sigUsed.has(`${r.side}:${r.slot}:${move}`),
     seat,
     instantText: deps.instantText(),
   });
@@ -551,6 +567,25 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       if (pendingLog.length < 64) pendingLog.push({ text, tone }); // alloc-ok: ≤ 1 small record per log frame
     },
     inputLock: () => undefined,
+    cinematic: (phase, move, from, to, mode) => {
+      // the store writes are deferred off the World3D tick, like the banners
+      if (phase === 'clear') {
+        defer(() => useCinematicStore.getState().clear());
+        return;
+      }
+      const a = pointOf(from);
+      const d = pointOf(to);
+      const forBattle = battleId;
+      if (phase === 'start') {
+        const cue: CinematicCue = { id: ++cinematicId, move, mode, fromNear: from?.side === 0, from: a, to: d, reduced: deps.reduced() };
+        defer(() => {
+          if (battleId === forBattle) useCinematicStore.getState().show(cue);
+        });
+        return;
+      }
+      const id = cinematicId;
+      defer(() => useCinematicStore.getState().aim(id, a, d));
+    },
     commit: () => hud.commit(),
     ended: () => defer(onTimelineEnd),
   };
@@ -671,6 +706,8 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
 
   /** Plays `tl`, which starts from `from` (doubles: the player's party → position map is seeded from its actives). */
   function play(tl: Timeline, from: BattleState): void {
+    // the signature moves this timeline plays count as used (the next timeline's cinematics play short)
+    for (const f of tl.frames) if (f.k === 'cinematic' && f.phase === 'start') sigUsed.add(`${f.who.side}:${f.who.slot}:${f.move}`);
     player.play(tl, seat, from.slots === 2 ? [from.sides[0].actives, from.sides[1].actives] : null);
   }
 
@@ -687,6 +724,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     x?: number | undefined; z?: number | undefined; yaw?: number | null | undefined;
   }): void {
     battleId = m.battleId;
+    sigUsed.clear();
     arena = m.x !== undefined && m.z !== undefined && Number.isFinite(m.x) && Number.isFinite(m.z) ? { x: m.x, z: m.z, yaw: m.yaw ?? null } : null;
     seat = m.seat;
     hud.setSeat(m.seat);
@@ -1075,6 +1113,8 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       view?.exitBattle();
     }
     hud.clear();
+    sigUsed.clear();
+    useCinematicStore.getState().clear();
     battleId = null;
     arena = null;
     state = null;

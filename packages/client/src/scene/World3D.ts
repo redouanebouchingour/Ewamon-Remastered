@@ -1388,6 +1388,20 @@ class World implements World3D {
       },
       setBattleHud: (m) => this.hudWriter.setBattle(m),
       setThreat: (on) => this.audio.setThreat(on),
+      project: (ref, out) => {
+        const bb = p3?.stage.battler(ref) ?? null;
+        if (bb === null) return false;
+        const rect = this.canvas.getBoundingClientRect();
+        const cam = r.camera.camera;
+        const top = bb.topWorld(this.sfxVec).project(cam);
+        if (top.z < -1 || top.z > 1) return false;
+        out[0] = rect.left + (top.x * 0.5 + 0.5) * rect.width;
+        out[1] = rect.top + (-top.y * 0.5 + 0.5) * rect.height;
+        const feet = bb.feet(this.sfxVec).project(cam);
+        out[2] = rect.left + (feet.x * 0.5 + 0.5) * rect.width;
+        out[3] = rect.top + (-feet.y * 0.5 + 0.5) * rect.height;
+        return true;
+      },
     };
   }
 

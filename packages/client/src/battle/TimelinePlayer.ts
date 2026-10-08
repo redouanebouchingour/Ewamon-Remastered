@@ -41,6 +41,11 @@ export interface TimelineTargets {
   /** a battle form: the battler's sprite becomes the form's */
   form(who: Ref, form: string): void;
   orb(phase: 'throw' | 'shake' | 'catch' | 'break', n: number): void;
+  /**
+   * A signature move's cinematic overlay (signatures.ts): 'start' mounts it, 'aim' re-reads the battlers' screen
+   * positions as the charge begins, 'clear' drops it (a timeline finished early or stopped). Optional: recorders skip it.
+   */
+  cinematic?(phase: 'start' | 'aim' | 'clear', move: string, from: BattlerRef | null, to: BattlerRef | null, mode: 'full' | 'short'): void;
   /** a battler (re)enters: the controller swaps the displayed creature when the party slot changed */
   enter(who: Ref): void;
   log(text: string, tone: LogTone): void;
@@ -80,6 +85,8 @@ export class TimelinePlayer {
   private slowScale = 1;
   private scale = 1;
   private durationMs = 0;
+  /** a cinematic overlay is up (cleared when the timeline is cut short) */
+  private cinematicUp = false;
   /** the viewer's core side: core refs map to stage positions through it */
   private seat: 0 | 1 = 0;
   /** Phase D6: true while a doubles timeline plays; `posOf[side][partyIndex]` = its field position, -1 = off the field */
@@ -194,6 +201,7 @@ export class TimelinePlayer {
     }
     this.t.commit();
     this.stopClock();
+    this.clearCinematic();
     this.playing = false;
   }
 
@@ -201,6 +209,13 @@ export class TimelinePlayer {
   stop(): void {
     this.playing = false;
     this.stopClock();
+    this.clearCinematic();
+  }
+
+  private clearCinematic(): void {
+    if (!this.cinematicUp) return;
+    this.cinematicUp = false;
+    this.t.cinematic?.('clear', '', null, null, 'full');
   }
 
   private stopClock(): void {
@@ -277,6 +292,10 @@ export class TimelinePlayer {
         return;
       case 'inputLock':
         t.inputLock(f.locked);
+        return;
+      case 'cinematic':
+        this.cinematicUp = true;
+        t.cinematic?.(f.phase, f.move, this.ref(f.who), this.refOrNull(f.target), f.mode);
         return;
       case 'end':
         this.playing = false;
