@@ -71,7 +71,7 @@ describe('signature cinematics: data', () => {
     const manifest = JSON.parse(readFileSync(resolve(PUBLIC, 'audio', 'manifest.json'), 'utf8')) as { sfx: Record<string, unknown> };
     for (const [move, c] of Object.entries(SIGNATURE_CINEMATICS)) {
       expect(existsSync(resolve(PUBLIC, 'signature', `${c.portrait}.webp`)), c.portrait).toBe(true);
-      for (const id of c.sfx) expect(manifest.sfx[id], id).toBeDefined();
+      for (const id of [...c.sfx, c.aimSfx]) expect(manifest.sfx[id], id).toBeDefined();
       expect(c.lines.join(move.includes(' ') ? ' ' : ''), move).toBe(move);
       expect(c.totalMs, move).toBeGreaterThan(impactAt(c) + 500);
     }
@@ -95,6 +95,9 @@ describe('signature cinematics: timeline', () => {
     expect(at(tl.frames, (f) => f.k === 'pose' && f.pose === 'lunge')).toBe(t0 + c.leadMs);
     expect(at(tl.frames, (f) => f.k === 'hp')).toBe(t0 + impactAt(c));
     expect(tl.frames.filter((f) => f.k === 'sfx' && c.sfx.includes(f.id)).every((f) => f.at === t0)).toBe(true);
+    // the move's own sound from the charge, in place of the type's move sfx
+    expect(tl.frames.find((f) => f.k === 'sfx' && f.id === c.aimSfx)?.at).toBe(t0 + c.leadMs);
+    expect(tl.frames.some((f) => f.k === 'sfx' && f.id === 'move_ghost')).toBe(false);
   });
 
   it('a battler’s second use (in the same events or a later turn) plays short; a plain move has no cinematic', () => {

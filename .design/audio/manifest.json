@@ -1494,6 +1494,174 @@
     },
     {
       "bus": "sfx",
+      "gainDb": -2,
+      "id": "sig_aurora_requiem",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2.2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3550192992,
+        "text": "A calm shimmer and cold wind, glassy chimes, a crystal forming, then cracking and shattering."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -2,
+      "id": "sig_bankai_sever",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 722551793,
+        "text": "A low pressure drone, a blade drawn, a glint, a whoosh, a beat of silence, two razor cuts and an eerie ring."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -2,
+      "id": "sig_cosmic_miracle",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2.4,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2855365857,
+        "text": "Healing chimes, falling star pews, a bright nova burst, then a gentle cure shimmer."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -2,
+      "id": "sig_cosmic_pyre",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2641751256,
+        "text": "Five rising star chimes, gathering fire, a comet whoosh, then a roaring pillar of flame."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -2,
+      "id": "sig_foxfire_voltage",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 1.9,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2406198869,
+        "text": "Crackling foxfire, quick laser launches, electric zaps landing, a cage of lightning snapping shut, a static buzz."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -2,
+      "id": "sig_hollow_crescent",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 1.8,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 763272710,
+        "text": "A dark swell and a ghostly breath, a heavy slash, a crunching cut and an ominous ring."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -2,
+      "id": "sig_kamehameha",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2.3,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3081299703,
+        "text": "A long rising energy hum, a massive beam firing with a roar, then a huge blast."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -2,
+      "id": "sig_rift_collapse",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1493683934,
+        "text": "Low glass cracks, a descending tear, a rising suck, a heavy slam and tinkling shards."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -2,
+      "id": "sig_sparking_grace",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 1.6,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2899286063,
+        "text": "A sparkling rising ribbon, a dancing electric zap, a crackling bloom with a shimmer tail."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -2,
+      "id": "sig_stellar_devour",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2.2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3554563690,
+        "text": "A deep inhale and drone, a slow drift, a heavy swallowing boom, a whirring spin-up, a collapse and a pop."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -2,
+      "id": "sig_sunbreaker_barrage",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2416648934,
+        "text": "A radiant swell, six rapid heavy punches, then a cracking blast."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": -2,
+      "id": "sig_vendetta_volley",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 24626542,
+        "text": "Cannons humming and a lock-on tone, eight rapid gunshots with metal pings and shell casings, a fireball."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
       "gainDb": -10,
       "id": "spawn_shimmer",
       "maxConcurrent": 3,

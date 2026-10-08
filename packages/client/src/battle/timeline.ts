@@ -355,7 +355,8 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         }
         const mf = sig !== undefined ? 1 : fOther;
         if (def.attackerPose !== 'idle') push({ at: t, k: 'pose', who: e.who, pose: def.attackerPose });
-        push({ at: t, k: 'sfx', id: def.sfx, at3d: e.who });
+        // a signature move plays its own sound design from the charge (its impact lands on the damage frame)
+        push({ at: t, k: 'sfx', id: sig !== undefined ? sig.aimSfx : def.sfx, at3d: e.who });
         if (def.camera !== 'impact') push({ at: t, k: 'camera', shot: def.camera, ms: Math.round(def.windupMs + def.travelMs + def.recoverMs) });
         const vfxAt = t + def.windupMs * mf;
         if (e.targets !== undefined && e.targets.length > 0 && !selfish) {

@@ -1,6 +1,17 @@
 {
   "blocked": [],
   "cached": [
+    "ambience/capital",
+    "ambience/cinder",
+    "ambience/forge",
+    "ambience/grove",
+    "ambience/marrow",
+    "ambience/rift",
+    "ambience/salt",
+    "ambience/shrine",
+    "ambience/sky",
+    "ambience/storm",
+    "ambience/vesper",
     "sfx/anvil_strike_1",
     "sfx/anvil_strike_2",
     "sfx/bell_toll_1",
@@ -367,8 +378,8 @@
       },
       "sfx": {
         "derived": 17,
-        "direct": 221,
-        "total": 238,
+        "direct": 233,
+        "total": 250,
         "unmapped": 0
       },
       "stem": {
@@ -384,24 +395,25 @@
         "unmapped": 0
       }
     },
-    "covered": 366,
+    "covered": 378,
     "fraction": 1,
-    "total": 366
+    "total": 378
   },
-  "entries": 298,
+  "entries": 310,
   "failed": [],
   "ingested": [
-    "ambience/capital",
-    "ambience/cinder",
-    "ambience/forge",
-    "ambience/grove",
-    "ambience/marrow",
-    "ambience/rift",
-    "ambience/salt",
-    "ambience/shrine",
-    "ambience/sky",
-    "ambience/storm",
-    "ambience/vesper"
+    "sfx/sig_aurora_requiem_1",
+    "sfx/sig_bankai_sever_1",
+    "sfx/sig_cosmic_miracle_1",
+    "sfx/sig_cosmic_pyre_1",
+    "sfx/sig_foxfire_voltage_1",
+    "sfx/sig_hollow_crescent_1",
+    "sfx/sig_kamehameha_1",
+    "sfx/sig_rift_collapse_1",
+    "sfx/sig_sparking_grace_1",
+    "sfx/sig_stellar_devour_1",
+    "sfx/sig_sunbreaker_barrage_1",
+    "sfx/sig_vendetta_volley_1"
   ],
   "missing": [],
   "ok": true,

@@ -45,6 +45,11 @@ export interface SignatureCinematic {
   readonly totalMs: number;
   /** sfx played as the cut-in starts (ids from the audio manifest) */
   readonly sfx: readonly string[];
+  /**
+   * the move's own sound design (`sig_*`, audio manifest), played from the charge (the `aim` frame) in place of the type's
+   * move sfx: its impact transient sits at windupMs + travelMs, on the damage frame (tools/audio-pipeline/cc0-tools/mix.py)
+   */
+  readonly aimSfx: string;
   /** the 3D side of the move under the overlay (MOVE_ANIMS takes windup / travel from above, camera `wide`) */
   readonly anim: Pick<MoveAnimDef, 'recoverMs' | 'attackerPose'> & { readonly vfx?: string };
 }
@@ -61,7 +66,7 @@ export const SIGNATURE_CINEMATICS: Readonly<Record<string, SignatureCinematic>> 
   'Hollow Crescent': {
     fx: 'crescent', species: 'hollowmane', portrait: 'hollowmane_rage', glint: [36, 32], lines: ['Hollow', 'Crescent'], kicker: RAGE,
     palette: { accent: '#e0193a', deep: '#3a0612', hot: '#ff4a62' },
-    leadMs: 1100, windupMs: 420, travelMs: 260, totalMs: 2800, sfx: ['wind_gust', 'cry_ghost'],
+    leadMs: 1100, windupMs: 420, travelMs: 260, totalMs: 2800, sfx: ['wind_gust', 'cry_ghost'], aimSfx: 'sig_hollow_crescent',
     anim: { recoverMs: 380, vfx: 'form_rage', attackerPose: 'lunge' },
   },
   // castlemaw's Rage Form: both arm cannons charge while a crosshair locks on, an alternating tracer volley, a
@@ -69,7 +74,7 @@ export const SIGNATURE_CINEMATICS: Readonly<Record<string, SignatureCinematic>> 
   'Vendetta Volley': {
     fx: 'volley', species: 'castlemaw', portrait: 'castlemaw_rage', glint: [38, 27], lines: ['Vendetta', 'Volley'], kicker: RAGE,
     palette: { accent: '#ff6a1a', deep: '#4a1a08', hot: '#ff9a4a' },
-    leadMs: 1100, windupMs: 420, travelMs: 420, totalMs: 3000, sfx: ['wind_gust', 'cry_steel'],
+    leadMs: 1100, windupMs: 420, travelMs: 420, totalMs: 3000, sfx: ['wind_gust', 'cry_steel'], aimSfx: 'sig_vendetta_volley',
     anim: { recoverMs: 360, vfx: 'form_rage', attackerPose: 'windup' },
   },
   // galaxion: five star-fires kindle into a constellation round it and fuse into a violet comet that arcs onto the foe,
@@ -77,7 +82,7 @@ export const SIGNATURE_CINEMATICS: Readonly<Record<string, SignatureCinematic>> 
   'Cosmic Pyre': {
     fx: 'pyre', species: 'galaxion', portrait: 'galaxion', glint: [36, 19], lines: ['Cosmic', 'Pyre'], kicker: LEGENDARY,
     palette: { accent: '#ff7a1a', deep: '#2a0a4a', hot: '#c9a0ff' },
-    leadMs: 1100, windupMs: 480, travelMs: 360, totalMs: 3000, sfx: ['wind_gust', 'cry_fire'],
+    leadMs: 1100, windupMs: 480, travelMs: 360, totalMs: 3000, sfx: ['wind_gust', 'cry_fire'], aimSfx: 'sig_cosmic_pyre',
     anim: { recoverMs: 360, attackerPose: 'windup' },
   },
   // voltaura: a ribbon of pink-gold lightning pirouettes round it and dances to the foe in a graceful zig-zag, blooming
@@ -85,21 +90,21 @@ export const SIGNATURE_CINEMATICS: Readonly<Record<string, SignatureCinematic>> 
   'Sparking Grace': {
     fx: 'grace', species: 'voltaura', portrait: 'voltaura', glint: [38, 27], lines: ['Sparking', 'Grace'], kicker: LEGENDARY,
     palette: { accent: '#ffd23a', deep: '#3a1840', hot: '#ff8ad8' },
-    leadMs: 1100, windupMs: 420, travelMs: 240, totalMs: 2800, sfx: ['wind_gust', 'cry_electric'],
+    leadMs: 1100, windupMs: 420, travelMs: 240, totalMs: 2800, sfx: ['wind_gust', 'cry_electric'], aimSfx: 'sig_sparking_grace',
     anim: { recoverMs: 340, attackerPose: 'windup' },
   },
   // sunjaw: a sun rises behind it, then a barrage of six blazing fists and a final sun-burst that cracks the air
   'Sunbreaker Barrage': {
     fx: 'sunbreaker', species: 'sunjaw', portrait: 'sunjaw', glint: [41, 23], lines: ['Sunbreaker', 'Barrage'], kicker: LEGENDARY,
     palette: { accent: '#ffb020', deep: '#4a1606', hot: '#ffe08a' },
-    leadMs: 1100, windupMs: 420, travelMs: 480, totalMs: 3000, sfx: ['wind_gust', 'cry_fighting'],
+    leadMs: 1100, windupMs: 420, travelMs: 480, totalMs: 3000, sfx: ['wind_gust', 'cry_fighting'], aimSfx: 'sig_sunbreaker_barrage',
     anim: { recoverMs: 380, attackerPose: 'lunge' },
   },
   // raikitsune: nine foxfire wisps fan out like tails, crackling, and home in on the foe, which a cage of lightning seals
   'Foxfire Voltage': {
     fx: 'foxfire', species: 'raikitsune', portrait: 'raikitsune', glint: [55, 31], lines: ['Foxfire', 'Voltage'], kicker: LEGENDARY,
     palette: { accent: '#4ad8ff', deep: '#10204a', hot: '#ffcf4a' },
-    leadMs: 1100, windupMs: 460, travelMs: 380, totalMs: 3000, sfx: ['wind_gust', 'cry_electric'],
+    leadMs: 1100, windupMs: 460, travelMs: 380, totalMs: 3000, sfx: ['wind_gust', 'cry_electric'], aimSfx: 'sig_foxfire_voltage',
     anim: { recoverMs: 360, attackerPose: 'windup' },
   },
   // zenryu: a long cupped-hands charge of blue-white ki drawing light inward, then a beam across the arena and a
@@ -107,7 +112,7 @@ export const SIGNATURE_CINEMATICS: Readonly<Record<string, SignatureCinematic>> 
   Kamehameha: {
     fx: 'kamehameha', species: 'zenryu', portrait: 'zenryu', glint: [41, 19], lines: ['Kame', 'hameha'], kicker: LEGENDARY,
     palette: { accent: '#4ab8ff', deep: '#0a1a40', hot: '#d8f4ff' },
-    leadMs: 1100, windupMs: 700, travelMs: 300, totalMs: 3200, sfx: ['wind_gust', 'cry_dragon'],
+    leadMs: 1100, windupMs: 700, travelMs: 300, totalMs: 3200, sfx: ['wind_gust', 'cry_dragon'], aimSfx: 'sig_kamehameha',
     anim: { recoverMs: 400, attackerPose: 'windup' },
   },
   // lumyth: a halo and a constellation, a shower of falling stars on the foe, a nova, then motes of light flow back and
@@ -115,14 +120,14 @@ export const SIGNATURE_CINEMATICS: Readonly<Record<string, SignatureCinematic>> 
   'Cosmic Miracle': {
     fx: 'miracle', species: 'lumyth', portrait: 'lumyth', glint: [51, 27], lines: ['Cosmic', 'Miracle'], kicker: MYTHICAL,
     palette: { accent: '#f4d27a', deep: '#1a1048', hot: '#fff6d8' },
-    leadMs: 1100, windupMs: 480, travelMs: 420, totalMs: 3100, sfx: ['wind_gust', 'cry_cosmic'],
+    leadMs: 1100, windupMs: 480, travelMs: 420, totalMs: 3100, sfx: ['wind_gust', 'cry_cosmic'], aimSfx: 'sig_cosmic_miracle',
     anim: { recoverMs: 420, attackerPose: 'windup' },
   },
   // noxmyth: a black hole with a turning accretion disc swallows the starlight, drifts onto the foe and devours it
   'Stellar Devour': {
     fx: 'devour', species: 'noxmyth', portrait: 'noxmyth', glint: [38, 28], lines: ['Stellar', 'Devour'], kicker: MYTHICAL,
     palette: { accent: '#9a4aff', deep: '#120620', hot: '#d0a8ff' },
-    leadMs: 1100, windupMs: 480, travelMs: 360, totalMs: 3100, sfx: ['wind_gust', 'cry_dark'],
+    leadMs: 1100, windupMs: 480, travelMs: 360, totalMs: 3100, sfx: ['wind_gust', 'cry_dark'], aimSfx: 'sig_stellar_devour',
     anim: { recoverMs: 400, attackerPose: 'windup' },
   },
   // bankaiser: spiritual pressure rises like a black pillar, the red line on its armour ignites, one flash-step and a
@@ -130,7 +135,7 @@ export const SIGNATURE_CINEMATICS: Readonly<Record<string, SignatureCinematic>> 
   'Bankai Sever': {
     fx: 'bankai', species: 'bankaiser', portrait: 'bankaiser', glint: [49, 19], lines: ['Bankai', 'Sever'], kicker: LEGENDARY,
     palette: { accent: '#c8d4e0', deep: '#0c0f16', hot: '#ff2a3a' },
-    leadMs: 1100, windupMs: 520, travelMs: 120, totalMs: 2900, sfx: ['wind_gust', 'cry_steel'],
+    leadMs: 1100, windupMs: 520, travelMs: 120, totalMs: 2900, sfx: ['wind_gust', 'cry_steel'], aimSfx: 'sig_bankai_sever',
     anim: { recoverMs: 380, attackerPose: 'lunge' },
   },
   // voidraxis: space cracks round it, a rift tears open over the foe pouring violet light, then collapses inward and
@@ -138,7 +143,7 @@ export const SIGNATURE_CINEMATICS: Readonly<Record<string, SignatureCinematic>> 
   'Rift Collapse': {
     fx: 'rift', species: 'voidraxis', portrait: 'voidraxis', glint: [26, 26], lines: ['Rift', 'Collapse'], kicker: LEGENDARY,
     palette: { accent: '#b04aff', deep: '#0a0418', hot: '#5af0ff' },
-    leadMs: 1100, windupMs: 460, travelMs: 340, totalMs: 3000, sfx: ['wind_gust', 'cry_cosmic'],
+    leadMs: 1100, windupMs: 460, travelMs: 340, totalMs: 3000, sfx: ['wind_gust', 'cry_cosmic'], aimSfx: 'sig_rift_collapse',
     anim: { recoverMs: 380, attackerPose: 'windup' },
   },
   // glacinid: a calm winter sky — aurora ribbons and slow snow — then an icy trail coils onto the foe and seals it in
@@ -146,7 +151,7 @@ export const SIGNATURE_CINEMATICS: Readonly<Record<string, SignatureCinematic>> 
   'Aurora Requiem': {
     fx: 'aurora', species: 'glacinid', portrait: 'glacinid', glint: [28, 34], lines: ['Aurora', 'Requiem'], kicker: LEGENDARY,
     palette: { accent: '#7af0d0', deep: '#06182a', hot: '#e8fbff' },
-    leadMs: 1100, windupMs: 460, travelMs: 340, totalMs: 3000, sfx: ['wind_gust', 'cry_ice'],
+    leadMs: 1100, windupMs: 460, travelMs: 340, totalMs: 3000, sfx: ['wind_gust', 'cry_ice'], aimSfx: 'sig_aurora_requiem',
     anim: { recoverMs: 380, attackerPose: 'windup' },
   },
 };

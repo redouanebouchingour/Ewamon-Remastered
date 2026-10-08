@@ -1,11 +1,11 @@
 {
   "bytes": {
     "budget": 83886080,
-    "m4a": 40989656,
-    "total": 76262417,
-    "webm": 35272761
+    "m4a": 41244951,
+    "total": 76730775,
+    "webm": 35485824
   },
-  "clips": 366,
+  "clips": 378,
   "flagged": [
     {
       "id": "sfx/anvil_strike_1",
@@ -442,6 +442,18 @@
     {
       "id": "sfx/raid_phase_1",
       "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.7"
+    },
+    {
+      "id": "sfx/sig_bankai_sever_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.87"
+    },
+    {
+      "id": "sfx/sig_cosmic_pyre_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -20.87"
+    },
+    {
+      "id": "sfx/sig_sunbreaker_barrage_1",
+      "reason": "gain clamped to the -3 dBTP ceiling; lufs -21.34"
     },
     {
       "id": "sfx/splash_1",

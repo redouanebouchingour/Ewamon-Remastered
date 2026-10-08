@@ -1554,3 +1554,10 @@ light layout", give the design and the numbers.
   moves keep theirs. The timeline's `vfx` keyframe already carried the move's `type`: `TimelineTargets.vfx`,
   `BattleView.vfx` and World3D / HarnessWorld now pass it to `BattleStage.vfx`, which colours the style.
   `moveStyles.test.ts` asserts every damaging move has a style and every style is a VFX id.
+
+## Signature move sounds (2026-10-08)
+
+- `SignatureCinematic.aimSfx` (`sig_*`, audio manifest): the move's own sound design, pushed at the cinematic's `aim`
+  frame (the charge) in place of the type's move sfx, in full and short cues alike — its impact transient lands on the
+  damage frame (tools/audio-pipeline IMPLEMENTATION-NOTES "Signature-move sound designs"). The cut-in still opens with
+  `wind_gust` + the type's cry; the damage frame still plays its `hit_*`.

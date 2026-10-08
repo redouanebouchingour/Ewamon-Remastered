@@ -286,6 +286,8 @@ Every night and drone layer names "one soft event on the first beat of every bar
 
 ## 6. SOUND EFFECTS AND STINGERS — 174 IDS, 287 VARIANTS
 
+Amended 2026-10-08: + 12 signature-move designs (`sig_*`, one variant each; layered CC0 premixes in `tools/audio-pipeline/cc0-tools/mix.py`, each timed from its cinematic's charge so the impact lands on the damage frame) → **186 ids, 299 variants, 378 jobs**; 73.18 MiB encoded.
+
 6.1 **Families.**
 
 | Family | Ids | Variants | Bus | Boot-validated (§20.7.4) |
@@ -446,6 +448,18 @@ Every night and drone layer names "one soft event on the first beat of every bar
 | `pylon_crackle` | sfx | 2 | 1.5 | -10 | 2 | P1 | S | High-voltage crackle and buzz from a power line insulator, erratic. | storm biome pylons (positional emitter) |
 | `raid_roar` | sfx | 1 | 2.5 | 0 | 1 | P2 | S | An enormous monster roar, deep and long, with a ground-shaking low end. | raid boss appears / phase change |
 | `raid_phase` | sfx | 1 | 2 | -4 | 1 | P2 | S | A massive impact boom with a shattering crack and a rising rumble, signalling a boss growing stronger. | raid phase ≥ 1 begins |
+| `sig_aurora_requiem` | sfx | 1 | 2.2 | -2 | 1 | P2 | S | A calm shimmer and cold wind, glassy chimes, a crystal forming, then cracking and shattering. | glacinid's signature (Aurora Requiem), from the charge |
+| `sig_bankai_sever` | sfx | 1 | 2 | -2 | 1 | P2 | S | A low pressure drone, a blade drawn, a glint, a whoosh, a beat of silence, two razor cuts and an eerie ring. | bankaiser's signature (Bankai Sever), from the charge |
+| `sig_cosmic_miracle` | sfx | 1 | 2.4 | -2 | 1 | P2 | S | Healing chimes, falling star pews, a bright nova burst, then a gentle cure shimmer. | lumyth's signature (Cosmic Miracle), from the charge |
+| `sig_cosmic_pyre` | sfx | 1 | 2 | -2 | 1 | P2 | S | Five rising star chimes, gathering fire, a comet whoosh, then a roaring pillar of flame. | galaxion's signature (Cosmic Pyre), from the charge |
+| `sig_foxfire_voltage` | sfx | 1 | 1.9 | -2 | 1 | P2 | S | Crackling foxfire, quick laser launches, electric zaps landing, a cage of lightning snapping shut, a static buzz. | raikitsune's signature (Foxfire Voltage), from the charge |
+| `sig_hollow_crescent` | sfx | 1 | 1.8 | -2 | 1 | P2 | S | A dark swell and a ghostly breath, a heavy slash, a crunching cut and an ominous ring. | hollowmane's Rage Form signature (Hollow Crescent), from the charge |
+| `sig_kamehameha` | sfx | 1 | 2.3 | -2 | 1 | P2 | S | A long rising energy hum, a massive beam firing with a roar, then a huge blast. | zenryu's signature (Kamehameha), from the charge |
+| `sig_rift_collapse` | sfx | 1 | 2 | -2 | 1 | P2 | S | Low glass cracks, a descending tear, a rising suck, a heavy slam and tinkling shards. | voidraxis's signature (Rift Collapse), from the charge |
+| `sig_sparking_grace` | sfx | 1 | 1.6 | -2 | 1 | P2 | S | A sparkling rising ribbon, a dancing electric zap, a crackling bloom with a shimmer tail. | voltaura's signature (Sparking Grace), from the charge |
+| `sig_stellar_devour` | sfx | 1 | 2.2 | -2 | 1 | P2 | S | A deep inhale and drone, a slow drift, a heavy swallowing boom, a whirring spin-up, a collapse and a pop. | noxmyth's signature (Stellar Devour), from the charge |
+| `sig_sunbreaker_barrage` | sfx | 1 | 2 | -2 | 1 | P2 | S | A radiant swell, six rapid heavy punches, then a cracking blast. | sunjaw's signature (Sunbreaker Barrage), from the charge |
+| `sig_vendetta_volley` | sfx | 1 | 2 | -2 | 1 | P2 | S | Cannons humming and a lock-on tone, eight rapid gunshots with metal pings and shell casings, a fireball. | castlemaw's Rage Form signature (Vendetta Volley), from the charge |
 | `ui_click` | ui | 2 | 0.15 | -14 | 2 | P0 | S | A tiny soft wooden click, like a small bead tapped on a board, clean and short. | button press (mixer: click −14 dB) |
 | `ui_confirm` | ui | 1 | 0.35 | -12 | 1 | P0 | S | A soft pleasant two-tone confirm chime, warm and rounded. | confirm, select move |
 | `ui_back` | ui | 1 | 0.25 | -14 | 1 | P0 | S | A soft short descending pluck, like closing a small wooden box. | back / cancel |

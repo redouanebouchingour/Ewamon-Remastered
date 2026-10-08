@@ -431,6 +431,168 @@ def ui_stinger_thinning_1(rng):
     return envelope(out, [(0, 0), (2.0, -2), (4.2, -18)])
 
 
+
+# ─── signature moves (client battle/signatures.ts): one layered design per move, played from the cinematic's `aim`
+# frame (the charge) — t = 0 is the charge, the impact transient sits at windup + travel (the timeline's damage frame).
+
+def _shots(path, times, gain, rate=1.0, af=''):
+    return [(path, t, gain, rate, af) for t in times]
+
+
+# Hollow Crescent (impact 0.68): a dark swell and a ghostly breath, the slash, a crunching cut and an ominous ring
+sfx('sig_hollow_crescent_1', [
+    (R5 + 'sfx100v2_air_01.ogg', 0.0, -4, 0.7, 'areverse,lowpass=f=2500'),
+    (KS + 'spaceEngineLow_002.ogg', 0.0, -8, 0.6, 'lowpass=f=600,afade=t=in:d=0.4'),
+    ('subs/ghost-breath/ghostbreath.flac', 0.1, -12, 0.9, 'areverse'),
+    (AP + 'battle/swing3.wav', 0.42, -2, 0.8, ''),
+    (R3 + 'blade_02.ogg', 0.45, -6, 1.0, ''),
+    (KS + 'explosionCrunch_002.ogg', 0.68, 0, 0.8, ''),
+    (KX + 'impactGlass_heavy_001.ogg', 0.68, -6, 0.7, ''),
+    (KX + 'impactBell_heavy_001.ogg', 0.70, -14, 0.5, 'lowpass=f=1500,aecho=0.8:0.7:180|400:0.4|0.25'),
+], 1.8, fout=0.4)
+
+# Vendetta Volley (rounds 0.42 + 0.046·i, the last lands 0.84): cannons hum and a lock tone, eight shots, metal pings,
+# casings, the fireball
+sfx('sig_vendetta_volley_1', [
+    (KS + 'forceField_001.ogg', 0.0, -8, 0.8, 'afade=t=in:d=0.3'),
+    (KD + 'phaserUp3.ogg', 0.05, -10, 0.6, ''),
+    (KD + 'twoTone1.ogg', 0.30, -12, 1.0, ''),
+    *_shots(R4 + 'shot_01.ogg', [0.42, 0.512, 0.604, 0.696], -2),
+    *_shots(R4 + 'shot_02.ogg', [0.466, 0.558, 0.65, 0.742], -4),
+    *_shots(KX + 'impactMetal_heavy_001.ogg', [0.52, 0.61, 0.70, 0.79], -14, 1.2),
+    *_shots(KX + 'impactPlate_light_001.ogg', [0.75, 0.9, 1.05], -18, 1.6),
+    (KS + 'explosionCrunch_000.ogg', 0.84, 0, 0.9, ''),
+    (KS + 'lowFrequency_explosion_000.ogg', 0.84, -10, 1.0, ''),
+], 2.0, fout=0.4)
+
+# Cosmic Pyre (impact 0.84): five star-fires kindle, fire gathers, the comet launches and lands as a roaring pillar
+sfx('sig_cosmic_pyre_1', [
+    *[(KI + f'glass_00{i + 1}.ogg', 0.02 + 0.07 * i, -12, 1.2 + 0.1 * i, '') for i in range(5)],
+    (R3 + 'spell_fire_03.ogg', 0.10, -6, 0.8, ''),
+    (KS + 'thrusterFire_001.ogg', 0.48, -4, 0.9, ''),
+    (R5 + 'sfx100v2_air_02.ogg', 0.50, -8, 0.8, ''),
+    (R3 + 'spell_fire_06.ogg', 0.84, 0, 0.7, ''),
+    (KS + 'lowFrequency_explosion_001.ogg', 0.84, 0, 1.0, ''),
+    (KS + 'thrusterFire_003.ogg', 0.86, -6, 0.6, 'lowpass=f=2500'),
+], 2.0, fout=0.5)
+
+# Sparking Grace (impact 0.66): a sparkling rising ribbon, a dancing zap, a crackling bloom with a shimmer tail
+sfx('sig_sparking_grace_1', [
+    (KD + 'phaserUp2.ogg', 0.0, -6, 1.2, ''),
+    (MS + 'magical_5.ogg', 0.05, -8, 1.3, ''),
+    *[(KI + f'glass_00{i}.ogg', t, -14, 1.6, '') for i, t in ((2, 0.15), (4, 0.25), (6, 0.35))],
+    (KD + 'zapTwoTone.ogg', 0.42, -4, 1.0, ''),
+    (KD + 'laser4.ogg', 0.48, -8, 1.3, ''),
+    (KS + 'forceField_002.ogg', 0.66, -4, 1.4, ''),
+    (KX + 'impactGlass_light_002.ogg', 0.66, -6, 1.4, ''),
+    (MS + 'magical_3.ogg', 0.70, -8, 1.4, ''),
+], 1.6, fout=0.4)
+
+# Sunbreaker Barrage (fists land 0.55 + 0.07·i, the sun-burst 0.90): a radiant swell, six punches, a cracking blast
+sfx('sig_sunbreaker_barrage_1', [
+    (MS + 'magical_7_0.ogg', 0.0, -8, 0.8, ''),
+    (KS + 'thrusterFire_000.ogg', 0.0, -10, 0.7, 'lowpass=f=2000,afade=t=in:d=0.3'),
+    *[(KX + f'impactPunch_heavy_00{i % 5}.ogg', 0.55 + 0.07 * i, -2 - (i % 2), 1.0, '') for i in range(6)],
+    *[(AP + 'battle/swing.wav', 0.50 + 0.07 * i, -14, 1.2, '') for i in range(6)],
+    (KS + 'explosionCrunch_003.ogg', 0.90, 0, 0.9, ''),
+    (KX + 'impactGlass_heavy_002.ogg', 0.92, -4, 0.8, ''),
+    (KS + 'lowFrequency_explosion_000.ogg', 0.90, -4, 1.0, ''),
+], 2.0, fout=0.4)
+
+# Foxfire Voltage (wisps launch 0.46+, land 0.68–0.84, the cage 0.84): crackling foxfire, launches, zaps, the cage
+# snapping shut, a paralysing buzz
+sfx('sig_foxfire_voltage_1', [
+    (R3 + 'spell_fire_01.ogg', 0.0, -6, 1.3, ''),
+    (KS + 'forceField_000.ogg', 0.05, -10, 1.2, ''),
+    *[(KD + f'laser{n}.ogg', t, -10 - 2 * k, 1.2, '') for k, (n, t) in enumerate(((2, 0.46), (3, 0.52), (5, 0.58)))],
+    *[(KD + f'zap{n}.ogg', t, g, 1.2, '') for n, t, g in ((1, 0.68, -8), (2, 0.74, -8), (1, 0.80, -6))],
+    (KD + 'zapThreeToneDown.ogg', 0.84, -2, 1.0, ''),
+    (KS + 'forceField_003.ogg', 0.84, -11, 0.9, ''),
+    (KS + 'impactMetal_002.ogg', 0.84, -6, 1.0, ''),
+    (KS + 'computerNoise_001.ogg', 0.95, -20, 1.0, 'highpass=f=2000'),
+], 1.9, fout=0.4)
+
+# Kamehameha (beam fires 0.70, hits 1.00, holds to ~1.6): a long rising ki hum, the beam's roar, the blast
+sfx('sig_kamehameha_1', [
+    (KS + 'spaceEngineSmall_002.ogg', 0.0, -6, 0.7, 'afade=t=in:d=0.6'),
+    (KD + 'phaserUp6.ogg', 0.05, -8, 0.5, ''),
+    (KS + 'forceField_001.ogg', 0.30, -10, 1.0, ''),
+    (KS + 'laserLarge_002.ogg', 0.70, 0, 0.7, ''),
+    (KS + 'thrusterFire_002.ogg', 0.72, -8, 0.8, ''),
+    (KS + 'spaceEngineLarge_001.ogg', 0.72, -6, 0.9, 'lowpass=f=2000'),
+    (KS + 'lowFrequency_explosion_000.ogg', 1.00, 0, 1.0, ''),
+    (KS + 'explosionCrunch_001.ogg', 1.00, -3, 1.0, ''),
+    (KX + 'impactPunch_heavy_003.ogg', 1.00, -2, 0.8, ''),
+], 2.3, fout=0.6)
+
+# Cosmic Miracle (stars fall 0.46–0.90, the nova 0.90, healing after): cure chimes, falling pews, a bright nova, a cure
+sfx('sig_cosmic_miracle_1', [
+    (CM + 'Cure3.wav', 0.0, -6, 1.0, ''),
+    *_shots(KD + 'highDown.ogg', [0.46, 0.58, 0.70], -12, 1.3),
+    *[(KI + f'glass_00{i}.ogg', t + 0.1, -14, 1.4, '') for i, t in ((3, 0.46), (5, 0.58), (1, 0.70))],
+    (MS + 'magical_1_0.ogg', 0.90, 0, 1.0, ''),
+    (KX + 'impactGlass_heavy_001.ogg', 0.90, -4, 1.3, ''),
+    (KS + 'lowFrequency_explosion_001.ogg', 0.90, -8, 1.2, 'lowpass=f=1800'),
+    (CM + 'Cure6.wav', 1.00, -17, 1.0, ''),
+], 2.4, fout=0.6)
+
+# Stellar Devour (engulfs 0.84, collapses 1.17–1.29, pops 1.34): a deep inhale and drone, the drift, the swallow,
+# a whirring spin-up, the collapse and a pop
+sfx('sig_stellar_devour_1', [
+    (R5 + 'sfx100v2_air_01.ogg', 0.0, -7, 0.5, 'areverse,lowpass=f=900'),
+    (KS + 'spaceEngineLow_003.ogg', 0.0, -9, 0.5, 'lowpass=f=300,afade=t=in:d=0.4'),
+    (KD + 'phaserDown2.ogg', 0.48, -10, 0.5, ''),
+    (KS + 'lowFrequency_explosion_001.ogg', 0.84, 0, 0.7, ''),
+    (KX + 'impactPunch_heavy_002.ogg', 0.84, -3, 0.6, ''),
+    (R2 + 'roar_06.ogg', 0.86, -10, 0.5, 'lowpass=f=800'),
+    (KS + 'engineCircular_002.ogg', 0.90, -8, 0.8, ''),
+    (KD + 'lowDown.ogg', 1.17, -6, 0.7, ''),
+    (KS + 'explosionCrunch_004.ogg', 1.34, -2, 1.2, ''),
+    (MS + 'magical_6_0.ogg', 1.36, -10, 0.8, ''),
+], 2.2, fout=0.5)
+
+# Bankai Sever (the red line 0.20, glint 0.42, flash-step 0.52, cuts 0.64 / 0.665): pressure, the blade drawn, a glint,
+# a whoosh, a beat of silence, two cuts and an eerie ring
+sfx('sig_bankai_sever_1', [
+    (KS + 'spaceEngineLow_000.ogg', 0.0, -10, 0.55, 'lowpass=f=400,afade=t=in:d=0.2,afade=t=out:st=0.4:d=0.12'),
+    (R5 + 'sfx100v2_air_01.ogg', 0.0, -13, 0.6, 'areverse,afade=t=out:st=0.45:d=0.08'),
+    (AP + 'battle/sword-unsheathe3.wav', 0.20, -11, 0.9, ''),
+    (KI + 'glass_003.ogg', 0.42, -10, 2.0, ''),
+    (AP + 'battle/swing2.wav', 0.52, -2, 1.3, ''),
+    (R3 + 'blade_01.ogg', 0.64, 0, 1.1, ''),
+    (R3 + 'blade_03.ogg', 0.665, -2, 1.0, ''),
+    (KX + 'impactMetal_heavy_002.ogg', 0.64, -2, 0.7, ''),
+    (KX + 'impactBell_heavy_000.ogg', 0.68, -16, 0.5, 'lowpass=f=1200,aecho=0.8:0.7:200|450:0.4|0.25'),
+], 2.0, fout=0.5)
+
+# Rift Collapse (cracks 0–0.25, the tear 0.44, implosion 0.71, slams shut 0.80, shards after): low glass cracks, a
+# descending tear, a rising suck, the slam and tinkling shards
+sfx('sig_rift_collapse_1', [
+    *[(KX + f'impactGlass_light_00{i}.ogg', t, -10, 0.7, '') for i, t in ((0, 0.02), (1, 0.08), (2, 0.15), (3, 0.22))],
+    (KS + 'forceField_004.ogg', 0.0, -10, 0.6, ''),
+    (R5 + 'sfx100v2_air_02.ogg', 0.44, -4, 0.6, ''),
+    (KD + 'phaserDown3.ogg', 0.44, -10, 0.5, ''),
+    (KD + 'phaserUp4.ogg', 0.60, -6, 0.6, ''),
+    (KS + 'explosionCrunch_002.ogg', 0.80, 0, 0.8, ''),
+    (KX + 'impactGlass_heavy_003.ogg', 0.80, -2, 0.8, ''),
+    *[(R5 + f'sfx100v2_glass_0{i}.ogg', t, g, 1.2, '') for i, t, g in ((1, 0.90, -10), (2, 1.00, -12), (3, 1.12, -14), (4, 1.25, -16))],
+], 2.0, fout=0.5)
+
+# Aurora Requiem (the crystal 0.80, cracks 1.10, shatters 1.22): a cold shimmer and wind, chimes along the trail, the
+# freeze, a crack, the shatter
+sfx('sig_aurora_requiem_1', [
+    (MS + 'magical_4.ogg', 0.0, -6, 0.7, ''),
+    (A6, 0.0, -12, 0.8, 'afade=t=in:d=0.3,afade=t=out:st=0.9:d=0.6'),
+    *[(KI + f'glass_00{i}.ogg', t, -10, 1.5, '') for i, t in ((1, 0.46), (2, 0.54), (3, 0.62), (4, 0.70))],
+    (KS + 'forceField_002.ogg', 0.80, -7, 0.6, ''),
+    (KX + 'impactGlass_heavy_000.ogg', 0.80, 0, 1.3, ''),
+    (R5 + 'sfx100v2_glass_03.ogg', 1.10, -6, 0.9, ''),
+    (KX + 'impactGlass_light_001.ogg', 1.12, -8, 1.0, ''),
+    (KX + 'impactGlass_heavy_004.ogg', 1.22, 0, 1.0, ''),
+    (R5 + 'sfx100v2_glass_05.ogg', 1.24, -4, 1.0, ''),
+], 2.2, fout=0.5)
+
+
 def main():
     global _cur
     names = sys.argv[1:] or sorted(RECIPES)

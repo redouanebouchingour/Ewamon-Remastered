@@ -264,3 +264,15 @@ From `assets-src/audio/cc0/`:
 4. `node _tools/gen-sources.mjs`
 
 Then run `pnpm --filter @ewa/audio-pipeline ingest` and `pnpm --filter @ewa/audio-pipeline process -- --provider cc0`. `PROGRESS.md` there has the session checklist.
+
+## Signature-move sound designs (2026-10-08)
+
+- 12 new sfx ids `sig_*` (186 ids, 299 variants, 378 jobs; 73.18 MiB of 80): one layered premix per signature move
+  (`cc0-tools/mix.py`, "signature moves"), built only from the already-approved CC0 downloads — no new files. Each is
+  timed from its cinematic's charge (the client's `aim` frame, t = 0): the charge across the windup, the release, the
+  impact transient at windup + travel (the timeline's damage frame), a tail. Checked numerically (25 ms RMS): every
+  impact sits on its beat with a 3–13 dB jump; the loudest moment is the impact or the body / shatter just after it.
+  Nothing here was auditioned by ear (same open item as the rest of the CC0 set).
+- Rebuild: `python _tools/mix.py sig_<move>_1 …` (from `assets-src/audio/cc0/`), `node _tools/gen-sources.mjs`, then
+  `ingest`, `credits`, `process -- --provider cc0`. Only the 24 new files, the manifest and the credits change; every
+  other clip re-encodes byte-identical. 3 of the 12 are flagged "gain clamped to the -3 dBTP ceiling" (sharp transients).
