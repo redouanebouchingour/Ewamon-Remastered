@@ -578,7 +578,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       const d = pointOf(to);
       const forBattle = battleId;
       if (phase === 'start') {
-        const cue: CinematicCue = { id: ++cinematicId, move, mode, fromNear: from?.side === 0, from: a, to: d, reduced: deps.reduced() };
+        const cue: CinematicCue = { id: ++cinematicId, move, mode, fromNear: from?.side === 0, from: a, to: d, reduced: deps.reduced(), clock: player.clock() };
         defer(() => {
           if (battleId === forBattle) useCinematicStore.getState().show(cue);
         });

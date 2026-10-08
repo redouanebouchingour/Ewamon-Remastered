@@ -1,11 +1,12 @@
 /**
  * A signature move's cinematic (signatures.ts) over the arena: a letterboxed dim, the cut-in band (the creature's
  * portrait, an eye glint, the move's name), then the move's own SVG effect (sigfx/*) aimed from the attacker to the target at their
- * projected screen positions. Pure CSS animation on one clock: mounting a cue (keyed by its id) starts it, `--skip`
- * starts a short cue past the band; nothing is written per frame. The 3D stage plays the move underneath (poses, the
+ * projected screen positions. CSS animation on one clock: mounting a cue (keyed by its id) starts it, `--skip` starts a
+ * short cue past the band. In battle the cue carries the timeline's clock and every animation is held at it each frame,
+ * so the overlay keeps the 3D move's beats when the world steps slower than real time (the dev preview runs on its own). The 3D stage plays the move underneath (poses, the
  * rage burst, the hit, the camera shake). Non-interactive and hidden from assistive tech (the log names the move).
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { cssVars } from '../ui/cssVars';
 import type { CssVarMap } from '../ui/cssVars';
 import { useCinematicStore } from './cinematic';
@@ -57,18 +58,45 @@ export function SignatureCinematic() {
   // a cue's clock starts when it is shown: `aim` updates (same id) keep it running
   const cueId = cue?.id ?? null;
   const lifeMs = cue === null || sig === undefined ? 0 : sig.totalMs - skipMs(sig, cue.mode);
+  const clock = cue?.clock;
+  const rootRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (cueId === null) return;
-    const t = setTimeout(() => useCinematicStore.getState().clear(cueId), lifeMs);
-    return () => clearTimeout(t);
-  }, [cueId, lifeMs]);
+    const done = (): void => useCinematicStore.getState().clear(cueId);
+    if (clock === undefined) {
+      // wall clock: the CSS animations run on their own
+      const t = setTimeout(done, lifeMs);
+      return () => clearTimeout(t);
+    }
+    // the battle timeline's clock: every frame, each animation is held at the clock's time (a slow world, hitstop and
+    // crit slow-mo slow the overlay with the 3D move); a stalled clock still ends after a generous wall-clock bound
+    let raf = 0;
+    const tick = (): void => {
+      const t = clock();
+      const root = rootRef.current;
+      if (root !== null && typeof root.getAnimations === 'function') {
+        for (const a of root.getAnimations({ subtree: true })) {
+          if (a.playState !== 'paused') a.pause();
+          a.currentTime = t;
+        }
+      }
+      if (t >= lifeMs) done();
+      else raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    const bound = setTimeout(done, lifeMs * 4 + 5000);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(bound);
+    };
+  }, [cueId, lifeMs, clock]);
   if (cue === null || sig === undefined) return null;
   const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 720;
   const classes = cue.reduced ? `${s.root} ${s.reduced}` : s.root;
   const Fx = SIG_FX[sig.fx];
   return (
-    <div key={cue.id} className={classes} style={cssVars(cinematicVars(cue, sig, vw, vh))} data-testid="signaturecinematic" data-move={cue.move} data-mode={cue.mode} aria-hidden="true">
+    <div key={cue.id} ref={rootRef} className={classes} style={cssVars(cinematicVars(cue, sig, vw, vh))} data-testid="signaturecinematic" data-move={cue.move} data-mode={cue.mode} aria-hidden="true">
       <div className={s.dim} />
       <div className={s.tint} />
       {!cue.reduced && <Fx k={KIT} />}

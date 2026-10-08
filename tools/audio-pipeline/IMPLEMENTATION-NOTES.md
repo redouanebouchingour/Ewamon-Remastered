@@ -276,3 +276,6 @@ Then run `pnpm --filter @ewa/audio-pipeline ingest` and `pnpm --filter @ewa/audi
 - Rebuild: `python _tools/mix.py sig_<move>_1 …` (from `assets-src/audio/cc0/`), `node _tools/gen-sources.mjs`, then
   `ingest`, `credits`, `process -- --provider cc0`. Only the 24 new files, the manifest and the credits change; every
   other clip re-encodes byte-identical. 3 of the 12 are flagged "gain clamped to the -3 dBTP ceiling" (sharp transients).
+- Louder (user request, same day): each signature premix ends in `acompressor` (threshold 0.08, ratio 6, makeup 3) +
+  `alimiter` (0.7) (`_sig_loud` in mix.py), so the −20 LUFS pass no longer clamps any of them at −3 dBTP, and the
+  manifest plays them at **+6 dB** (was −2): 8–10 dB louder than the first cut, the master compressor catches peaks.

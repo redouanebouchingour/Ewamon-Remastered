@@ -123,6 +123,29 @@ describe('signature cinematics: timeline', () => {
     expect(at(tl.frames, (f) => f.k === 'hp') - t0).toBe(impactAt(c));
   });
 
+  it('the player’s clock runs on the timeline (slow steps, hitstop), then on the wall clock once it ends or is replaced', () => {
+    const noop = (): undefined => undefined;
+    const targets: TimelineTargets = {
+      setPose: noop, hurt: noop, vfx: noop, setWeather: noop, cue: noop, shake: noop, setTimeScale: noop, hitstopEnabled: () => true,
+      slowmoEnabled: () => false, playSfx: noop, hp: noop, status: noop, stage: noop, form: noop, orb: noop, enter: noop, log: noop,
+      inputLock: noop, commit: noop, ended: noop,
+    };
+    const p = new TimelinePlayer(targets);
+    let wall = 1000;
+    p.play(buildTimeline(hit(A, B, 'Hollow Crescent', 150), ctx()), 0);
+    const clock = p.clock(() => wall);
+    for (let i = 0; i < 30; i++) p.step(16.667);
+    wall += 5000;                                               // a slow world: 30 steps took 5 s of wall time
+    expect(clock()).toBeCloseTo(30 * 16.667, 0);                // the overlay follows the timeline, not the wall
+    while (p.isPlaying) p.step(16.667);
+    const atEnd = clock();
+    wall += 400;
+    expect(clock()).toBeCloseTo(atEnd + 400, 5);                // ended: the wall clock from there
+    p.play(buildTimeline(hit(A, B, 'Tackle', 150), ctx()), 0);
+    wall += 100;
+    expect(clock()).toBeCloseTo(atEnd + 500, 5);                // a new timeline never rewinds it
+  });
+
   it('the player forwards the frames and clears the overlay when the timeline is cut short', () => {
     const calls: string[] = [];
     const noop = (): undefined => undefined;
@@ -166,6 +189,19 @@ describe('signature cinematics: overlay', () => {
     act(() => vi.advanceTimersByTime(signatureOf('Hollow Crescent')!.totalMs - 1));
     expect(screen.queryByTestId('signaturecinematic')).not.toBeNull();
     act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByTestId('signaturecinematic')).toBeNull();
+  });
+
+  it('with a timeline clock the overlay lives until the clock (not the wall) passes its length', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'] });
+    let t = 0;
+    render(<SignatureCinematic />);
+    act(() => useCinematicStore.getState().show(cue({ clock: () => t })));
+    const life = signatureOf('Hollow Crescent')!.totalMs;
+    act(() => vi.advanceTimersByTime(life + 1000));           // a slow world: the wall clock is past the end …
+    expect(screen.queryByTestId('signaturecinematic')).not.toBeNull();
+    t = life;                                                   // … the timeline gets there
+    act(() => vi.advanceTimersByTime(50));
     expect(screen.queryByTestId('signaturecinematic')).toBeNull();
   });
 

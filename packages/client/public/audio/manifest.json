@@ -111,7 +111,7 @@
       "urlFallback": "/audio/ambience/vesper.m4a?v=38fd9649"
     }
   },
-  "builtAt": "2026-10-08T19:52:12.385Z",
+  "builtAt": "2026-10-08T20:49:21.898Z",
   "sfx": {
     "anvil_strike": {
       "bus": "sfx",
@@ -1986,28 +1986,28 @@
       "bus": "sfx",
       "clips": [
         {
-          "bytes": 19239,
-          "durationSec": 2.2,
-          "hash": "1023f39ae48889df2bf5a1263c000131bebfa8d4847b52b6a00a6e931981f8ca",
-          "url": "/audio/sfx/sig_aurora_requiem_1.webm?v=1023f39a",
-          "urlFallback": "/audio/sfx/sig_aurora_requiem_1.m4a?v=1023f39a"
+          "bytes": 19281,
+          "durationSec": 2.196,
+          "hash": "c477489875540065d4c0dae3547bac80ccdabd1fd3d973a456949509a91724ec",
+          "url": "/audio/sfx/sig_aurora_requiem_1.webm?v=c4774898",
+          "urlFallback": "/audio/sfx/sig_aurora_requiem_1.m4a?v=c4774898"
         }
       ],
-      "gainDb": -2,
+      "gainDb": 6,
       "maxConcurrent": 1
     },
     "sig_bankai_sever": {
       "bus": "sfx",
       "clips": [
         {
-          "bytes": 17529,
+          "bytes": 17546,
           "durationSec": 2,
-          "hash": "222ed9cb82d115af493c200c322b605a0fe6a1f2b0007963a90ad4bb46d1474e",
-          "url": "/audio/sfx/sig_bankai_sever_1.webm?v=222ed9cb",
-          "urlFallback": "/audio/sfx/sig_bankai_sever_1.m4a?v=222ed9cb"
+          "hash": "4b88bae1119b604690062d75cdabdcf6aa71d1e157a9f8a3b04be5ee64e1f18f",
+          "url": "/audio/sfx/sig_bankai_sever_1.webm?v=4b88bae1",
+          "urlFallback": "/audio/sfx/sig_bankai_sever_1.m4a?v=4b88bae1"
         }
       ],
-      "gainDb": -2,
+      "gainDb": 6,
       "maxConcurrent": 1
     },
     "sig_cosmic_miracle": {
@@ -2016,12 +2016,12 @@
         {
           "bytes": 20971,
           "durationSec": 2.4,
-          "hash": "3ac41a1caab1341ce29570e1212a4d952091e9a6e30b0f122fced365d243af59",
-          "url": "/audio/sfx/sig_cosmic_miracle_1.webm?v=3ac41a1c",
-          "urlFallback": "/audio/sfx/sig_cosmic_miracle_1.m4a?v=3ac41a1c"
+          "hash": "23ed7b7454bac0f54ef090922cb0881a00c8537e840e66dcd6cffd47f2ff9e93",
+          "url": "/audio/sfx/sig_cosmic_miracle_1.webm?v=23ed7b74",
+          "urlFallback": "/audio/sfx/sig_cosmic_miracle_1.m4a?v=23ed7b74"
         }
       ],
-      "gainDb": -2,
+      "gainDb": 6,
       "maxConcurrent": 1
     },
     "sig_cosmic_pyre": {
@@ -2029,125 +2029,125 @@
       "clips": [
         {
           "bytes": 17443,
-          "durationSec": 1.985,
-          "hash": "9512388aa0936fe915ae360ac95324ff9c999858e9b2c7fe7d30f657fb043bfc",
-          "url": "/audio/sfx/sig_cosmic_pyre_1.webm?v=9512388a",
-          "urlFallback": "/audio/sfx/sig_cosmic_pyre_1.m4a?v=9512388a"
+          "durationSec": 1.98,
+          "hash": "2dab97a498c460ddbb2dc9a0b5b5183fa0a876322ab3ce0c9086ae3eb8e4c875",
+          "url": "/audio/sfx/sig_cosmic_pyre_1.webm?v=2dab97a4",
+          "urlFallback": "/audio/sfx/sig_cosmic_pyre_1.m4a?v=2dab97a4"
         }
       ],
-      "gainDb": -2,
+      "gainDb": 6,
       "maxConcurrent": 1
     },
     "sig_foxfire_voltage": {
       "bus": "sfx",
       "clips": [
         {
-          "bytes": 16767,
-          "durationSec": 1.9,
-          "hash": "45c0f103c7d576ac69c9e19484cb5f702bb2116358bc66073e436ab883ed0672",
-          "url": "/audio/sfx/sig_foxfire_voltage_1.webm?v=45c0f103",
-          "urlFallback": "/audio/sfx/sig_foxfire_voltage_1.m4a?v=45c0f103"
+          "bytes": 16770,
+          "durationSec": 1.899,
+          "hash": "a4f023a19858c172af8a08a7d2d047d73cbc2c84fc745596eb5b83da99c21ca9",
+          "url": "/audio/sfx/sig_foxfire_voltage_1.webm?v=a4f023a1",
+          "urlFallback": "/audio/sfx/sig_foxfire_voltage_1.m4a?v=a4f023a1"
         }
       ],
-      "gainDb": -2,
+      "gainDb": 6,
       "maxConcurrent": 1
     },
     "sig_hollow_crescent": {
       "bus": "sfx",
       "clips": [
         {
-          "bytes": 15845,
-          "durationSec": 1.798,
-          "hash": "2438d316b365082e4687c38d450508652baafd6f60245691dbca82155188e106",
-          "url": "/audio/sfx/sig_hollow_crescent_1.webm?v=2438d316",
-          "urlFallback": "/audio/sfx/sig_hollow_crescent_1.m4a?v=2438d316"
+          "bytes": 15847,
+          "durationSec": 1.796,
+          "hash": "b98423e19a800457275a6d5a14e31d001d15aa47f5f0c0120fe1aba6b973c1bc",
+          "url": "/audio/sfx/sig_hollow_crescent_1.webm?v=b98423e1",
+          "urlFallback": "/audio/sfx/sig_hollow_crescent_1.m4a?v=b98423e1"
         }
       ],
-      "gainDb": -2,
+      "gainDb": 6,
       "maxConcurrent": 1
     },
     "sig_kamehameha": {
       "bus": "sfx",
       "clips": [
         {
-          "bytes": 19961,
-          "durationSec": 2.287,
-          "hash": "912b42ca8f1227a55730598b003e37302e91ac07a600c3b96dbfcb4ad8372443",
-          "url": "/audio/sfx/sig_kamehameha_1.webm?v=912b42ca",
-          "urlFallback": "/audio/sfx/sig_kamehameha_1.m4a?v=912b42ca"
+          "bytes": 20128,
+          "durationSec": 2.296,
+          "hash": "a6bd347a3168764d5ac389df5297b59b3f048ea486427e05c3d97a23b4ea660d",
+          "url": "/audio/sfx/sig_kamehameha_1.webm?v=a6bd347a",
+          "urlFallback": "/audio/sfx/sig_kamehameha_1.m4a?v=a6bd347a"
         }
       ],
-      "gainDb": -2,
+      "gainDb": 6,
       "maxConcurrent": 1
     },
     "sig_rift_collapse": {
       "bus": "sfx",
       "clips": [
         {
-          "bytes": 17501,
-          "durationSec": 1.999,
-          "hash": "9cfc7d462a18655b532d2bcb33970ceae6fb70d1ba6f12680ded478b5763a70d",
-          "url": "/audio/sfx/sig_rift_collapse_1.webm?v=9cfc7d46",
-          "urlFallback": "/audio/sfx/sig_rift_collapse_1.m4a?v=9cfc7d46"
+          "bytes": 17493,
+          "durationSec": 1.998,
+          "hash": "44b460a201ac3ebdf27661b6a4c9153c7138fdf15752e81126b5c4d39ec948cd",
+          "url": "/audio/sfx/sig_rift_collapse_1.webm?v=44b460a2",
+          "urlFallback": "/audio/sfx/sig_rift_collapse_1.m4a?v=44b460a2"
         }
       ],
-      "gainDb": -2,
+      "gainDb": 6,
       "maxConcurrent": 1
     },
     "sig_sparking_grace": {
       "bus": "sfx",
       "clips": [
         {
-          "bytes": 13669,
-          "durationSec": 1.553,
-          "hash": "d051efca24e9b0f5dadf69358b9c316582d2aecfac2833b2f3f49bde77aaac62",
-          "url": "/audio/sfx/sig_sparking_grace_1.webm?v=d051efca",
-          "urlFallback": "/audio/sfx/sig_sparking_grace_1.m4a?v=d051efca"
+          "bytes": 13896,
+          "durationSec": 1.556,
+          "hash": "2c9e9932edbb54423717fbba9d4930c6e3a0a047803b6e6f4612b3eab6d057e3",
+          "url": "/audio/sfx/sig_sparking_grace_1.webm?v=2c9e9932",
+          "urlFallback": "/audio/sfx/sig_sparking_grace_1.m4a?v=2c9e9932"
         }
       ],
-      "gainDb": -2,
+      "gainDb": 6,
       "maxConcurrent": 1
     },
     "sig_stellar_devour": {
       "bus": "sfx",
       "clips": [
         {
-          "bytes": 19290,
-          "durationSec": 2.2,
-          "hash": "0c1fe4e1e04514d34a40033ea17a980b8177d24f476d7da21e81ce6a5588b573",
-          "url": "/audio/sfx/sig_stellar_devour_1.webm?v=0c1fe4e1",
-          "urlFallback": "/audio/sfx/sig_stellar_devour_1.m4a?v=0c1fe4e1"
+          "bytes": 19291,
+          "durationSec": 2.197,
+          "hash": "b747147d394de77775b148197d081c3720d37967520baed91c22e46dd0e2558d",
+          "url": "/audio/sfx/sig_stellar_devour_1.webm?v=b747147d",
+          "urlFallback": "/audio/sfx/sig_stellar_devour_1.m4a?v=b747147d"
         }
       ],
-      "gainDb": -2,
+      "gainDb": 6,
       "maxConcurrent": 1
     },
     "sig_sunbreaker_barrage": {
       "bus": "sfx",
       "clips": [
         {
-          "bytes": 17513,
+          "bytes": 17465,
           "durationSec": 2,
-          "hash": "75c52c09fee393b10c58321340760d075478d6cea97fec798a946b0860950aeb",
-          "url": "/audio/sfx/sig_sunbreaker_barrage_1.webm?v=75c52c09",
-          "urlFallback": "/audio/sfx/sig_sunbreaker_barrage_1.m4a?v=75c52c09"
+          "hash": "f2ba3a03dc875fd4ce8670072081eb674ee6cb3312ff8de7b7fc90bba94d9df4",
+          "url": "/audio/sfx/sig_sunbreaker_barrage_1.webm?v=f2ba3a03",
+          "urlFallback": "/audio/sfx/sig_sunbreaker_barrage_1.m4a?v=f2ba3a03"
         }
       ],
-      "gainDb": -2,
+      "gainDb": 6,
       "maxConcurrent": 1
     },
     "sig_vendetta_volley": {
       "bus": "sfx",
       "clips": [
         {
-          "bytes": 17335,
+          "bytes": 17358,
           "durationSec": 1.989,
-          "hash": "feebf3d9016ca925e130fc1ecedd0dba41f14b46e03f615cf32a3a02862f71df",
-          "url": "/audio/sfx/sig_vendetta_volley_1.webm?v=feebf3d9",
-          "urlFallback": "/audio/sfx/sig_vendetta_volley_1.m4a?v=feebf3d9"
+          "hash": "59172e6520cc0a87d5e4f23e33e0ff8ad67de544694438b7979c2e890a6bc5af",
+          "url": "/audio/sfx/sig_vendetta_volley_1.webm?v=59172e65",
+          "urlFallback": "/audio/sfx/sig_vendetta_volley_1.m4a?v=59172e65"
         }
       ],
-      "gainDb": -2,
+      "gainDb": 6,
       "maxConcurrent": 1
     },
     "spawn_shimmer": {

@@ -23,6 +23,12 @@ export interface CinematicCue {
   readonly to: CinematicPoint | null;
   /** effective reduced motion: the cut-in fades in and out, no effect layer */
   readonly reduced: boolean;
+  /**
+   * ms since the cue's `start` frame on the battle timeline's clock (hitstop and crit slow-mo included), so the overlay
+   * stays on the 3D move's beats when the world steps slower than real time; the wall clock once that timeline has
+   * ended or been replaced. Absent (dev preview, tests): the overlay runs on the wall clock.
+   */
+  readonly clock?: () => number;
 }
 
 interface CinematicState {

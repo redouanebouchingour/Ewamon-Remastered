@@ -1561,3 +1561,18 @@ light layout", give the design and the numbers.
   frame (the charge) in place of the type's move sfx, in full and short cues alike — its impact transient lands on the
   damage frame (tools/audio-pipeline IMPLEMENTATION-NOTES "Signature-move sound designs"). The cut-in still opens with
   `wind_gust` + the type's cry; the damage frame still plays its `hit_*`.
+
+## Signature cinematics on the battle timeline's clock (2026-10-08)
+
+- Bug (user report: "Kamehameha does not show the blast, Sparking Grace neither"): the overlay ran on the wall clock,
+  the 3D move, the hit and the sounds on the battle timeline, which World3D steps at most `MAX_STEPS` (4) per frame —
+  below ~15 fps the timeline falls behind real time. The overlay then played its beam and blast early and cleared
+  itself after `totalMs` of wall time, before the 3D impact arrived. The harness never showed it: its checks seeked
+  both clocks to the same instant.
+- Fix: a cue carries `clock` = `TimelinePlayer.clock()` — the cursor's ms since the `start` frame (hitstop and crit
+  slow-mo included), the wall clock once that timeline ends or another `play()` replaces it (`generation`), never
+  rewound. `SignatureCinematic` holds every animation at `clock()` each frame (`pause` + `currentTime`) and clears
+  the cue when the clock passes its length (a stalled clock ends after `4 × length + 5 s` of wall time). Without a
+  clock (dev preview, tests) it runs on the wall clock as before.
+- Verified in the harness with the world stepping slower than real time (16.5 s of wall time to 2 150 ms of
+  timeline): no seek, the overlay sat at exactly 2 150 ms with Kamehameha's blast up; Sparking Grace's bloom at 1 900.

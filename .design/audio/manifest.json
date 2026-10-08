@@ -1494,7 +1494,7 @@
     },
     {
       "bus": "sfx",
-      "gainDb": -2,
+      "gainDb": 6,
       "id": "sig_aurora_requiem",
       "maxConcurrent": 1,
       "prompt": {
@@ -1508,7 +1508,7 @@
     },
     {
       "bus": "sfx",
-      "gainDb": -2,
+      "gainDb": 6,
       "id": "sig_bankai_sever",
       "maxConcurrent": 1,
       "prompt": {
@@ -1522,7 +1522,7 @@
     },
     {
       "bus": "sfx",
-      "gainDb": -2,
+      "gainDb": 6,
       "id": "sig_cosmic_miracle",
       "maxConcurrent": 1,
       "prompt": {
@@ -1536,7 +1536,7 @@
     },
     {
       "bus": "sfx",
-      "gainDb": -2,
+      "gainDb": 6,
       "id": "sig_cosmic_pyre",
       "maxConcurrent": 1,
       "prompt": {
@@ -1550,7 +1550,7 @@
     },
     {
       "bus": "sfx",
-      "gainDb": -2,
+      "gainDb": 6,
       "id": "sig_foxfire_voltage",
       "maxConcurrent": 1,
       "prompt": {
@@ -1564,7 +1564,7 @@
     },
     {
       "bus": "sfx",
-      "gainDb": -2,
+      "gainDb": 6,
       "id": "sig_hollow_crescent",
       "maxConcurrent": 1,
       "prompt": {
@@ -1578,7 +1578,7 @@
     },
     {
       "bus": "sfx",
-      "gainDb": -2,
+      "gainDb": 6,
       "id": "sig_kamehameha",
       "maxConcurrent": 1,
       "prompt": {
@@ -1592,7 +1592,7 @@
     },
     {
       "bus": "sfx",
-      "gainDb": -2,
+      "gainDb": 6,
       "id": "sig_rift_collapse",
       "maxConcurrent": 1,
       "prompt": {
@@ -1606,7 +1606,7 @@
     },
     {
       "bus": "sfx",
-      "gainDb": -2,
+      "gainDb": 6,
       "id": "sig_sparking_grace",
       "maxConcurrent": 1,
       "prompt": {
@@ -1620,7 +1620,7 @@
     },
     {
       "bus": "sfx",
-      "gainDb": -2,
+      "gainDb": 6,
       "id": "sig_stellar_devour",
       "maxConcurrent": 1,
       "prompt": {
@@ -1634,7 +1634,7 @@
     },
     {
       "bus": "sfx",
-      "gainDb": -2,
+      "gainDb": 6,
       "id": "sig_sunbreaker_barrage",
       "maxConcurrent": 1,
       "prompt": {
@@ -1648,7 +1648,7 @@
     },
     {
       "bus": "sfx",
-      "gainDb": -2,
+      "gainDb": 6,
       "id": "sig_vendetta_volley",
       "maxConcurrent": 1,
       "prompt": {

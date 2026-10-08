@@ -86,6 +86,8 @@ export class TimelinePlayer {
   private slowScale = 1;
   private scale = 1;
   private durationMs = 0;
+  /** bumped by every play(): a clock reading `cursorMs` can tell its timeline was replaced */
+  private gen = 0;
   /** a cinematic overlay is up (cleared when the timeline is cut short) */
   private cinematicUp = false;
   /** the viewer's core side: core refs map to stage positions through it */
@@ -105,6 +107,30 @@ export class TimelinePlayer {
   get currentTimeScale(): number {
     return this.scale;
   }
+  /** the timeline being played (or last played): +1 per play() */
+  get generation(): number {
+    return this.gen;
+  }
+
+  /**
+   * A clock from now (called as a frame applies: the signature cinematic's `start`): the cursor's ms since then — the
+   * battle timeline's time, hitstop and crit slow-mo included, however slowly the world steps; once this timeline ends
+   * or another replaces it, wall-clock ms from that moment on (`now` is injectable for tests).
+   */
+  clock(now: () => number = () => performance.now()): () => number {
+    const gen = this.gen;
+    const start = this.cursor;
+    let frozenAt = -1;
+    let frozenWall = 0;
+    return () => {
+      if (this.playing && this.gen === gen) return Math.max(0, this.cursor - start);
+      if (frozenAt < 0) {
+        frozenAt = this.gen === gen ? Math.max(0, this.cursor - start) : 0;
+        frozenWall = now();
+      }
+      return frozenAt + (now() - frozenWall);
+    };
+  }
   get expectedMs(): number {
     return this.durationMs;
   }
@@ -118,6 +144,7 @@ export class TimelinePlayer {
     this.seat = seat;
     this.doubles = actives !== null && actives[0] !== undefined && actives[1] !== undefined;
     if (actives !== null) this.seedPositions(actives);
+    this.gen++;
     this.frames = tl.frames;
     this.durationMs = tl.durationMs;
     this.index = 0;

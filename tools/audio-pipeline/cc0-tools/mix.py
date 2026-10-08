@@ -593,6 +593,20 @@ sfx('sig_aurora_requiem_1', [
 ], 2.2, fout=0.5)
 
 
+
+# the signature designs play over the whole battle mix: compressed and limited so the loudness pass reaches its target
+# without the true-peak clamp (they are then raised +6 dB in the manifest)
+def _sig_loud(fn):
+    def loud(rng):
+        return ffilter(fn(rng), 'acompressor=threshold=0.08:ratio=6:attack=3:release=120:makeup=3,alimiter=limit=0.7:level=false')
+    loud.__name__ = fn.__name__
+    return loud
+
+
+for _n in [n for n in RECIPES if n.startswith('sig_')]:
+    RECIPES[_n] = _sig_loud(RECIPES[_n])
+
+
 def main():
     global _cur
     names = sys.argv[1:] or sorted(RECIPES)
