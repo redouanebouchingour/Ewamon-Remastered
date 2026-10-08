@@ -185,3 +185,13 @@ consumables with `shop.js` prices. It is a test fixture, not `@ewa/content`.
   `doubles-fuzz-digests.json` are unchanged. The event union has 36 kinds (`events.test.ts`).
 - Not persisted: the form lives on the battler; `applyBattleOutcome` returns the creature.
 - Tests: `test/forms.test.ts` (8), `test/events.test.ts` (a form scenario).
+
+## Battle forms: signature move (2026-10-08)
+
+- `BattleFormDef.signatureMove?: { replaces, move }`; `formMoveId(sp, b, moveId)` (`forms.ts`) maps a known move to the
+  move the battler executes. `executeMoveAt` executes the signature's MoveDef (type, power, accuracy, effect) and emits
+  it in `moveUsed` / `damage` / `moveMissed`; the replaced slot pays the PP, and `lastMove` / `choiceLockedMove` keep the
+  slot's id, so `validateAction` and choice lock are unchanged and the moveset is never touched. Move order (singles
+  and doubles), doubles' spread check and the trainer AI's scoring (`npc.ts`) read the executed move. A signature must
+  not be a spread move (content `validate.ts`): `executeSpreadAt` pays PP by the executed id.
+- Tests: `test/forms.test.ts` (+2).

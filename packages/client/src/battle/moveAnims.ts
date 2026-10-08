@@ -83,6 +83,8 @@ export const MOVE_ANIMS: Readonly<Record<string, Partial<MoveAnimDef>>> = {
   'String Shot': { windupMs: 240, travelMs: 260, recoverMs: 260, vfx: 'stat_down', camera: 'defender', attackerPose: 'windup' },
   // Dark
   Bite: { windupMs: 180, travelMs: 150, recoverMs: 280, vfx: 'type_dark', attackerPose: 'lunge' },
+  // Ghost — hollowmane's Rage Form signature (it replaces Night Slash): a long windup, the crimson rage burst on the target
+  'Hollow Crescent': { windupMs: 380, travelMs: 220, recoverMs: 380, vfx: 'form_rage', camera: 'impact', attackerPose: 'lunge' },
 };
 
 /** All 19 types present (asserted). Type-level feel; the VFX/SFX default by type name. */

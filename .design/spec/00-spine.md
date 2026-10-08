@@ -195,6 +195,10 @@ export interface BattleFormDef {
     readonly lowerFoes: { readonly stat: StatKey; readonly stages: number } | null;
   };
   readonly sprite: { readonly front: string; readonly back: string }; // '<species>_<form>_front' / '_back'
+  // <!-- amended 2026-10-08: signature move --> while the battler holds the form, using the known move `replaces` executes `move` instead (its own MoveDef);
+  // the replaced slot pays the PP, validation and choice lock keep the slot's id, move order uses the executed move's
+  // priority, a trainer AI scores the slot by it, and the battle menu shows it in that slot. Learned by no species.
+  readonly signatureMove?: { readonly replaces: string; readonly move: string };
 }
 ```
 
@@ -1255,7 +1259,7 @@ Fails the build on the first of:
 
 1. Any zod schema failure over `SPECIES`, `MOVES`, `ABILITIES`, `ITEMS`, `ORBS`, `CONSUMABLES`, `ZONES`, `ENCOUNTER_TABLES`, `LEAGUE`, `QUESTS`, `STORY`, `SEASONAL_EVENTS`, `DAILY_SWARMS`, `RAID_HOTSPOTS`, `BATTLE_PASS`.
 2. Dangling id: species `moves`/`learnableMoves` → `MOVES`; species `abilities` → `ABILITIES`; `evolution.into`/`evolvesFrom` → `SPECIES`; zone `links` → `ZONES`; zone `gym` → `LEAGUE`; `encounterTable` → `ENCOUNTER_TABLES`; encounter/trainer/league/quest/swarm/raid/static `species` → `SPECIES`; shop stock, ground items, quest rewards, battle-pass items → `CONSUMABLES ∪ ORBS ∪ ITEMS`; story `speaker`/`battle.trainerId` → npcs/trainers/league; quest `giver` → an `NpcDef.id` of the quest's `zoneId` or `null`; quest `talkTo`/`deliverItem` `npcId` and `defeatTrainer` `trainerId` → npcs/trainers; `LegendaryStatic.when` → a `badge:` or a flag set by some beat/quest/league row; every `zoneId` anywhere → `ZoneId` (zod enum, build time). <!-- reconciled 2026-09-18: statics, quest givers and flag gates added (roster-coverage OQ 5, legacy-render-audit Q23) -->
-3. Counts: `SPECIES.length === 133` <!-- amended 2026-10-08: hollowmane (#131) --> <!-- amended 2026-10-08: dustcub, badlander (#132–133) -->, `MOVES.length === 193`, `TYPE_NAMES.length === 19`, `ABILITIES.length === 25`, `ITEMS.length === 17`, `ORBS.length === 10`, `ZONES.length === 21`, `LEAGUE.length === 12`, `BATTLE_PASS.length === 100`, dex numbers dense 1..133.
+3. Counts: `SPECIES.length === 133` <!-- amended 2026-10-08: hollowmane (#131) --> <!-- amended 2026-10-08: dustcub, badlander (#132–133) -->, `MOVES.length === 194` <!-- amended 2026-10-08: Hollow Crescent -->, `TYPE_NAMES.length === 19`, `ABILITIES.length === 25`, `ITEMS.length === 17`, `ORBS.length === 10`, `ZONES.length === 21`, `LEAGUE.length === 12`, `BATTLE_PASS.length === 100`, dex numbers dense 1..133.
    Phase D6 <!-- amended 2026-10-06 Phase D6 -->: every `SPREAD_MOVES` id (content `data/spreadMoves.ts`, 16 curated moves laid over the generated `MOVES`: Rock Slide, Heat Wave, Blizzard, Dazzling Gleam, Snarl, Twister, Powder Snow, Frozen Tempest, Gem Storm, Growl, String Shot → `'foes'`; Earthquake, Discharge, Bulldoze, Petal Blizzard, Sparkling Aria → `'all'`) is a foe-targeted MOVES row carrying that `spread`; a `doubles: true` trainer / league row has a team of 2+. Authored doubles (all optional, never gates): `draco_gym` (Sylvane), `aurelia` (Warden 2), and the route trainers `galvan_route.rocker`, `deepcut_route.digger`, `hollow_route.medium`, `siege_route.engineer`, `ascent_route.tamer`.
 4. Move effect keys ⊆ the 23 `MoveEffect` values after the `lower_spAtk → lower_atk` rewrite; `effect === 'first'` implies `priority === 1` and vice-versa.
 5. `learnableMoves` sorted by level, includes every default move at level 1, no duplicates.

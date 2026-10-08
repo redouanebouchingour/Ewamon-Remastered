@@ -1,5 +1,5 @@
 /**
- * One-shot generator: .design/legacy/{ewamon.js, shop.js} + .design/additions/species.js → packages/content/src/data/{species,moves,
+ * One-shot generator: .design/legacy/{ewamon.js, shop.js} + .design/additions/{species,moves}.js → packages/content/src/data/{species,moves,
  * abilities,items,orbs,consumables,typechart}.ts. Run with `pnpm --filter @ewa/content run migrate`.
  *
  * Rules applied (spine §2.3–§2.6; each is restated in the generated header):
@@ -47,6 +47,7 @@ import type {
 const HERE = dirname(fileURLToPath(import.meta.url));
 const LEGACY_DIR = resolve(HERE, '../../../.design/legacy');
 const ADDITIONS_FILE = resolve(HERE, '../../../.design/additions/species.js');
+const MOVE_ADDITIONS_FILE = resolve(HERE, '../../../.design/additions/moves.js');
 const OUT_DIR = resolve(HERE, '../src/data');
 
 // ─── legacy shapes ──────────────────────────────────────────────────────────
@@ -81,6 +82,7 @@ interface LegacySpecies {
     baseDef: number;
     baseSpd: number;
     onEnter: { clearNegativeStages: boolean; lowerFoes: { stat: string; stages: number } | null };
+    signatureMove?: { replaces: string; move: string };
   };
 }
 interface LegacyMove {
@@ -124,7 +126,14 @@ function loadLegacy(): LegacyModule {
   for (const id of Object.keys(additions)) {
     if (id in legacy.EWAMON_SPECIES) throw new Error(`additions: species '${id}' already exists in ewamon.js`);
   }
-  return { ...legacy, EWAMON_SPECIES: { ...legacy.EWAMON_SPECIES, ...additions } };
+  // post-legacy moves (a battle form's signature move): merged into the legacy rows; moves.ts is emitted sorted by id
+  const addMoves: { exports: { EWAMON_MOVE_ADDITIONS?: Record<string, LegacyMove> } } = { exports: {} };
+  (new Function('module', 'exports', readFileSync(MOVE_ADDITIONS_FILE, 'utf8')) as (m: typeof addMoves, e: unknown) => void)(addMoves, addMoves.exports);
+  const moveAdditions = addMoves.exports.EWAMON_MOVE_ADDITIONS ?? {};
+  for (const id of Object.keys(moveAdditions)) {
+    if (id in legacy.MOVES) throw new Error(`additions: move '${id}' already exists in ewamon.js`);
+  }
+  return { ...legacy, EWAMON_SPECIES: { ...legacy.EWAMON_SPECIES, ...additions }, MOVES: { ...legacy.MOVES, ...moveAdditions } };
 }
 
 const notes: string[] = [];
@@ -398,6 +407,7 @@ function migrateBattleForm(speciesId: string, f: NonNullable<LegacySpecies['batt
       lowerFoes: f.onEnter.lowerFoes === null ? null : { stat: f.onEnter.lowerFoes.stat as StatKey, stages: f.onEnter.lowerFoes.stages },
     },
     sprite: { front: `${speciesId}_${f.id}_front`, back: `${speciesId}_${f.id}_back` },
+    ...(f.signatureMove !== undefined ? { signatureMove: { replaces: f.signatureMove.replaces, move: f.signatureMove.move } } : {}),
   };
 }
 
@@ -619,7 +629,7 @@ function ser(v: unknown, indent: string): string {
 function header(what: string, extra: readonly string[]): string {
   const lines = [
     `// GENERATED — edit the generator (packages/content/scripts/migrate-legacy.ts), not this file.`,
-    `// Source: .design/legacy/ewamon.js${what === 'consumables' ? ' + shop.js' : ''}${what === 'species' ? ' + .design/additions/species.js' : ''}. Regenerate with \`pnpm --filter @ewa/content run migrate\`.`,
+    `// Source: .design/legacy/ewamon.js${what === 'consumables' ? ' + shop.js' : ''}${what === 'species' ? ' + .design/additions/species.js' : what === 'moves' ? ' + .design/additions/moves.js' : ''}. Regenerate with \`pnpm --filter @ewa/content run migrate\`.`,
     ...extra.map((l) => `// ${l}`),
   ];
   return lines.join('\n') + '\n';

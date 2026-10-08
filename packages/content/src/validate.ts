@@ -192,6 +192,15 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   for (const s of species) {
     for (const m of s.moves) if (!moveIds.has(m)) err(`species ${s.id}: default move '${m}' not in MOVES`);
     for (const e of s.learnableMoves) if (!moveIds.has(e.move)) err(`species ${s.id}: learnable move '${e.move}' not in MOVES`);
+    // a battle form's signature move exists, stands in for a move the species learns, and is learned by no species
+    const sig = s.battleForm?.signatureMove;
+    if (sig !== undefined) {
+      if (!moveIds.has(sig.move)) err(`species ${s.id}: signature move '${sig.move}' not in MOVES`);
+      if (!s.learnableMoves.some((e) => e.move === sig.replaces)) err(`species ${s.id}: signature move replaces '${sig.replaces}', which it never learns`);
+      if (species.some((o) => o.learnableMoves.some((e) => e.move === sig.move))) err(`species ${s.id}: signature move '${sig.move}' is learnable`);
+      const sm = moves.find((m) => m.id === sig.move);
+      if (sm !== undefined && sm.spread !== undefined) err(`species ${s.id}: signature move '${sig.move}' must not be a spread move`);
+    }
     for (const a of s.abilities) if (!abilityIds.has(a)) err(`species ${s.id}: ability '${a}' not in ABILITIES`);
     if (s.evolution !== null) {
       const intos = evolutionChildren(s.evolution);
@@ -369,7 +378,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
 
   // ── 3. counts ──
   if (species.length !== 133) err(`SPECIES.length ${species.length} !== 133`);
-  if (moves.length !== 193) err(`MOVES.length ${moves.length} !== 193`);
+  if (moves.length !== 194) err(`MOVES.length ${moves.length} !== 194`); // 193 legacy + Hollow Crescent (.design/additions/moves.js)
   // Phase D6: every curated spread move exists, and only damaging or foe-targeted moves spread
   for (const [id, sp] of Object.entries(SPREAD_MOVES).sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
     const m = moves.find((x) => x.id === id);

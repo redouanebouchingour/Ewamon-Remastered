@@ -1492,3 +1492,9 @@ light layout", give the design and the numbers.
   appears plain and swaps on its frame. `battleSpriteIds` adds `hollowmane_rage` to the battle's atlas hold whenever a
   hollowmane is in a party, so the swap never waits for an atlas.
 - The 40-event timing snapshot is unchanged (its fixture leaves `formChange` out; the kind has its own test).
+
+## Battle forms: the signature move in the menu (2026-10-08)
+
+- `BattleMenu` shows `formMoveId(...)`'s MoveDef in the replaced slot (hollowmane in Rage Form: Hollow Crescent where
+  Night Slash was) and still submits the slot's id; the server executes the signature. `MOVE_ANIMS['Hollow Crescent']`:
+  a long windup, a lunge, the `form_rage` burst on the target, the impact camera. Test: `test/battle-forms.test.tsx`.

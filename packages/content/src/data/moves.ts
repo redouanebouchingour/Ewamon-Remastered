@@ -1,5 +1,5 @@
 // GENERATED — edit the generator (packages/content/scripts/migrate-legacy.ts), not this file.
-// Source: .design/legacy/ewamon.js. Regenerate with `pnpm --filter @ewa/content run migrate`.
+// Source: .design/legacy/ewamon.js + .design/additions/moves.js. Regenerate with `pnpm --filter @ewa/content run migrate`.
 // priority 1 iff legacy effect "first"; contact = power > 0 && type ∉ {Fire,Water,Grass,Electric,Ice,Psychic,Ghost,Cosmic,Fairy} (§2.4).
 // effectChance defaults: lower_*/burn/poison/paralyze 100 (power 0) / 30; freeze 100 / 10; flinch/confuse 30; else 100.
 // move 'Moonblast': legacy effect "lower_spAtk" → "lower_atk" on the defender (§2.4: no Sp.Atk exists)
@@ -1032,6 +1032,19 @@ export const MOVES: readonly MoveDef[] = [
     effectChance: 100,
     target: 'foe',
     description: 'Ghost-type attack, 65 power; 100% accuracy; 10 PP.',
+  },
+  {
+    id: 'Hollow Crescent',
+    type: 'Ghost',
+    power: 110,
+    pp: 5,
+    accuracy: 95,
+    priority: 0,
+    contact: false,
+    effect: 'crit',
+    effectChance: 100,
+    target: 'foe',
+    description: 'Ghost-type attack, 110 power; 95% accuracy; 5 PP. High critical-hit ratio.',
   },
   {
     id: 'Howl',

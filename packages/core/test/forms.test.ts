@@ -33,6 +33,11 @@ const MOVES = [TACKLE.id, GROWL.id, NOOP.id, BIG.id];
 const P = (extra: Partial<CreatureSpec> = {}): CreatureSpec => ({ species: 'bramblecub', level: 50, ability: 'Chlorophyll', moves: MOVES, ...extra });
 const R = (extra: Partial<CreatureSpec> = {}): CreatureSpec => ({ species: 'F:rage', level: 50, ability: 'Natural Cure', moves: MOVES, ...extra });
 
+// the same form with a signature move: in the form, F:tackle executes F:crescent (Ghost 110, never misses)
+const CRESCENT = sure('Tackle', 'F:crescent', { type: 'Ghost', power: 110 });
+content.withSpecies({ ...content.species('mufflo'), id: 'F:sig', name: 'Sigmon', battleForm: { ...RAGE, signatureMove: { replaces: TACKLE.id, move: CRESCENT.id } } });
+const G = (extra: Partial<CreatureSpec> = {}): CreatureSpec => ({ species: 'F:sig', level: 50, ability: 'Natural Cure', moves: MOVES, ...extra });
+
 describe('battle forms', () => {
   it('changes the first time a hit takes it below half: stats from the form base, onEnter stages, once per battle', () => {
     const st = startBattle({ a: P(), b: R({ hp: 64 }), seed: 'f1' }).state;
@@ -125,5 +130,30 @@ describe('battle forms', () => {
     const r = resolveTurn(st, [[{ kind: 'move', move: TACKLE.id, target: { side: 1, pos: 0 } }, mv(NOOP.id)], [mv(NOOP.id), mv(NOOP.id)]], content);
     expect(eventsOf(r.events, 'formChange').map((e) => e.who)).toEqual([{ side: 1, slot: 0 }]);
     expect(r.state.sides[0].party.map((b) => b.stages.atk)).toEqual([-1, -1]);
+  });
+
+  it('signature move: in the form the replaced move executes the signature (its type, power, the slot pays PP); before it, the plain move', () => {
+    const before = startBattle({ a: P(), b: G(), seed: 's1' }).state;
+    const plain = turn(before, move(NOOP.id), move(TACKLE.id));
+    expect(eventsOf(plain.events, 'moveUsed').find((e) => e.who.side === 1)!.move).toBe(TACKLE.id);
+    const raged = startBattle({ a: P(), b: G({ hp: 30 }), seed: 's1' }).state; // changes at createBattle
+    expect(activeOf(raged, 1).form).toBe('rage');
+    const ppBefore = activeOf(raged, 1).creature.moves.find((m) => m.id === TACKLE.id)!.pp;
+    const r = turn(raged, move(NOOP.id), move(TACKLE.id));
+    const used = eventsOf(r.events, 'moveUsed').find((e) => e.who.side === 1)!;
+    expect(used.move).toBe(CRESCENT.id);
+    expect(used.ppLeft).toBe(ppBefore - 1);
+    expect(activeOf(r.state, 1).creature.moves.map((m) => m.id)).toEqual(MOVES); // the moveset never changes
+    expect(activeOf(r.state, 1).creature.moves.find((m) => m.id === TACKLE.id)!.pp).toBe(ppBefore - 1);
+    const hit = eventsOf(r.events, 'damage').find((e) => e.target.side === 0)!;
+    expect(hit.move).toBe(CRESCENT.id);
+    // Ghost vs Grass bramblecub: neutral, and 110 power hits far harder than the 40-power tackle did
+    expect(hit.amount).toBeGreaterThan(eventsOf(plain.events, 'damage').find((e) => e.target.side === 0)!.amount * 2);
+  });
+
+  it('signature move: a trainer AI scores the slot by the signature it executes', () => {
+    const st = startBattle({ a: P(), b: { party: [G({ hp: 30, moves: [TACKLE.id, NOOP.id] })], kind: 'npc' }, seed: 's2' }).state;
+    const r = turn(st, move(NOOP.id), null);
+    expect(eventsOf(r.events, 'moveUsed').find((e) => e.who.side === 1)!.move).toBe(CRESCENT.id);
   });
 });

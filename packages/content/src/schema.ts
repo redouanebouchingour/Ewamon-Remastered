@@ -160,6 +160,7 @@ const BattleFormDefSchema = z.object({
     lowerFoes: z.union([z.object({ stat: z.enum(['atk', 'def', 'spd', 'acc', 'eva']), stages: Int.min(1).max(6) }), z.null()]),
   }),
   sprite: z.object({ front: z.string().min(1), back: z.string().min(1) }),
+  signatureMove: z.object({ replaces: z.string().min(1), move: z.string().min(1) }).optional(),
 });
 
 export const SpeciesDefSchema: z.ZodType<SpeciesDef> = z.object({

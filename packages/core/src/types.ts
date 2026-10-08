@@ -98,6 +98,12 @@ export interface BattleFormDef {
     readonly lowerFoes: { readonly stat: StatKey; readonly stages: number } | null;
   };
   readonly sprite: { readonly front: string; readonly back: string }; // pipeline output ids, e.g. 'hollowmane_rage_front'
+  /**
+   * While the battler holds the form, using the known move `replaces` executes `move` instead (its own MoveDef: type,
+   * power, accuracy, effect, priority); the replaced slot pays the PP, and choice lock / validation keep the slot's id.
+   * Absent: no signature move.
+   */
+  readonly signatureMove?: { readonly replaces: string; readonly move: string };
 }
 
 // ─── §2.4 MoveDef and the 23 effects ─────────────────────────────────────────

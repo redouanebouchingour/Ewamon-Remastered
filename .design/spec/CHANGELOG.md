@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-08 hollowmane's Rage Form signature move: Hollow Crescent. One entry. -->
+
+## 2026-10-08 — `00-spine.md` §2.3 (`BattleFormDef.signatureMove`), §3.10 rule 3 (`MOVES.length === 194`); `50-verification-budget.md` §50.4.1 `forms.test.ts`, §50.4.2 `counts.test.ts` — a battle form's signature move
+Why: the user asked for a signature move for the rage form. While a battler holds its form, using the known move `signatureMove.replaces` executes `signatureMove.move`: hollowmane's Night Slash becomes **Hollow Crescent** (Ghost, 110 power, 95 % accuracy, high critical-hit ratio; a new row in `.design/additions/moves.js`, learned by no species). The replaced slot pays the PP and keeps validation and the choice lock, so the persisted moveset never changes; move order uses the executed move's priority, a trainer AI scores the slot by it, the battle menu shows it in that slot, and the timeline plays it with the `form_rage` burst on the target. Wild hollowmane (L57–60) get their last four level-up moves, so its learnset now ends with Night Slash at L39 (defaults Shadow Sneak, Low Kick, Phantom Strike, Bulk Up; then Sucker Punch 6, Crunch 15, Close Combat 24, Poltergeist 30). The fuzz content has no form: both digest files are unchanged.
+Evidence: `packages/core/test/forms.test.ts` (signature executes in the form only, the slot pays PP, trainer AI picks it); `packages/client/test/battle-forms.test.tsx` (the menu shows Hollow Crescent in Night Slash's slot only in the form and sends the slot's id); `pnpm --filter @ewa/content run validate` (signature move exists, replaces a learned move, is learned by no species, is not a spread move).
+Affects: `packages/core/src/{types,forms,turn,doubles,npc,index}.ts` (`formMoveId`); `packages/content` (generator merges `.design/additions/moves.js`; `schema.ts`; `validate.ts`); `packages/client/src/battle/{BattleMenu,moveAnims}.tsx|ts`.
+
 <!-- 2026-10-08 two new species: dustcub (#132) → badlander (#133). One entry. -->
 
 ## 2026-10-08 — `00-spine.md` §2.3 (`dexNumber` 1..133), §3.4 (`ACHIEVEMENTS` dex target 133), §3.10 rules 3, 7; `20-client.md` §20.9.5 (`N / 133`); `40-pipelines.md` §40.1.1, §40.1.4 accounting, the budget row, NON-NEGOTIABLES rule 2; `50-verification-budget.md` §50.1 #11, §50.4.2 / §50.4.8 rows, milestone checklists, the roster row — the roster is 133 species / 69 families

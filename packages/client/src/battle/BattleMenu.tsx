@@ -16,7 +16,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { isSpread, requiredPositions, typeMultiplier } from '@ewa/core';
+import { formMoveId, isSpread, requiredPositions, typeMultiplier } from '@ewa/core';
 import type { Action, BattleState, Battler, FieldRef, MoveDef } from '@ewa/core';
 import { CONSUMABLES, ORBS } from '@ewa/content';
 import { content, displayName, move as moveDef, species } from '../data/content';
@@ -117,7 +117,9 @@ function Moves({ st, seat, pos, onPick }: { readonly st: BattleState; readonly s
   return (
     <div className={s.moves}>
       {me.creature.moves.map((m, i) => {
-        const def = moveDef(m.id);
+        // a battle form's signature move shows (and is what the slot executes) in place of the move it replaces
+        const sp = species(me.creature.speciesId);
+        const def = moveDef(sp === undefined ? m.id : formMoveId(sp, me, m.id));
         if (def === undefined) return null;
         const a: Action = { kind: 'move', move: m.id };
         const why = reason(a);

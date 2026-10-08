@@ -11,6 +11,15 @@ export function activeForm(sp: SpeciesDef, b: { readonly form?: string }): Battl
   return f !== undefined && b.form === f.id ? f : null;
 }
 
+/**
+ * The move a battler executes when it uses its known move `moveId`: the active form's signature move in place of the
+ * move it replaces, else `moveId` itself.
+ */
+export function formMoveId(sp: SpeciesDef, b: { readonly form?: string }, moveId: string): string {
+  const sig = activeForm(sp, b)?.signatureMove;
+  return sig !== undefined && sig.replaces === moveId ? sig.move : moveId;
+}
+
 /** The base atk / def / spd the battler's stats derive from: the active form's, else the species'. */
 export function formBase(sp: SpeciesDef, b: { readonly form?: string }): { readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number } {
   return activeForm(sp, b) ?? sp;

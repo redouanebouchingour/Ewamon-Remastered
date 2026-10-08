@@ -485,3 +485,8 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   into the legacy moves: 194). The learnset now ends with Night Slash at L39 so every wild hollowmane (L57–60, last four
   level-up moves) knows it; defaults Shadow Sneak / Low Kick / Phantom Strike / Bulk Up. `validate.ts`: a signature move
   exists, replaces a move the species learns, is learned by no species and is not a spread move.
+- **Hollow Crescent** (2026-10-08): the Rage Form's signature move (`battleForm.signatureMove`: Night Slash → Hollow
+  Crescent; Ghost 110, 95 %, 5 PP, high critical-hit ratio), from `.design/additions/moves.js` (the generator merges it
+  into the legacy moves: 194). The learnset now ends with Night Slash at L39 so every wild hollowmane (L57–60, last four
+  level-up moves) knows it; defaults Shadow Sneak / Low Kick / Phantom Strike / Bulk Up. `validate.ts`: a signature move
+  exists, replaces a move the species learns, is learned by no species and is not a spread move.

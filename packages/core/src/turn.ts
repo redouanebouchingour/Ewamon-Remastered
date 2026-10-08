@@ -30,6 +30,7 @@ import {
   other,
   ref,
   rollPercent,
+  speciesOf,
   tryApplyStatus,
 } from './engine';
 import type { Ctx, MBattler, MSide, MState } from './engine';
@@ -39,7 +40,7 @@ import { createRng } from './rng';
 import { otherSide } from './side';
 import { createDoubles, resolveDoublesTurn, validateDoublesAction } from './doubles';
 import { effectiveSpeed } from './speed';
-import { formBase } from './forms';
+import { formBase, formMoveId } from './forms';
 import { applyRatio, calcStat, ratioOf, stageRatio } from './stats';
 import { hasStatus } from './status';
 import type {
@@ -389,9 +390,11 @@ function executeMove(ctx: Ctx, side: 0 | 1, moveId: string): void {
  * One single-target move by the battler at `who` aimed at `foeRef` (singles: the foe's active; doubles: the resolved
  * target, possibly the ally). Pre-action checks, PP, moveUsed, accuracy, damage, effect, contact, Weakness Policy, faints.
  */
-export function executeMoveAt(ctx: Ctx, who: Ref, moveId: string, foeRef: Ref): void {
+export function executeMoveAt(ctx: Ctx, who: Ref, slotMoveId: string, foeRef: Ref): void {
   if (!canActAt(ctx, who)) return;
   const b = at(ctx, who);
+  // a battle form's signature move stands in for the move it replaces; that slot pays the PP and keeps the choice lock
+  const moveId = formMoveId(speciesOf(ctx, b), b, slotMoveId);
   const move = ctx.content.move(moveId);
   const foe = at(ctx, foeRef);
   // A damaging move always hits the foe; `target` only steers power-0 moves (self/field) — see IMPLEMENTATION-NOTES.
@@ -402,16 +405,16 @@ export function executeMoveAt(ctx: Ctx, who: Ref, moveId: string, foeRef: Ref): 
   let ppLeft = 0;
   for (let i = 0; i < b.creature.moves.length; i++) {
     const m = b.creature.moves[i]!;
-    if (m.id === moveId) {
+    if (m.id === slotMoveId) {
       m.pp = Math.max(0, m.pp - 1);
       ppLeft = m.pp;
     }
   }
   emit(ctx, { t: 'moveUsed', who, move: moveId, target: targetRef, ppLeft });
-  b.volatile.lastMove = moveId;
+  b.volatile.lastMove = slotMoveId;
   b.volatile.movedThisTurn = true;
   if (b.volatile.choiceLockedMove === null && hasChoiceLock(heldHooks(b, ctx.content))) {
-    b.volatile.choiceLockedMove = moveId;
+    b.volatile.choiceLockedMove = slotMoveId;
   }
 
   if (hitsFoe && !isAlive(foe)) {
@@ -791,7 +794,10 @@ export function resolveTurn(
   for (let i = 0; i < SIDES.length; i++) {
     const side = SIDES[i]!;
     const a = acts[side];
-    if (a !== null && a.kind === 'move') movers.push({ side, priority: content.move(a.move).priority });
+    if (a !== null && a.kind === 'move') {
+      const b = active(ctx, side);
+      movers.push({ side, priority: content.move(formMoveId(speciesOf(ctx, b), b, a.move)).priority });
+    }
   }
   const orderedMovers = order(ctx, movers);
   for (let i = 0; i < orderedMovers.length; i++) {

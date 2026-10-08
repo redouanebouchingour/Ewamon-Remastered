@@ -29,6 +29,7 @@ import { abilityHooks, hooksOfKind } from './abilities';
 import { accuracyCheck } from './accuracy';
 import { calcDamageFor, damageStop } from './damage';
 import { effectTargetsDefender } from './effects';
+import { formMoveId } from './forms';
 import {
   at,
   changeStage,
@@ -430,7 +431,9 @@ function executeSpreadAt(ctx: Ctx, side: 0 | 1, pos: 0 | 1, move: MoveDef): void
 }
 
 function executeAt(ctx: Ctx, side: 0 | 1, pos: 0 | 1, a: Extract<Action, { kind: 'move' }>): void {
-  const move = ctx.content.move(a.move);
+  // a battle form's signature move stands in for the move it replaces (executeMoveAt swaps it again for the PP slot)
+  const b = at(ctx, posRef(ctx, side, pos));
+  const move = ctx.content.move(formMoveId(ctx.content.species(b.creature.speciesId), b, a.move));
   if (isSpread(move)) {
     executeSpreadAt(ctx, side, pos, move);
     return;
@@ -503,7 +506,8 @@ export function resolveDoublesTurn(state: BattleState, actions: readonly [SideCh
       for (const p of POSITIONS) {
         const a = acts[side][p];
         if (a === null || a.kind !== kind) continue;
-        out.push({ side, pos: p, priority: a.kind === 'move' ? content.move(a.move).priority : 0 });
+        const b = at(ctx, posRef(ctx, side, p));
+        out.push({ side, pos: p, priority: a.kind === 'move' ? content.move(formMoveId(content.species(b.creature.speciesId), b, a.move)).priority : 0 });
       }
     }
     return out;

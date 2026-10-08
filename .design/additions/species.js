@@ -20,8 +20,9 @@ const EWAMON_SPECIES_ADDITIONS = {
     rarity: "rare", catchRate: 6,
     sizeScale: 1.25,
     expYield: 240,
-    moves: ["Shadow Sneak", "Night Slash", "Low Kick", "Phantom Strike"],
-    learnableMoves: ["Bulk Up", "Sucker Punch", "Crunch", "Close Combat", "Poltergeist"],
+    moves: ["Shadow Sneak", "Low Kick", "Phantom Strike", "Bulk Up"],
+    // Night Slash comes last (L39) so every wild one (L57–60, its last four moves) knows it: in Rage Form it is Hollow Crescent
+    learnableMoves: ["Sucker Punch", "Crunch", "Close Combat", "Poltergeist", "Night Slash"],
     abilities: ["Hustle", "Guts"],
     role: "Physical Attacker",
     frontSprite: "hollowmane(front).png",
@@ -34,6 +35,8 @@ const EWAMON_SPECIES_ADDITIONS = {
       hpBelowPct: 50,
       baseAtk: 162, baseDef: 66, baseSpd: 150,
       onEnter: { clearNegativeStages: true, lowerFoes: { stat: "atk", stages: 1 } },
+      // in Rage Form, Night Slash becomes Hollow Crescent (.design/additions/moves.js)
+      signatureMove: { replaces: "Night Slash", move: "Hollow Crescent" },
       frontSprite: "hollowmane_rage(front).png",
       backSprite: "hollowmane_rage(back).png",
     },
