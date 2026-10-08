@@ -1942,3 +1942,10 @@ phase 1 ≈ 600 ms, of which ≈ 400 ms main-thread idle (GPU pipelines). After:
   `colorNode` per object), so shadow builds are never kept.
 - `ScatterMesh` relies on two three internals: the `getMaterialCacheKey` rule above and `NodeMaterial.setupPosition`. A
   three upgrade must re-check both (the A/B shots and `handover-ii.test.ts` catch a broken transform or layout).
+
+## `form_rage` VFX (2026-10-08)
+
+- The 49th `VfxId` (`VFX_FORM_IDS`): hollowmane's rage form — 180 crimson pixel shards bursting outward, 120 red
+  streaks torn upward, a two-ring shockwave; `flash: 1`, `beaconPulse: 1`, chroma 0.016 / 160 ms, 1 100 ms. Played by the
+  client's `formChange` timeline; the sprite swap itself is `Stage.setBattler` with the form's descriptor (same id,
+  new frames → the billboard is replaced in place).

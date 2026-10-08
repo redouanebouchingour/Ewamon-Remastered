@@ -175,6 +175,26 @@ export interface SpeciesDef {
   readonly evolvesFrom: string | null;
   readonly sprite: { readonly front: string; readonly back: string }; // pipeline output ids, e.g. 'bramblecub_front'
   readonly legendary: boolean;         // true for exactly the 10 legendaries incl. the 2 mythicals
+  readonly battleForm?: BattleFormDef; // a mid-battle form (hollowmane's rage form); absent on every other species
+}
+
+// <!-- amended 2026-10-08: battle forms (hollowmane's rage form) -->
+// Once per battle, never persisted: a standing battler on the field whose hp * 100 < maxHp * hpBelowPct changes — after
+// any damage (`dealDamage`) or on entering the field. atk / def / spd then derive from the form's base stats everywhere
+// they are computed (projection, level-up, the damage formula, the confusion self-hit: core `formBase`); max hp, types,
+// ability and status are the species'. It emits `formChange`, then onEnter: its own negative stages back to 0
+// (`statStage`, cause 'ability'), every standing foe on the field lowered (`statStage`, cause 'ability'). The form is kept
+// through a switch-out. The client shows the creature manifest entry `<species>_<form>` while the battler holds it.
+export interface BattleFormDef {
+  readonly id: string;                 // e.g. 'rage'
+  readonly name: string;               // e.g. 'Rage Form'
+  readonly hpBelowPct: number;         // 1..99
+  readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number;
+  readonly onEnter: {
+    readonly clearNegativeStages: boolean;
+    readonly lowerFoes: { readonly stat: StatKey; readonly stages: number } | null;
+  };
+  readonly sprite: { readonly front: string; readonly back: string }; // '<species>_<form>_front' / '_back'
 }
 ```
 
@@ -512,6 +532,7 @@ export interface Battler {
   readonly stages: Readonly<Record<StatKey, StatStage>>;
   readonly volatile: Volatile;
   readonly participated: boolean;           // was ever active; drives exp share
+  readonly form?: string;                   // the species' battleForm.id once changed this battle; absent otherwise (§2.3) <!-- amended 2026-10-08: battle forms (hollowmane's rage form) -->
 }
 
 export function projectBattler(c: CreatureInstance, content: ContentIndex): Battler;
@@ -840,6 +861,8 @@ export type BattleEvent =
   | { readonly t: 'statusTick'; readonly target: Ref; readonly status: StatusId; readonly detail: 'asleep' | 'frozen' | 'paralyzed' | 'confused' }
   | { readonly t: 'statusCured'; readonly target: Ref; readonly status: StatusId; readonly cause: 'timer' | 'thaw' | 'fireHit' | 'item' | 'ability' }
   | { readonly t: 'flinch'; readonly who: Ref }
+  // <!-- amended 2026-10-08: battle forms (hollowmane's rage form) --> a battle form (§2.3 BattleFormDef): the new unstaged stats; its onEnter statStage events follow
+  | { readonly t: 'formChange'; readonly who: Ref; readonly form: string; readonly atk: number; readonly def: number; readonly spd: number }
   | { readonly t: 'statStage'; readonly target: Ref; readonly stat: StatKey; readonly delta: number; readonly after: StatStage;
       readonly clamped: boolean; readonly source: Ref | null; readonly cause: 'move' | 'ability' | 'item' }
   | { readonly t: 'weatherSet'; readonly kind: WeatherKind; readonly turns: number; readonly source: Ref | null }

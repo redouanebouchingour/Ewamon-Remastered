@@ -18,8 +18,9 @@ import { LEGACY_DIR, REAL_OUT_DIR, REAL_QA_DIR } from './helpers.js';
 
 const MANIFEST_PATH = path.join(REAL_OUT_DIR, MANIFEST_FILE);
 const REPORT_PATH = path.join(REAL_QA_DIR, 'qa-report.json');
-// the 130 species of ewamon.js + the post-legacy additions (.design/additions/species.js)
-const SPECIES_COUNT = 131;
+// sprite entries: the 130 species of ewamon.js + the post-legacy additions (.design/additions/species.js, 1 today)
+// + their battle forms under `<species>_<form>` (hollowmane_rage)
+const SPECIES_COUNT = 132;
 
 function listFiles(dir: string, rel = ''): string[] {
   const out: string[] = [];
@@ -54,7 +55,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
     expect(readFileSync(MANIFEST_PATH, 'utf8')).toBe(serializeManifest(manifest));
   });
 
-  it('is a valid v2 manifest for exactly the 131 species of ewamon.js + additions', () => {
+  it('is a valid v2 manifest for exactly the 131 species of ewamon.js + additions and the hollowmane_rage form', () => {
     const ids = Object.keys(manifest.sprites);
     expect(ids.length).toBe(SPECIES_COUNT);
     expect(ids).toEqual([...ids].sort());
@@ -67,6 +68,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
     expect(manifest.encoding).toBe('webp');
     expect(manifest.spriteSize).toBe(1024);
     expect(ids.some((id) => id.includes('@'))).toBe(false);
+    expect(ids).toContain('hollowmane_rage');
   });
 
   it(`atlases ≤ 68, every sprite stored once (+ duplicates ≤ ${MAX_DUPLICATED_SPECIES}), 2048² cells, half-res normals`, () => {
@@ -157,7 +159,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
   describe.skipIf(!existsSync(REPORT_PATH))('qa-report.json', () => {
     const report = JSON.parse(readFileSync(REPORT_PATH, 'utf8')) as QaReport;
 
-    it('has 0 actionable flags over the 262 sprites, lists the excluded alternate-style files, and no unresolved flag kinds', () => {
+    it('has 0 actionable flags over the 264 sprites, lists the excluded alternate-style files, and no unresolved flag kinds', () => {
       expect(report.total).toBe(2 * SPECIES_COUNT);
       expect(report.actionable).toBe(0);
       for (const e of report.flagged) expect(e.actionable, `${e.species}/${e.side}`).toEqual([]);

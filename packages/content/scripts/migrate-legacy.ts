@@ -25,6 +25,7 @@ import { STONE_AND_TRADE_EVOLUTIONS } from '../src/data/evolutions';
 import type {
   AbilityDef,
   AbilityHook,
+  BattleFormDef,
   ConsumableDef,
   ConsumableEffect,
   Evolution,
@@ -38,6 +39,7 @@ import type {
   Rarity,
   SpeciesDef,
   SpeciesRole,
+  StatKey,
   TypeChart,
   TypeName,
 } from '@ewa/core';
@@ -70,6 +72,16 @@ interface LegacySpecies {
   evolvesAt?: number;
   evolvesFrom?: string;
   splitEvolvesInto?: { condition?: string; value?: string; into: string }[];
+  /** .design/additions only: a mid-battle form (sprite files under the form's own sprite key, see the sprite pipeline) */
+  battleForm?: {
+    id: string;
+    name: string;
+    hpBelowPct: number;
+    baseAtk: number;
+    baseDef: number;
+    baseSpd: number;
+    onEnter: { clearNegativeStages: boolean; lowerFoes: { stat: string; stages: number } | null };
+  };
 }
 interface LegacyMove {
   power: number;
@@ -368,6 +380,24 @@ function migrateSpecies(s: LegacySpecies, dexNumber: number, moveIds: ReadonlySe
     evolvesFrom,
     sprite: { front: `${s.id}_front`, back: `${s.id}_back` },
     legendary: s.rarity === 'legendary' || s.rarity === 'mythical',
+    ...(s.battleForm !== undefined ? { battleForm: migrateBattleForm(s.id, s.battleForm) } : {}),
+  };
+}
+
+/** sprite ids `<species>_<form>_front|back`: the sprite pipeline ships the form under the key `<species>_<form>`. */
+function migrateBattleForm(speciesId: string, f: NonNullable<LegacySpecies['battleForm']>): BattleFormDef {
+  return {
+    id: f.id,
+    name: f.name,
+    hpBelowPct: f.hpBelowPct,
+    baseAtk: f.baseAtk,
+    baseDef: f.baseDef,
+    baseSpd: f.baseSpd,
+    onEnter: {
+      clearNegativeStages: f.onEnter.clearNegativeStages,
+      lowerFoes: f.onEnter.lowerFoes === null ? null : { stat: f.onEnter.lowerFoes.stat as StatKey, stages: f.onEnter.lowerFoes.stages },
+    },
+    sprite: { front: `${speciesId}_${f.id}_front`, back: `${speciesId}_${f.id}_back` },
   };
 }
 

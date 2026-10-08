@@ -33,6 +33,8 @@ export const SWITCH_OUT_MS = 350;
 export const SWITCH_IN_MS = 450;
 /** Phase D4: the shiny sparkle after a shiny's switch-in. */
 export const SHINY_MS = 900;
+/** `formChange` (a battle form): the burst, the sprite swapping at 40 %, the line. */
+export const FORM_MS = 1100;
 
 export const STATUS_MS = 500;
 export const STAGE_MS = 400;

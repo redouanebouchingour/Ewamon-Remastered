@@ -38,6 +38,8 @@ export interface TimelineTargets {
   hp(who: Ref, to: number, max: number, ms: number): void;
   status(who: Ref, status: string | null): void;
   stage(who: Ref, stat: string, delta: number): void;
+  /** a battle form: the battler's sprite becomes the form's */
+  form(who: Ref, form: string): void;
   orb(phase: 'throw' | 'shake' | 'catch' | 'break', n: number): void;
   /** a battler (re)enters: the controller swaps the displayed creature when the party slot changed */
   enter(who: Ref): void;
@@ -187,7 +189,7 @@ export class TimelinePlayer {
     while (this.index < frames.length) {
       const f = frames[this.index]!;
       this.index++;
-      if (f.k === 'hp' || f.k === 'status' || f.k === 'stage' || f.k === 'log' || f.k === 'weather' || f.k === 'orb' || f.k === 'inputLock' || f.k === 'end') this.apply(f);
+      if (f.k === 'hp' || f.k === 'status' || f.k === 'stage' || f.k === 'form' || f.k === 'log' || f.k === 'weather' || f.k === 'orb' || f.k === 'inputLock' || f.k === 'end') this.apply(f);
       else if (f.k === 'pose' && (f.pose === 'faint' || f.pose === 'enter' || f.pose === 'exit')) this.apply(f);
     }
     this.t.commit();
@@ -257,6 +259,9 @@ export class TimelinePlayer {
         return;
       case 'stage':
         t.stage(f.who, f.stat, f.delta);
+        return;
+      case 'form':
+        t.form(f.who, f.form);
         return;
       case 'log':
         t.log(f.text, f.tone);

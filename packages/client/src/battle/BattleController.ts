@@ -79,8 +79,11 @@ export interface BattleView {
     readonly foeNpc: string | null; readonly yaw: number | null;
   }): void;
   exitBattle(): void;
-  /** `null` clears the position. `key` is unique per creature per battle. */
-  setBattler(ref: StageRef, c: CreatureInstance | null, key: string): void;
+  /**
+   * `null` clears the position. `key` is unique per creature per battle. `spriteId` (a battle form) names the creature
+   * manifest entry to show instead of the species' own (`<species>_<form>`); types and size stay the species'.
+   */
+  setBattler(ref: StageRef, c: CreatureInstance | null, key: string, spriteId?: string): void;
   setPose(ref: StageRef, pose: Pose, ms: number): void;
   hurt(ref: StageRef, strength: number): void;
   vfx(id: string, from: StageRef | null, to: StageRef | null, ms: number): void;
@@ -184,6 +187,20 @@ function foeOf(state: BattleState, seat: 0 | 1): string | null {
 function foeNpcOf(state: BattleState, seat: 0 | 1): string | null {
   const other = state.sides[seat === 0 ? 1 : 0];
   return other.kind === 'npc' ? other.trainerId : null;
+}
+
+/**
+ * The field as it stood before `events` changed any battler's form: a battle form swaps its sprite on its own timeline
+ * frame, so a battle that opens with one (a lead already below the line) shows the plain sprite until that frame plays.
+ */
+function beforeFormChanges(st: BattleState, events: readonly BattleEvent[]): BattleState {
+  const changed = events.flatMap((e) => (e.t === 'formChange' ? [`${e.who.side}:${e.who.slot}`] : []));
+  if (changed.length === 0) return st;
+  const strip = (side: 0 | 1): BattleState['sides'][0] => ({
+    ...st.sides[side],
+    party: st.sides[side].party.map((b, slot) => (changed.includes(`${side}:${slot}`) ? { ...b, form: undefined } : b)),
+  });
+  return { ...st, sides: [strip(0), strip(1)] };
 }
 
 /** The battler's species types for its HUD plate (§50.1 #15); [] for an unknown species id. */
@@ -424,11 +441,14 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     hud.setBar(side, cap(sideName(st, { side, slot }, seat, deps.content)), b.creature.level, hp, b.maxHp, statusGlyph(majorOf(b.creature.status)), side === seat, typesOf(st, { side, slot }, deps.content), pos);
   };
 
-  const showBattler = (st: BattleState, side: 0 | 1, slot: number, pos: 0 | 1 = 0): void => {
+  const showBattler = (st: BattleState, side: 0 | 1, slot: number, pos: 0 | 1 = 0, form?: string): void => {
     const c = creatureAt(st, side, slot);
     displayed[side][pos] = slot;
+    // a battle form shows its own sprite: the form the timeline just reached, else the one the state already holds
+    const f = form ?? st.sides[side]?.party[slot]?.form;
     // render's stage side 0 is the near (viewer's) position: core sides map through the seat
-    view?.setBattler(stageAt(side, pos), c, c === null ? '' : `battle:${battleId}:${side}:${c.id}`);
+    if (c !== null && f !== undefined) view?.setBattler(stageAt(side, pos), c, `battle:${battleId}:${side}:${c.id}`, `${c.speciesId}_${f}`);
+    else view?.setBattler(stageAt(side, pos), c, c === null ? '' : `battle:${battleId}:${side}:${c.id}`);
   };
 
   /** Every field position of both sides on the stage and its HUD bar (battle start, timeline end, resync). */
@@ -506,6 +526,13 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       if (pos >= 0 && displayed[who.side][pos] === who.slot) hud.addStage(who.side, stat, delta, pos as 0 | 1);
     },
     orb: (phase, n) => hud.setShakes(phase === 'throw' ? 0 : n),
+    form: (who, form) => {
+      const st = preState ?? state;
+      const p = posFor(who.side, who.slot);
+      if (st === null || p < 0 || displayed[who.side][p] !== who.slot) return;
+      showBattler(st, who.side, who.slot, p as 0 | 1, form);
+      view?.setPose(stageAt(who.side, p), 'idle', 0);
+    },
     enter: (who) => {
       const st = preState ?? state;
       if (st === null) return;
@@ -655,6 +682,8 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
 
   function begin(m: {
     battleId: string; seat: 0 | 1; format: BattleState['format']; state: BattleState;
+    /** battleStart: the createBattle events about to play (a form they change shows plain until its frame) */
+    events?: readonly BattleEvent[] | undefined;
     x?: number | undefined; z?: number | undefined; yaw?: number | null | undefined;
   }): void {
     battleId = m.battleId;
@@ -689,7 +718,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     const at = arenaFor(m.battleId);
     view?.enterBattle({ battleId: m.battleId, x: at.x, z: at.z, format: m.format, foeId: foeOf(m.state, m.seat), foeNpc: foeNpcOf(m.state, m.seat), yaw: at.yaw });
     view?.setThreat(true);
-    showField(m.state, true, false);
+    showField(m.events !== undefined ? beforeFormChanges(m.state, m.events) : m.state, true, false);
     hud.setTurnLabel(labelFor(m.state));
     hud.setShakes(0);
     hud.commit();

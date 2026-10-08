@@ -6,6 +6,9 @@
 // (`tools/sprite-pipeline/src/legacy.ts`) append these rows after the legacy ones, so the dex numbers
 // continue at 131 in insertion order. Append new species at the end; never reorder.
 //
+// A row may carry `battleForm` (a mid-battle form, core `BattleFormDef`): the generator emits it with sprite ids
+// `<id>_<form>_front|back`, and the sprite pipeline ships its `frontSprite` / `backSprite` under the key `<id>_<form>`.
+//
 // Dependency-free CommonJS, evaluated the same way as ewamon.js.
 
 const EWAMON_SPECIES_ADDITIONS = {
@@ -24,6 +27,16 @@ const EWAMON_SPECIES_ADDITIONS = {
     frontSprite: "hollowmane(front).png",
     backSprite: "hollowmane(back).png",
     habitat: ["The Rift"], evolvesInto: null, evolvesAt: null,
+    // Rage Form: once per battle, the first time it is below half hp and still standing, the mask cracks. Max hp is
+    // kept; it trades its guard for power and speed, sheds every weakening and roars the foes' attack down.
+    battleForm: {
+      id: "rage", name: "Rage Form",
+      hpBelowPct: 50,
+      baseAtk: 162, baseDef: 66, baseSpd: 150,
+      onEnter: { clearNegativeStages: true, lowerFoes: { stat: "atk", stages: 1 } },
+      frontSprite: "hollowmane_rage(front).png",
+      backSprite: "hollowmane_rage(back).png",
+    },
   },
 };
 

@@ -60,7 +60,7 @@ export type Evolution =
 export interface SpeciesDef {
   readonly id: string;                 // snake_case, e.g. 'bramblecub'
   readonly name: string;               // display, e.g. 'Bramblecub'
-  readonly dexNumber: number;          // 1..130, unique, dense
+  readonly dexNumber: number;          // 1..131, unique, dense
   readonly flavor: string;
   readonly types: readonly [TypeName] | readonly [TypeName, TypeName];
   readonly baseHp: number; readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number;
@@ -76,6 +76,28 @@ export interface SpeciesDef {
   readonly evolvesFrom: string | null;
   readonly sprite: { readonly front: string; readonly back: string }; // pipeline output ids, e.g. 'bramblecub_front'
   readonly legendary: boolean;         // true for exactly the 10 legendaries incl. the 2 mythicals
+  /** a mid-battle form (hollowmane's rage form); absent on every other species */
+  readonly battleForm?: BattleFormDef;
+}
+
+/**
+ * A form a species changes into during a battle — once per battle, never persisted. The battler changes the first
+ * time its hp is below `hpBelowPct` % of max hp while it is still standing (after any damage, or on entering the field
+ * already below it). Its atk / def / spd then derive from the form's base stats (max hp keeps the species'); its
+ * stages, status, ability and types are kept, except what `onEnter` changes.
+ */
+export interface BattleFormDef {
+  readonly id: string;                 // e.g. 'rage'
+  readonly name: string;               // display, e.g. 'Rage Form'
+  readonly hpBelowPct: number;         // 1..99: changes when hp * 100 < maxHp * hpBelowPct
+  readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number;
+  readonly onEnter: {
+    /** its own negative stat stages return to 0 */
+    readonly clearNegativeStages: boolean;
+    /** every standing foe on the field loses these stages (as an ability: Keen Eye / Competitive apply) */
+    readonly lowerFoes: { readonly stat: StatKey; readonly stages: number } | null;
+  };
+  readonly sprite: { readonly front: string; readonly back: string }; // pipeline output ids, e.g. 'hollowmane_rage_front'
 }
 
 // ─── §2.4 MoveDef and the 23 effects ─────────────────────────────────────────
@@ -259,6 +281,8 @@ export interface Battler {
   readonly stages: Readonly<Record<StatKey, StatStage>>;
   readonly volatile: Volatile;
   readonly participated: boolean;           // was ever active; drives exp share
+  /** the species' `battleForm.id` once it has changed this battle; absent otherwise (never persisted) */
+  readonly form?: string;
 }
 
 export type BattleFormat = 'wild' | 'trainer' | 'league' | 'pvp' | 'raid';
@@ -424,6 +448,8 @@ export type BattleEvent =
   | { readonly t: 'statusTick'; readonly target: Ref; readonly status: StatusId; readonly detail: 'asleep' | 'frozen' | 'paralyzed' | 'confused' }
   | { readonly t: 'statusCured'; readonly target: Ref; readonly status: StatusId; readonly cause: 'timer' | 'thaw' | 'fireHit' | 'item' | 'ability' }
   | { readonly t: 'flinch'; readonly who: Ref }
+  // a battle form (SpeciesDef.battleForm): the battler's new unstaged stats; followed by the onEnter statStage events
+  | { readonly t: 'formChange'; readonly who: Ref; readonly form: string; readonly atk: number; readonly def: number; readonly spd: number }
   | { readonly t: 'statStage'; readonly target: Ref; readonly stat: StatKey; readonly delta: number; readonly after: StatStage;
       readonly clamped: boolean; readonly source: Ref | null; readonly cause: 'move' | 'ability' | 'item' }
   | { readonly t: 'weatherSet'; readonly kind: WeatherKind; readonly turns: number; readonly source: Ref | null }

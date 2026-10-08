@@ -22,13 +22,14 @@ import { STAGE, Stage } from '../src/stage/battleStage.js';
 import type { SpriteDescriptor, VfxId } from '../src/contracts.js';
 
 describe('§10.7.5 VFX id table', () => {
-  it('exactly 19 + 4 + 6 + 5 + 4 + 4 + 5 = 47 unique ids + the Phase D4 shiny burst = 48, the SPEC union, one recipe each', () => {
+  it('exactly 19 + 4 + 6 + 5 + 4 + 4 + 5 = 47 unique ids + the Phase D4 shiny burst + the rage-form burst = 49, the SPEC union, one recipe each', () => {
     expect(VFX_TYPE_IDS).toHaveLength(19);
     expect(VFX_TYPE_IDS).toEqual(TYPE_NAMES.map((t) => `type_${t.toLowerCase()}`));
     expect([VFX_IMPACT_IDS, VFX_STATUS_IDS, VFX_STAT_IDS, VFX_WEATHER_IDS, VFX_ORB_IDS, VFX_MISC_IDS].map((g) => g.length)).toEqual([4, 6, 5, 4, 4, 5]);
-    expect(VFX_IDS).toHaveLength(48);
-    expect(new Set(VFX_IDS).size).toBe(48);
-    expect(VFX_IDS.at(-1)).toBe('shiny_sparkle');
+    expect(VFX_IDS).toHaveLength(49);
+    expect(new Set(VFX_IDS).size).toBe(49);
+    expect(VFX_IDS.at(-2)).toBe('shiny_sparkle');
+    expect(VFX_IDS.at(-1)).toBe('form_rage');
     expect(Object.keys(VFX_TABLE).sort()).toEqual([...VFX_IDS].sort());
     for (const id of VFX_IDS) {
       const r = VFX_TABLE[id];

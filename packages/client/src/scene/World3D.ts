@@ -48,7 +48,7 @@ import { foeIdentity } from '../battle/foe';
 import { STEP_MS } from '../battle/constants';
 import { TIMELINE_SFX } from '../battle/timeline';
 import { MOVE_ANIMS } from '../battle/moveAnims';
-import { content, maxHpOf, species as speciesDef } from '../data/content';
+import { battleSpriteIds, content, maxHpOf, species as speciesDef } from '../data/content';
 import { apiFetch } from '../net/api';
 import { getWorldSession } from '../net/WorldSession';
 import type { WorldSession, ZoneRoom } from '../net/WorldSession';
@@ -958,7 +958,7 @@ class World implements World3D {
         this.input.setEnabled(false);
         this.fishing.cancel();
         // both teams' static atlases for the battle's life (a switch-in never waits); flipbooks come per shown side
-        this.battleSprites.begin(m.state.sides.flatMap((s) => s.party.map((b) => b.creature.speciesId)));
+        this.battleSprites.begin(m.state.sides.flatMap((s) => s.party.flatMap((b) => battleSpriteIds(b.creature.speciesId))));
         useUiStore.getState().setDialogue(null);
         this.battle.onBattleStart(m);
         return;
@@ -967,7 +967,7 @@ class World implements World3D {
         return;
       case 'battleResync':
         this.input.setEnabled(false);
-        this.battleSprites.begin(m.state.sides.flatMap((s) => s.party.map((b) => b.creature.speciesId)));
+        this.battleSprites.begin(m.state.sides.flatMap((s) => s.party.flatMap((b) => battleSpriteIds(b.creature.speciesId))));
         // Phase C1: a raid's fight starts with this resync — the lobby yields to the battle
         if (useUiStore.getState().modal === 'raidLobby') useUiStore.getState().closeModal();
         this.battle.onBattleResync(m);
@@ -1352,15 +1352,16 @@ class World implements World3D {
         this.battleSprites.end();
         if (this.zone !== null) this.audio.setTheme(this.audio.themeFor(this.zone.id, this.zone.biome), 400);
       },
-      setBattler: (ref, c, key) => {
+      setBattler: (ref, c, key, spriteId) => {
         if (c === null || cat === null) {
           r.stage.setBattler(ref, null);
           this.battleSprites.set(ref, null);
           return;
         }
-        // the side this slot shows (the player's back, the foe's front), leased before the billboard asks for it
-        this.battleSprites.set(ref, c.speciesId);
-        r.stage.setBattler(ref, cat.descriptor(c.speciesId, key, c.variantKey, c.isAlpha, c.isShiny === true));
+        // the side this slot shows (the player's back, the foe's front), leased before the billboard asks for it;
+        // a battle form shows its own manifest entry (`spriteId`)
+        this.battleSprites.set(ref, spriteId ?? c.speciesId);
+        r.stage.setBattler(ref, cat.descriptor(c.speciesId, key, c.variantKey, c.isAlpha, c.isShiny === true, spriteId));
       },
       setPose: (ref, pose, ms) => r.stage.setPose(ref, pose, ms),
       hurt: (ref, s) => r.stage.hurt(ref, s),

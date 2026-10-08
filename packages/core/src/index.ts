@@ -13,7 +13,8 @@ export type { TypeName, TypeChart } from './types';
 export { TYPE_NAMES, typeMultiplier } from './typechart';
 
 // §2.3 SpeciesDef
-export type { Rarity, SpeciesRole, LearnEntry, Evolution, SpeciesDef } from './types';
+export type { Rarity, SpeciesRole, LearnEntry, Evolution, SpeciesDef, BattleFormDef } from './types';
+export { activeForm, formBase } from './forms';
 
 // §2.4 MoveDef and the 23 effects
 export type { MoveEffect, MoveTarget, MoveSpread, MoveDef } from './types';

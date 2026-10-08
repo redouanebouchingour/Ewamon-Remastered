@@ -41,9 +41,11 @@ export const VFX_ORB_IDS: readonly VfxId[] = Object.freeze(['orb_throw', 'orb_sh
 export const VFX_MISC_IDS: readonly VfxId[] = Object.freeze(['switch_out', 'switch_in', 'faint', 'trap', 'flinch'] as const);
 /** Phase D4: the shiny encounter burst (the one id beyond the §10.7.5 47). */
 export const VFX_SHINY_IDS: readonly VfxId[] = Object.freeze(['shiny_sparkle'] as const);
+/** Battle forms (`SpeciesDef.battleForm`): one burst per form. */
+export const VFX_FORM_IDS: readonly VfxId[] = Object.freeze(['form_rage'] as const);
 
 export const VFX_IDS: readonly VfxId[] = Object.freeze([
-  ...VFX_TYPE_IDS, ...VFX_IMPACT_IDS, ...VFX_STATUS_IDS, ...VFX_STAT_IDS, ...VFX_WEATHER_IDS, ...VFX_ORB_IDS, ...VFX_MISC_IDS, ...VFX_SHINY_IDS,
+  ...VFX_TYPE_IDS, ...VFX_IMPACT_IDS, ...VFX_STATUS_IDS, ...VFX_STAT_IDS, ...VFX_WEATHER_IDS, ...VFX_ORB_IDS, ...VFX_MISC_IDS, ...VFX_SHINY_IDS, ...VFX_FORM_IDS,
 ]);
 
 export function isVfxId(s: string): s is VfxId {
@@ -188,6 +190,12 @@ export const VFX_TABLE: Readonly<Record<VfxId, VfxRecipe>> = Object.freeze({
   trap: R('trap', [P({ motion: 'orbit', anchor: 'to', count: 48, color: '#c9a24a', color2: '#ffe0a0', shape: 'pixel', speed: 0, swirl: 4, radius: 0.9, lifeMs: 1100, spreadMs: 200, height: 0.5, drag: 0.001 })], { defaultMs: 1000 }),
   // Phase D4: a shiny's encounter burst — gold stars ringing and rising round the creature, one card flash
   shiny_sparkle: R('shiny_sparkle', [P({ motion: 'orbit', anchor: 'to', count: 28, color: '#fff3b8', color2: '#ffffff', shape: 'star', speed: 0, swirl: 3.2, radius: 0.85, lifeMs: 1000, spreadMs: 260, height: 0.9, size: 0.24, sizeEnd: 0.06, intensity: 2.2, drag: 0.001 }), P({ motion: 'burst', anchor: 'to', count: 2, color: '#ffffff', shape: 'star', size: 1.2, sizeEnd: 0.1, speed: 0, lifeMs: 260, height: 0.9, intensity: 2 })], { beaconPulse: 0.5, defaultMs: 1100 }),
+  // hollowmane's rage form: crimson shards blown outward, embers torn upward, a shockwave ring, one white flash
+  form_rage: R('form_rage', [
+    P({ motion: 'burst', anchor: 'to', count: 180, color: '#c0102c', color2: '#ff3a52', shape: 'pixel', speed: 5.2, lifeMs: 560, height: 0.9, size: 0.12, intensity: 2.4 }),
+    P({ motion: 'rise', anchor: 'to', count: 120, color: '#ff2a44', color2: '#3a0812', shape: 'streak', gravity: -4.5, speed: 1.2, lifeMs: 950, spreadMs: 520, radius: 0.75, height: 0.05, intensity: 2 }),
+    P({ motion: 'ring', anchor: 'to', count: 2, color: '#ff4a62', shape: 'ring', size: 1, sizeEnd: 3.6, speed: 0, lifeMs: 440, height: 0.15, intensity: 1.6 }),
+  ], { flash: 1, beaconPulse: 1, chroma: { amount: 0.016, ms: 160 }, defaultMs: 1100 }),
   flinch: R('flinch', [P({ motion: 'burst', anchor: 'to', count: 5, color: '#ffffff', shape: 'star', speed: 1.1, lifeMs: 360, height: 1.3, size: 0.3, sizeEnd: 0.6 })], { defaultMs: 400 }),
 }) as Readonly<Record<VfxId, VfxRecipe>>;
 

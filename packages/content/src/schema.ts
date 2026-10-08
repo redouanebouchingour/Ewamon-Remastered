@@ -147,6 +147,21 @@ export const EvolutionSchema: z.ZodType<Evolution> = z.union([
   z.null(),
 ]);
 
+/** a mid-battle form (hollowmane's rage form); the stat key enum is inline because StatKeySchema is declared below */
+const BattleFormDefSchema = z.object({
+  id: SnakeId,
+  name: z.string().min(1),
+  hpBelowPct: Int.min(1).max(99),
+  baseAtk: PosInt,
+  baseDef: PosInt,
+  baseSpd: PosInt,
+  onEnter: z.object({
+    clearNegativeStages: z.boolean(),
+    lowerFoes: z.union([z.object({ stat: z.enum(['atk', 'def', 'spd', 'acc', 'eva']), stages: Int.min(1).max(6) }), z.null()]),
+  }),
+  sprite: z.object({ front: z.string().min(1), back: z.string().min(1) }),
+});
+
 export const SpeciesDefSchema: z.ZodType<SpeciesDef> = z.object({
   id: SnakeId,
   name: z.string().min(1),
@@ -169,6 +184,7 @@ export const SpeciesDefSchema: z.ZodType<SpeciesDef> = z.object({
   evolvesFrom: z.union([SnakeId, z.null()]),
   sprite: z.object({ front: z.string().min(1), back: z.string().min(1) }),
   legendary: z.boolean(),
+  battleForm: BattleFormDefSchema.optional(),
 });
 
 // ─── §2.4 MoveDef ────────────────────────────────────────────────────────────

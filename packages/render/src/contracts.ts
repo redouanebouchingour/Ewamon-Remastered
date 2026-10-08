@@ -276,7 +276,8 @@ export type VfxId =
   | 'weather_sun' | 'weather_rain' | 'weather_sand' | 'weather_hail'
   | 'orb_throw' | 'orb_shake' | 'orb_catch' | 'orb_break'
   | 'switch_out' | 'switch_in' | 'faint' | 'trap' | 'flinch'
-  | 'shiny_sparkle';                                     // Phase D4: the encounter burst round a shiny
+  | 'shiny_sparkle'                                      // Phase D4: the encounter burst round a shiny
+  | 'form_rage';                                         // a battle form: hollowmane's rage form (crimson shards, embers, shockwave)
 
 export interface BattleStage {
   /** Dresses the arena at (x, z): a 7 m ring (surface cobble / the biome's plaza stone), 2 shadow-casting beacons whose colour is accentType, ≤ 6 spectator billboards (npc looks), rope posts; all within the zone's light budget (the 2 beacons are reserved slots). */

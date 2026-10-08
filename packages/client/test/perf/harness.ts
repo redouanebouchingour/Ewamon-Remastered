@@ -71,7 +71,7 @@ export function createFrame(now: () => number): Frame {
   const noop = (): void => undefined;
   const t: TimelineTargets = {
     setPose: noop, hurt: noop, vfx: noop, setWeather: noop, cue: noop, shake: noop, setTimeScale: noop,
-    hitstopEnabled: () => true, slowmoEnabled: () => true, playSfx: noop, hp: noop, status: noop, stage: noop, orb: noop,
+    hitstopEnabled: () => true, slowmoEnabled: () => true, playSfx: noop, hp: noop, status: noop, stage: noop, form: noop, orb: noop,
     enter: noop, log: noop, inputLock: noop, commit: noop, ended: noop,
   };
   const player = new TimelinePlayer(t);

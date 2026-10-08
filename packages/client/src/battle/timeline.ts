@@ -23,7 +23,7 @@
  */
 import type { BattleEvent, ContentIndex, MoveDef, Ref, StatKey, StatusId, TypeName, WeatherKind } from '@ewa/core';
 import {
-  CHROMA_SUPER, COMPRESS_FLOOR, CRIT_SLOWMO, HITSTOP_MS, HP_DRAIN, KO_HOLD, LOG_DWELL_MIN, ORB_GAP, ORB_RESULT, ORB_SHAKE, ORB_THROW, SHAKE_AMP,
+  CHROMA_SUPER, COMPRESS_FLOOR, CRIT_SLOWMO, FORM_MS, HITSTOP_MS, HP_DRAIN, KO_HOLD, LOG_DWELL_MIN, ORB_GAP, ORB_RESULT, ORB_SHAKE, ORB_THROW, SHAKE_AMP,
   SHAKE_MS, SHINY_MS, STAGE_MS, STATUS_MS, SWITCH_IN_MS, SWITCH_OUT_MS, TURN_BUDGET, WEATHER_MS,
 } from './constants';
 import type { MoveAnimDef, MoveAnimRegistry } from './moveAnims';
@@ -44,6 +44,8 @@ export type Keyframe =
   | { readonly at: number; readonly k: 'hp'; readonly who: Ref; readonly to: number; readonly max: number; readonly ms: number }
   | { readonly at: number; readonly k: 'status'; readonly who: Ref; readonly status: string | null }
   | { readonly at: number; readonly k: 'stage'; readonly who: Ref; readonly stat: string; readonly delta: number }
+  // a battle form: the battler's sprite becomes the form's (`<species>_<form>` in the creature manifest)
+  | { readonly at: number; readonly k: 'form'; readonly who: Ref; readonly form: string }
   | { readonly at: number; readonly k: 'log'; readonly text: string; readonly tone: LogTone }
   | { readonly at: number; readonly k: 'sfx'; readonly id: string; readonly at3d: Ref | null }
   | { readonly at: number; readonly k: 'weather'; readonly kind: string }
@@ -130,6 +132,12 @@ const CHIP_TEXT: Readonly<Record<string, string>> = {
 };
 const CHIP_VFX: Readonly<Record<string, string>> = {
   burn: 'status_burn', poison: 'status_poison', trap: 'trap', sand: 'weather_sand', hail: 'weather_hail', recoil: 'recoil', confusion: 'status_confuse', contact: 'impact_normal',
+};
+
+/** `formChange`: the burst and the line per battle form id (an unknown form gets the switch-in burst and a plain line). */
+const FORM_VFX: Readonly<Record<string, string>> = { rage: 'form_rage' };
+const FORM_TEXT: Readonly<Record<string, (name: string) => string>> = {
+  rage: (n) => `${n}’s mask cracks — it flies into a rage!`,
 };
 
 const FAIL_TEXT: Readonly<Record<string, string>> = {
@@ -412,6 +420,22 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         if (e.status !== 'confuse') push({ at: t, k: 'status', who: e.target, status: null });
         log(`${cap(name(e.target))} ${w.cured}`, tone(e.target, true));
         advance(STATUS_MS * 0.6, 'status');
+        break;
+      }
+      case 'formChange': {
+        // a battle form (hollowmane's rage): the hit finishes draining, then the burst and the roar; the sprite swaps
+        // at the burst's peak, then the line
+        flush();
+        const drained = hpEnd.get(key(e.who));
+        if (drained !== undefined && t < drained) t = drained;
+        push({ at: t, k: 'flash', who: e.who, color: '#ff2a44', ms: 300 });
+        push({ at: t, k: 'vfx', id: FORM_VFX[e.form] ?? 'switch_in', from: e.who, to: e.who, ms: FORM_MS, type: typeOf(e.who) });
+        push({ at: t, k: 'sfx', id: 'raid_roar', at3d: e.who });
+        if (!reduced) push({ at: t, k: 'shake', amp: SHAKE_AMP(1), ms: SHAKE_MS * 3 });
+        advance(FORM_MS * 0.4, 'other');
+        push({ at: t, k: 'form', who: e.who, form: e.form });
+        log(FORM_TEXT[e.form]?.(cap(name(e.who))) ?? `${cap(name(e.who))} changed form!`, tone(e.who, true));
+        advance(FORM_MS * 0.6, 'other');
         break;
       }
       case 'flinch':

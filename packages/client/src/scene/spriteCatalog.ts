@@ -80,7 +80,8 @@ export interface SpriteCatalog {
   sideAtlases(speciesId: string, side: 'front' | 'back'): { readonly atlas: string; readonly anim: string | null } | null;
   /** Level-0 bytes (albedo + normal + emissive, mips included when listed) of a set of atlases (static or anim), for the boot bar. */
   bytesOf(ids: readonly string[]): number;
-  descriptor(speciesId: string, key: string, variant?: VariantKey, isAlpha?: boolean, isShiny?: boolean): SpriteDescriptor | null;
+  /** `spriteId`: a battle form's manifest entry (`<species>_<form>`) drawn in place of the species' own; types and size stay the species'. */
+  descriptor(speciesId: string, key: string, variant?: VariantKey, isAlpha?: boolean, isShiny?: boolean, spriteId?: string): SpriteDescriptor | null;
   readonly speciesCount: number;
 }
 
@@ -130,8 +131,8 @@ export function createSpriteCatalog(m: CreatureManifest, species: (id: string) =
       return { atlas: sp[side].atlas, anim: a !== undefined && a.frames.length > 0 && animSets.has(a.atlas) ? a.atlas : null };
     },
     bytesOf: (ids) => ids.reduce((n, id) => n + (bytes.get(id) ?? 0), 0),
-    descriptor(speciesId, key, variant = 'normal', isAlpha = false, isShiny = false) {
-      const sp = m.sprites[speciesId];
+    descriptor(speciesId, key, variant = 'normal', isAlpha = false, isShiny = false, spriteId) {
+      const sp = m.sprites[spriteId ?? speciesId];
       if (sp === undefined) return null;
       const def = species(speciesId);
       const t = (def?.types ?? ['Normal']) as readonly CoreTypeName[];

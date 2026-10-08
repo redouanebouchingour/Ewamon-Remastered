@@ -594,6 +594,7 @@ export type Keyframe =
   | { readonly at: number; readonly k: 'hp'; readonly who: Ref; readonly to: number; readonly max: number; readonly ms: number }
   | { readonly at: number; readonly k: 'status'; readonly who: Ref; readonly status: string | null }
   | { readonly at: number; readonly k: 'stage'; readonly who: Ref; readonly stat: string; readonly delta: number }
+  | { readonly at: number; readonly k: 'form'; readonly who: Ref; readonly form: string }   // <!-- amended 2026-10-08: battle forms (hollowmane's rage form) --> `formChange`: after the hit drains, a red flash + `form_rage` + `raid_roar` sfx + shake; the stage shows `<species>_<form>` at +40 % of FORM_MS (1 100 ms), then the line
   | { readonly at: number; readonly k: 'log'; readonly text: string; readonly tone: 'neutral' | 'good' | 'bad' }
   | { readonly at: number; readonly k: 'sfx'; readonly id: string; readonly at3d: Ref | null }
   | { readonly at: number; readonly k: 'weather'; readonly kind: string }

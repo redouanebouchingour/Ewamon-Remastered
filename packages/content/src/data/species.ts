@@ -4116,5 +4116,15 @@ export const SPECIES: readonly SpeciesDef[] = [
     evolvesFrom: null,
     sprite: { front: 'hollowmane_front', back: 'hollowmane_back' },
     legendary: false,
+    battleForm: {
+      id: 'rage',
+      name: 'Rage Form',
+      hpBelowPct: 50,
+      baseAtk: 162,
+      baseDef: 66,
+      baseSpd: 150,
+      onEnter: { clearNegativeStages: true, lowerFoes: { stat: 'atk', stages: 1 } },
+      sprite: { front: 'hollowmane_rage_front', back: 'hollowmane_rage_back' },
+    },
   },
 ];

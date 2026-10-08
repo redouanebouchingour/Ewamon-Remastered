@@ -1478,3 +1478,17 @@ light layout", give the design and the numbers.
   `EWA_HARNESS_NO_BUILD=1` makes `handover-hitch.spec.ts` serve it as is (A/B of two bundles).
 - **Measured** (`handover-hitch.spec.ts`, dev iGPU): first destination frame preloaded 6.4–8.9 s → 68–196 ms; not
   preloaded 7.7–8.6 s → 3.7–4.7 s. `first-frame.spec.ts`: 34–64 s → 25–26 s.
+
+## Battle forms: the rage form on stage (2026-10-08)
+
+- `formChange` → timeline: after the crossing hit's hp drain, a red flash, `form_rage` VFX, `raid_roar` sfx and a shake
+  (not in reduced effects); at +40 % of `FORM_MS` (1 100 ms) a `form` keyframe; then "<Name>’s mask cracks — it flies into
+  a rage!" (`FORM_VFX` / `FORM_TEXT` per form id; an unknown form gets the switch-in burst and a plain line). `form` is a
+  state-bearing frame (`finishNow` applies it).
+- `BattleView.setBattler(ref, c, key, spriteId?)`: a form shows the manifest entry `<species>_<form>`
+  (`spriteCatalog.descriptor(..., spriteId)` keeps the species' types and size). `showBattler` reads the battler's
+  `form` from the state it shows, so a resync, a reload or a re-entry shows the rage sprite; `onBattleStart` shows the
+  field as it stood before the createBattle events' form changes (`beforeFormChanges`), so a lead already below half
+  appears plain and swaps on its frame. `battleSpriteIds` adds `hollowmane_rage` to the battle's atlas hold whenever a
+  hollowmane is in a party, so the swap never waits for an atlas.
+- The 40-event timing snapshot is unchanged (its fixture leaves `formChange` out; the kind has its own test).

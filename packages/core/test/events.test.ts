@@ -1,19 +1,19 @@
 /**
  * §2.19 BattleEvent — the animation contract. Every event names a valid side/slot, is JSON-serialisable with no
  * `undefined` (optional-looking fields are null), every `damage` carries hpAfter/maxHp/effectiveness/crit/stab/cause,
- * hpAfter agrees with the resulting state, and each of the 35 members of the union is produced by at least one
+ * hpAfter agrees with the resulting state, and each of the 36 members of the union is produced by at least one
  * scripted scenario in this file.
  */
 import { describe, expect, it } from 'vitest';
 import { createRng } from '../src/index';
-import type { BattleEvent, BattleState, MoveDef, Ref, TurnResult } from '../src/index';
-import { FLEE, FORFEIT, catchWith, customMove, eventTypes, eventsOf, findSeed, item, move, startBattle, sw, turn } from './helpers';
+import type { BattleEvent, BattleFormDef, BattleState, MoveDef, Ref, TurnResult } from '../src/index';
+import { FLEE, FORFEIT, catchWith, content, customMove, eventTypes, eventsOf, findSeed, item, move, startBattle, sw, turn } from './helpers';
 import type { CreatureSpec } from './helpers';
 
-/** The 35 `t` values of §2.19, in spec order. */
+/** The 36 `t` values of §2.19, in spec order (`formChange`: a battle form, added with hollowmane). */
 const EVENT_TYPES: readonly BattleEvent['t'][] = [
   'turnStart', 'switchOut', 'switchIn', 'abilityTrigger', 'moveUsed', 'moveMissed', 'moveFailed', 'damage', 'heal',
-  'statusApplied', 'statusBlocked', 'statusTick', 'statusCured', 'flinch', 'statStage', 'weatherSet', 'weatherTick',
+  'statusApplied', 'statusBlocked', 'statusTick', 'statusCured', 'flinch', 'formChange', 'statStage', 'weatherSet', 'weatherTick',
   'weatherEnd', 'trapped', 'trapEnd', 'itemUsed', 'heldItemTrigger', 'faint', 'switchRequired', 'catchThrow',
   'catchShake', 'catchResult', 'fled', 'forfeit', 'expGain', 'levelUp', 'learnMove', 'evolveReady', 'turnEnd', 'battleEnd',
 ];
@@ -31,6 +31,12 @@ const SYNTH = sure('Synthesis', 'V:heal');
 const SHAKY = sure('Growl', 'V:shaky', { accuracy: 30 });
 const FIGHTING = sure('Vine Lash', 'V:fighting', { type: 'Fighting' });
 const GROUND = sure('Vine Lash', 'V:ground', { type: 'Ground' });
+
+const RAGE: BattleFormDef = {
+  id: 'rage', name: 'Rage Form', hpBelowPct: 50, baseAtk: 90, baseDef: 30, baseSpd: 90,
+  onEnter: { clearNegativeStages: true, lowerFoes: { stat: 'atk', stages: 1 } },
+  sprite: { front: 'rage_front', back: 'rage_back' },
+};
 
 const A = (extra: Partial<CreatureSpec> = {}): CreatureSpec => ({ species: 'bramblecub', level: 50, ability: 'Chlorophyll', moves: [TACKLE.id, GROWL.id, NOOP.id, SAND.id], ...extra });
 const D = (extra: Partial<CreatureSpec> = {}): CreatureSpec => ({ species: 'mufflo', level: 50, ability: 'Natural Cure', moves: [TACKLE.id, GROWL.id, NOOP.id, TRAP.id], ...extra });
@@ -167,6 +173,13 @@ function scenarios(): Step[] {
     out.push(step(trainer, turn(trainer, FORFEIT, move(NOOP.id))));
   }
 
+  // a battle form: a hit takes the form species below half → formChange, then its onEnter stages
+  {
+    content.withSpecies({ ...content.species('mufflo'), id: 'V:rage', name: 'Rage', battleForm: RAGE });
+    const st = startBattle({ a: A(), b: D({ species: 'V:rage', hp: 64 }), seed: 'ev-form' }).state; // max 125: 64 is not below half
+    out.push(step(st, turn(st, move(TACKLE.id), move(NOOP.id))));
+  }
+
   return out;
 }
 
@@ -234,9 +247,9 @@ describe('§2.19 BattleEvent contract', () => {
     expect(checked).toBeGreaterThanOrEqual(15);
   });
 
-  it('the 35 union members are each produced at least once across the scenarios, and nothing outside the union is', () => {
-    expect(EVENT_TYPES.length).toBe(35);
-    expect(new Set(EVENT_TYPES).size).toBe(35);
+  it('the 36 union members are each produced at least once across the scenarios, and nothing outside the union is', () => {
+    expect(EVENT_TYPES.length).toBe(36);
+    expect(new Set(EVENT_TYPES).size).toBe(36);
     const missing = EVENT_TYPES.filter((t) => (produced.get(t) ?? 0) === 0);
     expect(missing).toEqual([]);
     for (const t of produced.keys()) expect(EVENT_TYPES).toContain(t);

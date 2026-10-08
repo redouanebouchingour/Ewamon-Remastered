@@ -6,6 +6,7 @@
 import { abilityHooks, hooksOfKind, stageLowerImmune, statusImmune } from './abilities';
 import { DEFAULT_VOLATILE, ZERO_STAGES } from './battler';
 import { applyExp, expGain } from './exp';
+import { formBase } from './forms';
 import { otherSide } from './side';
 import { calcMaxHp, calcStat, clampStage, ratioOf, applyRatio } from './stats';
 import { addStatus, hasStatus, isMajorStatus, majorStatus, removeStatus, clearMajorStatus } from './status';
@@ -49,6 +50,8 @@ export interface MBattler {
   stages: Record<StatKey, StatStage>;
   volatile: MVolatile;
   participated: boolean;
+  /** a battle form's id once changed (absent otherwise, so a formless battler keeps its exact shape) */
+  form?: string;
 }
 export interface MSide {
   kind: Side['kind'];
@@ -102,6 +105,7 @@ export function cloneBattler(b: Battler): MBattler {
     stages: { ...b.stages },
     volatile: { ...b.volatile },
     participated: b.participated,
+    ...(b.form !== undefined ? { form: b.form } : {}),
   };
 }
 
@@ -217,6 +221,7 @@ export function dealDamage(
     source,
     move,
   });
+  if (dealt > 0) checkBattleForm(ctx, target);
   return dealt;
 }
 
@@ -280,6 +285,44 @@ export function changeStage(
       const h = reacts[i]!;
       emit(ctx, { t: 'abilityTrigger', who: target, ability: b.creature.ability, detail: 'onStatLowered' });
       changeStage(ctx, target, h.raise.stat, h.raise.stages, target, 'ability');
+    }
+  }
+}
+
+// ─── battle forms ───────────────────────────────────────────────────────────
+
+const STAGE_KEYS: readonly StatKey[] = ['atk', 'def', 'spd', 'acc', 'eva'];
+
+/**
+ * `SpeciesDef.battleForm`, once per battle: a standing battler on the field that has not changed yet and whose hp is
+ * below `hpBelowPct` % of max changes — atk / def / spd from the form's base (`formChange`), then `onEnter`: its own
+ * negative stages back to 0, every standing foe on the field lowered (cause 'ability'). Called after every damage and
+ * when a battler enters the field. Consumes no rng, and returns at once for a species without a form.
+ */
+export function checkBattleForm(ctx: Ctx, who: Ref): void {
+  const b = at(ctx, who);
+  if (b.form !== undefined || !isAlive(b)) return;
+  const form = speciesOf(ctx, b).battleForm;
+  if (form === undefined || b.creature.hp * 100 >= b.maxHp * form.hpBelowPct) return;
+  if (!onField(ctx.st.sides[who.side], who.slot)) return;
+  b.form = form.id;
+  refreshDerived(ctx, b);
+  emit(ctx, { t: 'formChange', who, form: form.id, atk: b.atk, def: b.def, spd: b.spd });
+  if (form.onEnter.clearNegativeStages) {
+    for (let i = 0; i < STAGE_KEYS.length; i++) {
+      const stat = STAGE_KEYS[i]!;
+      const stage = b.stages[stat];
+      if (stage < 0) changeStage(ctx, who, stat, -stage, who, 'ability');
+    }
+  }
+  const lower = form.onEnter.lowerFoes;
+  if (lower !== null) {
+    const foeSideId = other(who.side);
+    const foeSide = ctx.st.sides[foeSideId];
+    const slots = foeSide.actives === undefined ? [foeSide.active] : [foeSide.actives[0], foeSide.actives[1]];
+    for (let i = 0; i < slots.length; i++) {
+      const foe = foeSide.party[slots[i]!];
+      if (foe !== undefined && isAlive(foe)) changeStage(ctx, ref(foeSideId, slots[i]!), lower.stat, -lower.stages, who, 'ability');
     }
   }
 }
@@ -396,10 +439,11 @@ export function setWeather(ctx: Ctx, kind: WeatherKind, source: Ref | null): voi
 /** Recomputes the derived stats after a level change; keeps stages/volatile/participation. */
 export function refreshDerived(ctx: Ctx, b: MBattler): void {
   const sp = speciesOf(ctx, b);
+  const base = formBase(sp, b);
   b.maxHp = calcMaxHp(sp.baseHp, b.creature.level);
-  b.atk = calcStat(sp.baseAtk, b.creature.level);
-  b.def = calcStat(sp.baseDef, b.creature.level);
-  b.spd = calcStat(sp.baseSpd, b.creature.level);
+  b.atk = calcStat(base.baseAtk, b.creature.level);
+  b.def = calcStat(base.baseDef, b.creature.level);
+  b.spd = calcStat(base.baseSpd, b.creature.level);
   if (b.creature.hp > b.maxHp) b.creature.hp = b.maxHp;
 }
 
@@ -426,6 +470,7 @@ export function awardExp(ctx: Ctx, defeatedRef: Ref): void {
     refreshDerived(ctx, b);
     emit(ctx, { t: 'expGain', who, amount: res.creature.exp - oldExp, expAfter: res.creature.exp });
     const sp = speciesOf(ctx, b);
+    const base = formBase(sp, b);
     for (let i = 0; i < res.levelsGained.length; i++) {
       const lvl = res.levelsGained[i]!;
       emit(ctx, {
@@ -433,9 +478,9 @@ export function awardExp(ctx: Ctx, defeatedRef: Ref): void {
         who,
         level: lvl,
         maxHp: calcMaxHp(sp.baseHp, lvl),
-        atk: calcStat(sp.baseAtk, lvl),
-        def: calcStat(sp.baseDef, lvl),
-        spd: calcStat(sp.baseSpd, lvl),
+        atk: calcStat(base.baseAtk, lvl),
+        def: calcStat(base.baseDef, lvl),
+        spd: calcStat(base.baseSpd, lvl),
       });
     }
     for (let i = 0; i < res.learnable.length; i++) {
@@ -539,6 +584,8 @@ export function fireSwitchInHooksAt(ctx: Ctx, who: Ref, foes: readonly Ref[]): v
       changeStage(ctx, foes[j]!, h.lowerFoe.stat, -h.lowerFoe.stages, who, 'ability');
     }
   }
+  // a battle form: one sent in already below its line changes as it lands
+  checkBattleForm(ctx, who);
 }
 
 /** Phase D6: puts party index `to` on field position `pos` of a doubles side (`active` mirrors position 0). No hooks. */

@@ -64,7 +64,7 @@ With soft alpha the bottom rung was 47.3 MB, over budget; the spec's 32 MB estim
 
 ## Output
 
-2026-10-08: with `hollowmane` (#131) the build is 131 species / 262 sprites, **66 atlases**, **33.69 MB** (33 691 962 B), albedo q88 / normal q92 (top rung), 0 actionable flags; the planner re-paired 13 atlases (`a-024`, `a-053` … `a-065`), the anim set is unchanged.
+2026-10-08: with `hollowmane` (#131) and its rage form (`hollowmane_rage`, a battle-form entry: `.design/additions/species.js` `battleForm.frontSprite/backSprite`, keyed like the species art) the build is 132 entries / 264 sprites, **66 atlases**, **34.13 MB** (34 134 598 B), albedo q88 / normal q92 (top rung), 0 actionable flags; the anim set is unchanged.
 
 `packages/client/public/creatures/` after the 2026-10-06 build (`PIPELINE_VERSION` 6, `SPRITE_STAGE_VERSION` 4: atlases composed from the true-colour cache), with the 2026-09-25 build (`PIPELINE_VERSION` 5, composed from the palette cache) for comparison:
 

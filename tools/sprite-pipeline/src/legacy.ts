@@ -8,7 +8,9 @@
  * ESM and is imported directly.
  *
  * Species added after the migration live in `.design/additions/species.js` (`EWAMON_SPECIES_ADDITIONS`,
- * the same row shape, a sibling of the legacy directory) and join the species set when that file exists.
+ * the same row shape, a sibling of the legacy directory) and join the species set when that file exists. A row's
+ * `battleForm` (a mid-battle form) ships as one more sprite entry under the key `<species>_<form>` (e.g.
+ * `hollowmane_rage`) with the species' sizeScale: the sprite set is the species set plus those form keys.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -96,6 +98,14 @@ export function loadLegacySpecies(legacyDir: string): Map<string, LegacySpecies>
     for (const id of Object.keys(additions)) {
       if (id in raw) throw new Error(`additions: species '${id}' already exists in ewamon.js`);
       raw[id] = additions[id];
+    }
+    for (const id of Object.keys(additions)) {
+      const row = additions[id] as RawSpecies & { battleForm?: { id?: unknown; frontSprite?: unknown; backSprite?: unknown } };
+      const form = row.battleForm;
+      if (form === undefined || typeof form.id !== 'string') continue;
+      const key = `${id}_${form.id}`;
+      if (key in raw) throw new Error(`additions: form sprite key '${key}' collides with a species`);
+      raw[key] = { frontSprite: form.frontSprite, backSprite: form.backSprite, sizeScale: row.sizeScale };
     }
   }
   return parseSpecies(raw);

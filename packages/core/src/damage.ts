@@ -11,6 +11,7 @@ import {
   typeImmunityFor,
 } from './abilities';
 import { heldHooks, statMultipliers, typeBoostMultipliers } from './items';
+import { formBase } from './forms';
 import { applyRatio, calcStat, mulFloor, stageRatio } from './stats';
 import { hasStatus, majorStatus } from './status';
 import { otherSide } from './side';
@@ -66,14 +67,14 @@ export function damageAmount(
   const P = move.power;
 
   // 1. A and D
-  let A = calcStat(atkSp.baseAtk, L);
+  let A = calcStat(formBase(atkSp, attacker).baseAtk, L);
   A = applyRatio(A, stageRatio(attacker.stages.atk));
   const aItem = statMultipliers(atkItems, 'atk', atkSp.evolution !== null);
   for (let i = 0; i < aItem.length; i++) A = mulFloor(A, aItem[i]!);
   const aAbility = attackMultipliers(atkHooks, majorStatus(attacker.creature.status) !== null);
   for (let i = 0; i < aAbility.length; i++) A = mulFloor(A, aAbility[i]!);
 
-  let D = calcStat(defSp.baseDef, defender.creature.level);
+  let D = calcStat(formBase(defSp, defender).baseDef, defender.creature.level);
   D = applyRatio(D, stageRatio(defender.stages.def));
   const dItem = statMultipliers(defItems, 'def', defSp.evolution !== null);
   for (let i = 0; i < dItem.length; i++) D = mulFloor(D, dItem[i]!);

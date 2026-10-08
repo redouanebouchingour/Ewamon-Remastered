@@ -460,3 +460,6 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
 - **Counts**: `validate.ts` rule 3 (131) and the family count (68), `schema.ts` `dexNumber ≤ 131`; the dex achievement
   keeps its persisted id `ach_dex_130` and targets the whole dex (131).
 - **Layout**: encounter slots do not feed the zone layout RNG; every heightfield digest and `r1-pre-move.json` are unchanged.
+- **Rage Form** (`battleForm`, core `BattleFormDef`; generator `migrateBattleForm`, schema `BattleFormDefSchema`): below
+  50 % hp, once per battle — base Atk 162 / Def 66 / Spd 150 (max hp kept), sheds its negative stages, every foe on the
+  field −1 Attack. Sprite ids `hollowmane_rage_front|back`; the sprite pipeline ships the art as `hollowmane_rage`.

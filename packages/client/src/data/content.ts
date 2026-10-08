@@ -34,6 +34,12 @@ const abilityMap = new Map<string, AbilityDef>(ABILITIES.map((a) => [a.id, a]));
 export const SPECIES_BY_DEX: readonly SpeciesDef[] = [...SPECIES].sort((a, b) => a.dexNumber - b.dexNumber);
 export const DEX_TOTAL = SPECIES_BY_DEX.length;
 
+/** The creature manifest entries a species can show in battle: its own, plus `<species>_<form>` when it has a battle form. */
+export function battleSpriteIds(speciesId: string): string[] {
+  const f = species(speciesId)?.battleForm;
+  return f === undefined ? [speciesId] : [speciesId, `${speciesId}_${f.id}`];
+}
+
 export function species(id: string): SpeciesDef | undefined {
   return speciesMap.get(id);
 }

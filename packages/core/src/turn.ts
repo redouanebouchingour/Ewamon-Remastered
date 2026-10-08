@@ -39,6 +39,7 @@ import { createRng } from './rng';
 import { otherSide } from './side';
 import { createDoubles, resolveDoublesTurn, validateDoublesAction } from './doubles';
 import { effectiveSpeed } from './speed';
+import { formBase } from './forms';
 import { applyRatio, calcStat, ratioOf, stageRatio } from './stats';
 import { hasStatus } from './status';
 import type {
@@ -325,8 +326,9 @@ export function useItemAt(ctx: Ctx, who: Ref, def: ConsumableDef, targetIdx: num
 function confusionSelfHit(ctx: Ctx, who: Ref, b: MBattler): void {
   const sp = ctx.content.species(b.creature.speciesId);
   const L = b.creature.level;
-  const A = applyRatio(calcStat(sp.baseAtk, L), stageRatio(b.stages.atk));
-  const D = Math.max(1, applyRatio(calcStat(sp.baseDef, L), stageRatio(b.stages.def)));
+  const fb = formBase(sp, b);
+  const A = applyRatio(calcStat(fb.baseAtk, L), stageRatio(b.stages.atk));
+  const D = Math.max(1, applyRatio(calcStat(fb.baseDef, L), stageRatio(b.stages.def)));
   const base = Math.floor(Math.floor((Math.floor((2 * L) / 5 + 2) * 40 * A) / D) / 50) + 2;
   dealDamage(ctx, who, Math.max(1, base), 'confusion', who, null);
 }

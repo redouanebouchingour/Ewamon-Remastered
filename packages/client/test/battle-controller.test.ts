@@ -28,7 +28,7 @@ function setup() {
   let hud: BattleHudModel | null = null;
   const calls: string[] = [];
   const view: BattleView = {
-    enterBattle: () => calls.push('enter'), exitBattle: () => calls.push('exit'), setBattler: (r, c) => calls.push(`battler ${r.side} ${c?.speciesId ?? '-'}`),
+    enterBattle: () => calls.push('enter'), exitBattle: () => calls.push('exit'), setBattler: (r, c, _k, sprite) => calls.push(`battler ${r.side} ${c?.speciesId ?? '-'}${sprite !== undefined ? ` as ${sprite}` : ''}`),
     setPose: () => undefined, hurt: () => undefined, vfx: () => undefined, prewarm: (ids) => calls.push(`prewarm ${ids.length}`), syncFrom: () => calls.push('sync'),
     setWeather: () => undefined, cue: () => undefined, shake: () => undefined, setTimeScale: () => undefined, hitstopEnabled: () => true,
     slowmoEnabled: () => true, playSfx: () => undefined, setBattleHud: (m) => (hud = m), setThreat: () => undefined,
@@ -208,6 +208,23 @@ describe('BattleController', () => {
     expect(b?.phase).toBe('selecting');
     expect(calls).toContain('enter');
     expect(c.player.isPlaying).toBe(false);
+  });
+
+  it('a battle form: a hollowmane entering below half swaps to its rage sprite on the form frame; a resync keeps it', () => {
+    const { c, calls, playOut } = setup();
+    const me = makeCreature(content, content.species('bramblecub'), 50, 'mine-1', 'p0');
+    const foe = { ...makeCreature(content, content.species('hollowmane'), 58, 'wild-1', null), hp: 20 };
+    const { state, events } = startBattle(content, 5, 'wild', [me], [foe]);
+    expect(events.some((e) => e.t === 'formChange')).toBe(true);
+    expect(state.sides[1].party[0]!.form).toBe('rage');
+    c.onBattleStart(startMsg(state, events));
+    expect(calls).toContain('battler 1 hollowmane');
+    expect(calls).not.toContain('battler 1 hollowmane as hollowmane_rage');
+    playOut();
+    expect(calls).toContain('battler 1 hollowmane as hollowmane_rage');
+    calls.length = 0;
+    c.onBattleResync({ type: 'battleResync', battleId: '00000000-0000-4000-8000-000000000001', state, stateDigest: digestBattleState(state) });
+    expect(calls).toContain('battler 1 hollowmane as hollowmane_rage');
   });
 
   it('pvp seat 1: own creature at the near stage position (render side 0) with the numbered bar', () => {

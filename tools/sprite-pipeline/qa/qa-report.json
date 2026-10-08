@@ -1,5 +1,5 @@
 {
-  "total": 262,
+  "total": 264,
   "actionable": 0,
   "informational": 152,
   "excluded": [
@@ -1580,14 +1580,14 @@
       {
         "albedo": 88,
         "normal": 92,
-        "totalBytes": 33691962
+        "totalBytes": 34134598
       }
     ],
     "thumbs": {
-      "count": 131,
-      "bytes": 703734,
+      "count": 132,
+      "bytes": 709626,
       "rungs": {
-        "q48/aq100/a8": 3,
+        "q48/aq100/a8": 4,
         "q56/aq100/a8": 3,
         "q64/aq100/a8": 3,
         "q72/aq100/a8": 20,
@@ -1597,5 +1597,5 @@
       }
     }
   },
-  "totalBytes": 33691962
+  "totalBytes": 34134598
 }

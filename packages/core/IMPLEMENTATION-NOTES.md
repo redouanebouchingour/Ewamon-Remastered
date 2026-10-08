@@ -166,3 +166,22 @@ consumables with `shop.js` prices. It is a test fixture, not `@ewa/content`.
   `expGain` / `levelUp` / `learnMove` / `evolveReady`. `cloneState` carries it. Absent (or false) = the key is not on the
   state: every committed fuzz digest is unchanged.
 - Tests: `test/tower.test.ts` (5).
+
+## Battle forms: hollowmane's rage form (2026-10-08)
+
+- `SpeciesDef.battleForm?: BattleFormDef` and `Battler.form?: string` (spine §2.3 / §2.9 as amended). `checkBattleForm`
+  (`engine.ts`) runs at the end of `dealDamage` (when hp was lost) and at the end of `fireSwitchInHooksAt` (every entry
+  path: `createBattle` leads, switches, replacements, doubles), so one sent in already below the line changes as it
+  lands. A standing battler on the field, not yet changed, with `hp * 100 < maxHp * hpBelowPct` (integer discipline):
+  `form` set, `refreshDerived` (atk / def / spd from the form base, max hp unchanged), `formChange`, then onEnter —
+  its own negative stages to 0 and every standing foe on the field lowered, both through `changeStage` with cause
+  'ability' (Keen Eye and Competitive react as to Intimidate). Once per battle: `form` is never cleared, so a switch-out
+  keeps it and nothing re-triggers.
+- `formBase(sp, b)` (`forms.ts`) is read wherever stats come from base stats: `projectBattler` (no form at projection),
+  `refreshDerived`, the `levelUp` event, `damageAmount` (A and D were recomputed from species, not `b.atk`), the
+  confusion self-hit. Speed reads the cached `b.spd` and follows.
+- Digests: `form` is absent until a change and `cloneBattler` copies it only when present; the check consumes no rng and
+  returns at once for a species without a form; the fuzz content has none — `fuzz-digests.json` and
+  `doubles-fuzz-digests.json` are unchanged. The event union has 36 kinds (`events.test.ts`).
+- Not persisted: the form lives on the battler; `applyBattleOutcome` returns the creature.
+- Tests: `test/forms.test.ts` (8), `test/events.test.ts` (a form scenario).

@@ -34,7 +34,7 @@ function ctxFor(state: BattleState | null, reduced = false): TimelineCtx {
 const A: Ref = { side: 0, slot: 0 };
 const B: Ref = { side: 1, slot: 0 };
 
-/** One event of each of the 35 kinds. */
+/** One event of each of the 36 kinds. */
 const ONE_OF_EACH: readonly BattleEvent[] = [
   { t: 'turnStart', turn: 1 },
   { t: 'switchOut', who: A, reason: 'action' },
@@ -50,6 +50,7 @@ const ONE_OF_EACH: readonly BattleEvent[] = [
   { t: 'statusTick', target: B, status: 'sleep', detail: 'asleep' },
   { t: 'statusCured', target: B, status: 'sleep', cause: 'timer' },
   { t: 'flinch', who: B },
+  { t: 'formChange', who: B, form: 'rage', atk: 180, def: 80, spd: 170 },
   { t: 'statStage', target: B, stat: 'atk', delta: -1, after: -1, clamped: false, source: A, cause: 'move' },
   { t: 'weatherSet', kind: 'rain', turns: 5, source: A },
   { t: 'weatherTick', kind: 'rain', turnsLeft: 4 },
@@ -90,8 +91,8 @@ function assertWellFormed(tl: Timeline, where: string): void {
 }
 
 describe('buildTimeline', () => {
-  it('maps each of the 35 BattleEvent kinds to at least one keyframe', () => {
-    expect(new Set(ONE_OF_EACH.map((e) => e.t)).size).toBe(35);
+  it('maps each of the 36 BattleEvent kinds to at least one keyframe', () => {
+    expect(new Set(ONE_OF_EACH.map((e) => e.t)).size).toBe(36);
     for (const e of ONE_OF_EACH) {
       const tl = buildTimeline([e], ctxFor(null));
       const own = tl.frames.filter((f) => !BRACKET.has(f.k));
@@ -170,6 +171,24 @@ describe('buildTimeline', () => {
     expect(red.durationMs).toBe(lastAt(red));
   });
 
+  it('formChange: after the hit drains, a red flash, the rage burst and the roar; the sprite swaps after them, then the line', () => {
+    const hit: BattleEvent = { t: 'damage', target: B, amount: 40, hpAfter: 50, maxHp: 120, effectiveness: 1, crit: false, stab: false, cause: 'move', source: A, move: 'Tackle' };
+    const tl = buildTimeline([hit, { t: 'formChange', who: B, form: 'rage', atk: 180, def: 80, spd: 170 }], ctxFor(null));
+    assertWellFormed(tl, 'formChange');
+    const fr = tl.frames;
+    const hp = fr.find((x) => x.k === 'hp')!;
+    const burst = fr.find((x) => x.k === 'vfx' && x.id === 'form_rage')!;
+    const swap = fr.find((x) => x.k === 'form')!;
+    expect(burst.at).toBeGreaterThan(hp.at);
+    expect(fr.some((x) => x.k === 'flash' && x.at === burst.at && x.color === '#ff2a44')).toBe(true);
+    expect(fr.some((x) => x.k === 'sfx' && x.id === 'raid_roar' && x.at === burst.at)).toBe(true);
+    expect(swap).toMatchObject({ who: B, form: 'rage' });
+    expect(swap.at).toBeGreaterThan(burst.at);
+    const line = fr.filter((x) => x.k === 'log').at(-1)!;
+    expect(line.k === 'log' && line.text).toMatch(/mask cracks — it flies into a rage!$/);
+    expect(line.at).toBeGreaterThanOrEqual(swap.at);
+  });
+
   it('hp frames target hpAfter / maxHp of the event', () => {
     const tl = buildTimeline(ONE_OF_EACH, ctxFor(null));
     const dmg = tl.frames.find((f) => f.k === 'hp' && f.who.side === 1);
@@ -177,7 +196,8 @@ describe('buildTimeline', () => {
   });
 
   it('a 40-event fixture matches the committed timing snapshot', () => {
-    const fixture: BattleEvent[] = [...ONE_OF_EACH];
+    // the 35 kinds the snapshot was taken with (formChange has its own test above)
+    const fixture: BattleEvent[] = ONE_OF_EACH.filter((e) => e.t !== 'formChange');
     fixture.push(
       { t: 'turnStart', turn: 2 },
       { t: 'moveUsed', who: B, move: 'Tackle', target: A, ppLeft: 34 },
