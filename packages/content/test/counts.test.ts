@@ -24,10 +24,10 @@ import {
 } from '../src/index';
 
 describe('counts', () => {
-  it('136 species with dense dex numbers', () => {
-    expect(SPECIES.length).toBe(136);
+  it('137 species with dense dex numbers', () => {
+    expect(SPECIES.length).toBe(137);
     const dex = SPECIES.map((s) => s.dexNumber).sort((a, b) => a - b);
-    expect(dex).toEqual(Array.from({ length: 136 }, (_, i) => i + 1));
+    expect(dex).toEqual(Array.from({ length: 137 }, (_, i) => i + 1));
     expect(SPECIES.filter((s) => s.legendary).length).toBe(10);
   });
   it('195 moves (193 legacy + Hollow Crescent, Vendetta Volley), 25 abilities, 17 items, 10 orbs, 23 consumables', () => {

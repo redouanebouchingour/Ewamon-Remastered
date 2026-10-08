@@ -50,7 +50,8 @@ export type Evolution =
   | { readonly kind: 'level'; readonly into: string; readonly atLevel: number }
   | { readonly kind: 'split'; readonly atLevel: number;
       readonly branches: readonly { readonly into: string;
-        readonly condition: { readonly kind: 'ability'; readonly ability: string } | null }[] }
+        // 'honor': the creature's honor ledger (CreatureInstance.honor, absent = 0) is at least `atLeast` (dustcub's line)
+        readonly condition: { readonly kind: 'ability'; readonly ability: string } | { readonly kind: 'honor'; readonly atLeast: number } | null }[] }
   // Phase D3: stone and trade evolutions. Never level-triggered (`applyExp` reports no `evolveReady` for them);
   // the server evolves on an explicit request, resolved by `itemEvolutionTarget` / `tradeEvolutionTarget`.
   | { readonly kind: 'item'; readonly item: string; readonly into: string }
@@ -60,7 +61,7 @@ export type Evolution =
 export interface SpeciesDef {
   readonly id: string;                 // snake_case, e.g. 'bramblecub'
   readonly name: string;               // display, e.g. 'Bramblecub'
-  readonly dexNumber: number;          // 1..131, unique, dense
+  readonly dexNumber: number;          // 1..137, unique, dense
   readonly flavor: string;
   readonly types: readonly [TypeName] | readonly [TypeName, TypeName];
   readonly baseHp: number; readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number;
@@ -114,6 +115,9 @@ export type MoveEffect =
   | 'raise_all' | 'trap' | 'weather' | 'sleep' | 'lower_spAtk' | 'raise_atk' | 'raise_spd';
 
 export type MoveTarget = 'foe' | 'self' | 'field';
+
+/** Why a battler's honor ledger moved (honor.ts HONOR_DELTAS). */
+export type HonorReason = 'dirtyTrick' | 'wildKo' | 'spared' | 'duelWon';
 
 /**
  * Phase D6 — doubles reach of a move. `'foes'` hits every standing foe on the field, `'all'` every other standing
@@ -260,6 +264,11 @@ export interface CreatureInstance {
   /** Phase D4: the 1/512 shiny tier; present (true) only on a shiny, absent otherwise (no effect on battle maths) */
   readonly isShiny?: boolean;
   readonly caughtAt: { readonly zoneId: string; readonly at: number } | null; // at = unix ms; null = starter/gift
+  /**
+   * The honor ledger, HONOR_MIN..HONOR_MAX (honor.ts): kept only by a species whose split evolution is decided by honor
+   * (dustcub), changed in battle by the `honor` event. Absent = 0; every other creature never has the field.
+   */
+  readonly honor?: number;
   readonly ribbons: readonly string[];
   readonly favorite: boolean;
   readonly locked: boolean;            // locked creatures cannot be released, traded or listed
@@ -413,7 +422,7 @@ export interface LevelUpResult {
   readonly creature: CreatureInstance;      // level/exp/hp updated; hp raised by the maxHp delta
   readonly levelsGained: readonly number[]; // e.g. [12, 13]
   readonly learnable: readonly { readonly level: number; readonly move: string }[]; // moves reached and not yet known
-  readonly evolveReady: string | null;      // species id, when level >= evolution.atLevel (branch resolved by ability)
+  readonly evolveReady: string | null;      // species id, when level >= evolution.atLevel (branch resolved by ability or honor)
 }
 
 // ─── §2.17 Elo ───────────────────────────────────────────────────────────────
@@ -476,6 +485,8 @@ export type BattleEvent =
   | { readonly t: 'levelUp'; readonly who: Ref; readonly level: number; readonly maxHp: number; readonly atk: number; readonly def: number; readonly spd: number }
   | { readonly t: 'learnMove'; readonly who: Ref; readonly move: string; readonly level: number }
   | { readonly t: 'evolveReady'; readonly who: Ref; readonly into: string }
+  // the honor ledger (honor.ts) moved; only for a battler whose species tracks honor
+  | { readonly t: 'honor'; readonly who: Ref; readonly delta: number; readonly honorAfter: number; readonly reason: HonorReason }
   | { readonly t: 'turnEnd'; readonly turn: number }
   | { readonly t: 'battleEnd'; readonly outcome: BattleOutcome; readonly turns: number };
 

@@ -3,7 +3,7 @@
  * §3.4 quest, §3.5 story, §3.6 live-ops and §3.12 body checks. Returns `{ ok, errors, stats }`; the CLI wrapper in
  * scripts/validate-cli.ts prints and exits non-zero. Nothing here touches disk.
  */
-import { TYPE_NAMES, evolutionChildren } from '@ewa/core';
+import { HONOR_MAX, HONOR_MIN, TYPE_NAMES, evolutionChildren } from '@ewa/core';
 import type { ConsumableDef, ItemDef, MoveDef, OrbDef, SpeciesDef } from '@ewa/core';
 import type {
   BadgeId,
@@ -208,7 +208,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
       if (s.evolution.kind === 'item' && !stoneIds.has(s.evolution.item)) err(`species ${s.id}: evolution item '${s.evolution.item}' is not an evolution stone`);
       if (s.evolution.kind === 'split') {
         for (const b of s.evolution.branches) {
-          if (b.condition !== null && !abilityIds.has(b.condition.ability)) err(`species ${s.id}: split condition ability '${b.condition.ability}' unknown`);
+          if (b.condition !== null && b.condition.kind === 'ability' && !abilityIds.has(b.condition.ability)) err(`species ${s.id}: split condition ability '${b.condition.ability}' unknown`);
+          if (b.condition !== null && b.condition.kind === 'honor' && (b.condition.atLeast <= HONOR_MIN || b.condition.atLeast > HONOR_MAX)) err(`species ${s.id}: split honor minimum ${b.condition.atLeast} outside ${HONOR_MIN + 1}..${HONOR_MAX}`);
         }
       }
     }
@@ -377,7 +378,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   for (const f of FLAG_REGISTRY) if (!f.id.includes(':') && !/^[a-z0-9_]+$/.test(f.id)) err(`flag registry: '${f.id}' is not snake_case`);
 
   // ── 3. counts ──
-  if (species.length !== 136) err(`SPECIES.length ${species.length} !== 136`);
+  if (species.length !== 137) err(`SPECIES.length ${species.length} !== 137`);
   if (moves.length !== 195) err(`MOVES.length ${moves.length} !== 195`); // 193 legacy + Hollow Crescent, Vendetta Volley (.design/additions/moves.js)
   // Phase D6: every curated spread move exists, and only damaging or foe-targeted moves spread
   for (const [id, sp] of Object.entries(SPREAD_MOVES).sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
@@ -397,7 +398,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   });
   {
     const dex = [...species.map((s) => s.dexNumber)].sort((a, b) => a - b);
-    for (let i = 0; i < dex.length; i++) if (dex[i] !== i + 1) { err(`dex numbers are not dense 1..136 (got ${dex[i]} at ${i})`); break; }
+    for (let i = 0; i < dex.length; i++) if (dex[i] !== i + 1) { err(`dex numbers are not dense 1..137 (got ${dex[i]} at ${i})`); break; }
     const ids = new Set(species.map((s) => s.id));
     if (ids.size !== species.length) err('duplicate species ids');
     if (moveIds.size !== moves.length) err('duplicate move ids');

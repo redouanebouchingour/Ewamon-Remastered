@@ -137,7 +137,7 @@ export const EvolutionSchema: z.ZodType<Evolution> = z.union([
       .array(
         z.object({
           into: SnakeId,
-          condition: z.union([z.object({ kind: z.literal('ability'), ability: Id }), z.null()]),
+          condition: z.union([z.object({ kind: z.literal('ability'), ability: Id }), z.object({ kind: z.literal('honor'), atLeast: z.number().int() }), z.null()]),
         }),
       )
       .min(2),
@@ -166,7 +166,7 @@ const BattleFormDefSchema = z.object({
 export const SpeciesDefSchema: z.ZodType<SpeciesDef> = z.object({
   id: SnakeId,
   name: z.string().min(1),
-  dexNumber: Int.min(1).max(136),
+  dexNumber: Int.min(1).max(137),
   flavor: z.string(),
   types: z.union([z.tuple([TypeNameSchema]), z.tuple([TypeNameSchema, TypeNameSchema])]),
   baseHp: PosInt,

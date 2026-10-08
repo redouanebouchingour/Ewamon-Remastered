@@ -1,7 +1,7 @@
 /**
  * §2.19 BattleEvent — the animation contract. Every event names a valid side/slot, is JSON-serialisable with no
  * `undefined` (optional-looking fields are null), every `damage` carries hpAfter/maxHp/effectiveness/crit/stab/cause,
- * hpAfter agrees with the resulting state, and each of the 36 members of the union is produced by at least one
+ * hpAfter agrees with the resulting state, and each of the 37 members of the union is produced by at least one
  * scripted scenario in this file.
  */
 import { describe, expect, it } from 'vitest';
@@ -10,12 +10,12 @@ import type { BattleEvent, BattleFormDef, BattleState, MoveDef, Ref, TurnResult 
 import { FLEE, FORFEIT, catchWith, content, customMove, eventTypes, eventsOf, findSeed, item, move, startBattle, sw, turn } from './helpers';
 import type { CreatureSpec } from './helpers';
 
-/** The 36 `t` values of §2.19, in spec order (`formChange`: a battle form, added with hollowmane). */
+/** The 37 `t` values of §2.19, in spec order (`formChange`: a battle form, added with hollowmane; `honor`: dustcub's ledger). */
 const EVENT_TYPES: readonly BattleEvent['t'][] = [
   'turnStart', 'switchOut', 'switchIn', 'abilityTrigger', 'moveUsed', 'moveMissed', 'moveFailed', 'damage', 'heal',
   'statusApplied', 'statusBlocked', 'statusTick', 'statusCured', 'flinch', 'formChange', 'statStage', 'weatherSet', 'weatherTick',
   'weatherEnd', 'trapped', 'trapEnd', 'itemUsed', 'heldItemTrigger', 'faint', 'switchRequired', 'catchThrow',
-  'catchShake', 'catchResult', 'fled', 'forfeit', 'expGain', 'levelUp', 'learnMove', 'evolveReady', 'turnEnd', 'battleEnd',
+  'catchShake', 'catchResult', 'fled', 'forfeit', 'expGain', 'levelUp', 'learnMove', 'evolveReady', 'honor', 'turnEnd', 'battleEnd',
 ];
 
 const sure = (base: string, id: string, patch: Partial<MoveDef> = {}): MoveDef => customMove(base, id, { effectChance: 100, accuracy: null, ...patch });
@@ -31,6 +31,7 @@ const SYNTH = sure('Synthesis', 'V:heal');
 const SHAKY = sure('Growl', 'V:shaky', { accuracy: 30 });
 const FIGHTING = sure('Vine Lash', 'V:fighting', { type: 'Fighting' });
 const GROUND = sure('Vine Lash', 'V:ground', { type: 'Ground' });
+const DARK = sure('Vine Lash', 'V:dark', { type: 'Dark' });
 
 const RAGE: BattleFormDef = {
   id: 'rage', name: 'Rage Form', hpBelowPct: 50, baseAtk: 90, baseDef: 30, baseSpd: 90,
@@ -180,6 +181,16 @@ function scenarios(): Step[] {
     out.push(step(st, turn(st, move(TACKLE.id), move(NOOP.id))));
   }
 
+  // the honor ledger: a species whose split evolution is decided by honor lands a Dark-type hit → honor −1
+  {
+    content.withSpecies({
+      ...content.species('mufflo'), id: 'V:honorcub', name: 'Honorcub',
+      evolution: { kind: 'split', atLevel: 30, branches: [{ into: 'wooltug', condition: { kind: 'honor', atLeast: 0 } }, { into: 'rambull', condition: null }] },
+    });
+    const st = startBattle({ a: A({ species: 'V:honorcub', moves: [DARK.id] }), b: D(), seed: 'ev-honor' }).state;
+    out.push(step(st, turn(st, move(DARK.id), move(NOOP.id))));
+  }
+
   return out;
 }
 
@@ -247,9 +258,9 @@ describe('§2.19 BattleEvent contract', () => {
     expect(checked).toBeGreaterThanOrEqual(15);
   });
 
-  it('the 36 union members are each produced at least once across the scenarios, and nothing outside the union is', () => {
-    expect(EVENT_TYPES.length).toBe(36);
-    expect(new Set(EVENT_TYPES).size).toBe(36);
+  it('the 37 union members are each produced at least once across the scenarios, and nothing outside the union is', () => {
+    expect(EVENT_TYPES.length).toBe(37);
+    expect(new Set(EVENT_TYPES).size).toBe(37);
     const missing = EVENT_TYPES.filter((t) => (produced.get(t) ?? 0) === 0);
     expect(missing).toEqual([]);
     for (const t of produced.keys()) expect(EVENT_TYPES).toContain(t);

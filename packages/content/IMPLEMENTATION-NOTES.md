@@ -526,3 +526,15 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   duplicate 8 species (73 atlases); umbral_observatory keeps 69 with none.
 - **Counts**: `validate.ts` rule 3 (136, MOVES 195), families (71), `schema.ts` `dexNumber ≤ 136`; `ach_dex_130` targets 136.
 - **Layout**: encounter slots do not feed the zone layout RNG; heightfield digests and `r1-pre-move.json` unchanged.
+
+## The honor ledger: dustcub → lawlander #137 / badlander (2026-10-08)
+
+- dustcub's evolution is a `split` at 30 with a new condition kind, `{ kind: 'honor', atLeast: 0 }` → `lawlander`, default
+  `badlander` (core `honor.ts`; the rules are in spine §2.3). The additions row writes it as
+  `splitEvolvesInto: [{ condition: "honor", value: 0, into: "lawlander" }, { into: "badlander" }]`; the generator maps
+  `condition: 'honor'` with a numeric `value` to the honor condition. `schema.ts` accepts it; `validate.ts` checks an
+  ability condition's ability and keeps an honor minimum inside −9..10.
+- **lawlander** (#137): Ground/Fighting, rare, 110 / 106 / 98 / 70, catch rate 30, sizeScale 1.1, Keen Eye / Guts, role
+  Physical Defender. Defaults Bulldoze, Counter, Mach Punch, Protect; learns Howl 6, Bulk Up 9, Power Jab 15, Slash 21,
+  Iron Fist 24, Earthquake 30, Body Slam 36, Close Combat 39. Evolution only: the directly placed count stays 83, the
+  families stay 71 (it is not a root), obtainable 137. `families.test.ts` / `index.test.ts` now expect two splits.

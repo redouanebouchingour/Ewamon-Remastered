@@ -569,7 +569,7 @@ export class RaidRunner {
               const row = await repos.creatures.recordById(tx, a.id);
               if (row === null || row.ownerId !== pid) continue;
               const after = persistableAfterBattle(a);
-              const merged: CreatureInstance = { ...toInstance(row), hp: after.hp, moves: after.moves, status: after.status, exp: after.exp, level: after.level, heldItem: after.heldItem };
+              const merged: CreatureInstance = { ...toInstance(row), hp: after.hp, moves: after.moves, status: after.status, exp: after.exp, level: after.level, heldItem: after.heldItem, ...(after.honor !== undefined ? { honor: after.honor } : {}) };
               await repos.creatures.update(tx, merged);
               o.updated.push(merged);
             }

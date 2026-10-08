@@ -26,6 +26,8 @@ import {
   placeActive,
   fractionOfMax,
   healBattler,
+  honorOnCatch,
+  honorOnWin,
   isAlive,
   other,
   ref,
@@ -91,6 +93,7 @@ export function endBattle(ctx: Ctx, outcome: BattleOutcome): void {
   ctx.st.ended = outcome;
   ctx.st.sides[0].mustSwitch = false;
   ctx.st.sides[1].mustSwitch = false;
+  if (outcome.winner === 0 || outcome.winner === 1) honorOnWin(ctx, outcome.winner);
   emit(ctx, { t: 'battleEnd', outcome, turns: ctx.st.turn });
 }
 
@@ -783,6 +786,7 @@ export function resolveTurn(
     for (let n = 1; n <= shown; n++) emit(ctx, { t: 'catchShake', n: n as 1 | 2 | 3 });
     emit(ctx, { t: 'catchResult', caught: roll.caught, target, shakes: roll.shakes });
     if (roll.caught) {
+      honorOnCatch(ctx);
       st.turn += 1;
       endBattle(ctx, { winner: 'caught', slot: st.sides[1].active });
       return finish(ctx);

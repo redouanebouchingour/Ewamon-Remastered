@@ -21,7 +21,7 @@
  *   celebrate address every standing position, a drain VFX points at the battler the drainer last hit, a spread
  *   move draws its VFX to each target, a per-target `moveFailed` names the target. Singles output is unchanged.
  */
-import type { BattleEvent, ContentIndex, MoveDef, Ref, StatKey, StatusId, TypeName, WeatherKind } from '@ewa/core';
+import type { BattleEvent, ContentIndex, HonorReason, MoveDef, Ref, StatKey, StatusId, TypeName, WeatherKind } from '@ewa/core';
 import {
   CHROMA_SUPER, COMPRESS_FLOOR, CRIT_SLOWMO, FORM_MS, HITSTOP_MS, HP_DRAIN, KO_HOLD, LOG_DWELL_MIN, ORB_GAP, ORB_RESULT, ORB_SHAKE, ORB_THROW, SHAKE_AMP,
   SHAKE_MS, SHINY_MS, STAGE_MS, STATUS_MS, SWITCH_IN_MS, SWITCH_OUT_MS, TURN_BUDGET, WEATHER_MS,
@@ -112,6 +112,14 @@ export function statusGlyph(s: StatusId | null): string | null {
 
 const STAT_WORD: Readonly<Record<StatKey, string>> = { atk: 'Attack', def: 'Defense', spd: 'Speed', acc: 'accuracy', eva: 'evasiveness' };
 export const STAT_SHORT: Readonly<Record<StatKey, string>> = { atk: 'Atk', def: 'Def', spd: 'Spe', acc: 'Acc', eva: 'Eva' };
+
+/** The honor ledger's deeds (core honor.ts), as the battle log tells them. */
+export const HONOR_REASON: Readonly<Record<HonorReason, string>> = {
+  dirtyTrick: 'a dirty trick.',
+  wildKo: 'it put down a wild creature.',
+  spared: 'it spared a wild creature.',
+  duelWon: 'a duel fairly won.',
+};
 
 const WEATHER_TEXT: Readonly<Record<Exclude<WeatherKind, 'none'>, { set: string; tick: string; end: string }>> = {
   sun: { set: 'The sunlight turned harsh!', tick: 'The sunlight is strong.', end: 'The sunlight faded.' },
@@ -577,6 +585,10 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         break;
       case 'evolveReady':
         log(`${cap(name(e.who))} is ready to evolve!`, 'good');
+        break;
+      case 'honor':
+        // the honor ledger (dustcub's line): one line, no time of its own
+        log(`${cap(name(e.who))}'s honor ${e.delta > 0 ? 'rose' : 'fell'} (${e.honorAfter > 0 ? '+' : ''}${e.honorAfter}): ${HONOR_REASON[e.reason]}`, tone(e.who, e.delta > 0));
         break;
       case 'turnEnd':
         flush();

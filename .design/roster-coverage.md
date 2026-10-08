@@ -414,7 +414,7 @@ The only town whose "static" species are the point of the town. `TOWN_SPAWN_TUNI
 
 Totals (Appendix A): **15 tables, 152 slots, 79 distinct species placed directly**; closure under evolution = 120; plus 8 statics and 2 mythical rewards = **130**.
 
-Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60; `dustcub` (#132, Ground) → `badlander` (#133, Ground/Dark) @30 — deepcut_route `uncommon 5` L20–24; `veilpup` (#134, Psychic) → `hollowolf` (#135, Psychic/Cosmic) @42 — skyrend `any rare 2` L38–41; `castlemaw` (#136, Dark/Steel single stage, with a Rage Form) — umbral_observatory `night rare 2` L44–48. With them the game has 156 slots, 83 species placed directly, **136** obtainable, 71 families.
+Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60; `dustcub` (#132, Ground) → `badlander` (#133, Ground/Dark) @30 — deepcut_route `uncommon 5` L20–24; `veilpup` (#134, Psychic) → `hollowolf` (#135, Psychic/Cosmic) @42 — skyrend `any rare 2` L38–41; `castlemaw` (#136, Dark/Steel single stage, with a Rage Form) — umbral_observatory `night rare 2` L44–48. Dustcub's evolution is an honor split at 30 (core honor.ts): `lawlander` (#137, Ground/Fighting, the High Honor branch, honor ≥ 0) or `badlander` (Low Honor); lawlander is obtainable by evolution only, so the directly placed count does not change. With them the game has 156 slots, 83 species placed directly, **136** obtainable, 71 families.
 
 ---
 

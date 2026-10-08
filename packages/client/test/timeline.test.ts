@@ -34,7 +34,7 @@ function ctxFor(state: BattleState | null, reduced = false): TimelineCtx {
 const A: Ref = { side: 0, slot: 0 };
 const B: Ref = { side: 1, slot: 0 };
 
-/** One event of each of the 36 kinds. */
+/** One event of each of the 37 kinds. */
 const ONE_OF_EACH: readonly BattleEvent[] = [
   { t: 'turnStart', turn: 1 },
   { t: 'switchOut', who: A, reason: 'action' },
@@ -70,6 +70,7 @@ const ONE_OF_EACH: readonly BattleEvent[] = [
   { t: 'levelUp', who: A, level: 8, maxHp: 30, atk: 14, def: 12, spd: 13 },
   { t: 'learnMove', who: A, move: 'Leaf Blade', level: 8 },
   { t: 'evolveReady', who: A, into: 'bramblewolf' },
+  { t: 'honor', who: A, delta: 2, honorAfter: 3, reason: 'duelWon' },
   { t: 'turnEnd', turn: 1 },
   { t: 'battleEnd', outcome: { winner: 0 }, turns: 1 },
 ];
@@ -91,8 +92,8 @@ function assertWellFormed(tl: Timeline, where: string): void {
 }
 
 describe('buildTimeline', () => {
-  it('maps each of the 36 BattleEvent kinds to at least one keyframe', () => {
-    expect(new Set(ONE_OF_EACH.map((e) => e.t)).size).toBe(36);
+  it('maps each of the 37 BattleEvent kinds to at least one keyframe', () => {
+    expect(new Set(ONE_OF_EACH.map((e) => e.t)).size).toBe(37);
     for (const e of ONE_OF_EACH) {
       const tl = buildTimeline([e], ctxFor(null));
       const own = tl.frames.filter((f) => !BRACKET.has(f.k));
@@ -189,6 +190,16 @@ describe('buildTimeline', () => {
     expect(line.at).toBeGreaterThanOrEqual(swap.at);
   });
 
+  it('an honor event logs one line with the ledger after the deed, good when the viewer’s creature gained', () => {
+    const lines = (e: BattleEvent): Keyframe[] => buildTimeline([e], ctxFor(null)).frames.filter((f) => f.k === 'log');
+    const [rose] = lines({ t: 'honor', who: A, delta: 2, honorAfter: 3, reason: 'duelWon' });
+    expect(rose).toMatchObject({ k: 'log', tone: 'good' });
+    expect(rose?.k === 'log' && rose.text).toMatch(/honor rose \(\+3\): a duel fairly won\.$/);
+    const [fell] = lines({ t: 'honor', who: A, delta: -1, honorAfter: -2, reason: 'dirtyTrick' });
+    expect(fell).toMatchObject({ k: 'log', tone: 'bad' });
+    expect(fell?.k === 'log' && fell.text).toMatch(/honor fell \(-2\): a dirty trick\.$/);
+  });
+
   it('hp frames target hpAfter / maxHp of the event', () => {
     const tl = buildTimeline(ONE_OF_EACH, ctxFor(null));
     const dmg = tl.frames.find((f) => f.k === 'hp' && f.who.side === 1);
@@ -196,8 +207,8 @@ describe('buildTimeline', () => {
   });
 
   it('a 40-event fixture matches the committed timing snapshot', () => {
-    // the 35 kinds the snapshot was taken with (formChange has its own test above)
-    const fixture: BattleEvent[] = ONE_OF_EACH.filter((e) => e.t !== 'formChange');
+    // the 35 kinds the snapshot was taken with (formChange and honor have their own tests)
+    const fixture: BattleEvent[] = ONE_OF_EACH.filter((e) => e.t !== 'formChange' && e.t !== 'honor');
     fixture.push(
       { t: 'turnStart', turn: 2 },
       { t: 'moveUsed', who: B, move: 'Tackle', target: A, ppLeft: 34 },

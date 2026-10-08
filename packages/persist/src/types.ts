@@ -38,6 +38,8 @@ export interface CreatureInstance {
   /** Phase D4: present (true) only on a shiny; absent = not shiny */
   readonly isShiny?: boolean;
   readonly caughtAt: { readonly zoneId: string; readonly at: number } | null;
+  /** the honor ledger (core honor.ts); absent = 0 */
+  readonly honor?: number;
   readonly ribbons: readonly string[];
   readonly favorite: boolean;
   readonly locked: boolean;

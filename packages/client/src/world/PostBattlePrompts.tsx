@@ -6,9 +6,10 @@
  * sequence plays (`app/evolution.ts`); the next prompt waits until it ended.
  */
 import { useEffect, useState } from 'react';
+import { evolutionChildren, evolutionTarget, tracksHonor } from '@ewa/core';
 import type { CreatureInstance } from '@ewa/core';
 import { evolveCreature, preloadEvolution } from '../app/evolution';
-import { displayName, itemInfo, move as moveDef, speciesName } from '../data/content';
+import { displayName, itemInfo, move as moveDef, species, speciesName } from '../data/content';
 import { ApiFailure, apiFetch } from '../net/api';
 import { toast } from '../state/notifications';
 import { applyInventoryDelta, toInventoryDelta, useSessionStore } from '../state/session';
@@ -30,8 +31,24 @@ function failure(e: unknown): string {
   return e instanceof ApiFailure ? e.error.code : 'network';
 }
 
-function Evolve({ p, c }: { readonly p: Extract<QueuedPrompt, { kind: 'evolve' }>; readonly c: CreatureInstance }) {
+/**
+ * The species this prompt evolves the creature into: its own `into`, except on an honor split (dustcub), where the
+ * ledger can move after the battle event that queued the prompt — the branch the creature's ledger picks now (the
+ * server resolves the same branch). Null when the creature can no longer evolve into it (an earlier prompt evolved it).
+ */
+export function promptTarget(p: Extract<QueuedPrompt, { kind: 'evolve' }>, c: CreatureInstance): string | null {
+  const sp = species(c.speciesId);
+  if (sp === undefined || !evolutionChildren(sp.evolution).includes(p.into)) return null;
+  const evo = sp.evolution;
+  if (evo === null || evo.kind !== 'split' || !tracksHonor(sp) || c.level < evo.atLevel) return p.into;
+  return evolutionTarget(evo, c.ability, c.honor ?? 0) ?? p.into;
+}
+
+function Evolve({ p: queued, c }: { readonly p: Extract<QueuedPrompt, { kind: 'evolve' }>; readonly c: CreatureInstance }) {
   const [busy, setBusy] = useState(false);
+  const p = { ...queued, into: promptTarget(queued, c) ?? queued.into };
+  const own = species(c.speciesId);
+  const honor = own !== undefined && tracksHonor(own) ? (c.honor ?? 0) : null;
   // the new form's sprite atlas binds while the player reads the prompt (the sequence must not wait for it)
   useEffect(() => preloadEvolution(p.into), [p.into]);
   const go = async (): Promise<void> => {
@@ -66,6 +83,7 @@ function Evolve({ p, c }: { readonly p: Extract<QueuedPrompt, { kind: 'evolve' }
         <strong className={s.name}>{displayName(c)}</strong> is ready to evolve into <strong className={s.name}>{speciesName(p.into)}</strong>.
         {p.item !== undefined ? ` Evolving uses one ${itemInfo(p.item).name}.` : ''}
         {p.trade === true ? ' The trade woke something in it.' : ''}
+        {honor !== null ? ` Its honor stands at ${honor > 0 ? `+${honor}` : honor}: ${honor >= 0 ? 'it walks the lawman\'s road.' : 'it rides with the outlaws.'}` : ''}
       </p>
     </Modal>
   );
@@ -143,7 +161,7 @@ export function PostBattlePrompts() {
   useSessionStore((st) => st.inventory);
   if (head === null || inBattle || talking || evolving) return null;
   const c = findCreature(head.creatureId);
-  if (c === null) {
+  if (c === null || (head.kind === 'evolve' && promptTarget(head, c) === null)) {
     queueMicrotask(next);
     return null;
   }

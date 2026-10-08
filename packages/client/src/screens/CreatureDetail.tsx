@@ -1,11 +1,13 @@
 /**
  * The selected creature's detail column (SPEC §20.9.3, reused by Box §20.9.4): stats "at level" (core calcStat —
  * display only), four MoveButtons with PP, ability + held item (`POST /creature/:id/setup`), nickname
- * (`/nickname`), favourite/lock (`/flags`), release (danger, confirm modal, refused when locked).
+ * (`/nickname`), favourite/lock (`/flags`), release (danger, confirm modal, refused when locked); the honor ledger of
+ * a creature whose evolution it decides (dustcub, core honor.ts).
  */
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { CreatureInstance } from '@ewa/core';
+import { HONOR_DELTAS, HONOR_MAX, HONOR_MIN, evolutionTarget, tracksHonor } from '@ewa/core';
+import type { CreatureInstance, SpeciesDef } from '@ewa/core';
 import { CREATURE_ITEMS, HELD_ITEMS, MULTI_USE_ITEMS, STONE_IDS, ability as abilityDef, displayName, itemInfo, maxHpOf, move as moveDef, species, statsOf, stoneTarget } from '../data/content';
 import { useSessionStore } from '../state/session';
 import { Button } from '../ui/Button';
@@ -35,6 +37,34 @@ export interface CreatureDetailProps {
 }
 
 const MAX_BASE = 150;
+
+const signed = (n: number): string => (n > 0 ? `+${n}` : String(n));
+
+/** The honor ledger (core honor.ts): where the creature stands between outlaw and lawman, and what its evolution will be. */
+export function HonorLedger({ creature: c, sp }: { readonly creature: CreatureInstance; readonly sp: SpeciesDef }) {
+  const evo = sp.evolution;
+  if (evo === null || evo.kind !== 'split') return null;
+  const honor = c.honor ?? 0;
+  const into = species(evolutionTarget(evo, c.ability, honor) ?? '')?.name ?? null;
+  const lawful = honor >= 0;
+  return (
+    <section className={l.section} aria-label="Honor">
+      <h4 className={l.sectionTitle}>Honor</h4>
+      <div className={s.honor}>
+        <span className={l.kvLabel}>Outlaw</span>
+        <div className={s.honorTrack} role="meter" aria-valuemin={HONOR_MIN} aria-valuemax={HONOR_MAX} aria-valuenow={honor} aria-label={`Honor ${signed(honor)}`}>
+          <div className={s.honorMark} data-lawful={lawful} style={cssVars({ '--p': (honor - HONOR_MIN) / (HONOR_MAX - HONOR_MIN) })} />
+        </div>
+        <span className={l.kvLabel}>Lawman</span>
+      </div>
+      <p className={l.caption}>
+        <strong className={l.kvValue}>{signed(honor)}</strong>{' '}
+        {into !== null ? `At level ${evo.atLevel} it becomes ${into}${c.level >= evo.atLevel ? ' when it evolves' : ''}.` : ''} Dark-type hits {HONOR_DELTAS.dirtyTrick}, knocking out a wild creature {HONOR_DELTAS.wildKo},
+        catching one while it stands on the field +{HONOR_DELTAS.spared}, winning a trainer duel +{HONOR_DELTAS.duelWon}.
+      </p>
+    </section>
+  );
+}
 
 export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInParty = false }: CreatureDetailProps) {
   const sp = species(c.speciesId);
@@ -110,6 +140,8 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
           ))}
         </div>
       </section>
+
+      {sp !== undefined && tracksHonor(sp) && <HonorLedger creature={c} sp={sp} />}
 
       <section className={l.section}>
         <h4 className={l.sectionTitle}>Moves</h4>

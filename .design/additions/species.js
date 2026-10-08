@@ -9,6 +9,9 @@
 // A row may carry `battleForm` (a mid-battle form, core `BattleFormDef`): the generator emits it with sprite ids
 // `<id>_<form>_front|back`, and the sprite pipeline ships its `frontSprite` / `backSprite` under the key `<id>_<form>`.
 //
+// A row may split by honor (`splitEvolvesInto: [{ condition: "honor", value: <min ledger>, into }, { into }]`, dustcub):
+// the creature keeps an honor ledger in battle and the ledger picks the branch at `evolvesAt` (core honor.ts).
+//
 // Dependency-free CommonJS, evaluated the same way as ewamon.js.
 
 const EWAMON_SPECIES_ADDITIONS = {
@@ -58,7 +61,8 @@ const EWAMON_SPECIES_ADDITIONS = {
     frontSprite: "dustcub(front).png",
     backSprite: "dustcub(back).png",
     habitat: ["Deepcut Route"],
-    evolvesInto: "badlander", evolvesAt: 30,
+    // the honor ledger decides at 30: honor ≥ 0 → lawlander (High Honor), below → badlander (Low Honor)
+    splitEvolvesInto: [{ condition: "honor", value: 0, into: "lawlander" }, { into: "badlander" }], evolvesAt: 30,
   },
 
   badlander: {
@@ -146,6 +150,25 @@ const EWAMON_SPECIES_ADDITIONS = {
       frontSprite: "castlemaw_rage(front).png",
       backSprite: "castlemaw_rage(back).png",
     },
+  },
+
+  // dustcub's High Honor branch (the honor ledger at 30 is ≥ 0): the lawman to badlander's outlaw.
+  lawlander: {
+    id: "lawlander", name: "Lawlander",
+    flavor: "A Dustcub that kept its word grows into a Lawlander, a weathered lawman of the badlands wearing a tin star nobody pinned on it. It never draws first, and it never misses second.",
+    type: ["Ground", "Fighting"],
+    baseHp: 110, baseAtk: 106, baseDef: 98, baseSpd: 70,
+    rarity: "rare", catchRate: 30,
+    sizeScale: 1.1,
+    expYield: 168,
+    moves: ["Bulldoze", "Counter", "Mach Punch", "Protect"],
+    learnableMoves: ["Howl", "Bulk Up", "Power Jab", "Slash", "Iron Fist", "Earthquake", "Body Slam", "Close Combat"],
+    abilities: ["Keen Eye", "Guts"],
+    role: "Physical Defender",
+    frontSprite: "lawlander(front).png",
+    backSprite: "lawlander(back).png",
+    habitat: [],
+    evolvesFrom: "dustcub",
   },
 };
 

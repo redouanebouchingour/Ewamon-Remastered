@@ -224,6 +224,7 @@ export function toInstance(c: CreatureInstance): CreatureInstance {
     isAlpha: c.isAlpha,
     ...(c.isShiny === true ? { isShiny: true } : {}),
     caughtAt: c.caughtAt === null ? null : { zoneId: c.caughtAt.zoneId, at: c.caughtAt.at },
+    ...(c.honor !== undefined ? { honor: c.honor } : {}),
     ribbons: [...c.ribbons],
     favorite: c.favorite,
     locked: c.locked,
@@ -849,7 +850,7 @@ export class BattleCoordinator {
           const row = await repos.creatures.recordById(tx, a.id);
           if (row === null || row.ownerId !== pid) continue;
           const after = persistableAfterBattle(a);
-          const merged: CreatureInstance = { ...toInstance(row), hp: after.hp, moves: after.moves, status: after.status, exp: after.exp, level: after.level, heldItem: after.heldItem };
+          const merged: CreatureInstance = { ...toInstance(row), hp: after.hp, moves: after.moves, status: after.status, exp: after.exp, level: after.level, heldItem: after.heldItem, ...(after.honor !== undefined ? { honor: after.honor } : {}) };
           await repos.creatures.update(tx, merged);
           d.creaturesUpdated.push(merged);
         }

@@ -32,6 +32,8 @@ export const creatureInstances = pgTable(
     isAlpha: boolean('is_alpha').notNull().default(false),
     /** Phase D4 (migration 0003): the 1/512 shiny tier */
     isShiny: boolean('is_shiny').notNull().default(false),
+    /** migration 0005: the honor ledger (core honor.ts), -10..10; 0 = none — only dustcub's line ever moves it */
+    honor: smallint('honor').notNull().default(0),
     caughtZoneId: varchar('caught_zone_id', { length: 32 }),
     caughtAt: timestamp('caught_at', { withTimezone: true }),
     ribbons: jsonb('ribbons').$type<string[]>().notNull().default([]),

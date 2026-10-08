@@ -10,7 +10,7 @@
  *    (§2.3 migration rule); duplicates and moves that name no MOVES row are dropped and listed in the header.
  *  - rarity 'epic' (13 legacy rows) → 'rare' (the spine's Rarity has no epic; roster-coverage §15).
  *  - catchRate clamped into 3..255, sizeScale into 0.5..2.2 (schema ranges); clamps are listed in the header.
- *  - evolution: level | split (darkone: the `condition: null` branch last) | null; evolvesFrom kept.
+ *  - evolution: level | split (darkone by ability, dustcub by honor: the `condition: null` branch last) | null; evolvesFrom kept.
  *  - sprite ids `<id>_front` / `<id>_back` (spine §2.3 example `bramblecub_front`).
  *  - moves: id = legacy display name; priority 1 iff effect 'first'; contact = power > 0 && type ∉ non-contact set;
  *    target 'field' for weather/sun, 'self' for power-0 raise_atk/def/spd/all and heal, else 'foe'; effectChance per §2.4;
@@ -72,7 +72,8 @@ interface LegacySpecies {
   evolvesInto?: string;
   evolvesAt?: number;
   evolvesFrom?: string;
-  splitEvolvesInto?: { condition?: string; value?: string; into: string }[];
+  /** `condition: 'ability'` with an ability name, or (.design/additions) `condition: 'honor'` with the ledger minimum */
+  splitEvolvesInto?: { condition?: string; value?: string | number; into: string }[];
   /** .design/additions only: a mid-battle form (sprite files under the form's own sprite key, see the sprite pipeline) */
   battleForm?: {
     id: string;
@@ -316,9 +317,11 @@ function migrateEvolution(s: LegacySpecies): Extract<Evolution, { kind: 'level' 
     const branches = s.splitEvolvesInto.map((b) => ({
       into: b.into,
       condition:
-        b.condition === 'ability' && b.value !== undefined
+        b.condition === 'ability' && typeof b.value === 'string'
           ? ({ kind: 'ability', ability: b.value } as const)
-          : null,
+          : b.condition === 'honor' && typeof b.value === 'number'
+            ? ({ kind: 'honor', atLeast: b.value } as const)
+            : null,
     }));
     branches.sort((a, b) => (a.condition === null ? 1 : 0) - (b.condition === null ? 1 : 0));
     return { kind: 'split', atLevel: s.evolvesAt ?? 40, branches };

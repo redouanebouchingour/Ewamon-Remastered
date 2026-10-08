@@ -37,6 +37,7 @@ export interface CreatureSpec {
   readonly nickname?: string | null;
   readonly exp?: number;
   readonly pp?: number; // override pp on every move
+  readonly honor?: number; // the honor ledger (absent = no field)
 }
 
 let nextId = 1;
@@ -66,6 +67,7 @@ export function creature(spec: CreatureSpec, c: LegacyContent = content): Creatu
     variantKey: 'normal',
     isAlpha: spec.isAlpha ?? false,
     caughtAt: null,
+    ...(spec.honor !== undefined ? { honor: spec.honor } : {}),
     ribbons: [],
     favorite: false,
     locked: false,

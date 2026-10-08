@@ -46,6 +46,8 @@ export const CreatureInstanceSchema = z.object({
   /** Phase D4: present (true) only on a shiny */
   isShiny: z.boolean().optional(),
   caughtAt: z.object({ zoneId: z.string(), at: z.number().int() }).nullable(),
+  /** the honor ledger (core honor.ts), -10..10; absent = 0 (only dustcub's line keeps one) */
+  honor: z.number().int().min(-10).max(10).optional(),
   ribbons: z.array(z.string()),
   favorite: z.boolean(),
   locked: z.boolean(),

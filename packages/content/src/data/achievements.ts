@@ -53,8 +53,8 @@ export const ACHIEVEMENTS: readonly QuestDef[] = [
   ach('ach_dex_30', 'A Field Notebook', 'Record 30 species in the dex.', 1, one('dex', 'Record 30 species', { kind: 'dexCaught', count: 30 }), reward(1500, { prism_orb: 3 })),
   ach('ach_dex_60', 'Half a Ledger', 'Record 60 species in the dex.', 2, one('dex', 'Record 60 species', { kind: 'dexCaught', count: 60 }), reward(3000, { prism_orb: 5, superpotion: 3 })),
   ach('ach_dex_90', 'The Long Record', 'Record 90 species in the dex.', 2, one('dex', 'Record 90 species', { kind: 'dexCaught', count: 90 }), reward(5000, { hyper_potion: 3, rarecandy: 1 })),
-  // id kept from the 130-species roster (persisted unlocks); the target is the whole dex (136 with the post-legacy additions)
-  ach('ach_dex_130', 'Nothing Quietly Lost', 'Record all 136 species in the dex.', 3, one('dex', 'Record all 136 species', { kind: 'dexCaught', count: 136 }), reward(15000, { rarecandy: 3, max_revive: 2 })),
+  // id kept from the 130-species roster (persisted unlocks); the target is the whole dex (137 with the post-legacy additions)
+  ach('ach_dex_130', 'Nothing Quietly Lost', 'Record all 137 species in the dex.', 3, one('dex', 'Record all 137 species', { kind: 'dexCaught', count: 137 }), reward(15000, { rarecandy: 3, max_revive: 2 })),
   // ---- catches (every catch counts) ----
   ach('ach_catch_1', 'First Catch', 'Catch your first wild creature.', 1, one('catch', 'Catch 1 creature', { kind: 'catchSpecies', count: 1 }), reward(200, { spark_orb: 5 })),
   ach('ach_catch_10', 'Ten Orbs Thrown True', 'Catch 10 creatures.', 1, one('catch', 'Catch 10 creatures', { kind: 'catchSpecies', count: 10 }), reward(800, { crest_orb: 5 })),

@@ -13,8 +13,9 @@ export type { TypeName, TypeChart } from './types';
 export { TYPE_NAMES, typeMultiplier } from './typechart';
 
 // §2.3 SpeciesDef
-export type { Rarity, SpeciesRole, LearnEntry, Evolution, SpeciesDef, BattleFormDef } from './types';
+export type { Rarity, SpeciesRole, LearnEntry, Evolution, SpeciesDef, BattleFormDef, HonorReason } from './types';
 export { activeForm, formBase, formMoveId } from './forms';
+export { HONOR_DELTAS, HONOR_MAX, HONOR_MIN, clampHonor, tracksHonor } from './honor';
 
 // §2.4 MoveDef and the 23 effects
 export type { MoveEffect, MoveTarget, MoveSpread, MoveDef } from './types';
@@ -65,7 +66,7 @@ export { CATCH_B } from './catch';
 
 // §2.16 EXP, levels, evolution
 export type { LevelUpResult } from './types';
-export { MAX_LEVEL, expToLevel, levelForExp, expGain, applyExp, evolve, evolutionChildren, itemEvolutionTarget, tradeEvolutionTarget } from './exp';
+export { MAX_LEVEL, expToLevel, levelForExp, expGain, applyExp, evolve, evolutionChildren, evolutionTarget, itemEvolutionTarget, tradeEvolutionTarget } from './exp';
 
 // §2.17 Elo
 export type { EloResult } from './types';

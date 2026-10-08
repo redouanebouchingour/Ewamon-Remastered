@@ -4,7 +4,7 @@
  * calcMaxHp) — the client never sends a result, only an intent.
  */
 import { MOVE_TUTOR_PRICE, TRADE_EVOLVE_RIBBON, TM_MOVES, canLearnMachineMove, tmItemId } from '@ewa/content';
-import { applyExp, calcMaxHp, evolve, expToLevel, itemEvolutionTarget, majorStatus, removeStatus, tradeEvolutionTarget } from '@ewa/core';
+import { applyExp, calcMaxHp, evolutionChildren, evolutionTarget, evolve, expToLevel, itemEvolutionTarget, majorStatus, removeStatus, tracksHonor, tradeEvolutionTarget } from '@ewa/core';
 import type { ConsumableDef, CreatureInstance, ItemDef, StatusId } from '@ewa/core';
 import type { CreatureRecord, Tx } from '@ewa/persist';
 import {
@@ -193,6 +193,8 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
   /**
    * `into` must be what the creature can evolve into right now:
    *   - a level / split evolution: core's evolveReady at the current level and ability (split branch by ability);
+   *   - an honor split (dustcub): either branch may be named — the honor ledger can still move after the battle event
+   *     that queued the prompt — and the creature evolves into the branch its persisted ledger picks now;
    *   - Phase D3 stone: the species' `{ kind: 'item', item }` target while the player owns the stone — ONE is spent,
    *     and the response carries the stone count in `inventoryDelta`;
    *   - Phase D3 trade: the species' `{ kind: 'trade' }` target while the creature carries the trade marker
@@ -212,8 +214,13 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
       const items: Record<string, number> = {};
       let via: 'level' | 'item' | 'trade' = 'level';
       let next: CreatureInstance;
+      const honorSplit = evo !== null && evo.kind === 'split' && tracksHonor(content.species(rec.speciesId)) && cur.level >= evo.atLevel && evolutionChildren(evo).includes(body.into);
       if (applyExp(cur, 0, content).evolveReady === body.into) {
         next = evolve(cur, body.into, content);
+      } else if (honorSplit) {
+        const into = evolutionTarget(evo, cur.ability, cur.honor ?? 0);
+        if (into === null) throw new HttpError(409, 'notReady');
+        next = evolve(cur, into, content);
       } else if (evo !== null && evo.kind === 'item' && itemEvolutionTarget(evo, evo.item) === body.into) {
         if ((await repos.inventory.qty(tx, id, evo.item)) < 1) throw new HttpError(409, 'notReady', { needs: evo.item });
         items[evo.item] = await repos.inventory.add(tx, id, evo.item, -1);
@@ -226,9 +233,9 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
         throw new HttpError(409, 'notReady');
       }
       await repos.creatures.update(tx, next);
-      await repos.progress.markSeen(tx, id, body.into, now);
-      await repos.progress.markCaught(tx, id, body.into, next.variantKey, next.isAlpha, now, next.isShiny === true);
-      await repos.audit.write(tx, { actorId: id, action: 'creature.evolve', subject: cid, detail: { from: rec.speciesId, into: body.into, via } }, now);
+      await repos.progress.markSeen(tx, id, next.speciesId, now);
+      await repos.progress.markCaught(tx, id, next.speciesId, next.variantKey, next.isAlpha, now, next.isShiny === true);
+      await repos.audit.write(tx, { actorId: id, action: 'creature.evolve', subject: cid, detail: { from: rec.speciesId, into: next.speciesId, via } }, now);
       return { next, items };
     });
     const c = res.next;

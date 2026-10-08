@@ -7,6 +7,7 @@ import { abilityHooks, hooksOfKind, stageLowerImmune, statusImmune } from './abi
 import { DEFAULT_VOLATILE, ZERO_STAGES } from './battler';
 import { applyExp, expGain } from './exp';
 import { formBase } from './forms';
+import { HONOR_DELTAS, clampHonor, tracksHonor } from './honor';
 import { otherSide } from './side';
 import { calcMaxHp, calcStat, clampStage, ratioOf, applyRatio } from './stats';
 import { addStatus, hasStatus, isMajorStatus, majorStatus, removeStatus, clearMajorStatus } from './status';
@@ -19,6 +20,7 @@ import type {
   CreatureInstance,
   Effectiveness,
   Field,
+  HonorReason,
   MajorStatus,
   MoveSlot,
   Ref,
@@ -222,7 +224,49 @@ export function dealDamage(
     move,
   });
   if (dealt > 0) checkBattleForm(ctx, target);
+  if (dealt > 0 && cause === 'move' && source !== null && move !== null && keepsHonor(ctx, source) && ctx.content.move(move).type === 'Dark') {
+    adjustHonor(ctx, source, 'dirtyTrick');
+  }
   return dealt;
+}
+
+// ─── the honor ledger (honor.ts) ────────────────────────────────────────────
+
+/** True when the battler at `who` keeps an honor ledger: a player's creature whose species tracks honor, outside the tower. */
+export function keepsHonor(ctx: Ctx, who: Ref): boolean {
+  if (ctx.st.noExp === true || ctx.st.sides[who.side].kind !== 'player') return false;
+  return tracksHonor(speciesOf(ctx, at(ctx, who)));
+}
+
+/** Moves the battler's honor by the deed's HONOR_DELTAS value (clamped); emits `honor` when it changed. */
+export function adjustHonor(ctx: Ctx, who: Ref, reason: HonorReason): void {
+  if (!keepsHonor(ctx, who)) return;
+  const b = at(ctx, who);
+  const before = b.creature.honor ?? 0;
+  const after = clampHonor(before + HONOR_DELTAS[reason]);
+  if (after === before) return;
+  b.creature.honor = after;
+  emit(ctx, { t: 'honor', who, delta: after - before, honorAfter: after, reason });
+}
+
+/** Every standing battler on `side`'s field, slot order. */
+function standingOnField(ctx: Ctx, side: 0 | 1): Ref[] {
+  const out: Ref[] = [];
+  const sd = ctx.st.sides[side];
+  for (let slot = 0; slot < sd.party.length; slot++) if (onField(sd, slot) && isAlive(sd.party[slot]!)) out.push(ref(side, slot));
+  return out;
+}
+
+/** A wild creature was caught: every standing battler on the catcher's field spared it. */
+export function honorOnCatch(ctx: Ctx): void {
+  for (const r of standingOnField(ctx, 0)) adjustHonor(ctx, r, 'spared');
+}
+
+/** The battle ended in a win: a won duel (not against the wild) honors every participant of the winning side. */
+export function honorOnWin(ctx: Ctx, winner: 0 | 1): void {
+  if (ctx.st.sides[other(winner)].kind === 'wild') return;
+  const sd = ctx.st.sides[winner];
+  for (let slot = 0; slot < sd.party.length; slot++) if (sd.party[slot]!.participated) adjustHonor(ctx, ref(winner, slot), 'duelWon');
 }
 
 /** Heals up to maxHp; emits `heal` with the actual amount (possibly 0). Returns the amount healed. */
@@ -498,7 +542,10 @@ export function checkFaint(ctx: Ctx, target: Ref): boolean {
   if (ctx.fainted[key] === true) return true;
   ctx.fainted[key] = true;
   emit(ctx, { t: 'faint', who: target });
-  if (onField(ctx.st.sides[target.side], target.slot)) awardExp(ctx, target);
+  if (onField(ctx.st.sides[target.side], target.slot)) {
+    awardExp(ctx, target);
+    if (ctx.st.sides[target.side].kind === 'wild') for (const r of standingOnField(ctx, other(target.side))) adjustHonor(ctx, r, 'wildKo');
+  }
   return true;
 }
 

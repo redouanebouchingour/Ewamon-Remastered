@@ -176,3 +176,9 @@ Tests: `test/shiny.test.ts` (4); `players.test.ts` dex expectation gains `shiny:
   Together with a route that never checked the trainer level, this let a level-1 account claim a level-50 mythical
   through `POST /battle-pass/mythical-choice`. The method now throws `Forbidden` without the row and `AlreadyClaimed`
   on a second choice. The server route now claims level 50 itself, gated on trainer level (server notes, Phase E5).
+
+## Migration 0005_honor (2026-10-08)
+
+`creature_instances.honor smallint NOT NULL DEFAULT 0` — the honor ledger (core `honor.ts`). `rowToCreature` emits `honor` only
+when non-zero, like `isShiny`, so every other creature keeps its exact shape; `creatureToColumns` writes `c.honor ?? 0`.
+No check constraint: core clamps to ±10 and the wire schema validates the range. Test: `test/honor.test.ts`.

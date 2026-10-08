@@ -151,7 +151,8 @@ export type Evolution =
   | { readonly kind: 'level'; readonly into: string; readonly atLevel: number }
   | { readonly kind: 'split'; readonly atLevel: number;
       readonly branches: readonly { readonly into: string;
-        readonly condition: { readonly kind: 'ability'; readonly ability: string } | null }[] }
+        // 'honor' <!-- amended 2026-10-08: the honor ledger, lawlander (#137) -->: the creature's honor ledger (CreatureInstance.honor, absent = 0) is at least `atLeast`
+        readonly condition: { readonly kind: 'ability'; readonly ability: string } | { readonly kind: 'honor'; readonly atLeast: number } | null }[] }
   | { readonly kind: 'item'; readonly item: string; readonly into: string }   // Phase D3: an evolution stone, any level
   | { readonly kind: 'trade'; readonly into: string }                         // Phase D3: when traded
   | null;
@@ -159,7 +160,7 @@ export type Evolution =
 export interface SpeciesDef {
   readonly id: string;                 // snake_case, e.g. 'bramblecub'
   readonly name: string;               // display, e.g. 'Bramblecub'
-  readonly dexNumber: number;          // 1..136, unique, dense (1..130 legacy, 131.. `.design/additions/species.js`)
+  readonly dexNumber: number;          // 1..137, unique, dense (1..130 legacy, 131.. `.design/additions/species.js`)
   readonly flavor: string;
   readonly types: readonly [TypeName] | readonly [TypeName, TypeName];
   readonly baseHp: number; readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number;
@@ -205,6 +206,8 @@ export interface BattleFormDef {
 Legacy `learnableMoves` is a flat string list with no levels. Migration rule for content: the species' default `moves` get level 1; the remaining entries get levels `evolvesAt`-aware — spaced evenly between 5 and `min(evolution.atLevel ?? 40, 60)` in list order, rounded to a multiple of 3. The generated table is committed as data, validated, and thereafter hand-edited; the generator is a one-shot tool, not a runtime rule.
 
 The `split` evolution exists exactly once in legacy (`Lightning Rod → aonred`, default `→ darkyon`); its branch with `condition: null` is the default and must be last.
+
+**The honor ledger (dustcub's line).** <!-- amended 2026-10-08: the honor ledger, lawlander (#137) --> A species whose `split` evolution has an `honor` branch keeps a ledger in `CreatureInstance.honor` (core `honor.ts`; absent = 0, clamped to −10..10). Inside the battle engine, for a creature of a `player` side only and never when `noExp` (the tower): a damaging hit with a Dark-type move −1 (`dirtyTrick`); a wild creature fainting while it stands on the field opposite −1 (`wildKo`); a wild creature caught while it stands on the field +1 (`spared`); its side winning a non-wild battle it took part in +2 (`duelWon`, emitted just before `battleEnd`). Each change emits `honor { who, delta, honorAfter, reason }`; at the clamp nothing is emitted. `evolutionTarget(evolution, ability, honor = 0)` takes the first branch whose condition holds (`honor >= atLeast`), so dustcub at 30 becomes `lawlander` (High Honor, #137) at honor ≥ 0 and `badlander` (Low Honor) below. A creature that never keeps a ledger never gains the field or the event, so both fuzz digest files are byte-identical. `POST /creature/:id/evolve` on an honor split accepts either branch and evolves into the one the persisted ledger picks (the ledger can move after the battle event that queued the prompt); the evolve prompt names that branch.
 
 **Phase D3 — stone and trade evolutions.** `item` and `trade` are never level-triggered: `applyExp` reports no `evolveReady` for them, and their species keep their legacy learnset (spaced by the legacy level). Core exports `itemEvolutionTarget(evolution, item)`, `tradeEvolutionTarget(evolution)` and `evolutionChildren(evolution)` (every target, any trigger); `evolve` is trigger-agnostic. Nine families use them (`packages/content/src/data/evolutions.ts`, applied by the generator): `embrock`, `flampling` → Ember Stone; `stormchick` → Storm Stone; `mossling` → Tide Stone; `seedrift` → Verdant Stone; `berkest` → Moon Stone; `hexroach` → Dusk Stone; `glowtent`, `resilith` → trade. None is in a league team or in the progression walker's parties. Eviolite and the speed tie-break keep reading `evolution !== null`, so battle semantics (and the fuzz digests) are unchanged. The roster report's `AcquisitionPath` gains `{ kind: 'item', from, item }` and `{ kind: 'trade', from }`; validate requires every stone an `item` evolution names to be sold, found or rewarded somewhere.
 
@@ -499,6 +502,7 @@ export interface CreatureInstance {
   readonly isAlpha: boolean;
   readonly isShiny?: boolean;          // Phase D4: the 1/512 tier; present (true) only on a shiny, absent otherwise; no battle effect
   readonly caughtAt: { readonly zoneId: string; readonly at: number } | null; // at = unix ms; null = starter/gift
+  readonly honor?: number;             // <!-- amended 2026-10-08: the honor ledger, lawlander (#137) --> the honor ledger, -10..10; only a species with an `honor` split keeps one (dustcub); absent = 0
   readonly ribbons: readonly string[];
   readonly favorite: boolean;
   readonly locked: boolean;            // locked creatures cannot be released, traded or listed
@@ -887,6 +891,8 @@ export type BattleEvent =
   | { readonly t: 'levelUp'; readonly who: Ref; readonly level: number; readonly maxHp: number; readonly atk: number; readonly def: number; readonly spd: number }
   | { readonly t: 'learnMove'; readonly who: Ref; readonly move: string; readonly level: number }
   | { readonly t: 'evolveReady'; readonly who: Ref; readonly into: string }
+  // <!-- amended 2026-10-08: the honor ledger, lawlander (#137) --> the honor ledger moved (37 kinds); reason 'dirtyTrick' | 'wildKo' | 'spared' | 'duelWon'
+  | { readonly t: 'honor'; readonly who: Ref; readonly delta: number; readonly honorAfter: number; readonly reason: HonorReason }
   | { readonly t: 'turnEnd'; readonly turn: number }
   | { readonly t: 'battleEnd'; readonly outcome: BattleOutcome; readonly turns: number };
 ```
@@ -1166,7 +1172,7 @@ export interface QuestDef {
   readonly rewards: { readonly money: number; readonly items: Readonly<Record<string, number>>; readonly creature: { readonly species: string; readonly level: number } | null; readonly flag: string | null };
 }
 export const QUESTS: readonly QuestDef[];            // the 12 story quests, then the 30 ACHIEVEMENTS (Phase D5)
-export const ACHIEVEMENTS: readonly QuestDef[];      // Phase D5: dex 10/30/60/90/136 (all species; id `ach_dex_130` kept), catches 1/10/50/200, alpha, shiny, wins 10/100/500, trainer 50, PvP 1/25, 8 badges, 12 league trainers, champion, 8 statics, trades 1/10/50, raids 1/10/50, streaks 7/30/100
+export const ACHIEVEMENTS: readonly QuestDef[];      // Phase D5: dex 10/30/60/90/137 (all species; id `ach_dex_130` kept), catches 1/10/50/200, alpha, shiny, wins 10/100/500, trainer 50, PvP 1/25, 8 badges, 12 league trainers, champion, 8 statics, trades 1/10/50, raids 1/10/50, streaks 7/30/100
 export const STORY_QUESTS: readonly QuestDef[];      // QUESTS without the achievements
 ```
 
@@ -1259,12 +1265,12 @@ Fails the build on the first of:
 
 1. Any zod schema failure over `SPECIES`, `MOVES`, `ABILITIES`, `ITEMS`, `ORBS`, `CONSUMABLES`, `ZONES`, `ENCOUNTER_TABLES`, `LEAGUE`, `QUESTS`, `STORY`, `SEASONAL_EVENTS`, `DAILY_SWARMS`, `RAID_HOTSPOTS`, `BATTLE_PASS`.
 2. Dangling id: species `moves`/`learnableMoves` → `MOVES`; species `abilities` → `ABILITIES`; `evolution.into`/`evolvesFrom` → `SPECIES`; zone `links` → `ZONES`; zone `gym` → `LEAGUE`; `encounterTable` → `ENCOUNTER_TABLES`; encounter/trainer/league/quest/swarm/raid/static `species` → `SPECIES`; shop stock, ground items, quest rewards, battle-pass items → `CONSUMABLES ∪ ORBS ∪ ITEMS`; story `speaker`/`battle.trainerId` → npcs/trainers/league; quest `giver` → an `NpcDef.id` of the quest's `zoneId` or `null`; quest `talkTo`/`deliverItem` `npcId` and `defeatTrainer` `trainerId` → npcs/trainers; `LegendaryStatic.when` → a `badge:` or a flag set by some beat/quest/league row; every `zoneId` anywhere → `ZoneId` (zod enum, build time). <!-- reconciled 2026-09-18: statics, quest givers and flag gates added (roster-coverage OQ 5, legacy-render-audit Q23) -->
-3. Counts: `SPECIES.length === 136` <!-- amended 2026-10-08: hollowmane (#131) --> <!-- amended 2026-10-08: dustcub, badlander (#132–133) --> <!-- amended 2026-10-08: veilpup, hollowolf (#134–135) --> <!-- amended 2026-10-08: castlemaw (#136) -->, `MOVES.length === 195` <!-- amended 2026-10-08: Hollow Crescent --> <!-- amended 2026-10-08: Vendetta Volley -->, `TYPE_NAMES.length === 19`, `ABILITIES.length === 25`, `ITEMS.length === 17`, `ORBS.length === 10`, `ZONES.length === 21`, `LEAGUE.length === 12`, `BATTLE_PASS.length === 100`, dex numbers dense 1..135.
+3. Counts: `SPECIES.length === 137` <!-- amended 2026-10-08: hollowmane (#131) --> <!-- amended 2026-10-08: dustcub, badlander (#132–133) --> <!-- amended 2026-10-08: veilpup, hollowolf (#134–135) --> <!-- amended 2026-10-08: castlemaw (#136) --> <!-- amended 2026-10-08: the honor ledger, lawlander (#137) -->, `MOVES.length === 195` <!-- amended 2026-10-08: Hollow Crescent --> <!-- amended 2026-10-08: Vendetta Volley -->, `TYPE_NAMES.length === 19`, `ABILITIES.length === 25`, `ITEMS.length === 17`, `ORBS.length === 10`, `ZONES.length === 21`, `LEAGUE.length === 12`, `BATTLE_PASS.length === 100`, dex numbers dense 1..137.
    Phase D6 <!-- amended 2026-10-06 Phase D6 -->: every `SPREAD_MOVES` id (content `data/spreadMoves.ts`, 16 curated moves laid over the generated `MOVES`: Rock Slide, Heat Wave, Blizzard, Dazzling Gleam, Snarl, Twister, Powder Snow, Frozen Tempest, Gem Storm, Growl, String Shot → `'foes'`; Earthquake, Discharge, Bulldoze, Petal Blizzard, Sparkling Aria → `'all'`) is a foe-targeted MOVES row carrying that `spread`; a `doubles: true` trainer / league row has a team of 2+. Authored doubles (all optional, never gates): `draco_gym` (Sylvane), `aurelia` (Warden 2), and the route trainers `galvan_route.rocker`, `deepcut_route.digger`, `hollow_route.medium`, `siege_route.engineer`, `ascent_route.tamer`.
 4. Move effect keys ⊆ the 23 `MoveEffect` values after the `lower_spAtk → lower_atk` rewrite; `effect === 'first'` implies `priority === 1` and vice-versa.
 5. `learnableMoves` sorted by level, includes every default move at level 1, no duplicates.
 6. `evolution.atLevel` in 2..99; `evolvesFrom` consistency both ways; a split evolution's `null`-condition branch is last; all 68 evolution families form trees rooted at a species with `evolvesFrom === null`.
-7. **Roster coverage.** Let `E` = the set of species in any `EncounterTable`, `DailySwarm`, `RaidHotspot` boss, quest `rewards.creature`, battle-pass `creature`, or a `StoryBeat` with `battle` against a legendary static. Let `R(E)` = `E` closed under `evolution.into`. Assert `R(E) ∪ LEGENDARY_STATICS ∪ { 'lumyth', 'noxmyth' }` ⊇ all 136 ids, where `LEGENDARY_STATICS` (§3.2) holds the 8 non-mythical legendaries (`raikitsune`, `bankaiser`, `galaxion`, `sunjaw`, `glacinid`, `voltaura`, `zenryu`, `voidraxis`), each exactly once, none in any table/swarm/raid pool. The mythicals `lumyth` and `noxmyth` must each be a `rewards.creature` of some quest or the `mythicalChoice` at battle-pass 50. Non-legendary species may **not** appear in `LEGENDARY_STATICS`. The message on failure lists the unobtainable ids — the legacy set was `wraithtide, kygra, ripshell, bloomsprite, acier` plus 40 others. The roster rules RC-1 … RC-13 of `.design/roster-coverage.md` §3 run here too and the `RosterReport` (roster-coverage §4.2) is written under `roster` in the report.
+7. **Roster coverage.** Let `E` = the set of species in any `EncounterTable`, `DailySwarm`, `RaidHotspot` boss, quest `rewards.creature`, battle-pass `creature`, or a `StoryBeat` with `battle` against a legendary static. Let `R(E)` = `E` closed under `evolution.into`. Assert `R(E) ∪ LEGENDARY_STATICS ∪ { 'lumyth', 'noxmyth' }` ⊇ all 137 ids, where `LEGENDARY_STATICS` (§3.2) holds the 8 non-mythical legendaries (`raikitsune`, `bankaiser`, `galaxion`, `sunjaw`, `glacinid`, `voltaura`, `zenryu`, `voidraxis`), each exactly once, none in any table/swarm/raid pool. The mythicals `lumyth` and `noxmyth` must each be a `rewards.creature` of some quest or the `mythicalChoice` at battle-pass 50. Non-legendary species may **not** appear in `LEGENDARY_STATICS`. The message on failure lists the unobtainable ids — the legacy set was `wraithtide, kygra, ripshell, bloomsprite, acier` plus 40 others. The roster rules RC-1 … RC-13 of `.design/roster-coverage.md` §3 run here too and the `RosterReport` (roster-coverage §4.2) is written under `roster` in the report.
 8. Every `EncounterSlot` has `levelMin <= levelMax`, weights > 0; a table on a `story` zone must satisfy roster-coverage RC-9 (levels inside the zone's band, Ghost/Dark night-only). No table exceeds 16 slots or 14 distinct species. <!-- reconciled 2026-09-18: roster-coverage A1 — story tables allowed -->
 9. Zone graph checks from §3.1, and every authored coordinate inside the playable interior (§3.1 extents; snapped, else fail).
 10. Prices: every consumable `sellPrice === floor(price / 2)`; orb prices are the legacy values.
@@ -1680,6 +1686,7 @@ export const creatureInstances = pgTable('creature_instances', {
   variantKey: varchar('variant_key', { length: 8 }).notNull().default('normal'),
   isAlpha: boolean('is_alpha').notNull().default(false),
   isShiny: boolean('is_shiny').notNull().default(false),           // migration 0003_shiny (Phase D4)
+  honor: smallint('honor').notNull().default(0),                   // migration 0005_honor: the honor ledger (-10..10) <!-- amended 2026-10-08: the honor ledger, lawlander (#137) -->
   caughtZoneId: varchar('caught_zone_id', { length: 32 }),
   caughtAt: timestamp('caught_at', { withTimezone: true }),
   ribbons: jsonb('ribbons').$type<string[]>().notNull().default([]),

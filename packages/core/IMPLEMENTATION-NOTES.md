@@ -195,3 +195,11 @@ consumables with `shop.js` prices. It is a test fixture, not `@ewa/content`.
   and doubles), doubles' spread check and the trainer AI's scoring (`npc.ts`) read the executed move. A signature must
   not be a spread move (content `validate.ts`): `executeSpreadAt` pays PP by the executed id.
 - Tests: `test/forms.test.ts` (+2).
+
+## The honor ledger (2026-10-08)
+
+`honor.ts` (`HONOR_MIN` / `HONOR_MAX` ±10, `HONOR_DELTAS`, `tracksHonor`, `clampHonor`) and the engine hooks `adjustHonor`,
+`honorOnCatch`, `honorOnWin`: `dealDamage` (a Dark-type move hit), `checkFaint` (a wild creature fainted on the field, after
+`awardExp`), the catch (before `endBattle`) and `endBattle` (a won non-wild battle, before `battleEnd`). `keepsHonor` is checked
+first (a player side, not `noExp`, a species with an honor split), so no other battle looks a move up or changes shape;
+the fuzz digests are unchanged. `evolutionTarget` takes `honor = 0` and is exported; `applyExp` passes `c.honor ?? 0`.

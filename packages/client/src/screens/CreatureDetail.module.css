@@ -37,3 +37,33 @@
   gap: var(--s-3);
   margin-left: auto;
 }
+
+/* the honor ledger (dustcub): outlaw red on the left, lawman gold on the right, the mark at the creature's honor */
+.honor {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.honorTrack {
+  position: relative;
+  block-size: 8px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(90deg, var(--danger) 0%, var(--danger-a16) 47.5%, var(--warn-a16) 52.5%, var(--warn) 100%);
+}
+
+.honorMark {
+  position: absolute;
+  inset-block: -4px;
+  inset-inline-start: calc(var(--p) * 100%);
+  inline-size: 4px;
+  transform: translateX(-50%);
+  border-radius: var(--r-pill);
+  background: var(--danger);
+  box-shadow: 0 0 0 2px var(--bg-0);
+}
+
+.honorMark[data-lawful='true'] {
+  background: var(--warn);
+}

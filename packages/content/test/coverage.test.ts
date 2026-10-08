@@ -38,10 +38,10 @@ describe('roster coverage (independent)', () => {
   for (const l of LEGENDARY_STATICS) R.add(l.species);
   for (const m of ['lumyth', 'noxmyth']) R.add(m);
 
-  it('136/136 obtainable', () => {
+  it('137/137 obtainable', () => {
     const missing = SPECIES.map((s) => s.id).filter((id) => !R.has(id));
     expect(missing).toEqual([]);
-    expect(R.size).toBe(136);
+    expect(R.size).toBe(137);
   });
 
   it('83 directly placed: roster-coverage Appendix A reports 79, plus the post-legacy hollowmane, dustcub, veilpup and castlemaw', () => {
@@ -91,7 +91,7 @@ describe('roster coverage (independent)', () => {
     expect(r.stats.roster.obtainable).toBe(R.size);
     expect(r.stats.roster.directlyPlaced).toBe(E.size);
     expect(r.stats.roster.families).toBe(71);
-    expect(Object.keys(r.stats.roster.paths).length).toBe(136);
+    expect(Object.keys(r.stats.roster.paths).length).toBe(137);
     expect(r.stats.roster.paths['bramblecub']?.kind).toBe('wild');
     expect(r.stats.roster.paths['thornback']?.kind).toBe('raid');
     expect(r.stats.roster.paths['galaxion']).toEqual({ kind: 'static', zoneId: 'umbral_observatory', when: 'flag:ledger_read' });

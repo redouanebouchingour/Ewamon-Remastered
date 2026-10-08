@@ -27,10 +27,11 @@ export function expGain(defeated: SpeciesDef, defeatedLevel: number, trainerBatt
 }
 
 /**
- * Resolves the LEVEL evolution target for a creature at its current species, given its ability. Null when none —
- * and always null for the Phase D3 `item` / `trade` kinds, which no level reaches.
+ * Resolves the LEVEL evolution target for a creature at its current species, given its ability and honor ledger
+ * (`CreatureInstance.honor`, absent = 0). Null when none — and always null for the Phase D3 `item` / `trade` kinds,
+ * which no level reaches.
  */
-export function evolutionTarget(evolution: Evolution, ability: string): string | null {
+export function evolutionTarget(evolution: Evolution, ability: string, honor = 0): string | null {
   if (evolution === null) return null;
   if (evolution.kind === 'level') return evolution.into;
   if (evolution.kind === 'item' || evolution.kind === 'trade') return null;
@@ -38,6 +39,7 @@ export function evolutionTarget(evolution: Evolution, ability: string): string |
     const br = evolution.branches[i]!;
     if (br.condition === null) return br.into;
     if (br.condition.kind === 'ability' && br.condition.ability === ability) return br.into;
+    if (br.condition.kind === 'honor' && honor >= br.condition.atLeast) return br.into;
   }
   return null;
 }
@@ -68,7 +70,7 @@ export function applyExp(c: CreatureInstance, gained: number, content: ContentIn
 
   let evolveReady: string | null = null;
   if (sp.evolution !== null && (sp.evolution.kind === 'level' || sp.evolution.kind === 'split') && newLevel >= sp.evolution.atLevel) {
-    evolveReady = evolutionTarget(sp.evolution, c.ability);
+    evolveReady = evolutionTarget(sp.evolution, c.ability, c.honor ?? 0);
   }
 
   return {

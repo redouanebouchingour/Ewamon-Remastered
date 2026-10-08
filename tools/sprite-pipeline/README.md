@@ -72,6 +72,8 @@ With soft alpha the bottom rung was 47.3 MB, over budget; the spec's 32 MB estim
 
 2026-10-08: with `castlemaw` (#136) and its rage form (`castlemaw_rage`) the build is 138 entries / 276 sprites, **69 atlases** (`budget.test.ts` cap raised to 69), **35.93 MB** (35 930 846 B, 0.77 MB under the ceiling), albedo q88 / normal q92 (top rung), 0 actionable flags, no duplicates, the anim set unchanged. Placed on umbral_observatory: siege_route (the first choice) gave 73 atlases with 8 duplicated species, ascent_route 72 / 6, every other zone 69 / 0. The re-pairing put `hollowmane_rage` beside `hollowolf` (`a-061`), an atlas mean band luma error of 38.8 over the §40.1.6.4 test 7 bound of 35; measured per sprite the worst is `hollowmane_rage` front at 43.1 (its thin white mane strands), so the bound is now 45, over the worst sprite and independent of the pairing.
 
+2026-10-08: with `lawlander` (#137, dustcub's High Honor branch; grey-background sources keyed like dustcub's, front already facing left) the build is 139 entries / 278 sprites, **70 atlases**, **36.32 MB** (36 317 929 B), albedo q88 / normal q92 (top rung), 0 actionable flags, no duplicated species; 0.38 MB of headroom is left before the ladder steps down.
+
 `packages/client/public/creatures/` after the 2026-10-06 build (`PIPELINE_VERSION` 6, `SPRITE_STAGE_VERSION` 4: atlases composed from the true-colour cache), with the 2026-09-25 build (`PIPELINE_VERSION` 5, composed from the palette cache) for comparison:
 
 | Item | 2026-10-06 (v6) | 2026-09-25 (v5) |
