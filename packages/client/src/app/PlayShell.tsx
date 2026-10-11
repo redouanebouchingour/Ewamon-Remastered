@@ -18,6 +18,7 @@ import { PostBattlePrompts } from '../world/PostBattlePrompts';
 import { RaidLobby } from '../world/RaidLobby';
 import { TowerModal, TowerStreak } from '../world/TowerModal';
 import { TradeModal } from '../world/TradeModal';
+import { BandTutorialCard } from '../world/BandTutorialCard';
 import { TutorialCard } from '../world/TutorialCard';
 import { setNavigator } from './navigation';
 import { installMessageRouter } from '../net/messageRouter';
@@ -172,6 +173,8 @@ export function PlayShell() {
       {!hasPanel && !inBattle && worldCapability() && <Minimap />}
       {/* Phase D12: Prof. Wynn's tutorial steps (live world only, like the minimap) */}
       {worldCapability() && <TutorialCard />}
+      {/* Majin / Tenjin: the band cards (once a band is in the inventory), state apart from the opening tutorial */}
+      {worldCapability() && <BandTutorialCard />}
       <DialogueBox />
       <FishingPrompt />
       <ChatInput />

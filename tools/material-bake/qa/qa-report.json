@@ -154,15 +154,13 @@
       "field": {
         "aoDefault": true,
         "bytes": {
-          "albedo": 110395,
-          "normal": 168335,
-          "orm": 107279
+          "albedo": 62001,
+          "normal": 140538,
+          "orm": 93893
         },
         "clampedPct": 0,
-        "maxLuminance": 0.27719,
+        "maxLuminance": 0.25621,
         "overTarget": [
-          "albedo",
-          "orm",
           "normal"
         ],
         "roughClippedPct": 0,
@@ -174,12 +172,12 @@
       "hero": {
         "aoDefault": true,
         "bytes": {
-          "albedo": 319071,
-          "normal": 573778,
-          "orm": 341513
+          "albedo": 170629,
+          "normal": 449158,
+          "orm": 289008
         },
         "clampedPct": 0,
-        "maxLuminance": 0.2777,
+        "maxLuminance": 0.25619,
         "overTarget": [
           "normal"
         ],
@@ -272,12 +270,12 @@
       "field": {
         "aoDefault": true,
         "bytes": {
-          "albedo": 66178,
-          "normal": 137105,
-          "orm": 93802
+          "albedo": 99880,
+          "normal": 143463,
+          "orm": 104403
         },
         "clampedPct": 0,
-        "maxLuminance": 0.06732,
+        "maxLuminance": 0.13463,
         "overTarget": [
           "normal"
         ],
@@ -290,13 +288,15 @@
       "hero": {
         "aoDefault": true,
         "bytes": {
-          "albedo": 192306,
-          "normal": 413744,
-          "orm": 289859
+          "albedo": 284077,
+          "normal": 424942,
+          "orm": 315408
         },
         "clampedPct": 0,
-        "maxLuminance": 0.06835,
-        "overTarget": [],
+        "maxLuminance": 0.13469,
+        "overTarget": [
+          "normal"
+        ],
         "roughClippedPct": 0,
         "seam": {
           "albedo": 0,
@@ -1128,12 +1128,12 @@
       "field": {
         "aoDefault": true,
         "bytes": {
-          "albedo": 89586,
+          "albedo": 89487,
           "normal": 140772,
           "orm": 97627
         },
         "clampedPct": 0,
-        "maxLuminance": 0.15748,
+        "maxLuminance": 0.18123,
         "overTarget": [
           "normal"
         ],
@@ -1836,13 +1836,14 @@
       "field": {
         "aoDefault": true,
         "bytes": {
-          "albedo": 102811,
-          "normal": 165983,
-          "orm": 98182
+          "albedo": 127883,
+          "normal": 114386,
+          "orm": 66700
         },
         "clampedPct": 0,
-        "maxLuminance": 0.12456,
+        "maxLuminance": 0.17753,
         "overTarget": [
+          "albedo",
           "normal"
         ],
         "roughClippedPct": 0,
@@ -1854,15 +1855,13 @@
       "hero": {
         "aoDefault": true,
         "bytes": {
-          "albedo": 283286,
-          "normal": 545684,
-          "orm": 292958
+          "albedo": 399312,
+          "normal": 394727,
+          "orm": 185825
         },
         "clampedPct": 0,
-        "maxLuminance": 0.12471,
-        "overTarget": [
-          "normal"
-        ],
+        "maxLuminance": 0.1823,
+        "overTarget": [],
         "roughClippedPct": 0,
         "seam": {
           "albedo": 0,
@@ -2298,8 +2297,8 @@
     }
   },
   "totals": {
-    "fieldBytes": 22980874,
-    "heroBytes": 35411882,
-    "totalBytes": 58393677
+    "fieldBytes": 22883852,
+    "heroBytes": 35072769,
+    "totalBytes": 57957542
   }
 }

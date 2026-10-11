@@ -13,8 +13,8 @@ export type { TypeName, TypeChart } from './types';
 export { TYPE_NAMES, typeMultiplier } from './typechart';
 
 // §2.3 SpeciesDef
-export type { Rarity, SpeciesRole, LearnEntry, Evolution, SpeciesDef, BattleFormDef, HonorReason } from './types';
-export { activeForm, formBase, formMoveId } from './forms';
+export type { Rarity, SpeciesRole, LearnEntry, Evolution, SpeciesDef, BattleFormDef, BandKind, HonorReason } from './types';
+export { activeForm, formBase, formLineMet, formMoveId, transformError } from './forms';
 export { HONOR_DELTAS, HONOR_MAX, HONOR_MIN, clampHonor, tracksHonor } from './honor';
 
 // §2.4 MoveDef and the 23 effects

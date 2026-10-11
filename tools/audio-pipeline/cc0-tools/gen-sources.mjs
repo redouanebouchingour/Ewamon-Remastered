@@ -238,6 +238,9 @@ const SFX = {
   sig_stellar_devour: [MIX('sig_stellar_devour_1')],
   sig_sunbreaker_barrage: [MIX('sig_sunbreaker_barrage_1')],
   sig_vendetta_volley: [MIX('sig_vendetta_volley_1')],
+  // Majin / Tenjin bond cinematics (client battle/bond.ts): heartbeats, the lock and the burst (mix.py, from the bond frame)
+  bond_majin: [MIX('bond_majin_1')],
+  bond_tenjin: [MIX('bond_tenjin_1')],
   raid_phase: [MIX('raid_phase_1')],
   raid_roar: [MIX('raid_roar_1')],
   // world

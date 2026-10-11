@@ -287,6 +287,7 @@ Every night and drone layer names "one soft event on the first beat of every bar
 ## 6. SOUND EFFECTS AND STINGERS — 174 IDS, 287 VARIANTS
 
 Amended 2026-10-08: + 12 signature-move designs (`sig_*`, one variant each; layered CC0 premixes in `tools/audio-pipeline/cc0-tools/mix.py`, each timed from its cinematic's charge so the impact lands on the damage frame; compressed and limited in the premix, +6 dB in the manifest so they ride over the battle mix) → **186 ids, 299 variants, 378 jobs**.
+Amended 2026-10-11: + 2 bond designs (`bond_majin`, `bond_tenjin`: a trainer's Majin / Tenjin transformation, timed from the client's `bond` frame — two heartbeats closing in on `BOND_BEATS`, a ducked breath, the crack / bell at 2.40 s, the roar / a synthesized formant choir at 2.70 s; same premix compression and +6 dB) → **188 ids, 301 variants, 380 jobs**.
 
 6.1 **Families.**
 
@@ -460,6 +461,8 @@ Amended 2026-10-08: + 12 signature-move designs (`sig_*`, one variant each; laye
 | `sig_stellar_devour` | sfx | 1 | 2.2 | 6 | 1 | P2 | S | A deep inhale and drone, a slow drift, a heavy swallowing boom, a whirring spin-up, a collapse and a pop. | noxmyth's signature (Stellar Devour), from the charge |
 | `sig_sunbreaker_barrage` | sfx | 1 | 2 | 6 | 1 | P2 | S | A radiant swell, six rapid heavy punches, then a cracking blast. | sunjaw's signature (Sunbreaker Barrage), from the charge |
 | `sig_vendetta_volley` | sfx | 1 | 2 | 6 | 1 | P2 | S | Cannons humming and a lock-on tone, eight rapid gunshots with metal pings and shell casings, a fireball. | castlemaw's Rage Form signature (Vendetta Volley), from the charge |
+| `bond_majin` | sfx | 1 | 4 | 6 | 1 | P2 | S | Two heartbeats speeding up and falling into step over a rising drone, a breath of silence, glass cracking with a crunch, then a deep monster roar and a floor-shaking boom. | a trainer's Majin transformation (the bond cinematic), from the bond frame |
+| `bond_tenjin` | sfx | 1 | 4 | 6 | 1 | P2 | S | Two heartbeats speeding up and falling into step over a rising drone, a breath of silence, one great bell with rising chimes, then a bright choir swell and a healing shimmer. | a trainer's Tenjin transformation (the bond cinematic), from the bond frame |
 | `ui_click` | ui | 2 | 0.15 | -14 | 2 | P0 | S | A tiny soft wooden click, like a small bead tapped on a board, clean and short. | button press (mixer: click −14 dB) |
 | `ui_confirm` | ui | 1 | 0.35 | -12 | 1 | P0 | S | A soft pleasant two-tone confirm chime, warm and rounded. | confirm, select move |
 | `ui_back` | ui | 1 | 0.25 | -14 | 1 | P0 | S | A soft short descending pluck, like closing a small wooden box. | back / cancel |

@@ -25,6 +25,7 @@ import { Stage, type StageGround } from './battleStage.js';
 import { VfxSystem } from './vfx.js';
 import { GroundCoverReveal } from './groundCover.js';
 import { PropCutaway } from './propCutaway.js';
+import { TerrainPad } from './terrainPad.js';
 import { TerrainCollider } from '../terrain/collider.js';
 import { scatterMaskFor } from '../zone/scatter.js';
 
@@ -37,6 +38,8 @@ export interface Part3 {
   readonly hud: CanvasHudLayer;
   /** Flattens the grass around shown creatures near the camera focus (IMPLEMENTATION-NOTES Part 5, T3). */
   readonly reveal: GroundCoverReveal;
+  /** The level pad a dressed ring cuts into a slope (M3 review R-forgewall-2). */
+  readonly pad: TerrainPad;
   readonly hook: FrameHook;
   /** Ground for the stage, the actors and the inspector (the zone's collider; null = flat 0). */
   setGround(g: StageGround | null): void;
@@ -90,6 +93,7 @@ function build(ctx: HostContext): Part3 {
   });
   const reveal = new GroundCoverReveal(sprites, () => rig.focus);
   const cutaway = new PropCutaway();
+  const pad = new TerrainPad();
   const anchors: HudAnchors = {
     nameplate: (id, out, offset) => actors.projectHead(id, out, offset),
     battler: (ref: Ref, out, offset) => stage.projectBattler(ref, out, offset),
@@ -134,19 +138,21 @@ function build(ctx: HostContext): Part3 {
       // T1 / T3: the zone's ground-cover mask (arena rings, revealed creatures); per-instance scale, never a rebuild
       const mask = z === null ? null : scatterMaskFor(z.group);
       cutaway.setRoot(z === null ? null : z.group);
-      stage.setGroundCover(mask, z === null ? null : cutaway);
+      pad.setRoot(z === null ? null : z.group);
+      stage.setGroundCover(mask, z === null ? null : cutaway, z === null ? null : pad);
       reveal.setMask(mask);
     },
     dispose(): void { reveal.dispose(); vfx.dispose(); sprites.dispose(); },
   };
 
   const bundle: Part3 = {
-    sprites, rig, actors, vfx, stage, hud, reveal, hook,
+    sprites, rig, actors, vfx, stage, hud, reveal, pad, hook,
     setGround(g) {
       stage.setGround(g);
       // Phase D8: surfers ride the water level (the collider's surfaceY) with a ripple where it says open water
       if (g === null) actors.setGround(null);
-      else actors.setGround((x, z) => (g.surfaceY !== undefined ? g.surfaceY(x, z) : g.sample(x, z)), g.onWater !== undefined ? (x, z) => g.onWater!(x, z) : null);
+      // M3 review R-forgewall-2: actors stand on a dressed ring's level pad (`TerrainPad.adjust`), not on the cut ground
+      else actors.setGround((x, z) => pad.adjust(x, z, g.surfaceY !== undefined ? g.surfaceY(x, z) : g.sample(x, z)), g.onWater !== undefined ? (x, z) => g.onWater!(x, z) : null);
     },
     viewport,
     setBattleInsets(topPx, bottomPx) {
@@ -184,7 +190,9 @@ function warmupObjects(ctx: HostContext): Object3D[] {
   const housing = p.stage.warmupHousing();                     // the beacon housing material
   housing.position.set(2, 0, -2);
   p.stage.armWarmupShadows();                                  // the beacons' spot-shadow pass programs (battles, evolutions)
-  return [bb, fx, character, housing];
+  const aura = p.stage.aura.warmupObjects();                   // the battle-form aura's flames + floor sigil materials
+  aura.forEach((o, i) => o.position.set(3 + i, 0.5, -2));
+  return [bb, fx, character, housing, ...aura];
 }
 
 /** The subsystem factories part 3 provides (merged into `DEFAULT_SUBSYSTEMS`). */

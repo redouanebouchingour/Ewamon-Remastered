@@ -78,7 +78,8 @@ import { pocketActorMax } from './interiors';
 import { LocalPlayerController } from './LocalPlayerController';
 import { RemoteInterpolator } from './RemoteInterpolator';
 import { EMOTE_CHEER, EMOTE_SAD, FoeActor, foeSpecOf } from './foeActor';
-import { TRAINER_BACK_M, createSceneDirector } from './SceneDirector';
+import { createSceneDirector, trainerPose } from './SceneDirector';
+import type { TrainerPose } from './SceneDirector';
 import type { SceneDirector } from './SceneDirector';
 import { SpawnViews } from './SpawnViews';
 import { RaidDen, raidTargetId } from './RaidViews';
@@ -151,6 +152,7 @@ class World implements World3D {
   readonly battle: BattleController;
   readonly audio: AudioDirector;
   readonly hudWriter = new HudWriter(null);
+  private readonly trainerAt: TrainerPose = { x: 0, z: 0, angle: 0 };
   private readonly targets: InteractionTargets;
   private readonly ws: WorldSession = getWorldSession();
   private readonly capture: InputCapture;
@@ -1503,10 +1505,13 @@ class World implements World3D {
       const selfId = this.ws.selfId;
       const bf = this.director.battleFrame;
       if (bf !== null) {
-        // the trainer stands behind their own creature, facing the foe; the foe actor behind theirs (a pvp foe's remote
-        // interpolator wrote its server pose this step — both players are frozen in battle, so this only restages it)
-        this.renderer.actors.setTransform(selfId, bf.x - bf.fx * TRAINER_BACK_M, bf.z - bf.fz * TRAINER_BACK_M, Math.atan2(bf.fx, bf.fz), false, false);
-        this.foe.stage(bf.x, bf.z, bf.fx, bf.fz, TRAINER_BACK_M);
+        // each trainer stands beside and behind their own creature, out of the battle camera's ray to it (render
+        // `trainerSlot`, M3 review R-all-1), facing the arena (a pvp foe's remote interpolator wrote its server pose this
+        // step — both players are frozen in battle, so this only restages it)
+        const me = trainerPose(bf, 0, this.trainerAt);
+        this.renderer.actors.setTransform(selfId, me.x, me.z, me.angle, false, false);
+        const foe = trainerPose(bf, 1, this.trainerAt);
+        this.foe.stage(foe.x, foe.z, foe.angle);
       } else if (this.evolution?.active === true) {
         // the evolution sequence: the trainer turns to the creature beside them (input is locked meanwhile)
         const rx = this.input.renderX;

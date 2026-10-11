@@ -25,6 +25,12 @@ export interface Palette {
   readonly nightLift: readonly [number, number, number];
   /** Height-fog density (§10.3.7 default 0.018). */
   readonly fogDensity: number;
+  /**
+   * M3 review fixes (art, audit M3-all-3 / M3-all-4): the grass card's re-tone for this zone (sRGB target colour and
+   * blend, `MaterialLibrary.setTone('tall_grass', …)`): straw on salt sand, ash-brown on cinder, frosted on snow, void
+   * teal in the shrine. Absent = the baked green (grove, capital).
+   */
+  readonly grassTone?: { readonly color: string; readonly amount: number };
 }
 
 /** §10.5.4, verbatim. */

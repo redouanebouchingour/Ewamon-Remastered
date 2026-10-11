@@ -21,12 +21,13 @@
  *   celebrate address every standing position, a drain VFX points at the battler the drainer last hit, a spread
  *   move draws its VFX to each target, a per-target `moveFailed` names the target. Singles output is unchanged.
  */
-import type { BattleEvent, ContentIndex, HonorReason, MoveDef, Ref, StatKey, StatusId, TypeName, WeatherKind } from '@ewa/core';
+import type { BandKind, BattleEvent, ContentIndex, HonorReason, MoveDef, Ref, StatKey, StatusId, TypeName, WeatherKind } from '@ewa/core';
 import {
   CHROMA_SUPER, COMPRESS_FLOOR, CRIT_SLOWMO, FORM_MS, HITSTOP_MS, HP_DRAIN, KO_HOLD, LOG_DWELL_MIN, ORB_GAP, ORB_RESULT, ORB_SHAKE, ORB_THROW, SHAKE_AMP,
   SHAKE_MS, SHINY_MS, STAGE_MS, STATUS_MS, SWITCH_IN_MS, SWITCH_OUT_MS, TURN_BUDGET, WEATHER_MS,
 } from './constants';
 import type { MoveAnimDef, MoveAnimRegistry } from './moveAnims';
+import { BOND_BURST_MS, BOND_SFX, BOND_STYLE } from './bond';
 import { leadMs as sigLead, signatureOf } from './signatures';
 
 export type KeyPose = 'idle' | 'windup' | 'lunge' | 'recoil' | 'hurt' | 'faint' | 'enter' | 'exit' | 'celebrate';
@@ -55,6 +56,8 @@ export type Keyframe =
   // a signature move's cinematic overlay (signatures.ts): 'start' with the cut-in, 'aim' as the charge begins (the
   // camera has settled: the overlay re-reads the battlers' screen positions)
   | { readonly at: number; readonly k: 'cinematic'; readonly phase: 'start' | 'aim'; readonly move: string; readonly who: Ref; readonly target: Ref | null; readonly mode: 'full' | 'short' }
+  // a trainer's Majin / Tenjin transformation: the bond cinematic (bond.ts) before the form's burst
+  | { readonly at: number; readonly k: 'bond'; readonly who: Ref; readonly kind: BandKind; readonly form: string }
   | { readonly at: number; readonly k: 'end' };
 
 export type KeyframeKind = Keyframe['k'];
@@ -89,6 +92,11 @@ export interface TimelineCtx {
   readonly standing?: (r: Ref) => boolean;
   /** Whether this battler already used signature move `move` earlier in the battle (its cinematic plays short). Default: never. */
   readonly signatureSeen?: (r: Ref, move: string) => boolean;
+  /**
+   * The band behind this battler's form change when its trainer chose it (Majin / Tenjin, bond.ts): the bond cinematic
+   * plays before the burst. null (a wild form, a raid boss) or absent: the plain burst.
+   */
+  readonly bondOf?: (r: Ref) => BandKind | null;
 }
 
 /** Real time a crit slow-mo adds over its timeline span. */
@@ -99,6 +107,7 @@ export const TIMELINE_SFX: readonly string[] = [
   'hit_normal', 'hit_super', 'hit_weak', 'hit_crit', 'faint', 'switch', 'orb_throw', 'orb_shake', 'orb_catch', 'orb_break',
   'status_burn', 'status_poison', 'status_paralyze', 'status_sleep', 'status_freeze', 'status_confuse', 'status_heal',
   'stage_up', 'stage_down', 'weather_sun', 'weather_rain', 'weather_sand', 'weather_hail', 'ui_levelup',
+  ...BOND_SFX,
 ];
 
 const STATUS_WORD: Readonly<Record<StatusId, { applied: string; tick: string; cured: string; vfx: string; color: string; glyph: string }>> = {
@@ -127,6 +136,34 @@ export const HONOR_REASON: Readonly<Record<HonorReason, string>> = {
   duelWon: 'a duel fairly won.',
 };
 
+/**
+ * The core's `abilityTrigger.detail` is a hook id (`endOfTurn`, `onContact` …) or a short phrase; the log shows the
+ * player a sentence, never the id (M3 independent review R-all-3: "Scalewisp’s Speed Boost — endOfTurn" was printed).
+ */
+const ABILITY_HOOK_TEXT: Readonly<Record<string, string>> = {
+  endOfTurn: 'activated!',
+  onSwitchIn: 'activated!',
+  onSwitchOut: 'activated!',
+  onContact: 'took effect!',
+  onStatLowered: 'activated!',
+  statusImmunity: 'prevents the status condition!',
+  typeImmunity: 'made the move miss — it’s immune!',
+  wonderGuard: 'blocked the move!',
+  enraged: 'boils over — it’s enraged!',
+};
+const STAT_LOCK = /^(atk|def|spd|acc|eva) cannot be lowered$/;
+
+/** The battle-log line for an ability trigger (`who` is already capitalised: "The wild Scalewisp"). */
+export function abilityText(who: string, ability: string, detail: string): string {
+  const hook = ABILITY_HOOK_TEXT[detail];
+  if (hook !== undefined) return `${who}’s ${ability} ${hook}`;
+  const lock = STAT_LOCK.exec(detail);
+  if (lock !== null) return `${who}’s ${ability} prevents its ${STAT_WORD[lock[1] as StatKey]} from being lowered!`;
+  // an unknown hook id (camelCase, no spaces) is never shown; free text from the core reads as a clause
+  if (detail.length === 0 || detail === ability || /^[a-z]+[A-Z]\w*$/.test(detail)) return `${who}’s ${ability} activated!`;
+  return `${who}’s ${ability} — ${detail}!`.replace(/[.!]!$/, '!');
+}
+
 const WEATHER_TEXT: Readonly<Record<Exclude<WeatherKind, 'none'>, { set: string; tick: string; end: string }>> = {
   sun: { set: 'The sunlight turned harsh!', tick: 'The sunlight is strong.', end: 'The sunlight faded.' },
   rain: { set: 'It started to rain!', tick: 'Rain continues to fall.', end: 'The rain stopped.' },
@@ -148,11 +185,40 @@ const CHIP_VFX: Readonly<Record<string, string>> = {
   burn: 'status_burn', poison: 'status_poison', trap: 'trap', sand: 'weather_sand', hail: 'weather_hail', recoil: 'recoil', confusion: 'status_confuse', contact: 'impact_normal',
 };
 
-/** `formChange`: the burst and the line per battle form id (an unknown form gets the switch-in burst and a plain line). */
-const FORM_VFX: Readonly<Record<string, string>> = { rage: 'form_rage' };
-const FORM_TEXT: Readonly<Record<string, (name: string) => string>> = {
-  rage: (n) => `${n}’s mask cracks — it flies into a rage!`,
+/**
+ * `formChange`: the burst, the flash, the sound and the line per battle form id (an unknown form gets the switch-in
+ * burst and a plain line). Majin (`.design/majin-tenjin.md`): the shipped rage forms (hollowmane, castlemaw keep the id
+ * 'rage') are Majin forms and read the same — a crimson burst, the roar and a shake. Tenjin: a gold ring burst, a
+ * white-gold flash and the bell, no shake. Sounds are existing ids only.
+ */
+export const FORM_VFX: Readonly<Record<string, string>> = { rage: 'form_rage', majin: 'form_rage', tenjin: 'form_tenjin' };
+const MAJIN_TEXT = (n: string): string => `${n} broke open into its Majin Form!`;
+export const FORM_TEXT: Readonly<Record<string, (name: string) => string>> = {
+  rage: MAJIN_TEXT,
+  majin: MAJIN_TEXT,
+  tenjin: (n) => `${n} ascended into its Tenjin Form!`,
 };
+const FORM_CUE: Readonly<Record<string, { readonly flash: string; readonly sfx: string; readonly shake: boolean }>> = {
+  tenjin: { flash: '#fff1c2', sfx: 'bell_toll', shake: false },
+};
+const FORM_CUE_DEFAULT = { flash: '#ff2a44', sfx: 'raid_roar', shake: true } as const;
+
+/** The `heal` line after the battler's name, per cause (`item`: the item's display name; a Tenjin Form's heal on entering it: 'form'). */
+export function healText(cause: Extract<BattleEvent, { t: 'heal' }>['cause'], item: string | null): string {
+  switch (cause) {
+    case 'drain':
+      return 'had its energy drained!';
+    case 'berry':
+    case 'item':
+      return `restored HP${item !== null ? ` with its ${item}` : ''}.`;
+    case 'form':
+      return 'is steadied and restored its HP!';
+    case 'move':
+    case 'absorb':
+    case 'regenerator':
+      return 'restored its HP.';
+  }
+}
 
 const FAIL_TEXT: Readonly<Record<string, string>> = {
   fullHp: 'But its HP is already full!',
@@ -327,7 +393,7 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         }
         break;
       case 'abilityTrigger':
-        log(`${cap(name(e.who))}’s ${e.ability}${e.detail.length > 0 && e.detail !== e.ability ? ` — ${e.detail}` : '!'}`);
+        log(abilityText(cap(name(e.who)), e.ability, e.detail));
         push({ at: t, k: 'flash', who: e.who, color: '#ffffff', ms: 180 });
         advance(STATUS_MS * 0.6, 'status');
         break;
@@ -421,7 +487,7 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         push({ at: t, k: 'vfx', id: e.cause === 'drain' || e.cause === 'absorb' ? 'drain' : 'heal', from: e.target, to: e.cause === 'drain' ? foe : e.target, ms: 500, type: typeOf(e.target) });
         push({ at: t, k: 'sfx', id: 'status_heal', at3d: e.target });
         hpFrame(e.target, e.hpAfter, max, max > 0 ? e.amount / max : 0);
-        const why = e.cause === 'drain' ? 'had its energy drained!' : e.cause === 'berry' || e.cause === 'item' ? `restored HP${e.item !== null ? ` with its ${itemName(e.item)}` : ''}.` : 'restored its HP.';
+        const why = healText(e.cause, e.item !== null ? itemName(e.item) : null);
         log(e.cause === 'drain' ? `${cap(name(foe))} ${why}` : `${cap(name(e.target))} ${why}`, tone(e.target, true));
         advance(STATUS_MS, 'status');
         break;
@@ -460,10 +526,20 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         flush();
         const drained = hpEnd.get(key(e.who));
         if (drained !== undefined && t < drained) t = drained;
-        push({ at: t, k: 'flash', who: e.who, color: '#ff2a44', ms: 300 });
+        const cue = FORM_CUE[e.form] ?? FORM_CUE_DEFAULT;
+        // a trainer's band: the bond cinematic first, uncompressed (its sound carries the crack / bell and the roar /
+        // choir on the burst, so the form's own sound is not played)
+        const band = ctx.bondOf?.(e.who) ?? null;
+        if (band !== null) {
+          push({ at: t, k: 'bond', who: e.who, kind: band, form: e.form });
+          push({ at: t, k: 'sfx', id: BOND_STYLE[band].sfx, at3d: null });
+          push({ at: t, k: 'camera', shot: 'wide', ms: BOND_BURST_MS + FORM_MS });
+          advance(BOND_BURST_MS, 'fixed');
+        }
+        push({ at: t, k: 'flash', who: e.who, color: cue.flash, ms: 300 });
         push({ at: t, k: 'vfx', id: FORM_VFX[e.form] ?? 'switch_in', from: e.who, to: e.who, ms: FORM_MS, type: typeOf(e.who) });
-        push({ at: t, k: 'sfx', id: 'raid_roar', at3d: e.who });
-        if (!reduced) push({ at: t, k: 'shake', amp: SHAKE_AMP(1), ms: SHAKE_MS * 3 });
+        if (band === null) push({ at: t, k: 'sfx', id: cue.sfx, at3d: e.who });
+        if (!reduced && cue.shake) push({ at: t, k: 'shake', amp: SHAKE_AMP(1), ms: SHAKE_MS * 3 });
         advance(FORM_MS * 0.4, 'other');
         push({ at: t, k: 'form', who: e.who, form: e.form });
         log(FORM_TEXT[e.form]?.(cap(name(e.who))) ?? `${cap(name(e.who))} changed form!`, tone(e.who, true));

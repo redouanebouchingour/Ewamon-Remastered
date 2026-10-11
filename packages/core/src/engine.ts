@@ -12,7 +12,9 @@ import { otherSide } from './side';
 import { calcMaxHp, calcStat, clampStage, ratioOf, applyRatio } from './stats';
 import { addStatus, hasStatus, isMajorStatus, majorStatus, removeStatus, clearMajorStatus } from './status';
 import type {
+  BandKind,
   BattleEvent,
+  BattleFormDef,
   BattleOutcome,
   BattleState,
   Battler,
@@ -66,6 +68,10 @@ export interface MSide {
   consumedItems: string[];
   /** Phase D6: doubles only — party index per field position; absent in singles */
   actives?: [number, number];
+  /** Majin / Tenjin: the bands this side holds; absent = none */
+  bands?: readonly BandKind[];
+  /** Majin / Tenjin: true once this side has transformed this battle; absent before */
+  transformed?: true;
 }
 export interface MState {
   id: string;
@@ -124,6 +130,9 @@ export function cloneSide(s: Side): MSide {
   };
   // Phase D6: the key exists only in doubles, so a singles state keeps its exact shape
   if (s.actives !== undefined) out.actives = [s.actives[0], s.actives[1]];
+  // Majin / Tenjin: the keys exist only when the side holds a band / has transformed (same rule)
+  if (s.bands !== undefined) out.bands = s.bands.slice();
+  if (s.transformed === true) out.transformed = true;
   return out;
 }
 
@@ -342,13 +351,34 @@ const STAGE_KEYS: readonly StatKey[] = ['atk', 'def', 'spd', 'acc', 'eva'];
  * below `hpBelowPct` % of max changes — atk / def / spd from the form's base (`formChange`), then `onEnter`: its own
  * negative stages back to 0, every standing foe on the field lowered (cause 'ability'). Called after every damage and
  * when a battler enters the field. Consumes no rng, and returns at once for a species without a form.
+ * Majin / Tenjin: a 'majin' form changes on its own only on a WILD side (a trainer's side changes it by choice,
+ * `transformAt`); a 'tenjin' form never changes on its own.
  */
 export function checkBattleForm(ctx: Ctx, who: Ref): void {
   const b = at(ctx, who);
   if (b.form !== undefined || !isAlive(b)) return;
   const form = speciesOf(ctx, b).battleForm;
   if (form === undefined || b.creature.hp * 100 >= b.maxHp * form.hpBelowPct) return;
+  if (form.kind === 'tenjin' || (form.kind === 'majin' && ctx.st.sides[who.side].kind !== 'wild')) return;
   if (!onField(ctx.st.sides[who.side], who.slot)) return;
+  enterForm(ctx, who, form);
+}
+
+/**
+ * Majin / Tenjin: battler `who` transforms by its trainer's choice (`Action.transform`, validated) — the side's one
+ * transformation this battle. Consumes no rng.
+ */
+export function transformAt(ctx: Ctx, who: Ref): void {
+  const b = at(ctx, who);
+  const form = speciesOf(ctx, b).battleForm;
+  if (form === undefined || b.form !== undefined || !isAlive(b)) return;   // validated; defensive
+  ctx.st.sides[who.side].transformed = true;
+  enterForm(ctx, who, form);
+}
+
+/** The change itself: the form's stats (`formChange`), then its `onEnter` effects in a fixed order. */
+function enterForm(ctx: Ctx, who: Ref, form: BattleFormDef): void {
+  const b = at(ctx, who);
   b.form = form.id;
   refreshDerived(ctx, b);
   emit(ctx, { t: 'formChange', who, form: form.id, atk: b.atk, def: b.def, spd: b.spd });
@@ -369,6 +399,10 @@ export function checkBattleForm(ctx: Ctx, who: Ref): void {
       if (foe !== undefined && isAlive(foe)) changeStage(ctx, ref(foeSideId, slots[i]!), lower.stat, -lower.stages, who, 'ability');
     }
   }
+  // Tenjin: a held memory is steadied — its major status cured, some hp restored
+  if (form.onEnter.cureStatus === true) cureAllMajor(ctx, who, 'ability');
+  const heal = form.onEnter.healFraction;
+  if (heal !== undefined && heal > 0) healBattler(ctx, who, fractionOfMax(b, heal), 'form', null);
 }
 
 // ─── statuses ───────────────────────────────────────────────────────────────

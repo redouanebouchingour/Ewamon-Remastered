@@ -16,22 +16,32 @@
  * Broadcast UI (2026-10-11): a command deck — the root commands are a vertical rail that stays up in every menu (the
  * open one is the orange slab; a click on another slab goes straight there), the log lines are a "Last turn" ticker
  * with the live key hints, and the stage beside the rail holds the prompt, the 4 move cards or the lists.
+ * Majin / Tenjin (`.design/majin-tenjin.md` §3, §6.4): in the moves menu a transform toggle (key T) sits at the end of
+ * the head row when `transformOffer` shows it (the side holds the band of the battler's form kind and has not
+ * transformed). Disabled, it carries its reason as a caption; armed (`aria-pressed`, the orange 'selected' slab) the
+ * next move picked is sent as `{ kind: 'move', transform: true }` (doubles: for the choosing position only — the other
+ * position's toggle is then disabled). It resets with the turn, the doubles position and the phase. The first time it
+ * lights up for a kind, a one-line coach mark (`state/bandTutorial.ts`, once per kind per account).
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { formMoveId, isSpread, requiredPositions, typeMultiplier } from '@ewa/core';
-import type { Action, BattleState, Battler, FieldRef, MoveDef } from '@ewa/core';
+import type { Action, BandKind, BattleState, Battler, FieldRef, MoveDef } from '@ewa/core';
 import { CONSUMABLES, ORBS } from '@ewa/content';
 import { content, displayName, move as moveDef, species } from '../data/content';
+import { COACH_LINE, TRANSFORM_KEY, bandAccountOf, useBandTutorialStore } from '../state/bandTutorial';
 import { useSessionStore } from '../state/session';
 import { useUiStore } from '../state/ui';
 import type { BattleUi } from '../state/ui';
 import { Button } from '../ui/Button';
 import { CreatureCard } from '../ui/CreatureCard';
 import { cx } from '../ui/cx';
+import { FORM_KIND_NAME, FormSigil } from '../ui/FormSigil';
 import { MoveButton } from '../ui/MoveButton';
 import type { Effectiveness } from '../ui/MoveButton';
 import { battleActions } from './controllerRef';
+import { transformOffer } from './transform';
+import type { TransformOffer } from './transform';
 import s from './BattleMenu.module.css';
 
 type Menu = BattleUi['menu'];
@@ -67,6 +77,11 @@ function firstFoeOf(st: BattleState, seat: 0 | 1): Battler | undefined {
   if (sd.actives === undefined) return sd.party[sd.active];
   for (const i of sd.actives) if ((sd.party[i]?.creature.hp ?? 0) > 0) return sd.party[i];
   return sd.party[sd.actives[0]];
+}
+
+/** A move action; `transform` (Majin / Tenjin) when the toggle is armed. */
+export function moveAction(move: string, target?: FieldRef, transform = false): Action {
+  return { kind: 'move', move, ...(target !== undefined ? { target } : {}), ...(transform ? { transform: true as const } : {}) };
 }
 
 /** Phase D6: whether a doubles move asks for a target (single-target: power > 0 or target 'foe', not spread). */
@@ -163,11 +178,11 @@ function Moves({ st, seat, pos, onPick }: { readonly st: BattleState; readonly s
 const EMPTY: readonly string[] = [];
 
 /** Phase D6: the target list of a single-target doubles move (hotkeys 1–3; Escape goes back to the moves). */
-function Targets({ move, options }: { readonly move: string; readonly options: readonly TargetOption[] }) {
+function Targets({ move, options, transform }: { readonly move: string; readonly options: readonly TargetOption[]; readonly transform: boolean }) {
   return (
     <div className={s.targets} role="list" aria-label={`Target of ${move}`} data-testid="battle-targets">
       {options.map((o, i) => {
-        const a: Action = { kind: 'move', move, target: o.ref };
+        const a = moveAction(move, o.ref, transform);
         const why = reason(a);
         return (
           <button key={`${o.ref.side}:${o.ref.pos}`} type="button" role="listitem" className={cx(s.targetRow, o.ally && s.targetAlly)} disabled={why !== null} onClick={() => submit(a)} aria-keyshortcuts={String(i + 1)}>
@@ -243,6 +258,42 @@ function Bag({ st, seat, orbs }: { readonly st: BattleState; readonly seat: 0 | 
 
 const NO_ITEMS: Readonly<Record<string, number>> = {};
 
+const TRANSFORM_WHY_ID = 'battle-transform-why';
+
+/**
+ * Majin / Tenjin: the transform toggle at the end of the moves menu's head row — the key chip, the form's sigil
+ * (crimson cracked ring / gold ring) and its name; armed it is the orange 'selected' slab. Disabled, the reason sits
+ * beside it as a caption.
+ */
+function TransformToggle({ offer, armed, pulse, onToggle }: { readonly offer: TransformOffer; readonly armed: boolean; readonly pulse: boolean; readonly onToggle: () => void }) {
+  const name = FORM_KIND_NAME[offer.kind];
+  return (
+    <div className={s.transform}>
+      {offer.reason !== null && (
+        <span id={TRANSFORM_WHY_ID} className={cx(s.why, s.transformWhy)}>
+          {offer.reason}
+        </span>
+      )}
+      <button
+        type="button"
+        className={cx(s.transformBtn, armed && s.armed, pulse && s.pulse)}
+        data-testid="transform-toggle"
+        data-kind={offer.kind}
+        aria-pressed={armed}
+        aria-keyshortcuts={TRANSFORM_KEY}
+        aria-describedby={offer.reason !== null ? TRANSFORM_WHY_ID : undefined}
+        title={armed ? `${name}: the next move transforms first` : `${name} Form: transform before the move`}
+        disabled={!offer.enabled}
+        onClick={onToggle}
+      >
+        <kbd className={s.key}>{TRANSFORM_KEY}</kbd>
+        <FormSigil kind={offer.kind} size="md" className={s.transformSigil} />
+        <span className={s.cmdLabel}>{name}</span>
+      </button>
+    </div>
+  );
+}
+
 const ROOT: readonly { readonly key: Menu | 'run'; readonly label: string }[] = [
   { key: 'moves', label: 'Fight' },
   { key: 'party', label: 'Party' },
@@ -271,6 +322,18 @@ export function BattleMenu() {
   const doubles = st?.slots === 2;
   const pickPos: 0 | 1 | null = doubles ? (b?.pick?.pos ?? 0) : null;
   const [targeting, setTargeting] = useState<string | null>(null);
+  // Majin / Tenjin: the transform toggle for the battler choosing now (null = not shown) and whether it is armed
+  const chooser = st === null ? undefined : chooserOf(st, seat, pickPos);
+  const otherPick = pickPos === null ? null : (b?.pick?.picks[pickPos === 0 ? 1 : 0] ?? null);
+  const offer = st !== null && phase === 'selecting' ? transformOffer(st, seat, chooser, otherPick) : null;
+  const [armedRaw, setArmed] = useState(false);
+  const armed = armedRaw && offer?.enabled === true;
+  const offerKind: BandKind | null = offer?.kind ?? null;
+  const offerOn = offer?.enabled === true;
+  const accountId = useSessionStore((x) => x.profile?.id ?? '');
+  const coached = useBandTutorialStore((x) => bandAccountOf(x, accountId).coached);
+  const markCoached = useBandTutorialStore((x) => x.coach);
+  const [coach, setCoach] = useState<BandKind | null>(null);
   const options = useMemo(() => (st !== null && pickPos !== null && targeting !== null ? targetOptions(st, seat, pickPos) : []), [st, seat, pickPos, targeting]);
 
   useEffect(() => {
@@ -281,9 +344,25 @@ export function BattleMenu() {
     setTargeting(null);
   }, [menu, pickPos, phase]);
 
+  // the toggle resets after every submit: a new turn, another doubles position, any phase change
+  const turn = st?.turn ?? 0;
+  useEffect(() => {
+    setArmed(false);
+  }, [turn, pickPos, phase]);
+
+  // the coach mark: the first time the toggle is enabled in the moves menu, once per kind per account
+  useEffect(() => {
+    if (offerKind === null || !offerOn || menu !== 'moves' || coached.includes(offerKind)) return;
+    setCoach(offerKind);
+    markCoached(accountId, offerKind);
+  }, [offerKind, offerOn, menu, coached, accountId, markCoached]);
+  useEffect(() => {
+    if (!selectable) setCoach(null);
+  }, [selectable]);
+
   /** a move from the grid: doubles single-target moves ask for their target first */
   const pickMove = (id: string): void => {
-    const a: Action = { kind: 'move', move: id };
+    const a = moveAction(id, undefined, armed);
     if (st === null || pickPos === null) {
       if (reason(a) === null) submit(a);
       return;
@@ -294,7 +373,7 @@ export function BattleMenu() {
       return;
     }
     const opts = targetOptions(st, seat, pickPos);
-    if (opts.length === 1) submit({ kind: 'move', move: id, target: opts[0]!.ref });
+    if (opts.length === 1) submit(moveAction(id, opts[0]!.ref, armed));
     else setTargeting(id);
   };
 
@@ -314,6 +393,13 @@ export function BattleMenu() {
         setMenu('root');
         return;
       }
+      if (e.key.toUpperCase() === TRANSFORM_KEY && menu === 'moves' && targeting === null) {
+        if (offerOn) {
+          e.preventDefault();
+          setArmed((x) => !x);
+        }
+        return;
+      }
       const n = Number(e.key);
       if (!Number.isInteger(n) || n < 1) return;
       if (menu === 'root' && n <= 5) {
@@ -327,7 +413,7 @@ export function BattleMenu() {
         const o = options[n - 1];
         if (o !== undefined) {
           e.preventDefault();
-          const a: Action = { kind: 'move', move: targeting, target: o.ref };
+          const a = moveAction(targeting, o.ref, armed);
           if (reason(a) === null) submit(a);
         }
       } else if (menu === 'moves' && n <= 4) {
@@ -340,7 +426,7 @@ export function BattleMenu() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selectable, st, seat, menu, forced, runNow, catchWindow, confirmForfeit, runAction, targeting, options, pickPos]);
+  }, [selectable, st, seat, menu, forced, runNow, catchWindow, confirmForfeit, runAction, targeting, options, pickPos, offerOn, armed]);
 
   if (b === null || st === null) return null;
   const me = chooserOf(st, seat, pickPos);
@@ -389,7 +475,9 @@ export function BattleMenu() {
       : menu === 'moves'
         ? targeting !== null
           ? [[`1–${Math.max(1, options.length)}`, 'Target'], ['Esc', 'Back']]
-          : [['1–4', 'Move'], ['Esc', 'Back']]
+          : offer !== null && offer.enabled
+            ? [['1–4', 'Move'], [TRANSFORM_KEY, FORM_KIND_NAME[offer.kind]], ['Esc', 'Back']]
+            : [['1–4', 'Move'], ['Esc', 'Back']]
         : forced
           ? []
           : [['Esc', 'Back']];
@@ -435,12 +523,21 @@ export function BattleMenu() {
               </Button>
             )}
             {status !== null && <p className={s.prompt}>{status}</p>}
+            {menu === 'moves' && targeting === null && offer !== null && (
+              <TransformToggle offer={offer} armed={armed} pulse={coach === offer.kind} onToggle={() => setArmed((x) => !x)} />
+            )}
           </div>
+        )}
+        {menu === 'moves' && coach !== null && offer !== null && coach === offer.kind && (
+          <p className={s.coach} role="status" data-testid="transform-coach">
+            <FormSigil kind={coach} size="sm" />
+            {COACH_LINE[coach]}
+          </p>
         )}
         {selectable && menu !== 'root' && (
           <div className={s.sub}>
             {menu === 'moves' && targeting === null && <Moves st={st} seat={seat} pos={pickPos} onPick={pickMove} />}
-            {menu === 'moves' && targeting !== null && <Targets move={targeting} options={options} />}
+            {menu === 'moves' && targeting !== null && <Targets move={targeting} options={options} transform={armed} />}
             {menu === 'party' && <PartyList st={st} seat={seat} forced={forced} />}
             {menu === 'bag' && <Bag st={st} seat={seat} orbs={false} />}
             {menu === 'orbs' && <Bag st={st} seat={seat} orbs />}

@@ -29,9 +29,10 @@ tsx src/cli.ts sheet [--zone …] [--surface …] [--out qa/x.png]   # contact s
 ```
 
 `--zone` takes a zone id (`mirevale`, `cinderhold`, …) or a biome (`grove`, `cinder`, …) and bakes that biome's
-row plus the 6 shared surfaces. Partial bakes merge into the existing manifest; a full bake also deletes
-orphaned `.ktx2` files. `--force` ignores the cache. The encoder is probed before any work; if the Basis WASM
-cannot initialise the bake stops with one message.
+row plus the 6 shared surfaces. Partial bakes (`--zone`, `--surface`, `--tier`) merge into the existing manifest
+(unselected entries survive while their files exist, totals are re-summed) and never delete; a full bake also
+deletes orphaned `.ktx2` files. `--force` ignores the cache. The encoder is probed before any work; if the
+Basis WASM cannot initialise the bake stops with one message.
 
 Outputs:
 
@@ -159,6 +160,8 @@ rdo lever, never beyond 3× the target, and `qa/qa-report.json` lists every one 
 - `test/budget.test.ts` — per-map targets (with the rdo-lever rule), phase-2 6 MB per biome, Mirevale hero,
   90 MB ceiling, ≤ 50 hero surfaces.
 - `test/cache.test.ts` — byte-identical rebuild from cache, fresh bake = committed bytes, hash sensitivity.
+- `test/partial.test.ts` — a partial bake keeps the existing manifest's other entries (stale hash included),
+  drops those whose files are gone, re-totals, and deletes no file.
 - `test/zones.test.ts` — the tool's zone → biome table equals `@ewa/content`.
 
 The output tests read the committed `public/materials/`; rerun `bake` after changing a recipe.

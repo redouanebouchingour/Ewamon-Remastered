@@ -6,11 +6,22 @@
  * in v1), so every battle terminates. Every action returned passes validateAction.
  */
 import { damageAmount, damageStop } from './damage';
-import { formMoveId } from './forms';
+import { formMoveId, transformError } from './forms';
 import { benchOf, requiredPositions } from './doubles';
 import { blocksStatusMoves, heldHooks } from './items';
 import { otherSide } from './side';
 import type { Action, BattleState, Battler, ContentIndex, FieldRef, MoveDef, Rng } from './types';
+
+/**
+ * Majin / Tenjin: an NPC trainer holding the band transforms as soon as it may (Tenjin from the first turn its creature
+ * stands above the line, Majin the first turn it is below it). Deterministic, no rng; wild sides never choose (a wild
+ * Majin changes on its own, engine `checkBattleForm`).
+ */
+function withTransform(state: BattleState, side: 0 | 1, b: Battler, a: Action, content: ContentIndex): Action {
+  const s = state.sides[side];
+  if (a.kind !== 'move' || s.kind !== 'npc' || s.bands === undefined) return a;
+  return transformError(s, b, content.species(b.creature.speciesId)) === null ? { ...a, transform: true } : a;
+}
 
 /** Moves the battler may legally select: pp > 0, not choice-locked to another move, not a status move under Assault Vest. */
 function usableMoves(b: Battler, content: ContentIndex): readonly string[] {
@@ -143,6 +154,13 @@ export function chooseNpcDoubles(state: BattleState, side: 0 | 1, content: Conte
     const pick = bests.length === 1 ? bests[0]! : rng.pick(bests);
     out[p] = pick.target === null ? { kind: 'move', move: pick.move } : { kind: 'move', move: pick.move, target: pick.target };
   }
+  // Majin / Tenjin: the first position that may transform does (one per side per battle, so never both)
+  for (const p of [0, 1] as const) {
+    const act = out[p];
+    if (act === null || act.kind !== 'move') continue;
+    const withT = withTransform(state, side, s.party[a[p]]!, act, content);
+    if (withT !== act) { out[p] = withT; break; }
+  }
   return out;
 }
 
@@ -191,6 +209,6 @@ export function chooseNpcAction(state: BattleState, side: 0 | 1, content: Conten
       bestMoves.push(id);
     }
   }
-  if (bestMoves.length === 0) return { kind: 'move', move: moves[0]! };
-  return { kind: 'move', move: bestMoves.length === 1 ? bestMoves[0]! : rng.pick(bestMoves) };
+  if (bestMoves.length === 0) return withTransform(state, side, b, { kind: 'move', move: moves[0]! }, content);
+  return withTransform(state, side, b, { kind: 'move', move: bestMoves.length === 1 ? bestMoves[0]! : rng.pick(bestMoves) }, content);
 }

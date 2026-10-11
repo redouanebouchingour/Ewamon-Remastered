@@ -79,6 +79,9 @@ export const TRADE_EVOLVE_RIBBON = 'trade_evolve';
 
 /** Phase D11: the bicycle's item id and its (steep) Saltmourn price. */
 export const BIKE_ITEM = 'bike';
+/** Majin / Tenjin: the two transformation bands (key items; a side holding one may transform once a battle). */
+export const MAJIN_BAND = 'majin_band';
+export const TENJIN_BAND = 'tenjin_band';
 export const BIKE_PRICE = 30000;
 
 /** Built from MOVES at module load so a TM never disagrees with its move. */
@@ -119,6 +122,27 @@ export function buildKeyItems(moves: readonly MoveDef[]): readonly ItemDef[] {
       fieldVerb: null,
       hooks: [],
       price: BIKE_PRICE,
+    },
+    // Majin / Tenjin (.design/majin-tenjin.md): story rewards (beats sables_turn / the_requisition), never sold, never a gate
+    {
+      id: MAJIN_BAND,
+      name: 'Majin Band',
+      description:
+        "Sable's field lens on an iron wrist-mount. Below half HP, an Ewamon with a Majin form sees itself being unmade and refuses: once a battle it breaks open into its Majin Form.",
+      slot: 'key',
+      fieldVerb: null,
+      hooks: [],
+      price: null,
+    },
+    {
+      id: TENJIN_BAND,
+      name: 'Tenjin Band',
+      description:
+        "Wynn's spare Attestor lens, ground into a gold band. At or above half HP, an Ewamon with a Tenjin form sees that it is held: once a battle it ascends into its Tenjin Form.",
+      slot: 'key',
+      fieldVerb: null,
+      hooks: [],
+      price: null,
     },
     ...tms,
   ];
@@ -166,5 +190,5 @@ export const PROGRESSION_STOCK: Readonly<Partial<Record<ZoneId, readonly string[
   ],
 };
 
-/** `old_rod`, the bicycle (Phase D11) and the 39 TMs (`tm:<Move>`), all `slot: 'key'`. */
+/** `old_rod`, the bicycle (Phase D11), the Majin / Tenjin bands and the 39 TMs (`tm:<Move>`), all `slot: 'key'`. */
 export const KEY_ITEMS: readonly ItemDef[] = buildKeyItems(MOVES);

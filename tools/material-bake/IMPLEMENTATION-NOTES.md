@@ -164,8 +164,11 @@ both tiers), plus `.cache/placeholder-v1/`.
 `sheet` writes `qa/slice-sheet.png` with two extra columns (a lit view and a 2 × 2 tiling) used for the visual
 review. Previews are rendered from the pre-encode mip chain (no UASTC transcoder in Node), shown v-up.
 `bake --report` is `report`; `bake --surface <id>` and `--jobs N` are additions. Partial bakes (`--zone`,
-`--surface`, `--tier`) merge into the existing manifest: an entry is kept when its files exist and its cache
-hash is current. A full bake removes orphan `.ktx2` files.
+`--surface`, `--tier`) merge into the existing manifest: a tier whose current-hash cache entry is byte-identical
+to the shipped files is described from the cache; any other tier keeps the existing manifest's entry (hash,
+metres, wrap, clamp % included) while its files exist, with `bytes` re-measured, so editing a shared recipe or
+bake source (which moves every hash) no longer drops the unselected surfaces. Totals are summed over the merged
+set. Only a full bake removes orphan `.ktx2` files; a partial bake never deletes.
 
 **D19 — wrap.** Every surface is `repeat` except the seven alpha cards (`clamp`).
 

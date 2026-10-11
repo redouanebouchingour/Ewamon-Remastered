@@ -5,11 +5,12 @@
  * stands outside the walkable square — and every town gains instances without new scatter kinds beyond the shard.
  */
 import { describe, expect, it } from 'vitest';
-import { getHeightfield, isWalkable, type ZoneId } from '@ewa/content';
+import { arrivalPoint, getHeightfield, isWalkable, type ZoneId } from '@ewa/content';
 import { buildZone } from '../src/zone/builder.js';
-import { BIOME_GENERATORS } from '../src/zone/generators/index.js';
-import { DRESSING, GATE_HALF_GAP_M, SKIRT_DEPTH_M, boundaryPieces, buildSkirtItem, dressingFor, screeClusters, skirtPlacements, vergeClusters } from '../src/zone/generators/dressing.js';
-import { createSplatContext, doorOf, footprintDistance, layoutOf, roadDistance, scatterClear } from '../src/zone/layout.js';
+import { BIOME_SURFACES } from '../src/materials/surfaces.js';
+import { BIOME_GENERATORS, PROP_BLOCKER } from '../src/zone/generators/index.js';
+import { DRESSING, GATE_HALF_GAP_M, PLAZA_CLUTTER, SKIRT_DEPTH_M, boundaryPieces, buildClutterItem, buildSkirtItem, dressingFor, plazaClutter, screeClusters, skirtPlacements, vergeClusters } from '../src/zone/generators/dressing.js';
+import { createSplatContext, doorOf, footprintDistance, inSetPiece, layoutOf, roadDistance, scatterClear } from '../src/zone/layout.js';
 import { mockLibrary, realSpec } from './zone-helpers.js';
 
 const TOWNS: ZoneId[] = ['mirevale', 'cinderhold', 'saltmourn', 'stormrook', 'marrowdig', 'vesperveil', 'forgewall', 'skyrend', 'solenne'];
@@ -87,6 +88,49 @@ describe('Phase E1 dressing', () => {
       const west = pieces.filter((p) => p.kind === 'run' && Math.abs(p.x + ih) < 1e-6);
       for (const r of west) expect(Math.abs(r.z) - r.len / 2).toBeGreaterThanOrEqual(GATE_HALF_GAP_M - 1e-6);
       expect(pieces.filter((p) => p.kind === 'pier')).toHaveLength(dressingFor(spec.biome).gatePiers ? 4 : 0);
+    }
+  });
+
+  it('plaza clutter (M3 town art): clustered inside the rim, off props, lights, points, roads and the set-piece, one cluster by the arrival point', () => {
+    for (const id of ['saltmourn', 'stormrook', 'skyrend', 'cinderhold', 'mirevale'] as ZoneId[]) {
+      const spec = realSpec(id);
+      const plan = layoutOf(spec);
+      const P = plan.plaza!;
+      const splat = createSplatContext(plan, spec.buildings, spec.seed, spec.interiors);
+      const clear = (x: number, z: number, r: number): boolean => {
+        for (const pp of spec.props) if (Math.hypot(pp.x - x, pp.z - z) < (PROP_BLOCKER[pp.kind] ?? 0) + 0.9) return false;
+        for (const l of spec.lights) if (Math.hypot(l.position[0] - x, l.position[2] - z) < 0.9) return false;
+        for (const [px, pz] of plan.points) if (Math.hypot(px - x, pz - z) < 1.3) return false;
+        if (roadDistance(splat.roads, x, z) < r + 0.25) return false;
+        if (inSetPiece(plan, x, z, r + 0.3)) return false;
+        for (const b of spec.buildings) if (footprintDistance(b, x, z) < r + 0.3) return false;
+        return true;
+      };
+      const items = plazaClutter(spec.biome, P.x, P.z, P.r, spec.seed & 0xffff, clear);
+      if (PLAZA_CLUTTER[spec.biome] === undefined) { expect(items, id).toHaveLength(0); continue; }
+      expect(items.length, id).toBeGreaterThanOrEqual(8);
+      expect(plazaClutter(spec.biome, P.x, P.z, P.r, spec.seed & 0xffff, clear), id).toEqual(items);   // deterministic
+      for (const it of items) {
+        const r = Math.hypot(it.x - P.x, it.z - P.z);
+        expect(r, `${id} ${it.kind}`).toBeLessThan(P.r - 0.5);
+        expect(r, `${id} ${it.kind}`).toBeGreaterThan(P.r - 3.5);
+        expect(clear(it.x, it.z, 0.45), `${id} ${it.kind}`).toBe(true);
+        expect(PLAZA_CLUTTER[spec.biome]!.kinds, id).toContain(it.kind);
+      }
+      const a = arrivalPoint(id);
+      expect(Math.min(...items.map((it) => Math.hypot(it.x - a.x, it.z - a.z))), `${id}: a cluster by the arrival point`).toBeLessThan(5);
+    }
+  });
+
+  it('every clutter kind builds from surfaces its biome binds', () => {
+    for (const [biome, kit] of Object.entries(PLAZA_CLUTTER)) {
+      const set = BIOME_GENERATORS[biome as keyof typeof BIOME_GENERATORS];
+      // its surface row plus what its prop style already binds (storm's timber is `harbour_plank`)
+      const bound = new Set<string>([...BIOME_SURFACES[biome as keyof typeof BIOME_SURFACES], ...Object.values(set.props).filter((v): v is string => typeof v === 'string'), set.rock]);
+      for (const kind of kit!.kinds) {
+        const g = buildClutterItem(set, kind, 7);
+        for (const s of g.surfaces) expect(bound.has(s), `${biome} ${kind}: ${s}`).toBe(true);
+      }
     }
   });
 

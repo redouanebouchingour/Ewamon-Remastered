@@ -10,9 +10,25 @@
  * from: `creatureTextures.ts` binds the side a view shows, never both (client IMPLEMENTATION-NOTES "Creature textures").
  */
 import type { SpeciesDef, TypeName as CoreTypeName, VariantKey } from '@ewa/core';
-import type { AnimAtlasSet, AtlasSet, SpriteAnim, SpriteDescriptor, SpriteFrame, SpritePool, TypeName } from '@ewa/render';
+import type { AnimAtlasSet, AtlasSet, AuraKind, SpriteAnim, SpriteDescriptor, SpriteFrame, SpritePool, TypeName } from '@ewa/render';
 
 export const CREATURE_BASE = '/creatures/';
+
+/**
+ * The live aura a battle form shows on the stage (`.design/majin-tenjin.md`): the shipped Rage Forms are Majin forms.
+ * A form id not listed here shows no aura.
+ */
+export const FORM_AURA: Readonly<Record<string, AuraKind>> = Object.freeze({ rage: 'majin', majin: 'majin', tenjin: 'tenjin' });
+
+/** Species whose Majin form wears a different aura: zenryu's Majin form is its Super Saiyan (golden flames). */
+export const SPECIES_MAJIN_AURA: Readonly<Record<string, AuraKind>> = Object.freeze({ zenryu: 'majin_gold' });
+
+/** The aura of form sprite `spriteId` (`<species>_<form>`) of `speciesId`; undefined for the species' own sprite or an unknown form. */
+export function auraOfSprite(speciesId: string, spriteId: string | undefined): AuraKind | undefined {
+  if (spriteId === undefined || spriteId === speciesId || !spriteId.startsWith(`${speciesId}_`)) return undefined;
+  const aura = FORM_AURA[spriteId.slice(speciesId.length + 1)];
+  return aura === 'majin' ? (SPECIES_MAJIN_AURA[speciesId] ?? aura) : aura;
+}
 
 interface ManifestMap { readonly url: string; readonly mips: readonly string[]; readonly bytes?: number }
 interface ManifestAtlas {
@@ -80,7 +96,10 @@ export interface SpriteCatalog {
   sideAtlases(speciesId: string, side: 'front' | 'back'): { readonly atlas: string; readonly anim: string | null } | null;
   /** Level-0 bytes (albedo + normal + emissive, mips included when listed) of a set of atlases (static or anim), for the boot bar. */
   bytesOf(ids: readonly string[]): number;
-  /** `spriteId`: a battle form's manifest entry (`<species>_<form>`) drawn in place of the species' own; types and size stay the species'. */
+  /**
+   * `spriteId`: a battle form's manifest entry (`<species>_<form>`) drawn in place of the species' own; types and size stay the species'.
+   * A Majin / Tenjin form (`FORM_AURA`) also gets its live aura (`SpriteDescriptor.aura`).
+   */
   descriptor(speciesId: string, key: string, variant?: VariantKey, isAlpha?: boolean, isShiny?: boolean, spriteId?: string): SpriteDescriptor | null;
   readonly speciesCount: number;
 }
@@ -142,7 +161,11 @@ export function createSpriteCatalog(m: CreatureManifest, species: (id: string) =
         const a = sp.anim?.[side];
         return a !== undefined && animSets.has(a.atlas) ? a : undefined;
       };
-      return { id: key, front: frame(sp.front, anim('front')), back: frame(sp.back, anim('back')), sizeScale: def?.sizeScale ?? sp.sizeScale, types, variant, isAlpha, ...(isShiny ? { isShiny: true } : {}) };
+      const aura = auraOfSprite(speciesId, spriteId);
+      return {
+        id: key, front: frame(sp.front, anim('front')), back: frame(sp.back, anim('back')), sizeScale: def?.sizeScale ?? sp.sizeScale, types, variant, isAlpha,
+        ...(isShiny ? { isShiny: true } : {}), ...(aura !== undefined ? { aura } : {}),
+      };
     },
     get speciesCount() {
       return Object.keys(m.sprites).length;

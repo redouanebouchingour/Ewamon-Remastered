@@ -50,7 +50,15 @@ export interface SpriteDescriptor {
   readonly isAlpha: boolean;
   /** Phase D4 (additive): a shiny sparkles — encoded in the same `alphaGlow` per-object value (+2), no new uniform */
   readonly isShiny?: boolean;
+  /** A battle form's live aura on the battle stage (stage/aura.ts); absent = none. Ignored outside `BattleStage.setBattler`. */
+  readonly aura?: AuraKind;
 }
+
+/**
+ * The battle-form auras (`.design/majin-tenjin.md`): Majin crimson flames, Tenjin gold light; `majin_gold` is Majin's
+ * motion and cracked sigil with golden Super Saiyan flames (zenryu's Majin form).
+ */
+export type AuraKind = 'majin' | 'tenjin' | 'majin_gold';
 
 export type BattlerPose = 'idle' | 'lunge' | 'windup' | 'hurt' | 'recoil' | 'faint' | 'enter' | 'exit' | 'celebrate';
 
@@ -280,7 +288,8 @@ export type VfxId =
   | 'orb_throw' | 'orb_shake' | 'orb_catch' | 'orb_break'
   | 'switch_out' | 'switch_in' | 'faint' | 'trap' | 'flinch'
   | 'shiny_sparkle'                                      // Phase D4: the encounter burst round a shiny
-  | 'form_rage'                                          // a battle form: hollowmane's rage form (crimson shards, embers, shockwave)
+  | 'form_rage'                                          // a battle form: a Majin Form / hollowmane's rage form (crimson shards, embers, shockwave)
+  | 'form_tenjin'                                        // a battle form: a Tenjin Form (gold ring burst, rising gold motes, a soft white-gold flash)
   | `style_${MoveStyle}`;                                // 14 motion styles of a move (slash, bite, beam …), coloured by the `type` passed to vfx()
 
 export interface BattleStage {

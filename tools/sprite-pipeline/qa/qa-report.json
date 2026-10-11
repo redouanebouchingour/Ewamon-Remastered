@@ -1,7 +1,7 @@
 {
-  "total": 278,
+  "total": 300,
   "actionable": 0,
-  "informational": 152,
+  "informational": 154,
   "excluded": [
     {
       "file": "back/yaschamp(back)(fighterstyle).png",
@@ -25,7 +25,7 @@
     }
   ],
   "counts": {
-    "clipped": 76,
+    "clipped": 78,
     "coverage": 1,
     "multiframe": 20,
     "nonsquare": 50,
@@ -1448,6 +1448,24 @@
       ],
       "source": "front/zenryu(front).webp",
       "actionable": []
+    },
+    {
+      "species": "zenryu_majin",
+      "side": "back",
+      "flags": [
+        "clipped"
+      ],
+      "source": "back/zenryu_majin(back).png",
+      "actionable": []
+    },
+    {
+      "species": "zenryu_majin",
+      "side": "front",
+      "flags": [
+        "clipped"
+      ],
+      "source": "front/zenryu_majin(front).png",
+      "actionable": []
     }
   ],
   "bindStats": {
@@ -1580,22 +1598,24 @@
       {
         "albedo": 88,
         "normal": 92,
-        "totalBytes": 36317929
+        "totalBytes": 40637140
       }
     ],
     "thumbs": {
-      "count": 139,
-      "bytes": 748144,
+      "count": 150,
+      "bytes": 810448,
       "rungs": {
+        "q32/aq100/a8": 1,
+        "q40/aq100/a8": 2,
         "q48/aq100/a8": 4,
         "q56/aq100/a8": 3,
         "q64/aq100/a8": 3,
-        "q72/aq100/a8": 21,
-        "q80/aq100/a16": 72,
-        "q80/aq100/a8": 5,
+        "q72/aq100/a8": 22,
+        "q80/aq100/a16": 77,
+        "q80/aq100/a8": 7,
         "q80/aq90": 31
       }
     }
   },
-  "totalBytes": 36317929
+  "totalBytes": 40637140
 }

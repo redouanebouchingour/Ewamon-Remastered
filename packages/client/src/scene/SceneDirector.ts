@@ -26,7 +26,7 @@
 import { getHeightfield, harvestStateFor, interiorAt, interiorsFor, obstacleAt, obstacleFlag, zone as zoneDef } from '@ewa/content';
 import type { HarvestState, PlacedInterior, ZoneDef, ZoneId } from '@ewa/content';
 import type { BattleFormat } from '@ewa/core';
-import { BATTLER_SEPARATION, BATTLE_DISTANCE, BATTLE_PITCH, BATTLE_YAW_OFFSET, doorOf, headingYaw } from '@ewa/render';
+import { BATTLER_SEPARATION, BATTLE_DISTANCE, BATTLE_PITCH, BATTLE_YAW_OFFSET, doorOf, fitCentre, headingYaw, trainerSlot } from '@ewa/render';
 import type { CameraRig, Renderer, Terrain, TerrainCollider, WeatherKind, ZoneHandle } from '@ewa/render';
 import { itemInfo } from '../data/content';
 import type { AudioDirector } from '../audio/AudioDirector';
@@ -58,8 +58,21 @@ const DEG = Math.PI / 180;
  * approximate it (and failed at the impact cue, audit M2-battle-5).
  */
 export const FRAME_SHIFT_M = 0;
-/** The trainer stands behind their own creature during a battle. */
-export const TRAINER_BACK_M = BATTLER_SEPARATION / 2 + 1.7;
+/** A trainer's battle pose: feet (x, z) and facing angle (the actor pool's atan2(dx, dz) convention). */
+export interface TrainerPose { x: number; z: number; angle: number }
+const _slot: [number, number] = [0, 0];
+/**
+ * Where trainer `side` stands while battle frame `bf` is dressed (render `trainerSlot`: beside and behind its own
+ * battler, out of the battle camera's ray to it — M3 independent review R-all-1; side 1 is the point reflection),
+ * facing the arena centre. Allocation-free: writes `out`.
+ */
+export function trainerPose(bf: { readonly x: number; readonly z: number; readonly fx: number; readonly fz: number }, side: 0 | 1, out: TrainerPose): TrainerPose {
+  const t = trainerSlot(bf.x, bf.z, bf.fx, bf.fz, side, _slot);
+  out.x = t[0];
+  out.z = t[1];
+  out.angle = Math.atan2(bf.x - t[0], bf.z - t[1]);
+  return out;
+}
 
 /** A tree's crown reaches this far around its trunk blocker (m); the battle camera must not sit inside one. */
 export const CANOPY_R = 2.8;
@@ -151,7 +164,7 @@ export interface SceneDirector {
   // ---- additions ----
   readonly handle: ZoneHandle | null;
   readonly inBattle: boolean;
-  /** arena centre + forward while a battle is dressed (the trainer stands behind their creature) */
+  /** arena centre + forward while a battle is dressed (the trainers stand at `trainerPose`) */
   readonly battleFrame: { readonly x: number; readonly z: number; readonly fx: number; readonly fz: number } | null;
   /** Re-evaluates NPC presence / pickups / gates / switch tiles for new flags (a restore beat, a pickup, a beaten gym trainer). */
   refreshFlags(flags: ReadonlySet<string>): void;
@@ -496,7 +509,9 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
       }
       const fx = -Math.sin(fy);
       const fz = -Math.cos(fy);
-      battleFrame = { x: summary.x, z: summary.z, fx, fz };
+      // in a hall the stage pulls the ring centre in to keep it on the floor (`fitCentre`): the trainers stand around that
+      const at = hall === null ? null : fitCentre(hallBoundsOf(hall), summary.x, summary.z, fy, [0, 0]);
+      battleFrame = { x: at === null ? summary.x : at[0], z: at === null ? summary.z : at[1], fx, fz };
       cam.pushIn({ x: summary.x - fx * FRAME_SHIFT_M, z: summary.z - fz * FRAME_SHIFT_M }, PUSH_IN);
       const terrain = terrainFor(def?.biome ?? 'grove');
       if (hall !== null) d.renderer.stage.dress({ x: summary.x, z: summary.z }, terrain, [d.selfId()], hallBoundsOf(hall));

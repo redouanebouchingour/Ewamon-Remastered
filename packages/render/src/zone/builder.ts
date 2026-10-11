@@ -32,11 +32,11 @@ import { DOORWAY_SURFACE, houseSteps } from './generators/buildings.js';
 import { buildBush, buildFlowers, buildGroundTuft, buildImpostorCards, buildLog, buildRock, buildStump, buildTallGrass, buildTree } from './generators/nature.js';
 import { buildPondBank } from './generators/props.js';
 import { interiorSteps, interiorSurfaces, type BuiltInterior } from './generators/interiors.js';
-import { boundaryPieces, buildShard, buildSkirtItem, dressingFor, rockClusters, screeClusters, skirtPlacements, vergeClusters, type CoverPoint, type DressingStyle } from './generators/dressing.js';
+import { boundaryPieces, buildClutterItem, buildShard, buildSkirtItem, dressingFor, plazaClutter, rockClusters, screeClusters, skirtPlacements, vergeClusters, type CoverPoint, type DressingStyle } from './generators/dressing.js';
 import { InteriorSystem } from './interiors.js';
 import { setSurfaces, type BiomeSet } from './generators/set.js';
 import {
-  FIELD_SIZE, HOUSING_LOCAL, createSplatContext, footprintDistance, inEllipse, inPocket, layoutOf, roadDistance, scatterClear, splatAt, toWorld,
+  FIELD_SIZE, HOUSING_LOCAL, createSplatContext, footprintDistance, inEllipse, inPocket, inSetPiece, layoutOf, roadDistance, scatterClear, splatAt, toWorld,
   type PocketRect, type SplatContext, type SplatFields, type ZoneLayoutPlan,
 } from './layout.js';
 import { BUILDING_LOD_LEVELS, CHUNK_SIZE, chunkGrid, type ChunkGrid } from './lod.js';
@@ -380,6 +380,23 @@ function* zoneSteps(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonly Surf
       for (const sk of skirtPlacements(b, dressing, near)) {
         const geo = buildSkirtItem(set, sk.kind, sk.seed);
         placeProp(geo, sk.x, heightClamped(h, sk.x, sk.z) - 0.02, sk.z, sk.yaw, 1, false);
+        disposeProp(geo);
+      }
+      yield 'dressing';
+    }
+    // M3 review fixes: walk-through clutter round the plaza rim (dressing.ts `PLAZA_CLUTTER`; salt / storm / sky / cinder)
+    if (plan.plaza && spec.layout === 'town') {
+      const P = plan.plaza;
+      const clear = (x: number, z: number, r: number): boolean => {
+        if (!near(x, z)) return false;
+        if (roadDistance(splat.roads, x, z) < r + 0.25) return false;
+        if (inSetPiece(plan, x, z, r + 0.3)) return false;
+        for (const b of spec.buildings) if (footprintDistance(b, x, z) < r + 0.3) return false;
+        return true;
+      };
+      for (const c of plazaClutter(set.biome, P.x, P.z, P.r, spec.seed & 0xffff, clear)) {
+        const geo = buildClutterItem(set, c.kind, c.seed);
+        placeProp(geo, c.x, heightClamped(h, c.x, c.z) - 0.02, c.z, c.yaw, 1, true);
         disposeProp(geo);
       }
       yield 'dressing';

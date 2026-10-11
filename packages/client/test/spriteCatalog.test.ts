@@ -11,7 +11,7 @@ import { LEGENDARY_IDS, MYTHICAL_IDS } from '@ewa/content';
 import type { AnimAtlasSet, AtlasSet } from '@ewa/render';
 import { species as speciesDef } from '../src/data/content';
 import type { CreatureManifest } from '../src/scene/spriteCatalog';
-import { bindCatalogAtlas, createSpriteCatalog, speciesAtlases } from '../src/scene/spriteCatalog';
+import { FORM_AURA, auraOfSprite, bindCatalogAtlas, createSpriteCatalog, speciesAtlases } from '../src/scene/spriteCatalog';
 
 const map = (u: string) => ({ url: `atlases/${u}.webp`, mips: [1, 2, 3].map((i) => `atlases/${u}.m${i}.webp`), bytes: 10 });
 const amap = (u: string) => ({ url: `anim/${u}.webp`, mips: [1, 2, 3].map((i) => `anim/${u}.m${i}.webp`), bytes: 100 });
@@ -94,9 +94,34 @@ describe('sprite catalog: flipbooks', () => {
 
 const REAL = fileURLToPath(new URL('../public/creatures/creatures.manifest.json', import.meta.url));
 
+describe('sprite catalog: battle-form auras', () => {
+  it('a Majin / Tenjin form sprite carries its aura; the species own sprite and unknown forms carry none', () => {
+    expect(auraOfSprite('hollowmane', 'hollowmane_rage')).toBe('majin');   // the shipped Rage Forms are Majin forms
+    expect(auraOfSprite('thornback', 'thornback_tenjin')).toBe('tenjin');
+    expect(auraOfSprite('infernomorel', 'infernomorel_majin')).toBe('majin');
+    expect(auraOfSprite('hollowmane', undefined)).toBeUndefined();
+    expect(auraOfSprite('hollowmane', 'hollowmane')).toBeUndefined();
+    expect(auraOfSprite('hollowmane', 'hollowmane_zen')).toBeUndefined();
+    expect(auraOfSprite('hollowmane', 'castlemaw_rage')).toBeUndefined();   // another species' form is not this one's
+    expect(auraOfSprite('zenryu', 'zenryu_majin')).toBe('majin_gold');      // zenryu's Majin form is its Super Saiyan
+    expect(auraOfSprite('zenryu', 'zenryu_tenjin')).toBe('tenjin');
+    expect(Object.values(FORM_AURA).every((k) => k === 'majin' || k === 'tenjin')).toBe(true);
+  });
+});
+
 describe.skipIf(!existsSync(REAL))('sprite catalog on the shipped manifest', () => {
   const m = JSON.parse(readFileSync(REAL, 'utf8')) as CreatureManifest;
   const cat = createSpriteCatalog(m, speciesDef);
+
+  it('every shipped battle form with an aura gets it in its descriptor; the plain sprite gets none', () => {
+    const forms = Object.keys(m.sprites).filter((id) => id.endsWith('_rage'));
+    expect(forms.length).toBeGreaterThanOrEqual(2);
+    for (const id of forms) {
+      const sp = id.slice(0, -'_rage'.length);
+      expect(cat.descriptor(sp, `t:${sp}`, 'normal', false, false, id)?.aura, id).toBe('majin');
+      expect(cat.descriptor(sp, `t:${sp}`)?.aura, sp).toBeUndefined();
+    }
+  });
 
   it('the 10 legendaries / mythicals animate on both sides; nothing else does', () => {
     const animated = Object.keys(m.sprites).filter((id) => cat.animAtlasesOf(id).length > 0).sort();

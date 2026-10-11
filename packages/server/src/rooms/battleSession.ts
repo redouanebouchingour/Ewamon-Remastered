@@ -10,7 +10,7 @@
  * No Colyseus import: the room is a `BattleHost` (send + lifecycle hooks), so this module is testable alone.
  */
 import { randomUUID } from 'node:crypto';
-import { TOWER, league as leagueById, leagueRematchFlag, storyBeat as beatById, towerSetReward } from '@ewa/content';
+import { MAJIN_BAND, TENJIN_BAND, TOWER, league as leagueById, leagueRematchFlag, storyBeat as beatById, towerSetReward } from '@ewa/content';
 import type { BadgeId, LeagueRematch, LeagueTrainer, LegendaryStatic, TrainerDef, ZoneDef } from '@ewa/content';
 import {
   TRAINER_EXP,
@@ -24,7 +24,7 @@ import {
   resolveTurn,
   validateAction,
 } from '@ewa/core';
-import type { Action, BattleEvent, BattleFormat, BattleOutcome, BattleState, ContentIndex, CreatureInstance, Rng, RngState, Side, SideChoice, Terrain, WeatherKind } from '@ewa/core';
+import type { Action, BandKind, BattleEvent, BattleFormat, BattleOutcome, BattleState, ContentIndex, CreatureInstance, Rng, RngState, Side, SideChoice, Terrain, WeatherKind } from '@ewa/core';
 import type { QuestProgressEntry, RewardsSummary, ServerMessage } from '@ewa/protocol';
 import type { BattleStartSnapshot, Db, Repos, StreakState } from '@ewa/persist';
 import type { Logger } from '../log';
@@ -330,6 +330,14 @@ export function mustActSides(session: BattleSession): (0 | 1)[] {
   return out;
 }
 
+/** Majin / Tenjin: the bands a player holds (key items `majin_band` / `tenjin_band` in the inventory snapshot). */
+export function bandsOf(inventory: Readonly<Record<string, number>>): BandKind[] {
+  const out: BandKind[] = [];
+  if ((inventory[MAJIN_BAND] ?? 0) > 0) out.push('majin');
+  if ((inventory[TENJIN_BAND] ?? 0) > 0) out.push('tenjin');
+  return out;
+}
+
 export class BattleCoordinator {
   private readonly sessions = new Map<string, BattleSession>();
   private readonly byPlayer = new Map<string, string>();
@@ -358,12 +366,19 @@ export class BattleCoordinator {
 
   // ─── start ──────────────────────────────────────────────────────────────────
 
-  private playerSide(party: readonly CreatureInstance[], playerId: string, canFlee: boolean, canCatch: boolean): Omit<Side, 'mustSwitch' | 'consumedItems'> | null {
+  private playerSide(
+    party: readonly CreatureInstance[],
+    playerId: string,
+    canFlee: boolean,
+    canCatch: boolean,
+    inventory: Readonly<Record<string, number>> = {},
+  ): Omit<Side, 'mustSwitch' | 'consumedItems'> | null {
     const content = this.deps.content;
     const battlers = party.slice(0, 6).map((c) => projectBattler(toInstance(c), content));
     const active = battlers.findIndex((b) => b.creature.hp > 0);
     if (active === -1) return null;
-    return { kind: 'player', party: battlers, active, trainerId: playerId, canFlee, canCatch };
+    const bands = bandsOf(inventory);
+    return { kind: 'player', party: battlers, active, trainerId: playerId, canFlee, canCatch, ...(bands.length > 0 ? { bands } : {}) };
   }
 
   /** Reads party + inventory under the player lock and marks the opposing lead seen — the start transaction. */
@@ -447,7 +462,7 @@ export class BattleCoordinator {
   async startWild(p: PlayerSeat, spawn: SpawnRecord, at: BattleAt): Promise<StartResult> {
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
     const loaded = await this.loadPlayers([p.playerId], spawn.speciesId);
-    const side0 = this.playerSide(loaded.get(p.playerId)!.party, p.playerId, true, true);
+    const side0 = this.playerSide(loaded.get(p.playerId)!.party, p.playerId, true, true, loaded.get(p.playerId)!.inventory);
     if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
     const wild = withSyntheticId(
@@ -484,7 +499,7 @@ export class BattleCoordinator {
   async startStatic(p: PlayerSeat, st: LegendaryStatic, at: BattleAt): Promise<StartResult> {
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
     const loaded = await this.loadPlayers([p.playerId], st.species);
-    const side0 = this.playerSide(loaded.get(p.playerId)!.party, p.playerId, false, true);
+    const side0 = this.playerSide(loaded.get(p.playerId)!.party, p.playerId, false, true, loaded.get(p.playerId)!.inventory);
     if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
     const wild = withSyntheticId(newCreature(this.deps.content, st.species, st.level), `static:${st.species}`);
     const side1: Omit<Side, 'mustSwitch' | 'consumedItems'> = { kind: 'wild', party: [projectBattler(wild, this.deps.content)], active: 0, trainerId: null, canFlee: false, canCatch: false };
@@ -532,12 +547,14 @@ export class BattleCoordinator {
             withSyntheticId(newCreature(content, m.species, m.level, { nickname: m.nickname, ability: m.ability, heldItem: m.heldItem }), `npc:${trainerId}:${i}`),
           );
     const loaded = await this.loadPlayers([p.playerId], team[0]!.speciesId);
-    const side0 = this.playerSide(loaded.get(p.playerId)!.party, p.playerId, false, false);
+    const side0 = this.playerSide(loaded.get(p.playerId)!.party, p.playerId, false, false, loaded.get(p.playerId)!.inventory);
     if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
     // Phase D6: a trainer authored as doubles (`doubles: true`, ≥ 2 creatures) fights 2-on-2 when the player has two
     // usable creatures; with one, the battle falls back to singles (never a refusal: doubles is never a gate)
     const authoredDoubles = (def.kind === 'trainer' ? def.trainer.doubles : def.league.doubles) === true && team.length >= 2;
     const doubles = authoredDoubles && side0.party.filter((b) => b.creature.hp > 0).length >= 2;
+    // Majin / Tenjin: the trainer's authored bands (content `bands`); its side transforms one creature (core chooseNpcAction)
+    const npcBands = def.kind === 'trainer' ? def.trainer.bands : def.league.bands;
     const side1: Omit<Side, 'mustSwitch' | 'consumedItems'> = {
       kind: 'npc',
       party: team.map((c) => projectBattler(c, content)),
@@ -545,6 +562,7 @@ export class BattleCoordinator {
       trainerId,
       canFlee: false,
       canCatch: false,
+      ...(npcBands !== undefined && npcBands.length > 0 ? { bands: npcBands } : {}),
     };
     const reward = def.kind === 'trainer' ? (def.rematch ? Math.floor(def.trainer.reward / 2) : def.trainer.reward) : (def.rematch?.reward ?? def.league.reward);
     const { session } = this.open(
@@ -617,8 +635,8 @@ export class BattleCoordinator {
     const before = busy();
     if (before !== null) return before;
     const loaded = await this.loadPlayers([challenger.playerId, accepter.playerId], null);
-    const side0 = this.playerSide(loaded.get(challenger.playerId)!.party, challenger.playerId, false, false);
-    const side1 = this.playerSide(loaded.get(accepter.playerId)!.party, accepter.playerId, false, false);
+    const side0 = this.playerSide(loaded.get(challenger.playerId)!.party, challenger.playerId, false, false, loaded.get(challenger.playerId)!.inventory);
+    const side1 = this.playerSide(loaded.get(accepter.playerId)!.party, accepter.playerId, false, false, loaded.get(accepter.playerId)!.inventory);
     if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty', playerId: challenger.playerId };
     if (side1 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty', playerId: accepter.playerId };
     const after = busy();

@@ -250,6 +250,11 @@ export interface SoilParams extends Common {
   readonly crust?: number;                              // cracked crust cells per tile
   readonly sparkle?: number;                            // bright specks (snow, salt)
   readonly embers?: { readonly color: string; readonly amount: number };
+  /**
+   * Organic albedo patches independent of the height (wind-laid pale ash over dark cinder): `cells` noise cells per
+   * tile, `amount` the blend at the patch core. Absent = none (the other soils bake as before).
+   */
+  readonly drift?: { readonly color: string; readonly amount: number; readonly cells: number };
 }
 
 export function soil(p: SoilParams): SurfaceRecipe {
@@ -299,12 +304,15 @@ export function soil(p: SoilParams): SurfaceRecipe {
       const pb = aux(h, 'pebble'), cr = aux(h, 'crack');
       const pc = col(p.pebbleColor, scale3(base, 0.8));
       const ember = p.embers ? hex(p.embers.color) : base;
+      const dn = p.drift ? tiled(c.noise, p.drift.cells, p.drift.cells, 7) : null;
+      const dc = p.drift ? hex(p.drift.color) : base;
       each(rgb, (u, v, i) => {
         const hh = h.data[i]!;
         const t = tint.fbm(u, v, 4);
         let cc = mix3(dark, base, smoothstep(0.1, 0.55, hh));
         cc = mix3(cc, light, smoothstep(0.65, 1, hh) * 0.5);
         cc = scale3(hueShift(cc, (t - 0.5) * 8), (0.9 + 0.18 * t) * (1 - 0.35 * cr[i]!));
+        if (dn && p.drift) cc = mix3(cc, scale3(dc, 0.92 + 0.16 * t), smoothstep(0.46, 0.68, dn.fbm(u, v, 5)) * p.drift.amount);
         if (pb[i]! > 0.02) cc = mix3(cc, scale3(pc, 0.8 + 0.4 * pb[i]!), smoothstep(0.02, 0.12, pb[i]!));
         const s = sp.value(u, v);
         if (p.sparkle && s > 1 - p.sparkle * 0.2) cc = mix3(cc, light, 0.8);

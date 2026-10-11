@@ -28,10 +28,10 @@
  *    one per `surfaceStructure()` — {standard, physical, card, water} × triplanar × trunk wind — not one
  *    per feature combination. Measured in the sandbox: this halves the library's programs.
  */
-import { Color, DoubleSide, FrontSide, MeshPhysicalNodeMaterial, MeshStandardNodeMaterial, Vector3 } from 'three/webgpu';
+import { Color, DoubleSide, FrontSide, MeshPhysicalNodeMaterial, MeshStandardNodeMaterial, Vector3, Vector4 } from 'three/webgpu';
 import type { Node, TextureNode, UniformNode } from 'three/webgpu';
 import {
-  attribute, bool, float, frontFacing, max, mix, normalMap, normalView, oneMinus, positionLocal, texture, uniform, uv, vec2, vec4, vertexColor,
+  attribute, bool, float, frontFacing, luminance, max, mix, normalMap, normalView, oneMinus, positionLocal, texture, uniform, uv, vec2, vec3, vec4, vertexColor,
 } from 'three/tsl';
 import { harvestBlend, type SharedUniforms } from './harvest.js';
 import { occlusionKeep } from './occlusion.js';
@@ -72,6 +72,13 @@ export interface SurfaceParams {
   readonly transmission: UniformNode<'float', number> | null;
   /** Card back-face multiplier; (1,1,1) = no tint. */
   readonly backTint: UniformNode<'vec3', Vector3>;
+  /**
+   * M3 review fixes (art): a per-zone re-tone of a card surface — rgb = the target colour divided by the surface's
+   * base luminance (so a texel of mean luminance lands on the target), w = the blend (0 = the baked albedo). The grass
+   * card (tufts, tall grass, grass clumps) reads straw on salt sand, ash-brown on cinder, frosted on snow
+   * (`Palette.grassTone`, set by the zone system with the palette). A uniform: no program changes.
+   */
+  readonly tone: UniformNode<'vec4', Vector4>;
 }
 
 export type GraphKind = 'standard' | 'physical' | 'card' | 'water';
@@ -140,7 +147,24 @@ export function createSurfaceParams(def: SurfaceDef, extras: SurfaceExtras): Sur
     wind,
     transmission: s.kind === 'water' ? uniform(extras.transmission ?? 0.6) : null,
     backTint: uniform(extras.backfaceTint && def.doubleSide ? linearRgb(extras.backfaceTint).multiplyScalar(2.2) : new Vector3(1, 1, 1)),
+    tone: uniform(new Vector4(1, 1, 1, 0)),
   };
+}
+
+/** Rec. 709 luminance of a linear colour. */
+export function luminanceOf(v: Vector3): number {
+  return 0.2126 * v.x + 0.7152 * v.y + 0.0722 * v.z;
+}
+
+/**
+ * Writes `tone` (see `SurfaceParams.tone`): `hex` null (or amount 0) restores the baked albedo. The target is divided by
+ * the surface's base luminance, so the re-toned texture keeps its own light / dark structure around the target colour.
+ */
+export function applyTone(p: SurfaceParams, def: SurfaceDef, hex: string | null, amount = 1): void {
+  if (hex === null || amount <= 0) { p.tone.value.set(1, 1, 1, 0); return; }
+  const ref = Math.max(1e-3, luminanceOf(linearRgb(def.albedo)));
+  const t = linearRgb(hex);
+  p.tone.value.set(t.x / ref, t.y / ref, t.z / ref, Math.min(1, amount));
 }
 
 /** Uniform values while the neutral placeholder set is bound (deviation 4). */
@@ -152,8 +176,8 @@ export function applyPlaceholderParams(p: SurfaceParams, def: SurfaceDef): void 
 }
 
 /** Uniform values once the baked set is bound (deviation 4); `metres` from the manifest entry. */
-export function applyBakedParams(p: SurfaceParams, def: SurfaceDef, metres: number): void {
-  p.albedoScale.value.set(1, 1, 1);
+export function applyBakedParams(p: SurfaceParams, def: SurfaceDef, metres: number, albedoCal = 1): void {
+  p.albedoScale.value.set(albedoCal, albedoCal, albedoCal);   // M3 review fixes: high-albedo calibration (SurfaceExtras.albedoCal)
   p.albedoBias.value.set(0, 0, 0);
   p.roughScale.value = 1; p.roughBias.value = 0;
   p.metalScale.value = def.metalness > 0 ? 1 : 0; p.metalBias.value = 0;   // §10.2.4: orm.b × (metal > 0 ? 1 : 0)
@@ -176,7 +200,10 @@ export function buildSurfaceGraph(def: SurfaceDef, _extras: SurfaceExtras, maps:
 
   // Pillar 2 vs harvested: the SAME graph, blended by one uniform.
   let rgb: Node<'vec3'> = alb.rgb.mul(p.albedoScale).add(p.albedoBias);
-  if (st.kind === 'card') rgb = frontFacing.select(rgb, rgb.mul(p.backTint)) as Node<'vec3'>;       // leaf subsurface tint (§10.2.2)
+  if (st.kind === 'card') {
+    rgb = mix(rgb, vec3(luminance(rgb)).mul(p.tone.xyz), p.tone.w) as Node<'vec3'>;                 // per-zone re-tone (M3 review fixes)
+    rgb = frontFacing.select(rgb, rgb.mul(p.backTint)) as Node<'vec3'>;                             // leaf subsurface tint (§10.2.2)
+  }
   m.colorNode = vec4(mix(rgb, vertexColor().rgb, h), alb.a);                                        // level 2 = flat vertex colour
   m.normalNode = mix(tangentNormal(nrm.rgb, float(1)), normalView, h).normalize();                  // level 2 = geometry normal (flat when unwelded)
   const rough = mix(orm.g.mul(p.roughScale).add(p.roughBias), float(0.95), h);                    // level 2 = flat rough

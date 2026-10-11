@@ -182,6 +182,18 @@
     "sfx/pylon_crackle_2",
     "sfx/raid_phase_1",
     "sfx/raid_roar_1",
+    "sfx/sig_aurora_requiem_1",
+    "sfx/sig_bankai_sever_1",
+    "sfx/sig_cosmic_miracle_1",
+    "sfx/sig_cosmic_pyre_1",
+    "sfx/sig_foxfire_voltage_1",
+    "sfx/sig_hollow_crescent_1",
+    "sfx/sig_kamehameha_1",
+    "sfx/sig_rift_collapse_1",
+    "sfx/sig_sparking_grace_1",
+    "sfx/sig_stellar_devour_1",
+    "sfx/sig_sunbreaker_barrage_1",
+    "sfx/sig_vendetta_volley_1",
     "sfx/spawn_shimmer_1",
     "sfx/spawn_shimmer_2",
     "sfx/splash_1",
@@ -378,8 +390,8 @@
       },
       "sfx": {
         "derived": 17,
-        "direct": 233,
-        "total": 250,
+        "direct": 235,
+        "total": 252,
         "unmapped": 0
       },
       "stem": {
@@ -395,25 +407,15 @@
         "unmapped": 0
       }
     },
-    "covered": 378,
+    "covered": 380,
     "fraction": 1,
-    "total": 378
+    "total": 380
   },
-  "entries": 310,
+  "entries": 312,
   "failed": [],
   "ingested": [
-    "sfx/sig_aurora_requiem_1",
-    "sfx/sig_bankai_sever_1",
-    "sfx/sig_cosmic_miracle_1",
-    "sfx/sig_cosmic_pyre_1",
-    "sfx/sig_foxfire_voltage_1",
-    "sfx/sig_hollow_crescent_1",
-    "sfx/sig_kamehameha_1",
-    "sfx/sig_rift_collapse_1",
-    "sfx/sig_sparking_grace_1",
-    "sfx/sig_stellar_devour_1",
-    "sfx/sig_sunbreaker_barrage_1",
-    "sfx/sig_vendetta_volley_1"
+    "sfx/bond_majin_1",
+    "sfx/bond_tenjin_1"
   ],
   "missing": [],
   "ok": true,

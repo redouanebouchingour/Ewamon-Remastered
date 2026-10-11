@@ -186,14 +186,22 @@ export interface SpeciesDef {
 // ability and status are the species'. It emits `formChange`, then onEnter: its own negative stages back to 0
 // (`statStage`, cause 'ability'), every standing foe on the field lowered (`statStage`, cause 'ability'). The form is kept
 // through a switch-out. The client shows the creature manifest entry `<species>_<form>` while the battler holds it.
+// <!-- amended 2026-10-11: Majin / Tenjin --> `kind` makes it the Majin / Tenjin gimmick (`.design/majin-tenjin.md`): a 'majin' form opens below the
+// line, a 'tenjin' form at or above it, and on a trainer's side neither changes on its own — the side transforms by choice
+// (§2.10 `Action.transform`, once per side per battle, holding the band of that kind, `Side.bands`). A WILD 'majin'
+// battler still changes on its own as above; a 'tenjin' never does. `kind` absent = the automatic form above, any side.
+export type BandKind = 'majin' | 'tenjin';
 export interface BattleFormDef {
   readonly id: string;                 // e.g. 'rage'
-  readonly name: string;               // e.g. 'Rage Form'
-  readonly hpBelowPct: number;         // 1..99
+  readonly name: string;               // e.g. 'Rage Form' / 'Majin Form'
+  readonly kind?: BandKind;            // <!-- amended 2026-10-11: Majin / Tenjin --> absent = automatic (any side)
+  readonly hpBelowPct: number;         // 1..99 — the line: majin / automatic change when hp * 100 < maxHp * hpBelowPct; tenjin when ≥
   readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number;
   readonly onEnter: {
     readonly clearNegativeStages: boolean;
     readonly lowerFoes: { readonly stat: StatKey; readonly stages: number } | null;
+    readonly cureStatus?: boolean;     // <!-- amended 2026-10-11: Majin / Tenjin --> Tenjin: its major status cured (`statusCured`, cause 'ability')
+    readonly healFraction?: number;    // <!-- amended 2026-10-11: Majin / Tenjin --> Tenjin: heals floor(maxHp × this) (`heal`, cause 'form'), after the stages
   };
   readonly sprite: { readonly front: string; readonly back: string }; // '<species>_<form>_front' / '_back'
   // <!-- amended 2026-10-08: signature move --> while the battler holds the form, using the known move `replaces` executes `move` instead (its own MoveDef);
@@ -560,6 +568,8 @@ export interface Side {
   readonly mustSwitch: boolean;            // active fainted and a replacement exists (doubles: a position holds a fainted battler and a bench creature stands)
   readonly consumedItems: readonly string[]; // consumable ids used this battle (raid/pvp limits)
   readonly actives?: readonly [number, number]; // Phase D6, doubles only: party index on field position 0 / 1; `active` mirrors actives[0]
+  readonly bands?: readonly BandKind[];  // <!-- amended 2026-10-11: Majin / Tenjin --> the bands this side holds (player: key items majin_band / tenjin_band; NPC: content `bands`); absent = none, state shape unchanged
+  readonly transformed?: true;           // <!-- amended 2026-10-11: Majin / Tenjin --> present once this side has used its one transformation this battle
 }
 
 export type Terrain = 'none' | 'grove' | 'cinder' | 'salt' | 'storm' | 'marrow' | 'vesper' | 'forge' | 'sky' | 'shrine' | 'rift';
@@ -608,7 +618,7 @@ export function createBattle(o: CreateBattleOpts, content: ContentIndex): TurnRe
 export interface FieldRef { readonly side: 0 | 1; readonly pos: 0 | 1 } // Phase D6: a field position (NOT a party index)
 
 export type Action =
-  | { readonly kind: 'move'; readonly move: string; readonly target?: FieldRef } // must be in active.creature.moves with pp > 0; target: doubles only (foe or ally position; absent = first standing foe)
+  | { readonly kind: 'move'; readonly move: string; readonly target?: FieldRef; readonly transform?: true } // must be in active.creature.moves with pp > 0; target: doubles only (foe or ally position; absent = first standing foe); transform (<!-- amended 2026-10-11: Majin / Tenjin -->): the battler transforms first (§2.11 step 5b)
   | { readonly kind: 'switch'; readonly to: number }          // party index, not active, hp > 0
   | { readonly kind: 'item'; readonly item: string; readonly target?: number } // consumable id; target = party index (default active)
   | { readonly kind: 'catch'; readonly orb: string }
@@ -620,7 +630,8 @@ export type ActionError =
   | 'badSwitchIndex' | 'switchToFainted' | 'switchToActive' | 'trapped'
   | 'unknownItem' | 'itemNotUsableInBattle' | 'badItemTarget'
   | 'cannotCatch' | 'unknownOrb' | 'cannotFlee' | 'cannotForfeit' | 'mustSwitch' | 'actionNotRequired'
-  | 'badTarget';   // Phase D6: a doubles move target at the user itself / not a field position
+  | 'badTarget'    // Phase D6: a doubles move target at the user itself / not a field position
+  | 'cannotTransform'; // <!-- amended 2026-10-11: Majin / Tenjin --> transform without a Majin / Tenjin form, without that band, already transformed (battler or side), or the line not met; doubles: two positions of one side in one turn
 
 /** Phase D6: one side's input to resolveTurn — singles an Action / null; doubles one entry per field position (a bare Action = position 0). */
 export type SideChoice = Action | null | readonly [Action | null, Action | null];
@@ -682,6 +693,7 @@ The §2.20 fuzz digest committed in `packages/core/test/fuzz-digests.json` is, p
 3. **Switches**, both sides, ordered by effective speed (§2.13) with rng tiebreak. `onSwitchOut` hooks, then `onSwitchIn`. A switched-out battler's volatile resets to defaults; stages reset to 0.
 4. **Items**, same ordering. Item on a fainted target is only `revive`/`max_revive`.
 5. **Catch** (side 0 only). Resolve §2.15; on success `ended: { winner: 'caught' }`, return after step 7's end-of-turn is *skipped*. On failure the wild side still acts in step 6.
+5b. **Transformations** <!-- amended 2026-10-11: Majin / Tenjin --> — every `move` action carrying `transform: true` (validated: core `transformError`), ordered by effective speed (rng tiebreak only on a full tie), before any move: the side's `transformed` is set, then `formChange` and the form's `onEnter` (negative stages to 0, foes lowered, Tenjin's `statusCured` and `heal { cause: 'form' }`). Move order and priority are then computed from the transformed battler (a signature move's priority, the new speed). Doubles: the same step between items and moves. NPC trainers holding a band transform as soon as `transformError` is null (`chooseNpcAction`, no rng draw); wild sides never choose (a wild Majin changes on its own).
 6. **Moves**, ordered by `priority` desc, then effective speed desc, then `rng.int(2)`. For each actor in order, if still able: pre-action checks in this order — fainted (skip) → `flinched` (emit `flinch`, skip) → `sleepTurns > 0` (decrement; if still > 0 emit `statusTick { status: 'sleep' }`, skip; if 0 emit `statusCured`) → `freeze` (20 % thaw → `statusCured`; else `statusTick`, skip) → `paralyze` full-para 25 % (`statusTick`, skip) → `confusedTurns > 0` (decrement; if now 0 `statusCured { 'confuse' }`; else 33 % self-hit: `damage { cause: 'confusion' }`, skip). Then PP −1, `moveUsed`, accuracy roll (§2.12), damage (§2.14), effect (§2.4 table), contact hooks, `onSuperEffectiveHit` items, faint checks. The second actor's move is skipped if its own battler fainted; it still resolves if the *target* fainted (retargeting is not needed — the target simply takes no damage and the move emits `moveFailed { reason: 'noTarget' }`).
 7. **End of turn**, exactly this order: weather damage (`sand`: 1/16 to non-Rock/Ground/Steel; `hail`: 1/16 to non-Ice) → burn chip 1/16 → poison chip 1/8 → trap chip 1/8 and `trappedTurns − 1` → berries (`Sitrus`, `Oran`) → `Speed Boost` → weather `turns − 1` (at 0 → `weatherEnd`, kind `none`) → faint checks → `mustSwitch` computation → `turn + 1` → `turnEnd`.
 8. **Battle end** check: a side with no `hp > 0` battler loses; both → `draw`. Raid: the boss side never has `mustSwitch`; `raid` end conditions are in `30-server-netcode.md` (the room aggregates many players' `resolveTurn` calls against one boss `Side`).
@@ -863,7 +875,7 @@ export type BattleEvent =
       readonly cause: 'move' | 'confusion' | 'recoil' | 'burn' | 'poison' | 'trap' | 'sand' | 'hail' | 'contact';
       readonly source: Ref | null; readonly move: string | null }
   | { readonly t: 'heal'; readonly target: Ref; readonly amount: number; readonly hpAfter: number;
-      readonly cause: 'drain' | 'move' | 'berry' | 'absorb' | 'regenerator' | 'item'; readonly item: string | null }
+      readonly cause: 'drain' | 'move' | 'berry' | 'absorb' | 'regenerator' | 'item' | 'form'; readonly item: string | null } // 'form': <!-- amended 2026-10-11: Majin / Tenjin --> a Tenjin form's healFraction
   | { readonly t: 'statusApplied'; readonly target: Ref; readonly status: StatusId; readonly source: Ref | null; readonly turns: number | null }
   | { readonly t: 'statusBlocked'; readonly target: Ref; readonly status: StatusId; readonly reason: 'type' | 'ability' | 'alreadyStatused' }
   | { readonly t: 'statusTick'; readonly target: Ref; readonly status: StatusId; readonly detail: 'asleep' | 'frozen' | 'paralyzed' | 'confused' }
@@ -975,6 +987,7 @@ export interface TrainerDef {
   readonly team: readonly { readonly species: string; readonly level: number }[]; // 1..6
   readonly lines: readonly string[]; readonly reward: number; readonly rematchDays: number | null;
   readonly doubles?: true;   // Phase D6: fights 2-on-2 (team ≥ 2; the player needs 2 usable creatures, else singles); never a gate
+  readonly bands?: readonly BandKind[]; // <!-- amended 2026-10-11: Majin / Tenjin --> the trainer fights with these bands (shipped: reeve_observatory, hollis_siege, varn_spire — majin)
 }
 export interface GroundItemDef { readonly id: string; readonly x: number; readonly z: number; readonly item: string; readonly qty: number }
 export interface LoreTabletDef { readonly id: string; readonly x: number; readonly z: number; readonly title: string; readonly text: readonly string[] }
@@ -1105,6 +1118,7 @@ export interface LeagueTrainer {
   readonly setsFlags: readonly string[];
   readonly mid?: { readonly halfHp: string; readonly lastStand: string };   // added 2026-10-06 (Phase B7): mid-battle lines, ≤ 140 chars, all 12 rows
   readonly doubles?: true;             // Phase D6: fights 2-on-2 (draco_gym, aurelia); see TrainerDef.doubles
+  readonly bands?: readonly BandKind[]; // <!-- amended 2026-10-11: Majin / Tenjin --> see TrainerDef.bands (shipped: veil majin, aurelia tenjin, zeon majin)
 }
 export const LEAGUE: readonly LeagueTrainer[];  // 12 entries; champion id is exactly 'zeon'
 export const BADGES: readonly { readonly id: BadgeId; readonly name: string; readonly type: TypeName; readonly gym: string }[];
@@ -1193,7 +1207,7 @@ export interface StoryBeat {
   readonly after: readonly string[];   // lines after the battle / on completion
   readonly harvest: { readonly zoneId: ZoneId; readonly to: HarvestState } | null; // the beat changes a zone's render state
   readonly starter: boolean;           // exactly one beat has this
-  readonly grant?: Readonly<Record<string, number>>; // Phase D1: items added when the beat completes (same transaction), sent as inventoryDelta; never a gate
+  readonly grant?: Readonly<Record<string, number>>; // Phase D1: items added when the beat completes (same transaction), sent as inventoryDelta; never a gate. <!-- amended 2026-10-11: Majin / Tenjin --> sables_turn grants majin_band, the_requisition tenjin_band (key items, never sold)
 }
 export const STORY: readonly StoryBeat[];
 
@@ -1467,7 +1481,8 @@ export const BattleActionMsg = z.object({ battleId: z.string().uuid(), turn: z.n
   pos: z.union([z.literal(0), z.literal(1)]).optional(),   // Phase D6: the doubles field position (absent = the lowest still waiting); ignored in singles
   action: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('move'), move: z.string().min(1).max(40),
-      target: z.object({ side: z.union([z.literal(0), z.literal(1)]), pos: z.union([z.literal(0), z.literal(1)]) }).optional() }), // Phase D6
+      target: z.object({ side: z.union([z.literal(0), z.literal(1)]), pos: z.union([z.literal(0), z.literal(1)]) }).optional(), // Phase D6
+      transform: z.literal(true).optional() }), // <!-- amended 2026-10-11: Majin / Tenjin --> Majin / Tenjin; the server's player side carries the bands of its inventory snapshot
     z.object({ kind: z.literal('switch'), to: z.number().int().min(0).max(5) }),
     z.object({ kind: z.literal('item'), item: z.string().min(1).max(40), target: z.number().int().min(0).max(5).optional() }),
     z.object({ kind: z.literal('catch'), orb: z.string().min(1).max(40) }),

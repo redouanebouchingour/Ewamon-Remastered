@@ -1479,6 +1479,25 @@ light layout", give the design and the numbers.
 - **Measured** (`handover-hitch.spec.ts`, dev iGPU): first destination frame preloaded 6.4–8.9 s → 68–196 ms; not
   preloaded 7.7–8.6 s → 3.7–4.7 s. `first-frame.spec.ts`: 34–64 s → 25–26 s.
 
+## M3 review: framing, battle, harness (2026-10-06/07)
+
+- **Headings (R-all-2 / M3-all-11, blocker; SPEC §50.6.1 amended 2026-10-06).** `src/harness/shotTable.ts` holds rig
+  indices: spawn-noon 0 (the in-game arrival view), gym-dusk `faceSubject` (anchors `rigFacing`: the rig whose view is
+  nearest anchor → door; 0 at Mirevale; the no-gym fallback faces its set-piece), sprite-edge 3, lamps-night 1,
+  battle (the battle camera; walk-in at rig 3), link-east 3 (fallback edges: w 1, n 0, s 2). The 'words' convention,
+  `setHeadingConvention` / `rigHeading`, `?headings=` and the runner's `--headings` / `headings-rig/` are gone; sidecars
+  record `anchor.heading.convention: "rig"`. The non-spawn digits reproduce the committed frames (old words 1 → rig 3,
+  3 → rig 1); every `spawn-noon` frame changes (180°) and must be re-shot with `harness:shots -- --set M3`.
+- **Trainers beside their creatures (R-all-1, blocker).** SceneDirector `trainerPose(bf, side, out)` (render
+  `trainerSlot`, facing the ring centre) replaces `TRAINER_BACK_M`; World3D / HarnessWorld place the avatar with it and
+  `FoeActor.stage(x, z, angle)` takes the far slot. In a hall the battle frame is the stage's fitted ring centre
+  (`fitCentre`), so the trainers stand around the ring the stage actually dressed.
+- **Battle log (R-all-3).** `battle/timeline.ts` `abilityText(who, ability, detail)`: core `abilityTrigger.detail` hook
+  ids (`endOfTurn`, `onContact`, `onStatLowered`, `onSwitchIn/Out`, `statusImmunity`, `typeImmunity`, `wonderGuard`,
+  the raid's `enraged`, `<stat> cannot be lowered`) become sentences ("The wild Scalewisp’s Speed Boost activated!");
+  an unknown camelCase id reads "activated!", never the id. Test: `timeline.test.ts` (the review's check
+  `/— [a-z]+[A-Z]/` over every detail the core emits).
+
 ## Battle forms: the rage form on stage (2026-10-08)
 
 - `formChange` → timeline: after the crossing hit's hp drain, a red flash, `form_rage` VFX, `raid_roar` sfx and a shake
@@ -1815,3 +1834,108 @@ label strip. §20.9.9c says "on a `--glass` strip", and the strip is now black w
 the streak and best "(mono)", and they are now display-face tabular numbers. §20.5.6 says the skip hint is "a caption
 pill", and it is now a black slab with a paper key chip. §20.9.2 (DialogueBox) is still accurate. You could add
 "orange speaker strip, paper key chip".
+
+## Battle-form auras (2026-10-11)
+
+- `scene/spriteCatalog.ts`: `FORM_AURA` (`rage` → `majin`, `majin` → `majin`, `tenjin` → `tenjin`) and
+  `auraOfSprite(speciesId, spriteId)`. `descriptor(…, spriteId)` sets `SpriteDescriptor.aura` when the sprite is a form
+  of that species (`<species>_<form>`), so every path that already shows a form sprite (`BattleController.showBattler`
+  → `World3D` / harness `setBattler`) gets the live aura with no other change. The shipped Rage Forms (hollowmane,
+  castlemaw) are Majin forms and show the Majin aura from this change on.
+- The aura starts when the form sprite appears (the timeline's `form` frame, after the `form_rage` burst) and ends
+  with the faint, a resync to a formless battler, or the battle's end (render SPEC §10.7.5 "Battle-form auras").
+
+## Majin / Tenjin in the client (2026-10-11)
+
+The client side of the band gimmick (`.design/majin-tenjin.md` §3, §6, §8; core `transformError` / `formLineMet`).
+Tests: `test/majin-tenjin.test.tsx` (16), `test/timeline.test.ts` (+2), `test/battle-forms.test.tsx` (adapted).
+
+- **Labels**: `ACTION_ERROR_LABEL.cannotTransform` = "Can’t transform now". `timeline.ts` `healText(cause, itemName)`
+  is an exhaustive switch over every `heal` cause; `'form'` (a Tenjin Form's heal on entering it) reads
+  "<Name> is steadied and restored its HP!".
+- **Timeline**: `FORM_VFX` / `FORM_TEXT` / `FORM_CUE` per form id. `rage` and `majin` are the same: the `form_rage`
+  burst, a red flash, `raid_roar`, a shake, then "<Name> broke open into its Majin Form!" (this replaces "…’s mask
+  cracks — it flies into a rage!", since the design renames Rage Form to Majin Form in the UI). `tenjin`: the new
+  render VFX `form_tenjin`, a white-gold flash (#fff1c2), `bell_toll` (an existing approved id, no new audio), no
+  shake, then "<Name> ascended into its Tenjin Form!". The `form` keyframe timing (`FORM_MS`) is unchanged. The
+  design's dedicated sounds (crack + roar / bell + choir swell) are not made; the existing ids stand in.
+- **Transform toggle** (`battle/transform.ts` `transformOffer`, `BattleMenu` `TransformToggle`): in the moves menu, at
+  the end of the head row (after Back and the prompt). It shows when the player's side holds the band of the battler's
+  form kind (`Side.bands`), the species has a form of that kind and the side has not transformed (`Side.transformed`).
+  It is enabled when `transformError(...) === null`. Disabled, its reason is a caption beside it ("Majin needs HP below
+  half." / "Tenjin needs HP at or above half." / "Already transformed this battle." / doubles, when the other position
+  armed it this turn: "One transformation per battle."). The slab has a key chip **T**, the form sigil and
+  "Majin" / "Tenjin". Armed, it is `aria-pressed` and the orange 'selected' slab (the sigil goes to `--on-accent`).
+  While it is enabled, the ticker's key hints add "T Majin" / "T Tenjin". Picking a move while armed sends
+  `moveAction(id, target?, true)` = `{ kind: 'move', move, target?, transform: true }`. This covers the doubles target
+  list, which also gets the flag. It resets on a new turn, another doubles position, or any phase change, so it is
+  off again after every submit. Doubles: the flag rides on the choosing position's pick only. Position 1's toggle is
+  then disabled (core `validateSideChoice` rejects two anyway). T is free in battle: the world's chat key is blocked
+  while `ui.battle` is set.
+- **Coach mark**: the first time the toggle is enabled in the moves menu, one line under the head row
+  (`role="status"`): "Majin ready — its HP is below half. One transformation per battle." / "Tenjin ready — its HP is
+  at or above half. One transformation per battle." The toggle pulses 3× (no pulse under reduced motion). It shows once
+  per kind per account (`state/bandTutorial.ts` `coached`) and is cleared when the phase leaves selecting. The design's
+  first-time grey-out explanation is covered by the always-present disabled caption.
+- **pvp patch**: `patchFromEvents` (formats without a preview) applies `formChange`: the battler's `form`, and
+  `transformed: true` on a non-wild side, so the toggle hides after a pvp transformation as it does elsewhere.
+- **Band cards** (`world/BandTutorialCard.tsx`, mounted in `PlayShell` beside `TutorialCard`, reusing its CSS module;
+  state `state/bandTutorial.ts`, persisted per account under `ewa.bandTutorial`, apart from `ewa.tutorial`). A card runs
+  while its band is in the inventory (`majin_band` / `tenjin_band`), Majin first when both are held, with 3 steps each:
+  party opened (`/play/party`) → a creature of that form kind on the player's field in a battle
+  (`ui.battle.authoritative`) → a transformation of that kind by the player (`sides[seat].transformed` + the battler in
+  its form). A transformation completes the card. That is the "done on sight for accounts that already transformed"
+  rule: the client has no server record of past transformations, so "already" means seen in a battle on this
+  browser. Each card has a Skip. Like the opening card it hides during battles, dialogues and panels, but its tracker
+  keeps running.
+- **Form marks** (`ui/FormSigil.tsx`): `FormSigil` (24-unit stroke SVG: Majin = the cracked ring, crimson #ff3048;
+  Tenjin = the whole ring + lens + ticks, gold #f5c84c; never orange), `FormMark` (a black chip with the sigil,
+  `role="img"`, "Has a Majin Form"), `formKindOf`. Shown on `CreatureCard` row (after the badges) and tile (top-right),
+  so the battle party list and the box get it. On the Party lineup card it joins the marks, and the button's label adds
+  ", has a majin form". On the Dex grid (seen or caught; bottom-right; the label adds it) and in the Dex entry, a
+  "Battle form" section: sigil, the form's name, "With the Majin Band, it breaks open below half HP. Once a battle." /
+  "With the Tenjin Band, it ascends at or above half HP. Once a battle." The design's "form art in the Dex" is not done.
+- **Spec to amend** (lead): §20.5.6 moves menu gains the transform toggle (key T, caption, coach line, ticker hint);
+  §20.2.4 gains `FormSigil` / `FormMark`; §20.9.3 / §20.9.4 / §20.9.5 gain the form marks and the Dex "Battle form"
+  line; §20.9.2a-style band card; the battle-text table gains the Majin / Tenjin lines and heal cause `form`; render
+  §10.7.5 VfxId union +`form_tenjin` (64 ids).
+- **Not verified live** (unit tests only): the toggle's layout next to a long prompt at 1280 px, the pulse, the band
+  card in the world, and the `form_tenjin` burst on stage. A raid's player side would show the toggle if the server
+  gave it bands (the client follows `Side.bands`).
+
+## Majin / Tenjin bond cinematic, "Heartsync" (2026-10-11)
+
+User request: a Mega-Evolution-like animation for the bond between trainer and Ewamon, with its own twist and sound.
+`battle/bond.ts` (timing, palettes, store), `BondCinematic.tsx` + `.module.css`, mounted in `BattleOverlay` (and the
+harness's `HarnessOverlay`). Design: `.design/majin-tenjin.md` §9.
+
+- **Who plays it.** Only a trainer's transformation: `bandOf(state, ref)` (BattleController) = the species'
+  `battleForm.kind` when the side is not wild and the battle is not a raid (the player, an NPC with bands, a pvp
+  rival). A wild Majin keeps the plain burst. `TimelineCtx.bondOf` (optional; absent = no bond, every existing
+  timeline unchanged).
+- **Timeline.** `formChange` with a band: a `bond` frame + `bond_<kind>` sfx + camera `wide`, then `BOND_BURST_MS`
+  (2 700 ms) spent uncompressed ('fixed'), then the existing flash / burst / shake / sprite swap / line. The form's
+  own sound (raid_roar / bell_toll) is not played: the bond premix carries the roar / choir on the burst.
+  `TimelinePlayer` forwards `bond(who: core Ref, kind, form)`; `cinematic('clear')` (a timeline cut short) clears the
+  bond store too.
+- **The overlay** (one clock from the frame; held at `TimelinePlayer.clock()` each frame like the signature
+  cinematics): the trainer's wrist, cuff and lens (SVG) and the creature's portrait on two slanted slabs (mirrored when
+  the foe transforms: the fist always reaches towards the creature); five heartbeats each (`BOND_BEATS`) speeding up and
+  closing in — lens glow + ripple + a spark down the light thread / portrait thump + ripple — while SYNC counts to
+  100 % (an `@property` integer counter); at the lock (2 400 ms) Majin strikes the ledger's "UNSAID" through, the strike
+  cracks into crimson cracks across the screen, the cracked ring's halves fly apart, REFUSED; Tenjin cracks the screen
+  and gold seams flow into every crack (kintsugi), the whole ring closes with its 12 ticks, HELD (+ "Held by <trainer>");
+  the portrait becomes the form's. At 2 700 ms the slabs break off (Majin) / rise and burn white (Tenjin) over the 3D
+  burst; gone by 3 300 ms. Reduced motion: still cards that fade and the stamp, no cracks, thread, ripples or flash.
+- **Ends** when the battle clock passes `BOND_TOTAL_MS`, or when that clock has not moved for 5 s of wall time. (A
+  wall-clock bound like the signature overlay's `4 × total + 5 s` cut it short in the headless harness, whose world
+  stepped ~7× slower than real time.)
+- **Names.** Player side: the session's username; an NPC: `foeIdentity(trainerId).name`; a pvp rival: "Rival".
+- **Portraits.** `public/signature/<species>.webp` and `<species>_<form>.webp` for all 13 form species (23 new,
+  `pnpm --filter @ewa/sprite-pipeline portraits …`, ~1.15 MB).
+- **Dev preview:** `/bondfx/?species=toxshade&side=far&trainer=Reeve&t=2400` (`src/dev/bondfxPreview.tsx`,
+  `window.__bondfx.seek(ms)`), not a build input.
+- **Verified:** `test/bond.test.tsx` (9); the preview frame by frame in headless Chrome; the real battle in the harness
+  over CDP (a scripted toxshade battle, a `formChange` injected): the overlay held on the timeline's clock to 3 300 ms,
+  the 3D crimson burst under the breaking slabs. **Not verified:** the sounds by ear (checked numerically only), and a
+  full server battle with a band.

@@ -539,3 +539,15 @@ Lines with nothing to add: **line 5 (soft pixels): none found.** All 21 sprite-e
 4. The M2 Answers table has no blank row (R-M2-1).
 
 Separately, these files do not meet M3's budget line (`--budget-ms 1` on the reference machine): see R.4, line 9.
+
+## Answers: the four towns below the bar (2026-10-11)
+
+R.5 blocker 3 and blocker 4, implementer's answers. Re-shot `spawn-noon` (rig 0, the arrival view), `gym-dusk` and `lamps-night` of the four towns, full / reduced / mask, in `.screenshots/audit/M3/<zone>/` (the zones' `index.json` still lists the earlier run). Budget counts: render IMPLEMENTATION-NOTES "M3 review: the four towns below the bar" (0 count-cap violations). SPEC: CHANGELOG 2026-10-11 "M3 town art". Whether the bar is met is the user's call (close condition 3); these are the changes to judge.
+
+| Id | Answer | What changed (evidence: the re-shot frames) |
+|---|---|---|
+| M3-all-3, M3-saltmourn-1, M3-skyrend-1 (tufts), M3-marrowdig-1 | Fixed | `Palette.grassTone` re-tones the `tall_grass` card per zone: straw on salt sand, ash-brown on cinder, sage on the storm moor, frosted on snow. |
+| M3-saltmourn-2 | Fixed (to judge) | Plaza `harbour_plank` deck (was a grey cobble grid); the arrival view holds the lighthouse and its door; rope coils, net piles, fish baskets and lobster pots in clusters round the rim, one beside the arrival point. |
+| M3-skyrend-1 (white on white), M3-skyrend-2, R-skyrend-3 | Fixed (to judge) | Plaza `cobble`, paths `path_gravel`; stall timber `timber` under `dragon_scale_tile` roofs (the flags stay on the shrine); snow / marble albedo calibrated (`albedoCal`); prayer cairns, pots and flower boxes round the rim. |
+| R-cinderhold-3 | Fixed (to judge) | The pool glows only between its crust (`emissiveFromAlbedo`, near-black crust), a planar disc (no starburst), a cooled skin of 15 crust plates along the rim and small rafts in the hot centre; the kerb is fractured basalt and obsidian shards. Ash: pale drifts in patches over dark cinder (no zebra ripples). Coal heaps, firewood and kegs round the rim; braziers 22 → 30. |
+| M3-stormrook-1 (raised), R-galvan-1 | Fixed (to judge) | Ground `grave_moss` (a dark moor), roads `wet_flagstone`, slate at the fringe, plaza `tower_stone`: four materials where there was one. Crystal lamps 18 / 10 m → 38 / 12 m: each lamp lights a pool of ground at night. Cable spools and crates round the rim. |

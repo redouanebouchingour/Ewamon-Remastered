@@ -594,16 +594,109 @@ sfx('sig_aurora_requiem_1', [
 
 
 
+# ─── bond cinematics (client battle/bond.ts) ─────────────────────────────────────────────────────────────────────────
+# A trainer's Majin / Tenjin transformation, from the `bond` frame (t = 0): two heartbeats that speed up and close in
+# (BOND_BEATS: the trainer's deeper, the creature's higher), a drone rising under them, a breath of silence, then the
+# answer at BOND_LOCK_MS 2.40 (Majin: the crack; Tenjin: the bell) and the form's burst at BOND_BURST_MS 2.70 (Majin: the
+# roar; Tenjin: the choir). Keep these numbers equal to bond.ts.
+BOND_TRAINER = (0.38, 0.94, 1.42, 1.82, 2.12)
+BOND_CREATURE = (0.60, 1.08, 1.50, 1.85, 2.12)
+BOND_LOCK, BOND_BURST = 2.40, 2.70
+
+
+def _heartbeats(times, rate, lub, dub):
+    """lub-dub per beat: a low soft thump, a quieter second 0.13 s later; each beat a little louder than the last"""
+    out = []
+    for i, t in enumerate(times):
+        g = -16 + min(i, 3) * 2
+        out.append((KX + f'impactSoft_heavy_00{lub}.ogg', t, g, rate, 'lowpass=f=260,lowpass=f=260'))
+        out.append((KX + f'impactPunch_heavy_00{lub}.ogg', t, g - 10, rate * 0.9, 'lowpass=f=400'))
+        out.append((KX + f'impactSoft_heavy_00{dub}.ogg', t + 0.13, g - 6, rate * 1.1, 'lowpass=f=300,lowpass=f=300'))
+    return out
+
+
+def _bond(hits, length):
+    """the heartbeats, the drone and the riser, ducked to a breath of silence before the lock, then `hits` on top"""
+    bed = layered([
+        *_heartbeats(BOND_TRAINER, 0.55, 1, 2),
+        *_heartbeats(BOND_CREATURE, 0.72, 3, 4),
+        (KS + 'spaceEngineLow_002.ogg', 0.0, -14, 0.55, 'lowpass=f=420,afade=t=in:d=1.6,afade=t=out:st=1.9:d=0.25'),
+        (R5 + 'sfx100v2_air_01.ogg', 0.18, -12, 1.2, 'areverse'),  # a reversed whoosh whose peak ends at 2.38
+    ], length)
+    bed = envelope(bed, [(0, 0), (2.24, 0), (2.32, -14), (2.38, -40), (length, -40)])
+    x = layered(hits, length)
+    return x + bed
+
+
+def _choir(sec, notes=(220.0, 277.18, 329.63, 440.0, 554.37), attack=0.35, release=0.9):
+    """an 'aah' chord: three detuned voices per note, additive saws shaped by vowel formants, a slow vibrato"""
+    n = int(sec * SR)
+    tt = np.arange(n) / SR
+    vib = 1 + 0.004 * np.sin(2 * np.pi * 5.3 * tt)
+    formants = ((800, 160, 1.0), (1150, 220, 0.6), (2900, 320, 0.25))
+    out = np.zeros((2, n), np.float32)
+    for ni, f0 in enumerate(notes):
+        for vi, cents in enumerate((-7, 0, 6)):
+            f = f0 * 2 ** (cents / 1200)
+            phase = 2 * np.pi * np.cumsum(f * vib) / SR
+            v = np.zeros(n)
+            for k in range(1, int(4200 / f) + 1):
+                w = sum(a * np.exp(-((k * f - c) / bw) ** 2) for c, bw, a in formants) + 0.05
+                v += w * np.sin(k * phase) / k
+            pan = 0.5 + 0.35 * ((vi - 1) * 0.6 + (ni - 2) * 0.15)
+            out[0] += (v * (1 - pan)).astype(np.float32)
+            out[1] += (v * pan).astype(np.float32)
+    env = np.minimum(1, tt / attack) * np.clip((sec - tt) / release, 0, 1)
+    return peaknorm(ffilter(out * env.astype(np.float32), 'aecho=0.8:0.6:70|130:0.3|0.2,highpass=f=150'))
+
+
+@recipe
+def bond_majin_1(rng):
+    x = _bond([
+        (KS + 'forceField_003.ogg', 0.9, -18, 0.5, 'lowpass=f=900,afade=t=in:d=0.8,afade=t=out:st=1.2:d=0.2'),
+        # the lock: the strike cracks, glass splits, a crunch and a floor thump
+        (KX + 'impactGlass_heavy_002.ogg', BOND_LOCK, 3, 0.75, ''),
+        (R7 + 'wood_cracking_02.ogg', BOND_LOCK + 0.01, -4, 1.1, 'highpass=f=300'),
+        (KS + 'explosionCrunch_001.ogg', BOND_LOCK + 0.02, -3, 0.85, ''),
+        (KS + 'lowFrequency_explosion_001.ogg', BOND_LOCK, -5, 1.0, ''),
+        (KX + 'impactGlass_medium_003.ogg', BOND_LOCK + 0.12, -9, 0.9, ''),
+        # the burst: a blast, the roar, the floor drop
+        (KS + 'explosionCrunch_003.ogg', BOND_BURST, -1, 0.8, ''),
+        (R2 + 'monster_20.ogg', BOND_BURST, 0, 0.62, ''),
+        (R3 + 'creature_roar_03.ogg', BOND_BURST + 0.04, -3, 0.7, ''),
+        (R2 + 'roar_05.ogg', BOND_BURST + 0.08, -9, 0.6, 'lowpass=f=900'),
+        (KS + 'lowFrequency_explosion_000.ogg', BOND_BURST, -4, 0.9, ''),
+    ], 4.0)
+    return fade(x, 0, 0.5)
+
+
+@recipe
+def bond_tenjin_1(rng):
+    x = _bond([
+        (CM + 'Cure3.wav', 1.0, -20, 0.8, 'afade=t=in:d=1.0,afade=t=out:st=0.9:d=0.3'),
+        # the lock: one great bell over a soft floor thump, chimes rising as the seams flow
+        (KX + 'impactBell_heavy_002.ogg', BOND_LOCK, 3, 0.7, 'aecho=0.8:0.7:220|480:0.45|0.3'),
+        (KX + 'impactSoft_heavy_000.ogg', BOND_LOCK, -6, 0.6, 'lowpass=f=300'),
+        *[(KI + f'glass_00{i}.ogg', BOND_LOCK + 0.05 + 0.06 * j, -10, 1.2 + 0.12 * j, '') for j, i in enumerate((1, 2, 3, 4, 5))],
+        # the burst: a bright bell strike, the cure shimmer (the choir is placed below)
+        (KX + 'impactBell_heavy_004.ogg', BOND_BURST, -4, 1.4, 'aecho=0.8:0.6:160:0.35'),
+        (CM + 'Cure6.wav', BOND_BURST, -6, 1.0, ''),
+        (MS + 'magical_6_0.ogg', BOND_BURST, -10, 0.9, 'highpass=f=600'),
+    ], 4.0)
+    place(x, _choir(1.3, release=0.6), BOND_BURST - 0.05, -2)
+    return fade(x, 0, 0.4)
+
 # the signature designs play over the whole battle mix: compressed and limited so the loudness pass reaches its target
 # without the true-peak clamp (they are then raised +6 dB in the manifest)
 def _sig_loud(fn):
     def loud(rng):
         return ffilter(fn(rng), 'acompressor=threshold=0.08:ratio=6:attack=3:release=120:makeup=3,alimiter=limit=0.7:level=false')
     loud.__name__ = fn.__name__
+    loud.__wrapped__ = fn
     return loud
 
 
-for _n in [n for n in RECIPES if n.startswith('sig_')]:
+for _n in [n for n in RECIPES if n.startswith(('sig_', 'bond_'))]:
     RECIPES[_n] = _sig_loud(RECIPES[_n])
 
 

@@ -16,6 +16,7 @@ import { Button } from '../ui/Button';
 import { CreatureSprite } from '../ui/CreatureSprite';
 import { EmptyState } from '../ui/EmptyState';
 import { Segmented, Select, TextField } from '../ui/Field';
+import { FORM_KIND_NAME, FormSigil, formMarkLabel } from '../ui/FormSigil';
 import { Icon } from '../ui/Icon';
 import { Panel } from '../ui/Panel';
 import { ProgressBar } from '../ui/ProgressBar';
@@ -28,6 +29,11 @@ import { useClosePanel } from './shared';
 type DexState = 'caught' | 'seen' | 'unknown';
 /** the State filter: a dex state, everything, or the species with a shiny catch (Phase D4) */
 type StateFilter = DexState | 'all' | 'shiny';
+/** Majin / Tenjin: the form's rule in one line (the Dex entry of a species with a form) */
+const FORM_RULE: Readonly<Record<'majin' | 'tenjin', string>> = {
+  majin: `With the ${FORM_KIND_NAME.majin} Band, it breaks open below half HP. Once a battle.`,
+  tenjin: `With the ${FORM_KIND_NAME.tenjin} Band, it ascends at or above half HP. Once a battle.`,
+};
 const EMPTY: readonly string[] = [];
 const NO_VARIANTS: Readonly<Record<string, readonly VariantKey[]>> = {};
 
@@ -76,6 +82,17 @@ function DexDetail({ sp, state, variants, alpha, shiny, recordedIn }: {
         {state === 'caught' ? 'Recorded — this one cannot be quietly lost.' : 'Seen, not yet recorded.'}
       </p>
       <p className={l.bodyLg}>{sp.flavor}</p>
+      {sp.battleForm?.kind !== undefined && (
+        <section className={l.section} data-testid="dex-form">
+          <h4 className={l.sectionTitle}>Battle form</h4>
+          <p className={cx(l.body, s.form)}>
+            <FormSigil kind={sp.battleForm.kind} size="md" label={formMarkLabel(sp.battleForm.kind)} />
+            <span>
+              <b className={s.formName}>{sp.battleForm.name}</b> · {FORM_RULE[sp.battleForm.kind]}
+            </span>
+          </p>
+        </section>
+      )}
       {chain.length > 1 && (
         <section className={l.section}>
           <h4 className={l.sectionTitle}>Evolution</h4>
@@ -258,11 +275,12 @@ export function DexScreen() {
                     data-type={st === 'unknown' ? undefined : sp.types[0]}
                     onClick={() => setParam('id', selectedId === sp.id ? '' : sp.id)}
                     aria-pressed={selectedId === sp.id}
-                    aria-label={st === 'unknown' ? `Unknown entry ${sp.dexNumber}` : `${sp.name}, ${st === 'caught' ? 'recorded' : 'seen'}`}
+                    aria-label={st === 'unknown' ? `Unknown entry ${sp.dexNumber}` : `${sp.name}, ${st === 'caught' ? 'recorded' : 'seen'}${sp.battleForm?.kind !== undefined ? `, ${formMarkLabel(sp.battleForm.kind).toLowerCase()}` : ''}`}
                   >
                     <span className={s.num}>#{String(sp.dexNumber).padStart(3, '0')}</span>
                     {alphaIds.includes(sp.id) && <Icon name="alpha" size="sm" className={s.alphaMark} label="Alpha recorded" />}
                     {shinyIds.includes(sp.id) && <Icon name="sparkle" size="sm" className={cx(s.shinyMark, alphaIds.includes(sp.id) && s.shinyMarkShift)} label="Shiny recorded" />}
+                    {st !== 'unknown' && sp.battleForm?.kind !== undefined && <FormSigil kind={sp.battleForm.kind} size="sm" className={s.formMark} label={formMarkLabel(sp.battleForm.kind)} />}
                     <CreatureSprite speciesId={sp.id} size="lg" silhouette={st === 'unknown'} desaturate={st === 'seen'} />
                     <span className={s.name}>{st === 'unknown' ? '???' : sp.name}</span>
                     {st === 'caught' && v.length > 0 && (

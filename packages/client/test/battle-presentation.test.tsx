@@ -65,8 +65,8 @@ describe('FoeActor (Phase B7)', () => {
     foe.begin(foeSpecOf(null, 'mirevale_gym.trainer_a', 'me', (id) => foeIdentity(id)));
     expect(foe.kind).toBe('static');
     expect(log.filter((l) => l.startsWith('spawn'))).toEqual([]);
-    // arena at (10, 20), forward (0, −1): the foe stands `back` m ahead, facing back down the axis toward the player
-    foe.stage(10, 20, 0, -1, 3);
+    // the far slot (SceneDirector `trainerPose(bf, 1)`), facing the angle it is given
+    foe.stage(10, 17, 0);
     expect(pose.get('mirevale_gym.trainer_a')).toMatchObject({ x: 10, z: 17 });
     expect(pose.get('mirevale_gym.trainer_a')!.a).toBeCloseTo(0); // faces +z, back toward the player
     foe.react(false);
@@ -86,7 +86,7 @@ describe('FoeActor (Phase B7)', () => {
     expect(foe.kind).toBe('temporary');
     expect(foe.id).toBe(TEMP_FOE_ID);
     expect(log).toEqual([`spawn ${TEMP_FOE_ID} ${sable.look} Sable`]);
-    foe.stage(0, 0, 1, 0, 2);
+    foe.stage(2, 0, -Math.PI / 2);
     expect(pose.get(TEMP_FOE_ID)).toMatchObject({ x: 2, z: 0 });
     foe.react(true);
     expect(log).toContain(`emote ${TEMP_FOE_ID} ${EMOTE_CHEER}`);
@@ -105,10 +105,10 @@ describe('FoeActor (Phase B7)', () => {
     const foe = new FoeActor({ actors: pool, isStatic: () => false, isRemote: () => rig });
     foe.begin(foeSpecOf('p2', null, 'me', (id) => foeIdentity(id)));
     expect(foe.kind).toBe('remote');
-    foe.stage(0, 0, 0, 1, 2);
+    foe.stage(0, 2, Math.PI);
     expect(pose.has('p2')).toBe(false);
     rig = true;
-    foe.stage(0, 0, 0, 1, 2);
+    foe.stage(0, 2, Math.PI);
     expect(pose.get('p2')).toMatchObject({ x: 0, z: 2 });
     expect(foeSpecOf('me', null, 'me', (id) => foeIdentity(id))).toBeNull();
     expect(foeSpecOf(null, null, 'me', (id) => foeIdentity(id))).toBeNull();

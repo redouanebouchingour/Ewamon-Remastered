@@ -449,7 +449,7 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
   };
 }
 
-/** Every static file under the output: `outDir` without its `anim/` subdirectory (the §40.6 35 MiB line). */
+/** Every static file under the output: `outDir` without its `anim/` subdirectory (the §40.6 static creatures line). */
 export function staticDirBytes(outDir: string): number {
   return dirBytes(outDir) - dirBytes(path.join(outDir, ANIM_DIR));
 }

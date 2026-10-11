@@ -557,3 +557,20 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   after loading the legacy rows (throws on an unknown species or field); a pinned move is left out of the even 5..40
   spacing, so no other level moves, and sorts last among equal levels (it is the newest). Core's fuzz reads only
   `ewamon.js`: the digests do not change.
+
+## Majin / Tenjin forms and bands (2026-10-11)
+
+- Schema: `BattleFormDefSchema` gains `kind` ('majin' | 'tenjin'), `onEnter.cureStatus`, `onEnter.healFraction`;
+  `TrainerDefSchema` / `LeagueTrainerSchema` gain `bands` (1..2 kinds). `types.ts` `TrainerDef.bands` / `LeagueTrainer.bands`.
+- Generator: `migrateBattleForm` carries `kind` and the two Tenjin onEnter fields (keys only when set);
+  `.design/additions/patches.js` may now patch `battleForm` onto a legacy row (the sprite pipeline reads the same file).
+  13 species have a form: hollowmane / castlemaw (id `rage`, now `kind: 'majin'`, "Majin Form"), badlander (majin) and
+  lawlander (tenjin) in species.js; infernomorel, toxshade, necrogeist, zenryu (majin) and thornback, abysspark,
+  gemknight, glimmereen, solpyre (tenjin) in patches.js. Majin: base atk +28 / def −18 / spd +28 and one foe stat −1;
+  Tenjin: +10 / +30 / +10, clears its negative stages, cures its status, heals a fifth.
+- Items: `MAJIN_BAND` / `TENJIN_BAND` key items (`slot: 'key'`, `price: null`), granted by story beats `sables_turn`
+  and `the_requisition` (`grant`), with new after-lines (Sable hands over the field lens; Wynn's letter) and one Reeve line
+  in `escorted_out`. Never a gate: nothing needs the bands.
+- Trainers: `majinBand(tr(...))` on reeve_observatory, hollis_siege, varn_spire; league `bands` on veil (majin), aurelia
+  (tenjin), zeon (majin, zenryu's Super Saiyan form). x / z unchanged, so no layout moves.
+- `pnpm --filter @ewa/content run validate` OK; `npx vitest run packages/content` 21 files / 150 tests.

@@ -1,5 +1,5 @@
 /**
- * Phase B7 — the ONE "foe actor" of a battle: the trainer who stands at the far trainer slot, behind their creature,
+ * Phase B7 — the ONE "foe actor" of a battle: the trainer who stands at the far trainer slot, beside and behind their creature,
  * facing the player. Reused by every format that has a visible opponent (trainer / league today; raids and the
  * post-game tower later):
  *
@@ -92,12 +92,12 @@ export class FoeActor {
     this.actorId = TEMP_FOE_ID;
   }
 
-  /** Every frame while the battle is dressed: the far trainer slot, facing the arena (and the player). */
-  stage(x: number, z: number, fx: number, fz: number, back: number): void {
+  /** Every frame while the battle is dressed: the far trainer slot (SceneDirector `trainerPose(bf, 1)`), facing the arena. */
+  stage(x: number, z: number, angle: number): void {
     const id = this.actorId;
     if (id === null) return;
     if (this.mode === 'remote' && !this.d.isRemote(id)) return;
-    this.d.actors.setTransform(id, x + fx * back, z + fz * back, Math.atan2(-fx, -fz), false, false);
+    this.d.actors.setTransform(id, x, z, angle, false, false);
   }
 
   /** The result emote: `won` is the FOE's result (true: the foe won and cheers; false: it lost; null: no winner). */

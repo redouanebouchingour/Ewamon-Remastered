@@ -13,7 +13,7 @@ import type { BattleEvent, BattleState, Ref } from '@ewa/core';
 import { BATTLER_POSES, CUE_KINDS, VFX_IDS } from '@ewa/render';
 import { CRIT_SLOWMO, HITSTOP_MS, TURN_BUDGET } from '../src/battle/constants';
 import { DEFAULT_BY_TYPE, MOVE_ANIMS, createMoveAnimRegistry } from '../src/battle/moveAnims';
-import { CRIT_EXTRA_MS, buildTimeline } from '../src/battle/timeline';
+import { CRIT_EXTRA_MS, abilityText, buildTimeline, healText } from '../src/battle/timeline';
 import type { Keyframe, Timeline, TimelineCtx } from '../src/battle/timeline';
 import { runFuzzBattle } from './battleFuzz';
 
@@ -172,7 +172,7 @@ describe('buildTimeline', () => {
     expect(red.durationMs).toBe(lastAt(red));
   });
 
-  it('formChange: after the hit drains, a red flash, the rage burst and the roar; the sprite swaps after them, then the line', () => {
+  it('formChange: after the hit drains, a red flash, the Majin (rage) burst and the roar; the sprite swaps after them, then the line', () => {
     const hit: BattleEvent = { t: 'damage', target: B, amount: 40, hpAfter: 50, maxHp: 120, effectiveness: 1, crit: false, stab: false, cause: 'move', source: A, move: 'Tackle' };
     const tl = buildTimeline([hit, { t: 'formChange', who: B, form: 'rage', atk: 180, def: 80, spd: 170 }], ctxFor(null));
     assertWellFormed(tl, 'formChange');
@@ -186,8 +186,48 @@ describe('buildTimeline', () => {
     expect(swap).toMatchObject({ who: B, form: 'rage' });
     expect(swap.at).toBeGreaterThan(burst.at);
     const line = fr.filter((x) => x.k === 'log').at(-1)!;
-    expect(line.k === 'log' && line.text).toMatch(/mask cracks — it flies into a rage!$/);
+    expect(line.k === 'log' && line.text).toMatch(/broke open into its Majin Form!$/);
     expect(line.at).toBeGreaterThanOrEqual(swap.at);
+  });
+
+  it('Majin / Tenjin formChange: majin reads like the rage form; tenjin is a gold ring burst, a white-gold flash, the bell, no shake', () => {
+    const frames = (form: string): Keyframe[] => buildTimeline([{ t: 'formChange', who: A, form, atk: 150, def: 140, spd: 90 }], ctxFor(null)).frames;
+    const majin = frames('majin');
+    assertWellFormed(buildTimeline([{ t: 'formChange', who: A, form: 'majin', atk: 150, def: 140, spd: 90 }], ctxFor(null)), 'majin');
+    expect(majin.some((f) => f.k === 'vfx' && f.id === 'form_rage')).toBe(true);
+    expect(majin.some((f) => f.k === 'sfx' && f.id === 'raid_roar')).toBe(true);
+    expect(majin.some((f) => f.k === 'shake')).toBe(true);
+    expect(majin.find((f) => f.k === 'form')).toMatchObject({ who: A, form: 'majin' });
+    expect(majin.filter((f) => f.k === 'log').at(-1)).toMatchObject({ k: 'log', tone: 'good', text: expect.stringMatching(/ broke open into its Majin Form!$/) });
+
+    const tl = buildTimeline([{ t: 'formChange', who: A, form: 'tenjin', atk: 150, def: 140, spd: 90 }], ctxFor(null));
+    assertWellFormed(tl, 'tenjin');
+    const tenjin = tl.frames;
+    const burst = tenjin.find((f) => f.k === 'vfx' && f.id === 'form_tenjin');
+    expect(burst).toBeDefined();
+    expect(VFX_IDS).toContain('form_tenjin');
+    expect(tenjin.some((f) => f.k === 'flash' && f.at === burst!.at && f.color === '#fff1c2')).toBe(true);
+    expect(tenjin.some((f) => f.k === 'sfx' && f.id === 'bell_toll' && f.at === burst!.at)).toBe(true);
+    expect(tenjin.some((f) => f.k === 'sfx' && f.id === 'raid_roar')).toBe(false);
+    expect(tenjin.some((f) => f.k === 'shake')).toBe(false);
+    expect(tenjin.find((f) => f.k === 'form')).toMatchObject({ who: A, form: 'tenjin' });
+    expect(tenjin.filter((f) => f.k === 'log').at(-1)).toMatchObject({ k: 'log', text: expect.stringMatching(/ ascended into its Tenjin Form!$/) });
+    // an unknown form id still gets the switch-in burst and a plain line
+    const other = frames('mystery');
+    expect(other.some((f) => f.k === 'vfx' && f.id === 'switch_in')).toBe(true);
+    expect(other.filter((f) => f.k === 'log').at(-1)).toMatchObject({ text: expect.stringMatching(/ changed form!$/) });
+  });
+
+  it('heal cause form (a Tenjin Form steadying itself) logs its own line; every heal cause has one', () => {
+    const line = (cause: Extract<BattleEvent, { t: 'heal' }>['cause'], item: string | null = null): string => {
+      const fr = buildTimeline([{ t: 'heal', target: A, amount: 20, hpAfter: 80, cause, item }], ctxFor(null)).frames;
+      const l = fr.filter((f) => f.k === 'log').at(-1);
+      return l?.k === 'log' ? l.text : '';
+    };
+    expect(line('form')).toMatch(/ is steadied and restored its HP!$/);
+    expect(healText('form', null)).toBe('is steadied and restored its HP!');
+    for (const c of ['drain', 'move', 'berry', 'absorb', 'regenerator', 'item', 'form'] as const) expect(line(c), c).not.toBe('');
+    expect(healText('item', 'Potion')).toBe('restored HP with its Potion.');
   });
 
   it('an honor event logs one line with the ledger after the deed, good when the viewer’s creature gained', () => {
@@ -234,6 +274,23 @@ describe('move animation registry', () => {
     expect(logs({ t: 'weatherSet', kind: 'rain', turns: 5, source: A })).toEqual(['It started to rain!']);
     const frames = buildTimeline([{ t: 'weatherSet', kind: 'sand', turns: 0, source: null }], ctxFor(null)).frames;
     expect(frames.some((f) => f.k === 'weather' && f.kind === 'sand')).toBe(true);
+  });
+
+  it('M3 review R-all-3: an ability trigger logs a sentence, never the core hook id', () => {
+    const logs = (detail: string): string[] =>
+      buildTimeline([{ t: 'abilityTrigger', who: B, ability: 'Speed Boost', detail }], ctxFor(null)).frames.flatMap((f) => (f.k === 'log' ? [f.text] : []));
+    // every detail the core emits (core/src/{engine,turn,doubles}.ts) and the raid boss's
+    for (const d of ['endOfTurn', 'onContact', 'onStatLowered', 'onSwitchIn', 'onSwitchOut', 'statusImmunity', 'typeImmunity', 'wonderGuard', 'enraged', 'spd cannot be lowered', 'someFutureHook']) {
+      const [line] = logs(d);
+      expect(line, d).toBeDefined();
+      expect(line, d).not.toMatch(/— [a-z]+[A-Z]/);           // the review's check
+      if (/[a-z][A-Z]/.test(d) || d.includes(' ')) expect(line, d).not.toContain(d.includes(' ') ? 'spd' : d);   // a hook id / stat key
+      expect(line, d).toMatch(/[!]$/);
+    }
+    expect(logs('endOfTurn')[0]).toMatch(/’s Speed Boost activated!$/);
+    expect(logs('spd cannot be lowered')[0]).toMatch(/Speed Boost prevents its Speed from being lowered!$/);
+    expect(abilityText('Bramblecub', 'Intimidate', 'lowered Attack')).toBe('Bramblecub’s Intimidate — lowered Attack!');
+    expect(abilityText('Bramblecub', 'Intimidate', '')).toBe('Bramblecub’s Intimidate activated!');
   });
 
   it('MOVE_ANIMS has ≥ 40 real move ids and DEFAULT_BY_TYPE covers all 19 types', () => {

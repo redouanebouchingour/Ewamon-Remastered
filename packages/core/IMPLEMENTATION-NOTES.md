@@ -203,3 +203,24 @@ consumables with `shop.js` prices. It is a test fixture, not `@ewa/content`.
 `awardExp`), the catch (before `endBattle`) and `endBattle` (a won non-wild battle, before `battleEnd`). `keepsHonor` is checked
 first (a player side, not `noExp`, a species with an honor split), so no other battle looks a move up or changes shape;
 the fuzz digests are unchanged. `evolutionTarget` takes `honor = 0` and is exported; `applyExp` passes `c.honor ?? 0`.
+
+## Majin / Tenjin transformations (2026-10-11)
+
+The user's form-change gimmick (`.design/majin-tenjin.md`; spine §2.3 `BattleFormDef.kind`, §2.9 `Side.bands` /
+`transformed`, §2.10 `Action.transform`, §2.11 step 5b).
+
+- `forms.ts`: `formLineMet(form, b)` (majin / automatic below the line, tenjin at or above it — the same integer compare as
+  the automatic change) and `transformError(side, b, species)`: no Majin / Tenjin form, no band of that kind, side already
+  transformed, battler already in a form or fainted, or the line not met → `'cannotTransform'`.
+- `engine.ts`: `checkBattleForm` now returns early for a kinded form on a trainer's side (majin on a non-wild side, any
+  tenjin); the change itself moved to `enterForm` (stats, onEnter stages, then Tenjin's `cureAllMajor(…, 'ability')` and
+  `healBattler(fractionOfMax(b, healFraction), 'form')`). `transformAt` sets `side.transformed` and enters the form.
+  `cloneSide` copies `bands` / `transformed` only when present, so every existing state keeps its exact shape.
+- `turn.ts` / `doubles.ts`: `validateAction` / `validateDoublesAction` check `transform` with content; `validateSideChoice`
+  rejects two transforms from one side in one doubles turn. The transform step runs after items (and catch in singles),
+  before the movers list is built, so priority and speed come from the transformed battler. `order` / `orderActors`
+  draw rng only on a full speed tie of two transformers (never in the fuzz: no fuzz content has forms).
+- `npc.ts`: `withTransform` adds `transform: true` to an NPC trainer's chosen move whenever `transformError` is null
+  (first eligible position in doubles). No rng draw, so NPC choices are unchanged for every band-less side.
+- `types.ts`: `BandKind`, `heal` cause `'form'`, ActionError `'cannotTransform'`.
+- Tests: `test/transform.test.ts` (7). `npx vitest run packages/core`: 26 files / 303 tests; both fuzz digest files unchanged.

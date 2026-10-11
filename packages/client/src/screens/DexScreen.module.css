@@ -214,6 +214,28 @@
   color: var(--danger);
 }
 
+/* Majin / Tenjin: the form sigil (crimson cracked ring / gold ring) in the entry's bottom-right corner */
+.formMark {
+  position: absolute;
+  inset-block-end: var(--s-3);
+  inset-inline-end: var(--s-2);
+}
+
+/* the Dex entry's form line: sigil, the form's name, its rule */
+.form {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin: 0;
+}
+
+.formName {
+  font-family: var(--face-display);
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 /* Phase D4: a shiny catch; sits left of the alpha mark when both are recorded */
 .shinyMark {
   position: absolute;

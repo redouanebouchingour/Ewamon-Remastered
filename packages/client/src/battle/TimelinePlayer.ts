@@ -14,7 +14,7 @@
  * state's `actives` and moved by a switch-in's `enter` pose frame (`pos`), and addresses every pose / hurt / VFX / sfx
  * at the battler's position. Singles keeps the one-battler-per-side mapping (stage slot 0).
  */
-import type { Ref } from '@ewa/core';
+import type { BandKind, Ref } from '@ewa/core';
 import type { Keyframe, LogTone, Timeline } from './timeline';
 
 type BattlerRef = { readonly side: 0 | 1; readonly slot: number };
@@ -47,6 +47,8 @@ export interface TimelineTargets {
    * positions as the charge begins, 'clear' drops it (a timeline finished early or stopped). Optional: recorders skip it.
    */
   cinematic?(phase: 'start' | 'aim' | 'clear', move: string, from: BattlerRef | null, to: BattlerRef | null, mode: 'full' | 'short'): void;
+  /** A trainer's Majin / Tenjin bond cinematic (bond.ts) starts; `cinematic('clear')` drops it too. Optional: recorders skip it. */
+  bond?(who: Ref, kind: BandKind, form: string): void;
   /** a battler (re)enters: the controller swaps the displayed creature when the party slot changed */
   enter(who: Ref): void;
   log(text: string, tone: LogTone): void;
@@ -324,6 +326,10 @@ export class TimelinePlayer {
       case 'cinematic':
         this.cinematicUp = true;
         t.cinematic?.(f.phase, f.move, this.ref(f.who), this.refOrNull(f.target), f.mode);
+        return;
+      case 'bond':
+        this.cinematicUp = true;
+        t.bond?.(f.who, f.kind, f.form);
         return;
       case 'end':
         this.playing = false;

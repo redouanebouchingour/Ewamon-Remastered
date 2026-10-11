@@ -164,6 +164,34 @@
     },
     {
       "bus": "sfx",
+      "gainDb": 6,
+      "id": "bond_majin",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 4,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 3529348636,
+        "text": "Two heartbeats speeding up and falling into step over a rising drone, a breath of silence, glass cracking with a crunch, then a deep monster roar and a floor-shaking boom."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": 6,
+      "id": "bond_tenjin",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 4,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 2310753065,
+        "text": "Two heartbeats speeding up and falling into step over a rising drone, a breath of silence, one great bell with rising chimes, then a bright choir swell and a healing shimmer."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
       "gainDb": -4,
       "id": "cry_bug",
       "maxConcurrent": 2,

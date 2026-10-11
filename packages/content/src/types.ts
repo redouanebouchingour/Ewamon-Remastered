@@ -2,7 +2,7 @@
  * @ewa/content types — .design/spec/00-spine.md §3, verbatim where the spine writes a shape.
  * The §2 definition types (SpeciesDef, MoveDef, …) come from @ewa/core; this file adds the world.
  */
-import type { BattleFormat, Rarity, TypeName, VariantKey } from '@ewa/core';
+import type { BandKind, BattleFormat, Rarity, TypeName, VariantKey } from '@ewa/core';
 
 // ─── §3.1 Zone record ────────────────────────────────────────────────────────
 
@@ -97,6 +97,8 @@ export interface TrainerDef {
    * singles). Optional, absent = singles; never a story gate.
    */
   readonly doubles?: true;
+  /** Majin / Tenjin: the bands this trainer fights with (its side transforms one creature, core `chooseNpcAction`). Absent = none. */
+  readonly bands?: readonly BandKind[];
 }
 
 export interface GroundItemDef {
@@ -430,6 +432,8 @@ export interface LeagueTrainer {
   readonly setsFlags: readonly string[];
   /** Phase D6: fights 2-on-2 (see TrainerDef.doubles); optional, absent = singles */
   readonly doubles?: true;
+  /** Majin / Tenjin: the bands this league trainer fights with (see TrainerDef.bands). Absent = none. */
+  readonly bands?: readonly BandKind[];
 }
 
 /**

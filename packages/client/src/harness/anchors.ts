@@ -25,26 +25,42 @@
  *   (inside `ENGAGE_RANGE_M` 3.0).
  * - `link-east`: `HANDOVER_INSET` (6 m) west of the `links.e` playable edge point (`edgePoint(layout, 'e')`).
  *
- * Headings: §50.6.1 words say heading 0 = +z forward, 1 = +x, 2 = −z, 3 = −x (the camera LOOKS that way). The rig's
- * heading k (§10.7.1, yaw −35° + 90°·k, camera at target + (sin yaw, cos yaw)·horizontal) looks toward
- * (−sin yaw, −cos yaw): k = 0 looks ≈ −z. The two disagree by 180°; the anchors only frame their subjects with the
- * words' reading (shot 2 looks at the gym, shot 3 at the creature ahead in +x, shot 6 at the east edge), so the
- * harness drives rig heading `(spec + 2) & 3` and records both.
+ * Headings (amended 2026-10-06, M3 independent review R-all-2): the table's digits are rig indices
+ * (`CameraRig.setHeading`; §10.7.1 yaw −35° + 90°·k, camera at target + (sin yaw, cos yaw)·horizontal, looking toward
+ * (−sin yaw, −cos yaw): 0 ≈ −z, 1 ≈ −x, 2 ≈ +z, 3 ≈ +x) and the harness passes them straight to the rig
+ * (sidecar `anchor.heading.convention: "rig"`). `gym-dusk` turns to the rig that looks most directly at its subject
+ * (`rigFacing`: the gym door, or the set-piece of the no-gym fallback); a `link-east` fallback turns to the edge it uses.
  */
 import { ENCOUNTER_TABLES, arrivalPoint, getHeightfield, isWalkable, isWater, nearestWalkable, zone as zoneDef } from '@ewa/content';
 import type { EncounterSlot, ZoneDef, ZoneId } from '@ewa/content';
 import { HANDOVER_INSET, doorOf, edgePoint, headingYaw, planLayout } from '@ewa/render';
 import type { BuildingSpec, ZoneSpec } from '@ewa/render';
-import { headingConvention, rigHeading, round2 } from './shotTable';
+import { HEADING_CONVENTION, round2 } from './shotTable';
 import type { Heading, ShotDef, ShotId } from './shotTable';
 
-export { AUDIT_SHOTS, VARIANTS, coordTag, headingConvention, rigHeading, round2, setHeadingConvention, shotDef, shotFileStem, shotsForZone } from './shotTable';
+export { AUDIT_SHOTS, HEADING_CONVENTION, VARIANTS, coordTag, round2, shotDef, shotFileStem, shotsForZone } from './shotTable';
 export type { Heading, HeadingConvention, ShotDef, ShotId, Variant } from './shotTable';
 
 /** Horizontal view direction (camera → scene) of a rig heading, rounded to 1e-4. */
 export function viewForward(rig: Heading): readonly [number, number] {
   const yaw = headingYaw(rig);
   return [round4(-Math.sin(yaw)), round4(-Math.cos(yaw))];
+}
+
+/** The rig heading whose view direction is closest to (dx, dz) (ties: the lower index). */
+export function rigFacing(dx: number, dz: number): Heading {
+  let best: Heading = 0; let bd = -Infinity;
+  for (const k of [0, 1, 2, 3] as const) {
+    const [fx, fz] = viewForward(k);
+    const d = fx * dx + fz * dz;
+    if (d > bd + 1e-9) { bd = d; best = k; }
+  }
+  return best;
+}
+
+type HeadingInfo = ResolvedAnchor['heading'];
+function headingOf(shot: ShotDef, rig: Heading | null = shot.heading): HeadingInfo {
+  return { spec: shot.heading, rig, viewForward: rig === null ? null : viewForward(rig), convention: HEADING_CONVENTION };
 }
 
 function round4(v: number): number {
@@ -127,6 +143,7 @@ export interface ResolvedAnchor {
   readonly wild: { readonly speciesId: string; readonly level: number; readonly slotIndex: number; readonly x: number; readonly z: number } | null;
   /** world-axis reading of a door-frame offset, when it differs (reported, not used) */
   readonly worldReading: readonly [number, number] | null;
+  /** `spec`: the table's rig index; `rig`: the one used (a `faceSubject` row or a fallback may turn it) */
   readonly heading: { readonly spec: Heading | null; readonly rig: Heading | null; readonly viewForward: readonly [number, number] | null; readonly convention: 'words' | 'rig' };
 }
 
@@ -148,9 +165,7 @@ export function resolveAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | n
 /** The table's own rule (§50.6.1, header comment). Null when the zone has no such subject. */
 export function tableAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | null {
   const z = zoneDef(spec.id as ZoneId);
-  const rigH = shot.heading === null ? null : rigHeading(shot.heading);
-  const heading = { spec: shot.heading, rig: rigH, viewForward: rigH === null ? null : viewForward(rigH), convention: headingConvention() };
-  const base = { layoutSeed: z.layoutSeed >>> 0, shot: shot.id, zone: z.id, heading };
+  const base = { layoutSeed: z.layoutSeed >>> 0, shot: shot.id, zone: z.id, heading: headingOf(shot) };
   switch (shot.id) {
     case 'spawn-noon': {
       const arr = arrivalPoint(z.id);
@@ -179,9 +194,11 @@ export function tableAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | nul
       const p = snapWalkable(z, door.x + ox, door.z + oz);
       const world: readonly [number, number] = [round2(door.x + dx), round2(door.z + dz)];
       const differs = Math.abs(world[0] - round2(door.x + ox)) > 0.01 || Math.abs(world[1] - round2(door.z + oz)) > 0.01;
+      // gym-dusk looks at the door (M3 review R.3 b); lamps-night keeps its table heading
+      const heading = shot.headingRule === 'faceSubject' ? headingOf(shot, rigFacing(door.x - p.x, door.z - p.z)) : base.heading;
       return {
-        ...base, x: p.x, z: p.z, snapped: p.snapped, raw: p.raw,
-        rule: `doorOf(${b.id}) + (${dx}, ${dz}) in the door frame (+z = outward normal (${round4(door.nx)}, ${round4(door.nz)}))`,
+        ...base, heading, x: p.x, z: p.z, snapped: p.snapped, raw: p.raw,
+        rule: `doorOf(${b.id}) + (${dx}, ${dz}) in the door frame (+z = outward normal (${round4(door.nx)}, ${round4(door.nz)}))${shot.headingRule === 'faceSubject' ? '; rig facing the door' : ''}`,
         base: { name: `${b.id} door`, x: door.x, z: door.z }, offset: { dx, dz, frame: 'door' }, wild: null,
         worldReading: differs ? world : null,
       };
@@ -225,8 +242,8 @@ export function tableAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | nul
 }
 
 const EDGE_ORDER = ['e', 'w', 'n', 's'] as const;
-/** §50.6.1 heading (words) that looks at each edge: e = 1 (+x), w = 3 (−x), n = 2 (−z), s = 0 (+z). */
-const EDGE_HEADING: Readonly<Record<'e' | 'w' | 'n' | 's', Heading>> = { e: 1, w: 3, n: 2, s: 0 };
+/** The rig heading that looks at each edge: e = 3 (+x), w = 1 (−x), n = 0 (−z), s = 2 (+z). */
+const EDGE_HEADING: Readonly<Record<'e' | 'w' | 'n' | 's', Heading>> = { e: 3, w: 1, n: 0, s: 2 };
 
 /**
  * M3 fallbacks where a zone lacks the table's subject (each recorded in `rule`, prefixed "fallback:"):
@@ -240,9 +257,7 @@ const EDGE_HEADING: Readonly<Record<'e' | 'w' | 'n' | 's', Heading>> = { e: 1, w
  */
 export function fallbackAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | null {
   const z = zoneDef(spec.id as ZoneId);
-  const rigH = shot.heading === null ? null : rigHeading(shot.heading);
-  const heading = { spec: shot.heading, rig: rigH, viewForward: rigH === null ? null : viewForward(rigH), convention: headingConvention() };
-  const base = { layoutSeed: z.layoutSeed >>> 0, shot: shot.id, zone: z.id, heading };
+  const base = { layoutSeed: z.layoutSeed >>> 0, shot: shot.id, zone: z.id, heading: headingOf(shot) };
   switch (shot.id) {
     case 'spawn-noon': return null;
     case 'gym-dusk': {
@@ -253,8 +268,8 @@ export function fallbackAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | 
       const sp = plan.setPiece;
       const p = snapWalkable(z, sp.x, sp.z + Math.max(sp.hw, sp.hd) + 8);
       return {
-        ...base, x: p.x, z: p.z, snapped: p.snapped, raw: p.raw,
-        rule: `fallback: no gym — set-piece ${sp.id} + (0, ${round2(Math.max(sp.hw, sp.hd) + 8)}) world (its keep-clear extent + 8 m)`,
+        ...base, heading: headingOf(shot, rigFacing(sp.x - p.x, sp.z - p.z)), x: p.x, z: p.z, snapped: p.snapped, raw: p.raw,
+        rule: `fallback: no gym — set-piece ${sp.id} + (0, ${round2(Math.max(sp.hw, sp.hd) + 8)}) world (its keep-clear extent + 8 m); rig facing it`,
         base: { name: `${sp.id}`, x: sp.x, z: sp.z }, offset: { dx: 0, dz: round2(Math.max(sp.hw, sp.hd) + 8), frame: 'world' }, wild: null, worldReading: null,
       };
     }
@@ -311,13 +326,12 @@ export function fallbackAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | 
         const [ex, ez] = edgePoint(spec.layout, d);
         const [ix, iz] = d === 'w' ? [HANDOVER_INSET, 0] : d === 'n' ? [0, HANDOVER_INSET] : [0, -HANDOVER_INSET];
         const p = snapWalkable(z, ex + ix, ez + iz);
-        const sh = EDGE_HEADING[d];
-        const rh = rigHeading(sh);
+        const rh = EDGE_HEADING[d];
         return {
           ...base, x: p.x, z: p.z, snapped: p.snapped, raw: p.raw,
           rule: `fallback: no east link — edgePoint(${spec.layout}, '${d}') ${HANDOVER_INSET} m inside (the links.${d} handover line, neighbour ${e.toZone}); heading turned to look at it`,
           base: { name: `links.${d} edge (${e.toZone})`, x: ex, z: ez }, offset: { dx: ix, dz: iz, frame: 'world' }, wild: null, worldReading: null,
-          heading: { spec: sh, rig: rh, viewForward: viewForward(rh), convention: headingConvention() },
+          heading: headingOf(shot, rh),
         };
       }
       return null;

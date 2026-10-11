@@ -67,8 +67,11 @@ export const FILL_FRACTION = 0.86;
 export const NORMAL_SCALE = 0.5;
 /** Pipeline-built mip levels 1..MIP_LEVELS per map. */
 export const MIP_LEVELS = 3;
-/** Hard ceiling for every file under `public/creatures/` (35 MiB, spec §40.6). */
-export const CREATURES_BUDGET_BYTES = 36_700_160;
+/**
+ * Hard ceiling for every file under `public/creatures/` outside `anim/` (spec §40.6). 39.25 MiB since 2026-10-11 (the
+ * 11 Majin / Tenjin form entries, kept at the top encoder rung with ~0.5 MB headroom); 35 MiB (36 700 160) before.
+ */
+export const CREATURES_BUDGET_BYTES = 41_156_608;
 /** Bind cap per zone (= 2 × 4096² in texels). */
 export const MAX_ATLASES_PER_ZONE = 8;
 /** Planner duplicates allowed over the whole world. */
@@ -92,7 +95,7 @@ export const ANIM_STAGE_VERSION = '1';
 export const ANIM_BUDGET_BYTES = 25_165_824;
 /** Largest anim atlas edge: the 8192 `maxTextureSize` every renderer must have (render §10.1.1; WebP itself allows 16383). */
 export const ANIM_MAX_EDGE = 8192;
-/** Anim atlases live under this subdirectory of the output, outside the static 35 MiB line. */
+/** Anim atlases live under this subdirectory of the output, outside the static creatures line. */
 export const ANIM_DIR = 'anim';
 /** A page delay below this (ms) is shown as DEFAULT_FRAME_DELAY_MS, as browsers do for GIF / animated WebP. */
 export const MIN_FRAME_DELAY_MS = 20;

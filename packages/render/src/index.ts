@@ -103,7 +103,7 @@ export type { BiomeGenerators, GeoLod, Palette, PropGeo, TreeKind } from './zone
 export type {
   ActorDescriptor, ActorPool, BattlerPose, BattlerRef, BattleStage, Biome, BuildingSpec, CameraRig, Dir, Edge, EvolutionHandle, EvolutionPhase,
   EvolutionRequest, GeneratorSet, HeightfieldData,
-  HudLayer, HudModel, Layout, Marker, Pickup, PropPlacement, SetPieceId, SpriteAnim, SpriteDescriptor, SpriteFrame, Tablet, Terrain, TerrainColliderLike,
+  HudLayer, HudModel, Layout, Marker, Pickup, PropPlacement, SetPieceId, SpriteAnim, SpriteDescriptor, AuraKind, SpriteFrame, Tablet, Terrain, TerrainColliderLike,
   TypeName, VariantKey, VfxId, WaterSpec, ZoneHandle, ZoneSpec, ActorSpawn, PlanRoadData, ZonePlanData,
   HallBounds, InteriorLocalPoint, InteriorLocalRect, InteriorSpec, InteriorTemplateId, InteriorThemeId, InteriorsHandle,
   ObstacleSpec, ObstaclesHandle, NeighbourSpec,
@@ -132,7 +132,7 @@ export {
 export type { DioramaRigOptions, FeetResolver } from './camera/rig.js';
 export {
   BATTLE_DISTANCE, BATTLE_PITCH, BATTLE_YAW_OFFSET, BATTLER_SEPARATION, CAMERA_WORK, CUE_KINDS, INSPECT_DISTANCE, PILLAR7_RADIUS, PUSH_IN_MS,
-  RELEASE_MS, RING_DIAMETER, battlePose, battlerSlot, orbitPosition,
+  RELEASE_MS, RING_DIAMETER, TRAINER_SIDE_DEG, TRAINER_SLOT_M, battlePose, battlerSlot, orbitPosition, trainerSlot,
 } from './camera/battle.js';
 export type { CameraWork, CueKind, OrbitPose } from './camera/battle.js';
 export { BOKEH_PX, FOCAL_LENGTH_M, TILT_DEG, TiltShiftDOF, circleOfConfusionPx, groundOffPlaneM } from './camera/dof.js';
@@ -147,7 +147,8 @@ export type {
   AccessoryRef, AccessoryTemplate, AnimationsRef, AtlasRef, CharacterFileRef, CharacterSet, CharacterSource, GltfCharacterSourceOptions, LookRef, ShapeRef,
   ShapeTemplate,
 } from './stage/looks.js';
-export { STAGE, Stage, TERRAIN_ACCENT, TERRAIN_SURFACE } from './stage/battleStage.js';
+export { AURA, AuraSystem } from './stage/aura.js';
+export { STAGE, Stage, TERRAIN_ACCENT, TERRAIN_SURFACE, fitCentre, inHall } from './stage/battleStage.js';
 export {
   EVOLUTION, EVOLUTION_TIMELINE, EvolutionSequence, alternationHz, evolutionDurationMs, evolutionPhaseAt, evolutionRecipes, sampleEvolution,
 } from './stage/evolution.js';

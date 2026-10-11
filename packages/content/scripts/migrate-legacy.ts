@@ -77,15 +77,16 @@ interface LegacySpecies {
   evolvesFrom?: string;
   /** `condition: 'ability'` with an ability name, or (.design/additions) `condition: 'honor'` with the ledger minimum */
   splitEvolvesInto?: { condition?: string; value?: string | number; into: string }[];
-  /** .design/additions only: a mid-battle form (sprite files under the form's own sprite key, see the sprite pipeline) */
+  /** .design/additions (species.js, or patches.js for a legacy row): a mid-battle form (sprite files under the form's own sprite key, see the sprite pipeline) */
   battleForm?: {
     id: string;
     name: string;
+    kind?: 'majin' | 'tenjin';
     hpBelowPct: number;
     baseAtk: number;
     baseDef: number;
     baseSpd: number;
-    onEnter: { clearNegativeStages: boolean; lowerFoes: { stat: string; stages: number } | null };
+    onEnter: { clearNegativeStages: boolean; lowerFoes: { stat: string; stages: number } | null; cureStatus?: boolean; healFraction?: number };
     signatureMove?: { replaces: string; move: string };
   };
 }
@@ -138,13 +139,13 @@ function loadLegacy(): LegacyModule {
     if (id in legacy.MOVES) throw new Error(`additions: move '${id}' already exists in ewamon.js`);
   }
   // field patches to legacy species rows (ewamon.js stays verbatim): whole `moves` / `learnableMoves` replacements
-  const addPatches: { exports: { EWAMON_SPECIES_PATCHES?: Record<string, Partial<Pick<LegacySpecies, 'moves' | 'learnableMoves' | 'learnLevels'>>> } } = { exports: {} };
+  const addPatches: { exports: { EWAMON_SPECIES_PATCHES?: Record<string, Partial<Pick<LegacySpecies, 'moves' | 'learnableMoves' | 'learnLevels' | 'battleForm'>>> } } = { exports: {} };
   (new Function('module', 'exports', readFileSync(PATCHES_FILE, 'utf8')) as (m: typeof addPatches, e: unknown) => void)(addPatches, addPatches.exports);
   const species: Record<string, LegacySpecies> = { ...legacy.EWAMON_SPECIES };
   for (const [id, patch] of Object.entries(addPatches.exports.EWAMON_SPECIES_PATCHES ?? {})) {
     const row = legacy.EWAMON_SPECIES[id];
     if (row === undefined) throw new Error(`patches: species '${id}' is not a legacy row`);
-    for (const k of Object.keys(patch)) if (k !== 'moves' && k !== 'learnableMoves' && k !== 'learnLevels') throw new Error(`patches: ${id}.${k} cannot be patched`);
+    for (const k of Object.keys(patch)) if (k !== 'moves' && k !== 'learnableMoves' && k !== 'learnLevels' && k !== 'battleForm') throw new Error(`patches: ${id}.${k} cannot be patched`);
     species[id] = { ...row, ...patch };
   }
   return { ...legacy, EWAMON_SPECIES: { ...species, ...additions }, MOVES: { ...legacy.MOVES, ...moveAdditions } };
@@ -423,6 +424,7 @@ function migrateBattleForm(speciesId: string, f: NonNullable<LegacySpecies['batt
   return {
     id: f.id,
     name: f.name,
+    ...(f.kind !== undefined ? { kind: f.kind } : {}),
     hpBelowPct: f.hpBelowPct,
     baseAtk: f.baseAtk,
     baseDef: f.baseDef,
@@ -430,6 +432,8 @@ function migrateBattleForm(speciesId: string, f: NonNullable<LegacySpecies['batt
     onEnter: {
       clearNegativeStages: f.onEnter.clearNegativeStages,
       lowerFoes: f.onEnter.lowerFoes === null ? null : { stat: f.onEnter.lowerFoes.stat as StatKey, stages: f.onEnter.lowerFoes.stages },
+      ...(f.onEnter.cureStatus === true ? { cureStatus: true } : {}),
+      ...(f.onEnter.healFraction !== undefined ? { healFraction: f.onEnter.healFraction } : {}),
     },
     sprite: { front: `${speciesId}_${f.id}_front`, back: `${speciesId}_${f.id}_back` },
     ...(f.signatureMove !== undefined ? { signatureMove: { replaces: f.signatureMove.replaces, move: f.signatureMove.move } } : {}),

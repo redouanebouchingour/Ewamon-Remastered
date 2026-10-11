@@ -8,6 +8,7 @@
     "id": "spawn-noon",
     "zone": "skyrend",
     "heading": 0,
+    "headingRule": "fixed",
     "timeOfDay": 0.5,
     "zoomStop": 1,
     "state": "overworld, player idle"
@@ -19,12 +20,12 @@
     "zone": "skyrend",
     "heading": {
       "spec": 0,
-      "rig": 2,
+      "rig": 0,
       "viewForward": [
-        -0.5736,
-        0.8192
+        0.5736,
+        -0.8192
       ],
-      "convention": "words"
+      "convention": "rig"
     },
     "x": 5.5,
     "z": 9.5,
@@ -68,7 +69,7 @@
     "device": "0xa7a8",
     "description": "Intel(R) UHD Graphics"
   },
-  "chrome": "Chrome/154.0.8037.98",
+  "chrome": "Chrome/154.0.8037.99",
   "variants": [
     {
       "variant": "full",
@@ -76,9 +77,9 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 190.8,
+        "meanLuma": 159.4,
         "blackShare": 0,
-        "greyShare": 0,
+        "greyShare": 0.0006,
         "levels": {
           "zero": 0,
           "full": 0,
@@ -91,13 +92,13 @@
         "shot": "spawn-noon",
         "variant": "full",
         "camera": {
-          "rigHeading": 2,
+          "rigHeading": 0,
           "zoomStop": 1,
           "mode": "diorama",
           "position": [
-            14.681,
+            -3.681,
             20.207,
-            -3.612
+            22.612
           ],
           "focus": [
             5.5,
@@ -131,25 +132,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 305,
-          "triangles": 620386,
-          "texturesSize": 573335372,
-          "textures": 169,
-          "geometries": 464,
-          "programs": 107,
+          "drawCalls": 309,
+          "triangles": 659023,
+          "texturesSize": 617244824,
+          "textures": 184,
+          "geometries": 449,
+          "programs": 111,
           "renderTargets": 36,
-          "attributes": 1414,
-          "attributesSize": 118452052,
-          "materials": 18,
+          "attributes": 1418,
+          "attributesSize": 118829076,
+          "materials": 20,
           "shadowLights": 3,
           "nonShadowLights": 20,
-          "beautyDrawCalls": 117,
-          "shadowDrawCalls": 188
+          "beautyDrawCalls": 122,
+          "shadowDrawCalls": 187
         },
         "settle": {
-          "frames": 45,
+          "frames": 90,
           "stable": true,
-          "programs": 107
+          "programs": 111
         },
         "rects": {
           "player": [
@@ -169,7 +170,7 @@
         },
         "battle": null,
         "notes": [],
-        "frame": 105
+        "frame": 150
       }
     },
     {
@@ -178,9 +179,9 @@
       "png": {
         "width": 1440,
         "height": 900,
-        "meanLuma": 188.7,
+        "meanLuma": 158,
         "blackShare": 0,
-        "greyShare": 0,
+        "greyShare": 0.0004,
         "levels": {
           "zero": 0,
           "full": 0,
@@ -193,13 +194,13 @@
         "shot": "spawn-noon",
         "variant": "reduced",
         "camera": {
-          "rigHeading": 2,
+          "rigHeading": 0,
           "zoomStop": 1,
           "mode": "diorama",
           "position": [
-            14.681,
+            -3.681,
             20.207,
-            -3.612
+            22.612
           ],
           "focus": [
             5.5,
@@ -230,25 +231,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 294,
-          "triangles": 620375,
-          "texturesSize": 497519376,
-          "textures": 157,
-          "geometries": 464,
-          "programs": 103,
+          "drawCalls": 298,
+          "triangles": 659012,
+          "texturesSize": 541428828,
+          "textures": 172,
+          "geometries": 449,
+          "programs": 107,
           "renderTargets": 26,
-          "attributes": 1414,
-          "attributesSize": 118452052,
-          "materials": 18,
+          "attributes": 1418,
+          "attributesSize": 118829076,
+          "materials": 20,
           "shadowLights": 3,
           "nonShadowLights": 20,
-          "beautyDrawCalls": 106,
-          "shadowDrawCalls": 188
+          "beautyDrawCalls": 111,
+          "shadowDrawCalls": 187
         },
         "settle": {
-          "frames": 45,
+          "frames": 90,
           "stable": true,
-          "programs": 103
+          "programs": 107
         },
         "rects": {
           "player": [
@@ -268,7 +269,7 @@
         },
         "battle": null,
         "notes": [],
-        "frame": 150
+        "frame": 240
       }
     },
     {
@@ -288,20 +289,20 @@
       },
       "checks": [],
       "maskCoverage": {
-        "player": 0.5577,
+        "player": 0.5557,
         "battlers": []
       },
       "stage": {
         "shot": "spawn-noon",
         "variant": "mask",
         "camera": {
-          "rigHeading": 2,
+          "rigHeading": 0,
           "zoomStop": 1,
           "mode": "diorama",
           "position": [
-            14.681,
+            -3.681,
             20.207,
-            -3.612
+            22.612
           ],
           "focus": [
             5.5,
@@ -335,25 +336,25 @@
           "output"
         ],
         "counts": {
-          "drawCalls": 305,
-          "triangles": 620386,
-          "texturesSize": 573335380,
-          "textures": 171,
-          "geometries": 464,
-          "programs": 115,
+          "drawCalls": 309,
+          "triangles": 659023,
+          "texturesSize": 617244832,
+          "textures": 186,
+          "geometries": 449,
+          "programs": 119,
           "renderTargets": 36,
-          "attributes": 1414,
-          "attributesSize": 118452052,
-          "materials": 18,
+          "attributes": 1418,
+          "attributesSize": 118829076,
+          "materials": 20,
           "shadowLights": 3,
           "nonShadowLights": 20,
-          "beautyDrawCalls": 117,
-          "shadowDrawCalls": 188
+          "beautyDrawCalls": 122,
+          "shadowDrawCalls": 187
         },
         "settle": {
-          "frames": 45,
+          "frames": 90,
           "stable": true,
-          "programs": 115
+          "programs": 119
         },
         "rects": {
           "player": [
@@ -373,7 +374,7 @@
         },
         "battle": null,
         "notes": [],
-        "frame": 195
+        "frame": 330
       }
     }
   ]

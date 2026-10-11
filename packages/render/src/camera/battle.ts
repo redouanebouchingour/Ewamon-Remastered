@@ -73,6 +73,20 @@ export const FRAMING_STEP_M = 0.25;
 export const FRAMING_EASE_MS = 300;
 // #endregion
 
+// #region constants — the trainers' slots (implementation values; M3 independent review R-all-1)
+/**
+ * A trainer stands this far from the arena centre (m): just outside the 3.5 m ring top and its curb (content
+ * `ARENA_SLOT_M`, client `TRAINER_BACK_M`, the hall fit's trainer disc).
+ */
+export const TRAINER_SLOT_M = 4.45;
+/**
+ * …and this far (degrees) off the battle axis, toward the side away from the battle camera's +12° yaw offset (the
+ * camera's left for side 0; the far trainer is point-symmetric). On the axis itself (the pre-review 0°) the player's
+ * own avatar stood in the camera → near-battler ray and hid 17–56 % of the creature in 17 of 21 M3 battle rows.
+ */
+export const TRAINER_SIDE_DEG = 45;
+// #endregion
+
 /** A battle framing: the camera distance and the extra downward tilt (rad) of the view (T2). */
 export interface Framing { distance: number; tilt: number; fits: boolean }
 
@@ -161,6 +175,22 @@ export function battlerSlot(center: Vector3, dioramaYaw: number, side: 0 | 1, sl
   const n = Math.max(1, count);
   const lateral = (Math.min(Math.max(0, slot), n - 1) - (n - 1) / 2) * SLOT_SPACING * (side === 0 ? 1 : -1);
   return out.set(center.x + fx * along + rx * lateral, center.y, center.z + fz * along + rz * lateral);
+}
+
+/**
+ * Where trainer `side` stands for an arena centred at (`cx`, `cz`) on the battle axis `forward` (camera → scene,
+ * horizontal): `TRAINER_SLOT_M` from the centre, `TRAINER_SIDE_DEG` off the axis. Side 0 stands on the near half to the
+ * camera's left, out of the battle camera's ray to its own battler (the camera sits at +BATTLE_YAW_OFFSET, i.e. to the
+ * right of the axis, and every cue orbit keeps it right of the axis); side 1 is the point reflection (far half, right).
+ * World x / z into `out[0]` / `out[1]`. Pure, allocation-free; the stage, the hall fit and the client all use it.
+ */
+export function trainerSlot(cx: number, cz: number, fx: number, fz: number, side: 0 | 1, out: [number, number]): [number, number] {
+  const a = TRAINER_SIDE_DEG * DEG;
+  const along = Math.cos(a) * TRAINER_SLOT_M * (side === 0 ? -1 : 1);
+  const lateral = Math.sin(a) * TRAINER_SLOT_M * (side === 0 ? -1 : 1);   // right = (−fz, fx)
+  out[0] = cx + fx * along - fz * lateral;
+  out[1] = cz + fz * along + fx * lateral;
+  return out;
 }
 
 /** Inspector pose: the camera 4 m from the creature's aim point, a shallow look-down, the current diorama yaw. */

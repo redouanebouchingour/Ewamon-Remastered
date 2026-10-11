@@ -41,7 +41,8 @@ import { BattleSprites, CreatureTextures, NO_LEASE, creatureBudget } from '../sc
 import type { AtlasHold, CreatureSide, CreatureTextureStats, SpritePart, SpriteLease } from '../scene/creatureTextures';
 import { LocalPlayerController } from '../scene/LocalPlayerController';
 import { RemoteInterpolator } from '../scene/RemoteInterpolator';
-import { TRAINER_BACK_M, createSceneDirector, terrainFor } from '../scene/SceneDirector';
+import { createSceneDirector, terrainFor, trainerPose } from '../scene/SceneDirector';
+import type { TrainerPose } from '../scene/SceneDirector';
 import type { SceneDirector } from '../scene/SceneDirector';
 import { SpawnViews } from '../scene/SpawnViews';
 import type { SpawnLike } from '../scene/SpawnViews';
@@ -107,6 +108,7 @@ export class HarnessWorld {
   renderer!: Renderer;
   probe!: RendererProbe;
   director!: SceneDirector;
+  private readonly trainerAt: TrainerPose = { x: 0, z: 0, angle: 0 };
   readonly hud = new HudWriter(null);
   /** §20.5.6 the evolution sequence, as World3D builds it (the harness's `evolve()` plays through `app/evolution.ts`) */
   evolution: EvolutionDirector | null = null;
@@ -481,7 +483,8 @@ export class HarnessWorld {
     const t1 = performance.now();
     const bf = this.director.battleFrame;
     if (bf !== null) {
-      this.renderer.actors.setTransform(SELF_ID, bf.x - bf.fx * TRAINER_BACK_M, bf.z - bf.fz * TRAINER_BACK_M, Math.atan2(bf.fx, bf.fz), false, false);
+      const me = trainerPose(bf, 0, this.trainerAt);
+      this.renderer.actors.setTransform(SELF_ID, me.x, me.z, me.angle, false, false);
     } else if (this.evolution?.active === true) {
       this.renderer.actors.setTransform(SELF_ID, this.input.renderX, this.input.renderZ, this.evolution.faceAngle(this.input.renderX, this.input.renderZ), false, false);
     } else {
@@ -832,16 +835,17 @@ export class HarnessWorld {
         void this.director.exitBattle();
         this.battleSprites.end();
       },
-      setBattler: (ref, c, key) => {
+      setBattler: (ref, c, key, spriteId) => {
         const catalog = cat();
         if (c === null || catalog === null) {
           r.stage.setBattler(ref, null);
           this.battleSprites.set(ref, null);
           return;
         }
-        if (this.textures !== null) this.battleSprites.set(ref, c.speciesId);
-        else this.leaseSprites(c.speciesId, 'front');
-        r.stage.setBattler(ref, catalog.descriptor(c.speciesId, key, c.variantKey, c.isAlpha));
+        // a battle form shows its own manifest entry (`spriteId`, `<species>_<form>`) and its aura, as in World3D
+        if (this.textures !== null) this.battleSprites.set(ref, spriteId ?? c.speciesId);
+        else this.leaseSprites(spriteId ?? c.speciesId, 'front');
+        r.stage.setBattler(ref, catalog.descriptor(c.speciesId, key, c.variantKey, c.isAlpha, c.isShiny === true, spriteId));
       },
       setPose: (ref, pose, ms) => r.stage.setPose(ref, pose, ms),
       hurt: (ref, s) => r.stage.hurt(ref, s),

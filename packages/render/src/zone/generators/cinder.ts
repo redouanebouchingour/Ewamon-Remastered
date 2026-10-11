@@ -3,8 +3,8 @@
  * grates, braziers, scoria boulders, dead ash trees; set-pieces `cinder_caldera` (a basalt crater rim around a
  * glowing lava pool) and `ash_lava_bridge` (a stone arch over a lava channel between two fire bowls).
  */
-import { Matrix4 } from 'three/webgpu';
-import { box, card, lathe, trs } from '../geo.js';
+import { Matrix4, Shape } from 'three/webgpu';
+import { box, card, extrude, lathe, trs } from '../geo.js';
 import { createPrng } from '../prng.js';
 import type { BuildingStyle } from './buildings.js';
 import { addPropTier, archway, blockRing, disposeProp, finish, spLights, tiers3 } from './common.js';
@@ -14,6 +14,9 @@ import type { BiomeSet, SetPieceContext } from './set.js';
 import type { PropGeo } from '../types.js';
 
 const TAU = Math.PI * 2;
+/** `cinder_caldera`'s lava pool: radius (it runs under the rim's inner slope) and top height. */
+const POOL_R = 3.52;
+const POOL_Y = 0.31;
 
 export const CINDER_BUILDING: BuildingStyle = {
   wall: 'forge_brick', upperWall: 'forge_brick', frame: null, plinth: 'cinder_basalt', door: 'charred_timber', glass: 'iron_grate', litGlass: 'glass_warm',
@@ -34,18 +37,39 @@ function caldera(ctx: SetPieceContext): PropGeo {
   const st = ctx.set.props;
   for (const [k, parts] of t.entries()) {
     lathe(parts, 'cinder_basalt', [[6.2, -0.6], [6.0, 0.3], [5.4, 1.1], [4.6, 1.3], [3.9, 0.9], [3.6, 0.35], [3.2, 0.1]], { segments: k === 0 ? 40 : 20, smooth: false, radial: (a) => 1 + 0.08 * Math.sin(a * 5 + 1) + 0.05 * Math.sin(a * 11) });
-    lathe(parts, 'lava_glow', [[3.3, 0.18], [2.2, 0.32], [0.001, 0.4]], { segments: k === 0 ? 24 : 12, smooth: false });
   }
-  // crust islands floating on the lava
-  for (let k = 0; k < 7; k++) {
-    const a = p.next() * TAU; const r = 0.6 + p.next() * 2.2;
-    const g = buildRock('lava_crust', ctx.seed + k, { size: 0.45 + p.next() * 0.3, squash: 0.3, elongate: 1.6, cuts: [3, 4] });
-    const m = trs(Math.cos(a) * r, 0.34, Math.sin(a) * r, p.next() * TAU);
+  // the pool: a flat disc meeting the rim's inner slope at ~0.31 m. An extruded cap maps the lava planar (the lathed dome
+  // pinched its texture into a starburst at the centre, M3 review fixes)
+  const pool = new Shape().absarc(0, 0, POOL_R, 0, TAU, false);
+  const poolM = new Matrix4().makeTranslation(0, POOL_Y - 0.2, 0).multiply(new Matrix4().makeRotationX(-Math.PI / 2));
+  t.forEach((parts, k) => extrude(parts, 'lava_glow', pool, 0.2, 0, poolM, { curveSegments: k === 0 ? 24 : 12 }));
+  // crust plates floating on the lava: a cooled skin packed along the rim (big, overlapping plates, only cracks of glow
+  // between them), thinning to a few small rafts so the hot centre stays open (M3 review fixes, R-cinderhold-3: the
+  // temperature gradient to the rim; 7 scattered islands read as a fried egg)
+  for (let k = 0; k < 22; k++) {
+    const rim = k < 15;
+    const a = rim ? (k / 15) * TAU + (p.next() - 0.5) * 0.3 : p.next() * TAU;
+    const r = rim ? 2.55 + p.next() * 0.45 : 0.9 + p.next() * 1.3;
+    const size = rim ? 0.62 + p.next() * 0.3 : 0.28 + p.next() * 0.22;
+    const g = buildRock('lava_crust', ctx.seed + k, { size, squash: 0.3, elongate: rim ? 1.9 : 1.4, cuts: [3, 4] });
+    const m = trs(Math.cos(a) * r, POOL_Y + 0.02, Math.sin(a) * r, p.next() * TAU);
     t.forEach((parts, i) => addPropTier(parts, g, i as 0 | 1 | 2, m));
     disposeProp(g);
   }
-  blockRing(t[0], 'obsidian', 5.1, 1.0, 16, 0.9, 0.5, 0.7, ctx.seed + 9);
-  void st;
+  // M3 review fixes (R-cinderhold-3): the rim's kerb is fractured basalt boulders and obsidian shards in a broken ring
+  // (it was 16 glossy obsidian blocks), lower on the side that faces the plaza's south arrival
+  for (let k = 0; k < 15; k++) {
+    const a = (k / 15) * TAU + (p.next() - 0.5) * 0.25;
+    const r = 4.75 + p.next() * 0.7;
+    const big = k % 3 !== 1;
+    const g = buildRock(big ? 'cinder_basalt' : 'obsidian', ctx.seed + 40 + k, big
+      ? { size: 0.55 + p.next() * 0.35, squash: 0.62, elongate: 1.5, cuts: [3, 5] }
+      : { size: 0.32 + p.next() * 0.18, squash: 1.2, elongate: 1.2, cuts: [4, 5] });
+    const m = trs(Math.cos(a) * r, 0.95 + p.next() * 0.2, Math.sin(a) * r, p.next() * TAU);
+    t.forEach((parts, i) => addPropTier(parts, g, i as 0 | 1 | 2, m));
+    disposeProp(g);
+  }
+  void st; void blockRing;
   return finish(t, ['cinder_basalt', 'lava_glow', 'lava_crust', 'obsidian']);
 }
 

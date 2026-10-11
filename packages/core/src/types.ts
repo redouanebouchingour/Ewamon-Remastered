@@ -90,13 +90,24 @@ export interface SpeciesDef {
 export interface BattleFormDef {
   readonly id: string;                 // e.g. 'rage'
   readonly name: string;               // display, e.g. 'Rage Form'
-  readonly hpBelowPct: number;         // 1..99: changes when hp * 100 < maxHp * hpBelowPct
+  /**
+   * The Majin / Tenjin gimmick (`.design/majin-tenjin.md`). Absent: the original automatic form (changes on its own
+   * below the line, any side). 'majin': a trainer's side changes it by choice (`Action.transform`) while hp is below
+   * the line, holding the Majin Band; a WILD battler still changes on its own. 'tenjin': by choice only, while hp is at
+   * or above the line, holding the Tenjin Band; never on its own.
+   */
+  readonly kind?: BandKind;
+  readonly hpBelowPct: number;         // 1..99: the line (majin / automatic: hp * 100 < maxHp * hpBelowPct; tenjin: ≥)
   readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number;
   readonly onEnter: {
     /** its own negative stat stages return to 0 */
     readonly clearNegativeStages: boolean;
     /** every standing foe on the field loses these stages (as an ability: Keen Eye / Competitive apply) */
     readonly lowerFoes: { readonly stat: StatKey; readonly stages: number } | null;
+    /** Tenjin: its major status is cured (`statusCured`, cause 'ability'). Absent = false. */
+    readonly cureStatus?: boolean;
+    /** Tenjin: heals floor(maxHp × this) (`heal`, cause 'form'). Absent = no heal. */
+    readonly healFraction?: number;
   };
   readonly sprite: { readonly front: string; readonly back: string }; // pipeline output ids, e.g. 'hollowmane_rage_front'
   /**
@@ -300,6 +311,9 @@ export interface Battler {
   readonly form?: string;
 }
 
+/** The two transformation bands a trainer can hold (key items `majin_band` / `tenjin_band`). */
+export type BandKind = 'majin' | 'tenjin';
+
 export type BattleFormat = 'wild' | 'trainer' | 'league' | 'pvp' | 'raid';
 export type SideKind = 'player' | 'wild' | 'npc';
 
@@ -318,6 +332,13 @@ export interface Side {
    * and is skipped by every rule. `mustSwitch` = some position holds a fainted battler and a bench creature stands.
    */
   readonly actives?: readonly [number, number];
+  /**
+   * The bands this side holds (Majin / Tenjin, `.design/majin-tenjin.md`). Absent = none: the side can never
+   * transform, and the state shape is byte-identical to a battle without the gimmick.
+   */
+  readonly bands?: readonly BandKind[];
+  /** Present (true) once this side has used its one transformation this battle; absent before. */
+  readonly transformed?: true;
 }
 
 export type Terrain = 'none' | 'grove' | 'cinder' | 'salt' | 'storm' | 'marrow' | 'vesper' | 'forge' | 'sky' | 'shrine' | 'rift';
@@ -382,7 +403,9 @@ export interface FieldRef { readonly side: 0 | 1; readonly pos: 0 | 1 }
 export type Action =
   // must be in active.creature.moves with pp > 0. `target` (doubles only; ignored in singles): the foe or ally position a
   // single-target move aims at — absent = the first standing foe; spread / self / field moves take none.
-  | { readonly kind: 'move'; readonly move: string; readonly target?: FieldRef }
+  // `transform` (Majin / Tenjin): the battler changes into its battle form at the start of the turn, before any move,
+  // then uses `move` in the new form. Once per side per battle; needs the band and the hp line (validateAction).
+  | { readonly kind: 'move'; readonly move: string; readonly target?: FieldRef; readonly transform?: true }
   | { readonly kind: 'switch'; readonly to: number }          // party index, not active, hp > 0
   | { readonly kind: 'item'; readonly item: string; readonly target?: number } // consumable id; target = party index (default active)
   | { readonly kind: 'catch'; readonly orb: string }
@@ -395,7 +418,10 @@ export type ActionError =
   | 'unknownItem' | 'itemNotUsableInBattle' | 'badItemTarget'
   | 'cannotCatch' | 'unknownOrb' | 'cannotFlee' | 'cannotForfeit' | 'mustSwitch' | 'actionNotRequired'
   // Phase D6 (doubles only): a move target that is not a position on the field / is the user itself
-  | 'badTarget';
+  | 'badTarget'
+  // Majin / Tenjin: no band of the form's kind, no form of that kind, already transformed (this battler or this side
+  // this battle), or the hp line not met
+  | 'cannotTransform';
 
 /**
  * Phase D6: what one side submits to resolveTurn. Singles: one Action (or null). Doubles: one entry per field position
@@ -457,7 +483,7 @@ export type BattleEvent =
       readonly cause: 'move' | 'confusion' | 'recoil' | 'burn' | 'poison' | 'trap' | 'sand' | 'hail' | 'contact';
       readonly source: Ref | null; readonly move: string | null }
   | { readonly t: 'heal'; readonly target: Ref; readonly amount: number; readonly hpAfter: number;
-      readonly cause: 'drain' | 'move' | 'berry' | 'absorb' | 'regenerator' | 'item'; readonly item: string | null }
+      readonly cause: 'drain' | 'move' | 'berry' | 'absorb' | 'regenerator' | 'item' | 'form'; readonly item: string | null }
   | { readonly t: 'statusApplied'; readonly target: Ref; readonly status: StatusId; readonly source: Ref | null; readonly turns: number | null }
   | { readonly t: 'statusBlocked'; readonly target: Ref; readonly status: StatusId; readonly reason: 'type' | 'ability' | 'alreadyStatused' }
   | { readonly t: 'statusTick'; readonly target: Ref; readonly status: StatusId; readonly detail: 'asleep' | 'frozen' | 'paralyzed' | 'confused' }

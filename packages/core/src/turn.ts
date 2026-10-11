@@ -33,6 +33,7 @@ import {
   ref,
   rollPercent,
   speciesOf,
+  transformAt,
   tryApplyStatus,
 } from './engine';
 import type { Ctx, MBattler, MSide, MState } from './engine';
@@ -42,7 +43,7 @@ import { createRng } from './rng';
 import { otherSide } from './side';
 import { createDoubles, resolveDoublesTurn, validateDoublesAction } from './doubles';
 import { effectiveSpeed } from './speed';
-import { formBase, formMoveId } from './forms';
+import { formBase, formMoveId, transformError } from './forms';
 import { applyRatio, calcStat, ratioOf, stageRatio } from './stats';
 import { hasStatus } from './status';
 import type {
@@ -206,8 +207,11 @@ export function validateAction(
   const b = s.party[s.active];
   if (b === undefined) return 'badSwitchIndex';
   switch (action.kind) {
-    case 'move':
-      return validateMoveChoice(b, action.move, content);
+    case 'move': {
+      const err = validateMoveChoice(b, action.move, content);
+      if (err !== null || action.transform !== true || content === null) return err;
+      return transformError(s, b, content.species(b.creature.speciesId));
+    }
     case 'switch':
       return validateSwitch(state, side, action.to, true);
     case 'item':
@@ -792,6 +796,16 @@ export function resolveTurn(
       return finish(ctx);
     }
   }
+
+  // 5b. Majin / Tenjin: transformations happen before any move (faster first), then the move runs in the new form
+  const transformers: Actor[] = [];
+  for (let i = 0; i < SIDES.length; i++) {
+    const side = SIDES[i]!;
+    const a = acts[side];
+    if (a !== null && a.kind === 'move' && a.transform === true) transformers.push({ side, priority: 0 });
+  }
+  const orderedTransformers = order(ctx, transformers);
+  for (let i = 0; i < orderedTransformers.length; i++) transformAt(ctx, activeRef(ctx, orderedTransformers[i]!.side));
 
   // 6. Moves
   const movers: Actor[] = [];

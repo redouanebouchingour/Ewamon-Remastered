@@ -166,8 +166,8 @@
       "wrought_iron"
     ]
   },
-  "fieldBytes": 22980874,
-  "heroBytes": 35411882,
+  "fieldBytes": 22883852,
+  "heroBytes": 35072769,
   "placeholder": {
     "albedo": "placeholder_albedo.ktx2",
     "normal": "placeholder_normal.ktx2",
@@ -183,7 +183,7 @@
         "orm": "anvil_black.field_orm.ktx2",
         "size": 512
       },
-      "hash": "1f1e797c3547ebcafb4d3a04c53f97c95674e1601de0b0118e93463d0a315c19",
+      "hash": "bdf54711eaf2f2e4ace4a8b54d5f05f2fd7da86c093fea20855ce0c55112487b",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -197,7 +197,7 @@
         "orm": "banner_cloth.field_orm.ktx2",
         "size": 512
       },
-      "hash": "85af3756f9c315fbe6bc262c8e9cc837d222ba419c656035e09eeb14ae0d0353",
+      "hash": "42f1bf5eec2a546e81d5769e8632acdca4d492e512e8290530f218147797b6b3",
       "hero": null,
       "metres": 1,
       "wrap": "clamp"
@@ -211,7 +211,7 @@
         "orm": "barnacle_stone.field_orm.ktx2",
         "size": 512
       },
-      "hash": "0b1476ab94922854c27505a9b86a239c9c35da8c52ffdf63a5e83bbbe7ab12a2",
+      "hash": "daec3211c2e49a769e95603071fb01c082374271f0d33d444c67a63bbce4afa0",
       "hero": {
         "albedo": "barnacle_stone.hero_albedo.ktx2",
         "bytes": 1527788,
@@ -231,7 +231,7 @@
         "orm": "bog_water.field_orm.ktx2",
         "size": 512
       },
-      "hash": "72b36245014ed0a4a3d4e2ca9bc0be108c3c04fb6ee535f2a9591deb7b8192c1",
+      "hash": "cd136072cbcbd6a1826b2eaa7661e6680e7264da56628f3b4e06a01040e4befb",
       "hero": null,
       "metres": 3,
       "wrap": "repeat"
@@ -245,7 +245,7 @@
         "orm": "bone_chalk.field_orm.ktx2",
         "size": 512
       },
-      "hash": "a0f5db560afd923719583e9ad3fb34ae870c0cabf7d545e160a06c41d0a7defb",
+      "hash": "2c9e7f86900348722fad4663412ab64cbb5959f8688f8ce6ff8289436175f72a",
       "hero": {
         "albedo": "bone_chalk.hero_albedo.ktx2",
         "bytes": 1060843,
@@ -265,7 +265,7 @@
         "orm": "candle_wax.field_orm.ktx2",
         "size": 512
       },
-      "hash": "2f364fa12f621f40d10cc1301a4228b430546d36559cd55f9b91fec30e8f0f47",
+      "hash": "aaeb75d6eb0c347321c7ed09f63e93be1766509d97750f16042008fb18a8a2e3",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -274,15 +274,15 @@
       "albedoClampedPct": 0,
       "field": {
         "albedo": "canyon_dust.field_albedo.ktx2",
-        "bytes": 386009,
+        "bytes": 296432,
         "normal": "canyon_dust.field_normal.ktx2",
         "orm": "canyon_dust.field_orm.ktx2",
         "size": 512
       },
-      "hash": "735005f849623f7fbf6d19ba2d0443586508249a18a6c01fec51f5eb7319a6bb",
+      "hash": "e69bf9ff18ca404067e1a50d0f30dbe7124302029f8000bd22c4b8bca2929b71",
       "hero": {
         "albedo": "canyon_dust.hero_albedo.ktx2",
-        "bytes": 1234362,
+        "bytes": 908795,
         "normal": "canyon_dust.hero_normal.ktx2",
         "orm": "canyon_dust.hero_orm.ktx2",
         "size": 1024
@@ -299,7 +299,7 @@
         "orm": "castle_granite.field_orm.ktx2",
         "size": 512
       },
-      "hash": "ac0d4cfaacbb984ed1b163bb8717dd7d93629403859506861c44f81c49330494",
+      "hash": "bc3b8506e9989cbd6b10ede58d7c416e5276fbcbd795b49917a7004db57d3aa8",
       "hero": {
         "albedo": "castle_granite.hero_albedo.ktx2",
         "bytes": 851497,
@@ -319,7 +319,7 @@
         "orm": "chain.field_orm.ktx2",
         "size": 512
       },
-      "hash": "f320b90327cc2d4977b0f3517ece16d55bdd47f161359f24c75bc14b2fb43365",
+      "hash": "ef6c686befa137b46ab4faf979bd65fb51f886bb28779b7fda1814c62579d289",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -333,7 +333,7 @@
         "orm": "charred_timber.field_orm.ktx2",
         "size": 512
       },
-      "hash": "f1aec0db39316deeca857b497c58c295d645ff47fc4ad7d247276d4fbbc648ad",
+      "hash": "20dfe88cca831ed5575338f719bd36240a03e7391f13e87d7b670b0831bf2af3",
       "hero": null,
       "metres": 2,
       "wrap": "repeat"
@@ -342,15 +342,15 @@
       "albedoClampedPct": 0,
       "field": {
         "albedo": "cinder_ash_soil.field_albedo.ktx2",
-        "bytes": 297085,
+        "bytes": 347746,
         "normal": "cinder_ash_soil.field_normal.ktx2",
         "orm": "cinder_ash_soil.field_orm.ktx2",
         "size": 512
       },
-      "hash": "c99aa7d2bdac62a90266f207de2bb4b1658c69c6f76dee4497d101c489b57c2a",
+      "hash": "fe36d4faac717759d4c1465089958a1d31038e236e05f8bc649ffa4373dd6e33",
       "hero": {
         "albedo": "cinder_ash_soil.hero_albedo.ktx2",
-        "bytes": 895909,
+        "bytes": 1024427,
         "normal": "cinder_ash_soil.hero_normal.ktx2",
         "orm": "cinder_ash_soil.hero_orm.ktx2",
         "size": 1024
@@ -367,7 +367,7 @@
         "orm": "cinder_basalt.field_orm.ktx2",
         "size": 512
       },
-      "hash": "047567907c3a0758c2fe42e8c75e201f9e29edf620da68826662f4d9ef7ebb37",
+      "hash": "b32584821f946628837929a5290d994a7f0a8fb70ee4ec9181a62056de6e8d32",
       "hero": {
         "albedo": "cinder_basalt.hero_albedo.ktx2",
         "bytes": 1112144,
@@ -387,7 +387,7 @@
         "orm": "cinder_scoria.field_orm.ktx2",
         "size": 512
       },
-      "hash": "037c934b3c9462b571a13d160f925050f60f038b112c516884ce8cbf929f89fb",
+      "hash": "20d1fd1fade4a8eedbebf176de77dd769a942edca4c9152e4fa602d6d456ce90",
       "hero": {
         "albedo": "cinder_scoria.hero_albedo.ktx2",
         "bytes": 1526445,
@@ -407,7 +407,7 @@
         "orm": "cloud_stone.field_orm.ktx2",
         "size": 512
       },
-      "hash": "7e53619a14497e038ffb6110e1254ae439ec2136476bda688c195bcda14277d2",
+      "hash": "b98faefd33afdbd3fce98209eb8f29335c2c2bc4470a278cd86e4c219440a784",
       "hero": {
         "albedo": "cloud_stone.hero_albedo.ktx2",
         "bytes": 1313992,
@@ -427,7 +427,7 @@
         "orm": "coal_glow.field_orm.ktx2",
         "size": 512
       },
-      "hash": "10ea2ce2f6529a50fa4fe08db84f72990575cecdef89c96562faa73474cf2355",
+      "hash": "257030c887ecb0bba6c6f5e8def417a497442431bf8632585ba18a7b812bd7b3",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -441,7 +441,7 @@
         "orm": "cobble.field_orm.ktx2",
         "size": 512
       },
-      "hash": "ec70d10f07b2f5dede35504591b1d3190ba00bc052732dd36cadcf842f375434",
+      "hash": "7817d297f927ed75e97f3d670130688b149c84e22101b08285de046d09e4eae8",
       "hero": {
         "albedo": "cobble.hero_albedo.ktx2",
         "bytes": 892106,
@@ -461,7 +461,7 @@
         "orm": "coil_brass.field_orm.ktx2",
         "size": 512
       },
-      "hash": "16bb578e74b9bc21caafab137618c901b2f5fee5904a0b75b89732a751bf3a75",
+      "hash": "a9f8b653dc1cf2a416fee68eebb04e298943c252002dce397a03e493d2de3c39",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -475,7 +475,7 @@
         "orm": "copper_oxide.field_orm.ktx2",
         "size": 512
       },
-      "hash": "86b1f2a7cc7a2e84e2184c24baf0e50ed1523ccb4773f054fca0e36ac1a4f3eb",
+      "hash": "7ef9b8799699c04fc18f20d91dd695bb61631e1462302b231145c29bf7b3dfb7",
       "hero": {
         "albedo": "copper_oxide.hero_albedo.ktx2",
         "bytes": 941941,
@@ -495,7 +495,7 @@
         "orm": "dirt.field_orm.ktx2",
         "size": 512
       },
-      "hash": "53028d88eeee21aaea8b56b3c3e1015eff3ddb150cf7e5a8cf1cc069449345b5",
+      "hash": "37ba98824782b48f9accc547a84403a0ae119c8639ef9f24485d6e62075de84c",
       "hero": {
         "albedo": "dirt.hero_albedo.ktx2",
         "bytes": 1046812,
@@ -515,7 +515,7 @@
         "orm": "dragon_scale_tile.field_orm.ktx2",
         "size": 512
       },
-      "hash": "4ef89f9cacae30be5fb3f9aad6557fdb13d39d3def84dfcdc914f87876717e33",
+      "hash": "1e8fac6dade9ad5d588d5f8d6d348d414ba2fe2aca9b23e1854b570312ca7559",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -529,7 +529,7 @@
         "orm": "driftwood.field_orm.ktx2",
         "size": 512
       },
-      "hash": "06b97c0ce6936475bae1e0ac50387f00cd3c4e8c310b2a85db70fec86798964b",
+      "hash": "322f908d30616ada952bf177aab202b2be9376e141d47ccc6321acb1b147cdaa",
       "hero": null,
       "metres": 2,
       "wrap": "repeat"
@@ -543,7 +543,7 @@
         "orm": "eclipse_stone.field_orm.ktx2",
         "size": 512
       },
-      "hash": "f070451ddf93b5775ba7cc8e42486687b483959b9c2c9679cd6dc0143c5b1162",
+      "hash": "addc4674d89c46af80f0207a8d1052ee8860a7f6d32dc3ef0e5fea860353c379",
       "hero": {
         "albedo": "eclipse_stone.hero_albedo.ktx2",
         "bytes": 1041885,
@@ -563,7 +563,7 @@
         "orm": "forge_brick.field_orm.ktx2",
         "size": 512
       },
-      "hash": "bd4dd1a9c59f74ca2a5ee9b17461ee4fc430fa8c959f83eea09bd40a029641ad",
+      "hash": "5adb4f4feeca8f63d2a15006f31f7c08d4892fca756150670346c258faee1424",
       "hero": null,
       "metres": 2,
       "wrap": "repeat"
@@ -577,7 +577,7 @@
         "orm": "forge_steel_plate.field_orm.ktx2",
         "size": 512
       },
-      "hash": "e116b1284a512147ac629a309dcbcbece1b1d71f7f90c686926cbcb0d2e4fd6b",
+      "hash": "5022674742948b22920f533c9d448f8faeacb6c3558d61ffde6058b8d785b3f1",
       "hero": {
         "albedo": "forge_steel_plate.hero_albedo.ktx2",
         "bytes": 531779,
@@ -597,7 +597,7 @@
         "orm": "fountain_water.field_orm.ktx2",
         "size": 512
       },
-      "hash": "1ad023a676c61c05b110caed15b3aebfebab9299d59d64323cdaf905504d3fc4",
+      "hash": "657014e660567d424f3deac20c36da5c4bd86b7af6038ed37914e5dd3150fc89",
       "hero": null,
       "metres": 2,
       "wrap": "repeat"
@@ -611,7 +611,7 @@
         "orm": "frost_glass.field_orm.ktx2",
         "size": 512
       },
-      "hash": "9ef9818b663bcfe50b3c0a250d322dc43c995ad1a44c65426228f200feb3af31",
+      "hash": "678d5512be2c426a75c389af55648082115d09960e1806f1e8b1b09014e17982",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -625,7 +625,7 @@
         "orm": "gilt_bronze.field_orm.ktx2",
         "size": 512
       },
-      "hash": "755f653ca15a1bc36fb14e7a19f3b0c2357398bd5c466a6f7eabb814c194505a",
+      "hash": "9a10d0656c9364b2b5775459648f85e7a9dd268fe72da5e8b887d48dc9341997",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -639,7 +639,7 @@
         "orm": "glass_warm.field_orm.ktx2",
         "size": 512
       },
-      "hash": "5ed8acdc137cb8d9efc4e114de19991bba6bee4f0ffe498e0d5d98d119497887",
+      "hash": "6f19fe3270a2921c4deb184513bcc2207bf40d164a5c0e1c81092b1390ab1362",
       "hero": {
         "albedo": "glass_warm.hero_albedo.ktx2",
         "bytes": 16289,
@@ -659,7 +659,7 @@
         "orm": "gold_leaf.field_orm.ktx2",
         "size": 512
       },
-      "hash": "05c0306d49e513f2f0a488ce8c7481f449f511d8c73cf62d4cf13cd77da69d5f",
+      "hash": "9977d38e69bd1bdeb09cfa21cb893b25e40df0ec9918e5f881928ab3242f4d4e",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -673,7 +673,7 @@
         "orm": "grave_moss.field_orm.ktx2",
         "size": 512
       },
-      "hash": "3113e621ca9cafe885bbf6ac8e74e7d51793e8a4e9d4475b244c43098c75d662",
+      "hash": "6148fdb1953ed6e477032204cad35e11f0d7b276918180b8578c8aec0bbbdae4",
       "hero": {
         "albedo": "grave_moss.hero_albedo.ktx2",
         "bytes": 1116670,
@@ -693,7 +693,7 @@
         "orm": "grove_bark.field_orm.ktx2",
         "size": 512
       },
-      "hash": "d6fa570319dfa6abcd3c22450f498877057a90ac4d64a5a79be1ad3d77b60874",
+      "hash": "06af888dc4279d17617f1f05285af1854e5544a35fb4f4bfa54dd6efd061a50c",
       "hero": {
         "albedo": "grove_bark.hero_albedo.ktx2",
         "bytes": 1127071,
@@ -713,7 +713,7 @@
         "orm": "grove_leaf_canopy.field_orm.ktx2",
         "size": 512
       },
-      "hash": "b3c1f0d3ed4f08b8223c000e59edee4e435024e0a7da26a34160ed892a0c6fd3",
+      "hash": "e320605ae9d166f1cccc5c293c82f11ce6839532c31d9cc93c1af900eb1fed65",
       "hero": null,
       "metres": 1,
       "wrap": "clamp"
@@ -727,7 +727,7 @@
         "orm": "grove_moss.field_orm.ktx2",
         "size": 512
       },
-      "hash": "b881ac1468482758508d2ff29fe84f84d9486ef7e6b599ae845d7394fcbac9d6",
+      "hash": "6105811401b648c6bdeb1eca11238027fb2359e8ff3a30eca88381d18dcaa0b8",
       "hero": {
         "albedo": "grove_moss.hero_albedo.ktx2",
         "bytes": 1386597,
@@ -747,7 +747,7 @@
         "orm": "gypsum_crystal.field_orm.ktx2",
         "size": 512
       },
-      "hash": "9f9dabeb266b0a4cab1ec3b444080bf9a7fe5a680832f62881b2cbea8307e893",
+      "hash": "fc2921399bf6b4422bc7d982453fcad03c68222115c4daf9321a6248dbd057aa",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -761,7 +761,7 @@
         "orm": "harbour_plank.field_orm.ktx2",
         "size": 512
       },
-      "hash": "ae05a15181b7c173a91e7bc0dbdddec6224c2e36b7aa409b2d0632de391eacf3",
+      "hash": "2c51711b245dca45e775a58595fa59f59ed06744d499d08541eb641c39967b73",
       "hero": null,
       "metres": 2,
       "wrap": "repeat"
@@ -775,7 +775,7 @@
         "orm": "insulator_glass.field_orm.ktx2",
         "size": 512
       },
-      "hash": "bb60dd14e371180921f105bef46f72331ff268007ac16012e7774e2c739b554a",
+      "hash": "7bfbcb18bda47bb2138deae98ea828ce57bd15f749f768879f4e8c362f4cb37d",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -789,7 +789,7 @@
         "orm": "iron_grate.field_orm.ktx2",
         "size": 512
       },
-      "hash": "942c2d8fd15f2a6ce3a772fab647531ea4a5783ccd7352ae6a4fa1192fab265f",
+      "hash": "ba7ac78c7c95e3130503faca3c82a437ee96fd075c63b4acd0f8b891dcf2527c",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -803,7 +803,7 @@
         "orm": "lantern_metal.field_orm.ktx2",
         "size": 512
       },
-      "hash": "fd38c55e9baf8584a9254df83d3e05df07f008c1e86ed391e293d09c2dc68a76",
+      "hash": "076d6006c57513653034b3459933c470b72fc6bc567f3f3decc53e716cedc2a2",
       "hero": {
         "albedo": "lantern_metal.hero_albedo.ktx2",
         "bytes": 248800,
@@ -823,7 +823,7 @@
         "orm": "laurel_leaf.field_orm.ktx2",
         "size": 512
       },
-      "hash": "a3815c993b764c2cb797636b5005cbfc2e1548fa8ab220cd6f1da6f05f6c59ce",
+      "hash": "54c1067709035bdc18d864bc8e446afedbfb25b72b31d2c39f5485abfe1ba99e",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -837,7 +837,7 @@
         "orm": "lava_crust.field_orm.ktx2",
         "size": 512
       },
-      "hash": "7377a9e55d98a0f522efa686816c2ec3fc0e9926d4595192ea027f037dac88e3",
+      "hash": "410b336971c9de95871802f4c5bdec51af361cfb56206129f2c8c145c967f140",
       "hero": {
         "albedo": "lava_crust.hero_albedo.ktx2",
         "bytes": 1034508,
@@ -852,12 +852,12 @@
       "albedoClampedPct": 0,
       "field": {
         "albedo": "lava_glow.field_albedo.ktx2",
-        "bytes": 327985,
+        "bytes": 327886,
         "normal": "lava_glow.field_normal.ktx2",
         "orm": "lava_glow.field_orm.ktx2",
         "size": 512
       },
-      "hash": "c4cb23246fba8cb26344761e5f36d91dd84b952005772befd18a1fc1c8fff515",
+      "hash": "ed9421a6eefdb03078e42266c0b26e70a81c0c5de2f41921c8916eddba6f2282",
       "hero": null,
       "metres": 2,
       "wrap": "repeat"
@@ -871,7 +871,7 @@
         "orm": "lichen_stone.field_orm.ktx2",
         "size": 512
       },
-      "hash": "f12f6ca3fa2af181948b94d5e1d4c0c49400df3167a1169e2670dcda32b86f3a",
+      "hash": "1e33ba90573658f9acbb34eb165b9eee3d301c0b165cbe76433c054b509cdba1",
       "hero": {
         "albedo": "lichen_stone.hero_albedo.ktx2",
         "bytes": 1097288,
@@ -891,7 +891,7 @@
         "orm": "lightning_glass.field_orm.ktx2",
         "size": 512
       },
-      "hash": "34c151c516835741ebf3d6b642317c8094a0f7d6b85556fbe6f15ca8ea5a4f30",
+      "hash": "83a3d8c370218f9ef6a7aa4815eb59efbfb27a706951ed8b123d33f696294a7b",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -905,7 +905,7 @@
         "orm": "marrow_sandstone.field_orm.ktx2",
         "size": 512
       },
-      "hash": "b893a94648175530dd9bc5c80401b1f3964eb3a658116c3cd729479a93d23250",
+      "hash": "a4126317e685b93137ea186fe8e07fbd2e1c8c6de4a75966b831fa9a0f781e80",
       "hero": {
         "albedo": "marrow_sandstone.hero_albedo.ktx2",
         "bytes": 1023264,
@@ -925,7 +925,7 @@
         "orm": "mine_timber.field_orm.ktx2",
         "size": 512
       },
-      "hash": "f0b065cf34bf96982db5a3168143bb8f53c6c4dd42dd060e52840410cb2de1cf",
+      "hash": "17d5d4521c6952b728f0a54ba428567360013b7b0d9f6630258a38c01a7656dc",
       "hero": null,
       "metres": 2,
       "wrap": "repeat"
@@ -939,7 +939,7 @@
         "orm": "mist_glass.field_orm.ktx2",
         "size": 512
       },
-      "hash": "9857d2109000e0fea37bf0cbbb5f7a468868464ae6f6f79e5ddd3f7465d7c855",
+      "hash": "808702966f250ece24d6c4627c00579fa89d62a3f25d2613da63f21655f339e4",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -953,7 +953,7 @@
         "orm": "obsidian.field_orm.ktx2",
         "size": 512
       },
-      "hash": "2b6693e027f763573c2713ee832cda296ac358920906bbfb14b52ab3182a1980",
+      "hash": "3356a4016904e3f17a0991cfaea127e9d928959aa7af1b8cacc81ea8dd5d31a4",
       "hero": null,
       "metres": 2,
       "wrap": "repeat"
@@ -967,7 +967,7 @@
         "orm": "ore_vein.field_orm.ktx2",
         "size": 512
       },
-      "hash": "184eb7c6cd89ac5886fa0cf2bcd22d575a58fd964c9723bda8b0931eef39a359",
+      "hash": "561cf5b847fbea8be71f734c104e278afa017aa06ed9b94b26ae6c9d6c5db8af",
       "hero": null,
       "metres": 2,
       "wrap": "repeat"
@@ -981,7 +981,7 @@
         "orm": "path_gravel.field_orm.ktx2",
         "size": 512
       },
-      "hash": "f04ee53e077e4a5053461f0ff86f170f8918ca01c2666ec2b46dfee422647138",
+      "hash": "bec649354e1e06eabeaee355199adbc846691a9928d88b35d77ef1753b682882",
       "hero": {
         "albedo": "path_gravel.hero_albedo.ktx2",
         "bytes": 1606633,
@@ -1001,7 +1001,7 @@
         "orm": "pine_needle.field_orm.ktx2",
         "size": 512
       },
-      "hash": "cbc793794349f9c5f79a35d31b435487eb17a39e0737c9874f1037cc855ebc0d",
+      "hash": "5b8da083b688096bf2a75040c98a656d06769cee437681d345e3faac21240982",
       "hero": null,
       "metres": 1,
       "wrap": "clamp"
@@ -1015,7 +1015,7 @@
         "orm": "plaster.field_orm.ktx2",
         "size": 512
       },
-      "hash": "7dab5904d35eb9d6bbf8ff1abc6c88e89a1fcb2a99f5356f99c9753274c631a4",
+      "hash": "13b506dd943508409afb6194144ab73bccd9929322042cb3252243995b56f5ae",
       "hero": {
         "albedo": "plaster.hero_albedo.ktx2",
         "bytes": 442567,
@@ -1035,7 +1035,7 @@
         "orm": "plaza_pale_stone.field_orm.ktx2",
         "size": 512
       },
-      "hash": "cb1958eda8f2080b9b2f46c81b7b15134c13602e78f52f1a618eab795366df82",
+      "hash": "739425735b070d7a3be0cc7b28031ef70f9312036aaba71c6b47249109a76a98",
       "hero": {
         "albedo": "plaza_pale_stone.hero_albedo.ktx2",
         "bytes": 696172,
@@ -1055,7 +1055,7 @@
         "orm": "prayer_silk.field_orm.ktx2",
         "size": 512
       },
-      "hash": "f055d58e1c853877a9ef66f210faa74f23e36b03ef823e05c298187ff691dc0a",
+      "hash": "00ade60292cca8b05df1fdab438652cadc6018f1d48cde64c373ef5c8426ab97",
       "hero": null,
       "metres": 1,
       "wrap": "clamp"
@@ -1069,7 +1069,7 @@
         "orm": "rail_iron.field_orm.ktx2",
         "size": 512
       },
-      "hash": "ece262c97a6a52607fdb7fe15cb8c15222fa2210158aa04b81a46c5248707aa3",
+      "hash": "9d2fa5996908a27bccaffe3824b0c91e86cc3471dedee4d3e97fbe565c707634",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -1083,7 +1083,7 @@
         "orm": "rift_shard.field_orm.ktx2",
         "size": 512
       },
-      "hash": "8873f823374556c5e5874b498b52ac0e99c179c528a0d7d8f2109a7b755d8f26",
+      "hash": "cacc6b24d4164c0d6f44bd93b963540186671d274bddeb99b5a15cce319942fa",
       "hero": {
         "albedo": "rift_shard.hero_albedo.ktx2",
         "bytes": 1131847,
@@ -1103,7 +1103,7 @@
         "orm": "ring_light.field_orm.ktx2",
         "size": 512
       },
-      "hash": "3c0737d90d79b3bfc82ea00cc40c55c3d834ae7ee17ada8b6d1ab0801d7f72b5",
+      "hash": "4148509f6f0ca3e450b98e09c8c9eb55dc378f33eb0f08d01466c7ab6fda0066",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -1117,7 +1117,7 @@
         "orm": "rivet_iron.field_orm.ktx2",
         "size": 512
       },
-      "hash": "547cfd5deb52e71e19e9cf88d5b3974ab21163808b8bf355a07a8024c652fc42",
+      "hash": "5e25719adc4383c7a1b35951c5db5827841332bcff8f01e6b884878d4cf6b9f2",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -1131,7 +1131,7 @@
         "orm": "rope.field_orm.ktx2",
         "size": 512
       },
-      "hash": "ff695016945b7eee8b5d0c2782cd9f0404727a85e95b16e91840bdc2a42b0901",
+      "hash": "27929f580926a31794da24e56aa12576a5e11df5a662d73aeaaef7686871447a",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -1145,7 +1145,7 @@
         "orm": "sailcloth.field_orm.ktx2",
         "size": 512
       },
-      "hash": "e0624ce1799c3b3ab28c8f3f2f5d23cb6e12221ac5b2c46d3e18e32b727ceda7",
+      "hash": "8d1845c59c0e2b1bad105ef8c8adb192dd8c00fcb2a4c3f4db6db49099513504",
       "hero": null,
       "metres": 1,
       "wrap": "clamp"
@@ -1159,7 +1159,7 @@
         "orm": "salt_sand.field_orm.ktx2",
         "size": 512
       },
-      "hash": "221e9f1484d3e0911520e927f2291c6bded46eddc2a492985679f9f7dfd01dd4",
+      "hash": "fe052e0a2ed6c66770be3fef899e0685574a8b1ca6f827c053dd1498babb9e07",
       "hero": {
         "albedo": "salt_sand.hero_albedo.ktx2",
         "bytes": 1019035,
@@ -1179,7 +1179,7 @@
         "orm": "sea_water.field_orm.ktx2",
         "size": 512
       },
-      "hash": "279151787c08753b935883bb4d543f1fa1c6ded476bdacc4d39ed07e6c2f67d0",
+      "hash": "a11f788b122c2dca69eabf5f7ca047aa7223d36eed278bdf18f7b2ada926702b",
       "hero": null,
       "metres": 4,
       "wrap": "repeat"
@@ -1193,7 +1193,7 @@
         "orm": "sky_marble.field_orm.ktx2",
         "size": 512
       },
-      "hash": "d316ebbbf8eef0de58bd0bbebc274a8719f83990488841742063a49619d4bce1",
+      "hash": "b7f5f7c24f998052b13548b81bf33c439f6dc6aaca4b8b50d2705cf66620fe5e",
       "hero": {
         "albedo": "sky_marble.hero_albedo.ktx2",
         "bytes": 579157,
@@ -1213,7 +1213,7 @@
         "orm": "slate_roof.field_orm.ktx2",
         "size": 512
       },
-      "hash": "6013a874adadca36de6f8f57d0b3ae9e499685b9c2188ac749081c771732b77c",
+      "hash": "16353848942cc14cfdfe6bc262205883385a8cba06ad45562b753255e7016627",
       "hero": null,
       "metres": 2,
       "wrap": "repeat"
@@ -1227,7 +1227,7 @@
         "orm": "snow.field_orm.ktx2",
         "size": 512
       },
-      "hash": "f35774aa7dead120fc7bd9acf3c7bcf40149af8848a1c625eac134e785c2fe80",
+      "hash": "31ca3b1192d26671dc6c7021314fa3421bb0ff0cc3fb73b5626656591489f54c",
       "hero": {
         "albedo": "snow.hero_albedo.ktx2",
         "bytes": 1023199,
@@ -1247,7 +1247,7 @@
         "orm": "stained_glass.field_orm.ktx2",
         "size": 512
       },
-      "hash": "eeb14f60a3d18ad70c9330ac30e837393685b551319b8c46e592775b2c2ecac0",
+      "hash": "8dd18426bc2cc1ca30ba8acf98cf7a967f00975a74acdd71c189e4620c7bc32c",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -1261,7 +1261,7 @@
         "orm": "star_iron.field_orm.ktx2",
         "size": 512
       },
-      "hash": "590cd9d19c7a4aef3e35e7acc169738c695f350dc84424ef3f16238985947720",
+      "hash": "76ef9f35c7a91de1cb8d1cb116c7e9b0994fa955d0e2711be937f3828750a313",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
@@ -1275,7 +1275,7 @@
         "orm": "stone_wall.field_orm.ktx2",
         "size": 512
       },
-      "hash": "6b54b3db5c86c8d9d9deb31119f5142fed5dca14b3bef5aea3d55f484f03ae26",
+      "hash": "d5e1e1315e4f03f8b2eeea8c32710fde81f6b15147b17579b95a9d0d37910c5f",
       "hero": {
         "albedo": "stone_wall.hero_albedo.ktx2",
         "bytes": 725406,
@@ -1290,15 +1290,15 @@
       "albedoClampedPct": 0,
       "field": {
         "albedo": "storm_slate.field_albedo.ktx2",
-        "bytes": 366976,
+        "bytes": 308969,
         "normal": "storm_slate.field_normal.ktx2",
         "orm": "storm_slate.field_orm.ktx2",
         "size": 512
       },
-      "hash": "29da91a2363e2e8c9e85ce779dc13900569c1d403ca401c5e0ed09aef146b0a4",
+      "hash": "e922810f0aeb79fbbcba69f6df79f0c2157b1c9f7dec74e0c7fc41c48e41af7a",
       "hero": {
         "albedo": "storm_slate.hero_albedo.ktx2",
-        "bytes": 1121928,
+        "bytes": 979864,
         "normal": "storm_slate.hero_normal.ktx2",
         "orm": "storm_slate.hero_orm.ktx2",
         "size": 1024
@@ -1315,7 +1315,7 @@
         "orm": "sun_marble.field_orm.ktx2",
         "size": 512
       },
-      "hash": "e2273ae6c624898deed1de1e2e33930b92f32f5a09fbb185ad2ded2fd10f1a35",
+      "hash": "0aefc5f41957dc6048be4a70b723c3f7840de0a50a95f10167e3ed7f4c3330a7",
       "hero": {
         "albedo": "sun_marble.hero_albedo.ktx2",
         "bytes": 589471,
@@ -1335,7 +1335,7 @@
         "orm": "tall_grass.field_orm.ktx2",
         "size": 512
       },
-      "hash": "c0dd6c9c3711eddb92dd1cec7c4405e9b55d36c62b1281a6280fb3bd17ae4581",
+      "hash": "14dc4680bb5a6a7f251b21c169817afa199e7bb0782c13f96756a47c9acad656",
       "hero": null,
       "metres": 1,
       "wrap": "clamp"
@@ -1349,7 +1349,7 @@
         "orm": "thatch.field_orm.ktx2",
         "size": 512
       },
-      "hash": "82fea3fa392288eae1d9af4990f551f41c888ade0ce2efd006866bfd70cf761a",
+      "hash": "87eefad0819b4937a46dbb1768818c4557dca0a2cd55dc2ff67235b80e2f82b0",
       "hero": null,
       "metres": 2,
       "wrap": "repeat"
@@ -1363,7 +1363,7 @@
         "orm": "tide_pool.field_orm.ktx2",
         "size": 512
       },
-      "hash": "2af463c89b6feeffa2cb01e1c10cafc318578550db14491de04e6169c9683577",
+      "hash": "06c16ba51e57c1984edebc8633c8483a17f2bbdd8f7ab8ed0e86e30326b3b799",
       "hero": null,
       "metres": 2,
       "wrap": "repeat"
@@ -1377,7 +1377,7 @@
         "orm": "timber.field_orm.ktx2",
         "size": 512
       },
-      "hash": "3cf277d356bb968d3b4c93089a45d61ea7f46ab25a1176d67bbc03c70c769798",
+      "hash": "59af9e9445ba322702e911410ea704c1fbbdba13a989277d2ac8532da8989b85",
       "hero": {
         "albedo": "timber.hero_albedo.ktx2",
         "bytes": 596355,
@@ -1397,7 +1397,7 @@
         "orm": "tower_stone.field_orm.ktx2",
         "size": 512
       },
-      "hash": "1589605774dcb8d7ecfca6d830a699c0a60695d064da3e42f59bc30b4700f21e",
+      "hash": "fcc9025b0dfba7aee9bf0671c355324f5e7b6202c7b089466ab20c6aae81f31c",
       "hero": null,
       "metres": 2,
       "wrap": "repeat"
@@ -1411,7 +1411,7 @@
         "orm": "unmade_stone.field_orm.ktx2",
         "size": 512
       },
-      "hash": "55da0ed65f7ca3e2d27cc3e366cfc0f321dc95ecb6f0222103b12e2e6ad802b4",
+      "hash": "78f56c5940fc363df29282cb7b2c1da2f1e4fe56c43dd60165598dffcaaa8b19",
       "hero": {
         "albedo": "unmade_stone.hero_albedo.ktx2",
         "bytes": 611283,
@@ -1431,7 +1431,7 @@
         "orm": "vesper_bark_black.field_orm.ktx2",
         "size": 512
       },
-      "hash": "6153544db8d2de2fcbf6438736d5d5cf3e32e1235faf1150426dc2836b6ace6e",
+      "hash": "270800f416413704a13ab111e3377df45ebca94e2d1dc72863cf1eee16296672",
       "hero": {
         "albedo": "vesper_bark_black.hero_albedo.ktx2",
         "bytes": 959859,
@@ -1451,7 +1451,7 @@
         "orm": "void_floor.field_orm.ktx2",
         "size": 512
       },
-      "hash": "192a45ce84d30ae24eea222a8325f640519c204b61e5c23caa0076af8b84ab8d",
+      "hash": "d0a023ce3b6e198eb257a647e8aaf05b25b9e4e761f40ddfa6ad4fb838ce7d79",
       "hero": {
         "albedo": "void_floor.hero_albedo.ktx2",
         "bytes": 580037,
@@ -1471,7 +1471,7 @@
         "orm": "void_glass.field_orm.ktx2",
         "size": 512
       },
-      "hash": "dea49b9625996de25a61f2e4a277afab458bd5adbec392d0cbd98d1ca094f298",
+      "hash": "eafcb9e5439e46adae50f284d79b9e22e52190e56a7a19a198bb109480350cff",
       "hero": {
         "albedo": "void_glass.hero_albedo.ktx2",
         "bytes": 920949,
@@ -1491,7 +1491,7 @@
         "orm": "water_pond.field_orm.ktx2",
         "size": 512
       },
-      "hash": "9c84d0104c0e01e11fb1c6991b173bdac6531125864f52c911a67afba867ee06",
+      "hash": "21386d2953f858c7bcaf5f2ffaf76228a9263ca8b0024ac2816198a034acacab",
       "hero": null,
       "metres": 4,
       "wrap": "repeat"
@@ -1505,7 +1505,7 @@
         "orm": "wet_flagstone.field_orm.ktx2",
         "size": 512
       },
-      "hash": "fb341180b9510294bf966ce05f56662d54cc9eab0b2170013f0d70288dc01d77",
+      "hash": "6a8cc45691c58c7b6585c56732a4576c2f8b0e594b94e7d848643ac5f0cf33d7",
       "hero": {
         "albedo": "wet_flagstone.hero_albedo.ktx2",
         "bytes": 830888,
@@ -1525,7 +1525,7 @@
         "orm": "wet_rock.field_orm.ktx2",
         "size": 512
       },
-      "hash": "d91114ffe60aff7db4a0e0f3aa237907f7a78d87872bd7f8b7a9b343162888be",
+      "hash": "54a5419694ddcbbbce69d030ac1199d0601aa30efe6ac3327e871847cc492021",
       "hero": {
         "albedo": "wet_rock.hero_albedo.ktx2",
         "bytes": 949106,
@@ -1545,7 +1545,7 @@
         "orm": "willow_leaf.field_orm.ktx2",
         "size": 512
       },
-      "hash": "2990266e46a7235ec46adecf03825aed8f289e34e87f677ecc9a992de82deb15",
+      "hash": "af2e520f6a7b9526ec486ae35edefc87863972e8649967e143ad9824316f0ab2",
       "hero": null,
       "metres": 1,
       "wrap": "clamp"
@@ -1559,12 +1559,12 @@
         "orm": "wrought_iron.field_orm.ktx2",
         "size": 512
       },
-      "hash": "709f6e1da3ec6aae308a28edb62224c680804220e9699f18f09e314250e3be99",
+      "hash": "ddfd02fab81e11adbb9aa9eb86bff3e5c7812dad94ccf35ddc4f7ac459de4bc6",
       "hero": null,
       "metres": 1,
       "wrap": "repeat"
     }
   },
-  "totalBytes": 58393677,
+  "totalBytes": 57957542,
   "version": 2
 }

@@ -23,7 +23,7 @@ import type { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { LAYERS } from '../descriptors.js';
 import { isDevBuild } from '../env.js';
 import {
-  applyBakedParams, applyPlaceholderParams, buildSurfaceGraph, createSurfaceParams, defaultMetres, linearRgb,
+  applyBakedParams, applyPlaceholderParams, applyTone, buildSurfaceGraph, createSurfaceParams, defaultMetres, linearRgb,
   type SurfaceMaps, type SurfaceMaterial, type SurfaceParams,
 } from './graph.js';
 import { createSharedUniforms, type SharedUniforms } from './harvest.js';
@@ -87,6 +87,11 @@ export interface MaterialLibrary {
    * GPU memory. A handover's `preload` then reads them from the cache. Resolves with the bytes fetched; never rejects.
    */
   prefetch?(ids: readonly SurfaceId[]): Promise<number>;
+  /**
+   * M3 review fixes (art): re-tones a card surface toward `hex` (`SurfaceParams.tone`; null restores the baked albedo).
+   * The zone system calls it with the palette (`Palette.grassTone`): one uniform write, no program change.
+   */
+  setTone?(id: SurfaceId, hex: string | null, amount?: number): void;
 }
 
 /** Anything that turns a url into a GPU-ready texture (the KTX2 loader in production, a mock in tests). */
@@ -213,6 +218,8 @@ export function createMaterialLibraryWith(deps: LibraryDeps): MaterialLibrary {
    */
   const retired = new Set<string>();
   const wanted = new Set<SurfaceId>();
+  /** `setTone` values, applied to a material when it is created later. */
+  const tones = new Map<SurfaceId, { readonly hex: string; readonly amount: number }>();
   const warned = new Set<string>();
   const warnings: string[] = [];
   let manifest: MaterialsManifest | null = null;
@@ -248,7 +255,7 @@ export function createMaterialLibraryWith(deps: LibraryDeps): MaterialLibrary {
   const bindSet = (rec: Rec, set: TextureSet): void => {
     assign(rec, set.albedo, set.orm, set.normal);
     const metres = manifest?.surfaces[rec.def.id]?.metres ?? defaultMetres(rec.def);
-    applyBakedParams(rec.params, rec.def, metres);
+    applyBakedParams(rec.params, rec.def, metres, surfaceExtras(rec.def.id).albedoCal ?? 1);
     rec.bound = set.tier;
   };
 
@@ -267,6 +274,8 @@ export function createMaterialLibraryWith(deps: LibraryDeps): MaterialLibrary {
     material.name = `ewa:${id}`;
     material.userData = { ewaSurface: id, ewaClass: def.cls };
     rec = { def, material, maps, params, bound: 'placeholder' };
+    const tone = tones.get(id);
+    if (tone !== undefined) applyTone(params, def, tone.hex, tone.amount);
     bindPlaceholder(rec);
     recs.set(id, rec);
     byMaterial.set(material.uuid, rec);
@@ -409,6 +418,12 @@ export function createMaterialLibraryWith(deps: LibraryDeps): MaterialLibrary {
     },
 
     residentTextureBytes: () => residentBytes,
+
+    setTone(id, hex, amount = 1) {
+      if (hex === null || amount <= 0) tones.delete(id); else tones.set(id, { hex, amount });
+      const rec = recs.get(id);
+      if (rec !== undefined) applyTone(rec.params, rec.def, hex, amount);
+    },
 
     async prefetch(ids) {
       await ready;

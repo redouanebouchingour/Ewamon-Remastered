@@ -8,6 +8,32 @@
 // Dependency-free CommonJS, evaluated the same way as ewamon.js.
 
 const EWAMON_SPECIES_PATCHES = {
+  // Majin / Tenjin battle forms (.design/majin-tenjin.md): Majin +28 atk / -18 def / +28 spd and lowers a foe stat;
+  // Tenjin +10 / +30 / +10, cures its status and heals a fifth. Sprites: assets-src/creatures/{front,back}/<id>_<form>(...).png.
+  infernomorel: {
+    battleForm: { id: "majin", name: "Majin Form", kind: "majin", hpBelowPct: 50, baseAtk: 146, baseDef: 66, baseSpd: 130, onEnter: { clearNegativeStages: true, lowerFoes: { stat: "spd", stages: 1 } }, frontSprite: "infernomorel_majin(front).png", backSprite: "infernomorel_majin(back).png" },
+  },
+  toxshade: {
+    battleForm: { id: "majin", name: "Majin Form", kind: "majin", hpBelowPct: 50, baseAtk: 140, baseDef: 56, baseSpd: 134, onEnter: { clearNegativeStages: true, lowerFoes: { stat: "def", stages: 1 } }, frontSprite: "toxshade_majin(front).png", backSprite: "toxshade_majin(back).png" },
+  },
+  necrogeist: {
+    battleForm: { id: "majin", name: "Majin Form", kind: "majin", hpBelowPct: 50, baseAtk: 166, baseDef: 94, baseSpd: 130, onEnter: { clearNegativeStages: true, lowerFoes: { stat: "atk", stages: 1 } }, frontSprite: "necrogeist_majin(front).png", backSprite: "necrogeist_majin(back).png" },
+  },
+  thornback: {
+    battleForm: { id: "tenjin", name: "Tenjin Form", kind: "tenjin", hpBelowPct: 50, baseAtk: 122, baseDef: 132, baseSpd: 80, onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 }, frontSprite: "thornback_tenjin(front).png", backSprite: "thornback_tenjin(back).png" },
+  },
+  abysspark: {
+    battleForm: { id: "tenjin", name: "Tenjin Form", kind: "tenjin", hpBelowPct: 50, baseAtk: 102, baseDef: 114, baseSpd: 126, onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 }, frontSprite: "abysspark_tenjin(front).png", backSprite: "abysspark_tenjin(back).png" },
+  },
+  gemknight: {
+    battleForm: { id: "tenjin", name: "Tenjin Form", kind: "tenjin", hpBelowPct: 50, baseAtk: 118, baseDef: 142, baseSpd: 86, onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 }, frontSprite: "gemknight_tenjin(front).png", backSprite: "gemknight_tenjin(back).png" },
+  },
+  glimmereen: {
+    battleForm: { id: "tenjin", name: "Tenjin Form", kind: "tenjin", hpBelowPct: 50, baseAtk: 70, baseDef: 110, baseSpd: 100, onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 }, frontSprite: "glimmereen_tenjin(front).png", backSprite: "glimmereen_tenjin(back).png" },
+  },
+  solpyre: {
+    battleForm: { id: "tenjin", name: "Tenjin Form", kind: "tenjin", hpBelowPct: 50, baseAtk: 120, baseDef: 105, baseSpd: 115, onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 }, frontSprite: "solpyre_tenjin(front).png", backSprite: "solpyre_tenjin(back).png" },
+  },
   // Every legendary's / mythical's signature move is its own (client battle/signatures.ts): Bankai Sever is
   // bankaiser's, so ironcarab's L39 finisher becomes Six-Blade Storm.
   ironcarab: {
@@ -39,6 +65,7 @@ const EWAMON_SPECIES_PATCHES = {
     learnLevels: { "Foxfire Voltage": 27 }, // met at L30 (galvan_route)
   },
   zenryu: {
+    battleForm: { id: "majin", name: "Majin Form", kind: "majin", hpBelowPct: 50, baseAtk: 176, baseDef: 94, baseSpd: 158, onEnter: { clearNegativeStages: true, lowerFoes: { stat: "def", stages: 1 } }, frontSprite: "zenryu_majin(front).png", backSprite: "zenryu_majin(back).png" },
     moves: ["Celestial Burst", "Draco Impact", "Mach Punch"],
     learnLevels: { "Kamehameha": 39 },
   },

@@ -21,6 +21,14 @@ import { loadZone, zoneSurfaces, type ZoneHandleImpl } from './builder.js';
 export const PREPARE_SLICE_MS = 8;
 import { gradeOf, lightingPaletteOf } from './palettes.js';
 
+/** The zone palette's sky / fog / grade, and its grass re-tone (M3 review fixes: `Palette.grassTone`). */
+function applyPaletteLook(ctx: HostContext, handle: ZoneHandleImpl): void {
+  ctx.setLightingPalette(lightingPaletteOf(handle.palette));
+  ctx.setGrade(gradeOf(handle.palette));
+  const g = handle.palette.grassTone;
+  ctx.materials.setTone?.('tall_grass', g?.color ?? null, g?.amount ?? 0);
+}
+
 export class ZoneSystem implements FrameHook {
   private current: ZoneHandleImpl | null = null;
   private culled = 0;
@@ -46,8 +54,7 @@ export class ZoneSystem implements FrameHook {
         releaseGpu: (root) => releaseZoneAttributes(ctx, root),
         ...(opts.heroGate ? { heroGate: opts.heroGate } : {}),
       }, this.clock ?? undefined);
-      ctx.setLightingPalette(lightingPaletteOf(handle.palette));
-      ctx.setGrade(gradeOf(handle.palette));
+      applyPaletteLook(ctx, handle);
       this.current = handle;
       return handle;
     } finally {
@@ -121,8 +128,7 @@ export class ZoneSystem implements FrameHook {
         this.pendingKeep = [];   // `prepareHandover`'s keep was for this zone: it is loaded now
         ctx.scene.add(handle.group);
         lights.activate();
-        ctx.setLightingPalette(lightingPaletteOf(handle.palette));
-        ctx.setGrade(gradeOf(handle.palette));
+        applyPaletteLook(ctx, handle);
         this.current = handle;
         return handle;
       },

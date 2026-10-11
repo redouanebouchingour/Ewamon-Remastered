@@ -69,15 +69,15 @@ const GREEN: DressingStyle['grassTints'] = ['#c9d49c', '#b9c78c', '#d6d9a2', '#c
 export const DRESSING: Readonly<Record<Biome, DressingStyle>> = {
   grove: { vergeRate: 0.85, vergeBush: 0.45, vergeFlower: 0.55, vergeStone: 0.35, vergeTufts: [2, 4], screePerRock: [2, 4], screeDensity: 0.002, shardDensity: 0, grassTints: GREEN, bushTint: 'foliage', skirt: ['flowerbox', 'firewood', 'pot', 'flowerbox', 'keg', 'sack'], skirtPerSide: [2, 4], bush: null, bushDensity: 0, gatePiers: true },
   capital: { vergeRate: 0.8, vergeBush: 0.55, vergeFlower: 0.6, vergeStone: 0.2, vergeTufts: [2, 3], screePerRock: [1, 3], screeDensity: 0.001, shardDensity: 0, grassTints: GREEN, bushTint: 'foliage', skirt: ['flowerbox', 'pot', 'flowerbox', 'keg', 'crate_s'], skirtPerSide: [2, 4], bush: null, bushDensity: 0, gatePiers: true },
-  vesper: { vergeRate: 0.8, vergeBush: 0.5, vergeFlower: 0, vergeStone: 0.4, vergeTufts: [2, 4], screePerRock: [2, 4], screeDensity: 0.003, shardDensity: 0, grassTints: ['#a8b296', '#9aa48a', '#b4b8a0', '#a2ab94'], bushTint: 'foliage', skirt: ['pot', 'firewood', 'sack', 'keg', 'pot'], skirtPerSide: [2, 4], bush: null, bushDensity: 0, gatePiers: true },
-  salt: { vergeRate: 0.75, vergeBush: 0.5, vergeFlower: 0, vergeStone: 0.55, vergeTufts: [2, 4], screePerRock: [2, 5], screeDensity: 0.008, shardDensity: 0, grassTints: ['#d8d6a0', '#c8c890', '#e2dcae', '#cfd09a'], bushTint: 'grass', skirt: ['crate_s', 'keg', 'sack', 'firewood', 'crate_s'], skirtPerSide: [2, 4], bush: 'tall_grass', bushDensity: 0.01, gatePiers: true },
-  storm: { vergeRate: 0.75, vergeBush: 0.5, vergeFlower: 0, vergeStone: 0.55, vergeTufts: [2, 3], screePerRock: [2, 5], screeDensity: 0.01, shardDensity: 0, grassTints: ['#b4c09a', '#a6b28e', '#bec6a2', '#aebb96'], bushTint: 'foliage', skirt: ['crate_s', 'keg', 'firewood', 'sack'], skirtPerSide: [2, 3], bush: 'pine_needle', bushDensity: 0.008, gatePiers: true },
-  forge: { vergeRate: 0.7, vergeBush: 0.45, vergeFlower: 0, vergeStone: 0.6, vergeTufts: [1, 3], screePerRock: [2, 5], screeDensity: 0.01, shardDensity: 0, grassTints: ['#b8b490', '#aaa684', '#c2bc98', '#b2ae8c'], bushTint: 'foliage', skirt: ['firewood', 'crate_s', 'keg', 'sack', 'firewood'], skirtPerSide: [2, 4], bush: 'pine_needle', bushDensity: 0.006, gatePiers: true },
-  sky: { vergeRate: 0.75, vergeBush: 0.5, vergeFlower: 0.45, vergeStone: 0.5, vergeTufts: [2, 3], screePerRock: [2, 4], screeDensity: 0.008, shardDensity: 0, grassTints: ['#c4d0a4', '#b6c498', '#d0d6b0', '#bccaa0'], bushTint: 'foliage', skirt: ['pot', 'firewood', 'flowerbox', 'sack'], skirtPerSide: [2, 3], bush: null, bushDensity: 0, gatePiers: true },
-  cinder: { vergeRate: 0.75, vergeBush: 0.5, vergeFlower: 0, vergeStone: 0.75, vergeTufts: [1, 3], screePerRock: [3, 6], screeDensity: 0.022, shardDensity: 0, grassTints: ['#9c8466', '#8e785e', '#a88e70', '#94806a'], bushTint: 'grass', skirt: ['keg', 'sack', 'crate_s', 'firewood'], skirtPerSide: [2, 4], bush: null, bushDensity: 0, gatePiers: true },
-  marrow: { vergeRate: 0.75, vergeBush: 0.5, vergeFlower: 0, vergeStone: 0.75, vergeTufts: [1, 3], screePerRock: [3, 6], screeDensity: 0.022, shardDensity: 0, grassTints: ['#c8b890', '#b8a882', '#d2c29c', '#c0b088'], bushTint: 'grass', skirt: ['crate_s', 'keg', 'sack', 'firewood'], skirtPerSide: [2, 4], bush: null, bushDensity: 0, gatePiers: true },
-  shrine: { vergeRate: 0.8, vergeBush: 0, vergeFlower: 0, vergeStone: 0.85, vergeTufts: [0, 0], screePerRock: [3, 6], screeDensity: 0.03, shardDensity: 0.012, grassTints: GREEN, bushTint: 'grass', skirt: [], skirtPerSide: [0, 0], bush: null, bushDensity: 0, gatePiers: false },
-  rift: { vergeRate: 0.8, vergeBush: 0, vergeFlower: 0, vergeStone: 0.85, vergeTufts: [0, 0], screePerRock: [3, 6], screeDensity: 0.032, shardDensity: 0.014, grassTints: GREEN, bushTint: 'grass', skirt: [], skirtPerSide: [0, 0], bush: null, bushDensity: 0, gatePiers: false },
+  vesper: { vergeRate: 0.8, vergeBush: 0.5, vergeFlower: 0, vergeStone: 0.4, vergeTufts: [2, 4], screePerRock: [2, 4], screeDensity: 0.003, shardDensity: 0, grassTints: ['#ffffff', '#ebe7df', '#f5f2ea', '#dfdbd2'], bushTint: 'foliage', skirt: ['pot', 'firewood', 'sack', 'keg', 'pot'], skirtPerSide: [2, 4], bush: null, bushDensity: 0, gatePiers: true },
+  salt: { vergeRate: 0.75, vergeBush: 0.5, vergeFlower: 0, vergeStone: 0.55, vergeTufts: [2, 4], screePerRock: [2, 5], screeDensity: 0.008, shardDensity: 0, grassTints: ['#ffffff', '#ebe7df', '#f5f2ea', '#dfdbd2'], bushTint: 'grass', skirt: ['crate_s', 'keg', 'sack', 'firewood', 'crate_s'], skirtPerSide: [2, 4], bush: 'tall_grass', bushDensity: 0.01, gatePiers: true },
+  storm: { vergeRate: 0.75, vergeBush: 0.5, vergeFlower: 0, vergeStone: 0.55, vergeTufts: [2, 3], screePerRock: [2, 5], screeDensity: 0.01, shardDensity: 0, grassTints: ['#ffffff', '#ebe7df', '#f5f2ea', '#dfdbd2'], bushTint: 'foliage', skirt: ['crate_s', 'keg', 'firewood', 'sack'], skirtPerSide: [2, 3], bush: 'pine_needle', bushDensity: 0.008, gatePiers: true },
+  forge: { vergeRate: 0.7, vergeBush: 0.45, vergeFlower: 0, vergeStone: 0.6, vergeTufts: [1, 3], screePerRock: [2, 5], screeDensity: 0.01, shardDensity: 0, grassTints: ['#ffffff', '#ebe7df', '#f5f2ea', '#dfdbd2'], bushTint: 'foliage', skirt: ['firewood', 'crate_s', 'keg', 'sack', 'firewood'], skirtPerSide: [2, 4], bush: 'pine_needle', bushDensity: 0.006, gatePiers: true },
+  sky: { vergeRate: 0.75, vergeBush: 0.5, vergeFlower: 0.45, vergeStone: 0.5, vergeTufts: [2, 3], screePerRock: [2, 4], screeDensity: 0.008, shardDensity: 0, grassTints: ['#ffffff', '#ebe7df', '#f5f2ea', '#dfdbd2'], bushTint: 'foliage', skirt: ['pot', 'firewood', 'flowerbox', 'sack'], skirtPerSide: [2, 3], bush: null, bushDensity: 0, gatePiers: true },
+  cinder: { vergeRate: 0.75, vergeBush: 0.5, vergeFlower: 0, vergeStone: 0.75, vergeTufts: [1, 3], screePerRock: [3, 6], screeDensity: 0.022, shardDensity: 0, grassTints: ['#ffffff', '#ebe7df', '#f5f2ea', '#dfdbd2'], bushTint: 'grass', skirt: ['keg', 'sack', 'crate_s', 'firewood'], skirtPerSide: [2, 4], bush: null, bushDensity: 0, gatePiers: true },
+  marrow: { vergeRate: 0.75, vergeBush: 0.5, vergeFlower: 0, vergeStone: 0.75, vergeTufts: [1, 3], screePerRock: [3, 6], screeDensity: 0.022, shardDensity: 0, grassTints: ['#ffffff', '#ebe7df', '#f5f2ea', '#dfdbd2'], bushTint: 'grass', skirt: ['crate_s', 'keg', 'sack', 'firewood'], skirtPerSide: [2, 4], bush: null, bushDensity: 0, gatePiers: true },
+  shrine: { vergeRate: 0.8, vergeBush: 0, vergeFlower: 0, vergeStone: 0.85, vergeTufts: [0, 0], screePerRock: [3, 6], screeDensity: 0.03, shardDensity: 0.012, grassTints: ['#ffffff', '#ebe7df', '#f5f2ea', '#dfdbd2'], bushTint: 'grass', skirt: [], skirtPerSide: [0, 0], bush: null, bushDensity: 0, gatePiers: false },
+  rift: { vergeRate: 0.8, vergeBush: 0, vergeFlower: 0, vergeStone: 0.85, vergeTufts: [0, 0], screePerRock: [3, 6], screeDensity: 0.032, shardDensity: 0.014, grassTints: ['#ffffff', '#ebe7df', '#f5f2ea', '#dfdbd2'], bushTint: 'grass', skirt: [], skirtPerSide: [0, 0], bush: null, bushDensity: 0, gatePiers: false },
 };
 
 export function dressingFor(biome: Biome): DressingStyle {
@@ -388,6 +388,156 @@ export function buildSkirtItem(set: BiomeSet, kind: SkirtKind, seed: number): Pr
       }
       return propGeo(t[0]!, t[1]!, t[2]!, null, [st.wood]);
     }
+  }
+}
+
+// ---- plaza clutter (walk-through, M3 review fixes) -----------------------------------------------------------------
+
+/** Small biome items that stand in clusters round a town plaza's rim (all ≤ 0.7 m tall: walked through, like scree). */
+export type ClutterKind = SkirtKind | 'rope_coil' | 'net_pile' | 'fish_basket' | 'lobster_pot' | 'coal_heap' | 'spool' | 'cairn';
+
+/**
+ * M3 review fixes (the Phase E bar: Saltmourn's thin plaza, Stormrook / Skyrend / Cinderhold read through two props):
+ * the plaza's working life — nets and pots on the harbour deck, cable spools, prayer cairns, coal heaps — in 6–10
+ * clusters of 2–4 items between the benches and the plaza's paved ring. Only the biomes listed get it; the grove (the
+ * bar) is unchanged. Every item is drawn from surfaces the biome already binds.
+ */
+export const PLAZA_CLUTTER: Readonly<Partial<Record<Biome, { readonly kinds: readonly ClutterKind[]; readonly clusters: readonly [number, number] }>>> = {
+  salt: { kinds: ['rope_coil', 'net_pile', 'fish_basket', 'lobster_pot', 'keg', 'crate_s', 'rope_coil'], clusters: [8, 10] },
+  storm: { kinds: ['spool', 'crate_s', 'keg', 'spool'], clusters: [6, 8] },
+  sky: { kinds: ['cairn', 'pot', 'flowerbox', 'cairn'], clusters: [6, 8] },
+  cinder: { kinds: ['coal_heap', 'crate_s', 'keg', 'firewood', 'coal_heap'], clusters: [6, 8] },
+};
+
+export interface ClutterPlacement { readonly kind: ClutterKind; readonly x: number; readonly z: number; readonly yaw: number; readonly seed: number }
+
+/**
+ * Clutter clusters round the plaza (centre `px, pz`, radius `pr`): cluster centres spread round the circle at 1.3–2.3 m
+ * inside the rim, items within ±0.8 m of their centre. `clear(x, z, r)` is the builder's keep-clear (props, lights,
+ * points, roads, set-piece, buildings). Deterministic in `salt`.
+ */
+export function plazaClutter(biome: Biome, px: number, pz: number, pr: number, salt: number, clear: (x: number, z: number, r: number) => boolean): ClutterPlacement[] {
+  const kit = PLAZA_CLUTTER[biome];
+  const out: ClutterPlacement[] = [];
+  if (!kit || pr < 8) return out;
+  const [c0, c1] = kit.clusters;
+  const n = c0 + Math.floor(hash2(1, 2, salt + 1201) * (c1 - c0 + 1));
+  // the first cluster stands beside content's arrival point (the plaza's south side, ~30° off the south road), so the
+  // view a player arrives to always holds one
+  const a0 = Math.PI / 2 + 0.45 + (hash2(3, 4, salt + 1203) - 0.5) * 0.3;
+  for (let c = 0; c < n; c++) {
+    const ac = a0 + (c / n) * TAU + (hash2(c, 5, salt + 1205) - 0.5) * (TAU / n) * 0.5;
+    const rc = pr - 1.3 - hash2(c, 6, salt + 1207) * 1.0;
+    const items = 2 + Math.floor(hash2(c, 7, salt + 1209) * 3);
+    for (let k = 0; k < items; k++) {
+      const h = hash2(c * 13 + k, 8, salt + 1211);
+      const along = (k - (items - 1) / 2) * 0.7 + (h - 0.5) * 0.3;
+      const across = (hash2(c * 13 + k, 9, salt + 1213) - 0.5) * 0.8;
+      const a = ac + along / rc;
+      const r = rc + across;
+      const x = px + Math.cos(a) * r; const z = pz + Math.sin(a) * r;
+      if (!clear(x, z, 0.45)) continue;
+      const kind = kit.kinds[Math.floor(hash2(c * 13 + k, 10, salt + 1215) * kit.kinds.length) % kit.kinds.length]!;
+      out.push({ kind, x, z, yaw: hash2(c * 13 + k, 11, salt + 1217) * TAU, seed: Math.floor(hash2(c * 13 + k, 12, salt + 1219) * 0x7fffffff) });
+    }
+  }
+  return out;
+}
+
+/** Builds one clutter item (local origin on the ground at its centre). */
+export function buildClutterItem(set: BiomeSet, kind: ClutterKind, seed: number): PropGeo {
+  const st: PropStyle = set.props;
+  const p = createPrng(seed);
+  const t = [new Parts(), new Parts(), new Parts()];
+  const ring = (parts: Parts, surface: SurfaceId, r: number, y: number, tube: number, seg: number, m?: ReturnType<typeof trs>): void => {
+    const prof: [number, number][] = [];
+    for (let q = 0; q <= 6; q++) { const a = (q / 6) * TAU; prof.push([r + Math.cos(a) * tube, y + Math.sin(a) * tube]); }
+    lathe(parts, surface, prof, { segments: seg }, m);
+  };
+  switch (kind) {
+    case 'rope_coil': {
+      // a flat coil: three concentric turns and a loose end
+      for (const [k, parts] of t.entries()) {
+        const seg = k === 0 ? 16 : 8;
+        for (const [q, r] of [0.25, 0.17, 0.09].entries()) if (k < 2 || q === 0) ring(parts, 'rope', r, 0.04 + q * 0.01, 0.04, seg);
+        if (k === 0) beam(parts, 'rope', [0.25, 0.04, 0], [0.55, 0.035, 0.12 + p.next() * 0.1], 0.07, 0.06, 0.02);
+      }
+      return propGeo(t[0]!, t[1]!, t[2]!, null, ['rope']);
+    }
+    case 'net_pile': {
+      // a heaped net (lumpy low dome) with a few cork floats on it
+      const ph = p.next() * TAU;
+      const lump = (a: number): number => 1 + 0.18 * Math.sin(a * 3 + ph) + 0.1 * Math.sin(a * 7 + 1.3);
+      for (const [k, parts] of t.entries()) {
+        lathe(parts, 'rope', [[0.62, 0], [0.55, 0.08], [0.38, 0.17], [0.16, 0.22], [0.001, 0.23]], { segments: k === 0 ? 14 : 7, radial: lump, smooth: true });
+        if (k === 0) for (let q = 0; q < 4; q++) {
+          const a = p.next() * TAU; const r = 0.2 + p.next() * 0.3;
+          lathe(parts, 'driftwood', [[0.001, 0], [0.06, 0.02], [0.06, 0.07], [0.001, 0.09]], { segments: 6 }, trs(Math.cos(a) * r, 0.2 - r * 0.25, Math.sin(a) * r));
+        }
+      }
+      return propGeo(t[0]!, t[1]!, t[2]!, null, ['rope', 'driftwood']);
+    }
+    case 'fish_basket': {
+      for (const [k, parts] of t.entries()) {
+        lathe(parts, 'driftwood', [[0.17, 0], [0.22, 0.06], [0.25, 0.3], [0.27, 0.33], [0.23, 0.33], [0.21, 0.08], [0.001, 0.07]], { segments: k === 0 ? 12 : 7, capBottom: true });
+        if (k === 0) ring(parts, 'rope', 0.26, 0.31, 0.022, 12);
+        if (k < 2) lathe(parts, 'wet_rock', [[0.21, 0.24], [0.12, 0.29], [0.001, 0.3]], { segments: k === 0 ? 10 : 6, radial: (a) => 1 + 0.12 * Math.sin(a * 5) });
+      }
+      return propGeo(t[0]!, t[1]!, t[2]!, null, ['driftwood', 'rope', 'wet_rock']);
+    }
+    case 'lobster_pot': {
+      // a slatted half-barrel trap on a plank base, roped at the ends
+      const L = 0.62; const R = 0.24;
+      for (const [k, parts] of t.entries()) {
+        box(parts, st.wood, 0, 0, 0, L, 0.04, R * 2, 0, 0.01);
+        if (k === 2) { box(parts, 'driftwood', 0, 0.04, 0, L, R, R * 2, 0, 0.02); continue; }
+        const n = k === 0 ? 7 : 4;
+        for (let q = 0; q < n; q++) {
+          const a = (q / (n - 1)) * Math.PI;
+          const y = 0.04 + Math.sin(a) * R; const z = Math.cos(a) * R;
+          beam(parts, 'driftwood', [-L / 2, y, z], [L / 2, y, z], 0.035, 0.025, 0.006);
+        }
+        if (k === 0) for (const x of [-L / 2 + 0.02, L / 2 - 0.02]) ring(parts, 'rope', R, 0, 0.015, 10, trs(x, 0.04, 0).multiply(trs(0, 0, 0).makeRotationZ(Math.PI / 2)));
+      }
+      return propGeo(t[0]!, t[1]!, t[2]!, null, [st.wood, 'driftwood', 'rope']);
+    }
+    case 'coal_heap': {
+      const ph = p.next() * TAU;
+      const lump = (a: number): number => 1 + 0.2 * Math.sin(a * 4 + ph) + 0.1 * Math.sin(a * 9);
+      for (const [k, parts] of t.entries()) {
+        lathe(parts, st.stone, [[0.55, 0], [0.45, 0.12], [0.25, 0.26], [0.001, 0.3]], { segments: k === 0 ? 12 : 6, radial: lump });   // the dark heap
+        if (k === 0) for (let q = 0; q < 5; q++) {
+          const a = p.next() * TAU; const r = 0.45 + p.next() * 0.2;
+          lathe(parts, set.rock, [[0.001, 0], [0.07, 0.03], [0.06, 0.08], [0.001, 0.1]], { segments: 5 }, trs(Math.cos(a) * r, 0, Math.sin(a) * r, p.next() * TAU));
+        }
+      }
+      return propGeo(t[0]!, t[1]!, t[2]!, null, [st.stone, set.rock]);
+    }
+    case 'spool': {
+      // a cable drum on its side: timber flanges, a brass winding
+      const m = trs(0, 0.32, 0).multiply(trs(0, 0, 0).makeRotationZ(Math.PI / 2));
+      for (const [k, parts] of t.entries()) {
+        lathe(parts, st.wood, [[0.001, -0.25], [0.32, -0.25], [0.32, -0.19], [0.001, -0.19]], { segments: k === 0 ? 14 : 8, smooth: false }, m);
+        lathe(parts, st.wood, [[0.001, 0.19], [0.32, 0.19], [0.32, 0.25], [0.001, 0.25]], { segments: k === 0 ? 14 : 8, smooth: false }, m);
+        lathe(parts, 'coil_brass', [[0.2, -0.19], [0.23, -0.15], [0.23, 0.15], [0.2, 0.19]], { segments: k === 0 ? 14 : 8 }, m);
+      }
+      return propGeo(t[0]!, t[1]!, t[2]!, null, [st.wood, 'coil_brass']);
+    }
+    case 'cairn': {
+      // stacked flat stones, the top one small
+      const n = 3 + Math.floor(p.next() * 3);
+      for (const [k, parts] of t.entries()) {
+        let y = 0;
+        for (let q = 0; q < (k === 2 ? 2 : n); q++) {
+          const r = 0.34 * (1 - q / (n + 1)) + p.next() * 0.05; const hh = 0.1 + p.next() * 0.05;
+          lathe(parts, st.stone, [[r * 0.8, 0], [r, hh * 0.4], [r * 0.85, hh], [0.001, hh]], { segments: k === 0 ? 9 : 6 }, trs((p.next() - 0.5) * 0.04, y, (p.next() - 0.5) * 0.04, p.next() * TAU));
+          y += hh * 0.9;
+        }
+      }
+      return propGeo(t[0]!, t[1]!, t[2]!, null, [st.stone]);
+    }
+    default:
+      return buildSkirtItem(set, kind, seed);
   }
 }
 

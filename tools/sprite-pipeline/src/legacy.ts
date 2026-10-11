@@ -11,6 +11,9 @@
  * the same row shape, a sibling of the legacy directory) and join the species set when that file exists. A row's
  * `battleForm` (a mid-battle form) ships as one more sprite entry under the key `<species>_<form>` (e.g.
  * `hollowmane_rage`) with the species' sizeScale: the sprite set is the species set plus those form keys.
+ * `.design/additions/patches.js` (`EWAMON_SPECIES_PATCHES`, field patches to legacy rows) can give a legacy species a
+ * `battleForm` too (the Majin / Tenjin forms, e.g. `zenryu_majin`): those join the same way, with the legacy species'
+ * sizeScale. The other patched fields (moves, learnable moves) do not concern the sprites.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -43,6 +46,13 @@ interface RawSpecies {
   frontSprite?: unknown;
   backSprite?: unknown;
   sizeScale?: unknown;
+}
+
+/** A row's `battleForm` (species.js additions or patches.js): only the fields the sprite set needs. */
+interface RawBattleForm {
+  id?: unknown;
+  frontSprite?: unknown;
+  backSprite?: unknown;
 }
 
 function loadCommonJs(file: string): Record<string, unknown> {
@@ -100,12 +110,25 @@ export function loadLegacySpecies(legacyDir: string): Map<string, LegacySpecies>
       raw[id] = additions[id];
     }
     for (const id of Object.keys(additions)) {
-      const row = additions[id] as RawSpecies & { battleForm?: { id?: unknown; frontSprite?: unknown; backSprite?: unknown } };
+      const row = additions[id] as RawSpecies & { battleForm?: RawBattleForm };
       const form = row.battleForm;
       if (form === undefined || typeof form.id !== 'string') continue;
       const key = `${id}_${form.id}`;
       if (key in raw) throw new Error(`additions: form sprite key '${key}' collides with a species`);
       raw[key] = { frontSprite: form.frontSprite, backSprite: form.backSprite, sizeScale: row.sizeScale };
+    }
+  }
+  const patchesFile = path.join(legacyDir, '..', 'additions', 'patches.js');
+  if (existsSync(patchesFile)) {
+    const patches = (loadCommonJs(patchesFile).EWAMON_SPECIES_PATCHES ?? {}) as Record<string, unknown>;
+    for (const id of Object.keys(patches)) {
+      const form = (patches[id] as { battleForm?: RawBattleForm }).battleForm;
+      if (form === undefined || typeof form.id !== 'string') continue;
+      const base = raw[id] as RawSpecies | undefined;
+      if (base === undefined) throw new Error(`patches: battleForm on unknown species '${id}'`);
+      const key = `${id}_${form.id}`;
+      if (key in raw) throw new Error(`patches: form sprite key '${key}' collides with a species or another form`);
+      raw[key] = { frontSprite: form.frontSprite, backSprite: form.backSprite, sizeScale: base.sizeScale };
     }
   }
   return parseSpecies(raw);

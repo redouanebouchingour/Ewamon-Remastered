@@ -5,9 +5,11 @@ import { glass, masonry, metal, rock } from './families';
 export const FILE = 'recipes/storm.ts';
 
 export const STORM_RECIPES: readonly SurfaceRecipe[] = [
-  // strong planar cleavage: thin strata with cracked facets
-  rock({ id: 'storm_slate', hero: true, metres: 3, strength: 0.75, rdo: 4, base: '#4a4f57', dark: '#2a2d33', light: '#5c626b',
-    rough: [0.5, 0.7], strata: 14, strataAmp: 0.3, cells: 5, cellAspect: 2, crack: 0.3, freq: 3, tone: 0.1 }),
+  // strong planar cleavage: thin strata, no facet cells (M3 review fixes, M3-stormrook-1 / R-galvan-1: the faceted slate read
+  // as the same paving as the flagstone road); moss and heath lichen in the low strata make it ground, not a pavement
+  rock({ id: 'storm_slate', hero: true, metres: 3, strength: 0.75, rdo: 4, base: '#4d535a', dark: '#262a2f', light: '#636a72',
+    rough: [0.5, 0.7], strata: 11, strataAmp: 0.35, freq: 3, tone: 0.1, speck: 0.15, speckColor: '#7a8088',
+    lichen: { color: '#55663f', amount: 0.75 } }),
   metal({ id: 'copper_oxide', hero: true, metres: 2, strength: 0.55, rdo: 4, base: '#9a6a48', metal: 0.9, rough: [0.3, 0.6],
     panels: [3, 4], seamPx: 5, rivets: { perEdge: 5, rPx: 7 }, hammered: 0.15, patina: { color: '#4f8f7a', amount: 1.0 } }),
   metal({ id: 'coil_brass', hero: false, metres: 1, strength: 0.7, base: '#b08d4a', metal: 1.0, rough: [0.25, 0.5], windings: 48,

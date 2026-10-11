@@ -1,0 +1,39 @@
+/* Majin / Tenjin form sigil (FormSigil.tsx). The two kinds carry their own colours — crimson and gold, the live aura's
+   (render stage/aura.ts) — so the orange accent keeps meaning only selected / press this / focus. */
+.sigil {
+  flex: none;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.sm {
+  inline-size: 16px;
+  block-size: 16px;
+}
+
+.md {
+  inline-size: 20px;
+  block-size: 20px;
+}
+
+.lg {
+  inline-size: 24px;
+  block-size: 24px;
+}
+
+.majin {
+  color: #ff3048;
+}
+
+.tenjin {
+  color: #f5c84c;
+}
+
+/* the species mark: a black chip like the other card marks */
+.mark {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 22px;
+  block-size: 22px;
+  background: var(--bg-0);
+}

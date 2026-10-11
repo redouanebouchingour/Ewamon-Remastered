@@ -58,6 +58,9 @@ const tr = (
 /** Phase D6: this trainer fights 2-on-2 (the key exists only on doubles trainers; x/z alone feed the layout). */
 const doubles = (t: TrainerDef): TrainerDef => ({ ...t, doubles: true });
 
+/** Majin / Tenjin: this trainer fights with the Majin Band (the key exists only on band trainers; x/z alone feed the layout). */
+const majinBand = (t: TrainerDef): TrainerDef => ({ ...t, bands: ['majin'] });
+
 const it = (id: string, x: number, z: number, item: string, qty = 1): GroundItemDef => ({
   id,
   x,
@@ -835,7 +838,7 @@ const BASE_ZONES: readonly ZoneDef[] = [
       ], { when: 'siege_held' }),
     ],
     trainers: [
-      tr('hollis_siege', 'Assessor Bram Hollis', 0, -6, 'soldier_male', [['trenchtusk', 40], ['ironcarab', 39], ['gemknight', 39], ['rivetalon', 41], ['toxshade', 40]], ["The Marshal's declined. So — the old way. Whoever's standing at the end holds the gate."], 3000, null),
+      majinBand(tr('hollis_siege', 'Assessor Bram Hollis', 0, -6, 'soldier_male', [['trenchtusk', 40], ['ironcarab', 39], ['gemknight', 39], ['rivetalon', 41], ['toxshade', 40]], ["The Marshal's declined. So — the old way. Whoever's standing at the end holds the gate."], 3000, null)),
     ],
     items: [it('fw1', 18, -18, 'hyper_potion', 2), it('fw2', 38, 34, 'revive', 2)],
     lore: [
@@ -1166,7 +1169,7 @@ const BASE_ZONES: readonly ZoneDef[] = [
     ],
     trainers: [
       tr('sable_observatory', 'Sable', 10, -40, 'casual2_male', [['caldermole', 45], ['glimmereen', 44], ['bogmaw', 44], ['murmink', 43], ['ignispectre', 45]], ["I'm going to fight you because it's the only thing in this room I know how to do."], 2500, null),
-      tr('reeve_observatory', 'Assessor Tamsin Reeve', -10, 4, 'doctor_female_young', [['chrysotox', 45], ['fedoraith', 45], ['toxshade', 46], ['glaciarm', 44], ['aonred', 47]], ["You've read it. Now you leave, because that's the procedure, and I'm the procedure."], 2500, null),
+      majinBand(tr('reeve_observatory', 'Assessor Tamsin Reeve', -10, 4, 'doctor_female_young', [['chrysotox', 45], ['fedoraith', 45], ['toxshade', 46], ['glaciarm', 44], ['aonred', 47]], ["You've read it. Now you leave, because that's the procedure, and I'm the procedure."], 2500, null)),
     ],
     items: [it('uo1', -40, 40, 'dusk_orb', 2), it('uo2', 50, 50, 'phantom_orb', 2)],
     lore: [
@@ -1224,7 +1227,7 @@ const BASE_ZONES: readonly ZoneDef[] = [
       ]),
     ],
     trainers: [
-      tr('varn_spire', 'Comptroller Odile Varn', 0, -56, 'old_classy_female', [['archonosis', 53], ['velvetomb', 53], ['necrogeist', 54], ['glaciarm', 52], ['rivetalon', 54], ['aonred', 55]], ["Stand there anyway, if you must; I've never once asked anyone to leave a room they'd read their way into."], 6000, null),
+      majinBand(tr('varn_spire', 'Comptroller Odile Varn', 0, -56, 'old_classy_female', [['archonosis', 53], ['velvetomb', 53], ['necrogeist', 54], ['glaciarm', 52], ['rivetalon', 54], ['aonred', 55]], ["Stand there anyway, if you must; I've never once asked anyone to leave a room they'd read their way into."], 6000, null)),
     ],
     items: [it('cs1', 40, 30, 'max_revive'), it('cs2', -50, 40, 'full_restore')],
     lore: [

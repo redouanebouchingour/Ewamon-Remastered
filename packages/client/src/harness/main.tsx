@@ -13,7 +13,7 @@ import { harvestStateFor, zone as zoneDef } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
 import { part3Of, rendererInternals } from '@ewa/render';
 import type { BudgetCounts, ZoneDump } from '@ewa/render';
-import { headingConvention, resolveAnchor, setHeadingConvention, shotDef, shotsForZone } from './anchors';
+import { HEADING_CONVENTION, resolveAnchor, shotDef, shotsForZone } from './anchors';
 import type { ResolvedAnchor, ShotId, Variant } from './anchors';
 import { HarnessWorld } from './HarnessWorld';
 import type { HandoverResult } from './HarnessWorld';
@@ -70,8 +70,6 @@ const params = new URLSearchParams(location.search);
 const zoneId = (params.get('zone') ?? 'mirevale') as ZoneId;
 // ?set=M3: every zone takes all six §50.6.1 rows (shotTable.ts `shotsForZone`); default M2 = the table's own zones
 const auditSet = params.get('set') ?? 'M2';
-// ?headings=rig: the §50.6.1 heading numbers straight to the rig (default: the table's words, anchors.ts)
-setHeadingConvention(params.get('headings') === 'rig' ? 'rig' : 'words');
 const log: string[] = [];
 const say = (line: string): void => {
   log.push(`${(performance.now() / 1000).toFixed(1)}s ${line}`);
@@ -126,7 +124,7 @@ function info(): Record<string, unknown> {
     compileStats: host?.compileStats ?? null,
     materialWarnings: r.materials.warnings(),
     harvest: world.harvest,
-    headingConvention: headingConvention(),
+    headingConvention: HEADING_CONVENTION,
     auditSet,
     shots: shotsForZone(zoneId, auditSet).map((x) => x.id),
   };

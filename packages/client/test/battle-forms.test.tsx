@@ -38,7 +38,11 @@ function open(hp: number | null): { sent: { type: string; payload: unknown }[]; 
   const base = makeCreature(content, content.species('hollowmane'), 58, 'mine-1', 'p0');
   const me = hp === null ? base : { ...base, hp };
   const foe = makeCreature(content, content.species('mossling'), 5, 'wild-1', null);
-  const { state, events } = startBattle(content, 9, 'wild', [me], [foe]);
+  const start = startBattle(content, 9, 'wild', [me], [foe]);
+  const events = start.events;
+  // Majin / Tenjin: hollowmane's rage form is a Majin form, so a PLAYER's hollowmane no longer changes on its own below
+  // half — it transforms by the band. The menu test starts it in its form, as after its transformation.
+  const state: BattleState = hp === null ? start.state : { ...start.state, sides: [{ ...start.state.sides[0], transformed: true, party: [{ ...start.state.sides[0].party[0]!, form: 'rage' }] }, start.state.sides[1]] };
   const msg: ServerMessageOf<'battleStart'> = { type: 'battleStart', battleId: BID, format: 'wild', seat: 0, state, events: [...events] as BattleEvent[], stateDigest: digestBattleState(state) };
   c.onBattleStart(msg);
   for (let i = 0; i < 4000 && c.player.isPlaying; i++) c.player.step(STEP_MS);

@@ -19,8 +19,12 @@ import { LEGACY_DIR, REAL_OUT_DIR, REAL_QA_DIR } from './helpers.js';
 const MANIFEST_PATH = path.join(REAL_OUT_DIR, MANIFEST_FILE);
 const REPORT_PATH = path.join(REAL_QA_DIR, 'qa-report.json');
 // sprite entries: the 130 species of ewamon.js + the post-legacy additions (.design/additions/species.js, 7 today: hollowmane, dustcub, badlander, veilpup, hollowolf, castlemaw, lawlander)
-// + their battle forms under `<species>_<form>` (hollowmane_rage, castlemaw_rage)
-const SPECIES_COUNT = 139;
+// + their battle forms under `<species>_<form>` (hollowmane_rage, castlemaw_rage, badlander_majin, lawlander_tenjin)
+// + the legacy species' battle forms from .design/additions/patches.js (9: infernomorel, toxshade, necrogeist, zenryu _majin;
+// thornback, abysspark, gemknight, glimmereen, solpyre _tenjin)
+const SPECIES_COUNT = 150;
+/** Atlas cap: 75 with the Majin / Tenjin forms (2026-10-11; 70 before). */
+const MAX_ATLASES = 75;
 
 function listFiles(dir: string, rel = ''): string[] {
   const out: string[] = [];
@@ -37,7 +41,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
   const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8')) as SpriteManifestV2;
   const size = (rel: string): number => statSync(path.join(REAL_OUT_DIR, rel)).size;
 
-  it(`totalBytes ≤ ${CREATURES_BUDGET_BYTES} (35 MiB) and equals the bytes on disk`, () => {
+  it(`totalBytes ≤ ${CREATURES_BUDGET_BYTES} and equals the bytes on disk`, () => {
     expect(manifest.totalBytes).toBeLessThanOrEqual(CREATURES_BUDGET_BYTES);
     // everything outside anim/, minus the bytes the manifest's anim fields add (charged to the anim line, §40.6)
     const share = Buffer.byteLength(serializeManifest(manifest)) - Buffer.byteLength(serializeManifest(staticManifest(manifest)));
@@ -55,7 +59,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
     expect(readFileSync(MANIFEST_PATH, 'utf8')).toBe(serializeManifest(manifest));
   });
 
-  it('is a valid v2 manifest for exactly the 137 species of ewamon.js + additions and the hollowmane_rage / castlemaw_rage forms', () => {
+  it('is a valid v2 manifest for exactly the 137 species of ewamon.js + additions and their 13 battle forms', () => {
     const ids = Object.keys(manifest.sprites);
     expect(ids.length).toBe(SPECIES_COUNT);
     expect(ids).toEqual([...ids].sort());
@@ -70,10 +74,12 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
     expect(ids.some((id) => id.includes('@'))).toBe(false);
     expect(ids).toContain('hollowmane_rage');
     expect(ids).toContain('castlemaw_rage');
+    expect(ids).toContain('zenryu_majin');
+    expect(ids).toContain('glimmereen_tenjin');
   });
 
-  it(`atlases ≤ 70, every sprite stored once (+ duplicates ≤ ${MAX_DUPLICATED_SPECIES}), 2048² cells, half-res normals`, () => {
-    expect(manifest.atlases.length).toBeLessThanOrEqual(70);
+  it(`atlases ≤ ${MAX_ATLASES}, every sprite stored once (+ duplicates ≤ ${MAX_DUPLICATED_SPECIES}), 2048² cells, half-res normals`, () => {
+    expect(manifest.atlases.length).toBeLessThanOrEqual(MAX_ATLASES);
     const placements = manifest.atlases.reduce((n, a) => n + a.species.length, 0);
     const duplicated = placements - SPECIES_COUNT;
     expect(duplicated).toBeGreaterThanOrEqual(0);
@@ -160,7 +166,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
   describe.skipIf(!existsSync(REPORT_PATH))('qa-report.json', () => {
     const report = JSON.parse(readFileSync(REPORT_PATH, 'utf8')) as QaReport;
 
-    it('has 0 actionable flags over the 278 sprites, lists the excluded alternate-style files, and no unresolved flag kinds', () => {
+    it('has 0 actionable flags over the 300 sprites, lists the excluded alternate-style files, and no unresolved flag kinds', () => {
       expect(report.total).toBe(2 * SPECIES_COUNT);
       expect(report.actionable).toBe(0);
       for (const e of report.flagged) expect(e.actionable, `${e.species}/${e.side}`).toEqual([]);

@@ -158,6 +158,11 @@
   color: var(--accent);
 }
 
+/* Majin / Tenjin: the form mark sits after the badges (at the row's end when there are none) */
+.formEnd {
+  margin-left: auto;
+}
+
 /* ---- tile (72 px sprite) ---- */
 
 .tile {
@@ -202,6 +207,13 @@
   inline-size: 20px;
   block-size: 20px;
   background: var(--glass);
+}
+
+/* Majin / Tenjin: the form mark in the tile's top-right corner (the badges hold the top-left) */
+.tile .tileForm {
+  position: absolute;
+  inset-block-start: var(--s-2);
+  inset-inline-end: var(--s-2);
 }
 
 /* ---- showcase ---- */

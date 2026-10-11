@@ -33,13 +33,13 @@ describe('§10.7.5 VFX id table', () => {
     expect(colours('type_fire', 'Water')).toBe(colours('type_fire', null));
   });
 
-  it('exactly 19 + 4 + 6 + 5 + 4 + 4 + 5 = 47 unique ids + the Phase D4 shiny burst + the rage-form burst + 14 move styles = 63, the SPEC union, one recipe each', () => {
+  it('exactly 19 + 4 + 6 + 5 + 4 + 4 + 5 = 47 unique ids + the Phase D4 shiny burst + the two form bursts (Majin / rage, Tenjin) + 14 move styles = 64, the SPEC union, one recipe each', () => {
     expect(VFX_TYPE_IDS).toHaveLength(19);
     expect(VFX_TYPE_IDS).toEqual(TYPE_NAMES.map((t) => `type_${t.toLowerCase()}`));
     expect([VFX_IMPACT_IDS, VFX_STATUS_IDS, VFX_STAT_IDS, VFX_WEATHER_IDS, VFX_ORB_IDS, VFX_MISC_IDS].map((g) => g.length)).toEqual([4, 6, 5, 4, 4, 5]);
-    expect(VFX_IDS).toHaveLength(63);
-    expect(new Set(VFX_IDS).size).toBe(63);
-    expect(VFX_IDS.slice(-16, -14)).toEqual(['shiny_sparkle', 'form_rage']);
+    expect(VFX_IDS).toHaveLength(64);
+    expect(new Set(VFX_IDS).size).toBe(64);
+    expect(VFX_IDS.slice(-17, -14)).toEqual(['shiny_sparkle', 'form_rage', 'form_tenjin']);
     expect(VFX_STYLE_IDS).toEqual(MOVE_STYLES.map((m) => `style_${m}`));
     expect(VFX_IDS.slice(-14)).toEqual(VFX_STYLE_IDS);
     expect(Object.keys(VFX_TABLE).sort()).toEqual([...VFX_IDS].sort());

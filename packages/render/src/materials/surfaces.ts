@@ -28,6 +28,12 @@ export interface SurfaceExtras {
   readonly emissiveFromAlbedo?: boolean;
   /** Double-sided leaf cards: subsurface tint on the backface via `frontFacing` (§10.2.2 grove_leaf_canopy). */
   readonly backfaceTint?: string;
+  /**
+   * M3 review fixes (audit M3-all-10 / R-all-5): a linear albedo multiplier applied once the baked set is bound, for the
+   * high-albedo ground and stone that clipped under the key (snow, salt sand, marble, pale plaza stone, chalk). The
+   * baked maps and the harvest-level vertex colour are unchanged.
+   */
+  readonly albedoCal?: number;
 }
 
 export const SURFACE_EXTRAS: Readonly<Partial<Record<SurfaceId, SurfaceExtras>>> = Object.freeze({
@@ -38,9 +44,19 @@ export const SURFACE_EXTRAS: Readonly<Partial<Record<SurfaceId, SurfaceExtras>>>
   fountain_water: { transmission: 0.6 },
   unmade_stone: { alwaysHarvested: true },
   stained_glass: { emissiveFromAlbedo: true },
+  // M3 review fixes (R-cinderhold-3): the lava glows through its crust cracks (the albedo's orange veins), not as one flat disc
+  lava_glow: { emissiveFromAlbedo: true },
   grove_leaf_canopy: { backfaceTint: '#9bbf4a' },
   willow_leaf: { backfaceTint: '#9fb865' },
   pine_needle: { backfaceTint: '#7c9a52' },
+  // M3 review fixes: high-albedo ground and stone (audit M3-all-10 / R-all-5 / R-all-4)
+  snow: { albedoCal: 0.84 },
+  salt_sand: { albedoCal: 0.88 },
+  sky_marble: { albedoCal: 0.82 },
+  cloud_stone: { albedoCal: 0.86 },
+  bone_chalk: { albedoCal: 0.86 },
+  plaza_pale_stone: { albedoCal: 0.84 },
+  sun_marble: { albedoCal: 0.86 },
 });
 
 /** The 6 shared rows every zone may bind (§10.2.2). */

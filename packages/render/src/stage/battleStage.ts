@@ -29,10 +29,11 @@ import type { EffectsFlags, HarvestLevel, WeatherKind } from '../descriptors.js'
 import type { MaterialLibrary } from '../materials/library.js';
 import type { SurfaceId } from '../materials/surfaces.js';
 import { paintSurfaceColor } from '../materials/library.js';
-import { BATTLER_SEPARATION, INSPECT_AIM, INSPECT_OFFSET, RING_DIAMETER, SLOT_SPACING, battlerSlot, forwardOfYaw } from '../camera/battle.js';
+import { BATTLER_SEPARATION, INSPECT_AIM, INSPECT_OFFSET, RING_DIAMETER, SLOT_SPACING, TRAINER_SLOT_M, battlerSlot, forwardOfYaw, trainerSlot } from '../camera/battle.js';
 import type { DioramaRig } from '../camera/rig.js';
 import type { BillboardPool, CreatureBillboard } from '../sprites/billboard.js';
 import { TYPE_COLORS, hexToLinearInto, validateTypeColorTable } from '../sprites/typeColors.js';
+import { AuraSystem } from './aura.js';
 import type { CharacterPool } from './actors.js';
 import { EvolutionSequence } from './evolution.js';
 import { isVfxId, type VfxAnchor, type VfxSystem } from './vfx.js';
@@ -62,8 +63,14 @@ export const STAGE = Object.freeze({
    * their crowns, H11).
    */
   coverHideM: 4.9, coverOuterM: 6.6, propHideM: 5.0,
-  /** Ground samples on the ring's rim the arena is seated on (the highest wins, capped by the skirt). */
-  seatSamples: 12,
+  /**
+   * Ground samples on the ring's rim and the curb's outer edge the arena is seated on. With a terrain pad (the zone is
+   * loaded) the seat is the lowest that the 0.45 m skirt still closes on the downhill side (never above the highest
+   * sample) and the pad cuts everything above it; without one the highest sample wins, capped by the skirt.
+   */
+  seatSamples: 24,
+  /** M3 review R-forgewall-2: the terrain above the seat is levelled inside `padInnerM` (ring, curb, posts, pylons) and eases back by `padOuterM`. */
+  padInnerM: 5.0, padOuterM: 7.0,
   /** Arenas whose ground cover is masked (main + 3 spectator arenas; 2 mask slots each, slots 0..7). */
   coverArenas: 4,
   /**
@@ -74,12 +81,12 @@ export const STAGE = Object.freeze({
   /** Warm-up: the beacons render their shadow maps for the first N frames (the boot frame and the warm-group frame), from here. */
   warmShadowFrames: 2, warmShadowHeightM: 4, warmShadowBackM: 4,
   /**
-   * Phase A halls (`dress(…, hall)`): the trainers stand this far either side of the centre along the battle axis
-   * (client `TRAINER_BACK_M` = BATTLER_SEPARATION / 2 + 1.7, content `ARENA_SLOT_M`); everything keeps `hallMarginM`
+   * Phase A halls (`dress(…, hall)`): the trainers stand this far from the centre (camera/battle.ts `trainerSlot`:
+   * `TRAINER_SIDE_DEG` off the battle axis since the M3 review R-all-1; content `ARENA_SLOT_M`); everything keeps `hallMarginM`
    * (+ its own radius) from the hall's floor edge. The rope posts may pull in to `postMinScale` of their radius, the
    * pylons to `pylonMinRadius`, the spectators to `spectatorMinRadius`; what still does not fit is not shown.
    */
-  trainerSlotM: 4.45, trainerR: 0.4, ringFitR: 4.0, hallMarginM: 0.1,
+  trainerSlotM: TRAINER_SLOT_M, trainerR: 0.4, ringFitR: 4.0, hallMarginM: 0.1,
   postMinScale: 0.92, postR: 0.1, pylonMinRadius: 4.05, pylonR: 0.3, spectatorMinRadius: 4.9, spectatorR: 0.45, fitStep: 0.1,
   /**
    * Phase D6: the foot disc of a battler (the contact-shadow decal of a size-1 creature, `BILLBOARD.decalSizeM` / 2).
@@ -96,6 +103,8 @@ export interface GroundCoverMask {
 }
 /** Static props inside a ring (the zone's merged prop meshes; stage/propCutaway.ts, M2-battle-8). */
 export interface PropCutawayLike { hide(slot: number, x: number, z: number, r: number): void; restore(slot: number): void }
+/** The level pad under a ring (the zone's terrain chunks; stage/terrainPad.ts, M3 review R-forgewall-2). */
+export interface TerrainPadLike { level(slot: number, x: number, z: number, y: number, inner: number, outer: number): void; restore(slot: number): void }
 /** `COVER` bits (zone/scatter.ts), repeated so the stage does not import the zone builder. */
 const COVER_GROUND = 1; const COVER_SMALL = 2; const COVER_LARGE = 4;
 /** Mask slots owned by the stage (the rest are the creature reveal's, stage/groundCover.ts). */
@@ -173,6 +182,7 @@ const DEG = Math.PI / 180;
 function refKey(r: BattlerRef): string { return `${r.side}:${r.slot}`; }
 
 const _fitOut: [number, number] = [0, 0];
+const _slotOut: [number, number] = [0, 0];
 
 /** Whether a disc of radius `r` at world (x, z) lies on the hall's floor rectangle. */
 export function inHall(h: HallBounds, x: number, z: number, r: number): boolean {
@@ -183,8 +193,8 @@ export function inHall(h: HallBounds, x: number, z: number, r: number): boolean 
 }
 
 /**
- * Phase A: the arena centre nearest (x, z) that keeps the ring (+ curb) and both trainer slots (±`trainerSlotM` along
- * the battle axis of diorama yaw `yaw`) on the hall floor; per hall axis the feasible interval is intersected, and an
+ * Phase A: the arena centre nearest (x, z) that keeps the ring (+ curb) and both trainer slots (`trainerSlot` for the
+ * battle axis of diorama yaw `yaw`, point-symmetric about the centre) on the hall floor; per hall axis the feasible interval is intersected, and an
  * axis too short for all of them takes the interval's middle. World (x, z) into `out`.
  * Phase D6: the four doubles battler foot discs (±BATTLER_SEPARATION / 2 along the axis, ±SLOT_SPACING / 2 across it,
  * radius `battlerFootR`) are part of the need list. They lie inside the ring-fit disc (2.89 + 0.55 < 4.0), so they
@@ -195,7 +205,9 @@ export function fitCentre(h: HallBounds, x: number, z: number, yaw: number, out:
   const dx = x - h.x; const dz = z - h.z;
   let lx = c * dx - s * dz; let lz = s * dx + c * dz;
   const fx = -Math.sin(yaw); const fz = -Math.cos(yaw);                       // the battle axis (world) → hall local
-  const ox = (c * fx - s * fz) * STAGE.trainerSlotM; const oz = (s * fx + c * fz) * STAGE.trainerSlotM;
+  // the two trainer slots (point-symmetric about the centre), world offsets → hall local
+  const t = trainerSlot(0, 0, fx, fz, 0, _slotOut);
+  const ox = c * t[0] - s * t[1]; const oz = s * t[0] + c * t[1];
   const m = STAGE.hallMarginM;
   const need: (readonly [number, number, number])[] = [[0, 0, STAGE.ringFitR + m], [ox, oz, STAGE.trainerR + m], [-ox, -oz, STAGE.trainerR + m]];
   // Phase D6: the doubles battlers' feet (the battle axis and its right-hand normal, in hall local)
@@ -309,6 +321,8 @@ function ropeGeometry(height: number): BufferGeometry {
 
 export class Stage implements BattleStage {
   readonly root = new Group();
+  /** Battle-form auras (`SpriteDescriptor.aura`): flames, a floor sigil and a rim glow per battler holding a form. */
+  readonly aura: AuraSystem;
   readonly beaconLights: readonly SpotLight[];
   private readonly beaconTargets: readonly Object3D[];
   private readonly housingColor: UniformNode<'vec3', Vector3>;
@@ -326,6 +340,7 @@ export class Stage implements BattleStage {
   private ground: StageGround | null = null;
   private cover: GroundCoverMask | null = null;
   private cut: PropCutawayLike | null = null;
+  private pad: TerrainPadLike | null = null;
   private hall: HallBounds | null = null;
   private beaconLevel = 0;         // 0..1 fade
   private beaconTarget = 0;
@@ -339,6 +354,7 @@ export class Stage implements BattleStage {
   constructor(private readonly d: StageDeps) {
     this.root.name = 'ewa:arena';
     d.parent.add(this.root);
+    this.aura = new AuraSystem({ parent: this.root, clock: d.vfx.clock, sizeScale: d.vfx.sizeScale });
     this.geo = {
       ring: new Map(), curb: curbGeometry(), post: postGeometry(), pylon: pylonGeometry(), housing: housingGeometry(), cap: capGeometry(),
       ropes: STAGE.ropeHeights.map((h) => ropeGeometry(h)),
@@ -391,10 +407,11 @@ export class Stage implements BattleStage {
    * The loaded zone's ground-cover mask (null when no zone is loaded). A dressed arena hides the grass and small props
    * inside its ring through it — per-instance scale in the zone's instance buffers, never a rebuild (T1, Pillar 7).
    */
-  setGroundCover(m: GroundCoverMask | null, cut: PropCutawayLike | null = null): void {
-    if (m === this.cover && cut === this.cut) return;
+  setGroundCover(m: GroundCoverMask | null, cut: PropCutawayLike | null = null, pad: TerrainPadLike | null = null): void {
+    if (m === this.cover && cut === this.cut && pad === this.pad) return;
     this.cover = m;
     this.cut = cut;
+    this.pad = pad;
     if (m === null) return;
     this.coverArena(this.main, this.main.rise > 0 || this.main.dressed);
     this.spectatorArenas.forEach((a) => this.coverArena(a, a.rise > 0 || a.dressed));
@@ -487,12 +504,15 @@ export class Stage implements BattleStage {
     }
   }
 
-  /** Where trainer `side` stands (the client's `TRAINER_BACK_M` behind its battler on the battle axis): world xz into `out`, y = the arena centre's. */
+  /**
+   * Where trainer `side` stands (camera/battle.ts `trainerSlot`: beside and behind its battler, out of the battle
+   * camera's ray to it — M3 review R-all-1): world xz into `out`, y = the arena centre's.
+   */
   trainerSpot(side: 0 | 1, out: Vector3): Vector3 {
     forwardOfYaw(this.d.rig.dioramaYaw, _fwd);
-    const s = side === 0 ? -1 : 1;
     const c = this.main.center;
-    return out.set(c.x + _fwd.x * s * STAGE.trainerSlotM, c.y, c.z + _fwd.z * s * STAGE.trainerSlotM);
+    const t = trainerSlot(c.x, c.z, _fwd.x, _fwd.z, side, _slotOut);
+    return out.set(t[0], c.y, t[1]);
   }
 
   /** The hall the main arena was last dressed in (null = open ground). */
@@ -520,6 +540,7 @@ export class Stage implements BattleStage {
       for (const id of this.spectators) this.d.actors.despawn(id);
       this.spectators.length = 0;
       this.d.vfx.clear();
+      this.aura.clear();
       return;
     }
     for (const a of this.spectatorArenas) if (a.dressed) this.sinkArena(a, ms);
@@ -531,11 +552,13 @@ export class Stage implements BattleStage {
     const have = this.battlers.get(key);
     if (desc === null) {
       if (have !== undefined) { have.bb.dispose(); this.battlers.delete(key); this.removeFromList(have); this.layoutSide(ref.side); }
+      this.aura.set(key, null, null);
       return;
     }
     if (have !== undefined && have.id === desc.id && sameSprite(have.bb.descriptor, desc)) {
       // the same creature (the client rebuilds descriptor objects): keep the billboard, refresh the palette
       have.bb.setVariant(desc.variant, desc.isAlpha, desc.isShiny === true);
+      this.aura.set(key, have.bb, desc.aura ?? null);
       return;
     }
     if (have !== undefined) { have.bb.dispose(); this.removeFromList(have); }
@@ -547,6 +570,7 @@ export class Stage implements BattleStage {
     this.battlers.set(key, b);
     this.battlerList.push(b);
     this.layoutSide(ref.side);
+    this.aura.set(key, bb, desc.aura ?? null);
   }
 
   setPose(ref: BattlerRef, pose: BattlerPose, ms: number): void {
@@ -570,6 +594,7 @@ export class Stage implements BattleStage {
     if (b === undefined) return;
     b.bb.setPose('faint', ms);
     b.hpFrac = 0;
+    this.aura.set(refKey(ref), null, null);   // a fainted battler's form is over
     this.d.rig.setCueTarget('ko', b.bb.feet(_v));
   }
 
@@ -599,6 +624,7 @@ export class Stage implements BattleStage {
       b.hpFrac = e.hpFrac;
       b.bb.setPose('idle', 0);
       b.bb.setFaint(e.hpFrac <= 0 ? 1 : 0);
+      if (e.hpFrac <= 0) this.aura.set(refKey(e.ref), null, null);
     }
     this.d.vfx.clear();
   }
@@ -685,6 +711,7 @@ export class Stage implements BattleStage {
     if (this.disposed) return;
     this.cancelEvolution();
     this.disposed = true;
+    this.aura.dispose();
     for (const b of this.battlerList) b.bb.dispose();
     this.battlers.clear(); this.battlerList.length = 0;
     this.inspected?.dispose(); this.inspected = null;
@@ -721,6 +748,7 @@ export class Stage implements BattleStage {
       if (this.beaconLevel <= 0 && this.beaconTarget === 0) L.shadow.autoUpdate = this.warmShadowFrames > 0;
     }
     if (this.warmShadowFrames > 0) this.warmShadowFrames--;
+    this.aura.update(dtScaledMs, dtRealMs, this.d.camera);
     (this.housingMaterial.userData.harvest as UniformNode<'float', number>).value = harvest;
     // the evolution sequence borrows beacon 0 (written after the arena's own beacon values) and restores it at its end
     if (this.evo !== null) {
@@ -879,15 +907,20 @@ export class Stage implements BattleStage {
   }
 
   private placeArena(a: Arena, x: number, z: number, terrain: Terrain): void {
-    // seated on the highest ground under its rim (within the skirt): on a slope the uphill half no longer disappears
-    // under the terrain (seen in the Part 5 sandbox shots); the downhill side is closed by the 0.45 m skirt
-    let y = this.groundAt(x, z);
-    const c = y;
+    // seated against the slope: the ring and the curb's outer edge are sampled. With the terrain pad (a zone is loaded)
+    // the seat is the lowest the 0.45 m skirt still closes downhill and the pad levels the uphill side to it (M3 review
+    // R-forgewall-2: capped at centre + skirt, the uphill terrain rose through the ring floor). Without a pad the
+    // highest sample wins, capped by the skirt (the Part 5 rule).
+    const c = this.groundAt(x, z);
+    let hi = c; let lo = c;
     for (let k = 0; k < STAGE.seatSamples; k++) {
       const ang = (k / STAGE.seatSamples) * Math.PI * 2;
-      y = Math.max(y, this.groundAt(x + Math.cos(ang) * STAGE.ringRadius, z + Math.sin(ang) * STAGE.ringRadius));
+      for (const r of [STAGE.ringRadius, STAGE.curbOuter]) {
+        const g = this.groundAt(x + Math.cos(ang) * r, z + Math.sin(ang) * r);
+        hi = Math.max(hi, g); lo = Math.min(lo, g);
+      }
     }
-    y = Math.min(y, c + STAGE.ringSkirt - 0.05);
+    const y = this.pad !== null ? Math.min(hi, lo + STAGE.ringSkirt - 0.05) : Math.min(hi, c + STAGE.ringSkirt - 0.05);
     a.center.set(x, y, z);
     const surface = TERRAIN_SURFACE[terrain];
     a.ring.geometry = this.ringFor(surface);
@@ -932,8 +965,9 @@ export class Stage implements BattleStage {
     const i = a === this.main ? 0 : this.spectatorArenas.indexOf(a) + 1;
     if (i < 0 || i >= STAGE.coverArenas) return;
     const s = i * 2;
-    if (!on) { m.clear(s); m.clear(s + 1); this.cut?.restore(i); return; }
+    if (!on) { m.clear(s); m.clear(s + 1); this.cut?.restore(i); this.pad?.restore(i); return; }
     this.cut?.hide(i, a.center.x, a.center.z, STAGE.propHideM);
+    this.pad?.level(i, a.center.x, a.center.z, a.center.y, STAGE.padInnerM, STAGE.padOuterM);
     m.set(s, a.center.x, a.center.z, STAGE.coverHideM, STAGE.coverOuterM, 0, COVER_GROUND);
     m.set(s + 1, a.center.x, a.center.z, STAGE.propHideM, STAGE.propHideM + 0.05, 0, COVER_SMALL | COVER_LARGE);
   }

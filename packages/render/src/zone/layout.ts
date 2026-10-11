@@ -424,9 +424,9 @@ export interface BiomeLightStyle {
 /** The biome light table (§20.4.4 "per the biome's light table"). */
 export const BIOME_LIGHTS: Readonly<Record<string, BiomeLightStyle>> = {
   grove: { kind: 'lantern', generator: 'lantern', color: '#ffb35c', intensity: 40, range: 12, flicker: null },
-  cinder: { kind: 'brazier', generator: 'brazier', color: '#ff8a3c', intensity: 22, range: 10, flicker: { amplitude: 0.12, hz: 5 } },
+  cinder: { kind: 'brazier', generator: 'brazier', color: '#ff8a3c', intensity: 30, range: 11, flicker: { amplitude: 0.12, hz: 5 } },   // M3 review fixes (Cinderhold's night murk): was 22 / 10 m
   salt: { kind: 'lantern', generator: 'lantern', color: '#ffd6a0', intensity: 40, range: 12, flicker: null },
-  storm: { kind: 'crystal', generator: 'crystal', color: '#9fd0ff', intensity: 18, range: 10, flicker: null },
+  storm: { kind: 'crystal', generator: 'crystal', color: '#b4dcff', intensity: 38, range: 12, flicker: null },   // M3 review fixes (Stormrook at night): was 18 / 10 m, one cold pool per lamp
   marrow: { kind: 'lamp', generator: 'lantern', color: '#ffc766', intensity: 40, range: 12, flicker: null },
   vesper: { kind: 'candle', generator: 'candle', color: '#ffd08a', intensity: 12, range: 8, flicker: { amplitude: 0.1, hz: 7 } },
   forge: { kind: 'brazier', generator: 'brazier', color: '#ff7a2a', intensity: 22, range: 10, flicker: { amplitude: 0.12, hz: 5 } },

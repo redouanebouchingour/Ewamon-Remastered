@@ -29,7 +29,7 @@ import { abilityHooks, hooksOfKind } from './abilities';
 import { accuracyCheck } from './accuracy';
 import { calcDamageFor, damageStop } from './damage';
 import { effectTargetsDefender } from './effects';
-import { formMoveId } from './forms';
+import { formMoveId, transformError } from './forms';
 import {
   at,
   changeStage,
@@ -45,6 +45,7 @@ import {
   ref,
   rollPercent,
   switchOutAt,
+  transformAt,
   tryApplyStatus,
 } from './engine';
 import type { Ctx, MSide } from './engine';
@@ -235,6 +236,7 @@ export function validateDoublesAction(
       if (err !== null) return err;
       const t = action.target;
       if (t !== undefined && (!isFieldRef(t) || (t.side === side && t.pos === pos))) return 'badTarget';
+      if (action.transform === true && content !== null) return transformError(s, b, content.species(b.creature.speciesId));
       return null;
     }
     case 'switch':
@@ -271,6 +273,8 @@ export function validateSideChoice(
   const x = pair[0];
   const y = pair[1];
   if (x !== null && y !== null && x.kind === 'switch' && y.kind === 'switch' && x.to === y.to) return { pos: 1, code: 'switchToActive' };
+  // Majin / Tenjin: one transformation per side per battle — never two in one turn
+  if (x !== null && y !== null && x.kind === 'move' && y.kind === 'move' && x.transform === true && y.transform === true) return { pos: 1, code: 'cannotTransform' };
   return null;
 }
 
@@ -534,6 +538,13 @@ export function resolveDoublesTurn(state: BattleState, actions: readonly [SideCh
       return finish(ctx);
     }
   }
+
+  // 4b. Majin / Tenjin: transformations happen before any move (faster first), then the move runs in the new form
+  const transformers = actorsOf('move').filter((actor) => {
+    const a = acts[actor.side][actor.pos];
+    return a !== null && a.kind === 'move' && a.transform === true;
+  }).map((actor) => ({ ...actor, priority: 0 }));
+  for (const actor of orderActors(ctx, transformers)) transformAt(ctx, posRef(ctx, actor.side, actor.pos));
 
   // 5. Moves
   for (const actor of orderActors(ctx, actorsOf('move'))) {

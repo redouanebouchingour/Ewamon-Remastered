@@ -17,6 +17,7 @@ import { BattleMenu } from './BattleMenu';
 import { BattleResultCard } from './BattleResultCard';
 import { RaidPanel } from './RaidPanel';
 import { RaidSummaryCard } from './RaidSummaryCard';
+import { BondCinematic } from './BondCinematic';
 import { SignatureCinematic } from './SignatureCinematic';
 import { setBattlePanelTop } from './panelInset';
 
@@ -63,6 +64,7 @@ export function BattleOverlay() {
       <BattleBanner />
       <RaidPanel />
       <SignatureCinematic />
+      <BondCinematic />
       <section ref={ref} className={s.overlay} data-testid="battleoverlay" aria-label="Battle">
         <BattleBlocker />
         <p className={s.turn}>{turnLabel}</p>

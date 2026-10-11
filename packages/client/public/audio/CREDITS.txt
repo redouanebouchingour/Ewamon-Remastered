@@ -364,6 +364,10 @@ Impact Sounds: impactBell_heavy_003 - Kenney (kenney.nl)
   https://kenney.nl/assets/impact-sounds
   Licence: CC0-1.0
 
+Impact Sounds: impactBell_heavy_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
 Impact Sounds: impactGeneric_light_000 - Kenney (kenney.nl)
   https://kenney.nl/assets/impact-sounds
   Licence: CC0-1.0
@@ -405,6 +409,10 @@ Impact Sounds: impactGlass_light_003 - Kenney (kenney.nl)
   Licence: CC0-1.0
 
 Impact Sounds: impactGlass_light_004 - Kenney (kenney.nl)
+  https://kenney.nl/assets/impact-sounds
+  Licence: CC0-1.0
+
+Impact Sounds: impactGlass_medium_003 - Kenney (kenney.nl)
   https://kenney.nl/assets/impact-sounds
   Licence: CC0-1.0
 
@@ -1001,6 +1009,10 @@ Water Waves: wave_04_cc0-11505__transitking__wavesound - qubodup (from transitki
   Licence: CC0-1.0
 
 100 CC0 metal and wood SFX: wood_cracking_01 - rubberduck
+  https://opengameart.org/content/100-cc0-metal-and-wood-sfx
+  Licence: CC0-1.0
+
+100 CC0 metal and wood SFX: wood_cracking_02 - rubberduck
   https://opengameart.org/content/100-cc0-metal-and-wood-sfx
   Licence: CC0-1.0
 

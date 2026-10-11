@@ -111,7 +111,7 @@
       "urlFallback": "/audio/ambience/vesper.m4a?v=38fd9649"
     }
   },
-  "builtAt": "2026-10-08T20:49:21.898Z",
+  "builtAt": "2026-10-11T18:24:18.531Z",
   "sfx": {
     "anvil_strike": {
       "bus": "sfx",
@@ -146,6 +146,34 @@
         }
       ],
       "gainDb": -8,
+      "maxConcurrent": 1
+    },
+    "bond_majin": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 34240,
+          "durationSec": 3.988,
+          "hash": "1334792f46726e613d2ce541fac9c4ace1f305aced3e5e571e4efc77dfebabb4",
+          "url": "/audio/sfx/bond_majin_1.webm?v=1334792f",
+          "urlFallback": "/audio/sfx/bond_majin_1.m4a?v=1334792f"
+        }
+      ],
+      "gainDb": 6,
+      "maxConcurrent": 1
+    },
+    "bond_tenjin": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 34207,
+          "durationSec": 3.988,
+          "hash": "dbf664af8cd3407e7467511565a69b13add0031da7b3751747177a02b3a11cd4",
+          "url": "/audio/sfx/bond_tenjin_1.webm?v=dbf664af",
+          "urlFallback": "/audio/sfx/bond_tenjin_1.m4a?v=dbf664af"
+        }
+      ],
+      "gainDb": 6,
       "maxConcurrent": 1
     },
     "cry_bug": {

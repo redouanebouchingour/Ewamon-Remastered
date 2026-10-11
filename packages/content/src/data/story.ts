@@ -359,9 +359,13 @@ export const STORY: readonly StoryBeat[] = [
       '(Sable takes the brass token off and lays it on the open ledger, on the Yr 38 line.)',
       "I read it. That's all. I read it.",
       "…Wynn's people can pay for a bed. She told me at Mirevale and I laughed at her. Tell her I've stopped laughing.",
+      '(Sable unstraps the field lens from their wrist and holds it out.)',
+      "Junior Assessors get the token and the lens. The token goes back. The lens… it only knows how to take things apart. Point it at something that won't come apart.",
+      "When one of yours is hurt and looks through it, it sees itself being unsaid. A held one won't take that. You'll see. Below half, once a fight.",
     ],
     harvest: null,
     starter: false,
+    grant: { majin_band: 1 },
   },
   {
     id: 'escorted_out',
@@ -373,6 +377,7 @@ export const STORY: readonly StoryBeat[] = [
     lines: [
       "You've read it. That's more than most manage. Now you leave, because that's the procedure, and I'm the procedure.",
       "Nothing personal. It never is. That's rather the point of an office.",
+      "(Her Toxshade's lens-light catches yours.) Procedure. Every Assessor carries one. You were never supposed to be holding one too.",
     ],
     battle: { trainerId: 'reeve_observatory' },
     after: [
@@ -396,9 +401,15 @@ export const STORY: readonly StoryBeat[] = [
       'The Assessor arrives at noon with a team. Stand the gate with me. Not for the badge. For the record — so someone with a device saw a town say no.',
     ],
     battle: null,
-    after: [],
+    after: [
+      "(Rell's quartermaster hands over a parcel from Mirevale: a letter, and a gold band.)",
+      "Wynn: Sable told me what they gave you. I'm not angry. I'm afraid of it, which is different.",
+      "Wynn: This was the twelfth Attestor's spare lens. It records. Pointed at one of yours, it shows them they're held somewhere else, and a memory that knows that stops being afraid. At or above half, once a fight.",
+      "Wynn: Sable's lens shows them what being unmade would be. Mine shows them they won't be. Use whichever you can live with. — W.",
+    ],
     harvest: null,
     starter: false,
+    grant: { tenjin_band: 1 },
   },
   {
     id: 'siege_of_forgewall',

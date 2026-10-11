@@ -1,0 +1,953 @@
+/*
+ * The bond cinematic (bond.ts, BondCinematic.tsx). One clock from the cue's mount, in absolute ms:
+ *   0–500        letterbox + dim; the trainer's band and the creature come in on two slanted slabs
+ *   --tb1…--tb5  the trainer's heartbeats (lens glow, ripple, a spark down the thread)
+ *   --cb1…--cb5  the creature's heartbeats (portrait thump, ripple); both sets close in and meet at --sync
+ *   --sync       SYNC 100 %; the ring forms (Majin) / is closing (Tenjin)
+ *   --lock       the answer: strike cracks + crimson cracks + the ring breaks + REFUSED (Majin) / cracks mended with gold
+ *                seams + the ring closes + HELD (Tenjin); the portrait becomes the form
+ *   --burst      everything breaks away over the 3D form burst; gone by --total
+ * Custom properties from bondVars (cssVars): the ms marks above and --accent / --deep / --hot (the band's palette).
+ */
+
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-topbar);
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+.root > div,
+.root > svg {
+  position: absolute;
+  inset: 0;
+}
+
+.root > svg {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+/* ---- the frame ------------------------------------------------------------------------------------------------ */
+
+.dim {
+  opacity: 0;
+  background: radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--deep) 70%, transparent), rgb(5 3 6 / 0.9) 72%);
+  animation:
+    fade-in 220ms linear both,
+    fade-out 260ms linear var(--burst) forwards;
+}
+
+/* the screen's edges throb on the last beats */
+.pulse {
+  opacity: 0;
+  background: radial-gradient(ellipse at 50% 50%, transparent 45%, color-mix(in srgb, var(--accent) 55%, transparent) 100%);
+  mix-blend-mode: screen;
+  animation:
+    edge-beat 360ms ease-out var(--tb3),
+    edge-beat 360ms ease-out var(--tb4),
+    edge-beat 420ms ease-out var(--tb5),
+    edge-beat 520ms ease-out var(--lock);
+}
+
+.root > .bar {
+  inset: auto 0;
+  block-size: 7vh;
+  background: #050305;
+}
+
+.root > .top {
+  inset-block-start: 0;
+  transform: translateY(-100%);
+  animation:
+    bar-top-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    bar-top-out 300ms ease-in var(--burst) forwards;
+}
+
+.root > .bot {
+  inset-block-end: 0;
+  transform: translateY(100%);
+  animation:
+    bar-bot-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    bar-bot-out 300ms ease-in var(--burst) forwards;
+}
+
+.flash {
+  opacity: 0;
+  background: color-mix(in srgb, var(--hot) 30%, #fff);
+  mix-blend-mode: screen;
+  animation: flash 220ms linear calc(var(--lock) - 10ms) both;
+}
+
+/* ---- the two slabs ---------------------------------------------------------------------------------------------- */
+
+.root > .panel {
+  inset: auto;
+  inline-size: 66vw;
+  block-size: 24vh;
+}
+
+.root > .low {
+  inset-inline-start: -4vw;
+  inset-block-start: 64vh;
+  transform: translateX(-110%) rotate(-7deg);
+  animation:
+    low-in 380ms cubic-bezier(0.15, 0.85, 0.25, 1) 120ms both,
+    low-out-break 340ms cubic-bezier(0.5, 0, 0.9, 0.4) var(--burst) forwards;
+}
+
+.root > .high {
+  inset-inline-end: -4vw;
+  inset-block-start: 10vh;
+  transform: translateX(110%) rotate(-7deg);
+  animation:
+    high-in 380ms cubic-bezier(0.15, 0.85, 0.25, 1) 260ms both,
+    high-out-break 340ms cubic-bezier(0.5, 0, 0.9, 0.4) var(--burst) forwards;
+}
+
+/* Tenjin: the slabs rise and burn white instead of breaking off */
+.tenjin > .low {
+  animation:
+    low-in 380ms cubic-bezier(0.15, 0.85, 0.25, 1) 120ms both,
+    rise-out 340ms cubic-bezier(0.5, 0, 0.9, 0.4) var(--burst) forwards;
+}
+
+.tenjin > .high {
+  animation:
+    high-in 380ms cubic-bezier(0.15, 0.85, 0.25, 1) 260ms both,
+    rise-out 340ms cubic-bezier(0.5, 0, 0.9, 0.4) var(--burst) forwards;
+}
+
+.slab {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: linear-gradient(90deg, var(--bg-0) 0%, #17131a 55%, color-mix(in srgb, var(--deep) 85%, #000) 100%);
+  border-block: 0.5vh solid var(--accent);
+  box-shadow: 0 0 4vh color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.low .slab {
+  clip-path: polygon(0 0, 100% 0, 93% 100%, 0 100%);
+}
+
+.high .slab {
+  clip-path: polygon(7% 0, 100% 0, 100% 100%, 0 100%);
+  background: linear-gradient(270deg, var(--bg-0) 0%, #17131a 55%, color-mix(in srgb, var(--deep) 85%, #000) 100%);
+}
+
+.speed {
+  position: absolute;
+  inset: -10% -20%;
+  background: repeating-linear-gradient(100deg, transparent 0 2.2vw, rgb(255 255 255 / 0.05) 2.2vw 2.4vw, transparent 2.4vw 5.1vw, color-mix(in srgb, var(--accent) 22%, transparent) 5.1vw 5.25vw);
+  animation: speed 500ms linear infinite;
+}
+
+.high .speed {
+  animation-direction: reverse;
+}
+
+.art {
+  position: absolute;
+  inset-block-start: 50%;
+  inline-size: min(36vh, 30vw);
+  block-size: min(36vh, 30vw);
+  transform: translate(-50%, -50%) rotate(7deg);
+}
+
+.low .art {
+  inset-inline-start: 26vw;
+}
+
+.high .art {
+  inset-inline-start: 38vw;
+}
+
+.label {
+  position: absolute;
+  inset-block-start: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  inline-size: 21vw;
+  transform: translateY(-50%) rotate(7deg);
+  opacity: 0;
+  animation: label-in 300ms cubic-bezier(0.2, 0.8, 0.2, 1) 420ms both;
+}
+
+.low .label {
+  inset-inline-start: 43vw;
+}
+
+.high .label {
+  inset-inline-start: 2vw;
+  align-items: flex-end;
+  text-align: end;
+}
+
+.kicker {
+  color: var(--accent);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.who {
+  overflow: hidden;
+  max-inline-size: 100%;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-display);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 0.95;
+  text-overflow: ellipsis;
+  text-shadow: 0.4vh 0.4vh 0 var(--deep), 0 0 2vh color-mix(in srgb, var(--accent) 45%, transparent);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ---- the trainer's band ----------------------------------------------------------------------------------------- */
+
+.bandArt {
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: visible;
+}
+
+.arm {
+  stroke: color-mix(in srgb, var(--accent) 55%, transparent);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.knuckles {
+  fill: none;
+  stroke: #050305;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.cuff {
+  stroke: #050305;
+  stroke-width: 3;
+}
+
+.engrave {
+  fill: none;
+  stroke: #7a5414;
+  stroke-width: 2;
+}
+
+.rivet {
+  fill: #9a979f;
+}
+
+.housing {
+  stroke: #050305;
+  stroke-width: 2;
+}
+
+.lens {
+  stroke: #050305;
+  stroke-width: 2;
+}
+
+.lensSigil {
+  fill: none;
+  stroke: color-mix(in srgb, var(--deep) 80%, #000);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.tenjin .lensSigil {
+  stroke: #8a6516;
+  stroke-width: 1.6;
+}
+
+.lensGlow,
+.ripple {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.lensGlow {
+  fill: var(--hot);
+  opacity: 0;
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 0 10px var(--accent));
+  animation:
+    lens-beat 280ms ease-out var(--tb1),
+    lens-beat 280ms ease-out var(--tb2),
+    lens-beat 280ms ease-out var(--tb3),
+    lens-beat 280ms ease-out var(--tb4),
+    lens-beat 280ms ease-out var(--tb5),
+    lens-lit 300ms ease-out var(--sync) forwards;
+}
+
+.ripple {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  opacity: 0;
+  animation: ripple 620ms ease-out var(--at) both;
+}
+
+/* ---- the creature ----------------------------------------------------------------------------------------------- */
+
+.portrait {
+  position: absolute;
+  inset: 0;
+  animation:
+    thump 240ms ease-out var(--cb1),
+    thump 240ms ease-out var(--cb2),
+    thump 240ms ease-out var(--cb3),
+    thump 240ms ease-out var(--cb4),
+    thump 260ms ease-out var(--cb5),
+    reveal-jolt 360ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--lock);
+}
+
+.portrait > img {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 1.2vh color-mix(in srgb, var(--accent) 60%, transparent));
+}
+
+.before {
+  animation: before-out 140ms linear var(--lock) forwards;
+}
+
+.after {
+  opacity: 0;
+  animation: after-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--lock) both;
+}
+
+.thump {
+  position: absolute;
+  inset: 12%;
+  border: 0.5vh solid var(--accent);
+  border-radius: 50%;
+  opacity: 0;
+  animation: ripple 620ms ease-out var(--at) both;
+}
+
+/* ---- the thread between them ------------------------------------------------------------------------------------ */
+
+.thread line {
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+}
+
+.threadGlow {
+  stroke: var(--accent);
+  stroke-width: 12;
+  opacity: 0;
+  filter: blur(5px);
+  animation:
+    thread-grow var(--sync) linear both,
+    fade-out 220ms linear var(--burst) forwards;
+}
+
+.threadCore {
+  stroke: #fff;
+  stroke-width: 2.5;
+  opacity: 0;
+  animation:
+    thread-grow var(--sync) linear both,
+    thread-hot 260ms ease-out var(--lock),
+    fade-out 220ms linear var(--burst) forwards;
+}
+
+.spark {
+  stroke: var(--hot);
+  stroke-width: 6;
+  stroke-dasharray: 0.07 1;
+  stroke-dashoffset: 0.07;
+  opacity: 0;
+  animation: spark 440ms cubic-bezier(0.4, 0, 0.6, 1) var(--at) both;
+}
+
+/* ---- the centre: SYNC, the ledger line, the ring, the stamp ----------------------------------------------------- */
+
+.root > .center {
+  inset: auto;
+  inset-inline-start: 50vw;
+  inset-block-start: 46vh;
+  inline-size: 0;
+  block-size: 0;
+}
+
+.center > * {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.ring {
+  inline-size: min(34vh, 52vw);
+  block-size: min(34vh, 52vw);
+  overflow: visible;
+}
+
+.ringPath {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 5;
+  stroke-linejoin: miter;
+  filter: drop-shadow(0 0 6px var(--accent));
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.ringLeft,
+.ringRight {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.ringLeft {
+  animation:
+    draw 320ms ease-out var(--tb4) both,
+    break-left 520ms cubic-bezier(0.2, 0.8, 0.3, 1) var(--lock) forwards;
+}
+
+.ringRight {
+  animation:
+    draw 320ms ease-out var(--tb4) both,
+    break-right 520ms cubic-bezier(0.2, 0.8, 0.3, 1) var(--lock) forwards;
+}
+
+.ringWhole {
+  stroke-width: 4;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation:
+    close 980ms cubic-bezier(0.4, 0, 0.2, 1) var(--tb3) both,
+    ring-hold 300ms ease-out var(--lock),
+    fade-out 260ms linear calc(var(--burst) + 200ms) forwards;
+}
+
+.ringInner {
+  stroke-width: 2;
+  opacity: 0;
+  animation:
+    fade-in 200ms ease-out var(--lock) both,
+    fade-out 260ms linear calc(var(--burst) + 200ms) forwards;
+}
+
+.ticks {
+  stroke: var(--hot);
+  stroke-width: 3;
+  opacity: 0;
+  transform-box: view-box;
+  transform-origin: center;
+  animation:
+    ticks-in 600ms ease-out var(--lock) both,
+    fade-out 260ms linear calc(var(--burst) + 200ms) forwards;
+}
+
+.sync {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  opacity: 0;
+  animation:
+    fade-in 200ms ease-out 360ms both,
+    sync-hit 300ms ease-out var(--sync),
+    fade-out 120ms linear var(--lock) forwards;
+}
+
+.syncLabel {
+  color: var(--accent);
+  font-size: var(--t-caption);
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.syncNum {
+  font-size: var(--t-hero);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 2vh color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+/* the readout counts in discrete steps (`content` animates discretely), faster on each beat pair */
+.syncNum::after {
+  content: '0%';
+  animation: pct var(--sync) linear both;
+}
+
+.ledger {
+  inset-block-start: 9vh;
+  rotate: -7deg;
+  display: flex;
+  gap: var(--s-3);
+  align-items: baseline;
+  padding: var(--s-2) var(--s-4);
+  border-inline-start: 0.5vh solid var(--accent);
+  background: var(--bg-0);
+  color: var(--text-hi);
+  font-family: var(--face-mono);
+  font-size: var(--t-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  clip-path: inset(0 100% 0 0);
+  animation:
+    type-in 380ms steps(16, end) var(--tb3) both,
+    fade-out 160ms linear var(--burst) forwards;
+}
+
+.majin .ledger {
+  animation:
+    type-in 380ms steps(16, end) var(--tb3) both,
+    jolt 260ms linear var(--lock),
+    fade-out 160ms linear var(--burst) forwards;
+}
+
+.dash {
+  color: var(--accent);
+}
+
+.verdict {
+  color: var(--hot);
+}
+
+.tenjin .verdict {
+  animation: verdict-glow 500ms ease-out var(--lock) both;
+}
+
+.strike {
+  position: absolute;
+  inset-inline: 0.8vh;
+  inset-block-start: 50%;
+  block-size: 0.45vh;
+  background: var(--accent);
+  box-shadow: 0 0 1vh var(--accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation:
+    strike 230ms cubic-bezier(0.6, 0, 0.4, 1) var(--sync) both,
+    strike-hot 240ms ease-out var(--lock);
+}
+
+.stamp {
+  opacity: 0;
+  animation:
+    stamp 200ms cubic-bezier(0.3, 1.6, 0.5, 1) var(--lock) both,
+    stamp-out 260ms ease-in calc(var(--burst) + 160ms) forwards;
+}
+
+.stamp > span {
+  position: relative;
+  display: block;
+  padding: var(--s-2) var(--s-5) var(--s-1);
+  border: 0.5vh solid var(--accent);
+  color: var(--accent);
+  font-family: var(--face-display);
+  font-size: var(--t-hero);
+  font-style: italic;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 0 3vh color-mix(in srgb, var(--accent) 60%, transparent);
+  background: color-mix(in srgb, var(--bg-0) 70%, transparent);
+  transform: rotate(-8deg) scale(1.6);
+}
+
+/* Majin: the stamp itself is cracked */
+.majin .stamp > span::after {
+  content: '';
+  position: absolute;
+  inset: -1vh 46% -1vh 50%;
+  background: var(--deep);
+  clip-path: polygon(40% 0, 70% 0, 45% 35%, 80% 52%, 30% 100%, 10% 100%, 35% 60%, 0 45%);
+}
+
+/* Tenjin: a double gold rule */
+.tenjin .stamp > span {
+  outline: 0.25vh solid color-mix(in srgb, var(--accent) 70%, transparent);
+  outline-offset: 0.7vh;
+  color: var(--hot);
+}
+
+/* ---- the cracks (and Tenjin's gold seams) ----------------------------------------------------------------------- */
+
+.crack,
+.seam {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.crack {
+  stroke: var(--accent);
+  stroke-width: 3.5;
+  filter: drop-shadow(0 0 5px var(--hot));
+  animation:
+    draw 220ms cubic-bezier(0.2, 0.9, 0.3, 1) calc(var(--lock) + var(--i) * 22ms) both,
+    fade-out 420ms linear calc(var(--burst) + 160ms) forwards;
+}
+
+.tenjin .crack {
+  stroke: #120d07;
+  stroke-width: 3;
+  filter: none;
+  animation:
+    draw 140ms linear calc(var(--lock) - 60ms + var(--i) * 12ms) both,
+    fade-out 300ms linear calc(var(--burst) + 100ms) forwards;
+}
+
+.seam {
+  stroke: var(--accent);
+  stroke-width: 4;
+  filter: drop-shadow(0 0 6px var(--hot));
+  animation:
+    draw 360ms cubic-bezier(0.4, 0, 0.2, 1) calc(var(--lock) + 80ms + var(--i) * 30ms) both,
+    fade-out 460ms linear calc(var(--burst) + 140ms) forwards;
+}
+
+/* ---- reduced motion: still cards that fade, the stamp, no flying or flashing ----------------------------------- */
+
+.reduced > .low,
+.reduced > .high {
+  transform: rotate(-7deg);
+  animation:
+    fade-in 300ms ease-out both,
+    fade-out 300ms linear var(--burst) forwards;
+}
+
+.reduced .portrait,
+.reduced .lensGlow,
+.reduced .speed,
+.reduced .pulse {
+  animation: none;
+}
+
+.reduced .ripple,
+.reduced .thump {
+  display: none;
+}
+
+.reduced .stamp {
+  animation:
+    fade-in 200ms ease-out var(--lock) both,
+    fade-out 260ms ease-in var(--burst) forwards;
+}
+
+/* ---- keyframes -------------------------------------------------------------------------------------------------- */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-out {
+  to { opacity: 0; }
+}
+
+@keyframes flash {
+  0% { opacity: 0; }
+  10% { opacity: 0.7; }
+  30% { opacity: 0.12; }
+  100% { opacity: 0; }
+}
+
+@keyframes edge-beat {
+  0% { opacity: 0; }
+  20% { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+
+@keyframes bar-top-in {
+  from { transform: translateY(-100%); }
+  to { transform: none; }
+}
+
+@keyframes bar-top-out {
+  from { transform: none; }
+  to { transform: translateY(-100%); }
+}
+
+@keyframes bar-bot-in {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+
+@keyframes bar-bot-out {
+  from { transform: none; }
+  to { transform: translateY(100%); }
+}
+
+@keyframes low-in {
+  from { transform: translateX(-110%) rotate(-7deg); }
+  to { transform: rotate(-7deg); }
+}
+
+@keyframes high-in {
+  from { transform: translateX(110%) rotate(-7deg); }
+  to { transform: rotate(-7deg); }
+}
+
+/* Majin: the slabs break off and fly apart */
+@keyframes low-out-break {
+  from { transform: rotate(-7deg); opacity: 1; }
+  to { transform: translate(-26vw, 34vh) rotate(-24deg); opacity: 0; }
+}
+
+@keyframes high-out-break {
+  from { transform: rotate(-7deg); opacity: 1; }
+  to { transform: translate(26vw, -34vh) rotate(8deg); opacity: 0; }
+}
+
+/* Tenjin: the slabs rise and burn white */
+@keyframes rise-out {
+  from { transform: rotate(-7deg); opacity: 1; filter: none; }
+  to { transform: translateY(-7vh) rotate(-7deg); opacity: 0; filter: brightness(2.4); }
+}
+
+@keyframes speed {
+  from { transform: translateX(0); }
+  to { transform: translateX(-5.1vw); }
+}
+
+@keyframes label-in {
+  from { opacity: 0; translate: 0 2vh; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes lens-beat {
+  0% { opacity: 0.15; transform: scale(1); }
+  25% { opacity: 1; transform: scale(1.18); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes lens-lit {
+  from { opacity: 0.4; transform: scale(1); }
+  to { opacity: 0.9; transform: scale(1.08); }
+}
+
+@keyframes ripple {
+  0% { opacity: 0; transform: scale(0.7); }
+  12% { opacity: 0.9; }
+  100% { opacity: 0; transform: scale(1.9); }
+}
+
+@keyframes thump {
+  0% { transform: scale(1); }
+  22% { transform: scale(1.07); }
+  100% { transform: scale(1); }
+}
+
+@keyframes reveal-jolt {
+  0% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+@keyframes before-out {
+  0% { opacity: 1; filter: brightness(1); }
+  40% { opacity: 1; filter: brightness(3); }
+  100% { opacity: 0; filter: brightness(3); }
+}
+
+@keyframes after-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* the thread brightens with each beat pair: --tb1 380 ms = 18 %, 940 = 44 %, 1420 = 67 %, 1820 = 86 % of --sync */
+@keyframes thread-grow {
+  0% { opacity: 0; }
+  17% { opacity: 0; }
+  18% { opacity: 0.22; }
+  43% { opacity: 0.22; }
+  44% { opacity: 0.4; }
+  66% { opacity: 0.4; }
+  67% { opacity: 0.6; }
+  85% { opacity: 0.6; }
+  86% { opacity: 0.8; }
+  99% { opacity: 0.8; }
+  100% { opacity: 1; }
+}
+
+@keyframes thread-hot {
+  0% { stroke: #fff; }
+  30% { stroke: var(--hot); }
+  100% { stroke: #fff; }
+}
+
+@keyframes spark {
+  0% { opacity: 0; stroke-dashoffset: 0.07; }
+  10% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; stroke-dashoffset: -1; }
+}
+
+/* the readout climbs to each beat pair's value on its beat (18 % ≈ --tb1 … 100 % = --sync) */
+@keyframes pct {
+  0% { content: '0%'; }
+  4.5% { content: '3%'; }
+  9% { content: '6%'; }
+  13.5% { content: '9%'; }
+  18% { content: '12%'; }
+  20.5% { content: '16%'; }
+  23% { content: '19%'; }
+  25.5% { content: '22%'; }
+  28% { content: '26%'; }
+  32% { content: '29%'; }
+  36% { content: '32%'; }
+  40% { content: '35%'; }
+  44% { content: '38%'; }
+  45.8% { content: '41%'; }
+  47.5% { content: '44%'; }
+  49.2% { content: '48%'; }
+  51% { content: '51%'; }
+  55% { content: '54%'; }
+  59% { content: '58%'; }
+  63% { content: '61%'; }
+  67% { content: '64%'; }
+  69% { content: '68%'; }
+  71% { content: '72%'; }
+  74.8% { content: '76%'; }
+  78.5% { content: '79%'; }
+  82.2% { content: '82%'; }
+  86% { content: '86%'; }
+  87% { content: '91%'; }
+  91.3% { content: '94%'; }
+  95.7% { content: '97%'; }
+  100% { content: '100%'; }
+}
+
+@keyframes sync-hit {
+  0% { transform: translate(-50%, -50%) scale(1); }
+  30% { transform: translate(-50%, -50%) scale(1.25); color: var(--hot); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes close {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes ring-hold {
+  0% { stroke-width: 4; }
+  30% { stroke-width: 9; stroke: var(--hot); }
+  100% { stroke-width: 4; }
+}
+
+@keyframes ticks-in {
+  from { opacity: 0; transform: rotate(-30deg) scale(0.8); }
+  to { opacity: 1; transform: rotate(0) scale(1); }
+}
+
+@keyframes break-left {
+  from { stroke-dashoffset: 0; transform: none; opacity: 1; }
+  to { stroke-dashoffset: 0; transform: translate(-46px, 14px) rotate(-18deg); opacity: 0; }
+}
+
+@keyframes break-right {
+  from { stroke-dashoffset: 0; transform: none; opacity: 1; }
+  to { stroke-dashoffset: 0; transform: translate(46px, -10px) rotate(14deg); opacity: 0; }
+}
+
+@keyframes type-in {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes jolt {
+  0%, 100% { translate: 0 0; }
+  20% { translate: -0.8vh 0.3vh; }
+  40% { translate: 0.7vh -0.3vh; }
+  60% { translate: -0.5vh 0; }
+  80% { translate: 0.3vh 0.2vh; }
+}
+
+@keyframes strike {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes strike-hot {
+  0% { background: var(--accent); }
+  30% { background: #fff; box-shadow: 0 0 2.4vh var(--hot); }
+  100% { background: var(--accent); }
+}
+
+@keyframes verdict-glow {
+  from { text-shadow: none; }
+  to { text-shadow: 0 0 1.6vh var(--accent); }
+}
+
+@keyframes stamp {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(2.3); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes stamp-out {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(1.12); }
+}
+
+/* phones: the slabs take more of the width */
+@media (max-aspect-ratio: 4 / 5) {
+  .root > .panel {
+    inline-size: 96vw;
+    block-size: 22vh;
+  }
+
+  .low .art {
+    inset-inline-start: 24vw;
+  }
+
+  .high .art {
+    inset-inline-start: 72vw;
+  }
+
+  .art {
+    inline-size: min(26vh, 40vw);
+    block-size: min(26vh, 40vw);
+  }
+
+  .label {
+    inline-size: 44vw;
+  }
+
+  .low .label {
+    inset-inline-start: 46vw;
+  }
+
+  .high .label {
+    inset-inline-start: 4vw;
+  }
+
+  .who {
+    font-size: var(--t-h1);
+  }
+
+  .stamp > span {
+    transform: rotate(-8deg) scale(0.95);
+  }
+}

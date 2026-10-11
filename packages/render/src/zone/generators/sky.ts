@@ -20,8 +20,10 @@ export const SKY_BUILDING: BuildingStyle = {
 };
 
 export const SKY_PROPS: PropStyle = {
-  wood: 'dragon_scale_tile', metal: 'gold_leaf', stone: 'cloud_stone', housingGlass: 'glass_warm', glow: 'glass_warm', crystal: 'frost_glass', candle: 'glass_warm',
-  cloth: 'prayer_silk', soil: 'snow', leaf: 'pine_needle', rock: 'cloud_stone', water: 'water_pond',
+  // M3 review fixes (R-skyrend-3 / M3-skyrend-2): stall timber was the teal scale tile (it read as knitted fabric) and the
+  // awnings the rainbow prayer-flag card; timber posts under teal tile roofs now (the flags stay on the shrine)
+  wood: 'timber', metal: 'gold_leaf', stone: 'cloud_stone', housingGlass: 'glass_warm', glow: 'glass_warm', crystal: 'frost_glass', candle: 'glass_warm',
+  cloth: 'dragon_scale_tile', soil: 'snow', leaf: 'pine_needle', rock: 'cloud_stone', water: 'water_pond',
 };
 
 /** A square pyramid roof (4-segment lathe, edges on the axes) of half-width w/2 + 0.6 m overhang rising `rise`, with a curled eave lip. */

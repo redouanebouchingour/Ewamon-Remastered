@@ -960,3 +960,16 @@ and taught the Phase A interiors.
   `progression-halls.test.ts` re-run green).
 - Tests: `test/fast-travel.test.ts` (cinderhold: handover to the arrival point, landing + facing, same-zone hop; a
   fallback join lands there), `test/fixes.test.ts` (the rope on a route = its spawn).
+
+## Majin / Tenjin bands (2026-10-11)
+
+- `rooms/battleSession.ts`: `bandsOf(inventory)` (exported) reads `majin_band` / `tenjin_band` from the start
+  transaction's inventory snapshot; `playerSide(…, inventory)` adds `bands` only when the player holds one (wild, static,
+  trainer / league and pvp starts; the tower passes none — bands are not used there). `startNpc` copies the trainer's /
+  league trainer's content `bands` onto the NPC side. The start snapshot (battle_history.start) carries them, so a
+  history replay transforms the same way. Action messages pass `transform` through to core's `validateAction`
+  (`notAllowed` / `cannotTransform` when refused).
+- Protocol: the `move` action accepts `transform: z.literal(true).optional()`.
+- Tests: `test/bands.test.ts` (3: bandsOf; a Tenjin transformation end to end with digest = client preview and the second
+  transform refused; no band → `cannotTransform`). `npx vitest run packages/server`: 35 files / 261 tests (the 12 seeded
+  league battles, three of them with bands now, still desync 0).

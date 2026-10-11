@@ -4,6 +4,7 @@ import { displayName, itemInfo, maxHpOf, species } from '../data/content';
 import s from './CreatureCard.module.css';
 import { CreatureSprite } from './CreatureSprite';
 import { cx } from './cx';
+import { FormMark } from './FormSigil';
 import { HpBar } from './HpBar';
 import { Icon } from './Icon';
 import type { IconName } from './Icon';
@@ -91,6 +92,7 @@ export function CreatureCard({
         <CreatureSprite speciesId={creature.speciesId} variantKey={creature.variantKey} size="lg" className={s.tileSprite} />
         <span className={s.tileLevel}>{creature.level}</span>
         <Badges list={list} />
+        <FormMark speciesId={creature.speciesId} className={s.tileForm} />
       </div>
     );
   }
@@ -123,6 +125,7 @@ export function CreatureCard({
           <span className={s.name}>{name}</span>
           <span className={s.level}>Lv {creature.level}</span>
           <Badges list={list} />
+          <FormMark speciesId={creature.speciesId} className={list.length === 0 ? s.formEnd : undefined} />
         </div>
         <div className={s.rowMid}>
           <div className={s.types}>{sp?.types.map((t) => <TypeBadge key={t} type={t} size="sm" compact />)}</div>

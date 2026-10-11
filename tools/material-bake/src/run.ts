@@ -225,8 +225,11 @@ export async function runBake(opts: BakeOptions = {}): Promise<BakeResult> {
   }
 
   const placeholderBytes = await writePlaceholder(outDir, cacheDir);
-  const manifest = buildManifest(outDir, cacheDir, placeholderBytes, full);
+  const previous = full ? null : readPreviousManifest(outDir, log);
+  const { manifest, kept } = buildManifest(outDir, cacheDir, placeholderBytes, full, previous);
+  if (kept.length) log(`  kept ${kept.length} surfaces from the existing manifest`);
   writeFileSync(join(outDir, MANIFEST_FILE), stableJson(manifest));
+  // only a full bake knows the complete output set; a partial bake never deletes files
   if (full) removeOrphans(outDir, manifest);
   if (opts.qaDir !== null) writeQaReport(resolve(opts.qaDir ?? QA_DIR), cacheDir, manifest);
 
@@ -234,42 +237,84 @@ export async function runBake(opts: BakeOptions = {}): Promise<BakeResult> {
   return { outcomes, manifest, baked, cacheHits: inputs - baked, inputs };
 }
 
+/** The manifest already in `outDir`, or null when there is none or it does not parse/validate. */
+function readPreviousManifest(outDir: string, log: (s: string) => void): MaterialsManifest | null {
+  const file = join(outDir, MANIFEST_FILE);
+  if (!existsSync(file)) return null;
+  try {
+    const m: unknown = JSON.parse(readFileSync(file, 'utf8'));
+    const errs = validateManifest(m);
+    if (!errs.length) return m as MaterialsManifest;
+    log(`  existing manifest ignored (invalid: ${errs.slice(0, 3).join('; ')})`);
+  } catch (e) {
+    log(`  existing manifest ignored (${(e as Error).message})`);
+  }
+  return null;
+}
+
+function sameBytes(a: string, b: string): boolean {
+  if (!existsSync(b) || statSync(a).size !== statSync(b).size) return false;
+  return readFileSync(a).equals(readFileSync(b));
+}
+
 /**
- * Manifest over every SurfaceId whose tier files are present in `outDir` and whose cache entry matches the
- * current hash (a partial bake keeps the other surfaces' entries as long as they are still current).
+ * Manifest over every SurfaceId. A tier is current when its cache entry matches the current hash and the files
+ * in `outDir` are byte-identical to it. A full bake requires every tier current (else it throws). A partial bake
+ * merges: a tier that is not current keeps `previous`'s entry for it as long as its files are still in `outDir`
+ * (bytes re-measured), so surfaces outside the selection survive even when their hash has moved since they were
+ * baked. Totals are summed over the merged set.
  */
-function buildManifest(outDir: string, cacheDir: string, placeholderBytes: number, full: boolean): MaterialsManifest {
+function buildManifest(
+  outDir: string, cacheDir: string, placeholderBytes: number, full: boolean, previous: MaterialsManifest | null,
+): { manifest: MaterialsManifest; kept: string[] } {
   const surfaces: Record<string, MaterialSetEntry> = {};
   let fieldBytes = 0, heroBytes = 0;
-  const missing: string[] = [];
+  const missing: string[] = [], kept: string[] = [];
+  const shippedBytes = (names: { albedo: string; orm: string; normal: string }): number | null => {
+    let bytes = 0;
+    for (const m of MAPS) {
+      const f = join(outDir, names[m]);
+      if (!existsSync(f)) return null;
+      bytes += statSync(f).size;
+    }
+    return bytes;
+  };
   for (const id of SURFACE_IDS) {
     const r = RECIPES[id]!, def = SURFACES[id];
     const hash = surfaceHash(r, def);
-    const tierEntry = (tier: Tier): { t: MaterialTier; meta: TierMeta } | null => {
+    const prev = previous?.surfaces[id];
+    const current = (tier: Tier): { t: MaterialTier; meta: TierMeta } | null => {
       const meta = readTierMeta(cacheDir, hash, tier);
-      const names = tierFiles(id, tier);
       if (!meta) return null;
-      let bytes = 0;
-      for (const m of MAPS) {
-        const f = join(outDir, names[m]);
-        if (!existsSync(f)) return null;
-        bytes += statSync(f).size;
-      }
-      return { t: { ...names, size: TIER_SIZE[tier], bytes }, meta };
+      const names = tierFiles(id, tier);
+      for (const m of MAPS) if (!sameBytes(tierFile(cacheDir, hash, tier, m), join(outDir, names[m]))) return null;
+      return { t: { ...names, size: TIER_SIZE[tier], bytes: shippedBytes(names)! }, meta };
     };
-    const field = tierEntry('field');
-    const hero = def.hero ? tierEntry('hero') : null;
-    if (!field || (def.hero && !hero)) { missing.push(id); continue; }
-    fieldBytes += field.t.bytes;
-    if (hero) heroBytes += hero.t.bytes;
-    surfaces[id] = {
-      field: field.t,
-      hero: hero ? hero.t : null,
-      metres: r.metres,
-      wrap: r.wrap,
-      hash,
-      albedoClampedPct: (hero ?? field).meta.clampedPct,
+    const keep = (t: MaterialTier | null | undefined): MaterialTier | null => {
+      const bytes = t ? shippedBytes(t) : null;
+      return t && bytes !== null ? { ...t, bytes } : null;
     };
+    const field = current('field');
+    const hero = def.hero ? current('hero') : null;
+    const fieldT = field?.t ?? keep(prev?.field);
+    const heroT = def.hero ? hero?.t ?? keep(prev?.hero) : null;
+    if (!fieldT || (def.hero && !heroT)) { missing.push(id); continue; }
+    fieldBytes += fieldT.bytes;
+    if (heroT) heroBytes += heroT.bytes;
+    if (field || hero) {
+      // at least one tier is this bake's: the current hash busts the client cache for it
+      surfaces[id] = {
+        field: fieldT,
+        hero: heroT,
+        metres: r.metres,
+        wrap: r.wrap,
+        hash,
+        albedoClampedPct: (def.hero ? hero : field)?.meta.clampedPct ?? prev!.albedoClampedPct,
+      };
+    } else {
+      kept.push(id);
+      surfaces[id] = { ...prev!, field: fieldT, hero: heroT };
+    }
   }
   if (full && missing.length) throw new Error(`[material-bake] full bake left surfaces without outputs: ${missing.join(', ')}`);
   const byBiome: Record<string, string[]> = {};
@@ -285,7 +330,7 @@ function buildManifest(outDir: string, cacheDir: string, placeholderBytes: numbe
   };
   const errs = validateManifest(m);
   if (errs.length) throw new Error(`[material-bake] manifest invalid: ${errs.join('; ')}`);
-  return m;
+  return { manifest: m, kept };
 }
 
 function removeOrphans(outDir: string, m: MaterialsManifest): void {

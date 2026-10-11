@@ -1,5 +1,5 @@
 {
- "about": "R1 pre-move capture: the render layout planners, the client adapter (zoneSpecFor) and the zone builder at HEAD 689fd78, before the zone plan moved into @ewa/content. Digests are fnv1a32 (core) over JSON.stringify; roadZ is sampled at x = -130..130 step 0.5; lightPositions = [id, x, z, castShadow, housing seed]; blockers = every TerrainCollider blocker the builder registered, in order. Re-captured 2026-10-06 for solenne only: the league hall now stands in its gym slot (interiors, Phase A), its stale league_hall warp is gone and two Act III NPCs moved to the hall door; specFields/geometryDigest/crowns/instances re-baselined by the client and render tests. Client part (zoneSpecFor.test R1): solenne specFields warps, buildings, props, lights and actors re-captured from zoneSpecFor; the new `interiors` field is excluded from the comparison like `plan`; heightfieldDigest keeps its pre-move value (the test asserts the stamped field differs from it). The other 20 zones' specFields are unchanged.",
+ "about": "R1 pre-move capture: the render layout planners, the client adapter (zoneSpecFor) and the zone builder at HEAD 689fd78, before the zone plan moved into @ewa/content. Digests are fnv1a32 (core) over JSON.stringify; roadZ is sampled at x = -130..130 step 0.5; lightPositions = [id, x, z, castShadow, housing seed]; blockers = every TerrainCollider blocker the builder registered, in order. Re-captured 2026-10-06 for solenne only: the league hall now stands in its gym slot (interiors, Phase A), its stale league_hall warp is gone and two Act III NPCs moved to the hall door; specFields/geometryDigest/crowns/instances re-baselined by the client and render tests. Client part (zoneSpecFor.test R1): solenne specFields warps, buildings, props, lights and actors re-captured from zoneSpecFor; the new `interiors` field is excluded from the comparison like `plan`; heightfieldDigest keeps its pre-move value (the test asserts the stamped field differs from it). The other 20 zones' specFields are unchanged. Re-captured 2026-10-11 for cinderhold, ash_route, stormrook and galvan_route specFields.lights only: the M3 town art changed the cinder brazier (22 → 30, 10 → 11 m) and storm crystal (18 → 38, 10 → 12 m, #9fd0ff → #b4dcff) light look in render BIOME_LIGHTS; positions (lightPositions) are unchanged.",
  "zones": {
   "mirevale": {
    "terrainWalkable": 0.6277112993856814,
@@ -341,7 +341,7 @@
     "edges": "3acf5261",
     "buildings": "5770fad5",
     "props": "2e6f421a",
-    "lights": "9e892117",
+    "lights": "0fbb0473",
     "actors": "5ba9723f",
     "pickups": "da4c7ae6",
     "tablets": "f0754924",
@@ -393,7 +393,7 @@
     "edges": "01a3af1b",
     "buildings": "741638a5",
     "props": "993987b3",
-    "lights": "eebe7c24",
+    "lights": "9e24cfea",
     "actors": "b9e42b66",
     "pickups": "8ee9125d",
     "tablets": "feea1f2f",
@@ -743,7 +743,7 @@
     "edges": "b8427bdb",
     "buildings": "4f8888c1",
     "props": "aa1a688e",
-    "lights": "989a61e9",
+    "lights": "f0302389",
     "actors": "5d3835f9",
     "pickups": "f25f442d",
     "tablets": "7466e9b7",
@@ -795,7 +795,7 @@
     "edges": "aa655470",
     "buildings": "741638a5",
     "props": "784f412f",
-    "lights": "29db7b39",
+    "lights": "0c20a841",
     "actors": "e2a87742",
     "pickups": "2c952ffe",
     "tablets": "a04397f7",

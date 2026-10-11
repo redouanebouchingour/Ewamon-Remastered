@@ -487,3 +487,122 @@
   color: var(--text-hi);
   box-shadow: inset 0 0 0 1px var(--text-hi);
 }
+
+/* ---- Majin / Tenjin: the transform toggle (end of the moves menu's head row) and its coach mark ------------------ */
+.transform {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--s-3);
+  margin-inline-start: auto;
+}
+
+.transformBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  block-size: var(--control-md);
+  margin: 0;
+  padding: 0 var(--s-6) 0 var(--s-3);
+  border: 0;
+  background: var(--glass);
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: 1;
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  transition: background-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out);
+}
+
+.transformBtn:hover:not(:disabled) {
+  background: var(--bg-3);
+}
+
+/* keyboard focus: the slab clips an outline, so it turns paper (as the rail does) */
+.transformBtn:focus-visible {
+  outline: none;
+  background: var(--text-hi);
+  color: var(--bg-0);
+}
+
+.transformBtn:focus-visible .key {
+  background: var(--bg-0);
+  color: var(--text-hi);
+}
+
+.transformBtn:disabled {
+  color: var(--text-2);
+  cursor: default;
+}
+
+.transformBtn:disabled .key,
+.transformBtn:disabled .transformSigil {
+  opacity: 0.45;
+}
+
+/* armed: the 'selected' slab — orange, its chip inverted, the sigil in the slab's ink */
+.armed,
+.armed:hover:not(:disabled),
+.armed:focus-visible {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.armed .key,
+.armed:focus-visible .key {
+  background: var(--bg-0);
+  color: var(--text-hi);
+}
+
+.armed svg {
+  color: var(--on-accent);
+}
+
+/* the first time it lights up: a short pulse under the coach line (none under reduced motion) */
+.pulse:not(.armed) {
+  animation: transformPulse 900ms var(--ease-in-out) 3;
+}
+
+@keyframes transformPulse {
+  0%,
+  100% {
+    background: var(--glass);
+  }
+  50% {
+    background: var(--bg-3);
+  }
+}
+
+:global(:root[data-reduced='1']) .pulse {
+  animation: none;
+}
+
+.transformWhy {
+  padding: var(--s-1) var(--s-3);
+  background: var(--bg-0);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.coach {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--s-3);
+  align-self: flex-end;
+  margin: 0;
+  padding: var(--s-2) var(--s-6) var(--s-2) var(--s-4);
+  background: var(--bg-0);
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}

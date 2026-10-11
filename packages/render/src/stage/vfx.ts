@@ -41,8 +41,8 @@ export const VFX_ORB_IDS: readonly VfxId[] = Object.freeze(['orb_throw', 'orb_sh
 export const VFX_MISC_IDS: readonly VfxId[] = Object.freeze(['switch_out', 'switch_in', 'faint', 'trap', 'flinch'] as const);
 /** Phase D4: the shiny encounter burst (the one id beyond the §10.7.5 47). */
 export const VFX_SHINY_IDS: readonly VfxId[] = Object.freeze(['shiny_sparkle'] as const);
-/** Battle forms (`SpeciesDef.battleForm`): one burst per form. */
-export const VFX_FORM_IDS: readonly VfxId[] = Object.freeze(['form_rage'] as const);
+/** Battle forms (`SpeciesDef.battleForm`): one burst per form kind — Majin (and the rage forms) / Tenjin. */
+export const VFX_FORM_IDS: readonly VfxId[] = Object.freeze(['form_rage', 'form_tenjin'] as const);
 /** The 14 motion styles of a move (the client's MOVE_STYLE), drawn in the colours of the move's type passed to vfx(). */
 export const MOVE_STYLES: readonly MoveStyle[] = Object.freeze(['slash', 'bite', 'punch', 'tackle', 'beam', 'orb', 'wave', 'rain', 'erupt', 'spray', 'bolt', 'spin', 'shard', 'gust'] as const);
 export const VFX_STYLE_IDS: readonly VfxId[] = Object.freeze(MOVE_STYLES.map((m) => `style_${m}` as VfxId));
@@ -288,6 +288,14 @@ export const VFX_TABLE: Readonly<Record<VfxId, VfxRecipe>> = Object.freeze({
     P({ motion: 'rise', anchor: 'to', count: 120, color: '#ff2a44', color2: '#3a0812', shape: 'streak', gravity: -4.5, speed: 1.2, lifeMs: 950, spreadMs: 520, radius: 0.75, height: 0.05, intensity: 2 }),
     P({ motion: 'ring', anchor: 'to', count: 2, color: '#ff4a62', shape: 'ring', size: 1, sizeEnd: 3.6, speed: 0, lifeMs: 440, height: 0.15, intensity: 1.6 }),
   ], { flash: 1, beaconPulse: 1, chroma: { amount: 0.016, ms: 160 }, defaultMs: 1100 }),
+  // a Tenjin Form (`.design/majin-tenjin.md` §8): the opposite of form_rage — a whole gold ring opening at the feet, a
+  // slow inner ring, gold motes rising straight up, a white-gold star card at the chest and a soft flash; no chroma
+  form_tenjin: R('form_tenjin', [
+    P({ motion: 'ring', anchor: 'to', count: 2, color: '#ffd76a', shape: 'ring', size: 1, sizeEnd: 3.2, speed: 0, lifeMs: 620, height: 0.08, intensity: 1.8 }),
+    P({ motion: 'ring', anchor: 'to', count: 1, color: '#fff3c4', shape: 'ring', size: 0.6, sizeEnd: 1.8, speed: 0, lifeMs: 820, height: 0.1, intensity: 1.4, delay: 0.15 }),
+    P({ motion: 'rise', anchor: 'to', count: 140, color: '#ffd76a', color2: '#fff8e0', shape: 'star', gravity: -2.2, speed: 0.6, lifeMs: 1100, spreadMs: 640, radius: 0.7, height: 0.05, size: 0.12, sizeEnd: 0.2, intensity: 2, drag: 0.4 }),
+    P({ motion: 'burst', anchor: 'to', count: 2, color: '#fffbe8', shape: 'star', size: 1.3, sizeEnd: 0.1, speed: 0, lifeMs: 320, height: 0.9, intensity: 1.8 }),
+  ], { flash: 0.45, beaconPulse: 0.7, defaultMs: 1100 }),
   ...Object.fromEntries(MOVE_STYLES.map((m) => [`style_${m}`, styleRecipe(m)])),
   flinch: R('flinch', [P({ motion: 'burst', anchor: 'to', count: 5, color: '#ffffff', shape: 'star', speed: 1.1, lifeMs: 360, height: 1.3, size: 0.3, sizeEnd: 0.6 })], { defaultMs: 400 }),
 }) as Readonly<Record<VfxId, VfxRecipe>>;

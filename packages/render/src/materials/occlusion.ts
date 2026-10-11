@@ -9,6 +9,15 @@
  * apply it: `pass` is a render-group uniform that is 1 for that camera and 0 for every other one, so shadow maps and
  * probes keep the full occluder. The inputs are uniforms written once per frame by the host (`setOcclusion`):
  * nothing is compiled or allocated at runtime; the programs carry the node from step 8 on.
+ *
+ * M3 independent review (R-all-6, R-all-9, R-saltmourn-3): the capsule alone left (a) the player under a crown — the
+ * last 1.0 m of the segment was kept, and a pine crown that comes down to chest height stood in it (`maskCoverage
+ * .player` 0.40–0.43) — and (b) tall foreground crowns, roofs and set-pieces between the camera and the focus that
+ * miss the capsule but fill 20–45 % of the frame as DOF blur (and hid the shot-3 creature in saltmourn). Now `clearM`
+ * is 0.35 m, and a second volume fades the FOREGROUND: fragments more than `fgNearM` in front of the focus (measured
+ * horizontally toward the camera) and higher than `fgHeightM` above the followed feet, each edge eased over `fgRampM`.
+ * Ground-level dressing, fences, bushes and lamp posts (≤ 3.2 m) in front of the focus stay; what is tall and in front
+ * goes see-through. Everything behind the focus (the subject of every overworld shot) is untouched.
  */
 import { Vector3 } from 'three/webgpu';
 import type { Camera, Node, UniformNode } from 'three/webgpu';
@@ -17,8 +26,17 @@ import { clamp, dot, float, fract, length, max, positionWorld, renderGroup, scre
 export const OCCLUSION = Object.freeze({
   /** Capsule radius (m) of the full fade, and where it has eased out. */
   innerM: 1.2, outerM: 1.8,
-  /** Occluders this close to the player (m, along the segment) are kept: the player's own surroundings stay. */
-  clearM: 1.0,
+  /**
+   * Occluders this close to the player (m, along the segment) are kept: the player's own surroundings stay. 1.0 until
+   * the M3 review (R-all-6: a crown reaching down to chest height in that last metre stippled the player).
+   */
+  clearM: 0.35,
+  /** Foreground volume (M3 review R-all-9): this far in front of the focus toward the camera (m, horizontal) … */
+  fgNearM: 2.0,
+  /** … and this high above the followed feet (m) … */
+  fgHeightM: 3.2,
+  /** … each edge eased over this (m). */
+  fgRampM: 1.0,
   /** The segment ends this far above the followed feet (the chest). */
   chestM: 0.9,
   /** Share of the occluding fragments kept at full strength (the audit asks for ≤ 20 % coverage). */
@@ -69,7 +87,14 @@ export function occlusionKeep(u: OcclusionUniforms): Node<'bool'> {
   const d = length(rel.sub(ab.mul(t)));
   const inside = float(1).sub(smoothstep(float(OCCLUSION.innerM), float(OCCLUSION.outerM), d));
   const before = float(1).sub(smoothstep(u.tCut.sub(0.02), u.tCut, t));
-  const amount = inside.mul(before).mul(u.strength).mul(u.pass);
+  // M3 review R-all-9: the foreground volume — in front of the focus (horizontally toward the camera) and tall
+  const toCam = vec2(u.from.x.sub(u.to.x), u.from.z.sub(u.to.z));
+  const dirC = toCam.div(max(length(toCam), float(1e-3)));
+  const along = dot(vec2(positionWorld.x.sub(u.to.x), positionWorld.z.sub(u.to.z)), dirC);
+  const height = positionWorld.y.sub(u.to.y.sub(OCCLUSION.chestM));
+  const fg = smoothstep(float(OCCLUSION.fgNearM), float(OCCLUSION.fgNearM + OCCLUSION.fgRampM), along)
+    .mul(smoothstep(float(OCCLUSION.fgHeightM), float(OCCLUSION.fgHeightM + OCCLUSION.fgRampM), height));
+  const amount = max(inside.mul(before), fg).mul(u.strength).mul(u.pass);
   const ign = fract(float(52.9829189).mul(fract(dot(screenCoordinate.xy, vec2(0.06711056, 0.00583715)))));
   return ign.greaterThanEqual(amount.mul(1 - OCCLUSION.keep)) as unknown as Node<'bool'>;
 }

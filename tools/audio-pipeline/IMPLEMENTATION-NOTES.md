@@ -279,3 +279,17 @@ Then run `pnpm --filter @ewa/audio-pipeline ingest` and `pnpm --filter @ewa/audi
 - Louder (user request, same day): each signature premix ends in `acompressor` (threshold 0.08, ratio 6, makeup 3) +
   `alimiter` (0.7) (`_sig_loud` in mix.py), so the −20 LUFS pass no longer clamps any of them at −3 dBTP, and the
   manifest plays them at **+6 dB** (was −2): 8–10 dB louder than the first cut, the master compressor catches peaks.
+
+## Bond cinematic sound designs (2026-10-11)
+
+- 2 new sfx ids `bond_majin`, `bond_tenjin` (188 ids, 301 variants, 380 jobs; 73.33 MiB of 80): a trainer's Majin /
+  Tenjin transformation (client `battle/bond.ts`), timed from the `bond` frame: two lub-dub heartbeats on the client's
+  `BOND_BEATS` (the trainer's at rate 0.55, the creature's at 0.72) escalating then capped, a drone and a reversed
+  whoosh rising, everything ducked to a breath of silence (−61 dB at 2.36 s), then the lock at 2.40 s (Majin: glass
+  crack + wood crack + crunch + a low-frequency thump; Tenjin: one great bell + a soft thump + five rising chimes) and the
+  burst at 2.70 s (Majin: a crunch blast and three layered roars + the floor drop; Tenjin: a bright bell strike, the
+  cure shimmer and a **synthesized** 'aah' choir — additive detuned saws through vowel formants with a slow vibrato,
+  numpy in `mix.py` `_choir`, no source file). Same `_sig_loud` compression and +6 dB as the signature designs; 4.0 s
+  (the sfx cap). Built only from already-approved CC0 downloads; nothing new fetched. Not auditioned by ear.
+- Rebuild: `python _tools/mix.py bond_majin_1 bond_tenjin_1` (from `assets-src/audio/cc0/`), `node _tools/gen-sources.mjs`,
+  then `ingest` and `process -- --provider cc0`. Only the 4 new files, the manifest and the credits change.

@@ -1,7 +1,7 @@
 /**
  * Stages one §50.6.1 shot in the harness world and leaves the frame ready for `Page.captureScreenshot`:
- * - overworld shots: the player stands at the resolved anchor facing the camera, the rig at the shot's heading (the
- *   §50.6.1 words → rig index, `anchors.ts`) and zoom stop, `timeOfDay` from the table; frames run until the heading /
+ * - overworld shots: the player stands at the resolved anchor facing the camera, the rig at the anchor's heading (a
+ *   rig index since the 2026-10-06 amendment, `anchors.ts`) and the shot's zoom stop, `timeOfDay` from the table; frames run until the heading /
  *   zoom eases, the follow spring, the IBL re-bake and every shader compile have settled;
  * - shot 5: the player engages the zone's first common creature from the resolved battle anchor; the scripted battle
  *   (`battleScript.ts`) plays through the real BattleController — intro, turn 1 — then turn 2 runs until its first HP
@@ -16,7 +16,7 @@ import { part3Of, rendererInternals } from '@ewa/render';
 import type { BudgetCounts } from '@ewa/render';
 import type { HarnessWorld } from './HarnessWorld';
 import { yieldTask } from './HarnessWorld';
-import { rigHeading, shotDef, viewForward } from './anchors';
+import { shotDef, viewForward } from './anchors';
 import type { Heading, ResolvedAnchor, ShotDef, Variant } from './anchors';
 
 export interface StageOptions {
@@ -123,7 +123,7 @@ export async function stageEdgeScan(w: HarnessWorld, anchor: ResolvedAnchor): Pr
   w.endBattle();
   w.setEffects(false);
   w.setWild(null);
-  const rig = rigHeading(shotDef('sprite-edge').heading ?? 1);
+  const rig = anchor.heading.rig ?? shotDef('sprite-edge').heading ?? 3;
   w.setView(rig, 1);
   w.place(anchor.x, anchor.z, facingCamera(rig));
   w.setTimeOfDay(0.5);
@@ -185,7 +185,7 @@ export async function stageShot(w: HarnessWorld, anchor: ResolvedAnchor, variant
   let settle = { frames: 0, stable: false, programs: 0 };
 
   if (shot.id !== 'battle') {
-    const rig = anchor.heading.rig ?? rigHeading(shot.heading ?? 0);   // an M3 fallback anchor may turn the view (link-east to another edge)
+    const rig = anchor.heading.rig ?? shot.heading ?? 0;   // a faceSubject row or an M3 fallback may turn the view
     w.setWild(anchor.wild !== null && shot.id === 'sprite-edge' ? anchor.wild : null);
     w.setView(rig, shot.zoomStop);
     w.place(anchor.x, anchor.z, facingCamera(rig));
@@ -199,8 +199,8 @@ export async function stageShot(w: HarnessWorld, anchor: ResolvedAnchor, variant
   } else {
     const wild = anchor.wild;
     if (wild === null) throw new Error('battle shot needs a wild slot');
-    // the player arrives with shot 3's framing (heading 1 = +x), stands 2.5 m from the creature, facing it
-    const preHeading = rigHeading(shotDef('sprite-edge').heading ?? 1);
+    // the player arrives with shot 3's framing (rig 3 ≈ +x), stands 2.5 m from the creature, facing it
+    const preHeading = shotDef('sprite-edge').heading ?? 3;
     w.setWild(wild);
     w.setView(preHeading, 1);
     w.place(anchor.x, anchor.z, Math.atan2(wild.x - anchor.x, wild.z - anchor.z));

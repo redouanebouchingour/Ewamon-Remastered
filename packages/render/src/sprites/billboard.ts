@@ -665,6 +665,14 @@ export class CreatureBillboard {
     hexToLinearInto(this.pool.typeColorHex(this.d.types[0]), this.rig.ud.typeColor);
   }
 
+  /**
+   * A battle-form aura's rim (stage/aura.ts): the rim light takes linear `r, g, b` (HDR; the rim term multiplies it by
+   * 0.6 at the silhouette's edge) in place of the type colour. `refreshTypeColor` restores it. Scalar writes.
+   */
+  setRimColor(r: number, g: number, b: number): void {
+    if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) this.rig.ud.typeColor.setRGB(r, g, b);
+  }
+
   /** Evolution glow 0..1: a white silhouette of the card's own alpha (§10.7.5 evolution sequence). Scalar write. */
   setGlow(v: number): void { this.rig.ud.glow = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0; }
 

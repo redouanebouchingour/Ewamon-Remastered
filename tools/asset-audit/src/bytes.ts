@@ -7,7 +7,7 @@
  * `creatures/anim/` (amended 2026-10-06) is its own line: the animated legendaries' flipbooks, held to 24 MiB against
  * `animTotalBytes`. The manifest file lives in `creatures/`, but the bytes its anim fields add (measured here by
  * re-serialising it without them, exactly as the pipeline writes it) are charged to the anim line, so the static
- * `creatures/` line keeps measuring the 35 MiB static set.
+ * `creatures/` line keeps measuring the static set.
  *
  * MB in §40.6 is MiB: the table itself writes 35 MB as 36 700 160 B (and §50.2.2 700 MB as 734 003 200 B).
  */
@@ -18,7 +18,7 @@ const MiB = 1024 * 1024;
 
 /** §40.6 ceilings, bytes. */
 export const CEILINGS = Object.freeze({
-  creatures: 36_700_160,
+  creatures: 41_156_608, // 39.25 MiB since 2026-10-11 (Majin / Tenjin forms); 36 700 160 (35 MiB) before
   creaturesAnim: 24 * MiB,
   models: 12 * MiB,
   materials: 90 * MiB,

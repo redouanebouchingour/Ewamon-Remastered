@@ -23,6 +23,7 @@ export const ACTION_ERROR_LABEL: Readonly<Record<ActionError, string>> = {
   mustSwitch: 'Choose a replacement',
   actionNotRequired: 'Waiting',
   badTarget: 'Not a target', // Phase D6 (doubles): a move aimed at its own user
+  cannotTransform: 'Can’t transform now', // Majin / Tenjin: no band / form, already transformed, or the hp line not met
 };
 
 export function actionErrorLabel(e: ActionError | null): string | null {

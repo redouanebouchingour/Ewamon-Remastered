@@ -36,7 +36,8 @@ export const EngageSpawnMsg = z.object({ spawnId: z.string().min(1).max(64) });
 export const FieldRefSchema = z.object({ side: z.union([z.literal(0), z.literal(1)]), pos: z.union([z.literal(0), z.literal(1)]) });
 export const BattleActionSchema = z.discriminatedUnion('kind', [
   // Phase D6: `target` (doubles only, optional; ignored in singles) — the foe or ally position a single-target move aims at
-  z.object({ kind: z.literal('move'), move: z.string().min(1).max(40), target: FieldRefSchema.optional() }),
+  // Majin / Tenjin: `transform` (optional) — the battler transforms before the move (core validateAction checks band, line, once)
+  z.object({ kind: z.literal('move'), move: z.string().min(1).max(40), target: FieldRefSchema.optional(), transform: z.literal(true).optional() }),
   z.object({ kind: z.literal('switch'), to: z.number().int().min(0).max(5) }),
   z.object({
     kind: z.literal('item'),

@@ -34,7 +34,8 @@ const EWAMON_SPECIES_ADDITIONS = {
     // Rage Form: once per battle, the first time it is below half hp and still standing, the mask cracks. Max hp is
     // kept; it trades its guard for power and speed, sheds every weakening and roars the foes' attack down.
     battleForm: {
-      id: "rage", name: "Rage Form",
+      // Majin form (.design/majin-tenjin.md): the trainer's Majin Band below half hp; a wild one rages on its own
+      id: "rage", name: "Majin Form", kind: "majin",
       hpBelowPct: 50,
       baseAtk: 162, baseDef: 66, baseSpd: 150,
       onEnter: { clearNegativeStages: true, lowerFoes: { stat: "atk", stages: 1 } },
@@ -81,6 +82,15 @@ const EWAMON_SPECIES_ADDITIONS = {
     backSprite: "badlander(back).png",
     habitat: [],
     evolvesFrom: "dustcub",
+    // Majin form (.design/majin-tenjin.md): the drifter gone feral. Majin template +28 atk / -18 def / +28 spd.
+    battleForm: {
+      id: "majin", name: "Majin Form", kind: "majin",
+      hpBelowPct: 50,
+      baseAtk: 146, baseDef: 70, baseSpd: 102,
+      onEnter: { clearNegativeStages: true, lowerFoes: { stat: "atk", stages: 1 } },
+      frontSprite: "badlander_majin(front).png",
+      backSprite: "badlander_majin(back).png",
+    },
   },
 
   // A blindfolded wolf line inspired by Gojo Satoru (Jujutsu Kaisen): a cocky pup and the untouchable sorcerer it grows into.
@@ -142,7 +152,8 @@ const EWAMON_SPECIES_ADDITIONS = {
     // Rage Form: once per battle, the first time it is below half hp and still standing, the skull ignites. Max hp is
     // kept; it trades guard for power and speed, sheds every weakening, and its glare cracks the foes' guard.
     battleForm: {
-      id: "rage", name: "Rage Form",
+      // Majin form (.design/majin-tenjin.md): the trainer's Majin Band below half hp; a wild one rages on its own
+      id: "rage", name: "Majin Form", kind: "majin",
       hpBelowPct: 50,
       baseAtk: 160, baseDef: 86, baseSpd: 104,
       onEnter: { clearNegativeStages: true, lowerFoes: { stat: "def", stages: 1 } },
@@ -170,6 +181,15 @@ const EWAMON_SPECIES_ADDITIONS = {
     backSprite: "lawlander(back).png",
     habitat: [],
     evolvesFrom: "dustcub",
+    // Tenjin form (.design/majin-tenjin.md): the lawman exalted. Tenjin template +10 atk / +30 def / +10 spd.
+    battleForm: {
+      id: "tenjin", name: "Tenjin Form", kind: "tenjin",
+      hpBelowPct: 50,
+      baseAtk: 116, baseDef: 128, baseSpd: 80,
+      onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 },
+      frontSprite: "lawlander_tenjin(front).png",
+      backSprite: "lawlander_tenjin(back).png",
+    },
   },
 };
 

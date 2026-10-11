@@ -5,6 +5,7 @@
  */
 import { useUiStore } from '../state/ui';
 import { BattleMenu } from '../battle/BattleMenu';
+import { BondCinematic } from '../battle/BondCinematic';
 import { EvolutionBanner } from '../world/EvolutionBanner';
 import s from '../battle/BattleOverlay.module.css';
 
@@ -21,6 +22,8 @@ export function HarnessOverlay() {
           </div>
         </section>
       )}
+      {/* a trainer's Majin / Tenjin bond cinematic (battle/bond.ts) */}
+      <BondCinematic />
       {/* §20.5.6 the evolution banner (the harness's `evolve()`) */}
       <EvolutionBanner />
     </>

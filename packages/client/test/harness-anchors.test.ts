@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { ZONES, arrivalPoint, getHeightfield, isWalkable, zone, zonePlan } from '@ewa/content';
 import { headingYaw } from '@ewa/render';
-import { AUDIT_SHOTS, doorFrameOffset, resolveAnchor, rigHeading, shotFileStem, shotsForZone, viewForward } from '../src/harness/anchors';
+import { AUDIT_SHOTS, doorFrameOffset, resolveAnchor, rigFacing, shotFileStem, shotsForZone, viewForward } from '../src/harness/anchors';
 import type { ResolvedAnchor, ShotId } from '../src/harness/anchors';
 import { zoneSpecFor } from '../src/scene/zoneSpecFor';
 
@@ -30,18 +30,31 @@ describe('§50.6.1 shot table', () => {
     expect(AUDIT_SHOTS.find((s) => s.id === 'sprite-edge')!.zoomStop).toBe(0);
   });
 
-  it('maps the words (0 = +z forward, 1 = +x, 2 = −z, 3 = −x) onto rig headings that look that way', () => {
-    const want: Record<number, readonly [number, number]> = { 0: [0, 1], 1: [1, 0], 2: [0, -1], 3: [-1, 0] };
-    for (const s of [0, 1, 2, 3] as const) {
-      const [fx, fz] = viewForward(rigHeading(s));
-      const [wx, wz] = want[s]!;
-      // the diorama yaw base is −35°, so "forward" is the dominant axis of the view direction
+  it('headings are rig indices (amended 2026-10-06, M3 review R-all-2): 0 ≈ −z, 1 ≈ −x, 2 ≈ +z, 3 ≈ +x', () => {
+    const want: Record<number, readonly [number, number]> = { 0: [0, -1], 1: [-1, 0], 2: [0, 1], 3: [1, 0] };
+    for (const k of [0, 1, 2, 3] as const) {
+      const [fx, fz] = viewForward(k);
+      const [wx, wz] = want[k]!;
+      // the diorama yaw base is −35°, so the named axis is the dominant one of the view direction
       expect(fx * wx + fz * wz).toBeGreaterThan(0.8);
+      expect(rigFacing(wx, wz)).toBe(k);
     }
-    expect(rigHeading(0)).toBe(2);
-    expect(rigHeading(1)).toBe(3);
-    // the rig's own heading 0 looks ≈ −z (camera at target + (sin yaw, cos yaw)), the reason for the mapping
     expect(-Math.cos(headingYaw(0))).toBeLessThan(-0.8);
+    // the table: spawn at the arrival heading (rig 0), gym-dusk turns to its door, the others keep the pre-amendment frames
+    expect(AUDIT_SHOTS.map((s) => s.heading)).toEqual([0, 0, 3, 1, null, 3]);
+    expect(AUDIT_SHOTS.map((s) => s.headingRule)).toEqual(['fixed', 'faceSubject', 'fixed', 'fixed', 'battle', 'fixed']);
+    for (const id of ['spawn-noon', 'gym-dusk', 'sprite-edge', 'lamps-night', 'link-east'] as const) {
+      expect(anchor(id).heading.convention, id).toBe('rig');
+    }
+    // the slice: the spawn row is rig 0 (the in-game arrival), gym-dusk rig 0 looks at the door 8 m ahead
+    expect(anchor('spawn-noon').heading.rig).toBe(0);
+    const g = anchor('gym-dusk');
+    expect(g.heading.rig).toBe(0);
+    const [fx, fz] = g.heading.viewForward!;
+    expect(fx * (g.base.x - g.x) + fz * (g.base.z - g.z)).toBeGreaterThan(0.8 * Math.hypot(g.base.x - g.x, g.base.z - g.z));
+    expect(anchor('sprite-edge').heading.rig).toBe(3);
+    expect(anchor('lamps-night').heading.rig).toBe(1);
+    expect(anchor('link-east').heading.rig).toBe(3);
   });
 
   it('reads door offsets in the door frame (+z = outward normal), world axes for a door facing +z', () => {
@@ -147,6 +160,17 @@ describe('M3 audit set (§50.5 M3: six shots in every zone)', () => {
     // the M2 slice's spawn shot is unchanged (the committed M2 Mirevale shots stay valid)
     expect(resolveAnchor(shotsForZone('mirevale', 'M3').find((s) => s.id === 'spawn-noon')!, specs.mirevale)).toEqual(anchor('spawn-noon'));
     expect(anchor('spawn-noon')).toMatchObject({ x: 0, z: 6, rule: 'ZoneDef.spawn', base: { name: 'spawn', x: 0, z: 6 } });
+  });
+
+  it('every zone: gym-dusk looks at its subject (the gym door, or the set-piece fallback); spawn-noon is rig 0', () => {
+    for (const z of ZONES) {
+      const spec = zoneSpecFor(zone(z.id), 'intact');
+      const g = resolveAnchor(shotsForZone(z.id, 'M3').find((s) => s.id === 'gym-dusk')!, spec)!;
+      const [fx, fz] = g.heading.viewForward!;
+      const [bx, bz] = [g.base.x - g.x, g.base.z - g.z];
+      expect(fx * bx + fz * bz, `${z.id} gym-dusk`).toBeGreaterThan(0.7 * Math.hypot(bx, bz));
+      expect(resolveAnchor(shotsForZone(z.id, 'M3').find((s) => s.id === 'spawn-noon')!, spec)!.heading.rig, z.id).toBe(0);
+    }
   });
 
   it('a link-east fallback turns the view toward the edge it uses', () => {

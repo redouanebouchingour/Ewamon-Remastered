@@ -15,6 +15,6 @@ export const MARROW_RECIPES: readonly SurfaceRecipe[] = [
   metal({ id: 'rail_iron', hero: false, metres: 1, strength: 0.5, rdo: 4, base: '#4a4541', metal: 0.9, rough: [0.35, 0.85],
     brushed: { dir: 'u', amount: 0.25 }, hammered: 0.08, rust: { color: '#6a3a22', amount: 0.7 } }),
   soil({ id: 'canyon_dust', hero: true, metres: 3, strength: 0.45, rdo: 4, base: '#b58b62', dark: '#8e6a48', light: '#c49a70',
-    rough: [0.9, 0.98], ripple: { k: [4, 7], amp: 0.15 }, grain: 0.1, pebbles: 500, pebbleColor: '#8a6446', pebblePx: [3, 9], crust: 6 }),
+    rough: [0.9, 0.98], ripple: { k: [4, 7], amp: 0.15 }, grain: 0.1, pebbles: 500, pebbleColor: '#8a6446', pebblePx: [3, 9] }),   // M3 review fixes: no crust cells (the sandstone road keeps the flagstone pattern)
   crystal({ id: 'gypsum_crystal', hero: false, metres: 1, strength: 0.5, rdo: 4, kind: 'blades', base: '#d8d1c3', light: '#e6e0d4', dark: '#a89f90', rough: [0.15, 0.3], cells: 5 }),
 ];

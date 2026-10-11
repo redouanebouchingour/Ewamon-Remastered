@@ -148,9 +148,12 @@ export const EvolutionSchema: z.ZodType<Evolution> = z.union([
 ]);
 
 /** a mid-battle form (hollowmane's rage form); the stat key enum is inline because StatKeySchema is declared below */
+const BandKindSchema = z.enum(['majin', 'tenjin']);
+
 const BattleFormDefSchema = z.object({
   id: SnakeId,
   name: z.string().min(1),
+  kind: BandKindSchema.optional(),
   hpBelowPct: Int.min(1).max(99),
   baseAtk: PosInt,
   baseDef: PosInt,
@@ -158,6 +161,8 @@ const BattleFormDefSchema = z.object({
   onEnter: z.object({
     clearNegativeStages: z.boolean(),
     lowerFoes: z.union([z.object({ stat: z.enum(['atk', 'def', 'spd', 'acc', 'eva']), stages: Int.min(1).max(6) }), z.null()]),
+    cureStatus: z.boolean().optional(),
+    healFraction: z.number().gt(0).max(1).optional(),
   }),
   sprite: z.object({ front: z.string().min(1), back: z.string().min(1) }),
   signatureMove: z.object({ replaces: z.string().min(1), move: z.string().min(1) }).optional(),
@@ -450,6 +455,7 @@ export const TrainerDefSchema: z.ZodType<TrainerDef> = z.object({
   reward: Money,
   rematchDays: z.union([PosInt, z.null()]),
   doubles: z.literal(true).optional(),
+  bands: z.array(BandKindSchema).min(1).max(2).optional(),
 });
 
 export const GroundItemDefSchema: z.ZodType<GroundItemDef> = z.object({
@@ -598,6 +604,7 @@ export const LeagueTrainerSchema: z.ZodType<LeagueTrainer> = z.object({
     .max(6),
   reward: Money,
   setsFlags: z.array(Flag),
+  bands: z.array(BandKindSchema).min(1).max(2).optional(),
   doubles: z.literal(true).optional(),
 });
 

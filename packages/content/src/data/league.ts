@@ -237,6 +237,7 @@ export const LEAGUE: readonly LeagueTrainer[] = [
     team: [m('mismagmen', 48, 'Veilwhisper'), m('fedoraith', 49, 'Final Bow'), m('voidraith', 50, 'Nullshade'), m('toxshade', 51, 'Blightveil'), m('bankaiser', 54, 'Bankaiser')],
     reward: 6000,
     setsFlags: ['elite:veil:beaten'],
+    bands: ['majin'],
   },
   {
     // Phase D6: fights 2-on-2
@@ -259,6 +260,7 @@ export const LEAGUE: readonly LeagueTrainer[] = [
     team: [m('glimmereen', 48, 'Lightmote'), m('cirrileap', 49, 'Skyleap'), m('starwhim', 50, 'Wishfall'), m('gemknight', 51, 'Prismguard'), m('voltaura', 54, 'Voltaura')],
     reward: 7000,
     setsFlags: ['elite:aurelia:beaten'],
+    bands: ['tenjin'],
   },
   {
     id: 'kirei',
@@ -302,6 +304,7 @@ export const LEAGUE: readonly LeagueTrainer[] = [
     team: [m('florasage', 55, 'Verdant Sage'), m('blizzraak', 55, 'Rimecaller'), m('abyssrake', 56, 'Deepfang'), m('rexaloft', 57, 'Skytyrant'), m('pyrothal', 58, 'Solwyrm'), m('zenryu', 60, 'Zenryu')],
     reward: 20000,
     setsFlags: ['champion:zeon:beaten'],
+    bands: ['majin'],
   },
 ];
 

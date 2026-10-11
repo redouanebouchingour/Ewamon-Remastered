@@ -1943,6 +1943,105 @@ phase 1 ≈ 600 ms, of which ≈ 400 ms main-thread idle (GPU pipelines). After:
 - `ScatterMesh` relies on two three internals: the `getMaterialCacheKey` rule above and `NodeMaterial.setupPosition`. A
   three upgrade must re-check both (the A/B shots and `handover-ii.test.ts` catch a broken transform or layout).
 
+# M3 review: framing, battle, harness (2026-10-06/07)
+
+The render half of the independent M3 review's fix list (`.design/audits/M3-render-audit.md` "Independent review"):
+R-all-1 (blocker), R-forgewall-2, R-all-6 / R-all-9 / R-saltmourn-3. SPEC: four CHANGELOG entries of 2026-10-06
+(§50.6.1 headings, §50.6.2 per zone, §10.2.4 occluder fade, §10.7.5 trainers + pad).
+
+## R-all-1 — the trainers stand beside their creatures
+
+- `camera/battle.ts` `trainerSlot(cx, cz, fx, fz, side, out)`: `TRAINER_SLOT_M` 4.45 m from the ring centre (the old
+  on-axis distance, content `ARENA_SLOT_M`), `TRAINER_SIDE_DEG` 45° off the battle axis toward the side away from the
+  battle camera's +12° yaw — side 0 on the near half to the camera's left, side 1 the point reflection. On the axis the
+  avatar stood in the camera → near-battler ray (rect overlap 0.17–0.56 in 17 of 21 M3 battle rows).
+- `Stage.trainerSpot` and `fitCentre` (hall fit) use it; the client places the local avatar and the foe actor with
+  SceneDirector `trainerPose` (render `trainerSlot`, facing the ring centre).
+- Why 45°: `test/battle-trainer.test.ts` projects the harness's own rects (player: a 0.4 m × 1.6 m cylinder; battler:
+  the card, feet → top ± half width along the camera right) through the rig's stock battle framing with the client's
+  panel insets at 1440×900 and 1280×720, every heading, cards 0.8–2.69 m (sizeScale 0.5–1.5 × alpha 1.12; every
+  manifest frame is square) and 1.6 × 1.25, singles and doubles, and every frame of the six cues. 30° fails a 2.69 m
+  doubles card (6.3 %); 35–55° pass; 45° covers 0 % everywhere (margin for a taller creature).
+- Harness `forgewall/battle--47.39_5.08` re-shot (scratchpad, see below): player rect x 126–292 against Bramblecub's
+  601–827, the creature whole; `maskCoverage.battlers[0].full` is now the creature's own share (0.277; it read 0.6725
+  with the avatar merged into it — M3-all-8's blind spot no longer bites in the stock framing).
+
+## R-forgewall-2 — the ring levels a terrain pad
+
+- `stage/terrainPad.ts` `TerrainPad`: like `PropCutaway`, edits the zone's terrain chunk meshes
+  (`ewa:terrain:<cx>,<cz>`) in place — every vertex above the seat inside `padInnerM` 5.0 m (ring, curb, posts, pylons)
+  is lowered to it, easing back (smoothstep, lowered only) by `padOuterM` 7.0 m; normals on the flat pad become up;
+  saved originals are written back on undress (overlapping pads re-apply from the originals, so they compose). Only the
+  touched vertex range is uploaded; nothing is added to the zone root, no material change (Pillar 7).
+- The seat (`placeArena`): 24 samples on the ring rim and the curb's outer edge; with a pad the seat is the lowest the
+  0.45 m skirt still closes downhill, `min(hi, lo + skirt − 0.05)`; without a zone (no pad) the Part 5 rule stays.
+- `TerrainPad.adjust(x, z, y)` is the same cut analytically; wiring routes the actor pool's ground sampler through it,
+  so the trainers and the spectators stand on the pad / bank, not in the air or in the hill.
+- The forgewall anchor: centre −0.54 m, rim −0.81 … +0.24 m. Before: seat −0.14, the uphill ground 0.3 m above the
+  ring top. Now: seat −0.41, every terrain vertex inside 5 m ≤ the seat (`test/terrain-pad.test.ts`, which also pins
+  lowered-only, the ease, byte-exact restore and adjust = mesh).
+- Known limit: trees are scatter, not terrain — a tree inside the 5–7 m bank on a steep slope keeps its original base
+  height (a few cm to dm above the cut). None seen in the re-shot frames.
+
+## R-all-6 / R-all-9 / R-saltmourn-3 — the occluder fade reaches the foreground
+
+`materials/occlusion.ts` (the mask node only; nothing else in materials/ touched): `clearM` 1.0 → 0.35 m (a pine
+crown reaching chest height in the kept last metre stippled the player: maskCoverage 0.40–0.43), and a second volume:
+fragments > `fgNearM` 2.0 m in front of the focus (horizontal, toward the camera) and > `fgHeightM` 3.2 m above the
+followed feet, each eased over 1.0 m, take the same dither (`max` of the two amounts). Ground dressing, fences, bushes
+and lamp posts in front of the focus stay; nothing behind the focus changes. Same uniforms, no new runtime compile;
+shadow maps keep the full occluder (scene-camera gate).
+
+# M3 review: the four towns below the bar (2026-10-06 … 10-11)
+
+The art half of the review's fix list, blocker 3 (Saltmourn, Skyrend, Cinderhold, Stormrook below the Phase E bar) and
+blocker 4 (M3-all-3, green tufts on non-grass ground). Begun 2026-10-06/07 in a session that left it uncommitted; finished
+and verified 2026-10-11 from the arrival views (rig 0, `harness:shots -- --set M3 --shots spawn-noon,gym-dusk,lamps-night`).
+SPEC: CHANGELOG 2026-10-11 "M3 town art".
+
+- **Tufts take the biome's colour** (M3-all-3 / M3-all-4). The per-biome `grassTints` multiply the card and could not
+  desaturate it. `SurfaceParams.tone` (vec4) re-tones a card surface: `rgb = mix(rgb, luminance(rgb) · tone.xyz, tone.w)`,
+  `tone.xyz` = the target divided by the surface's base luminance, so the texture keeps its light / dark structure.
+  `Palette.grassTone` sets it on `tall_grass` with the palette (`MaterialLibrary.setTone`, also applied to a material
+  created later). One uniform: no program change. The dressing `grassTints` became near-white so they no longer
+  fight the tone.
+- **High-albedo calibration** (M3-all-10 / R-all-5 / R-all-4): `SurfaceExtras.albedoCal` 0.82–0.88 on snow, salt sand,
+  sky marble, cloud stone, bone chalk, pale plaza stone and sun marble, written into `albedoScale` once the baked set
+  binds. The bake and its ≤ 0.85 ceiling are unchanged.
+- **Cinderhold** (R-cinderhold-3). Ash: the soil's albedo is keyed to the height, and the first cut's strong drifts
+  (ripple amp 0.3) painted zebra stripes, while the pebbles take the top of the normalised range so the bare ash
+  otherwise lands on one dark value. New optional soil `drift` (organic albedo patches from their own noise, independent
+  of the height; absent = no change to any other soil): pale ash `#7d766c` at 0.55 over dark cinder, low ripples
+  (amp 0.1). Lava: `lava_glow` glows per texel (`emissiveFromAlbedo`) with a near-black crust (`#1c1513`), so only the
+  molten flow glows; the pool is a flat extruded disc (planar UVs: the lathed dome pinched the texture into a starburst)
+  meeting the rim's slope at 0.31 m; 15 large crust plates packed along the rim and 7 small rafts in the middle give the
+  cooled skin and the hot centre; the kerb is fractured basalt and obsidian shards, not 16 glossy blocks. Braziers
+  22 / 10 m → 30 / 11 m (the night was red-brown murk).
+- **Stormrook** (M3-stormrook-1 raised, R-galvan-1). The ground was `storm_slate` under a `wet_flagstone` plaza: one
+  material at one value. Ground `grave_moss` (a dark olive moor; `grove_moss` read as Mirevale's lawn), roads
+  `wet_flagstone`, the fringe `storm_slate` (slate shows through by the roads and buildings), the plaza `tower_stone`.
+  `storm_slate` lost its facet cells (it read as paving) and gained heath lichen. Crystal lamps 18 / 10 m →
+  38 / 12 m, `#b4dcff` (one cold pool per lamp, the town read as empty at night). Galvan Route shares the palette.
+- **Skyrend** (M3-skyrend-1/-2, R-skyrend-3). Plaza `cobble` (was `sky_marble`: white on white), paths `path_gravel`;
+  stall timber `timber` and stall roofs `dragon_scale_tile` (the teal stripe read as knitted fabric, the prayer-flag
+  awning as a rainbow plank; the flags stay on the shrine).
+- **Saltmourn** (M3-saltmourn-1/-2). Plaza `harbour_plank` (a deck, was a grey cobble grid); the arrival view now holds
+  the lighthouse and its door.
+- **Plaza clutter** (all four; the thin plazas). `dressing.ts` `PLAZA_CLUTTER` / `plazaClutter` / `buildClutterItem`:
+  6–10 clusters of 2–4 walk-through items 1.3–2.3 m inside the rim — salt rope coils, net piles with floats, fish
+  baskets, lobster pots, kegs, small crates; storm cable spools; sky prayer cairns, pots, flower boxes; cinder coal
+  heaps, firewood, kegs. The first cluster stands 30° off the south road, beside content's arrival point, so every
+  arrival view holds one (a random start put Skyrend's 8 items all out of frame). Keep-clear: 0.9 m off hand-placed
+  props and lights, 1.3 m off authored points, off roads, buildings and the set-piece. Merged into the static chunk
+  meshes (shadow-casting), surfaces the biome already binds (`dressing.test.ts`: storm's prop timber is
+  `harbour_plank`, so "binds" means the biome row plus its `PropStyle`). The grove (the bar) gets none.
+- Budget (`harness:budget -- --set M3 --shots all --no-diff --budget-ms 0`, counts only, worst of the six shots): 0 count-cap
+  violations. saltmourn draws 454 / beauty 150 / programs 109 / materials 18 / textures 566 MB; skyrend 364 / 139 / 113 / 20 /
+  618 MB; cinderhold 314 / 114 / 109 / 18 / 498 MB; stormrook 328 / 118 / 115 / 18 / 508 MB. The clutter is merged into
+  the chunk meshes, so the arrival frames' draws did not move (cinderhold 291, skyrend 309, stormrook 328).
+- The bake: `bake --surface cinder_ash_soil --surface lava_glow` rewrote `materials.manifest.json` with only those two
+  surfaces (the README says partial bakes merge); a full `bake` restored it (unchanged surfaces bake byte-identical).
+
 ## `form_rage` VFX (2026-10-08)
 
 - The 49th `VfxId` (`VFX_FORM_IDS`): hollowmane's rage form — 180 crimson pixel shards bursting outward, 120 red
@@ -2013,3 +2112,46 @@ chat fade are unchanged; `tick` still allocates nothing.
   40 px, with the HP % and bar below. One fetch + `createImageBitmap` per species on first ask; the party region is
   re-marked dirty when it lands; initials until then or when the file is missing. Nothing loads without
   `createImageBitmap` (node tests). Bitmaps are closed on `dispose`.
+
+## Battle-form auras (2026-10-11)
+
+The user asked that a Majin / Tenjin form be recognisable by an aura that moves in the game, not one drawn into the
+sprites (`.design/majin-tenjin.md` §8; SPEC §10.7.5 "Battle-form auras").
+
+- `stage/aura.ts` `AuraSystem`, owned by `Stage` (`stage.aura`): 4 slots (every doubles position), each a flames
+  `Sprite` (192 particles) and a sigil `Mesh` under the stage root, built at construction and hidden while idle. One
+  shared `PointsNodeMaterial` and one shared `MeshBasicNodeMaterial`; the per-slot values (feet, the camera's right
+  and back, card size and kind, level, a seed) are read through `userData(...)`, so an aura never builds a program.
+  Both materials are in the step-8 warm-up (`wiring.ts` `warmupObjects`).
+- The loop costs no CPU: each particle's age is `fract(clock / cycle + seed)` on the VFX clock (static seeds in one
+  instanced attribute). Per frame the CPU writes the slot's anchor (the posed card's world position + lift, so a lunge
+  carries the aura), its fade level and the billboard's rim colour.
+- Rim: `CreatureBillboard.setRimColor(r, g, b)` writes the per-object `typeColor` (the rim term's colour) with an HDR
+  value; `refreshTypeColor()` restores it when the aura ends or the billboard changes hands.
+- Stage hooks: `setBattler` passes `desc.aura` (a new billboard under the same ref takes the slot and fades in; the same
+  creature re-set keeps its level), `faint` and `syncFrom` with hp 0 end it, `undress` clears all, `dispose` disposes.
+- Tuning measured in the sandbox over CDP (WebGPU): a crimson with any blue turned pink under bloom + ACES, so Majin
+  runs orange-hot (1, 0.13, 0.01) → blood red (0.72, 0, 0) with no blue; Tenjin's first white streaks were warmed to
+  gold and shortened (rise 0.62 → 0.42 of the height). A first fade bug (`target > level` stepped a full aura back
+  down every frame) is covered by the "same creature re-set keeps its level" assertion.
+- Like every VFX it never writes `mask.y = 1`, so a far battler's flames are softened by the DOF while the creature
+  stays sharp. That's acceptable (the sigil and rim carry the read), and it's noted in case a review wants them sharp
+  (a mask write would also sharpen the floor behind every flame texel).
+- Sandbox: `?demo=battle&mine=thornback&foe=hollowmane_rage&mineAura=tenjin&foeAura=majin`, `__ewaSandbox.part3.aura(side, kind | null)`.
+- `majin_gold` (zenryu's Super Saiyan Majin form, the user's choice of a gold aura): kind index 2 in the same shared
+  materials (no new program). Majin motion and sigil; flames orange-gold → amber, rise 0.55, × 1.4 size, outward 0.04;
+  sparks are electric-blue streaks; rim gold. The first pass (cream 1, 0.92, 0.5) read pale under bloom; saturated to
+  (1, 0.8, 0.18) → (1, 0.5, 0). Sandbox: `&mine=zenryu&mineAura=majin_gold`.
+
+## `form_tenjin` — the Tenjin Form's burst (2026-10-11)
+
+- A 64th `VfxId` (`contracts.ts` union, `VFX_FORM_IDS = ['form_rage', 'form_tenjin']`, `VFX_TABLE`): the Tenjin
+  Form's transformation burst, the opposite of `form_rage` (`.design/majin-tenjin.md` §8). A whole gold ring opening
+  at the feet (2 ring cards, 1 → 3.2), a slower white-gold inner ring (delay 0.15), 140 gold star motes rising
+  straight up (gravity −2.2, slow, drag 0.4), a white-gold star card at the chest, `flash` 0.45 (soft; rage is 1),
+  `beaconPulse` 0.7, no chroma, 1 100 ms default. Same pooled emitters, no new program.
+- `form_rage` stays the Majin burst (the client plays it for form ids `rage` and `majin`).
+- `test/stage.test.ts`: 63 → 64 ids; the form block is `['shiny_sparkle', 'form_rage', 'form_tenjin']` before the 14
+  styles. SPEC §10.7.5's VfxId union needs `'form_tenjin'` (the lead amends it).
+- Not tuned live: the colours follow the Tenjin aura's (gold that survived bloom + ACES in the aura pass), but the
+  burst was not looked at in the sandbox or a battle.

@@ -20,7 +20,7 @@
  */
 import { Group, Vector3 } from 'three/webgpu';
 import { SPECIES } from '@ewa/content';   // sandbox only (vite alias); the render package never imports content
-import { part3Of, rendererInternals, type AnimAtlasSet, type AtlasSet, type CreatureBillboard, type FrameHook, type Renderer, type SpriteDescriptor, type TypeName, type VariantKey, type VfxId } from '../src/index.js';
+import { part3Of, rendererInternals, type AnimAtlasSet, type AtlasSet, type AuraKind, type CreatureBillboard, type FrameHook, type Renderer, type SpriteDescriptor, type TypeName, type VariantKey, type VfxId } from '../src/index.js';
 
 interface ManifestMap { readonly url: string; readonly mips: readonly string[] }
 interface ManifestAtlas { readonly id: string; readonly species: readonly string[]; readonly size: 2048; readonly albedo: ManifestMap; readonly normal: ManifestMap; readonly emissive: ManifestMap; readonly normalScale: 0.5 | 1 }
@@ -65,14 +65,14 @@ function typesOf(id: string): readonly [TypeName] | readonly [TypeName, TypeName
   return t.length > 1 ? [t[0]!, t[1]!] : [t[0]!];
 }
 
-function descriptor(man: Manifest, species: string, key: string, variant: VariantKey = 'normal', isAlpha = false): SpriteDescriptor {
+function descriptor(man: Manifest, species: string, key: string, variant: VariantKey = 'normal', isAlpha = false, aura?: AuraKind): SpriteDescriptor {
   const sp = man.sprites[species]!;
   // the client adapter's mapping (spriteCatalog.ts): frames → rects, delays → delaysMs
   const f = (r: ManifestRect, a: ManifestAnimSide | undefined) => ({
     atlas: r.atlas, rect: r.uv, px: r.px, footV: r.footV, aspect: r.aspect,
     ...(a && ANIM_ON ? { anim: { atlas: a.atlas, rects: a.frames, delaysMs: a.delays, staticFrame: a.staticFrame } } : {}),
   });
-  return { id: key, front: f(sp.front, sp.anim?.front), back: f(sp.back, sp.anim?.back), sizeScale: sp.sizeScale, types: typesOf(species), variant, isAlpha };
+  return { id: key, front: f(sp.front, sp.anim?.front), back: f(sp.back, sp.anim?.back), sizeScale: sp.sizeScale, types: typesOf(species), variant, isAlpha, ...(aura ? { aura } : {}) };
 }
 
 export async function startPart3Demo(r: Renderer, mode: string, api: Record<string, unknown>): Promise<void> {
@@ -341,8 +341,13 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
     const foe = q.get('foe') ?? (species.includes('snapling') ? 'snapling' : species[1]!);
     await bindSpecies([mine, foe]);
     const me = { side: 0 as const, slot: 0 }; const them = { side: 1 as const, slot: 0 };
-    p.stage.setBattler(me, descriptor(man, mine, 'battler:mine'));
-    p.stage.setBattler(them, descriptor(man, foe, 'battler:foe', 'normal', false));
+    // battle-form auras: `&mineAura=majin|tenjin&foeAura=…`; `aura(0 | 1, kind | null)` switches one live
+    const auraOf = (k: string | null): AuraKind | undefined => (k === 'majin' || k === 'tenjin' || k === 'majin_gold' ? k : undefined);
+    p.stage.setBattler(me, descriptor(man, mine, 'battler:mine', 'normal', false, auraOf(q.get('mineAura'))));
+    p.stage.setBattler(them, descriptor(man, foe, 'battler:foe', 'normal', false, auraOf(q.get('foeAura'))));
+    out.aura = (side: 0 | 1, kind: AuraKind | null): void => {
+      p.stage.setBattler(side === 0 ? me : them, descriptor(man, side === 0 ? mine : foe, side === 0 ? 'battler:mine' : 'battler:foe', 'normal', false, kind ?? undefined));
+    };
     p.stage.setPose(me, 'enter', 450); p.stage.setPose(them, 'enter', 450);
     let hpMe = 58; let hpThem = 64; const maxMe = 58; const maxThem = 64;
     const bars = () => ({

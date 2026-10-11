@@ -43,18 +43,21 @@
  * Store writes happen at message time or are deferred off the tick (setTimeout 0) — never from inside World3D.tick.
  */
 import { digestBattleState, requiredPositions, resolveTurn, validateAction, validateSideChoice } from '@ewa/core';
-import type { Action, BattleEvent, BattleState, ContentIndex, CreatureInstance, Ref, StatusId } from '@ewa/core';
+import type { Action, BandKind, BattleEvent, BattleState, ContentIndex, CreatureInstance, Ref, StatusId } from '@ewa/core';
 import type { ClientMessageType, ClientPayload, RewardsSummary, ServerMessageOf } from '@ewa/protocol';
 import { useUiStore } from '../state/ui';
+import { useSessionStore } from '../state/session';
 import type { BattleResult, BattleUi, DoublesPick, QueuedPrompt, RaidBattleUi, RaidSummary } from '../state/ui';
 import { toast } from '../state/notifications';
 import { BattleHud, STAGE_REFS, STAGE_REFS_DOUBLES } from './BattleHud';
 import type { BattleHudModel } from './BattleHud';
 import { LOG_DWELL_MIN } from './constants';
 import { actionErrorLabel } from './labels';
-import { foeOfState } from './foe';
+import { foeIdentity, foeOfState } from './foe';
 import type { FoeIdentity } from './foe';
 import { useCinematicStore } from './cinematic';
+import { useBondStore } from './bond';
+import type { BondCue } from './bond';
 import type { CinematicCue, CinematicPoint } from './cinematic';
 import { createMoveAnimRegistry } from './moveAnims';
 import type { MoveAnimRegistry } from './moveAnims';
@@ -222,6 +225,22 @@ function typesOf(state: BattleState, r: Ref, content: ContentIndex): readonly st
   }
 }
 
+/**
+ * The band behind a battler's form change when its trainer chose it (the bond cinematic, bond.ts): any trainer's side
+ * (the player, an NPC with bands, a pvp rival) whose species has a Majin / Tenjin form. A wild side's form breaks open
+ * on its own and a raid boss is nobody's: null.
+ */
+export function bandOf(state: BattleState, r: Ref, content: ContentIndex): BandKind | null {
+  const side = state.sides[r.side];
+  const b = side?.party[r.slot];
+  if (side === undefined || b === undefined || side.kind === 'wild' || state.format === 'raid') return null;
+  try {
+    return content.species(b.creature.speciesId).battleForm?.kind ?? null;
+  } catch (_e) {
+    return null;
+  }
+}
+
 function sideName(state: BattleState, r: Ref, seat: 0 | 1, content: ContentIndex): string {
   const b = state.sides[r.side]?.party[r.slot];
   if (b === undefined) return 'It';
@@ -282,6 +301,16 @@ export function patchFromEvents(state: BattleState, events: readonly BattleEvent
       case 'statusCured': {
         const b = sides[e.target.side]?.party[e.target.slot];
         if (b !== undefined) setCreature(e.target, { status: b.creature.status.filter((s: StatusId) => s !== e.status) });
+        break;
+      }
+      case 'formChange': {
+        // Majin / Tenjin: the battler takes its form; a trainer's side has used its one transformation (a wild side's
+        // automatic change uses none)
+        const sd = sides[e.who.side];
+        const b = sd?.party[e.who.slot];
+        if (sd === undefined || b === undefined) break;
+        sd.party[e.who.slot] = { ...b, form: e.form };
+        if (sd.kind !== 'wild') sides[e.who.side] = { ...sd, transformed: true };
         break;
       }
       case 'switchRequired':
@@ -495,6 +524,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     activesOf: (side) => (st.slots === 2 ? st.sides[side].actives : undefined),
     standing: (r) => (creatureAt(st, r.side, r.slot)?.hp ?? 0) > 0,
     signatureSeen: (r, move) => sigUsed.has(`${r.side}:${r.slot}:${move}`),
+    bondOf: (r) => bandOf(st, r, deps.content),
     seat,
     instantText: deps.instantText(),
   });
@@ -571,7 +601,10 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     cinematic: (phase, move, from, to, mode) => {
       // the store writes are deferred off the World3D tick, like the banners
       if (phase === 'clear') {
-        defer(() => useCinematicStore.getState().clear());
+        defer(() => {
+          useCinematicStore.getState().clear();
+          useBondStore.getState().clear();
+        });
         return;
       }
       const a = pointOf(from);
@@ -586,6 +619,33 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       }
       const id = cinematicId;
       defer(() => useCinematicStore.getState().aim(id, a, d));
+    },
+    bond: (who, kind, form) => {
+      const st = preState ?? state;
+      const b = st?.sides[who.side]?.party[who.slot];
+      if (st === null || b === undefined) return;
+      const side = st.sides[who.side];
+      const trainer =
+        who.side === seat
+          ? (useSessionStore.getState().profile?.username ?? 'You')
+          : side.kind === 'npc' && side.trainerId !== null
+            ? foeIdentity(side.trainerId).name
+            : 'Rival';
+      const cue: BondCue = {
+        id: ++cinematicId,
+        kind,
+        speciesId: b.creature.speciesId,
+        form,
+        name: cap(sideName(st, who, who.side, deps.content)),
+        trainer,
+        near: who.side === seat,
+        reduced: deps.reduced(),
+        clock: player.clock(),
+      };
+      const forBattle = battleId;
+      defer(() => {
+        if (battleId === forBattle) useBondStore.getState().show(cue);
+      });
     },
     commit: () => hud.commit(),
     ended: () => defer(onTimelineEnd),

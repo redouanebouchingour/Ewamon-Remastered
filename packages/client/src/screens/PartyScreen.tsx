@@ -19,6 +19,7 @@ import { CreatureSprite } from '../ui/CreatureSprite';
 import { cssVars } from '../ui/cssVars';
 import { cx } from '../ui/cx';
 import { EmptyState } from '../ui/EmptyState';
+import { FormSigil, formKindOf, formMarkLabel } from '../ui/FormSigil';
 import { StatusChip, hpTone } from '../ui/HpBar';
 import { Icon } from '../ui/Icon';
 import type { IconName } from '../ui/Icon';
@@ -52,13 +53,15 @@ function LineupCard({ creature: c, slot, selected, onSelect }: { readonly creatu
   const frac = max > 0 ? Math.max(0, Math.min(1, c.hp / max)) : 0;
   const fainted = c.hp <= 0;
   const marks = badgesOf(c);
+  // Majin / Tenjin: the species' form sigil joins the marks (the button's label says it)
+  const formKind = formKindOf(c.speciesId);
   return (
     <button
       type="button"
       className={cx(s.card, selected && s.selected, fainted && s.fainted)}
       data-type={sp?.types[0] ?? 'Normal'}
       aria-pressed={selected}
-      aria-label={`${name}, level ${c.level}, ${c.hp} of ${max} HP${fainted ? ', fainted' : ''}`}
+      aria-label={`${name}, level ${c.level}, ${c.hp} of ${max} HP${fainted ? ', fainted' : ''}${formKind !== null ? `, ${formMarkLabel(formKind).toLowerCase()}` : ''}`}
       onClick={onSelect}
     >
       <span className={s.art}>
@@ -66,13 +69,18 @@ function LineupCard({ creature: c, slot, selected, onSelect }: { readonly creatu
           {String(slot).padStart(2, '0')}
         </span>
         <CreatureSprite speciesId={c.speciesId} variantKey={c.variantKey} size="xl" className={s.sprite} />
-        {marks.length > 0 && (
+        {(marks.length > 0 || formKind !== null) && (
           <span className={s.marks} aria-hidden>
             {marks.map((b) => (
               <span key={b} className={s.mark} title={MARK[b].label}>
                 <Icon name={MARK[b].icon} size="sm" />
               </span>
             ))}
+            {formKind !== null && (
+              <span className={s.mark} title={formMarkLabel(formKind)} data-form={formKind}>
+                <FormSigil kind={formKind} size="sm" />
+              </span>
+            )}
           </span>
         )}
         {c.heldItem !== null && (
