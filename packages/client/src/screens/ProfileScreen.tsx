@@ -55,7 +55,7 @@ function Achievements() {
                 <span className={l.caption}>{q.summary}</span>
                 {!earned && <ProgressBar size="sm" value={prog.target === 0 ? 0 : prog.value / prog.target} label={`${q.title} progress`} valueText={figure} />}
               </span>
-              {earned ? <Pill tone="accent">Earned</Pill> : status === 'ready' ? <Pill tone="info">Claim in Quests</Pill> : <span className={l.mono}>{prog.value} / {prog.target}</span>}
+              {earned ? <Pill tone="neutral">Earned</Pill> : status === 'ready' ? <Pill tone="info">Claim in Quests</Pill> : <span className={l.mono}>{prog.value} / {prog.target}</span>}
             </li>
           );
         })}

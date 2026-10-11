@@ -1,35 +1,64 @@
+/* Broadcast UI (2026-10-11): an interactive move is a solid slab of its TYPE colour with a slanted right edge; the
+   orange bar under it (and a lift) marks hover / focus. The static form (party detail) is a carbon row with a type
+   stripe. --tc / --tc-ink come from tokens.css `[data-type]`. */
+
+/* ---- interactive: the slab ------------------------------------------------------------------------------------- */
 .move {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--s-2);
   min-inline-size: 0;
-  padding: var(--s-4);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-2);
-  background: linear-gradient(160deg, color-mix(in srgb, var(--tc) 9%, transparent), transparent 55%), var(--bg-2);
-  color: var(--text-1);
-  text-align: left;
-  transition:
-    transform var(--motion-fast) var(--ease-out),
-    border-color var(--motion-ui) var(--ease-out),
-    background-color var(--motion-ui) var(--ease-out);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tc-ink);
+  font-family: var(--face-display);
+  text-align: start;
+  cursor: pointer;
+  transition: transform var(--motion-fast) var(--ease-out);
 }
 
-button.move:hover:not(:disabled),
-button.move:focus-visible {
-  border-color: color-mix(in srgb, var(--tc) 70%, var(--line-2));
+.slab {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--s-2);
+  min-block-size: 0;
+  padding: var(--s-3) var(--s-6) var(--s-3) var(--s-4);
+  background: var(--tc);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
 }
 
-button.move:hover:not(:disabled) {
-  transform: scale(1.05);
+.bar {
+  flex: none;
+  block-size: 6px;
+  margin-block-start: var(--s-1);
+  background: transparent;
+  transition: background-color var(--motion-fast) var(--ease-out);
 }
 
-button.move:active:not(:disabled) {
-  transform: scale(0.95);
+/* the selected move: lifted, the orange bar under it (the bar is outside the clip, so it is never cut) */
+.move:hover:not(:disabled),
+.move:focus-visible {
+  transform: translateY(-8px);
 }
 
-button.move:disabled {
+.move:hover:not(:disabled) .bar,
+.move:focus-visible .bar {
+  background: var(--accent);
+}
+
+.move:active:not(:disabled) {
+  transform: translateY(-8px) scale(0.95);
+}
+
+.move:focus-visible {
+  outline: none;
+}
+
+.move:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
@@ -41,76 +70,225 @@ button.move:disabled {
   min-inline-size: 0;
 }
 
+/* a key chip on the type colour: black with paper ink (the paper chip would vanish on the light types) */
 .hotkey {
-  display: grid;
+  display: inline-grid;
   place-items: center;
   flex: none;
-  inline-size: 20px;
-  block-size: 20px;
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-1);
-  color: var(--text-2);
-  font-family: var(--face-mono);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-}
-
-.name {
-  overflow: hidden;
+  min-inline-size: 22px;
+  block-size: 22px;
+  padding: 0 var(--s-2);
+  background: var(--bg-0);
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-body-lg);
-  line-height: var(--lh-body-lg);
-  font-weight: 700;
+  font-size: var(--t-body);
+  line-height: 1;
+  font-weight: 800;
+}
+
+.type {
+  overflow: hidden;
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-overflow: ellipsis;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
+/* effectiveness: the shape-coded chevrons in a black box (×n beside them) */
 .eff {
-  margin-left: auto;
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  font-weight: 700;
-  letter-spacing: -0.05em;
-}
-
-.good {
-  color: var(--accent);
-}
-
-.bad {
-  color: var(--warn);
-}
-
-.middle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-3);
-}
-
-.pp {
-  color: var(--text-1);
-  font-family: var(--face-mono);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  white-space: nowrap;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  flex: none;
+  margin-inline-start: auto;
+  padding: var(--s-1) var(--s-3);
+  background: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 800;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
-.low {
-  color: var(--warn);
+.good {
+  color: var(--text-hi);
 }
 
-.empty {
+.bad {
   color: var(--danger);
 }
 
-.stats {
+.mult {
+  font-size: var(--t-caption);
+}
+
+.name {
+  display: -webkit-box;
   overflow: hidden;
+  font-size: var(--t-h3);
+  line-height: 1;
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-1) var(--s-5);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pow,
+.pp {
+  white-space: nowrap;
+}
+
+.statLabel {
+  font-weight: 700;
+}
+
+.num {
+  font-size: var(--t-body-lg);
+  font-weight: 800;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.max {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* PP running out: the number sits in a black chip (amber / red ink), legible on every type colour */
+.low .num,
+.empty .num {
+  padding: 0 var(--s-2);
+  background: var(--bg-0);
+}
+
+.low .num {
+  color: var(--warn);
+}
+
+.empty .num {
+  color: var(--danger);
+}
+
+.acc {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* the battle deck's card: fills its cell, the name big */
+.lg {
+  block-size: 100%;
+}
+
+.lg .slab {
+  padding: var(--s-4) var(--s-7) var(--s-4) var(--s-5);
+}
+
+.lg .name {
+  font-size: var(--t-h1);
+  line-height: 0.95;
+}
+
+.lg .num {
+  font-size: var(--t-h3);
+}
+
+/* a short viewport (the deck is 28vh, ≥ 200 px): one line of name so the card never overflows its cell */
+@media (max-height: 760px) {
+  .lg .name {
+    -webkit-line-clamp: 1;
+  }
+}
+
+/* ---- static: the party detail's row ---------------------------------------------------------------------------- */
+.row {
+  display: flex;
+  align-items: stretch;
+  min-inline-size: 0;
+  background: var(--bg-2);
+  color: var(--text-hi);
+  font-family: var(--face-display);
+}
+
+.stripe {
+  flex: none;
+  inline-size: 8px;
+  background: var(--tc);
+}
+
+.rowBody {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-3);
+  min-inline-size: 0;
+  padding: var(--s-2) var(--s-4);
+}
+
+.rowName {
+  overflow: hidden;
+  font-size: var(--t-h3);
+  line-height: var(--lh-h3);
+  font-style: italic;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rowType {
+  margin-inline-start: auto;
   color: var(--text-2);
   font-size: var(--t-caption);
   line-height: var(--lh-caption);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.row .eff {
+  margin-inline-start: 0;
+}
+
+.rowStats {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-1) var(--s-4);
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rowStats .num {
+  color: var(--text-hi);
+  font-size: var(--t-body);
+}
+
+.rowStats .low .num,
+.rowStats .empty .num {
+  padding: 0;
+  background: none;
 }

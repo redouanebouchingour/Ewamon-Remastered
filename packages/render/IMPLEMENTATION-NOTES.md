@@ -1963,3 +1963,53 @@ phase 1 ≈ 600 ms, of which ≈ 400 ms main-thread idle (GPU pipelines). After:
   horizontal direction and its right hand are computed per phase (`_d`, `_r`; no allocation).
 - Tuned once against the harness battle (WebGPU, CDP): bite, slash, rain, erupt, bolt, shard and gust were too faint
   at the battle camera's distance — bigger cards, lower spawn heights (rain 2.4 m, bolt 2.6 m), more intensity.
+
+## Broadcast UI (2026-10-11)
+
+`hud/layer.ts` restyled to the "Broadcast" direction (`.screenshots/ui-revamp/BROADCAST.md`). Public API, `HudModel`,
+regions, dirty bits, clipping, bar placement (anchoring, reserved boxes, collisions, bottom inset), the HP tween and the
+chat fade are unchanged; `tick` still allocates nothing.
+
+- Palette mirrored from the client tokens (render may not import the client): black `#0d0d0f` / carbon `#18181c` slabs
+  at 0.92 over the world, paper `#f5f3ee` text, fog `#a3a3ad` labels, `#2a2a31` bar tracks, ONE orange `#ff5b1f` only
+  for the lead party card's ring, the prompt's key chip, the turn chip, the zone banner's edge block, the OBJECTIVE
+  strip and the in-battle nameplate edge. HP: paper > 50 %, amber `#ffb020` > 20 %, red `#ff4b3e` below. No green left
+  (the old `#5fd068` HP, `#b8e0a8` guild tag, `#9fd3ff` chat names, `#ffd97a` targets are gone).
+- Type: names, numbers, labels and the zone name in the display face (the client's `setFonts` display string), weight
+  800, uppercase (cached per string: no per-redraw allocation), italic for names / the zone / the turn chip; running
+  text (chat lines) stays in the body face. Every font ≥ 14 px at uiScale 1 (the `hud.test` floor). Tabular numerals
+  now advance by the widest digit (Barlow's digits are proportional) and stroke every outline before any fill, so a
+  digit's outline no longer eats its neighbour.
+- Shapes (canvas paths, no `transform`/`setTransform`: the `Ctx2D` subset is unchanged): slabs with a 12° right cut,
+  mirrored (left cut) for the top-right column; HP bars are 12° parallelograms; badges, status and shake markers are
+  flat rectangles / squares; no rounded rects remain.
+- Regions: party = 48 × 68 cards (neutral `#4a4a54` band, paper band for a variant — the model has no types —
+  initials, HP % as a number or KO, skewed bar, status square, orange ring on slot 0). Zone = a centred lower-third: a
+  paper "NOW ENTERING" tag strip (`HUD.zoneTagH` 22) over an orange edge block + black slab with the 48 px name
+  (shrunk to fit the region); the region is 78 px tall (was 72; still clear of the connection pill at +96). Top-right =
+  a clock slab (paper sun / crescent, DAY / NIGHT, hh:mm) and the quest hint as an orange OBJECTIVE strip + the hint
+  uppercase, ellipsised to the 440 px column (cached). Chat = one slab per line fading with it, fog name, paper text,
+  clipped to the column. Prompt = orange key chip + slab with the verb and the target (italic). Nameplates = one slab
+  (fog guild tag inline before the name, no longer above it; orange left edge when in battle). Battle plates (240 × 52
+  as before) = slab with a type-colour left edge, italic name, LV, skewed HP bar, type badges · status · stages left,
+  HP numbers right (own side); turn label = orange skewed chip; orb shakes = paper / dark squares. Connection = slab
+  with an amber / red edge. Dev = carbon panel.
+- `HUD.badgeH` 18 → 16 (flat badges sit inside the plate's bottom row). Badge ink: whichever of black / paper has the
+  higher contrast on the type colour (black above L ≈ 0.18; was paper below L 0.45, which put paper on Fire at
+  2.9 : 1); every §10.4.6 colour now gets ≥ 4.2 : 1. Colourblind tables still flow through `setTypeColors`.
+- Tests: `hud.test.ts` expectations that matched drawn strings now expect the uppercase forms ('MIRE ROUTE', 'TABLET',
+  'ROWAN', 'TURN 1'); nothing else changed.
+- Spec text now out of date (lead to amend): §10.9 "2 px dark outline under every glyph over the world" (glyphs now sit
+  on 0.92 slabs; the outline is kept but no longer the legibility device), "centre-top display face 48 px" (now a
+  lower-third with a tag strip), the badge description (flat rectangles, contrast-chosen ink, 16 px); §20.6 comments
+  ("48 px thumbs" are 48 × 68 cards; the prompt reads "E · TALK TO FENKEEPER" in caps).
+- **Type icons on the battle plates** (2026-10-11, the user asked for icons instead of letter codes): a badge is a
+  flat type-colour square with the type's icon (`hud/typeIcons.ts`, the client's `ui/typeIcons.ts` verbatim) stroked
+  in the luminance-chosen ink; one cached `Path2D` per type (built on first use, nothing per frame). Surfaces without
+  `Path2D` or `translate`/`scale` (the node test fakes) fall back to the 3-letter name.
+- **Creature sprites in the party cards** (2026-10-11, the user: "i want to see my ewamon sprites here"): each card
+  (now 56×76, was 48×68) draws the species' 128 px WebP front thumbnail — the same file the client's DOM uses,
+  `/creatures/thumbs/<id>_front.webp` — pixel-crisp (`imageSmoothingEnabled = false`), contained in the card's top
+  40 px, with the HP % and bar below. One fetch + `createImageBitmap` per species on first ask; the party region is
+  re-marked dirty when it lands; initials until then or when the file is missing. Nothing loads without
+  `createImageBitmap` (node tests). Bitmaps are closed on `dispose`.

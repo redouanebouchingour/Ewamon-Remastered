@@ -43,7 +43,7 @@ export function TrainerIdentity({ username, title, motto, body, guildTag, tier, 
           {guildTag !== null && <span className={s.guild}>[{guildTag}]</span>}
         </h3>
         <div className={s.chips}>
-          <Pill tone="accent">{tierLabel(tier)}</Pill>
+          <Pill tone="neutral">{tierLabel(tier)}</Pill>
           <Pill>{bodyLabel(body)}</Pill>
           {you && <Pill tone="info">You</Pill>}
         </div>

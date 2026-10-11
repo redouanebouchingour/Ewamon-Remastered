@@ -1,5 +1,12 @@
+/*
+ * Shared bodies of the world's modals (challenge, trade, evolve / learn-move prompts, the tower).
+ * Broadcast look (2026-10-11): running text in the text face, names / headings in the condensed display face
+ * (uppercase, heavy), inner panels carbon-on-black with hairlines, hard edges; a confirmation is a paper label, never
+ * orange (orange is only the focused / pressed control).
+ */
 .text {
   color: var(--text-1);
+  font-family: var(--face-text);
   font-size: var(--t-body-lg);
   line-height: var(--lh-body-lg);
 }
@@ -36,11 +43,18 @@
 }
 
 .heading {
+  overflow: hidden;
+  padding-block-end: var(--s-2);
+  border-block-end: 1px solid var(--line-1);
   color: var(--text-hi);
   font-family: var(--face-display);
   font-size: var(--t-h3);
   line-height: var(--lh-h3);
-  font-weight: 700;
+  font-style: italic;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .pick {
@@ -55,27 +69,33 @@
   display: flex;
   align-items: center;
   gap: var(--s-3);
-  color: var(--text-1);
+  color: var(--text-2);
+  font-family: var(--face-display);
   font-size: var(--t-body);
   line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .moneyInput {
   inline-size: 140px;
   padding: var(--s-2) var(--s-3);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-1);
-  background: var(--bg-1);
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-2);
   color: var(--text-hi);
-  font-family: var(--face-mono);
-  font-size: var(--t-mono);
-  line-height: var(--lh-mono);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: var(--lh-h3);
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
 .moneyInput:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
 .offer {
@@ -83,18 +103,22 @@
   flex-direction: column;
   gap: var(--s-2);
   padding: var(--s-4);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-2);
-  background: var(--bg-2);
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-1);
 }
 
+/* a paper label: "Confirmed" / "You confirmed" */
 .confirmed {
-  color: var(--accent);
-  font-size: var(--t-caption);
+  align-self: flex-start;
+  padding: var(--s-1) var(--s-3);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
   line-height: var(--lh-caption);
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
 }
 
 .moves {

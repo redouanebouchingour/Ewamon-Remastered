@@ -23,7 +23,7 @@ export const HISTORY_PAGE = 25;
 
 type Result = BattleHistoryRow['result'];
 const RESULT: Readonly<Record<Result, { readonly label: string; readonly tone: 'accent' | 'danger' | 'neutral' | 'info' }>> = {
-  win: { label: 'Win', tone: 'accent' },
+  win: { label: 'Win', tone: 'neutral' },
   loss: { label: 'Loss', tone: 'danger' },
   draw: { label: 'Draw', tone: 'neutral' },
   fled: { label: 'Fled', tone: 'neutral' },

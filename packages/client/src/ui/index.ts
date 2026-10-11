@@ -13,7 +13,7 @@ export { Toast } from './Toast';
 export type { ToastProps } from './Toast';
 export { HpBar, StatusChip, STATUS_LABEL, hpTone, drainMs } from './HpBar';
 export type { HpBarProps } from './HpBar';
-export { TypeBadge, TYPE_GLYPHS } from './TypeBadge';
+export { TypeBadge, TYPE_ICON_PATHS } from './TypeBadge';
 export type { TypeBadgeProps } from './TypeBadge';
 export { CreatureCard, badgesOf } from './CreatureCard';
 export type { CreatureCardProps, CreatureBadge } from './CreatureCard';

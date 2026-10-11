@@ -3,12 +3,13 @@
  * its shared HP (`RaidState.hpPct`, the only boss HP every participant sees), the phase (Enraged in danger tone), the
  * round countdown (`roundEndsInMs`, patched once a second) and the public damage board. All of it is read from
  * `room.state.raid` through `useRoomState`; the canvas HP bars and the timeline stay the battle's own.
+ * Broadcast UI (2026-10-11): a black card — the boss on a label strip, the phase a slab (Enraged red, the others
+ * outlined: orange is never a status), the shared HP as a big number, the board in tabular display figures.
  */
 import { speciesName } from '../data/content';
 import { useRoomState } from '../net/useRoomState';
 import { useUiStore } from '../state/ui';
 import { HpBar } from '../ui/HpBar';
-import { Pill } from '../ui/Pill';
 import { cx } from '../ui/cx';
 import { boardFlat, countdownLine, phaseLabel, unflattenBoard } from './raid';
 import s from './RaidPanel.module.css';
@@ -43,7 +44,7 @@ export function RaidPanel() {
         <span className={s.boss}>
           {speciesName(view.species)} <span className={s.level}>Lv {view.level}</span>
         </span>
-        <Pill tone={enraged ? 'danger' : view.phase === 3 ? 'accent' : 'neutral'}>{phaseLabel(view.phase)}</Pill>
+        <span className={cx(s.phase, enraged && s.enraged)}>{phaseLabel(view.phase)}</span>
       </header>
       <div className={s.hp}>
         <HpBar hp={pct} maxHp={1000} size="sm" />

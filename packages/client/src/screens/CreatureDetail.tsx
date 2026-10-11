@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { HONOR_DELTAS, HONOR_MAX, HONOR_MIN, evolutionTarget, tracksHonor } from '@ewa/core';
+import { HONOR_DELTAS, HONOR_MAX, HONOR_MIN, MAX_LEVEL, evolutionTarget, expToLevel, tracksHonor } from '@ewa/core';
 import type { CreatureInstance, SpeciesDef } from '@ewa/core';
 import { CREATURE_ITEMS, HELD_ITEMS, MULTI_USE_ITEMS, STONE_IDS, ability as abilityDef, displayName, itemInfo, maxHpOf, move as moveDef, species, statsOf, stoneTarget } from '../data/content';
 import { useSessionStore } from '../state/session';
@@ -14,6 +14,7 @@ import { Button } from '../ui/Button';
 import { badgesOf } from '../ui/CreatureCard';
 import { CreatureSprite } from '../ui/CreatureSprite';
 import { cssVars } from '../ui/cssVars';
+import { cx } from '../ui/cx';
 import { Select, TextField } from '../ui/Field';
 import { HpBar } from '../ui/HpBar';
 import { Icon } from '../ui/Icon';
@@ -34,11 +35,83 @@ export interface CreatureDetailProps {
   readonly extraActions?: ReactNode;
   /** the last party member cannot be released or deposited */
   readonly isLastInParty?: boolean;
+  /**
+   * `column` (Box, default): one scrolling column. `band` (Party, Broadcast 2026-10-11): a full-width band with
+   * identity, stats and moves side by side, then the tools (teach, items, setup, identity) as label-strip cards.
+   */
+  readonly layout?: 'column' | 'band';
+  /** the party slot (1-based), shown in the band's identity label */
+  readonly slot?: number;
 }
 
 const MAX_BASE = 150;
 
 const signed = (n: number): string => (n > 0 ? `+${n}` : String(n));
+
+const STAT_SHORT: Readonly<Record<string, string>> = { hp: 'HP', atk: 'ATK', def: 'DEF', spd: 'SPD' };
+
+/** Stats at level as big tabular numbers beside a skewed bar of the species' base stat (display only, core calcStat). */
+function StatRows({ creature: c }: { readonly creature: CreatureInstance }) {
+  return (
+    <div className={s.stats}>
+      {statsOf(c).map((st) => (
+        <div key={st.key} className={s.stat}>
+          <abbr className={s.statLabel} title={st.label}>
+            {STAT_SHORT[st.key] ?? st.label}
+          </abbr>
+          <span className={s.statValue}>{st.value}</span>
+          <div className={l.statTrack} title={`Base ${st.base}`}>
+            <div className={l.statFill} style={cssVars({ '--p': Math.min(1, st.base / MAX_BASE) })} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Progress to the next level from the total exp (core expToLevel: this level's floor and the next one's). */
+function ExpRow({ creature: c }: { readonly creature: CreatureInstance }) {
+  const max = c.level >= MAX_LEVEL;
+  const lo = expToLevel(c.level);
+  const hi = expToLevel(c.level + 1);
+  const frac = max ? 1 : Math.min(1, Math.max(0, (c.exp - lo) / Math.max(1, hi - lo)));
+  const left = Math.max(0, hi - c.exp);
+  return (
+    <div className={s.exp}>
+      <span className={l.kvLabel}>Exp</span>
+      <span className={s.expTrack} aria-hidden>
+        <span className={s.expFill} style={cssVars({ '--p': frac })} />
+      </span>
+      <span className={s.expText}>{max ? 'Max level' : `${left.toLocaleString('en-US')} to Lv ${c.level + 1}`}</span>
+    </div>
+  );
+}
+
+/** The four moves as type-tagged rows: a type-colour edge, the name, its type, power and PP. */
+function MoveRows({ creature: c }: { readonly creature: CreatureInstance }) {
+  return (
+    <ul className={s.moveRows} aria-label="Moves">
+      {c.moves.map((m) => {
+        const def = moveDef(m.id);
+        if (def === undefined) return null;
+        const low = m.ppMax > 0 && m.pp / m.ppMax <= 0.25;
+        return (
+          <li key={m.id} className={s.moveRow} data-type={def.type}>
+            <span className={s.moveName}>{def.id}</span>
+            <span className={s.moveMeta}>
+              <span className={s.moveType}>{def.type}</span>
+              <span>{def.power > 0 ? `Pow ${def.power}` : 'Status'}</span>
+              <span className={cx(s.movePp, low && s.movePpLow)}>
+                {m.pp}
+                <span className={s.movePpMax}>/{m.ppMax} PP</span>
+              </span>
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 /** The honor ledger (core honor.ts): where the creature stands between outlaw and lawman, and what its evolution will be. */
 export function HonorLedger({ creature: c, sp }: { readonly creature: CreatureInstance; readonly sp: SpeciesDef }) {
@@ -66,7 +139,7 @@ export function HonorLedger({ creature: c, sp }: { readonly creature: CreatureIn
   );
 }
 
-export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInParty = false }: CreatureDetailProps) {
+export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInParty = false, layout = 'column', slot }: CreatureDetailProps) {
   const sp = species(c.speciesId);
   const items = useSessionStore((st) => st.inventory?.items);
   const [nickname, setNickname] = useState(c.nickname ?? '');
@@ -105,22 +178,200 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
   const submitUse = (qty: number): void => {
     if (useItem !== undefined) fetcher.submit({ intent: 'useItem', item: useItem.id, target: c.id, qty });
   };
+  const band = layout === 'band';
+  const name = displayName(c);
+  const dexNo = sp !== undefined ? String(sp.dexNumber).padStart(3, '0') : null;
+
+  const typeRow = (
+    <div className={l.row}>
+      {sp?.types.map((t) => <TypeBadge key={t} type={t} />)}
+      {c.variantKey !== 'normal' && <Pill tone="info">{c.variantKey}</Pill>}
+      {badgesOf(c).includes('alpha') && <Pill tone="danger">Alpha</Pill>}
+    </div>
+  );
+
+  const useItemSection = (
+    <section className={l.section}>
+      <h4 className={band ? l.labelStrip : l.sectionTitle}>Use an item</h4>
+      {useItem === undefined ? (
+        <p className={l.caption}>You have no items that work on a creature. Potions, revives and Rare Candy are sold in town shops.</p>
+      ) : (
+        <>
+          <Select
+            label="Item"
+            value={useItem.id}
+            options={usable.map((i) => ({ value: i.id, label: `${i.name} ×${items?.[i.id] ?? 0}` }))}
+            onChange={setUseId}
+          />
+          <p className={l.caption}>{useItem.description}</p>
+          <div className={l.row}>
+            <Button size="sm" variant="primary" disabled={maxTimes < 1} busy={useBusy} onClick={() => submitUse(1)}>
+              Use
+            </Button>
+            {multi && maxTimes >= 5 && (
+              <Button size="sm" disabled={useBusy} onClick={() => submitUse(5)}>
+                Use ×5
+              </Button>
+            )}
+            {multi && maxTimes >= 10 && (
+              <Button size="sm" disabled={useBusy} onClick={() => submitUse(10)}>
+                Use ×10
+              </Button>
+            )}
+            {multi && maxTimes < 1 && <span className={l.caption}>Already level 100.</span>}
+          </div>
+        </>
+      )}
+    </section>
+  );
+
+  const setupSection = (
+    <section className={l.section}>
+      <h4 className={band ? l.labelStrip : l.sectionTitle}>Setup</h4>
+      <div className={s.setup}>
+        <Select label="Ability" value={abilityId} options={abilityOptions} onChange={setAbilityId} />
+        <Select label="Held item" value={held} options={heldOptions} onChange={setHeld} />
+      </div>
+      {currentAbility !== undefined && <p className={l.caption}>{currentAbility.description}</p>}
+      {held !== '' && <p className={l.caption}>{itemInfo(held).description}</p>}
+      <div className={l.row}>
+        <Button
+          size="sm"
+          variant="primary"
+          disabled={!setupDirty}
+          busy={busyFor('setup')}
+          onClick={() => fetcher.submit({ intent: 'setup', id: c.id, ability: abilityId, heldItem: held })}
+        >
+          Save setup
+        </Button>
+      </div>
+    </section>
+  );
+
+  const identitySection = (
+    <section className={l.section}>
+      <h4 className={band ? l.labelStrip : l.sectionTitle}>Identity</h4>
+      <div className={s.nickRow}>
+        <TextField label="Nickname" value={nickname} onChange={setNickname} maxLength={16} placeholder={sp?.name ?? ''} className={l.grow} />
+        <Button size="md" disabled={!nickDirty} busy={busyFor('nickname')} onClick={() => fetcher.submit({ intent: 'nickname', id: c.id, nickname: nickname.trim() })}>
+          Rename
+        </Button>
+      </div>
+      <Toggle
+        label="Favourite"
+        description="Pinned to the top of your box."
+        checked={c.favorite}
+        disabled={busyFor('flags')}
+        onChange={(v) => fetcher.submit({ intent: 'flags', id: c.id, favorite: v })}
+      />
+      <Toggle
+        label="Locked"
+        description="Locked creatures cannot be released, traded or listed."
+        checked={c.locked}
+        disabled={busyFor('flags')}
+        onChange={(v) => fetcher.submit({ intent: 'flags', id: c.id, locked: v })}
+      />
+    </section>
+  );
+
+  const release = (
+    <div className={s.releaseWrap}>
+      <Button variant="danger" size="sm" icon="close" disabled={c.locked || isLastInParty} onClick={() => setConfirmRelease(true)}>
+        Release
+      </Button>
+      {(c.locked || isLastInParty) && <span className={l.caption}>{c.locked ? 'Unlock to release' : 'Last party member'}</span>}
+    </div>
+  );
+
+  const releaseModal = (
+    <Modal
+      open={confirmRelease}
+      title={`Release ${name}?`}
+      size="sm"
+      onClose={() => setConfirmRelease(false)}
+      footer={
+        <>
+          <Button variant="ghost" onClick={() => setConfirmRelease(false)}>
+            Keep it
+          </Button>
+          <Button
+            variant="danger"
+            busy={busyFor('release')}
+            onClick={() => {
+              fetcher.submit({ intent: 'release', id: c.id });
+              setConfirmRelease(false);
+            }}
+          >
+            <Icon name="close" size="sm" /> Release for good
+          </Button>
+        </>
+      }
+    >
+      <p className={l.body}>
+        It returns to the wild and leaves your records. Your dex keeps the entry — this one cannot be quietly lost — but the creature itself will be
+        gone.
+      </p>
+    </Modal>
+  );
+
+  if (band) {
+    return (
+      <aside className={s.band} data-type={sp?.types[0] ?? 'Normal'} aria-label={`${name} details`}>
+        <div className={s.bandMain}>
+          <div className={s.bandCol}>
+            <p className={s.idLabel}>
+              {dexNo !== null ? `Dex #${dexNo}` : c.speciesId}
+              {slot !== undefined ? ` · Slot ${slot}` : ''}
+            </p>
+            <h3 className={s.bandName}>{name}</h3>
+            <p className={s.bandSub}>
+              {c.nickname !== null ? `${sp?.name ?? c.speciesId} · ` : ''}Level <b className={s.bandLevel}>{c.level}</b>
+            </p>
+            {typeRow}
+            {sp !== undefined && sp.flavor !== '' && <p className={s.flavour}>{sp.flavor}</p>}
+            <div className={s.bandHp}>
+              <HpBar hp={c.hp} maxHp={maxHpOf(c)} showNumbers status={c.status} />
+            </div>
+          </div>
+          <div className={s.bandCol}>
+            <h4 className={l.sectionTitle}>Stats at level {c.level}</h4>
+            <StatRows creature={c} />
+            {sp !== undefined && tracksHonor(sp) && <HonorLedger creature={c} sp={sp} />}
+            <ExpRow creature={c} />
+          </div>
+          <div className={s.bandCol}>
+            <h4 className={l.sectionTitle}>Moves</h4>
+            <MoveRows creature={c} />
+            {extraActions !== undefined && <div className={s.bandActions}>{extraActions}</div>}
+          </div>
+        </div>
+        <div className={s.tools}>
+          <div className={s.tool}>
+            <TeachSection creature={c} fetcher={fetcher} />
+          </div>
+          <div className={s.tool}>{useItemSection}</div>
+          <div className={s.tool}>{setupSection}</div>
+          <div className={s.tool}>
+            {identitySection}
+            <div className={s.toolFoot}>{release}</div>
+          </div>
+        </div>
+        {releaseModal}
+      </aside>
+    );
+  }
 
   return (
-    <aside className={l.detail} data-type={sp?.types[0] ?? 'Normal'} aria-label={`${displayName(c)} details`}>
+    <aside className={l.detail} data-type={sp?.types[0] ?? 'Normal'} aria-label={`${name} details`}>
       <div className={l.detailHead}>
         <CreatureSprite speciesId={c.speciesId} variantKey={c.variantKey} size="xl" />
         <div className={l.detailTitle}>
-          <h3 className={l.h2}>{displayName(c)}</h3>
+          <h3 className={l.h2}>{name}</h3>
           <p className={l.muted}>
             {c.nickname !== null ? `${sp?.name ?? c.speciesId} · ` : ''}Level {c.level}
-            {sp !== undefined ? ` · #${String(sp.dexNumber).padStart(3, '0')}` : ''}
+            {dexNo !== null ? ` · #${dexNo}` : ''}
           </p>
-          <div className={l.row}>
-            {sp?.types.map((t) => <TypeBadge key={t} type={t} />)}
-            {c.variantKey !== 'normal' && <Pill tone="info">{c.variantKey}</Pill>}
-            {badgesOf(c).includes('alpha') && <Pill tone="danger">Alpha</Pill>}
-          </div>
+          {typeRow}
         </div>
       </div>
 
@@ -128,17 +379,7 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
 
       <section className={l.section}>
         <h4 className={l.sectionTitle}>Stats at level {c.level}</h4>
-        <div className={s.stats}>
-          {statsOf(c).map((st) => (
-            <div key={st.key} className={s.stat}>
-              <span className={l.kvLabel}>{st.label}</span>
-              <div className={l.statTrack}>
-                <div className={l.statFill} style={cssVars({ '--p': Math.min(1, st.base / MAX_BASE) })} />
-              </div>
-              <span className={l.kvValue}>{st.value}</span>
-            </div>
-          ))}
-        </div>
+        <StatRows creature={c} />
       </section>
 
       {sp !== undefined && tracksHonor(sp) && <HonorLedger creature={c} sp={sp} />}
@@ -155,127 +396,16 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
 
       <TeachSection creature={c} fetcher={fetcher} />
 
-      <section className={l.section}>
-        <h4 className={l.sectionTitle}>Use an item</h4>
-        {useItem === undefined ? (
-          <p className={l.caption}>You have no items that work on a creature. Potions, revives and Rare Candy are sold in town shops.</p>
-        ) : (
-          <>
-            <Select
-              label="Item"
-              value={useItem.id}
-              options={usable.map((i) => ({ value: i.id, label: `${i.name} ×${items?.[i.id] ?? 0}` }))}
-              onChange={setUseId}
-            />
-            <p className={l.caption}>{useItem.description}</p>
-            <div className={l.row}>
-              <Button size="sm" variant="primary" disabled={maxTimes < 1} busy={useBusy} onClick={() => submitUse(1)}>
-                Use
-              </Button>
-              {multi && maxTimes >= 5 && (
-                <Button size="sm" disabled={useBusy} onClick={() => submitUse(5)}>
-                  Use ×5
-                </Button>
-              )}
-              {multi && maxTimes >= 10 && (
-                <Button size="sm" disabled={useBusy} onClick={() => submitUse(10)}>
-                  Use ×10
-                </Button>
-              )}
-              {multi && maxTimes < 1 && <span className={l.caption}>Already level 100.</span>}
-            </div>
-          </>
-        )}
-      </section>
-
-      <section className={l.section}>
-        <h4 className={l.sectionTitle}>Setup</h4>
-        <div className={s.setup}>
-          <Select label="Ability" value={abilityId} options={abilityOptions} onChange={setAbilityId} />
-          <Select label="Held item" value={held} options={heldOptions} onChange={setHeld} />
-        </div>
-        {currentAbility !== undefined && <p className={l.caption}>{currentAbility.description}</p>}
-        {held !== '' && <p className={l.caption}>{itemInfo(held).description}</p>}
-        <div className={l.row}>
-          <Button
-            size="sm"
-            variant="primary"
-            disabled={!setupDirty}
-            busy={busyFor('setup')}
-            onClick={() => fetcher.submit({ intent: 'setup', id: c.id, ability: abilityId, heldItem: held })}
-          >
-            Save setup
-          </Button>
-        </div>
-      </section>
-
-      <section className={l.section}>
-        <h4 className={l.sectionTitle}>Identity</h4>
-        <div className={s.nickRow}>
-          <TextField label="Nickname" value={nickname} onChange={setNickname} maxLength={16} placeholder={sp?.name ?? ''} className={l.grow} />
-          <Button
-            size="md"
-            disabled={!nickDirty}
-            busy={busyFor('nickname')}
-            onClick={() => fetcher.submit({ intent: 'nickname', id: c.id, nickname: nickname.trim() })}
-          >
-            Rename
-          </Button>
-        </div>
-        <Toggle
-          label="Favourite"
-          description="Pinned to the top of your box."
-          checked={c.favorite}
-          disabled={busyFor('flags')}
-          onChange={(v) => fetcher.submit({ intent: 'flags', id: c.id, favorite: v })}
-        />
-        <Toggle
-          label="Locked"
-          description="Locked creatures cannot be released, traded or listed."
-          checked={c.locked}
-          disabled={busyFor('flags')}
-          onChange={(v) => fetcher.submit({ intent: 'flags', id: c.id, locked: v })}
-        />
-      </section>
+      {useItemSection}
+      {setupSection}
+      {identitySection}
 
       <div className={s.footer}>
         {extraActions}
-        <div className={s.releaseWrap}>
-          <Button variant="danger" size="sm" icon="close" disabled={c.locked || isLastInParty} onClick={() => setConfirmRelease(true)}>
-            Release
-          </Button>
-          {(c.locked || isLastInParty) && <span className={l.caption}>{c.locked ? 'Unlock to release' : 'Last party member'}</span>}
-        </div>
+        {release}
       </div>
 
-      <Modal
-        open={confirmRelease}
-        title={`Release ${displayName(c)}?`}
-        size="sm"
-        onClose={() => setConfirmRelease(false)}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setConfirmRelease(false)}>
-              Keep it
-            </Button>
-            <Button
-              variant="danger"
-              busy={busyFor('release')}
-              onClick={() => {
-                fetcher.submit({ intent: 'release', id: c.id });
-                setConfirmRelease(false);
-              }}
-            >
-              <Icon name="close" size="sm" /> Release for good
-            </Button>
-          </>
-        }
-      >
-        <p className={l.body}>
-          It returns to the wild and leaves your records. Your dex keeps the entry — this one cannot be quietly lost — but the creature itself
-          will be gone.
-        </p>
-      </Modal>
+      {releaseModal}
     </aside>
   );
 }

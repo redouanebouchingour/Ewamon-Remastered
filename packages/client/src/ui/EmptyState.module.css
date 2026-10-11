@@ -15,10 +15,10 @@
   inline-size: 56px;
   block-size: 56px;
   margin-bottom: var(--s-3);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-pill);
-  background: radial-gradient(circle at 50% 30%, var(--accent-a16), transparent 70%), var(--bg-2);
-  color: var(--accent);
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-3);
+  color: var(--text-hi);
 }
 
 .unavailable .icon {
@@ -27,16 +27,18 @@
 }
 
 .error .icon {
-  background: radial-gradient(circle at 50% 30%, var(--danger-a16), transparent 70%), var(--bg-2);
+  background: var(--danger-a16);
   color: var(--danger);
 }
 
 .title {
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-h3);
+  font-size: var(--t-h2);
   line-height: var(--lh-h3);
-  font-weight: 700;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
 }
 
 .hint {

@@ -4,6 +4,7 @@
  * rewards of `battleEnd { battleId: raidId }` — for DISPLAY only, the money and trainer EXP already reached the session
  * through the server's inventoryDelta / progressionDelta. "Back to the world" closes the battle (then any evolve /
  * learn-move prompts the raid queued), like the result card.
+ * Broadcast UI (2026-10-11): damage and place as big numbers under label strips, the board in display figures.
  */
 import { speciesName } from '../data/content';
 import { useUiStore } from '../state/ui';
@@ -34,9 +35,9 @@ export function RaidSummaryCard() {
   const r = result?.raid;
   if (result === null || r === undefined) return null;
   const boss = speciesName(r.bossSpecies);
-  const rewards: string[] = [];
-  if (result.rewards.money > 0) rewards.push(`+${result.rewards.money.toLocaleString()} money`);
-  if (result.rewards.trainerExp > 0) rewards.push(`+${result.rewards.trainerExp} trainer EXP`);
+  const rewards: { readonly value: string; readonly label: string }[] = [];
+  if (result.rewards.money > 0) rewards.push({ value: `+${result.rewards.money.toLocaleString()}`, label: 'money' });
+  if (result.rewards.trainerExp > 0) rewards.push({ value: `+${result.rewards.trainerExp}`, label: 'trainer EXP' });
   const done = (): void => battleActions()?.dismissResult();
   const line = catchLine(r, boss);
   return (
@@ -78,8 +79,8 @@ export function RaidSummaryCard() {
         {rewards.length > 0 ? (
           <ul className={s.rewards} data-testid="raidsummary-rewards">
             {rewards.map((l) => (
-              <li key={l} className={s.reward}>
-                {l}
+              <li key={l.label} className={s.reward}>
+                <span className={s.rewardValue}>{l.value}</span> <span className={s.label}>{l.label}</span>
               </li>
             ))}
           </ul>

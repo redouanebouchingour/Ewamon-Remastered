@@ -1,177 +1,461 @@
-/* §20.5.6: log in the left third, actions in the rest; the overlay itself is the bottom 28 % panel */
+/* Broadcast UI (2026-10-11) — the command deck. A grid: the "Last turn" ticker over the stage, the command rail
+   beside the stage (the cell over the rail is BattleOverlay's turn tag, the same --control-md tall as the ticker). */
 .menu {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-  gap: var(--s-6);
+  grid-template-columns: 184px minmax(0, 1fr);
+  grid-template-rows: var(--control-md) minmax(0, 1fr);
+  column-gap: var(--s-3);
+  row-gap: var(--s-3);
   block-size: 100%;
   min-block-size: 0;
 }
 
+/* ---- ticker ------------------------------------------------------------------------------------------------------ */
+.ticker {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  align-items: stretch;
+  min-inline-size: 0;
+  background: var(--glass);
+  font-family: var(--face-display);
+}
+
+.tickerLabel {
+  display: flex;
+  flex: none;
+  align-items: center;
+  padding: 0 var(--s-4) 0 var(--s-4);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-size: var(--t-caption);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+
 .log {
   display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: var(--s-2);
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--s-3);
+  min-inline-size: 0;
   margin: 0;
-  padding: 0;
+  padding: 0 var(--s-4);
   list-style: none;
   overflow: hidden;
-  border-inline-end: 1px solid var(--line-1);
-  padding-inline-end: var(--s-5);
 }
 
 .line {
-  color: var(--text-1);
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--text-2);
   font-size: var(--t-body-lg);
   line-height: var(--lh-body-lg);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
+/* the newest line truncates last */
 .line:last-child {
+  flex-shrink: 0.2;
   color: var(--text-hi);
 }
 
-.good {
-  color: var(--accent);
+.line + .line::before {
+  content: '/' / '';
+  margin-inline-end: var(--s-3);
+  color: var(--line-2);
 }
 
-.bad {
-  color: var(--warn);
+/* tone: good news for the player is paper, bad news red — the words carry it, the colour only repeats it */
+.good,
+.line:last-child.good {
+  color: var(--text-hi);
+}
+
+.bad,
+.line:last-child.bad {
+  color: var(--danger);
 }
 
 .neutral {
   color: inherit;
 }
 
-.actions {
+.hints {
   display: flex;
-  flex-direction: column;
+  flex: none;
+  align-items: center;
   gap: var(--s-4);
-  min-block-size: 0;
-  overflow: hidden;
+  padding: 0 var(--s-4);
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.prompt {
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.hintKey {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 20px;
+  block-size: 20px;
+  padding: 0 var(--s-2);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+/* ---- command rail ------------------------------------------------------------------------------------------------ */
+.rail {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-block-size: 0;
+}
+
+.cmd {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--s-3);
+  min-block-size: 0;
+  max-block-size: 44px;
+  margin: 0;
+  padding: 0 var(--s-5) 0 var(--s-4);
+  border: 0;
+  background: var(--glass);
   color: var(--text-hi);
   font-family: var(--face-display);
   font-size: var(--t-h3);
-  line-height: var(--lh-h3);
-  font-weight: 700;
+  line-height: 1;
+  font-style: italic;
+  font-weight: 800;
+  text-align: start;
+  text-transform: uppercase;
+  cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  transition: background-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out);
 }
 
-.root {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: var(--s-3);
+.cmd:hover:not(:disabled) {
+  background: var(--bg-3);
+}
+
+/* keyboard focus: the slab clips an outline, so the focused slab turns paper (the chip inverts) */
+.cmd:focus-visible {
+  outline: none;
+  background: var(--text-hi);
+  color: var(--bg-0);
+}
+
+.cmd:focus-visible .key {
+  background: var(--bg-0);
+  color: var(--text-hi);
+}
+
+.cmd:disabled {
+  color: var(--text-2);
+  cursor: default;
+}
+
+.cmd:disabled .key {
+  opacity: 0.45;
+}
+
+/* the open menu: the orange slab, its key chip inverted */
+.on,
+.on:hover:not(:disabled),
+.on:focus-visible {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.on .key,
+.on:focus-visible .key {
+  background: var(--bg-0);
+  color: var(--text-hi);
+  opacity: 1;
+}
+
+/* a forfeit / leave waiting for its confirmation */
+.confirm,
+.confirm:hover:not(:disabled) {
+  background: var(--danger);
+  color: var(--bg-0);
+}
+
+.cmdLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .key {
   display: inline-grid;
   place-items: center;
-  min-inline-size: 20px;
-  margin-inline-end: var(--s-3);
+  flex: none;
+  min-inline-size: 22px;
+  block-size: 22px;
   padding: 0 var(--s-2);
-  border: 1px solid currentcolor;
-  border-radius: var(--r-1);
-  font-family: var(--face-mono);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
   font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  opacity: 0.7;
+  line-height: 1;
+  font-style: normal;
+  font-weight: 800;
+}
+
+/* outside the root the digits pick moves / targets, so the rail's chips step back */
+.keyIdle {
+  background: transparent;
+  color: var(--text-2);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+
+/* ---- stage ------------------------------------------------------------------------------------------------------- */
+.stage {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+.head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--s-3);
+  min-inline-size: 0;
+}
+
+.prompt {
+  margin: 0;
+  overflow: hidden;
+  padding: var(--s-1) var(--s-6) var(--s-1) var(--s-4);
+  background: var(--glass);
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+
+/* root: the prompt is the lower third — big, italic, at the bottom of the stage */
+.stageRoot {
+  justify-content: flex-end;
+}
+
+.stageRoot .head {
+  flex-wrap: wrap;
+}
+
+.stageRoot .prompt {
+  flex-basis: 100%;
+  padding: var(--s-3) var(--s-8) var(--s-3) var(--s-6);
+  font-size: var(--t-display);
+  line-height: var(--lh-display);
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: 0;
+  white-space: normal;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 18px) 100%, 0 100%);
 }
 
 .sub {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--s-3);
   min-block-size: 0;
   overflow: auto;
 }
 
+/* ---- moves ------------------------------------------------------------------------------------------------------- */
 .moves {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--s-3);
-  inline-size: 100%;
+  flex: 1 1 auto;
+  min-block-size: 0;
+  padding-block-start: var(--s-3);
 }
 
 .moveCell {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--s-1);
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+/* a disabled move's reason: a full-strength label strip over the dimmed card */
+.moveCell > .why {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-end: var(--s-4);
+  padding: var(--s-1) var(--s-4);
+  background: var(--bg-0);
+  color: var(--text-hi);
 }
 
 .why {
-  color: var(--text-2);
+  font-family: var(--face-display);
   font-size: var(--t-caption);
   line-height: var(--lh-caption);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
+/* ---- lists: party, bag, orbs, targets -------------------------------------------------------------------------- */
 .list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--s-3);
   inline-size: 100%;
 }
 
 .partyRow {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--s-1);
+  min-inline-size: 0;
 }
 
-.itemRow {
+.partyRow > .why {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  padding: var(--s-1) var(--s-3);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  pointer-events: none;
+}
+
+.itemRow,
+.targetRow {
+  position: relative;
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--s-3);
-  padding: var(--s-3) var(--s-4);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-2);
-  background: var(--bg-2);
-  color: var(--text-1);
-  font: inherit;
-  font-size: var(--t-body);
-  line-height: var(--lh-body);
+  gap: var(--s-1) var(--s-3);
+  min-inline-size: 0;
+  margin: 0;
+  padding: var(--s-3) var(--s-6) var(--s-3) var(--s-4);
+  border: 0;
+  background: var(--glass);
+  color: var(--text-hi);
+  font-family: var(--face-display);
   text-align: start;
   cursor: pointer;
-  transition: transform var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+  transition: background-color var(--motion-fast) var(--ease-out);
 }
 
-.itemRow:hover:not(:disabled) {
-  border-color: var(--line-2);
-  transform: scale(1.05);
+.itemRow:hover:not(:disabled),
+.targetRow:hover:not(:disabled) {
+  background: var(--bg-3);
 }
 
-.itemRow:active:not(:disabled) {
-  transform: scale(0.95);
+/* keyboard focus: an orange bar along the bottom (the slab would clip an outline) */
+.itemRow:focus-visible,
+.targetRow:focus-visible {
+  outline: none;
+  box-shadow: inset 0 -4px 0 var(--accent);
+  background: var(--bg-3);
 }
 
-.itemRow:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+.itemRow:active:not(:disabled),
+.targetRow:active:not(:disabled) {
+  background: var(--bg-2);
 }
 
-.itemRow:disabled {
-  opacity: 0.45;
+.itemRow:disabled,
+.targetRow:disabled {
   cursor: default;
 }
 
+.itemRow:disabled > :not(.why),
+.targetRow:disabled > :not(.why) {
+  opacity: 0.45;
+}
+
+.itemRow > .why,
+.targetRow > .why {
+  flex-basis: 100%;
+  color: var(--text-2);
+}
+
 .itemName {
-  color: var(--text-hi);
-  font-weight: 600;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  font-size: var(--t-h3);
+  line-height: var(--lh-h3);
+  font-style: italic;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .itemCount {
-  color: var(--text-2);
-  font-family: var(--face-mono);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
+  color: var(--text-hi);
+  font-size: var(--t-h3);
+  line-height: var(--lh-h3);
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
-.empty {
+.itemMax {
   color: var(--text-2);
   font-size: var(--t-body);
-  line-height: var(--lh-body);
+  font-weight: 700;
+}
+
+.empty {
+  align-self: flex-start;
+  margin: 0;
+  padding: var(--s-3) var(--s-6) var(--s-3) var(--s-4);
+  background: var(--glass);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 /* Phase D6 doubles: the target list of a single-target move (foes first, then the ally) */
@@ -183,50 +467,23 @@
 }
 
 .targetRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--s-2) var(--s-3);
-  padding: var(--s-3) var(--s-4);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-2);
-  background: var(--bg-2);
-  color: var(--text-1);
-  font: inherit;
-  font-size: var(--t-body);
-  line-height: var(--lh-body);
-  text-align: start;
-  cursor: pointer;
-  transition: transform var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out);
-}
-
-.targetRow:hover:not(:disabled) {
-  border-color: var(--line-2);
-  transform: scale(1.05);
-}
-
-.targetRow:active:not(:disabled) {
-  transform: scale(0.95);
-}
-
-.targetRow:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.targetRow:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.targetAlly {
-  border-style: dashed;
+  align-items: center;
 }
 
 .targetSide {
-  color: var(--text-2);
+  padding: var(--s-1) var(--s-3);
+  background: var(--text-hi);
+  color: var(--bg-0);
   font-size: var(--t-caption);
   line-height: var(--lh-caption);
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+}
+
+/* the ally reads as the outline label, so foe and ally never differ by colour alone */
+.targetAlly .targetSide {
+  background: transparent;
+  color: var(--text-hi);
+  box-shadow: inset 0 0 0 1px var(--text-hi);
 }

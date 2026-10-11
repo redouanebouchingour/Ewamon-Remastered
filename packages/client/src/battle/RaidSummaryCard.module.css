@@ -1,49 +1,60 @@
+/* Broadcast UI (2026-10-11): label strips over big condensed numbers, the board in tabular display figures. */
 .body {
   display: flex;
   flex-direction: column;
-  gap: var(--s-4);
+  gap: var(--s-5);
 }
 
 .stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--s-3);
+  gap: var(--s-2);
   margin: 0;
 }
 
 .stat {
   display: flex;
   flex-direction: column;
-  gap: var(--s-1);
-  padding: var(--s-3) var(--s-4);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-2);
+  align-items: flex-start;
+  gap: var(--s-2);
+  padding-block-end: var(--s-3);
   background: var(--bg-2);
 }
 
-.body[data-cleared] .stat:first-child {
-  border-color: var(--accent-a32);
+/* a label strip heading each number (paper; the raid's cleared state is said by the title, not a colour) */
+.stat .label {
+  padding: var(--s-1) var(--s-4) var(--s-1) var(--s-3);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-weight: 800;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
 }
 
 .label {
   color: var(--text-2);
+  font-family: var(--face-display);
   font-size: var(--t-caption);
   line-height: var(--lh-caption);
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .value {
   margin: 0;
+  padding-inline: var(--s-4);
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-h3);
-  line-height: var(--lh-h3);
-  font-weight: 700;
+  font-size: var(--t-display);
+  line-height: 1;
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
 
 .line {
+  margin: 0;
   color: var(--text-1);
   font-size: var(--t-body);
   line-height: var(--lh-body);
@@ -63,14 +74,18 @@
   grid-template-columns: 2ch minmax(0, 1fr) auto;
   align-items: baseline;
   gap: var(--s-3);
+  padding: var(--s-1) var(--s-3);
   color: var(--text-1);
-  font-size: var(--t-body);
-  line-height: var(--lh-body);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-weight: 700;
 }
 
+/* the player's own row: a lighter step, paper ink ("(you)" says it too) */
 .self {
-  color: var(--accent);
-  font-weight: 700;
+  background: var(--bg-3);
+  color: var(--text-hi);
 }
 
 .rank {
@@ -81,19 +96,18 @@
 .name {
   overflow: hidden;
   text-overflow: ellipsis;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .damage {
-  font-family: var(--face-mono);
-  font-size: var(--t-mono);
-  line-height: var(--lh-mono);
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
 .rewards {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: var(--s-2);
   margin: 0;
   padding: 0;
@@ -101,15 +115,29 @@
 }
 
 .reward {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-3) var(--s-4);
+  background: var(--bg-2);
+}
+
+.rewardValue {
   color: var(--text-hi);
-  font-family: var(--face-mono);
-  font-size: var(--t-mono);
-  line-height: var(--lh-mono);
+  font-family: var(--face-display);
+  font-size: var(--t-h1);
+  line-height: 1;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
 .none {
+  margin: 0;
   color: var(--text-2);
-  font-size: var(--t-body);
-  line-height: var(--lh-body);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }

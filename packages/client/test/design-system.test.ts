@@ -20,6 +20,7 @@ import {
   spacingViolations,
 } from '../src/ui/gen-tokens';
 import type { SourceFile, TokenSource } from '../src/ui/gen-tokens';
+import { TYPE_ICON_PATHS } from '../src/ui/typeIcons';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const src = join(root, 'src');
@@ -59,6 +60,15 @@ describe('the one token set', () => {
     expect(Object.keys(tokens.typeColors.default)).toEqual([...TYPE_NAMES]);
     expect(tokens.typeColors.default).toEqual(RENDER_TYPE_COLORS);
     for (const mode of ['deuteranopia', 'protanopia', 'tritanopia'] as const) expect(Object.keys(tokens.typeColors[mode])).toEqual([...TYPE_NAMES]);
+  });
+
+  it('the type icons are the render table verbatim, one per type (Broadcast UI)', () => {
+    expect(Object.keys(TYPE_ICON_PATHS)).toEqual([...TYPE_NAMES]);
+    // render's copy, read as text (a test may not reach into another package by path)
+    const renderSrc = readFileSync(join(root, '../render/src/hud/typeIcons.ts'), 'utf8');
+    const renderIcons = Object.fromEntries([...renderSrc.matchAll(/^ {2}(\w+): '([^']+)',$/gm)].map((m) => [m[1], m[2]]));
+    expect(TYPE_ICON_PATHS).toEqual(renderIcons);
+    expect(new Set(Object.values(TYPE_ICON_PATHS)).size).toBe(TYPE_NAMES.length);
   });
 
   it('colourblind palettes keep adjacent types ≥ 40 ΔE apart under Machado 2009', () => {
@@ -103,9 +113,9 @@ describe('contrast (§20.2.2)', () => {
   it.each([
     ['text-hi', 'bg-1', 15],
     ['text-1', 'bg-1', 11],
-    ['text-2', 'bg-1', 5.4],
-    ['accent', 'bg-1', 9.7],
-    ['on-accent', 'accent', 9.7],
+    ['text-2', 'bg-1', 7.1],
+    ['accent', 'bg-1', 5.7],
+    ['on-accent', 'accent', 6.3],
   ] as const)('%s on %s ≥ %s:1 (rounded)', (fg, bg, min) => {
     expect(Number(contrast(c[fg]!, c[bg]!).toFixed(1))).toBeGreaterThanOrEqual(min);
   });

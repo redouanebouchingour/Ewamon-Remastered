@@ -1,4 +1,5 @@
-/* Phase B7 VS card: a glass band over the push-in; the opponent's type colour is its border and emblem. */
+/* Phase B7 VS card, Broadcast UI (2026-10-11): a black band over the push-in — "VS", the opponent's type colour as a
+   solid slab carrying the monogram, the title on a paper label strip over the name in the big italic display face. */
 .layer {
   position: absolute;
   inset-inline: 0;
@@ -11,15 +12,9 @@
 
 .card {
   display: flex;
-  align-items: center;
-  gap: var(--s-5);
-  inline-size: min(640px, calc(100% - 48px));
-  padding: var(--s-4) var(--s-6);
-  border: 1px solid var(--tc, var(--line-2));
-  border-radius: var(--r-3);
-  background: var(--glass);
-  backdrop-filter: blur(12px);
-  box-shadow: var(--shadow-3);
+  align-items: stretch;
+  inline-size: min(680px, calc(100% - 48px));
+  background: var(--bg-0);
   color: var(--text-hi);
   animation: intro-in var(--motion-banner) var(--ease-out) both;
 }
@@ -47,62 +42,79 @@
 }
 
 .vs {
+  display: flex;
   flex: none;
+  align-items: center;
+  padding: 0 var(--s-5);
   color: var(--text-2);
   font-family: var(--face-display);
-  font-size: var(--t-h2);
-  line-height: var(--lh-h2);
+  font-size: var(--t-display);
+  line-height: 1;
   font-weight: 800;
   font-style: italic;
-  letter-spacing: 0.04em;
 }
 
+/* the type colour is the hero: a solid slab with a slanted right edge, the monogram in its ink */
 .emblem {
   display: grid;
   place-items: center;
   flex: none;
-  inline-size: 64px;
-  block-size: 64px;
-  border-radius: var(--r-pill);
-  background: var(--tc, var(--accent));
-  color: var(--tc-ink, var(--on-accent));
-  box-shadow: inset 0 0 0 2px var(--shade-a40), var(--shadow-1);
+  inline-size: 96px;
+  min-block-size: 88px;
+  padding-inline-end: var(--s-4);
+  background: var(--tc, var(--bg-3));
+  color: var(--tc-ink, var(--text-hi));
   font-family: var(--face-display);
-  font-size: var(--t-h1);
-  line-height: var(--lh-h1);
+  font-size: var(--t-display);
+  line-height: 1;
+  font-style: italic;
   font-weight: 800;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%);
 }
 
 .text {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--s-2);
   min-inline-size: 0;
+  padding: var(--s-4) var(--s-5);
 }
 
 .title {
-  color: var(--text-2);
+  padding: var(--s-1) var(--s-5) var(--s-1) var(--s-3);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
   font-size: var(--t-caption);
   line-height: var(--lh-caption);
-  letter-spacing: 0.08em;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
 }
 
 .name {
+  max-inline-size: 100%;
   overflow: hidden;
   font-family: var(--face-display);
-  font-size: var(--t-h2);
-  line-height: var(--lh-h2);
-  font-weight: 700;
+  font-size: var(--t-h1);
+  line-height: 1;
+  font-style: italic;
+  font-weight: 800;
   text-overflow: ellipsis;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .card[data-league] .name {
-  font-size: var(--t-h1);
-  line-height: var(--lh-h1);
+  font-size: var(--t-display);
 }
 
 .type {
   flex: none;
+  align-self: center;
+  margin-inline-end: var(--s-5);
 }

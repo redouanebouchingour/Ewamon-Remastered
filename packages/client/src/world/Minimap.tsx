@@ -7,6 +7,9 @@
  *
  * Hidden while a panel is open, in battle, and with the rest of the chrome under F1 (`PlayShell` renders it as an
  * `<aside>` of the shell). In environments without a 2D context (jsdom) it renders the frame and draws nothing.
+ *
+ * Broadcast look (2026-10-11): a black frame and a label strip under the map — the zone (or hall) name and "Map" with
+ * the player's own map key as a paper chip.
  */
 import { useEffect, useRef, useState } from 'react';
 import { interiorAt } from '@ewa/content';
@@ -14,8 +17,10 @@ import type { PlacedInterior, ZoneId } from '@ewa/content';
 import type { PlayerState } from '@ewa/protocol';
 import { zoneName } from '../data/content';
 import { getWorldSession } from '../net/WorldSession';
+import { useSettingsStore } from '../state/settings';
 import { MINIMAP_CSS_PX, MINIMAP_TICK_MS, drawBase, drawFrame, hallView, zoneView } from './minimapDraw';
 import type { Ctx2D, MinimapDot, MinimapView } from './minimapDraw';
+import { keyGlyph } from './TutorialCard';
 import s from './Minimap.module.css';
 
 const MAX_OTHERS = 32;
@@ -34,6 +39,7 @@ function context2d(canvas: HTMLCanvasElement | null): CanvasRenderingContext2D |
 export function Minimap() {
   const ref = useRef<HTMLCanvasElement>(null);
   const [label, setLabel] = useState<string | null>(null);
+  const mapKey = useSettingsStore((st) => keyGlyph(st.keybinds.map[0]));
 
   useEffect(() => {
     const canvas = ref.current;
@@ -119,7 +125,12 @@ export function Minimap() {
   return (
     <aside className={s.minimap} aria-label={label === null ? 'Minimap' : `Minimap: ${label}`} data-testid="minimap">
       <canvas ref={ref} className={s.canvas} width={MINIMAP_CSS_PX} height={MINIMAP_CSS_PX} aria-hidden />
-      {label !== null && <span className={s.label}>{label}</span>}
+      <div className={s.strip}>
+        <span className={s.label}>{label ?? ''}</span>
+        <span className={s.hint} aria-hidden>
+          Map <kbd className={s.key}>{mapKey}</kbd>
+        </span>
+      </div>
     </aside>
   );
 }

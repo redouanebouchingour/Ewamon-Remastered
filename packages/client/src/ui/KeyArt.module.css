@@ -27,9 +27,11 @@
   fill: var(--text-hi);
 }
 
+/* Broadcast UI (2026-10-11): orange only means "selected", so the art is drawn in paper and greys — a flat moon,
+   no halo, thin paper veins, faint paper fireflies. */
 .moon {
-  fill: var(--accent-hi);
-  opacity: 0.95;
+  fill: var(--text-hi);
+  opacity: 0.92;
 }
 
 /* the unlit part of the disc, just visible against the sky */
@@ -38,18 +40,10 @@
   opacity: 0.55;
 }
 
-.moonCore {
-  stop-color: var(--accent-hi);
-  stop-opacity: 0.28;
-}
-
-.moonHalo {
-  stop-color: var(--accent);
-  stop-opacity: 0.1;
-}
-
+.moonCore,
+.moonHalo,
 .moonFade {
-  stop-color: var(--accent);
+  stop-color: var(--text-hi);
   stop-opacity: 0;
 }
 
@@ -81,36 +75,36 @@
 }
 
 .veinFade {
-  stop-color: var(--accent);
+  stop-color: var(--text-hi);
   stop-opacity: 0;
 }
 
 .veinCore {
-  stop-color: var(--accent);
+  stop-color: var(--text-hi);
   stop-opacity: 1;
 }
 
 .vein {
   fill: none;
   stroke-width: 10;
-  opacity: 0.55;
+  opacity: 0;
 }
 
 .veinLine {
   fill: none;
-  stroke-width: 2;
-  opacity: 0.9;
+  stroke-width: 1.5;
+  opacity: 0.45;
 }
 
 .veinSmall {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--text-2);
   stroke-width: 1.5;
-  opacity: 0.35;
+  opacity: 0.25;
 }
 
 .flies {
-  fill: var(--accent-hi);
+  fill: var(--text-hi);
 }
 
 .fly0,
@@ -138,7 +132,7 @@
     opacity: 0.15;
   }
   50% {
-    opacity: 0.95;
+    opacity: 0.6;
   }
 }
 

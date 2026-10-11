@@ -1,20 +1,14 @@
-/* §20.5.6: bottom 28 % of the viewport */
+/* §20.5.6: the bottom 28 % of the viewport. Broadcast UI (2026-10-11): no panel behind it — the command deck's
+   slabs (rail, ticker, move cards) sit straight on the arena; BattleOverlay measures this box's top for the camera. */
 .overlay {
   position: absolute;
-  inset-inline: var(--s-6);
+  inset-inline: var(--s-7);
   inset-block-end: var(--s-6);
   z-index: var(--z-panel);
-  block-size: 28vh;
-  padding: var(--s-5) var(--s-6);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-3);
-  background: var(--glass);
-  backdrop-filter: blur(12px);
-  box-shadow: var(--shadow-2);
+  block-size: clamp(200px, 28vh, 280px);
   pointer-events: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--s-3);
 }
 
 .body {
@@ -22,10 +16,30 @@
   min-block-size: 0;
 }
 
+/* the turn tag: a black slab in the cell over the command rail, level with the ticker */
 .turn {
-  color: var(--text-2);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  letter-spacing: 0.08em;
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  display: flex;
+  align-items: center;
+  inline-size: 184px;
+  block-size: var(--control-md);
+  margin: 0;
+  padding: 0 var(--s-4);
+  background: var(--bg-0);
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: 1;
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+
+.turn:empty {
+  display: none;
 }

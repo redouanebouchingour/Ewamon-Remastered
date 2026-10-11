@@ -1,13 +1,16 @@
-/* Phase C6 — the non-blocking "confirm your email" nudge (settings panel) */
+/* Phase C6 — the non-blocking "confirm your email" nudge (settings panel).
+ * Broadcast (2026-10-11): a carbon notice with a hard info-blue left edge, no tinted fill, no radius. */
 .nudge {
   display: flex;
   align-items: center;
   gap: var(--s-4);
   margin-block-end: var(--s-5);
   padding: var(--s-4) var(--s-5);
-  border: 1px solid var(--info-a16);
-  border-radius: var(--r-2);
-  background: var(--info-a16);
+  border: 0;
+  border-left: 4px solid var(--info);
+  border-radius: 0;
+  background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-1);
   color: var(--text-1);
   font-size: var(--t-body);
   line-height: var(--lh-body);
@@ -25,5 +28,5 @@
 
 .nudgeText strong {
   color: var(--text-hi);
-  font-weight: 600;
+  font-weight: 700;
 }

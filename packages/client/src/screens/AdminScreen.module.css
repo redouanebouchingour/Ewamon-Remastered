@@ -1,10 +1,10 @@
+/* Broadcast (2026-10-11): black page, carbon header and cards on hairlines, big tabular stat numbers, no washes. */
+
 .page {
   position: fixed;
   inset: 0;
   overflow: auto;
-  background:
-    radial-gradient(60% 40% at 100% 0%, var(--accent-a08), transparent 70%),
-    var(--bg-0);
+  background: var(--bg-0);
 }
 
 .header {
@@ -17,8 +17,7 @@
   block-size: var(--topbar-h);
   padding: 0 var(--s-7);
   border-bottom: 1px solid var(--line-1);
-  background: var(--glass);
-  backdrop-filter: blur(12px);
+  background: var(--bg-1);
 }
 
 .mark {
@@ -26,26 +25,37 @@
   place-items: center;
   inline-size: 28px;
   block-size: 28px;
-  border-radius: var(--r-2);
-  background: var(--info-a16);
-  color: var(--info);
+  border-radius: 0;
+  background: var(--text-hi);
+  color: var(--bg-0);
 }
 
 .title {
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-h3);
-  line-height: var(--lh-h3);
+  font-size: var(--t-h2);
+  line-height: 1;
   font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
 
 .back {
   display: inline-flex;
   align-items: center;
   gap: var(--s-2);
-  font-size: var(--t-body);
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
   line-height: var(--lh-body);
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.back:hover {
+  color: var(--text-hi);
 }
 
 .main {
@@ -66,12 +76,14 @@
 .stat {
   display: flex;
   flex-direction: column;
-  gap: var(--s-1);
+  gap: var(--s-2);
   min-inline-size: 160px;
   padding: var(--s-5);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-3);
+  border: 0;
+  border-top: 4px solid var(--text-hi);
+  border-radius: 0;
   background: var(--bg-1);
+  box-shadow: inset 0 0 0 1px var(--line-1);
 }
 
 .statValue,
@@ -79,8 +91,8 @@
 .statAccent {
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-h1);
-  line-height: var(--lh-h1);
+  font-size: var(--t-display);
+  line-height: 1;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
@@ -89,8 +101,9 @@
   color: var(--danger);
 }
 
+/* "Online" is a status, not a selection: info blue, never the orange */
 .statAccent {
-  color: var(--accent);
+  color: var(--info);
 }
 
 .statsNote {
@@ -98,7 +111,8 @@
   align-items: center;
   padding: var(--s-5);
   border: 1px dashed var(--line-2);
-  border-radius: var(--r-3);
+  border-radius: 0;
+  background: var(--bg-1);
   color: var(--text-2);
   font-size: var(--t-body);
   line-height: var(--lh-body);
@@ -122,9 +136,10 @@
   flex-direction: column;
   gap: var(--s-4);
   padding: var(--s-6);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-3);
+  border: 0;
+  border-radius: 0;
   background: var(--bg-1);
+  box-shadow: inset 0 0 0 1px var(--line-1);
 }
 
 .searchRow {
@@ -138,7 +153,7 @@
   align-items: center;
   gap: var(--s-2);
   color: var(--text-hi);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .rooms {

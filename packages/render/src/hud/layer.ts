@@ -10,8 +10,12 @@
  *
  * World-anchored regions (nameplates, battle bars, emote cards) poll their anchors in `tick` and re-mark themselves
  * only when an anchor moved ≥ 1 px; the chat fade re-marks at 4 Hz while a line fades; HP bars tween at 30 Hz.
- * Text: body ≥ 14 px at uiScale 1, a 2 px dark outline under every glyph, numerals drawn digit-by-digit at a fixed
- * advance (tabular). No wall clock: the HUD clock advances by the frame dt (§10 NN 10).
+ * Text: body ≥ 14 px at uiScale 1, a 2 px dark outline under every glyph on a dark slab, numerals drawn digit-by-digit
+ * at a fixed advance (tabular). No wall clock: the HUD clock advances by the frame dt (§10 NN 10).
+ *
+ * Look: the "Broadcast" UI (IMPLEMENTATION-NOTES "Broadcast UI (2026-10-11)") — black / carbon slabs at 0.92 over the
+ * world, paper text, fog labels, one orange for "active / the key you press", hard edges with 12° cuts, skewed HP
+ * bars, names / numbers / labels in the display face (uppercase, 800, italic for names), flat type-colour badges.
  *
  * Corrections vs the SPEC text (IMPLEMENTATION-NOTES "Part 3"):
  * - The overlay must be drawn with `outputColorSpace = workingColorSpace` (the host does so around its HUD render):
@@ -28,6 +32,7 @@ import type { TextureNode } from 'three/webgpu';
 import { texture as textureNode } from 'three/tsl';
 import type { HudLayer, TypeName, VariantKey } from '../contracts.js';
 import { TYPE_COLORS } from '../sprites/typeColors.js';
+import { TYPE_ICON_PATHS } from './typeIcons.js';
 import { isDevBuild } from '../env.js';
 
 // ---- the model (20-client.md §20.6, verbatim; mirrored because render may not import the client) -----------------
@@ -69,12 +74,14 @@ export const HUD = Object.freeze({
   margin: 16,
   bodyPx: 15, smallPx: 14, displayPx: 48, numPx: 15,
   outlinePx: 2,
-  thumbPx: 48, thumbGap: 8, partyMax: 6,
+  thumbPx: 56, thumbGap: 8, partyMax: 6,
   chatLines: 6, chatLineH: 21, chatWidth: 440, chatHoldMs: 6000, chatFadeMs: 2000, chatRepaintMs: 250,
   nameplatesMax: 16,
   barW: 240, barH: 52, barLift: 18, barGap: 6,
   /** Type badges on a battle plate (M2-battle-7): height, inner padding, gap (CSS px at uiScale 1). */
-  badgeH: 18, badgePad: 5, badgeGap: 4,
+  badgeH: 16, badgePad: 5, badgeGap: 4,
+  /** The zone banner's paper tag strip above the name slab. */
+  zoneTagH: 22,
   /** The battle turn label's reserved box: top-centre, `turnBandTop` below the margin, `turnBandW` × `turnBandH`; bars never enter it. */
   turnBandTop: 120, turnBandH: 34, turnBandW: 320,
 
@@ -85,24 +92,49 @@ export const HUD = Object.freeze({
   moveEpsilonPx: 1,
 });
 
+/**
+ * The Broadcast palette (client `tokens.css`, mirrored: render may not import the client): black `--bg-0`, carbon
+ * `--bg-1`, `--bg-3` tracks, `--line-2`, paper `--text-hi`, fog `--text-2`, ONE orange `--accent` (selected / active /
+ * the key you press, never decoration or status), `--hp-mid` amber and `--hp-lo` red. Panels sit over the world at 0.92.
+ */
+const BLACK = '#0d0d0f';
+const SLAB = 'rgba(13, 13, 15, 0.92)';
+const CARBON = 'rgba(24, 24, 28, 0.92)';
+const TRACK = '#2a2a31';
+const LINE = '#4a4a54';
+const PAPER = '#f5f3ee';
+const FOG = '#a3a3ad';
+const ACCENT = '#ff5b1f';
+const ON_ACCENT = BLACK;
+const HP_HI = PAPER; const HP_MID = '#ffb020'; const HP_LO = '#ff4b3e';
+/** The glyph outline (Pillar 8). */
 const INK = 'rgba(8, 10, 14, 0.92)';
+/** The 12° slant of every cut edge and skewed bar. */
+const TAN12 = Math.tan((12 * Math.PI) / 180);
+const ZONE_TAG = 'NOW ENTERING';
+const OBJECTIVE = 'OBJECTIVE';
+const TYPE_FALLBACK = '#9aa0a6';
+/**
+ * Where the party cards' creature thumbnails are served: the sprite pipeline's 128 px WebP fronts, the same files the
+ * client's DOM uses (`public/creatures/thumbs/<id>_front.webp`, client `data/thumbs.ts`).
+ */
+const THUMB_BASE = '/creatures/thumbs/';
+const STATUS_FALLBACK = '#77777f';
 
-/** Readable text colour on a `#rrggbb` badge (relative luminance > 0.45 → dark ink). */
+/**
+ * Readable text colour on a `#rrggbb` badge, chosen by relative luminance: whichever of black (L ≈ 0.004) and paper
+ * (L ≈ 0.90) gives the higher WCAG contrast — black above L ≈ 0.18 (every type colour but the darkest few).
+ */
 function inkOn(hex: string): string {
   const m = /^#([0-9a-f]{6})$/i.exec(hex);
-  if (m === null) return TEXT_ON_DARK;
+  if (m === null) return PAPER;
   const v = parseInt(m[1]!, 16);
   const lin = (c: number): number => { const x = c / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
   const L = 0.2126 * lin((v >> 16) & 255) + 0.7152 * lin((v >> 8) & 255) + 0.0722 * lin(v & 255);
-  return L > 0.45 ? '#101216' : TEXT_ON_DARK;
+  return (L + 0.05) / (0.0042 + 0.05) >= (0.9 + 0.05) / (L + 0.05) ? BLACK : PAPER;
 }
-const TEXT_ON_DARK = '#fbf8f1';
-const PANEL = 'rgba(14, 17, 23, 0.72)';
-const PANEL_EDGE = 'rgba(255, 255, 255, 0.14)';
-const TEXT = '#f3efe6';
-const DIM = '#b9b3a6';
-const HP_HI = '#5fd068'; const HP_MID = '#f2c33d'; const HP_LO = '#ec5a4a';
-const STATUS_COLORS: Readonly<Record<string, string>> = { brn: '#ee6f4a', psn: '#9a5bb0', par: '#f4cf3f', slp: '#8aa6e0', frz: '#8fd6e8', tox: '#7a3b9a', cnf: '#e06fa0' };
+/** Status squares (keyed by the uppercase 3-letter code). */
+const STATUS_COLORS: Readonly<Record<string, string>> = { BRN: '#ee6f4a', PSN: '#9a5bb0', PAR: '#f4cf3f', SLP: '#8aa6e0', FRZ: '#8fd6e8', TOX: '#7a3b9a', CNF: '#e06fa0' };
 const EMOTE_GLYPHS: readonly string[] = ['', '👋', '😊', '😢', '❗', '❤', '😎'];
 const DIGITS: readonly string[] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
@@ -183,6 +215,9 @@ export class CanvasHudLayer implements HudLayer {
   private readonly clearBox = box();
   private cssW = 1; private cssH = 1; private pr = 1; private ui = 1;
   private typeTable: Readonly<Record<TypeName, string>> = TYPE_COLORS;
+  private readonly typeIcons = new Map<string, Path2D>();
+  /** Party-card thumbnails by species: a decoded bitmap, or `null` while loading / when missing (initials drawn). */
+  private readonly thumbs = new Map<string, ImageBitmap | null>();
   /** CSS px at the bottom of the canvas covered by the DOM battle panel: battle bars stay above it (T2). */
   private bottomInset = 0;
   private bodyFamily = 'system-ui, sans-serif';
@@ -213,6 +248,10 @@ export class CanvasHudLayer implements HudLayer {
   private hpBars = 0;
   private hpTweenLeft = 0;
   private hpNextRepaint = 0;
+  // draw-time string caches (uppercase names / labels, thumb initials, the fitted quest hint)
+  private readonly upper = new Map<string, string>();
+  private readonly initialsCache = new Map<string, string>();
+  private hintSrc = ''; private hintAvail = -1; private hintFont = ''; private hintFit = '';
   private uploadCount = 0;
   private drawCount = 0;
   private disposed = false;
@@ -360,6 +399,8 @@ export class CanvasHudLayer implements HudLayer {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    for (const bmp of this.thumbs.values()) bmp?.close();
+    this.thumbs.clear();
     this.tex.dispose();
     this.material.dispose();
     this.quad.geometry.dispose();
@@ -475,8 +516,8 @@ export class CanvasHudLayer implements HudLayer {
 
   private s(): number { return this.pr * this.ui; }
 
-  private font(px: number, weight: number, display = false): string {
-    return `${weight} ${Math.round(px * this.s())}px ${display ? this.displayFamily : this.bodyFamily}`;
+  private font(px: number, weight: number, display = false, italic = false): string {
+    return `${italic ? 'italic ' : ''}${weight} ${Math.round(px * this.s())}px ${display ? this.displayFamily : this.bodyFamily}`;
   }
 
   /** Region box inflated by the glyph outline / panel stroke, so every pixel a region paints lies inside its box. */
@@ -503,7 +544,7 @@ export class CanvasHudLayer implements HudLayer {
       }
       case 'zoneName': {
         const w = W * 0.6;
-        out.x = (W - w) / 2; out.y = M; out.w = m.zoneName !== null ? w : 0; out.h = m.zoneName !== null ? (HUD.displayPx + 24) * s : 0;
+        out.x = (W - w) / 2; out.y = M; out.w = m.zoneName !== null ? w : 0; out.h = m.zoneName !== null ? (HUD.zoneTagH + HUD.displayPx + 8) * s : 0;
         return;
       }
       case 'timeOfDay': {
@@ -661,8 +702,8 @@ export class CanvasHudLayer implements HudLayer {
     }
   }
 
-  /** Outlined text: 2 px dark outline under every glyph (Pillar 8). */
-  private text(str: string, x: number, y: number, color: string = TEXT): void {
+  /** Outlined text: 2 px dark outline under every glyph (Pillar 8). Used for every glyph on a dark slab. */
+  private text(str: string, x: number, y: number, color: string = PAPER): void {
     const { ctx } = this.surface;
     ctx.lineJoin = 'round';
     ctx.lineWidth = HUD.outlinePx * 2 * this.s();
@@ -672,89 +713,228 @@ export class CanvasHudLayer implements HudLayer {
     ctx.fillText(str, x, y);
   }
 
-  /** Tabular numerals: digits at a fixed advance, no string allocation. Returns the drawn width. */
-  private num(value: number, x: number, y: number, align: 'left' | 'right', color: string = TEXT, minDigits = 1): number {
+  /** Plain text for glyphs on a light slab (paper / orange / a type colour): a dark outline would smear them. */
+  private flat(str: string, x: number, y: number, color: string): void {
     const { ctx } = this.surface;
-    if (this.digitFont !== ctx.font) { this.digitFont = ctx.font; this.digitAdvance = ctx.measureText('0').width; }
+    ctx.fillStyle = color;
+    ctx.fillText(str, x, y);
+  }
+
+  /** Uppercase of a model string, cached (names, labels): redraws at 30 Hz allocate nothing after the first. */
+  private up(str: string): string {
+    let u = this.upper.get(str);
+    if (u === undefined) {
+      if (this.upper.size >= 512) this.upper.clear();
+      u = str.toUpperCase();
+      this.upper.set(str, u);
+    }
+    return u;
+  }
+
+  /**
+   * The species' thumbnail for a party card, or null (draw initials). The first ask starts one fetch + decode; when
+   * it lands the party region is marked dirty. Nothing loads where `createImageBitmap` does not exist (node tests).
+   */
+  private thumb(speciesId: string): ImageBitmap | null {
+    const hit = this.thumbs.get(speciesId);
+    if (hit !== undefined) return hit;
+    this.thumbs.set(speciesId, null);
+    if (typeof createImageBitmap !== 'function' || typeof fetch !== 'function') return null;
+    fetch(`${THUMB_BASE}${speciesId}_front.webp`)
+      .then((res) => (res.ok ? res.blob() : Promise.reject(new Error(String(res.status)))))
+      .then((blob) => createImageBitmap(blob))
+      .then((bmp) => { if (this.disposed) { bmp.close(); return; } this.thumbs.set(speciesId, bmp); this.markDirty('party'); })
+      .catch(() => undefined);
+    return null;
+  }
+
+  /** A species' two-letter thumb initials, cached. */
+  private initials(speciesId: string): string {
+    let u = this.initialsCache.get(speciesId);
+    if (u === undefined) {
+      if (this.initialsCache.size >= 256) this.initialsCache.clear();
+      u = speciesId.slice(0, 2).toUpperCase();
+      this.initialsCache.set(speciesId, u);
+    }
+    return u;
+  }
+
+  /** Width of one tabular digit in the current font: the widest of 0–9 (the display face's digits are proportional). */
+  private digitW(): number {
+    const { ctx } = this.surface;
+    if (this.digitFont !== ctx.font) {
+      this.digitFont = ctx.font;
+      let w = 0;
+      for (let d = 0; d < 10; d++) w = Math.max(w, ctx.measureText(DIGITS[d]!).width);
+      this.digitAdvance = w;
+    }
+    return this.digitAdvance;
+  }
+
+  /** Tabular numerals: digits at a fixed advance, no string allocation. Returns the drawn width. */
+  private num(value: number, x: number, y: number, align: 'left' | 'right' | 'center', color: string = PAPER, minDigits = 1): number {
+    const { ctx } = this.surface;
+    const adv = this.digitW();
     let v = Math.max(0, Math.round(Number.isFinite(value) ? value : 0));
     let digits = 1; for (let t = v; t >= 10; t = Math.floor(t / 10)) digits++;
     digits = Math.max(digits, minDigits);
-    const w = digits * this.digitAdvance;
+    const w = digits * adv;
     const saved = ctx.textAlign;
-    ctx.textAlign = 'left';
-    let cx = (align === 'right' ? x - w : x) + (digits - 1) * this.digitAdvance;
-    for (let i = 0; i < digits; i++) { this.text(DIGITS[v % 10]!, cx, y, color); v = Math.floor(v / 10); cx -= this.digitAdvance; }
+    ctx.textAlign = 'center';            // each digit centred in its fixed cell
+    const x0 = (align === 'right' ? x - w : align === 'center' ? x - w / 2 : x) + adv / 2;
+    // two passes: every outline first, then every fill, so a digit's outline never eats into its neighbour
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = HUD.outlinePx * 2 * this.s();
+    ctx.strokeStyle = INK;
+    for (let i = 0, t = v; i < digits; i++, t = Math.floor(t / 10)) ctx.strokeText(DIGITS[t % 10]!, x0 + (digits - 1 - i) * adv, y);
+    ctx.fillStyle = color;
+    for (let i = 0; i < digits; i++, v = Math.floor(v / 10)) ctx.fillText(DIGITS[v % 10]!, x0 + (digits - 1 - i) * adv, y);
     ctx.textAlign = saved;
     return w;
   }
 
-  private panel(x: number, y: number, w: number, h: number, r: number): void {
+  /** A filled quadrilateral (the slab language: hard edges, 12° cuts). */
+  private quad4(x0: number, y0: number, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, fill: string): void {
     const { ctx } = this.surface;
     ctx.beginPath();
-    ctx.roundRect(x, y, w, h, r);
-    ctx.fillStyle = PANEL;
+    ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3);
+    ctx.closePath();
+    ctx.fillStyle = fill;
     ctx.fill();
-    ctx.lineWidth = Math.max(1, this.s());
-    ctx.strokeStyle = PANEL_EDGE;
-    ctx.stroke();
   }
 
+  /** A slab whose right edge is cut at 12° (top-right corner at x + w). */
+  private slab(x: number, y: number, w: number, h: number, fill: string): void {
+    const c = h * TAN12;
+    this.quad4(x, y, x + w, y, x + w - c, y + h, x, y + h, fill);
+  }
+
+  /** A slab whose left edge is cut at 12° (bottom-left corner at x): the mirror for right-anchored elements. */
+  private slabL(x: number, y: number, w: number, h: number, fill: string): void {
+    const c = h * TAN12;
+    this.quad4(x + c, y, x + w, y, x + w, y + h, x, y + h, fill);
+  }
+
+  /** A 12° parallelogram (skewX(-12deg)) spanning x..x+w; the top edge starts h·tan12 in. */
+  private skew(x: number, y: number, w: number, h: number, fill: string): void {
+    const k = h * TAN12;
+    this.quad4(x + k, y, x + w, y, x + w - k, y + h, x, y + h, fill);
+  }
+
+  /** Skewed HP bar: a flat fill on the bg-3 track; paper above 50 %, amber above 20 %, red below. */
   private hpBar(x: number, y: number, w: number, h: number, frac: number): void {
-    const { ctx } = this.surface;
     const f = Math.min(1, Math.max(0, Number.isFinite(frac) ? frac : 0));
-    ctx.fillStyle = INK;
-    ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = f > 0.5 ? HP_HI : f > 0.2 ? HP_MID : HP_LO;
-    ctx.fillRect(x, y, w * f, h);
+    const k = h * TAN12; const iw = w - k;
+    this.quad4(x + k, y, x + w, y, x + iw, y + h, x, y + h, TRACK);
+    if (f <= 0) return;
+    const fw = iw * f;
+    this.quad4(x + k, y, x + k + fw, y, x + fw, y + h, x, y + h, f > 0.5 ? HP_HI : f > 0.2 ? HP_MID : HP_LO);
   }
 
-  private statusPill(status: string, x: number, y: number): void {
+  /** A flat status square with its 3-letter code (status colour, ink by luminance). Returns its width. */
+  private statusChip(status: string, x: number, cy: number): number {
     const { ctx } = this.surface;
     const s = this.s();
-    const key = status.slice(0, 3).toLowerCase();
-    ctx.beginPath();
-    ctx.roundRect(x, y, 38 * s, 17 * s, 4 * s);
-    ctx.fillStyle = STATUS_COLORS[key] ?? '#777066';
-    ctx.fill();
-    ctx.font = this.font(HUD.smallPx, 700);
+    const key = this.up(status.length > 3 ? status.slice(0, 3) : status);
+    const fill = STATUS_COLORS[key] ?? STATUS_FALLBACK;
+    ctx.font = this.font(HUD.smallPx, 800, true);
+    const w = ctx.measureText(key).width + 2 * HUD.badgePad * s;
+    const h = HUD.badgeH * s;
+    ctx.fillStyle = fill;
+    ctx.fillRect(x, cy - h / 2, w, h);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#101010';
-    ctx.fillText(key.toUpperCase(), x + 19 * s, y + 9 * s);
+    this.flat(key, x + w / 2, cy + 0.5 * s, inkOn(fill));
+    return w;
   }
 
+  /**
+   * Party strip: one 48 px card per creature — a band on top (neutral; paper for a variant: the model carries no
+   * types), the initials in the display face, the HP % as a tabular number, a skewed HP bar; the lead card wears the
+   * orange ring; a status square in the corner.
+   */
   private drawParty(): void {
     const { ctx } = this.surface;
     const s = this.s(); const b = this.raw.party;
     const party = this.model.party;
+    const T = HUD.thumbPx * s; const H = (HUD.thumbPx + 20) * s;
     for (let i = 0; i < Math.min(HUD.partyMax, party.length); i++) {
       const p = party[i]!;
       const x = b.x + i * (HUD.thumbPx + HUD.thumbGap) * s; const y = b.y;
-      this.panel(x, y, HUD.thumbPx * s, HUD.thumbPx * s, 8 * s);
-      ctx.font = this.font(HUD.bodyPx + 3, 700);
+      ctx.fillStyle = SLAB; ctx.fillRect(x, y, T, H);
+      ctx.fillStyle = p.variantKey === 'normal' ? LINE : PAPER; ctx.fillRect(x, y, T, 4 * s);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.globalAlpha = p.fainted ? 0.4 : 1;
-      this.text(p.speciesId.slice(0, 2).toUpperCase(), x + HUD.thumbPx * s / 2, y + HUD.thumbPx * s / 2, p.variantKey === 'normal' ? TEXT : '#ffd97a');
+      // the creature itself (Broadcast UI, 2026-10-11: the user asked for the sprites here), pixel-crisp, contained in
+      // the card's top; initials until the thumbnail has loaded or where none exists
+      const bmp = this.thumb(p.speciesId);
+      const c = ctx as Ctx2D & { drawImage?: (img: ImageBitmap, x: number, y: number, w: number, h: number) => void; imageSmoothingEnabled?: boolean };
+      if (bmp !== null && typeof c.drawImage === 'function') {
+        const bw = T - 4 * s; const bh = 40 * s;
+        const k = Math.min(bw / bmp.width, bh / bmp.height);
+        const dw = bmp.width * k; const dh = bmp.height * k;
+        c.imageSmoothingEnabled = false;
+        c.drawImage(bmp, x + (T - dw) / 2, y + 5 * s + (bh - dh), dw, dh);
+        c.imageSmoothingEnabled = true;
+      } else {
+        ctx.font = this.font(HUD.bodyPx + 5, 800, true, true);
+        this.text(this.initials(p.speciesId), x + T / 2, y + 26 * s, PAPER);
+      }
+      ctx.font = this.font(HUD.smallPx, 800, true);
+      if (p.fainted) this.text('KO', x + T / 2, y + 53 * s, FOG);
+      else this.num(p.hpFrac * 100, x + T / 2, y + 53 * s, 'center', PAPER);
       ctx.globalAlpha = 1;
-      this.hpBar(x + 3 * s, y + (HUD.thumbPx + 6) * s, (HUD.thumbPx - 6) * s, 6 * s, p.fainted ? 0 : p.hpFrac);
+      this.hpBar(x + 5 * s, y + 64 * s, T - 10 * s, 6 * s, p.fainted ? 0 : p.hpFrac);
       if (p.status !== null && !p.fainted) {
-        ctx.beginPath(); ctx.arc(x + (HUD.thumbPx - 7) * s, y + 7 * s, 5 * s, 0, Math.PI * 2);
-        ctx.fillStyle = STATUS_COLORS[p.status.slice(0, 3).toLowerCase()] ?? '#777066'; ctx.fill();
+        ctx.fillStyle = STATUS_COLORS[this.up(p.status.length > 3 ? p.status.slice(0, 3) : p.status)] ?? STATUS_FALLBACK;
+        ctx.fillRect(x + T - 12 * s, y + 8 * s, 7 * s, 7 * s);
+      }
+      if (i === 0) {
+        ctx.lineWidth = 2 * s; ctx.strokeStyle = ACCENT;
+        ctx.strokeRect(x + s, y + s, T - 2 * s, H - 2 * s);
       }
     }
   }
 
+  /**
+   * Zone banner as a broadcast lower-third, centred at the top: a paper tag strip ("NOW ENTERING"), then an orange
+   * edge block and a black slab with the name in the display face (48 px, italic 800, uppercase), shrunk to fit.
+   */
   private drawZoneName(): void {
     const z = this.model.zoneName;
     if (z === null) return;
     const { ctx } = this.surface;
-    const b = this.raw.zoneName;
-    ctx.font = this.font(HUD.displayPx, 600, true);
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    this.text(z, b.x + b.w / 2, b.y + b.h / 2);
+    const s = this.s(); const b = this.raw.zoneName;
+    const tagH = HUD.zoneTagH * s; const nameH = (HUD.displayPx + 8) * s;
+    const edge = 12 * s; const padL = 20 * s; const padR = 30 * s;
+    const name = this.up(z);
+    let px: number = HUD.displayPx;
+    ctx.font = this.font(px, 800, true, true);
+    let tw = ctx.measureText(name).width;
+    const maxText = b.w - edge - padL - padR;
+    if (tw > maxText && tw > 0) {
+      px = Math.max(HUD.bodyPx, px * maxText / tw);
+      ctx.font = this.font(px, 800, true, true);
+      tw = ctx.measureText(name).width;
+    }
+    const total = Math.min(b.w, edge + padL + tw + padR);
+    const x0 = b.x + (b.w - total) / 2; const ny = b.y + tagH;
+    // the tag strip, flush with the slab's left edge
+    ctx.font = this.font(HUD.smallPx, 800, true);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const tagW = ctx.measureText(ZONE_TAG).width + 20 * s + tagH * TAN12;
+    this.slab(x0 + edge, b.y, tagW, tagH, PAPER);
+    this.flat(ZONE_TAG, x0 + edge + 10 * s, b.y + tagH / 2 + 1 * s, BLACK);
+    // edge block + name slab
+    ctx.fillStyle = ACCENT; ctx.fillRect(x0, ny, edge, nameH);
+    this.slab(x0 + edge, ny, total - edge, nameH, SLAB);
+    ctx.font = this.font(px, 800, true, true);
+    this.text(name, x0 + edge + padL, ny + nameH / 2 + 2 * s, PAPER);
   }
 
+  /**
+   * Top-right: the clock slab (sun / moon glyph, DAY / NIGHT label, hh:mm tabular) and, below it, the quest hint as an
+   * orange OBJECTIVE label strip + the hint on a black slab (uppercase display face, truncated to the region width).
+   */
   private drawTime(): void {
     const { ctx } = this.surface;
     const s = this.s(); const b = this.raw.timeOfDay;
@@ -763,85 +943,158 @@ export class CanvasHudLayer implements HudLayer {
     const hh = Math.floor(minutes / 60); const mm = minutes % 60;
     const day = hh >= 6 && hh < 19;
     const right = b.x + b.w;
-    ctx.font = this.font(HUD.numPx + 2, 700);
-    ctx.textBaseline = 'middle';
-    const y = b.y + 16 * s;
-    const mmW = this.num(mm, right, y, 'right', TEXT, 2);
-    ctx.textAlign = 'right';
-    this.text(':', right - mmW, y);
-    const colon = ctx.measureText(':').width;
-    const hhW = this.num(hh, right - mmW - colon, y, 'right', TEXT, 2);
-    // sun / moon glyph
-    const gx = right - mmW - colon - hhW - 16 * s;
-    ctx.beginPath(); ctx.arc(gx, y, 8 * s, 0, Math.PI * 2);
-    ctx.fillStyle = day ? '#ffd35a' : '#dfe6f5'; ctx.fill();
-    ctx.lineWidth = 2 * s; ctx.strokeStyle = INK; ctx.stroke();
-    if (!day) { ctx.beginPath(); ctx.arc(gx + 4 * s, y - 3 * s, 7 * s, 0, Math.PI * 2); ctx.fillStyle = INK; ctx.fill(); }
+    const rowH = 28 * s; const cy = b.y + rowH / 2;
+    const pad = 12 * s; const cut = rowH * TAN12; const glyph = 16 * s;
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    ctx.font = this.font(HUD.smallPx, 700, true);
+    const label = day ? 'DAY' : 'NIGHT';
+    const labW = ctx.measureText(label).width;
+    ctx.font = this.font(HUD.bodyPx + 5, 800, true);
+    const colonW = ctx.measureText(':').width;
+    const clockW = 4 * this.digitW() + colonW;
+    const slabW = cut + pad + glyph + 8 * s + labW + 10 * s + clockW + pad;
+    this.slabL(right - slabW, b.y, slabW, rowH, SLAB);
+    let cx = right - slabW + cut + pad;
+    // glyph: a paper disc (sun) or a paper crescent (moon)
+    ctx.beginPath(); ctx.arc(cx + glyph / 2, cy, 7 * s, 0, Math.PI * 2);
+    ctx.fillStyle = PAPER; ctx.fill();
+    if (!day) { ctx.beginPath(); ctx.arc(cx + glyph / 2 + 4 * s, cy - 3 * s, 6 * s, 0, Math.PI * 2); ctx.fillStyle = BLACK; ctx.fill(); }
+    cx += glyph + 8 * s;
+    ctx.font = this.font(HUD.smallPx, 700, true);
+    this.text(label, cx, cy + 1 * s, FOG);
+    cx += labW + 10 * s;
+    ctx.font = this.font(HUD.bodyPx + 5, 800, true);
+    cx += this.num(hh, cx, cy, 'left', PAPER, 2);
+    this.text(':', cx, cy, FOG);
+    cx += colonW;
+    this.num(mm, cx, cy, 'left', PAPER, 2);
     const q = this.model.questHint;
-    if (q !== null) {
-      ctx.font = this.font(HUD.bodyPx, 500);
-      ctx.textAlign = 'right';
-      this.text(q.length > 60 ? q.slice(0, 60) : q, right, b.y + 44 * s, DIM);
-    }
+    if (q === null) return;
+    const qy = b.y + 32 * s; const qh = 28 * s; const qc = qy + qh / 2; const qcut = qh * TAN12;
+    ctx.font = this.font(HUD.smallPx, 800, true);
+    const tagW = ctx.measureText(OBJECTIVE).width + 2 * 10 * s;
+    ctx.font = this.font(HUD.bodyPx + 1, 700, true);
+    const avail = b.w - qcut - tagW - 2 * pad;
+    const hint = this.fitHint(q, avail);
+    const hintW = ctx.measureText(hint).width;
+    const total = qcut + tagW + pad + hintW + pad;
+    const x0 = right - total;
+    this.slabL(x0, qy, total, qh, SLAB);
+    this.slabL(x0, qy, qcut + tagW, qh, ACCENT);
+    ctx.font = this.font(HUD.smallPx, 800, true);
+    this.flat(OBJECTIVE, x0 + qcut + 8 * s, qc + 1 * s, ON_ACCENT);
+    ctx.font = this.font(HUD.bodyPx + 1, 700, true);
+    this.text(hint, x0 + qcut + tagW + pad, qc + 1 * s, PAPER);
   }
 
+  /** The quest hint, uppercase, ≤ 60 chars, ellipsised to `avail` px in the current font; cached per (hint, width). */
+  private fitHint(q: string, avail: number): string {
+    if (q === this.hintSrc && avail === this.hintAvail && this.surface.ctx.font === this.hintFont) return this.hintFit;
+    const { ctx } = this.surface;
+    let t = this.up(q.length > 60 ? q.slice(0, 60) : q);
+    if (ctx.measureText(t).width > avail) {
+      let n = t.length - 1;
+      while (n > 1 && ctx.measureText(t.slice(0, n) + '…').width > avail) n--;
+      t = t.slice(0, n).trimEnd() + '…';
+    }
+    this.hintSrc = q; this.hintAvail = avail; this.hintFont = ctx.font; this.hintFit = t;
+    return t;
+  }
+
+  /** Chat: one black slab per line (fading with the line), the name as a fog label, the text in the body face. */
   private drawChat(): void {
     const { ctx } = this.surface;
     const s = this.s(); const b = this.raw.chat;
     const chat = this.model.chat;
     const n = Math.min(HUD.chatLines, chat.length);
-    ctx.font = this.font(HUD.bodyPx, 500);
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const lh = (HUD.chatLineH - 2) * s; const cut = lh * TAN12;
     for (let i = 0; i < n; i++) {
       const line = chat[chat.length - n + i]!;
       const age = this.clockMs - (this.chatArrival.get(line.at) ?? this.clockMs);
       const a = age <= HUD.chatHoldMs ? 1 : Math.max(0, 1 - (age - HUD.chatHoldMs) / HUD.chatFadeMs);
       if (a <= 0) continue;
-      ctx.globalAlpha = a;
       const y = b.y + (6 + (i + 0.5) * HUD.chatLineH) * s;
-      ctx.font = this.font(HUD.bodyPx, 700);
-      this.text(line.name, b.x + 8 * s, y, '#9fd3ff');
-      const nw = ctx.measureText(line.name).width;
+      const name = this.up(line.name);
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.font = this.font(HUD.bodyPx, 800, true);
+      const nw = ctx.measureText(name).width;
       ctx.font = this.font(HUD.bodyPx, 500);
-      this.text(line.text, b.x + 8 * s + nw + 8 * s, y);
+      const tw = ctx.measureText(line.text).width;
+      const w = Math.min(b.w, 8 * s + nw + 8 * s + tw + 10 * s + cut);
+      this.slab(b.x, y - lh / 2, w, lh, SLAB);
+      ctx.beginPath(); ctx.rect(b.x, y - lh / 2, Math.max(0, w - cut), lh); ctx.clip();
+      ctx.font = this.font(HUD.bodyPx, 800, true);
+      this.text(name, b.x + 8 * s, y + 1 * s, FOG);
+      ctx.font = this.font(HUD.bodyPx, 500);
+      this.text(line.text, b.x + 16 * s + nw, y, PAPER);
+      ctx.restore();
     }
     ctx.globalAlpha = 1;
   }
 
+  /** Prompt: the orange key chip + a black slab with the uppercase verb and target, centred bottom. */
   private drawPrompt(): void {
     const p = this.model.prompt;
     if (p === null) return;
     const { ctx } = this.surface;
     const s = this.s(); const b = this.raw.prompt;
-    this.panel(b.x, b.y, b.w, b.h, 10 * s);
-    const cy = b.y + b.h / 2;
-    const kw = 30 * s;
-    ctx.beginPath(); ctx.roundRect(b.x + 12 * s, cy - 13 * s, kw, 26 * s, 5 * s);
-    ctx.fillStyle = '#f3efe6'; ctx.fill();
-    ctx.font = this.font(HUD.bodyPx, 800);
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#15171c'; ctx.fillText(p.key, b.x + 12 * s + kw / 2, cy);
+    const h = 40 * s; const y0 = b.y + (b.h - h) / 2; const cy = y0 + h / 2;
+    const verb = this.up(p.verb); const target = this.up(p.target);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = this.font(HUD.bodyPx + 7, 800, true);
+    const key = this.up(p.key);
+    const chipW = Math.max(40 * s, ctx.measureText(key).width + 16 * s);
+    ctx.font = this.font(HUD.bodyPx + 5, 700, true);
+    const vw = ctx.measureText(verb).width;
+    ctx.font = this.font(HUD.bodyPx + 5, 800, true, true);
+    const tw = ctx.measureText(target).width;
+    const slabW = Math.min(b.w - chipW, 14 * s + vw + (tw > 0 ? 8 * s + tw : 0) + 18 * s + h * TAN12);
+    const x0 = b.x + (b.w - chipW - slabW) / 2;
+    ctx.fillStyle = ACCENT; ctx.fillRect(x0, y0, chipW, h);
+    ctx.font = this.font(HUD.bodyPx + 7, 800, true);
+    ctx.textAlign = 'center';
+    this.flat(key, x0 + chipW / 2, cy + 1 * s, ON_ACCENT);
+    this.slab(x0 + chipW, y0, slabW, h, SLAB);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x0 + chipW, y0, Math.max(0, slabW - h * TAN12), h); ctx.clip();
     ctx.textAlign = 'left';
-    ctx.font = this.font(HUD.bodyPx + 1, 600);
-    this.text(p.verb, b.x + 12 * s + kw + 12 * s, cy);
-    const vw = ctx.measureText(p.verb).width;
-    this.text(p.target, b.x + 12 * s + kw + 12 * s + vw + 7 * s, cy, '#ffd97a');
+    ctx.font = this.font(HUD.bodyPx + 5, 700, true);
+    this.text(verb, x0 + chipW + 14 * s, cy + 1 * s, PAPER);
+    ctx.font = this.font(HUD.bodyPx + 5, 800, true, true);
+    if (tw > 0) this.text(target, x0 + chipW + 14 * s + vw + 8 * s, cy + 1 * s, PAPER);
+    ctx.restore();
   }
 
+  /** Nameplates: a black slab per actor — the guild tag in fog, the name in the display face; in battle → orange edge. */
   private drawNameplates(): void {
     const { ctx } = this.surface;
     const s = this.s(); const pr = this.pr;
     const plates = this.model.nameplates;
     const n = Math.min(plates.length, HUD.nameplatesMax);
-    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    const h = 22 * s; const pad = 8 * s;
     for (let i = 0; i < n; i++) {
       this.plateDrawnXY[i * 2] = this.plateXY[i * 2]!; this.plateDrawnXY[i * 2 + 1] = this.plateXY[i * 2 + 1]!;
       if (this.plateOk[i] !== 1) continue;
       const p = plates[i]!;
       const x = this.plateXY[i * 2]! * pr; const y = this.plateXY[i * 2 + 1]! * pr;
-      ctx.font = this.font(HUD.bodyPx, 700);
-      this.text(p.name, x, y, p.inBattle ? '#ffb0a0' : TEXT);
-      if (p.guildTag.length > 0) { ctx.font = this.font(HUD.smallPx, 600); this.text(p.guildTag, x, y - 17 * s, '#b8e0a8'); }
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      const name = this.up(p.name);
+      ctx.font = this.font(HUD.bodyPx + 1, 800, true);
+      const nw = ctx.measureText(name).width;
+      let gw = 0;
+      const tag = p.guildTag.length > 0 ? this.up(p.guildTag) : '';
+      if (tag.length > 0) { ctx.font = this.font(HUD.smallPx, 700, true); gw = ctx.measureText(tag).width + 6 * s; }
+      const edge = p.inBattle ? 5 * s : 0;
+      const cut = h * TAN12;
+      const w = Math.min(260 * s, edge + pad + gw + nw + pad + cut);
+      const x0 = x - w / 2; const y0 = y - 18 * s; const cy = y0 + h / 2 + 1 * s;
+      this.slab(x0, y0, w, h, SLAB);
+      if (edge > 0) { ctx.fillStyle = ACCENT; ctx.fillRect(x0, y0, edge, h); }
+      if (gw > 0) { ctx.font = this.font(HUD.smallPx, 700, true); this.text(tag, x0 + edge + pad, cy, FOG); }
+      ctx.font = this.font(HUD.bodyPx + 1, 800, true);
+      this.text(name, x0 + edge + pad + gw, cy, PAPER);
     }
     if (this.emoteActive && this.anchors?.emotes) this.anchors.emotes(this.emoteDrawVisitor);
   }
@@ -852,17 +1105,20 @@ export class CanvasHudLayer implements HudLayer {
     const s = this.s(); const pr = this.pr;
     const x = this.emoteXY[0]! * pr; const y = this.emoteXY[1]! * pr - 62 * s;
     ctx.globalAlpha = Math.min(1, left * 6);
-    ctx.beginPath(); ctx.roundRect(x - 22 * s, y - 22 * s, 44 * s, 40 * s, 10 * s);
-    ctx.fillStyle = '#f7f3ea'; ctx.fill(); ctx.lineWidth = 2 * s; ctx.strokeStyle = INK; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x - 6 * s, y + 18 * s); ctx.lineTo(x, y + 26 * s); ctx.lineTo(x + 6 * s, y + 18 * s); ctx.closePath();
-    ctx.fillStyle = '#f7f3ea'; ctx.fill();
+    ctx.fillStyle = PAPER; ctx.fillRect(x - 22 * s, y - 22 * s, 44 * s, 40 * s);
+    this.quad4(x - 8 * s, y + 18 * s, x + 2 * s, y + 18 * s, x - 8 * s, y + 27 * s, x - 8 * s, y + 27 * s, PAPER);
     ctx.font = this.font(HUD.bodyPx + 7, 400);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#111';
+    ctx.fillStyle = BLACK;
     ctx.fillText(EMOTE_GLYPHS[emote] ?? '', x, y - 1 * s);
     ctx.globalAlpha = 1;
   };
 
+  /**
+   * Battle plates (240 × 52 at uiScale 1, placed by `placeBars`): a black slab with a 12° right cut and a type-colour
+   * edge, the name (display italic 800, uppercase), LV, a skewed HP bar, then type badges · status · stage arrows on
+   * the left and the HP numbers (own side) on the right. The turn label is an orange skewed chip; orb shakes are squares.
+   */
   private drawBattle(): void {
     const b = this.model.battle;
     if (b === null) return;
@@ -875,64 +1131,120 @@ export class CanvasHudLayer implements HudLayer {
       const bar = b.bars[i]!;
       const w = HUD.barW * s; const h = HUD.barH * s;
       const x = this.barPos[i * 2]!; const y = this.barPos[i * 2 + 1]!;
-      this.panel(x, y, w, h, 8 * s);
-      ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-      ctx.font = this.font(HUD.bodyPx, 700);
-      this.text(bar.name, x + 10 * s, y + 13 * s);
-      ctx.font = this.font(HUD.smallPx, 600);
-      ctx.textAlign = 'right';
-      const lvW = this.num(bar.level, x + w - 10 * s, y + 13 * s, 'right', DIM);
-      this.text('Lv', x + w - 12 * s - lvW, y + 13 * s, DIM);
-      const shown = i < this.hpBars ? this.hpShown[i]! : bar.hp;
-      this.hpBar(x + 10 * s, y + 26 * s, w - 20 * s, 7 * s, bar.maxHp > 0 ? shown / bar.maxHp : 0);
-      ctx.font = this.font(HUD.smallPx, 600);
-      if (bar.showNumbers) {
-        const my = y + 43 * s;
-        const maxW = this.num(bar.maxHp, x + w - 10 * s, my, 'right');
-        ctx.textAlign = 'right';
-        this.text('/', x + w - 12 * s - maxW, my, DIM);
-        const slash = ctx.measureText('/').width;
-        this.num(shown, x + w - 14 * s - maxW - slash, my, 'right');
-      }
-      let sx = x + 10 * s;
-      // type badges first (§50.1 #15, M2-battle-7): the §10.4.6 colour (the colourblind table when set), 3-letter name
+      const cut = h * TAN12;
+      this.slab(x, y, w, h, SLAB);
       const types = bar.types ?? [];
-      for (let t = 0; t < types.length && t < 2; t++) sx += this.typeBadge(types[t]!, sx, y + 43 * s) + HUD.badgeGap * s;
-      if (bar.status !== null) { this.statusPill(bar.status, sx, y + 35 * s); sx += 44 * s; }
-      if (bar.stages.length > 0) { ctx.font = this.font(HUD.smallPx, 700); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; this.text(bar.stages, sx, y + 43 * s, '#bfe3ff'); }
+      if (types.length > 0) { ctx.fillStyle = this.typeTable[types[0] as TypeName] ?? TYPE_FALLBACK; ctx.fillRect(x, y, 5 * s, h); }
+      const l = x + 14 * s;
+      // row 1: name · LV n
+      const r1 = y + 14 * s; const right1 = x + w - cut * (14 / HUD.barH) - 12 * s;
+      ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      ctx.font = this.font(HUD.bodyPx + 5, 800, true);
+      const lvW = this.num(bar.level, right1, r1, 'right', PAPER);
+      ctx.font = this.font(HUD.smallPx, 700, true);
+      ctx.textAlign = 'right';
+      this.text('LV', right1 - lvW - 4 * s, r1 + 1 * s, FOG);
+      ctx.textAlign = 'left';
+      ctx.font = this.font(HUD.bodyPx + 4, 800, true, true);
+      this.text(this.up(bar.name), l, r1, PAPER);
+      // row 2: the skewed HP bar
+      const shown = i < this.hpBars ? this.hpShown[i]! : bar.hp;
+      this.hpBar(l, y + 25 * s, x + w - cut * (34 / HUD.barH) - 10 * s - l, 9 * s, bar.maxHp > 0 ? shown / bar.maxHp : 0);
+      // row 3: numbers on the right (own side), badges · status · stages on the left
+      const r3 = y + 43 * s; const right3 = x + w - cut * (43 / HUD.barH) - 10 * s;
+      let numL = right3;
+      if (bar.showNumbers) {
+        ctx.font = this.font(HUD.smallPx, 700, true);
+        const maxW = this.num(bar.maxHp, right3, r3, 'right', FOG);
+        ctx.textAlign = 'right';
+        this.text('/', right3 - maxW - 1 * s, r3, FOG);
+        const slash = ctx.measureText('/').width;
+        ctx.font = this.font(HUD.bodyPx + 2, 800, true);
+        numL = right3 - maxW - 2 * s - slash - this.num(shown, right3 - maxW - 2 * s - slash, r3, 'right', PAPER);
+      }
+      let sx = l;
+      // type badges first (§50.1 #15, M2-battle-7): the §10.4.6 colour (the colourblind table when set), 3-letter name
+      for (let t = 0; t < types.length && t < 2; t++) sx += this.typeBadge(types[t]!, sx, r3) + HUD.badgeGap * s;
+      if (bar.status !== null) sx += this.statusChip(bar.status, sx, r3) + HUD.badgeGap * s;
+      if (bar.stages.length > 0 && sx < numL - 8 * s) {
+        ctx.font = this.font(HUD.smallPx, 700, true); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        this.text(this.up(bar.stages), sx + 2 * s, r3 + 1 * s, PAPER);
+      }
     }
     // turn label + orb shakes (top-centre, in the reserved band under the top HUD row / connection pill)
     const W = this.surface.canvas.width;
     const ty = (HUD.margin + HUD.turnBandTop + HUD.turnBandH / 2) * s;
-    ctx.font = this.font(HUD.bodyPx + 1, 700);
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if (b.turnLabel.length > 0) this.text(b.turnLabel, W / 2, ty);
+    const ch = (HUD.turnBandH - 4) * s;
+    let half = 0;
+    if (b.turnLabel.length > 0) {
+      const label = this.up(b.turnLabel);
+      ctx.font = this.font(HUD.bodyPx + 5, 800, true, true);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const cw = Math.min((HUD.turnBandW - 100) * s, ctx.measureText(label).width + 2 * 16 * s + ch * TAN12);
+      half = cw / 2;
+      this.skew(W / 2 - half, ty - ch / 2, cw, ch, ACCENT);
+      this.flat(label, W / 2, ty + 1 * s, ON_ACCENT);
+    }
     if (b.shakes > 0) {
+      const q = 10 * s;
+      const x0 = W / 2 + Math.max(half, 40 * s) + 12 * s;
       for (let k = 0; k < 3; k++) {
-        ctx.beginPath(); ctx.arc(W / 2 + 110 * s + k * 18 * s, ty, 6 * s, 0, Math.PI * 2);
-        ctx.fillStyle = k < b.shakes ? '#ffd35a' : 'rgba(255,255,255,0.18)'; ctx.fill();
-        ctx.lineWidth = 2 * s; ctx.strokeStyle = INK; ctx.stroke();
+        ctx.fillStyle = BLACK; ctx.fillRect(x0 + k * 16 * s - 2 * s, ty - q / 2 - 2 * s, q + 4 * s, q + 4 * s);
+        ctx.fillStyle = k < b.shakes ? PAPER : TRACK; ctx.fillRect(x0 + k * 16 * s, ty - q / 2, q, q);
       }
     }
   }
 
-  /** One type badge with its left edge at x, vertically centred on cy; returns its width (canvas px). */
+  /**
+   * One type badge with its left edge at x, vertically centred on cy; returns its width. Broadcast UI (2026-10-11):
+   * a flat type-colour square carrying the type's icon (`typeIcons.ts`, stroked in the badge's ink) — no letter
+   * code. Where the surface cannot draw a path (no `Path2D`, or a context without `translate`/`scale`: node tests)
+   * it falls back to the 3-letter name.
+   */
   private typeBadge(type: string, x: number, cy: number): number {
     const { ctx } = this.surface;
     const s = this.s();
-    const label = type.slice(0, 3).toUpperCase();
-    ctx.font = this.font(HUD.smallPx, 800);
+    const icon = this.typeIcon(type);
+    const c = ctx as Ctx2D & { translate?: (x: number, y: number) => void; scale?: (x: number, y: number) => void; lineCap: CanvasLineCap };
+    if (icon !== null && typeof c.translate === 'function' && typeof c.scale === 'function') {
+      const h = HUD.badgeH * s;
+      const fill = this.typeTable[type as TypeName] ?? TYPE_FALLBACK;
+      ctx.fillStyle = fill;
+      ctx.fillRect(x, cy - h / 2, h, h);
+      const k = (h * 0.8) / 24;
+      c.save();
+      c.translate(x + h * 0.1, cy - h * 0.4);
+      c.scale(k, k);
+      c.strokeStyle = inkOn(fill);
+      c.lineWidth = 2.4;
+      c.lineCap = 'round';
+      c.lineJoin = 'round';
+      (c.stroke as (path: Path2D) => void)(icon);
+      c.restore();
+      return h;
+    }
+    const label = this.up(type.length > 3 ? type.slice(0, 3) : type);
+    ctx.font = this.font(HUD.smallPx, 800, true);
     const w = ctx.measureText(label).width + 2 * HUD.badgePad * s;
     const h = HUD.badgeH * s;
-    const fill = this.typeTable[type as TypeName] ?? '#9aa0a6';
-    ctx.beginPath();
-    ctx.roundRect(x, cy - h / 2, w, h, h / 2);
-    ctx.fillStyle = fill; ctx.fill();
-    ctx.lineWidth = 1.5 * s; ctx.strokeStyle = INK; ctx.stroke();
+    const fill = this.typeTable[type as TypeName] ?? TYPE_FALLBACK;
+    ctx.fillStyle = fill;
+    ctx.fillRect(x, cy - h / 2, w, h);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = inkOn(fill);
-    ctx.fillText(label, x + w / 2, cy + 0.5 * s);
+    this.flat(label, x + w / 2, cy + 0.5 * s, inkOn(fill));
     return w;
+  }
+
+  /** The type's icon as a cached `Path2D` (built once per type), or null where `Path2D` does not exist. */
+  private typeIcon(type: string): Path2D | null {
+    if (typeof Path2D === 'undefined') return null;
+    const hit = this.typeIcons.get(type);
+    if (hit !== undefined) return hit;
+    const d = (TYPE_ICON_PATHS as Readonly<Record<string, string>>)[type];
+    if (d === undefined) return null;
+    const path = new Path2D(d);
+    this.typeIcons.set(type, path);
+    return path;
   }
 
   /** The type colour table badges use (the stage's `setTypeColors` forwards the colourblind tables, §20.8.3). */
@@ -942,15 +1254,21 @@ export class CanvasHudLayer implements HudLayer {
     this.markDirty('battle');
   }
 
+  /** Connection: a black slab with a status edge (amber reconnecting, red offline) and the uppercase state. */
   private drawConnection(): void {
     const c = this.model.connection;
     if (c === 'connected') return;
     const { ctx } = this.surface;
-    const b = this.raw.connection;
-    this.panel(b.x, b.y, b.w, b.h, b.h / 2);
-    ctx.font = this.font(HUD.bodyPx, 700);
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    this.text(c === 'reconnecting' ? 'Reconnecting…' : 'Offline', b.x + b.w / 2, b.y + b.h / 2, c === 'offline' ? HP_LO : HP_MID);
+    const s = this.s(); const b = this.raw.connection;
+    const color = c === 'offline' ? HP_LO : HP_MID;
+    ctx.font = this.font(HUD.bodyPx + 1, 800, true);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const label = c === 'reconnecting' ? 'RECONNECTING…' : 'OFFLINE';
+    const w = Math.min(b.w, 6 * s + 14 * s + ctx.measureText(label).width + 14 * s + b.h * TAN12);
+    const x0 = b.x + (b.w - w) / 2;
+    this.slab(x0, b.y, w, b.h, SLAB);
+    ctx.fillStyle = color; ctx.fillRect(x0, b.y, 6 * s, b.h);
+    this.text(label, x0 + 20 * s, b.y + b.h / 2 + 1 * s, color);
   }
 
   private drawDev(): void {
@@ -958,18 +1276,20 @@ export class CanvasHudLayer implements HudLayer {
     if (d === null) return;
     const { ctx } = this.surface;
     const s = this.s(); const b = this.raw.dev;
-    this.panel(b.x, b.y, b.w, b.h, 8 * s);
-    ctx.font = this.font(HUD.smallPx, 600);
+    ctx.fillStyle = CARBON; ctx.fillRect(b.x, b.y, b.w, b.h);
+    ctx.fillStyle = LINE; ctx.fillRect(b.x, b.y, b.w, 1 * s);
     ctx.textBaseline = 'middle';
     const rows: readonly (readonly [string, number])[] = DEV_ROWS;
     for (let i = 0; i < rows.length; i++) {
       const y = b.y + (14 + i * 20) * s;
       ctx.textAlign = 'left';
-      this.text(rows[i]![0], b.x + 10 * s, y, DIM);
+      ctx.font = this.font(HUD.smallPx, 700, true);
+      this.text(rows[i]![0], b.x + 10 * s, y, FOG);
+      ctx.font = this.font(HUD.numPx, 800, true);
       const v = i === 0 ? d.fps : i === 1 ? d.drawCalls : i === 2 ? d.gpuMs * 100 : i === 3 ? d.desyncs : d.rubberBands;
       if (i === 2) {   // gpu ms with 2 decimals, tabular
         const frac = Math.round(v) % 100; const whole = Math.floor(Math.round(v) / 100);
-        const fw = this.num(frac, b.x + b.w - 10 * s, y, 'right', TEXT, 2);
+        const fw = this.num(frac, b.x + b.w - 10 * s, y, 'right', PAPER, 2);
         ctx.textAlign = 'right'; this.text('.', b.x + b.w - 10 * s - fw, y);
         this.num(whole, b.x + b.w - 10 * s - fw - ctx.measureText('.').width, y, 'right');
       } else this.num(v, b.x + b.w - 10 * s, y, 'right');
@@ -977,4 +1297,4 @@ export class CanvasHudLayer implements HudLayer {
   }
 }
 
-const DEV_ROWS: readonly (readonly [string, number])[] = Object.freeze([['fps', 0], ['draw calls', 1], ['gpu ms', 2], ['desyncs', 3], ['rubber-bands', 4]] as const);
+const DEV_ROWS: readonly (readonly [string, number])[] = Object.freeze([['FPS', 0], ['DRAW CALLS', 1], ['GPU MS', 2], ['DESYNCS', 3], ['RUBBER-BANDS', 4]] as const);

@@ -1,3 +1,9 @@
+/*
+ * Broadcast (2026-10-11): the witnessed count is the largest number in the UI (--t-hero); each entry is a carbon
+ * tile headed by a band — the type colour when recorded, a fog hatch when only seen, nothing when unknown — matching
+ * the segmented bar (recorded paper, seen hatched fog, unknown graphite).
+ */
+
 .search {
   flex: 1 1 240px;
 }
@@ -9,49 +15,59 @@
   gap: var(--s-7);
   margin-bottom: var(--s-6);
   padding: var(--s-5) var(--s-6);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-3);
-  background:
-    radial-gradient(60% 120% at 0% 50%, var(--accent-a16), transparent 70%),
-    var(--bg-2);
+  border: none;
+  border-radius: 0;
+  background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-1);
 }
 
 .count {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-2);
 }
 
+/* a paper label strip with a slanted right edge */
 .countLabel {
-  color: var(--accent);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  font-weight: 700;
-  letter-spacing: 0.2em;
+  padding: var(--s-1) var(--s-5) var(--s-1) var(--s-3);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
 }
 
 /* §20.9.5: the largest number in the UI */
 .countValue {
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-display);
-  line-height: var(--lh-display);
+  font-size: var(--t-hero);
+  line-height: var(--lh-hero);
   font-weight: 800;
-  letter-spacing: -0.02em;
+  font-style: italic;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
 
 .countTotal {
   color: var(--text-2);
+  font-family: var(--face-display);
   font-size: var(--t-h1);
   line-height: var(--lh-h1);
-  font-weight: 600;
+  font-weight: 700;
+  font-style: italic;
+  font-variant-numeric: tabular-nums;
 }
 
 .barWrap {
   display: flex;
   flex-direction: column;
-  gap: var(--s-3);
+  gap: var(--s-4);
 }
 
 .legend {
@@ -62,31 +78,36 @@
 .legendItem {
   display: inline-flex;
   align-items: center;
-  gap: var(--s-2);
-  color: var(--text-1);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
+  gap: var(--s-3);
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
 
 .swatch {
-  inline-size: 12px;
-  block-size: 12px;
-  border-radius: var(--r-1);
+  inline-size: 14px;
+  block-size: 14px;
+  border-radius: 0;
+  transform: skewX(-12deg);
 }
 
 .swatchCaught {
-  background: var(--accent);
+  background: var(--text-hi);
 }
 
 .swatchSeen {
-  background: repeating-linear-gradient(-45deg, var(--accent-a32) 0 3px, transparent 3px 6px);
-  box-shadow: inset 0 0 0 1px var(--accent-a32);
+  background: repeating-linear-gradient(-45deg, var(--text-2) 0 3px, transparent 3px 7px);
+  box-shadow: inset 0 0 0 1px var(--text-2);
 }
 
 .swatchUnknown {
-  background: var(--bg-0);
-  box-shadow: inset 0 0 0 1px var(--line-1);
+  background: var(--bg-3);
+  box-shadow: inset 0 0 0 1px var(--line-2);
 }
 
 .body {
@@ -118,54 +139,77 @@
   align-items: center;
   gap: var(--s-2);
   inline-size: 100%;
-  padding: var(--s-5) var(--s-3) var(--s-4);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-2);
+  padding: var(--s-6) var(--s-3) var(--s-4);
+  border: none;
+  border-radius: 0;
   background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-1);
   color: var(--text-1);
+  overflow: hidden;
   transition:
     transform var(--motion-fast) var(--ease-out),
-    border-color var(--motion-ui) var(--ease-out),
+    box-shadow var(--motion-ui) var(--ease-out),
     background-color var(--motion-ui) var(--ease-out);
 }
 
+/* the band on top of each tile */
+.entry::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: 6px;
+  background: var(--bg-3);
+}
+
 .entry:hover {
-  transform: scale(1.05);
-  border-color: var(--line-2);
+  background: var(--bg-3);
   z-index: 1;
 }
 
-.entry:active {
-  transform: scale(0.95);
+.caught::before {
+  background: var(--tc, var(--text-hi));
 }
 
-.caught {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 14%, transparent), transparent 60%), var(--bg-2);
+.seen::before {
+  background: repeating-linear-gradient(-45deg, var(--text-2) 0 3px, transparent 3px 7px);
 }
 
 .unknown {
   background: var(--bg-1);
-  border-style: dashed;
+  box-shadow: inset 0 0 0 1px var(--line-1);
+}
+
+.unknown::before {
+  display: none;
+}
+
+.unknown:hover {
+  background: var(--bg-2);
 }
 
 .selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent-a32);
+  box-shadow: 0 0 0 2px var(--accent);
+  transform: translateY(-4px);
+  z-index: 1;
 }
 
 .num {
   position: absolute;
-  inset-block-start: var(--s-2);
+  inset-block-start: var(--s-3);
   inset-inline-start: var(--s-3);
   color: var(--text-2);
-  font-family: var(--face-mono);
+  font-family: var(--face-display);
   font-size: var(--t-caption);
   line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
 }
 
 .alphaMark {
   position: absolute;
-  inset-block-start: var(--s-2);
+  inset-block-start: var(--s-3);
   inset-inline-end: var(--s-2);
   color: var(--danger);
 }
@@ -173,7 +217,7 @@
 /* Phase D4: a shiny catch; sits left of the alpha mark when both are recorded */
 .shinyMark {
   position: absolute;
-  inset-block-start: var(--s-2);
+  inset-block-start: var(--s-3);
   inset-inline-end: var(--s-2);
   color: var(--warn);
 }
@@ -186,20 +230,25 @@
   max-inline-size: 100%;
   overflow: hidden;
   color: var(--text-hi);
-  font-size: var(--t-body);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
   line-height: var(--lh-body);
-  font-weight: 600;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.02em;
   text-overflow: ellipsis;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .seen .name {
   color: var(--text-1);
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .unknown .name {
   color: var(--text-2);
+  font-weight: 700;
 }
 
 .dots {
@@ -234,24 +283,29 @@
   background: var(--type-fire);
 }
 
+/* the verdict: a paper slab when recorded, graphite when only seen; slanted right edge */
 .verdict {
   display: flex;
   align-items: center;
   gap: var(--s-3);
-  padding: var(--s-3) var(--s-4);
-  border-radius: var(--r-2);
-  font-size: var(--t-body);
+  padding: var(--s-3) var(--s-6) var(--s-3) var(--s-4);
+  border-radius: 0;
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
   line-height: var(--lh-body);
-  font-weight: 600;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
 }
 
 .recorded {
-  background: var(--accent-a16);
-  color: var(--accent);
+  background: var(--text-hi);
+  color: var(--bg-0);
 }
 
 .seenOnly {
-  background: var(--light-a06);
+  background: var(--bg-3);
   color: var(--text-1);
 }
 
@@ -274,12 +328,15 @@
 
 .variantChip {
   padding: var(--s-1) var(--s-3);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-pill);
+  border: 1px solid var(--line-2);
+  border-radius: 0;
   color: var(--text-2);
+  font-family: var(--face-display);
   font-size: var(--t-caption);
   line-height: var(--lh-caption);
-  text-transform: capitalize;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   opacity: 0.55;
 }
 
@@ -290,7 +347,7 @@
 .variantOn {
   border-color: transparent;
   color: var(--bg-0);
-  font-weight: 700;
+  font-weight: 800;
   opacity: 1;
 }
 
@@ -299,9 +356,12 @@
   align-items: center;
   gap: var(--s-1);
   color: var(--danger);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  font-weight: 700;
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .shiny {
@@ -309,7 +369,10 @@
   align-items: center;
   gap: var(--s-1);
   color: var(--warn);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  font-weight: 700;
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }

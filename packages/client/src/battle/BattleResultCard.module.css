@@ -1,42 +1,47 @@
+/* Broadcast UI (2026-10-11): label strips over big condensed numbers; the badge is a solid slab of its type colour. */
 .body {
   display: flex;
   flex-direction: column;
-  gap: var(--s-4);
+  gap: var(--s-5);
 }
 
+/* "Badge earned" without a badge glyph */
 .badge {
-  color: var(--accent);
+  margin: 0;
+  color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-h3);
-  line-height: var(--lh-h3);
-  font-weight: 700;
+  font-size: var(--t-h2);
+  line-height: var(--lh-h2);
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .badgeRow {
   display: flex;
-  align-items: center;
-  gap: var(--s-4);
+  align-items: stretch;
+  background: var(--bg-2);
 }
 
 .badgeIcon {
   display: grid;
   place-items: center;
   flex: none;
-  inline-size: 56px;
-  block-size: 56px;
-  border-radius: var(--r-pill);
-  background: var(--tc, var(--accent));
-  color: var(--tc-ink, var(--on-accent));
-  box-shadow: inset 0 0 0 2px var(--shade-a40), var(--shadow-1);
+  inline-size: 72px;
+  min-block-size: 64px;
+  padding-inline-end: var(--s-3);
+  background: var(--tc, var(--bg-3));
+  color: var(--tc-ink, var(--text-hi));
   font-size: var(--t-h1);
-  line-height: var(--lh-h1);
+  line-height: 1;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
   animation: badge-in var(--motion-banner) var(--ease-out) both;
 }
 
 @keyframes badge-in {
   from {
     opacity: 0;
-    transform: scale(0.6);
+    transform: translateX(-12px);
   }
   to {
     opacity: 1;
@@ -47,14 +52,24 @@
 .badgeText {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--s-2);
+  min-inline-size: 0;
+  padding: var(--s-3) var(--s-4);
 }
 
 .badgeLabel {
-  color: var(--text-2);
+  padding: var(--s-1) var(--s-4) var(--s-1) var(--s-3);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
   font-size: var(--t-caption);
   line-height: var(--lh-caption);
-  letter-spacing: 0.08em;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
 }
 
 .concession {
@@ -62,6 +77,8 @@
   flex-direction: column;
   gap: var(--s-2);
   margin: 0;
+  padding-inline-start: var(--s-4);
+  box-shadow: inset 2px 0 0 var(--line-2);
 }
 
 .quote {
@@ -74,13 +91,17 @@
 
 .speaker {
   color: var(--text-2);
+  font-family: var(--face-display);
   font-size: var(--t-caption);
   line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .rewards {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: var(--s-2);
   margin: 0;
   padding: 0;
@@ -88,15 +109,42 @@
 }
 
 .reward {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-3) var(--s-4);
+  background: var(--bg-2);
+}
+
+.value {
   color: var(--text-hi);
-  font-family: var(--face-mono);
-  font-size: var(--t-mono);
-  line-height: var(--lh-mono);
+  font-family: var(--face-display);
+  font-size: var(--t-h1);
+  line-height: 1;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
-.none {
+.label {
+  overflow: hidden;
   color: var(--text-2);
-  font-size: var(--t-body);
-  line-height: var(--lh-body);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.none {
+  margin: 0;
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }

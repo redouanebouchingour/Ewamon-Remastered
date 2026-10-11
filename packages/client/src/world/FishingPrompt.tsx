@@ -3,6 +3,7 @@
  * "Wait for a bite…"; 'bite': a large "!" and "Reel in — E"; 'missed': "It got away." The card owns E / Enter / Space
  * (reel) and Escape (reel in empty) while it is up; a click on it reels too. Under reduced motion nothing moves (the
  * float holds still, the "!" does not pulse) and the bite window is longer (`FISHING.reducedBiteMs`).
+ * Broadcast look (2026-10-11): a square mark block (orange on a bite — the one moment to press) and a black slab.
  */
 import { useEffect } from 'react';
 import { fishingActions, useFishingStore } from '../state/fishing';
@@ -40,13 +41,9 @@ export function FishingPrompt() {
   if (!open) return null;
   return (
     <button type="button" className={s.card} data-phase={phase} onClick={() => fishingActions()?.press()}>
-      {phase === 'bite' ? (
-        <span className={s.bang} aria-hidden="true">
-          !
-        </span>
-      ) : (
-        <span className={phase === 'waiting' ? s.float : s.floatIdle} aria-hidden="true" />
-      )}
+      <span className={s.mark} aria-hidden="true">
+        {phase === 'bite' ? <span className={s.bang}>!</span> : <span className={phase === 'waiting' ? s.float : s.floatIdle} />}
+      </span>
       <span className={s.text} role="status" aria-live="assertive">
         {phase === 'waiting' && 'Wait for a bite…'}
         {phase === 'bite' && `Reel in — ${reel}`}

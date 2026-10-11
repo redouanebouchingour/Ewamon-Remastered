@@ -2,6 +2,9 @@
  * The evolution banner sits over the canvas, bottom-centre like a game text box (the close-up frames the creature and
  * its trainer in the upper four fifths); it never takes pointer events (a click anywhere skips the sequence —
  * World3D's capture). Entrance / exit use the motion tokens (0 ms under reduced motion).
+ *
+ * Broadcast look (2026-10-11): a paper "Evolution" label strip heading a black slab; the line in the display face,
+ * uppercase, the two names in heavy italic. The skip hint is a black slab with a paper key chip. Hard edges, no glass.
  */
 .layer {
   position: absolute;
@@ -18,16 +21,8 @@
   inset-block-end: var(--s-8);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--s-2);
+  align-items: flex-start;
   max-inline-size: min(var(--modal-md), 100vw - 2 * var(--s-7));
-  padding: var(--s-4) var(--s-7);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--r-3);
-  background: var(--glass);
-  backdrop-filter: blur(12px);
-  box-shadow: var(--shadow-2);
-  text-align: center;
   opacity: 0;
   transform: translateY(8px);
   transition:
@@ -46,30 +41,36 @@
 }
 
 .eyebrow {
-  color: var(--accent-hi);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  font-weight: 700;
+  padding: var(--s-1) var(--s-6) var(--s-1) var(--s-4);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
 }
 
 .line {
   margin: 0;
+  padding: var(--s-4) var(--s-6) var(--s-4) var(--s-4);
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-1);
   color: var(--text-1);
   font-family: var(--face-display);
   font-size: var(--t-h2);
   line-height: var(--lh-h2);
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
-.name {
-  color: var(--text-hi);
-  font-weight: 800;
-}
-
+.name,
 .species {
-  color: var(--accent-hi);
+  color: var(--text-hi);
+  font-style: italic;
   font-weight: 800;
 }
 
@@ -80,28 +81,32 @@
   display: inline-flex;
   align-items: center;
   gap: var(--s-3);
-  padding: var(--s-2) var(--s-5);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--r-pill);
-  background: var(--glass);
+  padding: var(--s-2) var(--s-4) var(--s-2) var(--s-2);
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-1);
   color: var(--text-2);
-  font-size: var(--t-caption);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
   line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
+/* paper key chip */
 .hint kbd {
   display: inline-grid;
   place-items: center;
   min-inline-size: 22px;
   block-size: 22px;
   padding: 0 var(--s-2);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-1);
-  background: var(--bg-1);
-  color: var(--text-hi);
-  font-family: var(--face-mono);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .sr {

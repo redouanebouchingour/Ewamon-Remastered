@@ -5,9 +5,7 @@
   max-block-size: 100%;
   border: 1px solid var(--line-1);
   border-radius: var(--r-3);
-  background:
-    radial-gradient(120% 60% at 100% 0%, var(--accent-a08), transparent 60%),
-    var(--bg-1);
+  background: var(--bg-1);
   box-shadow: var(--shadow-2);
   overflow: hidden;
   animation: panel-in var(--motion-panel) var(--ease-out) both;
@@ -42,20 +40,36 @@
 
 .eyebrow {
   color: var(--accent);
-  font-size: var(--t-caption);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
   line-height: var(--lh-caption);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
+/* Broadcast: condensed italic uppercase, an orange slanted block in front of it */
 .title {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-h1);
-  line-height: var(--lh-h1);
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: var(--t-display);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
+}
+
+.title::before {
+  content: '';
+  flex: none;
+  inline-size: 10px;
+  block-size: 0.78em;
+  background: var(--accent);
+  transform: skewX(-12deg);
 }
 
 .subtitle {
@@ -76,10 +90,10 @@
   place-items: center;
   inline-size: var(--control-md);
   block-size: var(--control-md);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-2);
-  background: var(--bg-2);
-  color: var(--text-1);
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-3);
+  color: var(--text-hi);
   transition:
     transform var(--motion-fast) var(--ease-out),
     color var(--motion-ui) var(--ease-out),
@@ -88,8 +102,8 @@
 
 .close:hover {
   transform: scale(1.05);
-  border-color: var(--line-2);
-  color: var(--text-hi);
+  background: var(--text-hi);
+  color: var(--bg-0);
 }
 
 .close:active {

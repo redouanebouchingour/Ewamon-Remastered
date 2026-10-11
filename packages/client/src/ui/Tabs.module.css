@@ -14,24 +14,28 @@
   border: none;
   background: none;
   color: var(--text-2);
-  font-size: var(--t-body);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
   line-height: var(--lh-body);
-  font-weight: 600;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  isolation: isolate;
   transition:
     transform var(--motion-fast) var(--ease-out),
     color var(--motion-ui) var(--ease-out);
 }
 
+/* Broadcast: the selected tab is a slanted orange slab with black text */
 .tab::after {
   content: '';
   position: absolute;
-  inset-inline: var(--s-4);
-  inset-block-end: -1px;
-  block-size: 2px;
-  border-radius: var(--r-pill);
+  inset: var(--s-2) 0;
+  z-index: -1;
   background: var(--accent);
-  transform: scaleX(0);
-  transform-origin: center;
+  transform: skewX(-12deg) scaleY(0);
+  transform-origin: bottom;
   transition: transform var(--motion-ui) var(--ease-out);
 }
 
@@ -44,12 +48,13 @@
   transform: scale(0.95);
 }
 
-.selected {
-  color: var(--text-hi);
+.selected,
+.selected:hover {
+  color: var(--on-accent);
 }
 
 .selected::after {
-  transform: scaleX(1);
+  transform: skewX(-12deg) scaleY(1);
 }
 
 .count {
@@ -58,10 +63,16 @@
   min-inline-size: 20px;
   block-size: 20px;
   padding: 0 var(--s-2);
-  border-radius: var(--r-pill);
-  background: var(--accent-a16);
-  color: var(--accent);
+  border-radius: 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-style: normal;
   font-size: var(--t-caption);
   line-height: var(--lh-caption);
   font-variant-numeric: tabular-nums;
+}
+
+.selected .count {
+  background: var(--bg-0);
+  color: var(--text-hi);
 }

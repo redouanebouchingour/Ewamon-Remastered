@@ -1,4 +1,6 @@
-/* Phase C4 battle / trade logs. */
+/* Phase C4 battle / trade logs.
+ * Broadcast (2026-10-11): names in the condensed display face; rating deltas as tabular display numbers, a gain in
+ * paper, a loss in danger red (the old green "up" is gone; orange is for selection only). */
 
 .cellStack {
   display: flex;
@@ -9,7 +11,12 @@
 .strong {
   overflow: hidden;
   color: var(--text-hi);
-  font-weight: 600;
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -22,15 +29,15 @@
 
 .up,
 .down {
-  font-family: var(--face-mono);
-  font-size: var(--t-mono);
-  line-height: var(--lh-mono);
-  font-weight: 600;
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: 1;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
 .up {
-  color: var(--accent);
+  color: var(--text-hi);
 }
 
 .down {
@@ -39,7 +46,12 @@
 
 .link {
   color: var(--text-hi);
-  font-weight: 600;
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .link:hover {

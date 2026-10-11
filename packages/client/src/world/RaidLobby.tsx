@@ -8,6 +8,9 @@
  * Ready → `raidReady` (the schema carries no ready flags, so the modal remembers this player's own Ready in its
  * payload); Leave → `raidLeave`. The fight starts when everyone present is ready (or the lobby time runs out with one
  * ready); the server's `battleResync { battleId: raidId }` then opens the battle and this modal yields to it.
+ *
+ * Broadcast look (2026-10-11): the catch-window phase pill is `warn`, not `accent` (orange only means selected /
+ * press this); the roster is a black slab with big tabular numbers, the own row marked by a paper edge.
  */
 import { speciesName } from '../data/content';
 import { getWorldSession } from '../net/WorldSession';
@@ -116,7 +119,7 @@ export function RaidLobby() {
     <Modal open size="md" title={`Raid · ${boss}`} description={`Lv ${view.level} · up to ${RAID_MAX_PLAYERS} trainers · 20 s rounds`} onClose={close} footer={footer}>
       <div className={s.body} data-testid="raidlobby" data-phase={view.phase} data-joined={view.joined || undefined}>
         <div className={s.status}>
-          <Pill tone={view.phase === 2 ? 'danger' : view.phase === 3 ? 'accent' : lobby ? 'info' : 'neutral'}>{phaseLabel(view.phase)}</Pill>
+          <Pill tone={view.phase === 2 ? 'danger' : view.phase === 3 ? 'warn' : lobby ? 'info' : 'neutral'}>{phaseLabel(view.phase)}</Pill>
           <span className={s.countdown} data-testid="raidlobby-countdown">
             {countdownLine(view.phase, view.ends)}
           </span>

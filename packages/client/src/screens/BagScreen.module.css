@@ -1,4 +1,5 @@
 /* Phase C5 /play/bag: four groups of item rows (icon, name + description, count, action) and the party picker. */
+/* Broadcast (2026-10-11): carbon rows split by hairlines, condensed uppercase names, big tabular counts. */
 
 .groupHead {
   display: flex;
@@ -9,9 +10,11 @@
 
 .groupCount {
   margin-inline-start: var(--s-2);
-  color: var(--text-1);
-  font-family: var(--face-mono);
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-weight: 800;
   letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .none {
@@ -25,9 +28,10 @@
   flex-direction: column;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-3);
+  border: none;
+  border-radius: 0;
   background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-1);
   list-style: none;
   overflow: hidden;
 }
@@ -38,6 +42,11 @@
   align-items: center;
   gap: var(--s-4);
   padding: var(--s-3) var(--s-4);
+  transition: background-color var(--motion-ui) var(--ease-out);
+}
+
+.item:hover {
+  background: var(--bg-3);
 }
 
 .item + .item {
@@ -49,9 +58,9 @@
   place-items: center;
   inline-size: 36px;
   block-size: 36px;
-  border-radius: var(--r-2);
+  border-radius: 0;
   background: var(--bg-3);
-  color: var(--accent);
+  color: var(--text-hi);
 }
 
 .itemIcon[data-kind='orb'] {
@@ -63,7 +72,7 @@
 }
 
 .itemIcon[data-kind='key'] {
-  color: var(--text-1);
+  color: var(--text-2);
 }
 
 .itemText {
@@ -74,7 +83,12 @@
 
 .itemName {
   color: var(--text-hi);
-  font-weight: 600;
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .itemDesc {
@@ -88,10 +102,10 @@
 
 .count {
   color: var(--text-hi);
-  font-family: var(--face-mono);
-  font-size: var(--t-mono);
-  line-height: var(--lh-mono);
-  font-weight: 600;
+  font-family: var(--face-display);
+  font-size: var(--t-h2);
+  line-height: 1;
+  font-weight: 800;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -117,9 +131,15 @@
   align-items: center;
   gap: var(--s-4);
   padding: var(--s-3) var(--s-4);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-2);
+  border: none;
+  border-radius: 0;
   background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+  transition: background-color var(--motion-ui) var(--ease-out);
+}
+
+.target:hover {
+  background: var(--bg-3);
 }
 
 .targetText {
@@ -131,7 +151,13 @@
 
 .targetName {
   color: var(--text-hi);
-  font-weight: 600;
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body);
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .reason {

@@ -32,7 +32,7 @@ import { ConnectionOverlay } from './ConnectionOverlay';
 import type { playLoader } from './loaders';
 import { NotificationHost } from './NotificationHost';
 import s from './PlayShell.module.css';
-import { NAV, TopBar } from './TopBar';
+import { NAV, TopBar, keyLabel } from './TopBar';
 
 /** Joins the world once per session (idempotent) and routes DOM-side server messages into the stores. */
 function useWorldConnection(zoneId: ZoneId): void {
@@ -129,26 +129,23 @@ function PanelSkeleton({ path }: { readonly path: string }) {
   );
 }
 
+/** The key legend over the bare world (Broadcast: a black strip of paper key chips, bottom-centre). */
 function WorldHint() {
   const binds = useSettingsStore((st) => st.keybinds);
-  const label = (code: string | undefined): string => (code ?? '').replace(/^Key|^Digit/, '');
+  const keys: readonly (readonly [InputAction, string])[] = [
+    ['party', 'Party'],
+    ['bag', 'Bag'],
+    ['journal', 'Dex'],
+    ['map', 'Map'],
+    ['pause', 'Settings'],
+  ];
   return (
     <aside className={s.hint} aria-label="Shortcuts">
-      <span>
-        <kbd>{label(binds.party[0])}</kbd> Party
-      </span>
-      <span>
-        <kbd>{label(binds.bag[0])}</kbd> Bag
-      </span>
-      <span>
-        <kbd>{label(binds.journal[0])}</kbd> Dex
-      </span>
-      <span>
-        <kbd>{label(binds.map[0])}</kbd> Map
-      </span>
-      <span>
-        <kbd>{label(binds.pause[0]) === 'Escape' ? 'Esc' : label(binds.pause[0])}</kbd> Settings
-      </span>
+      {keys.map(([action, label]) => (
+        <span key={action}>
+          <kbd>{keyLabel(binds[action][0])}</kbd> {label}
+        </span>
+      ))}
     </aside>
   );
 }

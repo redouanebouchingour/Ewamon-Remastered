@@ -1,26 +1,42 @@
+/*
+ * Broadcast UI (2026-10-11): the face is a slanted slab. The slab is ::before (skewX(-12deg)), so the label stays
+ * upright and the focus ring (on the button's own box) is never clipped. Display face, uppercase.
+ */
 .button {
   position: relative;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: none;
   block-size: var(--control-md);
   padding: 0 var(--s-5);
-  border: 1px solid transparent;
-  border-radius: var(--r-2);
+  border: 0;
+  border-radius: 0;
   background: none;
-  font-family: var(--face-text);
-  font-size: var(--t-body);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
   line-height: var(--lh-body);
-  font-weight: 600;
-  letter-spacing: 0.005em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   white-space: nowrap;
   user-select: none;
   transition:
     transform var(--motion-fast) var(--ease-out),
+    color var(--motion-ui) var(--ease-out);
+}
+
+.button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  transform: skewX(-12deg);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px transparent;
+  transition:
     background-color var(--motion-ui) var(--ease-out),
-    border-color var(--motion-ui) var(--ease-out),
-    color var(--motion-ui) var(--ease-out),
     box-shadow var(--motion-ui) var(--ease-out);
 }
 
@@ -55,30 +71,39 @@
 /* ---- variants ---- */
 
 .primary {
-  background: var(--accent);
   color: var(--on-accent);
-  box-shadow: 0 8px 24px -12px var(--accent-a32);
+  font-weight: 800;
+  font-style: italic;
 }
 
-.primary:hover:not(:disabled) {
+.primary::before {
+  background: var(--accent);
+}
+
+.primary:hover:not(:disabled)::before {
   background: var(--accent-hi);
-  box-shadow: 0 10px 28px -10px var(--accent-a32);
 }
 
 .secondary {
-  background: var(--bg-3);
-  border-color: var(--line-1);
   color: var(--text-hi);
 }
 
-.secondary:hover:not(:disabled) {
-  border-color: var(--line-2);
+.secondary::before {
+  background: var(--bg-3);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+}
+
+.secondary:hover:not(:disabled)::before {
+  box-shadow: inset 0 0 0 1px var(--line-2);
 }
 
 .secondary[aria-pressed='true'] {
-  background: var(--accent-a16);
-  border-color: var(--accent-a32);
-  color: var(--accent);
+  color: var(--on-accent);
+}
+
+.secondary[aria-pressed='true']::before {
+  background: var(--accent);
+  box-shadow: none;
 }
 
 .ghost {
@@ -86,18 +111,24 @@
 }
 
 .ghost:hover:not(:disabled) {
-  background: var(--light-a06);
   color: var(--text-hi);
 }
 
+.ghost:hover:not(:disabled)::before {
+  background: var(--light-a06);
+}
+
 .danger {
-  background: var(--danger-a16);
-  border-color: var(--danger-a16);
   color: var(--danger);
 }
 
-.danger:hover:not(:disabled) {
-  border-color: var(--danger);
+.danger::before {
+  background: var(--danger-a16);
+  box-shadow: inset 0 0 0 1px var(--danger-a16);
+}
+
+.danger:hover:not(:disabled)::before {
+  box-shadow: inset 0 0 0 1px var(--danger);
 }
 
 /* ---- sizes ---- */
@@ -105,7 +136,7 @@
 .sm {
   block-size: var(--control-sm);
   padding: 0 var(--s-4);
-  font-size: var(--t-caption);
+  font-size: var(--t-body);
   line-height: var(--lh-caption);
 }
 
@@ -116,7 +147,7 @@
 .lg {
   block-size: var(--control-lg);
   padding: 0 var(--s-6);
-  font-size: var(--t-body-lg);
+  font-size: var(--t-h3);
   line-height: var(--lh-body-lg);
 }
 
@@ -134,7 +165,7 @@
 .dot {
   inline-size: 6px;
   block-size: 6px;
-  border-radius: var(--r-pill);
+  border-radius: 0;
   background: currentColor;
   animation: pulse 900ms var(--ease-in-out) infinite;
 }

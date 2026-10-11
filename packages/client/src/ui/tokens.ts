@@ -2,35 +2,35 @@
 // Numbers for the canvas HUD and the battle timeline (SPEC §20.2.2 / §20.6); CSS reads tokens.css.
 
 export const COLOR = {
-  "bg-0": "#0b100c",
-  "bg-1": "#121a13",
-  "bg-2": "#1a251b",
-  "bg-3": "#24321f",
-  "line-1": "#2f4029",
-  "line-2": "#48632f",
-  "text-hi": "#eef3e6",
-  "text-1": "#c7d1bd",
-  "text-2": "#8c9a83",
-  "accent": "#7be08a",
-  "accent-hi": "#a4f0ad",
-  "on-accent": "#0b100c",
-  "warn": "#e0b35a",
-  "danger": "#e06a5a",
-  "info": "#6ab4e0",
-  "hp-hi": "#7be08a",
-  "hp-mid": "#e0b35a",
-  "hp-lo": "#e06a5a",
-  "scrim": "rgb(11 16 12 / 0.72)",
-  "glass": "rgb(11 16 12 / 0.82)",
-  "glass-line": "rgb(123 224 138 / 0.10)",
-  "accent-a08": "rgb(123 224 138 / 0.08)",
-  "accent-a16": "rgb(123 224 138 / 0.16)",
-  "accent-a32": "rgb(123 224 138 / 0.32)",
-  "warn-a16": "rgb(224 179 90 / 0.16)",
-  "danger-a16": "rgb(224 106 90 / 0.16)",
-  "info-a16": "rgb(106 180 224 / 0.16)",
+  "bg-0": "#0d0d0f",
+  "bg-1": "#18181c",
+  "bg-2": "#202025",
+  "bg-3": "#2a2a31",
+  "line-1": "#2e2e35",
+  "line-2": "#4a4a54",
+  "text-hi": "#f5f3ee",
+  "text-1": "#d6d4ce",
+  "text-2": "#a3a3ad",
+  "accent": "#ff5b1f",
+  "accent-hi": "#ff7a45",
+  "on-accent": "#0d0d0f",
+  "warn": "#ffb020",
+  "danger": "#ff4b3e",
+  "info": "#7cb7ff",
+  "hp-hi": "#f5f3ee",
+  "hp-mid": "#ffb020",
+  "hp-lo": "#ff4b3e",
+  "scrim": "rgb(13 13 15 / 0.76)",
+  "glass": "rgb(13 13 15 / 0.90)",
+  "glass-line": "rgb(245 243 238 / 0.08)",
+  "accent-a08": "rgb(255 91 31 / 0.08)",
+  "accent-a16": "rgb(255 91 31 / 0.16)",
+  "accent-a32": "rgb(255 91 31 / 0.32)",
+  "warn-a16": "rgb(255 176 32 / 0.16)",
+  "danger-a16": "rgb(255 75 62 / 0.16)",
+  "info-a16": "rgb(124 183 255 / 0.16)",
   "shade-a40": "rgb(0 0 0 / 0.40)",
-  "light-a06": "rgb(238 243 230 / 0.06)"
+  "light-a06": "rgb(245 243 238 / 0.06)"
 } as const;
 
 export const TYPE_COLORS = {
@@ -133,9 +133,9 @@ export const SPACE = {
 } as const;
 
 export const RADIUS = {
-  "r-1": 4,
-  "r-2": 8,
-  "r-3": 12,
+  "r-1": 2,
+  "r-2": 2,
+  "r-3": 2,
   "r-pill": 999
 } as const;
 
@@ -175,6 +175,11 @@ export const TYPE_SCALE = {
     "line": 56,
     "face": "display"
   },
+  "t-hero": {
+    "size": 64,
+    "line": 64,
+    "face": "display"
+  },
   "t-mono": {
     "size": 14,
     "line": 20,
@@ -183,8 +188,8 @@ export const TYPE_SCALE = {
 } as const;
 
 export const FONT = {
-  "display": "'Bricolage Grotesque', Bahnschrift, 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif",
-  "text": "Inter, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif",
+  "display": "'Barlow Condensed', 'Bahnschrift Condensed', 'Arial Narrow', sans-serif",
+  "text": "Barlow, 'Segoe UI', system-ui, sans-serif",
   "mono": "'JetBrains Mono', 'Cascadia Mono', Consolas, monospace"
 } as const;
 

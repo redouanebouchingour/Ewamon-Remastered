@@ -19,42 +19,56 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: var(--s-4);
-  inline-size: 380px;
+  inline-size: 400px;
+  padding: 0 0 var(--s-5);
+  background: var(--glass);
 }
 
+/* Broadcast: the brand as a black slab with an orange edge heading the loading card */
 .brand {
+  align-self: flex-start;
+  padding: var(--s-2) var(--s-7) var(--s-2) var(--s-4);
+  border-left: 10px solid var(--accent);
+  background: var(--bg-0);
   color: var(--text-hi);
   font-family: var(--face-display);
   font-size: var(--t-h1);
   line-height: var(--lh-h1);
   font-weight: 800;
-  letter-spacing: -0.02em;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+}
+
+.center > :not(.brand) {
+  margin-inline: var(--s-5);
 }
 
 .label {
-  color: var(--text-1);
-  font-size: var(--t-body);
-  line-height: var(--lh-body);
-  text-align: center;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
 
 .error {
   color: var(--danger);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  text-align: center;
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
 }
 
 .activity {
   position: relative;
-  inline-size: 100%;
-  block-size: 6px;
-  border-radius: var(--r-pill);
-  background: var(--bg-1);
-  box-shadow: inset 0 0 0 1px var(--line-1);
+  block-size: 8px;
+  background: var(--bg-3);
+  transform: skewX(-12deg);
   overflow: hidden;
 }
 
@@ -62,8 +76,7 @@
   position: absolute;
   inset-block: 0;
   inline-size: 30%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  background: var(--text-hi);
   animation: sweep 1400ms var(--ease-in-out) infinite;
   will-change: transform;
 }
@@ -88,16 +101,19 @@
   gap: var(--s-2);
   inline-size: 220px;
   padding: var(--s-3) var(--s-4);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-3);
   background: var(--glass);
+  box-shadow: inset 0 0 0 1px var(--line-1);
   pointer-events: none;
 }
 
 .pillLabel {
   color: var(--text-1);
+  font-family: var(--face-display);
   font-size: var(--t-caption);
   line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
 

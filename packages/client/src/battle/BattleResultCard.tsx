@@ -4,6 +4,7 @@
  * progressionDelta. "Continue" → director.exitBattle, ui.battle = null, then the queued evolve / learn-move prompts.
  * Phase B7: a won badge shows its glyph, name and type colour (`badgeIcon.ts`); a won league battle shows the
  * trainer's concession line (`concessionLine`: a gym leader's post[1], a Warden's / the Champion's post[0]).
+ * Broadcast UI (2026-10-11): the badge is a type-colour slab with a label strip, each reward a big number over its label.
  */
 import { badgeDisplay } from '../data/badgeIcon';
 import { itemInfo } from '../data/content';
@@ -27,11 +28,12 @@ export function BattleResultCard() {
     o.winner === 'caught' ? 'Caught!' : o.winner === 'fled' ? 'Got away safely' : o.winner === 'draw' ? 'A draw' : o.winner === seat ? 'Victory' : 'Defeat';
   const r = result.rewards;
   const items = Object.entries(r.items).filter(([, n]) => n > 0);
-  const lines: string[] = [];
-  if (r.money > 0) lines.push(`+${r.money.toLocaleString()} money`);
-  if (r.trainerExp > 0) lines.push(`+${r.trainerExp} trainer EXP`);
-  if (r.ratingDelta !== null && r.ratingDelta !== 0) lines.push(`${r.ratingDelta > 0 ? '+' : ''}${r.ratingDelta} rating`);
-  for (const [id, n] of items) lines.push(`${itemInfo(id).name} ×${n}`);
+  // Broadcast UI: each reward is a big number over its label ("+800 money" reads the same to assistive tech)
+  const lines: { readonly value: string; readonly label: string }[] = [];
+  if (r.money > 0) lines.push({ value: `+${r.money.toLocaleString()}`, label: 'money' });
+  if (r.trainerExp > 0) lines.push({ value: `+${r.trainerExp}`, label: 'trainer EXP' });
+  if (r.ratingDelta !== null && r.ratingDelta !== 0) lines.push({ value: `${r.ratingDelta > 0 ? '+' : ''}${r.ratingDelta}`, label: 'rating' });
+  for (const [id, n] of items) lines.push({ value: `×${n}`, label: itemInfo(id).name });
   const done = (): void => battleActions()?.dismissResult();
   const badge = r.badge === null ? null : badgeDisplay(r.badge);
   const won = o.winner === seat;
@@ -75,8 +77,8 @@ export function BattleResultCard() {
         {lines.length > 0 ? (
           <ul className={s.rewards}>
             {lines.map((l) => (
-              <li key={l} className={s.reward}>
-                {l}
+              <li key={l.label} className={s.reward}>
+                <span className={s.value}>{l.value}</span> <span className={s.label}>{l.label}</span>
               </li>
             ))}
           </ul>

@@ -1,102 +1,118 @@
+/*
+ * Broadcast strip (2026-10-11): a carbon bar on a hairline; the brand a black slab with an orange edge block; nav in
+ * condensed uppercase with paper key chips; the active item an orange skewed slab; condensed numbers on the right.
+ */
 .bar {
   position: absolute;
   inset-inline: 0;
   inset-block-start: 0;
-  /* above the panel slot so the account menu drops over an open panel */
+  /* above the panel slot so the More and account menus drop over an open panel */
   z-index: var(--z-topbar);
   display: flex;
   align-items: center;
   gap: var(--s-5);
   block-size: var(--topbar-h);
-  padding: 0 var(--s-5);
-  border-bottom: 1px solid var(--glass-line);
-  background: linear-gradient(180deg, var(--glass), var(--scrim));
-  backdrop-filter: blur(14px) saturate(1.2);
+  padding: 0 var(--s-5) 0 0;
+  background: var(--bg-1);
+  box-shadow: inset 0 -1px 0 var(--line-1);
   pointer-events: auto;
 }
 
-.left,
-.right {
-  display: flex;
-  align-items: center;
-  gap: var(--s-4);
-  flex: none;
-}
-
-.right {
-  margin-left: auto;
-}
+/* ---- brand: [orange edge][black slab, slanted right edge] ------------------------------------------------- */
 
 .brand {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-3);
+  display: flex;
+  align-items: stretch;
+  flex: none;
+  align-self: stretch;
   color: var(--text-hi);
-  font-family: var(--face-display);
-  font-size: var(--t-h3);
-  line-height: var(--lh-h3);
-  font-weight: 800;
-  letter-spacing: -0.01em;
 }
 
 .brand:hover {
   color: var(--text-hi);
 }
 
-.brandMark {
-  display: grid;
-  place-items: center;
-  inline-size: 28px;
-  block-size: 28px;
-  border-radius: var(--r-2);
-  background: radial-gradient(circle at 30% 25%, var(--accent-hi), var(--accent) 55%, var(--line-2));
-  color: var(--on-accent);
-  box-shadow: 0 0 16px var(--accent-a32);
+.brandEdge {
+  inline-size: 10px;
+  background: var(--accent);
 }
+
+.brandSlab {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--s-7) 0 var(--s-4);
+  background: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-h2);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%);
+}
+
+.brand:hover .brandSlab {
+  background: var(--bg-0);
+  color: var(--accent-hi);
+}
+
+.brand:focus-visible {
+  outline-offset: calc(var(--focus-ring) * -1);
+}
+
+/* ---- zone ------------------------------------------------------------------------------------------------- */
 
 .zone {
   display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  block-size: var(--control-sm);
-  padding: 0 var(--s-4) 0 var(--s-3);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-pill);
-  background: var(--bg-1);
-}
-
-.dot {
-  inline-size: 8px;
-  block-size: 8px;
-  border-radius: var(--r-pill);
-  background: var(--accent);
-  box-shadow: 0 0 8px var(--accent);
-}
-
-.reconnecting {
-  background: var(--warn);
-  box-shadow: 0 0 8px var(--warn);
-}
-
-.offline {
-  background: var(--danger);
-  box-shadow: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  flex: none;
+  min-inline-size: 0;
+  font-family: var(--face-display);
+  text-transform: uppercase;
 }
 
 .zoneName {
   color: var(--text-hi);
-  font-size: var(--t-body);
-  line-height: var(--lh-body);
-  font-weight: 600;
+  font-size: var(--t-body-lg);
+  line-height: 1.1;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 
 .zoneMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
   color: var(--text-2);
   font-size: var(--t-caption);
   line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.1em;
   white-space: nowrap;
 }
+
+/* a real dot: connection state (paper = connected; status colours otherwise; never orange) */
+.dot {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: var(--r-pill);
+  background: var(--text-hi);
+}
+
+.reconnecting {
+  background: var(--warn);
+}
+
+.offline {
+  background: var(--danger);
+}
+
+/* ---- nav -------------------------------------------------------------------------------------------------- */
 
 .nav {
   display: flex;
@@ -110,15 +126,18 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: var(--s-1);
   block-size: var(--control-md);
-  /* --s-2 (not --s-3): the nine links + the money / level / account cluster must fit the 1280 px minimum (part 2 L3) */
-  padding: 0 var(--s-2);
-  border-radius: var(--r-2);
+  padding: 0 var(--s-4);
+  border: 0;
+  border-radius: 0;
+  background: none;
   color: var(--text-1);
-  font-size: var(--t-body);
-  line-height: var(--lh-body);
-  font-weight: 500;
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   white-space: nowrap;
   transition:
     background-color var(--motion-ui) var(--ease-out),
@@ -126,39 +145,99 @@
 }
 
 .link:hover {
-  background: var(--light-a06);
+  background: var(--bg-3);
   color: var(--text-hi);
 }
 
-.active,
-.active:hover {
-  background: var(--accent-a16);
-  color: var(--accent);
+.linkInner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
 }
 
-.active::after {
-  content: '';
-  position: absolute;
-  inset-inline: var(--s-4);
-  inset-block-end: calc(var(--s-3) * -1 + 1px);
-  block-size: 2px;
-  border-radius: var(--r-pill);
+/* the active item: an orange skewed slab, the label counter-skewed upright */
+.active,
+.active:hover {
   background: var(--accent);
+  color: var(--on-accent);
+  font-style: italic;
+  font-weight: 800;
+  transform: skewX(-12deg);
+}
+
+.active .linkInner {
+  transform: skewX(12deg);
+}
+
+/* paper key chip; inverted (black on orange) on the active slab */
+.key {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 22px;
+  block-size: 22px;
+  padding: 0 var(--s-2);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: 1;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.active .key {
+  background: var(--bg-0);
+  color: var(--accent);
 }
 
 .count {
   display: inline-grid;
   place-items: center;
-  min-inline-size: 18px;
-  block-size: 18px;
+  min-inline-size: 20px;
+  block-size: 20px;
   padding: 0 var(--s-2);
-  border-radius: var(--r-pill);
   background: var(--accent);
   color: var(--on-accent);
+  font-family: var(--face-display);
   font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  font-weight: 700;
+  line-height: 1;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
+}
+
+.active .count {
+  background: var(--bg-0);
+  color: var(--text-hi);
+}
+
+.chevron {
+  opacity: 0.7;
+  transition: transform var(--motion-ui) var(--ease-out);
+}
+
+.more {
+  position: relative;
+}
+
+.moreBtn[aria-expanded='true']:not(.active) {
+  background: var(--bg-3);
+  color: var(--text-hi);
+}
+
+.moreBtn[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+
+/* ---- right cluster: money · trainer level · badges · account --------------------------------------------- */
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  flex: none;
 }
 
 .wallet {
@@ -167,53 +246,70 @@
   gap: var(--s-4);
 }
 
-.money {
+.stat {
   display: inline-flex;
   align-items: center;
-  gap: var(--s-2);
-  block-size: var(--control-sm);
-  padding: 0 var(--s-4) 0 var(--s-3);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-pill);
-  background: var(--bg-1);
-}
-
-.coin {
-  color: var(--warn);
-}
-
-.moneyValue {
-  color: var(--text-hi);
-  font-family: var(--face-mono);
-  font-size: var(--t-mono);
-  line-height: var(--lh-mono);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.pip {
-  position: relative;
-  display: grid;
-  place-items: center;
-  inline-size: 36px;
-  block-size: 36px;
-  border-radius: var(--r-pill);
-  background: conic-gradient(var(--accent) calc(var(--p) * 360deg), var(--line-1) 0);
-}
-
-.pipInner {
-  display: grid;
-  place-items: center;
-  inline-size: 30px;
-  block-size: 30px;
-  border-radius: var(--r-pill);
-  background: var(--bg-1);
-  color: var(--text-hi);
+  gap: var(--s-3);
   font-family: var(--face-display);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
+}
+
+.stat + .stat {
+  padding-left: var(--s-4);
+  box-shadow: inset 1px 0 0 var(--line-1);
+}
+
+.statValue {
+  color: var(--text-hi);
+  font-size: var(--t-h3);
+  line-height: 1;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+
+.statOf {
+  color: var(--text-2);
+  font-size: var(--t-body);
+  font-weight: 700;
+}
+
+.statLabel {
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* a real circle: the coin */
+.coin {
+  inline-size: 12px;
+  block-size: 12px;
+  border-radius: var(--r-pill);
+  background: var(--warn);
+}
+
+.levelBox {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s-1);
+}
+
+.expTrack {
+  display: block;
+  inline-size: 28px;
+  block-size: 3px;
+  background: var(--bg-3);
+  transform: skewX(-12deg);
+  overflow: hidden;
+}
+
+.expFill {
+  display: block;
+  block-size: 100%;
+  inline-size: calc(var(--p) * 100%);
+  background: var(--text-hi);
 }
 
 .account {
@@ -225,59 +321,119 @@
   align-items: center;
   gap: var(--s-3);
   block-size: var(--control-md);
-  padding: 0 var(--s-3) 0 var(--s-1);
-  border: 1px solid transparent;
-  border-radius: var(--r-pill);
+  padding: 0 var(--s-3) 0 0;
+  border: 0;
+  border-radius: 0;
   background: none;
   color: var(--text-1);
-  transition:
-    border-color var(--motion-ui) var(--ease-out),
-    background-color var(--motion-ui) var(--ease-out);
+  transition: background-color var(--motion-ui) var(--ease-out);
 }
 
 .accountBtn:hover,
 .accountBtn[aria-expanded='true'] {
-  border-color: var(--line-1);
-  background: var(--bg-1);
+  background: var(--bg-3);
+  color: var(--text-hi);
+}
+
+.accountBtn[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
 }
 
 .avatar {
   display: grid;
   place-items: center;
-  inline-size: 28px;
-  block-size: 28px;
-  border-radius: var(--r-pill);
-  background: var(--bg-3);
-  color: var(--accent);
+  inline-size: var(--control-md);
+  block-size: var(--control-md);
+  background: var(--text-hi);
+  color: var(--bg-0);
   font-family: var(--face-display);
-  font-size: var(--t-body);
-  line-height: var(--lh-body);
+  font-size: var(--t-h3);
+  line-height: 1;
   font-weight: 800;
+  font-style: italic;
 }
 
 .username {
   max-inline-size: 140px;
   overflow: hidden;
   color: var(--text-hi);
-  font-size: var(--t-body);
-  line-height: var(--lh-body);
-  font-weight: 500;
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-overflow: ellipsis;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
+/* ---- menus (More, account) ------------------------------------------------------------------------------- */
+
 .menu {
   position: absolute;
-  inset-block-start: calc(100% + var(--s-3));
+  inset-block-start: calc(100% + 10px);
   inset-inline-end: 0;
   display: flex;
   flex-direction: column;
-  min-inline-size: 180px;
-  padding: var(--s-2);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-2);
+  min-inline-size: 220px;
+  padding: var(--s-2) 0;
   background: var(--bg-1);
-  box-shadow: var(--shadow-2);
+  box-shadow:
+    inset 0 0 0 1px var(--line-2),
+    var(--shadow-2);
+}
+
+.more .menu {
+  inset-inline-end: auto;
+  inset-inline-start: 0;
+}
+
+.menuItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  inline-size: 100%;
+  padding: var(--s-3) var(--s-5);
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--text-1);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.menuItem:hover,
+.menuItem:focus-visible {
+  background: var(--bg-3);
+  color: var(--text-hi);
+}
+
+.menuItem:focus-visible {
+  outline-offset: calc(var(--focus-ring) * -1);
+}
+
+/* the current panel: an orange bar on the left edge */
+.menuItemActive,
+.menuItemActive:hover {
+  color: var(--text-hi);
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+.menuLabel {
+  flex: 1 1 auto;
+}
+
+.menuRule {
+  display: block;
+  block-size: 1px;
+  margin: var(--s-2) 0;
+  background: var(--line-1);
 }
 
 .badgeCase {
@@ -285,70 +441,68 @@
   flex-direction: column;
   gap: var(--s-3);
   margin-bottom: var(--s-2);
-  padding: var(--s-3) var(--s-4) var(--s-4);
-  border-bottom: 1px solid var(--line-1);
+  padding: var(--s-3) var(--s-5) var(--s-4);
+  box-shadow: inset 0 -1px 0 var(--line-1);
 }
 
 .badgeTitle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   color: var(--text-2);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.badgeCount {
+  color: var(--text-hi);
+  font-size: var(--t-h3);
+  font-weight: 800;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .badgeRow {
   display: grid;
-  grid-template-columns: repeat(4, 32px);
+  grid-template-columns: repeat(4, 36px);
   gap: var(--s-3);
 }
 
+/* badges: hard squares; earned ones a solid slab of their gym's type colour */
 .badge {
   display: grid;
   place-items: center;
-  inline-size: 32px;
-  block-size: 32px;
-  border: 1px dashed var(--line-2);
-  border-radius: var(--r-pill);
+  inline-size: 36px;
+  block-size: 36px;
+  background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-1);
   color: var(--text-2);
-  font-size: var(--t-body);
-  line-height: var(--lh-body);
+  font-size: var(--t-body-lg);
+  line-height: 1;
   opacity: 0.5;
 }
 
 .badgeEarned {
-  border: 1px solid var(--tc);
-  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--tc) 70%, var(--text-hi)), var(--tc));
+  background: var(--tc);
+  box-shadow: none;
   color: var(--tc-ink);
   opacity: 1;
 }
 
-.menuItem {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  padding: var(--s-3) var(--s-4);
-  border: none;
-  border-radius: var(--r-1);
-  background: none;
-  color: var(--text-1);
-  font-size: var(--t-body);
-  line-height: var(--lh-body);
-  text-align: left;
-}
-
-.menuItem:hover {
-  background: var(--bg-3);
-  color: var(--text-hi);
-}
-
 /*
- * Phase C3: eleven links (Map joined) no longer fit beside the brand, zone chip and money / level / account cluster
- * under ~1400 px; there the links show their icons only (the label stays for screen readers, `title` for the pointer).
+ * Narrow desktops (1280–1400 px): the zone's meta line and the username step aside so the five links, More and the
+ * number cluster fit beside the brand; both stay reachable (zone title attribute, the avatar opens the same menu).
  */
 @media (max-width: 1400px) {
-  .linkLabel {
+  .zoneMeta {
+    display: none;
+  }
+
+  .username {
     position: absolute;
     overflow: hidden;
     inline-size: 1px;
@@ -360,11 +514,4 @@
   .link {
     padding: 0 var(--s-3);
   }
-}
-
-.menuRule {
-  display: block;
-  block-size: 1px;
-  margin: var(--s-2) 0;
-  background: var(--line-1);
 }

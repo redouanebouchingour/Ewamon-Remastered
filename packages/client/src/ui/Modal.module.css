@@ -11,7 +11,6 @@
   position: absolute;
   inset: 0;
   background: var(--scrim);
-  backdrop-filter: blur(2px);
   animation: scrim-in var(--motion-ui) var(--ease-out) both;
 }
 
@@ -30,8 +29,9 @@
   flex-direction: column;
   inline-size: min(100%, var(--modal-md));
   max-block-size: calc(100vh - 2 * var(--s-8));
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-3);
+  border: 0;
+  border-top: 4px solid var(--accent);
+  border-radius: 0;
   background: var(--bg-1);
   box-shadow: var(--shadow-3);
   animation: dialog-in var(--motion-ui) var(--ease-out) both;
@@ -71,9 +71,11 @@
 .title {
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-h2);
+  font-size: var(--t-h1);
   line-height: var(--lh-h2);
-  font-weight: 700;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
 }
 
 .description {
@@ -87,14 +89,14 @@
   inline-size: var(--control-sm);
   block-size: var(--control-sm);
   border: none;
-  border-radius: var(--r-1);
-  background: none;
-  color: var(--text-2);
+  border-radius: 0;
+  background: var(--bg-3);
+  color: var(--text-hi);
 }
 
 .close:hover {
-  background: var(--light-a06);
-  color: var(--text-hi);
+  background: var(--text-hi);
+  color: var(--bg-0);
 }
 
 .body {

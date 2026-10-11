@@ -1,4 +1,5 @@
-/* Phase C6 — /forgot, /reset, /verify. The page, story column and card come from AuthScreen.module.css. */
+/* Phase C6 — /forgot, /reset, /verify. The page, story column and card come from AuthScreen.module.css.
+ * Broadcast (2026-10-11): the status mark is a hard-edged paper chip (danger slab for a refusal), no tints. */
 
 .body {
   color: var(--text-1);
@@ -8,7 +9,7 @@
 
 .body strong {
   color: var(--text-hi);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .status {
@@ -23,14 +24,14 @@
   place-items: center;
   inline-size: 40px;
   block-size: 40px;
-  border-radius: var(--r-pill);
-  background: var(--accent-a16);
-  color: var(--accent);
+  border-radius: 0;
+  background: var(--text-hi);
+  color: var(--bg-0);
 }
 
 .statusMarkWarn {
-  background: var(--danger-a16);
-  color: var(--danger);
+  background: var(--danger);
+  color: var(--bg-0);
 }
 
 .statusText {

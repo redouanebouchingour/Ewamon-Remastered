@@ -137,16 +137,16 @@ export function TowerModal() {
           {reward !== null && (
             <p className={s.reward}>
               <span className={s.rewardLabel}>Set {tower.set} complete</span>
-              {reward}
+              <span className={s.rewardText}>{reward}</span>
             </p>
           )}
           <dl className={s.stats}>
             <div className={s.stat}>
-              <dt className={m.caption}>Streak</dt>
+              <dt className={s.statLabel}>Streak</dt>
               <dd className={s.value}>{tower.streak}</dd>
             </div>
             <div className={s.stat}>
-              <dt className={m.caption}>Best</dt>
+              <dt className={s.statLabel}>Best</dt>
               <dd className={s.value}>{tower.best}</dd>
             </div>
           </dl>
@@ -183,11 +183,11 @@ export function TowerModal() {
         </p>
         <dl className={s.stats}>
           <div className={s.stat}>
-            <dt className={m.caption}>Run</dt>
+            <dt className={s.statLabel}>Run</dt>
             <dd className={s.value}>{tower.runWins}</dd>
           </div>
           <div className={s.stat}>
-            <dt className={m.caption}>Best</dt>
+            <dt className={s.statLabel}>Best</dt>
             <dd className={s.value}>{tower.best}</dd>
           </div>
         </dl>
@@ -204,8 +204,10 @@ export function TowerStreak() {
     <div className={s.layer} aria-live="polite">
       <p className={s.counter} data-testid="towerstreak">
         <span className={s.counterLabel}>Battle tower</span>
-        <span>{towerFightLabel(t)}</span>
-        <span className={s.counterStreak}>Streak {t.streak}</span>
+        <span className={s.counterFight}>{towerFightLabel(t)}</span>
+        <span className={s.counterStreak}>
+          Streak <span className={s.counterValue}>{t.streak}</span>
+        </span>
       </p>
     </div>
   );

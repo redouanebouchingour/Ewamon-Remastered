@@ -16,14 +16,14 @@ const API_TARGET = process.env['EWA_API_TARGET'] ?? 'http://localhost:4000';
 const WS_TARGET = process.env['EWA_WS_TARGET'] ?? 'ws://localhost:2567';
 const fontsDir = fileURLToPath(new URL('./public/fonts', import.meta.url));
 
-/** §20.2.2: `<link rel="preload" as="font" crossorigin>` for each woff2 actually present in public/fonts/. */
+/** §20.2.2: `<link rel="preload" as="font" crossorigin>` for each latin woff2 present in public/fonts/ (latin-ext loads on demand). */
 function fontPreloads(): Plugin {
   return {
     name: 'ewa:font-preloads',
     transformIndexHtml(): HtmlTagDescriptor[] {
       if (!existsSync(fontsDir)) return [];
       return readdirSync(fontsDir)
-        .filter((f) => f.endsWith('.woff2'))
+        .filter((f) => f.endsWith('.woff2') && !f.includes('-latin-ext'))
         .sort()
         .map((f) => ({
           tag: 'link',

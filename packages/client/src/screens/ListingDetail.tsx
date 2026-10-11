@@ -68,7 +68,7 @@ export function ListingDetail() {
             {data.variantKey !== 'normal' && <Pill tone="info">{data.variantKey}</Pill>}
             {data.isAlpha && <Pill tone="danger">Alpha</Pill>}
             {data.isShiny === true && <Pill tone="warn">Shiny</Pill>}
-            {own && <Pill tone="accent">Your listing</Pill>}
+            {own && <Pill tone="neutral">Your listing</Pill>}
           </div>
         </div>
       </div>

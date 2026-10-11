@@ -1,3 +1,5 @@
+/* Broadcast (2026-10-11): key art behind, a flat carbon card with a paper band on top, condensed uppercase type. */
+
 .page {
   position: fixed;
   inset: 0;
@@ -18,9 +20,12 @@
   gap: var(--s-3);
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-h3);
-  line-height: var(--lh-h3);
+  font-size: var(--t-h2);
+  line-height: var(--lh-h2);
   font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .logo:hover {
@@ -32,10 +37,9 @@
   place-items: center;
   inline-size: 32px;
   block-size: 32px;
-  border-radius: var(--r-2);
-  background: radial-gradient(circle at 30% 25%, var(--accent-hi), var(--accent) 55%, var(--line-2));
-  color: var(--on-accent);
-  box-shadow: 0 0 20px var(--accent-a32);
+  border-radius: 0;
+  background: var(--text-hi);
+  color: var(--bg-0);
 }
 
 .story {
@@ -47,22 +51,24 @@
 }
 
 .eyebrow {
-  color: var(--accent);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body);
   font-weight: 700;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .headline {
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-display);
-  line-height: var(--lh-display);
+  font-size: var(--t-hero);
+  line-height: 0.92;
   font-weight: 800;
-  letter-spacing: -0.025em;
-  text-shadow: 0 2px 32px var(--shade-a40);
+  font-style: italic;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
 }
 
 .lede {
@@ -79,11 +85,11 @@
   gap: var(--s-5);
   inline-size: var(--auth-card);
   padding: var(--s-7);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-3);
-  background: linear-gradient(180deg, var(--light-a06), transparent 30%), var(--glass);
-  backdrop-filter: blur(18px) saturate(1.2);
-  box-shadow: var(--shadow-3);
+  border: 0;
+  border-top: 6px solid var(--text-hi);
+  border-radius: 0;
+  background: var(--bg-1);
+  box-shadow: inset 0 0 0 1px var(--line-1);
   animation: card-in var(--motion-panel) var(--ease-out) both;
 }
 
@@ -101,9 +107,12 @@
 .title {
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-h2);
-  line-height: var(--lh-h2);
-  font-weight: 700;
+  font-size: var(--t-h1);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
 }
 
 .form {
@@ -140,11 +149,12 @@
 .legend {
   margin-bottom: var(--s-4);
   padding: 0;
-  color: var(--text-1);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -168,9 +178,17 @@
 .forgot {
   align-self: flex-end;
   margin-block-start: calc(var(--s-3) * -1);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  font-weight: 600;
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.forgot:hover {
+  color: var(--text-hi);
 }
 
 .switch {
@@ -181,5 +199,9 @@
 }
 
 .switchLink {
-  font-weight: 600;
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }

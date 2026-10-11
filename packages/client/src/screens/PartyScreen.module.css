@@ -1,55 +1,329 @@
-.slots {
+/*
+ * Broadcast party (2026-10-11): a lineup of six cards (type-colour slab with the sprite and slot number, condensed
+ * italic name, LV, skewed HP bar + number; the selected one lifts with an orange ring and bar), then the detail band.
+ */
+.screen {
   display: flex;
   flex-direction: column;
+  gap: var(--s-6);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+  margin: 0 var(--s-4) 0 0;
+}
+
+.summary div {
+  display: flex;
+  align-items: baseline;
   gap: var(--s-3);
+}
+
+.summary dt {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.summary dd {
+  margin: 0;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: 1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary .summaryWarn {
+  color: var(--hp-lo);
+}
+
+.lineup {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: end;
+  gap: var(--s-3);
+  /* room for the selected card's lift */
+  padding-top: var(--s-3);
 }
 
 .slot {
   position: relative;
   display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  border-radius: var(--r-2);
-  transition: box-shadow var(--motion-ui) var(--ease-out);
+  min-inline-size: 0;
+  transition: opacity var(--motion-ui) var(--ease-out);
 }
 
-.dropTarget {
-  box-shadow: 0 -3px 0 var(--accent);
+.dragging {
+  opacity: 0.45;
 }
 
-.index {
-  flex: none;
-  inline-size: 20px;
-  color: var(--text-2);
-  font-family: var(--face-mono);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  text-align: center;
+/* drop target: an orange bar on the slot's leading edge (where the dragged creature lands) */
+.dropTarget::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(var(--s-3) / -2 - 2px);
+  inline-size: 4px;
+  background: var(--accent);
 }
 
 .card {
-  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-2);
+  color: var(--text-hi);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--motion-ui) var(--ease-out),
+    background-color var(--motion-ui) var(--ease-out),
+    box-shadow var(--motion-ui) var(--ease-out);
+}
+
+.card:hover {
+  background: var(--bg-3);
+}
+
+.selected,
+.selected:hover {
+  box-shadow: 0 0 0 2px var(--accent);
+  transform: translateY(-8px);
+}
+
+.slot[draggable='true'] .card {
+  cursor: grab;
+}
+
+/* the hero: a solid slab of the creature's type colour */
+.art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  block-size: 136px;
+  background: var(--tc);
+  overflow: hidden;
+}
+
+.slotNo {
+  position: absolute;
+  inset-inline-start: var(--s-3);
+  inset-block-start: var(--s-1);
+  color: var(--tc-ink);
+  font-family: var(--face-display);
+  font-size: var(--t-display);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  opacity: 0.35;
+  font-variant-numeric: tabular-nums;
+}
+
+.art .sprite {
+  position: relative;
+  inline-size: 100%;
+  block-size: 100%;
+  background: transparent;
+}
+
+.marks {
+  position: absolute;
+  inset-inline-end: var(--s-2);
+  inset-block-start: var(--s-2);
+  display: flex;
+  gap: var(--s-1);
+}
+
+.mark,
+.held {
+  display: grid;
+  place-items: center;
+  inline-size: 22px;
+  block-size: 22px;
+  background: var(--bg-0);
+  color: var(--text-hi);
+}
+
+.held {
+  position: absolute;
+  inset-inline-end: var(--s-2);
+  inset-block-end: var(--s-2);
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4) var(--s-3);
+}
+
+.nameRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
   min-inline-size: 0;
 }
 
-.grip {
+.name {
+  min-inline-size: 0;
+  overflow: hidden;
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.level {
+  flex: none;
   color: var(--text-2);
-  opacity: 0.6;
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.levelNum {
+  color: var(--text-hi);
+  font-size: var(--t-body-lg);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.hpRow {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.hpTrack {
+  flex: 1 1 auto;
+  block-size: 8px;
+  background: var(--bg-0);
+  transform: skewX(-12deg);
+  overflow: hidden;
+}
+
+.hpFill {
+  display: block;
+  block-size: 100%;
+  inline-size: calc(var(--p) * 100%);
+  background: var(--hp-hi);
+  transition: inline-size var(--motion-slow) var(--ease-out);
+}
+
+.hpFill.mid {
+  background: var(--hp-mid);
+}
+
+.hpFill.lo {
+  background: var(--hp-lo);
+}
+
+.hpNum {
+  flex: none;
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: 1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.hpMax {
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  font-weight: 700;
+}
+
+.statusRow {
+  display: flex;
+  gap: var(--s-2);
+  min-block-size: 18px;
+}
+
+.faintedTag {
+  padding: 0 var(--s-3);
+  background: var(--hp-lo);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.fainted .art {
+  filter: grayscale(1) brightness(0.6);
+}
+
+/* the selection bar under the card */
+.bar {
+  block-size: 5px;
+  background: transparent;
+}
+
+.selected .bar {
+  background: var(--accent);
 }
 
 .emptySlot {
-  opacity: 0.8;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--s-3);
+  min-block-size: 220px;
+  padding: var(--s-3) var(--s-4) var(--s-4);
+  background: var(--bg-1);
+  box-shadow: inset 0 0 0 1px var(--line-1);
 }
 
-.emptyCard {
-  flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  block-size: 90px;
-  padding: 0 var(--s-5);
-  border: 1px dashed var(--line-1);
-  border-radius: var(--r-2);
+.emptyNo {
+  color: var(--line-2);
+  font-family: var(--face-display);
+  font-size: var(--t-display);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  font-variant-numeric: tabular-nums;
+}
+
+.emptyText {
   color: var(--text-2);
+  font-family: var(--face-display);
   font-size: var(--t-body);
   line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* the lead's place in the detail band's actions (no button: it already leads) */
+.leadTag {
+  padding: var(--s-2) var(--s-4);
+  background: var(--bg-3);
+  color: var(--text-1);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }

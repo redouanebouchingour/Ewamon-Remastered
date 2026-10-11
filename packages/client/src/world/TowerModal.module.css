@@ -1,4 +1,9 @@
-/* Phase D14 battle tower: the picker's order numbers, the run stats, the set reward, and the counter over a fight. */
+/*
+ * Phase D14 battle tower: the picker's order numbers, the run stats, the set reward, and the counter over a fight.
+ * Broadcast look (2026-10-11): the pick order is an orange chip (a selection), the stats are big condensed tabular
+ * numbers under small labels, the set reward a black slab headed by a paper label, the counter a black strip with a
+ * paper "Battle tower" label block and the streak as a big number. Hard edges, no glass, no motion.
+ */
 .option {
   position: relative;
 }
@@ -9,56 +14,84 @@
   inset-inline-end: var(--s-2);
   display: grid;
   place-items: center;
-  inline-size: 22px;
-  block-size: 22px;
-  border-radius: var(--r-1);
+  inline-size: 24px;
+  block-size: 24px;
   background: var(--accent);
   color: var(--on-accent);
-  font-family: var(--face-mono);
-  font-size: var(--t-caption);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
   line-height: 1;
-  font-weight: 700;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
 
 .stats {
   display: flex;
-  gap: var(--s-6);
+  gap: 0;
   margin: 0;
 }
 
 .stat {
   display: flex;
   flex-direction: column;
-  gap: var(--s-1);
+  gap: 0;
+  padding-inline: var(--s-5);
+  box-shadow: inset 1px 0 0 var(--line-1);
+}
+
+.stat:first-child {
+  padding-inline-start: 0;
+  box-shadow: none;
+}
+
+.statLabel {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .value {
   margin: 0;
   color: var(--text-hi);
-  font-family: var(--face-mono);
-  font-size: var(--t-h2);
-  line-height: var(--lh-h2);
+  font-family: var(--face-display);
+  font-size: var(--t-display);
+  line-height: var(--lh-display);
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
 .reward {
   display: flex;
   flex-direction: column;
-  gap: var(--s-1);
+  align-items: flex-start;
+  gap: 0;
   margin: 0;
-  padding: var(--s-3) var(--s-4);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-2);
-  background: var(--bg-2);
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-1);
   color: var(--text-1);
+  font-family: var(--face-text);
   font-size: var(--t-body);
   line-height: var(--lh-body);
 }
 
 .rewardLabel {
-  color: var(--text-hi);
-  font-weight: 700;
+  padding: var(--s-1) var(--s-5) var(--s-1) var(--s-3);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+
+.rewardText {
+  padding: var(--s-3) var(--s-4);
 }
 
 .layer {
@@ -71,31 +104,52 @@
 
 .counter {
   display: flex;
-  align-items: baseline;
-  gap: var(--s-3);
+  align-items: stretch;
+  gap: 0;
   margin: 0;
-  padding: var(--s-2) var(--s-4);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-2);
-  background: var(--glass);
-  backdrop-filter: blur(12px);
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-1);
   color: var(--text-1);
-  font-size: var(--t-body);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
   line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
 
 .counterLabel {
-  color: var(--text-2);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--s-5) 0 var(--s-3);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-size: var(--t-body);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+
+.counterFight {
+  display: flex;
+  align-items: center;
+  padding: var(--s-2) var(--s-4);
 }
 
 .counterStreak {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-4);
+  box-shadow: inset 1px 0 0 var(--line-1);
+  color: var(--text-2);
+  font-size: var(--t-body);
+}
+
+.counterValue {
   color: var(--text-hi);
-  font-family: var(--face-mono);
-  font-weight: 700;
+  font-size: var(--t-h2);
+  line-height: 1;
+  font-weight: 800;
 }

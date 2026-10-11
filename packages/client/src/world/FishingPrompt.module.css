@@ -1,49 +1,78 @@
-/* Phase D9 — the Old Rod's timing card (bottom centre, above the HUD prompt line). */
+/*
+ * Phase D9 — the Old Rod's timing card (bottom centre, above the HUD prompt line).
+ * Broadcast look (2026-10-11): like the world's interact prompt — a square block on the left (the float while
+ * waiting; the reel key as an orange chip on a bite, the one moment to press) and a black slab with the line in
+ * condensed uppercase and a slanted right edge. Hard edges, no glass.
+ */
 .card {
   position: absolute;
   inset-inline: 0;
   inset-block-end: calc(var(--s-8) * 2);
   z-index: var(--z-panel);
   display: flex;
-  align-items: center;
-  gap: var(--s-4);
+  align-items: stretch;
+  gap: 0;
   inline-size: max-content;
   min-inline-size: 240px;
   margin-inline: auto;
-  padding: var(--s-4) var(--s-6);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-3);
-  background: var(--glass);
-  backdrop-filter: blur(12px);
-  box-shadow: var(--shadow-2);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--text-hi);
   font: inherit;
   cursor: pointer;
   pointer-events: auto;
 }
 
-.card[data-phase='bite'] {
-  border-color: var(--accent);
+.card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  inline-size: 48px;
+  background: var(--bg-2);
+}
+
+.card[data-phase='bite'] .mark {
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .text {
-  font-size: var(--t-body-lg);
-  line-height: var(--lh-body-lg);
+  display: flex;
+  flex: 1;
+  align-items: center;
+  padding: var(--s-3) var(--s-7) var(--s-3) var(--s-4);
+  background: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: var(--lh-h3);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+}
+
+.card:hover .text {
+  background: var(--bg-1);
 }
 
 .card[data-phase='missed'] .text {
   color: var(--text-2);
 }
 
-/* the float: a two-tone disc bobbing on the line while waiting */
+/* the float: a two-tone disc bobbing on the line while waiting (red over paper, the classic bobber) */
 .float,
 .floatIdle {
   display: block;
-  inline-size: 18px;
-  block-size: 18px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, var(--accent) 0 50%, var(--text-hi) 50% 100%);
-  box-shadow: 0 0 0 2px var(--line-2);
+  inline-size: 16px;
+  block-size: 16px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(180deg, var(--danger) 0 50%, var(--text-hi) 50% 100%);
 }
 
 .float {
@@ -61,11 +90,10 @@
 
 .bang {
   display: block;
-  inline-size: 18px;
-  color: var(--accent);
   font-family: var(--face-display);
-  font-size: var(--t-h2);
+  font-size: var(--t-h1);
   line-height: 1;
+  font-style: italic;
   font-weight: 800;
   text-align: center;
   animation: pulse 0.35s var(--ease-out) infinite alternate;

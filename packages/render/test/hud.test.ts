@@ -63,7 +63,7 @@ describe('§10.9 HudLayer', () => {
     const up0 = hud.uploads;
     expect(hud.drawIfDirty()).toBe(true);
     expect(hud.uploads).toBe(up0 + 1);
-    expect(s.texts).toContain('Mire Route');
+    expect(s.texts).toContain('MIRE ROUTE');   // Broadcast UI: names / labels are drawn uppercase
     hud.set({ zoneName: 'Mire Route' });     // same value: nothing to do
     expect(hud.isDirty()).toBe(false);
     s.reset();
@@ -82,8 +82,8 @@ describe('§10.9 HudLayer', () => {
     s.reset();
     hud.set({ prompt: { key: 'E', verb: 'Read', target: 'Tablet' } });
     hud.drawIfDirty();
-    expect(s.texts).toContain('Tablet');
-    expect(s.texts).not.toContain('Mire Route');
+    expect(s.texts).toContain('TABLET');
+    expect(s.texts).not.toContain('MIRE ROUTE');
   });
 
   it('world anchors: nameplates re-mark only when an anchor moves ≥ 1 px (or appears)', () => {
@@ -94,7 +94,7 @@ describe('§10.9 HudLayer', () => {
     a.pos.set('p1', [400, 300]);
     hud.set({ nameplates: [{ id: 'p1', name: 'Rowan', guildTag: '[MIRE]', inBattle: false }] });
     hud.tick(16); hud.drawIfDirty();
-    expect(s.texts).toContain('Rowan');
+    expect(s.texts).toContain('ROWAN');
     const up = hud.uploads;
     a.pos.set('p1', [400.4, 300.3]);
     hud.tick(16);
@@ -158,7 +158,7 @@ describe('§10.9 HudLayer', () => {
     a.pos.set('0:0', [5, 715]); a.pos.set('1:0', [30, 710]);
     hud.tick(16); hud.drawIfDirty();
     check();
-    expect(s.texts).toContain('Turn 1');
+    expect(s.texts).toContain('TURN 1');
   });
 
   it('chat lines fade after 6 s over 2 s, repainting at ≤ 4 Hz, then go quiet', () => {

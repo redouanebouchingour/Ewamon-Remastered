@@ -1,4 +1,8 @@
 /* Phase B3 quest journal: acts as sections, one card per quest, a compact claimed list at the end. */
+/*
+ * Broadcast (2026-10-11): carbon cards split by hairlines; a ready-to-claim card carries an orange bar (press this),
+ * the tracked one an orange ring (selected); titles condensed italic uppercase; done marks are paper squares.
+ */
 
 .acts {
   display: flex;
@@ -25,19 +29,21 @@
   display: flex;
   flex-direction: column;
   gap: var(--s-3);
-  padding: var(--s-4);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-3);
+  padding: var(--s-4) var(--s-4) var(--s-4) var(--s-5);
+  border: none;
+  border-left: 4px solid transparent;
+  border-radius: 0;
   background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-1);
 }
 
 .ready {
-  border-color: var(--accent);
-  background: radial-gradient(80% 120% at 0% 0%, var(--accent-a16), transparent 70%), var(--bg-2);
+  border-left-color: var(--accent);
+  background: var(--bg-2);
 }
 
 .tracked {
-  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
 .locked {
@@ -54,9 +60,13 @@
 
 .title {
   color: var(--text-hi);
-  font-size: var(--t-body-lg);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
   line-height: var(--lh-body-lg);
-  font-weight: 700;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
 
 .locked .title {
@@ -94,8 +104,8 @@
   inline-size: 20px;
   block-size: 20px;
   border: 1px solid var(--line-2);
-  border-radius: var(--r-1);
-  color: var(--accent);
+  border-radius: 0;
+  color: var(--bg-0);
 }
 
 .done {
@@ -103,8 +113,8 @@
 }
 
 .done .mark {
-  border-color: var(--accent);
-  background: var(--accent-a16);
+  border-color: var(--text-hi);
+  background: var(--text-hi);
 }
 
 .foot {
@@ -137,20 +147,26 @@
   align-items: center;
   gap: var(--s-3);
   padding: var(--s-2) var(--s-4);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-2);
+  border: none;
+  border-radius: 0;
   background: var(--bg-1);
+  box-shadow: inset 0 0 0 1px var(--line-1);
   color: var(--text-2);
 }
 
 .claimedRow .mark {
-  border-color: var(--accent);
-  background: var(--accent-a16);
+  border-color: var(--text-hi);
+  background: var(--text-hi);
 }
 
 .claimedTitle {
   color: var(--text-1);
-  font-weight: 600;
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 /* Phase D5 achievements tab: one row per milestone in progress — text, bar, figure. */
@@ -169,9 +185,10 @@
   align-items: center;
   gap: var(--s-4);
   padding: var(--s-3) var(--s-4);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-2);
+  border: none;
+  border-radius: 0;
   background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-1);
 }
 
 .achText {

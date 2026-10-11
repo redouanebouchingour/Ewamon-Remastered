@@ -7,18 +7,20 @@
   pointer-events: auto;
 }
 
+/* Broadcast: a carbon card with a red edge, a red label, a big condensed italic title */
 .card {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--s-3);
   inline-size: var(--modal-md);
-  padding: var(--s-8) var(--s-8) var(--s-7);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-3);
+  padding: var(--s-7) var(--s-8);
+  border-left: 8px solid var(--danger);
   background: var(--bg-1);
-  box-shadow: var(--shadow-3);
-  text-align: center;
+  box-shadow:
+    inset 0 0 0 1px var(--line-1),
+    var(--shadow-3);
+  text-align: left;
   animation: rise var(--motion-panel) var(--ease-out) both;
 }
 
@@ -32,19 +34,19 @@
 .icon {
   display: grid;
   place-items: center;
-  inline-size: 64px;
-  block-size: 64px;
+  inline-size: 48px;
+  block-size: 48px;
   margin-bottom: var(--s-3);
-  border-radius: var(--r-pill);
-  background: var(--danger-a16);
-  color: var(--danger);
+  background: var(--danger);
+  color: var(--bg-0);
 }
 
 .eyebrow {
   color: var(--danger);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  font-weight: 600;
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -52,9 +54,11 @@
 .title {
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-h1);
-  line-height: var(--lh-h1);
-  font-weight: 700;
+  font-size: var(--t-display);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
 }
 
 .detail {

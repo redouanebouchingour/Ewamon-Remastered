@@ -1,6 +1,8 @@
 /*
  * Phase C3 world map: a legend row, then a sideways-scrolling board. The board is a gapless grid of fixed cells
  * (--cols / --rows arrive through cssVars) so the SVG link layer, drawn in cell units, lines up with cell centres.
+ * Broadcast (2026-10-11): flat carbon board, hard-edged nodes; a visited town carries a paper band, a visited
+ * landmark an info band; "you are here" is the only orange (ring + lift). Known roads are solid fog, unknown dashed.
  */
 
 .body {
@@ -15,8 +17,12 @@
   align-items: center;
   gap: var(--s-5);
   color: var(--text-2);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .legendItem {
@@ -27,19 +33,25 @@
 
 .legendHint {
   margin-inline-start: auto;
+  font-family: var(--face-text);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .swatch {
   inline-size: 12px;
   block-size: 12px;
   border: 1px solid var(--line-2);
-  border-radius: var(--r-1);
+  border-radius: 0;
   background: var(--bg-2);
 }
 
 .swatchTown {
-  border-color: var(--accent);
-  background: var(--accent-a16);
+  border-color: var(--text-hi);
+  background: var(--text-hi);
 }
 
 .swatchRoute {
@@ -48,7 +60,7 @@
 
 .swatchStory {
   border-color: var(--info);
-  background: var(--info-a16);
+  background: var(--info);
 }
 
 .swatchCurrent {
@@ -59,11 +71,10 @@
 .scroller {
   overflow-x: auto;
   overflow-y: hidden;
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-3);
-  background:
-    radial-gradient(120% 90% at 50% 50%, var(--accent-a08), transparent 70%),
-    var(--bg-1);
+  border: none;
+  border-radius: 0;
+  background: var(--bg-1);
+  box-shadow: inset 0 0 0 1px var(--line-1);
 }
 
 .scroller:focus-visible {
@@ -92,11 +103,11 @@
   stroke: var(--line-2);
   stroke-width: 3;
   stroke-dasharray: 4 6;
-  stroke-linecap: round;
+  stroke-linecap: butt;
 }
 
 .linkKnown {
-  stroke: var(--accent-a32);
+  stroke: var(--text-2);
   stroke-width: 4;
   stroke-dasharray: none;
 }
@@ -127,14 +138,24 @@
   min-block-size: 112px;
   padding: var(--s-3);
   border: 1px solid var(--line-1);
-  border-radius: var(--r-2);
+  border-radius: 0;
   background: var(--bg-1);
   color: var(--text-2);
+  transition:
+    transform var(--motion-fast) var(--ease-out),
+    background-color var(--motion-ui) var(--ease-out);
+}
+
+.node:hover {
+  background: var(--bg-2);
+}
+
+.town {
+  border-top: 4px solid var(--line-2);
 }
 
 .route {
   min-block-size: 76px;
-  border-radius: var(--r-pill);
   padding-inline: var(--s-4);
 }
 
@@ -144,18 +165,23 @@
   color: var(--text-1);
 }
 
+.visited:hover {
+  background: var(--bg-3);
+}
+
 .town.visited {
-  border-color: var(--accent-a32);
+  border-top-color: var(--text-hi);
 }
 
 .story.visited {
-  border-color: var(--info);
+  border-top: 4px solid var(--info);
 }
 
 .current {
-  border-color: var(--accent);
-  background: radial-gradient(100% 120% at 0% 0%, var(--accent-a16), transparent 70%), var(--bg-2);
-  box-shadow: var(--shadow-2);
+  border-color: var(--line-2);
+  background: var(--bg-2);
+  box-shadow: 0 0 0 2px var(--accent);
+  transform: translateY(-4px);
 }
 
 .nodeHead {
@@ -173,25 +199,38 @@
   background: var(--line-2);
 }
 
-.town .kindMark {
-  border-radius: var(--r-1);
+.town .kindMark,
+.story .kindMark {
+  border-radius: 0;
 }
 
-.visited.town .kindMark,
-.current .kindMark {
-  background: var(--accent);
+.visited.town .kindMark {
+  background: var(--text-hi);
 }
 
 .visited.story .kindMark {
   background: var(--info);
 }
 
+.visited.route .kindMark {
+  background: var(--text-2);
+}
+
+.current .kindMark,
+.visited.current .kindMark {
+  background: var(--accent);
+}
+
 .name {
   min-inline-size: 0;
   color: var(--text-2);
-  font-size: var(--t-body);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
   line-height: var(--lh-body);
-  font-weight: 700;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
   overflow-wrap: anywhere;
 }
 
@@ -212,16 +251,21 @@
   gap: var(--s-1);
   padding: 0 var(--s-2);
   border: 1px solid var(--line-1);
-  border-radius: var(--r-pill);
+  border-radius: 0;
   color: var(--text-2);
+  font-family: var(--face-display);
   font-size: var(--t-caption);
   line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .gateOpen {
-  border-color: var(--accent-a32);
-  color: var(--accent);
+  border-color: var(--text-hi);
+  background: var(--text-hi);
+  color: var(--bg-0);
 }
 
 .nodeFoot {

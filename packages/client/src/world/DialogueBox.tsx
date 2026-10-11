@@ -3,6 +3,9 @@
  * visible, the remaining count shown; `Escape` closes. The lines come from content (§20.4.7) — World3D writes
  * `ui.dialogue`; this component only pages through it. Paging past the last line runs `onFinish` (a beat battle or a
  * gym challenge starts then); Escape does not.
+ *
+ * Broadcast look (2026-10-11): a lower-third — an orange speaker strip over a black slab, the lines in the text face,
+ * "n more" / "Close" with a paper key chip.
  */
 import { useEffect, useRef } from 'react';
 import { useUiStore } from '../state/ui';
@@ -52,14 +55,17 @@ export function DialogueBox() {
   return (
     <div ref={ref} className={s.box} role="dialog" aria-label={`${d.speaker} says`} data-testid="dialoguebox">
       <p className={s.speaker}>{d.speaker}</p>
-      {page.map((line, i) => (
-        <p key={`${d.index}:${i}`} className={s.line}>
-          {line}
-        </p>
-      ))}
-      <button type="button" className={s.more} onClick={advance}>
-        {left > 0 ? `${left} more — Enter` : 'Close — Enter'}
-      </button>
+      <div className={s.slab}>
+        {page.map((line, i) => (
+          <p key={`${d.index}:${i}`} className={s.line}>
+            {line}
+          </p>
+        ))}
+        <button type="button" className={s.more} onClick={advance} aria-label={left > 0 ? `${left} more — Enter` : 'Close — Enter'}>
+          <span>{left > 0 ? `${left} more` : 'Close'}</span>
+          <kbd className={s.key}>Enter</kbd>
+        </button>
+      </div>
     </div>
   );
 }

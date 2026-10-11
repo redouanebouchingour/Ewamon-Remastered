@@ -1,9 +1,13 @@
 /**
- * The 56 px /play top bar (SPEC §20.9.2): brand + zone, the panel nav (NavLinks with unread counts), the money
- * counter (mono, tabular), the trainer level pip and the account menu.
+ * The 56 px /play top bar (SPEC §20.9.2), Broadcast strip (2026-10-11): the brand as a black slab with an orange
+ * edge block, the zone, the panel nav — five primary links (Party · Bag · Dex · Map · Quests, each with its key chip
+ * where a shell hotkey exists) and a "More" disclosure for the rest (Box · Shop · Social · Guild · Market · Pass ·
+ * Settings; their unread counts roll up onto More) — then money, trainer level, badges and the account menu as
+ * condensed numbers on the right.
  */
-import { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router';
 import { BADGE_CASE } from '../data/badgeIcon';
 import { zoneName } from '../data/content';
 import { readyCount } from '../data/quests';
@@ -12,29 +16,47 @@ import { getRefreshToken } from '../net/tokens';
 import { useRoomState } from '../net/useRoomState';
 import { useNotificationsStore } from '../state/notifications';
 import { useSessionStore } from '../state/session';
+import { useSettingsStore } from '../state/settings';
+import type { InputAction } from '../state/settings';
 import { useUiStore } from '../state/ui';
 import { cssVars } from '../ui/cssVars';
+import { keyGlyph } from '../world/TutorialCard';
 import { cx } from '../ui/cx';
 import { Icon } from '../ui/Icon';
 import type { IconName } from '../ui/Icon';
 import s from './TopBar.module.css';
 
-export const NAV: readonly { readonly to: string; readonly label: string; readonly icon: IconName }[] = [
-  { to: '/play/party', label: 'Party', icon: 'party' },
-  { to: '/play/box', label: 'Box', icon: 'box' },
-  { to: '/play/bag', label: 'Bag', icon: 'bag' },
-  { to: '/play/dex', label: 'Dex', icon: 'dex' },
-  { to: '/play/shop', label: 'Shop', icon: 'shop' },
-  { to: '/play/social', label: 'Social', icon: 'social' },
-  { to: '/play/guild', label: 'Guild', icon: 'guild' },
-  { to: '/play/market', label: 'Market', icon: 'market' },
-  { to: '/play/pass', label: 'Pass', icon: 'pass' },
-  { to: '/play/quests', label: 'Quests', icon: 'quest' },
-  { to: '/play/map', label: 'Map', icon: 'map' },
-  { to: '/play/settings', label: 'Settings', icon: 'settings' },
+export interface NavItem {
+  readonly to: string;
+  readonly label: string;
+  readonly icon: IconName;
+  /** in the bar itself; the rest live in the More menu */
+  readonly primary: boolean;
+  /** the shell hotkey that opens it (PlayShell `useShellHotkeys`), shown as a key chip */
+  readonly action?: InputAction;
+}
+
+/** Every /play panel the nav reaches: the five primary links first, then the More menu in its order. */
+export const NAV: readonly NavItem[] = [
+  { to: '/play/party', label: 'Party', icon: 'party', primary: true, action: 'party' },
+  { to: '/play/bag', label: 'Bag', icon: 'bag', primary: true, action: 'bag' },
+  { to: '/play/dex', label: 'Dex', icon: 'dex', primary: true, action: 'journal' },
+  { to: '/play/map', label: 'Map', icon: 'map', primary: true, action: 'map' },
+  { to: '/play/quests', label: 'Quests', icon: 'quest', primary: true },
+  { to: '/play/box', label: 'Box', icon: 'box', primary: false },
+  { to: '/play/shop', label: 'Shop', icon: 'shop', primary: false },
+  { to: '/play/social', label: 'Social', icon: 'social', primary: false },
+  { to: '/play/guild', label: 'Guild', icon: 'guild', primary: false },
+  { to: '/play/market', label: 'Market', icon: 'market', primary: false },
+  { to: '/play/pass', label: 'Pass', icon: 'pass', primary: false },
+  // Escape opens Settings from the bare world (PlayShell)
+  { to: '/play/settings', label: 'Settings', icon: 'settings', primary: false, action: 'pause' },
 ];
 
-/** Phase C4: the trainer's own pages live in the account menu (the nav row is full under 1400 px). */
+export const NAV_PRIMARY: readonly NavItem[] = NAV.filter((n) => n.primary);
+export const NAV_MORE: readonly NavItem[] = NAV.filter((n) => !n.primary);
+
+/** Phase C4: the trainer's own pages live in the account menu. */
 export const ACCOUNT_LINKS: readonly { readonly to: string; readonly label: string; readonly icon: IconName }[] = [
   { to: '/play/profile', label: 'Profile', icon: 'user' },
   { to: '/play/rankings', label: 'Rankings', icon: 'trophy' },
@@ -42,6 +64,9 @@ export const ACCOUNT_LINKS: readonly { readonly to: string; readonly label: stri
 ];
 
 export const formatMoney = (n: number): string => n.toLocaleString('en-US');
+
+/** A KeyboardEvent.code as a key chip label (KeyP → P, Escape → Esc, ArrowUp → ↑), as the tutorial card spells keys. */
+export const keyLabel = (code: string | undefined): string => (code === undefined ? '' : keyGlyph(code));
 
 function useNavCounts(): Readonly<Record<string, number>> {
   const unread = useNotificationsStore((st) => Object.values(st.unreadDm).reduce((a, b) => a + b, 0));
@@ -51,6 +76,62 @@ function useNavCounts(): Readonly<Record<string, number>> {
   return { '/play/social': unread + requests, '/play/pass': claims, '/play/quests': quests };
 }
 
+const countText = (n: number): string => (n > 99 ? '99+' : String(n));
+
+function Count({ n }: { readonly n: number }) {
+  if (n <= 0) return null;
+  return (
+    <span className={s.count} aria-label={`${n} new`}>
+      {countText(n)}
+    </span>
+  );
+}
+
+function KeyChip({ action }: { readonly action: InputAction | undefined }) {
+  const code = useSettingsStore((st) => (action === undefined ? undefined : st.keybinds[action][0]));
+  if (code === undefined) return null;
+  return (
+    <kbd className={s.key} aria-hidden>
+      {keyLabel(code)}
+    </kbd>
+  );
+}
+
+/** Closes a popover on Escape (focus back to its button) and on a pointer press outside it. */
+function useDismiss(open: boolean, close: () => void, root: RefObject<HTMLElement | null>, button: RefObject<HTMLButtonElement | null>): void {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== 'Escape') return;
+      // the menu owns this Escape: an open panel behind it must not close too
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+      button.current?.focus();
+    };
+    const onPointer = (e: PointerEvent): void => {
+      if (root.current !== null && e.target instanceof Node && !root.current.contains(e.target)) close();
+    };
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('pointerdown', onPointer, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('pointerdown', onPointer, true);
+    };
+  }, [open, close, root, button]);
+}
+
+/** ↑/↓ (and Home/End) move focus between a popover's items. */
+function onListKeys(e: ReactKeyboardEvent<HTMLElement>, selector: string): void {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return;
+  const items = [...e.currentTarget.querySelectorAll<HTMLElement>(selector)];
+  if (items.length === 0) return;
+  e.preventDefault();
+  const at = items.indexOf(document.activeElement as HTMLElement);
+  const next = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : e.key === 'ArrowDown' ? (at + 1) % items.length : (at - 1 + items.length) % items.length;
+  items[next]?.focus();
+}
+
 function ZoneChip() {
   const zoneId = useSessionStore((st) => st.zoneId);
   const connection = useUiStore((st) => st.connection);
@@ -58,9 +139,62 @@ function ZoneChip() {
   const label = connection === 'connected' ? (here > 1 ? `${here} here` : 'Connected') : connection === 'reconnecting' ? 'Reconnecting' : 'Offline';
   return (
     <div className={s.zone} title={`World connection: ${connection}`}>
-      <span className={cx(s.dot, s[connection])} aria-hidden />
       <span className={s.zoneName}>{zoneName(zoneId)}</span>
-      <span className={s.zoneMeta}>{label}</span>
+      <span className={s.zoneMeta}>
+        <span className={cx(s.dot, s[connection])} aria-hidden />
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function MoreMenu({ counts }: { readonly counts: Readonly<Record<string, number>> }) {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const listId = useId();
+  const root = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const list = useRef<HTMLUListElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  useDismiss(open, close, root, button);
+  // a route change (a link chosen, a hotkey) closes it
+  useEffect(() => setOpen(false), [location.pathname]);
+  useEffect(() => {
+    if (open) list.current?.querySelector<HTMLElement>('a')?.focus();
+  }, [open]);
+  const total = NAV_MORE.reduce((sum, n) => sum + (counts[n.to] ?? 0), 0);
+  const current = NAV_MORE.find((n) => location.pathname.startsWith(n.to)) ?? null;
+  return (
+    <div className={s.more} ref={root}>
+      <button
+        ref={button}
+        type="button"
+        className={cx(s.link, s.moreBtn, current !== null && s.active)}
+        aria-expanded={open}
+        aria-controls={listId}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className={s.linkInner}>
+          <span className={s.linkLabel}>More</span>
+          <Count n={total} />
+          <Icon name="chevronDown" size="sm" className={s.chevron} />
+        </span>
+        {current !== null && <span className="visually-hidden"> (current: {current.label})</span>}
+      </button>
+      {open && (
+        <ul id={listId} ref={list} className={s.menu} aria-label="More menus" onKeyDown={(e) => onListKeys(e, 'a')}>
+          {NAV_MORE.map((n) => (
+            <li key={n.to}>
+              <NavLink to={n.to} className={({ isActive }) => cx(s.menuItem, isActive && s.menuItemActive)} onClick={close}>
+                <Icon name={n.icon} size="sm" />
+                <span className={s.menuLabel}>{n.label}</span>
+                <Count n={counts[n.to] ?? 0} />
+                <KeyChip action={n.action} />
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -69,16 +203,31 @@ function Wallet() {
   const money = useSessionStore((st) => st.inventory?.money ?? 0);
   const level = useSessionStore((st) => st.progression?.trainerLevel ?? 1);
   const exp = useSessionStore((st) => st.progression?.trainerExp ?? 0);
+  const badges = useSessionStore((st) => st.progression?.badges.length ?? 0);
   const frac = level >= 100 ? 1 : (exp % 1000) / 1000;
   return (
     <div className={s.wallet}>
-      <span className={s.money} title="Money">
-        <Icon name="coin" size="sm" className={s.coin} />
-        <span className={s.moneyValue}>{formatMoney(money)}</span>
+      <span className={s.stat} title="Money">
+        <span className={s.coin} aria-hidden />
+        <span className={s.statValue}>{formatMoney(money)}</span>
+        <span className="visually-hidden"> money</span>
       </span>
-      <span className={s.pip} style={cssVars({ '--p': frac })} title={`Trainer level ${level} · ${exp % 1000} / 1000 exp`}>
-        <span className={s.pipInner}>{level}</span>
+      <span className={s.stat} title={`Trainer level ${level} · ${exp % 1000} / 1000 exp`}>
+        <span className={s.statLabel}>Trainer</span>
+        <span className={s.levelBox}>
+          <span className={s.statValue}>{level}</span>
+          <span className={s.expTrack} aria-hidden>
+            <span className={s.expFill} style={cssVars({ '--p': frac })} />
+          </span>
+        </span>
         <span className="visually-hidden">Trainer level {level}</span>
+      </span>
+      <span className={s.stat} title={`${badges} of 8 badges`}>
+        <span className={s.statValue}>
+          {badges}
+          <span className={s.statOf}>/8</span>
+        </span>
+        <span className={s.statLabel}>Badges</span>
       </span>
     </div>
   );
@@ -91,7 +240,9 @@ function BadgeCase() {
   const earned = useSessionStore((st) => st.progression?.badges ?? NO_BADGES);
   return (
     <div className={s.badgeCase} aria-label={`${earned.length} of 8 badges`}>
-      <span className={s.badgeTitle}>Badges {earned.length} / 8</span>
+      <span className={s.badgeTitle}>
+        Badges <b className={s.badgeCount}>{earned.length} / 8</b>
+      </span>
       <div className={s.badgeRow}>
         {BADGE_CASE.map((b) => {
           const has = earned.includes(b.id);
@@ -110,6 +261,13 @@ function Account() {
   const username = useSessionStore((st) => st.profile?.username ?? '');
   const isAdmin = useSessionStore((st) => st.profile?.isAdmin ?? false);
   const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  useDismiss(open, close, root, button);
+  useEffect(() => {
+    if (open) root.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+  }, [open]);
   const navigate = useNavigate();
   const go = (to: string): void => {
     setOpen(false);
@@ -122,30 +280,33 @@ function Account() {
     void navigate('/login', { replace: true });
   };
   return (
-    <div className={s.account}>
-      <button type="button" className={s.accountBtn} aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen((v) => !v)}>
+    <div className={s.account} ref={root}>
+      <button ref={button} type="button" className={s.accountBtn} aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen((v) => !v)}>
         <span className={s.avatar} aria-hidden>
           {username.slice(0, 1).toUpperCase()}
         </span>
         <span className={s.username}>{username}</span>
-        <Icon name="chevronDown" size="sm" />
+        <Icon name="chevronDown" size="sm" className={s.chevron} />
       </button>
       {open && (
-        <div className={s.menu} role="menu" onMouseLeave={() => setOpen(false)}>
+        <div className={s.menu} role="menu" onKeyDown={(e) => onListKeys(e, '[role="menuitem"]')}>
           <BadgeCase />
           {ACCOUNT_LINKS.map((a) => (
             <button key={a.to} type="button" role="menuitem" className={s.menuItem} onClick={() => go(a.to)}>
-              <Icon name={a.icon} size="sm" /> {a.label}
+              <Icon name={a.icon} size="sm" />
+              <span className={s.menuLabel}>{a.label}</span>
             </button>
           ))}
           <span className={s.menuRule} role="separator" />
           {isAdmin && (
             <button type="button" role="menuitem" className={s.menuItem} onClick={() => void navigate('/admin')}>
-              <Icon name="shield" size="sm" /> Admin
+              <Icon name="shield" size="sm" />
+              <span className={s.menuLabel}>Admin</span>
             </button>
           )}
           <button type="button" role="menuitem" className={s.menuItem} onClick={() => void logout()}>
-            <Icon name="logout" size="sm" /> Log out
+            <Icon name="logout" size="sm" />
+            <span className={s.menuLabel}>Log out</span>
           </button>
         </div>
       )}
@@ -157,30 +318,22 @@ export function TopBar() {
   const counts = useNavCounts();
   return (
     <header className={s.bar} data-testid="topbar">
-      <div className={s.left}>
-        <NavLink to="/play" end className={s.brand} aria-label="Back to the world">
-          <span className={s.brandMark} aria-hidden>
-            <Icon name="leaf" size="sm" />
-          </span>
-          Ewamon
-        </NavLink>
-        <ZoneChip />
-      </div>
+      <NavLink to="/play" end className={s.brand} aria-label="Back to the world">
+        <span className={s.brandEdge} aria-hidden />
+        <span className={s.brandSlab}>Ewamon</span>
+      </NavLink>
+      <ZoneChip />
       <nav className={s.nav} aria-label="Menus">
-        {NAV.map((n) => {
-          const count = counts[n.to] ?? 0;
-          return (
-            <NavLink key={n.to} to={n.to} className={({ isActive }) => cx(s.link, isActive && s.active)} title={n.label}>
-              <Icon name={n.icon} size="sm" />
+        {NAV_PRIMARY.map((n) => (
+          <NavLink key={n.to} to={n.to} className={({ isActive }) => cx(s.link, isActive && s.active)}>
+            <span className={s.linkInner}>
+              <KeyChip action={n.action} />
               <span className={s.linkLabel}>{n.label}</span>
-              {count > 0 && (
-                <span className={s.count} aria-label={`${count} new`}>
-                  {count > 99 ? '99+' : count}
-                </span>
-              )}
-            </NavLink>
-          );
-        })}
+              <Count n={counts[n.to] ?? 0} />
+            </span>
+          </NavLink>
+        ))}
+        <MoreMenu counts={counts} />
       </nav>
       <div className={s.right}>
         <Wallet />

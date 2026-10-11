@@ -7,32 +7,43 @@
   pointer-events: auto;
 }
 
+/* Broadcast lock-up: the brand a black slab with an orange edge, "Remastered" a paper strip under it */
 .center {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--s-2);
-  inline-size: 360px;
+  align-items: flex-start;
+  gap: 0;
+  inline-size: 400px;
 }
 
 .brand {
+  padding: var(--s-2) var(--s-8) var(--s-2) var(--s-5);
+  border-left: 14px solid var(--accent);
+  background: var(--bg-0);
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-display);
-  line-height: var(--lh-display);
+  font-size: var(--t-hero);
+  line-height: var(--lh-hero);
   font-weight: 800;
-  letter-spacing: -0.02em;
-  text-shadow: 0 0 32px var(--accent-a32);
+  font-style: italic;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 18px) 100%, 0 100%);
 }
 
 .tag {
-  color: var(--accent);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  font-weight: 600;
-  letter-spacing: 0.4em;
+  margin-left: var(--s-4);
+  padding: var(--s-1) var(--s-6) var(--s-1) var(--s-5);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
 }
 
 .phase {
@@ -41,22 +52,26 @@
   gap: var(--s-3);
   inline-size: 100%;
   margin-top: var(--s-8);
+  padding: var(--s-4) var(--s-5);
+  background: var(--glass);
 }
 
 .label {
-  color: var(--text-1);
-  font-size: var(--t-body);
-  line-height: var(--lh-body);
-  text-align: center;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
 
 .activity {
   position: relative;
-  block-size: 6px;
-  border-radius: var(--r-pill);
-  background: var(--bg-0);
-  box-shadow: inset 0 0 0 1px var(--line-1);
+  block-size: 8px;
+  background: var(--bg-3);
+  transform: skewX(-12deg);
   overflow: hidden;
 }
 
@@ -64,8 +79,7 @@
   position: absolute;
   inset-block: 0;
   inline-size: 30%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  background: var(--text-hi);
   animation: sweep 1400ms var(--ease-in-out) infinite;
 }
 

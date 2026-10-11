@@ -1576,3 +1576,242 @@ light layout", give the design and the numbers.
   clock (dev preview, tests) it runs on the wall clock as before.
 - Verified in the harness with the world stepping slower than real time (16.5 s of wall time to 2 150 ms of
   timeline): no seek, the overlay sat at exactly 2 150 ms with Kamehameha's blast up; Sparking Grace's bloom at 1 900.
+
+## Broadcast UI — tokens, fonts and base components (2026-10-11)
+
+The user rejected the grove-green look and picked direction C, "Broadcast", from three mockups (design canvas
+https://claude.ai/artifact/XXwEoFqjhEn53nXacE7v1L). SPEC §20.2.2 is amended (CHANGELOG 2026-10-11).
+
+- **Tokens** (`tokens.json`): near-black carbon neutrals, paper `--text-hi #f5f3ee`, one accent `--accent #ff5b1f`
+  that only ever means selected / primary / focus; HP high is paper, mid amber, low red. Radii 2 px (hard edges),
+  `--r-pill` only for real circles. Shadows lost their inset light. New `--t-hero` (64/64) for the one big number or
+  name of a screen. `design-system.test.ts` contrast floors follow the new table (accent 5.7:1 on `--bg-1`,
+  on-accent 6.3:1 — both still AA).
+- **Fonts**: Barlow Condensed 700/800/800 italic (display) and Barlow 400/500/700 (text), OFL 1.1
+  (`public/fonts/Barlow-OFL.txt`), downloaded from Google Fonts with the user's approval in chat; 12 static woff2
+  files, latin + latin-ext split by `unicode-range`, 223 KB. Only the latin files are preloaded
+  (`vite.config.ts`). No `local()` for Barlow: an installed copy can miss a weight. The 600 weights still in some
+  module CSS resolve to the 700 cut.
+- **Base components**: `Button` draws its face as a skewed `::before` slab (label and focus ring stay upright), display
+  face uppercase, primary 800 italic orange; `Tabs` — the selected tab is an orange slanted slab with black text;
+  `Panel`/`Modal` titles are condensed italic uppercase (panel title `--t-display` with an orange slanted block in
+  front), no accent washes; `HpBar`/`ProgressBar` tracks skew 12°, flat fills; `TypeBadge` flat type-colour
+  rectangles in the display face; `CreatureSprite` sits on a flat slab of its type colour (no radial glow);
+  `CreatureCard` selected = 1 px orange ring, showcase = a type-colour band instead of a glow; `Toast` a black slab
+  with a square level block (success is paper now that green is gone); `EmptyState`, `Table` selection, `Field`
+  segments and focus, `Slider` fill follow. The `/__gallery` route shows every state.
+
+## Broadcast UI — shell and screens (2026-10-11)
+
+The app shell (`src/app/*`) and every screen (`src/screens/*`) in the Broadcast direction
+(`.screenshots/ui-revamp/BROADCAST.md`, mockups `C-World`, `C-Party`, `C-System`). Layouts and behaviour are unchanged
+except where noted. Screenshots: `.screenshots/ui-revamp/shell/`.
+
+- **Top bar** (`TopBar.tsx`): a carbon strip on a hairline. The brand is a black slab with an orange edge block. The
+  zone name is condensed italic with a connection line under it; the connection dot is paper, amber or red, never
+  orange. The nav is condensed uppercase; the active item is an orange slab skewed 12° with its label counter-skewed.
+  Money (amber coin), trainer level (with a thin exp bar) and badges `n/8` are condensed tabular numbers separated by
+  hairlines. The avatar is a paper square. Below 1400 px the zone's connection line and the username are hidden (the
+  zone's `title` and the avatar button stay).
+- **Five primary links + More** (the UX change approved in the mockups): Party, Bag, Dex, Map and Quests sit in the
+  bar. Box, Shop, Social, Guild, Market, Pass and Settings sit behind a "More" disclosure: a button with
+  `aria-expanded` / `aria-controls` and a list of real `NavLink`s, not `role="menu"`.
+  - Opening moves focus to the first link. ↑/↓/Home/End move between the links. Escape closes the menu, returns focus
+    to the button and does not reach the open panel's own Escape (capture listener + `stopPropagation`). A pointer
+    press outside or a route change also closes it.
+  - The More items' unread counts add up onto the More button. While a More panel is open, the button shows as the
+    active slab, and its accessible name gains "(current: …)".
+  - `NAV` keeps all 12 entries; each now has `primary` and an optional `action` (the hotkey). `NAV_PRIMARY` and
+    `NAV_MORE` are derived from it. `ACCOUNT_LINKS` is unchanged.
+  - The account menu gained Escape, outside-press closing and arrow keys. Mouse-leave no longer closes it.
+- **Key chips**: paper squares with black display-face text; on the active slab the chip turns black with orange text.
+  They come from the player's own bindings (`useSettingsStore` keybinds, spelled by `keyLabel` = TutorialCard
+  `keyGlyph`): Party `party` (P), Bag `bag` (B), Dex `journal` (J), Map `map` (M), and in More, Settings `pause`
+  (Esc, from the bare world). These are exactly the shortcuts `PlayShell`'s `useShellHotkeys` handles; Quests has no
+  hotkey, so it has no chip.
+- **World key legend** (`PlayShell` `WorldHint`): the C-World key legend, a black strip of paper key chips with
+  condensed labels and hairlines between the keys. The `Shortcuts` landmark and its labels are unchanged.
+- **Boot and error chrome**: `BootScreen` and `WorldBoot` show the brand lock-up (black slab, orange edge; paper
+  "Remastered" strip) with a flat skewed activity bar. The gradient sweep and the text-shadow glow are gone.
+  `ConnectionOverlay` lost its scrim blur; it is now a carbon card with a red (offline) or amber (reconnecting) top
+  edge and square status icons. `PlayError` is a carbon card with a red edge and a `--t-display` italic title.
+  `UnsupportedViewport` lost its blurred glass and gained an orange edge.
+- **Party** (`PartyScreen`, the C-Party mockup inside the anchored panel):
+  - **Lineup**: the six slots are now a row of cards. Each card has a type-colour slab with the sprite and a large
+    slot number, then a condensed italic name, LV, a skewed HP bar (paper / amber / red at the HpBar thresholds) with
+    the number, and status chips or "Fainted". Favourite, lock, alpha, shiny and held-item marks sit on the slab.
+  - **Selected card**: an orange 2 px ring, an orange bar under it, and an 8 px lift. Each card is a real `<button>`
+    with `aria-pressed`, labelled "name, level n, hp of max HP".
+  - **Reordering**: drag reorder, `POST /party/reorder` and the optimistic revert are unchanged. Alt+↑/↓ still
+    works, and Alt+←/→ now does the same along the row. The drop target shows an orange bar on its leading edge.
+    Empty slots are numbered carbon placeholders.
+  - **Header**: Avg lv, Types and Fainted sit in the panel header next to Heal party.
+  - **Detail band** (`CreatureDetail layout="band"`):
+    - Identity column: `Dex #nnn · Slot n` in orange (it belongs to the selection), a `--t-display` italic name,
+      level, type badges, the species flavour text, and the HP bar.
+    - Stats column: stats at level as `--t-h1` tabular numbers beside skewed paper bars of the base stat, the honor
+      ledger when there is one, and an exp-to-next-level bar from core `expToLevel`.
+    - Moves column: type-tagged rows (a type-colour edge, condensed italic name, type · power · PP; low PP in
+      amber) and the actions.
+    - Below the columns: Teach, Use an item, Setup and Identity are cards headed by paper label strips. Release sits
+      in the Identity card.
+  - **"Set lead"** is new. It reuses the reorder intent (moves the selected creature to slot 1); the creature already
+    in slot 1 reads "Leads every battle" instead.
+  - Every existing control is still there: Teach (TMs / tutor), items (Rare Candy ×5/×10, stones), ability / held
+    item, nickname, favourite / lock, release with its confirm modal.
+- **Box detail** (`CreatureDetail` default `column` layout): the type colour is a 6 px band on top (no tinted wash).
+  Stats use the same big-number rows; moves stay `MoveButton`s.
+- **`screens/layout.module.css`** (shared vocabulary):
+  - `.sectionTitle` / `.kvLabel` are condensed 700 labels with wide tracking. `.h2` / `.h3` are condensed italic
+    uppercase. `.kvValue` and `.mono` are display-face tabular numbers: `.mono` keeps its name, but no screen uses
+    the monospace face any more.
+  - New classes: `.labelStrip` (a paper slab label heading a card) and `.bigNum`.
+  - `.statTrack` / `.statFill` are a skewed flat paper bar. `.detail` is carbon with a type band. `.notice` has a hard
+    left edge.
+- **Other screens** (visual pass only, CSS except the Pill tones below): Auth, Landing, AccountScreens, EmailNudge,
+  Admin, BattlePass, Profile, TrainerCard, Rankings, RankedPanel, History, Bag, Box, Dex, Shop, Social, DmThread,
+  Guild, Market, ListingDetail, Quests, Map, Settings, TeachSection.
+  - Hard edges throughout; `--r-pill` only on real dots.
+  - Removed: the radial accent washes (Landing, Auth, Admin, BattlePass hero, Quests), blurred glass, glows and text
+    shadows, gradient fills, and the leftover green / orange decoration.
+  - Titles, names and numbers are in the display face. The Dex "Witnessed N" is `--t-hero`, the largest number in
+    the UI.
+  - Pill tones moved from `accent` to `neutral` where orange was decoration or status: Profile "Earned", the
+    TrainerCard tier, ListingDetail "Your listing", and a History win.
+- **Deviations from the spec** (`20-client.md`; the lead amends the spec):
+  - §20.9.2 lists the nav as nine flat `NavLink`s. It is now five primary links plus a More disclosure for the rest.
+  - §20.9.2 says the money counter is "mono". Money, trainer level, battle-pass exp (§20.9.10) and ranked rating
+    (§20.9.9b) now use the condensed display face with tabular numbers.
+  - §20.9.3 describes the Party as "Left 60 %: six `CreatureCard variant="row"`" and "Right 40 %: … four
+    `MoveButton`s". It is now a horizontal lineup of party-specific cards over a full-width detail band with
+    type-tagged move rows. Alt+←/→ was added next to Alt+↑/↓, and so was "Set lead".
+  - §20.9.2a / §20.9.9c still mention `--glass` cards. Those are TutorialCard and TowerStreak, both `world/` files and
+    not in this pass.
+- **Not in this pass**: `ui/KeyArt` (an orange moon halo, glowing veins and fireflies behind Landing / Auth / boot),
+  the canvas HUD and the `world/` overlays (Minimap, TutorialCard, DialogueBox, …), `battle/*`.
+- **Tests**: new `test/topbar-nav.test.tsx` (the nav model, key chip spelling, the More disclosure: counts roll-up,
+  focus, Escape, navigation, and Escape not closing the panel). No existing test needed changing: the old ones read
+  `NAV` / `ACCOUNT_LINKS` membership only.
+- **Type icons instead of letter codes** (the user, 2026-10-11: "i dont wanna see GR or WA, i want icons"): 19
+  24-unit stroke icons (`src/ui/typeIcons.ts`; flame, droplet, leaf, bolt, snowflake, fist, flask, hills, feather,
+  spiral, beetle, stone, ghost, slit eye, hex nut, sparkle, moon, planet, ring) replace `TYPE_GLYPHS` in `TypeBadge`,
+  stroked in the badge's `--tc-ink` on `--tc`, so the colourblind palettes still apply and colour is still never the
+  only signal (each icon is distinct; compact badges keep the visually-hidden name). Render's battle plates draw the
+  same table (`packages/render/src/hud/typeIcons.ts`); `design-system.test.ts` asserts the two equal by reading
+  render's file as text (a test may not import another package by path).
+
+## Broadcast UI — battle (2026-10-11)
+
+The DOM battle UI restyled to the Broadcast direction (`.screenshots/ui-revamp/BROADCAST.md`, mockup
+`canvas/project/C-Battle.dc.html`). Behaviour, hotkeys, accessibility and every test are unchanged; shots in
+`.screenshots/ui-revamp/battle/` (taken in the offline harness page, `/harness/index.html?zone=mire_route`).
+
+- **Command deck** (`BattleOverlay` + `BattleMenu`). The overlay keeps its box (bottom 28 vh, now
+  `clamp(200px, 28vh, 280px)`, measured for the camera inset exactly as before) but has no panel of its own: no glass,
+  blur, border or shadow. The deck's slabs sit on the arena. `BattleMenu` is a grid:
+  - the **command rail** on the left: Fight · Party · Bag · Orbs · Run/Forfeit as slanted black slabs in the italic
+    display face, each with a paper key chip 1–5. It **stays up in every menu**. The open menu is the orange slab with
+    an inverted chip (`aria-current`). Clicking another slab goes straight there (Escape still goes back to the root).
+    Outside the root the digits pick moves or targets, so the rail's chips step back to outlined. Keyboard focus turns
+    a slab paper, because the slanted clip would cut an outline. A forfeit or leave waiting for its confirmation is a
+    red slab. Outside `selecting` / `replacement` the rail stays visible but disabled. In the replacement phase only
+    Party is live.
+  - the **"Last turn" ticker** over the stage: a paper label slab, then the last 3 log lines in one strip
+    (condensed uppercase, `--t-body-lg`, separated by "/", older lines truncate first). On the right are the keys
+    that work in this menu as paper chips: `1–5 Command`; `1–4 Move · Esc Back`; `1–n Target · Esc Back`;
+    `Esc Back`. Tones: bad news is `--danger`, good news paper, neutral `--text-2` (newest paper). Orange is no longer
+    used for "good". The log has no damage numbers to colour: `timeline.ts` writes none.
+  - the **turn tag** (`BattleOverlay`'s `p.turn`, hidden when empty): a black slab in the cell over the rail, level
+    with the ticker. The harness's `HarnessOverlay` uses the same classes and keeps working.
+  - the **stage**. At the root, the prompt ("What will X do?", "Waiting for the turn…") is a big italic lower third
+    (`--t-display`). In a sub-menu, Back / "Back to X" (`Button` ghost) and the prompt sit on one small row over the
+    content. Moves are 4 cards in a row (was a 2×2 grid). A disabled move's reason is a black label strip over the
+    dimmed card. Party, bag and orbs are 3-column lists of slanted carbon slabs (italic name, big count). A party
+    reason ("In battle", "Already chosen") is a paper corner tag on the `CreatureCard`. Doubles targets are three
+    slabs: key chip, FOE / ALLY label (the ally's is outlined, so they differ by more than colour), name, HP. Empty
+    lists read as a small slab.
+- **`MoveButton`** gains an optional `size?: 'md' | 'lg'` prop. `'lg'` is the deck card: it fills its cell and the
+  name is `--t-h1`, clamped to one line under 760 px of viewport height. An interactive move is a solid slab of its
+  type colour (`--tc` / `--tc-ink`, so the colourblind palettes swap it) with a slanted right edge. It carries the key
+  chip (black on the type colour), the type's name spelled out, the effectiveness in a black box (the shape-coded
+  chevrons plus ×n; super-effective is paper ink, resisted or immune red), the name, POW and PP. Low or empty PP
+  shows as an amber or red number in a black chip. `'md'` keeps the accuracy line. Hover and focus lift the card
+  8 px and show the 6 px orange bar under it. The bar sits outside the clip, so it is never cut. Press is
+  `translateY(-8px) scale(0.95)`; disabled is 0.45. The static form (party detail, `onClick` absent) is a carbon row
+  with an 8 px type stripe, matching `C-Party`. `TypeBadge` is no longer used inside `MoveButton`.
+- **Banner**: a black strip. The speaker sits on a paper label slab before the quote (Barlow `--t-body-lg`).
+  **Intro card**: a black band reading "VS", then the opponent's type colour as a solid slanted slab carrying the
+  monogram, then the title on a paper label strip over the name (`--t-h1`, league `--t-display`), then the
+  `TypeBadge`. **Result card**: the badge is a type-colour slab with a "Badge earned" strip. Each reward is a tile
+  with a big number over its label: "+800" / "money" (the text content still reads "+800 money"), and items read
+  "×2" / name. **Raid panel**: a black card with the boss on a strip. The phase is a slab, red when Enraged and
+  outlined otherwise, replacing the `Pill` (the `accent` tone for phase 3 was orange used as a status). The HP % is
+  the big number and the board uses display figures. The player's row is a lighter step, no longer orange. **Raid
+  summary**: damage and place are big italic numbers under paper label strips, and the rewards use the same tiles
+  as the result card.
+- **Deviations from the spec** (`20-client.md` §20.5.6, §20.2.4; the lead amends the spec):
+  - §20.5.6 says the panel is "`Panel` without title" with the "root menu" as its own view. Now the panel has no
+    `Panel` / backdrop. The root commands are a persistent rail beside every menu, and a click on a rail slab switches
+    menus directly. The digit hotkeys are unchanged: 1–5 at the root only, 1–4 moves, 1–3 targets.
+  - §20.5.6 says "The last 3 log lines render in the DOM panel's left third with `--t-body-lg`". They are now a
+    one-line "Last turn" ticker across the top of the command area (still the last 3, still `--t-body-lg`).
+  - §20.5.6 says "moves grid of 4 `MoveButton`s". They are 4 cards in one row (`size="lg"`).
+  - §20.2.2 / §20.2.4 interaction scales: hover `scale(1.05)` on `MoveButton` is replaced by a lift
+    (`translateY(-8px)`) plus the orange bar. Four cards in a row with an 8 px gap would overlap at 1.05. Press keeps
+    `scale(0.95)`. The focus ring on the clipped slabs (move cards, rail, list rows) is the orange bar, the paper slab
+    or an inset orange bottom bar instead of a 2 px outline at 2 px offset, which `clip-path` would cut.
+  - §20.2.4 `MoveButtonProps` gains `size?: 'md' | 'lg'`.
+- **Not in this pass**: `SignatureCinematic` / `sigfx` and `timeline.ts` (other sessions). The canvas HUD plates are
+  render's. The doubles target list and the low / no-PP reasons inside the battle deck were not staged live; the
+  states were checked in `/__gallery` and by the tests.
+
+## Broadcast UI — world overlays (2026-10-11)
+
+The DOM overlays over the live world (`src/world/*`) restyled to the Broadcast direction
+(`.screenshots/ui-revamp/BROADCAST.md`, mockups `canvas/project/C-World.dc.html` / `C-System.dc.html`). No overlay
+uses `--glass` or `backdrop-filter` any more, and there are no glows, gradient washes or shadow halos. The overlays
+are black `--bg-0` slabs with `--line-1` hairlines, hard edges, label strips in the condensed display face, and paper
+key chips. Behaviour, keys, ARIA and every test are unchanged. Shots are in `.screenshots/ui-revamp/world/`. The alt
+dev pair was down, so they were taken by mounting the real components with the app's own modules and stores in the
+5173 dev client over a world backdrop. The minimap and the raid lobby were fed a fake world session, as in
+`test/raid.test.tsx`.
+
+- **DialogueBox** is a lower third: an orange speaker strip (italic uppercase `--t-h3`, slanted right edge) on a
+  black slab, the lines in the text face (`--t-body-lg`), and "n more" / "Close" with a paper `Enter` chip. The lines
+  and button now sit in a `.slab` wrapper. The button's accessible name is still "n more — Enter" /
+  "Close — Enter" (`aria-label`).
+- **Minimap**: a black frame (2 px inset, hairline) with the map flush inside, and a label strip under it: the zone
+  or hall name (`--text-2`) on the left, "Map" plus the player's own map key (`keybinds.map[0]` through `keyGlyph`) as
+  a paper chip on the right. The strip is always rendered, with an empty name until the first tick. `minimapDraw.ts`
+  (the canvas's own colours) is untouched.
+- **ChatInput**: a black slab with a paper "Say" label block (slanted). While the field has focus, the slab gets the
+  orange 2 px focus ring.
+- **TutorialCard**: a paper label strip ("Prof. Wynn", "n of 7") heads a black slab. The title is italic uppercase
+  `--t-h3`, the line is in the text face, and the key glyphs are paper chips. "Skip tutorial" sits under a hairline.
+  The markup adds a `.body` wrapper.
+- **FishingPrompt** follows the interact-prompt pattern: a 48 px square mark block, then a black slab with
+  condensed uppercase `--t-h3` text and a slanted edge. The mark shows the float (a red-over-paper disc, still bobbing)
+  while waiting and after a miss. On a bite the block turns orange with a black "!": the one moment to press. The
+  mark is wrapped in a `.mark` span.
+- **EvolutionBanner**: a paper "Evolution" label strip heads a black slab. The line is in the display face at
+  `--t-h2`, uppercase, with the two names in heavy italic. The species is no longer orange: it was decoration. The
+  status text, `role="status"`, the fades and the timings are unchanged. The skip hint is a black slab with a paper
+  `Space` chip instead of a pill (spec §20.5.6 calls it "a caption pill").
+- **TowerModal / TowerStreak**: the pick order is an orange chip, which marks a selection. Streak / best / run are
+  `--t-display` condensed tabular numbers under small labels (`.statLabel`, replacing `m.caption` on the `dt`s),
+  split by a hairline. The set reward is a black slab headed by a paper label (the amount is in `.rewardText`).
+  `TowerStreak` is a black strip: a paper "Battle tower" block, the fight label, then "Streak" with a big number. The
+  spec's `--glass` strip is gone.
+- **RaidLobby**: the countdown is in the display face. Boss HP % is `--t-h1` tabular. The roster is a black slab: a
+  paper "Trainers n / 8" header, hairline rows in condensed uppercase, damage as big tabular numbers, the own row
+  marked with a 4 px paper edge (it was orange), and "Ready" as a paper label. The catch-window phase `Pill` is now
+  `warn`, not `accent`, because orange is not a status colour.
+- **WorldModals** (shared by the challenge, trade, evolve and learn-move prompts and the tower): headings are italic
+  uppercase with a hairline under them. The money input is a black field with big tabular figures and an orange focus
+  ring. The other side's offer is a black slab. "Confirmed" / "You confirmed" is a paper label, no longer orange text.
+
+Spec text to amend (owned by the lead): §20.9.2a says "`--glass` card", and the card is now a black slab with a paper
+label strip. §20.9.9c says "on a `--glass` strip", and the strip is now black with a paper label block; it also calls
+the streak and best "(mono)", and they are now display-face tabular numbers. §20.5.6 says the skip hint is "a caption
+pill", and it is now a black slab with a paper key chip. §20.9.2 (DialogueBox) is still accurate. You could add
+"orange speaker strip, paper key chip".

@@ -1,3 +1,5 @@
+/* Broadcast (2026-10-11): key art behind, condensed italic uppercase headline, slanted slab CTAs, flat carbon pillars. */
+
 .page {
   position: fixed;
   inset: 0;
@@ -18,9 +20,12 @@
   gap: var(--s-3);
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-h3);
-  line-height: var(--lh-h3);
+  font-size: var(--t-h2);
+  line-height: var(--lh-h2);
   font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .mark {
@@ -28,26 +33,29 @@
   place-items: center;
   inline-size: 32px;
   block-size: 32px;
-  border-radius: var(--r-2);
-  background: radial-gradient(circle at 30% 25%, var(--accent-hi), var(--accent) 55%, var(--line-2));
-  color: var(--on-accent);
-  box-shadow: 0 0 20px var(--accent-a32);
+  border-radius: 0;
+  background: var(--text-hi);
+  color: var(--bg-0);
 }
 
 .topLink {
   padding: var(--s-3) var(--s-5);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-pill);
-  background: var(--glass);
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-1);
+  box-shadow: inset 0 0 0 1px var(--line-2);
   color: var(--text-hi);
-  font-size: var(--t-body);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
   line-height: var(--lh-body);
-  font-weight: 600;
-  transition: border-color var(--motion-ui) var(--ease-out);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: background-color var(--motion-ui) var(--ease-out);
 }
 
 .topLink:hover {
-  border-color: var(--accent);
+  background: var(--bg-3);
   color: var(--text-hi);
 }
 
@@ -61,22 +69,24 @@
 }
 
 .eyebrow {
-  color: var(--accent);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body);
   font-weight: 700;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .title {
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-display);
-  line-height: var(--lh-display);
+  font-size: var(--t-hero);
+  line-height: 0.92;
   font-weight: 800;
-  letter-spacing: -0.025em;
-  text-shadow: 0 2px 32px var(--shade-a40);
+  font-style: italic;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
 }
 
 .lede {
@@ -93,45 +103,72 @@
   margin-top: var(--s-4);
 }
 
+/* the CTAs mirror Button: a slanted slab (::before, skewX(-12deg)) behind an upright label */
 .primary,
 .secondary {
+  position: relative;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
   gap: var(--s-3);
   block-size: var(--control-lg);
   padding: 0 var(--s-6);
-  border-radius: var(--r-2);
-  font-size: var(--t-body-lg);
+  border-radius: 0;
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
   line-height: var(--lh-body-lg);
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: transform var(--motion-fast) var(--ease-out);
+}
+
+.primary::before,
+.secondary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  transform: skewX(-12deg);
   transition:
-    transform var(--motion-fast) var(--ease-out),
     background-color var(--motion-ui) var(--ease-out),
-    border-color var(--motion-ui) var(--ease-out);
+    box-shadow var(--motion-ui) var(--ease-out);
 }
 
 .primary {
-  background: var(--accent);
   color: var(--on-accent);
-  box-shadow: 0 12px 32px -12px var(--accent-a32);
+  font-style: italic;
+}
+
+.primary::before {
+  background: var(--accent);
 }
 
 .primary:hover {
   transform: scale(1.05);
-  background: var(--accent-hi);
   color: var(--on-accent);
 }
 
+.primary:hover::before {
+  background: var(--accent-hi);
+}
+
 .secondary {
-  border: 1px solid var(--line-2);
-  background: var(--glass);
   color: var(--text-hi);
+}
+
+.secondary::before {
+  background: var(--bg-3);
+  box-shadow: inset 0 0 0 1px var(--line-1);
 }
 
 .secondary:hover {
   transform: scale(1.05);
-  border-color: var(--accent);
   color: var(--text-hi);
+}
+
+.secondary:hover::before {
+  box-shadow: inset 0 0 0 1px var(--line-2);
 }
 
 .primary:active,
@@ -151,10 +188,11 @@
   flex-direction: column;
   gap: var(--s-3);
   padding: var(--s-5);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--r-3);
-  background: var(--glass);
-  backdrop-filter: blur(8px);
+  border: 0;
+  border-top: 4px solid var(--text-hi);
+  border-radius: 0;
+  background: var(--bg-1);
+  box-shadow: inset 0 0 0 1px var(--line-1);
 }
 
 .pillarIcon {
@@ -162,17 +200,20 @@
   place-items: center;
   inline-size: 36px;
   block-size: 36px;
-  border-radius: var(--r-2);
-  background: var(--accent-a16);
-  color: var(--accent);
+  border-radius: 0;
+  background: var(--bg-3);
+  color: var(--text-hi);
 }
 
 .pillarTitle {
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-body-lg);
-  line-height: var(--lh-body-lg);
-  font-weight: 700;
+  font-size: var(--t-h3);
+  line-height: var(--lh-h3);
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
 
 .pillarText {

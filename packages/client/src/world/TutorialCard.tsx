@@ -9,6 +9,8 @@
  *  - caught / won: the battle result (`caught`, or the player's side won)
  *  - healed:      `noteTutorialEvent('healed')` from the two heal paths (party screen, healer NPC)
  * Under reduced motion the card appears without its slide.
+ * Broadcast look (2026-10-11): a paper label strip (Prof. Wynn · n of 7) heading a black slab; the step title in
+ * condensed italic uppercase, her line in the text face, the keys as paper chips.
  */
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router';
@@ -134,28 +136,30 @@ export function TutorialCard() {
           {index + 1} of {TUTORIAL_STEPS.length}
         </span>
       </p>
-      <div aria-live="polite">
-        <h2 className={s.title}>{step.title}</h2>
-        <p className={s.line}>{step.line}</p>
-      </div>
-      {step.keys.length > 0 && (
-        <ul className={s.keys}>
-          {stepKeys(step, binds).map((k) => (
-            <li key={k.label} className={s.keyRow}>
-              <span className={s.glyphs}>
-                {k.glyphs.map((g, i) => (
-                  <kbd key={`${g}${i}`}>{g}</kbd>
-                ))}
-              </span>
-              <span>{k.label}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className={s.actions}>
-        <Button size="sm" variant="ghost" onClick={() => accountId !== null && finish(accountId)}>
-          Skip tutorial
-        </Button>
+      <div className={s.body}>
+        <div aria-live="polite">
+          <h2 className={s.title}>{step.title}</h2>
+          <p className={s.line}>{step.line}</p>
+        </div>
+        {step.keys.length > 0 && (
+          <ul className={s.keys}>
+            {stepKeys(step, binds).map((k) => (
+              <li key={k.label} className={s.keyRow}>
+                <span className={s.glyphs}>
+                  {k.glyphs.map((g, i) => (
+                    <kbd key={`${g}${i}`}>{g}</kbd>
+                  ))}
+                </span>
+                <span>{k.label}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className={s.actions}>
+          <Button size="sm" variant="ghost" onClick={() => accountId !== null && finish(accountId)}>
+            Skip tutorial
+          </Button>
+        </div>
       </div>
     </aside>
   );

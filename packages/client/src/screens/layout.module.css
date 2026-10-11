@@ -1,4 +1,8 @@
-/* Shared screen layout vocabulary: splits, sections, key/value rows, toolbars. */
+/*
+ * Shared screen layout vocabulary: splits, sections, key/value rows, toolbars.
+ * Broadcast (2026-10-11): hard edges, condensed uppercase labels, big tabular numbers, flat skewed bars, panels as
+ * carbon on black separated by hairlines. Orange (--accent) only for "selected / press this / focus".
+ */
 
 .split {
   display: grid;
@@ -56,13 +60,33 @@
   gap: var(--s-4);
 }
 
+/* a label: condensed, 700, wide tracking, fog */
 .sectionTitle {
   color: var(--text-2);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+/* a label strip heading a card: paper slab, black uppercase, slanted right edge */
+.labelStrip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-2) var(--s-6) var(--s-2) var(--s-4);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
 }
 
 .h3 {
@@ -70,15 +94,21 @@
   font-family: var(--face-display);
   font-size: var(--t-h3);
   line-height: var(--lh-h3);
-  font-weight: 700;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
 
 .h2 {
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-h2);
-  line-height: var(--lh-h2);
-  font-weight: 700;
+  font-size: var(--t-h1);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
 }
 
 .body {
@@ -105,11 +135,24 @@
   line-height: var(--lh-caption);
 }
 
+/* numbers: the condensed display face, tabular (the class name predates Broadcast; no monospace any more) */
 .mono {
   color: var(--text-hi);
-  font-family: var(--face-mono);
-  font-size: var(--t-mono);
-  line-height: var(--lh-mono);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* a big number is a feature: HP, levels, counts */
+.bigNum {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h1);
+  line-height: 1;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
@@ -125,6 +168,7 @@
   color: var(--accent);
 }
 
+/* the detail column: carbon slab with the creature's type colour as a solid band on top */
 .detail {
   position: sticky;
   inset-block-start: 0;
@@ -132,9 +176,10 @@
   flex-direction: column;
   gap: var(--s-5);
   padding: var(--s-6);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-3);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--tc, var(--accent)) 10%, transparent), transparent 40%), var(--bg-2);
+  border-top: 6px solid var(--tc, var(--line-2));
+  border-radius: 0;
+  background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-1);
 }
 
 .detailHead {
@@ -160,34 +205,36 @@
 
 .kvLabel {
   color: var(--text-2);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .kvValue {
   color: var(--text-hi);
-  font-family: var(--face-mono);
-  font-size: var(--t-mono);
-  line-height: var(--lh-mono);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: 1;
+  font-weight: 800;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
+/* stat bars: flat paper fill on graphite, slanted 12° */
 .statTrack {
-  block-size: 6px;
-  border-radius: var(--r-pill);
-  background: var(--bg-0);
+  block-size: 10px;
+  background: var(--bg-3);
   overflow: hidden;
+  transform: skewX(-12deg);
 }
 
 .statFill {
   block-size: 100%;
   inline-size: calc(var(--p) * 100%);
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--line-2), var(--accent));
+  background: var(--text-hi);
 }
 
 .movesGrid {
@@ -221,13 +268,15 @@
   gap: var(--s-3);
 }
 
+/* a notice: carbon with a hard left edge (paper; info keeps its own hue) */
 .notice {
   display: flex;
   align-items: center;
   gap: var(--s-3);
   padding: var(--s-4) var(--s-5);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-2);
+  border: none;
+  border-left: 4px solid var(--text-2);
+  border-radius: 0;
   background: var(--bg-2);
   color: var(--text-1);
   font-size: var(--t-body);
@@ -235,7 +284,7 @@
 }
 
 .noticeInfo {
-  border-color: var(--info-a16);
-  background: var(--info-a16);
-  color: var(--info);
+  border-left-color: var(--info);
+  background: var(--bg-2);
+  color: var(--text-hi);
 }

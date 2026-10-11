@@ -1,6 +1,10 @@
 /*
  * Phase D12 — Prof. Wynn's step card. Left edge, below the canvas HUD's party strip (top-left) and above the chat
  * (bottom-left); the minimap and clock own the right. Only the card takes pointer events.
+ *
+ * Broadcast look (2026-10-11): a paper label strip (her name, the step count in big tabular figures) heading a black
+ * slab; the title in condensed italic uppercase, the line in the text face, the keys as paper chips. Hard edges, no
+ * glass, no shadow halo.
  */
 .card {
   position: absolute;
@@ -9,14 +13,9 @@
   z-index: var(--z-panel);
   display: flex;
   flex-direction: column;
-  gap: var(--s-3);
   inline-size: min(320px, 100vw - 2 * var(--s-5));
-  padding: var(--s-4) var(--s-5);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--r-3);
-  background: var(--glass);
-  backdrop-filter: blur(12px);
-  box-shadow: var(--shadow-2);
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-1);
   color: var(--text-hi);
   pointer-events: auto;
   animation: enter 180ms var(--ease-out) both;
@@ -35,50 +34,73 @@
 
 .eyebrow {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: var(--s-3);
   margin: 0;
-  color: var(--accent);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
-  font-weight: 600;
+  padding: var(--s-2) var(--s-4);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .count {
-  color: var(--text-2);
-  font-family: var(--face-mono);
-  font-weight: 400;
+  font-weight: 800;
+  letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-4) var(--s-3);
 }
 
 .title {
   margin: 0;
-  font-size: var(--t-body-lg);
-  line-height: var(--lh-body-lg);
-  font-weight: 600;
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: var(--lh-h3);
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
 
 .line {
   margin: var(--s-1) 0 0;
-  color: var(--text-2);
+  color: var(--text-1);
+  font-family: var(--face-text);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
 }
 
 .keys {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s-2) var(--s-5);
+  gap: var(--s-3) var(--s-5);
   margin: 0;
   padding: 0;
   list-style: none;
   color: var(--text-2);
-  font-size: var(--t-caption);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
   line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .keyRow {
   display: inline-flex;
   align-items: center;
-  gap: var(--s-2);
+  gap: var(--s-3);
 }
 
 .glyphs {
@@ -86,24 +108,27 @@
   gap: var(--s-1);
 }
 
+/* paper key chips */
 .glyphs kbd {
   display: inline-grid;
   place-items: center;
   min-inline-size: 22px;
   block-size: 22px;
   padding: 0 var(--s-2);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-1);
-  background: var(--bg-1);
-  color: var(--text-hi);
-  font-family: var(--face-mono);
-  font-size: var(--t-caption);
-  line-height: var(--lh-caption);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .actions {
   display: flex;
   justify-content: flex-end;
+  padding-block-start: var(--s-2);
+  border-block-start: 1px solid var(--line-1);
 }
 
 /* reduced motion: the card is simply there */

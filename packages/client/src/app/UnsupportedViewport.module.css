@@ -14,23 +14,25 @@
   padding: var(--s-6);
 }
 
+/* Broadcast: carbon card with an orange edge block, condensed italic title; no blurred glass */
 .card {
   position: relative;
   max-inline-size: 440px;
   padding: var(--s-7);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-3);
-  background: var(--glass);
-  backdrop-filter: blur(12px);
-  text-align: center;
+  border-left: 10px solid var(--accent);
+  background: var(--bg-1);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+  text-align: left;
 }
 
 .title {
   color: var(--text-hi);
   font-family: var(--face-display);
-  font-size: var(--t-h2);
-  line-height: var(--lh-h2);
-  font-weight: 700;
+  font-size: var(--t-h1);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
 }
 
 .text {

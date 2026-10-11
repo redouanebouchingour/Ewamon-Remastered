@@ -13,6 +13,9 @@
  * and the standing ally (never the user), hotkeys 1–3, Escape back to the moves; with one candidate it is taken
  * directly. Spread / self / field moves skip it. Party switches the choosing position's creature (one already on the
  * field, or chosen by the other position this turn, is disabled); the replacement phase asks once per required position.
+ * Broadcast UI (2026-10-11): a command deck — the root commands are a vertical rail that stays up in every menu (the
+ * open one is the orange slab; a click on another slab goes straight there), the log lines are a "Last turn" ticker
+ * with the live key hints, and the stage beside the rail holds the prompt, the 4 move cards or the lists.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -94,16 +97,38 @@ export function targetOptions(st: BattleState, seat: 0 | 1, pos: 0 | 1): TargetO
   return out;
 }
 
-function LogLines({ log }: { readonly log: BattleUi['log'] }) {
+/** a key hint of the ticker: the key (a paper chip) and what it does */
+type Hint = readonly [key: string, verb: string];
+
+/**
+ * Broadcast UI: the "Last turn" ticker over the command area — the last 3 log lines in one strip (older ones truncate
+ * first), then the keys that work in this menu on the right.
+ */
+function Ticker({ log, hints }: { readonly log: BattleUi['log']; readonly hints: readonly Hint[] }) {
   const last = log.slice(-3);
   return (
-    <ol className={s.log} aria-live="polite" aria-label="Battle log">
-      {last.map((l) => (
-        <li key={l.id} className={cx(s.line, s[l.tone])}>
-          {l.text}
-        </li>
-      ))}
-    </ol>
+    <div className={s.ticker} data-testid="battle-ticker">
+      <span className={s.tickerLabel} aria-hidden>
+        Last turn
+      </span>
+      <ol className={s.log} aria-live="polite" aria-label="Battle log">
+        {last.map((l) => (
+          <li key={l.id} className={cx(s.line, s[l.tone])}>
+            {l.text}
+          </li>
+        ))}
+      </ol>
+      {hints.length > 0 && (
+        <span className={s.hints} aria-hidden>
+          {hints.map(([k, verb]) => (
+            <span key={k} className={s.hint}>
+              <kbd className={s.hintKey}>{k}</kbd>
+              {verb}
+            </span>
+          ))}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -126,7 +151,7 @@ function Moves({ st, seat, pos, onPick }: { readonly st: BattleState; readonly s
         const eff: Effectiveness | null = foeSeen && def.power > 0 ? (typeMultiplier(content().typeChart, def.type, foeTypes) as Effectiveness) : null;
         return (
           <div key={m.id} className={s.moveCell}>
-            <MoveButton move={def} pp={m.pp} ppMax={m.ppMax} effectiveness={eff} disabled={why !== null} onClick={() => onPick(m.id)} hotkey={String(i + 1) as '1' | '2' | '3' | '4'} />
+            <MoveButton move={def} pp={m.pp} ppMax={m.ppMax} effectiveness={eff} disabled={why !== null} onClick={() => onPick(m.id)} hotkey={String(i + 1) as '1' | '2' | '3' | '4'} size="lg" />
             {why !== null && <span className={s.why}>{why}</span>}
           </div>
         );
@@ -145,12 +170,13 @@ function Targets({ move, options }: { readonly move: string; readonly options: r
         const a: Action = { kind: 'move', move, target: o.ref };
         const why = reason(a);
         return (
-          <button key={`${o.ref.side}:${o.ref.pos}`} type="button" role="listitem" className={cx(s.targetRow, o.ally && s.targetAlly)} disabled={why !== null} onClick={() => submit(a)}>
+          <button key={`${o.ref.side}:${o.ref.pos}`} type="button" role="listitem" className={cx(s.targetRow, o.ally && s.targetAlly)} disabled={why !== null} onClick={() => submit(a)} aria-keyshortcuts={String(i + 1)}>
             <kbd className={s.key}>{i + 1}</kbd>
-            <span className={s.itemName}>{displayName(o.battler.creature)}</span>
             <span className={s.targetSide}>{o.ally ? 'Ally' : 'Foe'}</span>
+            <span className={s.itemName}>{displayName(o.battler.creature)}</span>
             <span className={s.itemCount}>
-              {o.battler.creature.hp}/{o.battler.maxHp}
+              {o.battler.creature.hp}
+              <span className={s.itemMax}>/{o.battler.maxHp}</span>
             </span>
             {why !== null && <span className={s.why}>{why}</span>}
           </button>
@@ -344,46 +370,75 @@ export function BattleMenu() {
   const runLabel =
     raid !== null ? (catchWindow ? 'Done' : confirmForfeit ? 'Confirm leave' : 'Leave raid') : canFlee ? 'Run' : confirmForfeit ? 'Confirm forfeit' : 'Forfeit';
   const runWhy = reason(runAction);
+  /** the command a rail slab runs (the same as its root hotkey) */
+  const command = (k: Menu | 'run'): void => {
+    if (k === 'run') {
+      if (runNow || confirmForfeit) submit(runAction);
+      else setConfirmForfeit(true);
+    } else if (k !== menu) setMenu(k);
+  };
+  const railDisabled = (k: Menu | 'run'): boolean => {
+    if (!selectable) return true;
+    if (forced) return k !== 'party';
+    return k === 'run' ? runWhy !== null : k === 'orbs' ? !st.sides[seat].canCatch : catchWindow;
+  };
+  const hints: Hint[] = !selectable
+    ? []
+    : menu === 'root'
+      ? [['1–5', 'Command']]
+      : menu === 'moves'
+        ? targeting !== null
+          ? [[`1–${Math.max(1, options.length)}`, 'Target'], ['Esc', 'Back']]
+          : [['1–4', 'Move'], ['Esc', 'Back']]
+        : forced
+          ? []
+          : [['Esc', 'Back']];
+  const showBack = selectable && menu !== 'root' && !forced;
+  const showBackTo = selectable && backTo !== undefined;
 
   return (
-    <div className={s.menu} data-testid="battlemenu" data-phase={phase}>
-      <LogLines log={b.log} />
-      <div className={s.actions}>
-        {status !== null && <p className={s.prompt}>{status}</p>}
-        {selectable && backTo !== undefined && (
-          <Button size="sm" variant="ghost" icon="chevronLeft" onClick={() => battleActions()?.undoPick?.()}>
-            {`Back to ${displayName(backTo.creature)}`}
-          </Button>
-        )}
-        {selectable && menu === 'root' && (
-          <div className={s.root}>
-            {ROOT.map((r, i) => (
-              <Button
-                key={r.key}
-                size="lg"
-                variant={r.key === (catchWindow ? 'orbs' : 'moves') ? 'primary' : r.key === 'run' ? (runNow ? 'ghost' : 'danger') : 'secondary'}
-                onClick={() => {
-                  if (r.key === 'run') {
-                    if (runNow || confirmForfeit) submit(runAction);
-                    else setConfirmForfeit(true);
-                  } else setMenu(r.key);
-                }}
-                title={r.key === 'run' && runWhy !== null ? runWhy : undefined}
-                disabled={r.key === 'run' ? runWhy !== null : r.key === 'orbs' ? !st.sides[seat].canCatch : catchWindow}
-              >
-                <kbd className={s.key}>{i + 1}</kbd>
-                {r.key === 'run' ? runLabel : r.label}
+    <div className={s.menu} data-testid="battlemenu" data-phase={phase} data-menu={menu}>
+      <Ticker log={b.log} hints={hints} />
+      {/* Broadcast UI: the command rail stays up in every menu; the active one is the orange slab */}
+      <nav className={s.rail} aria-label="Battle commands">
+        {ROOT.map((r, i) => {
+          const on = selectable && r.key === menu;
+          const label = r.key === 'run' ? runLabel : r.label;
+          return (
+            <button
+              key={r.key}
+              type="button"
+              className={cx(s.cmd, on && s.on, r.key === 'run' && confirmForfeit && !runNow && s.confirm)}
+              aria-current={on ? 'true' : undefined}
+              aria-keyshortcuts={menu === 'root' ? String(i + 1) : undefined}
+              disabled={railDisabled(r.key)}
+              title={r.key === 'run' && runWhy !== null ? runWhy : undefined}
+              onClick={() => command(r.key)}
+            >
+              <kbd className={cx(s.key, menu !== 'root' && s.keyIdle)}>{i + 1}</kbd>
+              <span className={s.cmdLabel}>{label}</span>
+            </button>
+          );
+        })}
+      </nav>
+      <div className={cx(s.stage, menu === 'root' && s.stageRoot)}>
+        {(status !== null || showBack || showBackTo) && (
+          <div className={s.head}>
+            {showBackTo && (
+              <Button size="sm" variant="ghost" icon="chevronLeft" onClick={() => battleActions()?.undoPick?.()}>
+                {`Back to ${displayName(backTo.creature)}`}
               </Button>
-            ))}
-          </div>
-        )}
-        {selectable && menu !== 'root' && (
-          <div className={s.sub}>
-            {!forced && (
+            )}
+            {showBack && (
               <Button size="sm" variant="ghost" icon="chevronLeft" onClick={() => (targeting !== null ? setTargeting(null) : setMenu('root'))}>
                 Back
               </Button>
             )}
+            {status !== null && <p className={s.prompt}>{status}</p>}
+          </div>
+        )}
+        {selectable && menu !== 'root' && (
+          <div className={s.sub}>
             {menu === 'moves' && targeting === null && <Moves st={st} seat={seat} pos={pickPos} onPick={pickMove} />}
             {menu === 'moves' && targeting !== null && <Targets move={targeting} options={options} />}
             {menu === 'party' && <PartyList st={st} seat={seat} forced={forced} />}
