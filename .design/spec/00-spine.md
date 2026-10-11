@@ -554,6 +554,8 @@ export interface Battler {
 export function projectBattler(c: CreatureInstance, content: ContentIndex): Battler;
 /** Phase D14 (battle tower): level min(level, cap) (exp clamped to that level when lowered), full hp, no status, full pp; pure, the input untouched. */
 export function capLevel(c: CreatureInstance, cap: number, content: ContentIndex): CreatureInstance;
+/** Arena PvP <!-- amended 2026-10-11: arena PvP -->: exactly `level` (raised or lowered; exp = expToLevel(level) when it changes), or the own level when null; full hp, no status, full pp; pure, the input untouched. */
+export function atLevel(c: CreatureInstance, level: number | null, content: ContentIndex): CreatureInstance;
 
 export type BattleFormat = 'wild' | 'trainer' | 'league' | 'pvp' | 'raid';
 export type SideKind = 'player' | 'wild' | 'npc';
@@ -1459,6 +1461,13 @@ export class ZoneState extends Schema {
   @type({ map: BattleSummary }) battles = new MapSchema<BattleSummary>();     // small; broadcast to all
   @type(RaidState) raid: RaidState | null = null;                              // broadcast to all
 }
+
+// <!-- amended 2026-10-11: arena PvP --> the state of an `arena` room (30-server-netcode.md §30.4.10): one battle outside the world;
+// everything the client draws comes from `arenaState` and the battle messages
+export class ArenaState extends Schema {
+  @type('string') matchId = '';
+  @type('string') phase = 'waiting';              // 'waiting' | 'fighting' | 'ended' | 'cancelled'
+}
 ```
 
 ### 4.2 Per-client AOI via `StateView`
@@ -1554,7 +1563,16 @@ export type ServerMessage =
       readonly reason: 'left' | 'busy' | 'party' | 'cancelled' | 'started' | null }                                // Phase D13 (30-server-netcode.md §30.4.5a); sent last in SERVER_MESSAGE_TYPES
   | { readonly type: 'towerState'; readonly phase: 'fighting' | 'won' | 'lost' | 'ended'; readonly streak: number; readonly runWins: number; readonly best: number;
       readonly set: number; readonly fight: number; readonly picks: readonly string[];
-      readonly reward: { readonly money: number; readonly items: Readonly<Record<string, number>> } | null }      // Phase D14 (30-server-netcode.md §30.4.9); after rankedStatus in SERVER_MESSAGE_TYPES (18 variants)
+      readonly reward: { readonly money: number; readonly items: Readonly<Record<string, number>> } | null }      // Phase D14 (30-server-netcode.md §30.4.9); after rankedStatus in SERVER_MESSAGE_TYPES
+  // arena PvP (30-server-netcode.md §30.4.10; protocol `arena.ts`) <!-- amended 2026-10-11: arena PvP --> — after towerState (22 variants)
+  | { readonly type: 'arenaStatus'; readonly state: 'idle' | 'queued' | 'matched'; readonly kind: ArenaKind | null; readonly waitedMs: number; readonly window: number;
+      readonly opponent: { readonly name: string; readonly rating: number } | null; readonly seat: SeatReservation | null;   // seat only while `matched`: the arena room
+      readonly reason: 'left' | 'busy' | 'party' | 'cup' | 'cancelled' | 'started' | 'timeout' | null; readonly detail: string | null }
+  | { readonly type: 'arenaInvite'; readonly inviteId: string; readonly fromId: string; readonly fromName: string; readonly rules: 'standard' | 'level50'; readonly expiresAt: number }
+  | { readonly type: 'arenaInviteResult'; readonly inviteId: string; readonly toName: string; readonly result: 'declined' | 'expired' | 'unavailable' }
+  | { readonly type: 'arenaState'; readonly matchId: string; readonly kind: ArenaKind; readonly level: number | null; readonly phase: 'waiting' | 'fighting' | 'ended' | 'cancelled';
+      readonly players: readonly { readonly playerId: string; readonly name: string; readonly rating: number }[]; readonly foeName: string | null;
+      readonly cup: { readonly id: string; readonly name: string; readonly description: string; readonly endsAt: string } | null; readonly reason: string | null }
   | { readonly type: 'error'; readonly code: 'rateLimited' | 'invalidPayload' | 'notAllowed' | 'notFound' | 'busy' | 'internal'; readonly detail: string | null };
 
 export interface TradeOffer { readonly playerId: string; readonly creatureIds: readonly string[]; readonly money: number; readonly confirmed: boolean }
@@ -1631,11 +1649,17 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /battle-pass` | — | `{ trainerExp, trainerLevel, claimed: number[], mythicalChoice: string | null, rewards: BattlePassReward[] }` | bearer |
 | `POST /battle-pass/claim` | `{ level }` | `{ claimed, inventory, money, creaturesAdded }` | bearer |
 | `POST /battle-pass/mythical-choice` | `{ species: 'lumyth' | 'noxmyth' }` | `{ creaturesAdded }` | bearer |
-| `GET /history/battles?page=` · `GET /history/trades?page=` | — | rows | bearer |
+| `GET /history/battles?page=` · `GET /history/trades?page=` | — | rows (a battle row's optional `arena`: the `ArenaKind` from its start snapshot) | bearer |
+| `GET /arena` <!-- amended 2026-10-11: arena PvP --> | — | `{ rating, peakRating, rankedMatches, level: 50, cup: { id, name, description, endsAt }, status: ArenaStatus, live: { roomId } \| null }` | bearer |
+| `POST /arena/queue` · `POST /arena/queue/leave` | `{ mode: 'standard' \| 'level50' \| 'ranked' \| 'cup' }` · `{}` | `ArenaStatus` (a refusal is `idle` + `reason` / `detail`) | bearer |
+| `POST /arena/training` | `{ rules: 'standard' \| 'level50', difficulty: 'easy' \| 'normal' \| 'hard' }` | `{ seat }` (409 `busy` / `party`) | bearer |
+| `POST /arena/invite` · `POST /arena/invite/reply` | `{ username, rules }` · `{ inviteId, accept }` | `{ inviteId, expiresAt }` (409 `notFriends` / `self` / `friendOffline` / `friendBusy` / `busy` / `party`) · `{ seat \| null }` (404 `NotFound` / `expired`) | bearer |
+| `POST /arena/rejoin` | `{}` | `{ seat }` in the arena room holding the player (404 when none) | bearer |
 | `GET /admin/stats` · `GET /admin/players?q=&page=` · `GET /admin/metrics` · `POST /admin/ban` · `POST /admin/unban` | `{ username, reason: 1..200 }` | — / `ProcessMetrics` (30-server-netcode.md §30.10.2) | bearer + `is_admin` |
 | `GET /health` | — | `{ status: 'ok', time }` | none |
 
 <!-- reconciled 2026-09-18: `/zone/enter`, `/profile`, `/quests/claim`, `/admin/metrics` added (30-server-netcode.md §30.2.6, §30.5, §30.9.1, §30.10.2 used them; OQ 3); `GET /me` gains presence/unread/liveOps; guild tag {3,4} (30-server-netcode.md OQ 5 — the persist column is varchar(4) and a 2-char tag collides with the 2-letter type glyphs in the HUD) -->
+<!-- amended 2026-10-11: arena PvP — every `/arena/*` route needs presence (409 `offline`); `POST /zone/enter` answers 409 `inArena` (+ `roomId`) while an `arena` room holds the player in `waiting` / `fighting`, and the client rejoins through `POST /arena/rejoin` (30-server-netcode.md §30.4.10) -->
 <!-- amended 2026-09-25: `/zone/enter` wrongZone + battle-room seat, and the `inventoryDelta` extensions of `/creature/:id/setup`, `/guilds`, `/marketplace/*` (protocol `InventoryDeltaBodySchema`, additive) — packages/server IMPLEMENTATION-NOTES R2, P1, P3. Without `wrongZone` a client could "fast travel" by entering any ungated zone and being placed at its spawn -->
 Every user-supplied string that reaches SQL `LIKE`/`ILIKE` goes through `escapeLike()` in `@ewa/persist`; there is no regex search anywhere. Domain errors from persist (§5.5) map to `409 { code }`; `RateLimited` → 429; zod → 400 `invalidPayload`; JWT → 401; everything else → 500 `internal`.
 

@@ -12,6 +12,7 @@ import { ApiFailure, apiFetch, loginRedirect, requireSession } from '../net/api'
 import type { ApiInit } from '../net/api';
 import { isRouteUnavailable } from '../net/errors';
 import { useNotificationsStore } from '../state/notifications';
+import { useArenaStore } from '../state/arena';
 import { toProgressionDelta, useSessionStore } from '../state/session';
 
 export type Maybe<T> = { readonly available: true; readonly data: T } | { readonly available: false };
@@ -206,6 +207,23 @@ export async function historyLoader({ request }: LoaderFunctionArgs) {
   const page = pageOf(sp);
   if (tab === 'trades') return { tab, page, trades: (await load(request, 'historyTrades', { query: { page } })).rows } as const;
   return { tab, page, battles: (await load(request, 'historyBattles', { query: { page } })).rows } as const;
+}
+
+/**
+ * Arena PvP `/play/pvp`: GET /arena into the arena store (rating, the week's cup, the queue) and the friend list for
+ * Challenge a friend. A server without the arena routes renders the screen's "not live yet" state.
+ */
+export async function pvpLoader({ request }: LoaderFunctionArgs) {
+  const [arena, friends] = await Promise.all([
+    loadOptional(request, 'arena'),
+    loadOptional(request, 'friends').catch(() => ({ available: false }) as const),
+    sessionReady(request.signal),
+  ]);
+  if (arena.available) {
+    const { status, ...info } = arena.data;
+    useArenaStore.getState().setInfo(info, status);
+  }
+  return { available: arena.available, friends: friends.available ? friends.data.friends : [] };
 }
 
 /** A public profile, or `null` when the server answers 404 (unknown or banned) / 400 (not a username). */

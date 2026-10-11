@@ -8,6 +8,7 @@ import type { Env } from './env';
 import type { Logger } from './log';
 import type { Mailer } from './mail/mailer';
 import type { MetricsRegistry } from './metrics';
+import type { ArenaLobby } from './rooms/arenaLobby';
 import type { MatchQueue } from './rooms/matchQueue';
 import type { PresenceMirror } from './rooms/presenceMirror';
 import type { PresenceStore } from './rooms/presenceStore';
@@ -61,6 +62,8 @@ export interface Runtime {
   readonly mailer: Mailer;
   /** Phase D13: the presence-keyed ranked queue (its matcher ticks every RANKED_TICK_MS on the lease holder) */
   readonly matchQueue: MatchQueue;
+  /** Arena PvP: the out-of-world queue (ticked every ARENA_TICK_MS on the lease holder), invites, training, rejoin */
+  readonly arena: ArenaLobby;
 }
 
 export type RoomDeps = ServerDeps & Runtime;

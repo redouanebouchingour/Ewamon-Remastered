@@ -15,6 +15,7 @@ import { JWT_AUD, JWT_ISS } from './auth';
 import { installErrorHandler } from './http';
 import type { RestDeps } from './http';
 import { registerAdminRoutes } from './routes/admin';
+import { registerArenaRoutes } from './routes/arena';
 import { registerAuthRoutes } from './routes/auth';
 import { registerCatalogRoutes } from './routes/catalog';
 import { registerMarketRoutes } from './routes/market';
@@ -68,5 +69,6 @@ export function registerRoutes(app: FastifyInstance, deps: RestDeps, opts: RestO
   registerCatalogRoutes(app, deps);
   registerMarketRoutes(app, deps);
   registerSocialRoutes(app, deps);
+  registerArenaRoutes(app, deps);
   registerAdminRoutes(app, deps, opts.publishKick ?? (() => undefined));
 }

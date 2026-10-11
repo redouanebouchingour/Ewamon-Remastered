@@ -15,7 +15,7 @@ function nameMap<T extends string>(names: readonly T[]): Readonly<{ [K in T]: K 
 
 /** The 24 client → server message names (§4.3; Phase D13 rankedQueue, Phase D14 tower), as `{ input: 'input', … }`. */
 export const CLIENT_MSG: Readonly<{ [K in ClientMessageType]: K }> = nameMap(CLIENT_MESSAGE_TYPES);
-/** The 18 server → client message names (§4.4; Phase D13 rankedStatus, Phase D14 towerState). */
+/** The 22 server → client message names (§4.4; Phase D13 rankedStatus, Phase D14 towerState, the 4 arena messages). */
 export const SERVER_MSG: Readonly<{ [K in ServerMessageType]: K }> = nameMap(SERVER_MESSAGE_TYPES);
 
 /**

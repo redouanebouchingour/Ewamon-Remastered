@@ -89,6 +89,16 @@ export function RankingsScreen() {
       toolbar={<Tabs<RankingMode> label="Ranking" tabs={MODE_TABS.map((t) => ({ key: t.key, label: t.label }))} value={data.mode} onChange={(k) => go(k, 1)} />}
     >
       <div className={l.stack}>
+        {/* arena PvP: the out-of-world modes (Ranked at Lv 50 among them) live on the PvP screen */}
+        <div className={s.pvp} data-testid="rankings-pvp">
+          <span className={s.pvpText}>
+            <b className={s.pvpTitle}>Arena PvP</b>
+            <span className={l.caption}>Ranked at Lv 50, Level 50, the Weekly Cup, training and friend battles — from anywhere.</span>
+          </span>
+          <Link to="/play/pvp" className={s.pvpLink}>
+            Open PvP
+          </Link>
+        </div>
         {/* Phase D13: the ranked queue sits above the boards */}
         <RankedPanel />
         <p className={l.caption} aria-live="polite">

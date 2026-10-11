@@ -35,6 +35,7 @@ Behaviours of `@colyseus/core` 0.18.14 / `@colyseus/schema` 5.0.32 this file dep
 | `rooms/tradeSession.ts` | `TradeSession` (§30.8.3). |
 | `rooms/challengeStore.ts` | Pure `ChallengeStore` (§30.4.5) — the legacy `createChallengeStore` shape, ported. |
 | `rooms/matchQueue.ts` | Phase D13 `MatchQueue` (presence-keyed ranked queue + leased matcher), `pairUp`, `RankedArena` (§30.4.5a). |
+| `rooms/arenaQueue.ts` · `rooms/arenaLobby.ts` · `rooms/ArenaRoom.ts` | Arena PvP (§30.4.10): the per-mode presence queue, the lobby (match step, invites, training, rejoin, pushes), the `arena` room type. <!-- amended 2026-10-11: arena PvP --> |
 | `rooms/storyBeats.ts` | Beat firing and completion on `interact` (§30.4.8); uses content's `nextStoryBeat`/`beatDoneFlag`/`harvestStateFor`. |
 | `rooms/presenceStore.ts` | Pure `PresenceStore` (§30.7.4). |
 | `rest/app.ts` | `buildRest(deps): FastifyInstance` — plugins, hooks, route registration. |
@@ -472,7 +473,7 @@ A transaction failure rolls everything back and the session keeps `before` as it
 | `wild` | `engageSpawn` accepted | `kind: 'wild'`, one battler projected from the `SpawnRecord` (species default moves at that level via `learnableMoves`, `ability = record.ability` — rolled at spawn, spine §3.2 / roster-coverage A3, reconciled 2026-09-18 — `heldItem null`, `hp = maxHp`), `canFlee` on side 0, `canCatch` on side 0 | money 0; `trainerExp: TRAINER_EXP.wildWin` (+ `catch`/`catchNewSpecies` on catch; the catch ends the battle as `caught`, which is also a win for exp purposes) | — |
 | `trainer` | `interact { kind: 'npc', targetId }` on a `TrainerDef` within 3 m; refused if `story_flags` has `trainer:<id>:beaten` and (`rematchDays === null` or fewer than `rematchDays` days since the flag was set) | `kind: 'npc'`, `trainerId = TrainerDef.id`, team from content (same projection rule) | `money: TrainerDef.reward` (rematch: `floor(reward / 2)`); `trainerExp: trainerWin`; sets flag `trainer:<id>:beaten`; quest `defeatTrainer`/`winBattles` advance | — |
 | `league` | `interact { kind: 'gym', targetId: LeagueTrainer.id }` within 4 m of the gym marker; gyms require the previous badge in order (order 1 needs none); elite require all 8 badges and the previous elite (order); champion requires the 3 elite flags. Refused with `toast` when already beaten — until `champion:zeon:beaten` is held: then an already-beaten trainer (gym: badge held; Warden / Champion: its `setsFlags`) takes a **rematch** (Phase D14) unless `league:<id>:rematchAt` was set less than `LEAGUE_REMATCH_COOLDOWN_DAYS` (1) ago (toast "… wants a rest. Come back tomorrow for a rematch.", `error leagueLocked`) | `kind: 'npc'`, `trainerId = LeagueTrainer.id`, team verbatim from content including `nickname/ability/heldItem` | `money: reward`; `badge: LeagueTrainer.badge` via `awardBadge` (audit `badge.award`); `trainerExp: gymWin/eliteWin/championWin` by stage; `setFlags(setsFlags)`; `championWin` additionally sets `champion:zeon:beaten` — the id is `'zeon'`, and the check anywhere in server code is `=== 'zeon'`. **Rematch** (Phase D14): team = `LEAGUE_REMATCH[id].team` (verbatim, same projection), `money: LeagueRematch.reward` (×1.5), the same stage `trainerExp`, **no** badge, **no** `setsFlags`; `league:<id>:rematchAt` is cleared and re-set in the same transaction (its set time = this win) | — |
-| `pvp` | challenge handshake (§30.4.5) or a ranked match (§30.4.5a) | `kind: 'player'` | `money 0`, `trainerExp: pvpWin` / `pvpLoss` to loser; `ratingDelta` from `eloDelta(winner.rating, loser.rating)` applied with `applyRating` to both, floor 0 (repo); `rankedMatches + 1`; draw → `eloDrawDelta` | yes |
+| `pvp` | challenge handshake (§30.4.5), a ranked match (§30.4.5a) or an arena match (§30.4.10: Elo only for `ranked`, no creature writes) | `kind: 'player'` | `money 0`, `trainerExp: pvpWin` / `pvpLoss` to loser; `ratingDelta` from `eloDelta(winner.rating, loser.rating)` applied with `applyRating` to both, floor 0 (repo); `rankedMatches + 1`; draw → `eloDrawDelta` | yes |
 | `raid` | §30.4.7 | shared boss `Side` | per participant: `trainerExp: raidClear`, `money: 50 * bossLevel`, catch window | — |
 
 Side 0 is always the human player (pvp: the challenger). Losing a `trainer`/`league`/`wild` battle: every party creature keeps its post-battle `hp` (possibly 0); no money is lost (the legacy "blackout fee" is not carried); the client's `20-client.md` sends the player to the last healer on its own initiative via `POST /heal`, which requires being in a `healer: true` zone — so a wiped party in a route means walking back, which is the intended cost.
@@ -551,6 +552,49 @@ league hall foyer's interior NPC — elsewhere every `tower` message is refused 
    party between fights ends it with a toast.
 
 `GET /leaderboard?mode=towerStreak` ranks `player_streaks.best` (§30.6.3).
+
+### 30.4.10 Arena PvP — battles outside the world <!-- amended 2026-10-11: arena PvP -->
+
+The player opens the PvP screen anywhere (20-client.md §20.9.9d) and fights in a dedicated `arena` room, not a zone; the
+in-world PvP (§30.4.5, §30.4.5a) is unchanged. Protocol: `packages/protocol/src/arena.ts`; server: `rooms/arenaQueue.ts`,
+`rooms/arenaLobby.ts`, `rooms/ArenaRoom.ts`, `rest/routes/arena.ts`.
+
+**Kinds.** `standard` (own levels), `level50`, `ranked` (Lv 50, Elo), `cup` (Lv 50, a full party of 6 that passes this week's
+rule: content `weeklyCup(at)` / `cupRefusal`, rotating Monday 00:00 UTC through Mirror Clause, Starter Bond, Origin Grounds,
+Mono Pulse), `friend` (an invite; rules `standard` | `level50`), `training` (an AI; rules + difficulty `easy` | `normal` |
+`hard`, team from `ARENA_TRAINING[d].pool` sized to the player's party, at the rules' level or the player's highest level).
+Ranked is open to everyone.
+
+**Teams.** One start transaction locks the players and reads the parties: the first six as healed synthetic copies
+(`atLevel(c, 50 | null)`, ids `arena:<id>`), so `isPersistedId` skips every creature write — no hp or pp lost, no exp, no
+honor (`noExp`). No bag items (inventory snapshot `[null, null]` → `noItem`); the Majin / Tenjin bands still come from the
+inventory. Format `pvp` (training `trainer`), seed `createRng(battleId)`, terrain none (`{ id: 'arena', biome: 'capital' }`),
+no weather, at (0, 0) yaw 0. The start snapshot carries `arena: <kind>`. A non-empty party may enter (copies are healed).
+
+**End.** `ranked`: `eloDelta` / `eloDrawDelta` + `applyRating` once per player. Every other human kind: `pvpWin` / `pvpLoss`
+trainer exp and the `win pvp` quest event, no rating. `training`: nothing (no exp, money, flags, quest events or dex seen).
+
+**Queue.** One presence hash per mode `ewa:arena:queue:<mode>` (a player in one mode at most); lease `ewa:arena:leader`;
+a 1 s pass. Ranked pairs with `pairUp` and the ranked window; the other modes pair the two longest-waiting. Entries
+without presence are dropped; entries older than `ARENA_QUEUE_TIMEOUT_MS` (5 min) get `idle / timeout`. A pair is
+re-checked (busy = presence `battleId` / `tradeId`, or seated in an arena room in `waiting` / `fighting`); a busy side
+gets `idle / busy` and the free side keeps its place and wait. Then the lobby creates the room
+(`createRoom('arena', { ticket, match })`), reserves both seats and pushes `arenaStatus { matched, seat }`.
+
+**Delivery anywhere.** The per-player topic `ewa:arena:<playerId>` carries a `ServerMessage`; the zone room and the
+arena room holding the player forward it. Friend invites: `POST /arena/invite` needs an accepted friendship, the friend
+online and free; the invite lives in presence for `ARENA_INVITE_TTL_MS` (45 s) and reaches the friend as `arenaInvite`;
+`/arena/invite/reply` answers the inviter with `arenaInviteResult` (declined / expired / unavailable) or seats both.
+
+**Arena room.** Static `onAuth` refuses without the server ticket (as `zone`); instance `onAuth` = JWT + ticket + ban +
+one of the match's players. On join: presence `{ roomId: <arena>, zoneId: <where the player stood>, arena: true }` (no
+`ewa:kick`), the topic subscribed, `arenaState` (+ `battleResync` for a returning seat). When every human is present →
+`idle / started`, `arenaState fighting`, `battleStart`. `battleAction` / `battleResync` as in a zone room; a dropped
+socket keeps the seat 20 s; a real leave forfeits (pvp) or abandons (training). `battleEnd` → `arenaState ended`.
+Cancelled (`arenaState cancelled`, reason): `noShow` (a seat not taken within `ARENA_ARRIVAL_MS` 20 s), `left`, `party`,
+`cup` (re-checked against the stored party at the start). The room disposes when empty. The zone room wrote the
+player's position when the client left it; `POST /zone/enter` answers 409 `inArena` while the arena holds the player
+in `waiting` / `fighting` (a reload rejoins through `POST /arena/rejoin`), and takes them back where they stood after.
 
 ### 30.4.7 Raids
 
@@ -973,7 +1017,7 @@ Not preserved, on purpose: client-side badge awards laundered through `gymwin_<i
 - **Friend gifts, guild bank, guild chat, guild wars, weekly cups with party rules, mastery chains, profile cosmetics grid** (legacy `liveOps.js`). Titles/motto/body remain; the rest is not v1.
 - **Legacy exploration hotspots / roaming rares** — retired zone ids; the story bible supplies `LEGENDARY_STATICS` instead.
 - **Blackout money penalty on loss.** The walk back is the cost.
-- **PvP spectating, ranked seasons, matchmaking queue.** PvP is challenge-only in v1. (League rematches landed in Phase D14, §30.4.4 — amended 2026-10-06.)
+- **PvP spectating, ranked seasons.** (League rematches landed in Phase D14, §30.4.4 — amended 2026-10-06; the ranked queue in D13, §30.4.5a; the arena queues, invites and training on 2026-10-11, §30.4.10.)
 - **Prometheus/OpenTelemetry exporters.** JSON metrics at `/admin/metrics` and pino lines.
 - **`@fastify/rate-limit`.** Not installed; the pure `LIMITS` module is cluster-aware through `Presence` when Redis is present.
 - **Team preview hiding in PvP resync.** The full `BattleState` is sent to both seats (decided, spine §4.5).

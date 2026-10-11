@@ -24,9 +24,12 @@ import { buildRest } from './rest/app';
 import type { RestDeps } from './rest/http';
 import { localRateLimiter, presenceRateLimiter } from './rest/rateLimit';
 import { MatchQueue, RANKED_ARENA, RANKED_TICK_MS } from './rooms/matchQueue';
+import { ArenaLobby } from './rooms/arenaLobby';
+import { ARENA_TICK_MS } from './rooms/arenaQueue';
+import { bindArenaRoom, refuseDirectArenaMatchmaking } from './rooms/ArenaRoom';
 import { PresenceMirror } from './rooms/presenceMirror';
 import { PresenceStore } from './rooms/presenceStore';
-import { ZONE_ROOM, pickZoneRoom } from './rooms/matchmaking';
+import { ARENA_ROOM, ZONE_ROOM, pickZoneRoom } from './rooms/matchmaking';
 import { bindZoneRoom, refuseDirectMatchmaking } from './rooms/ZoneRoom';
 
 export const MAX_SOCKETS_PER_IP = 8;
@@ -110,10 +113,13 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
     },
     isOnline: async (playerId) => (await presenceMirror.lookup(playerId)) !== null,
   });
+  // every transaction the server runs is timed (§30.10.2 db.txPerSec / txP99Ms / poolInUse)
+  const repos = { ...deps.repos, db: timedDb(deps.repos.db, metrics) };
+  // Arena PvP: the out-of-world queues (presence hashes per mode; the lease holder matches), invites, training
+  const arena = new ArenaLobby(presence, { repos, clock: deps.clock, log: log.child({ component: 'arena' }), presenceMirror, ticket });
   const runtime: RestDeps = {
     ...deps,
-    // every transaction the server runs is timed (§30.10.2 db.txPerSec / txP99Ms / poolInUse)
-    repos: { ...deps.repos, db: timedDb(deps.repos.db, metrics) },
+    repos,
     presenceStore,
     presenceMirror,
     bus: { publish: (topic, data) => void presence.publish(topic, data) },
@@ -124,6 +130,7 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
     worldSeed,
     mailer: deps.mailer ?? createMailer(env, log),
     matchQueue,
+    arena,
     verifyAccess: (token) => {
       if (verify === null) throw new Error('verifier not ready');
       return verify(token);
@@ -158,6 +165,10 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
   matchMaker.defineRoomType(ZONE_ROOM, zoneRoom).filterBy(['zoneId', 'shard']);
   // R2: Colyseus' /matchmake/* HTTP routes are refused without the join ticket (after defineRoomType, see there)
   refuseDirectMatchmaking(zoneRoom, runtime.ticket);
+  // Arena PvP: one `arena` room per match (created by the lobby with the ticket; seats reserved server-side only)
+  const arenaRoom = bindArenaRoom(runtime);
+  matchMaker.defineRoomType(ARENA_ROOM, arenaRoom);
+  refuseDirectArenaMatchmaking(arenaRoom, runtime.ticket);
   // 4.
   await colyseus.listen(env.PORT_WS);
   const wsPort = (colyseus.transport.server?.address() as AddressInfo | null)?.port ?? env.PORT_WS;
@@ -170,6 +181,7 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
     setInterval(() => local.sweep(), RATE_SWEEP_MS),
     setInterval(() => presenceMirror.sweep(), PRESENCE_SWEEP_MS),
     setInterval(() => void matchQueue.tick().catch((e: unknown) => log.warn({ err: e }, 'ranked matcher pass failed')), RANKED_TICK_MS),
+    setInterval(() => void arena.tick().catch((e: unknown) => log.warn({ err: e }, 'arena matcher pass failed')), ARENA_TICK_MS),
   ];
   for (const t of timers) t.unref();
   const jobs: { stop(): void }[] = [startMarketExpiry(deps), startLiveOpsRollover({ ...deps, bus: runtime.bus })];
@@ -186,6 +198,7 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
       stopped = true;
       // 7. jobs → rest.close() → matchMaker graceful shutdown
       for (const t of timers) clearInterval(t);
+      arena.dispose();
       for (const j of jobs) j.stop();
       await rest.close();
       await colyseus.gracefullyShutdown(false);

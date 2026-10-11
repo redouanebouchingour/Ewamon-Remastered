@@ -127,3 +127,23 @@ export const RewardsSummarySchema = z.object({
 
 /** 8 lowercase hex chars (fnv1a32). */
 export const Digest = z.string().regex(/^[0-9a-f]{8}$/);
+
+/** Mirrors @colyseus/shared-types ISeatReservation (0.18.2) so the client can call sdk.consumeSeatReservation(seat) with no re-encoding. */
+export interface SeatReservation {
+  readonly name: string;
+  readonly sessionId: string;
+  readonly roomId: string;
+  readonly publicAddress?: string;
+  readonly processId?: string;
+  readonly reconnectionToken?: string;
+}
+
+/** looseObject: the reservation is handed to `consumeSeatReservation` unchanged, so unknown keys must survive. */
+export const SeatReservationSchema = z.looseObject({
+  name: z.string().min(1),
+  sessionId: z.string().min(1),
+  roomId: z.string().min(1),
+  publicAddress: z.string().optional(),
+  processId: z.string().optional(),
+  reconnectionToken: z.string().optional(),
+});

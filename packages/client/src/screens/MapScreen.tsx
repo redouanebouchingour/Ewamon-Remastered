@@ -21,6 +21,7 @@ import { Panel } from '../ui/Panel';
 import { Pill } from '../ui/Pill';
 import { cssVars } from '../ui/cssVars';
 import { cx } from '../ui/cx';
+import { useArenaStore } from '../state/arena';
 import l from './layout.module.css';
 import s from './MapScreen.module.css';
 import { useClosePanel } from './shared';
@@ -106,7 +107,10 @@ export function MapScreen() {
   const current = useSessionStore((st) => st.zoneId);
   const flags = useSessionStore((st) => st.progression?.flags ?? NO_FLAGS);
   const earned = useSessionStore((st) => st.progression?.badges ?? NO_BADGES);
-  const inBattle = useUiStore((st) => st.battle !== null);
+  // arena PvP: no fast travel from the arena (the world is left behind until Back to world)
+  const battling = useUiStore((st) => st.battle !== null);
+  const inArena = useArenaStore((st) => st.inArena);
+  const inBattle = battling || inArena;
   const visited = visitedSet(flags, current);
 
   const travel = (zoneId: ZoneId): void => {

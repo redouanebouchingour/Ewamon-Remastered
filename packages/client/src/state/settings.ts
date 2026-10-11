@@ -9,7 +9,7 @@ export type Colorblind = 'none' | 'deuteranopia' | 'protanopia' | 'tritanopia';
 export type InputAction =
   | 'forward' | 'back' | 'left' | 'right' | 'run' | 'interact' | 'jump' | 'bike' | 'chat'
   | 'emote1' | 'emote2' | 'emote3' | 'emote4' | 'emote5' | 'emote6'
-  | 'challenge' | 'rotateLeft' | 'rotateRight' | 'party' | 'bag' | 'journal' | 'map' | 'pause' | 'toggleHud';
+  | 'challenge' | 'rotateLeft' | 'rotateRight' | 'party' | 'bag' | 'journal' | 'map' | 'pvp' | 'pause' | 'toggleHud';
 
 export interface GraphicsSettings {
   readonly reducedEffects: boolean;
@@ -85,6 +85,8 @@ export const DEFAULT_KEYBINDS: Keybinds = {
   bag: ['KeyB'],
   journal: ['KeyJ'],
   map: ['KeyM'],
+  // arena PvP: the PvP screen (K was free; persisted blobs without it merge this default in)
+  pvp: ['KeyK'],
   pause: ['Escape'],
   toggleHud: ['F1'],
 };

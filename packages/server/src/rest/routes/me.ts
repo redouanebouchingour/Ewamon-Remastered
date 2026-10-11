@@ -105,9 +105,13 @@ export function registerMeRoutes(app: FastifyInstance, deps: RestDeps): void {
     const presence = deps.presenceStore.get(id);
     const present = presence?.zoneId ?? null;
     if (body.zoneId !== row.zoneId && body.zoneId !== present) throw new HttpError(409, 'wrongZone', { zoneId: present ?? row.zoneId });
+    // Arena PvP: seated in an arena room still waiting / fighting → 409 inArena (the client rejoins it through
+    // POST /arena/rejoin); once that battle has ended the world takes the player back as usual
+    const liveArena = await deps.arena.liveRoom(id);
+    if (liveArena !== null) throw new HttpError(409, 'inArena', { roomId: liveArena.roomId });
     // P3: during a battle the seat is issued in the battle's own room (a reload rejoins it and gets battleResync
     // on join); any other zone stays 409 inBattle
-    if (presence !== null && presence.battleId !== null) {
+    if (presence !== null && presence.battleId !== null && presence.arena !== true) {
       if (presence.zoneId !== body.zoneId) throw new HttpError(409, 'inBattle');
       const battleRoom = await zoneRoomById(presence.roomId);
       if (battleRoom !== null) {

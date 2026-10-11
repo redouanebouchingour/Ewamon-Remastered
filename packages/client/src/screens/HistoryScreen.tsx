@@ -4,6 +4,7 @@
  * turns, rating change, rewards, when. Trades: partner (linked to the public profile), what went each way, when.
  */
 import { Link, useLoaderData, useNavigation, useSearchParams } from 'react-router';
+import { ARENA_KIND_LABELS } from '@ewa/protocol';
 import type { BattleHistoryRow, TradeHistoryRow } from '@ewa/protocol';
 import type { HistoryTab, historyLoader } from '../app/loaders';
 import { formatMoney } from '../app/TopBar';
@@ -32,6 +33,11 @@ const RESULT: Readonly<Record<Result, { readonly label: string; readonly tone: '
 
 const FORMAT_LABEL: Readonly<Record<BattleHistoryRow['format'], string>> = { wild: 'Wild', trainer: 'Trainer', league: 'League', pvp: 'PvP', raid: 'Raid' };
 
+/** Arena PvP: an arena battle names its kind ("Arena · Ranked"), every other battle its format. */
+export function formatLabel(r: Pick<BattleHistoryRow, 'format' | 'arena'>): string {
+  return r.arena !== undefined && r.arena !== null ? `Arena · ${ARENA_KIND_LABELS[r.arena]}` : FORMAT_LABEL[r.format];
+}
+
 function rewardsLine(r: BattleHistoryRow['rewards']): string {
   const parts: string[] = [];
   if (r.money !== 0) parts.push(`${r.money > 0 ? '+' : ''}${formatMoney(r.money)}`);
@@ -54,7 +60,7 @@ const battleColumns: TableColumn<BattleHistoryRow>[] = [
       <span className={s.cellStack}>
         <span className={s.strong}>{r.opponent}</span>
         <span className={l.caption}>
-          {FORMAT_LABEL[r.format]} · {r.turns} {r.turns === 1 ? 'turn' : 'turns'}
+          {formatLabel(r)} · {r.turns} {r.turns === 1 ? 'turn' : 'turns'}
           {r.rewards.badge !== null && ' · badge earned'}
         </span>
       </span>

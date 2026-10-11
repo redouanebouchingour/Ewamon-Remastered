@@ -49,6 +49,13 @@ const fakeWorld: WorldSession = {
   leave: vi.fn(async () => undefined),
   onRoom: () => () => undefined,
   onReconnected: () => () => undefined,
+  // arena PvP seams (unused here)
+  arenaRoom: null,
+  kind: 'zone',
+  homeZone: null,
+  enterArena: async () => undefined,
+  returnToWorld: async () => undefined,
+  onArena: () => () => undefined,
   subscribeState: () => () => undefined,
 };
 

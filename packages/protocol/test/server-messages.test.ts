@@ -56,11 +56,21 @@ const EXAMPLES: { [K in ServerMessageType]: Extract<ServerMessage, { type: K }> 
   error: { type: 'error', code: 'rateLimited', detail: null },
   rankedStatus: { type: 'rankedStatus', state: 'matched', rating: 1012, waitedMs: 0, window: 0, opponent: { name: 'misty', rating: 1040 }, reason: null },
   towerState: { type: 'towerState', phase: 'won', streak: 7, runWins: 7, best: 9, set: 1, fight: 7, picks: ['a', 'b', 'c'], reward: { money: 2500, items: { rarecandy: 1 } } },
+  arenaStatus: {
+    type: 'arenaStatus', state: 'matched', kind: 'ranked', waitedMs: 12_000, window: 150,
+    opponent: { name: 'rival', rating: 1210 }, seat: { name: 'arena', sessionId: 'abc', roomId: 'room1' }, reason: null, detail: null,
+  },
+  arenaInvite: { type: 'arenaInvite', inviteId: 'inv1', fromId: U3, fromName: 'friend', rules: 'level50', expiresAt: 1_700_000_045_000 },
+  arenaInviteResult: { type: 'arenaInviteResult', inviteId: 'inv1', toName: 'friend', result: 'declined' },
+  arenaState: {
+    type: 'arenaState', matchId: 'm1', kind: 'training', level: 50, phase: 'fighting',
+    players: [{ playerId: U3, name: 'me', rating: 1000 }], foeName: 'Sparring Partner', cup: null, reason: null,
+  },
 };
 
 describe('§4.4 ServerMessage', () => {
-  it('lists the 18 variants of the §4.4 block (Phase D13 rankedStatus, Phase D14 towerState), and SERVER_MSG names them', () => {
-    expect(SERVER_MESSAGE_TYPES).toHaveLength(18);
+  it('lists the 22 variants of the §4.4 block (Phase D13 rankedStatus, Phase D14 towerState, the 4 arena messages), and SERVER_MSG names them', () => {
+    expect(SERVER_MESSAGE_TYPES).toHaveLength(22); // + arenaStatus, arenaInvite, arenaInviteResult, arenaState
     expect(Object.keys(SERVER_MESSAGES).sort()).toEqual([...SERVER_MESSAGE_TYPES].sort());
     expect(Object.keys(EXAMPLES).sort()).toEqual([...SERVER_MESSAGE_TYPES].sort());
     for (const t of SERVER_MESSAGE_TYPES) expect(SERVER_MSG[t]).toBe(t);

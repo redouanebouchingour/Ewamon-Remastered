@@ -472,6 +472,21 @@ export interface TowerDef {
   readonly pools: readonly (readonly string[])[];
 }
 
+/** Arena PvP: one Weekly Cup (data/arena.ts). Every cup fights at Lv 50 with a full party of six. */
+export type WeeklyCupRule =
+  | { readonly kind: 'noRepeatedTypes' }
+  | { readonly kind: 'starterLines'; readonly count: number }
+  /** `count` party members caught in this week's featured zone (`zones`, one per appearance of the cup) */
+  | { readonly kind: 'caughtIn'; readonly count: number; readonly zones: readonly ZoneId[] }
+  | { readonly kind: 'sharedType' };
+
+export interface WeeklyCupDef {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly rule: WeeklyCupRule;
+}
+
 export interface BadgeDef {
   readonly id: BadgeId;
   readonly name: string;

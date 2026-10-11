@@ -370,7 +370,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(65); // 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor
+    expect(ROUTE_KEYS).toHaveLength(72); // 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes
     expect(ROUTES.authRegister.auth).toBe('none');
     expect(ROUTES.health.auth).toBe('none');
     expect(ROUTES.adminBan.auth).toBe('admin');

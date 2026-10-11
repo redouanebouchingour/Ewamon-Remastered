@@ -22,7 +22,11 @@ import {
   ItemCounts,
   RewardsSummarySchema,
   RngStateSchema,
+  SeatReservationSchema,
 } from './common';
+import type { SeatReservation } from './common';
+import { ArenaInviteMsg, ArenaInviteResultMsg, ArenaStateMsg, ArenaStatusMsg } from '../arena';
+import type { ArenaServerMessage } from '../arena';
 
 // ---- companion shapes ------------------------------------------------------------------------------
 
@@ -41,15 +45,6 @@ export interface RewardsSummary {
   readonly badge: BadgeId | null;
 }
 
-/** Mirrors @colyseus/shared-types ISeatReservation (0.18.2) so the client can call sdk.consumeSeatReservation(seat) with no re-encoding. */
-export interface SeatReservation {
-  readonly name: string;
-  readonly sessionId: string;
-  readonly roomId: string;
-  readonly publicAddress?: string;
-  readonly processId?: string;
-  readonly reconnectionToken?: string;
-}
 
 export const SERVER_ERROR_CODES = ['rateLimited', 'invalidPayload', 'notAllowed', 'notFound', 'busy', 'internal'] as const;
 export type ServerErrorCode = (typeof SERVER_ERROR_CODES)[number];
@@ -194,6 +189,8 @@ export type ServerMessage =
       readonly picks: readonly string[];
       readonly reward: { readonly money: number; readonly items: Readonly<Record<string, number>> } | null;
     }
+  /** arena PvP (../arena.ts): the queue state, a friend's invite, the invite's fate, the arena room's phase */
+  | ArenaServerMessage
   | { readonly type: 'error'; readonly code: ServerErrorCode; readonly detail: string | null };
 
 export type ServerMessageType = ServerMessage['type'];
@@ -218,19 +215,13 @@ export const SERVER_MESSAGE_TYPES = [
   'error',
   'rankedStatus',
   'towerState',
+  'arenaStatus',
+  'arenaInvite',
+  'arenaInviteResult',
+  'arenaState',
 ] as const satisfies readonly ServerMessageType[];
 
 // ---- zod (client-side validation) -------------------------------------------------------------------------
-
-/** looseObject: the reservation is handed to `consumeSeatReservation` unchanged, so unknown keys must survive. */
-export const SeatReservationSchema = z.looseObject({
-  name: z.string().min(1),
-  sessionId: z.string().min(1),
-  roomId: z.string().min(1),
-  publicAddress: z.string().optional(),
-  processId: z.string().optional(),
-  reconnectionToken: z.string().optional(),
-});
 
 export const TradeOfferSchema = z.object({
   playerId: z.string().min(1),
@@ -404,6 +395,10 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
   ErrorMsg,
   RankedStatusMsg,
   TowerStateMsg,
+  ArenaStatusMsg,
+  ArenaInviteMsg,
+  ArenaInviteResultMsg,
+  ArenaStateMsg,
 ]);
 
 /** Schemas by message type — the client picks one when it registers `room.onMessage(type, …)`. */
@@ -426,6 +421,10 @@ export const SERVER_MESSAGES = {
   error: ErrorMsg,
   rankedStatus: RankedStatusMsg,
   towerState: TowerStateMsg,
+  arenaStatus: ArenaStatusMsg,
+  arenaInvite: ArenaInviteMsg,
+  arenaInviteResult: ArenaInviteResultMsg,
+  arenaState: ArenaStateMsg,
 } as const satisfies Record<ServerMessageType, z.ZodType>;
 
 export type ServerMessageParse =

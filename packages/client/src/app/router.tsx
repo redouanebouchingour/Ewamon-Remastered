@@ -194,6 +194,14 @@ export const routes: RouteObject[] = [
               return { Component: RankingsScreen, loader: l.rankingsLoader };
             },
           }),
+          // arena PvP: queues, the Weekly Cup, AI training and friend challenges (battles outside the world)
+          child({
+            path: 'pvp',
+            lazy: async () => {
+              const [{ PvpScreen }, l] = await Promise.all([import('../screens/PvpScreen'), loaders()]);
+              return { Component: PvpScreen, loader: l.pvpLoader };
+            },
+          }),
           child({
             path: 'history',
             lazy: async () => {

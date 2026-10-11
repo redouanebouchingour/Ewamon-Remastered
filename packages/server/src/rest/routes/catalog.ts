@@ -7,6 +7,7 @@ import type { ZoneDef } from '@ewa/content';
 import { trainerLevelFor, tierFor } from '@ewa/core';
 import type { ConsumableDef, ItemDef, OrbDef } from '@ewa/core';
 import {
+  ARENA_KINDS,
   BattleHistoryRes,
   BattlePassClaimReq,
   BattlePassClaimRes,
@@ -25,6 +26,7 @@ import {
   TradeHistoryRes,
   UsernameParams,
 } from '@ewa/protocol';
+import type { ArenaKind } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
 import { newCreature } from '../../game/creatures';
 import { toInstance } from '../../rooms/battleSession';
@@ -32,6 +34,11 @@ import { HttpError, iso, out, presenceZone, rateLimit, refuseInBattle, requireAu
 import type { RestDeps } from '../http';
 
 const HISTORY_PAGE = 25;
+
+/** A history row's arena kind from its start snapshot (null for every other battle). */
+function arenaKindOf(v: unknown): ArenaKind | null {
+  return typeof v === 'string' && (ARENA_KINDS as readonly string[]).includes(v) ? (v as ArenaKind) : null;
+}
 const LEADERBOARD_PAGE = 25;
 /** Held items (ItemDef.price !== null) are sold only here (§30.6.3). */
 export const HELD_ITEM_SHOP_ZONE = 'solenne';
@@ -224,6 +231,8 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
         ratingDelta: r.ratingDelta,
         rewards: r.rewards as never,
         happenedAt: iso(r.happenedAt),
+        // arena PvP: the kind rides the start snapshot (absent → null)
+        arena: arenaKindOf(r.start?.arena),
       })),
     });
   });

@@ -2155,3 +2155,55 @@ sprites (`.design/majin-tenjin.md` §8; SPEC §10.7.5 "Battle-form auras").
   styles. SPEC §10.7.5's VfxId union needs `'form_tenjin'` (the lead amends it).
 - Not tuned live: the colours follow the Tenjin aura's (gold that survived bloom + ACES in the aura pass), but the
   burst was not looked at in the sandbox or a battle.
+
+## Arena backdrop — the PvP stadium (2026-10-11)
+
+PvP battles leave the overworld: the client unloads the zone and fights in a dedicated venue. `stage/arenaBackdrop.ts`
+`createArenaBackdrop(): ArenaBackdrop` (`{ root, update(dtSeconds), dispose() }`) builds a stadium bowl round a ring
+dressed at the world origin; the client adds `root` to the scene and registers it with `setZoneRoot(root)` so it gets
+the normal sun / hemisphere / CSM / fog, then `stage.dress({ x: 0, z: 0 }, ARENA_BACKDROP.terrain, …)`.
+
+- **Shape follows the battle camera.** The camera orbits the ring centre at −28° pitch (FOV 28°), 12–22 m out
+  (+3 m on the `wide` cue, −2.5 m on a push), i.e. always on the cone h = r·tan 28°. The 18 tiers are laid on that
+  slope (0.85 m deep, 0.452 m rise) behind a 1.1 m parapet at r 6.6 m, so the crowd's heads stay ~2 m under every camera
+  position over them; the concourse / back wall (r 24) and the canopy underside (13.4 m) stay outside / above the
+  farthest camera (r 22.1, h 11.7). Everything is rotationally symmetric, so any diorama heading and every cue orbit is
+  clear. Inside r 6.6 the floor is flat and empty (ring, curb, posts, pylons 4.7 m, trainers 4.45 m, the stage's
+  spectators 5.9 m stand on it).
+- **What the battle camera actually sees**: with a 28° FOV at −28° the frame's top edge looks ~16° down, so at the
+  usual 13 m framing the world visible behind the far battler ends ~9 m past the centre. That is why the parapet sits
+  at 6.6 m (not further out): its LED ribbon + orange line run along the frame's top edge, with crowd at the top
+  corners; the full bowl reads on wider shots, the pre-battle view and cut-aways. A client that wants more stadium in
+  frame needs a different camera (e.g. a shallower pitch) — not changed here.
+- **Look** (Broadcast): carbon surfaces (vertex colours), paper-white floor markings (a line round the curb, a tick
+  crown, an outer line), grey aisle nosings, one hot orange (`#ff5b1f`) only on the parapet's light line, the ribbon's
+  chevrons and the screens' centre mark; no green (crowd shirts are greys / paper / blues / deep reds / ochre). The
+  floor is a polished dark slab with fwidth-antialiased seams (TSL, no texture). LED ribbons (parapet + back wall) scroll
+  paper slabs; four back-wall screens show a slanted broadcast card with a sweep; a light ring under the canopy; four
+  floodlight masts with lamp grids.
+- **Crowd**: one `InstancedMesh` (1 854 seated figures, 44 tris each; legs / torso / head by a vertex attribute,
+  shirt colour + phase and skin per instance as `InstancedBufferAttribute`s). Bob and a wave rolling round the bowl
+  (~8.4 s a lap) run in `positionNode` on one time uniform; `update(dtSeconds)` only advances it (wraps hourly). Pass
+  the scaled frame time so hitstop freezes it.
+- **Budget**: 5 meshes / 5 materials / 5 beauty draws; the structure is the only shadow caster (sun cascades). Measured
+  in the sandbox (WebGPU, Intel Gen-12): +5 beauty draws, +11 total; 106 k triangles (82 k of them the crowd); no textures, no punctual lights
+  (the stage's two beacons + emissive strips under bloom light it). Works on the WebGL2 fallback (standard node
+  materials, instanced attributes, no compute).
+- **Exports**: `ARENA_BACKDROP` (dimensions, `terrain: 'forge'`, `timeOfDay: 21.5 / 24`), `ARENA_COLORS`,
+  `ARENA_LIGHTING` (a neutral night-venue `LightingPalette`) and `ARENA_GRADE` (neutral `GradePalette`) for the host's
+  `setLightingPalette` / `setGrade` while no zone is loaded (otherwise the last zone's sky / fog / grade stay),
+  `ARENA_CAMERA_MAX_DISTANCE`, `crowdSeats`, `tierFront`, `tierY`.
+- **Sandbox**: `?demo=arena` (no zone; the backdrop as the zone root, `ARENA_LIGHTING` + `ARENA_GRADE` unless
+  `&palette=0`, 21:30 unless `&t=`); the `?demo=battle` controls (`&mine=`, `&foe=`, `&auto=0`, `&panel=0`) plus
+  `&terrain=` and `&h=0..3`. `window.__ewaArena` is the backdrop.
+- **Tests** (`test/arena-backdrop.test.ts`, node): builds without a GPU (5 meshes, one instanced crowd, node materials,
+  < 200 k tris, one caster, no lights); nothing above the floor inside the parapet and the stage's dressing fits inside
+  it; the camera → battler corridor (24 headings × every cue orbit × push-in … widest framing, singles + doubles, feet
+  and 3 m tops) stays ≥ 0.3 m over the crowd at the top of the wave and under the canopy; the tiers follow the camera
+  cone; `dispose` frees 5 geometries + 5 materials once, detaches the root, is idempotent.
+- Not in the SPEC yet (the lead amends §10.7 if the arena stays).
+- **`zoneRoot()` and a disposed zone** (2026-10-12): the disposed handle stays in the host's `zone` until the next
+  `loadZone`, and `zoneRoot()` returned its (detached) group, so `setZoneRoot(backdrop)` never took effect (stats,
+  probe, `dumpZone`, the opaque budget toggle missed the stadium). `currentZoneRoot(zone, external)` now skips a
+  disposed handle (tested in `arena-backdrop.test.ts`). The white world after leaving the arena was not render's: see
+  the client notes, "Arena PvP" (the zone load predicted its first view at the zone's spawn).

@@ -983,7 +983,7 @@ class RendererHost implements Renderer, HostContext {
   effects(): EffectsFlags { return this.effectsFlags; }
   timeScale(): number { return this.scale; }
   harvestLevel(): HarvestLevel { return this.harvest; }
-  zoneRoot(): Group | null { return this.zone?.group ?? this.externalRoot; }
+  zoneRoot(): Group | null { return currentZoneRoot(this.zone, this.externalRoot); }
 
   setZoneRoot(root: Group | null): void {
     this.externalRoot = root;
@@ -1370,6 +1370,16 @@ class RendererHost implements Renderer, HostContext {
 function isDrawable(o: Object3D): boolean {
   const r = o as Object3D & { isMesh?: boolean; isLine?: boolean; isPoints?: boolean; isSprite?: boolean };
   return r.isMesh === true || r.isLine === true || r.isPoints === true || r.isSprite === true;
+}
+
+/**
+ * The zone root the stats, the probe and the budget toggles act on: the loaded zone's, else the root registered through
+ * `setZoneRoot`. A disposed handle stays in `zone` until the next `loadZone` (the load / compile guards read it), so it
+ * must not shadow a registered root — the arena backdrop stands in while no zone is loaded (it did, 2026-10-12: the
+ * stadium was never counted). Pure; exported for the tests.
+ */
+export function currentZoneRoot(zone: ZoneHandle | null, external: Group | null): Group | null {
+  return zone !== null && !isDisposedHandle(zone) ? zone.group : external;
 }
 
 function isDisposedHandle(h: ZoneHandle): boolean {

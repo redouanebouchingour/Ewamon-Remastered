@@ -17,7 +17,20 @@ import {
   Uuid,
   VariantKeySchema,
 } from './messages/common';
-import { InventoryDeltaMsg, QuestProgressEntrySchema, SeatReservationSchema } from './messages/server';
+import { InventoryDeltaMsg, QuestProgressEntrySchema } from './messages/server';
+import { SeatReservationSchema } from './messages/common';
+import {
+  ArenaInfoRes,
+  ArenaKindSchema,
+  ArenaInviteReplyReq,
+  ArenaInviteReplyRes,
+  ArenaInviteReq,
+  ArenaInviteRes,
+  ArenaQueueReq,
+  ArenaSeatRes,
+  ArenaStatusBody,
+  ArenaTrainingReq,
+} from './arena';
 
 // ---- primitives ----------------------------------------------------------------------------------------
 
@@ -182,6 +195,8 @@ export const BattleHistoryRowSchema = z.object({
   ratingDelta: z.number().int().nullable(),
   rewards: RewardsSummarySchema,
   happenedAt: IsoDate,
+  /** arena PvP: the kind of arena battle (from the start snapshot); absent / null for every other battle */
+  arena: ArenaKindSchema.nullable().optional(),
 });
 export type BattleHistoryRow = z.infer<typeof BattleHistoryRowSchema>;
 const TradedCreature = z.object({ id: Uuid, speciesId: z.string(), level: z.number().int().min(1).max(100) });
@@ -568,6 +583,14 @@ export const ROUTES = {
   battlePassMythical: route({ method: 'POST', path: '/battle-pass/mythical-choice', auth: 'bearer', request: MythicalChoiceReq, response: CreaturesAddedRes }),
   historyBattles: route({ method: 'GET', path: '/history/battles', auth: 'bearer', query: PageQuery, response: BattleHistoryRes }),
   historyTrades: route({ method: 'GET', path: '/history/trades', auth: 'bearer', query: PageQuery, response: TradeHistoryRes }),
+  // arena PvP (arena.ts): out-of-world queues, AI training, friend invites, the reload rejoin
+  arena: route({ method: 'GET', path: '/arena', auth: 'bearer', response: ArenaInfoRes }),
+  arenaQueue: route({ method: 'POST', path: '/arena/queue', auth: 'bearer', request: ArenaQueueReq, response: ArenaStatusBody }),
+  arenaQueueLeave: route({ method: 'POST', path: '/arena/queue/leave', auth: 'bearer', request: Nothing, response: ArenaStatusBody }),
+  arenaTraining: route({ method: 'POST', path: '/arena/training', auth: 'bearer', request: ArenaTrainingReq, response: ArenaSeatRes }),
+  arenaInvite: route({ method: 'POST', path: '/arena/invite', auth: 'bearer', request: ArenaInviteReq, response: ArenaInviteRes, limit: 'friendReq' }),
+  arenaInviteReply: route({ method: 'POST', path: '/arena/invite/reply', auth: 'bearer', request: ArenaInviteReplyReq, response: ArenaInviteReplyRes }),
+  arenaRejoin: route({ method: 'POST', path: '/arena/rejoin', auth: 'bearer', request: Nothing, response: ArenaSeatRes }),
   adminStats: route({ method: 'GET', path: '/admin/stats', auth: 'admin', response: AdminStatsRes }),
   adminPlayers: route({ method: 'GET', path: '/admin/players', auth: 'admin', query: AdminPlayersQuery, response: AdminPlayersRes }),
   adminMetrics: route({ method: 'GET', path: '/admin/metrics', auth: 'admin', response: ProcessMetricsSchema }),

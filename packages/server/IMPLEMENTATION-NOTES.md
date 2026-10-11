@@ -973,3 +973,62 @@ and taught the Phase A interiors.
 - Tests: `test/bands.test.ts` (3: bandsOf; a Tenjin transformation end to end with digest = client preview and the second
   transform refused; no band → `cannotTransform`). `npx vitest run packages/server`: 35 files / 261 tests (the 12 seeded
   league battles, three of them with bands now, still desync 0).
+
+## Arena PvP — battles outside the world (2026-10-11)
+
+Protocol contract: `packages/protocol/src/arena.ts` (+ `ArenaState`). The in-world PvP (walk-up challenge §30.4.5, the
+Mirevale ranked queue §30.4.5a) is unchanged.
+
+- **Files.** `rooms/arenaQueue.ts` (pure `pairArena` + `ArenaQueue`, presence-keyed like `MatchQueue`),
+  `rooms/arenaLobby.ts` (`ArenaLobby`: the queue's match step, invites, training, rejoin, busy rules, pushes;
+  `Runtime.arena`), `rooms/ArenaRoom.ts` (room type `arena`, one per match), `rest/routes/arena.ts` (the 7 routes),
+  `matchmaking.ts` (`ArenaMatch`, `openArenaRoom`, `reserveArenaSeat`). `server.ts` defines `arena` with the same
+  ticket-only static `onAuth` as `zone` (`refuseDirectArenaMatchmaking`) and ticks the lobby every `ARENA_TICK_MS` (1 s).
+- **Queue.** One hash per mode `ewa:arena:queue:<mode>`; a player is in one mode at most (another mode moves them, the
+  same mode keeps the wait); lease `ewa:arena:leader`. Ranked pairs with `pairUp` (ranked window), the others pair the
+  two longest-waiting. Each pass drops entries without presence (silently) and entries older than
+  `ARENA_QUEUE_TIMEOUT_MS` (`arenaStatus idle/timeout`). The match step re-checks both (`availability`): offline →
+  dropped, busy → `idle/busy` to them and the free side goes back into the queue with its wait. A real leave of the
+  world (ZoneRoom `removePlayer`, not a crossing and not into an arena) drops the entry; the arena battle start drops
+  both players from the arena queue and the in-world ranked queue.
+- **Busy** = presence `battleId` or `tradeId` set (in-world battle, raid fight, trade) or seated in an arena room whose
+  listing metadata `phase` is `waiting` / `fighting`. Not detected: a tower run between fights, a crossing in progress
+  (both cheap only inside the zone room; the arena start's own transaction is the last guard).
+- **Delivery anywhere.** Topic `ewa:arena:<playerId>` carries a ServerMessage; `ZoneRoom.subscribePlayer` and the arena
+  room forward it to that player. `PresenceEntry` / `RemotePresence` got an optional `arena: true` (mirrored).
+- **Arena room.** `createRoom('arena', { ticket, match })`; seats via `reserveSeatFor(room, { ticket }, null)`;
+  instance `onAuth` = JWT + ticket + ban + "one of `match.players`". `maxClients` = 2 × players (a rejoin reservation
+  while the old socket waits out its reconnection), `seatReservationTimeout` = 25 s (outlives ARENA_ARRIVAL_MS). onJoin:
+  presence `{ roomId: arena, zoneId: where they stood, arena: true }` (no `ewa:kick`), topic subscribed, `arenaState`
+  (+ `battleResync` for a returning seat; a second socket of the same player replaces the first). All humans present →
+  `startArena`. Phases are mirrored to `state.phase` and the listing metadata. A 250 ms room interval drives
+  `battles.tick` (deadlines) and the no-show check against the injected clock (`createdAt + ARENA_ARRIVAL_MS`). Cancel
+  reasons: `noShow`, `left`, `party`, `cup` (`arenaState cancelled`; a player who never arrived gets
+  `arenaStatus idle/cancelled` in the world). Battle start → `idle/started` push; end → `ended`; then the room locks.
+  onDrop → allowReconnection 20 s (waiting / fighting only); a real leave forfeits (pvp) or abandons (training).
+- **`BattleCoordinator.startArena`.** One transaction (loadPlayers) per start; copies = `arenaCopies` (first six,
+  `atLevel(toInstance(c), level)`, `arena:<id>`); sides `player` (bands from the inventory kept), training side 1 =
+  `npc` with `arenaTrainingTeam(<matchId>:foe, difficulty, party size, level ?? highest party level)`; format `pvp`
+  (training `trainer`), seed `createRng(battleId)`, `noExp` (no exp, no honor), inventory `[null, null]` (bag items →
+  `noItem`), x/z 0, yaw 0, no weather, terrain none (`BattleDeps.zone` widened to `{ id, biome }`; the arena passes
+  `{ id: 'arena', biome: 'capital' }`; `BattleSession.zoneId` is now `string`). Session field
+  `arena: { kind, ranked }`; the start snapshot carries `arena: kind` (persist `BattleStartSnapshot.arena`, optional),
+  and `GET /history/battles` fills the row's `arena` from it.
+- **End transaction.** Arena PvP: Elo + `applyRating` (rankedMatches + 1) only when `ranked`; every arena PvP kind pays
+  `pvpWin` / `pvpLoss` trainer exp and the `win pvp` quest event (+ the `battle` event). Training: nothing — no exp, no
+  money, no flags (the `trainer:<id>:beaten` branch never runs), no quest events, no dex `seen`. History rows for every
+  human (opponent = the other player's id; training = the trainer id). Synthetic ids → `isPersistedId` skips every
+  creature write (tested byte-for-byte); the item snapshot is never refreshed for an arena session.
+- **Deviations / decisions.** (1) "Usable party" for the arena = a non-empty party: copies are healed, so a fainted
+  party still fights (`party` only for an empty one). (2) `POST /zone/enter` answers 409 `inArena` (+ `roomId`) while an
+  arena room holds the player in `waiting` or `fighting` (not only mid-battle), so a reload during the arrival window
+  also goes through `/arena/rejoin`; after `ended` / `cancelled` the world takes them back as usual. (3) Every arena
+  route needs presence (409 `offline`). Queue refusals answer 200 with `idle` + reason; training / invite refusals are
+  409 `busy` / `party` / `cup` (+ `detail`) / `notFriends` / `self` / `friendOffline` / `friendBusy`; a reply to a
+  missing / foreign invite is 404 `NotFound`, to an expired one 404 `expired` (the inviter is told `expired`). (4) The
+  invite expiry push is a real-time timer (TTL) plus the lazy check on reply.
+- Not done: a Redis multi-process run (LocalPresence in tests); the cup rule is checked against the week the match was
+  made (a rotation between match and start keeps that week's cup).
+- Tests: `test/arena.test.ts` (11: 4 pure, 7 live — Level 50 end to end with untouched creatures / no rating / pvp exp /
+  history, Ranked Elo once, training, friend invite decline + accept + leave-forfeit, the cup refusal + queue moves,
+  /zone/enter 409 + /arena/rejoin, no-show cancel).

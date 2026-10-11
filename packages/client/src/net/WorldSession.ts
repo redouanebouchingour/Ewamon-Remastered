@@ -17,10 +17,18 @@
  *
  * Part 2 (World3D / SceneDirector / BattleController) plugs in through `onRoom`, `onMessage` and
  * `onReconnected` — nothing here touches the scene.
+ *
+ * Arena PvP (protocol arena.ts): the session holds either the zone room or ONE `arena` room (`kind`). `enterArena(seat)`
+ * retires the zone room (a consented leave: the server writes the position; no offline / kicked UI), consumes the arena
+ * seat and adopts it with the same message wiring (`onRoom` fires null, `onArena` fires the arena room); a second
+ * `enterArena` from inside an arena (Queue again) hops rooms. `returnToWorld()` leaves the arena and enters the zone
+ * the player left. `POST /zone/enter` answering 409 `inArena` (a reload mid arena battle) rejoins the arena
+ * (`POST /arena/rejoin`). While in the arena only the battle messages are sent (`ARENA_SENDABLE`); `enter()` keeps the
+ * player in the arena (a remount of the shell must not forfeit a battle).
  */
 import { Client } from '@colyseus/sdk';
 import type { Room } from '@colyseus/sdk';
-import { CLIENT_MESSAGES, CLOSE_CODES, SERVER_MESSAGES, SERVER_MESSAGE_TYPES, ZoneState } from '@ewa/protocol';
+import { ArenaState, CLIENT_MESSAGES, CLOSE_CODES, SERVER_MESSAGES, SERVER_MESSAGE_TYPES, ZoneState } from '@ewa/protocol';
 import type { ClientMessageType, ClientPayload, SeatReservation, ServerMessage, ServerMessageOf, ZoneId } from '@ewa/protocol';
 import { toast } from '../state/notifications';
 import { useSessionStore } from '../state/session';
@@ -28,9 +36,21 @@ import { useUiStore } from '../state/ui';
 import { ApiFailure, apiFetch } from './api';
 
 export type ZoneRoom = Room<unknown, ZoneState>;
+export type ArenaRoom = Room<unknown, ArenaState>;
+/** Which room the session is about: the world's zone room, or an arena (the arena's socket may already be closed). */
+export type SessionKind = 'zone' | 'arena';
+/** The client messages an arena room takes (everything else is dropped silently while in the arena). */
+export const ARENA_SENDABLE: ReadonlySet<ClientMessageType> = new Set<ClientMessageType>(['battleAction', 'battleResync']);
 
 export interface WorldSession {
+  /** the ZONE room (null while in an arena) */
   readonly room: ZoneRoom | null;
+  /** the arena room while in an arena and its socket is open */
+  readonly arenaRoom: ArenaRoom | null;
+  /** 'arena' from `enterArena` until `returnToWorld` (or a real leave) */
+  readonly kind: SessionKind;
+  /** the zone the player returns to from the arena (null outside one) */
+  readonly homeZone: ZoneId | null;
   /** player uuid (room.state.players key), not sessionId */
   readonly selfId: string;
   readonly zoneId: ZoneId | null;
@@ -40,6 +60,15 @@ export interface WorldSession {
   /** one dispatcher; fan-out inside the client */
   onMessage(cb: (m: ServerMessage) => void): () => void;
   handover(m: ServerMessageOf<'handover'>): Promise<void>;
+  /** Moves the player into the arena room of `seat` (from the zone, or from another arena). */
+  enterArena(seat: SeatReservation): Promise<void>;
+  /** Leaves the arena (a consented leave; mid-battle it forfeits) and enters the zone the player left. */
+  returnToWorld(): Promise<void>;
+  /**
+   * Fires on arena entry (the room), when the arena room is retired for a hop (null, true), when it closed under the
+   * player (null, true, closed = true: disposed after the battle, or a dead socket) and on the return (null, false).
+   */
+  onArena(cb: (room: ArenaRoom | null, inArena: boolean, closed: boolean) => void): () => void;
   leave(): Promise<void>;
   /** part 2 seam: fires with the new room (or null) on join, handover and leave */
   onRoom(cb: (room: ZoneRoom | null, zoneId: ZoneId | null) => void): () => void;
@@ -53,6 +82,8 @@ export interface WorldSessionDeps {
   readonly wsUrl: string;
   readonly createClient: (url: string) => Client;
   readonly fetchSeat: (zoneId: ZoneId) => Promise<SeatReservation>;
+  /** `POST /arena/rejoin`: the seat of the arena the server still has the player in (a reload mid arena battle) */
+  readonly rejoinArena: () => Promise<SeatReservation>;
   readonly refetchMe: () => Promise<void>;
   readonly accessToken: () => string | null;
   readonly selfId: () => string;
@@ -73,24 +104,40 @@ export function defaultWsUrl(): string {
 
 export function createWorldSession(deps: WorldSessionDeps): WorldSession {
   let client: Client | null = null;
-  let room: ZoneRoom | null = null;
+  /** the open socket of either kind (`kind` says which) */
+  let active: Room | null = null;
+  let kind: SessionKind = 'zone';
   let zoneId: ZoneId | null = null;
+  /** arena: the zone to return to */
+  let home: ZoneId | null = null;
   let entering: { zoneId: ZoneId; promise: Promise<void> } | null = null;
+  /** an arena hop / return / rejoin in flight (the switches run one at a time) */
+  let switching: Promise<void> | null = null;
   let handingOver = false;
   let disposers: (() => void)[] = [];
   let reconnectPoll: ReturnType<typeof setInterval> | null = null;
   const messageListeners = new Set<(m: ServerMessage) => void>();
   const roomListeners = new Set<(room: ZoneRoom | null, zoneId: ZoneId | null) => void>();
+  const arenaListeners = new Set<(room: ArenaRoom | null, inArena: boolean, closed: boolean) => void>();
   const reconnectListeners = new Set<() => void>();
   const stateListeners = new Set<() => void>();
-  /** rooms we are leaving on purpose (consented leave, handover source): their onLeave is expected */
+  /** rooms we are leaving on purpose (consented leave, handover source, arena switch): their onLeave is expected */
   const retiring = new WeakSet<object>();
+
+  const zoneRoom = (): ZoneRoom | null => (kind === 'zone' ? (active as ZoneRoom | null) : null);
+  const arenaRoom = (): ArenaRoom | null => (kind === 'arena' ? (active as ArenaRoom | null) : null);
 
   const emitState = (): void => {
     for (const l of stateListeners) l();
   };
   const emitRoom = (): void => {
-    for (const l of roomListeners) l(room, zoneId);
+    const r = zoneRoom();
+    for (const l of roomListeners) l(r, r === null ? null : zoneId);
+    emitState();
+  };
+  const emitArena = (closed = false): void => {
+    const r = arenaRoom();
+    for (const l of arenaListeners) l(r, kind === 'arena', closed);
     emitState();
   };
 
@@ -111,7 +158,7 @@ export function createWorldSession(deps: WorldSessionDeps): WorldSession {
     reconnectPoll = null;
   }
 
-  function configureReconnection(r: ZoneRoom): void {
+  function configureReconnection(r: Room): void {
     const rc = r.reconnection;
     rc.enabled = true;
     rc.maxRetries = RECONNECT_DELAYS_MS.length;
@@ -121,14 +168,14 @@ export function createWorldSession(deps: WorldSessionDeps): WorldSession {
     rc.backoff = (attempt: number): number => RECONNECT_DELAYS_MS[Math.min(attempt, RECONNECT_DELAYS_MS.length) - 1] ?? 8000;
   }
 
-  /** Registers every ServerMessage type once on `r`; returns the disposers. */
-  function wire(r: ZoneRoom): (() => void)[] {
+  /** Registers every ServerMessage type once on `r` (a zone or an arena room); returns the disposers. */
+  function wire(r: Room, which: SessionKind): (() => void)[] {
     const out: (() => void)[] = [];
     for (const type of SERVER_MESSAGE_TYPES) {
       const schema = SERVER_MESSAGES[type];
       out.push(
         r.onMessage(type, (payload: unknown) => {
-          if (r !== room) return; // a handover source still delivering after the swap
+          if (r !== active) return; // a handover source / a left room still delivering after the swap
           const parsed = schema.safeParse(payload);
           if (!parsed.success) {
             console.error('invalid server message', type, parsed.error.issues.slice(0, 3));
@@ -139,23 +186,23 @@ export function createWorldSession(deps: WorldSessionDeps): WorldSession {
       );
     }
     const onState = (): void => {
-      if (r === room) emitState();
+      if (r === active) emitState();
     };
     r.onStateChange(onState);
     out.push(() => r.onStateChange.remove(onState));
 
     r.onDrop(() => {
-      if (r !== room) return;
+      if (r !== active) return;
       ui().setConnection('reconnecting', 1);
       stopReconnectPoll();
       reconnectPoll = setInterval(() => {
-        if (r !== room) return stopReconnectPoll();
+        if (r !== active) return stopReconnectPoll();
         const attempt = Math.max(1, r.reconnection.retryCount);
         if (ui().connection === 'reconnecting') ui().setConnection('reconnecting', attempt);
       }, 500);
     });
     r.onReconnect(() => {
-      if (r !== room) return;
+      if (r !== active) return;
       stopReconnectPoll();
       ui().setConnection('connected');
       for (const l of reconnectListeners) l();
@@ -163,10 +210,18 @@ export function createWorldSession(deps: WorldSessionDeps): WorldSession {
     });
     r.onLeave((code: number) => {
       stopReconnectPoll();
-      if (retiring.has(r) || r !== room) return;
+      if (retiring.has(r) || r !== active) return;
       const wasReconnecting = ui().connection === 'reconnecting';
       disposeWiring();
-      room = null;
+      active = null;
+      if (which === 'arena') {
+        // the arena closed under the player (disposed after the battle, or the socket died): the scene stays until the
+        // arena flow sends them back (`onArena(null, true)`); only a takeover is an offline state
+        if (code === CLOSE_CODES.replaced) ui().setConnection('offline', 0, 'replaced');
+        else ui().setConnection('connected');
+        emitArena(true);
+        return;
+      }
       if (code === CLOSE_CODES.replaced) ui().setConnection('offline', 0, 'replaced');
       else if (code === SERVER_SHUTDOWN_CODE) ui().setConnection('offline', 0, 'restarted');
       else if (code === CLOSE_CODES.kicked && !wasReconnecting) ui().setConnection('offline', 0, 'kicked');
@@ -183,19 +238,94 @@ export function createWorldSession(deps: WorldSessionDeps): WorldSession {
 
   function adopt(r: ZoneRoom, z: ZoneId): void {
     disposeWiring();
-    room = r;
+    kind = 'zone';
+    home = null;
+    active = r;
     zoneId = z;
     configureReconnection(r);
-    disposers = wire(r);
+    disposers = wire(r, 'zone');
     useSessionStore.getState().setZone(z);
     ui().setConnection('connected');
     emitRoom();
+  }
+
+  function adoptArena(r: ArenaRoom): void {
+    disposeWiring();
+    kind = 'arena';
+    active = r;
+    zoneId = null;
+    configureReconnection(r);
+    disposers = wire(r, 'arena');
+    ui().setConnection('connected');
+    emitArena();
   }
 
   function sdk(): Client {
     if (client === null) client = deps.createClient(deps.wsUrl);
     client.auth.token = deps.accessToken() ?? '';
     return client;
+  }
+
+  /** Retires the open socket (a consented leave: its onLeave is expected) and tells the listeners it is gone. */
+  async function retire(): Promise<void> {
+    stopReconnectPoll();
+    const r = active;
+    const was = kind;
+    disposeWiring();
+    active = null;
+    if (was === 'zone') zoneId = null;
+    if (r === null) return;
+    retiring.add(r);
+    if (was === 'zone') emitRoom();
+    else emitArena();
+    try {
+      await r.leave(true);
+    } catch (_e) {
+      // already closed
+    }
+  }
+
+  /** Into the arena of `seat`; `from` is the zone to return to. A failed join goes back to that zone. */
+  async function joinArena(seat: SeatReservation, from: ZoneId | null): Promise<void> {
+    home = from ?? home ?? useSessionStore.getState().zoneId;
+    await retire();
+    kind = 'arena';
+    let r: ArenaRoom;
+    try {
+      r = (await sdk().consumeSeatReservation(seat, ArenaState)) as ArenaRoom;
+    } catch (e) {
+      console.error('arena join failed', e);
+      toast('danger', 'Could not reach the arena.');
+      await backToZone();
+      return;
+    }
+    adoptArena(r);
+  }
+
+  /** Out of the arena (its room already left) into the zone the player came from. */
+  async function backToZone(): Promise<void> {
+    const target = home ?? useSessionStore.getState().zoneId;
+    kind = 'zone';
+    home = null;
+    emitArena();
+    if (target === null) {
+      ui().setConnection('offline', 0, 'failed');
+      return;
+    }
+    await doEnter(target, false).catch(() => undefined); // doEnter toasts + flips ui.connection itself
+  }
+
+  /** One switch at a time (an arena hop, a return, a rejoin). */
+  function serial(run: () => Promise<void>): Promise<void> {
+    const prev = switching;
+    const p: Promise<void> = (async () => {
+      if (prev !== null) await prev.catch(() => undefined);
+      await run();
+    })().finally(() => {
+      if (switching === p) switching = null;
+    });
+    switching = p;
+    return p;
   }
 
   async function doEnter(target: ZoneId, retried: boolean): Promise<void> {
@@ -207,6 +337,17 @@ export function createWorldSession(deps: WorldSessionDeps): WorldSession {
         const zoneFromServer = e.error.extra?.['zoneId'];
         if (e.error.code === 'wrongZone' && !retried && typeof zoneFromServer === 'string') {
           return doEnter(zoneFromServer as ZoneId, true);
+        }
+        // arena PvP: a reload mid arena battle — the server still seats the player in the arena
+        if (e.error.code === 'inArena' && !retried) {
+          let arenaSeat: SeatReservation | null = null;
+          try {
+            arenaSeat = await deps.rejoinArena();
+          } catch (_e) {
+            arenaSeat = null; // the arena ended in between: the zone takes the player again
+          }
+          if (arenaSeat === null) return doEnter(target, true);
+          return joinArena(arenaSeat, target);
         }
         if (e.error.code === 'gated') toast('warn', 'That zone is sealed until you earn its badge.');
         else if (e.error.code === 'inBattle') toast('warn', 'Finish your battle first.');
@@ -228,20 +369,48 @@ export function createWorldSession(deps: WorldSessionDeps): WorldSession {
 
   const session: WorldSession = {
     get room() {
-      return room;
+      return zoneRoom();
+    },
+    get arenaRoom() {
+      return arenaRoom();
+    },
+    get kind() {
+      return kind;
+    },
+    get homeZone() {
+      return kind === 'arena' ? home : null;
     },
     get selfId() {
       return deps.selfId();
     },
     get zoneId() {
-      return zoneId;
+      return kind === 'zone' ? zoneId : null;
     },
 
     enter(target) {
-      if (room !== null && zoneId === target) return Promise.resolve();
+      if (kind === 'arena') {
+        // the arena keeps the player (a shell remount must not forfeit a battle); with its socket gone (an offline
+        // retry) the server is asked whether the arena still seats them, else the zone takes them back
+        if (active !== null) return Promise.resolve();
+        return serial(async () => {
+          if (kind !== 'arena' || active !== null) return;
+          let seat: SeatReservation | null = null;
+          try {
+            seat = await deps.rejoinArena();
+          } catch (_e) {
+            seat = null;
+          }
+          if (seat !== null) await joinArena(seat, home ?? target);
+          else {
+            home = home ?? target;
+            await backToZone();
+          }
+        });
+      }
+      if (active !== null && zoneId === target) return Promise.resolve();
       if (entering !== null && entering.zoneId === target) return entering.promise;
       const promise = (async () => {
-        if (room !== null) await session.leave();
+        if (active !== null) await session.leave();
         await doEnter(target, false);
       })().finally(() => {
         entering = null;
@@ -258,7 +427,9 @@ export function createWorldSession(deps: WorldSessionDeps): WorldSession {
         console.error(msg);
         return;
       }
-      room?.send(type, parsed.data);
+      // an arena room takes only the battle messages (prediction input, chat, interacts … wait for the world)
+      if (kind === 'arena' && !ARENA_SENDABLE.has(type)) return;
+      active?.send(type, parsed.data);
     },
 
     onMessage(cb) {
@@ -267,9 +438,9 @@ export function createWorldSession(deps: WorldSessionDeps): WorldSession {
     },
 
     async handover(m) {
-      if (handingOver || room === null) return;
+      const source = zoneRoom();
+      if (handingOver || source === null) return;
       handingOver = true;
-      const source = room;
       try {
         const dest = (await sdk().consumeSeatReservation(m.seat, ZoneState)) as ZoneRoom;
         await new Promise<void>((resolve) => {
@@ -279,6 +450,12 @@ export function createWorldSession(deps: WorldSessionDeps): WorldSession {
             resolve();
           });
         });
+        if (active !== source) {
+          // an arena match took the player while the crossing was in flight: the destination is not wanted
+          retiring.add(dest);
+          void dest.leave(true);
+          return;
+        }
         dest.send('handoverAck', { roomId: m.roomId, seat: m.seat.sessionId });
         retiring.add(source);
         adopt(dest, m.zoneId);
@@ -294,20 +471,37 @@ export function createWorldSession(deps: WorldSessionDeps): WorldSession {
       }
     },
 
+    enterArena(seat) {
+      return serial(async () => {
+        // a pending zone entry (the shell's first enter) would adopt its room after this: let it land first
+        if (entering !== null) await entering.promise.catch(() => undefined);
+        const from = kind === 'zone' ? (zoneId ?? useSessionStore.getState().zoneId) : home;
+        await joinArena(seat, from);
+      });
+    },
+
+    returnToWorld() {
+      return serial(async () => {
+        if (kind !== 'arena') return;
+        await retire();
+        await backToZone();
+      });
+    },
+
+    onArena(cb) {
+      arenaListeners.add(cb);
+      return () => arenaListeners.delete(cb);
+    },
+
     async leave() {
-      stopReconnectPoll();
-      const r = room;
-      disposeWiring();
-      room = null;
-      zoneId = null;
-      if (r !== null) {
-        retiring.add(r);
-        try {
-          await r.leave(true);
-        } catch (_e) {
-          // already closed
-        }
+      const was = kind;
+      await retire();
+      if (was === 'arena') {
+        kind = 'zone';
+        home = null;
+        emitArena();
       }
+      zoneId = null;
       emitRoom();
     },
 
@@ -339,6 +533,7 @@ export function getWorldSession(): WorldSession {
       wsUrl: defaultWsUrl(),
       createClient: (url) => new Client(url),
       fetchSeat: async (zoneId) => (await apiFetch('zoneEnter', { body: { zoneId } })).seat,
+      rejoinArena: async () => (await apiFetch('arenaRejoin', { body: {} })).seat,
       refetchMe: async () => useSessionStore.getState().hydrateFromMe(await apiFetch('me')),
       accessToken: () => useSessionStore.getState().accessToken,
       selfId: () => useSessionStore.getState().profile?.id ?? '',

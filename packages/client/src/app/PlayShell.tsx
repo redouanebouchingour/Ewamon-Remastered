@@ -19,6 +19,8 @@ import { RaidLobby } from '../world/RaidLobby';
 import { TowerModal, TowerStreak } from '../world/TowerModal';
 import { TradeModal } from '../world/TradeModal';
 import { BandTutorialCard } from '../world/BandTutorialCard';
+import { ArenaHud, ArenaInvitePrompt, MatchFoundCard } from '../world/ArenaOverlays';
+import { useArenaStore } from '../state/arena';
 import { TutorialCard } from '../world/TutorialCard';
 import { setNavigator } from './navigation';
 import { installMessageRouter } from '../net/messageRouter';
@@ -51,6 +53,8 @@ const SHORTCUTS: Partial<Record<InputAction, string>> = {
   bag: '/play/bag',
   journal: '/play/dex',
   map: '/play/map',
+  // arena PvP: the PvP screen (K)
+  pvp: '/play/pvp',
 };
 
 function isTyping(target: EventTarget | null): boolean {
@@ -158,6 +162,8 @@ export function PlayShell() {
   // the evolution sequence has the stage: the open panel and the shortcut hint step aside until it ends (§20.5.6)
   const evolving = useUiStore((st) => st.evolution !== null);
   const inBattle = useUiStore((st) => st.battle !== null);
+  // arena PvP: no zone in the arena — the minimap, the key legend and the world tutorials wait for the return
+  const inArena = useArenaStore((st) => st.inArena);
   useWorldConnection(zoneId as ZoneId);
   useShellHotkeys();
   const pendingPanel = usePendingPanel();
@@ -168,18 +174,22 @@ export function PlayShell() {
       <div className={s.panelSlot} data-open={hasPanel || pendingPanel !== null || undefined}>
         {pendingPanel !== null ? <PanelSkeleton path={pendingPanel} /> : <Outlet />}
       </div>
-      {!hasPanel && <WorldHint />}
+      {!hasPanel && !inArena && <WorldHint />}
       {/* Phase C3: the minimap draws over the live world only (no world → no canvas, as GameCanvas) */}
-      {!hasPanel && !inBattle && worldCapability() && <Minimap />}
+      {!hasPanel && !inBattle && !inArena && worldCapability() && <Minimap />}
       {/* Phase D12: Prof. Wynn's tutorial steps (live world only, like the minimap) */}
-      {worldCapability() && <TutorialCard />}
+      {worldCapability() && !inArena && <TutorialCard />}
       {/* Majin / Tenjin: the band cards (once a band is in the inventory), state apart from the opening tutorial */}
-      {worldCapability() && <BandTutorialCard />}
+      {worldCapability() && !inArena && <BandTutorialCard />}
+      {/* arena PvP: the arena strip / waiting / result actions, a friend's invite, the match-found card */}
+      <ArenaHud />
       <DialogueBox />
       <FishingPrompt />
       <ChatInput />
       <BattleOverlay />
       <ChallengePrompt />
+      <ArenaInvitePrompt />
+      <MatchFoundCard />
       <TradeModal />
       <RaidLobby />
       {/* Phase D14: the battle tower (picker / between fights / summary) and the counter over a tower fight */}

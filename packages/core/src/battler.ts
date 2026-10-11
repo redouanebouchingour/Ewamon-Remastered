@@ -64,3 +64,21 @@ export function capLevel(c: CreatureInstance, cap: number, content: ContentIndex
     moves: c.moves.map((m) => ({ ...m, pp: m.ppMax })),
   };
 }
+
+/**
+ * Arena PvP (Level 50, Ranked, Weekly Cup): the creature as it fights at exactly `level` — raised or lowered (exp set to
+ * that level's floor), fully healed as `capLevel`. `level` null keeps the creature's own level (Standard: healed only).
+ * Pure; the stored creature is never changed, and the moves stay as known.
+ */
+export function atLevel(c: CreatureInstance, level: number | null, content: ContentIndex): CreatureInstance {
+  const lv = level === null ? c.level : Math.max(1, Math.min(100, Math.floor(level)));
+  const sp = content.species(c.speciesId);
+  return {
+    ...c,
+    level: lv,
+    exp: lv === c.level ? c.exp : expToLevel(lv),
+    hp: calcMaxHp(sp.baseHp, lv),
+    status: [],
+    moves: c.moves.map((m) => ({ ...m, pp: m.ppMax })),
+  };
+}

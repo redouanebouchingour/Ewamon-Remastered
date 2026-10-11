@@ -8,7 +8,9 @@
  */
 import { badgeDisplay } from '../data/badgeIcon';
 import { itemInfo } from '../data/content';
+import { levelLabel, useArenaStore } from '../state/arena';
 import { useUiStore } from '../state/ui';
+import { ARENA_KIND_LABELS } from '@ewa/protocol';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { battleActions } from './controllerRef';
@@ -21,6 +23,8 @@ export function BattleResultCard() {
   const seat = useUiStore((st) => st.battle?.seat ?? 0);
   const format = useUiStore((st) => st.battle?.format ?? null);
   const state = useUiStore((st) => st.battle?.authoritative ?? null);
+  // arena PvP: the arena's kind and level head the card; its own result actions follow it
+  const arena = useArenaStore((st) => (st.inArena ? st.match : null));
   // Phase C1: a raid closes with its own summary card (RaidSummaryCard)
   if (result === null || result.raid !== undefined) return null;
   const o = result.outcome;
@@ -50,11 +54,17 @@ export function BattleResultCard() {
       description={o.winner === 'caught' ? 'It joins your party — or your box when the party is full.' : undefined}
       footer={
         <Button variant="primary" onClick={done}>
-          {result.prompts > 0 ? 'Continue' : 'Back to the world'}
+          {result.prompts > 0 || arena !== null ? 'Continue' : 'Back to the world'}
         </Button>
       }
     >
       <div className={s.body} data-testid="battleresult">
+        {arena !== null && (
+          <p className={s.arena} data-testid="battleresult-arena">
+            <span className={s.arenaKind}>{ARENA_KIND_LABELS[arena.kind]}</span>
+            {arena.kind !== 'level50' && <span className={s.arenaLevel}>{levelLabel(arena.level)}</span>}
+          </p>
+        )}
         {badge !== null ? (
           <div className={s.badgeRow} data-testid="battleresult-badge" data-type={badge.type}>
             <span className={s.badgeIcon} aria-hidden>

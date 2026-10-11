@@ -45,6 +45,13 @@ const fakeWorld: WorldSession = {
   leave: vi.fn(async () => undefined),
   onRoom: () => () => undefined,
   onReconnected: () => () => undefined,
+  // arena PvP seams (unused here)
+  arenaRoom: null,
+  kind: 'zone',
+  homeZone: null,
+  enterArena: async () => undefined,
+  returnToWorld: async () => undefined,
+  onArena: () => () => undefined,
   subscribeState: () => () => undefined,
 };
 
@@ -78,10 +85,10 @@ function mount(path: string) {
 }
 
 describe('nav model', () => {
-  it('five primary links, seven behind More, every panel reachable once', () => {
+  it('five primary links, eight behind More, every panel reachable once', () => {
     expect(NAV_PRIMARY.map((n) => n.label)).toEqual(['Party', 'Bag', 'Dex', 'Map', 'Quests']);
-    expect(NAV_MORE.map((n) => n.label)).toEqual(['Box', 'Shop', 'Social', 'Guild', 'Market', 'Pass', 'Settings']);
-    expect(new Set(NAV.map((n) => n.to)).size).toBe(12);
+    expect(NAV_MORE.map((n) => n.label)).toEqual(['PvP', 'Box', 'Shop', 'Social', 'Guild', 'Market', 'Pass', 'Settings']);
+    expect(new Set(NAV.map((n) => n.to)).size).toBe(13);
   });
 
   it('key chips spell codes as the tutorial card does', () => {
@@ -109,7 +116,7 @@ describe('the top bar', () => {
     fireEvent.click(more);
     expect(more.getAttribute('aria-expanded')).toBe('true');
     const list = within(nav).getByRole('list', { name: 'More menus' });
-    expect(within(list).getAllByRole('link').map((a) => a.textContent?.replace(/\d+|Esc/g, '').trim())).toEqual(NAV_MORE.map((n) => n.label));
+    expect(within(list).getAllByRole('link').map((a) => a.textContent?.replace(/\d+|Esc|K$/g, '').trim())).toEqual(NAV_MORE.map((n) => n.label));
     expect(document.activeElement).toBe(within(list).getAllByRole('link')[0]);
 
     // Escape closes it and gives focus back to the button

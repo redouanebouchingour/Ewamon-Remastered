@@ -150,6 +150,10 @@ export type {
 export { AURA, AuraSystem } from './stage/aura.js';
 export { STAGE, Stage, TERRAIN_ACCENT, TERRAIN_SURFACE, fitCentre, inHall } from './stage/battleStage.js';
 export {
+  ARENA_BACKDROP, ARENA_CAMERA_MAX_DISTANCE, ARENA_COLORS, ARENA_GRADE, ARENA_LIGHTING, createArenaBackdrop, crowdSeats, tierFront, tierY,
+} from './stage/arenaBackdrop.js';
+export type { ArenaBackdrop } from './stage/arenaBackdrop.js';
+export {
   EVOLUTION, EVOLUTION_TIMELINE, EvolutionSequence, alternationHz, evolutionDurationMs, evolutionPhaseAt, evolutionRecipes, sampleEvolution,
 } from './stage/evolution.js';
 export type { EvolutionDeps, EvolutionSample, PhaseSpan } from './stage/evolution.js';

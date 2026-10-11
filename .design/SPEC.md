@@ -150,6 +150,7 @@ Companion documents (inputs, not binding): `.design/PLAN.md`, `.design/story-bib
     - [10.7.3 `TiltShiftDOF` (Pillar 1)](#10.7.3-tiltshiftdof-pillar-1)
     - [10.7.4 `BattleCamera` and arena framing (Pillar 7)](#10.7.4-battlecamera-and-arena-framing-pillar-7)
     - [10.7.5 `BattleStage` (the surface `20-client.md` consumes) and the VFX id table](#10.7.5-battlestage-the-surface-20-client.md-consumes-and-the-vfx-id-table)
+    - [10.7.5a The arena stadium](#10.7.5a-the-arena-stadium)
     - [10.7.6 `ActorPool`](#10.7.6-actorpool)
     - [10.7.7 Character models](#10.7.7-character-models)
   - [§10.8 POST STACK](#§10.8-post-stack)
@@ -248,6 +249,7 @@ Companion documents (inputs, not binding): `.design/PLAN.md`, `.design/story-bib
     - [30.4.6 Trainer NPC and league dialogue](#30.4.6-trainer-npc-and-league-dialogue)
     - [30.4.8 Story beats — the runtime the bible left to this file](#30.4.8-story-beats-the-runtime-the-bible-left-to-this-file)
     - [30.4.9 Battle tower (Phase D14)](#30.4.9-battle-tower-phase-d14)
+    - [30.4.10 Arena PvP — battles outside the world](#30.4.10-arena-pvp-battles-outside-the-world)
     - [30.4.7 Raids](#30.4.7-raids)
   - [§30.5 AUTHORITY MATRIX](#§30.5-authority-matrix)
     - [30.5.1 Adversarial test list — expected server response](#30.5.1-adversarial-test-list-expected-server-response)
@@ -917,6 +919,8 @@ export interface Battler {
 export function projectBattler(c: CreatureInstance, content: ContentIndex): Battler;
 /** Phase D14 (battle tower): level min(level, cap) (exp clamped to that level when lowered), full hp, no status, full pp; pure, the input untouched. */
 export function capLevel(c: CreatureInstance, cap: number, content: ContentIndex): CreatureInstance;
+/** Arena PvP <!-- amended 2026-10-11: arena PvP -->: exactly `level` (raised or lowered; exp = expToLevel(level) when it changes), or the own level when null; full hp, no status, full pp; pure, the input untouched. */
+export function atLevel(c: CreatureInstance, level: number | null, content: ContentIndex): CreatureInstance;
 
 export type BattleFormat = 'wild' | 'trainer' | 'league' | 'pvp' | 'raid';
 export type SideKind = 'player' | 'wild' | 'npc';
@@ -1822,6 +1826,13 @@ export class ZoneState extends Schema {
   @type({ map: BattleSummary }) battles = new MapSchema<BattleSummary>();     // small; broadcast to all
   @type(RaidState) raid: RaidState | null = null;                              // broadcast to all
 }
+
+// <!-- amended 2026-10-11: arena PvP --> the state of an `arena` room (30-server-netcode.md §30.4.10): one battle outside the world;
+// everything the client draws comes from `arenaState` and the battle messages
+export class ArenaState extends Schema {
+  @type('string') matchId = '';
+  @type('string') phase = 'waiting';              // 'waiting' | 'fighting' | 'ended' | 'cancelled'
+}
 ```
 
 ### 4.2 Per-client AOI via `StateView`
@@ -1917,7 +1928,16 @@ export type ServerMessage =
       readonly reason: 'left' | 'busy' | 'party' | 'cancelled' | 'started' | null }                                // Phase D13 (30-server-netcode.md §30.4.5a); sent last in SERVER_MESSAGE_TYPES
   | { readonly type: 'towerState'; readonly phase: 'fighting' | 'won' | 'lost' | 'ended'; readonly streak: number; readonly runWins: number; readonly best: number;
       readonly set: number; readonly fight: number; readonly picks: readonly string[];
-      readonly reward: { readonly money: number; readonly items: Readonly<Record<string, number>> } | null }      // Phase D14 (30-server-netcode.md §30.4.9); after rankedStatus in SERVER_MESSAGE_TYPES (18 variants)
+      readonly reward: { readonly money: number; readonly items: Readonly<Record<string, number>> } | null }      // Phase D14 (30-server-netcode.md §30.4.9); after rankedStatus in SERVER_MESSAGE_TYPES
+  // arena PvP (30-server-netcode.md §30.4.10; protocol `arena.ts`) <!-- amended 2026-10-11: arena PvP --> — after towerState (22 variants)
+  | { readonly type: 'arenaStatus'; readonly state: 'idle' | 'queued' | 'matched'; readonly kind: ArenaKind | null; readonly waitedMs: number; readonly window: number;
+      readonly opponent: { readonly name: string; readonly rating: number } | null; readonly seat: SeatReservation | null;   // seat only while `matched`: the arena room
+      readonly reason: 'left' | 'busy' | 'party' | 'cup' | 'cancelled' | 'started' | 'timeout' | null; readonly detail: string | null }
+  | { readonly type: 'arenaInvite'; readonly inviteId: string; readonly fromId: string; readonly fromName: string; readonly rules: 'standard' | 'level50'; readonly expiresAt: number }
+  | { readonly type: 'arenaInviteResult'; readonly inviteId: string; readonly toName: string; readonly result: 'declined' | 'expired' | 'unavailable' }
+  | { readonly type: 'arenaState'; readonly matchId: string; readonly kind: ArenaKind; readonly level: number | null; readonly phase: 'waiting' | 'fighting' | 'ended' | 'cancelled';
+      readonly players: readonly { readonly playerId: string; readonly name: string; readonly rating: number }[]; readonly foeName: string | null;
+      readonly cup: { readonly id: string; readonly name: string; readonly description: string; readonly endsAt: string } | null; readonly reason: string | null }
   | { readonly type: 'error'; readonly code: 'rateLimited' | 'invalidPayload' | 'notAllowed' | 'notFound' | 'busy' | 'internal'; readonly detail: string | null };
 
 export interface TradeOffer { readonly playerId: string; readonly creatureIds: readonly string[]; readonly money: number; readonly confirmed: boolean }
@@ -1994,11 +2014,17 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /battle-pass` | — | `{ trainerExp, trainerLevel, claimed: number[], mythicalChoice: string | null, rewards: BattlePassReward[] }` | bearer |
 | `POST /battle-pass/claim` | `{ level }` | `{ claimed, inventory, money, creaturesAdded }` | bearer |
 | `POST /battle-pass/mythical-choice` | `{ species: 'lumyth' | 'noxmyth' }` | `{ creaturesAdded }` | bearer |
-| `GET /history/battles?page=` · `GET /history/trades?page=` | — | rows | bearer |
+| `GET /history/battles?page=` · `GET /history/trades?page=` | — | rows (a battle row's optional `arena`: the `ArenaKind` from its start snapshot) | bearer |
+| `GET /arena` <!-- amended 2026-10-11: arena PvP --> | — | `{ rating, peakRating, rankedMatches, level: 50, cup: { id, name, description, endsAt }, status: ArenaStatus, live: { roomId } \| null }` | bearer |
+| `POST /arena/queue` · `POST /arena/queue/leave` | `{ mode: 'standard' \| 'level50' \| 'ranked' \| 'cup' }` · `{}` | `ArenaStatus` (a refusal is `idle` + `reason` / `detail`) | bearer |
+| `POST /arena/training` | `{ rules: 'standard' \| 'level50', difficulty: 'easy' \| 'normal' \| 'hard' }` | `{ seat }` (409 `busy` / `party`) | bearer |
+| `POST /arena/invite` · `POST /arena/invite/reply` | `{ username, rules }` · `{ inviteId, accept }` | `{ inviteId, expiresAt }` (409 `notFriends` / `self` / `friendOffline` / `friendBusy` / `busy` / `party`) · `{ seat \| null }` (404 `NotFound` / `expired`) | bearer |
+| `POST /arena/rejoin` | `{}` | `{ seat }` in the arena room holding the player (404 when none) | bearer |
 | `GET /admin/stats` · `GET /admin/players?q=&page=` · `GET /admin/metrics` · `POST /admin/ban` · `POST /admin/unban` | `{ username, reason: 1..200 }` | — / `ProcessMetrics` (30-server-netcode.md §30.10.2) | bearer + `is_admin` |
 | `GET /health` | — | `{ status: 'ok', time }` | none |
 
 <!-- reconciled 2026-09-18: `/zone/enter`, `/profile`, `/quests/claim`, `/admin/metrics` added (30-server-netcode.md §30.2.6, §30.5, §30.9.1, §30.10.2 used them; OQ 3); `GET /me` gains presence/unread/liveOps; guild tag {3,4} (30-server-netcode.md OQ 5 — the persist column is varchar(4) and a 2-char tag collides with the 2-letter type glyphs in the HUD) -->
+<!-- amended 2026-10-11: arena PvP — every `/arena/*` route needs presence (409 `offline`); `POST /zone/enter` answers 409 `inArena` (+ `roomId`) while an `arena` room holds the player in `waiting` / `fighting`, and the client rejoins through `POST /arena/rejoin` (30-server-netcode.md §30.4.10) -->
 <!-- amended 2026-09-25: `/zone/enter` wrongZone + battle-room seat, and the `inventoryDelta` extensions of `/creature/:id/setup`, `/guilds`, `/marketplace/*` (protocol `InventoryDeltaBodySchema`, additive) — packages/server IMPLEMENTATION-NOTES R2, P1, P3. Without `wrongZone` a client could "fast travel" by entering any ungated zone and being placed at its spawn -->
 Every user-supplied string that reaches SQL `LIKE`/`ILIKE` goes through `escapeLike()` in `@ewa/persist`; there is no regex search anywhere. Domain errors from persist (§5.5) map to `409 { code }`; `RateLimited` → 429; zod → 400 `invalidPayload`; JWT → 401; everything else → 500 `internal`.
 
@@ -3617,6 +3643,18 @@ Every VFX is a slice of one pooled instanced `Sprite` (`count` 4 096 = 8 emitter
 
 **Doubles** <!-- amended 2026-10-06 Phase D6 -->. In a doubles battle the stage holds four battlers: `BattlerRef.slot` is the field position (0 / 1), never a party index. `battlerSlot(center, yaw, side, slot, count = 2)` keeps the sides 5.5 m apart along the battle axis and spreads each side's two `SLOT_SPACING` (1.8 m) across it, point-symmetric about the ring centre (each side's position 0 on its own left); `Stage.layoutSide` derives `count` from the highest slot a side holds, so one battler per side stays on the axis exactly as in singles. Every foot disc (`STAGE.battlerFootR` 0.55 m, the size-1 contact-shadow decal) lies on the 3.5 m ring top (≈ 2.89 m + 0.55 m from the centre), and in a hall `fitCentre` lists the four foot discs in its need set (they sit inside the 4.0 m ring-fit disc, so they cannot move the centre today; they keep the guarantee if the ring or the spacing changes). VFX anchors, cue targets, `syncFrom` and `projectBattler` are keyed per ref, so `from` / `to` work for either position of either side, an ally included; all four billboards are DOF-sharp. The client maps core refs (party indices) to these positions (`20-client.md` §20.5.4). Proof: `packages/render/test/doubles.test.ts`.
 
+### 10.7.5a The arena stadium <!-- amended 2026-10-11: arena PvP -->
+
+Arena PvP (30-server-netcode.md §30.4.10) fights outside the world: no zone is loaded. `createArenaBackdrop(): { root,
+update(dtSeconds), dispose() }` (`stage/arenaBackdrop.ts`) is a round stadium bowl registered as the zone root
+(`setZoneRoot`): a dark floor with paper-white markings and one orange line, a parapet with an LED ribbon at r 6.6 m,
+tiered stands with 1 854 instanced seated figures (a crowd wave advanced by `update`, so hitstop freezes it), a canopy,
+banner and screen panels. Everything inside r 6.6 m is flat (y 0) and empty: the stage dresses its ring at the origin
+with `ARENA_BACKDROP.terrain` ('forge'). The client sets `ARENA_BACKDROP.timeOfDay` (21:30) and, while no zone is loaded,
+`ARENA_LIGHTING` / `ARENA_GRADE`. Budget: 5 meshes, 5 materials, 5 main draws, no textures, no lights; the bowl is the
+only sun-shadow caster. Every battle-camera sightline (all headings, cues, push-ins, framing distances) stays clear of
+the crowd and under the canopy (`test/arena-backdrop.test.ts`). Sandbox `?demo=arena`.
+
 ### 10.7.6 `ActorPool`
 
 ```ts
@@ -4787,6 +4825,12 @@ Each screen: information hierarchy in one paragraph, then its states. All `/play
 
 **20.9.9c Post-game: league rematches and the battle tower** (Phase D14) <!-- amended 2026-10-06: Phase D14 -->. Rematches: `scene/dialogue.ts` `rematchOffer(leagueId, flags, badges)` mirrors the server's `leagueBeaten` (the champion flag held and the trainer beaten — gym: its badge; Warden / Champion: its `setsFlags`, plus the champion flag for Zeon); `gymPlan` then opens the rematch's `pre` lines and challenges on finish (the client cannot see the 1-day cooldown — a rematch asked too soon is refused by the server's toast after the lines). A won rematch (`rematchOfBattle(state, seat)`: the NPC party equals the `LEAGUE_REMATCH` team) shows the rematch's `post` lines after the result card, and the result card's concession line is `post[0]`; no badge glyph. The tower: the league hall foyer's Tower Attendant is a `tower` interactable (range 2.5); before the Champion it only talks; after, paging past its line opens `ui.modal 'tower'` (`world/TowerModal.tsx`, rendered only while no battle is open). With no run (`ui.tower null`) it is the picker — the party as `CreatureCard` rows, three picks in click order (a numbered corner tag; a fourth click is ignored, a second click un-picks), "Start run" sends `tower { start, picks }`. The message router writes every `towerState` to `ui.tower`: `fighting` closes the modal (the battle covers the world), `won` / `lost` / `ended` open it — between fights it shows the streak and best (display face, tabular — amended 2026-10-11), the fight just cleared ("Set s · fight f of 7"), the set reward when one was paid, the tower team, and Next fight (`tower next`) / Retire (`tower quit`); a lost or retired run shows its summary (run wins, best) and Close clears `ui.tower`. During a tower fight `TowerStreak` sits top-left under the top bar: "Battle tower · Set s · fight f of 7 · Streak n" on a black strip with a paper "Battle tower" block and the streak as a big number (amended 2026-10-11; was a `--glass` strip), no motion. The NPC side's name is `TOWER.trainerName`. Rankings (§20.9.9b) gain a fourth tab, Tower (`?mode=towerStreak`), whose leading column is the best streak (`towerBest`).
 
+**20.9.9d Arena PvP — battles outside the world** (`/play/pvp`; 30-server-netcode.md §30.4.10) <!-- amended 2026-10-12: arena PvP -->. Entry: "PvP" in the More menu (key `K`, `InputAction 'pvp'`, rebindable) and an "Open PvP" strip on Rankings; the in-world PvP (walk-up challenge, §20.9.9b's ranked block) is unchanged. The screen (`screens/PvpScreen.tsx`, data `GET /arena`): a rating strip (rating as the hero number, peak, ranked matches, the party as sprites), then cards — Standard (own levels), Level 50, Ranked (Lv 50; the rating window while queued), Weekly Cup (this week's cup, its rule and time left; pre-checked with content `cupRefusal(party, weeklyCup(now))` and showing why it is locked), Training (levels own / Lv 50 × difficulty easy / normal / hard → `POST /arena/training` → straight into the arena), Challenge a friend (online friends from `GET /friends`, levels → `POST /arena/invite`; pending / declined / expired). Gates: an empty party, a battle, a trade, being in an arena, offline (a fainted party may enter: arena teams are healed copies). One queue at a time; while queued the player may close the screen and walk on — a top-bar chip shows the mode, elapsed time and × (leave). `arenaStatus matched` → a 2.6 s "Match found" card and the switch. A friend's `arenaInvite` opens a modal with a countdown to `expiresAt` (Accept / Decline → `POST /arena/invite/reply`; it declines itself when `allowChallenges` is off or the player is busy); `arenaInviteResult` toasts for the inviter.
+
+**The switch** (`net/WorldSession.ts`, `app/arena.ts`, `state/arena.ts`): one session holds the zone room or one `arena` room (`kind`). `enterArena(seat)` retires the zone room (a consented leave — the server writes the position; no offline / kicked state), consumes the seat with `ArenaState` and wires every server message as before; `room` stays the zone room only (null in an arena), so no `ZoneState` reader sees a foreign state. In an arena `send()` passes only `battleAction` / `battleResync`, and `enter()` is a no-op (a shell remount must not forfeit). `returnToWorld()` leaves the arena and enters the zone the player left. A reload mid arena: `POST /zone/enter` 409 `inArena` → `POST /arena/rejoin` → the arena; a scene built after the rejoin asks for its own `battleResync`. Queue again from inside an arena hops rooms.
+
+**The scene** (`scene/World3D.ts`): the zone is unloaded and render's stadium (§10.7.5a) is the zone root with `ARENA_LIGHTING` / `ARENA_GRADE` and `ARENA_BACKDROP.timeOfDay`; the ring dresses at the origin with `ARENA_BACKDROP.terrain`; the player's trainer waits at the near slot; the opponent is a `FoeActor` stand-in with the other player's body (Training: a look per difficulty, name from `ARENA_TRAINING`). Gym theme between battles (elite for Ranked / Cup), battle theme in battle. The boot overlay covers both switches. Minimap, key legend and tutorial cards hide; Map fast travel is disabled. HUD (`world/ArenaOverlays.tsx`): a top-centre strip (Arena · kind · level · vs opponent), a waiting card until both trainers arrive, and after the result card (which gains the kind / level) the actions Back to world and Queue again / Rematch (Training) / Challenge again (friend). `arenaState cancelled` toasts its reason and returns home. History rows with `arena` read "Arena · <kind>".
+
 **20.9.10 Battle Pass** (`/play/pass`). Header: trainer level (display face) and a progress bar to the next 1 000 exp with the exact `exp / 1000` in the display face, tabular (amended 2026-10-11). A horizontal track of 100 reward tiles (virtualised, 10 visible), each `claimable · claimed · locked`; claimable tiles pulse once (160 ms) on entry. Level 50 shows the mythical choice as two `CreatureCard variant="showcase"` (`lumyth / noxmyth`) with "Choose once" — `POST /battle-pass/mythical-choice`. Claim → `POST /battle-pass/claim` → `applyInventoryDelta`. Empty: never. Loading: skeleton track. Error: retry.
 
 **20.9.11 Settings** (`/play/settings`). Five tabs (`?tab=graphics|audio|accessibility|controls|social`). Every control is a `Toggle`/`Slider`/`Table` from §20.2.4 bound to `useSettingsStore`; changes apply immediately (no Save button) and the graphics tab shows the live `renderer.stats()` (draw calls, GPU ms) under the toggles. Accessibility tab first item: the reduced-motion tri-state with the current system value shown. Controls: the remap table (§20.8.5). Empty/loading: none. Error: none (local).
@@ -4939,6 +4983,7 @@ Behaviours of `@colyseus/core` 0.18.14 / `@colyseus/schema` 5.0.32 this file dep
 | `rooms/tradeSession.ts` | `TradeSession` (§30.8.3). |
 | `rooms/challengeStore.ts` | Pure `ChallengeStore` (§30.4.5) — the legacy `createChallengeStore` shape, ported. |
 | `rooms/matchQueue.ts` | Phase D13 `MatchQueue` (presence-keyed ranked queue + leased matcher), `pairUp`, `RankedArena` (§30.4.5a). |
+| `rooms/arenaQueue.ts` · `rooms/arenaLobby.ts` · `rooms/ArenaRoom.ts` | Arena PvP (§30.4.10): the per-mode presence queue, the lobby (match step, invites, training, rejoin, pushes), the `arena` room type. <!-- amended 2026-10-11: arena PvP --> |
 | `rooms/storyBeats.ts` | Beat firing and completion on `interact` (§30.4.8); uses content's `nextStoryBeat`/`beatDoneFlag`/`harvestStateFor`. |
 | `rooms/presenceStore.ts` | Pure `PresenceStore` (§30.7.4). |
 | `rest/app.ts` | `buildRest(deps): FastifyInstance` — plugins, hooks, route registration. |
@@ -5376,7 +5421,7 @@ A transaction failure rolls everything back and the session keeps `before` as it
 | `wild` | `engageSpawn` accepted | `kind: 'wild'`, one battler projected from the `SpawnRecord` (species default moves at that level via `learnableMoves`, `ability = record.ability` — rolled at spawn, spine §3.2 / roster-coverage A3, reconciled 2026-09-18 — `heldItem null`, `hp = maxHp`), `canFlee` on side 0, `canCatch` on side 0 | money 0; `trainerExp: TRAINER_EXP.wildWin` (+ `catch`/`catchNewSpecies` on catch; the catch ends the battle as `caught`, which is also a win for exp purposes) | — |
 | `trainer` | `interact { kind: 'npc', targetId }` on a `TrainerDef` within 3 m; refused if `story_flags` has `trainer:<id>:beaten` and (`rematchDays === null` or fewer than `rematchDays` days since the flag was set) | `kind: 'npc'`, `trainerId = TrainerDef.id`, team from content (same projection rule) | `money: TrainerDef.reward` (rematch: `floor(reward / 2)`); `trainerExp: trainerWin`; sets flag `trainer:<id>:beaten`; quest `defeatTrainer`/`winBattles` advance | — |
 | `league` | `interact { kind: 'gym', targetId: LeagueTrainer.id }` within 4 m of the gym marker; gyms require the previous badge in order (order 1 needs none); elite require all 8 badges and the previous elite (order); champion requires the 3 elite flags. Refused with `toast` when already beaten — until `champion:zeon:beaten` is held: then an already-beaten trainer (gym: badge held; Warden / Champion: its `setsFlags`) takes a **rematch** (Phase D14) unless `league:<id>:rematchAt` was set less than `LEAGUE_REMATCH_COOLDOWN_DAYS` (1) ago (toast "… wants a rest. Come back tomorrow for a rematch.", `error leagueLocked`) | `kind: 'npc'`, `trainerId = LeagueTrainer.id`, team verbatim from content including `nickname/ability/heldItem` | `money: reward`; `badge: LeagueTrainer.badge` via `awardBadge` (audit `badge.award`); `trainerExp: gymWin/eliteWin/championWin` by stage; `setFlags(setsFlags)`; `championWin` additionally sets `champion:zeon:beaten` — the id is `'zeon'`, and the check anywhere in server code is `=== 'zeon'`. **Rematch** (Phase D14): team = `LEAGUE_REMATCH[id].team` (verbatim, same projection), `money: LeagueRematch.reward` (×1.5), the same stage `trainerExp`, **no** badge, **no** `setsFlags`; `league:<id>:rematchAt` is cleared and re-set in the same transaction (its set time = this win) | — |
-| `pvp` | challenge handshake (§30.4.5) or a ranked match (§30.4.5a) | `kind: 'player'` | `money 0`, `trainerExp: pvpWin` / `pvpLoss` to loser; `ratingDelta` from `eloDelta(winner.rating, loser.rating)` applied with `applyRating` to both, floor 0 (repo); `rankedMatches + 1`; draw → `eloDrawDelta` | yes |
+| `pvp` | challenge handshake (§30.4.5), a ranked match (§30.4.5a) or an arena match (§30.4.10: Elo only for `ranked`, no creature writes) | `kind: 'player'` | `money 0`, `trainerExp: pvpWin` / `pvpLoss` to loser; `ratingDelta` from `eloDelta(winner.rating, loser.rating)` applied with `applyRating` to both, floor 0 (repo); `rankedMatches + 1`; draw → `eloDrawDelta` | yes |
 | `raid` | §30.4.7 | shared boss `Side` | per participant: `trainerExp: raidClear`, `money: 50 * bossLevel`, catch window | — |
 
 Side 0 is always the human player (pvp: the challenger). Losing a `trainer`/`league`/`wild` battle: every party creature keeps its post-battle `hp` (possibly 0); no money is lost (the legacy "blackout fee" is not carried); the client's `20-client.md` sends the player to the last healer on its own initiative via `POST /heal`, which requires being in a `healer: true` zone — so a wiped party in a route means walking back, which is the intended cost.
@@ -5455,6 +5500,49 @@ league hall foyer's interior NPC — elsewhere every `tower` message is refused 
    party between fights ends it with a toast.
 
 `GET /leaderboard?mode=towerStreak` ranks `player_streaks.best` (§30.6.3).
+
+### 30.4.10 Arena PvP — battles outside the world <!-- amended 2026-10-11: arena PvP -->
+
+The player opens the PvP screen anywhere (20-client.md §20.9.9d) and fights in a dedicated `arena` room, not a zone; the
+in-world PvP (§30.4.5, §30.4.5a) is unchanged. Protocol: `packages/protocol/src/arena.ts`; server: `rooms/arenaQueue.ts`,
+`rooms/arenaLobby.ts`, `rooms/ArenaRoom.ts`, `rest/routes/arena.ts`.
+
+**Kinds.** `standard` (own levels), `level50`, `ranked` (Lv 50, Elo), `cup` (Lv 50, a full party of 6 that passes this week's
+rule: content `weeklyCup(at)` / `cupRefusal`, rotating Monday 00:00 UTC through Mirror Clause, Starter Bond, Origin Grounds,
+Mono Pulse), `friend` (an invite; rules `standard` | `level50`), `training` (an AI; rules + difficulty `easy` | `normal` |
+`hard`, team from `ARENA_TRAINING[d].pool` sized to the player's party, at the rules' level or the player's highest level).
+Ranked is open to everyone.
+
+**Teams.** One start transaction locks the players and reads the parties: the first six as healed synthetic copies
+(`atLevel(c, 50 | null)`, ids `arena:<id>`), so `isPersistedId` skips every creature write — no hp or pp lost, no exp, no
+honor (`noExp`). No bag items (inventory snapshot `[null, null]` → `noItem`); the Majin / Tenjin bands still come from the
+inventory. Format `pvp` (training `trainer`), seed `createRng(battleId)`, terrain none (`{ id: 'arena', biome: 'capital' }`),
+no weather, at (0, 0) yaw 0. The start snapshot carries `arena: <kind>`. A non-empty party may enter (copies are healed).
+
+**End.** `ranked`: `eloDelta` / `eloDrawDelta` + `applyRating` once per player. Every other human kind: `pvpWin` / `pvpLoss`
+trainer exp and the `win pvp` quest event, no rating. `training`: nothing (no exp, money, flags, quest events or dex seen).
+
+**Queue.** One presence hash per mode `ewa:arena:queue:<mode>` (a player in one mode at most); lease `ewa:arena:leader`;
+a 1 s pass. Ranked pairs with `pairUp` and the ranked window; the other modes pair the two longest-waiting. Entries
+without presence are dropped; entries older than `ARENA_QUEUE_TIMEOUT_MS` (5 min) get `idle / timeout`. A pair is
+re-checked (busy = presence `battleId` / `tradeId`, or seated in an arena room in `waiting` / `fighting`); a busy side
+gets `idle / busy` and the free side keeps its place and wait. Then the lobby creates the room
+(`createRoom('arena', { ticket, match })`), reserves both seats and pushes `arenaStatus { matched, seat }`.
+
+**Delivery anywhere.** The per-player topic `ewa:arena:<playerId>` carries a `ServerMessage`; the zone room and the
+arena room holding the player forward it. Friend invites: `POST /arena/invite` needs an accepted friendship, the friend
+online and free; the invite lives in presence for `ARENA_INVITE_TTL_MS` (45 s) and reaches the friend as `arenaInvite`;
+`/arena/invite/reply` answers the inviter with `arenaInviteResult` (declined / expired / unavailable) or seats both.
+
+**Arena room.** Static `onAuth` refuses without the server ticket (as `zone`); instance `onAuth` = JWT + ticket + ban +
+one of the match's players. On join: presence `{ roomId: <arena>, zoneId: <where the player stood>, arena: true }` (no
+`ewa:kick`), the topic subscribed, `arenaState` (+ `battleResync` for a returning seat). When every human is present →
+`idle / started`, `arenaState fighting`, `battleStart`. `battleAction` / `battleResync` as in a zone room; a dropped
+socket keeps the seat 20 s; a real leave forfeits (pvp) or abandons (training). `battleEnd` → `arenaState ended`.
+Cancelled (`arenaState cancelled`, reason): `noShow` (a seat not taken within `ARENA_ARRIVAL_MS` 20 s), `left`, `party`,
+`cup` (re-checked against the stored party at the start). The room disposes when empty. The zone room wrote the
+player's position when the client left it; `POST /zone/enter` answers 409 `inArena` while the arena holds the player
+in `waiting` / `fighting` (a reload rejoins through `POST /arena/rejoin`), and takes them back where they stood after.
 
 ### 30.4.7 Raids
 
@@ -5877,7 +5965,7 @@ Not preserved, on purpose: client-side badge awards laundered through `gymwin_<i
 - **Friend gifts, guild bank, guild chat, guild wars, weekly cups with party rules, mastery chains, profile cosmetics grid** (legacy `liveOps.js`). Titles/motto/body remain; the rest is not v1.
 - **Legacy exploration hotspots / roaming rares** — retired zone ids; the story bible supplies `LEGENDARY_STATICS` instead.
 - **Blackout money penalty on loss.** The walk back is the cost.
-- **PvP spectating, ranked seasons, matchmaking queue.** PvP is challenge-only in v1. (League rematches landed in Phase D14, §30.4.4 — amended 2026-10-06.)
+- **PvP spectating, ranked seasons.** (League rematches landed in Phase D14, §30.4.4 — amended 2026-10-06; the ranked queue in D13, §30.4.5a; the arena queues, invites and training on 2026-10-11, §30.4.10.)
 - **Prometheus/OpenTelemetry exporters.** JSON metrics at `/admin/metrics` and pino lines.
 - **`@fastify/rate-limit`.** Not installed; the pure `LIMITS` module is cluster-aware through `Presence` when Redis is present.
 - **Team preview hiding in PvP resync.** The full `BattleState` is sent to both seats (decided, spine §4.5).
@@ -7023,6 +7111,7 @@ Every file listed must exist with at least the assertions listed. A milestone in
 | `repairs.test.ts` | One `it('repair: …')` per `PLAN.md` combat row, each a regression that the legacy behaviour would fail: `stab ×3/2`; `accuracy rolls` (a 70-accuracy move misses with rng 70..99); `nine effects implemented` (crit, heal, recoil, trap, drain, raise_all, weather, sun are live; lower_spAtk is content-rewritten); `stages not permanent` (switch-out resets to 0, `Battler.atk` unchanged); `burn halves damage`; `immunity is zero` (never 1); `lower_atk hits the defender`; `Intimidate once`; `Elo loser negative`; `champion is zeon` (content check duplicated here as a guard on `LEAGUE`); `one catch formula` (no second `catch*` export exists in `index.ts`). |
 | `fuzz.test.ts` | `fuzzBattles({ seeds: 1000, maxTurns: 200 })` exactly as spine §2.20 (a)–(e), plus: `calcDamage` draw-count assertion per turn; every action passes `validateAction`; digests equal `test/fuzz-digests.json` (1000 entries). A diff in that file is a semantics change and needs a §50.7 entry. Runtime target ≤ 40 s on the CI runner. |
 | `determinism-replay.test.ts` | For 50 recorded battles (seed + action list from the fuzz run): replay from `createBattle` reproduces every per-turn digest; replaying from a `snapshot()` taken at turn 7 reproduces turns 8..end; `resolveTurn` called twice on the same input yields identical `canonicalJson` and does not mutate the input (deep-frozen input throws on write). |
+| `arena-level.test.ts` <!-- added 2026-10-12: arena PvP --> | `atLevel`: raised and lowered to exactly the level (exp at its floor, full hp, no status, full pp, moves kept, the input untouched); null keeps the own level and exp and heals. |
 
 ### 50.4.2 `@ewa/content` — `packages/content/test/`
 
@@ -7040,6 +7129,7 @@ Every file listed must exist with at least the assertions listed. A milestone in
 | `encounters.test.ts` | `levelMin ≤ levelMax`, weights > 0, story tables satisfy RC-9 (band + Ghost/Dark night-only), ≤ 16 slots and ≤ 14 species per table, `|O(zone)| ≤ 16` (table ∪ statics) for all 21 and the full `Z(zone)` reported in `bindSets` (spine rule 11, amended 2026-09-25: `solenne` 26 and `umbral_observatory` 20 cannot meet a cap on `Z`); `medium` defaults to `'land'` and every `'water'` slot's zone has `water` samples; `ALPHA_CHANCE 0.02`, `VARIANT_CHANCE 0.03`; a 100 000-roll seeded sample of `mire_route` lands within ±1.5 percentage points of each slot's weight share. <!-- reconciled 2026-09-18: story tables allowed (roster-coverage A1) --> |
 | `story.test.ts` | Exactly one `starter`; every `need` flag resolvable (`badge:` or set by a beat/quest/league row — the 33 bible beats pass); acyclic per zone and at most one eligible beat per zone for every reachable flag set (BFS over the beat graph); each act has ≥ 1 beat; `mire_route` has both a `harvested` and an `intact` beat; `nextStoryBeat` returns beat 1 for an empty flag set and `null` for a zone whose beats are all done; `harvestStateFor('mire_route', {})` is the content default, `{ 'beat:grove_gone:done' }` → `harvested`, `{ …, 'beat:restore_the_grove:done' }` → `intact`; `beatDoneFlag` never collides with an authored flag. |
 | `index.test.ts` | `createContentIndex()` throws `RangeError` on an unknown id for each of the 5 lookups; `allSpecies()` sorted by `dexNumber`; the index is frozen (`Object.isFrozen` on a species). |
+| `arena.test.ts` <!-- added 2026-10-12: arena PvP --> | `weeklyCup` rotates on Monday 00:00 UTC through every cup, the Origin Grounds route is a real zone and moves on; `cupRefusal` for each rule and the party of 6; every training pool is non-legendary and ≥ 6 species. |
 
 ### 50.4.3 `@ewa/protocol` — `packages/protocol/test/`
 
@@ -7086,6 +7176,7 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `challenge-trade.test.ts` | Challenge handshake re-checks presence before `createBattle`; a challenge to a player who left → `challengeResult { result: 'unavailable' }`; 45 s TTL expiry; trade `offerHash` is `fnv1a32` of the canonical pair of offers and a changed offer resets both `confirmed` flags. |
 | `rest-auth.test.ts` | Register → login → refresh → logout; access token expiry 15 min (`exp − iat === 900`); refresh 30 d; a revoked refresh fails; every bearer route returns 401 without a token; admin routes return 403 without `is_admin`. |
 | `raid.test.ts` | Boss `hpPct` is the only HP the client sees; phase transitions 0→1→2 (`hpPct < 0.3`)→3→4; `raidEvents` carry digests; the catch window accepts one `raidCatch` per player. |
+| `arena.test.ts` <!-- added 2026-10-12: arena PvP --> | Pure pairing per mode; Level 50 end to end (both teams at 50, full hp; stored creatures byte-unchanged, no rating, pvp trainer exp, history `arena`); Ranked Elo once per player; training pays nothing; friend invite decline / accept / leave-forfeit; the cup refusal and queue moves; `/zone/enter` 409 `inArena` + `/arena/rejoin`; no-show cancel. |
 
 ### 50.4.6 `@ewa/render` — `packages/render/test/` (Playwright, Chromium with WebGPU)
 
@@ -7100,6 +7191,7 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `collider.test.ts` (vitest, node) | For 10 000 prng points over `dist/heightfields/mirevale.json`, `TerrainCollider.sample` equals content's `sampleHeight` to 1e-6, `walkable`/`water` equal `isWalkable`/`isWater` exactly; `resolveMove` never returns an unwalkable position over 10 000 random displacements. |
 | `prng.test.ts` (vitest, node) | Render's sfc32 copy reproduces `packages/core/test/rng.test.ts`'s committed constant for `createPrng(12345).int(1000)`. |
 | `dispose-contract.test.ts` (vitest, node) | Every builder in `@ewa/render` returns an object with `dispose()`; calling it twice is a no-op; a `Material`/`Texture` obtained from the shared library is never `dispose()`d directly (a spy on `Texture.prototype.dispose` counts calls during a builder's `dispose`). Pure-logic parts of render (`layout`, `lod`, `descriptors`) are tested in node without a GPU. |
+| `arena-backdrop.test.ts` <!-- added 2026-10-12: arena PvP --> | Builds without a GPU within the mesh / triangle bounds; the floor inside the parapet is clear; every battle-camera sightline (headings, cues, push-ins, framing) clears the crowd wave and stays under the canopy; `dispose` frees every geometry and material. |
 
 `tools/asset-audit` (`pnpm audit:assets`, reads `ZoneDump` JSON written by `harness:budget --dump`) rules, each failing the build, named exactly as `40-pipelines.md` §40.5.2 implements them: `budget.counts.*` (§50.2.2), `materials.count ≤ 48`, `materials.threeMaps` (exempt by class: `billboard`, `impostor`, `decal`, `character`, and `harvestLevel ≥ 1`), `materials.albedoCeiling` (every surface's bake reports `albedoClampedPct`), `textures.ktx2Only` (no `CanvasTexture`, no PNG albedo on a lit material; `billboard` WebP and `character` vertex colour exempt by class), `geometry.noPrimitives`, `geometry.noOutlineShells` (no BackSide scaled clone sharing a geometry — legacy-render-audit Q4), `scatter.instanced` (every scatter kind an `InstancedMesh`; trees with lod0–lod2 + impostor, other kinds with the tiers they are drawn at, ≥ lod0 + lod1 — Q19; amended 2026-09-30, P4-C1), `lights.housing (≤ 0.6 units, both directions: every light has a housing and every `lightSource`-tagged emissive has a light)`, `lights.count (8 / 24)`, `sprites.nearest`, `shadows.drawCalls ≤ 564`, `harvest.same`. Test: `tools/asset-audit/test/rules.test.ts` feeds one violating fixture per rule and asserts the rule name in the error. <!-- reconciled 2026-09-18: rule list unified with 40-pipelines.md and extended for the legacy audit -->
 
@@ -7122,6 +7214,7 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `first-frame.spec.ts` (Playwright, throttled to 50 Mbit/s, cold cache) | `performance.mark('ewa:first-frame')` ≤ 2 500 ms from navigation start on `mirevale`; phase payloads ≤ §20.10.3's bytes (`field` materials ≤ 6 MB, atlases + singles + GLB ≤ 4 MB); the `hero` tier and audio are not awaited before the mark (Q17). Amended 2026-10-06 (Phase E5): "not awaited" is proved by holding every hero-tier and audio request unanswered until the mark lands. As in `handover-hitch.spec.ts`, the 2 500 ms limit is asserted only with `EWA_REFERENCE_GPU=1`; elsewhere the time is annotated. On the dev iGPU it measured about 46–48 s, dominated by the synchronous shader warm-up (a HANDOFF open issue). <!-- amended 2026-10-06: Phase E5 --> Amended 2026-10-06 (handover, fixed light layout): 25–26 s on the dev iGPU (34–64 s the same day before the layout, under the same machine load). <!-- amended 2026-10-06: handover fixed light layout — render IMPLEMENTATION-NOTES "Handover: fixed light layout" --> |
 | `handover-hitch.spec.ts` (Playwright, two zones) | Crossing `mirevale → mire_route` with `mire_route` preloaded: no frame > 33 ms, no full-screen fade, first destination frame ≤ 250 ms after `handoverAck`; non-preloaded ≤ 1 500 ms (§20.10.3, spine §4.6; legacy-render-audit Q16). Amended 2026-10-06 (Phase E3): the spec runs the capture harness page (`/harness/shots?zone=mirevale&bg=1`, background compile on as in the client), crosses with `__ewaHarness.handover(to, { preload })`, and records every requestAnimationFrame gap. The millisecond limits are asserted only with `EWA_REFERENCE_GPU=1`, on the §50.2 reference machine. Elsewhere the numbers are attached and annotated, and the zone change, the destination frame and the absence of a fade are asserted. <!-- amended 2026-10-06: Phase E3 --> Amended 2026-10-06 (handover): "preloaded" also prepares the destination off the scene (`10-render.md` §10.1.2 "Handover prepare", what the client does within 48 m of a link edge) and records that prepare's own frame gaps (`prepare`), and the result carries `programsBefore` / `programsSettled`. Measured on the dev iGPU (before → after the fixed light layout + prepare): preloaded 6 402 / 8 895 ms → **105 / 68 / 196 ms** (≤ 250 met on this machine); not preloaded 7 734 / 8 562 ms → **3 781 / 3 742 / 4 659 ms** (≤ 1 500 not met: the destination's build and its scatter node builds, render IMPLEMENTATION-NOTES); programs 109 → 119–125 → 113 before, 109 flat after. Frames over 33 ms stay the norm on this iGPU (its idle frame is 70–130 ms). <!-- amended 2026-10-06: handover fixed light layout — render IMPLEMENTATION-NOTES "Handover: fixed light layout" --> Amended 2026-10-06 (handover II): `prepare.build` records the sliced build (slices, work ms, longest slice and step). Measured on the dev iGPU, HEAD before → after (shared scatter builds, the kept builds and pipelines, the sliced prepare), same sessions: not preloaded 2 062–2 995 ms → **687–1 348 ms** (≤ 1 500 met on this machine); preloaded 63–89 ms → 32–60 ms; the prepare's longest frame 683–1 150 ms → 67 ms (the idle frame; 0 frames > 100 ms), the prepare 3.1–4.1 s; programs 109 flat. <!-- amended 2026-10-06: handover II — render IMPLEMENTATION-NOTES "Handover II: shared scatter builds, a time-sliced build" --> |
 | `slice-e2e.spec.ts` (Playwright, two browser contexts) | Two players: register, `POST /zone/enter` + join, meet in `mirevale` (each sees the other's `PlayerState`), chat (`chat` variant received by the neighbour only), trade one creature (rows swap owners), challenge and complete a PvP battle (rating rows change with opposite signs), one clears `verdant_gym` and receives `progressionDelta.badges` containing `bloom`; the first player's `interact` on `mirevale.wynn` yields `storyBeat start/complete` and `met_wynn`. Status 2026-10-06 (Phase E5): the file exists and covers register (form), join, meet, chat, the `mirevale.wynn` beat (`met_wynn`), and a gym-hall trainer battle up to move selection. The trade, the PvP battle and the `verdant_gym` clear are *not yet driven* in the browser, so this row still stands. <!-- Phase E5 --> |
+| `arena.test.tsx` <!-- added 2026-10-12: arena PvP --> | The session's zone → arena → zone switch over a stubbed SDK (hop, 409 `inArena` rejoin, a closed room), the arena flow and gates, the PvP screen (modes, cup lock reason, queue / leave, training), the invite modal, the arena HUD, the route. |
 
 ### 50.4.8 Pipelines — `tools/*/test/`
 

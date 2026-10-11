@@ -15,6 +15,8 @@ export interface PresenceEntry {
   battleId: string | null;
   tradeId: string | null;
   readonly since: number;
+  /** Arena PvP: the player is seated in an `arena` room (roomId) — outside the world; zoneId is where they stood */
+  readonly arena?: true;
 }
 
 export class PresenceStore {

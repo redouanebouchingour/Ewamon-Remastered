@@ -8,7 +8,7 @@
  */
 import { matchMaker } from '@colyseus/core';
 import type { ZoneId } from '@ewa/content';
-import type { SeatReservation } from '@ewa/protocol';
+import type { ArenaDifficulty, ArenaKind, ArenaSeatView, SeatReservation } from '@ewa/protocol';
 
 export const ZONE_ROOM = 'zone';
 
@@ -52,5 +52,38 @@ export async function zoneRoomById(roomId: string): Promise<RoomCache | null> {
 /** Step 3: reserve a seat; the whole ISeatReservation goes to the client unchanged. */
 export async function reserveZoneSeat(room: RoomCache, opts: ZoneSeatOptions): Promise<SeatReservation> {
   const seat = await matchMaker.reserveSeatFor(room, opts, null);
+  return { ...seat };
+}
+
+// ─── Arena PvP (rooms/ArenaRoom.ts) ─────────────────────────────────────────────────────────────────────────────────
+
+export const ARENA_ROOM = 'arena';
+
+/** One arena match: who fights, at which level, under which rules. The `arena` room is created per match. */
+export interface ArenaMatch {
+  readonly matchId: string;
+  readonly kind: ArenaKind;
+  /** ARENA_LEVEL, or null = each creature's own level */
+  readonly level: number | null;
+  /** the human seats in side order (side 0 = the longer-waiting player / the inviter); training: one */
+  readonly players: readonly ArenaSeatView[];
+  readonly training?: { readonly difficulty: ArenaDifficulty };
+  /** `cup`: the cup in force when the match was made */
+  readonly cupId?: string;
+  /** server clock ms the match was made (the cup week, the arrival window) */
+  readonly createdAt: number;
+}
+
+/** Creates the match's `arena` room (server ticket) and reserves one seat per human player (playerId → seat). */
+export async function openArenaRoom(match: ArenaMatch, ticket: string): Promise<{ readonly roomId: string; readonly seats: ReadonlyMap<string, SeatReservation> }> {
+  const room = await matchMaker.createRoom(ARENA_ROOM, { ticket, match });
+  const seats = new Map<string, SeatReservation>();
+  for (const p of match.players) seats.set(p.playerId, await reserveArenaSeat(room, ticket));
+  return { roomId: room.roomId, seats };
+}
+
+/** A seat in a live arena room (the match's players are checked by the room's onAuth when it is consumed). */
+export async function reserveArenaSeat(room: RoomCache, ticket: string): Promise<SeatReservation> {
+  const seat = await matchMaker.reserveSeatFor(room, { ticket }, null);
   return { ...seat };
 }

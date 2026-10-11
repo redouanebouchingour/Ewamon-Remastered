@@ -7,7 +7,7 @@
  */
 
 // §4.1 / §4.2 — schema classes + the AOI view rule
-export { PlayerState, SpawnState, BattleSummary, RaidState, ZoneState, AOI_VIEW_FIELDS } from './state/index';
+export { PlayerState, SpawnState, BattleSummary, RaidState, ZoneState, ArenaState, AOI_VIEW_FIELDS } from './state/index';
 export {
   AOI_CELL,
   AOI_RADIUS,
@@ -44,6 +44,9 @@ export type { MoveInput, MovePose, Collider } from './movement';
 
 // §4.7 — REST
 export * from './rest';
+
+// arena PvP (out-of-world queues, training, friend invites)
+export * from './arena';
 
 // structural copies of content types (see types.ts TODO)
 export * from './types';

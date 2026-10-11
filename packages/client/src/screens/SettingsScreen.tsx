@@ -68,6 +68,7 @@ export const ACTION_LABEL: Readonly<Record<InputAction, string>> = {
   bag: 'Open bag',
   journal: 'Open journal (dex)',
   map: 'Open world map',
+  pvp: 'Open PvP (arena)',
   pause: 'Pause / settings',
   toggleHud: 'Toggle HUD',
 };

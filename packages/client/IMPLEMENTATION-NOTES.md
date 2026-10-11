@@ -1939,3 +1939,71 @@ harness's `HarnessOverlay`). Design: `.design/majin-tenjin.md` §9.
   over CDP (a scripted toxshade battle, a `formChange` injected): the overlay held on the timeline's clock to 3 300 ms,
   the 3D crimson burst under the breaking slabs. **Not verified:** the sounds by ear (checked numerically only), and a
   full server battle with a band.
+
+## Arena PvP (2026-10-12)
+
+Battles outside the world (protocol `arena.ts`, server `ArenaRoom`): Standard, Level 50, Ranked (Lv 50, the only mode
+that moves the rating), the Weekly Cup, AI Training and friend challenges. The in-world PvP (walk-up challenge, the
+Rankings screen's RankedPanel / Mirevale queue) is unchanged.
+
+- **Session** (`net/WorldSession.ts`): one session holds the zone room OR one `arena` room (`kind`). `enterArena(seat)`
+  retires the zone room (a consented leave: the server writes the position; it is in `retiring`, so no offline / kicked
+  state), consumes the seat with `ArenaState` and wires it with the same `wire()` (every server message type). `room`
+  stays the ZONE room (null in an arena), so every `ZoneState` reader (useRoomState, TopBar's ZoneChip, TutorialCard,
+  Minimap, raid views) sees "no room" instead of a foreign state; `onRoom` fires null on entry; the new `onArena(room,
+  inArena, closed)` drives the scene and the arena store. `returnToWorld()` leaves the arena and enters `homeZone` (the
+  zone the player left; `wrongZone` retry as ever). A second `enterArena` from inside an arena (Queue again) hops rooms.
+  `POST /zone/enter` → 409 `inArena` (a reload mid arena battle) → `POST /arena/rejoin` → the arena. While in an arena:
+  `enter()` is a no-op (a shell remount must not forfeit a battle; with the arena socket gone it asks the server via
+  rejoin, else goes home) and `send()` passes only `battleAction` / `battleResync` (`ARENA_SENDABLE`; prediction input,
+  chat, interacts are dropped silently). An arena room that closes under the player is `onArena(null, true, closed)`:
+  the arena flow sends them home unless the battle already ended (the result stays up until Back to world). Switches
+  are serialised (`serial`); a handover that lands after an arena match took the player is discarded.
+- **Arena flow** (`app/arena.ts`, store `state/arena.ts`): REST through `apiFetch` (not route actions — the calls move
+  the session and must work from the HUD, the invite modal and the arena itself; deviation from §20.1.2's fetcher path).
+  The message router hands it `arenaStatus` (queued: elapsed from `waitedMs`; matched: the seat → `enterArena` with a
+  2.6 s "Match found" card; idle refusals toast, `cup` with the server's `detail`; `left` / `started` silent),
+  `arenaInvite` (the modal), `arenaInviteResult` (toast + the PvP screen's outgoing line), `arenaState` (the match;
+  `cancelled` toasts its reason and returns home after 1.2 s; the opponent's body via GET /players/:name for the foe
+  stand-in) and observes `battleStart` / `battleResync` / `battleEvents` (the battle id) and `battleEnd` (the outcome
+  and rating change for the result actions). Error copy for the server's codes (`busy`, `party`, `cup`, `notFriends`,
+  `self`, `friendOffline`, `friendBusy`, `offline` = no presence, `NotFound` / `expired` invites).
+- **Gates**: arena teams are healed copies, so only an EMPTY party blocks (a fainted one does not); also a battle, a
+  trade, being in an arena, or offline. One queue at a time: while queued the other starts say "Leave the X queue
+  first". The Weekly Cup is pre-checked with content `cupRefusal(party, weeklyCup(now))` (the server's rule) and shows
+  why it is locked.
+- **Scene** (`scene/World3D.ts`, `scene/arenaBackdrop.ts`): in an arena the zone is unloaded (statics, spawns, remotes,
+  its atlas hold, a prepared neighbour), render's stadium (`createArenaBackdrop`, read through the namespace so a build
+  without it links: sky only, ring terrain 'none') is added and registered as the zone root with `ARENA_LIGHTING` /
+  `ARENA_GRADE` and `ARENA_BACKDROP.timeOfDay`; the ring dresses at the origin with `ARENA_BACKDROP.terrain`
+  (`SceneDirector.enterBattle` gained an optional `terrain`); `update(scaled dt s)` per frame. The trainer waits at the
+  near trainer slot; input stays off in the arena (`setInputEnabled` gated). The opponent is a temporary `battle:foe`
+  stand-in (`FoeActor` `playerLook`: their body, the generic look until it arrives); a training partner gets a look per
+  difficulty (`battle/foe.ts`, name from content `ARENA_TRAINING`). Music: gym theme between battles (elite for Ranked
+  / Cup), battle theme in battle. The boot overlay covers both switches ("Entering the arena" / "Returning to the
+  world"); the return reloads the zone through the normal `enterZone` (avatar where the player stood, remotes, spawns,
+  minimap, HUD hint). A scene built after a reload's rejoin asks for a `battleResync` with the id the router saw (the
+  server's resync can land before the World exists). `debug().arena` (dev) has a short event trace.
+- **UI**: `/play/pvp` (lazy; More menu "PvP" + key K, `InputAction 'pvp'`; an "Open PvP" strip on Rankings): the rating
+  strip (rating as the hero number, peak, ranked matches, the party's sprites), cards for Standard / Level 50 / Ranked
+  (rating window while queued) / Weekly Cup / Training (levels × difficulty) / Challenge a friend (online friends).
+  The top bar's queue chip (mode, elapsed, × leave) shows the queue anywhere; ZoneChip reads "Arena · Level 50" in an
+  arena. In the arena (`world/ArenaOverlays.tsx`): a top-centre strip (Arena · mode · level · vs opponent), the waiting
+  card, and after the result card (which gains the kind / level strips and says Continue) the result actions: Back to
+  world, Queue again / Rematch / Challenge again (a re-queue shows its timer and Leave queue in place). The arena
+  invite modal declines on its own with `allowChallenges` off or when busy. Minimap, key legend and tutorial cards hide
+  in the arena; Map's fast travel is disabled there. History rows with `arena` read "Arena · <kind>".
+- **Tests**: `test/arena.test.tsx` (session switch over a stubbed SDK incl. hop / 409 rejoin / closed room, the flow,
+  gates, PvP screen, invite modal, arena HUD, the route). The other test fakes gained the arena seams.
+- **Fixed (2026-10-12): the white world after "Back to world"** (was Open here, blamed on the beacon shadow maps). The
+  zone room is joined with the renderer up, so `enterZone` ran before the room's first state patch: no local player in
+  `players`, `loadZone` got no focus and predicted the first view at the zone's spawn (mire_route x −92; the player
+  stood at 12, −9.5). Render's T4 phase 1 compiled that view; the real one stayed gated (invisible) until the background
+  phase reached it (nearest the wrong focus first: 15–45 s), so the frame showed the sky through it — white by day, a
+  blue haze by night. The beacon toggles only "fixed" it by recompiling for seconds while the background caught up
+  (measured: with the beacons' castShadow off the frame stayed white; hiding the sky alone turned it dark). Now
+  `enterZone` waits (≤ 3 s, `scene/arrival.ts` `awaitArrival`) for the patch carrying the player. Measured over 5 live
+  returns (forced daytime): the first playable frame is the world every time (canvas luminance 74–75; before: 252–254 for
+  8–45 s after the load in all 7 per-frame-logged returns); `loadZone` focus = the player's position. Test: `test/arrival.test.ts`. Palette,
+  grade, exposure, fog and time of day come back with the zone (ZoneSystem's palette look + the room's `timeOfDay`), the
+  backdrop is removed + disposed and `setZoneRoot(null)` clears it, the stage is undressed (beacons 0, shadows idle).

@@ -224,6 +224,8 @@ export interface BattleStartSnapshot {
   readonly slots?: 2;
   /** Phase D14: true for a battle tower fight (createBattle `noExp`); absent otherwise */
   readonly noExp?: true;
+  /** Arena PvP: the arena battle's kind (protocol ArenaKind — 'standard' | 'level50' | 'ranked' | 'cup' | 'friend' | 'training'); absent otherwise */
+  readonly arena?: string;
 }
 
 export interface TradedCreatureSummary {

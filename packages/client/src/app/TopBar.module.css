@@ -515,3 +515,66 @@
     padding: 0 var(--s-3);
   }
 }
+
+/* arena PvP: the queue chip beside the zone — a black slab, the mode as a paper label, the elapsed time, × to leave */
+.queue {
+  display: flex;
+  flex: none;
+  align-items: stretch;
+  align-self: center;
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+}
+
+.queueLink {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding-inline-end: var(--s-3);
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.queueLink:focus-visible,
+.queueLeave:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.queueLabel {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  padding: 0 var(--s-4) 0 var(--s-3);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+
+.queueTime {
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.queueLeave {
+  display: grid;
+  place-items: center;
+  padding: 0 var(--s-3);
+  border: 0;
+  box-shadow: inset 1px 0 0 var(--line-1);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.queueLeave:hover {
+  color: var(--text-hi);
+}

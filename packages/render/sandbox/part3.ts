@@ -16,11 +16,11 @@
  * pick) in two rows facing the camera, static + anim atlases bound (`&anim=0` binds only the static atlases: the A/B
  * baseline), `&side=back`. Controls on `part3.legends`: `frames()` (each card's flipbook page), `facing(side)`,
  * `pose(i, pose, ms)`, `faint(i)`, `inspect(i | null)`, `bindAnim()`, `stats()`. `?demo=battle&mine=&foe=` puts any two
- * species in the arena (their atlases, flipbooks included, are bound first).
+ * species in the arena; `?demo=arena` (same controls, `&terrain=`, `&h=0..3`) fights it in the PvP stadium with no zone (their atlases, flipbooks included, are bound first).
  */
 import { Group, Vector3 } from 'three/webgpu';
 import { SPECIES } from '@ewa/content';   // sandbox only (vite alias); the render package never imports content
-import { part3Of, rendererInternals, type AnimAtlasSet, type AtlasSet, type AuraKind, type CreatureBillboard, type FrameHook, type Renderer, type SpriteDescriptor, type TypeName, type VariantKey, type VfxId } from '../src/index.js';
+import { ARENA_BACKDROP, part3Of, rendererInternals, type Terrain, type AnimAtlasSet, type AtlasSet, type AuraKind, type CreatureBillboard, type FrameHook, type Renderer, type SpriteDescriptor, type TypeName, type VariantKey, type VfxId } from '../src/index.js';
 
 interface ManifestMap { readonly url: string; readonly mips: readonly string[] }
 interface ManifestAtlas { readonly id: string; readonly species: readonly string[]; readonly size: 2048; readonly albedo: ManifestMap; readonly normal: ManifestMap; readonly emissive: ManifestMap; readonly normalScale: 0.5 | 1 }
@@ -136,7 +136,7 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
     for (const t of extraTicks) t(dt);
   };
   p.hud.set({
-    zoneName: mode === 'battle' ? null : 'Mire Route', timeOfDay: 0.42, questHint: 'Find the Fenkeeper by the old lantern',
+    zoneName: mode === 'battle' || mode === 'arena' ? null : 'Mire Route', timeOfDay: 0.42, questHint: 'Find the Fenkeeper by the old lantern',
     party: species.slice(0, 6).map((s, i) => ({ speciesId: s, variantKey: (i === 2 ? 'dusk' : 'normal') as VariantKey, hpFrac: 1 - i * 0.15, status: i === 3 ? 'psn' : null, fainted: i === 5 })),
     chat: [{ name: 'Isla', text: 'anyone seen a dusk mossling?', at: 1 }, { name: 'Rowan', text: 'by the pond, just now', at: 2 }],
     nameplates: walkers.map((_, i) => ({ id: `walker${i}`, name: ['Rowan', 'Isla', 'Tamsin'][i]!, guildTag: i === 1 ? '[MIRE]' : '', inBattle: false })),
@@ -319,11 +319,14 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
     Object.assign(out, { people });
   }
 
-  if (mode === 'battle') {
+  if (mode === 'battle' || mode === 'arena') {
     const q = new URLSearchParams(location.search);
+    // `?demo=arena`: the PvP stadium (main.ts registered the backdrop as the zone root); the ring at the origin, no walkers
+    const arena = mode === 'arena';
+    if (arena) { walkersOn = false; walkers.forEach((_, i) => p.actors.despawn(`walker${i}`)); }
     // Phase A: with `&interior=<id>` the battle forms at that hall's arena and stays on its floor
     const hallInfo = (window as unknown as { __ewaInterior?: { arena: { x: number; z: number }; hall: { x: number; z: number; yaw: number; hw: number; hd: number } } }).__ewaInterior;
-    const at = hallInfo ? hallInfo.arena : { x: Number(q.get('ax') ?? focus.x - 0.4), z: Number(q.get('az') ?? focus.z + 9) };   // a clear patch of the part-1 diorama
+    const at = arena ? { x: 0, z: 0 } : hallInfo ? hallInfo.arena : { x: Number(q.get('ax') ?? focus.x - 0.4), z: Number(q.get('az') ?? focus.z + 9) };   // a clear patch of the part-1 diorama
     // T2: a stand-in for the client's DOM battle panel (§20.5.6: the bottom 28 % + a 24 px margin); `&panel=0` hides it
     if (q.get('panel') !== '0') {
       const panel = document.createElement('div');
@@ -335,7 +338,8 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
       measure();
       new ResizeObserver(measure).observe(panel);
     }
-    p.stage.dress(at, 'grove', ['walker0'], hallInfo?.hall);
+    if (arena) p.rig.setHeading((Number(q.get('h') ?? 0) & 3) as 0 | 1 | 2 | 3);
+    p.stage.dress(at, arena ? (q.get('terrain') ?? ARENA_BACKDROP.terrain) as Terrain : 'grove', [arena ? 'rival' : 'walker0'], arena ? undefined : hallInfo?.hall);
     p.rig.pushIn(at, 600);
     const mine = q.get('mine') ?? (species.includes('mossling') ? 'mossling' : species[0]!);
     const foe = q.get('foe') ?? (species.includes('snapling') ? 'snapling' : species[1]!);

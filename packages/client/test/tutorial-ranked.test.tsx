@@ -62,6 +62,13 @@ const fakeWorld: WorldSession = {
     return () => roomListeners.delete(cb);
   },
   onReconnected: () => () => undefined,
+  // arena PvP seams (unused here)
+  arenaRoom: null,
+  kind: 'zone',
+  homeZone: null,
+  enterArena: async () => undefined,
+  returnToWorld: async () => undefined,
+  onArena: () => () => undefined,
   subscribeState: (cb) => {
     stateListeners.add(cb);
     return () => stateListeners.delete(cb);

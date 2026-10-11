@@ -22,6 +22,8 @@ export interface RemotePresence {
   readonly shard: number;
   readonly battleId: string | null;
   readonly tradeId: string | null;
+  /** Arena PvP: `roomId` is an `arena` room (the player is outside the world) */
+  readonly arena?: true;
 }
 
 export const PRESENCE_TTL_S = 90;
@@ -68,13 +70,13 @@ export class PresenceMirror {
   /** Local entry first; otherwise the mirror key another process wrote. */
   async lookup(playerId: string): Promise<RemotePresence | null> {
     const local = this.store.get(playerId);
-    if (local !== null) return { roomId: local.roomId, zoneId: local.zoneId, shard: local.shard, battleId: local.battleId, tradeId: local.tradeId };
+    if (local !== null) return { roomId: local.roomId, zoneId: local.zoneId, shard: local.shard, battleId: local.battleId, tradeId: local.tradeId, ...(local.arena === true ? { arena: true as const } : {}) };
     const raw = await this.kv.get(presenceKey(playerId));
     if (typeof raw !== 'string' || raw.length === 0) return null;
     try {
       const v = JSON.parse(raw) as Partial<RemotePresence>;
       if (typeof v.roomId !== 'string' || typeof v.zoneId !== 'string') return null;
-      return { roomId: v.roomId, zoneId: v.zoneId, shard: Number(v.shard ?? 0), battleId: v.battleId ?? null, tradeId: v.tradeId ?? null };
+      return { roomId: v.roomId, zoneId: v.zoneId, shard: Number(v.shard ?? 0), battleId: v.battleId ?? null, tradeId: v.tradeId ?? null, ...(v.arena === true ? { arena: true as const } : {}) };
     } catch (_e) {
       return null;
     }
@@ -83,7 +85,7 @@ export class PresenceMirror {
   private write(playerId: string): void {
     const e = this.store.get(playerId);
     if (e === null) return;
-    const v: RemotePresence = { roomId: e.roomId, zoneId: e.zoneId, shard: e.shard, battleId: e.battleId, tradeId: e.tradeId };
+    const v: RemotePresence = { roomId: e.roomId, zoneId: e.zoneId, shard: e.shard, battleId: e.battleId, tradeId: e.tradeId, ...(e.arena === true ? { arena: true as const } : {}) };
     void this.kv.setex(presenceKey(playerId), JSON.stringify(v), PRESENCE_TTL_S);
   }
 }

@@ -24,6 +24,12 @@
  * it — the zone holds its static set and the party's static atlases for its life, every view (spawn, legendary static,
  * raid den, battle slot, evolution) leases the ONE side it shows with that side's flipbook, and `CreatureTextures`
  * releases what nothing shows after a grace period, under a creature-texture budget.
+ *
+ * Arena PvP (client IMPLEMENTATION-NOTES "Arena PvP"): while the session is in an arena room (`WorldSession.onArena`)
+ * the zone is unloaded, render's stadium backdrop (`arenaBackdrop.ts`, sky only without it) stands in as the zone root,
+ * the local trainer stands at the near trainer slot of a ring at the origin and the normal battle view plays the
+ * arena's battle there (`battleStart` x = z = 0); the opponent trainer is a temporary stand-in with their look. Back
+ * to the world, the backdrop goes and the zone room's `enterZone` loads the zone under the boot overlay as a handover.
  */
 import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
@@ -32,7 +38,7 @@ import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import { FISH_REACH_M } from '@ewa/protocol';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
-import { ACTOR_POOL_SIZE, createRenderer, edgePoint, heroSurfaces, part3Of } from '@ewa/render';
+import { ACTOR_POOL_SIZE, createRenderer, edgePoint, headingYaw, heroSurfaces, part3Of } from '@ewa/render';
 import type { CompileProgress, Renderer, SurfaceId, TypeName, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
 import { createAudioDirector } from '../audio/AudioDirector';
 import type { AudioDirector } from '../audio/AudioDirector';
@@ -53,6 +59,7 @@ import { apiFetch } from '../net/api';
 import { getWorldSession } from '../net/WorldSession';
 import type { WorldSession, ZoneRoom } from '../net/WorldSession';
 import { onEffectiveSettings, getEffectiveSettings } from '../state/applySettings';
+import { useArenaStore } from '../state/arena';
 import { toast, useNotificationsStore } from '../state/notifications';
 import { applyInventoryDelta, partyCanBattle, toInventoryDelta, useSessionStore } from '../state/session';
 import { useQuestTracking } from '../state/questTracking';
@@ -86,7 +93,10 @@ import { RaidDen, raidTargetId } from './RaidViews';
 import { raidInfoOf } from '../battle/raid';
 import { LegendaryViews, STATIC_FLIPBOOK_NEAR_M, staticTargetId, visibleStatics } from './LegendaryViews';
 import { createSpriteCatalog, loadCreatureManifest } from './spriteCatalog';
+import { ARENA_FALLBACK, mountArenaBackdrop } from './arenaBackdrop';
+import type { MountedBackdrop } from './arenaBackdrop';
 import { DeviceRecovery } from './deviceRecovery';
+import { awaitArrival } from './arrival';
 import { fetchIntoCache, neighbourPrefetchPlan, runPrefetch } from './prefetch';
 import type { PrefetchToken } from './prefetch';
 import type { SpriteCatalog } from './spriteCatalog';
@@ -197,7 +207,20 @@ class World implements World3D {
     isStatic: (id) => this.ready && this.director.isStaticActor(id),
     isRemote: (id) => this.remotes.isSpawned(id),
     restPose: (id) => (this.ready ? this.director.staticPose(id) : null),
+    playerLook: (id) => this.arenaFoeLook(id),
   });
+  /** Arena PvP: the session is in an arena (the zone is unloaded; the stadium stands in) */
+  private inArena = false;
+  private backdrop: MountedBackdrop | null = null;
+  /** the arena ring's frame (origin, facing the camera heading at entry): where the trainers stand before a battle */
+  private readonly arenaFrame = { x: 0, z: 0, fx: 0, fz: -1 };
+  /** dev: the arena scene's last events (debug().arena.trace) */
+  private readonly arenaTrace: string[] = [];
+  private traceArena(e: string): void {
+    if (!this.dev) return;
+    this.arenaTrace.push(`${Math.round(performance.now())} ${e}`);
+    if (this.arenaTrace.length > 30) this.arenaTrace.shift();
+  }
   /** the prediction collider of the loaded zone (gates are its removable blockers) */
   private stepCollider: StepCollider | null = null;
   private devLeft = 0;
@@ -322,8 +345,9 @@ class World implements World3D {
       await this.audio.init(m);
     });
     this.ready = true;
-    // a room joined while the renderer compiled
-    if (this.room !== null && this.roomZone !== null) void this.enterZone(this.room, this.roomZone);
+    // a room joined while the renderer compiled (an arena: a reload mid arena battle rejoined it)
+    if (this.inArena) this.enterArenaScene();
+    else if (this.room !== null && this.roomZone !== null) void this.enterZone(this.room, this.roomZone);
     else setWorldBoot({ label: 'Joining the world' });
   }
 
@@ -354,7 +378,7 @@ class World implements World3D {
       flags: () => this.flags(),
       interactKey: () => this.keyLabel('interact'),
       onZone: (h, z) => this.onZoneChanged(h, z),
-      setInputEnabled: (on) => this.input.setEnabled(on),
+      setInputEnabled: (on) => this.input.setEnabled(on && !this.inArena),
       setAccentType: (t) => part3Of(r)?.stage.setAccentType(t),
       reducedMotion: () => getEffectiveSettings().reduced,
       blockers: () => this.stepCollider,
@@ -457,6 +481,12 @@ class World implements World3D {
       return ok;
     },
     reload: async () => {
+      if (this.inArena) {
+        // the stadium on the new renderer; an open battle is re-dressed by `battle.attach`
+        this.backdrop = null;
+        this.enterArenaScene();
+        return;
+      }
       const room = this.room;
       const zoneId = this.roomZone;
       if (room === null || zoneId === null) {
@@ -614,6 +644,9 @@ class World implements World3D {
         if (this.ready) void this.enterZone(room, zoneId);
       }),
     );
+    // arena PvP: the stadium while the session is in an arena room
+    this.offs.push(ws.onArena((_room, inArena) => this.onArenaChange(inArena)));
+    if (ws.kind === 'arena') this.inArena = true;
     this.offs.push(
       ws.onReconnected(() => {
         this.input.clear();
@@ -631,8 +664,8 @@ class World implements World3D {
       useSessionStore.subscribe(
         (s) => s.progression,
         () => {
-          this.hudWriter.setQuestHint(questHint());
-          if (this.ready) this.director.refreshFlags(this.flags());
+          this.hudWriter.setQuestHint(this.inArena ? null : questHint());
+          if (this.ready && !this.inArena) this.director.refreshFlags(this.flags());
         },
         { fireImmediately: true },
       ),
@@ -832,9 +865,11 @@ class World implements World3D {
       this.awaitingZoneFrame = true;
       setWorldBoot({ ready: false, label: label ?? `Travelling to ${z.name}`, loadedBytes: null, totalBytes: null, compile: null, background: null });
     }
-    // where the player will stand: render compiles what the first view there draws before loadZone resolves (T4)
-    const arrival = room.state.players.get(this.ws.selfId);
-    const focus = arrival !== undefined ? { x: arrival.x, z: arrival.z } : null;
+    // where the player will stand: render compiles what the first view there draws before loadZone resolves (T4). A room
+    // joined with the renderer already up (back from the arena, a reconnect) has no state patch yet: wait for the one
+    // that carries the player, or the first view is predicted at the zone's spawn and the real one stays gated (arrival.ts)
+    const focus = await awaitArrival(room, this.ws.selfId, { stillCurrent: () => this.room === room && !this.disposed });
+    if (this.room !== room || this.disposed) return;
     // the statics' flipbooks are held only until the zone's LegendaryViews lease them (sync inside loadZone)
     let preload: SpriteLease = NO_LEASE;
     try {
@@ -950,6 +985,103 @@ class World implements World3D {
   /** A view's lease on the side it shows (`CreatureTextures.show`); nothing before the sprite pool exists. */
   private leaseSprites(speciesId: string, side: CreatureSide, part?: SpritePart): SpriteLease {
     return this.textures?.show(speciesId, side, part) ?? NO_LEASE;
+  }
+
+  // ---- arena PvP ----------------------------------------------------------------------------------------------------
+
+  private onArenaChange(inArena: boolean): void {
+    if (inArena && !this.inArena) {
+      this.inArena = true;
+      if (this.ready) this.enterArenaScene();
+    } else if (!inArena && this.inArena) {
+      this.leaveArenaScene();
+    }
+  }
+
+  /**
+   * Into the stadium: the zone (statics, spawns, remotes, its atlas hold) is unloaded, the backdrop registered as the
+   * zone root, the trainer placed at the near slot of the ring at the origin; the boot overlay covers the switch and
+   * lifts on the next rendered frame (the tick sees `zoneLoaded`). A battle that arrived first is dressed by `attach`.
+   */
+  private enterArenaScene(): void {
+    this.traceArena(`enterArenaScene battle=${this.battle.active}`);
+    const r = this.renderer;
+    this.evolution?.cancel();
+    this.fishing.cancel();
+    this.autopilotTarget = null;
+    this.input.override = null;
+    if (this.input.biking) this.input.setBike(false);
+    this.input.setEnabled(false);
+    if (this.firstFrame) {
+      this.awaitingZoneFrame = true;
+      setWorldBoot({ ready: false, label: 'Entering the arena', loadedBytes: null, totalBytes: null, compile: null, background: null });
+    }
+    this.zoneLoaded = false;
+    if (this.prefetchToken !== null) this.prefetchToken.cancelled = true;
+    this.director.unloadZone();
+    this.renderer.dropPrepared?.();
+    this.preparedFor = null;
+    this.zone = null;
+    this.zoneHold?.release();
+    this.zoneHold = null;
+    this.remotes.clear();
+    this.spawns?.clear();
+    this.raidDen?.clear();
+    this.backdrop?.dispose();
+    this.backdrop = mountArenaBackdrop(r);
+    // the ring faces the camera's current heading (the battle's push-in keeps it: no zone collider to avoid)
+    const fy = headingYaw(this.headingIndex());
+    this.arenaFrame.fx = -Math.sin(fy);
+    this.arenaFrame.fz = -Math.cos(fy);
+    const tod = this.backdrop?.timeOfDay ?? ARENA_FALLBACK.timeOfDay;
+    this.director.setTimeOfDay(tod);
+    this.hudWriter.setTimeOfDay(tod);
+    this.director.setWeather('none');
+    const selfId = this.ws.selfId;
+    const profile = useSessionStore.getState().profile;
+    r.actors.spawn(selfId, { look: lookOf(profile?.body ?? 'ranger_m'), name: profile?.username ?? '', guildTag: '', isLocal: true });
+    const me = trainerPose(this.arenaFrame, 0, this.trainerAt);
+    r.actors.setTransform(selfId, me.x, me.z, me.angle, false, false);
+    r.camera.follow(selfId);
+    this.hudWriter.setQuestHint(null);
+    this.hudWriter.setNameplates([]);
+    this.audio.setTheme(this.arenaTheme(), 400);
+    this.zoneLoaded = true;
+    this.battle.attach(this.battleView());
+    // a reload's rejoin: the server's battleResync can land before this scene existed (the router saw its id)
+    const a = useArenaStore.getState();
+    if (!this.battle.active && a.battleId !== null && a.match?.phase === 'fighting') this.ws.send('battleResync', { battleId: a.battleId });
+  }
+
+  /** Out of the stadium: the backdrop goes; the zone room that follows loads the zone (`enterZone`, overlay up). */
+  private leaveArenaScene(): void {
+    this.traceArena('leaveArenaScene');
+    this.inArena = false;
+    // a result card still up (the arena closed, a cancelled match): the battle view goes with the arena
+    if (this.battle.active) this.battle.reset();
+    this.foe.end();
+    this.backdrop?.dispose();
+    this.backdrop = null;
+    this.zoneLoaded = false;
+    if (this.firstFrame) {
+      this.awaitingZoneFrame = true;
+      setWorldBoot({ ready: false, label: 'Returning to the world', loadedBytes: null, totalBytes: null, compile: null, background: null });
+    }
+    this.hudWriter.setQuestHint(questHint());
+  }
+
+  /** The opponent's stand-in in an arena: their body from GET /players/:name (the generic trainer until it arrives). */
+  private arenaFoeLook(id: string): { readonly look: string; readonly name: string } | null {
+    if (!this.inArena) return null;
+    const a = useArenaStore.getState();
+    const seat = a.match?.players.find((p) => p.playerId === id);
+    return { look: lookOf(a.bodies[id] ?? 'ranger_m'), name: seat?.name ?? 'Opponent' };
+  }
+
+  /** The stadium's music between battles: the elite theme for Ranked and the Weekly Cup, the gym theme otherwise. */
+  private arenaTheme(): string {
+    const kind = useArenaStore.getState().match?.kind ?? null;
+    return kind === 'ranked' || kind === 'cup' ? 'elite' : 'gym';
   }
 
   // ---- messages -----------------------------------------------------------------------------------------------
@@ -1334,11 +1466,13 @@ class World implements World3D {
     const flags = (): { hitstop: boolean; slowmo: boolean } => getEffectiveSettings().effects;
     return {
       enterBattle: (s) => {
+        this.traceArena(`enterBattle ${s.format} inArena=${this.inArena}`);
         // from the battle state (the BattleSummary patch can arrive after battleStart)
         this.foe.begin(foeSpecOf(s.foeId, s.foeNpc, this.ws.selfId, (id) => foeIdentity(id)));
         // Phase C1: the den's boss steps aside while its arena copy fights
         if (s.format === 'raid') this.raidDen?.setHidden(true);
-        void this.director.enterBattle(s);
+        // arena PvP: the stadium's own floor under the ring
+        void this.director.enterBattle(this.inArena ? { ...s, terrain: this.backdrop?.terrain ?? ARENA_FALLBACK.terrain } : s);
         this.audio.setTheme(s.format === 'raid' ? 'raid' : 'battle', 400);
       },
       ended: (foeWon) => {
@@ -1347,12 +1481,14 @@ class World implements World3D {
         if (foeWon !== null) r.actors.setEmote(this.ws.selfId, foeWon ? EMOTE_SAD : EMOTE_CHEER);
       },
       exitBattle: () => {
+        this.traceArena('exitBattle');
         this.foe.end();
         this.raidDen?.setHidden(false);
         void this.director.exitBattle();
         // the stage disposed its battlers: their sides and the teams' atlases idle (released after the grace period)
         this.battleSprites.end();
         if (this.zone !== null) this.audio.setTheme(this.audio.themeFor(this.zone.id, this.zone.biome), 400);
+        else if (this.inArena) this.audio.setTheme(this.arenaTheme(), 400);
       },
       setBattler: (ref, c, key, spriteId) => {
         if (c === null || cat === null) {
@@ -1512,6 +1648,10 @@ class World implements World3D {
         this.renderer.actors.setTransform(selfId, me.x, me.z, me.angle, false, false);
         const foe = trainerPose(bf, 1, this.trainerAt);
         this.foe.stage(foe.x, foe.z, foe.angle);
+      } else if (this.inArena) {
+        // arena PvP: before / after the battle the trainer waits at the near slot of the stadium's ring
+        const me = trainerPose(this.arenaFrame, 0, this.trainerAt);
+        this.renderer.actors.setTransform(selfId, me.x, me.z, me.angle, false, false);
       } else if (this.evolution?.active === true) {
         // the evolution sequence: the trainer turns to the creature beside them (input is locked meanwhile)
         const rx = this.input.renderX;
@@ -1528,6 +1668,7 @@ class World implements World3D {
     }
     // the active pocket drops the walls facing the camera (only on a yaw change)
     if (this.director.pocket !== null) this.director.syncView(this.cameraYaw());
+    this.backdrop?.update(frameDt);
     // (3)
     this.hudWriter.flush();
     // (4)
@@ -1654,6 +1795,10 @@ class World implements World3D {
       items: useSessionStore.getState().inventory?.items ?? {},
       authoritativeTurn: ui.battle?.authoritative.turn ?? null,
       textures: this.textureSummary(),
+      arena: this.inArena
+        ? { trace: this.arenaTrace.slice(), inBattle: this.director.inBattle, backdrop: this.backdrop !== null, match: useArenaStore.getState().match, outcome: useArenaStore.getState().outcome, foe: this.foe.kind, room: this.ws.arenaRoom !== null }
+        : null,
+      session: this.ws.kind,
     };
   }
 
@@ -1757,6 +1902,8 @@ class World implements World3D {
     this.audio.dispose();
     for (const f of this.rendererOffs) f();
     this.rendererOffs = [];
+    this.backdrop?.dispose();
+    this.backdrop = null;
     if (this.ready) {
       this.director.unloadZone();
       this.battleSprites.end();

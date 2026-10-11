@@ -3,7 +3,8 @@
  * facing the player. Reused by every format that has a visible opponent (trainer / league today; raids and the
  * post-game tower later):
  *
- * - `player` — a pvp foe: their remote avatar is restaged while the remote interpolator has a rig for it;
+ * - `player` — a pvp foe: their remote avatar is restaged while the remote interpolator has a rig for it; in an arena
+ *   (no zone room, no remotes) a temporary `battle:foe` actor stands in with the foe's own look (`playerLook`);
  * - `npc` — a route trainer, gym-hall trainer or league leader: the static actor the director spawned is restaged
  *   (the director stands it back on exit); when none stands in the zone (a story trainer fought from a beat, Sable),
  *   a temporary `battle:foe` actor is spawned with the content `look` and despawned on exit;
@@ -30,6 +31,11 @@ export interface FoeActorDeps {
   isRemote(id: string): boolean;
   /** where a static actor stands when no battle restages it (null: unknown — the director restores it itself) */
   restPose?(id: string): { readonly x: number; readonly z: number; readonly angle: number } | null;
+  /**
+   * Arena PvP: a player foe with no remote avatar to restage (the arena has no zone room) — their look and name for a
+   * temporary stand-in; null = none (the in-world rule: wait for the remote rig).
+   */
+  playerLook?(id: string): { readonly look: string; readonly name: string } | null;
 }
 
 export type FoeSpec =
@@ -77,6 +83,13 @@ export class FoeActor {
     this.end();
     if (spec === null) return;
     if (spec.kind === 'player') {
+      const stand = this.d.isRemote(spec.id) ? null : (this.d.playerLook?.(spec.id) ?? null);
+      if (stand !== null) {
+        this.d.actors.spawn(TEMP_FOE_ID, { look: stand.look, name: stand.name, guildTag: '', isLocal: false });
+        this.mode = 'temporary';
+        this.actorId = TEMP_FOE_ID;
+        return;
+      }
       this.mode = 'remote';
       this.actorId = spec.id;
       return;

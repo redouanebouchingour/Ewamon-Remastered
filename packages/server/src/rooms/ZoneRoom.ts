@@ -51,6 +51,7 @@ import { ChallengeStore } from './challengeStore';
 import { findTarget, itemFlag, rangeFor, trainerBeatenFlag } from './interactables';
 import { pickZoneRoom, reserveZoneSeat, zoneRoomById } from './matchmaking';
 import { RANKED_CANCEL_TOPIC, RANKED_MATCH_TOPIC, RankedArena, rankedArenaTopic } from './matchQueue';
+import { arenaTopic } from './arenaQueue';
 import type { PendingRanked, RankedCancel, RankedMatch } from './matchQueue';
 import { BIKE_ITEM, NO_CLEARED, NO_GATES, SURF_ITEM, isLava, onOpenWater, refillBudget, validateInput } from './movement';
 import type { RejectReason } from './movement';
@@ -253,8 +254,11 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   private fishCounter = 0;
   /** Phase D14: battle tower runs (only Solenne has the attendant; elsewhere every `tower` message is refused) */
   private tower!: TowerSessions;
-  /** player uuid → its `ewa:dm:<id>` callback (§30.7.2: DMs pushed live while the player is in this room) */
-  private readonly dmSubs = new Map<string, (m: DmPush) => void>();
+  /**
+   * player uuid → its `ewa:dm:<id>` callback (§30.7.2: DMs pushed live while the player is in this room) and its
+   * `ewa:arena:<id>` callback (arena PvP: queue status, friend invites — a ServerMessage forwarded as is)
+   */
+  private readonly dmSubs = new Map<string, { readonly dm: (m: DmPush) => void; readonly arena: (m: ServerMessage) => void }>();
   /** Phase D13: ranked matches this room is the arena for, waiting for both players to arrive */
   private readonly rankedArena = new RankedArena();
 
@@ -604,6 +608,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     // Phase D13: a real leave (not a crossing) drops the queue entry and stops a ranked match waiting here
     if (!movedAway) {
       void deps.matchQueue.leave(playerId).catch((e: unknown) => deps.log.warn({ err: e, playerId }, 'ranked queue leave failed'));
+      // arena PvP: leaving the world for good (not for an arena room: matched players are already out of the queue)
+      if (deps.presenceStore.get(playerId)?.arena !== true) void deps.arena.queue.leave(playerId).catch((e: unknown) => deps.log.warn({ err: e, playerId }, 'arena queue leave failed'));
       const pending = this.rankedArena.involving(playerId);
       if (pending !== null) this.rankedArena.cancel(pending.match.matchId, playerId);
     }
@@ -661,16 +667,19 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
 
   private subscribePlayer(playerId: string): void {
     if (this.dmSubs.has(playerId)) return;
-    const cb = (m: DmPush): void => this.sendTo(playerId, { type: 'dm', id: m.id, fromId: m.fromId, fromName: m.fromName, text: m.text, sentAt: m.sentAt });
-    this.dmSubs.set(playerId, cb);
-    void this.presence.subscribe(`ewa:dm:${playerId}`, cb);
+    const dm = (m: DmPush): void => this.sendTo(playerId, { type: 'dm', id: m.id, fromId: m.fromId, fromName: m.fromName, text: m.text, sentAt: m.sentAt });
+    const arena = (m: ServerMessage): void => this.sendTo(playerId, m);
+    this.dmSubs.set(playerId, { dm, arena });
+    void this.presence.subscribe(`ewa:dm:${playerId}`, dm);
+    void this.presence.subscribe(arenaTopic(playerId), arena);
   }
 
   private unsubscribePlayer(playerId: string): void {
     const cb = this.dmSubs.get(playerId);
     if (cb === undefined) return;
     this.dmSubs.delete(playerId);
-    this.presence.unsubscribe(`ewa:dm:${playerId}`, cb);
+    this.presence.unsubscribe(`ewa:dm:${playerId}`, cb.dm);
+    this.presence.unsubscribe(arenaTopic(playerId), cb.arena);
   }
 
   private async grantDailyLogin(client: ZoneClient, playerId: string): Promise<void> {

@@ -47,7 +47,7 @@ export type {
   BattleState,
   CreateBattleOpts,
 } from './types';
-export { capLevel, projectBattler } from './battler';
+export { atLevel, capLevel, projectBattler } from './battler';
 export { createBattle } from './turn';
 
 // §2.10 Actions and resolveTurn

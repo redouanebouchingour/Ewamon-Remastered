@@ -1108,6 +1108,18 @@ Every VFX is a slice of one pooled instanced `Sprite` (`count` 4 096 = 8 emitter
 
 **Doubles** <!-- amended 2026-10-06 Phase D6 -->. In a doubles battle the stage holds four battlers: `BattlerRef.slot` is the field position (0 / 1), never a party index. `battlerSlot(center, yaw, side, slot, count = 2)` keeps the sides 5.5 m apart along the battle axis and spreads each side's two `SLOT_SPACING` (1.8 m) across it, point-symmetric about the ring centre (each side's position 0 on its own left); `Stage.layoutSide` derives `count` from the highest slot a side holds, so one battler per side stays on the axis exactly as in singles. Every foot disc (`STAGE.battlerFootR` 0.55 m, the size-1 contact-shadow decal) lies on the 3.5 m ring top (≈ 2.89 m + 0.55 m from the centre), and in a hall `fitCentre` lists the four foot discs in its need set (they sit inside the 4.0 m ring-fit disc, so they cannot move the centre today; they keep the guarantee if the ring or the spacing changes). VFX anchors, cue targets, `syncFrom` and `projectBattler` are keyed per ref, so `from` / `to` work for either position of either side, an ally included; all four billboards are DOF-sharp. The client maps core refs (party indices) to these positions (`20-client.md` §20.5.4). Proof: `packages/render/test/doubles.test.ts`.
 
+### 10.7.5a The arena stadium <!-- amended 2026-10-11: arena PvP -->
+
+Arena PvP (30-server-netcode.md §30.4.10) fights outside the world: no zone is loaded. `createArenaBackdrop(): { root,
+update(dtSeconds), dispose() }` (`stage/arenaBackdrop.ts`) is a round stadium bowl registered as the zone root
+(`setZoneRoot`): a dark floor with paper-white markings and one orange line, a parapet with an LED ribbon at r 6.6 m,
+tiered stands with 1 854 instanced seated figures (a crowd wave advanced by `update`, so hitstop freezes it), a canopy,
+banner and screen panels. Everything inside r 6.6 m is flat (y 0) and empty: the stage dresses its ring at the origin
+with `ARENA_BACKDROP.terrain` ('forge'). The client sets `ARENA_BACKDROP.timeOfDay` (21:30) and, while no zone is loaded,
+`ARENA_LIGHTING` / `ARENA_GRADE`. Budget: 5 meshes, 5 materials, 5 main draws, no textures, no lights; the bowl is the
+only sun-shadow caster. Every battle-camera sightline (all headings, cues, push-ins, framing distances) stays clear of
+the crowd and under the canopy (`test/arena-backdrop.test.ts`). Sandbox `?demo=arena`.
+
 ### 10.7.6 `ActorPool`
 
 ```ts

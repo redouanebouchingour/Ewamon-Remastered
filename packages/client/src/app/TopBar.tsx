@@ -14,6 +14,10 @@ import { readyCount } from '../data/quests';
 import { apiFetch, endSession } from '../net/api';
 import { getRefreshToken } from '../net/tokens';
 import { useRoomState } from '../net/useRoomState';
+import { ARENA_KIND_LABELS } from '@ewa/protocol';
+import { leaveArenaQueue } from './arena';
+import { levelLabel, useArenaStore } from '../state/arena';
+import { formatElapsed } from '../state/ranked';
 import { useNotificationsStore } from '../state/notifications';
 import { useSessionStore } from '../state/session';
 import { useSettingsStore } from '../state/settings';
@@ -43,6 +47,8 @@ export const NAV: readonly NavItem[] = [
   { to: '/play/dex', label: 'Dex', icon: 'dex', primary: true, action: 'journal' },
   { to: '/play/map', label: 'Map', icon: 'map', primary: true, action: 'map' },
   { to: '/play/quests', label: 'Quests', icon: 'quest', primary: true },
+  // arena PvP: queues, the Weekly Cup, training and friend challenges (K)
+  { to: '/play/pvp', label: 'PvP', icon: 'sword', primary: false, action: 'pvp' },
   { to: '/play/box', label: 'Box', icon: 'box', primary: false },
   { to: '/play/shop', label: 'Shop', icon: 'shop', primary: false },
   { to: '/play/social', label: 'Social', icon: 'social', primary: false },
@@ -136,14 +142,41 @@ function ZoneChip() {
   const zoneId = useSessionStore((st) => st.zoneId);
   const connection = useUiStore((st) => st.connection);
   const here = useRoomState((state) => state.players.size, 0);
-  const label = connection === 'connected' ? (here > 1 ? `${here} here` : 'Connected') : connection === 'reconnecting' ? 'Reconnecting' : 'Offline';
+  // arena PvP: the arena replaces the zone (the zone id is where the player returns)
+  const arena = useArenaStore((st) => (st.inArena ? (st.match === null ? 'Arena' : `Arena · ${levelLabel(st.match.level)}`) : null));
+  const label = connection === 'connected' ? (arena !== null ? 'Connected' : here > 1 ? `${here} here` : 'Connected') : connection === 'reconnecting' ? 'Reconnecting' : 'Offline';
   return (
     <div className={s.zone} title={`World connection: ${connection}`}>
-      <span className={s.zoneName}>{zoneName(zoneId)}</span>
+      <span className={s.zoneName}>{arena ?? zoneName(zoneId)}</span>
       <span className={s.zoneMeta}>
         <span className={cx(s.dot, s[connection])} aria-hidden />
         {label}
       </span>
+    </div>
+  );
+}
+
+/** Arena PvP: the queue the player is in, anywhere (elapsed time; opens PvP; × leaves it). */
+function QueueChip() {
+  const kind = useArenaStore((st) => (st.status.state === 'queued' && !st.inArena ? st.status.kind : null));
+  const queuedAt = useArenaStore((st) => st.queuedAt);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (kind === null) return;
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [kind]);
+  if (kind === null) return null;
+  return (
+    <div className={s.queue} data-testid="queuechip">
+      <NavLink to="/play/pvp" className={s.queueLink} title={`Searching for a ${ARENA_KIND_LABELS[kind]} match — open PvP`}>
+        <span className={s.queueLabel}>{ARENA_KIND_LABELS[kind]}</span>
+        <span className={s.queueTime}>{formatElapsed(now - queuedAt)}</span>
+      </NavLink>
+      <button type="button" className={s.queueLeave} aria-label="Leave the queue" onClick={() => void leaveArenaQueue()}>
+        <Icon name="close" size="sm" />
+      </button>
     </div>
   );
 }
@@ -323,6 +356,7 @@ export function TopBar() {
         <span className={s.brandSlab}>Ewamon</span>
       </NavLink>
       <ZoneChip />
+      <QueueChip />
       <nav className={s.nav} aria-label="Menus">
         {NAV_PRIMARY.map((n) => (
           <NavLink key={n.to} to={n.to} className={({ isActive }) => cx(s.link, isActive && s.active)}>

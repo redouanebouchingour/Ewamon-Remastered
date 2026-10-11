@@ -4,7 +4,7 @@
  * trainer (gym leader, Warden, Champion), else a zone trainer (route trainers and the story trainers a beat fights,
  * e.g. Sable), else a gym-hall trainer. Nothing here decides game truth.
  */
-import { LEAGUE, TOWER, allZones, interiorTrainers } from '@ewa/content';
+import { ARENA_TRAINING, LEAGUE, TOWER, allZones, interiorTrainers } from '@ewa/content';
 import type { LeagueTrainer } from '@ewa/content';
 import type { BattleState, TypeName } from '@ewa/core';
 import { species } from '../data/content';
@@ -23,6 +23,9 @@ export interface FoeIdentity {
 }
 
 interface TrainerRow { readonly name: string; readonly look: string }
+
+/** Arena training: the partner's look per difficulty (render looks the player bodies use). */
+const TRAINING_LOOKS: Readonly<Record<keyof typeof ARENA_TRAINING, string>> = { easy: 'casual3_male', normal: 'casual_female', hard: 'suit_male' };
 let trainers: Map<string, TrainerRow> | null = null;
 
 /** Every zone trainer and gym-hall trainer by id (built once, on first use). */
@@ -49,6 +52,10 @@ export function foeIdentity(trainerId: string, leadSpecies: string | null = null
   if (lt !== null) return { id: trainerId, name: lt.name, title: lt.title, type: lt.type, look: lt.look, league: lt };
   // Phase D14: the battle tower's generated opponent
   if (trainerId === TOWER.trainerId) return { id: trainerId, name: TOWER.trainerName, title: null, type: lead, look: null, league: null };
+  // arena PvP: the AI training partner (a stand-in look per difficulty; content gives the name)
+  for (const [difficulty, t] of Object.entries(ARENA_TRAINING) as [keyof typeof ARENA_TRAINING, (typeof ARENA_TRAINING)[keyof typeof ARENA_TRAINING]][]) {
+    if (t.trainerId === trainerId) return { id: trainerId, name: t.name, title: 'Arena training', type: lead, look: TRAINING_LOOKS[difficulty], league: null };
+  }
   const row = trainerRows().get(trainerId);
   if (row !== undefined) return { id: trainerId, name: row.name, title: null, type: lead, look: row.look, league: null };
   const tail = trainerId.slice(trainerId.lastIndexOf('.') + 1).replace(/_/g, ' ');

@@ -92,3 +92,55 @@
   justify-content: center;
   gap: var(--s-4);
 }
+
+/* arena PvP: the entry to the PvP screen above the ranked block (a black strip; the link is the press-this control) */
+.pvp {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-5);
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+}
+
+.pvpText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-inline-size: 0;
+}
+
+.pvpTitle {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: var(--lh-h3);
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.pvpLink {
+  flex: none;
+  padding: var(--s-2) var(--s-5);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+
+.pvpLink:hover {
+  background: var(--accent-hi);
+}
+
+.pvpLink:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

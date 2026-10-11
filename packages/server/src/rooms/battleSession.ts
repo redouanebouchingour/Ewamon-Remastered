@@ -10,10 +10,11 @@
  * No Colyseus import: the room is a `BattleHost` (send + lifecycle hooks), so this module is testable alone.
  */
 import { randomUUID } from 'node:crypto';
-import { MAJIN_BAND, TENJIN_BAND, TOWER, league as leagueById, leagueRematchFlag, storyBeat as beatById, towerSetReward } from '@ewa/content';
-import type { BadgeId, LeagueRematch, LeagueTrainer, LegendaryStatic, TrainerDef, ZoneDef } from '@ewa/content';
+import { ARENA_TRAINING, MAJIN_BAND, TENJIN_BAND, TOWER, cupRefusal, league as leagueById, leagueRematchFlag, storyBeat as beatById, towerSetReward } from '@ewa/content';
+import type { ActiveCup, BadgeId, LeagueRematch, LeagueTrainer, LegendaryStatic, TrainerDef, ZoneDef } from '@ewa/content';
 import {
   TRAINER_EXP,
+  atLevel,
   createBattle,
   createRng,
   digestBattleState,
@@ -25,7 +26,7 @@ import {
   validateAction,
 } from '@ewa/core';
 import type { Action, BandKind, BattleEvent, BattleFormat, BattleOutcome, BattleState, ContentIndex, CreatureInstance, Rng, RngState, Side, SideChoice, Terrain, WeatherKind } from '@ewa/core';
-import type { QuestProgressEntry, RewardsSummary, ServerMessage } from '@ewa/protocol';
+import type { ArenaDifficulty, ArenaKind, QuestProgressEntry, RewardsSummary, ServerMessage } from '@ewa/protocol';
 import type { BattleStartSnapshot, Db, Repos, StreakState } from '@ewa/persist';
 import type { Logger } from '../log';
 import type { RoomMetrics } from '../metrics';
@@ -58,7 +59,8 @@ export interface Seat {
 export interface BattleSession {
   readonly id: string;
   readonly format: BattleFormat;
-  readonly zoneId: ZoneDef['id'];
+  /** the zone id (an `arena` room's battles: 'arena') */
+  readonly zoneId: string;
   readonly seats: readonly [Seat, Seat];
   /** core; the ONLY copy of the truth */
   state: BattleState;
@@ -103,6 +105,12 @@ export interface BattleSession {
   readonly tower?: true;
   /** Phase D14: the tower result for side 0, set after the end transaction commits (read by the host's `onEnd`) */
   towerResult?: TowerResult;
+  /**
+   * Arena PvP (rooms/ArenaRoom.ts): an out-of-world battle between healed synthetic copies (`noExp`, no items, nothing
+   * about the creatures written). `ranked`: only then the end moves the rating (Elo); every other arena PvP kind pays
+   * the pvp trainer exp + the `win pvp` quest event; `training` (format 'trainer' vs an AI) pays nothing at all.
+   */
+  readonly arena?: { readonly kind: ArenaKind; readonly ranked: boolean };
   /** the LegendaryStatic flag to set on win/catch */
   readonly staticFlag: string | null;
   /** createBattle's input minus seed, deep-copied before the call — battle_history.start (P6, DB-only replay) */
@@ -124,7 +132,8 @@ export interface BattleDeps {
   readonly content: ContentIndex;
   readonly clock: () => number;
   readonly log: Logger;
-  readonly zone: ZoneDef;
+  /** where battles form: the zone room's ZoneDef, or the arena room's `{ id: 'arena', biome: 'capital' }` (terrain none) */
+  readonly zone: { readonly id: string; readonly biome: ZoneDef['biome'] };
   readonly host: BattleHost;
   readonly metrics: RoomMetrics;
   /** Phase D7: the ambient weather a battle of this format forming at this point starts under (absent → 'none') */
@@ -145,6 +154,43 @@ export interface PlayerSeat {
 
 /** A failed start; `playerId` (pvp) names the side whose party / battle stopped it. */
 export type StartResult = { readonly ok: true; readonly session: BattleSession } | { readonly ok: false; readonly code: 'notAllowed' | 'busy' | 'internal'; readonly detail: string; readonly playerId?: string };
+
+/** Arena PvP: what `startArena` needs (the arena room's match). */
+export interface ArenaStart {
+  readonly kind: ArenaKind;
+  /** every creature at exactly this level, or null = own levels (healed) */
+  readonly level: number | null;
+  /** the human seats, side order (training: one) */
+  readonly players: readonly PlayerSeat[];
+  /** `cup`: the cup in force at the match (its rule is re-checked against the stored party) */
+  readonly cup?: ActiveCup;
+  /** `training`: the AI's difficulty and the seed of its team */
+  readonly training?: { readonly difficulty: ArenaDifficulty; readonly seed: string };
+}
+
+/** Arena PvP: the start refusals (`detail`), with `playerId` naming the side. */
+export type ArenaStartRefusal = 'party' | 'cup' | 'inBattle';
+
+/**
+ * Arena training: the AI's team — `size` distinct species from the difficulty's pool (seeded shuffle), each at
+ * `level` with its level-up moves and a seeded ability, synthetic `arena:foe:<i>` ids. Pure and deterministic in `seed`.
+ */
+export function arenaTrainingTeam(seed: string, difficulty: ArenaDifficulty, size: number, level: number, content: ContentIndex): CreatureInstance[] {
+  const rng = createRng(seed);
+  const pool = rng.shuffle(ARENA_TRAINING[difficulty].pool);
+  const out: CreatureInstance[] = [];
+  for (let i = 0; i < size && i < pool.length; i++) {
+    const sp = content.species(pool[i]!);
+    const ability = sp.abilities[rng.int(sp.abilities.length)]!;
+    out.push(withSyntheticId(newCreature(content, sp.id, level, { ability }), `arena:foe:${i}`));
+  }
+  return out;
+}
+
+/** Arena PvP: the party as it fights — the first six, each at `level` (null = own), fully healed, synthetic `arena:` ids. */
+export function arenaCopies(party: readonly CreatureInstance[], level: number | null, content: ContentIndex): CreatureInstance[] {
+  return party.slice(0, 6).map((c) => withSyntheticId(atLevel(toInstance(c), level, content), `arena:${c.id}`));
+}
 export type ActionResult = null | { readonly code: 'notFound' | 'notAllowed' | 'busy'; readonly detail: string | null };
 
 export const TERRAIN_BY_BIOME: Readonly<Record<ZoneDef['biome'], Terrain>> = {
@@ -421,8 +467,10 @@ export class BattleCoordinator {
     // Phase D6: `slots: 2` rides the start snapshot so a doubles battle replays from its history row alone
     const slots = doubles ? { slots: 2 as const } : {};
     // Phase D14: a tower fight awards no exp; the flag rides the snapshot so the history row replays alone
-    const noExp = base.tower === true ? { noExp: true as const } : {};
-    const start = JSON.parse(JSON.stringify({ zoneId: base.zoneId, terrain, sides, ...ambient, ...slots, ...noExp })) as BattleStartSnapshot;
+    // Arena PvP: healed copies fight with noExp too (no exp, no honor); the kind rides the snapshot (history rows show it)
+    const noExp = base.tower === true || base.arena !== undefined ? { noExp: true as const } : {};
+    const arena = base.arena !== undefined ? { arena: base.arena.kind } : {};
+    const start = JSON.parse(JSON.stringify({ zoneId: base.zoneId, terrain, sides, ...ambient, ...slots, ...noExp, ...arena })) as BattleStartSnapshot;
     const { state, events } = createBattle({ id: base.id, format: base.format, zoneId: base.zoneId, terrain, seed, sides, ...ambient, ...slots, ...noExp }, this.deps.content);
     const session: BattleSession = {
       ...base,
@@ -668,6 +716,76 @@ export class BattleCoordinator {
     return { ok: true, session };
   }
 
+  /**
+   * Arena PvP (rooms/ArenaRoom.ts): one transaction locks the human players and reads their parties + inventories;
+   * each side is its party's first six as healed synthetic copies at `a.level` (`arenaCopies`) — nothing about a stored
+   * creature is ever written. Both human sides are `player` (format 'pvp', seed = createRng(battleId)); training fights
+   * an AI (`npc`, format 'trainer') whose team is `arenaTrainingTeam` sized to the player's party, at `a.level` or the
+   * player's highest party level. `noExp`, no item snapshot (bag items are refused `noItem`), no flee, no catch, no
+   * weather, terrain none; the Majin / Tenjin bands still come from the inventory. Refusals: `party` (an empty party),
+   * `cup` (the stored party breaks the cup's rule), `inBattle`.
+   */
+  async startArena(a: ArenaStart, battleId: string = randomUUID()): Promise<StartResult> {
+    const busy = (): StartResult | null => {
+      const p = a.players.find((x) => this.byPlayer.has(x.playerId));
+      return p === undefined ? null : { ok: false, code: 'busy', detail: 'inBattle', playerId: p.playerId };
+    };
+    const before = busy();
+    if (before !== null) return before;
+    const content = this.deps.content;
+    const loaded = await this.loadPlayers(
+      a.players.map((p) => p.playerId),
+      null,
+    );
+    const sides: Omit<Side, 'mustSwitch' | 'consumedItems'>[] = [];
+    for (const p of a.players) {
+      const l = loaded.get(p.playerId)!;
+      if (l.party.length === 0) return { ok: false, code: 'notAllowed', detail: 'party', playerId: p.playerId };
+      if (a.cup !== undefined && cupRefusal(l.party.slice(0, 6), a.cup) !== null) return { ok: false, code: 'notAllowed', detail: 'cup', playerId: p.playerId };
+      const bands = bandsOf(l.inventory);
+      const party = arenaCopies(l.party, a.level, content).map((c) => projectBattler(c, content));
+      sides.push({ kind: 'player', party, active: 0, trainerId: p.playerId, canFlee: false, canCatch: false, ...(bands.length > 0 ? { bands } : {}) });
+    }
+    let npc: BattleSession['npc'] = null;
+    if (a.training !== undefined) {
+      const mine = loaded.get(a.players[0]!.playerId)!.party.slice(0, 6);
+      const level = a.level ?? Math.max(...mine.map((c) => c.level));
+      const foes = arenaTrainingTeam(a.training.seed, a.training.difficulty, mine.length, level, content);
+      const trainerId = ARENA_TRAINING[a.training.difficulty].trainerId;
+      sides.push({ kind: 'npc', party: foes.map((c) => projectBattler(c, content)), active: 0, trainerId, canFlee: false, canCatch: false });
+      npc = { trainerId, reward: 0, leagueId: null };
+    }
+    if (sides.length !== 2) return { ok: false, code: 'internal', detail: 'seats' };
+    const after = busy();
+    if (after !== null) return after;
+    const seats: [Seat, Seat] = [
+      { side: 0, playerId: a.players[0]!.playerId, sessionId: a.players[0]!.sessionId },
+      a.players[1] !== undefined ? { side: 1, playerId: a.players[1].playerId, sessionId: a.players[1].sessionId } : { side: 1, playerId: null, sessionId: null },
+    ];
+    const { session } = this.open(
+      {
+        id: battleId,
+        format: a.training !== undefined ? 'trainer' : 'pvp',
+        zoneId: this.deps.zone.id,
+        seats,
+        spawnId: null,
+        npc,
+        beatId: null,
+        staticSpecies: null,
+        staticFlag: null,
+        x: 0,
+        z: 0,
+        yaw: 0,
+        inventory: [null, null],
+        rematch: false,
+        arena: { kind: a.kind, ranked: a.kind === 'ranked' },
+      },
+      [sides[0]!, sides[1]!],
+      createRng(battleId).snapshot(),
+    );
+    return { ok: true, session };
+  }
+
   // ─── actions ────────────────────────────────────────────────────────────────
 
   /**
@@ -793,8 +911,8 @@ export class BattleCoordinator {
       const d = deltas.get(pid);
       if (d === undefined) continue;
       if (d.tower !== null && seat.side === 0) session.towerResult = d.tower;
-      // Phase D14: a tower fight keeps its empty item snapshot (no items in the tower)
-      if (d.inventoryAll !== null && session.tower !== true) session.inventory[seat.side] = d.inventoryAll;
+      // Phase D14: a tower fight keeps its empty item snapshot (no items in the tower); arena PvP likewise
+      if (d.inventoryAll !== null && session.tower !== true && session.arena === undefined) session.inventory[seat.side] = d.inventoryAll;
       const itemsTouched = Object.keys(d.items).length > 0;
       if (itemsTouched || d.money !== null || d.creaturesAdded.length > 0 || d.creaturesUpdated.length > 0) {
         host.send(pid, {
@@ -910,8 +1028,10 @@ export class BattleCoordinator {
           questEvents.push({ kind: 'dex', caught: await repos.progress.caughtCount(tx, pid) });
         }
 
-        // h. markSeen for every opposing species revealed this turn
+        // h. markSeen for every opposing species revealed this turn (arena training writes nothing at all)
+        const training = session.arena?.kind === 'training';
         for (const ev of events) {
+          if (training) break;
           if (ev.t !== 'switchIn' || ev.who.side !== other) continue;
           const sp = next.sides[other].party[ev.who.slot]?.creature.speciesId;
           if (sp === undefined || d.dexSeen.includes(sp)) continue;
@@ -927,9 +1047,29 @@ export class BattleCoordinator {
         const flagsToSet: string[] = [];
         const outcome = next.ended;
         if (outcome !== null) {
-          questEvents.push({ kind: 'battle', format: session.format });
+          if (!training) questEvents.push({ kind: 'battle', format: session.format });
           const won = side === 0 ? side0Won(outcome) : outcome.winner === 1;
-          if (session.format === 'wild') {
+          if (training) {
+            // Arena training: no trainer exp, no quest win, no flags, no money
+          } else if (session.arena !== undefined) {
+            // Arena PvP: only Ranked moves the rating (Elo, once per player); every other kind pays the pvp trainer exp
+            if (outcome.winner !== 'fled' && outcome.winner !== 'caught') {
+              const me = rows.get(pid)!;
+              const foe = rows.get(session.seats[other].playerId!)!;
+              const ranked = session.arena.ranked;
+              if (outcome.winner === 'draw') {
+                if (ranked) ratingDelta = eloDrawDelta(me.rating, foe.rating)[0];
+              } else if (outcome.winner === side) {
+                if (ranked) ratingDelta = eloDelta(me.rating, foe.rating).winnerDelta;
+                trainerExpGain += TRAINER_EXP.pvpWin;
+                questEvents.push({ kind: 'win', format: 'pvp' });
+              } else {
+                if (ranked) ratingDelta = eloDelta(foe.rating, me.rating).loserDelta;
+                trainerExpGain += TRAINER_EXP.pvpLoss;
+              }
+              if (ranked && ratingDelta !== null) d.rating = (await repos.players.applyRating(tx, pid, ratingDelta)).rating;
+            }
+          } else if (session.format === 'wild') {
             if (won) trainerExpGain += TRAINER_EXP.wildWin;
             if (won && session.staticFlag !== null) flagsToSet.push(session.staticFlag);
             if (won) questEvents.push({ kind: 'win', format: 'wild' });

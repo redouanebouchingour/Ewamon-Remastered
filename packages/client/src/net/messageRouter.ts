@@ -5,6 +5,8 @@
  */
 import { FAST_TRAVEL_REFUSALS } from '@ewa/protocol';
 import type { ServerMessage } from '@ewa/protocol';
+import { installArenaFlow, routeArenaMessage } from '../app/arena';
+import type { ArenaSession } from '../app/arena';
 import { queueTradeEvolutions } from '../app/itemUseFeedback';
 import { toast, useNotificationsStore } from '../state/notifications';
 import { rankedStatusText, useRankedStore } from '../state/ranked';
@@ -65,7 +67,9 @@ export function challengeResultText(m: Extract<ServerMessage, { type: 'challenge
   return 'That trainer is unavailable.';
 }
 
-export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'handover' | 'selfId'>): void {
+export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'handover' | 'selfId'> & Partial<ArenaSession>): void {
+  // arena PvP (app/arena.ts): the queue, invites, the arena room's phase; battleEnd is observed there and played here
+  if (ws.enterArena !== undefined && ws.returnToWorld !== undefined && routeArenaMessage(m, ws as ArenaSession)) return;
   switch (m.type) {
     case 'inventoryDelta':
       if (tradeReceiptPending) {
@@ -145,8 +149,11 @@ export function installMessageRouter(ws: WorldSession): () => void {
   const offRoom = ws.onRoom((room) => {
     if (room === null) useRankedStore.getState().reset();
   });
+  // arena PvP: the arena store follows the session; an arena closed mid-battle sends the player back
+  const offArena = installArenaFlow(ws);
   return () => {
     offMessages();
     offRoom();
+    offArena();
   };
 }

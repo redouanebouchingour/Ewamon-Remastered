@@ -1,4 +1,4 @@
-# HANDOFF — Ewamon Remastered (as of 2026-10-11, after the finish plan's phases A–E and the post-plan additions)
+# HANDOFF — Ewamon Remastered (as of 2026-10-12, after the finish plan's phases A–E and the post-plan additions)
 
 This file is the single entry point for whoever continues the build. Read it, then
 `.design/PLAN.md` (approved plan) and `.design/SPEC.md` (BINDING contract, assembled from
@@ -61,6 +61,7 @@ fail under machine load and pass alone).
 | client | every server system has UI. The **Broadcast UI** (2026-10-11): carbon panels, paper white, one hot orange for selected / press / focus, type colour as the hero, Barlow Condensed over Barlow, 19 type icons instead of letter codes, canvas HUD in the same language, battle command deck, five top-bar links + More, Party as a card row. Signature-move cinematics, the Majin / Tenjin bond cinematic + transform toggle + band tutorial, the honor meter | `npx vitest run packages/client`; Playwright `client-e2e` |
 | render | interiors, doubles stage, shiny glow, surf ripple, weather, art pass, density dressing, neighbour skirt, fixed light layout + off-scene zone prepare, device-lost recovery; 14 move motion styles (63 → 64 VFX ids with `form_tenjin`); battle-form auras (flames / light, sigil ring, rim); M3 town art for Saltmourn, Skyrend, Cinderhold, Stormrook (`albedoCal`, `Palette.grassTone`, `lava_glow` emissive, plaza clutter) | `npx vitest run packages/render`; `.design/audits/M3-render-audit.md` |
 | sprites | 150 sprite keys (137 species + battle forms), 75 atlases, creature byte ceiling 41,156,608 | `pnpm --filter @ewa/sprite-pipeline` tests |
+| arena PvP | out-of-world battles: Standard, Level 50, Ranked (Lv 50, the only rated kind), Weekly Cup, friend invites, AI Training; healed copies (no hp / exp); a dedicated `arena` room + stadium; the in-world challenge and Mirevale ranked queue unchanged | `npx vitest run packages/server/test/arena.test.ts packages/client/test/arena.test.tsx`; SPEC §30.4.10, §20.9.9d |
 | audio | 380 jobs (188 sfx ids) from the 58 user-approved CC0 downloads, no new downloads since; 73.33 MiB of 80; credits + licences shipped; 12 signature-move premixes (`sig_*`) and 2 bond sounds | `npx vitest run tools/audio-pipeline`; `IMPLEMENTATION-NOTES.md` "Phase E4 downloads" |
 
 ## Since 2026-10-06 (post-plan additions)
@@ -84,6 +85,13 @@ fail under machine load and pass alone).
   type icons not letter codes, real sprites not initials).
 - **M3**: the independent review landed (2026-10-06, `c16d772`, section R of the audit); the four towns below the bar
   and the green tufts are answered "Fixed (to judge)" (2026-10-11).
+- **Arena PvP** (2026-10-12, like the old game's battle page): `/play/pvp` (More → PvP, key K; "Open PvP" on Rankings).
+  Queue Standard / Level 50 / Ranked / Weekly Cup from anywhere (a top-bar chip while queued), invite an online friend,
+  or start AI Training. A match moves the player out of the zone into a fresh `arena` room (server `ArenaRoom` /
+  `arenaQueue` / `arenaLobby`, REST `/arena/*`) rendered in render's stadium (`createArenaBackdrop`, sandbox
+  `?demo=arena`); Back to world returns them where they stood. Teams are healed synthetic copies (`atLevel`), so nothing
+  about a creature is written; only Ranked moves the rating. Weekly Cup rules rotate Monday 00:00 UTC (content
+  `weeklyCup` / `cupRefusal`). A reload mid battle: `/zone/enter` 409 `inArena` → `/arena/rejoin`.
 - **Tuning / dev**: denser wild spawns; `grant:creature` / `grant:item`; the tower test's Wonder Guard flake fixed.
 
 ## The finish plan
@@ -94,7 +102,7 @@ fail under machine load and pass alone).
 ## Open items, in order
 
 1. **Re-run `pnpm test:progression`**: the last recorded run predates the Majin / Tenjin band grants (beats 19 / 21),
-   the trainer bands and the denser spawns.
+   the trainer bands, the denser spawns and the arena changes to the battle coordinator / zone room.
 2. **Audio — a human listen**: nothing was auditioned by ear. In order: the grove, marrow and champion loop seams
    (non-repeating pieces joined with a 1.5–2 s fade; grove plays first), battle / victory seams, the short sky / elite /
    gym loops, derived threat / biome / night layers, creature cries, stinger starts, tiled ambience beds, arcade-ish
@@ -116,4 +124,8 @@ fail under machine load and pass alone).
    as a doubles pair; a hall warp tile can be pressed through a wall (no line-of-sight rule); used email tokens are
    never purged; a tower run lives in server memory. Majin / Tenjin "later": a species with both forms, the mythical
    pair (Lumyth Tenjin, Noxmyth Majin).
-7. Deployment is undecided (the user's call).
+7. Arena PvP left open: never run on Redis with several server processes (tests use local presence); "busy" does not
+   see a tower run between fights or a crossing in progress (the arena start's transaction is the last guard); the
+   battle camera's narrow framing shows mostly the arena floor (the bowl shows on cut-aways); no arena spectating or
+   seasons; Weekly Cup wins earn nothing beyond pvp trainer exp (the old game's cup milestones were not carried).
+8. Deployment is undecided (the user's call).

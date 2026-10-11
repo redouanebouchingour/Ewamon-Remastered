@@ -15,8 +15,8 @@ import {
 import type { BufferGeometry } from 'three/webgpu';
 import { color, mrt, vec2 } from 'three/tsl';
 import {
-  ALL_EFFECTS, GROVE_LIGHTING, WATER_DEPTH_ATTRIBUTE, applyReducedEffects, capViolations, createBudgetProbe, createRenderer, paintSurfaceColor,
-  rendererInternals,
+  ALL_EFFECTS, ARENA_GRADE, ARENA_LIGHTING, GROVE_LIGHTING, WATER_DEPTH_ATTRIBUTE, applyReducedEffects, capViolations, createArenaBackdrop, createBudgetProbe,
+  createRenderer, paintSurfaceColor, rendererInternals,
 } from '../src/index.js';
 import type { BasicDioramaRig, HarvestLevel, LightSource, Renderer, SurfaceId, WeatherKind, ZoneHandleImpl } from '../src/index.js';
 import { zone as contentZone } from '@ewa/content';
@@ -440,6 +440,16 @@ async function main(): Promise<void> {
     };
     if (params.get('hold') === '1') holding = true; else await firstZoneFrame();
     (window as unknown as { __ewaZone: unknown }).__ewaZone = { spec, handle: zoneHandle };
+  } else if (params.get('demo') === 'arena') {
+    // ?demo=arena: the PvP stadium (stage/arenaBackdrop.ts) as the zone root, no zone loaded; part3.ts dresses the
+    // ring at the origin. The backdrop's clock runs in a frame hook (scaled ms → s).
+    const backdrop = createArenaBackdrop();
+    r.scene.add(backdrop.root);
+    host.setZoneRoot(backdrop.root as Group);
+    if (params.get('palette') !== '0') { host.setLightingPalette(ARENA_LIGHTING); host.setGrade(ARENA_GRADE); }
+    (host as unknown as { hooks: { update?: (dt: number) => void }[] }).hooks.unshift({ update: (dt: number) => backdrop.update(dt / 1000) });
+    (window as unknown as { __ewaArena: unknown }).__ewaArena = backdrop;
+    rig.setFocus(0, 0, 0);
   } else {
     await r.materials.preload(SURFACES_USED);
     const root = buildDiorama(r);
@@ -449,7 +459,7 @@ async function main(): Promise<void> {
     rig.setFocus(0.9, 0, 1.2);
   }
 
-  let hours = Number(new URLSearchParams(location.search).get('t') ?? 10);
+  let hours = Number(new URLSearchParams(location.search).get('t') ?? (params.get('demo') === 'arena' ? 21.5 : 10));
   r.setTimeOfDay(hours / 24);
   const resize = (): void => { if (canvas.clientWidth > 0 && canvas.clientHeight > 0) r.resize(canvas.clientWidth, canvas.clientHeight); };
   new ResizeObserver(resize).observe(canvas);

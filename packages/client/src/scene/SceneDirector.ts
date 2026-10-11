@@ -154,8 +154,13 @@ export interface SceneDirector {
    */
   prepareZone(id: ZoneId, harvestState: HarvestState, focus?: { readonly x: number; readonly z: number } | null): Promise<void>;
   unloadZone(): void;
-  /** `yaw`: the hall battle axis from `battleStart` (null / absent outside a hall; the arena's pocket decides anyway). */
-  enterBattle(summary: { readonly battleId: string; readonly x: number; readonly z: number; readonly format: BattleFormat; readonly yaw?: number | null }): Promise<void>;
+  /**
+   * `yaw`: the hall battle axis from `battleStart` (null / absent outside a hall; the arena's pocket decides anyway).
+   * `terrain`: the ring's dressing when no zone decides it (arena PvP: the stadium's own floor, 'none').
+   */
+  enterBattle(summary: {
+    readonly battleId: string; readonly x: number; readonly z: number; readonly format: BattleFormat; readonly yaw?: number | null; readonly terrain?: Terrain;
+  }): Promise<void>;
   exitBattle(): Promise<void>;
   setTimeOfDay(t: number): void;
   setWeather(w: WeatherKind): void;
@@ -513,7 +518,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
       const at = hall === null ? null : fitCentre(hallBoundsOf(hall), summary.x, summary.z, fy, [0, 0]);
       battleFrame = { x: at === null ? summary.x : at[0], z: at === null ? summary.z : at[1], fx, fz };
       cam.pushIn({ x: summary.x - fx * FRAME_SHIFT_M, z: summary.z - fz * FRAME_SHIFT_M }, PUSH_IN);
-      const terrain = terrainFor(def?.biome ?? 'grove');
+      const terrain = summary.terrain ?? terrainFor(def?.biome ?? 'grove');
       if (hall !== null) d.renderer.stage.dress({ x: summary.x, z: summary.z }, terrain, [d.selfId()], hallBoundsOf(hall));
       else d.renderer.stage.dress({ x: summary.x, z: summary.z }, terrain, [d.selfId()]);
     },
