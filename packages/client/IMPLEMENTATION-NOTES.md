@@ -1333,6 +1333,22 @@ never one a hold shows or a billboard samples. A flipbook that still does not fi
 static frame (render waits on the id) and the flipbook is retried whenever bytes are freed and on `refresh()` (World3D
 1 Hz). A static atlas always binds (a creature is always drawn); an overrun is reported once per atlas.
 
+**C6 — the battle's team hold is a reserve hold (2026-10-12).** A 3v3 of legendaries with Majin / Tenjin forms holds nine
+32 MiB static sheets for the battle (front and back share a sheet, two species a sheet; the forms add their own), so
+288 of the 400 MiB fit the two leads' flipbooks and nothing more: every switch-in of an animated creature was refused
+(the old billboard still samples the outgoing flipbook at the moment the new one binds, then 337 + 64 MiB did not fit)
+and stood on its static frame for the rest of the battle — "after a switch the battle breaks". `BattleSprites.begin`
+now holds the teams with `hold(…, { reserve: true })`: a flipbook a view shows (`show`, held beyond reserve holds) that
+still does not fit once the idle entries went releases static atlases ONLY reserve holds want (least recently used,
+never one a billboard samples) and marks them `parked`; parked atlases rebind on `refresh()` / any release, where they
+fit (idle entries make room; `bind(e, fitOnly)` never passes the budget for them). A benched creature whose sheet was
+parked binds it when it is sent in (its slot's `show` is a full hold — the static-always-binds rule). A reserve-held
+flipbook never displaces anything. Live (the isolated dev pair, two accounts, Arena Standard, zenryu / galaxion /
+hollowmane vs voltaura / castlemaw / gemknight at L60, both bands): before, `anim-galaxion-back waits (static frame)`
+on both clients for the rest of the battle; after, a 15-turn battle with six switches, two Majin transforms and every
+signature cinematic shows each animated battler's flipbook within a second of its switch-in, no refusal.
+`test/creatureTextures.test.ts` (+2).
+
 
 ## Measured (`pnpm harness:textures`, headless Chrome 154 over CDP, WebGPU, Intel UHD (i7-13620H), 1440 × 900, pr 1)
 

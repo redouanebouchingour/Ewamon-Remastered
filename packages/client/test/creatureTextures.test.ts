@@ -173,6 +173,50 @@ describe('creature textures: which side each context shows', () => {
     expect(b.size).toBe(0);
     for (const e of s.tex.stats().entries) expect(e.refs, e.id).toBe(0);
   });
+
+  it('a switch-in animates on a full budget: its flipbook displaces benched team atlases (parked), which rebind once the old flipbook idles out', () => {
+    // room for the four team atlases and ONE flipbook: the case a 3v3 of legendaries hit (9 sheets + 2 flipbooks of 400 MiB)
+    const s = setup({ budgetBytes: 4 * STATIC_BYTES + ANIM_BYTES + 1 });
+    const b = new BattleSprites(() => s.tex);
+    b.begin(['s0', 's2', 's4', 'legA']);
+    b.set({ side: 0, slot: 0 }, 'legA');
+    expect(s.bound.has('anim-legA-back')).toBe(true);
+    // the switch: the old billboard still samples legA's flipbook while legB's binds
+    s.users.set('anim-legA-back', 1);
+    b.set({ side: 0, slot: 0 }, 'legB');
+    expect(s.bound.has('anim-legB-back')).toBe(true);
+    expect(s.warn).not.toHaveBeenCalledWith(expect.stringContaining('waits (static frame)'));
+    const parked = s.tex.stats().entries.filter((e) => e.parked).map((e) => e.id);
+    expect(parked).toHaveLength(2);
+    // the shown battler's own atlas (held by its slot too) is never displaced
+    expect(parked).not.toContain('a-005');
+    expect(s.bound.has('a-005')).toBe(true);
+    // the old billboard is gone: the idle flipbook makes room and the benched atlases come back
+    s.users.delete('anim-legA-back');
+    s.tex.refresh();
+    expect(s.tex.stats().entries.filter((e) => e.parked)).toHaveLength(0);
+    for (const id of ['a-000', 'a-001', 'a-002', 'a-005', 'anim-legB-back']) expect(s.bound.has(id), id).toBe(true);
+    expect(s.bound.has('anim-legA-back')).toBe(false);
+    expect(s.tex.boundBytes).toBeLessThanOrEqual(4 * STATIC_BYTES + ANIM_BYTES + 1);
+    b.end();
+    for (const e of s.tex.stats().entries) expect(e.refs, e.id).toBe(0);
+  });
+
+  it('only a shown flipbook displaces reserve atlases: a held static or another reserve hold never does', () => {
+    const s = setup({ budgetBytes: 2 * STATIC_BYTES + 1 });
+    const team = s.tex.hold(['a-000', 'a-001'], undefined, null, { reserve: true });
+    // a static atlas binds anyway over budget (a creature is always drawn) and parks nothing
+    const other = s.tex.show('s4', 'front');
+    expect(s.tex.stats().entries.filter((e) => e.parked)).toHaveLength(0);
+    // a reserve-held flipbook waits rather than displace
+    const res = s.tex.hold(['anim-legC-front'], undefined, null, { reserve: true });
+    expect(s.bound.has('anim-legC-front')).toBe(false);
+    expect(s.bound.has('a-000') && s.bound.has('a-001')).toBe(true);
+    res.release();
+    other.release();
+    team.release();
+    for (const e of s.tex.stats().entries) expect(e.refs, e.id).toBe(0);
+  });
 });
 
 // ---- refcounts, grace, LRU -----------------------------------------------------------------------------------------

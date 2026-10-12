@@ -23,6 +23,10 @@
  *   never one a hold still shows or a billboard still samples (`atlasUsers`). A flipbook that still does not fit is not
  *   bound (the creature keeps its static frame) and is retried whenever bytes are freed (and on `refresh`, the world's
  *   1 Hz call, as the budget moves); a static atlas always binds (a creature is always drawn), an overrun reported once.
+ * - **Reserve holds.** A battle holds both teams' static atlases so a switch-in never waits, but nine or more 32 MiB
+ *   sheets leave no room for the flipbook of the creature sent in. A reserve hold yields: when a flipbook a view shows
+ *   does not fit after the idle entries went, static atlases only reserve holds want are released (`parked`, least
+ *   recently used first, never one a billboard samples) and rebound once bytes free up (idle entries make room for them).
  *
  * Pure bookkeeping over a `TexturePool` seam and an injected clock / timer, so node tests drive it without a GPU.
  */
@@ -127,10 +131,14 @@ interface Entry {
   readonly bytes: number;
   /** holds on it */
   refs: number;
+  /** how many of `refs` are reserve holds (`hold(…, { reserve: true })`) */
+  reserve: number;
   /** a pool bind is outstanding (not yet released) */
   bound: boolean;
   /** a flipbook the budget guard refused while held; retried when bytes free up */
   denied: boolean;
+  /** a static atlas only reserve holds wanted, released for a shown flipbook; rebound when bytes free up */
+  parked: boolean;
   /** when the last hold went (NaN while held) */
   idleSince: number;
   /** last hold / release: the LRU order */
@@ -149,6 +157,7 @@ export interface CreatureTextureRow {
   readonly refs: number;
   readonly bound: boolean;
   readonly denied: boolean;
+  readonly parked: boolean;
   readonly idle: boolean;
 }
 
@@ -169,14 +178,14 @@ const RESOLVED: Promise<void> = Promise.resolve();
 
 class Hold implements AtlasHold {
   private live = true;
-  constructor(private readonly owner: CreatureTextures, readonly ids: readonly string[], readonly ready: Promise<void>) {}
+  constructor(private readonly owner: CreatureTextures, readonly ids: readonly string[], readonly ready: Promise<void>, private readonly reserve = false) {}
   get released(): boolean {
     return !this.live;
   }
   release(): void {
     if (!this.live) return;
     this.live = false;
-    this.owner.unrefAll(this.ids);
+    this.owner.unrefAll(this.ids, this.reserve);
   }
 }
 
@@ -192,6 +201,8 @@ export class CreatureTextures {
   private bytes = 0;
   /** held flipbooks the guard refused (waiting on their static frame) */
   private denied = 0;
+  /** reserve-held static atlases released for a shown flipbook (waiting to rebind) */
+  private parked = 0;
   private binds = 0;
   private releases = 0;
   private timer: unknown = null;
@@ -247,8 +258,11 @@ export class CreatureTextures {
    * must bind before the flipbooks it may refuse. `onSettled(id)` runs once per bind outstanding for this hold, when it
    * lands. `replacing` (the zone's or the battle's previous hold) is released between taking the new holds and binding:
    * what both hold never idles, what only the old one held is idle — and releasable — before anything new binds.
+   * `reserve` (a battle's teams): static atlases kept ready for what may be shown next, which a flipbook a view shows
+   * may displace when the budget is full (released, then rebound once bytes free up — `parked`).
    */
-  hold(ids: readonly string[], onSettled?: (id: string) => void, replacing?: SpriteLease | null): AtlasHold {
+  hold(ids: readonly string[], onSettled?: (id: string) => void, replacing?: SpriteLease | null, o: { readonly reserve?: boolean } = {}): AtlasHold {
+    const reserve = o.reserve === true;
     if (this.disposed) {
       replacing?.release();
       return new Hold(this, [], RESOLVED);
@@ -258,14 +272,14 @@ export class CreatureTextures {
     const ordered = [...uniq.filter((id) => this.kindOf(id) === 'static'), ...uniq.filter((id) => this.kindOf(id) === 'anim')];
     const held: Entry[] = [];
     for (const id of ordered) {
-      const e = this.ref(id);
+      const e = this.ref(id, reserve);
       if (e !== null) held.push(e);
     }
     replacing?.release();
     for (const e of held) if (!e.bound) this.bind(e);
     const waits: Promise<void>[] = [];
     for (const e of held) if (e.bound) waits.push(onSettled === undefined ? e.settled : e.settled.then(() => onSettled(e.id)));
-    return new Hold(this, held.map((e) => e.id), waits.length === 0 ? RESOLVED : Promise.all(waits).then(() => undefined));
+    return new Hold(this, held.map((e) => e.id), waits.length === 0 ? RESOLVED : Promise.all(waits).then(() => undefined), reserve);
   }
 
   /** Binds the side now and lets it idle at once (re-shown within the grace period it costs no upload). */
@@ -274,8 +288,8 @@ export class CreatureTextures {
   }
 
   /** @internal (Hold) */
-  unrefAll(ids: readonly string[]): void {
-    for (const id of ids) this.unref(id);
+  unrefAll(ids: readonly string[], reserve = false): void {
+    for (const id of ids) this.unref(id, reserve);
     this.retryDenied();
   }
 
@@ -297,9 +311,12 @@ export class CreatureTextures {
     this.schedule();
   }
 
-  /** Retries the flipbooks the guard refused (the budget is live: other textures may have gone). The world calls it at 1 Hz. */
+  /**
+   * Retries the flipbooks the guard refused and rebinds the parked reserve atlases (the budget is live: other textures
+   * may have gone). The world calls it at 1 Hz.
+   */
   refresh(): void {
-    if (this.denied > 0) this.retryDenied();
+    if (this.denied > 0 || this.parked > 0) this.retryDenied();
   }
 
   /** Releases every idle entry now (tests; a teardown). */
@@ -331,7 +348,7 @@ export class CreatureTextures {
     let idle = 0;
     let denied = 0;
     for (const e of this.entries.values()) {
-      rows.push({ id: e.id, kind: e.kind, bytes: e.bytes, refs: e.refs, bound: e.bound, denied: e.denied, idle: e.refs === 0 && e.bound });
+      rows.push({ id: e.id, kind: e.kind, bytes: e.bytes, refs: e.refs, bound: e.bound, denied: e.denied, parked: e.parked, idle: e.refs === 0 && e.bound });
       if (e.bound) bound++;
       if (e.refs === 0 && e.bound) idle++;
       if (e.denied) denied++;
@@ -369,10 +386,10 @@ export class CreatureTextures {
     const anim = set === null ? cat.animAtlas(id) : null;
     if (set === null && anim === null) return null;
     const bytes = set !== null ? atlasSetBytes(set.size, set.normalScale) : animAtlasSetBytes(anim!.width, anim!.height, anim!.normalScale);
-    return { id, kind: set !== null ? 'static' : 'anim', bytes, refs: 0, bound: false, denied: false, idleSince: Number.NaN, lastUse: 0, settled: RESOLVED, gen: 0 };
+    return { id, kind: set !== null ? 'static' : 'anim', bytes, refs: 0, reserve: 0, bound: false, denied: false, parked: false, idleSince: Number.NaN, lastUse: 0, settled: RESOLVED, gen: 0 };
   }
 
-  private ref(id: string): Entry | null {
+  private ref(id: string, reserve = false): Entry | null {
     let e = this.entries.get(id);
     if (e === undefined) {
       const made = this.make(id);
@@ -381,21 +398,25 @@ export class CreatureTextures {
       this.entries.set(id, e);
     }
     e.refs++;
+    if (reserve) e.reserve++;
     e.lastUse = this.now();
     e.idleSince = Number.NaN;
     return e;
   }
 
-  private unref(id: string): void {
+  private unref(id: string, reserve = false): void {
     const e = this.entries.get(id);
     if (e === undefined || e.refs === 0) return;
     e.refs--;
+    if (reserve && e.reserve > 0) e.reserve--;
     e.lastUse = this.now();
     if (e.refs > 0) return;
     if (!e.bound) {
       // refused or failed: nothing is bound to keep
       if (e.denied) this.denied--;
+      if (e.parked) this.parked--;
       e.denied = false;
+      e.parked = false;
       this.entries.delete(id);
       return;
     }
@@ -408,13 +429,15 @@ export class CreatureTextures {
     return this.o.pool()?.atlasUsers?.(id) ?? 0;
   }
 
-  private bind(e: Entry): void {
+  /** Binds `e` within the budget; a static atlas binds past it (a creature is always drawn) unless `fitOnly` (a parked one). */
+  private bind(e: Entry, fitOnly = false): void {
     const pool = this.o.pool();
     const cat = this.o.catalog();
     if (pool === null || cat === null || this.disposed) return;
     const budget = this.budgetOf();
-    if (this.bytes + e.bytes > budget) this.makeRoom(this.bytes + e.bytes - budget);
+    if (this.bytes + e.bytes > budget) this.makeRoom(this.bytes + e.bytes - budget, e);
     if (this.bytes + e.bytes > budget) {
+      if (fitOnly) return;
       if (e.kind === 'anim') {
         if (!e.denied) {
           this.denied++;
@@ -429,7 +452,9 @@ export class CreatureTextures {
     const anim = e.kind === 'anim' ? cat.animAtlas(e.id) : null;
     if (set === null && anim === null) return;
     if (e.denied) this.denied--;
+    if (e.parked) this.parked--;
     e.denied = false;
+    e.parked = false;
     e.bound = true;
     const gen = ++e.gen;
     this.bytes += e.bytes;
@@ -448,13 +473,29 @@ export class CreatureTextures {
     );
   }
 
-  /** Releases idle entries until `need` bytes are free: flipbooks first, then static atlases, least recently used first. */
-  private makeRoom(need: number): void {
+  /**
+   * Releases idle entries until `need` bytes are free: flipbooks first, then static atlases, least recently used first.
+   * For a flipbook a view shows (`for` held beyond reserve holds), static atlases only reserve holds want come next: they
+   * are released and `parked` (rebound once bytes free up) — the creature on screen animates before a benched one is
+   * ready to be sent in.
+   */
+  private makeRoom(need: number, forEntry: Entry | null = null): void {
     let freed = 0;
     for (const e of this.idleOrder(null)) {
-      if (freed >= need) break;
+      if (freed >= need) return;
       freed += e.bytes;
       this.evict(e);
+    }
+    if (freed >= need || forEntry === null || forEntry.kind !== 'anim' || forEntry.refs <= forEntry.reserve) return;
+    const reserved: Entry[] = [];
+    for (const e of this.entries.values()) if (e.kind === 'static' && e.bound && e.refs > 0 && e.refs === e.reserve && this.users(e.id) === 0) reserved.push(e);
+    reserved.sort((a, b) => a.lastUse - b.lastUse);
+    for (const e of reserved) {
+      if (freed >= need) return;
+      freed += e.bytes;
+      this.evict(e);
+      e.parked = true;
+      this.parked++;
     }
   }
 
@@ -482,11 +523,20 @@ export class CreatureTextures {
     if (e.refs === 0) this.entries.delete(e.id);
   }
 
-  /** Held flipbooks the guard refused bind once room frees up (most recently shown first). */
+  /**
+   * Held flipbooks the guard refused bind once room frees up (most recently shown first), then the parked reserve
+   * atlases rebind where they fit (idle entries make room for them; nothing held is displaced).
+   */
   private retryDenied(): void {
-    if (this.disposed || this.denied === 0) return;
+    if (this.disposed || (this.denied === 0 && this.parked === 0)) return;
     const want = [...this.entries.values()].filter((e) => e.denied && e.refs > 0 && !e.bound).sort((a, b) => b.lastUse - a.lastUse);
     for (const e of want) this.bind(e);
+    if (this.parked === 0) return;
+    const parked = [...this.entries.values()].filter((e) => e.parked && e.refs > 0 && !e.bound).sort((a, b) => b.lastUse - a.lastUse);
+    for (const e of parked) {
+      this.bind(e, true);
+      if (!e.bound) return;
+    }
   }
 
   private schedule(): void {
@@ -517,7 +567,8 @@ function mb(b: number): string {
 }
 
 /**
- * The battle stage's holds: both teams' static atlases for the battle's life (a switch-in never waits for its atlas),
+ * The battle stage's holds: both teams' static atlases for the battle's life (a switch-in never waits for its atlas while
+ * the budget allows; a reserve hold, below the flipbooks of the battlers on stage),
  * and per stage slot the ONE side that slot shows (`stageSide`: the near side's back, the far side's front) with its
  * flipbook. `set` follows `BattleView.setBattler`; `end` (the battle view's exit) releases everything.
  */
@@ -527,11 +578,14 @@ export class BattleSprites {
 
   constructor(private readonly textures: () => CreatureTextures | null) {}
 
-  /** battleStart / battleResync: every battler's static atlases (replaces the previous battle's hold). */
+  /**
+   * battleStart / battleResync: every battler's static atlases (replaces the previous battle's hold) — a reserve hold, so
+   * the flipbook of a battler on stage may displace a benched one's atlas when the budget is full.
+   */
   begin(species: Iterable<string>): void {
     const tex = this.textures();
     if (tex === null) return;
-    this.team = tex.hold(tex.staticAtlasesOf(species), undefined, this.team);
+    this.team = tex.hold(tex.staticAtlasesOf(species), undefined, this.team, { reserve: true });
   }
 
   /** The battler on stage slot `ref` (null = empty): leases the side it shows, then releases what the slot showed. */
