@@ -47,7 +47,6 @@ function open(hp: number | null): { sent: { type: string; payload: unknown }[]; 
   c.onBattleStart(msg);
   for (let i = 0; i < 4000 && c.player.isPlaying; i++) c.player.step(STEP_MS);
   render(<BattleMenu />);
-  fireEvent.click(screen.getByRole('button', { name: /Fight/ }));
   return { sent, state };
 }
 

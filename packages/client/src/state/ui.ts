@@ -50,6 +50,9 @@ export type QueuedPrompt =
   | { readonly kind: 'evolve'; readonly creatureId: string; readonly into: string; readonly item?: string; readonly trade?: boolean }
   | { readonly kind: 'learnMove'; readonly creatureId: string; readonly move: string };
 
+/** The menu a battle opens on at every choice: the moves (the command rail beside it still holds Party / Bag / Orbs / Run). */
+export const OPEN_MENU: BattleUi['menu'] = 'moves';
+
 export interface BattleUi {
   readonly battleId: string;
   readonly format: BattleFormat;

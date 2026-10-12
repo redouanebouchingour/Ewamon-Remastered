@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-12 battle menu opens on the moves. One entry. -->
+
+## 2026-10-12 — `20-client.md` §20.5.6 (the deck opens on the Fight menu) — battle menu default
+Why: the user asked that a battle open on the attacks by default. The command rail already stays up beside every sub-menu (Broadcast UI), so the root stage was an extra step before every move; the moves grid is now home: Back / Escape from Party, Bag and Orbs return to it, Escape on it shows the root's `1–5` command hotkeys, and the Back button is gone from the moves (it remains out of a doubles target pick). A raid's catch window still opens on the root, since only Orbs is live there.
+Evidence: `packages/client/test/battle-menu-default.test.tsx`; the battle, doubles, raid, forms and tutorial client tests.
+Affects: `packages/client/src/state/ui.ts` (`OPEN_MENU`), `battle/BattleController.ts` (every choice reset), `battle/BattleMenu.tsx`.
+
 <!-- 2026-10-12 custom tooltips: every title attribute gets the Broadcast slab. One entry. -->
 
 ## 2026-10-12 — `20-client.md` §20.2.4 (`TooltipHost`), §20.2.6 (tooltip fade row) — custom tooltips

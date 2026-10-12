@@ -45,7 +45,7 @@
 import { digestBattleState, requiredPositions, resolveTurn, validateAction, validateSideChoice } from '@ewa/core';
 import type { Action, BandKind, BattleEvent, BattleState, ContentIndex, CreatureInstance, Ref, StatusId } from '@ewa/core';
 import type { ClientMessageType, ClientPayload, RewardsSummary, ServerMessageOf } from '@ewa/protocol';
-import { useUiStore } from '../state/ui';
+import { OPEN_MENU, useUiStore } from '../state/ui';
 import { useSessionStore } from '../state/session';
 import type { BattleResult, BattleUi, DoublesPick, QueuedPrompt, RaidBattleUi, RaidSummary } from '../state/ui';
 import { toast } from '../state/notifications';
@@ -673,7 +673,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       raidAfterTimeline(st, label);
       return;
     }
-    writeUi({ phase: phaseAfter(st), menu: 'root', turnLabel: label, authoritative: st, ...pickFor(st) });
+    writeUi({ phase: phaseAfter(st), menu: OPEN_MENU, turnLabel: label, authoritative: st, ...pickFor(st) });
     if (pendingEnd !== null) showResult();
   }
 
@@ -687,7 +687,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       return;
     }
     if (r.catchWindow) {
-      writeUi({ phase: 'selecting', menu: 'root', turnLabel: label, authoritative: st });
+      writeUi({ phase: 'selecting', menu: OPEN_MENU, turnLabel: label, authoritative: st });
       return;
     }
     if (r.bossDown) {
@@ -695,7 +695,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       writeUi({ phase: 'submitted', menu: 'root', turnLabel: label, authoritative: st, expectedMs: 0 });
       return;
     }
-    writeUi({ phase: phaseAfter(st), menu: 'root', turnLabel: label, authoritative: st });
+    writeUi({ phase: phaseAfter(st), menu: OPEN_MENU, turnLabel: label, authoritative: st });
   }
 
   /** Phase C1: the catch window's battleResync for the open raid battle. */
@@ -849,7 +849,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       if (battleId !== null && battleId !== m.battleId) controller.reset();
       begin(m);
       ui().setBattle({
-        battleId: m.battleId, format: m.format, seat: m.seat, authoritative: m.state, phase: 'playing', menu: 'root',
+        battleId: m.battleId, format: m.format, seat: m.seat, authoritative: m.state, phase: 'playing', menu: OPEN_MENU,
         turnLabel: TURN(m.state.turn + 1), log: [], desyncs: 0, result: null, expectedMs: 0,
       });
       // Phase B7: the VS card over the push-in (a fresh trainer / league battle only — a resync restore has none)
@@ -878,7 +878,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       const picks: [Action | null, Action | null] = [pick.picks[0], pick.picks[1]];
       picks[prev] = null;
       picks[pick.pos] = null;
-      writeUi({ menu: 'root', pick: { pos: prev, picks } });
+      writeUi({ menu: OPEN_MENU, pick: { pos: prev, picks } });
     },
 
     submit(action) {
@@ -962,7 +962,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
         begin({ battleId: m.battleId, seat: mySeat, format: s.format, state: s });
         const r = raidUi();
         ui().setBattle({
-          battleId: m.battleId, format: s.format, seat: mySeat, authoritative: s, phase: phaseAfter(s), menu: 'root',
+          battleId: m.battleId, format: s.format, seat: mySeat, authoritative: s, phase: phaseAfter(s), menu: OPEN_MENU,
           turnLabel: labelFor(s), log: [], desyncs: 0, result: null, expectedMs: 0, ...(r === undefined ? {} : { raid: r }), ...pickFor(s),
         });
         return;
@@ -1064,7 +1064,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     const label = labelFor(st);
     hud.setTurnLabel(label);
     hud.commit();
-    writeUi({ phase: phaseAfter(st), menu: 'root', authoritative: st, turnLabel: label, ...pickFor(st) });
+    writeUi({ phase: phaseAfter(st), menu: OPEN_MENU, authoritative: st, turnLabel: label, ...pickFor(st) });
   }
 
   /** Phase D6: the doubles pick in the store (a fresh one when the store has none). */
@@ -1100,14 +1100,14 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     else picks[pick.pos] = action;
     const next = req.find((p) => picks[p] === null);
     if (next !== undefined) {
-      writeUi({ menu: 'root', pick: { pos: next, picks } });
+      writeUi({ menu: OPEN_MENU, pick: { pos: next, picks } });
       return;
     }
     const bad = validateSideChoice(st, seat, picks, deps.content);
     if (bad !== null) {
       toast('warn', actionErrorLabel(bad.code) ?? 'Not allowed');
       picks[bad.pos] = null;
-      writeUi({ menu: 'root', pick: { pos: bad.pos, picks } });
+      writeUi({ menu: OPEN_MENU, pick: { pos: bad.pos, picks } });
       return;
     }
     for (const p of req) deps.send('battleAction', { battleId: id, turn: st.turn + 1, action: picks[p]!, pos: p });

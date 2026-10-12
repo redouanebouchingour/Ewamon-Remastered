@@ -16,6 +16,8 @@
  * Broadcast UI (2026-10-11): a command deck — the root commands are a vertical rail that stays up in every menu (the
  * open one is the orange slab; a click on another slab goes straight there), the log lines are a "Last turn" ticker
  * with the live key hints, and the stage beside the rail holds the prompt, the 4 move cards or the lists.
+ * Every choice opens on the moves (`OPEN_MENU`, 2026-10-12): Back / Escape from Party, Bag or Orbs returns to them,
+ * Escape on the moves shows the root (1–5 command hotkeys); in a raid's catch window the root shows instead.
  * Majin / Tenjin (`.design/majin-tenjin.md` §3, §6.4): in the moves menu a transform toggle (key T) sits at the end of
  * the head row when `transformOffer` shows it (the side holds the band of the battler's form kind and has not
  * transformed). Disabled, it carries its reason as a caption; armed (`aria-pressed`, the orange 'selected' slab) the
@@ -31,7 +33,7 @@ import { CONSUMABLES, ORBS } from '@ewa/content';
 import { content, displayName, move as moveDef, species } from '../data/content';
 import { COACH_LINE, TRANSFORM_KEY, bandAccountOf, useBandTutorialStore } from '../state/bandTutorial';
 import { useSessionStore } from '../state/session';
-import { useUiStore } from '../state/ui';
+import { OPEN_MENU, useUiStore } from '../state/ui';
 import type { BattleUi } from '../state/ui';
 import { Button } from '../ui/Button';
 import { CreatureCard } from '../ui/CreatureCard';
@@ -310,10 +312,14 @@ export function BattleMenu() {
   const canFlee = st?.sides[seat].canFlee ?? false;
   const phase = b?.phase ?? 'playing';
   const forced = phase === 'replacement';
-  const menu: Menu = forced ? 'party' : (b?.menu ?? 'root');
-  const selectable = phase === 'selecting' || phase === 'replacement';
   const raid = b?.raid ?? null;
   const catchWindow = raid?.catchWindow === true;
+  // the moves open by default; in a raid's catch window only Orbs is allowed, so the commands show instead
+  const stored: Menu = b?.menu ?? OPEN_MENU;
+  const menu: Menu = forced ? 'party' : catchWindow && stored === 'moves' ? 'root' : stored;
+  /** where Back / Escape go: the sub-menus back to the moves, the moves to the command hotkeys */
+  const back: Menu = menu === 'moves' || catchWindow ? 'root' : OPEN_MENU;
+  const selectable = phase === 'selecting' || phase === 'replacement';
   /** Run fires without a confirmation: fleeing, or Done in a raid's catch window */
   const runNow = canFlee || catchWindow;
 
@@ -390,7 +396,7 @@ export function BattleMenu() {
       }
       if (e.key === 'Escape' && menu !== 'root' && !forced) {
         e.preventDefault();
-        setMenu('root');
+        setMenu(back);
         return;
       }
       if (e.key.toUpperCase() === TRANSFORM_KEY && menu === 'moves' && targeting === null) {
@@ -426,7 +432,7 @@ export function BattleMenu() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selectable, st, seat, menu, forced, runNow, catchWindow, confirmForfeit, runAction, targeting, options, pickPos, offerOn, armed]);
+  }, [selectable, st, seat, menu, back, forced, runNow, catchWindow, confirmForfeit, runAction, targeting, options, pickPos, offerOn, armed]);
 
   if (b === null || st === null) return null;
   const me = chooserOf(st, seat, pickPos);
@@ -476,12 +482,13 @@ export function BattleMenu() {
         ? targeting !== null
           ? [[`1–${Math.max(1, options.length)}`, 'Target'], ['Esc', 'Back']]
           : offer !== null && offer.enabled
-            ? [['1–4', 'Move'], [TRANSFORM_KEY, FORM_KIND_NAME[offer.kind]], ['Esc', 'Back']]
-            : [['1–4', 'Move'], ['Esc', 'Back']]
+            ? [['1–4', 'Move'], [TRANSFORM_KEY, FORM_KIND_NAME[offer.kind]], ['Esc', 'Commands']]
+            : [['1–4', 'Move'], ['Esc', 'Commands']]
         : forced
           ? []
           : [['Esc', 'Back']];
-  const showBack = selectable && menu !== 'root' && !forced;
+  // the moves are home now: no Back button there (Esc still reaches the command hotkeys), only out of a target pick
+  const showBack = selectable && menu !== 'root' && !forced && (menu !== 'moves' || targeting !== null);
   const showBackTo = selectable && backTo !== undefined;
 
   return (
@@ -518,7 +525,7 @@ export function BattleMenu() {
               </Button>
             )}
             {showBack && (
-              <Button size="sm" variant="ghost" icon="chevronLeft" onClick={() => (targeting !== null ? setTargeting(null) : setMenu('root'))}>
+              <Button size="sm" variant="ghost" icon="chevronLeft" onClick={() => (targeting !== null ? setTargeting(null) : setMenu(back))}>
                 Back
               </Button>
             )}

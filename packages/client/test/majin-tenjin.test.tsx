@@ -102,7 +102,6 @@ function singles(speciesId: string, hpFrac: number, bands: readonly BandKind[] |
   t.c.onBattleStart(msg);
   t.playOut();
   render(<BattleMenu />);
-  fireEvent.click(screen.getByRole('button', { name: /Fight/ }));
   return { ...t, state };
 }
 
@@ -225,12 +224,10 @@ describe('transformOffer (pure) and the doubles rule', () => {
     t.c.onBattleStart({ type: 'battleStart', battleId: BID, format: 'trainer', seat: 0, state, events: [...events], stateDigest: digestBattleState(state) });
     t.playOut();
     render(<BattleMenu />);
-    fireEvent.click(screen.getByRole('button', { name: /Fight/ }));
     fireEvent.click(toggle()!);
     const growl = (): HTMLElement => screen.getAllByTestId('movebutton').find((b) => b.textContent?.includes('Growl'))!;
     fireEvent.click(growl());
     expect(useUiStore.getState().battle!.pick?.picks[0]).toEqual({ kind: 'move', move: 'Growl', transform: true });
-    fireEvent.click(screen.getByRole('button', { name: /Fight/ }));
     expect((toggle() as HTMLButtonElement).disabled).toBe(true);
     expect(toggle()!.getAttribute('aria-pressed')).toBe('false');
     expect(screen.getByText(OTHER_ARMED)).toBeTruthy();

@@ -253,7 +253,6 @@ describe('Phase D6 BattleMenu (doubles)', () => {
   it('a single-target move asks for a target (both foes + the ally); a spread move does not; Back to position 0', () => {
     const { sent } = open();
     expect(screen.getByTestId('battlemenu').textContent).toContain('What will Bramblecub do? (1/2)');
-    fireEvent.click(screen.getByRole('button', { name: /Fight/ }));
     const moveButton = (id: string): HTMLElement => screen.getAllByTestId('movebutton').find((b) => b.textContent?.includes(id))!;
     // Tackle: target selection — two foes and the ally, never the user
     fireEvent.click(moveButton('Tackle'));
@@ -276,11 +275,9 @@ describe('Phase D6 BattleMenu (doubles)', () => {
     // the self move (Bulk Up) needs no target either — but first Back to position 0 and re-pick it there
     fireEvent.click(screen.getByRole('button', { name: 'Back to Bramblecub' }));
     expect(useUiStore.getState().battle!.pick).toEqual({ pos: 0, picks: [null, null] });
-    fireEvent.click(screen.getByRole('button', { name: /Fight/ }));
     fireEvent.click(moveButton('Bulk Up'));
     expect(screen.queryByTestId('battle-targets')).toBeNull();
     // position 1: Tackle at the foe on position 1 → both actions go out
-    fireEvent.click(screen.getByRole('button', { name: /Fight/ }));
     fireEvent.click(moveButton('Tackle'));
     const foeRow = [...screen.getByTestId('battle-targets').querySelectorAll('button')].find((b) => b.textContent?.includes('Mufflo'))!;
     fireEvent.click(foeRow);
