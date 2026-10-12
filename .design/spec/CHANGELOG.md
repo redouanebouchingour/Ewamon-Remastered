@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-12 custom tooltips: every title attribute gets the Broadcast slab. One entry. -->
+
+## 2026-10-12 — `20-client.md` §20.2.4 (`TooltipHost`), §20.2.6 (tooltip fade row) — custom tooltips
+Why: the user called the browser's native `title` tooltips "standard html, very ugly" and asked for custom Ewamon ones. About 85 call sites set `title`; one document-level host restyles all of them without touching a call site, and keeps the attribute (moved aside only while the tip shows) so accessible names and `getByTitle` tests are unchanged.
+Evidence: `packages/client/test/tooltip.test.tsx` (5); live on the isolated client (`/__gallery`, headless Chrome over CDP): the tip shows above a type badge with its type edge, swaps without a delay along the badge row, wraps a move description over a disabled MoveButton, and all 66 `title` attributes are back after the pointer leaves.
+Affects: `packages/client/src/ui/{TooltipHost.tsx,Tooltip.module.css,index.ts}`, `packages/client/src/main.tsx`.
+
 <!-- 2026-10-12 arena PvP: battles outside the world (Standard, Level 50, Ranked Lv 50, Weekly Cup, friend, AI training). One entry. -->
 
 ## 2026-10-12 — `00-spine.md` §2.9 (`atLevel`), §4.1 (`ArenaState`), §4.4 (`arenaStatus`, `arenaInvite`, `arenaInviteResult`, `arenaState`: 22 variants), §4.7 (`/arena`, `/arena/queue`, `/arena/queue/leave`, `/arena/training`, `/arena/invite`, `/arena/invite/reply`, `/arena/rejoin`; history row `arena`; `/zone/enter` 409 `inArena`); `30-server-netcode.md` files table, §30.4.4 `pvp` row, §30.4.10 (new), cut list; `20-client.md` §20.9.9d (new); `10-render.md` §10.7.5a (new); `50-verification-budget.md` §50.4.1 / .2 / .5 / .6 / .7 rows — arena PvP

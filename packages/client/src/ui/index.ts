@@ -34,5 +34,6 @@ export { Pill } from './Pill';
 export { Icon, ICON_NAMES } from './Icon';
 export type { IconName } from './Icon';
 export { KeyArt } from './KeyArt';
+export { TooltipHost } from './TooltipHost';
 export { cssVars } from './cssVars';
 export { cx } from './cx';

@@ -250,6 +250,8 @@ export const TYPE_ICON_PATHS: Readonly<Record<TypeName, string>>; // 24-unit SVG
 
 `HpBar` widths are `--hp` custom properties (0..1) set via `cssVars`; the colour switches at 0.5 and 0.2 by a CSS `@container style()`-free approach: three classes chosen in TS. `MoveButton` shows the effectiveness chevrons (`▲▲` ×4, `▲` ×2, `▼` ×0.5, `▼▼` ×0.25, `✕` ×0) only after the player has *seen* the target species (dex `seen`); otherwise nothing — the dex is load-bearing (§20.9.5).
 
+`TooltipHost` (mounted once in `main.tsx`, beside the router) is the client's only tooltip: no call site uses a tooltip component; every `title` attribute is shown as a Broadcast slab instead of the browser's box. On hover (380 ms; immediate within 300 ms of another tip hiding) or `:focus-visible` focus, the nearest `[title]` element's text is shown and the attribute is moved aside until the tip hides (pointer leave, pointer down, Escape, scroll, focus out), then restored — accessible names keep working. The slab is `--bg-0` with a 1 px `--line-2` edge, a 3 px left bar in `--text-hi` (the anchor's type colour when it carries a `data-type`) and a 10 px pointer at the anchor; above the anchor, below when the top edge is within 8 px, clamped to the viewport, max 280 px wide, `role="tooltip"`, `--z-overlay`, no pointer events. <!-- amended 2026-10-12: custom tooltips -->
+
 ### 20.2.5 Component states
 
 Every interactive component implements exactly: `default`, `hover` (1.05), `active` (0.95), `focus-visible` (ring), `disabled` (opacity 0.45, no scale), and where applicable `busy` and `selected`. Storybook is not used; `src/ui/Gallery.tsx` renders every component in every state at `/__gallery` in dev builds only (`import.meta.env.DEV`), and the Playwright visual test screenshots it at 1440p.
@@ -261,6 +263,7 @@ Every interactive component implements exactly: `default`, `hover` (1.05), `acti
 | Panel open/close (opacity 0→1, translateX 8 px→0) | 160 ms `--ease-out` | 0 |
 | Modal (scrim 0→0.72, dialog scale 0.98→1) | 160 ms | 0 |
 | Toast enter/exit (translateY 8 px) | 160 ms / 80 ms | 0 |
+| Tooltip fade-in (after a 380 ms hover delay) | 80 ms | 0 (delay kept) |
 | Tab underline slide | 160 ms | 0 |
 | Zone banner (display text fade + 12 px rise, 2 s hold) | 400 ms in, 2 000 hold, 400 out | hold only |
 | HpBar drain | 350 + 650 × damageFraction ms, max 1 000 | 0 (jumps) |

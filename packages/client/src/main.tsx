@@ -2,6 +2,7 @@
  * Entry (SPEC §20.1.1): one createBrowserRouter, mounted with <RouterProvider> under createRoot(#root).
  * Order: design-system CSS → settings mirrored onto :root (reduced motion, colourblind, UI scale) before the first
  * paint → router → session keeper (access-token refresh + cross-tab logout).
+ * TooltipHost sits beside the router: one document-level layer that restyles every `title` attribute.
  */
 import './ui/fonts.css';
 import './ui/tokens.css';
@@ -13,6 +14,7 @@ import { createAppRouter } from './app/router';
 import { ViewportGate } from './app/UnsupportedViewport';
 import { startSessionKeeper } from './net/sessionKeeper';
 import { startApplySettings } from './state/applySettings';
+import { TooltipHost } from './ui/TooltipHost';
 
 startApplySettings();
 const router = createAppRouter();
@@ -27,5 +29,6 @@ createRoot(document.getElementById('root')!).render(
     <ViewportGate>
       <RouterProvider router={router} />
     </ViewportGate>
+    <TooltipHost />
   </StrictMode>,
 );

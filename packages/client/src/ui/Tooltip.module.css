@@ -1,0 +1,59 @@
+/*
+ * Broadcast tooltip: a black slab with a paper edge (the anchor's type colour when it has one) and a hard pointer;
+ * no orange (nothing here is "press this").
+ * TooltipHost renders it invisible first, measures it, then sets --tip-x / --tip-y / --tip-arrow and data-placed.
+ */
+.tip {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: var(--z-overlay);
+  max-inline-size: 280px;
+  padding: var(--s-2) var(--s-4) var(--s-2) var(--s-5);
+  background: var(--bg-0);
+  box-shadow: var(--shadow-2), inset 0 0 0 1px var(--line-2), inset 3px 0 0 var(--tip-edge, var(--text-hi));
+  color: var(--text-hi);
+  font-family: var(--face-text);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 500;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  visibility: hidden;
+  transform: translate(var(--tip-x), var(--tip-y));
+}
+
+.tip[data-placed] {
+  visibility: visible;
+  animation: tip-in var(--motion-fast) var(--ease-out) both;
+}
+
+/* the pointer: a 10 px triangle on the edge facing the anchor, at the anchor's centre */
+.tip::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: calc(var(--tip-arrow) - 5px);
+  inline-size: 10px;
+  block-size: 5px;
+  background: var(--line-2);
+}
+
+.tip[data-placed='above']::after {
+  inset-block-start: 100%;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.tip[data-placed='below']::after {
+  inset-block-end: 100%;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+@keyframes tip-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
