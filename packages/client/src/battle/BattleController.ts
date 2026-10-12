@@ -424,6 +424,9 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
 
   const raidUi = (): RaidBattleUi | undefined => (raid === null || battleId === null ? undefined : { raidId: battleId, round: raid.shownRound, catchWindow: raid.catchWindow });
 
+  /** the turn timer's end on this clock: arrival time + the server's `deadlineMs` (null when it sent none) */
+  const deadlineFrom = (ms: number | undefined): number | null => (ms === undefined ? null : performance.now() + ms);
+
   const writeUi = (patch: Partial<BattleUi>): void => {
     const b = ui().battle;
     if (b === null || b.battleId !== battleId) return;
@@ -850,7 +853,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       begin(m);
       ui().setBattle({
         battleId: m.battleId, format: m.format, seat: m.seat, authoritative: m.state, phase: 'playing', menu: OPEN_MENU,
-        turnLabel: TURN(m.state.turn + 1), log: [], desyncs: 0, result: null, expectedMs: 0,
+        turnLabel: TURN(m.state.turn + 1), log: [], desyncs: 0, result: null, expectedMs: 0, deadlineAt: deadlineFrom(m.deadlineMs),
       });
       // Phase B7: the VS card over the push-in (a fresh trainer / league battle only — a resync restore has none)
       if (foe !== null && (m.format === 'trainer' || m.format === 'league') && !deps.reduced()) {
@@ -938,7 +941,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       preState = before;
       resetHpTable(before);
       for (const p of promptsFrom(m.events, next, seat)) if (!prompts.some((q) => samePrompt(q, p))) prompts.push(p);
-      writeUi({ phase: 'playing', authoritative: next, expectedMs: 0 });
+      writeUi({ phase: 'playing', authoritative: next, expectedMs: 0, deadlineAt: deadlineFrom(m.deadlineMs) });
       play(buildTimeline(m.events, ctxFor(before)), before);
     },
 
@@ -963,11 +966,13 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
         const r = raidUi();
         ui().setBattle({
           battleId: m.battleId, format: s.format, seat: mySeat, authoritative: s, phase: phaseAfter(s), menu: OPEN_MENU,
-          turnLabel: labelFor(s), log: [], desyncs: 0, result: null, expectedMs: 0, ...(r === undefined ? {} : { raid: r }), ...pickFor(s),
+          turnLabel: labelFor(s), log: [], desyncs: 0, result: null, expectedMs: 0, deadlineAt: deadlineFrom(m.deadlineMs),
+          ...(r === undefined ? {} : { raid: r }), ...pickFor(s),
         });
         return;
       }
       restoreFrom(m.state);
+      writeUi({ deadlineAt: deadlineFrom(m.deadlineMs) });
     },
 
     onRaidEvents(m) {

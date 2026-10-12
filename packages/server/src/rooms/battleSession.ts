@@ -36,7 +36,7 @@ import type { QuestEvent } from '../game/quests';
 import type { SpawnRecord } from './spawnDirector';
 import { completeBeatInTx } from './storyBeats';
 
-export const TURN_DEADLINE_MS = 30_000;
+export const TURN_DEADLINE_MS = 60_000;
 export const REPLACEMENT_DEADLINE_MS = 20_000;
 /** The champion id checked anywhere in server code (NON-NEGOTIABLE 11). */
 export const CHAMPION_ID = 'zeon';
@@ -297,6 +297,11 @@ function side0Won(outcome: BattleOutcome): boolean {
   return outcome.winner === 0 || outcome.winner === 'caught';
 }
 
+/** The turn timer the client shows: ms until `tick` auto-acts, as of `now` (whole ms, never negative). */
+function deadlineLeft(session: BattleSession, now: number): number {
+  return Math.max(0, Math.round(session.deadlineAt - now));
+}
+
 /** The auto-action of §30.4.3 "Deadline" for a seat that did not act. */
 export function autoAction(state: BattleState, side: 0 | 1, content: ContentIndex): Action {
   const s = state.sides[side];
@@ -501,6 +506,7 @@ export class BattleCoordinator {
         x: session.x,
         z: session.z,
         yaw: session.yaw,
+        deadlineMs: deadlineLeft(session, now),
       });
     }
     return { session, events };
@@ -841,7 +847,7 @@ export class BattleCoordinator {
   resync(playerId: string, battleId: string): ServerMessage | null {
     const session = this.sessions.get(battleId);
     if (session === undefined || !session.seats.some((s) => s.playerId === playerId)) return null;
-    return { type: 'battleResync', battleId, state: session.state, stateDigest: digestBattleState(session.state) };
+    return { type: 'battleResync', battleId, state: session.state, stateDigest: digestBattleState(session.state), deadlineMs: deadlineLeft(session, this.deps.clock()) };
   }
 
   // ─── resolution ─────────────────────────────────────────────────────────────
@@ -891,7 +897,7 @@ export class BattleCoordinator {
     session.pending = emptyPending(next, session.seats);
     const anyMustSwitch = next.sides[0].mustSwitch || next.sides[1].mustSwitch;
     session.deadlineAt = now + (anyMustSwitch ? REPLACEMENT_DEADLINE_MS : TURN_DEADLINE_MS);
-    this.sendAfterCommit(session, next, events, deltas);
+    this.sendAfterCommit(session, next, events, deltas, now);
     session.resolving = false;
     if (next.ended !== null) {
       this.finish(session, next.ended);
@@ -901,13 +907,14 @@ export class BattleCoordinator {
     if (mustActSides(session).length === 0) await this.resolveNow(session);
   }
 
-  private sendAfterCommit(session: BattleSession, next: BattleState, events: readonly BattleEvent[], deltas: Map<string, PlayerDelta>): void {
+  private sendAfterCommit(session: BattleSession, next: BattleState, events: readonly BattleEvent[], deltas: Map<string, PlayerDelta>, now: number): void {
     const host = this.deps.host;
     const digest = digestBattleState(next);
     for (const seat of session.seats) {
       if (seat.playerId === null) continue;
       const pid = seat.playerId;
-      host.send(pid, { type: 'battleEvents', battleId: session.id, turn: next.turn, events, stateDigest: digest, rng: next.rng });
+      const deadline = next.ended === null ? { deadlineMs: deadlineLeft(session, now) } : {};
+      host.send(pid, { type: 'battleEvents', battleId: session.id, turn: next.turn, events, stateDigest: digest, rng: next.rng, ...deadline });
       const d = deltas.get(pid);
       if (d === undefined) continue;
       if (d.tower !== null && seat.side === 0) session.towerResult = d.tower;

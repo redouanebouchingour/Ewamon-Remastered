@@ -40,6 +40,30 @@
   clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
 }
 
-.turn:empty {
-  display: none;
+/* the label keeps its width; the timer takes the right of the slab (clear of the slant) */
+.turnLabel {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* the turn timer (2026-10-12): paper digits on the black slab; warn under 10 s, a danger block under 5 s */
+.timer {
+  flex: none;
+  margin-inline-end: var(--s-3);
+  padding: var(--s-1) var(--s-2);
+  color: var(--text-hi);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--motion-fast) var(--ease-out), background-color var(--motion-fast) var(--ease-out);
+}
+
+.timerWarn {
+  color: var(--warn);
+}
+
+.timerDanger {
+  background: var(--danger);
+  color: var(--bg-0);
 }

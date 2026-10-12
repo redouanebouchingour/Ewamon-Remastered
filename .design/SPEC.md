@@ -1903,10 +1903,11 @@ Rate limits (per client, sliding window; excess is dropped with one `error { cod
 ```ts
 export type ServerMessage =
   | { readonly type: 'battleStart'; readonly battleId: string; readonly format: BattleFormat; readonly seat: 0 | 1;
-      readonly state: BattleState; readonly events: readonly BattleEvent[]; readonly stateDigest: string }
+      readonly state: BattleState; readonly events: readonly BattleEvent[]; readonly stateDigest: string;
+      readonly deadlineMs?: number }   // amended 2026-10-12: the turn timer — ms left before the §30.4.3 deadline auto-acts, as sent (absent in raids and on the last turn)
   | { readonly type: 'battleEvents'; readonly battleId: string; readonly turn: number; readonly events: readonly BattleEvent[];
-      readonly stateDigest: string; readonly rng: RngState }
-  | { readonly type: 'battleResync'; readonly battleId: string; readonly state: BattleState; readonly stateDigest: string }
+      readonly stateDigest: string; readonly rng: RngState; readonly deadlineMs?: number }
+  | { readonly type: 'battleResync'; readonly battleId: string; readonly state: BattleState; readonly stateDigest: string; readonly deadlineMs?: number }
   | { readonly type: 'battleEnd'; readonly battleId: string; readonly outcome: BattleOutcome; readonly rewards: RewardsSummary }
   | { readonly type: 'inventoryDelta'; readonly items: Readonly<Record<string, number>>; readonly money: number | null; // absolute counts
       readonly creaturesAdded: readonly CreatureInstance[]; readonly creaturesRemoved: readonly string[]; readonly creaturesUpdated: readonly CreatureInstance[] }
@@ -4626,7 +4627,7 @@ export interface BattleController {
 
 Amended 2026-09-30 (render Part 5 T2; audit M2-battle-5 / -6): `BattleOverlay` reports the panel's measured top edge; World3D hands render the panel's height over the canvas (`part3.setBattleInsets(0, px)`), and render's battle camera frames both battlers — and the far battler's HP bar — above it, while the HUD keeps both bars off it. The client's former 1.0 m look-at shift toward the camera (`FRAME_SHIFT_M`) is 0. `BattleHud` fills each bar's `types` from the species table for the plate's type badges.
 
-DOM (`BattleOverlay`, the bottom `clamp(200px, 28vh, 280px)` of the viewport, no `Panel` — amended 2026-10-11, Broadcast UI: a command deck): a command rail on the left, `Fight · Party · Bag · Orbs · Run/Forfeit` as slanted slabs with key chips (hotkeys `1–5` at the root), which stays visible beside every sub-menu (the open one is the `--accent` slab); every choice opens on the Fight menu (the moves) — amended 2026-10-12 — so Back / `Escape` from Party, Bag or Orbs return to the moves, `Escape` on the moves shows the root and its `1–5` hotkeys, and a raid's catch window opens on the root (only Orbs is live); a "Last turn" ticker across the top of the deck; moves as 4 cards in one row (`MoveButton size="lg"`: a slab of the move's type colour, key chip, type, shape-coded effectiveness, name, POW, PP; hotkeys `1–4`, `Escape` back), party list of `CreatureCard variant="row"` (switch), bag list filtered by `usableInBattle`, orbs list. Disabled reasons come from `validateAction` (`ActionError` → label table, e.g. `noPp → 'No PP'`, `choiceLocked → 'Choice-locked'`, `trapped → 'Trapped'`). The last 3 log lines render in the deck's "Last turn" ticker with `--t-body-lg` (bad news in `--danger`, the rest paper). Key hints name only the keys live in the open menu. <!-- amended 2026-10-11: Broadcast UI -->
+DOM (`BattleOverlay`, the bottom `clamp(200px, 28vh, 280px)` of the viewport, no `Panel` — amended 2026-10-11, Broadcast UI: a command deck): a command rail on the left, `Fight · Party · Bag · Orbs · Run/Forfeit` as slanted slabs with key chips (hotkeys `1–5` at the root), which stays visible beside every sub-menu (the open one is the `--accent` slab); the turn tag above the rail carries the turn timer at its right (amended 2026-10-12; `battle/TurnTimer.tsx`): the `m:ss` left before the server's deadline auto-acts (§30.4.3, 60 s a turn, 20 s for a replacement), counted down from the last battle message's `deadlineMs` while the player chooses or waits for the other side, `--warn` under 10 s and a `--danger` block under 5 s, hidden while a turn plays, after the end and in raids (whose round timer is the raid panel's); every choice opens on the Fight menu (the moves) — amended 2026-10-12 — so Back / `Escape` from Party, Bag or Orbs return to the moves, `Escape` on the moves shows the root and its `1–5` hotkeys, and a raid's catch window opens on the root (only Orbs is live); a "Last turn" ticker across the top of the deck; moves as 4 cards in one row (`MoveButton size="lg"`: a slab of the move's type colour, key chip, type, shape-coded effectiveness, name, POW, PP; hotkeys `1–4`, `Escape` back), party list of `CreatureCard variant="row"` (switch), bag list filtered by `usableInBattle`, orbs list. Disabled reasons come from `validateAction` (`ActionError` → label table, e.g. `noPp → 'No PP'`, `choiceLocked → 'Choice-locked'`, `trapped → 'Trapped'`). The last 3 log lines render in the deck's "Last turn" ticker with `--t-body-lg` (bad news in `--danger`, the rest paper). Key hints name only the keys live in the open menu. <!-- amended 2026-10-11: Broadcast UI -->
 
 In-canvas (render `HudLayer`, spine Pillar 8: never covered by an effect): both active battlers' HP bars anchored above the billboards with name, level, HP numbers (own side only), status glyph, stage arrows (▲/▼ per stat with count); the turn label; the orb shake counter. The `BattleResultCard` (DOM modal) shows `RewardsSummary` and, for `battleEnd` with `evolveReady`/`learnMove` events in the last turn, the `evolve`/`learnMove` modals queued in order, each an explicit REST call (`POST /creature/:id/evolve`, `POST /creature/:id/moves`) — never automatic.
 
@@ -5349,7 +5350,7 @@ export interface BattleSession {
   readonly seed: RngState;                   // createBattle's seed snapshot, for battle_history.seed
   readonly actionsLog: [SideChoice, SideChoice][];   // one entry per resolved resolveTurn, for battle_history.actions (Phase D6: SideChoice)
   pending: [SideChoice, SideChoice];         // actions received for the CURRENT turn; Phase D6 doubles: one [pos0, pos1] pair per player side (NPC sides null)
-  deadlineAt: number;                        // ms; 30 s after the turn opened
+  deadlineAt: number;                        // ms; 60 s after the turn opened (20 s for a replacement) — amended 2026-10-12: was 30 s
   resolving: boolean;
   readonly spawnId: string | null;           // wild: the SpawnRecord it consumes
   readonly npc: { readonly trainerId: string; readonly reward: number; readonly leagueId: string | null } | null;
@@ -5358,9 +5359,11 @@ export interface BattleSession {
   readonly startedAt: number;
   readonly x: number; readonly z: number;    // where the arena dresses (BattleSummary)
 }
-export const TURN_DEADLINE_MS = 30_000;
+export const TURN_DEADLINE_MS = 60_000;   // amended 2026-10-12: was 30_000
 export const REPLACEMENT_DEADLINE_MS = 20_000;
 ```
+
+The client shows the deadline as a turn timer (§20.5.6): `battleStart`, `battleEvents` (unless the battle ended) and `battleResync` carry `deadlineMs = max(0, deadlineAt − now)` as of sending; the client counts it down on its own clock, so no clock sync is needed. <!-- amended 2026-10-12: turn timer -->
 
 While `userData.battleId !== null`: `input` messages are rejected with `inBattle` (avatar frozen at the pre-battle pose; `PlayerState.inBattle = true`), `engageSpawn`/`challenge`/`tradeRequest`/`interact` are answered `error { code: 'busy' }`, handover triggers are skipped. Emote and chat still work.
 

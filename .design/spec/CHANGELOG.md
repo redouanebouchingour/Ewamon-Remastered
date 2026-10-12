@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-12 the turn timer: shown in battle, 60 s a turn. One entry. -->
+
+## 2026-10-12 — `00-spine.md` §4.4 (`deadlineMs?` on `battleStart` / `battleEvents` / `battleResync`); `30-server-netcode.md` §30.4.3 (`TURN_DEADLINE_MS` 30 → 60 s; the deadline sent to the client); `20-client.md` §20.5.6 (the turn timer) — battle turn timer
+Why: the user asked to show the timer in battle and make it 60 seconds. The server already auto-acted after 30 s (two auto-actions in a row forfeit a pvp battle), but the client never knew the deadline, so a player could lose a turn without warning. The server now sends the ms left with every battle message that opens a choice, and the turn tag counts it down. The replacement deadline (20 s) is unchanged; raids keep their own round timer.
+Evidence: `packages/server/test/battle-room.test.ts` ("the turn timer": 60 s; battleStart, battleResync 12 s later, battleEvents carry it); `packages/client/test/turn-timer.test.tsx` (3). The optional field leaves existing messages valid; core and its fuzz digests are untouched.
+Affects: `packages/protocol/src/messages/server.ts`; `packages/server/src/rooms/battleSession.ts`; `packages/client/src/{state/ui.ts,battle/BattleController.ts,battle/TurnTimer.tsx,battle/BattleOverlay.tsx,battle/BattleOverlay.module.css}`.
+
 <!-- 2026-10-12 battle menu opens on the moves. One entry. -->
 
 ## 2026-10-12 — `20-client.md` §20.5.6 (the deck opens on the Fight menu) — battle menu default

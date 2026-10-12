@@ -1538,10 +1538,11 @@ Rate limits (per client, sliding window; excess is dropped with one `error { cod
 ```ts
 export type ServerMessage =
   | { readonly type: 'battleStart'; readonly battleId: string; readonly format: BattleFormat; readonly seat: 0 | 1;
-      readonly state: BattleState; readonly events: readonly BattleEvent[]; readonly stateDigest: string }
+      readonly state: BattleState; readonly events: readonly BattleEvent[]; readonly stateDigest: string;
+      readonly deadlineMs?: number }   // amended 2026-10-12: the turn timer — ms left before the §30.4.3 deadline auto-acts, as sent (absent in raids and on the last turn)
   | { readonly type: 'battleEvents'; readonly battleId: string; readonly turn: number; readonly events: readonly BattleEvent[];
-      readonly stateDigest: string; readonly rng: RngState }
-  | { readonly type: 'battleResync'; readonly battleId: string; readonly state: BattleState; readonly stateDigest: string }
+      readonly stateDigest: string; readonly rng: RngState; readonly deadlineMs?: number }
+  | { readonly type: 'battleResync'; readonly battleId: string; readonly state: BattleState; readonly stateDigest: string; readonly deadlineMs?: number }
   | { readonly type: 'battleEnd'; readonly battleId: string; readonly outcome: BattleOutcome; readonly rewards: RewardsSummary }
   | { readonly type: 'inventoryDelta'; readonly items: Readonly<Record<string, number>>; readonly money: number | null; // absolute counts
       readonly creaturesAdded: readonly CreatureInstance[]; readonly creaturesRemoved: readonly string[]; readonly creaturesUpdated: readonly CreatureInstance[] }

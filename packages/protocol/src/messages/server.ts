@@ -97,6 +97,8 @@ export type ServerMessage =
       readonly z?: number;
       /** the battle axis yaw inside a hall (the pocket's yaw), null/absent in the open world */
       readonly yaw?: number | null;
+      /** ms left, as sent, before the server auto-acts for a seat that has not chosen (the turn timer); absent in raids */
+      readonly deadlineMs?: number;
     }
   | {
       readonly type: 'battleEvents';
@@ -105,8 +107,10 @@ export type ServerMessage =
       readonly events: readonly BattleEvent[];
       readonly stateDigest: string;
       readonly rng: RngState;
+      /** ms left, as sent, before the server auto-acts for a seat that has not chosen (the turn timer); absent in raids */
+      readonly deadlineMs?: number;
     }
-  | { readonly type: 'battleResync'; readonly battleId: string; readonly state: BattleState; readonly stateDigest: string }
+  | { readonly type: 'battleResync'; readonly battleId: string; readonly state: BattleState; readonly stateDigest: string; readonly deadlineMs?: number }
   | { readonly type: 'battleEnd'; readonly battleId: string; readonly outcome: BattleOutcome; readonly rewards: RewardsSummary }
   | {
       readonly type: 'inventoryDelta';
@@ -250,6 +254,7 @@ export const BattleStartMsg = z.object({
   x: z.number().finite().optional(),
   z: z.number().finite().optional(),
   yaw: z.number().finite().nullable().optional(),
+  deadlineMs: z.number().int().min(0).optional(),
 });
 export const BattleEventsMsg = z.object({
   type: z.literal('battleEvents'),
@@ -258,12 +263,14 @@ export const BattleEventsMsg = z.object({
   events: BattleEvents,
   stateDigest: Digest,
   rng: RngStateSchema,
+  deadlineMs: z.number().int().min(0).optional(),
 });
 export const BattleResyncServerMsg = z.object({
   type: z.literal('battleResync'),
   battleId: z.string().min(1),
   state: BattleStateSchema,
   stateDigest: Digest,
+  deadlineMs: z.number().int().min(0).optional(),
 });
 export const BattleEndMsg = z.object({
   type: z.literal('battleEnd'),

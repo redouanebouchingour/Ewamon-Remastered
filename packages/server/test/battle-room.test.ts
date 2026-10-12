@@ -287,6 +287,23 @@ describe('§30.4.2 message → action', () => {
     expect(msgsOf(host, pid).some((m) => m.type === 'battleEvents')).toBe(true);
   }, 120_000);
 
+  it('the turn timer: 60 s a turn; battleStart, battleEvents and battleResync carry the ms left (deadlineMs)', async () => {
+    expect(TURN_DEADLINE_MS).toBe(60_000);
+    const host = recorder();
+    const c = coordinator(host, 'mire_route', 'timer');
+    const pid = await mkPlayer([{ species: 'bramblecub', level: 30 }]);
+    const res = await c.startWild({ playerId: pid, sessionId: 's' }, spawn('mossling', 30), { x: 0, z: 0 });
+    if (!res.ok) throw new Error(res.detail);
+    const start = msgsOf(host, pid).find((m) => m.type === 'battleStart');
+    expect(start).toMatchObject({ deadlineMs: TURN_DEADLINE_MS });
+    now += 12_000;
+    expect(c.resync(pid, res.session.id)).toMatchObject({ type: 'battleResync', deadlineMs: TURN_DEADLINE_MS - 12_000 });
+    expect(c.action(pid, res.session.id, 1, firstMove(res.session.state, 0))).toBeNull();
+    await settle(c, res.session.id);
+    const events = msgsOf(host, pid).find((m) => m.type === 'battleEvents');
+    if (c.get(res.session.id) !== null) expect(events).toMatchObject({ deadlineMs: TURN_DEADLINE_MS });
+  }, 120_000);
+
   it('a failed transaction leaves session.state unchanged (the item balance vanished under the snapshot)', async () => {
     const host = recorder();
     const c = coordinator(host, 'mire_route', 'txfail');

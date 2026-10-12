@@ -19,6 +19,7 @@ import { RaidPanel } from './RaidPanel';
 import { RaidSummaryCard } from './RaidSummaryCard';
 import { BondCinematic } from './BondCinematic';
 import { SignatureCinematic } from './SignatureCinematic';
+import { TurnTimer } from './TurnTimer';
 import { setBattlePanelTop } from './panelInset';
 
 /** Reports the panel's top edge while mounted (render T2: the battle camera frames the battlers above it). */
@@ -67,7 +68,12 @@ export function BattleOverlay() {
       <BondCinematic />
       <section ref={ref} className={s.overlay} data-testid="battleoverlay" aria-label="Battle">
         <BattleBlocker />
-        <p className={s.turn}>{turnLabel}</p>
+        {turnLabel !== '' && (
+          <p className={s.turn}>
+            <span className={s.turnLabel}>{turnLabel}</span>
+            <TurnTimer />
+          </p>
+        )}
         <div className={s.body}>
           <BattleMenu />
         </div>

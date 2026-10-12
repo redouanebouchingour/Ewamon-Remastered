@@ -69,6 +69,11 @@ export interface BattleUi {
   readonly result: BattleResult | null;
   /** the preview's timeline duration while 'submitted' (sizes the waiting indicator); 0 = unknown */
   readonly expectedMs: number;
+  /**
+   * The turn timer: `performance.now()` at which the server auto-acts for a seat that has not chosen (the message's
+   * `deadlineMs` added to its arrival time); null / absent when the server sent none (raids, the battle's end).
+   */
+  readonly deadlineAt?: number | null;
   /** Phase C1: set for format 'raid' */
   readonly raid?: RaidBattleUi;
   /**

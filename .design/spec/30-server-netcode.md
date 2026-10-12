@@ -398,7 +398,7 @@ export interface BattleSession {
   readonly seed: RngState;                   // createBattle's seed snapshot, for battle_history.seed
   readonly actionsLog: [SideChoice, SideChoice][];   // one entry per resolved resolveTurn, for battle_history.actions (Phase D6: SideChoice)
   pending: [SideChoice, SideChoice];         // actions received for the CURRENT turn; Phase D6 doubles: one [pos0, pos1] pair per player side (NPC sides null)
-  deadlineAt: number;                        // ms; 30 s after the turn opened
+  deadlineAt: number;                        // ms; 60 s after the turn opened (20 s for a replacement) — amended 2026-10-12: was 30 s
   resolving: boolean;
   readonly spawnId: string | null;           // wild: the SpawnRecord it consumes
   readonly npc: { readonly trainerId: string; readonly reward: number; readonly leagueId: string | null } | null;
@@ -407,9 +407,11 @@ export interface BattleSession {
   readonly startedAt: number;
   readonly x: number; readonly z: number;    // where the arena dresses (BattleSummary)
 }
-export const TURN_DEADLINE_MS = 30_000;
+export const TURN_DEADLINE_MS = 60_000;   // amended 2026-10-12: was 30_000
 export const REPLACEMENT_DEADLINE_MS = 20_000;
 ```
+
+The client shows the deadline as a turn timer (§20.5.6): `battleStart`, `battleEvents` (unless the battle ended) and `battleResync` carry `deadlineMs = max(0, deadlineAt − now)` as of sending; the client counts it down on its own clock, so no clock sync is needed. <!-- amended 2026-10-12: turn timer -->
 
 While `userData.battleId !== null`: `input` messages are rejected with `inBattle` (avatar frozen at the pre-battle pose; `PlayerState.inBattle = true`), `engageSpawn`/`challenge`/`tradeRequest`/`interact` are answered `error { code: 'busy' }`, handover triggers are skipped. Emote and chat still work.
 
