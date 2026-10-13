@@ -2,7 +2,7 @@
  * §50.5 M3 progression walk, leg 5 of 5 (progression.ts): from the snapshot leg 4 wrote (the Rift) home — the
  * statics voltaura (galvan_route) and sunjaw (ash_route), then beat 27 `restore_the_grove` on Mire Route (its data
  * needs only `act3_started ledger_read`, so a player may leave it for the way home). The walk's final state: all 33
- * beats done, 8 badges, the champion flag, all 8 statics' flags, every league row beaten.
+ * beats done, 8 badges, the champion flag, all 9 statics' flags, every league row beaten.
  */
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { LEAGUE, LEGENDARY_STATICS, harvestStateFor } from '@ewa/content';

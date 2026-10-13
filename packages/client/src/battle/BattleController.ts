@@ -42,7 +42,7 @@
  * HP is never computed here: bars follow `damage.hpAfter` / `heal.hpAfter` (TimelinePlayer → BattleHud).
  * Store writes happen at message time or are deferred off the tick (setTimeout 0) — never from inside World3D.tick.
  */
-import { digestBattleState, requiredPositions, resolveTurn, validateAction, validateSideChoice } from '@ewa/core';
+import { digestBattleState, formTypes, requiredPositions, resolveTurn, validateAction, validateSideChoice } from '@ewa/core';
 import type { Action, BandKind, BattleEvent, BattleState, ContentIndex, CreatureInstance, Ref, StatusId } from '@ewa/core';
 import type { ClientMessageType, ClientPayload, RewardsSummary, ServerMessageOf } from '@ewa/protocol';
 import { OPEN_MENU, useUiStore } from '../state/ui';
@@ -214,12 +214,15 @@ function beforeFormChanges(st: BattleState, events: readonly BattleEvent[]): Bat
   return { ...st, sides: [strip(0), strip(1)] };
 }
 
-/** The battler's species types for its HUD plate (§50.1 #15); [] for an unknown species id. */
-function typesOf(state: BattleState, r: Ref, content: ContentIndex): readonly string[] {
+/**
+ * The battler's types for its HUD plate (§50.1 #15): its battle form's when the form names its own (`formTypes`; `form`
+ * overrides the battler's, for the timeline's form frame), else the species'; [] for an unknown species id.
+ */
+function typesOf(state: BattleState, r: Ref, content: ContentIndex, form?: string): readonly string[] {
   const b = state.sides[r.side]?.party[r.slot];
   if (b === undefined) return [];
   try {
-    return content.species(b.creature.speciesId).types;
+    return formTypes(content.species(b.creature.speciesId), form === undefined ? b : { form });
   } catch (_e) {
     return [];
   }
@@ -581,6 +584,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       const p = posFor(who.side, who.slot);
       if (st === null || p < 0 || displayed[who.side][p] !== who.slot) return;
       showBattler(st, who.side, who.slot, p as 0 | 1, form);
+      hud.setTypes(who.side, typesOf(st, who, deps.content, form), p as 0 | 1);
       view?.setPose(stageAt(who.side, p), 'idle', 0);
     },
     enter: (who) => {

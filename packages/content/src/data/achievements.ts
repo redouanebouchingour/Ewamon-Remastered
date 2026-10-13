@@ -17,7 +17,7 @@ function ach(id: string, title: string, summary: string, act: QuestDef['act'], o
 
 const one = (id: string, label: string, objective: QuestObjective): QuestDef['objectives'] => [{ id, label, objective }];
 
-/** The 8 legendary statics' win/catch flags (content `LEGENDARY_STATICS[].flag`). */
+/** The 9 legendary statics' win/catch flags (content `LEGENDARY_STATICS[].flag`). */
 const STATIC_FLAGS: readonly (readonly [string, string])[] = [
   ['leg_raikitsune', 'Raikitsune'],
   ['leg_bankaiser', 'Bankaiser'],
@@ -27,6 +27,7 @@ const STATIC_FLAGS: readonly (readonly [string, string])[] = [
   ['leg_voltaura', 'Voltaura'],
   ['leg_zenryu', 'Zenryu'],
   ['leg_voidraxis', 'Voidraxis'],
+  ['leg_hyoryu', 'Hyoryu'],
 ];
 
 /** The 12 league trainers (content `LEAGUE[].id`) with their display names. */
@@ -53,8 +54,8 @@ export const ACHIEVEMENTS: readonly QuestDef[] = [
   ach('ach_dex_30', 'A Field Notebook', 'Record 30 species in the dex.', 1, one('dex', 'Record 30 species', { kind: 'dexCaught', count: 30 }), reward(1500, { prism_orb: 3 })),
   ach('ach_dex_60', 'Half a Ledger', 'Record 60 species in the dex.', 2, one('dex', 'Record 60 species', { kind: 'dexCaught', count: 60 }), reward(3000, { prism_orb: 5, superpotion: 3 })),
   ach('ach_dex_90', 'The Long Record', 'Record 90 species in the dex.', 2, one('dex', 'Record 90 species', { kind: 'dexCaught', count: 90 }), reward(5000, { hyper_potion: 3, rarecandy: 1 })),
-  // id kept from the 130-species roster (persisted unlocks); the target is the whole dex (137 with the post-legacy additions)
-  ach('ach_dex_130', 'Nothing Quietly Lost', 'Record all 137 species in the dex.', 3, one('dex', 'Record all 137 species', { kind: 'dexCaught', count: 137 }), reward(15000, { rarecandy: 3, max_revive: 2 })),
+  // id kept from the 130-species roster (persisted unlocks); the target is the whole dex (138 with the post-legacy additions)
+  ach('ach_dex_130', 'Nothing Quietly Lost', 'Record all 138 species in the dex.', 3, one('dex', 'Record all 138 species', { kind: 'dexCaught', count: 138 }), reward(15000, { rarecandy: 3, max_revive: 2 })),
   // ---- catches (every catch counts) ----
   ach('ach_catch_1', 'First Catch', 'Catch your first wild creature.', 1, one('catch', 'Catch 1 creature', { kind: 'catchSpecies', count: 1 }), reward(200, { spark_orb: 5 })),
   ach('ach_catch_10', 'Ten Orbs Thrown True', 'Catch 10 creatures.', 1, one('catch', 'Catch 10 creatures', { kind: 'catchSpecies', count: 10 }), reward(800, { crest_orb: 5 })),
@@ -76,7 +77,7 @@ export const ACHIEVEMENTS: readonly QuestDef[] = [
     LEAGUE_IDS.map(([id, name]) => ({ id, label: `Defeat ${name}`, objective: { kind: 'defeatTrainer', trainerId: id } as const })), reward(15000, { full_restore: 3, rarecandy: 2 })),
   ach('ach_champion', 'Champion', 'Defeat Champion Zeon.', 3, one('zeon', 'Beat Champion Zeon', { kind: 'flag', flag: 'champion:zeon:beaten' }), reward(10000, { max_revive: 3 })),
   // ---- the legendaries ----
-  ach('ach_statics_all', 'Eight Old Powers', 'Defeat or catch all eight legendary statics.', 3,
+  ach('ach_statics_all', 'Nine Old Powers', 'Defeat or catch all nine legendary statics.', 3,
     STATIC_FLAGS.map(([flag, name]) => ({ id: flag, label: `Face ${name}`, objective: { kind: 'flag', flag } as const })), reward(20000, { mythos_orb: 1 })),
   // ---- trades, raids ----
   ach('ach_trade_1', 'Fair Exchange', 'Complete a trade with another player.', 1, one('trade', 'Complete 1 trade', { kind: 'completeTrades', count: 1 }), reward(500, { potion: 3 })),

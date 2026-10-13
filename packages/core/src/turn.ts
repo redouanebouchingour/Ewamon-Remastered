@@ -43,7 +43,7 @@ import { createRng } from './rng';
 import { otherSide } from './side';
 import { createDoubles, resolveDoublesTurn, validateDoublesAction } from './doubles';
 import { effectiveSpeed } from './speed';
-import { formBase, formMoveId, transformError } from './forms';
+import { formBase, formMoveId, formTypes, transformError } from './forms';
 import { applyRatio, calcStat, ratioOf, stageRatio } from './stats';
 import { hasStatus } from './status';
 import type {
@@ -554,7 +554,7 @@ export function endOfTurnAt(ctx: Ctx, field: readonly Ref[]): void {
       const who = field[i]!;
       const b = at(ctx, who);
       if (!isAlive(b)) continue;
-      const types = ctx.content.species(b.creature.speciesId).types;
+      const types = formTypes(ctx.content.species(b.creature.speciesId), b);
       const immune =
         w === 'sand'
           ? types.indexOf('Rock') !== -1 || types.indexOf('Ground') !== -1 || types.indexOf('Steel') !== -1

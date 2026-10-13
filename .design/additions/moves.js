@@ -15,6 +15,9 @@ const EWAMON_MOVE_ADDITIONS = {
   // glacinid's signature move (a default move, patches.js): the frost dragon draws an aurora across a calm winter sky
   // and seals the foe in ice. Learned by glacinid only.
   "Aurora Requiem": { power: 130, type: "Ice", pp: 5, effect: "freeze", accuracy: 90 },
+  // hyoryu's signature move (pinned as its newest learnable move): ice petals open across the sky around the foe and
+  // close into a crimson lotus of ice. Dragon, so it keeps its STAB in the Dragon/Dark Majin form. Learned by hyoryu only.
+  "Crimson Lotus Prison": { power: 120, type: "Dragon", pp: 5, effect: "freeze", accuracy: 90 },
 };
 
 module.exports = { EWAMON_MOVE_ADDITIONS };

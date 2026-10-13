@@ -68,10 +68,11 @@ export const NORMAL_SCALE = 0.5;
 /** Pipeline-built mip levels 1..MIP_LEVELS per map. */
 export const MIP_LEVELS = 3;
 /**
- * Hard ceiling for every file under `public/creatures/` outside `anim/` (spec §40.6). 39.25 MiB since 2026-10-11 (the
- * 11 Majin / Tenjin form entries, kept at the top encoder rung with ~0.5 MB headroom); 35 MiB (36 700 160) before.
+ * Hard ceiling for every file under `public/creatures/` outside `anim/` (spec §40.6). 40 MiB since 2026-10-13 (hyoryu
+ * and its Majin form, kept at the top encoder rung); 39.25 MiB (41 156 608) from 2026-10-11 (the 11 Majin / Tenjin form
+ * entries); 35 MiB (36 700 160) before.
  */
-export const CREATURES_BUDGET_BYTES = 41_156_608;
+export const CREATURES_BUDGET_BYTES = 41_943_040;
 /** Bind cap per zone (= 2 × 4096² in texels). */
 export const MAX_ATLASES_PER_ZONE = 8;
 /** Planner duplicates allowed over the whole world. */

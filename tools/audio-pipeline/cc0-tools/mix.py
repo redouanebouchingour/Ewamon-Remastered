@@ -592,6 +592,23 @@ sfx('sig_aurora_requiem_1', [
     (R5 + 'sfx100v2_glass_05.ogg', 1.24, -4, 1.0, ''),
 ], 2.2, fout=0.5)
 
+# Crimson Lotus Prison (sky petals open 0.00-0.33, the dragon 0.46-0.80, the lotus closes 0.80, its heart burns 0.90-1.06,
+# strains 1.10, shatters 1.22): a cold shimmer, a glass chime per petal, a rushing roar, the snap shut with a low thump,
+# a crimson swell, a crack, the shatter
+sfx('sig_crimson_lotus_prison_1', [
+    (MS + 'magical_4.ogg', 0.0, -8, 0.6, ''),
+    *[(KI + f'glass_00{i}.ogg', 0.02 + 0.06 * k, -14, 1.3 + 0.05 * k, '') for k, i in enumerate((1, 2, 3, 4, 5, 6))],
+    (R5 + 'sfx100v2_air_01.ogg', 0.40, -14, 0.8, 'afade=t=out:st=0.3:d=0.1'),
+    (R2 + 'roar_06.ogg', 0.46, -16, 0.8, 'lowpass=f=3000,afade=t=out:st=0.28:d=0.06'),
+    (KS + 'forceField_002.ogg', 0.80, -7, 0.6, ''),
+    (KX + 'impactGlass_heavy_000.ogg', 0.80, 0, 1.1, ''),
+    (KS + 'lowFrequency_explosion_001.ogg', 0.80, -6, 1.0, ''),
+    (KS + 'spaceEngineLow_002.ogg', 0.90, -14, 0.6, 'lowpass=f=500,afade=t=in:d=0.15,afade=t=out:st=0.2:d=0.12'),
+    (R5 + 'sfx100v2_glass_03.ogg', 1.10, -6, 0.9, ''),
+    (KX + 'impactGlass_heavy_004.ogg', 1.22, 0, 1.0, ''),
+    (R5 + 'sfx100v2_glass_05.ogg', 1.24, -4, 1.0, ''),
+], 2.2, fout=0.5)
+
 
 
 # ─── bond cinematics (client battle/bond.ts) ─────────────────────────────────────────────────────────────────────────

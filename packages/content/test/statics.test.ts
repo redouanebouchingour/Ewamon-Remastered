@@ -3,7 +3,7 @@
  * beat / quest / league row sets); each static (and each raid hotspot) snaps with `nearestWalkable(h, x, z, 8)` — the
  * server's and the client's placement — to a walkable sample inside `playableBounds`, and the two authored on the
  * boundary (`voidraxis` at (0, 84), `raid_ascent_pyrothal` at (0, 104)) snap strictly inward; `galaxion` waits on
- * `flag:ledger_read`; the 8 rows are the 8 non-mythical legendaries, once each.
+ * `flag:ledger_read`; the 9 rows are the 9 non-mythical legendaries, once each.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -46,16 +46,16 @@ function snap(zoneId: ZoneId, x: number, z: number): { p: readonly [number, numb
 }
 
 describe('LEGENDARY_STATICS (§3.2)', () => {
-  it('exactly the 8 non-mythical legendaries, once each, all legendary species', () => {
+  it('exactly the 9 non-mythical legendaries, once each, all legendary species', () => {
     expect(LEGENDARY_STATICS.map((s) => s.species).sort()).toEqual([...LEGENDARY_IDS].sort());
-    expect(new Set(LEGENDARY_STATICS.map((s) => s.species)).size).toBe(8);
+    expect(new Set(LEGENDARY_STATICS.map((s) => s.species)).size).toBe(9);
     const byId = new Map(SPECIES.map((s) => [s.id, s]));
     for (const s of LEGENDARY_STATICS) {
       expect(byId.get(s.species)?.legendary, s.species).toBe(true);
       expect(s.level, s.species).toBeGreaterThanOrEqual(1);
       expect(s.level, s.species).toBeLessThanOrEqual(100);
     }
-    expect(new Set(LEGENDARY_STATICS.map((s) => s.flag)).size).toBe(8);
+    expect(new Set(LEGENDARY_STATICS.map((s) => s.flag)).size).toBe(9);
   });
 
   it('every `when` gate resolves: a badge id, or a flag set by a beat / quest / league row', () => {

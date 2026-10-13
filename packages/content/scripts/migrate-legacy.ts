@@ -21,6 +21,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TYPE_NAMES } from '@ewa/core';
 import { STONE_AND_TRADE_EVOLUTIONS } from '../src/data/evolutions';
 import type {
   AbilityDef,
@@ -86,6 +87,7 @@ interface LegacySpecies {
     baseAtk: number;
     baseDef: number;
     baseSpd: number;
+    types?: string[];
     onEnter: { clearNegativeStages: boolean; lowerFoes: { stat: string; stages: number } | null; cureStatus?: boolean; healFraction?: number };
     signatureMove?: { replaces: string; move: string };
   };
@@ -419,6 +421,14 @@ function migrateSpecies(s: LegacySpecies, dexNumber: number, moveIds: ReadonlySe
   };
 }
 
+/** A form's own types (hyoryu's Majin Form): one or two known type names. */
+function migrateFormTypes(speciesId: string, t: readonly string[]): readonly [TypeName] | readonly [TypeName, TypeName] {
+  for (const x of t) if (!(TYPE_NAMES as readonly string[]).includes(x)) throw new Error(`species '${speciesId}': battle form type '${x}' is not a type`);
+  if (t.length === 1) return [t[0] as TypeName];
+  if (t.length === 2) return [t[0] as TypeName, t[1] as TypeName];
+  throw new Error(`species '${speciesId}': a battle form has one or two types`);
+}
+
 /** sprite ids `<species>_<form>_front|back`: the sprite pipeline ships the form under the key `<species>_<form>`. */
 function migrateBattleForm(speciesId: string, f: NonNullable<LegacySpecies['battleForm']>): BattleFormDef {
   return {
@@ -429,6 +439,7 @@ function migrateBattleForm(speciesId: string, f: NonNullable<LegacySpecies['batt
     baseAtk: f.baseAtk,
     baseDef: f.baseDef,
     baseSpd: f.baseSpd,
+    ...(f.types !== undefined ? { types: migrateFormTypes(speciesId, f.types) } : {}),
     onEnter: {
       clearNegativeStages: f.onEnter.clearNegativeStages,
       lowerFoes: f.onEnter.lowerFoes === null ? null : { stat: f.onEnter.lowerFoes.stat as StatKey, stages: f.onEnter.lowerFoes.stages },

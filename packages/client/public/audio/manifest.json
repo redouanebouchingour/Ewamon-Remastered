@@ -111,7 +111,7 @@
       "urlFallback": "/audio/ambience/vesper.m4a?v=38fd9649"
     }
   },
-  "builtAt": "2026-10-11T18:24:18.531Z",
+  "builtAt": "2026-10-13T14:19:42.303Z",
   "sfx": {
     "anvil_strike": {
       "bus": "sfx",
@@ -2061,6 +2061,20 @@
           "hash": "2dab97a498c460ddbb2dc9a0b5b5183fa0a876322ab3ce0c9086ae3eb8e4c875",
           "url": "/audio/sfx/sig_cosmic_pyre_1.webm?v=2dab97a4",
           "urlFallback": "/audio/sfx/sig_cosmic_pyre_1.m4a?v=2dab97a4"
+        }
+      ],
+      "gainDb": 6,
+      "maxConcurrent": 1
+    },
+    "sig_crimson_lotus_prison": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 19291,
+          "durationSec": 2.196,
+          "hash": "b86262985913f98c815265ba52d4ff526388fd183b2e8c78ede11ed30bb5b784",
+          "url": "/audio/sfx/sig_crimson_lotus_prison_1.webm?v=b8626298",
+          "urlFallback": "/audio/sfx/sig_crimson_lotus_prison_1.m4a?v=b8626298"
         }
       ],
       "gainDb": 6,

@@ -574,3 +574,19 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
 - Trainers: `majinBand(tr(...))` on reeve_observatory, hollis_siege, varn_spire; league `bands` on veil (majin), aurelia
   (tenjin), zeon (majin, zenryu's Super Saiyan form). x / z unchanged, so no layout moves.
 - `pnpm --filter @ewa/content run validate` OK; `npx vitest run packages/content` 21 files / 150 tests.
+
+## hyoryu (#138, 2026-10-13)
+
+- A legendary Ice/Dragon inspired by Daiguren Hyorinmaru (Bleach), from the user's four reference sprites
+  (`.design/additions/species.js`). 138 species / 72 families / 197 moves; 11 legendary / mythical species.
+- Its Majin Form changes types (Ice/Dragon to Dragon/Dark): `BattleFormDefSchema.types` (optional, one or two types) and
+  the generator's `migrateFormTypes` (throws on an unknown type). Base 120 / 144 / 110 / 134, the form 172 / 92 / 162
+  (the Majin template), every foe -1 Speed on entering it.
+- Signature move **Crimson Lotus Prison** (Dragon 120, 90 %, 5 PP, freeze; `.design/additions/moves.js`), pinned at L39
+  with `learnLevels` like the legacy legendaries. The L60 static knows Glacier Crash, Crunch, Dragon Rush and it.
+- The ninth static: `LEGENDARY_STATICS` row on eclipse_shrine (-70, -70), L60, `flag:champion:zeon:beaten`, flag
+  `leg_hyoryu` (flag registry; the "Nine Old Powers" achievement, was "Eight"). Not on ascent_route, the cold route the
+  art suggests: there the sprite planner's pairing duplicated 6 species in the_rift (79 atlases); every zone not on the
+  pair's path planned 76 with none duplicated (siege_route also failed). eclipse_shrine has no interiors and is no town, so
+  no interior door or arrival point moves; the static is a separate layer from the zone plan (no layout reshuffle).
+- The roster gate (`roster.ts`) wants 9 statics; `validate.ts` 138 species, 197 moves, 72 roots.

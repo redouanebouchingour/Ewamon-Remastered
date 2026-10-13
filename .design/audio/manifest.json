@@ -1579,6 +1579,20 @@
     {
       "bus": "sfx",
       "gainDb": 6,
+      "id": "sig_crimson_lotus_prison",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2.2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 586171983,
+        "text": "Glassy petals chiming open one by one, a rushing dragon roar, an ice lotus snapping shut with a deep crimson swell, then cracking and shattering."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": 6,
       "id": "sig_foxfire_voltage",
       "maxConcurrent": 1,
       "prompt": {

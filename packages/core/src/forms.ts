@@ -3,7 +3,7 @@
  * from. Every stat path (projection, level-up, the damage formula, the confusion self-hit) reads them through here, so a
  * battler without a form — every battler of every species without one — computes exactly what it did before.
  */
-import type { ActionError, BattleFormDef, Battler, Side, SpeciesDef } from './types';
+import type { ActionError, BattleFormDef, Battler, Side, SpeciesDef, TypeName } from './types';
 
 /** The species' battle form when the battler has changed into it this battle, else null. */
 export function activeForm(sp: SpeciesDef, b: { readonly form?: string }): BattleFormDef | null {
@@ -23,6 +23,11 @@ export function formMoveId(sp: SpeciesDef, b: { readonly form?: string }, moveId
 /** The base atk / def / spd the battler's stats derive from: the active form's, else the species'. */
 export function formBase(sp: SpeciesDef, b: { readonly form?: string }): { readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number } {
   return activeForm(sp, b) ?? sp;
+}
+
+/** The battler's types: the active form's when it names its own, else the species'. */
+export function formTypes(sp: SpeciesDef, b: { readonly form?: string }): readonly TypeName[] {
+  return activeForm(sp, b)?.types ?? sp.types;
 }
 
 /**

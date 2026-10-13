@@ -160,7 +160,7 @@ describe('the world in play order (M3 progression audit)', () => {
     }
     // bible §7.2: galaxion opens with ledger_read (beat 18) — before the Anvil Badge; the post-title five need the Champion
     expect(w.log.indexOf('beat:the_ledger')).toBeLessThan(w.log.indexOf('league:iron_gym'));
-    expect(LEGENDARY_STATICS.filter((s) => s.when === `flag:${CHAMPION_FLAG}`).map((s) => s.species).sort()).toEqual(['glacinid', 'sunjaw', 'voidraxis', 'voltaura', 'zenryu']);
+    expect(LEGENDARY_STATICS.filter((s) => s.when === `flag:${CHAMPION_FLAG}`).map((s) => s.species).sort()).toEqual(['glacinid', 'hyoryu', 'sunjaw', 'voidraxis', 'voltaura', 'zenryu']);
   });
 
   it('no zone ever has two eligible beats along either run (bible §5.4)', () => {

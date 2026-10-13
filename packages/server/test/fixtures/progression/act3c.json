@@ -9,7 +9,7 @@
     "username_lower": "pgyf5s1",
     "email": "pgyf5s1@test.ewa",
     "password_hash": "$argon2id$v=19$m=19456,t=2,p=1$Fnn8nW3ix+q93MgvQ8x9/w$MehimlYKrclYpBrd6b/MCmfcjtBDi7BZlF9Bgu7Toqw",
-    "money": 85140,
+    "money": 85240,
     "zone_id": "mire_route",
     "x": 12,
     "z": -9.5,
@@ -20,12 +20,12 @@
     "rating": 1000,
     "peak_rating": 1000,
     "ranked_matches": 0,
-    "trainer_exp": 9845,
+    "trainer_exp": 9875,
     "is_admin": false,
     "banned_at": null,
     "ban_reason": null,
     "created_at": "2026-10-06T09:21:17.916Z",
-    "last_seen_at": "2026-10-06T10:37:06.518Z",
+    "last_seen_at": "2026-10-13T14:37:14.824Z",
     "email_verified_at": null
    }
   ],
@@ -38,8 +38,8 @@
     "species_id": "geoboxer",
     "nickname": null,
     "level": 72,
-    "exp": 381353,
-    "hp": 241,
+    "exp": 374365,
+    "hp": 256,
     "moves": [
      {
       "id": "Close Combat",
@@ -48,7 +48,7 @@
      },
      {
       "id": "Earthquake",
-      "pp": 9,
+      "pp": 10,
       "ppMax": 10
      },
      {
@@ -72,8 +72,9 @@
     "ribbons": [],
     "favorite": false,
     "locked": false,
-    "version": 841,
-    "is_shiny": false
+    "version": 839,
+    "is_shiny": false,
+    "honor": 0
    },
    {
     "id": "39c30ea9-749f-400d-9d9d-0628c51e988b",
@@ -83,8 +84,8 @@
     "species_id": "gemknight",
     "nickname": null,
     "level": 68,
-    "exp": 322125,
-    "hp": 0,
+    "exp": 325230,
+    "hp": 119,
     "moves": [
      {
       "id": "Six-Blade Storm",
@@ -93,7 +94,7 @@
      },
      {
       "id": "Moonblast",
-      "pp": 9,
+      "pp": 8,
       "ppMax": 10
      },
      {
@@ -117,8 +118,9 @@
     "ribbons": [],
     "favorite": false,
     "locked": false,
-    "version": 549,
-    "is_shiny": false
+    "version": 555,
+    "is_shiny": false,
+    "honor": 0
    },
    {
     "id": "ba7b1154-04cb-4e21-bbea-b0d72626a4d5",
@@ -162,8 +164,9 @@
     "ribbons": [],
     "favorite": false,
     "locked": false,
-    "version": 546,
-    "is_shiny": false
+    "version": 544,
+    "is_shiny": false,
+    "honor": 0
    },
    {
     "id": "c35909ad-ec80-4471-9641-31112b342eba",
@@ -172,9 +175,9 @@
     "slot_index": 5,
     "species_id": "bloomduck",
     "nickname": null,
-    "level": 64,
-    "exp": 271074,
-    "hp": 209,
+    "level": 65,
+    "exp": 277785,
+    "hp": 212,
     "moves": [
      {
       "id": "Petal Blizzard",
@@ -207,8 +210,9 @@
     "ribbons": [],
     "favorite": false,
     "locked": false,
-    "version": 871,
-    "is_shiny": false
+    "version": 874,
+    "is_shiny": false,
+    "honor": 0
    },
    {
     "id": "d5296937-c556-4002-bb16-435978be1d01",
@@ -253,7 +257,8 @@
     "favorite": false,
     "locked": false,
     "version": 1068,
-    "is_shiny": false
+    "is_shiny": false,
+    "honor": 0
    },
    {
     "id": "f89a2378-ad9d-408a-832e-37edcbd177fa",
@@ -262,9 +267,9 @@
     "slot_index": 3,
     "species_id": "infernomorel",
     "nickname": null,
-    "level": 67,
-    "exp": 308103,
-    "hp": 218,
+    "level": 66,
+    "exp": 299155,
+    "hp": 215,
     "moves": [
      {
       "id": "Flare Blitz",
@@ -297,8 +302,9 @@
     "ribbons": [],
     "favorite": false,
     "locked": false,
-    "version": 1345,
-    "is_shiny": false
+    "version": 1343,
+    "is_shiny": false,
+    "honor": 0
    }
   ],
   "inventory_items": [
@@ -469,12 +475,12 @@
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "beat:restore_the_grove:done",
-    "set_at": "2026-10-06T10:41:01.559Z"
+    "set_at": "2026-10-13T14:41:10.166Z"
    },
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "beat:rift_edge:done",
-    "set_at": "2026-10-06T10:32:43.748Z"
+    "set_at": "2026-10-13T14:26:38.563Z"
    },
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
@@ -594,7 +600,7 @@
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "grove_reremembered",
-    "set_at": "2026-10-06T10:41:01.559Z"
+    "set_at": "2026-10-13T14:41:10.166Z"
    },
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
@@ -619,7 +625,12 @@
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "leg_glacinid",
-    "set_at": "2026-10-06T10:29:38.388Z"
+    "set_at": "2026-10-13T14:23:41.556Z"
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "flag": "leg_hyoryu",
+    "set_at": "2026-10-13T14:23:01.202Z"
    },
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
@@ -629,22 +640,22 @@
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "leg_sunjaw",
-    "set_at": "2026-10-06T10:39:56.337Z"
+    "set_at": "2026-10-13T14:40:05.263Z"
    },
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "leg_voidraxis",
-    "set_at": "2026-10-06T10:37:05.281Z"
+    "set_at": "2026-10-13T14:31:11.109Z"
    },
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "leg_voltaura",
-    "set_at": "2026-10-06T10:38:05.381Z"
+    "set_at": "2026-10-13T14:38:13.063Z"
    },
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "leg_zenryu",
-    "set_at": "2026-10-06T10:28:44.215Z"
+    "set_at": "2026-10-13T14:22:23.325Z"
    },
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
@@ -679,7 +690,7 @@
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "rift_seen",
-    "set_at": "2026-10-06T10:32:43.748Z"
+    "set_at": "2026-10-13T14:26:38.563Z"
    },
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
@@ -764,12 +775,12 @@
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "streak:1",
-    "set_at": "2026-10-06T09:21:17.916Z"
+    "set_at": "2026-10-13T14:21:50.173Z"
    },
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
-    "flag": "streak:last:2026-10-06",
-    "set_at": "2026-10-06T09:21:17.916Z"
+    "flag": "streak:last:2026-10-13",
+    "set_at": "2026-10-13T14:21:50.173Z"
    },
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
@@ -1074,7 +1085,7 @@
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "flag": "visited:the_rift",
-    "set_at": "2026-10-06T10:32:20.129Z"
+    "set_at": "2026-10-13T14:26:15.662Z"
    },
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
@@ -1400,6 +1411,15 @@
    },
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "species_id": "hyoryu",
+    "seen_at": "2026-10-13T14:23:00.278Z",
+    "caught_at": null,
+    "variants": [],
+    "alpha_seen": false,
+    "shiny_caught": false
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "ignispectre",
     "seen_at": "2026-10-06T10:12:22.216Z",
     "caught_at": null,
@@ -1705,7 +1725,7 @@
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "sunjaw",
-    "seen_at": "2026-10-06T10:39:55.088Z",
+    "seen_at": "2026-10-13T14:40:04.623Z",
     "caught_at": null,
     "variants": [],
     "alpha_seen": false,
@@ -1768,7 +1788,7 @@
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "voidraxis",
-    "seen_at": "2026-10-06T10:37:04.894Z",
+    "seen_at": "2026-10-13T14:31:10.693Z",
     "caught_at": null,
     "variants": [],
     "alpha_seen": false,
@@ -1806,7 +1826,7 @@
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "species_id": "yaschamp",
-    "seen_at": "2026-10-06T10:33:03.508Z",
+    "seen_at": "2026-10-13T14:26:57.660Z",
     "caught_at": null,
     "variants": [],
     "alpha_seen": false,
@@ -2090,6 +2110,14 @@
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "quest_id": "ach_statics_all",
+    "objective_id": "leg_hyoryu",
+    "count": 1,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "ach_statics_all",
     "objective_id": "leg_raikitsune",
     "count": 1,
     "done": true,
@@ -2202,6 +2230,22 @@
    {
     "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
     "quest_id": "daily:2026-10-06",
+    "objective_id": "daily-zone-scout",
+    "count": 2,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "daily:2026-10-13",
+    "objective_id": "daily-sightings",
+    "count": 2,
+    "done": true,
+    "claimed_at": null
+   },
+   {
+    "player_id": "27d3ad2d-42b0-4765-98c8-cf788a30b6aa",
+    "quest_id": "daily:2026-10-13",
     "objective_id": "daily-zone-scout",
     "count": 2,
     "done": true,

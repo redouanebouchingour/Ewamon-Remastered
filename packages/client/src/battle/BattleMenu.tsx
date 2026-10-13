@@ -27,7 +27,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { formMoveId, isSpread, requiredPositions, typeMultiplier } from '@ewa/core';
+import { formMoveId, formTypes, isSpread, requiredPositions, typeMultiplier } from '@ewa/core';
 import type { Action, BandKind, BattleState, Battler, FieldRef, MoveDef } from '@ewa/core';
 import { CONSUMABLES, ORBS } from '@ewa/content';
 import { content, displayName, move as moveDef, species } from '../data/content';
@@ -154,7 +154,9 @@ function Moves({ st, seat, pos, onPick }: { readonly st: BattleState; readonly s
   const foe = firstFoeOf(st, seat);
   const seen = useSessionStore((x) => x.progression?.dexSeen ?? EMPTY);
   const foeSeen = foe !== undefined && seen.includes(foe.creature.speciesId);
-  const foeTypes = foe === undefined ? [] : (species(foe.creature.speciesId)?.types ?? []);
+  // a foe in a battle form with its own types (hyoryu's Majin Form) is hit as what it is now
+  const foeSp = foe === undefined ? undefined : species(foe.creature.speciesId);
+  const foeTypes = foe === undefined || foeSp === undefined ? [] : formTypes(foeSp, foe);
   if (me === undefined) return null;
   return (
     <div className={s.moves}>

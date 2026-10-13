@@ -67,6 +67,7 @@ export const FLAG_REGISTRY: readonly FlagEntry[] = [
   { id: 'leg_voltaura', setBy: 'voltaura' },
   { id: 'leg_zenryu', setBy: 'zenryu' },
   { id: 'leg_voidraxis', setBy: 'voidraxis' },
+  { id: 'leg_hyoryu', setBy: 'hyoryu' },
 ];
 
 export const FLAG_IDS: ReadonlySet<string> = new Set(FLAG_REGISTRY.map((f) => f.id));

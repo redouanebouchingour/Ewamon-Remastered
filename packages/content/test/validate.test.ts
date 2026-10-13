@@ -6,7 +6,7 @@ describe('validate()', () => {
     const r = validate();
     expect(r.errors).toEqual([]);
     expect(r.ok).toBe(true);
-    expect(r.stats.roster.obtainable).toBe(137);
+    expect(r.stats.roster.obtainable).toBe(138);
     expect(r.stats.roster.unobtainable).toEqual([]);
   });
 
@@ -32,7 +32,7 @@ describe('validate()', () => {
     expect(r.errors.some((e) => e.includes(victim.id) && e.includes('Abyssal Nova'))).toBe(true);
   });
 
-  it('mutation: a species dropped from the tables breaks 137/137 coverage', () => {
+  it('mutation: a species dropped from the tables breaks 138/138 coverage', () => {
     const r = validate({ skipHeightfields: true }, { ...DEFAULT_TABLES, species: SPECIES.slice(0, 132) });
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => e.includes('SPECIES.length 132'))).toBe(true);

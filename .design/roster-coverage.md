@@ -414,13 +414,13 @@ The only town whose "static" species are the point of the town. `TOWN_SPAWN_TUNI
 
 Totals (Appendix A): **15 tables, 152 slots, 79 distinct species placed directly**; closure under evolution = 120; plus 8 statics and 2 mythical rewards = **130**.
 
-Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60; `dustcub` (#132, Ground) → `badlander` (#133, Ground/Dark) @30 — deepcut_route `uncommon 5` L20–24; `veilpup` (#134, Psychic) → `hollowolf` (#135, Psychic/Cosmic) @42 — skyrend `any rare 2` L38–41; `castlemaw` (#136, Dark/Steel single stage, with a Rage Form) — umbral_observatory `night rare 2` L44–48. Dustcub's evolution is an honor split at 30 (core honor.ts): `lawlander` (#137, Ground/Fighting, the High Honor branch, honor ≥ 0) or `badlander` (Low Honor); lawlander is obtainable by evolution only, so the directly placed count does not change. With them the game has 156 slots, 83 species placed directly, **136** obtainable, 71 families.
+Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60; `dustcub` (#132, Ground) → `badlander` (#133, Ground/Dark) @30 — deepcut_route `uncommon 5` L20–24; `veilpup` (#134, Psychic) → `hollowolf` (#135, Psychic/Cosmic) @42 — skyrend `any rare 2` L38–41; `castlemaw` (#136, Dark/Steel single stage, with a Rage Form) — umbral_observatory `night rare 2` L44–48. Dustcub's evolution is an honor split at 30 (core honor.ts): `lawlander` (#137, Ground/Fighting, the High Honor branch, honor ≥ 0) or `badlander` (Low Honor); lawlander is obtainable by evolution only, so the directly placed count does not change. `hyoryu` (#138, Ice/Dragon legendary, a Majin Form that turns it Dragon/Dark) is the ninth static: eclipse_shrine L60 after the title (§7), in no table (on ascent_route the sprite planner duplicated 6 species in the_rift). With them the game has 156 slots, 83 species placed directly, **138** obtainable, 72 families.
 
 ---
 
 ## 7. LEGENDARY STATICS AND MYTHICAL REWARDS
 
-`LEGENDARY_STATICS`, exactly 8 rows. Gates keep the legacy conditions where the legacy flag survives the story rewrite (badges; the champion flag `champion:zeon:beaten`, which `30-server-netcode.md` §30.4.4 sets on `championWin`). `galaxion`'s legacy gate `flag:hq_done` belonged to the retired plot; it becomes `badge:anvil` (the badge after the observatory act) until `story-bible.md` names an Act II flag, in which case the bible's flag replaces it and nothing else changes. Levels are the legacy levels except `galaxion` (38 → 45, inside its zone's band). Coordinates are authored inside RC-13 bounds; `validate.ts` snaps them.
+`LEGENDARY_STATICS`, exactly 9 rows: the 8 legacy legendaries and the post-legacy `hyoryu` (#138, 2026-10-13). Gates keep the legacy conditions where the legacy flag survives the story rewrite (badges; the champion flag `champion:zeon:beaten`, which `30-server-netcode.md` §30.4.4 sets on `championWin`). `galaxion`'s legacy gate `flag:hq_done` belonged to the retired plot; it becomes `badge:anvil` (the badge after the observatory act) until `story-bible.md` names an Act II flag, in which case the bible's flag replaces it and nothing else changes. Levels are the legacy levels except `galaxion` (38 → 45, inside its zone's band). Coordinates are authored inside RC-13 bounds; `validate.ts` snaps them.
 
 | species | level | zoneId | x | z | flag | when | staging |
 |---|---|---|---|---|---|---|---|
@@ -432,6 +432,7 @@ Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A
 | voltaura | 55 | galvan_route | 92 | -40 | `leg_voltaura` | `flag:champion:zeon:beaten` | the storm's eye |
 | zenryu | 60 | eclipse_shrine | 0 | -80 | `leg_zenryu` | `flag:champion:zeon:beaten` | the altar-stone |
 | voidraxis | 65 | the_rift | 0 | 84 | `leg_voidraxis` | `flag:champion:zeon:beaten` | the edge |
+| hyoryu | 60 | eclipse_shrine | -70 | -70 | `leg_hyoryu` | `flag:champion:zeon:beaten` | the frozen terrace at the head of the Ascent |
 
 A static battle is `format: 'wild'` with `canFlee` false on the legendary's side and `canCatch` true (§30.4.4 `static` row). Win **or** catch sets `flag`; a KO'd legendary is gone for that player. `catchRate` is the species value (2–3); the spine's single catch curve applies; no rate is inflated.
 
@@ -516,7 +517,7 @@ One row per evolution root (67) plus the legendary/mythical singles. `wild:` lis
 | kygra | wild: tide_route, saltmourn, the_rift (day, water) · raid tide_route | single |
 | raidori | wild: galvan_route (night) · raid galvan_route | single |
 | malice → devourest → necrogeist | wild: hollow_route, eclipse_shrine, the_rift (night); devourest wild eclipse_shrine, the_rift | @30, @50 |
-| glacinid · galaxion · voltaura · voidraxis · sunjaw · raikitsune · bankaiser · zenryu | `LEGENDARY_STATICS` (§7) | single |
+| glacinid · galaxion · voltaura · voidraxis · sunjaw · raikitsune · bankaiser · zenryu · hyoryu | `LEGENDARY_STATICS` (§7) | single |
 | lumyth · noxmyth | quest rewards q12 / q11 (§12.1); battle-pass 50 choice | single |
 
 Type coverage of direct placements: all 19 types have ≥ 3 directly placed species; Cosmic (3 species, all legendary/mythical) is covered by statics and quests only, by construction.

@@ -32,8 +32,8 @@ describe('Phase D5 achievements', () => {
     expect(new Set(QUESTS.map((q) => q.id)).size).toBe(QUESTS.length);
   });
 
-  it('covers dex 30/60/90/all 137, catches 10/50/200, wins 10/100/500, trades 1/10, raids 1/10, streaks 7/30', () => {
-    expect(targets('dexCaught')).toEqual(expect.arrayContaining([30, 60, 90, 137]));
+  it('covers dex 30/60/90/all 138, catches 10/50/200, wins 10/100/500, trades 1/10, raids 1/10, streaks 7/30', () => {
+    expect(targets('dexCaught')).toEqual(expect.arrayContaining([30, 60, 90, 138]));
     expect(Math.max(...targets('dexCaught'))).toBe(SPECIES.length);
     expect(targets('catchSpecies')).toEqual(expect.arrayContaining([10, 50, 200]));
     const anyWins = ACHIEVEMENTS.flatMap((a) => a.objectives.map((o) => o.objective)).filter((o) => o.kind === 'winBattles' && o.format === 'any').map((o) => (o.kind === 'winBattles' ? o.count : 0));
@@ -43,7 +43,7 @@ describe('Phase D5 achievements', () => {
     expect(targets('loginStreak')).toEqual(expect.arrayContaining([7, 30]));
   });
 
-  it('all 8 statics and all 12 league trainers, by their content ids', () => {
+  it('all 9 statics and all 12 league trainers, by their content ids', () => {
     const statics = ACHIEVEMENTS.find((a) => a.id === 'ach_statics_all')!;
     expect(statics.objectives.map((o) => (o.objective.kind === 'flag' ? o.objective.flag : '')).sort()).toEqual(LEGENDARY_STATICS.map((s) => s.flag).sort());
     const league = ACHIEVEMENTS.find((a) => a.id === 'ach_league_all')!;

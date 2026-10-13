@@ -18,13 +18,13 @@ import { LEGACY_DIR, REAL_OUT_DIR, REAL_QA_DIR } from './helpers.js';
 
 const MANIFEST_PATH = path.join(REAL_OUT_DIR, MANIFEST_FILE);
 const REPORT_PATH = path.join(REAL_QA_DIR, 'qa-report.json');
-// sprite entries: the 130 species of ewamon.js + the post-legacy additions (.design/additions/species.js, 7 today: hollowmane, dustcub, badlander, veilpup, hollowolf, castlemaw, lawlander)
-// + their battle forms under `<species>_<form>` (hollowmane_rage, castlemaw_rage, badlander_majin, lawlander_tenjin)
+// sprite entries: the 130 species of ewamon.js + the post-legacy additions (.design/additions/species.js, 8 today: hollowmane, dustcub, badlander, veilpup, hollowolf, castlemaw, lawlander, hyoryu)
+// + their battle forms under `<species>_<form>` (hollowmane_rage, castlemaw_rage, badlander_majin, lawlander_tenjin, hyoryu_majin)
 // + the legacy species' battle forms from .design/additions/patches.js (9: infernomorel, toxshade, necrogeist, zenryu _majin;
 // thornback, abysspark, gemknight, glimmereen, solpyre _tenjin)
-const SPECIES_COUNT = 150;
-/** Atlas cap: 75 with the Majin / Tenjin forms (2026-10-11; 70 before). */
-const MAX_ATLASES = 75;
+const SPECIES_COUNT = 152;
+/** Atlas cap: 76 with hyoryu and its Majin form (2026-10-13); 75 with the Majin / Tenjin forms (2026-10-11); 70 before. */
+const MAX_ATLASES = 76;
 
 function listFiles(dir: string, rel = ''): string[] {
   const out: string[] = [];
@@ -59,7 +59,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
     expect(readFileSync(MANIFEST_PATH, 'utf8')).toBe(serializeManifest(manifest));
   });
 
-  it('is a valid v2 manifest for exactly the 137 species of ewamon.js + additions and their 13 battle forms', () => {
+  it('is a valid v2 manifest for exactly the 138 species of ewamon.js + additions and their 14 battle forms', () => {
     const ids = Object.keys(manifest.sprites);
     expect(ids.length).toBe(SPECIES_COUNT);
     expect(ids).toEqual([...ids].sort());
@@ -76,6 +76,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
     expect(ids).toContain('castlemaw_rage');
     expect(ids).toContain('zenryu_majin');
     expect(ids).toContain('glimmereen_tenjin');
+    expect(ids).toContain('hyoryu_majin');
   });
 
   it(`atlases ≤ ${MAX_ATLASES}, every sprite stored once (+ duplicates ≤ ${MAX_DUPLICATED_SPECIES}), 2048² cells, half-res normals`, () => {
@@ -166,7 +167,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
   describe.skipIf(!existsSync(REPORT_PATH))('qa-report.json', () => {
     const report = JSON.parse(readFileSync(REPORT_PATH, 'utf8')) as QaReport;
 
-    it('has 0 actionable flags over the 300 sprites, lists the excluded alternate-style files, and no unresolved flag kinds', () => {
+    it('has 0 actionable flags over the 304 sprites, lists the excluded alternate-style files, and no unresolved flag kinds', () => {
       expect(report.total).toBe(2 * SPECIES_COUNT);
       expect(report.actionable).toBe(0);
       for (const e of report.flagged) expect(e.actionable, `${e.species}/${e.side}`).toEqual([]);

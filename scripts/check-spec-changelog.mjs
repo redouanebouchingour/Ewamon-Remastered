@@ -44,9 +44,9 @@ if (!changed.includes(CHANGELOG)) {
 
 const heading = readFileSync(CHANGELOG, 'utf8')
   .split('\n')
-  .find((l) => /^## \d{4}-\d{2}-\d{2} — /.test(l));
+  .find((l) => /^## \d{4}-\d{2}-\d{2} [—·] /.test(l));
 if (!heading) {
-  console.error(`spec changelog: ${CHANGELOG} has no "## YYYY-MM-DD — …" heading`);
+  console.error(`spec changelog: ${CHANGELOG} has no "## YYYY-MM-DD · …" heading`);
   process.exit(1);
 }
 const date = heading.slice(3, 13);

@@ -15,6 +15,8 @@
     "sfx/anvil_strike_1",
     "sfx/anvil_strike_2",
     "sfx/bell_toll_1",
+    "sfx/bond_majin_1",
+    "sfx/bond_tenjin_1",
     "sfx/cry_bug_1",
     "sfx/cry_bug_2",
     "sfx/cry_cosmic_1",
@@ -390,8 +392,8 @@
       },
       "sfx": {
         "derived": 17,
-        "direct": 235,
-        "total": 252,
+        "direct": 236,
+        "total": 253,
         "unmapped": 0
       },
       "stem": {
@@ -407,15 +409,14 @@
         "unmapped": 0
       }
     },
-    "covered": 380,
+    "covered": 381,
     "fraction": 1,
-    "total": 380
+    "total": 381
   },
-  "entries": 312,
+  "entries": 313,
   "failed": [],
   "ingested": [
-    "sfx/bond_majin_1",
-    "sfx/bond_tenjin_1"
+    "sfx/sig_crimson_lotus_prison_1"
   ],
   "missing": [],
   "ok": true,

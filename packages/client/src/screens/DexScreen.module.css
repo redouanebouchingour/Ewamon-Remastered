@@ -229,6 +229,14 @@
   margin: 0;
 }
 
+.formTypes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  margin: var(--s-2) 0 0;
+}
+
 .formName {
   font-family: var(--face-display);
   font-style: italic;

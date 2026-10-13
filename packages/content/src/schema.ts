@@ -158,6 +158,7 @@ const BattleFormDefSchema = z.object({
   baseAtk: PosInt,
   baseDef: PosInt,
   baseSpd: PosInt,
+  types: z.union([z.tuple([TypeNameSchema]), z.tuple([TypeNameSchema, TypeNameSchema])]).optional(),
   onEnter: z.object({
     clearNegativeStages: z.boolean(),
     lowerFoes: z.union([z.object({ stat: z.enum(['atk', 'def', 'spd', 'acc', 'eva']), stages: Int.min(1).max(6) }), z.null()]),
@@ -171,7 +172,7 @@ const BattleFormDefSchema = z.object({
 export const SpeciesDefSchema: z.ZodType<SpeciesDef> = z.object({
   id: SnakeId,
   name: z.string().min(1),
-  dexNumber: Int.min(1).max(137),
+  dexNumber: Int.min(1).max(138),
   flavor: z.string(),
   types: z.union([z.tuple([TypeNameSchema]), z.tuple([TypeNameSchema, TypeNameSchema])]),
   baseHp: PosInt,

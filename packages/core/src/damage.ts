@@ -11,7 +11,7 @@ import {
   typeImmunityFor,
 } from './abilities';
 import { heldHooks, statMultipliers, typeBoostMultipliers } from './items';
-import { formBase } from './forms';
+import { formBase, formTypes } from './forms';
 import { applyRatio, calcStat, mulFloor, stageRatio } from './stats';
 import { hasStatus, majorStatus } from './status';
 import { otherSide } from './side';
@@ -33,7 +33,7 @@ export function damageStop(inp: DamageInputs, move: MoveDef, content: ContentInd
   readonly absorbed: DamageResult['absorbed'];
 } {
   const defSp = content.species(inp.defender.creature.speciesId);
-  const effectiveness = typeMultiplier(content.typeChart, move.type, defSp.types);
+  const effectiveness = typeMultiplier(content.typeChart, move.type, formTypes(defSp, inp.defender));
   if (effectiveness === 0) return { stop: 'typeChart', effectiveness, absorbed: null };
   const defHooks = abilityHooks(inp.defender, content);
   const imm = typeImmunityFor(defHooks, move.type);
@@ -84,7 +84,7 @@ export function damageAmount(
   const base = Math.floor(Math.floor((Math.floor((2 * L) / 5 + 2) * P * A) / D) / 50) + 2;
 
   // 3. stab
-  const stab = atkSp.types.indexOf(move.type) !== -1;
+  const stab = formTypes(atkSp, attacker).indexOf(move.type) !== -1;
   let dmg = stab ? Math.floor((base * 3) / 2) : base;
 
   // 4. type

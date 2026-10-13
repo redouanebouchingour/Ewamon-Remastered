@@ -1,7 +1,7 @@
 /**
  * §50.5 M3 progression walk, leg 4 of 5 (progression.ts): from the snapshot leg 3 wrote (Solenne, the title) back
- * west to Marrowdig and down into the Rift — beat 33 `rift_edge`, and the post-title statics zenryu (eclipse_shrine),
- * glacinid (ascent_route) and voidraxis (the_rift), each gated on `champion:zeon:beaten`.
+ * west to Marrowdig and down into the Rift — beat 33 `rift_edge`, and the post-title statics zenryu and hyoryu
+ * (eclipse_shrine), glacinid (ascent_route) and voidraxis (the_rift), each gated on `champion:zeon:beaten`.
  */
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import type { TestServer } from './helpers';
@@ -15,12 +15,13 @@ afterAll(async () => {
   await s?.stop();
 }, 60_000);
 
-it('act3b: solenne → the_rift — rift_edge and the statics zenryu, glacinid, voidraxis', async () => {
+it('act3b: solenne → the_rift — rift_edge and the statics zenryu, hyoryu, glacinid, voidraxis', async () => {
   const t0 = Date.now();
   const w = await startLeg(s, 'act3a');
   try {
     await w.cross('w');
     await winStatic(w, 'zenryu', 'e');
+    await winStatic(w, 'hyoryu', 'e');
     await w.cross('w');
     await winStatic(w, 'glacinid', 'w');
     for (const _zone of ['skyrend', 'siege_route', 'forgewall', 'hollow_route', 'vesperveil', 'deepcut_route', 'marrowdig']) await w.cross('w');

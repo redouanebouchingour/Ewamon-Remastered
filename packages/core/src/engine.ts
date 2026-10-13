@@ -6,7 +6,7 @@
 import { abilityHooks, hooksOfKind, stageLowerImmune, statusImmune } from './abilities';
 import { DEFAULT_VOLATILE, ZERO_STAGES } from './battler';
 import { applyExp, expGain } from './exp';
-import { formBase } from './forms';
+import { formBase, formTypes } from './forms';
 import { HONOR_DELTAS, clampHonor, tracksHonor } from './honor';
 import { otherSide } from './side';
 import { calcMaxHp, calcStat, clampStage, ratioOf, applyRatio } from './stats';
@@ -439,7 +439,7 @@ export function tryApplyStatus(ctx: Ctx, target: Ref, status: StatusId, source: 
     emit(ctx, { t: 'statusApplied', target, status, source, turns });
     return true;
   }
-  const types = speciesOf(ctx, b).types;
+  const types = formTypes(speciesOf(ctx, b), b);
   const immuneTypes = STATUS_TYPE_IMMUNITY[status];
   for (let i = 0; i < immuneTypes.length; i++) {
     if (types.indexOf(immuneTypes[i]!) !== -1) {

@@ -191,6 +191,38 @@ const EWAMON_SPECIES_ADDITIONS = {
       backSprite: "lawlander_tenjin(back).png",
     },
   },
+
+  // A legendary ice dragon inspired by Daiguren Hyorinmaru (Bleach): a serpent of living ice on wings of frozen petals.
+  hyoryu: {
+    id: "hyoryu", name: "Hyoryu",
+    flavor: "A dragon of living ice that coils through the high passes on wings of frozen petals. Where it flies the air goes still and flowers of ice open in the sky one by one. Old climbers say that when the last petal opens, the sky itself freezes.",
+    type: ["Ice", "Dragon"],
+    baseHp: 120, baseAtk: 144, baseDef: 110, baseSpd: 134,
+    rarity: "legendary", catchRate: 3,
+    sizeScale: 1.45,
+    expYield: 330,
+    moves: ["Ice Shard", "Dragon Breath", "Snarl"],
+    // Crimson Lotus Prison is its signature move (client battle/signatures.ts): pinned as the newest move (L39) so the
+    // static (L60) knows it, beside Glacier Crash, Crunch and Dragon Rush
+    learnableMoves: ["Frost Bite", "Night Slash", "Dragon Claw", "Ice Beam", "Glacier Crash", "Crunch", "Dragon Rush", "Crimson Lotus Prison"],
+    learnLevels: { "Crimson Lotus Prison": 39 },
+    abilities: ["Thick Fat", "Intimidate"],
+    role: "Physical Attacker",
+    frontSprite: "hyoryu(front).png",
+    backSprite: "hyoryu(back).png",
+    habitat: [], evolvesInto: null, evolvesAt: null,
+    // Majin form (.design/majin-tenjin.md): the ice turns crimson and the dragon turns on the sky it froze. The only form
+    // that changes its types: Ice/Dragon becomes Dragon/Dark. Majin template +28 atk / -18 def / +28 spd.
+    battleForm: {
+      id: "majin", name: "Majin Form", kind: "majin",
+      hpBelowPct: 50,
+      types: ["Dragon", "Dark"],
+      baseAtk: 172, baseDef: 92, baseSpd: 162,
+      onEnter: { clearNegativeStages: true, lowerFoes: { stat: "spd", stages: 1 } },
+      frontSprite: "hyoryu_majin(front).png",
+      backSprite: "hyoryu_majin(back).png",
+    },
+  },
 };
 
 module.exports = { EWAMON_SPECIES_ADDITIONS };

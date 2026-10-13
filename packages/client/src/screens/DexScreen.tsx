@@ -91,6 +91,14 @@ function DexDetail({ sp, state, variants, alpha, shiny, recordedIn }: {
               <b className={s.formName}>{sp.battleForm.name}</b> · {FORM_RULE[sp.battleForm.kind]}
             </span>
           </p>
+          {sp.battleForm.types !== undefined && (
+            <p className={cx(l.body, s.formTypes)} data-testid="dex-form-types">
+              <span>In this form it becomes</span>
+              {sp.battleForm.types.map((t) => (
+                <TypeBadge key={t} type={t} size="sm" />
+              ))}
+            </p>
+          )}
         </section>
       )}
       {chain.length > 1 && (

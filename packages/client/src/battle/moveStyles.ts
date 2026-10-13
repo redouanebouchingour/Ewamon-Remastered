@@ -35,6 +35,7 @@ export const MOVE_STYLE: Readonly<Record<string, MoveStyle>> = {
   'Cosmic Miracle': 'rain',
   'Cosmic Pyre': 'erupt',
   Counter: 'punch',
+  'Crimson Lotus Prison': 'gust',
   'Cross Poison': 'slash',
   Crunch: 'bite',
   'Crystal Slam': 'tackle',

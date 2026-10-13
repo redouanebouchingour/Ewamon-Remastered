@@ -378,8 +378,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   for (const f of FLAG_REGISTRY) if (!f.id.includes(':') && !/^[a-z0-9_]+$/.test(f.id)) err(`flag registry: '${f.id}' is not snake_case`);
 
   // ── 3. counts ──
-  if (species.length !== 137) err(`SPECIES.length ${species.length} !== 137`);
-  if (moves.length !== 196) err(`MOVES.length ${moves.length} !== 196`); // 193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem (.design/additions/moves.js)
+  if (species.length !== 138) err(`SPECIES.length ${species.length} !== 138`);
+  if (moves.length !== 197) err(`MOVES.length ${moves.length} !== 197`); // 193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem, Crimson Lotus Prison (.design/additions/moves.js)
   // Phase D6: every curated spread move exists, and only damaging or foe-targeted moves spread
   for (const [id, sp] of Object.entries(SPREAD_MOVES).sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
     const m = moves.find((x) => x.id === id);
@@ -398,7 +398,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   });
   {
     const dex = [...species.map((s) => s.dexNumber)].sort((a, b) => a - b);
-    for (let i = 0; i < dex.length; i++) if (dex[i] !== i + 1) { err(`dex numbers are not dense 1..137 (got ${dex[i]} at ${i})`); break; }
+    for (let i = 0; i < dex.length; i++) if (dex[i] !== i + 1) { err(`dex numbers are not dense 1..138 (got ${dex[i]} at ${i})`); break; }
     const ids = new Set(species.map((s) => s.id));
     if (ids.size !== species.length) err('duplicate species ids');
     if (moveIds.size !== moves.length) err('duplicate move ids');
@@ -460,9 +460,9 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
       while (cur !== undefined && cur.evolvesFrom !== null && hops < 8) { cur = speciesById.get(cur.evolvesFrom); hops++; }
       if (hops >= 8) err(`species ${s.id}: evolution chain has a cycle or exceeds depth`);
     }
-    // roster-coverage: 71 roots (57 non-legendary legacy families + hollowmane + dustcub + veilpup + castlemaw + the 10 legendary/mythical singles), each a tree root
+    // roster-coverage: 72 roots (57 non-legendary legacy families + hollowmane + dustcub + veilpup + castlemaw + the 11 legendary/mythical singles, hyoryu the post-legacy one), each a tree root
     const families = species.filter((s) => s.evolvesFrom === null).length;
-    if (families !== 71) err(`evolution families (roots) ${families} !== 71`);
+    if (families !== 72) err(`evolution families (roots) ${families} !== 72`);
   }
 
   // ── 7 + 8. roster coverage and RC rules ──

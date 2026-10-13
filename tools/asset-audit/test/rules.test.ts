@@ -289,7 +289,7 @@ describe('§40.6 --bytes roll-up', () => {
     expect(failing(fakePublic({ misc: CEILINGS.misc + 1 }))).toEqual(['basis/ + icons/ + fonts/ + keyart/']);
     const full = fakePublic({ creatures: CEILINGS.creatures, creaturesAnim: CEILINGS.creaturesAnim, models: CEILINGS.models, materials: CEILINGS.materials, audio: CEILINGS.audio, misc: 1024, stray: CEILINGS.misc });
     expect(failing(full)).toEqual(['total public/']);
-    expect(CEILINGS).toEqual({ creatures: 41_156_608, creaturesAnim: 24 * MiB, models: 12 * MiB, materials: 90 * MiB, audio: 80 * MiB, misc: 2 * MiB, total: 243 * MiB });
+    expect(CEILINGS).toEqual({ creatures: 41_943_040, creaturesAnim: 24 * MiB, models: 12 * MiB, materials: 90 * MiB, audio: 80 * MiB, misc: 2 * MiB, total: 243 * MiB });
   });
 
   it('creatures/anim/ is its own 24 MiB line: anim files + the manifest bytes its anim fields add, charged away from creatures/', () => {

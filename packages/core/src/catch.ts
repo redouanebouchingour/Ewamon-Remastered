@@ -3,6 +3,7 @@
  * scripts/gen-catch-table.ts (CATCH_B[a] = floor(65536 / (255 / a) ** 0.1875), CATCH_B[0] = 0);
  * Math.pow never runs at sim time.
  */
+import { formTypes } from './forms';
 import { majorStatus } from './status';
 import type { Battler, OrbDef, Rng, SpeciesDef } from './types';
 
@@ -30,7 +31,8 @@ export function orbMultiplier(orb: OrbDef, wild: Battler, species: SpeciesDef): 
   let m = orb.catchRate;
   if (orb.bonus === null) return m;
   if (orb.bonus.kind === 'type') {
-    if (species.types.indexOf(orb.bonus.type) !== -1) m *= orb.bonus.multiplier;
+    // a wild battler in its battle form is caught as what it is now (formTypes)
+    if (formTypes(species, wild).indexOf(orb.bonus.type) !== -1) m *= orb.bonus.multiplier;
   } else if (wild.creature.isAlpha || wild.creature.variantKey !== 'normal') {
     m *= orb.bonus.multiplier;
   }

@@ -85,7 +85,7 @@ export interface SpeciesDef {
  * A form a species changes into during a battle — once per battle, never persisted. The battler changes the first
  * time its hp is below `hpBelowPct` % of max hp while it is still standing (after any damage, or on entering the field
  * already below it). Its atk / def / spd then derive from the form's base stats (max hp keeps the species'); its
- * stages, status, ability and types are kept, except what `onEnter` changes.
+ * stages, status and ability are kept, except what `onEnter` changes, and its types unless the form names its own.
  */
 export interface BattleFormDef {
   readonly id: string;                 // e.g. 'rage'
@@ -99,6 +99,11 @@ export interface BattleFormDef {
   readonly kind?: BandKind;
   readonly hpBelowPct: number;         // 1..99: the line (majin / automatic: hp * 100 < maxHp * hpBelowPct; tenjin: ≥)
   readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number;
+  /**
+   * The battler's types while it holds the form (hyoryu's Majin Form: Ice/Dragon becomes Dragon/Dark): STAB, the type
+   * chart, status and weather immunities read them through `formTypes`. Absent: the species' types are kept.
+   */
+  readonly types?: readonly [TypeName] | readonly [TypeName, TypeName];
   readonly onEnter: {
     /** its own negative stat stages return to 0 */
     readonly clearNegativeStages: boolean;

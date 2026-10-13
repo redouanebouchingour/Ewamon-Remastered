@@ -68,7 +68,7 @@ export function computeRosterReport(input: RosterInputs): RosterReport {
   const nocturnal = (s: SpeciesDef): boolean => s.types.includes('Ghost') || s.types.includes('Dark');
 
   // roots / families
-  // 71 roots: 61 non-legendary families (57 legacy + hollowmane + dustcub + veilpup + castlemaw) + the 10 legendary/mythical singles
+  // 72 roots: 61 non-legendary families (57 legacy + hollowmane + dustcub + veilpup + castlemaw) + the 11 legendary/mythical singles (hyoryu post-legacy)
   const roots = input.species.filter((s) => s.evolvesFrom === null);
   const familyCount = roots.length;
 
@@ -189,7 +189,7 @@ export function computeRosterReport(input: RosterInputs): RosterReport {
     if (Math.abs(l.x) > h || Math.abs(l.z) > h) fail.push(`static ${l.species}: (${l.x},${l.z}) outside ±${h} (RC-13)`);
   }
   const staticSpecies = new Set(input.statics.map((l) => l.species));
-  if (staticSpecies.size !== 8 || input.statics.length !== 8) fail.push(`LEGENDARY_STATICS must be exactly the 8 legendaries (have ${input.statics.length})`);
+  if (staticSpecies.size !== 9 || input.statics.length !== 9) fail.push(`LEGENDARY_STATICS must be exactly the 9 legendaries (have ${input.statics.length})`);
   for (const id of input.legendaryIds) if (!staticSpecies.has(id)) fail.push(`legendary ${id} has no static`);
 
   // closure

@@ -1,0 +1,228 @@
+/*
+ * Crimson Lotus Prison (hyoryu; signatures.ts): clock 3000 ms, keyframe % = ms / 30; impact 1900.
+ * 1100–1460 the ice flower opens in the sky one petal at a time (30 ms apart) while frozen petals drift down; frost
+ * gathers round the attacker · 1560–1900 the ice dragon coils along the line · 1880–1980 the lotus blooms from the
+ * target's feet (a flash, a frost ring) · 2000–2160 crimson veins run up its petals and its heart burns · 2200–2320 it
+ * strains · 2320 it shatters into petals and powder · 2350–2700 the sky flower and the drift fade.
+ */
+
+/* ---- the sky ------------------------------------------------------------------------------------------------------- */
+
+.sky {
+  opacity: 0;
+  animation: lotus-sky 3000ms ease-in-out calc(0ms - var(--skip)) both;
+}
+
+.skyHalo {
+  animation: lotus-halo 3000ms ease-in-out calc(0ms - var(--skip)) both;
+}
+
+svg .skyPetal {
+  transform-origin: 50% 100%;
+  animation: lotus-sky-petal 3000ms cubic-bezier(0.2, 0.9, 0.3, 1.2) calc(var(--kd) - var(--skip)) both;
+}
+
+.drift {
+  opacity: 0;
+  animation: lotus-drift 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.flake {
+  animation: lotus-fall 2600ms linear var(--kd) infinite;
+}
+
+/* ---- the charge and the dragon ------------------------------------------------------------------------------------- */
+
+.frost {
+  opacity: 0;
+  animation: lotus-frost 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.stretch {
+  transform: scaleX(calc(var(--dist) / 1000));
+}
+
+.body {
+  opacity: 0;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+  animation: lotus-body 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+.head {
+  opacity: 0;
+  stroke-dasharray: 0.05 1.95;
+  stroke-dashoffset: 0.05;
+  animation: lotus-head 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+/* ---- the lotus ----------------------------------------------------------------------------------------------------- */
+
+.ring {
+  opacity: 0;
+  animation: lotus-ring 3000ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.flash {
+  opacity: 0;
+  animation: lotus-flash 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+svg .lotus {
+  animation: lotus-strain 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+svg .petal {
+  opacity: 0;
+  transform-origin: 50% 100%;
+  animation: lotus-petal 3000ms linear calc(var(--kd) - var(--skip)) both;
+}
+
+.heart {
+  opacity: 0;
+  animation: lotus-heart 3000ms ease-in-out calc(0ms - var(--skip)) both;
+}
+
+.vein {
+  opacity: 0;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: lotus-vein 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.vein:nth-child(2) { animation-delay: calc(30ms - var(--skip)); }
+.vein:nth-child(3) { animation-delay: calc(50ms - var(--skip)); }
+.vein:nth-child(4) { animation-delay: calc(80ms - var(--skip)); }
+.vein:nth-child(5) { animation-delay: calc(100ms - var(--skip)); }
+
+.powder {
+  opacity: 0;
+  animation: lotus-powder 3000ms ease-out calc(var(--kd) - var(--skip)) both;
+}
+
+.shard {
+  opacity: 0;
+  animation: lotus-shard 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+/* 1100–1500 in · 2350–2700 out */
+@keyframes lotus-sky {
+  0%, 36.67% { opacity: 0; }
+  48% { opacity: 1; }
+  78.33% { opacity: 1; }
+  90%, 100% { opacity: 0; }
+}
+
+@keyframes lotus-halo {
+  0%, 36.67% { transform: scale(0.4); opacity: 0; }
+  50% { transform: scale(1); opacity: 1; }
+  63.33% { transform: scale(1.15); opacity: 0.8; }
+  100% { transform: scale(1.3); opacity: 0.5; }
+}
+
+/* a petal opens over 180 ms (--kd after 1100) and stays open */
+@keyframes lotus-sky-petal {
+  0%, 36.67% { opacity: 0; transform: scale(0.1, 0); }
+  42.67% { opacity: 1; transform: scale(1, 1); }
+  100% { opacity: 1; transform: scale(1, 1); }
+}
+
+@keyframes lotus-drift {
+  0%, 38% { opacity: 0; }
+  50% { opacity: 1; }
+  80% { opacity: 1; }
+  90%, 100% { opacity: 0; }
+}
+
+@keyframes lotus-fall {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  12% { opacity: 1; }
+  50% { transform: translate(var(--tx), 200px) rotate(calc(var(--r) * 0.5)); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(0, 400px) rotate(var(--r)); }
+}
+
+/* 1100–1560 a frost glow round the attacker */
+@keyframes lotus-frost {
+  0%, 36.67% { opacity: 0; transform: scale(0.7); }
+  45% { opacity: 1; transform: scale(1); }
+  52% { opacity: 1; transform: scale(1.03); }
+  58%, 100% { opacity: 0; transform: scale(1.12); }
+}
+
+/* 1560–1900 the dragon coils onto the target (ease-in) · lingers · gone by 2160 */
+@keyframes lotus-body {
+  0%, 52% { opacity: 0; stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.3, 0, 0.75, 1); }
+  52.1% { opacity: 1; }
+  63.33% { opacity: 1; stroke-dashoffset: 0; }
+  65% { opacity: 1; stroke-dashoffset: 0; }
+  72%, 100% { opacity: 0; stroke-dashoffset: 0; }
+}
+
+@keyframes lotus-head {
+  0%, 52% { opacity: 0; stroke-dashoffset: 0.05; animation-timing-function: cubic-bezier(0.3, 0, 0.75, 1); }
+  52.1% { opacity: 1; }
+  63.33% { opacity: 1; stroke-dashoffset: -0.95; }
+  63.6%, 100% { opacity: 0; stroke-dashoffset: -0.95; }
+}
+
+@keyframes lotus-ring {
+  0%, 63.33% { opacity: 0; transform: scale(0.3); }
+  63.67% { opacity: 1; }
+  73%, 100% { opacity: 0; transform: scale(2.2); }
+}
+
+@keyframes lotus-flash {
+  0%, 62.67% { opacity: 0; transform: scale(0.4); }
+  63.67% { opacity: 1; transform: scale(1); }
+  69%, 100% { opacity: 0; transform: scale(1.4); }
+}
+
+/* 2200–2320 the prison strains before it breaks */
+@keyframes lotus-strain {
+  0%, 73.33% { transform: translateX(0); }
+  74.33% { transform: translateX(-4px); }
+  75.33% { transform: translateX(4px); }
+  76.33% { transform: translateX(-3px) scale(1.01); }
+  77.33%, 100% { transform: translateX(0) scale(1.02); }
+}
+
+/* 1880 (+ --kd) a petal rises from the target's feet, overshoots and settles · 2320 it is gone in the shatter */
+@keyframes lotus-petal {
+  0%, 62.67% { opacity: 0; transform: scale(0.5, 0); animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1); }
+  64.33% { opacity: 1; transform: scale(1.04, 1.08); }
+  66% { opacity: 1; transform: scale(1, 1); }
+  77% { opacity: 1; transform: scale(1, 1); }
+  78%, 100% { opacity: 0; transform: scale(1.06, 1.04); }
+}
+
+/* 2000–2160 the heart burns crimson, pulses, flares at the shatter */
+@keyframes lotus-heart {
+  0%, 66.67% { opacity: 0; transform: scale(0.4); }
+  72% { opacity: 0.9; transform: scale(1); }
+  74.67% { opacity: 0.7; transform: scale(0.94); }
+  77.33% { opacity: 1; transform: scale(1.15); }
+  82%, 100% { opacity: 0; transform: scale(1.5); }
+}
+
+@keyframes lotus-vein {
+  0%, 66.67% { opacity: 0; stroke-dashoffset: 1; }
+  66.8% { opacity: 1; }
+  72% { opacity: 1; stroke-dashoffset: 0; }
+  77.33% { opacity: 1; stroke-dashoffset: 0; }
+  78%, 100% { opacity: 0; stroke-dashoffset: 0; }
+}
+
+@keyframes lotus-powder {
+  0%, 77.33% { opacity: 0; transform: scale(0.3); }
+  79% { opacity: 0.9; transform: scale(1); }
+  86%, 100% { opacity: 0; transform: scale(1.7); }
+}
+
+/* 2320 the petals fly out, tumble and fall, gone by 2670 */
+@keyframes lotus-shard {
+  0%, 77% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(1); }
+  77.33% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); animation-timing-function: cubic-bezier(0.1, 0.8, 0.3, 1); }
+  80.5% { opacity: 1; transform: translate(calc(var(--tx) * 0.6), calc(var(--ty) * 0.6)) rotate(calc(var(--r) * 0.4)) scale(1); animation-timing-function: cubic-bezier(0.4, 0, 0.8, 0.6); }
+  89%, 100% { opacity: 0; transform: translate(var(--tx), calc(var(--ty) + 140px)) rotate(var(--r)) scale(0.6); }
+}

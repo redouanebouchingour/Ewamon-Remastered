@@ -18,7 +18,7 @@ const MiB = 1024 * 1024;
 
 /** §40.6 ceilings, bytes. */
 export const CEILINGS = Object.freeze({
-  creatures: 41_156_608, // 39.25 MiB since 2026-10-11 (Majin / Tenjin forms); 36 700 160 (35 MiB) before
+  creatures: 41_943_040, // 40 MiB since 2026-10-13 (hyoryu + its Majin form); 39.25 MiB from 2026-10-11 (Majin / Tenjin forms); 36 700 160 (35 MiB) before
   creaturesAnim: 24 * MiB,
   models: 12 * MiB,
   materials: 90 * MiB,

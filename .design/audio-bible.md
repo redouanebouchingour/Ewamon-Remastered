@@ -288,6 +288,7 @@ Every night and drone layer names "one soft event on the first beat of every bar
 
 Amended 2026-10-08: + 12 signature-move designs (`sig_*`, one variant each; layered CC0 premixes in `tools/audio-pipeline/cc0-tools/mix.py`, each timed from its cinematic's charge so the impact lands on the damage frame; compressed and limited in the premix, +6 dB in the manifest so they ride over the battle mix) → **186 ids, 299 variants, 378 jobs**.
 Amended 2026-10-11: + 2 bond designs (`bond_majin`, `bond_tenjin`: a trainer's Majin / Tenjin transformation, timed from the client's `bond` frame — two heartbeats closing in on `BOND_BEATS`, a ducked breath, the crack / bell at 2.40 s, the roar / a synthesized formant choir at 2.70 s; same premix compression and +6 dB) → **188 ids, 301 variants, 380 jobs**.
+Amended 2026-10-13: + 1 signature design (`sig_crimson_lotus_prison`, hyoryu's Crimson Lotus Prison: a glass chime per opening sky petal, a rushing roar for the ice dragon, the lotus snapping shut on the impact at 0.80 s, a low crimson swell, the crack and the shatter; same premix compression and +6 dB) → **189 ids, 302 variants, 381 jobs**.
 
 6.1 **Families.**
 
@@ -453,6 +454,7 @@ Amended 2026-10-11: + 2 bond designs (`bond_majin`, `bond_tenjin`: a trainer's M
 | `sig_bankai_sever` | sfx | 1 | 2 | 6 | 1 | P2 | S | A low pressure drone, a blade drawn, a glint, a whoosh, a beat of silence, two razor cuts and an eerie ring. | bankaiser's signature (Bankai Sever), from the charge |
 | `sig_cosmic_miracle` | sfx | 1 | 2.4 | 6 | 1 | P2 | S | Healing chimes, falling star pews, a bright nova burst, then a gentle cure shimmer. | lumyth's signature (Cosmic Miracle), from the charge |
 | `sig_cosmic_pyre` | sfx | 1 | 2 | 6 | 1 | P2 | S | Five rising star chimes, gathering fire, a comet whoosh, then a roaring pillar of flame. | galaxion's signature (Cosmic Pyre), from the charge |
+| `sig_crimson_lotus_prison` | sfx | 1 | 2.2 | 6 | 1 | P2 | S | Glassy petals chiming open one by one, a rushing dragon roar, an ice lotus snapping shut with a deep crimson swell, then cracking and shattering. | hyoryu's signature (Crimson Lotus Prison), from the charge |
 | `sig_foxfire_voltage` | sfx | 1 | 1.9 | 6 | 1 | P2 | S | Crackling foxfire, quick laser launches, electric zaps landing, a cage of lightning snapping shut, a static buzz. | raikitsune's signature (Foxfire Voltage), from the charge |
 | `sig_hollow_crescent` | sfx | 1 | 1.8 | 6 | 1 | P2 | S | A dark swell and a ghostly breath, a heavy slash, a crunching cut and an ominous ring. | hollowmane's Rage Form signature (Hollow Crescent), from the charge |
 | `sig_kamehameha` | sfx | 1 | 2.3 | 6 | 1 | P2 | S | A long rising energy hum, a massive beam firing with a roar, then a huge blast. | zenryu's signature (Kamehameha), from the charge |

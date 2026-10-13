@@ -143,6 +143,11 @@ export class BattleHud {
     this.active = true;
   }
 
+  /** A battle form with its own types (hyoryu's Majin Form) re-labels the plate; hp, status and stages stay. */
+  setTypes(side: 0 | 1, types: readonly string[], pos: 0 | 1 = 0): void {
+    this.prepare().bars[this.at(side, pos)]!.types = types;
+  }
+
   setHp(side: 0 | 1, hp: number, maxHp: number, pos: 0 | 1 = 0): void {
     const bar = this.prepare().bars[this.at(side, pos)]!;
     bar.hp = hp;

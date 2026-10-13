@@ -224,3 +224,12 @@ The user's form-change gimmick (`.design/majin-tenjin.md`; spine §2.3 `BattleFo
   (first eligible position in doubles). No rng draw, so NPC choices are unchanged for every band-less side.
 - `types.ts`: `BandKind`, `heal` cause `'form'`, ActionError `'cannotTransform'`.
 - Tests: `test/transform.test.ts` (7). `npx vitest run packages/core`: 26 files / 303 tests; both fuzz digest files unchanged.
+
+## Battle forms with their own types (2026-10-13)
+
+- `BattleFormDef.types?` (hyoryu's Majin Form: Ice/Dragon becomes Dragon/Dark). `formTypes(sp, b)` returns the active
+  form's types when it names them, else the species'. Every type read in a battle goes through it: the type chart and
+  STAB (`damage.ts`), status immunity (`engine.ts` `applyStatus`), hail / sand chip (`turn.ts` end of turn) and the orb's
+  type bonus against a wild battler in its form (`catch.ts`). Abilities and the moveset do not change.
+- No rng, no new event: the client reads the types from content after `formChange`. Every species without a typed form
+  computes exactly what it did; the 1,000-battle fuzz digests are unchanged. `test/formTypes.test.ts` (3).

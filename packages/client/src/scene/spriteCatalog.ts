@@ -97,7 +97,8 @@ export interface SpriteCatalog {
   /** Level-0 bytes (albedo + normal + emissive, mips included when listed) of a set of atlases (static or anim), for the boot bar. */
   bytesOf(ids: readonly string[]): number;
   /**
-   * `spriteId`: a battle form's manifest entry (`<species>_<form>`) drawn in place of the species' own; types and size stay the species'.
+   * `spriteId`: a battle form's manifest entry (`<species>_<form>`) drawn in place of the species' own; size stays the species',
+   * types too unless the form names its own (hyoryu's Majin Form: Dragon/Dark, so its type colour follows).
    * A Majin / Tenjin form (`FORM_AURA`) also gets its live aura (`SpriteDescriptor.aura`).
    */
   descriptor(speciesId: string, key: string, variant?: VariantKey, isAlpha?: boolean, isShiny?: boolean, spriteId?: string): SpriteDescriptor | null;
@@ -154,7 +155,9 @@ export function createSpriteCatalog(m: CreatureManifest, species: (id: string) =
       const sp = m.sprites[spriteId ?? speciesId];
       if (sp === undefined) return null;
       const def = species(speciesId);
-      const t = (def?.types ?? ['Normal']) as readonly CoreTypeName[];
+      const form = def?.battleForm;
+      const formTypes = form !== undefined && spriteId === `${speciesId}_${form.id}` ? form.types : undefined;
+      const t = (formTypes ?? def?.types ?? ['Normal']) as readonly CoreTypeName[];
       const types = (t.length > 1 ? [t[0]!, t[1]!] : [t[0]!]) as unknown as readonly [TypeName] | readonly [TypeName, TypeName];
       // a flipbook whose atlas the manifest does not list stays static (never a dangling bind)
       const anim = (side: 'front' | 'back'): ManifestAnimSide | undefined => {

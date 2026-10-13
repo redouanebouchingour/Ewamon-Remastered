@@ -19,7 +19,7 @@ import type { MoveAnimDef } from './moveAnims';
 
 /** The bespoke effect layer each cinematic draws (sigfx/index.ts). */
 export type SignatureFx =
-  | 'crescent' | 'volley' | 'pyre' | 'grace' | 'sunbreaker' | 'foxfire' | 'kamehameha' | 'miracle' | 'devour' | 'bankai' | 'rift' | 'aurora';
+  | 'crescent' | 'volley' | 'pyre' | 'grace' | 'sunbreaker' | 'foxfire' | 'kamehameha' | 'miracle' | 'devour' | 'bankai' | 'rift' | 'aurora' | 'lotus';
 
 export interface SignatureCinematic {
   readonly fx: SignatureFx;
@@ -152,6 +152,14 @@ export const SIGNATURE_CINEMATICS: Readonly<Record<string, SignatureCinematic>> 
     fx: 'aurora', species: 'glacinid', portrait: 'glacinid', glint: [28, 34], lines: ['Aurora', 'Requiem'], kicker: LEGENDARY,
     palette: { accent: '#7af0d0', deep: '#06182a', hot: '#e8fbff' },
     leadMs: 1100, windupMs: 460, travelMs: 340, totalMs: 3000, sfx: ['wind_gust', 'cry_ice'], aimSfx: 'sig_aurora_requiem',
+    anim: { recoverMs: 380, attackerPose: 'windup' },
+  },
+  // hyoryu: a flower of ice opens in the sky one petal at a time, an ice dragon coils onto the foe and a lotus of ice
+  // closes round it, burns crimson at its heart and shatters
+  'Crimson Lotus Prison': {
+    fx: 'lotus', species: 'hyoryu', portrait: 'hyoryu', glint: [35, 29], lines: ['Crimson Lotus', 'Prison'], kicker: LEGENDARY,
+    palette: { accent: '#9aeaff', deep: '#061a2e', hot: '#ff4a62' },
+    leadMs: 1100, windupMs: 460, travelMs: 340, totalMs: 3000, sfx: ['wind_gust', 'cry_dragon'], aimSfx: 'sig_crimson_lotus_prison',
     anim: { recoverMs: 380, attackerPose: 'windup' },
   },
 };

@@ -293,3 +293,14 @@ Then run `pnpm --filter @ewa/audio-pipeline ingest` and `pnpm --filter @ewa/audi
   (the sfx cap). Built only from already-approved CC0 downloads; nothing new fetched. Not auditioned by ear.
 - Rebuild: `python _tools/mix.py bond_majin_1 bond_tenjin_1` (from `assets-src/audio/cc0/`), `node _tools/gen-sources.mjs`,
   then `ingest` and `process -- --provider cc0`. Only the 4 new files, the manifest and the credits change.
+
+## hyoryu's signature sound (2026-10-13)
+
+- 1 new sfx id `sig_crimson_lotus_prison` (189 ids, 302 variants, 381 jobs; 73.37 MiB of 80) for Crimson Lotus Prison,
+  timed from the cinematic's charge: a cold shimmer, six glass chimes as the sky flower opens (0.02 to 0.32 s), a rush
+  and a low-passed roar for the ice dragon (0.40 / 0.46 s, kept 14 to 16 dB down so the impact stands out), the lotus
+  snapping shut on the damage frame at 0.80 s (glass, force field and a low thump), a low crimson swell, the crack at
+  1.10 s and the shatter at 1.22 s. Before the `_sig_loud` stage the impact is a 8.7 dB jump over the 25 ms before it.
+  Built only from already-approved CC0 downloads; nothing new fetched. Not auditioned by ear.
+- Rebuild: `python _tools/mix.py sig_crimson_lotus_prison_1` (from `assets-src/audio/cc0/`), `node _tools/gen-sources.mjs`,
+  then `ingest`, `credits` and `process -- --provider cc0`. Only the 2 new files, the manifest and the credits change.

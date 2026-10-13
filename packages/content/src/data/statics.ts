@@ -1,5 +1,5 @@
 /**
- * §3.2 LEGENDARY_STATICS — exactly 8 rows: roster-coverage.md §7 coordinates/levels with the gates of
+ * §3.2 LEGENDARY_STATICS — exactly 9 rows (the 8 legacy legendaries plus the post-legacy hyoryu): roster-coverage.md §7 coordinates/levels with the gates of
  * story-bible.md §7.2 (galaxion `flag:ledger_read` replaces roster's `badge:anvil` placeholder — spec CHANGELOG).
  * Coordinates are authored inside the playable interior and snapped with nearestWalkable(h, x, z, 8) at validate;
  * `voidraxis` (0, 84) sits exactly on the interior boundary of a story zone and snaps inward.
@@ -15,9 +15,12 @@ export const LEGENDARY_STATICS: readonly LegendaryStatic[] = [
   { species: 'voltaura', level: 55, zoneId: 'galvan_route', x: 92, z: -40, flag: 'leg_voltaura', when: 'flag:champion:zeon:beaten' },
   { species: 'zenryu', level: 60, zoneId: 'eclipse_shrine', x: 0, z: -80, flag: 'leg_zenryu', when: 'flag:champion:zeon:beaten' },
   { species: 'voidraxis', level: 65, zoneId: 'the_rift', x: 0, z: 84, flag: 'leg_voidraxis', when: 'flag:champion:zeon:beaten' },
+  // post-legacy (#138): the frozen terrace at the head of the Ascent, after the title. Not on ascent_route itself: there the
+  // sprite planner's pairing duplicates 6 species in the_rift (79 atlases); most other zones plan 76 atlases, none duplicated
+  { species: 'hyoryu', level: 60, zoneId: 'eclipse_shrine', x: -70, z: -70, flag: 'leg_hyoryu', when: 'flag:champion:zeon:beaten' },
 ];
 
-/** The 8 non-mythical legendaries (rule 7); the two mythicals are quest rewards / the battle-pass 50 choice. */
+/** The 9 non-mythical legendaries (rule 7, hyoryu post-legacy); the two mythicals are quest rewards / the battle-pass 50 choice. */
 export const LEGENDARY_IDS: readonly string[] = [
   'raikitsune',
   'bankaiser',
@@ -27,5 +30,6 @@ export const LEGENDARY_IDS: readonly string[] = [
   'voltaura',
   'zenryu',
   'voidraxis',
+  'hyoryu',
 ];
 export const MYTHICAL_IDS: readonly string[] = ['lumyth', 'noxmyth'];

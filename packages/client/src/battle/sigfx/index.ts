@@ -8,6 +8,7 @@ import { DevourFx } from './Devour';
 import { FoxfireFx } from './Foxfire';
 import { GraceFx } from './Grace';
 import { KamehamehaFx } from './Kamehameha';
+import { LotusFx } from './Lotus';
 import { MiracleFx } from './Miracle';
 import { PyreFx } from './Pyre';
 import { RiftFx } from './Rift';
@@ -28,4 +29,5 @@ export const SIG_FX: Readonly<Record<SignatureFx, (p: FxProps) => ReactElement>>
   bankai: BankaiFx,
   rift: RiftFx,
   aurora: AuroraFx,
+  lotus: LotusFx,
 };
