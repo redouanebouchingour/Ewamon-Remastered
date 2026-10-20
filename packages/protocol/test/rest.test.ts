@@ -43,6 +43,8 @@ import {
   ROUTES,
   ROUTE_KEYS,
   CreatureHistoryRes,
+  DailyRes,
+  LeaderboardRowSchema,
   REPLAY_BATTLE_ID,
   ReplayRes,
   BattleShareRes,
@@ -375,7 +377,9 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(75); // 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history
+    expect(ROUTE_KEYS).toHaveLength(77); // 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(paths).toContain('GET /daily');
+    expect(paths).toContain('POST /daily/start');
     expect(paths).toContain('GET /creature/:id/history');
     expect(paths).toContain('POST /history/battles/:battleId/share');
     expect(paths).toContain('GET /replay/:token');
@@ -447,6 +451,19 @@ describe('creature history', () => {
     bad(CreatureHistoryRes, { originalTrainer: null, events: [{ kind: 'stolen', at }] });
     bad(CreatureHistoryRes, { originalTrainer: null, events: [{ kind: 'met', at, how: 'hatched', speciesId: 'x', level: 1, zoneId: null, trainer: 'a' }] });
     bad(CreatureHistoryRes, { originalTrainer: null, events: [{ kind: 'legendary', at, species: 'hyoryu' }] });
+  });
+});
+
+describe('the daily challenge', () => {
+  it('DailyRes: three a side, a day key, par; the leaderboard row carries the daily turns and strip', () => {
+    const c = { speciesId: 'glimfin', level: 50, moves: ['tackle'], ability: 'Swift Swim' };
+    const daily = { dayKey: '2026-10-20', number: 1, endsAt: '2026-10-21T00:00:00.000Z', team: [c, c, c], foe: [c, c, c], foeName: 'Daily Rival', par: 7, best: null, attempts: 0, winners: 0 };
+    ok(DailyRes, daily);
+    ok(DailyRes, { ...daily, best: { turns: 5, marks: '.K.KK', battleId: '00000000-0000-4000-8000-000000000001' }, attempts: 3 });
+    bad(DailyRes, { ...daily, team: [c, c] });
+    bad(DailyRes, { ...daily, dayKey: '20-10-2026' });
+    bad(DailyRes, { ...daily, par: 0 });
+    expect(LeaderboardRowSchema.safeParse({ rank: 1, id: '00000000-0000-4000-8000-000000000001', username: 'ash_k', title: 't', body: 'b', rating: 1000, tier: 'bronze', trainerLevel: 1, dexCaughtCount: 0, guildTag: null, dailyTurns: 5, dailyMarks: '.K.KK' }).success).toBe(true);
   });
 });
 

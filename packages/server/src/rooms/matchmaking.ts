@@ -68,6 +68,8 @@ export interface ArenaMatch {
   /** the human seats in side order (side 0 = the longer-waiting player / the inviter); training: one */
   readonly players: readonly ArenaSeatView[];
   readonly training?: { readonly difficulty: ArenaDifficulty };
+  /** the daily challenge: the UTC day whose puzzle this is (the teams and the seed come from it) */
+  readonly daily?: { readonly dayKey: string };
   /** `cup`: the cup in force when the match was made */
   readonly cupId?: string;
   /** server clock ms the match was made (the cup week, the arrival window) */

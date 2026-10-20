@@ -31,6 +31,8 @@ const MODE_TABS: readonly { readonly key: RankingMode; readonly label: string; r
   { key: 'trainerLevel', label: 'Trainer level', blurb: 'Trainer experience earned.' },
   // Phase D14: the battle tower (Solenne) — best streak; only trainers who have won a tower fight appear
   { key: 'towerStreak', label: 'Tower', blurb: 'Best battle tower streak; ties go to the longer run in progress.' },
+  // the daily challenge: today's winners (UTC), fewest turns first; ties go to the earlier win
+  { key: 'daily', label: 'Daily', blurb: "Today's daily challenge: fewest turns to win; ties go to the earlier win." },
 ];
 
 function columns(mode: RankingMode, myId: string | null): TableColumn<LeaderboardRow>[] {
@@ -39,6 +41,17 @@ function columns(mode: RankingMode, myId: string | null): TableColumn<Leaderboar
     dex: { key: 'dex', header: 'Caught', width: 110, align: 'end', render: (r) => <span className={l.mono}>{r.dexCaughtCount} / {DEX_TOTAL}</span> },
     trainerLevel: { key: 'trainerLevel', header: 'Level', width: 80, align: 'end', render: (r) => <span className={l.mono}>{r.trainerLevel}</span> },
     towerStreak: { key: 'towerStreak', header: 'Streak', width: 96, align: 'end', render: (r) => <span className={l.mono}>{r.towerBest ?? 0}</span> },
+    daily: {
+      key: 'daily',
+      header: 'Turns',
+      width: 180,
+      align: 'end',
+      render: (r) => (
+        <span className={l.mono}>
+          {r.dailyTurns ?? '-'} <span className={s.dim}>{r.dailyMarks ?? ''}</span>
+        </span>
+      ),
+    },
   };
   const rest = (['rating', 'dex', 'trainerLevel'] as const).filter((k) => k !== mode).map((k) => ({ ...metric[k], render: (r: LeaderboardRow) => <span className={s.dim}>{metric[k].render(r)}</span> }));
   return [

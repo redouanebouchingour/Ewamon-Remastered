@@ -201,3 +201,9 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
   (`caught` at the catch time when `caughtAt` is set, else `received` at now); `transferCreature` writes `traded` /
   `sold` / `gift` with both usernames; `addEvent` / `history` for the server. `history` orders by `at`, then `id`.
 - Not part of `CreatureInstance` (core's type is battle state): the history is read on demand.
+
+## Migration 0008_daily_results (2026-10-20)
+
+- `daily_results (player_id, day_key)` PK: `attempts` and the best win (`turns`, `marks`, `battle_id`, `won_at`, null
+  until the first win). `dailyRepo.record` locks the row (`for update`), adds the attempt and replaces the best only
+  for fewer turns, so a tie keeps the earlier win. `winners` and `leaderboard` leave banned players out.

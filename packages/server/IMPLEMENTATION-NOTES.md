@@ -1079,3 +1079,15 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
 - `POST /creature/:id/evolve` adds `evolved { from, into }` (every evolution path goes through it). `GET
   /creature/:id/history` lets any signed-in player read any creature's history: a listed creature's past is part of
   what is offered, and the names in it are public usernames.
+
+## The daily challenge (2026-10-20)
+
+- `game/daily.ts`: `dailyPuzzle(dayKey)` keeps the first of 40 seeded pairings (tower pool 2, level 50) that core's
+  trainer AI wins for the player's side on the day's seed, so every day is winnable and `par` is a real line (the
+  test checks a quarter of days). The first version drew one pairing per day and a simple strategy lost most days.
+  The result is cached per day (a handful of entries).
+- `ArenaLobby.daily` → an arena room of kind `daily` (`ArenaMatch.daily.dayKey`); `ArenaRoom.start` calls
+  `BattleCoordinator.startDaily`: the day's teams on `createRng('daily:<dayKey>')`, format `trainer`, trainer
+  `arena.daily` (content `ARENA_DAILY`). In `persistTurn` a daily counts as training (nothing paid or written about the
+  player) and, at the end, re-runs `replayBattle` over the actions log for the strip and writes `daily_results`.
+- `GET /leaderboard?mode=daily` reads today's (UTC, `liveops/schedule.ts` `dayKey`) winners.

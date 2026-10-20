@@ -141,7 +141,7 @@ export {
   leagueRematchFlag,
 } from './data/league';
 export { TOWER, towerSetReward, towerTier } from './data/tower';
-export { ARENA_TRAINING, CUP_PARTY_SIZE, STARTER_ROOTS, WEEKLY_CUPS, cupRefusal, evolutionRoot, weeklyCup } from './data/arena';
+export { ARENA_DAILY, ARENA_TRAINING, CUP_PARTY_SIZE, STARTER_ROOTS, WEEKLY_CUPS, cupRefusal, evolutionRoot, weeklyCup } from './data/arena';
 export type { ActiveCup, CupMember } from './data/arena';
 export { QUESTS } from './data/quests';
 export { ACHIEVEMENTS, ACHIEVEMENT_IDS, isAchievement } from './data/achievements';

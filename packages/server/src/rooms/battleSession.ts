@@ -21,6 +21,7 @@ import {
   eloDelta,
   eloDrawDelta,
   projectBattler,
+  replayBattle,
   requiredPositions,
   resolveTurn,
   validateAction,
@@ -31,6 +32,8 @@ import type { BattleStartSnapshot, Db, Repos, StreakState } from '@ewa/persist';
 import type { Logger } from '../log';
 import type { RoomMetrics } from '../metrics';
 import { isPersistedId, newCreature, persistableAfterBattle, withSyntheticId } from '../game/creatures';
+import { DAILY_TRAINER, dailyMarks, dailyPuzzle, dailySeed, dailySides } from '../game/daily';
+import { replayOpts } from '../game/replay';
 import { advanceQuests } from '../game/quests';
 import type { QuestEvent } from '../game/quests';
 import type { SpawnRecord } from './spawnDirector';
@@ -108,9 +111,10 @@ export interface BattleSession {
   /**
    * Arena PvP (rooms/ArenaRoom.ts): an out-of-world battle between healed synthetic copies (`noExp`, no items, nothing
    * about the creatures written). `ranked`: only then the end moves the rating (Elo); every other arena PvP kind pays
-   * the pvp trainer exp + the `win pvp` quest event; `training` (format 'trainer' vs an AI) pays nothing at all.
+   * the pvp trainer exp + the `win pvp` quest event; `training` (format 'trainer' vs an AI) pays nothing at all;
+   * `daily` (the daily challenge, `dayKey`) likewise pays nothing and records the try in `daily_results`.
    */
-  readonly arena?: { readonly kind: ArenaKind; readonly ranked: boolean };
+  readonly arena?: { readonly kind: ArenaKind; readonly ranked: boolean; readonly dayKey?: string };
   /** the LegendaryStatic flag to set on win/catch */
   readonly staticFlag: string | null;
   /** createBattle's input minus seed, deep-copied before the call — battle_history.start (P6, DB-only replay) */
@@ -792,6 +796,40 @@ export class BattleCoordinator {
     return { ok: true, session };
   }
 
+  /**
+   * The daily challenge (game/daily.ts): the day's fixed team against the day's AI team, both synthetic and at
+   * `DAILY_LEVEL`, on the day's own seed, so every player's daily plays out the same for the same choices. No bands,
+   * no items; nothing about the player's creatures is read or written.
+   */
+  async startDaily(p: PlayerSeat, dayKey: string, battleId: string = randomUUID()): Promise<StartResult> {
+    if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle', playerId: p.playerId };
+    const content = this.deps.content;
+    const { team, foe } = dailyPuzzle(dayKey, content);
+    const [side0, side1] = dailySides(team, foe, p.playerId, content);
+    const { session } = this.open(
+      {
+        id: battleId,
+        format: 'trainer',
+        zoneId: this.deps.zone.id,
+        seats: [{ side: 0, playerId: p.playerId, sessionId: p.sessionId }, { side: 1, playerId: null, sessionId: null }],
+        spawnId: null,
+        npc: { trainerId: DAILY_TRAINER.id, reward: 0, leagueId: null },
+        beatId: null,
+        staticSpecies: null,
+        staticFlag: null,
+        x: 0,
+        z: 0,
+        yaw: 0,
+        inventory: [null, null],
+        rematch: false,
+        arena: { kind: 'daily', ranked: false, dayKey },
+      },
+      [side0, side1],
+      createRng(dailySeed(dayKey)).snapshot(),
+    );
+    return { ok: true, session };
+  }
+
   // ─── actions ────────────────────────────────────────────────────────────────
 
   /**
@@ -1036,7 +1074,8 @@ export class BattleCoordinator {
         }
 
         // h. markSeen for every opposing species revealed this turn (arena training writes nothing at all)
-        const training = session.arena?.kind === 'training';
+        // the daily challenge writes as little as training (no exp, quests, flags or seen marks), plus its own result
+        const training = session.arena?.kind === 'training' || session.arena?.kind === 'daily';
         for (const ev of events) {
           if (training) break;
           if (ev.t !== 'switchIn' || ev.who.side !== other) continue;
@@ -1058,6 +1097,11 @@ export class BattleCoordinator {
           const won = side === 0 ? side0Won(outcome) : outcome.winner === 1;
           if (training) {
             // Arena training: no trainer exp, no quest win, no flags, no money
+            if (session.arena?.kind === 'daily' && session.arena.dayKey !== undefined) {
+              const run = replayBattle(replayOpts(session.id, session.format, session.seed, session.start), actionsLog, this.deps.content);
+              const marks = dailyMarks(run.steps, side);
+              await repos.daily.record(tx, pid, session.arena.dayKey, won ? { turns: next.turn, marks, battleId: session.id } : null, now);
+            }
           } else if (session.arena !== undefined) {
             // Arena PvP: only Ranked moves the rating (Elo, once per player); every other kind pays the pvp trainer exp
             if (outcome.winner !== 'fled' && outcome.winner !== 'caught') {

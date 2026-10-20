@@ -18,6 +18,7 @@ import type { ArenaCupView, ArenaDifficulty, ArenaIdleReason, ArenaKind, ArenaMo
 import type { CreatureInstance } from '@ewa/core';
 import type { Db, Repos } from '@ewa/persist';
 import type { Logger } from '../log';
+import { DAILY_TRAINER } from '../game/daily';
 import { ArenaQueue, arenaTopic } from './arenaQueue';
 import type { ArenaEntry, ArenaKV } from './arenaQueue';
 import { openArenaRoom, reserveArenaSeat, zoneRoomById } from './matchmaking';
@@ -154,7 +155,7 @@ export class ArenaLobby {
   }
 
   /** A new match record (`createdAt` = now; `cup` records this week's cup id). */
-  newMatch(kind: ArenaKind, players: readonly ArenaSeatView[], o: { readonly rules?: ArenaRules; readonly difficulty?: ArenaDifficulty } = {}): ArenaMatch {
+  newMatch(kind: ArenaKind, players: readonly ArenaSeatView[], o: { readonly rules?: ArenaRules; readonly difficulty?: ArenaDifficulty; readonly dayKey?: string } = {}): ArenaMatch {
     const now = this.deps.clock();
     return {
       matchId: randomUUID(),
@@ -162,6 +163,7 @@ export class ArenaLobby {
       level: arenaLevel(kind, o.rules ?? null),
       players,
       ...(o.difficulty !== undefined ? { training: { difficulty: o.difficulty } } : {}),
+      ...(o.dayKey !== undefined ? { daily: { dayKey: o.dayKey } } : {}),
       ...(kind === 'cup' ? { cupId: weeklyCup(now).def.id } : {}),
       createdAt: now,
     };
@@ -249,6 +251,12 @@ export class ArenaLobby {
     return seats?.get(me.playerId) ?? null;
   }
 
+  /** The daily challenge of `dayKey` for one player: the room and its one seat (null when the room could not be made). */
+  async daily(me: ArenaSeatView, dayKey: string): Promise<SeatReservation | null> {
+    const seats = await this.open(this.newMatch('daily', [me], { dayKey }));
+    return seats?.get(me.playerId) ?? null;
+  }
+
   /** A fresh seat in the live arena room this player is seated in (a reload mid-battle), or null. */
   async rejoin(playerId: string): Promise<SeatReservation | null> {
     const live = await this.liveRoom(playerId);
@@ -257,8 +265,9 @@ export class ArenaLobby {
     return room === null ? null : reserveArenaSeat(room, this.deps.ticket);
   }
 
-  /** The AI opponent's display name for a training match. */
+  /** The AI opponent's display name for a training match or the daily challenge. */
   static foeName(match: ArenaMatch): string | null {
+    if (match.daily !== undefined) return DAILY_TRAINER.name;
     return match.training === undefined ? null : ARENA_TRAINING[match.training.difficulty].name;
   }
 

@@ -229,15 +229,18 @@ export async function replayLoader({ request, params }: LoaderFunctionArgs) {
  * Challenge a friend. A server without the arena routes renders the screen's "not live yet" state.
  */
 export async function pvpLoader({ request }: LoaderFunctionArgs) {
-  const [arena, friends] = await Promise.all([
+  const [arena, friends, daily] = await Promise.all([
     loadOptional(request, 'arena'),
     loadOptional(request, 'friends').catch(() => ({ available: false }) as const),
+    // the daily challenge: a server without it shows no daily card
+    loadOptional(request, 'daily').catch(() => ({ available: false }) as const),
     sessionReady(request.signal),
   ]);
   if (arena.available) {
     const { status, ...info } = arena.data;
     useArenaStore.getState().setInfo(info, status);
   }
+  useArenaStore.getState().setDaily(daily.available ? daily.data : null);
   return { available: arena.available, friends: friends.available ? friends.data.friends : [] };
 }
 

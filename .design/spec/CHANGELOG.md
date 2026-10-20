@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-20 the daily challenge: one puzzle a day, the same for everyone. One entry. -->
+
+## 2026-10-20 · `00-spine.md` §4.7 (`GET /daily`, `POST /daily/start`, leaderboard `daily`), §5.2 (`DailyRepo`, migration 0008 `daily_results`); `30-server-netcode.md` §30.4.10 (the daily challenge); `20-client.md` §20.9.9d+ (new); `50-verification-budget.md` §50.4.4 / .5 / .7 rows · the daily challenge
+Why: the user asked for a daily challenge: one shared seed a day sets a fixed team and a fixed opponent, everyone plays the same puzzle and compares how many turns they needed. It is a new arena kind so it reuses the arena room, battle path, history and replays; the teams and the battle seed come from the UTC day alone, so the same choices always play out the same for everyone. A first version picked teams at random and a simple strategy lost most days, so a day now keeps the first seeded pairing that core's own trainer AI wins for the player's side: every daily is winnable, and that win's turn count is shown as par. The share text is a spoiler-free strip of KOs per turn.
+Evidence: `packages/persist/test/daily.test.ts` (2) and `migrations.test.ts`; `packages/protocol/test/rest.test.ts` (77 routes, `DailyRes`); `packages/server/test/daily.test.ts` (4: a quarter of days all winnable, two players' starts identical, a played try recorded); `packages/client/test/arena.test.tsx` (+3); live on the second isolated pair (the PvP card with both teams and par, the battle against the Daily Rival with the day's team, the arena result with Try again).
+Affects: `packages/protocol/src/{arena,rest}.ts`; `packages/content/src/{data/arena,index}.ts` (`ARENA_DAILY`); `packages/persist/src/{schema/daily,repos/daily,repos/index,schema/index}.ts`, `drizzle/0008_daily_results.sql`; `packages/server/src/{game/daily,rooms/battleSession,rooms/arenaLobby,rooms/ArenaRoom,rooms/matchmaking,rest/routes/arena,rest/routes/catalog}.ts`; `packages/client/src/{app/arena,app/loaders,state/arena,screens/PvpScreen,screens/RankingsScreen,world/ArenaOverlays,battle/foe}.ts(x)`.
+
 <!-- 2026-10-20 creature history: the original trainer and what happened to a creature. One entry. -->
 
 ## 2026-10-20 · `00-spine.md` §4.7 (`GET /creature/:id/history`), §5.2 (migration 0007 `creature_events`, `original_trainer_*`, the history repo methods); `30-server-netcode.md` §30.6.3 (who writes which event); `20-client.md` §20.9.9f (new); `50-verification-budget.md` §50.4.4 / .5 / .7 rows · creature history

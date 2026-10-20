@@ -18,8 +18,8 @@ export const ARENA_LEVEL = 50;
 /** The modes a player can queue for (matched by the arena matcher). */
 export const ARENA_MODES = ['standard', 'level50', 'ranked', 'cup'] as const;
 export type ArenaMode = (typeof ARENA_MODES)[number];
-/** Every kind of arena battle: the queued modes, a friend invite, AI training. */
-export const ARENA_KINDS = [...ARENA_MODES, 'friend', 'training'] as const;
+/** Every kind of arena battle: the queued modes, a friend invite, AI training, the daily challenge. */
+export const ARENA_KINDS = [...ARENA_MODES, 'friend', 'training', 'daily'] as const;
 export type ArenaKind = (typeof ARENA_KINDS)[number];
 /** The level rule of a friend battle or a training battle: own levels (`standard`) or everyone at `ARENA_LEVEL`. */
 export const ARENA_RULES = ['standard', 'level50'] as const;
@@ -30,7 +30,8 @@ export type ArenaDifficulty = (typeof ARENA_DIFFICULTIES)[number];
 
 /** The level a kind / rules fights at: `ARENA_LEVEL`, or null = each creature's own level. */
 export function arenaLevel(kind: ArenaKind, rules: ArenaRules | null = null): number | null {
-  if (kind === 'level50' || kind === 'ranked' || kind === 'cup') return ARENA_LEVEL;
+  // the daily challenge's teams are built at ARENA_LEVEL (server game/daily.ts DAILY_LEVEL)
+  if (kind === 'level50' || kind === 'ranked' || kind === 'cup' || kind === 'daily') return ARENA_LEVEL;
   if (kind === 'friend' || kind === 'training') return rules === 'level50' ? ARENA_LEVEL : null;
   return null;
 }
@@ -43,6 +44,7 @@ export const ARENA_KIND_LABELS: Readonly<Record<ArenaKind, string>> = {
   cup: 'Weekly Cup',
   friend: 'Friend battle',
   training: 'Training',
+  daily: 'Daily challenge',
 };
 
 /**
@@ -199,3 +201,36 @@ export const ArenaInviteRes = z.object({ inviteId: z.string().min(1).max(64), ex
 /** POST /arena/invite/reply — the invitee's answer; on accept both get a seat (the invitee in this response). */
 export const ArenaInviteReplyReq = z.object({ inviteId: z.string().min(1).max(64), accept: z.boolean() });
 export const ArenaInviteReplyRes = z.object({ seat: SeatReservationSchema.nullable() });
+
+// ---- the daily challenge ---------------------------------------------------------------------------------------------
+
+/**
+ * The daily challenge: one puzzle a UTC day, the same for everyone. A fixed team of `DAILY_TEAM_SIZE` against a fixed
+ * AI team, both chosen from the day (server `game/daily.ts`), fought in an arena room with the day's own seed, so the
+ * same choices always play out the same. A win scores its turn count (fewer is better); the best of the day counts.
+ * `number` counts days from the first daily (`DAILY_FIRST_DAY` is #1).
+ */
+export const DAILY_TEAM_SIZE = 3;
+export const DAILY_FIRST_DAY = '2026-10-20';
+const DayKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+export const DailyCreatureSchema = z.object({ speciesId: z.string().min(1).max(32), level: z.number().int().min(1).max(100), moves: z.array(z.string().max(32)).min(1).max(4), ability: z.string().max(32) });
+export const DailyBestSchema = z.object({ turns: z.number().int().min(1), marks: z.string().max(200), battleId: z.string().uuid() });
+/** GET /daily */
+export const DailyRes = z.object({
+  dayKey: DayKey,
+  number: z.number().int().min(1),
+  /** ISO time the next daily starts (00:00 UTC) */
+  endsAt: z.string(),
+  team: z.array(DailyCreatureSchema).length(DAILY_TEAM_SIZE),
+  foe: z.array(DailyCreatureSchema).length(DAILY_TEAM_SIZE),
+  foeName: Name,
+  /** the turns of a reference win (core's trainer AI playing the team): every daily is winnable; null never in practice */
+  par: z.number().int().min(1).nullable(),
+  /** today's best win, null before the first */
+  best: DailyBestSchema.nullable(),
+  attempts: z.number().int().min(0),
+  /** how many players have won today's */
+  winners: z.number().int().min(0),
+});
+export type DailyInfo = z.infer<typeof DailyRes>;
+

@@ -7,11 +7,12 @@
  * - `MatchFoundCard`: the short card while a queue match moves the player into the arena.
  * - `ArenaHud`: in the arena — the top-left strip (Arena · mode · level, you vs the opponent), the waiting card before
  *   the battle starts, and after the result card the result actions: Back to world, Queue again (the same mode) /
- *   Rematch (training) / Challenge again (friend); a re-queue shows its elapsed time and Leave queue in place.
+ *   Rematch (training) / Try again (the daily challenge) / Challenge again (friend); a re-queue shows its elapsed time and
+ *   Leave queue in place. After a daily the card refetches GET /daily and shows today's best and Copy result.
  */
 import { useEffect, useState } from 'react';
 import { ARENA_KIND_LABELS, rankedWindow } from '@ewa/protocol';
-import { backToWorld, leaveArenaQueue, playAgain, replyInvite } from '../app/arena';
+import { backToWorld, copyDailyResult, leaveArenaQueue, loadDaily, playAgain, replyInvite } from '../app/arena';
 import { getWorldSession } from '../net/WorldSession';
 import { MATCH_FOUND_MS, RULES_LABELS, levelLabel, useArenaStore } from '../state/arena';
 import type { ArenaLast } from '../state/arena';
@@ -114,7 +115,27 @@ function againLabel(last: ArenaLast | null): string | null {
   if (last === null) return null;
   if (last.kind === 'queue') return 'Queue again';
   if (last.kind === 'training') return 'Rematch';
+  if (last.kind === 'daily') return 'Try again';
   return 'Challenge again';
+}
+
+/** After a daily: today's best (refetched, so this try counts) against par, with Copy result. */
+function DailyResult() {
+  const daily = useArenaStore((st) => st.daily);
+  useEffect(() => {
+    void loadDaily().catch(() => undefined);
+  }, []);
+  if (daily === null) return null;
+  return (
+    <p className={s.caption} data-testid="arenaresult-daily">
+      {daily.best === null ? 'Not won yet today.' : `Your best today: ${daily.best.turns} turns${daily.par !== null ? ` (par ${daily.par})` : ''} · ${daily.best.marks}`}{' '}
+      {daily.best !== null && (
+        <Button size="sm" variant="ghost" icon="link" onClick={() => void copyDailyResult(daily)}>
+          Copy result
+        </Button>
+      )}
+    </p>
+  );
 }
 
 export function ArenaHud() {
@@ -180,6 +201,7 @@ export function ArenaHud() {
           <section className={s.card} data-testid="arenaresult" aria-label="Arena result">
             <span className={s.label}>{match !== null ? ARENA_KIND_LABELS[match.kind] : 'Arena'}</span>
             <p className={s.cardTitle}>{outcome?.won === true ? 'Victory' : outcome?.won === false ? 'Defeat' : 'Battle over'}</p>
+            {match?.kind === 'daily' && <DailyResult />}
             {delta !== null && delta !== 0 && (
               <p className={s.delta} data-testid="arenaresult-rating">
                 <span className={s.deltaValue}>{`${delta > 0 ? '+' : ''}${delta}`}</span> rating

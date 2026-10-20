@@ -57,6 +57,13 @@
       "when": 1792489173466,
       "tag": "0007_creature_history",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792490462485,
+      "tag": "0008_daily_results",
+      "breakpoints": true
     }
   ]
 }

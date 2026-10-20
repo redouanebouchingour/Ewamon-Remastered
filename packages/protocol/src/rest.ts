@@ -31,6 +31,7 @@ import {
   ArenaSeatRes,
   ArenaStatusBody,
   ArenaTrainingReq,
+  DailyRes,
 } from './arena';
 
 // ---- primitives ----------------------------------------------------------------------------------------
@@ -165,8 +166,8 @@ export type GuildView = z.infer<typeof GuildViewSchema>;
 export const GuildMemberViewSchema = z.object({ playerId: Uuid, username: Username, role: z.enum(GUILD_ROLES), joinedAt: IsoDate });
 export type GuildMemberView = z.infer<typeof GuildMemberViewSchema>;
 
-/** Phase D14 adds `towerStreak` (best battle tower streak; only players with one). */
-export const LEADERBOARD_MODES = ['rating', 'dex', 'trainerLevel', 'towerStreak'] as const;
+/** Phase D14 adds `towerStreak` (best battle tower streak; only players with one); the daily challenge adds `daily` (today's best wins, fewest turns first). */
+export const LEADERBOARD_MODES = ['rating', 'dex', 'trainerLevel', 'towerStreak', 'daily'] as const;
 /** TODO(spec): `LeaderboardRow` has no field list in the spec; these are the columns §30.6.3 sorts on plus the showcase-card fields. */
 export const LeaderboardRowSchema = z.object({
   rank: z.number().int().min(1),
@@ -182,6 +183,9 @@ export const LeaderboardRowSchema = z.object({
   /** Phase D14: battle tower streak — best ever and the run in progress (0 / 0 for a player who never ran it) */
   towerBest: z.number().int().min(0).optional(),
   towerCurrent: z.number().int().min(0).optional(),
+  /** the daily challenge (`mode=daily`): today's best win in turns and its per-turn marks */
+  dailyTurns: z.number().int().min(1).optional(),
+  dailyMarks: z.string().max(200).optional(),
 });
 export type LeaderboardRow = z.infer<typeof LeaderboardRowSchema>;
 
@@ -650,6 +654,9 @@ export const ROUTES = {
   arenaInvite: route({ method: 'POST', path: '/arena/invite', auth: 'bearer', request: ArenaInviteReq, response: ArenaInviteRes, limit: 'friendReq' }),
   arenaInviteReply: route({ method: 'POST', path: '/arena/invite/reply', auth: 'bearer', request: ArenaInviteReplyReq, response: ArenaInviteReplyRes }),
   arenaRejoin: route({ method: 'POST', path: '/arena/rejoin', auth: 'bearer', request: Nothing, response: ArenaSeatRes }),
+  // the daily challenge (arena.ts): today's puzzle and best, and the start (an arena seat)
+  daily: route({ method: 'GET', path: '/daily', auth: 'bearer', response: DailyRes }),
+  dailyStart: route({ method: 'POST', path: '/daily/start', auth: 'bearer', request: Nothing, response: ArenaSeatRes }),
   adminStats: route({ method: 'GET', path: '/admin/stats', auth: 'admin', response: AdminStatsRes }),
   adminPlayers: route({ method: 'GET', path: '/admin/players', auth: 'admin', query: AdminPlayersQuery, response: AdminPlayersRes }),
   adminMetrics: route({ method: 'GET', path: '/admin/metrics', auth: 'admin', response: ProcessMetricsSchema }),

@@ -7,7 +7,8 @@
  * Broadcast cards, one per mode: Standard, Level 50, Ranked (rating / peak / matches; the rating window while queued),
  * Weekly Cup (this week's cup, time left, the party checked client-side with content `cupRefusal` — the server's rule —
  * and why it is locked), Training (rules × difficulty → straight into the arena) and Challenge a friend (online
- * friends, rules, the outgoing invite's fate). One queue at a time: while queued the other starts wait, the queued card
+ * friends, rules, the outgoing invite's fate) and the daily challenge (today's two teams, par, your best and its strip,
+ * Copy result, Play). One queue at a time: while queued the other starts wait, the queued card
  * carries the elapsed time and Leave queue; the player may close the screen and keep walking (the top bar's queue chip
  * shows it; a match moves them automatically).
  */
@@ -18,7 +19,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { ARENA_DIFFICULTIES, ARENA_KIND_LABELS, ARENA_LEVEL, ARENA_RULES, rankedWindow } from '@ewa/protocol';
 import type { ArenaDifficulty, ArenaMode, ArenaRules, FriendView } from '@ewa/protocol';
 import type { pvpLoader } from '../app/loaders';
-import { inviteFriend, leaveArenaQueue, queueArena, startTraining } from '../app/arena';
+import { copyDailyResult, inviteFriend, leaveArenaQueue, queueArena, startDaily, startTraining } from '../app/arena';
 import { DIFFICULTY_LABELS, RULES_LABELS, arenaBlockReason, cupLockReason, timeLeft, useArenaStore } from '../state/arena';
 import { formatElapsed } from '../state/ranked';
 import { useSessionStore } from '../state/session';
@@ -116,7 +117,7 @@ export function PvpScreen() {
 }
 
 function PvpBody({ friends, onClose }: { readonly friends: readonly FriendView[]; readonly onClose: () => void }) {
-  const arena = useArenaStore(useShallow((st) => ({ info: st.info, status: st.status, queuedAt: st.queuedAt, busy: st.busy, inArena: st.inArena, outgoing: st.outgoing })));
+  const arena = useArenaStore(useShallow((st) => ({ info: st.info, status: st.status, queuedAt: st.queuedAt, busy: st.busy, inArena: st.inArena, outgoing: st.outgoing, daily: st.daily })));
   const party = useSessionStore((st) => st.inventory?.party ?? NO_PARTY);
   const sessionRating = useSessionStore((st) => st.progression?.rating ?? null);
   const inBattle = useUiStore((st) => st.battle !== null);
@@ -240,6 +241,51 @@ function PvpBody({ friends, onClose }: { readonly friends: readonly FriendView[]
             )}
             {queueAction('cup', cupWhy)}
           </Card>
+
+          {arena.daily !== null && (
+            <Card title={`${ARENA_KIND_LABELS.daily} #${arena.daily.number}`} level={arena.daily.team[0]?.level ?? null} testId="pvp-mode-daily">
+              <p className={s.blurb}>The same puzzle for everyone today: this team against {arena.daily.foeName}, fewest turns wins.</p>
+              <div className={s.dailyTeams} aria-label="Today's teams">
+                <span className={s.partyRow} aria-label="Your team">
+                  {arena.daily.team.map((c, i) => (
+                    <CreatureSprite key={`${c.speciesId}:${i}`} speciesId={c.speciesId} size="sm" />
+                  ))}
+                </span>
+                <span className={s.dailyVs}>vs</span>
+                <span className={s.partyRow} aria-label={`${arena.daily.foeName}'s team`}>
+                  {arena.daily.foe.map((c, i) => (
+                    <CreatureSprite key={`${c.speciesId}:${i}`} speciesId={c.speciesId} size="sm" />
+                  ))}
+                </span>
+              </div>
+              <p className={s.meta}>
+                {arena.daily.par !== null && (
+                  <>
+                    Par <b className={s.metaValue}>{arena.daily.par}</b> ·{' '}
+                  </>
+                )}
+                Your best <b className={s.metaValue}>{arena.daily.best === null ? 'not won yet' : `${arena.daily.best.turns} turns`}</b> · Tries{' '}
+                <b className={s.metaValue}>{arena.daily.attempts}</b> · Won by <b className={s.metaValue}>{arena.daily.winners}</b> · New in{' '}
+                <b className={s.metaValue}>{timeLeft(arena.daily.endsAt, now)}</b>
+              </p>
+              {arena.daily.best !== null && (
+                <p className={s.dailyStrip} aria-label="Your best, turn by turn" data-testid="pvp-daily-strip">
+                  {arena.daily.best.marks}
+                </p>
+              )}
+              <div className={s.actions}>
+                <Button variant="primary" icon="sword" disabled={startBlock !== null} busy={arena.busy} onClick={() => void startDaily()}>
+                  {arena.daily.attempts === 0 ? "Play today's daily" : 'Try again'}
+                </Button>
+                {arena.daily.best !== null && (
+                  <Button variant="ghost" icon="link" onClick={() => void copyDailyResult(arena.daily!)}>
+                    Copy result
+                  </Button>
+                )}
+                {startBlock !== null && <span className={s.why}>{startBlock}</span>}
+              </div>
+            </Card>
+          )}
 
           <Card title={ARENA_KIND_LABELS.training} level={trainRules === 'level50' ? ARENA_LEVEL : null} testId="pvp-mode-training">
             <p className={s.blurb}>A battle against the AI, starting at once. Nothing is at stake.</p>

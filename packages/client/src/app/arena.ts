@@ -9,7 +9,7 @@
  * card; panels close (the arena battle owns the screen).
  */
 import { ARENA_KIND_LABELS } from '@ewa/protocol';
-import type { ArenaDifficulty, ArenaMode, ArenaRules, ArenaStatus, SeatReservation, ServerMessage } from '@ewa/protocol';
+import type { ArenaDifficulty, ArenaKind, ArenaMode, ArenaRules, ArenaStatus, DailyInfo, SeatReservation, ServerMessage } from '@ewa/protocol';
 import { ApiFailure, apiFetch } from '../net/api';
 import { describeError } from '../net/errors';
 import type { ArenaRoom, WorldSession } from '../net/WorldSession';
@@ -109,6 +109,41 @@ export async function inviteFriend(username: string, rules: ArenaRules): Promise
   toast('info', `Invite sent to ${username}.`);
 }
 
+/** GET /daily into the arena store (today's puzzle and the player's best). */
+export async function loadDaily(signal?: AbortSignal): Promise<void> {
+  const res = await apiFetch('daily', signal === undefined ? {} : { signal });
+  useArenaStore.getState().setDaily(res);
+}
+
+/** Today's daily challenge: straight into its arena (the team is the day's, not the party). */
+export async function startDaily(): Promise<void> {
+  const res = await guarded(() => apiFetch('dailyStart', { body: {} }));
+  if (res === null) return;
+  useArenaStore.getState().setLast({ kind: 'daily' });
+  await goToArena(res.seat);
+}
+
+/**
+ * The daily result to paste anywhere: the number, the turns against par and the spoiler-free strip (K a foe fainted,
+ * L one of yours, X both, . neither), no team names.
+ */
+export function dailyShareText(d: DailyInfo): string | null {
+  if (d.best === null) return null;
+  const par = d.par !== null ? ` (par ${d.par})` : '';
+  return `Ewamon Daily #${d.number}: won in ${d.best.turns} ${d.best.turns === 1 ? 'turn' : 'turns'}${par}\n${d.best.marks}`;
+}
+
+export async function copyDailyResult(d: DailyInfo): Promise<void> {
+  const text = dailyShareText(d);
+  if (text === null) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('info', 'Daily result copied.');
+  } catch (_e) {
+    toast('warn', `Copy failed. Your result: ${text.replace('\n', ' ')}`);
+  }
+}
+
 /** The invitee's answer; an accept moves them into the arena. */
 export async function replyInvite(accept: boolean): Promise<void> {
   const inv = useArenaStore.getState().invite;
@@ -133,11 +168,12 @@ export async function backToWorld(ws: Pick<WorldSession, 'returnToWorld'> = getW
   await ws.returnToWorld().catch((e: unknown) => console.error('arena return failed', e));
 }
 
-/** The arena's "Queue again" (same mode) / "Rematch" (same training) / a friend battle's "Invite again". */
+/** The arena's "Queue again" (same mode) / "Rematch" (same training) / "Try again" (the daily) / a friend battle's "Invite again". */
 export async function playAgain(last: ArenaLast | null = useArenaStore.getState().last): Promise<void> {
   if (last === null) return;
   if (last.kind === 'queue') await queueArena(last.mode);
   else if (last.kind === 'training') await startTraining(last.rules, last.difficulty);
+  else if (last.kind === 'daily') await startDaily();
   else await inviteFriend(last.username, last.rules);
 }
 
@@ -264,7 +300,7 @@ export function installArenaFlow(ws: Pick<WorldSession, 'onArena' | 'returnToWor
 }
 
 /** "Level 50 Ranked" style label for a kind (+ its level). */
-export function arenaTitle(kind: ArenaMode | 'friend' | 'training', level: number | null): string {
+export function arenaTitle(kind: ArenaKind, level: number | null): string {
   const label = ARENA_KIND_LABELS[kind];
   return level !== null && kind !== 'level50' ? `${label} · Level ${level}` : label;
 }

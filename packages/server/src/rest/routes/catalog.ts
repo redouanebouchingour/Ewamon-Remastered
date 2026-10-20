@@ -30,6 +30,7 @@ import type { ArenaKind } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
 import { newCreature } from '../../game/creatures';
 import { toInstance } from '../../rooms/battleSession';
+import { dayKey } from '../../liveops/schedule';
 import { HttpError, iso, out, presenceZone, rateLimit, refuseInBattle, requireAuth } from '../http';
 import type { RestDeps } from '../http';
 
@@ -278,9 +279,13 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
     const rows = await repos.db.transaction(async (tx) => {
       // §30.6.3: rating (ties peak, username) / dex caught count / trainer exp; banned excluded in SQL. Phase D14
       // `towerStreak`: best battle tower streak desc (then current, then username), players with a best > 0 only
+      // the daily challenge `daily`: today's winners (UTC), fewest turns first, then the earlier win
       const board = q.mode === 'towerStreak' ? await repos.streaks.leaderboard(tx, q.page, LEADERBOARD_PAGE) : null;
+      const daily = q.mode === 'daily' ? await repos.daily.leaderboard(tx, dayKey(deps.clock()), q.page, LEADERBOARD_PAGE) : null;
+      const dailyOf = new Map((daily ?? []).map((r) => [r.player.id, r]));
       const mode = q.mode;
-      const players = mode === 'towerStreak' ? (board ?? []).map((r) => r.player) : await repos.players.leaderboard(tx, mode, q.page, LEADERBOARD_PAGE);
+      const players =
+        mode === 'towerStreak' ? (board ?? []).map((r) => r.player) : mode === 'daily' ? (daily ?? []).map((r) => r.player) : await repos.players.leaderboard(tx, mode, q.page, LEADERBOARD_PAGE);
       const streaks = board !== null ? new Map(board.map((r) => [r.player.id, { current: r.current, best: r.best }])) : await repos.streaks.byPlayers(tx, players.map((p) => p.id));
       const out = [];
       for (let i = 0; i < players.length; i++) {
@@ -300,6 +305,7 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
           guildTag: guild?.tag ?? null,
           towerBest: streak?.best ?? 0,
           towerCurrent: streak?.current ?? 0,
+          ...(dailyOf.has(p.id) ? { dailyTurns: dailyOf.get(p.id)!.turns, dailyMarks: dailyOf.get(p.id)!.marks } : {}),
         });
       }
       return out;

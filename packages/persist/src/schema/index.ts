@@ -13,3 +13,4 @@ export * from './history';
 export * from './auth';
 export * from './audit';
 export * from './streaks';
+export * from './daily';

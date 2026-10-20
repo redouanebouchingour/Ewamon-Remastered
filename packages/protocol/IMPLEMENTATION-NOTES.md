@@ -159,3 +159,9 @@ installed library that future readers should not have to re-derive. The spec its
 
 - `creatureHistory` (`GET /creature/:id/history`, bearer): `CreatureHistoryRes { originalTrainer, events }`, the
   events a discriminated union on `kind` (`traded` / `sold` / `gift` share one shape through a `z.enum`). 75 routes.
+
+## The daily challenge (2026-10-20)
+
+- `ARENA_KINDS` gains `daily` (label "Daily challenge", `arenaLevel('daily') = ARENA_LEVEL`). `DailyRes` (`GET /daily`)
+  and `POST /daily/start` (→ `ArenaSeatRes`); `LEADERBOARD_MODES` gains `daily`, and `LeaderboardRow` the optional
+  `dailyTurns` / `dailyMarks`. 77 routes. `DAILY_FIRST_DAY` is #1.

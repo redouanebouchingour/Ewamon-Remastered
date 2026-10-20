@@ -4,7 +4,7 @@
  * trainer (gym leader, Warden, Champion), else a zone trainer (route trainers and the story trainers a beat fights,
  * e.g. Sable), else a gym-hall trainer. Nothing here decides game truth.
  */
-import { ARENA_TRAINING, LEAGUE, TOWER, allZones, interiorTrainers } from '@ewa/content';
+import { ARENA_DAILY, ARENA_TRAINING, LEAGUE, TOWER, allZones, interiorTrainers } from '@ewa/content';
 import type { LeagueTrainer } from '@ewa/content';
 import type { BattleState, TypeName } from '@ewa/core';
 import { species } from '../data/content';
@@ -56,6 +56,8 @@ export function foeIdentity(trainerId: string, leadSpecies: string | null = null
   for (const [difficulty, t] of Object.entries(ARENA_TRAINING) as [keyof typeof ARENA_TRAINING, (typeof ARENA_TRAINING)[keyof typeof ARENA_TRAINING]][]) {
     if (t.trainerId === trainerId) return { id: trainerId, name: t.name, title: 'Arena training', type: lead, look: TRAINING_LOOKS[difficulty], league: null };
   }
+  // the daily challenge's AI side
+  if (trainerId === ARENA_DAILY.trainerId) return { id: trainerId, name: ARENA_DAILY.name, title: 'Daily challenge', type: lead, look: 'suit_male', league: null };
   const row = trainerRows().get(trainerId);
   if (row !== undefined) return { id: trainerId, name: row.name, title: null, type: lead, look: row.look, league: null };
   const tail = trainerId.slice(trainerId.lastIndexOf('.') + 1).replace(/_/g, ' ');

@@ -6,6 +6,8 @@ import type { AuthRepo } from './auth';
 import { battlePassRepo } from './battlePass';
 import type { BattlePassRepo } from './battlePass';
 import { creatureRepo } from './creatures';
+import { dailyRepo } from './daily';
+import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
 import { historyRepo } from './history';
 import type { HistoryRepo } from './history';
@@ -35,6 +37,8 @@ export interface Repos {
   readonly audit: AuditRepo;
   /** Phase D14: battle tower streaks (migration 0004) */
   readonly streaks: StreakRepo;
+  /** the daily challenge (migration 0008) */
+  readonly daily: DailyRepo;
 }
 
 /**
@@ -56,6 +60,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     auth: authRepo,
     audit: auditRepo,
     streaks: streakRepo,
+    daily: dailyRepo,
   };
 }
 

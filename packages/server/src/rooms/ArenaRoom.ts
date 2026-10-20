@@ -297,7 +297,7 @@ export class ArenaRoom extends Room<{ state: ArenaState; metadata: ArenaMeta; cl
   private async start(): Promise<void> {
     const m = this.match;
     const players = m.players.map((p) => ({ playerId: p.playerId, sessionId: this.owner.get(p.playerId) ?? '' }));
-    const res = await this.battles.startArena({
+    const res = m.daily !== undefined ? await this.battles.startDaily(players[0]!, m.daily.dayKey) : await this.battles.startArena({
       kind: m.kind,
       level: m.level,
       players,

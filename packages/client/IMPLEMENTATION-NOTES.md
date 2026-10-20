@@ -2089,3 +2089,11 @@ every KO turn shows the lunge, the hit and the faint before the next creature en
   renders "Original trainer" and the events newest first; `eventLine` turns each event into its sentence (zone,
   badge and species names from content). Party's band gets it as a sixth tool card, Box's column after Identity, a
   listing above its bid history. The badge / Champion / legendary lines are paper bold: the accent means selected.
+
+## The daily challenge (2026-10-20)
+
+- `pvpLoader` also loads `GET /daily` (optional: a server without it shows no card) into `useArenaStore.daily`. The PvP
+  card shows both teams, par, the best and its strip; Play / Try again → `startDaily()` (`ArenaLast { kind: 'daily' }`,
+  so the arena's again action is "Try again"). `dailyShareText` is the clipboard text: number, turns, par and the strip,
+  no team names. The arena result card refetches `GET /daily` (`DailyResult`) so the try just played counts.
+- `foeIdentity('arena.daily')`: "Daily Rival", title "Daily challenge", look `suit_male`. Rankings: a Daily tab.

@@ -118,3 +118,6 @@ export const ARENA_TRAINING: Readonly<Record<'easy' | 'normal' | 'hard', { reado
   normal: { name: 'Sparring Partner', trainerId: 'arena.training.normal', pool: TOWER.pools[1]! },
   hard: { name: 'Sparring Ace', trainerId: 'arena.training.hard', pool: TOWER.pools[TOWER.pools.length - 1]! },
 });
+
+/** The daily challenge's AI side (the server's game/daily.ts builds its team; the client names and dresses it). */
+export const ARENA_DAILY: { readonly name: string; readonly trainerId: string } = Object.freeze({ name: 'Daily Rival', trainerId: 'arena.daily' });

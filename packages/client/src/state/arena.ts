@@ -7,7 +7,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { ARENA_KIND_LABELS, ARENA_LEVEL } from '@ewa/protocol';
-import type { ArenaCupView, ArenaDifficulty, ArenaKind, ArenaMode, ArenaRules, ArenaStatus, ServerMessageOf } from '@ewa/protocol';
+import type { ArenaCupView, ArenaDifficulty, ArenaKind, ArenaMode, ArenaRules, ArenaStatus, DailyInfo, ServerMessageOf } from '@ewa/protocol';
 import { CUP_PARTY_SIZE, cupRefusal, weeklyCup } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 
@@ -28,7 +28,9 @@ export type ArenaMatch = Omit<ServerMessageOf<'arenaState'>, 'type'>;
 export type ArenaLast =
   | { readonly kind: 'queue'; readonly mode: ArenaMode }
   | { readonly kind: 'training'; readonly rules: ArenaRules; readonly difficulty: ArenaDifficulty }
-  | { readonly kind: 'friend'; readonly username: string; readonly rules: ArenaRules };
+  | { readonly kind: 'friend'; readonly username: string; readonly rules: ArenaRules }
+  /** the daily challenge (Try again starts today's again) */
+  | { readonly kind: 'daily' };
 
 /** The arena battle's end as the player saw it (`battleEnd` in the arena). */
 export interface ArenaOutcome {
@@ -87,6 +89,8 @@ export interface ArenaUi {
   readonly battleId: string | null;
   /** the opponents' bodies by player id (GET /players/:name, for the foe trainer in the arena) */
   readonly bodies: Readonly<Record<string, string>>;
+  /** the daily challenge (GET /daily): today's puzzle and the player's best; null before it loaded */
+  readonly daily: DailyInfo | null;
   setInfo(i: ArenaInfo, status?: ArenaStatus, now?: number): void;
   applyStatus(s: ArenaStatus, now?: number): void;
   setInArena(on: boolean): void;
@@ -99,6 +103,7 @@ export interface ArenaUi {
   setBusy(b: boolean): void;
   setBody(playerId: string, body: string): void;
   setBattleId(id: string | null): void;
+  setDaily(d: DailyInfo | null): void;
   reset(): void;
 }
 
@@ -116,6 +121,7 @@ const INITIAL = {
   busy: false,
   bodies: {},
   battleId: null,
+  daily: null,
 } as const;
 
 export const useArenaStore = create<ArenaUi>()(
@@ -138,6 +144,7 @@ export const useArenaStore = create<ArenaUi>()(
     setMatchFound: (matchFound) => set({ matchFound }),
     setBusy: (busy) => set({ busy }),
     setBody: (playerId, body) => set({ bodies: { ...get().bodies, [playerId]: body } }),
+    setDaily: (daily) => set({ daily }),
     setBattleId: (battleId) => set({ battleId }),
     reset: () => set({ ...INITIAL }),
   })),

@@ -22,7 +22,8 @@ vi.mock('../src/net/api', async (importOriginal) => {
 });
 
 import { ApiFailure, apiFetch } from '../src/net/api';
-import { CANCEL_RETURN_MS, routeArenaMessage } from '../src/app/arena';
+import { CANCEL_RETURN_MS, dailyShareText, routeArenaMessage } from '../src/app/arena';
+import { foeIdentity } from '../src/battle/foe';
 import type { ArenaSession } from '../src/app/arena';
 import { routes } from '../src/app/router';
 import { createWorldSession, __setWorldSessionForTests } from '../src/net/WorldSession';
@@ -357,6 +358,53 @@ describe('/play/pvp', () => {
     const training = await screen.findByTestId('pvp-mode-training');
     expect((within(training).getByRole('button', { name: /Start training/ }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByTestId('pvpscreen').textContent).toContain('You need a creature in your party.');
+  });
+});
+
+describe('the daily challenge', () => {
+  const c = (speciesId: string) => ({ speciesId, level: 50, moves: ['tackle'], ability: 'Overgrow' });
+  const DAILY = {
+    dayKey: '2026-10-20', number: 1, endsAt: new Date(Date.now() + 3_600_000).toISOString(),
+    team: [c('bramblecub'), c('glimfin'), c('cindercap')], foe: [c('mossling'), c('glimp'), c('bramblecub')],
+    foeName: 'Daily Rival', par: 7, best: null, attempts: 0, winners: 12,
+  };
+
+  it('the card shows both teams, par and the winners; Play starts the daily in the arena', async () => {
+    const ws = { enterArena: vi.fn(async () => undefined) } as unknown as WorldSession;
+    __setWorldSessionForTests(ws);
+    const s = seat('arena-d', 'arena');
+    api.mockImplementation(async (key: string) => {
+      if (key === 'dailyStart') return { seat: s };
+      throw new Error(key);
+    });
+    useArenaStore.getState().setDaily(DAILY);
+    mountPvp();
+    const card = await screen.findByTestId('pvp-mode-daily');
+    expect(card.textContent).toContain('Daily challenge #1');
+    expect(card.textContent).toContain('Par 7');
+    expect(card.textContent).toContain('Won by 12');
+    expect(within(card).queryByRole('button', { name: /Copy result/ })).toBeNull();
+    await act(async () => fireEvent.click(within(card).getByRole('button', { name: /Play today/ })));
+    expect(api).toHaveBeenCalledWith('dailyStart', { body: {} });
+    expect(ws.enterArena).toHaveBeenCalledWith(s);
+    expect(useArenaStore.getState().last).toEqual({ kind: 'daily' });
+  });
+
+  it('a best shows its strip and Try again; the share text has the number, turns, par and strip only', async () => {
+    const won = { ...DAILY, best: { turns: 5, marks: '.K.KK', battleId: '00000000-0000-4000-8000-000000000001' }, attempts: 3 };
+    useArenaStore.getState().setDaily(won);
+    mountPvp();
+    const card = await screen.findByTestId('pvp-mode-daily');
+    expect(within(card).getByTestId('pvp-daily-strip').textContent).toBe('.K.KK');
+    expect(within(card).getByRole('button', { name: /Try again/ })).toBeTruthy();
+    expect(within(card).getByRole('button', { name: /Copy result/ })).toBeTruthy();
+    expect(dailyShareText(won)).toBe('Ewamon Daily #1: won in 5 turns (par 7)\n.K.KK');
+    expect(dailyShareText(DAILY)).toBeNull();
+    expect(dailyShareText({ ...won, par: null, best: { ...won.best, turns: 1, marks: 'K' } })).toBe('Ewamon Daily #1: won in 1 turn\nK');
+  });
+
+  it("the daily's AI side is named and dressed", () => {
+    expect(foeIdentity('arena.daily')).toMatchObject({ name: 'Daily Rival', title: 'Daily challenge', look: 'suit_male' });
   });
 });
 

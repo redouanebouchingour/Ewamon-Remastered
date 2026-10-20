@@ -18,9 +18,12 @@ import {
   ArenaSeatRes,
   ArenaStatusBody,
   ArenaTrainingReq,
+  DailyRes,
 } from '@ewa/protocol';
 import type { ArenaKind, ArenaSeatView, ArenaStatus } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
+import { DAILY_TRAINER, dailyEndsAt, dailyNumber, dailyPuzzle } from '../../game/daily';
+import { dayKey } from '../../liveops/schedule';
 import { arenaRefusal, cupView, idleStatus, matchedStatus, queuedStatus, statusMsg } from '../../rooms/arenaLobby';
 import { HttpError, out, rateLimit, requireAuth } from '../http';
 import type { RestDeps } from '../http';
@@ -96,6 +99,37 @@ export function registerArenaRoutes(app: FastifyInstance, deps: RestDeps): void 
     await requireFree(id);
     requireParty(party, 'training');
     const seat = await lobby.training({ playerId: id, name: row.username, rating: row.rating }, body.rules, body.difficulty);
+    if (seat === null) throw new HttpError(503, 'arenaUnavailable');
+    return out(deps, ArenaSeatRes, { seat: { ...seat } });
+  });
+
+  /** The daily challenge: today's (UTC) puzzle, the player's best and tries, and how many have won it. */
+  app.get('/daily', bearer, async (req) => {
+    const id = req.user.sub;
+    const day = dayKey(clock());
+    const { team, foe, par } = dailyPuzzle(day, deps.content);
+    const view = (c: (typeof team)[number]) => ({ speciesId: c.speciesId, level: c.level, moves: c.moves.map((m) => m.id), ability: c.ability });
+    const r = await repos.db.transaction(async (tx) => ({ mine: await repos.daily.get(tx, id, day), winners: await repos.daily.winners(tx, day) }));
+    return out(deps, DailyRes, {
+      dayKey: day,
+      number: dailyNumber(day),
+      endsAt: dailyEndsAt(day),
+      team: team.map(view),
+      foe: foe.map(view),
+      foeName: DAILY_TRAINER.name,
+      par,
+      best: r.mine.best,
+      attempts: r.mine.attempts,
+      winners: r.winners,
+    });
+  });
+
+  /** Today's daily starts at once in an arena room (any party may play: the team is the day's, not the player's). */
+  app.post('/daily/start', bearer, async (req) => {
+    const id = req.user.sub;
+    const { row } = await me(id);
+    await requireFree(id);
+    const seat = await lobby.daily({ playerId: id, name: row.username, rating: row.rating }, dayKey(clock()));
     if (seat === null) throw new HttpError(503, 'arenaUnavailable');
     return out(deps, ArenaSeatRes, { seat: { ...seat } });
   });
