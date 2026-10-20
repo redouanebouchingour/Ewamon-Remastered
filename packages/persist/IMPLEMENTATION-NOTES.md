@@ -239,3 +239,9 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
 
 - `world_honor (season, zone_id, light, shadow)`; `worldHonorRepo.add` is one upsert adding to both columns, so turns
   in different rooms never lose each other's points.
+
+## Migration 0013_season_factions (2026-10-20)
+
+- `season_factions`: one row per (season, player). `join` inserts once and reads back the side held, so a second
+  request for the other side cannot switch it. Side totals are a `group by` over the rows (no separate counter to
+  keep in step).

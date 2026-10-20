@@ -2145,3 +2145,9 @@ every KO turn shows the lunge, the hit and the faint before the next creature en
 - World3D (shared file, small patch): listens to `shadow` (the director dims outdoors; a toast on arriving, rising
   or lifting) and adds `HOLLOWED_FLAG` to `flags()` at the highest level, which `npcDialogue` reads for Vesperveil's
   people. The World map reads `GET /world/shadow` once when opened.
+
+## Majin vs Tenjin seasons (2026-10-20)
+
+- `/play/factions` (More menu, and a link on the Rating board's season panel). The tug-of-war widths are flex grows
+  passed through `cssVars`. In Solenne, World3D (small patch) asks `scene/factionSky.ts` once a season and the
+  director renders the mood outdoors.

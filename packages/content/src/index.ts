@@ -442,3 +442,5 @@ export {
   shadowNotice,
 } from './data/worldHonor';
 export type { Deeds, ShadowLevel } from './data/worldHonor';
+export { FACTIONS, FACTION_LABELS, FACTION_POINTS, FACTION_SKY_ZONE, chronicleLine, factionWinner } from './data/factions';
+export type { Faction } from './data/factions';

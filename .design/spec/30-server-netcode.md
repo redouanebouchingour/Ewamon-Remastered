@@ -616,6 +616,8 @@ in `waiting` / `fighting` (a reload rejoins through `POST /arena/rejoin`), and t
 
 **Ranked seasons <!-- added 2026-10-20 -->.** Four weeks from Monday 2026-10-05 (content `seasons.ts`), the last seven days Finals week. `jobs/seasonRollover.ts` runs at boot and every 60 s (env `SEASON_ROLLOVER`, 'off' in testEnv): every ended season after the last closed one is closed (`seasons.close`; its row is the lock, so processes never close one twice): the final standings are written and every rating moves halfway back to 1000; after an outage that missed several closes only the last resets. Ratings are not otherwise touched; `peak_rating` keeps the all-time peak.
 
+**Majin vs Tenjin seasons <!-- added 2026-10-20 -->.** A trainer takes a side for a season (`POST /factions/join`, content factions.ts); it holds until the season ends. Points go to the side of a trainer who has one, in the transaction of the deed: a ranked win 3 (the winner, in either ranked path of `persistTurn`), a rewarded raid clear 2 (each rewarded participant), a daily or weekly mission claimed 1 (`POST /quests/claim`). A season's winner is the side with more points (none on a tie); it holds the sky over Solenne all the next season (`GET /factions/sky`), and the Chronicle line of each closed season is derived from its totals (`chronicleLine`). No battle changes and nothing gates the story.
+
 ### 30.4.7 Raids
 
 ```ts

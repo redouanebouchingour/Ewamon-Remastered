@@ -57,6 +57,33 @@ export function shadowParams(level: number): ShadowParams {
   return { sunMul: 1 - 0.12 * l, envMul: 1 - 0.1 * l, fogMix: 0.14 * l, fogDensityMul: 1 + 0.2 * l };
 }
 
+/**
+ * Majin vs Tenjin seasons: the side that won the last season holds the sky over Solenne. Majin: a hazed red sky
+ * (turbidity up, less blue scatter) and a crimson haze; Tenjin: a clear gold sky (less turbidity) and a warm haze with
+ * a little more sky light. null: the sky as it is.
+ */
+export type SkyMood = 'majin' | 'tenjin';
+export interface SkyMoodParams {
+  readonly turbidityAdd: number;
+  readonly rayleighMul: number;
+  readonly fogTint: string | null;
+  readonly fogMix: number;
+  readonly envMul: number;
+  /** the hemisphere's sky colour (the fill every surface takes from above) moves this far to `skyTint` */
+  readonly skyTint: string | null;
+  readonly hemiMix: number;
+  /** the sun's colour (what lights the diorama most) moves this far to `skyTint` */
+  readonly sunMix: number;
+}
+const NO_MOOD: SkyMoodParams = Object.freeze({ turbidityAdd: 0, rayleighMul: 1, fogTint: null, fogMix: 0, envMul: 1, skyTint: null, hemiMix: 0, sunMix: 0 });
+const MOODS: Readonly<Record<SkyMood, SkyMoodParams>> = Object.freeze({
+  majin: Object.freeze({ turbidityAdd: 9, rayleighMul: 0.45, fogTint: '#7a2433', fogMix: 0.38, envMul: 0.92, skyTint: '#c0394f', hemiMix: 0.55, sunMix: 0.35 }),
+  tenjin: Object.freeze({ turbidityAdd: -1.5, rayleighMul: 0.7, fogTint: '#f0d79a', fogMix: 0.32, envMul: 1.08, skyTint: '#ffd27a', hemiMix: 0.5, sunMix: 0.3 }),
+});
+export function skyMoodParams(mood: SkyMood | null): SkyMoodParams {
+  return mood === null ? NO_MOOD : MOODS[mood];
+}
+
 export function weatherParams(w: WeatherKind): WeatherParams {
   return TABLE[w] ?? TABLE.none;
 }

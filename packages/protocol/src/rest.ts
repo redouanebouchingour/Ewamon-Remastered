@@ -654,6 +654,28 @@ export const ZoneShadowSchema = z.object({
 export type ZoneShadowView = z.infer<typeof ZoneShadowSchema>;
 export const WorldShadowRes = z.object({ season: z.number().int(), zones: z.array(ZoneShadowSchema).max(64) });
 
+/**
+ * Majin vs Tenjin seasons (content factions.ts): the season's two sides (points, members, best contributors), the
+ * caller's side and points (null before choosing), the side holding Solenne's sky (last season's winner) and the
+ * Chronicle of the latest closed seasons, newest first. POST /factions/join takes a side for the season; a trainer
+ * who already holds the other one gets 409 `alreadyJoined`.
+ */
+export const FactionSchema = z.enum(['majin', 'tenjin']);
+export const FactionContributorSchema = z.object({ username: Username, points: z.number().int().min(0) });
+export const FactionsRes = z.object({
+  season: z.number().int(),
+  endsAt: IsoDate,
+  mine: z.object({ side: FactionSchema, points: z.number().int().min(0) }).nullable(),
+  points: z.object({ majin: z.number().int().min(0), tenjin: z.number().int().min(0) }),
+  members: z.object({ majin: z.number().int().min(0), tenjin: z.number().int().min(0) }),
+  top: z.object({ majin: z.array(FactionContributorSchema).max(5), tenjin: z.array(FactionContributorSchema).max(5) }),
+  sky: FactionSchema.nullable(),
+  chronicle: z.array(z.object({ season: z.number().int().min(1), winner: FactionSchema.nullable(), line: z.string().max(400) })).max(6),
+});
+export type FactionsView = z.infer<typeof FactionsRes>;
+export const FactionJoinReq = z.object({ side: FactionSchema });
+export const FactionSkyRes = z.object({ sky: FactionSchema.nullable() });
+
 // ---- admin / health -----------------------------------------------------------------------------------------------------
 
 /** TODO(spec): `/admin/stats` has no listed body; these are the legacy counters carried over. */
@@ -797,6 +819,10 @@ export const ROUTES = {
   arenaLiveFeed: route({ method: 'GET', path: '/arena/live/:matchId', auth: 'bearer', params: LiveParams, response: LiveFeedRes }),
   // honor shapes the world: the zones under a shadow this season
   worldShadow: route({ method: 'GET', path: '/world/shadow', auth: 'bearer', response: WorldShadowRes }),
+  // Majin vs Tenjin seasons: the standings and the Chronicle, taking a side, the side holding Solenne's sky
+  factions: route({ method: 'GET', path: '/factions', auth: 'bearer', response: FactionsRes }),
+  factionJoin: route({ method: 'POST', path: '/factions/join', auth: 'bearer', request: FactionJoinReq, response: FactionsRes }),
+  factionSky: route({ method: 'GET', path: '/factions/sky', auth: 'bearer', response: FactionSkyRes }),
   dailyStart: route({ method: 'POST', path: '/daily/start', auth: 'bearer', request: Nothing, response: ArenaSeatRes }),
   adminStats: route({ method: 'GET', path: '/admin/stats', auth: 'admin', response: AdminStatsRes }),
   adminPlayers: route({ method: 'GET', path: '/admin/players', auth: 'admin', query: AdminPlayersQuery, response: AdminPlayersRes }),

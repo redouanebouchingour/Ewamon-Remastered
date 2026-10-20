@@ -1,15 +1,17 @@
 /**
  * Honor shapes the world: a zone's shadow level dims the sun and the sky light and thickens the fog towards violet, a
  * step per level (lighting/weather.ts `shadowParams`, DayCycle `setShadow`); level 0 writes exactly what it did before.
+ * Majin vs Tenjin seasons: the winning side's sky mood (`skyMoodParams`, DayCycle `setSkyMood`) hazes the sky red or
+ * clears it gold and tints the fog; null restores it exactly.
  */
 import { describe, expect, it } from 'vitest';
 import type { Vector3 } from 'three/webgpu';
 import { DayCycle } from '../src/lighting/daycycle.js';
 import type { DayCycleTargets } from '../src/lighting/daycycle.js';
-import { shadowParams } from '../src/lighting/weather.js';
+import { shadowParams, skyMoodParams } from '../src/lighting/weather.js';
 
 function rig() {
-  const out = { sun: 0, hemi: 0, env: 0, fogDensity: 0, fog: [0, 0, 0] as number[] };
+  const out = { sun: 0, hemi: 0, env: 0, fogDensity: 0, fog: [0, 0, 0] as number[], mood: [0, 1] as number[] };
   const targets = {
     rig: {
       setFocus: () => undefined,
@@ -22,6 +24,9 @@ function rig() {
       },
     },
     sky: {
+      setMood: (t: number, r: number) => {
+        out.mood = [t, r];
+      },
       setCloudCoverage: () => undefined,
       setSunDirection: () => undefined,
       setEnvironmentIntensity: (v: number) => {
@@ -80,3 +85,27 @@ describe('the shadow over a zone', () => {
     expect(out).toEqual(clear);
   });
 });
+
+describe("the winning side's sky", () => {
+  it('Majin hazes the sky and reddens the fog; Tenjin clears it gold and lifts the sky light; null restores it', () => {
+    expect(skyMoodParams(null)).toEqual({ turbidityAdd: 0, rayleighMul: 1, fogTint: null, fogMix: 0, envMul: 1, skyTint: null, hemiMix: 0, sunMix: 0 });
+    const { day, out } = rig();
+    day.setTime(0.5);
+    day.update(16, 0.016, focus);
+    const clear = { ...out, fog: [...out.fog], mood: [...out.mood] };
+    day.setSkyMood('majin');
+    day.update(16, 0.016, focus);
+    expect(out.mood).toEqual([skyMoodParams('majin').turbidityAdd, skyMoodParams('majin').rayleighMul]);
+    expect(out.fog[0]! - out.fog[1]!).toBeGreaterThan(clear.fog[0]! - clear.fog[1]!);
+    expect(out.env).toBeLessThan(clear.env);
+    day.setSkyMood('tenjin');
+    day.update(16, 0.016, focus);
+    expect(out.env).toBeGreaterThan(clear.env);
+    // the gold haze: red pulls ahead of blue
+    expect(out.fog[0]! - out.fog[2]!).toBeGreaterThan(clear.fog[0]! - clear.fog[2]!);
+    day.setSkyMood(null);
+    day.update(16, 0.016, focus);
+    expect(out).toEqual({ ...clear, mood: [0, 1] });
+  });
+});
+

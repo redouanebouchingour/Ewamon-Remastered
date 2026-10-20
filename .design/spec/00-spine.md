@@ -1692,6 +1692,9 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /arena/live` <!-- added 2026-10-20: spectator mode --> | - | `LiveListRes { matches: { matchId, kind, finals, players: [{ name, rating }, { name, rating }], turn, startedAt }[] }` (≤ 50): the arena's queued two-player matches being fought (never a friend battle, training or the daily), League Finals first, then the highest rated pairs | bearer |
 | `GET /arena/live/:matchId` <!-- added 2026-10-20 --> | - | `LiveFeedRes`: the match row plus `replay { format: 'pvp', seat: 0, labels, seed, start, actions, digest }` (anonymised like a shared replay, a turn behind the players: `createBattle` + `resolveTurn` over `actions` ends on `digest`) and `outcome` (null while it goes on; the finished fight stays 3 min); 404 when there is none | bearer |
 | `GET /world/shadow` <!-- added 2026-10-20: honor shapes the world --> | - | `WorldShadowRes { season, zones: { zoneId, level: 1..4, light, shadow }[] }`: the zones a shadow lies over this season and the tally behind each; a zone not listed is clear | bearer |
+| `GET /factions` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | - | `FactionsRes { season, endsAt, mine: { side, points } \| null, points: { majin, tenjin }, members: { majin, tenjin }, top: { majin, tenjin }: { username, points }[] (≤ 5, banned left out), sky: side \| null, chronicle: { season, winner \| null, line }[] (≤ 6, newest first) }`: the season's two sides, the caller's, the side holding Solenne's sky (the last closed season's winner) | bearer |
+| `POST /factions/join` <!-- added 2026-10-20 --> | `{ side: 'majin' \| 'tenjin' }` | `FactionsRes`; the side holds for the season: the other side is 409 `alreadyJoined { side }`, the same side again is 200 | bearer |
+| `GET /factions/sky` <!-- added 2026-10-20 --> | - | `{ sky: side \| null }`: the last closed season's winner (null in season 1 or on a tie) | bearer |
 | `GET /weather/cities?q=` <!-- added 2026-10-20: weather from real life --> | - | `WeatherCitiesRes { cities: { name, region?, country, lat, lon }[] }` (≤ 5, Open-Meteo geocoding asked by the server, `region` its province or state, a place reading exactly like one already listed dropped, coordinates rounded to 0.1°); `q` 2..60 characters; 503 `weatherUnavailable` when the service does not answer; limit `weather` | bearer |
 | `POST /weather/city` <!-- added 2026-10-20 --> | `{ city: { name, region?, country, lat, lon } \| null }` | `RealWeatherRes { city \| null, kind \| null }`: the city stored on the player (coordinates rounded to 0.1°) and its weather now; null turns it off. The room holding the player hears it on `ewa:weather:<playerId>` | bearer |
 | `GET /weather` <!-- added 2026-10-20 --> | - | `RealWeatherRes`: the player's city and its cached weather | bearer |
@@ -2154,6 +2157,14 @@ export interface RunRepo {
 }
 /** Ranked seasons (migration 0011_seasons): `seasons (season int PK, closed_at)` (the row is the close's lock) and `season_results (season → seasons cascade, player_id → players cascade, rank, rating, wins, losses)`, PK (season, player_id). A season's participants are the players with a `battle_history` row carrying a `rating_delta` inside it; their record is that row's wins and losses; they rank by rating, then wins, then name. */
 /** Honor shapes the world (migration 0012_world_honor): `world_honor (season int, zone_id varchar(32), light int, shadow int)`, PK (season, zone_id). Added to in the battle turn's own transaction. */
+/** Majin vs Tenjin seasons (migration 0013_season_factions): `season_factions (season int, player_id → players cascade, side varchar(8), points int, joined_at)`, PK (season, player_id). */
+export interface FactionRepo {
+  join(tx: Tx, season: number, playerId: string, side: 'majin' | 'tenjin', now: Date): Promise<'majin' | 'tenjin'>;   // insert once; returns the side held
+  of(tx: Tx, season: number, playerId: string): Promise<{ side: 'majin' | 'tenjin'; points: number } | null>;
+  award(tx: Tx, season: number, playerId: string, points: number): Promise<'majin' | 'tenjin' | null>;   // nothing without a side
+  totals(tx: Tx, season: number): Promise<{ points: { majin: number; tenjin: number }; members: { majin: number; tenjin: number } }>;
+  top(tx: Tx, season: number, side: 'majin' | 'tenjin', limit: number): Promise<{ player: PlayerRow; points: number }[]>;   // banned left out
+}
 export interface WorldHonorRepo {
   add(tx: Tx, season: number, zoneId: string, light: number, shadow: number): Promise<void>;   // one upsert; nothing for an empty turn
   of(tx: Tx, season: number, zoneId: string): Promise<{ zoneId: string; light: number; shadow: number }>;   // zeros when nothing happened there

@@ -190,3 +190,7 @@ installed library that future readers should not have to re-derive. The spec its
 
 - `ZoneState.shadow` (uint8, after `harvestState`: the field order is the wire order, server and client move
   together); `worldShadow` route (89 routes).
+
+## Majin vs Tenjin seasons (2026-10-20)
+
+- `factions`, `factionJoin`, `factionSky` (92 routes); `FactionsRes` carries the Chronicle lines the server derived.

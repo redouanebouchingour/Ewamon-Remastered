@@ -84,6 +84,9 @@ export class SkyController {
   private target: RenderTarget | null = null;
   private harvest = 0;
   private weatherCoverage: number = SKY_INTACT.cloudCoverage;
+  /** Majin vs Tenjin seasons: the winning side's sky (added to the atmosphere after the harvest blend) */
+  private moodTurbidity = 0;
+  private moodRayleigh = 1;
   private envIntensity = 0.85;
   private norm = skyNormalization(priorSkyLuminance(70));
   private correction = 1;
@@ -145,6 +148,13 @@ export class SkyController {
     this.applyAtmosphere();
   }
 
+  /** Majin vs Tenjin seasons: the winning side's sky over Solenne (0 / 1 restore it). */
+  setMood(turbidityAdd: number, rayleighMul: number): void {
+    this.moodTurbidity = turbidityAdd;
+    this.moodRayleigh = rayleighMul;
+    this.applyAtmosphere();
+  }
+
   /** `scene.environmentIntensity` (§10.3.5 envIntensity × weather). */
   setEnvironmentIntensity(v: number): void {
     this.envIntensity = v;
@@ -162,8 +172,8 @@ export class SkyController {
     const rayleigh = lerp(SKY_INTACT.rayleigh, SKY_HARVESTED.rayleigh, h);
     const coverage = lerp(this.weatherCoverage, SKY_HARVESTED.cloudCoverage, h);
     for (const s of [this.sky, this.envSky]) {
-      s.turbidity.value = turbidity;
-      s.rayleigh.value = rayleigh;
+      s.turbidity.value = Math.max(1, turbidity + this.moodTurbidity);
+      s.rayleigh.value = rayleigh * this.moodRayleigh;
       s.cloudCoverage.value = coverage;
     }
   }

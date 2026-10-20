@@ -13,6 +13,8 @@ import { seasonRepo } from './seasons';
 import type { SeasonRepo } from './seasons';
 import { worldHonorRepo } from './worldHonor';
 import type { WorldHonorRepo } from './worldHonor';
+import { factionRepo } from './factions';
+import type { FactionRepo } from './factions';
 import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
 import { historyRepo } from './history';
@@ -51,6 +53,8 @@ export interface Repos {
   readonly seasons: SeasonRepo;
   /** honor shapes the world: each zone's season tally of light and shadow (migration 0012) */
   readonly worldHonor: WorldHonorRepo;
+  /** Majin vs Tenjin seasons: a trainer's side, its points, the totals (migration 0013) */
+  readonly factions: FactionRepo;
 }
 
 /**
@@ -76,6 +80,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     runs: runRepo,
     seasons: seasonRepo,
     worldHonor: worldHonorRepo,
+    factions: factionRepo,
   };
 }
 
@@ -99,3 +104,4 @@ export type { DexSummary, QuestObjectiveState } from './progress';
 export type { FriendLists } from './social';
 export type { SeasonStanding, SeasonWindow } from './seasons';
 export type { ZoneHonor } from './worldHonor';
+export type { FactionSide, FactionTotals } from './factions';

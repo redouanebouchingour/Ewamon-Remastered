@@ -40,7 +40,7 @@ import { advanceQuests } from '../game/quests';
 import type { QuestEvent } from '../game/quests';
 import type { SpawnRecord } from './spawnDirector';
 import { completeBeatInTx } from './storyBeats';
-import { deedsOf, seasonAt } from '@ewa/content';
+import { FACTION_POINTS, deedsOf, seasonAt } from '@ewa/content';
 
 export const TURN_DEADLINE_MS = 60_000;
 export const REPLACEMENT_DEADLINE_MS = 20_000;
@@ -1191,6 +1191,8 @@ export class BattleCoordinator {
                 trainerExpGain += TRAINER_EXP.pvpLoss;
               }
               if (ranked && ratingDelta !== null) d.rating = (await repos.players.applyRating(tx, pid, ratingDelta)).rating;
+              // Majin vs Tenjin seasons: a ranked win earns the winner's side its points
+              if (ranked && outcome.winner === side) await repos.factions.award(tx, seasonAt(nowMs).number, pid, FACTION_POINTS.rankedWin);
             }
           } else if (session.format === 'wild') {
             if (won) trainerExpGain += TRAINER_EXP.wildWin;
@@ -1257,6 +1259,8 @@ export class BattleCoordinator {
             }
             const r = await repos.players.applyRating(tx, pid, ratingDelta);
             d.rating = r.rating;
+            // Majin vs Tenjin seasons: a ranked win earns the winner's side its points
+            if (outcome.winner === side) await repos.factions.award(tx, seasonAt(nowMs).number, pid, FACTION_POINTS.rankedWin);
           }
           if (money !== 0) d.money = await repos.players.addMoney(tx, pid, money);
           // challenge modes: beating the Champion clears the run; nothing left that has not fallen fails it (the fallen

@@ -13,7 +13,7 @@ import { stepWetness } from '../materials/harvest.js';
 import { FOG_START_M, GROVE_FOG_DENSITY, type HeightFog } from './fog.js';
 import type { LightRig } from './rig.js';
 import type { SkyController } from './sky.js';
-import { SHADOW_FOG, shadowParams, weatherParams, type ShadowParams, type WeatherParams } from './weather.js';
+import { SHADOW_FOG, shadowParams, skyMoodParams, weatherParams, type ShadowParams, type SkyMood, type SkyMoodParams, type WeatherParams } from './weather.js';
 import { hexToSrgb, srgbToLinear } from './color.js';
 
 // ---- colour helpers (pure) --------------------------------------------------------------------------
@@ -338,6 +338,7 @@ export interface DayCycleTargets {
 const _lin: [number, number, number] = [1, 1, 1];
 const _sky: [number, number, number] = [1, 1, 1];
 const _ground: [number, number, number] = [0, 0, 0];
+const _sun: [number, number, number] = [1, 1, 1];
 
 /**
  * Owns time-of-day + weather state and writes it out each frame. The client calls `setTime` (from the
@@ -354,6 +355,10 @@ export class DayCycle {
   /** honor shapes the world: the zone's shadow level (0 = none) */
   private shadow: ShadowParams = shadowParams(0);
   private readonly shadowFog = hexToSrgb(SHADOW_FOG);
+  /** Majin vs Tenjin seasons: the sky mood (null = none) */
+  private mood: SkyMoodParams = skyMoodParams(null);
+  private moodFog: readonly [number, number, number] | null = null;
+  private moodSky: readonly [number, number, number] | null = null;
   private weatherKind: WeatherKind = 'none';
   private readonly day = createDaySample();
   private readonly dir = createDirectionalState();
@@ -392,6 +397,15 @@ export class DayCycle {
     this.bake.forced = true;                   // the sky light changes the IBL
   }
 
+  /** Majin vs Tenjin seasons: the winning side's sky (null restores the sky as it is). */
+  setSkyMood(mood: SkyMood | null): void {
+    this.mood = skyMoodParams(mood);
+    this.moodFog = this.mood.fogTint === null ? null : hexToSrgb(this.mood.fogTint);
+    this.moodSky = this.mood.skyTint === null ? null : hexToSrgb(this.mood.skyTint);
+    this.x.sky.setMood(this.mood.turbidityAdd, this.mood.rayleighMul);
+    this.bake.forced = true;
+  }
+
   /** Forces a PMREM bake on the next update (harvest level / palette change). */
   invalidateEnvironment(): void { this.bake.forced = true; }
 
@@ -412,7 +426,13 @@ export class DayCycle {
 
     rig.setFocus(focus);
     const sh = this.shadow;
-    rig.applyDirectional(d.dir, d.linear, d.intensity * w.sunMul * sh.sunMul);
+    // Majin vs Tenjin seasons: the winning side's light colours the sun (what lights the diorama most)
+    let sunColour: readonly number[] = d.linear;
+    if (this.moodSky !== null && this.mood.sunMix > 0) {
+      for (let c = 0; c < 3; c++) _sun[c] = lerp(d.linear[c]!, srgbToLinear(this.moodSky[c]!), this.mood.sunMix);
+      sunColour = _sun;
+    }
+    rig.applyDirectional(d.dir, sunColour, d.intensity * w.sunMul * sh.sunMul);
     rig.setPunctualMultiplier(day.punctual);
 
     const lit = day.daylight;
@@ -423,6 +443,10 @@ export class DayCycle {
     mixSrgbToLinear(NIGHT_GROUND, p.ground, lit, _ground);
     const top = Math.max(_sky[0], _sky[1], _sky[2], 1e-4);
     for (let c = 0; c < 3; c++) { _sky[c] = _sky[c]! / top; _ground[c] = _ground[c]! / top; }
+    // Majin vs Tenjin seasons: the winning side's light falls on everything from above (the unit sky keeps its level)
+    if (this.moodSky !== null) {
+      for (let c = 0; c < 3; c++) _sky[c] = lerp(_sky[c]!, srgbToLinear(this.moodSky[c]!), this.mood.hemiMix);
+    }
     rig.setHemisphere(_sky, _ground, day.hemi * w.envMul * sh.envMul);
 
     mixSrgbToLinear(p.fogNight, p.fogNoon, lit, _lin);
@@ -436,6 +460,9 @@ export class DayCycle {
       const tint = w.fogTintSrgb!;
       for (let c = 0; c < 3; c++) _lin[c] = lerp(_lin[c]!, srgbToLinear(tint[c]!), 0.6);
     }
+    if (this.moodFog !== null) {
+      for (let c = 0; c < 3; c++) _lin[c] = lerp(_lin[c]!, srgbToLinear(this.moodFog[c]!) * Math.max(0.2, lit), this.mood.fogMix);
+    }
     if (sh.fogMix > 0) {
       for (let c = 0; c < 3; c++) _lin[c] = lerp(_lin[c]!, srgbToLinear(this.shadowFog[c]!), sh.fogMix);
     }
@@ -448,7 +475,7 @@ export class DayCycle {
     // Sky follows the real sun even below the horizon (§10.3.4).
     sunDirection(this.t, _dir);
     sky.setSunDirection(_dir.x, _dir.y, _dir.z);
-    sky.setEnvironmentIntensity(day.env * w.envMul * sh.envMul);
+    sky.setEnvironmentIntensity(day.env * w.envMul * sh.envMul * this.mood.envMul);
 
     this.bake.sinceBakeMs += realDtMs;
     const el = sunElevationDeg(this.t);

@@ -224,6 +224,12 @@ export async function replayLoader({ request, params }: LoaderFunctionArgs) {
   }
 }
 
+/** Majin vs Tenjin seasons `/play/factions`: the season's two sides, the player's own, the sky and the Chronicle. */
+export async function factionsLoader({ request }: LoaderFunctionArgs) {
+  const [view] = await Promise.all([load(request, 'factions'), sessionReady(request.signal)]);
+  return { view };
+}
+
 /** Spectator mode `/play/watch/:matchId`: the live match's feed (null when there is no such match, or it is long over). */
 export async function watchLoader({ request, params }: LoaderFunctionArgs) {
   const matchId = params['matchId'] ?? '';

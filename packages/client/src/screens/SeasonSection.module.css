@@ -91,3 +91,14 @@
   padding: 0;
   list-style: none;
 }
+
+/* Majin vs Tenjin seasons: the link to the sides' standings, at the end of the head row */
+.factions {
+  margin-inline-start: auto;
+  color: var(--accent);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}

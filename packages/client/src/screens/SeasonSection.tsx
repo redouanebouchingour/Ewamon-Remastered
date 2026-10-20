@@ -30,6 +30,9 @@ export function SeasonSection() {
         <h4 className={s.title}>Season {c.season}</h4>
         {c.finals ? <span className={s.finals}>League Finals week</span> : <span className={l.caption}>Finals week in {timeLeft(c.finalsAt, now)}</span>}
         <span className={l.caption}>Ends in {timeLeft(c.endsAt, now)}</span>
+        <Link to="/play/factions" className={s.factions}>
+          Majin vs Tenjin
+        </Link>
       </div>
       <p className={l.caption}>
         Ranked wins count. When the season ends the top eight are its Finalists, the first its Champion, and every rating moves halfway back to 1000.

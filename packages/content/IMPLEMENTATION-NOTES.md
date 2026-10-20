@@ -660,3 +660,8 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   (clear below 40 points, then 55 / 65 / 75 / 85 % shadow share), `shadowDarkWeight`, `shadowNotice`, and the
   hollowed town (`HOLLOWED_TOWN` Vesperveil, `HOLLOWED_LINES` by npc id, `HOLLOWED_FLAG` the client's pseudo-flag).
   Nothing here touches the zone layer, so no fixture moves; the lines are dialogue only, never a gate.
+
+## Majin vs Tenjin seasons (2026-10-20)
+
+- `data/factions.ts`: the two sides with their words (drawn from the bands' own descriptions: Sable's lens shows a
+  thing unmade, Wynn's shows a thing held), the points per deed, `factionWinner` (none on a tie) and `chronicleLine`.

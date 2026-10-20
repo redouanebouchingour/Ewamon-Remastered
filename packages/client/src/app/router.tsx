@@ -231,6 +231,13 @@ export const routes: RouteObject[] = [
             },
           }),
           child({
+            path: 'factions',
+            lazy: async () => {
+              const [{ FactionsScreen }, l] = await Promise.all([import('../screens/FactionsScreen'), loaders()]);
+              return { Component: FactionsScreen, loader: l.factionsLoader };
+            },
+          }),
+          child({
             path: 'watch/:matchId',
             lazy: async () => {
               const [{ WatchScreen }, l] = await Promise.all([import('../screens/WatchScreen'), loaders()]);

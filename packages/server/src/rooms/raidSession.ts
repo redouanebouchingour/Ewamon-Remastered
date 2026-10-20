@@ -23,6 +23,7 @@ import { isPersistedId, newCreature, persistableAfterBattle, withSyntheticId } f
 import { advanceQuests } from '../game/quests';
 import type { Logger } from '../log';
 import { autoAction, toInstance } from './battleSession';
+import { FACTION_POINTS, seasonAt } from '@ewa/content';
 
 export const RAID_ROUND_MS = 20_000;
 export const RAID_LOBBY_MS = 90_000;
@@ -626,6 +627,8 @@ export class RaidRunner {
             o.trainerLevel = exp.trainerLevel;
             o.rewards = { money, items: {}, trainerExp: TRAINER_EXP.raidClear, ratingDelta: null, badge: null };
             o.quest = await advanceQuests(tx, repos, pid, [{ kind: 'battle', format: 'raid' }, { kind: 'raidClear' }], now);
+            // Majin vs Tenjin seasons: a raid cleared earns the trainer's side its points
+            await repos.factions.award(tx, seasonAt(now).number, pid, FACTION_POINTS.raidClear);
             await repos.audit.write(tx, { actorId: pid, action: 'raid.clear', subject: s.id, detail: { hotspot: s.hotspot.id, damage: (s.participants.get(pid)?.damage ?? 0) + (round.damage.get(pid) ?? 0) } }, new Date(now));
           }
           if (Object.keys(o.inventory).length > 0) this.inventory.set(pid, await repos.inventory.all(tx, pid));

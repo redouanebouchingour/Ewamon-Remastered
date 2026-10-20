@@ -2233,3 +2233,10 @@ the normal sun / hemisphere / CSM / fog, then `stage.dress({ x: 0, z: 0 }, ARENA
 - `Renderer.setShadow?(level)` (optional so the fakes keep compiling) → `DayCycle.setShadow`: the shadow multiplies
   the sun, the hemisphere fill, the environment and the fog density and tints the fog after the weather's tint
   (`shadowParams`, pure). Level 0 is the identity, so a clear zone renders exactly as before.
+
+## Majin vs Tenjin seasons (2026-10-20)
+
+- `Renderer.setSkyMood?` → `DayCycle.setSkyMood` → `SkyController.setMood` (turbidity offset and rayleigh scale on
+  both sky meshes, after the harvest blend), a sun and hemisphere tint (the diorama camera looks down, so the sky
+  alone barely shows: checked live, the light is what reads), and a fog tint scaled by daylight so a red or gold haze
+  does not glow at night. null is the identity.

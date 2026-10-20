@@ -166,6 +166,8 @@ export interface SceneDirector {
   setWeather(w: WeatherKind): void;
   /** Honor shapes the world: the zone's shadow level 0..4 (outdoors only; a pocket renders none). */
   setShadow(level: number): void;
+  /** Majin vs Tenjin seasons: the winning side's sky (Solenne, outdoors only); null clears it. */
+  setSkyMood(mood: 'majin' | 'tenjin' | null): void;
   setHarvest(h: HarvestState): void;
   readonly currentZone: ZoneId | null;
   // ---- additions ----
@@ -259,6 +261,8 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
   let overworldWeather: WeatherKind = 'none';
   /** honor shapes the world: the zone's shadow level (outdoors) */
   let overworldShadow = 0;
+  /** Majin vs Tenjin seasons: the sky mood (outdoors) */
+  let skyMood: 'majin' | 'tenjin' | null = null;
   /** Phase D10: the cleared-obstacle key last pushed (renderer + collider), '' = none */
   let obstacleKey: string | null = null;
 
@@ -276,6 +280,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
   function applyWeather(): void {
     if (!inBattle) d.renderer.setWeather(pocket === null ? overworldWeather : 'none');
     d.renderer.setShadow?.(pocket === null ? overworldShadow : 0);
+    d.renderer.setSkyMood?.(pocket === null ? skyMood : null);
   }
 
   function faceOrigin(x: number, z: number): number {
@@ -568,6 +573,12 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     setShadow(level) {
       if (level === overworldShadow) return;
       overworldShadow = level;
+      applyWeather();
+    },
+
+    setSkyMood(mood) {
+      if (mood === skyMood) return;
+      skyMood = mood;
       applyWeather();
     },
 

@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-20 Majin vs Tenjin seasons: take a side, earn it points, the winners hold Solenne's sky. One entry. -->
+
+## 2026-10-20 · `00-spine.md` §4.7 (`GET /factions`, `POST /factions/join`, `GET /factions/sky`), §5.2 (`FactionRepo`, migration 0013); `10-render.md` §10.1 (`setSkyMood`), §10.3.7 (Sky mood); `30-server-netcode.md` §30.4.10 (Majin vs Tenjin seasons); `20-client.md` §20.9.9l (new); `50-verification-budget.md` §50.4.2 / .4 / .5 / .6 / .7 rows · Majin vs Tenjin seasons
+Why: the user asked for Majin vs Tenjin seasons. The two bands already split the story's people; this lets the players split too, once a season, and gives every ranked win, raid and mission a second meaning. The reward is something everyone sees and nobody can buy: the winning side's sky over the capital for a whole season, and a line in the Chronicle. The side is fixed for the season so the score means something, and it never touches a battle, so nobody's side makes them stronger.
+Evidence: `packages/content/test/factions.test.ts` (3); `packages/persist/test/factions.test.ts` (1) and `migrations.test.ts`; `packages/protocol/test/rest.test.ts` (92 routes); `packages/server/test/factions.test.ts` (4) and `raid.test.ts`; `packages/render/test/shadow.test.ts` (the sky mood); `packages/client/test/factions.test.tsx` (3), `topbar-nav.test.tsx`; live on the second isolated pair.
+Affects: `packages/content/src/data/factions.ts`, `src/index.ts`; `packages/persist/src/{schema/factions,repos/factions,schema/index,repos/index}.ts`, `drizzle/0013_season_factions.sql`; `packages/protocol/src/rest.ts`; `packages/render/src/{lighting/weather,lighting/sky,lighting/daycycle,renderer}.ts`; `packages/server/src/{rest/routes/factions,rest/app,rest/routes/me,rooms/battleSession,rooms/raidSession}.ts`; `packages/client/src/{screens/FactionsScreen,screens/SeasonSection,scene/factionSky,scene/SceneDirector,scene/World3D,app/TopBar,app/loaders,app/router}.ts(x)`.
+
 <!-- 2026-10-20 honor shapes the world: the season tally of deeds in each zone darkens it, favours Dark types, and turns Vesperveil. One entry. -->
 
 ## 2026-10-20 · `00-spine.md` §4.1 (`ZoneState.shadow`), §4.7 (`GET /world/shadow`), §5.2 (`WorldHonorRepo`, migration 0012); `10-render.md` §10.1 (`setShadow`), §10.3.7 (Shadow); `30-server-netcode.md` §30.2.8 (tick 1a'), §30.4.3a (honor shapes the world); `20-client.md` §20.9.9k (new); `50-verification-budget.md` §50.4.2 / .5 / .6 / .7 rows · honor shapes the world

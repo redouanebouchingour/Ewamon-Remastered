@@ -1150,3 +1150,11 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   trainer / league / PvP battle. It costs one upsert per turn with deeds, none otherwise.
 - The zone room reads its tally once a minute (one row by primary key) on its own clock; a read in flight is never
   doubled. `rollWild` / `rollFishing` take the level last (default 0: the old weights).
+
+## Majin vs Tenjin seasons (2026-10-20)
+
+- Points are added where the deed is already written: both ranked branches of `persistTurn` (the winner), the raid's
+  rewarded clear, and the mission claim. `award` is a no-op without a side, so nothing changes for players who never
+  chose.
+- The Chronicle is derived on read from each closed season's totals (at most six seasons, two grouped reads each);
+  nothing is written at the season's close, so the season rollover job is untouched.

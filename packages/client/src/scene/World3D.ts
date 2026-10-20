@@ -64,6 +64,7 @@ import { toast, useNotificationsStore } from '../state/notifications';
 import { applyInventoryDelta, partyCanBattle, toInventoryDelta, useSessionStore } from '../state/session';
 import { useQuestTracking } from '../state/questTracking';
 import { useRealWeatherStore } from '../state/realWeather';
+import { factionSkyFor } from './factionSky';
 import { useSettingsStore } from '../state/settings';
 import { setFishingActions, useFishingStore } from '../state/fishing';
 import { noteTutorialEvent } from '../state/tutorial';
@@ -926,6 +927,11 @@ class World implements World3D {
     this.hudWriter.setTimeOfDay(room.state.timeOfDay);
     this.director.setWeather(useRealWeatherStore.getState().kind ?? (room.state.weather as WeatherKind));
     this.director.setShadow(room.state.shadow);
+    // Majin vs Tenjin seasons: the last season's winners hold the sky over Solenne
+    const skyZone = this.roomZone;
+    void factionSkyFor(skyZone).then((mood) => {
+      if (this.roomZone === skyZone) this.director.setSkyMood(mood);
+    });
     this.input.setEnabled(useUiStore.getState().battle === null);
     this.battle.attach(this.battleView());
     // Phase C1: a raid already open in this room (or opened while the zone built)

@@ -50,6 +50,8 @@ import {
   SeasonsRes,
   SeasonTitlesRes,
   WorldShadowRes,
+  FactionJoinReq,
+  FactionsRes,
   WeatherCitiesQuery,
   WeatherCityReq,
   SpeedrunRes,
@@ -388,7 +390,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(89); // GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(ROUTE_KEYS).toHaveLength(92); // the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
     expect(paths).toContain('GET /daily');
     expect(paths).toContain('POST /challenge');
     expect(paths).toContain('POST /daily/start');
@@ -546,5 +548,26 @@ describe('honor shapes the world', () => {
     ok(WorldShadowRes, { season: 1, zones: [{ zoneId: 'mire_route', level: 2, light: 10, shadow: 40 }] });
     bad(WorldShadowRes, { season: 1, zones: [{ zoneId: 'mire_route', level: 0, light: 10, shadow: 4 }] });
     bad(WorldShadowRes, { season: 1, zones: [{ zoneId: 'mire_route', level: 5, light: 0, shadow: 99 }] });
+  });
+});
+
+describe('Majin vs Tenjin seasons', () => {
+  it('two sides only; the chronicle carries a winner or none', () => {
+    ok(FactionJoinReq, { side: 'majin' });
+    bad(FactionJoinReq, { side: 'neutral' });
+    const view = {
+      season: 2,
+      endsAt: ISO,
+      mine: { side: 'tenjin', points: 9 },
+      points: { majin: 40, tenjin: 52 },
+      members: { majin: 4, tenjin: 5 },
+      top: { majin: [{ username: 'ash', points: 12 }], tenjin: [] },
+      sky: 'majin',
+      chronicle: [{ season: 1, winner: 'majin', line: 'Season 1: the Majin held the sky.' }],
+    };
+    ok(FactionsRes, view);
+    ok(FactionsRes, { ...view, mine: null, sky: null, chronicle: [] });
+    bad(FactionsRes, { ...view, chronicle: [{ season: 0, winner: null, line: 'before the first season' }] });
+    bad(FactionsRes, { ...view, points: { majin: -1, tenjin: 0 } });
   });
 });

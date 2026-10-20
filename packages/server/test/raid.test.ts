@@ -8,7 +8,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { matchMaker } from '@colyseus/core';
-import { RAID_HOTSPOTS, getHeightfield, nearestWalkable } from '@ewa/content';
+import { FACTION_POINTS, RAID_HOTSPOTS, getHeightfield, nearestWalkable, seasonAt } from '@ewa/content';
 import type { RaidHotspot } from '@ewa/content';
 import { TRAINER_EXP, calcMaxHp, createRng, digestBattleState } from '@ewa/core';
 import type { Action, CreatureInstance } from '@ewa/core';
@@ -167,6 +167,9 @@ describe('raids in the room (§30.4.7)', () => {
   it('join within 8 m, ready, rounds with digests, hpPct only, rewards on defeat, one catch (#14: a replay spends nothing)', async () => {
     const a = await inRoute(0, 0);
     const b = await inRoute(1, 0);
+    // Majin vs Tenjin seasons: a rewarded clear earns the trainer's side its points (a sided with the Tenjin)
+    const season = seasonAt(s.time.clock()).number;
+    await s.repos.db.transaction((tx) => s.repos.factions.join(tx, season, a.acc.id, 'tenjin', new Date(s.time.clock())));
     const room = roomOf(a.j);
     const pa = a.j.room.state.players.get(a.acc.id)!;
     const hotspot: RaidHotspot = { id: 'test_room_raid', zoneId: 'mire_route', x: pa.x, z: pa.z, boss: { species: 'mossling', level: 3, hpMultiplier: 1 }, minBadges: 0, window: { utcHour: 0, minutes: 1440 } };
@@ -238,6 +241,9 @@ describe('raids in the room (§30.4.7)', () => {
       const ach = await rawQuery(s.db, "select quest_id, count, done from quest_progress where player_id = $1 and quest_id in ('ach_raid_1', 'ach_raid_10') order by quest_id", [p.acc.id]);
       expect(ach.map((r) => [r['quest_id'], r['count'], r['done']])).toEqual([['ach_raid_1', 1, true], ['ach_raid_10', 1, false]]);
     }
+    const sided = await s.repos.db.transaction((tx) => s.repos.factions.of(tx, season, a.acc.id));
+    expect(sided).toEqual({ side: 'tenjin', points: damaged.includes(a) ? FACTION_POINTS.raidClear : 0 });
+    expect(await s.repos.db.transaction((tx) => s.repos.factions.of(tx, season, b.acc.id))).toBeNull();
     expect(a.j.room.state.players.get(a.acc.id)!.inBattle).toBe(false);
     // Phase C1: the catch window opens with a second battleResync to every participant (before the round's battleEnd):
     // the §2.15 pre-state — not ended, boss at 1 HP, canCatch only with damage dealt

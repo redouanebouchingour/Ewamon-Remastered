@@ -15,6 +15,7 @@ import { pickZoneRoom, reserveZoneSeat, zoneRoomById } from '../../rooms/matchma
 import { toInstance } from '../../rooms/battleSession';
 import { HttpError, out, rateLimit, refuseInBattle, requireAuth, toProfile } from '../http';
 import type { RestDeps } from '../http';
+import { FACTION_POINTS, seasonAt } from '@ewa/content';
 
 export { dayKey, weekKey };
 
@@ -172,6 +173,8 @@ export function registerMeRoutes(app: FastifyInstance, deps: RestDeps): void {
       const row = rows.find((r) => r.objectiveId === mission.id);
       if (row === undefined || !row.done) throw new HttpError(409, 'questIncomplete');
       if (!(await repos.progress.claimObjective(tx, id, questId, mission.id, now))) throw new HttpError(409, 'AlreadyClaimed');
+      // Majin vs Tenjin seasons: a mission claimed earns the trainer's side its point
+      await repos.factions.award(tx, seasonAt(now.getTime()).number, id, FACTION_POINTS.mission);
       const money = mission.reward.money > 0 ? await repos.players.addMoney(tx, id, mission.reward.money) : (await repos.players.byId(tx, id))!.money;
       if (Object.keys(mission.reward.items).length > 0) await repos.inventory.addMany(tx, id, mission.reward.items);
       await repos.audit.write(tx, { actorId: id, action: 'liveops.claim', subject: questId, detail: { mission: mission.id } }, now);

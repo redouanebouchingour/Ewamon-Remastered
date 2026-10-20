@@ -85,10 +85,10 @@ function mount(path: string) {
 }
 
 describe('nav model', () => {
-  it('five primary links, eight behind More, every panel reachable once', () => {
+  it('five primary links, nine behind More, every panel reachable once', () => {
     expect(NAV_PRIMARY.map((n) => n.label)).toEqual(['Party', 'Bag', 'Dex', 'Map', 'Quests']);
-    expect(NAV_MORE.map((n) => n.label)).toEqual(['PvP', 'Box', 'Shop', 'Social', 'Guild', 'Market', 'Pass', 'Settings']);
-    expect(new Set(NAV.map((n) => n.to)).size).toBe(13);
+    expect(NAV_MORE.map((n) => n.label)).toEqual(['PvP', 'Factions', 'Box', 'Shop', 'Social', 'Guild', 'Market', 'Pass', 'Settings']);
+    expect(new Set(NAV.map((n) => n.to)).size).toBe(14);
   });
 
   it('key chips spell codes as the tutorial card does', () => {
