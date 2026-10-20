@@ -1105,3 +1105,12 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
 - REST: `refuseFallen` (409 `fallen`) in withdraw, the box side of swap, evolve (both paths) and item use; `/heal`
   skips the fallen; the market list route and `TradeCoordinator.offer` refuse them; arena copies and tower picks leave
   them out. `POST /challenge` (me.ts) clears every `challenge:` flag before setting the new mode.
+
+## Verified speedruns (2026-10-20)
+
+- The play clock: `ZoneRoom.onJoin` (at its end) starts it, `removePlayer` stops it unless the player moved away (a
+  handover: the next room keeps it running); `ArenaRoom` starts it on join and stops it on a real leave; `main.ts`
+  stops stale clocks at boot. A reconnection window (20 s) still counts.
+- Splits (`game/speedrun.ts`): `beat:<id>` in `completeBeatInTx` (every beat path), `badge:<id>` beside the only
+  badge write, `champion` with the Champion's flag. `RUN_START_SPLIT` is the first story beat's split: the board and
+  `counted` need it. Overworld input is not recorded; the time is the server's and the battles are replayable.

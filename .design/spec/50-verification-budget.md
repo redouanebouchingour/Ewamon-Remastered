@@ -239,6 +239,7 @@ All files open a fresh PGlite (`drizzle-orm/pglite`) per file and run `migrate()
 | `creature-history.test.ts` <!-- added 2026-10-20: creature history --> | Migration 0007: an inserted creature records its original trainer and `met` (caught in a zone at the catch time, or received); a trade, a market sale and a gift each add a change of hands with both names; `addEvent` marks several creatures; `history` is oldest first and null for an unknown creature; the original trainer's name outlives the account; the events go with the creature. |
 | `daily.test.ts` <!-- added 2026-10-20: the daily challenge --> | Migration 0008: a loss counts an attempt and no best; a win sets the best; a slower win keeps it, a faster one replaces it, a tie keeps the earlier; days are separate; the leaderboard is the day's winners, fewest turns then earliest, banned left out; `winners` counts them. |
 | `challenge.test.ts` <!-- added 2026-10-20: challenge modes --> | The board lists the mode's players: cleared first (earliest), then active, then failed, each by badges; another mode and banned players left out. |
+| `runs.test.ts` <!-- added 2026-10-20: verified speedruns --> | Migration 0009: the play clock runs between start and stop (a second start keeps the first); a split records it once; stopAll stops stale clocks without charging the gap; the board ranks finishes of runs holding the start split, fastest first. |
 
 ### 50.4.5 `@ewa/server` — `packages/server/test/`
 
@@ -261,6 +262,7 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `history-routes.test.ts` (creature history) / `battle-room.test.ts` (badge, legendary) <!-- added 2026-10-20: creature history --> | `GET /creature/:id/history`: the starter is `met received` by its trainer, an evolution adds `evolved`, another player may read it, unknown 404; a league win adds `badge` to the winning party; a won legendary static adds `legendary { caught: false }` to each party creature. |
 | `daily.test.ts` <!-- added 2026-10-20: the daily challenge --> | The day's teams are fixed by the day (three distinct species a side, level 50, disjoint) and differ from day to day; every day of a quarter is winnable by core's trainer AI (`par` set); numbers count from the first daily; the strip marks KOs per turn. End to end: GET /daily shows the puzzle and par; two players' daily starts are the same battle (ids aside); a played try is recorded (a win as the best, with turns and strip, on the daily leaderboard); the player's creatures are untouched; the history row says `daily`. |
 | `challenge.test.ts` <!-- added 2026-10-20: challenge modes --> | A run chosen at registration; switched before the first badge and refused after one; only the zone's first wild encounter may be caught (its flag sent); Hardcore's bag is the orbs (a potion is `noItem`); a creature that faints falls, and with nothing left the run fails with memorial ribbons; beating the Champion clears the run; withdraw and items refuse the fallen, a fallen creature locks the run; the Nuzlocke board lists it. |
+| `speedrun.test.ts` <!-- added 2026-10-20: verified speedruns --> | The clock runs while a zone room holds the player and stops when they leave; a story beat and a badge write their splits in their own transactions; a counted run's Champion split ranks on the board; another trainer's run is readable by name, an unknown one 404. |
 
 ### 50.4.6 `@ewa/render` — `packages/render/test/` (Playwright, Chromium with WebGPU)
 
@@ -303,6 +305,7 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `creature-history.test.tsx` <!-- added 2026-10-20: creature history --> | Every event kind reads as its sentence; the section shows the original trainer and the events newest first; an older creature says nothing was recorded; a failed load says so. |
 | `arena.test.tsx` (the daily challenge) <!-- added 2026-10-20 --> | The card shows both teams, par and the winners and starts the daily in the arena (`last` = daily); a best shows its strip, Try again and Copy result; the share text has the number, turns, par and strip only; the daily's AI side is named and dressed. |
 | `challenge.test.tsx` <!-- added 2026-10-20: challenge modes --> | The lock reasons; the Profile section switches to Nuzlocke (POST /challenge, then GET /me); a fallen creature locks the run with its reason and carries the Fallen mark. |
+| `speedrun.test.tsx` <!-- added 2026-10-20: verified speedruns --> | The clock's format; split names; the timer off by default; the Profile section shows the finish and the splits, and says when a run has not started or cannot count. |
 
 ### 50.4.8 Pipelines — `tools/*/test/`
 

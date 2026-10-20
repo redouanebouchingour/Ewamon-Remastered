@@ -23,6 +23,7 @@ import {
   ShopParams,
   ShopRes,
   ShopTradeReq,
+  SpeedrunRes,
   TradeHistoryRes,
   UsernameParams,
 } from '@ewa/protocol';
@@ -30,6 +31,7 @@ import type { ArenaKind } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
 import { newCreature } from '../../game/creatures';
 import { toInstance } from '../../rooms/battleSession';
+import { CHAMPION_SPLIT, RUN_START_SPLIT } from '../../game/speedrun';
 import { dayKey } from '../../liveops/schedule';
 import { HttpError, iso, out, presenceZone, rateLimit, refuseInBattle, requireAuth } from '../http';
 import type { RestDeps } from '../http';
@@ -274,6 +276,31 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
     return out(deps, PublicProfileSchema, { ...pub, badges: [...pub.badges], showcase: pub.showcase.map(toInstance), createdAt: iso(pub.createdAt) });
   });
 
+  /** Verified speedruns: a player's play clock and splits (the caller's own, or a trainer's by name: runs are public). */
+  async function speedrunOf(username: string | null, me: string) {
+    const now = new Date(clock());
+    const v = await repos.db.transaction(async (tx) => {
+      const row = username === null ? await repos.players.byId(tx, me) : await repos.players.byUsername(tx, username.toLowerCase());
+      if (row === null || (username !== null && row.bannedAt !== null)) return null;
+      const c = (await repos.runs.clock(tx, row.id, now))!;
+      const splits = await repos.runs.splits(tx, row.id);
+      return { row, c, splits };
+    });
+    if (v === null) throw new HttpError(404, 'NotFound');
+    const finish = v.splits.find((x) => x.split === CHAMPION_SPLIT) ?? null;
+    return out(deps, SpeedrunRes, {
+      username: v.row.username,
+      playMs: v.c.playMs,
+      running: v.c.running,
+      counted: v.splits.some((x) => x.split === RUN_START_SPLIT),
+      finishMs: finish?.playMs ?? null,
+      splits: v.splits.map((x) => ({ split: x.split, playMs: x.playMs, at: iso(x.at) })),
+    });
+  }
+
+  app.get('/speedrun', bearer, async (req) => speedrunOf(null, req.user.sub));
+  app.get('/speedrun/:username', bearer, async (req) => speedrunOf(UsernameParams.parse(req.params).username, req.user.sub));
+
   app.get('/leaderboard', bearer, async (req) => {
     const q = LeaderboardQuery.parse(req.query);
     const rows = await repos.db.transaction(async (tx) => {
@@ -289,6 +316,9 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
           ? await repos.progress.challengeBoard(tx, { mode: CHALLENGE_MODE_FLAG[q.mode], cleared: CHALLENGE_CLEARED_FLAG, failed: CHALLENGE_FAILED_FLAG }, q.page, LEADERBOARD_PAGE)
           : null;
       const challengeOf = new Map((challenge ?? []).map((r) => [r.player.id, r]));
+      // verified speedruns: the Champion split of counted runs, fastest first
+      const speedrun = q.mode === 'speedrun' ? await repos.runs.board(tx, RUN_START_SPLIT, CHAMPION_SPLIT, q.page, LEADERBOARD_PAGE) : null;
+      const speedrunOfId = new Map((speedrun ?? []).map((r) => [r.player.id, r.playMs]));
       const mode = q.mode;
       const players =
         mode === 'towerStreak'
@@ -297,7 +327,9 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
             ? (daily ?? []).map((r) => r.player)
             : mode === 'nuzlocke' || mode === 'hardcore'
               ? (challenge ?? []).map((r) => r.player)
-              : await repos.players.leaderboard(tx, mode, q.page, LEADERBOARD_PAGE);
+              : mode === 'speedrun'
+                ? (speedrun ?? []).map((r) => r.player)
+                : await repos.players.leaderboard(tx, mode, q.page, LEADERBOARD_PAGE);
       const streaks = board !== null ? new Map(board.map((r) => [r.player.id, { current: r.current, best: r.best }])) : await repos.streaks.byPlayers(tx, players.map((p) => p.id));
       const out = [];
       for (let i = 0; i < players.length; i++) {
@@ -319,6 +351,7 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
           towerCurrent: streak?.current ?? 0,
           ...(dailyOf.has(p.id) ? { dailyTurns: dailyOf.get(p.id)!.turns, dailyMarks: dailyOf.get(p.id)!.marks } : {}),
           ...(challengeOf.has(p.id) ? { challengeBadges: challengeOf.get(p.id)!.badges, challengeState: challengeOf.get(p.id)!.state } : {}),
+          ...(speedrunOfId.has(p.id) ? { speedrunMs: speedrunOfId.get(p.id)! } : {}),
         });
       }
       return out;

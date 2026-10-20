@@ -227,6 +227,12 @@ function AccessibilityTab() {
         />
       </div>
       <Toggle label="Screen flash on impact" description="The white full-screen flash on heavy hits (the creature still flashes)." checked={a.screenFlash} onChange={(v) => set('accessibility', { screenFlash: v })} />
+      <Toggle
+        label="Show the speedrun timer"
+        description="Your play time, as the server counts it, in the top bar. It runs only while you are in the world."
+        checked={a.speedrunTimer}
+        onChange={(v) => set('accessibility', { speedrunTimer: v })}
+      />
     </div>
   );
 }

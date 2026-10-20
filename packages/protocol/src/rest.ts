@@ -166,8 +166,8 @@ export type GuildView = z.infer<typeof GuildViewSchema>;
 export const GuildMemberViewSchema = z.object({ playerId: Uuid, username: Username, role: z.enum(GUILD_ROLES), joinedAt: IsoDate });
 export type GuildMemberView = z.infer<typeof GuildMemberViewSchema>;
 
-/** Phase D14 adds `towerStreak` (best battle tower streak; only players with one); the daily challenge adds `daily` (today's best wins, fewest turns first); challenge modes add `nuzlocke` / `hardcore` (cleared runs first, then going, then failed, by badges). */
-export const LEADERBOARD_MODES = ['rating', 'dex', 'trainerLevel', 'towerStreak', 'daily', 'nuzlocke', 'hardcore'] as const;
+/** Phase D14 adds `towerStreak` (best battle tower streak; only players with one); the daily challenge adds `daily` (today's best wins, fewest turns first); challenge modes add `nuzlocke` / `hardcore` (cleared runs first, then going, then failed, by badges); verified speedruns add `speedrun` (the Champion's split on the play clock, fastest first). */
+export const LEADERBOARD_MODES = ['rating', 'dex', 'trainerLevel', 'towerStreak', 'daily', 'nuzlocke', 'hardcore', 'speedrun'] as const;
 /** TODO(spec): `LeaderboardRow` has no field list in the spec; these are the columns §30.6.3 sorts on plus the showcase-card fields. */
 export const LeaderboardRowSchema = z.object({
   rank: z.number().int().min(1),
@@ -183,6 +183,8 @@ export const LeaderboardRowSchema = z.object({
   /** Phase D14: battle tower streak — best ever and the run in progress (0 / 0 for a player who never ran it) */
   towerBest: z.number().int().min(0).optional(),
   towerCurrent: z.number().int().min(0).optional(),
+  /** verified speedruns (`mode=speedrun`): the play-clock time at the Champion split */
+  speedrunMs: z.number().int().min(0).optional(),
   /** challenge modes (`mode=nuzlocke|hardcore`): the run's badges and where it stands */
   challengeBadges: z.number().int().min(0).optional(),
   challengeState: z.enum(['active', 'cleared', 'failed']).optional(),
@@ -502,6 +504,22 @@ export type CreatureHistory = z.infer<typeof CreatureHistoryRes>;
 export const ChallengeReq = z.object({ mode: z.enum(['normal', ...CHALLENGE_MODE_IDS]) });
 export const ChallengeRes = z.object({ flags: z.array(z.string().max(64)) });
 
+/**
+ * Verified speedruns: the server's play clock (it runs only while a zone or arena room holds the player) and the
+ * splits written against it (`beat:<id>`, `badge:<id>`, `champion`). `counted`: the run holds the first beat's split,
+ * so it is on the board once it reaches `champion` (`finishMs`).
+ */
+export const SpeedrunSplitSchema = z.object({ split: z.string().max(48), playMs: z.number().int().min(0), at: IsoDate });
+export const SpeedrunRes = z.object({
+  username: Username,
+  playMs: z.number().int().min(0),
+  running: z.boolean(),
+  counted: z.boolean(),
+  finishMs: z.number().int().min(0).nullable(),
+  splits: z.array(SpeedrunSplitSchema).max(200),
+});
+export type SpeedrunView = z.infer<typeof SpeedrunRes>;
+
 export const PageQuery = z.object({ page: Page });
 export const BattleHistoryRes = z.object({ rows: z.array(BattleHistoryRowSchema) });
 export const TradeHistoryRes = z.object({ rows: z.array(TradeHistoryRowSchema) });
@@ -620,6 +638,8 @@ export const ROUTES = {
   creatureFlags: route({ method: 'POST', path: '/creature/:id/flags', auth: 'bearer', params: CreatureParams, request: CreatureFlagsReq, response: CreatureInstanceSchema }),
   creatureHistory: route({ method: 'GET', path: '/creature/:id/history', auth: 'bearer', params: CreatureParams, response: CreatureHistoryRes }),
   challenge: route({ method: 'POST', path: '/challenge', auth: 'bearer', request: ChallengeReq, response: ChallengeRes }),
+  speedrun: route({ method: 'GET', path: '/speedrun', auth: 'bearer', response: SpeedrunRes }),
+  speedrunOf: route({ method: 'GET', path: '/speedrun/:username', auth: 'bearer', params: UsernameParams, response: SpeedrunRes }),
   itemUse: route({ method: 'POST', path: '/item/use', auth: 'bearer', request: ItemUseReq, response: ItemUseRes }),
   heal: route({ method: 'POST', path: '/heal', auth: 'bearer', request: Nothing, response: PartyRes }),
   dex: route({ method: 'GET', path: '/dex', auth: 'bearer', response: DexRes }),

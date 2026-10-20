@@ -7,6 +7,8 @@ import { battlePassRepo } from './battlePass';
 import type { BattlePassRepo } from './battlePass';
 import { creatureRepo } from './creatures';
 import { dailyRepo } from './daily';
+import { runRepo } from './runs';
+import type { RunRepo } from './runs';
 import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
 import { historyRepo } from './history';
@@ -39,6 +41,8 @@ export interface Repos {
   readonly streaks: StreakRepo;
   /** the daily challenge (migration 0008) */
   readonly daily: DailyRepo;
+  /** verified speedruns: the play clock and the splits (migration 0009) */
+  readonly runs: RunRepo;
 }
 
 /**
@@ -61,6 +65,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     audit: auditRepo,
     streaks: streakRepo,
     daily: dailyRepo,
+    runs: runRepo,
   };
 }
 

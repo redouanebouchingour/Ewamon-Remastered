@@ -586,6 +586,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     if (fallback && arrival === null) {
       await deps.repos.db.transaction((tx) => deps.repos.players.setPosition(tx, playerId, this.zone.id, x, z, ps.angle));
     }
+    // verified speedruns: the play clock runs while a room holds the player (a handover keeps the running clock)
+    await deps.repos.db.transaction((tx) => deps.repos.runs.start(tx, playerId, new Date(deps.clock()))).catch((e: unknown) => deps.log.error({ err: e, playerId }, 'play clock start failed'));
   }
 
   override onDrop(client: ZoneClient, code?: number): void {
@@ -650,6 +652,12 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       await deps.repos.db
         .transaction((tx) => deps.repos.players.setPosition(tx, playerId, this.zone.id, ps.x, ps.z, ps.angle))
         .catch((e: unknown) => deps.log.error({ err: e, playerId }, 'leave position write failed'));
+    }
+    // verified speedruns: leaving the world stops the play clock (a crossing hands it to the next room running)
+    if (!movedAway) {
+      await deps.repos.db
+        .transaction((tx) => deps.repos.runs.stop(tx, playerId, new Date(deps.clock())))
+        .catch((e: unknown) => deps.log.error({ err: e, playerId }, 'play clock stop failed'));
     }
   }
 

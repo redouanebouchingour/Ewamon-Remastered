@@ -170,3 +170,8 @@ installed library that future readers should not have to re-derive. The spec its
 
 - `RegisterReq.challenge?`, `POST /challenge` (`ChallengeReq` / `ChallengeRes { flags }`), `LEADERBOARD_MODES` gains
   `nuzlocke` / `hardcore` and `LeaderboardRow` the optional `challengeBadges` / `challengeState`. 78 routes.
+
+## Verified speedruns (2026-10-20)
+
+- `GET /speedrun`, `GET /speedrun/:username` (`SpeedrunRes`); `LEADERBOARD_MODES` gains `speedrun` and
+  `LeaderboardRow` the optional `speedrunMs`. 80 routes.

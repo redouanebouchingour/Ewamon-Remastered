@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, index, integer, pgTable, real, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import { bigint, boolean, check, index, integer, pgTable, real, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 
 export const players = pgTable(
   'players',
@@ -29,6 +29,13 @@ export const players = pgTable(
     banReason: text('ban_reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * Verified speedruns (migration 0009): the server's play clock. `play_ms` is the banked time in the world (a zone or
+     * an arena room); `play_started_at` is set while a room holds the player, so the time now is
+     * `play_ms + (now - play_started_at)` and a split can be written inside any transaction.
+     */
+    playMs: bigint('play_ms', { mode: 'number' }).notNull().default(0),
+    playStartedAt: timestamp('play_started_at', { withTimezone: true }),
   },
   (t) => [
     uniqueIndex('players_username_lower_uq').on(t.usernameLower),

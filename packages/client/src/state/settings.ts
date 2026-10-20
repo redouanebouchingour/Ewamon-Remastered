@@ -29,6 +29,8 @@ export interface AccessibilitySettings {
   readonly uiScale: number;
   readonly battleTextSpeed: 'normal' | 'fast' | 'instant';
   readonly screenFlash: boolean;
+  /** verified speedruns: the server's play clock in the top bar */
+  readonly speedrunTimer: boolean;
 }
 /** 0..1 */
 export interface AudioSettings {
@@ -95,7 +97,7 @@ export const INPUT_ACTIONS = Object.keys(DEFAULT_KEYBINDS) as InputAction[];
 
 export const DEFAULT_SETTINGS: SettingsData = {
   graphics: { reducedEffects: false, renderScale: 1, dof: true, bloom: true, grain: true, chroma: true, shake: true, hitstop: true, slowmo: true },
-  accessibility: { reducedMotion: 'system', colorblind: 'none', uiScale: 1, battleTextSpeed: 'normal', screenFlash: true },
+  accessibility: { reducedMotion: 'system', colorblind: 'none', uiScale: 1, battleTextSpeed: 'normal', screenFlash: true, speedrunTimer: false },
   audio: { master: 0.8, music: 0.7, sfx: 0.8, ui: 0.6, muteWhenHidden: true },
   keybinds: DEFAULT_KEYBINDS,
   social: { showChat: true, allowChallenges: true, allowTrades: true, allowDmsFrom: 'everyone' },

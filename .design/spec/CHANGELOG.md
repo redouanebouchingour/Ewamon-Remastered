@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-20 verified speedruns: the server keeps the time, splits at every beat, badge and the Champion. One entry. -->
+
+## 2026-10-20 · `00-spine.md` §4.7 (`GET /speedrun`, `GET /speedrun/:username`, leaderboard `speedrun`), §5.1 (`players.play_ms`, `play_started_at`), §5.2 (`RunRepo`, migration 0009 `run_splits`); `30-server-netcode.md` §30.6.3 (the play clock and the splits); `20-client.md` §20.8 (`accessibility.speedrunTimer`), §20.9.9h (new); `50-verification-budget.md` §50.4.4 / .5 / .7 rows · verified speedruns
+Why: the user asked for verified speedruns: a built-in timer, and runs that can be checked. Recording every overworld input to replay a whole run is not something the game can do (movement is validated, not logged), so the server keeps the time itself instead: the clock runs only while a room holds the player and no client time is ever read, splits are written in the transaction of the beat, badge or Champion win they mark, and every battle of a run is already in the history and replays. A run counts from the first story beat, so accounts already past it when the clock arrived do not get impossible times.
+Evidence: `packages/persist/test/runs.test.ts` (3) and `migrations.test.ts`; `packages/protocol/test/rest.test.ts` (80 routes, `SpeedrunRes`); `packages/server/test/speedrun.test.ts` (2); `packages/client/test/speedrun.test.tsx` (2); live on the second isolated pair (the timer ticking in the top bar, the Profile section with the server's time).
+Affects: `packages/persist/src/{schema/players,schema/runs,repos/runs,repos/index,schema/index}.ts`, `drizzle/0009_play_clock.sql`; `packages/protocol/src/rest.ts`; `packages/server/src/{game/speedrun,rooms/ZoneRoom,rooms/ArenaRoom,rooms/storyBeats,rooms/battleSession,rest/routes/catalog,main}.ts`; `packages/client/src/{data/speedrun,screens/SpeedrunSection,screens/ProfileScreen,screens/SettingsScreen,screens/RankingsScreen,app/TopBar,state/settings}.ts(x)`.
+
 <!-- 2026-10-20 challenge modes: Nuzlocke and Hardcore runs with their own leaderboards. One entry. -->
 
 ## 2026-10-20 · `00-spine.md` §4.7 (`POST /challenge`, register `challenge`, leaderboard `nuzlocke` / `hardcore`), §5.2 (`challengeBoard`); `30-server-netcode.md` §30.6.3 (the run's rules); `20-client.md` §20.9.9g (new); `50-verification-budget.md` §50.4.4 / .5 / .7 rows · challenge modes

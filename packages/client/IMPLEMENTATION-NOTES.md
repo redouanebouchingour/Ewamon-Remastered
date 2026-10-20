@@ -2105,3 +2105,10 @@ every KO turn shows the lunge, the hit and the faint before the next creature en
   locked. `ChallengeChip` in the top bar. The fallen: the `fallen` CreatureBadge (card and Party marks), a Fallen note
   in place of Use an item, no Withdraw in the box. `BattleMenu` disables Bag in an active Hardcore run (Orbs already
   follows `canCatch`). Rankings: Nuzlocke and Hardcore tabs. Error copy for `fallen` and `badges`.
+
+## Verified speedruns (2026-10-20)
+
+- `accessibility.speedrunTimer` (default off; the persisted blob merges the default in). `SpeedrunChip` (TopBar)
+  reads `GET /speedrun` on every (re)connect and counts on locally each second while the clock runs and the world is
+  connected. `screens/SpeedrunSection.tsx` on Profile; `data/speedrun.ts` (`formatPlayMs`, `splitLabel`). Rankings:
+  a Speedrun tab.

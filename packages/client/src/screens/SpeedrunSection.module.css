@@ -1,0 +1,50 @@
+/* Verified speedruns: the clock as a big tabular number, then the splits as name / time rows. */
+.clock {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  margin: 0;
+}
+
+.clockValue {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h1);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.splits {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.split {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-2) 0;
+  border-block-end: 1px solid var(--line-1);
+}
+
+.splitName {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--text-1);
+  font-size: var(--t-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.splitTime {
+  flex: none;
+  color: var(--text-hi);
+  font-family: var(--face-mono);
+  font-size: var(--t-mono);
+  font-variant-numeric: tabular-nums;
+}

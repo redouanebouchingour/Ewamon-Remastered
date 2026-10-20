@@ -174,7 +174,8 @@ const SNAPSHOT_TABLES = ['players', 'creature_instances', 'inventory_items', 'ba
 
 /**
  * §50.4.5 authority snapshot: canonicalJson of the attacker's rows in every progression table.
- * `last_seen_at` is excluded (the spec allows it to change).
+ * `last_seen_at` is excluded (the spec allows it to change), and so is the speedrun play clock (`play_ms`,
+ * `play_started_at`): it runs whenever a room holds the player, which is not game state an attack could forge.
  */
 export async function snapshot(s: TestServer, playerId: string): Promise<string> {
   const out: Record<string, unknown> = {};
@@ -184,7 +185,7 @@ export async function snapshot(s: TestServer, playerId: string): Promise<string>
     out[t] = JSON.parse(
       JSON.stringify(
         res.map((r) => {
-          const { last_seen_at: _l, ...rest } = r;
+          const { last_seen_at: _l, play_ms: _p, play_started_at: _ps, ...rest } = r;
           return rest;
         }),
       ),

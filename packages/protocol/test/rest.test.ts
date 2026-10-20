@@ -43,6 +43,7 @@ import {
   ROUTES,
   ROUTE_KEYS,
   ChallengeReq,
+  SpeedrunRes,
   CreatureHistoryRes,
   DailyRes,
   LeaderboardRowSchema,
@@ -378,7 +379,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(78); // POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(ROUTE_KEYS).toHaveLength(80); // GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
     expect(paths).toContain('GET /daily');
     expect(paths).toContain('POST /challenge');
     expect(paths).toContain('POST /daily/start');
@@ -479,6 +480,16 @@ describe('challenge modes', () => {
     for (const mode of ['normal', 'nuzlocke', 'hardcore']) ok(ChallengeReq, { mode });
     bad(ChallengeReq, { mode: 'easy' });
     expect(LeaderboardRowSchema.safeParse({ rank: 1, id: '00000000-0000-4000-8000-000000000001', username: 'ash_k', title: 't', body: 'b', rating: 1000, tier: 'bronze', trainerLevel: 1, dexCaughtCount: 0, guildTag: null, challengeBadges: 3, challengeState: 'cleared' }).success).toBe(true);
+  });
+});
+
+describe('verified speedruns', () => {
+  it('SpeedrunRes: the clock, whether the run counts, the finish and the splits', () => {
+    const at = '2026-10-20T10:00:00.000Z';
+    ok(SpeedrunRes, { username: 'ash_k', playMs: 90_000, running: true, counted: true, finishMs: null, splits: [{ split: 'beat:first_witness', playMs: 12_000, at }] });
+    ok(SpeedrunRes, { username: 'ash_k', playMs: 9_000_000, running: false, counted: true, finishMs: 8_999_000, splits: [{ split: 'champion', playMs: 8_999_000, at }] });
+    bad(SpeedrunRes, { username: 'ash_k', playMs: -1, running: false, counted: false, finishMs: null, splits: [] });
+    expect(ROUTES.speedrunOf.path).toBe('/speedrun/:username');
   });
 });
 

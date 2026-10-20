@@ -33,6 +33,9 @@ async function main(): Promise<void> {
   await runMigrations(db);
   const repos = createRepos(db);
   const content = createContentIndex();
+  // verified speedruns: no room holds anyone at start, so a running play clock is stale (stopped, the gap not charged)
+  const stale = await db.transaction((tx) => repos.runs.stopAll(tx));
+  if (stale > 0) log.info({ stale }, 'stale play clocks stopped');
 
   if (env.ADMIN_BOOTSTRAP_USERNAME !== undefined) {
     const name = env.ADMIN_BOOTSTRAP_USERNAME.toLowerCase();

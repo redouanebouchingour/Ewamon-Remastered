@@ -168,6 +168,8 @@ export class ArenaRoom extends Room<{ state: ArenaState; metadata: ArenaMeta; cl
       const resync = this.battles.resync(playerId, live);
       if (resync !== null) this.sendMsg(client, resync);
     }
+    // verified speedruns: time in an arena is time played
+    await deps.repos.db.transaction((tx) => deps.repos.runs.start(tx, playerId, new Date(deps.clock()))).catch((e: unknown) => deps.log.error({ err: e, playerId }, 'play clock start failed'));
     this.maybeStart();
   }
 
@@ -190,6 +192,7 @@ export class ArenaRoom extends Room<{ state: ArenaState; metadata: ArenaMeta; cl
     else await this.battles.forfeitIfActive(playerId, 'disconnect').catch((e: unknown) => deps.log.error({ err: e }, 'arena forfeit failed'));
     deps.presenceMirror.leave(playerId, this.roomId);
     this.unsubscribePlayer(playerId);
+    await deps.repos.db.transaction((tx) => deps.repos.runs.stop(tx, playerId, new Date(deps.clock()))).catch((e: unknown) => deps.log.error({ err: e, playerId }, 'play clock stop failed'));
   }
 
   override onDispose(): void {

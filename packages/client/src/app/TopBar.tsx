@@ -32,6 +32,7 @@ import s from './TopBar.module.css';
 import { CHALLENGE_LABELS, challengeOf } from '@ewa/content';
 import type { ChallengeMode, ChallengeState } from '@ewa/content';
 import { Pill } from '../ui/Pill';
+import { formatPlayMs } from '../data/speedrun';
 
 export interface NavItem {
   readonly to: string;
@@ -173,6 +174,37 @@ function ChallengeChip() {
       <Pill tone={state === 'failed' ? 'danger' : state === 'cleared' ? 'info' : 'neutral'} title={CHALLENGE_LABELS[mode].rules}>
         {state === 'active' ? name : `${name} · ${state === 'cleared' ? 'Cleared' : 'Failed'}`}
       </Pill>
+    </span>
+  );
+}
+
+/**
+ * Verified speedruns: the server's play clock (GET /speedrun, refetched on every (re)connect), counted on locally
+ * each second while it runs and the world is connected. Off unless Settings asks for it.
+ */
+function SpeedrunChip() {
+  const on = useSettingsStore((st) => st.accessibility.speedrunTimer);
+  const connected = useUiStore((st) => st.connection === 'connected');
+  const [base, setBase] = useState<{ readonly ms: number; readonly running: boolean; readonly at: number } | null>(null);
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!on || !connected) return;
+    const ctl = new AbortController();
+    apiFetch('speedrun', { signal: ctl.signal })
+      .then((r) => setBase({ ms: r.finishMs ?? r.playMs, running: r.finishMs === null && r.running, at: Date.now() }))
+      .catch(() => undefined);
+    return () => ctl.abort();
+  }, [on, connected]);
+  useEffect(() => {
+    if (!on || base === null || !base.running || !connected) return;
+    const t = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [on, base, connected]);
+  if (!on || base === null) return null;
+  const ms = base.running && connected ? base.ms + (Date.now() - base.at) : base.ms;
+  return (
+    <span className={s.speedrun} data-testid="speedrun-chip" title="Play time, as the server counts it">
+      {formatPlayMs(ms)}
     </span>
   );
 }
@@ -378,6 +410,7 @@ export function TopBar() {
       </NavLink>
       <ZoneChip />
       <ChallengeChip />
+      <SpeedrunChip />
       <QueueChip />
       <nav className={s.nav} aria-label="Menus">
         {NAV_PRIMARY.map((n) => (

@@ -22,6 +22,7 @@ import { RankedPanel } from './RankedPanel';
 import s from './RankingsScreen.module.css';
 import { useClosePanel } from './shared';
 import { TrainerAvatar } from './TrainerCard';
+import { formatPlayMs } from '../data/speedrun';
 
 export const RANKINGS_PAGE = 25;
 
@@ -36,6 +37,8 @@ const MODE_TABS: readonly { readonly key: RankingMode; readonly label: string; r
   // challenge modes: cleared runs first (earliest), then runs still going, then failed ones, by badges
   { key: 'nuzlocke', label: 'Nuzlocke', blurb: 'Nuzlocke runs: cleared first, then the runs still going, then the failed, by badges.' },
   { key: 'hardcore', label: 'Hardcore', blurb: 'Hardcore runs: cleared first, then the runs still going, then the failed, by badges.' },
+  // verified speedruns: the Champion split on the server's play clock, fastest first
+  { key: 'speedrun', label: 'Speedrun', blurb: 'Time to the Champion, as the server counts it: the clock runs only while the trainer is in the world.' },
 ];
 
 /** A challenge run's cell: its badges and how it stands. */
@@ -50,6 +53,7 @@ function columns(mode: RankingMode, myId: string | null): TableColumn<Leaderboar
     dex: { key: 'dex', header: 'Caught', width: 110, align: 'end', render: (r) => <span className={l.mono}>{r.dexCaughtCount} / {DEX_TOTAL}</span> },
     trainerLevel: { key: 'trainerLevel', header: 'Level', width: 80, align: 'end', render: (r) => <span className={l.mono}>{r.trainerLevel}</span> },
     towerStreak: { key: 'towerStreak', header: 'Streak', width: 96, align: 'end', render: (r) => <span className={l.mono}>{r.towerBest ?? 0}</span> },
+    speedrun: { key: 'speedrun', header: 'Time', width: 110, align: 'end', render: (r) => <span className={l.mono}>{r.speedrunMs === undefined ? '-' : formatPlayMs(r.speedrunMs)}</span> },
     nuzlocke: { key: 'nuzlocke', header: 'Run', width: 150, align: 'end', render: (r) => <span className={l.mono}>{runLabel(r)}</span> },
     hardcore: { key: 'hardcore', header: 'Run', width: 150, align: 'end', render: (r) => <span className={l.mono}>{runLabel(r)}</span> },
     daily: {

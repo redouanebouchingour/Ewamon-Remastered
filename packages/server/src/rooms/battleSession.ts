@@ -34,6 +34,7 @@ import type { RoomMetrics } from '../metrics';
 import { isPersistedId, newCreature, persistableAfterBattle, withSyntheticId } from '../game/creatures';
 import { DAILY_TRAINER, dailyMarks, dailyPuzzle, dailySeed, dailySides } from '../game/daily';
 import { failIfNothingLeft, orbsOnly } from '../game/challenge';
+import { CHAMPION_SPLIT, badgeSplit } from '../game/speedrun';
 import { replayOpts } from '../game/replay';
 import { advanceQuests } from '../game/quests';
 import type { QuestEvent } from '../game/quests';
@@ -1223,11 +1224,17 @@ export class BattleCoordinator {
             if (lt.badge !== null) {
               // NON-NEGOTIABLE 6: the only badge write in the server
               await repos.progress.awardBadge(tx, pid, lt.badge, now);
+              // verified speedruns: every badge is a split on the play clock
+              await repos.runs.split(tx, pid, badgeSplit(lt.badge), now);
               badge = lt.badge;
               questEvents.push({ kind: 'badge', badge: lt.badge });
             }
             flagsToSet.push(...lt.setsFlags);
-            if (lt.id === CHAMPION_ID) flagsToSet.push(CHAMPION_FLAG);
+            if (lt.id === CHAMPION_ID) {
+              flagsToSet.push(CHAMPION_FLAG);
+              // verified speedruns: the run's finish
+              await repos.runs.split(tx, pid, CHAMPION_SPLIT, now);
+            }
             questEvents.push({ kind: 'defeatTrainer', trainerId: lt.id }, { kind: 'win', format: 'league' });
           } else if (session.format === 'pvp' && outcome.winner !== 'fled' && outcome.winner !== 'caught') {
             const me = rows.get(pid)!;

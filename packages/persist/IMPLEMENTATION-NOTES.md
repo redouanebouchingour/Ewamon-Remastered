@@ -213,3 +213,10 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
 - No migration: a run is story flags and a fallen creature a ribbon. `progressRepo.challengeBoard` takes the flags
   from the server (persist knows no content) and orders cleared runs (earliest clear first), then going, then failed,
   each by a badge-count subquery.
+
+## Migration 0009_play_clock (2026-10-20)
+
+- `players.play_ms` (banked) and `players.play_started_at` (set while a room holds the player): the clock now is
+  `play_ms + (now - play_started_at)`, one SQL expression (`clockNow`), so `runRepo.split` writes inside any
+  transaction without a server-side timer. `start` keeps a running clock (a crossing), `stop` banks it, `stopAll`
+  (boot) stops stale clocks without charging the gap. `run_splits` keeps the first time of each split.
