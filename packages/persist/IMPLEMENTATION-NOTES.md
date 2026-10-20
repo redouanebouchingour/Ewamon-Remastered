@@ -207,3 +207,9 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
 - `daily_results (player_id, day_key)` PK: `attempts` and the best win (`turns`, `marks`, `battle_id`, `won_at`, null
   until the first win). `dailyRepo.record` locks the row (`for update`), adds the attempt and replaces the best only
   for fewer turns, so a tie keeps the earlier win. `winners` and `leaderboard` leave banned players out.
+
+## Challenge modes (2026-10-20)
+
+- No migration: a run is story flags and a fallen creature a ribbon. `progressRepo.challengeBoard` takes the flags
+  from the server (persist knows no content) and orders cleared runs (earliest clear first), then going, then failed,
+  each by a badge-count subquery.

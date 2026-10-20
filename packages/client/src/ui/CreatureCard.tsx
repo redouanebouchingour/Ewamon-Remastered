@@ -9,8 +9,9 @@ import { HpBar } from './HpBar';
 import { Icon } from './Icon';
 import type { IconName } from './Icon';
 import { TypeBadge } from './TypeBadge';
+import { FALLEN_RIBBON } from '@ewa/content';
 
-export type CreatureBadge = 'favorite' | 'locked' | 'alpha' | 'shiny' | 'listed';
+export type CreatureBadge = 'favorite' | 'locked' | 'alpha' | 'shiny' | 'listed' | 'fallen';
 
 /** SPEC §20.2.4 props, plus `caption` (showcase flavour line) and `trailing` (row-end slot). */
 export interface CreatureCardProps {
@@ -25,8 +26,8 @@ export interface CreatureCardProps {
   readonly className?: string;
 }
 
-const BADGE_ICON: Readonly<Record<CreatureBadge, IconName>> = { favorite: 'star', locked: 'lock', alpha: 'alpha', shiny: 'sparkle', listed: 'tag' };
-const BADGE_LABEL: Readonly<Record<CreatureBadge, string>> = { favorite: 'Favourite', locked: 'Locked', alpha: 'Alpha', shiny: 'Shiny', listed: 'Listed' };
+const BADGE_ICON: Readonly<Record<CreatureBadge, IconName>> = { favorite: 'star', locked: 'lock', alpha: 'alpha', shiny: 'sparkle', listed: 'tag', fallen: 'close' };
+const BADGE_LABEL: Readonly<Record<CreatureBadge, string>> = { favorite: 'Favourite', locked: 'Locked', alpha: 'Alpha', shiny: 'Shiny', listed: 'Listed', fallen: 'Fallen in the run' };
 
 /** favourite / locked / alpha / shiny (Phase D4) from the instance itself; `listed` only when the caller says so. */
 export function badgesOf(c: CreatureInstance, extra: readonly CreatureBadge[] = []): CreatureBadge[] {
@@ -35,6 +36,8 @@ export function badgesOf(c: CreatureInstance, extra: readonly CreatureBadge[] = 
   if (c.locked) out.push('locked');
   if (c.isAlpha) out.push('alpha');
   if (c.isShiny === true) out.push('shiny');
+  // challenge modes: a creature that fell in the run
+  if (c.ribbons.includes(FALLEN_RIBBON)) out.push('fallen');
   for (const b of extra) if (!out.includes(b)) out.push(b);
   return out;
 }

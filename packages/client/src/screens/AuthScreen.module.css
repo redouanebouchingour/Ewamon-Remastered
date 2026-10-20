@@ -205,3 +205,20 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
+/* challenge modes: the run picker under the starters, its rules in one caption */
+.challenge {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.challengeRules {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-body);
+}

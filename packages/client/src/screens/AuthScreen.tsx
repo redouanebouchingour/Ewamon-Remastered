@@ -18,6 +18,9 @@ import { KeyArt } from '../ui/KeyArt';
 import { NotificationHost } from '../app/NotificationHost';
 import s from './AuthScreen.module.css';
 import { previewCreature } from './shared';
+import { CHALLENGE_LABELS, CHALLENGE_MODES } from '@ewa/content';
+import type { ChallengeMode } from '@ewa/content';
+import { Segmented } from '../ui/Field';
 
 export interface AuthScreenProps {
   readonly mode: 'login' | 'register';
@@ -56,6 +59,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
   const navigation = useNavigation();
   const [params] = useSearchParams();
   const [starter, setStarter] = useState<StarterId | null>(null);
+  const [challenge, setChallenge] = useState<'normal' | ChallengeMode>('normal');
   const submitting = navigation.state === 'submitting';
   const errors = result?.fieldErrors ?? {};
   const register = mode === 'register';
@@ -85,6 +89,19 @@ export function AuthScreen({ mode }: AuthScreenProps) {
         <Form method="post" className={s.form} noValidate>
           {register && <StarterPicker value={starter} onChange={setStarter} error={errors.starter} />}
           {register && <input type="hidden" name="starter" value={starter ?? ''} />}
+          {register && (
+            <fieldset className={s.challenge}>
+              <legend className={s.legend}>Challenge run</legend>
+              <Segmented<'normal' | ChallengeMode>
+                label="Challenge run"
+                value={challenge}
+                options={[{ value: 'normal', label: 'Normal' }, ...CHALLENGE_MODES.map((m) => ({ value: m, label: CHALLENGE_LABELS[m].name }))]}
+                onChange={setChallenge}
+              />
+              <p className={s.challengeRules}>{challenge === 'normal' ? 'No extra rules. You can start a run later, until your first badge.' : CHALLENGE_LABELS[challenge].rules}</p>
+              <input type="hidden" name="challenge" value={challenge === 'normal' ? '' : challenge} />
+            </fieldset>
+          )}
           <div className={register ? s.fieldGrid : s.fields}>
             <TextField
               label="Username"

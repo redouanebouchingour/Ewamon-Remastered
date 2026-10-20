@@ -42,6 +42,7 @@ import {
   QuestClaimRes,
   ROUTES,
   ROUTE_KEYS,
+  ChallengeReq,
   CreatureHistoryRes,
   DailyRes,
   LeaderboardRowSchema,
@@ -377,8 +378,9 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(77); // 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(ROUTE_KEYS).toHaveLength(78); // POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
     expect(paths).toContain('GET /daily');
+    expect(paths).toContain('POST /challenge');
     expect(paths).toContain('POST /daily/start');
     expect(paths).toContain('GET /creature/:id/history');
     expect(paths).toContain('POST /history/battles/:battleId/share');
@@ -464,6 +466,19 @@ describe('the daily challenge', () => {
     bad(DailyRes, { ...daily, dayKey: '20-10-2026' });
     bad(DailyRes, { ...daily, par: 0 });
     expect(LeaderboardRowSchema.safeParse({ rank: 1, id: '00000000-0000-4000-8000-000000000001', username: 'ash_k', title: 't', body: 'b', rating: 1000, tier: 'bronze', trainerLevel: 1, dexCaughtCount: 0, guildTag: null, dailyTurns: 5, dailyMarks: '.K.KK' }).success).toBe(true);
+  });
+});
+
+describe('challenge modes', () => {
+  it('register takes an optional run; the switch takes normal or a mode; leaderboard rows carry the run', () => {
+    const reg = { username: 'ash_k', email: 'a@b.cd', password: 'correct horse battery', starter: 'bramblecub' };
+    ok(RegisterReq, reg);
+    ok(RegisterReq, { ...reg, challenge: 'nuzlocke' });
+    ok(RegisterReq, { ...reg, challenge: 'hardcore' });
+    bad(RegisterReq, { ...reg, challenge: 'ironman' });
+    for (const mode of ['normal', 'nuzlocke', 'hardcore']) ok(ChallengeReq, { mode });
+    bad(ChallengeReq, { mode: 'easy' });
+    expect(LeaderboardRowSchema.safeParse({ rank: 1, id: '00000000-0000-4000-8000-000000000001', username: 'ash_k', title: 't', body: 'b', rating: 1000, tier: 'bronze', trainerLevel: 1, dexCaughtCount: 0, guildTag: null, challengeBadges: 3, challengeState: 'cleared' }).success).toBe(true);
   });
 });
 

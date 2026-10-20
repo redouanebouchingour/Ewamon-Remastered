@@ -165,3 +165,8 @@ installed library that future readers should not have to re-derive. The spec its
 - `ARENA_KINDS` gains `daily` (label "Daily challenge", `arenaLevel('daily') = ARENA_LEVEL`). `DailyRes` (`GET /daily`)
   and `POST /daily/start` (→ `ArenaSeatRes`); `LEADERBOARD_MODES` gains `daily`, and `LeaderboardRow` the optional
   `dailyTurns` / `dailyMarks`. 77 routes. `DAILY_FIRST_DAY` is #1.
+
+## Challenge modes (2026-10-20)
+
+- `RegisterReq.challenge?`, `POST /challenge` (`ChallengeReq` / `ChallengeRes { flags }`), `LEADERBOARD_MODES` gains
+  `nuzlocke` / `hardcore` and `LeaderboardRow` the optional `challengeBadges` / `challengeState`. 78 routes.

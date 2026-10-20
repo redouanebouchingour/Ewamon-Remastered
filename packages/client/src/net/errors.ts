@@ -17,6 +17,9 @@ const MESSAGES: Readonly<Record<string, string>> = {
   NotFound: 'Not found.',
   gated: 'Sealed until you earn the badge.',
   inBattle: 'Finish your battle first.',
+  // challenge modes
+  fallen: 'That creature has fallen in your challenge run.',
+  badges: 'Your first badge locked the challenge run.',
   wrongZone: 'You are in a different zone.',
   InsufficientFunds: 'Not enough money.',
   InsufficientItems: 'You do not have enough of that item.',

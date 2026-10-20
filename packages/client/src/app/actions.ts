@@ -76,6 +76,8 @@ export async function registerAction({ request }: ActionFunctionArgs) {
     email: String(form.get('email') ?? '').trim(),
     password: String(form.get('password') ?? ''),
     starter: String(form.get('starter') ?? ''),
+    // challenge modes: absent for a normal game
+    ...(String(form.get('challenge') ?? '') !== '' ? { challenge: String(form.get('challenge')) } : {}),
   };
   const parsed = RegisterReq.safeParse(raw);
   if (!parsed.success) {

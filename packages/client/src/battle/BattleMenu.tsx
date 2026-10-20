@@ -45,6 +45,7 @@ import { battleActions } from './controllerRef';
 import { transformOffer } from './transform';
 import type { TransformOffer } from './transform';
 import s from './BattleMenu.module.css';
+import { challengeActive } from '@ewa/content';
 
 type Menu = BattleUi['menu'];
 
@@ -339,6 +340,7 @@ export function BattleMenu() {
   const offerKind: BandKind | null = offer?.kind ?? null;
   const offerOn = offer?.enabled === true;
   const accountId = useSessionStore((x) => x.profile?.id ?? '');
+  const hardcore = useSessionStore((x) => challengeActive(x.progression?.flags ?? []) === 'hardcore');
   const coached = useBandTutorialStore((x) => bandAccountOf(x, accountId).coached);
   const markCoached = useBandTutorialStore((x) => x.coach);
   const [coach, setCoach] = useState<BandKind | null>(null);
@@ -474,6 +476,8 @@ export function BattleMenu() {
   const railDisabled = (k: Menu | 'run'): boolean => {
     if (!selectable) return true;
     if (forced) return k !== 'party';
+    // challenge modes: Hardcore takes no bag items into battle (orbs still catch)
+    if (k === 'bag' && hardcore) return true;
     return k === 'run' ? runWhy !== null : k === 'orbs' ? !st.sides[seat].canCatch : catchWindow;
   };
   const hints: Hint[] = !selectable

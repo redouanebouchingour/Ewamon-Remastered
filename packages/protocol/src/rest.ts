@@ -166,8 +166,8 @@ export type GuildView = z.infer<typeof GuildViewSchema>;
 export const GuildMemberViewSchema = z.object({ playerId: Uuid, username: Username, role: z.enum(GUILD_ROLES), joinedAt: IsoDate });
 export type GuildMemberView = z.infer<typeof GuildMemberViewSchema>;
 
-/** Phase D14 adds `towerStreak` (best battle tower streak; only players with one); the daily challenge adds `daily` (today's best wins, fewest turns first). */
-export const LEADERBOARD_MODES = ['rating', 'dex', 'trainerLevel', 'towerStreak', 'daily'] as const;
+/** Phase D14 adds `towerStreak` (best battle tower streak; only players with one); the daily challenge adds `daily` (today's best wins, fewest turns first); challenge modes add `nuzlocke` / `hardcore` (cleared runs first, then going, then failed, by badges). */
+export const LEADERBOARD_MODES = ['rating', 'dex', 'trainerLevel', 'towerStreak', 'daily', 'nuzlocke', 'hardcore'] as const;
 /** TODO(spec): `LeaderboardRow` has no field list in the spec; these are the columns §30.6.3 sorts on plus the showcase-card fields. */
 export const LeaderboardRowSchema = z.object({
   rank: z.number().int().min(1),
@@ -183,6 +183,9 @@ export const LeaderboardRowSchema = z.object({
   /** Phase D14: battle tower streak — best ever and the run in progress (0 / 0 for a player who never ran it) */
   towerBest: z.number().int().min(0).optional(),
   towerCurrent: z.number().int().min(0).optional(),
+  /** challenge modes (`mode=nuzlocke|hardcore`): the run's badges and where it stands */
+  challengeBadges: z.number().int().min(0).optional(),
+  challengeState: z.enum(['active', 'cleared', 'failed']).optional(),
   /** the daily challenge (`mode=daily`): today's best win in turns and its per-turn marks */
   dailyTurns: z.number().int().min(1).optional(),
   dailyMarks: z.string().max(200).optional(),
@@ -275,7 +278,9 @@ export type RestError = z.infer<typeof RestErrorSchema>;
 
 // ---- auth --------------------------------------------------------------------------------------------------------
 
-export const RegisterReq = z.object({ username: Username, email: Email, password: Password, starter: z.enum(STARTERS) });
+/** Challenge modes (content challenge.ts): a run chosen at registration (absent = a normal game). */
+export const CHALLENGE_MODE_IDS = ['nuzlocke', 'hardcore'] as const;
+export const RegisterReq = z.object({ username: Username, email: Email, password: Password, starter: z.enum(STARTERS), challenge: z.enum(CHALLENGE_MODE_IDS).optional() });
 export const LoginReq = z.object({ username: z.string().min(1).max(20), password: z.string().min(1).max(128) });
 export const RefreshReq = z.object({ refresh: z.string().min(1) });
 export const LogoutReq = RefreshReq;
@@ -490,6 +495,13 @@ export type CreatureEvent = z.infer<typeof CreatureEventSchema>;
 export const CreatureHistoryRes = z.object({ originalTrainer: Name.nullable(), events: z.array(CreatureEventSchema).max(200) });
 export type CreatureHistory = z.infer<typeof CreatureHistoryRes>;
 
+/**
+ * Challenge modes: change the run (`normal` ends it) while the player has no badge and nothing has fallen (409
+ * `badges` / `fallen`; `inBattle` in a battle). Every `challenge:` flag is cleared first, so a new run starts fresh.
+ */
+export const ChallengeReq = z.object({ mode: z.enum(['normal', ...CHALLENGE_MODE_IDS]) });
+export const ChallengeRes = z.object({ flags: z.array(z.string().max(64)) });
+
 export const PageQuery = z.object({ page: Page });
 export const BattleHistoryRes = z.object({ rows: z.array(BattleHistoryRowSchema) });
 export const TradeHistoryRes = z.object({ rows: z.array(TradeHistoryRowSchema) });
@@ -607,6 +619,7 @@ export const ROUTES = {
   creatureRelease: route({ method: 'POST', path: '/creature/:id/release', auth: 'bearer', params: CreatureParams, request: Nothing, response: null }),
   creatureFlags: route({ method: 'POST', path: '/creature/:id/flags', auth: 'bearer', params: CreatureParams, request: CreatureFlagsReq, response: CreatureInstanceSchema }),
   creatureHistory: route({ method: 'GET', path: '/creature/:id/history', auth: 'bearer', params: CreatureParams, response: CreatureHistoryRes }),
+  challenge: route({ method: 'POST', path: '/challenge', auth: 'bearer', request: ChallengeReq, response: ChallengeRes }),
   itemUse: route({ method: 'POST', path: '/item/use', auth: 'bearer', request: ItemUseReq, response: ItemUseRes }),
   heal: route({ method: 'POST', path: '/heal', auth: 'bearer', request: Nothing, response: PartyRes }),
   dex: route({ method: 'GET', path: '/dex', auth: 'bearer', response: DexRes }),

@@ -11,7 +11,7 @@
  * sorted by playerId, `confirmed` excluded) — the one function both client and server call.
  */
 import { randomUUID } from 'node:crypto';
-import { SPECIES, TRADE_EVOLVE_RIBBON } from '@ewa/content';
+import { SPECIES, TRADE_EVOLVE_RIBBON, isFallen } from '@ewa/content';
 import { TRAINER_EXP, tradeEvolutionTarget } from '@ewa/core';
 import type { CreatureInstance } from '@ewa/core';
 import type { Db, Repos } from '@ewa/persist';
@@ -231,6 +231,8 @@ export class TradeCoordinator {
         if (c === undefined) return 'notOwner';
         if (c.slotKind !== 'party' && c.slotKind !== 'box') return 'notTradable';
         if (c.locked) return 'locked';
+        // challenge modes: a fallen creature cannot be traded
+        if (isFallen(c)) return 'fallen';
         if (c.slotKind === 'party') partyGiven++;
       }
       const partySize = owned.filter((c) => c.slotKind === 'party').length;

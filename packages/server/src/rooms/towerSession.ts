@@ -16,7 +16,7 @@
  * toast. No Colyseus import: the room is a `TowerHost`.
  */
 import { randomUUID } from 'node:crypto';
-import { POSTGAME_FLAG, TOWER, interiorNpcs, towerTier } from '@ewa/content';
+import { POSTGAME_FLAG, TOWER, interiorNpcs, towerTier, isFallen } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
 import { capLevel, createRng } from '@ewa/core';
 import type { BattleOutcome, ContentIndex, CreatureInstance } from '@ewa/core';
@@ -118,7 +118,8 @@ export class TowerSessions {
     const { repos, clock } = this.deps;
     const r = await repos.db.transaction(async (tx) => {
       const party = await repos.creatures.party(tx, pid);
-      if (!picks.every((id) => party.some((c) => c.id === id))) return null;
+      // a fallen creature (challenge modes) never fights again, not even as a tower copy
+      if (!picks.every((id) => party.some((c) => c.id === id && !isFallen(c)))) return null;
       return repos.streaks.endRun(tx, pid, new Date(clock()));
     });
     if (r === null) return this.refuse(pid, 'badPicks', `Choose ${TOWER.teamSize} creatures from your party.`);

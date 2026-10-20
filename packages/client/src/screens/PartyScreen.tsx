@@ -43,6 +43,8 @@ const MARK: Readonly<Record<CreatureBadge, { readonly icon: IconName; readonly l
   alpha: { icon: 'alpha', label: 'Alpha' },
   shiny: { icon: 'sparkle', label: 'Shiny' },
   listed: { icon: 'tag', label: 'Listed' },
+  // challenge modes: a creature that fell in the run
+  fallen: { icon: 'close', label: 'Fallen in the run' },
 };
 
 /** One lineup card: the type slab with the sprite and the slot number, then name · level · skewed HP bar. */

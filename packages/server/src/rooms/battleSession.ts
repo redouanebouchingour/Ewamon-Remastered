@@ -10,8 +10,8 @@
  * No Colyseus import: the room is a `BattleHost` (send + lifecycle hooks), so this module is testable alone.
  */
 import { randomUUID } from 'node:crypto';
-import { ARENA_TRAINING, MAJIN_BAND, TENJIN_BAND, TOWER, cupRefusal, league as leagueById, leagueRematchFlag, storyBeat as beatById, towerSetReward } from '@ewa/content';
-import type { ActiveCup, BadgeId, LeagueRematch, LeagueTrainer, LegendaryStatic, TrainerDef, ZoneDef } from '@ewa/content';
+import { ARENA_TRAINING, CHALLENGE_CLEARED_FLAG, CHALLENGE_FAILED_FLAG, FALLEN_RIBBON, MAJIN_BAND, TENJIN_BAND, TOWER, challengeActive, challengeMetFlag, cupRefusal, isFallen, league as leagueById, leagueRematchFlag, storyBeat as beatById, towerSetReward } from '@ewa/content';
+import type { ActiveCup, BadgeId, ChallengeMode, LeagueRematch, LeagueTrainer, LegendaryStatic, TrainerDef, ZoneDef } from '@ewa/content';
 import {
   TRAINER_EXP,
   atLevel,
@@ -33,6 +33,7 @@ import type { Logger } from '../log';
 import type { RoomMetrics } from '../metrics';
 import { isPersistedId, newCreature, persistableAfterBattle, withSyntheticId } from '../game/creatures';
 import { DAILY_TRAINER, dailyMarks, dailyPuzzle, dailySeed, dailySides } from '../game/daily';
+import { failIfNothingLeft, orbsOnly } from '../game/challenge';
 import { replayOpts } from '../game/replay';
 import { advanceQuests } from '../game/quests';
 import type { QuestEvent } from '../game/quests';
@@ -115,6 +116,11 @@ export interface BattleSession {
    * `daily` (the daily challenge, `dayKey`) likewise pays nothing and records the try in `daily_results`.
    */
   readonly arena?: { readonly kind: ArenaKind; readonly ranked: boolean; readonly dayKey?: string };
+  /**
+   * Challenge modes (content challenge.ts): the active run of each side's player (null: none / a non-player side). A
+   * fainted creature of such a side falls (`FALLEN_RIBBON`); Hardcore's bag snapshot holds orbs only.
+   */
+  readonly challenge?: readonly [ChallengeMode | null, ChallengeMode | null];
   /** the LegendaryStatic flag to set on win/catch */
   readonly staticFlag: string | null;
   /** createBattle's input minus seed, deep-copied before the call — battle_history.start (P6, DB-only replay) */
@@ -160,6 +166,19 @@ export interface PlayerSeat {
 export type StartResult = { readonly ok: true; readonly session: BattleSession } | { readonly ok: false; readonly code: 'notAllowed' | 'busy' | 'internal'; readonly detail: string; readonly playerId?: string };
 
 /** Arena PvP: what `startArena` needs (the arena room's match). */
+/** What the start transaction read for one player (`loadPlayers`). */
+interface LoadedPlayer {
+  readonly party: CreatureInstance[];
+  readonly inventory: Record<string, number>;
+  readonly questProgress: QuestProgressEntry[];
+  /** the player's active challenge run (content challenge.ts), null for none */
+  readonly challenge: ChallengeMode | null;
+  /** false in a challenge run when this zone's first encounter is already spent */
+  readonly canCatch: boolean;
+  /** the first-encounter flag this start set (sent to the client and the room cache) */
+  readonly metFlag: string | null;
+}
+
 export interface ArenaStart {
   readonly kind: ArenaKind;
   /** every creature at exactly this level, or null = own levels (healed) */
@@ -193,7 +212,8 @@ export function arenaTrainingTeam(seed: string, difficulty: ArenaDifficulty, siz
 
 /** Arena PvP: the party as it fights — the first six, each at `level` (null = own), fully healed, synthetic `arena:` ids. */
 export function arenaCopies(party: readonly CreatureInstance[], level: number | null, content: ContentIndex): CreatureInstance[] {
-  return party.slice(0, 6).map((c) => withSyntheticId(atLevel(toInstance(c), level, content), `arena:${c.id}`));
+  // a fallen creature (challenge modes) never fights again, not even as a healed copy
+  return party.filter((c) => !isFallen(c)).slice(0, 6).map((c) => withSyntheticId(atLevel(toInstance(c), level, content), `arena:${c.id}`));
 }
 export type ActionResult = null | { readonly code: 'notFound' | 'notAllowed' | 'busy'; readonly detail: string | null };
 
@@ -436,13 +456,14 @@ export class BattleCoordinator {
     return { kind: 'player', party: battlers, active, trainerId: playerId, canFlee, canCatch, ...(bands.length > 0 ? { bands } : {}) };
   }
 
-  /** Reads party + inventory under the player lock and marks the opposing lead seen — the start transaction. */
-  private async loadPlayers(
-    ids: readonly string[],
-    seenSpecies: string | null,
-  ): Promise<Map<string, { party: CreatureInstance[]; inventory: Record<string, number>; questProgress: QuestProgressEntry[] }>> {
+  /**
+   * Reads party + inventory under the player lock and marks the opposing lead seen: the start transaction. Challenge
+   * modes: each player's active run; with `encounterZone` (a wild or static battle) the zone's first encounter of the
+   * run is consumed here (its flag set) and only that one may be caught (`canCatch`).
+   */
+  private async loadPlayers(ids: readonly string[], seenSpecies: string | null, encounterZone: string | null = null): Promise<Map<string, LoadedPlayer>> {
     const { repos, clock } = this.deps;
-    const out = new Map<string, { party: CreatureInstance[]; inventory: Record<string, number>; questProgress: QuestProgressEntry[] }>();
+    const out = new Map<string, LoadedPlayer>();
     await repos.db.transaction(async (tx) => {
       await repos.players.lockMany(tx, ids);
       for (const id of [...ids].sort()) {
@@ -452,15 +473,38 @@ export class BattleCoordinator {
         if (seenSpecies !== null && party.some((c) => c.hp > 0) && (await repos.progress.markSeen(tx, id, seenSpecies, new Date(clock())))) {
           questProgress = await advanceQuests(tx, repos, id, [{ kind: 'seen', species: seenSpecies }], clock());
         }
-        out.set(id, { party, inventory, questProgress });
+        const challenge = challengeActive(await repos.progress.flags(tx, id));
+        let canCatch = true;
+        let metFlag: string | null = null;
+        if (challenge !== null && encounterZone !== null && party.some((c) => c.hp > 0)) {
+          const f = challengeMetFlag(encounterZone);
+          if ((await repos.progress.flags(tx, id)).includes(f)) canCatch = false;
+          else {
+            await repos.progress.setFlags(tx, id, [f], new Date(clock()));
+            metFlag = f;
+          }
+        }
+        out.set(id, { party, inventory, questProgress, challenge, canCatch, metFlag });
       }
     });
     return out;
   }
 
+  /** The bag a side fights with: Hardcore keeps the orbs only (bag items are refused as `noItem`). */
+  private bagFor(l: LoadedPlayer): Record<string, number> {
+    return l.challenge === 'hardcore' ? orbsOnly(l.inventory, this.deps.content) : l.inventory;
+  }
+
   /** Quest / mission progress from the start transaction (a newly seen lead), sent after battleStart. */
-  private sendStartProgress(loaded: Map<string, { questProgress: QuestProgressEntry[] }>): void {
-    for (const [pid, l] of loaded) if (l.questProgress.length > 0) this.deps.host.send(pid, progressionOnly({ questProgress: l.questProgress }));
+  private sendStartProgress(loaded: Map<string, { questProgress: QuestProgressEntry[]; metFlag?: string | null }>): void {
+    for (const [pid, l] of loaded) {
+      if (l.questProgress.length > 0) this.deps.host.send(pid, progressionOnly({ questProgress: l.questProgress }));
+      // challenge modes: this zone's first encounter of the run is spent
+      if (l.metFlag != null) {
+        this.deps.host.send(pid, progressionOnly({ flags: [l.metFlag] }));
+        this.deps.host.onProgress(pid, { flags: [l.metFlag] });
+      }
+    }
   }
 
   private open(
@@ -519,8 +563,9 @@ export class BattleCoordinator {
   /** §30.4.4 `wild`: one battler projected from the SpawnRecord. */
   async startWild(p: PlayerSeat, spawn: SpawnRecord, at: BattleAt): Promise<StartResult> {
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
-    const loaded = await this.loadPlayers([p.playerId], spawn.speciesId);
-    const side0 = this.playerSide(loaded.get(p.playerId)!.party, p.playerId, true, true, loaded.get(p.playerId)!.inventory);
+    const loaded = await this.loadPlayers([p.playerId], spawn.speciesId, this.deps.zone.id);
+    const me = loaded.get(p.playerId)!;
+    const side0 = this.playerSide(me.party, p.playerId, true, me.canCatch, me.inventory);
     if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
     const wild = withSyntheticId(
@@ -542,8 +587,9 @@ export class BattleCoordinator {
         x: at.x,
         z: at.z,
         yaw: at.yaw ?? null,
-        inventory: [loaded.get(p.playerId)!.inventory, null],
+        inventory: [this.bagFor(me), null],
         rematch: false,
+        challenge: [me.challenge, null],
       },
       [side0, side1],
       this.rng.fork().snapshot(),
@@ -556,8 +602,9 @@ export class BattleCoordinator {
   /** §30.4.6 `static`: format wild, canFlee false, canCatch true; flag set on win or catch. */
   async startStatic(p: PlayerSeat, st: LegendaryStatic, at: BattleAt): Promise<StartResult> {
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
-    const loaded = await this.loadPlayers([p.playerId], st.species);
-    const side0 = this.playerSide(loaded.get(p.playerId)!.party, p.playerId, false, true, loaded.get(p.playerId)!.inventory);
+    const loaded = await this.loadPlayers([p.playerId], st.species, this.deps.zone.id);
+    const me = loaded.get(p.playerId)!;
+    const side0 = this.playerSide(me.party, p.playerId, false, me.canCatch, me.inventory);
     if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
     const wild = withSyntheticId(newCreature(this.deps.content, st.species, st.level), `static:${st.species}`);
     const side1: Omit<Side, 'mustSwitch' | 'consumedItems'> = { kind: 'wild', party: [projectBattler(wild, this.deps.content)], active: 0, trainerId: null, canFlee: false, canCatch: false };
@@ -575,8 +622,9 @@ export class BattleCoordinator {
         x: at.x,
         z: at.z,
         yaw: at.yaw ?? null,
-        inventory: [loaded.get(p.playerId)!.inventory, null],
+        inventory: [this.bagFor(me), null],
         rematch: false,
+        challenge: [me.challenge, null],
       },
       [side0, side1],
       this.rng.fork().snapshot(),
@@ -637,7 +685,8 @@ export class BattleCoordinator {
         x: at.x,
         z: at.z,
         yaw: at.yaw ?? null,
-        inventory: [loaded.get(p.playerId)!.inventory, null],
+        inventory: [this.bagFor(loaded.get(p.playerId)!), null],
+        challenge: [loaded.get(p.playerId)!.challenge, null],
         rematch: def.kind === 'trainer' ? def.rematch : def.rematch !== undefined,
       },
       [side0, side1],
@@ -717,7 +766,8 @@ export class BattleCoordinator {
         x: at.x,
         z: at.z,
         yaw: at.yaw ?? null,
-        inventory: [loaded.get(challenger.playerId)!.inventory, loaded.get(accepter.playerId)!.inventory],
+        inventory: [this.bagFor(loaded.get(challenger.playerId)!), this.bagFor(loaded.get(accepter.playerId)!)],
+        challenge: [loaded.get(challenger.playerId)!.challenge, loaded.get(accepter.playerId)!.challenge],
         rematch: false,
       },
       [side0, side1],
@@ -957,7 +1007,9 @@ export class BattleCoordinator {
       if (d === undefined) continue;
       if (d.tower !== null && seat.side === 0) session.towerResult = d.tower;
       // Phase D14: a tower fight keeps its empty item snapshot (no items in the tower); arena PvP likewise
-      if (d.inventoryAll !== null && session.tower !== true && session.arena === undefined) session.inventory[seat.side] = d.inventoryAll;
+      if (d.inventoryAll !== null && session.tower !== true && session.arena === undefined) {
+        session.inventory[seat.side] = session.challenge?.[seat.side] === 'hardcore' ? orbsOnly(d.inventoryAll, this.deps.content) : d.inventoryAll;
+      }
       const itemsTouched = Object.keys(d.items).length > 0;
       if (itemsTouched || d.money !== null || d.creaturesAdded.length > 0 || d.creaturesUpdated.length > 0) {
         host.send(pid, {
@@ -1031,7 +1083,20 @@ export class BattleCoordinator {
           const row = await repos.creatures.recordById(tx, a.id);
           if (row === null || row.ownerId !== pid) continue;
           const after = persistableAfterBattle(a);
-          const merged: CreatureInstance = { ...toInstance(row), hp: after.hp, moves: after.moves, status: after.status, exp: after.exp, level: after.level, heldItem: after.heldItem, ...(after.honor !== undefined ? { honor: after.honor } : {}) };
+          const cur = toInstance(row);
+          // challenge modes: a creature that faints in an active run has fallen for good
+          const falls = session.challenge?.[side] != null && after.hp === 0 && !isFallen(cur);
+          const merged: CreatureInstance = {
+            ...cur,
+            hp: after.hp,
+            moves: after.moves,
+            status: after.status,
+            exp: after.exp,
+            level: after.level,
+            heldItem: after.heldItem,
+            ...(after.honor !== undefined ? { honor: after.honor } : {}),
+            ...(falls ? { ribbons: [...cur.ribbons, FALLEN_RIBBON] } : {}),
+          };
           await repos.creatures.update(tx, merged);
           d.creaturesUpdated.push(merged);
         }
@@ -1181,6 +1246,18 @@ export class BattleCoordinator {
             d.rating = r.rating;
           }
           if (money !== 0) d.money = await repos.players.addMoney(tx, pid, money);
+          // challenge modes: beating the Champion clears the run; nothing left that has not fallen fails it (the fallen
+          // then keep a memorial ribbon only, so the account plays on)
+          if (session.challenge?.[side] != null) {
+            if (flagsToSet.includes(CHAMPION_FLAG)) flagsToSet.push(CHALLENGE_CLEARED_FLAG);
+            else {
+              const mourned = await failIfNothingLeft(tx, repos, pid);
+              if (mourned !== null) {
+                flagsToSet.push(CHALLENGE_FAILED_FLAG);
+                d.creaturesUpdated.push(...mourned);
+              }
+            }
+          }
           // creature history: the party that won a badge, beat the Champion, or caught / defeated a legendary
           const partyIds = aSide.party.map((b) => b.creature.id).filter(isPersistedId);
           if (badge !== null) await repos.creatures.addEvent(tx, partyIds, { kind: 'badge', badge }, now);

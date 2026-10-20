@@ -3,7 +3,7 @@
  * is projected in a live battle (§30.6.3). Every effect is computed with @ewa/core (applyExp, evolve,
  * calcMaxHp) — the client never sends a result, only an intent.
  */
-import { MOVE_TUTOR_PRICE, TRADE_EVOLVE_RIBBON, TM_MOVES, canLearnMachineMove, tmItemId } from '@ewa/content';
+import { MOVE_TUTOR_PRICE, TRADE_EVOLVE_RIBBON, TM_MOVES, canLearnMachineMove, isFallen, tmItemId } from '@ewa/content';
 import { applyExp, calcMaxHp, evolutionChildren, evolutionTarget, evolve, expToLevel, itemEvolutionTarget, majorStatus, removeStatus, tracksHonor, tradeEvolutionTarget } from '@ewa/core';
 import type { ConsumableDef, CreatureInstance, ItemDef, StatusId } from '@ewa/core';
 import type { CreatureRecord, Tx } from '@ewa/persist';
@@ -29,6 +29,7 @@ import {
 } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
 import { sanitizeChat } from '../../chat/filter';
+import { refuseFallen } from '../../game/challenge';
 import { healed } from '../../game/creatures';
 import { toInstance } from '../../rooms/battleSession';
 import { HttpError, inventoryDeltaBody, out, presenceZone, rateLimit, refuseInBattle, requireAuth } from '../http';
@@ -78,7 +79,7 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
     refuseInBattle(deps, id);
     const res = await repos.db.transaction(async (tx) => {
       await own(tx, id, body.partyId);
-      await own(tx, id, body.boxId);
+      refuseFallen(await own(tx, id, body.boxId)); // challenge modes: a fallen creature never rejoins the party
       await repos.creatures.swap(tx, id, body.partyId, body.boxId);
       return partyBox(tx, id);
     });
@@ -91,6 +92,7 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
     refuseInBattle(deps, id);
     const res = await repos.db.transaction(async (tx) => {
       const rec = await own(tx, id, body.id);
+      refuseFallen(rec);
       if (rec.slotKind !== 'box') throw new HttpError(409, 'InvalidSlot');
       await repos.creatures.moveToSlot(tx, body.id, 'party', await freePartyIndex(tx, id));
       return partyBox(tx, id);
@@ -210,6 +212,7 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
     const res = await repos.db.transaction(async (tx) => {
       await repos.players.lock(tx, id);
       const rec = await own(tx, id, cid);
+      refuseFallen(rec);
       const cur = toInstance(rec);
       const evo = content.species(rec.speciesId).evolution;
       const items: Record<string, number> = {};
@@ -363,6 +366,7 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
       const r = await repos.db.transaction(async (tx) => {
         if ((await repos.inventory.qty(tx, id, body.item)) < 1) throw new HttpError(409, 'InsufficientItems');
         const c = toInstance(await own(tx, id, target));
+        refuseFallen(c);
         return { c, inventory: await repos.inventory.all(tx, id) };
       });
       const into = itemEvolutionTarget(content.species(r.c.speciesId).evolution, body.item);
@@ -375,6 +379,7 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
       await repos.inventory.add(tx, id, body.item, -body.qty);
       if (body.target === null) throw new HttpError(409, 'needsTarget');
       const rec = await own(tx, id, body.target);
+      refuseFallen(rec); // no item, a revive included, brings a fallen creature back
       let c = toInstance(rec);
       const maxHp = (x: CreatureInstance): number => calcMaxHp(content.species(x.speciesId).baseHp, x.level);
       const events: { t: string; [k: string]: unknown }[] = [];
@@ -438,6 +443,11 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
       const current = await repos.creatures.party(tx, id);
       const healedParty: CreatureInstance[] = [];
       for (const c of current) {
+        // challenge modes: the fallen are not healed
+        if (isFallen(c)) {
+          healedParty.push(toInstance(c));
+          continue;
+        }
         const h = healed(content, toInstance(c));
         await repos.creatures.update(tx, h);
         healedParty.push(h);

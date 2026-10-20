@@ -20,6 +20,7 @@ import s from './BoxScreen.module.css';
 import { CreatureDetail } from './CreatureDetail';
 import l from './layout.module.css';
 import { useClosePanel, useIntent } from './shared';
+import { isFallen } from '@ewa/content';
 
 export const BOX_PAGE_SIZE = 60;
 const EMPTY: readonly CreatureInstance[] = [];
@@ -77,7 +78,10 @@ export function BoxScreen() {
   const busy = (intent: string): boolean => fetcher.busy((p) => p.intent === intent);
 
   const extra =
-    selected === null ? null : selectedInParty ? (
+    selected === null ? null : !selectedInParty && isFallen(selected) ? (
+      // challenge modes: a fallen creature never rejoins the party
+      <p className={l.caption}>Fallen in your challenge run: it stays in the box.</p>
+    ) : selectedInParty ? (
       <Button icon="box" busy={busy('deposit')} disabled={party.length <= 1} onClick={() => fetcher.submit({ intent: 'deposit', id: selected.id })}>
         Deposit to box
       </Button>

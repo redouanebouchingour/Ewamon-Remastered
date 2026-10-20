@@ -399,3 +399,17 @@ export function createContentIndex(): ContentIndex {
     allSpecies: () => speciesByDex,
   };
 }
+export {
+  CHALLENGE_CLEARED_FLAG,
+  CHALLENGE_FAILED_FLAG,
+  CHALLENGE_LABELS,
+  CHALLENGE_MODES,
+  CHALLENGE_MODE_FLAG,
+  FALLEN_MEMORIAL_RIBBON,
+  FALLEN_RIBBON,
+  challengeActive,
+  challengeMetFlag,
+  challengeOf,
+  isFallen,
+} from './data/challenge';
+export type { ChallengeMode, ChallengeState, ChallengeStatus } from './data/challenge';

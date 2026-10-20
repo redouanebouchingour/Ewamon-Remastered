@@ -29,6 +29,9 @@ import { cx } from '../ui/cx';
 import { Icon } from '../ui/Icon';
 import type { IconName } from '../ui/Icon';
 import s from './TopBar.module.css';
+import { CHALLENGE_LABELS, challengeOf } from '@ewa/content';
+import type { ChallengeMode, ChallengeState } from '@ewa/content';
+import { Pill } from '../ui/Pill';
 
 export interface NavItem {
   readonly to: string;
@@ -153,6 +156,24 @@ function ZoneChip() {
         {label}
       </span>
     </div>
+  );
+}
+
+/** Challenge modes: the run, beside the zone (Nuzlocke / Hardcore, and Cleared / Failed once it ended). */
+function ChallengeChip() {
+  const run = useSessionStore((st) => {
+    const r = challengeOf(st.progression?.flags ?? []);
+    return r === null ? null : `${r.mode}:${r.state}`;
+  });
+  if (run === null) return null;
+  const [mode, state] = run.split(':') as [ChallengeMode, ChallengeState];
+  const name = CHALLENGE_LABELS[mode].name;
+  return (
+    <span className={s.challenge} data-testid="challenge-chip">
+      <Pill tone={state === 'failed' ? 'danger' : state === 'cleared' ? 'info' : 'neutral'} title={CHALLENGE_LABELS[mode].rules}>
+        {state === 'active' ? name : `${name} · ${state === 'cleared' ? 'Cleared' : 'Failed'}`}
+      </Pill>
+    </span>
   );
 }
 
@@ -356,6 +377,7 @@ export function TopBar() {
         <span className={s.brandSlab}>Ewamon</span>
       </NavLink>
       <ZoneChip />
+      <ChallengeChip />
       <QueueChip />
       <nav className={s.nav} aria-label="Menus">
         {NAV_PRIMARY.map((n) => (

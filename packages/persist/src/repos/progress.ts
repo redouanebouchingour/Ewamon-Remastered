@@ -1,6 +1,7 @@
-import { and, asc, eq, inArray, isNotNull, isNull, like, lt } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, like, lt, sql } from 'drizzle-orm';
 import type { Tx } from '../db';
-import { badges, dexEntries, questProgress, storyFlags } from '../schema/index';
+import { badges, dexEntries, players, questProgress, storyFlags } from '../schema/index';
+import type { PlayerRow } from '../schema/index';
 import type { BadgeId, VariantKey } from '../types';
 import { escapeLike } from '../util';
 import { auditRepo } from './audit';
@@ -209,6 +210,32 @@ export const progressRepo = {
       .where(and(eq(questProgress.playerId, playerId), isNotNull(questProgress.claimedAt)))
       .orderBy(asc(questProgress.questId));
     return rows.map((r) => r.questId);
+  },
+
+  /**
+   * Challenge modes (the server's flags, passed in: persist knows no content): the players who hold `flags.mode`,
+   * cleared runs first (earliest clear first), then runs still going, then failed ones, each by badges desc, then
+   * username; banned excluded.
+   */
+  async challengeBoard(
+    tx: Tx,
+    flags: { readonly mode: string; readonly cleared: string; readonly failed: string },
+    page: number,
+    pageSize: number,
+  ): Promise<{ player: PlayerRow; badges: number; state: 'active' | 'cleared' | 'failed' }[]> {
+    const size = Math.min(100, Math.max(1, pageSize));
+    const badgeCount = sql<number>`(select count(*)::int from ${badges} b where b.player_id = ${players.id})`;
+    const clearedAt = sql<Date | null>`(select f.set_at from ${storyFlags} f where f.player_id = ${players.id} and f.flag = ${flags.cleared})`;
+    const failed = sql<boolean>`exists (select 1 from ${storyFlags} f where f.player_id = ${players.id} and f.flag = ${flags.failed})`;
+    const rows = await tx
+      .select({ player: players, badges: badgeCount, clearedAt, failed })
+      .from(storyFlags)
+      .innerJoin(players, eq(players.id, storyFlags.playerId))
+      .where(and(eq(storyFlags.flag, flags.mode), isNull(players.bannedAt)))
+      .orderBy(sql`${clearedAt} is null`, sql`${clearedAt} asc`, sql`${failed}`, sql`${badgeCount} desc`, asc(players.usernameLower))
+      .limit(size)
+      .offset(Math.max(0, page - 1) * size);
+    return rows.map((r) => ({ player: r.player, badges: Number(r.badges), state: r.clearedAt !== null ? 'cleared' : r.failed ? 'failed' : 'active' }));
   },
 };
 

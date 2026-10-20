@@ -1635,7 +1635,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 
 | Method + path | Request | Response | Auth |
 |---|---|---|---|
-| `POST /auth/register` | `{ username: /^[a-z0-9_]{3,20}$/, email, password: 8..128, starter: 'bramblecub'|'glimfin'|'cindercap' }` | `{ access, refresh, player: PlayerProfile }` | none |
+| `POST /auth/register` | `{ username: /^[a-z0-9_]{3,20}$/, email, password: 8..128, starter: 'bramblecub'|'glimfin'|'cindercap', challenge?: 'nuzlocke'|'hardcore' }` (the run starts with the account; added 2026-10-20) | `{ access, refresh, player: PlayerProfile }` | none |
 | `POST /auth/login` | `{ username, password }` | `{ access, refresh, player }` | none |
 | `POST /auth/refresh` | `{ refresh }` | `{ access, refresh }` (rotating) | none |
 | `POST /auth/logout` | `{ refresh }` | `204` | bearer |
@@ -1675,7 +1675,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /guilds?search=` · `GET /guilds/:id` | — | `GuildView[]` / `GuildView & { members }` | bearer |
 | `POST /guilds` | `{ name: 3..24, tag: /^[A-Z0-9]{3,4}$/ }` (costs `GUILD.createCost` 5000, 409 `InsufficientFunds`) | `GuildCreateRes` = `GuildView & { inventoryDelta }` (`money` after the charge) | bearer |
 | `POST /guilds/:id/join` · `/leave` · `/kick` · `/promote` | `{ playerId? }` | `GuildView` | bearer |
-| `GET /leaderboard?mode=rating|dex|trainerLevel|towerStreak|daily&page=` | - | `{ rows: LeaderboardRow[] }` (Phase D14: `towerStreak` ranks `player_streaks.best` desc, then `current`, then username, players with best > 0 only; every row carries `towerBest?` / `towerCurrent?`; `daily` (added 2026-10-20) ranks today's winners by `daily_results.turns` asc, then the earlier win, and carries `dailyTurns?` / `dailyMarks?`) | bearer |
+| `GET /leaderboard?mode=rating|dex|trainerLevel|towerStreak|daily|nuzlocke|hardcore&page=` | - | `{ rows: LeaderboardRow[] }` (Phase D14: `towerStreak` ranks `player_streaks.best` desc, then `current`, then username, players with best > 0 only; every row carries `towerBest?` / `towerCurrent?`; `daily` (added 2026-10-20) ranks today's winners by `daily_results.turns` asc, then the earlier win, and carries `dailyTurns?` / `dailyMarks?`; `nuzlocke` / `hardcore` (added 2026-10-20) list the players holding the mode's flag: cleared runs first (earliest clear first), then runs still going, then failed ones, each by badges desc, with `challengeBadges?` / `challengeState?`) | bearer |
 | `GET /players/:username` | — | `PublicProfile` (allow-list, §5.3) | bearer |
 | `GET /battle-pass` | — | `{ trainerExp, trainerLevel, claimed: number[], mythicalChoice: string | null, rewards: BattlePassReward[] }` | bearer |
 | `POST /battle-pass/claim` | `{ level }` | `{ claimed, inventory, money, creaturesAdded }` | bearer |
@@ -1684,6 +1684,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /creature/:id/history` <!-- added 2026-10-20: creature history --> | - | `CreatureHistoryRes { originalTrainer: string \| null, events: CreatureEvent[] }` oldest first (at most 200): `met { how: 'caught' \| 'received', speciesId, level, zoneId \| null, trainer }`, `traded` / `sold` / `gift { from, to }`, `evolved { from, into }`, `badge { badge }`, `champion`, `legendary { species, caught }`, each with `at`; names as they were then. Any signed-in player may read any creature's history; 404 `notFound` | bearer |
 | `POST /history/battles/:battleId/share` <!-- added 2026-10-20: battle replays --> | `{}` | `{ token }`: 12 url-safe characters, the same token on every share of that battle (404 `notFound` for another player's battle; 409 `notReplayable` for a row without `start` / `final_digest`, 409 `stale` when the row no longer replays to its `final_digest`) | bearer |
 | `GET /replay/:token` | - | `ReplayRes { token, format, seat, labels: [string \| null, string \| null], result, turns, happenedAt, seed, start, actions, finalDigest }`: the battle frozen and anonymised at share time (player sides' trainers `r:<side>`, creatures `r:<side>:<i>`, owners null; `createBattle({ id: REPLAY_BATTLE_ID, format, seed, ...start })` + the actions end on `finalDigest`); `seat` the sharer's side; 404 `notFound` | none (rate limit `replay` per IP) |
+| `POST /challenge` <!-- added 2026-10-20: challenge modes --> | `{ mode: 'normal' \| 'nuzlocke' \| 'hardcore' }` | `{ flags }`: every `challenge:` flag cleared, then the mode's set (`normal`: none); 409 `badges` after the first badge, 409 `fallen` once a creature has fallen, 409 `inBattle` | bearer |
 | `GET /daily` <!-- added 2026-10-20: the daily challenge --> | - | `DailyRes { dayKey, number, endsAt, team[3], foe[3] ({ speciesId, level, moves, ability }), foeName, par, best: { turns, marks, battleId } \| null, attempts, winners }` for today (UTC) | bearer |
 | `POST /daily/start` | `{}` | `{ seat }` in a fresh arena room of kind `daily` (409 `offline` / `busy`; any party may play: the team is the day's) | bearer |
 | `GET /arena` <!-- amended 2026-10-11: arena PvP --> | — | `{ rating, peakRating, rankedMatches, level: 50, cup: { id, name, description, endsAt }, status: ArenaStatus, live: { roomId } \| null }` | bearer |
@@ -2125,6 +2126,7 @@ export interface AuditRepo { write(tx: Tx, e: { actorId: string | null; action: 
 export function escapeLike(s: string): string;   // escapes \ % _ ; callers add their own wildcards and `ESCAPE '\'`
 /** Phase D14 (migration 0004_player_streaks): `player_streaks (player_id uuid PK → players cascade, current int ≥ 0, best int ≥ current, updated_at)`, index on best. */
 /** The daily challenge (migration 0008_daily_results): `daily_results (player_id → players cascade, day_key varchar(10), attempts int, turns smallint null, marks varchar(200) null, battle_id uuid null, won_at)`, PK (player_id, day_key). */
+/** Challenge modes (no migration: the run lives in story flags): `challengeBoard(tx, { mode, cleared, failed }, page, pageSize)` on ProgressRepo, the flags passed in by the server (persist knows no content); banned excluded. */
 export interface DailyRepo {
   get(tx: Tx, playerId: string, dayKey: string): Promise<{ attempts: number; best: { turns: number; marks: string; battleId: string } | null }>;
   record(tx: Tx, playerId: string, dayKey: string, won: { turns: number; marks: string; battleId: string } | null, now: Date): Promise<{ attempts: number; best: { turns: number; marks: string; battleId: string } | null }>;   // attempts + 1; a win with fewer turns replaces the best (a tie keeps the earlier)

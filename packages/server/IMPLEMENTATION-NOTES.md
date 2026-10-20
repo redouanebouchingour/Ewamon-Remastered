@@ -1091,3 +1091,17 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   `arena.daily` (content `ARENA_DAILY`). In `persistTurn` a daily counts as training (nothing paid or written about the
   player) and, at the end, re-runs `replayBattle` over the actions log for the strip and writes `daily_results`.
 - `GET /leaderboard?mode=daily` reads today's (UTC, `liveops/schedule.ts` `dayKey`) winners.
+
+## Challenge modes (2026-10-20)
+
+- `BattleCoordinator.loadPlayers` reads the run with the start transaction and, for a wild or static battle, spends
+  the zone's first encounter (`challenge:met:<zone>`, sent to the client and the room cache): that battle alone has
+  `canCatch`. `BattleSession.challenge` keeps each side's run: Hardcore's bag snapshot is `orbsOnly` (also after each
+  refresh), and `persistTurn` adds `FALLEN_RIBBON` to a creature written with hp 0. At the end the Champion's flag
+  adds `challenge:cleared`; `failIfNothingLeft` (game/challenge.ts, also run by raids) fails the run when every party
+  and box creature has fallen and swaps their ribbon for the memorial one.
+- Raids keep the run per participant: a spent zone encounter closes the catch window, an attempt spends it, Hardcore
+  refuses bag items, the fallen and the failure are written as in battles.
+- REST: `refuseFallen` (409 `fallen`) in withdraw, the box side of swap, evolve (both paths) and item use; `/heal`
+  skips the fallen; the market list route and `TradeCoordinator.offer` refuse them; arena copies and tower picks leave
+  them out. `POST /challenge` (me.ts) clears every `challenge:` flag before setting the new mode.

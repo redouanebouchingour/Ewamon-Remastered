@@ -33,7 +33,16 @@ const MODE_TABS: readonly { readonly key: RankingMode; readonly label: string; r
   { key: 'towerStreak', label: 'Tower', blurb: 'Best battle tower streak; ties go to the longer run in progress.' },
   // the daily challenge: today's winners (UTC), fewest turns first; ties go to the earlier win
   { key: 'daily', label: 'Daily', blurb: "Today's daily challenge: fewest turns to win; ties go to the earlier win." },
+  // challenge modes: cleared runs first (earliest), then runs still going, then failed ones, by badges
+  { key: 'nuzlocke', label: 'Nuzlocke', blurb: 'Nuzlocke runs: cleared first, then the runs still going, then the failed, by badges.' },
+  { key: 'hardcore', label: 'Hardcore', blurb: 'Hardcore runs: cleared first, then the runs still going, then the failed, by badges.' },
 ];
+
+/** A challenge run's cell: its badges and how it stands. */
+function runLabel(r: LeaderboardRow): string {
+  const badges = `${r.challengeBadges ?? 0} ${r.challengeBadges === 1 ? 'badge' : 'badges'}`;
+  return r.challengeState === 'cleared' ? `Cleared · ${badges}` : r.challengeState === 'failed' ? `Failed · ${badges}` : badges;
+}
 
 function columns(mode: RankingMode, myId: string | null): TableColumn<LeaderboardRow>[] {
   const metric: Record<RankingMode, TableColumn<LeaderboardRow>> = {
@@ -41,6 +50,8 @@ function columns(mode: RankingMode, myId: string | null): TableColumn<Leaderboar
     dex: { key: 'dex', header: 'Caught', width: 110, align: 'end', render: (r) => <span className={l.mono}>{r.dexCaughtCount} / {DEX_TOTAL}</span> },
     trainerLevel: { key: 'trainerLevel', header: 'Level', width: 80, align: 'end', render: (r) => <span className={l.mono}>{r.trainerLevel}</span> },
     towerStreak: { key: 'towerStreak', header: 'Streak', width: 96, align: 'end', render: (r) => <span className={l.mono}>{r.towerBest ?? 0}</span> },
+    nuzlocke: { key: 'nuzlocke', header: 'Run', width: 150, align: 'end', render: (r) => <span className={l.mono}>{runLabel(r)}</span> },
+    hardcore: { key: 'hardcore', header: 'Run', width: 150, align: 'end', render: (r) => <span className={l.mono}>{runLabel(r)}</span> },
     daily: {
       key: 'daily',
       header: 'Turns',

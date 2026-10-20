@@ -23,6 +23,7 @@ import l from './layout.module.css';
 import s from './ProfileScreen.module.css';
 import { useClosePanel, useIntent } from './shared';
 import { BadgeStrip, Showcase, TrainerIdentity, TrainerStats } from './TrainerCard';
+import { ChallengeSection } from './ChallengeSection';
 
 export const MOTTO_MAX = 120;
 
@@ -149,6 +150,7 @@ export function ProfileScreen() {
             <Showcase pub={pub} />
           </section>
         )}
+        <ChallengeSection />
         <section className={l.section} aria-label="Achievements">
           <h3 className={l.sectionTitle}>Achievements</h3>
           <Achievements />

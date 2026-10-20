@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-20 challenge modes: Nuzlocke and Hardcore runs with their own leaderboards. One entry. -->
+
+## 2026-10-20 · `00-spine.md` §4.7 (`POST /challenge`, register `challenge`, leaderboard `nuzlocke` / `hardcore`), §5.2 (`challengeBoard`); `30-server-netcode.md` §30.6.3 (the run's rules); `20-client.md` §20.9.9g (new); `50-verification-budget.md` §50.4.4 / .5 / .7 rows · challenge modes
+Why: the user asked for Nuzlocke and Hardcore as real game modes: permadeath, one catch per route, their own leaderboard. The run lives in the server's colon-namespaced story flags (no migration, and flags already reach the room cache and the client) and a fallen creature is a ribbon, so core and its fuzz digests are untouched. The mode is fixed from the first badge or the first fallen creature on, so a run cannot be quietly abandoned once it costs something. A failed run turns the fallen into memorials so the account is never stuck with nothing that can fight.
+Evidence: `packages/persist/test/challenge.test.ts` (1); `packages/protocol/test/rest.test.ts` (78 routes, register / switch / board fields); `packages/server/test/challenge.test.ts` (6); `packages/client/test/challenge.test.tsx` (3); live on the second isolated pair (the Profile switch and the top-bar pill; Orbs enabled in the route's first wild battle and disabled in the second; the register picker with Hardcore's rules).
+Affects: `packages/content/src/{data/challenge,index}.ts`; `packages/persist/src/repos/progress.ts`; `packages/protocol/src/rest.ts`; `packages/server/src/{game/challenge,rooms/battleSession,rooms/raidSession,rooms/tradeSession,rooms/towerSession,rest/routes/auth,rest/routes/me,rest/routes/party,rest/routes/market,rest/routes/catalog}.ts`; `packages/client/src/{screens/ChallengeSection,screens/ProfileScreen,screens/AuthScreen,screens/BoxScreen,screens/CreatureDetail,screens/PartyScreen,screens/RankingsScreen,app/TopBar,app/actions,battle/BattleMenu,ui/CreatureCard,net/errors}.ts(x)`.
+
 <!-- 2026-10-20 the daily challenge: one puzzle a day, the same for everyone. One entry. -->
 
 ## 2026-10-20 · `00-spine.md` §4.7 (`GET /daily`, `POST /daily/start`, leaderboard `daily`), §5.2 (`DailyRepo`, migration 0008 `daily_results`); `30-server-netcode.md` §30.4.10 (the daily challenge); `20-client.md` §20.9.9d+ (new); `50-verification-budget.md` §50.4.4 / .5 / .7 rows · the daily challenge

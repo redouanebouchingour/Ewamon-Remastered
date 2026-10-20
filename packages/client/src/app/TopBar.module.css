@@ -578,3 +578,11 @@
 .queueLeave:hover {
   color: var(--text-hi);
 }
+
+/* challenge modes: the run's pill beside the zone chip */
+.challenge {
+  display: flex;
+  align-items: center;
+  flex: none;
+  margin-inline-start: var(--s-3);
+}

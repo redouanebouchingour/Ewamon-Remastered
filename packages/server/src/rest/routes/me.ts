@@ -1,9 +1,9 @@
 /**
  * §4.7 rows: GET /me, POST /zone/enter, POST /profile, POST /quests/claim.
  */
-import { BATTLE_PASS, BODIES, QUESTS, TITLES, quest as questById, zone as zoneById } from '@ewa/content';
+import { BATTLE_PASS, BODIES, CHALLENGE_MODE_FLAG, FALLEN_MEMORIAL_RIBBON, FALLEN_RIBBON, QUESTS, TITLES, quest as questById, zone as zoneById } from '@ewa/content';
 import { TRAINER_EXP, trainerLevelFor } from '@ewa/core';
-import { MeRes, PlayerProfileSchema, QuestClaimReq, QuestClaimRes, ZoneEnterReq, ZoneEnterRes, profileRequestFor } from '@ewa/protocol';
+import { ChallengeReq, ChallengeRes, MeRes, PlayerProfileSchema, QuestClaimReq, QuestClaimRes, ZoneEnterReq, ZoneEnterRes, profileRequestFor } from '@ewa/protocol';
 import type { QuestView, ZoneId } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
 import { newCreature } from '../../game/creatures';
@@ -13,7 +13,7 @@ import type { DailyMission } from '../../liveops/missions';
 import { dayKey, liveOpsSummary, weekKey } from '../../liveops/schedule';
 import { pickZoneRoom, reserveZoneSeat, zoneRoomById } from '../../rooms/matchmaking';
 import { toInstance } from '../../rooms/battleSession';
-import { HttpError, out, rateLimit, requireAuth, toProfile } from '../http';
+import { HttpError, out, rateLimit, refuseInBattle, requireAuth, toProfile } from '../http';
 import type { RestDeps } from '../http';
 
 export { dayKey, weekKey };
@@ -122,6 +122,28 @@ export function registerMeRoutes(app: FastifyInstance, deps: RestDeps): void {
     const room = await pickZoneRoom(body.zoneId, deps.ticket);
     const seat = await reserveZoneSeat(room, { zoneId: body.zoneId, shard: Number(room.metadata?.shard ?? 0), ticket: deps.ticket });
     return out(deps, ZoneEnterRes, { seat: { ...seat } });
+  });
+
+  /**
+   * Challenge modes (content challenge.ts): start, change or end a run while there is no badge and nothing has fallen.
+   * Every `challenge:` flag is cleared first (the first encounters of the old run included), then the new mode's set.
+   */
+  app.post('/challenge', bearer, async (req) => {
+    const { mode } = ChallengeReq.parse(req.body);
+    const id = req.user.sub;
+    refuseInBattle(deps, id);
+    const now = new Date(deps.clock());
+    const flags = await repos.db.transaction(async (tx) => {
+      await repos.players.lock(tx, id);
+      if ((await repos.progress.badges(tx, id)).length > 0) throw new HttpError(409, 'badges');
+      if ((await repos.creatures.byOwner(tx, id)).some((c) => c.ribbons.includes(FALLEN_RIBBON) || c.ribbons.includes(FALLEN_MEMORIAL_RIBBON))) throw new HttpError(409, 'fallen');
+      const old = (await repos.progress.flags(tx, id)).filter((f) => f.startsWith('challenge:'));
+      if (old.length > 0) await repos.progress.clearFlags(tx, id, old);
+      if (mode !== 'normal') await repos.progress.setFlags(tx, id, [CHALLENGE_MODE_FLAG[mode]], now);
+      await repos.audit.write(tx, { actorId: id, action: 'challenge.mode', subject: id, detail: { mode } }, now);
+      return repos.progress.flags(tx, id);
+    });
+    return out(deps, ChallengeRes, { flags });
   });
 
   app.post('/profile', bearer, async (req) => {

@@ -2097,3 +2097,11 @@ every KO turn shows the lunge, the hit and the faint before the next creature en
   so the arena's again action is "Try again"). `dailyShareText` is the clipboard text: number, turns, par and the strip,
   no team names. The arena result card refetches `GET /daily` (`DailyResult`) so the try just played counts.
 - `foeIdentity('arena.daily')`: "Daily Rival", title "Daily challenge", look `suit_male`. Rankings: a Daily tab.
+
+## Challenge modes (2026-10-20)
+
+- Register sends `challenge` from a `Segmented` under the starters. `screens/ChallengeSection.tsx` (Profile) switches
+  the run (`POST /challenge`, then GET /me through `hydrateFromMe`, so progression keeps one writer) and says why it is
+  locked. `ChallengeChip` in the top bar. The fallen: the `fallen` CreatureBadge (card and Party marks), a Fallen note
+  in place of Use an item, no Withdraw in the box. `BattleMenu` disables Bag in an active Hardcore run (Orbs already
+  follows `canCatch`). Rankings: Nuzlocke and Hardcore tabs. Error copy for `fallen` and `badges`.

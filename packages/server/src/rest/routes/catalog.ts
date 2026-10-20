@@ -2,7 +2,7 @@
  * §4.7 rows: GET /dex, /shop/*, /battle-pass*, /history/*, /players/:username, /leaderboard.
  * Prices, rewards and levels are content + core; the client sends intents (item, qty, level) only.
  */
-import { BATTLE_PASS, SHOP_STOCK_DEFAULT, zone as zoneById } from '@ewa/content';
+import { BATTLE_PASS, CHALLENGE_CLEARED_FLAG, CHALLENGE_FAILED_FLAG, CHALLENGE_MODE_FLAG, SHOP_STOCK_DEFAULT, zone as zoneById } from '@ewa/content';
 import type { ZoneDef } from '@ewa/content';
 import { trainerLevelFor, tierFor } from '@ewa/core';
 import type { ConsumableDef, ItemDef, OrbDef } from '@ewa/core';
@@ -283,9 +283,21 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
       const board = q.mode === 'towerStreak' ? await repos.streaks.leaderboard(tx, q.page, LEADERBOARD_PAGE) : null;
       const daily = q.mode === 'daily' ? await repos.daily.leaderboard(tx, dayKey(deps.clock()), q.page, LEADERBOARD_PAGE) : null;
       const dailyOf = new Map((daily ?? []).map((r) => [r.player.id, r]));
+      // challenge modes: the mode's runs, cleared first (earliest), then going, then failed, by badges
+      const challenge =
+        q.mode === 'nuzlocke' || q.mode === 'hardcore'
+          ? await repos.progress.challengeBoard(tx, { mode: CHALLENGE_MODE_FLAG[q.mode], cleared: CHALLENGE_CLEARED_FLAG, failed: CHALLENGE_FAILED_FLAG }, q.page, LEADERBOARD_PAGE)
+          : null;
+      const challengeOf = new Map((challenge ?? []).map((r) => [r.player.id, r]));
       const mode = q.mode;
       const players =
-        mode === 'towerStreak' ? (board ?? []).map((r) => r.player) : mode === 'daily' ? (daily ?? []).map((r) => r.player) : await repos.players.leaderboard(tx, mode, q.page, LEADERBOARD_PAGE);
+        mode === 'towerStreak'
+          ? (board ?? []).map((r) => r.player)
+          : mode === 'daily'
+            ? (daily ?? []).map((r) => r.player)
+            : mode === 'nuzlocke' || mode === 'hardcore'
+              ? (challenge ?? []).map((r) => r.player)
+              : await repos.players.leaderboard(tx, mode, q.page, LEADERBOARD_PAGE);
       const streaks = board !== null ? new Map(board.map((r) => [r.player.id, { current: r.current, best: r.best }])) : await repos.streaks.byPlayers(tx, players.map((p) => p.id));
       const out = [];
       for (let i = 0; i < players.length; i++) {
@@ -306,6 +318,7 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
           towerBest: streak?.best ?? 0,
           towerCurrent: streak?.current ?? 0,
           ...(dailyOf.has(p.id) ? { dailyTurns: dailyOf.get(p.id)!.turns, dailyMarks: dailyOf.get(p.id)!.marks } : {}),
+          ...(challengeOf.has(p.id) ? { challengeBadges: challengeOf.get(p.id)!.badges, challengeState: challengeOf.get(p.id)!.state } : {}),
         });
       }
       return out;

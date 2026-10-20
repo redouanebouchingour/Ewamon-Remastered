@@ -621,3 +621,10 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   the quickest way to check a shape and its reachability before looking at it in 3D.
 - `pnpm test:progression` not re-run with the sculpts (about 41 min); the walker pathfinds (`server/test/pathing.ts`),
   and validate's rule 12 proves every story target reachable from the spawn.
+
+## Challenge modes (2026-10-20)
+
+- `data/challenge.ts`: the modes (`nuzlocke`, `hardcore`), their flags (`challenge:<mode>`, `challenge:cleared`,
+  `challenge:failed`, `challenge:met:<zone>`), the ribbons (`fallen`, `fallen_memorial`), `challengeOf` /
+  `challengeActive` / `isFallen` and the labels with each mode's rules, shared by the server and the client. The flags
+  are the server's colon-namespaced ones, so `FLAG_REGISTRY` does not list them.

@@ -1,7 +1,7 @@
 /**
  * §30.6.2 / §4.7 auth rows: register, login, refresh, logout; Phase C6 forgot / reset / verify / resend.
  */
-import { visitedFlag } from '@ewa/content';
+import { visitedFlag, CHALLENGE_MODE_FLAG } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
 import { AuthRes, ForgotReq, LoginReq, LogoutReq, RefreshReq, RefreshRes, RegisterReq, ResetReq, VerifyReq } from '@ewa/protocol';
 import { isPersistError } from '@ewa/persist';
@@ -31,12 +31,13 @@ export function registerAuthRoutes(app: FastifyInstance, deps: RestDeps): void {
         await repos.inventory.addMany(tx, id, STARTER_ITEMS);
         await repos.progress.markSeen(tx, id, body.starter, now);
         await repos.progress.markCaught(tx, id, body.starter, 'normal', false, now);
-        await repos.audit.write(tx, { actorId: id, action: 'auth.register', subject: id, detail: { starter: body.starter } }, now);
+        await repos.audit.write(tx, { actorId: id, action: 'auth.register', subject: id, detail: { starter: body.starter, ...(body.challenge !== undefined ? { challenge: body.challenge } : {}) } }, now);
         // registration is the account's first login: day 1 of the streak (§30.9.1, IMPLEMENTATION-NOTES Q13)
         await dailyLogin(tx, repos, id, now.getTime());
         const row = (await repos.players.byId(tx, id))!;
         // Phase C3: the starting zone counts as visited from the first moment (the room writes it on any later first join)
-        await repos.progress.setFlags(tx, id, [visitedFlag(row.zoneId as ZoneId)], now);
+        // challenge modes: a run chosen at registration starts with the account
+        await repos.progress.setFlags(tx, id, [visitedFlag(row.zoneId as ZoneId), ...(body.challenge !== undefined ? [CHALLENGE_MODE_FLAG[body.challenge]] : [])], now);
         const tokens = await issueTokens(tx, repos, app, { id, username: row.username, isAdmin: row.isAdmin }, now);
         // Phase C6: a verification link (never gates play); sent after the response, never awaited
         const verify = await repos.auth.issueEmailToken(tx, id, 'verify', VERIFY_TTL_MS, now);

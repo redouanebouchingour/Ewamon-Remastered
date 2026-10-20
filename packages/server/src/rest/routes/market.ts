@@ -14,6 +14,7 @@ import { toInstance } from '../../rooms/battleSession';
 import { HttpError, inventoryDeltaBody, iso, out, rateLimit, refuseInBattle, requireAuth } from '../http';
 import type { RestDeps } from '../http';
 import { SEARCH_CAP } from './social';
+import { refuseFallen } from '../../game/challenge';
 
 export function listingView(l: PersistListing): ListingView {
   return {
@@ -100,7 +101,12 @@ export function registerMarketRoutes(app: FastifyInstance, deps: RestDeps): void
     const me = req.user.sub;
     refuseInBattle(deps, me);
     const now = new Date(clock());
-    const l = await repos.db.transaction((tx) => repos.market.create(tx, { sellerId: me, creatureId: body.creatureId, startingBid: body.startingBid, buyNowPrice: body.buyNowPrice, durationHours: body.durationHours }, now));
+    const l = await repos.db.transaction(async (tx) => {
+      // challenge modes: a fallen creature cannot be listed
+      const rec = await repos.creatures.recordById(tx, body.creatureId);
+      if (rec !== null && rec.ownerId === me) refuseFallen(rec);
+      return repos.market.create(tx, { sellerId: me, creatureId: body.creatureId, startingBid: body.startingBid, buyNowPrice: body.buyNowPrice, durationHours: body.durationHours }, now);
+    });
     return out(deps, ListingMutationRes, { ...listingView(l), inventoryDelta: inventoryDeltaBody({ creaturesRemoved: [l.creatureId] }) });
   });
 

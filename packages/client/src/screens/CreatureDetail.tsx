@@ -28,6 +28,7 @@ import s from './CreatureDetail.module.css';
 import type { IntentFetcher } from './shared';
 import { CreatureHistory } from './CreatureHistory';
 import { TeachSection } from './TeachSection';
+import { isFallen } from '@ewa/content';
 
 export interface CreatureDetailProps {
   readonly creature: CreatureInstance;
@@ -249,6 +250,15 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
     </section>
   );
 
+  // challenge modes: a fallen creature takes no item (a revive included) and never fights again
+  const fallen = isFallen(c);
+  const fallenNote = (
+    <section className={l.section}>
+      <h4 className={band ? l.labelStrip : l.sectionTitle}>Fallen</h4>
+      <p className={l.caption}>It fell in your challenge run. It stays with you, but no item brings it back and it never fights again.</p>
+    </section>
+  );
+
   const identitySection = (
     <section className={l.section}>
       <h4 className={band ? l.labelStrip : l.sectionTitle}>Identity</h4>
@@ -350,7 +360,7 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
           <div className={s.tool}>
             <TeachSection creature={c} fetcher={fetcher} />
           </div>
-          <div className={s.tool}>{useItemSection}</div>
+          <div className={s.tool}>{fallen ? fallenNote : useItemSection}</div>
           <div className={s.tool}>{setupSection}</div>
           <div className={s.tool}>
             {identitySection}
@@ -400,7 +410,7 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
 
       <TeachSection creature={c} fetcher={fetcher} />
 
-      {useItemSection}
+      {fallen ? fallenNote : useItemSection}
       {setupSection}
       {identitySection}
       <CreatureHistory creatureId={c.id} />

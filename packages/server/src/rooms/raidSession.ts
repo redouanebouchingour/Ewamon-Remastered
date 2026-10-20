@@ -12,11 +12,13 @@
  * room (DB + `RaidHost`, no Colyseus import).
  */
 import { randomUUID } from 'node:crypto';
-import type { RaidHotspot, ZoneDef } from '@ewa/content';
+import { CHALLENGE_FAILED_FLAG, FALLEN_RIBBON, challengeActive, challengeMetFlag, isFallen } from '@ewa/content';
+import type { ChallengeMode, RaidHotspot, ZoneDef } from '@ewa/content';
 import { TRAINER_EXP, calcMaxHp, clampStage, createBattle, digestBattleState, projectBattler, resolveTurn, validateAction } from '@ewa/core';
 import type { Action, ActionError, BattleEvent, BattleState, Battler, ContentIndex, CreatureInstance, Rng, Side, Terrain } from '@ewa/core';
 import type { Db, Repos } from '@ewa/persist';
 import type { QuestProgressEntry, RewardsSummary, ServerMessage } from '@ewa/protocol';
+import { failIfNothingLeft } from '../game/challenge';
 import { isPersistedId, newCreature, persistableAfterBattle, withSyntheticId } from '../game/creatures';
 import { advanceQuests } from '../game/quests';
 import type { Logger } from '../log';
@@ -339,10 +341,10 @@ export class RaidSession {
    * defeated boss counts as 1 HP — nobody switching, not ended). `canCatch` is true only while the participant may
    * still `raidCatch` (damage > 0, no attempt yet). Sent as `battleResync` when the window opens (Phase C1).
    */
-  catchStateFor(playerId: string): BattleState | null {
+  catchStateFor(playerId: string, allowed = true): BattleState | null {
     const p = this.participants.get(playerId);
     if (p === undefined) return null;
-    return this.catchState(p, p.damage > 0 && !p.caughtAttempted);
+    return this.catchState(p, allowed && p.damage > 0 && !p.caughtAttempted);
   }
 
   private catchState(p: RaidParticipant, canCatch: boolean): BattleState {
@@ -446,6 +448,10 @@ export class RaidRunner {
   private resolving = false;
   /** per-participant inventory snapshots (item/orb balance checks at action time), refreshed after each round */
   private readonly inventory = new Map<string, Record<string, number>>();
+  /** challenge modes: each participant's active run (no entry: none) */
+  private readonly challenge = new Map<string, ChallengeMode>();
+  /** challenge modes: participants whose run already spent this zone's first encounter (no catch window for them) */
+  private readonly catchSpent = new Set<string>();
   private closing = false;
 
   constructor(
@@ -472,10 +478,19 @@ export class RaidRunner {
       party: await repos.creatures.party(tx, playerId),
       badges: await repos.progress.badges(tx, playerId),
       inventory: await repos.inventory.all(tx, playerId),
+      flags: await repos.progress.flags(tx, playerId),
     }));
     const r = this.session.join(playerId, loaded.party, loaded.badges.length, now);
     if (r !== 'ok') return { code: r === 'already' ? 'busy' : 'notAllowed', detail: r };
     this.inventory.set(playerId, loaded.inventory);
+    // challenge modes: the run's rules follow the participant into the raid (the catch counts as the zone's encounter)
+    const run = challengeActive(loaded.flags);
+    this.challenge.delete(playerId);
+    this.catchSpent.delete(playerId);
+    if (run !== null) {
+      this.challenge.set(playerId, run);
+      if (loaded.flags.includes(challengeMetFlag(this.deps.zone.id))) this.catchSpent.add(playerId);
+    }
     return null;
   }
 
@@ -488,6 +503,8 @@ export class RaidRunner {
   action(playerId: string, round: number, a: Action): RaidErr | null {
     const inv = this.inventory.get(playerId);
     if (a.kind === 'item' && (inv?.[a.item] ?? 0) < 1) return { code: 'notAllowed', detail: 'noItem' };
+    // Hardcore: no bag items in battle
+    if (a.kind === 'item' && this.challenge.get(playerId) === 'hardcore') return { code: 'notAllowed', detail: 'noItem' };
     const r = this.session.action(playerId, round, a);
     if (r === null) return null;
     return { code: r === 'notParticipant' ? 'notFound' : 'notAllowed', detail: r };
@@ -549,7 +566,7 @@ export class RaidRunner {
       return;
     }
     const rewardsFor = round.bossDefeated ? [...s.participants.values()].filter((p) => p.damage + (round.damage.get(p.playerId) ?? 0) > 0).map((p) => p.playerId) : [];
-    type Out = { inventory: Record<string, number>; money: number | null; updated: CreatureInstance[]; trainerExp: number | null; trainerLevel: number | null; rewards: RewardsSummary | null; quest: QuestProgressEntry[] };
+    type Out = { inventory: Record<string, number>; money: number | null; updated: CreatureInstance[]; trainerExp: number | null; trainerLevel: number | null; rewards: RewardsSummary | null; quest: QuestProgressEntry[]; failed?: boolean };
     let outs: Map<string, Out>;
     try {
       outs = await repos.db.transaction(async (tx) => {
@@ -569,9 +586,32 @@ export class RaidRunner {
               const row = await repos.creatures.recordById(tx, a.id);
               if (row === null || row.ownerId !== pid) continue;
               const after = persistableAfterBattle(a);
-              const merged: CreatureInstance = { ...toInstance(row), hp: after.hp, moves: after.moves, status: after.status, exp: after.exp, level: after.level, heldItem: after.heldItem, ...(after.honor !== undefined ? { honor: after.honor } : {}) };
+              const cur = toInstance(row);
+              // challenge modes: a creature that faints in an active run has fallen for good
+              const falls = this.challenge.has(pid) && after.hp === 0 && !isFallen(cur);
+              const merged: CreatureInstance = {
+                ...cur,
+                hp: after.hp,
+                moves: after.moves,
+                status: after.status,
+                exp: after.exp,
+                level: after.level,
+                heldItem: after.heldItem,
+                ...(after.honor !== undefined ? { honor: after.honor } : {}),
+                ...(falls ? { ribbons: [...cur.ribbons, FALLEN_RIBBON] } : {}),
+              };
               await repos.creatures.update(tx, merged);
               o.updated.push(merged);
+            }
+            // challenge modes: nothing left that has not fallen ends the run
+            if (this.challenge.has(pid)) {
+              const mourned = await failIfNothingLeft(tx, repos, pid);
+              if (mourned !== null) {
+                await repos.progress.setFlags(tx, pid, [CHALLENGE_FAILED_FLAG], new Date(this.deps.clock()));
+                o.updated.push(...mourned);
+                o.failed = true;
+                this.challenge.delete(pid);
+              }
             }
             // consumables used this round
             for (const ev of round.events.get(pid) ?? []) {
@@ -607,8 +647,10 @@ export class RaidRunner {
       if (round.spectators.has(pid)) this.deps.host.setFighting(pid, null);
     }
     // Phase C1: the catch window opened — every participant gets its catch battle (canCatch = may still raidCatch)
-    if (s.phase === 3) this.resyncAll((pid) => s.catchStateFor(pid));
+    if (s.phase === 3) this.resyncAll((pid) => s.catchStateFor(pid, !this.catchSpent.has(pid)));
     for (const [pid, o] of outs) {
+      // challenge modes: the run failed in this round
+      if (o.failed === true) this.deps.host.send(pid, { type: 'progressionDelta', badges: null, trainerExp: null, trainerLevel: null, rating: null, dexSeen: null, dexCaught: null, flags: [CHALLENGE_FAILED_FLAG], questProgress: null });
       if (Object.keys(o.inventory).length > 0 || o.money !== null || o.updated.length > 0) {
         this.deps.host.send(pid, { type: 'inventoryDelta', items: o.inventory, money: o.money, creaturesAdded: [], creaturesRemoved: [], creaturesUpdated: o.updated });
       }
@@ -636,6 +678,8 @@ export class RaidRunner {
   async catchAttempt(playerId: string, orb: string): Promise<RaidErr | null> {
     const s = this.session;
     const inv = this.inventory.get(playerId);
+    // challenge modes: this zone's first encounter was already spent in the run
+    if (this.catchSpent.has(playerId)) return { code: 'notAllowed', detail: 'cannotCatch' };
     if (s.participants.has(playerId) && s.phase === 3 && (inv?.[orb] ?? 0) < 1 && !(s.participants.get(playerId)?.caughtAttempted ?? false)) return { code: 'notAllowed', detail: 'noOrb' };
     const r = s.catchAttempt(playerId, orb);
     if (r !== 'ok') return { code: r === 'notParticipant' ? 'notFound' : 'notAllowed', detail: r };
@@ -647,6 +691,8 @@ export class RaidRunner {
     try {
       outcome = await repos.db.transaction(async (tx) => {
         await repos.players.lock(tx, playerId);
+        // challenge modes: the attempt spends the zone's first encounter of the run
+        if (this.challenge.has(playerId)) await repos.progress.setFlags(tx, playerId, [challengeMetFlag(zone.id)], now);
         const left = await repos.inventory.add(tx, playerId, orb, -1);
         const added: CreatureInstance[] = [];
         const placement: Record<string, 'party' | 'box'> = {};
