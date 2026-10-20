@@ -161,6 +161,8 @@ export interface Renderer {
   readonly deviceLost?: DeviceLostInfo | null;
   setTimeOfDay(t: number): void;               // 0..1; §10.3.5
   setWeather(w: WeatherKind): void;            // §10.3.7
+  /** Honor shapes the world: the zone's shadow level 0..4 (lighting/weather.ts `shadowParams`). Optional for fakes. */
+  setShadow?(level: number): void;
   setHarvestLevel(l: HarvestLevel): void;      // §10.2.6
   setEffects(f: EffectsFlags): void;           // rebuilds the post graph; §10.8.4
   setPixelRatio(r: number): void;              // re-clamped by §10.1.3
@@ -1142,6 +1144,10 @@ class RendererHost implements Renderer, HostContext {
   setWeather(w: WeatherKind): void {
     this.day.setWeather(w);
     this.precipitation.setMode(weatherParams(w).precipitation);
+  }
+
+  setShadow(level: number): void {
+    this.day.setShadow(level);
   }
 
   /** §10.2.6: 4 uniform writes + ≤ 32 light intensity writes; nothing is created or disposed. */

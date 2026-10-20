@@ -82,6 +82,7 @@ import { dayKey, hotspotDayKey, hotspotOpen, hotspotsFor, liveOpsModsFor } from 
 import { WEATHER_FORMATS, weatherAt, weatherBucket } from '../game/weather';
 import { REAL_WEATHER_CHECK_MS, weatherTopic } from '../game/realWeather';
 import type { WeatherCity } from '@ewa/persist';
+import { seasonAt, shadowLevel } from '@ewa/content';
 
 export interface ZoneMeta {
   readonly zoneId: ZoneId;
@@ -109,6 +110,9 @@ export interface HandoverPending {
   readonly toRoomId: string;
   readonly sentAt: number;
 }
+
+/** Honor shapes the world: how often a zone room reads its season tally. */
+export const SHADOW_CHECK_MS = 60_000;
 
 export interface ZoneUserData {
   readonly playerId: string;
@@ -293,6 +297,9 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   private readonly dmSubs = new Map<string, { readonly dm: (m: DmPush) => void; readonly arena: (m: ServerMessage) => void; readonly weather: (city: WeatherCity | null) => void }>();
   /** weather from real life: when the players' cities were last checked against the lookup cache */
   private realWeatherCheckedAt = 0;
+  /** honor shapes the world: when the zone's tally was last read (and whether a read is in flight) */
+  private shadowCheckedAt = Number.NEGATIVE_INFINITY;
+  private shadowReading = false;
   /** Phase D13: ranked matches this room is the arena for, waiting for both players to arrive */
   private readonly rankedArena = new RankedArena();
 
@@ -747,6 +754,21 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.presence.unsubscribe(`ewa:dm:${playerId}`, cb.dm);
     this.presence.unsubscribe(arenaTopic(playerId), cb.arena);
     this.presence.unsubscribe(weatherTopic(playerId), cb.weather);
+  }
+
+  /** Honor shapes the world: the zone's shadow level this season (state.shadow, written only when it changes). */
+  private async readShadow(now: number): Promise<void> {
+    this.shadowReading = true;
+    try {
+      const deps = this.deps;
+      const t = await deps.repos.db.transaction((tx) => deps.repos.worldHonor.of(tx, seasonAt(now).number, this.zone.id));
+      const level = shadowLevel(t.light, t.shadow);
+      if (this.state.shadow !== level) this.state.shadow = level;
+    } catch (e) {
+      this.deps.log.warn({ err: e }, 'shadow read failed');
+    } finally {
+      this.shadowReading = false;
+    }
   }
 
   /** Weather from real life: the player's city's weather (one lookup when the cache has none), sent when it changes. */
@@ -1380,7 +1402,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     if (water === null) return refuse('noWater', 'There is no water to fish in here.');
     this.fishCounter += 1;
     const id = `${this.zone.id}:fish:${this.fishCounter}`;
-    const rec = rollFishing(encounterTableFor(this.zone.id), this.fishRng!, this.deps.content, this.state.timeOfDay, water, id, this.now(), this.spawns?.liveOps, client.userData?.realWeather ?? null);
+    const rec = rollFishing(encounterTableFor(this.zone.id), this.fishRng!, this.deps.content, this.state.timeOfDay, water, id, this.now(), this.spawns?.liveOps, client.userData?.realWeather ?? null, this.state.shadow);
     if (rec === null) return refuse('nothingBites', 'Not even a nibble. Nothing seems to live in this water.');
     ud.battleId = 'pending';
     const res = await this.battles.startWild({ playerId: ud.playerId, sessionId: client.sessionId }, rec, { x: ps.x, z: ps.z }).catch((e: unknown) => {
@@ -1494,7 +1516,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.wildCounter += 1;
     const id = `${this.zone.id}:wild:${this.wildCounter}`;
     // weather from real life: the player's own weather favours its types (no bias without a city)
-    const rec = rollWild(encounterTableFor(this.zone.id), medium, this.wildRng!, this.deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps, ud.realWeather);
+    const rec = rollWild(encounterTableFor(this.zone.id), medium, this.wildRng!, this.deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps, ud.realWeather, this.state.shadow);
     if (rec === null) return;
     ud.encounterGraceM = ENCOUNTER_GRACE_M;
     ud.battleId = 'pending';
@@ -2253,6 +2275,11 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
           this.sendMsg(c as ZoneClient, { type: 'realWeather', kind: k });
         }
       }
+    }
+    // 1a'. honor shapes the world: the zone's shadow level from its season tally, read once a minute
+    if (now - this.shadowCheckedAt >= SHADOW_CHECK_MS && !this.shadowReading) {
+      this.shadowCheckedAt = now;
+      void this.readShadow(now);
     }
     // 1b. Phase D7 weather: one rng draw per bucket change, the field written only when it differs
     const bucket = weatherBucket(now);

@@ -653,3 +653,10 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
 - `data/seasons.ts`: `seasonAt` / `seasonByNumber` (four weeks from Monday 2026-10-05 UTC), `finalsWeek` (the last
   seven days), `seasonResetRating` (halfway back to 1000, truncated towards it, like the SQL), `seasonTitle`. Not a
   story gate and nothing in the zone layer, so no fixture moves.
+
+## Honor shapes the world (2026-10-20)
+
+- `data/worldHonor.ts`: the points per deed, `deedsOf` (a turn's events; only player sides' deeds count), `shadowLevel`
+  (clear below 40 points, then 55 / 65 / 75 / 85 % shadow share), `shadowDarkWeight`, `shadowNotice`, and the
+  hollowed town (`HOLLOWED_TOWN` Vesperveil, `HOLLOWED_LINES` by npc id, `HOLLOWED_FLAG` the client's pseudo-flag).
+  Nothing here touches the zone layer, so no fixture moves; the lines are dialogue only, never a gate.

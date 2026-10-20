@@ -234,3 +234,8 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
   rating at the close, then wins, then name.
 - The reset is `1000 + (rating - 1000) / 2` in SQL; Postgres integer division truncates towards zero, the same as
   content `seasonResetRating`.
+
+## Migration 0012_world_honor (2026-10-20)
+
+- `world_honor (season, zone_id, light, shadow)`; `worldHonorRepo.add` is one upsert adding to both columns, so turns
+  in different rooms never lose each other's points.

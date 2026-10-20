@@ -69,6 +69,8 @@ function respond(url: string): Response {
   const path = url.replace(/^\/api/, '').split('?')[0]!;
   if (path === '/me') return json(meFixture({ flags: FLAGS, badges: ['bloom'] }));
   if (path === '/auth/refresh') return json({ access: makeJwt(inOneHour()), refresh: 'r2' });
+  // honor shapes the world: this season's shadowed zones
+  if (path === '/world/shadow') return json({ season: 1, zones: [{ zoneId: 'mire_route', level: 2, light: 10, shadow: 40 }, { zoneId: 'vesperveil', level: 4, light: 0, shadow: 90 }] });
   return json({ message: 'Route not found', error: 'Not Found', statusCode: 404 }, 404);
 }
 
@@ -129,6 +131,11 @@ describe('/play/map', () => {
     expect(within(zones).getByRole('listitem', { name: 'Mire Route, route, visited' })).toBeTruthy();
     expect(within(zones).getByRole('listitem', { name: 'Cinderhold, town, visited' })).toBeTruthy();
     expect(within(zones).getByRole('listitem', { name: 'Saltmourn, town, unexplored' })).toBeTruthy();
+
+    // honor shapes the world: shadowed zones carry their tag (the deepest reads Hollowed); clear zones none
+    await waitFor(() => expect(within(zones).getByRole('listitem', { name: 'Mire Route, route, visited' }).textContent).toContain('Shadow 2'));
+    expect(within(zones).getByRole('listitem', { name: 'Vesperveil, town, unexplored' }).textContent).toContain('Hollowed');
+    expect(within(zones).getByRole('listitem', { name: 'Cinderhold, town, visited' }).textContent).not.toContain('Shadow');
 
     const buttons = within(zones).getAllByRole('button', { name: /^Travel to / });
     expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual(['Travel to Cinderhold']);

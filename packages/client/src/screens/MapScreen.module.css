@@ -278,3 +278,22 @@
 .nodeFoot:empty {
   display: none;
 }
+
+/* honor shapes the world: a shadowed zone's tag, in the Dark type's colour (the world dims towards violet) */
+.shadow {
+  align-self: flex-start;
+  padding: 0 var(--s-2);
+  background: var(--type-dark);
+  box-shadow: inset 0 0 0 1px var(--type-ghost);
+  color: var(--type-dark-ink);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.swatchShadow {
+  background: var(--type-dark);
+  box-shadow: inset 0 0 0 1px var(--type-ghost);
+}

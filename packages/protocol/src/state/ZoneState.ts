@@ -17,6 +17,8 @@ export class ZoneState extends Schema {
   @type('string') weather = 'none';
   /** the zone's content DEFAULT (ZoneDef.harvestState), same for every viewer; each client renders harvestStateFor(zone, ownFlags) (§3.5) */
   @type('string') harvestState = 'intact';
+  /** honor shapes the world: the zone's shadow level this season, 0..4 (content worldHonor.ts); broadcast to all */
+  @type('uint8') shadow = 0;
   /** keyed by player uuid — AOI-scoped */
   @view() @type({ map: PlayerState }) players = new MapSchema<PlayerState>();
   /** keyed by spawn id — AOI-scoped */

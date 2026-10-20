@@ -5,13 +5,15 @@
  * sends `fastTravel { zoneId }` — the server answers with the usual `handover` (or a refusal toast). The board scrolls
  * sideways; it opens centred on the current zone.
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { SHADOW_MAX } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
 import type { BadgeId } from '@ewa/protocol';
 import { BADGE_GLYPH } from '../data/badgeIcon';
 import { KIND_LABEL, MAP_LINKS, MAP_NODES, MAP_SIZE, badgeName, badgeShortName, canTravelTo, visitedSet } from '../data/worldMap';
 import type { MapNode } from '../data/worldMap';
+import { apiFetch } from '../net/api';
 import { getWorldSession } from '../net/WorldSession';
 import { useSessionStore } from '../state/session';
 import { useUiStore } from '../state/ui';
@@ -46,6 +48,7 @@ function ZoneNode({
   earned,
   canTravel,
   onTravel,
+  shadow,
 }: {
   readonly n: MapNode;
   readonly visited: boolean;
@@ -53,6 +56,8 @@ function ZoneNode({
   readonly earned: readonly BadgeId[];
   readonly canTravel: boolean;
   readonly onTravel: (id: ZoneId) => void;
+  /** honor shapes the world: the zone's shadow level this season (0 = clear) */
+  readonly shadow: number;
 }) {
   const ref = useRef<HTMLLIElement>(null);
   useEffect(() => {
@@ -88,6 +93,11 @@ function ZoneNode({
             )}
           </span>
         )}
+        {shadow > 0 && (
+          <span className={s.shadow} title={shadowTitle(shadow)}>
+            {shadow >= SHADOW_MAX ? 'Hollowed' : `Shadow ${shadow}`}
+          </span>
+        )}
         <div className={s.nodeFoot}>
           {current && <Pill tone="accent">You are here</Pill>}
           {canTravel && (
@@ -101,6 +111,13 @@ function ZoneNode({
   );
 }
 
+/** What the shadow tag says on hover. */
+export function shadowTitle(level: number): string {
+  return level >= SHADOW_MAX
+    ? 'Hollowed: the cruellest fights of the season were fought here. Catch, spare and win fair to bring the light back.'
+    : `A shadow (level ${level} of ${SHADOW_MAX}): too many fights here were won the cruel way. Catches and fair wins lift it.`;
+}
+
 export function MapScreen() {
   const close = useClosePanel();
   const navigate = useNavigate();
@@ -112,6 +129,15 @@ export function MapScreen() {
   const inArena = useArenaStore((st) => st.inArena);
   const inBattle = battling || inArena;
   const visited = visitedSet(flags, current);
+  // honor shapes the world: this season's shadowed zones (a failed read shows none)
+  const [shadows, setShadows] = useState<ReadonlyMap<string, number>>(new Map());
+  useEffect(() => {
+    const ctl = new AbortController();
+    apiFetch('worldShadow', { signal: ctl.signal })
+      .then((r) => setShadows(new Map(r.zones.map((z) => [z.zoneId, z.level]))))
+      .catch(() => undefined);
+    return () => ctl.abort();
+  }, []);
 
   const travel = (zoneId: ZoneId): void => {
     getWorldSession().send('fastTravel', { zoneId });
@@ -132,6 +158,9 @@ export function MapScreen() {
         </span>
         <span className={s.legendItem}>
           <span className={cx(s.swatch, s.swatchCurrent)} /> You are here
+        </span>
+        <span className={s.legendItem}>
+          <span className={cx(s.swatch, s.swatchShadow)} /> Shadow: cruel fights darken a zone
         </span>
         <span className={s.legendHint}>Fast travel is free between towns you have visited.</span>
       </div>
@@ -165,6 +194,7 @@ export function MapScreen() {
                 earned={earned}
                 canTravel={!inBattle && canTravelTo(n, visited, current)}
                 onTravel={travel}
+                shadow={shadows.get(n.id) ?? 0}
               />
             ))}
           </ol>

@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-20 honor shapes the world: the season tally of deeds in each zone darkens it, favours Dark types, and turns Vesperveil. One entry. -->
+
+## 2026-10-20 · `00-spine.md` §4.1 (`ZoneState.shadow`), §4.7 (`GET /world/shadow`), §5.2 (`WorldHonorRepo`, migration 0012); `10-render.md` §10.1 (`setShadow`), §10.3.7 (Shadow); `30-server-netcode.md` §30.2.8 (tick 1a'), §30.4.3a (honor shapes the world); `20-client.md` §20.9.9k (new); `50-verification-budget.md` §50.4.2 / .5 / .6 / .7 rows · honor shapes the world
+Why: the user asked for the players' honor to shape the world. The game already judged one creature line by how it fights; this lets every trainer's conduct leave a mark on the place it happens. Cruel play (Dark moves, knocking wild creatures out) and kind or fair play (catching instead, beating trainers) are counted per zone and per season, so a grinding spot darkens over the weeks while a busy town stays bright, and every season starts clean. The mark is seen (the light dims, the fog turns violet, the map says it), felt (Dark types come out) and heard (Vesperveil's people change at the darkest), and none of it blocks the story.
+Evidence: `packages/content/test/worldHonor.test.ts` (4); `packages/protocol/test/rest.test.ts` (89 routes) and `schema.test.ts` (the `shadow` field); `packages/persist/test/migrations.test.ts`; `packages/server/test/world-honor.test.ts` (3); `packages/render/test/shadow.test.ts` (2); `packages/client/test/hollowed.test.ts` (2), `world-map.test.tsx`; live on the second isolated pair.
+Affects: `packages/content/src/data/worldHonor.ts`, `src/index.ts`; `packages/persist/src/{schema/worldHonor,repos/worldHonor,schema/index,repos/index}.ts`, `drizzle/0012_world_honor.sql`; `packages/protocol/src/{rest,state/ZoneState}.ts`; `packages/render/src/{lighting/weather,lighting/daycycle,renderer}.ts`; `packages/server/src/{rooms/battleSession,rooms/spawnDirector,rooms/ZoneRoom,rest/routes/seasons}.ts`; `packages/client/src/{scene/dialogue,scene/SceneDirector,scene/World3D,screens/MapScreen}.ts(x)`.
+
 <!-- 2026-10-20 ranked seasons, League Finals and watching live: four-week seasons, Finals week, live arena matches anyone can follow. One entry. -->
 
 ## 2026-10-20 · `00-spine.md` §4.7 (`GET /seasons`, `/seasons/:season`, `/seasons/titles/:username`, `GET /arena/live`, `/arena/live/:matchId`), §5.2 (`SeasonRepo`, migration 0011); `30-server-netcode.md` §30.4.10 (spectator mode, ranked seasons), env `SEASON_ROLLOVER`; `20-client.md` §20.9.9j (new); `50-verification-budget.md` §50.4.4 / .5 / .7 rows · ranked seasons, League Finals and watching live

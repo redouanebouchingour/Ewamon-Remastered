@@ -16,3 +16,4 @@ export * from './streaks';
 export * from './daily';
 export * from './runs';
 export * from './seasons';
+export * from './worldHonor';

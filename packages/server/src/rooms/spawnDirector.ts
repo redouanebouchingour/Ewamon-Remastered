@@ -8,6 +8,7 @@ import type { EncounterSlot, EncounterTable, Heightfield, SpawnTuning, ZoneDef }
 import type { ContentIndex, Rng, VariantKey, WeatherKind } from '@ewa/core';
 import { isLava } from './movement';
 import { WEATHER_TYPES, WEATHER_TYPE_BOOST } from '../game/realWeather';
+import { shadowDarkWeight } from '@ewa/content';
 
 export interface SpawnRecord {
   /** `${zoneId}:${counter}` — counter is per-director, monotonic */
@@ -102,8 +103,9 @@ export function rollFishing(
   now: number,
   mods: LiveOpsMods = DEFAULT_LIVE_OPS,
   weather: WeatherKind | null = null,
+  shadow = 0,
 ): SpawnRecord | null {
-  return rollWild(table, 'water', rng, content, timeOfDay, at, id, now, mods, weather);
+  return rollWild(table, 'water', rng, content, timeOfDay, at, id, now, mods, weather, shadow);
 }
 
 /**
@@ -123,6 +125,8 @@ export function rollWild(
   mods: LiveOpsMods = DEFAULT_LIVE_OPS,
   /** weather from real life: the player's own weather, whose types are rolled `WEATHER_TYPE_BOOST` times as often (null: no bias) */
   weather: WeatherKind | null = null,
+  /** honor shapes the world: the zone's shadow level; Dark-type slots weigh `shadowDarkWeight(shadow)` (0: no bias) */
+  shadow = 0,
 ): SpawnRecord | null {
   if (table === null) return null;
   const eligible = table.slots.filter((s) => (s.medium ?? 'land') === medium && slotEligible(s, timeOfDay));
@@ -133,7 +137,8 @@ export function rollWild(
     (s) =>
       s.weight *
       (swarm.has(s.species) ? mods.swarmWeightBoost : 1) *
-      (favoured.length > 0 && content.species(s.species).types.some((t) => favoured.includes(t)) ? WEATHER_TYPE_BOOST : 1),
+      (favoured.length > 0 && content.species(s.species).types.some((t) => favoured.includes(t)) ? WEATHER_TYPE_BOOST : 1) *
+      (shadow > 0 && content.species(s.species).types.includes('Dark') ? shadowDarkWeight(shadow) : 1),
   );
   let total = 0;
   for (const w of weights) total += w;

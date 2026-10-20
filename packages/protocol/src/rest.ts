@@ -641,6 +641,19 @@ export const LiveFeedRes = LiveMatchSchema.extend({
 });
 export type LiveFeedView = z.infer<typeof LiveFeedRes>;
 
+/**
+ * Honor shapes the world (content worldHonor.ts): the zones a shadow lies over this season, their level 1..4 and the
+ * tally behind it. A zone not listed is clear.
+ */
+export const ZoneShadowSchema = z.object({
+  zoneId: z.string().max(32),
+  level: z.number().int().min(1).max(4),
+  light: z.number().int().min(0),
+  shadow: z.number().int().min(0),
+});
+export type ZoneShadowView = z.infer<typeof ZoneShadowSchema>;
+export const WorldShadowRes = z.object({ season: z.number().int(), zones: z.array(ZoneShadowSchema).max(64) });
+
 // ---- admin / health -----------------------------------------------------------------------------------------------------
 
 /** TODO(spec): `/admin/stats` has no listed body; these are the legacy counters carried over. */
@@ -782,6 +795,8 @@ export const ROUTES = {
   // spectator mode: the live arena matches and one match's feed (a turn behind)
   arenaLive: route({ method: 'GET', path: '/arena/live', auth: 'bearer', response: LiveListRes }),
   arenaLiveFeed: route({ method: 'GET', path: '/arena/live/:matchId', auth: 'bearer', params: LiveParams, response: LiveFeedRes }),
+  // honor shapes the world: the zones under a shadow this season
+  worldShadow: route({ method: 'GET', path: '/world/shadow', auth: 'bearer', response: WorldShadowRes }),
   dailyStart: route({ method: 'POST', path: '/daily/start', auth: 'bearer', request: Nothing, response: ArenaSeatRes }),
   adminStats: route({ method: 'GET', path: '/admin/stats', auth: 'admin', response: AdminStatsRes }),
   adminPlayers: route({ method: 'GET', path: '/admin/players', auth: 'admin', query: AdminPlayersQuery, response: AdminPlayersRes }),

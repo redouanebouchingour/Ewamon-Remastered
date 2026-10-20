@@ -1,12 +1,13 @@
 /**
  * Ranked seasons (content seasons.ts, jobs/seasonRollover.ts) and spectator mode (game/liveBoard.ts): the season now
  * with its standings so far and the latest closed seasons' top eight, one closed season's standings, a trainer's
- * titles; the live arena matches and one match's feed. A banned trainer is left out of every list.
+ * titles; the live arena matches and one match's feed; the zones under a shadow this season (honor shapes the world,
+ * content worldHonor.ts). A banned trainer is left out of every list.
  */
-import { SEASON_FINALISTS, seasonAt, seasonByNumber, seasonTitle } from '@ewa/content';
+import { SEASON_FINALISTS, seasonAt, seasonByNumber, seasonTitle, shadowLevel } from '@ewa/content';
 import type { Season } from '@ewa/content';
 import type { SeasonStanding } from '@ewa/persist';
-import { LiveFeedRes, LiveListRes, LiveParams, PageQuery, SeasonParams, SeasonStandingsRes, SeasonTitlesRes, SeasonsRes, UsernameParams } from '@ewa/protocol';
+import { LiveFeedRes, LiveListRes, LiveParams, PageQuery, SeasonParams, SeasonStandingsRes, SeasonTitlesRes, SeasonsRes, UsernameParams, WorldShadowRes } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
 import { HttpError, out, rateLimit, requireAuth } from '../http';
 import type { RestDeps } from '../http';
@@ -60,6 +61,13 @@ export function registerSeasonRoutes(app: FastifyInstance, deps: RestDeps): void
     const v = await repos.db.transaction(async (tx) => ((await repos.seasons.lastClosed(tx)) >= season ? repos.seasons.standings(tx, season, page, SEASON_PAGE) : null));
     if (v === null) throw new HttpError(404, 'NotFound');
     return out(deps, SeasonStandingsRes, { season, rows: shown(v) });
+  });
+
+  app.get('/world/shadow', bearer, async () => {
+    const season = seasonAt(clock()).number;
+    const rows = await repos.db.transaction((tx) => repos.worldHonor.season(tx, season));
+    const zones = rows.map((r) => ({ ...r, level: shadowLevel(r.light, r.shadow) })).filter((r) => r.level > 0);
+    return out(deps, WorldShadowRes, { season, zones });
   });
 
   app.get('/arena/live', bearer, async () => {

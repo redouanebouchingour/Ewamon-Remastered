@@ -426,3 +426,19 @@ export {
   seasonTitle,
 } from './data/seasons';
 export type { Season } from './data/seasons';
+export {
+  HOLLOWED_FLAG,
+  HOLLOWED_LINES,
+  HOLLOWED_TOWN,
+  LIGHT_POINTS,
+  SHADOW_DARK_BOOST,
+  SHADOW_MAX,
+  SHADOW_MIN_DEEDS,
+  SHADOW_POINTS,
+  SHADOW_THRESHOLDS,
+  deedsOf,
+  shadowDarkWeight,
+  shadowLevel,
+  shadowNotice,
+} from './data/worldHonor';
+export type { Deeds, ShadowLevel } from './data/worldHonor';

@@ -2139,3 +2139,9 @@ every KO turn shows the lunge, the hit and the faint before the next creature en
 - The season panel sits on the Rating board only; the PvP screen's Watch live card polls every 10 s while open.
 - A watched match plays from side 0's seat (the replay path), so the end line and the result card take the players'
   names from `spectatorNames` (a leaf map in `replayId.ts`, set while a live replay runs) instead of "You won / lost".
+
+## Honor shapes the world (2026-10-20)
+
+- World3D (shared file, small patch): listens to `shadow` (the director dims outdoors; a toast on arriving, rising
+  or lifting) and adds `HOLLOWED_FLAG` to `flags()` at the highest level, which `npcDialogue` reads for Vesperveil's
+  people. The World map reads `GET /world/shadow` once when opened.

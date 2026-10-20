@@ -40,6 +40,7 @@ import { advanceQuests } from '../game/quests';
 import type { QuestEvent } from '../game/quests';
 import type { SpawnRecord } from './spawnDirector';
 import { completeBeatInTx } from './storyBeats';
+import { deedsOf, seasonAt } from '@ewa/content';
 
 export const TURN_DEADLINE_MS = 60_000;
 export const REPLACEMENT_DEADLINE_MS = 20_000;
@@ -60,6 +61,9 @@ export interface Seat {
   readonly playerId: string | null;
   readonly sessionId: string | null;
 }
+
+/** Honor shapes the world: the battles whose deeds count in their zone. */
+const HONOR_FORMATS: ReadonlySet<string> = new Set(['wild', 'trainer', 'league', 'pvp']);
 
 export interface BattleSession {
   readonly id: string;
@@ -1317,6 +1321,14 @@ export class BattleCoordinator {
         }
         d.inventoryAll = await repos.inventory.all(tx, pid);
         out.set(pid, d);
+      }
+      // honor shapes the world: this turn's deeds count in the zone the battle was fought in (world battles only: not
+      // the arena, the tower or a raid)
+      if (HONOR_FORMATS.has(session.format) && session.arena === undefined && session.tower !== true && seats.length > 0) {
+        const ended = next.ended;
+        const wonBy = ended !== null && session.format !== 'wild' && (ended.winner === 0 || ended.winner === 1) ? ended.winner : null;
+        const deeds = deedsOf(events, seats.map((s) => s.side), session.format === 'wild' ? 1 : null, (id) => this.deps.content.move(id).type, wonBy);
+        await repos.worldHonor.add(tx, seasonAt(nowMs).number, session.zoneId, deeds.light, deeds.shadow);
       }
     });
     return out;

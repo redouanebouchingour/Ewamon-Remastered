@@ -13,7 +13,7 @@ import { stepWetness } from '../materials/harvest.js';
 import { FOG_START_M, GROVE_FOG_DENSITY, type HeightFog } from './fog.js';
 import type { LightRig } from './rig.js';
 import type { SkyController } from './sky.js';
-import { weatherParams, type WeatherParams } from './weather.js';
+import { SHADOW_FOG, shadowParams, weatherParams, type ShadowParams, type WeatherParams } from './weather.js';
 import { hexToSrgb, srgbToLinear } from './color.js';
 
 // ---- colour helpers (pure) --------------------------------------------------------------------------
@@ -351,6 +351,9 @@ export class DayCycle {
     fogNight: hexToSrgb(GROVE_LIGHTING.fogColor[0]), fogNoon: hexToSrgb(GROVE_LIGHTING.fogColor[1]),
   };
   private weather: WeatherParams = weatherParams('none');
+  /** honor shapes the world: the zone's shadow level (0 = none) */
+  private shadow: ShadowParams = shadowParams(0);
+  private readonly shadowFog = hexToSrgb(SHADOW_FOG);
   private weatherKind: WeatherKind = 'none';
   private readonly day = createDaySample();
   private readonly dir = createDirectionalState();
@@ -383,6 +386,12 @@ export class DayCycle {
     this.bake.forced = true;                   // cloud cover changes the IBL
   }
 
+  /** Honor shapes the world: the zone's shadow level 0..4 (a darker, duskier world; 0 restores it). */
+  setShadow(level: number): void {
+    this.shadow = shadowParams(level);
+    this.bake.forced = true;                   // the sky light changes the IBL
+  }
+
   /** Forces a PMREM bake on the next update (harvest level / palette change). */
   invalidateEnvironment(): void { this.bake.forced = true; }
 
@@ -402,7 +411,8 @@ export class DayCycle {
     shared.wetness.value = stepWetness(shared.wetness.value, w.wetTarget, scaledDtS);
 
     rig.setFocus(focus);
-    rig.applyDirectional(d.dir, d.linear, d.intensity * w.sunMul);
+    const sh = this.shadow;
+    rig.applyDirectional(d.dir, d.linear, d.intensity * w.sunMul * sh.sunMul);
     rig.setPunctualMultiplier(day.punctual);
 
     const lit = day.daylight;
@@ -413,7 +423,7 @@ export class DayCycle {
     mixSrgbToLinear(NIGHT_GROUND, p.ground, lit, _ground);
     const top = Math.max(_sky[0], _sky[1], _sky[2], 1e-4);
     for (let c = 0; c < 3; c++) { _sky[c] = _sky[c]! / top; _ground[c] = _ground[c]! / top; }
-    rig.setHemisphere(_sky, _ground, day.hemi * w.envMul);
+    rig.setHemisphere(_sky, _ground, day.hemi * w.envMul * sh.envMul);
 
     mixSrgbToLinear(p.fogNight, p.fogNoon, lit, _lin);
     // golden hours: the haze takes the low sun's colour (up to 45 % of the fog)
@@ -426,8 +436,11 @@ export class DayCycle {
       const tint = w.fogTintSrgb!;
       for (let c = 0; c < 3; c++) _lin[c] = lerp(_lin[c]!, srgbToLinear(tint[c]!), 0.6);
     }
+    if (sh.fogMix > 0) {
+      for (let c = 0; c < 3; c++) _lin[c] = lerp(_lin[c]!, srgbToLinear(this.shadowFog[c]!), sh.fogMix);
+    }
     fog.uniforms.fogColor.value.setRGB(_lin[0], _lin[1], _lin[2]);
-    fog.uniforms.fogDensity.value = this.palette.fogDensity * w.fogDensityMul;
+    fog.uniforms.fogDensity.value = this.palette.fogDensity * w.fogDensityMul * sh.fogDensityMul;
     fog.uniforms.fogStart.value = (this.palette.fogStart ?? FOG_START_M) / Math.max(1, w.fogDensityMul);
     fog.uniforms.fogBase.value = this.palette.fogBase;
     fog.uniforms.fogFalloff.value = this.palette.fogFalloff;
@@ -435,7 +448,7 @@ export class DayCycle {
     // Sky follows the real sun even below the horizon (§10.3.4).
     sunDirection(this.t, _dir);
     sky.setSunDirection(_dir.x, _dir.y, _dir.z);
-    sky.setEnvironmentIntensity(day.env * w.envMul);
+    sky.setEnvironmentIntensity(day.env * w.envMul * sh.envMul);
 
     this.bake.sinceBakeMs += realDtMs;
     const el = sunElevationDeg(this.t);

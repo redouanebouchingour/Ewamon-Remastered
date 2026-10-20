@@ -121,6 +121,7 @@ export interface Renderer {
   loadZone(spec: ZoneSpec): Promise<ZoneHandle>;   // rejects if a zone is loaded and not yet disposed
   setTimeOfDay(t: number): void;               // 0..1; §10.3.5
   setWeather(w: WeatherKind): void;            // §10.3.7
+  setShadow?(level: number): void;             // §10.3.7 honor shapes the world (added 2026-10-20): the zone's shadow 0..4; optional for fakes
   setHarvestLevel(l: HarvestLevel): void;      // §10.2.6
   setEffects(f: EffectsFlags): void;           // rebuilds the post graph; §10.8.4
   setPixelRatio(r: number): void;              // re-clamped by §10.1.3
@@ -492,6 +493,8 @@ scene.fogNode = fog(u.fogColor, fogFactor());
 ```
 
 Palette values for grove: `fogStart 15` (m of view depth before any fog), `fogDensity 0.00486` (per m past it; the implemented `0.018 × FOG_SCALE 0.27`), `fogBase 0.0` (m), `fogFalloff 0.35` (per m), `fogColor` from the keyframe (`#b9c7a8` noon, `#1a2030` night; golden hours pull it toward the key colour, §10.3.5). The binding number is the fog on the focus: the player's feet sit at `y ≈ 0` (so `hFall = 1`) and 26 m of view depth at the default stop, so `fogFactor = 1 − exp(−(26 − 15) · density)` — **5.2 %** (was 16 % at 0.0068 from the eye), 8.8 % at the far stop (34 m), while the skirt hills at 60–150 m still recede (20–48 %). Weather divides `fogStart` by its density multiplier. <!-- amended 2026-10-06: Phase E2, the re-landed M2 re-light (audit M2-spawn-noon-2, M2-gym-dusk-2, M2-lamps-night-5, M2-spawn-noon-13); render IMPLEMENTATION-NOTES "Phase E1–E2" --> The draft's 0.018 fogged the feet 37 % (46 % at 34 m), lifting and flattening the whole diorama and washing the inspector close-up; `sand` weather's ×2.5 still reaches 36 % at the default stop by design. <!-- amended 2026-09-25: render IMPLEMENTATION-NOTES M19, Z12, open item 4 --> `scene.fogNode` is read by `NodeManager.getFogNode` (verified, line 24). The sky mesh has `fog = false`. Light-shaft cards (≤ 6 per zone, additive alpha cards under lanterns at night, `layers 29`) are the only volumetric suggestion; there is no raymarch (§10.11).
+
+**Shadow** <!-- added 2026-10-20: honor shapes the world -->. `DayCycle.setShadow(level)` (the client passes the zone's `ZoneState.shadow` outdoors, 0 in a pocket) multiplies, per level `l` 0..4 (`lighting/weather.ts` `shadowParams`): the sun by `1 − 0.12 l`, the hemisphere fill and the environment by `1 − 0.1 l`, the fog density by `1 + 0.2 l`, and moves the fog colour `0.14 l` of the way to `SHADOW_FOG` `#2b1e3a` after the weather's tint. Level 0 writes exactly what it wrote before. A change forces one PMREM re-bake.
 
 ---
 

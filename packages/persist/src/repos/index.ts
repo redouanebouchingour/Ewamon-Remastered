@@ -11,6 +11,8 @@ import { runRepo } from './runs';
 import type { RunRepo } from './runs';
 import { seasonRepo } from './seasons';
 import type { SeasonRepo } from './seasons';
+import { worldHonorRepo } from './worldHonor';
+import type { WorldHonorRepo } from './worldHonor';
 import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
 import { historyRepo } from './history';
@@ -47,6 +49,8 @@ export interface Repos {
   readonly runs: RunRepo;
   /** ranked seasons: closing a season, its final standings, the standings so far (migration 0011) */
   readonly seasons: SeasonRepo;
+  /** honor shapes the world: each zone's season tally of light and shadow (migration 0012) */
+  readonly worldHonor: WorldHonorRepo;
 }
 
 /**
@@ -71,6 +75,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     daily: dailyRepo,
     runs: runRepo,
     seasons: seasonRepo,
+    worldHonor: worldHonorRepo,
   };
 }
 
@@ -93,3 +98,4 @@ export type { NewPlayer, PublicExtras } from './players';
 export type { DexSummary, QuestObjectiveState } from './progress';
 export type { FriendLists } from './social';
 export type { SeasonStanding, SeasonWindow } from './seasons';
+export type { ZoneHonor } from './worldHonor';

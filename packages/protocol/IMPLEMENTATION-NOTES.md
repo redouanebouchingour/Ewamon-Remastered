@@ -185,3 +185,8 @@ installed library that future readers should not have to re-derive. The spec its
 
 - `seasons`, `seasonStandings`, `seasonTitles`, `arenaLive`, `arenaLiveFeed` (88 routes). `LiveFeedRes.replay` is the
   shared replay's shape with `digest` for the turns shared so far; `outcome` uses `BattleOutcomeSchema`.
+
+## Honor shapes the world (2026-10-20)
+
+- `ZoneState.shadow` (uint8, after `harvestState`: the field order is the wire order, server and client move
+  together); `worldShadow` route (89 routes).

@@ -1485,6 +1485,7 @@ export class ZoneState extends Schema {
   @type('float32') timeOfDay = 0;                 // 0..1, one full day = 48 real minutes
   @type('string') weather = 'none';               // WeatherKind; Phase D7: the zone's per-biome schedule (30 §30.2.8 step 1b); wild / trainer / league battles outside interiors start under it
   @type('string') harvestState = 'intact';        // the zone's content DEFAULT (ZoneDef.harvestState), same for every viewer; each client renders harvestStateFor(zone, ownFlags) (§3.5) — the story is per player <!-- reconciled 2026-09-18 -->
+  @type('uint8') shadow = 0;                        // honor shapes the world (added 2026-10-20): the zone's shadow level this season 0..4 (content worldHonor.ts), read by the room once a minute; broadcast to all
   @view() @type({ map: PlayerState }) players = new MapSchema<PlayerState>();   // keyed by player uuid
   @view() @type({ map: SpawnState }) spawns = new MapSchema<SpawnState>();     // keyed by spawn id
   @type({ map: BattleSummary }) battles = new MapSchema<BattleSummary>();     // small; broadcast to all
@@ -1690,6 +1691,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /seasons/titles/:username` <!-- added 2026-10-20 --> | - | `SeasonTitlesRes { username, titles: { season, rank, title }[] }`: every season the trainer ended in the top eight, newest first; 404 unknown or banned | bearer |
 | `GET /arena/live` <!-- added 2026-10-20: spectator mode --> | - | `LiveListRes { matches: { matchId, kind, finals, players: [{ name, rating }, { name, rating }], turn, startedAt }[] }` (≤ 50): the arena's queued two-player matches being fought (never a friend battle, training or the daily), League Finals first, then the highest rated pairs | bearer |
 | `GET /arena/live/:matchId` <!-- added 2026-10-20 --> | - | `LiveFeedRes`: the match row plus `replay { format: 'pvp', seat: 0, labels, seed, start, actions, digest }` (anonymised like a shared replay, a turn behind the players: `createBattle` + `resolveTurn` over `actions` ends on `digest`) and `outcome` (null while it goes on; the finished fight stays 3 min); 404 when there is none | bearer |
+| `GET /world/shadow` <!-- added 2026-10-20: honor shapes the world --> | - | `WorldShadowRes { season, zones: { zoneId, level: 1..4, light, shadow }[] }`: the zones a shadow lies over this season and the tally behind each; a zone not listed is clear | bearer |
 | `GET /weather/cities?q=` <!-- added 2026-10-20: weather from real life --> | - | `WeatherCitiesRes { cities: { name, region?, country, lat, lon }[] }` (≤ 5, Open-Meteo geocoding asked by the server, `region` its province or state, a place reading exactly like one already listed dropped, coordinates rounded to 0.1°); `q` 2..60 characters; 503 `weatherUnavailable` when the service does not answer; limit `weather` | bearer |
 | `POST /weather/city` <!-- added 2026-10-20 --> | `{ city: { name, region?, country, lat, lon } \| null }` | `RealWeatherRes { city \| null, kind \| null }`: the city stored on the player (coordinates rounded to 0.1°) and its weather now; null turns it off. The room holding the player hears it on `ewa:weather:<playerId>` | bearer |
 | `GET /weather` <!-- added 2026-10-20 --> | - | `RealWeatherRes`: the player's city and its cached weather | bearer |
@@ -2151,6 +2153,12 @@ export interface RunRepo {
   board(tx: Tx, start: string, finish: string, page: number, pageSize: number): Promise<{ player: PlayerRow; playMs: number }[]>;
 }
 /** Ranked seasons (migration 0011_seasons): `seasons (season int PK, closed_at)` (the row is the close's lock) and `season_results (season → seasons cascade, player_id → players cascade, rank, rating, wins, losses)`, PK (season, player_id). A season's participants are the players with a `battle_history` row carrying a `rating_delta` inside it; their record is that row's wins and losses; they rank by rating, then wins, then name. */
+/** Honor shapes the world (migration 0012_world_honor): `world_honor (season int, zone_id varchar(32), light int, shadow int)`, PK (season, zone_id). Added to in the battle turn's own transaction. */
+export interface WorldHonorRepo {
+  add(tx: Tx, season: number, zoneId: string, light: number, shadow: number): Promise<void>;   // one upsert; nothing for an empty turn
+  of(tx: Tx, season: number, zoneId: string): Promise<{ zoneId: string; light: number; shadow: number }>;   // zeros when nothing happened there
+  season(tx: Tx, season: number): Promise<{ zoneId: string; light: number; shadow: number }[]>;
+}
 export interface SeasonRepo {
   lastClosed(tx: Tx): Promise<number>;                                                        // 0 before the first close
   close(tx: Tx, season: { number: number; startsAt: number; endsAt: number }, now: Date, reset?: boolean): Promise<boolean>;   // once: the standings by rating now; with reset (default) every rating = 1000 + trunc((rating - 1000) / 2)

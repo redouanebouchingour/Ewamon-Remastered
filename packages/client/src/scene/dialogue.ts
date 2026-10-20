@@ -2,10 +2,11 @@
  * SPEC §20.4.7 — NPC dialogue is content, not wire. On `interact { kind: 'npc' }` the client opens the DialogueBox
  * with the lines it computes from content and its own flags:
  *   nextStoryBeat(zone, flags)?.speaker === npcId ? beat.lines
+ *   : (honor shapes the world: in the hollowed town at the highest shadow, its people's HOLLOWED_LINES)
  *   : (the first `react` whose `when` flag is held, else NpcDef.lines)
  * Badges read as `badge:<id>` flags (the server materialises them the same way for nextStoryBeat). Pure.
  */
-import { LEAGUE, LEAGUE_REMATCH, POSTGAME_FLAG, STORY, badgeFlag, beatDoneFlag, beatEligible, leagueStoryGate, nextStoryBeat, storyBeat, zone } from '@ewa/content';
+import { HOLLOWED_FLAG, HOLLOWED_LINES, HOLLOWED_TOWN, LEAGUE, LEAGUE_REMATCH, POSTGAME_FLAG, STORY, badgeFlag, beatDoneFlag, beatEligible, leagueStoryGate, nextStoryBeat, storyBeat, zone } from '@ewa/content';
 import type { BadgeId, LeagueRematch, NpcDef, StoryBeat, ZoneId } from '@ewa/content';
 import type { BattleState } from '@ewa/core';
 
@@ -33,6 +34,8 @@ export function npcVisible(npc: Pick<NpcDef, 'when' | 'until'>, flags: ReadonlyS
 export function npcDialogue(zoneId: ZoneId, npc: NpcDef, flags: ReadonlySet<string>): DialogueLines {
   const beat = nextStoryBeat(zoneId, flags);
   if (beat !== null && beat.speaker === npc.id && beat.lines.length > 0) return { speaker: npc.name, lines: beat.lines, beatId: beat.id };
+  const hollowed = zoneId === HOLLOWED_TOWN && flags.has(HOLLOWED_FLAG) ? HOLLOWED_LINES[npc.id] : undefined;
+  if (hollowed !== undefined) return { speaker: npc.name, lines: hollowed, beatId: null };
   for (const r of npc.react) if (flags.has(r.when)) return { speaker: npc.name, lines: r.lines, beatId: null };
   return { speaker: npc.name, lines: npc.lines, beatId: null };
 }

@@ -40,6 +40,23 @@ const TABLE: Readonly<Record<WeatherKind, WeatherParams>> = {
   hail: row({ cloudCoverage: 0.85, sunMul: 0.55, envMul: 1, fogDensityMul: 1, fogTint: null, wetTarget: 1, precipitation: 'hail' }),
 };
 
+/**
+ * Honor shapes the world: a zone's shadow level 0..4 (content worldHonor.ts) dims the sun and the sky light and pulls
+ * the fog towards a dusky violet, a step per level; level 0 changes nothing.
+ */
+export const SHADOW_FOG = '#2b1e3a';
+export interface ShadowParams {
+  readonly sunMul: number;
+  readonly envMul: number;
+  /** how far the fog colour moves towards SHADOW_FOG */
+  readonly fogMix: number;
+  readonly fogDensityMul: number;
+}
+export function shadowParams(level: number): ShadowParams {
+  const l = Math.max(0, Math.min(4, Math.round(level)));
+  return { sunMul: 1 - 0.12 * l, envMul: 1 - 0.1 * l, fogMix: 0.14 * l, fogDensityMul: 1 + 0.2 * l };
+}
+
 export function weatherParams(w: WeatherKind): WeatherParams {
   return TABLE[w] ?? TABLE.none;
 }

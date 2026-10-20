@@ -33,7 +33,7 @@
  */
 import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
-import { BIKE_ITEM, BODIES, POSTGAME_FLAG, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, zone as zoneDef } from '@ewa/content';
+import { BIKE_ITEM, BODIES, HOLLOWED_FLAG, POSTGAME_FLAG, SHADOW_MAX, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, shadowNotice, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import { FISH_REACH_M } from '@ewa/protocol';
@@ -729,7 +729,9 @@ class World implements World3D {
 
   private flags(): ReadonlySet<string> {
     const p = useSessionStore.getState().progression;
-    return storyFlagSet(p?.flags ?? [], (p?.badges ?? []) as readonly BadgeId[]);
+    const flags = storyFlagSet(p?.flags ?? [], (p?.badges ?? []) as readonly BadgeId[]);
+    // honor shapes the world: in a hollowed zone its people speak of it (scene/dialogue.ts)
+    return (this.room?.state.shadow ?? 0) >= SHADOW_MAX ? new Set([...flags, HOLLOWED_FLAG]) : flags;
   }
 
   private attachRoom(room: ZoneRoom): void {
@@ -800,6 +802,17 @@ class World implements World3D {
       $(state).listen('weather', (w: string) => {
         // weather from real life: the player's city's weather stands in for the zone's
         if (this.ready) this.director.setWeather(useRealWeatherStore.getState().kind ?? (w as WeatherKind));
+      }, true),
+    );
+    // honor shapes the world: the zone's shadow darkens it; the player hears when it falls on the zone or lifts
+    let shadowWas = 0;
+    d.push(
+      $(state).listen('shadow', (n: number) => {
+        if (this.ready) this.director.setShadow(n);
+        const zoneId = this.roomZone;
+        const text = zoneId === null ? null : shadowNotice(zoneDef(zoneId).name, n, shadowWas);
+        shadowWas = n;
+        if (text !== null) toast('info', text);
       }, true),
     );
     // one sample per remote per applied patch (the interpolation ring), + the server-time offset
@@ -912,6 +925,7 @@ class World implements World3D {
     this.director.setTimeOfDay(room.state.timeOfDay);
     this.hudWriter.setTimeOfDay(room.state.timeOfDay);
     this.director.setWeather(useRealWeatherStore.getState().kind ?? (room.state.weather as WeatherKind));
+    this.director.setShadow(room.state.shadow);
     this.input.setEnabled(useUiStore.getState().battle === null);
     this.battle.attach(this.battleView());
     // Phase C1: a raid already open in this room (or opened while the zone built)

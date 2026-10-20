@@ -2227,3 +2227,9 @@ the normal sun / hemisphere / CSM / fog, then `stage.dress({ x: 0, z: 0 }, ARENA
 - Sandbox: `&far=<m>` sets a survey camera distance beyond the zoom stops (shape checks only; fog and DOF still apply).
 - The deprecated `planLayout` no longer equals content's plan (sculpts are content-only); the harness anchors use
   `layoutOf(spec)` now, and its equality test is gone.
+
+## Honor shapes the world (2026-10-20)
+
+- `Renderer.setShadow?(level)` (optional so the fakes keep compiling) → `DayCycle.setShadow`: the shadow multiplies
+  the sun, the hemisphere fill, the environment and the fog density and tints the fog after the weather's tint
+  (`shadowParams`, pure). Level 0 is the identity, so a clear zone renders exactly as before.

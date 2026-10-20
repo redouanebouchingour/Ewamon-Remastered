@@ -164,6 +164,8 @@ export interface SceneDirector {
   exitBattle(): Promise<void>;
   setTimeOfDay(t: number): void;
   setWeather(w: WeatherKind): void;
+  /** Honor shapes the world: the zone's shadow level 0..4 (outdoors only; a pocket renders none). */
+  setShadow(level: number): void;
   setHarvest(h: HarvestState): void;
   readonly currentZone: ZoneId | null;
   // ---- additions ----
@@ -255,6 +257,8 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
   let gates: GateSync | null = null;
   /** Phase D7: the zone's overworld weather (state.weather); interiors and battles render none */
   let overworldWeather: WeatherKind = 'none';
+  /** honor shapes the world: the zone's shadow level (outdoors) */
+  let overworldShadow = 0;
   /** Phase D10: the cleared-obstacle key last pushed (renderer + collider), '' = none */
   let obstacleKey: string | null = null;
 
@@ -271,6 +275,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
 
   function applyWeather(): void {
     if (!inBattle) d.renderer.setWeather(pocket === null ? overworldWeather : 'none');
+    d.renderer.setShadow?.(pocket === null ? overworldShadow : 0);
   }
 
   function faceOrigin(x: number, z: number): number {
@@ -557,6 +562,12 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
 
     setWeather(w) {
       overworldWeather = w;
+      applyWeather();
+    },
+
+    setShadow(level) {
+      if (level === overworldShadow) return;
+      overworldShadow = level;
       applyWeather();
     },
 

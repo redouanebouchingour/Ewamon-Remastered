@@ -1142,3 +1142,11 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   read finishes (a turn played meanwhile is in the first publish), so the mark is there from the first listing.
 - Not done: a knockout bracket (it would need eight players online together); watching an in-world PvP challenge or a
   friend battle (private by design).
+
+## Honor shapes the world (2026-10-20)
+
+- The tally is written at the end of `persistTurn`'s transaction for world formats only (no arena, tower or raid):
+  `deedsOf` over the turn's events with the human seats, the wild side for a wild battle, and the winner of a
+  trainer / league / PvP battle. It costs one upsert per turn with deeds, none otherwise.
+- The zone room reads its tally once a minute (one row by primary key) on its own clock; a read in flight is never
+  doubled. `rollWild` / `rollFishing` take the level last (default 0: the old weights).
