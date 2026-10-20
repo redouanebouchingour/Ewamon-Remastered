@@ -1696,6 +1696,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /factions/join` <!-- added 2026-10-20 --> | `{ side: 'majin' \| 'tenjin' }` | `FactionsRes`; the side holds for the season: the other side is 409 `alreadyJoined { side }`, the same side again is 200 | bearer |
 | `GET /factions/sky` <!-- added 2026-10-20 --> | - | `{ sky: side \| null }`: the last closed season's winner (null in season 1 or on a tie) | bearer |
 | `GET /legends` <!-- added 2026-10-20: one roaming legendary per season --> | - | `LegendsRes { season, species, zoneId \| null, movesAt \| null, caught: { season, species, username, at } \| null, past: { season, species, username, at }[] (≤ 50, newest first) }`: the season's roamer (content `roamerOf`), the route it is on and when it moves on while nobody has caught it, its first catcher this season, every season's first catcher | bearer |
+| `GET /ghost` <!-- added 2026-10-20: ghost trainers --> | - | `GhostRes { haunting: { zoneId, leftAt, party: { speciesId, level }[] (≤ 6) } \| null, won, lost, fights: { challenger, zoneId, won, at }[] (≤ 20, newest first) }`: where the caller's ghost haunts (null before they ever left, or after `GHOST_DAYS`), its record and latest fights | bearer |
 | `GET /weather/cities?q=` <!-- added 2026-10-20: weather from real life --> | - | `WeatherCitiesRes { cities: { name, region?, country, lat, lon }[] }` (≤ 5, Open-Meteo geocoding asked by the server, `region` its province or state, a place reading exactly like one already listed dropped, coordinates rounded to 0.1°); `q` 2..60 characters; 503 `weatherUnavailable` when the service does not answer; limit `weather` | bearer |
 | `POST /weather/city` <!-- added 2026-10-20 --> | `{ city: { name, region?, country, lat, lon } \| null }` | `RealWeatherRes { city \| null, kind \| null }`: the city stored on the player (coordinates rounded to 0.1°) and its weather now; null turns it off. The room holding the player hears it on `ewa:weather:<playerId>` | bearer |
 | `GET /weather` <!-- added 2026-10-20 --> | - | `RealWeatherRes`: the player's city and its cached weather | bearer |
@@ -2160,6 +2161,15 @@ export interface RunRepo {
 /** Honor shapes the world (migration 0012_world_honor): `world_honor (season int, zone_id varchar(32), light int, shadow int)`, PK (season, zone_id). Added to in the battle turn's own transaction. */
 /** Majin vs Tenjin seasons (migration 0013_season_factions): `season_factions (season int, player_id → players cascade, side varchar(8), points int, joined_at)`, PK (season, player_id). */
 /** One roaming legendary per season (migration 0014_season_legends): `season_legends (season int PK, species varchar(32), player_id → players set null, player_name varchar(20), caught_at)`. */
+/** Ghost trainers (migration 0015_ghosts): `ghosts (player_id PK → players cascade, name, zone_id, party jsonb CreatureInstance[], top_level, left_at)` and `ghost_battles (id, ghost_id → players cascade, challenger, zone_id, won (the ghost), seen, at)`. */
+export interface GhostRepo {
+  save(tx: Tx, playerId: string, name: string, zoneId: string, party: readonly CreatureInstance[], now: Date): Promise<void>;   // replaces; an empty party saves nothing
+  of(tx: Tx, playerId: string): Promise<Ghost | null>;
+  recent(tx: Tx, zoneId: string, since: Date, limit: number): Promise<Ghost[]>;   // newest first, banned left out
+  record(tx: Tx, ghostId: string, challenger: string, zoneId: string, won: boolean, now: Date): Promise<void>;
+  report(tx: Tx, ghostId: string): Promise<GhostFight[]>;   // the fights not yet told, now marked told
+  fights(tx: Tx, ghostId: string, limit: number): Promise<{ fights: GhostFight[]; won: number; lost: number }>;
+}
 export interface LegendRepo {
   claim(tx: Tx, season: number, species: string, playerId: string, playerName: string, now: Date): Promise<boolean>;   // the first catch only
   of(tx: Tx, season: number): Promise<{ season: number; species: string; playerName: string; caughtAt: Date } | null>;

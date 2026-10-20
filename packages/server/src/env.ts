@@ -29,6 +29,11 @@ export const EnvSchema = z.object({
   /** Ranked seasons: the job that closes an ended season ('off' in testEnv, so a test clock crossing a season never resets ratings) */
   SEASON_ROLLOVER: z.enum(['on', 'off']).default('on'),
   /**
+   * The roaming legendary and ghost trainers in tall grass ('off' in testEnv, so a grass test meets only the zone's
+   * own table; their own tests call the room's encounter methods directly)
+   */
+  ROAMING_ENCOUNTERS: z.enum(['on', 'off']).default('on'),
+  /**
    * Wild creatures: 'grass' (the default since 2026-10-20) = none stand in the overworld, walking in tall grass or surfing
    * rolls a random encounter; 'overworld' = the visible spawn director (§30.3). testEnv keeps 'overworld' for the suites
    * and the progression walker written against visible spawns.
@@ -106,6 +111,7 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
     LOG_LEVEL: 'error',
     WORLD_WEATHER: 'off',
     SEASON_ROLLOVER: 'off',
+    ROAMING_ENCOUNTERS: 'off',
     WILD_ENCOUNTERS: 'overworld',
     TRAINER_SIGHT: 'off',
     ...overrides,

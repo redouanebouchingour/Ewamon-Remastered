@@ -671,3 +671,8 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
 - `data/roamer.ts`: the roamers (Voltaura, Sunjaw, Glacinid in turn; all three are also statics, so a missed season
   never costs a species) and the schedule: `roamerZoneAt` hashes (season, 30-minute period) over eight routes and
   steps on when it would repeat the last period's route. Every server derives the same route with no shared state.
+
+## Ghost trainers (2026-10-20)
+
+- `data/ghosts.ts`: the chance, the fade time, the level span, the per-zone count, the trainer id (`ghost:<username>`,
+  public and unique, so the client can name the foe without a lookup), the reward and the report sentence.

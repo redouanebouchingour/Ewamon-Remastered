@@ -41,6 +41,7 @@ import type { QuestEvent } from '../game/quests';
 import type { SpawnRecord } from './spawnDirector';
 import { completeBeatInTx } from './storyBeats';
 import { FACTION_POINTS, deedsOf, seasonAt } from '@ewa/content';
+import { ghostReward, ghostTrainerId } from '@ewa/content';
 
 export const TURN_DEADLINE_MS = 60_000;
 export const REPLACEMENT_DEADLINE_MS = 20_000;
@@ -117,6 +118,11 @@ export interface BattleSession {
    * creatures is written; the end writes the streak and, every `TOWER.setLength` wins, the set reward). Absent otherwise.
    */
   readonly tower?: true;
+  /**
+   * Ghost trainers (content ghosts.ts): a fight with another trainer's ghost (format 'trainer', the AI drives healed
+   * copies of the party they left with; nothing of theirs is written). The end records the fight for the owner.
+   */
+  readonly ghost?: { readonly ownerId: string; readonly name: string };
   /** Phase D14: the tower result for side 0, set after the end transaction commits (read by the host's `onEnd`) */
   towerResult?: TowerResult;
   /**
@@ -859,6 +865,47 @@ export class BattleCoordinator {
   }
 
   /**
+   * Ghost trainers: the player against another trainer's ghost, as an AI trainer of healed copies of the party it left
+   * the world with (own levels, at most six, synthetic ids: nothing of the owner's is read again or written).
+   */
+  async startGhost(p: PlayerSeat, ghost: { readonly ownerId: string; readonly name: string; readonly party: readonly CreatureInstance[]; readonly topLevel: number }, at: BattleAt): Promise<StartResult> {
+    if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle', playerId: p.playerId };
+    const loaded = await this.loadPlayers([p.playerId], null, this.deps.zone.id);
+    const me = loaded.get(p.playerId)!;
+    const side0 = this.playerSide(me.party, p.playerId, false, false, me.inventory);
+    if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
+    if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
+    const content = this.deps.content;
+    const trainerId = ghostTrainerId(ghost.name);
+    const party = arenaCopies(ghost.party.slice(0, 6), null, content).map((c) => projectBattler(c, content));
+    const side1: Omit<Side, 'mustSwitch' | 'consumedItems'> = { kind: 'npc', party, active: 0, trainerId, canFlee: false, canCatch: false };
+    const { session } = this.open(
+      {
+        id: randomUUID(),
+        format: 'trainer',
+        zoneId: this.deps.zone.id,
+        seats: [{ side: 0, playerId: p.playerId, sessionId: p.sessionId }, { side: 1, playerId: null, sessionId: null }],
+        spawnId: null,
+        npc: { trainerId, reward: ghostReward(ghost.topLevel), leagueId: null },
+        beatId: null,
+        staticSpecies: null,
+        staticFlag: null,
+        x: at.x,
+        z: at.z,
+        yaw: at.yaw ?? null,
+        inventory: [this.bagFor(me), null],
+        rematch: false,
+        challenge: [me.challenge, null],
+        ghost: { ownerId: ghost.ownerId, name: ghost.name },
+      },
+      [side0, side1],
+      this.rng.fork().snapshot(),
+    );
+    this.sendStartProgress(loaded);
+    return { ok: true, session };
+  }
+
+  /**
    * The daily challenge (game/daily.ts): the day's fixed team against the day's AI team, both synthetic and at
    * `DAILY_LEVEL`, on the day's own seed, so every player's daily plays out the same for the same choices. No bands,
    * no items; nothing about the player's creatures is read or written.
@@ -1216,6 +1263,15 @@ export class BattleCoordinator {
               await repos.audit.write(tx, { actorId: pid, action: 'tower.reward', subject: session.id, detail: { streak: streak.current, money: reward.money, items: reward.items } }, now);
             }
             d.tower = { won, streak, reward };
+          } else if (session.ghost !== undefined) {
+            // ghost trainers: a win pays like a route trainer (no flag: a ghost is no content trainer); the owner learns
+            // how their ghost fared when they come back
+            if (won && session.npc !== null) {
+              money += session.npc.reward;
+              trainerExpGain += TRAINER_EXP.trainerWin;
+              questEvents.push({ kind: 'win', format: 'trainer' });
+            }
+            await repos.ghosts.record(tx, session.ghost.ownerId, rows.get(pid)!.username, session.zoneId, !won, now);
           } else if (session.format === 'trainer' && won && session.npc !== null) {
             money += session.npc.reward;
             trainerExpGain += TRAINER_EXP.trainerWin;

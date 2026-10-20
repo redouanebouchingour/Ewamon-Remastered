@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-20 ghost trainers: the party a trainer leaves with haunts that zone, fights as AI, and the owner hears how it went. One entry. -->
+
+## 2026-10-20 · `00-spine.md` §4.7 (`GET /ghost`), §5.2 (`GhostRepo`, migration 0015); `30-server-netcode.md` §30.4.3a (ghost trainers); `20-client.md` §20.9.9n (new); `50-verification-budget.md` §50.4.2 / .4 / .5 / .7 rows · ghost trainers
+Why: the user asked for ghost trainers: an offline player's party roaming as AI, with a report on login. It makes the world feel lived in when few are online: the trainers who walked a route before you are still there to fight. The ghost fights with healed copies, so nothing of the owner's can be lost, and only near the challenger's level so it is a fair fight; the owner comes back to a short account of how their ghost did.
+Evidence: `packages/content/test/ghosts.test.ts` (3); `packages/persist/test/ghosts.test.ts` (1) and `migrations.test.ts`; `packages/protocol/test/rest.test.ts` (94 routes); `packages/server/test/ghosts.test.ts` (3); `packages/client/test/ghosts.test.tsx` (3); live on the second isolated pair.
+Affects: `packages/content/src/data/ghosts.ts`, `src/index.ts`; `packages/persist/src/{schema/ghosts,repos/ghosts,schema/index,repos/index}.ts`, `drizzle/0015_ghosts.sql`; `packages/protocol/src/rest.ts`; `packages/server/src/{rooms/battleSession,rooms/ZoneRoom,rest/routes/seasons}.ts`; `packages/client/src/{battle/foe,screens/GhostSection,screens/ProfileScreen}.ts(x)`.
+
 <!-- 2026-10-20 one roaming legendary per season: the season's roamer moves between routes until someone catches it, and the Dex remembers who. One entry. -->
 
 ## 2026-10-20 · `00-spine.md` §4.7 (`GET /legends`), §5.2 (`LegendRepo`, migration 0014); `30-server-netcode.md` §30.4.3a (one roaming legendary per season); `20-client.md` §20.9.9m (new); `50-verification-budget.md` §50.4.2 / .4 / .5 / .7 rows · one roaming legendary per season

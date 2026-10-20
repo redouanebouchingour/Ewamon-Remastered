@@ -691,6 +691,25 @@ export const LegendsRes = z.object({
 });
 export type LegendsView = z.infer<typeof LegendsRes>;
 
+/**
+ * Ghost trainers (content ghosts.ts): where the caller's ghost haunts (the zone they last left, with the party it
+ * fights with; null before they ever left, or once it faded) and the fights other trainers had with it.
+ */
+export const GhostFightSchema = z.object({ challenger: z.string().max(20), zoneId: z.string().max(32), won: z.boolean(), at: IsoDate });
+export const GhostRes = z.object({
+  haunting: z
+    .object({
+      zoneId: z.string().max(32),
+      leftAt: IsoDate,
+      party: z.array(z.object({ speciesId: z.string().max(32), level: z.number().int().min(1).max(100) })).max(6),
+    })
+    .nullable(),
+  won: z.number().int().min(0),
+  lost: z.number().int().min(0),
+  fights: z.array(GhostFightSchema).max(20),
+});
+export type GhostView = z.infer<typeof GhostRes>;
+
 // ---- admin / health -----------------------------------------------------------------------------------------------------
 
 /** TODO(spec): `/admin/stats` has no listed body; these are the legacy counters carried over. */
@@ -840,6 +859,8 @@ export const ROUTES = {
   factionSky: route({ method: 'GET', path: '/factions/sky', auth: 'bearer', response: FactionSkyRes }),
   // one roaming legendary per season: where it roams and who caught it first
   legends: route({ method: 'GET', path: '/legends', auth: 'bearer', response: LegendsRes }),
+  // ghost trainers: where your ghost haunts and how it fared
+  ghost: route({ method: 'GET', path: '/ghost', auth: 'bearer', response: GhostRes }),
   dailyStart: route({ method: 'POST', path: '/daily/start', auth: 'bearer', request: Nothing, response: ArenaSeatRes }),
   adminStats: route({ method: 'GET', path: '/admin/stats', auth: 'admin', response: AdminStatsRes }),
   adminPlayers: route({ method: 'GET', path: '/admin/players', auth: 'admin', query: AdminPlayersQuery, response: AdminPlayersRes }),

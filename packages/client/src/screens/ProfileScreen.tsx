@@ -26,6 +26,7 @@ import { BadgeStrip, Showcase, TrainerIdentity, TrainerStats } from './TrainerCa
 import { ChallengeSection } from './ChallengeSection';
 import { SpeedrunSection } from './SpeedrunSection';
 import { SeasonTitles } from './SeasonTitles';
+import { GhostSection } from './GhostSection';
 
 export const MOTTO_MAX = 120;
 
@@ -147,6 +148,7 @@ export function ProfileScreen() {
           <BadgeStrip earned={badges} />
         </section>
         <SeasonTitles username={profile.username} />
+        <GhostSection />
         {pub !== null && (
           <section className={l.section} aria-label="Showcase">
             <h3 className={l.sectionTitle}>Showcase</h3>

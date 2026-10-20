@@ -1166,3 +1166,14 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   `persistTurn` claims the season's first catch for a caught roamer encounter and toasts the catcher after commit.
   Between a catch elsewhere and a room's next read the roamer can still be met there for up to a minute; a catch
   then is a catch, only not the first.
+
+## Ghost trainers (2026-10-20)
+
+- The snapshot is taken on a real leave only (`removePlayer` with no handover, not into an arena). The encounter runs
+  before the roamer and the wild roll, on its own `ghost` stream; the owner-offline and level checks are async, so
+  the encounter is decided in `startGhostEncounter`, which falls back to the normal wild roll.
+- `startGhost` reuses `arenaCopies` (healed, synthetic ids) at the ghost's own levels; the NPC side is driven by the
+  core AI like any trainer. `persistTurn` has its own branch for ghost fights (no `trainer:<id>:beaten` flag) and
+  records the fight for the owner at the end.
+- Env `ROAMING_ENCOUNTERS` (default 'on', testEnv 'off') gates both the ghost and the roamer encounters in
+  `wildStep`, so the grass tests keep meeting only the zone's table (the roamer had no such gate in its own commit).

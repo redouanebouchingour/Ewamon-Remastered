@@ -1,0 +1,49 @@
+/* Ghost trainers on the Profile: the haunted zone with the party's sprites, the record, the latest fights as rows. */
+.haunt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--bg-2);
+}
+
+.party {
+  display: flex;
+  gap: var(--s-1);
+}
+
+.member {
+  display: inline-flex;
+}
+
+.fights {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fight {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-3);
+}
+
+.won {
+  color: var(--accent);
+  font-family: var(--face-display);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.lost {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-weight: 800;
+  text-transform: uppercase;
+}

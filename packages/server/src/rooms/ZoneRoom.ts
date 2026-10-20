@@ -81,8 +81,8 @@ import { STREAK_LAST_PREFIX, dailyLogin } from '../liveops/login';
 import { dayKey, hotspotDayKey, hotspotOpen, hotspotsFor, liveOpsModsFor } from '../liveops/schedule';
 import { WEATHER_FORMATS, weatherAt, weatherBucket } from '../game/weather';
 import { REAL_WEATHER_CHECK_MS, weatherTopic } from '../game/realWeather';
-import type { WeatherCity } from '@ewa/persist';
-import { ROAMER_CHANCE, ROAMER_LEVEL, roamerOf, roamerZoneAt, seasonAt, shadowLevel } from '@ewa/content';
+import type { Ghost, WeatherCity } from '@ewa/persist';
+import { GHOSTS_PER_ZONE, GHOST_CHANCE, GHOST_DAYS, GHOST_LEVEL_SPAN, ROAMER_CHANCE, ROAMER_LEVEL, ghostReport, roamerOf, roamerZoneAt, seasonAt, shadowLevel } from '@ewa/content';
 
 export interface ZoneMeta {
   readonly zoneId: ZoneId;
@@ -289,6 +289,9 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   /** one roaming legendary per season: its own stream (the grass rolls stay as they were) and whether it was caught */
   private roamRng: Rng | null = null;
   private roamerCaught: { season: number; caught: boolean } | null = null;
+  /** ghost trainers: this zone's recent ghosts (read with the shadow, once a minute) and their own stream */
+  private ghosts: readonly Ghost[] = [];
+  private ghostRng: Rng | null = null;
   private wildCounter = 0;
   private grassPatches: readonly PlanEllipse[] = [];
   /** Phase D14: battle tower runs (only Solenne has the attendant; elsewhere every `tower` message is refused) */
@@ -352,6 +355,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     // grass encounters: their own seed too, so the root's forks (spawns, battles, raids) stay what they were
     this.wildRng = createRng(`${deps.worldSeed}:${options.zoneId}:${shard}:${this.now()}:wild`);
     this.roamRng = createRng(`${deps.worldSeed}:${options.zoneId}:${shard}:${this.now()}:roam`);
+    this.ghostRng = createRng(`${deps.worldSeed}:${options.zoneId}:${shard}:${this.now()}:ghost`);
     this.grassPatches = deps.env.WILD_ENCOUNTERS === 'grass' && this.zone.encounterTable !== null ? zonePlan(this.zone.id).grassPatches : [];
     const tuning = tuningFor(this.zone);
     const table = encounterTableFor(this.zone.id);
@@ -614,6 +618,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     await deps.repos.db.transaction((tx) => deps.repos.runs.start(tx, playerId, new Date(deps.clock()))).catch((e: unknown) => deps.log.error({ err: e, playerId }, 'play clock start failed'));
     // weather from real life: the city's weather (the cached answer at once, else one lookup)
     void this.refreshRealWeather(client);
+    // ghost trainers: how the player's ghost fared while they were away
+    void this.ghostWelcome(client, playerId);
   }
 
   override onDrop(client: ZoneClient, code?: number): void {
@@ -678,6 +684,15 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       await deps.repos.db
         .transaction((tx) => deps.repos.players.setPosition(tx, playerId, this.zone.id, ps.x, ps.z, ps.angle))
         .catch((e: unknown) => deps.log.error({ err: e, playerId }, 'leave position write failed'));
+    }
+    // ghost trainers: leaving the world for good (not a crossing, not an arena) leaves the party behind as a ghost here
+    if (!movedAway && deps.presenceStore.get(playerId)?.arena !== true) {
+      const name = client.auth?.username;
+      if (name !== undefined) {
+        await deps.repos.db
+          .transaction(async (tx) => deps.repos.ghosts.save(tx, playerId, name, this.zone.id, await deps.repos.creatures.party(tx, playerId), new Date(deps.clock())))
+          .catch((e: unknown) => deps.log.error({ err: e, playerId }, 'ghost save failed'));
+      }
     }
     // verified speedruns: leaving the world stops the play clock (a crossing hands it to the next room running)
     if (!movedAway) {
@@ -800,6 +815,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       // one roaming legendary per season: whether the season's roamer has been caught (read on the same minute)
       const legend = await deps.repos.db.transaction((tx) => deps.repos.legends.of(tx, season));
       this.roamerCaught = { season, caught: legend !== null };
+      // ghost trainers: this zone's recent ghosts
+      this.ghosts = await deps.repos.db.transaction((tx) => deps.repos.ghosts.recent(tx, this.zone.id, new Date(now - GHOST_DAYS * 86_400_000), GHOSTS_PER_ZONE));
     } catch (e) {
       this.deps.log.warn({ err: e }, 'shadow read failed');
     } finally {
@@ -1551,8 +1568,18 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     if (this.wildRng!.next() >= encounterChance(dist, rate)) return;
     this.wildCounter += 1;
     const id = `${this.zone.id}:wild:${this.wildCounter}`;
+    // ghost trainers: in tall grass, now and then, another trainer's ghost steps out instead (its own stream)
+    const roaming = this.deps.env.ROAMING_ENCOUNTERS === 'on';
+    const ghost = roaming && medium === 'land' ? this.ghostEncounter(ud.playerId) : null;
+    if (ghost !== null) {
+      ud.encounterGraceM = ENCOUNTER_GRACE_M;
+      ud.battleId = 'pending';
+      ps.moving = false;
+      void this.startGhostEncounter(client, ud, ps, ghost, id, medium);
+      return;
+    }
     // one roaming legendary per season: on its route, now and then, the encounter is the roamer
-    const roamer = this.roamerEncounter(medium, ps.x, ps.z);
+    const roamer = roaming ? this.roamerEncounter(medium, ps.x, ps.z) : null;
     // weather from real life: the player's own weather favours its types (no bias without a city)
     const rec = roamer ?? rollWild(encounterTableFor(this.zone.id), medium, this.wildRng!, this.deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps, ud.realWeather, this.state.shadow);
     if (rec === null) return;
@@ -1560,6 +1587,47 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     ud.battleId = 'pending';
     ps.moving = false;
     void this.startEncounter(client, ud, ps, rec);
+  }
+
+  /** Ghost trainers: one of this zone's ghosts (not the player's own) with GHOST_CHANCE, else null. */
+  ghostEncounter(playerId: string): Ghost | null {
+    const others = this.ghosts.filter((g) => g.playerId !== playerId);
+    if (others.length === 0) return null;
+    if (this.ghostRng!.next() >= GHOST_CHANCE) return null;
+    return others[this.ghostRng!.int(others.length)]!;
+  }
+
+  /**
+   * Ghost trainers: the ghost fights if its owner is offline and its best creature is within GHOST_LEVEL_SPAN of the
+   * player's lead; otherwise the grass gives a wild creature as it would have.
+   */
+  private async startGhostEncounter(client: ZoneClient, ud: ZoneUserData, ps: PlayerState, ghost: Ghost, id: string, medium: 'land' | 'water'): Promise<void> {
+    const deps = this.deps;
+    try {
+      const lead = await this.leadLevel(ud.playerId);
+      const owner = await deps.presenceMirror.lookup(ghost.playerId);
+      if (lead > 0 && owner === null && Math.abs(ghost.topLevel - lead) <= GHOST_LEVEL_SPAN) {
+        const res = await this.battles.startGhost({ playerId: ud.playerId, sessionId: client.sessionId }, { ownerId: ghost.playerId, name: ghost.name, party: ghost.party, topLevel: ghost.topLevel }, { x: ps.x, z: ps.z });
+        if (res.ok) return;
+      }
+    } catch (e) {
+      deps.log.error({ err: e }, 'ghost encounter failed');
+    }
+    const rec = rollWild(encounterTableFor(this.zone.id), medium, this.wildRng!, deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps, ud.realWeather, this.state.shadow);
+    if (rec === null) {
+      if (ud.battleId === 'pending') ud.battleId = null;
+      return;
+    }
+    await this.startEncounter(client, ud, ps, rec);
+  }
+
+  /** Ghost trainers: on coming back, how the player's ghost fared while they were away (each fight told once). */
+  private async ghostWelcome(client: ZoneClient, playerId: string): Promise<void> {
+    const deps = this.deps;
+    const fights = await deps.repos.db.transaction((tx) => deps.repos.ghosts.report(tx, playerId)).catch(() => []);
+    const won = fights.filter((f) => f.won).length;
+    const text = ghostReport(won, fights.length - won);
+    if (text !== null) this.sendMsg(client, { type: 'toast', level: 'info', text });
   }
 
   /** A grass / surf encounter's battle: none without a usable creature, none below the lead's level under a repel. */

@@ -250,3 +250,9 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
 
 - `season_legends`, one row per season; `claim` is an insert that does nothing on conflict, so two catches in the same
   moment cannot both be first. `player_id` is set null when the account goes; the name stays.
+
+## Migration 0015_ghosts (2026-10-20)
+
+- `ghosts` holds the party as `CreatureInstance[]` JSON at the moment of leaving (a snapshot: later changes to the
+  real creatures do not reach it until the next leave). `report` marks fights told in the same statement that returns
+  them, so two joins cannot both tell the same fight.

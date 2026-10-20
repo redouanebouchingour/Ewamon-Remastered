@@ -209,6 +209,7 @@ Every file listed must exist with at least the assertions listed. A milestone in
 | `worldHonor.test.ts` <!-- added 2026-10-20: honor shapes the world --> | The level from a tally (clear below the minimum, a level per threshold); a turn's deeds (a player's Dark move, a wild faint, a catch, a fair win; an AI side counts nothing); the Dark weight; the notices; the hollowed town's lines belong to its people. |
 | `factions.test.ts` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | The winner (none on a tie); the Chronicle's lines; two sides with their words; the deeds' points in order. |
 | `roamer.test.ts` <!-- added 2026-10-20: one roaming legendary per season --> | The roamer of each season in turn; the schedule is fixed, always a route, never the same two periods, reaching every route; the roamers are statics the world already holds. |
+| `ghosts.test.ts` <!-- added 2026-10-20: ghost trainers --> | A ghost's id names its owner and is no content trainer; a win pays by level; the report reads as a sentence for every record. |
 
 ### 50.4.3 `@ewa/protocol` — `packages/protocol/test/`
 
@@ -246,6 +247,7 @@ All files open a fresh PGlite (`drizzle-orm/pglite`) per file and run `migrate()
 | `seasons.test.ts` <!-- added 2026-10-20: ranked seasons --> | Migration 0011: the standings so far and at the close rank everyone with a rated fight inside the season by rating, with its wins and losses (unrated fights and fights outside it left out); a second close is refused; every rating moves halfway back to 1000; a catch-up close without the reset keeps them; titles are the top-eight places. |
 | `factions.test.ts` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | Migration 0013: a side holds for the season; points only with a side; the totals; the best list per side, banned left out; a new season starts empty. |
 | `legends.test.ts` <!-- added 2026-10-20: one roaming legendary per season --> | Migration 0014: the first catch only, one per season, newest first; the catcher's name outlives the account. |
+| `ghosts.test.ts` <!-- added 2026-10-20: ghost trainers --> | Migration 0015: a save replaces (an empty party saves none); a zone's recent ghosts since a time, newest first, banned left out; a fight recorded, told once, counted. |
 
 ### 50.4.5 `@ewa/server` — `packages/server/test/`
 
@@ -274,6 +276,7 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `world-honor.test.ts` <!-- added 2026-10-20: honor shapes the world --> | Dark slots weigh more in a shadowed zone and level 0 rolls as before; a wild battle won by a knock-out adds shadow to the zone in the turn; the zone room reads its tally into `state.shadow` (clients see it) and lets it go when the light comes back; GET /world/shadow lists the shadowed zones. |
 | `factions.test.ts` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | A side once a season (409 for the other, 200 for the same); GET /factions totals, best and own; a mission claimed earns 1 (none without a side); a ranked win earns the winner 3 and the loser none; the closed season's winner holds the sky and opens the Chronicle. `raid.test.ts` also checks a raid clear's 2. |
 | `roamer.test.ts` <!-- added 2026-10-20: one roaming legendary per season --> | On its route an encounter meets the season's roamer now and then, a town never, and once caught nowhere; GET /legends follows it (route, when it moves) and then names the catcher; a catch of a roamer encounter records the first catcher once and tells them, a later catch does not. |
+| `ghosts.test.ts` <!-- added 2026-10-20: ghost trainers --> | Leaving the world leaves a ghost in that zone (GET /ghost shows it); a fight with a ghost is an AI trainer battle of copies: a win pays, the owner's creatures are byte-unchanged, no content flag, the fight recorded; the owner is told once on coming back; a zone room meets its recent ghosts, never the player's own. |
 
 ### 50.4.6 `@ewa/render` — `packages/render/test/` (Playwright, Chromium with WebGPU)
 
@@ -326,6 +329,7 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `hollowed.test.ts` <!-- added 2026-10-20: honor shapes the world --> | In Vesperveil at the highest shadow its people say the hollowed lines, their own otherwise, and no other town takes them; the map tag's hover line. `world-map.test.tsx` also checks the shadow tags. |
 | `factions.test.tsx` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | The Factions screen's score, sides, sky and Chronicle; taking a side once; the empty Chronicle; Solenne's sky asked only there and once a season. |
 | `legends.test.ts` <!-- added 2026-10-20: one roaming legendary per season --> | The Dex lines for a roamer species (where it roams, every season's first catcher), none for another species. `world-map.test.tsx` checks the map tag. |
+| `ghosts.test.tsx` <!-- added 2026-10-20: ghost trainers --> | A ghost foe is its owner's ghost; the Profile's section (where it haunts, record, fights) and nothing before a ghost exists. |
 
 ### 50.4.8 Pipelines — `tools/*/test/`
 

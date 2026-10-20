@@ -53,6 +53,7 @@ import {
   FactionJoinReq,
   FactionsRes,
   LegendsRes,
+  GhostRes,
   WeatherCitiesQuery,
   WeatherCityReq,
   SpeedrunRes,
@@ -391,7 +392,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(93); // GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(ROUTE_KEYS).toHaveLength(94); // GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
     expect(paths).toContain('GET /daily');
     expect(paths).toContain('POST /challenge');
     expect(paths).toContain('POST /daily/start');
@@ -579,5 +580,14 @@ describe('one roaming legendary per season', () => {
     const caught = { season: 1, species: 'voltaura', username: 'ash', at: ISO };
     ok(LegendsRes, { season: 1, species: 'voltaura', zoneId: null, movesAt: null, caught, past: [caught] });
     bad(LegendsRes, { season: 1, species: 'voltaura', zoneId: null, movesAt: null, caught: { ...caught, season: 0 }, past: [] });
+  });
+});
+
+describe('ghost trainers', () => {
+  it('a haunting zone with its party (at most six), or none; the fights', () => {
+    const fight = { challenger: 'gary', zoneId: 'mire_route', won: true, at: ISO };
+    ok(GhostRes, { haunting: { zoneId: 'mire_route', leftAt: ISO, party: [{ speciesId: 'bramblecub', level: 12 }] }, won: 1, lost: 0, fights: [fight] });
+    ok(GhostRes, { haunting: null, won: 0, lost: 0, fights: [] });
+    bad(GhostRes, { haunting: { zoneId: 'mire_route', leftAt: ISO, party: Array.from({ length: 7 }, () => ({ speciesId: 'x', level: 5 })) }, won: 0, lost: 0, fights: [] });
   });
 });

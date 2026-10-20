@@ -17,6 +17,8 @@ import { factionRepo } from './factions';
 import type { FactionRepo } from './factions';
 import { legendRepo } from './legends';
 import type { LegendRepo } from './legends';
+import { ghostRepo } from './ghosts';
+import type { GhostRepo } from './ghosts';
 import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
 import { historyRepo } from './history';
@@ -59,6 +61,8 @@ export interface Repos {
   readonly factions: FactionRepo;
   /** one roaming legendary per season: the first catcher of each season's roamer (migration 0014) */
   readonly legends: LegendRepo;
+  /** ghost trainers: the party a trainer left with, and its fights (migration 0015) */
+  readonly ghosts: GhostRepo;
 }
 
 /**
@@ -86,6 +90,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     worldHonor: worldHonorRepo,
     factions: factionRepo,
     legends: legendRepo,
+    ghosts: ghostRepo,
   };
 }
 
@@ -111,3 +116,4 @@ export type { SeasonStanding, SeasonWindow } from './seasons';
 export type { ZoneHonor } from './worldHonor';
 export type { FactionSide, FactionTotals } from './factions';
 export type { SeasonLegend } from './legends';
+export type { Ghost, GhostFight } from './ghosts';

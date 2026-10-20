@@ -4,10 +4,10 @@
  * titles; the live arena matches and one match's feed; the zones under a shadow this season (honor shapes the world,
  * content worldHonor.ts). A banned trainer is left out of every list.
  */
-import { SEASON_FINALISTS, roamerMovesAt, roamerOf, roamerZoneAt, seasonAt, seasonByNumber, seasonTitle, shadowLevel } from '@ewa/content';
+import { GHOST_DAYS, SEASON_FINALISTS, roamerMovesAt, roamerOf, roamerZoneAt, seasonAt, seasonByNumber, seasonTitle, shadowLevel } from '@ewa/content';
 import type { Season } from '@ewa/content';
 import type { SeasonStanding } from '@ewa/persist';
-import { LiveFeedRes, LiveListRes, LiveParams, PageQuery, SeasonParams, SeasonStandingsRes, SeasonTitlesRes, SeasonsRes, LegendsRes, UsernameParams, WorldShadowRes } from '@ewa/protocol';
+import { LiveFeedRes, LiveListRes, LiveParams, PageQuery, SeasonParams, SeasonStandingsRes, SeasonTitlesRes, SeasonsRes, LegendsRes, GhostRes, UsernameParams, WorldShadowRes } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
 import { HttpError, out, rateLimit, requireAuth } from '../http';
 import type { RestDeps } from '../http';
@@ -84,6 +84,19 @@ export function registerSeasonRoutes(app: FastifyInstance, deps: RestDeps): void
       movesAt: roaming ? iso(roamerMovesAt(now)) : null,
       caught: v.caught === null ? null : view(v.caught),
       past: v.past.map(view),
+    });
+  });
+
+  // ghost trainers: where the caller's ghost haunts (until it fades) and its latest fights
+  app.get('/ghost', bearer, async (req) => {
+    const now = clock();
+    const v = await repos.db.transaction(async (tx) => ({ ghost: await repos.ghosts.of(tx, req.user.sub), record: await repos.ghosts.fights(tx, req.user.sub, 20) }));
+    const g = v.ghost !== null && now - v.ghost.leftAt.getTime() < GHOST_DAYS * 86_400_000 ? v.ghost : null;
+    return out(deps, GhostRes, {
+      haunting: g === null ? null : { zoneId: g.zoneId, leftAt: g.leftAt.toISOString(), party: g.party.slice(0, 6).map((c) => ({ speciesId: c.speciesId, level: c.level })) },
+      won: v.record.won,
+      lost: v.record.lost,
+      fights: v.record.fights.map((f) => ({ challenger: f.challenger, zoneId: f.zoneId, won: f.won, at: f.at.toISOString() })),
     });
   });
 

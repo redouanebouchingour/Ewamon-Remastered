@@ -2156,3 +2156,7 @@ every KO turn shows the lunge, the hit and the faint before the next creature en
 
 - The map tags the roamer's route; the Dex entry of a roamer species shows where it roams and every season's first
   catcher (`RoamerNote`, one `GET /legends` per opened entry).
+
+## Ghost trainers (2026-10-20)
+
+- `foeIdentity` names `ghost:<username>` foes; the Profile's `GhostSection` reads `GET /ghost`.
