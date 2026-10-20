@@ -101,8 +101,27 @@ export function rollFishing(
   now: number,
   mods: LiveOpsMods = DEFAULT_LIVE_OPS,
 ): SpawnRecord | null {
+  return rollWild(table, 'water', rng, content, timeOfDay, at, id, now, mods);
+}
+
+/**
+ * One wild creature of `medium` from `table` (the fishing bite's draws, in the same order): a tall-grass encounter rolls
+ * the `land` slots, a surf encounter or a bite the `water` slots. Never enters a director's population. null when the
+ * table has no eligible slot of that medium at `timeOfDay`.
+ */
+export function rollWild(
+  table: EncounterTable | null,
+  medium: 'land' | 'water',
+  rng: Rng,
+  content: ContentIndex,
+  timeOfDay: number,
+  at: { readonly x: number; readonly z: number },
+  id: string,
+  now: number,
+  mods: LiveOpsMods = DEFAULT_LIVE_OPS,
+): SpawnRecord | null {
   if (table === null) return null;
-  const eligible = table.slots.filter((s) => (s.medium ?? 'land') === 'water' && slotEligible(s, timeOfDay));
+  const eligible = table.slots.filter((s) => (s.medium ?? 'land') === medium && slotEligible(s, timeOfDay));
   if (eligible.length === 0) return null;
   const swarm = new Set(mods.swarmSpecies);
   const weights = eligible.map((s) => s.weight * (swarm.has(s.species) ? mods.swarmWeightBoost : 1));
@@ -135,7 +154,7 @@ export function rollFishing(
     isAlpha,
     isShiny,
     ability,
-    medium: 'water',
+    medium,
     x: at.x,
     z: at.z,
     bornAt: now,

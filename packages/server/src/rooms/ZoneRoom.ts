@@ -16,6 +16,7 @@ import {
   interiorArenaFor,
   interiorAt,
   interiorGates,
+  interiorTrainers,
   isWalkable,
   LEAGUE_REMATCH_COOLDOWN_DAYS,
   POSTGAME_FLAG,
@@ -31,8 +32,9 @@ import {
   playableBounds,
   visitedFlag,
   zone as zoneById,
+  zonePlan,
 } from '@ewa/content';
-import type { BadgeId, Heightfield, LinkDir, RaidHotspot, RectSolid, ZoneDef, ZoneId } from '@ewa/content';
+import type { BadgeId, Heightfield, LinkDir, PlanEllipse, RaidHotspot, RectSolid, TrainerDef, ZoneDef, ZoneId } from '@ewa/content';
 import { createRng } from '@ewa/core';
 import type { Rng, WeatherKind } from '@ewa/core';
 import { BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, FISH_REACH_M, PlayerState, RaidState, SpawnState, ZoneState, rankedWindow } from '@ewa/protocol';
@@ -55,7 +57,19 @@ import { arenaTopic } from './arenaQueue';
 import type { PendingRanked, RankedCancel, RankedMatch } from './matchQueue';
 import { BIKE_ITEM, NO_CLEARED, NO_GATES, SURF_ITEM, isLava, onOpenWater, refillBudget, validateInput } from './movement';
 import type { RejectReason } from './movement';
-import { SpawnDirector, rollFishing, tuningFor } from './spawnDirector';
+import { SpawnDirector, rollFishing, rollWild, tuningFor } from './spawnDirector';
+import {
+  ENCOUNTER_GRACE_M,
+  ENCOUNTER_REFUSED_GRACE_M,
+  GRASS_RATE_PER_M,
+  LURE_FACTOR,
+  SPOT_QUIET_MS,
+  SPOT_TIMEOUT_MS,
+  SURF_RATE_PER_M,
+  encounterChance,
+  inTallGrass,
+  spotter,
+} from './encounters';
 import type { SpawnRecord } from './spawnDirector';
 import { beatFor, completeBeatInTx, flagSet, isStoryTrainer, storyTrainerBeat } from './storyBeats';
 import { RAID_JOIN_RANGE_M, RaidRunner, RaidSession } from './raidSession';
@@ -141,6 +155,15 @@ export interface ZoneUserData {
   repel: { readonly kind: 'repel' | 'lure'; steps: number } | null;
   /** Phase C3: no `fastTravel` before this time (3 s after the last accepted one, or after any arrival) */
   fastTravelReadyAt: number;
+  /** grass encounters: metres still to walk before the grass or the water can roll (after arriving, after a battle) */
+  encounterGraceM: number;
+  /**
+   * trainer sight: the trainer who saw this player; movement is held until its fight starts (`at` = when it saw them;
+   * the room starts the fight itself after SPOT_TIMEOUT_MS). `checking` while the party read is in flight.
+   */
+  spotted: { readonly trainerId: string; at: number; checking: boolean } | null;
+  /** trainer sight is quiet until this time (a spotted fight that could not start) */
+  sightQuietUntil: number;
 }
 
 export type ZoneClient = Client<{ userData: ZoneUserData; auth: ZoneAuth }>;
@@ -252,6 +275,10 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   /** Phase D9: the fishing stream (seeded from the room seed; independent of the room's other forks) */
   private fishRng: Rng | null = null;
   private fishCounter = 0;
+  /** tall-grass / surf encounters: their own stream (seeded like the fishing one) and the zone plan's grass patches */
+  private wildRng: Rng | null = null;
+  private wildCounter = 0;
+  private grassPatches: readonly PlanEllipse[] = [];
   /** Phase D14: battle tower runs (only Solenne has the attendant; elsewhere every `tower` message is refused) */
   private tower!: TowerSessions;
   /**
@@ -305,6 +332,9 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.worldRng = root;
     // Phase D9: its own seed, so adding it changes none of the root's forks (spawns, battles, raids)
     this.fishRng = createRng(`${deps.worldSeed}:${options.zoneId}:${shard}:${this.now()}:fish`);
+    // grass encounters: their own seed too, so the root's forks (spawns, battles, raids) stay what they were
+    this.wildRng = createRng(`${deps.worldSeed}:${options.zoneId}:${shard}:${this.now()}:wild`);
+    this.grassPatches = deps.env.WILD_ENCOUNTERS === 'grass' && this.zone.encounterTable !== null ? zonePlan(this.zone.id).grassPatches : [];
     const tuning = tuningFor(this.zone);
     const table = encounterTableFor(this.zone.id);
     const spawnRng = root.fork();
@@ -523,6 +553,9 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       unknown: [],
       repel: null,
       fastTravelReadyAt: arrival !== null ? this.now() + FAST_TRAVEL_COOLDOWN_MS : 0,
+      encounterGraceM: ENCOUNTER_GRACE_M,
+      spotted: null,
+      sightQuietUntil: 0,
     };
     // R11: the join's AOI pass runs here, not on the first tick, so a chat/interact sent right after joining
     // already has a cell and an audience (a takeover client re-registers the viewer from scratch)
@@ -884,7 +917,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const canBike = input.bike === true && (ud.inventory[BIKE_ITEM] ?? 0) > 0 && interiorAt(this.zone.id, ps.x, ps.z) === null;
     const verdict = validateInput(
       {
-        x: ps.x, z: ps.z, lastSeq: ud.lastSeq, budgetMs: ud.budgetMs, inBattle: ud.battleId !== null, canSurf: (ud.inventory[SURF_ITEM] ?? 0) > 0,
+        x: ps.x, z: ps.z, lastSeq: ud.lastSeq, budgetMs: ud.budgetMs, inBattle: ud.battleId !== null || ud.spotted !== null, canSurf: (ud.inventory[SURF_ITEM] ?? 0) > 0,
         closedGates: ud.closedGates, clearedObstacles: ud.clearedObstacles, canBike,
       },
       input,
@@ -913,6 +946,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
           this.sendMsg(client, { type: 'toast', level: 'info', text: 'The repel wore off.' });
         }
       }
+      // a trainer who sees the player goes first; otherwise the grass (or the water) may roll
+      if (!this.checkSight(client, ud, ps)) this.wildStep(client, ud, ps, dist);
       return;
     }
     const reason: RejectReason = verdict.reason;
@@ -965,6 +1000,10 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const ps = this.state.players.get(ud.playerId);
     if (ps === undefined) return;
     if (ud.battleId !== null || ud.tradeId !== null) return this.sendMsg(client, { type: 'error', code: 'busy', detail: 'inBattle' });
+    // a trainer saw the player: only its fight may start now, wherever it stands (the client walked it up)
+    const spotted = ud.spotted !== null && !ud.spotted.checking && m.kind === 'npc' && ud.spotted.trainerId === m.targetId;
+    if (ud.spotted !== null && !spotted) return this.sendMsg(client, { type: 'error', code: 'busy', detail: 'spotted' });
+    if (spotted) return this.startSpotted(client, ud, ps, m.targetId);
     if (m.kind === 'healer' || m.kind === 'shop') return; // no-ops over the room (POST /heal, GET /shop/:zoneId)
     const target = findTarget(this.zone, m.kind, m.targetId, ud.flags);
     const cell = ud.cell ?? cellOf(ps.x, ps.z);
@@ -1309,6 +1348,135 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     }
   }
 
+  // ─── tall grass and trainer sight (encounters.ts) ──────────────────────────────
+
+  /**
+   * Trainer sight after an accepted move: the nearest unbeaten trainer within SIGHT_M with a clear line holds the
+   * player (true; the grass does not roll then). Once the party read says the player can fight, `trainerSpotted` goes
+   * out and the client plays the approach; with no usable creature the trainer looks away for SPOT_QUIET_MS.
+   */
+  private checkSight(client: ZoneClient, ud: ZoneUserData, ps: PlayerState): boolean {
+    if (ud.spotted !== null) return true;
+    if (this.deps.env.TRAINER_SIGHT !== 'on' || this.now() < ud.sightQuietUntil) return false;
+    if (ud.battleId !== null || ud.tradeId !== null || ud.handover !== null || this.raid?.isParticipant(ud.playerId) === true) return false;
+    const room = interiorAt(this.zone.id, ps.x, ps.z)?.def.id ?? null;
+    const t = spotter(
+      this.sightTrainers(),
+      (x) => this.sightEligible(ud, x),
+      this.heightfield,
+      ud.closedGates,
+      ps.x,
+      ps.z,
+      (x) => (interiorAt(this.zone.id, x.x, x.z)?.def.id ?? null) === room,
+    );
+    if (t === null) return false;
+    const spotted = { trainerId: t.id, at: this.now(), checking: true };
+    ud.spotted = spotted;
+    ps.moving = false;
+    const lookAway = (): void => {
+      if (ud.spotted !== spotted) return;
+      ud.spotted = null;
+      ud.sightQuietUntil = this.now() + SPOT_QUIET_MS;
+    };
+    void this.leadLevel(ud.playerId)
+      .then((lead) => {
+        if (ud.spotted !== spotted) return;
+        if (lead <= 0) return lookAway();
+        spotted.checking = false;
+        spotted.at = this.now();
+        this.sendMsg(client, { type: 'trainerSpotted', trainerId: t.id });
+      })
+      .catch(lookAway);
+    return true;
+  }
+
+  private sightList: readonly TrainerDef[] | null = null;
+
+  /** The zone's trainers and its halls' (world coordinates). */
+  private sightTrainers(): readonly TrainerDef[] {
+    this.sightList ??= [...this.zone.trainers, ...interiorTrainers(this.zone.id)];
+    return this.sightList;
+  }
+
+  /** Unbeaten (a rematch stays a conversation), and a story trainer only while its beat is the zone's next (rule 6). */
+  private sightEligible(ud: ZoneUserData, t: TrainerDef): boolean {
+    if (ud.flags.has(trainerBeatenFlag(t.id))) return false;
+    return !isStoryTrainer(t.id) || storyTrainerBeat(this.zone.id, ud.flags, t.id) !== null;
+  }
+
+  /**
+   * The spotted trainer's fight, wherever it stands: its story beat when one names it (§30.4.8 rule 6), else the plain
+   * fight: onInteract's paths without the range check. The hold ends when the start resolves.
+   */
+  private async startSpotted(client: ZoneClient, ud: ZoneUserData, ps: PlayerState, trainerId: string): Promise<void> {
+    const spotted = ud.spotted;
+    const t = this.sightTrainers().find((x) => x.id === trainerId);
+    if (spotted === null || t === undefined || !this.sightEligible(ud, t)) {
+      ud.spotted = null;
+      return;
+    }
+    spotted.checking = true;
+    const seat = { playerId: ud.playerId, sessionId: client.sessionId };
+    const beat = storyTrainerBeat(this.zone.id, ud.flags, t.id);
+    if (beat !== null) this.sendMsg(client, { type: 'storyBeat', beatId: beat.id, phase: 'start' });
+    const res = await this.battles.startNpc(seat, { kind: 'trainer', trainer: t, rematch: false }, beat?.id ?? null, this.battleAt(ps.x, ps.z)).catch((e: unknown) => {
+      this.deps.log.error({ err: e }, 'startNpc (spotted) failed');
+      return { ok: false as const, code: 'internal' as const, detail: 'startFailed' };
+    });
+    if (ud.spotted === spotted) ud.spotted = null;
+    if (!res.ok) {
+      ud.sightQuietUntil = this.now() + SPOT_QUIET_MS;
+      this.sendMsg(client, { type: 'error', code: res.code, detail: res.detail });
+    }
+  }
+
+  /**
+   * WILD_ENCOUNTERS=grass: `dist` metres walked inside a tall-grass patch (or surfed on open water) roll an encounter at
+   * GRASS_RATE_PER_M (SURF_RATE_PER_M), doubled by a lure, after the grace metres. The creature comes from the zone's
+   * `land` (`water`) slots with the fishing bite's draws and is held by the battle alone (never a visible spawn).
+   */
+  private wildStep(client: ZoneClient, ud: ZoneUserData, ps: PlayerState, dist: number): void {
+    if (this.deps.env.WILD_ENCOUNTERS !== 'grass' || dist <= 0 || this.zone.encounterTable === null) return;
+    if (ud.battleId !== null || ud.tradeId !== null || ud.handover !== null || this.raid?.isParticipant(ud.playerId) === true) return;
+    const medium = ps.surfing ? 'water' : inTallGrass(this.grassPatches, ps.x, ps.z) ? 'land' : null;
+    if (medium === null || interiorAt(this.zone.id, ps.x, ps.z) !== null) return;
+    if (ud.encounterGraceM > 0) {
+      ud.encounterGraceM -= dist;
+      return;
+    }
+    const rate = (medium === 'land' ? GRASS_RATE_PER_M : SURF_RATE_PER_M) * (ud.repel?.kind === 'lure' ? LURE_FACTOR : 1);
+    if (this.wildRng!.next() >= encounterChance(dist, rate)) return;
+    this.wildCounter += 1;
+    const id = `${this.zone.id}:wild:${this.wildCounter}`;
+    const rec = rollWild(encounterTableFor(this.zone.id), medium, this.wildRng!, this.deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps);
+    if (rec === null) return;
+    ud.encounterGraceM = ENCOUNTER_GRACE_M;
+    ud.battleId = 'pending';
+    ps.moving = false;
+    void this.startEncounter(client, ud, ps, rec);
+  }
+
+  /** A grass / surf encounter's battle: none without a usable creature, none below the lead's level under a repel. */
+  private async startEncounter(client: ZoneClient, ud: ZoneUserData, ps: PlayerState, rec: SpawnRecord): Promise<void> {
+    const fail = (quietM: number): void => {
+      if (ud.battleId === 'pending') ud.battleId = null;
+      ud.encounterGraceM = Math.max(ud.encounterGraceM, quietM);
+    };
+    try {
+      const lead = await this.leadLevel(ud.playerId);
+      if (lead <= 0) return fail(ENCOUNTER_REFUSED_GRACE_M);
+      if (ud.repel?.kind === 'repel' && rec.level < lead) return fail(0);
+      const res = await this.battles.startWild({ playerId: ud.playerId, sessionId: client.sessionId }, rec, { x: ps.x, z: ps.z });
+      if (!res.ok) {
+        fail(ENCOUNTER_REFUSED_GRACE_M);
+        if (res.detail !== 'noUsableParty') this.sendMsg(client, { type: 'error', code: res.code, detail: res.detail });
+      }
+    } catch (e) {
+      this.deps.log.error({ err: e }, 'startWild (grass) failed');
+      fail(ENCOUNTER_REFUSED_GRACE_M);
+    }
+  }
+
   /** Phase D9: the first open-water (non-lava) sample along `angle` from (x, z), within FISH_REACH_M; null when none. */
   private waterAhead(x: number, z: number, angle: number): { readonly x: number; readonly z: number } | null {
     const dx = Math.sin(angle);
@@ -1452,6 +1620,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       if (ps !== undefined) ps.inBattle = false;
       const c = this.clientOf(seat.playerId);
       if (c?.userData !== undefined && (c.userData.battleId === session.id || c.userData.battleId === 'pending')) c.userData.battleId = null;
+      if (c?.userData !== undefined) c.userData.encounterGraceM = Math.max(c.userData.encounterGraceM, ENCOUNTER_GRACE_M);
       this.deps.presenceMirror.setBattle(seat.playerId, null);
     }
     if (session.spawnId !== null && this.spawns !== null) {
@@ -2062,6 +2231,14 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     for (const c of this.challenges.sweep(now)) this.sendTo(c.fromId, { type: 'challengeResult', targetId: c.toId, result: 'expired' });
     // 9b. Phase D13: ranked matches waiting in this arena room
     if (this.rankedArena.size > 0) this.rankedPass(now);
+    // 9c. trainer sight: a spotted player whose client never sent the trainer's interact fights anyway
+    for (const c of this.clients) {
+      const sp = c.userData?.spotted;
+      if (sp === undefined || sp === null || sp.checking || now - sp.at < SPOT_TIMEOUT_MS) continue;
+      sp.at = now;
+      const ps = this.state.players.get(c.userData!.playerId);
+      if (ps !== undefined) void this.startSpotted(c, c.userData!, ps, sp.trainerId);
+    }
     // 10. metrics: tick duration ring (p50/p99), 1 s rates, one info line per room every 60 s
     const ms = performance.now() - t0;
     recordTick(this.metrics, ms);
@@ -2113,7 +2290,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
 
   /** §30.2.8 step 5 + §30.2.5 step 3. R8: `state.spawns.set` precedes `view.add` (schema 5 refuses detached adds). */
   spawnPass(now: number): void {
-    if (this.spawns === null) return;
+    // WILD_ENCOUNTERS=grass: no creature stands in the overworld (the director stays for the live-ops mods it carries)
+    if (this.spawns === null || this.deps.env.WILD_ENCOUNTERS === 'grass') return;
     const players = [...this.state.players.values()].map((p) => ({ x: p.x, z: p.z }));
     const r = this.spawns.tick(now, this.state.timeOfDay, players);
     for (const rec of r.spawned) this.addSpawn(rec, now);

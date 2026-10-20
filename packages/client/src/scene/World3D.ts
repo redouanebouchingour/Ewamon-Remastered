@@ -86,6 +86,7 @@ import { LocalPlayerController } from './LocalPlayerController';
 import { RemoteInterpolator } from './RemoteInterpolator';
 import { EMOTE_CHEER, EMOTE_SAD, FoeActor, foeSpecOf } from './foeActor';
 import { createSceneDirector, trainerPose } from './SceneDirector';
+import { TrainerApproach } from './trainerApproach';
 import type { TrainerPose } from './SceneDirector';
 import type { SceneDirector } from './SceneDirector';
 import { SpawnViews } from './SpawnViews';
@@ -163,6 +164,9 @@ class World implements World3D {
   readonly audio: AudioDirector;
   readonly hudWriter = new HudWriter(null);
   private readonly trainerAt: TrainerPose = { x: 0, z: 0, angle: 0 };
+  /** trainer sight: the spotting trainer's "!" and walk-up (created with the renderer), and the no-battle fallback */
+  private approach: TrainerApproach | null = null;
+  private approachTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly targets: InteractionTargets;
   private readonly ws: WorldSession = getWorldSession();
   private readonly capture: InputCapture;
@@ -1091,6 +1095,7 @@ class World implements World3D {
       case 'battleStart':
         this.input.setEnabled(false);
         this.fishing.cancel();
+        this.endApproach(false);
         // both teams' static atlases for the battle's life (a switch-in never waits); flipbooks come per shown side
         this.battleSprites.begin(m.state.sides.flatMap((s) => s.party.flatMap((b) => battleSpriteIds(b.creature.speciesId))));
         useUiStore.getState().setDialogue(null);
@@ -1143,6 +1148,9 @@ class World implements World3D {
         // Phase C1: a raid round's (or the catch roll's) events drive the battle view
         this.battle.onRaidEvents(m);
         return;
+      case 'trainerSpotted':
+        this.onTrainerSpotted(m.trainerId);
+        return;
       default:
         return;
     }
@@ -1194,6 +1202,60 @@ class World implements World3D {
         send();
       },
     });
+  }
+
+  // ---- trainer sight ---------------------------------------------------------------------------------------------
+
+  /**
+   * A trainer saw the player (the server holds them): input locks, the "!" goes up over the trainer with the `spotted`
+   * sting, the trainer walks up, then its lines open (a story trainer's beat, else its own), and paging past them (or
+   * Escape) sends the interact that starts the fight.
+   */
+  private onTrainerSpotted(trainerId: string): void {
+    const z = this.zone;
+    const send = (): void => {
+      this.ws.send('interact', { targetId: trainerId, kind: 'npc' });
+      this.armApproachFallback();
+    };
+    const tr = z === null ? undefined : (z.trainers.find((x) => x.id === trainerId) ?? interiorTrainers(z.id).find((x) => x.id === trainerId));
+    if (!this.ready || z === null || tr === undefined) return send();
+    this.input.setEnabled(false);
+    this.fishing.cancel();
+    useUiStore.getState().setDialogue(null);
+    this.approach ??= new TrainerApproach(this.renderer.actors);
+    const home = this.director.staticPose(trainerId) ?? { x: tr.x, z: tr.z, angle: 0 };
+    this.audio.play('spotted', null);
+    this.approach.start(trainerId, home, this.input.renderX, this.input.renderZ, () => {
+      const plan = trainerPlan(z.id, trainerId, this.flags());
+      const d = plan.dialogue ?? (tr.lines.length > 0 ? { speaker: tr.name, lines: tr.lines, beatId: null } : null);
+      if (d === null) return send();
+      useUiStore.getState().setDialogue({
+        speaker: d.speaker, lines: d.lines, index: 0, targetId: d.beatId !== null ? `beat:${d.beatId}` : trainerId, obligatory: true,
+        onFinish: () => {
+          this.readBeat = d.beatId;
+          send();
+        },
+      });
+    });
+  }
+
+  /** The fight did not start (the server refused): the trainer goes back to its spot and the player may move again. */
+  private armApproachFallback(): void {
+    if (this.approachTimer !== null) clearTimeout(this.approachTimer);
+    this.approachTimer = setTimeout(() => {
+      this.approachTimer = null;
+      if (useUiStore.getState().battle === null) this.endApproach(true);
+    }, 6_000);
+  }
+
+  private endApproach(restore: boolean): void {
+    if (this.approachTimer !== null) clearTimeout(this.approachTimer);
+    this.approachTimer = null;
+    const a = this.approach;
+    if (a === null || !a.active) return;
+    const id = a.trainerId!;
+    a.end(restore ? (this.director.staticPose(id) ?? undefined) : undefined);
+    if (restore) this.input.setEnabled(true);
   }
 
   // ---- interaction (called from DOM keydown, never from the tick) ------------------------------------------------
@@ -1652,6 +1714,12 @@ class World implements World3D {
         // arena PvP: before / after the battle the trainer waits at the near slot of the stadium's ring
         const me = trainerPose(this.arenaFrame, 0, this.trainerAt);
         this.renderer.actors.setTransform(selfId, me.x, me.z, me.angle, false, false);
+      } else if (this.approach?.active === true) {
+        // trainer sight: the player stands and turns toward the trainer walking up (input is locked meanwhile)
+        this.approach.update(frameDt);
+        const rx = this.input.renderX;
+        const rz = this.input.renderZ;
+        this.renderer.actors.setTransform(selfId, rx, rz, this.approach.facePlayer(rx, rz), false, false);
       } else if (this.evolution?.active === true) {
         // the evolution sequence: the trainer turns to the creature beside them (input is locked meanwhile)
         const rx = this.input.renderX;

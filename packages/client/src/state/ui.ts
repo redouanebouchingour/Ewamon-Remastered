@@ -151,6 +151,8 @@ export interface DialogueUi {
    * `pre` lines, send their `interact` only then, so the lines are read before the battle covers the world.
    */
   readonly onFinish?: () => void;
+  /** A trainer who saw the player: Escape cannot walk away; it skips to the end and runs `onFinish` (the fight). */
+  readonly obligatory?: boolean;
 }
 
 /**

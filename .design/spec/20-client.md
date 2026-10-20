@@ -574,6 +574,9 @@ Once per fixed step the controller scans a preallocated array of interactables (
 
 ## §20.5 BATTLE PRESENTATION
 
+
+**Trainer sight** <!-- amended 2026-10-20: old-game trainer battles, 30-server-netcode.md §30.3 -->: on `trainerSpotted` World3D locks input, cancels a cast, closes any dialogue and plays `TrainerApproach` (`scene/trainerApproach.ts`) on the trainer's director actor: the `spotted` sfx and the "!" emote card (actor emote 4) while it turns to the player, `ALERT_MS` 900 ms standing, then a walk at 3.2 m/s that stops `STOP_M` 1.6 m short of the player (at most 3 s), the local avatar turned toward it meanwhile. Then the trainer's lines open (`trainerPlan`'s beat for a story trainer, else `TrainerDef.lines`) as an **obligatory** dialogue (`DialogueUi.obligatory`: Escape skips to the end instead of walking away) whose `onFinish` sends `interact { kind: 'npc', targetId }`. The battle restages the actor and puts it back afterwards; if no battle opens within 6 s the trainer is set back at its spot and input returns. With `WILD_ENCOUNTERS = 'grass'` the spawn targets above are simply absent (`state.spawns` stays empty).
+
 ### 20.5.1 Pipeline
 
 ```

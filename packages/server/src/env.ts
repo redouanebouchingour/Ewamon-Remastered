@@ -26,6 +26,14 @@ export const EnvSchema = z.object({
   ZONE_CAPACITY: z.coerce.number().int().min(2).max(500).default(200),
   /** Phase D7: the scheduled overworld weather ('off' keeps every zone at 'none'; testEnv defaults to 'off' so room tests stay clock-independent) */
   WORLD_WEATHER: z.enum(['on', 'off']).default('on'),
+  /**
+   * Wild creatures: 'grass' (the default since 2026-10-20) = none stand in the overworld, walking in tall grass or surfing
+   * rolls a random encounter; 'overworld' = the visible spawn director (§30.3). testEnv keeps 'overworld' for the suites
+   * and the progression walker written against visible spawns.
+   */
+  WILD_ENCOUNTERS: z.enum(['grass', 'overworld']).default('grass'),
+  /** 'on' = an unbeaten trainer who sees the player starts the fight (the default); testEnv keeps 'off'. */
+  TRAINER_SIGHT: z.enum(['on', 'off']).default('on'),
   /** not configurable in v1; present so the value is visible */
   TICK_HZ: z.literal('20').default('20'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
@@ -95,6 +103,8 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
     SERVER_SEED: 'test-seed',
     LOG_LEVEL: 'error',
     WORLD_WEATHER: 'off',
+    WILD_ENCOUNTERS: 'overworld',
+    TRAINER_SIGHT: 'off',
     ...overrides,
   });
 }

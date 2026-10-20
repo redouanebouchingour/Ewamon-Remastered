@@ -1032,3 +1032,30 @@ Mirevale ranked queue §30.4.5a) is unchanged.
 - Tests: `test/arena.test.ts` (11: 4 pure, 7 live — Level 50 end to end with untouched creatures / no rating / pvp exp /
   history, Ranked Elo once, training, friend invite decline + accept + leave-forfeit, the cup refusal + queue moves,
   /zone/enter 409 + /arena/rejoin, no-show cancel).
+
+## Old-game encounters: tall grass and trainer sight (2026-10-20)
+
+The user asked for wild creatures only in tall grass (no longer standing in the overworld) and for trainer battles that
+cannot be skipped: a trainer who sees the player starts the sequence, "!" over their head. SPEC §30.3 (amended).
+
+- **`WILD_ENCOUNTERS`** (`grass` default, `overworld` = the §30.3 director as before). With `grass`, `spawnPass` returns at
+  once and `state.spawns` stays empty; the director is still built because its live-ops mods feed the roll. Each accepted
+  move of a free player outside a hall rolls on `wildRng` (its own seed, like `fishRng`) when the new position is in a
+  `zonePlan(zone).grassPatches` ellipse (land slots, 0.07 per metre) or the player is surfing (water slots, 0.035 per
+  metre): `1 - (1 - rate)^d`, doubled by a lure. 3 m of grace after joining and after any battle, 12 m after a refused
+  start. The creature is `rollWild(table, medium, ...)`: `rollFishing` is now `rollWild(..., 'water', ...)` with the same
+  draws in the same order, so every fishing result is unchanged. The battle holds the record alone (`<zone>:wild:<n>`).
+  No usable creature: no battle and no message. Repel: the roll is spent, no battle below the lead's level.
+- **`TRAINER_SIGHT`** (`on` default). After each accepted move (before the grass roll) `spotter` picks the nearest trainer
+  of the zone or its halls within 6 m that the player has not beaten (a story trainer only while rule 6 names it), in the
+  same hall (or both outdoors), with a clear line (0.5 m samples walkable or water, outside the player's shut gates).
+  `ud.spotted` holds movement (the `inBattle` reject) while a party read runs; with a usable creature the client gets
+  `trainerSpotted`, otherwise sight is quiet for 10 s. While held, only the spotter's `interact` is accepted (else `busy`
+  `spotted`), from any distance; `startSpotted` runs the beat battle or the plain fight. 45 s without it: the tick starts
+  the fight itself. A failed start drops the hold and quiets sight for 10 s.
+- **Deviations / decisions.** (1) Sight is a range plus a line, not a facing cone: overworld `TrainerDef`s carry no facing
+  (the client faces them to the zone origin) and the user wanted fights you cannot slip past. (2) A rematch stays a
+  conversation (a beaten trainer never sees you). (3) `testEnv` keeps `overworld` + `off`, so every existing suite and
+  the progression walker (which engages visible spawns and walks up to hall trainers) run as before; the walker does not
+  exercise the new defaults.
+- Tests: `test/encounters.test.ts` (8: 4 pure, 4 live on mire_route).

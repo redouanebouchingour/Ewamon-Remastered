@@ -163,6 +163,12 @@ export type ServerMessage =
   | { readonly type: 'storyBeat'; readonly beatId: string; readonly phase: StoryBeatPhase }
   | { readonly type: 'toast'; readonly level: ToastLevel; readonly text: string }
   /**
+   * A trainer saw the player (line of sight, like the old games): the server holds the player's movement until the
+   * fight starts. The client plays the "!" over the trainer, walks it up and opens its lines; paging past them sends
+   * `interact` for the trainer (the server starts it alone after a timeout).
+   */
+  | { readonly type: 'trainerSpotted'; readonly trainerId: string }
+  /**
    * Phase D13: the player's ranked-queue state, sent in answer to every `rankedQueue` and on each change (matched,
    * cancelled, started). `waitedMs` / `window` describe the queue at send time (0 when not queued); `opponent` is set
    * while `matched`; `reason` only on `idle`.
@@ -216,6 +222,7 @@ export const SERVER_MESSAGE_TYPES = [
   'dm',
   'storyBeat',
   'toast',
+  'trainerSpotted',
   'error',
   'rankedStatus',
   'towerState',
@@ -357,6 +364,10 @@ export const ToastMsg = z.object({
   level: z.enum(['info', 'success', 'warn']),
   text: z.string().min(1).max(200),
 });
+export const TrainerSpottedMsg = z.object({
+  type: z.literal('trainerSpotted'),
+  trainerId: z.string().min(1).max(64),
+});
 export const RankedStatusMsg = z.object({
   type: z.literal('rankedStatus'),
   state: z.enum(RANKED_STATES),
@@ -399,6 +410,7 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
   DmMsg,
   StoryBeatMsg,
   ToastMsg,
+  TrainerSpottedMsg,
   ErrorMsg,
   RankedStatusMsg,
   TowerStateMsg,
@@ -425,6 +437,7 @@ export const SERVER_MESSAGES = {
   dm: DmMsg,
   storyBeat: StoryBeatMsg,
   toast: ToastMsg,
+  trainerSpotted: TrainerSpottedMsg,
   error: ErrorMsg,
   rankedStatus: RankedStatusMsg,
   towerState: TowerStateMsg,

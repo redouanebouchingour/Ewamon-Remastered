@@ -1562,6 +1562,7 @@ export type ServerMessage =
   | { readonly type: 'dm'; readonly id: number; readonly fromId: string; readonly fromName: string; readonly text: string; readonly sentAt: number } // a persisted DM pushed live (30-server-netcode.md §30.7.2)
   | { readonly type: 'storyBeat'; readonly beatId: string; readonly phase: 'start' | 'complete' }                     // §3.5 runtime: the client renders the beat's `lines` on 'start' and `after` on 'complete'
   | { readonly type: 'toast'; readonly level: 'info' | 'success' | 'warn'; readonly text: string }
+  | { readonly type: 'trainerSpotted'; readonly trainerId: string }   // amended 2026-10-20: a trainer saw the player (§30.3 trainer sight); the client walks it up and sends its interact
   | { readonly type: 'rankedStatus'; readonly state: 'idle' | 'queued' | 'matched'; readonly rating: number; readonly waitedMs: number; readonly window: number;
       readonly opponent: { readonly name: string; readonly rating: number } | null;
       readonly reason: 'left' | 'busy' | 'party' | 'cancelled' | 'started' | null }                                // Phase D13 (30-server-netcode.md §30.4.5a); sent last in SERVER_MESSAGE_TYPES

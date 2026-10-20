@@ -2023,3 +2023,18 @@ Rankings screen's RankedPanel / Mirevale queue) is unchanged.
   8–45 s after the load in all 7 per-frame-logged returns); `loadZone` focus = the player's position. Test: `test/arrival.test.ts`. Palette,
   grade, exposure, fog and time of day come back with the zone (ZoneSystem's palette look + the room's `timeOfDay`), the
   backdrop is removed + disposed and `setZoneRoot(null)` clears it, the stage is undressed (beacons 0, shadows idle).
+
+## Trainer sight: the "!" and the walk-up (2026-10-20)
+
+The server's `trainerSpotted` (SPEC §30.3 trainer sight) holds the player until the trainer's fight starts. World3D locks
+input, cancels a cast, closes any dialogue, plays the existing `spotted` sfx (in the audio manifest, unused until now)
+and runs `TrainerApproach` (`scene/trainerApproach.ts`) on the trainer's director actor: actor emote 4 (the HUD's "!"
+card) while it turns to the player, 900 ms standing, a 3.2 m/s walk that stops 1.6 m short (at most 3 s), the local
+avatar turned toward it each frame (a branch beside the evolution one in `tick`). On arrival the trainer's lines open
+(`trainerPlan`'s beat for a story trainer, else `TrainerDef.lines`) as an `obligatory` dialogue: Escape skips to the end
+and runs `onFinish` instead of walking away. `onFinish` sends `interact { kind: 'npc' }`; `battleStart` lets go of the
+actor (the foe actor restages it and puts it back after). No battle within 6 s: the trainer goes back to its spot and
+input returns. With the server's `WILD_ENCOUNTERS=grass` there are no spawn views to engage; nothing in the client
+changed for that. Live (own pair, headless Chrome over CDP, act1 fixture, tide_route at night): Swimmer Cael saw the
+player at 5.8 m, the "!" rose over him, he walked up, his line opened and Enter started the battle; earlier a walk in the
+patch at (-40, 7) started "The wild Mossling appeared!" with `spawns: 0`. Test: `test/trainer-approach.test.tsx` (3).

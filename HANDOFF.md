@@ -99,6 +99,11 @@ fail under machine load and pass alone).
   `?demo=arena`); Back to world returns them where they stood. Teams are healed synthetic copies (`atLevel`), so nothing
   about a creature is written; only Ranked moves the rating. Weekly Cup rules rotate Monday 00:00 UTC (content
   `weeklyCup` / `cupRefusal`). A reload mid battle: `/zone/enter` 409 `inArena` → `/arena/rejoin`.
+- **Old-game encounters** (2026-10-20, the user's call): no wild creature stands in the overworld any more; walking in
+  tall grass (the zone plan's patches) or surfing rolls a random encounter, and an unbeaten trainer who sees the player
+  (6 m, clear line) holds them: "!" over the trainer, it walks up, its lines, then the fight. Server env
+  `WILD_ENCOUNTERS=grass|overworld` and `TRAINER_SIGHT=on|off` (defaults `grass` / `on`; `testEnv` keeps `overworld` /
+  `off`). SPEC §30.3; `packages/server/src/rooms/encounters.ts`, client `scene/trainerApproach.ts`.
 - **Tuning / dev**: denser wild spawns; `grant:creature` / `grant:item`; the tower test's Wonder Guard flake fixed.
 
 ## The finish plan
@@ -110,6 +115,8 @@ fail under machine load and pass alone).
 
 1. **Re-run `pnpm test:progression`**: the last recorded run predates the Majin / Tenjin band grants (beats 19 / 21),
    the trainer bands, the denser spawns and the arena changes to the battle coordinator / zone room.
+   The walker still runs with `testEnv`'s visible spawns and no trainer sight; to cover the new defaults it would
+   train by walking grass patches and answer `trainerSpotted` while walking.
 2. **Audio — a human listen**: nothing was auditioned by ear. In order: the grove, marrow and champion loop seams
    (non-repeating pieces joined with a 1.5–2 s fade; grove plays first), battle / victory seams, the short sky / elite /
    gym loops, derived threat / biome / night layers, creature cries, stinger starts, tiled ambience beds, arcade-ish

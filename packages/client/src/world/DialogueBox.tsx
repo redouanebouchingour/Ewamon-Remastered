@@ -2,7 +2,7 @@
  * SPEC §20.9.2 DialogueBox: bottom-centre, --t-body-lg, speaker in the display face, `Enter` / `E` advance, ≤ 3 lines
  * visible, the remaining count shown; `Escape` closes. The lines come from content (§20.4.7) — World3D writes
  * `ui.dialogue`; this component only pages through it. Paging past the last line runs `onFinish` (a beat battle or a
- * gym challenge starts then); Escape does not.
+ * gym challenge starts then); Escape does not, except on an `obligatory` dialogue (a trainer who saw the player).
  *
  * Broadcast look (2026-10-11): a lower-third — an orange speaker strip over a black slab, the lines in the text face,
  * "n more" / "Close" with a paper key chip.
@@ -41,7 +41,9 @@ export function DialogueBox() {
       } else if (e.code === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
+        const cur = useUiStore.getState().dialogue;
         useUiStore.getState().setDialogue(null);
+        if (cur?.obligatory === true) cur.onFinish?.();
       }
     };
     // capture: the dialogue owns E / Enter while it is open (the world's interact key must not re-trigger)
