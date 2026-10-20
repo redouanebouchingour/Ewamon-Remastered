@@ -25,6 +25,7 @@ import { useClosePanel, useIntent } from './shared';
 import { BadgeStrip, Showcase, TrainerIdentity, TrainerStats } from './TrainerCard';
 import { ChallengeSection } from './ChallengeSection';
 import { SpeedrunSection } from './SpeedrunSection';
+import { SeasonTitles } from './SeasonTitles';
 
 export const MOTTO_MAX = 120;
 
@@ -145,6 +146,7 @@ export function ProfileScreen() {
           <h3 className={l.sectionTitle}>Badges</h3>
           <BadgeStrip earned={badges} />
         </section>
+        <SeasonTitles username={profile.username} />
         {pub !== null && (
           <section className={l.section} aria-label="Showcase">
             <h3 className={l.sectionTitle}>Showcase</h3>

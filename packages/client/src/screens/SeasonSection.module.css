@@ -1,0 +1,93 @@
+/* Ranked seasons on the Rating board: the season as a label strip with its clock, the top eight so far as numbered rows
+   (the leader in the accent), and the closed seasons' champions and finalists as compact lines. */
+.season {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-5);
+  background: var(--bg-2);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-3) var(--s-5);
+}
+
+.title {
+  margin: 0;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.finals {
+  color: var(--accent);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.top {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  min-inline-size: 0;
+  padding: var(--s-2) var(--s-3);
+  background: var(--bg-1);
+}
+
+.rank {
+  flex: none;
+  inline-size: 2ch;
+  color: var(--text-2);
+  font-family: var(--face-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.leader {
+  color: var(--accent);
+}
+
+.name {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--text-hi);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.figure {
+  flex: none;
+  color: var(--text-2);
+  font-family: var(--face-mono);
+  font-size: var(--t-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.past {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

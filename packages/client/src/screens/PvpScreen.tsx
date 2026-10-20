@@ -8,7 +8,7 @@
  * Weekly Cup (this week's cup, time left, the party checked client-side with content `cupRefusal` — the server's rule —
  * and why it is locked), Training (rules × difficulty → straight into the arena) and Challenge a friend (online
  * friends, rules, the outgoing invite's fate) and the daily challenge (today's two teams, par, your best and its strip,
- * Copy result, Play). One queue at a time: while queued the other starts wait, the queued card
+ * Copy result, Play) and Watch live (the live matches, League Finals first). One queue at a time: while queued the other starts wait, the queued card
  * carries the elapsed time and Leave queue; the player may close the screen and keep walking (the top bar's queue chip
  * shows it; a match moves them automatically).
  */
@@ -33,6 +33,7 @@ import l from './layout.module.css';
 import s from './PvpScreen.module.css';
 import { useClosePanel } from './shared';
 import { TrainerAvatar } from './TrainerCard';
+import { LiveMatches } from './LiveMatches';
 
 const NO_PARTY: readonly never[] = [];
 
@@ -85,7 +86,8 @@ function Choice<K extends string>({ label, options, value, onChange, names }: {
 
 function Card({ title, level, active, testId, children, aside }: {
   readonly title: string;
-  readonly level: number | null;
+  /** the level rule's tag; absent: none (the watch list) */
+  readonly level?: number | null;
   readonly active?: boolean;
   readonly testId: string;
   readonly children: ReactNode;
@@ -95,7 +97,7 @@ function Card({ title, level, active, testId, children, aside }: {
     <section className={cx(s.card, active === true && s.cardActive)} data-testid={testId} aria-label={title}>
       <header className={s.cardHead}>
         <h3 className={s.cardTitle}>{title}</h3>
-        <LevelTag level={level} />
+        {level !== undefined && <LevelTag level={level} />}
       </header>
       {aside}
       <div className={s.cardBody}>{children}</div>
@@ -336,6 +338,11 @@ function PvpBody({ friends, onClose }: { readonly friends: readonly FriendView[]
                 ))}
               </ul>
             )}
+          </Card>
+
+          <Card title="Watch live" testId="pvp-live">
+            <p className={s.blurb}>Follow a match as it happens, one turn behind the players. In Finals week the top eight meet in the League Finals.</p>
+            <LiveMatches />
           </Card>
         </div>
       </div>

@@ -19,7 +19,8 @@ afterAll(async () => {
   await db.close();
 });
 
-const NOW = new Date('2026-10-20T12:00:00.000Z');
+/** after every creature insert's default `now()` (a received creature's `met` time), whenever the suite runs */
+const NOW = new Date(Date.now() + 3_600_000);
 
 describe('creature history', () => {
   it('a catch records its trainer, zone and time; a starter is received', async () => {

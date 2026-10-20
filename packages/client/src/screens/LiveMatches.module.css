@@ -1,0 +1,54 @@
+/* Spectator mode on the PvP screen: one row per live match, the two names with their ratings, the mode, the turn, the
+   Finals mark in the accent, and Watch. */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.match {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  background: var(--bg-1);
+}
+
+.players {
+  flex: 1 1 220px;
+  min-inline-size: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rating {
+  color: var(--text-2);
+  font-family: var(--face-mono);
+  font-size: var(--t-mono);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.meta {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.finals {
+  color: var(--accent);
+  font-weight: 800;
+}

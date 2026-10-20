@@ -16,7 +16,7 @@ import { Modal } from '../ui/Modal';
 import { battleActions } from './controllerRef';
 import { concessionLine, foeOfState } from './foe';
 import { rematchOfBattle } from '../scene/dialogue';
-import { isReplayBattle } from './replayId';
+import { isReplayBattle, spectatorNames } from './replayId';
 import s from './BattleResultCard.module.css';
 
 export function BattleResultCard() {
@@ -26,13 +26,25 @@ export function BattleResultCard() {
   const state = useUiStore((st) => st.battle?.authoritative ?? null);
   // battle replays: the outcome as it happened; nothing was won or lost now
   const replay = useUiStore((st) => isReplayBattle(st.battle?.battleId));
+  // spectator mode: a watched live match is nobody's win or loss here; the card names the winner
+  const watched = useUiStore((st) => spectatorNames(st.battle?.battleId));
   // arena PvP: the arena's kind and level head the card; its own result actions follow it
   const arena = useArenaStore((st) => (st.inArena ? st.match : null));
   // Phase C1: a raid closes with its own summary card (RaidSummaryCard)
   if (result === null || result.raid !== undefined) return null;
   const o = result.outcome;
   const title =
-    o.winner === 'caught' ? 'Caught!' : o.winner === 'fled' ? 'Got away safely' : o.winner === 'draw' ? 'A draw' : o.winner === seat ? 'Victory' : 'Defeat';
+    o.winner === 'caught'
+      ? 'Caught!'
+      : o.winner === 'fled'
+        ? 'Got away safely'
+        : o.winner === 'draw'
+          ? 'A draw'
+          : watched !== null
+            ? `${watched[o.winner]} wins`
+            : o.winner === seat
+              ? 'Victory'
+              : 'Defeat';
   const r = result.rewards;
   const items = Object.entries(r.items).filter(([, n]) => n > 0);
   // Broadcast UI: each reward is a big number over its label ("+800 money" reads the same to assistive tech)
@@ -54,7 +66,7 @@ export function BattleResultCard() {
       title={title}
       size="sm"
       onClose={done}
-      description={replay ? 'End of the replay.' : o.winner === 'caught' ? 'It joins your party, or your box when the party is full.' : undefined}
+      description={watched !== null ? 'End of the match.' : replay ? 'End of the replay.' : o.winner === 'caught' ? 'It joins your party, or your box when the party is full.' : undefined}
       footer={
         <Button variant="primary" onClick={done}>
           {result.prompts > 0 || (arena !== null && !replay) ? 'Continue' : 'Back to the world'}
@@ -96,7 +108,7 @@ export function BattleResultCard() {
             ))}
           </ul>
         ) : (
-          <p className={s.none}>{replay ? 'A replay changes nothing in your game.' : 'No rewards this time.'}</p>
+          <p className={s.none}>{watched !== null ? 'Watching changes nothing in your game.' : replay ? 'A replay changes nothing in your game.' : 'No rewards this time.'}</p>
         )}
       </div>
     </Modal>

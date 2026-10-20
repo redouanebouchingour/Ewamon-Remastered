@@ -63,7 +63,7 @@ import type { BondCue } from './bond';
 import type { CinematicCue, CinematicPoint } from './cinematic';
 import { createMoveAnimRegistry } from './moveAnims';
 import type { MoveAnimRegistry } from './moveAnims';
-import { isReplayBattle } from './replayId';
+import { isReplayBattle, spectatorNames } from './replayId';
 import type { RaidInfo } from './raid';
 import { buildTimeline, statusGlyph, vfxIdsIn } from './timeline';
 import type { LogTone, Timeline, TimelineCtx } from './timeline';
@@ -620,7 +620,14 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     bondOf: (r) => bandOf(st, r, deps.content),
     seat,
     instantText: deps.instantText(),
+    ...spectatorCtx(),
   });
+
+  /** Spectator mode: a watched live match names its players (the end says who won). */
+  const spectatorCtx = (): { playerName?: (side: 0 | 1) => string } => {
+    const names = spectatorNames(battleId);
+    return names === null ? {} : { playerName: (side) => names[side] };
+  };
 
   const phaseAfter = (st: BattleState): BattleUi['phase'] => {
     if (st.ended !== null) return 'ended';

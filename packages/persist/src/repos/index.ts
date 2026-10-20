@@ -9,6 +9,8 @@ import { creatureRepo } from './creatures';
 import { dailyRepo } from './daily';
 import { runRepo } from './runs';
 import type { RunRepo } from './runs';
+import { seasonRepo } from './seasons';
+import type { SeasonRepo } from './seasons';
 import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
 import { historyRepo } from './history';
@@ -43,6 +45,8 @@ export interface Repos {
   readonly daily: DailyRepo;
   /** verified speedruns: the play clock and the splits (migration 0009) */
   readonly runs: RunRepo;
+  /** ranked seasons: closing a season, its final standings, the standings so far (migration 0011) */
+  readonly seasons: SeasonRepo;
 }
 
 /**
@@ -66,6 +70,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     streaks: streakRepo,
     daily: dailyRepo,
     runs: runRepo,
+    seasons: seasonRepo,
   };
 }
 
@@ -87,3 +92,4 @@ export { PUBLIC_PROFILE_KEYS } from './players';
 export type { NewPlayer, PublicExtras } from './players';
 export type { DexSummary, QuestObjectiveState } from './progress';
 export type { FriendLists } from './social';
+export type { SeasonStanding, SeasonWindow } from './seasons';

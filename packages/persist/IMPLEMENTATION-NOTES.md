@@ -225,3 +225,12 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
 
 - `players.weather_city jsonb` (`WeatherCity { name, country, lat, lon }`, null: off) and `players.setWeatherCity`.
   The server rounds the coordinates before storing them; nothing else about the place is kept.
+
+## Migration 0011_seasons (2026-10-20)
+
+- `seasons` (the close's lock row) and `season_results`. `seasonRepo.close` inserts the row first (`on conflict do
+  nothing`): only the inserting transaction writes the standings and resets the ratings. Participants are read from
+  `battle_history` rows with a `rating_delta` in the season window (no new per-battle bookkeeping); their order is
+  rating at the close, then wins, then name.
+- The reset is `1000 + (rating - 1000) / 2` in SQL; Postgres integer division truncates towards zero, the same as
+  content `seasonResetRating`.

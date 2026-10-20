@@ -26,6 +26,8 @@ export const EnvSchema = z.object({
   ZONE_CAPACITY: z.coerce.number().int().min(2).max(500).default(200),
   /** Phase D7: the scheduled overworld weather ('off' keeps every zone at 'none'; testEnv defaults to 'off' so room tests stay clock-independent) */
   WORLD_WEATHER: z.enum(['on', 'off']).default('on'),
+  /** Ranked seasons: the job that closes an ended season ('off' in testEnv, so a test clock crossing a season never resets ratings) */
+  SEASON_ROLLOVER: z.enum(['on', 'off']).default('on'),
   /**
    * Wild creatures: 'grass' (the default since 2026-10-20) = none stand in the overworld, walking in tall grass or surfing
    * rolls a random encounter; 'overworld' = the visible spawn director (§30.3). testEnv keeps 'overworld' for the suites
@@ -103,6 +105,7 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
     SERVER_SEED: 'test-seed',
     LOG_LEVEL: 'error',
     WORLD_WEATHER: 'off',
+    SEASON_ROLLOVER: 'off',
     WILD_ENCOUNTERS: 'overworld',
     TRAINER_SIGHT: 'off',
     ...overrides,

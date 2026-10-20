@@ -11,6 +11,7 @@ import { BADGE_IDS, MYTHICAL_CHOICES, STARTERS, ZONE_IDS } from './types';
 import {
   BadgeIdSchema,
   BattleFormatSchema,
+  BattleOutcomeSchema,
   CreatureInstanceSchema,
   ItemCounts,
   RewardsSummarySchema,
@@ -27,6 +28,7 @@ import {
   ArenaInviteReplyRes,
   ArenaInviteReq,
   ArenaInviteRes,
+  ArenaModeSchema,
   ArenaQueueReq,
   ArenaSeatRes,
   ArenaStatusBody,
@@ -578,6 +580,67 @@ export const ReplayRes = z.object({
 });
 export type ReplayData = z.infer<typeof ReplayRes>;
 
+/**
+ * Ranked seasons (content seasons.ts): four weeks each, the last one League Finals week. A row is a place in the
+ * standings (`title`: champion for the first, finalist for the top eight). `current.top`: the standings so far;
+ * `past`: the latest closed seasons' top eight, newest first.
+ */
+export const SeasonTitleSchema = z.enum(['champion', 'finalist']);
+export const SeasonRowSchema = z.object({
+  rank: z.number().int().min(1),
+  username: Username,
+  rating: z.number().int(),
+  wins: z.number().int().min(0),
+  losses: z.number().int().min(0),
+  title: SeasonTitleSchema.nullable(),
+});
+export type SeasonRowView = z.infer<typeof SeasonRowSchema>;
+export const SeasonInfoSchema = z.object({ season: z.number().int().min(1), startsAt: IsoDate, endsAt: IsoDate, finalsAt: IsoDate });
+export const SeasonsRes = z.object({
+  current: SeasonInfoSchema.extend({ finals: z.boolean(), top: z.array(SeasonRowSchema).max(8) }),
+  past: z.array(SeasonInfoSchema.extend({ top: z.array(SeasonRowSchema).max(8) })).max(6),
+});
+export type SeasonsView = z.infer<typeof SeasonsRes>;
+export const SeasonParams = z.object({ season: z.coerce.number().int().min(1).max(100_000) });
+export const SeasonStandingsRes = z.object({ season: z.number().int().min(1), rows: z.array(SeasonRowSchema).max(100) });
+export const SeasonTitlesRes = z.object({
+  username: Username,
+  titles: z.array(z.object({ season: z.number().int().min(1), rank: z.number().int().min(1), title: SeasonTitleSchema })).max(500),
+});
+
+/**
+ * Spectator mode: the arena's live queued matches (never a friend battle, training or the daily) and one match's feed.
+ * The feed is the fight so far as a replay a turn behind the players (side 0 seated, both names as labels, anonymised
+ * like a shared replay): `createBattle({ id: REPLAY_BATTLE_ID, format, seed, ...start })` + `resolveTurn` over
+ * `actions` ends on `digest`. `outcome` is set once the battle is over (the replay then holds every turn). `finals`:
+ * a ranked match in Finals week between two of the season's top eight.
+ */
+export const LivePlayerSchema = z.object({ name: Username, rating: z.number().int() });
+export const LiveMatchSchema = z.object({
+  matchId: Uuid,
+  kind: ArenaModeSchema,
+  finals: z.boolean(),
+  players: z.tuple([LivePlayerSchema, LivePlayerSchema]),
+  turn: z.number().int().min(0),
+  startedAt: IsoDate,
+});
+export type LiveMatchView = z.infer<typeof LiveMatchSchema>;
+export const LiveListRes = z.object({ matches: z.array(LiveMatchSchema).max(50) });
+export const LiveParams = z.object({ matchId: Uuid });
+export const LiveFeedRes = LiveMatchSchema.extend({
+  replay: z.object({
+    format: z.literal('pvp'),
+    seat: z.literal(0),
+    labels: z.tuple([z.string().max(64), z.string().max(64)]),
+    seed: RngStateSchema,
+    start: ReplayStartSchema,
+    actions: z.array(z.tuple([z.unknown(), z.unknown()])).max(2000),
+    digest: z.string().regex(/^[0-9a-f]{8}$/),
+  }),
+  outcome: BattleOutcomeSchema.nullable(),
+});
+export type LiveFeedView = z.infer<typeof LiveFeedRes>;
+
 // ---- admin / health -----------------------------------------------------------------------------------------------------
 
 /** TODO(spec): `/admin/stats` has no listed body; these are the legacy counters carried over. */
@@ -712,6 +775,13 @@ export const ROUTES = {
   arenaRejoin: route({ method: 'POST', path: '/arena/rejoin', auth: 'bearer', request: Nothing, response: ArenaSeatRes }),
   // the daily challenge (arena.ts): today's puzzle and best, and the start (an arena seat)
   daily: route({ method: 'GET', path: '/daily', auth: 'bearer', response: DailyRes }),
+  // ranked seasons: the season now and the latest closed ones, one closed season's standings, a trainer's titles
+  seasons: route({ method: 'GET', path: '/seasons', auth: 'bearer', response: SeasonsRes }),
+  seasonStandings: route({ method: 'GET', path: '/seasons/:season', auth: 'bearer', params: SeasonParams, query: PageQuery, response: SeasonStandingsRes }),
+  seasonTitles: route({ method: 'GET', path: '/seasons/titles/:username', auth: 'bearer', params: UsernameParams, response: SeasonTitlesRes }),
+  // spectator mode: the live arena matches and one match's feed (a turn behind)
+  arenaLive: route({ method: 'GET', path: '/arena/live', auth: 'bearer', response: LiveListRes }),
+  arenaLiveFeed: route({ method: 'GET', path: '/arena/live/:matchId', auth: 'bearer', params: LiveParams, response: LiveFeedRes }),
   dailyStart: route({ method: 'POST', path: '/daily/start', auth: 'bearer', request: Nothing, response: ArenaSeatRes }),
   adminStats: route({ method: 'GET', path: '/admin/stats', auth: 'admin', response: AdminStatsRes }),
   adminPlayers: route({ method: 'GET', path: '/admin/players', auth: 'admin', query: AdminPlayersQuery, response: AdminPlayersRes }),

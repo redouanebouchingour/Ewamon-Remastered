@@ -12,6 +12,7 @@ import { Panel } from '../ui/Panel';
 import l from './layout.module.css';
 import { useClosePanel } from './shared';
 import { BadgeStrip, Showcase, TrainerIdentity, TrainerStats } from './TrainerCard';
+import { SeasonTitles } from './SeasonTitles';
 
 export function PlayerScreen() {
   const close = useClosePanel();
@@ -46,6 +47,7 @@ export function PlayerScreen() {
           <h3 className={l.sectionTitle}>Badges</h3>
           <BadgeStrip earned={pub.badges} />
         </section>
+        <SeasonTitles username={pub.username} />
         <section className={l.section} aria-label="Showcase">
           <h3 className={l.sectionTitle}>Showcase</h3>
           <Showcase pub={pub} />

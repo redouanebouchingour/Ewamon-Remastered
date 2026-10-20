@@ -13,6 +13,7 @@ import type { MatchQueue } from './rooms/matchQueue';
 import type { PresenceMirror } from './rooms/presenceMirror';
 import type { PresenceStore } from './rooms/presenceStore';
 import type { RealWeather } from './game/realWeather';
+import type { LiveBoard } from './game/liveBoard';
 
 export interface ServerDeps {
   readonly env: Env;
@@ -69,6 +70,8 @@ export interface Runtime {
   readonly arena: ArenaLobby;
   /** weather from real life: the cached Open-Meteo lookups (game/realWeather.ts) */
   readonly realWeather: RealWeather;
+  /** spectator mode: the live arena matches in the shared presence store (game/liveBoard.ts) */
+  readonly live: LiveBoard;
 }
 
 export type RoomDeps = ServerDeps & Runtime;

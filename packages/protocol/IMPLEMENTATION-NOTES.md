@@ -180,3 +180,8 @@ installed library that future readers should not have to re-derive. The spec its
 
 - Server message `realWeather { kind | null }` (24 types). Routes `weatherCities` (limit `weather`), `weatherCity`,
   `weather` with `WeatherCitySchema`, `RealWeatherRes`. 83 routes.
+
+## Ranked seasons and spectator mode (2026-10-20)
+
+- `seasons`, `seasonStandings`, `seasonTitles`, `arenaLive`, `arenaLiveFeed` (88 routes). `LiveFeedRes.replay` is the
+  shared replay's shape with `digest` for the turns shared so far; `outcome` uses `BattleOutcomeSchema`.

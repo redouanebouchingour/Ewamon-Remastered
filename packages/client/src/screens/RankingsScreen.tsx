@@ -19,6 +19,7 @@ import type { TableColumn } from '../ui/Table';
 import { Tabs } from '../ui/Tabs';
 import l from './layout.module.css';
 import { RankedPanel } from './RankedPanel';
+import { SeasonSection } from './SeasonSection';
 import s from './RankingsScreen.module.css';
 import { useClosePanel } from './shared';
 import { TrainerAvatar } from './TrainerCard';
@@ -129,6 +130,8 @@ export function RankingsScreen() {
         </div>
         {/* Phase D13: the ranked queue sits above the boards */}
         <RankedPanel />
+        {/* ranked seasons: the season on the rating board */}
+        {data.mode === 'rating' && <SeasonSection />}
         <p className={l.caption} aria-live="polite">
           {mine !== undefined ? `You are #${mine.rank} on this board.` : data.rows.length > 0 ? 'You are not on this page.' : ''}
         </p>

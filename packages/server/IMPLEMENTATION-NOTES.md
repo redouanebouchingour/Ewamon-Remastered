@@ -1128,3 +1128,17 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   weather anyway, but a future PvE pair) keep the zone's, so nobody's own sky decides a shared fight.
 - `rollWild` / `rollFishing` take the weather last (default null): no extra rng draw, only the weights change, so a
   player without a city rolls exactly as before.
+
+## Ranked seasons and spectator mode (2026-10-20)
+
+- `jobs/seasonRollover.ts` runs at boot and every minute (env `SEASON_ROLLOVER`, off in testEnv so a test clock that
+  crosses a season never resets ratings mid-test); after an outage it closes every missed season but resets once.
+- `game/liveBoard.ts` keeps the live matches in the Colyseus presence (hash `ewa:live` + one `setex` key per feed), so a
+  REST process that does not host the room serves the feed. The arena room publishes from its battle host: `send`
+  of a `battleEvents` (once per turn: the second player's copy finds nothing new), `onStart`, `onEnd` (an outcome:
+  the whole fight; void / playerLeft: dropped). The digest is recomputed on the anonymised start at every publish
+  (`replayBattle`, a few dozen turns at most), because the server's own state digest covers the real ids.
+- League Finals are decided once, at the battle's start, from the standings so far; nothing is published before that
+  read finishes (a turn played meanwhile is in the first publish), so the mark is there from the first listing.
+- Not done: a knockout bracket (it would need eight players online together); watching an in-world PvP challenge or a
+  friend battle (private by design).

@@ -83,3 +83,20 @@
   flex: none;
   gap: var(--s-3);
 }
+
+/* spectator mode: the tag turns red while the match is live (a broadcast's on-air light); the Finals mark beside it */
+.tagLive {
+  background: var(--danger);
+  color: var(--text-hi);
+}
+
+.finals {
+  flex: none;
+  margin: 0;
+  color: var(--accent);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}

@@ -413,3 +413,16 @@ export {
   isFallen,
 } from './data/challenge';
 export type { ChallengeMode, ChallengeState, ChallengeStatus } from './data/challenge';
+export {
+  SEASON_ANCHOR_MS,
+  SEASON_BASE_RATING,
+  SEASON_FINALISTS,
+  SEASON_FINALS_MS,
+  SEASON_LENGTH_MS,
+  finalsWeek,
+  seasonAt,
+  seasonByNumber,
+  seasonResetRating,
+  seasonTitle,
+} from './data/seasons';
+export type { Season } from './data/seasons';

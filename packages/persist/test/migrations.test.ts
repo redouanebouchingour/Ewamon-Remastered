@@ -28,6 +28,8 @@ const EXPECTED_TABLES = [
   'quest_progress',
   'refresh_tokens',
   'run_splits',
+  'season_results',
+  'seasons',
   'story_flags',
   'trade_history',
 ];
@@ -44,7 +46,7 @@ afterAll(async () => {
 });
 
 describe('migrations (§5.4)', () => {
-  it('creates the 18 tables of §5.1 plus email_tokens (0002), player_streaks (0004), battle_shares (0006), creature_events (0007), daily_results (0008) and run_splits (0009)', async () => {
+  it('creates the 18 tables of §5.1 plus email_tokens (0002), player_streaks (0004), battle_shares (0006), creature_events (0007), daily_results (0008), run_splits (0009), seasons and season_results (0011)', async () => {
     const rows = await db.transaction(async (tx) => {
       const r = await tx.execute<{ table_name: string }>(
         sql`select table_name from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE' order by table_name`,

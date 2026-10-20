@@ -105,6 +105,7 @@ export const EnvSchema = z.object({
   TRUST_PROXY: z.union([z.literal('false'), z.literal('loopback'), z.string()]).default('loopback'),
   SERVER_SEED: z.string().min(1).optional(),                    // world rng seed; absent → fnv1a32(`${processId}:${bootMs}`) logged at boot
   WORLD_WEATHER: z.enum(['on', 'off']).default('on'),           // Phase D7: the overworld weather schedule; testEnv sets 'off'
+  SEASON_ROLLOVER: z.enum(['on', 'off']).default('on'),         // ranked seasons: the close job (§30.4.10); testEnv sets 'off' (added 2026-10-20)
   WILD_ENCOUNTERS: z.enum(['grass', 'overworld']).default('grass'), // amended 2026-10-20: 'grass' = no overworld spawns, tall grass / surfing roll encounters (§30.3); testEnv sets 'overworld'
   TRAINER_SIGHT: z.enum(['on', 'off']).default('on'),           // amended 2026-10-20: an unbeaten trainer who sees the player starts its fight (§30.3); testEnv sets 'off'
   ZONE_CAPACITY: z.coerce.number().int().min(2).max(500).default(200),
@@ -607,6 +608,10 @@ Cancelled (`arenaState cancelled`, reason): `noShow` (a seat not taken within `A
 `cup` (re-checked against the stored party at the start). The room disposes when empty. The zone room wrote the
 player's position when the client left it; `POST /zone/enter` answers 409 `inArena` while the arena holds the player
 in `waiting` / `fighting` (a reload rejoins through `POST /arena/rejoin`), and takes them back where they stood after.
+
+**Spectator mode <!-- added 2026-10-20 -->.** A queued match between two players (standard, Level 50, ranked, cup; never a friend battle, training or the daily) goes on the live board (`game/liveBoard.ts`, the presence store, so any process lists and serves it): the room publishes it when the battle starts, after every `battleEvents` and in full when it ends. A feed is the fight as a replay: the start anonymised as a shared replay's (`anonymiseStart`), the seed, the resolved turns minus the last `LIVE_DELAY_TURNS` (1: a watcher is a turn behind the players, so watching beside one tells them nothing new), and the digest the anonymised run reaches (`replayBattle`, computed at publish). The index `ewa:live` holds one summary per match (names and ratings at the match, turn, `finals`); the feed `ewa:live:<matchId>` expires 10 min after its last write (a dead room drops off; the list also sweeps entries older than that) or 3 min after the end, when the full fight with its `outcome` is written and the index entry removed; a voided battle just leaves the index. **League Finals**: a ranked match in Finals week (content `finalsWeek`) whose two players are both in the season's top eight so far (`seasons.current`, read once at the start) is `finals` and listed first.
+
+**Ranked seasons <!-- added 2026-10-20 -->.** Four weeks from Monday 2026-10-05 (content `seasons.ts`), the last seven days Finals week. `jobs/seasonRollover.ts` runs at boot and every 60 s (env `SEASON_ROLLOVER`, 'off' in testEnv): every ended season after the last closed one is closed (`seasons.close`; its row is the lock, so processes never close one twice): the final standings are written and every rating moves halfway back to 1000; after an outage that missed several closes only the last resets. Ratings are not otherwise touched; `peak_rating` keeps the all-time peak.
 
 ### 30.4.7 Raids
 

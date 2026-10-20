@@ -224,6 +224,18 @@ export async function replayLoader({ request, params }: LoaderFunctionArgs) {
   }
 }
 
+/** Spectator mode `/play/watch/:matchId`: the live match's feed (null when there is no such match, or it is long over). */
+export async function watchLoader({ request, params }: LoaderFunctionArgs) {
+  const matchId = params['matchId'] ?? '';
+  try {
+    const [feed] = await Promise.all([load(request, 'arenaLiveFeed', { params: { matchId } }), sessionReady(request.signal)]);
+    return { matchId, feed };
+  } catch (e) {
+    if (e instanceof ApiFailure && (e.error.status === 404 || e.error.status === 400)) return { matchId, feed: null };
+    throw e;
+  }
+}
+
 /**
  * Arena PvP `/play/pvp`: GET /arena into the arena store (rating, the week's cup, the queue) and the friend list for
  * Challenge a friend. A server without the arena routes renders the screen's "not live yet" state.

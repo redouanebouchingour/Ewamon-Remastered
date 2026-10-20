@@ -231,6 +231,13 @@ export const routes: RouteObject[] = [
             },
           }),
           child({
+            path: 'watch/:matchId',
+            lazy: async () => {
+              const [{ WatchScreen }, l] = await Promise.all([import('../screens/WatchScreen'), loaders()]);
+              return { Component: WatchScreen, loader: l.watchLoader };
+            },
+          }),
+          child({
             path: 'settings',
             lazy: async () => ({ Component: (await import('../screens/SettingsScreen')).SettingsScreen }),
           }),

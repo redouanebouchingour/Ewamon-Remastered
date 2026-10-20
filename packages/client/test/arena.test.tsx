@@ -284,6 +284,8 @@ const INFO = {
 
 function mountPvp(friends: unknown[] = []) {
   useArenaStore.getState().setInfo(INFO, IDLE_STATUS);
+  // spectator mode: the Watch live card reads GET /arena/live (a test without its own mock gets an empty list)
+  if (api.getMockImplementation() === undefined) api.mockImplementation(async (key: string) => (key === 'arenaLive' ? { matches: [] } : undefined));
   const router = createMemoryRouter([{ path: '/play/pvp', element: <PvpScreen />, loader: () => ({ available: true, friends }) }, { path: '/play', element: <ArenaHud /> }], {
     initialEntries: ['/play/pvp'],
   });
@@ -293,9 +295,13 @@ function mountPvp(friends: unknown[] = []) {
 
 describe('/play/pvp', () => {
   it('shows every mode, the rating and the cup with its lock reason', async () => {
+    // spectator mode: the Watch live card reads GET /arena/live
+    api.mockResolvedValue({ matches: [] });
     mountPvp();
     const screenEl = await screen.findByTestId('pvpscreen');
     for (const m of ['standard', 'level50', 'ranked', 'cup', 'training', 'friend']) expect(within(screenEl).getByTestId(`pvp-mode-${m}`)).toBeTruthy();
+    expect(await within(screenEl).findByText('No match is being played right now.')).toBeTruthy();
+    expect(api).toHaveBeenCalledWith('arenaLive', expect.anything());
     expect(screenEl.textContent).toContain('1234');
     expect(screen.getByTestId('pvp-mode-cup').textContent).toContain('Mirror Clause Cup');
     const why = cupLockReason(useSessionStore.getState().inventory!.party, Date.now())!;

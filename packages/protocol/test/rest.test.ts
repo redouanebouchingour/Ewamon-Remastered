@@ -44,6 +44,11 @@ import {
   ROUTE_KEYS,
   ChallengeReq,
   RealWeatherRes,
+  LiveFeedRes,
+  LiveListRes,
+  SeasonParams,
+  SeasonsRes,
+  SeasonTitlesRes,
   WeatherCitiesQuery,
   WeatherCityReq,
   SpeedrunRes,
@@ -382,7 +387,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(83); // the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(ROUTE_KEYS).toHaveLength(88); // the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
     expect(paths).toContain('GET /daily');
     expect(paths).toContain('POST /challenge');
     expect(paths).toContain('POST /daily/start');
@@ -512,3 +517,25 @@ describe('weather from real life', () => {
   });
 });
 
+describe('seasons and spectator mode', () => {
+  it('season rows carry a title; the season param is a number; past seasons are at most six', () => {
+    const row = { rank: 1, username: 'ash', rating: 1301, wins: 4, losses: 1, title: 'champion' };
+    const info = { season: 1, startsAt: ISO, endsAt: ISO, finalsAt: ISO };
+    ok(SeasonsRes, { current: { ...info, finals: false, top: [row] }, past: [{ ...info, top: [{ ...row, rank: 9, title: null }] }] });
+    bad(SeasonsRes, { current: { ...info, finals: false, top: [{ ...row, title: 'winner' }] }, past: [] });
+    expect(SeasonParams.parse({ season: '3' }).season).toBe(3);
+    bad(SeasonParams, { season: '0' });
+    ok(SeasonTitlesRes, { username: 'ash', titles: [{ season: 1, rank: 2, title: 'finalist' }] });
+    expect(ROUTES.seasonTitles.path).toBe('/seasons/titles/:username');
+  });
+
+  it('a live match lists two players; its feed is a replay with a digest and, at the end, an outcome', () => {
+    const match = { matchId: U1, kind: 'ranked', finals: true, players: [{ name: 'ash', rating: 1200 }, { name: 'gary', rating: 1190 }], turn: 3, startedAt: ISO };
+    ok(LiveListRes, { matches: [match] });
+    bad(LiveListRes, { matches: [{ ...match, kind: 'friend' }] });
+    const replay = { format: 'pvp', seat: 0, labels: ['ash', 'gary'], seed: [1, 2, 3, 4], start: { zoneId: 'arena', terrain: 'capital', sides: [{}, {}] }, actions: [], digest: '0a1b2c3d' };
+    ok(LiveFeedRes, { ...match, replay, outcome: null });
+    ok(LiveFeedRes, { ...match, replay, outcome: { winner: 0 } });
+    bad(LiveFeedRes, { ...match, replay: { ...replay, digest: 'nope' }, outcome: null });
+  });
+});

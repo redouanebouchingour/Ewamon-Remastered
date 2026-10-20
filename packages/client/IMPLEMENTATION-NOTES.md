@@ -2128,3 +2128,14 @@ every KO turn shows the lunge, the hit and the faint before the next creature en
   `useRealWeatherStore` (messageRouter, reset when the world connection ends); World3D reads it wherever it set the
   zone's weather (join, `state.weather` changes) and on the message itself, null meaning the zone's again.
 - Interiors still render none: the director owns that rule, the store only replaces the zone's value.
+
+## Ranked seasons and watching live (2026-10-20)
+
+- `battle/replay.ts` takes a `ReplaySource` (a shared replay or a live feed), `planReplay(.., live)` accepts a battle
+  that has not ended, and `extendReplay` swaps in the longer plan (the shown steps are identical: same seed and
+  actions) and continues. The battleEnd is sent when the plan has an outcome and every step was shown, so an outcome
+  that arrives later still ends it. `battle/live.ts` polls every 2.5 s and stops on the outcome, a failed read, or
+  when the replay is no longer on.
+- The season panel sits on the Rating board only; the PvP screen's Watch live card polls every 10 s while open.
+- A watched match plays from side 0's seat (the replay path), so the end line and the result card take the players'
+  names from `spectatorNames` (a leaf map in `replayId.ts`, set while a live replay runs) instead of "You won / lost".

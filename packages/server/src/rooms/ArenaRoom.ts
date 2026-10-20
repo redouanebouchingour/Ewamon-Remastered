@@ -16,13 +16,18 @@
  * Presence: each seated player's entry points at this room with `arena: true` (zoneId = where they stood in the
  * world); the room never publishes `ewa:kick` (the client leaves its zone room itself). The per-player arena topic is
  * forwarded here too, so "queue again" from the result screen reaches the player.
+ *
+ * Spectator mode (game/liveBoard.ts): a queued match between two players (standard, Level 50, ranked, cup) is published
+ * on the live board when its battle starts, again after every turn (a turn behind), and in full when it ends. A ranked
+ * match in League Finals week between two of the season's top eight is marked `finals`.
  */
 import { Room, ServerError } from '@colyseus/core';
 import type { AuthContext, Client } from '@colyseus/core';
-import { weeklyCup } from '@ewa/content';
+import { SEASON_FINALISTS, finalsWeek, seasonAt, weeklyCup } from '@ewa/content';
 import type { ActiveCup, ZoneId } from '@ewa/content';
-import { createRng } from '@ewa/core';
-import { ARENA_ARRIVAL_MS, ArenaState, CLIENT_MESSAGES, CLOSE_CODES } from '@ewa/protocol';
+import { createRng, replayBattle } from '@ewa/core';
+import type { BattleOutcome, SideChoice } from '@ewa/core';
+import { ARENA_ARRIVAL_MS, ARENA_MODES, ArenaState, CLIENT_MESSAGES, CLOSE_CODES, REPLAY_BATTLE_ID } from '@ewa/protocol';
 import type { ArenaPhase, ClientPayload, ServerMessage } from '@ewa/protocol';
 import type { RoomDeps } from '../deps';
 import { createRoomMetrics } from '../metrics';
@@ -35,6 +40,9 @@ import { arenaTopic } from './arenaQueue';
 import { BattleCoordinator } from './battleSession';
 import type { BattleHost, BattleSession } from './battleSession';
 import type { ArenaMatch } from './matchmaking';
+import { LIVE_DELAY_TURNS } from '../game/liveBoard';
+import type { LiveFeed } from '../game/liveBoard';
+import { anonymiseStart, replayOpts } from '../game/replay';
 
 export interface ArenaJoinOptions {
   /** server-only join ticket (R2) */
@@ -58,6 +66,9 @@ export interface ArenaUserData {
 
 export type ArenaClient = Client<{ userData: ArenaUserData; auth: ArenaAuth }>;
 
+/** Spectator mode: the queued kinds whose matches anyone may watch. */
+const LIVE_KINDS: ReadonlySet<string> = new Set(ARENA_MODES);
+
 /** The arena's battles form here: no zone, terrain none (`capital`). */
 export const ARENA_ZONE = { id: 'arena', biome: 'capital' } as const;
 export const ARENA_TICK_INTERVAL_MS = 250;
@@ -79,6 +90,8 @@ export class ArenaRoom extends Room<{ state: ArenaState; metadata: ArenaMeta; cl
   private readonly owner = new Map<string, string>();
   /** player uuid → its arena-topic callback */
   private readonly subs = new Map<string, (m: ServerMessage) => void>();
+  /** spectator mode: the battle on the live board (null: not a watchable match, or not started) */
+  private live: { readonly session: BattleSession; readonly startedAt: number; finals: boolean; ready: boolean; shared: number } | null = null;
 
   protected get deps(): RoomDeps {
     const d = (this.constructor as typeof ArenaRoom).roomDeps;
@@ -334,13 +347,89 @@ export class ArenaRoom extends Room<{ state: ArenaState; metadata: ArenaMeta; cl
     if (this.phase === 'waiting' && !this.starting && now >= this.match.createdAt + ARENA_ARRIVAL_MS) this.cancel('noShow', null);
   }
 
+  // ─── spectator mode ─────────────────────────────────────────────────────────
+
+  /** A queued two-player match goes on the live board (Finals looked up once; nothing is published before that). */
+  private startLive(session: BattleSession): void {
+    const m = this.match;
+    if (!LIVE_KINDS.has(m.kind) || m.players.length !== 2 || session.format !== 'pvp') return;
+    const deps = this.deps;
+    const now = deps.clock();
+    const live = { session, startedAt: now, finals: false, ready: false, shared: -1 };
+    this.live = live;
+    void (async () => {
+      if (m.kind === 'ranked' && finalsWeek(now)) {
+        const season = seasonAt(now);
+        const top = await deps.repos.db.transaction((tx) => deps.repos.seasons.current(tx, season.startsAt, now, SEASON_FINALISTS)).catch(() => []);
+        const names = new Set(top.map((r) => r.player.username));
+        live.finals = m.players.every((p) => names.has(p.name));
+      }
+      live.ready = true;
+      if (this.live === live) this.publishLive(false);
+    })();
+  }
+
+  /** The feed now: every turn when `final`, else all but the last LIVE_DELAY_TURNS; null when there is nothing new. */
+  private liveFeed(final: boolean, outcome: BattleOutcome | null): LiveFeed | null {
+    const live = this.live;
+    if (live === null || (!final && !live.ready)) return null;
+    const s = live.session;
+    const all = s.actionsLog as unknown as readonly (readonly [SideChoice, SideChoice])[];
+    const count = final ? all.length : Math.max(0, all.length - LIVE_DELAY_TURNS);
+    if (!final && count === live.shared) return null;
+    live.shared = count;
+    const actions = all.slice(0, count);
+    const start = anonymiseStart(s.start);
+    const run = replayBattle(replayOpts(REPLAY_BATTLE_ID, 'pvp', s.seed, start), actions, this.deps.content);
+    const m = this.match;
+    const p0 = m.players[0]!;
+    const p1 = m.players[1]!;
+    return {
+      matchId: m.matchId,
+      kind: m.kind as LiveFeed['kind'],
+      finals: live.finals,
+      players: [
+        { name: p0.name, rating: p0.rating },
+        { name: p1.name, rating: p1.rating },
+      ],
+      turn: count,
+      startedAt: live.startedAt,
+      updatedAt: this.deps.clock(),
+      replay: { format: 'pvp', seat: 0, labels: [p0.name, p1.name], seed: s.seed, start, actions, digest: run.finalDigest },
+      outcome,
+    };
+  }
+
+  private publishLive(final: boolean, outcome: BattleOutcome | null = null): void {
+    let feed: LiveFeed | null = null;
+    try {
+      feed = this.liveFeed(final, outcome);
+    } catch (e) {
+      this.deps.log.warn({ err: e, matchId: this.match.matchId }, 'live feed failed');
+    }
+    if (feed === null) return;
+    const board = this.deps.live;
+    void (final ? board.finish(feed) : board.publish(feed)).catch((e: unknown) => this.deps.log.warn({ err: e }, 'live board write failed'));
+  }
+
+  /** The battle is over: the whole fight with its outcome; a voided battle just leaves the board. */
+  private endLive(outcome: BattleOutcome | 'void' | 'playerLeft'): void {
+    if (this.live === null) return;
+    if (outcome === 'void' || outcome === 'playerLeft') void this.deps.live.drop(this.match.matchId).catch(() => undefined);
+    else this.publishLive(true, outcome);
+    this.live = null;
+  }
+
   // ─── battle host ────────────────────────────────────────────────────────────
 
   private battleHost(): BattleHost {
     return {
-      send: (playerId, msg) => this.sendTo(playerId, msg),
+      send: (playerId, msg) => {
+        this.sendTo(playerId, msg);
+        if (msg.type === 'battleEvents') this.publishLive(false);
+      },
       onStart: (session) => this.onBattleStart(session),
-      onEnd: (session) => this.onBattleEnd(session),
+      onEnd: (session, outcome) => this.onBattleEnd(session, outcome),
       // arena battles write no flags, badges or items: nothing to refresh
       onProgress: () => undefined,
     };
@@ -360,10 +449,12 @@ export class ArenaRoom extends Room<{ state: ArenaState; metadata: ArenaMeta; cl
       deps.arena.notify(seat.playerId, statusMsg(idleStatus('started')));
     }
     this.broadcastState();
+    this.startLive(session);
   }
 
-  private onBattleEnd(session: BattleSession): void {
+  private onBattleEnd(session: BattleSession, outcome: BattleOutcome | 'void' | 'playerLeft'): void {
     const deps = this.deps;
+    this.endLive(outcome);
     for (const seat of session.seats) if (seat.playerId !== null && deps.presenceStore.battleOf(seat.playerId) === session.id) deps.presenceMirror.setBattle(seat.playerId, null);
     this.battleId = null;
     this.setPhase('ended');

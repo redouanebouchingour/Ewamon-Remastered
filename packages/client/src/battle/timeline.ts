@@ -97,6 +97,8 @@ export interface TimelineCtx {
    * plays before the burst. null (a wild form, a raid boss) or absent: the plain burst.
    */
   readonly bondOf?: (r: Ref) => BandKind | null;
+  /** Spectator mode: a side's player name; the end then names the winner instead of "You won / lost". Absent: a player's view. */
+  readonly playerName?: (side: 0 | 1) => string;
 }
 
 /** Real time a crit slow-mo adds over its timeline span. */
@@ -722,7 +724,8 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         } else {
           if (field !== null) posesOf(o.winner, 'celebrate');
           else push({ at: t, k: 'pose', who: { side: o.winner, slot: active[o.winner] }, pose: 'celebrate' });
-          log(o.winner === seat ? 'You won the battle!' : 'You lost the battle…', o.winner === seat ? 'good' : 'bad');
+          if (ctx.playerName !== undefined) log(`${ctx.playerName(o.winner)} won the battle!`);
+          else log(o.winner === seat ? 'You won the battle!' : 'You lost the battle…', o.winner === seat ? 'good' : 'bad');
         }
         break;
       }

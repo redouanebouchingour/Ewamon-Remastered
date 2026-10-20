@@ -647,3 +647,9 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   `challenge:failed`, `challenge:met:<zone>`), the ribbons (`fallen`, `fallen_memorial`), `challengeOf` /
   `challengeActive` / `isFallen` and the labels with each mode's rules, shared by the server and the client. The flags
   are the server's colon-namespaced ones, so `FLAG_REGISTRY` does not list them.
+
+## Ranked seasons (2026-10-20)
+
+- `data/seasons.ts`: `seasonAt` / `seasonByNumber` (four weeks from Monday 2026-10-05 UTC), `finalsWeek` (the last
+  seven days), `seasonResetRating` (halfway back to 1000, truncated towards it, like the SQL), `seasonTitle`. Not a
+  story gate and nothing in the zone layer, so no fixture moves.

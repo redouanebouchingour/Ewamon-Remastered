@@ -32,6 +32,8 @@ import { PresenceStore } from './rooms/presenceStore';
 import { ARENA_ROOM, ZONE_ROOM, pickZoneRoom } from './rooms/matchmaking';
 import { bindZoneRoom, refuseDirectMatchmaking } from './rooms/ZoneRoom';
 import { RealWeather } from './game/realWeather';
+import { LiveBoard } from './game/liveBoard';
+import { startSeasonRollover } from './jobs/seasonRollover';
 
 export const MAX_SOCKETS_PER_IP = 8;
 
@@ -133,6 +135,7 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
     matchQueue,
     arena,
     realWeather: new RealWeather({ fetch: deps.fetch ?? ((url, init) => fetch(url, init)), clock: deps.clock }),
+    live: new LiveBoard(presence, deps.clock),
     verifyAccess: (token) => {
       if (verify === null) throw new Error('verifier not ready');
       return verify(token);
@@ -187,6 +190,8 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
   ];
   for (const t of timers) t.unref();
   const jobs: { stop(): void }[] = [startMarketExpiry(deps), startLiveOpsRollover({ ...deps, bus: runtime.bus })];
+  // ranked seasons: an ended season is closed (standings kept, ratings halfway back) within a minute
+  if (env.SEASON_ROLLOVER === 'on') jobs.push(startSeasonRollover(deps));
   log.info({ ws: wsPort, rest: restPort, db: env.DATABASE_URL !== undefined ? 'postgres' : 'pglite' }, 'ewa server listening');
 
   let stopped = false;
