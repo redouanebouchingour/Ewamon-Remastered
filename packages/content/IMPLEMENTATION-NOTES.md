@@ -622,6 +622,25 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
 - `pnpm test:progression` not re-run with the sculpts (about 41 min); the walker pathfinds (`server/test/pathing.ts`),
   and validate's rule 12 proves every story target reachable from the spawn.
 
+## Handover landings on sculpted edges (2026-10-20)
+
+- The first progression run on the sculpts stranded the walker twice: Ash Route → Cinderhold at z = -6 landed on the
+  caldera rim at (58, -6), Tide Route → Stormrook at z = 11.5 on a pinnacle top. A handover keeps the lateral
+  coordinate (server `entryPoint`), the routes' edges are open, and rule 12 only asks each handover band for one
+  reachable sample. 14 links stranded some crossing. SPEC §3.11 "Handover landings" (amended in the same change).
+- `shoulder(dir, half, from, to)` in `data/sculpts.ts`: a lift (h 12, edge 12, ragged 1) whose outline sits 4 m inside
+  the playable edge, so its face runs from about 10 m in to the margin with no ledge flatter than 35° in the playable
+  area. The trigger line (6 m in) closes from 2.7 m to 5 m past each end; an arrival landing on the face is unwalkable
+  and snaps (8 m) to the ground at its foot. An end therefore sits 2.2 m inside the stranding stretch; a pocket narrower
+  than about 5 m gets a 0.5 m sliver. A first try with a 4.5 m cliffed plateau failed the other way: its flat top is
+  walkable, so the neighbour's arrivals landed on it.
+- Lake shores and beds are applied after the lifts and flatten a face, so three crossings were fixed with water:
+  tide_route's sea vertex (104, -30) is now (100, -24) and (125, -30) is (125, -24); its lagoon's (-104, 48) is
+  (-104, 41); ascent_route's tarn lost its west end ((-108, -36) → (-94, -36), (-100, -60) → (-86, -60)) and the
+  pier now ends in it at (-86, -44).
+- The guard is a server test (it needs `entryPoint`): `server/test/handover-landing.test.ts`, every reachable
+  trigger-line sample of every link, both ways, lands in the destination spawn's component.
+
 ## Challenge modes (2026-10-20)
 
 - `data/challenge.ts`: the modes (`nuzlocke`, `hardcore`), their flags (`challenge:<mode>`, `challenge:cleared`,

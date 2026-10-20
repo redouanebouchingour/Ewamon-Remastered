@@ -57,7 +57,7 @@ fail under machine load and pass alone).
 | core | 1,000-battle singles fuzz byte-identical through every phase (battle forms, honor, Majin / Tenjin all optional with defaults); doubles behind `slots: 2` with their own fuzz; capLevel / noExp for the tower; battle forms (`formChange`, form signature moves, `Action.transform`); honor ledger (`honor` event, 37 event kinds) | `npx vitest run packages/core` |
 | content | 138 species / 72 families obtainable (130 legacy + 8 post-legacy, see below); 197 moves; 21 zones; interiors for every town building (8 themed gym halls with puzzles, the 4-chamber league hall); 39 TMs, 6 stones, 30 achievements, 12 league rematch teams, Cut/Strength obstacles, water slots; town arrival points; 13 Majin / Tenjin species and the two bands in the story | `pnpm --filter @ewa/content run validate` |
 | server | interiors (door warps, per-player gates, switches, hall arenas), story grants, quests incl. restoreZone / deliverItem, TMs / tutor / evolve (incl. the honor split, migration `0005_honor`), trade evolutions, shinies, achievements, weather, doubles, surf / fishing / obstacles / bike, raids resync, fast travel + visited flags, ranked queue, rematches, battle tower, password reset + email verification; denser wild spawns (80 / 20 / 36 alive on route / town / story) | `npx vitest run packages/server` |
-| progression | Acts I–III + all 12 league fights headless, 0 desyncs, final `GET /me` has 8 badges + Wardens + Champion + 33 beats + 8 legendaries (legs act3b / act3c re-run 2026-10-13 with hyoryu, 0 desyncs; the full walk's last run: 2026-10-06, **before** the Majin / Tenjin story grants and trainer bands) | `pnpm test:progression` (~41 min) |
+| progression | Acts I–III + all 12 league fights headless, 0 desyncs, final `GET /me` has 8 badges + Wardens + Champion + 33 beats + 8 legendaries (full walk re-run and re-recorded 2026-10-20 on the sculpted terrain: 6/6 files in 2583 s, act1 563 s, act2 803 s, act3a 282 s, act3b 472 s, act3c 220 s, halls 9/9, 0 desyncs; `packages/server/test/fixtures/progression/PROGRESS.md`) | `pnpm test:progression` (~41 min) |
 | client | every server system has UI. The **Broadcast UI** (2026-10-11): carbon panels, paper white, one hot orange for selected / press / focus, type colour as the hero, Barlow Condensed over Barlow, 19 type icons instead of letter codes, canvas HUD in the same language, battle command deck, five top-bar links + More, Party as a card row. Signature-move cinematics, the Majin / Tenjin bond cinematic + transform toggle + band tutorial, the honor meter | `npx vitest run packages/client`; Playwright `client-e2e` |
 | render | interiors, doubles stage, shiny glow, surf ripple, weather, art pass, density dressing, neighbour skirt, fixed light layout + off-scene zone prepare, device-lost recovery; 14 move motion styles (63 → 64 VFX ids with `form_tenjin`); battle-form auras (flames / light, sigil ring, rim); M3 town art for Saltmourn, Skyrend, Cinderhold, Stormrook (`albedoCal`, `Palette.grassTone`, `lava_glow` emissive, plaza clutter) | `npx vitest run packages/render`; `.design/audits/M3-render-audit.md` |
 | sprites | 152 sprite keys (138 species + battle forms), 76 atlases, creature byte ceiling 41,943,040 (40 MiB, raised 2026-10-13 for hyoryu) | `pnpm --filter @ewa/sprite-pipeline` tests |
@@ -110,8 +110,9 @@ fail under machine load and pass alone).
   rims, ramparts, walls and towers, rock spires, winding roads with ramps, authored tall grass (where the wild
   encounters are) and a travellers' camp on every route. Edit a shape, then `pnpm --filter @ewa/content zone-map <dir>
   <zone>` (top-down debug map: unreachable ground shows magenta) and `pnpm --filter @ewa/content validate` (rule 12
-  proves reachability). The sandbox's `&far=<m>` gives a survey camera. `pnpm test:progression` has not been re-run
-  on the sculpted terrain.
+  proves reachability). The sandbox's `&far=<m>` gives a survey camera. A handover keeps the lateral coordinate, so
+  where a neighbour's entry line is cut off the edge is closed with `shoulder` (SPEC §3.11 "Handover landings");
+  `npx vitest run packages/server/test/handover-landing.test.ts` checks every link both ways in seconds.
 
 ## The finish plan
 
@@ -120,10 +121,11 @@ fail under machine load and pass alone).
 
 ## Open items, in order
 
-1. **Re-run `pnpm test:progression`**: the last recorded run predates the Majin / Tenjin band grants (beats 19 / 21),
-   the trainer bands, the denser spawns and the arena changes to the battle coordinator / zone room.
-   The walker still runs with `testEnv`'s visible spawns and no trainer sight; to cover the new defaults it would
-   train by walking grass patches and answer `trainerSpotted` while walking.
+1. **Progression walker on the new defaults**: `pnpm test:progression` was re-run and re-recorded on 2026-10-20 on the
+   sculpted terrain (every leg passes, 0 desyncs; the first try stranded the walker on a caldera rim and a pinnacle top
+   after a handover, fixed in the sculpts, see PROGRESS.md session 3). It covers the Majin / Tenjin band grants, the
+   trainer bands and the arena changes, but still runs with `testEnv`'s visible spawns and no trainer sight; to cover
+   the new defaults it would train by walking grass patches and answer `trainerSpotted` while walking.
 2. **Audio — a human listen**: nothing was auditioned by ear. In order: the grove, marrow and champion loop seams
    (non-repeating pieces joined with a 1.5–2 s fade; grove plays first), battle / victory seams, the short sky / elite /
    gym loops, derived threat / biome / night layers, creature cries, stinger starts, tiled ambience beds, arcade-ish

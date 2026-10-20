@@ -194,7 +194,14 @@ async function main(): Promise<void> {
         const live = await columnsOf(q, t);
         for (const row of fx.rows[t] ?? []) {
           const r: Record<string, unknown> = { ...row, [key]: id };
-          if (t === 'creature_instances') r['id'] = randomUUID();
+          if (t === 'creature_instances') {
+            r['id'] = randomUUID();
+            // the walk's own catches name the walk's account as their original trainer (migration 0007): this one now
+            if (r['original_trainer_id'] === src['id']) {
+              r['original_trainer_id'] = id;
+              r['original_trainer_name'] = username;
+            }
+          }
           await insertRow(q, t, live, r);
         }
       }

@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-20 handover landings: no crossing strands a player on a ledge of the neighbour. One entry. -->
+
+## 2026-10-20 · `00-spine.md` §3.11 Zone sculpts (new: Handover landings) · every reachable crossing lands where the destination's spawn can be reached
+Why: the first `pnpm test:progression` on the sculpted terrain failed act1, act2 and act3c the same way: the walker crossed from Ash Route into Cinderhold at z = −6 and landed at (58, −6) on the caldera rim, cut off from the town; from Tide Route into Stormrook at z = 11.5 it landed on a pinnacle top. A handover keeps the lateral coordinate (§30.2.7) and the routes' 208 m edges are open where the towns' 128 m edges are a rim with one pass, so any player crossing off the road was stranded. Validate's rule 12 checks that each handover band has one reachable sample, not that each crossing lands well. A scan of every link found 14 with stranding crossings (mire_route both ways, ash_route both ways, tide_route, galvan_route, hollow_route, siege_route, ascent_route, vesperveil, forgewall, eclipse_shrine, celestial_spire). Each is closed on the side the player would cross from by a steep rock face with no walkable ledge (`shoulder`); three beaches and a lake rim that flattened a face were moved instead (tide_route's sea and lagoon, ascent_route's tarn and its pier).
+Evidence: `packages/server/test/handover-landing.test.ts` (every reachable trigger-line sample of every link lands in the destination spawn's component; 14 links failed it before); `pnpm --filter @ewa/content validate` green; `npx vitest run packages/content` (163); `pnpm test:progression` 6/6 files (act1 563 s, act2 803 s, act3a 282 s, act3b 472 s, act3c 220 s, halls 9/9), 0 desyncs in every leg, fixtures re-recorded (PROGRESS.md session 3).
+Affects: `packages/content/src/data/sculpts.ts`, `dist/heightfields/{mire_route,ash_route,tide_route,galvan_route,hollow_route,siege_route,ascent_route,vesperveil,forgewall,eclipse_shrine,celestial_spire}.json`; `packages/server/test/handover-landing.test.ts`; `packages/server/test/fixtures/progression/*.json` re-recorded; re-baselined the `zoneSpecFor` snapshot (the 11 zones) and the shiny spawn-hash pin (director unchanged, mire_route terrain moved).
+
 <!-- 2026-10-20 music that follows the battle: the score hears the player's hp and Majin / Tenjin form. One entry. -->
 
 ## 2026-10-20 · `20-client.md` §20.7.2 (battle mood row), §20.7.3 (`setBattleMood`); `50-verification-budget.md` §50.4.7 row · music that follows the battle

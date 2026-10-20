@@ -39,4 +39,22 @@ Live notes so the work can resume after an interruption. Newest at the bottom.
   - chain total 2458 s (≈ 41 min), 5/5 passed in one `pnpm test:progression progression-act` run.
   - progression-halls re-run on current main: 9/9 pass (254 s).
 
-## State: DONE (nothing running). Fixtures act1, act2, act3a, act3b, act3c on disk, uncommitted.
+## Session 3 (2026-10-20): the sculpted terrain (00c83d6)
+- First run on the sculpts (fixtures from session 2, no write): act3a PASS 274 s, act3b PASS 608 s, halls 9/9, but
+  act1, act2 and act3c FAILED with `walker: no path`: a handover from Ash Route landed in Cinderhold at (58, -6) on the
+  caldera rim (act1 at `forge_gratitude`, act3c on its way west), one from Tide Route landed in Stormrook at
+  (-57.5, 11.5) on a pinnacle top (act2 at `grid_numbers`). Desyncs 0 in every leg.
+- Cause: the sculpts, not the walker. A handover keeps the lateral coordinate (`entryPoint`), the routes' edges are
+  open, and validate's rule 12 asks each handover band for one reachable sample only. A scan of every link found 14
+  with stranding crossings. Fixed in content `data/sculpts.ts` (`shoulder` rock faces, three lake edits; content
+  IMPLEMENTATION-NOTES "Handover landings"); guarded by `server/test/handover-landing.test.ts`.
+- Re-recorded the chain on the fixed terrain with EWA_PROGRESSION_WRITE=1 in one `pnpm test:progression` run
+  (6/6 files, 2583 s):
+  - act1: PASS 563 s (2192 m, 89 handovers, 368 battles / 1315 turns, desyncs 0), act1.json re-written.
+  - act2: PASS 803 s (3550 m, 96 handovers, 194 battles / 1151 turns, desyncs 0), act2.json re-written.
+  - act3a: PASS 282 s (1300 m, 40 handovers, 77 battles / 522 turns, desyncs 0), act3a.json re-written.
+  - act3b: PASS 472 s (2401 m, 50 handovers, 21 battles / 159 turns, desyncs 0), act3b.json re-written.
+  - act3c: PASS 220 s (1471 m, 12 handovers, 2 battles / 5 turns, desyncs 0), act3c.json re-written.
+  - progression-halls: 9/9 pass (197 s).
+
+## State: DONE (nothing running). Fixtures act1, act2, act3a, act3b, act3c re-recorded on the sculpted terrain.

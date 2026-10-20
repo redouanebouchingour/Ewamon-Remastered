@@ -5,7 +5,29 @@
  * shape keeps ≥ 9 m off any point it should not swallow; validate proves every point, door and exit stays reachable.
  */
 import type { ZoneId } from '../types';
-import type { ZoneSculpt } from '../sculpt';
+import type { SVec2, SculptLift, ZoneSculpt } from '../sculpt';
+
+/**
+ * A rock face along a linked edge, over the lateral coordinates `from`..`to` (`half`: the playable half-extent). A
+ * handover lands on the same lateral coordinate of the neighbour (server `entryPoint`, §30.2.7), so where the
+ * neighbour's entry line is cut off (a caldera rim, a ravine floor, a crag top) the edge here is closed: no one
+ * crosses there to land where they cannot walk on.
+ *
+ * The face climbs 12 m over 12 m from 10 m inside the playable edge to the margin, steeper than 35° the whole way, so
+ * it holds no walkable ground: the trigger line (6 m in) cannot be reached in front of it, and an arrival from the
+ * neighbour that lands on it (6.5 m in) snaps to the open ground at its foot (`nearestWalkable`, 8 m), never onto a
+ * ledge. In front of an end the trigger line opens 2.7–5 m past `to` (or before `from`), ragged outline included.
+ */
+function shoulder(dir: 'n' | 'e' | 's' | 'w', half: number, from: number, to: number): SculptLift {
+  const o = half + 24;
+  const i = half - 4;
+  const poly: SVec2[] =
+    dir === 'e' ? [[i, from], [o, from], [o, to], [i, to]]
+    : dir === 'w' ? [[-o, from], [-i, from], [-i, to], [-o, to]]
+    : dir === 's' ? [[from, i], [to, i], [to, o], [from, o]]
+    : [[from, -o], [to, -o], [to, -i], [from, -i]];
+  return { poly, h: 12, edge: 12, ragged: 1 };
+}
 
 export const SCULPTS: Readonly<Partial<Record<ZoneId, ZoneSculpt>>> = {
   // The fen: the road leaves Mirevale between hedgerows, crosses the mire on the boardwalk causeway, then bridges the
@@ -18,6 +40,8 @@ export const SCULPTS: Readonly<Partial<Record<ZoneId, ZoneSculpt>>> = {
       { poly: [[-112, -112], [40, -112], [34, -70], [16, -52], [-14, -44], [-40, -46], [-66, -38], [-96, -34], [-112, -36]], h: 4, edge: 3.2, ragged: 3 },
       // a low knoll the road skirts in the east
       { poly: [[78, 14], [100, 10], [108, 30], [96, 52], [76, 46]], h: 2.4, edge: 2.2, ragged: 2 },
+      // the caldera's outer flank: Cinderhold is entered only through its west pass; Mirevale's north bluff
+      shoulder('e', 104, -130, -10.2), shoulder('e', 104, 13.2, 130), shoulder('w', 104, -130, -46.2),
     ],
     hills: [
       { x: -40, z: 80, r: 30, h: 2.5 }, { x: 20, z: 92, r: 26, h: 2 }, { x: 88, z: -70, r: 24, h: 3 }, { x: -90, z: 64, r: 22, h: 1.6 },
@@ -75,6 +99,8 @@ export const SCULPTS: Readonly<Partial<Record<ZoneId, ZoneSculpt>>> = {
       { line: { points: [[-12, -114], [-16, -80], [-12, -50], [-20, -22], [-19, -5], [-18, 10], [-26, 36], [-18, 66], [-22, 96], [-16, 114]], width: 10 }, h: -7, edge: 3, ragged: 1.5, bridged: true },
       // the cone's crater
       { circle: { x: 70, z: -70, r: 7 }, h: -5, edge: 3.5, ragged: 1 },
+      // Cinderhold's east pass; Saltmourn's headland
+      shoulder('w', 104, -130, -6.7), shoulder('w', 104, 8.2, 130), shoulder('e', 104, -130, -50.7),
     ],
     hills: [{ x: 70, z: -70, r: 28, h: 8 }, { x: -60, z: 72, r: 24, h: 3 }, { x: -90, z: -60, r: 20, h: 2.5 }, { x: 30, z: 92, r: 22, h: 2 }],
     rivers: [{ points: [[-12, -114], [-16, -80], [-12, -50], [-20, -22], [-19, -5], [-18, 10], [-26, 36], [-18, 66], [-22, 96], [-16, 114]], width: 4.5, depth: 0.5, bank: 1.5 }],
@@ -107,11 +133,13 @@ export const SCULPTS: Readonly<Partial<Record<ZoneId, ZoneSculpt>>> = {
     rough: 0.7,
     ponds: 0,
     lakes: [
-      { poly: [[-6, -125], [125, -125], [125, -30], [104, -30], [90, -38], [78, -36], [62, -42], [44, -42], [28, -38], [14, -40], [4, -52], [-2, -72], [-8, -100]], depth: 2.2, shore: 9, ragged: 2 },
-      { poly: [[-104, 48], [-90, 44], [-70, 52], [-62, 66], [-74, 84], [-98, 86], [-108, 70]], depth: 1.2, shore: 6, ragged: 2 },
+      { poly: [[-6, -125], [125, -125], [125, -24], [100, -24], [90, -38], [78, -36], [62, -42], [44, -42], [28, -38], [14, -40], [4, -52], [-2, -72], [-8, -100]], depth: 2.2, shore: 9, ragged: 2 },
+      { poly: [[-104, 41], [-90, 44], [-70, 52], [-62, 66], [-74, 84], [-98, 86], [-108, 70]], depth: 1.2, shore: 6, ragged: 2 },
       { poly: [[58, 60], [72, 58], [78, 68], [70, 76], [58, 72]], depth: 0.9, shore: 3, ragged: 1 },
     ],
     hills: [{ x: 0, z: 52, r: 20, h: 2.5 }, { x: 60, z: 88, r: 18, h: 2 }, { x: -30, z: 62, r: 22, h: 3 }, { x: -60, z: -60, r: 24, h: 3 }],
+    // a sea stack where Stormrook's west edge is a pinnacle top
+    lifts: [shoulder('e', 104, 12.5, 13)],
     roads: [
       { id: 'road_main', kind: 'road', width: 3.5, points: [[-120, 0], [-92, 0], [-70, -6], [-48, -4], [-30, 2], [-10, -8], [10, -16], [30, -20], [50, -16], [70, -8], [88, -6], [104, -4], [120, 0]] },
       { id: 'pier_swimmer', kind: 'path', width: 2.2, points: [[22, -20], [21, -34], [20, -46], [20, -56]] },
@@ -137,6 +165,8 @@ export const SCULPTS: Readonly<Partial<Record<ZoneId, ZoneSculpt>>> = {
     lifts: [
       { line: { points: [[6, -114], [10, -80], [4, -50], [0, -24], [4, -3], [14, 30], [6, 60], [0, 90], [4, 114]], width: 14 }, h: -6, edge: 2.6, ragged: 2, bridged: true },
       { poly: [[-112, -112], [112, -112], [112, -64], [70, -58], [30, -66], [-10, -62], [-50, -58], [-90, -56], [-112, -60]], h: 3.5, edge: 2.4, ragged: 3 },
+      // Stormrook's ravine (north) and its low terrace (south) meet the west edge
+      shoulder('w', 104, -130, -48.2), shoulder('w', 104, 52.2, 130),
     ],
     rivers: [{ points: [[6, -114], [10, -80], [4, -50], [0, -24], [4, -3], [14, 30], [6, 60], [0, 90], [4, 114]], width: 6, depth: 1.2, bank: 1.5 }],
     hills: [{ x: -60, z: 60, r: 26, h: 3 }, { x: 70, z: 70, r: 24, h: 3.5 }, { x: 80, z: -30, r: 18, h: 2 }],
@@ -197,6 +227,8 @@ export const SCULPTS: Readonly<Partial<Record<ZoneId, ZoneSculpt>>> = {
       { line: { points: [[-84, -4], [-72, -6], [-50, -8], [-30, -2], [-22, 0]], width: 9 }, h: -2.6, edge: 2.4, ragged: 1 },
       { line: { points: [[26, 1], [30, 0], [50, -6], [70, -4], [84, 2]], width: 9 }, h: -2.6, edge: 2.4, ragged: 1 },
       { poly: [[-78, 28], [-50, 24], [-26, 38], [-22, 70], [-50, 84], [-82, 72]], h: 2.8, edge: 2.2, ragged: 2.5 },
+      // Vesperveil's canal cuts its east edge off in the south
+      shoulder('w', 104, 57.2, 130),
     ],
     lakes: [{ poly: [[0, -36], [30, -34], [44, -50], [36, -76], [10, -84], [-12, -66], [-10, -46]], depth: 1.3, shore: 5, ragged: 2 }],
     roads: [
@@ -227,6 +259,8 @@ export const SCULPTS: Readonly<Partial<Record<ZoneId, ZoneSculpt>>> = {
       { line: { points: [[38, -114], [38, -80], [36, -40], [38, -8], [40, 30], [44, 70], [42, 114]], width: 5 }, h: 3, edge: 1.6, ragged: 0.8, bridged: true, dress: 'palisade' },
       { circle: { x: 0, z: -18, r: 6 }, h: -1.6, edge: 4 }, { circle: { x: -12, z: 30, r: 5 }, h: -1.3, edge: 4 },
       { circle: { x: 14, z: -66, r: 6 }, h: -1.5, edge: 4 }, { circle: { x: -76, z: 40, r: 5 }, h: -1.2, edge: 4 }, { circle: { x: 80, z: -44, r: 5 }, h: -1.3, edge: 4 },
+      // Skyrend's massif stands on its west edge in the north
+      shoulder('e', 104, -130, -54.7),
     ],
     hills: [{ x: 82, z: 10, r: 22, h: 4 }, { x: -80, z: -30, r: 20, h: 2 }],
     roads: [
@@ -257,11 +291,13 @@ export const SCULPTS: Readonly<Partial<Record<ZoneId, ZoneSculpt>>> = {
     lifts: [
       { poly: [[-38, -125], [125, -125], [125, 125], [-34, 125], [-30, 70], [-42, 30], [-36, -10], [-44, -50], [-36, -90]], h: 4, edge: 2.4, ragged: 2.5 },
       { poly: [[44, -125], [125, -125], [125, 125], [40, 125], [42, 60], [30, 24], [36, 4], [38, -10], [46, -40], [44, -80]], h: 4, edge: 2.4, ragged: 2.5 },
+      // Skyrend's massif (north) and a crag (south) on its east line; the tarn keeps off the edge below the massif
+      shoulder('w', 104, -130, -51.2), shoulder('w', 104, 14, 14.5),
     ],
-    lakes: [{ poly: [[-108, -36], [-88, -28], [-78, -44], [-84, -58], [-100, -60]], depth: 1.6, shore: 4, ragged: 1.5 }],
+    lakes: [{ poly: [[-94, -36], [-88, -28], [-78, -44], [-84, -58], [-86, -60]], depth: 1.6, shore: 4, ragged: 1.5 }],
     roads: [
       { id: 'road_main', kind: 'road', width: 3.5, points: [[-120, 0], [-92, 0], [-72, -4], [-56, -10], [-48, -22], [-36, -30], [-20, -24], [-8, -10], [6, 0], [20, 4], [34, 4], [50, 2], [68, 8], [90, 2], [120, 0]] },
-      { id: 'pier_tarn', kind: 'path', width: 2, points: [[-80, -2], [-82, -20], [-88, -34], [-94, -44]] },
+      { id: 'pier_tarn', kind: 'path', width: 2, points: [[-80, -2], [-82, -20], [-86, -34], [-86, -44]] },
       { id: 'trail_cirque', kind: 'path', width: 1.8, points: [[-60, -14], [-62, -40], [-68, -62]] },
     ],
     setPiece: { x: 34, z: 4, yaw: 1.5708 },
@@ -361,7 +397,11 @@ export const SCULPTS: Readonly<Partial<Record<ZoneId, ZoneSculpt>>> = {
   vesperveil: {
     rough: 0.8,
     ponds: 0,
-    lifts: [{ poly: [[-54, 18], [-22, 22], [-18, 44], [-40, 54], [-58, 42]], h: 2.6, edge: 2.2, ragged: 1.5 }],
+    lifts: [
+      { poly: [[-54, 18], [-22, 22], [-18, 44], [-40, 54], [-58, 42]], h: 2.6, edge: 2.2, ragged: 1.5 },
+      // the Deep Cut's mesa top meets its east line there
+      shoulder('w', 64, -36.3, -26.2),
+    ],
     rivers: [{ points: [[70, -80], [58, -50], [60, -20], [56, 10], [62, 40], [50, 70], [40, 90]], width: 5, depth: 1.2, bank: 2.5 }],
     lakes: [{ poly: [[16, 46], [36, 40], [46, 52], [38, 64], [16, 62]], depth: 1.2, shore: 4, ragged: 1.5 }],
     roads: [
@@ -385,6 +425,8 @@ export const SCULPTS: Readonly<Partial<Record<ZoneId, ZoneSculpt>>> = {
       { circle: { x: -43, z: 43, r: 3.5 }, h: 7, edge: 1, dress: 'tower' }, { circle: { x: 43, z: 43, r: 3.5 }, h: 7, edge: 1, dress: 'tower' },
       { circle: { x: -46, z: -8.5, r: 2.6 }, h: 6.5, edge: 1, dress: 'tower' }, { circle: { x: -46, z: 8.5, r: 2.6 }, h: 6.5, edge: 1, dress: 'tower' },
       { circle: { x: 46, z: -8.5, r: 2.6 }, h: 6.5, edge: 1, dress: 'tower' }, { circle: { x: 46, z: 8.5, r: 2.6 }, h: 6.5, edge: 1, dress: 'tower' },
+      // a pocket on the siege lines' west line, south of the road
+      shoulder('e', 64, 51.7, 52.8),
     ],
     hills: [{ x: -66, z: -60, r: 14, h: 3 }, { x: -64, z: 62, r: 14, h: 2.5 }, { x: 66, z: 64, r: 12, h: 3 }],
     roads: [
@@ -437,6 +479,8 @@ export const SCULPTS: Readonly<Partial<Record<ZoneId, ZoneSculpt>>> = {
       { circle: { x: -43.2, z: -28.9, r: 1.6 }, h: 6, edge: 0.6 }, { circle: { x: -28.9, z: -43.2, r: 1.6 }, h: 6, edge: 0.6 },
       { circle: { x: -10.1, z: -51, r: 1.6 }, h: 6, edge: 0.6 }, { circle: { x: 10.1, z: -51, r: 1.6 }, h: 6, edge: 0.6 },
       { circle: { x: 28.9, z: -43.2, r: 1.6 }, h: 6, edge: 0.6 },
+      // a crag on the Ascent's east line, in the far north
+      shoulder('w', 84, -130, -83.7),
     ],
     roads: [
       { id: 'road_w', kind: 'road', width: 4, points: [[-13.4, 0], [-30, 0], [-50, 1], [-70, 0], [-100, 0]] },
@@ -469,6 +513,8 @@ export const SCULPTS: Readonly<Partial<Record<ZoneId, ZoneSculpt>>> = {
     lifts: [
       { poly: [[-110, -110], [110, -110], [110, 40], [50, 42], [30, 40], [-20, 46], [-50, 50], [-110, 50]], h: 3, edge: 2.2, ragged: 1.5 },
       { poly: [[-110, -110], [110, -110], [110, -36], [-110, -36]], h: 3, edge: 2.2, ragged: 1.5 },
+      // Solenne's raised garden lies under its north edge in the west
+      shoulder('s', 84, -44.8, -32.2),
     ],
     roads: [
       { id: 'road_s', kind: 'road', width: 4, points: [[0, 13.4], [0, 30], [0, 50], [0, 70], [0, 100]] },
