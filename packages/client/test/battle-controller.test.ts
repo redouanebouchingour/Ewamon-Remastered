@@ -11,7 +11,7 @@ import { createContentIndex } from '@ewa/content';
 import { digestBattleState, resolveTurn } from '@ewa/core';
 import type { Action, BattleState } from '@ewa/core';
 import type { ServerMessageOf } from '@ewa/protocol';
-import { createBattleController } from '../src/battle/BattleController';
+import { createBattleController, patchFromEvents } from '../src/battle/BattleController';
 import type { BattleController, BattleView } from '../src/battle/BattleController';
 import type { BattleHudModel } from '../src/battle/BattleHud';
 import { STEP_MS } from '../src/battle/constants';
@@ -29,7 +29,7 @@ function setup() {
   const calls: string[] = [];
   const view: BattleView = {
     enterBattle: () => calls.push('enter'), exitBattle: () => calls.push('exit'), setBattler: (r, c, _k, sprite) => calls.push(`battler ${r.side} ${c?.speciesId ?? '-'}${sprite !== undefined ? ` as ${sprite}` : ''}`),
-    setPose: () => undefined, hurt: () => undefined, vfx: () => undefined, prewarm: (ids) => calls.push(`prewarm ${ids.length}`), syncFrom: () => calls.push('sync'),
+    setPose: (r, p) => calls.push(`pose ${r.side} ${p}`), hurt: () => undefined, vfx: (id) => calls.push(`vfx ${id}`), prewarm: (ids) => calls.push(`prewarm ${ids.length}`), syncFrom: () => calls.push('sync'),
     setWeather: () => undefined, cue: () => undefined, shake: () => undefined, setTimeScale: () => undefined, hitstopEnabled: () => true,
     slowmoEnabled: () => true, playSfx: () => undefined, setBattleHud: (m) => (hud = m), setThreat: () => undefined,
   };
@@ -139,9 +139,78 @@ describe('BattleController', () => {
     expect(useUiStore.getState().battle?.desyncs).toBe(1);
     expect(sent.at(-1)).toEqual({ type: 'battleResync', payload: { battleId: '00000000-0000-4000-8000-000000000001' } });
     expect(c.player.isPlaying).toBe(true);
+    // the resync's answer waits for the timeline: the turn's moves play in full, then the server's state is taken
     c.onBattleResync({ type: 'battleResync', battleId: '00000000-0000-4000-8000-000000000001', state: res.state, stateDigest: digestBattleState(res.state) });
+    expect(c.player.isPlaying).toBe(true);
+    expect(useUiStore.getState().battle?.authoritative).not.toBe(res.state);
+    playOut();
     expect(c.player.isPlaying).toBe(false);
     expect(useUiStore.getState().battle?.authoritative).toBe(res.state);
+    expect(useUiStore.getState().battle?.phase).toBe('selecting');
+  });
+
+  it('an NPC replacement switch-in (Intimidate) is replayed exactly: the next turn previews without a desync', () => {
+    const id = '00000000-0000-4000-8000-000000000001';
+    // a turn that knocks the foe's lead out: the NPC's replacement then resolves on its own (core chooses), unpreviewed
+    for (let seed = 1; seed < 40; seed++) {
+      const { c, sent, calls, playOut } = setup();
+      const me = makeCreature(content, content.species('bramblecub'), 40, 'mine-1', 'p0');
+      const lead = makeCreature(content, content.species('mossling'), 2, 'foe-1', null);
+      const back = { ...makeCreature(content, content.species('gustuff'), 30, 'foe-2', null), ability: 'Intimidate' };
+      const { state, events } = startBattle(content, seed, 'trainer', [me], [lead, back]);
+      c.onBattleStart({ ...startMsg(state, events), format: 'trainer' });
+      playOut();
+      const hit = state.sides[0].party[0]!.creature.moves.find((m) => content.move(m.id).power > 0)!;
+      const action: Action = { kind: 'move', move: hit.id };
+      const t1 = resolveTurn(state, [action, null], content);
+      if (!t1.state.sides[1].mustSwitch) continue;
+      c.submit(action);
+      c.onBattleEvents({ type: 'battleEvents', battleId: id, turn: t1.state.turn, events: t1.events, stateDigest: digestBattleState(t1.state), rng: t1.state.rng });
+      const t2 = resolveTurn(t1.state, [null, null], content);
+      expect(t2.events.some((e) => e.t === 'statStage' && e.target.side === 0 && e.stat === 'atk')).toBe(true);
+      // the events alone miss the Intimidate drop: patching them would drift from the server
+      expect(digestBattleState(patchFromEvents(t1.state, t2.events, t2.state.turn, t2.state.rng))).not.toBe(digestBattleState(t2.state));
+      // the replacement comes right behind the KO turn (the server resolves it at once): the KO turn plays in full first
+      calls.length = 0;
+      c.player.step(STEP_MS);
+      c.onBattleEvents({ type: 'battleEvents', battleId: id, turn: t2.state.turn, events: t2.events, stateDigest: digestBattleState(t2.state), rng: t2.state.rng });
+      expect(digestBattleState(useUiStore.getState().battle!.authoritative)).toBe(digestBattleState(t2.state));
+      expect(c.player.isPlaying).toBe(true);
+      playOut();
+      const faintAt = calls.indexOf('pose 1 faint');
+      const enterAt = calls.indexOf('pose 1 enter');
+      expect(calls.filter((x) => x.startsWith('vfx impact_')).length).toBeGreaterThan(0);
+      expect(faintAt).toBeGreaterThan(-1);
+      expect(enterAt).toBeGreaterThan(faintAt);
+      expect(useUiStore.getState().battle?.phase).toBe('selecting');
+      c.submit(action);
+      const t3 = resolveTurn(t2.state, [action, null], content);
+      c.onBattleEvents({ type: 'battleEvents', battleId: id, turn: t3.state.turn, events: t3.events, stateDigest: digestBattleState(t3.state), rng: t3.state.rng });
+      expect(useUiStore.getState().battle?.desyncs).toBe(0);
+      expect(sent.filter((x) => x.type === 'battleResync')).toHaveLength(0);
+      return;
+    }
+    throw new Error('no seed knocked the lead out in one turn');
+  });
+
+  it('a pvp turn (no preview) is replayed from its events: one side switches, the other attacks, no resync', () => {
+    const id = '00000000-0000-4000-8000-000000000001';
+    const { c, sent, playOut } = setup();
+    const a = makeCreature(content, content.species('bramblecub'), 20, 'a-1', 'p0');
+    const a2 = makeCreature(content, content.species('mossling'), 20, 'a-2', 'p0');
+    const b = makeCreature(content, content.species('gustuff'), 20, 'b-1', 'p1');
+    const { state, events } = startBattle(content, 9, 'pvp', [a, a2], [b]);
+    c.onBattleStart({ ...startMsg(state, events), format: 'pvp' });
+    playOut();
+    const sw: Action = { kind: 'switch', to: 1 };
+    c.submit(sw);
+    expect(c.preview).toBeNull();
+    const foeMove: Action = { kind: 'move', move: state.sides[1].party[0]!.creature.moves.at(-1)!.id };
+    const t1 = resolveTurn(state, [sw, foeMove], content);
+    c.onBattleEvents({ type: 'battleEvents', battleId: id, turn: t1.state.turn, events: t1.events, stateDigest: digestBattleState(t1.state), rng: t1.state.rng });
+    expect(digestBattleState(useUiStore.getState().battle!.authoritative)).toBe(digestBattleState(t1.state));
+    expect(useUiStore.getState().battle?.desyncs).toBe(0);
+    expect(sent.filter((x) => x.type === 'battleResync')).toHaveLength(0);
   });
 
   it('evolve / learn-move prompts from EVERY turn of the battle, own side only, deduplicated, queued after the card', () => {

@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-20 switching: the moves after a switch-in play again. One entry. -->
+
+## 2026-10-20 · `20-client.md` §20.3 (`BattleUi.authoritative` row), §20.5.5 (`onBattleResync`, new "Every turn plays in full") · switch-ins no longer cut a turn's animations
+Why: the user reported that after a switch, by them or the opponent, the move animations stop showing (AI training and everywhere else). Live on the isolated pair (AI training, a legendary party), two causes: (1) the NPC's replacement switch-in is not previewed, and the events-only patch missed its Intimidate, so the next turn's preview mismatched, the resync came back while that turn played and `restoreFrom` stopped it after ~150 ms (no hits, no log lines); (2) the server resolves the NPC's replacement ~30 ms after the KO turn, and `TimelinePlayer.play` finished the playing KO turn at once, so the KO turn's moves, hits and faint never showed. Now an unpreviewed turn is resolved again from the actions its events show and kept on a digest match, a turn that arrives mid-timeline is queued, and a resync waits for the timeline. A voluntary switch is also framed by the camera like a move's attacker (the user: "switch should be seen as a move used"), and a fainted battler is no longer stood back up to idle by the turn end.
+Evidence: `packages/client/test/battle-controller.test.ts` (+2, and the resync test now waits for the timeline: the replacement test fails without the replay and without the queue), `timeline.test.ts` (+2, snapshot: one camera frame added, three idle poses on fainted battlers removed). Live, per-frame render samples over 17 AI-training turns with 6 switches and 4 KO + replacement pairs: 0 desyncs (before: a desync on the turn after each Intimidate switch-in), every KO turn shows the attacker's lunge, the hit and the faint before the next creature enters.
+Affects: `packages/client/src/battle/{BattleController,TimelinePlayer,timeline}.ts`.
+
 <!-- 2026-10-20 old-game encounters: wild creatures only in tall grass / on water, trainers who see the player fight them. One entry. -->
 
 ## 2026-10-20 · `30-server-netcode.md` §30.1 env (`WILD_ENCOUNTERS`, `TRAINER_SIGHT`), §30.3 (tall grass and surfing, trainer sight); `00-spine.md` §4.4 (`trainerSpotted`: 23 variants); `20-client.md` §20.4.7 (trainer sight) · old-game encounters

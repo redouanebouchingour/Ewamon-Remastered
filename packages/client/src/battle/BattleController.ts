@@ -7,12 +7,14 @@
  *   phase 'submitted'; for wild / trainer / league a PREVIEW `resolveTurn(authoritative, [action, null])` (the
  *   server's null-passing convention) used for exactly three things: stage.prewarm of its VFX, the expected
  *   duration, and the digest compared with `battleEvents.stateDigest`. No preview frame is ever rendered.
- * - `onBattleEvents`: digest check (match → the preview state IS the server's state and becomes authoritative;
- *   mismatch → console.warn, desyncs + 1, `battleResync`), then the server's events are played regardless. Without
- *   a preview (pvp, raid) the authoritative state is patched from the events (hpAfter, pp, status, actives, turn).
- *   `rng` replaces the local rng after every turn.
+ * - `onBattleEvents`: digest check (match → the preview state IS the server's state and becomes authoritative). No
+ *   preview (an NPC's replacement switch-in, pvp) or a mismatch: the turn is resolved again from the actions its
+ *   events show (`replayFromEvents`, singles) and kept when its digest is the server's; else console.warn, desyncs + 1,
+ *   `battleResync` and the state patched from the events (hpAfter, pp, status, actives, turn; pvp doubles patch without
+ *   a resync, as before). The server's events are played regardless. `rng` replaces the local rng after every turn.
  * - `onBattleResync`: replaces authoritative, `stage.syncFrom`, phase 'selecting' | 'replacement' (also restores a
- *   battle after a reload: the server sends it unprompted on rejoin, server part 2 P3).
+ *   battle after a reload: the server sends it unprompted on rejoin, server part 2 P3). One that arrives while a
+ *   timeline plays waits for its end: the turn's moves always play in full.
  * - `onBattleEnd`: the result card (rewards for display only; the server's progressionDelta / inventoryDelta already
  *   went through the session writers); on dismiss: director.exitBattle, ui.battle = null, then the evolve /
  *   learn-move modals of the final turn, in order. A battleEnd for the open raid goes to the raid summary instead.
@@ -261,6 +263,65 @@ function sideName(state: BattleState, r: Ref, seat: 0 | 1, content: ContentIndex
   return state.sides[r.side]!.kind === 'wild' ? `the wild ${base}` : `the foe’s ${base}`;
 }
 
+/**
+ * The actions `side` may have chosen for a turn whose events are `events`, most likely first. An NPC or wild side is
+ * null, as the server sends it (the core chooses). A player side's switch, item, catch, flee and forfeit show in the
+ * events; a move shows as `moveUsed` unless the battler never got to act (flinch, sleep, a faint first), so every move
+ * with pp left follows, each with and without the Majin / Tenjin transform when the side's battler changed form.
+ */
+function actionCandidates(state: BattleState, side: 0 | 1, events: readonly BattleEvent[]): (Action | null)[] {
+  const s = state.sides[side];
+  if (s.kind !== 'player') return [null];
+  let switchOut = false;
+  for (const e of events) {
+    if (e.t === 'forfeit' && e.side === side) return [{ kind: 'forfeit' }];
+    if (e.t === 'fled' && e.side === side) return [{ kind: 'flee' }];
+    if (e.t === 'catchThrow' && e.target.side !== side) return [{ kind: 'catch', orb: e.orb }];
+    if (e.t === 'itemUsed' && e.who.side === side && !e.consumedHeld) return [{ kind: 'item', item: e.item, target: e.target.slot }];
+    if (e.t === 'switchOut' && e.who.side === side) switchOut = true;
+    if (e.t === 'switchIn' && e.who.side === side && (switchOut || s.mustSwitch)) return [{ kind: 'switch', to: e.who.slot }];
+  }
+  const out: (Action | null)[] = [];
+  const b = s.party[s.active];
+  if (b !== undefined) {
+    const used = events.find((e) => e.t === 'moveUsed' && e.who.side === side);
+    const formed = events.some((e) => e.t === 'formChange' && e.who.side === side);
+    const ids = b.creature.moves.filter((m) => m.pp > 0).map((m) => m.id);
+    if (used !== undefined && used.t === 'moveUsed' && ids.includes(used.move)) ids.unshift(...ids.splice(ids.indexOf(used.move), 1));
+    for (const move of ids) {
+      if (formed) out.push({ kind: 'move', move, transform: true });
+      out.push({ kind: 'move', move });
+    }
+  }
+  if (events.some((e) => e.t === 'moveFailed' && e.who.side === side && e.reason === 'trapped' && e.move === null)) out.unshift({ kind: 'flee' });
+  out.push(null);
+  return out;
+}
+
+/**
+ * The exact state after a turn the client did not preview (an NPC's replacement switch-in, a pvp turn) or previewed
+ * wrongly: the turn is resolved again from the actions its events show (`actionCandidates`), and a result counts only
+ * when its digest is the server's. Singles only; null when nothing matches (the caller patches and resyncs).
+ * `patchFromEvents` alone drifts: a switch-in's Intimidate, a switch-out's reset stages and every other volatile are
+ * not in it, so the next turn's preview disagrees with the server and its resync cut the playing timeline short.
+ */
+export function replayFromEvents(state: BattleState, events: readonly BattleEvent[], digest: string, content: ContentIndex): BattleState | null {
+  if (state.slots === 2 || state.format === 'raid' || state.ended !== null) return null;
+  const c0 = actionCandidates(state, 0, events);
+  const c1 = actionCandidates(state, 1, events);
+  for (const a0 of c0) {
+    for (const a1 of c1) {
+      try {
+        const res = resolveTurn(state, [a0, a1], content);
+        if (digestBattleState(res.state) === digest) return res.state;
+      } catch (_e) {
+        // an action the battle refuses: not this pair
+      }
+    }
+  }
+  return null;
+}
+
 /** Patches `state` from a turn's events for formats without a preview (pvp / raid). Presentation only. */
 export function patchFromEvents(state: BattleState, events: readonly BattleEvent[], turn: number, rng: BattleState['rng']): BattleState {
   const sides = [state.sides[0], state.sides[1]].map((s) => ({ ...s, party: s.party.map((b) => ({ ...b, creature: { ...b.creature } })) }));
@@ -348,6 +409,10 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
   let state: BattleState | null = null;       // authoritative
   let preState: BattleState | null = null;    // the state the playing timeline starts from
   let preview: { state: BattleState; digest: string; turn: number } | null = null;
+  /** a resync's state that came while a timeline played: applied when it ends */
+  let pendingResync: BattleState | null = null;
+  /** timelines of battleEvents that came while another played, in order (each with the state it starts from) */
+  const waiting: { readonly tl: Timeline; readonly from: BattleState }[] = [];
   let pendingEnd: ServerMessageOf<'battleEnd'> | null = null;
   let resultShown = false;
   /** every evolve / learn-move of the battle for the player's own side, in order (a trainer battle levels up mid-way) */
@@ -661,8 +726,23 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
 
   function onTimelineEnd(): void {
     if (state === null || battleId === null) return;
+    const nextUp = waiting.shift();
+    if (nextUp !== undefined) {
+      preState = nextUp.from;
+      resetHpTable(nextUp.from);
+      play(nextUp.tl, nextUp.from);
+      return;
+    }
     if (raid !== null && raid.pendingResync !== null) {
       applyRaidResync(raid.pendingResync);
+      return;
+    }
+    if (pendingResync !== null) {
+      const st = pendingResync;
+      pendingResync = null;
+      flushLog();
+      restoreFrom(st);
+      if (pendingEnd !== null) showResult();
       return;
     }
     if (raid !== null) state = syncBossHp(state);
@@ -800,6 +880,8 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     state = m.state;
     preState = m.state;
     preview = null;
+    pendingResync = null;
+    waiting.length = 0;
     pendingEnd = null;
     resultShown = false;
     prompts = [];
@@ -925,28 +1007,45 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
 
     onBattleEvents(m) {
       if (battleId === null || m.battleId !== battleId || state === null) return;
+      // a resync held for the playing timeline: these events start from the server's state, not the drifted one
+      if (pendingResync !== null) {
+        state = pendingResync;
+        pendingResync = null;
+      }
       const before = state;
       let next: BattleState;
-      if (preview !== null) {
-        if (preview.digest === m.stateDigest) {
-          next = { ...preview.state, rng: m.rng };
+      if (preview !== null && preview.digest === m.stateDigest) {
+        next = { ...preview.state, rng: m.rng };
+      } else {
+        const exact = replayFromEvents(before, m.events, m.stateDigest, deps.content);
+        if (exact !== null) {
+          next = exact;
+        } else if (preview === null && before.slots === 2) {
+          // a pvp doubles turn: no preview and no replay, patched as before
+          next = patchFromEvents(before, m.events, m.turn, m.rng);
         } else {
+          // the server's events still play in full; its state replaces the patched one once they have (onBattleResync)
           console.warn('battle desync', m.battleId, m.turn);
           const b = ui().battle;
           if (b !== null) ui().setBattle({ ...b, desyncs: b.desyncs + 1 });
           deps.send('battleResync', { battleId: m.battleId });
           next = patchFromEvents(before, m.events, m.turn, m.rng);
         }
-      } else {
-        next = patchFromEvents(before, m.events, m.turn, m.rng);
       }
       preview = null;
       state = next;
-      preState = before;
-      resetHpTable(before);
       for (const p of promptsFrom(m.events, next, seat)) if (!prompts.some((q) => samePrompt(q, p))) prompts.push(p);
       writeUi({ phase: 'playing', authoritative: next, expectedMs: 0, deadlineAt: deadlineFrom(m.deadlineMs) });
-      play(buildTimeline(m.events, ctxFor(before)), before);
+      const tl = buildTimeline(m.events, ctxFor(before));
+      // a turn that arrives while another plays (the NPC's replacement switch-in ~30 ms after the KO turn) waits for
+      // it: starting it now would finish the playing turn without its moves, hits and faint
+      if (player.isPlaying || waiting.length > 0) {
+        waiting.push({ tl, from: before });
+        return;
+      }
+      preState = before;
+      resetHpTable(before);
+      play(tl, before);
     },
 
     onBattleResync(m) {
@@ -973,6 +1072,13 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
           turnLabel: labelFor(s), log: [], desyncs: 0, result: null, expectedMs: 0, deadlineAt: deadlineFrom(m.deadlineMs),
           ...(r === undefined ? {} : { raid: r }), ...pickFor(s),
         });
+        return;
+      }
+      // the answer to a desync arrives while the turn's events play: they finish first (the moves after a switch-in
+      // were cut short here), then the server's state replaces the patched one (onTimelineEnd)
+      if (player.isPlaying || waiting.length > 0) {
+        pendingResync = m.state;
+        writeUi({ deadlineAt: deadlineFrom(m.deadlineMs) });
         return;
       }
       restoreFrom(m.state);
@@ -1036,7 +1142,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
         return;
       }
       pendingEnd = m;
-      if (!player.isPlaying) showResult();
+      if (!player.isPlaying && waiting.length === 0) showResult();
     },
 
     dismissResult() {
@@ -1059,6 +1165,8 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     state = st;
     preState = st;
     preview = null;
+    pendingResync = null;
+    waiting.length = 0;
     resetHpTable(st);
     if (st.slots === 2) player.seedPositions([st.sides[0].actives, st.sides[1].actives]);
     showField(st, true, false);
@@ -1190,6 +1298,8 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     state = null;
     preState = null;
     preview = null;
+    pendingResync = null;
+    waiting.length = 0;
     pendingEnd = null;
     resultShown = false;
     prompts = [];

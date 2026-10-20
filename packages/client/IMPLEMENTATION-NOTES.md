@@ -2038,3 +2038,31 @@ input returns. With the server's `WILD_ENCOUNTERS=grass` there are no spawn view
 changed for that. Live (own pair, headless Chrome over CDP, act1 fixture, tide_route at night): Swimmer Cael saw the
 player at 5.8 m, the "!" rose over him, he walked up, his line opened and Enter started the battle; earlier a walk in the
 patch at (-40, 7) started "The wild Mossling appeared!" with `spawns: 0`. Test: `test/trainer-approach.test.tsx` (3).
+
+## Switching: every turn plays in full (2026-10-20)
+
+"After a switch the move animations don't show" (AI training, and every battle). Live on the isolated pair with per-frame
+samples of the stage (pose, dissolve, flipbook page, live VFX emitters), two causes:
+
+- **The resync cut the playing turn.** An NPC's replacement switch-in is not previewed; `patchFromEvents` kept hp, pp,
+  status and actives but no volatile, so a switch-in's Intimidate never reached the client's state. The next turn's
+  preview then mismatched, the client asked for a resync, and its answer landed ~100 ms into that turn's timeline:
+  `restoreFrom` → `player.stop()`, the lunge cut off, no hit, no log line. Now `replayFromEvents` resolves an
+  unpreviewed (or mismatched) singles turn again from the actions its events show (`actionCandidates`: a switch, an
+  item, a catch, flee, forfeit, else each move with pp, with and without the transform; NPC / wild sides pass null like
+  the server) and keeps the result only on a digest match. A pvp turn is replayed the same way. When nothing matches
+  the state is patched and a `battleResync` requested (pvp doubles: patched without one, as before); a resync that
+  arrives while a timeline plays is held (`pendingResync`) and applied when the last queued timeline ends.
+- **The replacement finished the KO turn.** The server resolves an NPC's replacement ~30 ms after the KO turn;
+  `TimelinePlayer.play` finished the playing KO turn at once (state frames only), so the KO turn's moves, hits and
+  faint never showed and the next creature simply appeared. A `battleEvents` that arrives while a timeline plays is now
+  queued (`waiting`, with the state it starts from) and played when the current one ends. `TimelinePlayer.step`
+  returns when the `end` callback already started the next timeline.
+
+Also: a voluntary switch-out gets a camera `attacker` shot over the switch (the user: "switch should be seen as a move
+used"; a replacement after a faint gets none), and singles no longer push the turn end's idle pose onto a fainted
+battler (it stood back up at 74 % dissolve, a ghost until the replacement). Live after the fix, 17 AI-training turns
+with 6 switches and 4 KO + replacement pairs: 0 desyncs (before: one on the turn after every Intimidate switch-in),
+every KO turn shows the lunge, the hit and the faint before the next creature enters. Tests:
+`test/battle-controller.test.ts` (+2; the replacement test fails without the replay and without the queue),
+`test/timeline.test.ts` (+2).

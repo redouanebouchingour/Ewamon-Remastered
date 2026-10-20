@@ -352,6 +352,14 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
     for (const slot of field![side]) if (!down.has(key({ side, slot }))) push({ at: t, k: 'pose', who: { side, slot }, pose });
   };
 
+  /** Singles: both actives back to idle, except one that fainted (it stays down until it is switched out). */
+  const idleActives = (): void => {
+    for (const side of [0, 1] as const) {
+      const who: Ref = { side, slot: active[side] };
+      if (!down.has(key(who))) push({ at: t, k: 'pose', who, pose: 'idle' });
+    }
+  };
+
   push({ at: 0, k: 'inputLock', locked: true });
 
   for (const e of events) {
@@ -363,8 +371,7 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
           posesOf(1, 'idle');
           break;
         }
-        push({ at: t, k: 'pose', who: { side: 0, slot: active[0] }, pose: 'idle' });
-        push({ at: t, k: 'pose', who: { side: 1, slot: active[1] }, pose: 'idle' });
+        idleActives();
         break;
       case 'switchOut':
         flush();
@@ -372,15 +379,19 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
         push({ at: t, k: 'pose', who: e.who, pose: 'exit' });
         push({ at: t, k: 'vfx', id: 'switch_out', from: e.who, to: e.who, ms: SWITCH_OUT_MS, type: typeOf(e.who) });
         push({ at: t, k: 'sfx', id: 'switch', at3d: e.who });
-        if (e.reason === 'action') advance(SWITCH_OUT_MS, 'other');
+        if (e.reason === 'action') {
+          // a switch is the side's action of the turn: the camera frames it like a move's attacker
+          push({ at: t, k: 'camera', shot: 'attacker', ms: SWITCH_OUT_MS + SWITCH_IN_MS });
+          advance(SWITCH_OUT_MS, 'other');
+        }
         break;
       case 'switchIn':
         flush();
         active[e.who.side] = e.who.slot;
+        down.delete(key(e.who));
         log(e.who.side === seat ? `Go, ${name(e.who)}!` : `${cap(name(e.who))} appeared!`);
         if (field !== null && e.pos !== undefined) {
           field[e.who.side][e.pos] = e.who.slot;
-          down.delete(key(e.who));
           push({ at: t, k: 'pose', who: e.who, pose: 'enter', pos: e.pos });
         } else push({ at: t, k: 'pose', who: e.who, pose: 'enter' });
         push({ at: t, k: 'vfx', id: 'switch_in', from: e.who, to: e.who, ms: SWITCH_IN_MS, type: typeOf(e.who) });
@@ -697,8 +708,7 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
           posesOf(1, 'idle');
           break;
         }
-        push({ at: t, k: 'pose', who: { side: 0, slot: active[0] }, pose: 'idle' });
-        push({ at: t, k: 'pose', who: { side: 1, slot: active[1] }, pose: 'idle' });
+        idleActives();
         break;
       case 'battleEnd': {
         flush();

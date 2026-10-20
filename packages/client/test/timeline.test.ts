@@ -315,4 +315,24 @@ describe('move animation registry', () => {
     const tackle = MOVES.find((m) => m.id === 'Tackle')!;
     expect(registry.get('Tackle', tackle).attackerPose).toBe('lunge');
   });
+
+  it('a switch is the turn’s action: the camera frames it; a replacement switch-in gets no shot of its own', () => {
+    const sw = buildTimeline([{ t: 'turnStart', turn: 1 }, { t: 'switchOut', who: A, reason: 'action' }, { t: 'switchIn', who: { side: 0, slot: 1 } }, { t: 'turnEnd', turn: 1 }], ctxFor(null));
+    const shot = sw.frames.find((f) => f.k === 'camera');
+    expect(shot).toMatchObject({ k: 'camera', shot: 'attacker', at: 0 });
+    const rep = buildTimeline([{ t: 'switchOut', who: A, reason: 'faint' }, { t: 'switchIn', who: { side: 0, slot: 1 } }], ctxFor(null));
+    expect(rep.frames.some((f) => f.k === 'camera')).toBe(false);
+  });
+
+  it('singles: a fainted battler is not stood back up by the turn end’s idle pose', () => {
+    const tl = buildTimeline([
+      { t: 'turnStart', turn: 1 },
+      { t: 'damage', target: B, amount: 40, hpAfter: 0, maxHp: 40, effectiveness: 1, crit: false, stab: false, cause: 'move', source: A, move: 'Tackle' },
+      { t: 'faint', who: B },
+      { t: 'turnEnd', turn: 1 },
+    ], ctxFor(null));
+    const poses = tl.frames.filter((f): f is Extract<Keyframe, { k: 'pose' }> => f.k === 'pose' && f.who.side === 1);
+    expect(poses.at(-1)?.pose).toBe('faint');
+    expect(tl.frames.filter((f) => f.k === 'pose' && f.who.side === 0 && f.pose === 'idle').length).toBeGreaterThan(1);
+  });
 });

@@ -198,7 +198,8 @@ export class TimelinePlayer {
       const f = frames[this.index]!;
       this.index++;
       this.apply(f);
-      if (!this.playing) {
+      // stopped, or the `end` frame's callback already started the next timeline (the controller's queue)
+      if (!this.playing || this.frames !== frames) {
         this.t.commit();
         return;
       }
