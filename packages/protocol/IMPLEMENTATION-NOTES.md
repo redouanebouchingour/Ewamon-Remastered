@@ -194,3 +194,7 @@ installed library that future readers should not have to re-derive. The spec its
 ## Majin vs Tenjin seasons (2026-10-20)
 
 - `factions`, `factionJoin`, `factionSky` (92 routes); `FactionsRes` carries the Chronicle lines the server derived.
+
+## One roaming legendary per season (2026-10-20)
+
+- `legends` route (93 routes): the roamer, its route and next move while uncaught, the catches.

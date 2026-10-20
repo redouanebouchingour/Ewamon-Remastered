@@ -82,7 +82,7 @@ import { dayKey, hotspotDayKey, hotspotOpen, hotspotsFor, liveOpsModsFor } from 
 import { WEATHER_FORMATS, weatherAt, weatherBucket } from '../game/weather';
 import { REAL_WEATHER_CHECK_MS, weatherTopic } from '../game/realWeather';
 import type { WeatherCity } from '@ewa/persist';
-import { seasonAt, shadowLevel } from '@ewa/content';
+import { ROAMER_CHANCE, ROAMER_LEVEL, roamerOf, roamerZoneAt, seasonAt, shadowLevel } from '@ewa/content';
 
 export interface ZoneMeta {
   readonly zoneId: ZoneId;
@@ -286,6 +286,9 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   private fishCounter = 0;
   /** tall-grass / surf encounters: their own stream (seeded like the fishing one) and the zone plan's grass patches */
   private wildRng: Rng | null = null;
+  /** one roaming legendary per season: its own stream (the grass rolls stay as they were) and whether it was caught */
+  private roamRng: Rng | null = null;
+  private roamerCaught: { season: number; caught: boolean } | null = null;
   private wildCounter = 0;
   private grassPatches: readonly PlanEllipse[] = [];
   /** Phase D14: battle tower runs (only Solenne has the attendant; elsewhere every `tower` message is refused) */
@@ -348,6 +351,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.fishRng = createRng(`${deps.worldSeed}:${options.zoneId}:${shard}:${this.now()}:fish`);
     // grass encounters: their own seed too, so the root's forks (spawns, battles, raids) stay what they were
     this.wildRng = createRng(`${deps.worldSeed}:${options.zoneId}:${shard}:${this.now()}:wild`);
+    this.roamRng = createRng(`${deps.worldSeed}:${options.zoneId}:${shard}:${this.now()}:roam`);
     this.grassPatches = deps.env.WILD_ENCOUNTERS === 'grass' && this.zone.encounterTable !== null ? zonePlan(this.zone.id).grassPatches : [];
     const tuning = tuningFor(this.zone);
     const table = encounterTableFor(this.zone.id);
@@ -756,14 +760,46 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.presence.unsubscribe(weatherTopic(playerId), cb.weather);
   }
 
+  /**
+   * One roaming legendary per season: while the season's roamer is on this route and nobody has caught it, an encounter
+   * meets it with ROAMER_CHANCE (drawn from its own stream); null otherwise.
+   */
+  roamerEncounter(medium: 'land' | 'water', x: number, z: number): SpawnRecord | null {
+    const now = this.now();
+    const season = seasonAt(now).number;
+    if (season < 1 || roamerZoneAt(season, now) !== this.zone.id) return null;
+    if (this.roamerCaught === null || this.roamerCaught.season !== season || this.roamerCaught.caught) return null;
+    if (this.roamRng!.next() >= ROAMER_CHANCE) return null;
+    const speciesId = roamerOf(season);
+    return {
+      id: `${this.zone.id}:roamer:${season}:${this.wildCounter}`,
+      speciesId,
+      level: ROAMER_LEVEL,
+      variantKey: 'normal',
+      isAlpha: false,
+      ability: this.deps.content.species(speciesId).abilities[0]!,
+      medium,
+      x,
+      z,
+      bornAt: now,
+      engagedBy: null,
+      engagedAt: null,
+      despawnAt: now + 60_000,
+    };
+  }
+
   /** Honor shapes the world: the zone's shadow level this season (state.shadow, written only when it changes). */
   private async readShadow(now: number): Promise<void> {
     this.shadowReading = true;
     try {
       const deps = this.deps;
-      const t = await deps.repos.db.transaction((tx) => deps.repos.worldHonor.of(tx, seasonAt(now).number, this.zone.id));
+      const season = seasonAt(now).number;
+      const t = await deps.repos.db.transaction((tx) => deps.repos.worldHonor.of(tx, season, this.zone.id));
       const level = shadowLevel(t.light, t.shadow);
       if (this.state.shadow !== level) this.state.shadow = level;
+      // one roaming legendary per season: whether the season's roamer has been caught (read on the same minute)
+      const legend = await deps.repos.db.transaction((tx) => deps.repos.legends.of(tx, season));
+      this.roamerCaught = { season, caught: legend !== null };
     } catch (e) {
       this.deps.log.warn({ err: e }, 'shadow read failed');
     } finally {
@@ -1515,8 +1551,10 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     if (this.wildRng!.next() >= encounterChance(dist, rate)) return;
     this.wildCounter += 1;
     const id = `${this.zone.id}:wild:${this.wildCounter}`;
+    // one roaming legendary per season: on its route, now and then, the encounter is the roamer
+    const roamer = this.roamerEncounter(medium, ps.x, ps.z);
     // weather from real life: the player's own weather favours its types (no bias without a city)
-    const rec = rollWild(encounterTableFor(this.zone.id), medium, this.wildRng!, this.deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps, ud.realWeather, this.state.shadow);
+    const rec = roamer ?? rollWild(encounterTableFor(this.zone.id), medium, this.wildRng!, this.deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps, ud.realWeather, this.state.shadow);
     if (rec === null) return;
     ud.encounterGraceM = ENCOUNTER_GRACE_M;
     ud.battleId = 'pending';

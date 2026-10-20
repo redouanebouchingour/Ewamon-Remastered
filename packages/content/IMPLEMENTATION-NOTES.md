@@ -665,3 +665,9 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
 
 - `data/factions.ts`: the two sides with their words (drawn from the bands' own descriptions: Sable's lens shows a
   thing unmade, Wynn's shows a thing held), the points per deed, `factionWinner` (none on a tie) and `chronicleLine`.
+
+## One roaming legendary per season (2026-10-20)
+
+- `data/roamer.ts`: the roamers (Voltaura, Sunjaw, Glacinid in turn; all three are also statics, so a missed season
+  never costs a species) and the schedule: `roamerZoneAt` hashes (season, 30-minute period) over eight routes and
+  steps on when it would repeat the last period's route. Every server derives the same route with no shared state.

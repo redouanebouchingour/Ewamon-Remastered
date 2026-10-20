@@ -99,6 +99,13 @@
       "when": 1792501808713,
       "tag": "0013_season_factions",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792503519912,
+      "tag": "0014_season_legends",
+      "breakpoints": true
     }
   ]
 }

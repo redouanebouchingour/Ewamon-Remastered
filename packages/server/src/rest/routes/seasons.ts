@@ -4,10 +4,10 @@
  * titles; the live arena matches and one match's feed; the zones under a shadow this season (honor shapes the world,
  * content worldHonor.ts). A banned trainer is left out of every list.
  */
-import { SEASON_FINALISTS, seasonAt, seasonByNumber, seasonTitle, shadowLevel } from '@ewa/content';
+import { SEASON_FINALISTS, roamerMovesAt, roamerOf, roamerZoneAt, seasonAt, seasonByNumber, seasonTitle, shadowLevel } from '@ewa/content';
 import type { Season } from '@ewa/content';
 import type { SeasonStanding } from '@ewa/persist';
-import { LiveFeedRes, LiveListRes, LiveParams, PageQuery, SeasonParams, SeasonStandingsRes, SeasonTitlesRes, SeasonsRes, UsernameParams, WorldShadowRes } from '@ewa/protocol';
+import { LiveFeedRes, LiveListRes, LiveParams, PageQuery, SeasonParams, SeasonStandingsRes, SeasonTitlesRes, SeasonsRes, LegendsRes, UsernameParams, WorldShadowRes } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
 import { HttpError, out, rateLimit, requireAuth } from '../http';
 import type { RestDeps } from '../http';
@@ -68,6 +68,23 @@ export function registerSeasonRoutes(app: FastifyInstance, deps: RestDeps): void
     const rows = await repos.db.transaction((tx) => repos.worldHonor.season(tx, season));
     const zones = rows.map((r) => ({ ...r, level: shadowLevel(r.light, r.shadow) })).filter((r) => r.level > 0);
     return out(deps, WorldShadowRes, { season, zones });
+  });
+
+  // one roaming legendary per season: where the season's roamer is (until caught) and every season's first catcher
+  app.get('/legends', bearer, async () => {
+    const now = clock();
+    const season = seasonAt(now).number;
+    const v = await repos.db.transaction(async (tx) => ({ caught: season >= 1 ? await repos.legends.of(tx, season) : null, past: await repos.legends.all(tx) }));
+    const view = (l: { season: number; species: string; playerName: string; caughtAt: Date }) => ({ season: l.season, species: l.species, username: l.playerName, at: l.caughtAt.toISOString() });
+    const roaming = season >= 1 && v.caught === null;
+    return out(deps, LegendsRes, {
+      season,
+      species: roamerOf(Math.max(1, season)),
+      zoneId: roaming ? roamerZoneAt(season, now) : null,
+      movesAt: roaming ? iso(roamerMovesAt(now)) : null,
+      caught: v.caught === null ? null : view(v.caught),
+      past: v.past.map(view),
+    });
   });
 
   app.get('/arena/live', bearer, async () => {

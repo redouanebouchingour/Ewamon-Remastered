@@ -208,6 +208,7 @@ Every file listed must exist with at least the assertions listed. A milestone in
 | `arena.test.ts` <!-- added 2026-10-12: arena PvP --> | `weeklyCup` rotates on Monday 00:00 UTC through every cup, the Origin Grounds route is a real zone and moves on; `cupRefusal` for each rule and the party of 6; every training pool is non-legendary and ≥ 6 species. |
 | `worldHonor.test.ts` <!-- added 2026-10-20: honor shapes the world --> | The level from a tally (clear below the minimum, a level per threshold); a turn's deeds (a player's Dark move, a wild faint, a catch, a fair win; an AI side counts nothing); the Dark weight; the notices; the hollowed town's lines belong to its people. |
 | `factions.test.ts` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | The winner (none on a tie); the Chronicle's lines; two sides with their words; the deeds' points in order. |
+| `roamer.test.ts` <!-- added 2026-10-20: one roaming legendary per season --> | The roamer of each season in turn; the schedule is fixed, always a route, never the same two periods, reaching every route; the roamers are statics the world already holds. |
 
 ### 50.4.3 `@ewa/protocol` — `packages/protocol/test/`
 
@@ -244,6 +245,7 @@ All files open a fresh PGlite (`drizzle-orm/pglite`) per file and run `migrate()
 | `runs.test.ts` <!-- added 2026-10-20: verified speedruns --> | Migration 0009: the play clock runs between start and stop (a second start keeps the first); a split records it once; stopAll stops stale clocks without charging the gap; the board ranks finishes of runs holding the start split, fastest first. |
 | `seasons.test.ts` <!-- added 2026-10-20: ranked seasons --> | Migration 0011: the standings so far and at the close rank everyone with a rated fight inside the season by rating, with its wins and losses (unrated fights and fights outside it left out); a second close is refused; every rating moves halfway back to 1000; a catch-up close without the reset keeps them; titles are the top-eight places. |
 | `factions.test.ts` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | Migration 0013: a side holds for the season; points only with a side; the totals; the best list per side, banned left out; a new season starts empty. |
+| `legends.test.ts` <!-- added 2026-10-20: one roaming legendary per season --> | Migration 0014: the first catch only, one per season, newest first; the catcher's name outlives the account. |
 
 ### 50.4.5 `@ewa/server` — `packages/server/test/`
 
@@ -271,6 +273,7 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `seasons.test.ts` <!-- added 2026-10-20: ranked seasons, spectator mode --> | The calendar from its Monday anchor and Finals week; the pulled-back rating and the titles; GET /seasons before and after the rollover (once), the closed standings, titles and the 404s; a ranked match between two of the top eight in Finals week is listed as the Finals, its feed is a replay a turn behind (after turn n it holds n - 1) that reproduces its digest and carries no player id, the end publishes every turn with the outcome and the match leaves the list; training is never listed. |
 | `world-honor.test.ts` <!-- added 2026-10-20: honor shapes the world --> | Dark slots weigh more in a shadowed zone and level 0 rolls as before; a wild battle won by a knock-out adds shadow to the zone in the turn; the zone room reads its tally into `state.shadow` (clients see it) and lets it go when the light comes back; GET /world/shadow lists the shadowed zones. |
 | `factions.test.ts` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | A side once a season (409 for the other, 200 for the same); GET /factions totals, best and own; a mission claimed earns 1 (none without a side); a ranked win earns the winner 3 and the loser none; the closed season's winner holds the sky and opens the Chronicle. `raid.test.ts` also checks a raid clear's 2. |
+| `roamer.test.ts` <!-- added 2026-10-20: one roaming legendary per season --> | On its route an encounter meets the season's roamer now and then, a town never, and once caught nowhere; GET /legends follows it (route, when it moves) and then names the catcher; a catch of a roamer encounter records the first catcher once and tells them, a later catch does not. |
 
 ### 50.4.6 `@ewa/render` — `packages/render/test/` (Playwright, Chromium with WebGPU)
 
@@ -322,6 +325,7 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `seasons-ui.test.tsx` <!-- added 2026-10-20: ranked seasons, spectator mode --> | The season panel (number, Finals week, top eight so far, past Champion and Finalists); titles as places and nothing without one; the live list with the Finals marked, Watch opening `/play/watch/:matchId`, and an empty list. |
 | `hollowed.test.ts` <!-- added 2026-10-20: honor shapes the world --> | In Vesperveil at the highest shadow its people say the hollowed lines, their own otherwise, and no other town takes them; the map tag's hover line. `world-map.test.tsx` also checks the shadow tags. |
 | `factions.test.tsx` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | The Factions screen's score, sides, sky and Chronicle; taking a side once; the empty Chronicle; Solenne's sky asked only there and once a season. |
+| `legends.test.ts` <!-- added 2026-10-20: one roaming legendary per season --> | The Dex lines for a roamer species (where it roams, every season's first catcher), none for another species. `world-map.test.tsx` checks the map tag. |
 
 ### 50.4.8 Pipelines — `tools/*/test/`
 

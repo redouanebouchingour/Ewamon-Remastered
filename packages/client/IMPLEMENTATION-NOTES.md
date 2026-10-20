@@ -2151,3 +2151,8 @@ every KO turn shows the lunge, the hit and the faint before the next creature en
 - `/play/factions` (More menu, and a link on the Rating board's season panel). The tug-of-war widths are flex grows
   passed through `cssVars`. In Solenne, World3D (small patch) asks `scene/factionSky.ts` once a season and the
   director renders the mood outdoors.
+
+## One roaming legendary per season (2026-10-20)
+
+- The map tags the roamer's route; the Dex entry of a roamer species shows where it roams and every season's first
+  catcher (`RoamerNote`, one `GET /legends` per opened entry).

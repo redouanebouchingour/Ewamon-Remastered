@@ -1158,3 +1158,11 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   chose.
 - The Chronicle is derived on read from each closed season's totals (at most six seasons, two grouped reads each);
   nothing is written at the season's close, so the season rollover job is untouched.
+
+## One roaming legendary per season (2026-10-20)
+
+- `ZoneRoom.roamerEncounter` runs before the wild roll, on its own `roam` stream, and only on the roamer's route while
+  the room's minute read (shared with the shadow read) found no catch this season. Its spawn id carries `:roamer:`;
+  `persistTurn` claims the season's first catch for a caught roamer encounter and toasts the catcher after commit.
+  Between a catch elsewhere and a room's next read the roamer can still be met there for up to a minute; a catch
+  then is a catch, only not the first.

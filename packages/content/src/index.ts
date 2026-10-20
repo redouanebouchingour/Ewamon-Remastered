@@ -444,3 +444,4 @@ export {
 export type { Deeds, ShadowLevel } from './data/worldHonor';
 export { FACTIONS, FACTION_LABELS, FACTION_POINTS, FACTION_SKY_ZONE, chronicleLine, factionWinner } from './data/factions';
 export type { Faction } from './data/factions';
+export { ROAMERS, ROAMER_CHANCE, ROAMER_LEVEL, ROAM_PERIOD_MS, ROAM_ZONES, roamerMovesAt, roamerOf, roamerZoneAt } from './data/roamer';

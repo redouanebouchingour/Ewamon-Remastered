@@ -676,6 +676,21 @@ export type FactionsView = z.infer<typeof FactionsRes>;
 export const FactionJoinReq = z.object({ side: FactionSchema });
 export const FactionSkyRes = z.object({ sky: FactionSchema.nullable() });
 
+/**
+ * One roaming legendary per season (content roamer.ts): the season's roamer, the route it is on and when it moves on
+ * (null once caught), its first catcher this season, and every season's first catcher, newest first.
+ */
+export const LegendCatchSchema = z.object({ season: z.number().int().min(1), species: z.string().max(32), username: z.string().max(20), at: IsoDate });
+export const LegendsRes = z.object({
+  season: z.number().int(),
+  species: z.string().max(32),
+  zoneId: z.string().max(32).nullable(),
+  movesAt: IsoDate.nullable(),
+  caught: LegendCatchSchema.nullable(),
+  past: z.array(LegendCatchSchema).max(50),
+});
+export type LegendsView = z.infer<typeof LegendsRes>;
+
 // ---- admin / health -----------------------------------------------------------------------------------------------------
 
 /** TODO(spec): `/admin/stats` has no listed body; these are the legacy counters carried over. */
@@ -823,6 +838,8 @@ export const ROUTES = {
   factions: route({ method: 'GET', path: '/factions', auth: 'bearer', response: FactionsRes }),
   factionJoin: route({ method: 'POST', path: '/factions/join', auth: 'bearer', request: FactionJoinReq, response: FactionsRes }),
   factionSky: route({ method: 'GET', path: '/factions/sky', auth: 'bearer', response: FactionSkyRes }),
+  // one roaming legendary per season: where it roams and who caught it first
+  legends: route({ method: 'GET', path: '/legends', auth: 'bearer', response: LegendsRes }),
   dailyStart: route({ method: 'POST', path: '/daily/start', auth: 'bearer', request: Nothing, response: ArenaSeatRes }),
   adminStats: route({ method: 'GET', path: '/admin/stats', auth: 'admin', response: AdminStatsRes }),
   adminPlayers: route({ method: 'GET', path: '/admin/players', auth: 'admin', query: AdminPlayersQuery, response: AdminPlayersRes }),

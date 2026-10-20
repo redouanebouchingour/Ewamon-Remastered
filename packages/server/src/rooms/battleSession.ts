@@ -65,6 +65,11 @@ export interface Seat {
 /** Honor shapes the world: the battles whose deeds count in their zone. */
 const HONOR_FORMATS: ReadonlySet<string> = new Set(['wild', 'trainer', 'league', 'pvp']);
 
+/** One roaming legendary per season: a roamer encounter's spawn id (`<zone>:roamer:<season>:<n>`, ZoneRoom). */
+export function isRoamerSpawn(spawnId: string | null): boolean {
+  return spawnId !== null && spawnId.includes(':roamer:');
+}
+
 export interface BattleSession {
   readonly id: string;
   readonly format: BattleFormat;
@@ -1067,6 +1072,7 @@ export class BattleCoordinator {
     const now = new Date(nowMs);
     const seats = session.seats.filter((s) => s.playerId !== null).sort((a, b) => (a.playerId! < b.playerId! ? -1 : 1));
     const out = new Map<string, PlayerDelta>();
+    const roamerFirsts: { pid: string; species: string }[] = [];
     await repos.db.transaction(async (tx) => {
       const rows = await repos.players.lockMany(
         tx,
@@ -1280,6 +1286,14 @@ export class BattleCoordinator {
           if (badge !== null) await repos.creatures.addEvent(tx, partyIds, { kind: 'badge', badge }, now);
           if (flagsToSet.includes(CHAMPION_FLAG)) await repos.creatures.addEvent(tx, partyIds, { kind: 'champion' }, now);
           if (won && session.staticSpecies !== null) await repos.creatures.addEvent(tx, partyIds, { kind: 'legendary', species: session.staticSpecies, caught: outcome.winner === 'caught' }, now);
+          // one roaming legendary per season: the first catch of the season's roamer is recorded for good
+          if (outcome.winner === 'caught' && isRoamerSpawn(session.spawnId)) {
+            const species = before.sides[1].party[0]?.creature.speciesId ?? null;
+            if (species !== null && (await repos.legends.claim(tx, seasonAt(nowMs).number, species, pid, rows.get(pid)!.username, now))) {
+              await repos.creatures.addEvent(tx, partyIds, { kind: 'legendary', species, caught: true }, now);
+              roamerFirsts.push({ pid, species });
+            }
+          }
           if (flagsToSet.length > 0) {
             await repos.progress.setFlags(tx, pid, flagsToSet, now);
             d.flags.push(...flagsToSet);
@@ -1335,6 +1349,11 @@ export class BattleCoordinator {
         await repos.worldHonor.add(tx, seasonAt(nowMs).number, session.zoneId, deeds.light, deeds.shadow);
       }
     });
+    // one roaming legendary per season: the first catcher hears it (after the commit)
+    for (const r of roamerFirsts) {
+      const name = this.deps.content.species(r.species).name;
+      this.deps.host.send(r.pid, { type: 'toast', level: 'success', text: `You are the first to catch ${name} this season. The Dex will remember it.` });
+    }
     return out;
   }
 

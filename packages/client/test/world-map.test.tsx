@@ -71,6 +71,8 @@ function respond(url: string): Response {
   if (path === '/auth/refresh') return json({ access: makeJwt(inOneHour()), refresh: 'r2' });
   // honor shapes the world: this season's shadowed zones
   if (path === '/world/shadow') return json({ season: 1, zones: [{ zoneId: 'mire_route', level: 2, light: 10, shadow: 40 }, { zoneId: 'vesperveil', level: 4, light: 0, shadow: 90 }] });
+  // one roaming legendary per season: on Tide Route now
+  if (path === '/legends') return json({ season: 1, species: 'voltaura', zoneId: 'tide_route', movesAt: new Date(Date.now() + 600_000).toISOString(), caught: null, past: [] });
   return json({ message: 'Route not found', error: 'Not Found', statusCode: 404 }, 404);
 }
 
@@ -136,6 +138,9 @@ describe('/play/map', () => {
     await waitFor(() => expect(within(zones).getByRole('listitem', { name: 'Mire Route, route, visited' }).textContent).toContain('Shadow 2'));
     expect(within(zones).getByRole('listitem', { name: 'Vesperveil, town, unexplored' }).textContent).toContain('Hollowed');
     expect(within(zones).getByRole('listitem', { name: 'Cinderhold, town, visited' }).textContent).not.toContain('Shadow');
+    // the roamer's route says so; no other does
+    await waitFor(() => expect(within(zones).getByRole('listitem', { name: 'Tide Route, route, unexplored' }).textContent).toContain('Voltaura seen here'));
+    expect(within(zones).getByRole('listitem', { name: 'Mire Route, route, visited' }).textContent).not.toContain('seen here');
 
     const buttons = within(zones).getAllByRole('button', { name: /^Travel to / });
     expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual(['Travel to Cinderhold']);

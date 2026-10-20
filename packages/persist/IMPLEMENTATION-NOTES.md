@@ -245,3 +245,8 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
 - `season_factions`: one row per (season, player). `join` inserts once and reads back the side held, so a second
   request for the other side cannot switch it. Side totals are a `group by` over the rows (no separate counter to
   keep in step).
+
+## Migration 0014_season_legends (2026-10-20)
+
+- `season_legends`, one row per season; `claim` is an insert that does nothing on conflict, so two catches in the same
+  moment cannot both be first. `player_id` is set null when the account goes; the name stays.

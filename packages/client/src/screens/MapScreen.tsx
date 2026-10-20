@@ -14,6 +14,7 @@ import { BADGE_GLYPH } from '../data/badgeIcon';
 import { KIND_LABEL, MAP_LINKS, MAP_NODES, MAP_SIZE, badgeName, badgeShortName, canTravelTo, visitedSet } from '../data/worldMap';
 import type { MapNode } from '../data/worldMap';
 import { apiFetch } from '../net/api';
+import { speciesName } from '../data/content';
 import { getWorldSession } from '../net/WorldSession';
 import { useSessionStore } from '../state/session';
 import { useUiStore } from '../state/ui';
@@ -49,6 +50,7 @@ function ZoneNode({
   canTravel,
   onTravel,
   shadow,
+  roamer,
 }: {
   readonly n: MapNode;
   readonly visited: boolean;
@@ -58,6 +60,8 @@ function ZoneNode({
   readonly onTravel: (id: ZoneId) => void;
   /** honor shapes the world: the zone's shadow level this season (0 = clear) */
   readonly shadow: number;
+  /** one roaming legendary per season: the roamer's name while it is on this route (null elsewhere) */
+  readonly roamer: string | null;
 }) {
   const ref = useRef<HTMLLIElement>(null);
   useEffect(() => {
@@ -98,6 +102,11 @@ function ZoneNode({
             {shadow >= SHADOW_MAX ? 'Hollowed' : `Shadow ${shadow}`}
           </span>
         )}
+        {roamer !== null && (
+          <span className={s.roamer} title={`${roamer} roams here until it moves on. The first trainer to catch it this season is remembered.`}>
+            {roamer} seen here
+          </span>
+        )}
         <div className={s.nodeFoot}>
           {current && <Pill tone="accent">You are here</Pill>}
           {canTravel && (
@@ -131,10 +140,15 @@ export function MapScreen() {
   const visited = visitedSet(flags, current);
   // honor shapes the world: this season's shadowed zones (a failed read shows none)
   const [shadows, setShadows] = useState<ReadonlyMap<string, number>>(new Map());
+  // one roaming legendary per season: the route the roamer is on (none once caught)
+  const [roamer, setRoamer] = useState<{ readonly zoneId: string; readonly name: string } | null>(null);
   useEffect(() => {
     const ctl = new AbortController();
     apiFetch('worldShadow', { signal: ctl.signal })
       .then((r) => setShadows(new Map(r.zones.map((z) => [z.zoneId, z.level]))))
+      .catch(() => undefined);
+    apiFetch('legends', { signal: ctl.signal })
+      .then((r) => setRoamer(r.zoneId === null ? null : { zoneId: r.zoneId, name: speciesName(r.species) }))
       .catch(() => undefined);
     return () => ctl.abort();
   }, []);
@@ -195,6 +209,7 @@ export function MapScreen() {
                 canTravel={!inBattle && canTravelTo(n, visited, current)}
                 onTravel={travel}
                 shadow={shadows.get(n.id) ?? 0}
+                roamer={roamer !== null && roamer.zoneId === n.id ? roamer.name : null}
               />
             ))}
           </ol>

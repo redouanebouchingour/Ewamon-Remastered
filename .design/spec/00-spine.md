@@ -1695,6 +1695,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /factions` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | - | `FactionsRes { season, endsAt, mine: { side, points } \| null, points: { majin, tenjin }, members: { majin, tenjin }, top: { majin, tenjin }: { username, points }[] (≤ 5, banned left out), sky: side \| null, chronicle: { season, winner \| null, line }[] (≤ 6, newest first) }`: the season's two sides, the caller's, the side holding Solenne's sky (the last closed season's winner) | bearer |
 | `POST /factions/join` <!-- added 2026-10-20 --> | `{ side: 'majin' \| 'tenjin' }` | `FactionsRes`; the side holds for the season: the other side is 409 `alreadyJoined { side }`, the same side again is 200 | bearer |
 | `GET /factions/sky` <!-- added 2026-10-20 --> | - | `{ sky: side \| null }`: the last closed season's winner (null in season 1 or on a tie) | bearer |
+| `GET /legends` <!-- added 2026-10-20: one roaming legendary per season --> | - | `LegendsRes { season, species, zoneId \| null, movesAt \| null, caught: { season, species, username, at } \| null, past: { season, species, username, at }[] (≤ 50, newest first) }`: the season's roamer (content `roamerOf`), the route it is on and when it moves on while nobody has caught it, its first catcher this season, every season's first catcher | bearer |
 | `GET /weather/cities?q=` <!-- added 2026-10-20: weather from real life --> | - | `WeatherCitiesRes { cities: { name, region?, country, lat, lon }[] }` (≤ 5, Open-Meteo geocoding asked by the server, `region` its province or state, a place reading exactly like one already listed dropped, coordinates rounded to 0.1°); `q` 2..60 characters; 503 `weatherUnavailable` when the service does not answer; limit `weather` | bearer |
 | `POST /weather/city` <!-- added 2026-10-20 --> | `{ city: { name, region?, country, lat, lon } \| null }` | `RealWeatherRes { city \| null, kind \| null }`: the city stored on the player (coordinates rounded to 0.1°) and its weather now; null turns it off. The room holding the player hears it on `ewa:weather:<playerId>` | bearer |
 | `GET /weather` <!-- added 2026-10-20 --> | - | `RealWeatherRes`: the player's city and its cached weather | bearer |
@@ -2158,6 +2159,12 @@ export interface RunRepo {
 /** Ranked seasons (migration 0011_seasons): `seasons (season int PK, closed_at)` (the row is the close's lock) and `season_results (season → seasons cascade, player_id → players cascade, rank, rating, wins, losses)`, PK (season, player_id). A season's participants are the players with a `battle_history` row carrying a `rating_delta` inside it; their record is that row's wins and losses; they rank by rating, then wins, then name. */
 /** Honor shapes the world (migration 0012_world_honor): `world_honor (season int, zone_id varchar(32), light int, shadow int)`, PK (season, zone_id). Added to in the battle turn's own transaction. */
 /** Majin vs Tenjin seasons (migration 0013_season_factions): `season_factions (season int, player_id → players cascade, side varchar(8), points int, joined_at)`, PK (season, player_id). */
+/** One roaming legendary per season (migration 0014_season_legends): `season_legends (season int PK, species varchar(32), player_id → players set null, player_name varchar(20), caught_at)`. */
+export interface LegendRepo {
+  claim(tx: Tx, season: number, species: string, playerId: string, playerName: string, now: Date): Promise<boolean>;   // the first catch only
+  of(tx: Tx, season: number): Promise<{ season: number; species: string; playerName: string; caughtAt: Date } | null>;
+  all(tx: Tx, limit?: number): Promise<{ season: number; species: string; playerName: string; caughtAt: Date }[]>;   // newest first
+}
 export interface FactionRepo {
   join(tx: Tx, season: number, playerId: string, side: 'majin' | 'tenjin', now: Date): Promise<'majin' | 'tenjin'>;   // insert once; returns the side held
   of(tx: Tx, season: number, playerId: string): Promise<{ side: 'majin' | 'tenjin'; points: number } | null>;

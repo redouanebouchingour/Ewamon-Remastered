@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-20 one roaming legendary per season: the season's roamer moves between routes until someone catches it, and the Dex remembers who. One entry. -->
+
+## 2026-10-20 · `00-spine.md` §4.7 (`GET /legends`), §5.2 (`LegendRepo`, migration 0014); `30-server-netcode.md` §30.4.3a (one roaming legendary per season); `20-client.md` §20.9.9m (new); `50-verification-budget.md` §50.4.2 / .4 / .5 / .7 rows · one roaming legendary per season
+Why: the user asked for one roaming legendary per season, with the catcher recorded in the Dex. It is a hunt everybody shares: the legendary moves between routes every half hour on a schedule the servers agree on without talking, the map shows where it was seen, and the first trainer to catch it is named in the Dex for good. The roamers are legendaries the world already holds as statics, so nobody misses a species by missing a season.
+Evidence: `packages/content/test/roamer.test.ts` (3); `packages/persist/test/legends.test.ts` (1) and `migrations.test.ts`; `packages/protocol/test/rest.test.ts` (93 routes); `packages/server/test/roamer.test.ts` (2); `packages/client/test/legends.test.ts` (1), `world-map.test.tsx`; live on the second isolated pair.
+Affects: `packages/content/src/data/roamer.ts`, `src/index.ts`; `packages/persist/src/{schema/legends,repos/legends,schema/index,repos/index}.ts`, `drizzle/0014_season_legends.sql`; `packages/protocol/src/rest.ts`; `packages/server/src/{rooms/battleSession,rooms/ZoneRoom,rest/routes/seasons}.ts`; `packages/client/src/{data/legends,screens/RoamerNote,screens/DexScreen,screens/MapScreen}.ts(x)`.
+
 <!-- 2026-10-20 Majin vs Tenjin seasons: take a side, earn it points, the winners hold Solenne's sky. One entry. -->
 
 ## 2026-10-20 · `00-spine.md` §4.7 (`GET /factions`, `POST /factions/join`, `GET /factions/sky`), §5.2 (`FactionRepo`, migration 0013); `10-render.md` §10.1 (`setSkyMood`), §10.3.7 (Sky mood); `30-server-netcode.md` §30.4.10 (Majin vs Tenjin seasons); `20-client.md` §20.9.9l (new); `50-verification-budget.md` §50.4.2 / .4 / .5 / .6 / .7 rows · Majin vs Tenjin seasons

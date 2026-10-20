@@ -18,3 +18,4 @@ export * from './runs';
 export * from './seasons';
 export * from './worldHonor';
 export * from './factions';
+export * from './legends';

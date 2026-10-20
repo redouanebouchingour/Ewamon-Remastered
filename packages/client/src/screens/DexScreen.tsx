@@ -25,6 +25,7 @@ import { cx } from '../ui/cx';
 import s from './DexScreen.module.css';
 import l from './layout.module.css';
 import { useClosePanel } from './shared';
+import { RoamerNote } from './RoamerNote';
 
 type DexState = 'caught' | 'seen' | 'unknown';
 /** the State filter: a dex state, everything, or the species with a shiny catch (Phase D4) */
@@ -82,6 +83,7 @@ function DexDetail({ sp, state, variants, alpha, shiny, recordedIn }: {
         {state === 'caught' ? 'Recorded — this one cannot be quietly lost.' : 'Seen, not yet recorded.'}
       </p>
       <p className={l.bodyLg}>{sp.flavor}</p>
+      <RoamerNote speciesId={sp.id} speciesName={sp.name} />
       {sp.battleForm?.kind !== undefined && (
         <section className={l.section} data-testid="dex-form">
           <h4 className={l.sectionTitle}>Battle form</h4>

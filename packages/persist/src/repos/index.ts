@@ -15,6 +15,8 @@ import { worldHonorRepo } from './worldHonor';
 import type { WorldHonorRepo } from './worldHonor';
 import { factionRepo } from './factions';
 import type { FactionRepo } from './factions';
+import { legendRepo } from './legends';
+import type { LegendRepo } from './legends';
 import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
 import { historyRepo } from './history';
@@ -55,6 +57,8 @@ export interface Repos {
   readonly worldHonor: WorldHonorRepo;
   /** Majin vs Tenjin seasons: a trainer's side, its points, the totals (migration 0013) */
   readonly factions: FactionRepo;
+  /** one roaming legendary per season: the first catcher of each season's roamer (migration 0014) */
+  readonly legends: LegendRepo;
 }
 
 /**
@@ -81,6 +85,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     seasons: seasonRepo,
     worldHonor: worldHonorRepo,
     factions: factionRepo,
+    legends: legendRepo,
   };
 }
 
@@ -105,3 +110,4 @@ export type { FriendLists } from './social';
 export type { SeasonStanding, SeasonWindow } from './seasons';
 export type { ZoneHonor } from './worldHonor';
 export type { FactionSide, FactionTotals } from './factions';
+export type { SeasonLegend } from './legends';

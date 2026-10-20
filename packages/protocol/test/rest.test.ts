@@ -52,6 +52,7 @@ import {
   WorldShadowRes,
   FactionJoinReq,
   FactionsRes,
+  LegendsRes,
   WeatherCitiesQuery,
   WeatherCityReq,
   SpeedrunRes,
@@ -390,7 +391,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(92); // the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(ROUTE_KEYS).toHaveLength(93); // GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
     expect(paths).toContain('GET /daily');
     expect(paths).toContain('POST /challenge');
     expect(paths).toContain('POST /daily/start');
@@ -569,5 +570,14 @@ describe('Majin vs Tenjin seasons', () => {
     ok(FactionsRes, { ...view, mine: null, sky: null, chronicle: [] });
     bad(FactionsRes, { ...view, chronicle: [{ season: 0, winner: null, line: 'before the first season' }] });
     bad(FactionsRes, { ...view, points: { majin: -1, tenjin: 0 } });
+  });
+});
+
+describe('one roaming legendary per season', () => {
+  it('roaming (a route and when it moves) or caught (by whom)', () => {
+    ok(LegendsRes, { season: 1, species: 'voltaura', zoneId: 'mire_route', movesAt: ISO, caught: null, past: [] });
+    const caught = { season: 1, species: 'voltaura', username: 'ash', at: ISO };
+    ok(LegendsRes, { season: 1, species: 'voltaura', zoneId: null, movesAt: null, caught, past: [caught] });
+    bad(LegendsRes, { season: 1, species: 'voltaura', zoneId: null, movesAt: null, caught: { ...caught, season: 0 }, past: [] });
   });
 });
