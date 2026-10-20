@@ -4,7 +4,7 @@ import type { Tx } from '../db';
 import { fail } from '../errors';
 import { badges, creatureInstances, dexEntries, guildMembers, guilds, players } from '../schema/index';
 import type { PlayerRow } from '../schema/index';
-import type { BadgeId, CreatureInstance, PublicProfile, ZoneId } from '../types';
+import type { BadgeId, CreatureInstance, PublicProfile, ZoneId, WeatherCity } from '../types';
 import { clampInt, escapeLike, sortIds } from '../util';
 import { rowToCreature } from './creatureMap';
 
@@ -106,6 +106,12 @@ export const playerRepo = {
     if (row) return row.money;
     await mustExist(tx, id);
     return fail('InsufficientFunds');
+  },
+
+  /** Weather from real life: the city the player picked (rounded to 0.1° by the caller), or null to turn it off. */
+  async setWeatherCity(tx: Tx, id: string, city: WeatherCity | null): Promise<void> {
+    const res = await tx.update(players).set({ weatherCity: city }).where(eq(players.id, id)).returning({ id: players.id });
+    if (res.length === 0) fail('NotFound', `player ${id}`);
   },
 
   async setPosition(tx: Tx, id: string, zoneId: ZoneId, x: number, z: number, angle: number): Promise<void> {

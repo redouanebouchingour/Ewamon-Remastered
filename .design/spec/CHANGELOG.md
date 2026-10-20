@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-20 weather from real life: a city in Settings, its weather in the world and in battle. One entry. -->
+
+## 2026-10-20 · `00-spine.md` §4.4 (`realWeather` message), §4.7 (`GET /weather/cities`, `POST /weather/city`, `GET /weather`), §5.1 (`players.weather_city`, migration 0010); `30-server-netcode.md` §30.4.3a (weather from real life, `BattleDeps.weather` gets the players), §30.3 roll (the weather's types), rate limit `weather`; `20-client.md` §20.9.9i (new), §20.9.11 (World tab); `50-verification-budget.md` §50.4.5 / .7 rows · weather from real life
+Why: the user asked for the game's weather to follow real life, with a city picked in Settings (their choice over asking the browser for a location). Only the place, rounded to about 10 km, goes to the weather service, and the server asks, so the player's address never leaves the game. The weather is per player because players from different cities share a zone; a battle with more than one person keeps the zone's weather so nobody gets an edge from their own sky. Types that like the weather turn up more often, which is the part players feel.
+Evidence: `packages/server/test/real-weather.test.ts` (9); `packages/protocol/test/rest.test.ts` (83 routes) and `server-messages.test.ts` (24 types); `packages/client/test/real-weather.test.tsx` (2); persist migrations; live on the second isolated pair (the World tab, a city picked, its weather in the world).
+Affects: `packages/persist/src/{schema/players,repos/players,types}.ts`, `drizzle/0010_weather_city.sql`; `packages/protocol/src/{rest,messages/server}.ts`; `packages/server/src/{game/realWeather,rest/routes/weather,rest/app,rest/rateLimit,rooms/ZoneRoom,rooms/battleSession,rooms/spawnDirector,deps,server}.ts`; `packages/client/src/{screens/WeatherSection,screens/SettingsScreen,state/realWeather,net/messageRouter,net/errors,scene/World3D}.ts(x)`.
+
 <!-- 2026-10-20 handover landings: no crossing strands a player on a ledge of the neighbour. One entry. -->
 
 ## 2026-10-20 · `00-spine.md` §3.11 Zone sculpts (new: Handover landings) · every reachable crossing lands where the destination's spawn can be reached

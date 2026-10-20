@@ -175,3 +175,8 @@ installed library that future readers should not have to re-derive. The spec its
 
 - `GET /speedrun`, `GET /speedrun/:username` (`SpeedrunRes`); `LEADERBOARD_MODES` gains `speedrun` and
   `LeaderboardRow` the optional `speedrunMs`. 80 routes.
+
+## Weather from real life (2026-10-20)
+
+- Server message `realWeather { kind | null }` (24 types). Routes `weatherCities` (limit `weather`), `weatherCity`,
+  `weather` with `WeatherCitySchema`, `RealWeatherRes`. 83 routes.

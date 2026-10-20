@@ -29,6 +29,7 @@ export const LIMITS = {
   restRead: { max: 240, windowMs: 60_000 }, // every GET, per player
   restWrite: { max: 60, windowMs: 60_000 }, // every other POST, per player
   replay: { max: 60, windowMs: 60_000 }, // GET /replay/:token per IP (public, no account)
+  weather: { max: 20, windowMs: 60_000 }, // GET /weather/cities per player (each one an Open-Meteo request)
   // room messages (per client), from the spine §4.3
   input: { max: 30, windowMs: 1_000 },
   emote: { max: 1, windowMs: 1_500 },

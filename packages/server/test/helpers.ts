@@ -17,6 +17,7 @@ import type { Env } from '../src/env';
 import { silentLogger } from '../src/log';
 import { boot } from '../src/server';
 import type { Booted } from '../src/server';
+import type { ServerDeps } from '../src/deps';
 
 /**
  * @colyseus/core's Stats module dynamically imports `@pm2/io`, whose IPC transport calls `process.send`
@@ -67,11 +68,14 @@ export interface TestServer {
   stop(): Promise<void>;
 }
 
-export async function startServer(envOverrides: Partial<Env> = {}, opts: { readonly databaseUrl?: string } = {}): Promise<TestServer> {
+/** Tests never reach the internet: the weather lookups (Open-Meteo) fail unless a test passes its own fetch. */
+const offlineFetch: NonNullable<ServerDeps['fetch']> = () => Promise.reject(new Error('no network in tests'));
+
+export async function startServer(envOverrides: Partial<Env> = {}, opts: { readonly databaseUrl?: string; readonly fetch?: ServerDeps['fetch'] } = {}): Promise<TestServer> {
   const { db, repos } = await openRepos(opts.databaseUrl);
   const time = offsetClock();
   const env = testEnv({ PORT_WS: 0, PORT_REST: 0, ...envOverrides });
-  const booted = await boot({ env, repos, content, log: silentLogger(), clock: time.clock });
+  const booted = await boot({ env, repos, content, log: silentLogger(), clock: time.clock, fetch: opts.fetch ?? offlineFetch });
   return {
     booted,
     db,

@@ -43,6 +43,9 @@ import {
   ROUTES,
   ROUTE_KEYS,
   ChallengeReq,
+  RealWeatherRes,
+  WeatherCitiesQuery,
+  WeatherCityReq,
   SpeedrunRes,
   CreatureHistoryRes,
   DailyRes,
@@ -379,7 +382,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(80); // GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(ROUTE_KEYS).toHaveLength(83); // the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
     expect(paths).toContain('GET /daily');
     expect(paths).toContain('POST /challenge');
     expect(paths).toContain('POST /daily/start');
@@ -490,6 +493,22 @@ describe('verified speedruns', () => {
     ok(SpeedrunRes, { username: 'ash_k', playMs: 9_000_000, running: false, counted: true, finishMs: 8_999_000, splits: [{ split: 'champion', playMs: 8_999_000, at }] });
     bad(SpeedrunRes, { username: 'ash_k', playMs: -1, running: false, counted: false, finishMs: null, splits: [] });
     expect(ROUTES.speedrunOf.path).toBe('/speedrun/:username');
+  });
+});
+
+describe('weather from real life', () => {
+  it('a city is rounded coordinates and a name; the search needs two letters; null turns it off', () => {
+    const city = { name: 'Rotterdam', country: 'Netherlands', lat: 51.9, lon: 4.5 };
+    ok(WeatherCityReq, { city });
+    ok(WeatherCityReq, { city: null });
+    ok(WeatherCityReq, { city: { ...city, region: 'South Holland' } });
+    bad(WeatherCityReq, { city: { ...city, lat: 91 } });
+    ok(WeatherCitiesQuery, { q: 'Ro' });
+    bad(WeatherCitiesQuery, { q: 'R' });
+    ok(RealWeatherRes, { city, kind: 'rain' });
+    ok(RealWeatherRes, { city: null, kind: null });
+    bad(RealWeatherRes, { city, kind: 'snow' });
+    expect(ROUTES.weatherCities.limit).toBe('weather');
   });
 });
 

@@ -63,6 +63,7 @@ import { useArenaStore } from '../state/arena';
 import { toast, useNotificationsStore } from '../state/notifications';
 import { applyInventoryDelta, partyCanBattle, toInventoryDelta, useSessionStore } from '../state/session';
 import { useQuestTracking } from '../state/questTracking';
+import { useRealWeatherStore } from '../state/realWeather';
 import { useSettingsStore } from '../state/settings';
 import { setFishingActions, useFishingStore } from '../state/fishing';
 import { noteTutorialEvent } from '../state/tutorial';
@@ -797,7 +798,8 @@ class World implements World3D {
     );
     d.push(
       $(state).listen('weather', (w: string) => {
-        if (this.ready) this.director.setWeather(w as WeatherKind);
+        // weather from real life: the player's city's weather stands in for the zone's
+        if (this.ready) this.director.setWeather(useRealWeatherStore.getState().kind ?? (w as WeatherKind));
       }, true),
     );
     // one sample per remote per applied patch (the interpolation ring), + the server-time offset
@@ -909,7 +911,7 @@ class World implements World3D {
     room.state.spawns.forEach((s) => this.spawns?.add(s));
     this.director.setTimeOfDay(room.state.timeOfDay);
     this.hudWriter.setTimeOfDay(room.state.timeOfDay);
-    this.director.setWeather(room.state.weather as WeatherKind);
+    this.director.setWeather(useRealWeatherStore.getState().kind ?? (room.state.weather as WeatherKind));
     this.input.setEnabled(useUiStore.getState().battle === null);
     this.battle.attach(this.battleView());
     // Phase C1: a raid already open in this room (or opened while the zone built)
@@ -1150,6 +1152,10 @@ class World implements World3D {
         return;
       case 'trainerSpotted':
         this.onTrainerSpotted(m.trainerId);
+        return;
+      case 'realWeather':
+        // weather from real life (messageRouter keeps the store): null goes back to the zone's weather
+        if (this.ready && this.room !== null) this.director.setWeather(m.kind ?? (this.room.state.weather as WeatherKind));
         return;
       default:
         return;

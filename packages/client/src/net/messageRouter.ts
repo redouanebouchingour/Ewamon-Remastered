@@ -10,6 +10,7 @@ import type { ArenaSession } from '../app/arena';
 import { queueTradeEvolutions } from '../app/itemUseFeedback';
 import { toast, useNotificationsStore } from '../state/notifications';
 import { rankedStatusText, useRankedStore } from '../state/ranked';
+import { useRealWeatherStore } from '../state/realWeather';
 import { applyInventoryDelta, applyProgressionDelta } from '../state/session';
 import { useUiStore } from '../state/ui';
 import type { WorldSession } from './WorldSession';
@@ -130,6 +131,10 @@ export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'han
       } else ui.openModal('tower');
       return;
     }
+    case 'realWeather':
+      // weather from real life: the player's city's weather (the world shows it; null: back to the zone's)
+      useRealWeatherStore.getState().set(m.kind);
+      return;
     case 'rankedStatus': {
       // Phase D13: the queue panel's state + one toast per change worth telling (match found, refusals, cancelled)
       useRankedStore.getState().apply(m);
@@ -147,7 +152,10 @@ export function installMessageRouter(ws: WorldSession): () => void {
   const offMessages = ws.onMessage((m) => routeServerMessage(m, ws));
   // Phase D13: the server drops a queue entry when the connection really ends; so does the panel
   const offRoom = ws.onRoom((room) => {
-    if (room === null) useRankedStore.getState().reset();
+    if (room === null) {
+      useRankedStore.getState().reset();
+      useRealWeatherStore.getState().reset();
+    }
   });
   // arena PvP: the arena store follows the session; an arena closed mid-battle sends the player back
   const offArena = installArenaFlow(ws);

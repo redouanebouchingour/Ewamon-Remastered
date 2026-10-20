@@ -20,6 +20,8 @@ const MESSAGES: Readonly<Record<string, string>> = {
   // challenge modes
   fallen: 'That creature has fallen in your challenge run.',
   badges: 'Your first badge locked the challenge run.',
+  // weather from real life
+  weatherUnavailable: 'The weather service did not answer. Try again in a minute.',
   wrongZone: 'You are in a different zone.',
   InsufficientFunds: 'Not enough money.',
   InsufficientItems: 'You do not have enough of that item.',

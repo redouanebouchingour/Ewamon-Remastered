@@ -2121,3 +2121,10 @@ every KO turn shows the lunge, the hit and the faint before the next creature en
   (optional; World3D wires it to `AudioDirector.setBattleMood`); `finish` clears it.
 - `AudioDirector`: `stemLevel` and `musicLowpassHz` are pure (tested); `MIXER.battleMood` holds every number. The
   CC0 themes have no choir stem, so a Majin rise is the low-pass and the threat swell, not a new layer.
+
+## Weather from real life (2026-10-20)
+
+- Settings gains a World tab with `WeatherSection` (search through the server, pick, turn off). `realWeather` goes into
+  `useRealWeatherStore` (messageRouter, reset when the world connection ends); World3D reads it wherever it set the
+  zone's weather (join, `state.weather` changes) and on the message itself, null meaning the zone's again.
+- Interiors still render none: the director owns that rule, the store only replaces the zone's value.

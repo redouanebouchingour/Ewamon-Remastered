@@ -80,6 +80,8 @@ import type { QuestEvent } from '../game/quests';
 import { STREAK_LAST_PREFIX, dailyLogin } from '../liveops/login';
 import { dayKey, hotspotDayKey, hotspotOpen, hotspotsFor, liveOpsModsFor } from '../liveops/schedule';
 import { WEATHER_FORMATS, weatherAt, weatherBucket } from '../game/weather';
+import { REAL_WEATHER_CHECK_MS, weatherTopic } from '../game/realWeather';
+import type { WeatherCity } from '@ewa/persist';
 
 export interface ZoneMeta {
   readonly zoneId: ZoneId;
@@ -110,6 +112,9 @@ export interface HandoverPending {
 
 export interface ZoneUserData {
   readonly playerId: string;
+  /** weather from real life: the city the player picked (null: off) and its weather once known */
+  weatherCity: WeatherCity | null;
+  realWeather: WeatherKind | null;
   /** last AOI cell; null before first tick */
   cell: Cell | null;
   /** last accepted input seq */
@@ -285,7 +290,9 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
    * player uuid → its `ewa:dm:<id>` callback (§30.7.2: DMs pushed live while the player is in this room) and its
    * `ewa:arena:<id>` callback (arena PvP: queue status, friend invites — a ServerMessage forwarded as is)
    */
-  private readonly dmSubs = new Map<string, { readonly dm: (m: DmPush) => void; readonly arena: (m: ServerMessage) => void }>();
+  private readonly dmSubs = new Map<string, { readonly dm: (m: DmPush) => void; readonly arena: (m: ServerMessage) => void; readonly weather: (city: WeatherCity | null) => void }>();
+  /** weather from real life: when the players' cities were last checked against the lookup cache */
+  private realWeatherCheckedAt = 0;
   /** Phase D13: ranked matches this room is the arena for, waiting for both players to arrive */
   private readonly rankedArena = new RankedArena();
 
@@ -350,8 +357,12 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       host: this.battleHost(),
       metrics: this.metrics,
       // Phase D7: wild / trainer / league fights take the zone's weather, never inside an interior (halls are indoors)
-      weather: (format, at) =>
-        WEATHER_FORMATS.has(format) && interiorAt(this.zone.id, at.x, at.z) === null ? (this.state.weather as WeatherKind) : 'none',
+      weather: (format, at, players) => {
+        if (!WEATHER_FORMATS.has(format) || interiorAt(this.zone.id, at.x, at.z) !== null) return 'none';
+        // weather from real life: a player who picked a city fights in its weather (a PvE battle has one player)
+        const own = players.length === 1 ? (this.clientOf(players[0]!)?.userData?.realWeather ?? null) : null;
+        return own ?? (this.state.weather as WeatherKind);
+      },
     });
     this.trades = new TradeCoordinator({
       repos: deps.repos,
@@ -556,6 +567,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       encounterGraceM: ENCOUNTER_GRACE_M,
       spotted: null,
       sightQuietUntil: 0,
+      weatherCity: row.weatherCity ?? null,
+      realWeather: null,
     };
     // R11: the join's AOI pass runs here, not on the first tick, so a chat/interact sent right after joining
     // already has a cell and an audience (a takeover client re-registers the viewer from scratch)
@@ -588,6 +601,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     }
     // verified speedruns: the play clock runs while a room holds the player (a handover keeps the running clock)
     await deps.repos.db.transaction((tx) => deps.repos.runs.start(tx, playerId, new Date(deps.clock()))).catch((e: unknown) => deps.log.error({ err: e, playerId }, 'play clock start failed'));
+    // weather from real life: the city's weather (the cached answer at once, else one lookup)
+    void this.refreshRealWeather(client);
   }
 
   override onDrop(client: ZoneClient, code?: number): void {
@@ -710,9 +725,19 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     if (this.dmSubs.has(playerId)) return;
     const dm = (m: DmPush): void => this.sendTo(playerId, { type: 'dm', id: m.id, fromId: m.fromId, fromName: m.fromName, text: m.text, sentAt: m.sentAt });
     const arena = (m: ServerMessage): void => this.sendTo(playerId, m);
-    this.dmSubs.set(playerId, { dm, arena });
+    // weather from real life: POST /weather/city publishes the new city here
+    const weather = (city: WeatherCity | null): void => {
+      const c = this.clientOf(playerId);
+      if (c?.userData === undefined) return;
+      c.userData.weatherCity = city;
+      c.userData.realWeather = null;
+      this.sendMsg(c, { type: 'realWeather', kind: null });
+      void this.refreshRealWeather(c);
+    };
+    this.dmSubs.set(playerId, { dm, arena, weather });
     void this.presence.subscribe(`ewa:dm:${playerId}`, dm);
     void this.presence.subscribe(arenaTopic(playerId), arena);
+    void this.presence.subscribe(weatherTopic(playerId), weather);
   }
 
   private unsubscribePlayer(playerId: string): void {
@@ -721,6 +746,18 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.dmSubs.delete(playerId);
     this.presence.unsubscribe(`ewa:dm:${playerId}`, cb.dm);
     this.presence.unsubscribe(arenaTopic(playerId), cb.arena);
+    this.presence.unsubscribe(weatherTopic(playerId), cb.weather);
+  }
+
+  /** Weather from real life: the player's city's weather (one lookup when the cache has none), sent when it changes. */
+  private async refreshRealWeather(client: ZoneClient): Promise<void> {
+    const ud = client.userData;
+    if (ud === undefined || ud.weatherCity === null) return;
+    const city = ud.weatherCity;
+    const kind = await this.deps.realWeather.lookup(city).catch(() => null);
+    if (client.userData !== ud || ud.weatherCity !== city || kind === null || kind === ud.realWeather) return;
+    ud.realWeather = kind;
+    this.sendMsg(client, { type: 'realWeather', kind });
   }
 
   private async grantDailyLogin(client: ZoneClient, playerId: string): Promise<void> {
@@ -1343,7 +1380,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     if (water === null) return refuse('noWater', 'There is no water to fish in here.');
     this.fishCounter += 1;
     const id = `${this.zone.id}:fish:${this.fishCounter}`;
-    const rec = rollFishing(encounterTableFor(this.zone.id), this.fishRng!, this.deps.content, this.state.timeOfDay, water, id, this.now(), this.spawns?.liveOps);
+    const rec = rollFishing(encounterTableFor(this.zone.id), this.fishRng!, this.deps.content, this.state.timeOfDay, water, id, this.now(), this.spawns?.liveOps, client.userData?.realWeather ?? null);
     if (rec === null) return refuse('nothingBites', 'Not even a nibble. Nothing seems to live in this water.');
     ud.battleId = 'pending';
     const res = await this.battles.startWild({ playerId: ud.playerId, sessionId: client.sessionId }, rec, { x: ps.x, z: ps.z }).catch((e: unknown) => {
@@ -1456,7 +1493,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     if (this.wildRng!.next() >= encounterChance(dist, rate)) return;
     this.wildCounter += 1;
     const id = `${this.zone.id}:wild:${this.wildCounter}`;
-    const rec = rollWild(encounterTableFor(this.zone.id), medium, this.wildRng!, this.deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps);
+    // weather from real life: the player's own weather favours its types (no bias without a city)
+    const rec = rollWild(encounterTableFor(this.zone.id), medium, this.wildRng!, this.deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps, ud.realWeather);
     if (rec === null) return;
     ud.encounterGraceM = ENCOUNTER_GRACE_M;
     ud.battleId = 'pending';
@@ -2202,6 +2240,20 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     // 1.
     state.tick += 1;
     state.timeOfDay = (now % ZoneRoom.DAY_LENGTH_MS) / ZoneRoom.DAY_LENGTH_MS;
+    // 1a. weather from real life: once a minute each player with a city reads the lookup cache (a stale place
+    // refreshes in the background) and hears a change
+    if (now - this.realWeatherCheckedAt >= REAL_WEATHER_CHECK_MS) {
+      this.realWeatherCheckedAt = now;
+      for (const c of this.clients) {
+        const ud = (c as ZoneClient).userData;
+        if (ud === undefined || ud.weatherCity === null) continue;
+        const k = this.deps.realWeather.peek(ud.weatherCity);
+        if (k !== null && k !== ud.realWeather) {
+          ud.realWeather = k;
+          this.sendMsg(c as ZoneClient, { type: 'realWeather', kind: k });
+        }
+      }
+    }
     // 1b. Phase D7 weather: one rng draw per bucket change, the field written only when it differs
     const bucket = weatherBucket(now);
     if (bucket !== this.weatherBucketAt && this.deps.env.WORLD_WEATHER !== 'off') {

@@ -54,6 +54,7 @@ const EXAMPLES: { [K in ServerMessageType]: Extract<ServerMessage, { type: K }> 
   storyBeat: { type: 'storyBeat', beatId: 'first_witness', phase: 'start' },
   toast: { type: 'toast', level: 'warn', text: 'The way is barred. Badge required: Bloom' },
   trainerSpotted: { type: 'trainerSpotted', trainerId: 'mire_trainer_1' },
+  realWeather: { type: 'realWeather', kind: 'rain' },
   error: { type: 'error', code: 'rateLimited', detail: null },
   rankedStatus: { type: 'rankedStatus', state: 'matched', rating: 1012, waitedMs: 0, window: 0, opponent: { name: 'misty', rating: 1040 }, reason: null },
   towerState: { type: 'towerState', phase: 'won', streak: 7, runWins: 7, best: 9, set: 1, fight: 7, picks: ['a', 'b', 'c'], reward: { money: 2500, items: { rarecandy: 1 } } },
@@ -70,8 +71,8 @@ const EXAMPLES: { [K in ServerMessageType]: Extract<ServerMessage, { type: K }> 
 };
 
 describe('§4.4 ServerMessage', () => {
-  it('lists the 23 variants of the §4.4 block (Phase D13 rankedStatus, Phase D14 towerState, the 4 arena messages, trainerSpotted), and SERVER_MSG names them', () => {
-    expect(SERVER_MESSAGE_TYPES).toHaveLength(23); // + arenaStatus, arenaInvite, arenaInviteResult, arenaState, trainerSpotted
+  it('lists the 24 variants of the §4.4 block (Phase D13 rankedStatus, Phase D14 towerState, the 4 arena messages, trainerSpotted, realWeather), and SERVER_MSG names them', () => {
+    expect(SERVER_MESSAGE_TYPES).toHaveLength(24); // + arenaStatus, arenaInvite, arenaInviteResult, arenaState, trainerSpotted, realWeather
     expect(Object.keys(SERVER_MESSAGES).sort()).toEqual([...SERVER_MESSAGE_TYPES].sort());
     expect(Object.keys(EXAMPLES).sort()).toEqual([...SERVER_MESSAGE_TYPES].sort());
     for (const t of SERVER_MESSAGE_TYPES) expect(SERVER_MSG[t]).toBe(t);

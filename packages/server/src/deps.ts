@@ -12,6 +12,7 @@ import type { ArenaLobby } from './rooms/arenaLobby';
 import type { MatchQueue } from './rooms/matchQueue';
 import type { PresenceMirror } from './rooms/presenceMirror';
 import type { PresenceStore } from './rooms/presenceStore';
+import type { RealWeather } from './game/realWeather';
 
 export interface ServerDeps {
   readonly env: Env;
@@ -23,6 +24,8 @@ export interface ServerDeps {
   readonly clock: () => number;
   /** Phase C6 outgoing mail; absent → `createMailer(env)` at boot (SMTP, else .eml files, memory under NODE_ENV=test) */
   readonly mailer?: Mailer;
+  /** weather from real life: the HTTP client for Open-Meteo (tests pass a fake; default the global fetch) */
+  readonly fetch?: (url: string, init?: { signal?: AbortSignal }) => Promise<{ ok: boolean; json(): Promise<unknown> }>;
 }
 
 /** JWT access-token payload (§30.6.1): `{ sub: playerId, usr: username, adm: boolean }`. */
@@ -64,6 +67,8 @@ export interface Runtime {
   readonly matchQueue: MatchQueue;
   /** Arena PvP: the out-of-world queue (ticked every ARENA_TICK_MS on the lease holder), invites, training, rejoin */
   readonly arena: ArenaLobby;
+  /** weather from real life: the cached Open-Meteo lookups (game/realWeather.ts) */
+  readonly realWeather: RealWeather;
 }
 
 export type RoomDeps = ServerDeps & Runtime;

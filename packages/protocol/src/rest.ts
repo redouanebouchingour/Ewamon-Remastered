@@ -520,6 +520,25 @@ export const SpeedrunRes = z.object({
 });
 export type SpeedrunView = z.infer<typeof SpeedrunRes>;
 
+/**
+ * Weather from real life: a place (Open-Meteo geocoding, coordinates rounded to 0.1°) the player may pick; the
+ * server keeps it on the player and looks its weather up (`realWeather`). `city: null` turns it off.
+ */
+export const WeatherCitySchema = z.object({
+  name: z.string().min(1).max(60),
+  /** the province or state, when known (same-named places differ by it) */
+  region: z.string().max(60).optional(),
+  country: z.string().max(60),
+  lat: z.number().min(-90).max(90),
+  lon: z.number().min(-180).max(180),
+});
+export type WeatherCityView = z.infer<typeof WeatherCitySchema>;
+export const WeatherKindSchema = z.enum(['none', 'sun', 'rain', 'sand', 'hail']);
+export const WeatherCitiesQuery = z.object({ q: z.string().trim().min(2).max(60) });
+export const WeatherCitiesRes = z.object({ cities: z.array(WeatherCitySchema).max(5) });
+export const WeatherCityReq = z.object({ city: WeatherCitySchema.nullable() });
+export const RealWeatherRes = z.object({ city: WeatherCitySchema.nullable(), kind: WeatherKindSchema.nullable() });
+
 export const PageQuery = z.object({ page: Page });
 export const BattleHistoryRes = z.object({ rows: z.array(BattleHistoryRowSchema) });
 export const TradeHistoryRes = z.object({ rows: z.array(TradeHistoryRowSchema) });
@@ -607,7 +626,7 @@ export interface RouteDef {
   /** `null` = 204 No Content */
   readonly response: z.ZodType | null;
   /** 30-server-netcode.md §30.6.4 key, when the route has a dedicated limit (else restRead/restWrite). */
-  readonly limit?: 'register' | 'login' | 'refresh' | 'listing' | 'bid' | 'message' | 'friendReq' | 'guildOp' | 'forgot' | 'emailToken' | 'resend' | 'replay';
+  readonly limit?: 'register' | 'login' | 'refresh' | 'listing' | 'bid' | 'message' | 'friendReq' | 'guildOp' | 'forgot' | 'emailToken' | 'resend' | 'replay' | 'weather';
 }
 
 const route = <const R extends RouteDef>(r: R): R => r;
@@ -640,6 +659,10 @@ export const ROUTES = {
   challenge: route({ method: 'POST', path: '/challenge', auth: 'bearer', request: ChallengeReq, response: ChallengeRes }),
   speedrun: route({ method: 'GET', path: '/speedrun', auth: 'bearer', response: SpeedrunRes }),
   speedrunOf: route({ method: 'GET', path: '/speedrun/:username', auth: 'bearer', params: UsernameParams, response: SpeedrunRes }),
+  // weather from real life: find a city, pick it (or null), read the player's
+  weatherCities: route({ method: 'GET', path: '/weather/cities', auth: 'bearer', query: WeatherCitiesQuery, response: WeatherCitiesRes, limit: 'weather' }),
+  weatherCity: route({ method: 'POST', path: '/weather/city', auth: 'bearer', request: WeatherCityReq, response: RealWeatherRes }),
+  weather: route({ method: 'GET', path: '/weather', auth: 'bearer', response: RealWeatherRes }),
   itemUse: route({ method: 'POST', path: '/item/use', auth: 'bearer', request: ItemUseReq, response: ItemUseRes }),
   heal: route({ method: 'POST', path: '/heal', auth: 'bearer', request: Nothing, response: PartyRes }),
   dex: route({ method: 'GET', path: '/dex', auth: 'bearer', response: DexRes }),

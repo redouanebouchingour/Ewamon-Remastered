@@ -277,6 +277,16 @@ export interface CreatureHistory {
   readonly events: readonly CreatureEvent[];
 }
 
+/** Weather from real life (migration 0010, `players.weather_city`): a place the player picked, rounded to 0.1°. */
+export interface WeatherCity {
+  readonly name: string;
+  /** the province or state, when the geocoder names one (tells same-named places apart) */
+  readonly region?: string;
+  readonly country: string;
+  readonly lat: number;
+  readonly lon: number;
+}
+
 export interface TradedCreatureSummary {
   readonly id: string;
   readonly speciesId: string;

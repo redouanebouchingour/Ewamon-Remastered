@@ -1114,3 +1114,17 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
 - Splits (`game/speedrun.ts`): `beat:<id>` in `completeBeatInTx` (every beat path), `badge:<id>` beside the only
   badge write, `champion` with the Champion's flag. `RUN_START_SPLIT` is the first story beat's split: the board and
   `counted` need it. Overworld input is not recorded; the time is the server's and the battles are replayable.
+
+## Weather from real life (2026-10-20)
+
+- `game/realWeather.ts`: `RealWeather` (on the runtime) asks Open-Meteo with coordinates rounded to 0.1° and caches
+  per place for 30 min; a failure keeps the last answer and is not retried for 5 min; concurrent askers share one
+  request. `ServerDeps.fetch` is injectable: the test server's default is an offline fetch that always fails, so no
+  test reaches the network (`real-weather.test.ts` passes a fake Open-Meteo).
+- `ZoneUserData.weatherCity` / `realWeather`: looked up on join, re-read from the cache once a minute in the tick (a
+  stale place refreshes in the background, the next check sends it), reset by `ewa:weather:<id>` (published by
+  `POST /weather/city`, subscribed beside the DM and arena topics). `realWeather` goes to the player on change.
+- `BattleDeps.weather` takes the human seats: one human with real weather fights in it; two humans (PvP never has
+  weather anyway, but a future PvE pair) keep the zone's, so nobody's own sky decides a shared fight.
+- `rollWild` / `rollFishing` take the weather last (default null): no extra rng draw, only the weights change, so a
+  player without a city rolls exactly as before.

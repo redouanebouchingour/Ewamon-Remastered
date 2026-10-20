@@ -1,5 +1,5 @@
 /**
- * `/play/settings` (SPEC §20.9.11, §20.8). Five tabs (`?tab=graphics|audio|accessibility|controls|social`); every
+ * `/play/settings` (SPEC §20.9.11, §20.8). Six tabs (`?tab=graphics|audio|accessibility|controls|social|world`); every
  * control is bound to useSettingsStore and applies immediately — no Save button. Accessibility's first item is the
  * reduced-motion tri-state with the current system value; while effective reduced motion is on, the dof / grain /
  * chroma / shake / hitstop / slow-mo toggles render disabled with "Off: reduced motion" (accessibility wins).
@@ -24,14 +24,16 @@ import l from './layout.module.css';
 import s from './SettingsScreen.module.css';
 import { useClosePanel } from './shared';
 import { EmailNudge } from './EmailNudge';
+import { WeatherSection } from './WeatherSection';
 
-type Tab = 'graphics' | 'audio' | 'accessibility' | 'controls' | 'social';
+type Tab = 'graphics' | 'audio' | 'accessibility' | 'controls' | 'social' | 'world';
 const TABS: readonly { readonly key: Tab; readonly label: string }[] = [
   { key: 'graphics', label: 'Graphics' },
   { key: 'audio', label: 'Audio' },
   { key: 'accessibility', label: 'Accessibility' },
   { key: 'controls', label: 'Controls' },
   { key: 'social', label: 'Social' },
+  { key: 'world', label: 'World' },
 ];
 
 type EffectToggle = Exclude<keyof GraphicsSettings, 'reducedEffects' | 'renderScale'>;
@@ -365,6 +367,11 @@ export function SettingsScreen() {
         {tab === 'accessibility' && <AccessibilityTab />}
         {tab === 'controls' && <ControlsTab />}
         {tab === 'social' && <SocialTab />}
+        {tab === 'world' && (
+          <div className={s.tab}>
+            <WeatherSection />
+          </div>
+        )}
       </div>
     </Panel>
   );

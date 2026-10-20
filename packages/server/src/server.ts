@@ -31,6 +31,7 @@ import { PresenceMirror } from './rooms/presenceMirror';
 import { PresenceStore } from './rooms/presenceStore';
 import { ARENA_ROOM, ZONE_ROOM, pickZoneRoom } from './rooms/matchmaking';
 import { bindZoneRoom, refuseDirectMatchmaking } from './rooms/ZoneRoom';
+import { RealWeather } from './game/realWeather';
 
 export const MAX_SOCKETS_PER_IP = 8;
 
@@ -131,6 +132,7 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
     mailer: deps.mailer ?? createMailer(env, log),
     matchQueue,
     arena,
+    realWeather: new RealWeather({ fetch: deps.fetch ?? ((url, init) => fetch(url, init)), clock: deps.clock }),
     verifyAccess: (token) => {
       if (verify === null) throw new Error('verifier not ready');
       return verify(token);

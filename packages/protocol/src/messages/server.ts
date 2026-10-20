@@ -169,6 +169,11 @@ export type ServerMessage =
    */
   | { readonly type: 'trainerSpotted'; readonly trainerId: string }
   /**
+   * Weather from real life: the weather of the city the player picked (null: none picked, or no answer yet), sent on
+   * joining a zone and when it changes. The client shows it instead of the zone's `weather`; the player's battles use it.
+   */
+  | { readonly type: 'realWeather'; readonly kind: 'none' | 'sun' | 'rain' | 'sand' | 'hail' | null }
+  /**
    * Phase D13: the player's ranked-queue state, sent in answer to every `rankedQueue` and on each change (matched,
    * cancelled, started). `waitedMs` / `window` describe the queue at send time (0 when not queued); `opponent` is set
    * while `matched`; `reason` only on `idle`.
@@ -223,6 +228,7 @@ export const SERVER_MESSAGE_TYPES = [
   'storyBeat',
   'toast',
   'trainerSpotted',
+  'realWeather',
   'error',
   'rankedStatus',
   'towerState',
@@ -368,6 +374,10 @@ export const TrainerSpottedMsg = z.object({
   type: z.literal('trainerSpotted'),
   trainerId: z.string().min(1).max(64),
 });
+export const RealWeatherMsg = z.object({
+  type: z.literal('realWeather'),
+  kind: z.enum(['none', 'sun', 'rain', 'sand', 'hail']).nullable(),
+});
 export const RankedStatusMsg = z.object({
   type: z.literal('rankedStatus'),
   state: z.enum(RANKED_STATES),
@@ -411,6 +421,7 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
   StoryBeatMsg,
   ToastMsg,
   TrainerSpottedMsg,
+  RealWeatherMsg,
   ErrorMsg,
   RankedStatusMsg,
   TowerStateMsg,
@@ -438,6 +449,7 @@ export const SERVER_MESSAGES = {
   storyBeat: StoryBeatMsg,
   toast: ToastMsg,
   trainerSpotted: TrainerSpottedMsg,
+  realWeather: RealWeatherMsg,
   error: ErrorMsg,
   rankedStatus: RankedStatusMsg,
   towerState: TowerStateMsg,

@@ -220,3 +220,8 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
   `play_ms + (now - play_started_at)`, one SQL expression (`clockNow`), so `runRepo.split` writes inside any
   transaction without a server-side timer. `start` keeps a running clock (a crossing), `stop` banks it, `stopAll`
   (boot) stops stale clocks without charging the gap. `run_splits` keeps the first time of each split.
+
+## Migration 0010_weather_city (2026-10-20)
+
+- `players.weather_city jsonb` (`WeatherCity { name, country, lat, lon }`, null: off) and `players.setWeatherCity`.
+  The server rounds the coordinates before storing them; nothing else about the place is kept.

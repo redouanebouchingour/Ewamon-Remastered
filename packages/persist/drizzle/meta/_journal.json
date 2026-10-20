@@ -71,6 +71,13 @@
       "when": 1792493688851,
       "tag": "0009_play_clock",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792495060337,
+      "tag": "0010_weather_city",
+      "breakpoints": true
     }
   ]
 }

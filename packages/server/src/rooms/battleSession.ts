@@ -148,7 +148,8 @@ export interface BattleDeps {
   readonly host: BattleHost;
   readonly metrics: RoomMetrics;
   /** Phase D7: the ambient weather a battle of this format forming at this point starts under (absent → 'none') */
-  readonly weather?: (format: BattleFormat, at: BattleAt) => WeatherKind;
+  /** `players`: the battle's human seats (weather from real life: a player's own weather replaces the zone's) */
+  readonly weather?: (format: BattleFormat, at: BattleAt, players: readonly string[]) => WeatherKind;
 }
 
 /** Where a battle forms (ZoneRoom `battleAt`): a hall arena + its battle-axis yaw inside an interior, else the player. */
@@ -516,7 +517,8 @@ export class BattleCoordinator {
   ): { session: BattleSession; events: readonly BattleEvent[] } {
     const now = this.deps.clock();
     const terrain = TERRAIN_BY_BIOME[this.deps.zone.biome];
-    const weather = this.deps.weather?.(base.format, { x: base.x, z: base.z }) ?? 'none';
+    const humans = base.seats.flatMap((s) => (s.playerId === null ? [] : [s.playerId]));
+    const weather = this.deps.weather?.(base.format, { x: base.x, z: base.z }, humans) ?? 'none';
     const ambient = weather === 'none' ? {} : { weather };
     // Phase D6: `slots: 2` rides the start snapshot so a doubles battle replays from its history row alone
     const slots = doubles ? { slots: 2 as const } : {};

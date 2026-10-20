@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
-import { bigint, boolean, check, index, integer, pgTable, real, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import { bigint, boolean, check, index, integer, jsonb, pgTable, real, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import type { WeatherCity } from '../types';
 
 export const players = pgTable(
   'players',
@@ -36,6 +37,8 @@ export const players = pgTable(
      */
     playMs: bigint('play_ms', { mode: 'number' }).notNull().default(0),
     playStartedAt: timestamp('play_started_at', { withTimezone: true }),
+    /** Weather from real life (migration 0010): the city the player picked, coordinates rounded to 0.1°; null = off */
+    weatherCity: jsonb('weather_city').$type<WeatherCity>(),
   },
   (t) => [
     uniqueIndex('players_username_lower_uq').on(t.usernameLower),

@@ -5,8 +5,9 @@
  */
 import { ALPHA_CHANCE, ROUTE_TUNING, STORY_TUNING, TOWN_SPAWN_TUNING, VARIANT_CHANCE, interiorFootprintAt, isWalkable, isWater } from '@ewa/content';
 import type { EncounterSlot, EncounterTable, Heightfield, SpawnTuning, ZoneDef } from '@ewa/content';
-import type { ContentIndex, Rng, VariantKey } from '@ewa/core';
+import type { ContentIndex, Rng, VariantKey, WeatherKind } from '@ewa/core';
 import { isLava } from './movement';
+import { WEATHER_TYPES, WEATHER_TYPE_BOOST } from '../game/realWeather';
 
 export interface SpawnRecord {
   /** `${zoneId}:${counter}` — counter is per-director, monotonic */
@@ -100,8 +101,9 @@ export function rollFishing(
   id: string,
   now: number,
   mods: LiveOpsMods = DEFAULT_LIVE_OPS,
+  weather: WeatherKind | null = null,
 ): SpawnRecord | null {
-  return rollWild(table, 'water', rng, content, timeOfDay, at, id, now, mods);
+  return rollWild(table, 'water', rng, content, timeOfDay, at, id, now, mods, weather);
 }
 
 /**
@@ -119,12 +121,20 @@ export function rollWild(
   id: string,
   now: number,
   mods: LiveOpsMods = DEFAULT_LIVE_OPS,
+  /** weather from real life: the player's own weather, whose types are rolled `WEATHER_TYPE_BOOST` times as often (null: no bias) */
+  weather: WeatherKind | null = null,
 ): SpawnRecord | null {
   if (table === null) return null;
   const eligible = table.slots.filter((s) => (s.medium ?? 'land') === medium && slotEligible(s, timeOfDay));
   if (eligible.length === 0) return null;
   const swarm = new Set(mods.swarmSpecies);
-  const weights = eligible.map((s) => s.weight * (swarm.has(s.species) ? mods.swarmWeightBoost : 1));
+  const favoured: readonly string[] = weather === null || weather === 'none' ? [] : WEATHER_TYPES[weather];
+  const weights = eligible.map(
+    (s) =>
+      s.weight *
+      (swarm.has(s.species) ? mods.swarmWeightBoost : 1) *
+      (favoured.length > 0 && content.species(s.species).types.some((t) => favoured.includes(t)) ? WEATHER_TYPE_BOOST : 1),
+  );
   let total = 0;
   for (const w of weights) total += w;
   let pickAt = rng.next() * total;
