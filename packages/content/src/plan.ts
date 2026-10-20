@@ -7,10 +7,10 @@
  * trunks exactly as the client's collider does.
  *
  * Moved from `packages/render/src/zone/layout.ts` (`planLayout`, `planBuildings`, `planLights`, `planProps`,
- * `doorPaths`) and the solid half of `zone/builder.ts` (`buildScatter`'s trunk / willow / rock blockers), statement
- * for statement: the same seeds, the same rng streams in the same order, the same arithmetic. Render keeps drawing
- * from it (`zoneSpecFor` passes the plan through `ZoneSpec`); `test/plan.test.ts` compares every zone with the
- * render layout's output captured before the move (`test/fixtures/r1-pre-move.json`).
+ * `doorPaths`) and the solid half of `zone/builder.ts` (`buildScatter`'s trunk / willow / rock blockers). Render keeps
+ * drawing from it (`zoneSpecFor` passes the plan through `ZoneSpec`) and mirrors the scatter solids exactly
+ * (`packages/client/test/footprints.test.ts`). The zone sculpts (`sculpt.ts`) supply a zone's own roads, tall grass,
+ * set-piece spot, fences, props, bridges, crags and structures; a route with a sculpted `road_main` has no meander.
  *
  * Pure: the only inputs are the `ZoneDef` and its base heightfield (heights, water, the terrain's walkable bits), and
  * the only randomness is core's `createRng(zone.layoutSeed)` plus stream-free integer hashes.
@@ -21,6 +21,8 @@ import type { Heightfield } from './heightfield';
 import type { Biome, ZoneDef, ZoneId, ZoneKind } from './types';
 import { ZONE_MARGIN, ZONE_SIZE } from './types';
 import { LEAGUE } from './data/league';
+import { SCULPTS } from './data/sculpts';
+import type { SculptBridge, SculptCrag, SculptResult, SculptStructure, ZoneSculpt } from './sculpt';
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
@@ -134,6 +136,12 @@ export interface ZonePlan {
   readonly props: readonly PlanProp[];
   /** Every footprint `buildHeightfield` marks unwalkable, in render's blocker registration order. */
   readonly solids: readonly PlanSolid[];
+  /** Where a sculpted road crosses water on a deck (render draws the bridge). */
+  readonly bridges: readonly SculptBridge[];
+  /** Rock spires / tors / columns of the sculpt (render dresses each with a faceted rock). */
+  readonly crags: readonly SculptCrag[];
+  /** The sculpt's curtain walls, palisades and towers (render builds them on their lifts). */
+  readonly structures: readonly SculptStructure[];
 }
 
 // ─── tables ──────────────────────────────────────────────────────────────────
@@ -230,6 +238,7 @@ export const ZONE_LIGHT_CAP = { shadow: 1, nonShadow: 20 } as const;
 export const PROP_SOLID_RADIUS: Readonly<Record<string, number>> = {
   well: 1.25, cart: 1.1, stall: 1.4, bench: 0.7, planter: 0.75, barrel: 0.4, crate: 0.5, sign: 0.2, rock_l: 1.0, rock_m: 0.65, rock_s: 0,
   tree_oak: 0.5, tree_birch: 0.35, tree_willow: 0.55, stump: 0.45, log: 0.6, bush: 0, flower_patch: 0, fence: 0, garden: 0,
+  tent: 1.3, campfire: 0.7,
 };
 /**
  * A picket / wayside fence run (render `buildFence(st, [[-1.8, 0], [1.8, 0]])`: 0.13 m posts every 1.8 m along local
@@ -546,6 +555,36 @@ interface LayoutCore {
   readonly water: readonly WaterBody[];
   readonly points: readonly Vec2[];
   readonly warpPairs: readonly WarpPair[];
+  /** A sculpted route's main road (its centreline replaces the meander's `z(x)`), else null. */
+  readonly main: PlanRoad | null;
+}
+
+/** Distance from (x, z) to a route's road centreline: the sculpted main road's, or the meander's |z − z(x)|. */
+export function routeCorridorDistance(main: PlanRoad | null, meander: RoadMeander | null, x: number, z: number): number {
+  if (main !== null) return distToPolyline(main.points, x, z);
+  return Math.abs(z - roadZAt(meander, x));
+}
+
+/** The point at arc length `s` along a polyline, with its unit tangent. */
+function alongPolyline(pts: readonly Vec2[], s: number): { x: number; z: number; tx: number; tz: number } {
+  let acc = 0;
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i]!; const b = pts[i + 1]!;
+    const len = Math.sqrt((b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1]));
+    if (acc + len >= s || i + 2 === pts.length) {
+      const t = len > 0 ? Math.min(1, Math.max(0, (s - acc) / len)) : 0;
+      return { x: a[0] + (b[0] - a[0]) * t, z: a[1] + (b[1] - a[1]) * t, tx: len > 0 ? (b[0] - a[0]) / len : 1, tz: len > 0 ? (b[1] - a[1]) / len : 0 };
+    }
+    acc += len;
+  }
+  const p = pts[pts.length - 1] ?? [0, 0];
+  return { x: p[0], z: p[1], tx: 1, tz: 0 };
+}
+
+function polylineLength(pts: readonly Vec2[]): number {
+  let acc = 0;
+  for (let i = 0; i + 1 < pts.length; i++) acc += Math.sqrt((pts[i + 1]![0] - pts[i]![0]) ** 2 + (pts[i + 1]![1] - pts[i]![1]) ** 2);
+  return acc;
 }
 
 function pushOffWater(p: [number, number], water: readonly WaterBody[], perp: Vec2, clearance: number): void {
@@ -588,8 +627,38 @@ function authoredPoints(zone: ZoneDef): Vec2[] {
   return out;
 }
 
-function planLayout(zone: ZoneDef, seed: number, setPieceId: SetPieceId, water: readonly WaterBody[]): LayoutCore {
+/** The set-piece's spot: the sculpt's, else on the main road nearest x = 0, its local x along the road. */
+function setPieceSpot(layout: ZoneKind, main: PlanRoad | null, sculpt: ZoneSculpt | undefined): { x: number; z: number; yaw: number } {
+  if (sculpt?.setPiece !== undefined) return sculpt.setPiece;
+  if (layout !== 'route' || main === null) return { x: 0, z: 0, yaw: 0 };
+  let best = 0;
+  for (let i = 0; i < main.points.length; i++) if (Math.abs(main.points[i]![0]) < Math.abs(main.points[best]![0])) best = i;
+  const a = main.points[Math.max(0, best - 1)]!; const b = main.points[Math.min(main.points.length - 1, best + 1)]!;
+  return { x: main.points[best]![0], z: main.points[best]![1], yaw: Math.atan2(-(b[1] - a[1]), b[0] - a[0]) };
+}
+
+/** z of the polyline point whose x is nearest `x`. */
+function roadCentreZNear(pts: readonly Vec2[], x: number): number {
+  let best = pts[0]!;
+  for (const p of pts) if (Math.abs(p[0] - x) < Math.abs(best[0] - x)) best = p;
+  return best[1];
+}
+
+function planLayout(zone: ZoneDef, seed: number, setPieceId: SetPieceId, water: readonly WaterBody[], sculpt: ZoneSculpt | undefined, sculpted: SculptResult | undefined, h: Heightfield): LayoutCore {
   const rng = forkLabelled(createRng(seed), 'layout');
+  /** Water within `pad` of a disc of radius `r` at (x, z): ponds by their circle, everything else by the mask. */
+  const wet = (x: number, z: number, r: number, pad: number): boolean =>
+    water.some((w) => roundBody(w) && Math.hypot(w.cx - x, w.cz - z) < w.r + r + pad) || wetWithin(h, x, z, r + pad);
+  // the sculpt's roads (sampled by the terrain pass): `road_main` / `road_<dir>` / `lane_s` replace the generated ones
+  const sculptRoads = new Map<string, PlanRoad>();
+  for (const r of sculpted?.roads ?? []) sculptRoads.set(r.id, { id: r.id, kind: r.kind, width: r.width, points: r.points });
+  const used = new Set<string>();
+  const sculptRoad = (id: string): PlanRoad | null => {
+    const r = sculptRoads.get(id);
+    if (r === undefined) return null;
+    used.add(id);
+    return r;
+  };
   const layout = zone.kind;
   const half = ZONE_SIZE[layout] / 2;
   const ih = half - ZONE_MARGIN;
@@ -611,6 +680,8 @@ function planLayout(zone: ZoneDef, seed: number, setPieceId: SetPieceId, water: 
       const v = DIR_VEC[dir];
       const start: Vec2 = [v[0] * (T.plazaR - 0.6), v[1] * (T.plazaR - 0.6)];
       const end: Vec2 = [v[0] * half, v[1] * half];
+      const own = sculptRoad(`road_${dir}`);
+      if (own !== null) { roads.push(own); continue; }
       if (dir === 'n') {
         // detour west of the gym (footprint x ∈ [−7, 7], z ∈ [−38, −26])
         roads.push({ id: 'road_n', kind: 'road', width: T.roadWidth, points: [[-5.2, -12.9], [-10.4, -21], [-11.6, -30], [-11, -40], [-6.5, -50], [-1.5, -58], [0, -66], end] });
@@ -623,27 +694,69 @@ function planLayout(zone: ZoneDef, seed: number, setPieceId: SetPieceId, water: 
       const pond = water.find((w) => w.cz > 20 && w.cz < 60 && Math.abs(w.cx) < 20);
       const endZ = pond ? pond.cz - pond.r - 3.5 : T.plazaR + 22;
       const endX = pond ? pond.cx * 0.6 : 0;
-      roads.push({ id: 'lane_s', kind: 'lane', width: T.laneWidth, points: wigglePath([0, T.plazaR - 0.6], [endX, endZ], 6, 0.8, rng, [], 0) });
+      const own = sculptRoad('lane_s');
+      if (own !== null) roads.push(own);
+      else roads.push({ id: 'lane_s', kind: 'lane', width: T.laneWidth, points: wigglePath([0, T.plazaR - 0.6], [endX, endZ], 6, 0.8, rng, [], 0) });
     }
   } else if (layout === 'route') {
     const R = ROUTE_LAYOUT;
     const phase = rng.next() * Math.PI * 2;
     const phase2 = rng.next() * Math.PI * 2;
-    const meander: RoadMeander = { amp: R.meanderAmp, wavelength: R.meanderWavelength, phase, phase2 };
+    const own = sculptRoad('road_main');
+    const meander: RoadMeander | null = own === null ? { amp: R.meanderAmp, wavelength: R.meanderWavelength, phase, phase2 } : null;
     roadMeander = meander;
     const roadZ = (x: number): number => roadZAt(meander, x);
-    const pts: Vec2[] = [];
-    for (let x = -half; x <= half + 1e-6; x += 4) pts.push([x, roadZ(x)]);
-    roads.push({ id: 'road_main', kind: 'road', width: R.roadWidth, points: pts });
+    if (own !== null) roads.push(own);
+    else {
+      const pts: Vec2[] = [];
+      for (let x = -half; x <= half + 1e-6; x += 4) pts.push([x, roadZ(x)]);
+      roads.push({ id: 'road_main', kind: 'road', width: R.roadWidth, points: pts });
+    }
+    const main = roads[0]!;
     for (const dir of ['n', 's'] as const) {
       if (!has(dir)) continue;
       const v = DIR_VEC[dir];
-      roads.push({ id: `road_${dir}`, kind: 'road', width: R.roadWidth, points: wigglePath([0, roadZ(0)], [v[0] * half, v[1] * half], 10, 3, rng, water, 5) });
+      const spur = sculptRoad(`road_${dir}`);
+      roads.push(spur ?? { id: `road_${dir}`, kind: 'road', width: R.roadWidth, points: wigglePath([0, roadZ(0)], [v[0] * half, v[1] * half], 10, 3, rng, water, 5) });
     }
-    if (tallGrass) {
+    const ext = SET_PIECE_EXTENT[setPieceId];
+    const spot = own === null ? { x: 0, z: 0, yaw: 0 } : setPieceSpot('route', main, sculpt);
+    const clearOfSetPiece = (x: number, z: number, rx: number, rz: number): boolean => {
+      const [lx, lz] = toLocal(spot, x, z);
+      const r = own === null ? 0 : Math.max(rx, rz);
+      return !(Math.abs(lx) < ext.hw + (own === null ? rx : r) + 2 && Math.abs(lz) < ext.hd + (own === null ? rz : r) + 2);
+    };
+    if (tallGrass && sculpt?.grass !== undefined) {
+      for (const g of sculpt.grass) grassPatches.push({ x: g.x, z: g.z, rx: g.rx, rz: g.rz, yaw: g.yaw ?? 0 });
+    } else if (tallGrass && own !== null) {
+      // along the sculpted road: alternate sides, set back from its edge
+      const n = R.patches[1] - 1 + Math.floor(rng.next() * 2);
+      let side = rng.next() < 0.5 ? 1 : -1;
+      const total = polylineLength(main.points);
+      for (let k = 0; k < n; k++) {
+        const s0 = 40 + (k * (total - 80)) / Math.max(1, n - 1) + (rng.next() - 0.5) * 16;
+        const rz = R.patchRz * (0.85 + rng.next() * 0.3);
+        const rx = R.patchRx * (0.85 + rng.next() * 0.3);
+        let placed: PlanEllipse | null = null;
+        for (let attempt = 0; attempt < 16 && placed === null; attempt++) {
+          const sAt = s0 + (attempt % 8 === 0 ? 0 : ((attempt % 2 === 0 ? 1 : -1) * Math.ceil((attempt % 8) / 2) * 6));
+          const sd = attempt >= 8 ? -side : side;
+          const q = alongPolyline(main.points, sAt);
+          const off = main.width / 2 + 1.2 + rz;
+          const x = q.x - q.tz * sd * off; const z = q.z + q.tx * sd * off;
+          const e: PlanEllipse = { x, z, rx, rz, yaw: Math.atan2(-q.tz, q.tx) };
+          if (Math.abs(x) + rx > ih - 4 || Math.abs(z) + rx > ih - 4) continue;
+          if (wet(x, z, Math.max(rx, rz), 3)) continue;
+          if (points.some(([px, pz]) => inEllipse(e, px, pz, 1.5))) continue;
+          if (!clearOfSetPiece(x, z, rx, rz)) continue;
+          placed = e;
+        }
+        if (placed !== null) grassPatches.push(placed);
+        side = -side;
+      }
+    } else if (tallGrass) {
       const n = R.patches[1] - 1 + Math.floor(rng.next() * 2);   // 4–5 of the SPEC's 3–5: a 208 m route reads sparse with fewer
       let side = rng.next() < 0.5 ? 1 : -1;
-      const ext = SET_PIECE_EXTENT[setPieceId];
       for (let k = 0; k < n; k++) {
         const baseX = -ih + 22 + (k * (2 * ih - 44)) / Math.max(1, n - 1) + (rng.next() - 0.5) * 16;
         const yaw = (rng.next() - 0.5) * 0.35;
@@ -656,9 +769,9 @@ function planLayout(zone: ZoneDef, seed: number, setPieceId: SetPieceId, water: 
           const z = roadZ(x) + s * (R.roadWidth / 2 + 1.2 + rz);
           const e: PlanEllipse = { x, z, rx, rz, yaw };
           if (Math.abs(x) + rx > ih - 4) continue;
-          if (water.some((w) => Math.hypot(w.cx - x, w.cz - z) < w.r + rx + 3)) continue;
+          if (wet(x, z, rx, 3)) continue;
           if (points.some(([px, pz]) => inEllipse(e, px, pz, 1.5))) continue;
-          if (Math.abs(x) < ext.hw + rx + 2 && Math.abs(z) < ext.hd + rz + 2) continue;
+          if (!clearOfSetPiece(x, z, rx, rz)) continue;
           placed = e;
         }
         if (placed !== null) grassPatches.push(placed);
@@ -670,10 +783,11 @@ function planLayout(zone: ZoneDef, seed: number, setPieceId: SetPieceId, water: 
       const r = R.clearingR[0] + rng.next() * (R.clearingR[1] - R.clearingR[0]);
       for (let attempt = 0; attempt < 12; attempt++) {
         const x = -ih + 30 + ((k + 0.5) * (2 * ih - 60)) / nc + (rng.next() - 0.5) * 24;
-        const z = (rng.next() < 0.5 ? -1 : 1) * (18 + rng.next() * 26);
+        const z = (own === null ? 0 : roadCentreZNear(main.points, x)) + (rng.next() < 0.5 ? -1 : 1) * (18 + rng.next() * 26);
         if (Math.abs(x) > ih - r - 4 || Math.abs(z) > ih - r - 4) continue;
-        if (water.some((w) => Math.hypot(w.cx - x, w.cz - z) < w.r + r + 3)) continue;
-        if (grassPatches.some((e) => Math.hypot(e.x - x, e.z - z) < e.rx + r + 2)) continue;
+        if (wet(x, z, r, 3)) continue;
+        if (grassPatches.some((e) => Math.hypot(e.x - x, e.z - z) < Math.max(e.rx, e.rz) + r + 2)) continue;
+        if (own !== null && distToPolyline(main.points, x, z) < r + 4) continue;
         clearings.push({ x, z, r });
         break;
       }
@@ -683,11 +797,18 @@ function planLayout(zone: ZoneDef, seed: number, setPieceId: SetPieceId, water: 
     for (const dir of DIRS) {
       if (!has(dir)) continue;
       const v = DIR_VEC[dir];
+      const own = sculptRoad(`road_${dir}`);
+      if (own !== null) { roads.push(own); continue; }
       roads.push({ id: `road_${dir}`, kind: 'road', width: STORY_LAYOUT.roadWidth, points: wigglePath([v[0] * (STORY_LAYOUT.platformR - 0.6), v[1] * (STORY_LAYOUT.platformR - 0.6)], [v[0] * half, v[1] * half], 10, 2.5, rng, water, 5) });
     }
   }
 
-  if (layout !== 'route' && tallGrass) {
+  // the sculpt's other roads: lanes and trails (ramps, side paths, loops)
+  for (const [id, r] of sculptRoads) if (!used.has(id)) roads.push(r);
+
+  if (layout !== 'route' && tallGrass && sculpt?.grass !== undefined) {
+    for (const g of sculpt.grass) grassPatches.push({ x: g.x, z: g.z, rx: g.rx, rz: g.rz, yaw: g.yaw ?? 0 });
+  } else if (layout !== 'route' && tallGrass) {
     // towns / story zones with an encounter table: patches on the outskirts, away from roads and the gym
     const n = 3;
     const base = rng.next() * Math.PI * 2;
@@ -700,7 +821,7 @@ function planLayout(zone: ZoneDef, seed: number, setPieceId: SetPieceId, water: 
         if (Math.abs(x) + 9 > ih - 3 || Math.abs(z) + 9 > ih - 3) continue;
         if (roadDistance(roads, x, z) < 10) continue;
         if (layout === 'town' && z < -20 && Math.abs(x) < 16) continue;
-        if (water.some((w) => Math.hypot(w.cx - x, w.cz - z) < w.r + 11)) continue;
+        if (wet(x, z, 8, 3)) continue;
         if (points.some(([px, pz]) => inEllipse(e, px, pz, 1.5))) continue;
         grassPatches.push(e);
         break;
@@ -708,21 +829,34 @@ function planLayout(zone: ZoneDef, seed: number, setPieceId: SetPieceId, water: 
     }
   }
 
-  const sp = layout === 'route' ? { x: 0, z: roadZAt(roadMeander, 0) } : { x: 0, z: 0 };
+  const main = layout === 'route' && roadMeander === null ? roads[0]! : null;
+  const sp = main !== null || sculpt?.setPiece !== undefined ? setPieceSpot(layout, main, sculpt) : layout === 'route' ? { x: 0, z: roadZAt(roadMeander, 0), yaw: 0 } : { x: 0, z: 0, yaw: 0 };
   const ext = SET_PIECE_EXTENT[setPieceId];
   const warpPairs: WarpPair[] = zone.warps.map((w) => ({ id: w.id, door: [w.x, w.z] as Vec2, to: [w.toX, w.toZ] as Vec2 }));
   return {
     half, interior, plaza, roads, roadMeander, grassPatches, clearings,
-    setPiece: { id: setPieceId, x: sp.x, z: sp.z, yaw: 0, hw: ext.hw, hd: ext.hd },
-    water, points, warpPairs,
+    setPiece: { id: setPieceId, x: sp.x, z: sp.z, yaw: sp.yaw, hw: ext.hw, hd: ext.hd },
+    water, points, warpPairs, main,
   };
 }
 
 // ─── buildings (render planBuildings) ────────────────────────────────────────
 
-function buildingFits(L: LayoutCore, b: PlanBuilding, placed: readonly PlanBuilding[], gap: number): boolean {
+function buildingFits(L: LayoutCore, b: PlanBuilding, placed: readonly PlanBuilding[], gap: number, h: Heightfield): boolean {
   const ih = L.half - ZONE_MARGIN;
   const hw = b.w / 2; const hd = b.d / 2;
+  // on level, walkable ground: never astride a cliff, a crag or a bank (the plinth hides up to 1.2 m of fall)
+  let lo = Infinity; let hi = -Infinity;
+  for (let gx = -1; gx <= 1; gx += 0.5) {
+    for (let gz = -1; gz <= 1; gz += 0.5) {
+      const [x, z] = toWorld(b, gx * (hw + 0.5), gz * (hd + 0.5));
+      if (!baseWalkable(h, x, z)) return false;
+      const y = heightClamped(h, x, z);
+      if (y < lo) lo = y;
+      if (y > hi) hi = y;
+    }
+  }
+  if (hi - lo > 1.2) return false;
   for (const [lx, lz] of [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]] as const) {
     const [x, z] = toWorld(b, lx, lz);
     if (Math.abs(x) > ih - 3 || Math.abs(z) > ih - 3) return false;
@@ -734,7 +868,8 @@ function buildingFits(L: LayoutCore, b: PlanBuilding, placed: readonly PlanBuild
       const [x, z] = toWorld(b, gx * (hw + 1), gz * (hd + 1));
       if (roadDistance(L.roads, x, z) < 0.6) return false;
       if (L.plaza && Math.hypot(x - L.plaza.x, z - L.plaza.z) < L.plaza.r + 3) return false;
-      for (const w of L.water) if (Math.hypot(x - w.cx, z - w.cz) < w.r + 3.5) return false;
+      for (const w of L.water) if (roundBody(w) && Math.hypot(x - w.cx, z - w.cz) < w.r + 3.5) return false;
+      if (wetWithin(h, x, z, 3.5)) return false;
       if (inSetPiece(L.setPiece, x, z, 1)) return false;
     }
   }
@@ -753,7 +888,7 @@ function facingCentre(x: number, z: number): number {
  * the marker — which the 2.5 m point clearance (the marker is itself an authored point) always refuses, so no zone
  * has one; the seed draw is kept so the rest of the stream is unchanged.
  */
-function planBuildings(zone: ZoneDef, L: LayoutCore, rng: Rng): PlanBuilding[] {
+function planBuildings(zone: ZoneDef, L: LayoutCore, rng: Rng, h: Heightfield): PlanBuilding[] {
   const out: PlanBuilding[] = [];
   const T = TOWN_LAYOUT;
   const roofs = BIOME_ROOFS[zone.biome] ?? BIOME_ROOFS.grove;
@@ -808,7 +943,7 @@ function planBuildings(zone: ZoneDef, L: LayoutCore, rng: Rng): PlanBuilding[] {
       const a = Math.PI / 2 + side * Math.atan2(off, r);
       const x = Math.cos(a) * Math.hypot(r, off); const z = Math.sin(a) * Math.hypot(r, off);
       const b: PlanBuilding = { id: `${zone.id}.${kind}`, kind, x: snap(x, 0.01), z: snap(z, 0.01), yaw: facingCentre(x, z), w, d, floors: kind === 'healer' ? 2 : 1, roof: 'tile', seed: u32(rng) };
-      if (buildingFits(L, b, out, T.gap)) { out.push(b); return; }
+      if (buildingFits(L, b, out, T.gap, h)) { out.push(b); return; }
     }
   };
   if (zone.shop !== null) flank('shop', -1);
@@ -823,7 +958,7 @@ function planBuildings(zone: ZoneDef, L: LayoutCore, rng: Rng): PlanBuilding[] {
     const r = T.ringMin + rng.next() * (T.ringMax - T.ringMin);
     const x = Math.cos(a) * r; const z = Math.sin(a) * r;
     const b: PlanBuilding = { id: `${zone.id}.house${idx}`, kind: 'house', x: snap(x, 0.01), z: snap(z, 0.01), yaw: facingCentre(x, z), w, d, floors: rng.next() < 0.45 ? 2 : 1, roof: pickRoof(), seed: u32(rng) };
-    if (buildingFits(L, b, out, T.gap)) { out.push(b); idx++; }
+    if (buildingFits(L, b, out, T.gap, h)) { out.push(b); idx++; }
   }
   return out;
 }
@@ -899,8 +1034,10 @@ function planLights(zone: ZoneDef, L: LayoutCore, h: Heightfield, buildings: rea
   const taken: Vec2[] = [];
   const clear = (x: number, z: number): boolean => {
     for (const [px, pz] of L.points) if (Math.hypot(px - x, pz - z) < 1.8) return false;
+    if (Math.hypot(zone.spawn.x - x, zone.spawn.z - z) < 1.8) return false;
     for (const b of buildings) if (footprintDistance(b, x, z) < 1.0) return false;
-    for (const w of L.water) if (Math.hypot(w.cx - x, w.cz - z) < w.r + 1.5) return false;
+    for (const w of L.water) if (roundBody(w) && Math.hypot(w.cx - x, w.cz - z) < w.r + 1.5) return false;
+    if (wetWithin(h, x, z, 1.5)) return false;
     for (const [tx, tz] of taken) if (Math.hypot(tx - x, tz - z) < 5) return false;
     if (inSetPiece(L.setPiece, x, z, 0.8)) return false;
     return Math.abs(x) < L.half - ZONE_MARGIN - 1 && Math.abs(z) < L.half - ZONE_MARGIN - 1;
@@ -982,20 +1119,30 @@ function planLights(zone: ZoneDef, L: LayoutCore, h: Heightfield, buildings: rea
  * Hand-placed props: plaza benches and planters, a well, crates / barrels / a stall by the shop, barrels beside
  * houses, fenced garden plots, carts, signposts at every exit; logs, stumps and rocks at route clearings.
  */
-function planProps(zone: ZoneDef, L: LayoutCore, buildings: readonly PlanBuilding[], lights: readonly PlanLight[], rng: Rng): PlanProp[] {
+function planProps(zone: ZoneDef, L: LayoutCore, buildings: readonly PlanBuilding[], lights: readonly PlanLight[], rng: Rng, h: Heightfield, sculpt: ZoneSculpt | undefined): PlanProp[] {
   const out: PlanProp[] = [];
   const clearOf = (x: number, z: number, r: number): boolean => {
     if (Math.max(Math.abs(x), Math.abs(z)) > L.half - ZONE_MARGIN - 1.5) return false;
+    if (!baseWalkable(h, x, z)) return false;
     for (const [px, pz] of L.points) if (Math.hypot(px - x, pz - z) < 1.6 + r) return false;
+    if (Math.hypot(zone.spawn.x - x, zone.spawn.z - z) < 1.6 + r) return false;
     for (const b of buildings) if (footprintDistance(b, x, z) < r + 0.3) return false;
+    // never over a door approach (it stays walkable, so a footprint there would have a walkable hole)
+    for (const b of buildings) {
+      const ap = doorApproach(b).approach;
+      if (footprintDistance({ x: ap.x, z: ap.z, yaw: ap.yaw, w: ap.hw * 2, d: ap.hd * 2 }, x, z) < r + MOVER_RADIUS + 0.1) return false;
+    }
     for (const l of lights) if (Math.hypot(l.x - x, l.z - z) < r + 0.9) return false;
-    for (const w of L.water) if (Math.hypot(w.cx - x, w.cz - z) < w.r + r + 1.2) return false;
+    for (const w of L.water) if (roundBody(w) && Math.hypot(w.cx - x, w.cz - z) < w.r + r + 1.2) return false;
+    if (wetWithin(h, x, z, r + 1.2)) return false;
     for (const p of out) if (Math.hypot(p.x - x, p.z - z) < r + 0.9) return false;
     if (inSetPiece(L.setPiece, x, z, r)) return false;
     return true;
   };
   const put = (kind: string, x: number, z: number, yaw: number, r: number, scale = 1, needRoadClear = true): boolean => {
     if (!clearOf(x, z, r)) return false;
+    // a fence run reaches 1.87 m along its axis: keep its whole length off the authored points
+    if (kind === 'fence') for (const [px, pz] of L.points) if (Math.hypot(px - x, pz - z) < FENCE_HALF.hw + 1.6) return false;
     if (needRoadClear && roadDistance(L.roads, x, z) < r + 0.3) return false;
     out.push({ kind, x: round3(x), z: round3(z), yaw: round3(yaw), scale: round3(scale), seed: u32(rng) });
     return true;
@@ -1108,15 +1255,99 @@ function planProps(zone: ZoneDef, L: LayoutCore, buildings: readonly PlanBuildin
       put('rock_m', c.x + (rng.next() - 0.5) * c.r * 1.2, c.z + (rng.next() - 0.5) * c.r, rng.next() * 6.28, 1.0);
     }
     // wayside fences along the road near both ends
-    for (const sx of [-1, 1]) {
-      for (let k = 0; k < 3; k++) {
-        const x = sx * (L.half - ZONE_MARGIN - 22 - k * 3.8);
-        const zc = roadZAt(L.roadMeander, x);
-        put('fence', x, zc + (rng.next() < 0.5 ? 1 : -1) * (ROUTE_LAYOUT.roadWidth / 2 + 1.4), Math.PI / 2, 0.4);
+    if (L.main === null) {
+      for (const sx of [-1, 1]) {
+        for (let k = 0; k < 3; k++) {
+          const x = sx * (L.half - ZONE_MARGIN - 22 - k * 3.8);
+          const zc = roadZAt(L.roadMeander, x);
+          put('fence', x, zc + (rng.next() < 0.5 ? 1 : -1) * (ROUTE_LAYOUT.roadWidth / 2 + 1.4), Math.PI / 2, 0.4);
+        }
+      }
+    } else {
+      // a picket run along the verge at both ends of the sculpted road (the gate into the next place)
+      const total = polylineLength(L.main.points);
+      for (const atEnd of [false, true]) {
+        const side = rng.next() < 0.5 ? 1 : -1;
+        for (let k = 0; k < 4; k++) {
+          const sAt = atEnd ? total - 26 - k * 3.73 : 26 + k * 3.73;
+          const q = alongPolyline(L.main.points, sAt);
+          const off = L.main.width / 2 + 1.4;
+          put('fence', q.x - q.tz * side * off, q.z + q.tx * side * off, Math.atan2(-q.tz, q.tx), 0.4);
+        }
       }
     }
   }
+  // the sculpt's own fence runs and hand-placed props
+  for (const run of sculpt?.fences ?? []) {
+    for (let i = 0; i + 1 < run.length; i++) {
+      const a = run[i]!; const b = run[i + 1]!;
+      const len = Math.sqrt((b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1]));
+      const n = Math.max(1, Math.round(len / 3.73));
+      const yaw = Math.atan2(-(b[1] - a[1]), b[0] - a[0]);
+      for (let k = 0; k < n; k++) {
+        const t = (k + 0.5) / n;
+        put('fence', a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, yaw, 0.3, 1, true);
+      }
+    }
+  }
+  for (const pp of sculpt?.props ?? []) put(pp.kind, pp.x, pp.z, pp.yaw ?? rng.next() * 6.28, PROP_SOLID_RADIUS[pp.kind] ?? 0.4, pp.scale ?? 1, true);
   return out;
+}
+
+/** The base field's walkable bit at the nearest sample (terrain only: margin, slope, open water). */
+function baseWalkable(h: Heightfield, x: number, z: number): boolean {
+  const col = Math.round((x - h.originX) / h.step); const row = Math.round((z - h.originZ) / h.step);
+  if (col < 0 || row < 0 || col >= h.res || row >= h.res) return false;
+  return h.walkable[row * h.res + col] === 1;
+}
+
+/** Terrain slope (rise per metre) at the nearest sample: central differences, 0 on the border. */
+export function slopeAt(h: Pick<Heightfield, 'res' | 'originX' | 'originZ' | 'step' | 'heights'>, x: number, z: number): number {
+  const col = Math.round((x - h.originX) / h.step); const row = Math.round((z - h.originZ) / h.step);
+  if (col < 1 || row < 1 || col >= h.res - 1 || row >= h.res - 1) return 0;
+  const i = row * h.res + col;
+  const hx = (h.heights[i + 1]! - h.heights[i - 1]!) / (2 * h.step);
+  const hz = (h.heights[i + h.res]! - h.heights[i - h.res]!) / (2 * h.step);
+  return Math.sqrt(hx * hx + hz * hz);
+}
+
+/**
+ * A water body the circle tests describe: a pond (small, about as wide as long). Rivers, lakes and seas are tested
+ * against the water mask instead (`wetWithin`, `wetNear`): their area-equivalent circle would swallow the shore.
+ * Render's `roundBody` is the same rule.
+ */
+export function roundBody(w: Pick<WaterBody, 'r' | 'x0' | 'x1' | 'z0' | 'z1'>): boolean {
+  return w.r <= 18 && w.x1 - w.x0 < 2.6 * w.r && w.z1 - w.z0 < 2.6 * w.r;
+}
+
+/** 8 unit directions (cos, sin of k·45°). */
+const DIR8: readonly (readonly [number, number])[] = [[1, 0], [0.7071, 0.7071], [0, 1], [-0.7071, 0.7071], [-1, 0], [-0.7071, -0.7071], [0, -1], [0.7071, -0.7071]];
+
+/** True when the water mask has a sample at (x, z) or on the rings of radius d and d / 2 round it (nearest samples). */
+export function wetWithin(h: Pick<Heightfield, 'res' | 'originX' | 'originZ' | 'step' | 'water'>, x: number, z: number, d: number): boolean {
+  const at = (px: number, pz: number): boolean => {
+    const col = Math.round((px - h.originX) / h.step); const row = Math.round((pz - h.originZ) / h.step);
+    return col >= 0 && row >= 0 && col < h.res && row < h.res && h.water[row * h.res + col] === 1;
+  };
+  if (at(x, z)) return true;
+  for (const [cx, cz] of DIR8) if (at(x + cx * d, z + cz * d) || at(x + cx * d * 0.5, z + cz * d * 0.5)) return true;
+  return false;
+}
+
+/** Scatter keeps off slopes steeper than this (cliff faces stay bare rock). */
+export const SCATTER_MAX_SLOPE = 0.9;
+
+/**
+ * True when a water sample lies at (x, z) or `d` metres from it along ±x / ±z (nearest samples): the scatter's test
+ * against rivers and lakes of any outline (render `wetNear`, the same five reads).
+ */
+export function wetNear(h: Pick<Heightfield, 'res' | 'originX' | 'originZ' | 'step' | 'water'>, x: number, z: number, d: number): boolean {
+  for (const [ox, oz] of [[0, 0], [d, 0], [-d, 0], [0, d], [0, -d]] as const) {
+    const col = Math.round((x + ox - h.originX) / h.step); const row = Math.round((z + oz - h.originZ) / h.step);
+    if (col < 0 || row < 0 || col >= h.res || row >= h.res) continue;
+    if (h.water[row * h.res + col] === 1) return true;
+  }
+  return false;
 }
 
 // ─── solids ──────────────────────────────────────────────────────────────────
@@ -1127,7 +1358,7 @@ function planProps(zone: ZoneDef, L: LayoutCore, buildings: readonly PlanBuildin
  * big rocks (render `buildScatter`: the same jittered grids, hashes and acceptance, playable interior only — the
  * 16 m margin forest is unwalkable anyway).
  */
-function planSolids(zone: ZoneDef, L: LayoutCore, buildings: readonly PlanBuilding[], doorPaths: readonly PlanRoad[], lights: readonly PlanLight[], props: readonly PlanProp[], scatterSalt: number): PlanSolid[] {
+function planSolids(zone: ZoneDef, L: LayoutCore, buildings: readonly PlanBuilding[], doorPaths: readonly PlanRoad[], lights: readonly PlanLight[], props: readonly PlanProp[], scatterSalt: number, h: Heightfield): PlanSolid[] {
   const R = MOVER_RADIUS;
   const out: PlanSolid[] = [];
   for (const b of buildings) out.push({ source: 'building', ref: b.id, shape: { kind: 'rect', x: b.x, z: b.z, hw: b.w / 2 + 0.12 + R, hd: b.d / 2 + 0.12 + R, yaw: b.yaw } });
@@ -1154,9 +1385,10 @@ function planSolids(zone: ZoneDef, L: LayoutCore, buildings: readonly PlanBuildi
     if (roadDistance(roads, x, z) < r + 0.4) return false;
     for (const b of buildings) if (footprintDistance(b, x, z) < r + 1.0) return false;
     for (const [px, pz] of L.points) if (Math.hypot(px - x, pz - z) < r + 1.5) return false;
-    for (const w of L.water) if (Math.hypot(w.cx - x, w.cz - z) < w.r * 1.05 + r + 0.6) return false;
+    for (const w of L.water) if (roundBody(w) && Math.hypot(w.cx - x, w.cz - z) < w.r * 1.05 + r + 0.6) return false;
     if (inSetPiece(L.setPiece, x, z, r)) return false;
     if (!allowPatches) for (const e of L.grassPatches) if (inEllipse(e, x, z, r + 0.5)) return false;
+    if (wetNear(h, x, z, r + 0.6)) return false;
     return true;
   };
   const dens = BIOME_SOLID_SCATTER[zone.biome] ?? BIOME_SOLID_SCATTER.grove;
@@ -1174,9 +1406,10 @@ function planSolids(zone: ZoneDef, L: LayoutCore, buildings: readonly PlanBuildi
   const treeAccept = (x: number, z: number): number => {
     if (!scatterClear(x, z, 1.4, false)) return 0;
     if (roadDistance(roads, x, z) < 3.2) return 0;
+    if (slopeAt(h, x, z) > SCATTER_MAX_SLOPE) return 0;
     for (const c of L.clearings) if (Math.hypot(c.x - x, c.z - z) < c.r) return 0;
     if (route) {
-      if (Math.abs(z - roadZAt(L.roadMeander, x)) < 9) return 0.08;
+      if (routeCorridorDistance(L.main, L.roadMeander, x, z) < 9) return 0.08;
       const n = clumpy(x, z, 11);
       return n > 0.05 ? 1 : 0.18;
     }
@@ -1201,6 +1434,7 @@ function planSolids(zone: ZoneDef, L: LayoutCore, buildings: readonly PlanBuildi
         const rr = body.r * 1.25 + 2.2 + hash2(k, body.id, salt + 42) * 2.5;
         const x = body.cx + Math.cos(a) * rr; const z = body.cz + Math.sin(a) * rr;
         if (!scatterClear(x, z, 1.2, true) || roadDistance(roads, x, z) < 2.5) continue;
+        if (slopeAt(h, x, z) > SCATTER_MAX_SLOPE) continue;
         if (inPlay(x, z)) out.push({ source: 'willow', ref: `willow@${body.id}.${k}`, shape: { kind: 'circle', x, z, r: 0.5 + R } });
       }
     }
@@ -1208,7 +1442,7 @@ function planSolids(zone: ZoneDef, L: LayoutCore, buildings: readonly PlanBuildi
   // big rocks
   for (const p of jitteredPoints(-half - 20, half + 20, -half - 20, half + 20, dens.rock * 1.6, salt + 201, (x, z) => {
     if (!inPlay(x, z)) return 0;
-    return scatterClear(x, z, 1.2, false) && roadDistance(roads, x, z) > 1.5 ? 0.6 : 0;
+    return scatterClear(x, z, 1.2, false) && roadDistance(roads, x, z) > 1.5 && slopeAt(h, x, z) <= SCATTER_MAX_SLOPE ? 0.6 : 0;
   })) {
     const big = p.h < 0.45;
     const s = big ? 0.7 + p.h * 1.5 : 0.6 + p.h * 0.8;
@@ -1225,28 +1459,29 @@ function planSolids(zone: ZoneDef, L: LayoutCore, buildings: readonly PlanBuildi
  * `fork('layout')` of `createRng(layoutSeed)`, the scatter salt from `fork('scatter')` after it; buildings, lights and
  * props from three unlabelled `fork()`s of a second `createRng(layoutSeed)`, in that order.
  */
-export function planZone(zone: ZoneDef, base: Heightfield): ZonePlan {
+export function planZone(zone: ZoneDef, base: Heightfield, sculpted?: SculptResult): ZonePlan {
   const seed = zone.layoutSeed >>> 0;
   const setPieceId = SET_PIECE_BY_ZONE[zone.id];
   const water = waterBodies(base);
-  const L = planLayout(zone, seed, setPieceId, water);
+  const sculpt = SCULPTS[zone.id];
+  const L = planLayout(zone, seed, setPieceId, water, sculpt, sculpted, base);
   const rng = createRng(zone.layoutSeed);
   const buildingRng = rng.fork();
   const lightRng = rng.fork();
   const propRng = rng.fork();
-  const buildings = planBuildings(zone, L, buildingRng);
+  const buildings = planBuildings(zone, L, buildingRng, base);
   const lights = planLights(zone, L, base, buildings, lightRng);
-  const props = planProps(zone, L, buildings, lights, propRng);
+  const props = planProps(zone, L, buildings, lights, propRng, base, sculpt);
   const doorPaths = planDoorPaths(L, buildings);
   const scatter = createRng(seed);
   forkLabelled(scatter, 'layout');
   const scatterSalt = (forkLabelled(scatter, 'scatter').next() * 4294967296) >>> 0;
-  const solids = planSolids(zone, L, buildings, doorPaths, lights, props, scatterSalt);
+  const solids = planSolids(zone, L, buildings, doorPaths, lights, props, scatterSalt, base);
   return {
     zoneId: zone.id, layout: zone.kind, seed,
     half: L.half, interior: L.interior, plaza: L.plaza, roads: L.roads, roadMeander: L.roadMeander, grassPatches: L.grassPatches,
     clearings: L.clearings, setPiece: L.setPiece, water: L.water, points: L.points, warpPairs: L.warpPairs,
-    buildings, doors: buildings.map(doorApproach), doorPaths, lights, props, solids,
+    buildings, doors: buildings.map(doorApproach), doorPaths, lights, props, solids, bridges: sculpted?.bridges ?? [], crags: sculpted?.crags ?? [], structures: sculpted?.structures ?? [],
   };
 }
 

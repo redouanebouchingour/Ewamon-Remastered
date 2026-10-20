@@ -2,7 +2,7 @@
  * Interiors: every town building opens into a POCKET — a roofless walled hall standing in the zone's own playable
  * outer band, reached only through door warps (`<id>.in` at the building's door approach → the hall entry,
  * `<id>.out` at the hall's exit marker → back to the door). Pockets are a separate layer laid out AFTER `planZone`:
- * the zone plan (and so `r1-pre-move.json`) is untouched; scatter solids (trees, willows, rocks) that fall inside a
+ * the zone plan is untouched; scatter solids (trees, willows, rocks) that fall inside a
  * pocket are dropped from the stamp, everything else is avoided.
  *
  * Placement is a deterministic greedy scan (outermost ring first, then angle) over a 0.5 m blocked-cell grid with a
@@ -15,7 +15,7 @@
  */
 import type { Heightfield } from './heightfield';
 import type { PlanSolid, RectSolid, Vec2, ZonePlan } from './plan';
-import { MOVER_RADIUS, footprintDistance, inEllipse, roadDistance, toWorld } from './plan';
+import { MOVER_RADIUS, footprintDistance, inEllipse, roadDistance, roundBody, slopeAt, toWorld } from './plan';
 import type {
   InteriorDef,
   InteriorPlacement,
@@ -152,7 +152,7 @@ function inSetPiece(sp: ZonePlan['setPiece'], x: number, z: number, pad: number)
 
 const SCATTER: ReadonlySet<PlanSolid['source']> = new Set(['tree', 'willow', 'rock']);
 
-function blockedGrid(zone: ZoneDef, plan: ZonePlan, base: Heightfield, avoidGrass: boolean): Grid {
+function blockedGrid(zone: ZoneDef, plan: ZonePlan, base: Heightfield, avoidGrass: boolean, avoidSlopes: boolean): Grid {
   // a 1 m lattice over the field (candidates sit on whole metres; the field's 0.5 m water mask is sampled under it)
   const step = 1;
   const originX = -Math.floor(plan.half);
@@ -189,7 +189,8 @@ function blockedGrid(zone: ZoneDef, plan: ZonePlan, base: Heightfield, avoidGras
       if (!b && linked.s !== undefined && z > ih - edge) b = true;
       if (!b && linked.w !== undefined && x < -ih + edge) b = true;
       if (!b && linked.e !== undefined && x > ih - edge) b = true;
-      if (!b && waterAt(x, z)) b = true;
+      // water, and a 2.5 m bank round it (a pocket's screen re-grades the ground under it: never a shore sample)
+      if (!b && (waterAt(x, z) || waterAt(x + 2.5, z) || waterAt(x - 2.5, z) || waterAt(x, z + 2.5) || waterAt(x, z - 2.5))) b = true;
       if (
         !b &&
         plan.plaza !== null &&
@@ -197,9 +198,11 @@ function blockedGrid(zone: ZoneDef, plan: ZonePlan, base: Heightfield, avoidGras
       )
         b = true;
       if (!b && inSetPiece(plan.setPiece, x, z, 2)) b = true;
+      // level ground first: a hall dropped on a sculpt's cliff or crater rim would flatten it away
+      if (!b && avoidSlopes && slopeAt(base, x, z) > 0.35) b = true;
       if (!b)
         for (const w of plan.water)
-          if (Math.hypot(x - w.cx, z - w.cz) < w.r + 3) {
+          if (roundBody(w) && Math.hypot(x - w.cx, z - w.cz) < w.r + 3) {
             b = true;
             break;
           }
@@ -285,12 +288,16 @@ export function planInteriors(zone: ZoneDef, plan: ZonePlan, base: Heightfield):
   const rank = (d: InteriorDef): number =>
     ({ league_hall: 0, gym_hall: 1, healer: 2, shop: 3, house_m: 4, house_s: 5 })[d.template];
   const order = defs.map((d, i) => ({ d, i })).sort((a, b) => rank(a.d) - rank(b.d) || a.i - b.i);
-  // tall-grass patches are avoided when possible; a hall that fits nowhere else may cover part of one
+  // level ground and no tall grass when possible; a hall that fits nowhere else may cover a slope or part of a patch
   const grids: (() => Grid)[] = [];
   let strict: Grid | null = null;
   let relaxed: Grid | null = null;
-  grids.push(() => (strict ??= blockedGrid(zone, plan, base, true)));
-  grids.push(() => (relaxed ??= blockedGrid(zone, plan, base, false)));
+  let strictLevel: Grid | null = null;
+  let relaxedLevel: Grid | null = null;
+  grids.push(() => (strictLevel ??= blockedGrid(zone, plan, base, true, true)));
+  grids.push(() => (relaxedLevel ??= blockedGrid(zone, plan, base, false, true)));
+  grids.push(() => (strict ??= blockedGrid(zone, plan, base, true, false)));
+  grids.push(() => (relaxed ??= blockedGrid(zone, plan, base, false, false)));
   const ih = plan.half - ZONE_MARGIN;
   // candidates: a 1 m lattice, outermost square ring first, then by angle
   const cands: { x: number; z: number; ring: number; ang: number }[] = [];

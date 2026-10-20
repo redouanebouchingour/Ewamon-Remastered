@@ -120,9 +120,9 @@ describe('§10.6.2 resolveMove', () => {
     expect(c.passable(head.x, head.z)).toBe(true);
   });
 
-  it('water bodies: mirevale has two ponds with a boardwalk strip and a level above the pond floor', () => {
+  it("water bodies: mirevale's brook has the lane's footbridge (a boardwalk strip) and a level above its floor", () => {
     const bodies = waterBodies(fixture('mirevale'));
-    expect(bodies.length).toBe(2);
+    expect(bodies.length).toBe(1);
     for (const b of bodies) {
       expect(b.boardwalk).not.toBeNull();
       expect(b.level).toBeGreaterThan(b.floor);

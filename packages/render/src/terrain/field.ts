@@ -37,6 +37,29 @@ export function heightAt(h: HeightfieldData, x: number, z: number): number {
 }
 
 /** `heightAt` with (x, z) clamped into the field (never NaN). */
+/** Scatter keeps off slopes steeper than this, so cliff faces stay bare rock (content `SCATTER_MAX_SLOPE`). */
+export const SCATTER_MAX_SLOPE = 0.9;
+
+/** Terrain slope (rise per metre) at the nearest sample by central differences, 0 on the border (content `slopeAt`). */
+export function slopeAt(h: HeightfieldData, x: number, z: number): number {
+  const col = Math.round((x - h.originX) / h.step); const row = Math.round((z - h.originZ) / h.step);
+  if (col < 1 || row < 1 || col >= h.res - 1 || row >= h.res - 1) return 0;
+  const i = row * h.res + col;
+  const hx = (h.heights[i + 1]! - h.heights[i - 1]!) / (2 * h.step);
+  const hz = (h.heights[i + h.res]! - h.heights[i - h.res]!) / (2 * h.step);
+  return Math.sqrt(hx * hx + hz * hz);
+}
+
+/** A water sample at (x, z) or `d` m from it along ±x / ±z (nearest samples): content `wetNear`, the same five reads. */
+export function wetNear(h: HeightfieldData, x: number, z: number, d: number): boolean {
+  for (const [ox, oz] of [[0, 0], [d, 0], [-d, 0], [0, d], [0, -d]] as const) {
+    const col = Math.round((x + ox - h.originX) / h.step); const row = Math.round((z + oz - h.originZ) / h.step);
+    if (col < 0 || row < 0 || col >= h.res || row >= h.res) continue;
+    if (h.water[row * h.res + col] === 1) return true;
+  }
+  return false;
+}
+
 export function heightClamped(h: HeightfieldData, x: number, z: number): number {
   const cx = Math.min(h.originX + h.size, Math.max(h.originX, x));
   const cz = Math.min(h.originZ + h.size, Math.max(h.originZ, z));

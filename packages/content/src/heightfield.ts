@@ -22,6 +22,11 @@ import type { FootprintStamp, ZonePlan } from './plan';
 import { planInteriors, stampInteriors } from './interiors';
 import type { InteriorPlan, PlacedInterior } from './interiors';
 import { stampObstacles } from './obstacles';
+import { applySculpt, sampleSpline } from './sculpt';
+import type { SculptResult, ZoneSculpt } from './sculpt';
+import { SCULPTS } from './data/sculpts';
+import { LEGENDARY_STATICS } from './data/statics';
+import { RAID_HOTSPOTS } from './data/liveops';
 
 export interface Heightfield {
   readonly zoneId: ZoneId;
@@ -168,14 +173,45 @@ function authoredPoints(zone: ZoneDef): readonly (readonly [number, number])[] {
   return pts;
 }
 
-function placePonds(rng: Rng, zone: ZoneDef, half: number, points: readonly (readonly [number, number])[]): Pond[] {
+/** A closed polygon's outline sampled every `step` metres along its edges. */
+function outline(poly: readonly (readonly [number, number])[], step: number): [number, number][] {
+  const out: [number, number][] = [];
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i]!; const b = poly[(i + 1) % poly.length]!;
+    const dx = b[0] - a[0]; const dz = b[1] - a[1];
+    const n = Math.max(1, Math.ceil(Math.sqrt(dx * dx + dz * dz) / step));
+    for (let k = 0; k < n; k++) out.push([a[0] + (dx * k) / n, a[1] + (dz * k) / n]);
+  }
+  return out;
+}
+
+/** 16 unit directions (cos, sin of k·22.5°), exact enough for a keep-dry ring. */
+const RING: readonly (readonly [number, number])[] = [
+  [1, 0], [0.9239, 0.3827], [0.7071, 0.7071], [0.3827, 0.9239], [0, 1], [-0.3827, 0.9239], [-0.7071, 0.7071], [-0.9239, 0.3827],
+  [-1, 0], [-0.9239, -0.3827], [-0.7071, -0.7071], [-0.3827, -0.9239], [0, -1], [0.3827, -0.9239], [0.7071, -0.7071], [0.9239, -0.3827],
+];
+
+function placePonds(rng: Rng, zone: ZoneDef, half: number, points: readonly (readonly [number, number])[], sculpt: ZoneSculpt | undefined): Pond[] {
   const p = BIOME[zone.biome];
   const ponds: Pond[] = [];
+  const count = sculpt?.ponds ?? p.ponds;
+  // a sculpted zone keeps its ponds off its roads, rivers and lakes
+  const keepDry: (readonly (readonly [number, number])[])[] = [];
+  for (const r of sculpt?.roads ?? []) keepDry.push(sampleSpline(r.points, 4));
+  for (const r of sculpt?.rivers ?? []) keepDry.push(sampleSpline(r.points, 4));
+  for (const l of sculpt?.lakes ?? []) keepDry.push(l.poly);
+  // … and off the lifts' edges (a pond dug into a cliff reads as a bite out of it)
+  for (const l of sculpt?.lifts ?? []) {
+    if (l.poly !== undefined) keepDry.push(outline(l.poly, 4));
+    else if (l.line !== undefined) keepDry.push(sampleSpline(l.line.points, 4));
+    else if (l.circle !== undefined) { const c = l.circle; const ring: [number, number][] = []; for (let k = 0; k < 16; k++) ring.push([c.x + c.r * RING[k]![0], c.z + c.r * RING[k]![1]]); keepDry.push(ring); }
+  }
+  const sculptedRoute = zone.kind === 'route' && (sculpt?.roads ?? []).some((r) => r.id === 'road_main');
   const inner = half - ZONE_MARGIN;
   // towns are the small fields: scale the biome's pond radius down so a harbour still fits beside the plaza
   const scale = zone.kind === 'town' ? 0.6 : 1;
   const featureR = zone.kind === 'town' ? 22 : zone.kind === 'story' ? 26 : 0;
-  for (let i = 0; i < p.ponds; i++) {
+  for (let i = 0; i < count; i++) {
     const r = Math.max(4, Math.round(scale * (p.pondRadius[0] + Math.floor(rng.next() * (p.pondRadius[1] - p.pondRadius[0] + 1)))));
     let placed = false;
     for (let attempt = 0; attempt < 200 && !placed; attempt++) {
@@ -183,8 +219,17 @@ function placePonds(rng: Rng, zone: ZoneDef, half: number, points: readonly (rea
       const cx = Math.floor((rng.next() * 2 - 1) * lim);
       const cz = Math.floor((rng.next() * 2 - 1) * lim);
       // keep the kind feature (plaza / road / platform) and every authored point dry
-      const nearCentre = zone.kind === 'route' ? Math.abs(cz) < r + 12 : cx * cx + cz * cz < (r + featureR) * (r + featureR);
+      const nearCentre = zone.kind === 'route' ? !sculptedRoute && Math.abs(cz) < r + 12 : cx * cx + cz * cz < (r + featureR) * (r + featureR);
       if (nearCentre) continue;
+      let wet = false;
+      for (const line of keepDry) {
+        for (const [qx, qz] of line) {
+          const dx = qx - cx; const dz = qz - cz;
+          if (dx * dx + dz * dz < (r + 10) * (r + 10)) { wet = true; break; }
+        }
+        if (wet) break;
+      }
+      if (wet) continue;
       let clash = false;
       for (const [px, pz] of points) {
         const dx = px - cx;
@@ -229,8 +274,8 @@ export function buildHeightfield(zone: ZoneDef): Heightfield {
  * stamped into `walkable` (`stampFootprints`) and the digest taken over the result.
  */
 export function buildZoneSurface(zone: ZoneDef): ZoneSurface {
-  const base = buildTerrainField(zone);
-  const plan = planZone(zone, base);
+  const { field: base, sculpted } = buildTerrainField(zone);
+  const plan = planZone(zone, base, sculpted);
   const interiorPlan = planInteriors(zone, plan, base);
   const dropped = new Set(interiorPlan.droppedSolids);
   const footprints = stampFootprints(base, dropped.size === 0 ? plan : { solids: plan.solids.filter((_, i) => !dropped.has(i)), doors: plan.doors });
@@ -241,8 +286,8 @@ export function buildZoneSurface(zone: ZoneDef): ZoneSurface {
   return { heightfield: { ...base, digest }, plan, footprints, interiors: interiorPlan.interiors, interiorPlan, obstacleCells };
 }
 
-/** Terrain only: noise, kind feature, ponds, clearings; walkable = margin, slope and open water. `digest` is ''. */
-function buildTerrainField(zone: ZoneDef): Heightfield {
+/** Terrain only: noise, kind feature, sculpt, ponds, clearings; walkable = margin, slope and open water. `digest` is ''. */
+function buildTerrainField(zone: ZoneDef): { field: Heightfield; sculpted: SculptResult } {
   const size = ZONE_SIZE[zone.kind];
   const half = size / 2;
   const res = size / HEIGHTFIELD_STEP + 1;
@@ -256,9 +301,12 @@ function buildTerrainField(zone: ZoneDef): Heightfield {
 
   const rng = createRng(zone.layoutSeed);
   const noise = makeNoise(rng);
-  const params = BIOME[zone.biome];
+  const sculpt = SCULPTS[zone.id];
+  const biome = BIOME[zone.biome];
+  const params = sculpt?.rough !== undefined ? { ...biome, amplitude: biome.amplitude * sculpt.rough } : biome;
   const points = authoredPoints(zone);
-  const ponds = placePonds(rng, zone, half, points);
+  const ponds = placePonds(rng, zone, half, points, sculpt);
+  const sculptedRoute = zone.kind === 'route' && (sculpt?.roads ?? []).some((r) => r.id === 'road_main');
 
   const raw = new Float64Array(n2);
   const base = (x: number, z: number): number => fbm(noise, x, z, params.amplitude, params.wavelength, 4);
@@ -272,7 +320,9 @@ function buildTerrainField(zone: ZoneDef): Heightfield {
     for (let col = 0; col < res; col++) {
       const x = originX + col * HEIGHTFIELD_STEP;
       let h = base(x, z);
-      if (zone.kind === 'route') {
+      if (sculptedRoute) {
+        // the sculpt's own road does the flattening
+      } else if (zone.kind === 'route') {
         // a road along z ≈ 0, flattened toward the coarse profile along x
         const t = smooth01((Math.abs(z) - 7) / 6);
         h = coarse(x, 0) + (h - coarse(x, 0)) * t;
@@ -284,6 +334,15 @@ function buildTerrainField(zone: ZoneDef): Heightfield {
       raw[row * res + col] = h;
     }
   }
+
+  // 1b. the zone's sculpt: lifts, hills, lakes, rivers, then its roads (ramps through cliffs, bridges over water)
+  const sculpted: SculptResult = sculpt !== undefined
+    ? applySculpt({ res, originX, originZ, step: HEIGHTFIELD_STEP }, raw, water, boardwalk, sculpt, (x, z) => noise2(noise, x, z), [
+      ...points,
+      ...LEGENDARY_STATICS.filter((st) => st.zoneId === zone.id).map((st) => [st.x, st.z] as const),
+      ...RAID_HOTSPOTS.filter((rh) => rh.zoneId === zone.id).map((rh) => [rh.x, rh.z] as const),
+    ])
+    : { roads: [], bridges: [], crags: [], structures: [] };
 
   // 2. ponds: bowl depression + water mask; a boardwalk strip from the centre to the east rim
   for (const p of ponds) {
@@ -382,7 +441,7 @@ function buildTerrainField(zone: ZoneDef): Heightfield {
     }
   }
 
-  return { zoneId: zone.id, size, step: HEIGHTFIELD_STEP, res, originX, originZ, heights, walkable, water, digest: '' };
+  return { field: { zoneId: zone.id, size, step: HEIGHTFIELD_STEP, res, originX, originZ, heights, walkable, water, digest: '' }, sculpted };
 }
 
 // ─── digest ──────────────────────────────────────────────────────────────────

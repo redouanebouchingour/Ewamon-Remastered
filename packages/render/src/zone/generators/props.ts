@@ -244,6 +244,52 @@ export function buildPlanter(st: PropStyle, seed: number): PropGeo {
   }, [st.stone, st.leaf]);
 }
 
+/**
+ * A traveller's ridge tent (2.6 m along local x, 2.2 m wide, 1.6 m to the ridge): two cloth panels, closed gables, a
+ * pole at each end and a ridge pole; the door gable (local +x) is drawn darker with an open flap.
+ */
+export function buildTent(st: PropStyle, seed: number): PropGeo {
+  const p = createPrng(seed);
+  const L = 2.4 + p.next() * 0.5; const W = 2.1 + p.next() * 0.3; const H = 1.5 + p.next() * 0.25;
+  const slant = Math.hypot(W / 2, H);
+  return tiered((parts, tier) => {
+    for (const s of [-1, 1]) {
+      const n: V3 = [0, (W / 2) / slant, (s * H) / slant];
+      beam(parts, st.cloth, [-L / 2, H / 2, (s * W) / 4], [L / 2, H / 2, (s * W) / 4], slant + 0.08, 0.05, tier === 0 ? 0.015 : 0.005, n);
+    }
+    const tri = new Shape();
+    tri.moveTo(-W / 2 + 0.04, 0); tri.lineTo(W / 2 - 0.04, 0); tri.lineTo(0, H - 0.04); tri.lineTo(-W / 2 + 0.04, 0);
+    extrude(parts, st.cloth, tri, 0.04, 0, trs(-L / 2 + 0.02, 0, 0, Math.PI / 2), { curveSegments: 1 });
+    if (tier < 2) {
+      const flap = new Shape();
+      flap.moveTo(0.05, 0); flap.lineTo(W / 2 - 0.06, 0); flap.lineTo(0.05, H * 0.92); flap.lineTo(0.05, 0);
+      extrude(parts, st.cloth, flap, 0.04, 0, trs(L / 2 - 0.02, 0, 0, Math.PI / 2), { curveSegments: 1 });
+      for (const x of [-L / 2 - 0.05, L / 2 + 0.05]) beam(parts, st.wood, [x, -0.1, 0], [x, H + 0.18, 0], 0.07, 0.07, 0.015);
+      beam(parts, st.wood, [-L / 2 - 0.1, H + 0.02, 0], [L / 2 + 0.1, H + 0.02, 0], 0.06, 0.06, 0.012);
+    }
+  }, [st.cloth, st.wood]);
+}
+
+/** A campfire: a ring of hearth stones round crossed logs and glowing coals (the coals use the set's glow surface). */
+export function buildCampfire(st: PropStyle, seed: number): PropGeo {
+  const p = createPrng(seed);
+  const rot = p.next() * TAU;
+  return tiered((parts, tier) => {
+    const n = tier === 0 ? 9 : 6;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * TAU + rot;
+      box(parts, st.stone, Math.cos(a) * 0.55, -0.04, Math.sin(a) * 0.55, 0.26, 0.2 + (k % 3) * 0.03, 0.2, -a, tier === 0 ? 0.05 : 0.02);
+    }
+    lathe(parts, st.glow, [[0.001, 0.02], [0.36, 0.0], [0.22, 0.08], [0.001, 0.12]], { segments: tier === 0 ? 10 : 6, smooth: false });
+    if (tier < 2) {
+      for (let k = 0; k < 3; k++) {
+        const a = (k / 3) * TAU + rot;
+        beam(parts, st.wood, [Math.cos(a) * 0.42, 0.04, Math.sin(a) * 0.42], [Math.cos(a) * -0.05, 0.34, Math.sin(a) * -0.05], 0.1, 0.1, 0.02);
+      }
+    }
+  }, [st.stone, st.glow, st.wood]);
+}
+
 export function buildCrate(st: PropStyle, seed: number): PropGeo {
   const p = createPrng(seed);
   const s = 0.7 + p.next() * 0.25;

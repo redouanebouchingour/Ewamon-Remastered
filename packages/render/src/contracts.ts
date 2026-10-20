@@ -224,6 +224,12 @@ export interface ZonePlanData {
   /** Authored points the layout keeps clear (actors, pickups, tablets, warp doors and arrivals). */
   readonly points: readonly XZ[];
   readonly warpPairs: readonly { readonly id: string; readonly door: XZ; readonly to: XZ | null }[];
+  /** Where a sculpted road crosses water on a deck (centreline ends on the banks, deck width and height). */
+  readonly bridges?: readonly { readonly road: string; readonly points: readonly XZ[]; readonly ys: readonly number[]; readonly width: number }[];
+  /** Rock spires, tors and columns of the zone's sculpt (centre, radius, height above the ground round them). */
+  readonly crags?: readonly { readonly x: number; readonly z: number; readonly r: number; readonly h: number }[];
+  /** Curtain walls and palisades (crest polylines) and towers (one point; width = diameter) on the sculpt's lifts. */
+  readonly structures?: readonly { readonly kind: 'wall' | 'palisade' | 'tower'; readonly points: readonly XZ[]; readonly width: number; readonly h: number }[];
 }
 
 /** The structure of §10.6.1 `TerrainCollider` (kept for callers typed against part 1; `ZoneHandle.collider` is the class). */

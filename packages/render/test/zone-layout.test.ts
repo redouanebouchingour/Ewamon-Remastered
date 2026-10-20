@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { allZones } from '@ewa/content';
 import { LOD_DISTANCES, LOD_HYSTERESIS, chooseTier, chunkCentre, chunkGrid, chunkOf, tierFor } from '../src/zone/lod.js';
 import {
-  HOUSING_LOCAL, SET_PIECE_EXTENT, SET_PIECE_LIGHTS, TOWN_LAYOUT, createSplatContext, doorOf, footprintDistance, layoutOf, planLayout, roadDistance, splatAt,
+  HOUSING_LOCAL, SET_PIECE_EXTENT, SET_PIECE_LIGHTS, TOWN_LAYOUT, createSplatContext, doorOf, footprintDistance, layoutOf, roadDistance, splatAt,
 } from '../src/zone/layout.js';
 import { PALETTES, paletteFor } from '../src/zone/palettes.js';
 import { realSpec } from './zone-helpers.js';
@@ -60,15 +60,6 @@ describe('§10.5.5 layout', () => {
     expect(JSON.stringify({ ...a, water: a.water.length, roadZ: 0 })).toBe(JSON.stringify({ ...b, water: b.water.length, roadZ: 0 }));
   });
 
-  it("the deprecated planLayout (the capture harness's anchors) still equals content's plan", () => {
-    for (const s of [mv, mr]) {
-      const legacy = planLayout(s); const plan = layoutOf(s);
-      const { doorPaths: _a, roadZ: _b, ...l } = legacy; const { doorPaths: _c, roadZ: _d, ...c } = plan;
-      expect(l).toEqual(c);
-      for (let x = -120; x <= 120; x += 3.7) expect(legacy.roadZ(x)).toBe(plan.roadZ(x));
-    }
-  });
-
   it('town: plaza r 14, a road to each edge, the gym north with its door at (0, −26), buildings on the 22–30 m ring', () => {
     const plan = layoutOf(mv);
     expect(plan.plaza).toEqual({ x: 0, z: 0, r: TOWN_LAYOUT.plazaR });
@@ -90,16 +81,21 @@ describe('§10.5.5 layout', () => {
     expect(Math.sign(shop.x)).not.toBe(Math.sign(healer.x));
   });
 
-  it('route: a meandering road on the corridor, 3–5 tall-grass patches alternating sides, 2–3 clearings, set-piece at the midpoint', () => {
+  it("route (sculpted): the road runs edge to edge, the corridor follows it, tall grass on both sides, the set-piece on the road", () => {
     const plan = layoutOf(mr);
+    const main = plan.roads[0]!;
+    expect(main.points[0]).toEqual([-120, 0]);
+    expect(main.points[main.points.length - 1]).toEqual([120, 0]);
+    for (const [x, z] of main.points) expect(plan.corridor(x, z)).toBeLessThan(1e-9);
+    expect(plan.corridor(0, 60)).toBeGreaterThan(40);
     expect(plan.grassPatches.length).toBeGreaterThanOrEqual(3);
-    expect(plan.grassPatches.length).toBeLessThanOrEqual(5);
-    expect(plan.clearings.length).toBeGreaterThanOrEqual(2);
     expect(plan.clearings.length).toBeLessThanOrEqual(3);
-    for (let x = -104; x <= 104; x += 8) expect(Math.abs(plan.roadZ(x))).toBeLessThan(ROUTE_CORRIDOR);
-    expect(plan.setPiece.x).toBe(0);
-    const sides = plan.grassPatches.map((e) => Math.sign(e.z - plan.roadZ(e.x)));
+    expect(plan.corridor(plan.setPiece.x, plan.setPiece.z)).toBeLessThan(2);
+    const sides = plan.grassPatches.map((e) => Math.sign(e.z - main.points.reduce((b, p) => (Math.abs(p[0] - e.x) < Math.abs(b[0] - e.x) ? p : b))[1]));
     expect(new Set(sides).size).toBe(2);
+    // the sculpt's features travel to the builder
+    expect(plan.bridges.length).toBeGreaterThan(0);
+    expect(plan.field).toBe(mr.heightfield);
   });
 
   it('splat: plaza inside r 14, path on roads, ground elsewhere', () => {
@@ -126,7 +122,6 @@ describe('§10.5.5 layout', () => {
   });
 });
 
-const ROUTE_CORRIDOR = 3.5;
 
 describe('§10.5.3 palettes', () => {
   it('one palette per ZoneDef.palette id, with valid terrain surfaces; the slice grade is the SPEC value', () => {

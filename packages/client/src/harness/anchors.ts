@@ -11,8 +11,8 @@
  * - `gym-dusk`: the gym building's door (`doorOf`, the server's league marker `(0, −26)`) + `(0, +8)` in the DOOR frame
  *   (+z = the door's outward normal, +x = that normal turned −90° about y, so a door facing +z reads in world axes).
  * - `sprite-edge`: the encounter table's first `common` slot is the creature; its spawn point is the road-side edge of
- *   the zone layout's first tall-grass patch (`planLayout(spec).grassPatches[0]`): from the patch centre toward the
- *   road centreline (`plan.roadZ`) by `rz + 1.5` m (`SPAWN_EDGE_OUT_M`), i.e. just outside the builder's 0.9 m grass fringe,
+ *   the zone layout's first tall-grass patch (`layoutOf(spec).grassPatches[0]`): from the patch centre toward the
+ *   nearest road point by its larger radius + 1.5 m (`SPAWN_EDGE_OUT_M`), i.e. just outside the builder's 0.9 m grass fringe,
  *   snapped to the heightfield (`nearestWalkable`, 8 m). The server draws spawn points from a time-seeded rng
  *   (`ZoneRoom` `worldRng`), so there is no committed spawn point; the patch is where the layout puts wild creatures,
  *   and its edge keeps the sprite out of the tall grass (the patch centre buried a level-2 mossling in grass cards,
@@ -33,7 +33,7 @@
  */
 import { ENCOUNTER_TABLES, arrivalPoint, getHeightfield, isWalkable, isWater, nearestWalkable, zone as zoneDef } from '@ewa/content';
 import type { EncounterSlot, ZoneDef, ZoneId } from '@ewa/content';
-import { HANDOVER_INSET, doorOf, edgePoint, headingYaw, planLayout } from '@ewa/render';
+import { HANDOVER_INSET, doorOf, edgePoint, headingYaw, layoutOf } from '@ewa/render';
 import type { BuildingSpec, ZoneSpec } from '@ewa/render';
 import { HEADING_CONVENTION, round2 } from './shotTable';
 import type { Heading, ShotDef, ShotId } from './shotTable';
@@ -105,17 +105,18 @@ export function encounterAnchor(z: ZoneDef, spec: ZoneSpec): EncounterAnchor | n
   const slotIndex = table.slots.findIndex((s) => s.tier === 'common');
   if (slotIndex < 0) return null;
   const slot = table.slots[slotIndex]!;
-  const plan = planLayout({
-    seed: spec.seed, layout: spec.layout, heightfield: spec.heightfield, edges: spec.edges, actors: spec.actors, pickups: spec.pickups,
-    tablets: spec.tablets, warps: spec.warps, tallGrass: spec.tallGrass, setPiece: spec.setPiece,
-  });
+  const plan = layoutOf(spec);
   const patch = plan.grassPatches[0];
   let cx = patch?.x ?? z.spawn.x;
   let cz = patch?.z ?? z.spawn.z;
   if (patch !== undefined) {
-    const toward = Math.sign(plan.roadZ(patch.x) - patch.z) || -1;
-    cz = patch.z + toward * (patch.rz + SPAWN_EDGE_OUT_M);
-    cx = patch.x;
+    // toward the nearest road point (the side a player walks up from)
+    let qx = patch.x; let qz = patch.z - 1; let bd = Infinity;
+    for (const r of plan.roads) for (const [px, pz] of r.points) { const d = Math.hypot(px - patch.x, pz - patch.z); if (d < bd) { bd = d; qx = px; qz = pz; } }
+    const len = Math.hypot(qx - patch.x, qz - patch.z) || 1;
+    const out = Math.max(patch.rx, patch.rz) + SPAWN_EDGE_OUT_M;
+    cx = patch.x + ((qx - patch.x) / len) * out;
+    cz = patch.z + ((qz - patch.z) / len) * out;
   }
   const h = getHeightfield(z.id);
   if ((slot.medium ?? 'land') === 'water') {
@@ -215,7 +216,7 @@ export function tableAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | nul
         const p = snapWalkable(z, ax, az);
         return {
           ...base, x: p.x, z: p.z, snapped: p.snapped, raw: p.raw,
-          rule: `${z.encounterTable} slot ${e.slotIndex} (${e.slot.species}, first 'common') at the road-side edge of grassPatches[0] (centre + ${SPAWN_EDGE_OUT_M} m past rz toward roadZ)${s.snapped ? ' (snapped)' : ''} + (-2, +3) world`,
+          rule: `${z.encounterTable} slot ${e.slotIndex} (${e.slot.species}, first 'common') at the road-side edge of grassPatches[0] (centre + ${SPAWN_EDGE_OUT_M} m past its larger radius toward the nearest road point)${s.snapped ? ' (snapped)' : ''} + (-2, +3) world`,
           base: { name: `${e.slot.species} spawn`, x: s.x, z: s.z }, offset: { dx: -2, dz: 3, frame: 'world' }, wild, worldReading: null,
         };
       }
@@ -261,11 +262,7 @@ export function fallbackAnchor(shot: ShotDef, spec: ZoneSpec): ResolvedAnchor | 
   switch (shot.id) {
     case 'spawn-noon': return null;
     case 'gym-dusk': {
-      const plan = planLayout({
-        seed: spec.seed, layout: spec.layout, heightfield: spec.heightfield, edges: spec.edges, actors: spec.actors, pickups: spec.pickups,
-        tablets: spec.tablets, warps: spec.warps, tallGrass: spec.tallGrass, setPiece: spec.setPiece,
-      });
-      const sp = plan.setPiece;
+      const sp = layoutOf(spec).setPiece;
       const p = snapWalkable(z, sp.x, sp.z + Math.max(sp.hw, sp.hd) + 8);
       return {
         ...base, heading: headingOf(shot, rigFacing(sp.x - p.x, sp.z - p.z)), x: p.x, z: p.z, snapped: p.snapped, raw: p.raw,

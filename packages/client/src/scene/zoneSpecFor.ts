@@ -75,7 +75,7 @@ export function zoneSpecFor(zone: ZoneDef, harvest: HarvestState): ZoneSpec {
   const lights = lightsFromPlan(plan.lights, zone.biome, setPiece, zone.type);
   const specPlan: ZonePlanData = {
     plaza: plan.plaza, roads: plan.roads, doorPaths: plan.doorPaths, roadMeander: plan.roadMeander, grassPatches: plan.grassPatches,
-    clearings: plan.clearings, setPiece: plan.setPiece, points: plan.points, warpPairs: plan.warpPairs,
+    clearings: plan.clearings, setPiece: plan.setPiece, points: plan.points, warpPairs: plan.warpPairs, bridges: plan.bridges, crags: plan.crags, structures: plan.structures,
   };
 
   // the primary water body (largest) as the WaterSpec; the builder renders every body of the heightfield mask
@@ -144,7 +144,7 @@ export function neighbourSpecsFor(zone: ZoneDef): Partial<Record<Dir, NeighbourS
       heightfield: getHeightfield(nb.id),
       plan: {
         plaza: plan.plaza, roads: plan.roads, doorPaths: plan.doorPaths, roadMeander: plan.roadMeander, grassPatches: plan.grassPatches,
-        clearings: plan.clearings, setPiece: plan.setPiece, points: plan.points, warpPairs: plan.warpPairs,
+        clearings: plan.clearings, setPiece: plan.setPiece, points: plan.points, warpPairs: plan.warpPairs, bridges: plan.bridges, crags: plan.crags, structures: plan.structures,
       },
       buildings: plan.buildings.map((b) => ({ id: b.id, kind: b.kind, x: b.x, z: b.z, yaw: b.yaw, w: b.w, d: b.d, floors: b.floors, roof: b.roof, seed: b.seed })),
       interiors: interiorSpecsFor(nb.id),

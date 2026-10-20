@@ -590,3 +590,34 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   pair's path planned 76 with none duplicated (siege_route also failed). eclipse_shrine has no interiors and is no town, so
   no interior door or arrival point moves; the static is a separate layer from the zone plan (no layout reshuffle).
 - The roster gate (`roster.ts`) wants 9 statics; `validate.ts` 138 species, 197 moves, 72 roots.
+
+## Zone sculpts (2026-10-20)
+
+- The user found the zones copy-paste and too linear. `src/sculpt.ts` (the field pass) and `src/data/sculpts.ts` (21
+  hand-authored shapes) now give every zone its own landform; SPEC §3.11 "Zone sculpts" (amended in the same change).
+- `applySculpt` runs inside `buildTerrainField` after the noise and the kind feature: lifts (polygon / circle /
+  Catmull-Rom stroke, `edge` decides cliff or bank, `ragged` from the zone's own value noise), hills, road profiles
+  (dry terrain, ±7 m moving average, 0.3 grade both ways, straight across `bridged` lifts), lakes, rivers, then the
+  road flatten (deck samples over water are walkable and water). Random biome ponds follow (count from `sculpt.ponds`,
+  kept off roads, rivers, lakes and lift outlines), then the authored-point clearings. Only + - * / and `Math.sqrt`,
+  `floor`, `round`, `abs`, `min`, `max`: digests stay engine-independent.
+- `placeOutcrops` scatters circle lifts from a seed (xorshift32), clear of roads, rivers, lakes, the authored points,
+  the statics, the raid hotspots, the set-piece and each other; `ring` / `axes` keep a town's streets clear.
+- The plan takes the sculpt's roads (`road_main` replaces the route meander, `road_<dir>` / `lane_s` replace a town's
+  generated road, other ids are extra trails), its grass, its set-piece spot, fences and props, and passes on
+  `bridges` (deck centrelines + heights), `crags` (cliffed round lifts) and `structures` (`dress` wall / palisade /
+  tower) for render.
+- Plan rules that changed for every zone: scatter keeps off slopes over 0.9 (`slopeAt`) and the water mask
+  (`wetNear`), mirrored by render; water clearances use the mask for any body that is not a round pond (`roundBody`:
+  r <= 18 and an extent under 2.6 r), circles stay for ponds; buildings need walkable ground varying <= 1.2 m; props keep
+  off door approaches (a footprint there had a walkable hole: the spawn-director test found one under a Solenne well)
+  and off the spawn, lamps too (Solenne's spawn no longer sits in a lamp post); a fence keeps its 1.87 m half-length off
+  the authored points; interior pockets keep 2.5 m off water (a pocket's screen re-grades the shore and moved a water
+  level).
+- New prop kinds `tent` (1.3 m) and `campfire` (0.7 m) in `PROP_SOLID_RADIUS`, one travellers' camp per route.
+- Retired: `test/fixtures/r1-pre-move.json` and the byte comparisons against the pre-R1 render planners (the sculpts
+  change every zone on purpose). New: `test/sculpt.test.ts`. Re-baselined: `dist/heightfields/*.json`.
+- `scripts/zone-map.ts` (`pnpm --filter @ewa/content zone-map <dir> [zones]`) draws top-down debug maps of the sculpts:
+  the quickest way to check a shape and its reachability before looking at it in 3D.
+- `pnpm test:progression` not re-run with the sculpts (about 41 min); the walker pathfinds (`server/test/pathing.ts`),
+  and validate's rule 12 proves every story target reachable from the spawn.

@@ -1,15 +1,12 @@
 /**
  * Audit R1 — the zone plan is content's (`plan.ts`), and `buildHeightfield` stamps its footprints into `walkable`.
  *
- * Identity: `fixtures/r1-pre-move.json` was captured from the render layout planners, the client adapter and the
- * zone builder at HEAD 689fd78, BEFORE the plan moved here (digests of every layout field, the door paths, props,
- * light positions and the ordered list of every collider blocker the builder registered; the building records in
- * full). Content's plan must reproduce all of it for all 21 zones — the rendered villages are unchanged — with one
- * deliberate addition: fence runs are solid now (render drew them walk-through).
+ * The byte-for-byte pin against the render planners' pre-move output (`fixtures/r1-pre-move.json`, HEAD 689fd78) was
+ * retired with the zone sculpts (`sculpt.ts`, `data/sculpts.ts`), which reshape every zone on purpose; the sculpts
+ * have their own tests (`sculpt.test.ts`). What stays is the contract: footprints, door approaches, stamping,
+ * determinism.
  */
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { fnv1a32 } from '@ewa/core';
 import {
   LEGENDARY_STATICS,
   RAID_HOTSPOTS,
@@ -20,25 +17,11 @@ import {
   getHeightfield,
   getZoneSurface,
   isWalkable,
-  roadZAt,
   solidContains,
   waterBodies,
   zonePlan,
 } from '../src/index';
 import type { Heightfield, Solid } from '../src/index';
-
-interface FixtureZone {
-  readonly terrainWalkable: number;
-  readonly buildings: readonly unknown[];
-  readonly counts: { readonly props: number; readonly lights: number; readonly blockers: number };
-  readonly layout: Readonly<Record<string, string>>;
-  readonly doorPaths: string;
-  readonly props: string;
-  readonly lightPositions: string;
-  readonly blockers: string;
-}
-const FIXTURE = JSON.parse(readFileSync(new URL('./fixtures/r1-pre-move.json', import.meta.url), 'utf8')) as { readonly zones: Readonly<Record<string, FixtureZone>> };
-const digest = (v: unknown): string => fnv1a32(JSON.stringify(v)).toString(16).padStart(8, '0');
 
 function samplesIn(h: Heightfield, s: Solid, fn: (i: number, x: number, z: number) => void): void {
   const r = s.kind === 'circle' ? s.r : Math.hypot(s.hw, s.hd);
@@ -51,33 +34,6 @@ function samplesIn(h: Heightfield, s: Solid, fn: (i: number, x: number, z: numbe
 }
 
 describe('R1 zone plan (content)', () => {
-  it('reproduces the pre-move render layout for all 21 zones: layout, door paths, buildings, props, lights, footprints', () => {
-    expect(Object.keys(FIXTURE.zones)).toHaveLength(21);
-    for (const z of ZONES) {
-      const f = FIXTURE.zones[z.id]!;
-      const p = zonePlan(z.id);
-      const roadZ: number[] = [];
-      for (let x = -130; x <= 130; x += 0.5) roadZ.push(roadZAt(p.roadMeander, x));
-      expect({
-        half: digest(p.half), interior: digest(p.interior), plaza: digest(p.plaza), roads: digest(p.roads), grassPatches: digest(p.grassPatches),
-        clearings: digest(p.clearings), setPiece: digest(p.setPiece), points: digest(p.points), warpPairs: digest(p.warpPairs), water: digest(p.water),
-        roadZ: digest(roadZ),
-      }, z.id).toEqual(f.layout);
-      expect(digest(p.doorPaths), `${z.id} door paths`).toBe(f.doorPaths);
-      expect(p.buildings, `${z.id} buildings`).toEqual(f.buildings);
-      expect(p.props.length).toBe(f.counts.props);
-      expect(digest(p.props), `${z.id} props`).toBe(f.props);
-      expect(p.lights.length).toBe(f.counts.lights);
-      expect(digest(p.lights.map((l) => [l.id, l.x, l.z, l.castShadow, l.seed])), `${z.id} lights`).toBe(f.lightPositions);
-      const fences = p.solids.filter((s) => s.source === 'prop' && s.ref.startsWith('fence#'));
-      const before = p.solids.filter((s) => !fences.includes(s)).map((s) => s.shape);
-      expect(before.length, `${z.id} footprints`).toBe(f.counts.blockers);
-      expect(digest(before), `${z.id} footprints = the builder's pre-move blockers, in order`).toBe(f.blockers);
-      // the deliberate addition: every fence run is solid
-      expect(fences.length).toBe(p.props.filter((q) => q.kind === 'fence').length);
-    }
-  });
-
   it('every building has a footprint (walls + plinth + capsule) and a door approach in front of its door', () => {
     let towns = 0;
     for (const z of ZONES) {
@@ -106,12 +62,11 @@ describe('R1 zone plan (content)', () => {
     expect(towns).toBe(9);                                                   // 8 gym towns + solenne
   });
 
-  it('stamps every footprint sample walkable = 0 (water and door approaches excepted) and leaves the rest of the terrain alone', () => {
+  it('stamps every footprint sample walkable = 0 (water and door approaches excepted)', () => {
     for (const z of ZONES) {
       const s = getZoneSurface(z.id);
       const h = s.heightfield;
-      const f = FIXTURE.zones[z.id]!;
-      expect(s.footprints.baseWalkable / h.walkable.length, `${z.id} terrain walkable (pre-move ratio)`).toBe(f.terrainWalkable);
+      expect(s.footprints.baseWalkable / h.walkable.length, `${z.id} terrain walkable`).toBeGreaterThan(0.45);
       // town pockets (interiors) re-stamp their own footprints after the plan; outside towns the count is exact
       // (plus the Phase D10 obstacle discs, stamped last on samples that were still walkable)
       if (s.interiors.length === 0) {

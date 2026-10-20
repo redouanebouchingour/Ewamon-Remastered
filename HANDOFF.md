@@ -105,6 +105,13 @@ fail under machine load and pass alone).
   `WILD_ENCOUNTERS=grass|overworld` and `TRAINER_SIGHT=on|off` (defaults `grass` / `on`; `testEnv` keeps `overworld` /
   `off`). SPEC §30.3; `packages/server/src/rooms/encounters.ts`, client `scene/trainerApproach.ts`.
 - **Tuning / dev**: denser wild spawns; `grant:creature` / `grant:item`; the tower test's Wonder Guard flake fixed.
+- **Zone sculpts** (2026-10-20): every zone has its own hand-authored landform (content `sculpt.ts` + `data/sculpts.ts`,
+  SPEC §3.11 "Zone sculpts", §10.5.5): cliffs, plateaus, terraces, ravines, rivers with bridges, lakes and coasts, crater
+  rims, ramparts, walls and towers, rock spires, winding roads with ramps, authored tall grass (where the wild
+  encounters are) and a travellers' camp on every route. Edit a shape, then `pnpm --filter @ewa/content zone-map <dir>
+  <zone>` (top-down debug map: unreachable ground shows magenta) and `pnpm --filter @ewa/content validate` (rule 12
+  proves reachability). The sandbox's `&far=<m>` gives a survey camera. `pnpm test:progression` has not been re-run
+  on the sculpted terrain.
 
 ## The finish plan
 

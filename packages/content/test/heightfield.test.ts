@@ -56,9 +56,8 @@ describe('heightfield (§3.11)', () => {
   });
 
   it('every authored zone coordinate (spawn/npcs/trainers/items/lore/warps) is walkable — or, the one inside a plan footprint, 0.5 m from a walkable sample', () => {
-    // the plan keeps buildings / props / lamps / trees clear of npcs, trainers, items, lore and warps, but not of the
-    // spawn: solenne's (−50, 0) sits in the road-w lamp post's footprint and snaps 0.5 m (validate reports it)
-    const covered = new Set(['solenne spawn']);
+    // the plan keeps buildings / props / lamps / trees clear of the spawn, npcs, trainers, items, lore and warps
+    const covered = new Set<string>();
     for (const z of ZONES) {
       const h = getHeightfield(z.id);
       const pts: [string, number, number][] = [['spawn', z.spawn.x, z.spawn.z]];

@@ -77,8 +77,9 @@ describe('the shiny roll', () => {
     const d = new SpawnDirector(zone('mire_route'), table, createRng('d4-stream'), h, { ...ROUTE_TUNING, targetCount: 1, lifetimeMs: 0, respawnMinMs: 0, respawnMaxMs: 0 }, content);
     const spawns = rollSpawns(d, 3000);
     const lines = spawns.map((s) => `${s.id}|${s.speciesId}|${s.level}|${s.isAlpha}|${s.variantKey}|${s.ability}|${s.x}|${s.z}`);
-    // captured by running HEAD~0's (pre-D4) spawnDirector.ts with the same tuning and seed
-    expect(fnv1a32(lines.join('\n')).toString(16)).toBe('8880f1e7');
+    // captured by running HEAD~0's (pre-D4) spawnDirector.ts with the same tuning and seed ('8880f1e7'), then re-captured
+    // with the director unchanged on the sculpted mire_route terrain (the zone sculpts moved the walkable samples)
+    expect(fnv1a32(lines.join('\n')).toString(16)).toBe('84d644db');
   });
 });
 

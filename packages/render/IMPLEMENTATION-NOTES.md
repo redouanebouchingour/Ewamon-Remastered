@@ -2207,3 +2207,23 @@ the normal sun / hemisphere / CSM / fog, then `stage.dress({ x: 0, z: 0 }, ARENA
   probe, `dumpZone`, the opaque budget toggle missed the stadium). `currentZoneRoot(zone, external)` now skips a
   disposed handle (tested in `arena-backdrop.test.ts`). The white world after leaving the arena was not render's: see
   the client notes, "Arena PvP" (the zone load predicted its first view at the zone's spawn).
+
+## Zone sculpts (2026-10-20)
+
+- Draws content's sculpted zones (SPEC §10.5.5 amended): `bridgeSteps` (plank deck, fascias down past the waterline,
+  posts, rails, segment by segment along the deck centreline; a crossing inside the set-piece extent is skipped, the
+  set-piece draws it), `cragSteps` (a faceted `buildRock` sized to each cliffed round lift, seated on the lowest ground
+  round its foot), `structureSteps` (curtain-wall blocks with merlons, palisade stakes, `tower()` on its mound; nothing
+  where the crest was cut down by a road, so gates stay open) and a `cliff_rock` scatter kind (boulders on every slope
+  over 1.1, walk-through: they stand on unwalkable samples).
+- Scatter mirrors content's new solid rules exactly (`slopeAt` / `SCATTER_MAX_SLOPE`, `wetNear`, `roundBody`):
+  `client/test/footprints.test.ts` passes unchanged. Non-solid scatter (bushes, flowers, tufts, stumps, cover, margin
+  trees and rocks) also keeps off the water mask, so nothing grows in a river or the sea.
+- `layoutOf` adds `corridor(x, z)` (distance to the sculpted road, replacing `|z - roadZ(x)|` in the tree acceptance),
+  `bridges`, `crags`, `structures` and `field`; the splat paints a broken shore band from the water mask round rivers,
+  lakes and seas (`SplatContext.wet`), circles only round ponds (a river's area-equivalent circle had painted a dirt disc).
+- Cinder water is drawn `lava_glow` (the ash ravine's lava, Cinderhold's lava lake).
+- New prop builders `buildTent`, `buildCampfire` (`PROP_BLOCKER` 1.3 / 0.7 = content's table).
+- Sandbox: `&far=<m>` sets a survey camera distance beyond the zoom stops (shape checks only; fog and DOF still apply).
+- The deprecated `planLayout` no longer equals content's plan (sculpts are content-only); the harness anchors use
+  `layoutOf(spec)` now, and its equality test is gone.

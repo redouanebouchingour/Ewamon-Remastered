@@ -194,6 +194,16 @@ export interface ZoneLayoutPlan {
   /** Door paths (1.6 m, door → nearest road or the plaza rim): part of the splat's roads and the scatter keep-clear. */
   readonly doorPaths: readonly Road[];
   roadZ(x: number): number;
+  /** Distance to a route's road centreline: the sculpted main road's, or |z − roadZ(x)| (content `routeCorridorDistance`). */
+  corridor(x: number, z: number): number;
+  /** Sculpted road decks over water (content `ZonePlan.bridges`). */
+  readonly bridges: NonNullable<ZonePlanData['bridges']>;
+  /** The sculpt's rock spires / tors (content `ZonePlan.crags`). */
+  readonly crags: NonNullable<ZonePlanData['crags']>;
+  /** The sculpt's walls, palisades and towers (content `ZonePlan.structures`). */
+  readonly structures: NonNullable<ZonePlanData['structures']>;
+  /** The zone's field (the splat's shore band reads its water mask); absent in synthetic plans. */
+  readonly field?: HeightfieldData;
 }
 
 function authoredPoints(i: LayoutInput): Vec2[] {
@@ -371,7 +381,7 @@ export function planLayout(i: LayoutInput): ZoneLayoutPlan {
   return {
     layout: i.layout, half, interior, plaza, roads, grassPatches, clearings,
     setPiece: { id: i.setPiece, x: sp.x, z: sp.z, yaw: 0, hw: ext.hw, hd: ext.hd },
-    water, points, warpPairs: warpPairs(i.warps), roadZ, doorPaths: [],
+    water, points, warpPairs: warpPairs(i.warps), roadZ, doorPaths: [], corridor: (x: number, z: number): number => Math.abs(z - roadZ(x)), bridges: [], crags: [], structures: [],
   };
 }
 
@@ -405,11 +415,17 @@ export function layoutOf(spec: Pick<ZoneSpec, 'layout' | 'heightfield' | 'plan'>
   const half = FIELD_SIZE[spec.layout] / 2;
   const ih = half - FIELD_MARGIN;
   const meander = p.roadMeander;
+  const main = spec.layout === 'route' && meander === null ? (p.roads[0] ?? null) : null;
   return {
     layout: spec.layout, half, interior: { minX: -ih, maxX: ih, minZ: -ih, maxZ: ih },
     plaza: p.plaza, roads: p.roads, grassPatches: p.grassPatches, clearings: p.clearings, setPiece: p.setPiece,
     water: waterBodies(spec.heightfield), points: p.points, warpPairs: p.warpPairs, doorPaths: p.doorPaths,
     roadZ: (x: number): number => roadZAt(meander, x),
+    corridor: main !== null ? (x: number, z: number): number => distToPolyline(main.points, x, z) : (x: number, z: number): number => Math.abs(z - roadZAt(meander, x)),
+    bridges: p.bridges ?? [],
+    crags: p.crags ?? [],
+    structures: p.structures ?? [],
+    field: spec.heightfield,
   };
 }
 
@@ -526,6 +542,8 @@ export function inPocket(pockets: readonly PocketRect[], x: number, z: number, p
 
 export interface SplatContext {
   readonly plan: ZoneLayoutPlan;
+  /** Water-mask test (a sample at (x, z) or `d` m away along ±x / ±z) when the zone has rivers / lakes; else null. */
+  readonly wet: ((x: number, z: number, d: number) => boolean) | null;
   readonly roads: readonly Road[];            // plan.roads + door paths
   readonly buildings: readonly BuildingSpec[];
   readonly salt: number;
@@ -534,7 +552,15 @@ export interface SplatContext {
 }
 
 export function createSplatContext(plan: ZoneLayoutPlan, buildings: readonly BuildingSpec[], seed: number, interiors?: readonly InteriorSpec[]): SplatContext {
-  return { plan, roads: [...plan.roads, ...plan.doorPaths], buildings, salt: seed & 0xffff, pockets: pocketRects(interiors) };
+  const field = plan.field;
+  const wet = field === undefined || !plan.water.some((w) => !roundBody(w)) ? null : (x: number, z: number, d: number): boolean => {
+    for (const [ox, oz] of [[0, 0], [d, 0], [-d, 0], [0, d], [0, -d]] as const) {
+      const col = Math.round((x + ox - field.originX) / field.step); const row = Math.round((z + oz - field.originZ) / field.step);
+      if (col >= 0 && row >= 0 && col < field.res && row < field.res && field.water[row * field.res + col] === 1) return true;
+    }
+    return false;
+  };
+  return { plan, roads: [...plan.roads, ...plan.doorPaths], buildings, salt: seed & 0xffff, pockets: pocketRects(interiors), wet };
 }
 
 /**
@@ -567,9 +593,12 @@ export function splatAt(c: SplatContext, x: number, z: number, out: SplatFields)
     if (fd < 3) detail = Math.max(detail, 0.3 - fd + n1 * 0.25 + n3 * 0.45);
   }
   for (const w of plan.water) {
+    if (!roundBody(w)) continue;
     const d = Math.hypot(x - w.cx, z - w.cz);
     if (d < w.r + 3) detail = Math.max(detail, w.r + 0.7 - d + n1 * 0.35 + n3 * 0.3);
   }
+  // rivers, lakes and seas: a broken shore band from the water mask (wet within 1 m / 2 m)
+  if (c.wet !== null && c.wet(x, z, 2.2)) detail = Math.max(detail, (c.wet(x, z, 1.1) ? 0.55 : 0.12) + n1 * 0.35 + n3 * 0.3);
   for (const e of plan.grassPatches) if (inEllipse(e, x, z, 1.2)) detail = Math.max(detail, -0.2);   // keep patches green
   detail = Math.max(detail, (n2 - 0.86) * 3 + n1 * 0.2);                    // rare worn patches
   const edge = Math.max(Math.abs(x), Math.abs(z)) - (plan.half - FIELD_MARGIN);
@@ -579,13 +608,18 @@ export function splatAt(c: SplatContext, x: number, z: number, out: SplatFields)
 }
 
 /** True when scatter of radius `r` may stand at (x, z) (roads, plaza, buildings, water, points, set-piece, patches optional). */
+/** A pond the circle tests describe (content `roundBody`, the same rule); rivers, lakes and seas go by the mask. */
+export function roundBody(w: Pick<WaterBody, 'r' | 'x0' | 'x1' | 'z0' | 'z1'>): boolean {
+  return w.r <= 18 && w.x1 - w.x0 < 2.6 * w.r && w.z1 - w.z0 < 2.6 * w.r;
+}
+
 export function scatterClear(c: SplatContext, x: number, z: number, r: number, allowPatches: boolean): boolean {
   const plan = c.plan;
   if (plan.plaza && Math.hypot(x - plan.plaza.x, z - plan.plaza.z) < plan.plaza.r + r + 0.8) return false;
   if (roadDistance(c.roads, x, z) < r + 0.4) return false;
   for (const b of c.buildings) if (footprintDistance(b, x, z) < r + 1.0) return false;
   for (const [px, pz] of plan.points) if (Math.hypot(px - x, pz - z) < r + 1.5) return false;
-  for (const w of plan.water) if (Math.hypot(w.cx - x, w.cz - z) < w.r * 1.05 + r + 0.6) return false;
+  for (const w of plan.water) if (roundBody(w) && Math.hypot(w.cx - x, w.cz - z) < w.r * 1.05 + r + 0.6) return false;
   if (inSetPiece(plan, x, z, r)) return false;
   if (!allowPatches) for (const e of plan.grassPatches) if (inEllipse(e, x, z, r + 0.5)) return false;
   return true;

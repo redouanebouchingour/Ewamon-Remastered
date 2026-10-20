@@ -131,12 +131,12 @@ describe('authored positions are walkable on the stamped fields', () => {
     }
   });
 
-  it("solenne's spawn sits in a lamp post's footprint: the room's nearestWalkable snap moves it 0.5 m", () => {
-    const s = zone('solenne').spawn;
-    const h = getHeightfield('solenne');
-    expect(isWalkable(h, s.x, s.z)).toBe(false);
-    const p = nearestWalkable(h, s.x, s.z, 8)!;
-    expect(Math.hypot(p[0] - s.x, p[1] - s.z)).toBeLessThanOrEqual(0.5);
-    expect(isWalkable(h, p[0], p[1])).toBe(true);
+  it('every spawn stands on a walkable sample: the plan keeps lamps and props off it (no snap needed)', () => {
+    for (const id of ['mirevale', 'solenne', 'mire_route', 'eclipse_shrine'] as const) {
+      const s = zone(id).spawn;
+      const h = getHeightfield(id);
+      expect(isWalkable(h, s.x, s.z), id).toBe(true);
+      expect(nearestWalkable(h, s.x, s.z, 8), id).toEqual([s.x, s.z]);
+    }
   });
 });

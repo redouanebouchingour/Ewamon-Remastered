@@ -21,13 +21,13 @@ import { SURFACES, type SurfaceId } from '../materials/surfaces.js';
 import type { PunctualHandle } from '../lighting/rig.js';
 import { HOUSINGS_KEY, createRenderStats, type HousingTag } from '../stats.js';
 import { TerrainCollider } from '../terrain/collider.js';
-import { heightClamped } from '../terrain/field.js';
+import { SCATTER_MAX_SLOPE, heightClamped, slopeAt, wetNear } from '../terrain/field.js';
 import { skirtClearFn, skirtHeightFn, skirtSteps, terrainChunkSteps, type NeighbourField, type SkirtOpts, type TerrainLayers } from '../terrain/mesh.js';
 import { createSliceStats, drain, runSliced, type SliceStats, type Steps } from '../steps.js';
 import type { Parts} from './geo.js';
-import { Digest, box, beam, card, lathe, releaseShapeCache, swapShapeCache, trs } from './geo.js';
+import { Digest, box, beam, card, lathe, releaseShapeCache, swapShapeCache, trs, type V3 } from './geo.js';
 import { BIOME_GENERATORS, FENCE_FOOTPRINT, PROP_BLOCKER, SET_PIECE_BUILDERS, buildHousing, buildPropKind } from './generators/index.js';
-import { addPropTier, disposeProp, finish, tiers3 } from './generators/common.js';
+import { addPropTier, disposeProp, finish, tiers3, tower } from './generators/common.js';
 import { DOORWAY_SURFACE, houseSteps } from './generators/buildings.js';
 import { buildBush, buildFlowers, buildGroundTuft, buildImpostorCards, buildLog, buildRock, buildStump, buildTallGrass, buildTree } from './generators/nature.js';
 import { buildPondBank } from './generators/props.js';
@@ -422,6 +422,9 @@ function* zoneSteps(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonly Surf
   }
   yield* boundarySteps(spec, plan, set, dressing, partsAt, propsRng.next.bind(propsRng));
   yield* waterDressingSteps(spec, plan, set, partsAt);
+  yield* bridgeSteps(spec, plan, set, partsAt);
+  yield* cragSteps(spec, plan, set, partsAt);
+  yield* structureSteps(spec, plan, set, partsAt);
   if (plan.plaza) { yield* plazaCurbSteps(h, plan, palette, set, partsAt); yield* plazaPatternSteps(h, plan, set, partsAt, spec.seed); }
   yield* warpRoomSteps(h, plan, set, partsAt, splat.pockets);
   // 6b. Phase A pockets: one group per town building's hall (hall hidden, canopy shown until `setActive`)
@@ -550,6 +553,9 @@ function* zoneSteps(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonly Surf
   };
   return handle;
 }
+
+/** Slope (rise per metre) from which a cliff face gets boulders (the walkable limit is 0.7). */
+const CLIFF_ROCK_SLOPE = 1.1;
 
 /** Phase D10: a small tree's scale on the biome's first scatter tree (a sapling a Cut can fell). */
 export const OBSTACLE_TREE_SCALE = 0.55;
@@ -761,6 +767,8 @@ function* waterDressingSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet
     // pier on the boardwalk strip (both walkable and water): planks across, posts into the water, a rail
     const bw = body.boardwalk;
     if (!bw) continue;
+    // a sculpted road's deck over this water is a bridge (bridgeSteps), not a pond pier
+    if (plan.bridges.some((br) => br.points.some(([mx, mz]) => mx >= body.x0 - 2 && mx <= body.x1 + 2 && mz >= body.z0 - 2 && mz <= body.z1 + 2))) continue;
     const zc = (bw.z0 + bw.z1) / 2;
     const width = Math.max(2.4, bw.z1 - bw.z0 + 0.6);
     const x0 = bw.x0 - 0.6; const x1 = bw.x1 + 1.6;
@@ -785,6 +793,163 @@ function* waterDressingSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet
     }
     for (const s of [-1, 1]) beam(tp[0], set.props.wood, [x0, deck + 0.82, zc + s * (width / 2 - 0.05)], [bw.x0 + 1, deck + 0.82, zc + s * (width / 2 - 0.05)], 0.09, 0.06, 0.015, [0, 0, s]);
     yield 'water-dressing:rail';
+  }
+}
+
+/**
+ * Sculpted bridges (content `ZonePlan.bridges`): where a road crosses water on its walkable deck strip: a plank deck a
+ * hand above it, solid timber fascias from the deck down past the waterline (they hide the deck's earth bank), posts
+ * into the bed and a post-and-rail on each side. A crossing inside the set-piece's extent is the set-piece's own.
+ */
+function* bridgeSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, partsAt: PartsAt): Steps<void> {
+  const h = spec.heightfield;
+  const wood = set.props.wood;
+  for (const [n, br] of plan.bridges.entries()) {
+    if (br.points.length < 2) continue;
+    const [mx, mz] = br.points[Math.floor(br.points.length / 2)]!;
+    if (inSetPiece(plan, mx, mz, 0)) continue;
+    // the centreline run onto both banks by 1.2 m
+    const pts: [number, number][] = br.points.map(([x, z]) => [x, z]);
+    const ys: number[] = [...br.ys];
+    for (const end of [0, 1]) {
+      const p = end === 0 ? pts[0]! : pts[pts.length - 1]!; const q = end === 0 ? pts[1]! : pts[pts.length - 2]!;
+      const l = Math.hypot(p[0] - q[0], p[1] - q[1]) || 1;
+      const e: [number, number] = [p[0] + ((p[0] - q[0]) / l) * 1.2, p[1] + ((p[1] - q[1]) / l) * 1.2];
+      if (end === 0) { pts.unshift(e); ys.unshift(ys[0]!); } else { pts.push(e); ys.push(ys[ys.length - 1]!); }
+    }
+    let level = Math.min(...ys) - 0.8;
+    for (const w of plan.water) if (mx >= w.x0 - 1 && mx <= w.x1 + 1 && mz >= w.z0 - 1 && mz <= w.z1 + 1) { level = w.level; break; }
+    const bottom = level - 0.35;
+    const half = br.width / 2;
+    let acc = 0; let nextPost = 0; let k = 0;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const [ax, az] = pts[i]!; const [bx, bz] = pts[i + 1]!;
+      const ya = ys[i]! + 0.07; const yb = ys[i + 1]! + 0.07;
+      const dx = bx - ax; const dz = bz - az;
+      const len = Math.hypot(dx, dz);
+      if (len < 0.05) continue;
+      const ux = dx / len; const uz = dz / len; const sx = -uz; const sz = ux;
+      const yaw = Math.atan2(-uz, ux);
+      const cx = (ax + bx) / 2; const cz = (az + bz) / 2; const cy = (ya + yb) / 2;
+      // planks
+      const np = Math.max(1, Math.round(len / 0.34));
+      for (let j = 0; j < np; j++, k++) {
+        const t = (j + 0.5) / np;
+        const px = ax + dx * t; const pz = az + dz * t; const py = ya + (yb - ya) * t;
+        const tp = partsAt(px, pz, false);
+        const jit = hash2(k, n, 11);
+        box(tp[0], wood, px, py - 0.07, pz, 0.3, 0.07, br.width - jit * 0.12, yaw + (jit - 0.5) * 0.03, 0.012);
+        if (k % 2 === 0) box(tp[1], wood, px, py - 0.07, pz, 0.68, 0.07, br.width, yaw, 0.012);
+      }
+      const tp = partsAt(cx, cz, false);
+      box(tp[2], wood, cx, cy - 0.09, cz, len + 0.04, 0.09, br.width, yaw, 0.02);
+      // fascias, both sides, from the deck down past the waterline
+      for (const s2 of [-1, 1]) {
+        const fx = cx + sx * s2 * (half + 0.06); const fz = cz + sz * s2 * (half + 0.06);
+        const tf = partsAt(fx, fz, true);
+        for (let t = 0; t < 3; t++) box(tf[t]!, wood, fx, bottom, fz, len + 0.06, Math.max(ya, yb) - bottom, 0.14, yaw, 0.02);
+        const r0: V3 = [ax + sx * s2 * (half + 0.12), ya + 0.88, az + sz * s2 * (half + 0.12)];
+        const r1: V3 = [bx + sx * s2 * (half + 0.12), yb + 0.88, bz + sz * s2 * (half + 0.12)];
+        beam(tf[0], wood, r0, r1, 0.1, 0.07, 0.015, [sx * s2, 0, sz * s2]);
+        beam(tf[1], wood, r0, r1, 0.1, 0.07, 0.015, [sx * s2, 0, sz * s2]);
+      }
+      // posts every 1.8 m along the run
+      while (nextPost <= acc + len + 1e-6) {
+        const t = (nextPost - acc) / len;
+        const py = ya + (yb - ya) * t;
+        for (const s2 of [-1, 1]) {
+          const px = ax + dx * t + sx * s2 * (half + 0.12); const pz = az + dz * t + sz * s2 * (half + 0.12);
+          const bed = Math.min(heightClamped(h, px, pz), bottom) - 0.3;
+          const tpp = partsAt(px, pz, true);
+          box(tpp[0], wood, px, bed, pz, 0.18, py + 0.95 - bed, 0.18, yaw, 0.03);
+          box(tpp[1], wood, px, bed, pz, 0.18, py + 0.95 - bed, 0.18, yaw, 0.03);
+        }
+        nextPost += 1.8;
+      }
+      acc += len;
+      yield 'bridge:segment';
+    }
+    yield 'bridge';
+  }
+}
+
+/**
+ * The sculpt's rock spires, tors and basalt columns (content `ZonePlan.crags`): the heightfield gives each its cliffed
+ * cone (collision), and a faceted rock sized to it, seated on the lowest ground round its foot, gives it a face.
+ */
+function* cragSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, partsAt: PartsAt): Steps<void> {
+  const h = spec.heightfield;
+  for (const [k, c] of plan.crags.entries()) {
+    let base = Infinity;
+    for (let a = 0; a < 8; a++) base = Math.min(base, heightClamped(h, c.x + Math.cos((a * Math.PI) / 4) * (c.r + 0.4), c.z + Math.sin((a * Math.PI) / 4) * (c.r + 0.4)));
+    const top = heightClamped(h, c.x, c.z);
+    const rise = Math.max(0.6, top - base);
+    const size = c.r * 1.12;
+    const g = buildRock(set.rock, spec.seed + k * 977 + 0x6c, { size, squash: (rise * 1.05) / (1.1 * size), elongate: 1.15, cuts: [4, 6] });
+    const tp = partsAt(c.x, c.z, true);
+    const m = trs(c.x, base - 0.15, c.z, hash2(k, 7, spec.seed & 0xffff) * 6.28);
+    for (let t = 0; t < 3; t++) addPropTier(tp[t]!, g, t as 0 | 1 | 2, m);
+    disposeProp(g);
+    yield 'crag';
+  }
+}
+
+/**
+ * The sculpt's dressed lifts (content `ZonePlan.structures`): a curtain wall of stone blocks with merlons along its
+ * crest, a palisade of stakes along an earthwork, a round tower on its mound. The lift is the collision; where a road
+ * has cut the crest down (a gate), the wall and the stakes stop.
+ */
+function* structureSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, partsAt: PartsAt): Steps<void> {
+  const h = spec.heightfield;
+  for (const [n, st] of plan.structures.entries()) {
+    if (st.kind === 'tower') {
+      const [x, z] = st.points[0]!;
+      const r = st.width / 2;
+      let base = Infinity;
+      for (let a = 0; a < 8; a++) base = Math.min(base, heightClamped(h, x + Math.cos((a * Math.PI) / 4) * (r + 1.2), z + Math.sin((a * Math.PI) / 4) * (r + 1.2)));
+      const top = heightClamped(h, x, z);
+      const tp = partsAt(x, z, true);
+      for (let t = 0; t < 3; t++) tower(tp[t]!, set.props.stone, set.props.stone, r * 0.98, top - base + 2.6, t === 0 ? 18 : 10, trs(x, base - 0.3, z));
+      yield 'structure:tower';
+      continue;
+    }
+    const half = st.width / 2;
+    for (let i = 0; i + 1 < st.points.length; i++) {
+      const a = st.points[i]!; const b = st.points[i + 1]!;
+      const dx = b[0] - a[0]; const dz = b[1] - a[1];
+      const len = Math.hypot(dx, dz);
+      if (len < 0.05) continue;
+      const cx = (a[0] + b[0]) / 2; const cz = (a[1] + b[1]) / 2;
+      if (Math.max(Math.abs(cx), Math.abs(cz)) > h.size / 2 - 0.5) continue;
+      const nx = -dz / len; const nz = dx / len;
+      const side = Math.min(heightClamped(h, cx + nx * (half + 2.5), cz + nz * (half + 2.5)), heightClamped(h, cx - nx * (half + 2.5), cz - nz * (half + 2.5)));
+      const crest = heightClamped(h, cx, cz);
+      if (crest < side + st.h * 0.55) continue;                // a gate: the road cut the crest down
+      const yaw = Math.atan2(-dz, dx);
+      const tp = partsAt(cx, cz, true);
+      if (st.kind === 'wall') {
+        for (let t = 0; t < 3; t++) box(tp[t]!, set.props.stone, cx, side - 0.4, cz, len + 0.04, crest + 0.55 - (side - 0.4), st.width + 1.0, yaw, t === 0 ? 0.05 : 0.02);
+        if (i % 2 === 0) {
+          for (const s2 of [-1, 1]) {
+            const ox = nx * s2 * (half + 0.28); const oz = nz * s2 * (half + 0.28);
+            box(tp[0], set.props.stone, cx + ox, crest + 0.55, cz + oz, Math.min(len, 0.9), 0.55, 0.42, yaw, 0.04);
+            box(tp[1], set.props.stone, cx + ox, crest + 0.55, cz + oz, Math.min(len, 0.9), 0.55, 0.42, yaw, 0.02);
+          }
+        }
+      } else {
+        const k = Math.max(1, Math.round(len / 0.42));
+        for (let j = 0; j < k; j++) {
+          const t = (j + 0.5) / k;
+          const px = a[0] + dx * t; const pz = a[1] + dz * t;
+          const g = heightClamped(h, px, pz);
+          const tall = 1.5 + hash2(i * 31 + j, n, 23) * 0.5;
+          beam(tp[0], set.props.wood, [px, g - 0.4, pz], [px, g + tall, pz], 0.2, 0.2, 0.04);
+          if (j % 2 === 0) beam(tp[1], set.props.wood, [px, g - 0.4, pz], [px, g + tall, pz], 0.22, 0.22, 0.03);
+        }
+      }
+      if ((i & 7) === 7) yield 'structure:segment';
+    }
+    yield 'structure';
   }
 }
 
@@ -945,7 +1110,7 @@ function* scatterSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dres
   const obstacles = spec.obstacles ?? [];
   const coverClear = (x: number, z: number, r: number): boolean => {
     if (Math.max(Math.abs(x), Math.abs(z)) > half - 1.5) return false;
-    if (!scatterClear(splat, x, z, r, false) || !free(x, z)) return false;
+    if (!scatterClear(splat, x, z, r, false) || !free(x, z) || wetNear(h, x, z, r + 0.4)) return false;
     for (const pp of spec.props) if (Math.hypot(pp.x - x, pp.z - z) < r + (PROP_BLOCKER[pp.kind] ?? 0.3) + 0.5) return false;
     for (const l of spec.lights) if (Math.hypot(l.position[0] - x, l.position[2] - z) < r + 0.6) return false;
     for (const o of obstacles) if (Math.hypot(o.x - x, o.z - z) < r + 1.4) return false;
@@ -977,14 +1142,15 @@ function* scatterSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dres
     if (d > half + reachTrees) return 0;
     if (d > half) return skirtClear(x, z) ? 0.9 * Math.max(0.2, 1 - (d - half) / reachTrees) : 0;   // treeline on the skirt (E3: off a neighbour's road)
     if (!inPlay(x, z)) {
-      if (roadDistance(splat.roads, x, z) < 3.5) return 0;
+      if (roadDistance(splat.roads, x, z) < 3.5 || wetNear(h, x, z, 2.0)) return 0;
       return 1;                                                                   // the margin forest
     }
-    if (!scatterClear(splat, x, z, 1.4, false)) return 0;
+    if (!scatterClear(splat, x, z, 1.4, false) || wetNear(h, x, z, 2.0)) return 0;
     if (roadDistance(splat.roads, x, z) < 3.2) return 0;
+    if (slopeAt(h, x, z) > SCATTER_MAX_SLOPE) return 0;
     for (const c of plan.clearings) if (Math.hypot(c.x - x, c.z - z) < c.r) return 0;
     if (spec.layout === 'route') {
-      if (Math.abs(z - plan.roadZ(x)) < 9) return 0.08;
+      if (plan.corridor(x, z) < 9) return 0.08;
       const n = clumpy(x, z, 11);
       return n > 0.05 ? 1 : 0.18;
     }
@@ -1015,7 +1181,8 @@ function* scatterSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dres
         if (body.boardwalk && Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < 0.6) continue;
         const rr = body.r * 1.25 + 2.2 + hash2(k, body.id, salt + 42) * 2.5;
         const x = body.cx + Math.cos(a) * rr; const z = body.cz + Math.sin(a) * rr;
-        if (!scatterClear(splat, x, z, 1.2, true) || roadDistance(splat.roads, x, z) < 2.5) continue;
+        if (!scatterClear(splat, x, z, 1.2, true) || wetNear(h, x, z, 1.8) || roadDistance(splat.roads, x, z) < 2.5) continue;
+        if (slopeAt(h, x, z) > SCATTER_MAX_SLOPE) continue;
         if (!free(x, z)) continue;
         wInst.push({ x, y: yAt(x, z) - 0.12, z, yaw: a * 3.1, scale: 0.9 + hash2(k, body.id, salt + 43) * 0.25, tint: 0 });
         if (inPlay(x, z)) collider.addFootprint({ kind: 'circle', x, z, r: 0.5 + MOVER_R });
@@ -1041,7 +1208,8 @@ function* scatterSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dres
   const aInst: Instance[] = []; const bInst: Instance[] = [];
   for (const p of yield* jitteredPointSteps(-half - 20, half + 20, -half - 20, half + 20, set.density.rock * 1.6, salt + 201, (x, z) => {
     if (Math.max(Math.abs(x), Math.abs(z)) > half + 20) return 0;
-    if (inPlay(x, z)) return scatterClear(splat, x, z, 1.2, false) && roadDistance(splat.roads, x, z) > 1.5 ? 0.6 : 0;
+    if (inPlay(x, z)) return scatterClear(splat, x, z, 1.2, false) && !wetNear(h, x, z, 1.8) && roadDistance(splat.roads, x, z) > 1.5 && slopeAt(h, x, z) <= SCATTER_MAX_SLOPE ? 0.6 : 0;
+    if (wetNear(h, x, z, 1.5)) return 0;
     return Math.max(Math.abs(x), Math.abs(z)) <= half || skirtClear(x, z) ? 1 : 0;
   })) {
     if (!free(p.x, p.z)) continue;
@@ -1077,6 +1245,23 @@ function* scatterSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dres
   cover.push(...rockClusters(aInst.filter((r) => r.scale > 0.8), dressing, set.tuft !== null, salt, coverClear));
   for (const c of coverOf('stone')) bInst.push({ x: c.x, y: yAt(c.x, c.z) - 0.04, z: c.z, yaw: c.h * 113, scale: c.scale, tint: 0 });
   if (aInst.length) out.push({ ...kindFrom('rock_a', rockA, mat, views, true, 3, rockA.lod2, 2), instances: aInst });
+  // cliff faces (the sculpt's scarps, ravine walls, crater rims): faceted boulders bedded into every steep slope so a
+  // cliff reads as rock from the play camera, not as stretched ground. Walk-through: they stand on unwalkable samples.
+  {
+    const cliffRock = buildRock(set.rock, spec.seed ^ 0xc11f, { size: 0.95, squash: 0.85, elongate: 1.35, cuts: [3, 5] });
+    const cInst: Instance[] = [];
+    for (const p of yield* jitteredPointSteps(-half + 0.5, half - 0.5, -half + 0.5, half - 0.5, 0.55, salt + 251, (x, z) => {
+      const sl = slopeAt(h, x, z);
+      if (sl < CLIFF_ROCK_SLOPE) return 0;
+      if (plan.plaza && Math.hypot(x - plan.plaza.x, z - plan.plaza.z) < plan.plaza.r + 1) return 0;
+      if (roadDistance(splat.roads, x, z) < 0.6) return 0;
+      return sl > CLIFF_ROCK_SLOPE * 1.5 ? 0.9 : 0.55;
+    })) {
+      if (!free(p.x, p.z)) continue;
+      cInst.push({ x: p.x, y: yAt(p.x, p.z) - 0.35, z: p.z, yaw: p.h * 151, scale: 0.75 + p.h * 0.9, tint: 0 });
+    }
+    if (cInst.length) out.push({ ...kindFrom('cliff_rock', cliffRock, mat, views, true, 3, cliffRock.lod2, 2), instances: cInst });
+  }
   if (bInst.length) out.push({ ...kindFrom('rock_b', rockB, mat, views, false, 3, null, 0), instances: bInst });
   yield 'scatter:rocks';
 
@@ -1089,6 +1274,7 @@ function* scatterSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dres
       const d = Math.max(Math.abs(x), Math.abs(z));
       if (d > half + 6) return 0;
       if (d > ih && d < ih + 3.5) return roadDistance(splat.roads, x, z) < 3 ? 0 : spec.layout === 'town' ? 0.9 : 1;   // the hedge line
+      if (wetNear(h, x, z, 1.2)) return 0;
       if (!inPlay(x, z)) return 0.5;
       if (!scatterClear(splat, x, z, 0.9, false)) return 0;
       splatAt(splat, x, z, f);
@@ -1109,7 +1295,7 @@ function* scatterSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dres
     const fl = buildFlowers(set.flower, spec.seed ^ 0xf10e);
     const inst: Instance[] = [];
     for (const p of yield* jitteredPointSteps(-ih, ih, -ih, ih, set.density.flower * 3, salt + 501, (x, z) => {
-      if (!scatterClear(splat, x, z, 0.7, false)) return 0;
+      if (!scatterClear(splat, x, z, 0.7, false) || wetNear(h, x, z, 1.0)) return 0;
       splatAt(splat, x, z, f);
       if (f.path > -0.3 || f.detail > 0.1) return 0;
       const nearHouse = spec.buildings.some((b) => { const fd = footprintDistance(b, x, z); return fd > 0.6 && fd < 2.2; });
@@ -1134,6 +1320,7 @@ function* scatterSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dres
       if (f.path > -0.15 || f.plaza > -0.2) return 0;
       if (f.detail > 0.35) return 0;
       for (const w of plan.water) if (Math.hypot(w.cx - x, w.cz - z) < w.r * 1.05) return 0;
+      if (wetNear(h, x, z, 0.6)) return 0;
       for (const b of spec.buildings) if (footprintDistance(b, x, z) < 0.4) return 0;
       const edge = roadDistance(splat.roads, x, z);
       if (edge > 0.1 && edge < 1.4) return 0.85;                                 // grass fringes the paths
@@ -1174,6 +1361,7 @@ function* scatterSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dres
   const log = buildLog(set.trees[0]?.bark ?? set.props.wood, set.props.wood, spec.seed ^ 0x1066);
   const sInst: Instance[] = []; const lInst: Instance[] = [];
   for (const p of jitteredPoints(-half, half, -half, half, 0.0016, salt + 801, (x, z) => {
+    if (wetNear(h, x, z, 1.5)) return 0;
     if (inPlay(x, z)) return spec.layout === 'town' ? 0 : scatterClear(splat, x, z, 1.5, false) && roadDistance(splat.roads, x, z) > 3 ? 0.5 : 0;
     return 1;
   })) {

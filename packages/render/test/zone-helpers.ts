@@ -172,7 +172,7 @@ export function realSpec(id: ZoneId, harvestLevel: 0 | 1 | 2 = 0): ZoneSpec {
   const lights = lightsFromPlan(p.lights, z.biome, setPiece, z.type);
   const plan: ZonePlanData = {
     plaza: p.plaza, roads: p.roads, doorPaths: p.doorPaths, roadMeander: p.roadMeander, grassPatches: p.grassPatches, clearings: p.clearings,
-    setPiece: p.setPiece, points: p.points, warpPairs: p.warpPairs,
+    setPiece: p.setPiece, points: p.points, warpPairs: p.warpPairs, bridges: p.bridges, crags: p.crags, structures: p.structures,
   };
   return {
     id: z.id, seed, biome: z.biome, palette: z.palette, generators: z.biome, layout, size: { w: INTERIOR_SIZE[layout], d: INTERIOR_SIZE[layout] }, heightfield,

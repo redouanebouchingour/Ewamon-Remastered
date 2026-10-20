@@ -27,7 +27,7 @@ export const CINDER_BUILDING: BuildingStyle = {
 
 export const CINDER_PROPS: PropStyle = {
   wood: 'charred_timber', metal: 'iron_grate', stone: 'cinder_basalt', housingGlass: 'glass_warm', glow: 'coal_glow', crystal: 'lava_glow', candle: 'glass_warm',
-  cloth: 'charred_timber', soil: 'cinder_ash_soil', leaf: 'tall_grass', rock: 'cinder_scoria', water: null,
+  cloth: 'charred_timber', soil: 'cinder_ash_soil', leaf: 'tall_grass', rock: 'cinder_scoria', water: 'lava_glow',
 };
 
 /** `cinder_caldera`: basalt rim (lathed, fractured blocks) round a lava pool whose glow is the light housing at (0, 0.6, 0). */

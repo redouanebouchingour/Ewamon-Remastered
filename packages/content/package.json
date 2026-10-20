@@ -11,6 +11,7 @@
     "validate": "tsx scripts/validate-cli.ts",
     "migrate": "tsx scripts/migrate-legacy.ts",
     "heightfields": "tsx scripts/build-heightfields.ts",
+    "zone-map": "tsx scripts/zone-map.ts",
     "typecheck:scripts": "tsc -p tsconfig.scripts.json"
   },
   "dependencies": { "@ewa/core": "workspace:*", "zod": "^4.1.12" },

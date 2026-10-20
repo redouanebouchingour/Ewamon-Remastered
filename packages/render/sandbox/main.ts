@@ -405,6 +405,8 @@ async function main(): Promise<void> {
     rig.setHeading((Number(params.get('h') ?? 0) & 3) as 0 | 1 | 2 | 3);
     rig.setZoomStop(Math.max(0, Math.min(2, Number(params.get('zoom') ?? 1))) as 0 | 1 | 2);
     for (let i = 0; i < 30; i++) rig.update(16);     // settle the heading / zoom eases (the predicted view reads them)
+    // `&far=<m>`: a survey distance beyond the zoom stops (sandbox only: whole-zone shape checks)
+    if (params.get('far') !== null) { const rr = rig as unknown as { dist: number; distTo: number; distFrom: number; distT: number }; rr.dist = rr.distTo = rr.distFrom = Number(params.get('far')); rr.distT = 1; }
     const t0 = performance.now();
     trackPhase = 'loadZone';
     pipePhase = 'zone';
