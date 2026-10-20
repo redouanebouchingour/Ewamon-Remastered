@@ -1588,6 +1588,8 @@ class World implements World3D {
       },
       setBattleHud: (m) => this.hudWriter.setBattle(m),
       setThreat: (on) => this.audio.setThreat(on),
+      // music that follows the battle (battle/mood.ts)
+      setMood: (m) => this.audio.setBattleMood(m),
       project: (ref, out) => {
         const bb = p3?.stage.battler(ref) ?? null;
         if (bb === null) return false;

@@ -69,6 +69,8 @@ import { buildTimeline, statusGlyph, vfxIdsIn } from './timeline';
 import type { LogTone, Timeline, TimelineCtx } from './timeline';
 import { TimelinePlayer } from './TimelinePlayer';
 import type { TimelineTargets } from './TimelinePlayer';
+import { battleMood, sameMood } from './mood';
+import type { BattleMood } from './mood';
 
 type StageRef = { readonly side: 0 | 1; readonly slot: number };
 type Pose = Parameters<TimelineTargets['setPose']>[1];
@@ -107,6 +109,8 @@ export interface BattleView {
   playSfx(id: string, at: StageRef | null): void;
   setBattleHud(m: BattleHudModel | null): void;
   setThreat(on: boolean): void;
+  /** Music that follows the battle (battle/mood.ts): the player's side's hp band and form; null when the battle closes. Optional: recorders skip it. */
+  setMood?(mood: BattleMood | null): void;
   /**
    * A battler's sprite on screen, for the signature cinematic's aim: writes [top x, top y, feet x, feet y] in CSS px
    * (viewport) and returns true, or false when it is not on screen. Optional: without it the overlay uses its layout.
@@ -427,6 +431,23 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
    */
   const displayed: [[number, number], [number, number]] = [[-1, -1], [-1, -1]];
   let hpNow: number[][] = [[], []];
+  /** battle music: the mood last given to the view, and the forms the timeline has shown on the player's side */
+  let mood: BattleMood | null = null;
+  const formNow = new Map<number, string>();
+  /** The player's side as the score hears it, from the bars the timeline shows (battle/mood.ts). */
+  function updateMood(): void {
+    const st = preState ?? state;
+    if (st === null || battleId === null) return;
+    const side = st.sides[seat];
+    const formed: BattleState = {
+      ...st,
+      sides: st.sides.map((sd, i) => (i !== seat ? sd : { ...sd, party: sd.party.map((b, slot) => (formNow.has(slot) ? { ...b, form: formNow.get(slot)! } : b)) })) as unknown as BattleState['sides'],
+    };
+    const next = battleMood(formed, seat, (slot) => hpNow[seat]?.[slot] ?? side.party[slot]?.creature.hp ?? 0, deps.content);
+    if (sameMood(mood, next)) return;
+    mood = next;
+    view?.setMood?.(next);
+  }
 
   const hud = new BattleHud((m) => view?.setBattleHud(m));
   /** Phase B7: the NPC trainer across the field (null for wild / pvp / raid) and which mid lines already played */
@@ -629,6 +650,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     hp: (who, to, max) => {
       const row = hpNow[who.side];
       if (row !== undefined) row[who.slot] = to;
+      if (who.side === seat) updateMood();
       const pos = posFor(who.side, who.slot);
       if (pos >= 0 && displayed[who.side][pos] === who.slot) hud.setHp(who.side, to, max, pos as 0 | 1);
       if (who.side !== seat && foe !== null) {
@@ -646,6 +668,10 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     },
     orb: (phase, n) => hud.setShakes(phase === 'throw' ? 0 : n),
     form: (who, form) => {
+      if (who.side === seat) {
+        formNow.set(who.slot, form);
+        updateMood();
+      }
       const st = preState ?? state;
       const p = posFor(who.side, who.slot);
       if (st === null || p < 0 || displayed[who.side][p] !== who.slot) return;
@@ -661,6 +687,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       const pos = p as 0 | 1;
       if (displayed[who.side][pos] !== who.slot) showBattler(st, who.side, who.slot, pos);
       if (who.side !== seat && foe !== null) checkLastStand(st, who.slot);
+      if (who.side === seat) updateMood();
       const b = st.sides[who.side]!.party[who.slot];
       if (b !== undefined) {
         const hp = hpNow[who.side]?.[who.slot] ?? b.creature.hp;
@@ -888,6 +915,9 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     prompts = [];
     pendingLog.length = 0;
     resetHpTable(m.state);
+    formNow.clear();
+    mood = null;
+    updateMood();
     // Phase D6: four bars and the party → position map for a doubles battle
     hud.setLayout(m.state.slots === 2);
     displayed[0][0] = -1; displayed[0][1] = -1; displayed[1][0] = -1; displayed[1][1] = -1;
@@ -1290,8 +1320,11 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     stopLogTimer();
     if (battleId !== null) {
       view?.setThreat(false);
+      view?.setMood?.(null);
       view?.exitBattle();
     }
+    mood = null;
+    formNow.clear();
     hud.clear();
     sigUsed.clear();
     useCinematicStore.getState().clear();

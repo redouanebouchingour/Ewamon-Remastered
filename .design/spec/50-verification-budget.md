@@ -306,6 +306,7 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `arena.test.tsx` (the daily challenge) <!-- added 2026-10-20 --> | The card shows both teams, par and the winners and starts the daily in the arena (`last` = daily); a best shows its strip, Try again and Copy result; the share text has the number, turns, par and strip only; the daily's AI side is named and dressed. |
 | `challenge.test.tsx` <!-- added 2026-10-20: challenge modes --> | The lock reasons; the Profile section switches to Nuzlocke (POST /challenge, then GET /me); a fallen creature locks the run with its reason and carries the Fallen mark. |
 | `speedrun.test.tsx` <!-- added 2026-10-20: verified speedruns --> | The clock's format; split names; the timer off by default; the Profile section shows the finish and the splits, and says when a run has not started or cannot count. |
+| `battle-mood.test.ts` <!-- added 2026-10-20: music that follows the battle --> | The hp bands; a battle's mood from the player's active battler and its Majin / Tenjin form; the stem levels and the low-pass of every mood; the controller hands the view the mood at the start and clears it when the battle closes. |
 
 ### 50.4.8 Pipelines — `tools/*/test/`
 

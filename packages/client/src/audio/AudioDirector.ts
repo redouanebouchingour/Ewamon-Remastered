@@ -14,6 +14,8 @@
  * per-id concurrency ≤ 4, the quietest (farthest) voice is stolen. `step()` runs per fixed step (ramps are WebAudio
  * automation; step does voice GC and loop scheduling) and allocates nothing.
  */
+import { sameMood } from '../battle/mood';
+import type { BattleMood } from '../battle/mood';
 import type { AudioManifest, StemRef } from './manifest';
 import { MIXER, dbToGain, nightGain, perceptual } from './mixer';
 
@@ -27,6 +29,8 @@ export interface AudioDirector {
   setThreat(on: boolean): void;
   setNight(t01: number): void;
   setHarvested(on: boolean): void;
+  /** Music that follows the battle: the player's side's hp band and Majin / Tenjin form (null: no battle, neutral). */
+  setBattleMood(mood: BattleMood | null): void;
   duck(on: boolean): void;
   play(sfxId: string, at: Vec3 | null): void;
   setListener(x: number, y: number, z: number, fx: number, fy: number, fz: number): void;
@@ -51,6 +55,8 @@ export interface DirectorState {
   readonly threat: boolean;
   readonly night: number;
   readonly harvested: boolean;
+  /** the battle's mood (null outside a battle) */
+  readonly mood: BattleMood | null;
   readonly ducked: boolean;
   readonly reverb: ReverbKind;
   readonly buses: Readonly<Record<Bus, number>>;
@@ -71,8 +77,49 @@ interface StemPlayer {
   scheduled: boolean;
 }
 
-const STEMS = ['base', 'threat', 'biome', 'night'] as const;
+export const STEMS = ['base', 'threat', 'biome', 'night'] as const;
 type StemName = (typeof STEMS)[number];
+
+/** The music low-pass: the lower of a harvested zone's and a Majin form's (open otherwise). */
+export function musicLowpassHz(harvested: boolean, mood: BattleMood | null): number {
+  const harvestHz = harvested ? MIXER.harvestLowpass.hz : 22050;
+  const majinHz = mood?.form === 'majin' ? MIXER.battleMood.majin.lowpassHz : 22050;
+  return Math.min(harvestHz, majinHz);
+}
+
+/**
+ * A stem's level: base and biome full, threat with the threat flag, night by the time of day (none once harvested),
+ * then the battle's mood (MIXER.battleMood): low hp thins the biome stem, critical drops it and thins the base under a
+ * louder threat, a Majin form swells the threat, a Tenjin form the biome stem.
+ */
+export function stemLevel(name: (typeof STEMS)[number], s: { readonly threat: boolean; readonly night: number; readonly harvested: boolean; readonly mood: BattleMood | null }): number {
+  const bm = MIXER.battleMood;
+  const m = s.mood;
+  let g: number;
+  switch (name) {
+    case 'base':
+      g = 1;
+      break;
+    case 'biome':
+      g = 1;
+      break;
+    case 'threat':
+      g = s.threat ? 1 : 0;
+      break;
+    case 'night':
+      return s.harvested ? 0 : nightGain(s.night);
+  }
+  if (m === null || g === 0) return g;
+  if (m.hp === 'low' && name === 'biome') g *= bm.low.biome;
+  if (m.hp === 'critical') {
+    if (name === 'base') g *= bm.critical.base;
+    if (name === 'biome') g *= bm.critical.biome;
+    if (name === 'threat') g *= bm.critical.threat;
+  }
+  if (m.form === 'majin' && name === 'threat') g *= bm.majin.threat;
+  if (m.form === 'tenjin' && name === 'biome' && m.hp !== 'critical') g *= bm.tenjin.biome;
+  return g;
+}
 
 export function createAudioDirector(opts: { readonly createContext?: () => AudioContext | null } = {}): AudioDirector {
   let manifest: AudioManifest | null = null;
@@ -103,7 +150,7 @@ export function createAudioDirector(opts: { readonly createContext?: () => Audio
   let themeGen = 0;
 
   const st = {
-    silent: true, contextReady: false, theme: null as string | null, threat: false, night: 0, harvested: false, ducked: false,
+    silent: true, contextReady: false, theme: null as string | null, threat: false, night: 0, harvested: false, mood: null as BattleMood | null, ducked: false,
     reverb: 'outdoor' as ReverbKind, buses: { master: 1, music: 1, sfx: 1, ui: 1 } as Record<Bus, number>, voices: 0, played: 0, dropped: 0,
   };
 
@@ -179,17 +226,12 @@ export function createAudioDirector(opts: { readonly createContext?: () => Audio
     reverbSend!.gain.value = MIXER.reverbSend[st.reverb];
     convolver!.buffer = irs.get(st.reverb) ?? null;
   }
-  function applyHarvest(): void {
+  function applyHarvest(ms = 400): void {
     if (ctx === null) return;
-    ramp(lowpass!.frequency, st.harvested ? MIXER.harvestLowpass.hz : 22050, 400);
+    ramp(lowpass!.frequency, musicLowpassHz(st.harvested, st.mood), ms);
   }
   function stemTarget(name: StemName): number {
-    switch (name) {
-      case 'base': return 1;
-      case 'biome': return 1;
-      case 'threat': return st.threat ? 1 : 0;
-      case 'night': return st.harvested ? 0 : nightGain(st.night);
-    }
+    return stemLevel(name, st);
   }
   function applyStemTargets(ms: number): void {
     if (ctx === null) return;
@@ -367,6 +409,13 @@ export function createAudioDirector(opts: { readonly createContext?: () => Audio
       st.harvested = on;
       applyHarvest();
       if (ctx !== null) ramp(stems.get('night')!.gain.gain, stemTarget('night'), 400);
+    },
+
+    setBattleMood(mood) {
+      if (sameMood(st.mood, mood)) return;
+      st.mood = mood;
+      applyHarvest(MIXER.battleMood.rampMs);
+      applyStemTargets(MIXER.battleMood.rampMs);
     },
 
     duck(on) {

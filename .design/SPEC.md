@@ -4763,6 +4763,7 @@ All nodes are standard WebAudio (`AudioContext`, `GainNode`, `PannerNode`, `Conv
 | stem `biome` | 1 in the zone's own biome theme; 0 during the 400 ms handover crossfade |
 | stem `base` | 1 |
 | harvested zone | every stem low-passed at 1 200 Hz (`BiquadFilterNode`, Q 0.7) and `night` forced 0 — the audio equivalent of the flat-shaded look |
+| battle mood <!-- added 2026-10-20: music that follows the battle --> | the player's active battler (the lowest of two in doubles) as the timeline's HP bars show it: at or under ½ max hp the `biome` stem × 0.45; at or under ¼ `biome` 0, `base` × 0.55, `threat` × 1.2; a Majin form low-passes every stem at 1 400 Hz (the lower of it and the harvest filter) with `threat` × 1.3; a Tenjin form `biome` × 1.25 (not when critical); every change ramps 900 ms; neutral outside a battle (`stemLevel`, `musicLowpassHz`, `MIXER.battleMood`) |
 | panner | `panningModel 'HRTF'`, `distanceModel 'inverse'`, `refDistance 4`, `maxDistance 60`, `rolloffFactor 1.5`, cone omnidirectional |
 | listener | position = camera position; forward = camera forward; up = (0,1,0); updated once per rendered frame |
 | reverb send | outdoor 0.12, town plaza 0.18, interior (gym/shop/healer) 0.35, cave/shrine/rift 0.50; IR = algorithmic exponentially decaying white noise, 0.5 s outdoor / 1.2 s interior / 2.4 s cave, generated once at boot into `AudioBuffer`s (no IR files) |
@@ -4778,6 +4779,7 @@ export interface AudioDirector {
   init(manifest: AudioManifest): Promise<void>;          // decodes ui + the current zone's sfx set; music stems stream-decoded lazily per theme
   setTheme(themeId: string, crossfadeMs: number): void;  // world theme per zone; 'battle' | 'gym' | 'elite' | 'champion' | 'raid' by format/opponent
   setThreat(on: boolean): void; setNight(t01: number): void; setHarvested(on: boolean): void;
+  setBattleMood(mood: { hp: 'steady' | 'low' | 'critical'; form: 'none' | 'majin' | 'tenjin' } | null): void;   // added 2026-10-20: BattleController via BattleView.setMood (battle/mood.ts); null when the battle closes
   duck(on: boolean): void;
   play(sfxId: string, at: { x: number; y: number; z: number } | null): void;   // null = non-positional (ui bus if id starts with 'ui_', else sfx bus centred)
   setListener(x: number, y: number, z: number, fx: number, fy: number, fz: number): void;
@@ -7333,6 +7335,7 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `arena.test.tsx` (the daily challenge) <!-- added 2026-10-20 --> | The card shows both teams, par and the winners and starts the daily in the arena (`last` = daily); a best shows its strip, Try again and Copy result; the share text has the number, turns, par and strip only; the daily's AI side is named and dressed. |
 | `challenge.test.tsx` <!-- added 2026-10-20: challenge modes --> | The lock reasons; the Profile section switches to Nuzlocke (POST /challenge, then GET /me); a fallen creature locks the run with its reason and carries the Fallen mark. |
 | `speedrun.test.tsx` <!-- added 2026-10-20: verified speedruns --> | The clock's format; split names; the timer off by default; the Profile section shows the finish and the splits, and says when a run has not started or cannot count. |
+| `battle-mood.test.ts` <!-- added 2026-10-20: music that follows the battle --> | The hp bands; a battle's mood from the player's active battler and its Majin / Tenjin form; the stem levels and the low-pass of every mood; the controller hands the view the mood at the start and clears it when the battle closes. |
 
 ### 50.4.8 Pipelines — `tools/*/test/`
 

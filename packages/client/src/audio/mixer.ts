@@ -19,6 +19,21 @@ export const MIXER = {
   handoverCrossfadeMs: 400,
   /** harvested zone: every stem low-passed */
   harvestLowpass: { hz: 1200, q: 0.7 },
+  /**
+   * Music that follows the battle (`setBattleMood`): the player's active battler at or under `lowAt` of its max hp
+   * thins the biome stem, at or under `criticalAt` drops it and thins the base under a louder threat; a Majin form
+   * low-passes every stem at `majinLowpassHz` with the threat swelled, a Tenjin form swells the biome stem. Gains
+   * are multipliers of the stem's usual level; every change ramps over `rampMs`.
+   */
+  battleMood: {
+    lowAt: 0.5,
+    criticalAt: 0.25,
+    rampMs: 900,
+    low: { biome: 0.45 },
+    critical: { base: 0.55, biome: 0, threat: 1.2 },
+    majin: { threat: 1.3, lowpassHz: 1400 },
+    tenjin: { biome: 1.25 },
+  },
   panner: { panningModel: 'HRTF' as PanningModelType, distanceModel: 'inverse' as DistanceModelType, refDistance: 4, maxDistance: 60, rolloffFactor: 1.5 },
   reverbSend: { outdoor: 0.12, plaza: 0.18, interior: 0.35, cave: 0.5 },
   /** algorithmic IR lengths (s): exponentially decaying white noise generated once at boot */

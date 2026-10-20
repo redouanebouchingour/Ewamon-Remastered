@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-20 music that follows the battle: the score hears the player's hp and Majin / Tenjin form. One entry. -->
+
+## 2026-10-20 · `20-client.md` §20.7.2 (battle mood row), §20.7.3 (`setBattleMood`); `50-verification-budget.md` §50.4.7 row · music that follows the battle
+Why: the user asked for music that builds with the fight: layers dropping out at low HP and a rise during a Majin transformation. The themes already ship four stems, so the mood works with them: low HP thins and then drops the biome layer and leaves base and a louder threat, a Majin form darkens every stem with a low-pass and swells the threat, a Tenjin form swells the biome layer. There is no choir stem in the CC0 music, so the "choir" of the idea is not there: a new asset would need a download the user approves first.
+Evidence: `packages/client/test/battle-mood.test.ts` (4); the audio, audio-stems and battle-controller tests; live on the second isolated pair (`debug().audio.mood` steady in a wild battle with the threat on, null after it).
+Affects: `packages/client/src/{battle/mood,battle/BattleController,audio/AudioDirector,audio/mixer,scene/World3D}.ts`.
+
 <!-- 2026-10-20 verified speedruns: the server keeps the time, splits at every beat, badge and the Champion. One entry. -->
 
 ## 2026-10-20 · `00-spine.md` §4.7 (`GET /speedrun`, `GET /speedrun/:username`, leaderboard `speedrun`), §5.1 (`players.play_ms`, `play_started_at`), §5.2 (`RunRepo`, migration 0009 `run_splits`); `30-server-netcode.md` §30.6.3 (the play clock and the splits); `20-client.md` §20.8 (`accessibility.speedrunTimer`), §20.9.9h (new); `50-verification-budget.md` §50.4.4 / .5 / .7 rows · verified speedruns

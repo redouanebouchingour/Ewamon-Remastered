@@ -2112,3 +2112,12 @@ every KO turn shows the lunge, the hit and the faint before the next creature en
   reads `GET /speedrun` on every (re)connect and counts on locally each second while the clock runs and the world is
   connected. `screens/SpeedrunSection.tsx` on Profile; `data/speedrun.ts` (`formatPlayMs`, `splitLabel`). Rankings:
   a Speedrun tab.
+
+## Battle music mood (2026-10-20)
+
+- `battle/mood.ts`: `battleMood(state, seat, hpOf)` from the player's active battler (the lowest of two in doubles)
+  as the HP bars show it, and a Majin / Tenjin form it holds. `BattleController.updateMood` runs on the player
+  side's `hp`, `form` and `enter` keyframes and at the start, and hands a changed mood to `BattleView.setMood`
+  (optional; World3D wires it to `AudioDirector.setBattleMood`); `finish` clears it.
+- `AudioDirector`: `stemLevel` and `musicLowpassHz` are pure (tested); `MIXER.battleMood` holds every number. The
+  CC0 themes have no choir stem, so a Majin rise is the low-pass and the threat swell, not a new layer.
