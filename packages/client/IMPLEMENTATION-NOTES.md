@@ -2082,3 +2082,10 @@ every KO turn shows the lunge, the hit and the faint before the next creature en
 - `/play/replay/:token` (`screens/ReplayScreen.tsx`, `replayLoader`): Watch navigates to `/play` first (an open battle
   blocks navigation) and then starts the replay. History rows: Watch / Link share first (`POST
   /history/battles/:battleId/share`, the same token every time) and toast a 409's reason. Icons `play`, `pause`, `link`.
+
+## Creature history (2026-10-20)
+
+- `screens/CreatureHistory.tsx` fetches `GET /creature/:id/history` when the creature is shown (aborted on change) and
+  renders "Original trainer" and the events newest first; `eventLine` turns each event into its sentence (zone,
+  badge and species names from content). Party's band gets it as a sixth tool card, Box's column after Identity, a
+  listing above its bid history. The badge / Champion / legendary lines are paper bold: the accent means selected.

@@ -191,3 +191,13 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
 - `historyRepo.createShare` inserts with `on conflict do nothing` and then reads the player's share of that battle, so a
   concurrent share of the same battle returns the one that won; null means the token already belongs to another share
   (the caller retries with a fresh token).
+
+## Migration 0007_creature_history (2026-10-20)
+
+- `creature_instances.original_trainer_id` (→ players, `on delete set null`) and `original_trainer_name` (the
+  username then, so it outlives the account), written by `creatureRepo.insert` from the locked owner row. Older rows
+  stay null: the client says "Not recorded" rather than guessing a history from the current owner.
+- `creature_events (id, creature_id → creature_instances cascade, kind, detail jsonb, at)`: `insert` writes `met`
+  (`caught` at the catch time when `caughtAt` is set, else `received` at now); `transferCreature` writes `traded` /
+  `sold` / `gift` with both usernames; `addEvent` / `history` for the server. `history` orders by `at`, then `id`.
+- Not part of `CreatureInstance` (core's type is battle state): the history is read on demand.

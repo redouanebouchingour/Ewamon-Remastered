@@ -4,7 +4,8 @@
  * per mode, POST /profile accepts only content TITLES / BODIES.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { TradeHistoryRes } from '@ewa/protocol';
+import { CreatureHistoryRes, TradeHistoryRes } from '@ewa/protocol';
+import { content } from './helpers';
 import { api, rawQuery, register, startServer } from './helpers';
 import type { TestServer } from './helpers';
 
@@ -62,5 +63,25 @@ describe('history / leaderboard / profile read routes', () => {
     expect((await api(s, 'POST', '/profile', a.access, { body: 'robot' })).status).toBe(400);
     const pub = await api(s, 'GET', `/players/${a.username}`, a.access);
     expect(pub.body).toMatchObject({ title: 'Witness', body: 'fisher_f', motto: 'Count the morning.' });
+  }, 60_000);
+
+  it('GET /creature/:id/history: the starter is received by its trainer; an evolution is added; unknown 404', async () => {
+    const a = await register(s);
+    const [row] = await rawQuery(s.db, "select id from creature_instances where owner_id = $1 and slot_kind = 'party'", [a.id]);
+    const cid = String(row!['id']);
+    const first = await api(s, 'GET', `/creature/${cid}/history`, a.access);
+    expect(first.status).toBe(200);
+    expect(CreatureHistoryRes.safeParse(first.body).success).toBe(true);
+    expect(first.body.originalTrainer).toBe(a.username);
+    expect(first.body.events).toEqual([expect.objectContaining({ kind: 'met', how: 'received', speciesId: 'bramblecub', zoneId: null, trainer: a.username })]);
+    const evo = content.species('bramblecub').evolution as { atLevel: number; into: string };
+    await rawQuery(s.db, 'update creature_instances set level = $2, exp = $3 where id = $1', [cid, evo.atLevel, evo.atLevel ** 3]);
+    const ev = await api(s, 'POST', `/creature/${cid}/evolve`, a.access, { into: evo.into });
+    expect(ev.status).toBe(200);
+    const after = await api(s, 'GET', `/creature/${cid}/history`, a.access);
+    expect(after.body.events.at(-1)).toMatchObject({ kind: 'evolved', from: 'bramblecub', into: evo.into });
+    const other = await register(s);
+    expect((await api(s, 'GET', `/creature/${cid}/history`, other.access)).status).toBe(200);
+    expect((await api(s, 'GET', '/creature/00000000-0000-4000-8000-000000000000/history', a.access)).status).toBe(404);
   }, 60_000);
 });

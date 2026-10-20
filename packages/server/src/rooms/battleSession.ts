@@ -1137,6 +1137,11 @@ export class BattleCoordinator {
             d.rating = r.rating;
           }
           if (money !== 0) d.money = await repos.players.addMoney(tx, pid, money);
+          // creature history: the party that won a badge, beat the Champion, or caught / defeated a legendary
+          const partyIds = aSide.party.map((b) => b.creature.id).filter(isPersistedId);
+          if (badge !== null) await repos.creatures.addEvent(tx, partyIds, { kind: 'badge', badge }, now);
+          if (flagsToSet.includes(CHAMPION_FLAG)) await repos.creatures.addEvent(tx, partyIds, { kind: 'champion' }, now);
+          if (won && session.staticSpecies !== null) await repos.creatures.addEvent(tx, partyIds, { kind: 'legendary', species: session.staticSpecies, caught: outcome.winner === 'caught' }, now);
           if (flagsToSet.length > 0) {
             await repos.progress.setFlags(tx, pid, flagsToSet, now);
             d.flags.push(...flagsToSet);

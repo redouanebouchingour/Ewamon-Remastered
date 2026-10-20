@@ -6,7 +6,7 @@
  * transaction leaves the session state unchanged.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { LEAGUE, beatDoneFlag, zone } from '@ewa/content';
+import { LEAGUE, LEGENDARY_STATICS, beatDoneFlag, zone } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
 import { TRAINER_EXP, chooseNpcAction, chooseNpcDoubles, createBattle, createRng, digestBattleState, resolveTurn } from '@ewa/core';
 import type { Action, BattleState, CreateBattleOpts, Rng, RngState, SideChoice } from '@ewa/core';
@@ -342,6 +342,25 @@ describe('league, story beat and pvp outcomes (server-side only)', () => {
     expect(audit).toHaveLength(1);
     const prog = msgsOf(host, pid).find((m) => m.type === 'progressionDelta' && m.badges !== null);
     expect(prog).toMatchObject({ badges: ['bloom'] });
+    // creature history: the party that won it carries the badge
+    const events = await rawQuery(db, "select e.kind, e.detail from creature_events e join creature_instances c on c.id = e.creature_id where c.owner_id = $1 and e.kind = 'badge'", [pid]);
+    expect(events.map((e) => e['detail'])).toEqual([{ kind: 'badge', badge: 'bloom' }]);
+  }, 180_000);
+
+  it('creature history: winning against a legendary static marks the party, with whether it was caught', async () => {
+    const host = recorder();
+    const c = coordinator(host, 'mirevale', 'legend');
+    const pid = await mkPlayer([{ species: 'cindercap', level: 100 }, { species: 'glimfin', level: 30 }], {});
+    const st = { ...LEGENDARY_STATICS[0]!, level: 5 };
+    const res = await c.startStatic({ playerId: pid, sessionId: 's' }, st, { x: 0, z: 0 });
+    if (!res.ok) throw new Error(res.detail);
+    await playOut(c, host, pid, res.session, (s) => firstMove(s, 0));
+    expect(msgsOf(host, pid).find((m) => m.type === 'battleEnd')).toMatchObject({ outcome: { winner: 0 } });
+    const events = await rawQuery(db, "select e.detail from creature_events e join creature_instances c on c.id = e.creature_id where c.owner_id = $1 and e.kind = 'legendary'", [pid]);
+    expect(events.map((e) => e['detail'])).toEqual([
+      { kind: 'legendary', species: st.species, caught: false },
+      { kind: 'legendary', species: st.species, caught: false },
+    ]);
   }, 180_000);
 
   it('a story-beat battle completes the beat (flags + done flag + storyBeat complete) only on a side-0 win', async () => {

@@ -50,6 +50,13 @@
       "when": 1792485915165,
       "tag": "0006_battle_shares",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792489173466,
+      "tag": "0007_creature_history",
+      "breakpoints": true
     }
   ]
 }

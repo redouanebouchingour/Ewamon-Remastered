@@ -1679,6 +1679,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /battle-pass/claim` | `{ level }` | `{ claimed, inventory, money, creaturesAdded }` | bearer |
 | `POST /battle-pass/mythical-choice` | `{ species: 'lumyth' | 'noxmyth' }` | `{ creaturesAdded }` | bearer |
 | `GET /history/battles?page=` · `GET /history/trades?page=` | — | rows (a battle row's optional `arena`: the `ArenaKind` from its start snapshot) | bearer |
+| `GET /creature/:id/history` <!-- added 2026-10-20: creature history --> | - | `CreatureHistoryRes { originalTrainer: string \| null, events: CreatureEvent[] }` oldest first (at most 200): `met { how: 'caught' \| 'received', speciesId, level, zoneId \| null, trainer }`, `traded` / `sold` / `gift { from, to }`, `evolved { from, into }`, `badge { badge }`, `champion`, `legendary { species, caught }`, each with `at`; names as they were then. Any signed-in player may read any creature's history; 404 `notFound` | bearer |
 | `POST /history/battles/:battleId/share` <!-- added 2026-10-20: battle replays --> | `{}` | `{ token }`: 12 url-safe characters, the same token on every share of that battle (404 `notFound` for another player's battle; 409 `notReplayable` for a row without `start` / `final_digest`, 409 `stale` when the row no longer replays to its `final_digest`) | bearer |
 | `GET /replay/:token` | - | `ReplayRes { token, format, seat, labels: [string \| null, string \| null], result, turns, happenedAt, seed, start, actions, finalDigest }`: the battle frozen and anonymised at share time (player sides' trainers `r:<side>`, creatures `r:<side>:<i>`, owners null; `createBattle({ id: REPLAY_BATTLE_ID, format, seed, ...start })` + the actions end on `finalDigest`); `seat` the sharer's side; 404 `notFound` | none (rate limit `replay` per IP) |
 | `GET /arena` <!-- amended 2026-10-11: arena PvP --> | — | `{ rating, peakRating, rankedMatches, level: 50, cup: { id, name, description, endsAt }, status: ArenaStatus, live: { roomId } \| null }` | bearer |
@@ -2084,6 +2085,11 @@ export interface SocialRepo {
   guildOf(tx: Tx, playerId: string): Promise<GuildView | null>;
   guildMembers(tx: Tx, guildId: string): Promise<GuildMemberView[]>;
   searchGuilds(tx: Tx, search: string, limit: number): Promise<GuildView[]>;   // escapeLike
+}
+/** Creature history (migration 0007_creature_history): `creature_instances.original_trainer_id` (→ players, set null) and `original_trainer_name` written by `insert` (the owner at insert), and `creature_events (id bigserial PK, creature_id → creature_instances cascade, kind varchar(16), detail jsonb, at)`. `insert` writes a `met` event (`caught` at the catch time when `caughtAt` is set, else `received`); `transferCreature` writes `traded` / `sold` / `gift` with both usernames. */
+export interface CreatureHistoryRepo {   // methods on CreatureRepo
+  addEvent(tx: Tx, ids: readonly string[], detail: CreatureEventDetail, now: Date): Promise<void>;   // one row per id
+  history(tx: Tx, id: string): Promise<{ originalTrainer: string | null; events: { detail: CreatureEventDetail; at: Date }[] } | null>;   // oldest first, ≤ 200; null for an unknown creature
 }
 export interface HistoryRepo {
   recordBattle(tx: Tx, row: NewBattleHistory): Promise<void>; recordTrade(tx: Tx, row: NewTradeHistory): Promise<void>;   // rows carry their own timestamps; NewBattleHistory carries optional `start` / `finalDigest` (§5.1)

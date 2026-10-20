@@ -467,6 +467,25 @@ export const BattlePassClaimRes = z.object({
 export const MythicalChoiceReq = z.object({ species: z.enum(MYTHICAL_CHOICES) });
 export const CreaturesAddedRes = z.object({ creaturesAdded: z.array(CreatureInstanceSchema) });
 
+/**
+ * Creature history: the original trainer (null for a creature older than the history) and what happened to it, oldest
+ * first. Names are as they were at the time. `met` how its first owner got it; `traded` / `sold` (the marketplace) /
+ * `gift` a change of hands; `evolved`; `badge` / `champion` / `legendary`: it was in the party that won it.
+ */
+export const CREATURE_EVENT_KINDS = ['met', 'traded', 'sold', 'gift', 'evolved', 'badge', 'champion', 'legendary'] as const;
+const Name = z.string().max(20);
+export const CreatureEventSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('met'), at: IsoDate, how: z.enum(['caught', 'received']), speciesId: z.string().max(32), level: z.number().int().min(1).max(100), zoneId: z.string().max(32).nullable(), trainer: Name }),
+  z.object({ kind: z.enum(['traded', 'sold', 'gift']), at: IsoDate, from: Name, to: Name }),
+  z.object({ kind: z.literal('evolved'), at: IsoDate, from: z.string().max(32), into: z.string().max(32) }),
+  z.object({ kind: z.literal('badge'), at: IsoDate, badge: z.string().max(32) }),
+  z.object({ kind: z.literal('champion'), at: IsoDate }),
+  z.object({ kind: z.literal('legendary'), at: IsoDate, species: z.string().max(32), caught: z.boolean() }),
+]);
+export type CreatureEvent = z.infer<typeof CreatureEventSchema>;
+export const CreatureHistoryRes = z.object({ originalTrainer: Name.nullable(), events: z.array(CreatureEventSchema).max(200) });
+export type CreatureHistory = z.infer<typeof CreatureHistoryRes>;
+
 export const PageQuery = z.object({ page: Page });
 export const BattleHistoryRes = z.object({ rows: z.array(BattleHistoryRowSchema) });
 export const TradeHistoryRes = z.object({ rows: z.array(TradeHistoryRowSchema) });
@@ -583,6 +602,7 @@ export const ROUTES = {
   creatureTutor: route({ method: 'POST', path: '/creature/:id/tutor', auth: 'bearer', params: CreatureParams, request: TutorReq, response: CreatureSetupRes }),
   creatureRelease: route({ method: 'POST', path: '/creature/:id/release', auth: 'bearer', params: CreatureParams, request: Nothing, response: null }),
   creatureFlags: route({ method: 'POST', path: '/creature/:id/flags', auth: 'bearer', params: CreatureParams, request: CreatureFlagsReq, response: CreatureInstanceSchema }),
+  creatureHistory: route({ method: 'GET', path: '/creature/:id/history', auth: 'bearer', params: CreatureParams, response: CreatureHistoryRes }),
   itemUse: route({ method: 'POST', path: '/item/use', auth: 'bearer', request: ItemUseReq, response: ItemUseRes }),
   heal: route({ method: 'POST', path: '/heal', auth: 'bearer', request: Nothing, response: PartyRes }),
   dex: route({ method: 'GET', path: '/dex', auth: 'bearer', response: DexRes }),

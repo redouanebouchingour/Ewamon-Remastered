@@ -1069,3 +1069,13 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
 - `rest/routes/replay.ts`: the share route freezes the replay into `battle_shares` (audit `battle.share`); the public
   route reads only that table. Rate limit `replay` (60 / min per IP). The history row's `opponent` label is the
   opponent's name in the replay (a username in pvp, the trainer label otherwise; wild null).
+
+## Creature history (2026-10-20)
+
+- `battleSession` (the battle transaction, after the rewards): every persisted creature of the side's party gets
+  `badge` when a league win awards one, `champion` when the win sets `champion:zeon:beaten`, `legendary { species,
+  caught }` when a legendary static is won or caught. "In the party" is the claim, not "fought": core keeps no
+  participation record and the history must not guess.
+- `POST /creature/:id/evolve` adds `evolved { from, into }` (every evolution path goes through it). `GET
+  /creature/:id/history` lets any signed-in player read any creature's history: a listed creature's past is part of
+  what is offered, and the names in it are public usernames.

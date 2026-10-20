@@ -250,6 +250,33 @@ export interface SharedReplay {
   readonly finalDigest: string;
 }
 
+/**
+ * Creature history (migration 0007, `creature_events`): one event's kind and fields. Names are stored as they were.
+ * `met`: how the first owner got it (`caught` in `zoneId`, or `received`: a starter or a gift); `traded` / `sold` /
+ * `gift`: an ownership change (`sold` = the marketplace); `evolved`; `badge`: in the party that won it; `champion`: in
+ * the party that beat the Champion; `legendary`: in the party that caught or defeated a legendary.
+ */
+export type CreatureEventDetail =
+  | { readonly kind: 'met'; readonly how: 'caught' | 'received'; readonly speciesId: string; readonly level: number; readonly zoneId: string | null; readonly trainer: string }
+  | { readonly kind: 'traded' | 'sold' | 'gift'; readonly from: string; readonly to: string }
+  | { readonly kind: 'evolved'; readonly from: string; readonly into: string }
+  | { readonly kind: 'badge'; readonly badge: string }
+  | { readonly kind: 'champion' }
+  | { readonly kind: 'legendary'; readonly species: string; readonly caught: boolean };
+
+export type CreatureEventKind = CreatureEventDetail['kind'];
+
+export interface CreatureEvent {
+  readonly detail: CreatureEventDetail;
+  readonly at: Date;
+}
+
+export interface CreatureHistory {
+  /** null for a creature that predates the history */
+  readonly originalTrainer: string | null;
+  readonly events: readonly CreatureEvent[];
+}
+
 export interface TradedCreatureSummary {
   readonly id: string;
   readonly speciesId: string;

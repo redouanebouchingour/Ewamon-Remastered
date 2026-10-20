@@ -154,3 +154,8 @@ installed library that future readers should not have to re-derive. The spec its
   none, limit `replay`): 74 routes. `ReplayRes.start.sides` and `actions` are `z.unknown()` like persist's opaque
   snapshot: the client checks a replay by its final digest, not by schema. `REPLAY_BATTLE_ID = 'replay'` is the
   createBattle id both the server (digest at share time) and the client use.
+
+## Creature history (2026-10-20)
+
+- `creatureHistory` (`GET /creature/:id/history`, bearer): `CreatureHistoryRes { originalTrainer, events }`, the
+  events a discriminated union on `kind` (`traded` / `sold` / `gift` share one shape through a `z.enum`). 75 routes.

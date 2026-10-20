@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, index, integer, jsonb, pgTable, smallint, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import { bigserial, boolean, check, index, integer, jsonb, pgTable, smallint, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import type { MoveSlot, StatusId } from '../types';
 import { slotKind } from './enums';
 import { players } from './players';
@@ -37,6 +37,12 @@ export const creatureInstances = pgTable(
     caughtZoneId: varchar('caught_zone_id', { length: 32 }),
     caughtAt: timestamp('caught_at', { withTimezone: true }),
     ribbons: jsonb('ribbons').$type<string[]>().notNull().default([]),
+    /**
+     * Creature history (migration 0007): the trainer who first owned it (the catcher, or who it was given to) and their
+     * name kept as it was then; null for creatures that predate the history (and the id once that account is gone).
+     */
+    originalTrainerId: uuid('original_trainer_id').references(() => players.id, { onDelete: 'set null' }),
+    originalTrainerName: varchar('original_trainer_name', { length: 20 }),
     favorite: boolean('favorite').notNull().default(false),
     locked: boolean('locked').notNull().default(false),
     /** bumped on every write; informational only — locks do the work */
@@ -57,3 +63,25 @@ export const creatureInstances = pgTable(
 
 export type CreatureRow = typeof creatureInstances.$inferSelect;
 export type NewCreatureRow = typeof creatureInstances.$inferInsert;
+
+/**
+ * Creature history (migration 0007): what happened to one creature, oldest first. `kind` names the event and `detail`
+ * holds its fields (persist's `CreatureEventDetail`); names are kept as they were, so a history outlives renames and
+ * departed accounts. Deleted with the creature.
+ */
+export const creatureEvents = pgTable(
+  'creature_events',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    creatureId: uuid('creature_id')
+      .notNull()
+      .references(() => creatureInstances.id, { onDelete: 'cascade' }),
+    kind: varchar('kind', { length: 16 }).notNull(),
+    detail: jsonb('detail').$type<Record<string, unknown>>().notNull().default({}),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('creature_events_creature_idx').on(t.creatureId, t.id)],
+);
+
+export type CreatureEventRow = typeof creatureEvents.$inferSelect;
+

@@ -2,7 +2,7 @@
  * The selected creature's detail column (SPEC §20.9.3, reused by Box §20.9.4): stats "at level" (core calcStat —
  * display only), four MoveButtons with PP, ability + held item (`POST /creature/:id/setup`), nickname
  * (`/nickname`), favourite/lock (`/flags`), release (danger, confirm modal, refused when locked); the honor ledger of
- * a creature whose evolution it decides (dustcub, core honor.ts).
+ * a creature whose evolution it decides (dustcub, core honor.ts); its history (original trainer and events, `CreatureHistory`).
  */
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -26,6 +26,7 @@ import { TypeBadge } from '../ui/TypeBadge';
 import l from './layout.module.css';
 import s from './CreatureDetail.module.css';
 import type { IntentFetcher } from './shared';
+import { CreatureHistory } from './CreatureHistory';
 import { TeachSection } from './TeachSection';
 
 export interface CreatureDetailProps {
@@ -355,6 +356,9 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
             {identitySection}
             <div className={s.toolFoot}>{release}</div>
           </div>
+          <div className={s.tool}>
+            <CreatureHistory creatureId={c.id} strip />
+          </div>
         </div>
         {releaseModal}
       </aside>
@@ -399,6 +403,7 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
       {useItemSection}
       {setupSection}
       {identitySection}
+      <CreatureHistory creatureId={c.id} />
 
       <div className={s.footer}>
         {extraActions}

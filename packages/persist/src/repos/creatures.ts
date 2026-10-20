@@ -2,9 +2,9 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { PARTY_MAX, PARTY_REORDER_OFFSET } from '../constants';
 import type { Tx } from '../db';
 import { fail } from '../errors';
-import { creatureInstances, listings } from '../schema/index';
+import { creatureEvents, creatureInstances, listings } from '../schema/index';
 import type { CreatureRow } from '../schema/index';
-import type { CreatureInstance, SlotKind } from '../types';
+import type { CreatureEventDetail, CreatureHistory, CreatureInstance, SlotKind } from '../types';
 import { auditRepo } from './audit';
 import { creatureToColumns, rowToCreature, rowToRecord } from './creatureMap';
 import type { CreatureRecord } from './creatureMap';
@@ -135,7 +135,7 @@ export const creatureRepo = {
   async insert(tx: Tx, c: Omit<CreatureInstance, 'id'>, slot: SlotTarget): Promise<CreatureInstance> {
     if (c.ownerId === null) fail('InvalidArgument', 'persisted creatures have an owner');
     const ownerId = c.ownerId;
-    await playerRepo.lock(tx, ownerId);
+    const owner = await playerRepo.lock(tx, ownerId);
     // spine §5.2: PartyFull when the party index is taken or the party already has 6 (Phase E5 — was InvalidSlot)
     if (slot.kind === 'party' && Number.isInteger(slot.index) && (slot.index as number) >= 0 && (slot.index as number) < PARTY_MAX) {
       if ((await partyCount(tx, ownerId)) >= PARTY_MAX || (await slotTaken(tx, ownerId, 'party', slot.index as number, null))) fail('PartyFull', `party[${slot.index}] is taken`);
@@ -143,8 +143,11 @@ export const creatureRepo = {
     const slotIndex = await resolveSlot(tx, ownerId, slot.kind, slot.index, null);
     const [row] = await tx
       .insert(ci)
-      .values({ ...creatureToColumns(c), ownerId, slotKind: slot.kind, slotIndex })
+      .values({ ...creatureToColumns(c), ownerId, slotKind: slot.kind, slotIndex, originalTrainerId: ownerId, originalTrainerName: owner.username })
       .returning();
+    // creature history: how its first owner got it (a catch keeps the catch time; a starter or a gift is now)
+    const met: CreatureEventDetail = { kind: 'met', how: c.caughtAt !== null ? 'caught' : 'received', speciesId: c.speciesId, level: c.level, zoneId: c.caughtAt?.zoneId ?? null, trainer: owner.username };
+    await tx.insert(creatureEvents).values({ creatureId: row!.id, kind: met.kind, detail: met, ...(c.caughtAt !== null ? { at: new Date(c.caughtAt.at) } : {}) });
     return rowToCreature(row!);
   },
 
@@ -232,6 +235,24 @@ export const creatureRepo = {
       { actorId: fromOwner, action: 'creature.transfer', subject: id, detail: { from: fromOwner, to: toOwner, reason, speciesId: c.speciesId, level: c.level } },
       now,
     );
+    // creature history: the change of hands, with both names as they are now
+    const names = new Map((await playerRepo.byIds(tx, [fromOwner, toOwner])).map((p) => [p.id, p.username]));
+    const kind = reason === 'trade' ? 'traded' : reason === 'marketSale' ? 'sold' : 'gift';
+    await creatureRepo.addEvent(tx, [id], { kind, from: names.get(fromOwner) ?? '', to: names.get(toOwner) ?? '' }, now);
+  },
+
+  /** Creature history: one event for each of `ids` (a party that won a badge shares one), at `now`. */
+  async addEvent(tx: Tx, ids: readonly string[], detail: CreatureEventDetail, now: Date): Promise<void> {
+    if (ids.length === 0) return;
+    await tx.insert(creatureEvents).values(ids.map((creatureId) => ({ creatureId, kind: detail.kind, detail, at: now })));
+  },
+
+  /** Creature history: the original trainer and the events, oldest first (at most 200); null for an unknown creature. */
+  async history(tx: Tx, id: string): Promise<CreatureHistory | null> {
+    const [row] = await tx.select({ name: ci.originalTrainerName }).from(ci).where(eq(ci.id, id)).limit(1);
+    if (!row) return null;
+    const rows = await tx.select().from(creatureEvents).where(eq(creatureEvents.creatureId, id)).orderBy(asc(creatureEvents.at), asc(creatureEvents.id)).limit(200);
+    return { originalTrainer: row.name, events: rows.map((r) => ({ detail: r.detail as unknown as CreatureEventDetail, at: r.at })) };
   },
 
   /** Deletes a party/box creature. Refuses locked; refuses the last party member; refuses listed/escrowed. */

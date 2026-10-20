@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-20 creature history: the original trainer and what happened to a creature. One entry. -->
+
+## 2026-10-20 · `00-spine.md` §4.7 (`GET /creature/:id/history`), §5.2 (migration 0007 `creature_events`, `original_trainer_*`, the history repo methods); `30-server-netcode.md` §30.6.3 (who writes which event); `20-client.md` §20.9.9f (new); `50-verification-budget.md` §50.4.4 / .5 / .7 rows · creature history
+Why: the user asked that every creature keep a record of its original trainer, every trade, the badges it fought for and the legendaries it helped catch, so a traded creature with a famous past is worth more than its stats. Persist writes what it already sees (the owner at insert, every transfer with both names); the server adds what only the battle knows (the party that won a badge, beat the Champion or caught / defeated a legendary) and evolutions. Names are stored as they were, so a history outlives renames and departed accounts. The history is not part of core's `CreatureInstance` (battle state and the fuzz digests are untouched); it is read on demand. Creatures from before the migration show "Not recorded" rather than a guessed history.
+Evidence: `packages/persist/test/creature-history.test.ts` (3) and `migrations.test.ts`; `packages/protocol/test/rest.test.ts` (75 routes, `CreatureHistoryRes`); `packages/server/test/history-routes.test.ts`, `battle-room.test.ts` (badge, legendary); `packages/client/test/creature-history.test.tsx` (3); live on the second isolated pair (Party: an older starter reads "Not recorded", a granted creature "Received by <trainer> at level 12.").
+Affects: `packages/persist/src/{schema/creatures,repos/creatures,types}.ts`, `drizzle/0007_creature_history.sql`; `packages/protocol/src/rest.ts`; `packages/server/src/{rooms/battleSession,rest/routes/party}.ts`; `packages/client/src/screens/{CreatureHistory,CreatureDetail,ListingDetail}.tsx`.
+
 <!-- 2026-10-20 switching: the moves after a switch-in play again. One entry. -->
 
 ## 2026-10-20 · `20-client.md` §20.3 (`BattleUi.authoritative` row), §20.5.5 (`onBattleResync`, new "Every turn plays in full") · switch-ins no longer cut a turn's animations

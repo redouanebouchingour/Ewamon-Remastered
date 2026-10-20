@@ -42,6 +42,7 @@ import {
   QuestClaimRes,
   ROUTES,
   ROUTE_KEYS,
+  CreatureHistoryRes,
   REPLAY_BATTLE_ID,
   ReplayRes,
   BattleShareRes,
@@ -374,7 +375,8 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(74); // 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes
+    expect(ROUTE_KEYS).toHaveLength(75); // 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history
+    expect(paths).toContain('GET /creature/:id/history');
     expect(paths).toContain('POST /history/battles/:battleId/share');
     expect(paths).toContain('GET /replay/:token');
     expect(ROUTES.replay.auth).toBe('none');
@@ -423,3 +425,28 @@ describe('battle replays', () => {
     expect(REPLAY_BATTLE_ID).toBe('replay');
   });
 });
+
+describe('creature history', () => {
+  it('CreatureHistoryRes accepts every event kind and refuses an unknown kind or a bad field', () => {
+    const at = '2026-10-20T10:00:00.000Z';
+    ok(CreatureHistoryRes, {
+      originalTrainer: 'ash_k',
+      events: [
+        { kind: 'met', at, how: 'caught', speciesId: 'glimfin', level: 7, zoneId: 'mire_route', trainer: 'ash_k' },
+        { kind: 'met', at, how: 'received', speciesId: 'glimfin', level: 5, zoneId: null, trainer: 'ash_k' },
+        { kind: 'traded', at, from: 'ash_k', to: 'misty' },
+        { kind: 'sold', at, from: 'misty', to: 'brock' },
+        { kind: 'gift', at, from: 'brock', to: 'ash_k' },
+        { kind: 'evolved', at, from: 'glimfin', into: 'tidefin' },
+        { kind: 'badge', at, badge: 'tidal' },
+        { kind: 'champion', at },
+        { kind: 'legendary', at, species: 'hyoryu', caught: true },
+      ],
+    });
+    ok(CreatureHistoryRes, { originalTrainer: null, events: [] });
+    bad(CreatureHistoryRes, { originalTrainer: null, events: [{ kind: 'stolen', at }] });
+    bad(CreatureHistoryRes, { originalTrainer: null, events: [{ kind: 'met', at, how: 'hatched', speciesId: 'x', level: 1, zoneId: null, trainer: 'a' }] });
+    bad(CreatureHistoryRes, { originalTrainer: null, events: [{ kind: 'legendary', at, species: 'hyoryu' }] });
+  });
+});
+

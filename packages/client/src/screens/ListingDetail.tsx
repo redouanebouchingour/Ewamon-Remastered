@@ -16,6 +16,7 @@ import { TextField } from '../ui/Field';
 import { Icon } from '../ui/Icon';
 import { Pill } from '../ui/Pill';
 import { TypeBadge } from '../ui/TypeBadge';
+import { CreatureHistory } from './CreatureHistory';
 import l from './layout.module.css';
 import s from './ListingDetail.module.css';
 import { relativeTime, timeLeft, useIntent } from './shared';
@@ -107,6 +108,7 @@ export function ListingDetail() {
         </Button>
       )}
       {error !== null && <p className={s.error}>{error}</p>}
+      <CreatureHistory creatureId={data.creatureId} title="The creature's history" />
       <section className={l.section}>
         <h4 className={l.sectionTitle}>Bid history</h4>
         {data.bids.length === 0 ? (

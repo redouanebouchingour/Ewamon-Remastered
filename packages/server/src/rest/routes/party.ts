@@ -9,6 +9,7 @@ import type { ConsumableDef, CreatureInstance, ItemDef, StatusId } from '@ewa/co
 import type { CreatureRecord, Tx } from '@ewa/persist';
 import {
   CreatureFlagsReq,
+  CreatureHistoryRes,
   CreatureIdReq,
   CreatureInstanceSchema,
   CreatureParams,
@@ -236,6 +237,7 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
       await repos.progress.markSeen(tx, id, next.speciesId, now);
       await repos.progress.markCaught(tx, id, next.speciesId, next.variantKey, next.isAlpha, now, next.isShiny === true);
       await repos.audit.write(tx, { actorId: id, action: 'creature.evolve', subject: cid, detail: { from: rec.speciesId, into: next.speciesId, via } }, now);
+      await repos.creatures.addEvent(tx, [cid], { kind: 'evolved', from: rec.speciesId, into: next.speciesId }, now);
       return { next, items };
     });
     const c = res.next;
@@ -290,6 +292,17 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
       await repos.creatures.release(tx, cid, id);
     });
     return reply.status(204).send();
+  });
+
+  /**
+   * Creature history: its original trainer and events, oldest first. Any signed-in player may read any creature's
+   * history (a listed creature's past is part of what is offered; names in it are public usernames).
+   */
+  app.get('/creature/:id/history', bearer, async (req) => {
+    const { id: cid } = CreatureParams.parse(req.params);
+    const h = await repos.db.transaction((tx) => repos.creatures.history(tx, cid));
+    if (h === null) throw new HttpError(404, 'notFound');
+    return out(deps, CreatureHistoryRes, { originalTrainer: h.originalTrainer, events: h.events.map((e) => ({ ...e.detail, at: e.at.toISOString() })) } as never);
   });
 
   app.post('/creature/:id/flags', bearer, async (req) => {
