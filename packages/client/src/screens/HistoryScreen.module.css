@@ -66,3 +66,9 @@
   justify-content: center;
   gap: var(--s-4);
 }
+
+/* battle replays: Watch and Link side by side at the row's end */
+.replay {
+  display: inline-flex;
+  gap: var(--s-2);
+}

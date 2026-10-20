@@ -210,6 +210,21 @@ export async function historyLoader({ request }: LoaderFunctionArgs) {
 }
 
 /**
+ * Battle replays `/play/replay/:token`: the shared battle (GET /replay/:token, no account needed), or null when the
+ * token is unknown (404) or malformed (400).
+ */
+export async function replayLoader({ request, params }: LoaderFunctionArgs) {
+  const token = params['token'] ?? '';
+  try {
+    const [replay] = await Promise.all([load(request, 'replay', { params: { token } }), sessionReady(request.signal)]);
+    return { token, replay };
+  } catch (e) {
+    if (e instanceof ApiFailure && (e.error.status === 404 || e.error.status === 400)) return { token, replay: null };
+    throw e;
+  }
+}
+
+/**
  * Arena PvP `/play/pvp`: GET /arena into the arena store (rating, the week's cup, the queue) and the friend list for
  * Challenge a friend. A server without the arena routes renders the screen's "not live yet" state.
  */

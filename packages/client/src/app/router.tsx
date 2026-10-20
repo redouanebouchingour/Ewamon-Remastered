@@ -224,6 +224,13 @@ export const routes: RouteObject[] = [
             },
           }),
           child({
+            path: 'replay/:token',
+            lazy: async () => {
+              const [{ ReplayScreen }, l] = await Promise.all([import('../screens/ReplayScreen'), loaders()]);
+              return { Component: ReplayScreen, loader: l.replayLoader };
+            },
+          }),
+          child({
             path: 'settings',
             lazy: async () => ({ Component: (await import('../screens/SettingsScreen')).SettingsScreen }),
           }),

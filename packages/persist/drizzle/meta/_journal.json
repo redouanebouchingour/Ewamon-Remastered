@@ -43,6 +43,13 @@
       "when": 1791464348235,
       "tag": "0005_honor",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792485915165,
+      "tag": "0006_battle_shares",
+      "breakpoints": true
     }
   ]
 }

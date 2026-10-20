@@ -34,6 +34,7 @@ import { toast } from '../state/notifications';
 import { useSessionStore } from '../state/session';
 import { useUiStore } from '../state/ui';
 import { ApiFailure, apiFetch } from './api';
+import { isReplayBattle } from '../battle/replayId';
 
 export type ZoneRoom = Room<unknown, ZoneState>;
 export type ArenaRoom = Room<unknown, ArenaState>;
@@ -59,6 +60,11 @@ export interface WorldSession {
   send<K extends ClientMessageType>(type: K, payload: ClientPayload<K>): void;
   /** one dispatcher; fan-out inside the client */
   onMessage(cb: (m: ServerMessage) => void): () => void;
+  /**
+   * Battle replays: hands a client-made message to every `onMessage` listener as if the server had sent it (the replay
+   * driver plays a shared battle through the scene's normal battle path). Optional so test fakes need not carry it.
+   */
+  inject?(m: ServerMessage): void;
   handover(m: ServerMessageOf<'handover'>): Promise<void>;
   /** Moves the player into the arena room of `seat` (from the zone, or from another arena). */
   enterArena(seat: SeatReservation): Promise<void>;
@@ -420,6 +426,9 @@ export function createWorldSession(deps: WorldSessionDeps): WorldSession {
     },
 
     send(type, payload) {
+      // battle replays: a replay's battle exists only in this client; nothing about it goes to the server
+      const battleId: unknown = typeof payload === 'object' && payload !== null ? (payload as { readonly battleId?: unknown }).battleId : undefined;
+      if (typeof battleId === 'string' && isReplayBattle(battleId)) return;
       const parsed = CLIENT_MESSAGES[type].safeParse(payload);
       if (!parsed.success) {
         const msg = `invalid client message '${type}': ${parsed.error.issues.map((i) => i.message).join('; ')}`;
@@ -435,6 +444,10 @@ export function createWorldSession(deps: WorldSessionDeps): WorldSession {
     onMessage(cb) {
       messageListeners.add(cb);
       return () => messageListeners.delete(cb);
+    },
+
+    inject(m) {
+      dispatch(m);
     },
 
     async handover(m) {

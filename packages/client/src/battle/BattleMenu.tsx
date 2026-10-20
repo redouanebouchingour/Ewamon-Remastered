@@ -121,7 +121,7 @@ type Hint = readonly [key: string, verb: string];
  * Broadcast UI: the "Last turn" ticker over the command area — the last 3 log lines in one strip (older ones truncate
  * first), then the keys that work in this menu on the right.
  */
-function Ticker({ log, hints }: { readonly log: BattleUi['log']; readonly hints: readonly Hint[] }) {
+export function Ticker({ log, hints }: { readonly log: BattleUi['log']; readonly hints: readonly Hint[] }) {
   const last = log.slice(-3);
   return (
     <div className={s.ticker} data-testid="battle-ticker">

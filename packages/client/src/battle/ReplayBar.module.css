@@ -1,0 +1,85 @@
+/* Battle replays: the battle menu's grid (BattleMenu.module.css .menu): the "Last turn" ticker in row 1 beside the
+   turn tag, the replay slab across row 2 where the command rail and the moves would be. */
+.deck {
+  display: grid;
+  grid-template-columns: 184px minmax(0, 1fr);
+  grid-template-rows: var(--control-md) minmax(0, 1fr);
+  column-gap: var(--s-3);
+  row-gap: var(--s-3);
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+.bar {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  align-self: end;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-5);
+  background: var(--glass);
+  min-inline-size: 0;
+}
+
+/* the paper "Replay" tag: the ticker label's slab */
+.tag {
+  flex: none;
+  margin: 0;
+  padding: var(--s-2) var(--s-4);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+
+.names {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: baseline;
+  gap: var(--s-3);
+  min-inline-size: 0;
+  margin: 0;
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: 1;
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.name {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--text-hi);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vs {
+  flex: none;
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  letter-spacing: 0.12em;
+}
+
+.progress {
+  flex: none;
+  margin: 0;
+  color: var(--text-2);
+  font-family: var(--face-mono);
+  font-size: var(--t-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  flex: none;
+  gap: var(--s-3);
+}

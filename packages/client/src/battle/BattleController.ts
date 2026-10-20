@@ -63,6 +63,7 @@ import type { BondCue } from './bond';
 import type { CinematicCue, CinematicPoint } from './cinematic';
 import { createMoveAnimRegistry } from './moveAnims';
 import type { MoveAnimRegistry } from './moveAnims';
+import { isReplayBattle } from './replayId';
 import type { RaidInfo } from './raid';
 import { buildTimeline, statusGlyph, vfxIdsIn } from './timeline';
 import type { LogTone, Timeline, TimelineCtx } from './timeline';
@@ -971,7 +972,8 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     },
 
     submit(action) {
-      if (state === null || battleId === null) return;
+      // a battle replay is played by its driver (battle/replay.ts); nothing is ever sent for it
+      if (state === null || battleId === null || isReplayBattle(battleId)) return;
       const b = ui().battle;
       if (b === null || (b.phase !== 'selecting' && b.phase !== 'replacement')) return;
       if (raid !== null) {

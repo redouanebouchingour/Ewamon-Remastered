@@ -957,6 +957,30 @@ export function fuzzBattles(opts: {
 
 M0's exit criterion in `PLAN.md` ("a headless battle between two seeded teams resolves identically on client and server 1,000 times") is this test run once in Node and once in a browser worker (Playwright) with the digests compared.
 
+### 2.21 Replays <!-- added 2026-10-20: battle replays -->
+
+```ts
+/** One resolved step of a replay: the choices fed to resolveTurn and what they produced. */
+export interface ReplayStep {
+  readonly choices: readonly [SideChoice, SideChoice];
+  readonly state: BattleState;
+  readonly events: readonly BattleEvent[];
+  readonly digest: string;
+}
+
+export interface ReplayRun {
+  readonly start: { readonly state: BattleState; readonly events: readonly BattleEvent[]; readonly digest: string };
+  /** one entry per resolveTurn call (a replacement phase is its own step, so steps can outnumber `turn`) */
+  readonly steps: readonly ReplayStep[];
+  /** the digest of the last state (the start's when there are no steps) */
+  readonly finalDigest: string;
+}
+
+export function replayBattle(opts: CreateBattleOpts, choices: readonly (readonly [SideChoice, SideChoice])[], content: ContentIndex): ReplayRun;
+```
+
+`replayBattle` is `createBattle` then one `resolveTurn` per recorded choice pair, digesting every state. Pure (the determinism contract above), so the server's `battle_history` row (`start` + `seed` + `actions`) replays to its `final_digest` anywhere, and a shared replay (§4.7 `GET /replay/:token`) plays in the client exactly as it happened. Core never reads `trainerId`, `ownerId` or a creature `id` for a rule, so a replay with those ids replaced (anonymised) plays out the same; only the digest differs.
+
 ---
 
 ## §3 @ewa/content SCHEMA
@@ -1655,6 +1679,8 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /battle-pass/claim` | `{ level }` | `{ claimed, inventory, money, creaturesAdded }` | bearer |
 | `POST /battle-pass/mythical-choice` | `{ species: 'lumyth' | 'noxmyth' }` | `{ creaturesAdded }` | bearer |
 | `GET /history/battles?page=` · `GET /history/trades?page=` | — | rows (a battle row's optional `arena`: the `ArenaKind` from its start snapshot) | bearer |
+| `POST /history/battles/:battleId/share` <!-- added 2026-10-20: battle replays --> | `{}` | `{ token }`: 12 url-safe characters, the same token on every share of that battle (404 `notFound` for another player's battle; 409 `notReplayable` for a row without `start` / `final_digest`, 409 `stale` when the row no longer replays to its `final_digest`) | bearer |
+| `GET /replay/:token` | - | `ReplayRes { token, format, seat, labels: [string \| null, string \| null], result, turns, happenedAt, seed, start, actions, finalDigest }`: the battle frozen and anonymised at share time (player sides' trainers `r:<side>`, creatures `r:<side>:<i>`, owners null; `createBattle({ id: REPLAY_BATTLE_ID, format, seed, ...start })` + the actions end on `finalDigest`); `seat` the sharer's side; 404 `notFound` | none (rate limit `replay` per IP) |
 | `GET /arena` <!-- amended 2026-10-11: arena PvP --> | — | `{ rating, peakRating, rankedMatches, level: 50, cup: { id, name, description, endsAt }, status: ArenaStatus, live: { roomId } \| null }` | bearer |
 | `POST /arena/queue` · `POST /arena/queue/leave` | `{ mode: 'standard' \| 'level50' \| 'ranked' \| 'cup' }` · `{}` | `ArenaStatus` (a refusal is `idle` + `reason` / `detail`) | bearer |
 | `POST /arena/training` | `{ rules: 'standard' \| 'level50', difficulty: 'easy' \| 'normal' \| 'hard' }` | `{ seat }` (409 `busy` / `party`) | bearer |
@@ -2061,6 +2087,10 @@ export interface SocialRepo {
 }
 export interface HistoryRepo {
   recordBattle(tx: Tx, row: NewBattleHistory): Promise<void>; recordTrade(tx: Tx, row: NewTradeHistory): Promise<void>;   // rows carry their own timestamps; NewBattleHistory carries optional `start` / `finalDigest` (§5.1)
+  /** Battle replays (migration 0006_battle_shares): `battle_shares (token varchar(16) PK, player_id uuid → players cascade, battle_id uuid, replay jsonb SharedReplay, created_at)`, unique (player_id, battle_id). */
+  shareOf(tx: Tx, playerId: string, battleId: string): Promise<BattleShareRow | null>;
+  createShare(tx: Tx, row: { token: string; playerId: string; battleId: string; replay: SharedReplay }, now: Date): Promise<BattleShareRow | null>;   // the player's share of that battle (a concurrent one wins); null when `token` is another share's
+  shareByToken(tx: Tx, token: string): Promise<BattleShareRow | null>;
   battles(tx: Tx, playerId: string, page: number, pageSize: number): Promise<BattleHistoryRow[]>; battleById(tx: Tx, playerId: string, battleId: string): Promise<BattleHistoryRow | null>;
   trades(tx: Tx, playerId: string, page: number, pageSize: number): Promise<TradeHistoryRow[]>;
   /** The whole two-player trade in one call (the transaction below): locks, escrow asserts, transfers both ways, money both ways, two trade_history rows, audit. */

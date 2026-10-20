@@ -16,6 +16,7 @@ import { installErrorHandler } from './http';
 import type { RestDeps } from './http';
 import { registerAdminRoutes } from './routes/admin';
 import { registerArenaRoutes } from './routes/arena';
+import { registerReplayRoutes } from './routes/replay';
 import { registerAuthRoutes } from './routes/auth';
 import { registerCatalogRoutes } from './routes/catalog';
 import { registerMarketRoutes } from './routes/market';
@@ -70,5 +71,6 @@ export function registerRoutes(app: FastifyInstance, deps: RestDeps, opts: RestO
   registerMarketRoutes(app, deps);
   registerSocialRoutes(app, deps);
   registerArenaRoutes(app, deps);
+  registerReplayRoutes(app, deps);
   registerAdminRoutes(app, deps, opts.publishKick ?? (() => undefined));
 }

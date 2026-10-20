@@ -82,3 +82,7 @@ export type { Ref, BattleEvent } from './types';
 // §2.20 ContentIndex, digest
 export type { ContentIndex } from './types';
 export { canonicalJson, digestBattleState } from './digest';
+
+// §2.21 Replays
+export type { ReplayRun, ReplayStep } from './replay';
+export { replayBattle } from './replay';

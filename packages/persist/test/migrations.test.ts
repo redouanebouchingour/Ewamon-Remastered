@@ -10,6 +10,7 @@ const EXPECTED_TABLES = [
   'badges',
   'battle_history',
   'battle_pass',
+  'battle_shares',
   'bids',
   'creature_instances',
   'dex_entries',
@@ -40,7 +41,7 @@ afterAll(async () => {
 });
 
 describe('migrations (§5.4)', () => {
-  it('creates the 18 tables of §5.1 plus email_tokens (0002) and player_streaks (0004)', async () => {
+  it('creates the 18 tables of §5.1 plus email_tokens (0002), player_streaks (0004) and battle_shares (0006)', async () => {
     const rows = await db.transaction(async (tx) => {
       const r = await tx.execute<{ table_name: string }>(
         sql`select table_name from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE' order by table_name`,

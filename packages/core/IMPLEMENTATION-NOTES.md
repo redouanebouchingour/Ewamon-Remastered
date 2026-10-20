@@ -233,3 +233,11 @@ The user's form-change gimmick (`.design/majin-tenjin.md`; spine §2.3 `BattleFo
   type bonus against a wild battler in its form (`catch.ts`). Abilities and the moveset do not change.
 - No rng, no new event: the client reads the types from content after `formChange`. Every species without a typed form
   computes exactly what it did; the 1,000-battle fuzz digests are unchanged. `test/formTypes.test.ts` (3).
+
+## Battle replays (2026-10-20)
+
+- `replayBattle(opts, choices, content)` (`src/replay.ts`, spine §2.21) is `createBattle` then one `resolveTurn` per
+  recorded choice pair, with the digest of every state. The server checks a history row against its `final_digest`
+  with it before sharing, and the client plays a shared replay from it. It adds no rule: the fuzz digests are unchanged.
+- `test/fuzz.ts` gained `fuzzOpts(seed, content)`, the createBattle input `buildBattle` uses (same rng draws in the
+  same order), so `test/replay.test.ts` replays 60 fuzz records from their input alone.

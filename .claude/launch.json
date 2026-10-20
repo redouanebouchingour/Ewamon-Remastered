@@ -50,6 +50,27 @@
         "client"
       ],
       "port": 5174
+    },
+    {
+      "name": "ewa-server-alt2",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/dev-alt.mjs",
+        "server",
+        "2"
+      ],
+      "port": 4200,
+      "url": "http://localhost:4200"
+    },
+    {
+      "name": "ewa-client-alt2",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/dev-alt.mjs",
+        "client",
+        "2"
+      ],
+      "port": 5175
     }
   ]
 }

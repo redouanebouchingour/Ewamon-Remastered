@@ -1,5 +1,5 @@
-import { index, integer, jsonb, pgTable, primaryKey, smallint, timestamp, uuid, varchar, bigserial } from 'drizzle-orm/pg-core';
-import type { BattleStartSnapshot, ReplayChoice, RewardsSummary, RngState, TradedCreatureSummary } from '../types';
+import { index, integer, jsonb, pgTable, primaryKey, smallint, timestamp, uniqueIndex, uuid, varchar, bigserial } from 'drizzle-orm/pg-core';
+import type { BattleStartSnapshot, ReplayChoice, RewardsSummary, RngState, SharedReplay, TradedCreatureSummary } from '../types';
 import { battleFormat } from './enums';
 import { players } from './players';
 
@@ -29,6 +29,25 @@ export const battleHistory = pgTable(
     happenedAt: timestamp('happened_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('battle_history_player_idx').on(t.playerId, t.happenedAt)],
+);
+
+/**
+ * Battle replays (migration 0006): a short public token for one of a player's battle_history rows. The replay is frozen
+ * at share time (anonymised: no player or creature uuids), so a share outlives later history and needs no lookup by
+ * battle id. One share per (player, battle): sharing again returns the same token.
+ */
+export const battleShares = pgTable(
+  'battle_shares',
+  {
+    token: varchar('token', { length: 16 }).primaryKey(),
+    playerId: uuid('player_id')
+      .notNull()
+      .references(() => players.id, { onDelete: 'cascade' }),
+    battleId: uuid('battle_id').notNull(),
+    replay: jsonb('replay').$type<SharedReplay>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('battle_shares_player_battle_uq').on(t.playerId, t.battleId)],
 );
 
 export const tradeHistory = pgTable(
@@ -70,3 +89,4 @@ export type NewBattleHistoryRow = typeof battleHistory.$inferInsert;
 export type TradeHistoryRow = typeof tradeHistory.$inferSelect;
 export type NewTradeHistoryRow = typeof tradeHistory.$inferInsert;
 export type BattlePassRow = typeof battlePass.$inferSelect;
+export type BattleShareRow = typeof battleShares.$inferSelect;

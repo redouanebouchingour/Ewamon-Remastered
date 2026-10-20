@@ -2066,3 +2066,19 @@ with 6 switches and 4 KO + replacement pairs: 0 desyncs (before: one on the turn
 every KO turn shows the lunge, the hit and the faint before the next creature enters. Tests:
 `test/battle-controller.test.ts` (+2; the replacement test fails without the replay and without the queue),
 `test/timeline.test.ts` (+2).
+
+## Battle replays (2026-10-20)
+
+- `battle/replay.ts`: `planReplay` re-simulates a `ReplayRes` with core `replayBattle` and refuses it (null) unless it
+  ends on its `finalDigest`; `startReplay` injects `battleStart`, then one `battleEvents` per step whenever the
+  controller leaves `playing` (selecting / replacement / submitted), then `battleEnd` with no rewards right behind the
+  last step, as the server does. The battle id is `replay:<token>` (`battle/replayId.ts`). `WorldSession.inject`
+  (optional on the interface, so the test fakes need nothing) dispatches a client-made message to the listeners.
+- Nothing reaches the server: `WorldSession.send` drops any payload whose `battleId` is a replay's, and the
+  controller's `submit` ignores a replay. The replay's creatures have `ownerId: null`, so `promptsFrom` queues nothing.
+- `ReplayBar` takes the menu's place (the exported `Ticker` over a slab: names, `Step n of N`, Pause / Resume, Copy
+  link, Exit). Exit (`stopReplay`) dismisses the battle through `battleActions().dismissResult()`. The result card
+  says "End of the replay." and "A replay changes nothing in your game." and goes Back to the world.
+- `/play/replay/:token` (`screens/ReplayScreen.tsx`, `replayLoader`): Watch navigates to `/play` first (an open battle
+  blocks navigation) and then starts the replay. History rows: Watch / Link share first (`POST
+  /history/battles/:battleId/share`, the same token every time) and toast a 409's reason. Icons `play`, `pause`, `link`.

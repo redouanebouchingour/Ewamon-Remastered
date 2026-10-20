@@ -228,6 +228,28 @@ export interface BattleStartSnapshot {
   readonly arena?: string;
 }
 
+/**
+ * battle_shares.replay: a battle_history row made public (migration 0006). Ids are anonymised (`r:<side>` trainers of
+ * player sides, `r:<side>:<i>` creatures, owners null), which core never reads, so `start` + `seed` + `actions`
+ * replay to `finalDigest` (the anonymised state's digest). `labels`: a player side's username, an NPC side's content
+ * trainer id, null for a wild side. Opaque to persist like BattleStartSnapshot.
+ */
+export interface SharedReplay {
+  readonly format: BattleFormat;
+  /** the sharer's side */
+  readonly seat: 0 | 1;
+  readonly labels: readonly [string | null, string | null];
+  /** the sharer's result */
+  readonly result: BattleResult;
+  readonly turns: number;
+  /** ISO time the battle ended */
+  readonly happenedAt: string;
+  readonly seed: RngState;
+  readonly start: BattleStartSnapshot;
+  readonly actions: readonly (readonly [ReplayChoice, ReplayChoice])[];
+  readonly finalDigest: string;
+}
+
 export interface TradedCreatureSummary {
   readonly id: string;
   readonly speciesId: string;

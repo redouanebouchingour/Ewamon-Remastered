@@ -14,6 +14,7 @@ import {
   CreatureInstanceSchema,
   ItemCounts,
   RewardsSummarySchema,
+  RngStateSchema,
   Uuid,
   VariantKeySchema,
 } from './messages/common';
@@ -470,6 +471,41 @@ export const PageQuery = z.object({ page: Page });
 export const BattleHistoryRes = z.object({ rows: z.array(BattleHistoryRowSchema) });
 export const TradeHistoryRes = z.object({ rows: z.array(TradeHistoryRowSchema) });
 
+/**
+ * Battle replays: a share token (12 url-safe characters) for one of the player's history rows, and the public replay
+ * behind it. The replay is anonymised (player sides' trainers `r:<side>`, creatures `r:<side>:<i>`, owners null), so
+ * `createBattle({ id: REPLAY_BATTLE_ID, format, seed, ...start })` + `resolveTurn` over `actions` ends on
+ * `finalDigest`. `seat` is the sharer's side; `labels` a player side's username, an NPC side's trainer id, null for wild.
+ */
+export const REPLAY_BATTLE_ID = 'replay';
+export const ShareToken = z.string().regex(/^[A-Za-z0-9_-]{8,16}$/);
+export const BattleShareParams = z.object({ battleId: Uuid });
+export const BattleShareRes = z.object({ token: ShareToken });
+export const ReplayParams = z.object({ token: ShareToken });
+export const ReplayStartSchema = z.object({
+  zoneId: z.string().max(64),
+  terrain: z.string().max(32),
+  sides: z.tuple([z.unknown(), z.unknown()]),
+  weather: z.string().max(16).optional(),
+  slots: z.literal(2).optional(),
+  noExp: z.literal(true).optional(),
+  arena: ArenaKindSchema.optional(),
+});
+export const ReplayRes = z.object({
+  token: ShareToken,
+  format: BattleFormatSchema,
+  seat: z.union([z.literal(0), z.literal(1)]),
+  labels: z.tuple([z.string().max(64).nullable(), z.string().max(64).nullable()]),
+  result: z.enum(BATTLE_RESULTS),
+  turns: z.number().int().min(0),
+  happenedAt: IsoDate,
+  seed: RngStateSchema,
+  start: ReplayStartSchema,
+  actions: z.array(z.tuple([z.unknown(), z.unknown()])).max(2000),
+  finalDigest: z.string().regex(/^[0-9a-f]{8}$/),
+});
+export type ReplayData = z.infer<typeof ReplayRes>;
+
 // ---- admin / health -----------------------------------------------------------------------------------------------------
 
 /** TODO(spec): `/admin/stats` has no listed body; these are the legacy counters carried over. */
@@ -518,7 +554,7 @@ export interface RouteDef {
   /** `null` = 204 No Content */
   readonly response: z.ZodType | null;
   /** 30-server-netcode.md §30.6.4 key, when the route has a dedicated limit (else restRead/restWrite). */
-  readonly limit?: 'register' | 'login' | 'refresh' | 'listing' | 'bid' | 'message' | 'friendReq' | 'guildOp' | 'forgot' | 'emailToken' | 'resend';
+  readonly limit?: 'register' | 'login' | 'refresh' | 'listing' | 'bid' | 'message' | 'friendReq' | 'guildOp' | 'forgot' | 'emailToken' | 'resend' | 'replay';
 }
 
 const route = <const R extends RouteDef>(r: R): R => r;
@@ -583,6 +619,9 @@ export const ROUTES = {
   battlePassMythical: route({ method: 'POST', path: '/battle-pass/mythical-choice', auth: 'bearer', request: MythicalChoiceReq, response: CreaturesAddedRes }),
   historyBattles: route({ method: 'GET', path: '/history/battles', auth: 'bearer', query: PageQuery, response: BattleHistoryRes }),
   historyTrades: route({ method: 'GET', path: '/history/trades', auth: 'bearer', query: PageQuery, response: TradeHistoryRes }),
+  // battle replays: a share token for one of the player's battles, and the public replay behind it
+  historyShare: route({ method: 'POST', path: '/history/battles/:battleId/share', auth: 'bearer', params: BattleShareParams, request: Nothing, response: BattleShareRes }),
+  replay: route({ method: 'GET', path: '/replay/:token', auth: 'none', params: ReplayParams, response: ReplayRes, limit: 'replay' }),
   // arena PvP (arena.ts): out-of-world queues, AI training, friend invites, the reload rejoin
   arena: route({ method: 'GET', path: '/arena', auth: 'bearer', response: ArenaInfoRes }),
   arenaQueue: route({ method: 'POST', path: '/arena/queue', auth: 'bearer', request: ArenaQueueReq, response: ArenaStatusBody }),

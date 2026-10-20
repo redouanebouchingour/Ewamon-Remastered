@@ -14,6 +14,7 @@ import type {
   BattleFormat,
   BattleState,
   ContentIndex,
+  CreateBattleOpts,
   CreatureInstance,
   MajorStatus,
   Rng,
@@ -110,7 +111,8 @@ export interface FuzzSetup {
   readonly driver: Rng;
 }
 
-export function buildBattle(seed: number, content: ContentIndex): FuzzSetup {
+/** The createBattle input of fuzz seed `seed` (and the player-side driver stream), as buildBattle builds it. */
+export function fuzzOpts(seed: number, content: ContentIndex): { readonly format: BattleFormat; readonly opts: CreateBattleOpts; readonly driver: Rng } {
   const rng = createRng(seed);
   const all = content.allSpecies();
   const held = heldItemIds(content, HELD_CANDIDATES);
@@ -146,10 +148,13 @@ export function buildBattle(seed: number, content: ContentIndex): FuzzSetup {
   };
   const driver = rng.fork();
   const battleSeed = rng.int(2147483647);
-  const created = createBattle(
-    { id: `fuzz-${seed}`, format, zoneId: 'mirevale', terrain: 'grove', seed: battleSeed, sides: [side0, side1] },
-    content,
-  );
+  const opts: CreateBattleOpts = { id: `fuzz-${seed}`, format, zoneId: 'mirevale', terrain: 'grove', seed: battleSeed, sides: [side0, side1] };
+  return { format, opts, driver };
+}
+
+export function buildBattle(seed: number, content: ContentIndex): FuzzSetup {
+  const { format, opts, driver } = fuzzOpts(seed, content);
+  const created = createBattle(opts, content);
   return { format, state: created.state, createEvents: created.events, driver };
 }
 

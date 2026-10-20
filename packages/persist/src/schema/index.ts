@@ -1,5 +1,5 @@
 /**
- * The whole @ewa/persist schema (§5.1): 17 tables + 5 enums. drizzle.config.ts globs this folder;
+ * The whole @ewa/persist schema (§5.1): 17 tables + 5 enums, plus the later migrations' tables. drizzle.config.ts globs this folder;
  * every table must be exported from here so `drizzle-kit generate` sees it.
  */
 export * from './enums';

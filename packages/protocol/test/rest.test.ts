@@ -42,6 +42,10 @@ import {
   QuestClaimRes,
   ROUTES,
   ROUTE_KEYS,
+  REPLAY_BATTLE_ID,
+  ReplayRes,
+  BattleShareRes,
+  BattleShareParams,
   RegisterReq,
   ResetReq,
   RestErrorSchema,
@@ -370,7 +374,12 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(72); // 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes
+    expect(ROUTE_KEYS).toHaveLength(74); // 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes
+    expect(paths).toContain('POST /history/battles/:battleId/share');
+    expect(paths).toContain('GET /replay/:token');
+    expect(ROUTES.replay.auth).toBe('none');
+    expect(ROUTES.replay.limit).toBe('replay');
+    expect(ROUTES.historyShare.auth).toBe('bearer');
     expect(ROUTES.authRegister.auth).toBe('none');
     expect(ROUTES.health.auth).toBe('none');
     expect(ROUTES.adminBan.auth).toBe('admin');
@@ -385,5 +394,32 @@ describe('route table', () => {
     expect(routePath('messagesThread', { username: 'ash k' })).toBe('/messages/ash%20k');
     expect(routePath('me')).toBe('/me');
     expect(() => routePath('marketplaceBid')).toThrow(RangeError);
+  });
+});
+
+describe('battle replays', () => {
+  const replay = {
+    token: 'AbC123_-xyz0',
+    format: 'pvp',
+    seat: 1,
+    labels: ['ash_k', 'misty'],
+    result: 'win',
+    turns: 4,
+    happenedAt: '2026-10-20T10:00:00.000Z',
+    seed: [1, 2, 3, 4],
+    start: { zoneId: 'mirevale', terrain: 'grove', sides: [{ kind: 'player' }, { kind: 'player' }], arena: 'ranked' },
+    actions: [[{ kind: 'move', move: 'tackle' }, { kind: 'move', move: 'ember' }]],
+    finalDigest: '0a1b2c3d',
+  };
+  it('ReplayRes accepts an anonymised replay and refuses a bad token, seat or digest', () => {
+    ok(ReplayRes, replay);
+    ok(ReplayRes, { ...replay, labels: ['ash_k', null], format: 'wild', start: { zoneId: 'mirevale', terrain: 'grove', sides: [{}, {}], slots: 2, noExp: true } });
+    bad(ReplayRes, { ...replay, token: 'short' });
+    bad(ReplayRes, { ...replay, token: 'has space in' });
+    bad(ReplayRes, { ...replay, seat: 2 });
+    bad(ReplayRes, { ...replay, finalDigest: 'XYZ' });
+    ok(BattleShareRes, { token: 'AbC123_-xyz0' });
+    bad(BattleShareParams, { battleId: 'not-a-uuid' });
+    expect(REPLAY_BATTLE_ID).toBe('replay');
   });
 });

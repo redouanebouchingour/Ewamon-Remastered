@@ -67,6 +67,7 @@ Companion documents (inputs, not binding): `.design/PLAN.md`, `.design/story-bib
     - [2.18 Trainer exp (Battle Pass)](#2.18-trainer-exp-battle-pass)
     - [2.19 BattleEvent — the animation contract](#2.19-battleevent-the-animation-contract)
     - [2.20 ContentIndex, digest, determinism](#2.20-contentindex-digest-determinism)
+    - [2.21 Replays](#2.21-replays)
   - [§3 @ewa/content SCHEMA](#§3-ewacontent-schema)
     - [3.1 Zone record — the ~15-field authoring shape](#3.1-zone-record-the-15-field-authoring-shape)
     - [3.2 Encounter tables](#3.2-encounter-tables)
@@ -1322,6 +1323,30 @@ export function fuzzBattles(opts: {
 
 M0's exit criterion in `PLAN.md` ("a headless battle between two seeded teams resolves identically on client and server 1,000 times") is this test run once in Node and once in a browser worker (Playwright) with the digests compared.
 
+### 2.21 Replays <!-- added 2026-10-20: battle replays -->
+
+```ts
+/** One resolved step of a replay: the choices fed to resolveTurn and what they produced. */
+export interface ReplayStep {
+  readonly choices: readonly [SideChoice, SideChoice];
+  readonly state: BattleState;
+  readonly events: readonly BattleEvent[];
+  readonly digest: string;
+}
+
+export interface ReplayRun {
+  readonly start: { readonly state: BattleState; readonly events: readonly BattleEvent[]; readonly digest: string };
+  /** one entry per resolveTurn call (a replacement phase is its own step, so steps can outnumber `turn`) */
+  readonly steps: readonly ReplayStep[];
+  /** the digest of the last state (the start's when there are no steps) */
+  readonly finalDigest: string;
+}
+
+export function replayBattle(opts: CreateBattleOpts, choices: readonly (readonly [SideChoice, SideChoice])[], content: ContentIndex): ReplayRun;
+```
+
+`replayBattle` is `createBattle` then one `resolveTurn` per recorded choice pair, digesting every state. Pure (the determinism contract above), so the server's `battle_history` row (`start` + `seed` + `actions`) replays to its `final_digest` anywhere, and a shared replay (§4.7 `GET /replay/:token`) plays in the client exactly as it happened. Core never reads `trainerId`, `ownerId` or a creature `id` for a rule, so a replay with those ids replaced (anonymised) plays out the same; only the digest differs.
+
 ---
 
 ## §3 @ewa/content SCHEMA
@@ -2020,6 +2045,8 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /battle-pass/claim` | `{ level }` | `{ claimed, inventory, money, creaturesAdded }` | bearer |
 | `POST /battle-pass/mythical-choice` | `{ species: 'lumyth' | 'noxmyth' }` | `{ creaturesAdded }` | bearer |
 | `GET /history/battles?page=` · `GET /history/trades?page=` | — | rows (a battle row's optional `arena`: the `ArenaKind` from its start snapshot) | bearer |
+| `POST /history/battles/:battleId/share` <!-- added 2026-10-20: battle replays --> | `{}` | `{ token }`: 12 url-safe characters, the same token on every share of that battle (404 `notFound` for another player's battle; 409 `notReplayable` for a row without `start` / `final_digest`, 409 `stale` when the row no longer replays to its `final_digest`) | bearer |
+| `GET /replay/:token` | - | `ReplayRes { token, format, seat, labels: [string \| null, string \| null], result, turns, happenedAt, seed, start, actions, finalDigest }`: the battle frozen and anonymised at share time (player sides' trainers `r:<side>`, creatures `r:<side>:<i>`, owners null; `createBattle({ id: REPLAY_BATTLE_ID, format, seed, ...start })` + the actions end on `finalDigest`); `seat` the sharer's side; 404 `notFound` | none (rate limit `replay` per IP) |
 | `GET /arena` <!-- amended 2026-10-11: arena PvP --> | — | `{ rating, peakRating, rankedMatches, level: 50, cup: { id, name, description, endsAt }, status: ArenaStatus, live: { roomId } \| null }` | bearer |
 | `POST /arena/queue` · `POST /arena/queue/leave` | `{ mode: 'standard' \| 'level50' \| 'ranked' \| 'cup' }` · `{}` | `ArenaStatus` (a refusal is `idle` + `reason` / `detail`) | bearer |
 | `POST /arena/training` | `{ rules: 'standard' \| 'level50', difficulty: 'easy' \| 'normal' \| 'hard' }` | `{ seat }` (409 `busy` / `party`) | bearer |
@@ -2426,6 +2453,10 @@ export interface SocialRepo {
 }
 export interface HistoryRepo {
   recordBattle(tx: Tx, row: NewBattleHistory): Promise<void>; recordTrade(tx: Tx, row: NewTradeHistory): Promise<void>;   // rows carry their own timestamps; NewBattleHistory carries optional `start` / `finalDigest` (§5.1)
+  /** Battle replays (migration 0006_battle_shares): `battle_shares (token varchar(16) PK, player_id uuid → players cascade, battle_id uuid, replay jsonb SharedReplay, created_at)`, unique (player_id, battle_id). */
+  shareOf(tx: Tx, playerId: string, battleId: string): Promise<BattleShareRow | null>;
+  createShare(tx: Tx, row: { token: string; playerId: string; battleId: string; replay: SharedReplay }, now: Date): Promise<BattleShareRow | null>;   // the player's share of that battle (a concurrent one wins); null when `token` is another share's
+  shareByToken(tx: Tx, token: string): Promise<BattleShareRow | null>;
   battles(tx: Tx, playerId: string, page: number, pageSize: number): Promise<BattleHistoryRow[]>; battleById(tx: Tx, playerId: string, battleId: string): Promise<BattleHistoryRow | null>;
   trades(tx: Tx, playerId: string, page: number, pageSize: number): Promise<TradeHistoryRow[]>;
   /** The whole two-player trade in one call (the transaction below): locks, escrow asserts, transfers both ways, money both ways, two trade_history rows, audit. */
@@ -4844,6 +4875,8 @@ Each screen: information hierarchy in one paragraph, then its states. All `/play
 
 **The scene** (`scene/World3D.ts`): the zone is unloaded and render's stadium (§10.7.5a) is the zone root with `ARENA_LIGHTING` / `ARENA_GRADE` and `ARENA_BACKDROP.timeOfDay`; the ring dresses at the origin with `ARENA_BACKDROP.terrain`; the player's trainer waits at the near slot; the opponent is a `FoeActor` stand-in with the other player's body (Training: a look per difficulty, name from `ARENA_TRAINING`). Gym theme between battles (elite for Ranked / Cup), battle theme in battle. The boot overlay covers both switches. Minimap, key legend and tutorial cards hide; Map fast travel is disabled. HUD (`world/ArenaOverlays.tsx`): a top-centre strip (Arena · kind · level · vs opponent), a waiting card until both trainers arrive, and after the result card (which gains the kind / level) the actions Back to world and Queue again / Rematch (Training) / Challenge again (friend). `arenaState cancelled` toasts its reason and returns home. History rows with `arena` read "Arena · <kind>".
 
+**20.9.9e Battle replays** (`/play/replay/:token`) <!-- added 2026-10-20: battle replays -->. History's battle rows end with Watch and Link: each first shares the battle (`POST /history/battles/:battleId/share`; a 409 toasts why there is no replay); Watch opens `/play/replay/:token`, Link copies `<origin>/play/replay/<token>`. The replay panel (`screens/ReplayScreen.tsx`, data `GET /replay/:token`, which needs no account; a signed-out visitor goes through `/login?next=`) names both sides (a wild side as "Wild <species>"), the format, turns and when, says the sharer's result, and offers Watch (disabled in a battle) and Copy link. An unknown token says "No replay here"; a replay that does not reach its `finalDigest` with this client's core and content says it was recorded with another version. Watch closes the panel and plays the battle in the world (`battle/replay.ts`): core `replayBattle` gives every step, and the session's `inject` hands the scene `battleStart`, then one `battleEvents` each time the previous step's timeline has played (the controller leaves `playing`), then `battleEnd` (no rewards), as the server would. The battle id is `replay:<token>`: `WorldSession.send` drops anything for it, the controller's `submit` ignores it, and the replay's creatures have no owner, so no evolve / learn-move prompt is queued. In place of the menu the `ReplayBar` shows the "Last turn" ticker over a slab with "Replay", both names, `Step n of N`, Pause / Resume, Copy link and Exit; the result card reads "End of the replay." and "A replay changes nothing in your game."
+
 **20.9.10 Battle Pass** (`/play/pass`). Header: trainer level (display face) and a progress bar to the next 1 000 exp with the exact `exp / 1000` in the display face, tabular (amended 2026-10-11). A horizontal track of 100 reward tiles (virtualised, 10 visible), each `claimable · claimed · locked`; claimable tiles pulse once (160 ms) on entry. Level 50 shows the mythical choice as two `CreatureCard variant="showcase"` (`lumyth / noxmyth`) with "Choose once" — `POST /battle-pass/mythical-choice`. Claim → `POST /battle-pass/claim` → `applyInventoryDelta`. Empty: never. Loading: skeleton track. Error: retry.
 
 **20.9.11 Settings** (`/play/settings`). Five tabs (`?tab=graphics|audio|accessibility|controls|social`). Every control is a `Toggle`/`Slider`/`Table` from §20.2.4 bound to `useSettingsStore`; changes apply immediately (no Save button) and the graphics tab shows the live `renderer.stats()` (draw calls, GPU ms) under the toggles. Accessibility tab first item: the reduced-motion tri-state with the current system value shown. Controls: the remap table (§20.8.5). Empty/loading: none. Error: none (local).
@@ -5720,6 +5753,7 @@ The §4.7 table is the route table; this section only pins behaviours the table 
 - `/shop/:zoneId` prices: `ConsumableDef.price`/`OrbDef.price` from content; `stock = zone.shop ?? SHOP_STOCK_DEFAULT` when `zone.shop !== null`, 404 when the zone has no shop. Sell = `sellPrice`. Held items (`ItemDef.price !== null`) are sold only in `solenne`.
 - `/players/:username`: `toPublic(row)` + showcase (≤ 3 `favorite` party members, `ownerId` nulled). Unknown → 404. Banned players return 404 too.
 - `/leaderboard`: top 100 by `rating` desc (ties by `peak_rating`, then `username_lower`), or by dex caught count, or `trainer_exp`, or (Phase D14 `towerStreak`) by `player_streaks.best` desc (then `current`, then `username_lower`; players with best > 0 only); banned excluded; `page` of 25. Every row carries `towerBest` / `towerCurrent`.
+- Battle replays <!-- added 2026-10-20 -->: `POST /history/battles/:battleId/share` loads the caller's own row, replays it (`replayBattle` over `start` + `seed` + `actions`) and refuses it unless it reaches `final_digest`; it then anonymises `start` (`game/replay.ts` `anonymiseStart`), replays that to its own final digest, and stores the frozen `SharedReplay` under a fresh `randomBytes(9).toString('base64url')` token (a token taken by another share is retried), audit `battle.share`. A second share of the battle returns the first token. `GET /replay/:token` is public (no bearer) and reads only `battle_shares`, so a share outlives the history page it came from. Labels: the sharer's username for their side, the history row's `opponent` for a player or NPC opponent, null for a wild side.
 - Admin: `GET /admin/players?q=` uses `ILIKE '%' || escapeLike(q) || '%' ESCAPE '\'` on `username_lower`; ban writes `banned_at/ban_reason`, revokes refresh tokens, publishes `ewa:kick` so every room drops the player within one tick, audit `admin.ban`. Admins cannot be banned (409).
 
 ### 30.6.4 Rate limits
@@ -5742,6 +5776,7 @@ export const LIMITS = {
   forgotEmail: { max: 3, windowMs: 3_600_000 },  // reset mails per address: over it 204 and nothing sent
   emailToken: { max: 20, windowMs: 900_000 },    // POST /auth/reset + /auth/verify per IP
   resend:    { max: 3,  windowMs: 3_600_000 },   // POST /auth/resend per player
+  replay:    { max: 60, windowMs: 60_000 },      // GET /replay/:token per IP (public; added 2026-10-20)
   // room messages (per client), from the spine §4.3, restated so one table holds them all:
   input:     { max: 30, windowMs: 1_000 },
   emote:     { max: 1,  windowMs: 1_500 },       // spine §4.3: 1 per 1.5 s (reconciled 2026-09-18: the earlier 6 / 5 s row is gone)
@@ -7134,6 +7169,7 @@ Every file listed must exist with at least the assertions listed. A milestone in
 | `fuzz.test.ts` | `fuzzBattles({ seeds: 1000, maxTurns: 200 })` exactly as spine §2.20 (a)–(e), plus: `calcDamage` draw-count assertion per turn; every action passes `validateAction`; digests equal `test/fuzz-digests.json` (1000 entries). A diff in that file is a semantics change and needs a §50.7 entry. Runtime target ≤ 40 s on the CI runner. |
 | `determinism-replay.test.ts` | For 50 recorded battles (seed + action list from the fuzz run): replay from `createBattle` reproduces every per-turn digest; replaying from a `snapshot()` taken at turn 7 reproduces turns 8..end; `resolveTurn` called twice on the same input yields identical `canonicalJson` and does not mutate the input (deep-frozen input throws on write). |
 | `arena-level.test.ts` <!-- added 2026-10-12: arena PvP --> | `atLevel`: raised and lowered to exactly the level (exp at its floor, full hp, no status, full pp, moves kept, the input untouched); null keeps the own level and exp and heals. |
+| `replay.test.ts` <!-- added 2026-10-20: battle replays --> | `replayBattle` (spine §2.21): from each of 60 fuzz records' createBattle input (`fuzzOpts`) and recorded actions it reproduces every per-step digest and the final digest; two runs are byte-identical; a choice after the end throws. Fuzz digests unchanged. |
 
 ### 50.4.2 `@ewa/content` — `packages/content/test/`
 
@@ -7181,6 +7217,7 @@ All files open a fresh PGlite (`drizzle-orm/pglite`) per file and run `migrate()
 | `battle-pass.test.ts` | `claim` twice → second returns `false` (`AlreadyClaimed`); `setMythicalChoice` without the level-50 row throws; a second choice throws; `BATTLE_PASS_MYTHICAL_LEVEL === 50`. Amended 2026-10-06 (Phase E5): "throws" is `Forbidden` without the row and `AlreadyClaimed` on a second choice. The REST route claims level 50 itself, gated on trainer level, before the choice (`authority.test.ts` A10b). <!-- amended 2026-10-06: Phase E5 --> |
 | `escape-like.test.ts` | `escapeLike` escapes `\`, `%`, `_`; a search for `%` finds only literal `%` usernames. |
 | `auth.test.ts` | argon2id parameters `m=19456 t=2 p=1` read back from the hash string; refresh rotation revokes the old token; a rotated-away token returns `null`; `revokeAll` invalidates every row and returns the count; `purge` removes expired rows only; every stamping method takes an explicit `now` (a frozen clock produces identical rows). Amended 2026-10-06 (Phase E5): the argon2id read-back lives in `packages/server/test/rest-auth.test.ts`. The server hashes (`hash-wasm`); persist stores the PHC string opaquely, and `auth.test.ts` asserts it round-trips. <!-- amended 2026-10-06: Phase E5 --> |
+| `shares.test.ts` <!-- added 2026-10-20: battle replays --> | `battle_shares` (migration 0006): a share is found by token and by (player, battle); a second share of the same battle returns the first; a token held by another share returns null. |
 
 ### 50.4.5 `@ewa/server` — `packages/server/test/`
 
@@ -7199,6 +7236,7 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `rest-auth.test.ts` | Register → login → refresh → logout; access token expiry 15 min (`exp − iat === 900`); refresh 30 d; a revoked refresh fails; every bearer route returns 401 without a token; admin routes return 403 without `is_admin`. |
 | `raid.test.ts` | Boss `hpPct` is the only HP the client sees; phase transitions 0→1→2 (`hpPct < 0.3`)→3→4; `raidEvents` carry digests; the catch window accepts one `raidCatch` per player. |
 | `arena.test.ts` <!-- added 2026-10-12: arena PvP --> | Pure pairing per mode; Level 50 end to end (both teams at 50, full hp; stored creatures byte-unchanged, no rating, pvp trainer exp, history `arena`); Ranked Elo once per player; training pays nothing; friend invite decline / accept / leave-forfeit; the cup refusal and queue moves; `/zone/enter` 409 `inArena` + `/arena/rejoin`; no-show cancel. |
+| `replay-share.test.ts` <!-- added 2026-10-20: battle replays --> | A finished wild battle shared twice gives one token; `GET /replay/:token` without a bearer answers `ReplayRes` with no player, battle or creature uuid, and core replays it to its `finalDigest`; another player's battle 404, no bearer 401, unknown token 404, malformed 400, a row whose digest no longer matches 409 `stale`, one without a start 409 `notReplayable`. |
 
 ### 50.4.6 `@ewa/render` — `packages/render/test/` (Playwright, Chromium with WebGPU)
 
@@ -7237,6 +7275,7 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `handover-hitch.spec.ts` (Playwright, two zones) | Crossing `mirevale → mire_route` with `mire_route` preloaded: no frame > 33 ms, no full-screen fade, first destination frame ≤ 250 ms after `handoverAck`; non-preloaded ≤ 1 500 ms (§20.10.3, spine §4.6; legacy-render-audit Q16). Amended 2026-10-06 (Phase E3): the spec runs the capture harness page (`/harness/shots?zone=mirevale&bg=1`, background compile on as in the client), crosses with `__ewaHarness.handover(to, { preload })`, and records every requestAnimationFrame gap. The millisecond limits are asserted only with `EWA_REFERENCE_GPU=1`, on the §50.2 reference machine. Elsewhere the numbers are attached and annotated, and the zone change, the destination frame and the absence of a fade are asserted. <!-- amended 2026-10-06: Phase E3 --> Amended 2026-10-06 (handover): "preloaded" also prepares the destination off the scene (`10-render.md` §10.1.2 "Handover prepare", what the client does within 48 m of a link edge) and records that prepare's own frame gaps (`prepare`), and the result carries `programsBefore` / `programsSettled`. Measured on the dev iGPU (before → after the fixed light layout + prepare): preloaded 6 402 / 8 895 ms → **105 / 68 / 196 ms** (≤ 250 met on this machine); not preloaded 7 734 / 8 562 ms → **3 781 / 3 742 / 4 659 ms** (≤ 1 500 not met: the destination's build and its scatter node builds, render IMPLEMENTATION-NOTES); programs 109 → 119–125 → 113 before, 109 flat after. Frames over 33 ms stay the norm on this iGPU (its idle frame is 70–130 ms). <!-- amended 2026-10-06: handover fixed light layout — render IMPLEMENTATION-NOTES "Handover: fixed light layout" --> Amended 2026-10-06 (handover II): `prepare.build` records the sliced build (slices, work ms, longest slice and step). Measured on the dev iGPU, HEAD before → after (shared scatter builds, the kept builds and pipelines, the sliced prepare), same sessions: not preloaded 2 062–2 995 ms → **687–1 348 ms** (≤ 1 500 met on this machine); preloaded 63–89 ms → 32–60 ms; the prepare's longest frame 683–1 150 ms → 67 ms (the idle frame; 0 frames > 100 ms), the prepare 3.1–4.1 s; programs 109 flat. <!-- amended 2026-10-06: handover II — render IMPLEMENTATION-NOTES "Handover II: shared scatter builds, a time-sliced build" --> |
 | `slice-e2e.spec.ts` (Playwright, two browser contexts) | Two players: register, `POST /zone/enter` + join, meet in `mirevale` (each sees the other's `PlayerState`), chat (`chat` variant received by the neighbour only), trade one creature (rows swap owners), challenge and complete a PvP battle (rating rows change with opposite signs), one clears `verdant_gym` and receives `progressionDelta.badges` containing `bloom`; the first player's `interact` on `mirevale.wynn` yields `storyBeat start/complete` and `met_wynn`. Status 2026-10-06 (Phase E5): the file exists and covers register (form), join, meet, chat, the `mirevale.wynn` beat (`met_wynn`), and a gym-hall trainer battle up to move selection. The trade, the PvP battle and the `verdant_gym` clear are *not yet driven* in the browser, so this row still stands. <!-- Phase E5 --> |
 | `arena.test.tsx` <!-- added 2026-10-12: arena PvP --> | The session's zone → arena → zone switch over a stubbed SDK (hop, 409 `inArena` rejoin, a closed room), the arena flow and gates, the PvP screen (modes, cup lock reason, queue / leave, training), the invite modal, the arena HUD, the route. |
+| `replay.test.ts` <!-- added 2026-10-20: battle replays --> | A shared replay plans to its final digest (a tampered digest or action plans to null; a wild side is "Wild <species>"); played through the real BattleController every step shows, the result card follows, nothing is sent and no prompt is queued; Pause holds the next step until Resume; Exit closes the battle; refused over an open battle, for a replay that does not reproduce and without a world. |
 
 ### 50.4.8 Pipelines — `tools/*/test/`
 

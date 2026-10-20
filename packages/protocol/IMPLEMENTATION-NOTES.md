@@ -147,3 +147,10 @@ installed library that future readers should not have to re-derive. The spec its
 - `BattleStateSchema.noExp` (optional literal true). `LEADERBOARD_MODES` gains `towerStreak`; `LeaderboardRow` gains
   optional `towerBest` / `towerCurrent` (optional so older fixtures stay valid; the server always fills them).
 - Tests: `payloads.test.ts` (tower cases, 24 keys, limit), `server-messages.test.ts` (example, 18).
+
+## Battle replays (2026-10-20)
+
+- Routes `historyShare` (`POST /history/battles/:battleId/share`, bearer) and `replay` (`GET /replay/:token`, auth
+  none, limit `replay`): 74 routes. `ReplayRes.start.sides` and `actions` are `z.unknown()` like persist's opaque
+  snapshot: the client checks a replay by its final digest, not by schema. `REPLAY_BATTLE_ID = 'replay'` is the
+  createBattle id both the server (digest at share time) and the client use.

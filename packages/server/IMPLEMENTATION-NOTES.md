@@ -1059,3 +1059,13 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   the progression walker (which engages visible spawns and walks up to hall trainers) run as before; the walker does not
   exercise the new defaults.
 - Tests: `test/encounters.test.ts` (8: 4 pure, 4 live on mire_route).
+
+## Battle replays (2026-10-20)
+
+- `game/replay.ts`: `replayOpts` (the createBattle input of a stored row, as `open()` passed it; the arena kind is not
+  an input), `anonymiseStart` (player trainers `r:<side>`, every creature `r:<side>:<i>`, owners null), `seatOf`,
+  `shareableReplay` (refuses `notReplayable` without start / digest, `stale` when the row no longer reaches its own
+  digest, which is how a content change after the battle shows).
+- `rest/routes/replay.ts`: the share route freezes the replay into `battle_shares` (audit `battle.share`); the public
+  route reads only that table. Rate limit `replay` (60 / min per IP). The history row's `opponent` label is the
+  opponent's name in the replay (a username in pvp, the trainer label otherwise; wild null).

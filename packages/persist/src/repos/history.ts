@@ -1,9 +1,9 @@
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import type { Tx } from '../db';
 import { fail } from '../errors';
-import { battleHistory, creatureInstances, tradeHistory } from '../schema/index';
-import type { BattleHistoryRow, TradeHistoryRow } from '../schema/index';
-import type { BattleFormat, BattleResult, BattleStartSnapshot, ReplayChoice, RewardsSummary, RngState, TradedCreatureSummary } from '../types';
+import { battleHistory, battleShares, creatureInstances, tradeHistory } from '../schema/index';
+import type { BattleHistoryRow, BattleShareRow, TradeHistoryRow } from '../schema/index';
+import type { BattleFormat, BattleResult, BattleStartSnapshot, ReplayChoice, RewardsSummary, RngState, SharedReplay, TradedCreatureSummary } from '../types';
 import { clampInt } from '../util';
 import { auditRepo } from './audit';
 import { creatureRepo } from './creatures';
@@ -95,6 +95,33 @@ export const historyRepo = {
       .from(battleHistory)
       .where(and(eq(battleHistory.playerId, playerId), eq(battleHistory.battleId, battleId)))
       .limit(1);
+    return row ?? null;
+  },
+
+  /** Battle replays (migration 0006): the player's existing share of a battle, or null. */
+  async shareOf(tx: Tx, playerId: string, battleId: string): Promise<BattleShareRow | null> {
+    const [row] = await tx
+      .select()
+      .from(battleShares)
+      .where(and(eq(battleShares.playerId, playerId), eq(battleShares.battleId, battleId)))
+      .limit(1);
+    return row ?? null;
+  },
+
+  /**
+   * Stores a share and returns the player's share of that battle: a concurrent share of the same battle wins and is
+   * returned instead. Null only when `token` already belongs to another share (retry with a fresh token).
+   */
+  async createShare(tx: Tx, row: { readonly token: string; readonly playerId: string; readonly battleId: string; readonly replay: SharedReplay }, now: Date): Promise<BattleShareRow | null> {
+    await tx
+      .insert(battleShares)
+      .values({ token: row.token, playerId: row.playerId, battleId: row.battleId, replay: row.replay, createdAt: now })
+      .onConflictDoNothing();
+    return historyRepo.shareOf(tx, row.playerId, row.battleId);
+  },
+
+  async shareByToken(tx: Tx, token: string): Promise<BattleShareRow | null> {
+    const [row] = await tx.select().from(battleShares).where(eq(battleShares.token, token)).limit(1);
     return row ?? null;
   },
 

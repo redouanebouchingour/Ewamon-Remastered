@@ -4,7 +4,8 @@
  * Part 1 owns the shell behaviour: the navigation blocker (§20.1.3 (a) — one of the two sanctioned `useBlocker`s)
  * and the anchored container. Part 2 (§20.5.6) renders `BattleMenu` — root menu, moves grid, party/bag/orbs lists,
  * the last log lines — and the BattleResultCard; Phase B7 adds the VS intro card and the mid-battle banner; Phase C1 the
- * raid panel (boss HP, round timer, damage board) and the raid summary card; the signature move cinematic plays over all of it. The in-canvas bars / turn label / orb counter are the HUD's.
+ * raid panel (boss HP, round timer, damage board) and the raid summary card; the signature move cinematic plays over all of it;
+ * a battle replay shows its ReplayBar in place of the menu. The in-canvas bars / turn label / orb counter are the HUD's.
  */
 import { useEffect, useRef } from 'react';
 import { useBlocker } from 'react-router';
@@ -17,6 +18,8 @@ import { BattleMenu } from './BattleMenu';
 import { BattleResultCard } from './BattleResultCard';
 import { RaidPanel } from './RaidPanel';
 import { RaidSummaryCard } from './RaidSummaryCard';
+import { ReplayBar } from './ReplayBar';
+import { isReplayBattle } from './replayId';
 import { BondCinematic } from './BondCinematic';
 import { SignatureCinematic } from './SignatureCinematic';
 import { TurnTimer } from './TurnTimer';
@@ -54,6 +57,8 @@ function BattleBlocker() {
 export function BattleOverlay() {
   const active = useUiStore((st) => st.battle !== null);
   const turnLabel = useUiStore((st) => st.battle?.turnLabel ?? '');
+  // battle replays: the replay's controls stand where the menu would (nothing is sent to the server)
+  const replay = useUiStore((st) => isReplayBattle(st.battle?.battleId));
   const ref = useRef<HTMLElement | null>(null);
   usePanelTop(ref, active);
   if (!active) return null;
@@ -74,9 +79,7 @@ export function BattleOverlay() {
             <TurnTimer />
           </p>
         )}
-        <div className={s.body}>
-          <BattleMenu />
-        </div>
+        <div className={s.body}>{replay ? <ReplayBar /> : <BattleMenu />}</div>
         <BattleResultCard />
         <RaidSummaryCard />
       </section>

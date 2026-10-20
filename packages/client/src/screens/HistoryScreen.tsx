@@ -1,13 +1,20 @@
 /**
  * Phase C4 `/play/history` — the player's own battle and trade logs (GET /history/battles, GET /history/trades; 25 a
  * page, newest first). Tabs bound to `?tab=battles|trades`, paging to `?page=`. Battles: result, opponent, format,
- * turns, rating change, rewards, when. Trades: partner (linked to the public profile), what went each way, when.
+ * turns, rating change, rewards, when, and the battle's replay (Watch opens `/play/replay/:token`, Copy link copies it;
+ * both share the battle first, POST /history/battles/:battleId/share). Trades: partner (linked to the public profile),
+ * what went each way, when.
  */
-import { Link, useLoaderData, useNavigation, useSearchParams } from 'react-router';
+import { useState } from 'react';
+import { Link, useLoaderData, useNavigate, useNavigation, useSearchParams } from 'react-router';
 import { ARENA_KIND_LABELS } from '@ewa/protocol';
 import type { BattleHistoryRow, TradeHistoryRow } from '@ewa/protocol';
 import type { HistoryTab, historyLoader } from '../app/loaders';
 import { formatMoney } from '../app/TopBar';
+import { copyReplayLink } from '../battle/ReplayBar';
+import { apiFetch } from '../net/api';
+import { ApiFailure } from '../net/apiError';
+import { toast } from '../state/notifications';
 import { itemInfo, speciesName } from '../data/content';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
@@ -51,6 +58,44 @@ function signed(n: number | null): string {
   return n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '±0';
 }
 
+const SHARE_REFUSED: Readonly<Record<string, string>> = {
+  notReplayable: 'This battle was recorded before replays existed.',
+  stale: 'This battle no longer plays out the same in this version of the game.',
+};
+
+/** The battle's share token (the same one every time), or null with a toast saying why there is none. */
+async function shareBattle(battleId: string): Promise<string | null> {
+  try {
+    return (await apiFetch('historyShare', { params: { battleId }, body: {} })).token;
+  } catch (e) {
+    toast('warn', e instanceof ApiFailure ? (SHARE_REFUSED[e.error.code] ?? 'The replay could not be shared.') : 'The replay could not be shared.');
+    return null;
+  }
+}
+
+function ReplayCell({ row }: { readonly row: BattleHistoryRow }) {
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const run = (then: (token: string) => void | Promise<void>): void => {
+    setBusy(true);
+    void shareBattle(row.battleId)
+      .then(async (token) => {
+        if (token !== null) await then(token);
+      })
+      .finally(() => setBusy(false));
+  };
+  return (
+    <span className={s.replay}>
+      <Button size="sm" icon="play" busy={busy} ariaLabel={`Watch the replay against ${row.opponent}`} onClick={() => run((t) => void navigate(`/play/replay/${t}`))}>
+        Watch
+      </Button>
+      <Button size="sm" variant="ghost" icon="link" disabled={busy} ariaLabel={`Copy the replay link of the battle against ${row.opponent}`} onClick={() => run(copyReplayLink)}>
+        Link
+      </Button>
+    </span>
+  );
+}
+
 const battleColumns: TableColumn<BattleHistoryRow>[] = [
   { key: 'result', header: 'Result', width: 96, render: (r) => <Pill tone={RESULT[r.result].tone}>{RESULT[r.result].label}</Pill> },
   {
@@ -69,6 +114,7 @@ const battleColumns: TableColumn<BattleHistoryRow>[] = [
   { key: 'rating', header: 'Rating', width: 80, align: 'end', render: (r) => <span className={r.ratingDelta !== null && r.ratingDelta < 0 ? s.down : r.ratingDelta !== null && r.ratingDelta > 0 ? s.up : l.mono}>{signed(r.ratingDelta)}</span> },
   { key: 'rewards', header: 'Rewards', render: (r) => <span className={s.rewards}>{rewardsLine(r.rewards)}</span> },
   { key: 'when', header: 'When', width: 120, align: 'end', render: (r) => <time className={l.caption} dateTime={r.happenedAt}>{relativeTime(r.happenedAt)}</time> },
+  { key: 'replay', header: 'Replay', width: 168, align: 'end', render: (r) => (r.format === 'raid' ? null : <ReplayCell row={r} />) },
 ];
 
 function creaturesLine(list: TradeHistoryRow['sent'], money: number): string {

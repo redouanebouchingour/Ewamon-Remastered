@@ -182,3 +182,12 @@ Tests: `test/shiny.test.ts` (4); `players.test.ts` dex expectation gains `shiny:
 `creature_instances.honor smallint NOT NULL DEFAULT 0` — the honor ledger (core `honor.ts`). `rowToCreature` emits `honor` only
 when non-zero, like `isShiny`, so every other creature keeps its exact shape; `creatureToColumns` writes `c.honor ?? 0`.
 No check constraint: core clamps to ±10 and the wire schema validates the range. Test: `test/honor.test.ts`.
+
+## Migration 0006_battle_shares (2026-10-20)
+
+- `battle_shares (token varchar(16) PK, player_id → players cascade, battle_id uuid, replay jsonb, created_at)`, unique
+  `(player_id, battle_id)`. `replay` is the server's `SharedReplay` (anonymised, frozen at share time), opaque to
+  persist like `BattleStartSnapshot`.
+- `historyRepo.createShare` inserts with `on conflict do nothing` and then reads the player's share of that battle, so a
+  concurrent share of the same battle returns the one that won; null means the token already belongs to another share
+  (the caller retries with a fresh token).

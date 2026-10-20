@@ -16,6 +16,7 @@ import { Modal } from '../ui/Modal';
 import { battleActions } from './controllerRef';
 import { concessionLine, foeOfState } from './foe';
 import { rematchOfBattle } from '../scene/dialogue';
+import { isReplayBattle } from './replayId';
 import s from './BattleResultCard.module.css';
 
 export function BattleResultCard() {
@@ -23,6 +24,8 @@ export function BattleResultCard() {
   const seat = useUiStore((st) => st.battle?.seat ?? 0);
   const format = useUiStore((st) => st.battle?.format ?? null);
   const state = useUiStore((st) => st.battle?.authoritative ?? null);
+  // battle replays: the outcome as it happened; nothing was won or lost now
+  const replay = useUiStore((st) => isReplayBattle(st.battle?.battleId));
   // arena PvP: the arena's kind and level head the card; its own result actions follow it
   const arena = useArenaStore((st) => (st.inArena ? st.match : null));
   // Phase C1: a raid closes with its own summary card (RaidSummaryCard)
@@ -51,10 +54,10 @@ export function BattleResultCard() {
       title={title}
       size="sm"
       onClose={done}
-      description={o.winner === 'caught' ? 'It joins your party — or your box when the party is full.' : undefined}
+      description={replay ? 'End of the replay.' : o.winner === 'caught' ? 'It joins your party, or your box when the party is full.' : undefined}
       footer={
         <Button variant="primary" onClick={done}>
-          {result.prompts > 0 || arena !== null ? 'Continue' : 'Back to the world'}
+          {result.prompts > 0 || (arena !== null && !replay) ? 'Continue' : 'Back to the world'}
         </Button>
       }
     >
@@ -93,7 +96,7 @@ export function BattleResultCard() {
             ))}
           </ul>
         ) : (
-          <p className={s.none}>No rewards this time.</p>
+          <p className={s.none}>{replay ? 'A replay changes nothing in your game.' : 'No rewards this time.'}</p>
         )}
       </div>
     </Modal>

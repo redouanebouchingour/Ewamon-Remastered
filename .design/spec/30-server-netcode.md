@@ -759,6 +759,7 @@ The §4.7 table is the route table; this section only pins behaviours the table 
 - `/shop/:zoneId` prices: `ConsumableDef.price`/`OrbDef.price` from content; `stock = zone.shop ?? SHOP_STOCK_DEFAULT` when `zone.shop !== null`, 404 when the zone has no shop. Sell = `sellPrice`. Held items (`ItemDef.price !== null`) are sold only in `solenne`.
 - `/players/:username`: `toPublic(row)` + showcase (≤ 3 `favorite` party members, `ownerId` nulled). Unknown → 404. Banned players return 404 too.
 - `/leaderboard`: top 100 by `rating` desc (ties by `peak_rating`, then `username_lower`), or by dex caught count, or `trainer_exp`, or (Phase D14 `towerStreak`) by `player_streaks.best` desc (then `current`, then `username_lower`; players with best > 0 only); banned excluded; `page` of 25. Every row carries `towerBest` / `towerCurrent`.
+- Battle replays <!-- added 2026-10-20 -->: `POST /history/battles/:battleId/share` loads the caller's own row, replays it (`replayBattle` over `start` + `seed` + `actions`) and refuses it unless it reaches `final_digest`; it then anonymises `start` (`game/replay.ts` `anonymiseStart`), replays that to its own final digest, and stores the frozen `SharedReplay` under a fresh `randomBytes(9).toString('base64url')` token (a token taken by another share is retried), audit `battle.share`. A second share of the battle returns the first token. `GET /replay/:token` is public (no bearer) and reads only `battle_shares`, so a share outlives the history page it came from. Labels: the sharer's username for their side, the history row's `opponent` for a player or NPC opponent, null for a wild side.
 - Admin: `GET /admin/players?q=` uses `ILIKE '%' || escapeLike(q) || '%' ESCAPE '\'` on `username_lower`; ban writes `banned_at/ban_reason`, revokes refresh tokens, publishes `ewa:kick` so every room drops the player within one tick, audit `admin.ban`. Admins cannot be banned (409).
 
 ### 30.6.4 Rate limits
@@ -781,6 +782,7 @@ export const LIMITS = {
   forgotEmail: { max: 3, windowMs: 3_600_000 },  // reset mails per address: over it 204 and nothing sent
   emailToken: { max: 20, windowMs: 900_000 },    // POST /auth/reset + /auth/verify per IP
   resend:    { max: 3,  windowMs: 3_600_000 },   // POST /auth/resend per player
+  replay:    { max: 60, windowMs: 60_000 },      // GET /replay/:token per IP (public; added 2026-10-20)
   // room messages (per client), from the spine §4.3, restated so one table holds them all:
   input:     { max: 30, windowMs: 1_000 },
   emote:     { max: 1,  windowMs: 1_500 },       // spine §4.3: 1 per 1.5 s (reconciled 2026-09-18: the earlier 6 / 5 s row is gone)
