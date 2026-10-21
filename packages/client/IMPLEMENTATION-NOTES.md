@@ -2175,3 +2175,12 @@ resync, not for a replay) and cleared by `reset`.
 - Checked live on the second isolated client (the component mounted over the landing page through Vite's module
   URLs, each kind screenshotted mid-wipe).
 - `SceneDirector.applyWeather` also calls `renderer.setAmbient?(pocket === null)` (render's ambient motes stay outdoors).
+
+## Breeding (2026-10-21)
+
+- The Daycare keeper is an interior NPC of kind `npc`; World3D's interior-NPC dialogue gains an `onFinish` that opens
+  `/play/daycare` for role `daycare` (the only World3D change). `DaycareScreen`, `EggShelf` (Party: carried, Box:
+  waiting) and `HatchReveal` read `state/daycare.ts`, refreshed from every action's response and after a hatch.
+- The egg is drawn in CSS (`ui/Egg.tsx`), not a sprite: no atlas entry. The hatch reveal is a DOM overlay over the
+  world (never over a battle) and plays the existing `ui_evolve_start` / `ui_evolve_done` cues through the running
+  world's audio director when there is one.

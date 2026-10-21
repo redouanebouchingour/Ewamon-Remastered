@@ -16,6 +16,7 @@ import { EmptyState } from '../ui/EmptyState';
 import { Select, TextField } from '../ui/Field';
 import { Panel } from '../ui/Panel';
 import { cx } from '../ui/cx';
+import { EggShelf } from './EggShelf';
 import s from './BoxScreen.module.css';
 import { CreatureDetail } from './CreatureDetail';
 import l from './layout.module.css';
@@ -153,6 +154,9 @@ export function BoxScreen() {
           ))}
         </div>
       </section>
+
+      {/* breeding: eggs waiting in the box (carried ones count the steps; see the Party) */}
+      <EggShelf place="box" title="Eggs in the box" />
 
       <div className={cx(s.body, selected !== null && s.withDetail)}>
         <div className={s.gridCol}>

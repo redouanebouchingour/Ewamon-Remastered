@@ -32,6 +32,7 @@ import { LEGENDARY_STATICS } from './data/statics';
 import { RAID_HOTSPOTS } from './data/liveops';
 import { ZONE_ORDER } from './types';
 import { gymHall, healerHall, houseHall, leagueHall, shopHall } from './data/interiors';
+import { withDaycare } from './data/daycare';
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
@@ -125,7 +126,8 @@ export function interiorDefFor(
     case 'healer':
       return healerHall(zone.id, b.id, `${town} Healer`);
     case 'house':
-      return houseHall(zone.id, b.id, 'the house', b.w * b.d < 50 ? 's' : 'm', townIndex);
+      // breeding: Mirevale's house 1 is the Daycare (its resident keeps it; the hall and its footprint are unchanged)
+      return withDaycare(houseHall(zone.id, b.id, 'the house', b.w * b.d < 50 ? 's' : 'm', townIndex));
     default:
       return null;
   }

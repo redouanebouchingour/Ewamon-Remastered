@@ -115,6 +115,16 @@ function MoveRows({ creature: c }: { readonly creature: CreatureInstance }) {
   );
 }
 
+/** Breeding: a bandborn (hatched from a Majin and a Tenjin parent) says what that means. */
+export function BandbornNote() {
+  return (
+    <p className={s.bandborn} data-testid="bandborn">
+      <span className={s.bandbornTag}>Bandborn</span>
+      Hatched from a Majin and a Tenjin parent: its form answers either band.
+    </p>
+  );
+}
+
 /** The honor ledger (core honor.ts): where the creature stands between outlaw and lawman, and what its evolution will be. */
 export function HonorLedger({ creature: c, sp }: { readonly creature: CreatureInstance; readonly sp: SpeciesDef }) {
   const evo = sp.evolution;
@@ -339,6 +349,7 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
               {c.nickname !== null ? `${sp?.name ?? c.speciesId} · ` : ''}Level <b className={s.bandLevel}>{c.level}</b>
             </p>
             {typeRow}
+            {c.bandborn === true && <BandbornNote />}
             {sp !== undefined && sp.flavor !== '' && <p className={s.flavour}>{sp.flavor}</p>}
             <div className={s.bandHp}>
               <HpBar hp={c.hp} maxHp={maxHpOf(c)} showNumbers status={c.status} />
@@ -388,6 +399,8 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
           {typeRow}
         </div>
       </div>
+
+      {c.bandborn === true && <BandbornNote />}
 
       <HpBar hp={c.hp} maxHp={maxHpOf(c)} showNumbers status={c.status} />
 

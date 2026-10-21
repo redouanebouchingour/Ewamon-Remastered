@@ -202,3 +202,9 @@ installed library that future readers should not have to re-derive. The spec its
 ## Ghost trainers (2026-10-20)
 
 - `ghost` route (94 routes).
+
+## Breeding (2026-10-21)
+
+- `daycare`, `daycareLeave`, `daycareTake`, `daycareCollect`, `eggMove` routes (99 routes); `eggHatched` server
+  message (25 types); `CreatureInstanceSchema.bandborn` (a literal true, optional: the client's battle-state digest
+  must keep it); history event `hatched`.

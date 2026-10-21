@@ -1,0 +1,106 @@
+/*
+ * The egg (Egg.tsx), Broadcast look: a paper-white shell with a hard carbon zigzag band, no gloss, no gradient soup.
+ * Bandborn: the band is the Majin crimson crack over the Tenjin gold seam (the Majin / Tenjin pairing of the Factions screen: Fire crimson, warn gold). The hatch stages
+ * rock the shell, then split it along the band; reduced motion keeps the stages as still frames.
+ */
+.egg {
+  display: inline-grid;
+  place-items: end center;
+  inline-size: 40px;
+  block-size: 50px;
+  flex: none;
+}
+
+.sm {
+  inline-size: 26px;
+  block-size: 32px;
+}
+
+.md {
+  inline-size: 40px;
+  block-size: 50px;
+}
+
+.xl {
+  inline-size: 128px;
+  block-size: 160px;
+}
+
+.shell {
+  position: relative;
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: hidden;
+  background: var(--text-hi);
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  box-shadow:
+    inset -0.12em -0.18em 0 var(--light-a06),
+    0 0 0 2px var(--bg-0);
+  transform-origin: 50% 90%;
+}
+
+/* the zigzag band across the middle */
+.band {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 44%;
+  block-size: 16%;
+  background: var(--bg-0);
+  clip-path: polygon(0 30%, 10% 0, 20% 30%, 30% 0, 40% 30%, 50% 0, 60% 30%, 70% 0, 80% 30%, 90% 0, 100% 30%, 100% 70%, 90% 100%, 80% 70%, 70% 100%, 60% 70%, 50% 100%, 40% 70%, 30% 100%, 20% 70%, 10% 100%, 0 70%);
+}
+
+.egg[data-bandborn] .band {
+  background: var(--warn);
+}
+
+/* the crack: hidden until the shell splits; a bandborn egg shows its crimson crack at rest */
+.crack {
+  position: absolute;
+  inset-inline: 18%;
+  inset-block-start: 22%;
+  block-size: 20%;
+  background: var(--bg-0);
+  clip-path: polygon(0 60%, 18% 20%, 32% 70%, 50% 0, 64% 64%, 80% 24%, 100% 56%, 100% 72%, 80% 40%, 64% 84%, 50% 20%, 32% 90%, 18% 40%, 0 76%);
+  opacity: 0;
+}
+
+.egg[data-bandborn] .crack {
+  background: var(--type-fire);
+  opacity: 1;
+}
+
+.egg[data-stage='crack'] .crack {
+  opacity: 1;
+  inset-inline: 6%;
+  block-size: 30%;
+}
+
+.egg[data-stage='wobble'] .shell {
+  animation: wobble 0.5s var(--ease-out) infinite alternate;
+}
+
+.egg[data-stage='crack'] .shell {
+  animation: shake 0.12s linear infinite alternate;
+}
+
+@keyframes wobble {
+  from {
+    transform: rotate(-9deg);
+  }
+  to {
+    transform: rotate(9deg);
+  }
+}
+
+@keyframes shake {
+  from {
+    transform: translateX(-2px) rotate(-2deg);
+  }
+  to {
+    transform: translateX(2px) rotate(2deg);
+  }
+}
+
+:global(:root[data-reduced='1']) .egg[data-stage] .shell {
+  animation: none;
+}

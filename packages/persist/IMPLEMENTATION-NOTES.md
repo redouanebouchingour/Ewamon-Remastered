@@ -256,3 +256,12 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
 - `ghosts` holds the party as `CreatureInstance[]` JSON at the moment of leaving (a snapshot: later changes to the
   real creatures do not reach it until the next leave). `report` marks fights told in the same statement that returns
   them, so two joins cannot both tell the same fight.
+
+## Migration 0016_breeding (2026-10-21)
+
+- Creatures at the Daycare are rows in a new slot kind `daycare` (an `ALTER TYPE ... ADD VALUE`), like `listing`: out
+  of every party / box read, so trades, the market, release, battles and the arena never see them. Slot index = the
+  order they were left (`nextBox` within the kind).
+- Eggs are their own table, not creature rows: an egg never takes a party slot, so none of the party paths (battles,
+  arena copies, ghosts, the tower, trades) can meet one. Everything the hatchling inherits is fixed when it is laid.
+- `creatures.insert` takes an optional first history event (`hatched`) in place of `met`; `bandborn` is a column.

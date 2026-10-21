@@ -12,6 +12,7 @@ import { ChallengePrompt } from '../world/ChallengePrompt';
 import { ChatInput } from '../world/ChatInput';
 import { DialogueBox } from '../world/DialogueBox';
 import { EvolutionBanner } from '../world/EvolutionBanner';
+import { HatchReveal } from '../world/HatchReveal';
 import { FishingPrompt } from '../world/FishingPrompt';
 import { Minimap } from '../world/Minimap';
 import { PostBattlePrompts } from '../world/PostBattlePrompts';
@@ -197,6 +198,8 @@ export function PlayShell() {
       <TowerStreak />
       <PostBattlePrompts />
       <EvolutionBanner />
+      {/* breeding: the hatch moment */}
+      <HatchReveal />
       <ConnectionOverlay />
       <NotificationHost />
     </div>

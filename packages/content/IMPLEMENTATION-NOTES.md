@@ -676,3 +676,13 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
 
 - `data/ghosts.ts`: the chance, the fade time, the level span, the per-zone count, the trainer id (`ghost:<username>`,
   public and unique, so the client can name the foe without a lookup), the reward and the report sentence.
+
+## Breeding (2026-10-21)
+
+- `data/daycare.ts`: the Daycare (Mirevale house 1) and every breeding rule as a small pure function (who breeds, what
+  hatches, egg moves, honor / coat / ability slot, bandborn, egg steps by rarity, the shiny odds). The Daycare is an
+  interiors-layer change only: `withDaycare` relabels the hall and turns its resident into the keeper (role
+  `daycare`); the hall, its footprint, walls and props are the house's, and `ZoneDef` is untouched, so no plan, layout
+  RNG, heightfield or progression fixture moves.
+- The species is the first-left parent's first stage (`evolutionRoot`), so a player chooses the line by the order they
+  leave the pair; legendaries and mythicals (`SpeciesDef.legendary`) never breed.

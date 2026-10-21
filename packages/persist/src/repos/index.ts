@@ -19,6 +19,8 @@ import { legendRepo } from './legends';
 import type { LegendRepo } from './legends';
 import { ghostRepo } from './ghosts';
 import type { GhostRepo } from './ghosts';
+import { breedingRepo } from './breeding';
+import type { BreedingRepo } from './breeding';
 import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
 import { historyRepo } from './history';
@@ -63,6 +65,8 @@ export interface Repos {
   readonly legends: LegendRepo;
   /** ghost trainers: the party a trainer left with, and its fights (migration 0015) */
   readonly ghosts: GhostRepo;
+  /** breeding: the Daycare's egg timer and the eggs a trainer carries or keeps (migration 0016) */
+  readonly breeding: BreedingRepo;
 }
 
 /**
@@ -91,6 +95,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     factions: factionRepo,
     legends: legendRepo,
     ghosts: ghostRepo,
+    breeding: breedingRepo,
   };
 }
 
@@ -117,3 +122,4 @@ export type { ZoneHonor } from './worldHonor';
 export type { FactionSide, FactionTotals } from './factions';
 export type { SeasonLegend } from './legends';
 export type { Ghost, GhostFight } from './ghosts';
+export type { Egg, EggPlace, NewEgg } from './breeding';

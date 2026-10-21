@@ -285,6 +285,12 @@ export interface CreatureInstance {
    * (dustcub), changed in battle by the `honor` event. Absent = 0; every other creature never has the field.
    */
   readonly honor?: number;
+  /**
+   * Bandborn (breeding, content daycare.ts): hatched from a Majin-form parent and a Tenjin-form parent. Its battle form
+   * answers either band at that band's hp line (forms.ts `transformError`). Present (true) only on a bandborn; absent
+   * on every other creature, so their battles compute exactly what they did before.
+   */
+  readonly bandborn?: true;
   readonly ribbons: readonly string[];
   readonly favorite: boolean;
   readonly locked: boolean;            // locked creatures cannot be released, traded or listed

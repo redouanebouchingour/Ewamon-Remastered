@@ -1,0 +1,200 @@
+/*
+ * The hatch moment (HatchReveal.tsx), Broadcast look: a carbon scrim over the world, the egg (then the hatchling)
+ * centred on a hard paper spotlight wedge, a one-frame paper flash on the reveal, and the broadcast banner below:
+ * the paper "Hatched" label strip heading a black slab, uppercase display face, the species in heavy italic. The one
+ * hot orange is the Continue button. Reduced motion: no rays turning, no flash fade, the stages are still frames.
+ */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  justify-items: center;
+  padding: var(--s-7) var(--s-5) var(--s-8);
+  background: var(--scrim);
+  outline: none;
+  cursor: pointer;
+}
+
+.layer[data-phase='reveal'] {
+  cursor: default;
+}
+
+.stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-self: center;
+  inline-size: min(360px, 80vw);
+  aspect-ratio: 1;
+}
+
+/* the spotlight wedge behind the egg: paper at low alpha, hard-edged */
+.rays {
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(from 0deg, var(--light-a06) 0 10%, transparent 10% 20%, var(--light-a06) 20% 30%, transparent 30% 40%, var(--light-a06) 40% 50%, transparent 50% 60%, var(--light-a06) 60% 70%, transparent 70% 80%, var(--light-a06) 80% 90%, transparent 90% 100%);
+  clip-path: circle(50%);
+  animation: turn 18s linear infinite;
+}
+
+.layer[data-phase='reveal'] .rays {
+  background: conic-gradient(from 0deg, var(--accent-a16) 0 10%, transparent 10% 20%, var(--accent-a16) 20% 30%, transparent 30% 40%, var(--accent-a16) 40% 50%, transparent 50% 60%, var(--accent-a16) 60% 70%, transparent 70% 80%, var(--accent-a16) 80% 90%, transparent 90% 100%);
+}
+
+.sprite {
+  position: relative;
+  transform: scale(1.6);
+  animation: pop var(--motion-banner) var(--ease-out);
+}
+
+.flash {
+  position: absolute;
+  inset: 0;
+  background: var(--text-hi);
+  clip-path: circle(50%);
+  opacity: 0;
+  pointer-events: none;
+  animation: flash 520ms ease-out;
+}
+
+.banner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  max-inline-size: min(var(--modal-md), 100%);
+}
+
+.eyebrow {
+  padding: var(--s-1) var(--s-6) var(--s-1) var(--s-4);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: var(--lh-body);
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+
+.line,
+.detail,
+.where,
+.hint {
+  margin: 0;
+  align-self: stretch;
+  padding: var(--s-2) var(--s-6) var(--s-2) var(--s-4);
+  background: var(--bg-0);
+  color: var(--text-1);
+}
+
+.line {
+  padding-block-start: var(--s-4);
+  color: var(--text-1);
+  font-family: var(--face-display);
+  font-size: var(--t-h2);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: var(--lh-h2);
+  text-transform: uppercase;
+}
+
+.species {
+  color: var(--text-hi);
+  font-style: italic;
+  font-weight: 800;
+}
+
+.detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.where {
+  padding-block-end: var(--s-4);
+  color: var(--text-2);
+}
+
+.banner > :global(button) {
+  margin-block-start: var(--s-4);
+}
+
+.tag,
+.bandborn {
+  padding: 0 var(--s-2);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tag {
+  background: var(--text-hi);
+  color: var(--bg-0);
+}
+
+.bandborn {
+  background: var(--warn);
+  box-shadow: inset 3px 0 0 var(--type-fire);
+  color: var(--bg-0);
+}
+
+.hint {
+  padding-block-end: var(--s-4);
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hint kbd {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 22px;
+  block-size: 22px;
+  margin-inline-end: var(--s-2);
+  padding: 0 var(--s-2);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-weight: 800;
+}
+
+@keyframes turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 1;
+  }
+}
+
+@keyframes flash {
+  from {
+    opacity: 0.95;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+:global(:root[data-reduced='1']) .rays,
+:global(:root[data-reduced='1']) .sprite,
+:global(:root[data-reduced='1']) .flash {
+  animation: none;
+}

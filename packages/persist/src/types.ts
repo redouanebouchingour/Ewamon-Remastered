@@ -40,6 +40,8 @@ export interface CreatureInstance {
   readonly caughtAt: { readonly zoneId: string; readonly at: number } | null;
   /** the honor ledger (core honor.ts); absent = 0 */
   readonly honor?: number;
+  /** breeding: hatched from a Majin-form and a Tenjin-form parent; absent = not bandborn */
+  readonly bandborn?: true;
   readonly ribbons: readonly string[];
   readonly favorite: boolean;
   readonly locked: boolean;
@@ -102,7 +104,7 @@ export interface RewardsSummary {
 
 // ---- persist-owned view types -----------------------------------------------------------------
 
-export type SlotKind = 'party' | 'box' | 'listing' | 'trade_escrow';
+export type SlotKind = 'party' | 'box' | 'listing' | 'trade_escrow' | 'daycare';
 export type ListingStatus = 'active' | 'sold' | 'expired' | 'cancelled';
 export type FriendshipStatus = 'pending' | 'accepted';
 export type GuildRole = 'leader' | 'officer' | 'member';
@@ -254,7 +256,8 @@ export interface SharedReplay {
  * Creature history (migration 0007, `creature_events`): one event's kind and fields. Names are stored as they were.
  * `met`: how the first owner got it (`caught` in `zoneId`, or `received`: a starter or a gift); `traded` / `sold` /
  * `gift`: an ownership change (`sold` = the marketplace); `evolved`; `badge`: in the party that won it; `champion`: in
- * the party that beat the Champion; `legendary`: in the party that caught or defeated a legendary.
+ * the party that beat the Champion; `legendary`: in the party that caught or defeated a legendary; `hatched`: how a
+ * hatchling's first owner got it (in place of `met`).
  */
 export type CreatureEventDetail =
   | { readonly kind: 'met'; readonly how: 'caught' | 'received'; readonly speciesId: string; readonly level: number; readonly zoneId: string | null; readonly trainer: string }
@@ -262,7 +265,9 @@ export type CreatureEventDetail =
   | { readonly kind: 'evolved'; readonly from: string; readonly into: string }
   | { readonly kind: 'badge'; readonly badge: string }
   | { readonly kind: 'champion' }
-  | { readonly kind: 'legendary'; readonly species: string; readonly caught: boolean };
+  | { readonly kind: 'legendary'; readonly species: string; readonly caught: boolean }
+  /** breeding: hatched from an egg laid at the Daycare in `zoneId`; `parents` are the parents' names as they were */
+  | { readonly kind: 'hatched'; readonly speciesId: string; readonly zoneId: string; readonly parents: readonly [string, string]; readonly trainer: string };
 
 export type CreatureEventKind = CreatureEventDetail['kind'];
 

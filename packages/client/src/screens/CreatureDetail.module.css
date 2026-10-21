@@ -314,3 +314,25 @@
   background: var(--text-hi);
   box-shadow: 0 0 0 2px var(--bg-0);
 }
+
+/* breeding: the bandborn line (the Tenjin gold tag with the Majin crimson edge, the Factions screen's --warn and --type-fire) */
+.bandborn {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  margin: 0;
+  color: var(--text-1);
+}
+
+.bandbornTag {
+  padding: 0 var(--s-2);
+  background: var(--warn);
+  box-shadow: inset 3px 0 0 var(--type-fire);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}

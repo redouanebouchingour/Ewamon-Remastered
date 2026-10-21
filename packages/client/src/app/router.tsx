@@ -108,6 +108,11 @@ export const routes: RouteObject[] = [
             },
           }),
           child({
+            // breeding: the Daycare (the keeper in Mirevale's house 1 opens it)
+            path: 'daycare',
+            lazy: async () => ({ Component: (await import('../screens/DaycareScreen')).DaycareScreen }),
+          }),
+          child({
             path: 'dex',
             lazy: async () => {
               const [{ DexScreen }, l] = await Promise.all([import('../screens/DexScreen'), loaders()]);

@@ -514,6 +514,7 @@ export interface CreatureInstance {
   readonly isShiny?: boolean;          // Phase D4: the 1/512 tier; present (true) only on a shiny, absent otherwise; no battle effect
   readonly caughtAt: { readonly zoneId: string; readonly at: number } | null; // at = unix ms; null = starter/gift
   readonly honor?: number;             // <!-- amended 2026-10-08: the honor ledger, lawlander (#137) --> the honor ledger, -10..10; only a species with an `honor` split keeps one (dustcub); absent = 0
+  readonly bandborn?: true;            // <!-- added 2026-10-21: breeding --> hatched from a Majin-form and a Tenjin-form parent (content daycare.ts): its form answers either band at that band's hp line (`transformError`); absent on every other creature
   readonly ribbons: readonly string[];
   readonly favorite: boolean;
   readonly locked: boolean;            // locked creatures cannot be released, traded or listed
@@ -698,7 +699,7 @@ The §2.20 fuzz digest committed in `packages/core/test/fuzz-digests.json` is, p
 3. **Switches**, both sides, ordered by effective speed (§2.13) with rng tiebreak. `onSwitchOut` hooks, then `onSwitchIn`. A switched-out battler's volatile resets to defaults; stages reset to 0.
 4. **Items**, same ordering. Item on a fainted target is only `revive`/`max_revive`.
 5. **Catch** (side 0 only). Resolve §2.15; on success `ended: { winner: 'caught' }`, return after step 7's end-of-turn is *skipped*. On failure the wild side still acts in step 6.
-5b. **Transformations** <!-- amended 2026-10-11: Majin / Tenjin --> — every `move` action carrying `transform: true` (validated: core `transformError`), ordered by effective speed (rng tiebreak only on a full tie), before any move: the side's `transformed` is set, then `formChange` and the form's `onEnter` (negative stages to 0, foes lowered, Tenjin's `statusCured` and `heal { cause: 'form' }`). Move order and priority are then computed from the transformed battler (a signature move's priority, the new speed). Doubles: the same step between items and moves. NPC trainers holding a band transform as soon as `transformError` is null (`chooseNpcAction`, no rng draw); wild sides never choose (a wild Majin changes on its own).
+5b. **Transformations** <!-- amended 2026-10-11: Majin / Tenjin --> — every `move` action carrying `transform: true` (validated: core `transformError`), ordered by effective speed (rng tiebreak only on a full tie), before any move: the side's `transformed` is set, then `formChange` and the form's `onEnter` (negative stages to 0, foes lowered, Tenjin's `statusCured` and `heal { cause: 'form' }`). Move order and priority are then computed from the transformed battler (a signature move's priority, the new speed). Doubles: the same step between items and moves. NPC trainers holding a band transform as soon as `transformError` is null (`chooseNpcAction`, no rng draw); wild sides never choose (a wild Majin changes on its own). <!-- amended 2026-10-21: breeding --> A **bandborn** battler (`creature.bandborn`) also transforms with the other band when that band's hp line is met (a bandborn Majin species at or above half with the Tenjin Band, a bandborn Tenjin species below half with the Majin Band); it changes into its own form either way, once per side as always; `bandsFor(sp, b)` lists the bands that can open it.
 6. **Moves**, ordered by `priority` desc, then effective speed desc, then `rng.int(2)`. For each actor in order, if still able: pre-action checks in this order — fainted (skip) → `flinched` (emit `flinch`, skip) → `sleepTurns > 0` (decrement; if still > 0 emit `statusTick { status: 'sleep' }`, skip; if 0 emit `statusCured`) → `freeze` (20 % thaw → `statusCured`; else `statusTick`, skip) → `paralyze` full-para 25 % (`statusTick`, skip) → `confusedTurns > 0` (decrement; if now 0 `statusCured { 'confuse' }`; else 33 % self-hit: `damage { cause: 'confusion' }`, skip). Then PP −1, `moveUsed`, accuracy roll (§2.12), damage (§2.14), effect (§2.4 table), contact hooks, `onSuperEffectiveHit` items, faint checks. The second actor's move is skipped if its own battler fainted; it still resolves if the *target* fainted (retargeting is not needed — the target simply takes no damage and the move emits `moveFailed { reason: 'noTarget' }`).
 7. **End of turn**, exactly this order: weather damage (`sand`: 1/16 to non-Rock/Ground/Steel; `hail`: 1/16 to non-Ice) → burn chip 1/16 → poison chip 1/8 → trap chip 1/8 and `trappedTurns − 1` → berries (`Sitrus`, `Oran`) → `Speed Boost` → weather `turns − 1` (at 0 → `weatherEnd`, kind `none`) → faint checks → `mustSwitch` computation → `turn + 1` → `turnEnd`.
 8. **Battle end** check: a side with no `hp > 0` battler loses; both → `draw`. Raid: the boss side never has `mustSwitch`; `raid` end conditions are in `30-server-netcode.md` (the room aggregates many players' `resolveTurn` calls against one boss `Side`).
@@ -1393,7 +1394,7 @@ export interface InteriorDef {           // authored in the hall's LOCAL frame: 
   readonly gates: readonly InteriorGate[];    // per-player doors: solid until every `opensWhen` flag is held — never stamped
   readonly switches: readonly InteriorSwitch[]; // interact { kind: 'switch' }: `requires` ⊆ flags, sets `switch:<zone>:<id>` (or null), optional warpTo
   readonly trainers: readonly InteriorTrainer[]; // gym trainers; beaten flag `trainer:<id>:beaten`, no rematch
-  readonly npcs: readonly InteriorNpc[];      // shopkeeper / nurse / guide / resident / tower (Phase D14: the battle tower attendant, Solenne league hall foyer) — client-local dialogue
+  readonly npcs: readonly InteriorNpc[];      // shopkeeper / nurse / guide / resident / tower (Phase D14: the battle tower attendant, Solenne league hall foyer) / daycare (2026-10-21: the Daycare keeper, Mirevale house 1, content `withDaycare`) — client-local dialogue
   readonly items: readonly InteriorItem[];    // pickup flag `item:<zone>:<id>`
   readonly props: readonly InteriorProp[];
 }
@@ -1417,6 +1418,34 @@ every pocket a progression walker from the entry with no flags (beating reachabl
 whose `requires` it holds, following teleports) reaches every leader, and with every gate closed reaches none (in the
 league hall, none past the first chamber); every arena keeps ≥ 6.5 m of floor and both trainer slots (±4.45 m) on the
 floor; entry → gym arena ≤ 30 m; every npc / item / exit reachable.
+
+### 3.14 Breeding — the Daycare and eggs
+<!-- added 2026-10-21: breeding and egg moves -->
+`content/src/data/daycare.ts`. **The Daycare** is Mirevale's house 1 (`DAYCARE { zoneId: 'mirevale', building:
+'mirevale.house1', keeperId, keeper: 'Nan Hob' }`): the interiors layer (`withDaycare`) relabels the hall "the Daycare" and
+makes its resident the keeper (role `daycare`, same hall, footprint, walls and props; `ZoneDef` untouched). A trainer
+leaves two creatures there (slot kind `daycare`); two that can breed give one egg every `EGG_READY_MS` (10 min) of server
+time, one waiting at a time. Rules, chosen to read in one line each:
+- **Who breeds** (`breedRefusal`): two of one family (`evolutionRoot`) or two that share a type; never a legendary or
+  mythical (`SpeciesDef.legendary`). Tower and arena teams are never persisted, so they never reach the Daycare.
+- **What hatches** (`eggSpecies`): the first stage of the family of the creature left FIRST, at `HATCH_LEVEL` 1.
+- **Moves** (`eggMoves`, `hatchMoves`): its level moves with the egg moves (moves either parent knows, first parent's
+  first, that the hatchling's species learns by level-up at any level or by TM under `canLearnMachineMove`; at most 4)
+  in place of the oldest, at most four.
+- **Inheritance**: Ewamon has no IVs (stats are base and level, §2.7), so the egg inherits what a creature carries: the
+  first parent's coat variant, else the second's (`eggVariant`); the ability in the first parent's ability slot
+  (`eggAbility`); honor = the parents' average, rounded half away from zero, clamped (`eggHonor`): honorable parents hatch
+  a dustcub that grows into a lawlander ("born Lawlander").
+- **Bandborn** (`isBandbornPair`): a parent whose species has a Majin form with one whose species has a Tenjin form always
+  gives a bandborn egg; the hatchling carries `bandborn: true` and its line's form answers either band (§2.11 step 5b).
+  A bandborn whose line never reaches a form keeps the mark only.
+- **Shiny**: 1 in `EGG_SHINY_ODDS` (512, the spawn odds), 1 in `EGG_SHINY_ODDS_SHINY_PARENT` (256) with a shiny parent;
+  rolled when the egg is laid from a seeded stream, hidden until it hatches.
+- **Hatching**: an egg is carried (`place: 'party'`, at most `EGG_CARRY_MAX` 3, never in a party slot) or waits in the
+  box; a carried egg hatches after `eggSteps` metres walked (by rarity: `EGG_STEPS` 600 / 900 / 1200), counted by the
+  server from accepted movement. At most `EGG_MAX` 12 eggs in all.
+- **Challenge runs**: while a Nuzlocke or Hardcore run is active the Daycare takes no creature and gives no egg, and
+  carried eggs count no steps (a run's creatures are the first encounter of each route); taking one back is allowed.
 
 ---
 
@@ -1597,6 +1626,8 @@ export type ServerMessage =
   | { readonly type: 'towerState'; readonly phase: 'fighting' | 'won' | 'lost' | 'ended'; readonly streak: number; readonly runWins: number; readonly best: number;
       readonly set: number; readonly fight: number; readonly picks: readonly string[];
       readonly reward: { readonly money: number; readonly items: Readonly<Record<string, number>> } | null }      // Phase D14 (30-server-netcode.md §30.4.9); after rankedStatus in SERVER_MESSAGE_TYPES
+  | { readonly type: 'eggHatched'; readonly eggId: string; readonly creature: CreatureInstance; readonly placement: 'party' | 'box';
+      readonly parents: readonly [string, string]; readonly zoneId: string }   // added 2026-10-21: breeding (30-server-netcode.md §30.4.3a): a carried egg hatched; after the inventoryDelta adding it; after towerState in SERVER_MESSAGE_TYPES (25 variants)
   // arena PvP (30-server-netcode.md §30.4.10; protocol `arena.ts`) <!-- amended 2026-10-11: arena PvP --> — after towerState (22 variants)
   | { readonly type: 'arenaStatus'; readonly state: 'idle' | 'queued' | 'matched'; readonly kind: ArenaKind | null; readonly waitedMs: number; readonly window: number;
       readonly opponent: { readonly name: string; readonly rating: number } | null; readonly seat: SeatReservation | null;   // seat only while `matched`: the arena room
@@ -1696,6 +1727,11 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /factions/join` <!-- added 2026-10-20 --> | `{ side: 'majin' \| 'tenjin' }` | `FactionsRes`; the side holds for the season: the other side is 409 `alreadyJoined { side }`, the same side again is 200 | bearer |
 | `GET /factions/sky` <!-- added 2026-10-20 --> | - | `{ sky: side \| null }`: the last closed season's winner (null in season 1 or on a tie) | bearer |
 | `GET /legends` <!-- added 2026-10-20: one roaming legendary per season --> | - | `LegendsRes { season, species, zoneId \| null, movesAt \| null, caught: { season, species, username, at } \| null, past: { season, species, username, at }[] (≤ 50, newest first) }`: the season's roamer (content `roamerOf`), the route it is on and when it moves on while nobody has caught it, its first catcher this season, every season's first catcher | bearer |
+| `GET /daycare` <!-- added 2026-10-21: breeding --> | - | `DaycareRes { zoneId, pair: CreatureInstance[] (≤ 2, in the order left), refusal: 'legendary' \| 'unrelated' \| null, hatches: speciesId \| null, bandborn, eggAt \| null, eggReady, eggs: { id, place: 'party' \| 'box', stepsTotal, stepsWalked, bandborn, parents: [name, name], zoneId, laidAt }[] (≤ 64), carryMax, eggMax }` (content daycare.ts); anywhere | bearer |
+| `POST /daycare/leave` <!-- added 2026-10-21 --> | `{ id }` | `DaycareActionRes { daycare, party, box }`: a party or box creature goes to the Daycare (slot kind `daycare`); 409 `notAtDaycare` outside Mirevale, `daycareFull` (two there), `challenge` (an active run), `fallen`, `InvalidSlot`, `PartyMinimum`; a pair that can breed sets the egg timer to now + `EGG_READY_MS` | bearer |
+| `POST /daycare/take` <!-- added 2026-10-21 --> | `{ id }` | `DaycareActionRes`: back to the party while it has room, else the box; the timer stops; 409 `notAtDaycare`, `InvalidSlot` | bearer |
+| `POST /daycare/collect` <!-- added 2026-10-21 --> | - | `DaycareActionRes`: the ready egg, carried while fewer than `EGG_CARRY_MAX` are, else boxed; the timer starts over; 409 `notAtDaycare`, `noEgg`, `eggsFull`, `challenge` | bearer |
+| `POST /eggs/:id/move` <!-- added 2026-10-21 --> | `{ place: 'party' \| 'box' }` | `DaycareActionRes`; 409 `eggsCarried` past `EGG_CARRY_MAX`; 404 for anyone else's egg | bearer |
 | `GET /ghost` <!-- added 2026-10-20: ghost trainers --> | - | `GhostRes { haunting: { zoneId, leftAt, party: { speciesId, level }[] (≤ 6) } \| null, won, lost, fights: { challenger, zoneId, won, at }[] (≤ 20, newest first) }`: where the caller's ghost haunts (null before they ever left, or after `GHOST_DAYS`), its record and latest fights | bearer |
 | `GET /weather/cities?q=` <!-- added 2026-10-20: weather from real life --> | - | `WeatherCitiesRes { cities: { name, region?, country, lat, lon }[] }` (≤ 5, Open-Meteo geocoding asked by the server, `region` its province or state, a place reading exactly like one already listed dropped, coordinates rounded to 0.1°); `q` 2..60 characters; 503 `weatherUnavailable` when the service does not answer; limit `weather` | bearer |
 | `POST /weather/city` <!-- added 2026-10-20 --> | `{ city: { name, region?, country, lat, lon } \| null }` | `RealWeatherRes { city \| null, kind \| null }`: the city stored on the player (coordinates rounded to 0.1°) and its weather now; null turns it off. The room holding the player hears it on `ewa:weather:<playerId>` | bearer |
@@ -1727,7 +1763,7 @@ Drizzle `pg-core` schema in `packages/persist/src/schema/*.ts` (one file per are
 ### 5.1 Tables
 
 ```ts
-export const slotKind = pgEnum('slot_kind', ['party', 'box', 'listing', 'trade_escrow']);
+export const slotKind = pgEnum('slot_kind', ['party', 'box', 'listing', 'trade_escrow', 'daycare']);   // 'daycare' added 2026-10-21 (migration 0016_breeding): left at the Daycare, out of play like a listing
 export const listingStatus = pgEnum('listing_status', ['active', 'sold', 'expired', 'cancelled']);
 export const friendshipStatus = pgEnum('friendship_status', ['pending', 'accepted']);
 export const guildRole = pgEnum('guild_role', ['leader', 'officer', 'member']);
@@ -2111,7 +2147,7 @@ export interface SocialRepo {
   guildMembers(tx: Tx, guildId: string): Promise<GuildMemberView[]>;
   searchGuilds(tx: Tx, search: string, limit: number): Promise<GuildView[]>;   // escapeLike
 }
-/** Creature history (migration 0007_creature_history): `creature_instances.original_trainer_id` (→ players, set null) and `original_trainer_name` written by `insert` (the owner at insert), and `creature_events (id bigserial PK, creature_id → creature_instances cascade, kind varchar(16), detail jsonb, at)`. `insert` writes a `met` event (`caught` at the catch time when `caughtAt` is set, else `received`); `transferCreature` writes `traded` / `sold` / `gift` with both usernames. */
+/** Creature history (migration 0007_creature_history): `creature_instances.original_trainer_id` (→ players, set null) and `original_trainer_name` written by `insert` (the owner at insert), and `creature_events (id bigserial PK, creature_id → creature_instances cascade, kind varchar(16), detail jsonb, at)`. `insert` writes a `met` event (`caught` at the catch time when `caughtAt` is set, else `received`), or the `firstEvent` it is given (breeding: `hatched`, added 2026-10-21); `transferCreature` writes `traded` / `sold` / `gift` with both usernames. */
 export interface CreatureHistoryRepo {   // methods on CreatureRepo
   addEvent(tx: Tx, ids: readonly string[], detail: CreatureEventDetail, now: Date): Promise<void>;   // one row per id
   history(tx: Tx, id: string): Promise<{ originalTrainer: string | null; events: { detail: CreatureEventDetail; at: Date }[] } | null>;   // oldest first, ≤ 200; null for an unknown creature
@@ -2161,6 +2197,17 @@ export interface RunRepo {
 /** Honor shapes the world (migration 0012_world_honor): `world_honor (season int, zone_id varchar(32), light int, shadow int)`, PK (season, zone_id). Added to in the battle turn's own transaction. */
 /** Majin vs Tenjin seasons (migration 0013_season_factions): `season_factions (season int, player_id → players cascade, side varchar(8), points int, joined_at)`, PK (season, player_id). */
 /** One roaming legendary per season (migration 0014_season_legends): `season_legends (season int PK, species varchar(32), player_id → players set null, player_name varchar(20), caught_at)`. */
+/** Breeding (migration 0016_breeding): slot kind `daycare`; `creature_instances.bandborn boolean default false`; `daycare (player_id PK → players cascade, egg_at timestamptz null)`; `eggs (id uuid PK, owner_id → players cascade, place 'party' | 'box', species_id, steps_total, steps_walked (0..total), honor, variant_key, ability, moves jsonb string[] (the egg moves), is_shiny, bandborn, parents jsonb { speciesId, nickname }[], zone_id, laid_at)`. `creatures.insert(tx, c, slot, firstEvent?)`: a hatchling's history starts with `hatched { speciesId, zoneId, parents: [name, name], trainer }` in place of `met`. */
+export interface BreedingRepo {
+  pair(tx: Tx, ownerId: string): Promise<CreatureRecord[]>;   // the `daycare` slot kind, in the order left
+  eggAt(tx: Tx, ownerId: string): Promise<Date | null>;
+  setEggAt(tx: Tx, ownerId: string, at: Date | null): Promise<void>;
+  eggs(tx: Tx, ownerId: string): Promise<Egg[]>;   // carried first, then oldest first
+  insertEgg(tx: Tx, e: NewEgg, now: Date): Promise<Egg>;
+  moveEgg(tx: Tx, ownerId: string, id: string, place: 'party' | 'box'): Promise<void>;   // NotFound for anyone else's
+  addSteps(tx: Tx, ownerId: string, steps: number): Promise<Egg[]>;   // carried eggs only, capped at their total; returns the carried eggs
+  takeHatched(tx: Tx, ownerId: string, id: string): Promise<Egg | null>;   // deletes a carried egg that walked its total
+}
 /** Ghost trainers (migration 0015_ghosts): `ghosts (player_id PK → players cascade, name, zone_id, party jsonb CreatureInstance[], top_level, left_at)` and `ghost_battles (id, ghost_id → players cascade, challenger, zone_id, won (the ghost), seen, at)`. */
 export interface GhostRepo {
   save(tx: Tx, playerId: string, name: string, zoneId: string, party: readonly CreatureInstance[], now: Date): Promise<void>;   // replaces; an empty party saves nothing

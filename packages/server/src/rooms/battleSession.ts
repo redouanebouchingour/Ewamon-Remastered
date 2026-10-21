@@ -312,6 +312,7 @@ export function toInstance(c: CreatureInstance): CreatureInstance {
     ...(c.isShiny === true ? { isShiny: true } : {}),
     caughtAt: c.caughtAt === null ? null : { zoneId: c.caughtAt.zoneId, at: c.caughtAt.at },
     ...(c.honor !== undefined ? { honor: c.honor } : {}),
+    ...(c.bandborn === true ? { bandborn: true as const } : {}),
     ribbons: [...c.ribbons],
     favorite: c.favorite,
     locked: c.locked,

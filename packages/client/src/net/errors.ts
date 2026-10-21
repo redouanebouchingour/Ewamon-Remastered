@@ -51,6 +51,13 @@ const MESSAGES: Readonly<Record<string, string>> = {
   alreadyOwned: 'You already have that. TMs are never used up.',
   oneAtATime: 'One at a time.',
   notAtHealer: 'Find a healer first.',
+  // breeding
+  notAtDaycare: 'Talk to the keeper in the Mirevale Daycare.',
+  daycareFull: 'The keeper minds two at a time.',
+  noEgg: 'The keeper has no egg for you yet.',
+  eggsFull: 'You hold as many eggs as you can. Hatch some first.',
+  eggsCarried: 'You carry as many eggs as you can.',
+  challenge: 'Not during a challenge run.',
   notUsable: 'That item cannot be used here.',
   notUsableHere: 'That item cannot be used here.',
   noEffect: 'It would have no effect.',

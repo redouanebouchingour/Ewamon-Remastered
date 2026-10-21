@@ -25,6 +25,7 @@ import { Icon } from '../ui/Icon';
 import type { IconName } from '../ui/Icon';
 import { Panel } from '../ui/Panel';
 import { CreatureDetail } from './CreatureDetail';
+import { EggShelf } from './EggShelf';
 import s from './PartyScreen.module.css';
 import { useClosePanel, useIntent } from './shared';
 
@@ -249,6 +250,8 @@ export function PartyScreen() {
               </li>
             ))}
           </ol>
+          {/* breeding: the eggs carried beside the party (they never take a slot) count the steps walked */}
+          <EggShelf place="party" title="Eggs you carry" />
           {selected !== null && (
             <CreatureDetail
               creature={selected}

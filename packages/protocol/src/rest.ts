@@ -483,9 +483,10 @@ export const CreaturesAddedRes = z.object({ creaturesAdded: z.array(CreatureInst
 /**
  * Creature history: the original trainer (null for a creature older than the history) and what happened to it, oldest
  * first. Names are as they were at the time. `met` how its first owner got it; `traded` / `sold` (the marketplace) /
- * `gift` a change of hands; `evolved`; `badge` / `champion` / `legendary`: it was in the party that won it.
+ * `gift` a change of hands; `evolved`; `badge` / `champion` / `legendary`: it was in the party that won it; `hatched`
+ * (breeding) in place of `met`.
  */
-export const CREATURE_EVENT_KINDS = ['met', 'traded', 'sold', 'gift', 'evolved', 'badge', 'champion', 'legendary'] as const;
+export const CREATURE_EVENT_KINDS = ['met', 'traded', 'sold', 'gift', 'evolved', 'badge', 'champion', 'legendary', 'hatched'] as const;
 const Name = z.string().max(20);
 export const CreatureEventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('met'), at: IsoDate, how: z.enum(['caught', 'received']), speciesId: z.string().max(32), level: z.number().int().min(1).max(100), zoneId: z.string().max(32).nullable(), trainer: Name }),
@@ -494,6 +495,8 @@ export const CreatureEventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('badge'), at: IsoDate, badge: z.string().max(32) }),
   z.object({ kind: z.literal('champion'), at: IsoDate }),
   z.object({ kind: z.literal('legendary'), at: IsoDate, species: z.string().max(32), caught: z.boolean() }),
+  // breeding: how a hatchling's first owner got it (in place of `met`)
+  z.object({ kind: z.literal('hatched'), at: IsoDate, speciesId: z.string().max(32), zoneId: z.string().max(32), parents: z.tuple([z.string().max(40), z.string().max(40)]), trainer: Name }),
 ]);
 export type CreatureEvent = z.infer<typeof CreatureEventSchema>;
 export const CreatureHistoryRes = z.object({ originalTrainer: Name.nullable(), events: z.array(CreatureEventSchema).max(200) });
@@ -710,6 +713,43 @@ export const GhostRes = z.object({
 });
 export type GhostView = z.infer<typeof GhostRes>;
 
+/**
+ * Breeding (content daycare.ts). The Daycare: the creatures left there (in the order they were left, at most two),
+ * whether they can breed (`refusal` when not), what would hatch and whether it is bandborn, when the next egg is ready
+ * (`eggAt`, null while they cannot breed) and the trainer's eggs (carried ones count steps; the species stays a
+ * surprise until it hatches). Every action answers with the Daycare and the party and box after it.
+ */
+export const BREED_REFUSALS = ['legendary', 'unrelated'] as const;
+export const EGG_PLACES = ['party', 'box'] as const;
+export const EggSchema = z.object({
+  id: Uuid,
+  place: z.enum(EGG_PLACES),
+  stepsTotal: z.number().int().min(1),
+  stepsWalked: z.number().int().min(0),
+  bandborn: z.boolean(),
+  /** the parents' names as they were (nickname, else species name) */
+  parents: z.tuple([z.string().min(1).max(40), z.string().min(1).max(40)]),
+  zoneId: z.string().max(32),
+  laidAt: IsoDate,
+});
+export type EggView = z.infer<typeof EggSchema>;
+export const DaycareRes = z.object({
+  zoneId: z.string().max(32),
+  pair: z.array(CreatureInstanceSchema).max(2),
+  refusal: z.enum(BREED_REFUSALS).nullable(),
+  hatches: z.string().max(32).nullable(),
+  bandborn: z.boolean(),
+  eggAt: IsoDate.nullable(),
+  eggReady: z.boolean(),
+  eggs: z.array(EggSchema).max(64),
+  carryMax: z.number().int().min(1),
+  eggMax: z.number().int().min(1),
+});
+export type DaycareView = z.infer<typeof DaycareRes>;
+export const DaycareActionRes = z.object({ daycare: DaycareRes, party: Party, box: Box });
+export const EggParams = z.object({ id: Uuid });
+export const EggMoveReq = z.object({ place: z.enum(EGG_PLACES) });
+
 // ---- admin / health -----------------------------------------------------------------------------------------------------
 
 /** TODO(spec): `/admin/stats` has no listed body; these are the legacy counters carried over. */
@@ -861,6 +901,12 @@ export const ROUTES = {
   legends: route({ method: 'GET', path: '/legends', auth: 'bearer', response: LegendsRes }),
   // ghost trainers: where your ghost haunts and how it fared
   ghost: route({ method: 'GET', path: '/ghost', auth: 'bearer', response: GhostRes }),
+  // breeding: the Daycare (leave / take back a creature, collect the egg) and moving an egg between the party and the box
+  daycare: route({ method: 'GET', path: '/daycare', auth: 'bearer', response: DaycareRes }),
+  daycareLeave: route({ method: 'POST', path: '/daycare/leave', auth: 'bearer', request: CreatureIdReq, response: DaycareActionRes }),
+  daycareTake: route({ method: 'POST', path: '/daycare/take', auth: 'bearer', request: CreatureIdReq, response: DaycareActionRes }),
+  daycareCollect: route({ method: 'POST', path: '/daycare/collect', auth: 'bearer', request: Nothing, response: DaycareActionRes }),
+  eggMove: route({ method: 'POST', path: '/eggs/:id/move', auth: 'bearer', params: EggParams, request: EggMoveReq, response: DaycareActionRes }),
   dailyStart: route({ method: 'POST', path: '/daily/start', auth: 'bearer', request: Nothing, response: ArenaSeatRes }),
   adminStats: route({ method: 'GET', path: '/admin/stats', auth: 'admin', response: AdminStatsRes }),
   adminPlayers: route({ method: 'GET', path: '/admin/players', auth: 'admin', query: AdminPlayersQuery, response: AdminPlayersRes }),

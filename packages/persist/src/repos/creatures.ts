@@ -131,8 +131,11 @@ export const creatureRepo = {
     return rowToRecord(await lockRow(tx, id));
   },
 
-  /** Inserts a new creature into `slot`. Locks the owner row so `nextBox` is race-free. */
-  async insert(tx: Tx, c: Omit<CreatureInstance, 'id'>, slot: SlotTarget): Promise<CreatureInstance> {
+  /**
+   * Inserts a new creature into `slot`. Locks the owner row so `nextBox` is race-free. `firstEvent`: the history's first
+   * entry in place of the `met` it would write (breeding: `hatched`).
+   */
+  async insert(tx: Tx, c: Omit<CreatureInstance, 'id'>, slot: SlotTarget, firstEvent?: Extract<CreatureEventDetail, { kind: 'hatched' }>): Promise<CreatureInstance> {
     if (c.ownerId === null) fail('InvalidArgument', 'persisted creatures have an owner');
     const ownerId = c.ownerId;
     const owner = await playerRepo.lock(tx, ownerId);
@@ -146,7 +149,7 @@ export const creatureRepo = {
       .values({ ...creatureToColumns(c), ownerId, slotKind: slot.kind, slotIndex, originalTrainerId: ownerId, originalTrainerName: owner.username })
       .returning();
     // creature history: how its first owner got it (a catch keeps the catch time; a starter or a gift is now)
-    const met: CreatureEventDetail = { kind: 'met', how: c.caughtAt !== null ? 'caught' : 'received', speciesId: c.speciesId, level: c.level, zoneId: c.caughtAt?.zoneId ?? null, trainer: owner.username };
+    const met: CreatureEventDetail = firstEvent ?? { kind: 'met', how: c.caughtAt !== null ? 'caught' : 'received', speciesId: c.speciesId, level: c.level, zoneId: c.caughtAt?.zoneId ?? null, trainer: owner.username };
     await tx.insert(creatureEvents).values({ creatureId: row!.id, kind: met.kind, detail: met, ...(c.caughtAt !== null ? { at: new Date(c.caughtAt.at) } : {}) });
     return rowToCreature(row!);
   },

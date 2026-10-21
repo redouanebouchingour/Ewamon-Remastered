@@ -3,11 +3,12 @@
  * battler choosing now, whether it is enabled, and the short reason when it is not. The rules are core's
  * (`transformError`, `formLineMet`); this only words them.
  *
- * Shown when the player's side holds the band of the battler's form kind, the battler's species has a form of that
- * kind, and the side has not transformed this battle. Enabled when `transformError(...) === null` and (doubles) the
+ * Shown when the player's side holds the band of the battler's form kind (or, for a bandborn, either band), the
+ * battler's species has a Majin / Tenjin form, and the side has not transformed this battle. A bandborn's toggle names
+ * the band whose hp line is met. Enabled when `transformError(...) === null` and (doubles) the
  * other position has not armed the side's one transformation this turn.
  */
-import { formLineMet, transformError } from '@ewa/core';
+import { bandsFor, formLineMet, transformError } from '@ewa/core';
 import type { Action, BandKind, BattleState, Battler } from '@ewa/core';
 import { species } from '../data/content';
 import { ACTION_ERROR_LABEL } from './labels';
@@ -38,10 +39,13 @@ export function transformOffer(st: BattleState, seat: 0 | 1, battler: Battler | 
   const form = sp?.battleForm;
   if (sp === undefined || form === undefined || form.kind === undefined) return null;
   const side = st.sides[seat];
-  if (side.bands === undefined || !side.bands.includes(form.kind) || side.transformed === true) return null;
-  const kind = form.kind;
+  // breeding: a bandborn's form also answers the other band (core `bandsFor`); the toggle names the band that opens it
+  const held = bandsFor(sp, battler).filter((k) => side.bands?.includes(k) === true);
+  if (held.length === 0 || side.transformed === true) return null;
+  const open = held.find((k) => formLineMet({ ...form, kind: k }, battler));
+  const kind = open ?? held[0]!;
   if (otherPick !== null && otherPick.kind === 'move' && otherPick.transform === true) return { kind, enabled: false, reason: OTHER_ARMED };
   if (transformError(side, battler, sp) === null) return { kind, enabled: true, reason: null };
-  const reason = battler.form !== undefined ? ALREADY_TRANSFORMED : battler.creature.hp > 0 && !formLineMet(form, battler) ? LINE_REASON[kind] : ACTION_ERROR_LABEL.cannotTransform;
+  const reason = battler.form !== undefined ? ALREADY_TRANSFORMED : battler.creature.hp > 0 && open === undefined ? LINE_REASON[kind] : ACTION_ERROR_LABEL.cannotTransform;
   return { kind, enabled: false, reason };
 }

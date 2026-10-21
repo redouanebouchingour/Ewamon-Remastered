@@ -172,6 +172,8 @@ export function interiorInteractables(zoneId: ZoneId, flags: ReadonlySet<string>
     else if (n.role === 'nurse') out.push(makeInteractable(`healer:${n.id}`, 'healer', n.x, n.z, 'Rest with', n.name, key));
     // Phase D14: the battle tower attendant (Solenne's league hall foyer)
     else if (n.role === 'tower') out.push(makeInteractable(n.id, 'tower', n.x, n.z, 'Talk to', n.name, key));
+    // breeding: the Daycare keeper talks like a resident; World3D opens the Daycare when the lines end
+    else if (n.role === 'daycare') out.push(makeInteractable(n.id, 'npc', n.x, n.z, 'Talk to', n.name, key));
     else out.push(makeInteractable(n.id, 'npc', n.x, n.z, 'Talk to', n.name, key));
   }
   for (const p of pockets) {

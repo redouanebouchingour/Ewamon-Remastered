@@ -48,6 +48,8 @@ export const CreatureInstanceSchema = z.object({
   caughtAt: z.object({ zoneId: z.string(), at: z.number().int() }).nullable(),
   /** the honor ledger (core honor.ts), -10..10; absent = 0 (only dustcub's line keeps one) */
   honor: z.number().int().min(-10).max(10).optional(),
+  /** breeding: hatched from a Majin-form and a Tenjin-form parent (core `CreatureInstance.bandborn`); absent = not */
+  bandborn: z.literal(true).optional(),
   ribbons: z.array(z.string()),
   favorite: z.boolean(),
   locked: z.boolean(),

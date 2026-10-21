@@ -74,6 +74,8 @@ import type { SpawnRecord } from './spawnDirector';
 import { beatFor, completeBeatInTx, flagSet, isStoryTrainer, storyTrainerBeat } from './storyBeats';
 import { RAID_JOIN_RANGE_M, RaidRunner, RaidSession } from './raidSession';
 import { TradeCoordinator } from './tradeSession';
+import { EggWalker } from './eggWalk';
+import { EGGS_TOPIC } from '../rest/routes/daycare';
 import { TowerSessions } from './towerSession';
 import { advanceQuests, deliveriesFor } from '../game/quests';
 import type { QuestEvent } from '../game/quests';
@@ -296,6 +298,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   private grassPatches: readonly PlanEllipse[] = [];
   /** Phase D14: battle tower runs (only Solenne has the attendant; elsewhere every `tower` message is refused) */
   private tower!: TowerSessions;
+  /** breeding: the steps carried eggs count, and their hatching */
+  private eggs!: EggWalker;
   /**
    * player uuid → its `ewa:dm:<id>` callback (§30.7.2: DMs pushed live while the player is in this room) and its
    * `ewa:arena:<id>` callback (arena PvP: queue status, friend invites — a ServerMessage forwarded as is)
@@ -394,6 +398,13 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
         tradeOf: (playerId) => this.clientOf(playerId)?.userData?.tradeId ?? null,
       },
     });
+    this.eggs = new EggWalker({
+      repos: deps.repos,
+      content: deps.content,
+      clock: deps.clock,
+      log: deps.log.child({ roomId: this.roomId, zoneId: this.zone.id, shard }),
+      send: (playerId, msg) => this.sendTo(playerId, msg),
+    });
     this.tower = new TowerSessions({
       repos: deps.repos,
       content: deps.content,
@@ -418,6 +429,14 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       if (c?.userData !== undefined) c.userData.repel = { kind: m.kind, steps: m.steps };
     });
     await this.sub('ewa:teleport', (m: { playerId: string }) => this.onTeleport(m.playerId));
+    // breeding: an egg was collected or moved (daycare routes): the room holding the player re-reads its carried eggs
+    await this.sub(EGGS_TOPIC, (m: { playerId: string }) => {
+      if (this.clientOf(m.playerId) === undefined) return;
+      void this.eggs
+        .flush(m.playerId)
+        .then(() => this.eggs.load(m.playerId))
+        .catch((e: unknown) => deps.log.warn({ err: e, playerId: m.playerId }, 'egg reload failed'));
+    });
     // Phase D13 ranked queue: matches (every room: move the players it hosts), cancels, and this room's arena matches
     await this.sub(RANKED_MATCH_TOPIC, (m: RankedMatch) => void this.onRankedMatch(m));
     await this.sub(RANKED_CANCEL_TOPIC, (m: RankedCancel) => this.onRankedCancel(m));
@@ -620,6 +639,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     void this.refreshRealWeather(client);
     // ghost trainers: how the player's ghost fared while they were away
     void this.ghostWelcome(client, playerId);
+    // breeding: the eggs the player carries count the steps walked here
+    void this.eggs.load(playerId).catch((e: unknown) => deps.log.warn({ err: e, playerId }, 'egg load failed'));
   }
 
   override onDrop(client: ZoneClient, code?: number): void {
@@ -650,6 +671,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const playerId = ud.playerId;
     const ps = this.state.players.get(playerId);
     await this.battles.forfeitIfActive(playerId, 'disconnect').catch((e: unknown) => deps.log.error({ err: e }, 'forfeitIfActive failed'));
+    // breeding: the metres walked here are written before the player goes
+    await this.eggs.drop(playerId).catch((e: unknown) => deps.log.error({ err: e }, 'egg drop failed'));
     // Phase D14: leaving ends a tower run (current 0, best kept)
     await this.tower.onLeave(playerId).catch((e: unknown) => deps.log.error({ err: e }, 'tower onLeave failed'));
     this.trades.cancelFor(playerId);
@@ -1059,6 +1082,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       ud.lastSeq = input.seq;
       ud.lastInputAt = this.now();
       ud.moved = true;
+      // breeding: carried eggs count the metres walked
+      this.eggs.step(ud.playerId, dist, ud.flags);
       if (ud.repel !== null) {
         ud.repel.steps -= dist;
         if (ud.repel.steps <= 0) {

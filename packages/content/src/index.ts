@@ -446,3 +446,26 @@ export { FACTIONS, FACTION_LABELS, FACTION_POINTS, FACTION_SKY_ZONE, chronicleLi
 export type { Faction } from './data/factions';
 export { ROAMERS, ROAMER_CHANCE, ROAMER_LEVEL, ROAM_PERIOD_MS, ROAM_ZONES, roamerMovesAt, roamerOf, roamerZoneAt } from './data/roamer';
 export { GHOSTS_PER_ZONE, GHOST_CHANCE, GHOST_DAYS, GHOST_LEVEL_SPAN, ghostOwner, ghostReport, ghostReward, ghostTrainerId, isGhostTrainer } from './data/ghosts';
+export {
+  BREED_REFUSAL_TEXT,
+  DAYCARE,
+  DAYCARE_LINES,
+  EGG_CARRY_MAX,
+  EGG_MAX,
+  EGG_READY_MS,
+  EGG_SHINY_ODDS,
+  EGG_SHINY_ODDS_SHINY_PARENT,
+  EGG_STEPS,
+  HATCH_LEVEL,
+  breedRefusal,
+  canInheritMove,
+  eggAbility,
+  eggHonor,
+  eggMoves,
+  eggSpecies,
+  eggSteps,
+  eggVariant,
+  hatchMoves,
+  isBandbornPair,
+} from './data/daycare';
+export type { BreedRefusal } from './data/daycare';

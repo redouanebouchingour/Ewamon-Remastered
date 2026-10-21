@@ -1,0 +1,70 @@
+/* Breeding: the egg cards (EggShelf.tsx). Carbon slabs in a wrapping row; the egg on the left, then its name, the
+   parents, the steps bar and its caption; the one action on the right. The bandborn tag: the Factions screen's Tenjin gold (--warn) with a Majin crimson edge (--type-fire). */
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  background: var(--bg-2);
+  box-shadow: inset 3px 0 0 var(--text-hi);
+}
+
+.card[data-place='box'] {
+  box-shadow: inset 3px 0 0 var(--line-2);
+}
+
+.egg {
+  margin-block-end: var(--s-1);
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-inline-size: 0;
+}
+
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bandborn {
+  padding: 0 var(--s-2);
+  background: var(--warn);
+  color: var(--bg-0);
+  font-size: var(--t-caption);
+  letter-spacing: 0.1em;
+  box-shadow: inset 3px 0 0 var(--type-fire);
+}
+
+.parents {
+  overflow: hidden;
+  color: var(--text-1);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  margin-inline-start: var(--s-3);
+  color: var(--text-2);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}

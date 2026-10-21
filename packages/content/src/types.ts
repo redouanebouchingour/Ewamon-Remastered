@@ -234,8 +234,8 @@ export interface InteriorTrainer {
   readonly reward: number;
 }
 
-/** Phase D14 adds `tower`: the battle tower attendant (Solenne's league hall foyer). */
-export type InteriorNpcRole = 'shopkeeper' | 'nurse' | 'resident' | 'guide' | 'tower';
+/** Phase D14 adds `tower`: the battle tower attendant (Solenne's league hall foyer); breeding adds `daycare` (data/daycare.ts). */
+export type InteriorNpcRole = 'shopkeeper' | 'nurse' | 'resident' | 'guide' | 'tower' | 'daycare';
 export interface InteriorNpc {
   readonly id: string;
   readonly name: string;

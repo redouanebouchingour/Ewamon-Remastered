@@ -123,3 +123,30 @@ describe('Majin / Tenjin transformations', () => {
     expect(canonicalJson(r.state)).not.toContain('"transformed"');
   });
 });
+
+describe('bandborn (breeding: a Majin parent and a Tenjin parent)', () => {
+  it('its form answers either band, each at its own hp line', () => {
+    // a bandborn Majin species, healthy: the Tenjin Band opens it (at or above half), the Majin Band does not
+    expect(validateAction(start(M({ hp: 80, bandborn: true }), P(), { aBands: ['tenjin'] }), 0, tmove(TACKLE.id), content)).toBeNull();
+    expect(validateAction(start(M({ hp: 80, bandborn: true }), P(), { aBands: ['majin'] }), 0, tmove(TACKLE.id), content)).toBe('cannotTransform');
+    // hurt: its own band still opens it, the other one does not
+    expect(validateAction(start(M({ hp: 60, bandborn: true }), P(), { aBands: ['majin'] }), 0, tmove(TACKLE.id), content)).toBeNull();
+    expect(validateAction(start(M({ hp: 60, bandborn: true }), P(), { aBands: ['tenjin'] }), 0, tmove(TACKLE.id), content)).toBe('cannotTransform');
+    // a bandborn Tenjin species, hurt, with the Majin Band: it changes into its (Tenjin) form
+    const st = start(T({ hp: 40, bandborn: true }), P(), { aBands: ['majin'] });
+    expect(validateAction(st, 0, tmove(NOOP.id), content)).toBeNull();
+    const r = resolveTurn(st, [tmove(NOOP.id), move(NOOP.id)], content);
+    expect(activeOf(r.state, 0).form).toBe('tenjin');
+    // with both bands its door is always open (one line or the other is met)
+    expect(validateAction(start(T({ hp: 1, bandborn: true }), P(), { aBands: ['majin', 'tenjin'] }), 0, tmove(TACKLE.id), content)).toBeNull();
+  });
+
+  it('still once per battle, never without a band, never a species without a form', () => {
+    expect(validateAction(start(M({ hp: 80, bandborn: true }), P()), 0, tmove(TACKLE.id), content)).toBe('cannotTransform');
+    expect(validateAction(start(P({ bandborn: true }), P(), { aBands: ['majin', 'tenjin'] }), 0, tmove(TACKLE.id), content)).toBe('cannotTransform');
+    const st = start(M({ hp: 80, bandborn: true }), P(), { aBands: ['tenjin'] });
+    const r = resolveTurn(st, [tmove(NOOP.id), move(NOOP.id)], content);
+    expect(r.state.sides[0].transformed).toBe(true);
+    expect(validateAction(r.state, 0, tmove(TACKLE.id), content)).toBe('cannotTransform');
+  });
+});

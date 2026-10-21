@@ -204,6 +204,18 @@ export type ServerMessage =
       readonly picks: readonly string[];
       readonly reward: { readonly money: number; readonly items: Readonly<Record<string, number>> } | null;
     }
+  /**
+   * Breeding: a carried egg hatched (the server counted the steps). Sent right after the `inventoryDelta` that adds the
+   * hatchling; the client plays the hatch reveal. `parents`: the parents' names as they were; `zoneId`: the Daycare's.
+   */
+  | {
+      readonly type: 'eggHatched';
+      readonly eggId: string;
+      readonly creature: CreatureInstance;
+      readonly placement: CreaturePlacement;
+      readonly parents: readonly [string, string];
+      readonly zoneId: string;
+    }
   /** arena PvP (../arena.ts): the queue state, a friend's invite, the invite's fate, the arena room's phase */
   | ArenaServerMessage
   | { readonly type: 'error'; readonly code: ServerErrorCode; readonly detail: string | null };
@@ -232,6 +244,7 @@ export const SERVER_MESSAGE_TYPES = [
   'error',
   'rankedStatus',
   'towerState',
+  'eggHatched',
   'arenaStatus',
   'arenaInvite',
   'arenaInviteResult',
@@ -398,6 +411,14 @@ export const TowerStateMsg = z.object({
   picks: z.array(z.string().min(1).max(64)).max(6),
   reward: z.object({ money: z.number().int().min(0), items: ItemCounts }).nullable(),
 });
+export const EggHatchedMsg = z.object({
+  type: z.literal('eggHatched'),
+  eggId: z.string().min(1),
+  creature: CreatureInstanceSchema,
+  placement: z.enum(['party', 'box']),
+  parents: z.tuple([z.string().min(1).max(40), z.string().min(1).max(40)]),
+  zoneId: z.string().min(1).max(32),
+});
 export const ErrorMsg = z.object({
   type: z.literal('error'),
   code: z.enum(SERVER_ERROR_CODES),
@@ -425,6 +446,7 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
   ErrorMsg,
   RankedStatusMsg,
   TowerStateMsg,
+  EggHatchedMsg,
   ArenaStatusMsg,
   ArenaInviteMsg,
   ArenaInviteResultMsg,
@@ -453,6 +475,7 @@ export const SERVER_MESSAGES = {
   error: ErrorMsg,
   rankedStatus: RankedStatusMsg,
   towerState: TowerStateMsg,
+  eggHatched: EggHatchedMsg,
   arenaStatus: ArenaStatusMsg,
   arenaInvite: ArenaInviteMsg,
   arenaInviteResult: ArenaInviteResultMsg,

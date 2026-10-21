@@ -241,3 +241,12 @@ The user's form-change gimmick (`.design/majin-tenjin.md`; spine §2.3 `BattleFo
   with it before sharing, and the client plays a shared replay from it. It adds no rule: the fuzz digests are unchanged.
 - `test/fuzz.ts` gained `fuzzOpts(seed, content)`, the createBattle input `buildBattle` uses (same rng draws in the
   same order), so `test/replay.test.ts` replays 60 fuzz records from their input alone.
+
+## Breeding: bandborn (2026-10-21)
+
+- `CreatureInstance.bandborn?: true` (hatched from a Majin-form and a Tenjin-form parent). `transformError` accepts
+  the form's own band at its own hp line as before, and for a bandborn also the other band at that band's line; the
+  battler still changes into its own form, once per side. `bandsFor(sp, b)` lists the bands that can open it (the
+  client's toggle). Absent on every creature but a hatched bandborn, so the singles and doubles fuzz digests are
+  unchanged. No IVs were added: Ewamon's stats are base and level only, and breeding passes on what a creature does
+  carry (content daycare.ts).

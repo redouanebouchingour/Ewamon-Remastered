@@ -8,6 +8,7 @@ import type { ServerMessage } from '@ewa/protocol';
 import { installArenaFlow, routeArenaMessage } from '../app/arena';
 import type { ArenaSession } from '../app/arena';
 import { queueTradeEvolutions } from '../app/itemUseFeedback';
+import { useDaycareStore } from '../state/daycare';
 import { toast, useNotificationsStore } from '../state/notifications';
 import { rankedStatusText, useRankedStore } from '../state/ranked';
 import { useRealWeatherStore } from '../state/realWeather';
@@ -131,6 +132,11 @@ export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'han
       } else ui.openModal('tower');
       return;
     }
+    case 'eggHatched':
+      // breeding: the hatch reveal (the inventoryDelta before it already added the hatchling); the eggs change
+      useDaycareStore.getState().pushHatch({ eggId: m.eggId, creature: m.creature, placement: m.placement, parents: m.parents, zoneId: m.zoneId });
+      void useDaycareStore.getState().refresh();
+      return;
     case 'realWeather':
       // weather from real life: the player's city's weather (the world shows it; null: back to the zone's)
       useRealWeatherStore.getState().set(m.kind);

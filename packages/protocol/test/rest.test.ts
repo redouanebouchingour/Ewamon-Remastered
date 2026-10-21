@@ -54,6 +54,9 @@ import {
   FactionsRes,
   LegendsRes,
   GhostRes,
+  DaycareRes,
+  DaycareActionRes,
+  EggMoveReq,
   WeatherCitiesQuery,
   WeatherCityReq,
   SpeedrunRes,
@@ -392,7 +395,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(94); // GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(ROUTE_KEYS).toHaveLength(99); // the 5 daycare / egg routes + GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
     expect(paths).toContain('GET /daily');
     expect(paths).toContain('POST /challenge');
     expect(paths).toContain('POST /daily/start');
@@ -461,6 +464,7 @@ describe('creature history', () => {
         { kind: 'badge', at, badge: 'tidal' },
         { kind: 'champion', at },
         { kind: 'legendary', at, species: 'hyoryu', caught: true },
+        { kind: 'hatched', at, speciesId: 'dustcub', zoneId: 'mirevale', parents: ['Badlander', 'Rex'], trainer: 'ash_k' },
       ],
     });
     ok(CreatureHistoryRes, { originalTrainer: null, events: [] });
@@ -589,5 +593,21 @@ describe('ghost trainers', () => {
     ok(GhostRes, { haunting: { zoneId: 'mire_route', leftAt: ISO, party: [{ speciesId: 'bramblecub', level: 12 }] }, won: 1, lost: 0, fights: [fight] });
     ok(GhostRes, { haunting: null, won: 0, lost: 0, fights: [] });
     bad(GhostRes, { haunting: { zoneId: 'mire_route', leftAt: ISO, party: Array.from({ length: 7 }, () => ({ speciesId: 'x', level: 5 })) }, won: 0, lost: 0, fights: [] });
+  });
+});
+
+describe('breeding', () => {
+  const eggView = { id: U1, place: 'party', stepsTotal: 900, stepsWalked: 12, bandborn: true, parents: ['Badlander', 'Rex'], zoneId: 'mirevale', laidAt: ISO };
+  const view = { zoneId: 'mirevale', pair: [creature(), creature({ id: U2 })], refusal: null, hatches: 'dustcub', bandborn: true, eggAt: ISO, eggReady: false, eggs: [eggView], carryMax: 3, eggMax: 12 };
+  it('the Daycare: at most two left, a refusal or what hatches, the eggs', () => {
+    ok(DaycareRes, view);
+    ok(DaycareRes, { ...view, pair: [], refusal: null, hatches: null, bandborn: false, eggAt: null, eggs: [] });
+    ok(DaycareRes, { ...view, refusal: 'legendary', hatches: null, eggAt: null });
+    bad(DaycareRes, { ...view, pair: [creature(), creature(), creature()] });
+    bad(DaycareRes, { ...view, refusal: 'shy' });
+    bad(DaycareRes, { ...view, eggs: [{ ...eggView, place: 'pocket' }] });
+    ok(DaycareActionRes, { daycare: view, party: [creature()], box: [] });
+    ok(EggMoveReq, { place: 'box' });
+    bad(EggMoveReq, { place: 'daycare' });
   });
 });

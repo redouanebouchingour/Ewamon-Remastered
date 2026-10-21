@@ -1177,3 +1177,14 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   records the fight for the owner at the end.
 - Env `ROAMING_ENCOUNTERS` (default 'on', testEnv 'off') gates both the ghost and the roamer encounters in
   `wildStep`, so the grass tests keep meeting only the zone's table (the roamer had no such gate in its own commit).
+
+## Breeding (2026-10-21)
+
+- `rest/routes/daycare.ts`: leave / take back / collect need the player's presence in Mirevale (like the healer's
+  zone check); `GET /daycare` and moving an egg work anywhere. One egg waits at a time: `daycare.egg_at` is reset on
+  collect, cleared when the pair breaks.
+- `rooms/eggWalk.ts`: the room counts accepted movement (metres) for carried eggs in memory, writes it every 20 m and
+  on leaving the room, and hatches in its own transaction. Up to 20 m can be lost on a crash. No env flag: players
+  without eggs see nothing change (one map lookup per move), and nothing in encounters or battles changes.
+- Challenge runs: no deposit, no egg, no steps while a run is active; `failIfNothingLeft` counts Daycare creatures as
+  still the player's.

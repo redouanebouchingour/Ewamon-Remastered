@@ -27,12 +27,13 @@ export function refuseFallen(c: { readonly ribbons: readonly string[] }): void {
 }
 
 /**
- * The end of a run that has nothing left: when every party and box creature has fallen, the run fails and the fallen
+ * The end of a run that has nothing left: when every party, box and Daycare creature has fallen, the run fails and the fallen
  * keep a memorial ribbon instead (no rule reads it), so the account plays on as normal. Returns the creatures it
  * rewrote (empty when the run goes on). The caller sets `CHALLENGE_FAILED_FLAG`.
  */
 export async function failIfNothingLeft(tx: Tx, repos: Repos & { readonly db: Db }, playerId: string): Promise<CreatureInstance[] | null> {
-  const mine = (await repos.creatures.byOwner(tx, playerId)).filter((r) => r.slotKind === 'party' || r.slotKind === 'box');
+  // breeding: a creature left at the Daycare is still the player's (it comes back with `POST /daycare/take`)
+  const mine = (await repos.creatures.byOwner(tx, playerId)).filter((r) => r.slotKind === 'party' || r.slotKind === 'box' || r.slotKind === 'daycare');
   if (mine.length === 0 || !mine.every((r) => isFallen(r))) return null;
   const out: CreatureInstance[] = [];
   for (const r of mine) {

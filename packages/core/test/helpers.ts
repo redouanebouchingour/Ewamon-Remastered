@@ -38,6 +38,7 @@ export interface CreatureSpec {
   readonly exp?: number;
   readonly pp?: number; // override pp on every move
   readonly honor?: number; // the honor ledger (absent = no field)
+  readonly bandborn?: true; // breeding: hatched from a Majin and a Tenjin parent (absent = no field)
 }
 
 let nextId = 1;
@@ -68,6 +69,7 @@ export function creature(spec: CreatureSpec, c: LegacyContent = content): Creatu
     isAlpha: spec.isAlpha ?? false,
     caughtAt: null,
     ...(spec.honor !== undefined ? { honor: spec.honor } : {}),
+    ...(spec.bandborn === true ? { bandborn: true as const } : {}),
     ribbons: [],
     favorite: false,
     locked: false,

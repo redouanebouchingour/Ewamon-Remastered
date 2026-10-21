@@ -3,7 +3,7 @@
  * from. Every stat path (projection, level-up, the damage formula, the confusion self-hit) reads them through here, so a
  * battler without a form — every battler of every species without one — computes exactly what it did before.
  */
-import type { ActionError, BattleFormDef, Battler, Side, SpeciesDef, TypeName } from './types';
+import type { ActionError, BandKind, BattleFormDef, Battler, Side, SpeciesDef, TypeName } from './types';
 
 /** The species' battle form when the battler has changed into it this battle, else null. */
 export function activeForm(sp: SpeciesDef, b: { readonly form?: string }): BattleFormDef | null {
@@ -47,7 +47,20 @@ export function formLineMet(f: BattleFormDef, b: { readonly creature: { readonly
 export function transformError(s: Side, b: Battler, sp: SpeciesDef): ActionError | null {
   const f = sp.battleForm;
   if (f === undefined || f.kind === undefined) return 'cannotTransform';
-  if (s.bands === undefined || !s.bands.includes(f.kind)) return 'cannotTransform';
   if (s.transformed === true || b.form !== undefined || b.creature.hp <= 0) return 'cannotTransform';
-  return formLineMet(f, b) ? null : 'cannotTransform';
+  const bands = s.bands ?? [];
+  if (bands.includes(f.kind) && formLineMet(f, b)) return null;
+  // a bandborn (hatched from a Majin and a Tenjin parent) also answers the other band, at that band's line
+  if (b.creature.bandborn === true) {
+    const other: BandKind = f.kind === 'majin' ? 'tenjin' : 'majin';
+    if (bands.includes(other) && formLineMet({ ...f, kind: other }, b)) return null;
+  }
+  return 'cannotTransform';
+}
+
+/** The bands that can transform battler `b` (species `sp`): its form's band, and for a bandborn the other band too. */
+export function bandsFor(sp: SpeciesDef, b: { readonly creature: { readonly bandborn?: true } }): readonly BandKind[] {
+  const k = sp.battleForm?.kind;
+  if (k === undefined) return [];
+  return b.creature.bandborn === true ? [k, k === 'majin' ? 'tenjin' : 'majin'] : [k];
 }
