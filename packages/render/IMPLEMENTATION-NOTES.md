@@ -2294,3 +2294,12 @@ pool; `Part3.worldFx`).
 - Heat haze samples `beautyT` at an offset uv instead of reading it in place; GTAO, TRAA and the rest take that as their
   input. The offset is multiplied by `1 − mask.y` so the sharp player never wobbles. Velocity and depth stay
   unshifted (the shimmer is ≈ 2 px, below anything TRAA reprojects visibly).
+
+## World effects: water that lives (2026-10-21)
+
+- Foam and caustics come from the water mesh's `depthBelow`, never from a depth-buffer read (§10.5.6 keeps the water
+  graph free of one). The first pass read wrong live on Tide Route: a solid white strip along the shore (0.45 m band on
+  a gentle beach is metres wide) and a caustic web over the whole shallow sea; the shipped values are a 0.28 m band
+  that breaks into a lip and washing lines, and caustics at 0.16 gain over 1.8 m.
+- `GroundSource.surfaceY` (the collider's water level) places the fish on the surface; `FishShadows` picks loop centres
+  with its own seeded mulberry32 and tests the whole loop for open water.

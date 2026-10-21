@@ -36,14 +36,17 @@ export interface SurfaceExtras {
   readonly albedoCal?: number;
   /** World effects (§10.7.8): walkers push this card aside (the tall grass card: tall grass, tufts, clumps). */
   readonly pushable?: boolean;
+  /** World effects (§10.7.8), water only: shore foam and caustics strengths 0..1 (default 0.6 each). */
+  readonly foam?: number;
+  readonly caustics?: number;
 }
 
 export const SURFACE_EXTRAS: Readonly<Partial<Record<SurfaceId, SurfaceExtras>>> = Object.freeze({
-  water_pond: { transmission: 0.6 },
-  sea_water: { transmission: 0.7 },
-  tide_pool: { transmission: 0.6 },
-  bog_water: { transmission: 0.4 },
-  fountain_water: { transmission: 0.6 },
+  water_pond: { transmission: 0.6, foam: 0.55, caustics: 0.7 },
+  sea_water: { transmission: 0.7, foam: 1, caustics: 0.8 },
+  tide_pool: { transmission: 0.6, foam: 0.8, caustics: 1 },
+  bog_water: { transmission: 0.4, foam: 0.15, caustics: 0 },
+  fountain_water: { transmission: 0.6, foam: 0.35, caustics: 0.6 },
   unmade_stone: { alwaysHarvested: true },
   stained_glass: { emissiveFromAlbedo: true },
   // M3 review fixes (R-cinderhold-3): the lava glows through its crust cracks (the albedo's orange veins), not as one flat disc

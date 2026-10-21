@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-21 water that lives: shore foam, caustics, fish and a surf wake. One entry. -->
+
+## 2026-10-21 · `10-render.md` §10.7.8 (Water that lives, `SurfaceExtras.foam` / `.caustics`; Fish; Surf wake) · water that lives
+Why: the user asked for more life in the water: shoreline foam, caustics in shallow water, fish shadows, and a bow wave while surfing on top of the existing ripple. The water was a still tinted plane. Now the bank breaks into foam, light nets play over the shallow beds, a few fish swim loops near the camera, and a surfer throws foam off the bow and leaves rings behind, all from the data the water already carries.
+Evidence: `packages/render/test/world-fx.test.ts` (2 new: fish only on open water near the focus and gone without water; a surfer leaves a wake and no footsteps); `npx vitest run packages/render packages/client`; live in the render sandbox (two surfers off the Tide Route shore at 11:00).
+Affects: `packages/render/src/{materials/waterLife,materials/graph,materials/surfaces,worldfx/fish,worldfx/footsteps,worldfx/ground,worldfx/index}.ts`.
+
 <!-- 2026-10-21 weather on the ground: puddles, mud, a rime under hail, a heat haze over the lava. One entry. -->
 
 ## 2026-10-21 · `10-render.md` §10.7.8 (Weather on the ground, `SharedUniforms.frost`; Heat haze, `PostUniforms.haze` / `hazeTime`) · weather that changes the ground

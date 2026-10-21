@@ -47,6 +47,8 @@ export interface GroundSource {
   water(x: number, z: number): boolean;
   /** open water (a surfer) at (x, z) */
   onWater(x: number, z: number): boolean;
+  /** the water's surface height at (x, z) where `onWater` (else the ground's) */
+  surfaceY(x: number, z: number): number;
 }
 
 const _s: SplatFields = { plaza: 0, path: 0, detail: 0 };

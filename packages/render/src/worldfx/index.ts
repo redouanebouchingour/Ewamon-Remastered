@@ -20,6 +20,7 @@ import { classify, type GroundSource } from './ground.js';
 import { GrassPush } from './grass.js';
 import { AmbientMotes } from './ambient.js';
 import { SunShafts, shaftLevel } from './shafts.js';
+import { FishShadows } from './fish.js';
 import { setClouds } from '../materials/clouds.js';
 import { stepFrost } from '../materials/weatherSurface.js';
 import { weatherParams } from '../lighting/weather.js';
@@ -59,6 +60,7 @@ export function groundOf(z: ZoneHandle | null): GroundSource | null {
     plaza: h.palette.plaza,
     water: (x, z2) => c.water(x, z2),
     onWater: (x, z2) => c.onWater(x, z2),
+    surfaceY: (x, z2) => c.surfaceY(x, z2),
   };
 }
 
@@ -87,6 +89,7 @@ export class WorldFx {
   readonly grass: GrassPush;
   readonly ambient: AmbientMotes;
   readonly shafts: SunShafts;
+  readonly fish: FishShadows;
   private weather: WeatherKind = 'none';
   private biome: Biome | null = null;
   private hazeNow = 0;
@@ -101,7 +104,8 @@ export class WorldFx {
     this.grass = new GrassPush(d.push);
     this.ambient = new AmbientMotes(this.particles.light);
     this.shafts = new SunShafts();
-    this.root.add(this.particles.object, this.prints.mesh, this.ambient.object, this.shafts.mesh);
+    this.fish = new FishShadows(this.particles.clock, d.harvestLevel);
+    this.root.add(this.particles.object, this.prints.mesh, this.ambient.object, this.shafts.mesh, this.fish.mesh);
   }
 
   /** The loaded zone (null while none is): the footsteps' ground, a clean slate of particles and prints. */
@@ -111,6 +115,7 @@ export class WorldFx {
     this.steps.setGround(this.ground, h?.spec?.biome === 'cinder');
     this.biome = h?.spec?.biome ?? null;
     this.ambient.setBiome(this.biome);
+    this.fish.setWater(this.ground);
     this.particles.clear();
     this.prints.clear();
     this.grass.clear();
@@ -126,6 +131,7 @@ export class WorldFx {
     this.grass.update(dtScaledMs / 1000, this.d.walkers, focus);
     const daylight = this.d.daylight();
     this.ambient.update(dtScaledMs, focus, daylight, this.d.camera);
+    this.fish.update(dtScaledMs / 1000, focus, daylight);
     // cloud shadows by day, in the weather's coverage; shafts in the golden hours, thinned by cloud
     const w = weatherParams(this.weather);
     const clear = CLOUD_SHADE[this.weather];
@@ -187,7 +193,8 @@ export class WorldFx {
     const motes = new Sprite(this.ambient.material);
     motes.count = 1;
     const shafts = new Mesh(this.shafts.mesh.geometry, this.shafts.material);
-    return [fx, print, motes, shafts];
+    const fish = new InstancedMesh(this.fish.mesh.geometry, this.fish.material, 1);
+    return [fx, print, motes, shafts, fish];
   }
 
   dispose(): void {
@@ -197,6 +204,7 @@ export class WorldFx {
     this.prints.dispose();
     this.ambient.dispose();
     this.shafts.dispose();
+    this.fish.dispose();
     this.root.removeFromParent();
   }
 }

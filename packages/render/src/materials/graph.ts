@@ -36,6 +36,7 @@ import {
 import { harvestBlend, type SharedUniforms } from './harvest.js';
 import { cloudShade } from './clouds.js';
 import { WEATHER_SURFACE, weatherSurface } from './weatherSurface.js';
+import { waterLife } from './waterLife.js';
 import { occlusionKeep } from './occlusion.js';
 import type { SurfaceDef, SurfaceExtras } from './surfaces.js';
 import { triplanarSample } from './triplanar.js';
@@ -72,6 +73,9 @@ export interface SurfaceParams {
   /** Cards always carry wind (amplitude 0 when the def has none); standard surfaces only when the def has trunk wind. */
   readonly wind: WindParams | null;
   readonly transmission: UniformNode<'float', number> | null;
+  /** §10.7.8 water life (water graph only): shore foam and caustics strengths (`SurfaceExtras.foam` / `.caustics`) */
+  readonly foam: UniformNode<'float', number> | null;
+  readonly caustics: UniformNode<'float', number> | null;
   /** Card back-face multiplier; (1,1,1) = no tint. */
   readonly backTint: UniformNode<'vec3', Vector3>;
   /**
@@ -148,6 +152,8 @@ export function createSurfaceParams(def: SurfaceDef, extras: SurfaceExtras): Sur
     clearcoat: { base: uniform(cc.base), wet: uniform(cc.wet), roughness: uniform(cc.roughness) },
     wind,
     transmission: s.kind === 'water' ? uniform(extras.transmission ?? 0.6) : null,
+    foam: s.kind === 'water' ? uniform(extras.foam ?? 0.6) : null,
+    caustics: s.kind === 'water' ? uniform(extras.caustics ?? 0.6) : null,
     backTint: uniform(extras.backfaceTint && def.doubleSide ? linearRgb(extras.backfaceTint).multiplyScalar(2.2) : new Vector3(1, 1, 1)),
     tone: uniform(new Vector4(1, 1, 1, 0)),
   };
@@ -258,13 +264,16 @@ function buildWaterGraph(def: SurfaceDef, maps: SurfaceMaps, p: SurfaceParams, u
   const base = alb.rgb.mul(p.albedoScale).add(p.albedoBias);
   const depth = attribute(WATER_DEPTH_ATTRIBUTE, 'float') as Node<'float'>;
   const tint = mix(base.mul(1.35), base.mul(0.55), depth.div(2.5).saturate());
-  m.colorNode = vec4(mix(tint, vertexColor().rgb, h).mul(cloudShade(u, h)), 1);
-  m.normalNode = mix(tangentNormal(nrm, float(0.35)), normalView, h).normalize();
-  m.roughnessNode = mix(p.roughBias, float(0.95), h);   // §10.5.6 roughness 0.05 (the def value)
+  // §10.7.8 water life: foam at the bank, caustics over the shallow bed
+  const life = waterLife(depth, t, p.foam ?? uniform(0), p.caustics ?? uniform(0), h);
+  const water = mix(tint, vertexColor().rgb, h).add(life.caustics);
+  m.colorNode = vec4(mix(water, life.foamColor, life.foam).mul(cloudShade(u, h)), 1);
+  m.normalNode = mix(mix(tangentNormal(nrm, float(0.35)), normalView, h), normalView, life.foam).normalize();
+  m.roughnessNode = mix(mix(p.roughBias, float(0.95), h), float(0.7), life.foam);   // §10.5.6 roughness 0.05 (the def value); foam is matte
   m.metalnessNode = float(0);
   const tr = p.transmission ?? uniform(0.6);
   m.transmission = tr.value;                            // > 0 enables the transmission path at build time
-  m.transmissionNode = tr.mul(oneMinus(h));
+  m.transmissionNode = tr.mul(oneMinus(h)).mul(oneMinus(life.foam));
   m.ior = 1.333;
   m.side = def.doubleSide ? DoubleSide : FrontSide;
   m.transparent = false;

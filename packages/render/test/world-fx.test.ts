@@ -16,6 +16,7 @@ import { FootprintDecals, PRINT_SLOTS } from '../src/worldfx/prints.js';
 import { GRASS_PUSH, GrassPush, rustleStrength, springStrength } from '../src/worldfx/grass.js';
 import { surfaceExtras } from '../src/materials/surfaces.js';
 import { SHAFTS, shaftLevel } from '../src/worldfx/shafts.js';
+import { FISH, FishShadows } from '../src/worldfx/fish.js';
 import { CLOUD_STRENGTH, HAZE_UV, WorldFx, hazeLevel } from '../src/worldfx/index.js';
 import { FROST_FALL_S, FROST_RISE_S, stepFrost } from '../src/materials/weatherSurface.js';
 import { applyReducedEffects } from '../src/post/effects.js';
@@ -31,7 +32,7 @@ function groundFor(id: ZoneId): { g: GroundSource; c: TerrainCollider; half: num
   const g: GroundSource = {
     splat: createSplatContext(layoutOf(spec), spec.buildings, spec.seed, spec.interiors),
     layers: pal.terrainLayers, plaza: pal.plaza,
-    water: (x, z) => c.water(x, z), onWater: (x, z) => c.onWater(x, z),
+    water: (x, z) => c.water(x, z), onWater: (x, z) => c.onWater(x, z), surfaceY: (x, z) => c.surfaceY(x, z),
   };
   return { g, c, half: spec.size.w / 2 };
 }
@@ -304,5 +305,47 @@ describe('weather on the ground', () => {
     effects = applyReducedEffects(ALL_EFFECTS);
     for (let i = 0; i < 150; i++) w.update(100);
     expect(haze.amount.value).toBeLessThan(HAZE_UV * 0.01);
+  });
+});
+
+describe('water that lives', () => {
+  /** an open-water point on Tide Route with a 4 m disc of water round it */
+  function sea(c: TerrainCollider): { x: number; z: number } {
+    for (let x = -96; x < 96; x += 2) for (let z = -96; z < 96; z += 2) {
+      let ok = true;
+      for (let a = 0; a < 8 && ok; a++) ok = c.onWater(x + Math.cos(a) * 4, z + Math.sin(a) * 4);
+      if (ok && c.onWater(x, z)) return { x, z };
+    }
+    throw new Error('no sea');
+  }
+
+  it('fish swim only on open water near the focus, and leave when the water does', () => {
+    const { g, c } = groundFor('tide_route');
+    const at = sea(c);
+    const f = new FishShadows(uniform(0), uniform(0));
+    f.setWater(g);
+    for (let i = 0; i < 60; i++) f.update(1 / 30, new Vector3(at.x, 0, at.z), 1);
+    expect(f.swimming).toBeGreaterThan(0);
+    expect(f.mesh.count).toBe(FISH.count);
+    f.setWater(null);
+    expect(f.swimming).toBe(0);
+    const dry = new FishShadows(uniform(0), uniform(0));
+    dry.setWater({ onWater: () => false, surfaceY: () => 0 });
+    for (let i = 0; i < 30; i++) dry.update(1 / 30, new Vector3(), 1);
+    expect(dry.swimming).toBe(0);
+  });
+
+  it('a surfer leaves a wake (foam off the bow, rings behind), not footsteps', () => {
+    const { g, c } = groundFor('tide_route');
+    const at = sea(c);
+    const p = new WorldParticles();
+    const prints = new FootprintDecals(p.clock, uniform(0));
+    const steps = new Footsteps(p, prints);
+    steps.setGround(g);
+    const feet = new Vector3(at.x, 0, at.z);
+    for (let i = 0; i < 60; i++) steps.update(1 / 30, walker(feet, 2), feet, 0);
+    expect(steps.steps).toBe(0);
+    expect(prints.count).toBe(0);
+    expect(p.count).toBeGreaterThan(0);
   });
 });

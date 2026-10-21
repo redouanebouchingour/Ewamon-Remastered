@@ -20,6 +20,8 @@ export const STEPS = Object.freeze({
   rangeM: 30,
   /** above this speed (m/s; running is 4.2, the bike faster) a trail puff every `trailEveryM` between strides */
   trailMps: 5.2, trailEveryM: 0.45,
+  /** surfing: foam off both sides of the bow every `wakeEveryM`, a ring every `wakeRingM`, from `wakeMps` */
+  wakeMps: 0.6, wakeEveryM: 0.32, wakeRingM: 1.1, bowM: 0.4, beamM: 0.3,
   slots: 48,
 });
 
@@ -82,6 +84,7 @@ export class Footsteps {
     const dx = feet.x - _focus.x; const dz = feet.z - _focus.z;
     if (dx * dx + dz * dz > STEPS.rangeM * STEPS.rangeM || !(speed > STEPS.minMps)) { this.covered[slot] = 0; return; }
     const d = speed * this.dt;
+    if (this.ground!.onWater(feet.x, feet.z)) { this.wake(slot, feet, speed, yaw, d); return; }
     const stride = strideFor(speed);
     this.covered[slot] = this.covered[slot]! + d;
     if (speed > STEPS.trailMps) {
@@ -93,6 +96,27 @@ export class Footsteps {
     this.left[slot] = this.left[slot] === 1 ? 0 : 1;
     this.land(slot, feet, normal, speed, yaw, false);
   };
+
+  /** A surfer: foam thrown off both sides of the bow, a ring now and then behind. */
+  private wake(slot: number, feet: Vector3, speed: number, yaw: number, d: number): void {
+    if (speed < STEPS.wakeMps) return;
+    this.trail[slot] = this.trail[slot]! + d;
+    this.covered[slot] = this.covered[slot]! + d;
+    const fx = Math.sin(yaw); const fz = Math.cos(yaw);
+    const rx = fz; const rz = -fx;
+    const p = this.particles; const W = WORLD_BURSTS;
+    if (this.trail[slot]! >= STEPS.wakeEveryM) {
+      this.trail[slot] = 0;
+      const bx = feet.x + fx * STEPS.bowM; const bz = feet.z + fz * STEPS.bowM;
+      const s = Math.min(1.6, 0.6 + speed / 4);
+      p.emit(W.wake, bx + rx * STEPS.beamM, feet.y, bz + rz * STEPS.beamM, rx - fx * 0.5, rz - fz * 0.5, s);
+      p.emit(W.wake, bx - rx * STEPS.beamM, feet.y, bz - rz * STEPS.beamM, -rx - fx * 0.5, -rz - fz * 0.5, s);
+    }
+    if (this.covered[slot]! >= STEPS.wakeRingM) {
+      this.covered[slot] = 0;
+      p.emit(W.ripple, feet.x - fx * 0.6, feet.y, feet.z - fz * 0.6, 0, 0, 1);
+    }
+  }
 
   private land(slot: number, feet: Vector3, normal: Vector3, speed: number, yaw: number, trail: boolean): void {
     const g = this.ground!;
