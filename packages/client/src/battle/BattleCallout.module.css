@@ -1,0 +1,70 @@
+/* §20.5.8 the hit callout, Broadcast UI: a slanted slab in the move's type colour, a paper chip for a crit, the big
+   italic display face, uppercase. Over the arena on the hit battler's side; --tc / --tc-ink from tokens.css `[data-type]`. */
+.layer {
+  position: absolute;
+  z-index: var(--z-panel);
+  pointer-events: none;
+}
+
+.foe {
+  inset-block-start: 24vh;
+  inset-inline-end: 9vw;
+}
+
+.own {
+  inset-block-start: 46vh;
+  inset-inline-start: 9vw;
+}
+
+.callout {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s-2);
+  font-family: var(--face-display);
+  font-size: var(--t-h1);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+  animation: callout 1100ms var(--ease-out) both;
+}
+
+.matchup,
+.crit {
+  padding: var(--s-3) var(--s-6) var(--s-3) var(--s-5);
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+
+.matchup {
+  background: var(--tc, var(--accent));
+  color: var(--tc-ink, var(--text-hi));
+}
+
+/* a weak hit drops the type colour for carbon: the matchup went the other way */
+.resist,
+.immune {
+  background: var(--bg-0);
+  color: var(--text-2);
+}
+
+.crit {
+  background: var(--text-hi);
+  color: var(--bg-0);
+}
+
+@keyframes callout {
+  0% { opacity: 0; transform: translateX(-28px) skewX(-8deg); }
+  14% { opacity: 1; transform: none; }
+  80% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateX(16px); }
+}
+
+.reduced .callout {
+  animation-name: callout-still;
+}
+
+@keyframes callout-still {
+  0% { opacity: 0; }
+  10%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+}

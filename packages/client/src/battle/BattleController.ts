@@ -45,7 +45,7 @@
  * Store writes happen at message time or are deferred off the tick (setTimeout 0) — never from inside World3D.tick.
  */
 import { digestBattleState, formTypes, requiredPositions, resolveTurn, validateAction, validateSideChoice } from '@ewa/core';
-import type { Action, BandKind, BattleEvent, BattleState, ContentIndex, CreatureInstance, Ref, StatusId } from '@ewa/core';
+import type { Action, BandKind, BattleEvent, BattleState, ContentIndex, CreatureInstance, Ref, StatusId, TypeName } from '@ewa/core';
 import type { ClientMessageType, ClientPayload, RewardsSummary, ServerMessageOf } from '@ewa/protocol';
 import { OPEN_MENU, useUiStore } from '../state/ui';
 import { useSessionStore } from '../state/session';
@@ -460,6 +460,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
   /** `side:slot:move` of every signature move a battler used this battle: a later use plays the short cinematic */
   const sigUsed = new Set<string>();
   let cinematicId = 0;
+  let calloutId = 0;
   const projected = new Float32Array(4);
   const pointOf = (ref: StageRef | null): CinematicPoint | null => {
     if (ref === null || view?.project?.(ref, projected) !== true) return null;
@@ -704,6 +705,11 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     },
     log: (text, tone) => {
       if (pendingLog.length < 64) pendingLog.push({ text, tone }); // alloc-ok: ≤ 1 small record per log frame
+    },
+    callout: (who, kinds, type) => {
+      // §20.5.8: deferred off the World3D tick like the banners; a replay and a spectator see it too
+      const c = { id: ++calloutId, foe: who.side !== seat, kinds, type: type as TypeName, reduced: deps.reduced() }; // alloc-ok: one record per callout frame
+      defer(() => ui().setBattleCallout(c));
     },
     inputLock: () => undefined,
     cinematic: (phase, move, from, to, mode) => {
@@ -1356,6 +1362,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     raid = null;
     if (ui().battleIntro !== null) ui().setBattleIntro(null);
     if (ui().encounterFx !== null) ui().setEncounterFx(null);
+    if (ui().battleCallout !== null) ui().setBattleCallout(null);
     if (ui().battleBanner !== null || ui().battleBannerQueue.length > 0) ui().clearBattleBanners();
     if (ui().battle !== null) ui().setBattle(null);
   }

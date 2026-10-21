@@ -2303,3 +2303,10 @@ pool; `Part3.worldFx`).
   that breaks into a lip and washing lines, and caustics at 0.16 gain over 1.8 m.
 - `GroundSource.surfaceY` (the collider's water level) places the fish on the surface; `FishShadows` picks loop centres
   with its own seeded mulberry32 and tests the whole loop for open water.
+
+## Hit weight: the hurt pose and the ghost of lost HP (2026-10-21)
+
+- `POSES.hurt` gained a squash and a rebound and a firmer knockback (260 ms); `sprites.test.ts` follows the new keys.
+- The HUD's ghost shares the HP tween's repaint clock, so it adds no faster cadence; `hud.test.ts`'s 30 Hz check now
+  spans the tween and the drain. The ghost only draws above the target value: a heal tweens the fill up with no ghost
+  ahead of it (caught by `hud-ghost.test.ts`).

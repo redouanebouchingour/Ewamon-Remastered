@@ -86,6 +86,8 @@ export const HUD = Object.freeze({
   turnBandTop: 120, turnBandH: 34, turnBandW: 320,
 
   hpTweenMs: 500, hpRepaintMs: 1000 / 30,
+  /** §10.7.8 the ghost of lost HP: held this long after a hit, then drained to the new value over `ghostDrainMs` */
+  ghostHoldMs: 420, ghostDrainMs: 600,
   promptW: 520, promptH: 46, promptBottom: 132,
   topRightW: 440,
   scaleMin: 0.9, scaleMax: 1.4,
@@ -107,6 +109,8 @@ const FOG = '#a3a3ad';
 const ACCENT = '#ff5b1f';
 const ON_ACCENT = BLACK;
 const HP_HI = PAPER; const HP_MID = '#ffb020'; const HP_LO = '#ff4b3e';
+/** the ghost of lost HP: paper over the track, so the chunk a hit took reads before it drains away */
+const HP_GHOST = 'rgba(245, 243, 238, 0.42)';
 /** The glyph outline (Pillar 8). */
 const INK = 'rgba(8, 10, 14, 0.92)';
 /** The 12° slant of every cut edge and skewed bar. */
@@ -247,6 +251,11 @@ export class CanvasHudLayer implements HudLayer {
   private readonly hpTo = new Float64Array(16);
   private hpBars = 0;
   private hpTweenLeft = 0;
+  /** the ghost of lost HP per bar (≥ the shown value; equal = no ghost), its value at the hit, and the shared timers */
+  private readonly hpGhost = new Float64Array(16);
+  private readonly hpGhostFrom = new Float64Array(16);
+  private ghostHoldLeft = 0;
+  private ghostDrainLeft = 0;
   private hpNextRepaint = 0;
   // draw-time string caches (uppercase names / labels, thumb initials, the fitted quest hint)
   private readonly upper = new Map<string, string>();
@@ -432,6 +441,15 @@ export class CanvasHudLayer implements HudLayer {
       for (let i = 0; i < this.hpBars; i++) this.hpShown[i] = this.hpFrom[i]! + (this.hpTo[i]! - this.hpFrom[i]!) * e;
       if (this.clockMs >= this.hpNextRepaint || this.hpTweenLeft === 0) { this.markDirty('battle'); this.hpNextRepaint = this.clockMs + HUD.hpRepaintMs; }
     }
+    // the ghost: held, then drained to the target at 30 Hz
+    if (this.ghostHoldLeft > 0) this.ghostHoldLeft = Math.max(0, this.ghostHoldLeft - dt);
+    else if (this.ghostDrainLeft > 0) {
+      this.ghostDrainLeft = Math.max(0, this.ghostDrainLeft - dt);
+      const k = 1 - this.ghostDrainLeft / HUD.ghostDrainMs;
+      const e = k * k;
+      for (let i = 0; i < this.hpBars; i++) this.hpGhost[i] = Math.max(this.hpTo[i]!, this.hpGhostFrom[i]! + (this.hpTo[i]! - this.hpGhostFrom[i]!) * e);
+      if (this.clockMs >= this.hpNextRepaint || this.ghostDrainLeft === 0) { this.markDirty('battle'); this.hpNextRepaint = this.clockMs + HUD.hpRepaintMs; }
+    }
     const a = this.anchors;
     if (a === null) return;
     // nameplates: re-mark when an anchor moved ≥ 1 px (or appeared / vanished)
@@ -498,20 +516,27 @@ export class CanvasHudLayer implements HudLayer {
   private trackHp(b: HudModel['battle']): void {
     const prevBars = this.model.battle?.bars ?? [];
     const shown = Array.from(this.hpShown.subarray(0, this.hpBars));
-    if (b === null) { this.hpBars = 0; this.hpTweenLeft = 0; return; }
-    let changed = false;
+    const ghost = Array.from(this.hpGhost.subarray(0, this.hpBars));
+    if (b === null) { this.hpBars = 0; this.hpTweenLeft = 0; this.ghostHoldLeft = 0; this.ghostDrainLeft = 0; return; }
+    let changed = false; let lost = false;
     const n = Math.min(16, b.bars.length);
     for (let i = 0; i < n; i++) {
       const bar = b.bars[i]!;
       const j = prevBars.findIndex((p) => p.who.side === bar.who.side && p.who.slot === bar.who.slot);
-      if (j < 0 || j >= shown.length) { this.hpShown[i] = bar.hp; this.hpFrom[i] = bar.hp; this.hpTo[i] = bar.hp; continue; }
+      if (j < 0 || j >= shown.length) { this.hpShown[i] = bar.hp; this.hpFrom[i] = bar.hp; this.hpTo[i] = bar.hp; this.hpGhost[i] = bar.hp; this.hpGhostFrom[i] = bar.hp; continue; }
       this.hpShown[i] = shown[j]!;
       this.hpFrom[i] = shown[j]!;
       this.hpTo[i] = bar.hp;
+      // a loss keeps a ghost at the higher of the old ghost and the shown value; a heal leaves none
+      const g = Math.max(ghost[j]!, shown[j]!);
+      this.hpGhost[i] = bar.hp < shown[j]! ? g : bar.hp;
+      this.hpGhostFrom[i] = this.hpGhost[i]!;
       if (prevBars[j]!.hp !== bar.hp) changed = true;
+      if (bar.hp < shown[j]!) lost = true;
     }
     this.hpBars = n;
     if (changed) this.hpTweenLeft = HUD.hpTweenMs;
+    if (lost) { this.ghostHoldLeft = HUD.ghostHoldMs; this.ghostDrainLeft = HUD.ghostDrainMs; }
   }
 
   private s(): number { return this.pr * this.ui; }
@@ -822,10 +847,13 @@ export class CanvasHudLayer implements HudLayer {
   }
 
   /** Skewed HP bar: a flat fill on the bg-3 track; paper above 50 %, amber above 20 %, red below. */
-  private hpBar(x: number, y: number, w: number, h: number, frac: number): void {
+  private hpBar(x: number, y: number, w: number, h: number, frac: number, ghostFrac = frac): void {
     const f = Math.min(1, Math.max(0, Number.isFinite(frac) ? frac : 0));
     const k = h * TAN12; const iw = w - k;
     this.quad4(x + k, y, x + w, y, x + iw, y + h, x, y + h, TRACK);
+    // §10.7.8 the ghost of the HP a hit just took, behind the fill
+    const g = Math.min(1, Math.max(f, Number.isFinite(ghostFrac) ? ghostFrac : f));
+    if (g > f + 1e-4) { const gw = iw * g; this.quad4(x + k, y, x + k + gw, y, x + gw, y + h, x, y + h, HP_GHOST); }
     if (f <= 0) return;
     const fw = iw * f;
     this.quad4(x + k, y, x + k + fw, y, x + fw, y + h, x, y + h, f > 0.5 ? HP_HI : f > 0.2 ? HP_MID : HP_LO);
@@ -1149,7 +1177,9 @@ export class CanvasHudLayer implements HudLayer {
       this.text(this.up(bar.name), l, r1, PAPER);
       // row 2: the skewed HP bar
       const shown = i < this.hpBars ? this.hpShown[i]! : bar.hp;
-      this.hpBar(l, y + 25 * s, x + w - cut * (34 / HUD.barH) - 10 * s - l, 9 * s, bar.maxHp > 0 ? shown / bar.maxHp : 0);
+      // the ghost shows only above the target (a loss); a heal tweens the fill up with none ahead of it
+      const ghost = i < this.hpBars && this.hpGhost[i]! > this.hpTo[i]! ? Math.max(shown, this.hpGhost[i]!) : shown;
+      this.hpBar(l, y + 25 * s, x + w - cut * (34 / HUD.barH) - 10 * s - l, 9 * s, bar.maxHp > 0 ? shown / bar.maxHp : 0, bar.maxHp > 0 ? ghost / bar.maxHp : 0);
       // row 3: numbers on the right (own side), badges · status · stages on the left
       const r3 = y + 43 * s; const right3 = x + w - cut * (43 / HUD.barH) - 10 * s;
       let numL = right3;

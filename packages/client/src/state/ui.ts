@@ -7,6 +7,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import type { Action, BattleFormat, BattleOutcome, BattleState, TypeName } from '@ewa/core';
 import type { RewardsSummary, ServerMessageOf, TradeOffer } from '@ewa/protocol';
 import type { EncounterFx } from '../battle/encounter';
+import type { CalloutKind } from '../battle/timeline';
 
 /** `battleEnd` for the result card: display only (the rewards reached the session through the delta writers). */
 export interface BattleResult {
@@ -122,6 +123,18 @@ export interface BattleIntro {
   readonly league: boolean;
 }
 
+/** §20.5.8 the hit callout on screen (BattleCallout clears it when its time is up; a new hit replaces it). */
+export interface BattleCallout {
+  readonly id: number;
+  /** the hit landed on the viewer's opponent (the callout stands on the far side) */
+  readonly foe: boolean;
+  readonly kinds: readonly CalloutKind[];
+  /** the move's type: the slab's colour */
+  readonly type: TypeName;
+  /** effective reduced motion: no slide */
+  readonly reduced: boolean;
+}
+
 /** Phase B7: a league trainer's mid-battle line (`LeagueTrainer.mid`), a transient banner (BattleBanner, 3 s). */
 export interface BattleBanner {
   readonly id: number;
@@ -188,6 +201,8 @@ export interface UiState {
   readonly battleIntro: BattleIntro | null;
   /** the encounter transition over the push-in (§20.5.7): written at a fresh `battleStart`, cleared by the wipe */
   readonly encounterFx: EncounterFx | null;
+  /** §20.5.8 the hit callout on screen */
+  readonly battleCallout: BattleCallout | null;
   /** the banner on screen; the next ones wait in `battleBannerQueue` */
   readonly battleBanner: BattleBanner | null;
   readonly battleBannerQueue: readonly BattleBanner[];
@@ -210,6 +225,7 @@ export interface UiState {
   setEvolution(e: EvolutionUi | null): void;
   setBattleIntro(i: BattleIntro | null): void;
   setEncounterFx(e: EncounterFx | null): void;
+  setBattleCallout(c: BattleCallout | null): void;
   /** shows `b` now, or after the banner on screen */
   pushBattleBanner(b: BattleBanner): void;
   /** the banner `id` is done (its 3 s are up): the next queued one, if any, takes its place */
@@ -238,6 +254,7 @@ const INITIAL = {
   evolution: null,
   battleIntro: null,
   encounterFx: null,
+  battleCallout: null,
   battleBanner: null,
   battleBannerQueue: [] as readonly BattleBanner[],
   tower: null,
@@ -272,6 +289,7 @@ export const useUiStore = create<UiState>()(
     setEvolution: (evolution) => set({ evolution }),
     setBattleIntro: (battleIntro) => set({ battleIntro }),
     setEncounterFx: (encounterFx) => set({ encounterFx }),
+    setBattleCallout: (battleCallout) => set({ battleCallout }),
     pushBattleBanner: (b) => {
       const st = get();
       if (st.battleBanner === null) set({ battleBanner: b });

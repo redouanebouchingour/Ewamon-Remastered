@@ -2184,3 +2184,10 @@ resync, not for a replay) and cleared by `reset`.
 - The egg is drawn in CSS (`ui/Egg.tsx`), not a sprite: no atlas entry. The hatch reveal is a DOM overlay over the
   world (never over a battle) and plays the existing `ui_evolve_start` / `ui_evolve_done` cues through the running
   world's audio director when there is one.
+
+## The hit callout (2026-10-21)
+
+SPEC §20.5.8. A `callout` keyframe at the impact (`calloutsOf`), `TimelineTargets.callout?` (optional: recorders skip it),
+`ui.battleCallout`, `battle/BattleCallout.tsx` (+ module css) in `BattleOverlay`. The committed timeline timing snapshot
+gained one `callout` line per crit / super-effective hit in the fixture; the durations are unchanged. Checked live on
+the second isolated client (the component over the landing page: the foe and own placements).

@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-21 hit weight: a firmer hurt pose, the ghost of lost HP, and a callout for crits and matchups. One entry. -->
+
+## 2026-10-21 · `10-render.md` §10.4.6 (the `hurt` pose), §10.7.8 (Hit weight: the HUD's ghost of lost HP); `20-client.md` §20.5.8 The hit callout (new) · hits with more weight
+Why: the user asked for hits with more weight: a knockback and squash on the defender, a trailing ghost segment on the HP bar for chip damage, and a Broadcast-style lower-third for super effective and critical hits in the type's colour. A hit read mostly through the log; now the battler squashes and rebounds, the bar shows the chunk a hit took before it drains, and a crit or a matchup is called out on the hit battler's side.
+Evidence: `packages/render/test/hud-ghost.test.ts` (2: a ghost after a hit that holds and drains away, none on a heal), `sprites.test.ts` and `hud.test.ts` updated; `packages/client/test/battle-callout.test.tsx` (3: the kinds, one callout frame at the impact in full and reduced timelines, the lower-third and its clearing); the timeline timing snapshot re-recorded (+2 callout lines, durations unchanged); live (the callout on the second isolated client, the ghost in the render sandbox's battle demo).
+Affects: `packages/render/src/{sprites/tables,hud/layer}.ts`; `packages/client/src/{battle/timeline,battle/TimelinePlayer,battle/BattleController,battle/BattleCallout,battle/BattleOverlay,state/ui}.ts(x)`, `src/battle/BattleCallout.module.css`.
+
 <!-- 2026-10-21 water that lives: shore foam, caustics, fish and a surf wake. One entry. -->
 
 ## 2026-10-21 · `10-render.md` §10.7.8 (Water that lives, `SurfaceExtras.foam` / `.caustics`; Fish; Surf wake) · water that lives

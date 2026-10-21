@@ -33,6 +33,18 @@ import { leadMs as sigLead, signatureOf } from './signatures';
 export type KeyPose = 'idle' | 'windup' | 'lunge' | 'recoil' | 'hurt' | 'faint' | 'enter' | 'exit' | 'celebrate';
 export type CameraShot = 'wide' | 'attacker' | 'defender' | 'impact' | 'ko' | 'throw';
 export type LogTone = 'neutral' | 'good' | 'bad';
+/** §20.5.8 the hit callout: what made a hit land the way it did (a crit, the type matchup). */
+export type CalloutKind = 'crit' | 'super' | 'resist' | 'immune';
+
+/** The callout kinds of a move hit (empty: a plain hit, no callout). Pure. */
+export function calloutsOf(crit: boolean, effectiveness: number): CalloutKind[] {
+  const out: CalloutKind[] = [];
+  if (effectiveness >= 2) out.push('super');
+  else if (effectiveness > 0 && effectiveness < 1) out.push('resist');
+  else if (effectiveness === 0) out.push('immune');
+  if (crit) out.push('crit');
+  return out;
+}
 
 export type Keyframe =
   // `pos` (Phase D6 doubles only): on a switch-in's `enter`, the field position the battler takes
@@ -49,6 +61,8 @@ export type Keyframe =
   // a battle form: the battler's sprite becomes the form's (`<species>_<form>` in the creature manifest)
   | { readonly at: number; readonly k: 'form'; readonly who: Ref; readonly form: string }
   | { readonly at: number; readonly k: 'log'; readonly text: string; readonly tone: LogTone }
+  // §20.5.8 the hit callout over the arena (crit, super effective …), in the move's type colour
+  | { readonly at: number; readonly k: 'callout'; readonly who: Ref; readonly kinds: readonly CalloutKind[]; readonly type: TypeName }
   | { readonly at: number; readonly k: 'sfx'; readonly id: string; readonly at3d: Ref | null }
   | { readonly at: number; readonly k: 'weather'; readonly kind: string }
   | { readonly at: number; readonly k: 'orb'; readonly phase: 'throw' | 'shake' | 'catch' | 'break'; readonly n: number }
@@ -474,6 +488,9 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
               if (e.crit) push({ at: t, k: 'time', scale: CRIT_SLOWMO.scale, ms: CRIT_SLOWMO.ms });
             }
             push({ at: t, k: 'sfx', id: e.crit ? 'hit_crit' : e.effectiveness >= 2 ? 'hit_super' : e.effectiveness < 1 ? 'hit_weak' : 'hit_normal', at3d: e.target });
+            // §20.5.8: the callout lands with the impact (text, not motion: kept under reduced effects)
+            const kinds = calloutsOf(e.crit, e.effectiveness);
+            if (kinds.length > 0) push({ at: t, k: 'callout', who: e.target, kinds, type: moveDef(e.move)?.type ?? typeOf(e.source) });
             hpFrame(e.target, e.hpAfter, e.maxHp, frac);
             const parts: string[] = [];
             if (e.crit) parts.push('A critical hit!');
@@ -481,6 +498,7 @@ function build(events: readonly BattleEvent[], ctx: TimelineCtx, fSpec: number, 
             else if (e.effectiveness > 0 && e.effectiveness < 1) parts.push('It’s not very effective…');
             if (parts.length > 0) log(parts.join(' '), tone(e.target, false));
           } else {
+            push({ at: t, k: 'callout', who: e.target, kinds: ['immune'], type: moveDef(e.move)?.type ?? typeOf(e.source) });
             hpFrame(e.target, e.hpAfter, e.maxHp, 0);
             log(`It doesn’t affect ${name(e.target)}…`, tone(e.target, true));
           }

@@ -92,13 +92,16 @@ describe('§10.4.6 animation rules', () => {
     expect(h).toBe(0);
   });
 
-  it('poses: lunge +0.9 m at 40 %, windup 0.94 → 1.04, hurt −0.3 m + flash, recoil −0.25 m, enter/exit/faint dissolve, celebrate hops', () => {
+  it('poses: lunge +0.9 m at 40 %, windup 0.94 → 1.04, hurt −0.38 m squashed to 0.86 + flash, recoil −0.25 m, enter/exit/faint dissolve, celebrate hops', () => {
     expect(samplePose('lunge', 0.4, s).forward).toBeCloseTo(0.9, 9);
     expect(samplePose('lunge', 1, s).forward).toBe(0);
     expect(poseDurationMs('lunge', 0)).toBe(300);
     expect(samplePose('windup', 0.45, s).scaleY).toBeCloseTo(0.94, 9);
     expect(samplePose('windup', 0.85, s).scaleY).toBeCloseTo(1.04, 9);
-    expect(samplePose('hurt', 80 / 240, s).forward).toBeCloseTo(-0.3, 9);
+    expect(samplePose('hurt', 90 / 260, s).forward).toBeCloseTo(-0.38, 9);
+    expect(samplePose('hurt', 50 / 260, s).scaleY).toBeCloseTo(0.86, 9);
+    expect(samplePose('hurt', 150 / 260, s).scaleY).toBeCloseTo(1.05, 9);
+    expect(samplePose('hurt', 1, s).scaleY).toBe(1);
     expect(POSES.hurt.flash).toBe(true);
     expect(POSES.recoil.flash).toBe(false);
     expect(samplePose('recoil', 0.4, s).forward).toBeCloseTo(-0.25, 9);

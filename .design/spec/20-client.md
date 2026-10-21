@@ -713,6 +713,10 @@ A fresh `battleStart` (never a resync restore, never a replay) writes `ui.encoun
 
 The scene director's weather pass also calls `renderer.setAmbient?(pocket === null)`: render's ambient motes (§10.7.8) stay outdoors. World3D's battle view also calls render's `WorldFx.encounterAt(feet)` for a wild battle outside the arena (render §10.7.8): the tall grass bursts and shakes round the player, or the water sprays.
 
+### 20.5.8 The hit callout <!-- amended 2026-10-21 -->
+
+A move hit that lands in a way worth naming adds a `callout` keyframe (`{ who, kinds, type }`) at the impact, beside the log line: `calloutsOf(crit, effectiveness)` gives `super` (× 2 or more), `resist` (under × 1), `immune` (a move that does not affect the target) and `crit`; a plain hit has none. It is text, not motion: the reduced timeline keeps it. `TimelineTargets.callout?` → `ui.battleCallout` (`{ id, foe, kinds, type, reduced }`, deferred off the tick like the banners, cleared by `reset`) → `BattleCallout` in `BattleOverlay`: a Broadcast lower-third on the hit battler's side (high right for the opponent, low left for the viewer's own): the matchup on a slab in the move's type colour ("Super effective"; carbon for "Not very effective" and "No effect"), a crit as a paper chip ("Critical hit"), in the italic display face, sliding in and out over `CALLOUT_MS` 1 100 ms (appearing and fading without the slide under reduced motion); a new hit replaces it. Decorative (the log says the same): aria-hidden, pointer-events none.
+
 ---
 
 ## §20.6 IN-WORLD HUD

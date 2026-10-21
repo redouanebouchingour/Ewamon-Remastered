@@ -15,6 +15,7 @@ import s from './BattleOverlay.module.css';
 import { BattleBanner } from './BattleBanner';
 import { BattleIntroCard } from './BattleIntroCard';
 import { EncounterWipe } from './EncounterWipe';
+import { BattleCallout } from './BattleCallout';
 import { BattleMenu } from './BattleMenu';
 import { BattleResultCard } from './BattleResultCard';
 import { RaidPanel } from './RaidPanel';
@@ -70,6 +71,7 @@ export function BattleOverlay() {
       <EncounterWipe />
       <BattleIntroCard />
       <BattleBanner />
+      <BattleCallout />
       <RaidPanel />
       <SignatureCinematic />
       <BondCinematic />

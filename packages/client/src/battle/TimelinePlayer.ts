@@ -15,7 +15,7 @@
  * at the battler's position. Singles keeps the one-battler-per-side mapping (stage slot 0).
  */
 import type { BandKind, Ref } from '@ewa/core';
-import type { Keyframe, LogTone, Timeline } from './timeline';
+import type { CalloutKind, Keyframe, LogTone, Timeline } from './timeline';
 
 type BattlerRef = { readonly side: 0 | 1; readonly slot: number };
 type Pose = 'idle' | 'lunge' | 'windup' | 'hurt' | 'recoil' | 'faint' | 'enter' | 'exit' | 'celebrate';
@@ -52,6 +52,8 @@ export interface TimelineTargets {
   /** a battler (re)enters: the controller swaps the displayed creature when the party slot changed */
   enter(who: Ref): void;
   log(text: string, tone: LogTone): void;
+  /** §20.5.8 a hit callout (crit, super effective …) over the arena. Optional: recorders skip it. */
+  callout?(who: Ref, kinds: readonly CalloutKind[], type: string): void;
   inputLock(locked: boolean): void;
   /** once per step when something changed (BattleHud.commit) */
   commit(): void;
@@ -311,6 +313,9 @@ export class TimelinePlayer {
         return;
       case 'log':
         t.log(f.text, f.tone);
+        return;
+      case 'callout':
+        t.callout?.(f.who, f.kinds, f.type);
         return;
       case 'sfx':
         t.playSfx(f.id, this.refOrNull(f.at3d));

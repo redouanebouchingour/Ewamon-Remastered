@@ -105,7 +105,7 @@ describe('§10.9 HudLayer', () => {
     expect(hud.uploads).toBe(up + 1);
   });
 
-  it('battle bars tween HP at 30 Hz, then stop; own-side numbers only', () => {
+  it('battle bars tween HP (and drain the ghost of lost HP) at 30 Hz, then stop; own-side numbers only', () => {
     const s = recordingSurface();
     const a = anchors();
     a.pos.set('0:0', [500, 500]); a.pos.set('1:0', [800, 250]);
@@ -115,9 +115,10 @@ describe('§10.9 HudLayer', () => {
     hud.tick(16); hud.drawIfDirty();
     hud.set({ battle: bars(29) });
     let draws = 0;
-    for (let t = 0; t < HUD.hpTweenMs + 200; t += 1000 / 60) { hud.tick(1000 / 60); if (hud.drawIfDirty()) draws++; }
-    expect(draws).toBeGreaterThanOrEqual(12);   // ≈ 30 Hz over 500 ms (+ the settle frame)
-    expect(draws).toBeLessThanOrEqual(18);
+    const animMs = Math.max(HUD.hpTweenMs, HUD.ghostHoldMs + HUD.ghostDrainMs);
+    for (let t = 0; t < animMs + 200; t += 1000 / 60) { hud.tick(1000 / 60); if (hud.drawIfDirty()) draws++; }
+    expect(draws).toBeGreaterThanOrEqual(12);   // ≈ 30 Hz over the tween and the ghost's drain (+ the settle frames)
+    expect(draws).toBeLessThanOrEqual(Math.ceil(animMs / HUD.hpRepaintMs) + 3);
     s.reset();
     for (let i = 0; i < 60; i++) { hud.tick(1000 / 60); hud.drawIfDirty(); }
     expect(s.calls()).toBe(0);

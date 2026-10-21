@@ -203,6 +203,7 @@ Companion documents (inputs, not binding): `.design/PLAN.md`, `.design/story-bib
     - [20.5.5 `BattleController` and the local preview](#20.5.5-battlecontroller-and-the-local-preview)
     - [20.5.6 Battle menu (DOM) and in-canvas elements](#20.5.6-battle-menu-dom-and-in-canvas-elements)
     - [20.5.7 The encounter transition](#20.5.7-the-encounter-transition)
+    - [20.5.8 The hit callout](#20.5.8-the-hit-callout)
   - [§20.6 IN-WORLD HUD](#§20.6-in-world-hud)
   - [§20.7 AUDIO](#§20.7-audio)
     - [20.7.1 Graph](#20.7.1-graph)
@@ -3404,7 +3405,7 @@ Dual-typed creatures use `types[0]`. `20-client.md` §20.8.3 colourblind palette
 | Hurt flash | `hurt = strength` at `setHurt`, then `hurt *= exp(−dt / 70 ms)`; visible ≈ 220 ms |
 | Faint dissolve | `dissolve` set by the client's timeline (`KO_HOLD` 900 ms in `20-client.md`), linear 0 → 1 |
 | Flipbook (amended 2026-10-06) | page = the source's per-page delays over `clock + hash(id) × loop`, `clock += dt × timeScale` except while fainted; `rect` rewritten on a page change only |
-| Poses | `lunge`: position +0.9 m toward the foe over 120 ms, back over 180; `windup`: scale y 0.94 then 1.04 over 250 ms; `hurt`: −0.3 m recoil 80 ms + flash; `recoil`: −0.25 m back over 100 ms, return over 150, no flash (the `damage { cause: 'recoil' }` cue); `enter`/`exit`: dissolve 1 → 0 / 0 → 1 over 450/350 ms; `faint`: dissolve + 0.4 m sink; `celebrate`: two 0.15 m hops over 600 ms (battle end, winner's active battler) |
+| Poses | `lunge`: position +0.9 m toward the foe over 120 ms, back over 180; `windup`: scale y 0.94 then 1.04 over 250 ms; `hurt` (amended 2026-10-21, §10.7.8 hit weight): 260 ms, squashed to scale y 0.86 at 50 ms, knocked back −0.38 m at 90 ms, a 1.05 rebound at 150 ms, settled by the end, + flash; `recoil`: −0.25 m back over 100 ms, return over 150, no flash (the `damage { cause: 'recoil' }` cue); `enter`/`exit`: dissolve 1 → 0 / 0 → 1 over 450/350 ms; `faint`: dissolve + 0.4 m sink; `celebrate`: two 0.15 m hops over 600 ms (battle end, winner's active battler) |
 
 No pose creates a material or geometry; every pose is uniform writes on the shared quad and material.
 
@@ -3882,6 +3883,7 @@ The overworld's own small motion, one bundle per renderer (`worldfx/`, `WorldFx`
 - **Water that lives** (`materials/waterLife.ts`, in the §10.5.6 water graph, from its `depthBelow` attribute): shore foam, a broken lip where the depth is under about 0.2 m and thin lines washing in parallel to the bank, matte and opaque (no transmission under it); caustics, two drifting ridge nets over beds shallower than 1.8 m, in the albedo (the sun lights them, night hides them). Strengths per surface (`SurfaceExtras.foam` / `.caustics`, per-material uniforms): sea 1 / 0.8, tide pool 0.8 / 1, pond 0.55 / 0.7, fountain 0.35 / 0.6, bog 0.15 / 0.
 - **Fish** (`FishShadows`): six dark fish shapes (a tapered body, a beating tail) swim lazy loops on open water within 18 m of the focus, one `InstancedMesh` on the water surface, multiply-blended like the contact decal; a loop is chosen only where all of it is open water (`onWater`), a fish fades out and swims elsewhere when its path would leave the water or the focus has moved 24 m off; faint at night.
 - **Surf wake** (in `Footsteps`): a surfer (an actor on open water) throws foam off both sides of the bow every 0.32 m and leaves a ring every 1.1 m behind, from 0.6 m/s; no footsteps or prints on the water.
+- **Hit weight** (battle): the `hurt` pose squashes, knocks back and rebounds (§10.4.6 table); the HUD battle bar keeps a pale ghost of the HP a hit took (`HUD.ghostHoldMs` 420 held, then drained to the new value over `ghostDrainMs` 600, repainted at the HP tween's 30 Hz; none on a heal), so the chunk a hit took reads before it goes.
 
 Budget: + 5 draw calls, + 5 programs; nothing grows after construction.
 
@@ -4848,6 +4850,10 @@ A fresh `battleStart` (never a resync restore, never a replay) writes `ui.encoun
 - a white flash opens every kind except under `accessibility.screenFlash = false`; under reduced motion every kind is a 320 ms dark dip instead.
 
 The scene director's weather pass also calls `renderer.setAmbient?(pocket === null)`: render's ambient motes (§10.7.8) stay outdoors. World3D's battle view also calls render's `WorldFx.encounterAt(feet)` for a wild battle outside the arena (render §10.7.8): the tall grass bursts and shakes round the player, or the water sprays.
+
+### 20.5.8 The hit callout <!-- amended 2026-10-21 -->
+
+A move hit that lands in a way worth naming adds a `callout` keyframe (`{ who, kinds, type }`) at the impact, beside the log line: `calloutsOf(crit, effectiveness)` gives `super` (× 2 or more), `resist` (under × 1), `immune` (a move that does not affect the target) and `crit`; a plain hit has none. It is text, not motion: the reduced timeline keeps it. `TimelineTargets.callout?` → `ui.battleCallout` (`{ id, foe, kinds, type, reduced }`, deferred off the tick like the banners, cleared by `reset`) → `BattleCallout` in `BattleOverlay`: a Broadcast lower-third on the hit battler's side (high right for the opponent, low left for the viewer's own): the matchup on a slab in the move's type colour ("Super effective"; carbon for "Not very effective" and "No effect"), a crit as a paper chip ("Critical hit"), in the italic display face, sliding in and out over `CALLOUT_MS` 1 100 ms (appearing and fading without the slide under reduced motion); a new hit replaces it. Decorative (the log says the same): aria-hidden, pointer-events none.
 
 ---
 

@@ -210,7 +210,11 @@ export const POSES: Readonly<Record<BattlerPose, PoseDef>> = Object.freeze({
   idle: { defaultMs: 0, flash: false, keys: [{ t: 0, forward: 0, lift: 0, scaleY: 1 }, { t: 1, forward: 0, lift: 0, scaleY: 1 }] },
   lunge: { defaultMs: 300, flash: false, keys: [{ t: 0, forward: 0 }, { t: 0.4, forward: 0.9 }, { t: 1, forward: 0 }] },
   windup: { defaultMs: 250, flash: false, keys: [{ t: 0, scaleY: 1 }, { t: 0.45, scaleY: 0.94 }, { t: 0.85, scaleY: 1.04 }, { t: 1, scaleY: 1 }] },
-  hurt: { defaultMs: 240, flash: true, keys: [{ t: 0, forward: 0 }, { t: 80 / 240, forward: -0.3 }, { t: 1, forward: 0 }] },
+  // §10.7.8 hit weight: knocked back and squashed on the hit, a small rebound, then settled
+  hurt: {
+    defaultMs: 260, flash: true,
+    keys: [{ t: 0, forward: 0, scaleY: 1 }, { t: 50 / 260, scaleY: 0.86 }, { t: 90 / 260, forward: -0.38 }, { t: 150 / 260, scaleY: 1.05 }, { t: 1, forward: 0, scaleY: 1 }],
+  },
   recoil: { defaultMs: 250, flash: false, keys: [{ t: 0, forward: 0 }, { t: 0.4, forward: -0.25 }, { t: 1, forward: 0 }] },
   enter: { defaultMs: 450, flash: false, keys: [{ t: 0, dissolve: 1 }, { t: 1, dissolve: 0 }] },
   exit: { defaultMs: 350, flash: false, keys: [{ t: 0, dissolve: 0 }, { t: 1, dissolve: 1 }] },
