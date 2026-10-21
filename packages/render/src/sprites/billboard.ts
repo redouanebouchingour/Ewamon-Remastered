@@ -76,6 +76,12 @@ export interface BillboardUniforms {
   readonly cameraLean: UniformNode<'float', number>;
   /** Seconds × timeScale (shimmer). */
   readonly animTime: UniformNode<'float', number>;
+  /**
+   * §10.7.8 sit in the light (additions; absent = off): the unit direction toward the sun and the sun's rim colour
+   * (linear × strength, 0 at night), written by the part-3 frame hook from the day cycle.
+   */
+  readonly sunDir?: UniformNode<'vec3', Vector3>;
+  readonly sunRim?: UniformNode<'vec3', Vector3>;
 }
 
 /** The per-object record `userData(name, type)` reads (§10.4.5; preallocated, scalar writes only). */
@@ -155,7 +161,9 @@ export function createBillboardMaterial(tex: AtlasTextures, u: BillboardUniforms
 
   // evolution glow: the card becomes a white silhouette of its own alpha (lit white + white emissive below)
   const glow = f('glow');
-  m.colorNode = vec4(mix(mix(c, a.rgb, h), vec3(1), glow), alpha);
+  // §10.7.8 grounding: the bottom of the card, just above the feet, takes a little contact shade (not on a glow)
+  const footShade = mix(float(B.footShade), float(1), smoothstep(f('footV'), f('footV').add(B.footShadeBand), uv().y));
+  m.colorNode = vec4(mix(mix(c, a.rgb, h).mul(mix(footShade, float(1), h)), vec3(1), glow), alpha);
   m.normalNode = mix(normalMap(n.rgb, float(1)) as unknown as Node<'vec3'>, normalView, h).normalize();
   m.roughnessNode = float(B.roughness);
   m.metalnessNode = float(B.metalness);
@@ -175,7 +183,14 @@ export function createBillboardMaterial(tex: AtlasTextures, u: BillboardUniforms
   const sCell = floor(uv().mul(B.sparkleCells));
   const twinkle = hash(sCell.x.add(sCell.y.mul(B.sparkleCells * 7)).add(floor(u.animTime.mul(B.sparkleRate)).mul(131)));
   const sparkle = smoothstep(1 - B.sparkleDensity, 1, twinkle).mul(shinyOn).mul(B.sparkleGain).mul(alpha);
-  m.emissiveNode = typeC.mul(rim).mul(B.rimStrength).add(a.rgb.mul(em).mul(B.emissiveGain)).add(a.rgb.mul(shimmer)).add(vec3(1, 0.93, 0.7).mul(sparkle)).mul(oneMinus(h))
+  // §10.7.8 sit in the light: the sun catches the silhouette's edge, most when the creature stands against it
+  let sunEdge: Node<'vec3'> = vec3(0);
+  if (u.sunDir !== undefined && u.sunRim !== undefined) {
+    const against = dot(V.negate(), u.sunDir as unknown as Node<'vec3'>).max(0);
+    const edge = pow(oneMinus(abs(dot(normalWorld, V))), B.sunRimPower);
+    sunEdge = (u.sunRim as unknown as Node<'vec3'>).mul(edge).mul(mix(float(B.sunRimSide), float(1), against)).mul(alpha.greaterThan(cut).select(float(1), float(0)));
+  }
+  m.emissiveNode = typeC.mul(rim).mul(B.rimStrength).add(a.rgb.mul(em).mul(B.emissiveGain)).add(a.rgb.mul(shimmer)).add(vec3(1, 0.93, 0.7).mul(sparkle)).add(sunEdge).mul(oneMinus(h))
     .add(vec3(glow.mul(B.glowGain)));
 
   m.mrtNode = mrt({ mask: vec2(1, f('sharp')) });   // x: exclude from GTAO darkening; y: DOF-sharp (§10.8.2)
@@ -279,6 +294,8 @@ export class BillboardPool implements SpritePool {
       cameraYaw: uniform(0).setName('ewaCameraYaw'),
       cameraLean: uniform(0).setName('ewaCameraLean'),
       animTime: uniform(0).setName('ewaSpriteTime'),
+      sunDir: uniform(new Vector3(0, 1, 0)).setName('ewaSpriteSunDir'),
+      sunRim: uniform(new Vector3(0, 0, 0)).setName('ewaSpriteSunRim'),
     };
     this.decoder = o.decoder ?? browserDecoder();
     this.upload = o.upload ?? null;

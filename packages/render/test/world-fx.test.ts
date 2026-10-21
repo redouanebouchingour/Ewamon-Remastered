@@ -17,6 +17,8 @@ import { GRASS_PUSH, GrassPush, rustleStrength, springStrength } from '../src/wo
 import { surfaceExtras } from '../src/materials/surfaces.js';
 import { SHAFTS, shaftLevel } from '../src/worldfx/shafts.js';
 import { FISH, FishShadows } from '../src/worldfx/fish.js';
+import { createSpritePool } from '../src/sprites/billboard.js';
+import { BILLBOARD } from '../src/sprites/tables.js';
 import { CLOUD_STRENGTH, HAZE_UV, WorldFx, hazeLevel } from '../src/worldfx/index.js';
 import { FROST_FALL_S, FROST_RISE_S, stepFrost } from '../src/materials/weatherSurface.js';
 import { applyReducedEffects } from '../src/post/effects.js';
@@ -347,5 +349,17 @@ describe('water that lives', () => {
     expect(steps.steps).toBe(0);
     expect(prints.count).toBe(0);
     expect(p.count).toBeGreaterThan(0);
+  });
+});
+
+describe('creatures that sit in the light', () => {
+  it('the sprite pool carries the sun direction and a rim that starts dark; the foot shade and rim numbers hold', () => {
+    const pool = createSpritePool({ decoder: { decode: async () => { throw new Error('none'); } } as never });
+    expect(pool.uniforms.sunDir?.value.y).toBe(1);
+    expect(pool.uniforms.sunRim?.value.length()).toBe(0);
+    expect(BILLBOARD.footShade).toBeGreaterThan(0.6);
+    expect(BILLBOARD.footShade).toBeLessThan(1);
+    expect(BILLBOARD.sunRimSide).toBeLessThan(1);
+    pool.dispose();
   });
 });

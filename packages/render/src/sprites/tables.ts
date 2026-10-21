@@ -20,6 +20,12 @@ export const BILLBOARD = Object.freeze({
   metalness: 0,
   rimPower: 3.0,
   rimStrength: 0.6,
+  /** §10.7.8 the sun's rim: edge power, the share it keeps when the sun is not behind the creature */
+  sunRimPower: 3.4,
+  sunRimSide: 0.3,
+  /** §10.7.8 the contact shade at the feet: albedo × at the foot line, easing to 1 over this much of the card (uv) */
+  footShade: 0.74,
+  footShadeBand: 0.16,
   /** Creature emissive pixels output `1.8 × albedo` (≥ 1.35 scene-linear, above the 1.15 bloom threshold). */
   emissiveGain: 1.8,
   shimmerAmp: 0.25,

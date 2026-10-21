@@ -2310,3 +2310,11 @@ pool; `Part3.worldFx`).
 - The HUD's ghost shares the HP tween's repaint clock, so it adds no faster cadence; `hud.test.ts`'s 30 Hz check now
   spans the tween and the drain. The ghost only draws above the target value: a heal tweens the fill up with no ghost
   ahead of it (caught by `hud-ghost.test.ts`).
+
+## Creatures that sit in the light (2026-10-21)
+
+- The sun rim reads `ctx.lighting.sun` (colour × intensity ÷ the SPEC light unit), not the day table, so the weather's
+  sun multiplier, honor's shadow and the season's sky colour all reach it. At 0.9 the backlit white creatures bloomed
+  into blobs (Mire Route at 17:30, the camera facing the sun); 0.45 with a thinner edge (power 3.4) keeps a warm halo.
+- The rim is masked by the card's alpha cut, so it never lights a transparent texel; the foot shade multiplies the
+  albedo only (not the glow), between `footV` and `footV + 0.16` of the card's uv.

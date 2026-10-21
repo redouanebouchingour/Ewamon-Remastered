@@ -30,6 +30,10 @@ import { TerrainCollider } from '../terrain/collider.js';
 import { scatterMaskFor } from '../zone/scatter.js';
 import { WorldFx } from '../worldfx/index.js';
 import { sunDirection } from '../lighting/daycycle.js';
+import { SPEC_LIGHT_UNIT } from '../lighting/rig.js';
+
+/** §10.7.8 the sun's rim on creature billboards at the noon key's intensity (scene-linear emissive). */
+export const SUN_RIM_GAIN = 0.45;
 
 export interface Part3 {
   readonly sprites: BillboardPool;
@@ -140,6 +144,14 @@ function build(ctx: HostContext): Part3 {
     update(dtScaledMs: number, dtRealMs?: number): void {
       const real = dtRealMs ?? dtScaledMs;
       sprites.update(dtScaledMs);
+      // §10.7.8: the sun's rim on the creatures follows the real key light (its colour, weather, honor shadow included)
+      const su = sprites.uniforms;
+      if (su.sunDir !== undefined && su.sunRim !== undefined) {
+        sunDirection(ctx.day.timeOfDay, su.sunDir.value);
+        const sun = ctx.lighting.sun;
+        const k = SUN_RIM_GAIN * Math.min(1, sun.intensity / SPEC_LIGHT_UNIT) * (su.sunDir.value.y > 0 ? 1 : 0);
+        su.sunRim.value.set(sun.color.r * k, sun.color.g * k, sun.color.b * k);
+      }
       vfx.update(dtScaledMs, ctx.camera3);
       actors.update(dtScaledMs);
       worldFx.update(dtScaledMs);

@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-21 creatures that sit in the light: a sun rim and a contact shade on the billboards. One entry. -->
+
+## 2026-10-21 · `10-render.md` §10.7.8 (Creatures that sit in the light, `BillboardUniforms.sunDir` / `.sunRim`) · creature sprites that sit in the scene
+Why: the user asked for the 2D creatures to sit in the 3D world: billboards look pasted on unless their light matches the scene. They had a type-coloured rim and a contact decal but no sense of the sun. Now the real key light catches each silhouette's edge in its own colour (strongest when the creature stands against a low sun), and the card darkens a little just above the feet, where it meets the ground.
+Evidence: `packages/render/test/world-fx.test.ts` (1 new: the pool's sun uniforms start dark, the shade and rim numbers); `npx vitest run packages/render packages/client`; live in the render sandbox (Mire Route at 17:30 from all four headings).
+Affects: `packages/render/src/{sprites/billboard,sprites/tables,stage/wiring}.ts`.
+
 <!-- 2026-10-21 hit weight: a firmer hurt pose, the ghost of lost HP, and a callout for crits and matchups. One entry. -->
 
 ## 2026-10-21 · `10-render.md` §10.4.6 (the `hurt` pose), §10.7.8 (Hit weight: the HUD's ghost of lost HP); `20-client.md` §20.5.8 The hit callout (new) · hits with more weight
