@@ -592,6 +592,8 @@ async function main(): Promise<void> {
       host.lighting.updateFrustums();
     },
     zone: () => zoneHandle,
+    /** The renderer (shader dumps: `renderer().renderer.debug.getShaderAsync(scene, camera, object)`). */
+    renderer: () => r,
     /** The BudgetCounts captured after construction step 8 (the leak-test baseline, §50.1.9). */
     baseline: () => host.baseline,
     /**

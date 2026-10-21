@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-21 world effects: feet throw up the ground they land on, leave prints in sand, snow and mud, and tall grass makes way. One entry. -->
+
+## 2026-10-21 · `10-render.md` §10.7.8 World effects (new: particles, footsteps, prints, grass that makes way, the encounter rustle), §10.2.3 (`SharedUniforms.push`) · footsteps that match the ground, and grass that bends round walkers
+Why: the user asked for footsteps that depend on the ground (dust on roads, splashes in shallows, prints in sand and snow that fade, a trail behind the bike) and for tall grass that bends and parts as you walk through it. The world was still: people walked over sand, snow and tall grass without touching them, and since wild encounters live in the tall grass, a walker there was buried to the shoulders. Every footstep is classified from the same plan, palette and water mask the terrain is drawn from, so what a foot throws up matches what it stands on; the grass bends in the wind shader the shadow pass shares, so it costs no draw and no program.
+Evidence: `packages/render/test/world-fx.test.ts` (13: the ground kinds of Mire Route, Tide Route and Ascent Route, every tall-grass patch, rain turning earth to mud, the stride cadence, prints only on sand / snow / mud, the range limit, fixed pools, the push discs following the nearest walkers and springing back, the rustle, only the tall-grass card pushable); `npx vitest run packages/render` (all green); live in the render sandbox (walkers on Tide Route sand, Ascent Route snow, Mire Route tall grass and road at 1.6 and 4.2 m/s).
+Affects: `packages/render/src/worldfx/{particles,ground,footsteps,prints,grass,index}.ts`; `packages/render/src/{materials/wind,materials/harvest,materials/graph,materials/surfaces,stage/wiring,stage/actors,zone/builder}.ts`; `packages/render/sandbox/main.ts`.
+
 <!-- 2026-10-20 ghost trainers: the party a trainer leaves with haunts that zone, fights as AI, and the owner hears how it went. One entry. -->
 
 ## 2026-10-20 · `00-spine.md` §4.7 (`GET /ghost`), §5.2 (`GhostRepo`, migration 0015); `30-server-netcode.md` §30.4.3a (ghost trainers); `20-client.md` §20.9.9n (new); `50-verification-budget.md` §50.4.2 / .4 / .5 / .7 rows · ghost trainers

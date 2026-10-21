@@ -88,6 +88,9 @@ export interface ZoneHandleImpl extends ZoneHandle {
   readonly collider: TerrainCollider;
   readonly palette: Palette;
   readonly surfaces: readonly SurfaceId[];
+  /** World effects (§10.7.8): the spec the zone was built from and its splat context (what a foot lands on). */
+  readonly spec: ZoneSpec;
+  readonly splat: SplatContext;
   readonly disposed: boolean;
   /** Geometries the builder created, in build order (§10.5.9). */
   readonly geometries: readonly BufferGeometry[];
@@ -507,6 +510,8 @@ function* zoneSteps(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonly Surf
     geometryDigest: digest.hex(),
     palette,
     surfaces,
+    spec,
+    splat,
     get disposed() { return disposed; },
     geometries,
     instanced: built.instanced,

@@ -127,7 +127,7 @@ export function createSurfaceParams(def: SurfaceDef, extras: SurfaceExtras): Sur
     : new Vector3(0, 0, 0);
   const cc = def.clearcoat ?? { base: 0, wet: 0, roughness: 0 };
   const wind: WindParams | null = s.kind === 'card'
-    ? { amplitude: uniform(def.wind?.amplitude ?? 0), frequency: uniform(def.wind?.frequency ?? 1.9), stiffnessFromUv: true }
+    ? { amplitude: uniform(def.wind?.amplitude ?? 0), frequency: uniform(def.wind?.frequency ?? 1.9), stiffnessFromUv: true, push: uniform(extras.pushable === true ? 1 : 0) }
     : s.trunkWind && def.wind
       ? { amplitude: uniform(def.wind.amplitude), frequency: uniform(def.wind.frequency), stiffnessFromUv: false }
       : null;

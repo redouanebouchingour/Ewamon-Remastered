@@ -2240,3 +2240,27 @@ the normal sun / hemisphere / CSM / fog, then `stage.dress({ x: 0, z: 0 }, ARENA
   both sky meshes, after the harvest blend), a sun and hemisphere tint (the diorama camera looks down, so the sky
   alone barely shows: checked live, the light is what reads), and a fog tint scaled by daylight so a red or gold haze
   does not glow at night. null is the identity.
+
+## World effects: footsteps, prints and grass that makes way (2026-10-21)
+
+SPEC §10.7.8. `worldfx/` (`WorldFx`, built in `stage/wiring.ts` with the part-3 bundle and updated right after the actor
+pool; `Part3.worldFx`).
+- `ZoneHandleImpl` carries `spec` and `splat` (the builder's own `SplatContext`), so the ground a foot lands on is
+  classified from exactly what the terrain was drawn from. `CharacterPool.forEachWalker` hands out the rigs' own
+  vectors (slot, feet, ground normal, measured speed, yaw, camera distance²), allocation-free.
+- TSL scoping, measured in the WGSL: a node shared between `select` branches is emitted inside the FIRST branch that
+  uses it. The particles' age (for the leaf's spin) was built in the leaf branch and read uninitialised by every other
+  shape, so the fade was 0 and every particle was discarded. The life fraction and the spin are `varying`s now
+  (computed once per particle in the vertex stage).
+- The particle colour node is premultiplied by hand (glow 1 = additive, coverage 0): `premultipliedAlpha` stays false,
+  or three multiplies by alpha a second time and every puff turns into a dark smudge. The discard is on the coverage
+  before the glow term (an alpha test would drop every additive texel).
+- Lit particles take `light`: the day's key colour × (0.22 + 0.53 × daylight) plus a cool fill, about 3/4 of the
+  sun-lit ground at noon (checked against the live sun / hemisphere intensities in the sandbox).
+- The prints reuse the decal recipe (MultiplyBlending needs `premultipliedAlpha` on WebGPU, §10.4.7).
+- Sandbox: `__ewaSandbox.renderer()` returns the renderer (shader dumps with `renderer.debug.getShaderAsync`).
+- Grass: `SharedUniforms.push` (4 × vec4, `ewaPush0..3`) is an addition to the verbatim §10.2.3 interface, optional like
+  `occlusion`. `WindParams.push` is a per-material uniform on every card (1 only for `tall_grass`), so the card
+  program count is unchanged; scatter's attribute instancing runs before `positionNode`, so `pushDisplace` works on
+  the instanced (zone-frame) position and the shadow pass bends the same way. The existing `GroundCoverReveal`
+  (creature reveal discs through `ScatterMask`) is untouched: the push is a vertex bend, the mask a per-instance scale.

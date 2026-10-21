@@ -526,6 +526,17 @@ export class CharacterPool implements ActorPool {
     for (let i = 0; i < this.rigs.length; i++) { const r = this.rigs[i]!; if (r.id !== null) cb(r.id, r.name, r.guildTag, r.emote, r.emoteLeft / EMOTE_MS); }
   }
 
+  /**
+   * World effects (§10.7.8): every live actor's slot, feet, ground normal, measured ground speed (m/s), facing and
+   * squared camera distance, in slot order. The arguments are the rig's own vectors: read them, never keep them.
+   */
+  forEachWalker(visit: (slot: number, feet: Vector3, normal: Vector3, speed: number, yaw: number, dist2: number) => void): void {
+    for (let i = 0; i < this.rigs.length; i++) {
+      const r = this.rigs[i]!;
+      if (r.id !== null) visit(r.slot, r.feet, r.groundN, r.speed, r.yaw, r.dist2);
+    }
+  }
+
   /** Current emote of an actor and its remaining fraction (0 = none). */
   emoteOf(id: string): { readonly n: EmoteId; readonly left: number } {
     const r = this.byId.get(id);

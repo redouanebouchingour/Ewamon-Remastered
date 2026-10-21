@@ -34,6 +34,8 @@ export interface SurfaceExtras {
    * baked maps and the harvest-level vertex colour are unchanged.
    */
   readonly albedoCal?: number;
+  /** World effects (§10.7.8): walkers push this card aside (the tall grass card: tall grass, tufts, clumps). */
+  readonly pushable?: boolean;
 }
 
 export const SURFACE_EXTRAS: Readonly<Partial<Record<SurfaceId, SurfaceExtras>>> = Object.freeze({
@@ -47,6 +49,7 @@ export const SURFACE_EXTRAS: Readonly<Partial<Record<SurfaceId, SurfaceExtras>>>
   // M3 review fixes (R-cinderhold-3): the lava glows through its crust cracks (the albedo's orange veins), not as one flat disc
   lava_glow: { emissiveFromAlbedo: true },
   grove_leaf_canopy: { backfaceTint: '#9bbf4a' },
+  tall_grass: { pushable: true },
   willow_leaf: { backfaceTint: '#9fb865' },
   pine_needle: { backfaceTint: '#7c9a52' },
   // M3 review fixes: high-albedo ground and stone (audit M3-all-10 / R-all-5 / R-all-4)

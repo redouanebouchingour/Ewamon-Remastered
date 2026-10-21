@@ -9,7 +9,7 @@
  * poses, VFX clock, character gait, arena fades, chroma/slow-mo requests, then the HUD's anchor polling.
  */
 import { Sprite } from 'three/webgpu';
-import type { Object3D } from 'three/webgpu';
+import type { Object3D, Vector3 } from 'three/webgpu';
 import type { FrameHook, HostContext, Renderer, RendererSubsystems } from '../renderer.js';
 import { rendererInternals } from '../renderer.js';
 import type { HarvestLevel } from '../descriptors.js';
@@ -28,6 +28,7 @@ import { PropCutaway } from './propCutaway.js';
 import { TerrainPad } from './terrainPad.js';
 import { TerrainCollider } from '../terrain/collider.js';
 import { scatterMaskFor } from '../zone/scatter.js';
+import { WorldFx } from '../worldfx/index.js';
 
 export interface Part3 {
   readonly sprites: BillboardPool;
@@ -40,6 +41,8 @@ export interface Part3 {
   readonly reveal: GroundCoverReveal;
   /** The level pad a dressed ring cuts into a slope (M3 review R-forgewall-2). */
   readonly pad: TerrainPad;
+  /** World effects (§10.7.8): footsteps, prints, the encounter rustle. */
+  readonly worldFx: WorldFx;
   readonly hook: FrameHook;
   /** Ground for the stage, the actors and the inspector (the zone's collider; null = flat 0). */
   setGround(g: StageGround | null): void;
@@ -92,6 +95,19 @@ function build(ctx: HostContext): Part3 {
     post: ctx.post.uniforms,
   });
   const reveal = new GroundCoverReveal(sprites, () => rig.focus);
+  const worldFx = new WorldFx({
+    camera: ctx.camera3, harvestLevel: harvestUniform, walkers: actors, focus: () => rig.focus as Vector3,
+    wetness: () => ctx.materials.uniforms.wetness.value,
+    light: (out) => {
+      // what lit dust looks like: the key colour, dimmed toward night, over a cool fill
+      const d = ctx.day.sample;
+      const k = 0.3 + 0.7 * d.daylight;
+      out.set(d.linear[0] * k + 0.05, d.linear[1] * k + 0.06, d.linear[2] * k + 0.09);
+    },
+    effects: () => ctx.effects(),
+    push: ctx.materials.uniforms.push ?? null,
+  });
+  ctx.scene.add(worldFx.root);
   const cutaway = new PropCutaway();
   const pad = new TerrainPad();
   const anchors: HudAnchors = {
@@ -120,6 +136,7 @@ function build(ctx: HostContext): Part3 {
       sprites.update(dtScaledMs);
       vfx.update(dtScaledMs, ctx.camera3);
       actors.update(dtScaledMs);
+      worldFx.update(dtScaledMs);
       stage.update(dtScaledMs, real);
       reveal.update(real);
       if (slowmoLeft > 0) { slowmoLeft -= real; if (slowmoLeft <= 0) host.setTimeScale(1); }
@@ -141,12 +158,13 @@ function build(ctx: HostContext): Part3 {
       pad.setRoot(z === null ? null : z.group);
       stage.setGroundCover(mask, z === null ? null : cutaway, z === null ? null : pad);
       reveal.setMask(mask);
+      worldFx.onZone(z);
     },
-    dispose(): void { reveal.dispose(); vfx.dispose(); sprites.dispose(); },
+    dispose(): void { reveal.dispose(); worldFx.dispose(); vfx.dispose(); sprites.dispose(); },
   };
 
   const bundle: Part3 = {
-    sprites, rig, actors, vfx, stage, hud, reveal, pad, hook,
+    sprites, rig, actors, vfx, stage, hud, reveal, pad, worldFx, hook,
     setGround(g) {
       stage.setGround(g);
       // Phase D8: surfers ride the water level (the collider's surfaceY) with a ripple where it says open water
@@ -192,7 +210,9 @@ function warmupObjects(ctx: HostContext): Object3D[] {
   p.stage.armWarmupShadows();                                  // the beacons' spot-shadow pass programs (battles, evolutions)
   const aura = p.stage.aura.warmupObjects();                   // the battle-form aura's flames + floor sigil materials
   aura.forEach((o, i) => o.position.set(3 + i, 0.5, -2));
-  return [bb, fx, character, housing, ...aura];
+  const world = p.worldFx.warmupObjects();                   // the world effects' particle + footprint materials
+  world.forEach((o, i) => o.position.set(-2 - i, 0.2, -2));
+  return [bb, fx, character, housing, ...aura, ...world];
 }
 
 /** The subsystem factories part 3 provides (merged into `DEFAULT_SUBSYSTEMS`). */

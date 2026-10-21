@@ -2,7 +2,7 @@
  * SPEC §10.2.3 `SharedUniforms` and §10.2.6 — the harvested look is ONE uniform read by every library
  * material (and, later, every billboard). Writing it allocates nothing and compiles nothing.
  */
-import { Vector2 } from 'three/webgpu';
+import { Vector2, Vector4 } from 'three/webgpu';
 import type { Node, UniformNode } from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import type { HarvestLevel } from '../descriptors.js';
@@ -17,7 +17,15 @@ export interface SharedUniforms {
   readonly timeOfDay: UniformNode<'float', number>;
   /** Addition (IMPLEMENTATION-NOTES Part 5, M2-spawn-noon-9): the diorama occluder fade (materials/occlusion.ts). */
   readonly occlusion?: OcclusionState;
+  /**
+   * Addition (§10.7.8 world effects): `PUSHERS` walkers the tall grass bends away from, each (x, z, radius, strength);
+   * strength 0 = none. Written by the world effects' `GrassPush`.
+   */
+  readonly push?: readonly UniformNode<'vec4', Vector4>[];
 }
+
+/** Pushers the grass reads (§10.7.8). */
+export const PUSHERS = 4;
 
 export function createSharedUniforms(): SharedUniforms {
   return {
@@ -27,6 +35,7 @@ export function createSharedUniforms(): SharedUniforms {
     windDir: uniform(new Vector2(0.8, 0.6)).setName('ewaWindDir'),
     timeOfDay: uniform(0.5).setName('ewaTimeOfDay'),
     occlusion: createOcclusionUniforms(),
+    push: Array.from({ length: PUSHERS }, (_, i) => uniform(new Vector4(0, 0, 1, 0)).setName(`ewaPush${i}`)),
   };
 }
 
