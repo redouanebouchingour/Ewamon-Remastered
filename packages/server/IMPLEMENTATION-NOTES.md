@@ -1188,3 +1188,18 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   without eggs see nothing change (one map lookup per move), and nothing in encounters or battles changes.
 - Challenge runs: no deposit, no egg, no steps while a run is active; `failIfNothingLeft` counts Daycare creatures as
   still the player's.
+
+## Nemeses (2026-10-21)
+
+- `game/nemesis.ts` (pure) and `BattleCoordinator.settleNemesis` (inside the side-0 end transaction). The track of what
+  the wild side did is folded per resolved turn and kept on the session only after the commit, so a rejected turn
+  never counts. Promotion draws from `createRng(nemesis:<battleId>:<turn>)`, never from the coordinator's stream: the
+  battle seeds stay what they were.
+- `ZoneRoom`: its own `nemesis` stream for the ambush roll (the grass, roamer and ghost streams stay as they were); the
+  roll comes after the ghost and roamer checks and reads the player's nemeses only on a hit, falling back to the
+  zone's table when none can come (born here, or a land species while surfing).
+- Env `NEMESES` 'on' | 'off' | 'always' (testEnv 'off'): off reads, draws and writes nothing, so every suite and the
+  progression walker see today's wild battles. 'always' is the dev helper for live checks (every qualifying escape
+  rises, every encounter that can be an ambush is one).
+- The trophy goes to the player's creature that dealt the last damage before the faint (else the active one); a
+  disconnect mid-battle settles nothing (no end transaction runs).

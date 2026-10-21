@@ -2191,3 +2191,14 @@ SPEC §20.5.8. A `callout` keyframe at the impact (`calloutsOf`), `TimelineTarge
 `ui.battleCallout`, `battle/BattleCallout.tsx` (+ module css) in `BattleOverlay`. The committed timeline timing snapshot
 gained one `callout` line per crit / super-effective hit in the fixture; the durations are unchanged. Checked live on
 the second isolated client (the component over the landing page: the foe and own placements).
+
+## Nemeses (2026-10-21)
+
+- `battle/NemesisTaunt.tsx` reads `state/nemesis.ts` (its own small store, so `state/ui.ts` is untouched) and shows
+  only over the battle whose id the `nemesisAmbush` names; it waits 700 ms for the encounter wipe, holds 6.5 s. It sits
+  above the command deck using the deck's own height (`clamp(200px, 28vh, 280px)` + `--s-6`), as BattleOverlay lays it.
+- `nemesisNews` bumps the store's `version` (the Profile's `NemesesSection` reloads on it) and is an 8 s toast; while the
+  battle UI is open it waits (the server sends it right after `battleEnd`, before the timeline and the result card
+  play; found live: a 6 s toast had expired before the result card) and is told when `ui.battle` clears.
+- A caught nemesis's scar is read from its `nemesis-scar:` ribbon (`ScarNote` in the creature detail); the ribbon
+  stays out of the card badges.

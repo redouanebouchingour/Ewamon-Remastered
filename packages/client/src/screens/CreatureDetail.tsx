@@ -28,7 +28,8 @@ import s from './CreatureDetail.module.css';
 import type { IntentFetcher } from './shared';
 import { CreatureHistory } from './CreatureHistory';
 import { TeachSection } from './TeachSection';
-import { isFallen } from '@ewa/content';
+import { NEMESIS_SCAR_TEXT, isFallen, scarOfRibbons } from '@ewa/content';
+import type { NemesisScar } from '@ewa/content';
 
 export interface CreatureDetailProps {
   readonly creature: CreatureInstance;
@@ -121,6 +122,19 @@ export function BandbornNote() {
     <p className={s.bandborn} data-testid="bandborn">
       <span className={s.bandbornTag}>Bandborn</span>
       Hatched from a Majin and a Tenjin parent: its form answers either band.
+    </p>
+  );
+}
+
+/** Nemeses: a caught nemesis keeps the scar it won (a `nemesis-scar:` ribbon); nothing for any other creature. */
+export function ScarNote({ creature: c }: { readonly creature: CreatureInstance }) {
+  const scar: NemesisScar | null = scarOfRibbons(c.ribbons);
+  if (scar === null) return null;
+  const t = NEMESIS_SCAR_TEXT[scar];
+  return (
+    <p className={s.scarNote} data-testid="nemesis-scar">
+      <span className={s.scarTag}>{t.label}</span>
+      {t.line} A mark from its days as a nemesis.
     </p>
   );
 }
@@ -350,6 +364,7 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
             </p>
             {typeRow}
             {c.bandborn === true && <BandbornNote />}
+            <ScarNote creature={c} />
             {sp !== undefined && sp.flavor !== '' && <p className={s.flavour}>{sp.flavor}</p>}
             <div className={s.bandHp}>
               <HpBar hp={c.hp} maxHp={maxHpOf(c)} showNumbers status={c.status} />
@@ -401,6 +416,7 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
       </div>
 
       {c.bandborn === true && <BandbornNote />}
+      <ScarNote creature={c} />
 
       <HpBar hp={c.hp} maxHp={maxHpOf(c)} showNumbers status={c.status} />
 

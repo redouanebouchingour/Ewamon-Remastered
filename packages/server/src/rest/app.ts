@@ -21,6 +21,7 @@ import { registerWeatherRoutes } from './routes/weather';
 import { registerSeasonRoutes } from './routes/seasons';
 import { registerFactionRoutes } from './routes/factions';
 import { registerDaycareRoutes } from './routes/daycare';
+import { registerNemesisRoutes } from './routes/nemeses';
 import { registerAuthRoutes } from './routes/auth';
 import { registerCatalogRoutes } from './routes/catalog';
 import { registerMarketRoutes } from './routes/market';
@@ -80,5 +81,6 @@ export function registerRoutes(app: FastifyInstance, deps: RestDeps, opts: RestO
   registerSeasonRoutes(app, deps);
   registerFactionRoutes(app, deps);
   registerDaycareRoutes(app, deps);
+  registerNemesisRoutes(app, deps);
   registerAdminRoutes(app, deps, opts.publishKick ?? (() => undefined));
 }

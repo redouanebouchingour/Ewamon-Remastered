@@ -9,6 +9,7 @@ import { installArenaFlow, routeArenaMessage } from '../app/arena';
 import type { ArenaSession } from '../app/arena';
 import { queueTradeEvolutions } from '../app/itemUseFeedback';
 import { useDaycareStore } from '../state/daycare';
+import { useNemesisStore } from '../state/nemesis';
 import { toast, useNotificationsStore } from '../state/notifications';
 import { rankedStatusText, useRankedStore } from '../state/ranked';
 import { useRealWeatherStore } from '../state/realWeather';
@@ -137,6 +138,18 @@ export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'han
       useDaycareStore.getState().pushHatch({ eggId: m.eggId, creature: m.creature, placement: m.placement, parents: m.parents, zoneId: m.zoneId });
       void useDaycareStore.getState().refresh();
       return;
+    case 'nemesisAmbush': {
+      // nemeses: the taunt over the battle it just opened (NemesisTaunt shows it as a lower third)
+      const { type: _t, ...ambush } = m;
+      useNemesisStore.getState().setAmbush(ambush);
+      return;
+    }
+    case 'nemesisNews': {
+      // nemeses: one rose, ranked up, fell, was caught or faded (told once the battle UI closes)
+      const { type: _t, ...news } = m;
+      useNemesisStore.getState().news(news);
+      return;
+    }
     case 'realWeather':
       // weather from real life: the player's city's weather (the world shows it; null: back to the zone's)
       useRealWeatherStore.getState().set(m.kind);

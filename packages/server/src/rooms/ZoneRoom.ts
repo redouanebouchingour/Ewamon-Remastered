@@ -83,7 +83,9 @@ import { STREAK_LAST_PREFIX, dailyLogin } from '../liveops/login';
 import { dayKey, hotspotDayKey, hotspotOpen, hotspotsFor, liveOpsModsFor } from '../liveops/schedule';
 import { WEATHER_FORMATS, weatherAt, weatherBucket } from '../game/weather';
 import { REAL_WEATHER_CHECK_MS, weatherTopic } from '../game/realWeather';
-import type { Ghost, WeatherCity } from '@ewa/persist';
+import type { Ghost, Nemesis, WeatherCity } from '@ewa/persist';
+import { nemesisAmbushChance, nemesisFightLevel } from '@ewa/content';
+import { ambushesOn, tauntOf } from '../game/nemesis';
 import { GHOSTS_PER_ZONE, GHOST_CHANCE, GHOST_DAYS, GHOST_LEVEL_SPAN, ROAMER_CHANCE, ROAMER_LEVEL, ghostReport, roamerOf, roamerZoneAt, seasonAt, shadowLevel } from '@ewa/content';
 
 export interface ZoneMeta {
@@ -294,6 +296,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   /** ghost trainers: this zone's recent ghosts (read with the shadow, once a minute) and their own stream */
   private ghosts: readonly Ghost[] = [];
   private ghostRng: Rng | null = null;
+  /** nemeses: the ambush roll's own stream (the grass, roamer and ghost rolls stay as they were) */
+  private nemesisRng: Rng | null = null;
   private wildCounter = 0;
   private grassPatches: readonly PlanEllipse[] = [];
   /** Phase D14: battle tower runs (only Solenne has the attendant; elsewhere every `tower` message is refused) */
@@ -360,6 +364,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.wildRng = createRng(`${deps.worldSeed}:${options.zoneId}:${shard}:${this.now()}:wild`);
     this.roamRng = createRng(`${deps.worldSeed}:${options.zoneId}:${shard}:${this.now()}:roam`);
     this.ghostRng = createRng(`${deps.worldSeed}:${options.zoneId}:${shard}:${this.now()}:ghost`);
+    this.nemesisRng = createRng(`${deps.worldSeed}:${options.zoneId}:${shard}:${this.now()}:nemesis`);
     this.grassPatches = deps.env.WILD_ENCOUNTERS === 'grass' && this.zone.encounterTable !== null ? zonePlan(this.zone.id).grassPatches : [];
     const tuning = tuningFor(this.zone);
     const table = encounterTableFor(this.zone.id);
@@ -382,6 +387,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
         const own = players.length === 1 ? (this.clientOf(players[0]!)?.userData?.realWeather ?? null) : null;
         return own ?? (this.state.weather as WeatherKind);
       },
+      // nemeses: on unless NEMESES=off; a darker zone (honor shapes the world) promotes more often
+      nemeses: () => (deps.env.NEMESES === 'off' ? null : { always: deps.env.NEMESES === 'always', shadow: this.state.shadow }),
     });
     this.trades = new TradeCoordinator({
       repos: deps.repos,
@@ -1605,6 +1612,14 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     }
     // one roaming legendary per season: on its route, now and then, the encounter is the roamer
     const roamer = roaming ? this.roamerEncounter(medium, ps.x, ps.z) : null;
+    // nemeses: now and then (more often in a darker zone) one of the player's nemeses born elsewhere ambushes them
+    if (roamer === null && this.nemesisAmbushRoll()) {
+      ud.encounterGraceM = ENCOUNTER_GRACE_M;
+      ud.battleId = 'pending';
+      ps.moving = false;
+      void this.startNemesisEncounter(client, ud, ps, id, medium);
+      return;
+    }
     // weather from real life: the player's own weather favours its types (no bias without a city)
     const rec = roamer ?? rollWild(encounterTableFor(this.zone.id), medium, this.wildRng!, this.deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps, ud.realWeather, this.state.shadow);
     if (rec === null) return;
@@ -1644,6 +1659,76 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       return;
     }
     await this.startEncounter(client, ud, ps, rec);
+  }
+
+  /** Nemeses: whether this encounter is an ambush try (NEMESES on: by the zone's shadow level; `always`: every one). */
+  nemesisAmbushRoll(): boolean {
+    const mode = this.deps.env.NEMESES;
+    if (mode === 'off') return false;
+    if (mode === 'always') return true;
+    return this.nemesisRng!.next() < nemesisAmbushChance(this.state.shadow);
+  }
+
+  /**
+   * Nemeses: one of the player's active nemeses that rose in another zone (and can come at them on this medium) ambushes
+   * them, at its level held near their lead, opening with its taunt; with none, the grass gives a wild creature as it
+   * would have. A repel does not keep a nemesis away.
+   */
+  private async startNemesisEncounter(client: ZoneClient, ud: ZoneUserData, ps: PlayerState, id: string, medium: 'land' | 'water'): Promise<void> {
+    const deps = this.deps;
+    try {
+      const all = await deps.repos.db.transaction((tx) => deps.repos.nemeses.active(tx, ud.playerId));
+      const here = all.filter((n) => n.bornZone !== this.zone.id && ambushesOn(deps.content, n, medium));
+      const lead = here.length > 0 ? await this.leadLevel(ud.playerId) : 0;
+      if (lead > 0) {
+        const n = here[this.nemesisRng!.int(here.length)]!;
+        const res = await this.battles.startWild({ playerId: ud.playerId, sessionId: client.sessionId }, this.nemesisSpawn(n, lead, medium, ps.x, ps.z), { x: ps.x, z: ps.z }, n);
+        if (res.ok) {
+          this.sendMsg(client, {
+            type: 'nemesisAmbush',
+            battleId: res.session.id,
+            nemesisId: n.id,
+            name: n.name,
+            title: n.title,
+            speciesId: n.speciesId,
+            scar: n.scar as Extract<ServerMessage, { type: 'nemesisAmbush' }>['scar'],
+            rank: n.rank,
+            taunt: tauntOf(deps.content, n),
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      deps.log.error({ err: e }, 'nemesis ambush failed');
+    }
+    const rec = rollWild(encounterTableFor(this.zone.id), medium, this.wildRng!, deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps, ud.realWeather, this.state.shadow);
+    if (rec === null) {
+      if (ud.battleId === 'pending') ud.battleId = null;
+      return;
+    }
+    await this.startEncounter(client, ud, ps, rec);
+  }
+
+  /** Nemeses: an ambush's spawn record (`<zone>:nemesis:<n>`, held by the battle alone like any grass encounter). */
+  private nemesisSpawn(n: Nemesis, lead: number, medium: 'land' | 'water', x: number, z: number): SpawnRecord {
+    const now = this.now();
+    this.wildCounter += 1;
+    return {
+      id: `${this.zone.id}:nemesis:${this.wildCounter}`,
+      speciesId: n.speciesId,
+      level: nemesisFightLevel(n.level, lead),
+      variantKey: n.variantKey,
+      isAlpha: n.isAlpha,
+      ...(n.isShiny ? { isShiny: true } : {}),
+      ability: n.ability,
+      medium,
+      x,
+      z,
+      bornAt: now,
+      engagedBy: null,
+      engagedAt: null,
+      despawnAt: now + 60_000,
+    };
   }
 
   /** Ghost trainers: on coming back, how the player's ghost fared while they were away (each fight told once). */

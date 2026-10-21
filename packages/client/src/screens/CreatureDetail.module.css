@@ -336,3 +336,24 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
+
+/* nemeses: the scar a caught nemesis keeps (the hot accent tag of the ambush lower third) */
+.scarNote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  margin: 0;
+  color: var(--text-1);
+}
+
+.scarTag {
+  padding: 0 var(--s-2);
+  background: var(--accent);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}

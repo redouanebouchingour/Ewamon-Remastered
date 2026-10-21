@@ -265,3 +265,11 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
 - Eggs are their own table, not creature rows: an egg never takes a party slot, so none of the party paths (battles,
   arena copies, ghosts, the tower, trades) can meet one. Everything the hatchling inherits is fixed when it is laid.
 - `creatures.insert` takes an optional first history event (`hatched`) in place of `met`; `bandborn` is a column.
+
+## Nemeses (2026-10-21)
+
+- Migration `0017_nemeses` (drizzle-kit generated, renamed from its random tag): one `nemeses` table; `status` keeps the
+  ended ones (`beaten`, `caught`, `faded`) instead of deleting them, so a later trophy view can read them. `rise` fades
+  the oldest past the cap in the same transaction.
+- History event `nemesis { how: 'beaten' | 'caught', name, speciesId, rank, zoneId }` needs no migration
+  (`creature_events.kind` is a varchar and `detail` jsonb).

@@ -34,6 +34,10 @@ export function eventLine(e: CreatureEvent): string {
       return `In the party that ${e.caught ? 'caught' : 'defeated'} ${speciesName(e.species)}.`;
     case 'hatched':
       return `Hatched by ${e.trainer} at ${zoneName(e.zoneId)} from ${e.parents[0]} and ${e.parents[1]}.`;
+    case 'nemesis':
+      return e.how === 'beaten'
+        ? `Struck down ${e.name}, a rank ${e.rank} nemesis ${speciesName(e.speciesId)}, on ${zoneName(e.zoneId)}. A trophy.`
+        : `Once ${e.name}, a rank ${e.rank} nemesis, caught on ${zoneName(e.zoneId)}.`;
   }
 }
 

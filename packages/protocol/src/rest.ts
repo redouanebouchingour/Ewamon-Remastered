@@ -19,7 +19,7 @@ import {
   Uuid,
   VariantKeySchema,
 } from './messages/common';
-import { InventoryDeltaMsg, QuestProgressEntrySchema } from './messages/server';
+import { InventoryDeltaMsg, NEMESIS_SCAR_IDS, QuestProgressEntrySchema } from './messages/server';
 import { SeatReservationSchema } from './messages/common';
 import {
   ArenaInfoRes,
@@ -486,7 +486,7 @@ export const CreaturesAddedRes = z.object({ creaturesAdded: z.array(CreatureInst
  * `gift` a change of hands; `evolved`; `badge` / `champion` / `legendary`: it was in the party that won it; `hatched`
  * (breeding) in place of `met`.
  */
-export const CREATURE_EVENT_KINDS = ['met', 'traded', 'sold', 'gift', 'evolved', 'badge', 'champion', 'legendary', 'hatched'] as const;
+export const CREATURE_EVENT_KINDS = ['met', 'traded', 'sold', 'gift', 'evolved', 'badge', 'champion', 'legendary', 'hatched', 'nemesis'] as const;
 const Name = z.string().max(20);
 export const CreatureEventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('met'), at: IsoDate, how: z.enum(['caught', 'received']), speciesId: z.string().max(32), level: z.number().int().min(1).max(100), zoneId: z.string().max(32).nullable(), trainer: Name }),
@@ -497,6 +497,8 @@ export const CreatureEventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('legendary'), at: IsoDate, species: z.string().max(32), caught: z.boolean() }),
   // breeding: how a hatchling's first owner got it (in place of `met`)
   z.object({ kind: z.literal('hatched'), at: IsoDate, speciesId: z.string().max(32), zoneId: z.string().max(32), parents: z.tuple([z.string().max(40), z.string().max(40)]), trainer: Name }),
+  // nemeses: `beaten` this creature landed the blow that ended the nemesis `name`; `caught` it was that nemesis
+  z.object({ kind: z.literal('nemesis'), at: IsoDate, how: z.enum(['beaten', 'caught']), name: z.string().max(60), speciesId: z.string().max(32), rank: z.number().int().min(1).max(5), zoneId: z.string().max(32) }),
 ]);
 export type CreatureEvent = z.infer<typeof CreatureEventSchema>;
 export const CreatureHistoryRes = z.object({ originalTrainer: Name.nullable(), events: z.array(CreatureEventSchema).max(200) });
@@ -714,6 +716,38 @@ export const GhostRes = z.object({
 export type GhostView = z.infer<typeof GhostRes>;
 
 /**
+ * Nemeses (content nemesis.ts): the caller's active nemeses, newest first (at most `max`): name and title, species and
+ * level, the scar, the move it gained, its rank, where it rose and where it was last met (and when), and what it
+ * remembers of the last fight.
+ */
+export const NemesisMemorySchema = z.object({
+  how: z.enum(['ko', 'breakout']),
+  zoneId: z.string().max(32),
+  foeSpecies: z.string().max(32),
+  foeName: z.string().max(16).nullable(),
+  move: z.string().max(32).nullable(),
+  orb: z.string().max(32).nullable(),
+});
+export const NemesisViewSchema = z.object({
+  id: z.string().min(1).max(64),
+  name: z.string().min(1).max(16),
+  title: z.string().min(1).max(32),
+  speciesId: z.string().max(32),
+  level: z.number().int().min(1).max(100),
+  isShiny: z.boolean(),
+  scar: z.enum(NEMESIS_SCAR_IDS),
+  move: z.string().max(32).nullable(),
+  rank: z.number().int().min(1).max(5),
+  bornZone: z.string().max(32),
+  lastZone: z.string().max(32),
+  lastSeenAt: IsoDate,
+  memory: NemesisMemorySchema,
+});
+export const NemesesRes = z.object({ nemeses: z.array(NemesisViewSchema).max(10), max: z.number().int().min(1) });
+export type NemesisView = z.infer<typeof NemesisViewSchema>;
+export type NemesesView = z.infer<typeof NemesesRes>;
+
+/**
  * Breeding (content daycare.ts). The Daycare: the creatures left there (in the order they were left, at most two),
  * whether they can breed (`refusal` when not), what would hatch and whether it is bandborn, when the next egg is ready
  * (`eggAt`, null while they cannot breed) and the trainer's eggs (carried ones count steps; the species stays a
@@ -901,6 +935,8 @@ export const ROUTES = {
   legends: route({ method: 'GET', path: '/legends', auth: 'bearer', response: LegendsRes }),
   // ghost trainers: where your ghost haunts and how it fared
   ghost: route({ method: 'GET', path: '/ghost', auth: 'bearer', response: GhostRes }),
+  // nemeses: the wild creatures that beat or escaped you and rose against you
+  nemeses: route({ method: 'GET', path: '/nemeses', auth: 'bearer', response: NemesesRes }),
   // breeding: the Daycare (leave / take back a creature, collect the egg) and moving an egg between the party and the box
   daycare: route({ method: 'GET', path: '/daycare', auth: 'bearer', response: DaycareRes }),
   daycareLeave: route({ method: 'POST', path: '/daycare/leave', auth: 'bearer', request: CreatureIdReq, response: DaycareActionRes }),

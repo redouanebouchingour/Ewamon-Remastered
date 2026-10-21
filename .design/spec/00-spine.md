@@ -1447,6 +1447,44 @@ time, one waiting at a time. Rules, chosen to read in one line each:
 - **Challenge runs**: while a Nuzlocke or Hardcore run is active the Daycare takes no creature and gives no egg, and
   carried eggs count no steps (a run's creatures are the first encounter of each route); taking one back is allowed.
 
+### 3.15 Nemeses
+<!-- added 2026-10-21: nemeses, the user's approved pitch (a wild creature that beats or escapes you remembers you) -->
+`content/src/data/nemesis.ts`. A wild creature that knocks out one of a trainer's creatures, or breaks out of their orb,
+and gets away (the battle ends with it neither caught nor knocked out: the trainer ran, whited out, or the battle ended
+otherwise) is promoted for that trainer alone. Rules, one line each:
+- **Who rises**: a plain wild creature of a world wild battle (tall grass, surfing, fishing, a visible spawn). Never a
+  legendary or mythical (`SpeciesDef.legendary`), the season's roamer, a static, a trainer's or a ghost's creature, and
+  never in the tower, the arena or a raid (none of them is a world wild battle).
+- **How often**: `NEMESIS_PROMOTE_CHANCE` by the zone's shadow level (honor shapes the world, content `worldHonor.ts`; `ZoneState.shadow`): 0.6 / 0.7 / 0.8 /
+  0.9 / 1. At most `NEMESIS_MAX` 3 active per trainer; when one more rises the oldest fades.
+- **What it gains** (`riseNemesis` on the server): `NEMESIS_GAIN` 2 to 5 levels (to 100 at most); one move
+  (`nemesisMove`: the next move its learnset teaches above its new level that it does not know, else a damaging TM it can
+  learn); a name and a title (`nemesisName`: a head by its type and a tail, e.g. "Scarjaw", at most 16 letters so it fits
+  a nickname; a title by how it got away or by its type, e.g. "the Unbroken"); a scar (`scarOf`: a torn ear for an orb
+  broken out of; for a knockout the mark of the hardest blow it took, by that move's type: burn scar, frostbitten ear,
+  lightning mark, venom stain, cracked horn, shadow brand, claw marks; a cracked horn when nothing landed); rank 1; and its
+  memory of the fight (`NemesisMemory { how, zoneId, foeSpecies, foeName, move, orb }`: what it knocked out and with
+  which move, or which orb it broke out of in front of which creature).
+- **Again**: each time it knocks out or escapes the same trainer again its rank rises (to `NEMESIS_RANK_MAX` 5),
+  `NEMESIS_RANK_GAIN` 1 to 2 levels, and its memory becomes the newest fight. A meeting that settles nothing (the trainer
+  ran before either happened) only moves where it was last seen.
+- **Ambush**: `NEMESIS_AMBUSH_CHANCE` of a trainer's grass / surf encounters (0.08 / 0.10 / 0.12 / 0.14 / 0.16 by shadow
+  level) is an ambush by one of their active nemeses that rose in another zone (on the water only a Water, Flying or Ice
+  species). It fights at `nemesisFightLevel` (its own level held between the lead's level − `NEMESIS_UNDER_LEAD` 2 and
+  + `NEMESIS_OVER_LEAD` 3): a darker zone brings more of them, never harder ones. It is the wild battler with its name as
+  nickname, its coat, ability and gained move (in place of its oldest), and it opens with a taunt from its memory
+  (`nemesisTaunt`, e.g. "Scarjaw remembers your Pyrekit. It remembers Ember."; a higher rank remembers more). A repel does
+  not keep it away.
+- **Endings**: knocked out, it is gone (`beaten`) and the trainer's creature that landed the blow keeps a history line
+  (`nemesis { how: 'beaten' }`, a trophy); caught, it is gone from the list (`caught`) and the new creature keeps its name
+  as nickname, its scar as the ribbon `nemesis-scar:<scar>` (`nemesisScarRibbon`, read back by `scarOfRibbons`), its
+  gained move, and a history line (`nemesis { how: 'caught' }`).
+- **Challenge runs**: an ambush is a wild encounter of the zone it happens in. In a Nuzlocke or Hardcore run it spends that
+  zone's first encounter like any other, and may be caught only when it is that first encounter.
+- **Switch**: server env `NEMESES` (`on` default; `off` in testEnv, so the suites and the progression walker see wild
+  battles end as they always did; `always` promotes every qualifying escape and makes every possible ambush one, for live
+  checks). No core change.
+
 ---
 
 ## §4 @ewa/protocol WIRE
@@ -1628,6 +1666,10 @@ export type ServerMessage =
       readonly reward: { readonly money: number; readonly items: Readonly<Record<string, number>> } | null }      // Phase D14 (30-server-netcode.md §30.4.9); after rankedStatus in SERVER_MESSAGE_TYPES
   | { readonly type: 'eggHatched'; readonly eggId: string; readonly creature: CreatureInstance; readonly placement: 'party' | 'box';
       readonly parents: readonly [string, string]; readonly zoneId: string }   // added 2026-10-21: breeding (30-server-netcode.md §30.4.3a): a carried egg hatched; after the inventoryDelta adding it; after towerState in SERVER_MESSAGE_TYPES (25 variants)
+  | { readonly type: 'nemesisAmbush'; readonly battleId: string; readonly nemesisId: string; readonly name: string; readonly title: string; readonly speciesId: string;
+      readonly scar: NemesisScar; readonly rank: number; readonly taunt: string }   // added 2026-10-21: nemeses (§3.15): sent right after the ambush's battleStart; the client's lower third
+  | { readonly type: 'nemesisNews'; readonly event: 'rose' | 'rankUp' | 'beaten' | 'caught' | 'faded'; readonly nemesisId: string; readonly name: string; readonly title: string;
+      readonly speciesId: string; readonly scar: NemesisScar; readonly rank: number; readonly level: number }   // added 2026-10-21: what became of a nemesis, after its battle's battleEnd; both after eggHatched in SERVER_MESSAGE_TYPES (27 variants)
   // arena PvP (30-server-netcode.md §30.4.10; protocol `arena.ts`) <!-- amended 2026-10-11: arena PvP --> — after towerState (22 variants)
   | { readonly type: 'arenaStatus'; readonly state: 'idle' | 'queued' | 'matched'; readonly kind: ArenaKind | null; readonly waitedMs: number; readonly window: number;
       readonly opponent: { readonly name: string; readonly rating: number } | null; readonly seat: SeatReservation | null;   // seat only while `matched`: the arena room
@@ -1714,7 +1756,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /battle-pass/claim` | `{ level }` | `{ claimed, inventory, money, creaturesAdded }` | bearer |
 | `POST /battle-pass/mythical-choice` | `{ species: 'lumyth' | 'noxmyth' }` | `{ creaturesAdded }` | bearer |
 | `GET /history/battles?page=` · `GET /history/trades?page=` | — | rows (a battle row's optional `arena`: the `ArenaKind` from its start snapshot) | bearer |
-| `GET /creature/:id/history` <!-- added 2026-10-20: creature history --> | - | `CreatureHistoryRes { originalTrainer: string \| null, events: CreatureEvent[] }` oldest first (at most 200): `met { how: 'caught' \| 'received', speciesId, level, zoneId \| null, trainer }`, `traded` / `sold` / `gift { from, to }`, `evolved { from, into }`, `badge { badge }`, `champion`, `legendary { species, caught }`, each with `at`; names as they were then. Any signed-in player may read any creature's history; 404 `notFound` | bearer |
+| `GET /creature/:id/history` <!-- added 2026-10-20: creature history --> | - | `CreatureHistoryRes { originalTrainer: string \| null, events: CreatureEvent[] }` oldest first (at most 200): `met { how: 'caught' \| 'received', speciesId, level, zoneId \| null, trainer }`, `traded` / `sold` / `gift { from, to }`, `evolved { from, into }`, `badge { badge }`, `champion`, `legendary { species, caught }`, `hatched` (breeding), `nemesis { how: 'beaten' \| 'caught', name, speciesId, rank, zoneId }` (added 2026-10-21: it struck down the nemesis `name`, or was it), each with `at`; names as they were then. Any signed-in player may read any creature's history; 404 `notFound` | bearer |
 | `POST /history/battles/:battleId/share` <!-- added 2026-10-20: battle replays --> | `{}` | `{ token }`: 12 url-safe characters, the same token on every share of that battle (404 `notFound` for another player's battle; 409 `notReplayable` for a row without `start` / `final_digest`, 409 `stale` when the row no longer replays to its `final_digest`) | bearer |
 | `GET /replay/:token` | - | `ReplayRes { token, format, seat, labels: [string \| null, string \| null], result, turns, happenedAt, seed, start, actions, finalDigest }`: the battle frozen and anonymised at share time (player sides' trainers `r:<side>`, creatures `r:<side>:<i>`, owners null; `createBattle({ id: REPLAY_BATTLE_ID, format, seed, ...start })` + the actions end on `finalDigest`); `seat` the sharer's side; 404 `notFound` | none (rate limit `replay` per IP) |
 | `GET /seasons` <!-- added 2026-10-20: ranked seasons --> | - | `SeasonsRes { current: { season, startsAt, endsAt, finalsAt, finals, top }, past: { season, startsAt, endsAt, finalsAt, top }[] }`: the running season (content `seasonAt`) with its top eight so far, and the latest six closed seasons' top eight; a row is `{ rank, username, rating, wins, losses, title: 'champion' \| 'finalist' \| null }`; banned trainers left out | bearer |
@@ -1732,6 +1774,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /daycare/take` <!-- added 2026-10-21 --> | `{ id }` | `DaycareActionRes`: back to the party while it has room, else the box; the timer stops; 409 `notAtDaycare`, `InvalidSlot` | bearer |
 | `POST /daycare/collect` <!-- added 2026-10-21 --> | - | `DaycareActionRes`: the ready egg, carried while fewer than `EGG_CARRY_MAX` are, else boxed; the timer starts over; 409 `notAtDaycare`, `noEgg`, `eggsFull`, `challenge` | bearer |
 | `POST /eggs/:id/move` <!-- added 2026-10-21 --> | `{ place: 'party' \| 'box' }` | `DaycareActionRes`; 409 `eggsCarried` past `EGG_CARRY_MAX`; 404 for anyone else's egg | bearer |
+| `GET /nemeses` <!-- added 2026-10-21: nemeses --> | - | `NemesesRes { nemeses: { id, name, title, speciesId, level, isShiny, scar, move \| null, rank, bornZone, lastZone, lastSeenAt, memory: { how: 'ko' \| 'breakout', zoneId, foeSpecies, foeName \| null, move \| null, orb \| null } }[] (≤ 10, newest first), max }`: the caller's active nemeses (§3.15) | bearer |
 | `GET /ghost` <!-- added 2026-10-20: ghost trainers --> | - | `GhostRes { haunting: { zoneId, leftAt, party: { speciesId, level }[] (≤ 6) } \| null, won, lost, fights: { challenger, zoneId, won, at }[] (≤ 20, newest first) }`: where the caller's ghost haunts (null before they ever left, or after `GHOST_DAYS`), its record and latest fights | bearer |
 | `GET /weather/cities?q=` <!-- added 2026-10-20: weather from real life --> | - | `WeatherCitiesRes { cities: { name, region?, country, lat, lon }[] }` (≤ 5, Open-Meteo geocoding asked by the server, `region` its province or state, a place reading exactly like one already listed dropped, coordinates rounded to 0.1°); `q` 2..60 characters; 503 `weatherUnavailable` when the service does not answer; limit `weather` | bearer |
 | `POST /weather/city` <!-- added 2026-10-20 --> | `{ city: { name, region?, country, lat, lon } \| null }` | `RealWeatherRes { city \| null, kind \| null }`: the city stored on the player (coordinates rounded to 0.1°) and its weather now; null turns it off. The room holding the player hears it on `ewa:weather:<playerId>` | bearer |
@@ -2216,6 +2259,15 @@ export interface GhostRepo {
   record(tx: Tx, ghostId: string, challenger: string, zoneId: string, won: boolean, now: Date): Promise<void>;
   report(tx: Tx, ghostId: string): Promise<GhostFight[]>;   // the fights not yet told, now marked told
   fights(tx: Tx, ghostId: string, limit: number): Promise<{ fights: GhostFight[]; won: number; lost: number }>;
+}
+/** Nemeses (migration 0017_nemeses): `nemeses (id uuid PK, owner_id → players cascade, species_id, level 1..100, name varchar(16), title varchar(32), scar varchar(16), move varchar(32) null, rank 1..5, ability, variant_key, is_shiny, is_alpha, born_zone, last_zone, memory jsonb, status 'active' | 'beaten' | 'caught' | 'faded', created_at, updated_at)`, index (owner_id, status). */
+export interface NemesisRepo {
+  active(tx: Tx, ownerId: string): Promise<Nemesis[]>;   // newest first
+  of(tx: Tx, id: string): Promise<Nemesis | null>;
+  rise(tx: Tx, n: NewNemesis, max: number, now: Date): Promise<{ nemesis: Nemesis; faded: Nemesis[] }>;   // rank 1, last seen where it rose; beyond `max` active the oldest fade
+  rankUp(tx: Tx, id: string, p: { rank: number; level: number; memory: NemesisMemory; zoneId: string }, now: Date): Promise<Nemesis | null>;   // null when no longer active
+  seen(tx: Tx, id: string, zoneId: string, now: Date): Promise<void>;
+  end(tx: Tx, id: string, status: 'beaten' | 'caught', zoneId: string, now: Date): Promise<boolean>;   // once
 }
 export interface LegendRepo {
   claim(tx: Tx, season: number, species: string, playerId: string, playerName: string, now: Date): Promise<boolean>;   // the first catch only

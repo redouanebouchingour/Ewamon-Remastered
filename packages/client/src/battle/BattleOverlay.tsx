@@ -14,6 +14,7 @@ import { useUiStore } from '../state/ui';
 import s from './BattleOverlay.module.css';
 import { BattleBanner } from './BattleBanner';
 import { BattleIntroCard } from './BattleIntroCard';
+import { NemesisTaunt } from './NemesisTaunt';
 import { EncounterWipe } from './EncounterWipe';
 import { BattleCallout } from './BattleCallout';
 import { BattleMenu } from './BattleMenu';
@@ -70,6 +71,7 @@ export function BattleOverlay() {
     <>
       <EncounterWipe />
       <BattleIntroCard />
+      <NemesisTaunt />
       <BattleBanner />
       <BattleCallout />
       <RaidPanel />

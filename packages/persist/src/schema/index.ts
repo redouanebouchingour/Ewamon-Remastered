@@ -21,3 +21,4 @@ export * from './factions';
 export * from './legends';
 export * from './ghosts';
 export * from './breeding';
+export * from './nemeses';

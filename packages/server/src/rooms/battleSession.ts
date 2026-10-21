@@ -42,6 +42,11 @@ import type { SpawnRecord } from './spawnDirector';
 import { completeBeatInTx } from './storyBeats';
 import { FACTION_POINTS, deedsOf, seasonAt } from '@ewa/content';
 import { ghostReward, ghostTrainerId } from '@ewa/content';
+import { NEMESIS_MAX, nemesisFullName, nemesisPromoteChance, nemesisScarRibbon } from '@ewa/content';
+import type { NemesisScar } from '@ewa/content';
+import type { Nemesis, Tx } from '@ewa/persist';
+import { EMPTY_TRACK, isNemesisSpawn, nemesisCreature, promotionOf, rankUpOf, riseNemesis, trackNemesis } from '../game/nemesis';
+import type { NemesisTrack } from '../game/nemesis';
 
 export const TURN_DEADLINE_MS = 60_000;
 export const REPLACEMENT_DEADLINE_MS = 20_000;
@@ -137,6 +142,10 @@ export interface BattleSession {
    * fainted creature of such a side falls (`FALLEN_RIBBON`); Hardcore's bag snapshot holds orbs only.
    */
   readonly challenge?: readonly [ChallengeMode | null, ChallengeMode | null];
+  /** Nemeses (content nemesis.ts): the player's nemesis this wild battle is an ambush by (absent otherwise) */
+  readonly nemesis?: Nemesis;
+  /** Nemeses: what the wild side did to the player so far (a knockout, an orb broken out of), set after each commit */
+  nemesisTrack?: NemesisTrack;
   /** the LegendaryStatic flag to set on win/catch */
   readonly staticFlag: string | null;
   /** createBattle's input minus seed, deep-copied before the call — battle_history.start (P6, DB-only replay) */
@@ -165,6 +174,11 @@ export interface BattleDeps {
   /** Phase D7: the ambient weather a battle of this format forming at this point starts under (absent → 'none') */
   /** `players`: the battle's human seats (weather from real life: a player's own weather replaces the zone's) */
   readonly weather?: (format: BattleFormat, at: BattleAt, players: readonly string[]) => WeatherKind;
+  /**
+   * Nemeses (content nemesis.ts): whether wild creatures may rise here (null / absent: never, env `NEMESES=off`) and
+   * the zone's shadow level now (a darker zone promotes more often); `always` promotes every qualifying escape.
+   */
+  readonly nemeses?: () => { readonly always: boolean; readonly shadow: number } | null;
 }
 
 /** Where a battle forms (ZoneRoom `battleAt`): a hall arena + its battle-axis yaw inside an interior, else the player. */
@@ -269,6 +283,8 @@ interface PlayerDelta {
   inventoryAll: Record<string, number> | null;
   /** Phase D14: a finished tower fight's result */
   tower: TowerResult | null;
+  /** Nemeses: what became of a nemesis in this battle (`nemesisNews`, sent after `battleEnd`) */
+  nemesis: ServerMessage[];
 }
 
 function emptyDelta(): PlayerDelta {
@@ -290,6 +306,7 @@ function emptyDelta(): PlayerDelta {
     beatCompleted: null,
     inventoryAll: null,
     tower: null,
+    nemesis: [],
   };
 }
 
@@ -579,18 +596,24 @@ export class BattleCoordinator {
     return { session, events };
   }
 
-  /** §30.4.4 `wild`: one battler projected from the SpawnRecord. */
-  async startWild(p: PlayerSeat, spawn: SpawnRecord, at: BattleAt): Promise<StartResult> {
+  /**
+   * §30.4.4 `wild`: one battler projected from the SpawnRecord. Nemeses: with `nemesis` (an ambush) the battler is that
+   * nemesis at the spawn's level (held near the lead), with its name, look, ability and gained move.
+   */
+  async startWild(p: PlayerSeat, spawn: SpawnRecord, at: BattleAt, nemesis?: Nemesis): Promise<StartResult> {
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
     const loaded = await this.loadPlayers([p.playerId], spawn.speciesId, this.deps.zone.id);
     const me = loaded.get(p.playerId)!;
     const side0 = this.playerSide(me.party, p.playerId, true, me.canCatch, me.inventory);
     if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
-    const wild = withSyntheticId(
-      newCreature(this.deps.content, spawn.speciesId, spawn.level, { ability: spawn.ability, variantKey: spawn.variantKey, isAlpha: spawn.isAlpha, isShiny: spawn.isShiny === true }),
-      `wild:${spawn.id}`,
-    );
+    const wild =
+      nemesis !== undefined
+        ? nemesisCreature(this.deps.content, nemesis, spawn.level, `wild:${spawn.id}`)
+        : withSyntheticId(
+            newCreature(this.deps.content, spawn.speciesId, spawn.level, { ability: spawn.ability, variantKey: spawn.variantKey, isAlpha: spawn.isAlpha, isShiny: spawn.isShiny === true }),
+            `wild:${spawn.id}`,
+          );
     const side1: Omit<Side, 'mustSwitch' | 'consumedItems'> = { kind: 'wild', party: [projectBattler(wild, this.deps.content)], active: 0, trainerId: null, canFlee: false, canCatch: false };
     const { session } = this.open(
       {
@@ -609,6 +632,7 @@ export class BattleCoordinator {
         inventory: [this.bagFor(me), null],
         rematch: false,
         challenge: [me.challenge, null],
+        ...(nemesis !== undefined ? { nemesis } : {}),
       },
       [side0, side1],
       this.rng.fork().snapshot(),
@@ -1021,9 +1045,12 @@ export class BattleCoordinator {
       return;
     }
     const now = clock();
+    // nemeses: what the wild side did to the player this turn (a knockout, an orb broken out of), kept after the commit
+    const track = this.nemesesHere(session) !== null ? trackNemesis(session.nemesisTrack ?? EMPTY_TRACK, before, events, content) : undefined;
     let deltas: Map<string, PlayerDelta>;
     try {
-      deltas = await this.persistTurn(session, before, next, events, [...session.actionsLog, actions], now);
+      deltas = await this.persistTurn(session, before, next, events, [...session.actionsLog, actions], now, track);
+      if (track !== undefined) session.nemesisTrack = track;
     } catch (e) {
       log.error({ err: e, battleId: session.id }, 'battle turn transaction failed');
       this.deps.metrics.battleFaults += 1;
@@ -1104,6 +1131,8 @@ export class BattleCoordinator {
       if (next.ended !== null) {
         host.send(pid, { type: 'battleEnd', battleId: session.id, outcome: next.ended, rewards: d.rewards ?? { money: 0, items: {}, trainerExp: 0, ratingDelta: null, badge: null } });
       }
+      // nemeses: what became of one in this battle
+      for (const m of d.nemesis) host.send(pid, m);
     }
   }
 
@@ -1115,6 +1144,7 @@ export class BattleCoordinator {
     events: readonly BattleEvent[],
     actionsLog: [SideChoice, SideChoice][],
     nowMs: number,
+    track?: NemesisTrack,
   ): Promise<Map<string, PlayerDelta>> {
     const { repos } = this.deps;
     const now = new Date(nowMs);
@@ -1170,8 +1200,9 @@ export class BattleCoordinator {
         }
         for (const item of Object.keys(spend).sort()) d.items[item] = await repos.inventory.add(tx, pid, item, spend[item]!);
 
-        // e. catch: insert inside the same tx as the roll
+        // e. catch: insert inside the same tx as the roll (nemeses: a caught nemesis keeps its name and its scar)
         const caughtEv = side === 0 ? events.find((ev): ev is Extract<BattleEvent, { t: 'catchResult' }> => ev.t === 'catchResult' && ev.caught) : undefined;
+        let caughtId: string | null = null;
         if (caughtEv !== undefined) {
           const wild = next.sides[1].party[caughtEv.target.slot]!.creature;
           const records = await repos.creatures.byOwner(tx, pid);
@@ -1187,9 +1218,18 @@ export class BattleCoordinator {
           const { id: _synthetic, ...fields } = base;
           const inserted = await repos.creatures.insert(
             tx,
-            { ...fields, ownerId: pid, nickname: null, caughtAt: { zoneId: session.zoneId, at: nowMs }, favorite: false, locked: false, ribbons: [] },
+            {
+              ...fields,
+              ownerId: pid,
+              nickname: session.nemesis?.name ?? null,
+              caughtAt: { zoneId: session.zoneId, at: nowMs },
+              favorite: false,
+              locked: false,
+              ribbons: session.nemesis !== undefined ? [nemesisScarRibbon(session.nemesis.scar as NemesisScar)] : [],
+            },
             partyIndex === -1 ? { kind: 'box', index: 'nextBox' } : { kind: 'party', index: partyIndex },
           );
+          caughtId = inserted.id;
           d.creaturesAdded.push(toInstance(inserted));
           d.placement[inserted.id] = partyIndex === -1 ? 'box' : 'party';
           const { newSpecies } = await repos.progress.markCaught(tx, pid, wild.speciesId, wild.variantKey, wild.isAlpha, now, wild.isShiny === true);
@@ -1351,6 +1391,8 @@ export class BattleCoordinator {
               roamerFirsts.push({ pid, species });
             }
           }
+          // nemeses: a wild creature that knocked out or escaped the player rises; an ambush ends, or its rank rises
+          if (side === 0 && track !== undefined) d.nemesis.push(...(await this.settleNemesis(tx, session, before, next, events, track, pid, outcome, caughtId, now)));
           if (flagsToSet.length > 0) {
             await repos.progress.setFlags(tx, pid, flagsToSet, now);
             d.flags.push(...flagsToSet);
@@ -1412,6 +1454,78 @@ export class BattleCoordinator {
       this.deps.host.send(r.pid, { type: 'toast', level: 'success', text: `You are the first to catch ${name} this season. The Dex will remember it.` });
     }
     return out;
+  }
+
+  /** Nemeses: the rules in force for this battle (a world wild battle in a zone with nemeses on), else null. */
+  private nemesesHere(session: BattleSession): { readonly always: boolean; readonly shadow: number } | null {
+    if (session.format !== 'wild' || session.arena !== undefined || session.tower === true || session.ghost !== undefined) return null;
+    return this.deps.nemeses?.() ?? null;
+  }
+
+  /**
+   * Nemeses, at the end of a wild battle (inside its end transaction): an ambush caught (the creature's history says it
+   * was the nemesis), knocked out (the creature that landed the blow keeps a trophy line), escaped again (its rank
+   * rises) or merely met; a plain wild creature that knocked out or escaped the player may rise as a new nemesis.
+   */
+  private async settleNemesis(
+    tx: Tx,
+    session: BattleSession,
+    before: BattleState,
+    next: BattleState,
+    events: readonly BattleEvent[],
+    track: NemesisTrack,
+    pid: string,
+    outcome: BattleOutcome,
+    caughtId: string | null,
+    now: Date,
+  ): Promise<ServerMessage[]> {
+    const { repos, content } = this.deps;
+    const here = this.nemesesHere(session);
+    if (here === null) return [];
+    const rng = createRng(`nemesis:${session.id}:${next.turn}`);
+    const zoneId = session.zoneId;
+    const news = (event: 'rose' | 'rankUp' | 'beaten' | 'caught' | 'faded', n: Nemesis): ServerMessage => ({
+      type: 'nemesisNews',
+      event,
+      nemesisId: n.id,
+      name: n.name,
+      title: n.title,
+      speciesId: n.speciesId,
+      scar: n.scar as NemesisScar,
+      rank: n.rank,
+      level: n.level,
+    });
+    const n = session.nemesis;
+    if (n !== undefined) {
+      const line = (how: 'beaten' | 'caught') => ({ kind: 'nemesis' as const, how, name: nemesisFullName(n), speciesId: n.speciesId, rank: n.rank, zoneId });
+      if (outcome.winner === 'caught') {
+        if (!(await repos.nemeses.end(tx, n.id, 'caught', zoneId, now))) return [];
+        if (caughtId !== null) await repos.creatures.addEvent(tx, [caughtId], line('caught'), now);
+        return [news('caught', n)];
+      }
+      if (outcome.winner === 0) {
+        if (!(await repos.nemeses.end(tx, n.id, 'beaten', zoneId, now))) return [];
+        const victor = finisherOf(before, next, events);
+        if (victor !== null) await repos.creatures.addEvent(tx, [victor], line('beaten'), now);
+        return [news('beaten', n)];
+      }
+      const how = promotionOf(track, outcome);
+      if (how === null) {
+        await repos.nemeses.seen(tx, n.id, zoneId, now);
+        return [];
+      }
+      const up = await repos.nemeses.rankUp(tx, n.id, rankUpOf(rng, n, track, how, zoneId), now);
+      return up === null ? [] : [news('rankUp', up)];
+    }
+    // a plain wild creature: never a static, the roamer or a legendary
+    if (session.staticSpecies !== null || session.spawnId === null || isRoamerSpawn(session.spawnId) || isNemesisSpawn(session.spawnId)) return [];
+    const how = promotionOf(track, outcome);
+    const wild = next.sides[1].party[0]?.creature;
+    if (how === null || wild === undefined || content.species(wild.speciesId).legendary) return [];
+    if (!here.always && rng.next() >= nemesisPromoteChance(here.shadow)) return [];
+    const taken = (await repos.nemeses.active(tx, pid)).map((x) => x.name);
+    const { nemesis, faded } = await repos.nemeses.rise(tx, riseNemesis(rng, content, wild, track, how, zoneId, pid, taken), NEMESIS_MAX, now);
+    return [news('rose', nemesis), ...faded.map((f) => news('faded', f))];
   }
 
   private finish(session: BattleSession, outcome: BattleOutcome): void {
@@ -1501,6 +1615,20 @@ export class BattleCoordinator {
     this.sessions.clear();
     this.byPlayer.clear();
   }
+}
+
+/**
+ * Nemeses: the player's creature (a persisted id) that knocked out the wild battler this turn: the source of the last
+ * damage it took before fainting, else the player's active creature; null when none is a stored creature.
+ */
+function finisherOf(before: BattleState, next: BattleState, events: readonly BattleEvent[]): string | null {
+  let slot: number | null = null;
+  for (const e of events) {
+    if (e.t === 'damage' && e.target.side === 1 && e.source?.side === 0) slot = e.source.slot;
+    if (e.t === 'faint' && e.who.side === 1) break;
+  }
+  const id = (slot !== null ? before.sides[0].party[slot]?.creature.id : undefined) ?? next.sides[0].party[next.sides[0].active]?.creature.id;
+  return id !== undefined && isPersistedId(id) ? id : null;
 }
 
 function opponentLabel(session: BattleSession, side: 0 | 1): string {

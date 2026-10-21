@@ -686,3 +686,12 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   RNG, heightfield or progression fixture moves.
 - The species is the first-left parent's first stage (`evolutionRoot`), so a player chooses the line by the order they
   leave the pair; legendaries and mythicals (`SpeciesDef.legendary`) never breed.
+
+## Nemeses (2026-10-21)
+
+- `data/nemesis.ts`: every nemesis rule as a small pure function (chances by shadow level, the fair fight level, the
+  scar by how it won and its ribbon, names and titles by type, the gained move, the taunts). Nothing in `ZoneDef`, the
+  plan, the layout RNG or the heightfield changes; the world gains no layer: a nemesis lives in the database and meets
+  the player through the grass roll.
+- Names are a type's head and a common tail (at most 12 letters, a nickname takes 16). The word tables are content so
+  they can be read and tuned; none uses an em-dash.

@@ -257,7 +257,7 @@ export interface SharedReplay {
  * `met`: how the first owner got it (`caught` in `zoneId`, or `received`: a starter or a gift); `traded` / `sold` /
  * `gift`: an ownership change (`sold` = the marketplace); `evolved`; `badge`: in the party that won it; `champion`: in
  * the party that beat the Champion; `legendary`: in the party that caught or defeated a legendary; `hatched`: how a
- * hatchling's first owner got it (in place of `met`).
+ * hatchling's first owner got it (in place of `met`); `nemesis`: it ended a nemesis, or was one.
  */
 export type CreatureEventDetail =
   | { readonly kind: 'met'; readonly how: 'caught' | 'received'; readonly speciesId: string; readonly level: number; readonly zoneId: string | null; readonly trainer: string }
@@ -267,7 +267,12 @@ export type CreatureEventDetail =
   | { readonly kind: 'champion' }
   | { readonly kind: 'legendary'; readonly species: string; readonly caught: boolean }
   /** breeding: hatched from an egg laid at the Daycare in `zoneId`; `parents` are the parents' names as they were */
-  | { readonly kind: 'hatched'; readonly speciesId: string; readonly zoneId: string; readonly parents: readonly [string, string]; readonly trainer: string };
+  | { readonly kind: 'hatched'; readonly speciesId: string; readonly zoneId: string; readonly parents: readonly [string, string]; readonly trainer: string }
+  /**
+   * nemeses: `beaten`: this creature landed the blow that ended the nemesis `name` (its full name as it was);
+   * `caught`: this creature was that nemesis, caught at `rank`
+   */
+  | { readonly kind: 'nemesis'; readonly how: 'beaten' | 'caught'; readonly name: string; readonly speciesId: string; readonly rank: number; readonly zoneId: string };
 
 export type CreatureEventKind = CreatureEventDetail['kind'];
 

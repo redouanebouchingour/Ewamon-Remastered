@@ -54,6 +54,7 @@ import {
   FactionsRes,
   LegendsRes,
   GhostRes,
+  NemesesRes,
   DaycareRes,
   DaycareActionRes,
   EggMoveReq,
@@ -395,7 +396,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(99); // the 5 daycare / egg routes + GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(ROUTE_KEYS).toHaveLength(100); // GET /nemeses + the 5 daycare / egg routes + GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
     expect(paths).toContain('GET /daily');
     expect(paths).toContain('POST /challenge');
     expect(paths).toContain('POST /daily/start');
@@ -465,6 +466,7 @@ describe('creature history', () => {
         { kind: 'champion', at },
         { kind: 'legendary', at, species: 'hyoryu', caught: true },
         { kind: 'hatched', at, speciesId: 'dustcub', zoneId: 'mirevale', parents: ['Badlander', 'Rex'], trainer: 'ash_k' },
+        { kind: 'nemesis', at, how: 'beaten', name: 'Scarjaw the Unbroken', speciesId: 'dustcub', rank: 2, zoneId: 'mire_route' },
       ],
     });
     ok(CreatureHistoryRes, { originalTrainer: null, events: [] });
@@ -609,5 +611,18 @@ describe('breeding', () => {
     ok(DaycareActionRes, { daycare: view, party: [creature()], box: [] });
     ok(EggMoveReq, { place: 'box' });
     bad(EggMoveReq, { place: 'daycare' });
+  });
+});
+
+describe('nemeses', () => {
+  const memory = { how: 'ko', zoneId: 'mire_route', foeSpecies: 'pyrekit', foeName: null, move: 'Ember', orb: null };
+  const n = { id: U1, name: 'Scarjaw', title: 'the Unbroken', speciesId: 'dustcub', level: 12, isShiny: false, scar: 'burn', move: 'Dig', rank: 1, bornZone: 'mire_route', lastZone: 'mire_route', lastSeenAt: ISO, memory };
+  it('the active nemeses: a scar of the list, a rank of 1 to 5, a name that fits a nickname', () => {
+    ok(NemesesRes, { nemeses: [n], max: 3 });
+    ok(NemesesRes, { nemeses: [], max: 3 });
+    ok(NemesesRes, { nemeses: [{ ...n, move: null, memory: { ...memory, how: 'breakout', move: null, orb: 'great_orb' } }], max: 3 });
+    bad(NemesesRes, { nemeses: [{ ...n, scar: 'tattoo' }], max: 3 });
+    bad(NemesesRes, { nemeses: [{ ...n, rank: 6 }], max: 3 });
+    bad(NemesesRes, { nemeses: [{ ...n, name: 'A name much too long' }], max: 3 });
   });
 });

@@ -208,3 +208,8 @@ installed library that future readers should not have to re-derive. The spec its
 - `daycare`, `daycareLeave`, `daycareTake`, `daycareCollect`, `eggMove` routes (99 routes); `eggHatched` server
   message (25 types); `CreatureInstanceSchema.bandborn` (a literal true, optional: the client's battle-state digest
   must keep it); history event `hatched`.
+
+## Nemeses (2026-10-21)
+
+- `nemeses` route `GET /nemeses` (100 routes); `nemesisAmbush` and `nemesisNews` server messages (27 types);
+  `NEMESIS_SCAR_IDS` mirrors content's `NEMESIS_SCARS` (protocol does not import content); history event `nemesis`.

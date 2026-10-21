@@ -21,6 +21,8 @@ import { ghostRepo } from './ghosts';
 import type { GhostRepo } from './ghosts';
 import { breedingRepo } from './breeding';
 import type { BreedingRepo } from './breeding';
+import { nemesisRepo } from './nemeses';
+import type { NemesisRepo } from './nemeses';
 import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
 import { historyRepo } from './history';
@@ -67,6 +69,8 @@ export interface Repos {
   readonly ghosts: GhostRepo;
   /** breeding: the Daycare's egg timer and the eggs a trainer carries or keeps (migration 0016) */
   readonly breeding: BreedingRepo;
+  /** nemeses: the wild creatures that beat or escaped a trainer and rose against them (migration 0017) */
+  readonly nemeses: NemesisRepo;
 }
 
 /**
@@ -96,6 +100,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     legends: legendRepo,
     ghosts: ghostRepo,
     breeding: breedingRepo,
+    nemeses: nemesisRepo,
   };
 }
 
@@ -123,3 +128,4 @@ export type { FactionSide, FactionTotals } from './factions';
 export type { SeasonLegend } from './legends';
 export type { Ghost, GhostFight } from './ghosts';
 export type { Egg, EggPlace, NewEgg } from './breeding';
+export type { Nemesis, NemesisStatus, NewNemesis } from './nemeses';

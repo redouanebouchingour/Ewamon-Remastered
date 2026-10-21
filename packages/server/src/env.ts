@@ -41,6 +41,12 @@ export const EnvSchema = z.object({
   WILD_ENCOUNTERS: z.enum(['grass', 'overworld']).default('grass'),
   /** 'on' = an unbeaten trainer who sees the player starts the fight (the default); testEnv keeps 'off'. */
   TRAINER_SIGHT: z.enum(['on', 'off']).default('on'),
+  /**
+   * Nemeses (content nemesis.ts): 'on' (the default) = a wild creature that beats or escapes a player may rise as their
+   * nemesis and ambush them later; 'off' = never (testEnv, so wild battles end as they always did); 'always' = every
+   * qualifying escape promotes and every grass / surf encounter that can be an ambush is one (dev and live checks).
+   */
+  NEMESES: z.enum(['on', 'off', 'always']).default('on'),
   /** not configurable in v1; present so the value is visible */
   TICK_HZ: z.literal('20').default('20'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
@@ -114,6 +120,7 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
     ROAMING_ENCOUNTERS: 'off',
     WILD_ENCOUNTERS: 'overworld',
     TRAINER_SIGHT: 'off',
+    NEMESES: 'off',
     ...overrides,
   });
 }

@@ -469,3 +469,28 @@ export {
   isBandbornPair,
 } from './data/daycare';
 export type { BreedRefusal } from './data/daycare';
+export {
+  NEMESIS_AMBUSH_CHANCE,
+  NEMESIS_GAIN,
+  NEMESIS_LEVEL_MAX,
+  NEMESIS_MAX,
+  NEMESIS_OVER_LEAD,
+  NEMESIS_PROMOTE_CHANCE,
+  NEMESIS_RANK_GAIN,
+  NEMESIS_RANK_MAX,
+  NEMESIS_SCARS,
+  NEMESIS_SCAR_TEXT,
+  NEMESIS_UNDER_LEAD,
+  nemesisAmbushChance,
+  nemesisFightLevel,
+  nemesisFullName,
+  nemesisMove,
+  nemesisMoves,
+  nemesisName,
+  nemesisPromoteChance,
+  nemesisScarRibbon,
+  nemesisTaunt,
+  scarOf,
+  scarOfRibbons,
+} from './data/nemesis';
+export type { NemesisMemory, NemesisRng, NemesisScar, TauntNames } from './data/nemesis';

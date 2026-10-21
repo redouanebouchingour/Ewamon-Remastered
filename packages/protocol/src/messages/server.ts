@@ -216,6 +216,36 @@ export type ServerMessage =
       readonly parents: readonly [string, string];
       readonly zoneId: string;
     }
+  /**
+   * Nemeses (content nemesis.ts): one of the player's nemeses ambushed them. Sent right after the wild `battleStart`
+   * it opened (`battleId`); the client shows the taunt as a lower third over the battle.
+   */
+  | {
+      readonly type: 'nemesisAmbush';
+      readonly battleId: string;
+      readonly nemesisId: string;
+      readonly name: string;
+      readonly title: string;
+      readonly speciesId: string;
+      readonly scar: NemesisScar;
+      readonly rank: number;
+      readonly taunt: string;
+    }
+  /**
+   * Nemeses: what became of one after a battle (sent after its `battleEnd`): `rose` a new one, `rankUp` it beat or
+   * escaped the player again, `beaten` knocked out, `caught`, `faded` pushed out by a newer one.
+   */
+  | {
+      readonly type: 'nemesisNews';
+      readonly event: NemesisEvent;
+      readonly nemesisId: string;
+      readonly name: string;
+      readonly title: string;
+      readonly speciesId: string;
+      readonly scar: NemesisScar;
+      readonly rank: number;
+      readonly level: number;
+    }
   /** arena PvP (../arena.ts): the queue state, a friend's invite, the invite's fate, the arena room's phase */
   | ArenaServerMessage
   | { readonly type: 'error'; readonly code: ServerErrorCode; readonly detail: string | null };
@@ -245,6 +275,8 @@ export const SERVER_MESSAGE_TYPES = [
   'rankedStatus',
   'towerState',
   'eggHatched',
+  'nemesisAmbush',
+  'nemesisNews',
   'arenaStatus',
   'arenaInvite',
   'arenaInviteResult',
@@ -419,6 +451,31 @@ export const EggHatchedMsg = z.object({
   parents: z.tuple([z.string().min(1).max(40), z.string().min(1).max(40)]),
   zoneId: z.string().min(1).max(32),
 });
+/** Nemeses: the scars (content `NEMESIS_SCARS`) and what can become of one (`nemesisNews.event`). */
+export const NEMESIS_SCAR_IDS = ['burn', 'frost', 'lightning', 'venom', 'cracked_horn', 'brand', 'claw_marks', 'torn_ear'] as const;
+export type NemesisScar = (typeof NEMESIS_SCAR_IDS)[number];
+export const NEMESIS_EVENTS = ['rose', 'rankUp', 'beaten', 'caught', 'faded'] as const;
+export type NemesisEvent = (typeof NEMESIS_EVENTS)[number];
+const NemesisFields = {
+  nemesisId: z.string().min(1).max(64),
+  name: z.string().min(1).max(16),
+  title: z.string().min(1).max(32),
+  speciesId: z.string().min(1).max(32),
+  scar: z.enum(NEMESIS_SCAR_IDS),
+  rank: z.number().int().min(1).max(5),
+};
+export const NemesisAmbushMsg = z.object({
+  type: z.literal('nemesisAmbush'),
+  battleId: z.string().min(1),
+  ...NemesisFields,
+  taunt: z.string().min(1).max(200),
+});
+export const NemesisNewsMsg = z.object({
+  type: z.literal('nemesisNews'),
+  event: z.enum(NEMESIS_EVENTS),
+  ...NemesisFields,
+  level: z.number().int().min(1).max(100),
+});
 export const ErrorMsg = z.object({
   type: z.literal('error'),
   code: z.enum(SERVER_ERROR_CODES),
@@ -447,6 +504,8 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
   RankedStatusMsg,
   TowerStateMsg,
   EggHatchedMsg,
+  NemesisAmbushMsg,
+  NemesisNewsMsg,
   ArenaStatusMsg,
   ArenaInviteMsg,
   ArenaInviteResultMsg,
@@ -476,6 +535,8 @@ export const SERVER_MESSAGES = {
   rankedStatus: RankedStatusMsg,
   towerState: TowerStateMsg,
   eggHatched: EggHatchedMsg,
+  nemesisAmbush: NemesisAmbushMsg,
+  nemesisNews: NemesisNewsMsg,
   arenaStatus: ArenaStatusMsg,
   arenaInvite: ArenaInviteMsg,
   arenaInviteResult: ArenaInviteResultMsg,

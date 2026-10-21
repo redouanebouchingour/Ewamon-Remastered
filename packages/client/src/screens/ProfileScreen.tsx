@@ -27,6 +27,7 @@ import { ChallengeSection } from './ChallengeSection';
 import { SpeedrunSection } from './SpeedrunSection';
 import { SeasonTitles } from './SeasonTitles';
 import { GhostSection } from './GhostSection';
+import { NemesesSection } from './NemesesSection';
 
 export const MOTTO_MAX = 120;
 
@@ -149,6 +150,7 @@ export function ProfileScreen() {
         </section>
         <SeasonTitles username={profile.username} />
         <GhostSection />
+        <NemesesSection />
         {pub !== null && (
           <section className={l.section} aria-label="Showcase">
             <h3 className={l.sectionTitle}>Showcase</h3>

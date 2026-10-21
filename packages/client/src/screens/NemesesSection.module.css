@@ -1,0 +1,86 @@
+/* Nemeses on the Profile, Broadcast UI: one carbon row per nemesis, the sprite on a slanted slab in its type colour,
+   the name in the italic display face, the hot rank tag and the paper scar tag. */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-2);
+}
+
+.slab {
+  display: grid;
+  place-items: center;
+  flex: none;
+  padding: var(--s-2) var(--s-6) var(--s-2) var(--s-3);
+  background: var(--tc, var(--bg-3));
+  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+}
+
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-inline-size: 0;
+  padding: var(--s-3) var(--s-4);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-2);
+}
+
+.name {
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: 1;
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.title {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-style: italic;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.rank,
+.scar {
+  padding: 0 var(--s-2);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.rank {
+  background: var(--accent);
+  color: var(--bg-0);
+  font-variant-numeric: tabular-nums;
+}
+
+.scar {
+  background: var(--text-hi);
+  color: var(--bg-0);
+}
