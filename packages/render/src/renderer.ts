@@ -165,6 +165,8 @@ export interface Renderer {
   setShadow?(level: number): void;
   /** Majin vs Tenjin seasons: the winning side's sky (lighting/weather.ts `skyMoodParams`); null clears it. Optional for fakes. */
   setSkyMood?(mood: 'majin' | 'tenjin' | null): void;
+  /** World effects (§10.7.8): false stills the air (the ambient motes) indoors. Optional for fakes. */
+  setAmbient?(on: boolean): void;
   setHarvestLevel(l: HarvestLevel): void;      // §10.2.6
   setEffects(f: EffectsFlags): void;           // rebuilds the post graph; §10.8.4
   setPixelRatio(r: number): void;              // re-clamped by §10.1.3
@@ -256,6 +258,11 @@ export interface FrameHook {
   /** `dtRealMs` (unscaled) is passed as a second argument for hooks that must not stop at hitstop (HUD clock, fades). */
   update?(dtScaledMs: number, dtRealMs?: number): void;
   setHarvestLevel?(l: HarvestLevel): void;
+  /** World effects (§10.7.8): the overworld weather, honor shadow, sky mood and ambient switch, as the host got them. */
+  setWeather?(w: WeatherKind): void;
+  setShadow?(level: number): void;
+  setSkyMood?(mood: 'majin' | 'tenjin' | null): void;
+  setAmbient?(on: boolean): void;
   /** Called after `loadZone` resolves (part 3: the stage/actors sample the zone's collider for ground heights). */
   onZone?(zone: ZoneHandle | null): void;
   /**
@@ -1146,14 +1153,21 @@ class RendererHost implements Renderer, HostContext {
   setWeather(w: WeatherKind): void {
     this.day.setWeather(w);
     this.precipitation.setMode(weatherParams(w).precipitation);
+    for (const h of this.hooks) h.setWeather?.(w);
   }
 
   setShadow(level: number): void {
     this.day.setShadow(level);
+    for (const h of this.hooks) h.setShadow?.(level);
   }
 
   setSkyMood(mood: 'majin' | 'tenjin' | null): void {
     this.day.setSkyMood(mood);
+    for (const h of this.hooks) h.setSkyMood?.(mood);
+  }
+
+  setAmbient(on: boolean): void {
+    for (const h of this.hooks) h.setAmbient?.(on);
   }
 
   /** §10.2.6: 4 uniform writes + ≤ 32 light intensity writes; nothing is created or disposed. */

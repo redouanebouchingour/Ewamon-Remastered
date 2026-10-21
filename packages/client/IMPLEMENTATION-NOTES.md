@@ -2174,3 +2174,4 @@ resync, not for a replay) and cleared by `reset`.
   bursts round the player, or the water sprays; render decides from the ground under the feet).
 - Checked live on the second isolated client (the component mounted over the landing page through Vite's module
   URLs, each kind screenshotted mid-wipe).
+- `SceneDirector.applyWeather` also calls `renderer.setAmbient?(pocket === null)` (render's ambient motes stay outdoors).

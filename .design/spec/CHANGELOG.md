@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-21 ambient motes: the air of each biome, by day and night, and the zone's mood. One entry. -->
+
+## 2026-10-21 · `10-render.md` §10.7.8 (Ambient motes; `FrameHook` setters, `Renderer.setAmbient`), `20-client.md` §20.5.7 (the director stills the air indoors) · the air of each biome and the zone's mood
+Why: the user asked for ambient particles per biome and time of day (fireflies at night in grove zones, embers over Cinderhold, sea spray, pollen) and for honor to show up in the world as more than a notice. The air was empty. One vertex-driven draw fills a box round the camera with the biome's own motes, swaps them at dusk and dawn, thins them in rain, and lays falling ash over a shadowed zone (or the season's red or gold over Solenne); nothing is written per frame but uniforms.
+Evidence: `packages/render/test/world-fx.test.ts` (3 new: the profile per biome and daylight, the mood layer with shadow over sky mood and the weather thinning, the fade-out-then-in on a profile change and the indoor switch); live in the render sandbox (fireflies over Mire Route at 22:00, embers over Cinderhold at 15:00).
+Affects: `packages/render/src/{worldfx/ambient,worldfx/index,stage/wiring,renderer}.ts`; `packages/client/src/scene/SceneDirector.ts`.
+
 <!-- 2026-10-21 the encounter transition: a wipe over the push-in that says what kind of battle started. One entry. -->
 
 ## 2026-10-21 · `20-client.md` §20.5.7 The encounter transition (new) · a wipe for every kind of battle

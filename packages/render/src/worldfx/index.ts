@@ -10,7 +10,7 @@
  */
 import type { Object3D, PerspectiveCamera, UniformNode, Vector3, Vector4 } from 'three/webgpu';
 import { Group, InstancedMesh, Sprite } from 'three/webgpu';
-import type { EffectsFlags } from '../descriptors.js';
+import type { EffectsFlags, WeatherKind } from '../descriptors.js';
 import type { ZoneHandle } from '../contracts.js';
 import type { ZoneHandleImpl } from '../zone/builder.js';
 import { WORLD_BURSTS, WorldParticles } from './particles.js';
@@ -18,6 +18,7 @@ import { FootprintDecals } from './prints.js';
 import { Footsteps, type WalkerSource } from './footsteps.js';
 import { classify, type GroundSource } from './ground.js';
 import { GrassPush } from './grass.js';
+import { AmbientMotes } from './ambient.js';
 
 export interface WorldFxDeps {
   readonly camera: PerspectiveCamera;
@@ -29,6 +30,8 @@ export interface WorldFxDeps {
   /** the light lit particles take (linear rgb, written into `out`) */
   readonly light: (out: Vector3) => void;
   readonly effects: () => EffectsFlags;
+  /** sun-elevation daylight 0..1 (the ambient motes: fireflies at night) */
+  readonly daylight: () => number;
   /** the shared grass pushers (`SharedUniforms.push`); null = no push field */
   readonly push: readonly UniformNode<'vec4', Vector4>[] | null;
 }
@@ -53,6 +56,7 @@ export class WorldFx {
   readonly prints: FootprintDecals;
   readonly steps: Footsteps;
   readonly grass: GrassPush;
+  readonly ambient: AmbientMotes;
   private ground: GroundSource | null = null;
   private disposed = false;
 
@@ -62,7 +66,8 @@ export class WorldFx {
     this.prints = new FootprintDecals(this.particles.clock, d.harvestLevel);
     this.steps = new Footsteps(this.particles, this.prints);
     this.grass = new GrassPush(d.push);
-    this.root.add(this.particles.object, this.prints.mesh);
+    this.ambient = new AmbientMotes(this.particles.light);
+    this.root.add(this.particles.object, this.prints.mesh, this.ambient.object);
   }
 
   /** The loaded zone (null while none is): the footsteps' ground, a clean slate of particles and prints. */
@@ -70,6 +75,7 @@ export class WorldFx {
     const h = z as ZoneHandleImpl | null;
     this.ground = groundOf(z);
     this.steps.setGround(this.ground, h?.spec?.biome === 'cinder');
+    this.ambient.setBiome(h?.spec?.biome ?? null);
     this.particles.clear();
     this.prints.clear();
     this.grass.clear();
@@ -83,7 +89,14 @@ export class WorldFx {
     const focus = this.d.focus();
     this.steps.update(dtScaledMs / 1000, this.d.walkers, focus, this.d.wetness());
     this.grass.update(dtScaledMs / 1000, this.d.walkers, focus);
+    this.ambient.update(dtScaledMs, focus, this.d.daylight(), this.d.camera);
   }
+
+  /** The zone's weather, honor shadow and sky mood, and whether the air moves at all (off indoors): the motes. */
+  setWeather(w: WeatherKind): void { this.ambient.setWeather(w); }
+  setShadow(level: number): void { this.ambient.setShadow(level); }
+  setSkyMood(mood: 'majin' | 'tenjin' | null): void { this.ambient.setSkyMood(mood); }
+  setAmbient(on: boolean): void { this.ambient.setOn(on); }
 
   /**
    * The encounter rustle: tall grass bursting round (x, y, z) as a wild encounter starts (the client calls it with the
@@ -118,7 +131,9 @@ export class WorldFx {
     const fx = new Sprite(this.particles.material);
     fx.count = 1;
     const print = new InstancedMesh(this.prints.mesh.geometry, this.prints.material, 1);
-    return [fx, print];
+    const motes = new Sprite(this.ambient.material);
+    motes.count = 1;
+    return [fx, print, motes];
   }
 
   dispose(): void {
@@ -126,6 +141,7 @@ export class WorldFx {
     this.disposed = true;
     this.particles.dispose();
     this.prints.dispose();
+    this.ambient.dispose();
     this.root.removeFromParent();
   }
 }

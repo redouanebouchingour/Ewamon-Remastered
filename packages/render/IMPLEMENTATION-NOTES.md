@@ -2264,3 +2264,15 @@ pool; `Part3.worldFx`).
   program count is unchanged; scatter's attribute instancing runs before `positionNode`, so `pushDisplace` works on
   the instanced (zone-frame) position and the shadow pass bends the same way. The existing `GroundCoverReveal`
   (creature reveal discs through `ScatterMask`) is untouched: the push is a vertex bend, the mask a per-instance scale.
+
+## World effects: ambient motes (2026-10-21)
+
+- `worldfx/ambient.ts`: one `Sprite` of 720 motes, two layers selected per instance (`extra.z`), each layer's look in
+  uniforms (colour pair, drift, density / size / alpha / glow, wander / blink, height band). Positions are pure
+  functions of seed and clock in the vertex stage; alpha, glow and colour are `varying`s (the TSL first-branch rule
+  of the footsteps entry). Density is a per-mote threshold (`extra.x < density`), so thinning hides motes instead of
+  fading all of them.
+- `FrameHook` gains `setWeather?`, `setShadow?`, `setSkyMood?`, `setAmbient?`; the host forwards its own setters to every
+  hook, and `Renderer.setAmbient?` exists only to reach them (the client turns the air off in a pocket).
+- Honor has no "lit" level (shadow 0..4 only), so a clear zone shows its biome air; the season's sky mood is the bright
+  counterpart (red or gold motes over Solenne).

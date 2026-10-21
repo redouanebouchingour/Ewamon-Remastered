@@ -711,7 +711,7 @@ A fresh `battleStart` (never a resync restore, never a replay) writes `ui.encoun
 - **legendary / raid** (1 300 ms): the world closes to a small iris ringed in the type colour, holds, and opens;
 - a white flash opens every kind except under `accessibility.screenFlash = false`; under reduced motion every kind is a 320 ms dark dip instead.
 
-World3D's battle view also calls render's `WorldFx.encounterAt(feet)` for a wild battle outside the arena (render §10.7.8): the tall grass bursts and shakes round the player, or the water sprays.
+The scene director's weather pass also calls `renderer.setAmbient?(pocket === null)`: render's ambient motes (§10.7.8) stay outdoors. World3D's battle view also calls render's `WorldFx.encounterAt(feet)` for a wild battle outside the arena (render §10.7.8): the tall grass bursts and shakes round the player, or the water sprays.
 
 ---
 

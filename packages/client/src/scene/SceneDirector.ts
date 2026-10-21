@@ -281,6 +281,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     if (!inBattle) d.renderer.setWeather(pocket === null ? overworldWeather : 'none');
     d.renderer.setShadow?.(pocket === null ? overworldShadow : 0);
     d.renderer.setSkyMood?.(pocket === null ? skyMood : null);
+    d.renderer.setAmbient?.(pocket === null);   // render §10.7.8: the air's motes stay outdoors
   }
 
   function faceOrigin(x: number, z: number): number {

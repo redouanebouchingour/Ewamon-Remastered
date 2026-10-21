@@ -15,6 +15,7 @@ import { WORLD_BURSTS, WORLD_PARTICLES, WorldParticles } from '../src/worldfx/pa
 import { FootprintDecals, PRINT_SLOTS } from '../src/worldfx/prints.js';
 import { GRASS_PUSH, GrassPush, rustleStrength, springStrength } from '../src/worldfx/grass.js';
 import { surfaceExtras } from '../src/materials/surfaces.js';
+import { AMBIENT_PROFILES, AmbientMotes, biomeProfile, moodProfile, weatherThins } from '../src/worldfx/ambient.js';
 import { realSpec } from './zone-helpers.js';
 
 function groundFor(id: ZoneId): { g: GroundSource; c: TerrainCollider; half: number } {
@@ -177,5 +178,46 @@ describe('grass that makes way (GrassPush)', () => {
   it('only the tall grass card takes the push', () => {
     expect(surfaceExtras('tall_grass').pushable).toBe(true);
     expect(surfaceExtras('grove_leaf_canopy').pushable).not.toBe(true);
+  });
+});
+
+describe('ambient motes', () => {
+  it('each biome has its air, by day and by night', () => {
+    expect(biomeProfile('grove', 0.1)).toBe('fireflies');
+    expect(biomeProfile('grove', 0.9)).toBe('pollen');
+    expect(biomeProfile('cinder', 0.9)).toBe('embers');
+    expect(biomeProfile('sky', 0.5)).toBe('snow');
+    expect(biomeProfile('rift', 0.5)).toBe('void');
+    expect(biomeProfile(null, 0.5)).toBe('none');
+  });
+
+  it('a shadowed zone gets ash, denser per level, over the sky mood; level 0 leaves the mood', () => {
+    expect(moodProfile(0, null).id).toBe('none');
+    expect(moodProfile(0, 'tenjin').id).toBe('tenjin');
+    expect(moodProfile(2, 'tenjin')).toEqual({ id: 'ash', density: 0.44 });
+    expect(moodProfile(4, null).density).toBeGreaterThan(moodProfile(1, null).density);
+    expect(weatherThins('rain')).toBeLessThan(1);
+    expect(weatherThins('none')).toBe(1);
+  });
+
+  it('a profile change fades the old air out before the new one fades in; indoors stills it', () => {
+    const a = new AmbientMotes(uniform(new Vector3(1, 1, 1)));
+    a.setBiome('grove');
+    const step = (n: number, day: number) => { for (let i = 0; i < n; i++) a.update(1000 / 30, new Vector3(), day, null); };
+    step(120, 0.9);
+    expect(a.profiles[0]).toBe('pollen');
+    expect(a.densities[0]).toBeCloseTo(AMBIENT_PROFILES.pollen.density, 2);
+    step(3, 0.1);
+    expect(a.profiles[0]).toBe('pollen');                      // still fading out
+    expect(a.densities[0]).toBeLessThan(AMBIENT_PROFILES.pollen.density);
+    step(150, 0.1);
+    expect(a.profiles[0]).toBe('fireflies');
+    expect(a.densities[0]).toBeCloseTo(AMBIENT_PROFILES.fireflies.density, 2);
+    a.setShadow(3);
+    step(150, 0.1);
+    expect(a.profiles[1]).toBe('ash');
+    a.setOn(false);
+    step(200, 0.1);
+    expect(a.object.visible).toBe(false);
   });
 });

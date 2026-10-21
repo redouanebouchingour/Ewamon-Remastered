@@ -106,6 +106,7 @@ function build(ctx: HostContext): Part3 {
     },
     effects: () => ctx.effects(),
     push: ctx.materials.uniforms.push ?? null,
+    daylight: () => ctx.day.sample.daylight,
   });
   ctx.scene.add(worldFx.root);
   const cutaway = new PropCutaway();
@@ -148,6 +149,10 @@ function build(ctx: HostContext): Part3 {
       hud.tick(real);
     },
     setHarvestLevel(l: HarvestLevel): void { sprites.setHarvestLevel(l); },
+    setWeather: (w) => worldFx.setWeather(w),
+    setShadow: (l) => worldFx.setShadow(l),
+    setSkyMood: (m) => worldFx.setSkyMood(m),
+    setAmbient: (on) => worldFx.setAmbient(on),
     textureOvercountBytes: () => sprites.infoOvercountBytes(),
     onZone(z: ZoneHandle | null): void {
       bundle.setGround(z === null ? null : z.collider);
