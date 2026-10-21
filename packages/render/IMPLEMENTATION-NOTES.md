@@ -2276,3 +2276,12 @@ pool; `Part3.worldFx`).
   hook, and `Renderer.setAmbient?` exists only to reach them (the client turns the air off in a pocket).
 - Honor has no "lit" level (shadow 0..4 only), so a clear zone shows its biome air; the season's sky mood is the bright
   counterpart (red or gold motes over Solenne).
+
+## World effects: cloud shadows and light shafts (2026-10-21)
+
+- Cloud shadows multiply the albedo (`colorNode`), so they dim the sky fill as well as the sun: stylised, and with
+  no extra light term it costs two noise lookups per fragment and no program. Billboards and the character material
+  are not shaded (their own graphs); a creature in a cloud shadow keeps its light, which read fine in the sandbox.
+- The shafts' block of cells is centred on the focus's cell, so the outer ribbons jump when the focus crosses a cell
+  boundary; they sit beyond the 16 m fade, where they are already invisible.
+- Checked live in the sandbox (Mire Route: a cloud edge over the road at noon; shafts at 18:30).

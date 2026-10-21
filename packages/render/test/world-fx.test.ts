@@ -15,6 +15,10 @@ import { WORLD_BURSTS, WORLD_PARTICLES, WorldParticles } from '../src/worldfx/pa
 import { FootprintDecals, PRINT_SLOTS } from '../src/worldfx/prints.js';
 import { GRASS_PUSH, GrassPush, rustleStrength, springStrength } from '../src/worldfx/grass.js';
 import { surfaceExtras } from '../src/materials/surfaces.js';
+import { SHAFTS, shaftLevel } from '../src/worldfx/shafts.js';
+import { CLOUD_STRENGTH, WorldFx } from '../src/worldfx/index.js';
+import { ALL_EFFECTS } from '../src/descriptors.js';
+import { PerspectiveCamera } from 'three/webgpu';
 import { AMBIENT_PROFILES, AmbientMotes, biomeProfile, moodProfile, weatherThins } from '../src/worldfx/ambient.js';
 import { realSpec } from './zone-helpers.js';
 
@@ -219,5 +223,44 @@ describe('ambient motes', () => {
     a.setOn(false);
     step(200, 0.1);
     expect(a.object.visible).toBe(false);
+  });
+});
+
+describe('cloud shadows and light shafts', () => {
+  function fx(daylight: number, golden: number) {
+    const clouds = uniform(new Vector4());
+    const w = new WorldFx({
+      camera: new PerspectiveCamera(), harvestLevel: uniform(0), walkers: { forEachWalker: () => undefined }, focus: () => new Vector3(),
+      wetness: () => 0, light: (o) => o.set(1, 1, 1), effects: () => ALL_EFFECTS, daylight: () => daylight,
+      sun: (d) => { d.set(0.6, 0.2, 0.1); return { golden, color: [1, 0.7, 0.4] }; }, clouds, push: null,
+    });
+    return { w, clouds };
+  }
+
+  it('clouds shade the ground by day in the weather coverage, never at night, faintly under overcast rain', () => {
+    const day = fx(1, 0);
+    day.w.update(16);
+    expect(day.clouds.value.x).toBeCloseTo(CLOUD_STRENGTH);
+    expect(day.clouds.value.y).toBeCloseTo(0.35);
+    day.w.setWeather('rain');
+    day.w.update(16);
+    expect(day.clouds.value.x).toBeLessThan(CLOUD_STRENGTH * 0.3);
+    expect(day.clouds.value.y).toBeCloseTo(0.85);
+    const night = fx(0, 0);
+    night.w.update(16);
+    expect(night.clouds.value.x).toBe(0);
+  });
+
+  it('shafts stand only in the golden hours under a broken sky', () => {
+    expect(shaftLevel(0, 1, 1)).toBe(0);
+    expect(shaftLevel(1, 1, 1)).toBe(1);
+    expect(shaftLevel(1, 1, 0)).toBe(0);
+    const dusk = fx(0.5, 1);
+    dusk.w.update(16);
+    expect(dusk.w.shafts.mesh.visible).toBe(true);
+    dusk.w.setWeather('rain');
+    dusk.w.update(16);
+    expect(dusk.w.shafts.mesh.visible).toBe(false);
+    expect(SHAFTS.side * SHAFTS.side).toBe(9);
   });
 });

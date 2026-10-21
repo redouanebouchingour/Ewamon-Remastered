@@ -7,6 +7,7 @@ import type { Node, UniformNode } from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import type { HarvestLevel } from '../descriptors.js';
 import { createOcclusionUniforms, type OcclusionState } from './occlusion.js';
+import { CLOUDS } from './clouds.js';
 
 /** SPEC §10.2.3, verbatim. */
 export interface SharedUniforms {
@@ -22,6 +23,8 @@ export interface SharedUniforms {
    * strength 0 = none. Written by the world effects' `GrassPush`.
    */
   readonly push?: readonly UniformNode<'vec4', Vector4>[];
+  /** Addition (§10.7.8 world effects): cloud shadows (strength, coverage, scale, drift); strength 0 = none (`clouds.ts`). */
+  readonly clouds?: UniformNode<'vec4', Vector4>;
 }
 
 /** Pushers the grass reads (§10.7.8). */
@@ -36,6 +39,7 @@ export function createSharedUniforms(): SharedUniforms {
     timeOfDay: uniform(0.5).setName('ewaTimeOfDay'),
     occlusion: createOcclusionUniforms(),
     push: Array.from({ length: PUSHERS }, (_, i) => uniform(new Vector4(0, 0, 1, 0)).setName(`ewaPush${i}`)),
+    clouds: uniform(new Vector4(0, 0.35, CLOUDS.scale, CLOUDS.driftMps)).setName('ewaClouds'),
   };
 }
 

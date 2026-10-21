@@ -9,7 +9,7 @@
  * the encounter rustle's burst to a few blades.
  */
 import type { Object3D, PerspectiveCamera, UniformNode, Vector3, Vector4 } from 'three/webgpu';
-import { Group, InstancedMesh, Sprite } from 'three/webgpu';
+import { Group, InstancedMesh, Mesh, Sprite, Vector3 as V3 } from 'three/webgpu';
 import type { EffectsFlags, WeatherKind } from '../descriptors.js';
 import type { ZoneHandle } from '../contracts.js';
 import type { ZoneHandleImpl } from '../zone/builder.js';
@@ -19,6 +19,9 @@ import { Footsteps, type WalkerSource } from './footsteps.js';
 import { classify, type GroundSource } from './ground.js';
 import { GrassPush } from './grass.js';
 import { AmbientMotes } from './ambient.js';
+import { SunShafts, shaftLevel } from './shafts.js';
+import { setClouds } from '../materials/clouds.js';
+import { weatherParams } from '../lighting/weather.js';
 
 export interface WorldFxDeps {
   readonly camera: PerspectiveCamera;
@@ -32,6 +35,10 @@ export interface WorldFxDeps {
   readonly effects: () => EffectsFlags;
   /** sun-elevation daylight 0..1 (the ambient motes: fireflies at night) */
   readonly daylight: () => number;
+  /** the sun: unit direction toward it into `dir`; returns its golden-hour weight and linear colour */
+  readonly sun: (dir: Vector3) => { readonly golden: number; readonly color: readonly number[] };
+  /** the shared cloud-shadow uniform (`SharedUniforms.clouds`); undefined = none */
+  readonly clouds?: UniformNode<'vec4', Vector4>;
   /** the shared grass pushers (`SharedUniforms.push`); null = no push field */
   readonly push: readonly UniformNode<'vec4', Vector4>[] | null;
 }
@@ -50,6 +57,13 @@ export function groundOf(z: ZoneHandle | null): GroundSource | null {
   };
 }
 
+/** Cloud shadows: the darkening at full strength, and how much each weather lets show (overcast skies cast no edges). */
+export const CLOUD_STRENGTH = 0.38;
+const CLOUD_SHADE: Readonly<Record<WeatherKind, number>> = { none: 1, sun: 0.6, rain: 0.2, sand: 0.5, hail: 0.2 };
+/** Light shafts need a broken sky: how much each weather lets through. */
+const SHAFT_CLEAR: Readonly<Record<WeatherKind, number>> = { none: 1, sun: 0.85, rain: 0, sand: 0.5, hail: 0 };
+const _sunDir = new V3();
+
 export class WorldFx {
   readonly root = new Group();
   readonly particles: WorldParticles;
@@ -57,6 +71,8 @@ export class WorldFx {
   readonly steps: Footsteps;
   readonly grass: GrassPush;
   readonly ambient: AmbientMotes;
+  readonly shafts: SunShafts;
+  private weather: WeatherKind = 'none';
   private ground: GroundSource | null = null;
   private disposed = false;
 
@@ -67,7 +83,8 @@ export class WorldFx {
     this.steps = new Footsteps(this.particles, this.prints);
     this.grass = new GrassPush(d.push);
     this.ambient = new AmbientMotes(this.particles.light);
-    this.root.add(this.particles.object, this.prints.mesh, this.ambient.object);
+    this.shafts = new SunShafts();
+    this.root.add(this.particles.object, this.prints.mesh, this.ambient.object, this.shafts.mesh);
   }
 
   /** The loaded zone (null while none is): the footsteps' ground, a clean slate of particles and prints. */
@@ -89,11 +106,19 @@ export class WorldFx {
     const focus = this.d.focus();
     this.steps.update(dtScaledMs / 1000, this.d.walkers, focus, this.d.wetness());
     this.grass.update(dtScaledMs / 1000, this.d.walkers, focus);
-    this.ambient.update(dtScaledMs, focus, this.d.daylight(), this.d.camera);
+    const daylight = this.d.daylight();
+    this.ambient.update(dtScaledMs, focus, daylight, this.d.camera);
+    // cloud shadows by day, in the weather's coverage; shafts in the golden hours, thinned by cloud
+    const w = weatherParams(this.weather);
+    const clear = CLOUD_SHADE[this.weather];
+    const day = Math.min(1, Math.max(0, (daylight - 0.15) / 0.45));
+    setClouds(this.d.clouds, CLOUD_STRENGTH * day * clear, w.cloudCoverage);
+    const sun = this.d.sun(_sunDir);
+    this.shafts.update(dtScaledMs, focus, _sunDir, sun.color, shaftLevel(sun.golden, daylight, SHAFT_CLEAR[this.weather]));
   }
 
   /** The zone's weather, honor shadow and sky mood, and whether the air moves at all (off indoors): the motes. */
-  setWeather(w: WeatherKind): void { this.ambient.setWeather(w); }
+  setWeather(w: WeatherKind): void { this.weather = w; this.ambient.setWeather(w); }
   setShadow(level: number): void { this.ambient.setShadow(level); }
   setSkyMood(mood: 'majin' | 'tenjin' | null): void { this.ambient.setSkyMood(mood); }
   setAmbient(on: boolean): void { this.ambient.setOn(on); }
@@ -133,7 +158,8 @@ export class WorldFx {
     const print = new InstancedMesh(this.prints.mesh.geometry, this.prints.material, 1);
     const motes = new Sprite(this.ambient.material);
     motes.count = 1;
-    return [fx, print, motes];
+    const shafts = new Mesh(this.shafts.mesh.geometry, this.shafts.material);
+    return [fx, print, motes, shafts];
   }
 
   dispose(): void {
@@ -142,6 +168,7 @@ export class WorldFx {
     this.particles.dispose();
     this.prints.dispose();
     this.ambient.dispose();
+    this.shafts.dispose();
     this.root.removeFromParent();
   }
 }

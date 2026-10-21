@@ -34,6 +34,7 @@ import {
   attribute, bool, float, frontFacing, luminance, max, mix, normalMap, normalView, oneMinus, positionLocal, texture, uniform, uv, vec2, vec3, vec4, vertexColor,
 } from 'three/tsl';
 import { harvestBlend, type SharedUniforms } from './harvest.js';
+import { cloudShade } from './clouds.js';
 import { occlusionKeep } from './occlusion.js';
 import type { SurfaceDef, SurfaceExtras } from './surfaces.js';
 import { triplanarSample } from './triplanar.js';
@@ -204,7 +205,7 @@ export function buildSurfaceGraph(def: SurfaceDef, _extras: SurfaceExtras, maps:
     rgb = mix(rgb, vec3(luminance(rgb)).mul(p.tone.xyz), p.tone.w) as Node<'vec3'>;                 // per-zone re-tone (M3 review fixes)
     rgb = frontFacing.select(rgb, rgb.mul(p.backTint)) as Node<'vec3'>;                             // leaf subsurface tint (§10.2.2)
   }
-  m.colorNode = vec4(mix(rgb, vertexColor().rgb, h), alb.a);                                        // level 2 = flat vertex colour
+  m.colorNode = vec4(mix(rgb, vertexColor().rgb, h).mul(cloudShade(u, h)), alb.a);                  // level 2 = flat vertex colour; §10.7.8 cloud shadows
   m.normalNode = mix(tangentNormal(nrm.rgb, float(1)), normalView, h).normalize();                  // level 2 = geometry normal (flat when unwelded)
   const rough = mix(orm.g.mul(p.roughScale).add(p.roughBias), float(0.95), h);                    // level 2 = flat rough
   m.roughnessNode = rough.mul(mix(float(1), float(0.45), u.wetness.mul(p.wetResponse)));          // wet → × 0.45
@@ -252,7 +253,7 @@ function buildWaterGraph(def: SurfaceDef, maps: SurfaceMaps, p: SurfaceParams, u
   const base = alb.rgb.mul(p.albedoScale).add(p.albedoBias);
   const depth = attribute(WATER_DEPTH_ATTRIBUTE, 'float') as Node<'float'>;
   const tint = mix(base.mul(1.35), base.mul(0.55), depth.div(2.5).saturate());
-  m.colorNode = vec4(mix(tint, vertexColor().rgb, h), 1);
+  m.colorNode = vec4(mix(tint, vertexColor().rgb, h).mul(cloudShade(u, h)), 1);
   m.normalNode = mix(tangentNormal(nrm, float(0.35)), normalView, h).normalize();
   m.roughnessNode = mix(p.roughBias, float(0.95), h);   // §10.5.6 roughness 0.05 (the def value)
   m.metalnessNode = float(0);

@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-21 cloud shadows and light shafts: the sculpted ground reads by moving light. One entry. -->
+
+## 2026-10-21 · `10-render.md` §10.7.8 (Cloud shadows, `SharedUniforms.clouds`; Light shafts) · cloud shadows over the ground, shafts at dawn and dusk
+Why: the user asked for slow cloud shadows over the terrain, so the cliffs, terraces and ravines of the zone sculpts read better, and for light shafts at dawn and dusk. The light was even everywhere: a sculpted landform only read by its sun shading. A drifting shadow field passes over every surface by day in the weather's coverage, and at the golden hours a few soft ribbons of the low sun stand round the camera; the shafts are the "≤ 6 light-shaft billboards" the spec named when volumetric fog was cut.
+Evidence: `packages/render/test/world-fx.test.ts` (2 new: cloud strength by daylight and weather, the coverage from the weather table, no clouds at night; shafts only in the golden hours under a broken sky); `npx vitest run packages/render packages/client`; live in the render sandbox (Mire Route at 12:00 and 18:30).
+Affects: `packages/render/src/{materials/clouds,materials/harvest,materials/graph,worldfx/shafts,worldfx/index,stage/wiring}.ts`.
+
 <!-- 2026-10-21 ambient motes: the air of each biome, by day and night, and the zone's mood. One entry. -->
 
 ## 2026-10-21 · `10-render.md` §10.7.8 (Ambient motes; `FrameHook` setters, `Renderer.setAmbient`), `20-client.md` §20.5.7 (the director stills the air indoors) · the air of each biome and the zone's mood

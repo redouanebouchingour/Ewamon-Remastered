@@ -29,6 +29,7 @@ import { TerrainPad } from './terrainPad.js';
 import { TerrainCollider } from '../terrain/collider.js';
 import { scatterMaskFor } from '../zone/scatter.js';
 import { WorldFx } from '../worldfx/index.js';
+import { sunDirection } from '../lighting/daycycle.js';
 
 export interface Part3 {
   readonly sprites: BillboardPool;
@@ -107,6 +108,8 @@ function build(ctx: HostContext): Part3 {
     effects: () => ctx.effects(),
     push: ctx.materials.uniforms.push ?? null,
     daylight: () => ctx.day.sample.daylight,
+    sun: (dir) => { sunDirection(ctx.day.timeOfDay, dir); return { golden: ctx.day.sample.golden, color: ctx.day.sample.linear }; },
+    clouds: ctx.materials.uniforms.clouds,
   });
   ctx.scene.add(worldFx.root);
   const cutaway = new PropCutaway();
