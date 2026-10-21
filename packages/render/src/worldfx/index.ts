@@ -11,7 +11,7 @@
 import type { Object3D, PerspectiveCamera, UniformNode, Vector3, Vector4 } from 'three/webgpu';
 import { Group, InstancedMesh, Mesh, Sprite, Vector3 as V3 } from 'three/webgpu';
 import type { EffectsFlags, WeatherKind } from '../descriptors.js';
-import type { ZoneHandle } from '../contracts.js';
+import type { Biome, ZoneHandle } from '../contracts.js';
 import type { ZoneHandleImpl } from '../zone/builder.js';
 import { WORLD_BURSTS, WorldParticles } from './particles.js';
 import { FootprintDecals } from './prints.js';
@@ -21,6 +21,7 @@ import { GrassPush } from './grass.js';
 import { AmbientMotes } from './ambient.js';
 import { SunShafts, shaftLevel } from './shafts.js';
 import { setClouds } from '../materials/clouds.js';
+import { stepFrost } from '../materials/weatherSurface.js';
 import { weatherParams } from '../lighting/weather.js';
 
 export interface WorldFxDeps {
@@ -39,6 +40,10 @@ export interface WorldFxDeps {
   readonly sun: (dir: Vector3) => { readonly golden: number; readonly color: readonly number[] };
   /** the shared cloud-shadow uniform (`SharedUniforms.clouds`); undefined = none */
   readonly clouds?: UniformNode<'vec4', Vector4>;
+  /** the shared frost uniform (`SharedUniforms.frost`); undefined = none */
+  readonly frost?: UniformNode<'float', number>;
+  /** the post stack's heat-haze uniforms (amplitude, clock); undefined = none */
+  readonly haze?: { readonly amount: UniformNode<'float', number>; readonly time: UniformNode<'float', number> };
   /** the shared grass pushers (`SharedUniforms.push`); null = no push field */
   readonly push: readonly UniformNode<'vec4', Vector4>[] | null;
 }
@@ -64,6 +69,16 @@ const CLOUD_SHADE: Readonly<Record<WeatherKind, number>> = { none: 1, sun: 0.6, 
 const SHAFT_CLEAR: Readonly<Record<WeatherKind, number>> = { none: 1, sun: 0.85, rain: 0, sand: 0.5, hail: 0 };
 const _sunDir = new V3();
 
+/** Heat haze: the shimmer's amplitude at full level (uv units, ≈ 2 px at 1440 wide). */
+export const HAZE_UV = 0.0014;
+/** How much the air shimmers over a biome by day, in a weather: lava country most, the forge and the canyons less. Pure. */
+export function hazeLevel(biome: Biome | null, daylight: number, w: WeatherKind): number {
+  const base = biome === 'cinder' ? 1 : biome === 'forge' ? 0.55 : biome === 'marrow' ? 0.4 : 0;
+  const sky = w === 'sun' ? 1.25 : w === 'rain' || w === 'hail' ? 0 : w === 'sand' ? 0.8 : 1;
+  const day = biome === 'cinder' ? 0.5 + 0.5 * Math.max(0, Math.min(1, daylight)) : Math.max(0, Math.min(1, (daylight - 0.3) / 0.5));
+  return Math.min(1.25, base * sky * day);
+}
+
 export class WorldFx {
   readonly root = new Group();
   readonly particles: WorldParticles;
@@ -73,6 +88,8 @@ export class WorldFx {
   readonly ambient: AmbientMotes;
   readonly shafts: SunShafts;
   private weather: WeatherKind = 'none';
+  private biome: Biome | null = null;
+  private hazeNow = 0;
   private ground: GroundSource | null = null;
   private disposed = false;
 
@@ -92,7 +109,8 @@ export class WorldFx {
     const h = z as ZoneHandleImpl | null;
     this.ground = groundOf(z);
     this.steps.setGround(this.ground, h?.spec?.biome === 'cinder');
-    this.ambient.setBiome(h?.spec?.biome ?? null);
+    this.biome = h?.spec?.biome ?? null;
+    this.ambient.setBiome(this.biome);
     this.particles.clear();
     this.prints.clear();
     this.grass.clear();
@@ -115,6 +133,16 @@ export class WorldFx {
     setClouds(this.d.clouds, CLOUD_STRENGTH * day * clear, w.cloudCoverage);
     const sun = this.d.sun(_sunDir);
     this.shafts.update(dtScaledMs, focus, _sunDir, sun.color, shaftLevel(sun.golden, daylight, SHAFT_CLEAR[this.weather]));
+    // frost settles under hail and melts after; the air over hot ground shimmers by day (not under reduced effects)
+    const dtS = Math.max(0, dtScaledMs) / 1000;
+    if (this.d.frost !== undefined) this.d.frost.value = stepFrost(this.d.frost.value, this.weather === 'hail' ? 1 : 0, dtS);
+    const hz = this.d.haze;
+    if (hz !== undefined) {
+      const target = this.d.effects().shake ? hazeLevel(this.biome, daylight, this.weather) : 0;
+      this.hazeNow += (target - this.hazeNow) * (1 - Math.exp(-dtS * 0.8));
+      hz.amount.value = this.hazeNow * HAZE_UV;
+      hz.time.value = (hz.time.value + dtS) % 3600;
+    }
   }
 
   /** The zone's weather, honor shadow and sky mood, and whether the air moves at all (off indoors): the motes. */

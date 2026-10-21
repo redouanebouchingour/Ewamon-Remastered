@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-21 weather on the ground: puddles, mud, a rime under hail, a heat haze over the lava. One entry. -->
+
+## 2026-10-21 · `10-render.md` §10.7.8 (Weather on the ground, `SharedUniforms.frost`; Heat haze, `PostUniforms.haze` / `hazeTime`) · weather that changes the ground
+Why: the user asked for weather that changes the surfaces: wet, darker roads with puddle reflections after rain, a covering in the cold, heat haze over Cinderhold's lava. Rain only fell; the ground under it stayed dry-looking but for a little shine. Now wet ground darkens and puddles open on flat paving and roads, hail leaves a rime that melts after, and the air over lava country shimmers by day (never under reduced effects).
+Evidence: `packages/render/test/world-fx.test.ts` (3 new: the frost ramp, the haze level by biome, daylight and weather, WorldFx writing both and the haze off under reduced effects); `npx vitest run packages/render packages/client`; live in the render sandbox (Mire Route in rain and hail; Cinderhold at 14:00 with and without reduced effects).
+Affects: `packages/render/src/{materials/weatherSurface,materials/graph,materials/harvest,post/pipeline,worldfx/index,stage/wiring}.ts`.
+
 <!-- 2026-10-21 breeding and egg moves: the Daycare in Mirevale, eggs that hatch by walking, inheritance and bandborn. One entry. -->
 
 ## 2026-10-21 · `00-spine.md` §2.8 (`CreatureInstance.bandborn`), §2.11 step 5b (bandborn transformations), §3.13 (`daycare` npc role), §3.14 Breeding (new), §4.4 (`eggHatched`), §4.7 (the 5 daycare / egg routes), §5.1 (slot kind `daycare`), §5.2 (`BreedingRepo`, migration 0016, `insert` firstEvent); `30-server-netcode.md` §30.4.3a (breeding); `20-client.md` §20.9.9o (new); `50-verification-budget.md` §50.4.1 / .2 / .4 / .5 / .7 rows · breeding and egg moves

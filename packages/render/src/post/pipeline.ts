@@ -27,7 +27,7 @@
 import { NoToneMapping, RenderPipeline, SRGBColorSpace, Vector3 } from 'three/webgpu';
 import type { Camera, Node, PassNode, PerspectiveCamera, RenderTarget, Scene, TextureNode, UniformNode, WebGPURenderer } from 'three/webgpu';
 import {
-  acesFilmicToneMapping, dot, float, getViewPosition, mix, mrt, normalView, oneMinus, output, pass, renderOutput, screenUV, uniform, vec2,
+  acesFilmicToneMapping, cos, dot, float, getViewPosition, mix, mrt, normalView, oneMinus, output, pass, renderOutput, screenUV, sin, uniform, vec2,
   vec4, velocity,
 } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
@@ -111,6 +111,9 @@ export interface PostUniforms {
   readonly bokehScale: UniformNode<'float', number>;
   /** Vignette aspect correction `height / width` (0.5625 at 16:9). */
   readonly vignetteAspect: UniformNode<'float', number>;
+  /** §10.7.8 heat haze: the scene lookup's shimmer (uv units; 0 = none) and its clock (s × timeScale). Additions. */
+  readonly haze: UniformNode<'float', number>;
+  readonly hazeTime: UniformNode<'float', number>;
 }
 
 export function createPostUniforms(): PostUniforms {
@@ -126,6 +129,8 @@ export function createPostUniforms(): PostUniforms {
     exposure: uniform(POST_PARAMS.exposure),
     bokehScale: uniform(POST_PARAMS.dof.bokehPx),
     vignetteAspect: uniform(0.5625),
+    haze: uniform(0),
+    hazeTime: uniform(0),
   };
 }
 
@@ -197,8 +202,15 @@ export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: 
   const velT = scenePass.getTextureNode('velocity');
   const stages: { pass: BudgetPass; node: Node }[] = [];
 
+  // §10.7.8 heat haze: the scene is read through a slow shimmer (0 at rest: the lookup is the plain one), never over the
+  // DOF-sharp player (mask.y)
+  const hq = screenUV.mul(vec2(31, 19));
+  const ht = u.hazeTime;
+  const hazeOff = vec2(sin(hq.y.add(ht.mul(2.3)).add(sin(hq.x.mul(0.6).add(ht.mul(0.9))))), cos(hq.x.mul(0.8).add(ht.mul(1.6))))
+    .mul(u.haze).mul(oneMinus(maskT.y));
+  const hazed = beauty.sample(screenUV.add(hazeOff)) as unknown as Node<'vec4'>;
   // GTAO — half resolution, 16 spp; sprites/decals (mask.x = 1) keep their own contact gradient.
-  let lit: Node<'vec4'> = beauty as unknown as Node<'vec4'>;
+  let lit: Node<'vec4'> = hazed;
   const gtao = plan.find((s) => s.id === 'gtao');
   if (gtao) {
     const g = POST_PARAMS.gtao;
@@ -211,7 +223,7 @@ export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: 
     aoNode.useTemporalFiltering = gtao.params.temporal === true;
     stages.push({ pass: 'gtao', node: aoNode as unknown as Node });
     const aoT = aoNode.getTextureNode();
-    lit = vec4(beauty.rgb.mul(mix(aoT.r, float(1), maskT.x)), beauty.a);
+    lit = vec4(hazed.rgb.mul(mix(aoT.r, float(1), maskT.x)), hazed.a);
   }
 
   // Anti-aliasing — TRAA on webgpu, SMAA on the webgl2 fallback (or with taa off).

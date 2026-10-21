@@ -16,7 +16,9 @@ import { FootprintDecals, PRINT_SLOTS } from '../src/worldfx/prints.js';
 import { GRASS_PUSH, GrassPush, rustleStrength, springStrength } from '../src/worldfx/grass.js';
 import { surfaceExtras } from '../src/materials/surfaces.js';
 import { SHAFTS, shaftLevel } from '../src/worldfx/shafts.js';
-import { CLOUD_STRENGTH, WorldFx } from '../src/worldfx/index.js';
+import { CLOUD_STRENGTH, HAZE_UV, WorldFx, hazeLevel } from '../src/worldfx/index.js';
+import { FROST_FALL_S, FROST_RISE_S, stepFrost } from '../src/materials/weatherSurface.js';
+import { applyReducedEffects } from '../src/post/effects.js';
 import { ALL_EFFECTS } from '../src/descriptors.js';
 import { PerspectiveCamera } from 'three/webgpu';
 import { AMBIENT_PROFILES, AmbientMotes, biomeProfile, moodProfile, weatherThins } from '../src/worldfx/ambient.js';
@@ -262,5 +264,45 @@ describe('cloud shadows and light shafts', () => {
     dusk.w.update(16);
     expect(dusk.w.shafts.mesh.visible).toBe(false);
     expect(SHAFTS.side * SHAFTS.side).toBe(9);
+  });
+});
+
+describe('weather on the ground', () => {
+  it('frost settles under hail over a few seconds and melts slower', () => {
+    expect(stepFrost(0, 1, FROST_RISE_S / 2)).toBeCloseTo(0.5);
+    expect(stepFrost(1, 0, FROST_FALL_S / 4)).toBeCloseTo(0.75);
+    expect(stepFrost(0.3, 0.3, 1)).toBe(0.3);
+  });
+
+  it('the air shimmers over lava country by day, less over the forge and the canyons, never in rain or elsewhere', () => {
+    expect(hazeLevel('cinder', 1, 'none')).toBe(1);
+    expect(hazeLevel('cinder', 1, 'sun')).toBeGreaterThan(1);
+    expect(hazeLevel('forge', 1, 'none')).toBeLessThan(hazeLevel('cinder', 1, 'none'));
+    expect(hazeLevel('marrow', 0, 'none')).toBe(0);
+    expect(hazeLevel('cinder', 1, 'rain')).toBe(0);
+    expect(hazeLevel('grove', 1, 'sun')).toBe(0);
+  });
+
+  it('WorldFx ramps the frost under hail and writes the haze, off under reduced effects', () => {
+    const frost = uniform(0);
+    const haze = { amount: uniform(0), time: uniform(0) };
+    let effects = ALL_EFFECTS;
+    const w = new WorldFx({
+      camera: new PerspectiveCamera(), harvestLevel: uniform(0), walkers: { forEachWalker: () => undefined }, focus: () => new Vector3(),
+      wetness: () => 0, light: (o) => o.set(1, 1, 1), effects: () => effects, daylight: () => 1,
+      sun: (d) => { d.set(0, 1, 0); return { golden: 0, color: [1, 1, 1] }; }, frost, haze, push: null,
+    });
+    w.onZone({ spec: { biome: 'cinder' } } as never);
+    w.setWeather('hail');
+    for (let i = 0; i < 60; i++) w.update(100);
+    expect(frost.value).toBe(1);
+    expect(haze.amount.value).toBe(0);                     // hail: no shimmer
+    w.setWeather('none');
+    for (let i = 0; i < 100; i++) w.update(100);
+    expect(frost.value).toBeLessThan(1);
+    expect(haze.amount.value).toBeCloseTo(HAZE_UV, 4);
+    effects = applyReducedEffects(ALL_EFFECTS);
+    for (let i = 0; i < 150; i++) w.update(100);
+    expect(haze.amount.value).toBeLessThan(HAZE_UV * 0.01);
   });
 });

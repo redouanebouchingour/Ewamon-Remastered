@@ -25,6 +25,8 @@ export interface SharedUniforms {
   readonly push?: readonly UniformNode<'vec4', Vector4>[];
   /** Addition (§10.7.8 world effects): cloud shadows (strength, coverage, scale, drift); strength 0 = none (`clouds.ts`). */
   readonly clouds?: UniformNode<'vec4', Vector4>;
+  /** Addition (§10.7.8 world effects): frost 0..1, ramped up under hail and back after it (`weatherSurface.ts`). */
+  readonly frost?: UniformNode<'float', number>;
 }
 
 /** Pushers the grass reads (§10.7.8). */
@@ -40,6 +42,7 @@ export function createSharedUniforms(): SharedUniforms {
     occlusion: createOcclusionUniforms(),
     push: Array.from({ length: PUSHERS }, (_, i) => uniform(new Vector4(0, 0, 1, 0)).setName(`ewaPush${i}`)),
     clouds: uniform(new Vector4(0, 0.35, CLOUDS.scale, CLOUDS.driftMps)).setName('ewaClouds'),
+    frost: uniform(0).setName('ewaFrost'),
   };
 }
 

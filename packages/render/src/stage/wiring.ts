@@ -110,6 +110,8 @@ function build(ctx: HostContext): Part3 {
     daylight: () => ctx.day.sample.daylight,
     sun: (dir) => { sunDirection(ctx.day.timeOfDay, dir); return { golden: ctx.day.sample.golden, color: ctx.day.sample.linear }; },
     clouds: ctx.materials.uniforms.clouds,
+    frost: ctx.materials.uniforms.frost,
+    haze: { amount: ctx.post.uniforms.haze, time: ctx.post.uniforms.hazeTime },
   });
   ctx.scene.add(worldFx.root);
   const cutaway = new PropCutaway();

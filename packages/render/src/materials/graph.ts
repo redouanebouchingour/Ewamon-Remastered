@@ -35,6 +35,7 @@ import {
 } from 'three/tsl';
 import { harvestBlend, type SharedUniforms } from './harvest.js';
 import { cloudShade } from './clouds.js';
+import { WEATHER_SURFACE, weatherSurface } from './weatherSurface.js';
 import { occlusionKeep } from './occlusion.js';
 import type { SurfaceDef, SurfaceExtras } from './surfaces.js';
 import { triplanarSample } from './triplanar.js';
@@ -205,10 +206,14 @@ export function buildSurfaceGraph(def: SurfaceDef, _extras: SurfaceExtras, maps:
     rgb = mix(rgb, vec3(luminance(rgb)).mul(p.tone.xyz), p.tone.w) as Node<'vec3'>;                 // per-zone re-tone (M3 review fixes)
     rgb = frontFacing.select(rgb, rgb.mul(p.backTint)) as Node<'vec3'>;                             // leaf subsurface tint (§10.2.2)
   }
-  m.colorNode = vec4(mix(rgb, vertexColor().rgb, h).mul(cloudShade(u, h)), alb.a);                  // level 2 = flat vertex colour; §10.7.8 cloud shadows
-  m.normalNode = mix(tangentNormal(nrm.rgb, float(1)), normalView, h).normalize();                  // level 2 = geometry normal (flat when unwelded)
+  // §10.7.8 weather on the ground: wet darkening and puddles (flat, wet-responding surfaces), frost under hail
+  const ws = weatherSurface(u, st.kind === 'card' ? float(0) : p.wetResponse, h);
+  const lit = mix(rgb, vertexColor().rgb, h).mul(cloudShade(u, h)).mul(ws.dark);                   // level 2 = flat vertex colour; §10.7.8 cloud shadows
+  m.colorNode = vec4(mix(lit, ws.frostColor, ws.frost), alb.a);
+  m.normalNode = mix(mix(tangentNormal(nrm.rgb, float(1)), normalView, h), normalView, ws.puddle).normalize();   // level 2 / a puddle = geometry normal
   const rough = mix(orm.g.mul(p.roughScale).add(p.roughBias), float(0.95), h);                    // level 2 = flat rough
-  m.roughnessNode = rough.mul(mix(float(1), float(0.45), u.wetness.mul(p.wetResponse)));          // wet → × 0.45
+  const wetRough = rough.mul(mix(float(1), float(0.45), u.wetness.mul(p.wetResponse)));            // wet → × 0.45
+  m.roughnessNode = mix(mix(wetRough, float(WEATHER_SURFACE.puddleRough), ws.puddle), float(0.85), ws.frost);
   m.metalnessNode = mix(orm.b.mul(p.metalScale).add(p.metalBias), float(0), h);
   m.aoNode = mix(orm.r, float(1), h);
   m.emissiveNode = mix(p.emissive, alb.rgb.mul(p.emissive), p.emissiveFromAlbedo).mul(oneMinus(h)); // level 2: no light sources (Pillar 4 off)

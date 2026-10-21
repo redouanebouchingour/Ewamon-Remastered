@@ -2285,3 +2285,12 @@ pool; `Part3.worldFx`).
 - The shafts' block of cells is centred on the focus's cell, so the outer ribbons jump when the focus crosses a cell
   boundary; they sit beyond the 16 m fade, where they are already invisible.
 - Checked live in the sandbox (Mire Route: a cloud edge over the road at noon; shafts at 18:30).
+
+## World effects: weather on the ground, heat haze (2026-10-21)
+
+- Frost first read as a snowfield (whole route white, grass too) and then as camouflage blobs (a coarse noise with a
+  narrow edge); the shipped rime is a fine grain (4.5 / m) shaped by a soft coarse field, at most half white, on
+  upward faces only. Checked live under hail on Mire Route; rain shows puddles and mud prints there.
+- Heat haze samples `beautyT` at an offset uv instead of reading it in place; GTAO, TRAA and the rest take that as their
+  input. The offset is multiplied by `1 − mask.y` so the sharp player never wobbles. Velocity and depth stay
+  unshifted (the shimmer is ≈ 2 px, below anything TRAA reprojects visibly).
