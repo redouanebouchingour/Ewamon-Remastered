@@ -701,6 +701,18 @@ In-canvas (render `HudLayer`, spine Pillar 8: never covered by an effect): both 
 
 **Doubles menu and plates** <!-- amended 2026-10-06 Phase D6 -->. The menu picks per field position — position 0, then position 1 — and its prompt names the creature choosing (`What will X do? (1/2)`); "Back to X" re-opens position 0 before anything is sent (choice: collect both, then send — so a mistaken first pick costs nothing). A single-target move (power > 0 or target `'foe'`, not spread) opens a target list: each standing foe, then the standing ally (never the user), hotkeys `1–3`, `Escape` back to the moves; when only one candidate stands it is taken directly. Spread, self and field moves skip it. Party switches the choosing position's creature; both field creatures read "In battle" ("Fainted" for one fainted in place) and a creature the other position already chose this turn is disabled ("Already chosen"); the replacement phase asks once per required position. Orbs and Run (flee) do not exist in doubles; Forfeit forfeits for both positions. In-canvas: four HP plates (`BattleHud.setLayout(true)`; bar order near 0, near 1, far 0, far 1, numbers on the viewer's two), each anchored over its own battler by render's `HudLayer` (which already places up to 16 bars without overlap); singles keeps two.
 
+### 20.5.7 The encounter transition <!-- amended 2026-10-21 -->
+
+A fresh `battleStart` (never a resync restore, never a replay) writes `ui.encounterFx` = `{ kind, type, reduced }` (`battle/encounter.ts`): the kind from the format and the foe's lead (`wild`, `shiny` for a shiny lead, `legendary` for a legendary or mythical lead, `trainer`, `league`, `pvp`, `raid`), the type the lead's primary type, `reduced` the controller's effective reduced motion. `EncounterWipe` (first child of `BattleOverlay`, `--z-overlay`, pointer-events none, aria-hidden: the panel announces the battle) plays it over the 600 ms push-in and clears it after `ENCOUNTER_MS[kind]`:
+
+- **wild** (760 ms): three slanted slabs sweep the screen left to right in the type colour, carbon and the type's ink;
+- **shiny** (1 000 ms): the sweep in shiny gold and the type colour (`--shiny-gold`, `--shiny-light`, tokens.json) with 12 twinkling sparkles;
+- **trainer / pvp** (720 ms), **league** (820 ms): carbon shutters close from top and bottom on a seam drawn left to right (hot orange; gold for the league) and open again, the VS card (§20.5.6) following;
+- **legendary / raid** (1 300 ms): the world closes to a small iris ringed in the type colour, holds, and opens;
+- a white flash opens every kind except under `accessibility.screenFlash = false`; under reduced motion every kind is a 320 ms dark dip instead.
+
+World3D's battle view also calls render's `WorldFx.encounterAt(feet)` for a wild battle outside the arena (render §10.7.8): the tall grass bursts and shakes round the player, or the water sprays.
+
 ---
 
 ## §20.6 IN-WORLD HUD

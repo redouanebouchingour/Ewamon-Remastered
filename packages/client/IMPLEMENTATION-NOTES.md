@@ -2160,3 +2160,17 @@ every KO turn shows the lunge, the hit and the faint before the next creature en
 ## Ghost trainers (2026-10-20)
 
 - `foeIdentity` names `ghost:<username>` foes; the Profile's `GhostSection` reads `GET /ghost`.
+
+## The encounter transition (2026-10-21)
+
+SPEC §20.5.7. `battle/encounter.ts` (pure: the kind and the wipe record), `battle/EncounterWipe.tsx` (+ module css),
+first child of `BattleOverlay`; `ui.encounterFx` written by `BattleController.onBattleStart` (not by `attach` or a
+resync, not for a replay) and cleared by `reset`.
+- `reduced` is carried in the record (the controller's `deps.reduced()`, like the VS card's), so the wipe never reads
+  the live effective settings; the white flash follows `accessibility.screenFlash`.
+- The shiny gold is two new tokens (`--shiny-gold`, `--shiny-light`, tokens.json → `pnpm --filter @ewa/client tokens`):
+  the design-system test forbids custom properties anywhere else.
+- World3D's battle view calls render `WorldFx.encounterAt(feet)` for a wild battle outside the arena (the grass
+  bursts round the player, or the water sprays; render decides from the ground under the feet).
+- Checked live on the second isolated client (the component mounted over the landing page through Vite's module
+  URLs, each kind screenshotted mid-wipe).

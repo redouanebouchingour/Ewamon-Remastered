@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-21 the encounter transition: a wipe over the push-in that says what kind of battle started. One entry. -->
+
+## 2026-10-21 · `20-client.md` §20.5.7 The encounter transition (new) · a wipe for every kind of battle
+Why: the user asked for an encounter transition so a random encounter feels like an event, with its own version per kind: wild, trainer, legendary, shiny. Since grass encounters replaced the creatures standing in the world, a battle cut in with only the 600 ms camera push-in, and a shiny or a legendary looked like any other. The wipe says what started before any text does, in the foe's type colour, and under reduced motion it is a short dark dip.
+Evidence: `packages/client/test/battle-presentation.test.tsx` (3 new: the kinds from format and lead, the record written at a fresh start and cleared by the wipe, none on a resync restore, the flash setting, the reduced dip); live on the second isolated client (each kind mid-wipe).
+Affects: `packages/client/src/{battle/encounter,battle/EncounterWipe,battle/BattleOverlay,battle/BattleController,state/ui,scene/World3D}.ts(x)`, `src/battle/EncounterWipe.module.css`, `src/ui/tokens.{json,css,ts}`.
+
 <!-- 2026-10-21 world effects: feet throw up the ground they land on, leave prints in sand, snow and mud, and tall grass makes way. One entry. -->
 
 ## 2026-10-21 · `10-render.md` §10.7.8 World effects (new: particles, footsteps, prints, grass that makes way, the encounter rustle), §10.2.3 (`SharedUniforms.push`) · footsteps that match the ground, and grass that bends round walkers

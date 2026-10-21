@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { Action, BattleFormat, BattleOutcome, BattleState, TypeName } from '@ewa/core';
 import type { RewardsSummary, ServerMessageOf, TradeOffer } from '@ewa/protocol';
+import type { EncounterFx } from '../battle/encounter';
 
 /** `battleEnd` for the result card: display only (the rewards reached the session through the delta writers). */
 export interface BattleResult {
@@ -185,6 +186,8 @@ export interface UiState {
   /** the evolution sequence playing (null = none) */
   readonly evolution: EvolutionUi | null;
   readonly battleIntro: BattleIntro | null;
+  /** the encounter transition over the push-in (§20.5.7): written at a fresh `battleStart`, cleared by the wipe */
+  readonly encounterFx: EncounterFx | null;
   /** the banner on screen; the next ones wait in `battleBannerQueue` */
   readonly battleBanner: BattleBanner | null;
   readonly battleBannerQueue: readonly BattleBanner[];
@@ -206,6 +209,7 @@ export interface UiState {
   shiftPrompt(): void;
   setEvolution(e: EvolutionUi | null): void;
   setBattleIntro(i: BattleIntro | null): void;
+  setEncounterFx(e: EncounterFx | null): void;
   /** shows `b` now, or after the banner on screen */
   pushBattleBanner(b: BattleBanner): void;
   /** the banner `id` is done (its 3 s are up): the next queued one, if any, takes its place */
@@ -233,6 +237,7 @@ const INITIAL = {
   prompts: [] as readonly QueuedPrompt[],
   evolution: null,
   battleIntro: null,
+  encounterFx: null,
   battleBanner: null,
   battleBannerQueue: [] as readonly BattleBanner[],
   tower: null,
@@ -266,6 +271,7 @@ export const useUiStore = create<UiState>()(
     shiftPrompt: () => set({ prompts: get().prompts.slice(1) }),
     setEvolution: (evolution) => set({ evolution }),
     setBattleIntro: (battleIntro) => set({ battleIntro }),
+    setEncounterFx: (encounterFx) => set({ encounterFx }),
     pushBattleBanner: (b) => {
       const st = get();
       if (st.battleBanner === null) set({ battleBanner: b });

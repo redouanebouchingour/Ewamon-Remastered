@@ -1561,6 +1561,9 @@ class World implements World3D {
         if (s.format === 'raid') this.raidDen?.setHidden(true);
         // arena PvP: the stadium's own floor under the ring
         void this.director.enterBattle(this.inArena ? { ...s, terrain: this.backdrop?.terrain ?? ARENA_FALLBACK.terrain } : s);
+        // render §10.7.8: a wild battle bursts the tall grass (or sprays the water) round the player as the push-in starts
+        const feet = s.format === 'wild' && !this.inArena ? r.actors.feetOf(this.ws.selfId, new Vector3()) : null;
+        if (feet !== null) p3?.worldFx.encounterAt(feet.x, feet.y, feet.z);
         this.audio.setTheme(s.format === 'raid' ? 'raid' : 'battle', 400);
       },
       ended: (foeWon) => {

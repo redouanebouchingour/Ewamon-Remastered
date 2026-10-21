@@ -56,6 +56,7 @@ import type { BattleHudModel } from './BattleHud';
 import { LOG_DWELL_MIN } from './constants';
 import { actionErrorLabel } from './labels';
 import { foeIdentity, foeOfState } from './foe';
+import { encounterFxOf } from './encounter';
 import type { FoeIdentity } from './foe';
 import { useCinematicStore } from './cinematic';
 import { useBondStore } from './bond';
@@ -983,6 +984,8 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       if (foe !== null && (m.format === 'trainer' || m.format === 'league') && !deps.reduced()) {
         ui().setBattleIntro({ battleId: m.battleId, name: foe.name, title: foe.title, type: foe.type, look: foe.look, league: foe.league !== null });
       } else if (ui().battleIntro !== null) ui().setBattleIntro(null);
+      // §20.5.7: the encounter wipe over the push-in (a fresh battle; a replay starts without one)
+      if (!isReplayBattle(m.battleId)) ui().setEncounterFx(encounterFxOf(m.battleId, m.state, m.seat, deps.reduced()));
       play(buildTimeline(m.events, ctxFor(m.state)), m.state);
     },
 
@@ -1352,6 +1355,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     midLastDone = false;
     raid = null;
     if (ui().battleIntro !== null) ui().setBattleIntro(null);
+    if (ui().encounterFx !== null) ui().setEncounterFx(null);
     if (ui().battleBanner !== null || ui().battleBannerQueue.length > 0) ui().clearBattleBanners();
     if (ui().battle !== null) ui().setBattle(null);
   }

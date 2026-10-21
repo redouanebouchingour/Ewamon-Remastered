@@ -12,7 +12,7 @@
  */
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BADGES, LEAGUE, createContentIndex, zone } from '@ewa/content';
+import { BADGES, LEAGUE, LEGENDARY_IDS, createContentIndex, zone } from '@ewa/content';
 import { createBattle, digestBattleState, projectBattler } from '@ewa/core';
 import type { BattleEvent, BattleFormat, BattleState, CreatureInstance, Ref } from '@ewa/core';
 import type { ServerMessageOf } from '@ewa/protocol';
@@ -20,6 +20,9 @@ import { createBattleController } from '../src/battle/BattleController';
 import type { BattleView } from '../src/battle/BattleController';
 import { BATTLE_BANNER_MS, BattleBanner } from '../src/battle/BattleBanner';
 import { BattleIntroCard, INTRO_MS } from '../src/battle/BattleIntroCard';
+import { EncounterWipe } from '../src/battle/EncounterWipe';
+import { ENCOUNTER_MS, ENCOUNTER_REDUCED_MS, encounterKindOf } from '../src/battle/encounter';
+import { useSettingsStore } from '../src/state/settings';
 import { BattleResultCard } from '../src/battle/BattleResultCard';
 import { STEP_MS } from '../src/battle/constants';
 import { concessionLine, foeIdentity } from '../src/battle/foe';
@@ -329,5 +332,66 @@ describe('BattleResultCard (Phase B7)', () => {
     useUiStore.getState().setBattle({ ...useUiStore.getState().battle!, result: { outcome: { winner: 0 }, rewards: { money: 6000, items: {}, trainerExp: 0, ratingDelta: null, badge: null }, prompts: 0 } });
     render(<BattleResultCard />);
     expect(screen.getByTestId('battleresult-concession').textContent).toContain(veil.post[0]);
+  });
+});
+
+describe('encounter wipe (§20.5.7)', () => {
+  const wildOf = (id: string, shiny = false) => {
+    const c = makeCreature(content, content.species(id), 5, 'w-0', null);
+    return battle('wild', null, [shiny ? { ...c, isShiny: true } : c]);
+  };
+
+  it('tells a grass encounter from a shiny, a legendary, a trainer and a league battle', () => {
+    expect(encounterKindOf(wildOf('mossling').state, 0)).toBe('wild');
+    expect(encounterKindOf(wildOf('mossling', true).state, 0)).toBe('shiny');
+    expect(encounterKindOf(wildOf(LEGENDARY_IDS[0]!).state, 0)).toBe('legendary');
+    expect(encounterKindOf(battle('trainer', 'sable_mire', [makeCreature(content, content.species('coalette'), 5, 's-0', null)]).state, 0)).toBe('trainer');
+    expect(encounterKindOf(battle('league', 'verdant_gym', miraTeam()).state, 0)).toBe('league');
+  });
+
+  it('a fresh battle writes the wipe in the foe lead type; the wipe plays and clears itself; a resync restore writes none', () => {
+    vi.useFakeTimers();
+    const w = controller();
+    const b = wildOf('mossling');
+    w.c.onBattleStart(start('wild', b.state, b.events));
+    expect(useUiStore.getState().encounterFx).toMatchObject({ kind: 'wild', type: content.species('mossling').types[0] });
+    render(<EncounterWipe />);
+    const el = screen.getByTestId('encounterwipe');
+    expect(el.getAttribute('data-kind')).toBe('wild');
+    expect(el.getAttribute('data-type')).toBe(content.species('mossling').types[0]);
+    act(() => {
+      vi.advanceTimersByTime(ENCOUNTER_MS.wild + 10);
+    });
+    expect(useUiStore.getState().encounterFx).toBeNull();
+    expect(screen.queryByTestId('encounterwipe')).toBeNull();
+    w.c.reset();
+
+    const z = controller();
+    z.c.onBattleResync({ type: 'battleResync', battleId: BID, state: b.state });
+    expect(useUiStore.getState().encounterFx).toBeNull();
+  });
+
+  it('the screen flash follows the setting; reduced motion dips instead', () => {
+    vi.useFakeTimers();
+    useSettingsStore.getState().set('accessibility', { screenFlash: false });
+    const b = battle('league', 'verdant_gym', miraTeam());
+    const { c } = controller();
+    c.onBattleStart(start('league', b.state, b.events));
+    const { container } = render(<EncounterWipe />);
+    expect(screen.getByTestId('encounterwipe').getAttribute('data-kind')).toBe('league');
+    expect(container.querySelectorAll('span').length).toBe(3);   // two shutters and the seam, no flash
+    cleanup();
+    useSettingsStore.getState().set('accessibility', { screenFlash: true });
+    c.reset();
+    const r = controller({ reduced: true });
+    const lg = wildOf(LEGENDARY_IDS[0]!);
+    r.c.onBattleStart(start('wild', lg.state, lg.events));
+    expect(useUiStore.getState().encounterFx).toMatchObject({ kind: 'legendary', reduced: true });
+    render(<EncounterWipe />);
+    expect(screen.getByTestId('encounterwipe').getAttribute('data-reduced')).toBe('true');
+    act(() => {
+      vi.advanceTimersByTime(ENCOUNTER_REDUCED_MS + 10);
+    });
+    expect(useUiStore.getState().encounterFx).toBeNull();
   });
 });
