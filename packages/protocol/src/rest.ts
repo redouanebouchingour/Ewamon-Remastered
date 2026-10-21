@@ -660,6 +660,43 @@ export type ZoneShadowView = z.infer<typeof ZoneShadowSchema>;
 export const WorldShadowRes = z.object({ season: z.number().int(), zones: z.array(ZoneShadowSchema).max(64) });
 
 /**
+ * A living ecosystem (content ecosystem.ts): "This week on <zone>". Whether it runs at all (server env ECOSYSTEM; off:
+ * every list empty), the ranked season and its week (1..4) and when the week ends, this week's catches and knockouts in
+ * the zone and whether that is enough history to judge. Each listed species: its weight this week over the authored
+ * one (`factor`), why (`cause`), what it hunts and what hunts it here, this week's catches and knockouts. Surging,
+ * scarce, tilted by the zone's honor (shadow: Dark and Ghost; light: rare slots), and this season's migrants in and out.
+ */
+export const ECO_CAUSES = ['hunted', 'feeding', 'shadow', 'light', 'migrant', 'away'] as const;
+export const EcoSpeciesSchema = z.object({
+  speciesId: z.string().max(32),
+  factor: z.number().min(0).max(8),
+  cause: z.enum(ECO_CAUSES).nullable(),
+  caught: z.number().int().min(0),
+  ko: z.number().int().min(0),
+  preyOn: z.array(z.string().max(32)).max(24),
+  huntedBy: z.array(z.string().max(32)).max(24),
+});
+export type EcoSpeciesView = z.infer<typeof EcoSpeciesSchema>;
+export const EcoParams = z.object({ zoneId: ZoneIdSchema });
+export const EcosystemRes = z.object({
+  zoneId: ZoneIdSchema,
+  enabled: z.boolean(),
+  season: z.number().int(),
+  week: z.number().int().min(1).max(4),
+  endsAt: IsoDate,
+  takes: z.number().int().min(0),
+  judged: z.boolean(),
+  surging: z.array(EcoSpeciesSchema).max(40),
+  scarce: z.array(EcoSpeciesSchema).max(40),
+  tilted: z.array(EcoSpeciesSchema).max(40),
+  migrantsIn: z.array(z.object({ speciesId: z.string().max(32), from: ZoneIdSchema })).max(8),
+  migrantsOut: z.array(z.object({ speciesId: z.string().max(32), to: ZoneIdSchema })).max(8),
+  shadow: z.number().int().min(0).max(4),
+  light: z.number().int().min(0).max(4),
+});
+export type EcosystemView = z.infer<typeof EcosystemRes>;
+
+/**
  * Majin vs Tenjin seasons (content factions.ts): the season's two sides (points, members, best contributors), the
  * caller's side and points (null before choosing), the side holding Solenne's sky (last season's winner) and the
  * Chronicle of the latest closed seasons, newest first. POST /factions/join takes a side for the season; a trainer
@@ -927,6 +964,8 @@ export const ROUTES = {
   arenaLiveFeed: route({ method: 'GET', path: '/arena/live/:matchId', auth: 'bearer', params: LiveParams, response: LiveFeedRes }),
   // honor shapes the world: the zones under a shadow this season
   worldShadow: route({ method: 'GET', path: '/world/shadow', auth: 'bearer', response: WorldShadowRes }),
+  // a living ecosystem: this week on a zone (surging, scarce, migrants, the honor tilt)
+  worldEcosystem: route({ method: 'GET', path: '/world/ecosystem/:zoneId', auth: 'bearer', params: EcoParams, response: EcosystemRes }),
   // Majin vs Tenjin seasons: the standings and the Chronicle, taking a side, the side holding Solenne's sky
   factions: route({ method: 'GET', path: '/factions', auth: 'bearer', response: FactionsRes }),
   factionJoin: route({ method: 'POST', path: '/factions/join', auth: 'bearer', request: FactionJoinReq, response: FactionsRes }),

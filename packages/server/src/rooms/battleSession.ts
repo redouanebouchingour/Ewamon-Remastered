@@ -40,7 +40,8 @@ import { advanceQuests } from '../game/quests';
 import type { QuestEvent } from '../game/quests';
 import type { SpawnRecord } from './spawnDirector';
 import { completeBeatInTx } from './storyBeats';
-import { FACTION_POINTS, deedsOf, seasonAt } from '@ewa/content';
+import { FACTION_POINTS, deedsOf, ecoWeek, seasonAt } from '@ewa/content';
+import { countsForEcosystem, takeOf } from '../game/ecosystem';
 import { ghostReward, ghostTrainerId } from '@ewa/content';
 import { NEMESIS_MAX, nemesisFullName, nemesisPromoteChance, nemesisScarRibbon } from '@ewa/content';
 import type { NemesisScar } from '@ewa/content';
@@ -179,6 +180,8 @@ export interface BattleDeps {
    * the zone's shadow level now (a darker zone promotes more often); `always` promotes every qualifying escape.
    */
   readonly nemeses?: () => { readonly always: boolean; readonly shadow: number } | null;
+  /** A living ecosystem (content ecosystem.ts): whether a wild battle's catches and knockouts are tallied (absent: no) */
+  readonly ecosystem?: () => boolean;
 }
 
 /** Where a battle forms (ZoneRoom `battleAt`): a hall arena + its battle-axis yaw inside an interior, else the player. */
@@ -1446,6 +1449,12 @@ export class BattleCoordinator {
         const wonBy = ended !== null && session.format !== 'wild' && (ended.winner === 0 || ended.winner === 1) ? ended.winner : null;
         const deeds = deedsOf(events, seats.map((s) => s.side), session.format === 'wild' ? 1 : null, (id) => this.deps.content.move(id).type, wonBy);
         await repos.worldHonor.add(tx, seasonAt(nowMs).number, session.zoneId, deeds.light, deeds.shadow);
+      }
+      // a living ecosystem: a plain wild creature caught or knocked out counts against its species in this zone's week
+      if (session.format === 'wild' && session.arena === undefined && session.tower !== true && countsForEcosystem(session.spawnId) && this.deps.ecosystem?.() === true) {
+        const t = takeOf(events);
+        const species = before.sides[1].party[0]?.creature.speciesId ?? null;
+        if (species !== null) await repos.ecosystem.add(tx, session.zoneId, ecoWeek(nowMs), species, t.caught, t.ko);
       }
     });
     // one roaming legendary per season: the first catcher hears it (after the commit)

@@ -26,6 +26,7 @@ import s from './DexScreen.module.css';
 import l from './layout.module.css';
 import { useClosePanel } from './shared';
 import { RoamerNote } from './RoamerNote';
+import { EcosystemPanel } from './EcosystemPanel';
 
 type DexState = 'caught' | 'seen' | 'unknown';
 /** the State filter: a dex state, everything, or the species with a shiny catch (Phase D4) */
@@ -268,6 +269,8 @@ export function DexScreen() {
           </div>
         </div>
       </header>
+
+      <EcosystemPanel onPick={(id) => setParam('id', id)} />
 
       <div className={cx(s.body, selected !== null && s.withDetail)}>
         {entries.length === 0 ? (

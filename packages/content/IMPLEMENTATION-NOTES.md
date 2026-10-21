@@ -695,3 +695,19 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   the player through the grass roll.
 - Names are a type's head and a common tail (at most 12 letters, a nickname takes 16). The word tables are content so
   they can be read and tuned; none uses an em-dash.
+
+## A living ecosystem (2026-10-21)
+
+- `data/ecosystem.ts`: the food chain (hand rows, then a type rule over the zone's own species), the weekly pressure,
+  the seasonal migrations and the honor tilt as one pure `ecosystemOf(input)` that returns the reweighted table and the
+  reading the Dex shows. No `ZoneDef`, plan, layout RNG, heightfield or progression fixture moves: the authored
+  `ENCOUNTER_TABLES` are untouched and a zone with no history rolls them exactly.
+- `lightLevel` (worldHonor.ts) is `shadowLevel` with light and shadow swapped: the same minimum of history and the same
+  thresholds over the light share. Nothing but the ecosystem reads it.
+- The darkened tilt only adds Ghost species that are not Dark: `rollWild` already weighs Dark species by
+  `shadowDarkWeight`, so a Dark/Ghost creature is weighed once. The reading still reports a Dark species' full factor.
+- `MIGRATION_ROUTES` is hand authored, not derived: content cannot read the sprite manifest (it depends on core and zod
+  only). The twelve routes were picked from the shipped manifest (a species in the target zone's atlases, not yet in its
+  table, between neighbours); the client test `ecosystem-sprites.test.ts` re-checks them against the manifest, so a
+  re-plan of the atlases that drops one fails a test instead of loading a stray atlas mid-battle.
+- Neighbours count two zones one town apart when the town has no table: routes are only ever linked through towns.

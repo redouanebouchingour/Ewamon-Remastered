@@ -197,12 +197,21 @@ export class SpawnDirector {
 
   constructor(
     private readonly zone: ZoneDef,
-    private readonly table: EncounterTable | null,
+    private table: EncounterTable | null,
     private readonly rng: Rng,
     private readonly h: Heightfield,
     private readonly tuning: SpawnTuning,
     private readonly content: ContentIndex,
   ) {}
+
+  /**
+   * A living ecosystem: the zone's table this week (the same slots reweighted, plus the season's migrants). Never turns
+   * a zone without a table into one with a table, nor the reverse; the draws per spawn are unchanged.
+   */
+  setTable(t: EncounterTable | null): void {
+    if ((t === null) !== (this.table === null)) return;
+    this.table = t;
+  }
 
   /** Re-read from live-ops at each rollover. */
   setLiveOps(m: LiveOpsMods): void {

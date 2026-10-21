@@ -62,6 +62,15 @@ export function shadowLevel(light: number, shadow: number): ShadowLevel {
   return level as ShadowLevel;
 }
 
+/**
+ * A living ecosystem (ecosystem.ts): the zone's light level, the mirror of `shadowLevel`. Past the same minimum of
+ * history, each threshold of the LIGHT share is a level (1 at 55 %, ... 4 at 85 %). A lit zone brings its rare slots
+ * out more often; nothing else reads it.
+ */
+export function lightLevel(light: number, shadow: number): ShadowLevel {
+  return shadowLevel(shadow, light);
+}
+
 /** The weight multiplier of a Dark-type slot in a zone at `level`. */
 export function shadowDarkWeight(level: number): number {
   return 1 + SHADOW_DARK_BOOST * Math.max(0, Math.min(SHADOW_MAX, level));

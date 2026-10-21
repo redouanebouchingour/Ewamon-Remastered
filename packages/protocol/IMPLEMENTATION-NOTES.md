@@ -213,3 +213,9 @@ installed library that future readers should not have to re-derive. The spec its
 
 - `nemeses` route `GET /nemeses` (100 routes); `nemesisAmbush` and `nemesisNews` server messages (27 types);
   `NEMESIS_SCAR_IDS` mirrors content's `NEMESIS_SCARS` (protocol does not import content); history event `nemesis`.
+
+## A living ecosystem (2026-10-21)
+
+- `worldEcosystem` route `GET /world/ecosystem/:zoneId` (101 routes): `EcoParams` takes a known zone id, `EcosystemRes`
+  carries the reading's lists (`EcoSpeciesSchema`, `ECO_CAUSES` mirrors content's `EcoCause`: protocol does not import
+  content).

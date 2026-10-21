@@ -34,7 +34,7 @@ import {
   zone as zoneById,
   zonePlan,
 } from '@ewa/content';
-import type { BadgeId, Heightfield, LinkDir, PlanEllipse, RaidHotspot, RectSolid, TrainerDef, ZoneDef, ZoneId } from '@ewa/content';
+import type { BadgeId, EncounterTable, Ecosystem, Heightfield, LinkDir, PlanEllipse, RaidHotspot, RectSolid, TrainerDef, ZoneDef, ZoneId } from '@ewa/content';
 import { createRng } from '@ewa/core';
 import type { Rng, WeatherKind } from '@ewa/core';
 import { BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, FISH_REACH_M, PlayerState, RaidState, SpawnState, ZoneState, rankedWindow } from '@ewa/protocol';
@@ -86,6 +86,7 @@ import { REAL_WEATHER_CHECK_MS, weatherTopic } from '../game/realWeather';
 import type { Ghost, Nemesis, WeatherCity } from '@ewa/persist';
 import { nemesisAmbushChance, nemesisFightLevel } from '@ewa/content';
 import { ambushesOn, tauntOf } from '../game/nemesis';
+import { readEcosystem } from '../game/ecosystem';
 import { GHOSTS_PER_ZONE, GHOST_CHANCE, GHOST_DAYS, GHOST_LEVEL_SPAN, ROAMER_CHANCE, ROAMER_LEVEL, ghostReport, roamerOf, roamerZoneAt, seasonAt, shadowLevel } from '@ewa/content';
 
 export interface ZoneMeta {
@@ -314,6 +315,11 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   /** honor shapes the world: when the zone's tally was last read (and whether a read is in flight) */
   private shadowCheckedAt = Number.NEGATIVE_INFINITY;
   private shadowReading = false;
+  /**
+   * A living ecosystem (content ecosystem.ts, env ECOSYSTEM): the zone's reading this week, read with the shadow once a
+   * minute; its table is what grass, surf, fishing and the overworld director roll on (null: the authored table)
+   */
+  private eco: Ecosystem | null = null;
   /** Phase D13: ranked matches this room is the arena for, waiting for both players to arrive */
   private readonly rankedArena = new RankedArena();
 
@@ -389,6 +395,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       },
       // nemeses: on unless NEMESES=off; a darker zone (honor shapes the world) promotes more often
       nemeses: () => (deps.env.NEMESES === 'off' ? null : { always: deps.env.NEMESES === 'always', shadow: this.state.shadow }),
+      // a living ecosystem: wild catches and knockouts are tallied per zone and week unless ECOSYSTEM=off
+      ecosystem: () => deps.env.ECOSYSTEM === 'on',
     });
     this.trades = new TradeCoordinator({
       repos: deps.repos,
@@ -847,11 +855,32 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       this.roamerCaught = { season, caught: legend !== null };
       // ghost trainers: this zone's recent ghosts
       this.ghosts = await deps.repos.db.transaction((tx) => deps.repos.ghosts.recent(tx, this.zone.id, new Date(now - GHOST_DAYS * 86_400_000), GHOSTS_PER_ZONE));
+      // a living ecosystem: this week's table (pressure, the season's migrants, the honor tilt), on the same minute
+      if (deps.env.ECOSYSTEM === 'on') await this.readEcosystem(now);
     } catch (e) {
       this.deps.log.warn({ err: e }, 'shadow read failed');
     } finally {
       this.shadowReading = false;
     }
+  }
+
+  /** A living ecosystem: re-reads the zone's week and hands its table to the rolls (logged when the weights move). */
+  async readEcosystem(now: number): Promise<void> {
+    if (this.zone.encounterTable === null) return;
+    const deps = this.deps;
+    const e = await deps.repos.db.transaction((tx) => readEcosystem(deps.repos, tx, this.zone.id, now));
+    const weights = (x: Ecosystem | null): string => (x === null ? '' : x.table.slots.map((s) => `${s.species}:${s.weight.toFixed(3)}`).join(','));
+    if (weights(e) !== weights(this.eco) && e !== null) {
+      const moved = e.species.filter((s) => Math.abs(s.factor - 1) > 0.01).map((s) => `${s.speciesId} x${s.factor.toFixed(2)}${s.cause !== null ? ` (${s.cause})` : ''}`);
+      deps.log.info({ zoneId: this.zone.id, takes: e.takes, judged: e.judged, migrantsIn: e.migrantsIn.map((m) => m.species), moved }, 'ecosystem: encounter weights changed');
+    }
+    this.eco = e;
+    this.spawns?.setTable(e?.table ?? encounterTableFor(this.zone.id));
+  }
+
+  /** The table this zone rolls its wild creatures on now: this week's ecosystem table, else the authored one. */
+  wildTable(): EncounterTable | null {
+    return this.eco?.table ?? encounterTableFor(this.zone.id);
   }
 
   /** Weather from real life: the player's city's weather (one lookup when the cache has none), sent when it changes. */
@@ -1487,7 +1516,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     if (water === null) return refuse('noWater', 'There is no water to fish in here.');
     this.fishCounter += 1;
     const id = `${this.zone.id}:fish:${this.fishCounter}`;
-    const rec = rollFishing(encounterTableFor(this.zone.id), this.fishRng!, this.deps.content, this.state.timeOfDay, water, id, this.now(), this.spawns?.liveOps, client.userData?.realWeather ?? null, this.state.shadow);
+    const rec = rollFishing(this.wildTable(), this.fishRng!, this.deps.content, this.state.timeOfDay, water, id, this.now(), this.spawns?.liveOps, client.userData?.realWeather ?? null, this.state.shadow);
     if (rec === null) return refuse('nothingBites', 'Not even a nibble. Nothing seems to live in this water.');
     ud.battleId = 'pending';
     const res = await this.battles.startWild({ playerId: ud.playerId, sessionId: client.sessionId }, rec, { x: ps.x, z: ps.z }).catch((e: unknown) => {
@@ -1621,7 +1650,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       return;
     }
     // weather from real life: the player's own weather favours its types (no bias without a city)
-    const rec = roamer ?? rollWild(encounterTableFor(this.zone.id), medium, this.wildRng!, this.deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps, ud.realWeather, this.state.shadow);
+    const rec = roamer ?? rollWild(this.wildTable(), medium, this.wildRng!, this.deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps, ud.realWeather, this.state.shadow);
     if (rec === null) return;
     ud.encounterGraceM = ENCOUNTER_GRACE_M;
     ud.battleId = 'pending';
@@ -1653,7 +1682,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     } catch (e) {
       deps.log.error({ err: e }, 'ghost encounter failed');
     }
-    const rec = rollWild(encounterTableFor(this.zone.id), medium, this.wildRng!, deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps, ud.realWeather, this.state.shadow);
+    const rec = rollWild(this.wildTable(), medium, this.wildRng!, deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps, ud.realWeather, this.state.shadow);
     if (rec === null) {
       if (ud.battleId === 'pending') ud.battleId = null;
       return;
@@ -1701,7 +1730,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     } catch (e) {
       deps.log.error({ err: e }, 'nemesis ambush failed');
     }
-    const rec = rollWild(encounterTableFor(this.zone.id), medium, this.wildRng!, deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps, ud.realWeather, this.state.shadow);
+    const rec = rollWild(this.wildTable(), medium, this.wildRng!, deps.content, this.state.timeOfDay, { x: ps.x, z: ps.z }, id, this.now(), this.spawns?.liveOps, ud.realWeather, this.state.shadow);
     if (rec === null) {
       if (ud.battleId === 'pending') ud.battleId = null;
       return;

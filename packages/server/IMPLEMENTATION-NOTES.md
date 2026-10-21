@@ -1203,3 +1203,18 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   rises, every encounter that can be an ambush is one).
 - The trophy goes to the player's creature that dealt the last damage before the faint (else the active one); a
   disconnect mid-battle settles nothing (no end transaction runs).
+
+## A living ecosystem (2026-10-21)
+
+- `game/ecosystem.ts`: `countsForEcosystem` (a plain wild spawn id: not the roamer's, not an ambush's; statics have
+  none), `takeOf` (a turn's catch or wild faint) and `readEcosystem` (this week's and last week's rows plus the honor
+  tally, into content's `ecosystemOf`). The coordinator writes the take in the turn's own transaction, next to the
+  honor deeds.
+- `ZoneRoom.readEcosystem` runs with the shadow read (once a minute); `wildTable()` replaces `encounterTableFor` in the
+  grass, surf, ghost fallback, ambush fallback and fishing rolls. The rolls draw exactly as before: only the weights
+  change, so the wild, fish and spawn streams keep their sequence. `SpawnDirector.setTable` hands the same table to the
+  overworld director (it never read the shadow and still does not: Dark weighting there is unchanged).
+- Env `ECOSYSTEM` 'on' | 'off' (testEnv 'off'): off writes nothing and reads nothing, so the progression walker, the
+  spawn and encounter tests and the shiny spawn-hash pin see today's tables.
+- Dev helper `pnpm --filter @ewa/server eco take|roll` (scripts/eco.ts): force catches or knockouts into a zone's week,
+  and print the room's roll on the authored table against this week's on the same draws. One writer: stop the server.

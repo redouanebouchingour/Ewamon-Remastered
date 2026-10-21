@@ -437,11 +437,40 @@ export {
   SHADOW_POINTS,
   SHADOW_THRESHOLDS,
   deedsOf,
+  lightLevel,
   shadowDarkWeight,
   shadowLevel,
   shadowNotice,
 } from './data/worldHonor';
 export type { Deeds, ShadowLevel } from './data/worldHonor';
+export {
+  ECO_FACTOR_MAX,
+  ECO_FACTOR_MIN,
+  ECO_LAST_WEEK_WEIGHT,
+  ECO_MIN_TAKES,
+  ECO_NOTABLE,
+  ECO_WEEK_MS,
+  FOOD_CHAIN_HAND,
+  LIGHT_RARE_BOOST,
+  MIGRANT_SOURCE_FACTOR,
+  MIGRANT_WEIGHT,
+  MIGRATIONS_PER_SEASON,
+  MIGRATION_ROUTES,
+  PREDATOR_BST_MARGIN,
+  SHADOW_GHOST_BOOST,
+  ecoWeek,
+  ecoWeekStart,
+  ecosystemOf,
+  foodChain,
+  foodChainAmong,
+  huntsByType,
+  migrantSlot,
+  migrationsFor,
+  neighbourZones,
+  scarce,
+  surging,
+} from './data/ecosystem';
+export type { EcoCause, EcoInput, EcoSpecies, Ecosystem, FoodLink, MigrationRoute, SpeciesTake } from './data/ecosystem';
 export { FACTIONS, FACTION_LABELS, FACTION_POINTS, FACTION_SKY_ZONE, chronicleLine, factionWinner } from './data/factions';
 export type { Faction } from './data/factions';
 export { ROAMERS, ROAMER_CHANCE, ROAMER_LEVEL, ROAM_PERIOD_MS, ROAM_ZONES, roamerMovesAt, roamerOf, roamerZoneAt } from './data/roamer';

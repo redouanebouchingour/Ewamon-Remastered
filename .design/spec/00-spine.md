@@ -1485,6 +1485,47 @@ otherwise) is promoted for that trainer alone. Rules, one line each:
   battles end as they always did; `always` promotes every qualifying escape and makes every possible ambush one, for live
   checks). No core change.
 
+### 3.16 A living ecosystem
+<!-- added 2026-10-21: a living ecosystem, the user's approved pitch (species hunt and feed each other, players' catches press on them, seasonal migrations, the honor tilt, "This week on <zone>") -->
+`content/src/data/ecosystem.ts`. A zone's wild creatures form a food chain; what players catch and knock out there
+presses on it week by week; a few species migrate once a ranked season; the zone's honor tilts the roll. Pure: the
+server keeps the tallies and calls `ecosystemOf`, the zone room rolls on the table it returns, the Dex shows the same
+reading. Rules, one line each:
+- **Food chain** (`foodChain`, `foodChainAmong`): `FOOD_CHAIN_HAND` rows where it is obvious (the night hunters and the
+  rats, the big fish and the small ones, ...), then the type rule (`huntsByType`): the predator hits the prey super
+  effectively with one of its types, the prey hits it back with neither, the predator's base stat total is at least
+  `PREDATOR_BST_MARGIN` 20 higher, neither is legendary and they are not one family. Links exist only between species of
+  the same zone table (a migrant joins its new zone's chain). Every zone with a table has a chain; no link runs both ways.
+- **Weeks** (`ecoWeek`): Monday 00:00 UTC to Monday, counted from the first season's start (`SEASON_ANCHOR_MS`), so four
+  of them make a season.
+- **Pressure**: a species' take is this week's catches and knockouts plus `ECO_LAST_WEEK_WEIGHT` 0.5 of last week's
+  (left alone two weeks, it is back). Below `ECO_MIN_TAKES` 12 in the zone nothing is judged. A species whose share of
+  the takes is above its share of the table's weight is overhunted: `overhunt` = clamp(log2(share / fair share) / 2, 0, 1).
+  Its weight falls by 2^-overhunt; a predator's rises by 2^(the most overhunted of its prey here). So the pressure
+  factor is `2^(surge - overhunt)`, within 0.5x..2x.
+- **Migration** (`migrationsFor(season)`): each ranked season `MIGRATIONS_PER_SEASON` 3 of `MIGRATION_ROUTES` (12) are
+  drawn by the season number, one per target zone and per species. The species joins the target's table
+  (`migrantSlot`: weight `MIGRANT_WEIGHT` 4, uncommon, the target's level band from `ENCOUNTER_BANDS` but never below the
+  level it evolves at, its time of day and medium at home) and its home slots weigh `MIGRANT_SOURCE_FACTOR` 0.5. A route
+  runs between linked zones or two zones one table-less town apart (`neighbourZones`), and only where the target zone's
+  sprite atlases (the manifest's `zones[to]`, planned per zone from roster-coverage.md and bound by the client on
+  arrival) already hold the species, so a migrant never needs a texture the zone did not load. A water migrant only goes
+  where the target has water slots.
+- **Honor tilt** (worldHonor.ts; `lightLevel` new: the mirror of `shadowLevel` over the light share): in a darkened zone
+  Ghost species that are not Dark weigh `1 + SHADOW_GHOST_BOOST` 0.25 x level (Dark species already weigh
+  `shadowDarkWeight` in the roll, `rollWild`, not twice); in a lit zone its rare slots weigh `1 + LIGHT_RARE_BOOST` 0.25 x
+  level. Nemeses keep reading the shadow as before.
+- **Bounds**: every slot's ecosystem weight (pressure, migration and tilt together) stays within `ECO_FACTOR_MIN` 0.5 and
+  `ECO_FACTOR_MAX` 2 of its authored weight. A zone with no history, no migrant and no tilt rolls its authored table.
+- **The reading** (`Ecosystem`): the table, each species' factor and cause (`hunted`, `feeding`, `shadow`, `light`,
+  `migrant`, `away`), what it hunts and what hunts it, this week's catches and knockouts, the migrants in and out, the
+  shadow and light levels; `surging` / `scarce` at `ECO_NOTABLE` 1.15 and its inverse.
+- **What counts**: a plain wild creature of a world wild battle (grass, surf, fishing, a visible spawn) caught or knocked
+  out. Not the roamer, a nemesis ambush, a static, a ghost, the tower, the arena or a raid. Nothing is a story gate: a
+  table only gains a species or reweighs its own.
+- **Switch**: server env `ECOSYSTEM` (`on` default; `off` in testEnv, so the progression walker, the spawn and encounter
+  tests and their pins see today's tables). No core change.
+
 ---
 
 ## §4 @ewa/protocol WIRE
@@ -1765,6 +1806,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /arena/live` <!-- added 2026-10-20: spectator mode --> | - | `LiveListRes { matches: { matchId, kind, finals, players: [{ name, rating }, { name, rating }], turn, startedAt }[] }` (≤ 50): the arena's queued two-player matches being fought (never a friend battle, training or the daily), League Finals first, then the highest rated pairs | bearer |
 | `GET /arena/live/:matchId` <!-- added 2026-10-20 --> | - | `LiveFeedRes`: the match row plus `replay { format: 'pvp', seat: 0, labels, seed, start, actions, digest }` (anonymised like a shared replay, a turn behind the players: `createBattle` + `resolveTurn` over `actions` ends on `digest`) and `outcome` (null while it goes on; the finished fight stays 3 min); 404 when there is none | bearer |
 | `GET /world/shadow` <!-- added 2026-10-20: honor shapes the world --> | - | `WorldShadowRes { season, zones: { zoneId, level: 1..4, light, shadow }[] }`: the zones a shadow lies over this season and the tally behind each; a zone not listed is clear | bearer |
+| `GET /world/ecosystem/:zoneId` <!-- added 2026-10-21: a living ecosystem --> | - | `EcosystemRes { zoneId, enabled, season, week: 1..4, endsAt, takes, judged, surging, scarce, tilted: EcoSpecies[] (≤ 40), migrantsIn: { speciesId, from }[], migrantsOut: { speciesId, to }[] (≤ 8), shadow: 0..4, light: 0..4 }`, `EcoSpecies { speciesId, factor, cause: 'hunted' \| 'feeding' \| 'shadow' \| 'light' \| 'migrant' \| 'away' \| null, caught, ko, preyOn, huntedBy }`: "This week on <zone>" (§3.16). Surging: the feeding predators; scarce: overhunted or away; tilted: drawn by shadow or light. `enabled` false and every list empty while env `ECOSYSTEM` is off; 404 for a zone without wild creatures | bearer |
 | `GET /factions` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | - | `FactionsRes { season, endsAt, mine: { side, points } \| null, points: { majin, tenjin }, members: { majin, tenjin }, top: { majin, tenjin }: { username, points }[] (≤ 5, banned left out), sky: side \| null, chronicle: { season, winner \| null, line }[] (≤ 6, newest first) }`: the season's two sides, the caller's, the side holding Solenne's sky (the last closed season's winner) | bearer |
 | `POST /factions/join` <!-- added 2026-10-20 --> | `{ side: 'majin' \| 'tenjin' }` | `FactionsRes`; the side holds for the season: the other side is 409 `alreadyJoined { side }`, the same side again is 200 | bearer |
 | `GET /factions/sky` <!-- added 2026-10-20 --> | - | `{ sky: side \| null }`: the last closed season's winner (null in season 1 or on a tie) | bearer |
@@ -2268,6 +2310,11 @@ export interface NemesisRepo {
   rankUp(tx: Tx, id: string, p: { rank: number; level: number; memory: NemesisMemory; zoneId: string }, now: Date): Promise<Nemesis | null>;   // null when no longer active
   seen(tx: Tx, id: string, zoneId: string, now: Date): Promise<void>;
   end(tx: Tx, id: string, status: 'beaten' | 'caught', zoneId: string, now: Date): Promise<boolean>;   // once
+}
+/** A living ecosystem (migration 0018_ecosystem): `eco_takes (zone_id varchar(32), week int, species_id varchar(32), caught int, ko int)`, PK (zone_id, week, species_id). Added to in the wild battle turn's own transaction. */
+export interface EcosystemRepo {
+  add(tx: Tx, zoneId: string, week: number, speciesId: string, caught: number, ko: number): Promise<void>;   // an upsert; nothing for an empty take
+  week(tx: Tx, zoneId: string, week: number): Promise<{ speciesId: string; caught: number; ko: number }[]>;   // by species id
 }
 export interface LegendRepo {
   claim(tx: Tx, season: number, species: string, playerId: string, playerName: string, now: Date): Promise<boolean>;   // the first catch only

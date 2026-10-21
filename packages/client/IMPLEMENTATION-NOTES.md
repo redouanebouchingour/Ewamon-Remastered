@@ -2202,3 +2202,11 @@ the second isolated client (the component over the landing page: the foe and own
   play; found live: a 6 s toast had expired before the result card) and is told when `ui.battle` clears.
 - A caught nemesis's scar is read from its `nemesis-scar:` ribbon (`ScarNote` in the creature detail); the ribbon
   stays out of the card badges.
+
+## A living ecosystem (2026-10-21)
+
+- `screens/EcosystemPanel.tsx` (+ module css) sits in the Dex between the witnessed count and the grid; its words live
+  in `data/ecosystem.ts` (pure, tested). The Dex is the species view, so the panel takes a zone picker over the
+  visited zones with wild creatures instead of living on the map (whose nodes are too small for four columns).
+- An unseen creature shows as a silhouette and ??? so the panel never spoils the Dex; it cannot be picked.
+- `test/ecosystem-sprites.test.ts` is the migration safety check against the shipped manifest (see content's notes).

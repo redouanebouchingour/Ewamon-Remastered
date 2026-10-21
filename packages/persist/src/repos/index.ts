@@ -23,6 +23,8 @@ import { breedingRepo } from './breeding';
 import type { BreedingRepo } from './breeding';
 import { nemesisRepo } from './nemeses';
 import type { NemesisRepo } from './nemeses';
+import { ecosystemRepo } from './ecosystem';
+import type { EcosystemRepo } from './ecosystem';
 import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
 import { historyRepo } from './history';
@@ -71,6 +73,8 @@ export interface Repos {
   readonly breeding: BreedingRepo;
   /** nemeses: the wild creatures that beat or escaped a trainer and rose against them (migration 0017) */
   readonly nemeses: NemesisRepo;
+  /** a living ecosystem: each zone's weekly catches and knockouts per species (migration 0018) */
+  readonly ecosystem: EcosystemRepo;
 }
 
 /**
@@ -101,6 +105,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     ghosts: ghostRepo,
     breeding: breedingRepo,
     nemeses: nemesisRepo,
+    ecosystem: ecosystemRepo,
   };
 }
 
@@ -129,3 +134,4 @@ export type { SeasonLegend } from './legends';
 export type { Ghost, GhostFight } from './ghosts';
 export type { Egg, EggPlace, NewEgg } from './breeding';
 export type { Nemesis, NemesisStatus, NewNemesis } from './nemeses';
+export type { EcoTake } from './ecosystem';

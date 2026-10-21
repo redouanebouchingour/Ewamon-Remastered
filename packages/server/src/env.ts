@@ -47,6 +47,13 @@ export const EnvSchema = z.object({
    * qualifying escape promotes and every grass / surf encounter that can be an ambush is one (dev and live checks).
    */
   NEMESES: z.enum(['on', 'off', 'always']).default('on'),
+  /**
+   * A living ecosystem (content ecosystem.ts): 'on' (the default) = wild catches and knockouts are tallied per zone and
+   * week, and each zone rolls its encounters on this week's table (food chain pressure, the season's migrants, the honor
+   * tilt); 'off' = nothing is tallied and every zone rolls its authored table (testEnv, so the progression walker and
+   * the spawn / encounter tests and pins see today's tables).
+   */
+  ECOSYSTEM: z.enum(['on', 'off']).default('on'),
   /** not configurable in v1; present so the value is visible */
   TICK_HZ: z.literal('20').default('20'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
@@ -121,6 +128,7 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
     WILD_ENCOUNTERS: 'overworld',
     TRAINER_SIGHT: 'off',
     NEMESES: 'off',
+    ECOSYSTEM: 'off',
     ...overrides,
   });
 }

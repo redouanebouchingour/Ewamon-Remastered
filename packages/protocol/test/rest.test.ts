@@ -55,6 +55,7 @@ import {
   LegendsRes,
   GhostRes,
   NemesesRes,
+  EcosystemRes,
   DaycareRes,
   DaycareActionRes,
   EggMoveReq,
@@ -396,7 +397,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(100); // GET /nemeses + the 5 daycare / egg routes + GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(ROUTE_KEYS).toHaveLength(101); // GET /world/ecosystem/:zoneId + GET /nemeses + the 5 daycare / egg routes + GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
     expect(paths).toContain('GET /daily');
     expect(paths).toContain('POST /challenge');
     expect(paths).toContain('POST /daily/start');
@@ -624,5 +625,23 @@ describe('nemeses', () => {
     bad(NemesesRes, { nemeses: [{ ...n, scar: 'tattoo' }], max: 3 });
     bad(NemesesRes, { nemeses: [{ ...n, rank: 6 }], max: 3 });
     bad(NemesesRes, { nemeses: [{ ...n, name: 'A name much too long' }], max: 3 });
+  });
+});
+
+describe('ecosystem', () => {
+  const sp = { speciesId: 'pebblit', factor: 0.62, cause: 'hunted', caught: 30, ko: 10, preyOn: [], huntedBy: ['pebfist', 'yahit'] };
+  const view = {
+    zoneId: 'deepcut_route', enabled: true, season: 1, week: 3, endsAt: ISO, takes: 40, judged: true,
+    surging: [{ ...sp, speciesId: 'yahit', factor: 1.6, cause: 'feeding', caught: 0, ko: 0, preyOn: ['pebblit'], huntedBy: [] }],
+    scarce: [sp], tilted: [], migrantsIn: [{ speciesId: 'tidespine', from: 'tide_route' }], migrantsOut: [{ speciesId: 'wooltug', to: 'umbral_observatory' }],
+    shadow: 0, light: 2,
+  };
+  it('this week on a zone: a known zone, a week of 1 to 4, causes of the list, levels of 0 to 4', () => {
+    ok(EcosystemRes, view);
+    ok(EcosystemRes, { ...view, enabled: false, takes: 0, judged: false, surging: [], scarce: [], migrantsIn: [], migrantsOut: [] });
+    bad(EcosystemRes, { ...view, zoneId: 'atlantis' });
+    bad(EcosystemRes, { ...view, week: 5 });
+    bad(EcosystemRes, { ...view, scarce: [{ ...sp, cause: 'bored' }] });
+    bad(EcosystemRes, { ...view, light: 5 });
   });
 });

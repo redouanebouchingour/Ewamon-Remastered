@@ -273,3 +273,8 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
   the oldest past the cap in the same transaction.
 - History event `nemesis { how: 'beaten' | 'caught', name, speciesId, rank, zoneId }` needs no migration
   (`creature_events.kind` is a varchar and `detail` jsonb).
+
+## A living ecosystem (2026-10-21)
+
+- Migration `0018_ecosystem` (drizzle-kit generated): one `eco_takes` table keyed by (zone, week, species) with catches
+  and knockouts. Rows are never pruned: a week is a handful of rows per zone, and only this week and last are read.
