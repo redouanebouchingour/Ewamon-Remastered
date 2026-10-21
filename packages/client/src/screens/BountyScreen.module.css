@@ -1,0 +1,238 @@
+/*
+ * The bounty board (BountyScreen.tsx), Broadcast look: each poster a carbon card under a paper "Wanted" strip, the
+ * target's creature on a slanted slab in its type colour, the name in the big italic display face, the reward in big
+ * tabular numbers. The ghost picked to post on is the one orange thing (selected). No green.
+ */
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-5);
+  margin: 0;
+  padding: var(--s-3) var(--s-5);
+  background: var(--bg-1);
+  box-shadow: inset 4px 0 0 var(--line-1);
+  color: var(--text-1);
+  font-family: var(--face-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.strip[data-on] {
+  box-shadow: inset 4px 0 0 var(--text-hi);
+  color: var(--text-hi);
+}
+
+.posters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--s-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.poster {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: 0 0 var(--s-4);
+  background: var(--bg-2);
+}
+
+.poster > :not(.wanted, .face) {
+  padding-inline: var(--s-4);
+}
+
+.wanted {
+  padding: var(--s-1) var(--s-4);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.face {
+  display: grid;
+  place-items: center;
+  margin-block: var(--s-3) var(--s-2);
+  margin-inline-end: var(--s-8);
+  padding: var(--s-2) 0;
+  background: var(--tc, var(--bg-3));
+  clip-path: polygon(0 0, 100% 0, calc(100% - 18px) 100%, 0 100%);
+}
+
+.target {
+  overflow: hidden;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: 1.05;
+  font-style: italic;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.record {
+  color: var(--text-1);
+  font-size: var(--t-body);
+}
+
+.reward {
+  display: flex;
+  flex-direction: column;
+  margin-block: var(--s-2);
+}
+
+.rewardValue {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h1);
+  line-height: 1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.bonus {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bonus[data-on] {
+  color: var(--text-hi);
+}
+
+.marshal {
+  margin: 0;
+  padding: var(--s-3) var(--s-5);
+  background: var(--bg-1);
+  box-shadow: inset 4px 0 0 var(--text-hi);
+  color: var(--text-1);
+}
+
+.post {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr);
+  gap: var(--s-5);
+  align-items: start;
+}
+
+.ghosts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ghost {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: var(--s-3);
+  align-items: center;
+  inline-size: 100%;
+  padding: var(--s-2) var(--s-3);
+  border: 0;
+  background: var(--bg-2);
+  box-shadow: inset 4px 0 0 var(--tc, var(--line-1));
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.ghost > :first-child {
+  grid-row: span 2;
+}
+
+.ghost:hover {
+  background: var(--bg-3);
+}
+
+.ghost[aria-pressed='true'] {
+  box-shadow:
+    inset 4px 0 0 var(--tc, var(--line-1)),
+    inset 0 0 0 2px var(--accent);
+}
+
+.ghost:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ghostName {
+  overflow: hidden;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.postForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--s-1) var(--s-4);
+  padding: var(--s-2) var(--s-4);
+  background: var(--bg-2);
+}
+
+.row[data-status] {
+  grid-template-columns: minmax(120px, 1fr) auto minmax(0, 2fr);
+}
+
+.row[data-status='expired'] {
+  color: var(--text-2);
+}
+
+.rowTarget {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.rowValue {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}

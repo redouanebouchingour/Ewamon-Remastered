@@ -257,7 +257,8 @@ export interface SharedReplay {
  * `met`: how the first owner got it (`caught` in `zoneId`, or `received`: a starter or a gift); `traded` / `sold` /
  * `gift`: an ownership change (`sold` = the marketplace); `evolved`; `badge`: in the party that won it; `champion`: in
  * the party that beat the Champion; `legendary`: in the party that caught or defeated a legendary; `hatched`: how a
- * hatchling's first owner got it (in place of `met`); `nemesis`: it ended a nemesis, or was one.
+ * hatchling's first owner got it (in place of `met`); `nemesis`: it ended a nemesis, or was one; `bounty`: it led the
+ * party that brought in a wanted ghost or nemesis.
  */
 export type CreatureEventDetail =
   | { readonly kind: 'met'; readonly how: 'caught' | 'received'; readonly speciesId: string; readonly level: number; readonly zoneId: string | null; readonly trainer: string }
@@ -272,7 +273,9 @@ export type CreatureEventDetail =
    * nemeses: `beaten`: this creature landed the blow that ended the nemesis `name` (its full name as it was);
    * `caught`: this creature was that nemesis, caught at `rank`
    */
-  | { readonly kind: 'nemesis'; readonly how: 'beaten' | 'caught'; readonly name: string; readonly speciesId: string; readonly rank: number; readonly zoneId: string };
+  | { readonly kind: 'nemesis'; readonly how: 'beaten' | 'caught'; readonly name: string; readonly speciesId: string; readonly rank: number; readonly zoneId: string }
+  /** the bounty board: this creature led the party that brought in `target` (a ghost trainer's name or a nemesis's full name) */
+  | { readonly kind: 'bounty'; readonly target: string; readonly targetKind: 'ghost' | 'nemesis'; readonly reward: number; readonly zoneId: string };
 
 export type CreatureEventKind = CreatureEventDetail['kind'];
 

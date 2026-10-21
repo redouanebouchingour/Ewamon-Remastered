@@ -5,6 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import {
+  BountiesRes,
+  BountyPostReq,
   AuthRes,
   BadTokenErr,
   BanReq,
@@ -397,7 +399,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(101); // GET /world/ecosystem/:zoneId + GET /nemeses + the 5 daycare / egg routes + GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(ROUTE_KEYS).toHaveLength(103); // GET + POST /bounties + GET /world/ecosystem/:zoneId + GET /nemeses + the 5 daycare / egg routes + GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
     expect(paths).toContain('GET /daily');
     expect(paths).toContain('POST /challenge');
     expect(paths).toContain('POST /daily/start');
@@ -643,5 +645,33 @@ describe('ecosystem', () => {
     bad(EcosystemRes, { ...view, week: 5 });
     bad(EcosystemRes, { ...view, scarce: [{ ...sp, cause: 'bored' }] });
     bad(EcosystemRes, { ...view, light: 5 });
+  });
+});
+
+describe('bounty board', () => {
+  const poster = {
+    id: 'b1', kind: 'game', target: 'kestrel', speciesId: 'badlander', level: 34, zoneId: 'deepcut_route', wins: 40, rank: null,
+    reward: 5000, withLawlander: 6250, postedBy: null, postedAt: ISO, expiresAt: ISO, mine: false,
+  };
+  const view = {
+    enabled: true, nextPostingAt: ISO,
+    wanted: [poster, { ...poster, id: 'b2', kind: 'player', reward: 800, withLawlander: 1000, postedBy: 'outlaw', wins: 2 }],
+    personal: [{ ...poster, id: 'n1', kind: 'nemesis', target: 'Murkjaw the Drowned', wins: null, rank: 3, reward: 1200, withLawlander: 1500, expiresAt: null }],
+    posted: [{ id: 'b3', target: 'kestrel', reward: 800, fee: 200, status: 'expired', claimedBy: null, postedAt: ISO, expiresAt: ISO }],
+    claims: [{ kind: 'player', target: 'kestrel', claimedBy: 'marshal', payout: 1000, bonus: true, zoneId: 'deepcut_route', at: ISO }],
+    ghosts: [{ name: 'kestrel', zoneId: 'deepcut_route', speciesId: 'badlander', level: 34, wins: 40, wanted: true }],
+    you: { badlander: true, lawlander: false, open: 1, claimsToday: 0, atBoard: true },
+    money: 1200,
+  };
+  it("posters of three kinds, the caller's posts and claims; a post names a ghost and a whole reward", () => {
+    ok(BountiesRes, view);
+    ok(BountiesRes, { ...view, enabled: false, wanted: [], personal: [], posted: [], claims: [], ghosts: [] });
+    bad(BountiesRes, { ...view, wanted: [{ ...poster, kind: 'bribe' }] });
+    bad(BountiesRes, { ...view, posted: [{ ...view.posted[0], status: 'lost' }] });
+    bad(BountiesRes, { ...view, personal: [{ ...view.personal[0], rank: 6 }] });
+    bad(BountiesRes, { ...view, money: -1 });
+    ok(BountyPostReq, { target: 'kestrel', reward: 800 });
+    bad(BountyPostReq, { target: '', reward: 800 });
+    bad(BountyPostReq, { target: 'kestrel', reward: 80.5 });
   });
 });

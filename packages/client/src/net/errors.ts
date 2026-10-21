@@ -2,6 +2,7 @@
  * Human copy for REST error codes (server §30.6 HttpError codes + persist §5.5 domain errors), and the one
  * rule for telling "this server route does not exist yet" apart from a domain 404.
  */
+import { BOUNTY_REFUSAL_TEXT } from '@ewa/content';
 import { ApiFailure } from './apiError';
 
 const MESSAGES: Readonly<Record<string, string>> = {
@@ -24,6 +25,9 @@ const MESSAGES: Readonly<Record<string, string>> = {
   weatherUnavailable: 'The weather service did not answer. Try again in a minute.',
   wrongZone: 'You are in a different zone.',
   InsufficientFunds: 'Not enough money.',
+  // the bounty board: the Marshal's words for a refused post
+  ...BOUNTY_REFUSAL_TEXT,
+  bountiesOff: 'The board is bare today. The Marshal is out.',
   InsufficientItems: 'You do not have enough of that item.',
   InventoryOverflow: 'That stack is full.',
   AlreadyClaimed: 'Already claimed.',

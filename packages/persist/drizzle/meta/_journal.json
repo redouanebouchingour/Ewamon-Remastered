@@ -134,6 +134,13 @@
       "when": 1792574487977,
       "tag": "0018_ecosystem",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792576719308,
+      "tag": "0019_bounties",
+      "breakpoints": true
     }
   ]
 }

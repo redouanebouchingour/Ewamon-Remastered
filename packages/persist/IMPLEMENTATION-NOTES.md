@@ -278,3 +278,14 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
 
 - Migration `0018_ecosystem` (drizzle-kit generated): one `eco_takes` table keyed by (zone, week, species) with catches
   and knockouts. Rows are never pruned: a week is a handful of rows per zone, and only this week and last are read.
+
+## The bounty board (2026-10-21)
+
+- Migration `0019_bounties` (drizzle-kit generated, renamed from its random tag): one `bounties` table for the three
+  kinds. A partial unique index keeps one open game bounty per ghost. Nemesis claims are written as already-claimed
+  rows (never open) so the daily claim cap counts every kind with one query; the public lists leave them out.
+- `claim` picks the candidates, then marks each with an update guarded by `status = 'open'`, so a bounty is claimed
+  once even if two battles end in the same moment. `expireDue` is one update returning the rows, so each refund is paid
+  once. Money is never moved here: the server does it next to the audit row.
+- `ghostRepo.everywhere` (every ghost still haunting, banned owners left out) for the board's postings and its list.
+- History event `bounty { target, targetKind, reward, zoneId }` needs no migration (`creature_events.kind` is a varchar).

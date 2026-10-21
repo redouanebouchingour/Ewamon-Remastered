@@ -234,8 +234,11 @@ export interface InteriorTrainer {
   readonly reward: number;
 }
 
-/** Phase D14 adds `tower`: the battle tower attendant (Solenne's league hall foyer); breeding adds `daycare` (data/daycare.ts). */
-export type InteriorNpcRole = 'shopkeeper' | 'nurse' | 'resident' | 'guide' | 'tower' | 'daycare';
+/**
+ * Phase D14 adds `tower`: the battle tower attendant (Solenne's league hall foyer); breeding adds `daycare` (data/daycare.ts);
+ * the bounty board adds `bounty`: the Marshal by the board in every Healer hall (data/bounties.ts).
+ */
+export type InteriorNpcRole = 'shopkeeper' | 'nurse' | 'resident' | 'guide' | 'tower' | 'daycare' | 'bounty';
 export interface InteriorNpc {
   readonly id: string;
   readonly name: string;

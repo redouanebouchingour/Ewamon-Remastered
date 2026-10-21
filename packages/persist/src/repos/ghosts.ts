@@ -47,6 +47,18 @@ export const ghostRepo = {
     return rows.map(({ g }) => ({ playerId: g.playerId, name: g.name, zoneId: g.zoneId, party: g.party, topLevel: g.topLevel, leftAt: g.leftAt }));
   },
 
+  /** The bounty board: every ghost still haunting since `since` (banned trainers' left out), newest first. */
+  async everywhere(tx: Tx, since: Date, limit: number): Promise<Ghost[]> {
+    const rows = await tx
+      .select({ g: ghosts })
+      .from(ghosts)
+      .innerJoin(players, eq(players.id, ghosts.playerId))
+      .where(and(gte(ghosts.leftAt, since), isNull(players.bannedAt)))
+      .orderBy(desc(ghosts.leftAt))
+      .limit(Math.min(500, Math.max(1, limit)));
+    return rows.map(({ g }) => ({ playerId: g.playerId, name: g.name, zoneId: g.zoneId, party: g.party, topLevel: g.topLevel, leftAt: g.leftAt }));
+  },
+
   /** A fight with a trainer's ghost. */
   async record(tx: Tx, ghostId: string, challenger: string, zoneId: string, won: boolean, now: Date): Promise<void> {
     await tx.insert(ghostBattles).values({ ghostId, challenger, zoneId, won, at: now });

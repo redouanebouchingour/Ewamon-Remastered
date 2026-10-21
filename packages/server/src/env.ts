@@ -54,6 +54,13 @@ export const EnvSchema = z.object({
    * the spawn / encounter tests and pins see today's tables).
    */
   ECOSYSTEM: z.enum(['on', 'off']).default('on'),
+  /**
+   * The bounty board (content bounties.ts): 'on' (the default) = the board posts the game's bounties, a beaten ghost or
+   * nemesis is claimed and paid, and a wanted ghost steps out of its zone's grass more often; 'off' = the board reads
+   * empty, posting is refused and fights end as they always did (testEnv, so the walker and the ghost / nemesis tests
+   * see today's behaviour); 'always' = a wanted ghost steps out of every grass encounter it can (live checks).
+   */
+  BOUNTIES: z.enum(['on', 'off', 'always']).default('on'),
   /** not configurable in v1; present so the value is visible */
   TICK_HZ: z.literal('20').default('20'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
@@ -129,6 +136,7 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
     TRAINER_SIGHT: 'off',
     NEMESES: 'off',
     ECOSYSTEM: 'off',
+    BOUNTIES: 'off',
     ...overrides,
   });
 }

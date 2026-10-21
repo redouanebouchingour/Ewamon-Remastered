@@ -38,6 +38,8 @@ export function eventLine(e: CreatureEvent): string {
       return e.how === 'beaten'
         ? `Struck down ${e.name}, a rank ${e.rank} nemesis ${speciesName(e.speciesId)}, on ${zoneName(e.zoneId)}. A trophy.`
         : `Once ${e.name}, a rank ${e.rank} nemesis, caught on ${zoneName(e.zoneId)}.`;
+    case 'bounty':
+      return `Brought in ${e.target}${e.targetKind === 'nemesis' ? ', a nemesis,' : ''} on ${zoneName(e.zoneId)} for a ${e.reward.toLocaleString('en-US')} bounty.`;
   }
 }
 

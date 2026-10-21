@@ -23,6 +23,7 @@ import { registerFactionRoutes } from './routes/factions';
 import { registerDaycareRoutes } from './routes/daycare';
 import { registerNemesisRoutes } from './routes/nemeses';
 import { registerEcosystemRoutes } from './routes/ecosystem';
+import { registerBountyRoutes } from './routes/bounties';
 import { registerAuthRoutes } from './routes/auth';
 import { registerCatalogRoutes } from './routes/catalog';
 import { registerMarketRoutes } from './routes/market';
@@ -84,5 +85,6 @@ export function registerRoutes(app: FastifyInstance, deps: RestDeps, opts: RestO
   registerDaycareRoutes(app, deps);
   registerNemesisRoutes(app, deps);
   registerEcosystemRoutes(app, deps);
+  registerBountyRoutes(app, deps);
   registerAdminRoutes(app, deps, opts.publishKick ?? (() => undefined));
 }

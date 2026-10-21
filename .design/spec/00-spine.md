@@ -1526,6 +1526,42 @@ reading. Rules, one line each:
 - **Switch**: server env `ECOSYSTEM` (`on` default; `off` in testEnv, so the progression walker, the spawn and encounter
   tests and their pins see today's tables). No core change.
 
+### 3.17 The bounty board
+<!-- added 2026-10-21: the bounty board, the user's approved pitch (wanted posters in each town, set by the game and by players; Lawlander owners claim with a bonus, Badlander owners post; ghosts, honor and the dustcub split feed into each other) -->
+`content/src/data/bounties.ts`. Wanted posters in every town; the server keeps them (`bounties`, migration 0019) and
+decides every claim. Rules, one line each:
+- **The board** (interiors layer, never `ZoneDef`): `BOUNTY_OFFICES` names one hall per town: its Healer, else its Mart
+  (Stormrook, Marrowdig), else (Skyrend) its first house, which becomes "the Marshal's Office" (its resident is the
+  Marshal). `withBountyBoard` adds the Marshal (role `bounty`, look `cowboy_male`, two lines) beside the counter at local
+  (3.6, -1.8) and a `banner` prop on the wall behind him; in the house the Marshal takes the resident's spot and the board
+  goes on the back wall. Walls, footprints, entries and exits are unchanged. Talking to him opens the Wanted board.
+- **Game bounties** on ghost trainers (§3 ghosts): every `BOUNTY_PERIOD_MS` (6 h, UTC) the board posts one on each ghost
+  still haunting that beat at least `GAME_BOUNTY_MIN_WINS` 5 different trainers this week, counted since its last claimed
+  bounty, worth `gameBountyReward` (125 a head, at most 5,000: "beaten 40 people, 5,000"), raised at each posting while it
+  stays up; one open game bounty per ghost; it comes down when the ghost fades. Paid by the board.
+- **Player bounties** on a ghost: only a party holding a Badlander-line creature (`BADLANDER_LINE`) may post (the right to
+  post, not a discount), in a town, never on their own ghost, `PLAYER_BOUNTY_MIN` 500 .. `PLAYER_BOUNTY_MAX` 10,000, one
+  open post per ghost and `BOUNTY_OPEN_MAX` 3 open in all. The reward and the board's cut (`bountyFee`, a quarter, rounded
+  up) leave the poster at once, in escrow. Up `BOUNTY_POST_HOURS` 72 h, or until the ghost fades if sooner; expired, the
+  whole escrow (reward and cut) goes back once. Posting is honor-neutral.
+- **Nemesis bounties** (§3.15): a nemesis is one trainer's alone, so its poster is personal ("Wanted by you", seen by its
+  trainer only), from rank `NEMESIS_BOUNTY_MIN_RANK` 2, worth `nemesisBounty(rank)` (400 a rank), paid by the board when
+  they knock it out or catch it in an ambush.
+- **Claiming**: beating the target in its normal fight (a ghost met in its zone's tall grass, a nemesis ambush) claims
+  every open bounty on it the claimer may take, each once (one statement guarded by `status = 'open'`): never their own
+  post, at most `BOUNTY_CLAIMS_PER_DAY` 3 claims in any 24 hours (the rest stay up for someone else). A party holding a
+  Lawlander-line creature (`LAWLANDER_LINE`) takes `lawlanderBonus` (+25%): on a player's post that is exactly the
+  escrowed cut, so passing a bounty between friends makes no money; without a Lawlander the cut is the board's (a sink).
+- **Honor and history**: a claim gives the claiming party's lead `BOUNTY_HONOR` +1 honor when its species keeps the ledger
+  (core `honor.ts` bounds, `clampHonor`; never in the tower, where no ghost or nemesis is met) and the history line
+  `bounty { target, targetKind, reward, zoneId }` ("Brought in <target>"). So a dustcub that hunts bounties leans
+  Lawlander; a Badlander owner pays to have ghosts hunted.
+- **Hunting**: a wanted ghost steps out of its zone's tall grass first, with `WANTED_GHOST_CHANCE` 1/4 of the encounters
+  there, before the ordinary ghost roll (still only while its owner is offline and within `GHOST_LEVEL_SPAN`).
+- **Switch**: server env `BOUNTIES` (`on` default; `off` in testEnv, so the walker and the ghost / nemesis tests see
+  today's fights; `always` = a wanted ghost steps out of every grass encounter it can, for live checks). The board screen
+  itself is always there. No core change.
+
 ---
 
 ## §4 @ewa/protocol WIRE
@@ -1797,7 +1833,7 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /battle-pass/claim` | `{ level }` | `{ claimed, inventory, money, creaturesAdded }` | bearer |
 | `POST /battle-pass/mythical-choice` | `{ species: 'lumyth' | 'noxmyth' }` | `{ creaturesAdded }` | bearer |
 | `GET /history/battles?page=` · `GET /history/trades?page=` | — | rows (a battle row's optional `arena`: the `ArenaKind` from its start snapshot) | bearer |
-| `GET /creature/:id/history` <!-- added 2026-10-20: creature history --> | - | `CreatureHistoryRes { originalTrainer: string \| null, events: CreatureEvent[] }` oldest first (at most 200): `met { how: 'caught' \| 'received', speciesId, level, zoneId \| null, trainer }`, `traded` / `sold` / `gift { from, to }`, `evolved { from, into }`, `badge { badge }`, `champion`, `legendary { species, caught }`, `hatched` (breeding), `nemesis { how: 'beaten' \| 'caught', name, speciesId, rank, zoneId }` (added 2026-10-21: it struck down the nemesis `name`, or was it), each with `at`; names as they were then. Any signed-in player may read any creature's history; 404 `notFound` | bearer |
+| `GET /creature/:id/history` <!-- added 2026-10-20: creature history --> | - | `CreatureHistoryRes { originalTrainer: string \| null, events: CreatureEvent[] }` oldest first (at most 200): `met { how: 'caught' \| 'received', speciesId, level, zoneId \| null, trainer }`, `traded` / `sold` / `gift { from, to }`, `evolved { from, into }`, `badge { badge }`, `champion`, `legendary { species, caught }`, `hatched` (breeding), `nemesis { how: 'beaten' \| 'caught', name, speciesId, rank, zoneId }` (added 2026-10-21: it struck down the nemesis `name`, or was it), `bounty { target, targetKind: 'ghost' \| 'nemesis', reward, zoneId }` (added 2026-10-21: it led the party that brought `target` in, §3.17), each with `at`; names as they were then. Any signed-in player may read any creature's history; 404 `notFound` | bearer |
 | `POST /history/battles/:battleId/share` <!-- added 2026-10-20: battle replays --> | `{}` | `{ token }`: 12 url-safe characters, the same token on every share of that battle (404 `notFound` for another player's battle; 409 `notReplayable` for a row without `start` / `final_digest`, 409 `stale` when the row no longer replays to its `final_digest`) | bearer |
 | `GET /replay/:token` | - | `ReplayRes { token, format, seat, labels: [string \| null, string \| null], result, turns, happenedAt, seed, start, actions, finalDigest }`: the battle frozen and anonymised at share time (player sides' trainers `r:<side>`, creatures `r:<side>:<i>`, owners null; `createBattle({ id: REPLAY_BATTLE_ID, format, seed, ...start })` + the actions end on `finalDigest`); `seat` the sharer's side; 404 `notFound` | none (rate limit `replay` per IP) |
 | `GET /seasons` <!-- added 2026-10-20: ranked seasons --> | - | `SeasonsRes { current: { season, startsAt, endsAt, finalsAt, finals, top }, past: { season, startsAt, endsAt, finalsAt, top }[] }`: the running season (content `seasonAt`) with its top eight so far, and the latest six closed seasons' top eight; a row is `{ rank, username, rating, wins, losses, title: 'champion' \| 'finalist' \| null }`; banned trainers left out | bearer |
@@ -1806,6 +1842,8 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /arena/live` <!-- added 2026-10-20: spectator mode --> | - | `LiveListRes { matches: { matchId, kind, finals, players: [{ name, rating }, { name, rating }], turn, startedAt }[] }` (≤ 50): the arena's queued two-player matches being fought (never a friend battle, training or the daily), League Finals first, then the highest rated pairs | bearer |
 | `GET /arena/live/:matchId` <!-- added 2026-10-20 --> | - | `LiveFeedRes`: the match row plus `replay { format: 'pvp', seat: 0, labels, seed, start, actions, digest }` (anonymised like a shared replay, a turn behind the players: `createBattle` + `resolveTurn` over `actions` ends on `digest`) and `outcome` (null while it goes on; the finished fight stays 3 min); 404 when there is none | bearer |
 | `GET /world/shadow` <!-- added 2026-10-20: honor shapes the world --> | - | `WorldShadowRes { season, zones: { zoneId, level: 1..4, light, shadow }[] }`: the zones a shadow lies over this season and the tally behind each; a zone not listed is clear | bearer |
+| `GET /bounties` <!-- added 2026-10-21: the bounty board --> | - | `BountiesRes { enabled, nextPostingAt, wanted: BountyPoster[] (≤ 40, richest first), personal: BountyPoster[] (≤ 10, the caller's nemeses from rank 2), posted: { id, target, reward, fee, status: 'open' \| 'claimed' \| 'expired', claimedBy, postedAt, expiresAt }[] (≤ 10), claims: { kind, target, claimedBy, payout, bonus, zoneId, at }[] (≤ 10, nemeses left out), ghosts: { name, zoneId, speciesId, level, wins, wanted }[] (≤ 30, the caller's own left out), you: { badlander, lawlander, open, claimsToday, atBoard }, money }`, `BountyPoster { id, kind: 'game' \| 'player' \| 'nemesis', target, speciesId, level, zoneId, wins \| null, rank \| null, reward, withLawlander, postedBy \| null, postedAt, expiresAt \| null, mine }` (§3.17). Expired posts are refunded and the game's bounties posted (on schedule) first. `enabled` false and every list empty while env `BOUNTIES` is off | bearer |
+| `POST /bounties` <!-- added 2026-10-21 --> | `{ target: username, reward: int }` | `BountiesRes`; reward + cut taken into escrow in one transaction with an audit row `bounty.post`. 409 `noBadlander` \| `ownGhost` \| `noGhost` \| `tooLow` \| `tooHigh` \| `alreadyPosted` \| `tooMany` \| `notAtBoard` (not in a town) \| `bountiesOff` \| `InsufficientFunds` \| `inBattle` | bearer |
 | `GET /world/ecosystem/:zoneId` <!-- added 2026-10-21: a living ecosystem --> | - | `EcosystemRes { zoneId, enabled, season, week: 1..4, endsAt, takes, judged, surging, scarce, tilted: EcoSpecies[] (≤ 40), migrantsIn: { speciesId, from }[], migrantsOut: { speciesId, to }[] (≤ 8), shadow: 0..4, light: 0..4 }`, `EcoSpecies { speciesId, factor, cause: 'hunted' \| 'feeding' \| 'shadow' \| 'light' \| 'migrant' \| 'away' \| null, caught, ko, preyOn, huntedBy }`: "This week on <zone>" (§3.16). Surging: the feeding predators; scarce: overhunted or away; tilted: drawn by shadow or light. `enabled` false and every list empty while env `ECOSYSTEM` is off; 404 for a zone without wild creatures | bearer |
 | `GET /factions` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | - | `FactionsRes { season, endsAt, mine: { side, points } \| null, points: { majin, tenjin }, members: { majin, tenjin }, top: { majin, tenjin }: { username, points }[] (≤ 5, banned left out), sky: side \| null, chronicle: { season, winner \| null, line }[] (≤ 6, newest first) }`: the season's two sides, the caller's, the side holding Solenne's sky (the last closed season's winner) | bearer |
 | `POST /factions/join` <!-- added 2026-10-20 --> | `{ side: 'majin' \| 'tenjin' }` | `FactionsRes`; the side holds for the season: the other side is 409 `alreadyJoined { side }`, the same side again is 200 | bearer |
@@ -2315,6 +2353,21 @@ export interface NemesisRepo {
 export interface EcosystemRepo {
   add(tx: Tx, zoneId: string, week: number, speciesId: string, caught: number, ko: number): Promise<void>;   // an upsert; nothing for an empty take
   week(tx: Tx, zoneId: string, week: number): Promise<{ speciesId: string; caught: number; ko: number }[]>;   // by species id
+}
+/** The bounty board (migration 0019_bounties): `bounties (id, kind, target_id, target_name, species_id, level, zone_id, wins, poster_id, poster_name, reward, fee, status, claimer_id, claimer_name, payout, bonus, created_at, expires_at, claimed_at)`, one open game bounty per ghost (partial unique index). Money moves are the caller's, each with an audit row (`bounty.post`, `bounty.claim`, `bounty.refund`). */
+export interface BountyRepo {
+  post(tx: Tx, p: NewGhostBounty & { posterId: string; posterName: string; fee: number }, now: Date): Promise<Bounty>;   // escrow already taken
+  upsertGame(tx: Tx, p: NewGhostBounty, now: Date): Promise<void>;   // posted, or raised (never lowered)
+  open(tx: Tx, now: Date, limit: number): Promise<Bounty[]>;   // game and player posts, richest first
+  wanted(tx: Tx, targetIds: readonly string[], now: Date): Promise<Set<string>>;
+  openBy(tx: Tx, posterId: string, now: Date): Promise<Bounty[]>;
+  postedBy(tx: Tx, posterId: string, limit: number): Promise<Bounty[]>;
+  recentClaims(tx: Tx, limit: number): Promise<Bounty[]>;   // nemesis records left out
+  claimsSince(tx: Tx, claimerId: string, since: Date): Promise<number>;
+  claim(tx: Tx, p: { targetId: string; claimerId: string; claimerName: string; bonus: boolean; max: number; payoutOf: (reward: number) => number }, now: Date): Promise<Bounty[]>;   // each once, never the claimer's own post
+  recordNemesis(tx: Tx, p: { targetName: string; speciesId: string; level: number; zoneId: string; rank: number; reward: number; claimerId: string; claimerName: string; payout: number; bonus: boolean }, now: Date): Promise<Bounty>;
+  expireDue(tx: Tx, now: Date): Promise<Bounty[]>;   // each once; the caller refunds
+  ghostWins(tx: Tx, since: Date): Promise<Map<string, number>>;   // different trainers beaten since `since` and the last claim
 }
 export interface LegendRepo {
   claim(tx: Tx, season: number, species: string, playerId: string, playerName: string, now: Date): Promise<boolean>;   // the first catch only

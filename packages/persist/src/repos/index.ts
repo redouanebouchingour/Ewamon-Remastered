@@ -25,6 +25,8 @@ import { nemesisRepo } from './nemeses';
 import type { NemesisRepo } from './nemeses';
 import { ecosystemRepo } from './ecosystem';
 import type { EcosystemRepo } from './ecosystem';
+import { bountyRepo } from './bounties';
+import type { BountyRepo } from './bounties';
 import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
 import { historyRepo } from './history';
@@ -75,6 +77,8 @@ export interface Repos {
   readonly nemeses: NemesisRepo;
   /** a living ecosystem: each zone's weekly catches and knockouts per species (migration 0018) */
   readonly ecosystem: EcosystemRepo;
+  /** the bounty board: posters on ghosts and nemeses, escrow and claims (migration 0019) */
+  readonly bounties: BountyRepo;
 }
 
 /**
@@ -106,6 +110,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     breeding: breedingRepo,
     nemeses: nemesisRepo,
     ecosystem: ecosystemRepo,
+    bounties: bountyRepo,
   };
 }
 
@@ -135,3 +140,4 @@ export type { Ghost, GhostFight } from './ghosts';
 export type { Egg, EggPlace, NewEgg } from './breeding';
 export type { Nemesis, NemesisStatus, NewNemesis } from './nemeses';
 export type { EcoTake } from './ecosystem';
+export type { Bounty, BountyKind, BountyStatus, NewGhostBounty } from './bounties';

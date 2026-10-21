@@ -711,3 +711,16 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   table, between neighbours); the client test `ecosystem-sprites.test.ts` re-checks them against the manifest, so a
   re-plan of the atlases that drops one fails a test instead of loading a stray atlas mid-battle.
 - Neighbours count two zones one town apart when the town has no table: routes are only ever linked through towns.
+
+## The bounty board (2026-10-21)
+
+- `data/bounties.ts` holds the rules (rewards, the cut, the Lawlander bonus, limits, the schedule, refusals and their
+  words) and the board as an interiors layer: `withBountyBoard` adds the Marshal (role `bounty`) and a `banner` prop to
+  one hall per town, named in `BOUNTY_OFFICES`. Not every town has a Healer: Stormrook and Marrowdig keep the board in
+  their Mart, and Skyrend (no Healer, no Mart) in its first house, whose resident becomes the Marshal ("the Marshal's
+  Office"), like the Daycare keeper. No `ZoneDef`, plan, footprint, wall or heightfield changes; `validate` passes as
+  before.
+- No new render prop: the board is the existing `banner` (a post with a hanging cloth), so no atlas or render change.
+- Badlander gives the right to post (not a discount): a discount plus the Lawlander bonus would let two friends mint
+  money by passing a bounty back and forth. With the cut equal to the bonus, a Lawlander claim of a player's post pays
+  exactly the escrow.

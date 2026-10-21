@@ -486,7 +486,7 @@ export const CreaturesAddedRes = z.object({ creaturesAdded: z.array(CreatureInst
  * `gift` a change of hands; `evolved`; `badge` / `champion` / `legendary`: it was in the party that won it; `hatched`
  * (breeding) in place of `met`.
  */
-export const CREATURE_EVENT_KINDS = ['met', 'traded', 'sold', 'gift', 'evolved', 'badge', 'champion', 'legendary', 'hatched', 'nemesis'] as const;
+export const CREATURE_EVENT_KINDS = ['met', 'traded', 'sold', 'gift', 'evolved', 'badge', 'champion', 'legendary', 'hatched', 'nemesis', 'bounty'] as const;
 const Name = z.string().max(20);
 export const CreatureEventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('met'), at: IsoDate, how: z.enum(['caught', 'received']), speciesId: z.string().max(32), level: z.number().int().min(1).max(100), zoneId: z.string().max(32).nullable(), trainer: Name }),
@@ -499,6 +499,8 @@ export const CreatureEventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('hatched'), at: IsoDate, speciesId: z.string().max(32), zoneId: z.string().max(32), parents: z.tuple([z.string().max(40), z.string().max(40)]), trainer: Name }),
   // nemeses: `beaten` this creature landed the blow that ended the nemesis `name`; `caught` it was that nemesis
   z.object({ kind: z.literal('nemesis'), at: IsoDate, how: z.enum(['beaten', 'caught']), name: z.string().max(60), speciesId: z.string().max(32), rank: z.number().int().min(1).max(5), zoneId: z.string().max(32) }),
+  // the bounty board: this creature led the party that brought in `target` (a ghost trainer or a nemesis) for `reward`
+  z.object({ kind: z.literal('bounty'), at: IsoDate, target: z.string().max(64), targetKind: z.enum(['ghost', 'nemesis']), reward: z.number().int().min(0), zoneId: z.string().max(32) }),
 ]);
 export type CreatureEvent = z.infer<typeof CreatureEventSchema>;
 export const CreatureHistoryRes = z.object({ originalTrainer: Name.nullable(), events: z.array(CreatureEventSchema).max(200) });
@@ -695,6 +697,87 @@ export const EcosystemRes = z.object({
   light: z.number().int().min(0).max(4),
 });
 export type EcosystemView = z.infer<typeof EcosystemRes>;
+
+/**
+ * The bounty board (content bounties.ts). A poster: the game's own on a ghost that keeps winning, a trainer's escrow on
+ * a ghost, or (only its trainer sees it) a nemesis. `target` is the ghost trainer's name or the nemesis's full name;
+ * `zoneId` where the ghost haunts now (or the nemesis was last met); `wins` the different trainers the ghost beat this
+ * week (since its last bounty was claimed); `rank` the nemesis's; `withLawlander` the payout for a party holding a
+ * Lawlander; `postedBy` null for the board; `mine` the caller posted it.
+ */
+export const BOUNTY_KINDS = ['game', 'player', 'nemesis'] as const;
+export const BOUNTY_STATUSES = ['open', 'claimed', 'expired'] as const;
+export const BountyPosterSchema = z.object({
+  id: z.string().min(1).max(64),
+  kind: z.enum(BOUNTY_KINDS),
+  target: z.string().min(1).max(64),
+  speciesId: z.string().max(32),
+  level: z.number().int().min(1).max(100),
+  zoneId: z.string().max(32),
+  wins: z.number().int().min(0).nullable(),
+  rank: z.number().int().min(1).max(5).nullable(),
+  reward: Money,
+  withLawlander: Money,
+  postedBy: Name.nullable(),
+  postedAt: IsoDate,
+  expiresAt: IsoDate.nullable(),
+  mine: z.boolean(),
+});
+/** One of the caller's own posts, whatever became of it (an expired one's escrow went back). */
+export const BountyPostSchema = z.object({
+  id: z.string().min(1).max(64),
+  target: z.string().min(1).max(64),
+  reward: Money,
+  fee: Money,
+  status: z.enum(BOUNTY_STATUSES),
+  claimedBy: Name.nullable(),
+  postedAt: IsoDate,
+  expiresAt: IsoDate,
+});
+/** A claim on the board (the latest, newest first). */
+export const BountyClaimSchema = z.object({
+  kind: z.enum(BOUNTY_KINDS),
+  target: z.string().min(1).max(64),
+  claimedBy: Name,
+  payout: Money,
+  bonus: z.boolean(),
+  zoneId: z.string().max(32),
+  at: IsoDate,
+});
+/** A ghost haunting now that a bounty can be posted on (never the caller's own). */
+export const BountyGhostSchema = z.object({
+  name: Name,
+  zoneId: z.string().max(32),
+  speciesId: z.string().max(32),
+  level: z.number().int().min(1).max(100),
+  wins: z.number().int().min(0),
+  wanted: z.boolean(),
+});
+export const BountiesRes = z.object({
+  /** false while the server runs without the board (env BOUNTIES=off): the lists are empty */
+  enabled: z.boolean(),
+  /** when the board posts its next game bounties */
+  nextPostingAt: IsoDate,
+  wanted: z.array(BountyPosterSchema).max(40),
+  personal: z.array(BountyPosterSchema).max(10),
+  posted: z.array(BountyPostSchema).max(10),
+  claims: z.array(BountyClaimSchema).max(10),
+  ghosts: z.array(BountyGhostSchema).max(30),
+  you: z.object({
+    badlander: z.boolean(),
+    lawlander: z.boolean(),
+    open: z.number().int().min(0),
+    claimsToday: z.number().int().min(0),
+    atBoard: z.boolean(),
+  }),
+  money: Money,
+});
+export const BountyPostReq = z.object({ target: z.string().min(1).max(20), reward: z.number().int().min(1).max(1_000_000) });
+export type BountyPosterView = z.infer<typeof BountyPosterSchema>;
+export type BountyPostView = z.infer<typeof BountyPostSchema>;
+export type BountyClaimView = z.infer<typeof BountyClaimSchema>;
+export type BountyGhostView = z.infer<typeof BountyGhostSchema>;
+export type BountiesView = z.infer<typeof BountiesRes>;
 
 /**
  * Majin vs Tenjin seasons (content factions.ts): the season's two sides (points, members, best contributors), the
@@ -966,6 +1049,9 @@ export const ROUTES = {
   worldShadow: route({ method: 'GET', path: '/world/shadow', auth: 'bearer', response: WorldShadowRes }),
   // a living ecosystem: this week on a zone (surging, scarce, migrants, the honor tilt)
   worldEcosystem: route({ method: 'GET', path: '/world/ecosystem/:zoneId', auth: 'bearer', params: EcoParams, response: EcosystemRes }),
+  // the bounty board: the Wanted posters, the caller's posts and the latest claims; posting one on a ghost
+  bounties: route({ method: 'GET', path: '/bounties', auth: 'bearer', response: BountiesRes }),
+  bountyPost: route({ method: 'POST', path: '/bounties', auth: 'bearer', request: BountyPostReq, response: BountiesRes }),
   // Majin vs Tenjin seasons: the standings and the Chronicle, taking a side, the side holding Solenne's sky
   factions: route({ method: 'GET', path: '/factions', auth: 'bearer', response: FactionsRes }),
   factionJoin: route({ method: 'POST', path: '/factions/join', auth: 'bearer', request: FactionJoinReq, response: FactionsRes }),

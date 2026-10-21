@@ -87,6 +87,8 @@ import type { Ghost, Nemesis, WeatherCity } from '@ewa/persist';
 import { nemesisAmbushChance, nemesisFightLevel } from '@ewa/content';
 import { ambushesOn, tauntOf } from '../game/nemesis';
 import { readEcosystem } from '../game/ecosystem';
+import { boardUpkeep } from '../game/bounties';
+import { WANTED_GHOST_CHANCE } from '@ewa/content';
 import { GHOSTS_PER_ZONE, GHOST_CHANCE, GHOST_DAYS, GHOST_LEVEL_SPAN, ROAMER_CHANCE, ROAMER_LEVEL, ghostReport, roamerOf, roamerZoneAt, seasonAt, shadowLevel } from '@ewa/content';
 
 export interface ZoneMeta {
@@ -297,6 +299,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   /** ghost trainers: this zone's recent ghosts (read with the shadow, once a minute) and their own stream */
   private ghosts: readonly Ghost[] = [];
   private ghostRng: Rng | null = null;
+  /** the bounty board: which of this zone's ghosts are wanted now (read with the ghosts, once a minute) */
+  private wanted: ReadonlySet<string> = new Set();
   /** nemeses: the ambush roll's own stream (the grass, roamer and ghost rolls stay as they were) */
   private nemesisRng: Rng | null = null;
   private wildCounter = 0;
@@ -397,6 +401,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       nemeses: () => (deps.env.NEMESES === 'off' ? null : { always: deps.env.NEMESES === 'always', shadow: this.state.shadow }),
       // a living ecosystem: wild catches and knockouts are tallied per zone and week unless ECOSYSTEM=off
       ecosystem: () => deps.env.ECOSYSTEM === 'on',
+      // the bounty board: a beaten ghost or nemesis claims its bounties unless BOUNTIES=off
+      bounties: () => deps.env.BOUNTIES !== 'off',
     });
     this.trades = new TradeCoordinator({
       repos: deps.repos,
@@ -855,6 +861,12 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       this.roamerCaught = { season, caught: legend !== null };
       // ghost trainers: this zone's recent ghosts
       this.ghosts = await deps.repos.db.transaction((tx) => deps.repos.ghosts.recent(tx, this.zone.id, new Date(now - GHOST_DAYS * 86_400_000), GHOSTS_PER_ZONE));
+      // the bounty board: its upkeep (expired posts refunded, the game's bounties on schedule) and which ghosts are wanted
+      if (deps.env.BOUNTIES !== 'off') {
+        await boardUpkeep(deps.repos, now, deps.log);
+        const ids = this.ghosts.map((g) => g.playerId);
+        this.wanted = await deps.repos.db.transaction((tx) => deps.repos.bounties.wanted(tx, ids, new Date(now)));
+      }
       // a living ecosystem: this week's table (pressure, the season's migrants, the honor tilt), on the same minute
       if (deps.env.ECOSYSTEM === 'on') await this.readEcosystem(now);
     } catch (e) {
@@ -1658,10 +1670,16 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     void this.startEncounter(client, ud, ps, rec);
   }
 
-  /** Ghost trainers: one of this zone's ghosts (not the player's own) with GHOST_CHANCE, else null. */
+  /**
+   * Ghost trainers: one of this zone's ghosts (not the player's own) with GHOST_CHANCE, else null. The bounty board: a
+   * wanted ghost first, with WANTED_GHOST_CHANCE (BOUNTIES=always: every time).
+   */
   ghostEncounter(playerId: string): Ghost | null {
     const others = this.ghosts.filter((g) => g.playerId !== playerId);
     if (others.length === 0) return null;
+    const mode = this.deps.env.BOUNTIES;
+    const wanted = mode === 'off' ? [] : others.filter((g) => this.wanted.has(g.playerId));
+    if (wanted.length > 0 && (mode === 'always' || this.ghostRng!.next() < WANTED_GHOST_CHANCE)) return wanted[this.ghostRng!.int(wanted.length)]!;
     if (this.ghostRng!.next() >= GHOST_CHANCE) return null;
     return others[this.ghostRng!.int(others.length)]!;
   }

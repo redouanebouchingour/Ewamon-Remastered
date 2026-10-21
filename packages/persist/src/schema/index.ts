@@ -23,3 +23,4 @@ export * from './ghosts';
 export * from './breeding';
 export * from './nemeses';
 export * from './ecosystem';
+export * from './bounties';

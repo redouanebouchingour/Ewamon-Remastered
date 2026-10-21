@@ -219,3 +219,9 @@ installed library that future readers should not have to re-derive. The spec its
 - `worldEcosystem` route `GET /world/ecosystem/:zoneId` (101 routes): `EcoParams` takes a known zone id, `EcosystemRes`
   carries the reading's lists (`EcoSpeciesSchema`, `ECO_CAUSES` mirrors content's `EcoCause`: protocol does not import
   content).
+
+## The bounty board (2026-10-21)
+
+- `bounties` (`GET /bounties`) and `bountyPost` (`POST /bounties`) (103 routes); `BountiesRes` with the three poster kinds
+  (`BOUNTY_KINDS`), the caller's posts (`BOUNTY_STATUSES`), claims and the ghosts that can be posted on; history event
+  `bounty`. No new server message: a claim's payout rides the battle's rewards and a `toast`.

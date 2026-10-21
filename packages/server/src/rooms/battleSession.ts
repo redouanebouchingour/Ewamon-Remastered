@@ -42,6 +42,8 @@ import type { SpawnRecord } from './spawnDirector';
 import { completeBeatInTx } from './storyBeats';
 import { FACTION_POINTS, deedsOf, ecoWeek, seasonAt } from '@ewa/content';
 import { countsForEcosystem, takeOf } from '../game/ecosystem';
+import { claimGhostBounties, claimNemesisBounty } from '../game/bounties';
+import type { BroughtIn } from '../game/bounties';
 import { ghostReward, ghostTrainerId } from '@ewa/content';
 import { NEMESIS_MAX, nemesisFullName, nemesisPromoteChance, nemesisScarRibbon } from '@ewa/content';
 import type { NemesisScar } from '@ewa/content';
@@ -182,6 +184,8 @@ export interface BattleDeps {
   readonly nemeses?: () => { readonly always: boolean; readonly shadow: number } | null;
   /** A living ecosystem (content ecosystem.ts): whether a wild battle's catches and knockouts are tallied (absent: no) */
   readonly ecosystem?: () => boolean;
+  /** The bounty board (content bounties.ts): whether a beaten ghost or nemesis claims its bounties (absent: no, env BOUNTIES=off) */
+  readonly bounties?: () => boolean;
 }
 
 /** Where a battle forms (ZoneRoom `battleAt`): a hall arena + its battle-axis yaw inside an interior, else the player. */
@@ -288,6 +292,8 @@ interface PlayerDelta {
   tower: TowerResult | null;
   /** Nemeses: what became of a nemesis in this battle (`nemesisNews`, sent after `battleEnd`) */
   nemesis: ServerMessage[];
+  /** The bounty board: the payout toast of a claim (sent after `battleEnd`) */
+  bounty: ServerMessage[];
 }
 
 function emptyDelta(): PlayerDelta {
@@ -310,6 +316,7 @@ function emptyDelta(): PlayerDelta {
     inventoryAll: null,
     tower: null,
     nemesis: [],
+    bounty: [],
   };
 }
 
@@ -1136,6 +1143,8 @@ export class BattleCoordinator {
       }
       // nemeses: what became of one in this battle
       for (const m of d.nemesis) host.send(pid, m);
+      // the bounty board: what a claim paid
+      for (const m of d.bounty) host.send(pid, m);
     }
   }
 
@@ -1316,6 +1325,20 @@ export class BattleCoordinator {
               questEvents.push({ kind: 'win', format: 'trainer' });
             }
             await repos.ghosts.record(tx, session.ghost.ownerId, rows.get(pid)!.username, session.zoneId, !won, now);
+            // the bounty board: beating a wanted ghost claims its bounties (once each), paid with this battle's money
+            if (won && this.deps.bounties?.() === true) {
+              const got = await claimGhostBounties(
+                repos,
+                tx,
+                this.deps.content,
+                { ghostOwnerId: session.ghost.ownerId, ghostName: session.ghost.name, claimerId: pid, claimerName: rows.get(pid)!.username, zoneId: session.zoneId, battleId: session.id },
+                nowMs,
+              );
+              if (got !== null) {
+                money += got.payout;
+                this.noteBroughtIn(d, got);
+              }
+            }
           } else if (session.format === 'trainer' && won && session.npc !== null) {
             money += session.npc.reward;
             trainerExpGain += TRAINER_EXP.trainerWin;
@@ -1396,6 +1419,22 @@ export class BattleCoordinator {
           }
           // nemeses: a wild creature that knocked out or escaped the player rises; an ambush ends, or its rank rises
           if (side === 0 && track !== undefined) d.nemesis.push(...(await this.settleNemesis(tx, session, before, next, events, track, pid, outcome, caughtId, now)));
+          // the bounty board: a nemesis brought in (knocked out or caught, its story ended just now) pays its personal bounty
+          const ended = session.nemesis;
+          if (side === 0 && ended !== undefined && this.deps.bounties?.() === true && d.nemesis.some((m) => m.type === 'nemesisNews' && m.nemesisId === ended.id && (m.event === 'beaten' || m.event === 'caught'))) {
+            const got = await claimNemesisBounty(
+              repos,
+              tx,
+              this.deps.content,
+              { fullName: nemesisFullName(ended), speciesId: ended.speciesId, level: ended.level, rank: ended.rank, claimerId: pid, claimerName: rows.get(pid)!.username, zoneId: session.zoneId, battleId: session.id },
+              nowMs,
+            );
+            if (got !== null) {
+              money += got.payout;
+              d.money = await repos.players.addMoney(tx, pid, got.payout);
+              this.noteBroughtIn(d, got);
+            }
+          }
           if (flagsToSet.length > 0) {
             await repos.progress.setFlags(tx, pid, flagsToSet, now);
             d.flags.push(...flagsToSet);
@@ -1463,6 +1502,16 @@ export class BattleCoordinator {
       this.deps.host.send(r.pid, { type: 'toast', level: 'success', text: `You are the first to catch ${name} this season. The Dex will remember it.` });
     }
     return out;
+  }
+
+  /** The bounty board: a claim's lead (honor, history) among the turn's creature updates, and its toast. */
+  private noteBroughtIn(d: PlayerDelta, got: BroughtIn): void {
+    if (got.lead !== null) {
+      const i = d.creaturesUpdated.findIndex((c) => c.id === got.lead!.id);
+      if (i >= 0) d.creaturesUpdated[i] = got.lead;
+      else d.creaturesUpdated.push(got.lead);
+    }
+    d.bounty.push({ type: 'toast', level: 'success', text: got.text });
   }
 
   /** Nemeses: the rules in force for this battle (a world wild battle in a zone with nemeses on), else null. */

@@ -1297,9 +1297,9 @@ class World implements World3D {
         if (npc === undefined) {
           // Phase A: residents and guides inside the pockets talk client-side (the server has no record of them)
           const inside = interiorNpcs(z.id).find((n) => n.id === t.id);
-          // breeding: paging past the Daycare keeper's lines opens the Daycare
-          if (inside !== undefined)
-            ui.setDialogue({ speaker: inside.name, lines: inside.lines, index: 0, targetId: inside.id, ...(inside.role === 'daycare' ? { onFinish: () => navigateTo('/play/daycare') } : {}) });
+          // breeding: paging past the Daycare keeper's lines opens the Daycare; the bounty board: the Marshal's, the Wanted board
+          const opens = inside?.role === 'daycare' ? '/play/daycare' : inside?.role === 'bounty' ? '/play/bounties' : null;
+          if (inside !== undefined) ui.setDialogue({ speaker: inside.name, lines: inside.lines, index: 0, targetId: inside.id, ...(opens !== null ? { onFinish: () => navigateTo(opens) } : {}) });
           return;
         }
         const plan = npcPlan(z.id, npc, this.flags());

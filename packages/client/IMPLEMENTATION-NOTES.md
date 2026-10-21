@@ -2210,3 +2210,11 @@ the second isolated client (the component over the landing page: the foe and own
   visited zones with wild creatures instead of living on the map (whose nodes are too small for four columns).
 - An unseen creature shows as a silhouette and ??? so the panel never spoils the Dex; it cannot be picked.
 - `test/ecosystem-sprites.test.ts` is the migration safety check against the shipped manifest (see content's notes).
+
+## The bounty board (2026-10-21)
+
+- `screens/BountyScreen.tsx` (+ module css) at `/play/bounties`, opened by paging past the Marshal's lines (World3D's
+  interior NPC case maps role `bounty` to the route, as it does the Daycare keeper). Its lines are pure exports (tested).
+  A refused post shows the Marshal's words: `net/errors.ts` spreads content's `BOUNTY_REFUSAL_TEXT` into the messages.
+- The claim needs no new client code: its payout is in the battle's rewards and its toast is a plain server `toast`.
+- The poster's eyebrow names the zone the player stands in (a town when opened from the Marshal).

@@ -1218,3 +1218,20 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   spawn and encounter tests and the shiny spawn-hash pin see today's tables.
 - Dev helper `pnpm --filter @ewa/server eco take|roll` (scripts/eco.ts): force catches or knockouts into a zone's week,
   and print the room's roll on the authored table against this week's on the same draws. One writer: stop the server.
+
+## The bounty board (2026-10-21)
+
+- `game/bounties.ts`: upkeep (expired posts refunded with an audit row, the game's postings once a period; memoised per
+  repos object, at most once a minute per process, idempotent across processes), the ghost and nemesis claims and what
+  a claim does to the lead. `rest/routes/bounties.ts`: GET / POST /bounties. The post's escrow and its audit row are in
+  one transaction under the poster's row lock; `InsufficientFunds` rolls it back.
+- Claims happen in the battle's end transaction: a won ghost fight (`claimGhostBounties` in the ghost branch, the payout
+  added to the battle's money so the rewards show it) and a nemesis that `settleNemesis` just ended (`claimNemesisBounty`
+  right after it, its own `addMoney`). The lead's honor and history are written after the turn's creature rows, and the
+  lead replaces its entry in the turn's `creaturesUpdated`. The toast is sent after `battleEnd` (PlayerDelta `bounty`).
+- Env `BOUNTIES` 'on' | 'off' | 'always' (testEnv 'off'): off, GET /bounties answers `enabled: false`, posting is 409
+  `bountiesOff`, nothing is claimed and the grass rolls draw exactly as before. 'always' makes a wanted ghost step out
+  of every grass encounter it can (live checks; ghosts still need ROAMING_ENCOUNTERS on).
+- "At a board" is checked as "in a town" (presence zone): the board screen is opened from the Marshal, and every town
+  has one; there is no per-hall position check (the Daycare's REST does the same with its zone).
+- Dev helper `pnpm --filter @ewa/server bounty wins|post|list` (scripts/bounty.ts). One writer: stop the server.

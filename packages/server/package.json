@@ -15,7 +15,8 @@
     "seed:progression": "tsx --tsconfig tsconfig.dev.json scripts/seed-progression.ts",
     "grant:creature": "tsx --tsconfig tsconfig.dev.json scripts/grant-creature.ts",
     "grant:item": "tsx --tsconfig tsconfig.dev.json scripts/grant-item.ts",
-    "eco": "tsx --tsconfig tsconfig.dev.json scripts/eco.ts"
+    "eco": "tsx --tsconfig tsconfig.dev.json scripts/eco.ts",
+    "bounty": "tsx --tsconfig tsconfig.dev.json scripts/bounty.ts"
   },
   "dependencies": {
     "@colyseus/core": "^0.18.14",

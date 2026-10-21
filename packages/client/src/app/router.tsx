@@ -108,6 +108,11 @@ export const routes: RouteObject[] = [
             },
           }),
           child({
+            // the bounty board: the Wanted posters (the Marshal in a town's Healer, else its Mart, opens it)
+            path: 'bounties',
+            lazy: async () => ({ Component: (await import('../screens/BountyScreen')).BountyScreen }),
+          }),
+          child({
             // breeding: the Daycare (the keeper in Mirevale's house 1 opens it)
             path: 'daycare',
             lazy: async () => ({ Component: (await import('../screens/DaycareScreen')).DaycareScreen }),
