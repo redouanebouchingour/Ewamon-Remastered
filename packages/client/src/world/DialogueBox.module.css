@@ -150,7 +150,7 @@
   line-height: var(--lh-body);
 }
 
-.mic,
+.act,
 .more {
   display: inline-flex;
   align-items: center;
@@ -171,23 +171,13 @@
   cursor: pointer;
 }
 
-.mic {
-  touch-action: none;
-  user-select: none;
-}
-
-.mic[data-live='true'] {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-.mic:hover,
+.act:hover,
 .more:hover {
   background: var(--bg-2);
   color: var(--text-hi);
 }
 
-.mic:focus-visible,
+.act:focus-visible,
 .more:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

@@ -1,13 +1,12 @@
 /**
- * NPC voice talk: the conversation the DialogueBox shows over an NPC's lines. Hold V (or the mic button) to speak
- * English; release to send (or press C and type: `sendText`; or hit the NPC with H / K: `hitNpc`). The take goes to
- * whisper.cpp, the text to the local model, and the reply streams in.
- * One conversation per open dialogue (E on a person starts a new one): every take, typed line and hit while it stays open
+ * NPC talk: the conversation the DialogueBox shows over an NPC's lines. Press C and type (`sendText`), or hit the NPC
+ * with H / K (`hitNpc`); the line goes to the local model and the reply streams in.
+ * One conversation per open dialogue (E on a person starts a new one): every typed line and hit while it stays open
  * is added to it. `leaveTalk` (Back / Enter / E) shows the scripted lines again and keeps the conversation, so the next
- * line resumes it; `endTalk` (dialogue closed or target changed) drops it. Both abort the take or reply in flight and
- * release the microphone; only `endTalk` stops the tool passes still running (what the NPC said, it still does).
+ * line resumes it; `endTalk` (dialogue closed or target changed) drops it. Both abort the reply in flight; only
+ * `endTalk` stops the tool passes still running (what the NPC said, it still does).
  *
- * After each reply the tool pass picks what the NPC does (`voice/npcChat`) in the background: the player can speak
+ * After each reply the tool pass picks what the NPC does (`voice/npcChat`) in the background: the player can talk
  * again as soon as the words are in. Tool passes run one at a time, in order, and what one did lands on its own reply.
  * A slap or a kick plays in the world (`state/npcFx`); money and Ewamon go through `POST /npc/act`, which checks the NPC stands in the player's zone and
  * keeps its wallet; the delta lands in the session like any other.
@@ -23,9 +22,8 @@ import type { ChatTurn, NpcPersona, ToolCall } from '../voice/npcChat';
 import { strike } from './npcFx';
 import { toast } from './notifications';
 import { toInventoryDelta, useSessionStore } from './session';
-import { releaseMic, startTake, stopTake, transcribe } from '../voice/recorder';
 
-export type TalkPhase = 'idle' | 'listening' | 'transcribing' | 'thinking' | 'replying';
+export type TalkPhase = 'idle' | 'thinking' | 'replying';
 
 export interface VoiceTalkState {
   /** the dialogue target the conversation belongs to (null = none) */
@@ -45,20 +43,16 @@ export const useVoiceTalkStore = create<VoiceTalkState>()(() => IDLE);
 
 const set = (p: Partial<VoiceTalkState>): void => useVoiceTalkStore.setState(p);
 
-let persona: NpcPersona | null = null;
 let inflight: AbortController | null = null;
 /** the tool passes of this conversation, run one after another in the background; `endTalk` aborts them */
 let tools = new AbortController();
 let toolQueue: Promise<void> = Promise.resolve();
-/** the mic opening (the first press may wait on the permission prompt) */
-let starting: Promise<boolean> | null = null;
 
 /** Joins (or starts, when the target changed) the conversation with `targetId`; false while a reply is on its way. */
-function join(targetId: string, p: NpcPersona): boolean {
+function join(targetId: string): boolean {
   const st = useVoiceTalkStore.getState();
   if (st.targetId !== targetId) {
     endTalk();
-    persona = p;
     set({ targetId });
     return true;
   }
@@ -67,52 +61,12 @@ function join(targetId: string, p: NpcPersona): boolean {
   return true;
 }
 
-/** Starts a take for `targetId`. No-op while a reply is on its way. */
-export function beginTake(targetId: string, p: NpcPersona): void {
-  if (!join(targetId, p)) return;
-  set({ phase: 'listening', error: null });
-  starting = startTake().then(
-    () => true,
-    (e: unknown) => {
-      if (useVoiceTalkStore.getState().targetId === targetId) set({ phase: 'idle', error: micError(e) });
-      return false;
-    },
-  );
-}
-
-/** Ends the take and runs it: transcribe → reply. */
-export function finishTake(): void {
-  const st = useVoiceTalkStore.getState();
-  if (st.phase !== 'listening' || persona === null) return;
-  const p = persona;
-  const ac = new AbortController();
-  inflight = ac;
-  set({ phase: 'transcribing' });
-  void (async () => {
-    try {
-      if (!(await (starting ?? Promise.resolve(false)))) return;
-      const samples = await stopTake();
-      if (ac.signal.aborted) return;
-      if (samples === null) return set({ phase: 'idle', error: 'I heard nothing. Hold V while you talk.' });
-      const heard = await transcribe(samples, ac.signal);
-      if (ac.signal.aborted) return;
-      if (heard === '') return set({ phase: 'idle', error: 'I did not catch that. Try again.' });
-      await answer(p, { role: 'user', content: heard }, ac);
-    } catch (e) {
-      if (ac.signal.aborted) return;
-      set({ phase: 'idle', partial: '', error: `Speech recognition failed (is scripts/voice-stt.mjs running?): ${message(e)}` });
-    } finally {
-      if (inflight === ac) inflight = null;
-    }
-  })();
-}
-
 /**
  * The player hits the NPC (H / K): the strike plays (the burst at contact), then the NPC answers it like a line —
  * angry words, and the tool pass may hit back. No-op while a reply is on its way.
  */
 export function hitNpc(targetId: string, p: NpcPersona, kind: StrikeKind): void {
-  if (!join(targetId, p)) return;
+  if (!join(targetId)) return;
   const ac = new AbortController();
   inflight = ac;
   set({ error: null, phase: 'thinking' });
@@ -125,10 +79,10 @@ export function hitNpc(targetId: string, p: NpcPersona, kind: StrikeKind): void 
   });
 }
 
-/** Typed chat (C): the same conversation without the microphone. No-op while a reply is on its way. */
+/** Typed chat (C). No-op while a reply is on its way. */
 export function sendText(targetId: string, p: NpcPersona, text: string): void {
   const said = text.trim();
-  if (said === '' || !join(targetId, p)) return;
+  if (said === '' || !join(targetId)) return;
   const ac = new AbortController();
   inflight = ac;
   set({ error: null });
@@ -149,7 +103,7 @@ async function answer(p: NpcPersona, said: ChatTurn, ac: AbortController): Promi
     reply = await streamNpcReply(p, turns, (text) => set({ phase: 'replying', partial: text }), ac.signal);
   } catch (e) {
     if (ac.signal.aborted) return;
-    return set({ phase: 'idle', partial: '', error: `The language model did not answer (is LM Studio running on port 1234?): ${message(e)}` });
+    return set({ phase: 'idle', partial: '', error: `The language model did not answer (is Llama.cpp running on port 1234?): ${message(e)}` });
   }
   if (ac.signal.aborted) return;
   const spoken: ChatTurn = { role: 'assistant', content: reply === '' ? '…' : reply };
@@ -177,7 +131,7 @@ function judgeInBackground(p: NpcPersona, exchange: readonly ChatTurn[], spoken:
       if (i >= 0) set({ turns: [...now.slice(0, i), { ...spoken, events }, ...now.slice(i + 1)] });
     } catch (e) {
       if (signal.aborted) return;
-      set({ error: `The tool pass did not answer (is ${TOOL_MODEL} loaded in LM Studio?): ${message(e)}` });
+      set({ error: `The tool pass did not answer (is ${TOOL_MODEL} loaded in Llama.cpp?): ${message(e)}` });
     }
   });
 }
@@ -268,13 +222,11 @@ const REFUSED_TALK: Readonly<Record<string, string>> = {
 
 /**
  * Back to the scripted lines, keeping the conversation: what is in flight is aborted (a line still waiting for its
- * answer is dropped, so the history stays turn-taking) and the microphone released.
+ * answer is dropped, so the history stays turn-taking).
  */
 export function leaveTalk(): void {
   inflight?.abort();
   inflight = null;
-  starting = null;
-  releaseMic();
   const turns = useVoiceTalkStore.getState().turns;
   set({ phase: 'idle', partial: '', error: null, hidden: true, turns: turns.at(-1)?.role === 'user' ? turns.slice(0, -1) : turns });
 }
@@ -285,17 +237,7 @@ export function endTalk(): void {
   tools.abort();
   tools = new AbortController();
   toolQueue = Promise.resolve();
-  starting = null;
-  persona = null;
-  releaseMic();
   useVoiceTalkStore.setState(IDLE);
-}
-
-function micError(e: unknown): string {
-  const name = e instanceof DOMException ? e.name : '';
-  if (name === 'NotAllowedError') return 'No access to the microphone. Allow it in the browser.';
-  if (name === 'NotFoundError') return 'No microphone found.';
-  return 'The microphone does not start.';
 }
 
 function message(e: unknown): string {

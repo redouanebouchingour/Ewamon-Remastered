@@ -7,9 +7,8 @@
  * Broadcast look (2026-10-11): a lower-third — an orange speaker strip over a black slab, the lines in the text face,
  * "n more" / "Close" with a paper key chip.
  *
- * Voice talk (2026-10-22): over any person's lines, hold V (or the mic button) and speak English; the NPC answers in
- * character from a local model (`state/voiceTalk.ts`). C opens a text field to type instead (testing without a mic);
- * H slaps and K kicks the NPC, who answers that too. The whole conversation shows as a log; while it is on screen Enter / E /
+ * NPC talk (2026-10-22): over any person's lines, C opens a text field; the NPC answers what the player types in
+ * character from a local model (`state/voiceTalk.ts`). H slaps and K kicks the NPC, who answers that too. The whole conversation shows as a log; while it is on screen Enter / E /
  * Escape return to the scripted lines and keep it (the next line resumes it), so a beat's `onFinish` still runs only by
  * paging past them. Closing the dialogue ends the conversation: E on the person again starts a new one.
  */
@@ -20,7 +19,7 @@ import type { ZoneId } from '@ewa/content';
 import { useSessionStore } from '../state/session';
 import { useUiStore } from '../state/ui';
 import type { DialogueUi } from '../state/ui';
-import { beginTake, endTalk, finishTake, hitNpc, leaveTalk, sendText, useVoiceTalkStore } from '../state/voiceTalk';
+import { endTalk, hitNpc, leaveTalk, sendText, useVoiceTalkStore } from '../state/voiceTalk';
 import type { NpcPersona } from '../voice/npcChat';
 import s from './DialogueBox.module.css';
 
@@ -50,13 +49,9 @@ function placeOf(zoneId: ZoneId | null): string | null {
 }
 
 function personaOf(d: DialogueUi): NpcPersona {
-  return { name: d.speaker.split(',')[0]!.trim(), place: placeOf(useSessionStore.getState().zoneId), lines: d.lines };
-}
-
-function talkStart(): void {
-  const d = useUiStore.getState().dialogue;
-  if (d === null || d.noTalk === true || !VOICE_ON) return;
-  beginTake(d.targetId, personaOf(d));
+  const [name, ...role] = d.speaker.split(',');
+  const title = role.join(',').trim();
+  return { name: name!.trim(), role: title === '' ? null : title, place: placeOf(useSessionStore.getState().zoneId), lines: d.lines };
 }
 
 function typedSend(text: string): boolean {
@@ -84,11 +79,6 @@ function talking(): boolean {
   return d !== null && t.targetId === d.targetId && !t.hidden && (t.turns.length > 0 || t.phase !== 'idle' || t.error !== null);
 }
 
-const STATUS: Record<string, string> = {
-  listening: 'Listening… release V to send',
-  transcribing: 'Transcribing…',
-};
-
 export function DialogueBox() {
   const d = useUiStore((st) => st.dialogue);
   const inBattle = useUiStore((st) => st.battle !== null);
@@ -100,7 +90,7 @@ export function DialogueBox() {
   const open = d !== null && !inBattle;
   const canTalk = VOICE_ON && d !== null && d.noTalk !== true;
 
-  // the conversation belongs to one dialogue: closing it, or opening another, ends the talk (mic released)
+  // the conversation belongs to one dialogue: closing it, or opening another, ends the talk
   const targetId = open ? d.targetId : null;
   useEffect(() => {
     if (useVoiceTalkStore.getState().targetId !== targetId) endTalk();
@@ -130,12 +120,6 @@ export function DialogueBox() {
         if (!e.repeat) hit(e.code === 'KeyH' ? 'slap' : 'kick');
         return;
       }
-      if (e.code === 'KeyV') {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!e.repeat) talkStart();
-        return;
-      }
       if (e.repeat) return;
       if (talking() && (e.code === 'Enter' || e.code === 'KeyE' || e.code === 'Space' || e.code === 'Escape')) {
         e.preventDefault();
@@ -155,18 +139,10 @@ export function DialogueBox() {
         if (cur?.obligatory === true) cur.onFinish?.();
       }
     };
-    const onKeyUp = (e: KeyboardEvent): void => {
-      if (e.code !== 'KeyV' || inField(e)) return;
-      e.preventDefault();
-      e.stopPropagation();
-      finishTake();
-    };
-    // capture: the dialogue owns E / Enter / V while it is open (the world's interact key must not re-trigger)
+    // capture: the dialogue owns E / Enter / C / H / K while it is open (the world's interact key must not re-trigger)
     window.addEventListener('keydown', onKey, true);
-    window.addEventListener('keyup', onKeyUp, true);
     return () => {
       window.removeEventListener('keydown', onKey, true);
-      window.removeEventListener('keyup', onKeyUp, true);
     };
   }, [open]);
 
@@ -200,11 +176,11 @@ export function DialogueBox() {
     ) : null;
   const fists = canTalk ? (
     <>
-      <button type="button" className={s.mic} onClick={() => hit('slap')} aria-label="Slap — H">
+      <button type="button" className={s.act} onClick={() => hit('slap')} aria-label="Slap — H">
         <span>Slap</span>
         <kbd className={s.key}>H</kbd>
       </button>
-      <button type="button" className={s.mic} onClick={() => hit('kick')} aria-label="Kick — K">
+      <button type="button" className={s.act} onClick={() => hit('kick')} aria-label="Kick — K">
         <span>Kick</span>
         <kbd className={s.key}>K</kbd>
       </button>
@@ -212,31 +188,13 @@ export function DialogueBox() {
   ) : null;
   const chat =
     canTalk && !typing ? (
-      <button type="button" className={s.mic} onClick={() => setTyping(true)} aria-label="Type to chat — C">
+      <button type="button" className={s.act} onClick={() => setTyping(true)} aria-label="Type to chat — C">
         <span>Chat</span>
         <kbd className={s.key}>C</kbd>
       </button>
     ) : null;
-  const mic = canTalk ? (
-    <button
-      type="button"
-      className={s.mic}
-      data-live={talk.phase === 'listening' ? 'true' : undefined}
-      onPointerDown={(e) => {
-        e.preventDefault();
-        talkStart();
-      }}
-      onPointerUp={finishTake}
-      onPointerLeave={finishTake}
-      aria-label="Hold to talk — V"
-    >
-      <span>{talk.phase === 'listening' ? 'Listening' : 'Hold to talk'}</span>
-      <kbd className={s.key}>V</kbd>
-    </button>
-  ) : null;
-
   if (talk.targetId === d.targetId && !talk.hidden && (talk.turns.length > 0 || talk.phase !== 'idle' || talk.error !== null)) {
-    const status = talk.phase === 'thinking' ? `${personaOf(d).name} is thinking…` : (STATUS[talk.phase] ?? null);
+    const status = talk.phase === 'thinking' ? `${personaOf(d).name} is thinking…` : null;
     return (
       <div ref={ref} className={s.box} role="dialog" aria-label={`Talking with ${d.speaker}`} data-testid="dialoguebox">
         <p className={s.speaker}>{d.speaker}</p>
@@ -265,7 +223,6 @@ export function DialogueBox() {
           <div className={s.actions}>
             {fists}
             {chat}
-            {mic}
             <button type="button" className={s.more} onClick={leaveTalk} aria-label="Back to the lines — Enter">
               <span>Back</span>
               <kbd className={s.key}>Enter</kbd>
@@ -291,7 +248,6 @@ export function DialogueBox() {
         <div className={s.actions}>
           {fists}
           {chat}
-          {mic}
           <button type="button" className={s.more} onClick={advance} aria-label={left > 0 ? `${left} more — Enter` : 'Close — Enter'}>
             <span>{left > 0 ? `${left} more` : 'Close'}</span>
             <kbd className={s.key}>Enter</kbd>

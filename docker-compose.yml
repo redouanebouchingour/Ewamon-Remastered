@@ -1,9 +1,30 @@
-# Ewamon Remastered, standalone: the game server, the client (nginx) and llama.cpp on the CPU for NPC voice talk.
+# Ewamon Remastered, standalone: the game server, the client (nginx) and llama.cpp on the CPU for NPC talk.
 #   docker compose up --build    →  http://localhost:8080
-# The model is not in git: put the GGUF at models/qwen3.5-0.8b/model.gguf (see .gitignore).
+# The models are not in git (see .gitignore): models/gemma3-1b/model.gguf talks, models/qwen3.5-0.8b/model.gguf picks
+# what the NPC does.
+# Each llama.cpp server holds one model; the image listens on 0.0.0.0:8080 (LLAMA_ARG_HOST / _PORT) and is reached only
+# through nginx (/voice/llm, /voice/tools).
 
 services:
+  # the talk pass: gemma3-1b stays in character and short (qwen3.5-0.8b rambled); it has no tool support in its template
   llm:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    command:
+      - -m
+      - /models/model.gguf
+      - --alias
+      - gemma3-1b
+      - --jinja
+      - -c
+      - "8192"
+      - --threads
+      - "${LLM_THREADS:-4}"
+    volumes:
+      - ./models/gemma3-1b:/models:ro
+    restart: unless-stopped
+
+  # the tool pass: qwen3.5-0.8b calls the tools (`tool_choice: required`)
+  llm-tools:
     image: ghcr.io/ggml-org/llama.cpp:server
     command:
       - -m
@@ -16,10 +37,9 @@ services:
       - --reasoning-budget
       - "0"
       - -c
-      - "8192"
+      - "4096"
       - --threads
       - "${LLM_THREADS:-4}"
-    # the image listens on 0.0.0.0:8080 (LLAMA_ARG_HOST / LLAMA_ARG_PORT); reached only through nginx's /voice/llm
     volumes:
       - ./models/qwen3.5-0.8b:/models:ro
     restart: unless-stopped
@@ -50,6 +70,7 @@ services:
     depends_on:
       - server
       - llm
+      - llm-tools
     restart: unless-stopped
 
 volumes:

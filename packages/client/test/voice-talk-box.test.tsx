@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * NPC voice talk in the DialogueBox: a person's lines offer "Hold to talk"; a sign's do not; a conversation replaces
+ * NPC voice talk in the DialogueBox: a person's lines offer "Chat"; a sign's do not; a conversation replaces
  * the scripted page (the whole exchange as a log) and Enter returns to the lines without running `onFinish`, keeping the
  * conversation for the next line; closing the dialogue ends it.
  */
@@ -18,12 +18,12 @@ beforeEach(() => {
 });
 
 describe('DialogueBox voice talk', () => {
-  it('offers the mic over a person, not over a sign', () => {
+  it('offers the chat over a person, not over a sign', () => {
     act(() => useUiStore.getState().setDialogue({ speaker: 'Prof. Wynn', lines: ['Hello.'], index: 0, targetId: 'mirevale.wynn' }));
     render(<DialogueBox />);
-    expect(screen.getByRole('button', { name: /Hold to talk/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Type to chat/ })).toBeTruthy();
     act(() => useUiStore.getState().setDialogue({ speaker: 'Old Sign', lines: ['Mirevale'], index: 0, targetId: 'sign', noTalk: true }));
-    expect(screen.queryByRole('button', { name: /Hold to talk/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Type to chat/ })).toBeNull();
   });
 
   it('shows the exchange over the lines; Enter goes back to them without finishing the dialogue or dropping it', () => {
@@ -99,7 +99,7 @@ describe('DialogueBox voice talk', () => {
       fireEvent.keyDown(window, { code: 'KeyC' });
     });
     const input = screen.getByRole('textbox', { name: /Type to Prof. Wynn/ });
-    fireEvent.keyDown(input, { code: 'KeyV', key: 'v' });
+    fireEvent.keyDown(input, { code: 'KeyE', key: 'e' });
     expect(useVoiceTalkStore.getState().phase).toBe('idle');
     fireEvent.change(input, { target: { value: 'Hi Wynn' } });
     await act(async () => {

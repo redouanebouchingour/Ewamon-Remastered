@@ -1,64 +1,48 @@
 import { describe, expect, it } from 'vitest';
-import { DO_NOTHING, GIVE_EWAMON, GIVE_MONEY, HISTORY_TURNS, KICK, SLAP, TAKE_EWAMON, TAKE_MONEY, amountOf, chatMessages, eventsSoFar, guardCalls, judgeMessages, judgeTools, parseSse, stripThink, systemPrompt } from '../src/voice/npcChat';
+import { DO_NOTHING, GIVE_EWAMON, GIVE_MONEY, HISTORY_TURNS, KICK, MAX_SENTENCES, SLAP, TAKE_EWAMON, TAKE_MONEY, TEMPERAMENTS, amountOf, chatMessages, eventsSoFar, guardCalls, judgeMessages, judgeTools, parseSse, stripThink, systemPrompt, temperamentOf, tidyReply } from '../src/voice/npcChat';
 import type { ChatTurn } from '../src/voice/npcChat';
-import { encodeWav, rms } from '../src/voice/wav';
 import { CONTACT_M, HOLD_MS, KNOCK_M, KNOCK_MS, LUNGE_MS, NpcStrike, PlayerStrike, RETURN_MS } from '../src/scene/npcStrike';
-
-describe('voice talk: wav', () => {
-  it('writes a 16 kHz mono 16-bit PCM header and clamped samples', () => {
-    const buf = encodeWav(new Float32Array([0, 1, -1, 2]));
-    const v = new DataView(buf);
-    const tag = (at: number): string => String.fromCharCode(...new Uint8Array(buf, at, 4));
-    expect(tag(0)).toBe('RIFF');
-    expect(tag(8)).toBe('WAVE');
-    expect(tag(36)).toBe('data');
-    expect(v.getUint16(22, true)).toBe(1);
-    expect(v.getUint32(24, true)).toBe(16_000);
-    expect(v.getUint32(40, true)).toBe(8);
-    expect([0, 1, 2, 3].map((i) => v.getInt16(44 + i * 2, true))).toEqual([0, 0x7fff, -0x8000, 0x7fff]);
-  });
-
-  it('measures silence as silence', () => {
-    expect(rms(new Float32Array(100))).toBe(0);
-    expect(rms(new Float32Array([0.5, -0.5]))).toBeCloseTo(0.5);
-  });
-});
 
 describe('voice talk: npc chat', () => {
   const persona = { name: 'Bram', place: 'Mirevale (town, marsh)', lines: ['The marsh is quiet today.'] };
 
-  it('puts the persona, place and the scripted lines in the system prompt, in English, asking for the first person', () => {
+  it('keeps the system prompt short: who the NPC is, then engage and answer anything', () => {
     const p = systemPrompt(persona);
-    expect(p).toContain('You are Bram');
-    expect(p).toContain('Mirevale (town, marsh)');
-    expect(p).toContain('The marsh is quiet today.');
-    expect(p).toContain('in English');
-    expect(p).toContain('in the first person');
+    expect(p).toBe(
+      'You are an NPC in the game Ewamon. Act accordingly.\n\n' +
+      'Ewamon is a game similar to pokemon, but instead of pokemons contains ewamons\n\n' +
+        'The character you play is:\n' +
+        `You are Bram, who lives in Mirevale (town, marsh). You are ${temperamentOf('Bram')}. ` +
+        'Earlier you said to the traveller: "The marsh is quiet today."\n\n' +
+        'Engage, and answer any question the user asks you. No matter the subject.',
+    );
     // addressed to the NPC: never described in the third person, which the model copied as narration
     expect(p).not.toMatch(/Bram (is|always|only|can|may|hands)\b/);
+    // no refusal, stay-in-world or brevity rules
+    expect(p).not.toMatch(/only know|sentences|stand up for yourself/);
   });
 
-  it('sends only the recent history after the example turn', () => {
+  it('sends the persona and only the recent history, no example turns', () => {
     const history: ChatTurn[] = Array.from({ length: HISTORY_TURNS + 12 }, (_, i) => ({ role: i % 2 === 0 ? 'user' : 'assistant', content: `t${i}` }));
     const m = chatMessages(persona, history);
     expect(m[0]!.role).toBe('system');
-    expect(m.length).toBe(7 + HISTORY_TURNS);
+    expect(m.length).toBe(1 + HISTORY_TURNS);
     expect(m.at(-1)!.content).toBe(`t${HISTORY_TURNS + 11}`);
   });
 
-  it('tells the talk pass what the tools did so far, and writes the NPC as hot-headed', () => {
+  it('tells the talk pass what the tools did so far, in one short sentence', () => {
     const h: ChatTurn[] = [
       { role: 'user', content: 'You are ugly.' },
       { role: 'assistant', content: 'What did you say? Here, a slap!', events: ['You slapped the traveller.'] },
     ];
     expect(eventsSoFar(h)).toEqual(['You slapped the traveller.']);
     const m = chatMessages(persona, h);
-    expect(m[0]!.content).toContain('What has happened in this conversation so far: You slapped the traveller.');
+    expect(m[0]!.content).toContain('So far in this conversation: You slapped the traveller.\n\nEngage,');
     expect(m.slice(-2)).toEqual([
       { role: 'user', content: 'You are ugly.' },
       { role: 'assistant', content: 'What did you say? Here, a slap!' },
     ]);
-    expect(systemPrompt(persona)).toContain('hot-headed');
+    expect(systemPrompt(persona)).not.toContain('So far');
   });
 
   it('gives the tool pass the last exchange and all seven tools, money with an amount', () => {
@@ -96,9 +80,37 @@ describe('voice talk: npc chat', () => {
     expect(amountOf('nonsense', 1000)).toEqual({});
   });
 
+  it('gives each NPC one temperament, the same on every visit, and its title', () => {
+    expect(temperamentOf('Bram')).toBe(temperamentOf('Bram'));
+    expect(TEMPERAMENTS).toContain(temperamentOf('Hessa Dunmore'));
+    expect(new Set(['Bram', 'Hessa Dunmore', 'Old Hester', 'Pip', 'Wynn', 'Sable'].map(temperamentOf)).size).toBeGreaterThan(2);
+    const p = systemPrompt({ ...persona, name: 'Hessa Dunmore', role: 'Town Archivist' });
+    expect(p).toContain('You are Hessa Dunmore, the town archivist, who lives in Mirevale');
+    expect(p).toContain(temperamentOf('Hessa Dunmore'));
+  });
+
+  it('tidies the reply: no stage directions or quotes, no echoed lines, at most six sentences', () => {
+    const said = 'How are you today?';
+    // brackets and quotes go; the scripted line and the echoed question are dropped
+    expect(tidyReply('(I squint at you) "How are you today? The marsh is quiet today. Grand, thanks!"', persona, said, true).text).toBe('Grand, thanks!');
+    // capped, and full once the cap is reached (the stream stops there)
+    const long = 'One. Two! Three? Four. Five. Six. Seven.';
+    expect(tidyReply(long, persona, said, true)).toEqual({ text: 'One. Two! Three? Four. Five. Six.', full: true });
+    expect(MAX_SENTENCES).toBe(6);
+    // a bracket right after a word is code, not a stage direction
+    expect(tidyReply('Sure! Try this: for e in ewamon: print(e)', persona, said, true).text).toBe('Sure! Try this: for e in ewamon: print(e)');
+    // while streaming the unfinished sentence shows but does not count; a mid-sentence ellipsis goes on
+    expect(tidyReply('It is a bit… restless. And the reeds', persona, said, false)).toEqual({ text: 'It is a bit… restless. And the reeds', full: false });
+    // a reply that is only an echo is kept rather than shown empty
+    expect(tidyReply('The marsh is quiet today.', persona, said, true).text).toBe('The marsh is quiet today.');
+  });
+
   it('drops think blocks (closed or still streaming) and markdown', () => {
     expect(stripThink('<think>hmm</think>Hello **traveller**!')).toBe('Hello traveller!');
     expect(stripThink('Hello <think>still going')).toBe('Hello ');
+    // a closing tag without its opening one: what came before it goes, the reply after it stays
+    expect(stripThink('I am Bram.\n</think>\n\nI am Bram.')).toBe('I am Bram.');
+    expect(stripThink('the user greets me</think>Hi there!')).toBe('Hi there!');
   });
 
   it('parses SSE deltas across chunk boundaries', () => {

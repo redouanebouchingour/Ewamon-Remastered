@@ -2221,10 +2221,9 @@ the second isolated client (the component over the landing page: the foe and own
 
 ## NPC voice talk (2026-10-22)
 
-- Over any person's dialogue (not a sign: `DialogueUi.noTalk`, set for lore), hold V or the "Hold to talk" button and
-  speak English; release to send. `voice/recorder.ts` records with MediaRecorder, resamples to 16 kHz mono in the browser
-  and posts a WAV to whisper.cpp's `whisper-server` (`node scripts/voice-stt.mjs`, `brew install whisper-cpp`, model
-  `~/.cache/ewamon-voice/ggml-large-v3-turbo-q5_0.bin`, language en). `voice/npcChat.ts` streams the reply from LM
+- Over any person's dialogue (not a sign: `DialogueUi.noTalk`, set for lore), C (or the Chat button) opens a text
+  field in the box; the player types English and Enter sends. The dialogue's keys ignore events aimed at a text field,
+  so E / Space / H / K type normally there. `voice/npcChat.ts` streams the reply from LM
   Studio (`qwen3.5-0.8b`) in two passes: the talk pass streams the NPC's words with reasoning off and no tools;
   then the tool pass (same model) reads the exchange and must call at least one tool (`tool_choice: required`,
   reasoning off, token-capped since gemma sometimes drifts into reasoning anyway: no call = nothing).
@@ -2237,18 +2236,17 @@ the second isolated client (the component over the landing page: the foe and own
   wording points the other way: 14/20, ~200 ms, most misses an action dropped rather than a wrong one. The patterns
   are English only. `VITE_NPC_TOOL_MODEL=gemma-4-e4b-it-qat` brings gemma back (the guard still runs). `stripThink` drops a stray `<think>` block.
   `state/voiceTalk.ts` holds the conversation; the DialogueBox shows it as a scrolling log (every line said and every reply, the streaming one last).
-- Client-only and local: Vite proxies `/voice/llm` → `EWA_LLM_TARGET` (default http://localhost:1234) and `/voice/stt`
-  → `EWA_STT_TARGET` (default http://127.0.0.1:8178), in dev and preview. `VITE_NPC_LLM_URL`, `VITE_NPC_STT_URL`,
-  `VITE_NPC_LLM_MODEL` / `VITE_NPC_LLM_REASONING` (talk pass), `VITE_NPC_TOOL_MODEL` / `VITE_NPC_TOOL_REASONING` (tool
-  pass; reasoning = an LM Studio `reasoning_effort` or `default`) override; `VITE_NPC_VOICE=0` hides it. Not in the SPEC; the story never sees it.
-- C opens a text field in the box to type instead of speaking (testing without a mic); the dialogue's keys ignore
-  events aimed at a text field, so V / E / Space type normally there.
+- Client-only and local: Vite proxies `/voice/llm` → `EWA_LLM_TARGET` (default http://localhost:1234), in dev and
+  preview. `VITE_NPC_LLM_URL`, `VITE_NPC_LLM_MODEL` / `VITE_NPC_LLM_REASONING` (talk pass), `VITE_NPC_TOOL_MODEL` / `VITE_NPC_TOOL_REASONING` (tool
+  pass; reasoning = an Llama.cpp `reasoning_effort` or `default`) override; `VITE_NPC_VOICE=0` hides it. Not in the SPEC; the story never sees it.
+- Speech input (hold V, MediaRecorder → whisper.cpp's `whisper-server`, `/voice/stt`) was removed (2026-10-22): too
+  slow. Typing is the only way to talk.
 - Tools: after each reply the tool pass calls what the NPC does: `slap_user`, `kick_user`, `give_money` / `take_money`
   (`amount` ≤ 1 000), `give_ewamon`, `take_ewamon`, or `do_nothing` (capped at 120 tokens). `state/voiceTalk.runTools`
   plays the hits first, then the rest through `POST /npc/act` (server notes: NPC wallet, gift cooldown, a taken
   creature is released for good, never the last or a locked one), applies the delta and toasts. What happened (or
   was refused) is recorded on the turn in English (`ChatTurn.events`) and given to the talk pass as the scene so far.
-  The tool pass runs in the background (2026-10-22): the phase is idle once the words are in, so the player can speak
+  The tool pass runs in the background (2026-10-22): the phase is idle once the words are in, so the player can talk
   again at once. Tool passes queue one after another (hits and money in the order the NPC said them) and write their
   events onto their own reply, found by identity; a reply that starts before the previous tool pass is done does not
   hear its events yet. Back keeps them running (the NPC said it); closing the dialogue aborts them.
@@ -2262,23 +2260,33 @@ the second isolated client (the component over the landing page: the foe and own
   `KNOCK_M` back and it walks home. Same sound / shake / burst at contact. The hit then becomes a user turn
   (`playerHitTurn`: a narration for the models, `shown` for the dialogue), so the NPC answers it and its tool pass may
   hit back or grab something.
-- Villagers are written as hot-headed: insults and threats get a slap, a kick or a grab; real fear can still make
-  them pay; a friendly player may get money or an Ewamon. One temper among the example turns.
-- One conversation per dialogue: E on a person opens the dialogue and a new conversation; every take, typed line and
+- Villagers are no longer written as hot-headed in the prompt (2026-10-22): each gets one temperament from its name
+  (`temperamentOf`), all friendly to a friendly player; slaps, grabs and gifts happen when the NPC says them.
+- One conversation per dialogue: E on a person opens the dialogue and a new conversation; every typed line and
   hit while it stays open is added to it. A conversation never pages the lines: Enter / E / Escape / Back go back to
   them (`leaveTalk`: in-flight work aborted, a line still waiting for its answer dropped, the turns kept), and the next
   line resumes it, so a beat's `onFinish` (a battle, a gym challenge, the tutor screen) still runs only by paging past
-  the scripted lines. Closing the dialogue (paging past the last line, a battle) ends the talk (`endTalk`) and releases
-  the microphone.
-- The prompt is a role-play with positive rules and example turns: telling the 0.8B model "you are not an AI" made it
-  talk about AIs. It addresses the NPC as "you" and asks for its own spoken words in the first person; the events and
-  the player's hits are told to it the same way ("You slapped the traveller.", "The traveller slaps you…"). Written as
-  "Bram is hot-headed… say out loud what Bram does" it came back as narration ("Bram sits on the bench. He looks at
-  you…"): 3/168 sampled replies (2 personas × 14 lines × 6, some after a slap or a 3-exchange history with events),
-  0/168 after (2026-10-22).
-- The talk pass samples at temperature 1.0, top_p 0.95, top_k 40, presence_penalty 1.5 (was temperature 0.7 alone, which
-  sometimes looped one sentence until the token cap: 2/168 replies repeated a sentence 3+ times, 0/168 after). The tool
-  pass stays at temperature 0. History is capped at 32 turns (was 8, 2026-10-22: a conversation read as forgotten after four exchanges).
+  the scripted lines. Closing the dialogue (paging past the last line, a battle) ends the talk (`endTalk`).
+- The talk prompt is deliberately tiny (2026-10-22): "You are an NPC in the game Ewamon. Act accordingly.", "Ewamon is a game similar to pokemon, but instead of pokemons contains ewamons", then "The
+  character you play is:" with at most four sentences from the persona (name + role + place, the temperament, the
+  scripted lines, and the last three tool events as "So far in this conversation: …" when there are any), then
+  "Engage, and answer any question the user asks you. No matter the subject." The earlier prompt (stand up for
+  yourself, stay in the world, two or three sentences, only know Ewamon) made gemma3-1b's villagers curt, aggressive
+  and unwilling to chat; off-topic questions (a Python for loop) now get a friendly answer. It still addresses the NPC
+  as "you": written as "Bram is hot-headed…" it came back as narration ("Bram sits on the bench. He looks at you…").
+- Docker splits the passes over two llama.cpp servers (one model each): gemma3-1b talks (`/voice/llm`), qwen3.5-0.8b
+  calls the tools (`/voice/tools`, `VITE_NPC_TOOL_URL`; unset = the talk URL, as with Llama.cpp). Measured 2026-10-22:
+  on 84 replies gemma stayed short and in character (0 third person, 0 loops, p90 2.8 s) where qwen rambled (2, 1,
+  4.3 s); gemma3-1b's template has no tool support, so llama.cpp drops the tools and it never calls one (8/24 labelled
+  exchanges, only the do-nothing ones; 15/24 even forced through a JSON schema) against qwen's 19/24 guarded.
+- The talk pass samples like gemma3-1b recommends: temperature 1.0, top_p 0.95, top_k 64, min_p 0 (qwen at 0.7 looped a
+  sentence until the token cap now and then; a presence or repeat penalty changed nothing for gemma). The tool pass
+  stays at temperature 0.
+- No example turns: gemma took them for the real conversation ("What did I just say?" → a line from the examples) and
+  wrote whole "Traveller: … / You: …" scripts when they sat in the system prompt. Naming robots / AIs in the prompt
+  ("laugh it off") made it bring them up unasked (6/90), so it is left out. The reply is tidied, not the prompt: it
+  stops after 6 sentences (was 3) within 320 tokens (was 200), and only a bracket not right after a word is dropped as a
+  stage direction, so `print(e)` in a code answer stays (2026-10-22). History is capped at 32 turns (was 8, 2026-10-22: a conversation read as forgotten after four exchanges).
 
 ## First-person view (2026-10-22, not in the SPEC)
 

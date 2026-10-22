@@ -14,12 +14,10 @@ import type { HtmlTagDescriptor, Plugin } from 'vite';
 
 const API_TARGET = process.env['EWA_API_TARGET'] ?? 'http://localhost:4000';
 const WS_TARGET = process.env['EWA_WS_TARGET'] ?? 'ws://localhost:2567';
-// NPC voice talk (src/voice): LM Studio's OpenAI-compatible API and whisper.cpp's whisper-server (scripts/voice-stt.mjs)
+// NPC talk (src/voice): Llama.cpp's OpenAI-compatible API
 const LLM_TARGET = process.env['EWA_LLM_TARGET'] ?? 'http://localhost:1234';
-const STT_TARGET = process.env['EWA_STT_TARGET'] ?? 'http://127.0.0.1:8178';
 const voiceProxy = {
   '/voice/llm': { target: LLM_TARGET, changeOrigin: true, rewrite: (p: string) => p.replace(/^\/voice\/llm/, '') },
-  '/voice/stt': { target: STT_TARGET, changeOrigin: true, rewrite: (p: string) => p.replace(/^\/voice\/stt/, '') },
 };
 const fontsDir = fileURLToPath(new URL('./public/fonts', import.meta.url));
 

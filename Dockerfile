@@ -14,14 +14,17 @@ FROM deps AS client-build
 # relative: nginx serves the client and proxies these on the same origin (packages/client/src/net/api.ts, npcChat.ts)
 ARG VITE_API_URL=/api
 ARG VITE_NPC_LLM_URL=/voice/llm/v1
+ARG VITE_NPC_TOOL_URL=/voice/tools/v1
+ARG VITE_NPC_LLM_MODEL=gemma3-1b
 # the client needs an absolute socket URL (net/WorldSession.ts defaultWsUrl); docker-compose.yml sets it from EWA_PORT,
 # a public host would use e.g. wss://ewamon.example.com/colyseus
 ARG VITE_WS_URL=ws://localhost:8080/colyseus
-# llama.cpp turns thinking off itself (`--reasoning-budget 0`, docker-compose.yml); the LM Studio switch the client
+# llama.cpp turns thinking off itself (`--reasoning-budget 0`, docker-compose.yml); the Llama.cpp switch the client
 # sends by default would stop it enforcing the tool pass's `tool_choice: required` (voice/npcChat.ts `reasoning`)
 ARG VITE_NPC_LLM_REASONING=default
 ARG VITE_NPC_TOOL_REASONING=default
-ENV VITE_API_URL=$VITE_API_URL VITE_NPC_LLM_URL=$VITE_NPC_LLM_URL VITE_WS_URL=$VITE_WS_URL \
+ENV VITE_API_URL=$VITE_API_URL VITE_NPC_LLM_URL=$VITE_NPC_LLM_URL VITE_NPC_TOOL_URL=$VITE_NPC_TOOL_URL \
+    VITE_NPC_LLM_MODEL=$VITE_NPC_LLM_MODEL VITE_WS_URL=$VITE_WS_URL \
     VITE_NPC_LLM_REASONING=$VITE_NPC_LLM_REASONING VITE_NPC_TOOL_REASONING=$VITE_NPC_TOOL_REASONING
 RUN pnpm --filter @ewa/client exec vite build
 

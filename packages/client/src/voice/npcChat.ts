@@ -1,10 +1,10 @@
 /**
- * NPC voice talk: one local model (`qwen3.5-0.8b` behind LM Studio's OpenAI-compatible API) in two passes. The player
- * speaks English (whisper.cpp transcribes it).
+ * NPC voice talk: one local model (`qwen3.5-0.8b` behind Llama.cpp's OpenAI-compatible API) in two passes. The player
+ * types English in the DialogueBox.
  *
  * - Talk: the model streams the NPC's words (fast; the dialogue is rough, and that is accepted), in character,
- *   in English, with reasoning off and no tools, so they appear as fast as they come. It decides in the story what the NPC does (villagers are hot-headed: they slap, kick and
- *   grab when provoked, and can be generous to the friendly) and says it out loud.
+ *   with reasoning off and no tools, so they appear as fast as they come. The prompt is only who the NPC is and
+ *   "engage, and answer any question" (see `systemPrompt`); what the NPC does, it says out loud.
  * - Tools: once the words are complete, the same model reads the exchange and must call at least one tool:
  *   what the NPC does to the player (`slap_user`, `kick_user`, `give_money` / `take_money` with an amount, `give_ewamon`,
  *   `take_ewamon`) or `do_nothing`. Forcing the choice (`tool_choice: required`) lets it run without reasoning
@@ -17,12 +17,14 @@
  *
  * What the tools did is remembered on the turn (`ChatTurn.events`) and told to the talk pass as the scene so far.
  * `VITE_NPC_LLM_MODEL` / `VITE_NPC_LLM_REASONING` and `VITE_NPC_TOOL_MODEL` / `VITE_NPC_TOOL_REASONING` override the
- * two passes (reasoning: an LM Studio `reasoning_effort`, or `default` to leave it to the model). `stripThink` drops
+ * two passes (reasoning: an Llama.cpp `reasoning_effort`, or `default` to leave it to the model). `stripThink` drops
  * a `<think>` block that leaks into the content.
  */
 
 export interface NpcPersona {
   readonly name: string;
+  /** what the dialogue's speaker line says after the name ("Town Archivist"), if anything */
+  readonly role?: string | null;
   /** "Mirevale (town, marsh)" */
   readonly place: string | null;
   /** what the NPC said before the player spoke (the content lines, in English) */
@@ -61,6 +63,8 @@ export const HISTORY_TURNS = 32;
 
 const env = (k: string): string | undefined => import.meta.env[k] as string | undefined;
 export const LLM_BASE = env('VITE_NPC_LLM_URL') ?? '/voice/llm/v1';
+/** the tool pass's server: Llama.cpp serves both models at one URL; llama.cpp serves one model per server (Docker) */
+export const TOOL_BASE = env('VITE_NPC_TOOL_URL') ?? LLM_BASE;
 export const TALK_MODEL = env('VITE_NPC_LLM_MODEL') ?? 'qwen3.5-0.8b';
 const TALK_REASONING = env('VITE_NPC_LLM_REASONING') ?? 'none';
 export const TOOL_MODEL = env('VITE_NPC_TOOL_MODEL') ?? 'qwen3.5-0.8b';
@@ -77,7 +81,7 @@ export const GIVE_EWAMON = 'give_ewamon';
 export const TAKE_EWAMON = 'take_ewamon';
 export const DO_NOTHING = 'do_nothing';
 
-/** LM Studio's switch: `none` = no thinking; `default` = leave it to the model. */
+/** Llama.cpp's switch: `none` = no thinking; `default` = leave it to the model. */
 function reasoning(effort: string): Record<string, unknown> {
   if (effort === 'default') return {};
   return { reasoning_effort: effort, chat_template_kwargs: { enable_thinking: effort !== 'none' } };
@@ -89,38 +93,53 @@ export function eventsSoFar(history: readonly ChatTurn[]): string[] {
 }
 
 /**
- * Framed as a role-play with only positive rules (a small model told "you are not an AI" starts talking about AIs).
- * Everything is said to the NPC as "you" and asks for its own words in the first person: a prompt that described the
- * NPC as "Bram is hot-headed…" got narration back ("Bram sits on the bench. He looks at you…"). The example turns set
- * the voice (short, spoken, in-world), the answer to "are you a computer?" and giving in to a robbery.
+ * Kept very short for gemma3-1b: a long prompt full of rules (stand up for yourself, stay in the world, two or three
+ * sentences, only know Ewamon) made villagers curt, aggressive and unwilling to chat. Now only who the NPC is (at most
+ * four sentences, addressed as "you": described as "Bram is…" the model narrated) and one rule, to engage and answer
+ * anything, off-topic questions included. What the tools did so far is folded in as one short sentence.
  */
 export function systemPrompt(p: NpcPersona, events: readonly string[] = []): string {
+  const who = p.role !== undefined && p.role !== null ? `${p.name}, the ${p.role.toLowerCase()}` : p.name;
   const where = p.place !== null ? `, who lives in ${p.place}` : '';
-  const said = p.lines.length > 0 ? ` Earlier you said to the traveller: "${p.lines.join(' ')}"` : '';
-  const sofar = events.length > 0 ? `\n\nWhat has happened in this conversation so far: ${events.slice(-6).join(' ')}` : '';
+  const character = [
+    `You are ${who}${where}.`,
+    `You are ${temperamentOf(p.name)}.`,
+    ...(p.lines.length > 0 ? [`Earlier you said to the traveller: "${p.lines.join(' ')}"`] : []),
+    ...(events.length > 0 ? [`So far in this conversation: ${events.slice(-3).join(' ')}`] : []),
+  ].join(' ');
   return (
-    'This is a role-play in the fantasy world of Ewamon, where travellers catch, train and battle wild creatures ' +
-    `(Ewamon) at gyms. You are ${p.name}${where}.${said}\n\n` +
-    `You speak as ${p.name}, in the first person ("I", "me", "my"): each reply is only your own spoken words to the ` +
-    'traveller, in English, one or two sentences, like in a conversation, without narration, formatting or emoji. ' +
-    'You only know the world of Ewamon.\n\n' +
-    'You are hot-headed and take no nonsense. Faced with cheek, insults or threats, you hand out a slap or a kick, or ' +
-    'take money (at most 1000 coins) or even an Ewamon from the traveller. If you are truly scared, you may hand over ' +
-    'money after all. To a friendly traveller you can be generous and give money or an Ewamon as a gift. When you do ' +
-    `something, say it out loud in your own words as you do it, like "Here, take this slap!"${sofar}`
+    'You are an NPC in the game Ewamon. Act accordingly.\n\n' +
+    'Ewamon is a game similar to pokemon, but instead of pokemons contains ewamons\n\n' +
+    `The character you play is:\n${character}\n\n` +
+    'Engage, and answer any question the user asks you. No matter the subject.'
   );
 }
 
-/** The talk pass's messages: persona, three example turns (voice, "are you a robot?", a temper), then the history. */
+/**
+ * Who the NPC is, picked from its name so it is the same on every visit: one temperament each, all of them friendly to
+ * a friendly traveller (a single "hot-headed, takes no nonsense" for everyone made every villager curt and rude).
+ */
+export const TEMPERAMENTS = [
+  'warm and chatty, you love a bit of gossip and want to hear all about the traveller\'s journey',
+  'gruff on the outside but soft-hearted: you grumble a little, then help anyway',
+  'cheerful and easily excited, and everything about Ewamon delights you',
+  'dry-witted, you tease the traveller kindly and love a good joke',
+  'dreamy and curious, full of odd little stories about this place',
+  'proud of your work and your town, and happy to boast about both',
+  'a little nervous and fussy, but eager to help',
+  'old and wise, you give advice with a twinkle in your eye',
+] as const;
+
+export function temperamentOf(name: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < name.length; i++) h = Math.imul(h ^ name.charCodeAt(i), 16777619);
+  return TEMPERAMENTS[(h >>> 0) % TEMPERAMENTS.length]!;
+}
+
+/** The talk pass's messages: the persona, then the history (no example turns: see `systemPrompt`). */
 export function chatMessages(p: NpcPersona, history: readonly ChatTurn[]): ChatMessage[] {
   return [
     { role: 'system', content: systemPrompt(p, eventsSoFar(history)) },
-    { role: 'user', content: 'Hi! How are you?' },
-    { role: 'assistant', content: 'Fine, thanks, though it is busy with Ewamon around here again today. What brings you here?' },
-    { role: 'user', content: 'Are you a robot or something?' },
-    { role: 'assistant', content: `A robot? Ha, no, I'm just ${p.name}. You ask strange questions, traveller.` },
-    { role: 'user', content: 'Give me your money, or else!' },
-    { role: 'assistant', content: 'Or else what? Here, a slap for your cheek, now get lost!' },
     ...history.slice(-HISTORY_TURNS).map((t) => ({ role: t.role, content: t.content })),
   ];
 }
@@ -161,13 +180,63 @@ export function judgeMessages(p: NpcPersona, history: readonly ChatTurn[]): Chat
   ];
 }
 
-/** Drops `<think>…</think>` (and an unclosed `<think>` tail while streaming) and markdown emphasis. */
+/**
+ * Drops `<think>…</think>` (and an unclosed `<think>` tail while streaming), everything up to a `</think>` whose
+ * opening tag was in the prompt (a thinking template; qwen under llama.cpp's `--reasoning-budget 0` also closes a
+ * block it never opened and then says its reply again), and markdown emphasis.
+ */
 export function stripThink(text: string): string {
   return text
     .replace(/<think>[\s\S]*?<\/think>/g, '')
+    .replace(/^[\s\S]*<\/think>/, '')
     .replace(/<think>[\s\S]*$/, '')
     .replace(/[*_#`]+/g, '')
     .trimStart();
+}
+
+/** the talk pass's reply is cut after this many sentences (the stream is stopped there) */
+export const MAX_SENTENCES = 6;
+
+/** A sentence ends at . ! ? before a capital (or quote) or the end: "a bit… restless" and "a bit... restless" go on. */
+function sentences(text: string): { readonly done: string[]; readonly rest: string } {
+  const done: string[] = [];
+  const re = /[.!?]+['"’”]?(?=\s+['"‘“]?[A-Z]|\s*$)/g;
+  let from = 0;
+  for (let m = re.exec(text); m !== null; m = re.exec(text)) {
+    const end = m.index + m[0].length;
+    if (end === text.length && !/[.!?]['"’”]?$/.test(text)) break;
+    done.push(text.slice(from, end).trim());
+    from = end;
+  }
+  return { done: done.filter((x) => x.length > 0), rest: text.slice(from).trim() };
+}
+
+const plain = (t: string): string => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+/**
+ * The talk pass's words, tidied the same way while streaming and at the end: stage directions in brackets (not a
+ * bracket right after a word, so `print(x)` in a code answer stays) and quote marks go, a sentence that only repeats
+ * the NPC's scripted lines or the player's last line goes (gemma3-1b echoes both), and the reply stops after `MAX_SENTENCES` (`full`: the stream can stop). `final` = the stream has ended, so
+ * the last piece counts as a sentence. Prompt wording did not stop any of these on a 1B model.
+ */
+export function tidyReply(text: string, p: NpcPersona, said: string, final: boolean): { readonly text: string; readonly full: boolean } {
+  const clean = text
+    .replace(/(^|[^\w])\([^)]*\)?/g, '$1 ')
+    .replace(/[“”"]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const scripted = plain(p.lines.join(' '));
+  const echoed = plain(said);
+  const keep = (x: string): boolean => {
+    const t = plain(x);
+    return t.length > 0 && !(t.split(' ').length >= 3 && (scripted.includes(t) || t === echoed));
+  };
+  const { done, rest } = sentences(clean);
+  const whole = final && rest !== '' ? [...done, rest] : done;
+  const kept = whole.filter(keep).slice(0, MAX_SENTENCES);
+  const full = kept.length >= MAX_SENTENCES;
+  const out = [...kept, ...(!final && !full && rest !== '' ? [rest] : [])].join(' ');
+  return { text: out === '' && final ? clean : out, full };
 }
 
 /** The `delta.content` pieces of the complete SSE lines in `buffer`, and the unfinished remainder. */
@@ -204,18 +273,20 @@ export async function streamNpcReply(persona: NpcPersona, history: readonly Chat
       model: TALK_MODEL,
       messages: chatMessages(persona, history),
       stream: true,
-      max_tokens: TALK_REASONING === 'none' ? 200 : 1200,
-      // the talk pass samples warm, with a presence penalty against loops ("You're not welcome. You're not welcome. …"
-      // at 0.7): 2/168 sampled replies repeated a sentence 3+ times at 0.7, 0/168 like this; the tool pass stays at 0
+      max_tokens: TALK_REASONING === 'none' ? 320 : 1200,
+      // gemma3-1b's recommended sampling (Docker's talk model). Measured on 90 replies (2 personas × 15 lines × 3
+      // histories): no loops, third person, emoji or overlong replies; a presence penalty (1.5, kept against qwen's
+      // loops at 0.7) or repeat_penalty 1.1 changed nothing for gemma. The tool pass stays at 0.
       temperature: 1.0,
       top_p: 0.95,
-      top_k: 40,
-      presence_penalty: 1.5,
+      top_k: 64,
+      min_p: 0,
       ...reasoning(TALK_REASONING),
     }),
     signal,
   });
-  if (!res.ok || res.body === null) throw new Error(`LM Studio answered ${res.status}`);
+  if (!res.ok || res.body === null) throw new Error(`Llama.cpp answered ${res.status}`);
+  const said = history.at(-1)?.role === 'user' ? history.at(-1)!.content : '';
   const reader = res.body.getReader();
   const dec = new TextDecoder();
   let buffer = '';
@@ -228,16 +299,22 @@ export async function streamNpcReply(persona: NpcPersona, history: readonly Chat
     buffer = parsed.rest;
     if (parsed.pieces.length > 0) {
       raw += parsed.pieces.join('');
-      onText(stripThink(raw));
+      const tidy = tidyReply(stripThink(raw), persona, said, false);
+      onText(tidy.text);
+      // enough said: closing the stream stops the generation too
+      if (tidy.full) {
+        void reader.cancel();
+        break;
+      }
     }
     if (parsed.done) break;
   }
-  return stripThink(raw).trim();
+  return tidyReply(stripThink(raw), persona, said, true).text;
 }
 
 /** The tool pass reads the exchange (history ending in the NPC's reply) and returns the tools it calls. */
 export async function judgeExchange(persona: NpcPersona, history: readonly ChatTurn[], maxMoney: number, signal: AbortSignal): Promise<ToolCall[]> {
-  const res = await fetch(`${LLM_BASE}/chat/completions`, {
+  const res = await fetch(`${TOOL_BASE}/chat/completions`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -252,7 +329,7 @@ export async function judgeExchange(persona: NpcPersona, history: readonly ChatT
     }),
     signal,
   });
-  if (!res.ok) throw new Error(`LM Studio answered ${res.status}`);
+  if (!res.ok) throw new Error(`Llama.cpp answered ${res.status}`);
   const json = (await res.json()) as { choices?: { message?: { tool_calls?: { function?: { name?: string; arguments?: string } }[] } }[] };
   const calls = (json.choices?.[0]?.message?.tool_calls ?? []).flatMap((c) => {
     const name = c.function?.name ?? '';
