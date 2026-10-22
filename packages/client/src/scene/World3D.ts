@@ -35,7 +35,7 @@ import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
 import { BIKE_ITEM, BODIES, HOLLOWED_FLAG, POSTGAME_FLAG, SHADOW_MAX, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, shadowNotice, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
-import type { CreatureInstance } from '@ewa/core';
+import type { BattleState, CreatureInstance } from '@ewa/core';
 import { FISH_REACH_M } from '@ewa/protocol';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
 import { ACTOR_POOL_SIZE, createRenderer, edgePoint, headingYaw, heroSurfaces, part3Of } from '@ewa/render';
@@ -246,6 +246,8 @@ class World implements World3D {
   private zoneHold: AtlasHold | null = null;
   /** the battle's team atlases and the side each stage slot shows */
   private readonly battleSprites = new BattleSprites(() => this.textures);
+  /** the battle state the party strip shows while a battle is open (null = the session party) */
+  private stripFrom: BattleState | null = null;
   private readonly selfTmp = { x: 0, z: 0 };
   private spectatorArenas = new Map<string, { x: number; z: number }>();
   private zone: ZoneDef | null = null;
@@ -688,10 +690,13 @@ class World implements World3D {
     this.offs.push(
       useSessionStore.subscribe(
         (s) => s.inventory?.party,
-        (party) => this.writeParty(party ?? []),
+        (party) => {
+          if (this.stripFrom === null) this.writeParty(party ?? []);
+        },
         { fireImmediately: true },
       ),
     );
+    this.offs.push(useUiStore.subscribe((s) => s.battle, (b) => this.writeBattleParty(b)));
     this.offs.push(
       useSessionStore.subscribe(
         (s) => s.progression,
@@ -752,6 +757,25 @@ class World implements World3D {
 
   private writeParty(party: readonly CreatureInstance[]): void {
     this.hudWriter.setParty(partyStrip(party, (i) => maxHpOf(party[i]!)));
+  }
+
+  /**
+   * While a battle is open the party strip shows the player's side as the battle has it: an arena fights healed copies
+   * at the match's level, never the session party, from the start state, then once each turn's timeline has played
+   * (never ahead of the HP bars); the session party comes back when the battle UI closes.
+   */
+  private writeBattleParty(b: ReturnType<typeof useUiStore.getState>['battle']): void {
+    if (b === null) {
+      if (this.stripFrom === null) return;
+      this.stripFrom = null;
+      this.writeParty(useSessionStore.getState().inventory?.party ?? []);
+      return;
+    }
+    const st = b.authoritative;
+    if (st === this.stripFrom || (b.phase === 'playing' && this.stripFrom !== null)) return;
+    this.stripFrom = st;
+    const party = st.sides[b.seat].party;
+    this.hudWriter.setParty(partyStrip(party.map((x) => x.creature), (i) => party[i]!.maxHp));
   }
 
   private flags(): ReadonlySet<string> {

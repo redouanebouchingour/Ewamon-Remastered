@@ -2024,6 +2024,18 @@ Rankings screen's RankedPanel / Mirevale queue) is unchanged.
   grade, exposure, fog and time of day come back with the zone (ZoneSystem's palette look + the room's `timeOfDay`), the
   backdrop is removed + disposed and `setZoneRoot(null)` clears it, the stage is undressed (beacons 0, shadows idle).
 
+## The party strip follows the battle (2026-10-12)
+
+The HUD party strip was built from the session party only (`inventory.party`). A world battle writes the party's hp
+every turn (`inventoryDelta`, so the strip moved, but at commit, ahead of the timeline's HP bars); an Arena match fights
+healed synthetic copies (`arenaCopies`) and writes nothing, so the strip kept showing the world party's hp and a fainted
+arena creature stayed at 100 %. `World3D.writeBattleParty` (a `useUiStore` `battle` subscription): while the battle UI
+is open the strip shows `authoritative.sides[seat].party` (each battler's own `maxHp`, so a Level 50 copy reads right)
+from the start state, then after each turn's timeline (a `playing` phase never rewrites it, so the strip never runs ahead
+of the bars); the session-party subscription stays quiet meanwhile. When `ui.battle` clears, the session party is
+written back. Live on the isolated dev pair (Arena Standard): voltaura's card went 52 % → 5 % → KO a turn at a time
+with the session party still full, and both players' strips returned to the session party after the result card.
+
 ## Trainer sight: the "!" and the walk-up (2026-10-20)
 
 The server's `trainerSpotted` (SPEC §30.3 trainer sight) holds the player until the trainer's fight starts. World3D locks
