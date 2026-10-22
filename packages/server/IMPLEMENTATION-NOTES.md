@@ -1235,3 +1235,18 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
 - "At a board" is checked as "in a town" (presence zone): the board screen is opened from the Marshal, and every town
   has one; there is no per-hall position check (the Daycare's REST does the same with its zone).
 - Dev helper `pnpm --filter @ewa/server bounty wins|post|list` (scripts/bounty.ts). One writer: stop the server.
+
+## NPC tools (voice talk, 2026-10-22)
+
+- `POST /npc/act { npcId, action, amount? }` (`rest/routes/npc.ts`): the save-touching tools the local model picks after
+  an NPC's reply (client `src/voice`; slap / kick stay client-side). The NPC must stand in the caller's presence zone
+  (a ZoneDef npc or an interior resident). Audit `npc.<action>`.
+  - `giveMoney` / `takeMoney`: up to `NPC_MONEY_MAX` (1 000). Each NPC keeps a wallet per player, seeded 300–2 000 from
+    the world seed and its id; giving draws from it (409 `npcPurseEmpty`), taking adds to it and is capped by the
+    player's money (409 `playerBroke` at 0).
+  - `giveCreature`: a species from the zone's land encounter slots (every table's common land slots for a zone without
+    one), a level inside its slot, party or box; once per NPC per 10 min (409 `npcNoCreature`).
+  - `takeCreature`: releases the lowest-level unlocked party creature for good, through `creatures.release` (so never
+    the last party member, never a locked one: 409 `npcCannotTake`). Locking is the player's protection.
+  - Wallets and cooldowns are in memory (a restart refills them); in-memory state moves only after the transaction.
+- Env `NPC_TOOLS` 'on' | 'off'; unset = on, except in production (the route can be called without the model).

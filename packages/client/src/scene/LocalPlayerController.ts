@@ -150,10 +150,33 @@ export class LocalPlayerController {
    */
   override: { ax: number; az: number; running: boolean } | null = null;
 
+  /** NPC voice talk's kick: a forced run in a world direction for a few steps, even while the dialogue holds the keys. */
+  private readonly shoveDir = { ax: 0, az: 0 };
+  private shoveLeft = 0;
+
+  /** Knocks the player back: runs along (ax, az) (normalised here) for `ms` through the real prediction and wire. */
+  shove(ax: number, az: number, ms: number): void {
+    const m = Math.hypot(ax, az);
+    if (m < 1e-6) return;
+    this.shoveDir.ax = ax / m;
+    this.shoveDir.az = az / m;
+    this.shoveLeft = ms;
+  }
+
+  get shoving(): boolean {
+    return this.shoveLeft > 0;
+  }
+
   /** DOM key state → the input frame (camera-relative, normalised). */
   sample(): void {
     const inp = this.input;
     inp.bike = this.bike;
+    if (this.enabled && this.shoveLeft > 0) {
+      inp.ax = this.shoveDir.ax;
+      inp.az = this.shoveDir.az;
+      inp.running = true;
+      return;
+    }
     if (!this.enabled || this.deps.blocked()) {
       inp.ax = 0;
       inp.az = 0;
@@ -189,6 +212,14 @@ export class LocalPlayerController {
   /** One fixed step: predict, record, and every 50 ms send. */
   step(dtMs: number): void {
     if (this.blendLeft > 0) this.blendLeft = Math.max(0, this.blendLeft - dtMs);
+    if (this.shoveLeft > 0) {
+      this.shoveLeft = Math.max(0, this.shoveLeft - dtMs);
+      if (this.shoveLeft === 0) {
+        this.input.ax = 0;
+        this.input.az = 0;
+        this.input.running = false;
+      }
+    }
     if (!this.placed) {
       this.writeRender();
       return;

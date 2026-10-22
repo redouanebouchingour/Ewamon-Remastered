@@ -399,7 +399,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(103); // GET + POST /bounties + GET /world/ecosystem/:zoneId + GET /nemeses + the 5 daycare / egg routes + GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(ROUTE_KEYS).toHaveLength(104); // POST /npc/act + GET + POST /bounties + GET /world/ecosystem/:zoneId + GET /nemeses + the 5 daycare / egg routes + GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
     expect(paths).toContain('GET /daily');
     expect(paths).toContain('POST /challenge');
     expect(paths).toContain('POST /daily/start');

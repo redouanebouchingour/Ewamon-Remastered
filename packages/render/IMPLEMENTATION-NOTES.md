@@ -2318,3 +2318,14 @@ pool; `Part3.worldFx`).
   into blobs (Mire Route at 17:30, the camera facing the sun); 0.45 with a thinner edge (power 3.4) keeps a warm halo.
 - The rim is masked by the card's alpha cut, so it never lights a transparent texel; the foot shade multiplies the
   albedo only (not the glow), between `footV` and `footV + 0.16` of the card's uv.
+
+## First-person view (2026-10-22, not in the SPEC)
+
+- `CameraRig.setFirstPerson(view | null)` (contract addition): with a look (the diorama yaw convention — forward is
+  (−sin yaw, −cos yaw) — and pitch, clamped ±80°) the `DioramaRig` puts the eye at the followed feet + 1.2 m, 0.4 m
+  in front of the body's axis (the chibi rigs are 1.54 m tall, 0.70 m deep: just in front of the face), with a 70° /
+  near 0.08 m lens; null restores the diorama lens. Only the diorama pose of a followed actor: a battle / inspector shot
+  ignores it. The shake keeps its diorama angle (computed at the default zoom distance, not the 1.4 m eye distance).
+  `BasicDioramaRig` ignores it.
+- `ActorPool.setHidden(id, hidden)` (contract addition): hides one actor's body (its feet, decal and nameplate anchor
+  stay); `spawn` resets it. The client hides the player's own body in first person.

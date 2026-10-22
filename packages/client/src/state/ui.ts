@@ -167,6 +167,8 @@ export interface DialogueUi {
   readonly onFinish?: () => void;
   /** A trainer who saw the player: Escape cannot walk away; it skips to the end and runs `onFinish` (the fight). */
   readonly obligatory?: boolean;
+  /** Not a person (a sign, a plaque): no voice talk (`state/voiceTalk.ts`). */
+  readonly noTalk?: boolean;
 }
 
 /**

@@ -11,6 +11,7 @@ import { BattleOverlay } from '../battle/BattleOverlay';
 import { ChallengePrompt } from '../world/ChallengePrompt';
 import { ChatInput } from '../world/ChatInput';
 import { DialogueBox } from '../world/DialogueBox';
+import { NpcStrikeFx } from '../world/NpcStrikeFx';
 import { EvolutionBanner } from '../world/EvolutionBanner';
 import { HatchReveal } from '../world/HatchReveal';
 import { FishingPrompt } from '../world/FishingPrompt';
@@ -27,6 +28,7 @@ import { setNavigator } from './navigation';
 import { installMessageRouter } from '../net/messageRouter';
 import { getWorldSession } from '../net/WorldSession';
 import { worldCapability } from '../scene/worldHost';
+import { dance } from '../state/dance';
 import { useSettingsStore } from '../state/settings';
 import type { InputAction } from '../state/settings';
 import { useUiStore } from '../state/ui';
@@ -83,6 +85,12 @@ function useShellHotkeys(): void {
       if (binds.toggleHud.includes(e.code)) {
         e.preventDefault();
         ui.toggleHud();
+        return;
+      }
+      // the breakdance (not a remappable binding: G was free)
+      if (e.code === 'KeyG' && !e.repeat && location.pathname === '/play') {
+        e.preventDefault();
+        dance();
         return;
       }
       if (binds.pause.includes(e.code) && location.pathname === '/play') {
@@ -152,6 +160,9 @@ function WorldHint() {
           <kbd>{keyLabel(binds[action][0])}</kbd> {label}
         </span>
       ))}
+      <button type="button" className={s.dance} onClick={dance} aria-label="Dance — G" data-testid="dance-button">
+        <kbd>G</kbd> Dance
+      </button>
     </aside>
   );
 }
@@ -185,6 +196,7 @@ export function PlayShell() {
       {/* arena PvP: the arena strip / waiting / result actions, a friend's invite, the match-found card */}
       <ArenaHud />
       <DialogueBox />
+      <NpcStrikeFx />
       <FishingPrompt />
       <ChatInput />
       <BattleOverlay />

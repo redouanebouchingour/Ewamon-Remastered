@@ -59,6 +59,43 @@
   color: var(--text-hi);
 }
 
+/* first-person toggle (the frame is pointer-transparent; the button is not) */
+.view {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  max-inline-size: 168px;
+  margin-block-start: var(--s-1);
+  padding: var(--s-1) var(--s-1) var(--s-1) var(--s-2);
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-2);
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.view[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.view:hover {
+  box-shadow: inset 0 0 0 1px var(--text-2);
+}
+
+.view:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* paper key chip */
 .key {
   display: inline-grid;

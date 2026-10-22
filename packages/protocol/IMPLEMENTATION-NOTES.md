@@ -225,3 +225,8 @@ installed library that future readers should not have to re-derive. The spec its
 - `bounties` (`GET /bounties`) and `bountyPost` (`POST /bounties`) (103 routes); `BountiesRes` with the three poster kinds
   (`BOUNTY_KINDS`), the caller's posts (`BOUNTY_STATUSES`), claims and the ghosts that can be posted on; history event
   `bounty`. No new server message: a claim's payout rides the battle's rewards and a `toast`.
+
+## NPC tools (2026-10-22)
+
+- `npcAct` (`POST /npc/act`, `NpcActReq` / `NpcActRes`, `NPC_ACTIONS`, `NPC_MONEY_MAX`): the client voice talk's
+  money and creature tools. Not in the SPEC (a local-model feature).

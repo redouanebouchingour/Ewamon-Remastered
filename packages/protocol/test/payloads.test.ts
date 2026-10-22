@@ -46,7 +46,7 @@ const CASES: Record<ClientMessageType, Case> = {
   },
   emote: {
     valid: { emote: 3 },
-    invalid: [{ emote: 0 }, { emote: 7 }, { emote: '3' }, { emote: 2.5 }, {}],
+    invalid: [{ emote: 0 }, { emote: 8 }, { emote: '3' }, { emote: 2.5 }, {}],
   },
   chat: {
     valid: { text: 'hello there' },

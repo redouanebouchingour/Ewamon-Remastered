@@ -23,7 +23,10 @@ export const InputMsg = z.object({
    */
   bike: z.boolean().optional(),
 });
-export const EmoteMsg = z.object({ emote: z.number().int().min(1).max(6) });
+/** Emote 7 is the breakdance (not in the spine; protocol IMPLEMENTATION-NOTES): it plays for BREAKDANCE_MS, not 2 s. */
+export const EMOTE_BREAKDANCE = 7;
+export const BREAKDANCE_MS = 6_000;
+export const EmoteMsg = z.object({ emote: z.number().int().min(1).max(7) });
 export const ChatMsg = z.object({ text: z.string().min(1).max(120) });
 
 /** Phase D10 adds `obstacle` (a Cut tree / Strength boulder of `ZoneDef.obstacles`, by id). */

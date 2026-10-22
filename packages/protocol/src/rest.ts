@@ -904,6 +904,32 @@ export const DaycareActionRes = z.object({ daycare: DaycareRes, party: Party, bo
 export const EggParams = z.object({ id: Uuid });
 export const EggMoveReq = z.object({ place: z.enum(EGG_PLACES) });
 
+// ---- NPC voice talk -----------------------------------------------------------------------------------------------------
+
+/**
+ * The local model's tools (client voice talk) that touch the save: the NPC the player is talking to gives or takes up
+ * to `NPC_MONEY_MAX` money (giving is limited by its wallet, taking by the player's money), gives one Ewamon, or takes
+ * one of the player's. Slap / kick are client-only.
+ */
+export const NPC_MONEY_MAX = 1000;
+export const NPC_ACTIONS = ['giveMoney', 'takeMoney', 'giveCreature', 'takeCreature'] as const;
+export const NpcActReq = z.object({
+  npcId: z.string().min(1).max(80),
+  action: z.enum(NPC_ACTIONS),
+  /** money actions: what the NPC named (default and cap NPC_MONEY_MAX) */
+  amount: z.number().int().min(1).max(NPC_MONEY_MAX).optional(),
+});
+export const NpcActRes = z.object({
+  /** the caller's money after the action */
+  money: Money,
+  /** money moved (0 for a creature action) */
+  amount: Money,
+  /** what the NPC has left to give */
+  wallet: Money,
+  creaturesAdded: z.array(CreatureInstanceSchema),
+  creaturesRemoved: z.array(z.string()),
+});
+
 // ---- admin / health -----------------------------------------------------------------------------------------------------
 
 /** TODO(spec): `/admin/stats` has no listed body; these are the legacy counters carried over. */
@@ -1050,6 +1076,7 @@ export const ROUTES = {
   // a living ecosystem: this week on a zone (surging, scarce, migrants, the honor tilt)
   worldEcosystem: route({ method: 'GET', path: '/world/ecosystem/:zoneId', auth: 'bearer', params: EcoParams, response: EcosystemRes }),
   // the bounty board: the Wanted posters, the caller's posts and the latest claims; posting one on a ghost
+  npcAct: route({ method: 'POST', path: '/npc/act', auth: 'bearer', request: NpcActReq, response: NpcActRes }),
   bounties: route({ method: 'GET', path: '/bounties', auth: 'bearer', response: BountiesRes }),
   bountyPost: route({ method: 'POST', path: '/bounties', auth: 'bearer', request: BountyPostReq, response: BountiesRes }),
   // Majin vs Tenjin seasons: the standings and the Chronicle, taking a side, the side holding Solenne's sky

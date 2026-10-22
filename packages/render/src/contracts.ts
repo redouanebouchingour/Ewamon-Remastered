@@ -271,6 +271,8 @@ export interface CameraRig {
   cue(kind: 'attacker' | 'defender' | 'impact' | 'wide' | 'ko' | 'throw', ms: number): void;   // reconciled 2026-09-18: 'throw' added for the orb sequence
   /** Phase A: the diorama yaw base in degrees (headings are base + 90°·k); null restores the default diagonal −35°. Inside a hall the client sets the hall axis. */
   setYawBase(deg: number | null): void;
+  /** First-person view (render IMPLEMENTATION-NOTES): the look (diorama yaw convention, pitch in radians) or null = the diorama. */
+  setFirstPerson(view: { readonly yaw: number; readonly pitch: number } | null): void;
   update(dtMs: number): void;                               // called by frame(); zero allocation
   readonly focus: Readonly<Vector3>;                        // the point the DOF plane passes through (feet of the followed actor)
   readonly camera: PerspectiveCamera;
@@ -342,7 +344,9 @@ export interface ActorDescriptor { readonly look: string; readonly name: string;
 export interface ActorPool {
   spawn(id: string, d: ActorDescriptor): void;                 // character mesh from the look table (§10.7.7); pool of 48 rigs preallocated
   setTransform(id: string, x: number, z: number, angle: number, moving: boolean, running: boolean): void;   // y from the collider; walk/run blend by speed
-  setEmote(id: string, n: 0 | 1 | 2 | 3 | 4 | 5 | 6): void;    // 0 clears; 1..6 = wave happy sad alert heart cool (spine §4.1) — a 2 s card over the head
+  setHidden(id: string, hidden: boolean): void;              // first-person view: hide the player's own body (render IMPLEMENTATION-NOTES)
+  setEmote(id: string, n: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7): void;    // 0 clears; 1..6 = wave happy sad alert heart cool (spine §4.1) — a 2 s card over the head; 7 = breakdance (6 s, IMPLEMENTATION-NOTES)
+  setHop(id: string, ms: number): void;                        // hop in place for ms (villagers dancing along; IMPLEMENTATION-NOTES)
   despawn(id: string): void;
   feetOf(id: string, out: Vector3): Vector3 | null;            // for CameraRig.follow and the DOF focus
   screenPositions(out: Float32Array): number;                  // xy pairs in CSS px for HudLayer nameplates; returns count

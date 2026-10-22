@@ -42,6 +42,13 @@ import { resolveLook, type AccessoryTemplate, type CharacterSet, type CharacterS
 
 export const ACTOR_POOL_SIZE = 48;
 export const EMOTE_MS = 2000;
+/** Emote 7, the breakdance (client NPC-voice build, IMPLEMENTATION-NOTES "Breakdance"): longer than the 2 s cards. */
+export const BREAKDANCE_EMOTE = 7;
+export const BREAKDANCE_MS = 6000;
+/** How long an emote plays (ms). */
+export function emoteMs(n: number): number {
+  return n === BREAKDANCE_EMOTE ? BREAKDANCE_MS : EMOTE_MS;
+}
 /** Head-top anchor above the feet before a look resolves (m). */
 export const HEAD_ANCHOR_M = 1.7;
 export const CHARACTER = Object.freeze({
@@ -76,19 +83,19 @@ export const CHARACTER = Object.freeze({
   boundsCentreY: 1.1, boundsRadius: 1.75,
 });
 
-export type EmoteId = 0 | 1 | 2 | 3 | 4 | 5 | 6;
-/** spine §4.1: 1..6 = wave happy sad alert heart cool. */
-export const EMOTE_NAMES: readonly string[] = Object.freeze(['', 'wave', 'happy', 'sad', 'alert', 'heart', 'cool']);
+export type EmoteId = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+/** spine §4.1: 1..6 = wave happy sad alert heart cool; 7 = breakdance (not in the spine). */
+export const EMOTE_NAMES: readonly string[] = Object.freeze(['', 'wave', 'happy', 'sad', 'alert', 'heart', 'cool', 'breakdance']);
 /**
  * The clip each emote plays (§10.7.7). KayKit ships no wave and nothing downcast, so those two are procedural poses
  * over the idle (`EMOTE_POSES`): the right arm raised and waving, the head and chest bowed. Joy and the heart hop
  * (`cheer`), alert flinches, cool is the one-handed `use`.
  */
-export const EMOTE_CLIPS: readonly (string | null)[] = Object.freeze([null, null, 'cheer', null, 'flinch', 'cheer', 'use']);
+export const EMOTE_CLIPS: readonly (string | null)[] = Object.freeze([null, null, 'cheer', null, 'flinch', 'cheer', 'use', null]);
 /** Procedural emotes (applied after the mixer, weighted by the emote fade). */
-export const EMOTE_POSES: readonly ('wave' | 'bow' | null)[] = Object.freeze([null, 'wave', null, 'bow', null, null, null]);
+export const EMOTE_POSES: readonly ('wave' | 'bow' | 'breakdance' | null)[] = Object.freeze([null, 'wave', null, 'bow', null, null, null, 'breakdance']);
 /** Emotes that loop for their 2 s (the others play once and hold). */
-const EMOTE_LOOPS: readonly boolean[] = Object.freeze([false, false, true, false, false, true, false]);
+const EMOTE_LOOPS: readonly boolean[] = Object.freeze([false, false, true, false, false, true, false, false]);
 /** Procedural wave / bow numbers (root space: +x left, +y up, +z forward; radians, Hz). */
 export const EMOTE_POSE = Object.freeze({
   /** Upper-arm direction of the wave (up and out to the right, a little forward). */
@@ -98,6 +105,23 @@ export const EMOTE_POSE = Object.freeze({
   /** Bow: head and chest pitched forward (rad). */
   bowHead: 0.42, bowChest: 0.16,
 });
+
+/**
+ * The breakdance (emote 7), all out, in seconds from its start: toprock (bouncing, arms pumping), windmill (body flat on
+ * its side, spinning), headspin (upside down on the head), air flares (flips in the air) and a freeze. Heights (m),
+ * spins (rev/s) and tilts (rad) apply to the actor root; the limbs are aimed in root space after the mixer.
+ */
+export const BREAKDANCE = Object.freeze({
+  toprockEnd: 0.9, windmillEnd: 2.6, headspinEnd: 4.3, flaresEnd: 5.4,
+  toprockHz: 3.2, toprockBounceM: 0.18, toprockSway: 0.3,
+  windmillTilt: 1.35, windmillLiftM: 0.35, windmillRevS: 2.4,
+  headspinLiftM: 1.5, headspinRevS: 3.6,
+  flareHz: 2, flareJumpM: 0.95, flareRevS: 1.6,
+  freezeTiltZ: 1.15, freezeTiltX: 0.35, freezeLiftM: 0.42,
+  limbHz: 7,
+});
+/** Villagers dancing along: hop height (m) and rate (Hz). */
+export const HOP = Object.freeze({ heightM: 0.28, hz: 2.4 });
 
 /** Ground height sampler (the zone collider); flat 0 when unset. */
 export type GroundSampler = (x: number, z: number) => number;
@@ -165,6 +189,8 @@ interface Rig {
   name: string;
   guildTag: string;
   isLocal: boolean;
+  /** hidden by the client (the first-person view hides the player's own body) */
+  hidden: boolean;
   readonly feet: Vector3;
   readonly groundN: Vector3;
   angle: number;
@@ -182,6 +208,9 @@ interface Rig {
   emote: EmoteId;
   emoteLeft: number;
   emoteW: number;
+  /** hopping along to a breakdance (ms left) and the hop clock (s) */
+  hopLeft: number;
+  hopT: number;
   emoteAction: AnimationAction | null;
   inst: Instance | null;
   acc: Mesh | null;
@@ -350,7 +379,7 @@ export class CharacterPool implements ActorPool {
       r.speed = 0; r.hasLast = false; r.idleW = 1; r.walkW = 0; r.runW = 0; r.emote = 0; r.emoteLeft = 0; r.emoteW = 0; r.emoteAction = null;
       this.refreshCounts();
     }
-    r.name = d.name; r.guildTag = d.guildTag; r.isLocal = d.isLocal;
+    r.name = d.name; r.guildTag = d.guildTag; r.isLocal = d.isLocal; r.hidden = false;
     r.ud.sharp = d.isLocal ? 1 : 0;
     r.accUd.sharp = r.ud.sharp;
     r.ud.ewaActor = id;
@@ -370,11 +399,25 @@ export class CharacterPool implements ActorPool {
     this.place(r);
   }
 
-  setEmote(id: string, n: 0 | 1 | 2 | 3 | 4 | 5 | 6): void {
+  /** Hides (or shows again) one actor's body; its feet, decal and nameplate anchor stay. */
+  setHidden(id: string, hidden: boolean): void {
+    const r = this.byId.get(id);
+    if (r !== undefined) r.hidden = hidden;
+  }
+
+  /** Hops the actor in place for `ms` (villagers dancing along to a breakdance); 0 stops. */
+  setHop(id: string, ms: number): void {
+    const r = this.byId.get(id);
+    if (r === undefined) return;
+    if (r.hopLeft <= 0) r.hopT = 0;
+    r.hopLeft = Math.max(0, ms);
+  }
+
+  setEmote(id: string, n: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7): void {
     const r = this.byId.get(id);
     if (r === undefined) return;
     r.emote = n;
-    r.emoteLeft = n === 0 ? 0 : EMOTE_MS;
+    r.emoteLeft = n === 0 ? 0 : emoteMs(n);
     this.startEmote(r);
   }
 
@@ -489,10 +532,16 @@ export class CharacterPool implements ActorPool {
       r.dist2 = cam !== null ? cam.position.distanceToSquared(r.feet) : 0;
       const g = r.inst;
       if (g === null) continue;
-      const visible = r.dist2 <= C.cullRangeM * C.cullRangeM;
+      const visible = !r.hidden && r.dist2 <= C.cullRangeM * C.cullRangeM;
       g.root.visible = visible;
       g.root.position.copy(r.feet);
-      g.root.rotation.y = r.yaw;
+      // x / z reset every frame: the breakdance tilts the root
+      g.root.rotation.set(0, r.yaw, 0);
+      if (r.hopLeft > 0) {
+        r.hopLeft = Math.max(0, r.hopLeft - dtMs);
+        r.hopT += dt;
+        g.root.position.y += Math.abs(Math.sin(r.hopT * Math.PI * HOP.hz)) * HOP.heightM * Math.min(1, r.hopLeft / 250);
+      }
       if (r.acc !== null) r.acc.visible = visible && r.dist2 <= C.accessoryRangeM * C.accessoryRangeM;
       if (!visible) continue;
       // a clip emote replaces the gait; a procedural one (wave, bow) poses bones over it, so the gait keeps its full weight
@@ -508,6 +557,7 @@ export class CharacterPool implements ActorPool {
         const pose = EMOTE_POSES[r.emote];
         if (pose === 'wave') this.poseWave(g, r.emoteW, (EMOTE_MS - r.emoteLeft) / 1000);
         else if (pose === 'bow') this.poseBow(g, r.emoteW);
+        else if (pose === 'breakdance') this.poseBreakdance(g, r.emoteW, (BREAKDANCE_MS - r.emoteLeft) / 1000);
       }
     }
     this.pickShadowCasters();
@@ -523,7 +573,7 @@ export class CharacterPool implements ActorPool {
 
   /** Live actor ids in slot order (the order `screenPositions` writes). */
   forEachLive(cb: (id: string, name: string, guildTag: string, emote: EmoteId, emoteT: number) => void): void {
-    for (let i = 0; i < this.rigs.length; i++) { const r = this.rigs[i]!; if (r.id !== null) cb(r.id, r.name, r.guildTag, r.emote, r.emoteLeft / EMOTE_MS); }
+    for (let i = 0; i < this.rigs.length; i++) { const r = this.rigs[i]!; if (r.id !== null) cb(r.id, r.name, r.guildTag, r.emote, r.emoteLeft / emoteMs(r.emote)); }
   }
 
   /**
@@ -540,7 +590,7 @@ export class CharacterPool implements ActorPool {
   /** Current emote of an actor and its remaining fraction (0 = none). */
   emoteOf(id: string): { readonly n: EmoteId; readonly left: number } {
     const r = this.byId.get(id);
-    return r === undefined ? { n: 0, left: 0 } : { n: r.emote, left: r.emoteLeft / EMOTE_MS };
+    return r === undefined ? { n: 0, left: 0 } : { n: r.emote, left: r.emoteLeft / emoteMs(r.emote) };
   }
 
   /**
@@ -714,7 +764,7 @@ export class CharacterPool implements ActorPool {
     g.mesh.userData = r.ud as unknown as Record<string, unknown>;
     g.mesh.name = `ewa:actor:${r.id ?? ''}:${t.id}`;
     g.root.position.copy(r.feet);
-    g.root.rotation.y = r.yaw;
+    g.root.rotation.set(0, r.yaw, 0);
     g.root.visible = true;
     g.mixer.stopAllAction();
     g.idle?.reset().play();
@@ -830,6 +880,60 @@ export class CharacterPool implements ActorPool {
     if (head !== undefined) tiltBone(head, _t, EMOTE_POSE.bowHead * w);
   }
 
+  /**
+   * Breakdance (emote 7): the root lifts, tilts and spins per phase (`BREAKDANCE`), the limbs flail in root space. The
+   * mixer rewrites the bones and the frame start resets the root, so nothing accumulates. Zero allocation.
+   */
+  private poseBreakdance(g: Instance, w: number, t: number): void {
+    const B = BREAKDANCE;
+    const root = g.root;
+    root.rotation.order = 'YXZ';
+    const yaw = root.rotation.y;
+    const TAU = Math.PI * 2;
+    const f = Math.sin(t * TAU * B.limbHz);
+    // arms (x: ±1 left / right), legs: root-space directions per phase
+    let ax = 0.9, ay = 0.3, az = 0.2, lx = 0.25, ly = -1, lz = 0;
+    if (t < B.toprockEnd) {
+      const k = Math.sin(t * TAU * B.toprockHz);
+      root.position.y += Math.abs(k) * B.toprockBounceM * w;
+      root.rotation.set(0, yaw + k * B.toprockSway * w, k * 0.18 * w);
+      ax = 0.5; ay = 0.6 + 0.5 * k; az = 0.5; lx = 0.3 + 0.2 * Math.abs(k); ly = -1; lz = 0.3 * k;
+    } else if (t < B.windmillEnd) {
+      root.position.y += B.windmillLiftM * w;
+      root.rotation.set(0.25 * f * w, yaw + (t - B.toprockEnd) * TAU * B.windmillRevS * w, B.windmillTilt * w);
+      ax = 1; ay = -0.1; az = 0.1 * f; lx = 0.9; ly = -0.25; lz = 0.6 * f;
+    } else if (t < B.headspinEnd) {
+      root.position.y += B.headspinLiftM * w;
+      root.rotation.set(Math.PI * w, yaw + (t - B.windmillEnd) * TAU * B.headspinRevS * w, 0.12 * f * w);
+      // upside down: root-space up is the ground — the hands brace, the legs open in a V to the sky
+      ax = 0.45; ay = 1; az = 0.25; lx = 0.85; ly = -0.6; lz = 0.25 * f;
+    } else if (t < B.flaresEnd) {
+      const p = (t - B.headspinEnd) * B.flareHz;
+      const hop = p - Math.floor(p);
+      root.position.y += Math.sin(hop * Math.PI) * B.flareJumpM * w;
+      root.rotation.set(hop * TAU * w, yaw + (t - B.headspinEnd) * TAU * B.flareRevS * w, 0.4 * f * w);
+      ax = 1; ay = 0.4 * f; az = 0; lx = 1; ly = -0.3; lz = 0.4 * f;
+    } else {
+      root.position.y += B.freezeLiftM * w;
+      root.rotation.set(B.freezeTiltX * w, yaw, B.freezeTiltZ * w);
+      ax = 0.6; ay = 1; az = 0.1; lx = 0.7; ly = -0.4; lz = 0.6;
+    }
+    root.updateMatrixWorld(true);
+    root.getWorldQuaternion(_qRoot);
+    this.aimLimb(g, 'upperarml', 'lowerarml', ax, ay, az, w);
+    this.aimLimb(g, 'upperarmr', 'lowerarmr', -ax, ay, -az, w);
+    this.aimLimb(g, 'upperlegl', 'lowerlegl', lx, ly, lz, w);
+    this.aimLimb(g, 'upperlegr', 'lowerlegr', -lx, ly, -lz, w);
+  }
+
+  /** Aims a limb along a root-space direction (`_qRoot` holds the root's world rotation). */
+  private aimLimb(g: Instance, upper: string, lower: string, x: number, y: number, z: number, w: number): void {
+    const u = g.bones.get(upper), l = g.bones.get(lower);
+    if (u === undefined || l === undefined) return;
+    _t.set(x, y, z).normalize().applyQuaternion(_qRoot);
+    aimBone(u, l, _t, w);
+  }
+
   /** Shadows from the nearest `shadowCasters` visible bodies within `shadowRangeM`; accessories never cast. */
   private pickShadowCasters(): void {
     const C = CHARACTER;
@@ -937,9 +1041,9 @@ export class CharacterPool implements ActorPool {
   private makeRig(i: number): Rig {
     return {
       slot: i, ud: { sharp: 0, ewaTile: 0, ewaActor: '' }, accUd: { sharp: 0, ewaTile: 0 }, id: null, look: '', lookId: null, lookRef: null,
-      name: '', guildTag: '', isLocal: false, feet: new Vector3(), groundN: new Vector3(0, 1, 0), angle: 0, yaw: 0, hasYaw: false,
+      name: '', guildTag: '', isLocal: false, hidden: false, feet: new Vector3(), groundN: new Vector3(0, 1, 0), angle: 0, yaw: 0, hasYaw: false,
       moving: false, running: false, speed: 0, lastX: 0, lastZ: 0, hasLast: false, idleW: 1, walkW: 0, runW: 0, emote: 0, emoteLeft: 0,
-      emoteW: 0, emoteAction: null, inst: null, acc: null, accId: null, dist2: 0,
+      emoteW: 0, hopLeft: 0, hopT: 0, emoteAction: null, inst: null, acc: null, accId: null, dist2: 0,
     };
   }
 }

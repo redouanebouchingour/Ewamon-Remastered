@@ -11,7 +11,7 @@ import {
   SkinnedMesh, Texture, Vector3,
 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
-import { ACTOR_POOL_SIZE, CHARACTER, CharacterPool, EMOTE_CLIPS } from '../src/stage/actors.js';
+import { ACTOR_POOL_SIZE, BREAKDANCE_EMOTE, BREAKDANCE_MS, CHARACTER, CharacterPool, EMOTE_CLIPS } from '../src/stage/actors.js';
 import { parseCharacterSet, resolveLook, type AccessoryTemplate, type CharacterSet, type CharacterSource, type ShapeTemplate } from '../src/stage/looks.js';
 
 const file = (url: string) => ({ url, bytes: 1, hash: 'abcdef0123456789' });
@@ -217,6 +217,42 @@ describe('CharacterPool — KayKit bodies', () => {
     expect(pool.gaitOf('a')!.emote).toBeLessThan(0.05);
     for (let i = 0; i < 100; i++) pool.update(16);
     expect(pool.emoteOf('a').n).toBe(0);
+    pool.dispose();
+  });
+
+  it('the breakdance (emote 7) runs 6 s and throws the body around; a hop lifts a villager; a hidden actor draws no body', async () => {
+    const { pool } = await readyPool();
+    pool.spawn('a', { look: 'casual_male', name: 'A', guildTag: '', isLocal: false });
+    pool.spawn('b', { look: 'casual_male', name: 'B', guildTag: '', isLocal: false });
+    await flush();
+    pool.setTransform('a', 0, 0, 0, false, false);
+    pool.setTransform('b', 3, 0, 0, false, false);
+    pool.update(16);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the instance root is private
+    const root = (id: string) => (pool as any).byId.get(id).inst.root as { position: { y: number }; rotation: { x: number } };
+    pool.setEmote('a', BREAKDANCE_EMOTE);
+    pool.setHop('b', BREAKDANCE_MS);
+    let lifted = 0;
+    let flipped = false;
+    let hopped = 0;
+    for (let t = 0; t < 3000; t += 16) {
+      pool.update(16);
+      lifted = Math.max(lifted, root('a').position.y);
+      if (Math.abs(root('a').rotation.x) > 3) flipped = true;
+      hopped = Math.max(hopped, root('b').position.y);
+    }
+    expect(pool.emoteOf('a').n).toBe(BREAKDANCE_EMOTE);
+    expect(lifted).toBeGreaterThan(1);
+    expect(flipped).toBe(true);
+    expect(hopped).toBeGreaterThan(0.2);
+    for (let t = 0; t < 3300; t += 16) pool.update(16);
+    expect(pool.emoteOf('a').n).toBe(0);
+    pool.update(16);
+    expect(root('a').position.y).toBeCloseTo(0);
+    expect(root('a').rotation.x).toBe(0);
+    pool.setHidden('b', true);
+    pool.update(16);
+    expect((pool as unknown as { byId: Map<string, { inst: { root: { visible: boolean } } }> }).byId.get('b')!.inst.root.visible).toBe(false);
     pool.dispose();
   });
 

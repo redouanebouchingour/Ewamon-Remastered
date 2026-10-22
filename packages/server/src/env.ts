@@ -61,6 +61,12 @@ export const EnvSchema = z.object({
    * see today's behaviour); 'always' = a wanted ghost steps out of every grass encounter it can (live checks).
    */
   BOUNTIES: z.enum(['on', 'off', 'always']).default('on'),
+  /**
+   * NPC voice talk's tools (`POST /npc/act`): 'on' = an NPC in the player's zone can give / take money and Ewamon;
+   * 'off' = refused (409 npcToolsOff). Unset = on except in production, where anyone could call the route without the
+   * local model.
+   */
+  NPC_TOOLS: z.enum(['on', 'off']).optional(),
   /** not configurable in v1; present so the value is visible */
   TICK_HZ: z.literal('20').default('20'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),

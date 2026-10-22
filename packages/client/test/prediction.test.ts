@@ -267,3 +267,24 @@ describe('remote interpolation', () => {
     expect(reversals).toBe(0);
   });
 });
+
+describe('shove (NPC voice talk kick)', () => {
+  it('runs the player along the shove for its duration even while the keys are blocked, then stops', () => {
+    const sent: InputPayload[] = [];
+    const c = new LocalPlayerController({ held: new Uint8Array(16), cameraYaw: () => 0, blocked: () => true, send: (p) => sent.push({ ...p }) });
+    c.reconcile(0, 0, 0, 0);
+    c.shove(0, 2, 250);
+    for (let i = 0; i < 20; i++) {
+      c.sample();
+      c.step(50);
+    }
+    expect(c.shoving).toBe(false);
+    expect(c.pose.z).toBeGreaterThan(1);
+    expect(Math.abs(c.pose.x)).toBeLessThan(1e-6);
+    expect(sent.length).toBeGreaterThan(0);
+    const z = c.pose.z;
+    c.sample();
+    c.step(50);
+    expect(c.pose.z - z).toBeLessThan(0.05);
+  });
+});

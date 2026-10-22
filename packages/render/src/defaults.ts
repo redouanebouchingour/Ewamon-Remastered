@@ -50,6 +50,8 @@ export class BasicDioramaRig implements CameraRig {
   /** The diorama yaw (radians) of the current heading — what the battle stage stages along. */
   get dioramaYaw(): number { return (this.yawBaseDeg + 90 * this.heading) * DEG; }
   setZoomStop(z: 0 | 1 | 2): void { this.zoom = z; }
+  /** Placeholder: no first-person pose (the diorama stays). */
+  setFirstPerson(_view: { readonly yaw: number; readonly pitch: number } | null): void { /* placeholder */ }
   follow(actorId: string | null): void { this.followed = actorId; }
   get followedActor(): string | null { return this.followed; }
 
@@ -114,7 +116,7 @@ export class NullHudLayer implements HudLayer {
 }
 
 export class NullActorPool implements ActorPool {
-  spawn(): void {} setTransform(): void {} setEmote(): void {} despawn(): void {}
+  spawn(): void {} setTransform(): void {} setHidden(): void {} setHop(): void {} setEmote(): void {} despawn(): void {}
   feetOf(): Vector3 | null { return null; }
   screenPositions(): number { return 0; }
   dispose(): void {}

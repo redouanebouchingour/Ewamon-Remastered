@@ -3,7 +3,8 @@
  *
  * Held keys (movement, run) are latched into a preallocated `Uint8Array` the LocalPlayerController samples once per
  * frame. Edge actions (interact, chat, emotes, challenge, camera heading, zoom, dev HUD) are dispatched from the
- * keydown / wheel / pointer handlers themselves — outside World3D.tick — to the callbacks World3D provides.
+ * keydown / wheel / pointer handlers themselves — outside World3D.tick — to the callbacks World3D provides. In the
+ * first-person view a left-button drag looks around (`look`) instead of turning the heading.
  * Nothing fires while a DOM input has focus; world actions are also gated by `blocked()` (battle, dialogue, modal,
  * chat open).
  */
@@ -23,6 +24,11 @@ export interface InputCallbacks {
   /** Phase D11: the bike key (World3D mounts / folds the bicycle when allowed) */
   toggleBike(): void;
   toggleDev(): void;
+  /**
+   * First-person view: a left-button drag over the canvas turns the view by (dx, dy) CSS px. Returns false when the
+   * view is the diorama (the drag then turns the heading as before).
+   */
+  look?(dx: number, dy: number): boolean;
   /** true while world actions must not fire (battle, dialogue, modal, chat) */
   blocked(): boolean;
 }
@@ -110,10 +116,26 @@ export function createInputCapture(target: Window, canvas: HTMLElement | null, c
     wheelAcc = 0;
   };
   let dragX: number | null = null;
+  let lookX: number | null = null;
+  let lookY = 0;
   const onDown = (e: PointerEvent): void => {
     if (e.button === 0 || e.button === 2) dragX = e.clientX;
+    if (e.button === 0) {
+      lookX = e.clientX;
+      lookY = e.clientY;
+    }
   };
   const onMove = (e: PointerEvent): void => {
+    if (lookX !== null && cb.look !== undefined) {
+      const ldx = e.clientX - lookX;
+      const ldy = e.clientY - lookY;
+      lookX = e.clientX;
+      lookY = e.clientY;
+      if (cb.look(ldx, ldy)) {
+        dragX = e.clientX;
+        return;
+      }
+    }
     if (dragX === null || cb.blocked()) return;
     const dx = e.clientX - dragX;
     if (Math.abs(dx) >= 80) {
@@ -123,6 +145,7 @@ export function createInputCapture(target: Window, canvas: HTMLElement | null, c
   };
   const onUp = (): void => {
     dragX = null;
+    lookX = null;
   };
 
   target.addEventListener('keydown', onKeyDown);

@@ -10,6 +10,9 @@
  *
  * Broadcast look (2026-10-11): a black frame and a label strip under the map — the zone (or hall) name and "Map" with
  * the player's own map key as a paper chip.
+ *
+ * First-person view (2026-10-22): a toggle under the strip (and F) switches the world camera between the diorama and
+ * the player's eyes (`state/view.ts`); in first person, WASD walks where you look and a left-button drag looks around.
  */
 import { useEffect, useRef, useState } from 'react';
 import { interiorAt } from '@ewa/content';
@@ -17,7 +20,9 @@ import type { PlacedInterior, ZoneId } from '@ewa/content';
 import type { PlayerState } from '@ewa/protocol';
 import { zoneName } from '../data/content';
 import { getWorldSession } from '../net/WorldSession';
+import { isTypingTarget } from '../scene/input';
 import { useSettingsStore } from '../state/settings';
+import { useViewStore } from '../state/view';
 import { MINIMAP_CSS_PX, MINIMAP_TICK_MS, drawBase, drawFrame, hallView, zoneView } from './minimapDraw';
 import type { Ctx2D, MinimapDot, MinimapView } from './minimapDraw';
 import { keyGlyph } from './TutorialCard';
@@ -131,6 +136,27 @@ export function Minimap() {
           Map <kbd className={s.key}>{mapKey}</kbd>
         </span>
       </div>
+      <ViewToggle />
     </aside>
+  );
+}
+
+/** The camera toggle under the map: diorama ↔ first person; F does the same (not while typing). */
+function ViewToggle() {
+  const fp = useViewStore((st) => st.firstPerson);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.code !== 'KeyF' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(document.activeElement)) return;
+      e.preventDefault();
+      useViewStore.getState().toggle();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  return (
+    <button type="button" className={s.view} aria-pressed={fp} onClick={() => useViewStore.getState().toggle()} data-testid="view-toggle">
+      <span>{fp ? 'First person' : 'Top-down'}</span>
+      <kbd className={s.key}>F</kbd>
+    </button>
   );
 }

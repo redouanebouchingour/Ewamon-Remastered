@@ -2218,3 +2218,57 @@ the second isolated client (the component over the landing page: the foe and own
   A refused post shows the Marshal's words: `net/errors.ts` spreads content's `BOUNTY_REFUSAL_TEXT` into the messages.
 - The claim needs no new client code: its payout is in the battle's rewards and its toast is a plain server `toast`.
 - The poster's eyebrow names the zone the player stands in (a town when opened from the Marshal).
+
+## NPC voice talk (2026-10-22)
+
+- Over any person's dialogue (not a sign: `DialogueUi.noTalk`, set for lore), hold V or the "Hold to talk" button and
+  speak Dutch; release to send. `voice/recorder.ts` records with MediaRecorder, resamples to 16 kHz mono in the browser
+  and posts a WAV to whisper.cpp's `whisper-server` (`node scripts/voice-stt.mjs`, `brew install whisper-cpp`, model
+  `~/.cache/ewamon-voice/ggml-large-v3-turbo-q5_0.bin`, language nl). `voice/npcChat.ts` streams the reply from LM
+  Studio (`gemma-4-e4b-it-qat`) in two passes: the talk pass streams the NPC's words with reasoning off and no tools;
+  then the tool pass (same model) reads the exchange and must call at least one tool (`tool_choice: required`,
+  reasoning off, token-capped since gemma sometimes drifts into reasoning anyway: no call = nothing).
+  Measured: reply starts ~130 ms, completes < 1 s; the tool pass 0.3–1 s. Free choice without reasoning never called a
+  tool; with reasoning it was right but took 5–7 s. qwen3.5-0.8b was tried as the talk pass: fast but incoherent, and
+  it would not give in to a robbery. `stripThink` drops a stray `<think>` block.
+  `state/voiceTalk.ts` holds the conversation; the DialogueBox shows what the player said and the streaming reply.
+- Client-only and local: Vite proxies `/voice/llm` → `EWA_LLM_TARGET` (default http://localhost:1234) and `/voice/stt`
+  → `EWA_STT_TARGET` (default http://127.0.0.1:8178), in dev and preview. `VITE_NPC_LLM_URL`, `VITE_NPC_STT_URL`,
+  `VITE_NPC_LLM_MODEL` / `VITE_NPC_LLM_REASONING` (talk pass), `VITE_NPC_TOOL_MODEL` / `VITE_NPC_TOOL_REASONING` (tool
+  pass; reasoning = an LM Studio `reasoning_effort` or `default`) override; `VITE_NPC_VOICE=0` hides it. Not in the SPEC; the story never sees it.
+- C opens a text field in the box to type instead of speaking (testing without a mic); the dialogue's keys ignore
+  events aimed at a text field, so V / E / Space type normally there.
+- Tools: after each reply the tool pass calls what the NPC does: `slap_user`, `kick_user`, `give_money` / `take_money`
+  (`amount` ≤ 1 000), `give_ewamon`, `take_ewamon`, or `do_nothing` (capped at 120 tokens). `state/voiceTalk.runTools`
+  plays the hits first, then the rest through `POST /npc/act` (server notes: NPC wallet, gift cooldown, a taken
+  creature is released for good, never the last or a locked one), applies the delta and toasts. What happened (or
+  was refused) is recorded on the turn in Dutch (`ChatTurn.events`) and given to the talk pass as the scene so far.
+- Slap / kick (`scene/npcStrike.ts`, `state/npcFx.ts`, `world/NpcStrikeFx.tsx`): the NPC's actor runs at the player
+  and walks back (the rigs have no strike clip), the player turns to it; at contact a hit sound, a camera shake and a
+  comic burst ("PETS!" / "BOEM!") with a red edge flash. A kick also knocks the player back:
+  `LocalPlayerController.shove` runs them away from the NPC for 260 ms through the real prediction and wire (it
+  overrides the dialogue's key block). An NPC without an actor here (a beat speaker) only gets the burst.
+- The player can hit back: H slaps and K kicks the NPC in the dialogue (or the Slap / Kick buttons). `PlayerStrike`
+  (render only; the simulation stands still) runs the player's actor at the NPC and back; a kick throws the NPC's actor
+  `KNOCK_M` back and it walks home. Same sound / shake / burst at contact. The hit then becomes a user turn
+  (`playerHitTurn`: a narration for the models, `shown` for the dialogue), so the NPC answers it and its tool pass may
+  hit back or grab something.
+- Villagers are written as hot-headed: insults and threats get a slap, a kick or a grab; real fear can still make
+  them pay; a friendly player may get money or an Ewamon. One temper among the example turns.
+- A conversation never pages the lines: Enter / Escape go back to them, so a beat's `onFinish` (a battle, a gym
+  challenge, the tutor screen) still runs only by paging past the scripted lines. Closing the dialogue ends the talk
+  and releases the microphone.
+- The prompt is a role-play with positive rules and example turns: telling the 0.8B model "you are not an AI" made it
+  talk about AIs. History is capped at 8 turns.
+
+## First-person view (2026-10-22, not in the SPEC)
+
+- `state/view.ts` (remembered per browser in localStorage) and the toggle under the minimap (`Minimap.tsx`
+  `ViewToggle`, also F when not typing). World3D's `syncFirstPerson` runs every frame: first person is on when chosen
+  and the world is free-roaming (no battle, arena or evolution); entering looks the way the diorama faced.
+- On: the rig's `setFirstPerson` gets the look; `cameraYaw()` returns the look yaw, so WASD walks where you look
+  (the same camera-relative `LocalPlayerController` path); the player's own body is hidden (re-applied each frame, a
+  zone handover respawns the actor) and faces the look; the diorama's tilt-shift DOF is off (it blurred everything
+  past a few metres); wheel zoom and the Q / R heading turns do nothing.
+- Looking: a left-button drag over the canvas (`InputCallbacks.look`, 0.0042 rad per px, pitch ±1.35 rad). In the
+  diorama `look` declines and the drag turns the heading as before.

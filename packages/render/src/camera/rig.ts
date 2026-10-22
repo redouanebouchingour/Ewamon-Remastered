@@ -75,6 +75,21 @@ export const CROWN_MARGIN_M = 0.4;
 export const MIN_SHOT_DISTANCE_M = 3;
 // #endregion
 
+// #region constants — first-person view (client NPC-voice build, IMPLEMENTATION-NOTES "First-person view")
+/**
+ * Eye height above the followed actor's feet (m), and how far in front of the body's axis the camera sits (m). The
+ * chibi rigs are 1.54 m tall and 0.70 m deep (measured on ranger_lad): the face is 0.35 m in front of the axis, the
+ * eyes ~1.2 m up. The camera sits just in front of the face (the client also hides the player's own body).
+ */
+export const FP_EYE_HEIGHT_M = 1.2;
+export const FP_EYE_FORWARD_M = 0.4;
+/** Vertical FOV (degrees) and near plane (m) while in first person (the diorama's 28° / 0.5 m are restored after). */
+export const FP_FOV_V = 70;
+export const FP_NEAR_M = 0.08;
+/** Pitch clamp (degrees). */
+export const FP_PITCH_MAX = 80;
+// #endregion
+
 // #region constants — §10.7.2 shake (amp · 0.4° roll; oscillator rates/phases are implementation values)
 /** Roll added to a shake: amp · 0.4 degrees per world unit. */
 export const SHAKE_ROLL_DEG = 0.4;
@@ -210,6 +225,10 @@ export class DioramaRig implements CameraRig {
   private shakeLeft = 0;
   private shakeClock = 0;
   private settledPending = false;
+  // first person: the look the client sets each frame (null = the diorama); the lens it last applied
+  private fp: { yaw: number; pitch: number } | null = null;
+  private fpLens = false;
+  private dioramaNear = 0;
   // blended pose (exposed for tests / HUD)
   private readonly pose: OrbitPose = { center: new Vector3(), yaw: 0, pitch: PITCH * DEG, distance: DISTANCE[DEFAULT_ZOOM_STOP] };
 
@@ -220,6 +239,38 @@ export class DioramaRig implements CameraRig {
   }
 
   // ---- §10.7.2 -------------------------------------------------------------------------------------------------
+
+  /**
+   * First-person view: `view` = the look (yaw in the diorama convention — forward is (−sin yaw, −cos yaw) — and pitch
+   * in radians, clamped to ±FP_PITCH_MAX); null = back to the diorama. Applies only to the diorama pose of a followed
+   * actor: a battle / inspector shot blends from and releases to the diorama as before (the client turns first person
+   * off for those).
+   */
+  setFirstPerson(view: { readonly yaw: number; readonly pitch: number } | null): void {
+    if (view === null || !Number.isFinite(view.yaw) || !Number.isFinite(view.pitch)) {
+      this.fp = null;
+      return;
+    }
+    const lim = FP_PITCH_MAX * DEG;
+    const pitch = Math.max(-lim, Math.min(lim, view.pitch));
+    if (this.fp === null) this.fp = { yaw: view.yaw, pitch };
+    else {
+      this.fp.yaw = view.yaw;
+      this.fp.pitch = pitch;
+    }
+  }
+
+  get firstPerson(): boolean { return this.fp !== null; }
+
+  /** Switches the lens between the diorama's (28°, near 0.5 m) and first person's (70°, near 0.08 m). */
+  private applyLens(fp: boolean): void {
+    if (fp === this.fpLens) return;
+    this.fpLens = fp;
+    if (fp) this.dioramaNear = this.camera.near;
+    this.camera.fov = fp ? FP_FOV_V : FOV_V;
+    this.camera.near = fp ? FP_NEAR_M : this.dioramaNear;
+    this.camera.updateProjectionMatrix();
+  }
 
   setHeading(h: 0 | 1 | 2 | 3): void {
     if (this.mode !== 'diorama' || h === this.heading) return;
@@ -384,13 +435,28 @@ export class DioramaRig implements CameraRig {
       if (aim > 0) this.focus.lerp(this.cueTarget, aim * b);
     }
 
+    // first person: the eye at the followed actor's head, looking along the client's yaw / pitch (focus stays the feet)
+    const fpOn = this.fp !== null && this.mode === 'diorama' && b === 0 && this.followed !== null;
+    this.applyLens(fpOn);
+    if (fpOn) {
+      const f = this.fp!;
+      const fx = -Math.sin(f.yaw);
+      const fz = -Math.cos(f.yaw);
+      const cp = Math.cos(f.pitch);
+      this.camera.position.set(this.focus.x + fx * FP_EYE_FORWARD_M, this.focus.y + FP_EYE_HEIGHT_M, this.focus.z + fz * FP_EYE_FORWARD_M);
+      _pos.set(this.camera.position.x + fx * cp, this.camera.position.y + Math.sin(f.pitch), this.camera.position.z + fz * cp);
+      this.camera.lookAt(_pos);
+      this.camera.updateMatrixWorld();
+    }
+
     // shake: rotation about right/up after the pose, plus roll
     if (this.shakeLeft > 0) {
       if (!this.o.effects().shake) { this.shakeLeft = 0; }
       else {
         this.shakeLeft = Math.max(0, this.shakeLeft - dt);
         this.shakeClock += dtS;
-        const fd = Math.max(1, this.camera.position.distanceTo(this.focus));
+        // first person: the eye is ~1.4 m from the feet; shake as at the diorama distance, not ~18× harder
+        const fd = fpOn ? DISTANCE[DEFAULT_ZOOM_STOP] : Math.max(1, this.camera.position.distanceTo(this.focus));
         const mag = Math.min(this.shakeOffset, shakeRoom * fd);     // T2: never shakes a battler out of the band
         const a = mag / fd;
         this.camera.rotateX(a * Math.sin(TAU * SHAKE_HZ[0] * this.shakeClock + SHAKE_PHASE[0]));

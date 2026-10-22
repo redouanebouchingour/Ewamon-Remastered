@@ -188,6 +188,8 @@ export interface SceneDirector {
   isStaticActor(id: string): boolean;
   /** Phase B7: where a director actor stands when no battle restages it (the foe actor puts it back), else null. */
   staticPose(id: string): { readonly x: number; readonly z: number; readonly angle: number } | null;
+  /** Every static actor (NPCs, trainers) with its spot — the breakdance makes the ones near the dancer hop along. */
+  forEachStatic(visit: (id: string, x: number, z: number) => void): void;
 }
 
 export interface SceneDirectorDeps {
@@ -656,6 +658,9 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     staticPose(id) {
       for (const s of statics) if (s.id === id) return { x: s.x, z: s.z, angle: s.angle };
       return null;
+    },
+    forEachStatic(visit) {
+      for (const s of statics) visit(s.id, s.x, s.z);
     },
   };
   return director;

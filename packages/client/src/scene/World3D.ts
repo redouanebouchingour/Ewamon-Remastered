@@ -36,7 +36,7 @@ import { Group, Vector3 } from 'three/webgpu';
 import { BIKE_ITEM, BODIES, HOLLOWED_FLAG, POSTGAME_FLAG, SHADOW_MAX, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, shadowNotice, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
-import { FISH_REACH_M } from '@ewa/protocol';
+import { BREAKDANCE_MS, FISH_REACH_M } from '@ewa/protocol';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
 import { ACTOR_POOL_SIZE, createRenderer, edgePoint, headingYaw, heroSurfaces, part3Of } from '@ewa/render';
 import type { CompileProgress, Renderer, SurfaceId, TypeName, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
@@ -67,6 +67,9 @@ import { useRealWeatherStore } from '../state/realWeather';
 import { factionSkyFor } from './factionSky';
 import { useSettingsStore } from '../state/settings';
 import { setFishingActions, useFishingStore } from '../state/fishing';
+import { setStrikeHook } from '../state/npcFx';
+import { useViewStore } from '../state/view';
+import { setDanceAction } from '../state/dance';
 import { noteTutorialEvent } from '../state/tutorial';
 import { useUiStore } from '../state/ui';
 import { FONT, TYPE_COLORS } from '../ui/tokens';
@@ -89,6 +92,8 @@ import { RemoteInterpolator } from './RemoteInterpolator';
 import { EMOTE_CHEER, EMOTE_SAD, FoeActor, foeSpecOf } from './foeActor';
 import { createSceneDirector, trainerPose } from './SceneDirector';
 import { TrainerApproach } from './trainerApproach';
+import { NpcStrike, PlayerStrike } from './npcStrike';
+import type { StrikeKind } from './npcStrike';
 import type { TrainerPose } from './SceneDirector';
 import type { SceneDirector } from './SceneDirector';
 import { SpawnViews } from './SpawnViews';
@@ -106,6 +111,18 @@ import type { SpriteCatalog } from './spriteCatalog';
 import { BattleSprites, CreatureTextures, NO_LEASE, creatureBudget } from './creatureTextures';
 import type { AtlasHold, CreatureSide, SpritePart, SpriteLease } from './creatureTextures';
 import type { WorldInstance } from './worldHost';
+
+/** NPC voice talk's kick: a short run away from the NPC (~1.5 m at run speed), through the real prediction and wire. */
+const KICK_SHOVE_MS = 260;
+
+/** First-person view: radians of turn per CSS px of left-button drag, the starting pitch and the pitch clamp. */
+const LOOK_RAD_PER_PX = 0.0042;
+const FP_START_PITCH = -0.12;
+const FP_PITCH_MAX = 1.35;
+
+/** The breakdance: emote 7 and how far (m) from the dancer the villagers hop along. */
+const BREAKDANCE_EMOTE = 7;
+const DANCE_ALONG_M = 30;
 
 const MAX_STEPS = 4;
 const NO_ITEMS: Readonly<Record<string, number>> = Object.freeze({});
@@ -168,6 +185,15 @@ class World implements World3D {
   private readonly trainerAt: TrainerPose = { x: 0, z: 0, angle: 0 };
   /** trainer sight: the spotting trainer's "!" and walk-up (created with the renderer), and the no-battle fallback */
   private approach: TrainerApproach | null = null;
+  /** NPC voice talk: an NPC's slap / kick lunge (`scene/npcStrike.ts`) */
+  private strikeFx: NpcStrike | null = null;
+  /** NPC voice talk: the player's slap / kick at the NPC (H / K in the dialogue) */
+  private playerStrikeFx: PlayerStrike | null = null;
+  /** First-person view (`state/view.ts`): on this frame, and the look (diorama yaw convention, pitch in radians) */
+  private fpOn = false;
+  private readonly fpView = { yaw: 0, pitch: FP_START_PITCH };
+  /** performance.now() until which the player's own breakdance plays (first person steps aside so it can be seen) */
+  private selfDanceUntil = 0;
   private approachTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly targets: InteractionTargets;
   private readonly ws: WorldSession = getWorldSession();
@@ -260,8 +286,9 @@ class World implements World3D {
       openChat: () => useUiStore.getState().setChatOpen(true),
       emote: (n) => this.ws.send('emote', { emote: n }),
       challenge: () => this.challengeNearest(),
-      rotate: (dir) => this.ready && this.renderer.camera.setHeading(((this.headingIndex() + dir + 4) & 3) as 0 | 1 | 2 | 3),
-      zoom: (dir) => this.ready && this.renderer.camera.setZoomStop(Math.max(0, Math.min(2, this.zoomStop() + dir)) as 0 | 1 | 2),
+      rotate: (dir) => this.ready && !this.fpOn && this.renderer.camera.setHeading(((this.headingIndex() + dir + 4) & 3) as 0 | 1 | 2 | 3),
+      zoom: (dir) => this.ready && !this.fpOn && this.renderer.camera.setZoomStop(Math.max(0, Math.min(2, this.zoomStop() + dir)) as 0 | 1 | 2),
+      look: (dx, dy) => this.look(dx, dy),
       jump: () => undefined,
       toggleBike: () => this.toggleBike(),
       toggleDev: () => {
@@ -282,6 +309,8 @@ class World implements World3D {
       onMiss: () => undefined,
     });
     setFishingActions({ press: () => this.fishing.press(), cancel: () => this.fishing.cancel() });
+    setDanceAction(() => this.dance());
+    setStrikeHook((kind, npcId, by, onHit) => (by === 'player' ? this.playerStrike(kind, npcId, onHit) : this.npcStrike(kind, npcId, onHit)));
     this.input = new LocalPlayerController({
       held: this.capture.held,
       cameraYaw: () => this.cameraYaw(),
@@ -397,7 +426,8 @@ class World implements World3D {
     this.observeSize();
     this.rendererOffs.push(
       onEffectiveSettings((s) => {
-        r.setEffects(s.effects);
+        // first person: the diorama's tilt-shift DOF would blur everything past a few metres
+        r.setEffects(this.fpOn ? { ...s.effects, dof: false } : s.effects);
         r.hud.setScale(s.uiScale);
         r.stage.setTypeColors(TYPE_COLORS[s.colorblind === 'none' ? 'default' : s.colorblind]);
       }),
@@ -748,7 +778,13 @@ class World implements World3D {
       }
       this.remotes.add(key, { name: p.name, look: lookOf(p.body), guildTag: p.guildTag, inBattle: p.inBattle });
       this.remotes.push(key, state.tick, p.x, p.z, p.angle, p.moving, p.running);
-      d.push($(p).listen('emote', (v: number) => this.ready && this.renderer.actors.setEmote(key, Math.max(0, Math.min(6, v)) as 0 | 1 | 2 | 3 | 4 | 5 | 6)));
+      d.push(
+        $(p).listen('emote', (v: number) => {
+          if (!this.ready) return;
+          this.renderer.actors.setEmote(key, Math.max(0, Math.min(BREAKDANCE_EMOTE, v)) as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7);
+          if (v === BREAKDANCE_EMOTE) this.danceAlong(p.x, p.z);
+        }),
+      );
       d.push(
         $(p).onChange(() => this.remotes.update(key, { name: p.name, look: lookOf(p.body), guildTag: p.guildTag, inBattle: p.inBattle })),
       );
@@ -1230,6 +1266,97 @@ class World implements World3D {
     });
   }
 
+  // ---- first-person view -----------------------------------------------------------------------------------------
+
+  /**
+   * Per frame: first person is on when the player chose it (`state/view.ts`) and the world is free-roaming (no
+   * battle, arena, evolution). Entering looks the way the diorama faced; the lens and the DOF follow the change.
+   */
+  private syncFirstPerson(): void {
+    const want =
+      useViewStore.getState().firstPerson && this.director.battleFrame === null && !this.inArena && this.evolution?.active !== true && performance.now() >= this.selfDanceUntil;
+    if (want !== this.fpOn) {
+      if (want) {
+        const rig = this.renderer.camera as unknown as { dioramaYaw?: number };
+        this.fpView.yaw = rig.dioramaYaw ?? 0;
+        this.fpView.pitch = FP_START_PITCH;
+      }
+      this.fpOn = want;
+      // the camera sits inside the chibi head: hide the player's own body while looking through its eyes
+      this.renderer.actors.setHidden(this.ws.selfId, want);
+      const e = getEffectiveSettings().effects;
+      this.renderer.setEffects(want ? { ...e, dof: false } : e);
+    }
+    // re-applied every frame: a zone handover respawns the player's actor (a fresh slot shows its body)
+    if (this.fpOn) this.renderer.actors.setHidden(this.ws.selfId, true);
+    this.renderer.camera.setFirstPerson(this.fpOn ? this.fpView : null);
+  }
+
+  /** A left-button drag in first person: turn and tilt the view (drag right looks right, drag up looks up). */
+  private look(dx: number, dy: number): boolean {
+    if (!this.fpOn) return false;
+    this.fpView.yaw -= dx * LOOK_RAD_PER_PX;
+    this.fpView.pitch = Math.max(-FP_PITCH_MAX, Math.min(FP_PITCH_MAX, this.fpView.pitch - dy * LOOK_RAD_PER_PX));
+    return true;
+  }
+
+  // ---- the breakdance (emote 7) -------------------------------------------------------------------------------------
+
+  /**
+   * G / the Dance button: the emote goes to the room (the others see it on this player's avatar), plays on the
+   * player's own actor at once (the server does not echo a player's own emote), with the fanfare, and every villager
+   * within DANCE_ALONG_M hops along. First person steps aside while it plays.
+   */
+  private dance(): void {
+    if (!this.ready || this.worldBlocked() || this.director.battleFrame !== null) return;
+    this.ws.send('emote', { emote: BREAKDANCE_EMOTE });
+    this.renderer.actors.setEmote(this.ws.selfId, BREAKDANCE_EMOTE);
+    this.selfDanceUntil = performance.now() + BREAKDANCE_MS;
+    this.audio.play('ui_stinger_victory_trainer', null);
+    this.danceAlong(this.input.pose.x, this.input.pose.z);
+  }
+
+  /** The villagers near a dancer hop along for the dance's length. */
+  private danceAlong(x: number, z: number): void {
+    const r2 = DANCE_ALONG_M * DANCE_ALONG_M;
+    this.director.forEachStatic((id, sx, sz) => {
+      const dx = sx - x;
+      const dz = sz - z;
+      if (dx * dx + dz * dz <= r2) this.renderer.actors.setHop(id, BREAKDANCE_MS);
+    });
+  }
+
+  // ---- NPC voice talk: slap / kick ------------------------------------------------------------------------------
+
+  /**
+   * The tool pass decided the NPC hits the player: its actor lunges in and back; at contact the sound, a camera shake
+   * and (a kick) the knockback. `onHit` runs at contact, or at once when the NPC has no actor here (a beat's speaker).
+   */
+  private npcStrike(kind: StrikeKind, npcId: string, onHit: () => void): void {
+    const home = this.ready ? this.director.staticPose(npcId) : null;
+    if (home === null) return onHit();
+    this.strikeFx ??= new NpcStrike(this.renderer.actors);
+    this.strikeFx.start(npcId, home, this.input.renderX, this.input.renderZ, () => {
+      this.audio.play(kind === 'kick' ? 'impact_fighting' : 'hit_normal', null);
+      this.renderer.camera.shake(kind === 'kick' ? 0.4 : 0.18, kind === 'kick' ? 380 : 220);
+      if (kind === 'kick') this.input.shove(this.input.pose.x - home.x, this.input.pose.z - home.z, KICK_SHOVE_MS);
+      onHit();
+    });
+  }
+
+  /** The player hits the NPC: their actor lunges in and back; at contact the sound and shake (a kick throws the NPC). */
+  private playerStrike(kind: StrikeKind, npcId: string, onHit: () => void): void {
+    const home = this.ready ? this.director.staticPose(npcId) : null;
+    if (home === null) return onHit();
+    this.strikeFx?.finish();
+    this.playerStrikeFx ??= new PlayerStrike(this.renderer.actors);
+    this.playerStrikeFx.start(kind, npcId, home, this.input.renderX, this.input.renderZ, () => {
+      this.audio.play(kind === 'kick' ? 'impact_fighting' : 'hit_normal', null);
+      this.renderer.camera.shake(kind === 'kick' ? 0.3 : 0.14, kind === 'kick' ? 300 : 180);
+      onHit();
+    });
+  }
+
   // ---- trainer sight ---------------------------------------------------------------------------------------------
 
   /**
@@ -1332,7 +1459,7 @@ class World implements World3D {
         return;
       case 'lore': {
         const l = z.lore.find((x) => x.id === t.id);
-        if (l !== undefined) ui.setDialogue({ speaker: l.title, lines: l.text, index: 0, targetId: l.id });
+        if (l !== undefined) ui.setDialogue({ speaker: l.title, lines: l.text, index: 0, targetId: l.id, noTalk: true });
         this.ws.send('interact', { targetId: t.id, kind: 'lore' });
         return;
       }
@@ -1536,6 +1663,7 @@ class World implements World3D {
 
   private cameraYaw(): number {
     if (!this.ready) return 0;
+    if (this.fpOn) return this.fpView.yaw;
     const rig = this.renderer.camera as unknown as { dioramaYaw?: number };
     return rig.dioramaYaw ?? 0;
   }
@@ -1753,13 +1881,27 @@ class World implements World3D {
         const rx = this.input.renderX;
         const rz = this.input.renderZ;
         this.renderer.actors.setTransform(selfId, rx, rz, this.approach.facePlayer(rx, rz), false, false);
+      } else if (this.playerStrikeFx?.active === true) {
+        // NPC voice talk: the player runs at the NPC and back (render only; the simulation stands still)
+        const ps = this.playerStrikeFx;
+        ps.update(frameDt);
+        if (ps.active) this.renderer.actors.setTransform(selfId, ps.x, ps.z, ps.angle, ps.moving, ps.running);
+        else this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, ps.angle, false, false);
+      } else if (this.strikeFx?.active === true) {
+        // NPC voice talk: the player faces the NPC that slaps / kicks them (a kick's knockback runs backwards)
+        this.strikeFx.update(frameDt);
+        const rx = this.input.renderX;
+        const rz = this.input.renderZ;
+        this.renderer.actors.setTransform(selfId, rx, rz, this.strikeFx.facePlayer(rx, rz), false, false);
       } else if (this.evolution?.active === true) {
         // the evolution sequence: the trainer turns to the creature beside them (input is locked meanwhile)
         const rx = this.input.renderX;
         const rz = this.input.renderZ;
         this.renderer.actors.setTransform(selfId, rx, rz, this.evolution.faceAngle(rx, rz), false, false);
       } else {
-        this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, this.input.pose.angle, this.input.moving, this.input.running || this.input.biking);
+        // first person: the body under the camera faces where the player looks
+        const angle = this.fpOn ? Math.atan2(-Math.sin(this.fpView.yaw), -Math.cos(this.fpView.yaw)) : this.input.pose.angle;
+        this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, angle, this.input.moving, this.input.running || this.input.biking);
       }
     }
     this.nameplateLeft -= frameDt;
@@ -1773,6 +1915,7 @@ class World implements World3D {
     // (3)
     this.hudWriter.flush();
     // (4)
+    if (this.zoneLoaded) this.syncFirstPerson();
     this.renderer.frame(frameDt);
     this.listen();
     const ms = performance.now() - t0;
@@ -1999,6 +2142,10 @@ class World implements World3D {
     this.battle.reset();
     setBattleActions(null);
     setEvolutionPlayer(null);
+    setStrikeHook(null);
+    setDanceAction(null);
+    this.strikeFx?.finish();
+    this.playerStrikeFx?.finish();
     this.evolution?.cancel();
     this.audio.dispose();
     for (const f of this.rendererOffs) f();
