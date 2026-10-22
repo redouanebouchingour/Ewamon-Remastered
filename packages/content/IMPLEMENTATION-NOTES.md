@@ -741,3 +741,18 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
 - `LAVA_BIOMES` restates the server's `movement.ts` set (content cannot import the server); both say `cinder`.
 - Ghost haunts use the zone plan's grass patches (`zonePlan(id).grassPatches`) whatever WILD_ENCOUNTERS says, shuffled by
   an fnv hash of zone and owner (no core RNG needed, no transcendental functions).
+
+## Camp bases (2026-10-22)
+
+- `data/camps.ts`: the camp layer is derived, not authored: `campOf(zoneId)` reads the sculpt's campfire and its nearest
+  tent (siege_route has two tents), and puts the trophy slots and the banner on a 3 m ring at fixed angles from the
+  followers' dig spot side. The angles (60, -60, 105 for the slots, -150 for the banner) were picked from a 15-degree scan
+  of all 8 camps for dry, walkable ground clear of the tent, the dig spot and every other prop; `camps.test.ts` keeps
+  them honest. Nothing is stamped into a heightfield (the props are walk-through), so no digest or fixture moves.
+- Raids only while the owner is offline (the guard is their AI), so an online player's camp can not be robbed under
+  them; the cut is 2 % floored, capped at 1,000, once per raider and camp in 24 hours; a guard more than 12 levels under
+  the raider's lead is refused (no bullying low camps), a stronger one is the raider's risk.
+- "Long-inactive" is the owner's `last_seen_at` 14 days back; a raider who wins then takes the camp if they hold none.
+- Trophy kinds mirror what the player did elsewhere: `scar` (a nemesis beaten or caught), `legend` (a legendary species
+  in the dex as caught), `medal` (the Champion's flag, or the ranked peak's tier from Silver up: there are no cup medals
+  to read, Weekly Cup wins are not recorded), `achievement` (claimed), `bounty` (brought in).

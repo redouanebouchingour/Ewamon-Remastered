@@ -20,8 +20,11 @@
  *
  * Phase D10: `spec.obstacles` is content's `ZoneDef.obstacles` (id, kind, x, z) — present only in zones that have
  * some, so every other zone's spec is unchanged. Which ones a player cleared is per player (`ObstaclesHandle`).
+ *
+ * Camp bases: `spec.camps` is a route's travellers' camp (content `campOf`: its banner pole and trophy slots round the
+ * fire), present only on routes; what it shows is the zone room's (`CampsHandle.set`).
  */
-import { SET_PIECE_BY_ZONE, bramblesFor, getHeightfield, interiorsFor, zone as zoneDef, zonePlan } from '@ewa/content';
+import { SET_PIECE_BY_ZONE, bramblesFor, campOf, getHeightfield, interiorsFor, zone as zoneDef, zonePlan } from '@ewa/content';
 import type { HarvestState, LinkDir, ZoneDef, ZoneId } from '@ewa/content';
 import { INTERIOR_SIZE, edgePoint, lightsFromPlan, waterBodies } from '@ewa/render';
 import type { Dir, Edge, HarvestLevel, InteriorSpec, Marker, NeighbourSpec, ObstacleSpec, WaterSpec, ZonePlanData, ZoneSpec } from '@ewa/render';
@@ -52,6 +55,7 @@ export function zoneSpecFor(zone: ZoneDef, harvest: HarvestState): ZoneSpec {
     ...bramblesFor(zone.id).map((b) => ({ id: `bramble:${b.id}`, kind: 'bramble' as const, x: b.x, z: b.z })),
   ];
   const plan = zonePlan(zone.id);                                     // the plan whose footprints the field carries
+  const camp = campOf(zone.id);                                       // camp bases: a route's travellers' camp
   const layout = zone.kind;
   const interior = INTERIOR_SIZE[layout];
   const edges: Partial<Record<Dir, Edge>> = {};
@@ -123,6 +127,7 @@ export function zoneSpecFor(zone: ZoneDef, harvest: HarvestState): ZoneSpec {
     plan: specPlan,
     interiors: interiorSpecsFor(zone.id),
     ...(obstacles.length > 0 ? { obstacles } : {}),
+    ...(camp !== null ? { camps: [{ id: zone.id, banner: camp.banner, slots: camp.slots }] } : {}),
   };
 }
 

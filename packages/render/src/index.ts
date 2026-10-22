@@ -106,7 +106,7 @@ export type {
   HudLayer, HudModel, Layout, Marker, Pickup, PropPlacement, SetPieceId, SpriteAnim, SpriteDescriptor, AuraKind, SpriteFrame, Tablet, Terrain, TerrainColliderLike,
   TypeName, VariantKey, VfxId, WaterSpec, ZoneHandle, ZoneSpec, ActorSpawn, PlanRoadData, ZonePlanData,
   HallBounds, InteriorLocalPoint, InteriorLocalRect, InteriorSpec, InteriorTemplateId, InteriorThemeId, InteriorsHandle,
-  ObstacleSpec, ObstaclesHandle, NeighbourSpec,
+  ObstacleSpec, ObstaclesHandle, NeighbourSpec, CampSlotSpec, CampSpec, CampTrophyKind, CampsHandle,
 } from './contracts.js';
 export { BasicDioramaRig, NullActorPool, NullBattleStage, NullHudLayer, unimplementedZoneLoader } from './defaults.js';
 export type { ZoneLoader } from './defaults.js';

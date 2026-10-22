@@ -113,6 +113,9 @@ import type { FieldPowerRefusal } from '@ewa/protocol';
 import { POWER_OF_ACTION, fieldLeadOf, fieldRefusalText, hauntingNear, leadCan, senseGhosts } from '../game/fieldPowers';
 import type { FieldLead } from '../game/fieldPowers';
 import { PARTY_TOPIC } from '../rest/partyTopic';
+import { CAMP_TOPIC, raidedToday, trophyKinds } from '../game/camps';
+import { CAMP_RANGE_M, CAMP_REFUSAL_TEXT, campOf, campWelcome, challengeActive, claimRefusal, defaultCampName, nearCamp, raidRefusal } from '@ewa/content';
+import type { CampRefusal } from '@ewa/content';
 
 export interface ZoneMeta {
   readonly zoneId: ZoneId;
@@ -434,6 +437,11 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       ecosystem: () => deps.env.ECOSYSTEM === 'on',
       // the bounty board: a beaten ghost or nemesis claims its bounties unless BOUNTIES=off
       bounties: () => deps.env.BOUNTIES !== 'off',
+      // camp bases: a raid that took a camp over redraws it here and in the zone's other shards
+      campChanged: (zoneId) => {
+        if (zoneId === this.zone.id) void this.refreshCamp();
+        this.presence.publish(CAMP_TOPIC, { zoneId });
+      },
     });
     this.trades = new TradeCoordinator({
       repos: deps.repos,
@@ -480,6 +488,11 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       if (this.clientOf(m.playerId) !== undefined) void this.refreshLead(m.playerId);
     });
     await this.sub('ewa:liveops', () => this.spawns?.setLiveOps(liveOpsModsFor(this.zone.id, this.now())));
+    // camp bases: a camp was claimed, renamed, decorated, abandoned or taken over (here, in a REST route, another shard)
+    await this.sub(CAMP_TOPIC, (m: { zoneId: string }) => {
+      if (m.zoneId === this.zone.id) void this.refreshCamp();
+    });
+    void this.refreshCamp();
     await this.sub('ewa:repel', (m: { playerId: string; kind: 'repel' | 'lure'; steps: number }) => {
       const c = this.clientOf(m.playerId);
       if (c?.userData !== undefined) c.userData.repel = { kind: m.kind, steps: m.steps };
@@ -700,6 +713,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     void this.refreshRealWeather(client);
     // ghost trainers: how the player's ghost fared while they were away
     void this.ghostWelcome(client, playerId);
+    // camp bases: the camp log since the player was last told
+    void this.campWelcome(client, playerId);
     // breeding: the eggs the player carries count the steps walked here
     void this.eggs.load(playerId).catch((e: unknown) => deps.log.warn({ err: e, playerId }, 'egg load failed'));
   }
@@ -776,6 +791,12 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
         await deps.repos.db
           .transaction(async (tx) => deps.repos.ghosts.save(tx, playerId, name, this.zone.id, await deps.repos.creatures.party(tx, playerId), new Date(deps.clock())))
           .catch((e: unknown) => deps.log.error({ err: e, playerId }, 'ghost save failed'));
+      }
+      // camp bases: the camp's guard becomes the party the owner left with
+      if (deps.env.CAMPS === 'on') {
+        await deps.repos.db
+          .transaction(async (tx) => deps.repos.camps.setGuard(tx, playerId, await deps.repos.creatures.party(tx, playerId), new Date(deps.clock())))
+          .catch((e: unknown) => deps.log.error({ err: e, playerId }, 'camp guard save failed'));
       }
     }
     // verified speedruns: leaving the world stops the play clock (a crossing hands it to the next room running)
@@ -1211,6 +1232,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
           return this.onTower(client, data);
         case 'fieldPower':
           return this.onFieldPower(client, data);
+        case 'camp':
+          return this.onCamp(client, data);
         case 'rankedQueue':
           return this.onRankedQueue(client, data);
         case 'tradeRequest':
@@ -1940,6 +1963,120 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       engagedAt: null,
       despawnAt: now + 60_000,
     };
+  }
+
+  // ─── camp bases (content camps.ts, game/camps.ts) ────────────────────────────
+
+  /** Re-reads this zone's camp and writes what everyone sees of it (owner, banner, trophy kinds). */
+  private async refreshCamp(): Promise<void> {
+    const deps = this.deps;
+    if (deps.env.CAMPS !== 'on' || campOf(this.zone.id) === null) return;
+    try {
+      const c = await deps.repos.db.transaction((tx) => deps.repos.camps.of(tx, this.zone.id));
+      this.state.campOwner = c?.ownerName ?? '';
+      this.state.campName = c?.name ?? '';
+      this.state.campTrophies = trophyKinds(c);
+    } catch (e) {
+      deps.log.warn({ err: e }, 'camp read failed');
+    }
+  }
+
+  /** Camp bases: on coming back, what happened at the player's camp while they were away (each raid told once). */
+  private async campWelcome(client: ZoneClient, playerId: string): Promise<void> {
+    const deps = this.deps;
+    if (deps.env.CAMPS !== 'on') return;
+    const raids = await deps.repos.db.transaction((tx) => deps.repos.camps.report(tx, playerId)).catch(() => []);
+    for (const text of campWelcome(raids.map((r) => ({ raider: r.raiderName, won: r.won, cut: r.cut, tookOver: r.tookOver })))) this.sendMsg(client, { type: 'toast', level: 'info', text });
+  }
+
+  /**
+   * Camp bases `camp { action }` at this zone's campfire: `claim` a free camp (one per trainer, not on a challenge run),
+   * `raid` someone else's while they are away (a fight with their guard). Refused with a toast + `error notAllowed`.
+   */
+  private async onCamp(client: ZoneClient, m: ClientPayload<'camp'>): Promise<void> {
+    const deps = this.deps;
+    const ud = client.userData!;
+    const ps = this.state.players.get(ud.playerId);
+    if (ps === undefined) return;
+    const refuse = (why: CampRefusal): void => {
+      this.sendMsg(client, { type: 'toast', level: 'info', text: CAMP_REFUSAL_TEXT[why] });
+      this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: why });
+    };
+    if (deps.env.CAMPS !== 'on') return refuse('campsOff');
+    if (ud.battleId !== null || ud.tradeId !== null || ud.spotted !== null || ud.glide !== null) return this.sendMsg(client, { type: 'error', code: 'busy', detail: 'inBattle' });
+    const def = campOf(this.zone.id);
+    if (def === null) return refuse('noCampHere');
+    const me = client.auth?.username ?? '';
+    const near = nearCamp(def, ps.x, ps.z, CAMP_RANGE_M);
+    const inRun = challengeActive(ud.flags) !== null;
+    const nowMs = this.now();
+    if (m.action === 'claim') {
+      const why = await deps.repos.db.transaction(async (tx): Promise<CampRefusal | null> => {
+        await deps.repos.players.lock(tx, ud.playerId);
+        const held = await deps.repos.camps.of(tx, this.zone.id);
+        const party = await deps.repos.creatures.party(tx, ud.playerId);
+        const r = claimRefusal({
+          enabled: true,
+          campHere: true,
+          near,
+          heldBy: held === null ? null : held.ownerId === ud.playerId ? me : held.ownerName,
+          me,
+          holdsOne: (await deps.repos.camps.byOwner(tx, ud.playerId)) !== null,
+          inRun,
+          canFight: party.some((c) => c.hp > 0),
+        });
+        if (r !== null) return r;
+        const ok = await deps.repos.camps.claim(tx, { zoneId: this.zone.id, ownerId: ud.playerId, ownerName: me, name: defaultCampName(me), guard: party }, new Date(nowMs));
+        if (!ok) return 'campTaken';
+        await deps.repos.audit.write(tx, { actorId: ud.playerId, action: 'camp.claim', subject: this.zone.id, detail: { guard: party.length } }, new Date(nowMs));
+        return null;
+      });
+      if (why !== null) return refuse(why);
+      await this.refreshCamp();
+      this.presence.publish(CAMP_TOPIC, { zoneId: this.zone.id });
+      this.sendMsg(client, { type: 'toast', level: 'success', text: 'The camp is yours. Your party will guard it while you are away. Decorate it at the fire.' });
+      return;
+    }
+    // a raid: everything read fresh (the camp, its owner's presence and run, the raider's cooldown and lead)
+    const read = await deps.repos.db.transaction(async (tx) => {
+      const c = await deps.repos.camps.of(tx, this.zone.id);
+      if (c === null || c.ownerId === ud.playerId) return { c, ownerInRun: false, wonToday: false, canFight: true };
+      const ownerInRun = challengeActive(await deps.repos.progress.flags(tx, c.ownerId)) !== null;
+      const wonToday = await raidedToday(deps.repos, tx, ud.playerId, this.zone.id, nowMs);
+      const party = await deps.repos.creatures.party(tx, ud.playerId);
+      return { c, ownerInRun, wonToday, canFight: party.some((x) => x.hp > 0) };
+    });
+    const c = read.c;
+    const ownerOnline = c !== null && c.ownerId !== ud.playerId && (await deps.presenceMirror.lookup(c.ownerId)) !== null;
+    const why = raidRefusal({
+      enabled: true,
+      campHere: true,
+      near,
+      heldBy: c === null ? null : c.ownerId === ud.playerId ? me : c.ownerName,
+      me,
+      inRun,
+      canFight: read.canFight,
+      ownerOnline,
+      ownerInRun: read.ownerInRun,
+      wonToday: read.wonToday,
+      guardTop: c?.guardTop ?? 0,
+      leadLevel: await this.leadLevel(ud.playerId),
+    });
+    if (why !== null || c === null) return refuse(why ?? 'campFree');
+    ud.battleId = 'pending';
+    ps.moving = false;
+    try {
+      const res = await this.battles.startCampRaid({ playerId: ud.playerId, sessionId: client.sessionId }, { ownerId: c.ownerId, ownerName: c.ownerName, zoneId: this.zone.id, guard: c.guard }, { x: ps.x, z: ps.z });
+      if (!res.ok) {
+        if (ud.battleId === 'pending') ud.battleId = null;
+        this.sendMsg(client, { type: 'error', code: res.code, detail: res.detail });
+        return;
+      }
+      this.sendMsg(client, { type: 'toast', level: 'info', text: `You challenge the guard of ${c.name}.` });
+    } catch (e) {
+      if (ud.battleId === 'pending') ud.battleId = null;
+      throw e;
+    }
   }
 
   /** Ghost trainers: on coming back, how the player's ghost fared while they were away (each fight told once). */

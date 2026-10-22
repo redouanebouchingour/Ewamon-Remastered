@@ -1606,6 +1606,43 @@ same function. Never a story gate: every spot is optional, and Cut / Strength ob
   handover-landing tests see today's world: no glide in validation, no bramble blocker, every power refused). The
   follower itself is visual and always on. No core change.
 
+### 3.19 Camp bases
+<!-- added 2026-10-22: camp bases, the user's approved pitch (claim a route's travellers' camp, decorate it with trophies, your party guards it as AI while you are offline, others raid it for a small cut and an honor hit, camps held count for the factions) -->
+`content/src/data/camps.ts`. Every route's travellers' camp (the zone sculpts' tent and campfire) can be held by one
+trainer; the server keeps the camps (`camps`, `camp_raids`, migration 0020) and decides every claim and raid. Rules, one
+line each:
+- **Where** (a layer of its own, never `ZoneDef`): `campOf(zoneId)` reads the sculpt's campfire and nearest tent; the
+  banner pole and `CAMP_TROPHY_SLOTS` 3 trophy slots stand on a 3 m ring round the fire, at fixed angles from the side
+  away from the tent (the followers' dig spot side), each facing the fire. Walk-through props: nothing is stamped into a
+  heightfield, no digest moves. Only routes have a camp (8). Never the tower or the arena (no route there).
+- **Claiming** at the fire (`CAMP_RANGE_M` 5 m, the zone room's `camp { action: 'claim' }`): a free camp, one camp per
+  trainer, one owner per camp (the row's keys), a party that can fight, not during an active Nuzlocke / Hardcore run.
+  The guard is the owner's party as claimed, replaced every time they leave the world (like a ghost's). The banner reads
+  "<owner>'s camp" until renamed.
+- **Banner and trophies** (`POST /camps/edit`, from anywhere): a name of at most `CAMP_NAME_MAX` 24 characters, cleaned
+  like chat and refused on a blocked word; up to three trophies the owner earned, read fresh from what they did: `scar`
+  a nemesis they beat or caught ("<name the title>'s scar"), `legend` a legendary species caught, `medal` the Champion's
+  medal or their ranked peak's tier from Silver up, `achievement` one claimed, `bounty` one brought in ("Brought in
+  <target>"). Everyone in the zone sees the banner and the trophy kinds (`ZoneState.campOwner` / `campName` /
+  `campTrophies`). `POST /camps/abandon` frees the camp.
+- **Guarding**: while the owner is offline (presence) and not on a challenge run, the guard fights a raider as an AI
+  trainer of healed copies of the snapshot (the ghosts' path, `campguard:<owner>`); `noExp`, so the fight itself moves no
+  exp and no honor. A guard whose best creature is more than `CAMP_LEVEL_SPAN` 12 levels under the raider's lead is not
+  worth a raid (refused); a stronger guard is the raider's risk.
+- **Raids** at someone else's fire (`camp { action: 'raid' }`). A win takes `campRaidCut` (2 % of the owner's money,
+  floored, at most `CAMP_RAID_CAP` 1,000) once per raider and camp in any 24 hours (later wins that day take nothing and
+  are refused at the fire), paid in the battle's own end transaction with an audit row `camp.raid`, plus the trainer exp
+  of a won trainer battle; the raider's party lead loses `CAMP_RAID_HONOR` 1 honor (a species that keeps the ledger) and
+  the zone's season tally takes `CAMP_RAID_SHADOW` 3 shadow points (§3 honor shapes the world; a raid is never a fair
+  win, so it adds no light). A loss takes nothing. A camp whose owner has been away `CAMP_INACTIVE_DAYS` 14 days or more
+  passes to a raider who beats its guard and holds none (fresh banner, no trophies, their party on guard).
+- **Factions** (§3 Majin vs Tenjin): a guard that holds earns its owner's side `CAMP_HELD_POINTS` 1, at most
+  `CAMP_HELD_PER_DAY` 3 a day, in the same transaction as the fight: a camp held is a camp defended.
+- **The camp log**: every raid is a row the owner reads on coming back (a toast per raid, the first three, then how many
+  more) and on the Camp screen ("bh_outlaw raided your camp and took 120.", "Your guard held against kestrel.").
+- **Switch**: server env `CAMPS` (`on` default; `off` in testEnv, so the walker and every other test see today's world:
+  nothing can be claimed, edited or raided and the zone shows no owner). No core change.
+
 ---
 
 ## §4 @ewa/protocol WIRE
@@ -1681,6 +1718,9 @@ export class ZoneState extends Schema {
   @type({ map: BattleSummary }) battles = new MapSchema<BattleSummary>();     // small; broadcast to all
   @type(RaidState) raid: RaidState | null = null;                              // broadcast to all
   @type('boolean') fieldPowers = false;            // added 2026-10-21 (followers, §3.18): the server env FIELD_POWERS is on in this room; set at creation; the client predicts glides and blocks brambles only when true
+  @type('string') campOwner = '';                  // added 2026-10-22 (camp bases, §3.19): the holder of this zone's travellers' camp ('' = free, no camp, or CAMPS off)
+  @type('string') campName = '';                   // its banner
+  @type('string') campTrophies = '';               // its trophy kinds in slot order, comma-separated (TROPHY_KINDS; '' = none)
 }
 
 // <!-- amended 2026-10-11: arena PvP --> the state of an `arena` room (30-server-netcode.md §30.4.10): one battle outside the world;
@@ -1742,6 +1782,7 @@ export const TowerMsg = z.discriminatedUnion('action', [                        
   z.object({ action: z.literal('next') }), z.object({ action: z.literal('quit') }),
 ]);
 export const FieldPowerMsg = z.object({ power: z.enum(['burn', 'dig', 'dive', 'sense']), targetId: z.string().min(1).max(64) });   // added 2026-10-21 (followers, §3.18): the lead's power on a spot of data/fieldPowers.ts (sense: 'here'); refusals FIELD_POWER_REFUSALS powersOff / noPower / noSpot / spotFar / burnt / usedToday / senseResting / powerIndoors, each with a toast
+export const CampMsg = z.object({ action: z.enum(['claim', 'raid']) });   // added 2026-10-22 (camp bases, §3.19): at the zone's campfire; refusals CampRefusal (content CAMP_REFUSAL_TEXT), each with a toast
 
 export const CLIENT_MESSAGES = {
   input: InputMsg, emote: EmoteMsg, chat: ChatMsg, interact: InteractMsg, engageSpawn: EngageSpawnMsg,
@@ -1749,7 +1790,8 @@ export const CLIENT_MESSAGES = {
   tradeRequest: TradeRequestMsg, tradeReply: TradeReplyMsg, tradeOffer: TradeOfferMsg, tradeConfirm: TradeConfirmMsg, tradeCancel: TradeCancelMsg,
   raidJoin: RaidJoinMsg, raidReady: RaidReadyMsg, raidAction: RaidActionMsg, raidCatch: RaidCatchMsg, raidLeave: RaidLeaveMsg,
   handoverAck: HandoverAckMsg, fastTravel: FastTravelMsg, fish: FishMsg, rankedQueue: RankedQueueMsg, tower: TowerMsg, fieldPower: FieldPowerMsg,
-} as const;   // exactly 25 keys (Phase C3 added fastTravel, Phase D9 fish, Phase D13 rankedQueue, Phase D14 tower, 2026-10-21 fieldPower; its limit 2 per second)
+  camp: CampMsg,
+} as const;   // exactly 26 keys (Phase C3 added fastTravel, Phase D9 fish, Phase D13 rankedQueue, Phase D14 tower, 2026-10-21 fieldPower; its limit 2 per second; 2026-10-22 camp, 1 per 2 s)
 export type ClientMessageType = keyof typeof CLIENT_MESSAGES;
 ```
 
@@ -1896,6 +1938,9 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /arena/live/:matchId` <!-- added 2026-10-20 --> | - | `LiveFeedRes`: the match row plus `replay { format: 'pvp', seat: 0, labels, seed, start, actions, digest }` (anonymised like a shared replay, a turn behind the players: `createBattle` + `resolveTurn` over `actions` ends on `digest`) and `outcome` (null while it goes on; the finished fight stays 3 min); 404 when there is none | bearer |
 | `GET /world/shadow` <!-- added 2026-10-20: honor shapes the world --> | - | `WorldShadowRes { season, zones: { zoneId, level: 1..4, light, shadow }[] }`: the zones a shadow lies over this season and the tally behind each; a zone not listed is clear | bearer |
 | `GET /bounties` <!-- added 2026-10-21: the bounty board --> | - | `BountiesRes { enabled, nextPostingAt, wanted: BountyPoster[] (≤ 40, richest first), personal: BountyPoster[] (≤ 10, the caller's nemeses from rank 2), posted: { id, target, reward, fee, status: 'open' \| 'claimed' \| 'expired', claimedBy, postedAt, expiresAt }[] (≤ 10), claims: { kind, target, claimedBy, payout, bonus, zoneId, at }[] (≤ 10, nemeses left out), ghosts: { name, zoneId, speciesId, level, wins, wanted }[] (≤ 30, the caller's own left out), you: { badlander, lawlander, open, claimsToday, atBoard }, money }`, `BountyPoster { id, kind: 'game' \| 'player' \| 'nemesis', target, speciesId, level, zoneId, wins \| null, rank \| null, reward, withLawlander, postedBy \| null, postedAt, expiresAt \| null, mine }` (§3.17). Expired posts are refunded and the game's bounties posted (on schedule) first. `enabled` false and every list empty while env `BOUNTIES` is off | bearer |
+| `GET /camps` <!-- added 2026-10-22: camp bases --> | - | `CampsRes { enabled, here: { zoneId, camp: CampView \| null } \| null (the camp of the zone the caller stands in), mine: CampView \| null, earned: CampTrophy[] (≤ 80), log: { zoneId, raider, won, cut, tookOver, line, at }[] (≤ 20, newest first), camps: { zoneId, owner, name }[] (every held camp), you: { inRun, money } }`; `CampView { zoneId, owner, name, trophies: CampTrophy[] (≤ 3), guard: { speciesId, level, isShiny }[] (≤ 6), claimedAt, mine, ownerOnline, ownerInRun, inactive, raidedToday, cut }`, `CampTrophy { id: '<kind>:<ref>', kind: 'scar' \| 'legend' \| 'medal' \| 'achievement' \| 'bounty', label }`. CAMPS=off: `enabled: false`, all empty | bearer |
+| `POST /camps/edit` <!-- added 2026-10-22 --> | `{ name?: string (1..24), trophies?: string[] (≤ 3, ids from earned) }` (one at least) | `CampsRes`; audit row `camp.edit`; the zone rooms told (`ewa:camp`). 400 `blockedWord` \| `invalidPayload`; 409 `noCamp` \| `badTrophy` \| `campsOff` \| `inBattle` | bearer |
+| `POST /camps/abandon` <!-- added 2026-10-22 --> | `{}` | `CampsRes`; audit row `camp.abandon`. 409 `noCamp` \| `campsOff` \| `inBattle` | bearer |
 | `POST /bounties` <!-- added 2026-10-21 --> | `{ target: username, reward: int }` | `BountiesRes`; reward + cut taken into escrow in one transaction with an audit row `bounty.post`. 409 `noBadlander` \| `ownGhost` \| `noGhost` \| `tooLow` \| `tooHigh` \| `alreadyPosted` \| `tooMany` \| `notAtBoard` (not in a town) \| `bountiesOff` \| `InsufficientFunds` \| `inBattle` | bearer |
 | `GET /world/ecosystem/:zoneId` <!-- added 2026-10-21: a living ecosystem --> | - | `EcosystemRes { zoneId, enabled, season, week: 1..4, endsAt, takes, judged, surging, scarce, tilted: EcoSpecies[] (≤ 40), migrantsIn: { speciesId, from }[], migrantsOut: { speciesId, to }[] (≤ 8), shadow: 0..4, light: 0..4 }`, `EcoSpecies { speciesId, factor, cause: 'hunted' \| 'feeding' \| 'shadow' \| 'light' \| 'migrant' \| 'away' \| null, caught, ko, preyOn, huntedBy }`: "This week on <zone>" (§3.16). Surging: the feeding predators; scarce: overhunted or away; tilted: drawn by shadow or light. `enabled` false and every list empty while env `ECOSYSTEM` is off; 404 for a zone without wild creatures | bearer |
 | `GET /factions` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | - | `FactionsRes { season, endsAt, mine: { side, points } \| null, points: { majin, tenjin }, members: { majin, tenjin }, top: { majin, tenjin }: { username, points }[] (≤ 5, banned left out), sky: side \| null, chronicle: { season, winner \| null, line }[] (≤ 6, newest first) }`: the season's two sides, the caller's, the side holding Solenne's sky (the last closed season's winner) | bearer |
@@ -2421,6 +2466,22 @@ export interface BountyRepo {
   recordNemesis(tx: Tx, p: { targetName: string; speciesId: string; level: number; zoneId: string; rank: number; reward: number; claimerId: string; claimerName: string; payout: number; bonus: boolean }, now: Date): Promise<Bounty>;
   expireDue(tx: Tx, now: Date): Promise<Bounty[]>;   // each once; the caller refunds
   ghostWins(tx: Tx, since: Date): Promise<Map<string, number>>;   // different trainers beaten since `since` and the last claim
+}
+/** Camp bases (migration 0020_camps): `camps (zone_id pk, owner_id unique, owner_name, name, trophies jsonb, guard jsonb, guard_top, claimed_at, updated_at)` and `camp_raids (id, zone_id, owner_id, raider_id, raider_name, won, cut, took_over, held, seen, at)`. Money moves are the caller's, with an audit row (`camp.raid`). Also `NemesisRepo.ended(tx, ownerId, limit)` (beaten or caught, newest first) and `BountyRepo.claimedBy(tx, claimerId, limit)` for the trophies. */
+export interface CampRepo {
+  of(tx: Tx, zoneId: string): Promise<Camp | null>;
+  byOwner(tx: Tx, ownerId: string): Promise<Camp | null>;
+  all(tx: Tx): Promise<Camp[]>;   // by zone
+  claim(tx: Tx, c: NewCamp, now: Date): Promise<boolean>;   // false: held, or the owner holds one (nothing written)
+  abandon(tx: Tx, ownerId: string): Promise<Camp | null>;
+  edit(tx: Tx, ownerId: string, p: { name?: string; trophies?: readonly CampTrophyJson[] }, now: Date): Promise<Camp | null>;
+  setGuard(tx: Tx, ownerId: string, party: readonly CreatureInstance[], now: Date): Promise<boolean>;   // nothing for an empty party
+  transfer(tx: Tx, zoneId: string, fromOwnerId: string, to: Omit<NewCamp, 'zoneId'>, now: Date): Promise<boolean>;   // only from the owner it names
+  recordRaid(tx: Tx, r: Omit<CampRaid, 'id' | 'at'>, now: Date): Promise<void>;
+  wonSince(tx: Tx, raiderId: string, zoneId: string, since: Date): Promise<boolean>;   // the daily cooldown
+  heldSince(tx: Tx, ownerId: string, since: Date): Promise<number>;   // faction points earned by holding
+  report(tx: Tx, ownerId: string): Promise<CampRaid[]>;   // unseen, oldest first; marked seen
+  log(tx: Tx, ownerId: string, limit: number): Promise<CampRaid[]>;   // newest first
 }
 export interface LegendRepo {
   claim(tx: Tx, season: number, species: string, playerId: string, playerName: string, now: Date): Promise<boolean>;   // the first catch only

@@ -115,6 +115,8 @@ export interface ZoneSpec {
   readonly interiors?: readonly InteriorSpec[];
   /** Phase D10: Cut trees / Strength boulders (content `ZoneDef.obstacles`); absent / [] in most zones. */
   readonly obstacles?: readonly ObstacleSpec[];
+  /** Camp bases (§10.7.10): the travellers' camps a player can hold (content `campOf`); absent / [] off the routes. */
+  readonly camps?: readonly CampSpec[];
   /**
    * Phase E3 (audit M2-link-east-1): the linked neighbours, keyed by the side of THIS zone they lie on. The skirt beyond
    * the field on that side follows the neighbour's terrain (its heightfield and its road / plaza layers, low detail, no
@@ -154,6 +156,23 @@ export interface ObstaclesHandle {
   readonly ids: readonly string[];
   setCleared(id: string, cleared: boolean): void;
   isCleared(id: string): boolean;
+}
+
+/**
+ * Camp bases (§10.7.10): a travellers' camp's banner pole and trophy slots round its fire (world x, z; `yaw` turns the
+ * piece's local +z to face the fire). Nothing is solid: the camp's props are walk-through and the heightfield is
+ * untouched. Every slot holds one prebuilt object per trophy kind, hidden until `CampsHandle.set` shows one.
+ */
+export interface CampSlotSpec { readonly x: number; readonly z: number; readonly yaw: number }
+export interface CampSpec { readonly id: string; readonly banner: CampSlotSpec; readonly slots: readonly CampSlotSpec[] }
+export type CampTrophyKind = 'scar' | 'legend' | 'medal' | 'achievement' | 'bounty';
+
+/** Camp bases: what each camp shows (`held` null = a free camp: no banner, no trophies; unknown ids are ignored). */
+export interface CampsHandle {
+  readonly ids: readonly string[];
+  set(id: string, held: { readonly trophies: readonly (CampTrophyKind | null)[] } | null): void;
+  /** what a camp shows now (null: unknown id) */
+  shown(id: string): { readonly banner: boolean; readonly trophies: readonly (CampTrophyKind | null)[] } | null;
 }
 
 // ---- Phase A interiors (content `PlacedInterior`, flattened by the client adapter) --------------------------------
@@ -255,6 +274,8 @@ export interface ZoneHandle {
   readonly interiors?: InteriorsHandle;
   /** Phase D10: the zone's obstacles (absent when the spec has none) */
   readonly obstacles?: ObstaclesHandle;
+  /** Camp bases: the zone's camps (absent when the spec has none) */
+  readonly camps?: CampsHandle;
   stats(): RenderStats;
   dispose(): void;                                            // idempotent; §10.5.9
 }

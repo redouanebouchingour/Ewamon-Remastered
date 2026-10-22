@@ -2241,3 +2241,12 @@ the second isolated client (the component over the landing page: the foe and own
   card's field power line and the "Walks with you" tag; the power key `fieldPower` (F) in the controls.
 - `zoneSpecFor` appends the brambles to `obstacles` (`bramble:<id>`): the zone snapshot moved for the 8 routes and the
   rift only.
+
+## Camp bases (2026-10-22)
+
+- `scene/CampViews.ts` (owned by World3D, created with the interaction targets): the fire's `camp` target, the render's
+  `ZoneHandle.camps.set` and `state/camp.ts`; World3D only listens to the three `ZoneState` camp fields and routes `E`
+  to `/play/camp`. A state for a zone other than the shown one waits (a handover's room can attach first).
+- `screens/CampScreen.tsx` sends `camp { action }` through the world session and re-reads `GET /camps` when the camp
+  store changes (a claim or a takeover arrives as zone state, an edit as the REST answer).
+- `zoneSpecFor` adds `spec.camps` on the 8 routes: the snapshot moved for them only.

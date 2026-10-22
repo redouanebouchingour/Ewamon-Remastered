@@ -85,7 +85,7 @@ describe('§4.1 field layout', () => {
       'id', 'bossSpecies', 'bossLevel', 'hpPct', 'phase', 'roundEndsInMs', 'damageBoard', 'x', 'z',
     ]);
     expect(fieldNames(ZoneState)).toEqual([
-      'tick', 'timeOfDay', 'weather', 'harvestState', 'shadow', 'players', 'spawns', 'battles', 'raid', 'fieldPowers',
+      'tick', 'timeOfDay', 'weather', 'harvestState', 'shadow', 'players', 'spawns', 'battles', 'raid', 'fieldPowers', 'campOwner', 'campName', 'campTrophies',
     ]);
   });
 

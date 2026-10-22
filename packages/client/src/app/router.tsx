@@ -113,6 +113,11 @@ export const routes: RouteObject[] = [
             lazy: async () => ({ Component: (await import('../screens/BountyScreen')).BountyScreen }),
           }),
           child({
+            // camp bases: a route's travellers' camp (its fire opens it): claim, raid, banner and trophies, the camp log
+            path: 'camp',
+            lazy: async () => ({ Component: (await import('../screens/CampScreen')).CampScreen }),
+          }),
+          child({
             // breeding: the Daycare (the keeper in Mirevale's house 1 opens it)
             path: 'daycare',
             lazy: async () => ({ Component: (await import('../screens/DaycareScreen')).DaycareScreen }),

@@ -141,6 +141,13 @@
       "when": 1792576719308,
       "tag": "0019_bounties",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792666864354,
+      "tag": "0020_camps",
+      "breakpoints": true
     }
   ]
 }

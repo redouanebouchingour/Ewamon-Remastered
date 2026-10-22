@@ -53,6 +53,8 @@ export const LIMITS = {
   fish: { max: 1, windowMs: 1_500 },
   /** Phase D13: ranked queue join / leave (protocol CLIENT_MESSAGE_LIMITS.rankedQueue) */
   rankedQueue: { max: 4, windowMs: 5_000 },
+  /** camp bases: a claim or a raid on the camp here, one per 2 s (protocol CLIENT_MESSAGE_LIMITS.camp) */
+  camp: { max: 1, windowMs: 2_000 },
   /** every room message the spine gives no row (challengeReply, trade*, handoverAck): the generic 4 / 1 s of protocol's CLIENT_MESSAGE_LIMITS */
   roomOther: { max: 4, windowMs: 1_000 },
 } as const satisfies Record<string, Limit>;

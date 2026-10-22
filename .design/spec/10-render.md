@@ -1213,6 +1213,29 @@ part-3 bundle as `Part3.followers`, updated in the frame hook after the actor po
 Budget: + 0 draw calls and programs at rest (a follower is a creature billboard on its atlas's material, the light is a
 local light); each follower is one billboard draw.
 
+### 10.7.10 Camp bases <!-- added 2026-10-22: camp bases (spine §3.19) -->
+
+`ZoneSpec.camps?: CampSpec[]` (a route's travellers' camp: `{ id, banner: CampSlotSpec, slots: CampSlotSpec[] }`, each
+slot `{ x, z, yaw }` with local +z facing the fire) and `ZoneHandle.camps?: CampsHandle`:
+
+```ts
+export type CampTrophyKind = 'scar' | 'legend' | 'medal' | 'achievement' | 'bounty';
+export interface CampsHandle {
+  readonly ids: readonly string[];
+  set(id: string, held: { readonly trophies: readonly (CampTrophyKind | null)[] } | null): void;   // null = a free camp: nothing shown
+  shown(id: string): { readonly banner: boolean; readonly trophies: readonly (CampTrophyKind | null)[] } | null;
+}
+```
+
+The builder (`buildCamps`, after the obstacles) puts, per camp, the banner pole and, per slot, one object for every trophy
+kind, all hidden, each its own object on the ground (`heightClamped` - 0.04 m) under the zone root; `set` shows the banner
+and one kind per slot. Every piece is the biome set's own prop builders and surfaces (`zone/generators/trophies.ts`): a
+`legend` is the crystal housing on its carved stand, a `medal` a lit brazier, an `achievement` a post lantern, a `bounty`
+a wanted board (two posts, a plank, three pinned notices) with a crate at its foot, a `scar` a standing stone with three
+glowing claw marks; the banner a pole with a crossbar, a cloth flag with a metal band and a glowing diamond, a metal
+finial. No collider footprint (walk-through), no heightfield change; the geometry is recorded in the zone digest.
+Budget: the shown pieces only (a banner and up to three trophies, a few draws each); 16 hidden objects per camp cost no draw.
+
 ---
 
 ## §10.8 POST STACK

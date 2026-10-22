@@ -237,3 +237,12 @@ installed library that future readers should not have to re-derive. The spec its
   for burn / dig / dive / sense, `ghosts` empty except for sense). The refusal details (`FIELD_POWER_REFUSALS`) are named
   so none collides with another flow's (`tooFar` is the raids'): the client's router treats them as explained by the
   server's toast.
+
+## Camp bases (2026-10-22)
+
+- `ZoneState.campOwner` / `campName` / `campTrophies` (strings, appended last; the trophy kinds comma-separated rather
+  than an `ArraySchema`, written only when the camp changes).
+- Client message `camp { action: 'claim' | 'raid' }` (26 keys, limit 1 per 2 s): claiming and raiding happen at the
+  fire, so they go to the zone room, which knows where the player stands; refusals are a toast plus `error notAllowed`.
+- `camps` (`GET /camps`), `campEdit` (`POST /camps/edit`), `campAbandon` (`POST /camps/abandon`) (106 routes);
+  `CAMP_TROPHY_KINDS` mirrors content's `TROPHY_KINDS` (protocol does not import content).

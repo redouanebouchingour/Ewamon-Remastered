@@ -289,3 +289,14 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
   once. Money is never moved here: the server does it next to the audit row.
 - `ghostRepo.everywhere` (every ghost still haunting, banned owners left out) for the board's postings and its list.
 - History event `bounty { target, targetKind, reward, zoneId }` needs no migration (`creature_events.kind` is a varchar).
+
+## Camp bases (2026-10-22)
+
+- Migration `0020_camps` (drizzle-kit generated, `--name camps`): `camps` keyed by zone with a unique owner (one owner
+  per camp, one camp per owner: `claim` is an insert `on conflict do nothing`, so two claims racing write one row), and
+  `camp_raids` (the owner's log with a `seen` flag like `ghost_battles`, the raider's daily cooldown, `held` for the
+  faction points). Trophies are stored as they were set (id, kind, label), so a renamed nemesis or a pruned bounty never
+  changes a camp. The guard is a jsonb party snapshot like a ghost's.
+- `transfer` names the owner it takes from, so a takeover after the owner abandoned (or someone else took it) writes
+  nothing. Money is never moved here: the server does it next to the audit row.
+- `nemesisRepo.ended` and `bountyRepo.claimedBy` for the trophies.

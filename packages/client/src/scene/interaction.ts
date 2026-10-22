@@ -6,7 +6,7 @@
  */
 import type { HudPrompt } from './HudWriter';
 
-export type InteractableKind = 'npc' | 'trainer' | 'item' | 'lore' | 'gym' | 'healer' | 'shop' | 'warp' | 'spawn' | 'switch' | 'pc' | 'static' | 'raid' | 'obstacle' | 'fish' | 'tower' | 'bramble' | 'dig' | 'dive';
+export type InteractableKind = 'npc' | 'trainer' | 'item' | 'lore' | 'gym' | 'healer' | 'shop' | 'warp' | 'spawn' | 'switch' | 'pc' | 'static' | 'raid' | 'obstacle' | 'fish' | 'tower' | 'bramble' | 'dig' | 'dive' | 'camp';
 
 /**
  * Client ranges stay inside the server's (3 m for npc / item / warp / switch, 4 m for a league trainer at its
@@ -30,6 +30,8 @@ export const RANGE: Readonly<Record<InteractableKind, number>> = {
   bramble: 2.6,
   dig: 2.5,
   dive: 2.6,
+  // camp bases: a travellers' camp's fire (server CAMP_RANGE_M = 5; content CAMP_PROMPT_M = 4)
+  camp: 4,
 };
 export const PLAYER_RANGE = 6;
 

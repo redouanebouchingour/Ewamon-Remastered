@@ -2334,3 +2334,11 @@ pool; `Part3.worldFx`).
 - `WorldFx.field(kind, ...)` and its `WORLD_BURSTS` recipes (flame, smoke, dig, dive, diveMark, bubble, sense, senseRing,
   wanted, wantedRing, gust): the same particle pool.
 - `ObstacleSpec.kind` 'bramble': a knot of four of the biome's bushes (`buildBush`), hidden once cleared.
+
+## Camp bases (2026-10-22)
+
+- `ZoneSpec.camps` / `ZoneHandle.camps` (`CampsHandle.set` / `shown`): every slot holds one prebuilt object per trophy
+  kind (5 x 3 plus the banner per camp, all hidden), so showing a trophy is a visibility flip, never a build mid-frame.
+- `zone/generators/trophies.ts` reuses the set's builders (crystal housing, brazier, lantern, crate) and composes the
+  wanted board, the scar stone and the banner from `box` / `beam` / `lathe` with the set's own surfaces, all of which
+  `setSurfaces` already binds, so no surface or program is new to a route. No collider footprint: walk-through.

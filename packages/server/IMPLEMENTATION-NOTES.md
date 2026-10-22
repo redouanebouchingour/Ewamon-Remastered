@@ -1257,3 +1257,16 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   a minute; the wanted flag comes from the same read.
 - Env `FIELD_POWERS` 'on' | 'off' (testEnv 'off'): off, movement is today's (no `canGlide`, no bramble gates) and every
   power is refused with a toast. The lead fields are written either way (the follower is visual).
+
+## Camp bases (2026-10-22)
+
+- Env `CAMPS` 'on' | 'off' (testEnv 'off'). Claims and raids are the zone room's `camp` message (the fire's range is
+  checked on the accepted position); edits and abandoning are REST and publish `ewa:camp`, which every shard of the zone
+  hears to redraw the camp; a takeover inside a battle's end publishes it after the commit (`BattleDeps.campChanged`).
+- A raid is `startCampRaid`: the ghosts' path (an NPC side of `arenaCopies` of the snapshot) with `noExp`, because a
+  trainer win's `duelWon` would otherwise raise the raider's honor by 2 for robbing a camp; the raid's own toll (lead
+  -1 honor) is written at the end. The world honor tally gets no `duelWon` light for a raid and +3 shadow for a won one.
+- Faction fit: points are deeds written in the deed's transaction, so "camps held" is "a guard that held": +1 to the
+  owner's side, at most 3 a day (`heldSince`). A daily tick over all camps would need a scheduler the server does not
+  have.
+- The guard snapshot is refreshed when the owner leaves the world (next to the ghost save), not on every party change.

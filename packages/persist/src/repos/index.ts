@@ -27,6 +27,8 @@ import { ecosystemRepo } from './ecosystem';
 import type { EcosystemRepo } from './ecosystem';
 import { bountyRepo } from './bounties';
 import type { BountyRepo } from './bounties';
+import { campRepo } from './camps';
+import type { CampRepo } from './camps';
 import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
 import { historyRepo } from './history';
@@ -79,6 +81,8 @@ export interface Repos {
   readonly ecosystem: EcosystemRepo;
   /** the bounty board: posters on ghosts and nemeses, escrow and claims (migration 0019) */
   readonly bounties: BountyRepo;
+  /** camp bases: the claimed travellers' camps and the raids on them (migration 0020) */
+  readonly camps: CampRepo;
 }
 
 /**
@@ -111,6 +115,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     nemeses: nemesisRepo,
     ecosystem: ecosystemRepo,
     bounties: bountyRepo,
+    camps: campRepo,
   };
 }
 
@@ -141,3 +146,4 @@ export type { Egg, EggPlace, NewEgg } from './breeding';
 export type { Nemesis, NemesisStatus, NewNemesis } from './nemeses';
 export type { EcoTake } from './ecosystem';
 export type { Bounty, BountyKind, BountyStatus, NewGhostBounty } from './bounties';
+export type { Camp, CampRaid, NewCamp } from './camps';

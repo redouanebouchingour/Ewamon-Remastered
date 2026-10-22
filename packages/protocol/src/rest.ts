@@ -780,6 +780,62 @@ export type BountyGhostView = z.infer<typeof BountyGhostSchema>;
 export type BountiesView = z.infer<typeof BountiesRes>;
 
 /**
+ * Camp bases (content camps.ts, SPEC §3.19). `CAMP_TROPHY_KINDS` mirrors content's `TROPHY_KINDS` (protocol does not
+ * import content). A camp as the caller sees it: its owner, banner and trophies, its guard (the party snapshot that
+ * fights raiders), and for someone else's camp whether a raid could go ahead now: `ownerOnline` (the guard rests),
+ * `raidedToday` (the caller's daily cut is spent), `cut` (what a win would take now), `inactive` (the owner has been away
+ * long enough that a raider who wins takes the camp over).
+ */
+export const CAMP_TROPHY_KINDS = ['scar', 'legend', 'medal', 'achievement', 'bounty'] as const;
+export const CampTrophySchema = z.object({ id: z.string().min(3).max(80), kind: z.enum(CAMP_TROPHY_KINDS), label: z.string().min(1).max(64) });
+export const CampGuardSchema = z.object({ speciesId: z.string().max(32), level: z.number().int().min(1).max(100), isShiny: z.boolean() });
+export const CampViewSchema = z.object({
+  zoneId: z.string().max(32),
+  owner: Name,
+  name: z.string().min(1).max(24),
+  trophies: z.array(CampTrophySchema).max(3),
+  guard: z.array(CampGuardSchema).max(6),
+  claimedAt: IsoDate,
+  mine: z.boolean(),
+  ownerOnline: z.boolean(),
+  ownerInRun: z.boolean(),
+  inactive: z.boolean(),
+  raidedToday: z.boolean(),
+  cut: Money,
+});
+/** One raid in the owner's camp log, with the line the game words it in. */
+export const CampLogSchema = z.object({
+  zoneId: z.string().max(32),
+  raider: Name,
+  won: z.boolean(),
+  cut: Money,
+  tookOver: z.boolean(),
+  line: z.string().min(1).max(160),
+  at: IsoDate,
+});
+export const CampsRes = z.object({
+  /** false while the server runs without camps (env CAMPS=off): nothing can be claimed, raided or edited */
+  enabled: z.boolean(),
+  /** the travellers' camp of the zone the caller stands in (null: none there), and who holds it (null: free) */
+  here: z.object({ zoneId: z.string().max(32), camp: CampViewSchema.nullable() }).nullable(),
+  mine: CampViewSchema.nullable(),
+  /** the trophies the caller has earned, to pick from */
+  earned: z.array(CampTrophySchema).max(80),
+  log: z.array(CampLogSchema).max(20),
+  /** every held camp in the world */
+  camps: z.array(z.object({ zoneId: z.string().max(32), owner: Name, name: z.string().min(1).max(24) })).max(32),
+  you: z.object({ inRun: z.boolean(), money: Money }),
+});
+/** A new banner name and / or trophy pick (ids from `earned`, at most 3, in slot order). */
+export const CampEditReq = z
+  .object({ name: z.string().min(1).max(24).optional(), trophies: z.array(z.string().min(3).max(80)).max(3).optional() })
+  .refine((b) => b.name !== undefined || b.trophies !== undefined, { message: 'name or trophies' });
+export type CampTrophyView = z.infer<typeof CampTrophySchema>;
+export type CampView = z.infer<typeof CampViewSchema>;
+export type CampLogView = z.infer<typeof CampLogSchema>;
+export type CampsView = z.infer<typeof CampsRes>;
+
+/**
  * Majin vs Tenjin seasons (content factions.ts): the season's two sides (points, members, best contributors), the
  * caller's side and points (null before choosing), the side holding Solenne's sky (last season's winner) and the
  * Chronicle of the latest closed seasons, newest first. POST /factions/join takes a side for the season; a trainer
@@ -1052,6 +1108,10 @@ export const ROUTES = {
   // the bounty board: the Wanted posters, the caller's posts and the latest claims; posting one on a ghost
   bounties: route({ method: 'GET', path: '/bounties', auth: 'bearer', response: BountiesRes }),
   bountyPost: route({ method: 'POST', path: '/bounties', auth: 'bearer', request: BountyPostReq, response: BountiesRes }),
+  // camp bases: the camp here, your camp, the trophies you earned and the camp log; renaming / decorating, abandoning
+  camps: route({ method: 'GET', path: '/camps', auth: 'bearer', response: CampsRes }),
+  campEdit: route({ method: 'POST', path: '/camps/edit', auth: 'bearer', request: CampEditReq, response: CampsRes }),
+  campAbandon: route({ method: 'POST', path: '/camps/abandon', auth: 'bearer', request: Nothing, response: CampsRes }),
   // Majin vs Tenjin seasons: the standings and the Chronicle, taking a side, the side holding Solenne's sky
   factions: route({ method: 'GET', path: '/factions', auth: 'bearer', response: FactionsRes }),
   factionJoin: route({ method: 'POST', path: '/factions/join', auth: 'bearer', request: FactionJoinReq, response: FactionsRes }),

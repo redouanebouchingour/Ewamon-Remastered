@@ -1,7 +1,7 @@
 /**
  * §4.3 Client → server messages. zod v4 schemas; every payload is validated before any handler
  * runs (the room registers each with `onMessage(name, schema, handler)`; zod v4 implements
- * Standard Schema). Exactly 25 keys in CLIENT_MESSAGES (Phase C3 added `fastTravel`, Phase D9 `fish`, Phase D13 `rankedQueue`, Phase D14 `tower`, the followers `fieldPower`): a `type` outside them has no handler.
+ * Standard Schema). Exactly 26 keys in CLIENT_MESSAGES (Phase C3 added `fastTravel`, Phase D9 `fish`, Phase D13 `rankedQueue`, Phase D14 `tower`, the followers `fieldPower`, camp bases `camp`): a `type` outside them has no handler.
  *
  * zod v4 `z.number()` already rejects NaN/±Infinity (`.finite()` is a deprecated no-op), so the
  * spine's `.finite()` calls are satisfied by the default. Objects STRIP unknown keys (zod default).
@@ -148,6 +148,15 @@ export type FieldPowerAction = (typeof FIELD_POWER_ACTIONS)[number];
 export const FieldPowerMsg = z.object({ power: z.enum(FIELD_POWER_ACTIONS), targetId: z.string().min(1).max(64) });
 export const FIELD_POWER_REFUSALS = ['powersOff', 'noPower', 'noSpot', 'spotFar', 'burnt', 'usedToday', 'senseResting', 'powerIndoors'] as const;
 export type FieldPowerRefusal = (typeof FIELD_POWER_REFUSALS)[number];
+/**
+ * Camp bases (SPEC §3.19): at the campfire of the zone's travellers' camp (content camps.ts; one camp per route, so no
+ * id), `claim` a free camp or `raid` someone else's (a fight with its guard). Answers: a claim writes the camp and the
+ * zone's `campOwner` / `campName` / `campTrophies` with a toast; a raid a `battleStart` against the guard; a refusal a
+ * toast + `error { code: 'notAllowed', detail: CampRefusal }` (content `CAMP_REFUSAL_TEXT` words it).
+ */
+export const CAMP_ACTIONS = ['claim', 'raid'] as const;
+export type CampAction = (typeof CAMP_ACTIONS)[number];
+export const CampMsg = z.object({ action: z.enum(CAMP_ACTIONS) });
 /** §4.5 */
 export const BattleResyncMsg = z.object({ battleId: z.string().uuid() });
 
@@ -177,7 +186,8 @@ export const CLIENT_MESSAGES = {
   rankedQueue: RankedQueueMsg,
   tower: TowerMsg,
   fieldPower: FieldPowerMsg,
-} as const; // exactly 25 keys
+  camp: CampMsg,
+} as const; // exactly 26 keys
 
 export type ClientMessageType = keyof typeof CLIENT_MESSAGES;
 export type ClientPayload<T extends ClientMessageType> = z.infer<(typeof CLIENT_MESSAGES)[T]>;
@@ -187,7 +197,7 @@ export type ClientMessage = {
 export type BattleAction = z.infer<typeof BattleActionSchema>;
 
 export const CLIENT_MESSAGE_TYPES = Object.freeze(Object.keys(CLIENT_MESSAGES) as ClientMessageType[]);
-export const CLIENT_MESSAGE_COUNT = 25;
+export const CLIENT_MESSAGE_COUNT = 26;
 
 /**
  * §4.3 rate limits (per client, sliding window; excess dropped with ONE `error { code: 'rateLimited' }`
@@ -223,6 +233,8 @@ export const CLIENT_MESSAGE_LIMITS: Readonly<Record<ClientMessageType, { readonl
   tower: { max: 4, windowMs: 1_000 },
   /** followers with field powers: a burn / dig / dive / sense, 2 per second */
   fieldPower: { max: 2, windowMs: 1_000 },
+  /** camp bases: a claim or a raid on the camp here, one per 2 s */
+  camp: { max: 1, windowMs: 2_000 },
 };
 
 export function isClientMessageType(type: unknown): type is ClientMessageType {

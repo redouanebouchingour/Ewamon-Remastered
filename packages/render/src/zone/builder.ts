@@ -14,7 +14,8 @@
  */
 import { Color, Group, LOD, Mesh } from 'three/webgpu';
 import type { BufferGeometry, Material, Object3D , Vector3 } from 'three/webgpu';
-import type { BuildingSpec, HeightfieldData, ObstaclesHandle, ZoneHandle, ZoneSpec } from '../contracts.js';
+import type { BuildingSpec, CampTrophyKind, CampsHandle, HeightfieldData, ObstaclesHandle, ZoneHandle, ZoneSpec } from '../contracts.js';
+import { TROPHY_KINDS, buildCampBanner, buildTrophy } from './generators/trophies.js';
 import type { LightSource, RenderStats } from '../descriptors.js';
 import type { MaterialLibrary } from '../materials/library.js';
 import { SURFACES, type SurfaceId } from '../materials/surfaces.js';
@@ -445,6 +446,8 @@ function* zoneSteps(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonly Surf
   const interiorSystem = pockets.length > 0 ? new InteriorSystem(pockets) : null;
   // 6c. Phase D10 obstacles: one object each (never merged), so a cleared one can be swapped per player
   const obstacles = buildObstacles(spec, set, mat, views, record, root);
+  // 6d. camp bases: each camp's banner and one object per trophy kind per slot, all hidden until `camps.set`
+  const camps = buildCamps(spec, set, mat, views, record, root);
   releaseShapeCache();
   yield 'obstacles';
   const chunkKeys = [...staticParts.keys()].sort((a, b) => a - b);
@@ -518,6 +521,7 @@ function* zoneSteps(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonly Surf
     info: { triangles: built.triangles, chunks: chunks.records().length, instances, buildMs: null },
     ...(interiorSystem ? { interiors: interiorSystem } : {}),
     ...(obstacles ? { obstacles } : {}),
+    ...(camps ? { camps } : {}),
     scatterInstances: () => fields.map((f) => ({ kind: f.kind.name, matrices: f.instanceData() })),
     stats: () => (deps.stats ? deps.stats() : createRenderStats()),
     updateLod(camera: Vector3, cameraObject: Object3D): number {
@@ -640,6 +644,64 @@ function buildObstacles(
     },
     isCleared(id: string): boolean {
       return objs.get(id)?.done === true;
+    },
+  };
+}
+
+/**
+ * Camp bases (§10.7.10): per camp a group holding its banner pole and, for every trophy slot, one object per trophy kind
+ * (the set's own prop builders and library materials), all hidden; the handle shows the banner and one kind per slot.
+ * Walk-through: no collider footprint, the heightfield untouched. null when the spec has none.
+ */
+function buildCamps(
+  spec: ZoneSpec, set: BiomeSet, material: (id: SurfaceId) => Material, views: BufferGeometry[], record: (g: BufferGeometry) => void, root: Group,
+): CampsHandle | null {
+  const list = spec.camps ?? [];
+  if (list.length === 0) return null;
+  const h = spec.heightfield;
+  const st = set.props;
+  const made = new Map<string, { readonly banner: Object3D; readonly slots: ReadonlyMap<CampTrophyKind, Object3D>[]; shown: (CampTrophyKind | null)[] }>();
+  const place = (pieces: readonly { readonly geo: PropGeo; readonly x: number; readonly z: number; readonly yaw: number; readonly scale: number }[], name: string, x: number, z: number, yaw: number): Object3D => {
+    const g = new Group();
+    g.name = name;
+    pieces.forEach((p, k) => {
+      const o = objectFromGeo(p.geo, 0, material, `${name}:${k}`, views, true);
+      o.position.set(p.x, 0, p.z);
+      o.rotation.y = p.yaw;
+      o.scale.setScalar(p.scale);
+      record(p.geo.lod0); record(p.geo.lod1); record(p.geo.lod2);
+      g.add(o);
+    });
+    g.position.set(x, heightClamped(h, x, z) - 0.04, z);
+    g.rotation.y = yaw;
+    g.visible = false;
+    root.add(g);
+    return g;
+  };
+  for (const c of list) {
+    const banner = place([{ geo: buildCampBanner(st, (spec.seed ^ idSeed(`${c.id}:banner`)) >>> 0), x: 0, z: 0, yaw: 0, scale: 1 }], `ewa:camp:${c.id}:banner`, c.banner.x, c.banner.z, c.banner.yaw);
+    const slots = c.slots.map((s, i) => {
+      const byKind = new Map<CampTrophyKind, Object3D>();
+      for (const kind of TROPHY_KINDS) byKind.set(kind, place(buildTrophy(st, kind, (spec.seed ^ idSeed(`${c.id}:${i}:${kind}`)) >>> 0), `ewa:camp:${c.id}:${i}:${kind}`, s.x, s.z, s.yaw));
+      return byKind;
+    });
+    made.set(c.id, { banner, slots, shown: slots.map(() => null) });
+  }
+  return {
+    ids: list.map((c) => c.id),
+    set(id, held): void {
+      const e = made.get(id);
+      if (e === undefined) return;
+      e.banner.visible = held !== null;
+      e.slots.forEach((byKind, i) => {
+        const want = held === null ? null : (held.trophies[i] ?? null);
+        for (const [kind, o] of byKind) o.visible = kind === want;
+        e.shown[i] = want !== null && byKind.has(want) ? want : null;
+      });
+    },
+    shown(id) {
+      const e = made.get(id);
+      return e === undefined ? null : { banner: e.banner.visible, trophies: [...e.shown] };
     },
   };
 }

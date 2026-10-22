@@ -94,6 +94,7 @@ import type { SceneDirector } from './SceneDirector';
 import { SpawnViews } from './SpawnViews';
 import { FollowerViews } from './FollowerViews';
 import { FieldPowerSystem } from './fieldPowers';
+import { CampViews } from './CampViews';
 import { getHeightfield, glideAltitude, interiorAt } from '@ewa/content';
 import { rendererInternals } from '@ewa/render';
 import { RaidDen, raidTargetId } from './RaidViews';
@@ -259,6 +260,8 @@ class World implements World3D {
   private followers: FollowerViews | null = null;
   /** followers with field powers: the lead's powers on this zone's spots, the glide rule, the light, the sense trails */
   private field: FieldPowerSystem | null = null;
+  /** camp bases: the route's travellers' camp (its fire's target, the render's banner and trophies, the camp store) */
+  private readonly campViews: CampViews;
   /** render's actor lift (a glide carries the avatar along its arc) */
   private liftActor: ((id: string, m: number) => void) | null = null;
   private selfFollowerShown = true;
@@ -266,6 +269,7 @@ class World implements World3D {
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.audio = createAudioDirector();
     this.targets = new InteractionTargets((p) => this.hudWriter.setPrompt(p));
+    this.campViews = new CampViews({ targets: this.targets, interactKey: () => this.keyLabel('interact'), camps: () => (this.director as SceneDirector | undefined)?.handle?.camps ?? null });
     this.capture = createInputCapture(window, canvas, {
       interact: () => this.ready && this.activate(),
       openChat: () => useUiStore.getState().setChatOpen(true),
@@ -847,6 +851,9 @@ class World implements World3D {
         if (text !== null) toast('info', text);
       }, true),
     );
+    // camp bases: who holds the zone's camp, its banner and its trophies (claims, edits, takeovers)
+    const camp = (): void => this.campViews.setState(this.roomZone, state.campOwner, state.campName, state.campTrophies);
+    d.push($(state).listen('campOwner', camp, true), $(state).listen('campName', camp), $(state).listen('campTrophies', camp));
     // one sample per remote per applied patch (the interpolation ring), + the server-time offset
     const onPatch = (): void => {
       this.remotes.observeTick(state.tick);
@@ -1011,6 +1018,8 @@ class World implements World3D {
     // followers with field powers: this zone's spots, its brambles, and the glide rule over the new collider
     this.field?.onZone(h === null ? null : z);
     this.input.glider = this.field?.glider() ?? null;
+    // camp bases: the route's camp, drawn as its zone room says
+    this.campViews.onZone(h === null ? null : z);
   }
 
   /**
@@ -1417,6 +1426,10 @@ class World implements World3D {
         return;
       case 'spawn':
         this.ws.send('engageSpawn', { spawnId: t.id });
+        return;
+      case 'camp':
+        // camp bases: the Camp screen (claim, raid, decorate; the server re-checks the fire's range)
+        navigateTo('/play/camp');
         return;
       case 'bramble':
       case 'dig':
@@ -2124,6 +2137,7 @@ class World implements World3D {
     for (const f of this.offs) f();
     this.offs.length = 0;
     this.detachRoom();
+    this.campViews.dispose();
     this.capture.dispose();
     this.battle.reset();
     setBattleActions(null);

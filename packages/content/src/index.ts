@@ -604,3 +604,40 @@ export {
   reachFromSpawn,
 } from './fieldPowers';
 export type { BrambleDef, FieldLoot, FieldPower, FieldSpotDef, GlidePlan } from './fieldPowers';
+
+// ─── camp bases (SPEC §3.19) ─────────────────────────────────────────────────
+export {
+  CAMP_HELD_PER_DAY,
+  CAMP_HELD_POINTS,
+  CAMP_INACTIVE_DAYS,
+  CAMP_LEVEL_SPAN,
+  CAMP_NAME_MAX,
+  CAMP_PROMPT_M,
+  CAMP_RAID_CAP,
+  CAMP_RAID_COOLDOWN_MS,
+  CAMP_RAID_HONOR,
+  CAMP_RAID_SHADOW,
+  CAMP_RAID_SHARE,
+  CAMP_RANGE_M,
+  CAMP_REFUSAL_TEXT,
+  CAMP_SLOT_RADIUS,
+  CAMP_TROPHY_SLOTS,
+  TROPHY_KINDS,
+  TROPHY_KIND_LABEL,
+  campGuardOwner,
+  campGuardTrainerId,
+  campInactive,
+  campLogLine,
+  campOf,
+  campRaidCut,
+  campWelcome,
+  campZones,
+  claimRefusal,
+  defaultCampName,
+  nearCamp,
+  raidRefusal,
+  raidWonText,
+  trophyId,
+  trophyKindOf,
+} from './data/camps';
+export type { CampDef, CampLogEntry, CampRefusal, CampSlot, Trophy, TrophyKind } from './data/camps';

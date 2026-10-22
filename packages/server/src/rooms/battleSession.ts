@@ -45,6 +45,8 @@ import { countsForEcosystem, takeOf } from '../game/ecosystem';
 import { claimGhostBounties, claimNemesisBounty } from '../game/bounties';
 import type { BroughtIn } from '../game/bounties';
 import { ghostReward, ghostTrainerId } from '@ewa/content';
+import { CAMP_RAID_SHADOW, campGuardTrainerId } from '@ewa/content';
+import { settleRaid } from '../game/camps';
 import { NEMESIS_MAX, nemesisFullName, nemesisPromoteChance, nemesisScarRibbon } from '@ewa/content';
 import type { NemesisScar } from '@ewa/content';
 import type { Nemesis, Tx } from '@ewa/persist';
@@ -131,6 +133,12 @@ export interface BattleSession {
    * copies of the party they left with; nothing of theirs is written). The end records the fight for the owner.
    */
   readonly ghost?: { readonly ownerId: string; readonly name: string };
+  /**
+   * Camp bases (content camps.ts): a raid on another trainer's camp (format 'trainer', `noExp`: the AI drives healed
+   * copies of the owner's guard snapshot; the fight itself moves no exp and no honor). The end settles the raid
+   * (game/camps.ts `settleRaid`: the cut, the raider's lead's honor, a takeover, the held point, the camp log).
+   */
+  readonly camp?: { readonly ownerId: string; readonly ownerName: string; readonly zoneId: string };
   /** Phase D14: the tower result for side 0, set after the end transaction commits (read by the host's `onEnd`) */
   towerResult?: TowerResult;
   /**
@@ -186,6 +194,8 @@ export interface BattleDeps {
   readonly ecosystem?: () => boolean;
   /** The bounty board (content bounties.ts): whether a beaten ghost or nemesis claims its bounties (absent: no, env BOUNTIES=off) */
   readonly bounties?: () => boolean;
+  /** Camp bases: a raid settled on this zone's camp (the room re-reads it: a takeover changes owner and banner) */
+  readonly campChanged?: (zoneId: string) => void;
 }
 
 /** Where a battle forms (ZoneRoom `battleAt`): a hall arena + its battle-axis yaw inside an interior, else the player. */
@@ -294,6 +304,8 @@ interface PlayerDelta {
   nemesis: ServerMessage[];
   /** The bounty board: the payout toast of a claim (sent after `battleEnd`) */
   bounty: ServerMessage[];
+  /** Camp bases: what a won raid took (sent after `battleEnd`) */
+  camp: ServerMessage[];
 }
 
 function emptyDelta(): PlayerDelta {
@@ -317,6 +329,7 @@ function emptyDelta(): PlayerDelta {
     tower: null,
     nemesis: [],
     bounty: [],
+    camp: [],
   };
 }
 
@@ -567,7 +580,8 @@ export class BattleCoordinator {
     const slots = doubles ? { slots: 2 as const } : {};
     // Phase D14: a tower fight awards no exp; the flag rides the snapshot so the history row replays alone
     // Arena PvP: healed copies fight with noExp too (no exp, no honor); the kind rides the snapshot (history rows show it)
-    const noExp = base.tower === true || base.arena !== undefined ? { noExp: true as const } : {};
+    // Camp bases: a raid fights with noExp too (no exp, and the fight itself moves no honor: the raid's own toll is settled at the end)
+    const noExp = base.tower === true || base.arena !== undefined || base.camp !== undefined ? { noExp: true as const } : {};
     const arena = base.arena !== undefined ? { arena: base.arena.kind } : {};
     const start = JSON.parse(JSON.stringify({ zoneId: base.zoneId, terrain, sides, ...ambient, ...slots, ...noExp, ...arena })) as BattleStartSnapshot;
     const { state, events } = createBattle({ id: base.id, format: base.format, zoneId: base.zoneId, terrain, seed, sides, ...ambient, ...slots, ...noExp }, this.deps.content);
@@ -941,6 +955,49 @@ export class BattleCoordinator {
   }
 
   /**
+   * Camp bases: the player raids another trainer's camp, fighting its guard as an AI trainer of healed copies of the
+   * owner's party snapshot (own levels, at most six, synthetic ids: nothing of the owner's creatures is read again or
+   * written). `noExp` (see `open`); no flee, no catch. The end settles the raid (`settleRaid`).
+   */
+  async startCampRaid(p: PlayerSeat, camp: { readonly ownerId: string; readonly ownerName: string; readonly zoneId: string; readonly guard: readonly CreatureInstance[] }, at: BattleAt): Promise<StartResult> {
+    if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle', playerId: p.playerId };
+    const loaded = await this.loadPlayers([p.playerId], null, this.deps.zone.id);
+    const me = loaded.get(p.playerId)!;
+    const side0 = this.playerSide(me.party, p.playerId, false, false, me.inventory);
+    if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
+    if (camp.guard.length === 0) return { ok: false, code: 'notAllowed', detail: 'campFree' };
+    if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
+    const content = this.deps.content;
+    const trainerId = campGuardTrainerId(camp.ownerName);
+    const party = arenaCopies(camp.guard.slice(0, 6), null, content).map((c) => projectBattler(c, content));
+    const side1: Omit<Side, 'mustSwitch' | 'consumedItems'> = { kind: 'npc', party, active: 0, trainerId, canFlee: false, canCatch: false };
+    const { session } = this.open(
+      {
+        id: randomUUID(),
+        format: 'trainer',
+        zoneId: this.deps.zone.id,
+        seats: [{ side: 0, playerId: p.playerId, sessionId: p.sessionId }, { side: 1, playerId: null, sessionId: null }],
+        spawnId: null,
+        npc: { trainerId, reward: 0, leagueId: null },
+        beatId: null,
+        staticSpecies: null,
+        staticFlag: null,
+        x: at.x,
+        z: at.z,
+        yaw: at.yaw ?? null,
+        inventory: [this.bagFor(me), null],
+        rematch: false,
+        challenge: [me.challenge, null],
+        camp: { ownerId: camp.ownerId, ownerName: camp.ownerName, zoneId: camp.zoneId },
+      },
+      [side0, side1],
+      this.rng.fork().snapshot(),
+    );
+    this.sendStartProgress(loaded);
+    return { ok: true, session };
+  }
+
+  /**
    * The daily challenge (game/daily.ts): the day's fixed team against the day's AI team, both synthetic and at
    * `DAILY_LEVEL`, on the day's own seed, so every player's daily plays out the same for the same choices. No bands,
    * no items; nothing about the player's creatures is read or written.
@@ -1145,6 +1202,8 @@ export class BattleCoordinator {
       for (const m of d.nemesis) host.send(pid, m);
       // the bounty board: what a claim paid
       for (const m of d.bounty) host.send(pid, m);
+      // camp bases: what a raid took
+      for (const m of d.camp) host.send(pid, m);
     }
   }
 
@@ -1163,6 +1222,8 @@ export class BattleCoordinator {
     const seats = session.seats.filter((s) => s.playerId !== null).sort((a, b) => (a.playerId! < b.playerId! ? -1 : 1));
     const out = new Map<string, PlayerDelta>();
     const roamerFirsts: { pid: string; species: string }[] = [];
+    // camp bases: the camps a raid touched (their zone rooms redraw them after the commit)
+    const campChanges: string[] = [];
     await repos.db.transaction(async (tx) => {
       const rows = await repos.players.lockMany(
         tx,
@@ -1316,6 +1377,22 @@ export class BattleCoordinator {
               await repos.audit.write(tx, { actorId: pid, action: 'tower.reward', subject: session.id, detail: { streak: streak.current, money: reward.money, items: reward.items } }, now);
             }
             d.tower = { won, streak, reward };
+          } else if (session.camp !== undefined) {
+            // camp bases: a raid pays only what it takes from the owner (the cut, once a day per camp), plus the trainer
+            // exp of a win; the raider's lead pays in honor; the owner reads it all in the camp log
+            if (won) {
+              trainerExpGain += TRAINER_EXP.trainerWin;
+              questEvents.push({ kind: 'win', format: 'trainer' });
+            }
+            const r = await settleRaid(repos, tx, this.deps.content, { ...session.camp, raiderId: pid, raiderName: rows.get(pid)!.username, battleId: session.id, won }, nowMs);
+            money += r.cut;
+            if (r.lead !== null) {
+              const i = d.creaturesUpdated.findIndex((c) => c.id === r.lead!.id);
+              if (i >= 0) d.creaturesUpdated[i] = r.lead;
+              else d.creaturesUpdated.push(r.lead);
+            }
+            if (r.text !== null) d.camp.push({ type: 'toast', level: 'warn', text: r.text });
+            campChanges.push(session.camp.zoneId);
           } else if (session.ghost !== undefined) {
             // ghost trainers: a win pays like a route trainer (no flag: a ghost is no content trainer); the owner learns
             // how their ghost fared when they come back
@@ -1485,9 +1562,12 @@ export class BattleCoordinator {
       // the arena, the tower or a raid)
       if (HONOR_FORMATS.has(session.format) && session.arena === undefined && session.tower !== true && seats.length > 0) {
         const ended = next.ended;
-        const wonBy = ended !== null && session.format !== 'wild' && (ended.winner === 0 || ended.winner === 1) ? ended.winner : null;
+        // camp bases: a raid is never a fair win; a won raid is a dark deed of its own
+        const raid = session.camp !== undefined;
+        const wonBy = ended !== null && session.format !== 'wild' && !raid && (ended.winner === 0 || ended.winner === 1) ? ended.winner : null;
         const deeds = deedsOf(events, seats.map((s) => s.side), session.format === 'wild' ? 1 : null, (id) => this.deps.content.move(id).type, wonBy);
-        await repos.worldHonor.add(tx, seasonAt(nowMs).number, session.zoneId, deeds.light, deeds.shadow);
+        const raidShadow = raid && ended !== null && ended.winner === 0 ? CAMP_RAID_SHADOW : 0;
+        await repos.worldHonor.add(tx, seasonAt(nowMs).number, session.zoneId, deeds.light, deeds.shadow + raidShadow);
       }
       // a living ecosystem: a plain wild creature caught or knocked out counts against its species in this zone's week
       if (session.format === 'wild' && session.arena === undefined && session.tower !== true && countsForEcosystem(session.spawnId) && this.deps.ecosystem?.() === true) {
@@ -1496,6 +1576,7 @@ export class BattleCoordinator {
         if (species !== null) await repos.ecosystem.add(tx, session.zoneId, ecoWeek(nowMs), species, t.caught, t.ko);
       }
     });
+    for (const z of campChanges) this.deps.campChanged?.(z);
     // one roaming legendary per season: the first catcher hears it (after the commit)
     for (const r of roamerFirsts) {
       const name = this.deps.content.species(r.species).name;

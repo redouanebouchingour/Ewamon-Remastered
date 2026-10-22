@@ -176,18 +176,22 @@ const CASES: Record<ClientMessageType, Case> = {
     valid: { power: 'dig', targetId: 'camp' },
     invalid: [{}, { power: 'fly', targetId: 'camp' }, { power: 'dig' }, { power: 'dig', targetId: '' }, { power: 'dive', targetId: long(65) }],
   },
+  camp: {
+    valid: { action: 'raid' },
+    invalid: [{}, { action: 'burn' }, null],
+  },
 };
 
 describe('§4.3 CLIENT_MESSAGES', () => {
-  it('has exactly 25 keys, in the spine order', () => {
-    expect(Object.keys(CLIENT_MESSAGES)).toHaveLength(25);
-    expect(CLIENT_MESSAGE_COUNT).toBe(25);
+  it('has exactly 26 keys, in the spine order', () => {
+    expect(Object.keys(CLIENT_MESSAGES)).toHaveLength(26);
+    expect(CLIENT_MESSAGE_COUNT).toBe(26);
     expect(CLIENT_MESSAGE_TYPES).toEqual([
       'input', 'emote', 'chat', 'interact', 'engageSpawn',
       'battleAction', 'battleResync', 'challenge', 'challengeReply',
       'tradeRequest', 'tradeReply', 'tradeOffer', 'tradeConfirm', 'tradeCancel',
       'raidJoin', 'raidReady', 'raidAction', 'raidCatch', 'raidLeave',
-      'handoverAck', 'fastTravel', 'fish', 'rankedQueue', 'tower', 'fieldPower',
+      'handoverAck', 'fastTravel', 'fish', 'rankedQueue', 'tower', 'fieldPower', 'camp',
     ]);
     expect(Object.keys(CASES).sort()).toEqual([...CLIENT_MESSAGE_TYPES].sort());
     expect(Object.keys(CLIENT_MESSAGE_LIMITS).sort()).toEqual([...CLIENT_MESSAGE_TYPES].sort());
