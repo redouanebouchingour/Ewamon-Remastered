@@ -81,6 +81,9 @@ export function hazeLevel(biome: Biome | null, daylight: number, w: WeatherKind)
   return Math.min(1.25, base * sky * day);
 }
 
+/** What `WorldFx.field` can play (followers with field powers, §10.7.9). */
+export type FieldFxKind = 'burn' | 'dig' | 'dive' | 'diveMark' | 'sense' | 'senseRing' | 'wanted' | 'wantedRing' | 'gust';
+
 export class WorldFx {
   readonly root = new Group();
   readonly particles: WorldParticles;
@@ -183,6 +186,29 @@ export class WorldFx {
     if (classify(g, x, z) !== 'grass') return null;
     this.rustle(x, y, z, 1);
     return 'grass';
+  }
+
+  /**
+   * Followers with field powers (§10.7.9): the world's answer to a power at (x, y, z). `burn` flames and smoke off a
+   * bramble, `dig` soil thrown up at a camp, `dive` a column of spray, `diveMark` a dark-water spot's slow ring and
+   * bubbles, `sense` / `wanted` a mote on a ghost's haunt and `senseRing` / `wantedRing` where it walks now, `gust` a
+   * glide's take-off along (dx, dz). Reduced effects keep a few particles.
+   */
+  field(kind: FieldFxKind, x: number, y: number, z: number, dx = 0, dz = 0): void {
+    const s = this.d.effects().shake ? 1 : 0.4;
+    const W = WORLD_BURSTS;
+    const p = this.particles;
+    switch (kind) {
+      case 'burn': p.emit(W.flame, x, y, z, 0, 0, s * 1.4); p.emit(W.smoke, x, y, z, 0, 0, s); p.emit(W.ember, x, y + 0.4, z, 0, 0, 4 * s); break;
+      case 'dig': p.emit(W.dig, x, y, z, 0, 0, 1.4 * s); p.emit(W.dust, x, y, z, 0, 0, 2 * s); break;
+      case 'dive': p.emit(W.dive, x, y, z, 0, 0, 1.5 * s); p.emit(W.ripple, x, y, z, 0, 0, 1.6); p.emit(W.splash, x, y, z, 0, 0, 2 * s); break;
+      case 'diveMark': p.emit(W.diveMark, x, y, z, 0, 0, 1); p.emit(W.bubble, x, y, z, 0, 0, s); break;
+      case 'sense': p.emit(W.sense, x, y, z, 0, 0, 1); break;
+      case 'senseRing': p.emit(W.senseRing, x, y, z, 0, 0, 1); p.emit(W.sense, x, y + 0.6, z, 0, 0, 2); break;
+      case 'wanted': p.emit(W.wanted, x, y, z, 0, 0, 1); break;
+      case 'wantedRing': p.emit(W.wantedRing, x, y, z, 0, 0, 1); p.emit(W.wanted, x, y + 0.6, z, 0, 0, 2); break;
+      case 'gust': p.emit(W.gust, x, y, z, dx, dz, s); break;
+    }
   }
 
   /** The warm-up frame's objects (§10.1.2 step 8): the particle material and the print material. */

@@ -7,7 +7,7 @@ import { createJSONStorage, persist, subscribeWithSelector } from 'zustand/middl
 
 export type Colorblind = 'none' | 'deuteranopia' | 'protanopia' | 'tritanopia';
 export type InputAction =
-  | 'forward' | 'back' | 'left' | 'right' | 'run' | 'interact' | 'jump' | 'bike' | 'chat'
+  | 'forward' | 'back' | 'left' | 'right' | 'run' | 'interact' | 'jump' | 'bike' | 'fieldPower' | 'chat'
   | 'emote1' | 'emote2' | 'emote3' | 'emote4' | 'emote5' | 'emote6'
   | 'challenge' | 'rotateLeft' | 'rotateRight' | 'party' | 'bag' | 'journal' | 'map' | 'pvp' | 'pause' | 'toggleHud';
 
@@ -73,6 +73,8 @@ export const DEFAULT_KEYBINDS: Keybinds = {
   jump: ['Space'],
   // Phase D11: mount / fold the bicycle (V was free; persisted blobs without it merge this default in)
   bike: ['KeyV'],
+  // followers with field powers: the lead's power that needs no spot (a Psychic lead's sense); F was free
+  fieldPower: ['KeyF'],
   chat: ['KeyT'],
   emote1: ['Digit1'],
   emote2: ['Digit2'],

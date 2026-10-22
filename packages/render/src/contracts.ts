@@ -144,9 +144,12 @@ export interface NeighbourSpec {
  * scale) or a boulder at (x, z), each its own object so `ObstaclesHandle.setCleared` can swap it per player. Movement
  * is content's business (the heightfield stamps the disc unwalkable; the client's collider re-opens a cleared one).
  */
-export interface ObstacleSpec { readonly id: string; readonly kind: 'tree' | 'boulder'; readonly x: number; readonly z: number }
+export interface ObstacleSpec { readonly id: string; readonly kind: 'tree' | 'boulder' | 'bramble'; readonly x: number; readonly z: number }
 
-/** Phase D10: per-player obstacle state. A cleared tree shows its stump, a cleared boulder is gone; unknown ids are ignored. */
+/**
+ * Phase D10: per-player obstacle state. A cleared tree shows its stump, a cleared boulder is gone; unknown ids are ignored.
+ * Followers with field powers (§10.7.9): a `bramble` (a thorn patch a Fire lead burns) is gone once cleared.
+ */
 export interface ObstaclesHandle {
   readonly ids: readonly string[];
   setCleared(id: string, cleared: boolean): void;

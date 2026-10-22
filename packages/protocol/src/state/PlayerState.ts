@@ -27,4 +27,27 @@ export class PlayerState extends Schema {
   @type('boolean') surfing = false;
   /** Phase D11: the last accepted input was ridden on the bicycle */
   @type('boolean') biking = false;
+  /**
+   * Followers (SPEC §3.18): the species of the party lead walking behind this player ('' = none: every creature fainted).
+   * Written only when the lead changes, so it costs nothing per tick.
+   */
+  @type('string') lead = '';
+  /** Followers: the lead's look, packed (`encodeLeadFlags`: bit 0 shiny, bit 1 alpha, bits 2..4 the variant). */
+  @type('uint8') leadFlags = 0;
+}
+
+/** The variant keys in their `leadFlags` order (core `VariantKey`). */
+export const LEAD_VARIANTS = ['normal', 'dawn', 'dusk', 'verdant', 'ember'] as const;
+export type LeadVariant = (typeof LEAD_VARIANTS)[number];
+
+/** Followers: packs a lead's look into `PlayerState.leadFlags` (unknown variant = normal). */
+export function encodeLeadFlags(look: { readonly isShiny?: boolean; readonly isAlpha?: boolean; readonly variantKey?: string }): number {
+  const v = Math.max(0, LEAD_VARIANTS.indexOf((look.variantKey ?? 'normal') as LeadVariant));
+  return (look.isShiny === true ? 1 : 0) | (look.isAlpha === true ? 2 : 0) | (v << 2);
+}
+
+/** Followers: unpacks `PlayerState.leadFlags`. */
+export function decodeLeadFlags(flags: number): { readonly isShiny: boolean; readonly isAlpha: boolean; readonly variantKey: LeadVariant } {
+  const v = (flags >> 2) & 7;
+  return { isShiny: (flags & 1) === 1, isAlpha: (flags & 2) === 2, variantKey: LEAD_VARIANTS[v] ?? 'normal' };
 }

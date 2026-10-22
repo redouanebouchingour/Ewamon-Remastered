@@ -1180,6 +1180,39 @@ The overworld's own small motion, one bundle per renderer (`worldfx/`, `WorldFx`
 
 Budget: + 5 draw calls, + 5 programs; nothing grows after construction.
 
+### 10.7.9 Followers <!-- added 2026-10-21: followers with field powers (spine §3.18) -->
+
+Each trainer's party lead walks behind them as its creature billboard (`stage/followers.ts`, `FollowerPool`, part of the
+part-3 bundle as `Part3.followers`, updated in the frame hook after the actor pool, before the world effects).
+- **API**: `set(owner, descriptor | null, frontOnly?)` (a new descriptor swaps the card in place; a full pool of
+  `FOLLOWER.max` 16 refuses), `setShown(owner, on)` (a battle, a hall, the arena: hidden without dropping the card; shown
+  again it reappears behind the owner), `positionOf`, `billboardOf`, `forEachWalker`, `setLight(owner | null, level)`.
+  The owners are the `CharacterPool`'s actors (`feetOf`, `groundAt`). Which sprite and which atlas is the client's.
+- **Trailing**: per owner a ring of `FOLLOWER.historyN` 30 points of the owner's path, one every 0.2 m; the follower
+  heads for the point `FOLLOWER.gapM` 1.45 m back along that path (so it walks round a corner, never across it) at the
+  owner's measured pace plus `catchPerM` 3.5 m/s per metre of lag past the gap (linear, never an exponential ease, at
+  most 16 m/s), and a lag past `snapM` 7 m (a teleport, a warp, a handover) puts it straight behind the owner. It stands on
+  the actors' ground (the water level on open water, a ring's level pad), never below the owner's own path height (so it
+  floats along a glide), hops 0.07 m at 3.4 Hz while it walks (billboards have no walk cycle), and shows its back while it
+  walks away from the camera (`frontOnly`: never). Drawn at 0.72 of its §10.4.3 size, never taller than 1.5 m.
+- **World effects**: followers are walkers after the character rigs (slots `FOLLOWER.slot0` 48 .. 63; `STEPS.slots` is
+  64), so they get footsteps, prints, grass bend and the surf wake like any actor (`combinedWalkers`).
+- **The Fire lead's light**: one non-shadow `PointLight` (`#ff9a3c`, range 14 m, decay 2) always in the scene at intensity
+  0, so turning it up changes no program (the layout loops every local light); `setLight` carries it 1.1 m over the
+  owner's follower at `level` × 60 (twice a lantern: it has to read at night) with a gentle flicker; hidden or released, it goes back to 0.
+- **The actor lift** (`CharacterPool.setLift(id, m)`, `groundAt(x, z)`; additions to §10.7.6): a gliding actor's feet
+  float `m` over the ground, its contact shadow stays on the ground (smaller the higher it flies), and it is no walker for
+  the world effects while lifted (no dust kicked up mid-air).
+- **Field effects** (`WorldFx.field(kind, x, y, z, dx?, dz?)`, recipes in `WORLD_BURSTS`, the same particle pool and
+  program): `burn` flames, smoke and embers; `dig` soil and dust; `dive` a column of spray and a ring; `diveMark` a slow
+  dark ring and bubbles (a dark-water spot); `sense` / `wanted` a glowing mote on a ghost's haunt and `senseRing` /
+  `wantedRing` where it walks now (pink; a wanted ghost the hot orange); `gust` a glide's take-off.
+- **Brambles** (§10.5 builder): `ObstacleSpec.kind` gains `'bramble'`: a knot of four of the biome's bushes on its own
+  object; cleared (burnt), it is gone. Movement is not render's business: the client's collider blocks an unburnt one.
+
+Budget: + 0 draw calls and programs at rest (a follower is a creature billboard on its atlas's material, the light is a
+local light); each follower is one billboard draw.
+
 ---
 
 ## §10.8 POST STACK

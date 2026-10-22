@@ -7,7 +7,8 @@
  */
 
 // §4.1 / §4.2 — schema classes + the AOI view rule
-export { PlayerState, SpawnState, BattleSummary, RaidState, ZoneState, ArenaState, AOI_VIEW_FIELDS } from './state/index';
+export { PlayerState, SpawnState, BattleSummary, RaidState, ZoneState, ArenaState, AOI_VIEW_FIELDS, LEAD_VARIANTS, decodeLeadFlags, encodeLeadFlags } from './state/index';
+export type { LeadVariant } from './state/index';
 export {
   AOI_CELL,
   AOI_RADIUS,

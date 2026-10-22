@@ -225,3 +225,15 @@ installed library that future readers should not have to re-derive. The spec its
 - `bounties` (`GET /bounties`) and `bountyPost` (`POST /bounties`) (103 routes); `BountiesRes` with the three poster kinds
   (`BOUNTY_KINDS`), the caller's posts (`BOUNTY_STATUSES`), claims and the ghosts that can be posted on; history event
   `bounty`. No new server message: a claim's payout rides the battle's rewards and a `toast`.
+
+## Followers with field powers (2026-10-21)
+
+- `PlayerState.lead` (string) and `leadFlags` (uint8, `encodeLeadFlags` / `decodeLeadFlags`: shiny, alpha, variant) are
+  appended last, so every earlier field index is unchanged; `ZoneState.fieldPowers` likewise. Both written on a change
+  only: the follower costs nothing per tick on the wire.
+- `InputMsg.glide` (optional): the take-off and the unit direction the server re-plans from. A client sends a separate
+  payload object for a glide window, never a `glide: undefined` key (msgpack would carry it as nil, which zod refuses).
+- Client message `fieldPower` (25 keys, limit 2 per second) and server message `fieldPower` (28 variants: one flat shape
+  for burn / dig / dive / sense, `ghosts` empty except for sense). The refusal details (`FIELD_POWER_REFUSALS`) are named
+  so none collides with another flow's (`tooFar` is the raids'): the client's router treats them as explained by the
+  server's toast.

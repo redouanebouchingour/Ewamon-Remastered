@@ -3,7 +3,7 @@
  * session writers; everything a scene owns (battle*, chat, storyBeat, raidEvents) is left for part 2's
  * World3D / BattleController, which subscribe to the same `WorldSession.onMessage`.
  */
-import { FAST_TRAVEL_REFUSALS } from '@ewa/protocol';
+import { FAST_TRAVEL_REFUSALS, FIELD_POWER_REFUSALS } from '@ewa/protocol';
 import type { ServerMessage } from '@ewa/protocol';
 import { installArenaFlow, routeArenaMessage } from '../app/arena';
 import type { ArenaSession } from '../app/arena';
@@ -18,7 +18,7 @@ import { useUiStore } from '../state/ui';
 import type { WorldSession } from './WorldSession';
 
 /** refusals the server already explained with its own toast (e.g. a league gate: toast + error leagueLocked; Phase C3 fast travel) */
-const EXPLAINED_DETAILS: ReadonlySet<string> = new Set(['leagueLocked', ...FAST_TRAVEL_REFUSALS]);
+const EXPLAINED_DETAILS: ReadonlySet<string> = new Set(['leagueLocked', ...FAST_TRAVEL_REFUSALS, ...FIELD_POWER_REFUSALS]);
 
 const ERROR_TEXT: Readonly<Record<string, string>> = {
   notAllowed: 'That is not allowed right now.',

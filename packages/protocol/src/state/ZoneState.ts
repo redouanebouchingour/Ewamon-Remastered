@@ -27,4 +27,9 @@ export class ZoneState extends Schema {
   @type({ map: BattleSummary }) battles = new MapSchema<BattleSummary>();
   /** broadcast to all */
   @type(RaidState) raid: RaidState | null = null;
+  /**
+   * Followers with field powers (SPEC §3.18): the server env FIELD_POWERS is on here (glides, brambles, digs, dives and
+   * the Psychic sense work). Set once at room creation; the client predicts glides and blocks brambles only when true.
+   */
+  @type('boolean') fieldPowers = false;
 }

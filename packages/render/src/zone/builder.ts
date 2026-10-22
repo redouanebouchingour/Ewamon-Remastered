@@ -602,6 +602,22 @@ function buildObstacles(
       cleared.visible = false;
       record(sg.lod0); record(sg.lod1); record(sg.lod2);
       root.add(cleared);
+    } else if (o.kind === 'bramble') {
+      // §10.7.9 a thorn patch a Fire lead burns: a dense knot of the biome's bush leaves round a low rock; burnt, it is gone
+      const leaf = set.bushLeaf ?? tree?.leaf ?? set.props.leaf;
+      const knot = new Group();
+      knot.name = `ewa:obstacle:${o.id}`;
+      const parts: readonly (readonly [number, number, number])[] = [[0, 0, 1.25], [0.75, 0.35, 0.85], [-0.6, 0.5, 0.9], [0.15, -0.75, 0.8]];
+      parts.forEach(([dx, dz, size], k) => {
+        const geo = buildBush(leaf, (seed ^ (k * 0x9e37)) >>> 0, size);
+        const bush = objectFromGeo(geo, 0, material, `ewa:obstacle:${o.id}:b${k}`, views, true);
+        bush.position.set(dx, 0, dz);
+        record(geo.lod0); record(geo.lod1); record(geo.lod2);
+        knot.add(bush);
+      });
+      knot.position.set(o.x, y - 0.08, o.z);
+      knot.rotation.y = ((seed & 0xffff) / 0xffff) * Math.PI * 2;
+      standing = knot;
     } else {
       const geo = buildRock(set.rock, seed, { size: 1.15, squash: 0.78, elongate: 1.15, cuts: [3, 5] });
       standing = objectFromGeo(geo, 0, material, `ewa:obstacle:${o.id}`, views, true);

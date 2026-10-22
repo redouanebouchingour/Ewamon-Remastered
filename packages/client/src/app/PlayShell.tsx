@@ -15,6 +15,7 @@ import { EvolutionBanner } from '../world/EvolutionBanner';
 import { HatchReveal } from '../world/HatchReveal';
 import { FishingPrompt } from '../world/FishingPrompt';
 import { Minimap } from '../world/Minimap';
+import { FieldPowerChip } from '../world/FieldPowerChip';
 import { PostBattlePrompts } from '../world/PostBattlePrompts';
 import { RaidLobby } from '../world/RaidLobby';
 import { TowerModal, TowerStreak } from '../world/TowerModal';
@@ -178,6 +179,8 @@ export function PlayShell() {
       {!hasPanel && !inArena && <WorldHint />}
       {/* Phase C3: the minimap draws over the live world only (no world → no canvas, as GameCanvas) */}
       {!hasPanel && !inBattle && !inArena && worldCapability() && <Minimap />}
+      {/* followers with field powers: who walks behind the player and what that lead can do here */}
+      {!hasPanel && !inBattle && !inArena && worldCapability() && <FieldPowerChip />}
       {/* Phase D12: Prof. Wynn's tutorial steps (live world only, like the minimap) */}
       {worldCapability() && !inArena && <TutorialCard />}
       {/* Majin / Tenjin: the band cards (once a band is in the inventory), state apart from the opening tutorial */}

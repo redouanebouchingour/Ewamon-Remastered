@@ -236,6 +236,8 @@ export class CharacterPool implements ActorPool {
   private readonly rippleTime = uniform(0).setName('ewaRippleTime');
   private water: WaterProbe | null = null;
   private readonly wet = new Uint8Array(ACTOR_POOL_SIZE);
+  /** Followers with field powers (§10.7.9): metres an actor's feet float above the ground (a glide), per slot */
+  private readonly lift = new Float32Array(ACTOR_POOL_SIZE);
   private dirtyRipples = false;
   private readonly rigs: Rig[] = [];
   private readonly byId = new Map<string, Rig>();
@@ -324,6 +326,27 @@ export class CharacterPool implements ActorPool {
     for (const r of this.rigs) if (r.id !== null) this.place(r);
   }
 
+  /** The ground the actors stand on at (x, z): the zone's surface (water level on open water); 0 without a zone. */
+  groundAt(x: number, z: number): number {
+    const g = this.ground;
+    const y = g !== null ? g(x, z) : 0;
+    return Number.isFinite(y) ? y : 0;
+  }
+
+  /**
+   * Followers with field powers (§10.7.9): `id`'s feet float `m` metres above the ground (a glide off a cliff; 0 = on
+   * the ground). The contact shadow stays on the ground; a lifted actor is no walker for the world effects (no dust
+   * kicked up mid-air).
+   */
+  setLift(id: string, m: number): void {
+    const r = this.byId.get(id);
+    if (r === undefined) return;
+    const v = Number.isFinite(m) && m > 0 ? m : 0;
+    if (this.lift[r.slot] === v) return;
+    this.lift[r.slot] = v;
+    this.place(r);
+  }
+
   /** Phase D8: true while `id` stands on open water (tests, the client's ripple audio). */
   onWater(id: string): boolean {
     const r = this.byId.get(id);
@@ -390,6 +413,7 @@ export class CharacterPool implements ActorPool {
     this.decals.setMatrixAt(r.slot, ZERO_SCALE);
     this.ripples.setMatrixAt(r.slot, ZERO_SCALE);
     this.wet[r.slot] = 0;
+    this.lift[r.slot] = 0;
     this.dirtyDecals = true;
     this.dirtyRipples = true;
     this.refreshCounts();
@@ -533,7 +557,7 @@ export class CharacterPool implements ActorPool {
   forEachWalker(visit: (slot: number, feet: Vector3, normal: Vector3, speed: number, yaw: number, dist2: number) => void): void {
     for (let i = 0; i < this.rigs.length; i++) {
       const r = this.rigs[i]!;
-      if (r.id !== null) visit(r.slot, r.feet, r.groundN, r.speed, r.yaw, r.dist2);
+      if (r.id !== null && this.lift[r.slot]! < 0.2) visit(r.slot, r.feet, r.groundN, r.speed, r.yaw, r.dist2);
     }
   }
 
@@ -866,7 +890,8 @@ export class CharacterPool implements ActorPool {
   private place(r: Rig): void {
     const g = this.ground;
     const y = g !== null ? g(r.feet.x, r.feet.z) : 0;
-    r.feet.y = Number.isFinite(y) ? y : 0;
+    const lift = this.lift[r.slot]!;
+    r.feet.y = (Number.isFinite(y) ? y : 0) + lift;
     if (g !== null) {
       const d = CHARACTER.normalProbeM;
       const hx = g(r.feet.x + d, r.feet.z) - g(r.feet.x - d, r.feet.z);
@@ -893,9 +918,11 @@ export class CharacterPool implements ActorPool {
     }
     if (this.wet[r.slot] === 1) { this.wet[r.slot] = 0; this.ripples.setMatrixAt(r.slot, ZERO_SCALE); this.dirtyRipples = true; }
     _q.setFromUnitVectors(_up, r.groundN).multiply(_qFlat);
-    _s.set(CHARACTER.decalM, CHARACTER.decalM, 1);
+    // a gliding actor's shadow stays on the ground, smaller the higher it flies
+    const k = lift > 0 ? Math.max(0.45, 1 - lift / 12) : 1;
+    _s.set(CHARACTER.decalM * k, CHARACTER.decalM * k, 1);
     _p.copy(r.feet);
-    _p.y += 0.01;
+    _p.y += 0.01 - lift;
     _m.compose(_p, _q, _s);
     this.decals.setMatrixAt(r.slot, _m);
     this.dirtyDecals = true;

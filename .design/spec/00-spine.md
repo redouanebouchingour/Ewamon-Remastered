@@ -1562,6 +1562,50 @@ decides every claim. Rules, one line each:
   today's fights; `always` = a wanted ghost steps out of every grass encounter it can, for live checks). The board screen
   itself is always there. No core change.
 
+### 3.18 Followers with field powers
+<!-- added 2026-10-21: followers with field powers, the user's approved pitch (the lead walks behind its trainer and its type does things on the sculpted terrain: Flying glides off a cliff, Fire lights the dark and burns brambles, Ground digs at the camps, Psychic shows a ghost trainer's route, Water dives in the lakes; exploring depends on the team, not on HM-style tools) -->
+`content/src/fieldPowers.ts` (rules) and `data/fieldPowers.ts` (the spots, a layer of their own: never `ZoneDef`, so no
+zone's layout RNG or heightfield digest moves). The server decides every power; the client predicts the glide with the
+same function. Never a story gate: every spot is optional, and Cut / Strength obstacles, surfing and fishing are as they were.
+- **The lead** (`fieldLead`): the first party creature still standing walks behind its trainer (`PlayerState.lead` /
+  `leadFlags`, §4.1) and its types give its powers (`fieldPowersOf`, `FIELD_POWER_TYPE`): Flying `glide`, Fire `light`,
+  Ground `dig`, Psychic `sense`, Water `dive`; a dual type has both. Every creature has its line on the party screen.
+- **Glide** (Flying): a step off a cliff edge glides instead of being stopped. `planGlide(h, x0, z0, dx, dz, standable,
+  reach)`: from a standable take-off with at most `GLIDE.edgeM` 1 m of ground ahead, the flier sinks along a line of
+  `GLIDE.ratio` 3 m flown per metre lost over cliff samples (`cliffSample`: in bounds, unwalkable, dry, not a Cut /
+  Strength stamp, steeper than the walkable limit), the ground below and walkable specks, and touches down where that line
+  meets standable ground that the zone's spawn reaches (`reachFromSpawn`), at least `GLIDE.minDropM` 1.5 m below, within
+  `GLIDE.maxRunM` 24 m; a house, open water, the margin or rising ground ends it at the last landing that qualified, or
+  refuses it. So a glide only ever goes down, onto ground the spawn reaches, and can never strand anyone. It moves at
+  `GLIDE.speedMps` 7 m/s (the run speed: the run cap covers it) along the line, whatever the keys say; `glideAltitude`
+  is the arc drawn (the line, a 0.8 m hump, never closer than 0.35 m to the ground under it).
+- **Light and burn** (Fire): in a dark place (`isDarkHere`: `DARK_ZONES` the_rift, eclipse_shrine and
+  umbral_observatory at any hour, night when the day cycle's daylight is under 0.35, a zone the honor shadow darkened to 3
+  or more) the follower carries a light. `BRAMBLES`: two thorn patches on each of the 8 routes and in the rift, each on
+  open walkable ground off the roads and the tall grass, a few metres from a cliff, hiding a small cache (`item` x `qty`)
+  given once with the burning (flag `burnt:<zone>:<id>`). An unburnt patch is a per-player blocker like a hall gate
+  (`brambleSolid`: a square of half `BRAMBLE_SOLID_HALF` 1.45 m, the 1.1 m bush grown by the capsule).
+- **Dig** (Ground): `DIG_SPOTS`, one beside the campfire of each route's travellers' camp (the zone sculpts' tent and
+  campfire). Once per camp per player per UTC day (flag `dug:<zone>:<id>`, its set time is the last dig; `fieldSpotReady`
+  re-arms it when the day turns), one draw from `DIG_LOOT` seeded by player, zone, spot and day (`fieldLoot`).
+- **Dive** (Water): `DIVE_SPOTS`, the dark middle of a lake or the sea (12, open water at least 2.5 m all round, never in
+  a lava zone). The diver surfs out over it (HM Surf, as ever); once per spot per player per UTC day (flag
+  `dove:<zone>:<id>`), one draw from `DIVE_LOOT`. A short interaction, not an underwater mode.
+- **Sense** (Psychic): ghost trainers (§3 ghosts) walk their haunts: `hauntPath(owner, zone, grassPatches)` is a loop
+  through `HAUNT.patches` 3 of the zone's tall-grass patches (shuffled by owner and zone, so every room and client
+  agrees), walked at `HAUNT.speedMps` 0.6 m/s (`hauntPosition`). Sensing shows this zone's ghosts whose haunt passes within
+  `HAUNT.senseRangeM` 90 m now, and every wanted one (the bounty board, §3.17) wherever it walks, for `HAUNT.senseMs`
+  12 s; it rests `HAUNT.cooldownMs` 6 s. Haunts are real: when the grass rolls a ghost, the one whose haunt passes within
+  `HAUNT.nearM` 14 m of the player is the one that steps out (wanted ghosts first, as before).
+- **Ranges**: `FIELD_INTERACT_M` 3 m from the spot (burn, dig, dive), from the server's accepted position, outdoors.
+- **validate rule 13**: a bramble's blocker square (+0.5 m) and a 3.2 m ring round it are all walkable (it can never plug
+  a path), it is reachable from the spawn at its range, at least 8 m from every authored point, obstacle, static, raid
+  hotspot and camp prop, outside the interiors and the tall grass; a dig spot is walkable, reachable and within 4 m of a
+  campfire; a dive spot is open water 2.5 m all round in a zone whose water is not lava; every cache and loot item exists.
+- **Switch**: server env `FIELD_POWERS` (`on` default; `off` in testEnv, so the progression walker's movement and the
+  handover-landing tests see today's world: no glide in validation, no bramble blocker, every power refused). The
+  follower itself is visual and always on. No core change.
+
 ---
 
 ## §4 @ewa/protocol WIRE
@@ -1588,6 +1632,8 @@ export class PlayerState extends Schema {
   @type('uint32') seq = 0;           // last input seq the server applied — the client reconciles against it
   @type('boolean') surfing = false;  // Phase D8: the accepted pose is on open water (water, not walkable) — remotes ride the level
   @type('boolean') biking = false;   // Phase D11: the last accepted input was ridden (the bike cap applied)
+  @type('string') lead = '';         // added 2026-10-21 (followers, §3.18): the species of the party lead walking behind this player ('' = every creature fainted); written only on a change
+  @type('uint8') leadFlags = 0;      // added 2026-10-21: the lead's look packed (`encodeLeadFlags`: bit 0 shiny, bit 1 alpha, bits 2..4 the variant in core VariantKey order)
 }
 
 export class SpawnState extends Schema {
@@ -1634,6 +1680,7 @@ export class ZoneState extends Schema {
   @view() @type({ map: SpawnState }) spawns = new MapSchema<SpawnState>();     // keyed by spawn id
   @type({ map: BattleSummary }) battles = new MapSchema<BattleSummary>();     // small; broadcast to all
   @type(RaidState) raid: RaidState | null = null;                              // broadcast to all
+  @type('boolean') fieldPowers = false;            // added 2026-10-21 (followers, §3.18): the server env FIELD_POWERS is on in this room; set at creation; the client predicts glides and blocks brambles only when true
 }
 
 // <!-- amended 2026-10-11: arena PvP --> the state of an `arena` room (30-server-netcode.md §30.4.10): one battle outside the world;
@@ -1655,7 +1702,8 @@ import { z } from 'zod';
 
 export const InputMsg = z.object({ seq: z.number().int().min(0).max(0xffffffff), x: z.number(), z: z.number(),   // zod 4: z.number() rejects NaN/±Infinity; .finite() is a deprecated no-op
   angle: z.number(), running: z.boolean(), dtMs: z.number().int().min(1).max(100),
-  bike: z.boolean().optional() });   // Phase D11: the window was ridden — the bike cap only for an owner outdoors on land, else run / walk (30-server-netcode.md §30.2.4)
+  bike: z.boolean().optional(),   // Phase D11: the window was ridden: the bike cap only for an owner outdoors on land, else run / walk (30-server-netcode.md §30.2.4)
+  glide: z.object({ x: z.number(), z: z.number(), dx: z.number().min(-1).max(1), dz: z.number().min(-1).max(1) }).optional() });   // added 2026-10-21 (followers, §3.18): the window glided; the take-off and unit direction the server re-plans from (30-server-netcode.md §30.2.4)
 export const EmoteMsg = z.object({ emote: z.number().int().min(1).max(6) });
 export const ChatMsg = z.object({ text: z.string().min(1).max(120) });
 export const InteractMsg = z.object({ targetId: z.string().min(1).max(64), kind: z.enum(['npc', 'item', 'lore', 'gym', 'healer', 'shop', 'warp', 'static', 'switch', 'obstacle']) });   // 'switch' Phase A, 'obstacle' Phase D10
@@ -1693,14 +1741,15 @@ export const TowerMsg = z.discriminatedUnion('action', [                        
   z.object({ action: z.literal('start'), picks: z.array(z.string().min(1).max(64)).length(3) }),   // refusals TOWER_REFUSALS locked / tooFar / badPicks / running / noRun / inBattle
   z.object({ action: z.literal('next') }), z.object({ action: z.literal('quit') }),
 ]);
+export const FieldPowerMsg = z.object({ power: z.enum(['burn', 'dig', 'dive', 'sense']), targetId: z.string().min(1).max(64) });   // added 2026-10-21 (followers, §3.18): the lead's power on a spot of data/fieldPowers.ts (sense: 'here'); refusals FIELD_POWER_REFUSALS powersOff / noPower / noSpot / spotFar / burnt / usedToday / senseResting / powerIndoors, each with a toast
 
 export const CLIENT_MESSAGES = {
   input: InputMsg, emote: EmoteMsg, chat: ChatMsg, interact: InteractMsg, engageSpawn: EngageSpawnMsg,
   battleAction: BattleActionMsg, battleResync: BattleResyncMsg, challenge: ChallengeMsg, challengeReply: ChallengeReplyMsg,
   tradeRequest: TradeRequestMsg, tradeReply: TradeReplyMsg, tradeOffer: TradeOfferMsg, tradeConfirm: TradeConfirmMsg, tradeCancel: TradeCancelMsg,
   raidJoin: RaidJoinMsg, raidReady: RaidReadyMsg, raidAction: RaidActionMsg, raidCatch: RaidCatchMsg, raidLeave: RaidLeaveMsg,
-  handoverAck: HandoverAckMsg, fastTravel: FastTravelMsg, fish: FishMsg, rankedQueue: RankedQueueMsg, tower: TowerMsg,
-} as const;   // exactly 24 keys (Phase C3 added fastTravel, Phase D9 fish, Phase D13 rankedQueue, Phase D14 tower)
+  handoverAck: HandoverAckMsg, fastTravel: FastTravelMsg, fish: FishMsg, rankedQueue: RankedQueueMsg, tower: TowerMsg, fieldPower: FieldPowerMsg,
+} as const;   // exactly 25 keys (Phase C3 added fastTravel, Phase D9 fish, Phase D13 rankedQueue, Phase D14 tower, 2026-10-21 fieldPower; its limit 2 per second)
 export type ClientMessageType = keyof typeof CLIENT_MESSAGES;
 ```
 
@@ -1747,6 +1796,10 @@ export type ServerMessage =
       readonly scar: NemesisScar; readonly rank: number; readonly taunt: string }   // added 2026-10-21: nemeses (§3.15): sent right after the ambush's battleStart; the client's lower third
   | { readonly type: 'nemesisNews'; readonly event: 'rose' | 'rankUp' | 'beaten' | 'caught' | 'faded'; readonly nemesisId: string; readonly name: string; readonly title: string;
       readonly speciesId: string; readonly scar: NemesisScar; readonly rank: number; readonly level: number }   // added 2026-10-21: what became of a nemesis, after its battle's battleEnd; both after eggHatched in SERVER_MESSAGE_TYPES (27 variants)
+  | { readonly type: 'fieldPower'; readonly power: 'burn' | 'dig' | 'dive' | 'sense'; readonly spotId: string; readonly x: number; readonly z: number;
+      readonly item: string | null; readonly qty: number;
+      readonly ghosts: readonly { readonly name: string; readonly wanted: boolean; readonly x: number; readonly z: number; readonly path: readonly (readonly [number, number])[] }[] }
+      // added 2026-10-21 (followers, §3.18): a power worked: burn / dig / dive name the spot and what it gave (after its inventoryDelta and progressionDelta); sense lists the ghosts walking here (at most 8, nearest first) and where the player stood; after nemesisNews in SERVER_MESSAGE_TYPES (28 variants)
   // arena PvP (30-server-netcode.md §30.4.10; protocol `arena.ts`) <!-- amended 2026-10-11: arena PvP --> — after towerState (22 variants)
   | { readonly type: 'arenaStatus'; readonly state: 'idle' | 'queued' | 'matched'; readonly kind: ArenaKind | null; readonly waitedMs: number; readonly window: number;
       readonly opponent: { readonly name: string; readonly rating: number } | null; readonly seat: SeatReservation | null;   // seat only while `matched`: the arena room

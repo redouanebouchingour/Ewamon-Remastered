@@ -19,6 +19,7 @@ import { createSpritePool, type BillboardPool } from '../sprites/billboard.js';
 import { CanvasHudLayer, HUD, type HudAnchors, type Ref } from '../hud/layer.js';
 import { PANEL_DEFAULT_FRACTION } from '../camera/battle.js';
 import { CharacterPool } from './actors.js';
+import { FollowerPool, combinedWalkers } from './followers.js';
 import { createGltfCharacterSource } from './looks.js';
 import { isDevBuild } from '../env.js';
 import { Stage, type StageGround } from './battleStage.js';
@@ -39,6 +40,8 @@ export interface Part3 {
   readonly sprites: BillboardPool;
   readonly rig: DioramaRig;
   readonly actors: CharacterPool;
+  /** Followers (§10.7.9): each trainer's party lead trailing behind them as its creature billboard. */
+  readonly followers: FollowerPool;
   readonly vfx: VfxSystem;
   readonly stage: Stage;
   readonly hud: CanvasHudLayer;
@@ -78,6 +81,8 @@ function build(ctx: HostContext): Part3 {
     source: ctx.modelsUrl === null ? null : createGltfCharacterSource({ baseUrl: ctx.modelsUrl, ktx2: ctx.ktx2, warn: warnCharacters }),
   });
   ctx.scene.add(actors.root);
+  const followers = new FollowerPool(sprites, actors, ctx.camera3);
+  ctx.scene.add(followers.root);
   const host = ctx as unknown as Renderer;
   // the loaded zone's collider carries the tree crowns the shot camera avoids (H11); nothing once it is disposed
   let zoneRef: (ZoneHandle & { readonly disposed?: boolean; readonly collider?: unknown }) | null = null;
@@ -101,7 +106,7 @@ function build(ctx: HostContext): Part3 {
   });
   const reveal = new GroundCoverReveal(sprites, () => rig.focus);
   const worldFx = new WorldFx({
-    camera: ctx.camera3, harvestLevel: harvestUniform, walkers: actors, focus: () => rig.focus as Vector3,
+    camera: ctx.camera3, harvestLevel: harvestUniform, walkers: combinedWalkers(actors, followers), focus: () => rig.focus as Vector3,
     wetness: () => ctx.materials.uniforms.wetness.value,
     light: (out) => {
       // what lit dust looks like: the key colour, dimmed toward night, over a cool fill
@@ -154,6 +159,7 @@ function build(ctx: HostContext): Part3 {
       }
       vfx.update(dtScaledMs, ctx.camera3);
       actors.update(dtScaledMs);
+      followers.update(dtScaledMs);
       worldFx.update(dtScaledMs);
       stage.update(dtScaledMs, real);
       reveal.update(real);
@@ -182,11 +188,11 @@ function build(ctx: HostContext): Part3 {
       reveal.setMask(mask);
       worldFx.onZone(z);
     },
-    dispose(): void { reveal.dispose(); worldFx.dispose(); vfx.dispose(); sprites.dispose(); },
+    dispose(): void { reveal.dispose(); worldFx.dispose(); followers.dispose(); vfx.dispose(); sprites.dispose(); },
   };
 
   const bundle: Part3 = {
-    sprites, rig, actors, vfx, stage, hud, reveal, pad, worldFx, hook,
+    sprites, rig, actors, followers, vfx, stage, hud, reveal, pad, worldFx, hook,
     setGround(g) {
       stage.setGround(g);
       // Phase D8: surfers ride the water level (the collider's surfaceY) with a ripple where it says open water

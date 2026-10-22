@@ -330,6 +330,17 @@ export class BillboardPool implements SpritePool {
     return this.cache.bind(key, () => this.load(key, loadSingleTextures(set, frame, this.decoder))).then((e) => { if (e) this.resolveWaiting(key); });
   }
 
+  /**
+   * Followers (§10.7.9): drops one bind of a single (`bindSingle(set, frame)`), leaving the full atlas `atlasId` and its
+   * other singles alone; the single is freed once no billboard samples it.
+   */
+  releaseSingle(atlasId: string, px: readonly number[]): void {
+    this.cache.release(singleKey(atlasId, px));
+  }
+
+  /** Singles bound now (`single:` keys), against `MAX_SINGLES`. */
+  singlesBound(): number { return this.cache.countPrefix('single:'); }
+
   releaseAtlas(id: string): void {
     this.cache.release(id);
     const prefix = `single:${id}:`;

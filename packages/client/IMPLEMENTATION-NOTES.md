@@ -2218,3 +2218,26 @@ the second isolated client (the component over the landing page: the foe and own
   A refused post shows the Marshal's words: `net/errors.ts` spreads content's `BOUNTY_REFUSAL_TEXT` into the messages.
 - The claim needs no new client code: its payout is in the battle's rewards and its toast is a plain server `toast`.
 - The poster's eyebrow names the zone the player stands in (a town when opened from the Marshal).
+
+## Followers with field powers (2026-10-21)
+
+- `scene/FollowerViews.ts` feeds render's `FollowerPool` from `PlayerState.lead` / `leadFlags` (listened per player).
+  Residency: the player's own follower holds its species' static atlas (front and back, `'still'`); a remote's shows at
+  once on an atlas already bound, else takes a front-only party single (`bindSingle`, at most `FOLLOWER_SINGLES` 3, two
+  of one species share one), else has no follower: the fallback is "no follower", never a whole 2048² atlas per
+  passer-by. Re-chosen at 2 Hz with the nameplates (the nearest remotes with a rig).
+- The glide in `LocalPlayerController`: a blocked step whose 0.6 m probe is not passable asks the glider (content
+  `planGlide` over the collider's `passable`); glide steps are gait 3, replayed along the line; a glide window's message
+  is a second payload object with `glide`. The probe must stay blocked 6 steps before it asks (a push, not a slide along a
+  ledge: the live check's autopilot, threading a one-sample ledge with a Flying lead, slid into accidental take-offs). Any
+  correction mid-glide ends the glide and rests take-offs for 3 s (the server takes every on-line position of a glide it
+  planned, so a correction is a refusal; replaying the glide would only be refused again); a probe with no plan rests
+  0.2 s. The probe and plan allocate only at a
+  take-off. Remote gliders are not lifted (no glide state on the wire): they slide down the face under interpolation.
+- `scene/fieldPowers.ts` (`FieldPowerSystem`): targets, bramble blockers and render obstacles, the power key, the
+  server's answers, the Fire light level, the dark-water marks and the sense trails; it subscribes to the session's party
+  and progression itself, so World3D only wires it (`bootFollowers`, `stepFollowers`, `syncFollowers`).
+- `world/FieldPowerChip.tsx` under the minimap; `state/fieldPowers.ts` written only when what it shows changes. The party
+  card's field power line and the "Walks with you" tag; the power key `fieldPower` (F) in the controls.
+- `zoneSpecFor` appends the brambles to `obstacles` (`bramble:<id>`): the zone snapshot moved for the 8 routes and the
+  rift only.

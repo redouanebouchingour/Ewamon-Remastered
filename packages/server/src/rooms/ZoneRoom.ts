@@ -90,6 +90,29 @@ import { readEcosystem } from '../game/ecosystem';
 import { boardUpkeep } from '../game/bounties';
 import { WANTED_GHOST_CHANCE } from '@ewa/content';
 import { GHOSTS_PER_ZONE, GHOST_CHANCE, GHOST_DAYS, GHOST_LEVEL_SPAN, ROAMER_CHANCE, ROAMER_LEVEL, ghostReport, roamerOf, roamerZoneAt, seasonAt, shadowLevel } from '@ewa/content';
+import {
+  DIG_LOOT,
+  DIVE_LOOT,
+  FIELD_INTERACT_M,
+  HAUNT,
+  brambleFlag,
+  brambleSolidsFor,
+  bramblesFor,
+  digFlag,
+  digSpotsFor,
+  diveFlag,
+  diveSpotsFor,
+  fieldDayKey,
+  fieldLoot,
+  fieldSpotReady,
+  reachFromSpawn,
+} from '@ewa/content';
+import type { GlidePlan } from '@ewa/content';
+import type { CreatureInstance } from '@ewa/core';
+import type { FieldPowerRefusal } from '@ewa/protocol';
+import { POWER_OF_ACTION, fieldLeadOf, fieldRefusalText, hauntingNear, leadCan, senseGhosts } from '../game/fieldPowers';
+import type { FieldLead } from '../game/fieldPowers';
+import { PARTY_TOPIC } from '../rest/partyTopic';
 
 export interface ZoneMeta {
   readonly zoneId: ZoneId;
@@ -180,6 +203,12 @@ export interface ZoneUserData {
   spotted: { readonly trainerId: string; at: number; checking: boolean } | null;
   /** trainer sight is quiet until this time (a spotted fight that could not start) */
   sightQuietUntil: number;
+  /** followers (SPEC §3.18): the lead walking behind the player (null: every creature fainted), refreshed on party changes */
+  lead: FieldLead | null;
+  /** followers: the glide in flight (a Flying lead stepped off a cliff), null on the ground */
+  glide: GlidePlan | null;
+  /** followers: the Psychic sense is ready again at this time */
+  senseReadyAt: number;
 }
 
 export type ZoneClient = Client<{ userData: ZoneUserData; auth: ZoneAuth }>;
@@ -360,6 +389,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     // Phase D7: the zone's scheduled weather (re-derived in tick step 1 when the bucket turns)
     this.weatherBucketAt = weatherBucket(this.now());
     state.weather = deps.env.WORLD_WEATHER === 'off' ? 'none' : weatherAt(deps.worldSeed, this.zone, this.now());
+    // followers with field powers: the client predicts glides and blocks brambles only where the server does
+    state.fieldPowers = deps.env.FIELD_POWERS === 'on';
     this.state = state;
     this.metrics = createRoomMetrics(this.roomId, this.zone.id, shard);
     deps.metrics.register(this.metrics);
@@ -444,6 +475,10 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     await this.sub('ewa:kick', (m: { playerId: string; exceptRoomId?: string }) => this.onKick(m));
     await this.sub(`ewa:handover:done:${this.roomId}`, (m: { playerId: string }) => this.onHandoverDone(m.playerId));
     await this.sub('ewa:profile', (m: { playerId: string }) => void this.onProfile(m.playerId));
+    // followers: a REST route changed the party (reorder, heal, evolve, deposit...): the lead walking behind may change
+    await this.sub(PARTY_TOPIC, (m: { playerId: string }) => {
+      if (this.clientOf(m.playerId) !== undefined) void this.refreshLead(m.playerId);
+    });
     await this.sub('ewa:liveops', () => this.spawns?.setLiveOps(liveOpsModsFor(this.zone.id, this.now())));
     await this.sub('ewa:repel', (m: { playerId: string; kind: 'repel' | 'lure'; steps: number }) => {
       const c = this.clientOf(m.playerId);
@@ -624,7 +659,12 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       sightQuietUntil: 0,
       weatherCity: row.weatherCity ?? null,
       realWeather: null,
+      lead: null,
+      glide: null,
+      senseReadyAt: 0,
     };
+    // followers: the lead walks behind the player from the first frame (other players see it through the AOI view)
+    this.setLead(client.userData, ps, loaded.party);
     // R11: the join's AOI pass runs here, not on the first tick, so a chat/interact sent right after joining
     // already has a cell and an audience (a takeover client re-registers the viewer from scratch)
     if (existing !== undefined) this.aoi.removeViewer(playerId);
@@ -974,11 +1014,119 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     ps.guildTag = r.guild?.tag ?? '';
   }
 
+  // ─── followers with field powers (SPEC §3.18) ────────────────────────────────
+
+  /** Followers: the lead as the party now has it, written to the player's state only when it changed. */
+  private setLead(ud: ZoneUserData, ps: PlayerState, party: readonly CreatureInstance[]): void {
+    const lead = fieldLeadOf(party, (id) => {
+      try {
+        return this.deps.content.species(id).types as readonly string[];
+      } catch (_e) {
+        return null;
+      }
+    });
+    ud.lead = lead;
+    const species = lead?.speciesId ?? '';
+    const flags = lead?.flags ?? 0;
+    if (ps.lead !== species) ps.lead = species;
+    if (ps.leadFlags !== flags) ps.leadFlags = flags;
+  }
+
+  /** Followers: re-reads the party (a battle, a trade, a REST change) and updates the lead; returns it. */
+  private async refreshLead(playerId: string): Promise<FieldLead | null> {
+    const deps = this.deps;
+    const party = await deps.repos.db.transaction((t) => deps.repos.creatures.party(t, playerId)).catch(() => null);
+    const c = this.clientOf(playerId);
+    const ps = this.state.players.get(playerId);
+    if (party === null || c?.userData === undefined || ps === undefined) return c?.userData?.lead ?? null;
+    this.setLead(c.userData, ps, party);
+    return c.userData.lead;
+  }
+
+  private hauntCache: readonly PlanEllipse[] | null = null;
+  /** The zone's tall-grass patches the ghosts haunt (content's plan, whatever WILD_ENCOUNTERS says). */
+  private hauntPatches(): readonly PlanEllipse[] {
+    if (this.hauntCache === null) this.hauntCache = this.zone.encounterTable === null ? [] : zonePlan(this.zone.id).grassPatches;
+    return this.hauntCache;
+  }
+
+  /**
+   * Followers `fieldPower { power, targetId }`: the lead's power on a spot. Refused (a toast + `error notAllowed`) with
+   * FIELD_POWERS off, busy, indoors, without a lead of the power's type (read fresh), out of range, a bramble already
+   * burnt, a camp dug or a spot dived today, the sense resting. A burn, dig or dive writes its flag and the find in one
+   * transaction, then the same deltas as a ground item and a `fieldPower` message the client plays.
+   */
+  private async onFieldPower(client: ZoneClient, m: ClientPayload<'fieldPower'>): Promise<void> {
+    const deps = this.deps;
+    const ud = client.userData!;
+    const ps = this.state.players.get(ud.playerId);
+    if (ps === undefined) return;
+    const refuse = (why: FieldPowerRefusal): void => {
+      this.sendMsg(client, { type: 'toast', level: 'info', text: fieldRefusalText(why, m.power) });
+      this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: why });
+    };
+    if (deps.env.FIELD_POWERS !== 'on') return refuse('powersOff');
+    if (ud.battleId !== null || ud.tradeId !== null || ud.spotted !== null || ud.glide !== null) return this.sendMsg(client, { type: 'error', code: 'busy', detail: 'inBattle' });
+    if (interiorAt(this.zone.id, ps.x, ps.z) !== null) return refuse('powerIndoors');
+    const lead = await this.refreshLead(ud.playerId);
+    if (!leadCan(lead, POWER_OF_ACTION[m.power])) return refuse('noPower');
+    const now = this.now();
+    if (m.power === 'sense') {
+      if (now < ud.senseReadyAt) return refuse('senseResting');
+      ud.senseReadyAt = now + HAUNT.cooldownMs;
+      const ghosts = senseGhosts(this.ghosts, this.wanted, ud.playerId, this.zone.id, this.hauntPatches(), ps.x, ps.z, now);
+      this.sendMsg(client, { type: 'fieldPower', power: 'sense', spotId: '', x: ps.x, z: ps.z, item: null, qty: 0, ghosts });
+      const wanted = ghosts.filter((g) => g.wanted).length;
+      const text =
+        ghosts.length === 0
+          ? 'Your lead reaches out. No ghost trainer walks near here now.'
+          : `Your lead senses ${ghosts.length} ghost trainer${ghosts.length === 1 ? '' : 's'} nearby${wanted > 0 ? `, ${wanted} of them wanted` : ''}.`;
+      this.sendMsg(client, { type: 'toast', level: 'info', text });
+      return;
+    }
+    const power = m.power;
+    const spot = (power === 'burn' ? bramblesFor(this.zone.id) : power === 'dig' ? digSpotsFor(this.zone.id) : diveSpotsFor(this.zone.id)).find((s) => s.id === m.targetId);
+    if (spot === undefined) return refuse('noSpot');
+    if (!this.near(ps, spot.x, spot.z, FIELD_INTERACT_M[power])) return refuse('spotFar');
+    if (power === 'dive' && !onOpenWater(this.heightfield, ps.x, ps.z)) return refuse('spotFar');
+    const flag = power === 'burn' ? brambleFlag(this.zone.id, spot.id) : power === 'dig' ? digFlag(this.zone.id, spot.id) : diveFlag(this.zone.id, spot.id);
+    if (power === 'burn' && ud.flags.has(flag)) return refuse('burnt');
+    const cache = power === 'burn' ? bramblesFor(this.zone.id).find((b) => b.id === spot.id)?.item : undefined;
+    const find = cache ?? fieldLoot(power === 'dig' ? DIG_LOOT : DIVE_LOOT, `${ud.playerId}:${this.zone.id}:${spot.id}:${fieldDayKey(now)}`);
+    const r = await deps.repos.db.transaction(async (t) => {
+      const setAt = await deps.repos.progress.flagSetAt(t, ud.playerId, flag);
+      if (power === 'burn' ? setAt !== null : !fieldSpotReady(setAt?.getTime() ?? null, now)) return null;
+      // a camp or a spot re-arms each UTC day: the flag's set time is when it was last used
+      if (setAt !== null) await deps.repos.progress.clearFlags(t, ud.playerId, [flag]);
+      await deps.repos.progress.setFlags(t, ud.playerId, [flag], new Date(now));
+      return deps.repos.inventory.add(t, ud.playerId, find.item, find.qty);
+    });
+    if (r === null) return refuse(power === 'burn' ? 'burnt' : 'usedToday');
+    this.applyFlags(ud, [flag]);
+    ud.inventory[find.item] = r;
+    this.sendMsg(client, { type: 'inventoryDelta', items: { [find.item]: r }, money: null, creaturesAdded: [], creaturesRemoved: [], creaturesUpdated: [] });
+    this.sendMsg(client, progressionOnly({ flags: [flag] }));
+    this.sendMsg(client, { type: 'fieldPower', power, spotId: spot.id, x: spot.x, z: spot.z, item: find.item, qty: find.qty, ghosts: [] });
+    const what = `${this.itemName(find.item)}${find.qty > 1 ? ` x${find.qty}` : ''}`;
+    const text =
+      power === 'burn'
+        ? `The brambles burn away. Hidden inside: ${what}.`
+        : power === 'dig'
+          ? `Your lead digs by the campfire and turns up ${what}.`
+          : `Your lead dives into the dark water and brings up ${what}.`;
+    this.sendMsg(client, { type: 'toast', level: 'success', text });
+  }
+
   // ─── messaging ──────────────────────────────────────────────────────────────
 
   sendMsg(client: ZoneClient, msg: ServerMessage): void {
     this.metrics.msgsOut += 1;
     client.send(msg.type as never, msg as never);
+    // followers: a battle, trade, raid or hatch changed the party; the lead walking behind may have changed
+    if (msg.type === 'inventoryDelta' && (msg.creaturesAdded.length > 0 || msg.creaturesRemoved.length > 0 || msg.creaturesUpdated.length > 0)) {
+      const id = client.userData?.playerId;
+      if (id !== undefined) void this.refreshLead(id);
+    }
   }
 
   private sendTo(playerId: string, msg: ServerMessage): void {
@@ -1061,6 +1209,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
           return this.onFish(client, data);
         case 'tower':
           return this.onTower(client, data);
+        case 'fieldPower':
+          return this.onFieldPower(client, data);
         case 'rankedQueue':
           return this.onRankedQueue(client, data);
         case 'tradeRequest':
@@ -1106,16 +1256,20 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     if (ps === undefined) return;
     // Phase D11: the bike cap needs the bicycle and an outdoor start (halls are interiors)
     const canBike = input.bike === true && (ud.inventory[BIKE_ITEM] ?? 0) > 0 && interiorAt(this.zone.id, ps.x, ps.z) === null;
+    // followers: a Flying lead may glide off a cliff (FIELD_POWERS on, outdoors); a glide in flight stays its own
+    const canGlide = this.deps.env.FIELD_POWERS === 'on' && (ud.glide !== null || (leadCan(ud.lead, 'glide') && interiorAt(this.zone.id, ps.x, ps.z) === null));
     const verdict = validateInput(
       {
         x: ps.x, z: ps.z, lastSeq: ud.lastSeq, budgetMs: ud.budgetMs, inBattle: ud.battleId !== null || ud.spotted !== null, canSurf: (ud.inventory[SURF_ITEM] ?? 0) > 0,
         closedGates: ud.closedGates, clearedObstacles: ud.clearedObstacles, canBike,
+        ...(canGlide ? { canGlide, glide: ud.glide, reach: reachFromSpawn(this.zone.id) } : {}),
       },
       input,
       this.heightfield,
     );
     ud.budgetMs = verdict.budgetMs;
     if (verdict.ok) {
+      ud.glide = verdict.glide;
       const dist = Math.hypot(verdict.x - ps.x, verdict.z - ps.z);
       ps.x = verdict.x;
       ps.z = verdict.z;
@@ -1139,8 +1293,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
           this.sendMsg(client, { type: 'toast', level: 'info', text: 'The repel wore off.' });
         }
       }
-      // a trainer who sees the player goes first; otherwise the grass (or the water) may roll
-      if (!this.checkSight(client, ud, ps)) this.wildStep(client, ud, ps, dist);
+      // a trainer who sees the player goes first; otherwise the grass (or the water) may roll (never mid-glide)
+      if (ud.glide === null && !this.checkSight(client, ud, ps)) this.wildStep(client, ud, ps, dist);
       return;
     }
     const reason: RejectReason = verdict.reason;
@@ -1425,7 +1579,12 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     try {
       return this.deps.content.item(id).name;
     } catch (_e) {
-      return id;
+      // an orb (a field power's find can be one) has its own table
+      try {
+        return this.deps.content.orb(id).name;
+      } catch (_e2) {
+        return id;
+      }
     }
   }
 
@@ -1643,7 +1802,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const id = `${this.zone.id}:wild:${this.wildCounter}`;
     // ghost trainers: in tall grass, now and then, another trainer's ghost steps out instead (its own stream)
     const roaming = this.deps.env.ROAMING_ENCOUNTERS === 'on';
-    const ghost = roaming && medium === 'land' ? this.ghostEncounter(ud.playerId) : null;
+    const ghost = roaming && medium === 'land' ? this.ghostEncounter(ud.playerId, ps) : null;
     if (ghost !== null) {
       ud.encounterGraceM = ENCOUNTER_GRACE_M;
       ud.battleId = 'pending';
@@ -1674,13 +1833,18 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
    * Ghost trainers: one of this zone's ghosts (not the player's own) with GHOST_CHANCE, else null. The bounty board: a
    * wanted ghost first, with WANTED_GHOST_CHANCE (BOUNTIES=always: every time).
    */
-  ghostEncounter(playerId: string): Ghost | null {
+  ghostEncounter(playerId: string, at?: { readonly x: number; readonly z: number }): Ghost | null {
     const others = this.ghosts.filter((g) => g.playerId !== playerId);
     if (others.length === 0) return null;
     const mode = this.deps.env.BOUNTIES;
     const wanted = mode === 'off' ? [] : others.filter((g) => this.wanted.has(g.playerId));
     if (wanted.length > 0 && (mode === 'always' || this.ghostRng!.next() < WANTED_GHOST_CHANCE)) return wanted[this.ghostRng!.int(wanted.length)]!;
     if (this.ghostRng!.next() >= GHOST_CHANCE) return null;
+    // followers: ghosts walk their haunts (what a Psychic lead senses); the one passing nearby is the one that steps out
+    if (at !== undefined && this.deps.env.FIELD_POWERS === 'on') {
+      const near = hauntingNear(others, this.zone.id, this.hauntPatches(), at.x, at.z, this.now());
+      if (near !== null) return near;
+    }
     return others[this.ghostRng!.int(others.length)]!;
   }
 
@@ -1822,9 +1986,11 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
 
   /** Phase A: the movement solids of the interior gates `flags` leave shut (the shared empty array when none). */
   private closedGatesFor(flags: ReadonlySet<string>): readonly RectSolid[] {
-    if (interiorGates(this.zone.id).length === 0) return NO_GATES;
+    // followers with field powers: an unburnt bramble blocks this player like a shut gate (FIELD_POWERS on only)
+    const brambles = this.deps.env.FIELD_POWERS === 'on' ? brambleSolidsFor(this.zone.id, flags) : [];
+    if (interiorGates(this.zone.id).length === 0) return brambles.length === 0 ? NO_GATES : brambles;
     const shut = gatesClosedFor(this.zone.id, flags);
-    return shut.length === 0 ? NO_GATES : shut.map((g) => g.solid);
+    return shut.length === 0 && brambles.length === 0 ? NO_GATES : [...shut.map((g) => g.solid), ...brambles];
   }
 
   /** Where a battle started at (x, z) forms: the hall's room arena inside an interior, else right here. */

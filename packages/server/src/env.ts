@@ -61,6 +61,13 @@ export const EnvSchema = z.object({
    * see today's behaviour); 'always' = a wanted ghost steps out of every grass encounter it can (live checks).
    */
   BOUNTIES: z.enum(['on', 'off', 'always']).default('on'),
+  /**
+   * Followers with field powers (content fieldPowers.ts, SPEC §3.18): 'on' (the default) = a Flying lead glides off a
+   * cliff (movement validation accepts the glide line), unburnt brambles block like hall gates, and the burn / dig / dive /
+   * sense powers work; 'off' = the world moves as it always did and every power is refused (testEnv, so the progression
+   * walker's movement and the handover-landing tests see today's world). The follower itself is visual and always on.
+   */
+  FIELD_POWERS: z.enum(['on', 'off']).default('on'),
   /** not configurable in v1; present so the value is visible */
   TICK_HZ: z.literal('20').default('20'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
@@ -137,6 +144,7 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
     NEMESES: 'off',
     ECOSYSTEM: 'off',
     BOUNTIES: 'off',
+    FIELD_POWERS: 'off',
     ...overrides,
   });
 }

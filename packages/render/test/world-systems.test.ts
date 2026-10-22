@@ -138,3 +138,22 @@ describe('Phase D10 obstacles in the zone builder', () => {
     plain.dispose();
   }, 120_000);
 });
+
+describe('§10.7.9 brambles in the zone builder', () => {
+  it('a bramble is a knot of bushes on its own; burnt (cleared), it is gone', async () => {
+    const { buildZone } = await import('../src/zone/builder.js');
+    const { mockLibrary, realSpec } = await import('./zone-helpers.js');
+    const lib = await mockLibrary();
+    const base = realSpec('mire_route');
+    const spec = { ...base, obstacles: [{ id: 'mire_route:thorns_a', kind: 'bramble' as const, x: -2, z: -50 }] };
+    const z = buildZone(spec, { materials: lib, lighting: null, scene: null });
+    const knot = z.group.getObjectByName('ewa:obstacle:mire_route:thorns_a')!;
+    expect(knot).toBeDefined();
+    expect(knot.children.length).toBeGreaterThanOrEqual(3);
+    expect(knot.position.x).toBe(-2);
+    expect(knot.visible).toBe(true);
+    z.obstacles!.setCleared('mire_route:thorns_a', true);
+    expect(knot.visible).toBe(false);
+    z.dispose();
+  }, 120_000);
+});

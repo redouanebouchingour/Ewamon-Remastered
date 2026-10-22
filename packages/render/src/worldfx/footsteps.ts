@@ -22,7 +22,8 @@ export const STEPS = Object.freeze({
   trailMps: 5.2, trailEveryM: 0.45,
   /** surfing: foam off both sides of the bow every `wakeEveryM`, a ring every `wakeRingM`, from `wakeMps` */
   wakeMps: 0.6, wakeEveryM: 0.32, wakeRingM: 1.1, bowM: 0.4, beamM: 0.3,
-  slots: 48,
+  /** the character rigs (48) and the followers after them (§10.7.9) */
+  slots: 64,
 });
 
 /** Stride length for a speed (m per foot). Pure. */

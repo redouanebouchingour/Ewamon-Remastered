@@ -570,6 +570,43 @@ For each other `PlayerState` in view, a ring of 8 samples `{ t, x, z, angle, mov
 
 Once per fixed step the controller scans a preallocated array of interactables (static actors from the `ZoneSpec` + spawns from `getStateCallbacks(room).onAdd('spawns')` + remote players) and keeps the nearest within range: NPC/trainer/tablet/pickup/building 2.5 u; spawn 1.2 u; link edge 1.5 u (auto-triggers `handover` on the server side — the client just walks); player 6 u (for `C`). The prompt text is written to the HUD only when the nearest target id changes. `E` sends the corresponding `interact`. NPC dialogue is **content, not wire**: on `interact { kind: 'npc' }` the client immediately opens the DOM `DialogueBox` with the lines it computes from content and its own flags — `nextStoryBeat(zone, flags)?.speaker === npcId ? beat.lines : (the first `react` whose `when` flag is held, else `NpcDef.lines`)` — while the server, for the same interact, replies with nothing (plain NPC), `storyBeat { beatId, phase: 'start' }` (confirms the beat; the client keeps the lines it already shows), `battleStart` (trainer/gym/static/beat battle), `inventoryDelta` (pickup), `progressionDelta` (flags) or `toast`. `storyBeat { phase: 'complete' }` opens the beat's `after` lines. A `start` for a beat the client did not predict (flags changed under it) replaces the open dialogue. <!-- reconciled 2026-09-18: this file expected a `dialogue` message that no section defined; 30-server-netcode.md §30.4.6 says lines are content; the spine's `storyBeat` variant bridges the two -->
 
+### 20.4.8 Followers and field powers <!-- added 2026-10-21: followers with field powers (spine §3.18) -->
+
+- **Followers** (`scene/FollowerViews.ts`): every player's lead comes from the room (`PlayerState.lead` / `leadFlags`,
+  listened per player; the AOI view keeps it to the trainers near). The player's own follower holds its species' static
+  atlas, both sides (`CreatureTextures.show(…, 'still')`; the zone load already holds the party's), so it always shows.
+  Another trainer's follower shows at once when its species' static atlas is already bound (the zone's set, the
+  player's party, an idle battle sheet), held while it walks there; otherwise it takes a party single (render
+  `bindSingle`: the front cell only, front-facing) while fewer than `FOLLOWER_SINGLES` 3 are out; beyond that it has no
+  follower (the graceful fallback: no whole atlas bound per passer-by). At most `FOLLOWER.max` 16, the player's own first,
+  then the nearest remotes with a rig, re-chosen at 2 Hz with the nameplates. Hidden: the player's own in a battle, the
+  arena, a trainer's walk-up, an evolution or a hall pocket; a remote's in battle or inside a hall. It walks while biking.
+- **Glide** (`LocalPlayerController.glider`, set on every zone change from `FieldPowerSystem`): a push whose probe 0.6 m
+  ahead stays blocked for `GLIDE_INTENT_STEPS` 6 steps (0.1 s: an intent, not a slide along a ledge) asks content's `planGlide` over the collider's `passable` (FIELD_POWERS on in this room, a Flying
+  lead, outdoors, on foot); with a plan the controller glides at `GLIDE.speedMps` along it whatever the keys say, each step
+  recorded as gait 3 (a replay glides), and every message of a glide window carries `glide { x, z, dx, dz }`. The server
+  accepts every position on a glide it planned too, so any correction mid-glide is a refusal: the glide ends, the replay
+  walks, and take-offs rest `GLIDE_REST_STEPS` 180 steps (3 s), so a refusal never loops (and never piles up rejections). World3D lifts the avatar (`CharacterPool.setLift`) along `glideAltitude` and plays a gust at the take-off.
+- **Field powers** (`scene/fieldPowers.ts`, `FieldPowerSystem`): the lead is `fieldLead` of the session party. A zone's
+  spots are dynamic targets, enabled only for a lead with the power while `state.fieldPowers`: "E Burn the brambles"
+  (2.6 m), "E Dig by the campfire" (2.5 m), "E Dive into the dark water" (2.6 m; on land: "Swim out over the dark water
+  first", nothing sent). Unburnt brambles are prediction blockers (`addBlocker('bramble:<id>', brambleSolid)`) and render
+  obstacles `bramble:<id>` (zoneSpecFor appends them after the Cut / Strength obstacles); burnt, or with the switch off,
+  they are gone. The power key (`fieldPower`, default F, rebindable, "Lead's field power"): a Psychic lead sends `sense`;
+  another lead is told what it does. The server's `fieldPower` plays the flames (and hides the patch), the soil, the spray,
+  or, for `sense`, the haunts: a mote every 1.6 m round each loop, the points within 36 m of the player lit in turn (a
+  third of them every 110 ms, so the near trail glows steadily), and a ring where it walks every 0.9 s, for 12 s (wanted ghosts in the hot orange). A Fire lead's follower carries render's light in dark places
+  (`isDarkHere`; 0.85 in a dark zone by day, the night ramp, 1 under a deep shadow). Dark-water spots within 45 m breathe
+  (`diveMark` every 1.5 s) while the switch is on. Refusal details (`FIELD_POWER_REFUSALS`) are explained by the server's
+  own toast (the message router does not toast them twice).
+- **The hint chip** (`world/FieldPowerChip.tsx`, under the minimap, an `<aside>` of the shell so F1 hides it; hidden
+  with a panel open, in battle and in the arena): "Walking with you", the lead's sprite, name and type icons, then one line
+  per power (its type icon, the label, what it does here, dimmed when there is nothing for it in this zone, the power key
+  on a paper chip for the sense); "No field power. Lead with a Flying, Fire, Ground, Psychic or Water type." or "Field
+  powers rest on this server". Fed by `state/fieldPowers.ts`, written only when what it shows changes (1 Hz check).
+- **The party screen**: each card has a field power line (the power's label on its type colour, or "No field power"), and
+  the creature walking with the player is tagged "Walks with you".
+
 ---
 
 ## §20.5 BATTLE PRESENTATION

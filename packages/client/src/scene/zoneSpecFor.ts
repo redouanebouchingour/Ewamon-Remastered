@@ -21,10 +21,10 @@
  * Phase D10: `spec.obstacles` is content's `ZoneDef.obstacles` (id, kind, x, z) — present only in zones that have
  * some, so every other zone's spec is unchanged. Which ones a player cleared is per player (`ObstaclesHandle`).
  */
-import { SET_PIECE_BY_ZONE, getHeightfield, interiorsFor, zone as zoneDef, zonePlan } from '@ewa/content';
+import { SET_PIECE_BY_ZONE, bramblesFor, getHeightfield, interiorsFor, zone as zoneDef, zonePlan } from '@ewa/content';
 import type { HarvestState, LinkDir, ZoneDef, ZoneId } from '@ewa/content';
 import { INTERIOR_SIZE, edgePoint, lightsFromPlan, waterBodies } from '@ewa/render';
-import type { Dir, Edge, HarvestLevel, InteriorSpec, Marker, NeighbourSpec, WaterSpec, ZonePlanData, ZoneSpec } from '@ewa/render';
+import type { Dir, Edge, HarvestLevel, InteriorSpec, Marker, NeighbourSpec, ObstacleSpec, WaterSpec, ZonePlanData, ZoneSpec } from '@ewa/render';
 
 /** SPEC §10.5.1 `SetPieceId`, one per zone, in ZONE_ORDER order (content's table). */
 export { SET_PIECE_BY_ZONE };
@@ -45,6 +45,12 @@ const LINK_DIRS: readonly LinkDir[] = ['n', 'e', 's', 'w'];
  */
 export function zoneSpecFor(zone: ZoneDef, harvest: HarvestState): ZoneSpec {
   const heightfield = getHeightfield(zone.id);                        // spine §3.11: passed through unchanged
+  // Phase D10 Cut / Strength obstacles, then the followers' bramble patches (§3.18; hidden per player once burnt, or
+  // where the server has field powers off: `FieldPowerSystem.refresh`)
+  const obstacles: ObstacleSpec[] = [
+    ...(zone.obstacles ?? []).map((o) => ({ id: o.id, kind: o.kind, x: o.x, z: o.z })),
+    ...bramblesFor(zone.id).map((b) => ({ id: `bramble:${b.id}`, kind: 'bramble' as const, x: b.x, z: b.z })),
+  ];
   const plan = zonePlan(zone.id);                                     // the plan whose footprints the field carries
   const layout = zone.kind;
   const interior = INTERIOR_SIZE[layout];
@@ -116,7 +122,7 @@ export function zoneSpecFor(zone: ZoneDef, harvest: HarvestState): ZoneSpec {
     harvestLevel: HARVEST_LEVEL[harvest],
     plan: specPlan,
     interiors: interiorSpecsFor(zone.id),
-    ...(zone.obstacles !== undefined && zone.obstacles.length > 0 ? { obstacles: zone.obstacles.map((o) => ({ id: o.id, kind: o.kind, x: o.x, z: o.z })) } : {}),
+    ...(obstacles.length > 0 ? { obstacles } : {}),
   };
 }
 

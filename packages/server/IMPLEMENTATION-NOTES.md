@@ -1235,3 +1235,25 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
 - "At a board" is checked as "in a town" (presence zone): the board screen is opened from the Marshal, and every town
   has one; there is no per-hall position check (the Daycare's REST does the same with its zone).
 - Dev helper `pnpm --filter @ewa/server bounty wins|post|list` (scripts/bounty.ts). One writer: stop the server.
+
+## Followers with field powers (2026-10-21)
+
+- `game/fieldPowers.ts` (the lead, refusal copy, the sense list, `hauntingNear`), `rest/partyTopic.ts` (`ewa:party` and
+  the routes that can change the party), the movement rule in `rooms/movement.ts` and the room's `onFieldPower`.
+- The lead is cached per player (`ud.lead`) for movement validation (no DB read per input) and re-read on every
+  `inventoryDelta` the room sends with creature changes (a hook in `sendMsg`: battles, trades, raids, hatches) and on
+  `ewa:party`, published by the REST app's `onResponse` hook after a 2xx POST to a party-changing route. A power re-reads
+  the party itself before it acts, so a stale cache can never grant one.
+- The glide: `validateInput` re-plans from the client's take-off with this player's own `standable` (gates, brambles,
+  cleared obstacles, surf) and keeps the plan in `ud.glide` until the landing. A take-off point farther than the
+  message's reach is the last window of a glide that already landed and is ignored (the client may still name it). No
+  trainer sight or grass roll mid-glide; `fieldPower` is busy mid-glide.
+- Brambles are added to `closedGates` (so they also block trainer sight lines, like a gate would); `applyFlags` already
+  recomputes the list on any new flag while it is not empty.
+- Digs and dives re-arm per UTC day with the flag's set time (clear + set in the same transaction); no migration (the
+  `story_flags` table holds them). The loot draw is seeded by player, zone, spot and day, so a retry after a dropped
+  answer finds the same thing.
+- The sense reads the room's ghost list (read with the shadow once a minute), so a ghost saved a moment ago shows within
+  a minute; the wanted flag comes from the same read.
+- Env `FIELD_POWERS` 'on' | 'off' (testEnv 'off'): off, movement is today's (no `canGlide`, no bramble gates) and every
+  power is refused with a toast. The lead fields are written either way (the follower is visual).

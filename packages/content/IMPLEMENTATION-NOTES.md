@@ -724,3 +724,20 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
 - Badlander gives the right to post (not a discount): a discount plus the Lawlander bonus would let two friends mint
   money by passing a bounty back and forth. With the cut equal to the bonus, a Lawlander claim of a player's post pays
   exactly the escrow.
+
+## Followers with field powers (2026-10-21)
+
+- `fieldPowers.ts` holds the rules (powers by type, the lead, the glide plan, the haunts, the dark places, loot draws) and
+  `data/fieldPowers.ts` the spots, a layer of their own: no `ZoneDef`, plan, footprint or heightfield changes, every
+  digest is as it was. Bramble, dig and dive positions were surveyed on the sculpted fields with throwaway scripts (open
+  ground a few metres from a cliff, off the roads and the grass, 12 m from authored points; the campfire's free side; the
+  middle of each lake or sea body that is open water 3 m all round) and are checked by validate rule 13.
+- A bramble is not an obstacle stamp (that would move the heightfield digest and the walker's fixtures): it is a
+  per-player square blocker the server adds to the player's closed gates (`brambleSolidsFor`) while FIELD_POWERS is on.
+- `planGlide` lands only on ground `reachFromSpawn` reaches (the spawn's walkable component, memoised per zone), so a glide
+  can never strand anyone; it only goes down (a landing at least 1.5 m lower, the flight never meets rising ground).
+  The flight sinks 1 m per 3 m: a typical 6 m cliff carries about 18 m out. `cliffSample` recomputes the walkable limit's
+  slope test (`MAX_SLOPE` is private to the heightfield) at the nearest sample.
+- `LAVA_BIOMES` restates the server's `movement.ts` set (content cannot import the server); both say `cinder`.
+- Ghost haunts use the zone plan's grass patches (`zonePlan(id).grassPatches`) whatever WILD_ENCOUNTERS says, shuffled by
+  an fnv hash of zone and owner (no core RNG needed, no transcendental functions).

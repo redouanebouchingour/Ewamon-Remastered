@@ -2318,3 +2318,19 @@ pool; `Part3.worldFx`).
   into blobs (Mire Route at 17:30, the camera facing the sun); 0.45 with a thinner edge (power 3.4) keeps a warm halo.
 - The rim is masked by the card's alpha cut, so it never lights a transparent texel; the foot shade multiplies the
   albedo only (not the glow), between `footV` and `footV + 0.16` of the card's uv.
+
+## Followers (2026-10-21)
+
+- `stage/followers.ts` `FollowerPool` (`Part3.followers`): one creature billboard per owner trailing its path history,
+  updated in the part-3 hook after the actor pool; walker slots 48..63 for the world effects (`STEPS.slots` 64,
+  `combinedWalkers(actors, followers)` is WorldFx's walker source). No new material or program: a follower is a
+  billboard on its atlas's material; its size is 0.72 of the §10.4.3 size, capped at 1.5 m.
+- The Fire lead's light is one `PointLight` created with the pool (castShadow false, intensity 0), so the light set is
+  fixed from the warm-up frame; `setLight` only changes its intensity and position.
+- `CharacterPool.setLift(id, m)` / `groundAt(x, z)`: a lifted actor's feet float, its decal stays on the ground and it is
+  skipped by `forEachWalker` above 0.2 m.
+- `BillboardPool.releaseSingle(atlasId, px)` / `singlesBound()`: a follower's party single is released on its own (not
+  through `releaseAtlas`, which would also drop a full-atlas bind the client's residency holds).
+- `WorldFx.field(kind, ...)` and its `WORLD_BURSTS` recipes (flame, smoke, dig, dive, diveMark, bubble, sense, senseRing,
+  wanted, wantedRing, gust): the same particle pool.
+- `ObstacleSpec.kind` 'bramble': a knot of four of the biome's bushes (`buildBush`), hidden once cleared.
