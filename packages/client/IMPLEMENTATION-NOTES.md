@@ -2248,6 +2248,10 @@ the second isolated client (the component over the landing page: the foe and own
   plays the hits first, then the rest through `POST /npc/act` (server notes: NPC wallet, gift cooldown, a taken
   creature is released for good, never the last or a locked one), applies the delta and toasts. What happened (or
   was refused) is recorded on the turn in English (`ChatTurn.events`) and given to the talk pass as the scene so far.
+  The tool pass runs in the background (2026-10-22): the phase is idle once the words are in, so the player can speak
+  again at once. Tool passes queue one after another (hits and money in the order the NPC said them) and write their
+  events onto their own reply, found by identity; a reply that starts before the previous tool pass is done does not
+  hear its events yet. Back keeps them running (the NPC said it); closing the dialogue aborts them.
 - Slap / kick (`scene/npcStrike.ts`, `state/npcFx.ts`, `world/NpcStrikeFx.tsx`): the NPC's actor runs at the player
   and walks back (the rigs have no strike clip), the player turns to it; at contact a hit sound, a camera shake and a
   comic burst ("SMACK!" / "WHAM!") with a red edge flash. A kick also knocks the player back:
@@ -2267,7 +2271,14 @@ the second isolated client (the component over the landing page: the foe and own
   the scripted lines. Closing the dialogue (paging past the last line, a battle) ends the talk (`endTalk`) and releases
   the microphone.
 - The prompt is a role-play with positive rules and example turns: telling the 0.8B model "you are not an AI" made it
-  talk about AIs. History is capped at 32 turns (was 8, 2026-10-22: a conversation read as forgotten after four exchanges).
+  talk about AIs. It addresses the NPC as "you" and asks for its own spoken words in the first person; the events and
+  the player's hits are told to it the same way ("You slapped the traveller.", "The traveller slaps you…"). Written as
+  "Bram is hot-headed… say out loud what Bram does" it came back as narration ("Bram sits on the bench. He looks at
+  you…"): 3/168 sampled replies (2 personas × 14 lines × 6, some after a slap or a 3-exchange history with events),
+  0/168 after (2026-10-22).
+- The talk pass samples at temperature 1.0, top_p 0.95, top_k 40, presence_penalty 1.5 (was temperature 0.7 alone, which
+  sometimes looped one sentence until the token cap: 2/168 replies repeated a sentence 3+ times, 0/168 after). The tool
+  pass stays at temperature 0. History is capped at 32 turns (was 8, 2026-10-22: a conversation read as forgotten after four exchanges).
 
 ## First-person view (2026-10-22, not in the SPEC)
 

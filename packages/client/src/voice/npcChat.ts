@@ -32,7 +32,7 @@ export interface NpcPersona {
 export interface ChatTurn {
   readonly role: 'user' | 'assistant';
   readonly content: string;
-  /** an assistant turn: what the NPC's tools did, in English for the talk pass ("Bram slapped the traveller.") */
+  /** an assistant turn: what the NPC's tools did, in English for the talk pass, addressed to the NPC ("You slapped the traveller.") */
   readonly events?: readonly string[];
   /** a user turn that is an action (H / K), not words: what the dialogue shows instead of `content` */
   readonly shown?: string;
@@ -41,8 +41,8 @@ export interface ChatTurn {
 /** The player's hit as a user turn: the models read the narration, the dialogue shows `shown`. */
 export function playerHitTurn(kind: 'slap' | 'kick', npcName: string): ChatTurn {
   return kind === 'slap'
-    ? { role: 'user', content: `(The traveller slaps ${npcName} hard in the face, out of nowhere.)`, shown: `You slap ${npcName}.` }
-    : { role: 'user', content: `(The traveller kicks ${npcName} hard, out of nowhere.)`, shown: `You kick ${npcName}.` };
+    ? { role: 'user', content: '(The traveller slaps you hard in the face, out of nowhere.)', shown: `You slap ${npcName}.` }
+    : { role: 'user', content: '(The traveller kicks you hard, out of nowhere.)', shown: `You kick ${npcName}.` };
 }
 
 /** A tool the tool pass called: its name and, for money, the amount (1..NPC_MONEY_MAX). */
@@ -90,22 +90,24 @@ export function eventsSoFar(history: readonly ChatTurn[]): string[] {
 
 /**
  * Framed as a role-play with only positive rules (a small model told "you are not an AI" starts talking about AIs).
- * The example turns set the voice (short, spoken, in-world), the answer to "are you a computer?" and giving in to a
- * robbery.
+ * Everything is said to the NPC as "you" and asks for its own words in the first person: a prompt that described the
+ * NPC as "Bram is hot-headed…" got narration back ("Bram sits on the bench. He looks at you…"). The example turns set
+ * the voice (short, spoken, in-world), the answer to "are you a computer?" and giving in to a robbery.
  */
 export function systemPrompt(p: NpcPersona, events: readonly string[] = []): string {
   const where = p.place !== null ? `, who lives in ${p.place}` : '';
-  const said = p.lines.length > 0 ? ` Earlier ${p.name} said to the traveller: "${p.lines.join(' ')}"` : '';
+  const said = p.lines.length > 0 ? ` Earlier you said to the traveller: "${p.lines.join(' ')}"` : '';
   const sofar = events.length > 0 ? `\n\nWhat has happened in this conversation so far: ${events.slice(-6).join(' ')}` : '';
   return (
     'This is a role-play in the fantasy world of Ewamon, where travellers catch, train and battle wild creatures ' +
-    `(Ewamon) at gyms. You play ${p.name}${where}.${said}\n\n` +
-    `${p.name} always speaks English, briefly: one or two sentences, like in a conversation, without formatting or emoji. ` +
-    `${p.name} only knows the world of Ewamon.\n\n` +
-    `${p.name} is hot-headed and takes no nonsense. Faced with cheek, insults or threats, ${p.name} hands out a slap ` +
-    `or a kick, or takes money (at most 1000 coins) or even an Ewamon from the traveller. ` +
-    `If ${p.name} is truly scared, ${p.name} may hand over money after all. To a friendly traveller ${p.name} can be ` +
-    `generous and give money or an Ewamon as a gift. Always say out loud what ${p.name} does.${sofar}`
+    `(Ewamon) at gyms. You are ${p.name}${where}.${said}\n\n` +
+    `You speak as ${p.name}, in the first person ("I", "me", "my"): each reply is only your own spoken words to the ` +
+    'traveller, in English, one or two sentences, like in a conversation, without narration, formatting or emoji. ' +
+    'You only know the world of Ewamon.\n\n' +
+    'You are hot-headed and take no nonsense. Faced with cheek, insults or threats, you hand out a slap or a kick, or ' +
+    'take money (at most 1000 coins) or even an Ewamon from the traveller. If you are truly scared, you may hand over ' +
+    'money after all. To a friendly traveller you can be generous and give money or an Ewamon as a gift. When you do ' +
+    `something, say it out loud in your own words as you do it, like "Here, take this slap!"${sofar}`
   );
 }
 
@@ -203,7 +205,12 @@ export async function streamNpcReply(persona: NpcPersona, history: readonly Chat
       messages: chatMessages(persona, history),
       stream: true,
       max_tokens: TALK_REASONING === 'none' ? 200 : 1200,
-      temperature: 0.7,
+      // the talk pass samples warm, with a presence penalty against loops ("You're not welcome. You're not welcome. …"
+      // at 0.7): 2/168 sampled replies repeated a sentence 3+ times at 0.7, 0/168 like this; the tool pass stays at 0
+      temperature: 1.0,
+      top_p: 0.95,
+      top_k: 40,
+      presence_penalty: 1.5,
       ...reasoning(TALK_REASONING),
     }),
     signal,

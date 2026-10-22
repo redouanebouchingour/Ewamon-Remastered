@@ -27,12 +27,15 @@ describe('voice talk: wav', () => {
 describe('voice talk: npc chat', () => {
   const persona = { name: 'Bram', place: 'Mirevale (town, marsh)', lines: ['The marsh is quiet today.'] };
 
-  it('puts the persona, place and the scripted lines in the system prompt, in English', () => {
+  it('puts the persona, place and the scripted lines in the system prompt, in English, asking for the first person', () => {
     const p = systemPrompt(persona);
-    expect(p).toContain('You play Bram');
+    expect(p).toContain('You are Bram');
     expect(p).toContain('Mirevale (town, marsh)');
     expect(p).toContain('The marsh is quiet today.');
-    expect(p).toContain('always speaks English');
+    expect(p).toContain('in English');
+    expect(p).toContain('in the first person');
+    // addressed to the NPC: never described in the third person, which the model copied as narration
+    expect(p).not.toMatch(/Bram (is|always|only|can|may|hands)\b/);
   });
 
   it('sends only the recent history after the example turn', () => {
@@ -46,11 +49,11 @@ describe('voice talk: npc chat', () => {
   it('tells the talk pass what the tools did so far, and writes the NPC as hot-headed', () => {
     const h: ChatTurn[] = [
       { role: 'user', content: 'You are ugly.' },
-      { role: 'assistant', content: 'What did you say? Here, a slap!', events: ['Bram slapped the traveller.'] },
+      { role: 'assistant', content: 'What did you say? Here, a slap!', events: ['You slapped the traveller.'] },
     ];
-    expect(eventsSoFar(h)).toEqual(['Bram slapped the traveller.']);
+    expect(eventsSoFar(h)).toEqual(['You slapped the traveller.']);
     const m = chatMessages(persona, h);
-    expect(m[0]!.content).toContain('What has happened in this conversation so far: Bram slapped the traveller.');
+    expect(m[0]!.content).toContain('What has happened in this conversation so far: You slapped the traveller.');
     expect(m.slice(-2)).toEqual([
       { role: 'user', content: 'You are ugly.' },
       { role: 'assistant', content: 'What did you say? Here, a slap!' },

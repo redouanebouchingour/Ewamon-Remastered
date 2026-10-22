@@ -4,11 +4,12 @@
  * whisper.cpp, the text to the local model, and the reply streams in.
  * One conversation per open dialogue (E on a person starts a new one): every take, typed line and hit while it stays open
  * is added to it. `leaveTalk` (Back / Enter / E) shows the scripted lines again and keeps the conversation, so the next
- * line resumes it; `endTalk` (dialogue closed or target changed) drops it. Both abort what is in flight and release
- * the microphone.
+ * line resumes it; `endTalk` (dialogue closed or target changed) drops it. Both abort the take or reply in flight and
+ * release the microphone; only `endTalk` stops the tool passes still running (what the NPC said, it still does).
  *
- * After each reply the tool pass picks what the NPC does (`voice/npcChat`): a slap or a kick plays in the world
- * (`state/npcFx`); money and Ewamon go through `POST /npc/act`, which checks the NPC stands in the player's zone and
+ * After each reply the tool pass picks what the NPC does (`voice/npcChat`) in the background: the player can speak
+ * again as soon as the words are in. Tool passes run one at a time, in order, and what one did lands on its own reply.
+ * A slap or a kick plays in the world (`state/npcFx`); money and Ewamon go through `POST /npc/act`, which checks the NPC stands in the player's zone and
  * keeps its wallet; the delta lands in the session like any other.
  */
 import { create } from 'zustand';
@@ -46,6 +47,9 @@ const set = (p: Partial<VoiceTalkState>): void => useVoiceTalkStore.setState(p);
 
 let persona: NpcPersona | null = null;
 let inflight: AbortController | null = null;
+/** the tool passes of this conversation, run one after another in the background; `endTalk` aborts them */
+let tools = new AbortController();
+let toolQueue: Promise<void> = Promise.resolve();
 /** the mic opening (the first press may wait on the permission prompt) */
 let starting: Promise<boolean> | null = null;
 
@@ -134,8 +138,8 @@ export function sendText(targetId: string, p: NpcPersona, text: string): void {
 }
 
 /**
- * Adds what the player said, streams the NPC's answer (talk pass), then lets the tool pass judge the exchange and
- * plays what it called. The phase stays `replying` until the tools are done, so the next take sees what happened.
+ * Adds what the player said and streams the NPC's answer (talk pass); the phase is `idle` again once the words are in,
+ * so the next line can go while the tool pass judges this exchange in the background (`judgeInBackground`).
  */
 async function answer(p: NpcPersona, said: ChatTurn, ac: AbortController): Promise<void> {
   const turns = [...useVoiceTalkStore.getState().turns, said];
@@ -148,19 +152,34 @@ async function answer(p: NpcPersona, said: ChatTurn, ac: AbortController): Promi
     return set({ phase: 'idle', partial: '', error: `The language model did not answer (is LM Studio running on port 1234?): ${message(e)}` });
   }
   if (ac.signal.aborted) return;
-  const spoken: ChatTurn[] = [...turns, { role: 'assistant', content: reply === '' ? '…' : reply }];
-  set({ turns: spoken, partial: '', phase: 'replying' });
-  try {
-    const calls = await judgeExchange(p, spoken, NPC_MONEY_MAX, ac.signal);
-    if (ac.signal.aborted) return;
-    const events = await runTools(targetOf(), p.name, calls);
-    if (ac.signal.aborted) return;
-    const last = spoken.at(-1)!;
-    set({ turns: events.length > 0 ? [...spoken.slice(0, -1), { ...last, events }] : spoken, phase: 'idle' });
-  } catch (e) {
-    if (ac.signal.aborted) return;
-    set({ phase: 'idle', error: `The tool pass did not answer (is ${TOOL_MODEL} loaded in LM Studio?): ${message(e)}` });
-  }
+  const spoken: ChatTurn = { role: 'assistant', content: reply === '' ? '…' : reply };
+  set({ turns: [...turns, spoken], partial: '', phase: 'idle' });
+  judgeInBackground(p, [...turns, spoken], spoken);
+}
+
+/**
+ * The tool pass for one exchange, queued behind the earlier ones (hits play and money moves in the order the NPC said
+ * them). What it did is written onto `spoken` (found by identity: newer turns may follow it by then), so later talk
+ * passes hear it as the scene so far.
+ */
+function judgeInBackground(p: NpcPersona, exchange: readonly ChatTurn[], spoken: ChatTurn): void {
+  const signal = tools.signal;
+  const npcId = targetOf();
+  toolQueue = toolQueue.then(async () => {
+    if (signal.aborted) return;
+    try {
+      const calls = await judgeExchange(p, exchange, NPC_MONEY_MAX, signal);
+      if (signal.aborted) return;
+      const events = await runTools(npcId, p.name, calls);
+      if (signal.aborted || events.length === 0) return;
+      const now = useVoiceTalkStore.getState().turns;
+      const i = now.indexOf(spoken);
+      if (i >= 0) set({ turns: [...now.slice(0, i), { ...spoken, events }, ...now.slice(i + 1)] });
+    } catch (e) {
+      if (signal.aborted) return;
+      set({ error: `The tool pass did not answer (is ${TOOL_MODEL} loaded in LM Studio?): ${message(e)}` });
+    }
+  });
 }
 
 function targetOf(): string {
@@ -177,7 +196,8 @@ const SERVER_ACTION: Readonly<Record<string, (typeof NPC_ACTIONS)[number]>> = {
 
 /**
  * Plays the tool calls: the hits first (each waits for contact), then the save-touching ones through `POST /npc/act`
- * (a toast each; a refusal is toasted and told to the talk pass as what happened). Returns the events, in English.
+ * (a toast each; a refusal is toasted and told to the talk pass as what happened). Returns the events, in English,
+ * addressed to the NPC ("You slapped the traveller.") so the talk pass keeps speaking as itself.
  */
 export async function runTools(npcId: string, name: string, calls: readonly ToolCall[]): Promise<string[]> {
   const events: string[] = [];
@@ -185,7 +205,7 @@ export async function runTools(npcId: string, name: string, calls: readonly Tool
   for (const c of ordered) {
     if (c.name === SLAP || c.name === KICK) {
       await strike(c.name === SLAP ? 'slap' : 'kick', npcId);
-      events.push(c.name === SLAP ? `${name} slapped the traveller.` : `${name} kicked the traveller.`);
+      events.push(c.name === SLAP ? 'You slapped the traveller.' : 'You kicked the traveller.');
       continue;
     }
     const action = SERVER_ACTION[c.name];
@@ -206,26 +226,26 @@ async function act(npcId: string, name: string, action: (typeof NPC_ACTIONS)[num
     switch (action) {
       case 'giveMoney':
         toast('success', `${name} gave you ${res.amount} money.`);
-        return `${name} gave the traveller ${res.amount} coins.`;
+        return `You gave the traveller ${res.amount} coins.`;
       case 'takeMoney':
         toast('danger', `${name} took ${res.amount} money from you.`);
-        return `${name} took ${res.amount} coins from the traveller.`;
+        return `You took ${res.amount} coins from the traveller.`;
       case 'giveCreature': {
         const got = res.creaturesAdded[0];
         const label = got === undefined ? 'an Ewamon' : `${nameOf(got)} (Lv ${got.level})`;
         toast('success', `${name} gave you ${label}.`);
-        return `${name} gave the traveller an Ewamon: ${got === undefined ? 'a creature' : nameOf(got)}.`;
+        return `You gave the traveller an Ewamon: ${got === undefined ? 'a creature' : nameOf(got)}.`;
       }
       case 'takeCreature': {
         const lost = before.find((c) => c.id === res.creaturesRemoved[0]);
         toast('danger', `${name} took ${lost === undefined ? 'one of your Ewamon' : nameOf(lost)}!`);
-        return `${name} took an Ewamon from the traveller: ${lost === undefined ? 'a creature' : nameOf(lost)}.`;
+        return `You took an Ewamon from the traveller: ${lost === undefined ? 'a creature' : nameOf(lost)}.`;
       }
     }
   } catch (e) {
     const code = isApiFailure(e) ? e.error.code : '';
     toast('info', REFUSED[code]?.(name) ?? `${name} could not do that.`);
-    return REFUSED_TALK[code]?.(name) ?? `${name} tried something, but it did not work.`;
+    return REFUSED_TALK[code] ?? 'You tried something, but it did not work.';
   }
 }
 
@@ -238,12 +258,12 @@ const REFUSED: Readonly<Record<string, (n: string) => string>> = {
   npcToolsOff: () => 'NPC actions are off on this server.',
 };
 
-/** The refusals as the talk pass hears them. */
-const REFUSED_TALK: Readonly<Record<string, (n: string) => string>> = {
-  npcPurseEmpty: (n) => `${n} wanted to give money, but had none left.`,
-  playerBroke: (n) => `${n} wanted to take money, but the traveller had none.`,
-  npcNoCreature: (n) => `${n} had no Ewamon left to give.`,
-  npcCannotTake: (n) => `${n} tried to take an Ewamon, but could not.`,
+/** The refusals as the talk pass hears them (addressed to the NPC, like every event). */
+const REFUSED_TALK: Readonly<Record<string, string>> = {
+  npcPurseEmpty: 'You wanted to give money, but had none left.',
+  playerBroke: 'You wanted to take money, but the traveller had none.',
+  npcNoCreature: 'You had no Ewamon left to give.',
+  npcCannotTake: 'You tried to take an Ewamon, but could not.',
 };
 
 /**
@@ -262,6 +282,9 @@ export function leaveTalk(): void {
 export function endTalk(): void {
   inflight?.abort();
   inflight = null;
+  tools.abort();
+  tools = new AbortController();
+  toolQueue = Promise.resolve();
   starting = null;
   persona = null;
   releaseMic();

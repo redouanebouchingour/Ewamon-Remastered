@@ -142,7 +142,7 @@ describe('DialogueBox voice talk', () => {
       await new Promise((r) => setTimeout(r, 20));
     });
     expect(screen.getByTestId('npc-strike').textContent).toContain('SMACK!');
-    expect(useVoiceTalkStore.getState().turns.at(-1)).toMatchObject({ role: 'assistant', events: ['Bram slapped the traveller.'] });
+    expect(useVoiceTalkStore.getState().turns.at(-1)).toMatchObject({ role: 'assistant', events: ['You slapped the traveller.'] });
     vi.unstubAllGlobals();
   });
 
@@ -170,6 +170,46 @@ describe('DialogueBox voice talk', () => {
     expect(screen.getByText('Ow! Why did you do that?')).toBeTruthy();
     const sent = JSON.parse(String(fetchMock.mock.calls[0]![1].body)) as { messages: { content: string }[] };
     expect(sent.messages.at(-1)!.content).toContain('slaps');
+    vi.unstubAllGlobals();
+  });
+
+  it('the next line can go while the tool pass still runs; what it did lands on its own reply', async () => {
+    let n = 0;
+    let release: (() => void) | null = null;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit) => {
+        if ((JSON.parse(String(init.body)) as { stream?: boolean }).stream === true)
+          return new Response(`data: {"choices":[{"delta":{"content":"Reply ${++n}, here a slap!"}}]}\n\ndata: [DONE]\n\n`, { status: 200 });
+        // the first tool pass hangs until released; the second answers at once
+        if (release === null) await new Promise<void>((r) => (release = r));
+        return Response.json({ choices: [{ message: { tool_calls: [{ function: { name: 'slap_user', arguments: '{}' } }] } }] });
+      }),
+    );
+    act(() => useUiStore.getState().setDialogue({ speaker: 'Bram', lines: ['Hello.'], index: 0, targetId: 'mirevale.bram' }));
+    render(<DialogueBox />);
+    act(() => {
+      fireEvent.keyDown(window, { code: 'KeyC' });
+    });
+    const send = async (text: string): Promise<void> => {
+      const input = screen.getByRole('textbox');
+      fireEvent.change(input, { target: { value: text } });
+      await act(async () => {
+        fireEvent.submit(input.closest('form')!);
+        await new Promise((r) => setTimeout(r, 20));
+      });
+    };
+    await send('You are ugly');
+    expect(useVoiceTalkStore.getState().phase).toBe('idle');
+    await send('And you smell');
+    expect(screen.getByText('Reply 2, here a slap!')).toBeTruthy();
+    expect(useVoiceTalkStore.getState().turns.every((t) => t.events === undefined)).toBe(true);
+    await act(async () => {
+      release!();
+      await new Promise((r) => setTimeout(r, 1200));
+    });
+    const replies = useVoiceTalkStore.getState().turns.filter((t) => t.role === 'assistant');
+    expect(replies.map((t) => t.events)).toEqual([['You slapped the traveller.'], ['You slapped the traveller.']]);
     vi.unstubAllGlobals();
   });
 
