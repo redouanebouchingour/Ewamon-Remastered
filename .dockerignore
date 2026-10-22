@@ -1,0 +1,19 @@
+# Keep the build context small: the image installs its own dependencies and never needs the model, art sources or caches.
+**/node_modules
+**/dist-types
+**/*.tsbuildinfo
+packages/client/dist
+.git
+.claude
+.screenshots
+.cdp-shots
+.probe
+.impeccable
+models
+assets-src
+tools/*/.cache
+tools/audio-pipeline/out
+packages/server/.data*
+**/.env
+**/.env.local
+**/*.log

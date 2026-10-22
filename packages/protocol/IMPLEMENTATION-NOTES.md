@@ -230,3 +230,8 @@ installed library that future readers should not have to re-derive. The spec its
 
 - `npcAct` (`POST /npc/act`, `NpcActReq` / `NpcActRes`, `NPC_ACTIONS`, `NPC_MONEY_MAX`): the client voice talk's
   money and creature tools. Not in the SPEC (a local-model feature).
+
+## Breakdance emote (2026-10-22)
+
+- `EmoteMsg.emote` accepts 1..7: 7 is the breakdance (`EMOTE_BREAKDANCE`), which stays on `PlayerState.emote` for
+  `BREAKDANCE_MS` (6 s) instead of 2 s. Not in the spine (§4.1 lists 1..6).

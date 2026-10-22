@@ -70,6 +70,16 @@
   gap: var(--s-3);
 }
 
+/* voice talk: the whole conversation, newest at the bottom; what the player said, the NPC's replies as normal lines */
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  max-block-size: 40vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 /* voice talk: what the player said, then the NPC's reply as a normal line */
 .heard {
   color: var(--text-2);

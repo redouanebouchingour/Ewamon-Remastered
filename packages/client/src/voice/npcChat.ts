@@ -1,16 +1,19 @@
 /**
- * NPC voice talk: one local model (`gemma-4-e4b-it-qat` behind LM Studio's OpenAI-compatible API) in two passes. The
- * player speaks Dutch (whisper.cpp transcribes it).
+ * NPC voice talk: one local model (`qwen3.5-0.8b` behind LM Studio's OpenAI-compatible API) in two passes. The player
+ * speaks English (whisper.cpp transcribes it).
  *
- * - Talk: the model streams the NPC's words, in character, in Dutch, with reasoning off and no tools, so they appear
- *   as fast as they come. It decides in the story what the NPC does (villagers are hot-headed: they slap, kick and
+ * - Talk: the model streams the NPC's words (fast; the dialogue is rough, and that is accepted), in character,
+ *   in English, with reasoning off and no tools, so they appear as fast as they come. It decides in the story what the NPC does (villagers are hot-headed: they slap, kick and
  *   grab when provoked, and can be generous to the friendly) and says it out loud.
- * - Tools: once the words are complete, the same model reads the exchange and must call at least one tool: what the
- *   NPC does to the player (`slap_user`, `kick_user`, `give_money` / `take_money` with an amount, `give_ewamon`,
+ * - Tools: once the words are complete, the same model reads the exchange and must call at least one tool:
+ *   what the NPC does to the player (`slap_user`, `kick_user`, `give_money` / `take_money` with an amount, `give_ewamon`,
  *   `take_ewamon`) or `do_nothing`. Forcing the choice (`tool_choice: required`) lets it run without reasoning
  *   (~0.3 s): left free and without reasoning it never called a tool; with reasoning it was right but took 5–7 s.
  *   It still drifts into reasoning now and then on harmless chat, so the pass is capped at a few tokens: no call =
- *   nothing happens.
+ *   nothing happens. The 0.8b model often gets the direction wrong (gives when the NPC takes) and acts on threats, so
+ *   `guardCalls` checks each call against the NPC's words: it drops a call the words do not mention (or only threaten)
+ *   and turns give / take round when the wording clearly says the other way. Measured on 20 unseen exchanges: 9/20
+ *   right bare, 14/20 guarded (gemma-4-e4b-it-qat: 18/20 at twice the time); most guarded misses drop an action.
  *
  * What the tools did is remembered on the turn (`ChatTurn.events`) and told to the talk pass as the scene so far.
  * `VITE_NPC_LLM_MODEL` / `VITE_NPC_LLM_REASONING` and `VITE_NPC_TOOL_MODEL` / `VITE_NPC_TOOL_REASONING` override the
@@ -29,7 +32,7 @@ export interface NpcPersona {
 export interface ChatTurn {
   readonly role: 'user' | 'assistant';
   readonly content: string;
-  /** an assistant turn: what the NPC's tools did, in Dutch for the talk pass ("Bram gaf de reiziger een klap.") */
+  /** an assistant turn: what the NPC's tools did, in English for the talk pass ("Bram slapped the traveller.") */
   readonly events?: readonly string[];
   /** a user turn that is an action (H / K), not words: what the dialogue shows instead of `content` */
   readonly shown?: string;
@@ -38,8 +41,8 @@ export interface ChatTurn {
 /** The player's hit as a user turn: the models read the narration, the dialogue shows `shown`. */
 export function playerHitTurn(kind: 'slap' | 'kick', npcName: string): ChatTurn {
   return kind === 'slap'
-    ? { role: 'user', content: `(De reiziger geeft ${npcName} zomaar een harde klap in het gezicht.)`, shown: `Je geeft ${npcName} een klap.` }
-    : { role: 'user', content: `(De reiziger geeft ${npcName} zomaar een harde schop.)`, shown: `Je geeft ${npcName} een schop.` };
+    ? { role: 'user', content: `(The traveller slaps ${npcName} hard in the face, out of nowhere.)`, shown: `You slap ${npcName}.` }
+    : { role: 'user', content: `(The traveller kicks ${npcName} hard, out of nowhere.)`, shown: `You kick ${npcName}.` };
 }
 
 /** A tool the tool pass called: its name and, for money, the amount (1..NPC_MONEY_MAX). */
@@ -53,14 +56,14 @@ interface ChatMessage {
   readonly content: string;
 }
 
-/** turns of history sent back to the talk pass */
-export const HISTORY_TURNS = 8;
+/** turns of history sent back to the talk pass: the whole conversation in practice (lines are a sentence or two) */
+export const HISTORY_TURNS = 32;
 
 const env = (k: string): string | undefined => import.meta.env[k] as string | undefined;
 export const LLM_BASE = env('VITE_NPC_LLM_URL') ?? '/voice/llm/v1';
-export const TALK_MODEL = env('VITE_NPC_LLM_MODEL') ?? 'gemma-4-e4b-it-qat';
+export const TALK_MODEL = env('VITE_NPC_LLM_MODEL') ?? 'qwen3.5-0.8b';
 const TALK_REASONING = env('VITE_NPC_LLM_REASONING') ?? 'none';
-export const TOOL_MODEL = env('VITE_NPC_TOOL_MODEL') ?? TALK_MODEL;
+export const TOOL_MODEL = env('VITE_NPC_TOOL_MODEL') ?? 'qwen3.5-0.8b';
 const TOOL_REASONING = env('VITE_NPC_TOOL_REASONING') ?? 'none';
 
 /** the tool pass's token cap without reasoning (see `judgeExchange`): a few calls with an amount */
@@ -91,18 +94,18 @@ export function eventsSoFar(history: readonly ChatTurn[]): string[] {
  * robbery.
  */
 export function systemPrompt(p: NpcPersona, events: readonly string[] = []): string {
-  const where = p.place !== null ? `, een inwoner van ${p.place}` : '';
-  const said = p.lines.length > 0 ? ` Eerder zei ${p.name} tegen de reiziger (in het Engels): "${p.lines.join(' ')}"` : '';
-  const sofar = events.length > 0 ? `\n\nWat er in dit gesprek al gebeurde: ${events.slice(-6).join(' ')}` : '';
+  const where = p.place !== null ? `, who lives in ${p.place}` : '';
+  const said = p.lines.length > 0 ? ` Earlier ${p.name} said to the traveller: "${p.lines.join(' ')}"` : '';
+  const sofar = events.length > 0 ? `\n\nWhat has happened in this conversation so far: ${events.slice(-6).join(' ')}` : '';
   return (
-    'Dit is een rollenspel in de fantasiewereld Ewamon, waar reizigers wilde wezens (Ewamon) vangen, trainen en laten ' +
-    `vechten bij gyms. Jij speelt ${p.name}${where}.${said}\n\n` +
-    `${p.name} praat altijd Nederlands, kort: één of twee zinnen, zoals in een gesprek, zonder opmaak of emoji. ` +
-    `${p.name} kent alleen de wereld van Ewamon.\n\n` +
-    `${p.name} is opvliegend en laat niet met zich sollen. Bij brutaliteit, beledigingen of bedreigingen deelt ` +
-    `${p.name} een klap of een schop uit, of pakt geld (hoogstens 1000 munten) of zelfs een Ewamon van de reiziger af. ` +
-    `Is ${p.name} echt bang, dan geeft ${p.name} misschien toch geld. Tegen een aardige reiziger kan ${p.name} gul zijn ` +
-    `en geld of een Ewamon cadeau geven. Zeg altijd hardop wat ${p.name} doet.${sofar}`
+    'This is a role-play in the fantasy world of Ewamon, where travellers catch, train and battle wild creatures ' +
+    `(Ewamon) at gyms. You play ${p.name}${where}.${said}\n\n` +
+    `${p.name} always speaks English, briefly: one or two sentences, like in a conversation, without formatting or emoji. ` +
+    `${p.name} only knows the world of Ewamon.\n\n` +
+    `${p.name} is hot-headed and takes no nonsense. Faced with cheek, insults or threats, ${p.name} hands out a slap ` +
+    `or a kick, or takes money (at most 1000 coins) or even an Ewamon from the traveller. ` +
+    `If ${p.name} is truly scared, ${p.name} may hand over money after all. To a friendly traveller ${p.name} can be ` +
+    `generous and give money or an Ewamon as a gift. Always say out loud what ${p.name} does.${sofar}`
   );
 }
 
@@ -110,12 +113,12 @@ export function systemPrompt(p: NpcPersona, events: readonly string[] = []): str
 export function chatMessages(p: NpcPersona, history: readonly ChatTurn[]): ChatMessage[] {
   return [
     { role: 'system', content: systemPrompt(p, eventsSoFar(history)) },
-    { role: 'user', content: 'Hoi! Hoe gaat het?' },
-    { role: 'assistant', content: 'Goed hoor, al is het hier vandaag weer druk met Ewamon. Wat brengt jou hier?' },
-    { role: 'user', content: 'Ben jij een robot of zo?' },
-    { role: 'assistant', content: `Een robot? Haha, nee, ik ben gewoon ${p.name}. Jij stelt rare vragen, reiziger.` },
-    { role: 'user', content: 'Geef me je geld, of anders!' },
-    { role: 'assistant', content: 'Of anders wát? Hier, een klap voor je brutale kop, en nu wegwezen!' },
+    { role: 'user', content: 'Hi! How are you?' },
+    { role: 'assistant', content: 'Fine, thanks, though it is busy with Ewamon around here again today. What brings you here?' },
+    { role: 'user', content: 'Are you a robot or something?' },
+    { role: 'assistant', content: `A robot? Ha, no, I'm just ${p.name}. You ask strange questions, traveller.` },
+    { role: 'user', content: 'Give me your money, or else!' },
+    { role: 'assistant', content: 'Or else what? Here, a slap for your cheek, now get lost!' },
     ...history.slice(-HISTORY_TURNS).map((t) => ({ role: t.role, content: t.content })),
   ];
 }
@@ -123,16 +126,16 @@ export function chatMessages(p: NpcPersona, history: readonly ChatTurn[]): ChatM
 /** The tools the tool pass must choose from (OpenAI function format). */
 export function judgeTools(p: NpcPersona, maxMoney: number): unknown[] {
   const none = { type: 'object', properties: {}, required: [] };
-  const money = { type: 'object', properties: { amount: { type: 'integer', minimum: 1, maximum: maxMoney, description: `het bedrag dat ${p.name} noemt, anders ${maxMoney}` } }, required: ['amount'] };
+  const money = { type: 'object', properties: { amount: { type: 'integer', minimum: 1, maximum: maxMoney, description: `the amount ${p.name} names, otherwise ${maxMoney}` } }, required: ['amount'] };
   const fn = (name: string, description: string, parameters: object = none) => ({ type: 'function', function: { name, description, parameters } });
   return [
-    fn(SLAP, `${p.name} geeft de reiziger een klap (slaat, mept).`),
-    fn(KICK, `${p.name} geeft de reiziger een schop (schopt, trapt).`),
-    fn(GIVE_MONEY, `${p.name} geeft de reiziger nu geld (hoogstens ${maxMoney} munten).`, money),
-    fn(TAKE_MONEY, `${p.name} pakt nu geld van de reiziger af (hoogstens ${maxMoney} munten).`, money),
-    fn(GIVE_EWAMON, `${p.name} geeft de reiziger nu een Ewamon (een wezen).`),
-    fn(TAKE_EWAMON, `${p.name} pakt nu een Ewamon van de reiziger af.`),
-    fn(DO_NOTHING, `Er gebeurt niets in het spel: ${p.name} praat alleen, weigert, dreigt alleen of belooft alleen iets.`),
+    fn(SLAP, `${p.name} slaps the traveller (hits, smacks).`),
+    fn(KICK, `${p.name} kicks the traveller.`),
+    fn(GIVE_MONEY, `${p.name} now gives the traveller money (at most ${maxMoney} coins).`, money),
+    fn(TAKE_MONEY, `${p.name} now takes money from the traveller (at most ${maxMoney} coins).`, money),
+    fn(GIVE_EWAMON, `${p.name} now gives the traveller an Ewamon (a creature).`),
+    fn(TAKE_EWAMON, `${p.name} now takes an Ewamon from the traveller.`),
+    fn(DO_NOTHING, `Nothing happens in the game: ${p.name} only talks, refuses, only threatens or only promises something.`),
   ];
 }
 
@@ -140,17 +143,17 @@ export function judgeTools(p: NpcPersona, maxMoney: number): unknown[] {
 export function judgeMessages(p: NpcPersona, history: readonly ChatTurn[]): ChatMessage[] {
   const transcript = history
     .slice(-2)
-    .map((t) => `${t.role === 'user' ? 'Reiziger' : p.name}: ${t.content}`)
+    .map((t) => `${t.role === 'user' ? 'Traveller' : p.name}: ${t.content}`)
     .join('\n');
   return [
     {
       role: 'system',
       content:
-        `Je bent de spelleider van een rollenspel. Je leest het laatste stukje van een gesprek tussen de reiziger en ` +
-        `${p.name} (een personage) en voert uit wat ${p.name} in het laatste antwoord nu echt doet: roep voor elke ` +
-        `handeling de passende tool aan (meerdere mag, bijvoorbeeld een klap én geld afpakken). Geven of afpakken telt ` +
-        `ook als ${p.name} boos of bang toegeeft, zoals "neem het maar" of "pak aan". Dreigt ${p.name} alleen, weigert ` +
-        `${p.name}, belooft ${p.name} alleen iets of praat ${p.name} gewoon, roep dan ${DO_NOTHING} aan.`,
+        `You are the game master of a role-play. You read the last part of a conversation between the traveller and ` +
+        `${p.name} (a character) and carry out what ${p.name} actually does in the last reply: call the matching tool ` +
+        `for each action (several is fine, for example a slap and taking money). Giving or taking also counts when ` +
+        `${p.name} gives in angrily or fearfully, like "take it then" or "here you go". If ${p.name} only threatens, ` +
+        `refuses, only promises something or just talks, call ${DO_NOTHING}.`,
     },
     { role: 'user', content: transcript },
   ];
@@ -244,11 +247,45 @@ export async function judgeExchange(persona: NpcPersona, history: readonly ChatT
   });
   if (!res.ok) throw new Error(`LM Studio answered ${res.status}`);
   const json = (await res.json()) as { choices?: { message?: { tool_calls?: { function?: { name?: string; arguments?: string } }[] } }[] };
-  return (json.choices?.[0]?.message?.tool_calls ?? []).flatMap((c) => {
+  const calls = (json.choices?.[0]?.message?.tool_calls ?? []).flatMap((c) => {
     const name = c.function?.name ?? '';
     if (name === '' || name === DO_NOTHING) return [];
     return [{ name, ...amountOf(c.function?.arguments, maxMoney) }];
   });
+  return guardCalls(calls, history.at(-1)?.content ?? '');
+}
+
+/** "or I will…", "next time", "keep talking and…": a hit said this way has not happened yet */
+const THREAT = /\b(or (else|i will|i'll)|next time|one more|if you|keep talking|you will (feel|regret|get)|watch your)\b/;
+const HIT_WORDS: Readonly<Record<string, RegExp>> = { [SLAP]: /\b(slap|smack|hit|punch|whack)/, [KICK]: /\b(kick|boot)/ };
+const MONEY_WORDS = /\b(coin|money|gold|purse|wallet)/;
+const MONEY_REFUSED = /\b(never|no way|nothing from me)\b/;
+const MONEY_TAKE = /\b(taking|take your|i('ll| will) (take|have|keep)|keeping|hand (it|them) over|confiscat|steal)/;
+const MONEY_GIVE = /\b(here is|here are|here,|have \d+|take it|take this|for you|reward|gift)/;
+const EWAMON_TAKE = /\b(take (that|your)|i('ll| will) (take|have)|have that|of yours|on your belt|steal)/;
+const EWAMON_GIVE = /\b(take (my|this)|here,? (take|have)|gift|for you|have (this|my))/;
+
+/**
+ * The tool pass's calls checked against the NPC's last words (see the header): a hit needs a hit word and must not
+ * be only a threat (an `*action*` or a "here" makes it real); money needs a money word and no refusal; an Ewamon
+ * needs the word Ewamon; give / take follow the wording when it points one way only. Repeats are dropped.
+ */
+export function guardCalls(calls: readonly ToolCall[], reply: string): ToolCall[] {
+  const t = reply.toLowerCase();
+  const onlyThreat = THREAT.test(t) && !t.includes('*') && !/\bhere\b/.test(t);
+  const direction = (give: boolean, take: boolean, giveName: string, takeName: string, said: string): string =>
+    take && !give ? takeName : give && !take ? giveName : said;
+  const out: ToolCall[] = [];
+  for (const c of calls) {
+    let name: string | null = null;
+    if (c.name === SLAP || c.name === KICK) name = HIT_WORDS[c.name]!.test(t) && !onlyThreat ? c.name : null;
+    else if (c.name === GIVE_MONEY || c.name === TAKE_MONEY)
+      name = MONEY_WORDS.test(t) && !MONEY_REFUSED.test(t) ? direction(MONEY_GIVE.test(t), MONEY_TAKE.test(t), GIVE_MONEY, TAKE_MONEY, c.name) : null;
+    else if (c.name === GIVE_EWAMON || c.name === TAKE_EWAMON)
+      name = t.includes('ewamon') ? direction(EWAMON_GIVE.test(t), EWAMON_TAKE.test(t), GIVE_EWAMON, TAKE_EWAMON, c.name) : null;
+    if (name !== null && !out.some((o) => o.name === name)) out.push({ ...c, name });
+  }
+  return out;
 }
 
 /** `{"amount": n}` → a clamped amount; anything else → none (the server's default, the cap). */

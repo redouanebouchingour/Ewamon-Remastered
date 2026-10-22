@@ -16,7 +16,7 @@
  * Every number is in the constants regions (`camera-constants.test.ts` greps this file). Zero allocation in
  * `update` (module scratch objects).
  */
-import { Vector3 } from 'three/webgpu';
+import { Quaternion, Vector3 } from 'three/webgpu';
 import type { PerspectiveCamera } from 'three/webgpu';
 import type { CameraRig } from '../contracts.js';
 import type { EffectsFlags } from '../descriptors.js';
@@ -145,10 +145,14 @@ export function springStep(x: number, v: number, target: number, dtS: number, ou
 
 /** Feet lookup (ActorPool.feetOf). */
 export type FeetResolver = (actorId: string, out: Vector3) => Vector3 | null;
+/** The body's root position and tilt while it breakdances (`CharacterPool.bodyTilt`); false when upright. */
+export type BodyTiltResolver = (actorId: string, outPos: Vector3, outQ: Quaternion) => boolean;
 
 export interface DioramaRigOptions {
   readonly effects: () => EffectsFlags;
   readonly feet?: FeetResolver;
+  /** First person rides the followed body's tilt (the breakdance); absent = always upright. */
+  readonly bodyTilt?: BodyTiltResolver;
   /** Called when a heading/zoom ease ends (§10.7.1: `csm.updateFrustums()` at the end). */
   readonly onSettled?: () => void;
   /** Slow-mo request from a `ko` cue (the host coerces it through `setTimeScale`, §10.8.4). */
@@ -168,6 +172,8 @@ const _pos = new Vector3();
 const _feet = new Vector3();
 const _spring = { x: 0, v: 0 };
 const _dolly = new Vector3();
+const _bodyPos = new Vector3();
+const _bodyQ = new Quaternion();
 const _band = new Vector3();
 const _rows = { feet: 0, top: 0, side: 0 };
 const _clear = new Vector3();
@@ -446,6 +452,12 @@ export class DioramaRig implements CameraRig {
       this.camera.position.set(this.focus.x + fx * FP_EYE_FORWARD_M, this.focus.y + FP_EYE_HEIGHT_M, this.focus.z + fz * FP_EYE_FORWARD_M);
       _pos.set(this.camera.position.x + fx * cp, this.camera.position.y + Math.sin(f.pitch), this.camera.position.z + fz * cp);
       this.camera.lookAt(_pos);
+      // a breakdancing body: the eye stays at the head and turns with it — spins, flips, upside down
+      if (this.o.bodyTilt?.(this.followed!, _bodyPos, _bodyQ) === true) {
+        _pos.set(fx * FP_EYE_FORWARD_M, FP_EYE_HEIGHT_M, fz * FP_EYE_FORWARD_M).applyQuaternion(_bodyQ);
+        this.camera.position.copy(_bodyPos).add(_pos);
+        this.camera.quaternion.premultiply(_bodyQ);
+      }
       this.camera.updateMatrixWorld();
     }
 

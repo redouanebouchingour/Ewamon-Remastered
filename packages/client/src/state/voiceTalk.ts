@@ -1,9 +1,11 @@
 /**
  * NPC voice talk: the conversation the DialogueBox shows over an NPC's lines. Hold V (or the mic button) to speak
- * Dutch; release to send (or press C and type: `sendText`; or hit the NPC with H / K: `hitNpc`). The take goes to
+ * English; release to send (or press C and type: `sendText`; or hit the NPC with H / K: `hitNpc`). The take goes to
  * whisper.cpp, the text to the local model, and the reply streams in.
- * One conversation per open dialogue: `endTalk` (dialogue closed, target changed, or the player left the talk)
- * aborts what is in flight and releases the microphone.
+ * One conversation per open dialogue (E on a person starts a new one): every take, typed line and hit while it stays open
+ * is added to it. `leaveTalk` (Back / Enter / E) shows the scripted lines again and keeps the conversation, so the next
+ * line resumes it; `endTalk` (dialogue closed or target changed) drops it. Both abort what is in flight and release
+ * the microphone.
  *
  * After each reply the tool pass picks what the NPC does (`voice/npcChat`): a slap or a kick plays in the world
  * (`state/npcFx`); money and Ewamon go through `POST /npc/act`, which checks the NPC stands in the player's zone and
@@ -32,9 +34,11 @@ export interface VoiceTalkState {
   /** the reply streaming in (shown until it lands in `turns`) */
   readonly partial: string;
   readonly error: string | null;
+  /** the player went back to the scripted lines (`leaveTalk`); the conversation is kept and the next line resumes it */
+  readonly hidden: boolean;
 }
 
-const IDLE: VoiceTalkState = { targetId: null, phase: 'idle', turns: [], partial: '', error: null };
+const IDLE: VoiceTalkState = { targetId: null, phase: 'idle', turns: [], partial: '', error: null, hidden: false };
 
 export const useVoiceTalkStore = create<VoiceTalkState>()(() => IDLE);
 
@@ -54,7 +58,9 @@ function join(targetId: string, p: NpcPersona): boolean {
     set({ targetId });
     return true;
   }
-  return st.phase === 'idle';
+  if (st.phase !== 'idle') return false;
+  if (st.hidden) set({ hidden: false });
+  return true;
 }
 
 /** Starts a take for `targetId`. No-op while a reply is on its way. */
@@ -83,14 +89,14 @@ export function finishTake(): void {
       if (!(await (starting ?? Promise.resolve(false)))) return;
       const samples = await stopTake();
       if (ac.signal.aborted) return;
-      if (samples === null) return set({ phase: 'idle', error: 'Ik hoorde niets. Houd V ingedrukt terwijl je praat.' });
+      if (samples === null) return set({ phase: 'idle', error: 'I heard nothing. Hold V while you talk.' });
       const heard = await transcribe(samples, ac.signal);
       if (ac.signal.aborted) return;
-      if (heard === '') return set({ phase: 'idle', error: 'Dat verstond ik niet. Probeer het nog eens.' });
+      if (heard === '') return set({ phase: 'idle', error: 'I did not catch that. Try again.' });
       await answer(p, { role: 'user', content: heard }, ac);
     } catch (e) {
       if (ac.signal.aborted) return;
-      set({ phase: 'idle', partial: '', error: `Spraakherkenning faalde (draait scripts/voice-stt.mjs?): ${message(e)}` });
+      set({ phase: 'idle', partial: '', error: `Speech recognition failed (is scripts/voice-stt.mjs running?): ${message(e)}` });
     } finally {
       if (inflight === ac) inflight = null;
     }
@@ -139,7 +145,7 @@ async function answer(p: NpcPersona, said: ChatTurn, ac: AbortController): Promi
     reply = await streamNpcReply(p, turns, (text) => set({ phase: 'replying', partial: text }), ac.signal);
   } catch (e) {
     if (ac.signal.aborted) return;
-    return set({ phase: 'idle', partial: '', error: `Het taalmodel antwoordde niet (draait LM Studio op poort 1234?): ${message(e)}` });
+    return set({ phase: 'idle', partial: '', error: `The language model did not answer (is LM Studio running on port 1234?): ${message(e)}` });
   }
   if (ac.signal.aborted) return;
   const spoken: ChatTurn[] = [...turns, { role: 'assistant', content: reply === '' ? '…' : reply }];
@@ -153,7 +159,7 @@ async function answer(p: NpcPersona, said: ChatTurn, ac: AbortController): Promi
     set({ turns: events.length > 0 ? [...spoken.slice(0, -1), { ...last, events }] : spoken, phase: 'idle' });
   } catch (e) {
     if (ac.signal.aborted) return;
-    set({ phase: 'idle', error: `De tool-stap antwoordde niet (${TOOL_MODEL} geladen in LM Studio?): ${message(e)}` });
+    set({ phase: 'idle', error: `The tool pass did not answer (is ${TOOL_MODEL} loaded in LM Studio?): ${message(e)}` });
   }
 }
 
@@ -171,7 +177,7 @@ const SERVER_ACTION: Readonly<Record<string, (typeof NPC_ACTIONS)[number]>> = {
 
 /**
  * Plays the tool calls: the hits first (each waits for contact), then the save-touching ones through `POST /npc/act`
- * (a toast each; a refusal is toasted and told to the talk pass as what happened). Returns the events, in Dutch.
+ * (a toast each; a refusal is toasted and told to the talk pass as what happened). Returns the events, in English.
  */
 export async function runTools(npcId: string, name: string, calls: readonly ToolCall[]): Promise<string[]> {
   const events: string[] = [];
@@ -179,7 +185,7 @@ export async function runTools(npcId: string, name: string, calls: readonly Tool
   for (const c of ordered) {
     if (c.name === SLAP || c.name === KICK) {
       await strike(c.name === SLAP ? 'slap' : 'kick', npcId);
-      events.push(c.name === SLAP ? `${name} gaf de reiziger een klap.` : `${name} gaf de reiziger een schop.`);
+      events.push(c.name === SLAP ? `${name} slapped the traveller.` : `${name} kicked the traveller.`);
       continue;
     }
     const action = SERVER_ACTION[c.name];
@@ -189,7 +195,7 @@ export async function runTools(npcId: string, name: string, calls: readonly Tool
   return events;
 }
 
-/** One save-touching tool through the server; the session takes the delta. Returns what happened, in Dutch. */
+/** One save-touching tool through the server; the session takes the delta. Returns what happened, in English. */
 async function act(npcId: string, name: string, action: (typeof NPC_ACTIONS)[number], amount: number | undefined): Promise<string> {
   const session = useSessionStore.getState();
   const before = [...(session.inventory?.party ?? []), ...(session.inventory?.box ?? [])];
@@ -200,26 +206,26 @@ async function act(npcId: string, name: string, action: (typeof NPC_ACTIONS)[num
     switch (action) {
       case 'giveMoney':
         toast('success', `${name} gave you ${res.amount} money.`);
-        return `${name} gaf de reiziger ${res.amount} munten.`;
+        return `${name} gave the traveller ${res.amount} coins.`;
       case 'takeMoney':
         toast('danger', `${name} took ${res.amount} money from you.`);
-        return `${name} pakte ${res.amount} munten van de reiziger af.`;
+        return `${name} took ${res.amount} coins from the traveller.`;
       case 'giveCreature': {
         const got = res.creaturesAdded[0];
         const label = got === undefined ? 'an Ewamon' : `${nameOf(got)} (Lv ${got.level})`;
         toast('success', `${name} gave you ${label}.`);
-        return `${name} gaf de reiziger een Ewamon: ${got === undefined ? 'een wezen' : nameOf(got)}.`;
+        return `${name} gave the traveller an Ewamon: ${got === undefined ? 'a creature' : nameOf(got)}.`;
       }
       case 'takeCreature': {
         const lost = before.find((c) => c.id === res.creaturesRemoved[0]);
         toast('danger', `${name} took ${lost === undefined ? 'one of your Ewamon' : nameOf(lost)}!`);
-        return `${name} pakte een Ewamon van de reiziger af: ${lost === undefined ? 'een wezen' : nameOf(lost)}.`;
+        return `${name} took an Ewamon from the traveller: ${lost === undefined ? 'a creature' : nameOf(lost)}.`;
       }
     }
   } catch (e) {
     const code = isApiFailure(e) ? e.error.code : '';
     toast('info', REFUSED[code]?.(name) ?? `${name} could not do that.`);
-    return REFUSED_NL[code]?.(name) ?? `${name} probeerde iets, maar het lukte niet.`;
+    return REFUSED_TALK[code]?.(name) ?? `${name} tried something, but it did not work.`;
   }
 }
 
@@ -232,12 +238,26 @@ const REFUSED: Readonly<Record<string, (n: string) => string>> = {
   npcToolsOff: () => 'NPC actions are off on this server.',
 };
 
-const REFUSED_NL: Readonly<Record<string, (n: string) => string>> = {
-  npcPurseEmpty: (n) => `${n} wilde geld geven, maar had niets meer.`,
-  playerBroke: (n) => `${n} wilde geld afpakken, maar de reiziger had niets.`,
-  npcNoCreature: (n) => `${n} had geen Ewamon meer om te geven.`,
-  npcCannotTake: (n) => `${n} probeerde een Ewamon af te pakken, maar dat lukte niet.`,
+/** The refusals as the talk pass hears them. */
+const REFUSED_TALK: Readonly<Record<string, (n: string) => string>> = {
+  npcPurseEmpty: (n) => `${n} wanted to give money, but had none left.`,
+  playerBroke: (n) => `${n} wanted to take money, but the traveller had none.`,
+  npcNoCreature: (n) => `${n} had no Ewamon left to give.`,
+  npcCannotTake: (n) => `${n} tried to take an Ewamon, but could not.`,
 };
+
+/**
+ * Back to the scripted lines, keeping the conversation: what is in flight is aborted (a line still waiting for its
+ * answer is dropped, so the history stays turn-taking) and the microphone released.
+ */
+export function leaveTalk(): void {
+  inflight?.abort();
+  inflight = null;
+  starting = null;
+  releaseMic();
+  const turns = useVoiceTalkStore.getState().turns;
+  set({ phase: 'idle', partial: '', error: null, hidden: true, turns: turns.at(-1)?.role === 'user' ? turns.slice(0, -1) : turns });
+}
 
 export function endTalk(): void {
   inflight?.abort();
@@ -250,9 +270,9 @@ export function endTalk(): void {
 
 function micError(e: unknown): string {
   const name = e instanceof DOMException ? e.name : '';
-  if (name === 'NotAllowedError') return 'Geen toegang tot de microfoon. Sta die toe in de browser.';
-  if (name === 'NotFoundError') return 'Geen microfoon gevonden.';
-  return 'De microfoon start niet.';
+  if (name === 'NotAllowedError') return 'No access to the microphone. Allow it in the browser.';
+  if (name === 'NotFoundError') return 'No microphone found.';
+  return 'The microphone does not start.';
 }
 
 function message(e: unknown): string {

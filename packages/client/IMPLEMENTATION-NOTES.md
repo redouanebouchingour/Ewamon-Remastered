@@ -2222,16 +2222,21 @@ the second isolated client (the component over the landing page: the foe and own
 ## NPC voice talk (2026-10-22)
 
 - Over any person's dialogue (not a sign: `DialogueUi.noTalk`, set for lore), hold V or the "Hold to talk" button and
-  speak Dutch; release to send. `voice/recorder.ts` records with MediaRecorder, resamples to 16 kHz mono in the browser
+  speak English; release to send. `voice/recorder.ts` records with MediaRecorder, resamples to 16 kHz mono in the browser
   and posts a WAV to whisper.cpp's `whisper-server` (`node scripts/voice-stt.mjs`, `brew install whisper-cpp`, model
-  `~/.cache/ewamon-voice/ggml-large-v3-turbo-q5_0.bin`, language nl). `voice/npcChat.ts` streams the reply from LM
-  Studio (`gemma-4-e4b-it-qat`) in two passes: the talk pass streams the NPC's words with reasoning off and no tools;
+  `~/.cache/ewamon-voice/ggml-large-v3-turbo-q5_0.bin`, language en). `voice/npcChat.ts` streams the reply from LM
+  Studio (`qwen3.5-0.8b`) in two passes: the talk pass streams the NPC's words with reasoning off and no tools;
   then the tool pass (same model) reads the exchange and must call at least one tool (`tool_choice: required`,
   reasoning off, token-capped since gemma sometimes drifts into reasoning anyway: no call = nothing).
   Measured: reply starts ~130 ms, completes < 1 s; the tool pass 0.3–1 s. Free choice without reasoning never called a
-  tool; with reasoning it was right but took 5–7 s. qwen3.5-0.8b was tried as the talk pass: fast but incoherent, and
-  it would not give in to a robbery. `stripThink` drops a stray `<think>` block.
-  `state/voiceTalk.ts` holds the conversation; the DialogueBox shows what the player said and the streaming reply.
+  tool; with reasoning it was right but took 5–7 s. qwen3.5-0.8b as the talk pass was first dropped (fast but
+  incoherent in Dutch, and it would not give in to a robbery); since the talk went English (2026-10-22) it is the talk
+  pass again by choice, rough dialogue accepted. It is the tool pass too, behind a word guard (`guardCalls`): bare it
+  mixed up give and take and acted on threats (9/20 right on unseen exchanges; gemma-4-e4b-it-qat 18/20 at ~380 ms).
+  The guard drops a call the NPC's words do not mention or only threaten, and turns give / take round when the
+  wording points the other way: 14/20, ~200 ms, most misses an action dropped rather than a wrong one. The patterns
+  are English only. `VITE_NPC_TOOL_MODEL=gemma-4-e4b-it-qat` brings gemma back (the guard still runs). `stripThink` drops a stray `<think>` block.
+  `state/voiceTalk.ts` holds the conversation; the DialogueBox shows it as a scrolling log (every line said and every reply, the streaming one last).
 - Client-only and local: Vite proxies `/voice/llm` → `EWA_LLM_TARGET` (default http://localhost:1234) and `/voice/stt`
   → `EWA_STT_TARGET` (default http://127.0.0.1:8178), in dev and preview. `VITE_NPC_LLM_URL`, `VITE_NPC_STT_URL`,
   `VITE_NPC_LLM_MODEL` / `VITE_NPC_LLM_REASONING` (talk pass), `VITE_NPC_TOOL_MODEL` / `VITE_NPC_TOOL_REASONING` (tool
@@ -2242,10 +2247,10 @@ the second isolated client (the component over the landing page: the foe and own
   (`amount` ≤ 1 000), `give_ewamon`, `take_ewamon`, or `do_nothing` (capped at 120 tokens). `state/voiceTalk.runTools`
   plays the hits first, then the rest through `POST /npc/act` (server notes: NPC wallet, gift cooldown, a taken
   creature is released for good, never the last or a locked one), applies the delta and toasts. What happened (or
-  was refused) is recorded on the turn in Dutch (`ChatTurn.events`) and given to the talk pass as the scene so far.
+  was refused) is recorded on the turn in English (`ChatTurn.events`) and given to the talk pass as the scene so far.
 - Slap / kick (`scene/npcStrike.ts`, `state/npcFx.ts`, `world/NpcStrikeFx.tsx`): the NPC's actor runs at the player
   and walks back (the rigs have no strike clip), the player turns to it; at contact a hit sound, a camera shake and a
-  comic burst ("PETS!" / "BOEM!") with a red edge flash. A kick also knocks the player back:
+  comic burst ("SMACK!" / "WHAM!") with a red edge flash. A kick also knocks the player back:
   `LocalPlayerController.shove` runs them away from the NPC for 260 ms through the real prediction and wire (it
   overrides the dialogue's key block). An NPC without an actor here (a beat speaker) only gets the burst.
 - The player can hit back: H slaps and K kicks the NPC in the dialogue (or the Slap / Kick buttons). `PlayerStrike`
@@ -2255,11 +2260,14 @@ the second isolated client (the component over the landing page: the foe and own
   hit back or grab something.
 - Villagers are written as hot-headed: insults and threats get a slap, a kick or a grab; real fear can still make
   them pay; a friendly player may get money or an Ewamon. One temper among the example turns.
-- A conversation never pages the lines: Enter / Escape go back to them, so a beat's `onFinish` (a battle, a gym
-  challenge, the tutor screen) still runs only by paging past the scripted lines. Closing the dialogue ends the talk
-  and releases the microphone.
+- One conversation per dialogue: E on a person opens the dialogue and a new conversation; every take, typed line and
+  hit while it stays open is added to it. A conversation never pages the lines: Enter / E / Escape / Back go back to
+  them (`leaveTalk`: in-flight work aborted, a line still waiting for its answer dropped, the turns kept), and the next
+  line resumes it, so a beat's `onFinish` (a battle, a gym challenge, the tutor screen) still runs only by paging past
+  the scripted lines. Closing the dialogue (paging past the last line, a battle) ends the talk (`endTalk`) and releases
+  the microphone.
 - The prompt is a role-play with positive rules and example turns: telling the 0.8B model "you are not an AI" made it
-  talk about AIs. History is capped at 8 turns.
+  talk about AIs. History is capped at 32 turns (was 8, 2026-10-22: a conversation read as forgotten after four exchanges).
 
 ## First-person view (2026-10-22, not in the SPEC)
 
@@ -2272,3 +2280,11 @@ the second isolated client (the component over the landing page: the foe and own
   past a few metres); wheel zoom and the Q / R heading turns do nothing.
 - Looking: a left-button drag over the canvas (`InputCallbacks.look`, 0.0042 rad per px, pitch ±1.35 rad). In the
   diorama `look` declines and the drag turns the heading as before.
+
+## Breakdance (2026-10-22, not in the SPEC)
+
+- A Dance button in the key legend (`PlayShell` `WorldHint`) and G (`useShellHotkeys`, not a remappable binding) call
+  `state/dance.ts`; World3D sends emote 7 and plays it on the player's own actor at once (the server does not echo a
+  player's own emote), with the trainer-victory fanfare. First person stays on while it plays and the eye rides the dancing body (render `bodyTilt`): the view spins, flips and goes upside down with it.
+- Any player's breakdance (own, or a remote's `emote` change to 7) makes every NPC / trainer actor within 30 m hop
+  along (`SceneDirector.forEachStatic`, `actors.setHop`). Walking ends the dance (emotes yield to locomotion).

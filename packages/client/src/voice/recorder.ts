@@ -2,7 +2,7 @@
  * NPC voice talk: push-to-talk microphone takes and their transcription. The mic stream opens on the first press and
  * stays open until `releaseMic` (the conversation ended), so later presses start without a permission round-trip.
  * A take is decoded and resampled to 16 kHz mono in the browser and posted to whisper.cpp's `whisper-server`
- * (`scripts/voice-stt.mjs`, language nl) as WAV.
+ * (`scripts/voice-stt.mjs`, language en) as WAV.
  */
 import { STT_SAMPLE_RATE, encodeWav, rms } from './wav';
 
@@ -12,8 +12,8 @@ export const STT_URL = (import.meta.env['VITE_NPC_STT_URL'] as string | undefine
 const MIN_TAKE_MS = 300;
 /** quieter takes are silence */
 const MIN_RMS = 0.005;
-/** whisper's well-known inventions on near-silence (Dutch subtitle credits) */
-const HALLUCINATION = /ondertitel|amara\.org|tv gelderland|bedankt voor het kijken/i;
+/** whisper's well-known inventions on near-silence (subtitle credits, video sign-offs) */
+const HALLUCINATION = /subtitles by|amara\.org|thanks? (you )?for watching|please subscribe/i;
 
 let stream: MediaStream | null = null;
 let recorder: MediaRecorder | null = null;
@@ -77,7 +77,7 @@ export function releaseMic(): void {
   stream = null;
 }
 
-/** Dutch text for a take ('' = nothing intelligible). */
+/** English text for a take ('' = nothing intelligible). */
 export async function transcribe(samples: Float32Array, signal: AbortSignal): Promise<string> {
   const form = new FormData();
   form.append('file', new Blob([encodeWav(samples)], { type: 'audio/wav' }), 'take.wav');

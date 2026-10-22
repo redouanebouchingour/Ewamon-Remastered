@@ -1250,3 +1250,7 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
     the last party member, never a locked one: 409 `npcCannotTake`). Locking is the player's protection.
   - Wallets and cooldowns are in memory (a restart refills them); in-memory state moves only after the transaction.
 - Env `NPC_TOOLS` 'on' | 'off'; unset = on, except in production (the route can be called without the model).
+
+## Breakdance emote (2026-10-22)
+
+- The emote timer clears emote 7 (`EMOTE_BREAKDANCE`) after `BREAKDANCE_MS` (6 s) instead of `EMOTE_MS`.

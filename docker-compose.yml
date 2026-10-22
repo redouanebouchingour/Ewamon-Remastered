@@ -1,0 +1,56 @@
+# Ewamon Remastered, standalone: the game server, the client (nginx) and llama.cpp on the CPU for NPC voice talk.
+#   docker compose up --build    →  http://localhost:8080
+# The model is not in git: put the GGUF at models/qwen3.5-0.8b/model.gguf (see .gitignore).
+
+services:
+  llm:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    command:
+      - -m
+      - /models/model.gguf
+      - --alias
+      - qwen3.5-0.8b
+      - --jinja
+      # no thinking, decided here: with `enable_thinking: false` in the request this llama.cpp build does not enforce
+      # `tool_choice: required`, so the client is built with VITE_NPC_*_REASONING=default (see the Dockerfile)
+      - --reasoning-budget
+      - "0"
+      - -c
+      - "8192"
+      - --threads
+      - "${LLM_THREADS:-4}"
+    # the image listens on 0.0.0.0:8080 (LLAMA_ARG_HOST / LLAMA_ARG_PORT); reached only through nginx's /voice/llm
+    volumes:
+      - ./models/qwen3.5-0.8b:/models:ro
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      target: server
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-ewa-docker-local-secret-change-me-0123456789}
+      CORS_ORIGINS: http://localhost:${EWA_PORT:-8080}
+      PUBLIC_WEB_URL: http://localhost:${EWA_PORT:-8080}
+      TRUST_PROXY: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16  # nginx in the compose network
+      NPC_TOOLS: "on"
+    volumes:
+      - ewa-data:/data
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        # baked into the client: the browser opens the game socket here (nginx proxies it to the server)
+        VITE_WS_URL: ws://localhost:${EWA_PORT:-8080}/colyseus
+    ports:
+      - "${EWA_PORT:-8080}:8080"
+    depends_on:
+      - server
+      - llm
+    restart: unless-stopped
+
+volumes:
+  ewa-data:

@@ -2326,6 +2326,18 @@ pool; `Part3.worldFx`).
   in front of the body's axis (the chibi rigs are 1.54 m tall, 0.70 m deep: just in front of the face), with a 70° /
   near 0.08 m lens; null restores the diorama lens. Only the diorama pose of a followed actor: a battle / inspector shot
   ignores it. The shake keeps its diorama angle (computed at the default zoom distance, not the 1.4 m eye distance).
-  `BasicDioramaRig` ignores it.
+  `BasicDioramaRig` ignores it. While the followed body breakdances (`DioramaRigOptions.bodyTilt` →
+  `CharacterPool.bodyTilt`) the eye rides it: the eye offset and the look are turned by the root's rotation relative to
+  its upright facing, from the root's lifted position, so the view spins, flips and hangs upside down with the dance
+  (last frame's body pose: the camera updates before the pool). A hidden body still poses while it dances.
 - `ActorPool.setHidden(id, hidden)` (contract addition): hides one actor's body (its feet, decal and nameplate anchor
   stay); `spawn` resets it. The client hides the player's own body in first person.
+
+## Breakdance (emote 7, 2026-10-22, not in the spine)
+
+- `EmoteId` is 0..7: emote 7 plays for `BREAKDANCE_MS` (6 s; `emoteMs(n)`, the other emotes keep 2 s) as a procedural
+  pose (`EMOTE_POSES[7] = 'breakdance'`, `poseBreakdance`): toprock, windmill, headspin, air flares and a freeze
+  (`BREAKDANCE` numbers). The rigs have no dance clips, so the root lifts, tilts (Euler order YXZ) and spins per phase
+  and the limbs are aimed in root space after the mixer. The frame start now writes `root.rotation.set(0, yaw, 0)` so a
+  tilt never outlives the dance. Like every emote it yields to walking. The HUD card shows 🔥.
+- `ActorPool.setHop(id, ms)` (contract addition): the actor hops in place (`HOP`), for villagers dancing along.

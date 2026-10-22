@@ -192,8 +192,6 @@ class World implements World3D {
   /** First-person view (`state/view.ts`): on this frame, and the look (diorama yaw convention, pitch in radians) */
   private fpOn = false;
   private readonly fpView = { yaw: 0, pitch: FP_START_PITCH };
-  /** performance.now() until which the player's own breakdance plays (first person steps aside so it can be seen) */
-  private selfDanceUntil = 0;
   private approachTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly targets: InteractionTargets;
   private readonly ws: WorldSession = getWorldSession();
@@ -1274,7 +1272,7 @@ class World implements World3D {
    */
   private syncFirstPerson(): void {
     const want =
-      useViewStore.getState().firstPerson && this.director.battleFrame === null && !this.inArena && this.evolution?.active !== true && performance.now() >= this.selfDanceUntil;
+      useViewStore.getState().firstPerson && this.director.battleFrame === null && !this.inArena && this.evolution?.active !== true;
     if (want !== this.fpOn) {
       if (want) {
         const rig = this.renderer.camera as unknown as { dioramaYaw?: number };
@@ -1305,13 +1303,12 @@ class World implements World3D {
   /**
    * G / the Dance button: the emote goes to the room (the others see it on this player's avatar), plays on the
    * player's own actor at once (the server does not echo a player's own emote), with the fanfare, and every villager
-   * within DANCE_ALONG_M hops along. First person steps aside while it plays.
+   * within DANCE_ALONG_M hops along. First person stays on: the eye rides the dancing body (render `bodyTilt`).
    */
   private dance(): void {
     if (!this.ready || this.worldBlocked() || this.director.battleFrame !== null) return;
     this.ws.send('emote', { emote: BREAKDANCE_EMOTE });
     this.renderer.actors.setEmote(this.ws.selfId, BREAKDANCE_EMOTE);
-    this.selfDanceUntil = performance.now() + BREAKDANCE_MS;
     this.audio.play('ui_stinger_victory_trainer', null);
     this.danceAlong(this.input.pose.x, this.input.pose.z);
   }

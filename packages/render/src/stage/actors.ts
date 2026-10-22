@@ -543,7 +543,8 @@ export class CharacterPool implements ActorPool {
         g.root.position.y += Math.abs(Math.sin(r.hopT * Math.PI * HOP.hz)) * HOP.heightM * Math.min(1, r.hopLeft / 250);
       }
       if (r.acc !== null) r.acc.visible = visible && r.dist2 <= C.accessoryRangeM * C.accessoryRangeM;
-      if (!visible) continue;
+      // a hidden body that breakdances still poses: first person rides its root (`bodyTilt`)
+      if (!visible && !(r.hidden && r.emote === BREAKDANCE_EMOTE && r.emoteW > 0.002)) continue;
       // a clip emote replaces the gait; a procedural one (wave, bow) poses bones over it, so the gait keeps its full weight
       // (weights summing below 1 would blend the bind T-pose in)
       const base = r.emoteAction !== null ? 1 - r.emoteW : 1;
@@ -585,6 +586,20 @@ export class CharacterPool implements ActorPool {
       const r = this.rigs[i]!;
       if (r.id !== null) visit(r.slot, r.feet, r.groundN, r.speed, r.yaw, r.dist2);
     }
+  }
+
+  /**
+   * While the actor breakdances: its root's world position and the root's rotation relative to its upright facing
+   * (first person rides it); false otherwise. The camera updates before the pool, so this is last frame's pose.
+   */
+  bodyTilt(id: string, outPos: Vector3, outQ: Quaternion): boolean {
+    const r = this.byId.get(id);
+    const g = r?.inst ?? null;
+    if (r === undefined || g === null || r.emote !== BREAKDANCE_EMOTE || r.emoteW <= 0.002) return false;
+    g.root.getWorldPosition(outPos);
+    g.root.getWorldQuaternion(outQ);
+    outQ.multiply(_q.setFromAxisAngle(_up, -r.yaw));
+    return true;
   }
 
   /** Current emote of an actor and its remaining fraction (0 = none). */

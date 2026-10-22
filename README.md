@@ -35,6 +35,19 @@ The server needs `JWT_SECRET` (≥ 32 chars) in its environment; without `DATABA
 (WebSocket :2567). The render sandbox is `pnpm --filter @ewa/render sandbox` (port 5180; `?zone=mirevale`,
 `?zone=mirevale&interior=mirevale.gym&at=arena`, `?demo=battle`).
 
+### In Docker (standalone, with the NPC voice LLM on the CPU)
+
+Put the GGUF at `models/qwen3.5-0.8b/model.gguf` (gitignored), then:
+
+```bash
+docker compose up --build
+```
+
+The game is on <http://localhost:8080>. Three services: `web` (the built client behind nginx, which proxies `/api`,
+`/colyseus` and `/voice/llm`), `server` (PGlite in the `ewa-data` volume) and `llm` (llama.cpp's `llama-server` on the
+CPU). `EWA_PORT`, `LLM_THREADS` and `JWT_SECRET` can be set in the shell or in a `.env`. Voice input (whisper.cpp) is
+not in the stack, so you talk to NPCs by typing.
+
 ## Check it
 
 ```bash
