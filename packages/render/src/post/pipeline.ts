@@ -39,6 +39,7 @@ import { chromaticAberration } from 'three/addons/tsl/display/ChromaticAberratio
 import type { Backend, BudgetPass, EffectsFlags } from '../descriptors.js';
 import { GROVE_GRADE, gradeNode, VIGNETTE, vignetteNode, type GradePalette } from './grade.js';
 import { grain } from './grain.js';
+import { QUALITY_PROFILES, type GraphicsQuality } from '../quality.js';
 
 // ---- numbers that are assertions (§10.8.3) -------------------------------------------------------------
 
@@ -76,15 +77,17 @@ export const ALL_PASSES_ON: PassSwitches = Object.freeze({
  * - GTAO iff `passes.gtao`; anti-aliasing: none iff `!passes.traa`, TRAA iff `f.taa && webgpu`, else SMAA;
  * - bloom iff `passes.bloom && f.bloom`; DOF iff `passes.dof && f.dof`; chroma iff `f.chroma`;
  * - ACES / grade / vignette iff `passes.grade`; grain iff `passes.grade && f.grain`.
+ * `quality` (addition, `quality.ts`) can drop GTAO, DOF and bloom and lowers the GTAO samples; `high` is the SPEC graph.
  */
-export function planPostGraph(f: EffectsFlags, backend: Backend, passes: PassSwitches = ALL_PASSES_ON): PostStage[] {
+export function planPostGraph(f: EffectsFlags, backend: Backend, passes: PassSwitches = ALL_PASSES_ON, quality: GraphicsQuality = 'high'): PostStage[] {
   const out: PostStage[] = [{ id: 'scene', params: { targets: 4, type: 'HalfFloat', depth: true } }];
   const p = POST_PARAMS;
+  const q = QUALITY_PROFILES[quality];
   const useTraa = passes.traa && f.taa && backend === 'webgpu';
-  if (passes.gtao) out.push({ id: 'gtao', params: { ...p.gtao, temporal: useTraa, maskChannel: 'x' } });
+  if (passes.gtao && q.gtao) out.push({ id: 'gtao', params: { ...p.gtao, samples: q.gtaoSamples, temporal: useTraa, maskChannel: 'x' } });
   if (passes.traa) out.push(useTraa ? { id: 'traa', params: { msaa: false } } : { id: 'smaa', params: {} });
-  if (passes.bloom && f.bloom) out.push({ id: 'bloom', params: { ...p.bloom } });
-  if (passes.dof && f.dof) out.push({ id: 'dof', params: { ...p.dof, maskChannel: 'y' } });
+  if (passes.bloom && f.bloom && q.bloom) out.push({ id: 'bloom', params: { ...p.bloom } });
+  if (passes.dof && f.dof && q.dof) out.push({ id: 'dof', params: { ...p.dof, maskChannel: 'y' } });
   if (f.chroma) out.push({ id: 'chroma', params: { scale: p.chroma.scale, rest: p.chroma.rest } });
   if (passes.grade) {
     out.push({ id: 'aces', params: { exposure: p.exposure } });
@@ -216,7 +219,7 @@ export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: 
     const g = POST_PARAMS.gtao;
     const aoNode = ao(depthT, normalT, camera);
     aoNode.resolutionScale = g.resolutionScale;
-    aoNode.samples.value = g.samples;
+    aoNode.samples.value = typeof gtao.params.samples === 'number' ? gtao.params.samples : g.samples;
     aoNode.radius.value = g.radius;
     aoNode.thickness.value = g.thickness;
     aoNode.scale.value = g.scale;
@@ -355,6 +358,7 @@ export class PostStack {
   sceneCallDepth: number | null = null;
   private flags: EffectsFlags;
   private passes: PassSwitches;
+  private quality: GraphicsQuality = 'high';
   private disposed = false;
 
   constructor(
@@ -364,10 +368,12 @@ export class PostStack {
     private backend: Backend,
     f: EffectsFlags,
     passes: PassSwitches = ALL_PASSES_ON,
+    quality: GraphicsQuality = 'high',
   ) {
     this.uniforms = createPostUniforms();
     this.flags = f;
     this.passes = passes;
+    this.quality = quality;
     this.nodes = createScenePass(scene, camera);
     {
       const pass = this.nodes.scenePass as unknown as { updateBefore(frame: unknown): unknown };
@@ -379,7 +385,7 @@ export class PostStack {
       };
     }
     this.keep = new Set<Node>([this.nodes.scenePass, this.nodes.beautyT, this.nodes.maskT]);
-    this.current = buildPostOutput(this.nodes, camera, this.uniforms, planPostGraph(f, backend, passes));
+    this.current = buildPostOutput(this.nodes, camera, this.uniforms, planPostGraph(f, backend, passes, quality));
     this.owned = collectOwnedNodes(this.current.outputNode, this.keep);
     this.targets = stageTargets(this.nodes, this.current);
     this.pipeline = new RenderPipeline(gpu, this.current.outputNode);
@@ -395,7 +401,7 @@ export class PostStack {
     this.flags = f;
     this.passes = passes;
     const retired = this.owned;
-    this.current = buildPostOutput(this.nodes, this.camera, this.uniforms, planPostGraph(f, this.backend, passes), this.buildOpts);
+    this.current = buildPostOutput(this.nodes, this.camera, this.uniforms, planPostGraph(f, this.backend, passes, this.quality), this.buildOpts);
     this.owned = collectOwnedNodes(this.current.outputNode, this.keep);
     this.targets = stageTargets(this.nodes, this.current);
     this.pipeline.outputNode = this.current.outputNode;
@@ -406,6 +412,14 @@ export class PostStack {
   /** The §50.2.1 row a render into `rt` belongs to (scene pass, a stage's own targets), or null (not the graph's). */
   passOfTarget(rt: RenderTarget): BudgetPass | null {
     return this.targets.get(rt) ?? null;
+  }
+
+  /** Quality preset (`quality.ts`); rebuilds only when the realised plan changes. */
+  setQuality(q: GraphicsQuality): void {
+    if (q === this.quality) return;
+    const before = JSON.stringify(this.current.plan);
+    this.quality = q;
+    if (JSON.stringify(planPostGraph(this.flags, this.backend, this.passes, q)) !== before) this.rebuild(this.flags, this.passes);
   }
 
   /** A/B switches for comparisons (sandbox shots); rebuilds with the current flags and passes. */

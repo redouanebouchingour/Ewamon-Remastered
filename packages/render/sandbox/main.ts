@@ -18,7 +18,7 @@ import {
   ALL_EFFECTS, ARENA_GRADE, ARENA_LIGHTING, GROVE_LIGHTING, WATER_DEPTH_ATTRIBUTE, applyReducedEffects, capViolations, createArenaBackdrop, createBudgetProbe,
   createRenderer, paintSurfaceColor, rendererInternals,
 } from '../src/index.js';
-import type { BasicDioramaRig, HarvestLevel, LightSource, Renderer, SurfaceId, WeatherKind, ZoneHandleImpl } from '../src/index.js';
+import type { BasicDioramaRig, GraphicsQuality, HarvestLevel, LightSource, Renderer, SurfaceId, WeatherKind, ZoneHandleImpl } from '../src/index.js';
 import { zone as contentZone } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
 import { withNeighbours, zoneSpecFor } from '@ewa/client-adapter';
@@ -360,6 +360,7 @@ async function main(): Promise<void> {
     materialsUrl: '/materials/',
     clock: () => performance.now(),
     precompile: new URLSearchParams(location.search).get('precompile') !== '0',   // `&precompile=0`: the pre-H4 path (A/B)
+    quality: (new URLSearchParams(location.search).get('quality') ?? 'high') as GraphicsQuality | 'auto',   // `&quality=low|medium|high|auto`
   });
   // the step-8 baseline was captured inside createRenderer, with no await after it: this is the same moment
   const atBaseline = tracked ? { targets: new Set(tracked.targets.keys()), textures: new Set(tracked.textures.keys()), attributes: new Set(tracked.attributes.keys()) } : null;
@@ -484,6 +485,8 @@ async function main(): Promise<void> {
   const api = {
     renderer: r,
     probe,
+    /** Quality preset A/B (`quality.ts`): pixel-ratio cap, sun cascades, GTAO / DOF. */
+    setQuality: (q: GraphicsQuality | 'auto') => { r.setQuality?.(q); return r.quality; },
     /** Boot / zone-load / first-frame timings (ms) and program counts at each step. */
     timing: () => ({ ...timing }),
     /** T4: every onCompileProgress report (phase, units, ms) and frame gaps / CPU during vs after the background phase. */

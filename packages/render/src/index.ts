@@ -22,6 +22,8 @@ export type {
   BudgetProbe, CameraShot, CompileProgress, DeviceLostInfo, DeviceLostSource, FrameHook, HostContext, HudBinding, PassMeasureOptions, Renderer, RendererOptions, RendererProbe,
   RendererSubsystems, RenderInitErrorCode, ZoneView, ZoneViewOptions,
 } from './renderer.js';
+export { QUALITY_PROFILES, isIntegratedIntel, recommendedQuality } from './quality.js';
+export type { GraphicsQuality, QualityProfile } from './quality.js';
 
 // ---- §10.2 materials ----
 export {

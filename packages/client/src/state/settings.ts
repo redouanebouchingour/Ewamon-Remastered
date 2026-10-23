@@ -11,9 +11,22 @@ export type InputAction =
   | 'emote1' | 'emote2' | 'emote3' | 'emote4' | 'emote5' | 'emote6'
   | 'challenge' | 'rotateLeft' | 'rotateRight' | 'party' | 'bag' | 'journal' | 'map' | 'pvp' | 'pause' | 'toggleHud';
 
+/** Quality preset (render `quality.ts`); 'auto' = low on integrated Intel GPUs, else high. */
+export type GraphicsQualitySetting = 'auto' | 'low' | 'medium' | 'high';
+/**
+ * Frames per second the world renders at most; 0 = the display's refresh rate, `FRAME_CAP_UNLIMITED` = as fast as the
+ * GPU finishes frames (beyond the refresh rate: the extra frames are never shown, a benchmark mode).
+ */
+export type FrameCap = -1 | 0 | 30 | 60;
+export const FRAME_CAP_UNLIMITED = -1;
+
 export interface GraphicsSettings {
   readonly reducedEffects: boolean;
   readonly renderScale: 0.75 | 1;
+  readonly quality: GraphicsQualitySetting;
+  readonly frameCap: FrameCap;
+  /** frames per second in the top bar */
+  readonly showFps: boolean;
   readonly dof: boolean;
   readonly bloom: boolean;
   readonly grain: boolean;
@@ -96,7 +109,7 @@ export const DEFAULT_KEYBINDS: Keybinds = {
 export const INPUT_ACTIONS = Object.keys(DEFAULT_KEYBINDS) as InputAction[];
 
 export const DEFAULT_SETTINGS: SettingsData = {
-  graphics: { reducedEffects: false, renderScale: 1, dof: true, bloom: true, grain: true, chroma: true, shake: true, hitstop: true, slowmo: true },
+  graphics: { reducedEffects: false, renderScale: 1, quality: 'auto', frameCap: 60, showFps: false, dof: true, bloom: true, grain: true, chroma: true, shake: true, hitstop: true, slowmo: true },
   accessibility: { reducedMotion: 'system', colorblind: 'none', uiScale: 1, battleTextSpeed: 'normal', screenFlash: true, speedrunTimer: false },
   audio: { master: 0.8, music: 0.7, sfx: 0.8, ui: 0.6, muteWhenHidden: true },
   keybinds: DEFAULT_KEYBINDS,

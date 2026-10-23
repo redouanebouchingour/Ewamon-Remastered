@@ -2341,3 +2341,21 @@ pool; `Part3.worldFx`).
   and the limbs are aimed in root space after the mixer. The frame start now writes `root.rotation.set(0, yaw, 0)` so a
   tilt never outlives the dance. Like every emote it yields to walking. The HUD card shows 🔥.
 - `ActorPool.setHop(id, ms)` (contract addition): the actor hops in place (`HOP`), for villagers dancing along.
+
+## Quality presets (2026-10-23, not in the SPEC)
+
+- `quality.ts`: `GraphicsQuality` `'low' | 'medium' | 'high'` and `QUALITY_PROFILES`. `high` is the SPEC (pixel-ratio cap
+  1.5, 4 × 2048² sun cascades, GTAO 16 spp, DOF, bloom). `medium`: cap 1.25, 4 × 1024², GTAO 8 spp. `low`: cap 1,
+  4 × 1024², no GTAO, no DOF, no bloom (TRAA, the grade, grain and chroma stay; the user's toggles still apply on top).
+- `RendererOptions.quality` (default `'high'`, so tests and harnesses see the SPEC graph) and `Renderer.setQuality(q)`
+  (contract additions). `'auto'` resolves through `recommendedQuality(caps)`: `low` on an integrated Intel adapter
+  (`isIntegratedIntel`: WebGPU `intel <arch>` or an ANGLE string; Arc / `xe-hpg` excluded), `medium` on the WebGL2
+  fallback, else `high`. `RenderCaps.adapter` is now the GL `RENDERER` string on WebGL2 (was always null).
+- Live switching: the pixel-ratio cap goes through `clampPixelRatio(requested, cssWidth, cap)`; the sun cascades through
+  `LightRig.setSunShadowMap` (the CSM cascade lights' `mapSize`; `ShadowNode.renderShadow` re-sizes from it every update,
+  no recompile); the post graph through `PostStack.setQuality` → `planPostGraph(f, backend, passes, quality)` (a rebuild
+  only when the plan changes).
+- Measured in the sandbox (`&quality=`, `__ewaSandbox.setQuality`), mirevale at 1440 × 900 CSS, DPR 2, headless Chrome on
+  an M2 Max, median whole-frame GPU ms: high 228, medium 163, low 41; texture memory 583 → 192 MB, render targets 36 → 14.
+  Bloom alone was ~50 ms of low's ~95 before it was dropped (its mip chain is a dozen passes; quarter resolution barely
+  helped), so `low` turns it off rather than shrinking it.

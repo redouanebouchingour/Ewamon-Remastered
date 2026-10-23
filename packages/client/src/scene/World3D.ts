@@ -65,7 +65,7 @@ import { applyInventoryDelta, partyCanBattle, toInventoryDelta, useSessionStore 
 import { useQuestTracking } from '../state/questTracking';
 import { useRealWeatherStore } from '../state/realWeather';
 import { factionSkyFor } from './factionSky';
-import { useSettingsStore } from '../state/settings';
+import { FRAME_CAP_UNLIMITED, useSettingsStore } from '../state/settings';
 import { setFishingActions, useFishingStore } from '../state/fishing';
 import { setStrikeHook } from '../state/npcFx';
 import { useViewStore } from '../state/view';
@@ -213,6 +213,12 @@ class World implements World3D {
   private raf = 0;
   private hiddenTimer: ReturnType<typeof setTimeout> | null = null;
   private last = -1;
+  /** rAF time of the last drawn frame, snapped to the frame-cap grid (−1: draw the next one). */
+  private lastDrawn = -1;
+  /** graphics.frameCap unlimited: frames are posted through a MessageChannel instead of rAF (see `scheduleUnlimited`) */
+  private readonly unlimitedChannel = typeof MessageChannel !== 'undefined' ? new MessageChannel() : null;
+  /** bumped whenever the loop is stopped or re-scheduled, so a frame posted before it is dropped */
+  private loopGen = 0;
   private acc = 0;
   private firstFrame = false;
   private zoneLoaded = false;
@@ -394,6 +400,7 @@ class World implements World3D {
     const eff = getEffectiveSettings();
     const r = await createRenderer({
       canvas: this.canvas, pixelRatio: this.pixelRatio(), effects: eff.effects, transcoderPath: '/basis/', clock: () => performance.now(),
+      quality: useSettingsStore.getState().graphics.quality,
       onCompileProgress: (p) => this.onCompileProgress(p),
       onDeviceLost: (info) => void this.recovery.onLost(info),
     });
@@ -643,6 +650,10 @@ class World implements World3D {
       useSettingsStore.subscribe(
         (s) => s.graphics.renderScale,
         () => this.renderer.setPixelRatio(this.pixelRatio()),
+      ),
+      useSettingsStore.subscribe(
+        (s) => s.graphics.quality,
+        (q) => this.renderer.setQuality?.(q),
       ),
     );
   }
@@ -1771,11 +1782,13 @@ class World implements World3D {
     if (this.running || this.disposed) return;
     this.running = true;
     this.last = -1;
+    this.lastDrawn = -1;
     this.schedule();
   }
 
   stop(): void {
     this.running = false;
+    this.loopGen++;
     if (this.raf !== 0) cancelAnimationFrame(this.raf);
     this.raf = 0;
     if (this.hiddenTimer !== null) clearTimeout(this.hiddenTimer);
@@ -1792,18 +1805,54 @@ class World implements World3D {
       }, HIDDEN_STEP_MS);
       return;
     }
+    if (useSettingsStore.getState().graphics.frameCap === FRAME_CAP_UNLIMITED && this.unlimitedChannel !== null) {
+      this.scheduleUnlimited(this.unlimitedChannel);
+      return;
+    }
     this.raf = requestAnimationFrame(this.onFrame);
+  }
+
+  /**
+   * Unlimited frame rate: rAF never fires faster than the display, so the next frame is a posted task once the GPU queue
+   * drained (WebGPU; one frame in flight, no runaway queue), else at once. Tasks interleave with input and the browser's
+   * own rendering steps.
+   */
+  private scheduleUnlimited(channel: MessageChannel): void {
+    const gen = this.loopGen;
+    channel.port1.onmessage = (e: MessageEvent<number>): void => {
+      if (e.data === this.loopGen) this.onFrame(performance.now());
+    };
+    const post = (): void => channel.port2.postMessage(gen);
+    const backend = (this.renderer as Renderer | undefined)?.renderer.backend as unknown as { device?: { queue: { onSubmittedWorkDone(): Promise<void> } } } | undefined;
+    const queue = backend?.device?.queue;
+    if (queue) void queue.onSubmittedWorkDone().then(post, post);
+    else post();
   }
 
   private readonly onFrame = (now: number): void => {
     this.raf = 0;
     if (!this.running) return;
+    // graphics.frameCap: skip display frames until the next slot (1 ms slack for rAF jitter); the slots stay on a fixed grid so
+    // a 144 Hz display averages the cap instead of rounding down to every third frame
+    const cap = useSettingsStore.getState().graphics.frameCap;
+    if (cap > 0 && this.lastDrawn >= 0) {
+      const interval = 1000 / cap;
+      const elapsed = now - this.lastDrawn;
+      if (elapsed < interval - 1) {
+        this.schedule();
+        return;
+      }
+      this.lastDrawn = elapsed < 2 * interval ? Math.min(now, this.lastDrawn + interval) : now;
+    } else {
+      this.lastDrawn = now;
+    }
     this.tick(now);
     this.schedule();
   };
 
   private onVisibility(): void {
     if (!this.running) return;
+    this.loopGen++;
     if (this.raf !== 0) cancelAnimationFrame(this.raf);
     this.raf = 0;
     if (this.hiddenTimer !== null) clearTimeout(this.hiddenTimer);
@@ -1814,6 +1863,7 @@ class World implements World3D {
       this.audio.resume();
     }
     this.last = -1;
+    this.lastDrawn = -1;
     this.schedule();
   }
 
@@ -1956,8 +2006,8 @@ class World implements World3D {
     this.frames = 0;
     this.frameMsSum = 0;
     this.frameMsMax = 0;
+    if (this.dev || useSettingsStore.getState().graphics.showFps) setTimeout(() => useUiStore.getState().setFps(fps), 0);
     if (this.dev) {
-      setTimeout(() => useUiStore.getState().setFps(fps), 0);
       if (this.devOn) {
         const b = useUiStore.getState().battle;
         this.hudWriter.setDev({ fps, drawCalls: st.drawCalls, gpuMs: st.gpuMs ?? 0, desyncs: b?.desyncs ?? 0, rubberBands: this.input.rubberBands });
@@ -2132,6 +2182,7 @@ class World implements World3D {
     if (this.disposed) return;
     this.disposed = true;
     this.stop();
+    this.unlimitedChannel?.port1.close();
     for (const f of this.offs) f();
     this.offs.length = 0;
     this.detachRoom();

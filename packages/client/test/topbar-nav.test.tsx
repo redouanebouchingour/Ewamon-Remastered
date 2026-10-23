@@ -16,6 +16,8 @@ import type { WorldSession } from '../src/net/WorldSession';
 import { setWorldCapabilityOverride } from '../src/scene/worldHost';
 import { useNotificationsStore } from '../src/state/notifications';
 import { useSessionStore } from '../src/state/session';
+import { DEFAULT_SETTINGS, useSettingsStore } from '../src/state/settings';
+import { useUiStore } from '../src/state/ui';
 import { inOneHour, json, makeJwt, meFixture } from './fixtures';
 
 beforeAll(() => {
@@ -143,5 +145,22 @@ describe('the top bar', () => {
     fireEvent.keyDown(document.activeElement!, { key: 'Escape', code: 'Escape' });
     expect(more.getAttribute('aria-expanded')).toBe('false');
     expect(router.state.location.pathname).toBe('/play/party');
+  });
+});
+
+describe('the fps chip', () => {
+  afterEach(() => useSettingsStore.getState().set('graphics', { showFps: DEFAULT_SETTINGS.graphics.showFps }));
+
+  it('shows the last second\'s frames only while Settings › Graphics › Show FPS is on', { timeout: 30_000 }, async () => {
+    mount('/play');
+    const bar = await screen.findByTestId('topbar', {}, { timeout: 15000 });
+    expect(within(bar).queryByTestId('fps-chip')).toBeNull();
+    act(() => {
+      useSettingsStore.getState().set('graphics', { showFps: true });
+      useUiStore.getState().setFps(58);
+    });
+    expect(within(bar).getByTestId('fps-chip').textContent).toBe('58 fps');
+    act(() => useSettingsStore.getState().set('graphics', { showFps: false }));
+    expect(within(bar).queryByTestId('fps-chip')).toBeNull();
   });
 });

@@ -215,6 +215,15 @@ export class LightRig {
     this.hemi.intensity = intensity * SPEC_LIGHT_UNIT;
   }
 
+  /**
+   * Quality presets (`quality.ts`): the per-cascade sun shadow map edge. The cascades clone the sun's shadow on their
+   * first render and `ShadowNode.renderShadow` re-sizes its map from `mapSize` every update, so this applies live.
+   */
+  setSunShadowMap(size: number): void {
+    this.sun.shadow.mapSize.set(size, size);
+    for (const l of (this.csm as unknown as { lights: readonly DirectionalLight[] }).lights) l.shadow.mapSize.set(size, size);
+  }
+
   /** CSM re-split after a camera projection/basis change (resize, zoom stop, heading). No-op before the first render. */
   updateFrustums(): void {
     if ((this.csm as unknown as { camera: unknown }).camera == null) return;

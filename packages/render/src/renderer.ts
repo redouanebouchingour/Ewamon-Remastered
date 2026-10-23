@@ -53,6 +53,7 @@ import { PrecipitationSheet, weatherParams } from './lighting/weather.js';
 import { coerceTimeScale } from './post/effects.js';
 import { GROVE_GRADE, type GradePalette } from './post/grade.js';
 import { ALL_PASSES_ON, GRAPH_PASSES, PostStack, type PassSwitches } from './post/pipeline.js';
+import { QUALITY_PROFILES, recommendedQuality, type GraphicsQuality } from './quality.js';
 import {
   computePassMs, copyInfo, countPunctualLights, createRenderStats, dumpZone, median, PassTimer, readBudgetCounts, TimestampResolver,
   type LightCountsOut, type MutableRenderStats, type TimestampPoolLike, type ZoneDump,
@@ -70,6 +71,8 @@ export interface RendererOptions {
   // ---- additions (documented in IMPLEMENTATION-NOTES.md) ----
   /** Where `materials.manifest.json` and the KTX2 sets are served. Default `'/materials/'`. */
   readonly materialsUrl?: string;
+  /** Quality preset (`quality.ts`); `'auto'` picks `recommendedQuality(caps)`. Default `'high'` (the SPEC numbers). */
+  readonly quality?: GraphicsQuality | 'auto';
   /** Where `models.manifest.json`, the character GLBs and the look atlas are served (§10.7.7; IMPLEMENTATION-NOTES Part 6). Default `'/models/'`; null = no character bodies (decals and nameplates only). */
   readonly modelsUrl?: string | null;
   /** Millisecond clock for `RenderStats.frameMs`; render never reads a wall clock itself (§10 NN 10). Default: none (frameMs = 0). */
@@ -170,6 +173,10 @@ export interface Renderer {
   setHarvestLevel(l: HarvestLevel): void;      // §10.2.6
   setEffects(f: EffectsFlags): void;           // rebuilds the post graph; §10.8.4
   setPixelRatio(r: number): void;              // re-clamped by §10.1.3
+  /** Quality preset addition (`quality.ts`): pixel-ratio cap, sun cascade size, GTAO / DOF. Optional for fakes. */
+  setQuality?(q: GraphicsQuality | 'auto'): void;
+  /** The preset in effect (`'auto'` resolved). Optional for fakes. */
+  readonly quality?: GraphicsQuality;
   resize(cssWidth: number, cssHeight: number): void;
   setTimeScale(s: number): void;               // 1 normal · 0 hitstop · 0.35 crit slow-mo; scales every render-side animation
   frame(dtMs: number): void;                   // exactly one pipeline.render() + one HUD draw when dirty
@@ -191,11 +198,11 @@ export class RenderInitError extends Error {
 export const PIXEL_RATIO_CAP = 1.5;
 export const MAX_DRAWING_WIDTH = 3840;
 
-/** `pr = min(requested, 1.5, 3840 / cssWidth)`; invalid inputs fall back to 1 / no width cap. */
-export function clampPixelRatio(requested: number, cssWidth: number): number {
+/** `pr = min(requested, cap, 3840 / cssWidth)` (cap 1.5, lower on the quality presets); invalid inputs fall back to 1 / no width cap. */
+export function clampPixelRatio(requested: number, cssWidth: number, cap: number = PIXEL_RATIO_CAP): number {
   const r = Number.isFinite(requested) && requested > 0 ? requested : 1;
   const w = Number.isFinite(cssWidth) && cssWidth > 0 ? MAX_DRAWING_WIDTH / cssWidth : Number.POSITIVE_INFINITY;
-  return Math.min(r, PIXEL_RATIO_CAP, w);
+  return Math.min(r, cap, w);
 }
 
 // ---- §10.1.2 step 5 helpers (pure) --------------------------------------------------------------------------
@@ -318,7 +325,7 @@ export function rendererInternals(r: Renderer): HostContext | undefined {
 // ---- construction --------------------------------------------------------------------------------------------
 
 interface WebGPUDeviceLike { readonly limits?: { readonly maxTextureDimension2D?: number }; readonly adapterInfo?: { readonly description?: string; readonly vendor?: string; readonly architecture?: string } }
-interface BackendLike { readonly isWebGPUBackend?: boolean; readonly device?: WebGPUDeviceLike; readonly gl?: { getParameter(p: number): unknown; readonly MAX_TEXTURE_SIZE: number } }
+interface BackendLike { readonly isWebGPUBackend?: boolean; readonly device?: WebGPUDeviceLike; readonly gl?: { getParameter(p: number): unknown; readonly MAX_TEXTURE_SIZE: number; readonly RENDERER: number } }
 
 function readDeviceCaps(gpu: WebGPURenderer, backend: Backend): { maxTextureSize: number; adapter: string | null } {
   const b = gpu.backend as unknown as BackendLike;
@@ -332,7 +339,9 @@ function readDeviceCaps(gpu: WebGPURenderer, backend: Backend): { maxTextureSize
   }
   const gl = b.gl;
   const max = gl ? Number(gl.getParameter(gl.MAX_TEXTURE_SIZE)) : 0;
-  return { maxTextureSize: Number.isFinite(max) ? max : 0, adapter: null };
+  // Chrome / Edge expose the (sanitised) ANGLE renderer string here, e.g. "ANGLE (Intel, Intel(R) UHD Graphics 620 …)"
+  const name = gl ? gl.getParameter(gl.RENDERER) : null;
+  return { maxTextureSize: Number.isFinite(max) ? max : 0, adapter: typeof name === 'string' && name.length > 0 ? name : null };
 }
 
 /**
@@ -500,6 +509,7 @@ class RendererHost implements Renderer, HostContext {
   private effectsFlags: EffectsFlags;
   private passes: PassSwitches = ALL_PASSES_ON;
   private requestedPr: number;
+  quality: GraphicsQuality;
   private cssW = 1;
   private cssH = 1;
   private scale = 1;
@@ -525,6 +535,7 @@ class RendererHost implements Renderer, HostContext {
     this.renderer = gpu;
     this.effectsFlags = o.effects ?? ALL_EFFECTS;
     this.requestedPr = o.pixelRatio;
+    this.quality = o.quality === 'auto' ? recommendedQuality(caps) : o.quality ?? 'high';
     this.clock = o.clock ?? null;
     this.modelsUrl = o.modelsUrl === undefined ? '/models/' : o.modelsUrl;
     this.onCompileProgress = o.onCompileProgress ?? null;
@@ -547,13 +558,14 @@ class RendererHost implements Renderer, HostContext {
     // 7. lighting rig, sky + PMREM, fog node, post graph, HUD, stage, actors — all before resolve.
     if (this.materials.uniforms.occlusion !== undefined) this.materials.uniforms.occlusion.camera = this.camera3;   // M2-spawn-noon-9
     this.lighting = new LightRig(this.scene);
+    this.lighting.setSunShadowMap(QUALITY_PROFILES[this.quality].sunShadowMap);
     this.sky = new SkyController(gpu, this.scene);
     this.fog = createHeightFog();
     this.scene.fogNode = this.fog.node;
     this.day = new DayCycle({ rig: this.lighting, sky: this.sky, fog: this.fog, shared: this.materials.uniforms });
     this.precipitation = new PrecipitationSheet(this.materials.uniforms);
     this.scene.add(this.precipitation.object);
-    this.post = new PostStack(gpu, this.scene, this.camera3, backend, this.effectsFlags, this.passes);
+    this.post = new PostStack(gpu, this.scene, this.camera3, backend, this.effectsFlags, this.passes, this.quality);
     const trackTs = caps.timestampQuery && o.trackTimestamp === true;
     // B1 / B2: one inspector always — it counts the shadow-map draw calls of every frame; timing only when tracked
     this.inspector = new PassTimer((rt) => this.classifyRender(rt), trackTs, () => gpu.info);
@@ -1192,6 +1204,16 @@ class RendererHost implements Renderer, HostContext {
     this.resize(this.cssW, this.cssH);
   }
 
+  setQuality(q: GraphicsQuality | 'auto'): void {
+    if (this.disposed) return;
+    const next = q === 'auto' ? recommendedQuality(this.caps) : q;
+    if (next === this.quality) return;
+    this.quality = next;
+    this.lighting.setSunShadowMap(QUALITY_PROFILES[next].sunShadowMap);
+    this.post.setQuality(next);
+    this.resize(this.cssW, this.cssH);
+  }
+
   /** §10.1.3: `setPixelRatio(pr); setSize(w, h, false)`; camera aspect, HUD, CSM frustums follow. */
   resize(cssWidth: number, cssHeight: number): void {
     if (this.disposed) return;
@@ -1199,7 +1221,7 @@ class RendererHost implements Renderer, HostContext {
     if (!(cssWidth >= 1 && cssHeight >= 1)) return;
     this.cssW = Math.floor(cssWidth);
     this.cssH = Math.floor(cssHeight);
-    const pr = clampPixelRatio(this.requestedPr, this.cssW);
+    const pr = clampPixelRatio(this.requestedPr, this.cssW, QUALITY_PROFILES[this.quality].pixelRatioCap);
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(this.cssW, this.cssH, false);
     const aspect = this.cssW / this.cssH;

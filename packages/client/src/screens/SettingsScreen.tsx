@@ -11,7 +11,7 @@ import { TYPE_NAMES } from '@ewa/core';
 import { REDUCED_LOCKED } from '../state/effective';
 import { useEffectiveSettings } from '../state/applySettings';
 import { INPUT_ACTIONS, UI_SCALE, bindingConflict, isBindable, useSettingsStore } from '../state/settings';
-import type { Colorblind, GraphicsSettings, InputAction } from '../state/settings';
+import type { Colorblind, FrameCap, GraphicsQualitySetting, GraphicsSettings, InputAction } from '../state/settings';
 import { Button } from '../ui/Button';
 import { Segmented, Select } from '../ui/Field';
 import { Panel } from '../ui/Panel';
@@ -36,7 +36,7 @@ const TABS: readonly { readonly key: Tab; readonly label: string }[] = [
   { key: 'world', label: 'World' },
 ];
 
-type EffectToggle = Exclude<keyof GraphicsSettings, 'reducedEffects' | 'renderScale'>;
+type EffectToggle = Exclude<keyof GraphicsSettings, 'reducedEffects' | 'renderScale' | 'quality' | 'frameCap' | 'showFps'>;
 const EFFECT_TOGGLES: Readonly<Record<EffectToggle, { readonly label: string; readonly description: string }>> = {
   dof: { label: 'Depth of field', description: 'Soft focus on the distance. Never blurs your creature or an active battler.' },
   bloom: { label: 'Bloom', description: 'Glow around bright light. Static, so it stays available under reduced motion.' },
@@ -96,6 +96,49 @@ function GraphicsTab() {
   const locked = new Set<string>(REDUCED_LOCKED);
   return (
     <div className={s.tab}>
+      <div className={s.control}>
+        <div>
+          <p className={s.controlLabel}>Quality</p>
+          <p className={l.caption}>Low renders at 1× pixel density without ambient occlusion, depth of field or bloom and with half the shadow detail. Auto picks Low on Intel integrated graphics.</p>
+        </div>
+        <Segmented<GraphicsQualitySetting>
+          label="Quality"
+          value={g.quality}
+          options={[
+            { value: 'auto', label: 'Auto' },
+            { value: 'low', label: 'Low' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'high', label: 'High' },
+          ]}
+          onChange={(v) => set('graphics', { quality: v })}
+        />
+      </div>
+      <div className={s.control}>
+        <div>
+          <p className={s.controlLabel}>Frame rate cap</p>
+          <p className={l.caption}>
+            A lower cap leaves the GPU and CPU idle between frames: cooler, quieter, longer battery. Unlimited draws as fast as the GPU
+            can, beyond what the display shows.
+          </p>
+        </div>
+        <Segmented<'30' | '60' | '0' | '-1'>
+          label="Frame rate cap"
+          value={String(g.frameCap) as '30' | '60' | '0' | '-1'}
+          options={[
+            { value: '30', label: '30' },
+            { value: '60', label: '60' },
+            { value: '0', label: 'Display' },
+            { value: '-1', label: 'Unlimited' },
+          ]}
+          onChange={(v) => set('graphics', { frameCap: Number(v) as FrameCap })}
+        />
+      </div>
+      <Toggle
+        label="Show FPS"
+        description="Frames per second in the top bar, updated every second."
+        checked={g.showFps}
+        onChange={(v) => set('graphics', { showFps: v })}
+      />
       <Toggle
         label="Reduced effects"
         description="Turns off grain, aberration, shake, hitstop, slow motion and depth of field in one switch."

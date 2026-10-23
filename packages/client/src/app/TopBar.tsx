@@ -211,6 +211,18 @@ function SpeedrunChip() {
   );
 }
 
+/** Settings › Graphics › Show FPS: the world's frames in the last second (World3D publishes it once a second). */
+function FpsChip() {
+  const on = useSettingsStore((st) => st.graphics.showFps);
+  const fps = useUiStore((st) => st.fps);
+  if (!on) return null;
+  return (
+    <span className={s.fps} data-testid="fps-chip" title="Frames per second">
+      {fps} fps
+    </span>
+  );
+}
+
 /** Arena PvP: the queue the player is in, anywhere (elapsed time; opens PvP; × leaves it). */
 function QueueChip() {
   const kind = useArenaStore((st) => (st.status.state === 'queued' && !st.inArena ? st.status.kind : null));
@@ -413,6 +425,7 @@ export function TopBar() {
       <ZoneChip />
       <ChallengeChip />
       <SpeedrunChip />
+      <FpsChip />
       <QueueChip />
       <nav className={s.nav} aria-label="Menus">
         {NAV_PRIMARY.map((n) => (

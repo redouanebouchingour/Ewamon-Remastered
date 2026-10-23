@@ -2342,3 +2342,20 @@ the second isolated client (the component over the landing page: the foe and own
   player's own emote), with the trainer-victory fanfare. First person stays on while it plays and the eye rides the dancing body (render `bodyTilt`): the view spins, flips and goes upside down with it.
 - Any player's breakdance (own, or a remote's `emote` change to 7) makes every NPC / trainer actor within 30 m hop
   along (`SceneDirector.forEachStatic`, `actors.setHop`). Walking ends the dance (emotes yield to locomotion).
+
+## Graphics quality and frame cap (2026-10-23, not in the SPEC)
+
+- `GraphicsSettings.quality` (`'auto' | 'low' | 'medium' | 'high'`, default `'auto'`: render's `recommendedQuality`, low
+  on integrated Intel GPUs) goes to `createRenderer({ quality })` and live to `renderer.setQuality`. Settings › Graphics
+  shows it as a segmented control. Persisted blobs without it merge the default in.
+- `GraphicsSettings.frameCap` (`0 | 30 | 60`, default 60; 0 = the display's rate): World3D's rAF callback skips display
+  frames until the next slot on a fixed 1000 / cap ms grid (1 ms slack), so 120 / 144 Hz displays do half the work and
+  the simulation still steps by real elapsed time. The hidden-tab 250 ms loop is unchanged.
+- `FRAME_CAP_UNLIMITED` (−1, "Unlimited"): rAF never fires faster than the display, so `scheduleUnlimited` posts the
+  next frame through a `MessageChannel` once `device.queue.onSubmittedWorkDone()` resolved (one frame in flight; at once
+  on WebGL2). `loopGen` drops a frame posted before a stop or a visibility change. Frames beyond the refresh rate are never
+  shown: a benchmark mode. Live check (dev-alt, headless Chrome at 60 Hz): 60 / Display ≈ 60 fps, Unlimited ≈ 74 fps,
+  a 0 ms timeout still fires in ≈ 5 ms (p50) in all three.
+- `GraphicsSettings.showFps` (default false): Settings › Graphics › Show FPS puts a mono readout ("58 fps", `FpsChip`)
+  in the top bar beside the speedrun clock. World3D's once-a-second `onSecond` writes the drawn frames to
+  `useUiStore.fps` when it is on (dev builds always did); with a frame cap the count is the capped rate.
