@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 /**
- * NPC voice talk in the DialogueBox: a person's lines offer "Chat"; a sign's do not; a conversation replaces
+ * NPC talk in the DialogueBox: a person's lines offer "Chat"; a sign's do not; a conversation replaces
  * the scripted page (the whole exchange as a log) and Enter returns to the lines without running `onFinish`, keeping the
  * conversation for the next line; closing the dialogue ends it.
  */
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useUiStore } from '../src/state/ui';
-import { endTalk, useVoiceTalkStore } from '../src/state/voiceTalk';
+import { endTalk, useNpcTalkStore } from '../src/state/npcTalk';
 import { DialogueBox } from '../src/world/DialogueBox';
 import { NpcStrikeFx } from '../src/world/NpcStrikeFx';
 
@@ -17,7 +17,7 @@ beforeEach(() => {
   endTalk();
 });
 
-describe('DialogueBox voice talk', () => {
+describe('DialogueBox NPC talk', () => {
   it('offers the chat over a person, not over a sign', () => {
     act(() => useUiStore.getState().setDialogue({ speaker: 'Prof. Wynn', lines: ['Hello.'], index: 0, targetId: 'mirevale.wynn' }));
     render(<DialogueBox />);
@@ -31,7 +31,7 @@ describe('DialogueBox voice talk', () => {
     act(() => useUiStore.getState().setDialogue({ speaker: 'Prof. Wynn', lines: ['Hello.'], index: 0, targetId: 'mirevale.wynn', onFinish }));
     render(<DialogueBox />);
     act(() =>
-      useVoiceTalkStore.setState({
+      useNpcTalkStore.setState({
         targetId: 'mirevale.wynn',
         turns: [
           { role: 'user', content: 'Which Ewamon should I pick?' },
@@ -46,8 +46,8 @@ describe('DialogueBox voice talk', () => {
     expect(screen.getByText('Hello.')).toBeTruthy();
     expect(onFinish).not.toHaveBeenCalled();
     expect(useUiStore.getState().dialogue).not.toBeNull();
-    expect(useVoiceTalkStore.getState()).toMatchObject({ targetId: 'mirevale.wynn', hidden: true });
-    expect(useVoiceTalkStore.getState().turns).toHaveLength(2);
+    expect(useNpcTalkStore.getState()).toMatchObject({ targetId: 'mirevale.wynn', hidden: true });
+    expect(useNpcTalkStore.getState().turns).toHaveLength(2);
   });
 
   it('every line while the dialogue stays open adds to one conversation, shown and sent in full', async () => {
@@ -100,14 +100,14 @@ describe('DialogueBox voice talk', () => {
     });
     const input = screen.getByRole('textbox', { name: /Type to Prof. Wynn/ });
     fireEvent.keyDown(input, { code: 'KeyE', key: 'e' });
-    expect(useVoiceTalkStore.getState().phase).toBe('idle');
+    expect(useNpcTalkStore.getState().phase).toBe('idle');
     fireEvent.change(input, { target: { value: 'Hi Wynn' } });
     await act(async () => {
       fireEvent.submit(input.closest('form')!);
       await new Promise((r) => setTimeout(r, 20));
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(useVoiceTalkStore.getState()).toMatchObject({ phase: 'idle', error: null });
+    expect(useNpcTalkStore.getState()).toMatchObject({ phase: 'idle', error: null });
     expect(screen.getByText('Hi Wynn')).toBeTruthy();
     expect(screen.getByText('Hello traveller!')).toBeTruthy();
     fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape', code: 'Escape' });
@@ -142,7 +142,7 @@ describe('DialogueBox voice talk', () => {
       await new Promise((r) => setTimeout(r, 20));
     });
     expect(screen.getByTestId('npc-strike').textContent).toContain('SMACK!');
-    expect(useVoiceTalkStore.getState().turns.at(-1)).toMatchObject({ role: 'assistant', events: ['You slapped the traveller.'] });
+    expect(useNpcTalkStore.getState().turns.at(-1)).toMatchObject({ role: 'assistant', events: ['You slapped the traveller.'] });
     vi.unstubAllGlobals();
   });
 
@@ -200,15 +200,15 @@ describe('DialogueBox voice talk', () => {
       });
     };
     await send('You are ugly');
-    expect(useVoiceTalkStore.getState().phase).toBe('idle');
+    expect(useNpcTalkStore.getState().phase).toBe('idle');
     await send('And you smell');
     expect(screen.getByText('Reply 2, here a slap!')).toBeTruthy();
-    expect(useVoiceTalkStore.getState().turns.every((t) => t.events === undefined)).toBe(true);
+    expect(useNpcTalkStore.getState().turns.every((t) => t.events === undefined)).toBe(true);
     await act(async () => {
       release!();
       await new Promise((r) => setTimeout(r, 1200));
     });
-    const replies = useVoiceTalkStore.getState().turns.filter((t) => t.role === 'assistant');
+    const replies = useNpcTalkStore.getState().turns.filter((t) => t.role === 'assistant');
     expect(replies.map((t) => t.events)).toEqual([['You slapped the traveller.'], ['You slapped the traveller.']]);
     vi.unstubAllGlobals();
   });
@@ -216,8 +216,8 @@ describe('DialogueBox voice talk', () => {
   it('closing the dialogue ends the conversation', () => {
     act(() => useUiStore.getState().setDialogue({ speaker: 'Prof. Wynn', lines: ['Hello.'], index: 0, targetId: 'mirevale.wynn' }));
     render(<DialogueBox />);
-    act(() => useVoiceTalkStore.setState({ targetId: 'mirevale.wynn', turns: [{ role: 'user', content: 'Hi' }] }));
+    act(() => useNpcTalkStore.setState({ targetId: 'mirevale.wynn', turns: [{ role: 'user', content: 'Hi' }] }));
     act(() => useUiStore.getState().setDialogue(null));
-    expect(useVoiceTalkStore.getState().targetId).toBeNull();
+    expect(useNpcTalkStore.getState().targetId).toBeNull();
   });
 });

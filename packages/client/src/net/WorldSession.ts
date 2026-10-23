@@ -103,9 +103,17 @@ const HANDOVER_STATE_TIMEOUT_MS = 5000;
 export const SERVER_SHUTDOWN_CODE = 4001;
 const SOURCE_LEAVE_GRACE_MS = 6000;
 
+/**
+ * `VITE_WS_URL` may be absolute (`wss://ewamon.example.com/colyseus`) or a path (`/colyseus`, same origin as the page).
+ * Unset: the page's own host on :2567, so a dev server opened by LAN IP still reaches the game server.
+ */
 export function defaultWsUrl(): string {
   const env = (import.meta as { env?: Record<string, string | undefined> }).env;
-  return env?.['VITE_WS_URL'] ?? 'ws://localhost:2567';
+  const configured = env?.['VITE_WS_URL'];
+  const loc = typeof location === 'undefined' ? null : location;
+  const proto = loc?.protocol === 'https:' ? 'wss:' : 'ws:';
+  if (configured?.startsWith('/')) return loc ? `${proto}//${loc.host}${configured}` : `ws://localhost${configured}`;
+  return configured ?? `${proto}//${loc?.hostname || 'localhost'}:2567`;
 }
 
 export function createWorldSession(deps: WorldSessionDeps): WorldSession {

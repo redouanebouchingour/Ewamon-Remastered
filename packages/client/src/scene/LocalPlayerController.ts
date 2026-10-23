@@ -150,7 +150,7 @@ export class LocalPlayerController {
    */
   override: { ax: number; az: number; running: boolean } | null = null;
 
-  /** NPC voice talk's kick: a forced run in a world direction for a few steps, even while the dialogue holds the keys. */
+  /** NPC talk's kick: a forced run in a world direction for a few steps, even while the dialogue holds the keys. */
   private readonly shoveDir = { ax: 0, az: 0 };
   private shoveLeft = 0;
 

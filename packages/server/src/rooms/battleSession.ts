@@ -50,6 +50,9 @@ import type { NemesisScar } from '@ewa/content';
 import type { Nemesis, Tx } from '@ewa/persist';
 import { EMPTY_TRACK, isNemesisSpawn, nemesisCreature, promotionOf, rankUpOf, riseNemesis, trackNemesis } from '../game/nemesis';
 import type { NemesisTrack } from '../game/nemesis';
+import { villagerTeam } from '../game/villagers';
+import { villagerTrainerId } from '@ewa/protocol';
+import type { ZoneId } from '@ewa/content';
 
 export const TURN_DEADLINE_MS = 60_000;
 export const REPLACEMENT_DEADLINE_MS = 20_000;
@@ -131,6 +134,11 @@ export interface BattleSession {
    * copies of the party they left with; nothing of theirs is written). The end records the fight for the owner.
    */
   readonly ghost?: { readonly ownerId: string; readonly name: string };
+  /**
+   * NPC talk: a battle a villager started (`POST /npc/act battle`; format 'trainer', trainerId `villager:<npc id>`). A
+   * win pays trainer exp and no money and sets no flag: a villager fights again whenever it is asked.
+   */
+  readonly villager?: true;
   /** Phase D14: the tower result for side 0, set after the end transaction commits (read by the host's `onEnd`) */
   towerResult?: TowerResult;
   /**
@@ -941,6 +949,48 @@ export class BattleCoordinator {
   }
 
   /**
+   * NPC talk: the player against a villager who took up (or made) a challenge. Its team is `villagerTeam` — the zone's
+   * species, seeded by the NPC so it fields the same ones every time, a few levels under the player's strongest.
+   */
+  async startVillager(p: PlayerSeat, npcId: string, at: BattleAt, seed: string): Promise<StartResult> {
+    if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
+    const loaded = await this.loadPlayers([p.playerId], null);
+    const me = loaded.get(p.playerId)!;
+    const side0 = this.playerSide(me.party, p.playerId, false, false, me.inventory);
+    if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
+    if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
+    const content = this.deps.content;
+    const trainerId = villagerTrainerId(npcId);
+    const top = Math.max(...me.party.map((c) => c.level));
+    const team = villagerTeam(this.deps.zone.id as ZoneId, top, createRng(seed)).map((m, i) => withSyntheticId(newCreature(content, m.species, m.level), `npc:${trainerId}:${i}`));
+    const side1: Omit<Side, 'mustSwitch' | 'consumedItems'> = { kind: 'npc', party: team.map((c) => projectBattler(c, content)), active: 0, trainerId, canFlee: false, canCatch: false };
+    const { session } = this.open(
+      {
+        id: randomUUID(),
+        format: 'trainer',
+        zoneId: this.deps.zone.id,
+        seats: [{ side: 0, playerId: p.playerId, sessionId: p.sessionId }, { side: 1, playerId: null, sessionId: null }],
+        spawnId: null,
+        npc: { trainerId, reward: 0, leagueId: null },
+        beatId: null,
+        staticSpecies: null,
+        staticFlag: null,
+        x: at.x,
+        z: at.z,
+        yaw: at.yaw ?? null,
+        inventory: [this.bagFor(me), null],
+        rematch: false,
+        challenge: [me.challenge, null],
+        villager: true,
+      },
+      [side0, side1],
+      this.rng.fork().snapshot(),
+    );
+    this.sendStartProgress(loaded);
+    return { ok: true, session };
+  }
+
+  /**
    * The daily challenge (game/daily.ts): the day's fixed team against the day's AI team, both synthetic and at
    * `DAILY_LEVEL`, on the day's own seed, so every player's daily plays out the same for the same choices. No bands,
    * no items; nothing about the player's creatures is read or written.
@@ -1338,6 +1388,12 @@ export class BattleCoordinator {
                 money += got.payout;
                 this.noteBroughtIn(d, got);
               }
+            }
+          } else if (session.villager === true) {
+            // NPC talk: a villager's battle pays trainer exp only (no money, no flag: it fights again whenever asked)
+            if (won) {
+              trainerExpGain += TRAINER_EXP.trainerWin;
+              questEvents.push({ kind: 'win', format: 'trainer' });
             }
           } else if (session.format === 'trainer' && won && session.npc !== null) {
             money += session.npc.reward;

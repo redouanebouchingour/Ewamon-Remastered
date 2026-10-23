@@ -112,7 +112,7 @@ import { BattleSprites, CreatureTextures, NO_LEASE, creatureBudget } from './cre
 import type { AtlasHold, CreatureSide, SpritePart, SpriteLease } from './creatureTextures';
 import type { WorldInstance } from './worldHost';
 
-/** NPC voice talk's kick: a short run away from the NPC (~1.5 m at run speed), through the real prediction and wire. */
+/** NPC talk's kick: a short run away from the NPC (~1.5 m at run speed), through the real prediction and wire. */
 const KICK_SHOVE_MS = 260;
 
 /** First-person view: radians of turn per CSS px of left-button drag, the starting pitch and the pitch clamp. */
@@ -185,9 +185,9 @@ class World implements World3D {
   private readonly trainerAt: TrainerPose = { x: 0, z: 0, angle: 0 };
   /** trainer sight: the spotting trainer's "!" and walk-up (created with the renderer), and the no-battle fallback */
   private approach: TrainerApproach | null = null;
-  /** NPC voice talk: an NPC's slap / kick lunge (`scene/npcStrike.ts`) */
+  /** NPC talk: an NPC's slap / kick lunge (`scene/npcStrike.ts`) */
   private strikeFx: NpcStrike | null = null;
-  /** NPC voice talk: the player's slap / kick at the NPC (H / K in the dialogue) */
+  /** NPC talk: the player's slap / kick at the NPC (H / K in the dialogue) */
   private playerStrikeFx: PlayerStrike | null = null;
   /** First-person view (`state/view.ts`): on this frame, and the look (diorama yaw convention, pitch in radians) */
   private fpOn = false;
@@ -1323,7 +1323,7 @@ class World implements World3D {
     });
   }
 
-  // ---- NPC voice talk: slap / kick ------------------------------------------------------------------------------
+  // ---- NPC talk: slap / kick ------------------------------------------------------------------------------
 
   /**
    * The tool pass decided the NPC hits the player: its actor lunges in and back; at contact the sound, a camera shake
@@ -1879,13 +1879,13 @@ class World implements World3D {
         const rz = this.input.renderZ;
         this.renderer.actors.setTransform(selfId, rx, rz, this.approach.facePlayer(rx, rz), false, false);
       } else if (this.playerStrikeFx?.active === true) {
-        // NPC voice talk: the player runs at the NPC and back (render only; the simulation stands still)
+        // NPC talk: the player runs at the NPC and back (render only; the simulation stands still)
         const ps = this.playerStrikeFx;
         ps.update(frameDt);
         if (ps.active) this.renderer.actors.setTransform(selfId, ps.x, ps.z, ps.angle, ps.moving, ps.running);
         else this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, ps.angle, false, false);
       } else if (this.strikeFx?.active === true) {
-        // NPC voice talk: the player faces the NPC that slaps / kicks them (a kick's knockback runs backwards)
+        // NPC talk: the player faces the NPC that slaps / kicks them (a kick's knockback runs backwards)
         this.strikeFx.update(frameDt);
         const rx = this.input.renderX;
         const rz = this.input.renderZ;

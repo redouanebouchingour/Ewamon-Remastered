@@ -1,5 +1,5 @@
 /**
- * NPC voice talk's slap / kick (2026-10-22), either way: the screen burst `NpcStrikeFx` shows at contact, and the
+ * NPC talk's slap / kick (2026-10-22), either way: the screen burst `NpcStrikeFx` shows at contact, and the
  * world hook World3D binds (the striker's lunge, the sound, a kick's knockback). Without a world (tests, a dialogue
  * with no actor) the burst still plays at once.
  */

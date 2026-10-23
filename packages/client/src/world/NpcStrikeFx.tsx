@@ -1,5 +1,5 @@
 /**
- * NPC voice talk's slap / kick (2026-10-22): at contact a comic burst ("SMACK!" / "WHAM!") pops beside the dialogue and
+ * NPC talk's slap / kick (2026-10-22): at contact a comic burst ("SMACK!" / "WHAM!") pops beside the dialogue and
  * the screen edges flash red; it clears itself when its animation ends. The world half (the NPC's lunge, the camera
  * shake, a kick's knockback) is `scene/npcStrike.ts`.
  */

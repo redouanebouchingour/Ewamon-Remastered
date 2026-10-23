@@ -1,5 +1,5 @@
 /**
- * NPC voice talk (client `src/voice`): the local model talking as an NPC picks tools after each reply; the ones that
+ * NPC talk (client `src/talk`): the local model talking as an NPC picks tools after each reply; the ones that
  * touch the save come here. The NPC must stand in the player's zone (a ZoneDef npc or an interior resident).
  *
  * - giveMoney / takeMoney: up to NPC_MONEY_MAX. Each NPC has a wallet per player (seeded 300–2 000 from the world seed
@@ -9,29 +9,26 @@
  *   level of its slot, into the party (the box when full); once per NPC per NPC_GIFT_COOLDOWN_MS (409 npcNoCreature).
  * - takeCreature: the player's lowest-level unlocked party creature, released for good — never the last one in the
  *   party, never a locked one (409 npcCannotTake). Lock a creature to keep it safe.
+ * - battle: the zone room holding the player opens a battle with the NPC (`NPC_BATTLE_TOPIC`, rooms/ZoneRoom.ts); the
+ *   reply moves nothing, and a refusal there (no usable party) reaches the player as a room error.
  *
  * Wallets and gift cooldowns live in memory (a restart refills them). `NPC_TOOLS` (env) turns it off; unset, it is
  * off in production.
  */
-import { ENCOUNTER_TABLES, encounterTableFor, interiorNpcs } from '@ewa/content';
-import type { EncounterSlot } from '@ewa/content';
+import { interiorNpcs } from '@ewa/content';
 import { createRng } from '@ewa/core';
 import { NPC_MONEY_MAX, NpcActReq, NpcActRes } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
 import { newCreature } from '../../game/creatures';
+import { pickSlot, zoneSlots } from '../../game/villagers';
 import { HttpError, out, presenceZone, rateLimit, refuseInBattle, requireAuth } from '../http';
 import type { RestDeps } from '../http';
 
 export const NPC_GIFT_COOLDOWN_MS = 10 * 60_000;
 const WALLET_MIN = 300;
 const WALLET_MAX = 2000;
-
-/** The slots an NPC's gift is drawn from: the zone's land slots, else every table's common land slots. */
-function giftSlots(zoneId: Parameters<typeof encounterTableFor>[0]): readonly EncounterSlot[] {
-  const land = (s: EncounterSlot): boolean => (s.medium ?? 'land') === 'land';
-  const own = encounterTableFor(zoneId)?.slots.filter(land) ?? [];
-  return own.length > 0 ? own : ENCOUNTER_TABLES.flatMap((t) => t.slots.filter((s) => land(s) && s.tier === 'common'));
-}
+/** `{ playerId, npcId }`: the zone room holding the player opens the battle (rooms/ZoneRoom.ts) */
+export const NPC_BATTLE_TOPIC = 'ewa:npcBattle';
 
 export function registerNpcRoutes(app: FastifyInstance, deps: RestDeps): void {
   const { repos, clock, content } = deps;
@@ -62,6 +59,12 @@ export function registerNpcRoutes(app: FastifyInstance, deps: RestDeps): void {
     const now = new Date(t);
     const asked = body.amount ?? NPC_MONEY_MAX;
 
+    if (body.action === 'battle') {
+      const row = await repos.db.transaction((tx) => repos.players.byId(tx, id));
+      deps.bus.publish(NPC_BATTLE_TOPIC, { playerId: id, npcId: body.npcId });
+      return out(deps, NpcActRes, { money: row?.money ?? 0, amount: 0, wallet: walletOf(key, body.npcId), creaturesAdded: [], creaturesRemoved: [] });
+    }
+
     const res = await repos.db.transaction(async (tx) => {
       const row = await repos.players.lock(tx, id);
       const audit = (detail: Record<string, unknown>) => repos.audit.write(tx, { actorId: id, action: `npc.${body.action}`, subject: body.npcId, detail: { ...detail, zone: zone.id } }, now);
@@ -84,10 +87,8 @@ export function registerNpcRoutes(app: FastifyInstance, deps: RestDeps): void {
         }
         case 'giveCreature': {
           if ((giftAt.get(key) ?? 0) > t) throw new HttpError(409, 'npcNoCreature');
-          const slots = giftSlots(zone.id);
           const rng = createRng(`${deps.worldSeed}:npc-gift:${key}:${t}`);
-          let roll = rng.next() * slots.reduce((n, s) => n + s.weight, 0);
-          const slot = slots.find((s) => (roll -= s.weight) < 0) ?? slots[slots.length - 1]!;
+          const slot = pickSlot(zoneSlots(zone.id), rng);
           const level = slot.levelMin + Math.floor(rng.next() * (slot.levelMax - slot.levelMin + 1));
           const c = newCreature(content, slot.species, level, { ownerId: id, moves: 'level' });
           const used = new Set((await repos.creatures.byOwner(tx, id)).filter((r) => r.slotKind === 'party').map((r) => r.slotIndex));
@@ -106,6 +107,8 @@ export function registerNpcRoutes(app: FastifyInstance, deps: RestDeps): void {
           await audit({ creature: pick.id, species: pick.speciesId, level: pick.level });
           return { money: row.money, amount: 0, wallet: walletOf(key, body.npcId), creaturesAdded: [], creaturesRemoved: [pick.id], commit: (): void => undefined };
         }
+        case 'battle':
+          throw new HttpError(500, 'internal'); // answered above
       }
     });
     // in-memory state moves only once the transaction committed

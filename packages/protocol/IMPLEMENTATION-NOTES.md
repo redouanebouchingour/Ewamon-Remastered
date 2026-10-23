@@ -228,8 +228,11 @@ installed library that future readers should not have to re-derive. The spec its
 
 ## NPC tools (2026-10-22)
 
-- `npcAct` (`POST /npc/act`, `NpcActReq` / `NpcActRes`, `NPC_ACTIONS`, `NPC_MONEY_MAX`): the client voice talk's
+- `npcAct` (`POST /npc/act`, `NpcActReq` / `NpcActRes`, `NPC_ACTIONS`, `NPC_MONEY_MAX`): the client NPC talk's
   money and creature tools. Not in the SPEC (a local-model feature).
+- `battle` (2026-10-23) in `NPC_ACTIONS`: the NPC starts an Ewamon battle with the player (the zone room opens it; the
+  reply moves nothing). Its NPC side's `trainerId` is `villager:<npc id>` (`villagerTrainerId` / `villagerNpcId`).
+  No new client message: the route reaches the room over the event bus, as the escape rope does.
 
 ## Breakdance emote (2026-10-22)
 

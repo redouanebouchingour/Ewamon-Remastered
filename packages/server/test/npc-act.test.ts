@@ -1,12 +1,14 @@
 /**
- * NPC voice talk's save-touching tools, `POST /npc/act`: money moves between the player and the NPC's wallet (capped
+ * NPC talk's save-touching tools, `POST /npc/act`: money moves between the player and the NPC's wallet (capped
  * at NPC_MONEY_MAX, by the wallet and by the player's money); a gift creature joins the party once per cooldown; a
- * taken creature is the lowest-level unlocked party member, never the last one; an NPC from another zone is refused.
+ * taken creature is the lowest-level unlocked party member, never the last one; an NPC from another zone is refused;
+ * a battle opens in the zone room against the villager's team.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { zone } from '@ewa/content';
-import { NPC_MONEY_MAX } from '@ewa/protocol';
-import { api, enter, register, startServer } from './helpers';
+import { NPC_MONEY_MAX, villagerTrainerId } from '@ewa/protocol';
+import { api, enter, ofType, register, startServer, waitFor } from './helpers';
+import { VILLAGER_LEVEL_UNDER, VILLAGER_TEAM_MAX } from '../src/game/villagers';
 import type { TestServer } from './helpers';
 
 let s: TestServer;
@@ -70,6 +72,30 @@ describe('POST /npc/act', () => {
     const took = await act('takeCreature');
     expect(took.body.creaturesRemoved).toEqual([weakest.id]);
     expect(await party(acc.id)).toHaveLength(before.length - 1);
+    await j.room.leave(true);
+  }, 60_000);
+
+  it('opens a battle against the villager: its team a little under the player, the same every time', async () => {
+    const acc = await register(s);
+    const j = await enter(s, acc, 'mirevale');
+    const npcId = zone('mirevale').npcs[0]!.id;
+    const top = Math.max(...(await party(acc.id)).map((c) => c.level));
+    const res = await api(s, 'POST', '/npc/act', acc.access, { npcId, action: 'battle' });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ amount: 0, creaturesAdded: [], creaturesRemoved: [] });
+    await waitFor(() => ofType(j.msgs, 'battleStart').length > 0, 8000);
+    const start = ofType(j.msgs, 'battleStart')[0]!;
+    expect(start.format).toBe('trainer');
+    const foe = start.state.sides[1];
+    expect(foe.trainerId).toBe(villagerTrainerId(npcId));
+    expect(foe.party.length).toBeGreaterThanOrEqual(1);
+    expect(foe.party.length).toBeLessThanOrEqual(VILLAGER_TEAM_MAX);
+    for (const b of foe.party) {
+      expect(top - b.creature.level).toBeGreaterThanOrEqual(0);
+      expect(top - b.creature.level).toBeLessThanOrEqual(VILLAGER_LEVEL_UNDER);
+    }
+    // already in a battle: the room starts nothing more
+    expect((await api(s, 'POST', '/npc/act', acc.access, { npcId, action: 'battle' })).body.code).toBe('inBattle');
     await j.room.leave(true);
   }, 60_000);
 });

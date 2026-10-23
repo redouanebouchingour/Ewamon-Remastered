@@ -1,6 +1,6 @@
 # Ewamon Remastered, standalone: `docker compose up --build` (see docker-compose.yml).
 # Targets: `server` (Colyseus WS + Fastify REST under tsx, PGlite in /data) and `web` (the built client behind nginx,
-# which also proxies /api, /colyseus and the NPC voice LLM, so the browser only ever talks to one origin).
+# which also proxies /api, /colyseus and the NPC LLM, so the browser only ever talks to one origin).
 
 FROM node:22-bookworm-slim AS deps
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true
@@ -13,19 +13,14 @@ RUN pnpm install --frozen-lockfile --filter "@ewa/server..." --filter "@ewa/clie
 FROM deps AS client-build
 # relative: nginx serves the client and proxies these on the same origin (packages/client/src/net/api.ts, npcChat.ts)
 ARG VITE_API_URL=/api
-ARG VITE_NPC_LLM_URL=/voice/llm/v1
-ARG VITE_NPC_TOOL_URL=/voice/tools/v1
-ARG VITE_NPC_LLM_MODEL=gemma3-1b
-# the client needs an absolute socket URL (net/WorldSession.ts defaultWsUrl); docker-compose.yml sets it from EWA_PORT,
-# a public host would use e.g. wss://ewamon.example.com/colyseus
-ARG VITE_WS_URL=ws://localhost:8080/colyseus
-# llama.cpp turns thinking off itself (`--reasoning-budget 0`, docker-compose.yml); the Llama.cpp switch the client
-# sends by default would stop it enforcing the tool pass's `tool_choice: required` (voice/npcChat.ts `reasoning`)
-ARG VITE_NPC_LLM_REASONING=default
-ARG VITE_NPC_TOOL_REASONING=default
-ENV VITE_API_URL=$VITE_API_URL VITE_NPC_LLM_URL=$VITE_NPC_LLM_URL VITE_NPC_TOOL_URL=$VITE_NPC_TOOL_URL \
-    VITE_NPC_LLM_MODEL=$VITE_NPC_LLM_MODEL VITE_WS_URL=$VITE_WS_URL \
-    VITE_NPC_LLM_REASONING=$VITE_NPC_LLM_REASONING VITE_NPC_TOOL_REASONING=$VITE_NPC_TOOL_REASONING
+ARG VITE_NPC_LLM_URL=/npc/llm/v1
+# one model for both NPC passes (talk/npcChat.ts; VITE_NPC_TOOL_MODEL / _URL would split them again)
+ARG VITE_NPC_LLM_MODEL=gemma4-e2b
+# a path resolves against the page's own origin (net/WorldSession.ts defaultWsUrl), so the game works from any host
+# that reaches nginx (localhost, a LAN IP, a domain); an absolute URL such as wss://ewamon.example.com/colyseus also works
+ARG VITE_WS_URL=/colyseus
+ENV VITE_API_URL=$VITE_API_URL VITE_NPC_LLM_URL=$VITE_NPC_LLM_URL VITE_NPC_LLM_MODEL=$VITE_NPC_LLM_MODEL \
+    VITE_WS_URL=$VITE_WS_URL
 RUN pnpm --filter @ewa/client exec vite build
 
 FROM deps AS server

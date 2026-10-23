@@ -2219,11 +2219,11 @@ the second isolated client (the component over the landing page: the foe and own
 - The claim needs no new client code: its payout is in the battle's rewards and its toast is a plain server `toast`.
 - The poster's eyebrow names the zone the player stands in (a town when opened from the Marshal).
 
-## NPC voice talk (2026-10-22)
+## NPC talk (2026-10-22)
 
 - Over any person's dialogue (not a sign: `DialogueUi.noTalk`, set for lore), C (or the Chat button) opens a text
   field in the box; the player types English and Enter sends. The dialogue's keys ignore events aimed at a text field,
-  so E / Space / H / K type normally there. `voice/npcChat.ts` streams the reply from LM
+  so E / Space / H / K type normally there. `talk/npcChat.ts` streams the reply from LM
   Studio (`qwen3.5-0.8b`) in two passes: the talk pass streams the NPC's words with reasoning off and no tools;
   then the tool pass (same model) reads the exchange and must call at least one tool (`tool_choice: required`,
   reasoning off, token-capped since gemma sometimes drifts into reasoning anyway: no call = nothing).
@@ -2235,17 +2235,18 @@ the second isolated client (the component over the landing page: the foe and own
   The guard drops a call the NPC's words do not mention or only threaten, and turns give / take round when the
   wording points the other way: 14/20, ~200 ms, most misses an action dropped rather than a wrong one. The patterns
   are English only. `VITE_NPC_TOOL_MODEL=gemma-4-e4b-it-qat` brings gemma back (the guard still runs). `stripThink` drops a stray `<think>` block.
-  `state/voiceTalk.ts` holds the conversation; the DialogueBox shows it as a scrolling log (every line said and every reply, the streaming one last).
-- Client-only and local: Vite proxies `/voice/llm` → `EWA_LLM_TARGET` (default http://localhost:1234), in dev and
+  `state/npcTalk.ts` holds the conversation; the DialogueBox shows it as a scrolling log (every line said and every reply, the streaming one last).
+- Client-only and local: Vite proxies `/npc/llm` → `EWA_LLM_TARGET` (default http://localhost:1234), in dev and
   preview. `VITE_NPC_LLM_URL`, `VITE_NPC_LLM_MODEL` / `VITE_NPC_LLM_REASONING` (talk pass), `VITE_NPC_TOOL_MODEL` / `VITE_NPC_TOOL_REASONING` (tool
-  pass; reasoning = an Llama.cpp `reasoning_effort` or `default`) override; `VITE_NPC_VOICE=0` hides it. Not in the SPEC; the story never sees it.
+  pass; reasoning = an Llama.cpp `reasoning_effort` or `default`) override; `VITE_NPC_TALK=0` hides it. Not in the SPEC; the story never sees it.
 - Speech input (hold V, MediaRecorder → whisper.cpp's `whisper-server`, `/voice/stt`) was removed (2026-10-22): too
   slow. Typing is the only way to talk.
 - Tools: after each reply the tool pass calls what the NPC does: `slap_user`, `kick_user`, `give_money` / `take_money`
-  (`amount` ≤ 1 000), `give_ewamon`, `take_ewamon`, or `do_nothing` (capped at 120 tokens). `state/voiceTalk.runTools`
+  (`amount` ≤ 1 000), `give_ewamon`, `take_ewamon`, or `do_nothing` (capped at 120 tokens). `state/npcTalk.runTools`
   plays the hits first, then the rest through `POST /npc/act` (server notes: NPC wallet, gift cooldown, a taken
   creature is released for good, never the last or a locked one), applies the delta and toasts. What happened (or
-  was refused) is recorded on the turn in English (`ChatTurn.events`) and given to the talk pass as the scene so far.
+  was refused) is recorded on the turn in English (`ChatTurn.events`) and told to the talk pass in square brackets at
+  the start of the next user turn.
   The tool pass runs in the background (2026-10-22): the phase is idle once the words are in, so the player can talk
   again at once. Tool passes queue one after another (hits and money in the order the NPC said them) and write their
   events onto their own reply, found by identity; a reply that starts before the previous tool pass is done does not
@@ -2267,26 +2268,60 @@ the second isolated client (the component over the landing page: the foe and own
   them (`leaveTalk`: in-flight work aborted, a line still waiting for its answer dropped, the turns kept), and the next
   line resumes it, so a beat's `onFinish` (a battle, a gym challenge, the tutor screen) still runs only by paging past
   the scripted lines. Closing the dialogue (paging past the last line, a battle) ends the talk (`endTalk`).
-- The talk prompt is deliberately tiny (2026-10-22): "You are an NPC in the game Ewamon. Act accordingly.", "Ewamon is a game similar to pokemon, but instead of pokemons contains ewamons", then "The
-  character you play is:" with at most four sentences from the persona (name + role + place, the temperament, the
-  scripted lines, and the last three tool events as "So far in this conversation: …" when there are any), then
-  "Engage, and answer any question the user asks you. No matter the subject." The earlier prompt (stand up for
-  yourself, stay in the world, two or three sentences, only know Ewamon) made gemma3-1b's villagers curt, aggressive
-  and unwilling to chat; off-topic questions (a Python for loop) now get a friendly answer. It still addresses the NPC
-  as "you": written as "Bram is hot-headed…" it came back as narration ("Bram sits on the bench. He looks at you…").
-- Docker splits the passes over two llama.cpp servers (one model each): gemma3-1b talks (`/voice/llm`), qwen3.5-0.8b
-  calls the tools (`/voice/tools`, `VITE_NPC_TOOL_URL`; unset = the talk URL, as with Llama.cpp). Measured 2026-10-22:
+- The talk system prompt is five sentences of instructions (2026-10-23): who the NPC is (name + role + place, a
+  villager in Ewamon, "a game like Pokémon"), its temperament, what it can do ("slap or kick the traveller, give them
+  money or take theirs, give them an Ewamon or take one of theirs: to do it, just say it"; the tool pass carries it
+  out), fury when slapped, kicked or insulted ("yell, curse and swear at them with foul words, insult them back and
+  threaten them"), and "Otherwise chat and answer
+  any question, whatever the subject, with only the words you say out loud" (gemma3-1b wrote `*my voice higher than
+  usual*` and other role-play). Longer prompts made the villagers worse. The conversation is a plain user / assistant
+  message log (`chatMessages`), not part of the prompt: the scripted lines open it as the NPC's reply to a "Hello.",
+  tool events go in brackets on the next user turn, and same-role turns are merged and the log starts on a user turn,
+  which gemma3's template requires. Explaining the brackets in the prompt made it answer with `[asides]`, so it is
+  left out; `tidyReply` drops round and square brackets, `stripThink` a single-asterisk span of three words or more
+  (keeping `a *beautiful* city`) and emoji.
+- Provoked (2026-10-23): a slap, a kick or a line with a rude word (`INSULT`, `provoked`) gets `[You are furious.]` in
+  its user turn: with the rule only in the prompt, most hits and insults drew a mild "Watch it!". The NPC hitting back
+  is the tool pass's job: gemma3-1b never says the slap unless given the exact words, and then it parrots them ("Take
+  this slap!" on every reply, friendly ones too). The tool pass is told that a provoked NPC hits back, and `guardCalls`
+  keeps a hit after a provocation even when the reply only yells. Measured on 32 live exchanges: 8/8 slaps and kicks
+  and 5/8 insults hit back, 0/16 friendly or begging lines did.
+- Swearing back (2026-10-23): with an uncensored gemma4-e2b, the fury rule and the marker say to swear
+  (`[You are furious: swear at them and insult them back.]`). Checked live: insults and a slap drew foul-mouthed replies
+  ("you little shit", "you miserable wanker"), and a friendly line stayed friendly.
+- Villager battles (2026-10-23): a `start_battle` tool, and "battle them with your Ewamon" among what the NPC can do. A
+  line that challenges the NPC (`challenged`: battle / duel / fight / challenge, not turned down) gets `[You accept the
+  challenge: …]` (it wins over the fury note) and `guardCalls` starts the battle whatever the tool pass called, so a
+  challenge is never talked away; a battle the NPC offers on its own needs a battle word and must not be only a
+  threat. `runTools` plays it last through `POST /npc/act battle` and closes the dialogue (which ends the talk); the
+  zone room opens the battle. `foeIdentity` names a `villager:<npc id>` foe after the NPC, with its look. Live on
+  gemma4-e2b: 3/3 challenges ("I challenge you to a battle!", "Let's fight, you idiot.", "Wanna have an Ewamon
+  duel?") were accepted and called `start_battle` without the guard's help; a friendly question called nothing.
+- Docker splits the passes over two llama.cpp servers (one model each): gemma3-1b talks (`/npc/llm`), qwen3.5-0.8b
+  calls the tools (`/npc/tools`, `VITE_NPC_TOOL_URL`; unset = the talk URL, as with Llama.cpp). Measured 2026-10-22:
   on 84 replies gemma stayed short and in character (0 third person, 0 loops, p90 2.8 s) where qwen rambled (2, 1,
   4.3 s); gemma3-1b's template has no tool support, so llama.cpp drops the tools and it never calls one (8/24 labelled
   exchanges, only the do-nothing ones; 15/24 even forced through a JSON schema) against qwen's 19/24 guarded.
+- One model since 2026-10-23: gemma4-e2b does both passes on the one llama.cpp server (`/npc/llm`; `llm-tools` and
+  `/npc/tools` are gone, `TOOL_MODEL` / `TOOL_BASE` default to the talk pass's). It needs `enable_thinking: false` in
+  the request (the client's default `none` reasoning; the Docker build no longer sets `default`): without it the
+  reply was its reasoning ("The user asked… Plan: …"), `--reasoning-budget 0` alone does not stop that, and unlike
+  qwen it still enforces `tool_choice: required`. Measured on 8 live replies and 8 labelled tool exchanges: in
+  character and on topic, talk 0.5–1.7 s, tools 8/8 right at 0.4–0.6 s. The rest of this section was written against
+  gemma3-1b / qwen3.5-0.8b; the prompt, the tidying and the guard are unchanged.
+- Robbery (2026-10-23): a player line that names money and demands it (`robbed`: "give me your money", "empty your
+  pockets", "hand over your coins or else") gets `[You are scared and you give in: say how many coins you hand over.]`
+  instead of the furious note. Without it gemma4-e2b paid 1 of 12 live robberies (it refused or changed the subject);
+  with it 18 of 24 paid (amounts the NPC names, mostly 3–100 coins). After a robbery `guardCalls` turns any money call
+  into `give_money`: the tool pass read "Here, take these" as `take_money` half the time.
 - The talk pass samples like gemma3-1b recommends: temperature 1.0, top_p 0.95, top_k 64, min_p 0 (qwen at 0.7 looped a
   sentence until the token cap now and then; a presence or repeat penalty changed nothing for gemma). The tool pass
   stays at temperature 0.
 - No example turns: gemma took them for the real conversation ("What did I just say?" → a line from the examples) and
   wrote whole "Traveller: … / You: …" scripts when they sat in the system prompt. Naming robots / AIs in the prompt
   ("laugh it off") made it bring them up unasked (6/90), so it is left out. The reply is tidied, not the prompt: it
-  stops after 6 sentences (was 3) within 320 tokens (was 200), and only a bracket not right after a word is dropped as a
-  stage direction, so `print(e)` in a code answer stays (2026-10-22). History is capped at 32 turns (was 8, 2026-10-22: a conversation read as forgotten after four exchanges).
+  stops after 6 sentences (was 3) within 320 tokens (was 200), and only a round or square bracket not right after a word is dropped as
+  a stage direction, so `print(e)` in a code answer stays (2026-10-22). History is capped at 32 messages (was 8, 2026-10-22: a conversation read as forgotten after four exchanges).
 
 ## First-person view (2026-10-22, not in the SPEC)
 

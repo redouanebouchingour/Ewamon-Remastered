@@ -4,7 +4,8 @@
  * trainer (gym leader, Warden, Champion), else a zone trainer (route trainers and the story trainers a beat fights,
  * e.g. Sable), else a gym-hall trainer. Nothing here decides game truth.
  */
-import { ARENA_DAILY, ARENA_TRAINING, LEAGUE, TOWER, allZones, ghostOwner, interiorTrainers } from '@ewa/content';
+import { ARENA_DAILY, ARENA_TRAINING, LEAGUE, TOWER, allZones, ghostOwner, interiorNpcs, interiorTrainers } from '@ewa/content';
+import { villagerNpcId } from '@ewa/protocol';
 import type { LeagueTrainer } from '@ewa/content';
 import type { BattleState, TypeName } from '@ewa/core';
 import { species } from '../data/content';
@@ -27,6 +28,16 @@ interface TrainerRow { readonly name: string; readonly look: string }
 /** Arena training: the partner's look per difficulty (render looks the player bodies use). */
 const TRAINING_LOOKS: Readonly<Record<keyof typeof ARENA_TRAINING, string>> = { easy: 'casual3_male', normal: 'casual_female', hard: 'suit_male' };
 let trainers: Map<string, TrainerRow> | null = null;
+let villagers: Map<string, TrainerRow> | null = null;
+
+/** Every zone and interior NPC by id, for a villager's battle (NPC talk; built once, on first use). */
+function villagerRows(): Map<string, TrainerRow> {
+  if (villagers !== null) return villagers;
+  const m = new Map<string, TrainerRow>();
+  for (const z of allZones()) for (const n of [...z.npcs, ...interiorNpcs(z.id)]) if (!m.has(n.id)) m.set(n.id, { name: n.name, look: n.look });
+  villagers = m;
+  return m;
+}
 
 /** Every zone trainer and gym-hall trainer by id (built once, on first use). */
 function trainerRows(): Map<string, TrainerRow> {
@@ -61,6 +72,10 @@ export function foeIdentity(trainerId: string, leadSpecies: string | null = null
   // ghost trainers: another trainer's party, left behind when they went offline
   const owner = ghostOwner(trainerId);
   if (owner !== null) return { id: trainerId, name: `${owner}'s ghost`, title: 'Ghost trainer', type: lead, look: null, league: null };
+  // NPC talk: a villager who took up the player's challenge
+  const npcId = villagerNpcId(trainerId);
+  const villager = npcId === null ? undefined : villagerRows().get(npcId);
+  if (villager !== undefined) return { id: trainerId, name: villager.name, title: 'Villager', type: lead, look: villager.look, league: null };
   const row = trainerRows().get(trainerId);
   if (row !== undefined) return { id: trainerId, name: row.name, title: null, type: lead, look: row.look, league: null };
   const tail = trainerId.slice(trainerId.lastIndexOf('.') + 1).replace(/_/g, ' ');

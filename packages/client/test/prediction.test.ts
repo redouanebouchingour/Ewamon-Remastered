@@ -268,7 +268,7 @@ describe('remote interpolation', () => {
   });
 });
 
-describe('shove (NPC voice talk kick)', () => {
+describe('shove (NPC talk kick)', () => {
   it('runs the player along the shove for its duration even while the keys are blocked, then stops', () => {
     const sent: InputPayload[] = [];
     const c = new LocalPlayerController({ held: new Uint8Array(16), cameraYaw: () => 0, blocked: () => true, send: (p) => sent.push({ ...p }) });

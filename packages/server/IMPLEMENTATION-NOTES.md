@@ -1236,10 +1236,10 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   has one; there is no per-hall position check (the Daycare's REST does the same with its zone).
 - Dev helper `pnpm --filter @ewa/server bounty wins|post|list` (scripts/bounty.ts). One writer: stop the server.
 
-## NPC tools (voice talk, 2026-10-22)
+## NPC tools (NPC talk, 2026-10-22)
 
 - `POST /npc/act { npcId, action, amount? }` (`rest/routes/npc.ts`): the save-touching tools the local model picks after
-  an NPC's reply (client `src/voice`; slap / kick stay client-side). The NPC must stand in the caller's presence zone
+  an NPC's reply (client `src/talk`; slap / kick stay client-side). The NPC must stand in the caller's presence zone
   (a ZoneDef npc or an interior resident). Audit `npc.<action>`.
   - `giveMoney` / `takeMoney`: up to `NPC_MONEY_MAX` (1 000). Each NPC keeps a wallet per player, seeded 300–2 000 from
     the world seed and its id; giving draws from it (409 `npcPurseEmpty`), taking adds to it and is capped by the
@@ -1249,6 +1249,14 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   - `takeCreature`: releases the lowest-level unlocked party creature for good, through `creatures.release` (so never
     the last party member, never a locked one: 409 `npcCannotTake`). Locking is the player's protection.
   - Wallets and cooldowns are in memory (a restart refills them); in-memory state moves only after the transaction.
+  - `battle` (2026-10-23): the route publishes `ewa:npcBattle { playerId, npcId }` (`NPC_BATTLE_TOPIC`) and answers
+    with nothing moved; the zone room holding the player opens it (`ZoneRoom.onNpcBattle` → `startVillager`), where
+    the player stands (a hall's arena inside one). Format 'trainer', trainerId `villager:<npc id>`
+    (`villagerTrainerId`), the team `game/villagers.ts villagerTeam`: 1–3 of the zone's land species (seeded by the
+    world seed and the npc id, so the same every time), each 0–3 levels under the player's strongest creature (a
+    town's fallback slots span the whole game, so slot levels are not used). A win pays trainer exp and the `win
+    trainer` quest event only: no money, no `trainer:<id>:beaten` flag, no `defeatTrainer` (it fights again whenever
+    asked). A refusal in the room (no usable party) goes to the client as an `error`. Not in the SPEC.
 - Env `NPC_TOOLS` 'on' | 'off'; unset = on, except in production (the route can be called without the model).
 
 ## Breakdance emote (2026-10-22)

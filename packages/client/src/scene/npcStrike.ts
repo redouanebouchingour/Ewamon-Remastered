@@ -1,5 +1,5 @@
 /**
- * NPC voice talk's slap / kick, the world half (2026-10-22). The local model's tool pass decided the NPC hits the
+ * NPC talk's slap / kick, the world half (2026-10-22). The local model's tool pass decided the NPC hits the
  * player (`state/npcFx.ts`); this plays it on the NPC's director actor: a quick run at the player, a beat at contact
  * (`onHit`: the sound, the screen burst and — for a kick — the player's knockback), then a walk back to its own spot.
  * The rigs have no strike clip, so the lunge is the strike. While it plays World3D turns the player toward the NPC.

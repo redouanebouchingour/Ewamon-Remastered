@@ -8,7 +8,7 @@
  * "n more" / "Close" with a paper key chip.
  *
  * NPC talk (2026-10-22): over any person's lines, C opens a text field; the NPC answers what the player types in
- * character from a local model (`state/voiceTalk.ts`). H slaps and K kicks the NPC, who answers that too. The whole conversation shows as a log; while it is on screen Enter / E /
+ * character from a local model (`state/npcTalk.ts`). H slaps and K kicks the NPC, who answers that too. The whole conversation shows as a log; while it is on screen Enter / E /
  * Escape return to the scripted lines and keep it (the next line resumes it), so a beat's `onFinish` still runs only by
  * paging past them. Closing the dialogue ends the conversation: E on the person again starts a new one.
  */
@@ -19,8 +19,8 @@ import type { ZoneId } from '@ewa/content';
 import { useSessionStore } from '../state/session';
 import { useUiStore } from '../state/ui';
 import type { DialogueUi } from '../state/ui';
-import { endTalk, hitNpc, leaveTalk, sendText, useVoiceTalkStore } from '../state/voiceTalk';
-import type { NpcPersona } from '../voice/npcChat';
+import { endTalk, hitNpc, leaveTalk, sendText, useNpcTalkStore } from '../state/npcTalk';
+import type { NpcPersona } from '../talk/npcChat';
 import s from './DialogueBox.module.css';
 
 export const LINES_PER_PAGE = 3;
@@ -36,7 +36,7 @@ function advance(): void {
   } else ui.setDialogue({ ...d, index: next });
 }
 
-const VOICE_ON = import.meta.env['VITE_NPC_VOICE'] !== '0';
+const TALK_ON = import.meta.env['VITE_NPC_TALK'] !== '0';
 
 function placeOf(zoneId: ZoneId | null): string | null {
   if (zoneId === null) return null;
@@ -56,14 +56,14 @@ function personaOf(d: DialogueUi): NpcPersona {
 
 function typedSend(text: string): boolean {
   const d = useUiStore.getState().dialogue;
-  if (d === null || d.noTalk === true || !VOICE_ON || text.trim() === '' || useVoiceTalkStore.getState().phase !== 'idle') return false;
+  if (d === null || d.noTalk === true || !TALK_ON || text.trim() === '' || useNpcTalkStore.getState().phase !== 'idle') return false;
   sendText(d.targetId, personaOf(d), text);
   return true;
 }
 
 function hit(kind: 'slap' | 'kick'): void {
   const d = useUiStore.getState().dialogue;
-  if (d === null || d.noTalk === true || !VOICE_ON) return;
+  if (d === null || d.noTalk === true || !TALK_ON) return;
   hitNpc(d.targetId, personaOf(d), kind);
 }
 
@@ -75,25 +75,25 @@ function inField(e: KeyboardEvent): boolean {
 /** a conversation is on screen for the open dialogue */
 function talking(): boolean {
   const d = useUiStore.getState().dialogue;
-  const t = useVoiceTalkStore.getState();
+  const t = useNpcTalkStore.getState();
   return d !== null && t.targetId === d.targetId && !t.hidden && (t.turns.length > 0 || t.phase !== 'idle' || t.error !== null);
 }
 
 export function DialogueBox() {
   const d = useUiStore((st) => st.dialogue);
   const inBattle = useUiStore((st) => st.battle !== null);
-  const talk = useVoiceTalkStore(useShallow((st) => st));
+  const talk = useNpcTalkStore(useShallow((st) => st));
   const ref = useRef<HTMLDivElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const [typing, setTyping] = useState(false);
   const [draft, setDraft] = useState('');
   const open = d !== null && !inBattle;
-  const canTalk = VOICE_ON && d !== null && d.noTalk !== true;
+  const canTalk = TALK_ON && d !== null && d.noTalk !== true;
 
   // the conversation belongs to one dialogue: closing it, or opening another, ends the talk
   const targetId = open ? d.targetId : null;
   useEffect(() => {
-    if (useVoiceTalkStore.getState().targetId !== targetId) endTalk();
+    if (useNpcTalkStore.getState().targetId !== targetId) endTalk();
     setTyping(false);
     setDraft('');
   }, [targetId]);
@@ -108,13 +108,13 @@ export function DialogueBox() {
     if (!open) return;
     const onKey = (e: KeyboardEvent): void => {
       if (e.ctrlKey || e.metaKey || e.altKey || inField(e)) return;
-      if (e.code === 'KeyC' && VOICE_ON && useUiStore.getState().dialogue?.noTalk !== true) {
+      if (e.code === 'KeyC' && TALK_ON && useUiStore.getState().dialogue?.noTalk !== true) {
         e.preventDefault();
         e.stopPropagation();
         setTyping(true);
         return;
       }
-      if ((e.code === 'KeyH' || e.code === 'KeyK') && VOICE_ON && useUiStore.getState().dialogue?.noTalk !== true) {
+      if ((e.code === 'KeyH' || e.code === 'KeyK') && TALK_ON && useUiStore.getState().dialogue?.noTalk !== true) {
         e.preventDefault();
         e.stopPropagation();
         if (!e.repeat) hit(e.code === 'KeyH' ? 'slap' : 'kick');

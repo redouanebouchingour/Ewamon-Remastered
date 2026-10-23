@@ -904,15 +904,25 @@ export const DaycareActionRes = z.object({ daycare: DaycareRes, party: Party, bo
 export const EggParams = z.object({ id: Uuid });
 export const EggMoveReq = z.object({ place: z.enum(EGG_PLACES) });
 
-// ---- NPC voice talk -----------------------------------------------------------------------------------------------------
+// ---- NPC talk -----------------------------------------------------------------------------------------------------
 
 /**
- * The local model's tools (client voice talk) that touch the save: the NPC the player is talking to gives or takes up
+ * The local model's tools (client NPC talk) that touch the save: the NPC the player is talking to gives or takes up
  * to `NPC_MONEY_MAX` money (giving is limited by its wallet, taking by the player's money), gives one Ewamon, or takes
- * one of the player's. Slap / kick are client-only.
+ * one of the player's, or starts an Ewamon battle with the player (`battle`: the zone room opens it; the reply moves
+ * nothing). Slap / kick are client-only.
  */
 export const NPC_MONEY_MAX = 1000;
-export const NPC_ACTIONS = ['giveMoney', 'takeMoney', 'giveCreature', 'takeCreature'] as const;
+export const NPC_ACTIONS = ['giveMoney', 'takeMoney', 'giveCreature', 'takeCreature', 'battle'] as const;
+/** The NPC side's `trainerId` in a battle with a villager (`battle`): `villager:<npc id>`. */
+const VILLAGER_PREFIX = 'villager:';
+export function villagerTrainerId(npcId: string): string {
+  return `${VILLAGER_PREFIX}${npcId}`;
+}
+/** The npc id of a villager battle's `trainerId`, else null. */
+export function villagerNpcId(trainerId: string | null | undefined): string | null {
+  return typeof trainerId === 'string' && trainerId.startsWith(VILLAGER_PREFIX) ? trainerId.slice(VILLAGER_PREFIX.length) : null;
+}
 export const NpcActReq = z.object({
   npcId: z.string().min(1).max(80),
   action: z.enum(NPC_ACTIONS),
@@ -922,7 +932,7 @@ export const NpcActReq = z.object({
 export const NpcActRes = z.object({
   /** the caller's money after the action */
   money: Money,
-  /** money moved (0 for a creature action) */
+  /** money moved (0 for a creature action or a battle) */
   amount: Money,
   /** what the NPC has left to give */
   wallet: Money,

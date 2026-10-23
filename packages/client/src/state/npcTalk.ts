@@ -6,26 +6,28 @@
  * line resumes it; `endTalk` (dialogue closed or target changed) drops it. Both abort the reply in flight; only
  * `endTalk` stops the tool passes still running (what the NPC said, it still does).
  *
- * After each reply the tool pass picks what the NPC does (`voice/npcChat`) in the background: the player can talk
+ * After each reply the tool pass picks what the NPC does (`talk/npcChat`) in the background: the player can talk
  * again as soon as the words are in. Tool passes run one at a time, in order, and what one did lands on its own reply.
  * A slap or a kick plays in the world (`state/npcFx`); money and Ewamon go through `POST /npc/act`, which checks the NPC stands in the player's zone and
- * keeps its wallet; the delta lands in the session like any other.
+ * keeps its wallet; the delta lands in the session like any other. A battle (`start_battle`) goes last, through the
+ * same route: the zone room opens it, and the dialogue closes so the battle can take the screen.
  */
 import { create } from 'zustand';
 import { NPC_MONEY_MAX } from '@ewa/protocol';
 import type { NPC_ACTIONS } from '@ewa/protocol';
 import { apiFetch, isApiFailure } from '../net/api';
 import { speciesName } from '../data/content';
-import { GIVE_EWAMON, GIVE_MONEY, KICK, SLAP, TAKE_EWAMON, TAKE_MONEY, TOOL_MODEL, judgeExchange, playerHitTurn, streamNpcReply } from '../voice/npcChat';
+import { GIVE_EWAMON, GIVE_MONEY, KICK, SLAP, START_BATTLE, TAKE_EWAMON, TAKE_MONEY, TOOL_MODEL, judgeExchange, playerHitTurn, streamNpcReply } from '../talk/npcChat';
 import type { StrikeKind } from '../scene/npcStrike';
-import type { ChatTurn, NpcPersona, ToolCall } from '../voice/npcChat';
+import type { ChatTurn, NpcPersona, ToolCall } from '../talk/npcChat';
 import { strike } from './npcFx';
 import { toast } from './notifications';
 import { toInventoryDelta, useSessionStore } from './session';
+import { useUiStore } from './ui';
 
 export type TalkPhase = 'idle' | 'thinking' | 'replying';
 
-export interface VoiceTalkState {
+export interface NpcTalkState {
   /** the dialogue target the conversation belongs to (null = none) */
   readonly targetId: string | null;
   readonly phase: TalkPhase;
@@ -37,11 +39,11 @@ export interface VoiceTalkState {
   readonly hidden: boolean;
 }
 
-const IDLE: VoiceTalkState = { targetId: null, phase: 'idle', turns: [], partial: '', error: null, hidden: false };
+const IDLE: NpcTalkState = { targetId: null, phase: 'idle', turns: [], partial: '', error: null, hidden: false };
 
-export const useVoiceTalkStore = create<VoiceTalkState>()(() => IDLE);
+export const useNpcTalkStore = create<NpcTalkState>()(() => IDLE);
 
-const set = (p: Partial<VoiceTalkState>): void => useVoiceTalkStore.setState(p);
+const set = (p: Partial<NpcTalkState>): void => useNpcTalkStore.setState(p);
 
 let inflight: AbortController | null = null;
 /** the tool passes of this conversation, run one after another in the background; `endTalk` aborts them */
@@ -50,7 +52,7 @@ let toolQueue: Promise<void> = Promise.resolve();
 
 /** Joins (or starts, when the target changed) the conversation with `targetId`; false while a reply is on its way. */
 function join(targetId: string): boolean {
-  const st = useVoiceTalkStore.getState();
+  const st = useNpcTalkStore.getState();
   if (st.targetId !== targetId) {
     endTalk();
     set({ targetId });
@@ -96,7 +98,7 @@ export function sendText(targetId: string, p: NpcPersona, text: string): void {
  * so the next line can go while the tool pass judges this exchange in the background (`judgeInBackground`).
  */
 async function answer(p: NpcPersona, said: ChatTurn, ac: AbortController): Promise<void> {
-  const turns = [...useVoiceTalkStore.getState().turns, said];
+  const turns = [...useNpcTalkStore.getState().turns, said];
   set({ turns, phase: 'thinking', partial: '' });
   let reply: string;
   try {
@@ -126,7 +128,7 @@ function judgeInBackground(p: NpcPersona, exchange: readonly ChatTurn[], spoken:
       if (signal.aborted) return;
       const events = await runTools(npcId, p.name, calls);
       if (signal.aborted || events.length === 0) return;
-      const now = useVoiceTalkStore.getState().turns;
+      const now = useNpcTalkStore.getState().turns;
       const i = now.indexOf(spoken);
       if (i >= 0) set({ turns: [...now.slice(0, i), { ...spoken, events }, ...now.slice(i + 1)] });
     } catch (e) {
@@ -137,7 +139,7 @@ function judgeInBackground(p: NpcPersona, exchange: readonly ChatTurn[], spoken:
 }
 
 function targetOf(): string {
-  return useVoiceTalkStore.getState().targetId ?? '';
+  return useNpcTalkStore.getState().targetId ?? '';
 }
 
 /** Server actions per tool (slap / kick are client-only). */
@@ -146,16 +148,18 @@ const SERVER_ACTION: Readonly<Record<string, (typeof NPC_ACTIONS)[number]>> = {
   [TAKE_MONEY]: 'takeMoney',
   [GIVE_EWAMON]: 'giveCreature',
   [TAKE_EWAMON]: 'takeCreature',
+  [START_BATTLE]: 'battle',
 };
 
 /**
  * Plays the tool calls: the hits first (each waits for contact), then the save-touching ones through `POST /npc/act`
- * (a toast each; a refusal is toasted and told to the talk pass as what happened). Returns the events, in English,
+ * (a toast each; a refusal is toasted and told to the talk pass as what happened), the battle last (it ends the talk). Returns the events, in English,
  * addressed to the NPC ("You slapped the traveller.") so the talk pass keeps speaking as itself.
  */
 export async function runTools(npcId: string, name: string, calls: readonly ToolCall[]): Promise<string[]> {
   const events: string[] = [];
-  const ordered = [...calls].sort((a, b) => Number(b.name === SLAP || b.name === KICK) - Number(a.name === SLAP || a.name === KICK));
+  const rank = (c: ToolCall): number => (c.name === SLAP || c.name === KICK ? 0 : c.name === START_BATTLE ? 2 : 1);
+  const ordered = [...calls].sort((a, b) => rank(a) - rank(b));
   for (const c of ordered) {
     if (c.name === SLAP || c.name === KICK) {
       await strike(c.name === SLAP ? 'slap' : 'kick', npcId);
@@ -195,6 +199,10 @@ async function act(npcId: string, name: string, action: (typeof NPC_ACTIONS)[num
         toast('danger', `${name} took ${lost === undefined ? 'one of your Ewamon' : nameOf(lost)}!`);
         return `You took an Ewamon from the traveller: ${lost === undefined ? 'a creature' : nameOf(lost)}.`;
       }
+      case 'battle':
+        // the zone room opens the battle; the dialogue makes way (closing it ends the talk)
+        useUiStore.getState().setDialogue(null);
+        return 'You started an Ewamon battle with the traveller.';
     }
   } catch (e) {
     const code = isApiFailure(e) ? e.error.code : '';
@@ -227,7 +235,7 @@ const REFUSED_TALK: Readonly<Record<string, string>> = {
 export function leaveTalk(): void {
   inflight?.abort();
   inflight = null;
-  const turns = useVoiceTalkStore.getState().turns;
+  const turns = useNpcTalkStore.getState().turns;
   set({ phase: 'idle', partial: '', error: null, hidden: true, turns: turns.at(-1)?.role === 'user' ? turns.slice(0, -1) : turns });
 }
 
@@ -237,7 +245,7 @@ export function endTalk(): void {
   tools.abort();
   tools = new AbortController();
   toolQueue = Promise.resolve();
-  useVoiceTalkStore.setState(IDLE);
+  useNpcTalkStore.setState(IDLE);
 }
 
 function message(e: unknown): string {

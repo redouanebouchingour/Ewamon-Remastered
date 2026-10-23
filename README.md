@@ -37,16 +37,15 @@ The server needs `JWT_SECRET` (≥ 32 chars) in its environment; without `DATABA
 
 ### In Docker (standalone, with NPC talk on the CPU)
 
-Put the models in `models/` (gitignored): `models/gemma3-1b/model.gguf` (the villagers' words),
-`models/qwen3.5-0.8b/model.gguf` (what they do: the tool calls). Then:
+Put the model in `models/` (gitignored): `models/gemma4-e2b/model.gguf` does both the villagers' words and what they
+do (the tool calls). Then:
 
 ```bash
 docker compose up --build
 ```
 
 The game is on <http://localhost:8080>. `web` is the built client behind nginx, which proxies `/api`, `/colyseus`,
-`/voice/llm` and `/voice/tools`; `server` keeps PGlite in the `ewa-data` volume; `llm` and `llm-tools` are llama.cpp
-servers. `EWA_PORT`, `LLM_THREADS` and `JWT_SECRET` can be set in the shell or in a `.env`.
+and `/npc/llm`; `server` keeps PGlite in the `ewa-data` volume; `llm` is the llama.cpp server. `EWA_PORT`, `LLM_THREADS` and `JWT_SECRET` can be set in the shell or in a `.env`.
 
 ## Check it
 

@@ -2,7 +2,7 @@
  * @ewa/client Vite config (SPEC §20.1, §20.2.2, §20.10.2).
  *
  * Dev proxies: `/api` → REST on :4000 (mounted at the root, so the prefix is stripped) and `/colyseus` → the
- * Colyseus WebSocket on :2567 (the client connects straight to VITE_WS_URL, default ws://localhost:2567; the
+ * Colyseus WebSocket on :2567 (the client connects straight to VITE_WS_URL, default ws://<page host>:2567; the
  * proxy exists for same-origin setups). `publicDir` stays the default `public/` (pipeline outputs live there).
  */
 import { existsSync, readdirSync } from 'node:fs';
@@ -14,10 +14,10 @@ import type { HtmlTagDescriptor, Plugin } from 'vite';
 
 const API_TARGET = process.env['EWA_API_TARGET'] ?? 'http://localhost:4000';
 const WS_TARGET = process.env['EWA_WS_TARGET'] ?? 'ws://localhost:2567';
-// NPC talk (src/voice): Llama.cpp's OpenAI-compatible API
+// NPC talk (src/talk): Llama.cpp's OpenAI-compatible API
 const LLM_TARGET = process.env['EWA_LLM_TARGET'] ?? 'http://localhost:1234';
-const voiceProxy = {
-  '/voice/llm': { target: LLM_TARGET, changeOrigin: true, rewrite: (p: string) => p.replace(/^\/voice\/llm/, '') },
+const llmProxy = {
+  '/npc/llm': { target: LLM_TARGET, changeOrigin: true, rewrite: (p: string) => p.replace(/^\/npc\/llm/, '') },
 };
 const fontsDir = fileURLToPath(new URL('./public/fonts', import.meta.url));
 
@@ -71,20 +71,22 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // listen on every interface: the game can be opened from another machine by the host's LAN IP
+    host: true,
     // EWA_NO_HMR=1 (the second isolated dev pair, scripts/dev-alt.mjs `client 2`): no file watching and no HMR, so a
     // live check is not reloaded by edits other sessions make in the same checkout (restart it to pick up changes)
     ...(process.env['EWA_NO_HMR'] === '1' ? { hmr: false, watch: null } : {}),
     proxy: {
       '/api': { target: API_TARGET, changeOrigin: true, rewrite: (p) => p.replace(/^\/api/, '') },
       '/colyseus': { target: WS_TARGET, ws: true, changeOrigin: true, rewrite: (p) => p.replace(/^\/colyseus/, '') },
-      ...voiceProxy,
+      ...llmProxy,
     },
   },
   preview: {
     port: 5174,
     proxy: {
       '/api': { target: API_TARGET, changeOrigin: true, rewrite: (p) => p.replace(/^\/api/, '') },
-      ...voiceProxy,
+      ...llmProxy,
     },
   },
   build: {

@@ -76,6 +76,7 @@ import { RAID_JOIN_RANGE_M, RaidRunner, RaidSession } from './raidSession';
 import { TradeCoordinator } from './tradeSession';
 import { EggWalker } from './eggWalk';
 import { EGGS_TOPIC } from '../rest/routes/daycare';
+import { NPC_BATTLE_TOPIC } from '../rest/routes/npc';
 import { TowerSessions } from './towerSession';
 import { advanceQuests, deliveriesFor } from '../game/quests';
 import type { QuestEvent } from '../game/quests';
@@ -89,6 +90,7 @@ import { ambushesOn, tauntOf } from '../game/nemesis';
 import { readEcosystem } from '../game/ecosystem';
 import { boardUpkeep } from '../game/bounties';
 import { WANTED_GHOST_CHANCE } from '@ewa/content';
+import { interiorNpcs } from '@ewa/content';
 import { GHOSTS_PER_ZONE, GHOST_CHANCE, GHOST_DAYS, GHOST_LEVEL_SPAN, ROAMER_CHANCE, ROAMER_LEVEL, ghostReport, roamerOf, roamerZoneAt, seasonAt, shadowLevel } from '@ewa/content';
 
 export interface ZoneMeta {
@@ -450,6 +452,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       if (c?.userData !== undefined) c.userData.repel = { kind: m.kind, steps: m.steps };
     });
     await this.sub('ewa:teleport', (m: { playerId: string }) => this.onTeleport(m.playerId));
+    // NPC talk: a villager took up the player's challenge (POST /npc/act battle)
+    await this.sub(NPC_BATTLE_TOPIC, (m: { playerId: string; npcId: string }) => void this.onNpcBattle(m.playerId, m.npcId));
     // breeding: an egg was collected or moved (daycare routes): the room holding the player re-reads its carried eggs
     await this.sub(EGGS_TOPIC, (m: { playerId: string }) => {
       if (this.clientOf(m.playerId) === undefined) return;
@@ -959,6 +963,25 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     ps.moving = false;
     c.userData.moved = true;
     c.userData.handoverCooldownUntil = this.now() + HANDOVER_COOLDOWN_MS;
+  }
+
+  /**
+   * NPC talk: the villager the player is talking to starts a battle (`battle` tool, POST /npc/act). The NPC must be
+   * one of this zone's (outdoors or in an interior); the battle forms where the player stands (a hall's arena inside
+   * one). A refusal (no usable party) reaches the client as an error.
+   */
+  private async onNpcBattle(playerId: string, npcId: string): Promise<void> {
+    const c = this.clientOf(playerId);
+    const ud = c?.userData;
+    const ps = this.state.players.get(playerId);
+    if (c === undefined || ud === undefined || ps === undefined || ud.battleId !== null || ud.tradeId !== null) return;
+    if (!this.zone.npcs.some((n) => n.id === npcId) && !interiorNpcs(this.zone.id).some((n) => n.id === npcId)) return;
+    try {
+      const res = await this.battles.startVillager({ playerId, sessionId: c.sessionId }, npcId, this.battleAt(ps.x, ps.z), `${this.deps.worldSeed}:villager:${npcId}`);
+      if (!res.ok) this.sendMsg(c, { type: 'error', code: res.code, detail: res.detail });
+    } catch (e) {
+      this.deps.log.error({ err: e, playerId, npcId }, 'villager battle failed');
+    }
   }
 
   /** §30.5 `PlayerState.body/guildTag` re-read after POST /profile or any guild change (`ewa:profile`). */

@@ -62,7 +62,7 @@ export const EnvSchema = z.object({
    */
   BOUNTIES: z.enum(['on', 'off', 'always']).default('on'),
   /**
-   * NPC voice talk's tools (`POST /npc/act`): 'on' = an NPC in the player's zone can give / take money and Ewamon;
+   * NPC talk's tools (`POST /npc/act`): 'on' = an NPC in the player's zone can give / take money and Ewamon;
    * 'off' = refused (409 npcToolsOff). Unset = on except in production, where anyone could call the route without the
    * local model.
    */
