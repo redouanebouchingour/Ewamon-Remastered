@@ -2359,3 +2359,10 @@ pool; `Part3.worldFx`).
   an M2 Max, median whole-frame GPU ms: high 228, medium 163, low 41; texture memory 583 → 192 MB, render targets 36 → 14.
   Bloom alone was ~50 ms of low's ~95 before it was dropped (its mip chain is a dozen passes; quarter resolution barely
   helped), so `low` turns it off rather than shrinking it.
+
+## `CameraRig.orbitBy` (2026-10-23, not in §10.7.2)
+
+- Optional `orbitBy(rad)`: in the diorama, turns the yaw at once (no ease) for a canvas drag; the heading index follows
+  the nearest 90° step so `headingIndex` users (rotate keys, interiors, halls) keep working. `setHeading` with the
+  current index but an off-grid yaw now eases back onto the grid instead of returning early. The placeholder rig has
+  no `orbitBy`.

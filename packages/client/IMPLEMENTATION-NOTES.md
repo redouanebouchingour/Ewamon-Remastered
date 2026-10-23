@@ -2359,3 +2359,10 @@ the second isolated client (the component over the landing page: the foe and own
 - `GraphicsSettings.showFps` (default false): Settings › Graphics › Show FPS puts a mono readout ("58 fps", `FpsChip`)
   in the top bar beside the speedrun clock. World3D's once-a-second `onSecond` writes the drawn frames to
   `useUiStore.fps` when it is on (dev builds always did); with a frame cap the count is the capped rate.
+
+## Smooth diorama drag (2026-10-23, deviates from §20.4.5)
+
+- §20.4.5 turns the heading by 90° per 80 px of horizontal drag. A drag over the canvas now orbits the diorama camera
+  continuously instead, at the first-person look rate (`LOOK_RAD_PER_PX`, drag right looks right): `InputCallbacks.orbit`
+  → render `CameraRig.orbitBy`. The rotate keys still step 90° (from the nearest heading); without `orbit` the input
+  capture falls back to the 80 px step.

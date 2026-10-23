@@ -76,6 +76,8 @@ export default defineConfig({
     // EWA_NO_HMR=1 (the second isolated dev pair, scripts/dev-alt.mjs `client 2`): no file watching and no HMR, so a
     // live check is not reloaded by edits other sessions make in the same checkout (restart it to pick up changes)
     ...(process.env['EWA_NO_HMR'] === '1' ? { hmr: false, watch: null } : {}),
+    // EWA_WATCH_POLL=1 (docker-compose.yml): poll the bind-mounted sources, file events may not cross the mount
+    ...(process.env['EWA_WATCH_POLL'] === '1' ? { watch: { usePolling: true, interval: 300 } } : {}),
     proxy: {
       '/api': { target: API_TARGET, changeOrigin: true, rewrite: (p) => p.replace(/^\/api/, '') },
       '/colyseus': { target: WS_TARGET, ws: true, changeOrigin: true, rewrite: (p) => p.replace(/^\/colyseus/, '') },

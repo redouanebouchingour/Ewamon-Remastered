@@ -10,6 +10,7 @@
     "dev": "pnpm --parallel --filter @ewa/client --filter @ewa/server dev",
     "dev:client": "pnpm --filter @ewa/client dev",
     "dev:server": "pnpm --filter @ewa/server dev",
+    "docker:dev": "docker compose up -d --build",
     "build": "pnpm -r --filter \"{packages/*}\" build",
     "test": "vitest run",
     "test:watch": "vitest",

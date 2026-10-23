@@ -293,6 +293,7 @@ class World implements World3D {
       rotate: (dir) => this.ready && !this.fpOn && this.renderer.camera.setHeading(((this.headingIndex() + dir + 4) & 3) as 0 | 1 | 2 | 3),
       zoom: (dir) => this.ready && !this.fpOn && this.renderer.camera.setZoomStop(Math.max(0, Math.min(2, this.zoomStop() + dir)) as 0 | 1 | 2),
       look: (dx, dy) => this.look(dx, dy),
+      orbit: (dx) => this.ready && !this.fpOn && this.renderer.camera.orbitBy?.(-dx * LOOK_RAD_PER_PX),
       jump: () => undefined,
       toggleBike: () => this.toggleBike(),
       toggleDev: () => {

@@ -4,7 +4,7 @@
  * Held keys (movement, run) are latched into a preallocated `Uint8Array` the LocalPlayerController samples once per
  * frame. Edge actions (interact, chat, emotes, challenge, camera heading, zoom, dev HUD) are dispatched from the
  * keydown / wheel / pointer handlers themselves — outside World3D.tick — to the callbacks World3D provides. In the
- * first-person view a left-button drag looks around (`look`) instead of turning the heading.
+ * first-person view a left-button drag looks around (`look`); in the diorama a drag orbits the camera smoothly (`orbit`).
  * Nothing fires while a DOM input has focus; world actions are also gated by `blocked()` (battle, dialogue, modal,
  * chat open).
  */
@@ -29,6 +29,8 @@ export interface InputCallbacks {
    * view is the diorama (the drag then turns the heading as before).
    */
   look?(dx: number, dy: number): boolean;
+  /** Diorama view: a drag over the canvas orbits the camera by dx CSS px (continuous, no 90° steps). */
+  orbit?(dx: number): void;
   /** true while world actions must not fire (battle, dialogue, modal, chat) */
   blocked(): boolean;
 }
@@ -106,7 +108,7 @@ export function createInputCapture(target: Window, canvas: HTMLElement | null, c
     held.fill(0);
   };
 
-  // wheel → zoom stop; horizontal drag ≥ 80 px → heading (§20.4.5)
+  // wheel → zoom stop; horizontal drag → a continuous orbit (≥ 80 px → heading without `orbit`, §20.4.5)
   let wheelAcc = 0;
   const onWheel = (e: WheelEvent): void => {
     if (cb.blocked()) return;
@@ -138,10 +140,9 @@ export function createInputCapture(target: Window, canvas: HTMLElement | null, c
     }
     if (dragX === null || cb.blocked()) return;
     const dx = e.clientX - dragX;
-    if (Math.abs(dx) >= 80) {
-      cb.rotate(dx > 0 ? -1 : 1);
-      dragX = e.clientX;
-    }
+    dragX = e.clientX;
+    if (cb.orbit !== undefined) cb.orbit(dx);
+    else if (Math.abs(dx) >= 80) cb.rotate(dx > 0 ? -1 : 1);
   };
   const onUp = (): void => {
     dragX = null;

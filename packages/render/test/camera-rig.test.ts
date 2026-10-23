@@ -47,6 +47,21 @@ describe('heading and zoom eases', () => {
     expect(Math.abs(r.orbit.yaw - before)).toBeCloseTo(90 * DEG, 6);
   });
 
+  it('orbitBy turns the yaw at once and keeps the nearest heading index; setHeading snaps back to the grid', () => {
+    const { r } = makeRig();
+    r.update(0);
+    r.orbitBy(10 * DEG);
+    r.update(FRAME);
+    expect(r.orbit.yaw).toBeCloseTo(headingYaw(0) + 10 * DEG, 6);
+    expect(r.headingIndex).toBe(0);
+    r.orbitBy(70 * DEG);   // 80° past heading 0: nearest is heading 1
+    r.update(FRAME);
+    expect(r.headingIndex).toBe(1);
+    r.setHeading(1);       // same index, off the grid: eases onto it
+    run(r, HEADING_TURN_MS + FRAME);
+    expect(r.orbit.yaw).toBeCloseTo(headingYaw(1), 6);
+  });
+
   it('distance eases between stops over 260 ms', () => {
     const { r } = makeRig();
     r.update(0);

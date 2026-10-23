@@ -47,6 +47,13 @@ export const HEADING_TURN_MS = 320;
 export const ZOOM_MS = 260;
 // #endregion
 
+// #region constants — free orbit (implementation values, IMPLEMENTATION-NOTES "CameraRig.orbitBy")
+/** Headings per turn (HEADING_STEP · HEADINGS = 360°). */
+const HEADINGS = 4;
+/** A yaw within this many radians of a heading counts as on the grid. */
+const ON_GRID_RAD = 1e-6;
+// #endregion
+
 // #region constants — follow spring integration (implementation value)
 /**
  * Longest semi-implicit Euler step of the follow spring (s). The integrator is stable only for dt < τ (0.12 s); a
@@ -279,11 +286,25 @@ export class DioramaRig implements CameraRig {
   }
 
   setHeading(h: 0 | 1 | 2 | 3): void {
-    if (this.mode !== 'diorama' || h === this.heading) return;
+    // a free orbit (`orbitBy`) can leave the yaw between headings: the same index then still eases back onto the grid
+    if (this.mode !== 'diorama' || (h === this.heading && Math.abs(angleDelta(this.yawTo, headingYaw(h, this.yawBase))) < ON_GRID_RAD)) return;
     this.heading = h;
     this.yawFrom = this.yaw;
     this.yawTo = this.yaw + angleDelta(this.yaw, headingYaw(h, this.yawBase));
     this.yawT = 0;
+  }
+
+  /**
+   * A drag over the canvas: turns the diorama yaw by `rad` at once (no ease; the drag itself is the motion). The
+   * heading index follows the nearest 90° step, so the rotate keys and the hall / interior logic keep working.
+   */
+  orbitBy(rad: number): void {
+    if (this.mode !== 'diorama' || !Number.isFinite(rad) || rad === 0) return;
+    this.yaw = this.yawTo + rad;
+    this.yawFrom = this.yawTo = this.yaw;
+    this.yawT = 1;
+    const k = Math.round(angleDelta(headingYaw(0, this.yawBase), this.yaw) / (HEADING_STEP * DEG));
+    this.heading = (((k % HEADINGS) + HEADINGS) % HEADINGS) as 0 | 1 | 2 | 3;
   }
 
   /**

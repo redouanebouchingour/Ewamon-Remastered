@@ -260,6 +260,8 @@ export interface ZoneHandle {
 
 export interface CameraRig {
   setHeading(h: 0 | 1 | 2 | 3): void;
+  /** A canvas drag in the diorama: turns the yaw by rad (radians) at once; the heading index follows the nearest 90° step. */
+  orbitBy?(rad: number): void;
   setZoomStop(z: 0 | 1 | 2): void;
   follow(actorId: string | null): void;                     // null = hold position
   /** Pillar 7: eases from the current pose to the battle pose (§10.7.4) over ms; input to the rig is ignored until release. */

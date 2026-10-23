@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * First-person view, the client half: the toggle under the minimap (and F) flips `state/view.ts`; in first person a
- * left-button drag goes to `look` (not the heading turn), in the diorama the drag still turns the heading.
+ * left-button drag goes to `look` (not the heading turn), in the diorama the drag orbits the camera (`orbit`).
  */
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -58,6 +58,17 @@ describe('drag to look', () => {
     const cap = createInputCapture(window, canvas, cb);
     drag(canvas, 120, 0);
     expect(cb.rotate).toHaveBeenCalledWith(-1);
+    cap.dispose();
+  });
+
+  it('diorama with orbit: every move orbits by its px, no 90° heading step', () => {
+    const canvas = document.createElement('div');
+    const orbit = vi.fn();
+    const cb = { ...callbacks(() => false), orbit };
+    const cap = createInputCapture(window, canvas, cb);
+    drag(canvas, 12, 0);
+    expect(orbit).toHaveBeenCalledWith(12);
+    expect(cb.rotate).not.toHaveBeenCalled();
     cap.dispose();
   });
 });

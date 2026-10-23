@@ -41,11 +41,14 @@ Put the model in `models/` (gitignored): `models/gemma4-e2b/model.gguf` does bot
 do (the tool calls). Then:
 
 ```bash
-docker compose up --build
+docker compose up -d --build        # or: pnpm docker:dev
 ```
 
-The game is on <http://localhost:8080>. `web` is the built client behind nginx, which proxies `/api`, `/colyseus`,
-and `/npc/llm`; `server` keeps PGlite in the `ewa-data` volume; `llm` is the llama.cpp server. `EWA_PORT`, `LLM_THREADS` and `JWT_SECRET` can be set in the shell or in a `.env`.
+The game is on <http://localhost:8080>, with live reload: the sources are mounted into the containers. `client` is
+the Vite dev server (the page reloads / hot-swaps on a client edit), `server` runs `tsx watch` (it restarts on a server
+edit). nginx (`web`) proxies the page, `/api`, `/colyseus` and `/npc/llm`; `server` keeps PGlite in the `ewa-data`
+volume; `llm` is the llama.cpp server. A dependency change needs the command again (it rebuilds). `EWA_PORT`,
+`LLM_THREADS` and `JWT_SECRET` can be set in the shell or in a `.env`.
 
 ## Check it
 
