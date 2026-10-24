@@ -238,7 +238,7 @@ async function answer(p: NpcPersona, said: ChatTurn, ac: AbortController): Promi
     reply = await streamNpcReply(p, turns, (text) => set({ phase: 'replying', partial: text }), ac.signal, note);
   } catch (e) {
     if (ac.signal.aborted) return;
-    return set({ phase: 'idle', partial: '', error: `The language model did not answer (is Llama.cpp running on port 1234?): ${message(e)}` });
+    return set({ phase: 'idle', partial: '', error: `The language model did not answer (is the docker llm service up?): ${message(e)}` });
   }
   if (ac.signal.aborted) return;
   const spoken: ChatTurn = { role: 'assistant', content: reply === '' ? '…' : reply };

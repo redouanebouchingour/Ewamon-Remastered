@@ -14,8 +14,9 @@ import type { HtmlTagDescriptor, Plugin } from 'vite';
 
 const API_TARGET = process.env['EWA_API_TARGET'] ?? 'http://localhost:4000';
 const WS_TARGET = process.env['EWA_WS_TARGET'] ?? 'ws://localhost:2567';
-// NPC talk (src/talk): Llama.cpp's OpenAI-compatible API
-const LLM_TARGET = process.env['EWA_LLM_TARGET'] ?? 'http://localhost:1234';
+// NPC talk (src/talk): Llama.cpp's OpenAI-compatible API, by default the docker stack's `llm` service through its nginx
+// (docker-compose.yml publishes only 8080); EWA_LLM_TARGET=http://localhost:1234 for a llama.cpp run on the host
+const LLM_TARGET = process.env['EWA_LLM_TARGET'] ?? 'http://localhost:8080/npc/llm';
 const llmProxy = {
   '/npc/llm': { target: LLM_TARGET, changeOrigin: true, rewrite: (p: string) => p.replace(/^\/npc\/llm/, '') },
 };
