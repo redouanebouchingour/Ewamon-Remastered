@@ -64,6 +64,8 @@ export function deedPhrase(deed: NpcDeed, name: string): string {
       return `lost an Ewamon battle to ${n}`;
     case 'helped':
       return `did a favour for ${n}`;
+    case 'haggledRudely':
+      return `haggled so rudely that ${n} raised the prices`;
   }
 }
 

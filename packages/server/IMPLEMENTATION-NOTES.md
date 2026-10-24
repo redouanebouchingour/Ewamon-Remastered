@@ -1342,3 +1342,31 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
 - The hand-in pays the money and the item, records `helped` with the NPC (`recordNpcDeed`, +2, so the town gossips
   about it too) and answers the standing after. Audit rows `npc.quest.offer` / `accept` / `decline` / `abandon` /
   `claim`.
+
+## Shop haggling (2026-10-24, not in the SPEC)
+
+- `POST /shop/haggle` (`rest/routes/haggle.ts`, registered by `registerNpcRoutes` under the same `NPC_TOOLS` gate):
+  the client's tool pass heard the keeper grant a discount or raise its prices and sends the kind and the percent its
+  words stated. The keeper must be the shopkeeper of the caller's zone (`zoneKeeper`: the interior NPC with role
+  'shopkeeper', resolved through content like `/npc/act`; 409 `npcNotHere` for any other NPC, another zone, or a zone
+  without a keeper: Saltmourn and Skyrend sell from a stall with nobody to haggle with). Refused in a battle.
+- The rules (`game/haggle.ts`, pure `decideHaggle`): a discount is capped at `HAGGLE_DISCOUNT_CAP[feeling]` (how the
+  keeper feels: its own standing, else half the town's, via the new `feelingOf` in game/npcMemory.ts) times
+  `haggleFactor(discounts won at that shop in the last hour)`; a second discount haggle within 2 min is refused (409
+  `haggleCooldown` with `readyAt`); a granted discount keeps the better of the deal in force and the new one, with a
+  fresh 10 min; a granted 0 changes nothing. A markup (capped at 25) always lands, cooldown or not, and replaces the
+  deal. Deeds: a discount given is `giftReceived`, a markup `haggledRudely` (-1). Audit row `shop.haggle` with the
+  asked and granted percent, the cap, the feeling and the deal.
+- `GET /shop/:zoneId` adds the caller's `deal` there and the `keeper` (its name, the cap now, its feeling, `readyAt`);
+  `/shop/buy` charges `dealBuyPrice(base, deal)` and `/shop/sell` pays `dealSellPrice`, both for the deal of the zone's
+  keeper; the audit rows carry the base price and the deal. Without a deal (or with `NPC_TOOLS` off) every price is
+  the content price, so the progression walker and the other shop tests are unchanged.
+- Deviation, the store: the book of deals lives in memory (`HaggleBook`, one per app through a WeakMap keyed by the
+  deps), like the NPC wallets. A deal lasts 10 minutes and the diminishing returns look back one hour, so a restart
+  costs a player at most one short discount (or forgives a markup); the audit rows keep the record. A table would add
+  a migration and a write per haggle for state that is stale within the hour.
+- `npcInZone` names a keeper by `shopkeeperName` ("Hessa, shopkeeper") instead of "Shopkeeper, shopkeeper", so the
+  gossip, the favour journal and the haggle agree.
+- Tests: `test/shop-haggle.test.ts` (the pure rules, the price helpers, the neutral cap with the deal on the shop, buy
+  and sell at it and its expiry, the caps by standing with the cooldown and the shrinking repeats, a hostile player,
+  a markup with its deed, another zone's keeper and a villager refused, `NPC_TOOLS=off`).

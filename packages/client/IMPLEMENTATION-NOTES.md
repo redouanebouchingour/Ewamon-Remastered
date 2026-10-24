@@ -2519,3 +2519,37 @@ the second isolated client (the component over the landing page: the foe and own
   journey ends with my victory." (both bank lines). A first run that acted at once spoke only templates. Neither
   covered the HP plates or the deck at 1440 x 900. Not driven live: a villager, a league trainer or a wild catch (the
   unit tests cover them).
+
+## Shop haggling (2026-10-24, not in the SPEC)
+
+- In a town whose shop has a keeper (every shop hall; Saltmourn and Skyrend sell from a stall without one), the shop
+  screen has Haggle (shown when `GET /shop` brings a `keeper`, i.e. `NPC_TOOLS` is on, and the talk is not switched off
+  with `VITE_NPC_TALK=0`). It opens the keeper's dialogue in haggle mode (`DialogueUi.haggle`, `state/haggle.ts`
+  `openHaggle`): the box sits bottom-left beside the panel (`data-side='left'`), the text field is open at once, the
+  speaker is "Juniper, Shopkeeper" (`shopkeeperName`: content calls them all "Shopkeeper").
+- The talk (talk/haggle.ts, the shop branch of talk/npcChat.ts): the persona carries `shop` (the stock with its
+  prices), so the system prompt is the keeper's ("the traveller haggles with you"); each typed line is read as a move
+  (`haggleMove`: bulk offer, flattery, a plain ask / argument / plea, rudeness, a threat) and gets a bracketed note
+  with the percent the server's cap allows (`haggleNote`; refusals when the cap is 0, during the cooldown, or after a
+  deal in this conversation; a markup for rudeness). The tool pass in a shop has `give_discount` / `raise_prices`,
+  `slap_user`, `kick_user` and `do_nothing` only (no money, Ewamon or battle tools; a robbery or a challenge there is
+  only words), and `guardHaggleExchange` checks it against the words (`guardHaggle`). Measurements in the header of
+  talk/haggle.ts: on 60 exchanges against the docker model the guarded result was right 59 times and never wrong.
+- What the tools did goes to `POST /shop/haggle` (`haggleAct`); the answer's deal and keeper land in `useHaggleStore`,
+  a toast says the deal ("Juniper's deal: 10% off for 10 minutes", the danger tone for a markup), and the keeper hears
+  what really happened (a cut: "You gave the traveller ten percent off, not the twenty you said"). One discount per
+  conversation (`dealt` in state/npcTalk.ts).
+- The shop screen reads the store, so its prices move the moment a deal lands: a carbon strip over the table with a
+  paper "Deal" tag (warn for "Markup"), each moved price after its struck-through base, the totals and the "Not enough"
+  check on the deal price; the sell tab shows `dealSellPrice`. The strip's minutes tick every 5 s and the deal drops
+  when it lapses. The shop loader fills the store (deal, keeper, the stock for the persona).
+- Tests: `test/haggle.test.ts` (moves, notes, percents in words and digits, the guard, the keeper prompts and tools,
+  the store with `fetch` mocked), `test/shop-haggle-screen.test.tsx` (the strip and prices, Haggle opening the talk,
+  a bulk offer's deal landing on the open screen with a toast, a markup, no keeper no button).
+- Live (2026-10-24, the alt2 pair at 1440 x 900, the docker model behind `EWA_LLM_TARGET=http://localhost:8080/npc/llm`
+  since port 1234 is not published): a fresh player in Mirevale opened the shop, Haggle opened "Juniper, Shopkeeper"
+  beside it; "I'd like to buy twenty Potions. Can you do me a better price?" got "Ten percent off for ten minutes for
+  you" (neutral cap 10), the strip and toast "Juniper's deal: 10% off for 10 minutes", Potion 150 → 135 and a buy
+  charged 135; "your prices are a rip-off, you crook" got "I'll raise the prices by ten percent for these ten
+  minutes", the strip turned to "Juniper's prices: 10% up for 10 minutes", Potion 165. At 1440 px the box covers the
+  left edge of the panel's item column (the descriptions); the item names stay readable above it.

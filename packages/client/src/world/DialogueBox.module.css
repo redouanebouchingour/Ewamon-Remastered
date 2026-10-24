@@ -16,6 +16,13 @@
   animation: rise var(--motion-panel) var(--ease-out) both;
 }
 
+/* shop haggling: the keeper's talk sits bottom-left, beside the shop panel on the right */
+.box[data-side='left'] {
+  inset-inline: var(--s-6) auto;
+  inline-size: min(480px, calc(100vw - 2 * var(--s-7)));
+  margin-inline: 0;
+}
+
 @keyframes rise {
   from {
     opacity: 0;

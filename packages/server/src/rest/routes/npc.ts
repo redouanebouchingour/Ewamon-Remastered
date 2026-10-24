@@ -23,7 +23,8 @@
  * rolled into the stored one) and the talk deeds (`NPC_TALK_DEEDS`), whose standing delta the server caps. Each write
  * leaves an audit row (`npc.memory`).
  *
- * NPC side quests (same gate): `/npc/quests*`, rest/routes/npcQuests.ts.
+ * NPC side quests (same gate): `/npc/quests*`, rest/routes/npcQuests.ts. Shop haggling (same gate): `POST /shop/haggle`,
+ * rest/routes/haggle.ts.
  */
 import { createRng } from '@ewa/core';
 import { NPC_MEMORY_NOTE_MAX, NPC_MONEY_MAX, NpcActReq, NpcActRes, NpcMemoryParams, NpcMemoryReq, NpcMemoryRes } from '@ewa/protocol';
@@ -33,6 +34,7 @@ import { newCreature } from '../../game/creatures';
 import { pickSlot, zoneSlots } from '../../game/villagers';
 import { applyDeeds, npcInZone, npcMemoryView, recordNpcDeed } from '../../game/npcMemory';
 import { registerNpcQuestRoutes } from './npcQuests';
+import { registerHaggleRoutes } from './haggle';
 import { HttpError, out, presenceZone, rateLimit, refuseInBattle, requireAuth } from '../http';
 import type { RestDeps } from '../http';
 
@@ -66,6 +68,7 @@ export function registerNpcRoutes(app: FastifyInstance, deps: RestDeps): void {
   const bearer = { onRequest: requireAuth(deps), preHandler: rateLimit(deps) };
   const on = (deps.env.NPC_TOOLS ?? (deps.env.NODE_ENV === 'production' ? 'off' : 'on')) === 'on';
   registerNpcQuestRoutes(app, deps, on);
+  registerHaggleRoutes(app, deps, on);
   /** `${playerId}:${npcId}` → the NPC's wallet for that player */
   const wallets = new Map<string, number>();
   /** `${playerId}:${npcId}` → when the NPC has a creature to give again */

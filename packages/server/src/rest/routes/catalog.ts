@@ -26,6 +26,8 @@ import {
   SpeedrunRes,
   TradeHistoryRes,
   UsernameParams,
+  dealBuyPrice,
+  dealSellPrice,
 } from '@ewa/protocol';
 import type { ArenaKind } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
@@ -34,6 +36,8 @@ import { toInstance } from '../../rooms/battleSession';
 import { CHAMPION_SPLIT, RUN_START_SPLIT } from '../../game/speedrun';
 import { dayKey } from '../../liveops/schedule';
 import { HttpError, iso, out, presenceZone, rateLimit, refuseInBattle, requireAuth } from '../http';
+import { haggleBook } from '../../game/haggle';
+import { npcToolsOn, shopHaggleState } from './haggle';
 import type { RestDeps } from '../http';
 
 const HISTORY_PAGE = 25;
@@ -82,6 +86,7 @@ export function isKeyItem(deps: RestDeps, item: string): boolean {
 export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): void {
   const { repos, content, clock } = deps;
   const bearer = { onRequest: requireAuth(deps), preHandler: rateLimit(deps) };
+  const haggleOn = npcToolsOn(deps);
 
   app.get('/dex', bearer, async (req) => {
     const dex = await repos.db.transaction((tx) => repos.progress.dex(tx, req.user.sub));
@@ -99,7 +104,8 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
       const p = priceOf(deps, item);
       if (p?.buy != null) prices[item] = p.buy;
     }
-    return out(deps, ShopRes, { stock: [...stock], prices });
+    // shop haggling: the base prices stay as they are; the caller's deal there and the keeper ride along
+    return out(deps, ShopRes, { stock: [...stock], prices, ...(await shopHaggleState(deps, haggleOn, req.user.sub, zoneId)) });
   });
 
   app.post('/shop/buy', bearer, async (req) => {
@@ -109,8 +115,11 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
     const zone = presenceZone(deps, id);
     const stock = zone === null ? null : shopStock(zone);
     if (stock === null || !stock.includes(body.item)) throw new HttpError(409, 'notInStock');
-    const price = priceOf(deps, body.item)?.buy ?? null;
-    if (price === null) throw new HttpError(409, 'notForSale');
+    const base = priceOf(deps, body.item)?.buy ?? null;
+    if (base === null) throw new HttpError(409, 'notForSale');
+    // shop haggling: the deal with this zone's keeper sets the price (the client never sends one)
+    const deal = haggleOn ? haggleBook(deps).dealView(id, zone!.id, clock()) : null;
+    const price = dealBuyPrice(base, deal);
     // Phase D2: a key item (a TM) is reusable — one copy, bought once
     const key = isKeyItem(deps, body.item);
     if (key && body.qty !== 1) throw new HttpError(409, 'oneAtATime');
@@ -120,7 +129,7 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
       if (key && (await repos.inventory.qty(tx, id, body.item)) > 0) throw new HttpError(409, 'alreadyOwned');
       const money = await repos.players.addMoney(tx, id, -price * body.qty);
       await repos.inventory.add(tx, id, body.item, body.qty);
-      await repos.audit.write(tx, { actorId: id, action: 'shop.buy', subject: body.item, detail: { qty: body.qty, price } }, now);
+      await repos.audit.write(tx, { actorId: id, action: 'shop.buy', subject: body.item, detail: { qty: body.qty, price, ...(deal !== null ? { base, deal: `${deal.kind}:${deal.percent}` } : {}) } }, now);
       return { inventory: await repos.inventory.all(tx, id), money };
     });
     return out(deps, InventoryMoneyRes, res);
@@ -132,14 +141,17 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
     refuseInBattle(deps, id);
     const zone = presenceZone(deps, id);
     if (zone === null || zone.shop === null) throw new HttpError(409, 'noShopHere');
-    const sell = priceOf(deps, body.item)?.sell ?? null;
-    if (sell === null) throw new HttpError(409, 'notSellable');
+    const priced = priceOf(deps, body.item);
+    const base = priced?.sell ?? null;
+    if (base === null) throw new HttpError(409, 'notSellable');
+    const deal = haggleOn ? haggleBook(deps).dealView(id, zone.id, clock()) : null;
+    const sell = dealSellPrice(base, priced?.buy ?? null, deal);
     const now = new Date(clock());
     const res = await repos.db.transaction(async (tx) => {
       await repos.players.lock(tx, id);
       await repos.inventory.add(tx, id, body.item, -body.qty);
       const money = await repos.players.addMoney(tx, id, sell * body.qty);
-      await repos.audit.write(tx, { actorId: id, action: 'shop.sell', subject: body.item, detail: { qty: body.qty, price: sell } }, now);
+      await repos.audit.write(tx, { actorId: id, action: 'shop.sell', subject: body.item, detail: { qty: body.qty, price: sell, ...(deal !== null ? { base, deal: `${deal.kind}:${deal.percent}` } : {}) } }, now);
       return { inventory: await repos.inventory.all(tx, id), money };
     });
     return out(deps, InventoryMoneyRes, res);

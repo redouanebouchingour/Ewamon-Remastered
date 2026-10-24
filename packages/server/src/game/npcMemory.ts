@@ -12,8 +12,8 @@
 import { interiorNpcs, zone as zoneById } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
 import type { NpcMemory, Repos, Tx } from '@ewa/persist';
-import { NPC_DEED_COOLDOWN_MS, NPC_DEED_DELTA, NPC_GOSSIP_MAX, feelingScore, standingOf, townScore, writeDelta } from '@ewa/protocol';
-import type { NpcDeed, NpcMemoryView, TownStanding } from '@ewa/protocol';
+import { NPC_DEED_COOLDOWN_MS, NPC_DEED_DELTA, NPC_GOSSIP_MAX, feelingScore, shopkeeperName, standingOf, townScore, writeDelta } from '@ewa/protocol';
+import type { NpcDeed, NpcMemoryView, Standing, TownStanding } from '@ewa/protocol';
 
 type Zone = ReturnType<typeof zoneById>;
 
@@ -23,6 +23,8 @@ export function npcInZone(zone: Zone, npcId: string): { readonly id: string; rea
   if (own !== undefined) return { id: own.id, name: own.name };
   const inside = interiorNpcs(zone.id as ZoneId).find((n) => n.id === npcId);
   if (inside === undefined) return null;
+  // shop haggling: content calls every keeper "Shopkeeper"; the game calls each by its own name
+  if (inside.role === 'shopkeeper') return { id: inside.id, name: `${shopkeeperName(inside.id)}, shopkeeper` };
   return { id: inside.id, name: inside.role.trim() === '' ? inside.name : `${inside.name}, ${inside.role.toLowerCase()}` };
 }
 
@@ -95,6 +97,13 @@ export async function recordNpcDeed(repos: Repos, tx: Tx, playerId: string, npcI
 /** The player's standing with one NPC (0 when it does not know them). */
 export async function standingWithNpc(repos: Repos, tx: Tx, playerId: string, npcId: string): Promise<number> {
   return (await repos.npcMemory.of(tx, playerId, npcId))?.standing ?? 0;
+}
+
+/** How an NPC feels about the player (`feelingScore` banded): its own standing, else half the town's. */
+export async function feelingOf(repos: Repos, tx: Tx, playerId: string, zoneId: ZoneId, npcId: string): Promise<Standing> {
+  const mine = await repos.npcMemory.of(tx, playerId, npcId);
+  const town = await townStandingOf(repos, tx, playerId, zoneId);
+  return standingOf(feelingScore(mine?.standing ?? null, town.score));
 }
 
 /** The player's reputation in a zone. */

@@ -13,6 +13,8 @@ import type { ApiInit } from '../net/api';
 import { isRouteUnavailable } from '../net/errors';
 import { useNotificationsStore } from '../state/notifications';
 import { useArenaStore } from '../state/arena';
+import { itemInfo } from '../data/content';
+import { setShopHaggle } from '../state/haggle';
 import { toProgressionDelta, useSessionStore } from '../state/session';
 
 export type Maybe<T> = { readonly available: true; readonly data: T } | { readonly available: false };
@@ -115,7 +117,7 @@ export async function dexLoader({ request }: LoaderFunctionArgs) {
 }
 
 export type ShopData =
-  | { readonly kind: 'ok'; readonly zoneId: string; readonly stock: readonly string[]; readonly prices: Readonly<Record<string, number>> }
+  | { readonly kind: 'ok'; readonly zoneId: string; readonly stock: readonly string[]; readonly prices: Readonly<Record<string, number>>; readonly haggle: boolean }
   | { readonly kind: 'noShop'; readonly zoneId: string | null };
 
 export async function shopLoader({ request }: LoaderFunctionArgs): Promise<ShopData> {
@@ -124,7 +126,14 @@ export async function shopLoader({ request }: LoaderFunctionArgs): Promise<ShopD
   if (zoneId === null) return { kind: 'noShop', zoneId: null };
   try {
     const res = await load(request, 'shop', { params: { zoneId } });
-    return { kind: 'ok', zoneId, stock: res.stock, prices: res.prices };
+    // shop haggling: the deal and the keeper go to the haggle store (the screen's prices follow it live)
+    const keeper = res.keeper ?? null;
+    const goods = res.stock.flatMap((id) => {
+      const price = res.prices[id];
+      return price === undefined ? [] : [{ name: itemInfo(id).name, price }];
+    });
+    setShopHaggle(zoneId, res.deal ?? null, keeper, goods);
+    return { kind: 'ok', zoneId, stock: res.stock, prices: res.prices, haggle: keeper !== null };
   } catch (e) {
     // 30-server-netcode.md §30.6.3: 404 when the zone has no shop → "There is no shop here"
     if (e instanceof ApiFailure && e.error.status === 404) return { kind: 'noShop', zoneId };

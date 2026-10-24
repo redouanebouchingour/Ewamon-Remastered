@@ -169,6 +169,8 @@ export interface DialogueUi {
   readonly obligatory?: boolean;
   /** Not a person (a sign, a plaque): no NPC talk (`state/npcTalk.ts`). */
   readonly noTalk?: boolean;
+  /** Shop haggling: the shop screen's Haggle opened the keeper's talk (`state/haggle.ts`); it starts typed, beside the panel. */
+  readonly haggle?: boolean;
 }
 
 /**

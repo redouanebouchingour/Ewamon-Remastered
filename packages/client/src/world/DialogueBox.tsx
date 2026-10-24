@@ -18,6 +18,9 @@
  * NPC side quests (2026-10-24): the NPC's favour, once asked, shows as a row in the slab (`NpcQuestCard`): Accept /
  * Decline on an offer, the progress and Hand in on an accepted one. The buttons say a line for the player (the talk
  * goes on), so a typed "yes" or "I did it" does the same.
+ *
+ * Shop haggling (2026-10-24): the shop screen's Haggle opens the keeper's dialogue in haggle mode (`haggle`): the box
+ * sits bottom-left beside the shop panel, the text field is open at once, and the persona knows the stock.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -31,6 +34,7 @@ import { acceptQuest, declineQuest, endTalk, handInQuest, hitNpc, leaveTalk, ope
 import { watchNpcQuests } from '../state/npcQuests';
 import type { NpcPersona } from '../talk/npcChat';
 import { NpcQuestCard } from './NpcQuestCard';
+import { haggleShop } from '../state/haggle';
 import s from './DialogueBox.module.css';
 
 export const LINES_PER_PAGE = 3;
@@ -61,7 +65,8 @@ function placeOf(zoneId: ZoneId | null): string | null {
 function personaOf(d: DialogueUi): NpcPersona {
   const [name, ...role] = d.speaker.split(',');
   const title = role.join(',').trim();
-  return { name: name!.trim(), role: title === '' ? null : title, place: placeOf(useSessionStore.getState().zoneId), lines: d.lines };
+  const p: NpcPersona = { name: name!.trim(), role: title === '' ? null : title, place: placeOf(useSessionStore.getState().zoneId), lines: d.lines };
+  return d.haggle === true ? { ...p, shop: haggleShop() } : p;
 }
 
 function typedSend(text: string): boolean {
@@ -107,7 +112,8 @@ export function DialogueBox() {
   useEffect(() => {
     if (targetId !== null && talkable) openTalk(targetId);
     else if (useNpcTalkStore.getState().targetId !== targetId) endTalk();
-    setTyping(false);
+    // a haggle opens typed: the player came to make an offer
+    setTyping(talkable && useUiStore.getState().dialogue?.haggle === true);
     setDraft('');
   }, [targetId, talkable]);
   useEffect(() => () => endTalk(), []);
@@ -233,7 +239,7 @@ export function DialogueBox() {
   if (talk.targetId === d.targetId && !talk.hidden && (talk.turns.length > 0 || talk.phase !== 'idle' || talk.error !== null)) {
     const status = talk.phase === 'thinking' ? `${personaOf(d).name} is thinking…` : null;
     return (
-      <div ref={ref} className={s.box} role="dialog" aria-label={`Talking with ${d.speaker}`} data-testid="dialoguebox">
+      <div ref={ref} className={s.box} role="dialog" aria-label={`Talking with ${d.speaker}`} data-testid="dialoguebox" data-side={d.haggle === true ? 'left' : undefined}>
         {head}
         <div className={s.slab}>
           <div ref={logRef} className={s.log}>
@@ -274,7 +280,7 @@ export function DialogueBox() {
   const page = d.lines.slice(d.index, d.index + LINES_PER_PAGE);
   const left = Math.max(0, d.lines.length - d.index - LINES_PER_PAGE);
   return (
-    <div ref={ref} className={s.box} role="dialog" aria-label={`${d.speaker} says`} data-testid="dialoguebox">
+    <div ref={ref} className={s.box} role="dialog" aria-label={`${d.speaker} says`} data-testid="dialoguebox" data-side={d.haggle === true ? 'left' : undefined}>
       {head}
       <div className={s.slab}>
         {page.map((line, i) => (

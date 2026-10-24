@@ -24,6 +24,11 @@
  * (`offer_quest` → `POST /npc/quests/offer`). A yes / no to an open offer answers it and "I did it" to an accepted
  * favour hands it in, before the NPC replies, so its reply hears what happened (`nudge`). The card's buttons send those
  * same lines (`acceptQuest`, `declineQuest`, `handInQuest`).
+ *
+ * Shop haggling (2026-10-24, talk/haggle.ts, state/haggle.ts): with a keeper the shop screen opened for haggling (the
+ * persona carries `shop`), a typed line carries the haggle note instead of a favour (`haggleTurn`: what the server's
+ * cap lets the keeper give, or a markup for rudeness), and the tool pass's `give_discount` / `raise_prices` go to
+ * `POST /shop/haggle` (`haggleAct`). One discount per conversation: after it the keeper is told to go no lower.
  */
 import { create } from 'zustand';
 import { NPC_MONEY_MAX } from '@ewa/protocol';
@@ -36,6 +41,8 @@ import type { ChatTurn, NpcPersona, ToolCall } from '../talk/npcChat';
 import { MEMORY_WAIT_MS, deedsOf, hadExchange, memoryNote, summarize } from '../talk/npcMemory';
 import { ACCEPTED, DECLINED, NOT_DONE, OFFER_QUEST, answerOf, askNote, claimedNote, saysDone, shouldAsk } from '../talk/npcQuest';
 import { answerNpcQuest, claimNpcQuest, fetchNpcQuest, offerNpcQuest } from './npcQuests';
+import { GIVE_DISCOUNT, RAISE_PRICES, haggleMove, haggleNote } from '../talk/haggle';
+import { haggleAct, useHaggleStore } from './haggle';
 import { strike } from './npcFx';
 import { toast } from './notifications';
 import { toInventoryDelta, useSessionStore } from './session';
@@ -77,6 +84,8 @@ let note: string | null | undefined;
 let persona: NpcPersona | null = null;
 /** the talk pass was told to ask the favour in this conversation (once per conversation) */
 let askedQuest = false;
+/** shop haggling: the keeper gave a discount in this conversation */
+let dealt = false;
 
 const signedIn = (): boolean => useSessionStore.getState().accessToken !== null;
 
@@ -142,7 +151,7 @@ export function sendText(targetId: string, p: NpcPersona, text: string): void {
   inflight = ac;
   set({ error: null, phase: 'thinking' });
   void (async () => {
-    const turn = await questTurn(targetId, said);
+    const turn = p.shop !== undefined ? haggleTurn(said) : await questTurn(targetId, said);
     if (ac.signal.aborted) return;
     await answer(p, turn, ac);
   })().finally(() => {
@@ -201,6 +210,13 @@ async function questTurn(targetId: string, said: string): Promise<ChatTurn> {
     return { ...plain, nudge: askNote(st.next), asks: true };
   }
   return plain;
+}
+
+/** Shop haggling: the player's line with the note for the keeper (talk/haggle.ts), or plain talk when it is no haggling. */
+function haggleTurn(said: string): ChatTurn {
+  const plain: ChatTurn = { role: 'user', content: said };
+  const h = haggleNote(haggleMove(said), useHaggleStore.getState().keeper, dealt, Date.now());
+  return h === null ? plain : { ...plain, nudge: h.note, haggle: h.ask };
 }
 
 /**
@@ -285,6 +301,12 @@ export async function runTools(npcId: string, name: string, calls: readonly Tool
     }
     if (c.name === OFFER_QUEST) {
       events.push(await offer(npcId));
+      continue;
+    }
+    if (c.name === GIVE_DISCOUNT || c.name === RAISE_PRICES) {
+      const done = await haggleAct(npcId, name, c.name === GIVE_DISCOUNT ? 'discount' : 'markup', c.amount ?? 1);
+      if (c.name === GIVE_DISCOUNT && done.granted > 0) dealt = true;
+      events.push(done.event);
       continue;
     }
     const action = SERVER_ACTION[c.name];
@@ -383,6 +405,7 @@ export function endTalk(): void {
   note = undefined;
   persona = null;
   askedQuest = false;
+  dealt = false;
   useNpcTalkStore.setState(IDLE);
 }
 

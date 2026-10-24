@@ -406,7 +406,7 @@ export const DexRes = z.object({
   shiny: StringList.optional(),
 });
 export const ShopParams = z.object({ zoneId: ZoneIdSchema });
-export const ShopRes = z.object({ stock: StringList, prices: z.record(z.string(), Money) });
+/** `ShopRes` (stock, prices, the haggle deal) is defined with shop haggling below. */
 export const ShopTradeReq = z.object({ item: ItemId, qty: Qty });
 export const InventoryMoneyRes = z.object({ inventory: ItemCounts, money: Money });
 
@@ -1016,11 +1016,12 @@ export const NPC_GOSSIP_MAX = 3;
 /**
  * What the player did to an NPC, from the NPC's side: `giftReceived` = the NPC gave the player money or an Ewamon,
  * `giftGiven` = the NPC took the player's money or Ewamon, `battleWon` / `battleLost` = the player won / lost a battle
- * against it, `helped` = the player handed in a favour the NPC asked (`POST /npc/quests/claim`). Those the server
- * records itself (`POST /npc/act`, the battle's end, the hand-in); the client reports only the talk deeds
- * (`NPC_TALK_DEEDS`).
+ * against it, `helped` = the player handed in a favour the NPC asked (`POST /npc/quests/claim`), `haggledRudely` =
+ * the player's haggling made a shopkeeper raise its prices (`POST /shop/haggle`; a discount it gave is `giftReceived`).
+ * Those the server records itself (`POST /npc/act`, the battle's end, the hand-in, the haggle); the client reports only
+ * the talk deeds (`NPC_TALK_DEEDS`).
  */
-export const NPC_DEEDS = ['hit', 'insulted', 'threatened', 'robbed', 'kindWords', 'giftReceived', 'giftGiven', 'battleWon', 'battleLost', 'helped'] as const;
+export const NPC_DEEDS = ['hit', 'insulted', 'threatened', 'robbed', 'kindWords', 'giftReceived', 'giftGiven', 'battleWon', 'battleLost', 'helped', 'haggledRudely'] as const;
 export type NpcDeed = (typeof NPC_DEEDS)[number];
 export const NPC_TALK_DEEDS = ['hit', 'insulted', 'threatened', 'robbed', 'kindWords'] as const satisfies readonly NpcDeed[];
 export type NpcTalkDeed = (typeof NPC_TALK_DEEDS)[number];
@@ -1036,6 +1037,7 @@ export const NPC_DEED_DELTA: Readonly<Record<NpcDeed, number>> = {
   battleWon: 1,
   battleLost: 1,
   helped: 2,
+  haggledRudely: -1,
 };
 /** one client write moves the standing by at most this much either way */
 export const NPC_WRITE_DELTA_MIN = -6;
@@ -1209,6 +1211,109 @@ export const NpcQuestClaimRes = z.object({
   standing: z.number().int().min(NPC_STANDING_MIN).max(NPC_STANDING_MAX),
 });
 
+// ---- shop haggling -------------------------------------------------------------------------------------------------
+
+/**
+ * Haggling with a shopkeeper (LLM feature 4): the player talks the shop's keeper (an interior NPC with role
+ * 'shopkeeper') into a discount, or annoys it into a markup. The model words it; `POST /shop/haggle` takes what the
+ * tool pass picked and the server caps it by how the keeper feels about the player (`HAGGLE_DISCOUNT_CAP`), halves it
+ * for every discount already won at that shop within `HAGGLE_WINDOW_MS` (`haggleFactor`), refuses a second discount
+ * within `HAGGLE_COOLDOWN_MS`, and stores the deal for `HAGGLE_DEAL_MS`. `/shop/buy` and `/shop/sell` apply it.
+ */
+export const HAGGLE_KINDS = ['discount', 'markup'] as const;
+export type HaggleKind = (typeof HAGGLE_KINDS)[number];
+/** the most a haggle request may name (the server caps it lower) */
+export const HAGGLE_PERCENT_MAX = 50;
+/** the largest discount a keeper gives, by how it feels about the player (`feelingScore` banded) */
+export const HAGGLE_DISCOUNT_CAP: Readonly<Record<Standing, number>> = { hostile: 0, wary: 5, neutral: 10, liked: 20, trusted: 25 };
+/** the largest markup a rude haggle earns */
+export const HAGGLE_MARKUP_MAX = 25;
+/** how long a deal (or a markup) holds */
+export const HAGGLE_DEAL_MS = 10 * 60_000;
+/** a second discount at one shop waits this long (a markup never waits) */
+export const HAGGLE_COOLDOWN_MS = 2 * 60_000;
+/** discounts won at one shop within this window shrink the next one */
+export const HAGGLE_WINDOW_MS = 60 * 60_000;
+
+/** The cap's factor after `won` discounts at that shop within the window: 1, 1/2, 1/4, then nothing. */
+export function haggleFactor(won: number): number {
+  return won <= 0 ? 1 : won === 1 ? 0.5 : won === 2 ? 0.25 : 0;
+}
+
+export const HaggleDealSchema = z.object({
+  npcId: z.string().max(80),
+  /** "Hessa" (`shopkeeperName`) */
+  npcName: z.string().max(120),
+  zoneId: ZoneIdSchema,
+  kind: z.enum(HAGGLE_KINDS),
+  percent: z.number().int().min(1).max(HAGGLE_PERCENT_MAX),
+  expiresAt: IsoDate,
+});
+export type HaggleDeal = z.infer<typeof HaggleDealSchema>;
+
+/** The unit buy price under a deal: a discount lowers it (never below 1), a markup raises it. */
+export function dealBuyPrice(price: number, deal: Pick<HaggleDeal, 'kind' | 'percent'> | null): number {
+  if (deal === null) return price;
+  const p = deal.kind === 'discount' ? Math.floor((price * (100 - deal.percent)) / 100) : Math.ceil((price * (100 + deal.percent)) / 100);
+  return Math.max(1, p);
+}
+/**
+ * The unit sell price under a deal: a discount raises it by half the percent, a markup lowers it by half, and it stays
+ * below the item's buy price under the same deal (no buying and selling back at a profit).
+ */
+export function dealSellPrice(sell: number, buy: number | null, deal: Pick<HaggleDeal, 'kind' | 'percent'> | null): number {
+  if (deal === null) return sell;
+  const half = deal.percent / 2;
+  const p = deal.kind === 'discount' ? Math.floor((sell * (100 + half)) / 100) : Math.floor((sell * (100 - half)) / 100);
+  return Math.max(1, buy === null ? p : Math.min(p, dealBuyPrice(buy, deal) - 1));
+}
+
+const KEEPER_NAMES = ['Hessa', 'Odo', 'Marisol', 'Tobin', 'Grete', 'Pell', 'Juniper', 'Haskel', 'Wyn', 'Bettany', 'Corvin', 'Ilse'] as const;
+/** The name a shopkeeper goes by (content calls them all "Shopkeeper"): picked from its id, the same everywhere. */
+export function shopkeeperName(npcId: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < npcId.length; i++) h = Math.imul(h ^ npcId.charCodeAt(i), 16777619);
+  return KEEPER_NAMES[(h >>> 0) % KEEPER_NAMES.length]!;
+}
+
+/** The zone's keeper as the shop screen needs it: who to haggle with and the most it would give off now. */
+export const HaggleKeeperSchema = z.object({
+  npcId: z.string().max(80),
+  npcName: z.string().max(120),
+  /** the largest discount a haggle can win now (0: none, the keeper dislikes the player or the haggling is spent) */
+  cap: z.number().int().min(0).max(HAGGLE_PERCENT_MAX),
+  feeling: z.enum(STANDINGS),
+  /** a discount haggle waits until then (null: it can go now) */
+  readyAt: IsoDate.nullable(),
+});
+export type HaggleKeeper = z.infer<typeof HaggleKeeperSchema>;
+
+export const HaggleReq = z.object({
+  npcId: z.string().min(1).max(80),
+  kind: z.enum(HAGGLE_KINDS),
+  /** what the keeper said (the server caps it) */
+  percent: z.number().int().min(1).max(HAGGLE_PERCENT_MAX),
+});
+export const HaggleRes = z.object({
+  /** the deal now in force at that shop (null: none) */
+  deal: HaggleDealSchema.nullable(),
+  /** what this haggle applied (0: nothing changed, the cap was 0) */
+  granted: z.number().int().min(0).max(HAGGLE_PERCENT_MAX),
+  keeper: HaggleKeeperSchema,
+});
+export type HaggleResult = z.infer<typeof HaggleRes>;
+
+/**
+ * A zone's shop: the stock and the base prices; since shop haggling, the caller's deal there (`deal`, prices to show
+ * are `dealBuyPrice(base, deal)`) and the keeper to haggle with (`keeper`; null in a shop without one).
+ */
+export const ShopRes = z.object({
+  stock: StringList,
+  prices: z.record(z.string(), Money),
+  deal: HaggleDealSchema.nullable().optional(),
+  keeper: HaggleKeeperSchema.nullable().optional(),
+});
+
 // ---- admin / health -----------------------------------------------------------------------------------------------------
 
 /** TODO(spec): `/admin/stats` has no listed body; these are the legacy counters carried over. */
@@ -1300,6 +1405,8 @@ export const ROUTES = {
   shop: route({ method: 'GET', path: '/shop/:zoneId', auth: 'bearer', params: ShopParams, response: ShopRes }),
   shopBuy: route({ method: 'POST', path: '/shop/buy', auth: 'bearer', request: ShopTradeReq, response: InventoryMoneyRes }),
   shopSell: route({ method: 'POST', path: '/shop/sell', auth: 'bearer', request: ShopTradeReq, response: InventoryMoneyRes }),
+  // shop haggling: what the keeper's words granted, capped by the server; the deal applies to buy / sell
+  shopHaggle: route({ method: 'POST', path: '/shop/haggle', auth: 'bearer', request: HaggleReq, response: HaggleRes }),
   marketplace: route({ method: 'GET', path: '/marketplace', auth: 'bearer', query: MarketQuery, response: MarketSearchRes }),
   marketplaceMyActive: route({ method: 'GET', path: '/marketplace/my/active', auth: 'bearer', response: ListingListRes }),
   marketplaceMyBids: route({ method: 'GET', path: '/marketplace/my/bids', auth: 'bearer', response: ListingListRes }),

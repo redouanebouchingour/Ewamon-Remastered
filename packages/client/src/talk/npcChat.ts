@@ -32,6 +32,8 @@
 import { NO_DASHES, chatOnce, noDashes, streamChat, stripThink, TALK_REASONING, TOOL_BASE, TOOL_MODEL, TOOL_REASONING } from './llm';
 import type { LlmMessage } from './llm';
 import { OFFER_QUEST, guardOffer, offerRule, offerTool } from './npcQuest';
+import { GIVE_DISCOUNT, RAISE_PRICES, guardHaggle, haggleRule, haggleTools, percentOf, shopSystemPrompt } from './haggle';
+import type { HaggleAsk, ShopPersona } from './haggle';
 
 export interface NpcPersona {
   readonly name: string;
@@ -41,6 +43,8 @@ export interface NpcPersona {
   readonly place: string | null;
   /** what the NPC said before the player spoke (the content lines, in English) */
   readonly lines: readonly string[];
+  /** shop haggling (talk/haggle.ts): a shopkeeper the player haggles with, and what it sells */
+  readonly shop?: ShopPersona;
 }
 
 export interface ChatTurn {
@@ -57,6 +61,8 @@ export interface ChatTurn {
   readonly nudge?: string;
   /** a user turn carrying the favour to ask (`nudge`): the tool pass gets `offer_quest` for the reply to it */
   readonly asks?: boolean;
+  /** shop haggling: what the note on this user turn told the keeper (a discount, a markup, a refusal) */
+  readonly haggle?: HaggleAsk;
 }
 
 /** rude words in the player's line: the talk pass is told it is furious (the rule in the prompt alone was too weak) */
@@ -148,6 +154,7 @@ export function eventsSoFar(history: readonly ChatTurn[]): string[] {
  * dropped by `stripThink` / `tidyReply`.
  */
 export function systemPrompt(p: NpcPersona): string {
+  if (p.shop !== undefined) return shopSystemPrompt(p, p.shop, temperamentOf(p.name));
   const who = p.role !== undefined && p.role !== null ? `${p.name}, the ${p.role.toLowerCase()}` : p.name;
   const where = p.place !== null ? ` in ${p.place}` : '';
   return (
@@ -202,7 +209,9 @@ export function chatMessages(p: NpcPersona, history: readonly ChatTurn[], memory
   let pending: readonly string[] = [];
   const first = history.find((t) => t.role === 'user');
   for (const t of [...opening, ...history]) {
-    const nudged = robbed(t) ? `${t.content} [${SCARED}]` : challenged(t) ? `${t.content} [${ACCEPT}]` : provoked(t) && t.shown === undefined ? `${t.content} [${FURIOUS}]` : t.content;
+    // a shop's talk has no money or battle tools: a robbery or a challenge there is only words (talk/haggle.ts)
+    const shop = p.shop !== undefined;
+    const nudged = !shop && robbed(t) ? `${t.content} [${SCARED}]` : !shop && challenged(t) ? `${t.content} [${ACCEPT}]` : provoked(t) && t.shown === undefined ? `${t.content} [${FURIOUS}]` : t.content;
     const remembered = t === first && memory !== null && memory !== '' ? `${nudged} [${memory}]` : nudged;
     const said = t.role === 'user' && t.nudge !== undefined && t.nudge !== '' ? `${remembered} [${t.nudge}]` : remembered;
     const content = t.role === 'user' && pending.length > 0 ? `[${pending.join(' ')}] ${said}` : said;
@@ -222,6 +231,14 @@ export function judgeTools(p: NpcPersona, maxMoney: number, offer = false): unkn
   const none = { type: 'object', properties: {}, required: [] };
   const money = { type: 'object', properties: { amount: { type: 'integer', minimum: 1, maximum: maxMoney, description: `the amount ${p.name} names, otherwise ${maxMoney}` } }, required: ['amount'] };
   const fn = (name: string, description: string, parameters: object = none) => ({ type: 'function', function: { name, description, parameters } });
+  // a shop's talk: the haggle tools and the hits, no money or Ewamon ("twenty coins off" is no gift)
+  if (p.shop !== undefined)
+    return [
+      fn(SLAP, `${p.name} slaps the traveller (hits, smacks).`),
+      fn(KICK, `${p.name} kicks the traveller.`),
+      ...haggleTools(p.name),
+      fn(DO_NOTHING, `Nothing happens in the game: ${p.name} only talks, refuses, or keeps the prices as they are.`),
+    ];
   return [
     fn(SLAP, `${p.name} slaps the traveller (hits, smacks).`),
     fn(KICK, `${p.name} kicks the traveller.`),
@@ -252,6 +269,25 @@ export function judgeMessages(p: NpcPersona, history: readonly ChatTurn[], offer
         `or insulted ${p.name}, ${p.name} hits back: call ${SLAP} or ${KICK}. If they agree to an Ewamon battle, call ` +
         `${START_BATTLE}. If ${p.name} only threatens, ` +
         `refuses, only promises something or just talks, call ${DO_NOTHING}.${offer ? ` ${offerRule(p.name)}` : ''} ${NO_DASHES}`,
+    },
+    { role: 'user', content: transcript },
+  ];
+}
+
+/** The tool pass's messages in a shop's talk: the haggle rule, then the last exchange (`judgeMessages`' transcript). */
+export function haggleJudgeMessages(p: NpcPersona, history: readonly ChatTurn[]): ChatMessage[] {
+  const transcript = history
+    .slice(-2)
+    .map((t) => `${t.role === 'user' ? 'Traveller' : p.name}: ${t.content}`)
+    .join('\n');
+  return [
+    {
+      role: 'system',
+      content:
+        `You are the game master of a role-play in a shop. You read the last part of a conversation between the traveller and ` +
+        `${p.name} (the shopkeeper) and carry out what ${p.name} actually does in the last reply. ${haggleRule(p.name)} If the ` +
+        `traveller slapped, kicked or insulted ${p.name}, ${p.name} hits back: call ${SLAP} or ${KICK}. If ${p.name} only talks, ` +
+        `refuses or keeps the prices, call ${DO_NOTHING}. ${NO_DASHES}`,
     },
     { role: 'user', content: transcript },
   ];
@@ -329,6 +365,7 @@ export async function streamNpcReply(persona: NpcPersona, history: readonly Chat
 
 /** The tool pass reads the exchange (history ending in the NPC's reply) and returns the tools it calls. */
 export async function judgeExchange(persona: NpcPersona, history: readonly ChatTurn[], maxMoney: number, signal: AbortSignal): Promise<ToolCall[]> {
+  if (persona.shop !== undefined) return judgeHaggle(persona, history, signal);
   const asked = history.at(-2)?.asks === true;
   const res = await chatOnce({
     base: TOOL_BASE,
@@ -344,6 +381,34 @@ export async function judgeExchange(persona: NpcPersona, history: readonly ChatT
   });
   const calls = res.toolCalls.flatMap((c) => (c.name === DO_NOTHING ? [] : [{ name: c.name, ...amountOf(c.arguments, maxMoney) }]));
   return guardCalls(calls, history.at(-1)?.content ?? '', provoked(history.at(-2)), robbed(history.at(-2)), challenged(history.at(-2)), asked);
+}
+
+/**
+ * The tool pass in a shop's talk (talk/haggle.ts): the haggle tools and the hits. The hits go through `guardCalls`, the
+ * haggle calls through `guardHaggle` (the words and the note on the player's line decide).
+ */
+export async function judgeHaggle(persona: NpcPersona, history: readonly ChatTurn[], signal: AbortSignal): Promise<ToolCall[]> {
+  const res = await chatOnce({
+    base: TOOL_BASE,
+    model: TOOL_MODEL,
+    reasoning: TOOL_REASONING,
+    messages: haggleJudgeMessages(persona, history),
+    tools: judgeTools(persona, 1),
+    toolChoice: 'required',
+    maxTokens: TOOL_REASONING === 'none' ? JUDGE_TOKENS : 1200,
+    temperature: 0,
+    signal,
+  });
+  return guardHaggleExchange(res.toolCalls, history);
+}
+
+/** The shop tool pass's raw calls checked against the exchange (split out for the tests). */
+export function guardHaggleExchange(raw: readonly { readonly name: string; readonly arguments: string }[], history: readonly ChatTurn[]): ToolCall[] {
+  const reply = history.at(-1)?.content ?? '';
+  const said = history.at(-2);
+  const hits = raw.filter((c) => c.name === SLAP || c.name === KICK).map((c) => ({ name: c.name }));
+  const deals = raw.filter((c) => c.name === GIVE_DISCOUNT || c.name === RAISE_PRICES).map((c) => ({ name: c.name, ...percentOf(c.arguments) }));
+  return [...guardCalls(hits, reply, provoked(said)), ...guardHaggle(deals, reply, said?.role === 'user' ? said.haggle : undefined)];
 }
 
 /** "or I will…", "next time", "keep talking and…": a hit said this way has not happened yet */

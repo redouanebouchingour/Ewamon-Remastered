@@ -285,3 +285,19 @@ installed library that future readers should not have to re-derive. The spec its
   optional array of strings, dropped on its own when it does not parse), `BANK_LINES_MAX`. Client only: the shape the
   local model's line banks must have (LLM feature 3). Nothing goes over the wire; it lives here because the client
   reaches zod only through this package.
+
+## Shop haggling (2026-10-24, not in the SPEC)
+
+- `rest.ts` "shop haggling": `POST /shop/haggle` (`shopHaggle`: `HaggleReq` { npcId, kind discount | markup, percent
+  1..`HAGGLE_PERCENT_MAX` }, `HaggleRes` { deal, granted, keeper }), `HaggleDealSchema`, `HaggleKeeperSchema` and the
+  rules both sides read: `HAGGLE_DISCOUNT_CAP` by standing (hostile 0, wary 5, neutral 10, liked 20, trusted 25),
+  `HAGGLE_MARKUP_MAX` (25), `HAGGLE_DEAL_MS` (10 min), `HAGGLE_COOLDOWN_MS` (2 min), `HAGGLE_WINDOW_MS` (1 h),
+  `haggleFactor` (1, 1/2, 1/4, then 0 per discount won in the window), `dealBuyPrice` / `dealSellPrice` (the client
+  shows and the server charges the same numbers; a sell price under a deal stays below the buy price under it) and
+  `shopkeeperName` (content calls every keeper "Shopkeeper"; a name from the id, the same on both sides).
+- `ShopRes` moved below the haggling section and gained two optional fields, `deal` and `keeper` (absent with
+  `NPC_TOOLS` off, so older readers and the progression walker see the same body).
+- `NPC_DEEDS` gains `haggledRudely` (-1): the server records it when a haggle ends in a markup. A discount given is
+  recorded as the existing `giftReceived` (0). Rudeness itself (an insult, a threat) is still the conversation's talk
+  deed, written when the talk ends; a new server-only deed keeps the markup from counting that insult twice.
+- Route count 114 → 115.

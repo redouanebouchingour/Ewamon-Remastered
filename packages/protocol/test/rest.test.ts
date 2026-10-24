@@ -79,6 +79,14 @@ import {
   SendMessageReq,
   SetupReq,
   ShopTradeReq,
+  HAGGLE_PERCENT_MAX,
+  HaggleReq,
+  HaggleRes,
+  ShopRes,
+  dealBuyPrice,
+  dealSellPrice,
+  haggleFactor,
+  shopkeeperName,
   USERNAME_RE,
   UnbanReq,
   VerifyReq,
@@ -248,6 +256,26 @@ describe('§4.7 dex / shop / marketplace', () => {
     bad(ShopTradeReq, { item: '', qty: 1 });
   });
 
+  it('shop haggling: the request, the deal on the shop, and the keeper names', () => {
+    ok(HaggleReq, { npcId: 'mirevale.shop.keeper', kind: 'discount', percent: 15 });
+    ok(HaggleReq, { npcId: 'mirevale.shop.keeper', kind: 'markup', percent: HAGGLE_PERCENT_MAX });
+    bad(HaggleReq, { npcId: 'mirevale.shop.keeper', kind: 'discount', percent: 0 });
+    bad(HaggleReq, { npcId: 'mirevale.shop.keeper', kind: 'gift', percent: 5 });
+    bad(HaggleReq, { npcId: 'mirevale.shop.keeper', kind: 'discount', percent: HAGGLE_PERCENT_MAX + 1 });
+    const deal = { npcId: 'k', npcName: 'Hessa', zoneId: 'mirevale', kind: 'discount', percent: 15, expiresAt: '2026-10-24T10:00:00.000Z' };
+    const keeper = { npcId: 'k', npcName: 'Hessa', cap: 10, feeling: 'neutral', readyAt: null };
+    ok(ShopRes, { stock: ['potion'], prices: { potion: 300 } });
+    ok(ShopRes, { stock: ['potion'], prices: { potion: 300 }, deal, keeper });
+    ok(ShopRes, { stock: ['potion'], prices: { potion: 300 }, deal: null, keeper: null });
+    ok(HaggleRes, { deal: null, granted: 0, keeper });
+    expect(shopkeeperName('mirevale.shop.keeper')).toBe(shopkeeperName('mirevale.shop.keeper'));
+    expect(new Set(['mirevale', 'cinderhold', 'stormrook', 'marrowdig', 'vesperveil', 'forgewall', 'solenne'].map((z) => shopkeeperName(`${z}.shop.keeper`))).size).toBeGreaterThan(3);
+    expect(dealBuyPrice(300, null)).toBe(300);
+    expect(dealSellPrice(150, 300, null)).toBe(150);
+    expect(haggleFactor(0)).toBe(1);
+    expect(haggleFactor(3)).toBe(0);
+  });
+
   it('marketplace query coerces strings and caps pageSize at 50', () => {
     const r = MarketQuery.safeParse({ search: 'glim', variant: 'dawn', isAlpha: 'true', levelMin: '5', levelMax: '30', sort: 'priceAsc', page: '2', pageSize: '50' });
     expect(r.success).toBe(true);
@@ -401,7 +429,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(114); // the 5 /npc/quests routes + GET + POST /npc/memory + POST /npc/act + GET /camps + POST /camps/edit + /camps/abandon + GET + POST /bounties + GET /world/ecosystem/:zoneId + GET /nemeses + the 5 daycare / egg routes + GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(ROUTE_KEYS).toHaveLength(115); // POST /shop/haggle + the 5 /npc/quests routes + GET + POST /npc/memory + POST /npc/act + GET /camps + POST /camps/edit + /camps/abandon + GET + POST /bounties + GET /world/ecosystem/:zoneId + GET /nemeses + the 5 daycare / egg routes + GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
     expect(paths).toContain('GET /daily');
     expect(paths).toContain('POST /challenge');
     expect(paths).toContain('POST /daily/start');
