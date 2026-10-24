@@ -54,6 +54,15 @@ const EXAMPLES: { [K in ServerMessageType]: Extract<ServerMessage, { type: K }> 
   storyBeat: { type: 'storyBeat', beatId: 'first_witness', phase: 'start' },
   toast: { type: 'toast', level: 'warn', text: 'The way is barred. Badge required: Bloom' },
   trainerSpotted: { type: 'trainerSpotted', trainerId: 'mire_trainer_1' },
+  rival: {
+    type: 'rival', phase: 'approach', x: 12.5, z: -3,
+    rival: {
+      name: 'Corin', look: 'casual2_male', temperament: 'brash', signature: 'cindercap', arc: 'frustrated',
+      record: { playerWins: 2, rivalWins: 1, draws: 0, meetings: 3 },
+      last: { result: 'won', zoneId: 'ash_route', at: '2026-10-24T12:00:00.000Z', words: 'Next time, I win.' },
+      team: [{ speciesId: 'pyrecap', level: 21 }, { speciesId: 'flampling', level: 19 }],
+    },
+  },
   realWeather: { type: 'realWeather', kind: 'rain' },
   error: { type: 'error', code: 'rateLimited', detail: null },
   rankedStatus: { type: 'rankedStatus', state: 'matched', rating: 1012, waitedMs: 0, window: 0, opponent: { name: 'misty', rating: 1040 }, reason: null },
@@ -78,8 +87,8 @@ const EXAMPLES: { [K in ServerMessageType]: Extract<ServerMessage, { type: K }> 
 };
 
 describe('§4.4 ServerMessage', () => {
-  it('lists the 28 variants of the §4.4 block (Phase D13 rankedStatus, Phase D14 towerState, the 4 arena messages, trainerSpotted, realWeather, eggHatched, nemesisAmbush, nemesisNews, fieldPower), and SERVER_MSG names them', () => {
-    expect(SERVER_MESSAGE_TYPES).toHaveLength(28); // + nemesisAmbush, nemesisNews, eggHatched, arenaStatus, arenaInvite, arenaInviteResult, arenaState, trainerSpotted, realWeather, fieldPower
+  it('lists the 29 variants of the §4.4 block (Phase D13 rankedStatus, Phase D14 towerState, the 4 arena messages, trainerSpotted, rival, realWeather, eggHatched, nemesisAmbush, nemesisNews, fieldPower), and SERVER_MSG names them', () => {
+    expect(SERVER_MESSAGE_TYPES).toHaveLength(29); // + rival, nemesisAmbush, nemesisNews, eggHatched, arenaStatus, arenaInvite, arenaInviteResult, arenaState, trainerSpotted, realWeather, fieldPower
     expect(Object.keys(SERVER_MESSAGES).sort()).toEqual([...SERVER_MESSAGE_TYPES].sort());
     expect(Object.keys(EXAMPLES).sort()).toEqual([...SERVER_MESSAGE_TYPES].sort());
     for (const t of SERVER_MESSAGE_TYPES) expect(SERVER_MSG[t]).toBe(t);

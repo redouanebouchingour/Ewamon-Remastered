@@ -28,6 +28,7 @@ import { SpeedrunSection } from './SpeedrunSection';
 import { SeasonTitles } from './SeasonTitles';
 import { GhostSection } from './GhostSection';
 import { NemesesSection } from './NemesesSection';
+import { RivalSection } from './RivalSection';
 
 export const MOTTO_MAX = 120;
 
@@ -149,6 +150,7 @@ export function ProfileScreen() {
           <BadgeStrip earned={badges} />
         </section>
         <SeasonTitles username={profile.username} />
+        <RivalSection />
         <GhostSection />
         <NemesesSection />
         {pub !== null && (

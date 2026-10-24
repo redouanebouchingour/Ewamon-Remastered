@@ -2661,3 +2661,43 @@ the second isolated client (the component over the landing page: the foe and own
   talk ("Talking with Bloomduck"). A bubble over the follower anchored at its head and cleared itself; an ambient step
   for a new zone was worded by the model in 3.4 s. A natural trigger (walking into a new zone, nightfall) was not
   driven live; the unit tests cover them.
+
+## A recurring rival (2026-10-24, LLM feature 7, not in the SPEC)
+
+- The server's `rival` message drives it (World3D): `near` stores the view (`state/rival.ts`) and starts the model's
+  taunt while the player walks the last metres; `approach` spawns the rival's actor (`rival:actor`, its look from the
+  view) where it stepped out and plays trainer sight's approach on it (the "!", the `spotted` sting, the walk-up); on
+  arrival its taunt opens as an obligatory dialogue (no NPC talk on it), and paging past it sends the interact for
+  `rival:<name>`. The battle's foe actor stands in during the fight (`foeIdentity` knows `rival:` ids: name from the id,
+  look from the view, a stand-in look after a reload). After the battle, once the result card is dismissed, the rival
+  stands before the player (`partingStand`), says its parting line and walks off (`scene/rivalExit.ts`); the line goes
+  to `POST /rival/words` for the Profile.
+- The words (`talk/rival.ts`): facts in the rival's voice ("my Cindercap", "your Bramblecub", the last battle from
+  both sides, the record), its feeling by arc stage and an angle per stage for the taunt and the parting line; a
+  neutral system prompt with everything in the user turn (feature 3's finding). `checkRivalLine` keeps a line only when
+  feature 5's `ungrounded` and `wrongTypeClaims` pass, `whoseMixups` finds every "my X" the rival's and every "your X"
+  the player's (lists and nicknames included), `pastClaimsWrong` finds no past the record contradicts, and a parting
+  line has the result the right way round. Templates per arc stage (`TAUNTS`, `PARTINGS`, and `RIVAL_START` for the
+  battle's first line) speak at once and whenever the model is down, slow or wrong. The measurements are in the
+  module header (24 calls on the shipped prompts: 24 kept, 0 fact errors or mix-ups among them, median 1.3 s).
+- Live check (alt2 pair, `RIVAL=always`, the act1 fixture with 3 badges, the docker model): on Tide Route the rival
+  (Milo, showy, Glimfin line at Voltide L36 against the player's Cindercap line) stepped out, walked up and battled;
+  the record moved 1-0, 1-1, 2-1 over three meetings, the arc went cocky, frustrated, cocky as it should, the Profile
+  section showed it with the parting words. What it found: `rival near` sent during the join never reached the client
+  (the server now sends it with the first move), a taunt pre-written before the session's party was in hand was
+  checked against an empty party (the cache key now holds the party), the cocky parting example came back garbled 4
+  of 4 times (changed, see the module header), and the trainer bank's win line "Your victory is temporary, traveler."
+  passed feature 3's outcome guard (`WRONG_WAY.win` now drops "your victory / win"). After the fixes the third meeting
+  used the model for both lines: "You remember who won our last battle. Your team is not very impressive." and "That
+  was luck. My Ewamon will beat you next time."
+- A beaten player meets no rival until they heal: a party with nothing standing makes the rival stay away for that
+  visit (like trainer sight's look-away).
+- The battle banter is feature 3's trainer bank: `personaOf` gives a rival "Corin, the traveller's rival, loud and
+  brash" with its arc and record as the memory (`rivalPersona`).
+- The model for the rival follows Settings › Accessibility "Trainer banter" (off: templates only, no call), like the
+  in-battle lines; no new switch.
+- Profile: `screens/RivalSection.tsx` (Broadcast: the signature creature on its type colour, the name in the display
+  face, the arc on a paper tag, the record as a scoreboard, the last meeting, the parting words as a pull quote, the
+  team it brought with sprites). It reloads after every meeting and is absent with the server's `RIVAL=off`.
+- Tests: `test/rival.test.ts` (facts, prompts, checks, templates, the model call mocked, the taunt and parting timing,
+  the rival as a foe and as a persona, the exit walk) and `test/rival-section.test.tsx`.

@@ -96,6 +96,11 @@ import { RemoteInterpolator } from './RemoteInterpolator';
 import { EMOTE_CHEER, EMOTE_SAD, FoeActor, foeSpecOf } from './foeActor';
 import { createSceneDirector, trainerPose } from './SceneDirector';
 import { TrainerApproach } from './trainerApproach';
+import { RIVAL_ACTOR_ID, RivalExit, partingStand } from './rivalExit';
+import { isRivalTrainer, rivalTrainerId } from '@ewa/content';
+import type { RivalView } from '@ewa/protocol';
+import { partingLine, prewriteTaunt, rivalScene, sendWords, tauntLine, useRivalStore, writeParting } from '../state/rival';
+import type { RivalOutcome } from '../talk/rival';
 import { NpcStrike, PlayerStrike } from './npcStrike';
 import type { StrikeKind } from './npcStrike';
 import type { TrainerPose } from './SceneDirector';
@@ -194,6 +199,8 @@ class World implements World3D {
   private readonly trainerAt: TrainerPose = { x: 0, z: 0, angle: 0 };
   /** trainer sight: the spotting trainer's "!" and walk-up (created with the renderer), and the no-battle fallback */
   private approach: TrainerApproach | null = null;
+  /** a recurring rival: its actor for the walk-up and the parting line (state/rival.ts, talk/rival.ts) */
+  private rivalActor: RivalExit | null = null;
   /** NPC talk: an NPC's slap / kick lunge (`scene/npcStrike.ts`) */
   private strikeFx: NpcStrike | null = null;
   /** NPC talk: the player's slap / kick at the NPC (H / K in the dialogue) */
@@ -1170,6 +1177,7 @@ class World implements World3D {
     }
     this.zoneLoaded = false;
     if (this.prefetchToken !== null) this.prefetchToken.cancelled = true;
+    this.rivalActor?.despawn();
     this.director.unloadZone();
     this.renderer.dropPrepared?.();
     this.preparedFor = null;
@@ -1244,6 +1252,8 @@ class World implements World3D {
         this.input.setEnabled(false);
         this.fishing.cancel();
         this.endApproach(false);
+        // a recurring rival: the battle's foe actor stands in for the one that walked up
+        this.rivalActor?.despawn();
         // both teams' static atlases for the battle's life (a switch-in never waits); flipbooks come per shown side
         this.battleSprites.begin(m.state.sides.flatMap((s) => s.party.flatMap((b) => battleSpriteIds(b.creature.speciesId))));
         useUiStore.getState().setDialogue(null);
@@ -1266,6 +1276,10 @@ class World implements World3D {
           // Phase D14: a won rematch says its own `post` lines
           const post = leaguePostDialogue(b.authoritative.sides[b.seat === 0 ? 1 : 0].trainerId, rematchOfBattle(b.authoritative, b.seat));
           if (post !== null) this.showAfterBattle(post, `league:${m.battleId}:post`);
+        }
+        if (b !== null && b.battleId === m.battleId) {
+          const foeId = b.authoritative.sides[b.seat === 0 ? 1 : 0].trainerId;
+          if (isRivalTrainer(foeId)) this.rivalAfterBattle(m.outcome, b.seat);
         }
         this.battle.onBattleEnd(m);
         return;
@@ -1298,6 +1312,12 @@ class World implements World3D {
         return;
       case 'trainerSpotted':
         this.onTrainerSpotted(m.trainerId);
+        return;
+      case 'rival':
+        // a recurring rival: `near` the model pre-writes its taunt while the player walks; `approach` it walks up
+        useRivalStore.getState().setView(m.rival);
+        if (m.phase === 'near') prewriteTaunt(rivalScene(m.rival, this.roomZone ?? this.zone?.id ?? ''));
+        else this.onRivalApproach(m.rival, m.x, m.z);
         return;
       case 'fieldPower':
         // followers with field powers: the flames, the soil, the splash, the ghosts' haunts
@@ -1501,7 +1521,80 @@ class World implements World3D {
     if (a === null || !a.active) return;
     const id = a.trainerId!;
     a.end(restore ? (this.director.staticPose(id) ?? undefined) : undefined);
+    if (id === RIVAL_ACTOR_ID && restore) this.rivalActor?.despawn();
     if (restore) this.input.setEnabled(true);
+  }
+
+  // ---- a recurring rival ---------------------------------------------------------------------------------------
+
+  /** How long the rival's walk-up waits for the model's taunt after it arrives (it was asked at `near`). */
+  private static readonly TAUNT_WAIT_MS = 2_500;
+  /** How long the parting line waits for the model once the result card is dismissed. */
+  private static readonly PARTING_WAIT_MS = 3_000;
+
+  /**
+   * The rival stepped out at (x, z) and the server holds the player: its actor spawns there with the "!", walks up
+   * (trainer sight's approach), says its taunt (the model's when it is back, else the template), and paging past it
+   * sends the interact that starts the fight.
+   */
+  private onRivalApproach(view: RivalView, x: number, z: number): void {
+    const targetId = rivalTrainerId(view.name);
+    const send = (): void => {
+      this.ws.send('interact', { targetId, kind: 'npc' });
+      this.armApproachFallback();
+    };
+    if (!this.ready || this.zone === null) return send();
+    const scene = rivalScene(view, this.zone.id);
+    this.input.setEnabled(false);
+    this.fishing.cancel();
+    useUiStore.getState().setDialogue(null);
+    this.rivalActor ??= new RivalExit(this.renderer.actors);
+    this.rivalActor.spawnFor(view.look, view.name);
+    this.approach ??= new TrainerApproach(this.renderer.actors);
+    this.audio.play('spotted', null);
+    this.approach.start(RIVAL_ACTOR_ID, { x, z }, this.input.renderX, this.input.renderZ, () => {
+      void tauntLine(scene, World.TAUNT_WAIT_MS).then((line) => {
+        if (this.approach?.trainerId !== RIVAL_ACTOR_ID || useUiStore.getState().battle !== null) return;
+        useUiStore.getState().setDialogue({ speaker: view.name, lines: [line.text], index: 0, targetId: RIVAL_ACTOR_ID, obligatory: true, noTalk: true, onFinish: send });
+      });
+    });
+  }
+
+  /**
+   * A battle with the rival is over (`outcome` from the battle's side `seat`): the model writes the parting line now;
+   * once the result card is dismissed the rival stands before the player, says it (the template when the model is not
+   * back in time) and walks off. The line goes to the Profile.
+   */
+  private rivalAfterBattle(outcome: Extract<ServerMessage, { type: 'battleEnd' }>['outcome'], seat: 0 | 1): void {
+    const view = useRivalStore.getState().view;
+    const zoneId = this.zone?.id ?? null;
+    if (view === null || zoneId === null || !('winner' in outcome)) return;
+    const result: RivalOutcome = outcome.winner === 'draw' ? 'draw' : outcome.winner === seat ? 'won' : 'lost';
+    const scene = rivalScene(view, zoneId);
+    const written = writeParting(scene, result);
+    const play = (): void => {
+      if (!this.ready || this.zone?.id !== zoneId) return;
+      const at = partingStand(this.input.renderX, this.input.renderZ, this.input.pose.angle);
+      this.rivalActor ??= new RivalExit(this.renderer.actors);
+      this.rivalActor.stand(view.look, view.name, at.x, at.z, at.angle);
+      void partingLine(scene, result, written, World.PARTING_WAIT_MS).then((line) => {
+        if (useUiStore.getState().battle !== null) return this.rivalActor?.despawn();
+        useUiStore.getState().setDialogue({
+          speaker: view.name, lines: [line.text], index: 0, targetId: RIVAL_ACTOR_ID, obligatory: true, noTalk: true,
+          onFinish: () => this.rivalActor?.leave(this.input.renderX, this.input.renderZ),
+        });
+        void sendWords(line.text);
+      });
+    };
+    if (useUiStore.getState().battle === null) return play();
+    const off = useUiStore.subscribe(
+      (st) => st.battle === null,
+      (done) => {
+        if (!done) return;
+        off();
+        play();
+      },
+    );
   }
 
   // ---- interaction (called from DOM keydown, never from the tick) ------------------------------------------------
@@ -2049,6 +2142,8 @@ class World implements World3D {
         this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, angle, this.input.moving, this.input.running || this.input.biking);
       }
       this.stepFollowers(selfId, bf === null && !this.inArena && this.approach?.active !== true && this.evolution?.active !== true);
+      // a recurring rival walking off after its parting line
+      this.rivalActor?.update(frameDt);
       this.field?.frame(frameDt, now);
     }
     this.nameplateLeft -= frameDt;

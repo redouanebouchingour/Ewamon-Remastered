@@ -4,11 +4,15 @@
  * trainer (gym leader, Warden, Champion), else a zone trainer (route trainers and the story trainers a beat fights,
  * e.g. Sable), else a gym-hall trainer. Nothing here decides game truth.
  */
-import { ARENA_DAILY, ARENA_TRAINING, LEAGUE, TOWER, allZones, campGuardOwner, ghostOwner, interiorNpcs, interiorTrainers } from '@ewa/content';
+import { ARENA_DAILY, ARENA_TRAINING, LEAGUE, TOWER, allZones, campGuardOwner, ghostOwner, interiorNpcs, interiorTrainers, rivalNameOf } from '@ewa/content';
 import { villagerNpcId } from '@ewa/protocol';
 import type { LeagueTrainer } from '@ewa/content';
 import type { BattleState, TypeName } from '@ewa/core';
 import { species } from '../data/content';
+import { rivalViewFor } from '../state/rival';
+
+/** The rival's look when its view is not in hand (a reload mid battle): a young trainer's. */
+export const RIVAL_FALLBACK_LOOK = 'casual2_male';
 
 export interface FoeIdentity {
   /** the battle side's `trainerId` (a content id) */
@@ -79,6 +83,9 @@ export function foeIdentity(trainerId: string, leadSpecies: string | null = null
   // camp bases: a camp's guard, the owner's party fighting while they are away
   const holder = campGuardOwner(trainerId);
   if (holder !== null) return { id: trainerId, name: `${holder}'s guard`, title: 'Camp guard', type: lead, look: null, league: null };
+  // a recurring rival: its name rides the id, its look the view the server sent on the route
+  const rival = rivalNameOf(trainerId);
+  if (rival !== null) return { id: trainerId, name: rival, title: 'Rival', type: lead, look: rivalViewFor(trainerId)?.look ?? RIVAL_FALLBACK_LOOK, league: null };
   const row = trainerRows().get(trainerId);
   if (row !== undefined) return { id: trainerId, name: row.name, title: null, type: lead, look: row.look, league: null };
   const tail = trainerId.slice(trainerId.lastIndexOf('.') + 1).replace(/_/g, ' ');

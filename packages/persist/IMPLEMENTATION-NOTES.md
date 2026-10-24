@@ -327,3 +327,17 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
 - `npcQuestRepo`: `open`, `ofNpc` (newest first), `claimed` (the journal), `lock`, `offer`, `setStatus` (stamps
   `accepted_at` / `closed_at`), `setProgress` (never past the target), `expireOffers`. The caps, the cooldowns and the
   rewards are the server's (`game/npcQuests.ts`).
+
+## A recurring rival (2026-10-24)
+
+- Migration `0023_rivals` (drizzle-kit named it 0023 itself, `--name rivals`; the journal entry's `when` is the
+  generation time). One `rivals` table keyed by player (cascade): the identity as drawn (`name`, `look`, `temperament`,
+  `signature`: stored, so a world seed that changes between boots never renames the rival), the record (`player_wins`,
+  `rival_wins`, `draws`, `meetings`, checked non-negative), the last meeting (`last_result` checked won / lost / draw
+  from the player's side, `last_zone`, `last_met_at`, `last_team` jsonb `{ speciesId, level }[]`, `last_words` varchar
+  200), `next_at` (the end of the cooldown) and `created_at`.
+- `rivalRepo`: `of`, `ensure` (insert on conflict do nothing, so a second call keeps the first identity),
+  `recordMeeting` (under a row lock: the counts, the last meeting, its words cleared, `next_at = now + cooldown`),
+  `setWords` (one update guarded by `last_words is null` and `last_met_at` inside the window: the words are taken once
+  per meeting). The rules and the cooldown length are the server's.
+- Tests: `test/rivals.test.ts`; `migrations.test.ts` lists the table.

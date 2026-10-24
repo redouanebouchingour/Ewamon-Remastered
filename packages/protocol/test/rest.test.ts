@@ -5,6 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import {
+  RivalRes,
+  RivalWordsReq,
   BountiesRes,
   BountyPostReq,
   CampEditReq,
@@ -276,6 +278,24 @@ describe('§4.7 dex / shop / marketplace', () => {
     expect(haggleFactor(3)).toBe(0);
   });
 
+  it('a recurring rival: the view, the state before the first meeting and the parting words', () => {
+    const rival = {
+      name: 'Corin', look: 'casual2_male', temperament: 'cool', signature: 'glimfin', arc: 'cocky',
+      record: { playerWins: 0, rivalWins: 1, draws: 0, meetings: 1 },
+      last: { result: 'lost', zoneId: 'mire_route', at: '2026-10-24T10:00:00.000Z', words: null },
+      team: [{ speciesId: 'glimfin', level: 14 }],
+    };
+    ok(RivalRes, { enabled: true, rival });
+    ok(RivalRes, { enabled: true, rival: { ...rival, last: null, team: [] } });
+    ok(RivalRes, { enabled: false, rival: null });
+    bad(RivalRes, { enabled: true, rival: { ...rival, arc: 'smug' } });
+    bad(RivalRes, { enabled: true, rival: { ...rival, temperament: 'sleepy' } });
+    bad(RivalRes, { enabled: true, rival: { ...rival, last: { ...rival.last, result: 'fled' } } });
+    ok(RivalWordsReq, { text: 'Next time, I win.' });
+    bad(RivalWordsReq, { text: '   ' });
+    bad(RivalWordsReq, { text: 'x'.repeat(201) });
+  });
+
   it('marketplace query coerces strings and caps pageSize at 50', () => {
     const r = MarketQuery.safeParse({ search: 'glim', variant: 'dawn', isAlpha: 'true', levelMin: '5', levelMax: '30', sort: 'priceAsc', page: '2', pageSize: '50' });
     expect(r.success).toBe(true);
@@ -429,7 +449,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(115); // POST /shop/haggle + the 5 /npc/quests routes + GET + POST /npc/memory + POST /npc/act + GET /camps + POST /camps/edit + /camps/abandon + GET + POST /bounties + GET /world/ecosystem/:zoneId + GET /nemeses + the 5 daycare / egg routes + GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(ROUTE_KEYS).toHaveLength(117); // GET + POST /rival/words + POST /shop/haggle + the 5 /npc/quests routes + GET + POST /npc/memory + POST /npc/act + GET /camps + POST /camps/edit + /camps/abandon + GET + POST /bounties + GET /world/ecosystem/:zoneId + GET /nemeses + the 5 daycare / egg routes + GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
     expect(paths).toContain('GET /daily');
     expect(paths).toContain('POST /challenge');
     expect(paths).toContain('POST /daily/start');

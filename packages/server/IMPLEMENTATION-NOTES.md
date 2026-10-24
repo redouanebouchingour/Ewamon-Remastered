@@ -1370,3 +1370,44 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
 - Tests: `test/shop-haggle.test.ts` (the pure rules, the price helpers, the neutral cap with the deal on the shop, buy
   and sell at it and its expiry, the caps by standing with the cooldown and the shrinking repeats, a hostile player,
   a markup with its deed, another zone's keeper and a villager refused, `NPC_TOOLS=off`).
+
+## A recurring rival (2026-10-24, LLM feature 7, not in the SPEC)
+
+- Env `RIVAL=on|off|always` (default `on`; `off` in `testEnv`, so the progression walker and every other suite see
+  today's world; `always` for live checks: every route entry, after 4 m, no cooldown). It gates the world behaviour and
+  the two routes; it does not ride `NPC_TOOLS`, since the rival walks up to players who never talk to an NPC.
+- The trigger (`game/rival.ts`, pure, and `ZoneRoom.armRival` / `rivalStep`): on joining a zone (a fresh join or a
+  crossing), `rivalRefusal` checks the gates (a route, never a town or a story zone; at least one badge; no story beat
+  waiting in the zone, `nextStoryBeat`; not in a battle; the cooldown since the last meeting over), then `rivalRoll`
+  (seeded by the world seed, the player, the meetings so far, the zone and the hour: a reload in the same hour rolls
+  the same) brings the rival with `RIVAL_CHANCE` and a walk of 18 to 40 m. The first time, the row is created with
+  `newRivalIdentity` (seeded by the world seed and the player; its signature line is the starter strong against the
+  player's own, `playerStarter`: the gift starter line in the save, else the first starter line). The team is drawn
+  (`rivalTeam`); `rival near` goes out with the player's first accepted move there (sent during the join it was lost
+  in the live check: the client's room is not active until the join resolves). After the walk, outside a building and not surfing, the rival steps out
+  where it sees the player (`rivalSpawnPoint`: 9 m ahead or round the sides, walkable, a clear line) and holds the
+  player through the same `spotted` slot as trainer sight (`rival approach`; no grass roll meanwhile; the sight timeout
+  starts the fight if the client never sends the interact). The interact for `rival:<name>` starts it
+  (`startRivalSpotted`); once a visit, whatever happens.
+- The team (`rivalTeam`, deterministic per rival, meeting count, zone and badge count): the signature line at the
+  player's badges first, at the player's strongest level plus the record lead (`rivalLevelLead`: +2 when the rival
+  leads, +1 level, +0 behind), then distinct species from the zone's land slots (never alpha slots or the signature's
+  own line) 1 to 3 levels below it, `rivalTeamSize(badges)` in all.
+- The battle (`BattleCoordinator.startRival`): format 'trainer', trainerId `rival:<name>`, synthetic creatures
+  (`npc:rival:<i>`) at their level's moves, no flee or catch, reward `rivalReward(signature level)`. The end
+  transaction (a branch before the plain trainer one, so no `trainer:<id>:beaten` flag is set and the rival comes back):
+  a win pays the reward and the route trainer's exp and quest event; every meeting is recorded (`rivals.recordMeeting`:
+  the record from both sides, the zone, the team, the cooldown) with an audit row `rival.battle` (result, zone, record).
+  A loss costs what any trainer loss costs (nothing written but the fainted party). A disconnect mid battle voids it
+  like any NPC battle (nothing recorded, no cooldown).
+- `GET /rival` (the view: identity, arc, record, last meeting with its words, the team it brought) and
+  `POST /rival/words` (`rest/routes/rival.ts`): the parting line the player saw, taken once per meeting within 15 min
+  of it (409 `rivalNoMeeting`), cleaned (`cleanWords`: one line, no em-dash, no control characters), audit row
+  `rival.words`; 409 `rivalOff` with the flag off.
+- Deviation: the rival appears on entering a route (and then after a walk), not on a timer while the player stands in
+  one: the zone join is the one moment the room reads the player's save anyway, and a crossing is the natural "now and
+  then". The cooldown is real time (90 min), so a player who crosses a lot does not meet the rival more often.
+- Tests: `test/rival.test.ts` (the gates, the roll, the identity and the team, the spawn point, `RIVAL=always`: it arms
+  on a route, steps out after a walk, holds the player and its interact starts the fight with the team it announced;
+  never before the first badge or in a town; the end records a win (paid) and a loss (not), GET /rival and the words;
+  `RIVAL=off` arms nothing and the routes say so).

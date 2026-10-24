@@ -81,6 +81,13 @@ export const EnvSchema = z.object({
    * every other test see today's world).
    */
   CAMPS: z.enum(['on', 'off']).default('on'),
+  /**
+   * A recurring rival (content rival.ts, LLM feature 7): 'on' (the default) = once the player holds a badge, their rival
+   * now and then shows up on a route, walks up and battles them, and keeps a record; 'off' = never (testEnv and the
+   * progression walker, so every other test sees today's world); 'always' = on every route entry, after a few metres,
+   * with no cooldown (live checks).
+   */
+  RIVAL: z.enum(['on', 'off', 'always']).default('on'),
   /** not configurable in v1; present so the value is visible */
   TICK_HZ: z.literal('20').default('20'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
@@ -159,6 +166,7 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
     BOUNTIES: 'off',
     FIELD_POWERS: 'off',
     CAMPS: 'off',
+    RIVAL: 'off',
     ...overrides,
   });
 }

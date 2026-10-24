@@ -162,6 +162,13 @@
       "when": 1792855826907,
       "tag": "0022_npc_quests",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792868312964,
+      "tag": "0023_rivals",
+      "breakpoints": true
     }
   ]
 }

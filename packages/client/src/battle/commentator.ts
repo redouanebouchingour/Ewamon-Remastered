@@ -23,6 +23,9 @@ import {
 } from '../talk/commentary';
 import type { CasterBank, MatchInfo, Picker, Throttle, TrainerBank, TrainerMoment, TrainerPersona } from '../talk/commentary';
 import { apiFetch } from '../net/api';
+import { RIVAL_START, rivalPersona } from '../talk/rival';
+import { rivalViewFor } from '../state/rival';
+import { rivalArc } from '@ewa/content';
 import { clearCommentary, showCaster, showTrainer } from '../state/commentary';
 import { useSettingsStore } from '../state/settings';
 import { useSessionStore } from '../state/session';
@@ -100,7 +103,18 @@ export function personaOf(foe: FoeIdentity, memory: NpcMemoryView | null): Train
   if (foe.title === 'Villager') return { who: `${foe.name}, a villager${memory !== null ? ` of ${memory.town.name}` : ''}`, memory: memoryInstruction(memory) };
   if (foe.title === 'Camp guard') return { who: `${foe.name}, keeping the camp while its owner is away`, memory: '' };
   if (foe.title === 'Ghost trainer') return { who: `${foe.name}, the team a trainer left behind`, memory: '' };
+  // a recurring rival: its arc and the record are its memory (talk/rival.ts)
+  if (foe.title === 'Rival') {
+    const v = rivalViewFor(foe.id);
+    return v !== null ? rivalPersona(v, useSessionStore.getState().progression?.badges.length ?? 0) : { who: `${foe.name}, the traveller's rival`, memory: '' };
+  }
   return { who: `${foe.name}, ${foe.title ?? 'a trainer'}`, memory: '' };
+}
+
+/** The rival's arc going into this battle (cocky when its view is not in hand). */
+function rivalStartArc(trainerId: string): ReturnType<typeof rivalArc> {
+  const v = rivalViewFor(trainerId);
+  return v === null ? 'cocky' : rivalArc(useSessionStore.getState().progression?.badges.length ?? 0, v.record);
 }
 
 /** The battle the commentator's bank is written for: kinds and types only (the bank is name free). */
@@ -235,6 +249,7 @@ export function createCommentator(deps: CommentatorDeps): Commentator {
     else if (t.kind === 'start' && foe.title === 'Villager') pool = villagerStartLines(memory);
     else if (t.kind === 'start' && foe.title === 'Camp guard') pool = GUARD_START;
     else if (t.kind === 'start' && foe.title === 'Ghost trainer') pool = GHOST_START;
+    else if (t.kind === 'start' && foe.title === 'Rival') pool = RIVAL_START[rivalStartArc(foe.id)];
     else pool = TRAINER_LINES[t.kind];
     const text = fill(pool[picker.pick(`trainer:${t.kind}`, pool.length)]!, { name: t.name });
     trainerAt = now();

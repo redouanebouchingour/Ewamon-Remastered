@@ -641,3 +641,33 @@ export {
   trophyKindOf,
 } from './data/camps';
 export type { CampDef, CampLogEntry, CampRefusal, CampSlot, Trophy, TrophyKind } from './data/camps';
+
+// ─── a recurring rival (LLM feature 7) ───────────────────────────────────────
+export {
+  RIVAL_ARCS,
+  RIVAL_CHANCE,
+  RIVAL_COOLDOWN_MS,
+  RIVAL_COUNTER,
+  RIVAL_LOOKS,
+  RIVAL_MIN_BADGES,
+  RIVAL_NAMES,
+  RIVAL_RESPECT_BADGES,
+  RIVAL_SPAWN_M,
+  RIVAL_TEMPERAMENTS,
+  RIVAL_TEMPERAMENT_TEXT,
+  RIVAL_WALK_ALWAYS_M,
+  RIVAL_WALK_M,
+  RIVAL_WORDS_MAX,
+  RIVAL_WORDS_WINDOW_MS,
+  isRivalTrainer,
+  rivalArc,
+  rivalIdentity,
+  rivalLevelLead,
+  rivalNameOf,
+  rivalReward,
+  rivalTeamSize,
+  rivalTrainerId,
+  signatureSpecies,
+  signatureStage,
+} from './data/rival';
+export type { RivalArc, RivalIdentity, RivalRecord, RivalTemperament } from './data/rival';

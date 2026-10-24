@@ -52,5 +52,8 @@ export * from './arena';
 // the battle commentary's model line banks (client only, validated here because the client reaches zod through protocol)
 export * from './commentary';
 
+// a recurring rival (LLM feature 7): the rival's view (the `rival` message, GET /rival) and its parting words
+export * from './rival';
+
 // structural copies of content types (see types.ts TODO)
 export * from './types';

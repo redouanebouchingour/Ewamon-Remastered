@@ -782,3 +782,18 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
 - Trophy kinds mirror what the player did elsewhere: `scar` (a nemesis beaten or caught), `legend` (a legendary species
   in the dex as caught), `medal` (the Champion's flag, or the ranked peak's tier from Silver up: there are no cup medals
   to read, Weekly Cup wins are not recorded), `achievement` (claimed), `bounty` (brought in).
+
+## A recurring rival (2026-10-24, LLM feature 7, not in the SPEC)
+
+- `data/rival.ts`: the rival's vocabulary and rules, pure. `rivalIdentity(seed, playerStarter)` draws a name
+  (`RIVAL_NAMES`, none used by an NPC, a trainer or a species), a look (`RIVAL_LOOKS`, young trainers' render looks), a
+  temperament (`RIVAL_TEMPERAMENTS`, with `RIVAL_TEMPERAMENT_TEXT`) and a signature line: the starter strong against
+  the player's own starter (`RIVAL_COUNTER`), else one drawn from the seed. `rivalArc(badges, record)`: cocky, then
+  frustrated once the player is ahead in the record, respectful from 6 badges (or 4 badges and 3 wins). The signature
+  evolves with the badges (`signatureStage`: one stage at 3, the last at 6; `signatureSpecies` walks `evolution.into`);
+  `rivalTeamSize` (2 at the first badge, one more every two badges, at most 6), `rivalLevelLead` (2 above the player's
+  strongest when the rival leads the record, 1 when level, 0 behind), `rivalReward` (a route trainer's pay, 50 a level,
+  at least 200), the trigger numbers (`RIVAL_MIN_BADGES` 1, `RIVAL_COOLDOWN_MS` 90 min, `RIVAL_CHANCE` 0.35 per route
+  entry, `RIVAL_WALK_M` 18 to 40 m, `RIVAL_SPAWN_M` 9) and the battle trainer id `rival:<name>`.
+- Nothing in a `ZoneDef` moves and no story gate reads it: the rival is drawn and placed by the server at run time.
+- Tests: `test/rival.test.ts`.

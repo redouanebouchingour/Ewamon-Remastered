@@ -56,6 +56,8 @@ import { villagerTeam } from '../game/villagers';
 import { recordNpcDeed } from '../game/npcMemory';
 import { villagerNpcId, villagerTrainerId } from '@ewa/protocol';
 import type { ZoneId } from '@ewa/content';
+import { rivalReward, rivalTrainerId } from '@ewa/content';
+import type { RivalTeamMember } from '@ewa/protocol';
 
 export const TURN_DEADLINE_MS = 60_000;
 export const REPLACEMENT_DEADLINE_MS = 20_000;
@@ -148,6 +150,12 @@ export interface BattleSession {
    * (game/camps.ts `settleRaid`: the cut, the raider's lead's honor, a takeover, the held point, the camp log).
    */
   readonly camp?: { readonly ownerId: string; readonly ownerName: string; readonly zoneId: string };
+  /**
+   * A recurring rival (content rival.ts): the player against their rival (format 'trainer', trainerId `rival:<name>`,
+   * synthetic creatures). A win pays like a route trainer and sets no flag; the end records the meeting (the record, the
+   * last meeting, the cooldown `cooldownMs`) with an audit row. A loss costs what any trainer loss costs.
+   */
+  readonly rival?: { readonly name: string; readonly team: readonly RivalTeamMember[]; readonly cooldownMs: number };
   /** Phase D14: the tower result for side 0, set after the end transaction commits (read by the host's `onEnd`) */
   towerResult?: TowerResult;
   /**
@@ -1006,6 +1014,49 @@ export class BattleCoordinator {
   }
 
   /**
+   * A recurring rival: the player against their rival's team as the zone room drew it (`game/rival.ts` `rivalTeam`),
+   * synthetic creatures with the moves of their level (`npc:rival:<i>` ids: nothing is written for them). No flee, no
+   * catch; the reward is a route trainer's at the signature creature's level.
+   */
+  async startRival(p: PlayerSeat, rival: { readonly name: string; readonly team: readonly RivalTeamMember[]; readonly cooldownMs: number }, at: BattleAt): Promise<StartResult> {
+    if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
+    if (rival.team.length === 0) return { ok: false, code: 'notAllowed', detail: 'rivalNoTeam' };
+    const loaded = await this.loadPlayers([p.playerId], rival.team[0]!.speciesId);
+    const me = loaded.get(p.playerId)!;
+    const side0 = this.playerSide(me.party, p.playerId, false, false, me.inventory);
+    if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
+    if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
+    const content = this.deps.content;
+    const trainerId = rivalTrainerId(rival.name);
+    const team = rival.team.map((m, i) => withSyntheticId(newCreature(content, m.speciesId, m.level), `npc:rival:${i}`));
+    const side1: Omit<Side, 'mustSwitch' | 'consumedItems'> = { kind: 'npc', party: team.map((c) => projectBattler(c, content)), active: 0, trainerId, canFlee: false, canCatch: false };
+    const { session } = this.open(
+      {
+        id: randomUUID(),
+        format: 'trainer',
+        zoneId: this.deps.zone.id,
+        seats: [{ side: 0, playerId: p.playerId, sessionId: p.sessionId }, { side: 1, playerId: null, sessionId: null }],
+        spawnId: null,
+        npc: { trainerId, reward: rivalReward(rival.team[0]!.level), leagueId: null },
+        beatId: null,
+        staticSpecies: null,
+        staticFlag: null,
+        x: at.x,
+        z: at.z,
+        yaw: at.yaw ?? null,
+        inventory: [this.bagFor(me), null],
+        rematch: false,
+        challenge: [me.challenge, null],
+        rival: { name: rival.name, team: rival.team.map((t) => ({ ...t })), cooldownMs: rival.cooldownMs },
+      },
+      [side0, side1],
+      this.rng.fork().snapshot(),
+    );
+    this.sendStartProgress(loaded);
+    return { ok: true, session };
+  }
+
+  /**
    * Camp bases: the player raids another trainer's camp, fighting its guard as an AI trainer of healed copies of the
    * owner's party snapshot (own levels, at most six, synthetic ids: nothing of the owner's creatures is read again or
    * written). `noExp` (see `open`); no flee, no catch. The end settles the raid (`settleRaid`).
@@ -1467,6 +1518,25 @@ export class BattleCoordinator {
                 this.noteBroughtIn(d, got);
               }
             }
+          } else if (session.rival !== undefined) {
+            // a recurring rival: a win pays like a route trainer (no flag: the rival comes back); every meeting is recorded
+            if (won && session.npc !== null) {
+              money += session.npc.reward;
+              trainerExpGain += TRAINER_EXP.trainerWin;
+              questEvents.push({ kind: 'win', format: 'trainer' });
+            }
+            const result = outcome.winner === 'draw' ? 'draw' : won ? 'won' : 'lost';
+            const r = await repos.rivals.recordMeeting(tx, pid, { result, zoneId: session.zoneId, team: session.rival.team, cooldownMs: session.rival.cooldownMs }, now);
+            await repos.audit.write(
+              tx,
+              {
+                actorId: pid,
+                action: 'rival.battle',
+                subject: session.id,
+                detail: { rival: session.rival.name, zone: session.zoneId, result, record: r === null ? null : { playerWins: r.playerWins, rivalWins: r.rivalWins, draws: r.draws, meetings: r.meetings } },
+              },
+              now,
+            );
           } else if (session.villager === true) {
             // NPC talk: a villager's battle pays trainer exp only (no money, no flag: it fights again whenever asked)
             if (won) {

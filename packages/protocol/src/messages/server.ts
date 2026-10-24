@@ -27,6 +27,8 @@ import {
 import type { SeatReservation } from './common';
 import { ArenaInviteMsg, ArenaInviteResultMsg, ArenaStateMsg, ArenaStatusMsg } from '../arena';
 import type { ArenaServerMessage } from '../arena';
+import { RivalMsg } from '../rival';
+import type { RivalPhase, RivalView } from '../rival';
 
 // ---- companion shapes ------------------------------------------------------------------------------
 
@@ -169,6 +171,13 @@ export type ServerMessage =
    */
   | { readonly type: 'trainerSpotted'; readonly trainerId: string }
   /**
+   * A recurring rival (content rival.ts): `near` the rival is on this route (the client may pre-write its taunt; nothing
+   * shows yet); `approach` it stepped out at (x, z) and the server holds the player like a trainer who saw them: the
+   * client walks it up, says its taunt and sends `interact` for `rivalTrainerId(name)` (the server starts the fight
+   * alone after the sight timeout).
+   */
+  | { readonly type: 'rival'; readonly phase: RivalPhase; readonly x: number; readonly z: number; readonly rival: RivalView }
+  /**
    * Weather from real life: the weather of the city the player picked (null: none picked, or no answer yet), sent on
    * joining a zone and when it changes. The client shows it instead of the zone's `weather`; the player's battles use it.
    */
@@ -297,6 +306,7 @@ export const SERVER_MESSAGE_TYPES = [
   'storyBeat',
   'toast',
   'trainerSpotted',
+  'rival',
   'realWeather',
   'error',
   'rankedStatus',
@@ -547,6 +557,7 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
   StoryBeatMsg,
   ToastMsg,
   TrainerSpottedMsg,
+  RivalMsg,
   RealWeatherMsg,
   ErrorMsg,
   RankedStatusMsg,
@@ -579,6 +590,7 @@ export const SERVER_MESSAGES = {
   storyBeat: StoryBeatMsg,
   toast: ToastMsg,
   trainerSpotted: TrainerSpottedMsg,
+  rival: RivalMsg,
   realWeather: RealWeatherMsg,
   error: ErrorMsg,
   rankedStatus: RankedStatusMsg,

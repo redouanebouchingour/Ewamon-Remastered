@@ -242,7 +242,8 @@ function jsonOf(content: string): unknown {
  */
 const WRONG_WAY: Readonly<Partial<Record<TrainerBankKey, RegExp>>> = {
   loss: /\byou (lost|lose|are beaten|failed)\b|\byour (defeat|loss|failure)\b|\badmit\b|\bthink you could\b/i,
-  win: /\byou (won|win|beat me)\b|\bI lost\b|\bmy (defeat|loss)\b/i,
+  // "Your victory is temporary, traveler." as a rival's win line (feature 7's live check): the victory is the traveller's
+  win: /\byou (won|win|beat me)\b|\bI lost\b|\bmy (defeat|loss)\b|\byour (victory|win)\b/i,
 };
 
 function keep(lines: readonly unknown[] | undefined, nameless: boolean, names: readonly string[], wrong?: RegExp, typesOk = true): string[] {

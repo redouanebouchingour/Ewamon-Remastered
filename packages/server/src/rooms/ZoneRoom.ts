@@ -118,6 +118,9 @@ import { PARTY_TOPIC } from '../rest/partyTopic';
 import { CAMP_TOPIC, raidedToday, trophyKinds } from '../game/camps';
 import { CAMP_RANGE_M, CAMP_REFUSAL_TEXT, campOf, campWelcome, challengeActive, claimRefusal, defaultCampName, nearCamp, raidRefusal } from '@ewa/content';
 import type { CampRefusal } from '@ewa/content';
+import { isRivalTrainer, nextStoryBeat, rivalTrainerId } from '@ewa/content';
+import type { RivalView } from '@ewa/protocol';
+import { newRivalIdentity, playerStarter, rivalCooldownMs, rivalRefusal, rivalRoll, rivalSpawnPoint, rivalTeam, rivalView } from '../game/rival';
 
 export interface ZoneMeta {
   readonly zoneId: ZoneId;
@@ -214,6 +217,21 @@ export interface ZoneUserData {
   glide: GlidePlan | null;
   /** followers: the Psychic sense is ready again at this time */
   senseReadyAt: number;
+  /**
+   * a recurring rival on this route (game/rival.ts): `near` it shows itself after `leftM` more metres; `approach` it
+   * stepped out and holds the player (`spotted` names it); `done` the fight started or could not, for this visit
+   */
+  rival: RivalVisit | null;
+}
+
+/** A recurring rival's visit to this route for one player (ZoneUserData.rival). */
+export interface RivalVisit {
+  phase: 'near' | 'approach' | 'done';
+  leftM: number;
+  /** `rival near` went out (on the first accepted move: a message sent during the join can reach the client before it listens) */
+  announced: boolean;
+  readonly view: RivalView;
+  readonly cooldownMs: number;
 }
 
 export type ZoneClient = Client<{ userData: ZoneUserData; auth: ZoneAuth }>;
@@ -679,6 +697,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       lead: null,
       glide: null,
       senseReadyAt: 0,
+      rival: null,
     };
     // followers: the lead walks behind the player from the first frame (other players see it through the AOI view)
     this.setLead(client.userData, ps, loaded.party);
@@ -719,6 +738,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     void this.ghostWelcome(client, playerId);
     // camp bases: the camp log since the player was last told
     void this.campWelcome(client, playerId);
+    // a recurring rival: now and then, on a route, the rival is here (it shows itself after a walk)
+    void this.armRival(client).catch((e: unknown) => deps.log.warn({ err: e, playerId }, 'rival arm failed'));
     // breeding: the eggs the player carries count the steps walked here
     void this.eggs.load(playerId).catch((e: unknown) => deps.log.warn({ err: e, playerId }, 'egg load failed'));
   }
@@ -1340,7 +1361,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
         }
       }
       // a trainer who sees the player goes first; otherwise the grass (or the water) may roll (never mid-glide)
-      if (ud.glide === null && !this.checkSight(client, ud, ps)) this.wildStep(client, ud, ps, dist);
+      if (ud.glide === null && !this.checkSight(client, ud, ps) && !this.rivalStep(client, ud, ps, dist)) this.wildStep(client, ud, ps, dist);
       return;
     }
     const reason: RejectReason = verdict.reason;
@@ -1807,6 +1828,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
    * fight: onInteract's paths without the range check. The hold ends when the start resolves.
    */
   private async startSpotted(client: ZoneClient, ud: ZoneUserData, ps: PlayerState, trainerId: string): Promise<void> {
+    if (isRivalTrainer(trainerId)) return this.startRivalSpotted(client, ud, ps, trainerId);
     const spotted = ud.spotted;
     const t = this.sightTrainers().find((x) => x.id === trainerId);
     if (spotted === null || t === undefined || !this.sightEligible(ud, t)) {
@@ -1819,6 +1841,99 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     if (beat !== null) this.sendMsg(client, { type: 'storyBeat', beatId: beat.id, phase: 'start' });
     const res = await this.battles.startNpc(seat, { kind: 'trainer', trainer: t, rematch: false }, beat?.id ?? null, this.battleAt(ps.x, ps.z)).catch((e: unknown) => {
       this.deps.log.error({ err: e }, 'startNpc (spotted) failed');
+      return { ok: false as const, code: 'internal' as const, detail: 'startFailed' };
+    });
+    if (ud.spotted === spotted) ud.spotted = null;
+    if (!res.ok) {
+      ud.sightQuietUntil = this.now() + SPOT_QUIET_MS;
+      this.sendMsg(client, { type: 'error', code: res.code, detail: res.detail });
+    }
+  }
+
+  // ─── a recurring rival (game/rival.ts) ──────────────────────────────────────
+
+  /**
+   * On joining a route (a fresh join or a crossing): when the gates allow and the seeded roll says so, the rival is on
+   * this route. The row is created the first time (its identity drawn and stored) and the team drawn; `rival near` goes
+   * out with the first accepted move (the live check lost it when sent during the join: the client's room was not
+   * active yet) so the client can pre-write the taunt; the rival shows itself after the rolled walk (`rivalStep`).
+   */
+  private async armRival(client: ZoneClient): Promise<void> {
+    const deps = this.deps;
+    const ud = client.userData;
+    if (ud === undefined) return;
+    const mode = deps.env.RIVAL;
+    const pid = ud.playerId;
+    const now = this.now();
+    const gate = (nextAt: number | null) =>
+      rivalRefusal({ mode, zoneKind: this.zone.kind, inInterior: false, badges: ud.badges.length, beatPending: nextStoryBeat(this.zone.id, ud.flags) !== null, busy: ud.battleId !== null, nextAt, now });
+    if (gate(null) !== null) return;
+    const got = await deps.repos.db.transaction(async (tx) => {
+      const had = await deps.repos.rivals.of(tx, pid);
+      if (had !== null && gate(had.nextAt?.getTime() ?? null) !== null) return null;
+      const walk = rivalRoll(mode, deps.worldSeed, pid, had?.meetings ?? 0, this.zone.id, now);
+      if (walk === null) return null;
+      const r = had ?? (await deps.repos.rivals.ensure(tx, pid, newRivalIdentity(deps.worldSeed, pid, playerStarter(await deps.repos.creatures.byOwner(tx, pid))), new Date(now)));
+      const party = await deps.repos.creatures.party(tx, pid);
+      return { r, walk, top: Math.max(1, ...party.map((c) => c.level)) };
+    });
+    if (got === null || client.userData !== ud || this.owner.get(pid) !== client.sessionId) return;
+    const badges = ud.badges.length;
+    const view = rivalView(got.r, badges, rivalTeam(got.r, badges, got.top, this.zone.id));
+    ud.rival = { phase: 'near', leftM: got.walk, view, cooldownMs: rivalCooldownMs(mode), announced: false };
+  }
+
+  /**
+   * After an accepted move with no trainer in sight: the rival on this route counts the walk down, then steps out where
+   * it sees the player (`rivalSpawnPoint`) and holds them like a trainer who saw them (true: the grass does not roll).
+   * Never mid-surf, inside a building or while anything else holds the player; it tries again on the next step.
+   */
+  private rivalStep(client: ZoneClient, ud: ZoneUserData, ps: PlayerState, dist: number): boolean {
+    const v = ud.rival;
+    if (v === null || v.phase !== 'near') return false;
+    if (ud.battleId !== null || ud.tradeId !== null || ud.handover !== null || ud.spotted !== null || this.raid?.isParticipant(ud.playerId) === true) return false;
+    if (!v.announced) {
+      v.announced = true;
+      this.sendMsg(client, { type: 'rival', phase: 'near', x: 0, z: 0, rival: v.view });
+    }
+    v.leftM -= dist;
+    if (v.leftM > 0 || ps.surfing || interiorAt(this.zone.id, ps.x, ps.z) !== null) return false;
+    const at = rivalSpawnPoint(this.heightfield, ud.closedGates, ps.x, ps.z, ps.angle, (x, z) => interiorAt(this.zone.id, x, z) !== null);
+    if (at === null) return false;
+    v.phase = 'approach';
+    const spotted = { trainerId: rivalTrainerId(v.view.name), at: this.now(), checking: true };
+    ud.spotted = spotted;
+    ps.moving = false;
+    const away = (): void => {
+      if (ud.spotted !== spotted) return;
+      ud.spotted = null;
+      v.phase = 'done';
+    };
+    void this.leadLevel(ud.playerId)
+      .then((lead) => {
+        if (ud.spotted !== spotted) return;
+        if (lead <= 0) return away();
+        spotted.checking = false;
+        spotted.at = this.now();
+        this.sendMsg(client, { type: 'rival', phase: 'approach', x: at.x, z: at.z, rival: v.view });
+      })
+      .catch(away);
+    return true;
+  }
+
+  /** The rival's fight (its interact, or the sight timeout): the team drawn on arming; the hold ends when the start resolves. */
+  private async startRivalSpotted(client: ZoneClient, ud: ZoneUserData, ps: PlayerState, trainerId: string): Promise<void> {
+    const spotted = ud.spotted;
+    const v = ud.rival;
+    if (spotted === null || v === null || v.phase !== 'approach' || rivalTrainerId(v.view.name) !== trainerId) {
+      ud.spotted = null;
+      return;
+    }
+    spotted.checking = true;
+    v.phase = 'done';
+    const seat = { playerId: ud.playerId, sessionId: client.sessionId };
+    const res = await this.battles.startRival(seat, { name: v.view.name, team: v.view.team, cooldownMs: v.cooldownMs }, this.battleAt(ps.x, ps.z)).catch((e: unknown) => {
+      this.deps.log.error({ err: e }, 'startRival failed');
       return { ok: false as const, code: 'internal' as const, detail: 'startFailed' };
     });
     if (ud.spotted === spotted) ud.spotted = null;

@@ -20,6 +20,7 @@ import {
   VariantKeySchema,
 } from './messages/common';
 import { InventoryDeltaMsg, NEMESIS_SCAR_IDS, QuestProgressEntrySchema } from './messages/server';
+import { RivalRes, RivalWordsReq } from './rival';
 import { SeatReservationSchema } from './messages/common';
 import {
   ArenaInfoRes,
@@ -1488,6 +1489,9 @@ export const ROUTES = {
   ghost: route({ method: 'GET', path: '/ghost', auth: 'bearer', response: GhostRes }),
   // nemeses: the wild creatures that beat or escaped you and rose against you
   nemeses: route({ method: 'GET', path: '/nemeses', auth: 'bearer', response: NemesesRes }),
+  // a recurring rival: who it is, the record, the last meeting and its parting words; the words the player saw
+  rival: route({ method: 'GET', path: '/rival', auth: 'bearer', response: RivalRes }),
+  rivalWords: route({ method: 'POST', path: '/rival/words', auth: 'bearer', request: RivalWordsReq, response: RivalRes }),
   // breeding: the Daycare (leave / take back a creature, collect the egg) and moving an egg between the party and the box
   daycare: route({ method: 'GET', path: '/daycare', auth: 'bearer', response: DaycareRes }),
   daycareLeave: route({ method: 'POST', path: '/daycare/leave', auth: 'bearer', request: CreatureIdReq, response: DaycareActionRes }),

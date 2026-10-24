@@ -27,3 +27,4 @@ export * from './bounties';
 export * from './npcMemory';
 export * from './npcQuests';
 export * from './camps';
+export * from './rivals';

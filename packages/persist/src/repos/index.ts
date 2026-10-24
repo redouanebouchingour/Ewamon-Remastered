@@ -32,6 +32,8 @@ import type { NpcMemoryRepo } from './npcMemory';
 import { npcQuestRepo } from './npcQuests';
 import type { NpcQuestRepo } from './npcQuests';
 import { campRepo } from './camps';
+import { rivalRepo } from './rivals';
+import type { RivalRepo } from './rivals';
 import type { CampRepo } from './camps';
 import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
@@ -91,6 +93,8 @@ export interface Repos {
   readonly npcQuests: NpcQuestRepo;
   /** camp bases: the claimed travellers' camps and the raids on them (migration 0020) */
   readonly camps: CampRepo;
+  /** a recurring rival: its identity, the record and the last meeting (migration 0023) */
+  readonly rivals: RivalRepo;
 }
 
 /**
@@ -126,6 +130,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     npcMemory: npcMemoryRepo,
     npcQuests: npcQuestRepo,
     camps: campRepo,
+    rivals: rivalRepo,
   };
 }
 
@@ -160,3 +165,4 @@ export { NPC_MEMORY_LIMITS, rollSummary } from './npcMemory';
 export type { NpcMemory, NpcMemoryChange } from './npcMemory';
 export type { NewNpcQuest, NpcQuest, NpcQuestStatus } from './npcQuests';
 export type { Camp, CampRaid, NewCamp } from './camps';
+export type { Rival, RivalIdentityRow, RivalMeeting, RivalResult } from './rivals';

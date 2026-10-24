@@ -301,3 +301,15 @@ installed library that future readers should not have to re-derive. The spec its
   recorded as the existing `giftReceived` (0). Rudeness itself (an insult, a threat) is still the conversation's talk
   deed, written when the talk ends; a new server-only deed keeps the markup from counting that insult twice.
 - Route count 114 → 115.
+
+## A recurring rival (2026-10-24, not in the SPEC)
+
+- `src/rival.ts` (exported from the index): `RivalViewSchema` (name, look, temperament, signature root, arc, the record,
+  the last meeting with the rival's parting `words`, and a team of `{ speciesId, level }`), `RivalRes` { enabled, rival }
+  for `GET /rival` (`rival` null before the first battle; `enabled` false with the server's `RIVAL=off`),
+  `RivalWordsReq` { text, 1..200 } for `POST /rival/words`, and `RivalMsg`.
+- A new server message `rival` { phase: near | approach, x, z, rival }: `near` the rival is on this route (the client
+  pre-writes its taunt; nothing shows), `approach` it stepped out at (x, z) and holds the player like `trainerSpotted`.
+  The client's answer is the existing `interact { kind: 'npc', targetId: 'rival:<name>' }`, so no client message is
+  added. Server messages 28 → 29.
+- Route count 115 → 117 (`rival`, `rivalWords`).
