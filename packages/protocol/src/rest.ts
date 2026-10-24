@@ -1016,10 +1016,11 @@ export const NPC_GOSSIP_MAX = 3;
 /**
  * What the player did to an NPC, from the NPC's side: `giftReceived` = the NPC gave the player money or an Ewamon,
  * `giftGiven` = the NPC took the player's money or Ewamon, `battleWon` / `battleLost` = the player won / lost a battle
- * against it. Those four the server records itself (`POST /npc/act`, the battle's end); the client reports only the
- * talk deeds (`NPC_TALK_DEEDS`).
+ * against it, `helped` = the player handed in a favour the NPC asked (`POST /npc/quests/claim`). Those the server
+ * records itself (`POST /npc/act`, the battle's end, the hand-in); the client reports only the talk deeds
+ * (`NPC_TALK_DEEDS`).
  */
-export const NPC_DEEDS = ['hit', 'insulted', 'threatened', 'robbed', 'kindWords', 'giftReceived', 'giftGiven', 'battleWon', 'battleLost'] as const;
+export const NPC_DEEDS = ['hit', 'insulted', 'threatened', 'robbed', 'kindWords', 'giftReceived', 'giftGiven', 'battleWon', 'battleLost', 'helped'] as const;
 export type NpcDeed = (typeof NPC_DEEDS)[number];
 export const NPC_TALK_DEEDS = ['hit', 'insulted', 'threatened', 'robbed', 'kindWords'] as const satisfies readonly NpcDeed[];
 export type NpcTalkDeed = (typeof NPC_TALK_DEEDS)[number];
@@ -1034,6 +1035,7 @@ export const NPC_DEED_DELTA: Readonly<Record<NpcDeed, number>> = {
   giftGiven: 1,
   battleWon: 1,
   battleLost: 1,
+  helped: 2,
 };
 /** one client write moves the standing by at most this much either way */
 export const NPC_WRITE_DELTA_MIN = -6;
@@ -1108,6 +1110,103 @@ export const NpcMemoryReq = z.object({
   /** one or two sentences from the NPC's point of view (cut to NPC_MEMORY_NOTE_MAX) */
   summary: z.string().max(1000),
   deeds: z.array(z.enum(NPC_TALK_DEEDS)).max(NPC_TALK_DEEDS.length),
+});
+
+// ---- NPC side quests -----------------------------------------------------------------------------------------------
+
+/**
+ * A villager's favour (LLM feature 2): the server draws the objective from content and the world seed, scoped to what
+ * the player can reach now; the model only words the request. Progress comes from real events (a catch, a wild win in
+ * a zone, a crossing into a zone); a creature to show and items to bring are checked at the hand-in. Never a story
+ * gate, a story item or a flag.
+ */
+export const NPC_QUEST_KINDS = ['catch', 'defeat', 'show', 'deliver', 'visit'] as const;
+export type NpcQuestKind = (typeof NPC_QUEST_KINDS)[number];
+/** offered (asked, not answered) → active (accepted) → claimed; or declined / abandoned / expired (an offer left unanswered) */
+export const NPC_QUEST_STATUSES = ['offered', 'active', 'claimed', 'declined', 'abandoned', 'expired'] as const;
+export type NpcQuestStatus = (typeof NPC_QUEST_STATUSES)[number];
+/** favours a player holds at once (offered and active together), one per NPC */
+export const NPC_QUEST_OPEN_MAX = 3;
+/** the money a favour pays at most */
+export const NPC_QUEST_MONEY_MAX = 800;
+/** after a hand-in, the same NPC asks again only after this long */
+export const NPC_QUEST_COOLDOWN_MS = 20 * 60_000;
+/** after a refusal or a dropped favour */
+export const NPC_QUEST_DECLINE_COOLDOWN_MS = 10 * 60_000;
+/** an offer nobody answered lapses after this long */
+export const NPC_QUEST_OFFER_TTL_MS = 30 * 60_000;
+/** an NPC whose standing with the player is below this asks nothing (wary or hostile) */
+export const NPC_QUEST_MIN_STANDING = -1;
+/** the items a favour may pay with (cheap, never a story or key item), at most two of one */
+export const NPC_QUEST_REWARD_ITEMS = ['potion', 'superpotion', 'antidote', 'paralyze_heal', 'spark_orb', 'repel'] as const;
+/** the items a villager may ask for (sold in a shop the player can reach) */
+export const NPC_QUEST_DELIVER_ITEMS = ['potion', 'superpotion', 'antidote', 'paralyze_heal', 'burn_heal', 'awakening', 'ice_heal', 'spark_orb'] as const;
+/** `questProgress` entries of a favour: `npc:<quest id>`, objective `main` */
+export const NPC_QUEST_PREFIX = 'npc:';
+export function npcQuestKey(id: string): string {
+  return `${NPC_QUEST_PREFIX}${id}`;
+}
+
+const QuestSpecies = z.string().min(1).max(40);
+export const NpcQuestObjectiveSchema = z.discriminatedUnion('kind', [
+  /** catch one of `species` (it lives in `zoneId`) */
+  z.object({ kind: z.literal('catch'), species: QuestSpecies, zoneId: ZoneIdSchema }),
+  /** beat `count` wild creatures in `zoneId` */
+  z.object({ kind: z.literal('defeat'), zoneId: ZoneIdSchema, count: z.number().int().min(1).max(5) }),
+  /** have a `type` creature of `level` or more in the party at the hand-in (one lives in `zoneId`) */
+  z.object({ kind: z.literal('show'), type: z.string().min(1).max(16), level: z.number().int().min(1).max(100), zoneId: ZoneIdSchema }),
+  /** bring `qty` × `item` (a shop in `zoneId` sells it); taken at the hand-in */
+  z.object({ kind: z.literal('deliver'), item: z.enum(NPC_QUEST_DELIVER_ITEMS), qty: z.number().int().min(1).max(3), zoneId: ZoneIdSchema }),
+  /** go to `zoneId` (a zone next to the NPC's) */
+  z.object({ kind: z.literal('visit'), zoneId: ZoneIdSchema }),
+]);
+export type NpcQuestObjective = z.infer<typeof NpcQuestObjectiveSchema>;
+export const NpcQuestRewardSchema = z.object({
+  money: z.number().int().min(0).max(NPC_QUEST_MONEY_MAX),
+  item: z.object({ id: z.enum(NPC_QUEST_REWARD_ITEMS), qty: z.number().int().min(1).max(2) }).nullable(),
+});
+export type NpcQuestReward = z.infer<typeof NpcQuestRewardSchema>;
+/** what a villager would ask, before it is asked */
+export const NpcQuestPlanSchema = z.object({ objective: NpcQuestObjectiveSchema, reward: NpcQuestRewardSchema, target: z.number().int().min(1).max(5) });
+export type NpcQuestPlan = z.infer<typeof NpcQuestPlanSchema>;
+export const NpcQuestViewSchema = NpcQuestPlanSchema.extend({
+  id: Uuid,
+  npcId: z.string().max(80),
+  /** "Hessa Dunmore, town archivist" */
+  npcName: z.string().max(120),
+  /** where the NPC stands (the hand-in) */
+  zoneId: ZoneIdSchema,
+  status: z.enum(NPC_QUEST_STATUSES),
+  progress: z.number().int().min(0).max(5),
+  /** active and done: hand it in (a creature to show and items to bring are checked against the save now) */
+  ready: z.boolean(),
+  offeredAt: IsoDate,
+  closedAt: IsoDate.nullable(),
+});
+export type NpcQuestView = z.infer<typeof NpcQuestViewSchema>;
+export const NpcQuestParams = z.object({ npcId: z.string().min(1).max(80) });
+/** one NPC: the caller's open favour with it, and what it would ask now (null: nothing, see `why`) */
+export const NpcQuestRes = z.object({
+  npcId: z.string().max(80),
+  quest: NpcQuestViewSchema.nullable(),
+  next: NpcQuestPlanSchema.nullable(),
+  /** why `next` is null: an open favour with it, too many open, its cooldown, its standing */
+  why: z.enum(['open', 'tooMany', 'cooldown', 'standing']).nullable(),
+});
+export type NpcQuestState = z.infer<typeof NpcQuestRes>;
+/** the journal: open favours, then the last few handed in */
+export const NpcQuestsRes = z.object({ open: z.array(NpcQuestViewSchema).max(NPC_QUEST_OPEN_MAX), done: z.array(NpcQuestViewSchema).max(10) });
+export const NpcQuestOfferReq = z.object({ npcId: z.string().min(1).max(80) });
+export const NpcQuestAnswerReq = z.object({ questId: Uuid, answer: z.enum(['accept', 'decline', 'abandon']) });
+export const NpcQuestClaimReq = z.object({ npcId: z.string().min(1).max(80) });
+export const NpcQuestClaimRes = z.object({
+  quest: NpcQuestViewSchema,
+  /** the player's money after */
+  money: z.number().int().min(0),
+  /** the touched items' counts after (the reward, the delivered item) */
+  items: ItemCounts,
+  /** the player's standing with the NPC after */
+  standing: z.number().int().min(NPC_STANDING_MIN).max(NPC_STANDING_MAX),
 });
 
 // ---- admin / health -----------------------------------------------------------------------------------------------------
@@ -1260,6 +1359,12 @@ export const ROUTES = {
   // NPC memory: what an NPC remembers of the caller and the town's reputation; a conversation's summary and deeds
   npcMemory: route({ method: 'GET', path: '/npc/memory/:npcId', auth: 'bearer', params: NpcMemoryParams, response: NpcMemoryRes }),
   npcMemoryWrite: route({ method: 'POST', path: '/npc/memory', auth: 'bearer', request: NpcMemoryReq, response: NpcMemoryRes, limit: 'npcMemory' }),
+  // NPC side quests: the journal, one NPC's favour and what it would ask, the offer, the answer, the hand-in
+  npcQuests: route({ method: 'GET', path: '/npc/quests', auth: 'bearer', response: NpcQuestsRes }),
+  npcQuest: route({ method: 'GET', path: '/npc/quests/:npcId', auth: 'bearer', params: NpcQuestParams, response: NpcQuestRes }),
+  npcQuestOffer: route({ method: 'POST', path: '/npc/quests/offer', auth: 'bearer', request: NpcQuestOfferReq, response: NpcQuestRes }),
+  npcQuestAnswer: route({ method: 'POST', path: '/npc/quests/answer', auth: 'bearer', request: NpcQuestAnswerReq, response: NpcQuestViewSchema }),
+  npcQuestClaim: route({ method: 'POST', path: '/npc/quests/claim', auth: 'bearer', request: NpcQuestClaimReq, response: NpcQuestClaimRes }),
   bounties: route({ method: 'GET', path: '/bounties', auth: 'bearer', response: BountiesRes }),
   bountyPost: route({ method: 'POST', path: '/bounties', auth: 'bearer', request: BountyPostReq, response: BountiesRes }),
   // camp bases: the camp here, your camp, the trophies you earned and the camp log; renaming / decorating, abandoning

@@ -31,6 +31,7 @@
  */
 import { NO_DASHES, chatOnce, noDashes, streamChat, stripThink, TALK_REASONING, TOOL_BASE, TOOL_MODEL, TOOL_REASONING } from './llm';
 import type { LlmMessage } from './llm';
+import { OFFER_QUEST, guardOffer, offerRule, offerTool } from './npcQuest';
 
 export interface NpcPersona {
   readonly name: string;
@@ -49,6 +50,13 @@ export interface ChatTurn {
   readonly events?: readonly string[];
   /** a user turn that is an action (H / K), not words: what the dialogue shows instead of `content` */
   readonly shown?: string;
+  /**
+   * a user turn: a note for the talk pass, in brackets after the words (NPC side quests: the favour to ask, or what the
+   * player's answer did; talk/npcQuest.ts). Not part of what the tool pass or the summary read.
+   */
+  readonly nudge?: string;
+  /** a user turn carrying the favour to ask (`nudge`): the tool pass gets `offer_quest` for the reply to it */
+  readonly asks?: boolean;
 }
 
 /** rude words in the player's line: the talk pass is told it is furious (the rule in the prompt alone was too weak) */
@@ -195,7 +203,8 @@ export function chatMessages(p: NpcPersona, history: readonly ChatTurn[], memory
   const first = history.find((t) => t.role === 'user');
   for (const t of [...opening, ...history]) {
     const nudged = robbed(t) ? `${t.content} [${SCARED}]` : challenged(t) ? `${t.content} [${ACCEPT}]` : provoked(t) && t.shown === undefined ? `${t.content} [${FURIOUS}]` : t.content;
-    const said = t === first && memory !== null && memory !== '' ? `${nudged} [${memory}]` : nudged;
+    const remembered = t === first && memory !== null && memory !== '' ? `${nudged} [${memory}]` : nudged;
+    const said = t.role === 'user' && t.nudge !== undefined && t.nudge !== '' ? `${remembered} [${t.nudge}]` : remembered;
     const content = t.role === 'user' && pending.length > 0 ? `[${pending.join(' ')}] ${said}` : said;
     if (t.role === 'user') pending = [];
     if (t.role === 'assistant') pending = t.events ?? [];
@@ -208,8 +217,8 @@ export function chatMessages(p: NpcPersona, history: readonly ChatTurn[], memory
   return [{ role: 'system', content: systemPrompt(p) }, ...recent];
 }
 
-/** The tools the tool pass must choose from (OpenAI function format). */
-export function judgeTools(p: NpcPersona, maxMoney: number): unknown[] {
+/** The tools the tool pass must choose from (OpenAI function format); `offer`: the NPC was told to ask a favour. */
+export function judgeTools(p: NpcPersona, maxMoney: number, offer = false): unknown[] {
   const none = { type: 'object', properties: {}, required: [] };
   const money = { type: 'object', properties: { amount: { type: 'integer', minimum: 1, maximum: maxMoney, description: `the amount ${p.name} names, otherwise ${maxMoney}` } }, required: ['amount'] };
   const fn = (name: string, description: string, parameters: object = none) => ({ type: 'function', function: { name, description, parameters } });
@@ -222,11 +231,12 @@ export function judgeTools(p: NpcPersona, maxMoney: number): unknown[] {
     fn(TAKE_EWAMON, `${p.name} now takes an Ewamon from the traveller.`),
     fn(START_BATTLE, `${p.name} starts an Ewamon battle with the traveller now (takes up their challenge, or challenges them).`),
     fn(DO_NOTHING, `Nothing happens in the game: ${p.name} only talks, refuses, only threatens or only promises something.`),
+    ...(offer ? [offerTool(p.name)] : []),
   ];
 }
 
 /** The tool pass's messages: the rule, then the last exchange as one transcript. */
-export function judgeMessages(p: NpcPersona, history: readonly ChatTurn[]): ChatMessage[] {
+export function judgeMessages(p: NpcPersona, history: readonly ChatTurn[], offer = false): ChatMessage[] {
   const transcript = history
     .slice(-2)
     .map((t) => `${t.role === 'user' ? 'Traveller' : p.name}: ${t.content}`)
@@ -241,7 +251,7 @@ export function judgeMessages(p: NpcPersona, history: readonly ChatTurn[]): Chat
         `${p.name} gives in angrily or fearfully, like "take it then" or "here you go". If the traveller slapped, kicked ` +
         `or insulted ${p.name}, ${p.name} hits back: call ${SLAP} or ${KICK}. If they agree to an Ewamon battle, call ` +
         `${START_BATTLE}. If ${p.name} only threatens, ` +
-        `refuses, only promises something or just talks, call ${DO_NOTHING}. ${NO_DASHES}`,
+        `refuses, only promises something or just talks, call ${DO_NOTHING}.${offer ? ` ${offerRule(p.name)}` : ''} ${NO_DASHES}`,
     },
     { role: 'user', content: transcript },
   ];
@@ -319,12 +329,13 @@ export async function streamNpcReply(persona: NpcPersona, history: readonly Chat
 
 /** The tool pass reads the exchange (history ending in the NPC's reply) and returns the tools it calls. */
 export async function judgeExchange(persona: NpcPersona, history: readonly ChatTurn[], maxMoney: number, signal: AbortSignal): Promise<ToolCall[]> {
+  const asked = history.at(-2)?.asks === true;
   const res = await chatOnce({
     base: TOOL_BASE,
     model: TOOL_MODEL,
     reasoning: TOOL_REASONING,
-    messages: judgeMessages(persona, history),
-    tools: judgeTools(persona, maxMoney),
+    messages: judgeMessages(persona, history, asked),
+    tools: judgeTools(persona, maxMoney, asked),
     toolChoice: 'required',
     // a call is ~10–20 tokens; gemma sometimes starts reasoning anyway on harmless chat: cut off, it counts as nothing
     maxTokens: TOOL_REASONING === 'none' ? JUDGE_TOKENS : 1200,
@@ -332,7 +343,7 @@ export async function judgeExchange(persona: NpcPersona, history: readonly ChatT
     signal,
   });
   const calls = res.toolCalls.flatMap((c) => (c.name === DO_NOTHING ? [] : [{ name: c.name, ...amountOf(c.arguments, maxMoney) }]));
-  return guardCalls(calls, history.at(-1)?.content ?? '', provoked(history.at(-2)), robbed(history.at(-2)), challenged(history.at(-2)));
+  return guardCalls(calls, history.at(-1)?.content ?? '', provoked(history.at(-2)), robbed(history.at(-2)), challenged(history.at(-2)), asked);
 }
 
 /** "or I will…", "next time", "keep talking and…": a hit said this way has not happened yet */
@@ -353,9 +364,11 @@ const BATTLE_WORDS = /\b(battle|duel|fight|match|challenge)/;
  * needs the word Ewamon; give / take follow the wording when it points one way only, except after a robbery
  * (`robbed`), where money only goes to the player: gemma4-e2b called `take_money` for "Here, take these" 6 times in 12.
  * A battle the NPC starts needs a battle word and must not be only a threat; after the player's challenge
- * (`challenged`) it always starts, called or not. Repeats are dropped.
+ * (`challenged`) it always starts, called or not. Repeats are dropped. NPC side quests (`wasAsked`: the player's line
+ * carried the favour to ask): `offer_quest` stands when the words ask for something (`guardOffer`), called or not, and
+ * money or a battle the model reads into the ask ("300 coins when it is done", "beat wild Ewamon for me") is dropped.
  */
-export function guardCalls(calls: readonly ToolCall[], reply: string, wasProvoked = false, wasRobbed = false, wasChallenged = false): ToolCall[] {
+export function guardCalls(calls: readonly ToolCall[], reply: string, wasProvoked = false, wasRobbed = false, wasChallenged = false, wasAsked = false): ToolCall[] {
   const t = reply.toLowerCase();
   const onlyThreat = THREAT.test(t) && !t.includes('*') && !/\bhere\b/.test(t);
   const direction = (give: boolean, take: boolean, giveName: string, takeName: string, said: string): string =>
@@ -369,9 +382,15 @@ export function guardCalls(calls: readonly ToolCall[], reply: string, wasProvoke
     else if (c.name === GIVE_EWAMON || c.name === TAKE_EWAMON)
       name = t.includes('ewamon') ? direction(EWAMON_GIVE.test(t), EWAMON_TAKE.test(t), GIVE_EWAMON, TAKE_EWAMON, c.name) : null;
     else if (c.name === START_BATTLE) name = wasChallenged || (BATTLE_WORDS.test(t) && !onlyThreat) ? c.name : null;
+    else if (c.name === OFFER_QUEST) name = guardOffer(reply, wasAsked) ? c.name : null;
+    // NPC side quests: on the exchange where the NPC asks a favour, the coins it names are the promised reward (paid at
+    // the hand-in) and "beat wild Ewamon for me" is no battle with the NPC
+    if (wasAsked && (name === GIVE_MONEY || name === TAKE_MONEY || (name === START_BATTLE && !wasChallenged))) name = null;
     if (name !== null && !out.some((o) => o.name === name)) out.push({ ...c, name });
   }
   if (wasChallenged && !out.some((o) => o.name === START_BATTLE)) out.push({ name: START_BATTLE });
+  // the NPC asked in its own words but the tool pass missed it (1 ask in 28, see talk/npcQuest.ts): the words decide
+  if (guardOffer(reply, wasAsked) && !out.some((o) => o.name === OFFER_QUEST)) out.push({ name: OFFER_QUEST });
   return out;
 }
 

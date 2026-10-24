@@ -155,6 +155,13 @@
       "when": 1792852997747,
       "tag": "0021_npc_memory",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792855826907,
+      "tag": "0022_npc_quests",
+      "breakpoints": true
     }
   ]
 }

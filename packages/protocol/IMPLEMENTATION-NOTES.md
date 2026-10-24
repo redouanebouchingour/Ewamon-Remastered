@@ -267,3 +267,14 @@ installed library that future readers should not have to re-derive. The spec its
   fire, so they go to the zone room, which knows where the player stands; refusals are a toast plus `error notAllowed`.
 - `camps` (`GET /camps`), `campEdit` (`POST /camps/edit`), `campAbandon` (`POST /camps/abandon`) (106 routes);
   `CAMP_TROPHY_KINDS` mirrors content's `TROPHY_KINDS` (protocol does not import content).
+
+## NPC side quests (2026-10-24)
+
+- Routes `npcQuests` (`GET /npc/quests`, the journal), `npcQuest` (`GET /npc/quests/:npcId`: the open favour with that
+  NPC and what it would ask now, `next`, or why not), `npcQuestOffer`, `npcQuestAnswer` (accept / decline / abandon),
+  `npcQuestClaim`. Schemas `NpcQuestObjectiveSchema` (catch / defeat / show / deliver / visit), `NpcQuestRewardSchema`,
+  `NpcQuestPlanSchema`, `NpcQuestViewSchema`, `NpcQuestRes`, `NpcQuestsRes`, `NpcQuestClaimRes`, and the rules both
+  sides read: `NPC_QUEST_OPEN_MAX` (3), `NPC_QUEST_MONEY_MAX` (800), the cooldowns, the offer lifetime, the minimum
+  standing, the safe reward and delivery item lists, `NPC_QUEST_PREFIX` / `npcQuestKey` (a favour's `questProgress`
+  entry is `npc:<id>` / `main`).
+- `NPC_DEEDS` gains `helped` (+2, `NPC_DEED_DELTA`): the server records it at the hand-in; it is not a talk deed.

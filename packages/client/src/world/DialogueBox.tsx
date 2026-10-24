@@ -14,6 +14,10 @@
  *
  * NPC memory (2026-10-24): opening a person's dialogue fetches what they remember of the player (`openTalk`); the town's
  * standing then sits beside the speaker strip as a small carbon tag ("Mirevale · Wary").
+ *
+ * NPC side quests (2026-10-24): the NPC's favour, once asked, shows as a row in the slab (`NpcQuestCard`): Accept /
+ * Decline on an offer, the progress and Hand in on an accepted one. The buttons say a line for the player (the talk
+ * goes on), so a typed "yes" or "I did it" does the same.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -23,8 +27,10 @@ import { useSessionStore } from '../state/session';
 import { useUiStore } from '../state/ui';
 import type { DialogueUi } from '../state/ui';
 import { STANDING_LABEL } from '@ewa/protocol';
-import { endTalk, hitNpc, leaveTalk, openTalk, sendText, useNpcTalkStore } from '../state/npcTalk';
+import { acceptQuest, declineQuest, endTalk, handInQuest, hitNpc, leaveTalk, openTalk, sendText, useNpcTalkStore } from '../state/npcTalk';
+import { watchNpcQuests } from '../state/npcQuests';
 import type { NpcPersona } from '../talk/npcChat';
+import { NpcQuestCard } from './NpcQuestCard';
 import s from './DialogueBox.module.css';
 
 export const LINES_PER_PAGE = 3;
@@ -105,6 +111,8 @@ export function DialogueBox() {
     setDraft('');
   }, [targetId, talkable]);
   useEffect(() => () => endTalk(), []);
+  // a favour turning done anywhere (a catch, a battle, a crossing) is toasted with who to go back to
+  useEffect(() => watchNpcQuests(), []);
   // the log follows the newest line
   useEffect(() => {
     const el = logRef.current;
@@ -204,6 +212,17 @@ export function DialogueBox() {
       </button>
     </>
   ) : null;
+  const favour = canTalk && talk.targetId === d.targetId ? (talk.quest?.quest ?? null) : null;
+  const questCard =
+    favour !== null ? (
+      <NpcQuestCard
+        quest={favour}
+        busy={talk.phase !== 'idle'}
+        onAccept={() => acceptQuest(d.targetId, personaOf(d))}
+        onDecline={() => declineQuest(d.targetId, personaOf(d))}
+        onHandIn={() => handInQuest(d.targetId, personaOf(d))}
+      />
+    ) : null;
   const chat =
     canTalk && !typing ? (
       <button type="button" className={s.act} onClick={() => setTyping(true)} aria-label="Type to chat — C">
@@ -237,6 +256,7 @@ export function DialogueBox() {
           </div>
           {status !== null ? <p className={s.status}>{status}</p> : null}
           {talk.error !== null ? <p className={s.error}>{talk.error}</p> : null}
+          {questCard}
           {field}
           <div className={s.actions}>
             {fists}
@@ -262,6 +282,7 @@ export function DialogueBox() {
             {line}
           </p>
         ))}
+        {questCard}
         {field}
         <div className={s.actions}>
           {fists}

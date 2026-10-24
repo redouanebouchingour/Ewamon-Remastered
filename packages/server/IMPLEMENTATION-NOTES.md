@@ -1318,3 +1318,27 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   owner's side, at most 3 a day (`heldSince`). A daily tick over all camps would need a scheduler the server does not
   have.
 - The guard snapshot is refreshed when the owner leaves the world (next to the ghost save), not on every party change.
+
+## NPC side quests (2026-10-24, not in the SPEC)
+
+- `game/npcQuests.ts` draws a villager's favour deterministically (`planNpcQuest`: `createRng` over the world seed,
+  the player, the NPC and `seq`, how many favours that NPC asked the player before) among what the player can do now:
+  the NPC's zone and the linked zones the player's badges open (`reachableZones`). Catch a species of a common or
+  uncommon land slot that is out day and night (`questSlots`), beat 2..4 wild creatures in such a zone, show a party
+  creature of that slot's species' first type at the slot's top level, bring 1..3 of a cheap item a shop there sells
+  (`NPC_QUEST_DELIVER_ITEMS`), or go to a linked zone. Money scales with the level asked about (a delivery: the items'
+  price plus 80), rounded to tens, 50..`NPC_QUEST_MONEY_MAX`; half the favours (never a delivery) add one or two of an
+  item from `NPC_QUEST_REWARD_ITEMS`. Never a flag, a story item or a gate; the progression fixtures are untouched.
+- Routes in `rest/routes/npcQuests.ts`, registered by `registerNpcRoutes` under the same `NPC_TOOLS` gate and zone
+  check (`npcInZone`); dropping a favour (`answer: abandon`) works anywhere, the hand-in is refused in a battle. At most
+  `NPC_QUEST_OPEN_MAX` open favours (offered and active), one per NPC (also a unique index); a hand-in starts a 20 min
+  cooldown for that NPC, a refusal, a dropped favour or a lapsed offer (30 min unanswered) 10 min; an NPC whose own
+  standing with the player is below -1 asks nothing (`whyNoQuest`). The offer route draws the favour again and stores
+  it (an open one is answered instead), so the server never trusts the client's copy of `next`.
+- Progress from real events: `advanceQuests` also runs `advanceNpcQuests` (when the repos carry `npcQuests`): a
+  `catch` of the species, a wild `win` in the zone (the battle's `win` event now carries `zoneId`), a `reachZone`
+  crossing; the entries ride along as `npc:<id>` / `main`, so the client hears of a finished favour like any quest. A
+  creature to show and items to bring are checked at the hand-in (`isReady`; the items are taken there).
+- The hand-in pays the money and the item, records `helped` with the NPC (`recordNpcDeed`, +2, so the town gossips
+  about it too) and answers the standing after. Audit rows `npc.quest.offer` / `accept` / `decline` / `abandon` /
+  `claim`.

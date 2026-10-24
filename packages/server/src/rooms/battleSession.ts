@@ -1415,7 +1415,7 @@ export class BattleCoordinator {
           } else if (session.format === 'wild') {
             if (won) trainerExpGain += TRAINER_EXP.wildWin;
             if (won && session.staticFlag !== null) flagsToSet.push(session.staticFlag);
-            if (won) questEvents.push({ kind: 'win', format: 'wild' });
+            if (won) questEvents.push({ kind: 'win', format: 'wild', zoneId: session.zoneId as ZoneId });
           } else if (session.tower === true) {
             // Phase D14: the streak (a draw or a loss ends the run) and, every TOWER.setLength wins, the set reward
             const streak = won ? await repos.streaks.recordWin(tx, pid, now) : await repos.streaks.endRun(tx, pid, now);

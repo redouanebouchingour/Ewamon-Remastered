@@ -15,12 +15,16 @@
  *
  * §30.9.1 (part 2): the same call also advances today's daily missions (`daily:<dayKey>`) and this week's goals
  * (`weekly:<weekKey>`) — synthetic quest ids whose objective ids are mission ids — "one code path".
+ *
+ * NPC side quests (2026-10-24, game/npcQuests.ts): the same events advance the player's accepted favours (a catch, a
+ * wild win in a zone, a crossing into a zone); their entries ride along as `npc:<id>` / `main`.
  */
 import { QUESTS } from '@ewa/content';
 import type { BadgeId, QuestDef, QuestObjective, ZoneId } from '@ewa/content';
 import type { BattleFormat } from '@ewa/core';
 import type { QuestProgressEntry } from '@ewa/protocol';
 import type { Repos, Tx } from '@ewa/persist';
+import { advanceNpcQuests } from './npcQuests';
 import { WEEKLY_GOALS, dailyMissionsFor, dailyQuestId, weeklyQuestId } from '../liveops/missions';
 import type { DailyMetric, DailyMission } from '../liveops/missions';
 import { dayKey, weekKey } from '../liveops/schedule';
@@ -28,7 +32,8 @@ import { dayKey, weekKey } from '../liveops/schedule';
 export type QuestEvent =
   /** isAlpha / isShiny: Phase D5 `catchTier` */
   | { readonly kind: 'catch'; readonly species: string; readonly isAlpha?: boolean; readonly isShiny?: boolean }
-  | { readonly kind: 'win'; readonly format: BattleFormat }
+  /** zoneId: where it was fought (NPC side quests count wild wins per zone) */
+  | { readonly kind: 'win'; readonly format: BattleFormat; readonly zoneId?: ZoneId }
   | { readonly kind: 'defeatTrainer'; readonly trainerId: string }
   | { readonly kind: 'flags'; readonly flags: readonly string[] }
   | { readonly kind: 'badge'; readonly badge: BadgeId }
@@ -167,7 +172,7 @@ export async function deliveriesFor(tx: Tx, repos: Pick<Repos, 'progress'>, play
   return out;
 }
 
-export async function advanceQuests(tx: Tx, repos: Pick<Repos, 'progress'>, playerId: string, events: readonly QuestEvent[], nowMs: number = Date.now()): Promise<QuestProgressEntry[]> {
+export async function advanceQuests(tx: Tx, repos: Pick<Repos, 'progress'> & Partial<Pick<Repos, 'npcQuests'>>, playerId: string, events: readonly QuestEvent[], nowMs: number = Date.now()): Promise<QuestProgressEntry[]> {
   if (events.length === 0) return [];
   const all = await repos.progress.allQuests(tx, playerId);
   const claimed = claimedSet(all);
@@ -221,5 +226,7 @@ export async function advanceQuests(tx: Tx, repos: Pick<Repos, 'progress'>, play
       touched.push({ questId, objectiveId: m.id, count, done });
     }
   }
+  // NPC side quests: the accepted favours these events advance
+  if (repos.npcQuests !== undefined) touched.push(...(await advanceNpcQuests(tx, { npcQuests: repos.npcQuests }, playerId, events)));
   return touched;
 }

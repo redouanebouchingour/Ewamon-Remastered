@@ -6,7 +6,8 @@
  * route action (`questAction.claim`, the battle pass's `claimMission` pattern). Locked quests show what they wait
  * for; claimed quests collapse into a list at the end. Phase D5: a second tab (`?tab=achievements`) lists the
  * achievements — ready ones as cards with Claim (the same `questAction.claim`), the rest as progress rows, then the
- * earned ones.
+ * earned ones. NPC side quests (2026-10-24): a third tab (`?tab=favours`, `FavourList`) lists the favours villagers
+ * asked (from the server, not content).
  */
 import { useSearchParams } from 'react-router';
 import type { Act, QuestDef } from '@ewa/content';
@@ -26,6 +27,7 @@ import { Tabs } from '../ui/Tabs';
 import { cx } from '../ui/cx';
 import l from './layout.module.css';
 import s from './QuestScreen.module.css';
+import { FavourList } from './FavourList';
 import { useClosePanel, useIntent } from './shared';
 
 const ACTS: readonly Act[] = [1, 2, 3];
@@ -89,7 +91,7 @@ function QuestCard({ q, status, p, tracked, fetcher }: { readonly q: QuestDef; r
   );
 }
 
-type JournalTab = 'story' | 'achievements';
+type JournalTab = 'story' | 'achievements' | 'favours';
 
 /** Phase D5: the Achievements tab — ready (Claim), in progress (a bar each), earned (a compact list). */
 function AchievementList({ p, fetcher }: { readonly p: Progress | null; readonly fetcher: ReturnType<typeof useIntent> }) {
@@ -167,7 +169,8 @@ export function QuestScreen() {
   const claimedIds = useSessionStore((st) => st.progression?.questsClaimed ?? null);
   const tracked = useQuestTracking((st) => st.tracked);
   const [params, setParams] = useSearchParams();
-  const tab: JournalTab = params.get('tab') === 'achievements' ? 'achievements' : 'story';
+  const tabParam = params.get('tab');
+  const tab: JournalTab = tabParam === 'achievements' || tabParam === 'favours' ? tabParam : 'story';
   const p: Progress | null = quests === null || claimedIds === null ? null : { quests, questsClaimed: claimedIds };
 
   const rows = storyQuests().map((q) => ({ q, status: questStatus(q, p) }));
@@ -188,13 +191,16 @@ export function QuestScreen() {
           tabs={[
             { key: 'story', label: 'Story', ...(ready > 0 ? { count: ready } : {}) },
             { key: 'achievements', label: 'Achievements', ...(achReady > 0 ? { count: achReady } : {}) },
+            { key: 'favours', label: 'Favours' },
           ]}
           value={tab}
           onChange={(k) => setParams(k === 'story' ? {} : { tab: k }, { replace: true })}
         />
       }
     >
-      {tab === 'achievements' ? (
+      {tab === 'favours' ? (
+        <FavourList />
+      ) : tab === 'achievements' ? (
         <AchievementList p={p} fetcher={fetcher} />
       ) : (
       <div className={s.acts}>

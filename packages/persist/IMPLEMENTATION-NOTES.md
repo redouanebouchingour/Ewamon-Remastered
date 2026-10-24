@@ -314,3 +314,16 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
 - `transfer` names the owner it takes from, so a takeover after the owner abandoned (or someone else took it) writes
   nothing. Money is never moved here: the server does it next to the audit row.
 - `nemesisRepo.ended` and `bountyRepo.claimedBy` for the trophies.
+
+## NPC side quests (2026-10-24)
+
+- Migration `0022_npc_quests` (drizzle-kit named it 0022 itself: the journal has 0020_camps from main now, so no
+  rename). One `npc_quests` table, a row per favour an NPC asked of a player: `npc_id`, `zone_id` (where the NPC stands:
+  the hand-in), `seq` (that NPC's favours for the player, numbered; it seeds the next one), `status` (checked:
+  `offered` / `active` / `claimed` / `declined` / `abandoned` / `expired`), the `objective` and `reward` as jsonb
+  (protocol `NpcQuestObjective` / `NpcQuestReward`, typed loosely here since persist does not import protocol),
+  `target` / `progress`, `created_at` / `accepted_at` / `closed_at`. A partial unique index keeps one open (offered or
+  active) favour per player and NPC; indexes on (player, status) and (player, npc). A player's rows go with the player.
+- `npcQuestRepo`: `open`, `ofNpc` (newest first), `claimed` (the journal), `lock`, `offer`, `setStatus` (stamps
+  `accepted_at` / `closed_at`), `setProgress` (never past the target), `expireOffers`. The caps, the cooldowns and the
+  rewards are the server's (`game/npcQuests.ts`).

@@ -29,6 +29,8 @@ import { bountyRepo } from './bounties';
 import type { BountyRepo } from './bounties';
 import { npcMemoryRepo } from './npcMemory';
 import type { NpcMemoryRepo } from './npcMemory';
+import { npcQuestRepo } from './npcQuests';
+import type { NpcQuestRepo } from './npcQuests';
 import { campRepo } from './camps';
 import type { CampRepo } from './camps';
 import type { DailyRepo } from './daily';
@@ -85,6 +87,8 @@ export interface Repos {
   readonly bounties: BountyRepo;
   /** NPC memory: what each NPC remembers of a player, its standing, the deeds a town gossips about (migration 0021) */
   readonly npcMemory: NpcMemoryRepo;
+  /** NPC side quests: the favours NPCs asked of a player, open and closed (migration 0022) */
+  readonly npcQuests: NpcQuestRepo;
   /** camp bases: the claimed travellers' camps and the raids on them (migration 0020) */
   readonly camps: CampRepo;
 }
@@ -120,6 +124,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     ecosystem: ecosystemRepo,
     bounties: bountyRepo,
     npcMemory: npcMemoryRepo,
+    npcQuests: npcQuestRepo,
     camps: campRepo,
   };
 }
@@ -153,4 +158,5 @@ export type { EcoTake } from './ecosystem';
 export type { Bounty, BountyKind, BountyStatus, NewGhostBounty } from './bounties';
 export { NPC_MEMORY_LIMITS, rollSummary } from './npcMemory';
 export type { NpcMemory, NpcMemoryChange } from './npcMemory';
+export type { NewNpcQuest, NpcQuest, NpcQuestStatus } from './npcQuests';
 export type { Camp, CampRaid, NewCamp } from './camps';

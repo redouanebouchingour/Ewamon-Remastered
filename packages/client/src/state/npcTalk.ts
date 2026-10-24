@@ -17,16 +17,25 @@
  * `MEMORY_WAIT_MS`, then goes without it. The note it makes is fixed for the conversation. When a conversation with at
  * least one reply ends (`endTalk`), the NPC's summary of it and the talk deeds go to `POST /npc/memory` in the background
  * (the summary call falls back to a templated one), and the answer refreshes the standing shown.
+ *
+ * NPC side quests (2026-10-24, talk/npcQuest.ts, state/npcQuests.ts): `openTalk` also fetches the NPC's favour
+ * (`GET /npc/quests/:npcId`: the open one, and what it would ask now). A typed line may carry the ask (`shouldAsk`:
+ * the player asks for work, or their second line to a friendly NPC); the tool pass then stores the offer
+ * (`offer_quest` → `POST /npc/quests/offer`). A yes / no to an open offer answers it and "I did it" to an accepted
+ * favour hands it in, before the NPC replies, so its reply hears what happened (`nudge`). The card's buttons send those
+ * same lines (`acceptQuest`, `declineQuest`, `handInQuest`).
  */
 import { create } from 'zustand';
 import { NPC_MONEY_MAX } from '@ewa/protocol';
-import type { NPC_ACTIONS, NpcMemoryView } from '@ewa/protocol';
+import type { NPC_ACTIONS, NpcMemoryView, NpcQuestState } from '@ewa/protocol';
 import { apiFetch, isApiFailure } from '../net/api';
 import { speciesName } from '../data/content';
-import { GIVE_EWAMON, GIVE_MONEY, KICK, SLAP, START_BATTLE, TAKE_EWAMON, TAKE_MONEY, TOOL_MODEL, judgeExchange, playerHitTurn, streamNpcReply } from '../talk/npcChat';
+import { GIVE_EWAMON, GIVE_MONEY, KICK, SLAP, START_BATTLE, TAKE_EWAMON, TAKE_MONEY, TOOL_MODEL, challenged, judgeExchange, playerHitTurn, provoked, robbed, streamNpcReply } from '../talk/npcChat';
 import type { StrikeKind } from '../scene/npcStrike';
 import type { ChatTurn, NpcPersona, ToolCall } from '../talk/npcChat';
 import { MEMORY_WAIT_MS, deedsOf, hadExchange, memoryNote, summarize } from '../talk/npcMemory';
+import { ACCEPTED, DECLINED, NOT_DONE, OFFER_QUEST, answerOf, askNote, claimedNote, saysDone, shouldAsk } from '../talk/npcQuest';
+import { answerNpcQuest, claimNpcQuest, fetchNpcQuest, offerNpcQuest } from './npcQuests';
 import { strike } from './npcFx';
 import { toast } from './notifications';
 import { toInventoryDelta, useSessionStore } from './session';
@@ -46,9 +55,11 @@ export interface NpcTalkState {
   readonly hidden: boolean;
   /** what the NPC remembers of the player and the town's standing (null until loaded, or without it) */
   readonly memory: NpcMemoryView | null;
+  /** NPC side quests: the NPC's favour for the player and what it would ask (null until loaded, or without it) */
+  readonly quest: NpcQuestState | null;
 }
 
-const IDLE: NpcTalkState = { targetId: null, phase: 'idle', turns: [], partial: '', error: null, hidden: false, memory: null };
+const IDLE: NpcTalkState = { targetId: null, phase: 'idle', turns: [], partial: '', error: null, hidden: false, memory: null, quest: null };
 
 export const useNpcTalkStore = create<NpcTalkState>()(() => IDLE);
 
@@ -64,6 +75,8 @@ let memoryReady: Promise<NpcMemoryView | null> = Promise.resolve(null);
 let note: string | null | undefined;
 /** the NPC as the conversation knows it, for the summary at its end */
 let persona: NpcPersona | null = null;
+/** the talk pass was told to ask the favour in this conversation (once per conversation) */
+let askedQuest = false;
 
 const signedIn = (): boolean => useSessionStore.getState().accessToken !== null;
 
@@ -82,6 +95,12 @@ export function openTalk(targetId: string): void {
       return m;
     },
     () => null,
+  );
+  void fetchNpcQuest(targetId).then(
+    (q) => {
+      if (useNpcTalkStore.getState().targetId === targetId) set({ quest: q });
+    },
+    () => undefined,
   );
 }
 
@@ -121,10 +140,67 @@ export function sendText(targetId: string, p: NpcPersona, text: string): void {
   if (said === '' || !join(targetId)) return;
   const ac = new AbortController();
   inflight = ac;
-  set({ error: null });
-  void answer(p, { role: 'user', content: said }, ac).finally(() => {
+  set({ error: null, phase: 'thinking' });
+  void (async () => {
+    const turn = await questTurn(targetId, said);
+    if (ac.signal.aborted) return;
+    await answer(p, turn, ac);
+  })().finally(() => {
     if (inflight === ac) inflight = null;
   });
+}
+
+/** the lines the favour card's buttons say (they go the way a typed line does) */
+export const ACCEPT_LINE = 'Yes, I will do it.';
+export const DECLINE_LINE = 'Sorry, not now.';
+export const HAND_IN_LINE = 'I did what you asked.';
+export const acceptQuest = (targetId: string, p: NpcPersona): void => sendText(targetId, p, ACCEPT_LINE);
+export const declineQuest = (targetId: string, p: NpcPersona): void => sendText(targetId, p, DECLINE_LINE);
+export const handInQuest = (targetId: string, p: NpcPersona): void => sendText(targetId, p, HAND_IN_LINE);
+
+/**
+ * The player's line as a user turn, with what it did to the NPC's favour (talk/npcQuest.ts): a yes / no to an open
+ * offer answers it, "I did it" to an accepted favour tries the hand-in, and a line may carry the ask. A server refusal
+ * leaves the line as plain talk.
+ */
+async function questTurn(targetId: string, said: string): Promise<ChatTurn> {
+  const plain: ChatTurn = { role: 'user', content: said };
+  const { quest: st, memory, turns } = useNpcTalkStore.getState();
+  if (st === null || !signedIn()) return plain;
+  const open = st.quest;
+  try {
+    if (open?.status === 'offered') {
+      const a = answerOf(said);
+      if (a !== null) {
+        const q = await answerNpcQuest(open.id, a);
+        set({ quest: { ...st, quest: q.status === 'active' ? q : null, next: null } });
+        return { ...plain, nudge: a === 'accept' ? ACCEPTED : DECLINED };
+      }
+    }
+    if (open?.status === 'active' && saysDone(said)) {
+      if (!open.ready) return { ...plain, nudge: NOT_DONE };
+      const { quest } = await claimNpcQuest(targetId);
+      set({ quest: { ...st, quest: null, next: null, why: 'cooldown' } });
+      // the standing beside the speaker moves with the favour
+      void apiFetch('npcMemory', { params: { npcId: targetId } }).then(
+        (m) => {
+          if (useNpcTalkStore.getState().targetId === targetId) set({ memory: m });
+        },
+        () => undefined,
+      );
+      return { ...plain, nudge: claimedNote(quest.objective, quest.reward) };
+    }
+  } catch (_e) {
+    // refused (moved away, already answered, not done after all): the line is just talk
+    return plain;
+  }
+  const userLine = turns.filter((t) => t.role === 'user').length + 1;
+  const calm = !provoked(plain) && !robbed(plain) && !challenged(plain);
+  if (st.next !== null && shouldAsk({ hasNext: true, asked: askedQuest, feeling: memory?.feeling ?? null, calm, said, userLine })) {
+    askedQuest = true;
+    return { ...plain, nudge: askNote(st.next), asks: true };
+  }
+  return plain;
 }
 
 /**
@@ -207,6 +283,10 @@ export async function runTools(npcId: string, name: string, calls: readonly Tool
       events.push(c.name === SLAP ? 'You slapped the traveller.' : 'You kicked the traveller.');
       continue;
     }
+    if (c.name === OFFER_QUEST) {
+      events.push(await offer(npcId));
+      continue;
+    }
     const action = SERVER_ACTION[c.name];
     if (action === undefined) continue;
     events.push(await act(npcId, name, action, c.amount));
@@ -252,6 +332,17 @@ async function act(npcId: string, name: string, action: (typeof NPC_ACTIONS)[num
   }
 }
 
+/** The NPC asked a favour: the server stores the offer and the dialogue shows it (Accept / Decline). */
+async function offer(npcId: string): Promise<string> {
+  try {
+    const st = await offerNpcQuest(npcId);
+    if (useNpcTalkStore.getState().targetId === npcId) set({ quest: st });
+    return 'You asked the traveller for a favour and wait for their answer.';
+  } catch (_e) {
+    return 'You thought of asking the traveller for a favour, but let it go.';
+  }
+}
+
 const REFUSED: Readonly<Record<string, (n: string) => string>> = {
   npcPurseEmpty: (n) => `${n}'s purse is empty.`,
   playerBroke: () => 'You have no money to take.',
@@ -291,6 +382,7 @@ export function endTalk(): void {
   memoryReady = Promise.resolve(null);
   note = undefined;
   persona = null;
+  askedQuest = false;
   useNpcTalkStore.setState(IDLE);
 }
 

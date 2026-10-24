@@ -2440,3 +2440,41 @@ the second isolated client (the component over the landing page: the foe and own
 - `screens/CampScreen.tsx` sends `camp { action }` through the world session and re-reads `GET /camps` when the camp
   store changes (a claim or a takeover arrives as zone state, an edit as the REST answer).
 - `zoneSpecFor` adds `spec.camps` on the 8 routes: the snapshot moved for them only.
+
+## NPC side quests (2026-10-24, not in the SPEC)
+
+- A villager asks the traveller for a favour while they chat. The server draws it (`GET /npc/quests/:npcId` → `next`,
+  fetched by `openTalk` beside the memory); `talk/npcQuest.ts` words it for the talk pass (`askNote`: "You need help:
+  ask the traveller to catch a Mossling for you, it lives on Mire Route. Promise them three hundred coins and a Potion
+  when it is done.") on the player's line that asks for work, or unprompted on their second line to an NPC that is
+  neutral or better, once per conversation and never on a slap, insult, robbery or challenge (`shouldAsk`). The note
+  rides that user turn (`ChatTurn.nudge`, `asks`), like the memory note.
+- The tool pass gets `offer_quest` only on that exchange (`judgeTools` / `judgeMessages` with `offer`); `guardCalls`
+  keeps it when the NPC's words ask for something (`guardOffer`), adds it when they do and the call is missing, and on
+  that exchange drops money and battle calls (the coins are a promise). Then `POST /npc/quests/offer` stores the
+  server's own draw, and the DialogueBox shows the favour (`world/NpcQuestCard.tsx`: a carbon row, a paper FAVOUR chip,
+  the sprite for a catch or the type icon for a show, Accept / Decline, later the progress and Hand in, orange only on
+  the press buttons).
+- Answering: Accept / Decline / Hand in say a line for the player ("Yes, I will do it.", "Sorry, not now.", "I did what
+  you asked."), and a typed yes / no to an open offer or "I did it" to an accepted favour does the same (`answerOf`,
+  `saysDone`): the server call happens first (`state/npcQuests.ts`), then the NPC replies to the line with a note of
+  what happened (`ACCEPTED`, `DECLINED`, `claimedNote` with the reward in words, `NOT_DONE` when the server does not
+  call it ready). The hand-in lands the money and the items in the session, toasts the reward and refetches the memory
+  (the standing moved by the `helped` deed).
+- A favour turning done elsewhere (a catch, a wild win, a crossing) reaches the session as a `questProgress` entry
+  `npc:<id>`; `watchNpcQuests` (started by the DialogueBox) toasts "Favour done: <objective>. Go back to <NPC> in
+  <town>." The journal has a third tab, Favours (`screens/FavourList.tsx`, `GET /npc/quests`): the open favours with
+  who asked and where, the progress, the reward and Drop (abandon) on an accepted one, then the last ones handed in.
+- Measured on the docker model (talk/npcQuest.ts header): the first wording ("Offer 300 coins") made NPCs pay on the
+  spot and the tool pass move money; "Promise them ... when it is done" stopped that but the amounts came out garbled
+  ("thirty hundred coins") in 14 of 30; with the amount in words (`numberWords`) 28 of 30 replies asked, 26 named the
+  right amount, none garbled it, and `offer_quest` fired on 27 of 28 asks and 0 of 9 small-talk replies.
+  End to end with the shipped code (12 server draws for six Mirevale and Saltmourn NPCs): 12 offers stored, 11 replies
+  said the task with the right amount, no money or battle call.
+- Live check (alt2 pair, headless Chrome, the docker model): a new account asked the archivist "Do you need any help
+  with something?"; she answered "Beat four wild Ewamon on Mire Route for you and you will get two hundred and forty
+  coins. Deal?", the card showed "Beat 4 wild Ewamon on Mire Route · Reward 240 coins" with Accept / Decline; Accept
+  turned it to 0 / 4 and she replied "Good. Now go and do it. And when you are done, come back to me."; the journal's
+  Favours tab listed it with Drop. Completing and handing in was not driven live (the server tests cover it).
+- Signed out, nothing is fetched and no card shows; with the server's `NPC_TOOLS` off the fetch fails and the NPC never
+  asks; the model down means no ask (the talk pass errors as before), the card and the journal still work.
