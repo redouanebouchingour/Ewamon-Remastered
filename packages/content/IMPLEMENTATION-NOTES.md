@@ -797,3 +797,16 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   entry, `RIVAL_WALK_M` 18 to 40 m, `RIVAL_SPAWN_M` 9) and the battle trainer id `rival:<name>`.
 - Nothing in a `ZoneDef` moves and no story gate reads it: the rival is drawn and placed by the server at run time.
 - Tests: `test/rival.test.ts`.
+
+## The rumour board (2026-10-24, LLM feature 8, not in the SPEC)
+
+- `data/rumours.ts`: a town crier in every town, in the hall that keeps the bounty board (`BOUNTY_OFFICES`: the Healer,
+  else the Mart, Skyrend's Marshal's Office), added by `withTownCrier` in the interiors layer after `withBountyBoard`
+  (walls, props, size and doors unchanged; no `ZoneDef` change, so no layout, heightfield or fixture moves). In a
+  counter hall it stands left of the counter (`CRIER_AT`, a little deeper than the mirror of the Marshal so a player in
+  front of it is nearer to it than to the Healer's PC: the live check found the PC winning from the mirrored spot); in
+  the house, on the Marshal's side nearer the door. New interior role `crier`; `crierId`, `crierTown`,
+  `hasRumourBoard`, `CRIER_LINES`, and `rumourZones(town)`: the town and the zones one link away (what a board calls
+  local news). No new prop: the board is the crier and the screen (the bounty test counts one banner in the hall).
+- Tests: `test/rumours.test.ts` (one crier per town in the right hall and nowhere else, clear of walls, props, people,
+  items and the door, the hall otherwise unchanged, no em-dash, the board's zones). The content gate validates.

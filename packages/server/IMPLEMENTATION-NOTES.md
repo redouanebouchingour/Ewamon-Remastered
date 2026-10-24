@@ -1411,3 +1411,33 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   on a route, steps out after a walk, holds the player and its interact starts the fight with the team it announced;
   never before the first badge or in a town; the end records a win (paid) and a loss (not), GET /rival and the words;
   `RIVAL=off` arms nothing and the routes say so).
+
+## The rumour board (2026-10-24, LLM feature 8, not in the SPEC)
+
+- `GET /world/rumours/:zoneId` (`rest/routes/rumours.ts`, registered with the NPC routes behind `NPC_TOOLS`: the board's
+  words are the model's and its gossip is NPC memory; 409 `npcToolsOff`, 404 off a town): a town's facts of the UTC
+  day. Read-only, so no audit row.
+- `game/rumours.ts`: `buildRumours(town, dayStart, worldSeed, world)` is pure and deterministic: yesterday's news (the
+  UTC day before the board's, so a board is the same however late it is first read: badges by public name, the deepest
+  one as the news; the Champion beaten; bounties brought in; camps that changed hands), the standing world (open
+  bounties, nemeses from rank 2 near the town, each nearby zone's ecosystem this week: scarce from overhunting,
+  surging, a migrant), today's schedule (the swarm, the raid hotspots near the town with their UTC windows, a seasonal
+  event, the week's cup, the sky the nearby routes lean to from the biome's weather schedule) and the market (a
+  species whose average sale moved by a quarter or more, week against week, two sales each). Kinds are grouped, local
+  ones first (the town and the zones one link away), taken round-robin in an order seeded by the world seed, the day
+  and the town, at most 2 a kind and 8 in all. Every fact is one sentence (no em-dash, no control character, at most
+  240) whose names and numbers are real: the client's fallback and the model's only source.
+- `gossipRumours(town, username, memories)`: the town's villagers' notable deeds about the caller (feature 1's
+  `gossipFrom`, phrased from the town's side: "red robbed Hessa Dunmore.") and how the town stands with them, at most 3,
+  read per call and never cached.
+- `RumourBoard`: the world part per day and town in memory (a read in flight is shared, a failed build is not kept,
+  yesterday's boards go on the new day's first build). `gatherWorld` is a handful of indexed reads plus the
+  ecosystem of the nearby zones (skipped with `ECOSYSTEM=off`).
+- Deviation: "weather by zone" is the zone's climate (its biome's most common weather and how often), not today's sky:
+  the sky changes every 6 minutes and a daily board would be wrong most of the day.
+- Live check: the alt2 data dir had migrations 0021 to 0023 but not 0020 (camps; drizzle skips a migration older than
+  the last one applied), so `camp_raids` was missing and the board answered 500; a fresh data dir worked. A database
+  migrated on this branch before main's 0020 came in has the same gap (not this feature's to fix).
+- Tests: `test/rumours.test.ts` (determinism, a different town or day, the sentences, local first, the swarm and the
+  cup, the market swings, the gossip, the cache; the route: yesterday's badge by name, the raid next door, the caller's
+  deed and standing, the same world facts for another player and all day, the next day's board, 404, 401, 409).

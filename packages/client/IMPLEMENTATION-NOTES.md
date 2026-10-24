@@ -2701,3 +2701,29 @@ the second isolated client (the component over the landing page: the foe and own
   team it brought with sprites). It reloads after every meeting and is absent with the server's `RIVAL=off`.
 - Tests: `test/rival.test.ts` (facts, prompts, checks, templates, the model call mocked, the taunt and parting timing,
   the rival as a foe and as a persona, the exit walk) and `test/rival-section.test.tsx`.
+
+## The rumour board (2026-10-24, LLM feature 8, not in the SPEC)
+
+- `/play/rumours` (`screens/RumoursScreen.tsx`): a town's board. The town crier (content `withTownCrier`, beside the
+  Marshal) opens it with `?town=` when the player pages past its lines (World3D, like the Marshal's Wanted board); the
+  More menu opens it too (the town the player stands in, else the last one they stood in: World3D notes it on every
+  zone change, else the town next to the route). A picker switches between the towns the player's badges open.
+  Broadcast: a masthead ("The Mirevale Crier", the UTC day), each rumour a carbon row with a slanted slab in its type
+  colour (the creature's sprite, else the type icon, else a kind icon: no letter codes), a paper kind tag and the zone,
+  the player's gossip apart under "About you". Orange only on the selected town and focus.
+- `talk/rumours.ts`: one call per fact (neutral system prompt; the fact, the town and the crier in the user turn),
+  checked against the fact: feature 5's `ungrounded` and `wrongTypeClaims`, no other capitalised name, no number word
+  the fact lacks, one of the fact's names or numbers kept, the time kept, the turn kept (up stays up, robbed stays
+  robbed). `RumourCache` keeps the words per UTC day and town in memory and localStorage (wrapped: a blocked or full
+  store keeps them in memory; other days are dropped). Templates: a crier's lead-in picked by the fact id, then the
+  fact. Measurements in the module header (34 of 34 kept on the shipped prompt, median 1.3 s a fact).
+- `state/rumours.ts`: the facts show at once in their templates; the model writes the unwritten ones one at a time (one
+  call in flight), each replacing its template as it comes back checked; closing the screen or switching towns stops
+  the writing (what was written stays). `VITE_NPC_TALK=0` keeps the templates. 409 `npcToolsOff`: "The crier has the
+  day off."
+- Live check (alt2 pair on a fresh database, the docker model): the board from the More menu showed six facts at once
+  and their words in 12.8 s; in Mirevale's Healer the crier spoke its lines and paging past them opened
+  `/play/rumours?town=mirevale` with the day's words from the cache at once. Found on the way: from the mirrored spot
+  the Healer's PC won the E prompt in front of the crier (moved, see content).
+- Tests: `test/rumours.test.ts` (prompt, checks, tidy, template, the day cache, one call, the store) and
+  `test/rumours-screen.test.tsx` (the panel, the words replacing templates, About you, the picker, off, the More menu).

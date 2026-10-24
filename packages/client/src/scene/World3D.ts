@@ -100,6 +100,7 @@ import { RIVAL_ACTOR_ID, RivalExit, partingStand } from './rivalExit';
 import { isRivalTrainer, rivalTrainerId } from '@ewa/content';
 import type { RivalView } from '@ewa/protocol';
 import { partingLine, prewriteTaunt, rivalScene, sendWords, tauntLine, useRivalStore, writeParting } from '../state/rival';
+import { noteZone } from '../state/rumours';
 import type { RivalOutcome } from '../talk/rival';
 import { NpcStrike, PlayerStrike } from './npcStrike';
 import type { StrikeKind } from './npcStrike';
@@ -1109,6 +1110,8 @@ class World implements World3D {
     this.input.glider = this.field?.glider() ?? null;
     // camp bases: the route's camp, drawn as its zone room says
     this.campViews.onZone(h === null ? null : z);
+    // the rumour board: the last town stood in is the board the More menu opens
+    if (h !== null && z !== null) noteZone(z.id);
   }
 
   /**
@@ -1610,8 +1613,10 @@ class World implements World3D {
         if (npc === undefined) {
           // Phase A: residents and guides inside the pockets talk client-side (the server has no record of them)
           const inside = interiorNpcs(z.id).find((n) => n.id === t.id);
-          // breeding: paging past the Daycare keeper's lines opens the Daycare; the bounty board: the Marshal's, the Wanted board
-          const opens = inside?.role === 'daycare' ? '/play/daycare' : inside?.role === 'bounty' ? '/play/bounties' : null;
+          // breeding: paging past the Daycare keeper's lines opens the Daycare; the bounty board: the Marshal's, the Wanted board;
+          // the rumour board: the town crier's, the town's Rumours
+          const opens =
+            inside?.role === 'daycare' ? '/play/daycare' : inside?.role === 'bounty' ? '/play/bounties' : inside?.role === 'crier' ? `/play/rumours?town=${encodeURIComponent(z.id)}` : null;
           if (inside !== undefined) ui.setDialogue({ speaker: inside.name, lines: inside.lines, index: 0, targetId: inside.id, ...(opens !== null ? { onFinish: () => navigateTo(opens) } : {}) });
           return;
         }

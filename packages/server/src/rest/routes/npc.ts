@@ -35,6 +35,7 @@ import { pickSlot, zoneSlots } from '../../game/villagers';
 import { applyDeeds, npcInZone, npcMemoryView, recordNpcDeed } from '../../game/npcMemory';
 import { registerNpcQuestRoutes } from './npcQuests';
 import { registerHaggleRoutes } from './haggle';
+import { registerRumourRoutes } from './rumours';
 import { HttpError, out, presenceZone, rateLimit, refuseInBattle, requireAuth } from '../http';
 import type { RestDeps } from '../http';
 
@@ -69,6 +70,7 @@ export function registerNpcRoutes(app: FastifyInstance, deps: RestDeps): void {
   const on = (deps.env.NPC_TOOLS ?? (deps.env.NODE_ENV === 'production' ? 'off' : 'on')) === 'on';
   registerNpcQuestRoutes(app, deps, on);
   registerHaggleRoutes(app, deps, on);
+  registerRumourRoutes(app, deps, on);
   /** `${playerId}:${npcId}` → the NPC's wallet for that player */
   const wallets = new Map<string, number>();
   /** `${playerId}:${npcId}` → when the NPC has a creature to give again */

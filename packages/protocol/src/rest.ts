@@ -21,6 +21,7 @@ import {
 } from './messages/common';
 import { InventoryDeltaMsg, NEMESIS_SCAR_IDS, QuestProgressEntrySchema } from './messages/server';
 import { RivalRes, RivalWordsReq } from './rival';
+import { RumourParams, RumoursRes } from './rumours';
 import { SeatReservationSchema } from './messages/common';
 import {
   ArenaInfoRes,
@@ -1492,6 +1493,8 @@ export const ROUTES = {
   // a recurring rival: who it is, the record, the last meeting and its parting words; the words the player saw
   rival: route({ method: 'GET', path: '/rival', auth: 'bearer', response: RivalRes }),
   rivalWords: route({ method: 'POST', path: '/rival/words', auth: 'bearer', request: RivalWordsReq, response: RivalRes }),
+  // the rumour board (LLM feature 8): a town's facts of the day, behind NPC_TOOLS
+  worldRumours: route({ method: 'GET', path: '/world/rumours/:zoneId', auth: 'bearer', params: RumourParams, response: RumoursRes }),
   // breeding: the Daycare (leave / take back a creature, collect the egg) and moving an egg between the party and the box
   daycare: route({ method: 'GET', path: '/daycare', auth: 'bearer', response: DaycareRes }),
   daycareLeave: route({ method: 'POST', path: '/daycare/leave', auth: 'bearer', request: CreatureIdReq, response: DaycareActionRes }),

@@ -560,6 +560,9 @@ export {
 } from './data/bounties';
 export type { BountyKind, BountyRefusal } from './data/bounties';
 
+// ─── the rumour board (LLM feature 8) ────────────────────────────────────────
+export { CRIER_AT, CRIER_LINES, crierId, crierTown, hasRumourBoard, rumourZones, withTownCrier } from './data/rumours';
+
 // ─── followers with field powers (SPEC §3.18) ────────────────────────────────
 export {
   BRAMBLES,

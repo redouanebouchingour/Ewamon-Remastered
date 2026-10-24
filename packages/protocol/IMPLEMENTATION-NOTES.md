@@ -313,3 +313,11 @@ installed library that future readers should not have to re-derive. The spec its
   The client's answer is the existing `interact { kind: 'npc', targetId: 'rival:<name>' }`, so no client message is
   added. Server messages 28 → 29.
 - Route count 115 → 117 (`rival`, `rivalWords`).
+
+## The rumour board (2026-10-24, not in the SPEC)
+
+- `src/rumours.ts` (exported from the index): `RUMOUR_KINDS` (badge, champion, raid, swarm, event, ecosystem, migrant,
+  bounty, claim, camp, nemesis, weather, market, cup, gossip, standing), `RumourFactSchema` { id, kind, text (one plain
+  sentence, at most 240), zoneId, speciesId, type }, `RumoursRes` { zoneId, town, day (UTC `YYYY-MM-DD`), facts (at most
+  `RUMOUR_WORLD_MAX` 8 of the world's and `RUMOUR_GOSSIP_MAX` 3 about the caller) } and `RumourParams`.
+- Route `worldRumours` `GET /world/rumours/:zoneId`. Route count 117 → 118.

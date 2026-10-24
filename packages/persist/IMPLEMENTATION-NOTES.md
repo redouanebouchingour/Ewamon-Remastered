@@ -341,3 +341,15 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
   `setWords` (one update guarded by `last_words is null` and `last_met_at` inside the window: the words are taken once
   per meeting). The rules and the cooldown length are the server's.
 - Tests: `test/rivals.test.ts`; `migrations.test.ts` lists the table.
+
+## The rumour board (2026-10-24)
+
+- No table: `worldNewsRepo` (`repos/worldNews.ts`, `repos.worldNews`) reads what other tables already keep, across
+  players, read-only: `badgesBetween` (badges in a window with the username), `splitsBetween` (a run split such as
+  `champion`), `campTakeovers` (won raids that took a camp over, with the raider's name as the camp shows it),
+  `risingNemeses` (active nemeses last seen in some zones from a rank, by their own name, never their trainer's) and
+  `salesBetween` (sold listings with their price). Banned players are left out of the named reads; every list is
+  capped and fully ordered, so the same rows come back in the same order.
+- Names: only what is already public. The rankings and public profiles show usernames and badges (there is no opt-in
+  there to follow), camps show their holder, the bounty board its claimers.
+- Tests: `test/world-news.test.ts`.

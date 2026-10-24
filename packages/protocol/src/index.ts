@@ -55,5 +55,8 @@ export * from './commentary';
 // a recurring rival (LLM feature 7): the rival's view (the `rival` message, GET /rival) and its parting words
 export * from './rival';
 
+// the rumour board (LLM feature 8): a town's facts of the day (GET /world/rumours/:zoneId)
+export * from './rumours';
+
 // structural copies of content types (see types.ts TODO)
 export * from './types';

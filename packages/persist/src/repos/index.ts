@@ -34,6 +34,8 @@ import type { NpcQuestRepo } from './npcQuests';
 import { campRepo } from './camps';
 import { rivalRepo } from './rivals';
 import type { RivalRepo } from './rivals';
+import { worldNewsRepo } from './worldNews';
+import type { WorldNewsRepo } from './worldNews';
 import type { CampRepo } from './camps';
 import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
@@ -95,6 +97,8 @@ export interface Repos {
   readonly camps: CampRepo;
   /** a recurring rival: its identity, the record and the last meeting (migration 0023) */
   readonly rivals: RivalRepo;
+  /** the rumour board (LLM feature 8): read-only news across players, public names only */
+  readonly worldNews: WorldNewsRepo;
 }
 
 /**
@@ -131,6 +135,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     npcQuests: npcQuestRepo,
     camps: campRepo,
     rivals: rivalRepo,
+    worldNews: worldNewsRepo,
   };
 }
 
@@ -166,3 +171,4 @@ export type { NpcMemory, NpcMemoryChange } from './npcMemory';
 export type { NewNpcQuest, NpcQuest, NpcQuestStatus } from './npcQuests';
 export type { Camp, CampRaid, NewCamp } from './camps';
 export type { Rival, RivalIdentityRow, RivalMeeting, RivalResult } from './rivals';
+export type { NewsBadge, NewsCampTakeover, NewsNemesis, NewsSale, NewsSplit } from './worldNews';

@@ -236,9 +236,10 @@ export interface InteriorTrainer {
 
 /**
  * Phase D14 adds `tower`: the battle tower attendant (Solenne's league hall foyer); breeding adds `daycare` (data/daycare.ts);
- * the bounty board adds `bounty`: the Marshal by the board in every Healer hall (data/bounties.ts).
+ * the bounty board adds `bounty`: the Marshal by the board in every Healer hall (data/bounties.ts); the rumour board adds
+ * `crier`: the town crier beside him (data/rumours.ts).
  */
-export type InteriorNpcRole = 'shopkeeper' | 'nurse' | 'resident' | 'guide' | 'tower' | 'daycare' | 'bounty';
+export type InteriorNpcRole = 'shopkeeper' | 'nurse' | 'resident' | 'guide' | 'tower' | 'daycare' | 'bounty' | 'crier';
 export interface InteriorNpc {
   readonly id: string;
   readonly name: string;

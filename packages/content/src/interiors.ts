@@ -34,6 +34,7 @@ import { ZONE_ORDER } from './types';
 import { gymHall, healerHall, houseHall, leagueHall, shopHall } from './data/interiors';
 import { withDaycare } from './data/daycare';
 import { withBountyBoard } from './data/bounties';
+import { withTownCrier } from './data/rumours';
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
@@ -124,14 +125,15 @@ export function interiorDefFor(
     }
     case 'shop':
       // the bounty board: in a town without a Healer, the Mart keeps the Marshal and the board
-      return withBountyBoard(shopHall(zone.id, b.id, `${town} Mart`));
+      return withTownCrier(withBountyBoard(shopHall(zone.id, b.id, `${town} Mart`)));
     case 'healer':
-      // the bounty board: a town's Healer hall keeps the Marshal and the board (the hall and its footprint unchanged)
-      return withBountyBoard(healerHall(zone.id, b.id, `${town} Healer`));
+      // the bounty board: a town's Healer hall keeps the Marshal and the board (the hall and its footprint unchanged);
+      // the rumour board: the town crier beside him (data/rumours.ts)
+      return withTownCrier(withBountyBoard(healerHall(zone.id, b.id, `${town} Healer`)));
     case 'house':
       // breeding: Mirevale's house 1 is the Daycare (its resident keeps it; the hall and its footprint are unchanged)
       // the bounty board: Skyrend (no Healer, no Mart) keeps it in its first house, the Marshal's Office
-      return withBountyBoard(withDaycare(houseHall(zone.id, b.id, 'the house', b.w * b.d < 50 ? 's' : 'm', townIndex)));
+      return withTownCrier(withBountyBoard(withDaycare(houseHall(zone.id, b.id, 'the house', b.w * b.d < 50 ? 's' : 'm', townIndex))));
     default:
       return null;
   }
