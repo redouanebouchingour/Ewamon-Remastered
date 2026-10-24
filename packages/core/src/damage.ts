@@ -110,7 +110,8 @@ export function damageAmount(
 
   // 9. abilities: attacker side, then defender side (excluding the superEffective-conditioned hooks → step 11)
   const superEffective = effectiveness >= 2;
-  const q = { moveType: move.type, superEffective, flashFired: attacker.volatile.flashFired };
+  const fullHp = attacker.creature.hp >= attacker.maxHp;
+  const q = { moveType: move.type, superEffective, flashFired: attacker.volatile.flashFired, fullHp, contact: move.contact };
   const atkMuls = damageMultipliers(atkHooks, { ...q, side: 'attacker' });
   for (let i = 0; i < atkMuls.length; i++) dmg = mulFloor(dmg, atkMuls[i]!);
   const defMulsPlain = damageMultipliers(defHooks, { ...q, side: 'defender', whenFilter: null });

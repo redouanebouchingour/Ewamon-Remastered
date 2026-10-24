@@ -21,6 +21,7 @@ import {
   cureStatus,
   dealDamage,
   emit,
+  fireAfterMoveHooks,
   fireSwitchInHooks,
   firstAlive,
   placeActive,
@@ -43,7 +44,7 @@ import { createRng } from './rng';
 import { otherSide } from './side';
 import { createDoubles, resolveDoublesTurn, validateDoublesAction } from './doubles';
 import { effectiveSpeed } from './speed';
-import { formBase, formMoveId, formTypes, transformError } from './forms';
+import { formBase, formMove, formMoveId, formTypes, transformError } from './forms';
 import { applyRatio, calcStat, ratioOf, stageRatio } from './stats';
 import { hasStatus } from './status';
 import type {
@@ -402,7 +403,8 @@ export function executeMoveAt(ctx: Ctx, who: Ref, slotMoveId: string, foeRef: Re
   const b = at(ctx, who);
   // a battle form's signature move stands in for the move it replaces; that slot pays the PP and keeps the choice lock
   const moveId = formMoveId(speciesOf(ctx, b), b, slotMoveId);
-  const move = ctx.content.move(moveId);
+  // a relic form also retypes a typeFromForm move (formMove)
+  const move = formMove(ctx.content, speciesOf(ctx, b), b, slotMoveId);
   const foe = at(ctx, foeRef);
   // A damaging move always hits the foe; `target` only steers power-0 moves (self/field) — see IMPLEMENTATION-NOTES.
   const hitsFoe = move.power > 0 || move.target === 'foe';
@@ -483,6 +485,8 @@ export function executeMoveAt(ctx: Ctx, who: Ref, slotMoveId: string, foeRef: Re
 
   // Effect
   applyEffect(ctx, who, foeRef, move, dealt);
+  // the user's own ability answers its hit (Stance Change)
+  fireAfterMoveHooks(ctx, who, move, dealt);
 
   // Contact hooks (defender's ability reacts to the attacker's touch)
   if (move.power > 0 && move.contact && isAlive(b)) {

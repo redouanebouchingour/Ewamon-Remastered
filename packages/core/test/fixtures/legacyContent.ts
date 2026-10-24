@@ -330,6 +330,10 @@ export interface LegacyContent extends ContentIndex {
   withMove(m: MoveDef): LegacyContent;
   /** Register (or replace) a species for a test scenario. */
   withSpecies(s: SpeciesDef): LegacyContent;
+  /** Register (or replace) an ability for a test scenario. */
+  withAbility(a: AbilityDef): LegacyContent;
+  /** Register (or replace) a held item for a test scenario. */
+  withItem(i: ItemDef): LegacyContent;
 }
 
 /** Builds a FRESH ContentIndex from the legacy module every call (the determinism test needs two independent instances). */
@@ -449,6 +453,14 @@ export function buildLegacyContent(): LegacyContent {
     },
     withSpecies(s) {
       species.set(s.id, s);
+      return index;
+    },
+    withAbility(a) {
+      abilities.set(a.id, a);
+      return index;
+    },
+    withItem(i) {
+      items.set(i.id, i);
       return index;
     },
   };

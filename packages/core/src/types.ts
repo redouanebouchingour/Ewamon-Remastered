@@ -79,6 +79,11 @@ export interface SpeciesDef {
   readonly legendary: boolean;         // true for exactly the 10 legendaries incl. the 2 mythicals
   /** a mid-battle form (hollowmane's rage form); absent on every other species */
   readonly battleForm?: BattleFormDef;
+  /**
+   * Several mid-battle forms, each opened by its own held item (ravatar's relic forms). A species carries either
+   * `battleForm` or `battleForms`, never both; `formsOf` reads whichever it has. Absent on every other species.
+   */
+  readonly battleForms?: readonly BattleFormDef[];
 }
 
 /**
@@ -97,7 +102,18 @@ export interface BattleFormDef {
    * or above the line, holding the Tenjin Band; never on its own.
    */
   readonly kind?: BandKind;
-  readonly hpBelowPct: number;         // 1..99: the line (majin / automatic: hp * 100 < maxHp * hpBelowPct; tenjin: ≥)
+  /**
+   * 1..99: the line (majin / automatic: hp * 100 < maxHp * hpBelowPct; tenjin: ≥). Absent only on a form with a
+   * `heldItem`, which then opens as the battler enters the field.
+   */
+  readonly hpBelowPct?: number;
+  /**
+   * A relic form (ravatar's): the form opens only while the battler holds this item, on entering the field or, with
+   * `hpBelowPct`, the first time its hp is below that line. Never by a band, any side. Absent: no item is needed.
+   */
+  readonly heldItem?: string;
+  /** The type a `typeFromForm` move takes while the battler holds this form. Absent: the form's first type. */
+  readonly moveType?: TypeName;
   readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number;
   /**
    * The battler's types while it holds the form (hyoryu's Majin Form: Ice/Dragon becomes Dragon/Dark): STAB, the type
@@ -156,6 +172,10 @@ export interface MoveDef {
   readonly description: string;
   /** Phase D6: doubles spread reach (absent = single target); ignored in singles */
   readonly spread?: MoveSpread;
+  /** ravatar's Cosmic Convergence: while the user holds a battle form, the move takes that form's type (`formMove`) */
+  readonly typeFromForm?: true;
+  /** the move's effect applies only while the user holds no battle form (its base form) */
+  readonly effectOnlyBaseForm?: true;
 }
 
 // ─── §2.5 AbilityDef and hooks ───────────────────────────────────────────────
@@ -170,8 +190,10 @@ export type AbilityHook =
   | { readonly kind: 'onSwitchOut'; readonly action: 'healFraction' | 'cureStatus'; readonly fraction?: number }
   | { readonly kind: 'modifySpeed'; readonly whenWeather: WeatherKind; readonly mul: number }
   | { readonly kind: 'modifyAttack'; readonly when: 'always' | 'statused'; readonly mul: number }
+  // 'fullHp': only while the attacker's hp is full (Inner Chi). `contact`: only moves whose `contact` equals it.
   | { readonly kind: 'modifyDamage'; readonly side: 'attacker' | 'defender';
-      readonly moveTypes?: readonly TypeName[]; readonly when?: 'superEffective' | 'flashFired'; readonly mul: number }
+      readonly moveTypes?: readonly TypeName[]; readonly when?: 'superEffective' | 'flashFired' | 'fullHp';
+      readonly contact?: boolean; readonly mul: number }
   | { readonly kind: 'modifyAccuracy'; readonly side: 'attacker' | 'defender';
       readonly whenWeather?: WeatherKind; readonly onlyDamaging?: boolean; readonly mul: number }
   | { readonly kind: 'typeImmunity'; readonly moveType: TypeName;
@@ -188,7 +210,13 @@ export type AbilityHook =
         | { readonly kind: 'damageFraction'; readonly fraction: number } }
   | { readonly kind: 'onStatLowered'; readonly raise: { readonly stat: StatKey; readonly stages: number } }
   | { readonly kind: 'endOfTurn'; readonly raise: { readonly stat: StatKey; readonly stages: number } }
-  | { readonly kind: 'wonderGuard' };
+  | { readonly kind: 'wonderGuard' }
+  // Stance Change: after the battler's own damaging move hits, raise a stat by whether the move made contact; each
+  // stat gains at most `cap` stages from this hook per switch-in (Volatile.stanceGained)
+  | { readonly kind: 'afterMoveUsed';
+      readonly contact: { readonly stat: StatKey; readonly stages: number } | null;
+      readonly nonContact: { readonly stat: StatKey; readonly stages: number } | null;
+      readonly cap: number };
 
 export interface AbilityDef {
   readonly id: string;          // legacy display name, e.g. 'Intimidate'
@@ -309,6 +337,8 @@ export interface Volatile {
   readonly weaknessPolicyUsed: boolean;
   readonly lastMove: string | null;
   readonly movedThisTurn: boolean;
+  /** stages gained from an `afterMoveUsed` hook since the battler came in; absent until the first one */
+  readonly stanceGained?: Readonly<Partial<Record<StatKey, number>>>;
 }
 
 export interface Battler {
@@ -318,7 +348,7 @@ export interface Battler {
   readonly stages: Readonly<Record<StatKey, StatStage>>;
   readonly volatile: Volatile;
   readonly participated: boolean;           // was ever active; drives exp share
-  /** the species' `battleForm.id` once it has changed this battle; absent otherwise (never persisted) */
+  /** the id of the species' battle form (`battleForm` / `battleForms`) once it has changed this battle; absent otherwise (never persisted) */
   readonly form?: string;
 }
 

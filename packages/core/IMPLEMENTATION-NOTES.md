@@ -250,3 +250,23 @@ The user's form-change gimmick (`.design/majin-tenjin.md`; spine §2.3 `BattleFo
   client's toggle). Absent on every creature but a hatched bandborn, so the singles and doubles fuzz digests are
   unchanged. No IVs were added: Ewamon's stats are base and level only, and breeding passes on what a creature does
   carry (content daycare.ts).
+
+## Relic forms, form-typed moves, Inner Chi and Stance Change (2026-10-25)
+
+- `SpeciesDef.battleForms?` (ravatar's five relic forms) sits beside `battleForm?`; a species carries one or the
+  other, and `formsOf(sp)` reads whichever it has. `activeForm`, `formBase`, `formTypes` and `formMoveId` go through
+  it; the band rules (`transformError`, `bandsFor`, `transformAt`) still read the one `battleForm`, since a relic form
+  never answers a band.
+- `BattleFormDef.heldItem?`: the form opens only while that item is held. With no `hpBelowPct` (now optional, absent
+  only on a relic form) it opens as the battler lands; with one (the Avatar State, 30) the first time hp is below it.
+  `checkBattleForm` takes the first matching form; one form per battle as before, so a vial holder opens nothing else.
+- `MoveDef.typeFromForm?` / `effectOnlyBaseForm?` (Cosmic Convergence): `formMove(content, sp, b, id)` is the MoveDef
+  the battler executes, `formMoveId`'s move retyped to the form's `moveType` (else its first type) and without its
+  effect while a form is held. Singles, doubles and the NPC scoring all resolve the used move through it, so the
+  type chart, STAB, weather, immunities and type boosts read the retyped move.
+- There is no Sp. Atk / Sp. Def, so the Elemutt line's "special" means a move without contact. `modifyDamage` gained
+  `when: 'fullHp'` and `contact` (Inner Chi: non-contact ×1.3 at full hp). The new `afterMoveUsed` hook (Stance
+  Change: contact Def +1, non-contact Spd +1) runs after the user's own damaging hit, at most `cap` stages per stat per
+  switch-in, counted in the optional `Volatile.stanceGained` (reset with the volatile on switch-out).
+- Every new field is optional and absent on legacy content, and no new rng draw sits on a shared path: the singles and
+  doubles fuzz digests are unchanged. `test/relicForms.test.ts` (7); the test fixture gained `withAbility` / `withItem`.

@@ -6,7 +6,7 @@
 import { abilityHooks, hooksOfKind, stageLowerImmune, statusImmune } from './abilities';
 import { DEFAULT_VOLATILE, ZERO_STAGES } from './battler';
 import { applyExp, expGain } from './exp';
-import { formBase, formTypes } from './forms';
+import { formBase, formsOf, formTypes } from './forms';
 import { HONOR_DELTAS, clampHonor, tracksHonor } from './honor';
 import { otherSide } from './side';
 import { calcMaxHp, calcStat, clampStage, ratioOf, applyRatio } from './stats';
@@ -24,6 +24,7 @@ import type {
   Field,
   HonorReason,
   MajorStatus,
+  MoveDef,
   MoveSlot,
   Ref,
   Rng,
@@ -347,7 +348,7 @@ export function changeStage(
 const STAGE_KEYS: readonly StatKey[] = ['atk', 'def', 'spd', 'acc', 'eva'];
 
 /**
- * `SpeciesDef.battleForm`, once per battle: a standing battler on the field that has not changed yet and whose hp is
+ * `SpeciesDef.battleForm` (or the first matching `battleForms` entry), once per battle: a standing battler on the field that has not changed yet and whose hp is
  * below `hpBelowPct` % of max changes — atk / def / spd from the form's base (`formChange`), then `onEnter`: its own
  * negative stages back to 0, every standing foe on the field lowered (cause 'ability'). Called after every damage and
  * when a battler enters the field. Consumes no rng, and returns at once for a species without a form.
@@ -357,11 +358,17 @@ const STAGE_KEYS: readonly StatKey[] = ['atk', 'def', 'spd', 'acc', 'eva'];
 export function checkBattleForm(ctx: Ctx, who: Ref): void {
   const b = at(ctx, who);
   if (b.form !== undefined || !isAlive(b)) return;
-  const form = speciesOf(ctx, b).battleForm;
-  if (form === undefined || b.creature.hp * 100 >= b.maxHp * form.hpBelowPct) return;
-  if (form.kind === 'tenjin' || (form.kind === 'majin' && ctx.st.sides[who.side].kind !== 'wild')) return;
-  if (!onField(ctx.st.sides[who.side], who.slot)) return;
-  enterForm(ctx, who, form);
+  const forms = formsOf(speciesOf(ctx, b));
+  for (let i = 0; i < forms.length; i++) {
+    const form = forms[i]!;
+    // a relic form opens only while its item is held (ravatar's); with no line it opens as the battler lands
+    if (form.heldItem !== undefined && b.creature.heldItem !== form.heldItem) continue;
+    if (form.hpBelowPct !== undefined && b.creature.hp * 100 >= b.maxHp * form.hpBelowPct) continue;
+    if (form.kind === 'tenjin' || (form.kind === 'majin' && ctx.st.sides[who.side].kind !== 'wild')) continue;
+    if (!onField(ctx.st.sides[who.side], who.slot)) return;
+    enterForm(ctx, who, form);
+    return;
+  }
 }
 
 /**
@@ -667,6 +674,28 @@ export function fireSwitchInHooksAt(ctx: Ctx, who: Ref, foes: readonly Ref[]): v
   }
   // a battle form: one sent in already below its line changes as it lands
   checkBattleForm(ctx, who);
+}
+
+/**
+ * `afterMoveUsed` hooks (Stance Change) of the battler at `who` after its own damaging move dealt damage: the
+ * contact or non-contact raise, short of the hook's per-switch-in `cap` (Volatile.stanceGained, cleared on
+ * switch-out). Consumes no rng, and returns at once for an ability without the hook.
+ */
+export function fireAfterMoveHooks(ctx: Ctx, who: Ref, move: MoveDef, dealt: number): void {
+  const b = at(ctx, who);
+  if (dealt <= 0 || move.power <= 0 || !isAlive(b)) return;
+  const hooks = hooksOfKind(abilityHooks(b, ctx.content), 'afterMoveUsed');
+  for (let i = 0; i < hooks.length; i++) {
+    const h = hooks[i]!;
+    const raise = move.contact ? h.contact : h.nonContact;
+    if (raise === null) continue;
+    const gained = b.volatile.stanceGained?.[raise.stat] ?? 0;
+    const stages = Math.min(raise.stages, h.cap - gained);
+    if (stages <= 0 || b.stages[raise.stat] >= 6) continue;
+    b.volatile.stanceGained = { ...b.volatile.stanceGained, [raise.stat]: gained + stages };
+    emit(ctx, { t: 'abilityTrigger', who, ability: b.creature.ability, detail: 'afterMoveUsed' });
+    changeStage(ctx, who, raise.stat, stages, who, 'ability');
+  }
 }
 
 /** Phase D6: puts party index `to` on field position `pos` of a doubles side (`active` mirrors position 0). No hooks. */

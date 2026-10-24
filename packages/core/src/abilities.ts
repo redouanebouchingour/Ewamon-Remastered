@@ -85,8 +85,12 @@ export interface DamageHookQuery {
   readonly moveType: TypeName;
   readonly superEffective: boolean;
   readonly flashFired: boolean;
+  /** the attacker's hp is full (an attacker hook with `when: 'fullHp'` applies only then) */
+  readonly fullHp: boolean;
+  /** the move makes contact (a hook with `contact` set applies only to moves that match it) */
+  readonly contact: boolean;
   /** When set, only hooks whose `when` equals it (or, for null, hooks with no `when`) are returned. */
-  readonly whenFilter?: 'superEffective' | 'flashFired' | null;
+  readonly whenFilter?: 'superEffective' | 'flashFired' | 'fullHp' | null;
 }
 
 /** modifyDamage multipliers that apply, in hook order. */
@@ -100,6 +104,8 @@ export function damageMultipliers(hooks: readonly AbilityHook[], q: DamageHookQu
     if (h.moveTypes !== undefined && h.moveTypes.indexOf(q.moveType) === -1) continue;
     if (h.when === 'superEffective' && !q.superEffective) continue;
     if (h.when === 'flashFired' && !q.flashFired) continue;
+    if (h.when === 'fullHp' && !q.fullHp) continue;
+    if (h.contact !== undefined && h.contact !== q.contact) continue;
     out.push(h.mul);
   }
   return out;

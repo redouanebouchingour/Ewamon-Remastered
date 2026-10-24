@@ -29,7 +29,7 @@ import { abilityHooks, hooksOfKind } from './abilities';
 import { accuracyCheck } from './accuracy';
 import { calcDamageFor, damageStop } from './damage';
 import { effectTargetsDefender } from './effects';
-import { formMoveId, transformError } from './forms';
+import { formMove, formMoveId, transformError } from './forms';
 import {
   at,
   changeStage,
@@ -37,6 +37,7 @@ import {
   cureStatus,
   dealDamage,
   emit,
+  fireAfterMoveHooks,
   fireSwitchInHooksAt,
   fractionOfMax,
   healBattler,
@@ -431,13 +432,14 @@ function executeSpreadAt(ctx: Ctx, side: 0 | 1, pos: 0 | 1, move: MoveDef): void
     checkFaint(ctx, t);
   }
   if (hitAny && move.effect !== null && !effectTargetsDefender(move.effect)) applyEffect(ctx, who, primary, move, total);
+  fireAfterMoveHooks(ctx, who, move, total);
   checkFaint(ctx, who);
 }
 
 function executeAt(ctx: Ctx, side: 0 | 1, pos: 0 | 1, a: Extract<Action, { kind: 'move' }>): void {
   // a battle form's signature move stands in for the move it replaces (executeMoveAt swaps it again for the PP slot)
   const b = at(ctx, posRef(ctx, side, pos));
-  const move = ctx.content.move(formMoveId(ctx.content.species(b.creature.speciesId), b, a.move));
+  const move = formMove(ctx.content, ctx.content.species(b.creature.speciesId), b, a.move);
   if (isSpread(move)) {
     executeSpreadAt(ctx, side, pos, move);
     return;

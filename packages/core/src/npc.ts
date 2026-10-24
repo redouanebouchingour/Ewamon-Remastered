@@ -6,7 +6,7 @@
  * in v1), so every battle terminates. Every action returned passes validateAction.
  */
 import { damageAmount, damageStop } from './damage';
-import { formMoveId, transformError } from './forms';
+import { formMove, transformError } from './forms';
 import { benchOf, requiredPositions } from './doubles';
 import { blocksStatusMoves, heldHooks } from './items';
 import { otherSide } from './side';
@@ -127,7 +127,7 @@ export function chooseNpcDoubles(state: BattleState, side: 0 | 1, content: Conte
       let md: MoveDef;
       try {
         // a battle form's signature move is what the slot executes, so it is what gets scored
-        md = content.move(formMoveId(content.species(b.creature.speciesId), b, id));
+        md = formMove(content, content.species(b.creature.speciesId), b, id);
       } catch (_e) {
         continue;
       }
@@ -196,7 +196,7 @@ export function chooseNpcAction(state: BattleState, side: 0 | 1, content: Conten
     const id = moves[i]!;
     let md: MoveDef;
     try {
-      md = content.move(formMoveId(content.species(b.creature.speciesId), b, id));
+      md = formMove(content, content.species(b.creature.speciesId), b, id);
     } catch (_e) {
       continue;
     }
