@@ -27,6 +27,8 @@ import { ecosystemRepo } from './ecosystem';
 import type { EcosystemRepo } from './ecosystem';
 import { bountyRepo } from './bounties';
 import type { BountyRepo } from './bounties';
+import { npcMemoryRepo } from './npcMemory';
+import type { NpcMemoryRepo } from './npcMemory';
 import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
 import { historyRepo } from './history';
@@ -79,6 +81,8 @@ export interface Repos {
   readonly ecosystem: EcosystemRepo;
   /** the bounty board: posters on ghosts and nemeses, escrow and claims (migration 0019) */
   readonly bounties: BountyRepo;
+  /** NPC memory: what each NPC remembers of a player, its standing, the deeds a town gossips about (migration 0021) */
+  readonly npcMemory: NpcMemoryRepo;
 }
 
 /**
@@ -111,6 +115,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     nemeses: nemesisRepo,
     ecosystem: ecosystemRepo,
     bounties: bountyRepo,
+    npcMemory: npcMemoryRepo,
   };
 }
 
@@ -141,3 +146,5 @@ export type { Egg, EggPlace, NewEgg } from './breeding';
 export type { Nemesis, NemesisStatus, NewNemesis } from './nemeses';
 export type { EcoTake } from './ecosystem';
 export type { Bounty, BountyKind, BountyStatus, NewGhostBounty } from './bounties';
+export { NPC_MEMORY_LIMITS, rollSummary } from './npcMemory';
+export type { NpcMemory, NpcMemoryChange } from './npcMemory';

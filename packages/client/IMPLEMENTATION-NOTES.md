@@ -2366,3 +2366,33 @@ the second isolated client (the component over the landing page: the foe and own
   continuously instead, at the first-person look rate (`LOOK_RAD_PER_PX`, drag right looks right): `InputCallbacks.orbit`
   → render `CameraRig.orbitBy`. The rotate keys still step 90° (from the nearest heading); without `orbit` the input
   capture falls back to the 80 px step.
+
+## Shared LLM plumbing and NPC memory (2026-10-24, not in the SPEC)
+
+- `talk/llm.ts` holds what every LLM feature shares: the endpoints and model names (env overrides unchanged), the
+  reasoning switch, `streamChat` (SSE, stop early), `chatOnce` (one call: tools and `tool_choice`, JSON output as
+  `json_object` or a JSON schema, a timeout on top of the caller's signal), `stripThink`, `parseSse` and `noDashes`
+  (em-dashes to commas, a colon before a list, dropped at an end; also the horizontal bar and a spaced ` -- `).
+  `npcChat.ts` keeps its exports (re-exported) and runs both passes through it. Both NPC prompts end with "Never use
+  em-dashes." and every reply shown goes through `noDashes`.
+- NPC memory (`talk/npcMemory.ts`, `state/npcTalk.ts`): opening a person's dialogue (`openTalk`, signed in only)
+  fetches `GET /npc/memory/:npcId` once; the first reply waits for it at most 600 ms. The memory, the town's gossip and
+  how to feel go as one bracketed note after the player's first line (`chatMessages`' `memory`), fixed for the
+  conversation. Measured on gemma4-e2b with the warm-and-chatty temperament: as a system-prompt sentence 0 of 9 replies
+  used it, as a note on the opening "Hello." 0 of 9. On the player's first line, feeling and instruction first and the
+  memory last ("You know this traveller and you do not trust them. Tell them why, coldly. What you remember of them:
+  ...") a slapped NPC named the slap in 12 of 12, a friend brought up last time in 6 of 6, a stranger passed on the
+  gossip in 6 of 6; with the memory first and the instruction after, the slap came up in only 2 of 6.
+- When a conversation with at least one reply ends (`endTalk`: dialogue closed, target changed, a battle taking the
+  screen), the NPC's summary (one call, temperature 0.2, 90 tokens, first person; 10 of 10 test transcripts gave a
+  usable one or two sentences, 11 of 11 with a live slap, at 2.6 to 9 s on the shared docker model) and the talk deeds go to `POST /npc/memory` in
+  the background. A failed or junk summary falls back to a templated one from the deeds and the tool events. The deeds
+  come from what happened, never from the model: H / K = `hit`, `robbed`, an insult (`provoked`), a threat regex,
+  kind words (thanks, an apology, a compliment aimed at the NPC; "nice day" is not one) only in a conversation without
+  any of those.
+- Live check (alt2 pair, headless Chrome, the docker model): a new account met the archivist ("Mirevale · Neutral"),
+  slapped her (she swore back), closed the dialogue; on the next visit the tag read "Mirevale · Wary" and she answered
+  "Hello again" with "You stopped to waste time. Then you struck me."; the child, never slapped, greeted the traveller
+  with "Hessa Dunmore said you hit her!" under the same Wary tag.
+- The DialogueBox shows the town's standing as a small carbon tag beside the speaker strip ("Mirevale · Wary"; wary in
+  the warn tone, hostile in the danger tone, liked / trusted in paper white). Signed out, nothing is fetched or shown.

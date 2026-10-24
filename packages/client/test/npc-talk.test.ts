@@ -6,20 +6,33 @@ import { CONTACT_M, HOLD_MS, KNOCK_M, KNOCK_MS, LUNGE_MS, NpcStrike, PlayerStrik
 describe('npc talk: npc chat', () => {
   const persona = { name: 'Bram', place: 'Mirevale (town, marsh)', lines: ['The marsh is quiet today.'] };
 
-  it('keeps the system prompt to five sentences of instructions: who, temperament, what it can do, fury, chat', () => {
+  it('keeps the system prompt to six sentences of instructions: who, temperament, what it can do, fury, chat, no dashes', () => {
     const p = systemPrompt(persona);
     expect(p).toBe(
       'You are Bram in Mirevale (town, marsh), a villager in Ewamon, a game like Pokémon. ' +
         `You are ${temperamentOf('Bram')}. ` +
         'You can slap or kick the traveller, give them money or take theirs, give them an Ewamon or take one of theirs, and battle them with your Ewamon: to do it, just say it. ' +
         'If the traveller slaps, kicks, threatens, or insults you, you are furious: yell, curse and swear at them with foul words, insult them back and threaten them. ' +
-        'Otherwise chat and answer any question, whatever the subject, with only the words you say out loud.',
+        'Otherwise chat and answer any question, whatever the subject, with only the words you say out loud. ' +
+        'Never use em-dashes.',
     );
-    expect(p.split(/(?<=[.!?]) /).length).toBe(5);
+    expect(p.split(/(?<=[.!?]) /).length).toBe(6);
     // addressed to the NPC: never described in the third person, which the model copied as narration
     expect(p).not.toMatch(/Bram (is|always|only|can|may|hands)\b/);
     // no conversation in it: the scripted lines are in the message log
     expect(p).not.toContain('The marsh is quiet today.');
+  });
+
+  it("puts what the NPC remembers in brackets after the player's first line only", () => {
+    const h: ChatTurn[] = [
+      { role: 'user', content: 'Hi again.' },
+      { role: 'assistant', content: 'You!' },
+      { role: 'user', content: 'Sorry.' },
+    ];
+    const m = chatMessages(persona, h, 'You remember this traveller.');
+    expect(m.slice(3).map((x) => x.content)).toEqual(['Hi again. [You remember this traveller.]', 'You!', 'Sorry.']);
+    expect(chatMessages(persona, h, null)[3]!.content).toBe('Hi again.');
+    expect(judgeMessages(persona, h)[0]!.content).toContain('Never use em-dashes.');
   });
 
   it('sends the conversation as a user / assistant log, opened by the scripted lines', () => {

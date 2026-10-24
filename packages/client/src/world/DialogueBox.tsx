@@ -11,6 +11,9 @@
  * character from a local model (`state/npcTalk.ts`). H slaps and K kicks the NPC, who answers that too. The whole conversation shows as a log; while it is on screen Enter / E /
  * Escape return to the scripted lines and keep it (the next line resumes it), so a beat's `onFinish` still runs only by
  * paging past them. Closing the dialogue ends the conversation: E on the person again starts a new one.
+ *
+ * NPC memory (2026-10-24): opening a person's dialogue fetches what they remember of the player (`openTalk`); the town's
+ * standing then sits beside the speaker strip as a small carbon tag ("Mirevale · Wary").
  */
 import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -19,7 +22,8 @@ import type { ZoneId } from '@ewa/content';
 import { useSessionStore } from '../state/session';
 import { useUiStore } from '../state/ui';
 import type { DialogueUi } from '../state/ui';
-import { endTalk, hitNpc, leaveTalk, sendText, useNpcTalkStore } from '../state/npcTalk';
+import { STANDING_LABEL } from '@ewa/protocol';
+import { endTalk, hitNpc, leaveTalk, openTalk, sendText, useNpcTalkStore } from '../state/npcTalk';
 import type { NpcPersona } from '../talk/npcChat';
 import s from './DialogueBox.module.css';
 
@@ -90,13 +94,16 @@ export function DialogueBox() {
   const open = d !== null && !inBattle;
   const canTalk = TALK_ON && d !== null && d.noTalk !== true;
 
-  // the conversation belongs to one dialogue: closing it, or opening another, ends the talk
+  // the conversation belongs to one dialogue: closing it, or opening another, ends the talk; a person's dialogue
+  // starts one at once, so what the NPC remembers is on its way before the player speaks
   const targetId = open ? d.targetId : null;
+  const talkable = canTalk && open;
   useEffect(() => {
-    if (useNpcTalkStore.getState().targetId !== targetId) endTalk();
+    if (targetId !== null && talkable) openTalk(targetId);
+    else if (useNpcTalkStore.getState().targetId !== targetId) endTalk();
     setTyping(false);
     setDraft('');
-  }, [targetId]);
+  }, [targetId, talkable]);
   useEffect(() => () => endTalk(), []);
   // the log follows the newest line
   useEffect(() => {
@@ -147,6 +154,17 @@ export function DialogueBox() {
   }, [open]);
 
   if (!open || d === null) return null;
+  const town = canTalk && talk.targetId === d.targetId ? talk.memory?.town : undefined;
+  const head = (
+    <div className={s.head}>
+      <p className={s.speaker}>{d.speaker}</p>
+      {town !== undefined ? (
+        <span className={s.standing} data-standing={town.standing} data-testid="town-standing" title={`Your standing in ${town.name}`}>
+          {`${town.name} · ${STANDING_LABEL[town.standing]}`}
+        </span>
+      ) : null}
+    </div>
+  );
   const field =
     canTalk && typing ? (
       <form
@@ -197,7 +215,7 @@ export function DialogueBox() {
     const status = talk.phase === 'thinking' ? `${personaOf(d).name} is thinking…` : null;
     return (
       <div ref={ref} className={s.box} role="dialog" aria-label={`Talking with ${d.speaker}`} data-testid="dialoguebox">
-        <p className={s.speaker}>{d.speaker}</p>
+        {head}
         <div className={s.slab}>
           <div ref={logRef} className={s.log}>
             {talk.turns.map((t, i) =>
@@ -237,7 +255,7 @@ export function DialogueBox() {
   const left = Math.max(0, d.lines.length - d.index - LINES_PER_PAGE);
   return (
     <div ref={ref} className={s.box} role="dialog" aria-label={`${d.speaker} says`} data-testid="dialoguebox">
-      <p className={s.speaker}>{d.speaker}</p>
+      {head}
       <div className={s.slab}>
         {page.map((line, i) => (
           <p key={`${d.index}:${i}`} className={s.line}>

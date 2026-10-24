@@ -238,3 +238,11 @@ installed library that future readers should not have to re-derive. The spec its
 
 - `EmoteMsg.emote` accepts 1..7: 7 is the breakdance (`EMOTE_BREAKDANCE`), which stays on `PlayerState.emote` for
   `BREAKDANCE_MS` (6 s) instead of 2 s. Not in the spine (§4.1 lists 1..6).
+
+## NPC memory and town reputation (2026-10-24)
+
+- Routes `npcMemory` (`GET /npc/memory/:npcId`) and `npcMemoryWrite` (`POST /npc/memory`, dedicated limit
+  `npcMemory`), the schemas `NpcMemoryRes` / `NpcMemoryReq` / `TownStandingSchema`, and the shared rules both sides
+  read: `NPC_DEEDS` (`NPC_TALK_DEEDS` the client may report), `NPC_DEED_DELTA`, `writeDelta`, `NPC_DEED_COOLDOWN_MS`,
+  the bands `standingOf` (`hostile` / `wary` / `neutral` / `liked` / `trusted`, `STANDING_LABEL`), `townScore`,
+  `feelingScore`, `clampStanding`. Later features (haggling, rumours) read the standing through these.

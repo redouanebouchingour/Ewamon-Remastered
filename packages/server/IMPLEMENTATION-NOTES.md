@@ -1262,3 +1262,24 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
 ## Breakdance emote (2026-10-22)
 
 - The emote timer clears emote 7 (`EMOTE_BREAKDANCE`) after `BREAKDANCE_MS` (6 s) instead of `EMOTE_MS`.
+
+## NPC memory and town reputation (2026-10-24, not in the SPEC)
+
+- `GET /npc/memory/:npcId` and `POST /npc/memory` (`rest/routes/npc.ts`), behind the same `NPC_TOOLS` gate and the
+  same zone check as `/npc/act` (a ZoneDef npc or an interior resident of the caller's zone, `npcInZone`), but not
+  refused in a battle (a conversation that started one is saved as the battle opens).
+- The read answers the NPC's summary, its standing and how it feels (`feeling`: its own standing banded, else half the
+  town's for a stranger), the zone's reputation (`townScore`: the clamped sum of the standings of the zone's NPCs that
+  remember the player) and up to three pieces of gossip (deeds done to the zone's other NPCs, newest first, one per
+  NPC and deed; kind words are not news and stay out).
+- The write takes a summary (trimmed by `trimNote`: control characters out, em-dashes to commas, cut to
+  `NPC_MEMORY_NOTE_MAX` at a sentence) and the talk deeds only (`NPC_TALK_DEEDS`; a server deed from the client is a
+  400). Deltas are `NPC_DEED_DELTA`, the write's sum capped to -6..+1 (`writeDelta`); a deed already recorded for that
+  NPC within `NPC_DEED_COOLDOWN_MS` is not recorded again and a positive one then adds nothing (`applyDeeds`), so kind
+  words and one-coin gifts cannot farm a town. Rate limit `npcMemory` (12 / min per player). Audit row `npc.memory`
+  with the deeds, the delta and the standing after.
+- Deeds the server sees are recorded server-side: `/npc/act` giveMoney / giveCreature = `giftReceived` (0),
+  takeMoney / takeCreature = `giftGiven` (+1), in the same transaction as the audit row; a villager battle's end
+  (`battleSession` villager branch) = `battleWon` / `battleLost` (+1 each, a fair fight earns respect).
+- `game/npcMemory.ts` exports the helpers later features read: `standingWithNpc`, `townStandingOf`, `recordNpcDeed`,
+  `npcMemoryView`, `npcInZone`.

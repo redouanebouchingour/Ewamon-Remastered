@@ -24,3 +24,4 @@ export * from './breeding';
 export * from './nemeses';
 export * from './ecosystem';
 export * from './bounties';
+export * from './npcMemory';

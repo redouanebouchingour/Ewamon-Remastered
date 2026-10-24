@@ -289,3 +289,17 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
   once. Money is never moved here: the server does it next to the audit row.
 - `ghostRepo.everywhere` (every ghost still haunting, banned owners left out) for the board's postings and its list.
 - History event `bounty { target, targetKind, reward, zoneId }` needs no migration (`creature_events.kind` is a varchar).
+
+## NPC memory (2026-10-24)
+
+- Migration `0021_npc_memory` (drizzle-kit generated as 0020, renamed: main's `0020_camps` keeps its number, so a
+  merge slots it in before this one; the journal entry's `idx` is 21 and its `when` the generation time). One
+  `npc_memories` table keyed by (player, npc): `zone_id` (the zone the NPC stands in; interior residents carry their
+  town), a rolling `summary` (varchar 400), `standing` smallint checked -10..10, the last five `deeds` as jsonb
+  `{ deed, at }`, `talks`, `updated_at`; an index on (player, zone) for a town's reputation in one read. A player's rows
+  go with the player (cascade).
+- `npcMemoryRepo.remember` creates the row on first contact, locks it, clamps the standing, rolls the summary
+  (`rollSummary`: older sentences drop off the front past the cap) and keeps the last five deeds. The deltas and the
+  cooldowns are the server's (`game/npcMemory.ts`); the repo only bounds what it stores.
+- Note for the next migration: drizzle-kit numbers a new file by the journal's entry count, so the next one comes out
+  as `0021_*` too and needs the same rename (to 0022).

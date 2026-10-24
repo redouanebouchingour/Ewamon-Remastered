@@ -11,15 +11,22 @@
  * A slap or a kick plays in the world (`state/npcFx`); money and Ewamon go through `POST /npc/act`, which checks the NPC stands in the player's zone and
  * keeps its wallet; the delta lands in the session like any other. A battle (`start_battle`) goes last, through the
  * same route: the zone room opens it, and the dialogue closes so the battle can take the screen.
+ *
+ * NPC memory (2026-10-24, talk/npcMemory.ts): opening a talkable dialogue (`openTalk`) fetches what the NPC remembers
+ * of the player and the town's standing once (`GET /npc/memory`); the first reply waits for it at most
+ * `MEMORY_WAIT_MS`, then goes without it. The note it makes is fixed for the conversation. When a conversation with at
+ * least one reply ends (`endTalk`), the NPC's summary of it and the talk deeds go to `POST /npc/memory` in the background
+ * (the summary call falls back to a templated one), and the answer refreshes the standing shown.
  */
 import { create } from 'zustand';
 import { NPC_MONEY_MAX } from '@ewa/protocol';
-import type { NPC_ACTIONS } from '@ewa/protocol';
+import type { NPC_ACTIONS, NpcMemoryView } from '@ewa/protocol';
 import { apiFetch, isApiFailure } from '../net/api';
 import { speciesName } from '../data/content';
 import { GIVE_EWAMON, GIVE_MONEY, KICK, SLAP, START_BATTLE, TAKE_EWAMON, TAKE_MONEY, TOOL_MODEL, judgeExchange, playerHitTurn, streamNpcReply } from '../talk/npcChat';
 import type { StrikeKind } from '../scene/npcStrike';
 import type { ChatTurn, NpcPersona, ToolCall } from '../talk/npcChat';
+import { MEMORY_WAIT_MS, deedsOf, hadExchange, memoryNote, summarize } from '../talk/npcMemory';
 import { strike } from './npcFx';
 import { toast } from './notifications';
 import { toInventoryDelta, useSessionStore } from './session';
@@ -37,9 +44,11 @@ export interface NpcTalkState {
   readonly error: string | null;
   /** the player went back to the scripted lines (`leaveTalk`); the conversation is kept and the next line resumes it */
   readonly hidden: boolean;
+  /** what the NPC remembers of the player and the town's standing (null until loaded, or without it) */
+  readonly memory: NpcMemoryView | null;
 }
 
-const IDLE: NpcTalkState = { targetId: null, phase: 'idle', turns: [], partial: '', error: null, hidden: false };
+const IDLE: NpcTalkState = { targetId: null, phase: 'idle', turns: [], partial: '', error: null, hidden: false, memory: null };
 
 export const useNpcTalkStore = create<NpcTalkState>()(() => IDLE);
 
@@ -49,13 +58,38 @@ let inflight: AbortController | null = null;
 /** the tool passes of this conversation, run one after another in the background; `endTalk` aborts them */
 let tools = new AbortController();
 let toolQueue: Promise<void> = Promise.resolve();
+/** the memory fetch of this conversation (resolves null without it) */
+let memoryReady: Promise<NpcMemoryView | null> = Promise.resolve(null);
+/** the note the talk pass reads, fixed at the first reply (undefined = not decided yet) */
+let note: string | null | undefined;
+/** the NPC as the conversation knows it, for the summary at its end */
+let persona: NpcPersona | null = null;
+
+const signedIn = (): boolean => useSessionStore.getState().accessToken !== null;
+
+/**
+ * A talkable dialogue opened on `targetId`: the conversation's target is set (nothing shows until the player talks)
+ * and what the NPC remembers is fetched once. A target already set is left alone.
+ */
+export function openTalk(targetId: string): void {
+  if (useNpcTalkStore.getState().targetId === targetId) return;
+  endTalk();
+  set({ targetId });
+  if (!signedIn()) return;
+  memoryReady = apiFetch('npcMemory', { params: { npcId: targetId } }).then(
+    (m) => {
+      if (useNpcTalkStore.getState().targetId === targetId) set({ memory: m });
+      return m;
+    },
+    () => null,
+  );
+}
 
 /** Joins (or starts, when the target changed) the conversation with `targetId`; false while a reply is on its way. */
 function join(targetId: string): boolean {
   const st = useNpcTalkStore.getState();
   if (st.targetId !== targetId) {
-    endTalk();
-    set({ targetId });
+    openTalk(targetId);
     return true;
   }
   if (st.phase !== 'idle') return false;
@@ -99,10 +133,17 @@ export function sendText(targetId: string, p: NpcPersona, text: string): void {
  */
 async function answer(p: NpcPersona, said: ChatTurn, ac: AbortController): Promise<void> {
   const turns = [...useNpcTalkStore.getState().turns, said];
+  persona = p;
   set({ turns, phase: 'thinking', partial: '' });
+  if (note === undefined) {
+    // the first reply waits a moment for the memory, then goes without it (the NPC just does not remember)
+    const m = await Promise.race([memoryReady, new Promise<null>((r) => setTimeout(() => r(null), MEMORY_WAIT_MS))]);
+    if (ac.signal.aborted) return;
+    note = memoryNote(m);
+  }
   let reply: string;
   try {
-    reply = await streamNpcReply(p, turns, (text) => set({ phase: 'replying', partial: text }), ac.signal);
+    reply = await streamNpcReply(p, turns, (text) => set({ phase: 'replying', partial: text }), ac.signal, note);
   } catch (e) {
     if (ac.signal.aborted) return;
     return set({ phase: 'idle', partial: '', error: `The language model did not answer (is Llama.cpp running on port 1234?): ${message(e)}` });
@@ -245,7 +286,26 @@ export function endTalk(): void {
   tools.abort();
   tools = new AbortController();
   toolQueue = Promise.resolve();
+  const { targetId, turns } = useNpcTalkStore.getState();
+  if (targetId !== null && persona !== null && hadExchange(turns) && signedIn()) void remember(targetId, persona, turns);
+  memoryReady = Promise.resolve(null);
+  note = undefined;
+  persona = null;
   useNpcTalkStore.setState(IDLE);
+}
+
+/**
+ * The NPC keeps the conversation: its summary (the model's, else a templated one) and the talk deeds go to the server,
+ * which caps the standing change. In the background; a failure is dropped (the NPC just forgets this one).
+ */
+async function remember(npcId: string, p: NpcPersona, turns: readonly ChatTurn[]): Promise<void> {
+  try {
+    const summary = await summarize(p, turns);
+    const m = await apiFetch('npcMemoryWrite', { body: { npcId, summary, deeds: deedsOf(turns) } });
+    if (useNpcTalkStore.getState().targetId === npcId) set({ memory: m });
+  } catch (_e) {
+    // the server refused (another zone, rate limit, NPC actions off) or is unreachable: nothing to remember
+  }
 }
 
 function message(e: unknown): string {

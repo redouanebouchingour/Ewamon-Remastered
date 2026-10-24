@@ -14,15 +14,43 @@
  *
  * Wallets and gift cooldowns live in memory (a restart refills them). `NPC_TOOLS` (env) turns it off; unset, it is
  * off in production.
+ *
+ * Every action is also remembered by the NPC (`game/npcMemory.ts`): money or an Ewamon it gave is `giftReceived`, one
+ * it took `giftGiven`; a battle's outcome is recorded when it ends (rooms/battleSession.ts).
+ *
+ * NPC memory (same gate, same zone check): `GET /npc/memory/:npcId` is what the NPC remembers of the caller, the zone's
+ * reputation and its gossip; `POST /npc/memory` is a finished conversation: a summary from the NPC's side (trimmed,
+ * rolled into the stored one) and the talk deeds (`NPC_TALK_DEEDS`), whose standing delta the server caps. Each write
+ * leaves an audit row (`npc.memory`).
  */
-import { interiorNpcs } from '@ewa/content';
 import { createRng } from '@ewa/core';
-import { NPC_MONEY_MAX, NpcActReq, NpcActRes } from '@ewa/protocol';
+import { NPC_MEMORY_NOTE_MAX, NPC_MONEY_MAX, NpcActReq, NpcActRes, NpcMemoryParams, NpcMemoryReq, NpcMemoryRes } from '@ewa/protocol';
+import type { NpcDeed } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
 import { newCreature } from '../../game/creatures';
 import { pickSlot, zoneSlots } from '../../game/villagers';
+import { applyDeeds, npcInZone, npcMemoryView, recordNpcDeed } from '../../game/npcMemory';
 import { HttpError, out, presenceZone, rateLimit, refuseInBattle, requireAuth } from '../http';
 import type { RestDeps } from '../http';
+
+/** what the NPC remembers of each save-touching action (a battle is remembered when it ends) */
+const DEED_OF: Readonly<Partial<Record<string, NpcDeed>>> = { giveMoney: 'giftReceived', giveCreature: 'giftReceived', takeMoney: 'giftGiven', takeCreature: 'giftGiven' };
+
+/**
+ * A conversation's summary as stored: control characters out, whitespace collapsed, em-dashes turned into commas, cut
+ * to NPC_MEMORY_NOTE_MAX (at the last sentence end that fits, when there is one).
+ */
+export function trimNote(text: string): string {
+  const t = text
+    .replace(/\p{Cc}/gu, ' ')
+    .replace(/\s*[\u2014\u2015]\s*/g, ', ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (t.length <= NPC_MEMORY_NOTE_MAX) return t;
+  const cut = t.slice(0, NPC_MEMORY_NOTE_MAX);
+  const end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+  return end > 20 ? cut.slice(0, end + 1) : `${cut.slice(0, NPC_MEMORY_NOTE_MAX - 1).trimEnd()}…`;
+}
 
 export const NPC_GIFT_COOLDOWN_MS = 10 * 60_000;
 const WALLET_MIN = 300;
@@ -46,14 +74,45 @@ export function registerNpcRoutes(app: FastifyInstance, deps: RestDeps): void {
     return seeded;
   };
 
+  /** the caller's zone, when the NPC stands in it (a ZoneDef npc or an interior resident) */
+  const zoneWith = (id: string, npcId: string) => {
+    const zone = presenceZone(deps, id);
+    if (zone === null || npcInZone(zone, npcId) === null) throw new HttpError(409, 'npcNotHere');
+    return zone;
+  };
+
+  app.get('/npc/memory/:npcId', bearer, async (req) => {
+    const { npcId } = NpcMemoryParams.parse(req.params);
+    const id = req.user.sub;
+    if (!on) throw new HttpError(409, 'npcToolsOff');
+    const zone = zoneWith(id, npcId);
+    const view = await repos.db.transaction((tx) => npcMemoryView(repos, tx, id, zone, npcId));
+    return out(deps, NpcMemoryRes, view);
+  });
+
+  app.post('/npc/memory', { onRequest: requireAuth(deps), preHandler: rateLimit(deps, 'npcMemory') }, async (req) => {
+    const body = NpcMemoryReq.parse(req.body);
+    const id = req.user.sub;
+    if (!on) throw new HttpError(409, 'npcToolsOff');
+    const zone = zoneWith(id, body.npcId);
+    const now = new Date(clock());
+    const note = trimNote(body.summary);
+    const view = await repos.db.transaction(async (tx) => {
+      const cur = await repos.npcMemory.of(tx, id, body.npcId);
+      const { record, delta } = applyDeeds(body.deeds, cur?.deeds ?? [], now.getTime(), true);
+      const after = await repos.npcMemory.remember(tx, id, body.npcId, { zoneId: zone.id, note, delta, deeds: record, talk: true }, now);
+      await repos.audit.write(tx, { actorId: id, action: 'npc.memory', subject: body.npcId, detail: { zone: zone.id, deeds: record, delta, standing: after.standing, note } }, now);
+      return npcMemoryView(repos, tx, id, zone, body.npcId);
+    });
+    return out(deps, NpcMemoryRes, view);
+  });
+
   app.post('/npc/act', bearer, async (req) => {
     const body = NpcActReq.parse(req.body);
     const id = req.user.sub;
     if (!on) throw new HttpError(409, 'npcToolsOff');
     refuseInBattle(deps, id);
-    const zone = presenceZone(deps, id);
-    const npc = zone === null ? undefined : (zone.npcs.find((n) => n.id === body.npcId) ?? interiorNpcs(zone.id).find((n) => n.id === body.npcId));
-    if (zone === null || npc === undefined) throw new HttpError(409, 'npcNotHere');
+    const zone = zoneWith(id, body.npcId);
     const key = `${id}:${body.npcId}`;
     const t = clock();
     const now = new Date(t);
@@ -67,7 +126,10 @@ export function registerNpcRoutes(app: FastifyInstance, deps: RestDeps): void {
 
     const res = await repos.db.transaction(async (tx) => {
       const row = await repos.players.lock(tx, id);
-      const audit = (detail: Record<string, unknown>) => repos.audit.write(tx, { actorId: id, action: `npc.${body.action}`, subject: body.npcId, detail: { ...detail, zone: zone.id } }, now);
+      const audit = async (detail: Record<string, unknown>): Promise<void> => {
+        await repos.audit.write(tx, { actorId: id, action: `npc.${body.action}`, subject: body.npcId, detail: { ...detail, zone: zone.id } }, now);
+        await recordNpcDeed(repos, tx, id, body.npcId, zone.id, DEED_OF[body.action]!, now);
+      };
       switch (body.action) {
         case 'giveMoney': {
           const wallet = walletOf(key, body.npcId);

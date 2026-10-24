@@ -940,6 +940,120 @@ export const NpcActRes = z.object({
   creaturesRemoved: z.array(z.string()),
 });
 
+// ---- NPC memory and town reputation --------------------------------------------------------------------------------
+
+/**
+ * Every NPC remembers each player: a short summary from its own point of view, a standing (NPC_STANDING_MIN..MAX) and
+ * the last few notable deeds. A zone's reputation for a player is the sum of the standings of its NPCs (interior
+ * residents included), clamped to the same range. The deeds are a fixed menu; the server owns the standing deltas.
+ */
+export const NPC_STANDING_MIN = -10;
+export const NPC_STANDING_MAX = 10;
+/** the stored summary (older sentences drop off the front) */
+export const NPC_MEMORY_SUMMARY_MAX = 400;
+/** what one write may add to it (longer is cut) */
+export const NPC_MEMORY_NOTE_MAX = 240;
+/** recent deeds kept per NPC */
+export const NPC_MEMORY_DEEDS_MAX = 5;
+/** gossip items a memory read carries */
+export const NPC_GOSSIP_MAX = 3;
+/**
+ * What the player did to an NPC, from the NPC's side: `giftReceived` = the NPC gave the player money or an Ewamon,
+ * `giftGiven` = the NPC took the player's money or Ewamon, `battleWon` / `battleLost` = the player won / lost a battle
+ * against it. Those four the server records itself (`POST /npc/act`, the battle's end); the client reports only the
+ * talk deeds (`NPC_TALK_DEEDS`).
+ */
+export const NPC_DEEDS = ['hit', 'insulted', 'threatened', 'robbed', 'kindWords', 'giftReceived', 'giftGiven', 'battleWon', 'battleLost'] as const;
+export type NpcDeed = (typeof NPC_DEEDS)[number];
+export const NPC_TALK_DEEDS = ['hit', 'insulted', 'threatened', 'robbed', 'kindWords'] as const satisfies readonly NpcDeed[];
+export type NpcTalkDeed = (typeof NPC_TALK_DEEDS)[number];
+/** each deed's standing delta */
+export const NPC_DEED_DELTA: Readonly<Record<NpcDeed, number>> = {
+  hit: -3,
+  insulted: -2,
+  threatened: -2,
+  robbed: -4,
+  kindWords: 1,
+  giftReceived: 0,
+  giftGiven: 1,
+  battleWon: 1,
+  battleLost: 1,
+};
+/** one client write moves the standing by at most this much either way */
+export const NPC_WRITE_DELTA_MIN = -6;
+export const NPC_WRITE_DELTA_MAX = 1;
+/**
+ * A deed already among the NPC's deeds within this window is not recorded again, and a positive one then moves the
+ * standing no further (no farming a town's love with kind words or one-coin gifts). Negative ones always count.
+ */
+export const NPC_DEED_COOLDOWN_MS = 10 * 60_000;
+
+export const STANDINGS = ['hostile', 'wary', 'neutral', 'liked', 'trusted'] as const;
+export type Standing = (typeof STANDINGS)[number];
+export const STANDING_LABEL: Readonly<Record<Standing, string>> = { hostile: 'Hostile', wary: 'Wary', neutral: 'Neutral', liked: 'Liked', trusted: 'Trusted' };
+
+export function clampStanding(n: number): number {
+  return Math.max(NPC_STANDING_MIN, Math.min(NPC_STANDING_MAX, Math.trunc(n)));
+}
+/** A score's band: -10..-6 hostile, -5..-2 wary, -1..1 neutral, 2..5 liked, 6..10 trusted. */
+export function standingOf(score: number): Standing {
+  const s = clampStanding(score);
+  return s <= -6 ? 'hostile' : s <= -2 ? 'wary' : s <= 1 ? 'neutral' : s <= 5 ? 'liked' : 'trusted';
+}
+/** A zone's reputation from the standings of the NPCs there that remember the player. */
+export function townScore(standings: readonly number[]): number {
+  return clampStanding(standings.reduce((a, b) => a + b, 0));
+}
+/** How an NPC feels about the player: its own standing, else half the town's (a stranger goes by what it heard). */
+export function feelingScore(npcStanding: number | null, town: number): number {
+  return npcStanding ?? Math.trunc(town / 2);
+}
+/** The standing delta of one client write: the talk deeds' sum, capped. */
+export function writeDelta(deeds: readonly NpcDeed[]): number {
+  const sum = [...new Set(deeds)].reduce((a, d) => a + NPC_DEED_DELTA[d], 0);
+  return Math.max(NPC_WRITE_DELTA_MIN, Math.min(NPC_WRITE_DELTA_MAX, sum));
+}
+
+export const NpcMemoryParams = z.object({ npcId: z.string().min(1).max(80) });
+export const NpcDeedSchema = z.object({ deed: z.enum(NPC_DEEDS), at: IsoDate });
+export const NpcGossipSchema = z.object({
+  npcId: z.string().max(80),
+  /** "Hessa Dunmore, town archivist" */
+  npcName: z.string().max(120),
+  deed: z.enum(NPC_DEEDS),
+  at: IsoDate,
+});
+export const TownStandingSchema = z.object({
+  zoneId: z.string().max(32),
+  name: z.string().max(64),
+  score: z.number().int().min(NPC_STANDING_MIN).max(NPC_STANDING_MAX),
+  standing: z.enum(STANDINGS),
+  /** NPCs in the zone that remember the player */
+  known: z.number().int().min(0),
+});
+export type TownStanding = z.infer<typeof TownStandingSchema>;
+export const NpcMemoryRes = z.object({
+  npcId: z.string().max(80),
+  /** the NPC has met the player before */
+  known: z.boolean(),
+  summary: z.string().max(NPC_MEMORY_SUMMARY_MAX),
+  /** the NPC's own standing (0 when unknown) */
+  standing: z.number().int().min(NPC_STANDING_MIN).max(NPC_STANDING_MAX),
+  /** how it feels (`feelingScore` banded): its own standing, else half the town's */
+  feeling: z.enum(STANDINGS),
+  deeds: z.array(NpcDeedSchema).max(NPC_MEMORY_DEEDS_MAX),
+  town: TownStandingSchema,
+  /** notable deeds the player did to other NPCs of the zone, newest first */
+  gossip: z.array(NpcGossipSchema).max(NPC_GOSSIP_MAX),
+});
+export type NpcMemoryView = z.infer<typeof NpcMemoryRes>;
+export const NpcMemoryReq = z.object({
+  npcId: z.string().min(1).max(80),
+  /** one or two sentences from the NPC's point of view (cut to NPC_MEMORY_NOTE_MAX) */
+  summary: z.string().max(1000),
+  deeds: z.array(z.enum(NPC_TALK_DEEDS)).max(NPC_TALK_DEEDS.length),
+});
+
 // ---- admin / health -----------------------------------------------------------------------------------------------------
 
 /** TODO(spec): `/admin/stats` has no listed body; these are the legacy counters carried over. */
@@ -988,7 +1102,7 @@ export interface RouteDef {
   /** `null` = 204 No Content */
   readonly response: z.ZodType | null;
   /** 30-server-netcode.md §30.6.4 key, when the route has a dedicated limit (else restRead/restWrite). */
-  readonly limit?: 'register' | 'login' | 'refresh' | 'listing' | 'bid' | 'message' | 'friendReq' | 'guildOp' | 'forgot' | 'emailToken' | 'resend' | 'replay' | 'weather';
+  readonly limit?: 'register' | 'login' | 'refresh' | 'listing' | 'bid' | 'message' | 'friendReq' | 'guildOp' | 'forgot' | 'emailToken' | 'resend' | 'replay' | 'weather' | 'npcMemory';
 }
 
 const route = <const R extends RouteDef>(r: R): R => r;
@@ -1087,6 +1201,9 @@ export const ROUTES = {
   worldEcosystem: route({ method: 'GET', path: '/world/ecosystem/:zoneId', auth: 'bearer', params: EcoParams, response: EcosystemRes }),
   // the bounty board: the Wanted posters, the caller's posts and the latest claims; posting one on a ghost
   npcAct: route({ method: 'POST', path: '/npc/act', auth: 'bearer', request: NpcActReq, response: NpcActRes }),
+  // NPC memory: what an NPC remembers of the caller and the town's reputation; a conversation's summary and deeds
+  npcMemory: route({ method: 'GET', path: '/npc/memory/:npcId', auth: 'bearer', params: NpcMemoryParams, response: NpcMemoryRes }),
+  npcMemoryWrite: route({ method: 'POST', path: '/npc/memory', auth: 'bearer', request: NpcMemoryReq, response: NpcMemoryRes, limit: 'npcMemory' }),
   bounties: route({ method: 'GET', path: '/bounties', auth: 'bearer', response: BountiesRes }),
   bountyPost: route({ method: 'POST', path: '/bounties', auth: 'bearer', request: BountyPostReq, response: BountiesRes }),
   // Majin vs Tenjin seasons: the standings and the Chronicle, taking a side, the side holding Solenne's sky

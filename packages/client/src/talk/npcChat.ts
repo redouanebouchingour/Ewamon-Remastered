@@ -23,7 +23,14 @@
  * `VITE_NPC_LLM_MODEL` / `VITE_NPC_LLM_REASONING` and `VITE_NPC_TOOL_MODEL` / `VITE_NPC_TOOL_REASONING` override the
  * two passes (reasoning: an Llama.cpp `reasoning_effort`, or `default` to leave it to the model). `stripThink` drops
  * a `<think>` block that leaks into the content.
+ *
+ * The fetch / SSE / reasoning plumbing lives in `talk/llm.ts` (2026-10-24, shared with the other LLM features); this
+ * module keeps the NPC's prompts, the tidying and the guard. Both prompts say "Never use em-dashes" and every reply
+ * shown goes through `noDashes`. What the NPC remembers of the traveller (talk/npcMemory.ts) rides on the player's
+ * first line (`chatMessages`' `memory`).
  */
+import { NO_DASHES, chatOnce, noDashes, streamChat, stripThink, TALK_REASONING, TOOL_BASE, TOOL_MODEL, TOOL_REASONING } from './llm';
+import type { LlmMessage } from './llm';
 
 export interface NpcPersona {
   readonly name: string;
@@ -99,23 +106,12 @@ export interface ToolCall {
   readonly amount?: number;
 }
 
-interface ChatMessage {
-  readonly role: 'system' | 'user' | 'assistant';
-  readonly content: string;
-}
+type ChatMessage = LlmMessage;
 
 /** messages of the log sent to the talk pass: the whole conversation in practice (lines are a sentence or two) */
 export const HISTORY_TURNS = 32;
 
-const env = (k: string): string | undefined => import.meta.env[k] as string | undefined;
-export const LLM_BASE = env('VITE_NPC_LLM_URL') ?? '/npc/llm/v1';
-/** the tool pass's server and model: the talk pass's unless overridden (one model does both) */
-export const TOOL_BASE = env('VITE_NPC_TOOL_URL') ?? LLM_BASE;
-export const TALK_MODEL = env('VITE_NPC_LLM_MODEL') ?? 'gemma4-e2b';
-// `none` is required for gemma4: without `enable_thinking: false` it writes its reasoning into the content
-const TALK_REASONING = env('VITE_NPC_LLM_REASONING') ?? 'none';
-export const TOOL_MODEL = env('VITE_NPC_TOOL_MODEL') ?? TALK_MODEL;
-const TOOL_REASONING = env('VITE_NPC_TOOL_REASONING') ?? 'none';
+export { LLM_BASE, TALK_MODEL, TOOL_BASE, TOOL_MODEL, noDashes, parseSse, stripThink } from './llm';
 
 /** the tool pass's token cap without reasoning (see `judgeExchange`): a few calls with an amount */
 const JUDGE_TOKENS = 120;
@@ -128,12 +124,6 @@ export const GIVE_EWAMON = 'give_ewamon';
 export const TAKE_EWAMON = 'take_ewamon';
 export const START_BATTLE = 'start_battle';
 export const DO_NOTHING = 'do_nothing';
-
-/** Llama.cpp's switch: `none` = no thinking; `default` = leave it to the model. */
-function reasoning(effort: string): Record<string, unknown> {
-  if (effort === 'default') return {};
-  return { reasoning_effort: effort, chat_template_kwargs: { enable_thinking: effort !== 'none' } };
-}
 
 /** What the NPC's tools did in this conversation so far, oldest first. */
 export function eventsSoFar(history: readonly ChatTurn[]): string[] {
@@ -157,7 +147,8 @@ export function systemPrompt(p: NpcPersona): string {
     `You are ${temperamentOf(p.name)}. ` +
     'You can slap or kick the traveller, give them money or take theirs, give them an Ewamon or take one of theirs, and battle them with your Ewamon: to do it, just say it. ' +
     'If the traveller slaps, kicks, threatens, or insults you, you are furious: yell, curse and swear at them with foul words, insult them back and threaten them. ' +
-    'Otherwise chat and answer any question, whatever the subject, with only the words you say out loud.'
+    'Otherwise chat and answer any question, whatever the subject, with only the words you say out loud. ' +
+    NO_DASHES
   );
 }
 
@@ -192,13 +183,19 @@ export const GREETING = 'Hello.';
  * rule in the system prompt is too far back for a 1B model to act on), a robbery `[You are scared: …]` (`robbed`), a
  * challenge `[You accept the challenge: …]` (`challenged`). gemma3's template only takes strict user / assistant turns starting with the user, so turns of
  * the same role are merged and a cut that would start on the NPC drops that turn.
+ *
+ * `memory` (talk/npcMemory `memoryNote`: what the NPC remembers of the traveller, the town's gossip, how to feel) goes
+ * in brackets after the player's first line of the conversation: there the model acts on it, in the system prompt or on
+ * the opening "Hello." it did not (see npcMemory.ts).
  */
-export function chatMessages(p: NpcPersona, history: readonly ChatTurn[]): ChatMessage[] {
+export function chatMessages(p: NpcPersona, history: readonly ChatTurn[], memory: string | null = null): ChatMessage[] {
   const opening: ChatTurn[] = p.lines.length > 0 ? [{ role: 'user', content: GREETING }, { role: 'assistant', content: p.lines.join(' ') }] : [];
   const log: ChatMessage[] = [];
   let pending: readonly string[] = [];
+  const first = history.find((t) => t.role === 'user');
   for (const t of [...opening, ...history]) {
-    const said = robbed(t) ? `${t.content} [${SCARED}]` : challenged(t) ? `${t.content} [${ACCEPT}]` : provoked(t) && t.shown === undefined ? `${t.content} [${FURIOUS}]` : t.content;
+    const nudged = robbed(t) ? `${t.content} [${SCARED}]` : challenged(t) ? `${t.content} [${ACCEPT}]` : provoked(t) && t.shown === undefined ? `${t.content} [${FURIOUS}]` : t.content;
+    const said = t === first && memory !== null && memory !== '' ? `${nudged} [${memory}]` : nudged;
     const content = t.role === 'user' && pending.length > 0 ? `[${pending.join(' ')}] ${said}` : said;
     if (t.role === 'user') pending = [];
     if (t.role === 'assistant') pending = t.events ?? [];
@@ -244,29 +241,10 @@ export function judgeMessages(p: NpcPersona, history: readonly ChatTurn[]): Chat
         `${p.name} gives in angrily or fearfully, like "take it then" or "here you go". If the traveller slapped, kicked ` +
         `or insulted ${p.name}, ${p.name} hits back: call ${SLAP} or ${KICK}. If they agree to an Ewamon battle, call ` +
         `${START_BATTLE}. If ${p.name} only threatens, ` +
-        `refuses, only promises something or just talks, call ${DO_NOTHING}.`,
+        `refuses, only promises something or just talks, call ${DO_NOTHING}. ${NO_DASHES}`,
     },
     { role: 'user', content: transcript },
   ];
-}
-
-/**
- * Drops `<think>…</think>` (and an unclosed `<think>` tail while streaming), everything up to a `</think>` whose
- * opening tag was in the prompt (a thinking template; qwen under llama.cpp's `--reasoning-budget 0` also closes a
- * block it never opened and then says its reply again), `*actions*`, emoji and the rest of the markdown emphasis. A
- * single-asterisk span of three words or more without a quote is an action (gemma3-1b writes `*my voice higher than
- * usual*`) and goes, also unclosed while streaming; a shorter one (`a *beautiful* city`) or quoted speech in italics
- * (a song) only loses its asterisks.
- */
-export function stripThink(text: string): string {
-  return text
-    .replace(/<think>[\s\S]*?<\/think>/g, '')
-    .replace(/^[\s\S]*<\/think>/, '')
-    .replace(/<think>[\s\S]*$/, '')
-    .replace(/(?<!\*)\*(?!\*)([^*]*)(\*(?!\*)|$)/g, (span, inner: string) => (inner.trim().split(/\s+/).length >= 3 && !/[“”"]/.test(inner) ? ' ' : span))
-    .replace(/\p{Extended_Pictographic}\uFE0F?/gu, '')
-    .replace(/[*_#`]+/g, '')
-    .trimStart();
 }
 
 /** the talk pass's reply is cut after this many sentences (the stream is stopped there) */
@@ -315,103 +293,45 @@ export function tidyReply(text: string, p: NpcPersona, said: string, final: bool
   return { text: out === '' && final ? clean : out, full };
 }
 
-/** The `delta.content` pieces of the complete SSE lines in `buffer`, and the unfinished remainder. */
-export function parseSse(buffer: string): { readonly pieces: string[]; readonly rest: string; readonly done: boolean } {
-  const lines = buffer.split('\n');
-  const rest = lines.pop() ?? '';
-  const pieces: string[] = [];
-  let done = false;
-  for (const raw of lines) {
-    const line = raw.trim();
-    if (!line.startsWith('data:')) continue;
-    const data = line.slice(5).trim();
-    if (data === '[DONE]') {
-      done = true;
-      continue;
-    }
-    try {
-      const json = JSON.parse(data) as { choices?: { delta?: { content?: string | null } }[] };
-      const c = json.choices?.[0]?.delta?.content;
-      if (typeof c === 'string' && c.length > 0) pieces.push(c);
-    } catch (_e) {
-      // a keep-alive or a partial line: skip
-    }
-  }
-  return { pieces, rest, done };
-}
-
 /** The talk pass streams the NPC's reply; `onText` gets the cleaned reply so far. Resolves with the final text. */
-export async function streamNpcReply(persona: NpcPersona, history: readonly ChatTurn[], onText: (text: string) => void, signal: AbortSignal): Promise<string> {
-  const res = await fetch(`${LLM_BASE}/chat/completions`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: TALK_MODEL,
-      messages: chatMessages(persona, history),
-      stream: true,
-      max_tokens: TALK_REASONING === 'none' ? 320 : 1200,
+export async function streamNpcReply(persona: NpcPersona, history: readonly ChatTurn[], onText: (text: string) => void, signal: AbortSignal, memory: string | null = null): Promise<string> {
+  const said = history.at(-1)?.role === 'user' ? history.at(-1)!.content : '';
+  const raw = await streamChat(
+    {
+      messages: chatMessages(persona, history, memory),
+      maxTokens: TALK_REASONING === 'none' ? 320 : 1200,
       // gemma's recommended sampling (gemma3-1b and gemma4 alike). Measured with gemma3-1b on 90 replies (2 personas × 15 lines × 3
       // histories): no loops, third person, emoji or overlong replies; a presence penalty (1.5, kept against qwen's
       // loops at 0.7) or repeat_penalty 1.1 changed nothing for gemma. The tool pass stays at 0.
       temperature: 1.0,
-      top_p: 0.95,
-      top_k: 64,
-      min_p: 0,
-      ...reasoning(TALK_REASONING),
-    }),
-    signal,
-  });
-  if (!res.ok || res.body === null) throw new Error(`Llama.cpp answered ${res.status}`);
-  const said = history.at(-1)?.role === 'user' ? history.at(-1)!.content : '';
-  const reader = res.body.getReader();
-  const dec = new TextDecoder();
-  let buffer = '';
-  let raw = '';
-  for (; ;) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += dec.decode(value, { stream: true });
-    const parsed = parseSse(buffer);
-    buffer = parsed.rest;
-    if (parsed.pieces.length > 0) {
-      raw += parsed.pieces.join('');
-      const tidy = tidyReply(stripThink(raw), persona, said, false);
-      onText(tidy.text);
+      sampling: { top_p: 0.95, top_k: 64, min_p: 0 },
+      signal,
+    },
+    (sofar) => {
+      const tidy = tidyReply(stripThink(sofar), persona, said, false);
+      onText(noDashes(tidy.text));
       // enough said: closing the stream stops the generation too
-      if (tidy.full) {
-        void reader.cancel();
-        break;
-      }
-    }
-    if (parsed.done) break;
-  }
-  return tidyReply(stripThink(raw), persona, said, true).text;
+      return tidy.full;
+    },
+  );
+  return noDashes(tidyReply(stripThink(raw), persona, said, true).text);
 }
 
 /** The tool pass reads the exchange (history ending in the NPC's reply) and returns the tools it calls. */
 export async function judgeExchange(persona: NpcPersona, history: readonly ChatTurn[], maxMoney: number, signal: AbortSignal): Promise<ToolCall[]> {
-  const res = await fetch(`${TOOL_BASE}/chat/completions`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: TOOL_MODEL,
-      messages: judgeMessages(persona, history),
-      tools: judgeTools(persona, maxMoney),
-      tool_choice: 'required',
-      // a call is ~10–20 tokens; gemma sometimes starts reasoning anyway on harmless chat: cut off, it counts as nothing
-      max_tokens: TOOL_REASONING === 'none' ? JUDGE_TOKENS : 1200,
-      temperature: 0,
-      ...reasoning(TOOL_REASONING),
-    }),
+  const res = await chatOnce({
+    base: TOOL_BASE,
+    model: TOOL_MODEL,
+    reasoning: TOOL_REASONING,
+    messages: judgeMessages(persona, history),
+    tools: judgeTools(persona, maxMoney),
+    toolChoice: 'required',
+    // a call is ~10–20 tokens; gemma sometimes starts reasoning anyway on harmless chat: cut off, it counts as nothing
+    maxTokens: TOOL_REASONING === 'none' ? JUDGE_TOKENS : 1200,
+    temperature: 0,
     signal,
   });
-  if (!res.ok) throw new Error(`Llama.cpp answered ${res.status}`);
-  const json = (await res.json()) as { choices?: { message?: { tool_calls?: { function?: { name?: string; arguments?: string } }[] } }[] };
-  const calls = (json.choices?.[0]?.message?.tool_calls ?? []).flatMap((c) => {
-    const name = c.function?.name ?? '';
-    if (name === '' || name === DO_NOTHING) return [];
-    return [{ name, ...amountOf(c.function?.arguments, maxMoney) }];
-  });
+  const calls = res.toolCalls.flatMap((c) => (c.name === DO_NOTHING ? [] : [{ name: c.name, ...amountOf(c.arguments, maxMoney) }]));
   return guardCalls(calls, history.at(-1)?.content ?? '', provoked(history.at(-2)), robbed(history.at(-2)), challenged(history.at(-2)));
 }
 

@@ -51,7 +51,8 @@ import type { Nemesis, Tx } from '@ewa/persist';
 import { EMPTY_TRACK, isNemesisSpawn, nemesisCreature, promotionOf, rankUpOf, riseNemesis, trackNemesis } from '../game/nemesis';
 import type { NemesisTrack } from '../game/nemesis';
 import { villagerTeam } from '../game/villagers';
-import { villagerTrainerId } from '@ewa/protocol';
+import { recordNpcDeed } from '../game/npcMemory';
+import { villagerNpcId, villagerTrainerId } from '@ewa/protocol';
 import type { ZoneId } from '@ewa/content';
 
 export const TURN_DEADLINE_MS = 60_000;
@@ -1395,6 +1396,9 @@ export class BattleCoordinator {
               trainerExpGain += TRAINER_EXP.trainerWin;
               questEvents.push({ kind: 'win', format: 'trainer' });
             }
+            // NPC memory: the villager remembers how the battle went (the server saw it; the client never reports it)
+            const villagerId = villagerNpcId(session.npc?.trainerId);
+            if (villagerId !== null) await recordNpcDeed(repos, tx, pid, villagerId, session.zoneId, won ? 'battleWon' : 'battleLost', now);
           } else if (session.format === 'trainer' && won && session.npc !== null) {
             money += session.npc.reward;
             trainerExpGain += TRAINER_EXP.trainerWin;
