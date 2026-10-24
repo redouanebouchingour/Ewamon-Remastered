@@ -84,7 +84,8 @@ export interface FightResult {
   readonly after: readonly Msg[];
 }
 
-type Mode = { readonly kind: 'win' } | { readonly kind: 'train' } | { readonly kind: 'catch'; readonly orb: string };
+/** `catch`: `orbs` = how many of `orb` the bag held when the battle started (several can miss in one battle) */
+type Mode = { readonly kind: 'win' } | { readonly kind: 'train' } | { readonly kind: 'catch'; readonly orb: string; readonly orbs: number };
 
 export class Walker {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the SDK's room-type parameter (server room class) is irrelevant here
@@ -697,7 +698,9 @@ export class Walker {
         if (finisher !== me.active) return { kind: 'switch', to: finisher };
       }
     }
-    if (mode.kind === 'catch') {
+    // the bag ran dry within this battle (every orb missed): fight it out instead of throwing one the room refuses (noOrb)
+    const outOfOrbs = mode.kind === 'catch' && state.sides[0].consumedItems.filter((x) => x === mode.orb).length >= mode.orbs;
+    if (mode.kind === 'catch' && !outOfOrbs) {
       const hpPct = opp.creature.hp / opp.maxHp;
       if (hpPct <= 0.3) return { kind: 'catch', orb: mode.orb };
       // the gentlest damaging move that cannot finish it; the orb otherwise
@@ -838,7 +841,8 @@ export class Walker {
    */
   async catchOne(species: string, orb: string, maxTries = 16): Promise<CreatureInstance | null> {
     for (let i = 0; i < maxTries; i++) {
-      if ((await this.itemCount(orb)) === 0) {
+      const orbs = await this.itemCount(orb);
+      if (orbs === 0) {
         this.note(`out of ${orb} before catching ${species}`);
         return null;
       }
@@ -847,7 +851,7 @@ export class Walker {
       const slot = table?.slots.find((x) => x.species === species);
       const rec = this.forceSpawn(species, slot?.levelMax);
       const before = new Set((await this.party()).map((c) => c.id));
-      const r = await this.engage(rec, { kind: 'catch', orb });
+      const r = await this.engage(rec, { kind: 'catch', orb, orbs });
       if (r.end.outcome.winner === 'caught') {
         this.note(`caught ${species} (battle ${i + 1})`);
         const got = (await this.party()).find((c) => !before.has(c.id));
