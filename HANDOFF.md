@@ -55,14 +55,14 @@ fail under machine load and pass alone).
 | Area | State | Proof |
 |---|---|---|
 | core | 1,000-battle singles fuzz byte-identical through every phase (battle forms, honor, Majin / Tenjin all optional with defaults); doubles behind `slots: 2` with their own fuzz; capLevel / noExp for the tower; battle forms (`formChange`, form signature moves, `Action.transform`); honor ledger (`honor` event, 37 event kinds) | `npx vitest run packages/core` |
-| content | 141 species / 73 families obtainable (130 legacy + 11 post-legacy, see below); 197 moves; 21 zones; interiors for every town building (8 themed gym halls with puzzles, the 4-chamber league hall); 39 TMs, 6 stones, 30 achievements, 12 league rematch teams, Cut/Strength obstacles, water slots; town arrival points; 13 Majin / Tenjin species and the two bands in the story | `pnpm --filter @ewa/content run validate` |
+| content | 144 species / 74 families obtainable (130 legacy + 14 post-legacy, see below); 198 moves; 21 zones; interiors for every town building (8 themed gym halls with puzzles, the 4-chamber league hall); 39 TMs, 6 stones, 30 achievements, 12 league rematch teams, Cut/Strength obstacles, water slots; town arrival points; 13 Majin / Tenjin species and the two bands in the story | `pnpm --filter @ewa/content run validate` |
 | server | interiors (door warps, per-player gates, switches, hall arenas), story grants, quests incl. restoreZone / deliverItem, TMs / tutor / evolve (incl. the honor split, migration `0005_honor`), trade evolutions, shinies, achievements, weather, doubles, surf / fishing / obstacles / bike, raids resync, fast travel + visited flags, ranked queue, rematches, battle tower, password reset + email verification; denser wild spawns (80 / 20 / 36 alive on route / town / story) | `npx vitest run packages/server` |
 | progression | Acts I–III + all 12 league fights headless, 0 desyncs, final `GET /me` has 8 badges + Wardens + Champion + 33 beats + 8 legendaries (full walk re-run and re-recorded 2026-10-20 on the sculpted terrain: 6/6 files in 2583 s, act1 563 s, act2 803 s, act3a 282 s, act3b 472 s, act3c 220 s, halls 9/9, 0 desyncs; `packages/server/test/fixtures/progression/PROGRESS.md`) | `pnpm test:progression` (~41 min) |
 | client | every server system has UI. The **Broadcast UI** (2026-10-11): carbon panels, paper white, one hot orange for selected / press / focus, type colour as the hero, Barlow Condensed over Barlow, 19 type icons instead of letter codes, canvas HUD in the same language, battle command deck, five top-bar links + More, Party as a card row. Signature-move cinematics, the Majin / Tenjin bond cinematic + transform toggle + band tutorial, the honor meter | `npx vitest run packages/client`; Playwright `client-e2e` |
 | render | interiors, doubles stage, shiny glow, surf ripple, weather, art pass, density dressing, neighbour skirt, fixed light layout + off-scene zone prepare, device-lost recovery; 14 move motion styles (63 → 64 VFX ids with `form_tenjin`); battle-form auras (flames / light, sigil ring, rim); M3 town art for Saltmourn, Skyrend, Cinderhold, Stormrook (`albedoCal`, `Palette.grassTone`, `lava_glow` emissive, plaza clutter) | `npx vitest run packages/render`; `.design/audits/M3-render-audit.md` |
-| sprites | 155 sprite keys (141 species + battle forms), 78 atlases, creature byte ceiling 42,991,616 (41 MiB, raised 2026-10-24 for cryptorb, ultraze and vysion) | `pnpm --filter @ewa/sprite-pipeline` tests |
+| sprites | 163 sprite keys (144 species + battle forms), 82 atlases, creature byte ceiling 46,137,344 (44 MiB, raised 2026-10-25 for the Elemutt line; 41 MiB from 2026-10-24) | `pnpm --filter @ewa/sprite-pipeline` tests |
 | arena PvP | out-of-world battles: Standard, Level 50, Ranked (Lv 50, the only rated kind), Weekly Cup, friend invites, AI Training; healed copies (no hp / exp); a dedicated `arena` room + stadium; the in-world challenge and Mirevale ranked queue unchanged | `npx vitest run packages/server/test/arena.test.ts packages/client/test/arena.test.tsx`; SPEC §30.4.10, §20.9.9d |
-| audio | 380 jobs (188 sfx ids) from the 58 user-approved CC0 downloads, no new downloads since; 73.33 MiB of 80; credits + licences shipped; 12 signature-move premixes (`sig_*`) and 2 bond sounds | `npx vitest run tools/audio-pipeline`; `IMPLEMENTATION-NOTES.md` "Phase E4 downloads" |
+| audio | 380 jobs (188 sfx ids) from the 58 user-approved CC0 downloads, no new downloads since; 73.33 MiB of 80; credits + licences shipped; 13 signature-move premixes (`sig_*`, `sig_cosmic_convergence` since 2026-10-25) and 2 bond sounds | `npx vitest run tools/audio-pipeline`; `IMPLEMENTATION-NOTES.md` "Phase E4 downloads" |
 
 ## Since 2026-10-06 (post-plan additions)
 
@@ -77,6 +77,18 @@ fail under machine load and pass alone).
   Crimson Lotus Prison (Dragon 120, freeze) with its cinematic (`sigfx/Lotus.tsx`), portrait and `sig_crimson_lotus_prison`
   premix. Ships with still sprites only (the other legendaries animate). The creature byte ceiling went to 40 MiB and
   §40.1.6.4 test 5 to 6.5° to keep every sprite at the top rung.
+- **The Harmonic Cycle: elemutt #142 → katamute #143 → ravatar #144** (2026-10-25, the user's design and Gemini art):
+  a mythical Normal line given early by quest q13 (Mirevale berry-gardener; win 3, witness 5; Lv 5), evolving at 16
+  and 36. New abilities Inner Chi (non-contact ×1.3 at full hp) and Stance Change (contact: Def +1, non-contact: Spd
+  +1, at most +2 each per switch-in): there is no Sp. Atk / Sp. Def, so "special" means non-contact. Ravatar's held
+  relic opens a form as it lands (core `battleForms` + `heldItem`): Water, Earth (Ground/Rock), Fire, Air (Flying);
+  the Vial of Spirit Water opens the Normal/Psychic Avatar State below 30% hp. Cosmic Convergence (100, non-contact)
+  takes the form's type (`typeFromForm`, core `formMove`); in base form it has a 20% chance of raise_all. The four
+  relics wait in shrines that take over one house hall each in saltmourn, marrowdig, cinderhold and skyrend (rune gate
+  on the Champion, a Lv 68 to 72 guardian, rune gate on the guardian, the relic; `requires` on the trainer and the item
+  because the interact range reaches past a gate; the fight forms at the door approach). Quest q14 (the Champion + the
+  four guardians) gives the Vial. Stills only; the ravatar sources are git-ignored like all art, the keyed PNGs and
+  the keying script are also in the user's `Downloads/avatar-postgame/keyed`.
 - **cryptorb #139 → ultraze #140 / vysion #141** (2026-10-24, inspired by Ultron and Vision, Marvel): an Electric/Ghost
   orb of unknown code (ash_route night rare L9–11) that splits by honor at 34 like dustcub: vysion (Steel/Psychic,
   High Honor) or ultraze (Steel/Dark, Low Honor). Existing moves and abilities only; still sprites.

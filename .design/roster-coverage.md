@@ -415,7 +415,7 @@ The only town whose "static" species are the point of the town. `TOWN_SPAWN_TUNI
 
 Totals (Appendix A): **15 tables, 152 slots, 79 distinct species placed directly**; closure under evolution = 120; plus 8 statics and 2 mythical rewards = **130**.
 
-Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60; `dustcub` (#132, Ground) → `badlander` (#133, Ground/Dark) @30 — deepcut_route `uncommon 5` L20–24; `veilpup` (#134, Psychic) → `hollowolf` (#135, Psychic/Cosmic) @42 — skyrend `any rare 2` L38–41; `castlemaw` (#136, Dark/Steel single stage, with a Rage Form) — umbral_observatory `night rare 2` L44–48. Dustcub's evolution is an honor split at 30 (core honor.ts): `lawlander` (#137, Ground/Fighting, the High Honor branch, honor ≥ 0) or `badlander` (Low Honor); lawlander is obtainable by evolution only, so the directly placed count does not change. `hyoryu` (#138, Ice/Dragon legendary, a Majin Form that turns it Dragon/Dark) is the ninth static: eclipse_shrine L60 after the title (§7), in no table (on ascent_route the sprite planner duplicated 6 species in the_rift). `cryptorb` (#139, Electric/Ghost; ash_route `night rare 2` L9–11) splits by honor at 34 into `vysion` (#141, Steel/Psychic, High Honor) or `ultraze` (#140, Steel/Dark, Low Honor), both obtainable by evolution only. With them the game has 157 slots, 84 species placed directly, **141** obtainable, 73 families.
+Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60; `dustcub` (#132, Ground) → `badlander` (#133, Ground/Dark) @30 — deepcut_route `uncommon 5` L20–24; `veilpup` (#134, Psychic) → `hollowolf` (#135, Psychic/Cosmic) @42 — skyrend `any rare 2` L38–41; `castlemaw` (#136, Dark/Steel single stage, with a Rage Form) — umbral_observatory `night rare 2` L44–48. Dustcub's evolution is an honor split at 30 (core honor.ts): `lawlander` (#137, Ground/Fighting, the High Honor branch, honor ≥ 0) or `badlander` (Low Honor); lawlander is obtainable by evolution only, so the directly placed count does not change. `hyoryu` (#138, Ice/Dragon legendary, a Majin Form that turns it Dragon/Dark) is the ninth static: eclipse_shrine L60 after the title (§7), in no table (on ascent_route the sprite planner duplicated 6 species in the_rift). `cryptorb` (#139, Electric/Ghost; ash_route `night rare 2` L9–11) splits by honor at 34 into `vysion` (#141, Steel/Psychic, High Honor) or `ultraze` (#140, Steel/Dark, Low Honor), both obtainable by evolution only. With them the game has 157 slots, 84 species placed directly, 141 obtainable, 73 families. The mythical Elemutt line (2026-10-25): `elemutt` (#142, Normal) is quest q13's reward (Mirevale, Act I, L5) and evolves at 16 into `katamute` (#143, Normal), at 36 into `ravatar` (#144, Normal, five relic forms opened by held relics from the four postgame shrines and quest q14); in no table, so the slots stay 157. Now 85 species placed directly, **144** obtainable, 74 families.
 
 ---
 
@@ -437,7 +437,7 @@ Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A
 
 A static battle is `format: 'wild'` with `canFlee` false on the legendary's side and `canCatch` true (§30.4.4 `static` row). Win **or** catch sets `flag`; a KO'd legendary is gone for that player. `catchRate` is the species value (2–3); the spine's single catch curve applies; no rate is inflated.
 
-Mythicals — two quests (§12.1) carry `rewards.creature`: `q11_first_night → { species: 'noxmyth', level: 60 }`, `q12_first_morning → { species: 'lumyth', level: 60 }`. The battle-pass 50 `mythicalChoice: ['lumyth', 'noxmyth']` stays as the spine has it; a player who takes one there still completes the pair through the quests, and spine rule 7 is satisfied by the quest path alone.
+Mythicals — two quests (§12.1) carry `rewards.creature`: `q11_first_night → { species: 'noxmyth', level: 60 }`, `q12_first_morning → { species: 'lumyth', level: 60 }`. The battle-pass 50 `mythicalChoice: ['lumyth', 'noxmyth']` stays as the spine has it; a player who takes one there still completes the pair through the quests, and spine rule 7 is satisfied by the quest path alone. The Elemutt line (2026-10-25) is a mythical family: `q13_unaligned_pup → { species: 'elemutt', level: 5 }` gives its root, and its later stages count through that root (`roster.ts`: a mythical whose root is a quest reward or the battle-pass choice).
 
 ---
 
@@ -520,6 +520,7 @@ One row per evolution root (67) plus the legendary/mythical singles. `wild:` lis
 | malice → devourest → necrogeist | wild: hollow_route, eclipse_shrine, the_rift (night); devourest wild eclipse_shrine, the_rift | @30, @50 |
 | glacinid · galaxion · voltaura · voidraxis · sunjaw · raikitsune · bankaiser · zenryu · hyoryu | `LEGENDARY_STATICS` (§7) | single |
 | lumyth · noxmyth | quest rewards q12 / q11 (§12.1); battle-pass 50 choice | single |
+| elemutt → katamute → ravatar | quest reward q13 (§12.1), mythical | @16, @36 |
 
 Type coverage of direct placements: all 19 types have ≥ 3 directly placed species; Cosmic (3 species, all legendary/mythical) is covered by statics and quests only, by construction.
 
@@ -539,7 +540,7 @@ Type coverage of direct placements: all 19 types have ≥ 3 directly placed spec
 
 ## 12. LIVE-OPS, RE-KEYED TO REAL ZONE IDS
 
-### 12.1 Quests (12) — shape `QuestDef`, spine §3.4
+### 12.1 Quests (14) — shape `QuestDef`, spine §3.4
 
 Giver ids follow `<zoneId>.<role>`; the story bible must author these `NpcDef`s (or the row's `giver` becomes `null`, auto-offered). Trainer ids in `defeatTrainer` are `TrainerDef` ids the zone authoring must create. Item ids are spine consumable/orb ids. `requires` chains the list in order unless stated.
 
@@ -557,6 +558,8 @@ Giver ids follow `<zoneId>.<role>`; the story bible must author these `NpcDef`s 
 | `q10_restore_the_grove` | 3 | mirevale · `mirevale.archivist` | flag `act3_started` (bible); restoreZone mire_route; catchSpecies 80 | 8000 · aether_orb 1 · flag `grove_restored` |
 | `q11_first_night` | 3 | eclipse_shrine · `null` | flag `champion:zeon:beaten`; catchSpecies 100; winBattles pvp 5 | 10000 · **creature noxmyth L60** · flag `mythical_night` |
 | `q12_first_morning` | 3 | celestial_spire · `null` | flag `mythical_night`; catchSpecies 120; winBattles any 20 | 15000 · **creature lumyth L60** · flag `mythical_morning` |
+| `q13_unaligned_pup` | 1 | mirevale · `mirevale.gardener` | requires q01; winBattles any 3; catchSpecies 5 | 500 · **creature elemutt L5** |
+| `q14_harmonic_cycle` | 3 | saltmourn · `null` | flag `champion:zeon:beaten`; the four relic shrine guardians beaten (saltmourn, marrowdig, cinderhold, skyrend) | 20000 · spirit_water_vial 1 |
 
 `catchSpecies` counts distinct species in the Dex (`markCaught`), so `q12`'s 120 of the 128 non-mythical species is the Dex-as-win-condition made mechanical: `lumyth` is the last memory you are handed, not the first you find.
 

@@ -160,7 +160,7 @@ export type Evolution =
 export interface SpeciesDef {
   readonly id: string;                 // snake_case, e.g. 'bramblecub'
   readonly name: string;               // display, e.g. 'Bramblecub'
-  readonly dexNumber: number;          // 1..141 <!-- amended 2026-10-13: hyoryu (#138) --> <!-- amended 2026-10-24: cryptorb, ultraze, vysion (#139–141) -->, unique, dense (1..130 legacy, 131.. `.design/additions/species.js`)
+  readonly dexNumber: number;          // 1..144 <!-- amended 2026-10-13: hyoryu (#138) --> <!-- amended 2026-10-24: cryptorb, ultraze, vysion (#139–141) --> <!-- amended 2026-10-25: the Elemutt line (#142–144) -->, unique, dense (1..130 legacy, 131.. `.design/additions/species.js`)
   readonly flavor: string;
   readonly types: readonly [TypeName] | readonly [TypeName, TypeName];
   readonly baseHp: number; readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number;
@@ -177,6 +177,7 @@ export interface SpeciesDef {
   readonly sprite: { readonly front: string; readonly back: string }; // pipeline output ids, e.g. 'bramblecub_front'
   readonly legendary: boolean;         // true for exactly the 10 legendaries incl. the 2 mythicals
   readonly battleForm?: BattleFormDef; // a mid-battle form (hollowmane's rage form); absent on every other species
+  readonly battleForms?: readonly BattleFormDef[]; // <!-- amended 2026-10-25: the Elemutt line (#142–144) --> several forms, each opened by its own held item (ravatar's relic forms); never beside battleForm; core `formsOf` reads either
 }
 
 // <!-- amended 2026-10-08: battle forms (hollowmane's rage form) -->
@@ -195,7 +196,7 @@ export interface BattleFormDef {
   readonly id: string;                 // e.g. 'rage'
   readonly name: string;               // e.g. 'Rage Form' / 'Majin Form'
   readonly kind?: BandKind;            // <!-- amended 2026-10-11: Majin / Tenjin --> absent = automatic (any side)
-  readonly hpBelowPct: number;         // 1..99 — the line: majin / automatic change when hp * 100 < maxHp * hpBelowPct; tenjin when ≥
+  readonly hpBelowPct?: number;        // <!-- amended 2026-10-25: the Elemutt line (#142–144) --> absent only on a form with `heldItem` (it opens as the battler lands). 1..99 — the line: majin / automatic change when hp * 100 < maxHp * hpBelowPct; tenjin when ≥
   readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number;
   // <!-- amended 2026-10-13: hyoryu (#138) --> the battler's types while it holds the form (hyoryu's Majin Form: Ice/Dragon becomes Dragon/Dark): the type
   // chart, STAB, status and weather immunities and the orb type bonus read them (core `formTypes`); absent = the species' types
@@ -246,6 +247,8 @@ export interface MoveDef {
   readonly target: MoveTarget;      // 'field' for weather/sun; 'self' for raise_*/heal; else 'foe'. Read ONLY when power === 0 (see below)
   readonly description: string;
   readonly spread?: MoveSpread;     // Phase D6: absent = single target; read only in doubles (content's curated SPREAD_MOVES)
+  readonly typeFromForm?: true;     // <!-- amended 2026-10-25: the Elemutt line (#142–144) --> the move takes the held form's `moveType` (else its first type) through core `formMove`
+  readonly effectOnlyBaseForm?: true; // <!-- amended 2026-10-25: the Elemutt line (#142–144) --> the effect applies only while no battle form is held
 }
 ```
 
@@ -319,7 +322,10 @@ export type AbilityHook =
         | { readonly kind: 'damageFraction'; readonly fraction: number } }
   | { readonly kind: 'onStatLowered'; readonly raise: { readonly stat: StatKey; readonly stages: number } }
   | { readonly kind: 'endOfTurn'; readonly raise: { readonly stat: StatKey; readonly stages: number } }
-  | { readonly kind: 'wonderGuard' };
+  | { readonly kind: 'wonderGuard' }
+  // <!-- amended 2026-10-25: the Elemutt line (#142–144) --> Stance Change: after the user's own damaging hit, a raise by contact / non-contact, at most `cap` per stat per switch-in;
+  // `modifyDamage` also takes `when: 'fullHp'` and a `contact` filter (Inner Chi). There is no Sp. Atk / Sp. Def: "special" = non-contact.
+  | { readonly kind: 'afterMoveUsed'; readonly contact: { readonly stat: StatKey; readonly stages: number } | null; readonly nonContact: { readonly stat: StatKey; readonly stages: number } | null; readonly cap: number };
 
 export interface AbilityDef {
   readonly id: string;          // legacy display name, e.g. 'Intimidate'
@@ -1215,8 +1221,8 @@ export interface QuestDef {
   readonly objectives: readonly { readonly id: string; readonly label: string; readonly objective: QuestObjective }[];
   readonly rewards: { readonly money: number; readonly items: Readonly<Record<string, number>>; readonly creature: { readonly species: string; readonly level: number } | null; readonly flag: string | null };
 }
-export const QUESTS: readonly QuestDef[];            // the 12 story quests, then the 30 ACHIEVEMENTS (Phase D5)
-export const ACHIEVEMENTS: readonly QuestDef[];      // Phase D5: dex 10/30/60/90/141 <!-- amended 2026-10-13: hyoryu (#138) --> <!-- amended 2026-10-24: cryptorb, ultraze, vysion (#139–141) --> (all species; id `ach_dex_130` kept), catches 1/10/50/200, alpha, shiny, wins 10/100/500, trainer 50, PvP 1/25, 8 badges, 12 league trainers, champion, 9 statics <!-- amended 2026-10-13: hyoryu (#138) -->, trades 1/10/50, raids 1/10/50, streaks 7/30/100
+export const QUESTS: readonly QuestDef[];            // the 14 story quests <!-- amended 2026-10-25: the Elemutt line (#142–144) --> (q13 gives elemutt, q14 the Vial of Spirit Water), then the 30 ACHIEVEMENTS (Phase D5)
+export const ACHIEVEMENTS: readonly QuestDef[];      // Phase D5: dex 10/30/60/90/144 <!-- amended 2026-10-13: hyoryu (#138) --> <!-- amended 2026-10-24: cryptorb, ultraze, vysion (#139–141) --> <!-- amended 2026-10-25: the Elemutt line (#142–144) --> (all species; id `ach_dex_130` kept), catches 1/10/50/200, alpha, shiny, wins 10/100/500, trainer 50, PvP 1/25, 8 badges, 12 league trainers, champion, 9 statics <!-- amended 2026-10-13: hyoryu (#138) -->, trades 1/10/50, raids 1/10/50, streaks 7/30/100
 export const STORY_QUESTS: readonly QuestDef[];      // QUESTS without the achievements
 ```
 
@@ -1298,7 +1304,7 @@ export interface BattlePassReward {
   readonly level: number; readonly label: string; readonly rarity: Rarity | 'epic';
   readonly money: number; readonly items: Readonly<Record<string, number>>;
   readonly creature: { readonly species: string; readonly level: number } | null;
-  readonly mythicalChoice: readonly string[] | null;   // level 50 only: ['lumyth', 'noxmyth']
+  readonly mythicalChoice: readonly string[] | null;   // level 50 only: ['lumyth', 'noxmyth'] (`BATTLE_PASS_MYTHICALS`; <!-- amended 2026-10-25: the Elemutt line (#142–144) --> the Elemutt line is a mythical quest family, its root given by q13)
 }
 export const BATTLE_PASS: readonly BattlePassReward[]; // exactly 100, levels 1..100 in order
 ```
@@ -1309,7 +1315,7 @@ Fails the build on the first of:
 
 1. Any zod schema failure over `SPECIES`, `MOVES`, `ABILITIES`, `ITEMS`, `ORBS`, `CONSUMABLES`, `ZONES`, `ENCOUNTER_TABLES`, `LEAGUE`, `QUESTS`, `STORY`, `SEASONAL_EVENTS`, `DAILY_SWARMS`, `RAID_HOTSPOTS`, `BATTLE_PASS`.
 2. Dangling id: species `moves`/`learnableMoves` → `MOVES`; species `abilities` → `ABILITIES`; `evolution.into`/`evolvesFrom` → `SPECIES`; zone `links` → `ZONES`; zone `gym` → `LEAGUE`; `encounterTable` → `ENCOUNTER_TABLES`; encounter/trainer/league/quest/swarm/raid/static `species` → `SPECIES`; shop stock, ground items, quest rewards, battle-pass items → `CONSUMABLES ∪ ORBS ∪ ITEMS`; story `speaker`/`battle.trainerId` → npcs/trainers/league; quest `giver` → an `NpcDef.id` of the quest's `zoneId` or `null`; quest `talkTo`/`deliverItem` `npcId` and `defeatTrainer` `trainerId` → npcs/trainers; `LegendaryStatic.when` → a `badge:` or a flag set by some beat/quest/league row; every `zoneId` anywhere → `ZoneId` (zod enum, build time). <!-- reconciled 2026-09-18: statics, quest givers and flag gates added (roster-coverage OQ 5, legacy-render-audit Q23) -->
-3. Counts: `SPECIES.length === 137` <!-- amended 2026-10-08: hollowmane (#131) --> <!-- amended 2026-10-08: dustcub, badlander (#132–133) --> <!-- amended 2026-10-08: veilpup, hollowolf (#134–135) --> <!-- amended 2026-10-08: castlemaw (#136) --> <!-- amended 2026-10-08: the honor ledger, lawlander (#137) --> (138 <!-- amended 2026-10-13: hyoryu (#138) -->; 141 <!-- amended 2026-10-24: cryptorb, ultraze, vysion (#139–141) -->), `MOVES.length === 197` <!-- amended 2026-10-08: Hollow Crescent --> <!-- amended 2026-10-08: Vendetta Volley --> <!-- amended 2026-10-13: hyoryu (#138) --> (Aurora Requiem, Crimson Lotus Prison), `TYPE_NAMES.length === 19`, `ABILITIES.length === 25`, `ITEMS.length === 17`, `ORBS.length === 10`, `ZONES.length === 21`, `LEAGUE.length === 12`, `BATTLE_PASS.length === 100`, dex numbers dense 1..141.
+3. Counts: `SPECIES.length === 137` <!-- amended 2026-10-08: hollowmane (#131) --> <!-- amended 2026-10-08: dustcub, badlander (#132–133) --> <!-- amended 2026-10-08: veilpup, hollowolf (#134–135) --> <!-- amended 2026-10-08: castlemaw (#136) --> <!-- amended 2026-10-08: the honor ledger, lawlander (#137) --> (138 <!-- amended 2026-10-13: hyoryu (#138) -->; 141 <!-- amended 2026-10-24: cryptorb, ultraze, vysion (#139–141) -->; 144 <!-- amended 2026-10-25: the Elemutt line (#142–144) -->), `MOVES.length === 198` <!-- amended 2026-10-25: the Elemutt line (#142–144) --> (Cosmic Convergence) <!-- amended 2026-10-08: Hollow Crescent --> <!-- amended 2026-10-08: Vendetta Volley --> <!-- amended 2026-10-13: hyoryu (#138) --> (Aurora Requiem, Crimson Lotus Prison), `TYPE_NAMES.length === 19`, `ABILITIES.length === 28` <!-- amended 2026-10-25: the Elemutt line (#142–144) --> (Inner Chi, Stance Change, Avatar Cycle), `ITEMS.length === 17` (the five relics are a separate `RELICS` list), `ORBS.length === 10`, `ZONES.length === 21`, `LEAGUE.length === 12`, `BATTLE_PASS.length === 100`, dex numbers dense 1..144.
    Phase D6 <!-- amended 2026-10-06 Phase D6 -->: every `SPREAD_MOVES` id (content `data/spreadMoves.ts`, 16 curated moves laid over the generated `MOVES`: Rock Slide, Heat Wave, Blizzard, Dazzling Gleam, Snarl, Twister, Powder Snow, Frozen Tempest, Gem Storm, Growl, String Shot → `'foes'`; Earthquake, Discharge, Bulldoze, Petal Blizzard, Sparkling Aria → `'all'`) is a foe-targeted MOVES row carrying that `spread`; a `doubles: true` trainer / league row has a team of 2+. Authored doubles (all optional, never gates): `draco_gym` (Sylvane), `aurelia` (Warden 2), and the route trainers `galvan_route.rocker`, `deepcut_route.digger`, `hollow_route.medium`, `siege_route.engineer`, `ascent_route.tamer`.
 4. Move effect keys ⊆ the 23 `MoveEffect` values after the `lower_spAtk → lower_atk` rewrite; `effect === 'first'` implies `priority === 1` and vice-versa.
 5. `learnableMoves` sorted by level, includes every default move at level 1, no duplicates.
