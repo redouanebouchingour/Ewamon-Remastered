@@ -1,0 +1,206 @@
+/* LLM feature 3, Broadcast UI: the commentator's lower third (bottom right, above the command deck: BattleOverlay's
+   deck is clamp(200px, 28vh, 280px) tall, var(--s-6) off the bottom) and the trainer's line (top right, its side of
+   the field, under the HUD clock). Carbon slabs, paper tags, the display face; no accent colour (nothing here is
+   pressed or selected). The --motion-* tokens are 0 ms under reduced motion, so nothing slides then. */
+.casterLayer {
+  position: absolute;
+  inset-inline-end: var(--s-7);
+  inset-block-end: calc(var(--s-6) + clamp(200px, 28vh, 280px) + var(--s-4));
+  z-index: var(--z-panel);
+  display: flex;
+  justify-content: flex-end;
+  max-inline-size: min(560px, calc(50% - var(--s-7)));
+  pointer-events: none;
+}
+
+.caption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-inline-size: 0;
+  animation: line-in var(--motion-banner) var(--ease-out) both;
+}
+
+.leaving {
+  animation: line-out var(--motion-ui) var(--ease-in-out) both;
+}
+
+@keyframes line-in {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes line-out {
+  to {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+
+.headRow {
+  display: flex;
+  align-items: stretch;
+  max-inline-size: 100%;
+  margin: 0;
+  background: var(--bg-0);
+  color: var(--text-hi);
+}
+
+.live {
+  display: flex;
+  flex: none;
+  align-items: center;
+  padding: var(--s-1) var(--s-5) var(--s-1) var(--s-3);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+
+.head {
+  min-inline-size: 0;
+  padding: var(--s-2) var(--s-5) var(--s-2) var(--s-4);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: 1.1;
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.colour {
+  max-inline-size: 100%;
+  margin: 0;
+  padding: var(--s-2) var(--s-5);
+  background: var(--glass);
+  color: var(--text-1);
+  font-family: var(--face-text);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+/* ---- the trainer ------------------------------------------------------------------------------------------------- */
+.trainerLayer {
+  position: absolute;
+  inset-inline-end: var(--s-7);
+  /* under the top bar, clear of the HUD clock in the top-right corner */
+  inset-block-start: calc(var(--topbar-h) + var(--s-9));
+  z-index: var(--z-panel);
+  display: flex;
+  justify-content: flex-end;
+  max-inline-size: min(460px, calc(50% - var(--s-7)));
+  pointer-events: none;
+}
+
+.speech {
+  display: flex;
+  align-items: stretch;
+  min-inline-size: 0;
+  margin: 0;
+  background: var(--bg-0);
+  color: var(--text-hi);
+  animation: line-in var(--motion-banner) var(--ease-out) both;
+}
+
+.speech.leaving {
+  animation: line-out var(--motion-ui) var(--ease-in-out) both;
+}
+
+.speaker {
+  display: flex;
+  flex: none;
+  align-items: center;
+  max-inline-size: 40%;
+  padding: var(--s-2) var(--s-5) var(--s-2) var(--s-3);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+
+.quote {
+  align-self: center;
+  min-inline-size: 0;
+  padding: var(--s-2) var(--s-4);
+  font-family: var(--face-text);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+/* ---- on the result card ------------------------------------------------------------------------------------------ */
+.resultCaster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  margin: 0;
+  background: var(--bg-0);
+  color: var(--text-hi);
+}
+
+.resultHead {
+  padding: var(--s-1) var(--s-4);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.resultText {
+  flex-basis: 100%;
+  padding: var(--s-1) var(--s-4) var(--s-2);
+  color: var(--text-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+
+.resultTrainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0;
+  padding-inline-start: var(--s-4);
+  box-shadow: inset 2px 0 0 var(--line-2);
+}
+
+.resultQuote {
+  margin: 0;
+  color: var(--text-1);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-style: italic;
+}
+
+.resultSpeaker {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}

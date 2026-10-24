@@ -274,6 +274,18 @@ function AccessibilityTab() {
       </div>
       <Toggle label="Screen flash on impact" description="The white full-screen flash on heavy hits (the creature still flashes)." checked={a.screenFlash} onChange={(v) => set('accessibility', { screenFlash: v })} />
       <Toggle
+        label="Battle commentator"
+        description="A broadcast caption over the arena calls the big moments: crits, knockouts, comebacks, the win."
+        checked={a.battleCommentary}
+        onChange={(v) => set('accessibility', { battleCommentary: v })}
+      />
+      <Toggle
+        label="Trainer banter"
+        description="The trainer you fight talks during the battle: at the start, when you knock one out, at the end."
+        checked={a.trainerBanter}
+        onChange={(v) => set('accessibility', { trainerBanter: v })}
+      />
+      <Toggle
         label="Show the speedrun timer"
         description="Your play time, as the server counts it, in the top bar. It runs only while you are in the world."
         checked={a.speedrunTimer}

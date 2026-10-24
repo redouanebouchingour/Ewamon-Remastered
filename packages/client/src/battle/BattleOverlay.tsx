@@ -5,6 +5,7 @@
  * and the anchored container. Part 2 (§20.5.6) renders `BattleMenu` — root menu, moves grid, party/bag/orbs lists,
  * the last log lines — and the BattleResultCard; Phase B7 adds the VS intro card and the mid-battle banner; Phase C1 the
  * raid panel (boss HP, round timer, damage board) and the raid summary card; the signature move cinematic plays over all of it;
+ * LLM feature 3 the commentator's caption and the trainer's banter (BattleCommentary);
  * a battle replay shows its ReplayBar in place of the menu. The in-canvas bars / turn label / orb counter are the HUD's.
  */
 import { useEffect, useRef } from 'react';
@@ -17,6 +18,7 @@ import { BattleIntroCard } from './BattleIntroCard';
 import { NemesisTaunt } from './NemesisTaunt';
 import { EncounterWipe } from './EncounterWipe';
 import { BattleCallout } from './BattleCallout';
+import { BattleCommentary } from './BattleCommentary';
 import { BattleMenu } from './BattleMenu';
 import { BattleResultCard } from './BattleResultCard';
 import { RaidPanel } from './RaidPanel';
@@ -74,6 +76,7 @@ export function BattleOverlay() {
       <NemesisTaunt />
       <BattleBanner />
       <BattleCallout />
+      <BattleCommentary />
       <RaidPanel />
       <SignatureCinematic />
       <BondCinematic />

@@ -278,3 +278,10 @@ installed library that future readers should not have to re-derive. The spec its
   standing, the safe reward and delivery item lists, `NPC_QUEST_PREFIX` / `npcQuestKey` (a favour's `questProgress`
   entry is `npc:<id>` / `main`).
 - `NPC_DEEDS` gains `helped` (+2, `NPC_DEED_DELTA`): the server records it at the hand-in; it is not a talk deed.
+
+## Battle commentary banks (2026-10-24)
+
+- `commentary.ts`: `CASTER_BANK_KEYS` / `TRAINER_BANK_KEYS`, `CasterBankSchema` / `TrainerBankSchema` (each key an
+  optional array of strings, dropped on its own when it does not parse), `BANK_LINES_MAX`. Client only: the shape the
+  local model's line banks must have (LLM feature 3). Nothing goes over the wire; it lives here because the client
+  reaches zod only through this package.

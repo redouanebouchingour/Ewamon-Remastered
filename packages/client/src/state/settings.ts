@@ -44,6 +44,10 @@ export interface AccessibilitySettings {
   readonly screenFlash: boolean;
   /** verified speedruns: the server's play clock in the top bar */
   readonly speedrunTimer: boolean;
+  /** the battle commentator's caption (LLM feature 3; templates when the model is down) */
+  readonly battleCommentary: boolean;
+  /** the opposing trainer's lines during a battle */
+  readonly trainerBanter: boolean;
 }
 /** 0..1 */
 export interface AudioSettings {
@@ -112,7 +116,7 @@ export const INPUT_ACTIONS = Object.keys(DEFAULT_KEYBINDS) as InputAction[];
 
 export const DEFAULT_SETTINGS: SettingsData = {
   graphics: { reducedEffects: false, renderScale: 1, quality: 'auto', frameCap: 60, showFps: false, dof: true, bloom: true, grain: true, chroma: true, shake: true, hitstop: true, slowmo: true },
-  accessibility: { reducedMotion: 'system', colorblind: 'none', uiScale: 1, battleTextSpeed: 'normal', screenFlash: true, speedrunTimer: false },
+  accessibility: { reducedMotion: 'system', colorblind: 'none', uiScale: 1, battleTextSpeed: 'normal', screenFlash: true, speedrunTimer: false, battleCommentary: true, trainerBanter: true },
   audio: { master: 0.8, music: 0.7, sfx: 0.8, ui: 0.6, muteWhenHidden: true },
   keybinds: DEFAULT_KEYBINDS,
   social: { showChat: true, allowChallenges: true, allowTrades: true, allowDmsFrom: 'everyone' },

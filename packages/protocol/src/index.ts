@@ -49,5 +49,8 @@ export * from './rest';
 // arena PvP (out-of-world queues, training, friend invites)
 export * from './arena';
 
+// the battle commentary's model line banks (client only, validated here because the client reaches zod through protocol)
+export * from './commentary';
+
 // structural copies of content types (see types.ts TODO)
 export * from './types';

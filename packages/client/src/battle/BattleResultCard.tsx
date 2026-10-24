@@ -5,6 +5,7 @@
  * Phase B7: a won badge shows its glyph, name and type colour (`badgeIcon.ts`); a won league battle shows the
  * trainer's concession line (`concessionLine`: a gym leader's post[1], a Warden's / the Champion's post[0]).
  * Broadcast UI (2026-10-11): the badge is a type-colour slab with a label strip, each reward a big number over its label.
+ * LLM feature 3: the battle's closing commentary (ResultCommentary) under the concession.
  */
 import { badgeDisplay } from '../data/badgeIcon';
 import { itemInfo } from '../data/content';
@@ -17,6 +18,7 @@ import { battleActions } from './controllerRef';
 import { concessionLine, foeOfState } from './foe';
 import { rematchOfBattle } from '../scene/dialogue';
 import { isReplayBattle, spectatorNames } from './replayId';
+import { ResultCommentary } from './BattleCommentary';
 import s from './BattleResultCard.module.css';
 
 export function BattleResultCard() {
@@ -99,6 +101,8 @@ export function BattleResultCard() {
             <figcaption className={s.speaker}>{foe.name}</figcaption>
           </figure>
         )}
+        {/* LLM feature 3: the commentator's call of the end, and the trainer's last word where no concession is authored */}
+        <ResultCommentary concession={foe !== null && concession !== null} />
         {lines.length > 0 ? (
           <ul className={s.rewards}>
             {lines.map((l) => (

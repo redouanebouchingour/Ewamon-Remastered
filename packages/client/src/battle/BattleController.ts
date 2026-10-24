@@ -72,6 +72,7 @@ import { TimelinePlayer } from './TimelinePlayer';
 import type { TimelineTargets } from './TimelinePlayer';
 import { battleMood, sameMood } from './mood';
 import type { BattleMood } from './mood';
+import type { Commentator } from './commentator';
 
 type StageRef = { readonly side: 0 | 1; readonly slot: number };
 type Pose = Parameters<TimelineTargets['setPose']>[1];
@@ -142,6 +143,8 @@ export interface BattleControllerDeps {
   readonly view: BattleView | null;
   /** timers (tests inject a manual scheduler) */
   readonly defer?: (fn: () => void) => void;
+  /** LLM feature 3: the commentator and the trainer's banter (battle/commentator.ts); words only, never the battle */
+  readonly commentary?: Commentator;
 }
 
 export interface BattleController {
@@ -418,7 +421,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
   /** a resync's state that came while a timeline played: applied when it ends */
   let pendingResync: BattleState | null = null;
   /** timelines of battleEvents that came while another played, in order (each with the state it starts from) */
-  const waiting: { readonly tl: Timeline; readonly from: BattleState }[] = [];
+  const waiting: { readonly tl: Timeline; readonly from: BattleState; readonly events: readonly BattleEvent[] }[] = [];
   let pendingEnd: ServerMessageOf<'battleEnd'> | null = null;
   let resultShown = false;
   /** every evolve / learn-move of the battle for the player's own side, in order (a trainer battle levels up mid-way) */
@@ -768,11 +771,13 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
 
   function onTimelineEnd(): void {
     if (state === null || battleId === null) return;
+    // the timeline's highlight and the trainer's reaction, now that the player has seen it happen
+    deps.commentary?.played();
     const nextUp = waiting.shift();
     if (nextUp !== undefined) {
       preState = nextUp.from;
       resetHpTable(nextUp.from);
-      play(nextUp.tl, nextUp.from);
+      play(nextUp.tl, nextUp.from, nextUp.events);
       return;
     }
     if (raid !== null && raid.pendingResync !== null) {
@@ -894,8 +899,12 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     ui().setBattle({ ...b, log: [...b.log, ...add].slice(-40) });
   }
 
-  /** Plays `tl`, which starts from `from` (doubles: the player's party → position map is seeded from its actives). */
-  function play(tl: Timeline, from: BattleState): void {
+  /**
+   * Plays `tl`, which starts from `from` (doubles: the player's party → position map is seeded from its actives).
+   * `events`: the core events it was built from (the commentator reads its moments; they are said when it has played).
+   */
+  function play(tl: Timeline, from: BattleState, events: readonly BattleEvent[]): void {
+    deps.commentary?.timeline(events, from);
     // the signature moves this timeline plays count as used (the next timeline's cinematics play short)
     for (const f of tl.frames) if (f.k === 'cinematic' && f.phase === 'start') sigUsed.add(`${f.who.side}:${f.who.slot}:${f.move}`);
     player.play(tl, seat, from.slots === 2 ? [from.sides[0].actives, from.sides[1].actives] : null);
@@ -939,6 +948,10 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
     foe = foeOfState(m.state, m.seat);
     midHalfDone = false;
     midLastDone = false;
+    deps.commentary?.begin({
+      battleId: m.battleId, seat: m.seat, format: m.format, state: m.state, foe, replay: isReplayBattle(m.battleId), spectator: spectatorNames(m.battleId) !== null,
+      fresh: m.events !== undefined,
+    });
     const catchNow = m.format === 'raid' && m.state.sides[m.seat].canCatch;
     raid =
       m.format === 'raid'
@@ -992,7 +1005,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       } else if (ui().battleIntro !== null) ui().setBattleIntro(null);
       // §20.5.7: the encounter wipe over the push-in (a fresh battle; a replay starts without one)
       if (!isReplayBattle(m.battleId)) ui().setEncounterFx(encounterFxOf(m.battleId, m.state, m.seat, deps.reduced()));
-      play(buildTimeline(m.events, ctxFor(m.state)), m.state);
+      play(buildTimeline(m.events, ctxFor(m.state)), m.state, m.events);
     },
 
     check(action) {
@@ -1088,12 +1101,12 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       // a turn that arrives while another plays (the NPC's replacement switch-in ~30 ms after the KO turn) waits for
       // it: starting it now would finish the playing turn without its moves, hits and faint
       if (player.isPlaying || waiting.length > 0) {
-        waiting.push({ tl, from: before });
+        waiting.push({ tl, from: before, events: m.events });
         return;
       }
       preState = before;
       resetHpTable(before);
-      play(tl, before);
+      play(tl, before, m.events);
     },
 
     onBattleResync(m) {
@@ -1156,7 +1169,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
       resetHpTable(before);
       for (const p of promptsFrom(m.events, next, seat)) if (!prompts.some((q) => samePrompt(q, p))) prompts.push(p);
       writeUi({ phase: 'playing', authoritative: next, expectedMs: 0 });
-      play(buildTimeline(m.events, ctxFor(before)), before);
+      play(buildTimeline(m.events, ctxFor(before)), before, m.events);
     },
 
     onRaidState() {
@@ -1334,6 +1347,7 @@ export function createBattleController(deps: BattleControllerDeps): BattleContro
   function finish(): void {
     player.stop();
     stopLogTimer();
+    deps.commentary?.end();
     if (battleId !== null) {
       view?.setThreat(false);
       view?.setMood?.(null);

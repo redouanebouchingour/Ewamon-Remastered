@@ -2478,3 +2478,44 @@ the second isolated client (the component over the landing page: the foe and own
   Favours tab listed it with Drop. Completing and handing in was not driven live (the server tests cover it).
 - Signed out, nothing is fetched and no card shows; with the server's `NPC_TOOLS` off the fetch fails and the NPC never
   asks; the model down means no ask (the talk pass errors as before), the card and the journal still work.
+
+## Battle commentator and trainer banter (2026-10-24, not in the SPEC)
+
+- Client only, words over the battle: `battle/moments.ts` reads each timeline's core events (as the timeline starts)
+  into moments (crit, super effective, knockout, comeback: the attacker at 20 % HP or less lands the knockout, status,
+  a Majin / Tenjin transform, a last creature sent out, a catch or a break-out, the win, the loss; the opening from the
+  leads). `battle/commentator.ts` says them when that timeline has played (`BattleController.onTimelineEnd` →
+  `commentary.played()`): the highest one as the commentator's caption, throttled (`createThrottle`: majors always, a
+  minor 7 s after the last line and never the same minor twice running), and the trainer's reaction (its end, its last
+  creature, one of its creatures fainting, the start). A timeline cut short (a resync) never says its moments; nothing
+  queues. `BattleControllerDeps.commentary` is optional (World3D passes one; the harness and the tests do not); the
+  controller only hands it events and calls it, so battle state, timing and input are the same with or without it
+  (`battle-commentary.test.ts` compares both).
+- Words: a caption is a headline (a template filled with the facts, so the model never says who did what) and a colour
+  line; the trainer speaks a line. Templates for every moment (three or more each, `createPicker`: seeded by the battle
+  id, never the same line back to back) speak at once and whenever the model is down. At the start of a battle (not a
+  replay) two structured calls run in the background, one after the other: the trainer's bank (five moments x 2 lines
+  in its voice; a villager's `GET /npc/memory` folded in as feature 1 does, feeling first, memory last) and the
+  commentator's name-free colour bank (9 moments; super effective, knockout and status stay templates). Both are
+  JSON-schema calls validated with zod (`@ewa/protocol` `CasterBankSchema`, `TrainerBankSchema`) and line by line
+  (`cleanLine`: `noDashes`, length, names, sides, types; `WRONG_WAY` for a trainer's outcome said backwards). Whatever
+  is back by a moment is used; a bank that answers after the battle is dropped. Measurements in `talk/commentary.ts`.
+- Authored lines win: a league trainer gets no start banter (its pre-battle lines and the VS card), no last-creature
+  line when it has `mid.lastStand`, no line on losing when it has a concession line; a faint line stands aside while a
+  league banner is up. A villager's start template names what it remembers ("You hit me last time. Try that now.").
+  Raids and spectated matches get no commentary.
+- UI (`battle/BattleCommentary.tsx`): the caption is a lower third bottom right above the command deck (LIVE paper
+  tag, the headline in the italic display face on carbon, the colour line on a glass strip under it), 5.2 s; the
+  trainer speaks top right under the HUD clock (name on a paper slab, the line on carbon), 4.2 s. A newer line replaces
+  the one showing. The closing lines (the commentator's win / loss / catch, the trainer's last word unless a concession
+  is authored) go on the result card (`ResultCommentary`), since the caption would sit under the modal's scrim. Reduced
+  motion: the slide uses the --motion-* tokens, 0 ms then. All text through `noDashes`.
+- Settings › Accessibility: "Battle commentator" and "Trainer banter" (`accessibility.battleCommentary` /
+  `trainerBanter`, default on; off also skips that bank's call).
+- Live check (alt2 pair, headless Chrome, the docker model, Arena training at level 50): the opening caption "It is
+  Bramblecub versus Cirrileap / And we are under way!" and the partner's "Prepare for the Ewamon onslaught now." (the
+  trainer bank was back within the 11 s the start took), then "Super effective from Cirrileap! / That is going to
+  sting.", and on the result card "It is over for <player>! / The battle ends in defeat." with the partner's "Your
+  journey ends with my victory." (both bank lines). A first run that acted at once spoke only templates. Neither
+  covered the HP plates or the deck at 1440 x 900. Not driven live: a villager, a league trainer or a wild catch (the
+  unit tests cover them).
