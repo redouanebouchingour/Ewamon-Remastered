@@ -10,6 +10,7 @@
 import type { TypeName, VariantKey } from '@ewa/core';
 import { FIELD_POWER_TEXT, FIELD_POWER_TYPE } from '@ewa/content';
 import { useFieldPowerStore } from '../state/fieldPowers';
+import { useSettingsStore } from '../state/settings';
 import { CreatureSprite } from '../ui/CreatureSprite';
 import { TypeBadge } from '../ui/TypeBadge';
 import s from './FieldPowerChip.module.css';
@@ -18,6 +19,8 @@ export function FieldPowerChip() {
   const lead = useFieldPowerStore((st) => st.lead);
   const enabled = useFieldPowerStore((st) => st.enabled);
   const hints = useFieldPowerStore((st) => st.hints);
+  // LLM feature 6: the key that talks with the lead
+  const talkKey = useSettingsStore((st) => (st.keybinds.buddyTalk[0] ?? 'KeyY').replace(/^Key|^Digit/, ''));
   if (lead === null) return null;
   return (
     <aside className={s.chip} aria-label="Field powers" data-testid="field-power-chip">
@@ -49,6 +52,10 @@ export function FieldPowerChip() {
           ))}
         </ul>
       )}
+      <p className={s.talk} data-testid="field-power-talk">
+        <kbd className={s.key}>{talkKey}</kbd>
+        <span>Talk with {lead.name}</span>
+      </p>
     </aside>
   );
 }

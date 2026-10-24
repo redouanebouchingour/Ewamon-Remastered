@@ -9,7 +9,7 @@ export type Colorblind = 'none' | 'deuteranopia' | 'protanopia' | 'tritanopia';
 export type InputAction =
   | 'forward' | 'back' | 'left' | 'right' | 'run' | 'interact' | 'jump' | 'bike' | 'fieldPower' | 'chat'
   | 'emote1' | 'emote2' | 'emote3' | 'emote4' | 'emote5' | 'emote6'
-  | 'challenge' | 'rotateLeft' | 'rotateRight' | 'party' | 'bag' | 'journal' | 'map' | 'pvp' | 'professor' | 'pause' | 'toggleHud';
+  | 'challenge' | 'rotateLeft' | 'rotateRight' | 'party' | 'bag' | 'journal' | 'map' | 'pvp' | 'professor' | 'buddyTalk' | 'pause' | 'toggleHud';
 
 /** Quality preset (render `quality.ts`); 'auto' = low on integrated Intel GPUs, else high. */
 export type GraphicsQualitySetting = 'auto' | 'low' | 'medium' | 'high';
@@ -48,6 +48,8 @@ export interface AccessibilitySettings {
   readonly battleCommentary: boolean;
   /** the opposing trainer's lines during a battle */
   readonly trainerBanter: boolean;
+  /** LLM feature 6: the lead walking behind the player says a short line now and then (a speech bubble) */
+  readonly followerChatter: boolean;
 }
 /** 0..1 */
 export interface AudioSettings {
@@ -110,6 +112,8 @@ export const DEFAULT_KEYBINDS: Keybinds = {
   pvp: ['KeyK'],
   // LLM feature 5: Ask Prof. Wynn (L was free; persisted blobs without it merge this default in)
   professor: ['KeyL'],
+  // LLM feature 6: talk to the lead walking behind you (Y was free; persisted blobs without it merge this default in)
+  buddyTalk: ['KeyY'],
   pause: ['Escape'],
   toggleHud: ['F1'],
 };
@@ -118,7 +122,7 @@ export const INPUT_ACTIONS = Object.keys(DEFAULT_KEYBINDS) as InputAction[];
 
 export const DEFAULT_SETTINGS: SettingsData = {
   graphics: { reducedEffects: false, renderScale: 1, quality: 'auto', frameCap: 60, showFps: false, dof: true, bloom: true, grain: true, chroma: true, shake: true, hitstop: true, slowmo: true },
-  accessibility: { reducedMotion: 'system', colorblind: 'none', uiScale: 1, battleTextSpeed: 'normal', screenFlash: true, speedrunTimer: false, battleCommentary: true, trainerBanter: true },
+  accessibility: { reducedMotion: 'system', colorblind: 'none', uiScale: 1, battleTextSpeed: 'normal', screenFlash: true, speedrunTimer: false, battleCommentary: true, trainerBanter: true, followerChatter: true },
   audio: { master: 0.8, music: 0.7, sfx: 0.8, ui: 0.6, muteWhenHidden: true },
   keybinds: DEFAULT_KEYBINDS,
   social: { showChat: true, allowChallenges: true, allowTrades: true, allowDmsFrom: 'everyone' },

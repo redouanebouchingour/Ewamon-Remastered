@@ -12,6 +12,9 @@ import { ChallengePrompt } from '../world/ChallengePrompt';
 import { ChatInput } from '../world/ChatInput';
 import { DialogueBox } from '../world/DialogueBox';
 import { NpcStrikeFx } from '../world/NpcStrikeFx';
+import { BuddyBubble } from '../world/BuddyBubble';
+import { BuddyTalk } from '../world/BuddyTalk';
+import { openBuddyTalk, useBuddyTalkStore } from '../state/buddy';
 import { EvolutionBanner } from '../world/EvolutionBanner';
 import { HatchReveal } from '../world/HatchReveal';
 import { FishingPrompt } from '../world/FishingPrompt';
@@ -84,6 +87,8 @@ function useShellHotkeys(): void {
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) return;
       const ui = useUiStore.getState();
       if (ui.battle !== null || ui.evolution !== null || ui.modal !== 'none' || ui.dialogue !== null || ui.chatOpen || document.querySelector('[aria-modal="true"]') !== null) return;
+      // LLM feature 6: the talk with a party creature holds the keys (its own Escape closes it)
+      if (useBuddyTalkStore.getState().creatureId !== null) return;
       const binds = useSettingsStore.getState().keybinds;
       if (binds.toggleHud.includes(e.code)) {
         e.preventDefault();
@@ -94,6 +99,12 @@ function useShellHotkeys(): void {
       if (e.code === 'KeyG' && !e.repeat && location.pathname === '/play') {
         e.preventDefault();
         dance();
+        return;
+      }
+      // LLM feature 6: talk to the lead walking behind you (Y)
+      if (binds.buddyTalk.includes(e.code) && !e.repeat && location.pathname === '/play') {
+        e.preventDefault();
+        void openBuddyTalk();
         return;
       }
       if (binds.pause.includes(e.code) && location.pathname === '/play') {
@@ -201,6 +212,9 @@ export function PlayShell() {
       {/* arena PvP: the arena strip / waiting / result actions, a friend's invite, the match-found card */}
       <ArenaHud />
       <DialogueBox />
+      {/* LLM feature 6: the talk with a party creature, and the lead's speech bubble over the live world */}
+      <BuddyTalk />
+      {!hasPanel && !inBattle && !inArena && worldCapability() && <BuddyBubble />}
       <NpcStrikeFx />
       <FishingPrompt />
       <ChatInput />

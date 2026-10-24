@@ -39,7 +39,7 @@ import type { BattleState, CreatureInstance } from '@ewa/core';
 import { BREAKDANCE_MS, FISH_REACH_M } from '@ewa/protocol';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
 import { ACTOR_POOL_SIZE, createRenderer, edgePoint, headingYaw, heroSurfaces, part3Of } from '@ewa/render';
-import type { CompileProgress, Renderer, SurfaceId, TypeName, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
+import type { CompileProgress, CreatureBillboard, Renderer, SurfaceId, TypeName, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
 import { createAudioDirector } from '../audio/AudioDirector';
 import type { AudioDirector } from '../audio/AudioDirector';
 import { loadAudioManifest, validateAudioManifest } from '../audio/manifest';
@@ -50,6 +50,8 @@ import { battlePanelTop, onBattlePanelTop } from '../battle/panelInset';
 import { createBattleController } from '../battle/BattleController';
 import { createCommentator } from '../battle/commentator';
 import { createBattleLogger, teeCommentary } from '../state/professor';
+import { createBuddyLogger, resetBuddyAmbient, setBubbleAnchor, setBuddyPlace, stepBuddyAmbient, uiBusy, useBuddyBubbleStore, useBuddyTalkStore } from '../state/buddy';
+import { bubbleAnchor, buddySnapshot } from './buddyWatch';
 import type { BattleController, BattleView } from '../battle/BattleController';
 import { setBattleActions } from '../battle/controllerRef';
 import { foeIdentity } from '../battle/foe';
@@ -299,6 +301,9 @@ class World implements World3D {
   /** render's actor lift (a glide carries the avatar along its arc) */
   private liftActor: ((id: string, m: number) => void) | null = null;
   private selfFollowerShown = true;
+  /** LLM feature 6: the follower pool (its billboard anchors the lead's speech bubble) */
+  private followerPool: { billboardOf(owner: string): CreatureBillboard | null } | null = null;
+  private readonly bubbleVec = new Vector3();
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.audio = createAudioDirector();
@@ -360,7 +365,8 @@ class World implements World3D {
       content: content(),
       // LLM feature 3: the commentator's caption and the trainer's banter (words over the battle, never part of it)
       // LLM feature 5: the battle log the result card's "Why did I lose?" reads, beside the commentator
-      commentary: teeCommentary(createCommentator({ content: content() }), createBattleLogger()),
+      // LLM feature 6: what each of the player's creatures did, for when the player talks with it
+      commentary: teeCommentary(teeCommentary(createCommentator({ content: content() }), createBattleLogger()), createBuddyLogger()),
       send: (type, payload) => this.ws.send(type, payload),
       reduced: () => getEffectiveSettings().reduced,
       instantText: () => useSettingsStore.getState().accessibility.battleTextSpeed === 'instant',
@@ -601,6 +607,7 @@ class World implements World3D {
     // followers: the pool lived on the dead renderer (attachRoom re-feeds the leads to the rebuilt one)
     this.followers?.detach();
     this.followers = null;
+    this.followerPool = null;
     this.field?.dispose();
     this.field = null;
     this.liftActor = null;
@@ -1689,7 +1696,8 @@ class World implements World3D {
     const ui = useUiStore.getState();
     return (
       ui.battle !== null || ui.evolution !== null || ui.dialogue !== null || ui.modal !== 'none' || ui.chatOpen || ui.prompts.length > 0 || ui.trade !== null || ui.challenge !== null ||
-      this.fishing.active
+      this.fishing.active ||
+      useBuddyTalkStore.getState().creatureId !== null
     );
   }
 
@@ -2208,6 +2216,7 @@ class World implements World3D {
   /** The follower views and the field powers on a (re)built renderer. */
   private bootFollowers(r: Renderer, p3: NonNullable<ReturnType<typeof part3Of>>): void {
     this.liftActor = (id, m) => p3.actors.setLift(id, m);
+    this.followerPool = p3.followers;
     this.followers = new FollowerViews({
       pool: () => (this.disposed ? null : p3.followers),
       catalog: () => this.catalog,
@@ -2261,6 +2270,35 @@ class World implements World3D {
       this.selfFollowerShown = shown;
       this.followers?.setShown(selfId, shown);
     }
+    // LLM feature 6: while the lead says a line, its bubble follows the follower's head
+    if (useBuddyBubbleStore.getState().line !== null) {
+      const at = shown && this.ready ? bubbleAnchor(this.followerPool?.billboardOf(selfId) ?? null, this.renderer.camera.camera, this.canvas.getBoundingClientRect(), this.bubbleVec) : null;
+      setBubbleAnchor(at?.x ?? 0, at?.y ?? 0, at !== null);
+    }
+  }
+
+  /** LLM feature 6, 2 Hz: where the player is (the talk's facts) and whether the lead has something to say. */
+  private stepBuddy(sx: number, sz: number): void {
+    const room = this.room;
+    const zone = this.inArena ? null : this.zone;
+    const tod = room !== null && !this.inArena ? room.state.timeOfDay : null;
+    setBuddyPlace({ zoneId: zone?.id ?? null, timeOfDay: tod, weather: useRealWeatherStore.getState().kind ?? ((room?.state.weather as WeatherKind | undefined) ?? null) });
+    const terrain = this.stepCollider?.terrain ?? null;
+    const ui = useUiStore.getState();
+    void stepBuddyAmbient(
+      buddySnapshot({
+        now: performance.now(),
+        zone,
+        timeOfDay: tod,
+        party: useSessionStore.getState().inventory?.party ?? [],
+        x: sx,
+        z: sz,
+        inBattle: ui.battle !== null,
+        busy: !this.selfFollowerShown || this.inArena || uiBusy(),
+        water: terrain !== null && zone !== null && zone.biome !== 'cinder' ? (x, z) => terrain.water(x, z) : null,
+        spawns: room !== null ? room.state.spawns.values() : [],
+      }),
+    );
   }
 
   /** 2 Hz: the nearest trainers with a rig keep their followers (in battle or inside a hall theirs waits). */
@@ -2284,6 +2322,7 @@ class World implements World3D {
     // the legendary statics near the player play their flipbooks; the far ones let theirs go (2 Hz)
     this.legendaries?.setViewer(sx, sz);
     this.syncFollowers();
+    this.stepBuddy(sx, sz);
     const list: { id: string; name: string; guildTag: string; inBattle: boolean; d: number }[] = [];
     this.remotes.forEach((id, x, z, info, spawned) => {
       if (!spawned) return;
@@ -2365,6 +2404,7 @@ class World implements World3D {
     setEvolutionPlayer(null);
     setStrikeHook(null);
     setDanceAction(null);
+    resetBuddyAmbient();
     this.strikeFx?.finish();
     this.playerStrikeFx?.finish();
     this.evolution?.cancel();

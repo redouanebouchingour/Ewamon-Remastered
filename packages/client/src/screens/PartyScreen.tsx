@@ -11,6 +11,7 @@ import { useSearchParams } from 'react-router';
 import { FIELD_POWER_TEXT, FIELD_POWER_TYPE, fieldLead, fieldPowersOf, zone as zoneDef } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import { displayName, itemInfo, maxHpOf, species } from '../data/content';
+import { openBuddyTalk } from '../state/buddy';
 import { useSessionStore } from '../state/session';
 import { Button } from '../ui/Button';
 import { badgesOf } from '../ui/CreatureCard';
@@ -277,7 +278,19 @@ export function PartyScreen() {
               layout="band"
               slot={selectedIndex + 1}
               extraActions={
-                selectedIndex > 0 ? (
+                <>
+                  {/* LLM feature 6: talk with this creature (over the world: the panel closes) */}
+                  <Button
+                    size="sm"
+                    ariaLabel={`Talk with ${displayName(selected)}`}
+                    onClick={() => {
+                      close();
+                      void openBuddyTalk(selected.id);
+                    }}
+                  >
+                    Talk
+                  </Button>
+                  {selectedIndex > 0 ? (
                   <Button
                     variant="primary"
                     size="sm"
@@ -288,7 +301,8 @@ export function PartyScreen() {
                   </Button>
                 ) : (
                   <span className={s.leadTag}>Leads every battle</span>
-                )
+                )}
+                </>
               }
             />
           )}

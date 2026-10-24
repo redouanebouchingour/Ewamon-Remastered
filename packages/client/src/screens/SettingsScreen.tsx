@@ -73,6 +73,7 @@ export const ACTION_LABEL: Readonly<Record<InputAction, string>> = {
   map: 'Open world map',
   pvp: 'Open PvP (arena)',
   professor: 'Ask Prof. Wynn',
+  buddyTalk: 'Talk to your lead Ewamon',
   pause: 'Pause / settings',
   toggleHud: 'Toggle HUD',
 };
@@ -285,6 +286,12 @@ function AccessibilityTab() {
         description="The trainer you fight talks during the battle: at the start, when you knock one out, at the end."
         checked={a.trainerBanter}
         onChange={(v) => set('accessibility', { trainerBanter: v })}
+      />
+      <Toggle
+        label="Follower chatter"
+        description="Now and then the Ewamon walking behind you says a short line in a speech bubble: a new place, a rare find, nightfall."
+        checked={a.followerChatter}
+        onChange={(v) => set('accessibility', { followerChatter: v })}
       />
       <Toggle
         label="Show the speedrun timer"

@@ -1,0 +1,62 @@
+/*
+ * The lead's speech bubble (LLM feature 6): paper white with carbon ink and a hard square tail, the line in the text
+ * face, over the follower's head (`--bx` / `--by` from World3D, page px). Not anchored: above the player in the centre.
+ * Broadcast look: hard edges, no glow, no glass; it never takes the pointer.
+ */
+
+.bubble {
+  position: fixed;
+  inset-block-start: 38%;
+  inset-inline-start: 50%;
+  z-index: var(--z-overlay);
+  max-inline-size: 260px;
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-text);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 600;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  animation: pop var(--motion-panel) var(--ease-out) both;
+}
+
+.bubble[data-anchored] {
+  inset-block-start: calc(var(--by) - 10px);
+  inset-inline-start: var(--bx);
+}
+
+/* the tail: a small square turned to a point, down at the follower */
+.bubble::after {
+  position: absolute;
+  inset-block-end: -5px;
+  inset-inline-start: calc(50% - 5px);
+  inline-size: 10px;
+  block-size: 10px;
+  background: inherit;
+  content: '';
+  transform: rotate(45deg);
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -100%) translateY(6px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble {
+    animation: none;
+  }
+}
+
+:root[data-reduced='1'] .bubble {
+  animation: none;
+}

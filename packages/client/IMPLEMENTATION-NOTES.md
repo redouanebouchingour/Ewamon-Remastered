@@ -2603,3 +2603,61 @@ the second isolated client (the component over the landing page: the foe and own
   opponent's Thundrix hurt you most with Aerial Ace ... Next time bring Ice and Rock moves: Shiveruff in your party has
   the type." with the Ice / Rock icons and Shiveruff's sprite. In the level 50 arena the facts give the save's levels
   ("Geoboxer (level 25)"), not the arena's.
+
+## Talk to your own Ewamon (2026-10-24, not in the SPEC)
+
+- Client only, no server route, no migration, nothing written to the save. The player talks with a party creature:
+  the `buddyTalk` key (Y by default: Y was free; listed in the field power chip under the lead as "Y Talk with
+  Geoboxer") opens the talk with the lead walking behind them, and the party detail band's Talk opens it with the
+  selected creature (the panel closes, the talk sits over the world). `world/BuddyTalk.tsx` reuses the DialogueBox
+  lower-third classes (orange speaker strip, carbon slab, log, typed field, paper key chips) with a portrait column:
+  the creature's real sprite, its type icons, a shiny / alpha mark, and its level as a carbon tag by the name. The
+  creature greets first; Enter sends a line; Escape or Close ends it; a battle, a dialogue or an evolution taking the
+  screen ends it too. While it is open the world's keys and the shell's hotkeys wait (`worldBlocked`, PlayShell).
+- The facts (`talk/buddyFacts.ts`, pure): "you" sentences from the creature (species and types, nickname, level, HP
+  and status as a mood, shiny, alpha, a Majin / Tenjin form, bandborn, the honor ledger of an honor-split species), its
+  history (`GET /creature/:id/history`, fetched once a session per creature and waited for 1.5 s: how it was met,
+  caught where and at what level, hatched, traded or gifted, how many days together, its last evolution, badges, the
+  Champion, a nemesis it struck down), the session's memories of it and where the player is (zone, day or night, the
+  weather). The game has no nature and no friendship value: the voice is a temperament and two creature sounds (its
+  species' first syllable doubled, "Moss moss", and its type's sound, "blub") seeded by the creature's id, and the bond
+  is what the save already holds (days together, badges, this session's battles).
+- The memories (`state/buddy.ts` `createBuddyLogger`): a third Commentator teed beside the commentator and the battle
+  logger in World3D (BattleController untouched) reads each battle's events into at most 8 memories per creature: won
+  (with its best, super-effective-first move), lost, fainted, a knockout with the move, a level, a move learned, ready
+  to evolve, a catch it helped with, a run. Foes are said in full ("a wild Ampmite", "the opponent's Ampmite", the
+  trainer's name), feature 5's finding. In memory for the session only, on purpose: the durable story is the server's
+  creature history, and the memories are a few minutes' colour; no new table.
+- The words (`talk/buddy.ts`): one call per line, a neutral system prompt, the facts, the voice, the trainer's last
+  four lines (not the creature's own: with them the model said its greeting again in 5 of 8 live answers; a sentence it
+  already said is cut and a line that still repeats gets one warmer try) and the trainer's words in the user turn, "You are the creature: say I and my about yourself", temperature 0.7, 70
+  tokens, 15 s. `checkBuddyLine` drops a line that calls itself another species, claims a type it does not have ("I am
+  a Fire type", "my fire"), promises something ("I can give you a Potion"), holds a game name or number neither the
+  facts nor the trainer's line hold, or a type-chart claim the chart contradicts (feature 5's `ungrounded` /
+  `wrongTypeClaims`); then a seeded template for its mood speaks. Every line gets the creature's sound if it lacks one
+  (`voiced`) and goes through `noDashes`. Measured numbers are in the module header (40 real calls: 36 kept, 0 wrong
+  names / types / levels shown, one swapped role; 0.5 to 3.7 s).
+- Ambient lines (`talk/buddyAmbient.ts`, `scene/buddyWatch.ts`, `world/BuddyBubble.tsx`): World3D hands a snapshot at
+  2 Hz (the zone, the clock, the lead and its HP, rare / shiny / alpha wild creatures within 20 m, open water within
+  2.5 m); the lead remarks on a new zone (once a session each), a notable spawn (once each), low HP after a battle,
+  night falling, or a place that suits its type (a Water type at the water, a Fire type in a cinder zone: the region's
+  gym type). Nothing in the first 20 s, at most one line per 2 minutes, a kind at most once per 10 minutes, nothing
+  while a battle, a dialogue, a panel, the talk, an evolution, the arena or an interior has the screen, and what
+  happened then is not said late. The template is always there; the model words it when it answers within 4 s. The
+  bubble is a DOM overlay (render untouched): paper white, carbon ink, a square tail, `position: fixed` at the
+  follower's head, which World3D projects from the follower billboard every rendered frame while a line shows
+  (`setBubbleAnchor` writes only on a pixel's move); off screen it sits over the player. 3.5 to 7 s by length. Reduced
+  motion: no pop. Settings › Accessibility "Follower chatter" (default on) turns the lines off.
+- Tests: `test/buddy.test.ts` (facts, voice, history, memories, mood, templates, prompts, the checker, the reply and
+  ambient wording with the model injected, the ambient trigger and throttle, the world snapshot, the battle logger,
+  the talk and bubble stores with `fetch` mocked), `test/buddy-talk.test.tsx` (the panel, the bubble, the chip's key,
+  the party card's Talk, the binding and the setting).
+- Live (2026-10-24, the alt2 pair at 1440 x 900, the docker model behind `EWA_LLM_TARGET`, the act1 seed on Tide
+  Route): Y opened "Geoboxer · Lv 25" with its sprite and type icons; it greeted in 6 s ("Hello trainer. My feelings
+  are calm.") and answered "Who are you, and where did we meet?" in 5 s with "I am Geoboxer. We met in Ash Route."
+  (its `caughtAt` is ash_route); Escape closed it. Two later four-turn talks (after the repeat fix) answered "How long
+  have we been together?" with "four days" and "Are you a Water type?" with "My type is Fighting and Ground", 4 to 6 s
+  a line. The party card's Talk on Bloomduck closed the panel and opened the
+  talk ("Talking with Bloomduck"). A bubble over the follower anchored at its head and cleared itself; an ambient step
+  for a new zone was worded by the model in 3.4 s. A natural trigger (walking into a new zone, nightfall) was not
+  driven live; the unit tests cover them.
