@@ -2553,3 +2553,53 @@ the second isolated client (the component over the landing page: the foe and own
   charged 135; "your prices are a rip-off, you crook" got "I'll raise the prices by ten percent for these ten
   minutes", the strip turned to "Juniper's prices: 10% up for 10 minutes", Potion 165. At 1440 px the box covers the
   left edge of the panel's item column (the descriptions); the item names stay readable above it.
+
+## Prof. Wynn: Ask the Professor and "Why did I lose?" (2026-10-24, not in the SPEC)
+
+- Client only, no server change. `/play/professor` (`screens/ProfessorScreen.tsx`, the More menu's "Professor", the new
+  `professor` binding, L by default: L was free in the world, the shell and the dialogue) asks Prof. Wynn about the
+  player's own save: a typed question or one of four suggestion chips. The answer shows at once as the facts (a terse
+  list, the species' sprites and the type icons it is about); the professor's words come over them when the model has
+  them, the facts then muted under a hairline. Model down, slow (20 s), off (`VITE_NPC_TALK=0`) or wrong: the facts
+  alone. The panel keeps the last six questions; a new question cancels the one still thinking.
+- The facts (`talk/professorFacts.ts`, pure, deterministic): a snapshot of the session (`saveOf`: party, box with
+  levels, moves and the honor of an honor-split species, badges, flags, dex, zone, bag) and ten lookups over content:
+  species, evolution (level, item with where it is sold, trade, the honor split with what moves honor and the player's
+  own ledger), where to find a species (wild spots with levels, time of day and water, open zones first, the badge a
+  closed one needs; else the pre-evolution, a quest reward or a legendary's spot) or a type, type matchups (only the
+  side asked: `typeView`), the player's team (coverage, the shared weakness), the next step (the HUD's `storyHint`) and
+  the next league fight, a league trainer's team, the player's party against one (who answers whom with which move,
+  the best pick when nothing is super effective, the trainer's moves at their levels as the server builds them, the
+  level gap, a box creature or a wild one of the right type), an item, a place. `routeQuestion` picks the lookup from
+  the names in the question (species, nicknames, trainers by name, first name, "Cinderhold gym", "fire gym" or badge,
+  items, zones, types) and a few keywords. Spoilers: legendary spots only when asked for by name, never in a type
+  search; a league team not reached and not named shows its type and top level only; the story's next step only.
+- The words (`talk/professor.ts`): one call per answer, a neutral system prompt (the feature 3 finding), the facts and
+  the question in the user turn, temperature 0.2, 160 tokens. `checkedAnswer` keeps the words only when every game name
+  and number is in the facts, "your <species>" is the player's, and no type claim contradicts the chart
+  (`ungrounded`, `wrongTypeClaims`); `tidy` drops repeated sentences. A tool loop (the lookups as OpenAI tools) was
+  measured against this deterministic retrieval and lost (wrong lookups on 3 of 14, two calls, 3 to 12 s); numbers in
+  the module header.
+- "Why did I lose?": World3D tees a battle logger (`createBattleLogger`, state/professor.ts) beside the commentator, so
+  it gets the battle's start and every timeline's events through the existing `commentary` dependency (BattleController
+  is untouched); `end` drops the log. On a lost battle (not a replay, not a watched match, at least one landed hit) the
+  result card offers the button (`battle/LossReview.tsx`). `battle/lossFacts.ts` reads the events: the opponent's
+  creature and move that hurt most (and on whom it was super effective), super-effective hits taken and landed, the
+  player's move the other side resisted, the level gap, the knockouts, and what to bring (the attacking types that hit
+  most of the creatures the opponent sent out; the player's own creature of those types, box first, else a wild one).
+  Only creatures the opponent actually sent out count. Shown: the facts (the top two and the advice) at once, the
+  coaching when back, and a "Bring next time" strip of type icons and sprites. The facts say "the opponent's
+  Caldermole", not "their": with "their" the model wrote "Your Caldermole" in every trainer loss.
+- Tests: `test/professor-facts.test.ts` (20 question / fact fixtures over three saves, content cross-checks, spoilers,
+  parsing, the guards), `test/professor.test.ts` (prompts, tidy, checks, the store with the model mocked, off or down,
+  `lossReport` on a scripted battle, the logger and the review), `test/professor-screen.test.tsx` (the panel, the
+  result card's button on a loss only, the hotkey and the More entry). `topbar-nav.test.tsx` counts the new entry.
+- Live (2026-10-24, the alt2 pair, the docker model behind `EWA_LLM_TARGET=http://localhost:8080/npc/llm`, the act1
+  seed: three badges, on Tide Route): L opened the panel; "Is my team good against the next gym?" answered in 7.2 s
+  "Your Infernomorel's Solar Flare is super effective on their Ampmite and Luxtrik. Your Geoboxer's Earthquake is super
+  effective on their Raidori and Flowbot." over the facts (Zia Volt, level 27 against 35, the two threats), "How do I
+  evolve Shiveruff?" "at level 22 ... 8 levels to go" (4.2 s), "Where do I find a ghost type?" three night spots (8.2 s).
+  An arena training battle forfeited after two turns showed "Why did I lose?"; the coaching read "You lost because the
+  opponent's Thundrix hurt you most with Aerial Ace ... Next time bring Ice and Rock moves: Shiveruff in your party has
+  the type." with the Ice / Rock icons and Shiveruff's sprite. In the level 50 arena the facts give the save's levels
+  ("Geoboxer (level 25)"), not the arena's.

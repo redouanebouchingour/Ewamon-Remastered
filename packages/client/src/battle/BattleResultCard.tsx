@@ -6,6 +6,7 @@
  * trainer's concession line (`concessionLine`: a gym leader's post[1], a Warden's / the Champion's post[0]).
  * Broadcast UI (2026-10-11): the badge is a type-colour slab with a label strip, each reward a big number over its label.
  * LLM feature 3: the battle's closing commentary (ResultCommentary) under the concession.
+ * LLM feature 5: a lost battle (not a replay, not a watched match) offers "Why did I lose?" (LossReview).
  */
 import { badgeDisplay } from '../data/badgeIcon';
 import { itemInfo } from '../data/content';
@@ -19,6 +20,7 @@ import { concessionLine, foeOfState } from './foe';
 import { rematchOfBattle } from '../scene/dialogue';
 import { isReplayBattle, spectatorNames } from './replayId';
 import { ResultCommentary } from './BattleCommentary';
+import { LossReview } from './LossReview';
 import s from './BattleResultCard.module.css';
 
 export function BattleResultCard() {
@@ -58,6 +60,7 @@ export function BattleResultCard() {
   const done = (): void => battleActions()?.dismissResult();
   const badge = r.badge === null ? null : badgeDisplay(r.badge);
   const won = o.winner === seat;
+  const lost = typeof o.winner === 'number' && o.winner !== seat && watched === null && !replay;
   const foe = won && format === 'league' && state !== null ? foeOfState(state, seat) : null;
   // Phase D14: a won rematch concedes with its own line (the first fight's names the badge)
   const rematch = foe !== null && state !== null ? rematchOfBattle(state, seat) : null;
@@ -103,6 +106,8 @@ export function BattleResultCard() {
         )}
         {/* LLM feature 3: the commentator's call of the end, and the trainer's last word where no concession is authored */}
         <ResultCommentary concession={foe !== null && concession !== null} />
+        {/* LLM feature 5: Prof. Wynn's breakdown of a loss */}
+        {lost && <LossReview />}
         {lines.length > 0 ? (
           <ul className={s.rewards}>
             {lines.map((l) => (

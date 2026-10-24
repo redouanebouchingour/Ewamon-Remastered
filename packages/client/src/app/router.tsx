@@ -218,6 +218,11 @@ export const routes: RouteObject[] = [
             },
           }),
           child({
+            // LLM feature 5: Ask Prof. Wynn
+            path: 'professor',
+            lazy: async () => ({ Component: (await import('../screens/ProfessorScreen')).ProfessorScreen }),
+          }),
+          child({
             path: 'history',
             lazy: async () => {
               const [{ HistoryScreen }, l] = await Promise.all([import('../screens/HistoryScreen'), loaders()]);

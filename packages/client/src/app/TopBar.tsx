@@ -53,6 +53,8 @@ export const NAV: readonly NavItem[] = [
   { to: '/play/quests', label: 'Quests', icon: 'quest', primary: true },
   // arena PvP: queues, the Weekly Cup, training and friend challenges (K)
   { to: '/play/pvp', label: 'PvP', icon: 'sword', primary: false, action: 'pvp' },
+  // LLM feature 5: ask Prof. Wynn about the save (L)
+  { to: '/play/professor', label: 'Professor', icon: 'info', primary: false, action: 'professor' },
   // Majin vs Tenjin seasons: take a side, the standings, the Chronicle
   { to: '/play/factions', label: 'Factions', icon: 'shield', primary: false },
   { to: '/play/box', label: 'Box', icon: 'box', primary: false },

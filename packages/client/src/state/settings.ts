@@ -9,7 +9,7 @@ export type Colorblind = 'none' | 'deuteranopia' | 'protanopia' | 'tritanopia';
 export type InputAction =
   | 'forward' | 'back' | 'left' | 'right' | 'run' | 'interact' | 'jump' | 'bike' | 'fieldPower' | 'chat'
   | 'emote1' | 'emote2' | 'emote3' | 'emote4' | 'emote5' | 'emote6'
-  | 'challenge' | 'rotateLeft' | 'rotateRight' | 'party' | 'bag' | 'journal' | 'map' | 'pvp' | 'pause' | 'toggleHud';
+  | 'challenge' | 'rotateLeft' | 'rotateRight' | 'party' | 'bag' | 'journal' | 'map' | 'pvp' | 'professor' | 'pause' | 'toggleHud';
 
 /** Quality preset (render `quality.ts`); 'auto' = low on integrated Intel GPUs, else high. */
 export type GraphicsQualitySetting = 'auto' | 'low' | 'medium' | 'high';
@@ -108,6 +108,8 @@ export const DEFAULT_KEYBINDS: Keybinds = {
   map: ['KeyM'],
   // arena PvP: the PvP screen (K was free; persisted blobs without it merge this default in)
   pvp: ['KeyK'],
+  // LLM feature 5: Ask Prof. Wynn (L was free; persisted blobs without it merge this default in)
+  professor: ['KeyL'],
   pause: ['Escape'],
   toggleHud: ['F1'],
 };

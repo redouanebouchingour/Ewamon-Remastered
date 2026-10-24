@@ -49,6 +49,7 @@ import { getWorldBoot, setWorldBoot } from '../app/bootProgress';
 import { battlePanelTop, onBattlePanelTop } from '../battle/panelInset';
 import { createBattleController } from '../battle/BattleController';
 import { createCommentator } from '../battle/commentator';
+import { createBattleLogger, teeCommentary } from '../state/professor';
 import type { BattleController, BattleView } from '../battle/BattleController';
 import { setBattleActions } from '../battle/controllerRef';
 import { foeIdentity } from '../battle/foe';
@@ -358,7 +359,8 @@ class World implements World3D {
     this.battle = createBattleController({
       content: content(),
       // LLM feature 3: the commentator's caption and the trainer's banter (words over the battle, never part of it)
-      commentary: createCommentator({ content: content() }),
+      // LLM feature 5: the battle log the result card's "Why did I lose?" reads, beside the commentator
+      commentary: teeCommentary(createCommentator({ content: content() }), createBattleLogger()),
       send: (type, payload) => this.ws.send(type, payload),
       reduced: () => getEffectiveSettings().reduced,
       instantText: () => useSettingsStore.getState().accessibility.battleTextSpeed === 'instant',

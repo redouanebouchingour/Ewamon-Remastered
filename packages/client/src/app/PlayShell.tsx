@@ -59,6 +59,8 @@ const SHORTCUTS: Partial<Record<InputAction, string>> = {
   map: '/play/map',
   // arena PvP: the PvP screen (K)
   pvp: '/play/pvp',
+  // LLM feature 5: Ask Prof. Wynn (L)
+  professor: '/play/professor',
 };
 
 function isTyping(target: EventTarget | null): boolean {

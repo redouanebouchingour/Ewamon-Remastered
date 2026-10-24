@@ -1,0 +1,198 @@
+/*
+ * LLM feature 5: Ask Prof. Wynn. Broadcast: the question as a paper YOU chip over text, the answer a carbon card on a
+ * hairline with a paper PROF. WYNN slab, the facts as a tight list (muted under spoken words), sprites and type icons
+ * in a strip. Orange only on the Ask button and focus. Hard edges, no glow.
+ */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.intro {
+  margin: 0;
+  color: var(--text-2);
+  font-family: var(--face-text);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+
+.entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.question {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  margin: 0;
+  color: var(--text-hi);
+  font-family: var(--face-text);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+
+.you,
+.tag {
+  flex: none;
+  padding: 0 var(--s-2);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.you {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+.answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--bg-1);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+}
+
+.speaker {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  margin: 0;
+}
+
+.topic {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.text {
+  margin: 0;
+  color: var(--text-hi);
+  font-family: var(--face-text);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+}
+
+.thinking {
+  margin: 0;
+  color: var(--text-2);
+  font-family: var(--face-text);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-style: italic;
+}
+
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0 0 0 var(--s-4);
+  color: var(--text-1);
+  font-family: var(--face-text);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+
+.factsQuiet {
+  padding-block-start: var(--s-2);
+  border-top: 1px solid var(--line-1);
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.chip {
+  padding: var(--s-1) var(--s-3);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--text-1);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: var(--bg-2);
+  color: var(--text-hi);
+}
+
+.chip:focus-visible,
+.input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.form {
+  position: sticky;
+  inset-block-end: 0;
+  display: flex;
+  gap: var(--s-2);
+  padding-block: var(--s-2);
+  background: var(--bg-0);
+}
+
+.input {
+  flex: 1;
+  min-inline-size: 0;
+  block-size: var(--control-md);
+  padding: 0 var(--s-3);
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--text-hi);
+  font-family: var(--face-text);
+  font-size: var(--t-body);
+}
+
+.input::placeholder {
+  color: var(--text-2);
+}
