@@ -246,9 +246,36 @@ export type ServerMessage =
       readonly rank: number;
       readonly level: number;
     }
+  /**
+   * Followers with field powers (SPEC §3.18): a power the lead used worked. `burn` / `dig` / `dive`: the spot (`spotId`,
+   * its x / z) and what it gave (`item` x `qty`, null when nothing); the client plays the flames, the soil or the splash.
+   * `sense`: the ghost trainers walking this zone within range (`ghosts`, their haunt loop and where they walk now,
+   * `wanted` when the bounty board has a price on them); x / z = where the player stood.
+   */
+  | {
+      readonly type: 'fieldPower';
+      readonly power: 'burn' | 'dig' | 'dive' | 'sense';
+      readonly spotId: string;
+      readonly x: number;
+      readonly z: number;
+      readonly item: string | null;
+      readonly qty: number;
+      readonly ghosts: readonly SensedGhost[];
+    }
   /** arena PvP (../arena.ts): the queue state, a friend's invite, the invite's fate, the arena room's phase */
   | ArenaServerMessage
   | { readonly type: 'error'; readonly code: ServerErrorCode; readonly detail: string | null };
+
+/** Followers: one ghost trainer a Psychic lead senses (`fieldPower` power 'sense'). */
+export interface SensedGhost {
+  readonly name: string;
+  readonly wanted: boolean;
+  /** where it walks now */
+  readonly x: number;
+  readonly z: number;
+  /** its haunt: a closed loop through the zone's tall grass */
+  readonly path: readonly (readonly [number, number])[];
+}
 
 export type ServerMessageType = ServerMessage['type'];
 export type ServerMessageOf<T extends ServerMessageType> = Extract<ServerMessage, { type: T }>;
@@ -277,6 +304,7 @@ export const SERVER_MESSAGE_TYPES = [
   'eggHatched',
   'nemesisAmbush',
   'nemesisNews',
+  'fieldPower',
   'arenaStatus',
   'arenaInvite',
   'arenaInviteResult',
@@ -476,6 +504,26 @@ export const NemesisNewsMsg = z.object({
   ...NemesisFields,
   level: z.number().int().min(1).max(100),
 });
+export const FieldPowerServerMsg = z.object({
+  type: z.literal('fieldPower'),
+  power: z.enum(['burn', 'dig', 'dive', 'sense']),
+  spotId: z.string().max(64),
+  x: z.number(),
+  z: z.number(),
+  item: z.string().min(1).max(64).nullable(),
+  qty: z.number().int().min(0).max(99),
+  ghosts: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(32),
+        wanted: z.boolean(),
+        x: z.number(),
+        z: z.number(),
+        path: z.array(z.tuple([z.number(), z.number()])).max(8),
+      }),
+    )
+    .max(16),
+});
 export const ErrorMsg = z.object({
   type: z.literal('error'),
   code: z.enum(SERVER_ERROR_CODES),
@@ -506,6 +554,7 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
   EggHatchedMsg,
   NemesisAmbushMsg,
   NemesisNewsMsg,
+  FieldPowerServerMsg,
   ArenaStatusMsg,
   ArenaInviteMsg,
   ArenaInviteResultMsg,
@@ -537,6 +586,7 @@ export const SERVER_MESSAGES = {
   eggHatched: EggHatchedMsg,
   nemesisAmbush: NemesisAmbushMsg,
   nemesisNews: NemesisNewsMsg,
+  fieldPower: FieldPowerServerMsg,
   arenaStatus: ArenaStatusMsg,
   arenaInvite: ArenaInviteMsg,
   arenaInviteResult: ArenaInviteResultMsg,

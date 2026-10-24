@@ -750,3 +750,35 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   (saltmourn). ash_route: 78 atlases, none duplicated, every route drawable.
 - **Counts**: `validate.ts` rule 3 (141), families (73), `schema.ts` `dexNumber ≤ 141`; `ach_dex_130` targets 141.
 - **Layout**: encounter slots do not feed the zone layout RNG; heightfield digests and `r1-pre-move.json` unchanged.
+
+## Followers with field powers (2026-10-21)
+
+- `fieldPowers.ts` holds the rules (powers by type, the lead, the glide plan, the haunts, the dark places, loot draws) and
+  `data/fieldPowers.ts` the spots, a layer of their own: no `ZoneDef`, plan, footprint or heightfield changes, every
+  digest is as it was. Bramble, dig and dive positions were surveyed on the sculpted fields with throwaway scripts (open
+  ground a few metres from a cliff, off the roads and the grass, 12 m from authored points; the campfire's free side; the
+  middle of each lake or sea body that is open water 3 m all round) and are checked by validate rule 13.
+- A bramble is not an obstacle stamp (that would move the heightfield digest and the walker's fixtures): it is a
+  per-player square blocker the server adds to the player's closed gates (`brambleSolidsFor`) while FIELD_POWERS is on.
+- `planGlide` lands only on ground `reachFromSpawn` reaches (the spawn's walkable component, memoised per zone), so a glide
+  can never strand anyone; it only goes down (a landing at least 1.5 m lower, the flight never meets rising ground).
+  The flight sinks 1 m per 3 m: a typical 6 m cliff carries about 18 m out. `cliffSample` recomputes the walkable limit's
+  slope test (`MAX_SLOPE` is private to the heightfield) at the nearest sample.
+- `LAVA_BIOMES` restates the server's `movement.ts` set (content cannot import the server); both say `cinder`.
+- Ghost haunts use the zone plan's grass patches (`zonePlan(id).grassPatches`) whatever WILD_ENCOUNTERS says, shuffled by
+  an fnv hash of zone and owner (no core RNG needed, no transcendental functions).
+
+## Camp bases (2026-10-22)
+
+- `data/camps.ts`: the camp layer is derived, not authored: `campOf(zoneId)` reads the sculpt's campfire and its nearest
+  tent (siege_route has two tents), and puts the trophy slots and the banner on a 3 m ring at fixed angles from the
+  followers' dig spot side. The angles (60, -60, 105 for the slots, -150 for the banner) were picked from a 15-degree scan
+  of all 8 camps for dry, walkable ground clear of the tent, the dig spot and every other prop; `camps.test.ts` keeps
+  them honest. Nothing is stamped into a heightfield (the props are walk-through), so no digest or fixture moves.
+- Raids only while the owner is offline (the guard is their AI), so an online player's camp can not be robbed under
+  them; the cut is 2 % floored, capped at 1,000, once per raider and camp in 24 hours; a guard more than 12 levels under
+  the raider's lead is refused (no bullying low camps), a stronger one is the raider's risk.
+- "Long-inactive" is the owner's `last_seen_at` 14 days back; a raider who wins then takes the camp if they hold none.
+- Trophy kinds mirror what the player did elsewhere: `scar` (a nemesis beaten or caught), `legend` (a legendary species
+  in the dex as caught), `medal` (the Champion's flag, or the ranked peak's tier from Silver up: there are no cup medals
+  to read, Weekly Cup wins are not recorded), `achievement` (claimed), `bounty` (brought in).

@@ -16,7 +16,8 @@
     "grant:creature": "tsx --tsconfig tsconfig.dev.json scripts/grant-creature.ts",
     "grant:item": "tsx --tsconfig tsconfig.dev.json scripts/grant-item.ts",
     "eco": "tsx --tsconfig tsconfig.dev.json scripts/eco.ts",
-    "bounty": "tsx --tsconfig tsconfig.dev.json scripts/bounty.ts"
+    "bounty": "tsx --tsconfig tsconfig.dev.json scripts/bounty.ts",
+    "camp": "tsx --tsconfig tsconfig.dev.json scripts/camp.ts"
   },
   "dependencies": {
     "@colyseus/core": "^0.18.14",

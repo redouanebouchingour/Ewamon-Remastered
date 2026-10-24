@@ -67,6 +67,20 @@ export const EnvSchema = z.object({
    * local model.
    */
   NPC_TOOLS: z.enum(['on', 'off']).optional(),
+  /**
+   * Followers with field powers (content fieldPowers.ts, SPEC §3.18): 'on' (the default) = a Flying lead glides off a
+   * cliff (movement validation accepts the glide line), unburnt brambles block like hall gates, and the burn / dig / dive /
+   * sense powers work; 'off' = the world moves as it always did and every power is refused (testEnv, so the progression
+   * walker's movement and the handover-landing tests see today's world). The follower itself is visual and always on.
+   */
+  FIELD_POWERS: z.enum(['on', 'off']).default('on'),
+  /**
+   * Camp bases (content camps.ts, SPEC §3.19): 'on' (the default) = a route's travellers' camp can be claimed, decorated
+   * and raided (a fight with the owner's guard, the cut, the honor hit, the shadow deed, the held points); 'off' = the
+   * camps stand empty: nothing can be claimed, edited or raided and the zone shows no owner (testEnv, so the walker and
+   * every other test see today's world).
+   */
+  CAMPS: z.enum(['on', 'off']).default('on'),
   /** not configurable in v1; present so the value is visible */
   TICK_HZ: z.literal('20').default('20'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
@@ -143,6 +157,8 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
     NEMESES: 'off',
     ECOSYSTEM: 'off',
     BOUNTIES: 'off',
+    FIELD_POWERS: 'off',
+    CAMPS: 'off',
     ...overrides,
   });
 }

@@ -171,18 +171,27 @@ const CASES: Record<ClientMessageType, Case> = {
     valid: { action: 'start', picks: [U1, U2, 'c3'] },
     invalid: [{}, { action: 'start' }, { action: 'start', picks: [U1, U2] }, { action: 'start', picks: [U1, U2, U1, U2] }, { action: 'start', picks: [U1, U2, ''] }, { action: 'retire' }],
   },
+  // followers with field powers: burn / dig / dive a spot by id, sense 'here'
+  fieldPower: {
+    valid: { power: 'dig', targetId: 'camp' },
+    invalid: [{}, { power: 'fly', targetId: 'camp' }, { power: 'dig' }, { power: 'dig', targetId: '' }, { power: 'dive', targetId: long(65) }],
+  },
+  camp: {
+    valid: { action: 'raid' },
+    invalid: [{}, { action: 'burn' }, null],
+  },
 };
 
 describe('§4.3 CLIENT_MESSAGES', () => {
-  it('has exactly 24 keys, in the spine order', () => {
-    expect(Object.keys(CLIENT_MESSAGES)).toHaveLength(24);
-    expect(CLIENT_MESSAGE_COUNT).toBe(24);
+  it('has exactly 26 keys, in the spine order', () => {
+    expect(Object.keys(CLIENT_MESSAGES)).toHaveLength(26);
+    expect(CLIENT_MESSAGE_COUNT).toBe(26);
     expect(CLIENT_MESSAGE_TYPES).toEqual([
       'input', 'emote', 'chat', 'interact', 'engageSpawn',
       'battleAction', 'battleResync', 'challenge', 'challengeReply',
       'tradeRequest', 'tradeReply', 'tradeOffer', 'tradeConfirm', 'tradeCancel',
       'raidJoin', 'raidReady', 'raidAction', 'raidCatch', 'raidLeave',
-      'handoverAck', 'fastTravel', 'fish', 'rankedQueue', 'tower',
+      'handoverAck', 'fastTravel', 'fish', 'rankedQueue', 'tower', 'fieldPower', 'camp',
     ]);
     expect(Object.keys(CASES).sort()).toEqual([...CLIENT_MESSAGE_TYPES].sort());
     expect(Object.keys(CLIENT_MESSAGE_LIMITS).sort()).toEqual([...CLIENT_MESSAGE_TYPES].sort());
@@ -285,5 +294,12 @@ describe('§4.3 CLIENT_MESSAGES', () => {
     expect(CLIENT_MESSAGES.interact.safeParse({ targetId: 'mire_route.thicket', kind: 'obstacle' }).success).toBe(true);
     const ride = CLIENT_MESSAGES.input.safeParse({ seq: 2, x: 1, z: 1, angle: 0, running: false, dtMs: 50, bike: true });
     expect(ride.success && ride.data.bike).toBe(true);
+  });
+
+  it('followers: input carries an optional glide (take-off point + unit direction)', () => {
+    const glide = CLIENT_MESSAGES.input.safeParse({ seq: 3, x: 1, z: 1, angle: 0, running: true, dtMs: 50, glide: { x: 0.5, z: 0.5, dx: 0.6, dz: 0.8 } });
+    expect(glide.success && glide.data.glide?.dz).toBe(0.8);
+    expect(CLIENT_MESSAGES.input.safeParse({ seq: 3, x: 1, z: 1, angle: 0, running: true, dtMs: 50, glide: { x: 0, z: 0, dx: 2, dz: 0 } }).success).toBe(false);
+    expect(CLIENT_MESSAGES.input.safeParse({ seq: 3, x: 1, z: 1, angle: 0, running: true, dtMs: 50, glide: { x: 0, z: 0 } }).success).toBe(false);
   });
 });

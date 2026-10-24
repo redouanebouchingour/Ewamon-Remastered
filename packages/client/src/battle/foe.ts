@@ -4,7 +4,7 @@
  * trainer (gym leader, Warden, Champion), else a zone trainer (route trainers and the story trainers a beat fights,
  * e.g. Sable), else a gym-hall trainer. Nothing here decides game truth.
  */
-import { ARENA_DAILY, ARENA_TRAINING, LEAGUE, TOWER, allZones, ghostOwner, interiorNpcs, interiorTrainers } from '@ewa/content';
+import { ARENA_DAILY, ARENA_TRAINING, LEAGUE, TOWER, allZones, campGuardOwner, ghostOwner, interiorNpcs, interiorTrainers } from '@ewa/content';
 import { villagerNpcId } from '@ewa/protocol';
 import type { LeagueTrainer } from '@ewa/content';
 import type { BattleState, TypeName } from '@ewa/core';
@@ -76,6 +76,9 @@ export function foeIdentity(trainerId: string, leadSpecies: string | null = null
   const npcId = villagerNpcId(trainerId);
   const villager = npcId === null ? undefined : villagerRows().get(npcId);
   if (villager !== undefined) return { id: trainerId, name: villager.name, title: 'Villager', type: lead, look: villager.look, league: null };
+  // camp bases: a camp's guard, the owner's party fighting while they are away
+  const holder = campGuardOwner(trainerId);
+  if (holder !== null) return { id: trainerId, name: `${holder}'s guard`, title: 'Camp guard', type: lead, look: null, league: null };
   const row = trainerRows().get(trainerId);
   if (row !== undefined) return { id: trainerId, name: row.name, title: null, type: lead, look: row.look, league: null };
   const tail = trainerId.slice(trainerId.lastIndexOf('.') + 1).replace(/_/g, ' ');

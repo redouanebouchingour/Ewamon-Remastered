@@ -149,6 +149,17 @@ export const bountyRepo = {
     return rows.map(toBounty);
   },
 
+  /** The bounties a trainer brought in (every kind), newest first (camp bases: their trophies). */
+  async claimedBy(tx: Tx, claimerId: string, limit: number): Promise<Bounty[]> {
+    const rows = await tx
+      .select()
+      .from(bounties)
+      .where(and(eq(bounties.claimerId, claimerId), eq(bounties.status, 'claimed')))
+      .orderBy(desc(bounties.claimedAt))
+      .limit(Math.min(50, Math.max(1, limit)));
+    return rows.map(toBounty);
+  },
+
   /** How many bounties a trainer claimed since `since` (every kind). */
   async claimsSince(tx: Tx, claimerId: string, since: Date): Promise<number> {
     const [r] = await tx

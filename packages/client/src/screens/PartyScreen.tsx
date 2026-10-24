@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { DragEvent, KeyboardEvent } from 'react';
 import { useSearchParams } from 'react-router';
-import { zone as zoneDef } from '@ewa/content';
+import { FIELD_POWER_TEXT, FIELD_POWER_TYPE, fieldLead, fieldPowersOf, zone as zoneDef } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import { displayName, itemInfo, maxHpOf, species } from '../data/content';
 import { useSessionStore } from '../state/session';
@@ -49,8 +49,11 @@ const MARK: Readonly<Record<CreatureBadge, { readonly icon: IconName; readonly l
 };
 
 /** One lineup card: the type slab with the sprite and the slot number, then name · level · skewed HP bar. */
-function LineupCard({ creature: c, slot, selected, onSelect }: { readonly creature: CreatureInstance; readonly slot: number; readonly selected: boolean; readonly onSelect: () => void }) {
+function LineupCard({ creature: c, slot, selected, leads, onSelect }: { readonly creature: CreatureInstance; readonly slot: number; readonly selected: boolean; readonly leads: boolean; readonly onSelect: () => void }) {
   const sp = species(c.speciesId);
+  // followers with field powers: what this creature does in the world when it leads (and walks behind the player)
+  const powers = fieldPowersOf(sp?.types ?? []);
+  const powerText = powers.length === 0 ? 'no field power' : `field power ${powers.map((p) => FIELD_POWER_TEXT[p].label).join(' and ')}`;
   const name = displayName(c);
   const max = maxHpOf(c);
   const frac = max > 0 ? Math.max(0, Math.min(1, c.hp / max)) : 0;
@@ -64,7 +67,7 @@ function LineupCard({ creature: c, slot, selected, onSelect }: { readonly creatu
       className={cx(s.card, selected && s.selected, fainted && s.fainted)}
       data-type={sp?.types[0] ?? 'Normal'}
       aria-pressed={selected}
-      aria-label={`${name}, level ${c.level}, ${c.hp} of ${max} HP${fainted ? ', fainted' : ''}${formKind !== null ? `, ${formMarkLabel(formKind).toLowerCase()}` : ''}`}
+      aria-label={`${name}, level ${c.level}, ${c.hp} of ${max} HP${fainted ? ', fainted' : ''}${formKind !== null ? `, ${formMarkLabel(formKind).toLowerCase()}` : ''}, ${powerText}${leads ? ', walking with you' : ''}`}
       onClick={onSelect}
     >
       <span className={s.art}>
@@ -110,6 +113,18 @@ function LineupCard({ creature: c, slot, selected, onSelect }: { readonly creatu
         </span>
         <span className={s.statusRow}>
           {fainted ? <span className={s.faintedTag}>Fainted</span> : c.status.map((st) => <StatusChip key={st} status={st} />)}
+        </span>
+        <span className={s.fieldRow} data-testid="party-field-power">
+          {powers.length === 0 ? (
+            <span className={s.fieldNone}>No field power</span>
+          ) : (
+            powers.map((p) => (
+              <span key={p} className={s.fieldPower} data-type={FIELD_POWER_TYPE[p]} title={FIELD_POWER_TEXT[p].does}>
+                {FIELD_POWER_TEXT[p].label}
+              </span>
+            ))
+          )}
+          {leads && <span className={s.leadsTag}>Walks with you</span>}
         </span>
       </span>
       <span className={s.bar} aria-hidden />
@@ -180,12 +195,14 @@ export function PartyScreen() {
   const avgLevel = ordered.length === 0 ? 0 : Math.round(ordered.reduce((sum, c) => sum + c.level, 0) / ordered.length);
   const typeCount = new Set(ordered.flatMap((c) => species(c.speciesId)?.types ?? [])).size;
   const fainted = ordered.filter((c) => c.hp <= 0).length;
+  // followers: the first creature still standing walks behind the player (and its field powers work)
+  const walker = fieldLead(ordered)?.id ?? null;
 
   return (
     <Panel
       title="Party"
       eyebrow={`${ordered.length} / 6 slots`}
-      subtitle="Drag to reorder, or Alt + ↑/↓. The first creature leads every battle."
+      subtitle="Drag to reorder, or Alt + ↑/↓. The first creature leads every battle and walks with you; its type gives it a field power."
       onClose={close}
       actions={
         <>
@@ -238,7 +255,7 @@ export function PartyScreen() {
                 onDrop={(e) => onDrop(e, i)}
                 onKeyDown={(e) => onKey(e, i)}
               >
-                <LineupCard creature={c} slot={i + 1} selected={selected?.id === c.id} onSelect={() => select(c.id)} />
+                <LineupCard creature={c} slot={i + 1} selected={selected?.id === c.id} leads={c.id === walker} onSelect={() => select(c.id)} />
               </li>
             ))}
             {Array.from({ length: Math.max(0, 6 - ordered.length) }, (_, k) => (

@@ -25,12 +25,14 @@ import { registerNemesisRoutes } from './routes/nemeses';
 import { registerEcosystemRoutes } from './routes/ecosystem';
 import { registerBountyRoutes } from './routes/bounties';
 import { registerNpcRoutes } from './routes/npc';
+import { registerCampRoutes } from './routes/camps';
 import { registerAuthRoutes } from './routes/auth';
 import { registerCatalogRoutes } from './routes/catalog';
 import { registerMarketRoutes } from './routes/market';
 import { registerMeRoutes } from './routes/me';
 import { registerPartyRoutes } from './routes/party';
 import { registerSocialRoutes } from './routes/social';
+import { PARTY_TOPIC, changesParty } from './partyTopic';
 
 export const BODY_LIMIT = 64 * 1024;
 
@@ -65,6 +67,11 @@ export function buildRest(deps: RestDeps, opts: RestOptions = {}): FastifyInstan
   });
   app.addHook('onResponse', async (req, reply) => {
     deps.metrics.recordRest(`${req.method} ${req.routeOptions.url ?? 'unknown'}`, reply.statusCode, reply.elapsedTime);
+    // followers (SPEC §3.18): a route that may have changed the party tells the zone room, which re-reads the lead
+    if (req.method === 'POST' && reply.statusCode < 300 && changesParty(req.routeOptions.url ?? req.url)) {
+      const sub = (req.user as { sub?: unknown } | undefined)?.sub;
+      if (typeof sub === 'string') deps.bus.publish(PARTY_TOPIC, { playerId: sub });
+    }
   });
   // 3–5 are per-route hooks (requireAuth / requireAdmin / zod parse) — see ./http.ts and ./routes/*
   registerRoutes(app, deps, opts);
@@ -88,5 +95,6 @@ export function registerRoutes(app: FastifyInstance, deps: RestDeps, opts: RestO
   registerEcosystemRoutes(app, deps);
   registerBountyRoutes(app, deps);
   registerNpcRoutes(app, deps);
+  registerCampRoutes(app, deps);
   registerAdminRoutes(app, deps, opts.publishKick ?? (() => undefined));
 }

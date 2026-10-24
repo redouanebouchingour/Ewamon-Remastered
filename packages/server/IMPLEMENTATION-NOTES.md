@@ -1283,3 +1283,38 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   (`battleSession` villager branch) = `battleWon` / `battleLost` (+1 each, a fair fight earns respect).
 - `game/npcMemory.ts` exports the helpers later features read: `standingWithNpc`, `townStandingOf`, `recordNpcDeed`,
   `npcMemoryView`, `npcInZone`.
+
+## Followers with field powers (2026-10-21)
+
+- `game/fieldPowers.ts` (the lead, refusal copy, the sense list, `hauntingNear`), `rest/partyTopic.ts` (`ewa:party` and
+  the routes that can change the party), the movement rule in `rooms/movement.ts` and the room's `onFieldPower`.
+- The lead is cached per player (`ud.lead`) for movement validation (no DB read per input) and re-read on every
+  `inventoryDelta` the room sends with creature changes (a hook in `sendMsg`: battles, trades, raids, hatches) and on
+  `ewa:party`, published by the REST app's `onResponse` hook after a 2xx POST to a party-changing route. A power re-reads
+  the party itself before it acts, so a stale cache can never grant one.
+- The glide: `validateInput` re-plans from the client's take-off with this player's own `standable` (gates, brambles,
+  cleared obstacles, surf) and keeps the plan in `ud.glide` until the landing. A take-off point farther than the
+  message's reach is the last window of a glide that already landed and is ignored (the client may still name it). No
+  trainer sight or grass roll mid-glide; `fieldPower` is busy mid-glide.
+- Brambles are added to `closedGates` (so they also block trainer sight lines, like a gate would); `applyFlags` already
+  recomputes the list on any new flag while it is not empty.
+- Digs and dives re-arm per UTC day with the flag's set time (clear + set in the same transaction); no migration (the
+  `story_flags` table holds them). The loot draw is seeded by player, zone, spot and day, so a retry after a dropped
+  answer finds the same thing.
+- The sense reads the room's ghost list (read with the shadow once a minute), so a ghost saved a moment ago shows within
+  a minute; the wanted flag comes from the same read.
+- Env `FIELD_POWERS` 'on' | 'off' (testEnv 'off'): off, movement is today's (no `canGlide`, no bramble gates) and every
+  power is refused with a toast. The lead fields are written either way (the follower is visual).
+
+## Camp bases (2026-10-22)
+
+- Env `CAMPS` 'on' | 'off' (testEnv 'off'). Claims and raids are the zone room's `camp` message (the fire's range is
+  checked on the accepted position); edits and abandoning are REST and publish `ewa:camp`, which every shard of the zone
+  hears to redraw the camp; a takeover inside a battle's end publishes it after the commit (`BattleDeps.campChanged`).
+- A raid is `startCampRaid`: the ghosts' path (an NPC side of `arenaCopies` of the snapshot) with `noExp`, because a
+  trainer win's `duelWon` would otherwise raise the raider's honor by 2 for robbing a camp; the raid's own toll (lead
+  -1 honor) is written at the end. The world honor tally gets no `duelWon` light for a raid and +3 shadow for a won one.
+- Faction fit: points are deeds written in the deed's transaction, so "camps held" is "a guard that held": +1 to the
+  owner's side, at most 3 a day (`heldSince`). A daily tick over all camps would need a scheduler the server does not
+  have.
+- The guard snapshot is refreshed when the owner leaves the world (next to the ghost save), not on every party change.

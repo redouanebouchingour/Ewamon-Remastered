@@ -7,6 +7,8 @@ import type { z } from 'zod';
 import {
   BountiesRes,
   BountyPostReq,
+  CampEditReq,
+  CampsRes,
   AuthRes,
   BadTokenErr,
   BanReq,
@@ -399,7 +401,7 @@ describe('route table', () => {
     ]) {
       expect(paths, must).toContain(must);
     }
-    expect(ROUTE_KEYS).toHaveLength(106); // GET + POST /npc/memory + POST /npc/act + GET + POST /bounties + GET /world/ecosystem/:zoneId + GET /nemeses + the 5 daycare / egg routes + GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
+    expect(ROUTE_KEYS).toHaveLength(109); // GET + POST /npc/memory + POST /npc/act + GET /camps + POST /camps/edit + /camps/abandon + GET + POST /bounties + GET /world/ecosystem/:zoneId + GET /nemeses + the 5 daycare / egg routes + GET /ghost + GET /legends + the 3 faction routes + GET /world/shadow + the 3 season routes + the 2 live routes + the 3 weather routes + GET /speedrun + /speedrun/:username + POST /challenge + 60 of §4.7 + the four Phase C6 email routes + Phase D2 POST /creature/:id/tutor + the 7 arena routes + the 2 replay routes + GET /creature/:id/history + the 2 daily routes
     expect(paths).toContain('GET /daily');
     expect(paths).toContain('POST /challenge');
     expect(paths).toContain('POST /daily/start');
@@ -673,5 +675,36 @@ describe('bounty board', () => {
     ok(BountyPostReq, { target: 'kestrel', reward: 800 });
     bad(BountyPostReq, { target: '', reward: 800 });
     bad(BountyPostReq, { target: 'kestrel', reward: 80.5 });
+  });
+});
+
+describe('camp bases', () => {
+  const camp = {
+    zoneId: 'mire_route', owner: 'bh_outlaw', name: 'Ironhold', claimedAt: ISO, mine: false, ownerOnline: false, ownerInRun: false, inactive: false, raidedToday: false, cut: 120,
+    trophies: [{ id: 'medal:champion', kind: 'medal', label: "Champion's medal" }, { id: 'legend:solaris', kind: 'legend', label: 'Solaris caught' }],
+    guard: [{ speciesId: 'dustcub', level: 30, isShiny: false }],
+  };
+  const view = {
+    enabled: true,
+    here: { zoneId: 'mire_route', camp },
+    mine: { ...camp, zoneId: 'ash_route', owner: 'me', mine: true, cut: 0 },
+    earned: camp.trophies,
+    log: [{ zoneId: 'ash_route', raider: 'bh_outlaw', won: true, cut: 120, tookOver: false, line: 'bh_outlaw raided your camp and took 120.', at: ISO }],
+    camps: [{ zoneId: 'mire_route', owner: 'bh_outlaw', name: 'Ironhold' }],
+    you: { inRun: false, money: 5000 },
+  };
+  it('the camp here, your camp, the trophies you earned and the log; edits name a banner or trophies', () => {
+    ok(CampsRes, view);
+    ok(CampsRes, { ...view, enabled: false, here: null, mine: null, earned: [], log: [], camps: [] });
+    ok(CampsRes, { ...view, here: { zoneId: 'mire_route', camp: null } });
+    bad(CampsRes, { ...view, here: { zoneId: 'mire_route', camp: { ...camp, trophies: [...camp.trophies, ...camp.trophies] } } });
+    bad(CampsRes, { ...view, earned: [{ id: 'x:y', kind: 'crown', label: 'Crown' }] });
+    bad(CampsRes, { ...view, mine: { ...camp, name: '' } });
+    ok(CampEditReq, { name: 'Ironhold' });
+    ok(CampEditReq, { trophies: ['medal:champion'] });
+    ok(CampEditReq, { name: 'Ironhold', trophies: [] });
+    bad(CampEditReq, {});
+    bad(CampEditReq, { name: 'x'.repeat(25) });
+    bad(CampEditReq, { trophies: ['a:b', 'a:c', 'a:d', 'a:e'] });
   });
 });

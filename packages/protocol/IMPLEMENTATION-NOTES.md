@@ -246,3 +246,24 @@ installed library that future readers should not have to re-derive. The spec its
   read: `NPC_DEEDS` (`NPC_TALK_DEEDS` the client may report), `NPC_DEED_DELTA`, `writeDelta`, `NPC_DEED_COOLDOWN_MS`,
   the bands `standingOf` (`hostile` / `wary` / `neutral` / `liked` / `trusted`, `STANDING_LABEL`), `townScore`,
   `feelingScore`, `clampStanding`. Later features (haggling, rumours) read the standing through these.
+
+## Followers with field powers (2026-10-21)
+
+- `PlayerState.lead` (string) and `leadFlags` (uint8, `encodeLeadFlags` / `decodeLeadFlags`: shiny, alpha, variant) are
+  appended last, so every earlier field index is unchanged; `ZoneState.fieldPowers` likewise. Both written on a change
+  only: the follower costs nothing per tick on the wire.
+- `InputMsg.glide` (optional): the take-off and the unit direction the server re-plans from. A client sends a separate
+  payload object for a glide window, never a `glide: undefined` key (msgpack would carry it as nil, which zod refuses).
+- Client message `fieldPower` (25 keys, limit 2 per second) and server message `fieldPower` (28 variants: one flat shape
+  for burn / dig / dive / sense, `ghosts` empty except for sense). The refusal details (`FIELD_POWER_REFUSALS`) are named
+  so none collides with another flow's (`tooFar` is the raids'): the client's router treats them as explained by the
+  server's toast.
+
+## Camp bases (2026-10-22)
+
+- `ZoneState.campOwner` / `campName` / `campTrophies` (strings, appended last; the trophy kinds comma-separated rather
+  than an `ArraySchema`, written only when the camp changes).
+- Client message `camp { action: 'claim' | 'raid' }` (26 keys, limit 1 per 2 s): claiming and raiding happen at the
+  fire, so they go to the zone room, which knows where the player stands; refusals are a toast plus `error notAllowed`.
+- `camps` (`GET /camps`), `campEdit` (`POST /camps/edit`), `campAbandon` (`POST /camps/abandon`) (106 routes);
+  `CAMP_TROPHY_KINDS` mirrors content's `TROPHY_KINDS` (protocol does not import content).

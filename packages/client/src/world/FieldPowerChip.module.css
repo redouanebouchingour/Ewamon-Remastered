@@ -1,0 +1,134 @@
+/*
+ * Followers with field powers (SPEC §20.4.8): the lead's hint chip, on the right under the minimap (the minimap is
+ * 168 px + its strip under the canvas HUD's clock), clear of the toasts in the bottom-right corner, the chat
+ * (bottom-left) and the prompt (bottom-centre). Broadcast look: a black slab, hairline, condensed uppercase, the type
+ * colour as the hero (the badges), a dimmed line for a power with nothing to do here. Hard edges, no glass.
+ */
+
+.chip {
+  position: absolute;
+  inset-block-start: calc(var(--topbar-h) + 112px + 216px);
+  inset-inline-end: var(--s-5);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  inline-size: 264px;
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+  color: var(--text-hi);
+  pointer-events: none;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-3) var(--s-2) var(--s-2);
+  box-shadow: inset 0 -1px 0 var(--line-1);
+}
+
+.sprite {
+  flex: none;
+}
+
+.lead {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.eyebrow {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.name {
+  overflow: hidden;
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.types {
+  display: inline-flex;
+  flex: none;
+  gap: var(--s-1);
+}
+
+.powers {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: var(--s-1) 0;
+  list-style: none;
+}
+
+.power {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-1) var(--s-3) var(--s-1) var(--s-2);
+  opacity: 0.55;
+}
+
+.power[data-here] {
+  opacity: 1;
+}
+
+.label {
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.text {
+  min-inline-size: 0;
+  color: var(--text-2);
+  font-family: var(--face-text);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}
+
+.power[data-here] .text {
+  color: var(--text-hi);
+}
+
+/* paper key chip (the power key: a Psychic lead's sense) */
+.key {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 20px;
+  block-size: 20px;
+  padding: 0 var(--s-2);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.none {
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  color: var(--text-2);
+  font-family: var(--face-text);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}

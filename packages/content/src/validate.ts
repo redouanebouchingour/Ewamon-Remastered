@@ -58,13 +58,14 @@ import { SHOP_STOCK_DEFAULT } from './data/shop';
 import { FLAG_REGISTRY, VISITED_FLAGS, badgeFlag, isKnownFlag } from './flags';
 import { computeRosterReport } from './roster';
 import { getZoneSurface, isWalkable, nearestWalkable, playableBounds, reachableWithin, walkableComponent, walkableRatio, waterRatio } from './heightfield';
-import type { ZoneSurface } from './heightfield';
+import type { Heightfield, ZoneSurface } from './heightfield';
 import { TOWN_LAYOUT, solidContains } from './plan';
 import { checkInterior, interiorDefFor, trainersOf, warpsOf } from './interiors';
 import { beatDoneFlag, BEAT_DONE_PREFIX } from './story';
 import { interiorFootprintAt } from './interiorIndex';
 import { OBSTACLE_INTERACT_M } from './obstacles';
 import { arrivalPointFor } from './arrival';
+import { BRAMBLES, BRAMBLE_SOLID_HALF, DIG_LOOT, DIG_SPOTS, DIVE_LOOT, DIVE_SPOTS, FIELD_INTERACT_M, LAVA_BIOMES, bramblesFor, digSpotsFor, diveSpotsFor, diveWater } from './fieldPowers';
 
 /** Legacy orb prices (§3.10 rule 10: "orb prices are the legacy values"). */
 const LEGACY_ORB_PRICES: Readonly<Record<string, number>> = {
@@ -225,6 +226,13 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     if (z.encounterTable !== null && z.encounterTable !== `enc_${z.id}`) err(`zone ${z.id}: encounterTable must be 'enc_${z.id}'`);
     if (z.shop !== null) for (const id of z.shop) if (!anyItem(id)) err(`zone ${z.id}: shop item '${id}' unknown`);
     for (const gi of z.items) if (!anyItem(gi.item)) err(`zone ${z.id}: ground item '${gi.item}' unknown`);
+    // 13. field powers: unique bramble ids and known caches (the geometry is checked with the heightfields)
+    const brIds = new Set<string>();
+    for (const b of bramblesFor(z.id)) {
+      if (brIds.has(b.id)) err(`zone ${z.id}: duplicate bramble id ${b.id}`);
+      brIds.add(b.id);
+      if (!anyItem(b.item.item) || !(b.item.qty >= 1)) err(`zone ${z.id}: bramble ${b.id} cache '${b.item.item}' x${b.item.qty} invalid`);
+    }
     // Phase D10: obstacles — unique ids, a known kind and hidden item, inside the playable interior
     const obIds = new Set<string>();
     for (const o of z.obstacles ?? []) {
@@ -697,6 +705,10 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   if (new Set(BODIES.map((b) => b.id)).size !== BODIES.length) err('BODIES: duplicate ids');
   if (!TITLES.includes('Rookie Trainer')) err("TITLES: 'Rookie Trainer' (persist default) missing");
 
+  // 13. field powers: the dig and dive loot is real
+  for (const r of [...DIG_LOOT, ...DIVE_LOOT]) if (!anyItem(r.item) || !(r.qty >= 1) || !(r.weight > 0)) err(`field loot '${r.item}' x${r.qty} invalid`);
+  for (const id of Object.keys({ ...BRAMBLES, ...DIG_SPOTS, ...DIVE_SPOTS }).sort()) if (!zoneById.has(id as ZoneId)) err(`field spots: unknown zone '${id}'`);
+
   // ── 12. heightfields (and the walkability half of 9) ──
   const heightfields = {} as Record<ZoneId, ValidationStats['heightfields'][ZoneId]>;
   const snapped: ValidationStats['snapped'][number][] = [];
@@ -777,6 +789,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
         for (const [what, px, pz] of near) if (Math.hypot(px - o.x, pz - o.z) < 6) err(`zone ${z.id}: obstacle ${o.id} within 6 m of ${what}`);
         if (reach !== null && !reachableWithin(h, reach, o.x, o.z, OBSTACLE_INTERACT_M)) err(`zone ${z.id}: obstacle ${o.id} is not reachable from the spawn`);
       }
+      // 13. followers with field powers (SPEC §3.18): the spots layer
+      validateFieldSpots(z, h, reach, surface, err);
       if (reach !== null) {
         if (LEAGUE.some((l) => l.zoneId === z.id)) {
           if (!reachableWithin(h, reach, LEAGUE_DOOR.x, LEAGUE_DOOR.z, GYM_RANGE_M)) err(`zone ${z.id}: the league door (${LEAGUE_DOOR.x}, ${LEAGUE_DOOR.z}) is not reachable from the spawn`);
@@ -921,4 +935,57 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   };
 
   return { ok: errors.length === 0, errors, stats };
+}
+
+/**
+ * Rule 13 (SPEC §3.18): the field-power spots sit where their power works and never in anyone's way. A bramble stands on
+ * open walkable ground (its blocker square and a 3.2 m ring all walkable, so it can never plug a path), reachable at its
+ * burn range, ≥ 8 m from every authored point, obstacle and camp prop, outside the interiors and the tall grass. A dig
+ * spot is walkable, reachable at its range and within 4 m of a campfire. A dive spot is open water (2.5 m all round) in
+ * a zone whose water is not lava.
+ */
+function validateFieldSpots(z: ZoneDef, h: Heightfield, reach: Uint8Array | null, surface: ZoneSurface, err: (s: string) => void): void {
+  const plan = surface.plan;
+  const near: (readonly [string, number, number])[] = [['spawn', z.spawn.x, z.spawn.z]];
+  for (const n of z.npcs) near.push([n.id, n.x, n.z]);
+  for (const t of z.trainers) near.push([t.id, t.x, t.z]);
+  for (const i of z.items) near.push([i.id, i.x, i.z]);
+  for (const l of z.lore) near.push([l.id, l.x, l.z]);
+  for (const w of z.warps) { near.push([w.id, w.x, w.z]); near.push([`${w.id} target`, w.toX, w.toZ]); }
+  for (const o of z.obstacles ?? []) near.push([o.id, o.x, o.z]);
+  for (const st of LEGENDARY_STATICS) if (st.zoneId === z.id) near.push([st.species, st.x, st.z]);
+  for (const r of RAID_HOTSPOTS) if (r.zoneId === z.id) near.push([r.id, r.x, r.z]);
+  for (const p of plan.props) near.push([`prop ${p.kind}`, p.x, p.z]);
+  for (const b of bramblesFor(z.id)) {
+    const what = `bramble ${b.id}`;
+    const r = BRAMBLE_SOLID_HALF + 0.5;
+    for (let dx = -r; dx <= r + 1e-9; dx += 0.5) for (let dz = -r; dz <= r + 1e-9; dz += 0.5) {
+      if (!isWalkable(h, b.x + dx, b.z + dz)) { err(`zone ${z.id}: ${what} covers unwalkable ground at (${b.x + dx}, ${b.z + dz})`); dx = r + 1; break; }
+    }
+    for (let k = 0; k < 24; k++) {
+      const a = (k * Math.PI) / 12;
+      if (!isWalkable(h, b.x + Math.cos(a) * 3.2, b.z + Math.sin(a) * 3.2)) { err(`zone ${z.id}: ${what} could plug a path (its 3.2 m ring is not all walkable)`); break; }
+    }
+    if (interiorFootprintAt(z.id, b.x, b.z) !== null) err(`zone ${z.id}: ${what} stands in an interior pocket`);
+    for (const g of plan.grassPatches) if (Math.hypot(g.x - b.x, g.z - b.z) < Math.max(g.rx, g.rz) + 2) err(`zone ${z.id}: ${what} stands in tall grass`);
+    for (const [w, px, pz] of near) if (Math.hypot(px - b.x, pz - b.z) < 8) err(`zone ${z.id}: ${what} within 8 m of ${w}`);
+    if (reach !== null && !reachableWithin(h, reach, b.x, b.z, FIELD_INTERACT_M.burn)) err(`zone ${z.id}: ${what} is not reachable from the spawn`);
+  }
+  const fires = plan.props.filter((p) => p.kind === 'campfire');
+  for (const s of digSpotsFor(z.id)) {
+    const what = `dig spot ${s.id}`;
+    if (!isWalkable(h, s.x, s.z)) err(`zone ${z.id}: ${what} (${s.x}, ${s.z}) is not walkable`);
+    if (!fires.some((f) => Math.hypot(f.x - s.x, f.z - s.z) <= 4)) err(`zone ${z.id}: ${what} is not beside a campfire`);
+    if (reach !== null && !reachableWithin(h, reach, s.x, s.z, FIELD_INTERACT_M.dig)) err(`zone ${z.id}: ${what} is not reachable from the spawn`);
+  }
+  for (const s of diveSpotsFor(z.id)) {
+    const what = `dive spot ${s.id}`;
+    if (LAVA_BIOMES.has(z.biome)) err(`zone ${z.id}: ${what} in a lava zone`);
+    let open = diveWater(h, s.x, s.z);
+    for (let k = 0; k < 16 && open; k++) {
+      const a = (k * Math.PI) / 8;
+      if (!diveWater(h, s.x + Math.cos(a) * 2.5, s.z + Math.sin(a) * 2.5)) open = false;
+    }
+    if (!open) err(`zone ${z.id}: ${what} (${s.x}, ${s.z}) is not open water 2.5 m all round`);
+  }
 }

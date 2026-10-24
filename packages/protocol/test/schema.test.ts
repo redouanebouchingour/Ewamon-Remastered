@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { Decoder, Encoder, StateView } from '@colyseus/schema';
 import type { Iterator } from '@colyseus/schema';
-import { AOI_VIEW_FIELDS, BattleSummary, PlayerState, RaidState, SpawnState, ZoneState } from '../src/index';
+import { AOI_VIEW_FIELDS, BattleSummary, LEAD_VARIANTS, PlayerState, RaidState, SpawnState, ZoneState, decodeLeadFlags, encodeLeadFlags } from '../src/index';
 
 // Metadata keys (build/types/symbols.d.ts): plain string constants, read here so the test proves
 // the tags from the library's own bookkeeping rather than from our AOI_VIEW_FIELDS constant.
@@ -75,7 +75,7 @@ const UUID_B = '22222222-2222-4222-8222-222222222222';
 describe('§4.1 field layout', () => {
   it('declares exactly the spine fields, in order', () => {
     expect(fieldNames(PlayerState)).toEqual([
-      'id', 'name', 'x', 'z', 'angle', 'moving', 'running', 'body', 'emote', 'inBattle', 'guildTag', 'seq', 'surfing', 'biking',
+      'id', 'name', 'x', 'z', 'angle', 'moving', 'running', 'body', 'emote', 'inBattle', 'guildTag', 'seq', 'surfing', 'biking', 'lead', 'leadFlags',
     ]);
     expect(fieldNames(SpawnState)).toEqual([
       'id', 'speciesId', 'level', 'x', 'z', 'variantKey', 'isAlpha', 'engagedBy', 'despawnAtTick', 'isShiny',
@@ -85,7 +85,7 @@ describe('§4.1 field layout', () => {
       'id', 'bossSpecies', 'bossLevel', 'hpPct', 'phase', 'roundEndsInMs', 'damageBoard', 'x', 'z',
     ]);
     expect(fieldNames(ZoneState)).toEqual([
-      'tick', 'timeOfDay', 'weather', 'harvestState', 'shadow', 'players', 'spawns', 'battles', 'raid',
+      'tick', 'timeOfDay', 'weather', 'harvestState', 'shadow', 'players', 'spawns', 'battles', 'raid', 'fieldPowers', 'campOwner', 'campName', 'campTrophies',
     ]);
   });
 
@@ -94,6 +94,22 @@ describe('§4.1 field layout', () => {
     for (const ctor of [PlayerState, SpawnState, BattleSummary, RaidState]) {
       expect(viewFieldNames(ctor)).toEqual([]);
     }
+  });
+});
+
+describe('followers: the lead look packed into PlayerState.leadFlags', () => {
+  it('round-trips shiny, alpha and every variant', () => {
+    for (const variantKey of LEAD_VARIANTS) {
+      for (const isShiny of [false, true]) {
+        for (const isAlpha of [false, true]) {
+          const f = encodeLeadFlags({ isShiny, isAlpha, variantKey });
+          expect(f).toBeGreaterThanOrEqual(0);
+          expect(f).toBeLessThan(256);
+          expect(decodeLeadFlags(f)).toEqual({ isShiny, isAlpha, variantKey });
+        }
+      }
+    }
+    expect(decodeLeadFlags(encodeLeadFlags({ variantKey: 'unknown' }))).toEqual({ isShiny: false, isAlpha: false, variantKey: 'normal' });
   });
 });
 

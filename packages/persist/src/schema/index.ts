@@ -25,3 +25,4 @@ export * from './nemeses';
 export * from './ecosystem';
 export * from './bounties';
 export * from './npcMemory';
+export * from './camps';

@@ -1,4 +1,5 @@
-export { PlayerState } from './PlayerState';
+export { PlayerState, LEAD_VARIANTS, decodeLeadFlags, encodeLeadFlags } from './PlayerState';
+export type { LeadVariant } from './PlayerState';
 export { SpawnState } from './SpawnState';
 export { BattleSummary } from './BattleSummary';
 export { RaidState } from './RaidState';

@@ -303,3 +303,14 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
   cooldowns are the server's (`game/npcMemory.ts`); the repo only bounds what it stores.
 - Note for the next migration: drizzle-kit numbers a new file by the journal's entry count, so the next one comes out
   as `0021_*` too and needs the same rename (to 0022).
+
+## Camp bases (2026-10-22)
+
+- Migration `0020_camps` (drizzle-kit generated, `--name camps`): `camps` keyed by zone with a unique owner (one owner
+  per camp, one camp per owner: `claim` is an insert `on conflict do nothing`, so two claims racing write one row), and
+  `camp_raids` (the owner's log with a `seen` flag like `ghost_battles`, the raider's daily cooldown, `held` for the
+  faction points). Trophies are stored as they were set (id, kind, label), so a renamed nemesis or a pruned bounty never
+  changes a camp. The guard is a jsonb party snapshot like a ghost's.
+- `transfer` names the owner it takes from, so a takeover after the owner abandoned (or someone else took it) writes
+  nothing. Money is never moved here: the server does it next to the audit row.
+- `nemesisRepo.ended` and `bountyRepo.claimedBy` for the trophies.

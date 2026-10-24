@@ -2024,6 +2024,18 @@ Rankings screen's RankedPanel / Mirevale queue) is unchanged.
   grade, exposure, fog and time of day come back with the zone (ZoneSystem's palette look + the room's `timeOfDay`), the
   backdrop is removed + disposed and `setZoneRoot(null)` clears it, the stage is undressed (beacons 0, shadows idle).
 
+## The party strip follows the battle (2026-10-12)
+
+The HUD party strip was built from the session party only (`inventory.party`). A world battle writes the party's hp
+every turn (`inventoryDelta`, so the strip moved, but at commit, ahead of the timeline's HP bars); an Arena match fights
+healed synthetic copies (`arenaCopies`) and writes nothing, so the strip kept showing the world party's hp and a fainted
+arena creature stayed at 100 %. `World3D.writeBattleParty` (a `useUiStore` `battle` subscription): while the battle UI
+is open the strip shows `authoritative.sides[seat].party` (each battler's own `maxHp`, so a Level 50 copy reads right)
+from the start state, then after each turn's timeline (a `playing` phase never rewrites it, so the strip never runs ahead
+of the bars); the session-party subscription stays quiet meanwhile. When `ui.battle` clears, the session party is
+written back. Live on the isolated dev pair (Arena Standard): voltaura's card went 52 % → 5 % → KO a turn at a time
+with the session party still full, and both players' strips returned to the session party after the result card.
+
 ## Trainer sight: the "!" and the walk-up (2026-10-20)
 
 The server's `trainerSpotted` (SPEC §30.3 trainer sight) holds the player until the trainer's fight starts. World3D locks
@@ -2396,3 +2408,35 @@ the second isolated client (the component over the landing page: the foe and own
   with "Hessa Dunmore said you hit her!" under the same Wary tag.
 - The DialogueBox shows the town's standing as a small carbon tag beside the speaker strip ("Mirevale · Wary"; wary in
   the warn tone, hostile in the danger tone, liked / trusted in paper white). Signed out, nothing is fetched or shown.
+
+## Followers with field powers (2026-10-21)
+
+- `scene/FollowerViews.ts` feeds render's `FollowerPool` from `PlayerState.lead` / `leadFlags` (listened per player).
+  Residency: the player's own follower holds its species' static atlas (front and back, `'still'`); a remote's shows at
+  once on an atlas already bound, else takes a front-only party single (`bindSingle`, at most `FOLLOWER_SINGLES` 3, two
+  of one species share one), else has no follower: the fallback is "no follower", never a whole 2048² atlas per
+  passer-by. Re-chosen at 2 Hz with the nameplates (the nearest remotes with a rig).
+- The glide in `LocalPlayerController`: a blocked step whose 0.6 m probe is not passable asks the glider (content
+  `planGlide` over the collider's `passable`); glide steps are gait 3, replayed along the line; a glide window's message
+  is a second payload object with `glide`. The probe must stay blocked 6 steps before it asks (a push, not a slide along a
+  ledge: the live check's autopilot, threading a one-sample ledge with a Flying lead, slid into accidental take-offs). Any
+  correction mid-glide ends the glide and rests take-offs for 3 s (the server takes every on-line position of a glide it
+  planned, so a correction is a refusal; replaying the glide would only be refused again); a probe with no plan rests
+  0.2 s. The probe and plan allocate only at a
+  take-off. Remote gliders are not lifted (no glide state on the wire): they slide down the face under interpolation.
+- `scene/fieldPowers.ts` (`FieldPowerSystem`): targets, bramble blockers and render obstacles, the power key, the
+  server's answers, the Fire light level, the dark-water marks and the sense trails; it subscribes to the session's party
+  and progression itself, so World3D only wires it (`bootFollowers`, `stepFollowers`, `syncFollowers`).
+- `world/FieldPowerChip.tsx` under the minimap; `state/fieldPowers.ts` written only when what it shows changes. The party
+  card's field power line and the "Walks with you" tag; the power key `fieldPower` (F) in the controls.
+- `zoneSpecFor` appends the brambles to `obstacles` (`bramble:<id>`): the zone snapshot moved for the 8 routes and the
+  rift only.
+
+## Camp bases (2026-10-22)
+
+- `scene/CampViews.ts` (owned by World3D, created with the interaction targets): the fire's `camp` target, the render's
+  `ZoneHandle.camps.set` and `state/camp.ts`; World3D only listens to the three `ZoneState` camp fields and routes `E`
+  to `/play/camp`. A state for a zone other than the shown one waits (a handover's room can attach first).
+- `screens/CampScreen.tsx` sends `camp { action }` through the world session and re-reads `GET /camps` when the camp
+  store changes (a claim or a takeover arrives as zone state, an edit as the REST answer).
+- `zoneSpecFor` adds `spec.camps` on the 8 routes: the snapshot moved for them only.

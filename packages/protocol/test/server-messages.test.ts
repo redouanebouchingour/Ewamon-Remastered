@@ -61,6 +61,10 @@ const EXAMPLES: { [K in ServerMessageType]: Extract<ServerMessage, { type: K }> 
   eggHatched: { type: 'eggHatched', eggId: U3, creature: creature({ level: 1, bandborn: true }), placement: 'party', parents: ['Badlander', 'Rex'], zoneId: 'mirevale' },
   nemesisAmbush: { type: 'nemesisAmbush', battleId: U3, nemesisId: U1, name: 'Scarjaw', title: 'the Unbroken', speciesId: 'dustcub', scar: 'burn', rank: 2, taunt: 'Scarjaw remembers your Pyrekit. It remembers Ember.' },
   nemesisNews: { type: 'nemesisNews', event: 'rose', nemesisId: U1, name: 'Scarjaw', title: 'the Unbroken', speciesId: 'dustcub', scar: 'torn_ear', rank: 1, level: 9 },
+  fieldPower: {
+    type: 'fieldPower', power: 'sense', spotId: '', x: 3, z: -4, item: null, qty: 0,
+    ghosts: [{ name: 'rival', wanted: true, x: 10, z: 12, path: [[10, 12], [30, -4], [-12, 40]] }],
+  },
   arenaStatus: {
     type: 'arenaStatus', state: 'matched', kind: 'ranked', waitedMs: 12_000, window: 150,
     opponent: { name: 'rival', rating: 1210 }, seat: { name: 'arena', sessionId: 'abc', roomId: 'room1' }, reason: null, detail: null,
@@ -74,8 +78,8 @@ const EXAMPLES: { [K in ServerMessageType]: Extract<ServerMessage, { type: K }> 
 };
 
 describe('§4.4 ServerMessage', () => {
-  it('lists the 27 variants of the §4.4 block (Phase D13 rankedStatus, Phase D14 towerState, the 4 arena messages, trainerSpotted, realWeather, eggHatched, nemesisAmbush, nemesisNews), and SERVER_MSG names them', () => {
-    expect(SERVER_MESSAGE_TYPES).toHaveLength(27); // + nemesisAmbush, nemesisNews, eggHatched, arenaStatus, arenaInvite, arenaInviteResult, arenaState, trainerSpotted, realWeather
+  it('lists the 28 variants of the §4.4 block (Phase D13 rankedStatus, Phase D14 towerState, the 4 arena messages, trainerSpotted, realWeather, eggHatched, nemesisAmbush, nemesisNews, fieldPower), and SERVER_MSG names them', () => {
+    expect(SERVER_MESSAGE_TYPES).toHaveLength(28); // + nemesisAmbush, nemesisNews, eggHatched, arenaStatus, arenaInvite, arenaInviteResult, arenaState, trainerSpotted, realWeather, fieldPower
     expect(Object.keys(SERVER_MESSAGES).sort()).toEqual([...SERVER_MESSAGE_TYPES].sort());
     expect(Object.keys(EXAMPLES).sort()).toEqual([...SERVER_MESSAGE_TYPES].sort());
     for (const t of SERVER_MESSAGE_TYPES) expect(SERVER_MSG[t]).toBe(t);

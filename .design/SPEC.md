@@ -86,6 +86,8 @@ Companion documents (inputs, not binding): `.design/PLAN.md`, `.design/story-bib
     - [3.15 Nemeses](#3.15-nemeses)
     - [3.16 A living ecosystem](#3.16-a-living-ecosystem)
     - [3.17 The bounty board](#3.17-the-bounty-board)
+    - [3.18 Followers with field powers](#3.18-followers-with-field-powers)
+    - [3.19 Camp bases](#3.19-camp-bases)
   - [§4 @ewa/protocol WIRE](#§4-ewaprotocol-wire)
     - [4.1 Zone state](#4.1-zone-state)
     - [4.2 Per-client AOI via `StateView`](#4.2-per-client-aoi-via-stateview)
@@ -159,6 +161,8 @@ Companion documents (inputs, not binding): `.design/PLAN.md`, `.design/story-bib
     - [10.7.6 `ActorPool`](#10.7.6-actorpool)
     - [10.7.7 Character models](#10.7.7-character-models)
     - [10.7.8 World effects](#10.7.8-world-effects)
+    - [10.7.9 Followers](#10.7.9-followers)
+    - [10.7.10 Camp bases](#10.7.10-camp-bases)
   - [§10.8 POST STACK](#§10.8-post-stack)
     - [10.8.1 Order (from `PLAN.md`, realised as one `RenderPipeline` graph)](#10.8.1-order-from-plan.md-realised-as-one-renderpipeline-graph)
     - [10.8.2 The graph (verbatim TS)](#10.8.2-the-graph-verbatim-ts)
@@ -198,6 +202,8 @@ Companion documents (inputs, not binding): `.design/PLAN.md`, `.design/story-bib
     - [20.4.5 `LocalPlayerController` — input and prediction](#20.4.5-localplayercontroller-input-and-prediction)
     - [20.4.6 `RemoteInterpolator`](#20.4.6-remoteinterpolator)
     - [20.4.7 Interaction targeting](#20.4.7-interaction-targeting)
+    - [20.4.8 Followers and field powers](#20.4.8-followers-and-field-powers)
+    - [20.4.9 Camp bases](#20.4.9-camp-bases)
   - [§20.5 BATTLE PRESENTATION](#§20.5-battle-presentation)
     - [20.5.1 Pipeline](#20.5.1-pipeline)
     - [20.5.2 Move animation registry](#20.5.2-move-animation-registry)
@@ -1935,6 +1941,87 @@ decides every claim. Rules, one line each:
   today's fights; `always` = a wanted ghost steps out of every grass encounter it can, for live checks). The board screen
   itself is always there. No core change.
 
+### 3.18 Followers with field powers
+<!-- added 2026-10-21: followers with field powers, the user's approved pitch (the lead walks behind its trainer and its type does things on the sculpted terrain: Flying glides off a cliff, Fire lights the dark and burns brambles, Ground digs at the camps, Psychic shows a ghost trainer's route, Water dives in the lakes; exploring depends on the team, not on HM-style tools) -->
+`content/src/fieldPowers.ts` (rules) and `data/fieldPowers.ts` (the spots, a layer of their own: never `ZoneDef`, so no
+zone's layout RNG or heightfield digest moves). The server decides every power; the client predicts the glide with the
+same function. Never a story gate: every spot is optional, and Cut / Strength obstacles, surfing and fishing are as they were.
+- **The lead** (`fieldLead`): the first party creature still standing walks behind its trainer (`PlayerState.lead` /
+  `leadFlags`, §4.1) and its types give its powers (`fieldPowersOf`, `FIELD_POWER_TYPE`): Flying `glide`, Fire `light`,
+  Ground `dig`, Psychic `sense`, Water `dive`; a dual type has both. Every creature has its line on the party screen.
+- **Glide** (Flying): a step off a cliff edge glides instead of being stopped. `planGlide(h, x0, z0, dx, dz, standable,
+  reach)`: from a standable take-off with at most `GLIDE.edgeM` 1 m of ground ahead, the flier sinks along a line of
+  `GLIDE.ratio` 3 m flown per metre lost over cliff samples (`cliffSample`: in bounds, unwalkable, dry, not a Cut /
+  Strength stamp, steeper than the walkable limit), the ground below and walkable specks, and touches down where that line
+  meets standable ground that the zone's spawn reaches (`reachFromSpawn`), at least `GLIDE.minDropM` 1.5 m below, within
+  `GLIDE.maxRunM` 24 m; a house, open water, the margin or rising ground ends it at the last landing that qualified, or
+  refuses it. So a glide only ever goes down, onto ground the spawn reaches, and can never strand anyone. It moves at
+  `GLIDE.speedMps` 7 m/s (the run speed: the run cap covers it) along the line, whatever the keys say; `glideAltitude`
+  is the arc drawn (the line, a 0.8 m hump, never closer than 0.35 m to the ground under it).
+- **Light and burn** (Fire): in a dark place (`isDarkHere`: `DARK_ZONES` the_rift, eclipse_shrine and
+  umbral_observatory at any hour, night when the day cycle's daylight is under 0.35, a zone the honor shadow darkened to 3
+  or more) the follower carries a light. `BRAMBLES`: two thorn patches on each of the 8 routes and in the rift, each on
+  open walkable ground off the roads and the tall grass, a few metres from a cliff, hiding a small cache (`item` x `qty`)
+  given once with the burning (flag `burnt:<zone>:<id>`). An unburnt patch is a per-player blocker like a hall gate
+  (`brambleSolid`: a square of half `BRAMBLE_SOLID_HALF` 1.45 m, the 1.1 m bush grown by the capsule).
+- **Dig** (Ground): `DIG_SPOTS`, one beside the campfire of each route's travellers' camp (the zone sculpts' tent and
+  campfire). Once per camp per player per UTC day (flag `dug:<zone>:<id>`, its set time is the last dig; `fieldSpotReady`
+  re-arms it when the day turns), one draw from `DIG_LOOT` seeded by player, zone, spot and day (`fieldLoot`).
+- **Dive** (Water): `DIVE_SPOTS`, the dark middle of a lake or the sea (12, open water at least 2.5 m all round, never in
+  a lava zone). The diver surfs out over it (HM Surf, as ever); once per spot per player per UTC day (flag
+  `dove:<zone>:<id>`), one draw from `DIVE_LOOT`. A short interaction, not an underwater mode.
+- **Sense** (Psychic): ghost trainers (§3 ghosts) walk their haunts: `hauntPath(owner, zone, grassPatches)` is a loop
+  through `HAUNT.patches` 3 of the zone's tall-grass patches (shuffled by owner and zone, so every room and client
+  agrees), walked at `HAUNT.speedMps` 0.6 m/s (`hauntPosition`). Sensing shows this zone's ghosts whose haunt passes within
+  `HAUNT.senseRangeM` 90 m now, and every wanted one (the bounty board, §3.17) wherever it walks, for `HAUNT.senseMs`
+  12 s; it rests `HAUNT.cooldownMs` 6 s. Haunts are real: when the grass rolls a ghost, the one whose haunt passes within
+  `HAUNT.nearM` 14 m of the player is the one that steps out (wanted ghosts first, as before).
+- **Ranges**: `FIELD_INTERACT_M` 3 m from the spot (burn, dig, dive), from the server's accepted position, outdoors.
+- **validate rule 13**: a bramble's blocker square (+0.5 m) and a 3.2 m ring round it are all walkable (it can never plug
+  a path), it is reachable from the spawn at its range, at least 8 m from every authored point, obstacle, static, raid
+  hotspot and camp prop, outside the interiors and the tall grass; a dig spot is walkable, reachable and within 4 m of a
+  campfire; a dive spot is open water 2.5 m all round in a zone whose water is not lava; every cache and loot item exists.
+- **Switch**: server env `FIELD_POWERS` (`on` default; `off` in testEnv, so the progression walker's movement and the
+  handover-landing tests see today's world: no glide in validation, no bramble blocker, every power refused). The
+  follower itself is visual and always on. No core change.
+
+### 3.19 Camp bases
+<!-- added 2026-10-22: camp bases, the user's approved pitch (claim a route's travellers' camp, decorate it with trophies, your party guards it as AI while you are offline, others raid it for a small cut and an honor hit, camps held count for the factions) -->
+`content/src/data/camps.ts`. Every route's travellers' camp (the zone sculpts' tent and campfire) can be held by one
+trainer; the server keeps the camps (`camps`, `camp_raids`, migration 0020) and decides every claim and raid. Rules, one
+line each:
+- **Where** (a layer of its own, never `ZoneDef`): `campOf(zoneId)` reads the sculpt's campfire and nearest tent; the
+  banner pole and `CAMP_TROPHY_SLOTS` 3 trophy slots stand on a 3 m ring round the fire, at fixed angles from the side
+  away from the tent (the followers' dig spot side), each facing the fire. Walk-through props: nothing is stamped into a
+  heightfield, no digest moves. Only routes have a camp (8). Never the tower or the arena (no route there).
+- **Claiming** at the fire (`CAMP_RANGE_M` 5 m, the zone room's `camp { action: 'claim' }`): a free camp, one camp per
+  trainer, one owner per camp (the row's keys), a party that can fight, not during an active Nuzlocke / Hardcore run.
+  The guard is the owner's party as claimed, replaced every time they leave the world (like a ghost's). The banner reads
+  "<owner>'s camp" until renamed.
+- **Banner and trophies** (`POST /camps/edit`, from anywhere): a name of at most `CAMP_NAME_MAX` 24 characters, cleaned
+  like chat and refused on a blocked word; up to three trophies the owner earned, read fresh from what they did: `scar`
+  a nemesis they beat or caught ("<name the title>'s scar"), `legend` a legendary species caught, `medal` the Champion's
+  medal or their ranked peak's tier from Silver up, `achievement` one claimed, `bounty` one brought in ("Brought in
+  <target>"). Everyone in the zone sees the banner and the trophy kinds (`ZoneState.campOwner` / `campName` /
+  `campTrophies`). `POST /camps/abandon` frees the camp.
+- **Guarding**: while the owner is offline (presence) and not on a challenge run, the guard fights a raider as an AI
+  trainer of healed copies of the snapshot (the ghosts' path, `campguard:<owner>`); `noExp`, so the fight itself moves no
+  exp and no honor. A guard whose best creature is more than `CAMP_LEVEL_SPAN` 12 levels under the raider's lead is not
+  worth a raid (refused); a stronger guard is the raider's risk.
+- **Raids** at someone else's fire (`camp { action: 'raid' }`). A win takes `campRaidCut` (2 % of the owner's money,
+  floored, at most `CAMP_RAID_CAP` 1,000) once per raider and camp in any 24 hours (later wins that day take nothing and
+  are refused at the fire), paid in the battle's own end transaction with an audit row `camp.raid`, plus the trainer exp
+  of a won trainer battle; the raider's party lead loses `CAMP_RAID_HONOR` 1 honor (a species that keeps the ledger) and
+  the zone's season tally takes `CAMP_RAID_SHADOW` 3 shadow points (§3 honor shapes the world; a raid is never a fair
+  win, so it adds no light). A loss takes nothing. A camp whose owner has been away `CAMP_INACTIVE_DAYS` 14 days or more
+  passes to a raider who beats its guard and holds none (fresh banner, no trophies, their party on guard).
+- **Factions** (§3 Majin vs Tenjin): a guard that holds earns its owner's side `CAMP_HELD_POINTS` 1, at most
+  `CAMP_HELD_PER_DAY` 3 a day, in the same transaction as the fight: a camp held is a camp defended.
+- **The camp log**: every raid is a row the owner reads on coming back (a toast per raid, the first three, then how many
+  more) and on the Camp screen ("bh_outlaw raided your camp and took 120.", "Your guard held against kestrel.").
+- **Switch**: server env `CAMPS` (`on` default; `off` in testEnv, so the walker and every other test see today's world:
+  nothing can be claimed, edited or raided and the zone shows no owner). No core change.
+
 ---
 
 ## §4 @ewa/protocol WIRE
@@ -1961,6 +2048,8 @@ export class PlayerState extends Schema {
   @type('uint32') seq = 0;           // last input seq the server applied — the client reconciles against it
   @type('boolean') surfing = false;  // Phase D8: the accepted pose is on open water (water, not walkable) — remotes ride the level
   @type('boolean') biking = false;   // Phase D11: the last accepted input was ridden (the bike cap applied)
+  @type('string') lead = '';         // added 2026-10-21 (followers, §3.18): the species of the party lead walking behind this player ('' = every creature fainted); written only on a change
+  @type('uint8') leadFlags = 0;      // added 2026-10-21: the lead's look packed (`encodeLeadFlags`: bit 0 shiny, bit 1 alpha, bits 2..4 the variant in core VariantKey order)
 }
 
 export class SpawnState extends Schema {
@@ -2007,6 +2096,10 @@ export class ZoneState extends Schema {
   @view() @type({ map: SpawnState }) spawns = new MapSchema<SpawnState>();     // keyed by spawn id
   @type({ map: BattleSummary }) battles = new MapSchema<BattleSummary>();     // small; broadcast to all
   @type(RaidState) raid: RaidState | null = null;                              // broadcast to all
+  @type('boolean') fieldPowers = false;            // added 2026-10-21 (followers, §3.18): the server env FIELD_POWERS is on in this room; set at creation; the client predicts glides and blocks brambles only when true
+  @type('string') campOwner = '';                  // added 2026-10-22 (camp bases, §3.19): the holder of this zone's travellers' camp ('' = free, no camp, or CAMPS off)
+  @type('string') campName = '';                   // its banner
+  @type('string') campTrophies = '';               // its trophy kinds in slot order, comma-separated (TROPHY_KINDS; '' = none)
 }
 
 // <!-- amended 2026-10-11: arena PvP --> the state of an `arena` room (30-server-netcode.md §30.4.10): one battle outside the world;
@@ -2028,7 +2121,8 @@ import { z } from 'zod';
 
 export const InputMsg = z.object({ seq: z.number().int().min(0).max(0xffffffff), x: z.number(), z: z.number(),   // zod 4: z.number() rejects NaN/±Infinity; .finite() is a deprecated no-op
   angle: z.number(), running: z.boolean(), dtMs: z.number().int().min(1).max(100),
-  bike: z.boolean().optional() });   // Phase D11: the window was ridden — the bike cap only for an owner outdoors on land, else run / walk (30-server-netcode.md §30.2.4)
+  bike: z.boolean().optional(),   // Phase D11: the window was ridden: the bike cap only for an owner outdoors on land, else run / walk (30-server-netcode.md §30.2.4)
+  glide: z.object({ x: z.number(), z: z.number(), dx: z.number().min(-1).max(1), dz: z.number().min(-1).max(1) }).optional() });   // added 2026-10-21 (followers, §3.18): the window glided; the take-off and unit direction the server re-plans from (30-server-netcode.md §30.2.4)
 export const EmoteMsg = z.object({ emote: z.number().int().min(1).max(6) });
 export const ChatMsg = z.object({ text: z.string().min(1).max(120) });
 export const InteractMsg = z.object({ targetId: z.string().min(1).max(64), kind: z.enum(['npc', 'item', 'lore', 'gym', 'healer', 'shop', 'warp', 'static', 'switch', 'obstacle']) });   // 'switch' Phase A, 'obstacle' Phase D10
@@ -2066,14 +2160,17 @@ export const TowerMsg = z.discriminatedUnion('action', [                        
   z.object({ action: z.literal('start'), picks: z.array(z.string().min(1).max(64)).length(3) }),   // refusals TOWER_REFUSALS locked / tooFar / badPicks / running / noRun / inBattle
   z.object({ action: z.literal('next') }), z.object({ action: z.literal('quit') }),
 ]);
+export const FieldPowerMsg = z.object({ power: z.enum(['burn', 'dig', 'dive', 'sense']), targetId: z.string().min(1).max(64) });   // added 2026-10-21 (followers, §3.18): the lead's power on a spot of data/fieldPowers.ts (sense: 'here'); refusals FIELD_POWER_REFUSALS powersOff / noPower / noSpot / spotFar / burnt / usedToday / senseResting / powerIndoors, each with a toast
+export const CampMsg = z.object({ action: z.enum(['claim', 'raid']) });   // added 2026-10-22 (camp bases, §3.19): at the zone's campfire; refusals CampRefusal (content CAMP_REFUSAL_TEXT), each with a toast
 
 export const CLIENT_MESSAGES = {
   input: InputMsg, emote: EmoteMsg, chat: ChatMsg, interact: InteractMsg, engageSpawn: EngageSpawnMsg,
   battleAction: BattleActionMsg, battleResync: BattleResyncMsg, challenge: ChallengeMsg, challengeReply: ChallengeReplyMsg,
   tradeRequest: TradeRequestMsg, tradeReply: TradeReplyMsg, tradeOffer: TradeOfferMsg, tradeConfirm: TradeConfirmMsg, tradeCancel: TradeCancelMsg,
   raidJoin: RaidJoinMsg, raidReady: RaidReadyMsg, raidAction: RaidActionMsg, raidCatch: RaidCatchMsg, raidLeave: RaidLeaveMsg,
-  handoverAck: HandoverAckMsg, fastTravel: FastTravelMsg, fish: FishMsg, rankedQueue: RankedQueueMsg, tower: TowerMsg,
-} as const;   // exactly 24 keys (Phase C3 added fastTravel, Phase D9 fish, Phase D13 rankedQueue, Phase D14 tower)
+  handoverAck: HandoverAckMsg, fastTravel: FastTravelMsg, fish: FishMsg, rankedQueue: RankedQueueMsg, tower: TowerMsg, fieldPower: FieldPowerMsg,
+  camp: CampMsg,
+} as const;   // exactly 26 keys (Phase C3 added fastTravel, Phase D9 fish, Phase D13 rankedQueue, Phase D14 tower, 2026-10-21 fieldPower; its limit 2 per second; 2026-10-22 camp, 1 per 2 s)
 export type ClientMessageType = keyof typeof CLIENT_MESSAGES;
 ```
 
@@ -2120,6 +2217,10 @@ export type ServerMessage =
       readonly scar: NemesisScar; readonly rank: number; readonly taunt: string }   // added 2026-10-21: nemeses (§3.15): sent right after the ambush's battleStart; the client's lower third
   | { readonly type: 'nemesisNews'; readonly event: 'rose' | 'rankUp' | 'beaten' | 'caught' | 'faded'; readonly nemesisId: string; readonly name: string; readonly title: string;
       readonly speciesId: string; readonly scar: NemesisScar; readonly rank: number; readonly level: number }   // added 2026-10-21: what became of a nemesis, after its battle's battleEnd; both after eggHatched in SERVER_MESSAGE_TYPES (27 variants)
+  | { readonly type: 'fieldPower'; readonly power: 'burn' | 'dig' | 'dive' | 'sense'; readonly spotId: string; readonly x: number; readonly z: number;
+      readonly item: string | null; readonly qty: number;
+      readonly ghosts: readonly { readonly name: string; readonly wanted: boolean; readonly x: number; readonly z: number; readonly path: readonly (readonly [number, number])[] }[] }
+      // added 2026-10-21 (followers, §3.18): a power worked: burn / dig / dive name the spot and what it gave (after its inventoryDelta and progressionDelta); sense lists the ghosts walking here (at most 8, nearest first) and where the player stood; after nemesisNews in SERVER_MESSAGE_TYPES (28 variants)
   // arena PvP (30-server-netcode.md §30.4.10; protocol `arena.ts`) <!-- amended 2026-10-11: arena PvP --> — after towerState (22 variants)
   | { readonly type: 'arenaStatus'; readonly state: 'idle' | 'queued' | 'matched'; readonly kind: ArenaKind | null; readonly waitedMs: number; readonly window: number;
       readonly opponent: { readonly name: string; readonly rating: number } | null; readonly seat: SeatReservation | null;   // seat only while `matched`: the arena room
@@ -2216,6 +2317,9 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /arena/live/:matchId` <!-- added 2026-10-20 --> | - | `LiveFeedRes`: the match row plus `replay { format: 'pvp', seat: 0, labels, seed, start, actions, digest }` (anonymised like a shared replay, a turn behind the players: `createBattle` + `resolveTurn` over `actions` ends on `digest`) and `outcome` (null while it goes on; the finished fight stays 3 min); 404 when there is none | bearer |
 | `GET /world/shadow` <!-- added 2026-10-20: honor shapes the world --> | - | `WorldShadowRes { season, zones: { zoneId, level: 1..4, light, shadow }[] }`: the zones a shadow lies over this season and the tally behind each; a zone not listed is clear | bearer |
 | `GET /bounties` <!-- added 2026-10-21: the bounty board --> | - | `BountiesRes { enabled, nextPostingAt, wanted: BountyPoster[] (≤ 40, richest first), personal: BountyPoster[] (≤ 10, the caller's nemeses from rank 2), posted: { id, target, reward, fee, status: 'open' \| 'claimed' \| 'expired', claimedBy, postedAt, expiresAt }[] (≤ 10), claims: { kind, target, claimedBy, payout, bonus, zoneId, at }[] (≤ 10, nemeses left out), ghosts: { name, zoneId, speciesId, level, wins, wanted }[] (≤ 30, the caller's own left out), you: { badlander, lawlander, open, claimsToday, atBoard }, money }`, `BountyPoster { id, kind: 'game' \| 'player' \| 'nemesis', target, speciesId, level, zoneId, wins \| null, rank \| null, reward, withLawlander, postedBy \| null, postedAt, expiresAt \| null, mine }` (§3.17). Expired posts are refunded and the game's bounties posted (on schedule) first. `enabled` false and every list empty while env `BOUNTIES` is off | bearer |
+| `GET /camps` <!-- added 2026-10-22: camp bases --> | - | `CampsRes { enabled, here: { zoneId, camp: CampView \| null } \| null (the camp of the zone the caller stands in), mine: CampView \| null, earned: CampTrophy[] (≤ 80), log: { zoneId, raider, won, cut, tookOver, line, at }[] (≤ 20, newest first), camps: { zoneId, owner, name }[] (every held camp), you: { inRun, money } }`; `CampView { zoneId, owner, name, trophies: CampTrophy[] (≤ 3), guard: { speciesId, level, isShiny }[] (≤ 6), claimedAt, mine, ownerOnline, ownerInRun, inactive, raidedToday, cut }`, `CampTrophy { id: '<kind>:<ref>', kind: 'scar' \| 'legend' \| 'medal' \| 'achievement' \| 'bounty', label }`. CAMPS=off: `enabled: false`, all empty | bearer |
+| `POST /camps/edit` <!-- added 2026-10-22 --> | `{ name?: string (1..24), trophies?: string[] (≤ 3, ids from earned) }` (one at least) | `CampsRes`; audit row `camp.edit`; the zone rooms told (`ewa:camp`). 400 `blockedWord` \| `invalidPayload`; 409 `noCamp` \| `badTrophy` \| `campsOff` \| `inBattle` | bearer |
+| `POST /camps/abandon` <!-- added 2026-10-22 --> | `{}` | `CampsRes`; audit row `camp.abandon`. 409 `noCamp` \| `campsOff` \| `inBattle` | bearer |
 | `POST /bounties` <!-- added 2026-10-21 --> | `{ target: username, reward: int }` | `BountiesRes`; reward + cut taken into escrow in one transaction with an audit row `bounty.post`. 409 `noBadlander` \| `ownGhost` \| `noGhost` \| `tooLow` \| `tooHigh` \| `alreadyPosted` \| `tooMany` \| `notAtBoard` (not in a town) \| `bountiesOff` \| `InsufficientFunds` \| `inBattle` | bearer |
 | `GET /world/ecosystem/:zoneId` <!-- added 2026-10-21: a living ecosystem --> | - | `EcosystemRes { zoneId, enabled, season, week: 1..4, endsAt, takes, judged, surging, scarce, tilted: EcoSpecies[] (≤ 40), migrantsIn: { speciesId, from }[], migrantsOut: { speciesId, to }[] (≤ 8), shadow: 0..4, light: 0..4 }`, `EcoSpecies { speciesId, factor, cause: 'hunted' \| 'feeding' \| 'shadow' \| 'light' \| 'migrant' \| 'away' \| null, caught, ko, preyOn, huntedBy }`: "This week on <zone>" (§3.16). Surging: the feeding predators; scarce: overhunted or away; tilted: drawn by shadow or light. `enabled` false and every list empty while env `ECOSYSTEM` is off; 404 for a zone without wild creatures | bearer |
 | `GET /factions` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | - | `FactionsRes { season, endsAt, mine: { side, points } \| null, points: { majin, tenjin }, members: { majin, tenjin }, top: { majin, tenjin }: { username, points }[] (≤ 5, banned left out), sky: side \| null, chronicle: { season, winner \| null, line }[] (≤ 6, newest first) }`: the season's two sides, the caller's, the side holding Solenne's sky (the last closed season's winner) | bearer |
@@ -2741,6 +2845,22 @@ export interface BountyRepo {
   recordNemesis(tx: Tx, p: { targetName: string; speciesId: string; level: number; zoneId: string; rank: number; reward: number; claimerId: string; claimerName: string; payout: number; bonus: boolean }, now: Date): Promise<Bounty>;
   expireDue(tx: Tx, now: Date): Promise<Bounty[]>;   // each once; the caller refunds
   ghostWins(tx: Tx, since: Date): Promise<Map<string, number>>;   // different trainers beaten since `since` and the last claim
+}
+/** Camp bases (migration 0020_camps): `camps (zone_id pk, owner_id unique, owner_name, name, trophies jsonb, guard jsonb, guard_top, claimed_at, updated_at)` and `camp_raids (id, zone_id, owner_id, raider_id, raider_name, won, cut, took_over, held, seen, at)`. Money moves are the caller's, with an audit row (`camp.raid`). Also `NemesisRepo.ended(tx, ownerId, limit)` (beaten or caught, newest first) and `BountyRepo.claimedBy(tx, claimerId, limit)` for the trophies. */
+export interface CampRepo {
+  of(tx: Tx, zoneId: string): Promise<Camp | null>;
+  byOwner(tx: Tx, ownerId: string): Promise<Camp | null>;
+  all(tx: Tx): Promise<Camp[]>;   // by zone
+  claim(tx: Tx, c: NewCamp, now: Date): Promise<boolean>;   // false: held, or the owner holds one (nothing written)
+  abandon(tx: Tx, ownerId: string): Promise<Camp | null>;
+  edit(tx: Tx, ownerId: string, p: { name?: string; trophies?: readonly CampTrophyJson[] }, now: Date): Promise<Camp | null>;
+  setGuard(tx: Tx, ownerId: string, party: readonly CreatureInstance[], now: Date): Promise<boolean>;   // nothing for an empty party
+  transfer(tx: Tx, zoneId: string, fromOwnerId: string, to: Omit<NewCamp, 'zoneId'>, now: Date): Promise<boolean>;   // only from the owner it names
+  recordRaid(tx: Tx, r: Omit<CampRaid, 'id' | 'at'>, now: Date): Promise<void>;
+  wonSince(tx: Tx, raiderId: string, zoneId: string, since: Date): Promise<boolean>;   // the daily cooldown
+  heldSince(tx: Tx, ownerId: string, since: Date): Promise<number>;   // faction points earned by holding
+  report(tx: Tx, ownerId: string): Promise<CampRaid[]>;   // unseen, oldest first; marked seen
+  log(tx: Tx, ownerId: string, limit: number): Promise<CampRaid[]>;   // newest first
 }
 export interface LegendRepo {
   claim(tx: Tx, season: number, species: string, playerId: string, playerName: string, now: Date): Promise<boolean>;   // the first catch only
@@ -4043,6 +4163,62 @@ The overworld's own small motion, one bundle per renderer (`worldfx/`, `WorldFx`
 
 Budget: + 5 draw calls, + 5 programs; nothing grows after construction.
 
+### 10.7.9 Followers <!-- added 2026-10-21: followers with field powers (spine §3.18) -->
+
+Each trainer's party lead walks behind them as its creature billboard (`stage/followers.ts`, `FollowerPool`, part of the
+part-3 bundle as `Part3.followers`, updated in the frame hook after the actor pool, before the world effects).
+- **API**: `set(owner, descriptor | null, frontOnly?)` (a new descriptor swaps the card in place; a full pool of
+  `FOLLOWER.max` 16 refuses), `setShown(owner, on)` (a battle, a hall, the arena: hidden without dropping the card; shown
+  again it reappears behind the owner), `positionOf`, `billboardOf`, `forEachWalker`, `setLight(owner | null, level)`.
+  The owners are the `CharacterPool`'s actors (`feetOf`, `groundAt`). Which sprite and which atlas is the client's.
+- **Trailing**: per owner a ring of `FOLLOWER.historyN` 30 points of the owner's path, one every 0.2 m; the follower
+  heads for the point `FOLLOWER.gapM` 1.45 m back along that path (so it walks round a corner, never across it) at the
+  owner's measured pace plus `catchPerM` 3.5 m/s per metre of lag past the gap (linear, never an exponential ease, at
+  most 16 m/s), and a lag past `snapM` 7 m (a teleport, a warp, a handover) puts it straight behind the owner. It stands on
+  the actors' ground (the water level on open water, a ring's level pad), never below the owner's own path height (so it
+  floats along a glide), hops 0.07 m at 3.4 Hz while it walks (billboards have no walk cycle), and shows its back while it
+  walks away from the camera (`frontOnly`: never). Drawn at 0.72 of its §10.4.3 size, never taller than 1.5 m.
+- **World effects**: followers are walkers after the character rigs (slots `FOLLOWER.slot0` 48 .. 63; `STEPS.slots` is
+  64), so they get footsteps, prints, grass bend and the surf wake like any actor (`combinedWalkers`).
+- **The Fire lead's light**: one non-shadow `PointLight` (`#ff9a3c`, range 14 m, decay 2) always in the scene at intensity
+  0, so turning it up changes no program (the layout loops every local light); `setLight` carries it 1.1 m over the
+  owner's follower at `level` × 60 (twice a lantern: it has to read at night) with a gentle flicker; hidden or released, it goes back to 0.
+- **The actor lift** (`CharacterPool.setLift(id, m)`, `groundAt(x, z)`; additions to §10.7.6): a gliding actor's feet
+  float `m` over the ground, its contact shadow stays on the ground (smaller the higher it flies), and it is no walker for
+  the world effects while lifted (no dust kicked up mid-air).
+- **Field effects** (`WorldFx.field(kind, x, y, z, dx?, dz?)`, recipes in `WORLD_BURSTS`, the same particle pool and
+  program): `burn` flames, smoke and embers; `dig` soil and dust; `dive` a column of spray and a ring; `diveMark` a slow
+  dark ring and bubbles (a dark-water spot); `sense` / `wanted` a glowing mote on a ghost's haunt and `senseRing` /
+  `wantedRing` where it walks now (pink; a wanted ghost the hot orange); `gust` a glide's take-off.
+- **Brambles** (§10.5 builder): `ObstacleSpec.kind` gains `'bramble'`: a knot of four of the biome's bushes on its own
+  object; cleared (burnt), it is gone. Movement is not render's business: the client's collider blocks an unburnt one.
+
+Budget: + 0 draw calls and programs at rest (a follower is a creature billboard on its atlas's material, the light is a
+local light); each follower is one billboard draw.
+
+### 10.7.10 Camp bases <!-- added 2026-10-22: camp bases (spine §3.19) -->
+
+`ZoneSpec.camps?: CampSpec[]` (a route's travellers' camp: `{ id, banner: CampSlotSpec, slots: CampSlotSpec[] }`, each
+slot `{ x, z, yaw }` with local +z facing the fire) and `ZoneHandle.camps?: CampsHandle`:
+
+```ts
+export type CampTrophyKind = 'scar' | 'legend' | 'medal' | 'achievement' | 'bounty';
+export interface CampsHandle {
+  readonly ids: readonly string[];
+  set(id: string, held: { readonly trophies: readonly (CampTrophyKind | null)[] } | null): void;   // null = a free camp: nothing shown
+  shown(id: string): { readonly banner: boolean; readonly trophies: readonly (CampTrophyKind | null)[] } | null;
+}
+```
+
+The builder (`buildCamps`, after the obstacles) puts, per camp, the banner pole and, per slot, one object for every trophy
+kind, all hidden, each its own object on the ground (`heightClamped` - 0.04 m) under the zone root; `set` shows the banner
+and one kind per slot. Every piece is the biome set's own prop builders and surfaces (`zone/generators/trophies.ts`): a
+`legend` is the crystal housing on its carved stand, a `medal` a lit brazier, an `achievement` a post lantern, a `bounty`
+a wanted board (two posts, a plank, three pinned notices) with a crate at its foot, a `scar` a standing stone with three
+glowing claw marks; the banner a pole with a crossbar, a cloth flag with a metal band and a glowing diamond, a metal
+finial. No collider footprint (walk-through), no heightfield change; the geometry is recorded in the zone digest.
+Budget: the shown pieces only (a banner and up to three trophies, a few draws each); 16 hidden objects per camp cost no draw.
+
 ---
 
 ## §10.8 POST STACK
@@ -4864,6 +5040,52 @@ For each other `PlayerState` in view, a ring of 8 samples `{ t, x, z, angle, mov
 
 Once per fixed step the controller scans a preallocated array of interactables (static actors from the `ZoneSpec` + spawns from `getStateCallbacks(room).onAdd('spawns')` + remote players) and keeps the nearest within range: NPC/trainer/tablet/pickup/building 2.5 u; spawn 1.2 u; link edge 1.5 u (auto-triggers `handover` on the server side — the client just walks); player 6 u (for `C`). The prompt text is written to the HUD only when the nearest target id changes. `E` sends the corresponding `interact`. NPC dialogue is **content, not wire**: on `interact { kind: 'npc' }` the client immediately opens the DOM `DialogueBox` with the lines it computes from content and its own flags — `nextStoryBeat(zone, flags)?.speaker === npcId ? beat.lines : (the first `react` whose `when` flag is held, else `NpcDef.lines`)` — while the server, for the same interact, replies with nothing (plain NPC), `storyBeat { beatId, phase: 'start' }` (confirms the beat; the client keeps the lines it already shows), `battleStart` (trainer/gym/static/beat battle), `inventoryDelta` (pickup), `progressionDelta` (flags) or `toast`. `storyBeat { phase: 'complete' }` opens the beat's `after` lines. A `start` for a beat the client did not predict (flags changed under it) replaces the open dialogue. <!-- reconciled 2026-09-18: this file expected a `dialogue` message that no section defined; 30-server-netcode.md §30.4.6 says lines are content; the spine's `storyBeat` variant bridges the two -->
 
+### 20.4.8 Followers and field powers <!-- added 2026-10-21: followers with field powers (spine §3.18) -->
+
+- **Followers** (`scene/FollowerViews.ts`): every player's lead comes from the room (`PlayerState.lead` / `leadFlags`,
+  listened per player; the AOI view keeps it to the trainers near). The player's own follower holds its species' static
+  atlas, both sides (`CreatureTextures.show(…, 'still')`; the zone load already holds the party's), so it always shows.
+  Another trainer's follower shows at once when its species' static atlas is already bound (the zone's set, the
+  player's party, an idle battle sheet), held while it walks there; otherwise it takes a party single (render
+  `bindSingle`: the front cell only, front-facing) while fewer than `FOLLOWER_SINGLES` 3 are out; beyond that it has no
+  follower (the graceful fallback: no whole atlas bound per passer-by). At most `FOLLOWER.max` 16, the player's own first,
+  then the nearest remotes with a rig, re-chosen at 2 Hz with the nameplates. Hidden: the player's own in a battle, the
+  arena, a trainer's walk-up, an evolution or a hall pocket; a remote's in battle or inside a hall. It walks while biking.
+- **Glide** (`LocalPlayerController.glider`, set on every zone change from `FieldPowerSystem`): a push whose probe 0.6 m
+  ahead stays blocked for `GLIDE_INTENT_STEPS` 6 steps (0.1 s: an intent, not a slide along a ledge) asks content's `planGlide` over the collider's `passable` (FIELD_POWERS on in this room, a Flying
+  lead, outdoors, on foot); with a plan the controller glides at `GLIDE.speedMps` along it whatever the keys say, each step
+  recorded as gait 3 (a replay glides), and every message of a glide window carries `glide { x, z, dx, dz }`. The server
+  accepts every position on a glide it planned too, so any correction mid-glide is a refusal: the glide ends, the replay
+  walks, and take-offs rest `GLIDE_REST_STEPS` 180 steps (3 s), so a refusal never loops (and never piles up rejections). World3D lifts the avatar (`CharacterPool.setLift`) along `glideAltitude` and plays a gust at the take-off.
+- **Field powers** (`scene/fieldPowers.ts`, `FieldPowerSystem`): the lead is `fieldLead` of the session party. A zone's
+  spots are dynamic targets, enabled only for a lead with the power while `state.fieldPowers`: "E Burn the brambles"
+  (2.6 m), "E Dig by the campfire" (2.5 m), "E Dive into the dark water" (2.6 m; on land: "Swim out over the dark water
+  first", nothing sent). Unburnt brambles are prediction blockers (`addBlocker('bramble:<id>', brambleSolid)`) and render
+  obstacles `bramble:<id>` (zoneSpecFor appends them after the Cut / Strength obstacles); burnt, or with the switch off,
+  they are gone. The power key (`fieldPower`, default F, rebindable, "Lead's field power"): a Psychic lead sends `sense`;
+  another lead is told what it does. The server's `fieldPower` plays the flames (and hides the patch), the soil, the spray,
+  or, for `sense`, the haunts: a mote every 1.6 m round each loop, the points within 36 m of the player lit in turn (a
+  third of them every 110 ms, so the near trail glows steadily), and a ring where it walks every 0.9 s, for 12 s (wanted ghosts in the hot orange). A Fire lead's follower carries render's light in dark places
+  (`isDarkHere`; 0.85 in a dark zone by day, the night ramp, 1 under a deep shadow). Dark-water spots within 45 m breathe
+  (`diveMark` every 1.5 s) while the switch is on. Refusal details (`FIELD_POWER_REFUSALS`) are explained by the server's
+  own toast (the message router does not toast them twice).
+- **The hint chip** (`world/FieldPowerChip.tsx`, under the minimap, an `<aside>` of the shell so F1 hides it; hidden
+  with a panel open, in battle and in the arena): "Walking with you", the lead's sprite, name and type icons, then one line
+  per power (its type icon, the label, what it does here, dimmed when there is nothing for it in this zone, the power key
+  on a paper chip for the sense); "No field power. Lead with a Flying, Fire, Ground, Psychic or Water type." or "Field
+  powers rest on this server". Fed by `state/fieldPowers.ts`, written only when what it shows changes (1 Hz check).
+- **The party screen**: each card has a field power line (the power's label on its type colour, or "No field power"), and
+  the creature walking with the player is tagged "Walks with you".
+
+### 20.4.9 Camp bases <!-- added 2026-10-22: camp bases (spine §3.19) -->
+
+`scene/CampViews.ts` (`CampViews`, owned by the world): on a route the campfire is a dynamic `camp` target (range
+`CAMP_PROMPT_M` 4 m): "E Visit the travellers' camp", or the held camp's banner name; `E` opens `/play/camp`. The zone
+room's `campOwner` / `campName` / `campTrophies` (listened to on every room) go to the render's `ZoneHandle.camps.set`
+(the banner and the trophy kinds, nothing for a free camp), the prompt and `state/camp.ts` (the Camp screen re-reads when
+they change). A state for another zone than the one shown (a handover in flight) waits until that zone is the one shown.
+`zoneSpecFor` adds `spec.camps` on routes only (content `campOf`).
+
 ---
 
 ## §20.5 BATTLE PRESENTATION
@@ -5219,6 +5441,8 @@ Each screen: information hierarchy in one paragraph, then its states. All `/play
 
 **20.9.9g Challenge modes** <!-- added 2026-10-20 -->. Register gains "Challenge run" (Normal / Nuzlocke / Hardcore, a `Segmented` under the starters, the chosen mode's rules in one caption, sent as `challenge`). Profile gains a Challenge run section (`screens/ChallengeSection.tsx`): the same switch while the run can change (`POST /challenge`, then GET /me refreshes the session), else the mode and where it stands with the reason it is locked ("Your first badge locked the run." / "A creature has fallen: the run is locked."). The top bar shows the run as a pill beside the zone chip ("Nuzlocke", "Hardcore · Cleared", "Nuzlocke · Failed" in the danger tone). A fallen creature carries the "Fallen in the run" mark (CreatureCard, Party), its detail replaces Use an item with a Fallen note, and the box offers no Withdraw for it. In battle Orbs is disabled once the zone's first encounter is spent (`canCatch`), and Bag is disabled in an active Hardcore run. Rankings gains Nuzlocke and Hardcore tabs ("Cleared · n badges" / "Failed · n badges" / "n badges").
 
+**20.9.9s Camp bases** <!-- added 2026-10-22 -->. The campfire's target opens `/play/camp` (`screens/CampScreen.tsx`, `GET /camps`), a `Panel` titled "Camp" with "<route> · Travellers' camp" above. This camp: a free one says "Nobody holds this camp" with "Claim this camp" (sends `camp { action: 'claim' }`; disabled with the reason when the player holds one or is on a challenge run); someone else's is a camp card (a paper strip "Held by <owner>", the banner name in the big italic display face, the route and when it was claimed, its trophies as small labelled plates, the guard as sprites on their type-colour slabs with levels), the stakes in words ("A win takes 120 from bh_outlaw. A loss takes nothing. Raiding costs your lead 1 honor and darkens the route.", with ", and the camp itself" for an owner long away) and "Raid the camp" (sends `camp { action: 'raid' }` and closes the panel for the battle) or why not (the owner is in the world, on a challenge run, raided today, the player on a run). Your camp: the same card with a Banner field ("Raise banner"), the earned trophies to pick (up to three, the picked ones ringed in the hot orange, "n of 3"), "Set trophies" (`POST /camps/edit`; a refusal shows under the field, e.g. a blocked word) and "Abandon camp" (asks again: "Break camp for good"; `POST /camps/abandon`). The camp log (each raid's line and when) and Camps held (every banner in the world with its route and owner). With camps off the screen says the camps are quiet. The camp guard's battle identity is "<owner>'s guard" (title "Camp guard"); the raid's toll and the camp log come as toasts from the server.
+
 **20.9.9r The bounty board** <!-- added 2026-10-21 -->. The Marshal (an interior "Talk to" NPC in each town's office hall, spine §3.17) pages through his two lines, then opens `/play/bounties` (`screens/BountyScreen.tsx`, `GET /bounties`), a `Panel` titled "Wanted" with "<town> · Marshal" above. A strip says whether a Lawlander rides with the party ("every bounty pays a quarter more") with when the board posts again and "n of 3 claims today". On the board: one poster per bounty, a carbon card under a paper "Wanted" strip (nemeses: "Wanted by you"), the creature on a slanted slab in its type colour, the target in the big italic display face, species, level and where it haunts, the record ("Beat n trainers this week." / "Rank n nemesis."), the reward in big tabular numbers with "n with a Lawlander" (brighter when the party holds one), who posted it ("Posted by the board", "Posted by <name>", "Your poster") and when it comes down. Wanted by you: the player's own nemeses from rank 2, with "Nobody else can see these posters". Post a bounty: without a Badlander, the Marshal's line; outside a town, where to post; else the ghosts haunting now (sprite on its type edge, name, zone, level, wins, "wanted"; the picked one ringed in the hot orange), a Bounty field with the cost in words ("Costs 1,000: the 800 bounty and the board's 200 cut, held until it is claimed. Unclaimed after 72 hours, all of it comes back."), "Post on <name>" and "n of 3 posters up"; a refusal shows under the field in the Marshal's words (`BOUNTY_REFUSAL_TEXT`), a post applies the money. Your posters (up until, brought in by, came down with the refund) and Brought in (the latest claims). The claim itself is a toast after the battle; the history line: "Brought in <target> on <zone> for a n bounty." (", a nemesis," for one).
 
 **20.9.9q A living ecosystem** <!-- added 2026-10-21 -->. The Dex opens with "This week on <zone>" (`screens/EcosystemPanel.tsx`, `GET /world/ecosystem/:zoneId`) between the witnessed count and the grid: a carbon board headed by a paper "This week on" strip and the zone in the big italic display face, "Season n · week n of 4 · until <date>", and a zone picker over the zones with wild creatures the player has been to (`data/ecosystem.ts` `ecoZones`; where they stand first, else the last one visited). One line says how many catches and knockouts the zone saw this week and whether that is enough to judge ("Quiet so far: below 12, nothing is scarce yet."). Four columns (the client is desktop only, 1280 px and up): Surging (the predators feeding on overhunted prey, a paper "+n%" tag with an up arrow, "Hunts <prey>"), Scarce (overhunted, a graphite "-n%" tag, "n caught · n knocked out this week", or "Gone to <zone> for the season"), Migrated in (a hot "New" tag, "From <zone>, for the season") and Honor tilt (the shadow or light line, "Clear: ..." when neither, and the creatures drawn by it). Each creature sits on a slanted slab in its type colour; one the player has not seen is a silhouette named "???" and cannot be picked; picking one opens its Dex entry. Nothing shows before the server answers, while it runs without the ecosystem, or before the player has been to a zone with wild creatures.
@@ -5472,6 +5696,8 @@ export const EnvSchema = z.object({
   NEMESES: z.enum(['on', 'off', 'always']).default('on'),      // added 2026-10-21: nemeses (§30.4.3a, spine §3.15); 'always' promotes every qualifying escape and ambushes whenever it can (live checks); testEnv sets 'off'
   ECOSYSTEM: z.enum(['on', 'off']).default('on'),             // added 2026-10-21: a living ecosystem (§30.4.3a, spine §3.16); testEnv sets 'off'
   BOUNTIES: z.enum(['on', 'off', 'always']).default('on'),     // added 2026-10-21: the bounty board (§30.4.3a, spine §3.17); 'always' = a wanted ghost steps out of every grass encounter it can (live checks); testEnv sets 'off'
+  FIELD_POWERS: z.enum(['on', 'off']).default('on'),           // added 2026-10-21: followers with field powers (§30.4.3a, spine §3.18): glides in movement validation, bramble blockers, burn / dig / dive / sense; testEnv sets 'off' (today's world for the walker and the handover-landing tests)
+  CAMPS: z.enum(['on', 'off']).default('on'),                  // added 2026-10-22: camp bases (§30.4.3a, spine §3.19): claims, edits, raids (the cut, the honor hit, the shadow deed, the held point), the zone's camp state; testEnv sets 'off'
   ZONE_CAPACITY: z.coerce.number().int().min(2).max(500).default(200),
   TICK_HZ: z.literal('20').default('20'),                       // not configurable in v1; present so the value is visible
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
@@ -5582,14 +5808,16 @@ export const BUDGET_MIN_MS = -100;   // an input may not spend more than 100 ms 
 export const BUDGET_MAX_MS = 250;    // idle time does not bank more than 250 ms
 
 export type InputVerdict =
-  | { readonly ok: true; readonly x: number; readonly z: number; readonly angle: number; readonly running: boolean; readonly budgetMs: number; readonly bike: boolean }   // bike: Phase D11, the bike cap applied
+  | { readonly ok: true; readonly x: number; readonly z: number; readonly angle: number; readonly running: boolean; readonly budgetMs: number; readonly bike: boolean;   // bike: Phase D11, the bike cap applied
+      readonly glide: GlidePlan | null }   // added 2026-10-21 (followers, spine §3.18): the glide still in flight after this input
   | { readonly ok: false; readonly reason: 'staleSeq' | 'dtBudget' | 'speed' | 'unwalkable' | 'bounds' | 'inBattle'; readonly budgetMs: number };
 
 export function validateInput(
   prev: { readonly x: number; readonly z: number; readonly lastSeq: number; readonly budgetMs: number; readonly inBattle: boolean; readonly canSurf?: boolean;   // canSurf = inventory['HM Surf'] > 0 (§30.3)
     readonly closedGates?: readonly RectSolid[];         // Phase A
     readonly clearedObstacles?: ReadonlySet<string>;     // Phase D10: this zone's obstacle ids the player cleared
-    readonly canBike?: boolean },                        // Phase D11: inventory.bike > 0 && the start is outdoors (interiorAt === null)
+    readonly canBike?: boolean;                          // Phase D11: inventory.bike > 0 && the start is outdoors (interiorAt === null)
+    readonly canGlide?: boolean; readonly glide?: GlidePlan | null; readonly reach?: Uint8Array },   // added 2026-10-21 (followers): a Flying lead outdoors (or a glide in flight), the plan in flight, content `reachFromSpawn`
   input: z.infer<typeof InputMsg>,            // { seq, x, z, angle, running, dtMs }
   h: Heightfield,
 ): InputVerdict;
@@ -5603,6 +5831,7 @@ Rules, in this order (first failure wins):
 4. `dist = hypot(x - prev.x, z - prev.z)`; `cap = (bike ? MAX_BIKE_STEP : running ? MAX_RUN_STEP : MAX_WALK_STEP) * dtMs / 1000` where `bike = input.bike === true && prev.canBike` (Phase D11: an unearned flag is checked against run / walk); `dist > cap + 0.02` → `speed` (0.02 m absorbs float32 quantisation on the wire).
 5. Outside the bounds of §30.2.3 → `bounds`. (Checked before walkability: the 16 m margin is `walkable = 0`, so with the opposite order `bounds` could never be observed and `movement.test.ts`'s `bounds` case could not pass; the accept set is identical — amended 2026-09-25, server IMPLEMENTATION-NOTES S3.)
 6. Not standable → `unwalkable`, where standable = `!inClosedGate && (isWalkable(h, x, z) || clearedObstacles.has(obstacleAt(h, x, z)) || (canSurf && isWater(h, x, z) && !isLava))` with `canSurf = prev.canSurf && !bike` (Phase D10: a cleared obstacle's stamped samples, content `obstacleAt`; Phase D11: a ridden segment never touches open water) <!-- amended 2026-10-06: Phase D8–D11 world systems -->. Additionally the segment `prev → new` is sampled every 0.25 m; any sample that is not standable → `unwalkable` (no tunnelling through a 0.5 m wall in one 8 cm step is possible at these caps, but the check costs nothing).
+6a. <!-- added 2026-10-21: followers with field powers (spine §3.18) --> The glide, between 5 and 6, only with `canGlide` (never on the bike): an input carrying `glide { x, z, dx, dz }` whose take-off lies within this message's reach of the accepted position is a take-off (unless it names the plan in flight): refused `unwalkable` while another glide flies, `speed` when prev → take-off → new exceeds the cap, `unwalkable` when the take-off or the segment to it is not standable or content's `planGlide` (over this player's own `standable`, from `reach`) answers null; a take-off point beyond reach is the last window of a glide that already landed and is ignored. With a plan (new or in flight): the new position on its line (off it by at most `GLIDE.laneM` 0.3 m, between the take-off and the landing, never back behind where the player was) is `ok`, and the plan is kept until a position at the landing on standable ground ends it (`glide: null`); a position off the line is checked by rule 6 as an ordinary step (standable ground ends the glide; a cliff face is `unwalkable`).
 7. Otherwise `ok`; `angle` is wrapped into `[-π, π)`; `budgetMs = budget`. Rejections other than `staleSeq` also advance `userData.lastSeq` (a rejected seq cannot be replayed).
 
 Application (`ZoneRoom.onInput`): on `ok`, write `ps.x/z/angle/running`, `ps.moving = dist > 0.001`, `ps.seq = input.seq`, `userData.lastSeq = seq`; Phase D8 / D11: `ps.surfing = water && !walkable` at the new pose and `ps.biking = verdict.bike`, each written only on change. `userData.clearedObstacles` is derived from the flags at join and recomputed by `applyFlags` when an `obstacle:` flag arrives. On any failure other than `staleSeq`, the server does **not** move the avatar and sets `ps.seq = input.seq` anyway — the client's reconciler (`20-client.md`) sees a `seq` acknowledged against an unchanged authoritative `x/z` and snaps to it. That single mechanism is the "ack with authoritative pose"; there is no separate correction message. `speed`, `unwalkable` and `bounds` rejections increment `metrics.rejectedInputs[reason]`; 30 rejections within 10 s from one client → `client.leave(4003)` and an `audit_log` row `movement.kick`.
@@ -5834,6 +6063,10 @@ A transaction failure rolls everything back and the session keeps `before` as it
 **One roaming legendary per season <!-- added 2026-10-20 -->.** The season's roamer (content `roamerOf`: Voltaura, Sunjaw, Glacinid in turn, Lv `ROAMER_LEVEL` 50, legendaries the world already holds as statics) is on one route of `ROAM_ZONES` at a time, `roamerZoneAt(season, now)`: a hash of (season, period) over 30-minute periods, never the same route two periods running, the same on every server (no shared state). While it is on a room's route and the room's minute read (with the shadow, `SHADOW_CHECK_MS`) found no first catch this season, each grass or surf encounter there meets it with `ROAMER_CHANCE` 1/16, drawn from the room's own `roam` stream so the wild rolls stay as they were; its spawn id is `<zone>:roamer:<season>:<n>`. When a battle against a roamer encounter ends in a catch, `persistTurn` records the season's first catch (`season_legends`, the insert is the race) in the same transaction, writes the `legendary` history event to the party and, after the commit, tells the catcher. After that the roamer is met nowhere until the next season. Nothing gates the story.
 
 **The bounty board <!-- added 2026-10-21 -->.** The rules are content's (spine §3.17); the server's half is `game/bounties.ts` and `rest/routes/bounties.ts`. Upkeep (`boardUpkeep`, at most once a minute per process, from `GET /bounties`, `POST /bounties` and the zone room's minute read): expired posts come down (`expireDue`, each once) and a player's whole escrow goes back with an audit row `bounty.refund`; once per `BOUNTY_PERIOD_MS` the game's bounties are posted or raised (`postGameBounties`: the ghosts still haunting, `ghostWins` since the week began and the ghost's last claim). Claims run inside the battle's end transaction with the claimer's row locked, only while env `BOUNTIES` is not 'off' (the coordinator's `bounties()`): a won ghost fight (`claimGhostBounties`) claims every open bounty on that ghost the claimer may take (not their own post, within `BOUNTY_CLAIMS_PER_DAY`), the payout (with `lawlanderBonus` when the claimer's party holds a Lawlander) joins the battle's money and rewards; an ambush whose nemesis of rank 2 or more ended `beaten` or `caught` in `settleNemesis` pays `nemesisBounty(rank)` the same way (`claimNemesisBounty`, recorded as a claimed `nemesis` row). Each claim writes an audit row `bounty.claim`; the party lead (slot 0) gets +1 honor when its species keeps the ledger and the history event `bounty`, and is sent in the turn's `inventoryDelta`; a `toast` ("You brought in <target>: ..., n (Lawlander +n).") follows `battleEnd`. The zone room reads which of its ghosts are wanted with the ghosts (`wanted`, once a minute); `ghostEncounter` tries a wanted ghost first with `WANTED_GHOST_CHANCE` (`always`: every time) from the ghost stream, then the ordinary roll. Off, nothing is read, drawn, claimed or written: the suites and the progression walker run with it off. Dev: `pnpm --filter @ewa/server bounty wins <username> <n>` (n won fights by n different trainers for that ghost, then post), `bounty post`, `bounty list`.
+
+**Camp bases <!-- added 2026-10-22 -->.** The rules are content's (spine §3.19); the server's half is `game/camps.ts`, `rest/routes/camps.ts`, the zone room and the coordinator. With env `CAMPS` 'on': the zone room of a route reads its camp at creation and on the bus topic `ewa:camp` (published by a claim, a REST edit or abandon, and a raid that took the camp over, so every shard redraws) and writes `campOwner` / `campName` / `campTrophies`; leaving the world (not a crossing, not the arena) sets the owner's guard to the party they left with (`setGuard`), beside the ghost's save; a join tells the player their unseen raids (`report`, `campWelcome`: one toast each for the first three, then how many more). `camp { action }` is answered in order: off → `campsOff`; in a battle, a trade, spotted or mid-glide → `busy`; no camp in this zone → `noCampHere`; then `claimRefusal` / `raidRefusal` with the camp, the owner's presence (`presenceMirror.lookup`), the owner's and the player's challenge runs, the raider's daily cooldown (`wonSince` 24 h), the lead level, the fire's range (`CAMP_RANGE_M` from the accepted position) read fresh, each refusal a toast plus `error notAllowed <why>`. A claim is one transaction (the player's row locked, the insert guarded by the row's keys, an audit row `camp.claim`); a raid is `BattleCoordinator.startCampRaid`: format 'trainer', `noExp`, an NPC side `campguard:<owner>` of `arenaCopies` of the guard snapshot, reward 0, no flee or catch. Its end, in the battle's own transaction (`settleRaid`): a win adds the trainer exp and quest win of a trainer battle; if the camp is still the owner's and the raider took no cut from it in 24 hours, the owner's row is locked, `campRaidCut` of their money moves to the battle's money, and an owner away `CAMP_INACTIVE_DAYS` loses the camp to a raider who holds none (`transfer`); an audit row `camp.raid`; the raider's party lead (slot 0) loses 1 honor when its species keeps the ledger (sent in the turn's `inventoryDelta`); a `toast` follows `battleEnd`. A loss: the owner's side gets `CAMP_HELD_POINTS` while `heldSince` 24 h is under `CAMP_HELD_PER_DAY`. Either way a `camp_raids` row. The world honor tally takes no `duelWon` light for a raid and `CAMP_RAID_SHADOW` shadow for a won one. REST: `GET /camps` (the camp of the presence zone with what a raid would meet, the caller's camp, `earnedTrophies` read fresh, the log, every camp), `POST /camps/edit` (`sanitizeChat` 24 + `containsBlocked` → 400 `blockedWord`; trophies must be earned ids, at most three → 409 `badTrophy`; audit row `camp.edit`), `POST /camps/abandon` (audit row `camp.abandon`). Off, nothing is read or written, the state stays empty and every action is refused: the suites and the progression walker run with it off.
+
+**Followers with field powers <!-- added 2026-10-21 -->.** The rules are content's (spine §3.18); the server's half is `game/fieldPowers.ts`, `rooms/movement.ts` and the zone room. The lead (`fieldLeadOf`: the first party creature standing, its types and `encodeLeadFlags`) is set at join from the loaded party and written to `PlayerState.lead` / `leadFlags` only when it changes; it is re-read (`refreshLead`, one party read) whenever the room sends an `inventoryDelta` that adds, removes or updates creatures (a battle's end, a trade, a raid, a hatch) and on the bus topic `ewa:party` (`rest/partyTopic.ts`), which the REST app's `onResponse` hook publishes after any 2xx POST to a route that can change the party (`changesParty`: `/party/*`, `/creature/:id/evolve|release|nickname|setup`, `/item/use`, `/heal`, `/daycare/leave|take|collect`, `/battle-pass/claim|mythical-choice`, `/market/*`). With env `FIELD_POWERS` 'on': `state.fieldPowers` is true; the glide is checked in movement validation (§30.2.4: `canGlide` when the lead is Flying and the player stands outdoors, or a glide is in flight; `ud.glide` holds the plan until it lands; no trainer sight and no grass roll mid-glide); an unburnt bramble is one of the player's `closedGates` (`brambleSolidsFor`, recomputed by `applyFlags`, so it also blocks trainer sight like a gate); `fieldPower { power, targetId }` is answered in order: off → `powersOff`; in a battle, a trade, spotted or mid-glide → `busy`; in a hall → `powerIndoors`; the lead re-read and without the power → `noPower`; `sense` resting (`HAUNT.cooldownMs`) → `senseResting`, else `fieldPower sense` with `senseGhosts` (this zone's ghosts read with the shadow once a minute, never the player's own, the wanted flag from the bounty board) and a toast; an unknown spot → `noSpot`; beyond `FIELD_INTERACT_M` of the accepted position, or a dive not on open water → `spotFar`; a burnt bramble → `burnt`; then one transaction: the flag's set time re-checked (a burn once ever, a dig / dive once per UTC day: an old flag is cleared and set again), the flag set, the cache or the day's `fieldLoot` draw added; then `inventoryDelta`, `progressionDelta { flags }`, `fieldPower` and a success toast. A day's second dig or dive → `usedToday`. `ghostEncounter(playerId, at)`: after the wanted ghost and the ghost roll, the ghost whose haunt passes within `HAUNT.nearM` of the player steps out (`hauntingNear`), else a random one as before. Off, none of this runs (every power is refused with a toast) and movement is today's: the progression walker and the suites run with it off. The follower is visual and works either way; it costs the tick nothing (two fields written on a change).
 
 **A living ecosystem <!-- added 2026-10-21 -->.** The rules are content's (spine §3.16); the server's half is `game/ecosystem.ts`. While env `ECOSYSTEM` is 'on' the battle coordinator gets `ecosystem()` from the zone room and, in the turn transaction of a world wild battle (not the tower or the arena) whose spawn id is a plain wild one (`countsForEcosystem`: not the roamer's, not an ambush's; a static has none), adds the turn's take (`takeOf`: a catch, or the wild side's faint) to `eco_takes` for the wild creature's species in the zone's `ecoWeek`. The zone room reads `readEcosystem` (this week's and last week's rows, the season's honor tally into `shadowLevel` / `lightLevel`) with the shadow, once a minute, and rolls grass, surf and fishing on its table (`wildTable()`); the overworld director gets the same table (`SpawnDirector.setTable`, no new draw). A reading whose weights moved is logged ("ecosystem: encounter weights changed"). `GET /world/ecosystem/:zoneId` (`rest/routes/ecosystem.ts`) answers from the same read. Off, nothing is written and every room rolls its authored table. Dev: `pnpm --filter @ewa/server eco take <zone> <species> <n> [--ko] [--last-week]` and `eco roll <zone> [n] [--night] [--water]` (the room's roll on the authored table and on this week's, same draws).
 
@@ -7593,9 +7826,11 @@ Every file listed must exist with at least the assertions listed. A milestone in
 | `roamer.test.ts` <!-- added 2026-10-20: one roaming legendary per season --> | The roamer of each season in turn; the schedule is fixed, always a route, never the same two periods, reaching every route; the roamers are statics the world already holds. |
 | `ghosts.test.ts` <!-- added 2026-10-20: ghost trainers --> | A ghost's id names its owner and is no content trainer; a win pays by level; the report reads as a sentence for every record. |
 | `daycare.test.ts` <!-- added 2026-10-21: breeding --> | One family or a shared type breeds, legendaries never, every non-legendary species has a partner; the egg is the first parent's first stage; Majin + Tenjin is bandborn; egg moves (level-up or TM, at most four, in place of the oldest); honor average, coat and ability slot; the Daycare is Mirevale house 1 with the same hall and the keeper as its only daycare NPC. |
+| `camps.test.ts` <!-- added 2026-10-22: camp bases --> | Every route has exactly one camp (only routes); the trophy slots and the banner stand 3 m round the fire on dry walkable ground, clear of the tent, the dig spot and every other prop, each facing the fire; no zone carries the layer; the 2 % cut (nothing from an empty purse, capped); an owner away 14 days; the claim and raid refusals in order (a stronger guard is the raider's risk); the camp log's lines and the welcome summary; trophy ids, the guard's trainer id; no em-dash. |
 | `bounties.test.ts` <!-- added 2026-10-21: the bounty board --> | The game's reward by trainers beaten (125 a head, 5,000 at most, nothing under five); the cut and the Lawlander bonus are one quarter, so a Lawlander claim of a player's post pays exactly the escrow; nemesis bounties from rank 2; the six-hour schedule; a post's expiry (72 h or the ghost's fade); the refusals in order; no em-dash; every town keeps one board (Healer, else Mart, else its first house as the Marshal's Office), nothing else does, the hall otherwise unchanged. |
 | `ecosystem.test.ts` <!-- added 2026-10-21: a living ecosystem --> | The food chain: hand rows share a zone, every zone with a table has a chain of its own species, no legendary, no two-way link (migrants included), the type rule and no family hunting itself; migration routes run to neighbours that lack the species at a level it can be, water only to water; each season draws the same three, one per target and species, every route in time; a migrant joins its target and weighs half at home; weeks; no history rolls as authored; below the minimum nothing is judged; an overcaught prey falls and its hunters rise; every slot within 0.5x..2x whatever the takes; last week fades; the shadow raises Ghost (Dark in the roll), the light raises rare slots; the light level mirrors the shadow level. |
 | `nemesis.test.ts` <!-- added 2026-10-21: nemeses --> | A darker zone promotes and ambushes more often (level 4 always promotes); an ambush fights within 3 above and 2 below the lead; the scar by how it won (a torn ear for an orb, the hardest blow's type for a knockout) and its ribbon; names fit a nickname, titles read "the ...", a taken name is avoided; the gained move is the next level-up move, else a TM; the taunts by rank, none with an em-dash. |
+| `fieldPowers.test.ts` <!-- added 2026-10-21: followers with field powers --> | Flying glides, Fire lights, Ground digs, Psychic senses, Water dives (a dual type has both); the lead is the first creature standing; the spots live outside `ZoneDef`; every route has a camp and two brambles, every dive spot is open water; flags fit 64 characters; a burnt bramble stops blocking; digs and dives re-arm when the UTC day turns, the loot is a fixed draw per seed; every route has a glide whose landing is lower, walkable, reached and under the drawn arc; none on flat ground or with no standable landing; cliff samples are steep, unwalkable and dry; a haunt loops through the zone's grass at a walk, the same for everyone; the dark places. `pnpm --filter @ewa/content validate` rule 13 checks the spots' geometry |
 
 ### 50.4.3 `@ewa/protocol` — `packages/protocol/test/`
 
@@ -7634,6 +7869,7 @@ All files open a fresh PGlite (`drizzle-orm/pglite`) per file and run `migrate()
 | `factions.test.ts` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | Migration 0013: a side holds for the season; points only with a side; the totals; the best list per side, banned left out; a new season starts empty. |
 | `legends.test.ts` <!-- added 2026-10-20: one roaming legendary per season --> | Migration 0014: the first catch only, one per season, newest first; the catcher's name outlives the account. |
 | `breeding.test.ts` <!-- added 2026-10-21: breeding --> | Migration 0016: the pair in the order left; the egg timer; steps for carried eggs only, capped; only a carried egg that walked its total is taken; someone else's egg is NotFound; a hatchling's history starts `hatched` and keeps `bandborn`. |
+| `camps.test.ts` <!-- added 2026-10-22: camp bases --> | Migration 0020: one owner per camp and one camp per owner; edits, the guard snapshot (never empty), a takeover only from the owner it names, abandoning; the raid log told once and listed newest first; the raider's daily cooldown per camp; the owner's held points. |
 | `bounties.test.ts` <!-- added 2026-10-21: the bounty board --> | Migration 0019: a post and the board's own bounty (raised, never doubled); the open list richest first and who is wanted; a claim takes every open bounty but the claimer's own post, at most `max`, each once, with its payout; expiry returns each lapsed post once; a ghost's record counts different trainers since its last claim; nemesis records stay off the public lists. |
 | `ecosystem.test.ts` <!-- added 2026-10-21: a living ecosystem --> | Migration 0018: a zone's weekly tally per species adds up, zones, weeks and species apart, an empty take ignored. |
 | `nemeses.test.ts` <!-- added 2026-10-21: nemeses --> | Migration 0017: active nemeses newest first; past the cap the oldest fades; a rank up keeps it active with the newest fight; a sighting moves its last zone; an end is once and leaves the list. |
@@ -7667,7 +7903,9 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `factions.test.ts` <!-- added 2026-10-20: Majin vs Tenjin seasons --> | A side once a season (409 for the other, 200 for the same); GET /factions totals, best and own; a mission claimed earns 1 (none without a side); a ranked win earns the winner 3 and the loser none; the closed season's winner holds the sky and opens the Chronicle. `raid.test.ts` also checks a raid clear's 2. |
 | `roamer.test.ts` <!-- added 2026-10-20: one roaming legendary per season --> | On its route an encounter meets the season's roamer now and then, a town never, and once caught nowhere; GET /legends follows it (route, when it moves) and then names the catcher; a catch of a roamer encounter records the first catcher once and tells them, a later catch does not. |
 | `breeding.test.ts` <!-- added 2026-10-21: breeding --> | A Majin + Tenjin pair left in Mirevale starts the timer; a third is refused; the ready egg is carried; walking hatches it: inventoryDelta then eggHatched, dustcub at level 1 with the egg moves, honor the average, bandborn, history `hatched`, Dex caught; taking one back stops the timer; an unrelated or legendary pair says why; an egg moves to the box and back, never someone else's; refused outside Mirevale and in a challenge run. |
+| `camps.test.ts` <!-- added 2026-10-22: camp bases --> | A claim far from the fire is refused, at the fire it writes the camp and every client in the zone sees it; a second trainer finds it taken and its owner home; the owner renames (a blocked word refused) and sets earned trophies (an unearned one refused, audit row), a trainer walking the route sees banner and trophies; a raid while the owner is away starts a battle with `campguard:<owner>`; a won raid takes 2 % once a day with an audit row, costs the lead 1 honor and adds the shadow, the toast after battleEnd; a lost raid takes nothing and earns the owner's side a point; the owner's log told on coming back; a long-away owner loses the camp; abandon frees it; with CAMPS off nothing reads, claims or edits. |
 | `bounties.test.ts` <!-- added 2026-10-21: the bounty board --> | A Badlander party posts on a ghost in a town (escrow and cut taken, audit row, the poster on the board); every refusal is named, not enough money takes nothing, a route is not a board; beating the ghost claims the player's and the board's bounty once (Lawlander bonus in the battle's money, the lead's honor +1 after the battle's own, the history line, the toast after battleEnd, two audit rows), a second hunter gets the route reward only; with the board off nothing is claimed; an expired post refunds the whole escrow once; a rank 2 nemesis shows on its trainer's board alone and pays when knocked out; a zone room meets a wanted ghost every time under `always`. |
+| `fieldPowers.test.ts` <!-- added 2026-10-21: followers with field powers --> | Movement validation: a glide off a real cliff (content's plan) is accepted only with `canGlide`, positions on its line until the landing (where it ends), nothing off the line, no second take-off mid-flight, none where content plans none; an unburnt bramble is unstandable like a gate; the lead and its packed look; the sense list (never your own ghost, the wanted ones anywhere, nearest first) and `hauntingNear`; refusal copy without an em-dash. Integration with FIELD_POWERS on: `PlayerState.lead` at join and after a REST reorder (`ewa:party`), `state.fieldPowers`; burn refused without a Fire lead, the patch blocks until burnt, then the cache, the flag and the way through; a dig once per camp per UTC day (the next day digs again); a dive only out on the water; the sense lists another trainer's ghost, never your own, then rests; a Flying lead glides off the cliff to the landing, a Grass lead is held at the edge |
 | `ecosystem.test.ts` <!-- added 2026-10-21: a living ecosystem --> | Only plain wild creatures count, a turn takes a catch or the wild faint; forced pressure shifts `rollWild` on the same draws (the prey less, its hunter more); with it on a wild knockout is tallied in the zone week and an ambush is not; the zone room rolls on the week's table and GET /world/ecosystem shows the same reading (scarce prey and its hunters, 404 without wild creatures, 400 for an unknown zone); with it off (testEnv) the room rolls the authored table and the panel is not running. |
 | `nemeses.test.ts` <!-- added 2026-10-21: nemeses --> | With nemeses on, a wild creature that breaks out (or knocks one out) and gets away rises (levels, scar, memory, `nemesisNews` after `battleEnd`, GET /nemeses); with them off (testEnv) nothing rises; an ambush fights with its name and gained move, knocked out it is `beaten` and the lead's history keeps the trophy; caught it keeps its name, scar ribbon and move, history `met` then `nemesis`; one that escapes again ranks up with the newest memory; testEnv rooms never roll an ambush. |
 | `ghosts.test.ts` <!-- added 2026-10-20: ghost trainers --> | Leaving the world leaves a ghost in that zone (GET /ghost shows it); a fight with a ghost is an AI trainer battle of copies: a win pays, the owner's creatures are byte-unchanged, no content flag, the fight recorded; the owner is told once on coming back; a zone room meets its recent ghosts, never the player's own. |
@@ -7688,6 +7926,8 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `arena-backdrop.test.ts` <!-- added 2026-10-12: arena PvP --> | Builds without a GPU within the mesh / triangle bounds; the floor inside the parapet is clear; every battle-camera sightline (headings, cues, push-ins, framing) clears the crowd wave and stays under the canopy; `dispose` frees every geometry and material. |
 | `shadow.test.ts` <!-- added 2026-10-20: honor shapes the world --> | `shadowParams` per level, clamped; `DayCycle.setShadow` dims the sun, the fill and the environment, thickens the fog towards violet, and level 0 writes exactly what it did before. |
 | `shadow.test.ts` (sky mood) <!-- added 2026-10-20: Majin vs Tenjin seasons --> | The Majin sky hazes and reddens, the Tenjin sky lifts the light and turns the haze gold, null restores it exactly. |
+| `camps.test.ts` <!-- added 2026-10-22: camp bases --> | Every trophy kind builds from the set (the bounty board with its crate), the banner stands over 3.3 m; in the zone builder the banner and every kind per slot are hidden until held, `set` shows the banner and one kind per slot, a free camp shows nothing, unknown ids are ignored, on the ground, walk-through (the collider unchanged). |
+| `followers.test.ts` <!-- added 2026-10-21: followers with field powers --> | `FollowerPool` (vitest, node): trails at the gap along the path, settles standing still, never cuts a corner, stands on the ground; snaps behind after a teleport; floats along a lifted owner; hides and shows; turns its back walking away from the camera (front-only cards never); walker slots after the 48 rigs and `STEPS.slots` covers them; a full pool refuses, a new descriptor swaps in place; the Fire light rides the follower and goes to 0 hidden or released. `CharacterPool.setLift` raises the feet, keeps the shadow down, leaves the walkers. `world-systems.test.ts`: a bramble is a knot of bushes on its own object, gone once cleared |
 
 `tools/asset-audit` (`pnpm audit:assets`, reads `ZoneDump` JSON written by `harness:budget --dump`) rules, each failing the build, named exactly as `40-pipelines.md` §40.5.2 implements them: `budget.counts.*` (§50.2.2), `materials.count ≤ 48`, `materials.threeMaps` (exempt by class: `billboard`, `impostor`, `decal`, `character`, and `harvestLevel ≥ 1`), `materials.albedoCeiling` (every surface's bake reports `albedoClampedPct`), `textures.ktx2Only` (no `CanvasTexture`, no PNG albedo on a lit material; `billboard` WebP and `character` vertex colour exempt by class), `geometry.noPrimitives`, `geometry.noOutlineShells` (no BackSide scaled clone sharing a geometry — legacy-render-audit Q4), `scatter.instanced` (every scatter kind an `InstancedMesh`; trees with lod0–lod2 + impostor, other kinds with the tiers they are drawn at, ≥ lod0 + lod1 — Q19; amended 2026-09-30, P4-C1), `lights.housing (≤ 0.6 units, both directions: every light has a housing and every `lightSource`-tagged emissive has a light)`, `lights.count (8 / 24)`, `sprites.nearest`, `shadows.drawCalls ≤ 564`, `harvest.same`. Test: `tools/asset-audit/test/rules.test.ts` feeds one violating fixture per rule and asserts the rule name in the error. <!-- reconciled 2026-09-18: rule list unified with 40-pipelines.md and extended for the legacy audit -->
 
@@ -7725,6 +7965,8 @@ Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and c
 | `legends.test.ts` <!-- added 2026-10-20: one roaming legendary per season --> | The Dex lines for a roamer species (where it roams, every season's first catcher), none for another species. `world-map.test.tsx` checks the map tag. |
 | `breeding.test.tsx` <!-- added 2026-10-21: breeding --> | The Daycare's verdict lines and egg time; the screen's pair, bandborn verdict, eggs, taking a ready egg and leaving one; the egg shelf's steps and moving an egg; `eggHatched` queues the reveal (egg, crack, the hatchling's line, Continue; a click skips); the hatched history line; a bandborn's toggle answers the other band. |
 | `bounties.test.tsx` <!-- added 2026-10-21: the bounty board --> | The record, posted-by, post status, claim and cost lines; the Wanted screen's posters (the board's, a trainer's, the player's nemesis wanted by them alone), the Lawlander strip, the claims of the day, the refund; a Badlander picks a ghost and posts (the cost in words, the money applied); a refusal in the Marshal's words; without a Badlander his line; the Marshal is a "Talk to" NPC; the history lines. |
+| `camps.test.tsx` <!-- added 2026-10-22: camp bases --> | The stakes and block lines; the Camp screen: someone else's camp with banner, trophies, guard and stakes raided from the fire, a free camp claimed, an owner at home with no raid button, the owner's trophy pick (three at most) and banner saved through `POST /camps/edit`, a blocked word's words, camps off; `CampViews` puts the fire's target in the route, shows the room's camp on the render handle, the prompt and the store, waits on another zone's state, none in a town; `zoneSpecFor` carries the camp on routes only; the guard's battle identity. |
+| `followers.test.tsx` <!-- added 2026-10-21: followers with field powers --> | Prediction: at a drop the controller asks the glider, glides the plan whatever the keys say (gait 3), every window carries the take-off, lands and walks on; a correction on the line replays the glide, one off it ends it and rests take-offs 3 s; no glider, no glide. `FollowerViews`: the player's own follower holds its atlas; a remote's shows on a bound atlas, takes a front-only single otherwise (two of one species share one), none past the singles, and gives it back when it walks away. `FieldPowerSystem`: the spots are targets only for a lead with the power and the switch on, unburnt brambles block until burnt (and hide), E sends the power, a dive on land is refused locally; the power key senses with a Psychic lead and the haunts glow for 12 s; the burn plays and hides the patch; the chip's hints per zone; the chip and the F key |
 | `ecosystem.test.tsx` <!-- added 2026-10-21: a living ecosystem --> | The panel's words (a signed percentage, what was taken, the tilt, the week); the zones it can show; the board: surging and what they hunt, scarce prey and the away migrant, a migrant in as ??? until seen (not pickable), the tilt; a pick opens the Dex entry; nothing while the server runs without it or before a wild zone. `ecosystem-sprites.test.ts`: every migration route content can draw is held by the target zone's atlases in the shipped manifest. |
 | `nemesis.test.tsx` <!-- added 2026-10-21: nemeses --> | `nemesisAmbush` shows the lower third over its own battle (name, title, rank, scar, taunt; a status) and never over another; each `nemesisNews` event's toast and the list reload, held while the battle UI is open and told when it closes; the Profile's Nemeses rows (rank, scar, gained move, memory, last seen, where it rose) and the empty line; a caught nemesis's scar in the detail; the two history lines. |
 | `ghosts.test.tsx` <!-- added 2026-10-20: ghost trainers --> | A ghost foe is its owner's ghost; the Profile's section (where it haunts, record, fights) and nothing before a ghost exists. |

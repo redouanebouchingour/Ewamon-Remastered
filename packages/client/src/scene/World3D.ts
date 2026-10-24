@@ -35,7 +35,7 @@ import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
 import { BIKE_ITEM, BODIES, HOLLOWED_FLAG, POSTGAME_FLAG, SHADOW_MAX, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, shadowNotice, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
-import type { CreatureInstance } from '@ewa/core';
+import type { BattleState, CreatureInstance } from '@ewa/core';
 import { BREAKDANCE_MS, FISH_REACH_M } from '@ewa/protocol';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
 import { ACTOR_POOL_SIZE, createRenderer, edgePoint, headingYaw, heroSurfaces, part3Of } from '@ewa/render';
@@ -97,6 +97,11 @@ import type { StrikeKind } from './npcStrike';
 import type { TrainerPose } from './SceneDirector';
 import type { SceneDirector } from './SceneDirector';
 import { SpawnViews } from './SpawnViews';
+import { FollowerViews } from './FollowerViews';
+import { FieldPowerSystem } from './fieldPowers';
+import { CampViews } from './CampViews';
+import { getHeightfield, glideAltitude, interiorAt } from '@ewa/content';
+import { rendererInternals } from '@ewa/render';
 import { RaidDen, raidTargetId } from './RaidViews';
 import { raidInfoOf } from '../battle/raid';
 import { LegendaryViews, STATIC_FLIPBOOK_NEAR_M, staticTargetId, visibleStatics } from './LegendaryViews';
@@ -271,6 +276,8 @@ class World implements World3D {
   private zoneHold: AtlasHold | null = null;
   /** the battle's team atlases and the side each stage slot shows */
   private readonly battleSprites = new BattleSprites(() => this.textures);
+  /** the battle state the party strip shows while a battle is open (null = the session party) */
+  private stripFrom: BattleState | null = null;
   private readonly selfTmp = { x: 0, z: 0 };
   private spectatorArenas = new Map<string, { x: number; z: number }>();
   private zone: ZoneDef | null = null;
@@ -281,10 +288,20 @@ class World implements World3D {
   /** Phase D9: the Old Rod's prompt and the cast point it is offered at (kept on the water ahead, every fixed step) */
   private readonly fishing: FishingController;
   private readonly fishSpot: Interactable = makeInteractable('fish:spot', 'fish', 0, 0, 'Fish in', 'the water', this.keyLabel('interact'));
+  /** followers (SPEC §3.18): every trainer's lead walking behind them (render's FollowerPool, fed from PlayerState.lead) */
+  private followers: FollowerViews | null = null;
+  /** followers with field powers: the lead's powers on this zone's spots, the glide rule, the light, the sense trails */
+  private field: FieldPowerSystem | null = null;
+  /** camp bases: the route's travellers' camp (its fire's target, the render's banner and trophies, the camp store) */
+  private readonly campViews: CampViews;
+  /** render's actor lift (a glide carries the avatar along its arc) */
+  private liftActor: ((id: string, m: number) => void) | null = null;
+  private selfFollowerShown = true;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.audio = createAudioDirector();
     this.targets = new InteractionTargets((p) => this.hudWriter.setPrompt(p));
+    this.campViews = new CampViews({ targets: this.targets, interactKey: () => this.keyLabel('interact'), camps: () => (this.director as SceneDirector | undefined)?.handle?.camps ?? null });
     this.capture = createInputCapture(window, canvas, {
       interact: () => this.ready && this.activate(),
       openChat: () => useUiStore.getState().setChatOpen(true),
@@ -296,6 +313,9 @@ class World implements World3D {
       orbit: (dx) => this.ready && !this.fpOn && this.renderer.camera.orbitBy?.(-dx * LOOK_RAD_PER_PX),
       jump: () => undefined,
       toggleBike: () => this.toggleBike(),
+      fieldPower: () => {
+        if (this.ready && this.zoneLoaded) this.field?.usePower();
+      },
       toggleDev: () => {
         if (!this.dev) return;
         this.devOn = !this.devOn;
@@ -503,6 +523,7 @@ class World implements World3D {
       this.evolution = evoDirector;
       // the evolve prompt warms the new form's front (it idles until the sequence leases it, or the grace period ends)
       setEvolutionPlayer({ play: (req, cb) => evoDirector.play(req, cb), preload: (sp) => this.textures?.prefetch(sp, 'front') });
+      this.bootFollowers(r, p3);
     }
     if (attachBattle) this.battle.attach(this.battleView());
     return true;
@@ -572,6 +593,13 @@ class World implements World3D {
     this.spawns = null;
     this.legendaries = null;
     this.raidDen = null;
+    // followers: the pool lived on the dead renderer (attachRoom re-feeds the leads to the rebuilt one)
+    this.followers?.detach();
+    this.followers = null;
+    this.field?.dispose();
+    this.field = null;
+    this.liftActor = null;
+    this.input.glider = null;
     // the creature atlases lived on the dead sprite pool: the residency goes with it (the rebuild makes a new one and
     // enterZone / battle.attach take their holds again)
     const textures = this.textures;
@@ -702,10 +730,13 @@ class World implements World3D {
     this.offs.push(
       useSessionStore.subscribe(
         (s) => s.inventory?.party,
-        (party) => this.writeParty(party ?? []),
+        (party) => {
+          if (this.stripFrom === null) this.writeParty(party ?? []);
+        },
         { fireImmediately: true },
       ),
     );
+    this.offs.push(useUiStore.subscribe((s) => s.battle, (b) => this.writeBattleParty(b)));
     this.offs.push(
       useSessionStore.subscribe(
         (s) => s.progression,
@@ -768,6 +799,25 @@ class World implements World3D {
     this.hudWriter.setParty(partyStrip(party, (i) => maxHpOf(party[i]!)));
   }
 
+  /**
+   * While a battle is open the party strip shows the player's side as the battle has it: an arena fights healed copies
+   * at the match's level, never the session party, from the start state, then once each turn's timeline has played
+   * (never ahead of the HP bars); the session party comes back when the battle UI closes.
+   */
+  private writeBattleParty(b: ReturnType<typeof useUiStore.getState>['battle']): void {
+    if (b === null) {
+      if (this.stripFrom === null) return;
+      this.stripFrom = null;
+      this.writeParty(useSessionStore.getState().inventory?.party ?? []);
+      return;
+    }
+    const st = b.authoritative;
+    if (st === this.stripFrom || (b.phase === 'playing' && this.stripFrom !== null)) return;
+    this.stripFrom = st;
+    const party = st.sides[b.seat].party;
+    this.hudWriter.setParty(partyStrip(party.map((x) => x.creature), (i) => party[i]!.maxHp));
+  }
+
   private flags(): ReadonlySet<string> {
     const p = useSessionStore.getState().progression;
     const flags = storyFlagSet(p?.flags ?? [], (p?.badges ?? []) as readonly BadgeId[]);
@@ -781,6 +831,10 @@ class World implements World3D {
     const self = (): string => this.ws.selfId;
     const d: (() => void)[] = [];
     const onPlayer = (p: PlayerState, key: string): void => {
+      // followers (SPEC §3.18): the lead walking behind every player in view (written by the server only on a change)
+      this.followers?.setLead(key, p.lead, p.leadFlags);
+      d.push($(p).listen('lead', () => this.followers?.setLead(key, p.lead, p.leadFlags)));
+      d.push($(p).listen('leadFlags', () => this.followers?.setLead(key, p.lead, p.leadFlags)));
       if (key === self()) {
         this.input.reconcile(p.x, p.z, p.angle, p.seq);
         d.push($(p).onChange(() => this.input.reconcile(p.x, p.z, p.angle, p.seq)));
@@ -800,7 +854,12 @@ class World implements World3D {
       );
     };
     d.push($(state).players.onAdd(onPlayer, true));
-    d.push($(state).players.onRemove((_p: PlayerState, key: string) => this.remotes.remove(key)));
+    d.push(
+      $(state).players.onRemove((_p: PlayerState, key: string) => {
+        this.remotes.remove(key);
+        this.followers?.remove(key);
+      }),
+    );
     // A collection's onChange fires for adds / removals only: each spawn's own fields (a wandering x / z, engagedBy)
     // need a per-instance listener, dropped with the spawn.
     const spawnOffs = new Map<string, () => void>();
@@ -862,6 +921,9 @@ class World implements World3D {
         if (text !== null) toast('info', text);
       }, true),
     );
+    // camp bases: who holds the zone's camp, its banner and its trophies (claims, edits, takeovers)
+    const camp = (): void => this.campViews.setState(this.roomZone, state.campOwner, state.campName, state.campTrophies);
+    d.push($(state).listen('campOwner', camp, true), $(state).listen('campName', camp), $(state).listen('campTrophies', camp));
     // one sample per remote per applied patch (the interpolation ring), + the server-time offset
     const onPatch = (): void => {
       this.remotes.observeTick(state.tick);
@@ -913,6 +975,7 @@ class World implements World3D {
     this.spawns?.clear();
     this.input.clear();
     this.spectatorArenas.clear();
+    this.followers?.clear();
   }
 
   /** A room (join / handover) is live and the renderer exists: load its zone (`label`: the overlay text, E6 recovery). */
@@ -1022,6 +1085,11 @@ class World implements World3D {
     if (h !== null) this.targets.addDynamic(this.fishSpot);
     this.spawns?.reground();
     this.raidDen?.reground();
+    // followers with field powers: this zone's spots, its brambles, and the glide rule over the new collider
+    this.field?.onZone(h === null ? null : z);
+    this.input.glider = this.field?.glider() ?? null;
+    // camp bases: the route's camp, drawn as its zone room says
+    this.campViews.onZone(h === null ? null : z);
   }
 
   /**
@@ -1218,6 +1286,10 @@ class World implements World3D {
         return;
       case 'trainerSpotted':
         this.onTrainerSpotted(m.trainerId);
+        return;
+      case 'fieldPower':
+        // followers with field powers: the flames, the soil, the splash, the ghosts' haunts
+        if (this.ready) this.field?.onMessage(m, performance.now());
         return;
       case 'realWeather':
         // weather from real life (messageRouter keeps the store): null goes back to the zone's weather
@@ -1515,6 +1587,16 @@ class World implements World3D {
       case 'spawn':
         this.ws.send('engageSpawn', { spawnId: t.id });
         return;
+      case 'camp':
+        // camp bases: the Camp screen (claim, raid, decorate; the server re-checks the fire's range)
+        navigateTo('/play/camp');
+        return;
+      case 'bramble':
+      case 'dig':
+      case 'dive':
+        // followers with field powers: burn, dig, dive (the server re-checks the lead, the range, the day)
+        this.field?.activate(t);
+        return;
       case 'obstacle': {
         // Phase D10: the server re-checks; the same rule here saves a round trip and words the refusal
         const o = z.obstacles?.find((x) => x.id === t.id);
@@ -1657,6 +1739,8 @@ class World implements World3D {
     const terrain = c?.terrain ?? null;
     if (terrain === null || this.zone === null || this.zone.biome === 'cinder' || this.input.biking || this.director.pocket !== null || (this.items()['old_rod'] ?? 0) <= 0) return;
     const pose = this.input.pose;
+    // followers: over a dark-water spot a Water lead dives (its E), the rod waits
+    if (this.field?.diveNear(pose.x, pose.z) === true) return;
     const dx = Math.sin(pose.angle);
     const dz = Math.cos(pose.angle);
     for (let d = 0.5; d <= FISH_REACH_M + 1e-9; d += 0.5) {
@@ -1951,6 +2035,8 @@ class World implements World3D {
         const angle = this.fpOn ? Math.atan2(-Math.sin(this.fpView.yaw), -Math.cos(this.fpView.yaw)) : this.input.pose.angle;
         this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, angle, this.input.moving, this.input.running || this.input.biking);
       }
+      this.stepFollowers(selfId, bf === null && !this.inArena && this.approach?.active !== true && this.evolution?.active !== true);
+      this.field?.frame(frameDt, now);
     }
     this.nameplateLeft -= frameDt;
     if (this.nameplateLeft <= 0) {
@@ -2087,6 +2173,11 @@ class World implements World3D {
       items: useSessionStore.getState().inventory?.items ?? {},
       authoritativeTurn: ui.battle?.authoritative.turn ?? null,
       textures: this.textureSummary(),
+      followers: this.followers === null ? null : { live: this.followers.size, self: this.followers.modeOf(selfId) },
+      field:
+        this.field === null
+          ? null
+          : { lead: this.field.currentLead?.speciesId ?? null, powers: this.field.currentLead?.powers ?? [], sensed: this.field.sensed.map((g) => g.name), gliding: this.input.gliding !== null, on: room?.state.fieldPowers ?? false },
       arena: this.inArena
         ? { trace: this.arenaTrace.slice(), inBattle: this.director.inBattle, backdrop: this.backdrop !== null, match: useArenaStore.getState().match, outcome: useArenaStore.getState().outcome, foe: this.foe.kind, room: this.ws.arenaRoom !== null }
         : null,
@@ -2107,12 +2198,87 @@ class World implements World3D {
   /** Last 1 s window (dev tooling / verification: `window.__ewaWorld.lastSecond`). */
   lastSecond: { fps: number; avgMs: number; maxMs: number; drawCalls: number; gpuMs: number | null; frameMs: number; triangles: number; programs: number } | null = null;
 
+  // ---- followers (SPEC §3.18) ------------------------------------------------------------------------------------
+
+  /** The follower views and the field powers on a (re)built renderer. */
+  private bootFollowers(r: Renderer, p3: NonNullable<ReturnType<typeof part3Of>>): void {
+    this.liftActor = (id, m) => p3.actors.setLift(id, m);
+    this.followers = new FollowerViews({
+      pool: () => (this.disposed ? null : p3.followers),
+      catalog: () => this.catalog,
+      textures: () => this.textures,
+      singles: () => (this.disposed ? null : p3.sprites),
+      selfId: () => this.ws.selfId,
+    });
+    this.field = new FieldPowerSystem({
+      targets: this.targets,
+      interactKey: () => this.keyLabel('interact'),
+      powerKey: () => (useSettingsStore.getState().keybinds.fieldPower[0] ?? 'KeyF').replace(/^Key|^Digit/, ''),
+      send: (payload) => this.ws.send('fieldPower', payload),
+      toast: (text) => toast('info', text),
+      enabled: () => this.room?.state.fieldPowers === true,
+      shadow: () => this.room?.state.shadow ?? 0,
+      daylight: () => rendererInternals(r)?.day.sample.daylight ?? 1,
+      party: () => useSessionStore.getState().inventory?.party ?? [],
+      typesOf: (id) => speciesDef(id)?.types,
+      flags: () => this.flags(),
+      indoors: () => this.director.pocket !== null,
+      collider: () => this.stepCollider,
+      obstacles: () => this.director.handle?.obstacles ?? null,
+      followers: () => (this.disposed ? null : p3.followers),
+      fx: (kind, x, y, z, dx, dz) => p3.worldFx.field(kind, x, y, z, dx, dz),
+      height: (x, z) => this.stepCollider?.height(x, z) ?? 0,
+      selfId: () => this.ws.selfId,
+      player: () => this.input.pose,
+    });
+    // a take-off: a gust off the edge
+    this.input.onGlide = (g) => p3.worldFx.field('gust', g.x0, (this.stepCollider?.height(g.x0, g.z0) ?? 0) + 0.6, g.z0, g.dx, g.dz);
+    // the room joined before the renderer (or the renderer was rebuilt): the leads already in view
+    this.room?.state.players.forEach((p: PlayerState, key: string) => this.followers?.setLead(key, p.lead, p.leadFlags));
+  }
+
+  /**
+   * Per rendered frame: the avatar rides its glide's arc (render lifts its feet), and the player's own follower walks
+   * only outdoors, out of battles, the arena, a trainer's walk-up and an evolution.
+   */
+  private stepFollowers(selfId: string, outdoorsFree: boolean): void {
+    const g = this.input.gliding;
+    const zone = this.zone;
+    let lift = 0;
+    if (g !== null && zone !== null) {
+      const rx = this.input.renderX;
+      const rz = this.input.renderZ;
+      lift = Math.max(0, glideAltitude(getHeightfield(zone.id), g, this.input.glideAt) - (this.stepCollider?.height(rx, rz) ?? 0));
+    }
+    this.liftActor?.(selfId, lift);
+    const shown = outdoorsFree && this.director.pocket === null;
+    if (shown !== this.selfFollowerShown) {
+      this.selfFollowerShown = shown;
+      this.followers?.setShown(selfId, shown);
+    }
+  }
+
+  /** 2 Hz: the nearest trainers with a rig keep their followers (in battle or inside a hall theirs waits). */
+  private syncFollowers(): void {
+    const f = this.followers;
+    if (f === null) return;
+    const zone = this.zone;
+    const ids: string[] = [];
+    this.remotes.forEach((id, x, z, info, spawned) => {
+      if (!spawned) return;
+      ids.push(id);
+      f.setShown(id, !info.inBattle && (zone === null || interiorAt(zone.id, x, z) === null));
+    });
+    f.sync(ids);
+  }
+
   /** ≤ 16 nearest players + NPCs, every 500 ms (the one allocating HUD write outside chat / party). */
   private updateNameplates(): void {
     const sx = this.input.pose.x;
     const sz = this.input.pose.z;
     // the legendary statics near the player play their flipbooks; the far ones let theirs go (2 Hz)
     this.legendaries?.setViewer(sx, sz);
+    this.syncFollowers();
     const list: { id: string; name: string; guildTag: string; inBattle: boolean; d: number }[] = [];
     this.remotes.forEach((id, x, z, info, spawned) => {
       if (!spawned) return;
@@ -2187,6 +2353,7 @@ class World implements World3D {
     for (const f of this.offs) f();
     this.offs.length = 0;
     this.detachRoom();
+    this.campViews.dispose();
     this.capture.dispose();
     this.battle.reset();
     setBattleActions(null);
@@ -2206,6 +2373,8 @@ class World implements World3D {
       this.battleSprites.end();
       this.zoneHold?.release();
       this.zoneHold = null;
+      this.field?.dispose();
+      this.followers?.clear();
       this.textures?.dispose();
       this.renderer.dispose();
     }

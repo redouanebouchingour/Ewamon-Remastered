@@ -27,4 +27,17 @@ export class ZoneState extends Schema {
   @type({ map: BattleSummary }) battles = new MapSchema<BattleSummary>();
   /** broadcast to all */
   @type(RaidState) raid: RaidState | null = null;
+  /**
+   * Followers with field powers (SPEC §3.18): the server env FIELD_POWERS is on here (glides, brambles, digs, dives and
+   * the Psychic sense work). Set once at room creation; the client predicts glides and blocks brambles only when true.
+   */
+  @type('boolean') fieldPowers = false;
+  /**
+   * Camp bases (SPEC §3.19): the zone's travellers' camp as everyone sees it. `campOwner` the holder's name ('' = free,
+   * no camp here, or the server env CAMPS off); `campName` its banner; `campTrophies` the trophy kinds in slot order,
+   * comma-separated (content `TROPHY_KINDS`; '' = none). Written when the camp changes.
+   */
+  @type('string') campOwner = '';
+  @type('string') campName = '';
+  @type('string') campTrophies = '';
 }

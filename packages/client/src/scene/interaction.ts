@@ -6,7 +6,7 @@
  */
 import type { HudPrompt } from './HudWriter';
 
-export type InteractableKind = 'npc' | 'trainer' | 'item' | 'lore' | 'gym' | 'healer' | 'shop' | 'warp' | 'spawn' | 'switch' | 'pc' | 'static' | 'raid' | 'obstacle' | 'fish' | 'tower';
+export type InteractableKind = 'npc' | 'trainer' | 'item' | 'lore' | 'gym' | 'healer' | 'shop' | 'warp' | 'spawn' | 'switch' | 'pc' | 'static' | 'raid' | 'obstacle' | 'fish' | 'tower' | 'bramble' | 'dig' | 'dive' | 'camp';
 
 /**
  * Client ranges stay inside the server's (3 m for npc / item / warp / switch, 4 m for a league trainer at its
@@ -26,6 +26,12 @@ export const RANGE: Readonly<Record<InteractableKind, number>> = {
   fish: 2.6,
   // Phase D14: the battle tower attendant (server TOWER_RANGE_M = 3 for `tower start`)
   tower: 2.5,
+  // followers with field powers (server FIELD_INTERACT_M = 3 from the spot): a bramble's blocker reaches 1.45 m out
+  bramble: 2.6,
+  dig: 2.5,
+  dive: 2.6,
+  // camp bases: a travellers' camp's fire (server CAMP_RANGE_M = 5; content CAMP_PROMPT_M = 4)
+  camp: 4,
 };
 export const PLAYER_RANGE = 6;
 

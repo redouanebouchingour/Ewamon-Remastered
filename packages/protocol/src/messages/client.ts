@@ -1,7 +1,7 @@
 /**
  * §4.3 Client → server messages. zod v4 schemas; every payload is validated before any handler
  * runs (the room registers each with `onMessage(name, schema, handler)`; zod v4 implements
- * Standard Schema). Exactly 24 keys in CLIENT_MESSAGES (Phase C3 added `fastTravel`, Phase D9 `fish`, Phase D13 `rankedQueue`, Phase D14 `tower`) — a `type` outside them has no handler.
+ * Standard Schema). Exactly 26 keys in CLIENT_MESSAGES (Phase C3 added `fastTravel`, Phase D9 `fish`, Phase D13 `rankedQueue`, Phase D14 `tower`, the followers `fieldPower`, camp bases `camp`): a `type` outside them has no handler.
  *
  * zod v4 `z.number()` already rejects NaN/±Infinity (`.finite()` is a deprecated no-op), so the
  * spine's `.finite()` calls are satisfied by the default. Objects STRIP unknown keys (zod default).
@@ -22,6 +22,13 @@ export const InputMsg = z.object({
    * cap applies (a faster step is a `speed` rejection). Absent = false.
    */
   bike: z.boolean().optional(),
+  /**
+   * Followers with field powers (SPEC §3.18): the window's steps glided off a cliff with a Flying lead. The take-off
+   * point and the unit direction the client planned with (content `planGlide`); the server re-plans from them, checks
+   * the take-off against its accepted position and the message's position against the glide line, and holds the plan
+   * until the flier lands. Absent = no glide.
+   */
+  glide: z.object({ x: z.number(), z: z.number(), dx: z.number().min(-1).max(1), dz: z.number().min(-1).max(1) }).optional(),
 });
 /** Emote 7 is the breakdance (not in the spine; protocol IMPLEMENTATION-NOTES): it plays for BREAKDANCE_MS, not 2 s. */
 export const EMOTE_BREAKDANCE = 7;
@@ -133,6 +140,26 @@ export const TowerMsg = z.discriminatedUnion('action', [
 ]);
 export const TOWER_REFUSALS = ['locked', 'tooFar', 'badPicks', 'running', 'noRun', 'inBattle'] as const;
 export type TowerRefusal = (typeof TOWER_REFUSALS)[number];
+/**
+ * Followers with field powers (SPEC §3.18): the lead's power used on a spot of the zone (content `data/fieldPowers.ts`).
+ * `burn` a bramble (Fire), `dig` at a camp (Ground), `dive` at a dark-water spot (Water) by its id; `sense` (Psychic)
+ * names no spot ('here'). Answers: `fieldPower` with what happened, or a toast + `error { code: 'notAllowed', detail:
+ * FieldPowerRefusal }`.
+ */
+export const FIELD_POWER_ACTIONS = ['burn', 'dig', 'dive', 'sense'] as const;
+export type FieldPowerAction = (typeof FIELD_POWER_ACTIONS)[number];
+export const FieldPowerMsg = z.object({ power: z.enum(FIELD_POWER_ACTIONS), targetId: z.string().min(1).max(64) });
+export const FIELD_POWER_REFUSALS = ['powersOff', 'noPower', 'noSpot', 'spotFar', 'burnt', 'usedToday', 'senseResting', 'powerIndoors'] as const;
+export type FieldPowerRefusal = (typeof FIELD_POWER_REFUSALS)[number];
+/**
+ * Camp bases (SPEC §3.19): at the campfire of the zone's travellers' camp (content camps.ts; one camp per route, so no
+ * id), `claim` a free camp or `raid` someone else's (a fight with its guard). Answers: a claim writes the camp and the
+ * zone's `campOwner` / `campName` / `campTrophies` with a toast; a raid a `battleStart` against the guard; a refusal a
+ * toast + `error { code: 'notAllowed', detail: CampRefusal }` (content `CAMP_REFUSAL_TEXT` words it).
+ */
+export const CAMP_ACTIONS = ['claim', 'raid'] as const;
+export type CampAction = (typeof CAMP_ACTIONS)[number];
+export const CampMsg = z.object({ action: z.enum(CAMP_ACTIONS) });
 /** §4.5 */
 export const BattleResyncMsg = z.object({ battleId: z.string().uuid() });
 
@@ -161,7 +188,9 @@ export const CLIENT_MESSAGES = {
   fish: FishMsg,
   rankedQueue: RankedQueueMsg,
   tower: TowerMsg,
-} as const; // exactly 24 keys
+  fieldPower: FieldPowerMsg,
+  camp: CampMsg,
+} as const; // exactly 26 keys
 
 export type ClientMessageType = keyof typeof CLIENT_MESSAGES;
 export type ClientPayload<T extends ClientMessageType> = z.infer<(typeof CLIENT_MESSAGES)[T]>;
@@ -171,7 +200,7 @@ export type ClientMessage = {
 export type BattleAction = z.infer<typeof BattleActionSchema>;
 
 export const CLIENT_MESSAGE_TYPES = Object.freeze(Object.keys(CLIENT_MESSAGES) as ClientMessageType[]);
-export const CLIENT_MESSAGE_COUNT = 24;
+export const CLIENT_MESSAGE_COUNT = 26;
 
 /**
  * §4.3 rate limits (per client, sliding window; excess dropped with ONE `error { code: 'rateLimited' }`
@@ -205,6 +234,10 @@ export const CLIENT_MESSAGE_LIMITS: Readonly<Record<ClientMessageType, { readonl
   rankedQueue: { max: 4, windowMs: 5_000 },
   /** Phase D14: start / next / quit */
   tower: { max: 4, windowMs: 1_000 },
+  /** followers with field powers: a burn / dig / dive / sense, 2 per second */
+  fieldPower: { max: 2, windowMs: 1_000 },
+  /** camp bases: a claim or a raid on the camp here, one per 2 s */
+  camp: { max: 1, windowMs: 2_000 },
 };
 
 export function isClientMessageType(type: unknown): type is ClientMessageType {

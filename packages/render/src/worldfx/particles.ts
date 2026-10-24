@@ -87,6 +87,24 @@ export const WORLD_BURSTS = Object.freeze({
   wake: B({ count: 6, color: '#f2f8fb', color2: '#cfe2ec', shape: 'puff', alpha: 0.55, lifeMs: 1100, size: 0.16, sizeEnd: 3.4, speed: 1.1, up: 0.15, gravity: 0, drag: 1.4, spread: 0.2, radius: 0.3, height: 0.02 }),
   /** the encounter rustle: a burst of blades all round the walker (render `WorldFx.rustle`) */
   rustle: B({ count: 26, color: '#7fa24a', color2: '#c7cf73', shape: 'leaf', alpha: 1, lifeMs: 1100, spreadMs: 160, size: 0.11, sizeEnd: 0.6, speed: 1.6, up: 2.6, gravity: 2.6, drag: 2, radius: 0.7, height: 0.4, spread: 6.3 }),
+  // ---- followers with field powers (§10.7.9, `WorldFx.field`) ----
+  /** Fire burns a bramble: flames licking up, then smoke */
+  flame: B({ count: 22, color: '#ff7a2a', color2: '#ffd36a', shape: 'spark', alpha: 1.8, glow: 1, lifeMs: 900, spreadMs: 500, size: 0.1, sizeEnd: 0.5, speed: 0.3, up: 2.2, gravity: -0.8, drag: 1.4, radius: 0.9, height: 0.25, spread: 6.3 }),
+  smoke: B({ count: 10, color: '#4a4440', color2: '#6b625b', shape: 'puff', alpha: 0.55, lifeMs: 1800, spreadMs: 700, size: 0.35, sizeEnd: 4.2, speed: 0.2, up: 1.0, gravity: -0.25, drag: 1.6, radius: 0.8, height: 0.6, spread: 6.3 }),
+  /** Ground digs at a camp: soil thrown up and a low dust puff */
+  dig: B({ count: 16, color: '#5e5034', color2: '#3f3624', shape: 'grain', alpha: 0.9, lifeMs: 700, spreadMs: 400, size: 0.06, sizeEnd: 0.9, speed: 1.0, up: 2.6, gravity: 9, drag: 0.8, radius: 0.35, height: 0.05, spread: 6.3 }),
+  /** Water dives: a column of spray */
+  dive: B({ count: 22, color: '#d6e6f0', color2: '#a8c4d6', shape: 'drop', alpha: 0.8, lifeMs: 700, spreadMs: 120, size: 0.07, sizeEnd: 0.7, speed: 0.9, up: 3.4, gravity: 9, drag: 0.5, radius: 0.4, height: 0.05, spread: 6.3 }),
+  /** a dark-water spot: a slow dark ring on the surface and a few bubbles */
+  diveMark: B({ count: 1, color: '#0b2633', shape: 'ring', alpha: 0.55, lifeMs: 2200, size: 0.8, sizeEnd: 3.6, speed: 0, up: 0, gravity: 0, drag: 1, radius: 0, height: 0.03 }),
+  bubble: B({ count: 3, color: '#e9f5fb', shape: 'drop', alpha: 0.7, lifeMs: 900, spreadMs: 600, size: 0.05, sizeEnd: 0.4, speed: 0.05, up: 0.35, gravity: -0.2, drag: 1, radius: 0.9, height: 0.0, spread: 6.3 }),
+  /** Psychic senses: a soft glowing mote on a ghost's haunt, a ring where it walks now (pink; a wanted ghost hot orange) */
+  sense: B({ count: 2, color: '#ff8ae0', color2: '#b98cff', shape: 'puff', alpha: 0.9, glow: 1, lifeMs: 1600, spreadMs: 300, size: 0.22, sizeEnd: 1.8, speed: 0.05, up: 0.18, gravity: -0.05, drag: 1.2, radius: 0.25, height: 0.06, spread: 6.3 }),
+  senseRing: B({ count: 1, color: '#ff8ae0', shape: 'ring', alpha: 0.9, glow: 1, lifeMs: 1400, size: 0.5, sizeEnd: 4.4, speed: 0, up: 0, gravity: 0, drag: 1, radius: 0, height: 0.05 }),
+  wanted: B({ count: 2, color: '#ff5b1f', color2: '#ffb36b', shape: 'puff', alpha: 1, glow: 1, lifeMs: 1600, spreadMs: 300, size: 0.24, sizeEnd: 1.9, speed: 0.05, up: 0.18, gravity: -0.05, drag: 1.2, radius: 0.25, height: 0.06, spread: 6.3 }),
+  wantedRing: B({ count: 1, color: '#ff5b1f', shape: 'ring', alpha: 1, glow: 1, lifeMs: 1400, size: 0.5, sizeEnd: 4.8, speed: 0, up: 0, gravity: 0, drag: 1, radius: 0, height: 0.05 }),
+  /** Flying takes off: a gust off the cliff edge */
+  gust: B({ count: 12, color: '#eef4ff', color2: '#cfdcef', shape: 'puff', alpha: 0.5, lifeMs: 900, spreadMs: 80, size: 0.2, sizeEnd: 2.6, speed: 2.2, up: 0.6, gravity: 0, drag: 2.2, radius: 0.5, height: 0.6, spread: 1.6 }),
 });
 export type WorldBurstId = keyof typeof WORLD_BURSTS;
 

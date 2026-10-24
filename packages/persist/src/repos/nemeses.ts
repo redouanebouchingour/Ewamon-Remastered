@@ -66,6 +66,17 @@ export const nemesisRepo = {
     return rows.map(toNemesis);
   },
 
+  /** The trainer's nemeses whose story ended (beaten or caught), newest first (camp bases: their scars as trophies). */
+  async ended(tx: Tx, ownerId: string, limit: number): Promise<Nemesis[]> {
+    const rows = await tx
+      .select()
+      .from(nemeses)
+      .where(and(eq(nemeses.ownerId, ownerId), inArray(nemeses.status, ['beaten', 'caught'])))
+      .orderBy(desc(nemeses.updatedAt), desc(nemeses.id))
+      .limit(Math.min(50, Math.max(1, limit)));
+    return rows.map(toNemesis);
+  },
+
   async of(tx: Tx, id: string): Promise<Nemesis | null> {
     const [r] = await tx.select().from(nemeses).where(eq(nemeses.id, id)).limit(1);
     return r === undefined ? null : toNemesis(r);

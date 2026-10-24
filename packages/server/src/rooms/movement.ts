@@ -3,8 +3,8 @@
  * speed cap derived from protocol's MOVEMENT table, the dt budget, the content heightfield and the playable
  * bounds. No Colyseus, DB or clock import (NON-NEGOTIABLE 12).
  */
-import { BIKE_ITEM, allZones, isWalkable, isWater, obstacleAt, playableBounds, solidContains } from '@ewa/content';
-import type { Biome, Heightfield, RectSolid, ZoneId } from '@ewa/content';
+import { BIKE_ITEM, GLIDE, allZones, glideProgress, isWalkable, isWater, obstacleAt, planGlide, playableBounds, solidContains } from '@ewa/content';
+import type { Biome, GlidePlan, Heightfield, RectSolid, ZoneId } from '@ewa/content';
 import { MOVEMENT, MOVEMENT_VALIDATION, wrapAngle } from '@ewa/protocol';
 import type { InputMsg } from '@ewa/protocol';
 import type { z } from 'zod';
@@ -31,7 +31,11 @@ export { BIKE_ITEM };
 export type RejectReason = 'staleSeq' | 'dtBudget' | 'speed' | 'unwalkable' | 'bounds' | 'inBattle';
 
 export type InputVerdict =
-  | { readonly ok: true; readonly x: number; readonly z: number; readonly angle: number; readonly running: boolean; readonly budgetMs: number; readonly bike: boolean }
+  | {
+      readonly ok: true; readonly x: number; readonly z: number; readonly angle: number; readonly running: boolean; readonly budgetMs: number; readonly bike: boolean;
+      /** followers: the glide still in flight after this input (null: on the ground) */
+      readonly glide: GlidePlan | null;
+    }
   | { readonly ok: false; readonly reason: RejectReason; readonly budgetMs: number };
 
 export interface MovePrev {
@@ -57,6 +61,15 @@ export interface MovePrev {
    * flagged `bike` is checked against the bike cap, and its segment must stay on land (no surfing while riding).
    */
   readonly canBike?: boolean;
+  /**
+   * Followers with field powers (SPEC §3.18): the player may glide (FIELD_POWERS on, a Flying lead, outdoors). An input
+   * carrying `glide` takes off along content's `planGlide`; positions on the plan's line are accepted until it lands.
+   */
+  readonly canGlide?: boolean;
+  /** the glide in flight (accepted earlier), null / absent = on the ground */
+  readonly glide?: GlidePlan | null;
+  /** the walkable ground the zone's spawn reaches (content `reachFromSpawn`): where a glide may land */
+  readonly reach?: Uint8Array;
 }
 
 export const NO_GATES: readonly RectSolid[] = [];
@@ -156,10 +169,38 @@ export function validateInput(prev: MovePrev, input: z.infer<typeof InputMsg>, h
   const canSurf = prev.canSurf === true && !bike;
   const gates = prev.closedGates ?? NO_GATES;
   const cleared = prev.clearedObstacles ?? NO_CLEARED;
+  const ok = (glide: GlidePlan | null): InputVerdict => ({ ok: true, x: input.x, z: input.z, angle: wrapAngle(input.angle), running: input.running, budgetMs: budget, bike, glide });
+  // followers: a Flying lead glides off a cliff (a take-off, or the glide already in flight)
+  const canGlide = prev.canGlide === true && !bike && prev.reach !== undefined;
+  let plan: GlidePlan | null = canGlide ? (prev.glide ?? null) : null;
+  // a take-off point beyond this message's reach is a glide that already landed (its last window): ignored
+  if (canGlide && input.glide !== undefined && Math.hypot(input.glide.x - prev.x, input.glide.z - prev.z) <= cap + QUANTISATION_SLACK) {
+    const g = input.glide;
+    const same = plan !== null && Math.abs(g.x - plan.x0) < 1e-3 && Math.abs(g.z - plan.z0) < 1e-3;
+    if (!same) {
+      // a take-off: reached over standable ground from the accepted position, inside this message's budget
+      if (plan !== null) return { ok: false, reason: 'unwalkable', budgetMs: budget };
+      if (!(Math.hypot(g.x - prev.x, g.z - prev.z) + Math.hypot(input.x - g.x, input.z - g.z) <= cap + QUANTISATION_SLACK + 0.05)) return { ok: false, reason: 'speed', budgetMs: budget };
+      if (!standable(h, g.x, g.z, canSurf, gates, cleared) || !segmentStandable(h, prev.x, prev.z, g.x, g.z, canSurf, gates, cleared)) return { ok: false, reason: 'unwalkable', budgetMs: budget };
+      plan = planGlide(h, g.x, g.z, g.dx, g.dz, (x, z) => standable(h, x, z, canSurf, gates, cleared), prev.reach!);
+      if (plan === null) return { ok: false, reason: 'unwalkable', budgetMs: budget };
+    }
+  }
+  if (plan !== null) {
+    const at = glideProgress(plan, input.x, input.z);
+    const from = glideProgress(plan, prev.x, prev.z);
+    const lane = GLIDE.laneM;
+    const onLine = at.off <= lane && at.t >= -lane && at.t <= plan.dist + lane && at.t >= Math.min(from.t, 0) - lane;
+    if (onLine) {
+      const landed = at.t >= plan.dist - lane && standable(h, input.x, input.z, canSurf, gates, cleared);
+      return ok(landed ? null : plan);
+    }
+    // off the line: only an ordinary step from ground the player can stand on (it ends the glide)
+  }
   if (!standable(h, input.x, input.z, canSurf, gates, cleared) || !segmentStandable(h, prev.x, prev.z, input.x, input.z, canSurf, gates, cleared)) {
     return { ok: false, reason: 'unwalkable', budgetMs: budget };
   }
-  return { ok: true, x: input.x, z: input.z, angle: wrapAngle(input.angle), running: input.running, budgetMs: budget, bike };
+  return ok(null);
 }
 
 /** The tick's refill (§30.2.8 step 2): +TICK_MS, clamped at BUDGET_MAX_MS. */
